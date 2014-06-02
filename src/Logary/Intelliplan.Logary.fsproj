@@ -1,0 +1,128 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{f7e5b6e8-5d55-4974-9ca7-4c94d810631f}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Intelliplan.Logary</RootNamespace>
+    <AssemblyName>Intelliplan.Logary</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <Name>Intelliplan.Logary</Name>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugType>true</DebugType>
+    <Optimize>false</Optimize>
+    <Tailcalls>false</Tailcalls>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <WarningLevel>3</WarningLevel>
+    <DocumentationFile>bin\Debug\Intelliplan.Logary.xml</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <Tailcalls>true</Tailcalls>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <WarningLevel>3</WarningLevel>
+    <DocumentationFile>bin\Release\Intelliplan.Logary.xml</DocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="Example.fsx" />
+    <None Include="README.md" />
+    <Compile Include="Internals_Utils.fs" />
+    <Compile Include="ServiceMetadata.fs" />
+    <Compile Include="Named.fs" />
+    <Compile Include="LogLevel.fs" />
+    <Compile Include="LogLine.fs" />
+    <Compile Include="Metrics.fs" />
+    <Compile Include="Acks.fs" />
+    <Compile Include="HealthCheck.fs" />
+    <Compile Include="Logger.fs" />
+    <Compile Include="LogManager.fs" />
+    <Compile Include="Internals_FlyweightLogger.fs" />
+    <Compile Include="Internals_Globals.fs" />
+    <Compile Include="Internals_InternalLogger.fs" />
+    <Compile Include="Targets.fs" />
+    <Compile Include="Formatting.fs" />
+    <Compile Include="Rules.fs" />
+    <Compile Include="LogaryConf.fs" />
+    <Compile Include="Metric_Gauge.fs" />
+    <Compile Include="Metric_Counter.fs" />
+    <Compile Include="Metric_Histogram.fs" />
+    <Compile Include="Target_CoreTargets.fs" />
+    <Compile Include="Logging.fs" />
+    <Compile Include="Log.fs" />
+    <Compile Include="LogaryMessage.fs" />
+    <Compile Include="Target_Nimrod.fs" />
+    <Compile Include="Target_Logstash.fs" />
+    <Compile Include="Target_Graphite.fs" />
+    <Compile Include="HealthChecks.fs" />
+    <Compile Include="Registry.fs" />
+    <Compile Include="Configuration_Config.fs" />
+    <Compile Include="Configuration_FactoryApi.fs" />
+    <Compile Include="LoggerExtensions.fs" />
+    <None Include="packages.config" />
+    <Content Include="LogaryTargetOutline.txt" />
+    <None Include="App.config" />
+    <Compile Include="AssemblyVersionInfo.fs" />
+    <Compile Include="AssemblyInfo.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="FSharp.Core">
+      <HintPath>..\packages\FSharp.Core.3.0.0.2\lib\net40\FSharp.Core.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Intelliplan.JsonNet">
+      <HintPath>..\packages\Intelliplan.JsonNet.1.3.247\lib\net40\Intelliplan.JsonNet.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Intelliplan.JsonNet.NodaTime">
+      <HintPath>..\packages\Intelliplan.JsonNet.NodaTime.1.5.0\lib\net40\Intelliplan.JsonNet.NodaTime.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="mscorlib" />
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\packages\Newtonsoft.Json.5.0.8\lib\net40\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="NodaTime">
+      <HintPath>..\packages\NodaTime.1.2.0\lib\net35-Client\NodaTime.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="policy.2.3.FSharp.Core">
+      <HintPath>..\packages\FSharp.Core.3.0.0.2\lib\net40\policy.2.3.FSharp.Core.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Fsharp.Actor\src\FSharp.Actor\FSharp.Actor-logary.fsproj">
+      <Name>FSharp.Actor-logary</Name>
+      <Project>{aa4bc25b-04f7-4b39-bf28-0b0058193ed9}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+  </ItemGroup>
+  <PropertyGroup>
+    <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
+  </PropertyGroup>
+  <Choose>
+    <When Condition="'$(VisualStudioVersion)' == '11.0'">
+      <PropertyGroup Condition="Exists('..\vendor\FSharp\3.0\Microsoft.FSharp.Targets')">
+        <FSharpTargetsPath>..\vendor\FSharp\3.0\Microsoft.FSharp.Targets</FSharpTargetsPath>
+      </PropertyGroup>
+    </When>
+    <Otherwise>
+      <PropertyGroup Condition="Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets')">
+        <FSharpTargetsPath>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets</FSharpTargetsPath>
+      </PropertyGroup>
+    </Otherwise>
+  </Choose>
+  <Import Project="$(FSharpTargetsPath)" />
+</Project>

@@ -1,0 +1,47 @@
+﻿namespace Logary
+
+module Targets =
+  module MyTarget =
+
+    open Logary
+    open Wrappers
+    open Targets.TargetUtils
+    open Structures
+    open FSharp.Actor
+
+    type MyTargetConf =
+      { hostname  : string
+      ; port      : uint16 }
+      static member Create(hostname, ?port) =
+        let port = defaultArg port 2003us
+        { hostname = hostname
+        ; port = port }
+
+    type private MyTargetState =
+      { client         : WriteClient
+      ; sendRecvStream : WriteStream option }
+
+    let private actorLoop conf =
+      (fun (inbox : IActor<_>) ->
+        let rec loop () =
+          async {
+            return! running () }
+        and running () =
+          async {
+            let! msg, mopts = inbox.Receive()
+            match msg with
+            | Measurement m ->
+              
+              
+              return! loop ()
+            | Log l ->
+              
+              return! running ()
+            | ShutdownTarget ackChan -> return! shutdown () }
+            
+        and shutdown () =
+          async { return () }
+
+        loop ())
+
+    let create conf = stdNamedTarget (actorLoop conf)

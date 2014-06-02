@@ -1,0 +1,3 @@
+[submodule "src/Fsharp.Actor"]
+	path = src/Fsharp.Actor
+	url = git://github.com/haf/Fsharp.Actor.git
