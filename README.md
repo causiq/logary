@@ -4,6 +4,12 @@ Logary is a high performance, multi-target logging, metric and health-check libr
 
 Follow Logary at twitter: [@logarylib](https://twitter.com/logarylib).
 
+Installation:
+
+```
+Install-Package Intelliplan.Logary
+```
+
 ## Building
 
 Assuming you have Ruby 1.9.3 installed:
