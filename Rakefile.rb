@@ -31,8 +31,20 @@ asmver_files :assembly_info => :versioning do |a|
                assembly_informational_version: ENV['BUILD_VERSION']
 end
 
+build :clean_sln do |b|
+  b.target = 'Clean'
+  b.prop 'Configuration', 'Release'
+  b.sln = 'src/Logary.sln'
+end
+
+desc 'clean'
+task :clean => [:clean_sln] do
+  FileUtils.rm_rf 'build'
+end
+
 desc 'perform full build'
 build :build => [:versioning, :assembly_info, :restore] do |b|
+  b.prop 'Configuration', 'Release'
   b.sln = 'src/Logary.sln'
 end
 
@@ -56,15 +68,34 @@ task :default => :create_nugets
 
 namespace :docs do
   task :pre_reqs do
-    %w|FAKE FSharp.Formatting Microsoft.AspNet.Razor
-       RazorEngine FSharp.Compiler.Service|.each do |dep|
+    { 'FAKE'              => '2.17.9',
+      'FSharp.Formatting' => '2.4.10' }.
+      each do |name, version|
       system 'buildsupport/NuGet.exe', %W|
-        install #{dep} -OutputDirectory buildsupport -ExcludeVersion
+        install #{name} -OutputDirectory buildsupport -Version #{version} -ExcludeVersion
       |, clr_command: true
     end
   end
 
-  task :build => :pre_reqs do
+  directory 'build/api'
+  directory 'docs/files'
+  directory 'docs/content'
+
+  desc 'build docs'
+  task :build => [:pre_reqs, 'docs/files', 'docs/content', 'build/api'] do
     system 'buildsupport/FAKE/tools/Fake.exe', 'buildsupport/docs.fsx', clr_command: true
+  end
+
+  # unused!! for reference only
+  task :build2 => :pre_reqs do
+    system 'buildsupport/FSharp.Formatting.CommandTool/tools/fsformatting.exe', %w|
+     metadataFormat --generate
+                    --sourceRepo https://github.com/logary/logary
+                    --sourceFolder /src/Logary
+                    --dllFiles src/Logary/bin/Release/Intelliplan.Logary.dll
+                    --outDir docs/output-api
+                    --layoutRoots docs/layouts
+                    --libDirs src/Logary/bin/Release
+    |, clr_command: true
   end
 end

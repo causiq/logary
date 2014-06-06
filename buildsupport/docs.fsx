@@ -1,12 +1,15 @@
+#I "FAKE/tools"
 #I "FSharp.Formatting/lib/net40"
 #I "FSharp.Compiler.Service/lib/net40"
+#I "RazorEngine/lib/net45"
+#I "Microsoft.AspNet.Razor/lib/net45"
 
-#r "FAKE/tools/FakeLib.dll"
+#r "FakeLib.dll"
 #r "FSharp.Literate.dll"
 #r "FSharp.CodeFormat.dll"
 #r "FSharp.MetadataFormat.dll"
-#r "RazorEngine/lib/net45/RazorEngine.dll"
-#r "Microsoft.AspNet.Razor/lib/net45/System.Web.Razor.dll"
+#r "RazorEngine.dll"
+#r "System.Web.Razor.dll"
 
 open Fake
 open System.IO
@@ -20,7 +23,7 @@ open FSharp.MetadataFormat
 // --------------------------------------------------------------------------------------
 
 // Binaries that have XML documentation (in a corresponding generated XML file)
-let referenceBinaries = [ "../src/Logary/bin/Release/Logary.dll" ]
+let referenceBinaries = [ "Intelliplan.Logary.dll" ]
 // Web site location for the generated documentation
 let website = "/"
 
@@ -31,23 +34,24 @@ let info =
     "project-author", "Henrik Feldt, Intelliplan International AB"
     "project-summary", "A high performance logging library written in F# for the CLR."
     "project-github", githubLink
-    "project-nuget", "http://nuget.com/packages/Logary" ]
+    "project-nuget", "https://nuget.com/packages/Logary" ]
 
 // When called from 'build.fsx', use the public project URL as <root>
 // otherwise, use the current 'output' directory.
 #if RELEASE
 let root = website
 #else
-let root = "file://" + (__SOURCE_DIRECTORY__ @@ "../output")
+let root = "file://" + (__SOURCE_DIRECTORY__ @@ "../build")
 #endif
 
 // Paths with template/source/output locations
-let bin        = __SOURCE_DIRECTORY__ @@ "../../bin"
-let content    = __SOURCE_DIRECTORY__ @@ "../content"
-let output     = __SOURCE_DIRECTORY__ @@ "../output"
-let files      = __SOURCE_DIRECTORY__ @@ "../files"
-let templates  = __SOURCE_DIRECTORY__ @@ "templates"
-let formatting = __SOURCE_DIRECTORY__ @@ "../../packages/FSharp.Formatting.2.4.1/"
+let bin        = __SOURCE_DIRECTORY__ @@ "../src/Logary/bin/Release"
+let content    = __SOURCE_DIRECTORY__ @@ "../docs/content"
+let files      = __SOURCE_DIRECTORY__ @@ "../docs/files"
+let templates  = __SOURCE_DIRECTORY__ @@ "../docs/templates"
+
+let output     = __SOURCE_DIRECTORY__ @@ "../build/api"
+let formatting = __SOURCE_DIRECTORY__ @@ "./FSharp.Formatting"
 let docTemplate = formatting @@ "templates/docpage.cshtml"
 
 // Where to look for *.csproj templates (in this order)
@@ -67,11 +71,12 @@ let buildReference () =
   CleanDir (output @@ "reference")
   for lib in referenceBinaries do
     MetadataFormat.Generate
-      ( bin @@ lib, output @@ "reference", layoutRoots, 
+      ( bin @@ lib, output, layoutRoots, 
         parameters = ("root", root)::info,
         sourceRepo = githubLink @@ "tree/master",
-        sourceFolder = __SOURCE_DIRECTORY__ @@ ".." @@ "..",
-        publicOnly = true )
+        sourceFolder = __SOURCE_DIRECTORY__ @@ ".." @@ "src" @@ "Logary",
+        publicOnly = true,
+        libDirs    = [ bin ])
 
 // Build documentation from `fsx` and `md` files in `docs/content`
 let buildDocumentation () =
