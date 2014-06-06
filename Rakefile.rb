@@ -83,6 +83,10 @@ namespace :docs do
 
   desc 'build docs'
   task :build => [:pre_reqs, 'docs/files', 'docs/content', 'build/api'] do
+    %w|optdata sigdata|.each do |ext|
+      FileUtils.cp "src/vendor/FSharp/3.0/FSharp.Core.#{ext}", 'src/Logary/bin/Release/'
+    end
+
     system 'buildsupport/FAKE/tools/Fake.exe', 'buildsupport/docs.fsx', clr_command: true
   end
 
