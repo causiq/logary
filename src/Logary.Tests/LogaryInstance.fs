@@ -1,0 +1,2 @@
+﻿module Logary.Tests.LogaryInstance
+

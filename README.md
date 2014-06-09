@@ -20,3 +20,15 @@ cd logary
 git submodule update --init
 bundle && bundle exec rake
 ```
+
+## Contributing
+
+Coding style: pascalCase, 2 space intent. Use feature branches, PR against
+master.
+
+## License
+
+[Apache 2.0][apache]
+
+
+ [apache]: https://www.apache.org/licenses/LICENSE-2.0.html
