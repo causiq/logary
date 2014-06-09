@@ -1,48 +1,66 @@
-﻿namespace Logary
+﻿module Logary.Tests.Fac
 
-module Fac =
-  open System.IO
-  open System.Text
-  open FSharp.Actor
-  
-  open Logary
-  open Logary.Target.TextWriter
+open System.IO
+open System.Text.RegularExpressions
+open System.Text
 
-  open Logary.Configuration.Config
-  open Rules
-  open System.Text.RegularExpressions
-  open Targets
+open FSharp.Actor
 
-  let emptyTarget =
-    { name  = "empty target"
-    ; actor = Actor.spawn Actor.Options.Default (fun _ -> async { return () }) }
+open Logary
+open Logary.Target.TextWriter
+open Logary.Configuration.Config
 
-  let emptyRule =
-    { hiera  = Regex(".*")
-    ; target = "empty target"
-    ; accept = fun line -> true
-    ; level  = Verbose }
+open Rules
+open Targets
 
-  let textWriter () =
-    let sb = new StringBuilder()
-    new StringWriter(sb)
+open TestDSL
 
-  let withLogary f =
-    let out, err = textWriter (), textWriter ()
+let emptyTarget =
+  { name  = "empty target"
+  ; actor = Actor.spawn Actor.Options.Default (fun _ -> async { return () }) }
 
-    let target = confTarget "cons" (create <| TextWriterConf.Default(out, err))
+let emptyRule =
+  { hiera  = Regex(".*")
+  ; target = "empty target"
+  ; accept = fun line -> true
+  ; level  = Verbose }
 
-    let rule =
-      { accept = fun ll -> true
-      ; hiera = Regex(".*")
-      ; level = LogLevel.Verbose
-      ; target = target.name }
+let textWriter () =
+  let sb = new StringBuilder()
+  new StringWriter(sb)
 
-    let logary =
-      confLogary "tests"
-      |> withRules   [ rule ]
-      |> withTargets [ target ]
-      |> validateLogary
-      |> runLogary
+let withLogary f =
+  let out, err = textWriter (), textWriter ()
 
-    f logary out err
+  let target = confTarget "cons" (create <| TextWriterConf.Default(out, err))
+
+  let rule =
+    { accept = fun ll -> true
+    ; hiera = Regex(".*")
+    ; level = LogLevel.Verbose
+    ; target = target.name }
+
+  let logary =
+    confLogary "tests"
+    |> withRules   [ rule ]
+    |> withTargets [ target ]
+    |> validateLogary
+    |> runLogary
+
+  f logary out err
+
+let finaliseLogary = shutdownLogary >> fun a ->
+  let acks = Async.RunSynchronously(a, 1000)
+  (because "finalise should always work" <| fun () ->
+    match acks with
+    | Nack desc -> failwithf "finaliseLogary failed %A" desc
+    | Ack -> ()) |> thatsIt
+
+let finaliseTarget = shutdownTarget >> fun a ->
+  let acks = Async.RunSynchronously(a, 1000)
+  match acks with
+  | FSharp.Actor.RPC.ExperiencedTimeout actor -> failwith "finalising target timeout"
+  | FSharp.Actor.RPC.SuccessWith(acks, actor) ->
+    match acks with
+    | Nack desc -> failwith "would not shut down: %A"
+    | Ack -> ()

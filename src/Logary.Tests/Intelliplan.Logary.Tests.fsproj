@@ -6,7 +6,7 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{886dfae8-c01a-43e2-a275-7f1e41ca0342}</ProjectGuid>
-    <OutputType>Library</OutputType>
+    <OutputType>Exe</OutputType>
     <RootNamespace>Intelliplan.Logary.Tests</RootNamespace>
     <AssemblyName>Intelliplan.Logary.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
@@ -27,6 +27,10 @@
       <HintPath>..\packages\FSharp.Core.3.0.0.2\lib\net40\FSharp.Core.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Fuchu">
+      <HintPath>..\packages\Fuchu.0.4.0.0\lib\Fuchu.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\packages\Newtonsoft.Json.5.0.8\lib\net40\Newtonsoft.Json.dll</HintPath>
@@ -34,10 +38,6 @@
     </Reference>
     <Reference Include="NodaTime">
       <HintPath>..\packages\NodaTime.1.2.0\lib\net35-Client\NodaTime.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="nunit.framework">
-      <HintPath>..\packages\NUnit.2.6.3\lib\nunit.framework.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="policy.2.3.FSharp.Core">
@@ -57,13 +57,22 @@
     <Compile Include="StubTcp.fs" />
     <Compile Include="TestDSL.fs" />
     <Compile Include="Fac.fs" />
-    <Compile Include="Tests.fs" />
+    <Compile Include="Config.fs" />
+    <Compile Include="Metrics.fs" />
+    <Compile Include="LogLines.fs" />
+    <Compile Include="LogaryInstance.fs" />
+    <Compile Include="CoreTargets.fs" />
+    <Compile Include="LogstashTarget.fs" />
+    <Compile Include="GraphiteTarget.fs" />
+    <Compile Include="HealthChecks.fs" />
+    <Compile Include="Misc.fs" />
     <Compile Include="ExternalAssumptions.fs" />
-    <Compile Include="Gauges.fs" />
     <Compile Include="Formatting.fs" />
     <None Include="packages.config" />
     <None Include="App.config" />
     <Compile Include="AssemblyVersionInfo.fs" />
+    <None Include="Program.fsx" />
+    <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Fsharp.Actor\src\FSharp.Actor\FSharp.Actor-logary.fsproj">

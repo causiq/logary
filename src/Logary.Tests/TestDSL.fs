@@ -1,4 +1,4 @@
-module TestDSL
+module Logary.Tests.TestDSL
 
 open System
 
