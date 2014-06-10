@@ -75,68 +75,61 @@ before the configured timeout.
 
 ### Loosely based on CodaHale's metrics
 
-  http://metrics.codahale.com/getting-started/
-  https://github.com/haf/Graphite.NET
-  https://github.com/haf/riemann-health-windows
+ - http://metrics.codahale.com/getting-started/
+ - https://github.com/haf/Graphite.NET
+ - https://github.com/haf/riemann-health-windows
 
 # Stub Target Outline (e.g. named IPInternal)
 
 ```
-namespace Logary.Target
+module Logary.Target.IPInternal 
 
-open System.Runtime.CompilerServices
+open FSharp.Actor
 
-[<Extension>]
-module Extensions =
-  open Logary
+open Logary
+open Targets
 
-  [<CompiledName(""); Extension>]
-  let trace (logger : Logger) f =
-     f ()
+type IPInternalConf =
+  { connStr : string }
 
-module IPInternal =
+type internal IPInternalState =
+  { a : string }
 
-  open FSharp.Actor
+let requestTraceLoop (conf : IPInternalConf) (svc : ServiceMetadata) =
+  (fun (inbox : IActor<_>) ->
+    let rec init () = async {
+      return! running { a = "" } }
 
-  open Logary
-  open Targets
+    and running state = async {
+      return! shutdown state }
 
-  type IPInternalConf =
-    { connStr : string }
+    and shutdown ackChan = async {
+      return () }
 
-  type internal IPInternalState =
-    { a : string }
+    init ())
 
-  let requestTraceLoop (conf : IPInternalConf) =
-    (fun (inbox : IActor<_>) ->
-      let rec init () = async {
-        return! running { a = "" } }
 
-      and running state = async {
-        return! shutdown state }
+/// Create a new IPInternal target configuration.
+let create conf = TargetUtils.stdNamedTarget (requestTraceLoop conf)
 
-      and shutdown ackChan = async {
-        return () }
+/// Create a new IPInternal target configuration.
+[<CompiledName("Create")>] 
+let CreateC(conf, name)  = create conf name
 
-      init ())
+/// Use with LogaryFactory.New( s => s.Target< HERE >() )
+type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
 
-  let create conf name =
-    TargetUtils.stdNamedTarget (requestTraceLoop conf) (sprintf "logaryRoot/intelliplan/%s" name)
+  member x.Done() =
+    ! (callParent <| Builder(conf, callParent))
 
-  /// Use with LogaryFactory.New( s => s.Target< HERE >() )
-  type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+  member x.ConnectionString(conn : string) =
+    Builder({ conf with connStr = conn }, callParent)
 
-    member x.Done() =
-      ! (callParent <| Builder(conf, callParent))
+  new(callParent : FactoryApi.ParentCallback<_>) =
+    Builder({ connStr = "" }, callParent)
 
-    member x.ConnectionString(conn : string) =
-      Builder({ conf with connStr = conn }, callParent)
-
-    new(callParent : FactoryApi.ParentCallback<_>) =
-      Builder({ connStr = "" }, callParent)
-
-    interface Logary.Targets.FactoryApi.SpecificTargetConf with
-      member x.Build name = create conf name
+  interface Logary.Targets.FactoryApi.SpecificTargetConf with
+    member x.Build name = create conf name
 ```
 
 ## Aims:

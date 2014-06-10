@@ -21,6 +21,10 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.Tests", 
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.Zipkin", "Logary.Zipkin\Intelliplan.Logary.Zipkin.fsproj", "{2C3795A2-D88D-4635-BBAA-53503B7D9721}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.DB.Migrations", "Logary.DB.Migrations\Intelliplan.Logary.DB.Migrations.fsproj", "{FFE1B4AC-742A-45C2-9F04-08FFD01A7796}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.DB", "Logary.DB\Intelliplan.Logary.DB.fsproj", "{A9D14445-2559-4DF7-B1D4-61F0F190EE54}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -67,6 +71,14 @@ Global
 		{2C3795A2-D88D-4635-BBAA-53503B7D9721}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2C3795A2-D88D-4635-BBAA-53503B7D9721}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2C3795A2-D88D-4635-BBAA-53503B7D9721}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FFE1B4AC-742A-45C2-9F04-08FFD01A7796}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FFE1B4AC-742A-45C2-9F04-08FFD01A7796}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FFE1B4AC-742A-45C2-9F04-08FFD01A7796}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FFE1B4AC-742A-45C2-9F04-08FFD01A7796}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A9D14445-2559-4DF7-B1D4-61F0F190EE54}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A9D14445-2559-4DF7-B1D4-61F0F190EE54}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A9D14445-2559-4DF7-B1D4-61F0F190EE54}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A9D14445-2559-4DF7-B1D4-61F0F190EE54}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

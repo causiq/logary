@@ -106,7 +106,8 @@ module Graphite =
   let create conf = TargetUtils.stdNamedTarget (graphiteLoop conf)
 
   /// Create a new graphite target configuration.
-  let [<CompiledName("Create")>] CreateC(conf, name)  = create conf name
+  [<CompiledName("Create")>]
+  let CreateC(conf, name)  = create conf name
 
   /// Use with LogaryFactory.New( s => s.Target< HERE >() )
   type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
