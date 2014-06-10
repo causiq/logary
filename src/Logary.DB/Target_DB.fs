@@ -24,7 +24,7 @@ let private P = Sql.Parameter.make
 let private txn = Tx.transactionalWithIsolation IsolationLevel.ReadCommitted
 
 let private insertMetric (m : Measure) connMgr =
-  Sql.asyncExecNonQuery connMgr
+  Sql.execNonQuery connMgr
     "INSERT INTO Metrics (Path, EpochTicks, Level, Type, Value)
      VALUES (@path, @epoch, @level, @type, @value)"
     [ P("@path", m.path)
@@ -36,7 +36,7 @@ let private insertMetric (m : Measure) connMgr =
 let private insertMetric' m = insertMetric m |> txn
 
 let private insertLogLine (l : LogLine) connMgr =
-  Sql.asyncExecNonQuery connMgr
+  Sql.execNonQuery connMgr
     "INSERT INTO LogLine (Message, Data, Path, EpochTicks, Level, Exception, Tags)
      VALUES (@message, @data, @path, @epoch, @level, @exception, @tags)"
     [ P("@message", l.message)
@@ -58,11 +58,11 @@ let private requestTraceLoop (conf : DBConf) (svc : ServiceMetadata) =
       let! msg, mopt = inbox.Receive()
       match msg with
       | Log l ->
-        let! _ = insertLogLine' l conf.connMgr
+        let _ = insertLogLine' l conf.connMgr
         return! running state
 
       | Metric ms ->
-        let! _ = insertMetric' ms conf.connMgr
+        let _ = insertMetric' ms conf.connMgr
         return! running state
 
       | Flush chan ->
