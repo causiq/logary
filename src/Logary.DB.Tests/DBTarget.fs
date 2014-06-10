@@ -51,7 +51,7 @@ open FluentMigrator.Runner.Processors
 [<Tests>]
 let tests' =
   let fac = Sqlite.SqliteProcessorFactory()
-  testList "migrating sqlite" [
+  testList "migrating sqlite db up and down" [
     testCase "migrating up" <| fun _ ->
       Runner(fac, inMemConnStr).MigrateUp()
     testCase "migating down" <| fun _ ->

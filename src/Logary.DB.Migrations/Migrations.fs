@@ -76,7 +76,7 @@ type MetricsTable() =
         .WithColumnDescription("Arbitrary correlation id from context")
     |> ignore
 
-    base.Create.Index("IX_Timestamp").OnTable("Metrics")
+    base.Create.Index("IX_TimestampTypeLevel").OnTable("Metrics")
       .OnColumn("Timestamp").Descending().WithOptions().NonClustered()
       .OnColumn("Type").Ascending().WithOptions().NonClustered()
       .OnColumn("Level").Ascending().WithOptions().NonClustered()
@@ -106,7 +106,7 @@ type LogLineTable() =
         .WithColumnDescription("Arbitrary correlation id from context")
     |> ignore
 
-    base.Create.Index("IX_Timestamp").OnTable("Metrics").InSchema(Defaults.Schema)
+    base.Create.Index("IX_TimestampTypeLevel").OnTable("Metrics").InSchema(Defaults.Schema)
       .OnColumn("Timestamp").Descending().WithOptions().NonClustered()
       .OnColumn("Type").Ascending().WithOptions().NonClustered()
       .OnColumn("Level").Ascending().WithOptions().NonClustered()
