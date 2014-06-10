@@ -52,6 +52,13 @@
     <Compile Include="Migrations.fs" />
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Logary\Intelliplan.Logary.fsproj">
+      <Name>Intelliplan.Logary</Name>
+      <Project>{f7e5b6e8-5d55-4974-9ca7-4c94d810631f}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+  </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
   </PropertyGroup>

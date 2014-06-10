@@ -13,9 +13,11 @@ open FsSql
 open NodaTime
 
 type DBConf =
-  { connMgr : Sql.ConnectionManager }
+  { connMgr : Sql.ConnectionManager
+    schema  : string }
   static member Create openConn =
-    { connMgr = Sql.withNewConnection openConn }
+    { connMgr = Sql.withNewConnection openConn
+      schema  = "Logary" }
 
 type internal DBInternalState =
   { a : string }
@@ -23,7 +25,7 @@ type internal DBInternalState =
 let private P = Sql.Parameter.make
 let private txn = Tx.transactionalWithIsolation IsolationLevel.ReadCommitted
 
-let private insertMetric (m : Measure) connMgr =
+let private insertMetric schema (m : Measure) connMgr =
   Sql.execNonQuery connMgr
     "INSERT INTO Metrics (Path, EpochTicks, Level, Type, Value)
      VALUES (@path, @epoch, @level, @type, @value)"
@@ -33,11 +35,11 @@ let private insertMetric (m : Measure) connMgr =
       P("@type", m.mtype.ToString())
       P("@value", m.value) ]
 
-let private insertMetric' m = insertMetric m |> txn
+let private insertMetric' schema m = insertMetric schema m |> txn
 
-let private insertLogLine (l : LogLine) connMgr =
+let private insertLogLine schema (l : LogLine) connMgr =
   Sql.execNonQuery connMgr
-    "INSERT INTO LogLine (Message, Data, Path, EpochTicks, Level, Exception, Tags)
+    "INSERT INTO LogLines (Message, Data, Path, EpochTicks, Level, Exception, Tags)
      VALUES (@message, @data, @path, @epoch, @level, @exception, @tags)"
     [ P("@message", l.message)
       P("@data", l.data)
@@ -47,7 +49,7 @@ let private insertLogLine (l : LogLine) connMgr =
       P("@exception", l.``exception``)
       P("@tags", String.Join(",", l.tags)) ]
 
-let private insertLogLine' l = insertLogLine l |> txn
+let private insertLogLine' schema l = insertLogLine schema l |> txn
 
 let private requestTraceLoop (conf : DBConf) (svc : ServiceMetadata) =
   (fun (inbox : IActor<_>) ->
@@ -58,11 +60,11 @@ let private requestTraceLoop (conf : DBConf) (svc : ServiceMetadata) =
       let! msg, mopt = inbox.Receive()
       match msg with
       | Log l ->
-        let _ = insertLogLine' l conf.connMgr
+        let _ = insertLogLine' conf.schema l conf.connMgr
         return! running state
 
       | Metric ms ->
-        let _ = insertMetric' ms conf.connMgr
+        let _ = insertMetric' conf.schema ms conf.connMgr
         return! running state
 
       | Flush chan ->
