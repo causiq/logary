@@ -55,7 +55,6 @@ let tests =
     testCase "smoke" <| fun _ ->
       use c = new SQLiteConnection(inMemConnStr) :> IDbConnection
       c.Open()
-      ()
 
     testCase "initialise" <| fun _ ->
       stop (inited ())
@@ -87,13 +86,16 @@ open Logary.DB.Migrations
 open FluentMigrator.Runner.Processors
 
 [<Tests>]
-let tests' =
+let migrations =
   let fac = Sqlite.SqliteProcessorFactory()
+  let forgetful = "FullUri=file::memory:"
+
   testList "migrating sqlite db up and down" [
     testCase "migrating up" <| fun _ ->
-      Runner(fac, inMemConnStr).MigrateUp()
+      Runner(fac, forgetful).MigrateUp()
+
     testCase "migating down" <| fun _ ->
-      Runner(fac, inMemConnStr).MigrateDown()
+      Runner(fac, forgetful).MigrateDown()
     ]
 
 [<EntryPoint>]
