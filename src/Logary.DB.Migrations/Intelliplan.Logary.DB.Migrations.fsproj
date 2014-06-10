@@ -8,7 +8,7 @@
     <ProjectGuid>ffe1b4ac-742a-45c2-9f04-08ffd01a7796</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>Intelliplan.Logary.SqlServer.Migrations</RootNamespace>
-    <AssemblyName>Intelliplan.Logary.SqlServer.Migrations</AssemblyName>
+    <AssemblyName>Intelliplan.Logary.DB.Migrations</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <Name>Intelliplan.Logary.DB.Migrations</Name>
   </PropertyGroup>
@@ -34,6 +34,10 @@
   <ItemGroup>
     <Reference Include="FluentMigrator">
       <HintPath>..\packages\FluentMigrator.1.1.2.1\lib\40\FluentMigrator.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="FluentMigrator.Runner">
+      <HintPath>..\packages\FluentMigrator.Runner.1.1.1.26\lib\NET40\FluentMigrator.Runner.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />

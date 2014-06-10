@@ -1,4 +1,4 @@
-﻿module Logary.Target.SqlServer
+﻿module Logary.Target.DB
 
 open System
 open System.Data
@@ -21,7 +21,7 @@ type internal DBInternalState =
   { a : string }
 
 let private P = Sql.Parameter.make
-let private txn = Tx.transactionalWithIsolation IsolationLevel.RepeatableRead
+let private txn = Tx.transactionalWithIsolation IsolationLevel.ReadCommitted
 
 let private insertMetric (m : Measure) connMgr =
   Sql.asyncExecNonQuery connMgr

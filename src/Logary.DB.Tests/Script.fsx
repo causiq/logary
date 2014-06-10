@@ -2,7 +2,7 @@
 // for more guidance on F# programming.
 
 #load "Library1.fs"
-open Logary.SqlServer
+open Logary.DB.Tests
 
 // Define your library scripting code here
 
