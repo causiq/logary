@@ -41,33 +41,31 @@ type MigrationOptions(preview, switches, timeout) =
 type Runner(fac      : MigrationProcessorFactory,
             connStr  : string,
             ?timeout : TimeSpan,
+            ?showSql : bool,
             ?logger  : Logger) =
 
   let logger = defaultArg logger (Logging.getCurrentLogger())
+
   let timeout = defaultArg timeout (TimeSpan.FromSeconds(60.))
+  let showSql = defaultArg showSql true
 
   let mkRunner () =
-    let announcer = new TextWriterAnnouncer(fun s -> Log.infoStr s |> Log.log logger);
-    let assembly = Assembly.GetExecutingAssembly();
-
-    let migrationContext = new RunnerContext(announcer, Namespace = "Logary.DB.Migrations")
-    let processor = fac.Create(connStr, announcer,
-                               MigrationOptions(false, "", int timeout.TotalSeconds))
-    new MigrationRunner(assembly, migrationContext, processor)
+    let announcer = new TextWriterAnnouncer(Log.info logger, ShowSql = showSql)
+    let assembly  = Assembly.GetExecutingAssembly()
+    let ctx       = new RunnerContext(announcer, Namespace = "Logary.DB.Migrations")
+    let opts      = MigrationOptions(false, "", int timeout.TotalSeconds)
+    let processor = fac.Create(connStr, announcer, opts)
+    new MigrationRunner(assembly, ctx, processor)
 
   /// Migrate up to the latest version available in the assembly.
   member x.MigrateUp () =
-    Log.info logger "starting migration up"
     let r = mkRunner ()
     r.MigrateUp(true)
-    Log.info logger "finished migration up"
 
   /// Migrate down to version 0 (zero)
   member x.MigrateDown () =
-    Log.info logger "starting migration down"
     let r = mkRunner ()
     r.MigrateDown(0L, true)
-    Log.info logger "finishing migration down"
 
 [<Migration(1L)>]
 type MetricsTable() =
@@ -96,7 +94,7 @@ type MetricsTable() =
     |> ignore
 
 [<Migration(2L)>]
-type LogLineTable() =
+type LogLinesTable() =
   inherit AutoReversingMigration()
   override x.Up () =
 
