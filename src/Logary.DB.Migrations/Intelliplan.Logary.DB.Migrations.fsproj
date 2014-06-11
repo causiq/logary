@@ -46,13 +46,24 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Defaults.fs" />
+    <Compile Include="Runner.fs" />
     <Compile Include="Migrations.fs" />
+    <Compile Include="Configuration_CSharp_Migrations.fs" />
+    <Compile Include="Configuration_Migrations.fs" />
     <None Include="packages.config" />
+    <None Include="app.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Logary.DB\Intelliplan.Logary.DB.fsproj">
+      <Name>Intelliplan.Logary.DB</Name>
+      <Project>{a9d14445-2559-4df7-b1d4-61f0f190ee54}</Project>
+      <Private>True</Private>
+    </ProjectReference>
     <ProjectReference Include="..\Logary\Intelliplan.Logary.fsproj">
       <Name>Intelliplan.Logary</Name>
       <Project>{f7e5b6e8-5d55-4974-9ca7-4c94d810631f}</Project>

@@ -24,6 +24,12 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="FluentMigrator">
+      <HintPath>..\packages\FluentMigrator.1.1.2.1\lib\40\FluentMigrator.dll</HintPath>
+    </Reference>
+    <Reference Include="FluentMigrator.Runner">
+      <HintPath>..\packages\FluentMigrator.Runner.1.1.1.26\lib\NET40\FluentMigrator.Runner.dll</HintPath>
+    </Reference>
     <Reference Include="Machine.Specifications">
       <HintPath>..\packages\Machine.Specifications.0.5.16\lib\net40\Machine.Specifications.dll</HintPath>
     </Reference>
@@ -33,6 +39,9 @@
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Data.SQLite">
+      <HintPath>..\packages\System.Data.SQLite.Core.1.0.92.0\lib\net45\System.Data.SQLite.dll</HintPath>
+    </Reference>
     <Reference Include="System.Net" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -52,13 +61,30 @@
       <Project>{26fd79bd-2329-41b6-a86d-8f3992437cbe}</Project>
       <Name>Intelliplan.Logary.CSharp</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Logary.DB.Migrations\Intelliplan.Logary.DB.Migrations.fsproj">
+      <Project>{ffe1b4ac-742a-45c2-9f04-08ffd01a7796}</Project>
+      <Name>Intelliplan.Logary.DB.Migrations</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Logary.DB\Intelliplan.Logary.DB.fsproj">
+      <Project>{a9d14445-2559-4df7-b1d4-61f0f190ee54}</Project>
+      <Name>Intelliplan.Logary.DB</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Logary\Intelliplan.Logary.fsproj">
       <Project>{f7e5b6e8-5d55-4974-9ca7-4c94d810631f}</Project>
       <Name>Intelliplan.Logary</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="app.config" />
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="x64\SQLite.Interop.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="x86\SQLite.Interop.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

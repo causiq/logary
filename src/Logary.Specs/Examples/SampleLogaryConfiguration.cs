@@ -1,7 +1,12 @@
 using System;
+using System.Data.SQLite;
 using System.Text.RegularExpressions;
+using FluentMigrator.Runner.Announcers;
+using FluentMigrator.Runner.Generators.SQLite;
+using FluentMigrator.Runner.Processors.Sqlite;
 using Logary;
 using Logary.Configuration;
+using Logary.DB.Migrations;
 using Logary.Target;
 using Console = System.Console;
 
@@ -32,6 +37,16 @@ namespace Intelliplan.Logary.Specs.Examples
                             .Port(1936)
                             .EventVersion(Logstash.EventVersion.One)
                             .Done())
+                    .Target<DB.Builder>("db",
+                        conf => conf.Target
+                            .ConnectionFactory(() => new SQLiteConnection())
+                            .DefaultSchema()
+                            .MigrateUp(
+                                conn => new SqliteProcessor(conn,
+                                    new SqliteGenerator(),
+                                    new ConsoleAnnouncer(),
+                                    new MigrationOptions(false, "", 60),
+                                    new SqliteDbFactory())))
                 );
 
             var logger = x.GetLogger("Sample.Config");
