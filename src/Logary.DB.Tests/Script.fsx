@@ -1,8 +1,25 @@
-﻿// Learn more about F# at http://fsharp.net. See the 'F# Tutorial' project
-// for more guidance on F# programming.
+﻿#I "bin/Release"
 
-#load "Library1.fs"
+#r "Fuchu.dll"
+open Fuchu
+
+#r "Intelliplan.Logary.dll"
+#r "Intelliplan.Logary.DB.dll"
+#r "Intelliplan.Logary.DB.Migrations.dll"
+
+#r "FluentMigrator.dll"
+#r "FluentMigrator.Runner.dll"
+
+#r "FsSql.dll"
+
+#r "FSharp.Actor.dll"
+
+#r "System.Data.dll"
+#r "System.Data.SQLite.dll"
+
+#load "DBTarget.fs"
 open Logary.DB.Tests
 
-// Define your library scripting code here
-
+targetTests
+//|> Test.filter (fun s -> s.Contains "initialise and log")
+|> run
