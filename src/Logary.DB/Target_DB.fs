@@ -7,20 +7,22 @@ open FSharp.Actor
 
 open Logary
 open Logary.Targets
+open Logary.Internals
 
 open FsSql
 
 open NodaTime
 
 type DBConf =
-  { connMgr : Sql.ConnectionManager
+  { connFac : unit -> IDbConnection
     schema  : string }
   static member Create openConn =
-    { connMgr = Sql.withNewConnection openConn
+    { connFac = openConn
       schema  = "Logary" }
 
 type internal DBInternalState =
-  { a : string }
+  { conn    : IDbConnection
+    connMgr : Sql.ConnectionManager }
 
 let private P = Sql.Parameter.make
 let private txn = Tx.transactionalWithIsolation IsolationLevel.ReadCommitted
@@ -54,17 +56,25 @@ let private insertLogLine' schema l = insertLogLine schema l |> txn
 let private requestTraceLoop (conf : DBConf) (svc : ServiceMetadata) =
   (fun (inbox : IActor<_>) ->
     let rec init () = async {
-      return! running () }
+      InternalLogger.debug "target is opening connection to DB"
+      let c = conf.connFac ()
+      match c.State with
+      | ConnectionState.Broken
+      | ConnectionState.Closed -> c.Open()
+      | _ -> ()
+      return! running
+        { conn    = c
+          connMgr = Sql.withConnection c } }
 
     and running state = async {
       let! msg, mopt = inbox.Receive()
       match msg with
       | Log l ->
-        let _ = insertLogLine' conf.schema l conf.connMgr
+        let _ = insertLogLine' conf.schema l state.connMgr
         return! running state
 
       | Metric ms ->
-        let _ = insertMetric' conf.schema ms conf.connMgr
+        let _ = insertMetric' conf.schema ms state.connMgr
         return! running state
 
       | Flush chan ->
@@ -88,7 +98,7 @@ let CreateC(conf, name)  = create conf name
 type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
 
   member x.ConnectionFactory(conn : unit -> IDbConnection) =
-    ! (callParent <| Builder({ conf with connMgr = Sql.withNewConnection conn }, callParent))
+    ! (callParent <| Builder({ conf with connFac = conn }, callParent))
 
   new(callParent : FactoryApi.ParentCallback<_>) =
     let conf = DBConf.Create (fun () -> failwith "inner build error")
