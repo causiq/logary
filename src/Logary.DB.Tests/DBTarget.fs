@@ -11,6 +11,7 @@ open Logary.Metric
 open System
 open System.Data
 open System.Data.SQLite
+open System.Net
 
 /// this one is a per-process db
 [<Literal>]
@@ -95,6 +96,8 @@ module SQLiteDB =
 
 [<Tests>]
 let targetTests =
+  let flush = flushTarget >> Async.Ignore >> Async.RunSynchronously
+
   let stop = shutdownTarget >> Async.Ignore >> Async.RunSynchronously
 
   let start f_conn =
@@ -115,9 +118,6 @@ let targetTests =
       try (LogLine.Create "hello world") |> logTarget target
       finally stop target
 
-    testCase "initialise in logary config" <| fun _ ->
-      Tests.skiptest "TODO"
-
     testCase "log and read back returns result" <| fun _ ->
       Tests.skiptest "log and read back not impl"
       
@@ -129,27 +129,44 @@ let targetTests =
       try (Metric.Counter.counterValue "app.signin" 3.0) |> metricTarget target
       finally stop target
 
-    testCase "metric and read back returns result" <| fun _ ->
+    testList "metric and read back returns result" [
       use db = SQLiteDB.openConn inMemConnStrShared
       let mgr = Sql.withConnection db
 
-      let sql = "SELECT COUNT(*) FROM Metrics m WHERE m.Type = 'counter'"
+      let countSql = "SELECT COUNT(*) FROM Metrics m"
 
       // pre-conditions
-      let count = Sql.execScalar mgr sql [] |> Option.get
+      let count = Sql.execScalar mgr countSql [] |> Option.get
       Assert.Equal("count should be zero", 0L, count)
 
       // given
       let target = start (fun () -> db)
-      (Metric.Counter.counterValue "app.signin" 3.0) |> metricTarget target
-      (Metric.Counter.counterValue "app.signin" 6.0) |> metricTarget target
+      (Metric.Counter.counterValue "web01.app.signin" 3.0) |> metricTarget target
+      (Metric.Counter.counterValue "web02.app.signin" 6.0) |> metricTarget target
+      flush target
 
       // then
       try
-        let count = Sql.execScalar mgr sql [] |> Option.get
-        Assert.Equal("count should be two", 0L, count)
+        let count = Sql.execScalar mgr countSql [] |> Option.get
+        Assert.Equal("count should be two metrics", 2L, count)
+
+        let records = Sql.execReader mgr "SELECT * FROM Metrics" [] |> Sql.map Sql.asMap
+        let read (m : Map<string, obj>) k =
+          try m.[k] :?> 'a
+          with :? InvalidCastException as e ->
+            Tests.failtestf "converting key %s to %s failed, was: %s."
+              k typeof<'a>.Name (m.[k].GetType().Name)
+
+        for r in records do
+          let read k : 'a = read r k
+          Assert.Equal("should have host name from computer DNS", Dns.GetHostName(), read "Host")
+          Assert.StringContains("should have path from from metric", ".app.signin", read "Path")
+          Assert.Equal("should have info level", int64 (Info.ToInt()), read "Level")
+          Assert.Equal("should have counter type", DB.typeAsInt16 MetricType.Counter |> int64, read "Type")
+          Assert.Equal("value is 3 or 6", true, read "Value" = 3.M || read "Value" = 6.M)
       finally
         stop target
+      ]
 
     testCase "metric and read back: good field contents" <| fun _ ->
       Tests.skiptest "metric and read back not impl"
@@ -167,8 +184,14 @@ let migrationTests =
     testCase "migrating up" <| fun _ ->
       Runner(fac, forgetful).MigrateUp()
 
+    testCase "migrating up with reading index" <| fun _ ->
+      Runner(fac, forgetful).MigrateUp(Runner.IndexForReading)
+
     testCase "migating down" <| fun _ ->
       Runner(fac, forgetful).MigrateDown()
+
+    testCase "migating down with reading index" <| fun _ ->
+      Runner(fac, forgetful).MigrateDown(Runner.IndexForReading)
     ]
 
 [<EntryPoint>]

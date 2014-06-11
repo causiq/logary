@@ -2,6 +2,7 @@
 
 open System
 open System.Data
+open System.Net
 
 open FSharp.Actor
 
@@ -12,6 +13,12 @@ open Logary.Internals
 open FsSql
 
 open NodaTime
+
+/// Convert the MetricType to an int
+let typeAsInt16 = function
+  | MetricType.Counter -> 0s
+  | MetricType.Timer _ -> 1s
+  | MetricType.Gauge -> 2s
 
 type DBConf =
   { connFac : unit -> IDbConnection
@@ -29,21 +36,23 @@ let private txn = Tx.transactionalWithIsolation IsolationLevel.ReadCommitted
 
 let private insertMetric schema (m : Measure) connMgr =
   Sql.execNonQuery connMgr
-    "INSERT INTO Metrics (Path, EpochTicks, Level, Type, Value)
-     VALUES (@path, @epoch, @level, @type, @value)"
-    [ P("@path", m.path)
+    "INSERT INTO Metrics (Host, Path, EpochTicks, Level, Type, Value)
+     VALUES (@host, @path, @epoch, @level, @type, @value)"
+    [ P("@host", Dns.GetHostName())
+      P("@path", m.path)
       P("@epoch", m.timestamp.Ticks)
       P("@level", m.level.ToInt())
-      P("@type", m.mtype.ToString())
+      P("@type", typeAsInt16 m.mtype)
       P("@value", m.value) ]
 
 let private insertMetric' schema m = insertMetric schema m |> txn
 
 let private insertLogLine schema (l : LogLine) connMgr =
   Sql.execNonQuery connMgr
-    "INSERT INTO LogLines (Message, Data, Path, EpochTicks, Level, Exception, Tags)
-     VALUES (@message, @data, @path, @epoch, @level, @exception, @tags)"
-    [ P("@message", l.message)
+    "INSERT INTO LogLines (Host, Message, Data, Path, EpochTicks, Level, Exception, Tags)
+     VALUES (@host, @message, @data, @path, @epoch, @level, @exception, @tags)"
+    [ P("@host", Dns.GetHostName())
+      P("@message", l.message)
       P("@data", l.data)
       P("@path", l.path)
       P("@epoch", l.timestamp.Ticks)
@@ -82,6 +91,7 @@ let private requestTraceLoop (conf : DBConf) (svc : ServiceMetadata) =
         return! running state
 
       | ShutdownTarget ackChan ->
+        try state.conn.Dispose() with _ -> ()
         ackChan.Reply Ack
         return () }
 

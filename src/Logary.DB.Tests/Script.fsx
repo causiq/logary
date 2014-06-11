@@ -21,5 +21,5 @@ open Fuchu
 open Logary.DB.Tests
 
 targetTests
-//|> Test.filter (fun s -> s.Contains "initialise and log")
+|> Test.filter (fun s -> s.Contains "metric and read back returns result")
 |> run
