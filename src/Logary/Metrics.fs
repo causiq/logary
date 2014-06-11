@@ -1,6 +1,8 @@
 ﻿namespace Logary
 
-/// A counter is just a gauge for an AtomicLong instance. You can increment or decrement its value. For example, we may want a more efficient way of measuring the pending job in a queue:
+/// A counter is just a gauge for an AtomicLong instance. You can increment or
+/// decrement its value. For example, we may want a more efficient way of
+/// measuring the pending job in a queue:
 type Counter =
   inherit Named
   abstract Inc : uint32 -> unit
@@ -13,22 +15,27 @@ type Gauge =
   inherit Named
   abstract Put : float -> unit
 
-/// A meter measures the rate of events over time (e.g., “requests per second”). In addition to the mean rate, meters also track 1-, 5-, and 15-minute moving averages.
+/// A meter measures the rate of events over time (e.g., “requests per second”).
+/// In addition to the mean rate, meters also track 1-, 5-, and 15-minute moving
+/// averages.
 type Meter =
   inherit Named
   abstract Mark : uint32 -> unit
 
-/// A histogram measures the statistical distribution of values in a stream of data. In addition to minimum, maximum, mean, etc., it also measures median, 75th, 90th, 95th, 98th, 99th, and 99.9th percentiles.
+/// A histogram measures the statistical distribution of values in a stream of data.
+/// In addition to minimum, maximum, mean, etc., it also measures median, 75th,
+/// 90th, 95th, 98th, 99th, and 99.9th percentiles.
 type Histogram =
   abstract Update : float -> unit
 
-/// A timer measures both the rate that a particular piece of code is called and the distribution of its duration.
+/// A timer measures both the rate that a particular piece of code is called
+/// and the distribution of its duration.
 type Timer =
   inherit Named
   abstract Start : unit -> TimerContext
 and TimerContext =
   abstract Stop : unit -> unit
-  
+
 open FSharp.Actor
 open NodaTime
 
