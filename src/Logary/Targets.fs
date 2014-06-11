@@ -101,7 +101,14 @@ module Targets =
     instance
 
   /// Log to the target and just return unit
-  let logTarget i m = send m i |> ignore
+  let logTarget i logLine = send logLine i |> ignore
+
+  /// Send the metric to the target and return unit
+  let metricTarget i msr = i.actor <-- Metric msr
+
+  /// Send a flush RPC to the target and return the async with the ACKs
+  let flushTarget i =
+    i.actor |> Actor.makeRpc Flush Infinite
 
   /// Shutdown the target, waiting indefinitely for it to stop
   let shutdownTarget tInst =

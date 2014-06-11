@@ -14,10 +14,10 @@ open Logary.Targets
 open Logary.Metric
 open Logary.Internals.Tcp
 
-
 open Logary.Tests.StubTcp
 open Logary.Tests.TestDSL
 
+[<Tests>]
 let tests =
   testList "graphite target" [
     testCase "initialising" <| fun _ ->

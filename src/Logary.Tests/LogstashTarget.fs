@@ -18,6 +18,7 @@ let raised_exn msg =
   with ex -> e := Some ex
   (!e).Value
 
+[<Tests>]
 let tests =
   testList "logstash target" [
     testCase "plain logging" <| fun _ ->
