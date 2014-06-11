@@ -94,6 +94,18 @@ module SQLiteDB =
 
   let connMgrShared = Sql.withNewConnection (fun () -> openConn inMemConnStrShared)
 
+let raised_exn msg =
+  let e = ref None : exn option ref
+  try raise <| ApplicationException(msg)
+  with ex -> e := Some ex
+  (!e).Value
+
+let read (m : Map<string, obj>) k =
+  try m.[k] :?> 'a
+  with :? InvalidCastException as e ->
+    Tests.failtestf "converting key %s to %s failed, was: %s."
+      k typeof<'a>.Name (m.[k].GetType().Name)
+
 [<Tests>]
 let targetTests =
   let flush = flushTarget >> Async.Ignore >> Async.RunSynchronously
@@ -115,25 +127,63 @@ let targetTests =
 
     testCase "initialise and log" <| fun _ ->
       let target = start (fun () -> SQLiteDB.openConn inMemConnStrEmpheral)
-      try (LogLine.Create "hello world") |> logTarget target
+      try
+        (LogLine.Create "hello world") |> logTarget target
+        flush target
       finally stop target
 
     testCase "log and read back returns result" <| fun _ ->
-      Tests.skiptest "log and read back not impl"
-      
-    testCase "log and read back: good field contents" <| fun _ ->
-      Tests.skiptest "log and read back not impl"
+      use db = SQLiteDB.openConn inMemConnStrShared
+      let mgr = Sql.withConnection db
+
+      let countSql = "SELECT COUNT(*) FROM LogLines"
+
+      // pre-conditions
+      let count = Sql.execScalar mgr countSql [] |> Option.get
+      Assert.Equal("count should be zero", 0L, count)
+
+      // given
+      let target = start (fun () -> db)
+      LogLine.Create("hello world", path = "a.b.c")
+        |> logTarget target
+      LogLine.Create("goodbye world", Info, "a.b.c",
+                     tags = ["tests"; "things"],
+                     ``exception`` = Some (raised_exn "hoho"))
+        |> logTarget target
+      flush target
+
+      // then
+      try
+        let count = Sql.execScalar mgr countSql [] |> Option.get
+        Assert.Equal("count should be two log lines", 2L, count)
+
+        let records = Sql.execReader mgr "SELECT * FROM LogLines" [] |> Sql.map Sql.asMap
+
+        for r in records do
+          let read k : 'a = read r k
+          Assert.Equal("should have host name from computer DNS", Dns.GetHostName(), read "Host")
+          Assert.Equal("should have path from", "a.b.c", read "Path")
+          Assert.Equal("should have info level", int64 (Info.ToInt()), read "Level")
+
+          if read "Message" = "goodbye world" then
+            Assert.Equal("should have comma-separated tags", "tests,things", read "Tags")
+            Assert.StringContains("should have exception substring",
+                                  "ApplicationException", read "Exception")
+            Assert.StringContains("should have exception substring",
+                                  "hoho", read "Exception")
+      finally
+        stop target
 
     testCase "initialise and metric" <| fun _ ->
       let target = start (fun () -> SQLiteDB.openConn inMemConnStrEmpheral)
       try (Metric.Counter.counterValue "app.signin" 3.0) |> metricTarget target
       finally stop target
 
-    testList "metric and read back returns result" [
+    testCase "metric and read back returns result" <| fun _ ->
       use db = SQLiteDB.openConn inMemConnStrShared
       let mgr = Sql.withConnection db
 
-      let countSql = "SELECT COUNT(*) FROM Metrics m"
+      let countSql = "SELECT COUNT(*) FROM Metrics"
 
       // pre-conditions
       let count = Sql.execScalar mgr countSql [] |> Option.get
@@ -151,11 +201,6 @@ let targetTests =
         Assert.Equal("count should be two metrics", 2L, count)
 
         let records = Sql.execReader mgr "SELECT * FROM Metrics" [] |> Sql.map Sql.asMap
-        let read (m : Map<string, obj>) k =
-          try m.[k] :?> 'a
-          with :? InvalidCastException as e ->
-            Tests.failtestf "converting key %s to %s failed, was: %s."
-              k typeof<'a>.Name (m.[k].GetType().Name)
 
         for r in records do
           let read k : 'a = read r k
@@ -166,10 +211,6 @@ let targetTests =
           Assert.Equal("value is 3 or 6", true, read "Value" = 3.M || read "Value" = 6.M)
       finally
         stop target
-      ]
-
-    testCase "metric and read back: good field contents" <| fun _ ->
-      Tests.skiptest "metric and read back not impl"
     ]
 
 open Logary.DB.Migrations

@@ -122,7 +122,6 @@ type MetricsTable() =
         .OnColumn("Level").Ascending()
       |> ignore
 
-
 [<Migration(2L)>]
 type LogLinesTable() =
   inherit AutoReversingMigration()

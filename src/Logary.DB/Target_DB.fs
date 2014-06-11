@@ -57,7 +57,7 @@ let private insertLogLine schema (l : LogLine) connMgr =
       P("@path", l.path)
       P("@epoch", l.timestamp.Ticks)
       P("@level", l.level.ToInt())
-      P("@exception", l.``exception``)
+      P("@exception", l.``exception`` |> Option.map (sprintf "%O") |> Option.getOrDefault)
       P("@tags", String.Join(",", l.tags)) ]
 
 let private insertLogLine' schema l = insertLogLine schema l |> txn
