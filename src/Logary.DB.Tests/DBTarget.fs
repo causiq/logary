@@ -97,7 +97,7 @@ module SQLiteDB =
 let targetTests =
   let stop = shutdownTarget >> Async.Ignore >> Async.RunSynchronously
 
-  let startEmpheral f_conn =
+  let start f_conn =
     let conf = DB.DBConf.Create f_conn
     initTarget { serviceName = "tests" } (DB.create conf "db-target")
 
@@ -108,12 +108,12 @@ let targetTests =
       c.Close()
 
     testCase "initialise" <| fun _ ->
-      stop (startEmpheral (fun () -> SQLiteDB.openConn inMemConnStrEmpheral))
+      stop (start (fun () -> SQLiteDB.openConn inMemConnStrEmpheral))
 
     testCase "initialise and log" <| fun _ ->
-      let target = startEmpheral (fun () -> SQLiteDB.openConn inMemConnStrEmpheral)
-      (LogLine.Create "hello world") |> logTarget target
-      stop target
+      let target = start (fun () -> SQLiteDB.openConn inMemConnStrEmpheral)
+      try (LogLine.Create "hello world") |> logTarget target
+      finally stop target
 
     testCase "initialise in logary config" <| fun _ ->
       Tests.skiptest "TODO"
@@ -125,9 +125,9 @@ let targetTests =
       Tests.skiptest "log and read back not impl"
 
     testCase "initialise and metric" <| fun _ ->
-      let target = startEmpheral (fun () -> SQLiteDB.openConn inMemConnStrEmpheral)
-      (Metric.Counter.counterValue "app.signin" 3.0) |> metricTarget target
-      stop target
+      let target = start (fun () -> SQLiteDB.openConn inMemConnStrEmpheral)
+      try (Metric.Counter.counterValue "app.signin" 3.0) |> metricTarget target
+      finally stop target
 
     testCase "metric and read back returns result" <| fun _ ->
       use db = SQLiteDB.openConn inMemConnStrShared
@@ -135,8 +135,21 @@ let targetTests =
 
       let sql = "SELECT COUNT(*) FROM Metrics m WHERE m.Type = 'counter'"
 
+      // pre-conditions
       let count = Sql.execScalar mgr sql [] |> Option.get
       Assert.Equal("count should be zero", 0L, count)
+
+      // given
+      let target = start (fun () -> db)
+      (Metric.Counter.counterValue "app.signin" 3.0) |> metricTarget target
+      (Metric.Counter.counterValue "app.signin" 6.0) |> metricTarget target
+
+      // then
+      try
+        let count = Sql.execScalar mgr sql [] |> Option.get
+        Assert.Equal("count should be two", 0L, count)
+      finally
+        stop target
 
     testCase "metric and read back: good field contents" <| fun _ ->
       Tests.skiptest "metric and read back not impl"
