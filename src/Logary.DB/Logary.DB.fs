@@ -22,10 +22,10 @@ let typeAsInt16 = function
 
 type DBConf =
   { connFac : unit -> IDbConnection
-    schema  : string }
+    schema  : string option }
   static member Create openConn =
     { connFac = openConn
-      schema  = "Logary" }
+      schema  = None }
 
 type internal DBInternalState =
   { conn    : IDbConnection
@@ -34,10 +34,14 @@ type internal DBInternalState =
 let private P = Sql.Parameter.make
 let private txn = Tx.transactionalWithIsolation IsolationLevel.ReadCommitted
 
+let private printSchema = function
+  | Some (s : string) -> sprintf "%s." s
+  | None              -> String.Empty
+
 let private insertMetric schema (m : Measure) connMgr =
   Sql.execNonQuery connMgr
-    "INSERT INTO Metrics (Host, Path, EpochTicks, Level, Type, Value)
-     VALUES (@host, @path, @epoch, @level, @type, @value)"
+    (sprintf "INSERT INTO %sMetrics (Host, Path, EpochTicks, Level, Type, Value)
+     VALUES (@host, @path, @epoch, @level, @type, @value)" (printSchema schema))
     [ P("@host", Dns.GetHostName())
       P("@path", m.path)
       P("@epoch", m.timestamp.Ticks)
@@ -49,8 +53,8 @@ let private insertMetric' schema m = insertMetric schema m |> txn
 
 let private insertLogLine schema (l : LogLine) connMgr =
   Sql.execNonQuery connMgr
-    "INSERT INTO LogLines (Host, Message, Data, Path, EpochTicks, Level, Exception, Tags)
-     VALUES (@host, @message, @data, @path, @epoch, @level, @exception, @tags)"
+    (sprintf "INSERT INTO %sLogLines (Host, Message, Data, Path, EpochTicks, Level, Exception, Tags)
+     VALUES (@host, @message, @data, @path, @epoch, @level, @exception, @tags)" (printSchema schema))
     [ P("@host", Dns.GetHostName())
       P("@message", l.message)
       P("@data", l.data)
@@ -104,15 +108,53 @@ let create conf = TargetUtils.stdNamedTarget (requestTraceLoop conf)
 [<CompiledName("Create")>]
 let CreateC(conf, name)  = create conf name
 
-/// Use with LogaryFactory.New( s => s.Target< HERE >() )
-type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+/// In this step you have finished configuring all required things for the
+/// DB and can call Done() to complete the configuration.
+type ThirdStep =
+  inherit FactoryApi.ConfigReader<DBConf>
+  abstract Done : DBConf -> FactoryApi.TargetConfBuild<Builder>
 
-  member x.ConnectionFactory(conn : unit -> IDbConnection) =
-    ! (callParent <| Builder({ conf with connFac = conn }, callParent))
+/// In this step you need to decide whether you want to use a schema for your
+/// metrics and/or log lines tables.
+and SecondStep =
+  /// Don't use an explicit schema. This is the default for SQLite. For SQL
+  /// Server the default is 'dbo'.
+  abstract DefaultSchema : unit -> ThirdStep
+
+  /// Use an explicit schema. You may not pass a null or empty string.
+  abstract Schema : string -> ThirdStep
+
+/// Use with LogaryFactory.New( s => s.Target<Logary.Target.DB.Builder>() )
+and Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
 
   new(callParent : FactoryApi.ParentCallback<_>) =
     let conf = DBConf.Create (fun () -> failwith "inner build error")
     Builder(conf, callParent)
 
-  interface Logary.Targets.FactoryApi.SpecificTargetConf with
+  /// configure how to create connections to the database.
+  member x.ConnectionFactory(conn : Func<IDbConnection>) =
+    Builder({ conf with connFac = fun () -> conn.Invoke() }, callParent)
+    :> SecondStep
+
+  interface SecondStep with
+    member x.DefaultSchema () =
+      Builder({ conf with schema = None }, callParent)
+      :> ThirdStep
+
+    member x.Schema schema =
+      if String.IsNullOrWhiteSpace schema then
+        invalidArg "schema" "You must specify a schema, or call DefaultSchema()"
+      Builder({ conf with schema = Some schema }, callParent)
+      :> ThirdStep
+
+  interface ThirdStep with
+    member x.Done (newConf : DBConf) =
+      ! (callParent x)
+
+  // this builder is extended with Migrations to optionally ensure the schemas
+  // are their latest versions at start
+  interface FactoryApi.ConfigReader<DBConf> with
+    member x.ReadConf () = conf
+
+  interface FactoryApi.SpecificTargetConf with
     member x.Build name = create conf name

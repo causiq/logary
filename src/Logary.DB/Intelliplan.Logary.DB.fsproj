@@ -51,7 +51,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Target_DB.fs" />
+    <Compile Include="Logary.DB.fs" />
     <None Include="packages.config" />
     <None Include="app.config" />
   </ItemGroup>
