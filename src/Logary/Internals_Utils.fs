@@ -19,24 +19,44 @@ module Tcp =
 
   type WriteClient =
     inherit IDisposable
+    /// Gets a stream for this write client
     abstract GetStream : unit -> WriteStream
 
+  open System.IO
   open System.Net.Sockets
+  open System.Net.Security
+  open System.Security.Cryptography.X509Certificates
 
-  type TcpWriteStream(ns : NetworkStream) =
+  type TcpWriteStream(stream : Stream) =
     let orDefault = Option.fold (fun s t -> t)
     interface WriteStream with
       member x.Write buffer =
         let offset, len = Some 0, Some(buffer.Length)
-        ns.AsyncWrite(buffer,
+        stream.AsyncWrite(buffer,
           offset |> orDefault 0,
           len    |> orDefault buffer.Length)
     interface IDisposable with
-      member x.Dispose () = (ns :> IDisposable).Dispose()
+      member x.Dispose () =
+        (stream :> IDisposable).Dispose()
+
+  type TLSWriteClient(tcpClient    : TcpClient,
+                      certCallback : X509Certificate -> X509Chain -> SslPolicyErrors -> bool) =
+    interface WriteClient with
+      member x.GetStream () =
+        let cb = new RemoteCertificateValidationCallback(fun _ -> certCallback)
+        let sslStream = new SslStream(tcpClient.GetStream(), false, cb)
+        new TcpWriteStream(sslStream):> WriteStream
+
+    interface IDisposable with
+      member x.Dispose () =
+        (tcpClient :> IDisposable).Dispose()
 
   type TcpWriteClient(tcpClient : TcpClient) =
     interface WriteClient with
       member x.GetStream () =
-        new TcpWriteStream(tcpClient.GetStream()) :> WriteStream
+        let stream = tcpClient.GetStream()
+        new TcpWriteStream(stream) :> WriteStream
+
     interface IDisposable with
-      member x.Dispose () = (tcpClient :> IDisposable).Dispose()
+      member x.Dispose () =
+        (tcpClient :> IDisposable).Dispose()
