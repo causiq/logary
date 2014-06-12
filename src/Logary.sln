@@ -27,7 +27,7 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.DB", "Lo
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.DB.Tests", "Logary.DB.Tests\Intelliplan.Logary.DB.Tests.fsproj", "{69A84CB4-793D-46B4-87EF-E59FED669124}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.Riemann.Tests", "Intelliplan.Logary.Riemann.Tests\Intelliplan.Logary.Riemann.Tests.fsproj", "{204FE42E-89FB-4FA4-9CE0-9FA4B387BC63}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.Riemann.Tests", "Logary.Riemann.Tests\Intelliplan.Logary.Riemann.Tests.fsproj", "{204FE42E-89FB-4FA4-9CE0-9FA4B387BC63}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
