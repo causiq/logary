@@ -9,8 +9,7 @@ type Counter =
   abstract Dec : uint32 -> unit
 
 /// A gauge is an instantaneous measurement of a value.
-/// This interface is implemented by the user and registered
-/// in Logary.
+/// This interface is implemented by the user and registered in Logary.
 type Gauge =
   inherit Named
   abstract Put : float -> unit
