@@ -29,6 +29,10 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />
+    <Reference Include="NodaTime">
+      <HintPath>..\packages\NodaTime.1.2.0\lib\net35-Client\NodaTime.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="policy.2.3.FSharp.Core">
       <HintPath>..\packages\FSharp.Core.3.0.0.2\lib\net40\policy.2.3.FSharp.Core.dll</HintPath>
       <Private>True</Private>
@@ -40,14 +44,21 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
+    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Logary.Riemann.fs" />
     <None Include="Riemann.proto" />
     <None Include="packages.config" />
+    <None Include="riemann.dtos.cs" />
     <Compile Include="AssemblyVersionInfo.fs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Fsharp.Actor\src\FSharp.Actor\FSharp.Actor-logary.fsproj">
+      <Name>FSharp.Actor-logary</Name>
+      <Project>{aa4bc25b-04f7-4b39-bf28-0b0058193ed9}</Project>
+      <Private>True</Private>
+    </ProjectReference>
     <ProjectReference Include="..\Logary\Intelliplan.Logary.fsproj">
       <Name>Intelliplan.Logary</Name>
       <Project>{f7e5b6e8-5d55-4974-9ca7-4c94d810631f}</Project>
