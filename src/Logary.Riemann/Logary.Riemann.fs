@@ -168,7 +168,7 @@ module Client =
     let bufSize = 0x2000
     let buf = Array.zeroCreate bufSize // TODO: extract
     let rec read' amountRead = async {
-      if amountRead >= len then ()
+      if amountRead >= len then return ()
       else
         let toRead = Math.Min(bufSize, len - amountRead)
         let! wasRead = source.AsyncRead(buf, 0, toRead)
