@@ -10,14 +10,15 @@ open Swensen.Unquote
 open ProtoBuf
 
 open Logary.Target.Riemann
+open Logary.Riemann.Messages
 
-let roundtrip (x : 'a) =
+let roundtrip<'a when 'a :> IEquatable<'a>> (x : 'a) =
   use ms = new MemoryStream()
   Serializer.Serialize<'a>(ms, x)
   ms.Seek(0L, SeekOrigin.Begin) |> ignore
   let res = Serializer.Deserialize<'a>(ms)
   sprintf "deserialised output of %s should equal input" (typeof<'a>.Name) |> ignore
-  test <@ res = x @>
+  Assert.Equal("should equal after roundtrip", true, (res :> IEquatable<'a>).Equals x)
 
 let list (items : 'a list) =
   let l = List<'a>()
@@ -29,12 +30,13 @@ let tests =
   testList "serialisation and deserialisation" [
     testCase "Msg" <| fun _ ->
       roundtrip <| Msg(true, "", List<_>(), Query("are you there?"), List<_>())
-    testCase "Event" <| fun _ ->
-      roundtrip <| { time = 1L; state = "st"; service = "svc"; host = "hst";
-                     description = "desc"; tags = list ["t1"; "t2"]; ttl = 0.; metric_f = 3. }
+
     testCase "State" <| fun _ ->
-      roundtrip <| { time = 1L; state = "st"; service = "svc"; host = "hst";
-                     description = "desc"; tags = list ["t1"; "t2"]; ttl = 0.; metric_f = 3. }
+      roundtrip <| State(1L, "st", "svc", "hst", "desc", false, list ["t1"; "t2"], 2.)
+
+    testCase "Event" <| fun _ ->
+      roundtrip <| Event.CreateDouble(1337., 1L, "st", "svc", "hst", "desc", list ["t1"; "t2"], 2.f, [])
+
     testCase "Query" <| fun _ ->
       roundtrip <| Query("hi")
     ]
