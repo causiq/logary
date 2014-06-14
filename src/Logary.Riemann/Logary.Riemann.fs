@@ -216,7 +216,7 @@ let riemannLoop (conf : RiemannConf) metadata =
     and running state =
       async {
         let! msg, mopt = inbox.Receive()
-        // TODO: The server will accept a repeated list of Events, and respond
+        // The server will accept a repeated list of Events, and respond
         // with a confirmation message with either an acknowledgement or an error.
         // Check the `ok` boolean in the message; if false, message.error will
         // be a descriptive string.
