@@ -142,7 +142,7 @@ let mkEventM fMeasure ttl
   | Timer t -> failwith "not impl"
   | Counter -> failwith "not impl"
 
-// TODO: could be useful to spawn multiple of this one: each is async and implement
+// To Consider: could be useful to spawn multiple of this one: each is async and implement
 // an easy way to send/recv -- multiple will allow interleaving of said requests
 let riemannLoop (conf : RiemannConf) metadata =
   (fun (inbox : IActor<_>) ->

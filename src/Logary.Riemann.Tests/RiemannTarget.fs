@@ -12,13 +12,13 @@ open ProtoBuf
 open Logary.Target.Riemann
 open Logary.Riemann.Messages
 
-let roundtrip<'a when 'a :> IEquatable<'a>> (x : 'a) =
+let roundtrip<'a when 'a : equality> (x : 'a) =
   use ms = new MemoryStream()
   Serializer.Serialize<'a>(ms, x)
   ms.Seek(0L, SeekOrigin.Begin) |> ignore
-  let res = Serializer.Deserialize<'a>(ms)
+  let res = Serializer.Deserialize<'a> ms
   sprintf "deserialised output of %s should equal input" (typeof<'a>.Name) |> ignore
-  Assert.Equal("should equal after roundtrip", true, (res :> IEquatable<'a>).Equals x)
+  Assert.Equal("should equal after roundtrip", res, x)
 
 let list (items : 'a list) =
   let l = List<'a>()
