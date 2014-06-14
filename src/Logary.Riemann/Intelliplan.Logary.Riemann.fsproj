@@ -50,7 +50,6 @@
     <Compile Include="Logary.Riemann.fs" />
     <None Include="Riemann.proto" />
     <None Include="packages.config" />
-    <None Include="riemann.dtos.cs" />
     <Compile Include="AssemblyVersionInfo.fs" />
   </ItemGroup>
   <ItemGroup>
