@@ -231,7 +231,6 @@ let riemannLoop (conf : RiemannConf) metadata =
           let! (response : Msg) = Client.readResponse state.stream
           if not response.ok then raise <| Exception(sprintf "server error: %s" response.error)
           else return! running state
-          return! running state
         | Flush chan ->
           chan.Reply Ack
           return! running state
