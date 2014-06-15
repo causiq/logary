@@ -20,7 +20,6 @@ let fromBytes (buf : byte []) =
 
 /// Reads a Riemann-length from a stream at its current position
 let readLen (stream : Stream) = async {
-//  debug "readLen"
   let lenBuf = Array.zeroCreate 4 // TODO: use extracted buf
   let! wasRead = stream.AsyncRead(lenBuf, 0, 4) // TODO: faster with no async?
   if wasRead = 4 then
@@ -29,7 +28,6 @@ let readLen (stream : Stream) = async {
     return raise <| EndOfStreamException("unexpected EOF while reading len") }
 
 let writeLen len (stream : Stream) = async {
-//  debug "writeLen %d" len
   do! toBytes len |> fun b -> stream.AsyncWrite(b, 0, 4)
   }
 
@@ -44,7 +42,6 @@ let private transfer len (source : Stream) (target : Stream) =
   let buf = Array.zeroCreate bufSize // TODO: extract
   let rec read' amountRead = async {
     if amountRead >= len then
-//      debug "read' done"
       return ()
     else
       let toRead = Math.Min(bufSize, len - amountRead)
@@ -52,11 +49,8 @@ let private transfer len (source : Stream) (target : Stream) =
       if wasRead <> toRead then
         raise <| EndOfStreamException(sprintf "unexpected EOF (wasRead: %d, toRead: %d)" wasRead toRead)
       else
-//        debug "target.AsyncWrite(%A, 0, %d)" buf wasRead
         do! target.AsyncWrite(buf, 0, wasRead)
-//        debug "read' %d" (wasRead + amountRead)
         return! read' (wasRead + amountRead) }
-//  debug "transfer %d" len
   read' 0
 
 let sendMessage (stream : Stream) (msg : Msg) = async {
