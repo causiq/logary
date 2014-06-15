@@ -8,7 +8,7 @@
     <ProjectGuid>178b23d3-f676-43c3-880d-9e0befbaf019</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>Logary.Riemann.Example</RootNamespace>
-    <AssemblyName>Logary.Riemann.Example</AssemblyName>
+    <AssemblyName>Intelliplan.Logary.Riemann.Example</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <Name>Intelliplan.Logary.Riemann.Example</Name>
   </PropertyGroup>

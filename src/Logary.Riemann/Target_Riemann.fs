@@ -37,7 +37,9 @@ let private mkStream (client : TcpClient) = function
     client.GetStream() :> Stream
 
 let private mkClient (ep : IPEndPoint) =
-  new TcpClient(ep)
+  let c = new TcpClient(ep.Address.ToString(), ep.Port)
+  c.NoDelay <- true
+  c
 
 // Note: doing ticks per ms. docs say 'per second' so it might be wrong, but
 // I want the granularity and:
@@ -57,7 +59,7 @@ let mkAttrsFromData (m : Map<string, obj>) =
 /// Create an Event from a LogLine, supplying a function that optionally changes
 /// the event before yielding it.
 let mkEventL
-  hostname ttl mkAttrsFromData
+  hostname ttl confTags mkAttrsFromData
   ({ message      = message
   ; data          = data
   ; level         = level
@@ -68,35 +70,34 @@ let mkEventL
   Event.CreateDouble(1.,
                      asEpoch timestamp,
                      mkState level,
-                     path, // path = metric name = riemann's 'service'
+                     sprintf "%s.%s" path message, // path = metric name = riemann's 'service'
                      hostname,
-                     message,
-                     tags,
+                     "",
+                     confTags |> Option.fold (fun s t -> s @ t) tags,
                      ttl,
                      mkAttrsFromData data) // TODO: make attributes from map
 
 /// Create an Event from a Measure
 let mkEventM
-  hostname ttl
+  hostname ttl confTags
   { value     = value
     path      = path
     timestamp = timestamp
     level     = level
     mtype     = mtype } =
+  let tags = confTags |> Option.fold (fun s t -> s @ t) []
   match mtype with
   | Gauge   ->
     Event.CreateDouble(value, asEpoch timestamp,
-                       mkState level, path, hostname, "gauge", [],
+                       mkState level, path, hostname, "gauge", tags,
                        ttl, [])
-    // TODO: example "RegisterGauge"
   | Timer t ->
-    // TODO: use t
     Event.CreateDouble(value, asEpoch timestamp,
-                       mkState level, path, hostname, "timer", [],
+                       mkState level, path, hostname, "timer", tags,
                        ttl, [])
   | Counter ->
     Event.CreateDouble(value, asEpoch timestamp,
-                       mkState level, path, hostname, "counter", [],
+                       mkState level, path, hostname, "counter", tags,
                        ttl, [])
 
 // TODO: a way of discriminating between ServiceName-s.
@@ -133,18 +134,22 @@ type RiemannConf =
     fMeasure     : Measure -> Event
 
     /// The hostname to send to riemann
-    hostname     : string }
+    hostname     : string
+
+    /// An optional list of tags to apply to everything sent to riemann
+    tags         : string list option }
   /// Creates a new Riemann target configuration
   static member Create(?endpoint : IPEndPoint, ?clientFac, ?caValidation,
-                       ?fLogLine, ?fMeasure, ?hostname, ?ttl) =
+                       ?fLogLine, ?fMeasure, ?hostname, ?ttl, ?tags) =
     let ttl        = defaultArg ttl 0.f
     let hostname   = defaultArg hostname (Dns.GetHostName())
     { endpoint     = defaultArg endpoint (IPEndPoint(IPAddress.Loopback, 5555))
       clientFac    = defaultArg clientFac mkClient
       caValidation = defaultArg caValidation None
-      fLogLine     = defaultArg fLogLine (mkEventL hostname ttl mkAttrsFromData)
-      fMeasure     = defaultArg fMeasure (mkEventM hostname ttl)
-      hostname     = hostname }
+      fLogLine     = defaultArg fLogLine (mkEventL hostname ttl tags mkAttrsFromData)
+      fMeasure     = defaultArg fMeasure (mkEventM hostname ttl tags)
+      hostname     = hostname
+      tags         = tags }
   static member Default = RiemannConf.Create()
 
 type private RiemannTargetState =
@@ -182,15 +187,19 @@ let riemannLoop (conf : RiemannConf) metadata =
         // be a descriptive string.
         match msg with
         | Log l ->
-          do!  [ conf.fLogLine l ] |> sendEvents state.stream
-          let! (response : Msg) = readMessage state.stream
-          if not response.ok then raise <| Exception(sprintf "server error: %s" response.error)
-          else return! running state
+          let evt = conf.fLogLine l
+          info "sending LogLine: %A, as Event: %A" l evt
+          let! res = [ evt ] |> sendEvents state.stream
+          match res with
+          | Choice1Of2 () -> return! running state
+          | Choice2Of2 err -> raise <| Exception(sprintf "server error: %s" err)
         | Metric msr ->
-          do!  [ conf.fMeasure msr ] |> sendEvents state.stream
-          let! (response : Msg) = readMessage state.stream
-          if not response.ok then raise <| Exception(sprintf "server error: %s" response.error)
-          else return! running state
+          let evt = conf.fMeasure msr
+          info "sending measure %A, as Event: %A" msr evt
+          let! res = [ evt ] |> sendEvents state.stream
+          match res with
+          | Choice1Of2 () -> return! running state
+          | Choice2Of2 err -> raise <| Exception(sprintf "server error: %s" err)
         | Flush chan ->
           chan.Reply Ack
           return! running state

@@ -36,7 +36,7 @@ let main argv =
   use logary =
     withLogary "Riemann.Example" (
       withTargets [
-        Riemann.create (Riemann.RiemannConf.Default) "riemann"
+        Riemann.create (Riemann.RiemannConf.Create(tags = ["riemann-health"])) "riemann"
         Console.create (Console.ConsoleConf.Default) "console"
       ] >>
       withRules [
@@ -46,9 +46,6 @@ let main argv =
     )
 
   let logger = logary.GetLogger "Riemann.Example"
-  Log.info logger "started"
+  "riemann.example" |> Log.incr logger
 
-
-
-  Log.info logger "stopping"
   0 // return an integer exit code

@@ -154,6 +154,7 @@ module Log =
   let metric logger ms =
     (logger : Logger).Metric ms
 
+  /// Increment the counter at the path 'path'
   let incr logger path =
     { value     = 1.
     ; path      = path

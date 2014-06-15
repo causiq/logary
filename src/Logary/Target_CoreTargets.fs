@@ -77,7 +77,7 @@ module TextWriter =
       ; isErrorAt = isErrorAt }
       name
 
-  /// Use with LogaryFactory.New( s => s.Target< HERE >() )
+  /// Use with LogaryFactory.New( s => s.Target<TextWriter.Builder>() )
   type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
     member x.WriteTo(out : #TextWriter, err : #TextWriter) =
       ! (callParent <| Builder({ conf with output = out; error = err }, callParent))
@@ -122,7 +122,7 @@ module Console =
   let [<CompiledName("Create")>] createA(name, conf) = create conf name
   let [<CompiledName("Create")>] createB(name) = create ConsoleConf.Default name
 
-  /// Use with LogaryFactory.New( s => s.Target< HERE >() )
+  /// Use with LogaryFactory.New( s => s.Target<Console.Builder>() )
   type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
 
     /// Specify the formatting style to use when logging to the console
@@ -184,7 +184,7 @@ module Debugger =
 
   let [<CompiledName("Create")>] createA(conf, name) = create conf name
 
-  /// Use with LogaryFactory.New( s => s.Target< HERE >() )
+  /// Use with LogaryFactory.New( s => s.Target<Debugger.Builder>() )
   type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
 
     /// Specify the formatting style to use when logging to the debugger
