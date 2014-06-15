@@ -46,6 +46,6 @@ let main argv =
     )
 
   let logger = logary.GetLogger "Riemann.Example"
-  "riemann.example" |> Log.incr logger
+  ("disk /", 0.456) ||> Log.gauge logger
 
   0 // return an integer exit code

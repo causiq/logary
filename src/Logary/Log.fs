@@ -157,34 +157,42 @@ module Log =
   /// Increment the counter at the path 'path'
   let incr logger path =
     { value     = 1.
-    ; path      = path
-    ; timestamp = Date.utcNow()
-    ; level     = LogLevel.Info
-    ; mtype     = MetricType.Counter }
+      path      = path
+      timestamp = Date.utcNow()
+      level     = LogLevel.Info
+      mtype     = MetricType.Counter }
     |> metric logger
 
   let incrBy logger path amount =
     { value     = amount
-    ; path      = path
-    ; timestamp = Date.utcNow ()
-    ; level     = LogLevel.Info
-    ; mtype     = MetricType.Counter }
+      path      = path
+      timestamp = Date.utcNow ()
+      level     = LogLevel.Info
+      mtype     = MetricType.Counter }
     |> metric logger
 
   let decr logger path =
     { value     = -1.
-    ; path      = path
-    ; timestamp = Date.utcNow ()
-    ; level     = LogLevel.Info
-    ; mtype     = MetricType.Counter }
+      path      = path
+      timestamp = Date.utcNow ()
+      level     = LogLevel.Info
+      mtype     = MetricType.Counter }
     |> metric logger
 
   let decrBy logger path amount =
     { value     = -amount
-    ; path      = path
-    ; timestamp = Date.utcNow ()
-    ; level     = LogLevel.Info
-    ; mtype     = MetricType.Counter }
+      path      = path
+      timestamp = Date.utcNow ()
+      level     = LogLevel.Info
+      mtype     = MetricType.Counter }
+    |> metric logger
+
+  let gauge logger path amount =
+    { value = amount
+      path  = path
+      timestamp = Date.utcNow ()
+      level     = LogLevel.Info
+      mtype     = MetricType.Gauge }
     |> metric logger
 
   open System.Diagnostics

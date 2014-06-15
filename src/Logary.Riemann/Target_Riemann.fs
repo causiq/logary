@@ -41,15 +41,14 @@ let private mkClient (ep : IPEndPoint) =
   c.NoDelay <- true
   c
 
-// Note: doing ticks per ms. docs say 'per second' so it might be wrong, but
-// I want the granularity and:
+// Note: is it possible to do 'per millisecond'?
 // https://github.com/chillitom/Riemann.Net/blob/master/Riemann.Net/Event.cs#L25
-let private asEpoch (i : Instant) = i.Ticks / NodaConstants.TicksPerMillisecond
+let private asEpoch (i : Instant) = i.Ticks / NodaConstants.TicksPerSecond
 
 /// Convert the LogLevel to a Riemann (service) state
 let private mkState = function
-  | Verbose | Debug | Info -> "info"
-  | Warn | Error           -> "warn"
+  | Verbose | Debug | Info -> "ok"
+  | Warn | Error           -> "warning"
   | Fatal                  -> "critical"
 
 /// The default way of sending attributes; just do ToString() on them
@@ -141,7 +140,7 @@ type RiemannConf =
   /// Creates a new Riemann target configuration
   static member Create(?endpoint : IPEndPoint, ?clientFac, ?caValidation,
                        ?fLogLine, ?fMeasure, ?hostname, ?ttl, ?tags) =
-    let ttl        = defaultArg ttl 0.f
+    let ttl        = defaultArg ttl 10.f
     let hostname   = defaultArg hostname (Dns.GetHostName())
     { endpoint     = defaultArg endpoint (IPEndPoint(IPAddress.Loopback, 5555))
       clientFac    = defaultArg clientFac mkClient
