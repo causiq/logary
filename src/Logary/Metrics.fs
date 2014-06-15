@@ -35,7 +35,7 @@ type Timer =
 and TimerContext =
   abstract Stop : unit -> unit
 
-/// Module for capturing metrics in their raw form
+/// Module for capturing metrics
 module Metrics =
   open System.Diagnostics
 
@@ -45,6 +45,8 @@ module Metrics =
 
   open Logary.Internals
 
+  /// An abstract base class for metric objects with actors being the backing
+  /// primitive.
   [<AbstractClass>]
   type MetricInstance(name, targets) =
     member x.Targets : IActor list = targets
@@ -72,13 +74,17 @@ module Metrics =
   [<CompiledName "SetValue">]
   let setValue value m = { m with Measure.value = value }
 
+  /// Sets the timestamp of the measure
+  [<CompiledName "SetTimestamp">]
+  let setTimestamp value m = { m with Measure.timestamp = value }
+
   /////////////////////
   // Logging methods //
   /////////////////////
 
   /// Make a new measure value from the type of measure it is, the value and the
   /// path it is taken at or represents
-  let mkMeasure mtype value path =
+  let mkMeasure mtype path value =
     { value     = value
       path      = path
       timestamp = Date.utcNow()
@@ -92,25 +98,19 @@ module Metrics =
     (logger : Logger).Metric ms
 
   /// Increment the counter at the path 'path' at the info level
-  let incr logger path = mkMeasure Counter 1. path |> metric logger
+  let incr logger path = mkMeasure Counter path 1. |> metric logger
 
   /// Increment the counter at the path 'path' at the info level by the amount
-  let incrBy logger path amount = mkMeasure Counter amount path |> metric logger
+  let incrBy logger path amount = mkMeasure Counter path amount |> metric logger
 
   /// Decrement the counter at the path 'path' at the info level
-  let decr logger path = mkMeasure Counter -1. path |> metric logger
+  let decr logger path = mkMeasure Counter path -1. |> metric logger
 
   /// Decrement the counter at the path 'path' at the info level by the amount
-  let decrBy logger path amount = mkMeasure Counter -amount path |> metric logger
-  
-  let gauge logger path amount =
-    { value = amount
-      path  = path
-      timestamp = Date.utcNow ()
-      level     = Info
-      mtype     = Gauge
-      data      = Map.empty }
-    |> metric logger
+  let decrBy logger path amount = mkMeasure Counter path -amount |> metric logger
+
+  /// Give a gauge value at this current instant in time
+  let gauge logger path amount = mkMeasure Gauge amount path |> metric logger
 
   /// Capture a timer metric with a given metric-level and metric-path.
   [<CompiledName "TimeLevel">]
