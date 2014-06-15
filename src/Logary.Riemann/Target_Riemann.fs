@@ -208,31 +208,20 @@ let create conf = TargetUtils.stdNamedTarget (riemannLoop conf)
 [<CompiledName("Create")>]
 let CreateC(conf, name) = create conf name
 
-//  /// Use with LogaryFactory.New( s => s.Target<Riemann.Builder>() )
-//  type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
-//
-//    member x.Hostname(hostname : string) =
-//      Builder({ conf with LogstashConf.hostname = hostname }, callParent)
-//
-//    member x.Port(port : uint16) =
-//      Builder({ conf with port = port }, callParent)
-//
-//    member x.ClientFactory(fac : Func<string, uint16, WriteClient>) =
-//      Builder({ conf with clientFac = fun host port -> fac.Invoke(host, port) }, callParent)
-//
-//    /// Sets the JsonSerializerSettings to use, or uses
-//    /// <see cref="Logary.Formatting.JsonFormatter.Settings" /> otherwise.
-//    member x.JsonSerializerSettings(settings : JsonSerializerSettings) =
-//      Builder({ conf with jsonSettings = settings }, callParent)
-//
-//    member x.EventVersion(ver : EventVersion) =
-//      Builder({ conf with evtVer = ver }, callParent)
-//
-//    member x.Done() =
-//      ! ( callParent x )
-//
-//    new(callParent : FactoryApi.ParentCallback<_>) =
-//      Builder(LogstashConf.Create("127.0.0.1"), callParent)
-//
-//    interface Logary.Targets.FactoryApi.SpecificTargetConf with
-//      member x.Build name = create conf name
+/// Use with LogaryFactory.New( s => s.Target<Riemann.Builder>() )
+type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+
+  member x.Endpoint(ep : IPEndPoint) =
+    Builder({ conf with endpoint = ep }, callParent)
+
+  member x.ClientFactory(fac : Func<IPEndPoint, TcpClient>) =
+    Builder({ conf with clientFac = fun ep -> fac.Invoke ep }, callParent)
+
+  member x.Done() =
+    ! ( callParent x )
+
+  new(callParent : FactoryApi.ParentCallback<_>) =
+    Builder(RiemannConf.Default, callParent)
+
+  interface Logary.Targets.FactoryApi.SpecificTargetConf with
+    member x.Build name = create conf name
