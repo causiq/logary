@@ -35,8 +35,8 @@ module internal Logging =
   /// logs to, as well as its name.
   type LoggerInstance =
     { name    : string
-    ; targets : (Acceptor * IActor) list
-    ; level   : LogLevel }
+      targets : (Acceptor * IActor) list
+      level   : LogLevel }
     with
       interface Named with
         member x.Name = x.name
@@ -82,24 +82,24 @@ module internal Logging =
   /// Iterate through all flywieghts and set the current LogManager for them
   let goFish () =
     lock Globals.criticalSection <| fun () ->
-        match !Globals.singleton with
-        | None -> ()
-        | Some lm ->
-          !Globals.flyweights |> List.iter (fun f -> f.Configured lm)
-          Globals.flyweights := []
+      match !Globals.singleton with
+      | None -> ()
+      | Some lm ->
+        !Globals.flyweights |> List.iter (fun f -> f.Configured lm)
+        Globals.flyweights := []
 
   /// Singleton configuration entry point: call from the runLogary code.
   let startFlyweights logaryInstance =
     lock Globals.criticalSection <| fun () ->
-        debug "Logging.logaryRun w/ logaryInstance"
-        Globals.singleton := Some logaryInstance
-        goFish ()
+      debug "Logging.logaryRun w/ logaryInstance"
+      Globals.singleton := Some logaryInstance
+      goFish ()
 
   /// Singleton configuration exit point: call from shutdownLogary code
   let shutdownFlyweights _ =
     lock Globals.criticalSection <| fun () ->
-        Globals.singleton := None
-        Globals.flyweights := []
+      Globals.singleton := None
+      Globals.flyweights := []
 
 module Advanced =
   open System
@@ -222,8 +222,8 @@ module Advanced =
   [<CompiledName "FromTargets">]
   let fromTargets name (targets : (Acceptor * TargetInstance * LogLevel) list) =
     { name    = name
-    ; targets = targets |> List.map (fun (a, ti, _) -> a, (Targets.actor ti))
-    ; level   = targets |> List.map (fun (_, _, level) -> level) |> List.min }
+      targets = targets |> List.map (fun (a, ti, _) -> a, (Targets.actor ti))
+      level   = targets |> List.map (fun (_, _, level) -> level) |> List.min }
     :> Logger
 
   let rec private registry conf =
@@ -323,8 +323,8 @@ module Advanced =
 
     let logaryInstance =
       { supervisor = supervisor
-      ; registry   = Actor.spawn (Actor.Options.Create("logaryRoot/registry")) (registry conf')
-      ; metadata   = conf'.metadata }
+        registry   = Actor.spawn (Actor.Options.Create("logaryRoot/registry")) (registry conf')
+        metadata   = conf'.metadata }
 
     debug "runRegistry: registry status: %A" logaryInstance.registry.Status
 

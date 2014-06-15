@@ -1,10 +1,11 @@
 namespace Logary.Target
 
-/// A module implementing a text writer target. Useful for writing to the console output,
-/// or writing to a custom text writer.
+/// A module implementing a text writer target. Useful for writing to the
+/// console output, or writing to a custom text writer.
 module TextWriter =
-  open FSharp.Actor
   open System.IO
+
+  open FSharp.Actor
 
   open Logary
   open Logary.Targets
@@ -13,29 +14,30 @@ module TextWriter =
 
   /// Configuration for a text writer
   type TextWriterConf =
-    /// A string formatter to specify how to write the log lines
-    { formatter  : StringFormatter
-    /// the non-error text writer to output to
-    ; output     : TextWriter
-    /// the error text writer to output to
-    ; error      : TextWriter
-    /// whether to flush text writer after each line
-    ; flush      : bool
-    /// the log level that is considered 'important' enough to write to the error text writer
-    ; isErrorAt  : LogLevel }
+    { /// A string formatter to specify how to write the log lines
+      formatter  : StringFormatter
+      /// the non-error text writer to output to
+      output     : TextWriter
+      /// the error text writer to output to
+      error      : TextWriter
+      /// whether to flush text writer after each line
+      flush      : bool
+      /// the log level that is considered 'important' enough to write to the
+      /// error text writer
+      isErrorAt  : LogLevel }
     static member Default(output, error, ?formatter) =
       { formatter    = defaultArg formatter <| JsonFormatter.Default()
-      ; output       = output
-      ; error        = error
-      ; flush        = false
-      ; isErrorAt    = LogLevel.Error }
+        output       = output
+        error        = error
+        flush        = false
+        isErrorAt    = LogLevel.Error }
 
   let private twLoop
     { formatter = formatter
-    ; output    = out
-    ; error     = err
-    ; flush     = flush
-    ; isErrorAt = cutOff }
+      output    = out
+      error     = err
+      flush     = flush
+      isErrorAt = cutOff }
     metadata =
     (fun (inbox : IActor<_>) ->
       let rec loop () = async {
@@ -71,10 +73,10 @@ module TextWriter =
   let [<CompiledName("Create")>] createA (formatter, out, err, flush, isErrorAt, name) =
     create
       { formatter = formatter
-      ; output    = out
-      ; error     = err
-      ; flush     = flush
-      ; isErrorAt = isErrorAt }
+        output    = out
+        error     = err
+        flush     = flush
+        isErrorAt = isErrorAt }
       name
 
   /// Use with LogaryFactory.New( s => s.Target<TextWriter.Builder>() )
@@ -97,27 +99,27 @@ module Console =
   /// Colours in hex
   type ConsoleColours =
     { foregroundColor : int
-    ; backgroundColor : int }
+      backgroundColor : int }
 
   /// Console configuration structure
   type ConsoleConf =
     { formatter : StringFormatter
-    ; colorMap  : (ConsoleColours -> Logary.LogLevel -> ConsoleColours) option }
+      colorMap  : (ConsoleColours -> Logary.LogLevel -> ConsoleColours) option }
     static member Default =
       { formatter = StringFormatter.LevelDatetimePathMessage
-      ; colorMap  = None (* fun col line -> 0x000000 black *) }
+        colorMap  = None (* fun col line -> 0x000000 black *) }
     static member Create formatter =
       { formatter = formatter
-      ; colorMap  = None }
+        colorMap  = None }
 
   let [<CompiledName("Create")>] create conf =
     // TODO: coloured console output
     TextWriter.create
       { formatter = conf.formatter
-      ; output    = System.Console.Out
-      ; error     = System.Console.Error
-      ; flush     = false
-      ; isErrorAt = Error }
+        output    = System.Console.Out
+        error     = System.Console.Error
+        flush     = false
+        isErrorAt = Error }
 
   let [<CompiledName("Create")>] createA(name, conf) = create conf name
   let [<CompiledName("Create")>] createB(name) = create ConsoleConf.Default name
@@ -129,7 +131,7 @@ module Console =
     member x.WithFormatter( sf : StringFormatter ) =
       ! (callParent <| Builder({ conf with formatter = sf }, callParent))
 
-    // TODO
+    /// TODO: implement!
     member x.Colourise() =
       ! (callParent <| Builder(conf, callParent))
 
@@ -143,8 +145,9 @@ module Console =
 #nowarn "25"
 
 module Debugger =
-  open FSharp.Actor
   open System.Diagnostics
+
+  open FSharp.Actor
 
   open Logary
   open Logary.Targets

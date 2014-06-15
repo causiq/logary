@@ -15,12 +15,12 @@ open Logary.Tests.TestDSL
 
 let private sampleMessage =
   { message       = "this is bad"
-  ; timestamp     = Instant.FromSecondsSinceUnixEpoch(3L).PlusTicks(1234567L)
-  ; data          = Map.empty
-  ; level         = LogLevel.Error
-  ; tags          = ["error"; "bad"]
-  ; path          = "a.b.c.d"
-  ; ``exception`` = None }
+    timestamp     = Instant.FromSecondsSinceUnixEpoch(3L).PlusTicks(1234567L)
+    data          = Map.empty
+    level         = LogLevel.Error
+    tags          = ["error"; "bad"]
+    path          = "a.b.c.d"
+    ``exception`` = None }
 
 [<Tests>]
 let tests =

@@ -17,8 +17,8 @@ module FactoryApi =
 
   type internal ConfBuilderT<'T when 'T :> SpecificTargetConf> =
     { parent      : ConfBuilder        // logary that is being configured
-    ; tr          : Rule               // for this specific target
-    ; tcSpecific  : 'T option }
+      tr          : Rule               // for this specific target
+      tcSpecific  : 'T option }
   with
     member internal x.SetTcSpecific tcs =
       { x with tcSpecific = Some(tcs) }
@@ -56,8 +56,8 @@ module FactoryApi =
 
       let container : ConfBuilderT<'T> =
         { parent     = x
-        ; tr         = Rules.forAny name
-        ; tcSpecific = None }
+          tr         = Rules.forAny name
+          tcSpecific = None }
 
       let contRef = ref (container :> TargetConfBuild<_>)
 

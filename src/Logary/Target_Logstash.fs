@@ -25,10 +25,10 @@ open Logary.Internals.InternalLogger
 /// Logstash configuration structure.
 type LogstashConf =
   { hostname     : string
-  ; port         : uint16
-  ; clientFac    : string -> uint16 -> WriteClient
-  ; jsonSettings : JsonSerializerSettings
-  ; evtVer       : EventVersion }
+    port         : uint16
+    clientFac    : string -> uint16 -> WriteClient
+    jsonSettings : JsonSerializerSettings
+    evtVer       : EventVersion }
   /// Create a new logstash configuration structure, optionally specifying
   /// overrides on port, client tcp factory, the formatter to log with
   /// and what event versioning scheme to use when writing to log stash
@@ -40,10 +40,11 @@ type LogstashConf =
     let jss = defaultArg jsonSettings (JsonFormatter.Settings())
     let evtVer = defaultArg evtVer One
     { hostname     = hostname
-    ; port         = port
-    ; clientFac    = clientFac
-    ; jsonSettings = jss
-    ; evtVer       = evtVer }
+      port         = port
+      clientFac    = clientFac
+      jsonSettings = jss
+      evtVer       = evtVer }
+
 /// What version of events to output (zero is the oldest version, one the newer)
 and EventVersion =
   | Zero
@@ -58,84 +59,83 @@ type private NewtonsoftSerialisable =
   abstract Serialise : JsonSerializer -> Linq.JObject -> Linq.JObject
 
   (* Event version 0:
-https://gist.github.com/jordansissel/2996677:
+     https://gist.github.com/jordansissel/2996677
 {
-"@source":"unknown",
-"@type":null,"
+  "@source":"unknown",
+  "@type":null,"
   @tags":[],
-"@fields":{},
-"@message":"Hello world",
-"@timestamp":"2012-06-26T15:58:20.135353Z"
-}
-  *)
+  "@fields":{},
+  "@message":"Hello world",
+  "@timestamp":"2012-06-26T15:58:20.135353Z"
+}*)
 
 /// Logstash event version v0
 type private EventV0 =
   { ``@source``    : string
-  ; ``@tags``      : string list
-  ; ``@fields``    : Map<string, obj>
-  ; ``@message``   : string
-  ; ``@timestamp`` : Instant }
+    ``@tags``      : string list
+    ``@fields``    : Map<string, obj>
+    ``@message``   : string
+    ``@timestamp`` : Instant }
   /// Create an EventV0 from the log line passed as a parameter.
   static member FromLogLine (l : LogLine) =
     { ``@source``    = Dns.GetHostName()
-    ; ``@tags``      = l.tags
-    ; ``@fields``    = l.data
-    ; ``@message``   = l.message
-    ; ``@timestamp`` = l.timestamp }
+      ``@tags``      = l.tags
+      ``@fields``    = l.data
+      ``@message``   = l.message
+      ``@timestamp`` = l.timestamp }
 
   interface NewtonsoftSerialisable with
     member x.Serialise ser jobj =
       [ "@source"    => box x.``@source``
-      ; "@tags"      => box (List.toArray x.``@tags``)
-      ; "@fields"    => box (x.``@fields``)
-      ; "@message"   => box x.``@message``
-      ; "@timestamp" => box x.``@timestamp`` ]
+        "@tags"      => box (List.toArray x.``@tags``)
+        "@fields"    => box (x.``@fields``)
+        "@message"   => box x.``@message``
+        "@timestamp" => box x.``@timestamp`` ]
       |> List.iter (fun (k,v) -> jobj.[k] <- Linq.JToken.FromObject(v, ser))
       jobj
 
   (* Event version 1:
-https://logstash.jira.com/browse/LOGSTASH-675:
+     https://logstash.jira.com/browse/LOGSTASH-675
 {
-"@timestamp": "2012-12-18T01:01:46.092538Z".
-"@version": 1,
-"tags": [ "kernel", "dmesg" ]
-"type": "syslog"
-"message": "usb 3-1.2: USB disconnect, device number 4",
-"path": "/var/log/messages",
-"host": "pork.home"
+  "@timestamp": "2012-12-18T01:01:46.092538Z".
+  "@version": 1,
+  "tags": [ "kernel", "dmesg" ]
+  "type": "syslog"
+  "message": "usb 3-1.2: USB disconnect, device number 4",
+  "path": "/var/log/messages",
+  "host": "pork.home"
 }
-Required: @timestamp, @version, message. Nothing else.
-https://github.com/logstash/logstash/blob/master/lib/logstash/codecs/json_lines.rb#L36
+  Required: @timestamp, @version, message. Nothing else.
+  https://github.com/logstash/logstash/blob/master/lib/logstash/codecs/json_lines.rb#L36
 *)
 /// Logstash event v1
 type private Event =
-  /// @timestamp is the ISO8601 high-precision timestamp for the event.
-  { ``@timestamp`` : Instant
-  /// @version is always 1 so far.
-  ; ``@version``   : int
-  /// tags is the event tags (array of strings)
-  ; tags           : string list
-  /// message is the human-readable text message of the event
-  ; message        : string
-  /// path is from where in the logger structure that the event comes from,
-  /// see LogLine.path
-  ; path           : string
-  /// the level of the log line
-  ; level          : string
-  /// the host that the log entry comes from, we're using the hostname here.
-  ; hostname       : string
-  /// an optional exception
-  ; ``exception``  : exn option }
+  { /// @timestamp is the ISO8601 high-precision timestamp for the event.
+    ``@timestamp`` : Instant
+    /// @version is always 1 so far.
+    ``@version``   : int
+    /// tags is the event tags (array of strings)
+    tags           : string list
+    /// message is the human-readable text message of the event
+    message        : string
+    /// path is from where in the logger structure that the event comes from,
+    /// see LogLine.path
+    path           : string
+    /// the level of the log line
+    level          : string
+    /// the host that the log entry comes from, we're using the hostname here.
+    hostname       : string
+    /// an optional exception
+    ``exception``  : exn option }
   static member FromLogLine (l : LogLine) =
     { ``@timestamp`` = l.timestamp
-    ; ``@version``   = 1
-    ; tags           = l.tags
-    ; message        = l.message
-    ; path           = l.path
-    ; hostname       = Dns.GetHostName()
-    ; level          = l.level.ToString()
-    ; ``exception``  = l.``exception`` }
+      ``@version``   = 1
+      tags           = l.tags
+      message        = l.message
+      path           = l.path
+      hostname       = Dns.GetHostName()
+      level          = l.level.ToString()
+      ``exception``  = l.``exception`` }
 
   interface NewtonsoftSerialisable with
     member x.Serialise ser jobj =

@@ -16,9 +16,10 @@ open NodaTime
 
 /// Convert the MetricType to an int
 let typeAsInt16 = function
-  | MetricType.Counter -> 0s
-  | MetricType.Timer _ -> 1s
-  | MetricType.Gauge -> 2s
+  | Counter -> 0s
+  | Timer _ -> 1s
+  | Gauge -> 2s
+  | Meter -> 3s
 
 type DBConf =
   { connFac : unit -> IDbConnection

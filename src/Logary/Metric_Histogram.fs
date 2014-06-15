@@ -7,7 +7,7 @@ module Histograms =
 
   type Reservoir =
     { size   : uint32
-    ; update : uint64 -> Reservoir }
+      update : uint64 -> Reservoir }
 
   // https://github.com/codahale/metrics/blob/master/metrics-core/src/main/java/com/codahale/metrics/ExponentiallyDecayingReservoir.java
   // http://dimacs.rutgers.edu/~graham/pubs/papers/fwddecay.pdf

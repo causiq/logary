@@ -12,10 +12,11 @@ module Gauge =
   /// with the passed value and name
   let gauge name value =
     { value     = value
-    ; path      = name
-    ; timestamp = utcNow ()
-    ; level     = LogLevel.Info
-    ; mtype     = Gauge }
+      path      = name
+      timestamp = utcNow ()
+      level     = LogLevel.Info
+      mtype     = Gauge
+      data      = Map.empty}
 
   /// Logary's representation of a gauge.
   type GaugeInstance(name, targets) =

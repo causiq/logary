@@ -1,6 +1,6 @@
 # Logary
 
-Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net.
+Logary is a high performance, multi-target logging, metric, tracing and health-check library for mono and .Net.
 
 Follow Logary at twitter: [@logarylib](https://twitter.com/logarylib).
 

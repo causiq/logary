@@ -14,7 +14,7 @@ type Gauge =
   inherit Named
   abstract Put : float -> unit
 
-/// A meter measures the rate of events over time (e.g., “requests per second”).
+/// A meter measures the rate of events over time (e.g., "requests per second").
 /// In addition to the mean rate, meters also track 1-, 5-, and 15-minute moving
 /// averages.
 type Meter =
@@ -35,45 +35,104 @@ type Timer =
 and TimerContext =
   abstract Stop : unit -> unit
 
-open FSharp.Actor
-open NodaTime
-
-/// A MetricType is a discriminated union that specifies the type of the metric
-/// collected.
-type MetricType =
-  | Gauge
-  | Counter
-  | Timer of Duration
-with
-  /// Custom ToString that corresponds to all-lowercase.
-  override x.ToString() =
-    match x with
-    | Gauge   -> "gauge"
-    | Counter -> "counter"
-    | Timer _ -> "timer"
-
-/// The thinking behind the format of Metric is that it is similar to
-/// how Nimrod deals with it with logging: http://sbtourist.github.io/nimrod/
-/// A data-point is used to log to some statistics based service.
-/// Nimrod has second-resolution timers, but we're adding the Duration
-/// as a piece of data on the metric type Timer, so that the nimrod target
-/// doesn't have to rely on a loosely typed behaviour of the float value.
-type Measure =
-  { value     : float
-  /// The identifier for the metric - defaults to the path of the logger sending it
-  ; path      : string
-  /// When the metric was captured (start of capture of metric)
-  ; timestamp : Instant
-  /// The level of the metric
-  ; level     : LogLevel
-  /// What type of metric it is
-  ; mtype     : MetricType }
-
+/// Module for capturing metrics in their raw form
 module Metrics =
+  open System.Diagnostics
+
   open FSharp.Actor
 
+  open NodaTime
+
+  open Logary.Internals
+
+  [<AbstractClass>]
   type MetricInstance(name, targets) =
     member x.Targets : IActor list = targets
     member x.Name = name
     interface Named with
       member x.Name = name
+
+  /// Write a metric/measure of your chosing
+  [<CompiledName "Metric">]
+  let metric logger ms =
+    (logger : Logger).Metric ms
+
+  /// Increment the counter at the path 'path' at the info level
+  let incr logger path =
+    { value     = 1.
+      path      = path
+      timestamp = Date.utcNow()
+      level     = Info
+      mtype     = Counter
+      data      = Map.empty }
+    |> metric logger
+
+  let incrBy logger path amount =
+    { value     = amount
+      path      = path
+      timestamp = Date.utcNow ()
+      level     = Info
+      mtype     = Counter
+      data      = Map.empty }
+    |> metric logger
+
+  let decr logger path =
+    { value     = -1.
+      path      = path
+      timestamp = Date.utcNow ()
+      level     = Info
+      mtype     = Counter
+      data      = Map.empty }
+    |> metric logger
+
+  let decrBy logger path amount =
+    { value     = -amount
+      path      = path
+      timestamp = Date.utcNow ()
+      level     = Info
+      mtype     = Counter
+      data      = Map.empty }
+    |> metric logger
+
+  let gauge logger path amount =
+    { value = amount
+      path  = path
+      timestamp = Date.utcNow ()
+      level     = Info
+      mtype     = Gauge
+      data      = Map.empty }
+    |> metric logger
+
+  /// Capture a timer metric with a given metric-level and metric-path.
+  [<CompiledName "TimeLevel">]
+  let timelvl (logger : Logger) lvl path f =
+    if lvl < logger.Level then f ()
+    else
+      let now = Date.utcNow ()
+      let sw = Stopwatch.StartNew()
+      try
+        f ()
+      finally
+        sw.Stop()
+        { value     = sw.ElapsedTicks |> float
+          path      = path
+          timestamp = now
+          level     = lvl
+          mtype     = Timer(Duration.FromTicks(sw.ElapsedTicks))
+          data      = Map.empty  }
+        |> metric logger
+
+  /// Capture a timer metric with a given metric-path
+  [<CompiledName "Time">]
+  let time logger path = timelvl logger LogLevel.Info path
+
+  /// Capture a timer metric with the logger's name as the metric-path
+  [<CompiledName "TimeLog">]
+  let timeLog logger = timelvl logger LogLevel.Info (logger.Name)
+
+  /// Time a function execution with a 'path' equal to the passed argument.
+  /// Path may be null, and is then replaced with the logger name
+  [<CompiledName "TimePath">]
+  let timePath (logger : Logger) lvl path (f : System.Func<_>) =
+    let path = match path with null -> logger.Name | p -> p
+    timelvl logger lvl path (fun () -> f.Invoke())

@@ -7,7 +7,6 @@ module Nimrod =
 
   open Logary
   open Targets
-  open TargetUtils
   open Logary.Internals.Tcp
   open Logary.Internals.Date
 
@@ -27,12 +26,12 @@ module Nimrod =
             let ic = System.Globalization.CultureInfo.InvariantCulture
             let m' = sprintf "[nimrod][%i][%s][%s][%s]" ts (m.ToString()) m.path (m.value.ToString(ic))
             { message       = m'
-            ; level         = m.level
-            ; data          = Map.empty
-            ; path          = m.path
-            ; tags          = []
-            ; ``exception`` = None
-            ; timestamp     = m.timestamp }
+              level         = m.level
+              data          = Map.empty
+              path          = m.path
+              tags          = []
+              ``exception`` = None
+              timestamp     = m.timestamp }
             |> logTarget conf.target
             return! loop ()
           | Log l ->
@@ -45,6 +44,6 @@ module Nimrod =
       and shutdown () = async { return () }
       loop ())
 
-  let create conf = stdNamedTarget (actorLoop conf)
+  let create conf = TargetUtils.stdNamedTarget (actorLoop conf)
 
   let [<CompiledName("Create")>] CreateC(conf, name)  = create conf name

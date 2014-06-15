@@ -8,7 +8,7 @@ module HealthChecks =
   // success is next to type HealthCheck (Healthy)
   type Failure =
     { message : string
-    ; ``exception`` : exn option }
+      ``exception`` : exn option }
     interface UnhealthyResult with
       member x.Message = x.message
       member x.Exception = x.``exception``

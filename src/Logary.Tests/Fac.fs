@@ -17,13 +17,13 @@ open TestDSL
 
 let emptyTarget =
   { name  = "empty target"
-  ; actor = Actor.spawn Actor.Options.Default (fun _ -> async { return () }) }
+    actor = Actor.spawn Actor.Options.Default (fun _ -> async { return () }) }
 
 let emptyRule =
   { hiera  = Regex(".*")
-  ; target = "empty target"
-  ; accept = fun line -> true
-  ; level  = Verbose }
+    target = "empty target"
+    accept = fun _ -> true
+    level  = Verbose }
 
 let textWriter () =
   let sb = new StringBuilder()
@@ -35,15 +35,15 @@ let withLogary f =
   let target = confTarget "cons" (create <| TextWriterConf.Default(out, err))
 
   let rule =
-    { accept = fun ll -> true
-    ; hiera = Regex(".*")
-    ; level = LogLevel.Verbose
-    ; target = target.name }
+    { accept = fun _ -> true
+      hiera = Regex ".*"
+      level = LogLevel.Verbose
+      target = target.name }
 
   let logary =
     confLogary "tests"
-    |> withRules   [ rule ]
-    |> withTargets [ target ]
+    |> withRule rule
+    |> withTarget target
     |> validateLogary
     |> runLogary
 

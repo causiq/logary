@@ -13,10 +13,11 @@ module Counter =
   /// with the passed value and name
   let counterValue name amount =
     { value     = amount
-    ; path      = name
-    ; timestamp = Date.utcNow ()
-    ; level     = LogLevel.Info
-    ; mtype     = Counter }
+      path      = name
+      timestamp = Date.utcNow ()
+      level     = LogLevel.Info
+      mtype     = Counter
+      data      = Map.empty }
 
   /// Logary's representation of a counter.
   type CounterInstance(name, targets) =

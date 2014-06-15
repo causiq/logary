@@ -64,14 +64,14 @@ module RestKin =
 
   type internal RestKinSpan =
     { trace_id    : hex16long
-    ; span_id     : hex16long
-    ; parent_id   : hex16long option
-    ; name        : string
-    ; annotations : RestKinAnnotation list }
+      span_id     : hex16long
+      parent_id   : hex16long option
+      name        : string
+      annotations : RestKinAnnotation list }
 
   and internal RestKinAnnotation =
     { key : string
-    ; ``type`` : RestKinAnnotationType }
+      ``type`` : RestKinAnnotationType }
 
   and internal RestKinAnnotationType =
     | String
@@ -121,16 +121,16 @@ module RestKin =
   /// Configuration for RestKin target.
   type RestKinConf =
     { baseUri   : Uri
-    ; clientFac : Uri -> IRestClient
-    ; formatter : obj -> string }
+      clientFac : Uri -> IRestClient
+      formatter : obj -> string }
     /// Create a new configuration with a base uri and an optional
     /// rest client factory.
     /// Default port: 6956
     /// Default host: localhost
     static member Create(?baseUri, ?fac, ?traceReq, ?formatter) =
       { baseUri   = defaultArg baseUri (Uri("http://localhost:6956"))
-      ; clientFac = defaultArg fac (fun uri -> new RestClient(uri.ToString()) :> IRestClient)
-      ; formatter = defaultArg formatter (makeFormatter()) }
+        clientFac = defaultArg fac (fun uri -> new RestClient(uri.ToString()) :> IRestClient)
+        formatter = defaultArg formatter (makeFormatter()) }
     static member Default = RestKinConf.Create()
 
   type private RestKinState =
@@ -148,8 +148,8 @@ module RestKin =
 
   let private restKinLoop
     { baseUri   = baseUri
-    ; clientFac = clientFac
-    ; formatter = formatter }
+      clientFac = clientFac
+      formatter = formatter }
     metadata =
     (fun (inbox : IActor<_>) ->
       let rec loop state = async {

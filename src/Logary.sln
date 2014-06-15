@@ -31,6 +31,11 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.Riemann.
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.Riemann.Example", "Logary.Riemann.Example\Intelliplan.Logary.Riemann.Example.fsproj", "{178B23D3-F676-43C3-880D-9E0BEFBAF019}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{4FC4A3AC-CC29-4B8E-8E24-DCAA447AC1F0}"
+	ProjectSection(SolutionItems) = preProject
+		..\README.md = ..\README.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

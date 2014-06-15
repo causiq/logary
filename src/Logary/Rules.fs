@@ -1,30 +1,29 @@
-namespace Logary
-
 /// Module for dealing with rules
-module Rules =
-  open System
-  open System.Text.RegularExpressions
+module Logary.Rules
 
-  open Logary.Targets
+open System
+open System.Text.RegularExpressions
 
-  /// Find all rules matching the name, from the list of rules passed.
-  let matching (name : string) (rules : Rule list) =
-    rules |> List.filter (fun r -> r.hiera.IsMatch name)
+open Logary.Targets
 
-  ///////////////////
-  // Creating rules:
-  ///////////////////
+/// Find all rules matching the name, from the list of rules passed.
+let matching (name : string) (rules : Rule list) =
+  rules |> List.filter (fun r -> r.hiera.IsMatch name)
 
-  /// Create a rule with the given regex/hiera, accept function and level given a target configuration.
-  let forTarget hiera accept level (t : TargetConf) =
-    { hiera  = hiera
-    ; target = t.name
-    ; accept = accept
-    ; level  = level }
+/////////////////////
+// Creating rules: //
+/////////////////////
 
-  /// Create a rule that accepts any input for a specified target (that's the name param)
-  let forAny (name : string) =
-    { hiera  = Regex(".*")
-    ; target = name
-    ; accept = fun l -> true
-    ; level  = LogLevel.Verbose }
+/// Create a rule with the given regex/hiera, accept function and level given a target configuration.
+let forTarget hiera accept level (t : TargetConf) =
+  { hiera  = hiera
+    target = t.name
+    accept = accept
+    level  = level }
+
+/// Create a rule that accepts any input for a specified target (that's the name param)
+let forAny (name : string) =
+  { hiera  = Regex ".*"
+    target = name
+    accept = fun _ -> true
+    level  = Verbose }

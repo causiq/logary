@@ -18,23 +18,23 @@ module Targets =
   /// A rule specifies what log lines and metrics a target should accept.
   [<CustomEquality; NoComparison>]
   type Rule =
-    /// This is the regular expression that the 'path' must match to be loggable
-    { hiera  : Regex
-    /// This is the name of the target that this rule applies to
-    ; target : string
-    /// This is the accept filter that is before the log line is passed to the logger
-    /// instance.
-    ; accept : Acceptor
-    /// This is the level at which the target will accept log lines. It's inclusive, so
-    /// anything below won't be accepted.
-    ; level  : LogLevel }
-    /// Create a new rule with the given hiera, target, accept function and min level
-    /// acceptable.
+    { /// This is the regular expression that the 'path' must match to be loggable
+      hiera  : Regex
+      /// This is the name of the target that this rule applies to
+      target : string
+      /// This is the accept filter that is before the log line is passed to the logger
+      /// instance.
+      accept : Acceptor
+      /// This is the level at which the target will accept log lines. It's inclusive, so
+      /// anything below won't be accepted.
+      level  : LogLevel }
+      /// Create a new rule with the given hiera, target, accept function and min level
+      /// acceptable.
     static member Create(hiera, target, accept : System.Func<_, _>, level : LogLevel) =
       { hiera  = hiera
-      ; target = target
-      ; accept = fun l -> accept.Invoke l
-      ; level  = level }
+        target = target
+        accept = fun l -> accept.Invoke l
+        level  = level }
 
     override x.GetHashCode () = hash (x.hiera.ToString(), x.target, x.level)
 
@@ -65,10 +65,10 @@ module Targets =
   /// A target instance is a spawned actor instance together with
   /// the name of this target instance.
   type TargetInstance =
-    /// The backing actor instance of the target.
-    { actor  : IActor
-    /// The human readable name of the target.
-    ; name   : string }
+    { /// The backing actor instance of the target.
+      actor  : IActor
+      /// The human readable name of the target.
+      name   : string }
 
   /// Get the actor from the target instance
   let actor ti = ti.actor
@@ -77,7 +77,7 @@ module Targets =
   /// while it is being configured, and before Logary fully starts up.
   type TargetConf =
     { name     : string
-    ; initer   : ServiceMetadata -> TargetInstance }
+      initer   : ServiceMetadata -> TargetInstance }
     override x.ToString() = sprintf "{ name = %s } : TargetConf" x.name
 
   /// 'API helper' method for flowing the target through
@@ -122,9 +122,9 @@ module Targets =
     /// given an actor-based loop function and a name for the target.
     let stdNamedTarget loop name =
       { name = name
-      ; initer = fun metadata ->
+        initer = fun metadata ->
         { actor = Actor.spawn (Actor.Options.Create(sprintf "logaryRoot/%s" name)) (loop metadata)
-        ; name  = name } }
+          name  = name } }
 
   /// A module that contains the required interfaces to do an "object oriented" DSL
   /// per target

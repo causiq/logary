@@ -30,8 +30,8 @@ module Config =
   [<CompiledName "ConfigureLogary">]
   let confLogary serviceName =
     { rules = []
-    ; targets = Map.empty
-    ; metadata = { serviceName = serviceName } }
+      targets = Map.empty
+      metadata = { serviceName = serviceName } }
 
   /// Add a new target to the configuration. You also need to supple a rule for
   /// the target.

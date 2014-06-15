@@ -60,12 +60,12 @@ let mkAttrsFromData (m : Map<string, obj>) =
 let mkEventL
   hostname ttl confTags mkAttrsFromData
   ({ message      = message
-  ; data          = data
-  ; level         = level
-  ; tags          = tags
-  ; timestamp     = timestamp
-  ; path          = path
-  ; ``exception`` = ex } as ll) =
+     data          = data
+     level         = level
+     tags          = tags
+     timestamp     = timestamp
+     path          = path
+     ``exception`` = ex } as ll) =
   Event.CreateDouble(1.,
                      asEpoch timestamp,
                      mkState level,
@@ -85,19 +85,9 @@ let mkEventM
     level     = level
     mtype     = mtype } =
   let tags = confTags |> Option.fold (fun s t -> s @ t) []
-  match mtype with
-  | Gauge   ->
-    Event.CreateDouble(value, asEpoch timestamp,
-                       mkState level, path, hostname, "gauge", tags,
-                       ttl, [])
-  | Timer t ->
-    Event.CreateDouble(value, asEpoch timestamp,
-                       mkState level, path, hostname, "timer", tags,
-                       ttl, [])
-  | Counter ->
-    Event.CreateDouble(value, asEpoch timestamp,
-                       mkState level, path, hostname, "counter", tags,
-                       ttl, [])
+  Event.CreateDouble(value, asEpoch timestamp,
+                     mkState level, path, hostname, mtype.ToString(), tags,
+                     ttl, [])
 
 // TODO: a way of discriminating between ServiceName-s.
 
@@ -187,14 +177,12 @@ let riemannLoop (conf : RiemannConf) metadata =
         match msg with
         | Log l ->
           let evt = conf.fLogLine l
-//          info "sending LogLine: %A, as Event: %A" l evt
           let! res = [ evt ] |> sendEvents state.stream
           match res with
           | Choice1Of2 () -> return! running state
           | Choice2Of2 err -> raise <| Exception(sprintf "server error: %s" err)
         | Metric msr ->
           let evt = conf.fMeasure msr
-//          info "sending measure %A, as Event: %A" msr evt
           let! res = [ evt ] |> sendEvents state.stream
           match res with
           | Choice1Of2 () -> return! running state

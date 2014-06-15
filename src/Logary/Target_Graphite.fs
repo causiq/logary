@@ -23,26 +23,26 @@ module Graphite =
   /// TODO: prefixing with hostname etc
   type GraphiteConf =
     { hostname  : string
-    ; port      : uint16
-    ; clientFac : string -> uint16 -> WriteClient }
+      port      : uint16
+      clientFac : string -> uint16 -> WriteClient }
     static member Create(hostname, ?port, ?clientFac) =
       let port = defaultArg port 2003us
       let clientFac = defaultArg clientFac (fun host port -> new TcpWriteClient(new TcpClient(host, int port)) :> WriteClient)
       { hostname = hostname
-      ; port = port
-      ; clientFac = clientFac }
+        port = port
+        clientFac = clientFac }
 
   type private GraphiteState =
     { client         : WriteClient
-    ; sendRecvStream : WriteStream option }
+      sendRecvStream : WriteStream option }
 
   let private utf8 = System.Text.Encoding.UTF8
 
   let private tryDispose (item : 'a option) =
     if item.IsNone then ()
     else match item.Value |> box with
-          | :? IDisposable as disposable -> try disposable.Dispose() with _ -> ()
-          | _ -> ()
+         | :? IDisposable as disposable -> try disposable.Dispose() with _ -> ()
+         | _ -> ()
 
   /// All graphite messages are of the following form.
   /// metric_path value timestamp\n

@@ -78,8 +78,8 @@ let tests =
     yield testCase "retrieving two matching rules one non-matching" <| fun _ ->
       let rules =
         [ Fac.emptyRule
-        ; { Fac.emptyRule with hiera = Regex(@"^a\.b") }
-        ; { Fac.emptyRule with hiera = Regex(@"^a\.b\.d") } ]
+          { Fac.emptyRule with hiera = Regex(@"^a\.b") }
+          { Fac.emptyRule with hiera = Regex(@"^a\.b\.d") } ]
       rules
       |> Rules.matching "a.b.c"
       |> List.zip [ Fac.emptyRule; { Fac.emptyRule with hiera =  Regex(@"^a\.b") } ]
@@ -135,7 +135,7 @@ let tests =
 
       let rules =
         [ { Fac.emptyRule with accept = (fun l -> l.path = "1") ; target = "tw" }
-        ; { Fac.emptyRule with accept = (fun l -> l.path = "2") ; target = "tw" } ]
+          { Fac.emptyRule with accept = (fun l -> l.path = "2") ; target = "tw" } ]
 
       let targets =
         [ confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Default(out, out)) ]
@@ -247,7 +247,7 @@ let tests =
     yield testCase "timing f-n call" <| fun _ ->
       Fac.withLogary <| fun logary stdout stderr ->
         let logger = "a.b.c.d" |> Registry.getLogger logary.registry |> Async.RunSynchronously
-        let f = Log.timelvl logger Info (logger.Name) <| fun () ->
+        let f = Metrics.timelvl logger Info (logger.Name) <| fun () ->
           printfn "doing work ..."
           42
         // TODO: assert on Nimrod output

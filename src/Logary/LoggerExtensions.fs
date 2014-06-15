@@ -38,12 +38,12 @@ module LoggerExtensions =
   let log (logger : Logger, message, level, data, tags, path, ``exception``) =
     if String.IsNullOrWhiteSpace message then nullArg "message"
     { message       = message
-    ; level         = level
-    ; data          = toMap data
-    ; path          = match path with null -> logger.Name | _ -> path
-    ; tags          = match tags with null -> [] | _ -> List.ofSeq tags
-    ; ``exception`` = match ``exception`` with null -> None | _ -> Some ``exception``
-    ; timestamp     = NodaTime.SystemClock.Instance.Now }
+      level         = level
+      data          = toMap data
+      path          = match path with null -> logger.Name | _ -> path
+      tags          = match tags with null -> [] | _ -> List.ofSeq tags
+      ``exception`` = match ``exception`` with null -> None | _ -> Some ``exception``
+      timestamp     = NodaTime.SystemClock.Instance.Now }
     |> logger.Log
 
   /// Log a message with some accompanying data to the log
@@ -51,10 +51,10 @@ module LoggerExtensions =
   let logAnnotate (logger : Logger, message, level, data) =
     if String.IsNullOrWhiteSpace message then nullArg "message"
     { message       = message
-    ; level         = level
-    ; data          = toMap data
-    ; path          = logger.Name
-    ; tags          = []
-    ; ``exception`` = None
-    ; timestamp     = NodaTime.SystemClock.Instance.Now }
+      level         = level
+      data          = toMap data
+      path          = logger.Name
+      tags          = []
+      ``exception`` = None
+      timestamp     = NodaTime.SystemClock.Instance.Now }
     |> logger.Log
