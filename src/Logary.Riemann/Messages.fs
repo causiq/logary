@@ -479,7 +479,7 @@ type Msg =
     { ok     = false
       error  = ""
       states = List<_>()
-      query  = Query()
+      query  = Unchecked.defaultof<Query>
       events = List<_>() }
 
   new (ok, error, states, query, events) =
@@ -490,7 +490,7 @@ type Msg =
       events = List<_>(events : _ seq) }
 
   override x.ToString() =
-    sprintf "Msg(ok=%b, error=%s, states=%A, query=%O, events=%A)"
+    sprintf "Msg(ok=%b, error=%s, states=%A, query=%A, events=%A)"
       x.ok x.error x.states x.query x.events
 
   override x.Equals other =

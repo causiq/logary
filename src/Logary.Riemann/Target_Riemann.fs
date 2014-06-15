@@ -187,14 +187,14 @@ let riemannLoop (conf : RiemannConf) metadata =
         match msg with
         | Log l ->
           let evt = conf.fLogLine l
-          info "sending LogLine: %A, as Event: %A" l evt
+//          info "sending LogLine: %A, as Event: %A" l evt
           let! res = [ evt ] |> sendEvents state.stream
           match res with
           | Choice1Of2 () -> return! running state
           | Choice2Of2 err -> raise <| Exception(sprintf "server error: %s" err)
         | Metric msr ->
           let evt = conf.fMeasure msr
-          info "sending measure %A, as Event: %A" msr evt
+//          info "sending measure %A, as Event: %A" msr evt
           let! res = [ evt ] |> sendEvents state.stream
           match res with
           | Choice1Of2 () -> return! running state
