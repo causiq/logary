@@ -7,8 +7,14 @@ module internal Date =
   let toEpoch (dt : DateTime) = int64 <| (dt.ToUniversalTime() - epoch).TotalSeconds
   let utcNow () = SystemClock.Instance.Now
 
-/// A module that wraps the .Net TcpClient types/streams in a F#-ideomatic
-/// way, and behind an interface.
+module internal Map =
+  let put k v (m : Map<_,_>) =
+    match m.TryFind k with
+    | None -> m |> Map.add k v
+    | Some _ -> m |> Map.remove k |> Map.add k v
+
+/// A module that wraps the .Net TcpClient types/streams in a F#-ideomatic way,
+/// and behind an interface.
 module Tcp =
 
   open System

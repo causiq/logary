@@ -52,48 +52,57 @@ module Metrics =
     interface Named with
       member x.Name = name
 
+  ////////////////////
+  // Setter methods //
+  ////////////////////
+
+  /// Add a key-value pair to the data in the measure
+  [<CompiledName "SetData">]
+  let setData k v m = { m with Measure.data = m.data |> Map.put k v }
+
+  /// Add the key-value pairs to the data in the measure
+  [<CompiledName "SetDatas">]
+  let setDatas datas m = datas |> Seq.fold (fun s (k, v) -> s |> setData k v) m
+
+  /// Sets the path of the measure
+  [<CompiledName "SetPath">]
+  let setPath p m = { m with Measure.path = p }
+
+  /// Sets the value of the measure
+  [<CompiledName "SetValue">]
+  let setValue value m = { m with Measure.value = value }
+
+  /////////////////////
+  // Logging methods //
+  /////////////////////
+
+  /// Make a new measure value from the type of measure it is, the value and the
+  /// path it is taken at or represents
+  let mkMeasure mtype value path =
+    { value     = value
+      path      = path
+      timestamp = Date.utcNow()
+      level     = Info
+      mtype     = mtype
+      data      = Map.empty }
+
   /// Write a metric/measure of your chosing
   [<CompiledName "Metric">]
   let metric logger ms =
     (logger : Logger).Metric ms
 
   /// Increment the counter at the path 'path' at the info level
-  let incr logger path =
-    { value     = 1.
-      path      = path
-      timestamp = Date.utcNow()
-      level     = Info
-      mtype     = Counter
-      data      = Map.empty }
-    |> metric logger
+  let incr logger path = mkMeasure Counter 1. path |> metric logger
 
-  let incrBy logger path amount =
-    { value     = amount
-      path      = path
-      timestamp = Date.utcNow ()
-      level     = Info
-      mtype     = Counter
-      data      = Map.empty }
-    |> metric logger
+  /// Increment the counter at the path 'path' at the info level by the amount
+  let incrBy logger path amount = mkMeasure Counter amount path |> metric logger
 
-  let decr logger path =
-    { value     = -1.
-      path      = path
-      timestamp = Date.utcNow ()
-      level     = Info
-      mtype     = Counter
-      data      = Map.empty }
-    |> metric logger
+  /// Decrement the counter at the path 'path' at the info level
+  let decr logger path = mkMeasure Counter -1. path |> metric logger
 
-  let decrBy logger path amount =
-    { value     = -amount
-      path      = path
-      timestamp = Date.utcNow ()
-      level     = Info
-      mtype     = Counter
-      data      = Map.empty }
-    |> metric logger
-
+  /// Decrement the counter at the path 'path' at the info level by the amount
+  let decrBy logger path amount = mkMeasure Counter -amount path |> metric logger
+  
   let gauge logger path amount =
     { value = amount
       path  = path

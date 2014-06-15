@@ -7,12 +7,6 @@
 /// interop problems that you will get from using this module directly.
 module Logary.Log
 
-module internal Map =
-  let put k v (m : Map<_,_>) =
-    match m.TryFind k with
-    | None -> m |> Map.add k v
-    | Some _ -> m |> Map.remove k |> Map.add k v
-
 open System.Diagnostics
 
 open NodaTime
@@ -37,7 +31,7 @@ let setData k v line = { line with LogLine.data = line.data |> Map.put k v }
 [<CompiledName "SetDatas">]
 let setDatas datas line = datas |> Seq.fold (fun s (k, v) -> s |> setData k v) line
 
-// Sets the path of the log line to the passed value
+/// Sets the path of the log line
 [<CompiledName "SetPath">]
 let setPath p line = { line with LogLine.path = p }
 
