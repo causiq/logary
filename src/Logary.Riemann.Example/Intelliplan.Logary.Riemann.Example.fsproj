@@ -5,23 +5,35 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{cc87925c-e4f2-4386-a322-8bc088de7b33}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <RootNamespace>Intelliplan.Logary.Riemann</RootNamespace>
-    <AssemblyName>Intelliplan.Logary.Riemann</AssemblyName>
+    <ProjectGuid>178b23d3-f676-43c3-880d-9e0befbaf019</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Logary.Riemann.Example</RootNamespace>
+    <AssemblyName>Logary.Riemann.Example</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <TargetFSharpCoreVersion Condition=" '$(TargetFSharpCoreVersion)' == '' ">4.3.0.0</TargetFSharpCoreVersion>
-    <Name>Intelliplan.Logary.Riemann</Name>
-    <TargetFrameworkProfile />
+    <Name>Intelliplan.Logary.Riemann.Example</Name>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <Tailcalls>false</Tailcalls>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <WarningLevel>3</WarningLevel>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DocumentationFile>bin\Debug\Logary.Riemann.Example.XML</DocumentationFile>
+    <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
-    <Optimize>false</Optimize>
-    <Tailcalls>false</Tailcalls>
+    <Optimize>true</Optimize>
+    <Tailcalls>true</Tailcalls>
     <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>bin\Release\Intelliplan.Logary.Riemann.xml</DocumentationFile>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DocumentationFile>bin\Release\Logary.Riemann.Example.XML</DocumentationFile>
+    <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="FSharp.Core">
@@ -45,19 +57,25 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Xml" />
+    <Reference Include="UnionArgParser">
+      <HintPath>..\packages\UnionArgParser.0.6.5\lib\net40\UnionArgParser.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Messages.fs" />
-    <Compile Include="Client.fs" />
-    <Compile Include="Target_Riemann.fs" />
-    <None Include="Riemann.proto" />
+    <Compile Include="Program.fs" />
+    <None Include="App.config" />
     <None Include="packages.config" />
-    <Compile Include="AssemblyVersionInfo.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Fsharp.Actor\src\FSharp.Actor\FSharp.Actor-logary.fsproj">
       <Name>FSharp.Actor-logary</Name>
       <Project>{aa4bc25b-04f7-4b39-bf28-0b0058193ed9}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\Logary.Riemann\Intelliplan.Logary.Riemann.fsproj">
+      <Name>Intelliplan.Logary.Riemann</Name>
+      <Project>{cc87925c-e4f2-4386-a322-8bc088de7b33}</Project>
       <Private>True</Private>
     </ProjectReference>
     <ProjectReference Include="..\Logary\Intelliplan.Logary.fsproj">
@@ -69,17 +87,12 @@
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
   </PropertyGroup>
-  <Choose>
-    <When Condition="'$(VisualStudioVersion)' == '11.0'">
-      <PropertyGroup Condition="Exists('..\vendor\FSharp\3.0\Microsoft.FSharp.Targets')">
-        <FSharpTargetsPath>..\vendor\FSharp\3.0\Microsoft.FSharp.Targets</FSharpTargetsPath>
-      </PropertyGroup>
-    </When>
-    <Otherwise>
-      <PropertyGroup Condition="Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets')">
-        <FSharpTargetsPath>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets</FSharpTargetsPath>
-      </PropertyGroup>
-    </Otherwise>
-  </Choose>
-  <Import Project="$(FSharpTargetsPath)" />
+  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets" Condition=" Exists('$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets')" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
 </Project>

@@ -8,4 +8,4 @@ type internal FlyweightLogger =
   inherit Logger
   /// Call when the logging framework was configured to set the correct impl
   /// of the logger
-  abstract Configured : LogManager -> unit
+  abstract Configured : LogaryInstance -> unit

@@ -11,7 +11,6 @@ open Logary
 open Logary.Targets
 open Logary.Targets.TargetUtils
 
-
 let private toNLogLevel = function
   | Verbose -> NLog.LogLevel.Trace
   | Debug   -> NLog.LogLevel.Debug
@@ -46,9 +45,9 @@ let private nlogLoop nlogConfig metadata =
         logger.Log(typeof<Marker>.DeclaringType, event)
         return! running ()
       | Metric m -> return! loop ()
-      | ShutdownTarget ackChan -> return! shutdown () }
-            
-    and shutdown () = async { do LogManager.Shutdown() }
+      | ShutdownTarget ackChan -> return shutdown () }
+
+    and shutdown () = NLog.LogManager.Shutdown()
 
     loop ())
 

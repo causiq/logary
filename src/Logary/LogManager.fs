@@ -1,10 +1,32 @@
 ﻿namespace Logary
 
+open NodaTime
+
+open FSharp.Actor
+
+/// A type that encapsulates the moving parts of a configured Logary.
+type LogaryInstance =
+  { supervisor : IActor
+    registry   : IActor
+    metadata   : ServiceMetadata }
+
+/// A type that gives information on how the shutdown went
+type ShutdownState =
+  { flushed  : Acks
+    stopped  : Acks
+    timedOut : bool }
+  member x.Successful =
+    let succ = function Ack -> true | Nack _ -> false
+    succ x.flushed && succ x.stopped
+
 /// LogManager is the public interface to Logary and takes care of getting
 /// loggers from names. It is also responsible for running Dispose at the
 /// end of the application in order to run the target shutdown logic. That said,
 /// the body of the software should be crash only, so even if you don't call dispose
 /// terminating the application, it should continue working.
+///
+/// This is also a synchronous wrapper around the asynchronous actors that make
+/// up logary
 type LogManager =
   inherit System.IDisposable
 
@@ -20,4 +42,13 @@ type LogManager =
   /// Awaits that all targets finish responding to a flush message
   /// so that we can be certain they have processed all previous messages.
   /// This function is useful together with unit tests for the targets.
-  abstract FlushPending : unit -> unit
+  abstract FlushPending : Duration -> Acks
+
+  /// Shuts Logary down after flushing, given a timeout duration to wait before
+  /// counting the target as timed out in responding. The duration is applied
+  /// to each actor's communication. Does an ordered shutdown.
+  ///
+  /// First duration: flush duration
+  /// Second duration: shutdown duration
+  /// Returns the shutdown book keeping info
+  abstract Shutdown : Duration -> Duration -> ShutdownState

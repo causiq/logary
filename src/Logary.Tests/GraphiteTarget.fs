@@ -40,8 +40,8 @@ let tests =
 
       let logary =
         confLogary "tests"
-        |> withRules [ graphite |> Rules.forTarget (Regex(".*")) (fun x -> true) Info ]
-        |> withTargets [ graphite ]
+        |> withRule ( graphite |> Rules.forTarget (Regex(".*")) (fun x -> true) Info )
+        |> withTarget graphite
         |> validateLogary
         |> runLogary
 

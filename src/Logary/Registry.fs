@@ -1,16 +1,116 @@
-namespace Logary
-
 /// The registry is the composition root of Logary
-module Registry =
-  open FSharp.Actor
+module Logary.Registry
+
+open FSharp.Actor
+
+open NodaTime
+
+let private getSome (thing : string * ReplyChannel<_> -> _) registry name =
+  registry |> Actor.reqReply (fun ret -> thing (name, ret)) Infinite
+
+/// Given the registry actor, and a name for the logger, get the logger from the registry.
+let getLogger =
+  getSome GetLogger
+
+/// Given the registry actor, and a name for the gauge, get the gauge from the registry.
+let getGauge : IActor -> string -> Async<_> =
+  getSome GetGauge
+
+/// Given the registry actor, and a name for the counter, get the counter from the registry.
+let getCounter : IActor -> string -> Async<_> =
+  getSome GetCounter
+
+// TODO: move things out here as they become 'easy' to use
+
+/// handling flyweights
+module internal Logging =
+  open System
+
+  open Logary.Targets
+  open Logary.Internals
+  open Logary.Internals.InternalLogger
+  open Logary.Internals.Date
+
+  /// A logger instance that keeps a reference to the actor targets that it
+  /// logs to, as well as its name.
+  type LoggerInstance =
+    { name    : string
+    ; targets : (Acceptor * IActor) list
+    ; level   : LogLevel }
+    with
+      interface Named with
+        member x.Name = x.name
+
+      interface Logger with
+        member x.Log line =
+          // TODO: make functional:
+          for accept, t in x.targets do
+            try
+              if accept line then
+                t <-- Log line
+            with
+            | Actor.ActorInvalidStatus msg ->
+              err "Logging to %s failed, because of target state. Actor said: '%s'" x.name msg
+
+        member x.Metric m =
+          try
+            (x.targets |> List.map snd) <-* Metric m
+          with
+          | Actor.ActorInvalidStatus msg ->
+            err "Sending metric to %s failed, because of target state. Actor said: '%s'" x.name msg
+
+        member x.Level =
+          x.level
+
+  /// Flyweight logger impl - reconfigures to work when it is configured, and until then
+  /// throws away all log lines.
+  type FWL(name) =
+    let locker = obj()
+    let logManager = ref None
+    let logger = ref None
+    interface FlyweightLogger with
+      member x.Configured lm =
+        lock locker (fun () ->
+          logManager := Some lm
+          logger := Some <| Async.RunSynchronously(getLogger lm.registry name))
+    interface Logger with
+      member x.Name = name
+      member x.Log l = (!logger) |> Option.iter (fun logger -> logger.Log l)
+      member x.Metric m = (!logger) |> Option.iter (fun logger -> logger.Metric m)
+      member x.Level = Verbose
+
+  /// Iterate through all flywieghts and set the current LogManager for them
+  let goFish () =
+    lock Globals.criticalSection <| fun () ->
+        match !Globals.singleton with
+        | None -> ()
+        | Some lm ->
+          !Globals.flyweights |> List.iter (fun f -> f.Configured lm)
+          Globals.flyweights := []
+
+  /// Singleton configuration entry point: call from the runLogary code.
+  let startFlyweights logaryInstance =
+    lock Globals.criticalSection <| fun () ->
+        debug "Logging.logaryRun w/ logaryInstance"
+        Globals.singleton := Some logaryInstance
+        goFish ()
+
+  /// Singleton configuration exit point: call from shutdownLogary code
+  let shutdownFlyweights _ =
+    lock Globals.criticalSection <| fun () ->
+        Globals.singleton := None
+        Globals.flyweights := []
+
+module Advanced =
+  open System
+
+  open Logging
 
   open Logary
   open Logary.Metric
-  open Rules
-  open Targets
+  open Logary.Rules
+  open Logary.Targets
   open Logary.Internals.InternalLogger
-
-  open System
 
   module internal Seq =
     let all f s = Seq.fold (fun acc t -> acc && f t) true s
@@ -52,69 +152,55 @@ module Registry =
 
     // back to a list
     |> List.ofSeq
-
-  let private getSome (thing : string * ReplyChannel<_> -> _) registry name =
-    registry |> Actor.reqReply (fun ret -> thing (name, ret)) Infinite
-
-  /// Given the registry actor, and a name for the logger, get the logger from the registry.
-  let getLogger =
-    getSome GetLogger
-  /// Given the registry actor, and a name for the gauge, get the gauge from the registry.
-  let getGauge : IActor -> string -> Async<_> =
-    getSome GetGauge
-  /// Given the registry actor, and a name for the counter, get the counter from the registry.
-  let getCounter : IActor -> string -> Async<_> =
-    getSome GetCounter
   /// Given the registry actor, and a name for the meter, get the meter from the registry.
   let getMeter : IActor -> string -> Async<_> =
     getSome GetMeter
+
   /// Given the registry actor, and a name for the histogram, get the histogram from the registry.
   let getHistogram : IActor -> string -> Async<_> =
     getSome GetHistogram
+
   /// Given the registry actor, and a name for the timer, get the timer from the registry.
   let getTimer : IActor -> string -> Async<_> =
     getSome GetTimer
+
   /// Given the registry actor, and a name for the health check, get the health check from the registry.
   let getHealthCheck : IActor -> string -> Async<_> =
     getSome GetHealthCheck
-
-  let private rpcWait = Timeout(TimeSpan.FromMilliseconds(7000.))
 
   /// Flush all pending log lines for all targets. Returns a Nack/Ack structure describing
   /// how that went. E.g. if there's a target is has a backlog, it might not be able to
   /// flush all its pending entries within the allotted timeout (200 ms at the time of writing)
   /// but will then instead return Nack/failed RPC.
-  let flushPending registry =
+  let flushPending dur (registry : IActor) =
+    if registry.Status <> ActorStatus.Running then async { return Nack "registry not running" }
     /// Timeout=Infinite below is for THIS call, internally registry has a timeout per target.
-    registry |> Actor.reqReply FlushPending Infinite
+    else registry |> Actor.reqReply (fun c -> FlushPending(dur, c)) Infinite
 
   /// Shutdown the registry. This will first flush all pending entries for all targets inside the
   /// registry, and then proceed to sending ShutdownTarget to all of them. If this doesn't
   /// complete within the allotted timeout, (200 ms for flush, 200 ms for shutdown), it will
   /// return Nack to the caller (of shutdown).
-  let shutdown registry =
-    registry |> Actor.reqReply ShutdownLogary Infinite
+  let shutdown dur (registry : IActor) =
+    if registry.Status <> ActorStatus.Running then async { return Nack "registry not running" }
+    /// Timeout=Infinite below is for THIS call, internally registry has a timeout per target.
+    else registry |> Actor.reqReply (fun c -> ShutdownLogary(dur, c)) Infinite
 
-  /// A type that encapsulates the moving parts of a configured Logary.
-  type LogaryInstance =
-    { supervisor  : IActor
-    ; registry    : IActor
-    ; metadata    : ServiceMetadata }
-
-    interface LogManager with
-      member x.Metadata =
-        x.metadata
-      member x.GetLogger name =
-        name |> getLogger x.registry |> Async.RunSynchronously
-      member x.FlushPending () =
-        safeTryAsyncForce "LogManager: flushing pending" <| fun () ->
-          flushPending x.registry
-
-    interface IDisposable with
-      member x.Dispose () =
-        safeTryAsyncForce "LogManager: shutting down" <| fun () ->
-          shutdown x.registry
-        Logging.logaryShutdown ()
+  /// Flush all registry targets, then shut it down -- the registry internals
+  /// take care of timeouts, not these methods
+  let flushAndShutdown durFlush durShutdown (registry : IActor) = async {
+    if registry.Status <> ActorStatus.Running then
+      return { flushed = Nack "registry not running"
+               stopped = Nack "registry not running"
+               timedOut = false }
+    else
+      let! fs = flushPending durFlush registry
+      let! ss = shutdown durShutdown registry
+      // TODO: granular Ack handling for each target
+      return { flushed = fs
+               stopped = ss
+               timedOut = Seq.any (function Nack _ -> true | _ -> false) [ fs; ss ] }
+    }
 
   let private snd' (kv : System.Collections.Generic.KeyValuePair<_, _>) = kv.Value
   let private actorInstance = snd' >> snd >> Option.get >> Targets.actor
@@ -132,7 +218,13 @@ module Registry =
     for x in s do sb.AppendLine(sprintf " * %A" x) |> ignore
     sb.ToString()
 
-  open Internals.InternalLogger
+  /// Create a new Logger from the targets passed, with a given name.
+  [<CompiledName "FromTargets">]
+  let fromTargets name (targets : (Acceptor * TargetInstance * LogLevel) list) =
+    { name    = name
+    ; targets = targets |> List.map (fun (a, ti, _) -> a, (Targets.actor ti))
+    ; level   = targets |> List.map (fun (_, _, level) -> level) |> List.min }
+    :> Logger
 
   let rec private registry conf =
     let targetActors = conf.targets |> Seq.map actorInstance
@@ -142,7 +234,7 @@ module Registry =
         let! msg, mopt = inbox.Receive()
         match msg with
         | GetLogger (name, chan) ->
-          chan.Reply( name |> getTargets conf |> Logging.fromTargets name )
+          chan.Reply( name |> getTargets conf |> fromTargets name )
           return! running ()
         | GetCounter (name, chan) ->
           chan.Reply( name |> getTargets conf |> Counter.fromTargets name )
@@ -162,11 +254,12 @@ module Registry =
         | GetTimer (_, _) ->
           info "TODO: %A" msg
           return! running ()
-        | FlushPending chan ->
+        | FlushPending(dur, chan) ->
           info "%s" "registry: flush start"
           let! allFlushed =
             targetActors
-            |> Seq.pmap (Actor.makeRpc Flush rpcWait) // wait for flushes for 200ms across all targets
+            // wait for flushes across all targets
+            |> Seq.pmap (Actor.makeRpc Flush (Timeout(dur.ToTimeSpan ())))
           let flushed, notFlushed =
             allFlushed
             |> Seq.groupBy wasSuccessful
@@ -181,16 +274,16 @@ module Registry =
               err "registry: flush Nack - %s" msg
               Nack msg
           return! running ()
-        | ShutdownLogary ackChan ->
-          return! shutdown ackChan }
+        | ShutdownLogary(dur, ackChan) ->
+          return! shutdown dur ackChan }
 
       /// In the shutdown state, the registry doesn't respond to messages, but rather tries to
       /// flush and shut down all targets, doing internal logging as it goes.
-      and shutdown ackChan = async {
+      and shutdown dur ackChan = async {
         info "%s" "registry: shutdown start"
         let! allShutdown =
           targetActors
-          |> Seq.pmap (Actor.makeRpc ShutdownTarget rpcWait)
+          |> Seq.pmap (Actor.makeRpc ShutdownTarget (Timeout(dur.ToTimeSpan ())))
         let stopped, failed =
           allShutdown
           |> Seq.groupBy wasSuccessful
@@ -235,5 +328,4 @@ module Registry =
 
     debug "runRegistry: registry status: %A" logaryInstance.registry.Status
 
-    Logging.logaryRun logaryInstance
     logaryInstance

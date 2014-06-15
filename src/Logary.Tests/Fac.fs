@@ -50,11 +50,10 @@ let withLogary f =
   f logary out err
 
 let finaliseLogary = shutdownLogary >> fun a ->
-  let acks = Async.RunSynchronously(a, 1000)
+  let state = Async.RunSynchronously a
   (because "finalise should always work" <| fun () ->
-    match acks with
-    | Nack desc -> failwithf "finaliseLogary failed %A" desc
-    | Ack -> ()) |> thatsIt
+    if state.Successful then () else failwithf "finaliseLogary failed %A" state)
+  |> thatsIt
 
 let finaliseTarget = shutdownTarget >> fun a ->
   let acks = Async.RunSynchronously(a, 1000)

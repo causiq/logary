@@ -10,3 +10,4 @@ AssemblyVersionInfo.cs
 *.swp
 AssemblyVersionInfo.cs
 buildsupport/
+*.user

@@ -32,7 +32,6 @@ module HealthChecks =
           let! RunCheck, mopts = inbox.Receive()
           let! last' = fn ()
           slot := last'
-          //printfn "checked: %A" last'
           return! running { state with last = last' } }
       running { last = Healthy })
 

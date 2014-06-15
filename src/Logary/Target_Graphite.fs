@@ -20,6 +20,7 @@ module Graphite =
   let [<Literal>] TriggerTag = "plottable"
 
   /// Configuration for loggin to graphite.
+  /// TODO: prefixing with hostname etc
   type GraphiteConf =
     { hostname  : string
     ; port      : uint16

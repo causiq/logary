@@ -18,7 +18,7 @@ open Logary.Tests.StubTcp
 open Logary.Tests.TestDSL
 
 open System.Net.NetworkInformation
-  
+
 let private untilPred maxWait fPred =
   let spy msg = let doubleSpy = printfn "%s: %A" msg in Seq.map doubleSpy
   let sleep = 20

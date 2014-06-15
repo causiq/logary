@@ -43,7 +43,7 @@ module FactoryApi =
   /// Logary rules as well as configuring specific targets.
   and ConfBuilder(conf) =
     member internal x.BuildLogary () =
-      conf |> validateLogary |> runLogary :> LogManager
+      conf |> validateLogary |> runLogary |> asLogManager
 
     /// Configure a target of the type with a name specified by the parameter
     /// name
@@ -78,8 +78,8 @@ module FactoryApi =
 
       ConfBuilder(
         conf
-        |> addRule targetConf.tr
-        |> addTarget (targetConf.tcSpecific.Value.Build name))
+        |> withRule targetConf.tr
+        |> withTarget (targetConf.tcSpecific.Value.Build name))
 
 open System.Runtime.CompilerServices
 

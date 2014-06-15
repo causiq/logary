@@ -1,7 +1,10 @@
 module Logary.Tests.Misc
 
 open Swensen.Unquote
+
 open Fuchu
+
+open NodaTime
 
 open System
 open System.IO
@@ -152,7 +155,7 @@ let tests =
           "third"  |> Log.debug no3
 
           // wait for logging to complete; then
-          let! _ = Registry.flushPending logary.registry
+          let! _ = Registry.Advanced.flushPending (Duration.FromSeconds(20L)) logary.registry
 
           (because "it was logged to all three, but rule should stop third" <| fun () ->
             out.ToString())
@@ -181,7 +184,7 @@ let tests =
           |> thatsIt
 
           "my message comes here" |> Log.debug logr
-          let! _ = Registry.flushPending logary.registry
+          let! _ = Registry.Advanced.flushPending (Duration.FromSeconds(20L)) logary.registry
           (because "it was logged but accept is always returning false" <| fun () ->
             out.ToString())
           |> should equal ""
@@ -204,7 +207,7 @@ let tests =
           "this message should go through" |> Log.debug shouldLog
           let! shouldDrop = Registry.getLogger logary.registry "a.x.y"
           "this message should be dropped" |> Log.debug shouldDrop
-          let! _ = Registry.flushPending logary.registry
+          let! _ = Registry.Advanced.flushPending (Duration.FromSeconds(20L)) logary.registry
           (because "we only accept path a.b.c, other never" <| fun () ->
             out.ToString())
           |> should contain "this message should go through"
@@ -217,7 +220,7 @@ let tests =
     yield testCase "retrieving logger for name" <| fun _ ->
       Fac.withLogary <| fun logary out err ->
         let logger = "a.b.c.d" |> Registry.getLogger logary.registry |> Async.RunSynchronously
-        let logger' = "a.b.c.d" |> (logary :> LogManager).GetLogger
+        let logger' = "a.b.c.d" |> (logary |> asLogManager).GetLogger
         (because "logging normally" <| fun () ->
           "Hello world" |> Log.info logger
           "Goodbye cruel world" |> Log.fatal logger'

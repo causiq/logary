@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using Logary;
 using Logary.Configuration;
 using Machine.Specifications;
+using NodaTime;
 using TextWriter = Logary.Target.TextWriter;
 
 // ReSharper disable InconsistentNaming
@@ -101,7 +102,7 @@ namespace Intelliplan.Logary.Specs
             {
                 subject.Info("logged line");
 
-                manager.FlushPending();
+                manager.FlushPending(Duration.FromSeconds(20L));
             };
 
         It should_write_messages_to_text_writer = () => output.ToString().ShouldContain("logged line");
@@ -122,7 +123,7 @@ namespace Intelliplan.Logary.Specs
                 manager.Dispose();
 
                 thrownException = Catch.Exception(() => subject.Info("logged line"));
-                flushThrown = Catch.Exception(() => manager.FlushPending());
+                flushThrown = Catch.Exception(() => manager.FlushPending(Duration.FromSeconds(20L)));
             };
 
         Cleanup afterwards = () => manager.Dispose();
@@ -145,7 +146,7 @@ namespace Intelliplan.Logary.Specs
                 manager = LogaryTestFactory.GetManager(out output);
                 var logger = GetLogger();
                 logger.Debug("da 1st line", "testing");
-                manager.FlushPending();
+                manager.FlushPending(Duration.FromSeconds(20L));
                 var written = output.ToString();
                 written.ShouldContain("da 1st line");
                 written.ShouldContain("testing");
@@ -157,7 +158,7 @@ namespace Intelliplan.Logary.Specs
                 manager = LogaryTestFactory.GetManager(out output);
                 var logger = GetLogger();
                 logger.Debug("2nd here we go", "testing");
-                manager.FlushPending();
+                manager.FlushPending(Duration.FromSeconds(20L));
                 subject = output.ToString();
             };
 

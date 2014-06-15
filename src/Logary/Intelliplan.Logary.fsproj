@@ -54,7 +54,6 @@
     <Compile Include="Metric_Counter.fs" />
     <Compile Include="Metric_Histogram.fs" />
     <Compile Include="Target_CoreTargets.fs" />
-    <Compile Include="Logging.fs" />
     <Compile Include="Log.fs" />
     <Compile Include="LogaryMessage.fs" />
     <Compile Include="Target_Nimrod.fs" />
@@ -62,6 +61,7 @@
     <Compile Include="Target_Graphite.fs" />
     <Compile Include="HealthChecks.fs" />
     <Compile Include="Registry.fs" />
+    <Compile Include="Logging.fs" />
     <Compile Include="Configuration_Config.fs" />
     <Compile Include="Configuration_FactoryApi.fs" />
     <Compile Include="LoggerExtensions.fs" />

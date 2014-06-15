@@ -21,7 +21,7 @@ module internal Globals =
   /// changes it from the outside. Don't use this directly if you can
   /// avoid it, and instead take a c'tor dependency on LogaryRegistry
   /// or use IoC with a contextual lookup to resolve proper loggers.
-  let singleton : LogManager option ref = ref None
+  let singleton : LogaryInstance option ref = ref None
 
   /// A list of all loggers yet to be configured
   let flyweights : FlyweightLogger list ref = ref []
