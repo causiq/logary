@@ -85,9 +85,22 @@ let mkEventM
     level     = level
     mtype     = mtype } =
   match mtype with
-  | Gauge   -> failwith "not impl" // TODO: example "RegisterGauge"
-  | Timer t -> failwith "not impl"
-  | Counter -> failwith "not impl"
+  | Gauge   ->
+    Event.CreateDouble(value, asEpoch timestamp,
+                       mkState level, path, hostname, "gauge", [],
+                       ttl, [])
+    // TODO: example "RegisterGauge"
+  | Timer t ->
+    // TODO: use t
+    Event.CreateDouble(value, asEpoch timestamp,
+                       mkState level, path, hostname, "timer", [],
+                       ttl, [])
+  | Counter ->
+    Event.CreateDouble(value, asEpoch timestamp,
+                       mkState level, path, hostname, "counter", [],
+                       ttl, [])
+
+// TODO: a way of discriminating between ServiceName-s.
 
 /// The Riemann target will always use TCP in this version.
 type RiemannConf =
@@ -178,18 +191,23 @@ module Client =
           return! read' (wasRead + amountRead) }
     read' 0
 
-  let sendEvents (stream : Stream) (es : Event seq) = async {
-    let msg = Msg(false, "", [], Query(), es)
+  let sendMessage (stream : Stream) (msg : Msg) = async {
     use ms = new MemoryStream() // TODO: re-use MS?
     Serializer.Serialize(ms, msg)
     do! transfer (int ms.Position) ms stream }
 
-  let readResponse (stream : Stream) = async {
+  let readMessage (stream : Stream) = async {
     let! toRead = readLen stream
     use ms = new MemoryStream() // TODO: re-use MS?
     do! transfer toRead stream ms
     ms.Seek(0L, SeekOrigin.Begin) |> ignore
     return Serializer.Deserialize<Msg> ms }
+
+  let sendEvents (stream : Stream) (es : Event seq) =
+    Msg(false, "", [], Query(), es) |> sendMessage stream
+
+  let sendQuery (stream : Stream) (q : Query) =
+    Msg(false,"", [], q, []) |> sendMessage stream
 
 // To Consider: could be useful to spawn multiple of this one: each is async and implement
 // an easy way to send/recv -- multiple will allow interleaving of said requests
@@ -223,12 +241,12 @@ let riemannLoop (conf : RiemannConf) metadata =
         match msg with
         | Log l ->
           do!  [ conf.fLogLine l ] |> Client.sendEvents state.stream
-          let! (response : Msg) = Client.readResponse state.stream
+          let! (response : Msg) = Client.readMessage state.stream
           if not response.ok then raise <| Exception(sprintf "server error: %s" response.error)
           else return! running state
         | Metric msr ->
           do!  [ conf.fMeasure msr ] |> Client.sendEvents state.stream
-          let! (response : Msg) = Client.readResponse state.stream
+          let! (response : Msg) = Client.readMessage state.stream
           if not response.ok then raise <| Exception(sprintf "server error: %s" response.error)
           else return! running state
         | Flush chan ->
