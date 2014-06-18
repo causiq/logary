@@ -43,8 +43,8 @@ type MeasureWrapper(m : Measure) =
     member x.Description = tryGetDesc m
     member x.Exception   = tryGetExn m
   override x.ToString() =
-    sprintf "HealthCheck(name = %s, exn = %A, value=%f)"
-      m.path (tryGetExn m) m.value
+    sprintf "HealthCheck(name=%s, exn=%A, value=%f, level=%A)"
+      m.path (tryGetExn m) m.value m.level
 
 /// Transform the metric to a result data.
 [<CompiledName "MeasurementToResult">]
