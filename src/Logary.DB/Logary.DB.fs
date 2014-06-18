@@ -18,8 +18,8 @@ open NodaTime
 let typeAsInt16 = function
   | Counter -> 0s
   | Timer _ -> 1s
-  | Gauge -> 2s
-  | Meter -> 3s
+  | Gauge   -> 2s
+  | Meter   -> 3s
 
 type DBConf =
   { connFac : unit -> IDbConnection

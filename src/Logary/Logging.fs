@@ -18,7 +18,7 @@ module Logging =
   open Logary.Internals.InternalLogger
 
   module Seq =
-    let last = Seq.reduce (fun _ x -> x)
+    let last xs = Seq.reduce (fun _ x -> x) xs
 
   let private successor s = Some (s+1, s+1)
   let private toSkip = 2

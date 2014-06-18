@@ -202,6 +202,14 @@ module Advanced =
                timedOut = Seq.any (function Nack _ -> true | _ -> false) [ fs; ss ] }
     }
 
+  /// Create a new Logger from the targets passed, with a given name.
+  [<CompiledName "FromTargets">]
+  let fromTargets name (targets : (Acceptor * TargetInstance * LogLevel) list) =
+    { name    = name
+      targets = targets |> List.map (fun (a, ti, _) -> a, (Targets.actor ti))
+      level   = targets |> List.map (fun (_, _, level) -> level) |> List.min }
+    :> Logger
+
   let private snd' (kv : System.Collections.Generic.KeyValuePair<_, _>) = kv.Value
   let private actorInstance = snd' >> snd >> Option.get >> Targets.actor
 
@@ -218,13 +226,7 @@ module Advanced =
     for x in s do sb.AppendLine(sprintf " * %A" x) |> ignore
     sb.ToString()
 
-  /// Create a new Logger from the targets passed, with a given name.
-  [<CompiledName "FromTargets">]
-  let fromTargets name (targets : (Acceptor * TargetInstance * LogLevel) list) =
-    { name    = name
-      targets = targets |> List.map (fun (a, ti, _) -> a, (Targets.actor ti))
-      level   = targets |> List.map (fun (_, _, level) -> level) |> List.min }
-    :> Logger
+  
 
   let rec private registry conf =
     let targetActors = conf.targets |> Seq.map actorInstance
@@ -329,3 +331,6 @@ module Advanced =
     debug "runRegistry: registry status: %A" logaryInstance.registry.Status
 
     logaryInstance
+
+
+// TODO: method for handling registering health checks in the registry

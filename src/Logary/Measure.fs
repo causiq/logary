@@ -7,6 +7,9 @@ open NodaTime
 /// collected.
 type MetricType =
   | Counter
+  /// A timer is a Meter, but carries with it a more precise unit (that's all
+  /// that's different). In this case the `value` of the `Measure` would be the
+  /// same as this duration - in milliseconds (?).
   | Timer of Duration
   | Gauge
   | Meter
@@ -32,9 +35,10 @@ with
 type Measure =
   { /// The value of the measurement
     value     : float
-    /// The identifier for the metric - defaults to the path of the logger sending it
+    /// The identifier for the measure - defaults to the path of the logger
+    /// sending it -- this is also the 'name' of the measeure.
     path      : string
-    /// When the metric was captured (start of capture of metric)
+    /// When the measurement was taken (start of capture of metric)
     timestamp : Instant
     /// The level of the metric
     level     : LogLevel

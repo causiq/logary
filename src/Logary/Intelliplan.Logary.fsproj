@@ -44,6 +44,7 @@
     <Compile Include="Log.fs" />
     <Compile Include="Acks.fs" />
     <Compile Include="HealthCheck.fs" />
+    <Compile Include="HealthChecks.fs" />
     <Compile Include="LogManager.fs" />
     <Compile Include="Internals_FlyweightLogger.fs" />
     <Compile Include="Internals_Globals.fs" />
@@ -60,7 +61,6 @@
     <Compile Include="Target_Nimrod.fs" />
     <Compile Include="Target_Logstash.fs" />
     <Compile Include="Target_Graphite.fs" />
-    <Compile Include="HealthChecks.fs" />
     <Compile Include="Registry.fs" />
     <Compile Include="Logging.fs" />
     <Compile Include="Configuration_Config.fs" />

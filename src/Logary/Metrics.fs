@@ -84,6 +84,7 @@ module Metrics =
 
   /// Make a new measure value from the type of measure it is, the value and the
   /// path it is taken at or represents
+  [<CompiledName "MkMeasure">]
   let mkMeasure mtype path value =
     { value     = value
       path      = path
@@ -110,7 +111,7 @@ module Metrics =
   let decrBy logger path amount = mkMeasure Counter path -amount |> metric logger
 
   /// Give a gauge value at this current instant in time
-  let gauge logger path amount = mkMeasure Gauge amount path |> metric logger
+  let gauge logger path amount = mkMeasure Gauge path amount |> metric logger
 
   /// Capture a timer metric with a given metric-level and metric-path.
   [<CompiledName "TimeLevel">]

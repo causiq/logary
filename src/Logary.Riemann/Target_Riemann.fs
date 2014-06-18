@@ -48,8 +48,8 @@ let private asEpoch (i : Instant) = i.Ticks / NodaConstants.TicksPerSecond
 /// Convert the LogLevel to a Riemann (service) state
 let private mkState = function
   | Verbose | Debug | Info -> "ok"
-  | Warn | Error           -> "warning"
-  | Fatal                  -> "critical"
+  | Warn                   -> "warning"
+  | Error | Fatal          -> "critical"
 
 /// The default way of sending attributes; just do ToString() on them
 let mkAttrsFromData (m : Map<string, obj>) =
@@ -59,7 +59,7 @@ let mkAttrsFromData (m : Map<string, obj>) =
 /// the event before yielding it.
 let mkEventL
   hostname ttl confTags mkAttrsFromData
-  ({ message      = message
+  ({ message       = message
      data          = data
      level         = level
      tags          = tags
