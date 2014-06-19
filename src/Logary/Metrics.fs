@@ -85,9 +85,9 @@ module Metrics =
   /// Make a new measure value from the type of measure it is, the value and the
   /// path it is taken at or represents
   [<CompiledName "MkMeasure">]
-  let mkMeasure mtype path value =
+  let mkMeasure mtype value =
     { value     = value
-      path      = path
+      path      = ""
       timestamp = Date.utcNow()
       level     = Info
       mtype     = mtype
@@ -99,19 +99,19 @@ module Metrics =
     (logger : Logger).Metric ms
 
   /// Increment the counter at the path 'path' at the info level
-  let incr logger path = mkMeasure Counter path 1. |> metric logger
+  let incr logger path = mkMeasure Counter 1. |> setPath path |> metric logger
 
   /// Increment the counter at the path 'path' at the info level by the amount
-  let incrBy logger path amount = mkMeasure Counter path amount |> metric logger
+  let incrBy logger path amount = mkMeasure Counter amount |> setPath path |> metric logger
 
   /// Decrement the counter at the path 'path' at the info level
-  let decr logger path = mkMeasure Counter path -1. |> metric logger
+  let decr logger path = mkMeasure Counter -1. |> setPath path |> metric logger
 
   /// Decrement the counter at the path 'path' at the info level by the amount
-  let decrBy logger path amount = mkMeasure Counter path -amount |> metric logger
+  let decrBy logger path amount = mkMeasure Counter -amount |> setPath path |> metric logger
 
   /// Give a gauge value at this current instant in time
-  let gauge logger path amount = mkMeasure Gauge path amount |> metric logger
+  let gauge logger path amount = mkMeasure Gauge amount |> setPath path |> metric logger
 
   /// Capture a timer metric with a given metric-level and metric-path.
   [<CompiledName "TimeLevel">]

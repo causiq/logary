@@ -84,7 +84,7 @@ let fromFn name f =
   let a = Actor.spawn (Actor.Options.Create(sprintf "logaryRoot/healthCheck/%s" name)) (mkFromFunction f)
   { new HealthCheck with
       member x.Name = name
-      member x.LastValue () =
+      member x.GetValue () =
         a
         |> Actor.reqReply GetResult Infinite
         |> Async.RunSynchronously
@@ -92,3 +92,10 @@ let fromFn name f =
         a
         |> Actor.reqReply ShutdownHealthCheck Infinite |> Async.Ignore
         |> Async.RunSynchronously }
+
+/// Create a health check that will never yield a value
+let mkDead name =
+  { new HealthCheck with
+      member x.GetValue () = NoValue
+      member x.Name        = name
+      member x.Dispose ()  = () }

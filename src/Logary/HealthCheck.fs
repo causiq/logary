@@ -30,6 +30,5 @@ type HealthCheckResult =
 type HealthCheck =
   inherit Named
   inherit IDisposable
-
   /// Performs a check with the health check.
-  abstract LastValue : unit -> HealthCheckResult
+  abstract GetValue : unit -> HealthCheckResult
