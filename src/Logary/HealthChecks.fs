@@ -74,14 +74,14 @@ let private mkFromFunction fn =
       | ShutdownHealthCheck ackChan ->
         ackChan.Reply Ack
         return () }
-
     running { last = NoValue })
 
 /// Create a new health check from a checking function. This will create an
 /// actor but it needs to be registered in the registry for it to work on its
 /// own.
 let fromFn name f =
-  let a = Actor.spawn (Actor.Options.Create(sprintf "logaryRoot/healthCheck/%s" name)) (mkFromFunction f)
+  let a = Actor.spawn (Actor.Options.Create(sprintf "logaryRoot/healthCheck/%s" name))
+                      (mkFromFunction f)
   { new HealthCheck with
       member x.Name = name
       member x.GetValue () =

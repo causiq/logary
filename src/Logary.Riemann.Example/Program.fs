@@ -69,7 +69,8 @@ module WindowsPerfCounters =
     else
       None
 
-  /// Curried variant
+  /// Curried variant of `mkPc` that takes a category, counter and optional
+  /// instance and creates an `Option<PerformanceCounter>` from it.
   let mkPc' category counter instance =
     mkPc { category = category; counter = counter; instance = instance }
 
@@ -121,13 +122,24 @@ module WindowsPerfCounters =
     let name = sprintf "%s.%s%s" wpc.category wpc.counter inst
     toHealthCheckNamed name wpc
 
+  /// Takes a list of IDisposable things (performance counters, perhaps?) and
+  /// wraps the call to Dispose() of the inner health check with calls to
+  /// Dispose for each of the resources
+  let hasResources (disposables : #IDisposable seq) (hc : HealthCheck) =
+    { new HealthCheck with
+        member x.Name = hc.Name
+        member x.GetValue() = hc.GetValue()
+        member x.Dispose() =
+          disposables |> Seq.iter (fun d -> d.Dispose())
+          hc.Dispose() }
+
 open WindowsPerfCounters
 
 let mkMeasure' fValueTr fLevel rawValue =
   let m = Metrics.mkMeasure Gauge (fValueTr rawValue)
   { m with level = fLevel m.value }
 
-module Transforms =
+module Categorisation =
   /// Finds the bucket that is less than or equal in value to the sample, yielding
   /// its corresponding label.
   let lteBucket (buckets : _ seq) (labels : _ seq) sample =
@@ -158,7 +170,7 @@ let cpus =
     let wpc = { category = "Processor"
                 counter  = counter
                 instance = Some AllInstances }
-    toHealthCheck wpc (Transforms.percentBucket' 100.))
+    toHealthCheck wpc (Categorisation.percentBucket' 100.))
 
 open System.Text
 
@@ -168,20 +180,23 @@ let clr_proc =
   let wpc = { category = cat; counter  = "% Time in GC"; instance = inst }
   let MiB = 1024.f * 1024.f
   let toMiB = (fun v -> v / MiB)
+  let descCounters =
+    [ "Gen 0 Heap Size", toMiB, "MiB"
+      "Gen 1 Heap Size", toMiB, "MiB"
+      "Gen 2 Heap Size", toMiB, "MiB"
+      "# Gen 0 Collections", id, ""
+      "# Gen 1 Collections", id, ""
+      "# Gen 2 Collections", id, "" ]
+    |> List.map (fun (counter, fval, valUnit) -> mkPc' cat counter inst, fval, valUnit)
+    |> List.filter (fun (c, _, _) -> Option.isSome c)
+    |> List.map (fun (c, fval, valUnit) -> c.Value, fval, valUnit)
+
   let tf =
-    Transforms.percentBucket 100. [0.05; 0.5] [Info; Warn; Error]
+    Categorisation.percentBucket 100. [0.05; 0.5] [Info; Warn; Error]
     >> fun measuree ->
-      [ "Gen 0 Heap Size", toMiB, "MiB"
-        "Gen 1 Heap Size", toMiB, "MiB"
-        "Gen 2 Heap Size", toMiB, "MiB"
-        "# Gen 0 Collections", id, ""
-        "# Gen 1 Collections", id, ""
-        "# Gen 2 Collections", id, "" ]
-      |> List.map (fun (counter, fval, valUnit) -> mkPc' cat counter inst, fval, valUnit)
-      |> List.filter (fun (c, _, _) -> Option.isSome c)
+      descCounters
       |> List.fold
           (fun (sb : StringBuilder) (counter, fval, valUnit) ->
-            let counter = counter.Value
             let line = String.Format("{0}: {1:0.###} {2}", counter.CounterName, fval(counter.NextValue()), valUnit)
             sb.AppendLine(line) |> ignore
             sb)
@@ -189,7 +204,7 @@ let clr_proc =
       |> sprintf "%O"
       |> (fun desc -> HealthChecks.setDesc desc measuree)
 
-  toHealthCheck wpc tf
+  toHealthCheck wpc tf |> hasResources (descCounters |> List.map (fun (c, _, _) -> c))
 
 let printAll checks =
   let printSingle (check : HealthCheck) =
@@ -201,9 +216,13 @@ let printAll checks =
 // printAll my_appdomain
 // printAll [clr_proc]
 
+// TODO: register new health checks as conf
+// TODO: register and unregister health checks at runtime
+// TODO: 'acceptor' for metrics
+
 [<EntryPoint>]
 let main argv =
-  use logary =
+  let logary =
     withLogary "Riemann.Example" (
       withTargets [
         Riemann.create (Riemann.RiemannConf.Create(tags = ["riemann-health"])) "riemann"
@@ -214,6 +233,9 @@ let main argv =
         Rule.Create(Regex(@".*"), "console", (fun _ -> true), LogLevel.Verbose)
       ]
     )
+
+  clr_proc |> Registry.registerHealthCheck logary
+//  cpus |> Registry.registerHealthChecks logary
 
   let logger = logary.GetLogger "Riemann.Example"
   ("disk /", 0.456) ||> Metrics.gauge logger

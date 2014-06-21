@@ -16,7 +16,7 @@ module Gauge =
       timestamp = utcNow ()
       level     = LogLevel.Info
       mtype     = Gauge
-      data      = Map.empty}
+      data      = Map.empty }
 
   /// Logary's representation of a gauge.
   type GaugeInstance(name, targets) =

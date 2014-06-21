@@ -5,6 +5,28 @@ open FSharp.Actor
 
 open NodaTime
 
+open Logary.Metric
+open Logary.Targets
+open Logary.HealthChecks
+
+/// The messages that can be sent to the registry to interact with it and its
+/// running targets.
+type RegistryMessage =
+  | GetLogger             of string * Logger ReplyChannel
+  | GetGauge              of string * Gauge.GaugeInstance ReplyChannel
+  | GetCounter            of string * Counter ReplyChannel
+  | GetMeter              of string * Meter ReplyChannel
+  | GetHistogram          of string * Histogram ReplyChannel
+  | GetTimer              of string * Timer ReplyChannel
+
+  // health checks
+  | RegisterHealthCheck   of HealthCheckMessage IActor
+  | UnregisterHealthCheck of HealthCheckMessage IActor
+
+  // control messages
+  | FlushPending          of Duration * Acks ReplyChannel
+  | ShutdownLogary        of Duration * Acks ReplyChannel
+
 let private getSome (thing : string * ReplyChannel<_> -> _) registry name =
   registry |> Actor.reqReply (fun ret -> thing (name, ret)) Infinite
 
@@ -20,7 +42,17 @@ let getGauge : IActor -> string -> Async<_> =
 let getCounter : IActor -> string -> Async<_> =
   getSome GetCounter
 
-// TODO: move things out here as they become 'easy' to use
+/// Given the registry actor, and a name for the meter, get the meter from the registry.
+let internal getMeter : IActor -> string -> Async<_> =
+  getSome GetMeter
+
+/// Given the registry actor, and a name for the histogram, get the histogram from the registry.
+let internal getHistogram : IActor -> string -> Async<_> =
+  getSome GetHistogram
+
+/// Given the registry actor, and a name for the timer, get the timer from the registry.
+let internal getTimer : IActor -> string -> Async<_> =
+  getSome GetTimer
 
 /// handling flyweights
 module internal Logging =
@@ -110,6 +142,7 @@ module Advanced =
   open Logary.Metric
   open Logary.Rules
   open Logary.Targets
+  open Logary.HealthChecks
   open Logary.Internals.InternalLogger
 
   module internal Seq =
@@ -152,21 +185,6 @@ module Advanced =
 
     // back to a list
     |> List.ofSeq
-  /// Given the registry actor, and a name for the meter, get the meter from the registry.
-  let getMeter : IActor -> string -> Async<_> =
-    getSome GetMeter
-
-  /// Given the registry actor, and a name for the histogram, get the histogram from the registry.
-  let getHistogram : IActor -> string -> Async<_> =
-    getSome GetHistogram
-
-  /// Given the registry actor, and a name for the timer, get the timer from the registry.
-  let getTimer : IActor -> string -> Async<_> =
-    getSome GetTimer
-
-  /// Given the registry actor, and a name for the health check, get the health check from the registry.
-  let getHealthCheck : IActor -> string -> Async<_> =
-    getSome GetHealthCheck
 
   /// Flush all pending log lines for all targets. Returns a Nack/Ack structure describing
   /// how that went. E.g. if there's a target is has a backlog, it might not be able to
@@ -212,7 +230,6 @@ module Advanced =
 
   let private snd' (kv : System.Collections.Generic.KeyValuePair<_, _>) = kv.Value
   let private actorInstance = snd' >> snd >> Option.get >> Targets.actor
-
   let private wasSuccessful = function
     | SuccessWith(Ack, _)     -> 0
     | ExperiencedTimeout _    -> 1
@@ -226,36 +243,55 @@ module Advanced =
     for x in s do sb.AppendLine(sprintf " * %A" x) |> ignore
     sb.ToString()
 
-  
+  /// The proivate state for the Registry
+  type private RegistryState =
+    { /// the supervisor, not of the registry actor, but of the targets and health
+      /// checks.
+      supervisor : IActor
 
-  let rec private registry conf =
+      /// A map from the actor id to health check actor. It's implicit that each
+      /// of these actors are linked to the supervisor actor.
+      hcs        : Map<string, HealthCheckMessage IActor> }
+
+    /// Creates a new instance of the RegistryState given a supervisor.
+    static member Create (supervisor : IActor) =
+      { supervisor = supervisor
+        hcs        = Map.empty }
+
+  /// The registry function that works as an actor.
+  let rec private registry conf initialState =
     let targetActors = conf.targets |> Seq.map actorInstance
     (fun (inbox : IActor<_>) ->
       /// In the running state, the registry takes queries for loggers, gauges, etc...
-      let rec running () = async {
+      let rec running state = async {
         let! msg, mopt = inbox.Receive()
         match msg with
         | GetLogger (name, chan) ->
           chan.Reply( name |> getTargets conf |> fromTargets name )
-          return! running ()
+          return! running state
         | GetCounter (name, chan) ->
           chan.Reply( name |> getTargets conf |> Counter.fromTargets name )
-          return! running ()
+          return! running state
         | GetGauge (name, chan) ->
           chan.Reply( name |> getTargets conf |> Gauge.fromTargets name )
-          return! running ()
-        | GetHealthCheck (_, _) ->
-          info "TODO: %A" msg
-          return! running ()
+          return! running state
+        | RegisterHealthCheck actor ->
+          let state' = { state with hcs = state.hcs |> Map.add actor.Id actor }
+          state.supervisor.Watch actor
+          return! running state'
+        | UnregisterHealthCheck actor ->
+          let state' = { state with hcs = state.hcs |> Map.remove actor.Id }
+          state.supervisor.UnLink actor // TODO: upgrade FSharp.Actor
+          return! running state'
         | GetHistogram (_, _) ->
           info "TODO: %A" msg
-          return! running ()
+          return! running state
         | GetMeter (_, _) ->
           info "TODO: %A" msg
-          return! running ()
+          return! running state
         | GetTimer (_, _) ->
           info "TODO: %A" msg
-          return! running ()
+          return! running state
         | FlushPending(dur, chan) ->
           info "%s" "registry: flush start"
           let! allFlushed =
@@ -275,7 +311,7 @@ module Advanced =
               let msg = sprintf "Failed target flushes:%s%s" nl (toTextList notFlushed)
               err "registry: flush Nack - %s" msg
               Nack msg
-          return! running ()
+          return! running state
         | ShutdownLogary(dur, ackChan) ->
           return! shutdown dur ackChan }
 
@@ -303,12 +339,14 @@ module Advanced =
         info "%s" "shutting down registry immediately"
         return () }
 
-      running ())
+      running initialState)
 
-  /// Start a new registry with the given configuration. Will also launch/start all targets
-  /// that are to run inside the registry. Returns a newly configured LogaryInstance.
-  /// It is not until runRegistry is called, that each target gets its service metadata,
-  /// so it's no need to pass the metadata to the target before this.
+  /// Start a new registry with the given configuration. Will also launch/start
+  /// all targets that are to run inside the registry. Returns a newly
+  /// configured LogaryInstance.
+  ///
+  /// It is not until runRegistry is called, that each target gets its service
+  /// metadata, so it's no need to pass the metadata to the target before this.
   let runRegistry (conf : LogaryConf) =
     let makeTargetLive tuple = tuple |> fst |> initTarget conf.metadata
     let targets' =
@@ -325,12 +363,10 @@ module Advanced =
 
     let logaryInstance =
       { supervisor = supervisor
-        registry   = Actor.spawn (Actor.Options.Create("logaryRoot/registry")) (registry conf')
+        registry   = Actor.spawn (Actor.Options.Create("logaryRoot/registry"))
+                                 (registry conf' (RegistryState.Create supervisor))
         metadata   = conf'.metadata }
 
     debug "runRegistry: registry status: %A" logaryInstance.registry.Status
 
     logaryInstance
-
-
-// TODO: method for handling registering health checks in the registry

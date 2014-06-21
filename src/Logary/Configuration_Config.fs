@@ -107,11 +107,11 @@ module Config =
   let asLogManager (inst : LogaryInstance) =
     let run = Async.RunSynchronously
     { new LogManager with
-        member x.Metadata             = inst.metadata
-        member x.GetLogger name       = name |> getLogger inst.registry |> run
-        member x.FlushPending dur     = Advanced.flushPending dur inst.registry |> run
-        member x.Shutdown fDur sDur   = shutdownLogary' fDur sDur inst |> run
-        member x.Dispose ()           = shutdownLogary inst |> Async.Ignore |> run
+        member x.Metadata           = inst.metadata
+        member x.GetLogger name     = name |> getLogger inst.registry |> run
+        member x.FlushPending dur   = Advanced.flushPending dur inst.registry |> run
+        member x.Shutdown fDur sDur = shutdownLogary' fDur sDur inst |> run
+        member x.Dispose ()         = shutdownLogary inst |> Async.Ignore |> run
     }
 
   /// Configure Logary completely with the given service name and rules and
@@ -126,50 +126,22 @@ module Config =
     |> asLogManager
 
   /// Configure Logary completely with the given service name and a function that
-  /// configured the configuration. This will call the validateLogary function too.
-  [<CompiledName "WithLogary">]
+  /// configured the configuration. This will call the `validateLogary` function
+  /// too. The un-primed version of the function `withLogary` doesn't return a
+  /// `LogManager` but the F#-oriented LogaryInstance.
+  [<CompiledName "WithLogaryInstance">]
   let withLogary serviceName fConf =
     fConf (confLogary serviceName)
     |> validateLogary
     |> runLogary
+
+  /// Configure Logary completely with the given service name and a function that
+  /// configured the configuration. This will call the `validateLogary` function
+  /// too. The un-primed version of the function `withLogary` doesn't return a
+  /// `LogManager` but the F#-oriented LogaryInstance.
+  [<CompiledName "WithLogary">]
+  let withLogary' serviceName fConf =
+    fConf (confLogary serviceName)
+    |> validateLogary
+    |> runLogary
     |> asLogManager
-
-  open Logary.Target
-
-  /// Run with console and debugger targets with sane configurations.
-  [<CompiledName "GoodDefaults">]
-  let goodDefaults name =
-    // TODO: should include Riemann health checks
-    // TODO: should include a Graphite target
-    confLogary name
-    |> withTargets
-      [ Console.create Console.ConsoleConf.Default "console"
-        Debugger.create Debugger.DebuggerConf.Default "debugger" ]
-    |> withRules
-      [ { Rules.forAny "console" with level = Debug }
-        { Rules.forAny "debugger" with level = Debug } ]
-
-  /// Run with console and debugger targets with sane configurations as well
-  /// as a logstash configuration.
-  [<CompiledName "GoodDefaultsAndLogstash">]
-  let goodDefaultsAndLogstash name hostname port =
-    goodDefaults name
-    |> withTarget (Logstash.create (Logstash.LogstashConf.Create(hostname, port)) "logstash")
-    |> withRule ({ Rules.forAny "logstash" with level = Debug })
-
-  /// Start logary with sane SOA/service-defaults, remember to call
-  /// shutdownLogary at the end of the program. Pass the name of the
-  /// service you are configuring.
-  [<CompiledName "RunWithGoodDefaults">]
-  let runWithGoodDefaults name =
-    goodDefaults name
-    |> validateLogary
-    |> runLogary
-
-  /// Run with console and debugger targets with sane configurations as well
-  /// as a logstash configuration, and start logary.
-  [<CompiledName "RunWithGoodDefaultsAndLogstash">]
-  let runWithGoodDefaultsAndLogstash name hostname port =
-    goodDefaultsAndLogstash name hostname port
-    |> validateLogary
-    |> runLogary
