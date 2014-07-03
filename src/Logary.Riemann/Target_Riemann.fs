@@ -83,10 +83,10 @@ let mkEventM
     path      = path
     timestamp = timestamp
     level     = level
-    mtype     = mtype } =
+    unit      = u } =
   let tags = confTags |> Option.fold (fun s t -> s @ t) []
   Event.CreateDouble(value, asEpoch timestamp,
-                     mkState level, path, hostname, mtype.ToString(), tags,
+                     mkState level, path, hostname, u.ToString(), tags,
                      ttl, [])
 
 // TODO: a way of discriminating between ServiceName-s.

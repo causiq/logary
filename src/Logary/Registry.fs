@@ -13,11 +13,6 @@ open Logary.HealthChecks
 /// running targets.
 type RegistryMessage =
   | GetLogger             of string * Logger ReplyChannel
-  | GetGauge              of string * Gauge.GaugeInstance ReplyChannel
-  | GetCounter            of string * Counter ReplyChannel
-  | GetMeter              of string * Meter ReplyChannel
-  | GetHistogram          of string * Histogram ReplyChannel
-  | GetTimer              of string * Timer ReplyChannel
 
   // health checks
   | RegisterHealthCheck   of HealthCheckMessage IActor
@@ -33,26 +28,6 @@ let private getSome (thing : string * ReplyChannel<_> -> _) registry name =
 /// Given the registry actor, and a name for the logger, get the logger from the registry.
 let getLogger =
   getSome GetLogger
-
-/// Given the registry actor, and a name for the gauge, get the gauge from the registry.
-let getGauge : IActor -> string -> Async<_> =
-  getSome GetGauge
-
-/// Given the registry actor, and a name for the counter, get the counter from the registry.
-let getCounter : IActor -> string -> Async<_> =
-  getSome GetCounter
-
-/// Given the registry actor, and a name for the meter, get the meter from the registry.
-let internal getMeter : IActor -> string -> Async<_> =
-  getSome GetMeter
-
-/// Given the registry actor, and a name for the histogram, get the histogram from the registry.
-let internal getHistogram : IActor -> string -> Async<_> =
-  getSome GetHistogram
-
-/// Given the registry actor, and a name for the timer, get the timer from the registry.
-let internal getTimer : IActor -> string -> Async<_> =
-  getSome GetTimer
 
 /// handling flyweights
 module internal Logging =
@@ -269,12 +244,6 @@ module Advanced =
         | GetLogger (name, chan) ->
           chan.Reply( name |> getTargets conf |> fromTargets name )
           return! running state
-        | GetCounter (name, chan) ->
-          chan.Reply( name |> getTargets conf |> Counter.fromTargets name )
-          return! running state
-        | GetGauge (name, chan) ->
-          chan.Reply( name |> getTargets conf |> Gauge.fromTargets name )
-          return! running state
         | RegisterHealthCheck actor ->
           let state' = { state with hcs = state.hcs |> Map.add actor.Id actor }
           state.supervisor.Watch actor
@@ -283,15 +252,6 @@ module Advanced =
           let state' = { state with hcs = state.hcs |> Map.remove actor.Id }
           state.supervisor.UnLink actor // TODO: upgrade FSharp.Actor
           return! running state'
-        | GetHistogram (_, _) ->
-          info "TODO: %A" msg
-          return! running state
-        | GetMeter (_, _) ->
-          info "TODO: %A" msg
-          return! running state
-        | GetTimer (_, _) ->
-          info "TODO: %A" msg
-          return! running state
         | FlushPending(dur, chan) ->
           info "%s" "registry: flush start"
           let! allFlushed =
@@ -317,7 +277,7 @@ module Advanced =
 
       /// In the shutdown state, the registry doesn't respond to messages, but rather tries to
       /// flush and shut down all targets, doing internal logging as it goes.
-      and shutdown dur ackChan = async {
+      and shutdown (dur : Duration) (ackChan : Acks ReplyChannel) = async {
         info "%s" "registry: shutdown start"
         let! allShutdown =
           targetActors

@@ -136,7 +136,7 @@ module WindowsPerfCounters =
 open WindowsPerfCounters
 
 let mkMeasure' fValueTr fLevel rawValue =
-  let m = Metrics.mkMeasure Gauge (fValueTr rawValue)
+  let m = Metrics.mkMeasure "" (fValueTr rawValue)
   { m with level = fLevel m.value }
 
 module Categorisation =
@@ -233,8 +233,9 @@ let main argv =
         Rule.Create(Regex(@".*"), "console", (fun _ -> true), LogLevel.Verbose)
       ]
     )
+    |> Config.asLogManager
 
-  clr_proc |> Registry.registerHealthCheck logary
+//  clr_proc |> Registry.RegisterHealthCheck logary
 //  cpus |> Registry.registerHealthChecks logary
 
   let logger = logary.GetLogger "Riemann.Example"

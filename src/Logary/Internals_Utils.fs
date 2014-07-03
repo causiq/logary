@@ -13,6 +13,12 @@ module internal Map =
     | None -> m |> Map.add k v
     | Some _ -> m |> Map.remove k |> Map.add k v
 
+[<AutoOpen>]
+module internal Set =
+  let (|EmptySet|_|) = function
+    | (s : _ Set) when s.Count = 0 -> Some EmptySet
+    | _ -> None
+
 /// A module that wraps the .Net TcpClient types/streams in a F#-ideomatic way,
 /// and behind an interface.
 module Tcp =

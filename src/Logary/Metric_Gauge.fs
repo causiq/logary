@@ -15,7 +15,7 @@ module Gauge =
       path      = name
       timestamp = utcNow ()
       level     = LogLevel.Info
-      mtype     = Gauge
+      unit      = Units.Unit "unit"
       data      = Map.empty }
 
   /// Logary's representation of a gauge.

@@ -41,6 +41,7 @@
     <Compile Include="Measure.fs" />
     <Compile Include="Logger.fs" />
     <Compile Include="Metrics.fs" />
+    <Compile Include="Metrics_Derived.fs" />
     <Compile Include="Log.fs" />
     <Compile Include="Acks.fs" />
     <Compile Include="HealthCheck.fs" />
@@ -54,7 +55,6 @@
     <Compile Include="Rules.fs" />
     <Compile Include="LogaryConf.fs" />
     <Compile Include="Metric_Gauge.fs" />
-    <Compile Include="Metric_Counter.fs" />
     <Compile Include="Metric_Histogram.fs" />
     <Compile Include="Target_CoreTargets.fs" />
     <Compile Include="Registry.fs" />
