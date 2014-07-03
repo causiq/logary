@@ -173,7 +173,7 @@ module Debugger =
         | Log _ ->
           return! loop ()
         | Metric m when Debugger.IsLogging() ->
-          Debugger.Log(offLevel, m.path, sprintf "%A" m)
+          Debugger.Log(offLevel, m.m_path, sprintf "%A" m)
           return! loop ()
         | Flush chan ->
           chan.Reply Ack

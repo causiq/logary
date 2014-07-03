@@ -247,7 +247,7 @@ let tests =
     yield testCase "timing f-n call" <| fun _ ->
       Fac.withLogary <| fun logary stdout stderr ->
         let logger = "a.b.c.d" |> Registry.getLogger logary.registry |> Async.RunSynchronously
-        let f = Metrics.timelvl logger Info (logger.Name) <| fun () ->
+        let f = Logary.Derived.Metrics.Time.timelvl logger Info (logger.Name) <| fun () ->
           printfn "doing work ..."
           42
         // TODO: assert on Nimrod output

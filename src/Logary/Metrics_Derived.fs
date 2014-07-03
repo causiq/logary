@@ -23,7 +23,7 @@ type Timer =
 and TimerContext =
   abstract Stop : unit -> unit
 
-module Derived =
+module Time =
   open System.Diagnostics
   open Logary.Internals
   open Logary.Metrics
@@ -39,12 +39,13 @@ module Derived =
         f ()
       finally
         sw.Stop()
-        { value     = sw.ElapsedTicks |> float
-          path      = path
-          timestamp = now
-          level     = lvl
-          unit      = Units.Seconds
-          data      = Map.empty  }
+        { m_value     = sw.ElapsedTicks |> float
+          m_path      = path
+          m_timestamp = now
+          m_level     = lvl
+          m_unit      = Units.Seconds
+          m_tags      = []
+          m_data      = Map.empty }
         |> metric logger
 
   /// Capture a timer metric with a given metric-path

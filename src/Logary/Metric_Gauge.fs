@@ -11,12 +11,13 @@ module Gauge =
   /// Construct a new metric gauge at the instant this function is called
   /// with the passed value and name
   let gauge name value =
-    { value     = value
-      path      = name
-      timestamp = utcNow ()
-      level     = LogLevel.Info
-      unit      = Units.Unit "unit"
-      data      = Map.empty }
+    { m_value     = value
+      m_path      = name
+      m_timestamp = utcNow ()
+      m_level     = LogLevel.Info
+      m_unit      = Units.Unit "unit"
+      m_tags      = []
+      m_data      = Map.empty }
 
   /// Logary's representation of a gauge.
   type GaugeInstance(name, targets) =

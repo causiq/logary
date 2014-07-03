@@ -48,7 +48,7 @@ namespace Logary
             if (logger == null) throw new ArgumentNullException("logger");
             if (f == null) throw new ArgumentNullException("f");
             level = level ?? LogLevel.Debug;
-            return Logary.Log.TimePath(logger, level, null, f);
+            return Derived.Metrics.Time.TimePath(logger, level, null, f);
         }
 
         /// <summary>
@@ -59,7 +59,7 @@ namespace Logary
             if (logger == null) throw new ArgumentNullException("logger");
             if (a == null) throw new ArgumentNullException("a");
             level = level ?? LogLevel.Debug;
-            Logary.Log.TimePath(logger, level, null, () =>
+            Derived.Metrics.Time.TimePath(logger, level, null, () =>
                 {
                     a();
                     return 0;
@@ -77,7 +77,7 @@ namespace Logary
             if (path == null) throw new ArgumentNullException("path");
             if (f == null) throw new ArgumentNullException("f");
             level = level ?? LogLevel.Debug;
-            return Logary.Log.TimePath(logger, level, path, f);
+            return Derived.Metrics.Time.TimePath(logger, level, path, f);
         }
 
         /// <summary>

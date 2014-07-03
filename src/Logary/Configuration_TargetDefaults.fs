@@ -1,4 +1,4 @@
-﻿namespace Logay.Configuration
+﻿namespace Logary.Configuration
 
 /// A module the ties together Logstash, Riemann, Console/Debug, Graphite and
 /// some health checks into a nicely configured Logary instance.

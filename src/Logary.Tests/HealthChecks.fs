@@ -8,10 +8,8 @@ open System.Text.RegularExpressions
 open Fac
 
 open Logary
-open Logary.Configuration
-open Logary.Target
-open Logary.Targets
 open Logary.HealthChecks
+open Logary.Metrics
 open Logary.Internals.Tcp
 
 open Logary.Tests.StubTcp
@@ -30,6 +28,12 @@ let private untilPred maxWait fPred =
   |> not
 
 let pingSvdSe () =
+  let mkError ex =
+    mkMeasure "app.resource.ping-svd" 0.
+               |> setDesc "ping completed with error"
+               |> setExn ex
+               |> setLevel Error
+               |> HealthChecks.asResult
   async {
     use p = new Ping()
     let awaitPong = Async.AwaitEvent(p.PingCompleted, p.SendAsyncCancel)
@@ -37,28 +41,21 @@ let pingSvdSe () =
       p.SendAsync("svd.se", 1000, obj())
       let! complete = awaitPong
       if complete.Cancelled then
-        return Unhealthy <| Failure.Create("Ping was cancelled")
-      elif not (complete.Error = null) then
-        return Unhealthy <| Failure.Create("Ping got error", Some <| complete.Error)
-      else return Healthy
+        return NoValue
+      elif complete.Error <> null then
+        return mkError complete.Error
+      else
+        return mkMeasure "app.resource.ping-svd" 1. |> HealthChecks.asResult
+        
     with e ->
-      return Unhealthy <| Failure.Create("Exception when pinging haf.se", Some(e)) }
+      return mkError e }
 
 let tests =
   testList "health checks" [
-    testCase "creating primitive check" <| fun _ ->
-      let a () = async { return Unhealthy <| Failure.Create("Bad bad bad") }
-      let h = fromFn "a" a
-      let gotUnhealthy = untilPred 1000 (fun i -> match h.Check () with Unhealthy _ -> true | _ -> false)
-      match h.Check () with
-      | Unhealthy res -> res.Message =? "Bad bad bad"
-      | _ -> failwith "expected unhealthy result"
-
     testCase "real ping" <| fun _ ->
       Fuchu.Tests.skiptest "does network IO"
       let h = fromFn "ping haf.se" pingSvdSe
-      let gotUnhealthy = untilPred 10000 <| fun i -> match h.Check () with Unhealthy _ -> true | _ -> false
+      let gotUnhealthy = untilPred 10000 <| fun i ->
+        match h.GetValue () with HasValue _ -> true | _ -> false
       gotUnhealthy =? false
-      //let gotHealthy = untilPred 10000 <| fun i -> h.Check = Healthy
-      //gotHealthy =? true
     ]

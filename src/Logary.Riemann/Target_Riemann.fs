@@ -79,11 +79,11 @@ let mkEventL
 /// Create an Event from a Measure
 let mkEventM
   hostname ttl confTags
-  { value     = value
-    path      = path
-    timestamp = timestamp
-    level     = level
-    unit      = u } =
+  { m_value     = value
+    m_path      = path
+    m_timestamp = timestamp
+    m_level     = level
+    m_unit      = u } =
   let tags = confTags |> Option.fold (fun s t -> s @ t) []
   Event.CreateDouble(value, asEpoch timestamp,
                      mkState level, path, hostname, u.ToString(), tags,

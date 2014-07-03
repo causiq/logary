@@ -28,12 +28,12 @@ let setExn e m =
 /// Tries to get the description value from the measure.
 [<CompiledName "TryGetDescription">]
 let tryGetDesc m =
-  m.data |> Map.tryFind Description |> Option.fold (fun s t -> t :?> string) ""
+  m.m_data |> Map.tryFind Description |> Option.fold (fun s t -> t :?> string) ""
 
 /// Tries to get an exception from the measure
 [<CompiledName "TryGetException">]
-let tryGetExn m =
-  m.data |> Map.tryFind Exception |> Option.map (fun x -> x :?> exn)
+let tryGetExn (m : Measure) =
+  m.m_data |> Map.tryFind Exception |> Option.map (fun x -> x :?> exn)
 
 /// An implementation of the ResultData interface that wraps a Measure and
 /// uses its 'data' Map to read.
@@ -44,11 +44,11 @@ type MeasureWrapper(m : Measure) =
     member x.Exception   = tryGetExn m
   override x.ToString() =
     sprintf "HealthCheck(name=%s, exn=%A, value=%f, level=%A)"
-      m.path (tryGetExn m) m.value m.level
+      m.m_path (tryGetExn m) m.m_value m.m_level
 
 /// Transform the metric to a result data.
-[<CompiledName "MeasurementToResult">]
-let measureToResult (m : Measure) =
+[<CompiledName "AsResult"; Extension>]
+let asResult (m : Measure) =
   MeasureWrapper m :> ResultData
   |> HasValue
 

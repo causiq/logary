@@ -110,7 +110,7 @@ module WindowsPerfCounters =
               |> float
               |> measureTransform
               |> Metrics.setPath name
-              |> HealthChecks.measureToResult
+              |> HealthChecks.asResult
             with
               e -> NoValue
           member x.Dispose () =
@@ -137,7 +137,7 @@ open WindowsPerfCounters
 
 let mkMeasure' fValueTr fLevel rawValue =
   let m = Metrics.mkMeasure "" (fValueTr rawValue)
-  { m with level = fLevel m.value }
+  { m with m_level = fLevel m.m_value }
 
 module Categorisation =
   /// Finds the bucket that is less than or equal in value to the sample, yielding
@@ -210,7 +210,9 @@ let printAll checks =
   let printSingle (check : HealthCheck) =
     match check.GetValue() with
     | NoValue -> printfn "%s: -" check.Name
-    | HasValue v -> printfn ">>> [%O] %s: %f\n%s" v.Measure.level check.Name v.Measure.value v.Description
+    | HasValue v ->
+      let m = v.Measure
+      printfn ">>> [%O] %s: %f\n%s" m.m_level check.Name m.m_value v.Description
   checks |> Seq.iter printSingle
 
 // printAll my_appdomain

@@ -22,16 +22,16 @@ module Nimrod =
           let! msg, mopts = inbox.Receive()
           match msg with
           | Metric m ->
-            let ts = m.timestamp.Ticks / NodaConstants.TicksPerSecond
+            let ts = m.m_timestamp.Ticks / NodaConstants.TicksPerSecond
             let ic = System.Globalization.CultureInfo.InvariantCulture
-            let m' = sprintf "[nimrod][%i][%s][%s][%s]" ts (m.ToString()) m.path (m.value.ToString(ic))
+            let m' = sprintf "[nimrod][%i][%s][%s][%s]" ts (m.ToString()) m.m_path (m.m_value.ToString(ic))
             { message       = m'
-              level         = m.level
+              level         = m.m_level
               data          = Map.empty
-              path          = m.path
+              path          = m.m_path
               tags          = []
               ``exception`` = None
-              timestamp     = m.timestamp }
+              timestamp     = m.m_timestamp }
             |> logTarget conf.target
             return! loop ()
           | Log l ->

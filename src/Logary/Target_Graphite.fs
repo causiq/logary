@@ -85,7 +85,7 @@ module Graphite =
               let! state' = createMsg path l.message l.timestamp |> doWrite state
               return! running state'
             | None -> return! running state
-          | Metric { value = v ; path  = p ; timestamp = ts } ->
+          | Metric { m_value = v ; m_path  = p ; m_timestamp = ts } ->
             let! state' = createMsg p (v.ToString(CultureInfo.InvariantCulture)) ts |> doWrite state
             return! running state'
           | Flush chan ->

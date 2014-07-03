@@ -7,7 +7,7 @@
 open Fuchu
 
 open Logary
-open Logary.Configuration.Config
+open Logary.Configuration
 
 let expected_level = Warn
 

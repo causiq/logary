@@ -14,7 +14,7 @@ type Gauge =
   inherit Named
   abstract Put : float -> unit
 
-/// Module for capturing metrics
+/// Module for working with metrics
 module Metrics =
   open FSharp.Actor
 
@@ -37,7 +37,7 @@ module Metrics =
 
   /// Add a key-value pair to the data in the measure
   [<CompiledName "SetData">]
-  let setData k v m = { m with Measure.data = m.data |> Map.put k v }
+  let setData k v m = { m with m_data = m.m_data |> Map.put k v }
 
   /// Add the key-value pairs to the data in the measure
   [<CompiledName "SetDatas">]
@@ -45,15 +45,19 @@ module Metrics =
 
   /// Sets the path of the measure
   [<CompiledName "SetPath">]
-  let setPath p m = { m with Measure.path = p }
+  let setPath p m = { m with m_path = p }
 
   /// Sets the value of the measure
   [<CompiledName "SetValue">]
-  let setValue value m = { m with Measure.value = value }
+  let setValue value m = { m with m_value = value }
 
   /// Sets the timestamp of the measure
   [<CompiledName "SetTimestamp">]
-  let setTimestamp value m = { m with Measure.timestamp = value }
+  let setTimestamp value m = { m with m_timestamp = value }
+
+  /// Sets the level of the measure
+  [<CompiledName "SetLevel">]
+  let setLevel value m = { m with m_level = value }
 
   /////////////////////
   // Logging methods //
@@ -63,12 +67,13 @@ module Metrics =
   /// path it is taken at or represents
   [<CompiledName "MkMeasure">]
   let mkMeasure path value =
-    { value     = value
-      path      = path
-      timestamp = Date.utcNow()
-      level     = Info
-      unit      = Units.Unit "unit"
-      data      = Map.empty }
+    { m_value     = value
+      m_path      = path
+      m_timestamp = Date.utcNow()
+      m_level     = Info
+      m_unit      = Units.Unit "unit"
+      m_tags      = []
+      m_data      = Map.empty }
 
   /// Write a metric/measure of your chosing
   [<CompiledName "Metric">]

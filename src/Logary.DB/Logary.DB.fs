@@ -14,13 +14,6 @@ open FsSql
 
 open NodaTime
 
-/// Convert the MetricType to an int
-let typeAsInt16 = function
-  | Counter -> 0s
-  | Timer _ -> 1s
-  | Gauge   -> 2s
-  | Meter   -> 3s
-
 type DBConf =
   { connFac : unit -> IDbConnection
     schema  : string option }
@@ -44,11 +37,10 @@ let private insertMetric schema (m : Measure) connMgr =
     (sprintf "INSERT INTO %sMetrics (Host, Path, EpochTicks, Level, Type, Value)
      VALUES (@host, @path, @epoch, @level, @type, @value)" (printSchema schema))
     [ P("@host", Dns.GetHostName())
-      P("@path", m.path)
-      P("@epoch", m.timestamp.Ticks)
-      P("@level", m.level.ToInt())
-      P("@type", typeAsInt16 m.mtype)
-      P("@value", m.value) ]
+      P("@path", m.m_path)
+      P("@epoch", m.m_timestamp.Ticks)
+      P("@level", m.m_level.ToInt())
+      P("@value", m.m_value) ]
 
 let private insertMetric' schema m = insertMetric schema m |> txn
 
