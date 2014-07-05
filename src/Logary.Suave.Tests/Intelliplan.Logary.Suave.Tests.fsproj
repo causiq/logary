@@ -53,7 +53,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="ManagedOpenSsl">
-      <HintPath>..\packages\Suave.0.7.0\lib\ManagedOpenSsl.dll</HintPath>
+      <HintPath>..\packages\Suave.0.9.0\lib\ManagedOpenSsl.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />
@@ -62,7 +62,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="suave">
-      <HintPath>..\packages\Suave.0.7.0\lib\suave.dll</HintPath>
+      <HintPath>..\packages\Suave.0.9.0\lib\suave.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
@@ -79,12 +79,12 @@
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>
-  <Import Project="..\packages\Suave.0.7.0\build\suave.targets" Condition="Exists('..\packages\Suave.0.7.0\build\suave.targets')" />
+  <Import Project="..\packages\Suave.0.9.0\build\suave.targets" Condition="Exists('..\packages\Suave.0.9.0\build\suave.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
-    <Error Condition="!Exists('..\packages\Suave.0.7.0\build\suave.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Suave.0.7.0\build\suave.targets'))" />
+    <Error Condition="!Exists('..\packages\Suave.0.9.0\build\suave.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Suave.0.9.0\build\suave.targets'))" />
   </Target>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
