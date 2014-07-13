@@ -247,10 +247,20 @@ git submodule update --init
 bundle && bundle exec rake
 ```
 
-## Contributing
+## Contributing & Code Style
 
 Coding style: pascalCase, 2 space intent. Use feature branches, PR against
 master.
+
+Use `module Logary.MyModule` or `module Logary.SubNs.MyModule`, not:
+
+``` fsharp
+namespace Logary.SubNs
+
+module MyModule =
+  ...
+```
+
 
 ## License
 
