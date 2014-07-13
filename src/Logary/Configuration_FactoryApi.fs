@@ -1,85 +1,84 @@
-﻿namespace Logary.Configuration
-
-/// The FactoryApi is to make it much easier to configure Logary from a language
+﻿/// The FactoryApi is to make it much easier to configure Logary from a language
 /// such as C#. It's AutoOpen because opening Logary.Configuration should
 /// expose the ConfBuilder type inside this module without any further ado.
 /// Besides that, this module doesn't contain much in terms of functionality/functions
 /// but lets you configure all of that through interaction with the types/classes/objects.
 [<AutoOpen>]
-module FactoryApi =
-  open System
-  open System.Reflection
+module Logary.Configuration.FactoryApi
 
-  open Logary
-  open Config
-  open Targets
-  open Targets.FactoryApi
+open System
+open System.Reflection
 
-  type internal ConfBuilderT<'T when 'T :> SpecificTargetConf> =
-    { parent      : ConfBuilder        // logary that is being configured
-      tr          : Rule               // for this specific target
-      tcSpecific  : 'T option }
-  with
-    member internal x.SetTcSpecific tcs =
-      { x with tcSpecific = Some(tcs) }
+open Logary
+open Logary.Configuration
+open Logary.Targets
+open Logary.Targets.FactoryApi
 
-    interface TargetConfBuild<'T> with
+type internal ConfBuilderT<'T when 'T :> SpecificTargetConf> =
+  { parent      : ConfBuilder        // logary that is being configured
+    tr          : Rule               // for this specific target
+    tcSpecific  : 'T option }
+with
+  member internal x.SetTcSpecific tcs =
+    { x with tcSpecific = Some(tcs) }
 
-      member x.MinLevel logLevel =
-        { x with tr = { x.tr with Rule.level = logLevel } }
-        :> TargetConfBuild<'T>
+  interface TargetConfBuild<'T> with
 
-      member x.SourceMatching regex =
-        { x with tr = { x.tr with Rule.hiera = regex } }
-        :> TargetConfBuild<'T>
+    member x.MinLevel logLevel =
+      { x with tr = { x.tr with Rule.level = logLevel } }
+      :> TargetConfBuild<'T>
 
-      member x.AcceptIf acceptor =
-        { x with tr = { x.tr with Rule.accept = fun l -> acceptor.Invoke(l) } }
-        :> TargetConfBuild<'T>
+    member x.SourceMatching regex =
+      { x with tr = { x.tr with Rule.hiera = regex } }
+      :> TargetConfBuild<'T>
 
-      member x.Target = x.tcSpecific.Value
+    member x.AcceptIf acceptor =
+      { x with tr = { x.tr with Rule.accept = fun l -> acceptor.Invoke(l) } }
+      :> TargetConfBuild<'T>
 
-  /// The "main" fluent-config-api type with extension method for configuring
-  /// Logary rules as well as configuring specific targets.
-  and ConfBuilder(conf) =
-    member internal x.BuildLogary () =
-      conf |> validateLogary |> runLogary |> asLogManager
+    member x.Target = x.tcSpecific.Value
 
-    /// Configure a target of the type with a name specified by the parameter
-    /// name
-    member x.Target<'T when 'T :> SpecificTargetConf>
-      (name : string)
-      (f : Func<TargetConfBuild<'T>, TargetConfBuild<'T>>)
-      : ConfBuilder =
+/// The "main" fluent-config-api type with extension method for configuring
+/// Logary rules as well as configuring specific targets.
+and ConfBuilder(conf) =
+  member internal x.BuildLogary () =
+    conf |> validateLogary |> runLogary |> asLogManager
 
-      let builderType = typeof<'T>
+  /// Configure a target of the type with a name specified by the parameter
+  /// name
+  member x.Target<'T when 'T :> SpecificTargetConf>
+    (name : string)
+    (f : Func<TargetConfBuild<'T>, TargetConfBuild<'T>>)
+    : ConfBuilder =
 
-      let container : ConfBuilderT<'T> =
-        { parent     = x
-          tr         = Rules.forAny name
-          tcSpecific = None }
+    let builderType = typeof<'T>
 
-      let contRef = ref (container :> TargetConfBuild<_>)
+    let container : ConfBuilderT<'T> =
+      { parent     = x
+        tr         = Rules.forAny name
+        tcSpecific = None }
 
-      let parentCc : ParentCallback<_> =
-        fun tcSpec ->
-          let b = !contRef :?> ConfBuilderT<'T>
-          contRef := { b with tcSpecific = Some(tcSpec :?> 'T) } :> TargetConfBuild<_>
-          contRef
+    let contRef = ref (container :> TargetConfBuild<_>)
 
-      let tcSpecific = Activator.CreateInstance(builderType, parentCc) :?> 'T
+    let parentCc : ParentCallback<_> =
+      fun tcSpec ->
+        let b = !contRef :?> ConfBuilderT<'T>
+        contRef := { b with tcSpecific = Some(tcSpec :?> 'T) } :> TargetConfBuild<_>
+        contRef
 
-      contRef := { container with tcSpecific = Some tcSpecific } :> TargetConfBuild<_>
+    let tcSpecific = Activator.CreateInstance(builderType, parentCc) :?> 'T
 
-      // escape of the type system to get back to this mutually recursive
-      // builder class: hence the comment that the interface TargetConfBuild<_> is not
-      // referentially transparent
-      let targetConf = f.Invoke(!contRef) :?> ConfBuilderT<'T>
+    contRef := { container with tcSpecific = Some tcSpecific } :> TargetConfBuild<_>
 
-      ConfBuilder(
-        conf
-        |> withRule targetConf.tr
-        |> withTarget (targetConf.tcSpecific.Value.Build name))
+    // escape of the type system to get back to this mutually recursive
+    // builder class: hence the comment that the interface TargetConfBuild<_> is not
+    // referentially transparent
+    let targetConf = f.Invoke(!contRef) :?> ConfBuilderT<'T>
+
+    ConfBuilder(
+      conf
+      |> withRule targetConf.tr
+      |> withTarget (targetConf.tcSpecific.Value.Build name))
 
 open System.Runtime.CompilerServices
 
@@ -87,7 +86,9 @@ open System.Runtime.CompilerServices
 [<Extension; AutoOpen>]
 module FactoryApiExtensions =
   open System
+  open Logary
   open Logary.Targets.FactoryApi
+  open Logary.Configuration
 
   /// <summary>
   /// Configure the target with default settings.
@@ -99,11 +100,6 @@ module FactoryApiExtensions =
   [<Extension; CompiledName "Target">]
   let target<'T when 'T :> SpecificTargetConf> (builder : ConfBuilder) (name : string) =
     builder.Target<'T> name (new Func<_, _>(fun t -> t))
-
-
-open System
-open Logary
-open Logary.Configuration
 
 /// The main entry point for object oriented languages to interface with Logary,
 /// to configure it.

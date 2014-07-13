@@ -55,6 +55,7 @@
     <Compile Include="Target_CoreTargets.fs" />
     <Compile Include="Registry.fs" />
     <Compile Include="Logging.fs" />
+    <Compile Include="Configuration_ValidationException.fs" />
     <Compile Include="Configuration_Config.fs" />
     <Compile Include="Configuration_FactoryApi.fs" />
     <Compile Include="LoggerExtensions.fs" />

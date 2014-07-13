@@ -33,8 +33,8 @@ let main argv =
     )
     |> Config.asLogManager
 
-//  clr_proc |> Registry.RegisterHealthCheck logary
-//  cpus |> Registry.registerHealthChecks logary
+  clr_proc |> Registry.RegisterHealthCheck logary
+  cpus |> Registry.registerHealthChecks logary
 
 // TODO:
 //  let logger = logary.GetLogger "Riemann.Example"

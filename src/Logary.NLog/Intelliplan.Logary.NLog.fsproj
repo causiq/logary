@@ -59,7 +59,7 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Logary.NLog.fs" />
+    <Compile Include="Target_NLog.fs" />
     <None Include="Script.fsx" />
     <None Include="packages.config" />
     <Compile Include="AssemblyVersionInfo.fs" />
