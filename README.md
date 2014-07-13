@@ -5,11 +5,79 @@ health-check library for mono and .Net.
 
 Follow Logary at twitter: [@logarylib](https://twitter.com/logarylib).
 
-Installation:
-
 ```
 Install-Package Intelliplan.Logary
 ```
+
+This package works great with F#:
+
+``` fsharp
+open Logary
+open Logary.Configuration
+
+type Settings = ...
+let app settings = ...
+
+let parse args : Settings = ...
+
+[<EntryPoint>]
+let main args =
+  use logary = 
+    withLogary "My App Example" (
+      withTargets [
+        Riemann.create (Riemann.RiemannConf.Create(tags = ["riemann-health"])) "riemann"
+        Console.create (Console.ConsoleConf.Default) "console"
+      ] >>
+      withRules [
+        Rule.Create(Regex(@".*"), "riemann", (fun _ -> true), LogLevel.Verbose)
+        Rule.Create(Regex(@".*"), "console", (fun _ -> true), LogLevel.Verbose)
+      ]
+    )
+    |> Config.asLogManager
+
+  app (parse args)
+```
+
+#### C#/VB façade
+
+This facade is useful when you're using C# 
+
+```
+Install-Package Intelliplan.Logary.CSharp
+```
+
+It adds extension methods to the `Logary` namespace. Just do:
+
+``` csharp
+using Logary;
+```
+
+#### Logging to a DB
+
+Why are you logging to a DB? Think this through. Alright then:
+
+```
+Install-Package Intelliplan.Logary.DB
+```
+
+Configure the target:
+
+``` fsharp
+// TBD
+```
+
+``` csharp
+// TBD
+```
+
+#### HealthChecks
+
+...
+
+## Target Maintainers Wanted!
+
+Are you interested in maintaining a target? Let [me know](mailto:henrik@haf.se)
+or file a PR demonstrating your work.
 
 ## Why?
 
