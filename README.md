@@ -250,7 +250,7 @@ bundle && bundle exec rake
 ## Contributing & Code Style
 
 Coding style: pascalCase, 2 space intent. Use feature branches, PR against
-master.
+master. Use immutable data structures and tail recursion.
 
 Use `module Logary.MyModule` or `module Logary.SubNs.MyModule`, not:
 
@@ -261,6 +261,21 @@ module MyModule =
   ...
 ```
 
+If introducing a new type + corresponding module (see `Measure.fs` for example):
+
+Mine.fs:
+
+``` fsharp
+namespace Logary
+
+type mine =
+  { shaft : string
+  ; len   : int }
+
+module Mine =
+  let empty = { shaft = "empty shaft"; len = 50 }
+  // etc
+```
 
 ## License
 
