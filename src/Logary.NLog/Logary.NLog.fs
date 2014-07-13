@@ -44,7 +44,7 @@ let private nlogLoop nlogConfig metadata =
         // http://stackoverflow.com/questions/2297236/how-to-get-type-of-the-module-in-f
         logger.Log(typeof<Marker>.DeclaringType, event)
         return! running ()
-      | Metric m -> return! loop ()
+      | Measure m -> return! loop ()
       | ShutdownTarget ackChan -> return shutdown () }
 
     and shutdown () = NLog.LogManager.Shutdown()

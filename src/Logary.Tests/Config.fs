@@ -8,7 +8,7 @@ open System.IO
 
 open Logary
 open Logary.Target
-open Logary.Metric
+open Logary.Measure
 open Logary.Formatting
 open Logary.Logging
 
@@ -38,7 +38,7 @@ let tests =
       confTarget "tw" (create (TextWriterConf.Default(Fac.textWriter(), Fac.textWriter())))
       |> validateTarget
       |> initTarget { serviceName = "tests" }
-      |> send (Log.debugStr "Hello")
+      |> send (LogLine.debugStr "Hello")
       |> shutdownTarget
       |> Async.RunSynchronously
       |> ignore

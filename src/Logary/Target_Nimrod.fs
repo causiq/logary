@@ -6,7 +6,8 @@ module Nimrod =
   open NodaTime
 
   open Logary
-  open Targets
+  open Logary.Targets
+  open Logary.Measure
   open Logary.Internals.Tcp
   open Logary.Internals.Date
 
@@ -21,10 +22,9 @@ module Nimrod =
       and running () = async {
           let! msg, mopts = inbox.Receive()
           match msg with
-          | Metric m ->
+          | Measure m ->
             let ts = m.m_timestamp.Ticks / NodaConstants.TicksPerSecond
-            let ic = System.Globalization.CultureInfo.InvariantCulture
-            let m' = sprintf "[nimrod][%i][%s][%s][%s]" ts (m.ToString()) m.m_path (m.m_value.ToString(ic))
+            let m' = sprintf "[nimrod][%i][%s][%s][%s]" ts (m.ToString()) m.m_path (getValueStr m)
             { message       = m'
               level         = m.m_level
               data          = Map.empty

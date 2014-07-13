@@ -10,9 +10,11 @@ module Graphite =
   open System
   open System.Net
   open System.Net.Sockets
+  open System.Globalization
 
   open Logary
-  open Targets
+  open Logary.Targets
+  open Logary.Measure
   open Logary.Internals.Tcp
 
   /// Put this tag on your message (message must be a parseable value)
@@ -47,7 +49,7 @@ module Graphite =
   /// All graphite messages are of the following form.
   /// metric_path value timestamp\n
   let private createMsg path value (timestamp : Instant) =
-    let line = String.Format("{0} {1} {2}\n", path, value, timestamp.Ticks / NodaConstants.TicksPerSecond);
+    let line = String.Format("{0} {1} {2}\n", path, value, timestamp.Ticks / NodaConstants.TicksPerSecond)
     utf8.GetBytes line
 
   let private findPath (tags : string list) =
@@ -66,7 +68,6 @@ module Graphite =
       do! stream.Write( m )
       return { state with sendRecvStream = Some stream } }
 
-  open System.Globalization
 
   let private graphiteLoop (conf : GraphiteConf) (svc : ServiceMetadata) =
     (fun (inbox : IActor<_>) ->
@@ -85,8 +86,8 @@ module Graphite =
               let! state' = createMsg path l.message l.timestamp |> doWrite state
               return! running state'
             | None -> return! running state
-          | Metric { m_value = v ; m_path  = p ; m_timestamp = ts } ->
-            let! state' = createMsg p (v.ToString(CultureInfo.InvariantCulture)) ts |> doWrite state
+          | Measure ({ m_value = v ; m_path  = p ; m_timestamp = ts } as ms) ->
+            let! state' = createMsg p (getValueStr ms) ts |> doWrite state
             return! running state'
           | Flush chan ->
             chan.Reply Ack

@@ -50,7 +50,7 @@ namespace Intelliplan.Logary.Specs
         Cleanup afterwards = () => manager.Dispose();
 
         static LogManager manager;
-        static Logger logger;
+        static logger logger;
 
         It can_log_verbose = () => logger.Verbose("Hello world");
         It can_log_debug = () => logger.Debug("Hello world");

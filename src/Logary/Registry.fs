@@ -5,14 +5,13 @@ open FSharp.Actor
 
 open NodaTime
 
-open Logary.Metric
 open Logary.Targets
-open Logary.HealthChecks
+open Logary.HealthCheck
 
 /// The messages that can be sent to the registry to interact with it and its
 /// running targets.
 type RegistryMessage =
-  | GetLogger             of string * Logger ReplyChannel
+  | GetLogger             of string * logger ReplyChannel
 
   // health checks
   | RegisterHealthCheck   of HealthCheckMessage IActor
@@ -48,7 +47,7 @@ module internal Logging =
       interface Named with
         member x.Name = x.name
 
-      interface Logger with
+      interface logger with
         member x.Log line =
           // TODO: make functional:
           for accept, t in x.targets do
@@ -59,9 +58,9 @@ module internal Logging =
             | Actor.ActorInvalidStatus msg ->
               err "Logging to %s failed, because of target state. Actor said: '%s'" x.name msg
 
-        member x.Metric m =
+        member x.Measure m =
           try
-            (x.targets |> List.map snd) <-* Metric m
+            (x.targets |> List.map snd) <-* Measure m
           with
           | Actor.ActorInvalidStatus msg ->
             err "Sending metric to %s failed, because of target state. Actor said: '%s'" x.name msg
@@ -80,10 +79,10 @@ module internal Logging =
         lock locker (fun () ->
           logManager := Some lm
           logger := Some <| Async.RunSynchronously(getLogger lm.registry name))
-    interface Logger with
+    interface logger with
       member x.Name = name
       member x.Log l = (!logger) |> Option.iter (fun logger -> logger.Log l)
-      member x.Metric m = (!logger) |> Option.iter (fun logger -> logger.Metric m)
+      member x.Measure m = (!logger) |> Option.iter (fun logger -> logger.Measure m)
       member x.Level = Verbose
 
   /// Iterate through all flywieghts and set the current LogManager for them
@@ -114,10 +113,10 @@ module Advanced =
   open Logging
 
   open Logary
-  open Logary.Metric
+  open Logary.Measure
   open Logary.Rules
   open Logary.Targets
-  open Logary.HealthChecks
+  open Logary.HealthCheck
   open Logary.Internals.InternalLogger
 
   module internal Seq =
@@ -201,7 +200,7 @@ module Advanced =
     { name    = name
       targets = targets |> List.map (fun (a, ti, _) -> a, (Targets.actor ti))
       level   = targets |> List.map (fun (_, _, level) -> level) |> List.min }
-    :> Logger
+    :> logger
 
   let private snd' (kv : System.Collections.Generic.KeyValuePair<_, _>) = kv.Value
   let private actorInstance = snd' >> snd >> Option.get >> Targets.actor

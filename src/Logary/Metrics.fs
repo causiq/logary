@@ -1,4 +1,4 @@
-﻿module Logary.Derived.Metrics
+﻿module Logary.Metrics
 
 open Logary
 
@@ -25,12 +25,14 @@ and TimerContext =
 
 module Time =
   open System.Diagnostics
+
   open Logary.Internals
-  open Logary.Metrics
-  
+  open Logary.Logger
+  open Logary.Measure
+
   /// Capture a timer metric with a given metric-level and metric-path.
   [<CompiledName "TimeLevel">]
-  let timelvl (logger : Logger) lvl path f =
+  let timelvl (logger : logger) lvl path f =
     if lvl < logger.Level then f ()
     else
       let now = Date.utcNow ()
@@ -39,14 +41,16 @@ module Time =
         f ()
       finally
         sw.Stop()
-        { m_value     = sw.ElapsedTicks |> float
+        { m_value     = None
+          m_value'    = Some (sw.ElapsedTicks)
+          m_value''   = None
           m_path      = path
           m_timestamp = now
           m_level     = lvl
           m_unit      = Units.Seconds
           m_tags      = []
           m_data      = Map.empty }
-        |> metric logger
+        |> logger.Measure
 
   /// Capture a timer metric with a given metric-path
   [<CompiledName "Time">]
@@ -59,6 +63,6 @@ module Time =
   /// Time a function execution with a 'path' equal to the passed argument.
   /// Path may be null, and is then replaced with the logger name
   [<CompiledName "TimePath">]
-  let timePath (logger : Logger) lvl path (f : System.Func<_>) =
+  let timePath (logger : logger) lvl path (f : System.Func<_>) =
     let path = match path with null -> logger.Name | p -> p
     timelvl logger lvl path (fun () -> f.Invoke())

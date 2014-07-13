@@ -36,7 +36,7 @@ namespace Intelliplan.Logary.Specs
             {
                 manager.GetLogger("Intelliplan.Logary.Specs.When_configuring_with_CSharp_API")
                        .Warn("the situation is dire", "oh-noes");
-                manager.FlushPending(Duration.FromSeconds(20L));
+                manager.FlushPending();
                 subject = writer.ToString();
             };
 
@@ -70,7 +70,7 @@ namespace Intelliplan.Logary.Specs
             {
                 manager.GetLogger("Intelliplan.Logary.Specs.When_configuring_filter_with_API")
                        .Warn("the situation is dire", "oh-noes");
-                manager.FlushPending(Duration.FromSeconds(20L));
+                manager.FlushPending();
                 subject = writer.ToString();
             };
 

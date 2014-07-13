@@ -48,7 +48,7 @@ module TextWriter =
           (tw.WriteLine : string -> unit) <| formatter.format l
           do (if flush then tw.Flush() else ())
           return! loop ()
-        | Metric m ->
+        | Measure m ->
           return! loop ()
         | Flush chan ->
           info "%s: flush start" inbox.Id
@@ -172,7 +172,7 @@ module Debugger =
           return! loop()
         | Log _ ->
           return! loop ()
-        | Metric m when Debugger.IsLogging() ->
+        | Measure m when Debugger.IsLogging() ->
           Debugger.Log(offLevel, m.m_path, sprintf "%A" m)
           return! loop ()
         | Flush chan ->

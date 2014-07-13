@@ -36,13 +36,12 @@
     <Compile Include="Internals_Utils.fs" />
     <Compile Include="ServiceMetadata.fs" />
     <Compile Include="Named.fs" />
+    <Compile Include="Infrastructure.fs" />
     <Compile Include="LogLevel.fs" />
     <Compile Include="LogLine.fs" />
     <Compile Include="Measure.fs" />
     <Compile Include="Logger.fs" />
-    <Compile Include="Metrics_Derived.fs" />
-    <Compile Include="Log.fs" />
-    <Compile Include="Acks.fs" />
+    <Compile Include="Metrics.fs" />
     <Compile Include="HealthCheck.fs" />
     <Compile Include="LogManager.fs" />
     <Compile Include="Internals_FlyweightLogger.fs" />
@@ -52,7 +51,7 @@
     <Compile Include="Formatting.fs" />
     <Compile Include="Rules.fs" />
     <Compile Include="LogaryConf.fs" />
-    <Compile Include="Metric_Histogram.fs" />
+    <Compile Include="Measure_Histogram.fs" />
     <Compile Include="Target_CoreTargets.fs" />
     <Compile Include="Registry.fs" />
     <Compile Include="Logging.fs" />

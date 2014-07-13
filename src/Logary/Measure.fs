@@ -14,11 +14,11 @@ type Units =
 
 /// This is a measured event as it occurred or was at a point in time.
 type ``measure`` =
-  { /// The value of the measurement
+  { /// The value of the measurement for floats
     m_value     : float option
-
+    /// The value of the measurement for int64s
     m_value'    : int64 option
-
+    /// The value of the measurement for bigints
     m_value''   : bigint option
     /// The identifier for the measure - defaults to the path of the logger
     /// sending it -- this is also the 'name' of the measeure.
@@ -42,6 +42,7 @@ type sndmeasure =
   { sm_measures  : ``measure`` list
     sm_data      : ``measure`` }
 
+/// Module for dealing with measures
 module Measure =
   open FSharp.Actor
 
@@ -58,16 +59,56 @@ module Measure =
     interface Named with
       member x.Name = name
 
-  ////////////////////
-  // Getter methods //
-  ////////////////////
+  /// lenses for the `measure``
+  module Lenses =
+    open Lenses
 
-  let value m = m.m_value
-  let path m = m.m_path
-  let timestamp m = m.m_timestamp
-  let level m = m.m_level
-  let data m = m.m_data
-  let tags m = m.m_tags
+    /// float value
+    let value_ =
+      { get = fun x -> x.m_value
+        set = fun v x -> { x with m_value = v } }
+
+    /// int64 value
+    let value'_ =
+      { get = fun x -> x.m_value'
+        set = fun v x -> { x with m_value' = v } }
+
+    /// bigint value
+    let value''_ =
+      { get = fun x -> x.m_value''
+        set = fun v x -> { x with m_value'' = v } }
+
+    let path_ =
+      { get = fun x -> x.m_path
+        set = fun v x -> { x with m_path = v } }
+
+    let timestamp_ =
+      { get = fun x -> x.m_timestamp
+        set = fun v x -> { x with m_timestamp = v } }
+
+    let level_ =
+      { get = fun x -> x.m_level
+        set = fun v x -> { x with m_level = v } }
+
+    let unit_ =
+      { get = fun x -> x.m_unit
+        set = fun v x -> { x with m_unit = v } }
+
+    let data_ =
+      { get = fun x -> x.m_data
+        set = fun v x -> { x with m_data = v } }
+
+    let tags_ =
+      { get = fun x -> x.m_tags
+        set = fun v x -> { x with m_tags = v } }
+
+    // extras/patterns:
+
+    /// Gets (KeyNotFoundException if not found) or puts the key (idempotently)
+    /// to the data Map
+    let dataItem_ k =
+      { get = fun x -> x.m_data |> Map.find k
+        set = fun v x -> { x with m_data = x.m_data |> Map.put k v } }
 
   ////////////////////
   // Setter methods //
@@ -75,7 +116,7 @@ module Measure =
 
   /// Add a key-value pair to the data in the measure
   [<CompiledName "SetData">]
-  let setData k v m = { m with m_data = m.m_data |> Map.put k v }
+  let setData k = (Lenses.dataItem_ k).set
 
   /// Add the key-value pairs to the data in the measure
   [<CompiledName "SetDatas">]
@@ -83,11 +124,7 @@ module Measure =
 
   /// Sets the path of the measure
   [<CompiledName "SetPath">]
-  let setPath p m = { m with m_path = p }
-
-  /// Sets the value of the measure
-  [<CompiledName "SetValue">]
-  let setValue value m = { m with m_value = value }
+  let setPath = Lenses.path_.set
 
   /// Sets the timestamp of the measure
   [<CompiledName "SetTimestamp">]
@@ -101,19 +138,22 @@ module Measure =
   [<CompiledName "SetUnit">]
   let setUnit value m = { m with m_unit = value }
 
+  [<CompiledName "SetFloat">]
   let setFloat value m =
     { m with
         m_value = Some value
         m_value' = None
         m_value'' = None }
 
+  [<CompiledName "SetInt64">]
   let setInt64 value m =
     { m with
         m_value   = None
         m_value'  = Some value
         m_value'' = None }
 
-  let setBigInt value m =
+  [<CompiledName "SetBigint">]
+  let setBigint value m =
     { m with
         m_value   = None
         m_value'  = None
@@ -123,6 +163,7 @@ module Measure =
   // Factory functions //
   ///////////////////////
 
+  /// An empty `measure`
   let empty =
     { m_value     = None
       m_value'    = None
@@ -139,4 +180,27 @@ module Measure =
   [<CompiledName "MkMeasure">]
   let mkMeasure path value =
     { empty with m_path = path
-                 m_value = value }
+                 m_value = Some value }
+
+  let private (<|>) a b : 'a option =
+    match a with
+    | Some _ -> a
+    | None -> b
+
+  open System
+  open System.Globalization
+
+  let private toString x =
+    String.Format(CultureInfo.InvariantCulture, "{0}", [| x |])
+
+  let getValueStr m =
+    Option.map (box >> toString) m.m_value
+    <|> Option.map (box >> toString) m.m_value'
+    <|> Option.map (box >> toString) m.m_value''
+    |> Option.get
+
+  let getValueFloat m =
+    m.m_value
+    <|> Option.map float m.m_value'
+    <|> Option.map float m.m_value''
+    |> Option.get

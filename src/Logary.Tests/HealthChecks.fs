@@ -8,8 +8,8 @@ open System.Text.RegularExpressions
 open Fac
 
 open Logary
-open Logary.HealthChecks
-open Logary.Metrics
+open Logary.HealthCheck
+open Logary.Measure
 open Logary.Internals.Tcp
 
 open Logary.Tests.StubTcp
@@ -33,7 +33,7 @@ let pingSvdSe () =
                |> setDesc "ping completed with error"
                |> setExn ex
                |> setLevel Error
-               |> HealthChecks.asResult
+               |> asResult
   async {
     use p = new Ping()
     let awaitPong = Async.AwaitEvent(p.PingCompleted, p.SendAsyncCancel)
@@ -45,7 +45,7 @@ let pingSvdSe () =
       elif complete.Error <> null then
         return mkError complete.Error
       else
-        return mkMeasure "app.resource.ping-svd" 1. |> HealthChecks.asResult
+        return mkMeasure "app.resource.ping-svd" 1. |> asResult
         
     with e ->
       return mkError e }

@@ -77,7 +77,7 @@ type private EventV0 =
     ``@message``   : string
     ``@timestamp`` : Instant }
   /// Create an EventV0 from the log line passed as a parameter.
-  static member FromLogLine (l : LogLine) =
+  static member FromLogLine (l : logline) =
     { ``@source``    = Dns.GetHostName()
       ``@tags``      = l.tags
       ``@fields``    = l.data
@@ -127,7 +127,7 @@ type private Event =
     hostname       : string
     /// an optional exception
     ``exception``  : exn option }
-  static member FromLogLine (l : LogLine) =
+  static member FromLogLine (l : logline) =
     { ``@timestamp`` = l.timestamp
       ``@version``   = 1
       tags           = l.tags
@@ -169,10 +169,10 @@ open Newtonsoft.Json.Linq
 
 /// All logstash messages are of the following form.
 /// json-event\n
-let private createMsg evtVer (jss : JsonSerializerSettings) serviceName (logLine : LogLine) =
+let private createMsg evtVer (jss : JsonSerializerSettings) serviceName (logLine : logline) =
   let jsonSettings = JsonFormatter.Settings()
   let ser = JsonSerializer.Create jsonSettings
-  let fbox (f : LogLine -> 'a) = fun l -> f l :> NewtonsoftSerialisable
+  let fbox (f : logline -> 'a) = fun l -> f l :> NewtonsoftSerialisable
   let mkEvent = function
     | Zero -> fbox EventV0.FromLogLine
     | One  -> fbox Event.FromLogLine
@@ -210,7 +210,7 @@ let logstashLoop (conf : LogstashConf) metadata =
         | Log l ->
           let! state' = l |> createMsg conf.evtVer conf.jsonSettings metadata.serviceName |> doWrite state
           return! running state'
-        | Metric _ ->
+        | Measure _ ->
           return! running state
         | Flush chan ->
           chan.Reply Ack

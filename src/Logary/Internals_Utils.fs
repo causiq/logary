@@ -19,6 +19,9 @@ module internal Set =
     | (s : _ Set) when s.Count = 0 -> Some EmptySet
     | _ -> None
 
+// TODO: this module can be redone much nicer with an expressive API of possible
+// states rather then the current 'one method only' approach!
+
 /// A module that wraps the .Net TcpClient types/streams in a F#-ideomatic way,
 /// and behind an interface.
 module Tcp =

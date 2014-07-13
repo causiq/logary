@@ -25,7 +25,7 @@ let tests =
       let target = Logstash.create (Logstash.LogstashConf.Create("10.0.0.120", 1936us, StubTcp.StubWriterClient.Create)) "logstash-integration"
       let subject = target |> initTarget { serviceName = "tests" }
       (because "logging warning to logstash" <| fun () ->
-        Log.warnStrTag "integration" "integration test" |> logTarget subject
+        LogLine.warnStrTag "integration" "integration test" |> logTarget subject
         subject |> finaliseTarget
         ())
       |> thatsIt
@@ -41,11 +41,11 @@ let tests =
       let subject = target |> initTarget { serviceName = "tests" }
       let msg     = "integration test message"
       (because "logging warning to logstash" <| fun () ->
-        Log.warnStrTag "integration" msg
-        |> Log.setPath "a.b.c"
-        |> Log.setData "data-key" "data-value"
-        |> Log.setData "e" e1
-        |> Log.setExn e2
+        LogLine.warnStrTag "integration" msg
+        |> LogLine.setPath "a.b.c"
+        |> LogLine.setData "data-key" "data-value"
+        |> LogLine.setData "e" e1
+        |> LogLine.setExn e2
         |> logTarget subject
         subject |> finaliseTarget
         writer.ReadLines() |> Seq.exactlyOne |> Newtonsoft.Json.Linq.JObject.Parse)

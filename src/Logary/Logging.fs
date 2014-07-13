@@ -55,7 +55,7 @@ module Logging =
             debug "getting logger flyweight by name: %s" name
             let logger = FWL name :> FlyweightLogger
             Globals.flyweights := logger :: !Globals.flyweights
-            logger :> Logger
+            logger :> logger
           | Some lm ->
             debug "getting logger by name: %s" name
             name |> Registry.getLogger lm.registry |> Async.RunSynchronously

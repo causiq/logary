@@ -27,14 +27,14 @@ let tests =
   testList "formatting" [
     testCase "StringFormatter.Verbatim" <| fun _ ->
       (because "formatting the message verbatim" <| fun _ ->
-        Log.errorStr "hello world"
+        LogLine.errorStr "hello world"
         |> StringFormatter.Verbatim.format)
       |> should equal "hello world"
       |> thatsIt
 
     testCase "StringFormatter.VerbatimNewline" <| fun _ ->
       (because "logging verbatim with newline" <| fun () ->
-        Log.infoStr "hi there"
+        LogLine.infoStr "hi there"
         |> StringFormatter.VerbatimNewline.format)
       |> should equal (sprintf "hi there%s" Environment.NewLine)
       |> thatsIt

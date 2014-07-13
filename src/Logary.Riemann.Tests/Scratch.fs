@@ -2,7 +2,7 @@
 
 
 open Logary
-open Logary.Metrics
+open Logary.Measure
 
 open NodaTime
 
@@ -14,11 +14,13 @@ let plus t1 t2 = t1 + t2
 let minus t1 t2 = t1 - t2
 
 module Sut =
-  let tsdelta = function
-    | [] | [ _ ] -> failwith "this function is undefined to empty or single item lists"
-    | m1 :: m2 :: ms as all ->
-      let d = minus (timestamp m2) (timestamp m1)
-      m1 |> setInt64 (d.Ticks) |> setUnit Ticks
+  let tsdelta _ =
+//    function
+//    | [] | [ _ ] -> failwith "this function is undefined to empty or single item lists"
+//    | m1 :: m2 :: ms as all ->
+//      let d = minus (timestamp m2) (timestamp m1)
+//      m1 |> setInt64 (d.Ticks) |> setUnit Ticks
+    Measure.empty
 
 // tests
 

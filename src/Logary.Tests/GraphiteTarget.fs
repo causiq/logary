@@ -11,7 +11,7 @@ open Logary
 open Logary.Configuration
 open Logary.Target
 open Logary.Targets
-open Logary.Metric
+open Logary.Measure
 open Logary.Internals.Tcp
 
 open Logary.Tests.StubTcp

@@ -35,7 +35,7 @@ module LoggerExtensions =
 
   /// Log a log line to the log
   [<Extension; CompiledName("Log")>]
-  let log (logger : Logger, message, level, data, tags, path, ``exception``) =
+  let log (logger : logger, message, level, data, tags, path, ``exception``) =
     if String.IsNullOrWhiteSpace message then nullArg "message"
     { message       = message
       level         = level
@@ -48,7 +48,7 @@ module LoggerExtensions =
 
   /// Log a message with some accompanying data to the log
   [<Extension; CompiledName("Log")>]
-  let logAnnotate (logger : Logger, message, level, data) =
+  let logAnnotate (logger : logger, message, level, data) =
     if String.IsNullOrWhiteSpace message then nullArg "message"
     { message       = message
       level         = level
