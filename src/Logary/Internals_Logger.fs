@@ -85,17 +85,6 @@ type InternalLogger =
   static member Create(level, targets) =
     { lvl = level; trgs = targets } :> logger
 
-///// write a debug internal log entry
-//let debug fmt = Printf.ksprintf (put "D") fmt
-///// write an info internal log entry
-//let info  fmt = Printf.ksprintf (put "I") fmt
-///// write a warn internal log entry
-//let warn  fmt = Printf.ksprintf (put "W") fmt
-///// write an err internal log entry
-//let err   fmt = Printf.ksprintf (put "E") fmt
-///// write a fatal internal log entry
-//let fatal fmt = Printf.ksprintf (put "F") fmt
-
 module Try =
   /// Safely try to execute f, catching any exception thrown and logging that
   /// exception internally. Returns unit, irregardless of the codomain of f.

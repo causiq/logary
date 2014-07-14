@@ -49,7 +49,7 @@
     <Compile Include="Internals_Globals.fs" />
     <Compile Include="Rule.fs" />
     <Compile Include="Targets.fs" />
-    <Compile Include="Internals_InternalLogger.fs" />
+    <Compile Include="Internals_Logger.fs" />
     <Compile Include="Formatting.fs" />
     <Compile Include="LogaryConf.fs" />
     <Compile Include="Measure_Histogram.fs" />

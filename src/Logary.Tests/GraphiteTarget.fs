@@ -12,6 +12,7 @@ open Logary.Configuration
 open Logary.Target
 open Logary.Targets
 open Logary.Measure
+open Logary.Internals
 open Logary.Internals.Tcp
 
 open Logary.Tests.StubTcp
@@ -24,7 +25,7 @@ let tests =
       let client = new StubWriterClient(false)
       let conf = Graphite.GraphiteConf.Create("localhost", clientFac = fun a b -> client :> WriteClient)
       let graphite = Graphite.create conf "graphite-target"
-      let instance = graphite.initer { serviceName = "tests" }
+      let instance = graphite.initer { serviceName = "tests"; logger = NullLogger() }
       instance.name =? "graphite-target"
 
       (because "shutting down the target" <| fun () ->

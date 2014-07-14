@@ -6,6 +6,7 @@ open Swensen.Unquote
 open Logary
 open Logary.Target.TextWriter
 open Logary.Targets
+open Logary.Internals
 
 open TestDSL
 
@@ -15,13 +16,13 @@ let tests =
   testList "CoreTargets" [
     testCase "initialising TextWriter target" <| fun _ ->
       let target = create (TextWriterConf.Default(System.Console.Out, System.Console.Error)) "sample console"
-      let instance = target.initer { serviceName = "tests" }
+      let instance = target.initer { serviceName = "tests"; logger = NullLogger() }
       instance.name =? "sample console"
 
     testCase "writing with Console target directly" <| fun _ ->
       let stdout = Fac.textWriter ()
       let target = create (TextWriterConf.Default(stdout, stdout)) "writing console target"
-      let instance = target |> initTarget { serviceName = "tests" }
+      let instance = target |> initTarget { serviceName = "tests"; logger = NullLogger() }
 
       (because "logging with info level and then finalising the target" <| fun () ->
         "Hello World!" |> LogLine.info |> logTarget instance
@@ -33,7 +34,7 @@ let tests =
     testCase "``error levels should be to error text writer``" <| fun _ ->
       let out, err = Fac.textWriter (), Fac.textWriter ()
       let target = create (TextWriterConf.Default(out, err)) "error writing"
-      let subject = target |> initTarget { serviceName = "tests" }
+      let subject = target |> initTarget { serviceName = "tests"; logger = NullLogger() }
 
       (because "logging 'Error line' and 'Fatal line' to the target" <| fun () ->
         LogLine.error "Error line" |> logTarget subject
