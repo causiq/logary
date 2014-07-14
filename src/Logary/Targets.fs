@@ -34,8 +34,8 @@ type TargetInstance =
 /// Get the actor from the target instance
 let actor ti = ti.actor
 
-/// A target configuration is the 'reference' to the to-be-run target
-/// while it is being configured, and before Logary fully starts up.
+/// A target configuration is the 'reference' to the to-be-run target while it
+/// is being configured, and before Logary fully starts up.
 type TargetConf =
   { name     : string
     initer   : RuntimeInfo -> TargetInstance }

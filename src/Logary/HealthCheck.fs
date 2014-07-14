@@ -8,7 +8,7 @@ open Logary.Measure
 type ResultData =
   /// If the health check is for a value (which it probably is) then it should
   /// contain the measure generated.
-  abstract Measure : ``measure``
+  abstract Measure     : ``measure``
 
   /// Gets the description detailing what went badly with the evaluation of the
   /// health check. Useful for drilling down.
