@@ -22,7 +22,6 @@ open Logary.Targets
 open Logary.Internals
 open Logary.Internals.Tcp
 open Logary.Internals.Date
-open Logary.Internals.InternalLogger
 
 /// Logstash configuration structure.
 type LogstashConf =
@@ -158,11 +157,11 @@ type private Event =
 
 let private utf8 = System.Text.Encoding.UTF8
 
-let private maybeDispose =
+let private maybeDispose ilogger =
   Option.map box
   >> Option.iter (function
     | :? IDisposable as d ->
-      safeTry "disposing in riemann target" <| fun () ->
+      Try.safe "disposing in riemann target" ilogger <| fun () ->
         d.Dispose()
     | _ -> ())
 
@@ -219,8 +218,8 @@ let logstashLoop (conf : LogstashConf) metadata =
 
     and shutdown state ackChan =
       async {
-        state.sendRecvStream |> maybeDispose
-        safeTry "logstash target disposing tcp client" <| fun () ->
+        state.sendRecvStream |> maybeDispose metadata.logger
+        Try.safe "logstash target disposing tcp client" metadata.logger <| fun () ->
           (state.client :> IDisposable).Dispose()
         ackChan.Reply Ack
         return () }

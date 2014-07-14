@@ -7,7 +7,6 @@ open System.IO
 open ProtoBuf
 
 open Logary.Riemann.Messages
-open Logary.Internals.InternalLogger
 
 /// Converts int to networkByteOrder
 let toBytes (len : int) =

@@ -24,7 +24,7 @@ let tests =
       let instance = target |> initTarget { serviceName = "tests" }
 
       (because "logging with info level and then finalising the target" <| fun () ->
-        "Hello World!" |> LogLine.infoStr |> logTarget instance
+        "Hello World!" |> LogLine.info |> logTarget instance
         instance |> finaliseTarget
         stdout.ToString())
       |> should contain "Hello World!"
@@ -36,8 +36,8 @@ let tests =
       let subject = target |> initTarget { serviceName = "tests" }
 
       (because "logging 'Error line' and 'Fatal line' to the target" <| fun () ->
-        LogLine.errorStr "Error line" |> logTarget subject
-        LogLine.fatalStr "Fatal line" |> logTarget subject
+        LogLine.error "Error line" |> logTarget subject
+        LogLine.fatal "Fatal line" |> logTarget subject
         subject |> finaliseTarget
         err.ToString())
       |> should contain "Error line"

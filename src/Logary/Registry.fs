@@ -37,37 +37,6 @@ module internal Logging =
   open Logary.Internals
   open Logary.Internals.Date
 
-  /// A logger instance that keeps a reference to the actor targets that it
-  /// logs to, as well as its name.
-  type LoggerInstance =
-    { name    : string
-      targets : (LineFilter * IActor) list
-      level   : LogLevel }
-    with
-      interface Named with
-        member x.Name = x.name
-
-      interface logger with
-        member x.Log line =
-          // TODO: make functional:
-          for accept, t in x.targets do
-            try
-              if accept line then
-                t <-- Log line
-            with
-            | Actor.ActorInvalidStatus msg ->
-              err "Logging to %s failed, because of target state. Actor said: '%s'" x.name msg
-
-        member x.Measure m =
-          try
-            (x.targets |> List.map snd) <-* Measure m
-          with
-          | Actor.ActorInvalidStatus msg ->
-            err "Sending metric to %s failed, because of target state. Actor said: '%s'" x.name msg
-
-        member x.Level =
-          x.level
-
   /// Flyweight logger impl - reconfigures to work when it is configured, and until then
   /// throws away all log lines.
   type FWL(name) =
@@ -95,10 +64,10 @@ module internal Logging =
         Globals.flyweights := []
 
   /// Singleton configuration entry point: call from the runLogary code.
-  let startFlyweights logaryInstance =
+  let startFlyweights ({ metadata = { logger = lgr } } as inst) =
     lock Globals.criticalSection <| fun () ->
-      debug "Logging.logaryRun w/ logaryInstance"
-      Globals.singleton := Some logaryInstance
+      LogLine.debug "Logging.logaryRun w/ logaryInstance" |> Logger.log lgr
+      Globals.singleton := Some inst
       goFish ()
 
   /// Singleton configuration exit point: call from shutdownLogary code
@@ -118,7 +87,7 @@ module Advanced =
   open Logary.Rule
   open Logary.Targets
   open Logary.HealthCheck
-  open Logary.Internals.InternalLogger
+  open Logary.Internals
 
   module internal Seq =
     let all f s = Seq.fold (fun acc t -> acc && f t) true s
@@ -130,9 +99,12 @@ module Advanced =
   /// acceptor/filter (any matching acceptor).
   let getTargets conf name =
     let rules (rules, _, _) = rules
-    let combineAccept rules =
-      let accps = Seq.map (fun r -> r.lineFilter) rules
-      fun l -> Seq.any (fun a -> a l) accps
+    let createLineFilter rules =
+      let lfRules = Seq.map (fun r -> r.lineFilter) rules
+      fun l -> Seq.any (fun a -> a l) lfRules
+    let createMeasureFilter rules =
+      let mfRules = Seq.map (fun r -> r.measureFilter) rules
+      fun m -> Seq.any (fun mf -> mf m) mfRules
 
     conf.rules
     // first, filter by name
@@ -149,14 +121,17 @@ module Advanced =
     |> Seq.map (fun (_, ts) -> let _, t, ti = Seq.head ts in
                                  let rs       = Seq.map rules ts
                                  // find the min matching level from all rules for this target
-                                 combineAccept rs, t, ti, (rs |> Seq.map (fun r -> r.level) |> Seq.min))
+                                 createLineFilter rs,
+                                 createMeasureFilter rs,
+                                 t, ti,
+                                 (rs |> Seq.map (fun r -> r.level) |> Seq.min))
 
     // targets should be distinctly returned (deduplicated, so that doubly matching
     // rules don't duply log)
-    |> Seq.distinctBy (fun (_, t, _, _) -> t.name)
+    |> Seq.distinctBy (fun (_, _, t, _, _) -> t.name)
 
-    // project only the acceptor and the target instance
-    |> Seq.map (fun (accept, _, ti, level) -> accept, ti, level)
+    // project only the lineFilter, measureFilter and the target instance
+    |> Seq.map (fun (lineFilter, measureFilter, _, ti, level) -> lineFilter, measureFilter, ti, level)
 
     // back to a list
     |> List.ofSeq
@@ -197,10 +172,11 @@ module Advanced =
 
   /// Create a new Logger from the targets passed, with a given name.
   [<CompiledName "FromTargets">]
-  let fromTargets name (targets : (LineFilter * TargetInstance * LogLevel) list) =
+  let fromTargets name ilogger (targets : (LineFilter * MeasureFilter * TargetInstance * LogLevel) list) =
     { name    = name
-      targets = targets |> List.map (fun (a, ti, _) -> a, (Targets.actor ti))
-      level   = targets |> List.map (fun (_, _, level) -> level) |> List.min }
+      targets = targets |> List.map (fun (lf, mf, ti, _) -> lf, mf, (Targets.actor ti))
+      level   = targets |> List.map (fun (_, _, _, level) -> level) |> List.min
+      ilogger = ilogger }
     :> logger
 
   let private snd' (kv : System.Collections.Generic.KeyValuePair<_, _>) = kv.Value
@@ -236,13 +212,14 @@ module Advanced =
   /// The registry function that works as an actor.
   let rec private registry conf initialState =
     let targetActors = conf.targets |> Seq.map actorInstance
+    let ilogger = conf.metadata.logger
     (fun (inbox : IActor<_>) ->
       /// In the running state, the registry takes queries for loggers, gauges, etc...
       let rec running state = async {
         let! msg, _ = inbox.Receive()
         match msg with
         | GetLogger (name, chan) ->
-          chan.Reply( name |> getTargets conf |> fromTargets name )
+          chan.Reply( name |> getTargets conf |> fromTargets name ilogger )
           return! running state
         | RegisterHealthCheck actor ->
           let state' = { state with hcs = state.hcs |> Map.add actor.Id actor }
@@ -253,7 +230,7 @@ module Advanced =
           state.supervisor.UnLink actor // TODO: upgrade FSharp.Actor
           return! running state'
         | FlushPending(dur, chan) ->
-          info "%s" "registry: flush start"
+          LogLine.info "registry: flush start" |> Logger.log ilogger
           let! allFlushed =
             targetActors
             // wait for flushes across all targets
@@ -265,11 +242,11 @@ module Advanced =
 
           chan.Reply <|
             if List.isEmpty notFlushed then
-              info "%s" "registry: flush Ack"
+              LogLine.info "registry: flush Ack" |> Logger.log ilogger
               Ack
             else 
               let msg = sprintf "Failed target flushes:%s%s" nl (toTextList notFlushed)
-              err "registry: flush Nack - %s" msg
+              LogLine.errorf "registry: flush Nack - %s" msg |> Logger.log ilogger
               Nack msg
           return! running state
         | ShutdownLogary(dur, ackChan) ->
@@ -278,7 +255,7 @@ module Advanced =
       /// In the shutdown state, the registry doesn't respond to messages, but rather tries to
       /// flush and shut down all targets, doing internal logging as it goes.
       and shutdown (dur : Duration) (ackChan : Acks ReplyChannel) = async {
-        info "%s" "registry: shutdown start"
+        LogLine.info "registry: shutdown start" |> Logger.log ilogger
         let! allShutdown =
           targetActors
           |> Seq.pmap (Actor.makeRpc ShutdownTarget (Timeout(dur.ToTimeSpan ())))
@@ -289,14 +266,14 @@ module Advanced =
 
         ackChan.Reply <|
           if List.isEmpty failed then
-            info "%s" "registry: shutdown Ack"
+            LogLine.info "registry: shutdown Ack" |> Logger.log ilogger
             Ack
           else
             let msg = sprintf "Failed target shutdowns:%s%s" nl (toTextList failed)
-            err "registry: shutdown Nack%s%s" nl msg
+            LogLine.errorf "registry: shutdown Nack%s%s" nl msg |> Logger.log ilogger
             Nack msg
 
-        info "%s" "shutting down registry immediately"
+        LogLine.info "shutting down registry immediately" |> Logger.log ilogger
         return () }
 
       running initialState)
@@ -307,19 +284,20 @@ module Advanced =
   ///
   /// It is not until runRegistry is called, that each target gets its service
   /// metadata, so it's no need to pass the metadata to the target before this.
-  let runRegistry (conf : LogaryConf) =
-    let makeTargetLive tuple = tuple |> fst |> initTarget conf.metadata
+  let runRegistry ({ metadata = { logger = lgr } } as conf : LogaryConf) =
+    let makeTargetLive = fst >> initTarget conf.metadata
     let targets' =
       conf.targets
       |> Seq.map (fun kv -> kv.Key, (fst kv.Value, Some(makeTargetLive (snd' kv))))
       |> Map.ofSeq
+
     let conf' = { conf with targets = targets' }
     let targetActors = targets' |> Seq.map actorInstance
     let supervisor =
       Supervisor.spawn <| Supervisor.Options.Create(None, Supervisor.Strategy.OneForOne, Actor.Options.Create("logaryRoot/supervisor"))
       |> Supervisor.superviseAll targetActors
 
-    debug "runRegistry: supervisor status: %A" supervisor.Status
+    LogLine.debugf "runRegistry: supervisor status: %A" supervisor.Status |> Logger.log lgr
 
     let logaryInstance =
       { supervisor = supervisor
@@ -327,6 +305,6 @@ module Advanced =
                                  (registry conf' (RegistryState.Create supervisor))
         metadata   = conf'.metadata }
 
-    debug "runRegistry: registry status: %A" logaryInstance.registry.Status
+    LogLine.debugf "runRegistry: registry status: %A" logaryInstance.registry.Status |> Logger.log lgr
 
     logaryInstance

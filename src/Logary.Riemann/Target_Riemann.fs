@@ -23,7 +23,6 @@ open Logary.Riemann.Messages
 open Logary.Targets
 open Logary.Internals
 open Logary.Internals.Tcp
-open Logary.Internals.InternalLogger
 
 /// Make a stream from a TcpClient and an optional certificate validation
 /// function
@@ -195,7 +194,7 @@ let riemannLoop (conf : RiemannConf) metadata =
 
     and shutdown state ackChan =
       async {
-        safeTry "riemann target disposing tcp stream, then client" <| fun () ->
+        Try.safe "riemann target disposing tcp stream, then client" metadata.logger <| fun () ->
           (state.stream :> IDisposable).Dispose()
           (state.client :> IDisposable).Dispose()
         ackChan.Reply Ack

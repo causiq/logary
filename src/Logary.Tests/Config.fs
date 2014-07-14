@@ -5,17 +5,18 @@ open Fuchu
 
 open System
 open System.IO
+open System.Text.RegularExpressions
 
 open Logary
 open Logary.Target
+open Logary.Targets
 open Logary.Measure
 open Logary.Formatting
 open Logary.Logging
-
-open Logary.Targets
 open Logary.Configuration.Config
-open System.Text.RegularExpressions
-open Internals.Tcp
+open Logary.Internals
+open Logary.Internals.Tcp
+
 open TestDSL
 
 let isTarget name (t : TargetInstance) = t.name =? name
@@ -37,8 +38,8 @@ let tests =
     testCase "target lifecycle" <| fun _ ->
       confTarget "tw" (create (TextWriterConf.Default(Fac.textWriter(), Fac.textWriter())))
       |> validateTarget
-      |> initTarget { serviceName = "tests" }
-      |> send (LogLine.debugStr "Hello")
+      |> initTarget { serviceName = "tests"; logger = NullLogger() }
+      |> send (LogLine.debug "Hello")
       |> shutdownTarget
       |> Async.RunSynchronously
       |> ignore

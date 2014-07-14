@@ -183,7 +183,7 @@ module LogLine =
   /// Write a error log entry, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
   [<CompiledName "ErrorFormat">]
-  let errorf fmt = Printf.kprintf (logLine Error)
+  let errorf fmt = Printf.kprintf (logLine Error) fmt
 
   /// Create an error log line with a message and a tag
   [<CompiledName "ErrorTag">]

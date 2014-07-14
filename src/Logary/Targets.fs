@@ -39,7 +39,7 @@ let actor ti = ti.actor
 type TargetConf =
   { name   : string
     initer : RuntimeInfo -> TargetInstance }
-  override x.ToString() = sprintf "{ name = %s } : TargetConf" x.name
+  override x.ToString() = sprintf "TargetConf(name = %s)" x.name
 
 /// 'API helper' method for flowing the target through
 /// a configurator factory that is then used to change the

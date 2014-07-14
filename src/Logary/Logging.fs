@@ -14,7 +14,6 @@ open NodaTime
 
 open Logary.Registry.Logging
 open Logary.Internals
-open Logary.Internals.InternalLogger
 
 module Seq =
   let last xs = Seq.reduce (fun _ x -> x) xs
