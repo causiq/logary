@@ -9,7 +9,7 @@ module Configuration_TargetDefaults =
 
   open Logary
   open Logary.Target
-  open Logary.Rules
+  open Logary.Rule
   open Logary.Configuration
 
   /// Run with console and debugger targets with sane configurations.
@@ -22,8 +22,8 @@ module Configuration_TargetDefaults =
       [ Console.create Console.ConsoleConf.Default "console"
         Debugger.create Debugger.DebuggerConf.Default "debugger" ]
     |> withRules
-      [ { Rules.forAny "console" with level = Debug }
-        { Rules.forAny "debugger" with level = Debug } ]
+      [ { Rule.forAny "console" with level = Debug }
+        { Rule.forAny "debugger" with level = Debug } ]
 
   /// Run with console and debugger targets with sane configurations as well
   /// as a logstash configuration.
@@ -31,7 +31,7 @@ module Configuration_TargetDefaults =
   let goodDefaultsAndLogstash name hostname port =
     goodDefaults name
     |> withTarget (Logstash.create (Logstash.LogstashConf.Create(hostname, port)) "logstash")
-    |> withRule ({ Rules.forAny "logstash" with level = Debug })
+    |> withRule ({ Rule.forAny "logstash" with level = Debug })
 
   /// Start logary with sane SOA/service-defaults, remember to call
   /// shutdownLogary at the end of the program. Pass the name of the

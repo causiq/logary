@@ -11,7 +11,7 @@ open Logary.Configuration
 
 let expected_level = Warn
 
-let configure_level (r : Targets.Rule) =
+let configure_level (r : rule) =
   { r with level = Some Warn |> Option.fold (fun s t -> t) Debug }
 
 let givens () = goodDefaults "tests" |> fun conf -> { conf with rules = conf.rules |> List.map configure_level }

@@ -1,23 +1,6 @@
 ﻿namespace Logary.Internals
 
-module internal Date =
-  open System
-  open NodaTime
-  let private epoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-  let toEpoch (dt : DateTime) = int64 <| (dt.ToUniversalTime() - epoch).TotalSeconds
-  let utcNow () = SystemClock.Instance.Now
-
-module internal Map =
-  let put k v (m : Map<_,_>) =
-    match m.TryFind k with
-    | None -> m |> Map.add k v
-    | Some _ -> m |> Map.remove k |> Map.add k v
-
-[<AutoOpen>]
-module internal Set =
-  let (|EmptySet|_|) = function
-    | (s : _ Set) when s.Count = 0 -> Some EmptySet
-    | _ -> None
+// DEPRECATED, refactor!
 
 // TODO: this module can be redone much nicer with an expressive API of possible
 // states rather then the current 'one method only' approach!

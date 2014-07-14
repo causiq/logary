@@ -1,6 +1,7 @@
 namespace Logary
 
 open System
+
 open NodaTime
 
 /// The log levels specify the severity of the message.

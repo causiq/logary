@@ -21,6 +21,7 @@ open Logary
 open Logary.Riemann.Client
 open Logary.Riemann.Messages
 open Logary.Targets
+open Logary.Internals
 open Logary.Internals.Tcp
 open Logary.Internals.InternalLogger
 
@@ -162,7 +163,7 @@ let riemannLoop (conf : RiemannConf) metadata =
     let rec init () =
       async {
         let client = conf.clientFac conf.endpoint
-        let stream = client.GetStream()
+        let stream = mkStream client conf.caValidation
         return! running { client = client
                           stream = stream } }
 

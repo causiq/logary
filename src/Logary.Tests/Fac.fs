@@ -7,11 +7,11 @@ open System.Text
 open FSharp.Actor
 
 open Logary
+open Logary.Internals
 open Logary.Target.TextWriter
 open Logary.Configuration.Config
-
-open Rules
-open Targets
+open Logary.Rule
+open Logary.Targets
 
 open TestDSL
 
@@ -19,11 +19,7 @@ let emptyTarget =
   { name  = "empty target"
     actor = Actor.spawn Actor.Options.Default (fun _ -> async { return () }) }
 
-let emptyRule =
-  { hiera  = Regex(".*")
-    target = "empty target"
-    accept = fun _ -> true
-    level  = Verbose }
+let emptyRule = Rule.forAny "empty target"
 
 let textWriter () =
   let sb = new StringBuilder()
@@ -34,11 +30,7 @@ let withLogary f =
 
   let target = confTarget "cons" (create <| TextWriterConf.Default(out, err))
 
-  let rule =
-    { accept = fun _ -> true
-      hiera = Regex ".*"
-      level = LogLevel.Verbose
-      target = target.name }
+  let rule = Rule.forAny "cons"
 
   let logary =
     confLogary "tests"

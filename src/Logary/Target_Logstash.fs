@@ -14,10 +14,12 @@ open System.Net
 open System.Net.Sockets
 open System.IO
 
-open Logary
-open Formatting
-open Targets
+open Newtonsoft.Json.Linq
 
+open Logary
+open Logary.Formatting
+open Logary.Targets
+open Logary.Internals
 open Logary.Internals.Tcp
 open Logary.Internals.Date
 open Logary.Internals.InternalLogger
@@ -163,9 +165,6 @@ let private maybeDispose =
       safeTry "disposing in riemann target" <| fun () ->
         d.Dispose()
     | _ -> ())
-
-open Formatting
-open Newtonsoft.Json.Linq
 
 /// All logstash messages are of the following form.
 /// json-event\n

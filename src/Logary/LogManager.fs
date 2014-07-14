@@ -4,11 +4,13 @@ open NodaTime
 
 open FSharp.Actor
 
+open Logary.Internals
+
 /// A type that encapsulates the moving parts of a configured Logary.
 type LogaryInstance =
   { supervisor : IActor
     registry   : IActor
-    metadata   : ServiceMetadata }
+    metadata   : RuntimeInfo }
 
 /// A type that gives information on how the shutdown went
 type ShutdownState =
@@ -32,7 +34,7 @@ type LogManager =
 
   /// Gets the service name that is used to filter and process the logs further
   /// downstream. This property is configured at initialisation of Logary.
-  abstract Metadata : ServiceMetadata
+  abstract RuntimeInfo : RuntimeInfo
 
   /// Get a logger denoted by the name passed as the parameter. This name can either be
   /// a specific name that you keep for a sub-component of your application or 

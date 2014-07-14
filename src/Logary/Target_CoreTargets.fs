@@ -8,6 +8,7 @@ module TextWriter =
   open FSharp.Actor
 
   open Logary
+  open Logary.Internals
   open Logary.Targets
   open Logary.Formatting
   open Logary.Internals.InternalLogger
@@ -150,6 +151,7 @@ module Debugger =
   open FSharp.Actor
 
   open Logary
+  open Logary.Internals
   open Logary.Targets
   open Logary.Formatting
 

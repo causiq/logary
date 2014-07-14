@@ -27,14 +27,14 @@ let main argv =
         Console.create (Console.ConsoleConf.Default) "console"
       ] >>
       withRules [
-        Rule.Create(Regex(@".*"), "riemann", (fun _ -> true), LogLevel.Verbose)
-        Rule.Create(Regex(@".*"), "console", (fun _ -> true), LogLevel.Verbose)
+        Rule.forAny "riemann"
+        Rule.forAny "console"
       ]
     )
     |> Config.asLogManager
 
-  clr_proc |> Registry.RegisterHealthCheck logary
-  cpus |> Registry.registerHealthChecks logary
+//  clr_proc |> Registry.RegisterHealthCheck logary
+//  cpus |> Registry.registerHealthChecks logary
 
 // TODO:
 //  let logger = logary.GetLogger "Riemann.Example"

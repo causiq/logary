@@ -13,6 +13,7 @@ module Graphite =
   open System.Globalization
 
   open Logary
+  open Logary.Internals
   open Logary.Targets
   open Logary.Measure
   open Logary.Internals.Tcp
@@ -68,8 +69,7 @@ module Graphite =
       do! stream.Write( m )
       return { state with sendRecvStream = Some stream } }
 
-
-  let private graphiteLoop (conf : GraphiteConf) (svc : ServiceMetadata) =
+  let private graphiteLoop (conf : GraphiteConf) (svc : RuntimeInfo) =
     (fun (inbox : IActor<_>) ->
       let rec init () =
         async {

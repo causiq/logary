@@ -9,44 +9,7 @@ open System.Text.RegularExpressions
 
 open FSharp.Actor
 
-/// This is the accept filter that is before the log line is passed to the logger
-/// instance.
-type Acceptor = logline -> bool
-
-/// A rule specifies what log lines and metrics a target should accept.
-[<CustomEquality; NoComparison>]
-type Rule =
-  { /// This is the regular expression that the 'path' must match to be loggable
-    hiera  : Regex
-    /// This is the name of the target that this rule applies to
-    target : string
-    /// This is the accept filter that is before the log line is passed to the logger
-    /// instance.
-    accept : Acceptor
-    /// This is the level at which the target will accept log lines. It's inclusive, so
-    /// anything below won't be accepted.
-    level  : LogLevel }
-    /// Create a new rule with the given hiera, target, accept function and min level
-    /// acceptable.
-  static member Create(hiera, target, accept : System.Func<_, _>, level : LogLevel) =
-    { hiera  = hiera
-      target = target
-      accept = fun l -> accept.Invoke l
-      level  = level }
-
-  override x.GetHashCode () = hash (x.hiera.ToString(), x.target, x.level)
-
-  override x.Equals other =
-    match other with
-    | null -> false
-    | :? Rule as o -> (x :> IEquatable<Rule>).Equals(o)
-    | _ -> false
-
-  interface System.IEquatable<Rule> with
-    member x.Equals r = r.hiera.ToString() = x.hiera.ToString() && r.target = x.target && r.level = x.level
-
-  override x.ToString() =
-    sprintf "Rule { hiera=%O; target=%s; level=%O }" x.hiera x.target x.level
+open Logary.Internals
 
 /// The protocol that a target can speak
 type TargetMessage =
@@ -75,7 +38,7 @@ let actor ti = ti.actor
 /// while it is being configured, and before Logary fully starts up.
 type TargetConf =
   { name     : string
-    initer   : ServiceMetadata -> TargetInstance }
+    initer   : RuntimeInfo -> TargetInstance }
   override x.ToString() = sprintf "{ name = %s } : TargetConf" x.name
 
 /// 'API helper' method for flowing the target through

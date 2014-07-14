@@ -5,6 +5,7 @@ open FSharp.Actor
 
 open NodaTime
 
+open Logary.Internals
 open Logary.Targets
 open Logary.HealthCheck
 
@@ -41,7 +42,7 @@ module internal Logging =
   /// logs to, as well as its name.
   type LoggerInstance =
     { name    : string
-      targets : (Acceptor * IActor) list
+      targets : (LineFilter * IActor) list
       level   : LogLevel }
     with
       interface Named with
@@ -114,7 +115,7 @@ module Advanced =
 
   open Logary
   open Logary.Measure
-  open Logary.Rules
+  open Logary.Rule
   open Logary.Targets
   open Logary.HealthCheck
   open Logary.Internals.InternalLogger
@@ -130,7 +131,7 @@ module Advanced =
   let getTargets conf name =
     let rules (rules, _, _) = rules
     let combineAccept rules =
-      let accps = Seq.map (fun r -> r.accept) rules
+      let accps = Seq.map (fun r -> r.lineFilter) rules
       fun l -> Seq.any (fun a -> a l) accps
 
     conf.rules
@@ -145,7 +146,7 @@ module Advanced =
     |> Seq.groupBy (fun (r, t, ti) -> t.name)
 
     // combine acceptors with Seq.any/combineAccept
-    |> Seq.map (fun (key, ts) -> let _, t, ti = Seq.head ts in
+    |> Seq.map (fun (_, ts) -> let _, t, ti = Seq.head ts in
                                  let rs       = Seq.map rules ts
                                  // find the min matching level from all rules for this target
                                  combineAccept rs, t, ti, (rs |> Seq.map (fun r -> r.level) |> Seq.min))
@@ -196,7 +197,7 @@ module Advanced =
 
   /// Create a new Logger from the targets passed, with a given name.
   [<CompiledName "FromTargets">]
-  let fromTargets name (targets : (Acceptor * TargetInstance * LogLevel) list) =
+  let fromTargets name (targets : (LineFilter * TargetInstance * LogLevel) list) =
     { name    = name
       targets = targets |> List.map (fun (a, ti, _) -> a, (Targets.actor ti))
       level   = targets |> List.map (fun (_, _, level) -> level) |> List.min }
@@ -238,7 +239,7 @@ module Advanced =
     (fun (inbox : IActor<_>) ->
       /// In the running state, the registry takes queries for loggers, gauges, etc...
       let rec running state = async {
-        let! msg, mopt = inbox.Receive()
+        let! msg, _ = inbox.Receive()
         match msg with
         | GetLogger (name, chan) ->
           chan.Reply( name |> getTargets conf |> fromTargets name )

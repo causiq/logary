@@ -4,7 +4,7 @@
 type logger =
   inherit Named
 
-  /// Write a log lone to the logger.
+  /// Write a log line to the logger.
   abstract Log     : logline -> unit
 
   /// Write a measure to the logger.

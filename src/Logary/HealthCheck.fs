@@ -42,6 +42,7 @@ module HealthCheck =
 
   open FSharp.Actor
 
+  open Logary.Internals
   open Logary.Measure
 
   /// A key in the `data` map inside the `Measure` type.

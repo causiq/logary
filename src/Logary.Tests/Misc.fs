@@ -55,24 +55,24 @@ let tests =
         (l1 :> IComparable<LogLevel>).CompareTo(l2) =? -1
 
     yield testCase "retrieving rule for name" <| fun _ ->
-      let rules = [] : Rule list
-      let found = rules |> Rules.matching "a.b.c"
+      let rules = [] : rule list
+      let found = rules |> Rule.matching "a.b.c"
       found =? []
 
     yield testCase "retrieving existing rule for name" <| fun _ ->
-      let found = [ Fac.emptyRule ] |> Rules.matching "a"
+      let found = [ Fac.emptyRule ] |> Rule.matching "a"
       theSubject found.Head.target
       |> should equal "empty target"
       |> thatsIt
 
     yield testCase "retrieving rule that doesn't match fails" <| fun _ ->
       let funnyRules = [ { Fac.emptyRule with hiera = Regex("^$") } ]
-      let found = funnyRules |> Rules.matching "a"
+      let found = funnyRules |> Rule.matching "a"
       found =? []
 
     yield testCase "retrieving two matching rules" <| fun _ ->
       let rules = [ Fac.emptyRule ; { Fac.emptyRule with hiera = Regex(@"^a\.b") }]
-      let found = rules |> Rules.matching "a.b.c"
+      let found = rules |> Rule.matching "a.b.c"
       found =? rules
 
     yield testCase "retrieving two matching rules one non-matching" <| fun _ ->
@@ -81,7 +81,7 @@ let tests =
           { Fac.emptyRule with hiera = Regex(@"^a\.b") }
           { Fac.emptyRule with hiera = Regex(@"^a\.b\.d") } ]
       rules
-      |> Rules.matching "a.b.c"
+      |> Rule.matching "a.b.c"
       |> List.zip [ Fac.emptyRule; { Fac.emptyRule with hiera =  Regex(@"^a\.b") } ]
       |> List.iter (fun (found, expected) -> found =? expected)
 
@@ -90,7 +90,7 @@ let tests =
       (executing "validateLogary with a rule that doesn't have a matching target" <| fun () ->
         confLogary "tests"
         |> withRules
-          [ Rule.Create(Regex(@".*"), "not-correct-target", (fun _ -> true), LogLevel.Verbose) ]
+          [ Rule.forAny "not-correct-target" ]
         |> withTargets
           [ confTarget "another-target-name" (TextWriter.create <| TextWriter.TextWriterConf.Default(out, out)) ]
         |> validateLogary |> ignore)
@@ -102,10 +102,10 @@ let tests =
       let rules = [
         // "path.1" will be match by two rules
         // "path.1.extra" will be match by one rule
-        Rule.Create(Regex("path\.1"), "t1", (fun line -> false), Info)
-        Rule.Create(Regex("path\.1\.extra"), "t1", (fun line -> false), Verbose)
-        Rule.Create(Regex("path\.2"), "t2", (fun line -> false), Warn)
-        Rule.Create(Regex("path\.2\.extra"), "t2", (fun line -> false), Error)
+        rule.Create(Regex("path\.1"), "t1", (fun line -> false), level = Info)
+        rule.Create(Regex("path\.1\.extra"), "t1", (fun line -> false), level = Verbose)
+        rule.Create(Regex("path\.2"), "t2", (fun line -> false), level = Warn)
+        rule.Create(Regex("path\.2\.extra"), "t2", (fun line -> false), level = Error)
       ]
       let targets = [
         confTarget "t1" (TextWriter.create <| TextWriter.TextWriterConf.Default(out, out))
@@ -134,8 +134,8 @@ let tests =
       let out = Fac.textWriter ()
 
       let rules =
-        [ { Fac.emptyRule with accept = (fun l -> l.path = "1") ; target = "tw" }
-          { Fac.emptyRule with accept = (fun l -> l.path = "2") ; target = "tw" } ]
+        [ { Fac.emptyRule with lineFilter = (fun l -> l.path = "1") ; target = "tw" }
+          { Fac.emptyRule with lineFilter = (fun l -> l.path = "2") ; target = "tw" } ]
 
       let targets =
         [ confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Default(out, out)) ]
@@ -172,7 +172,7 @@ let tests =
 
     yield testCase "filter should never pass anything through" <| fun _ ->
       let out = Fac.textWriter ()
-      let rules   = [ { hiera  = Regex(".*"); target = "tw"; accept = (fun line -> false); level  = Debug } ]
+      let rules   = [ { hiera  = Regex(".*"); target = "tw"; lineFilter = (fun line -> false); measureFilter = Rule.allowFilter; level = Debug } ]
       let targets = [ confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Default(out, out)) ]
       let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validateLogary |> runLogary
       try
@@ -196,8 +196,8 @@ let tests =
     yield testCase "filter should only pass through one path" <| fun _ ->
       let out = Fac.textWriter ()
       let rules   = [
-        { hiera  = Regex(".*"); target = "tw"; accept = (fun line -> false); level  = Verbose }
-        { hiera  = Regex(".*"); target = "tw"; accept = (fun line -> line.path = "a.b.c"); level  = Verbose }
+        { hiera  = Regex(".*"); target = "tw"; lineFilter = (fun line -> false); measureFilter = Rule.allowFilter; level  = Verbose }
+        { hiera  = Regex(".*"); target = "tw"; lineFilter = (fun line -> line.path = "a.b.c"); measureFilter = Rule.allowFilter; level  = Verbose }
         ]
       let targets = [ confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Default(out, out)) ]
       let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validateLogary |> runLogary

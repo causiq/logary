@@ -8,6 +8,7 @@ open NLog.Config
 open FSharp.Actor
 
 open Logary
+open Logary.Internals
 open Logary.Targets
 open Logary.Targets.TargetUtils
 

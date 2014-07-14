@@ -2,6 +2,7 @@
 /// required configuration for Logary.
 [<AutoOpen>]
 module Logary.Configuration.Config
+
 open FSharp.Actor
 
 open System
@@ -10,6 +11,7 @@ open System.Runtime.CompilerServices
 open NodaTime
 
 open Logary
+open Logary.Internals
 open Logary.Targets
 open Logary.Registry
 
@@ -18,8 +20,8 @@ open Logary.Registry
 /// on with the logs after they have been sent.
 [<CompiledName "ConfigureLogary">]
 let confLogary serviceName =
-  { rules = []
-    targets = Map.empty
+  { rules    = []
+    targets  = Map.empty
     metadata = { serviceName = serviceName } }
 
 /// Add a new target to the configuration. You also need to supple a rule for
@@ -54,7 +56,6 @@ open Logary.Internals.InternalLogger
 [<CompiledName "ValidateLogary"; Extension>]
 let validateLogary conf =
   let targets   = conf.targets |> Map.fold (fun acc k _ -> k :: acc) [] |> Set.ofList
-  let ruleTargs = conf.rules |> List.map (fun r -> r.target)
   let invalidRules =
     [ for r in conf.rules do
         if not(targets |> Set.contains r.target) then
@@ -96,7 +97,7 @@ let shutdownLogary =
 let asLogManager (inst : LogaryInstance) =
   let run = Async.RunSynchronously
   { new LogManager with
-      member x.Metadata           = inst.metadata
+      member x.RuntimeInfo           = inst.metadata
       member x.GetLogger name     = name |> getLogger inst.registry |> run
       member x.FlushPending dur   = Advanced.flushPending dur inst.registry |> run
       member x.Shutdown fDur sDur = shutdownLogary' fDur sDur inst |> run

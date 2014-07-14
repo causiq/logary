@@ -2,13 +2,23 @@
 /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
 ///
 /// TODO: make modular and configurable when Logary is started
-module Logary.Internals.InternalLogger
+module Logary.Internals.InternalLogger // TODO: refactor towards namespace with no values
 
 open System
 open System.Globalization
 open System.Diagnostics
 
 open Logary
+
+type InternalLoggerImpl(lvl, target) =
+  interface logger with
+    member x.Log line =
+      ()
+    member x.Measure m =
+      ()
+    member x.Level =
+      lvl
+    member x.Name = "Logary.Internals.InternalLogger"
 
 let private put lvl (m : string) : unit =
   let n = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture)
