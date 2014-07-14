@@ -1,6 +1,5 @@
 ﻿module Scratch
 
-
 open Logary
 open Logary.Measure
 
