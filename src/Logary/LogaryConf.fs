@@ -1,5 +1,6 @@
-﻿namespace Logary
+﻿namespace Logary.Configuration
 
+open Logary
 open Logary.Internals
 open Logary.Targets
 

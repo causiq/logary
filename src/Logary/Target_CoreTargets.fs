@@ -11,7 +11,6 @@ module TextWriter =
   open Logary.Internals
   open Logary.Targets
   open Logary.Formatting
-  open Logary.Internals.InternalLogger
 
   /// Configuration for a text writer
   type TextWriterConf =
@@ -52,19 +51,14 @@ module TextWriter =
         | Measure m ->
           return! loop ()
         | Flush chan ->
-          info "%s: flush start" inbox.Id
           out.Flush()
           err.Flush()
-          info "%s: flush Ack" inbox.Id
           chan.Reply Ack
-          info "%s: recursing loop" inbox.Id
           return! loop ()
         | ShutdownTarget ackChan ->
-          info "%s: shutdown Ack" inbox.Id
           out.Dispose()
           if not (obj.ReferenceEquals(out, err)) then err.Dispose() else ()
           ackChan.Reply Ack
-          info "%s: shutting down immediately" inbox.Id
           return () }
       loop ())
 

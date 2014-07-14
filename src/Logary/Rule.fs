@@ -57,8 +57,8 @@ type rule =
 /// log lines and measures before they are sent to the targets.
 module Rule =
 
-  // Acceptors:
-
+  // filters:
+  /// A filter that accepts any input given
   let allowFilter _ = true
 
   /// Find all rules matching the name, from the list of rules passed.
@@ -69,16 +69,19 @@ module Rule =
   // Creating rules: //
   /////////////////////
 
+  let private allHiera = Regex(".*", RegexOptions.Compiled)
+
   /// An empty rule; don't forget to give it a proper name or the configuration
   /// won't work, e.g. using the `forAny` method.
   let empty =
-    { hiera         = Regex(".*")
+    { hiera         = allHiera
       target        = ""
       lineFilter    = fun _ -> true
       measureFilter = fun _ -> true
       level         = Verbose }
 
-  /// Create a rule with the given regex/hiera, accept function and level given a target configuration.
+  /// Create a rule with the given regex/hiera, accept function and level given
+  /// a target configuration.
   let forTarget hiera lineFilter measureFilter level (targetName : string) =
     { hiera         = hiera
       target        = targetName

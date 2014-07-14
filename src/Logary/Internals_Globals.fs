@@ -1,14 +1,10 @@
 ﻿namespace Logary.Internals
 
-/// Module that is the ONLY module allowed to have global
-/// variables; created so that consumer applications may
-/// call into Logary without having a reference to the LogManager
-/// first.
-/// Also used to have a method for handling internal logging (the
-/// chicken and the egg problem, but I'm looking to inject the
-/// internal logger in a nicer fashion).
-/// The globals in this module are configured in module "Logging"
-/// and module "InternalLogger".
+/// Module that is the ONLY module allowed to have global variables; created so
+/// that consumer applications may call into Logary without having a reference
+/// to the LogManager first.
+///
+/// The globals in this module are configured in module "Logging".
 module internal Globals =
   open Logary
 
@@ -25,9 +21,3 @@ module internal Globals =
 
   /// A list of all loggers yet to be configured
   let flyweights : FlyweightLogger list ref = ref []
-
-  /// The writer to use for printing internal logging. Currently
-  /// a global variable, that I would prefer to change into something
-  /// that is not global.
-  let write : (string -> unit) ref =
-    ref (System.Console.WriteLine : string -> unit)

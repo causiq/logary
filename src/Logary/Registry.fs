@@ -35,7 +35,6 @@ module internal Logging =
 
   open Logary.Targets
   open Logary.Internals
-  open Logary.Internals.InternalLogger
   open Logary.Internals.Date
 
   /// A logger instance that keeps a reference to the actor targets that it
@@ -114,6 +113,7 @@ module Advanced =
   open Logging
 
   open Logary
+  open Logary.Configuration
   open Logary.Measure
   open Logary.Rule
   open Logary.Targets

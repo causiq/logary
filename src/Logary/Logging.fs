@@ -49,15 +49,14 @@ let getLoggerByName name =
   | IsNull    -> nullArg "name"
   | _ as name ->
     lock Globals.criticalSection <| fun () ->
-        match !Globals.singleton with
-        | None ->
-          debug "getting logger flyweight by name: %s" name
-          let logger = FWL name :> FlyweightLogger
-          Globals.flyweights := logger :: !Globals.flyweights
-          logger :> logger
-        | Some lm ->
-          debug "getting logger by name: %s" name
-          name |> Registry.getLogger lm.registry |> Async.RunSynchronously
+      match !Globals.singleton with
+      | None ->
+        let logger = FWL name :> FlyweightLogger
+        Globals.flyweights := logger :: !Globals.flyweights
+        logger :> logger
+      | Some { registry = reg; metadata = { logger = logger } } ->
+        logger.Log (LogLine.debugf "getting logger by name: %s" name)
+        name |> Registry.getLogger reg |> Async.RunSynchronously
 
 /// Gets the current logger from the context that this method was called
 /// in.

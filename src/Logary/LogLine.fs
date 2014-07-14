@@ -36,7 +36,7 @@ module LogLine =
       data          = Map.empty
       level         = LogLevel.Info
       tags          = []
-      timestamp     = Internals.Date.utcNow ()
+      timestamp     = Date.utcNow ()
       path          = ""
       ``exception`` = None }
 
@@ -120,84 +120,84 @@ module LogLine =
 
   /// Create a new log line at the specified level for the given message.
   [<CompiledName "LogLine">]
-  let logLine level msg =
+  let logLine level msg = // TODO: rename to 'create'
     { empty with level = level
                  message = msg }
+
+  /// Create a verbose log line with a message
+  [<CompiledName "Verbose">]
+  let verbose = logLine Verbose
 
   /// Create a verbose log line, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
   [<CompiledName "VerboseFormat">]
   let verbosef fmt = Printf.kprintf (logLine Verbose) fmt
 
-  /// Create a verbose log line with a message
-  [<CompiledName "VerboseString">]
-  let verboseStr = logLine Verbose
-
   /// Create a verbose log line with a message and a tag
-  [<CompiledName "VerboseStringTag">]
-  let verboseStrTag tag = setTag tag << logLine Verbose
+  [<CompiledName "VerboseTag">]
+  let verboseTag tag = setTag tag << logLine Verbose
+
+  /// Create a debug log line with a message
+  [<CompiledName "Debug">]
+  let debug = logLine Debug
 
   /// Write a debug log entry, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
   [<CompiledName "DebugFormat">]
   let debugf fmt = Printf.kprintf (logLine Debug) fmt
 
-  /// Create a debug log line with a message
-  [<CompiledName "DebugString">]
-  let debugStr = logLine Debug
-
   /// Create a debug log line with a message and a tag
-  [<CompiledName "DebugStringTag">]
-  let debugStrTag tag = setTag tag << logLine Debug
+  [<CompiledName "DebugTag">]
+  let debugTag tag = setTag tag << logLine Debug
+
+  /// Create an info log line with a message
+  [<CompiledName "Info">]
+  let info = logLine Info
 
   /// Write a info log entry, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
   [<CompiledName "InfoFormat">]
   let infof fmt = Printf.kprintf (logLine Info) fmt
 
-  /// Create an info log line with a message
-  [<CompiledName "InfoString">]
-  let infoStr = logLine Info
-
   /// Create an info log line with a message and a tag
-  [<CompiledName "InfoStringTag">]
-  let infoStrTag tag = setTag tag << logLine Info
+  [<CompiledName "InfoTag">]
+  let infoTag tag = setTag tag << logLine Info
+
+  /// Create an warn log line with a message
+  [<CompiledName "Warn">]
+  let warn = logLine Warn
 
   /// Write a warn log entry, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
   [<CompiledName "WarnFormat">]
   let warnf fmt = Printf.kprintf (logLine Warn) fmt
 
-  /// Create an warn log line with a message
-  [<CompiledName "WarnString">]
-  let warnStr = logLine Warn
-
   /// Create a warn log line with a message and a tag
-  [<CompiledName "WarnStringTag">]
-  let warnStrTag tag = setTag tag << logLine Warn
+  [<CompiledName "WarnTag">]
+  let warnTag tag = setTag tag << logLine Warn
+  
+  /// Create an error log line with a message
+  [<CompiledName "Error">]
+  let error = logLine Error
 
   /// Write a error log entry, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
   [<CompiledName "ErrorFormat">]
   let errorf fmt = Printf.kprintf (logLine Error)
 
-  /// Create an error log line with a message
-  [<CompiledName "ErrorString">]
-  let errorStr = logLine Error
-
   /// Create an error log line with a message and a tag
-  [<CompiledName "ErrorStringTag">]
-  let errorStrTag tag = setTag tag << logLine Error
-  
+  [<CompiledName "ErrorTag">]
+  let errorTag tag = setTag tag << logLine Error
+
+  /// Create a fatal log entry with a message
+  [<CompiledName "Fatal">]
+  let fatal = logLine Fatal
+ 
   /// Write a fatal log entry, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
   [<CompiledName "FatalFormat">]
   let fatalf fmt = Printf.kprintf (logLine Fatal) fmt
 
-  /// Create a fatal log entry with a message
-  [<CompiledName "FatalString">]
-  let fatalStr = logLine Fatal
-
   /// Create a fatal log entry with a message and a tag
-  [<CompiledName "FatalStringTag">]
-  let fatalStrTag tag = setTag tag << logLine Fatal
+  [<CompiledName "FatalTag">]
+  let fatalTag tag = setTag tag << logLine Fatal

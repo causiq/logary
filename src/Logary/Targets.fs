@@ -37,8 +37,8 @@ let actor ti = ti.actor
 /// A target configuration is the 'reference' to the to-be-run target while it
 /// is being configured, and before Logary fully starts up.
 type TargetConf =
-  { name     : string
-    initer   : RuntimeInfo -> TargetInstance }
+  { name   : string
+    initer : RuntimeInfo -> TargetInstance }
   override x.ToString() = sprintf "{ name = %s } : TargetConf" x.name
 
 /// 'API helper' method for flowing the target through

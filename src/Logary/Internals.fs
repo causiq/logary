@@ -17,15 +17,6 @@ module internal Set =
     | (s : _ Set) when s.Count = 0 -> Some EmptySet
     | _ -> None
 
-/// A type giving more information about the service that this logary instance
-/// is running on.
-type RuntimeInfo =
-  { /// Name of the service. Will show up as 'service' in e.g. LogStash/Kibana and
-    /// is the basis for a lot of the sorting and health checking that Riemann
-    /// does.
-    serviceName : string }
-
-
 // TODO: consider moving NackDescription and Acks to Logary ns instead of Internals
 
 /// A description of why no Ack was received like was expected.
