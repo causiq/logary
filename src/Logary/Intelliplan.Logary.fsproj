@@ -51,8 +51,7 @@
     <Compile Include="Targets.fs" />
     <Compile Include="Internals_Logger.fs" />
     <Compile Include="Formatting.fs" />
-    <Compile Include="LogaryConf.fs" />
-    <Compile Include="Measure_Histogram.fs" />
+    <Compile Include="Configuration_LogaryConf.fs" />
     <Compile Include="Target_CoreTargets.fs" />
     <Compile Include="Registry.fs" />
     <Compile Include="Logging.fs" />

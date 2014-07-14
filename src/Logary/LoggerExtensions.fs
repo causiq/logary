@@ -11,10 +11,6 @@ module LoggerExtensions =
   open System.Collections.Generic
   open System.Runtime.InteropServices
 
-  // How you can construct maps in F#:
-  //  let inline (=>) a b = a, box b
-  //  let private a = dict [ "a" => 4, "b" => 3 ]
-
   let private toMap : obj -> _ = function
     | null -> Map.empty
     | :? IEnumerable<KeyValuePair<string, obj>> as data ->
