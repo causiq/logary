@@ -16,6 +16,7 @@ type Assert =
 [<Tests>]
 let snapshot =
   let sample = Snapshot.create [| 5L; 1L; 2L; 3L; 4L |]
+  let empty = Snapshot.create [||]
 
   testList "calculating snapshot values" [
     testCase "small quantiles are first value" <| fun _ ->
@@ -45,8 +46,15 @@ let snapshot =
     testCase "has mean value" <| fun _ ->
       Assert.Equal("has a mean value", 3., Snapshot.mean sample)
     testCase "has stdDev" <| fun _ ->
-      Assert.FloatEqual("has stdDev", 1.5811, Snapshot.stdDev sample)
-
+      Assert.FloatEqual("has stdDev", 1.5811, Snapshot.stdDev sample, 0.0001)
+    testCase "empty: min" <| fun _ ->
+      Assert.Equal("zero", 0L, Snapshot.min empty)
+    testCase "empty: max" <| fun _ ->
+      Assert.Equal("zero", 0L, Snapshot.max empty)
+    testCase "empty: mean" <| fun _ ->
+      Assert.FloatEqual("zero", 0., Snapshot.mean empty)
+    testCase "empty: std dev" <| fun _ ->
+      Assert.FloatEqual("zero", 0., Snapshot.mean empty)
     ]
 
 [<Tests>]

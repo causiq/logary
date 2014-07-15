@@ -54,8 +54,8 @@ module Snapshot =
   let percentile999th s = quantile s 0.999
 
   let values s = s.values
-  let min s = Array.min s.values
-  let max s = Array.max s.values
+  let min s = if size s = 0 then 0L else Array.min s.values
+  let max s = if size s = 0 then 0L else Array.max s.values
 
   let private meanAndSum s =
     if size s = 0 then 0., 0. else
