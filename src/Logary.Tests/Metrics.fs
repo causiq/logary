@@ -106,7 +106,6 @@ let reservoirs =
         testCase explaination <| fun _ ->
           List.zip expectations actual
           |> List.iteri (fun index (expected, actual) ->
-    //        System.Diagnostics.Debugger.Log(5, "", sprintf "expected %f, actual %f\n" expected actual)
             Assert.FloatEqual(sprintf "Index %d, should calculate correct EWMA" index,
                               expected,  actual, epsilon = 0.000001))
 
