@@ -2,6 +2,14 @@
 
 open Logary
 
+// https://github.com/codahale/metrics/blob/master/metrics-core/src/main/java/com/codahale/metrics/ExponentiallyDecayingReservoir.java
+// http://dimacs.rutgers.edu/~graham/pubs/papers/fwddecay.pdf
+
+// https://github.com/codahale/metrics/blob/master/metrics-core/src/main/java/com/codahale/metrics/UniformReservoir.java
+// http://www.cs.umd.edu/~samir/498/vitter.pdf
+// http://researcher.watson.ibm.com/researcher/files/us-dpwoodru/tw11.pdf
+// https://en.wikipedia.org/wiki/Reservoir_sampling
+
 /// A meter measures the rate of events over time (e.g., "requests per second").
 /// In addition to the mean rate, meters also track 1-, 5-, and 15-minute moving
 /// averages.
@@ -16,121 +24,134 @@ type Histogram =
   abstract Update : float -> unit
 
 
-module Snapshot =
-  open System
-  // TODO: memoized snapshot to avoid recalculation of values after reading
+module Reservoir =
 
-  type snapshot =
-    { values : int64 [] }
+  module Snapshot =
+    open System
+    // TODO: when I need to read values multiple times:
+    // memoized snapshot to avoid recalculation of values after reading
 
-  let create unsorted =
-    Array.sortInPlace unsorted
-    { values = unsorted }
+    type snapshot =
+      { values : int64 [] }
 
-  let size s = s.values.Length
+    let create unsorted =
+      Array.sortInPlace unsorted
+      { values = unsorted }
 
-  let quantile s q =
-    if q < 0. || q > 1. then
-      invalidArg "q" "quantile is not in [0., 1.]"
-    if size s = 0 then
-      0.
-    else
-      let pos = q * float (s.values.Length + 1)
-      match pos with
-      | _ when pos < 1. ->
-        float s.values.[0]
-      | _ when pos >= float s.values.Length ->
-        float s.values.[s.values.Length - 1]
-      | _ ->
-        let lower = s.values.[int pos - 1]
-        let upper = s.values.[int pos]
-        float lower + (pos - floor pos) * float (upper - lower)
+    let size s = s.values.Length
 
-  let median s = quantile s 0.5
-  let percentile75th s = quantile s 0.75
-  let percentile95th s = quantile s 0.95
-  let percentile98th s = quantile s 0.98
-  let percentile99th s = quantile s 0.99
-  let percentile999th s = quantile s 0.999
+    let quantile s q =
+      if q < 0. || q > 1. then
+        invalidArg "q" "quantile is not in [0., 1.]"
+      if size s = 0 then
+        0.
+      else
+        let pos = q * float (s.values.Length + 1)
+        match pos with
+        | _ when pos < 1. ->
+          float s.values.[0]
+        | _ when pos >= float s.values.Length ->
+          float s.values.[s.values.Length - 1]
+        | _ ->
+          let lower = s.values.[int pos - 1]
+          let upper = s.values.[int pos]
+          float lower + (pos - floor pos) * float (upper - lower)
 
-  let values s = s.values
-  let min s = if size s = 0 then 0L else Array.min s.values
-  let max s = if size s = 0 then 0L else Array.max s.values
+    let median s = quantile s 0.5
+    let percentile75th s = quantile s 0.75
+    let percentile95th s = quantile s 0.95
+    let percentile98th s = quantile s 0.98
+    let percentile99th s = quantile s 0.99
+    let percentile999th s = quantile s 0.999
 
-  let private meanAndSum s =
-    if size s = 0 then 0., 0. else
-    let mutable sum = 0.
-    for x in s.values do
-      sum <- sum + float x
-    let mean = float sum / float s.values.Length
-    mean, sum
+    let values s = s.values
+    let min s = if size s = 0 then 0L else Array.min s.values
+    let max s = if size s = 0 then 0L else Array.max s.values
 
-  let mean = fst << meanAndSum
+    let private meanAndSum s =
+      if size s = 0 then 0., 0. else
+      let mutable sum = 0.
+      for x in s.values do
+        sum <- sum + float x
+      let mean = float sum / float s.values.Length
+      mean, sum
 
-  let stdDev s =
-    let size = size s
-    if size = 0 then 0. else
-    let mean = mean s
-    let sum = s.values |> Array.map (fun d -> Math.Pow(float d - mean, 2.)) |> Array.sum
-    sqrt (sum / float (size - 1))
+    let mean = fst << meanAndSum
 
-// starting off single-threaded
-module UniformReservoir =
-  open System.Diagnostics.Contracts
+    let stdDev s =
+      let size = size s
+      if size = 0 then 0. else
+      let mean = mean s
+      let sum = s.values |> Array.map (fun d -> Math.Pow(float d - mean, 2.)) |> Array.sum
+      sqrt (sum / float (size - 1))
 
-  open Logary.Internals
 
-  let private DefaultSize = 1028
+  // starting off single-threaded
+  module Uniform =
+    open System
+    open System.Diagnostics.Contracts
 
-  /// Mutable uniform distribution
-  type UniformState =
-    { count  : int
-      values : int64 [] }
+    open Logary.Internals
 
-  [<Pure>]
-  let create size =
-    { count  = size
-      values = Array.zeroCreate size }
+    let private DefaultSize = 1028
 
-  [<Pure>]
-  let empty = create DefaultSize
+    /// Mutable uniform distribution
+    type UniformState =
+      { count  : bigint
+        values : int64 [] }
 
-  [<Pure>]
-  let size r = min r.count r.values.Length
+    [<Pure>]
+    let create size =
+      { count  = 0I
+        values = Array.zeroCreate size }
 
-  [<Pure>]
-  let snapshot r =
-    Snapshot.create (r.values |> Seq.take (size r) |> Array.ofSeq)
+    [<Pure>]
+    let empty = create DefaultSize
 
-  // impure update the reservoir
-  let update r value =
-    let count' = r.count + 1
-    if count' <= r.values.Length then
-      r.values.[count' - 1] <- value
-    else
-      let rnd = Rnd.nextInt' count'
-      if rnd < r.values.Length then
-        r.values.[rnd] <- value
+    [<Pure>]
+    let size r = int (min r.count (bigint r.values.Length))
 
-    { r with count = r.count + 1 }
+    [<Pure>]
+    let snapshot r =
+      Snapshot.create (r.values |> Seq.take (size r) |> Array.ofSeq)
 
-module Histograms =
-  let x () = ()
+    // impure update the reservoir
+    let update r value =
+      let count' = r.count + 1I
+      if count' <= bigint r.values.Length then
+        r.values.[int count' - 1] <- value
+      else
+        let rnd = Rnd.nextInt' (min (int count') Int32.MaxValue)
+        if rnd < r.values.Length then
+          r.values.[rnd] <- value
 
-  // https://github.com/codahale/metrics/blob/master/metrics-core/src/main/java/com/codahale/metrics/Reservoir.java
+      { r with count = r.count + 1I }
 
-  type Reservoir =
-    { size   : uint32
-      update : uint64 -> Reservoir }
+  module SlidingWindow =
+    open System
 
-  // https://github.com/codahale/metrics/blob/master/metrics-core/src/main/java/com/codahale/metrics/ExponentiallyDecayingReservoir.java
-  // http://dimacs.rutgers.edu/~graham/pubs/papers/fwddecay.pdf
+    let private DefaultSize = 1028
 
-  // https://github.com/codahale/metrics/blob/master/metrics-core/src/main/java/com/codahale/metrics/UniformReservoir.java
-  // http://www.cs.umd.edu/~samir/498/vitter.pdf
-  // http://researcher.watson.ibm.com/researcher/files/us-dpwoodru/tw11.pdf
-  // https://en.wikipedia.org/wiki/Reservoir_sampling
+    type SlidingState =
+      { count  : bigint
+        values : int64 [] }
 
+    let create size =
+      { count  = 0I
+        values = Array.zeroCreate size }
+
+    let size r = int (min r.count (bigint r.values.Length))
+
+    let snapshot r =
+      Snapshot.create (r.values |> Seq.take (size r) |> Array.ofSeq)
+
+    let update r value =
+      let count' = r.count + 1I
+      r.values.[int (r.count % (bigint r.values.Length))] <- value
+      { r with count = count' }
+
+  module ExpWeightedMovAvg =
+    ()
 
 /// A timer measures both the rate that a particular piece of code is called
 /// and the distribution of its duration.

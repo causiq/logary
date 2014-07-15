@@ -2,7 +2,7 @@
 
 open Fuchu
 open Logary
-open Logary.Metrics
+open Logary.Metrics.Reservoir
 
 type Assert =
   static member FloatEqual(msg, expected, actual, ?epsilon) =
@@ -59,14 +59,31 @@ let snapshot =
 
 [<Tests>]
 let reservoirs =
-  testList "uniform reservoirs" [
-    testCase "update 100 times" <| fun _ ->
-      let mutable state = UniformReservoir.create 100
-      for i in 0L..999L do
-        state <- UniformReservoir.update state i
-      Assert.Equal("should have 100L size", 100, UniformReservoir.size state)
-      let snap = UniformReservoir.snapshot state
+  testList "reservoirs" [
+    testCase "uniform: update 100 times" <| fun _ ->
+      let state =
+        [ 0L .. 999L ]
+        |> List.fold Uniform.update (Uniform.create 100)
+      Assert.Equal("should have 100L size", 100, Uniform.size state)
+
+      let snap = Uniform.snapshot state
       Assert.Equal("snapshot has as many", 100, Snapshot.size snap)
       for v in snap.values do
         Assert.Equal(sprintf "'%d' should be in [0, 999]" v, true, 0L <= v && v <= 999L)
+
+    testCase "sliding: small" <| fun _ ->
+      let state =
+        [ 1L; 2L ]
+        |> List.fold SlidingWindow.update (SlidingWindow.create 3)
+      let snap = SlidingWindow.snapshot state
+      Assert.Equal("has two", 2I, state.count)
+      Assert.Equal("size has two", 2, SlidingWindow.size state)
+      Assert.Equal("snap has two", 2, snap.values.Length)
+      Assert.Equal("should have correct order", [| 1L; 2L; |], Snapshot.values snap)
+
+    testCase "sliding: only last values" <| fun _ ->
+      ()
+
+    testCase "exponentially weighted moving average: ..." <| fun _ ->
+      ()
     ]
