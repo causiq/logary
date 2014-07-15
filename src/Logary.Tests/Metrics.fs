@@ -92,7 +92,7 @@ let reservoirs =
       let testEWMA explaination instance (expectations : _ list) =
 
         let flip f a b = f b a
-        let passMinute s =
+        let passMinute s = // 5 second sampling rate, see implementation module
           [ 1..12 ] |> List.fold (fun s' t -> ExpWeightedMovAvg.tick s') s
 
         let initState =
