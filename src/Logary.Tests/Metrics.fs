@@ -88,42 +88,83 @@ let reservoirs =
       let snap = SlidingWindow.snapshot state
       Assert.Equal("should have correct order", [| 3L..5L |], Snapshot.values snap)
 
-    testCase "exponentially weighted moving average" <| fun _ ->
-      let flip f a b = f b a
-      let passMinute s =
-        [ 1..12 ] |> List.fold (fun s' t -> ExpWeightedMovAvg.tick s') s
+    testList "exponentially weighted moving average" [
+      let testEWMA explaination instance (expectations : _ list) =
 
-      let initState =
-        ExpWeightedMovAvg.oneMinuteEWMA
-        |> (flip ExpWeightedMovAvg.update) 3L
-        |> ExpWeightedMovAvg.tick
+        let flip f a b = f b a
+        let passMinute s =
+          [ 1..12 ] |> List.fold (fun s' t -> ExpWeightedMovAvg.tick s') s
 
-      let expectations =
+        let initState =
+          instance |> (flip ExpWeightedMovAvg.update) 3L |> ExpWeightedMovAvg.tick
+
+        let actual =
+          [ for i in 1..expectations.Length - 1 do yield i ]
+          |> List.scan (fun s t -> passMinute s) initState
+          |> List.map (ExpWeightedMovAvg.rate Seconds)
+
+        testCase explaination <| fun _ ->
+          List.zip expectations actual
+          |> List.iteri (fun index (expected, actual) ->
+    //        System.Diagnostics.Debugger.Log(5, "", sprintf "expected %f, actual %f\n" expected actual)
+            Assert.FloatEqual(sprintf "Index %d, should calculate correct EWMA" index,
+                              expected,  actual, epsilon = 0.000001))
+
+      yield testEWMA "1 min"
+          ExpWeightedMovAvg.oneMinuteEWMA
+          [ 0.6
+            0.22072766
+            0.08120117
+            0.02987224
+            0.01098938
+            0.00404277
+            0.00148725
+            0.00054713
+            0.00020128
+            0.00007405
+            0.00002724
+            0.00001002
+            0.00000369
+            0.00000136
+            0.00000050
+            0.00000018 ]
+
+      yield testEWMA "5 min"
+        ExpWeightedMovAvg.fiveMinutesEWMA
         [ 0.6
+          0.49123845
+          0.40219203
+          0.32928698
+          0.26959738
           0.22072766
+          0.18071653
+          0.14795818
+          0.12113791
+          0.09917933
           0.08120117
-          0.02987224
-          0.01098938
-          0.00404277
-          0.00148725
-          0.00054713
-          0.00020128
-          0.00007405
-          0.00002724
-          0.00001002
-          0.00000369
-          0.00000136
-          0.00000050
-          0.00000018 ]
+          0.06648190
+          0.05443077
+          0.04456415
+          0.03648604
+          0.02987224 ]
 
-      let actual =
-        [ for i in 1..expectations.Length - 1 do yield i ]
-        |> List.scan (fun s t -> passMinute s) initState
-        |> List.map (ExpWeightedMovAvg.rate Seconds)
-
-      List.zip expectations actual
-      |> List.iteri (fun index (expected, actual) ->
-//        System.Diagnostics.Debugger.Log(5, "", sprintf "expected %f, actual %f\n" expected actual)
-        Assert.FloatEqual(sprintf "Index %d, should calculate correct EWMA" index,
-                          expected,  actual, epsilon = 0.000001))
+      yield testEWMA "15 min"
+        ExpWeightedMovAvg.fifteenMinutesAWMA
+        [ 0.6
+          0.56130419
+          0.52510399
+          0.49123845
+          0.45955700
+          0.42991879
+          0.40219203
+          0.37625345
+          0.35198773
+          0.32928698
+          0.30805027
+          0.28818318
+          0.26959738
+          0.25221023
+          0.23594443
+          0.22072766 ]
+      ]
     ]
