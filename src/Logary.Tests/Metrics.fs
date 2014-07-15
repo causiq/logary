@@ -107,7 +107,7 @@ let reservoirs =
           List.zip expectations actual
           |> List.iteri (fun index (expected, actual) ->
             Assert.FloatEqual(sprintf "Index %d, should calculate correct EWMA" index,
-                              expected,  actual, epsilon = 0.000001))
+                              expected,  actual, epsilon = 0.00000001))
 
       yield testEWMA "1 min"
         ExpWeightedMovAvg.oneMinuteEWMA
