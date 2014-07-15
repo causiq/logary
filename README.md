@@ -179,7 +179,7 @@ called logging. However, what Logary gives you is a the conjunction of the above
 concepts in a single library. It allows you to use only a few concepts from your
 own code, but extract a wealth of data.
 
-### A little bit about Targets
+### Targets
 
 When building a modern distributes system you need to move the data off the
 computing nodes, or you will surely suffer the wrath of bad data locality,

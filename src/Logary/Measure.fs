@@ -3,14 +3,24 @@
 open FSharp.Actor
 open NodaTime
 
-type Units =
+type timeunit =
+  | Nanoseconds
+  /// Ticks as defined by `NodaTime.NodaConstants.TicksPerSecond`.
+  | Ticks
+  | Microseconds
+  | Milliseconds
+  | Seconds
+  | Minutes
+  | Hours
+  | Days
+
+type units =
   /// e.g. 'requests' or 'users'; you can put an arbitrary unit here
   | Unit of string
+  | Time of timeunit
   | Bytes
   | KiB
   | MiB
-  | Seconds
-  | Ticks
 
 /// This is a measured event as it occurred or was at a point in time.
 type ``measure`` =
@@ -28,7 +38,7 @@ type ``measure`` =
     /// The level of the measure
     m_level     : LogLevel
     /// What unit this measure has
-    m_unit      : Units
+    m_unit      : units
     /// A map of string to anything; it is up to the target in question how to
     /// handle extra data on the metric
     m_data      : Map<string, obj>
@@ -171,7 +181,7 @@ module Measure =
       m_path      = ""
       m_timestamp = Date.utcNow()
       m_level     = Info
-      m_unit      = Units.Unit "unit"
+      m_unit      = Unit "unit"
       m_tags      = []
       m_data      = Map.empty }
 
@@ -204,3 +214,37 @@ module Measure =
     <|> Option.map float m.m_value'
     <|> Option.map float m.m_value''
     |> Option.get
+
+module TimeUnit =
+  let ticksPerUnit = function
+    | Ticks -> 1.
+    | Nanoseconds -> float NodaConstants.TicksPerMillisecond / 1000000.
+    /// Ticks as defined by `NodaTime.NodaConstants.TicksPerSecond`.
+    | Microseconds -> float NodaConstants.TicksPerMillisecond / 1000.
+    | Milliseconds -> float NodaConstants.TicksPerMillisecond
+    | Seconds -> float NodaConstants.TicksPerSecond
+    | Minutes -> float NodaConstants.TicksPerMinute
+    | Hours -> float NodaConstants.TicksPerHour
+    | Days -> float NodaConstants.TicksPerStandardDay
+
+module Duration =
+  let hours (dur : Duration) =
+    float dur.Ticks / float NodaConstants.TicksPerHour
+
+  let minutes (dur : Duration) =
+    float dur.Ticks / float NodaConstants.TicksPerMinute
+
+  let seconds (dur : Duration) =
+    float dur.Ticks / float NodaConstants.TicksPerSecond
+
+  let milliseconds (dur : Duration) =
+    float dur.Ticks / float NodaConstants.TicksPerMillisecond
+
+  let microseconds (dur : Duration) =
+    1000. * float dur.Ticks / float NodaConstants.TicksPerMillisecond
+
+  let ticks (dur : Duration) =
+    float dur.Ticks
+
+  let nanoseconds =
+    ((*) 1000.) << microseconds

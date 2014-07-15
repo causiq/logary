@@ -4,7 +4,8 @@ open Logary
 
 // https://github.com/codahale/metrics/blob/master/metrics-core/src/main/java/com/codahale/metrics/ExponentiallyDecayingReservoir.java
 // http://dimacs.rutgers.edu/~graham/pubs/papers/fwddecay.pdf
-
+// https://www.youtube.com/watch?v=qURhXHbxbDU
+// https://gist.github.com/haf/5e770676d8c007ca80c1
 // https://github.com/codahale/metrics/blob/master/metrics-core/src/main/java/com/codahale/metrics/UniformReservoir.java
 // http://www.cs.umd.edu/~samir/498/vitter.pdf
 // http://researcher.watson.ibm.com/researcher/files/us-dpwoodru/tw11.pdf
@@ -85,7 +86,6 @@ module Reservoir =
       let sum = s.values |> Array.map (fun d -> Math.Pow(float d - mean, 2.)) |> Array.sum
       sqrt (sum / float (size - 1))
 
-
   // starting off single-threaded
   module Uniform =
     open System
@@ -150,8 +150,90 @@ module Reservoir =
       r.values.[int (r.count % (bigint r.values.Length))] <- value
       { r with count = count' }
 
+  /// The an exponentially weighted moving average that gets ticks every
+  /// period (a period is a duration between events), but can get
+  /// `update`s at any point between the ticks.
   module ExpWeightedMovAvg =
-    ()
+    open NodaTime
+
+    /// The period in between ticks; it's a duration of time between two data
+    /// points.
+    let private SamplePeriod = NodaTime.Duration.FromSeconds 5L
+
+    let private OneMinute = 1.
+    let private FiveMinutes = 5.
+    let private FifteenMinutes = 15.
+
+    /// calculate the alpha coefficient from a number of minutes
+    ///
+    /// - `duration` is how long is between each tick
+    /// - `mins` is the number of minutes the EWMA should be calculated over
+    let xMinuteAlpha duration mins =
+      1. - exp (- Duration.minutes duration / mins)
+
+    /// alpha coefficient for the `SamplePeriod` tick period, with one minute
+    /// EWMA
+    let M1Alpha = xMinuteAlpha SamplePeriod OneMinute, SamplePeriod
+    
+    /// alpha coefficient for the `SamplePeriod` tick period, with five minutes
+    /// EWMA
+    let M5Alpha = xMinuteAlpha SamplePeriod FiveMinutes, SamplePeriod
+    
+    /// alpha coefficient for the `SamplePeriod` tick period, with fifteen minutes
+    /// EWMA
+    let M15Alpha = xMinuteAlpha SamplePeriod FifteenMinutes, SamplePeriod
+
+    type EWMAState =
+      { inited    : bool
+        rate      : float
+        uncounted : int64
+        alpha     : float
+        /// interval in ticks
+        interval  : float }
+
+    /// Create a new EWMA state that you can do `update` and `tick` on.
+    ///
+    /// Alpha is dependent on the duration between sampling events ("how long
+    /// time is it between the data points") so they are given as a pair.
+    let create (alpha, duration : Duration) =
+      { inited    = false
+        rate      = 0.
+        uncounted = 0L
+        alpha     = alpha
+        interval  = float duration.Ticks }
+
+    /// duration: SamplePeriod
+    let oneMinuteEWMA =
+      create M1Alpha
+
+    /// duration: SamplePeriod
+    let fiveMinutesEWMA =
+      create M5Alpha
+
+    /// duration: SamplePeriod
+    let fifteenMinutesAWMA =
+      create M15Alpha
+
+    let update state value =
+      { state with uncounted = state.uncounted + value }
+
+    let private calcRate currentRate alpha instantRate =
+      currentRate + alpha * (instantRate - currentRate)
+
+    let tick state =
+      let count = float state.uncounted
+      let instantRate = count / state.interval
+      if state.inited then
+        { state with uncounted = 0L
+                     rate      = calcRate state.rate state.alpha instantRate }
+      else
+        { state with uncounted = 0L
+                     inited    = true
+                     rate      = instantRate }
+
+    let rate (timeUnit : timeunit) state =
+      // we know rate is in samples per tick
+      state.rate * (TimeUnit.ticksPerUnit timeUnit)
 
 /// A timer measures both the rate that a particular piece of code is called
 /// and the distribution of its duration.
@@ -185,7 +267,7 @@ module Time =
           m_path      = path
           m_timestamp = now
           m_level     = lvl
-          m_unit      = Units.Seconds
+          m_unit      = Time Ticks
           m_tags      = []
           m_data      = Map.empty }
         |> logger.Measure

@@ -60,7 +60,7 @@ let snapshot =
 [<Tests>]
 let reservoirs =
   testList "reservoirs" [
-    testCase "uniform: update 100 times" <| fun _ ->
+    testCase "uniform: update 1000 times" <| fun _ ->
       let state =
         [ 0L .. 999L ]
         |> List.fold Uniform.update (Uniform.create 100)
@@ -82,8 +82,48 @@ let reservoirs =
       Assert.Equal("should have correct order", [| 1L; 2L; |], Snapshot.values snap)
 
     testCase "sliding: only last values" <| fun _ ->
-      ()
+      let state =
+        [ 1L..5L ]
+        |> List.fold SlidingWindow.update (SlidingWindow.create 3)
+      let snap = SlidingWindow.snapshot state
+      Assert.Equal("should have correct order", [| 3L..5L |], Snapshot.values snap)
 
-    testCase "exponentially weighted moving average: ..." <| fun _ ->
-      ()
+    testCase "exponentially weighted moving average" <| fun _ ->
+      let flip f a b = f b a
+      let passMinute s =
+        [ 1..12 ] |> List.fold (fun s' t -> ExpWeightedMovAvg.tick s') s
+
+      let initState =
+        ExpWeightedMovAvg.oneMinuteEWMA
+        |> (flip ExpWeightedMovAvg.update) 3L
+        |> ExpWeightedMovAvg.tick
+
+      let expectations =
+        [ 0.6
+          0.22072766
+          0.08120117
+          0.02987224
+          0.01098938
+          0.00404277
+          0.00148725
+          0.00054713
+          0.00020128
+          0.00007405
+          0.00002724
+          0.00001002
+          0.00000369
+          0.00000136
+          0.00000050
+          0.00000018 ]
+
+      let actual =
+        [ for i in 1..expectations.Length - 1 do yield i ]
+        |> List.scan (fun s t -> passMinute s) initState
+        |> List.map (ExpWeightedMovAvg.rate Seconds)
+
+      List.zip expectations actual
+      |> List.iteri (fun index (expected, actual) ->
+//        System.Diagnostics.Debugger.Log(5, "", sprintf "expected %f, actual %f\n" expected actual)
+        Assert.FloatEqual(sprintf "Index %d, should calculate correct EWMA" index,
+                          expected,  actual, epsilon = 0.000001))
     ]
