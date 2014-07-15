@@ -158,7 +158,7 @@ module Reservoir =
 
     /// The period in between ticks; it's a duration of time between two data
     /// points.
-    let private SamplePeriod = NodaTime.Duration.FromSeconds 5L
+    let private SamplePeriod = Duration.FromSeconds 5L
 
     let private OneMinute = 1.
     let private FiveMinutes = 5.
@@ -211,7 +211,7 @@ module Reservoir =
       create M5Alpha
 
     /// duration: SamplePeriod
-    let fifteenMinutesAWMA =
+    let fifteenMinuteEWMA =
       create M15Alpha
 
     let update state value =

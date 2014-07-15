@@ -1,6 +1,9 @@
 ﻿module Logary.Tests.Metrics
 
 open Fuchu
+
+open NodaTime
+
 open Logary
 open Logary.Metrics.Reservoir
 
@@ -88,6 +91,14 @@ let reservoirs =
       let snap = SlidingWindow.snapshot state
       Assert.Equal("should have correct order", [| 3L..5L |], Snapshot.values snap)
 
+    testList "sliding time window" [
+      testCase "store duplicate ticks" <| fun _ ->
+        let testClock = { new IClock with
+                    member x.Now = Instant(20L) }
+
+        ()
+      ]
+
     testList "exponentially weighted moving average" [
       let testEWMA explaination instance (expectations : _ list) =
 
@@ -148,7 +159,7 @@ let reservoirs =
           0.02987224 ]
 
       yield testEWMA "15 min"
-        ExpWeightedMovAvg.fifteenMinutesAWMA
+        ExpWeightedMovAvg.fifteenMinuteEWMA
         [ 0.6
           0.56130419
           0.52510399

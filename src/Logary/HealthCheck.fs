@@ -138,6 +138,55 @@ module HealthCheck =
         member x.Name        = name
         member x.Dispose ()  = () }
 
+  // these replace the HealthChecks' actor implementations:
+  module Probe =
+    // inspiration: https://github.com/Feuerlabs/exometer/blob/master/doc/exometer_probe.md
+
+    type DP =
+      | DP of string
+      | DP_Error
+
+    type ProbeMsg =
+      /// The GetValue implementation shall retrieve the value of one or more data points from the probe.
+      | GetValue of DP list * ReplyChannel<(DP * ``measure``) list>
+      /// The GetDataPoints shall return a list with all data points supported by the probe
+      | GetDataPoints of ReplyChannel<DP list>
+      /// Incorporate a new value into the metric maintained by the metric.
+      | Update of ``measure``
+      /// The Sample implementation shall sample data from the subsystem the probe is integrated with.
+      | Sample
+      /// The custom probe shall release any resources associated with the given state and return ok.
+      | Terminate
+      /// The Reset shall reset the state of the probe to its initial state.
+      | Reset
+
+    let private exampleProbe _ (* conf, logary conf etc ... *) (inbox : IActor<_>) =
+      let rec loop () = async {
+        let! msg, _ = inbox.Receive()
+        match msg with
+        | GetValue (datapoints, replChan) ->
+          // what are the values for the requested data points?
+          replChan.Reply(datapoints |> List.map (fun dp -> dp, Measure.empty))
+          return! loop ()
+        | GetDataPoints replChan ->
+          // what data points does this probe support?
+          replChan.Reply [ DP "min"; DP "mean"; DP "99th percentile" ]
+          return! loop ()
+        | Update msr ->
+          // update the probe with the given measure
+          return! loop ()
+        | Sample ->
+          // read data from external sources and update state
+          return! loop ()
+        | Terminate ->
+          return! shutdown ()
+        | Reset ->
+          return! loop ()
+        }
+      and shutdown () = async.Return ()
+
+      loop ()
+
   // see http://www.mono-project.com/Mono_Performance_Counters
   // see http://www.databasejournal.com/features/mssql/article.php/3932406/Top-10-SQL-Server-Counters-for-Monitoring-SQL-Server-Performance.htm
   // http://www.quest.com/backstage/images/promotions/SQLServer-Perfmonance-Poster.pdf
