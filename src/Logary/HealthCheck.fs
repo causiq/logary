@@ -3,6 +3,7 @@ namespace Logary
 open System
 
 open Logary.Measure
+open Logary.Metric
 
 /// The details a result
 type ResultData =
@@ -84,9 +85,9 @@ module HealthCheck =
       sprintf "HealthCheck(name=%s, exn=%A, value=%A, level=%A)"
         m.m_path (tryGetExn m) m.m_value m.m_level
 
-  /// Transform the metric to a result data.
+  /// Transform the measure to a result data.
   [<CompiledName "AsResult"; Extension>]
-  let asResult (m : _) =
+  let ofResult (m : _) =
     MeasureWrapper m :> ResultData
     |> HasValue
 
@@ -140,25 +141,6 @@ module HealthCheck =
 
   // these replace the HealthChecks' actor implementations:
   module Probe =
-    // inspiration: https://github.com/Feuerlabs/exometer/blob/master/doc/exometer_probe.md
-
-    type DP =
-      | DP of string
-      | DP_Error
-
-    type ProbeMsg =
-      /// The GetValue implementation shall retrieve the value of one or more data points from the probe.
-      | GetValue of DP list * ReplyChannel<(DP * ``measure``) list>
-      /// The GetDataPoints shall return a list with all data points supported by the probe
-      | GetDataPoints of ReplyChannel<DP list>
-      /// Incorporate a new value into the metric maintained by the metric.
-      | Update of ``measure``
-      /// The Sample implementation shall sample data from the subsystem the probe is integrated with.
-      | Sample
-      /// The custom probe shall release any resources associated with the given state and return ok.
-      | Terminate
-      /// The Reset shall reset the state of the probe to its initial state.
-      | Reset
 
     let private exampleProbe _ (* conf, logary conf etc ... *) (inbox : IActor<_>) =
       let rec loop () = async {
@@ -279,7 +261,7 @@ module HealthCheck =
                 |> float
                 |> measureTransform
                 |> Measure.setPath name
-                |> asResult
+                |> ofResult
               with
                 e -> NoValue
             member x.Dispose () =

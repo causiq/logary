@@ -32,9 +32,8 @@ module internal Rnd =
     value
 
 module internal Date =
-  open System
   open NodaTime
-  let utcNow () = SystemClock.Instance.Now
+  let now () = SystemClock.Instance.Now
 
 module internal Map =
   let put k v (m : Map<_,_>) =

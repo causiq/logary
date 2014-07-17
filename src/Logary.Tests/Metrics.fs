@@ -5,7 +5,7 @@ open Fuchu
 open NodaTime
 
 open Logary
-open Logary.Metrics.Reservoir
+open Logary.Metric.Reservoir
 
 type Assert =
   static member FloatEqual(msg, expected, actual, ?epsilon) =

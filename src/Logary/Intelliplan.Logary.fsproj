@@ -42,7 +42,8 @@
     <Compile Include="Measure.fs" />
     <Compile Include="Logger.fs" />
     <Compile Include="Internals_RuntimeInfo.fs" />
-    <Compile Include="Metrics.fs" />
+    <Compile Include="TO_THINK_ABOUT.fs" />
+    <Compile Include="Metric.fs" />
     <Compile Include="HealthCheck.fs" />
     <Compile Include="LogManager.fs" />
     <Compile Include="Internals_FlyweightLogger.fs" />

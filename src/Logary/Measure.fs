@@ -48,9 +48,6 @@ type ``measure`` =
 // TODO: secondary order event
 /// This is a calculated event with input of one or many measures and/or global
 /// time. f :: Measure list -> Instant -> SecondaryMeasure
-type sndmeasure =
-  { sm_measures  : ``measure`` list
-    sm_data      : ``measure`` }
 
 /// Module for dealing with measures
 module Measure =
@@ -59,15 +56,6 @@ module Measure =
   open NodaTime
 
   open Logary.Internals
-
-  /// An abstract base class for metric objects with actors being the backing
-  /// primitive.
-  [<AbstractClass>]
-  type MetricInstance(name, targets) =
-    member x.Targets : IActor list = targets
-    member x.Name = name
-    interface Named with
-      member x.Name = name
 
   /// lenses for the `measure``
   module Lenses =
@@ -179,7 +167,7 @@ module Measure =
       m_value'    = None
       m_value''   = None
       m_path      = ""
-      m_timestamp = Date.utcNow()
+      m_timestamp = Date.now()
       m_level     = Info
       m_unit      = Unit "unit"
       m_tags      = []
@@ -240,8 +228,8 @@ module Duration =
   let milliseconds (dur : Duration) =
     float dur.Ticks / float NodaConstants.TicksPerMillisecond
 
-  let microseconds (dur : Duration) =
-    1000. * float dur.Ticks / float NodaConstants.TicksPerMillisecond
+  let microseconds =
+    ((*) 1000.) << milliseconds
 
   let ticks (dur : Duration) =
     float dur.Ticks

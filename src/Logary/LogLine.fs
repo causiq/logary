@@ -36,7 +36,7 @@ module LogLine =
       data          = Map.empty
       level         = LogLevel.Info
       tags          = []
-      timestamp     = Date.utcNow ()
+      timestamp     = Date.now ()
       path          = ""
       ``exception`` = None }
 

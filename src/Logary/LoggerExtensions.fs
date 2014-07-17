@@ -5,11 +5,12 @@ open System.Runtime.CompilerServices
 /// Extensions for logging
 [<Extension>]
 module LoggerExtensions =
-  open Logary.Targets
-
   open System
   open System.Collections.Generic
   open System.Runtime.InteropServices
+
+  open Logary.Targets
+  open Logary.Internals
 
   let private toMap : obj -> _ = function
     | null -> Map.empty
@@ -39,7 +40,7 @@ module LoggerExtensions =
       path          = match path with null -> logger.Name | _ -> path
       tags          = match tags with null -> [] | _ -> List.ofSeq tags
       ``exception`` = match ``exception`` with null -> None | _ -> Some ``exception``
-      timestamp     = NodaTime.SystemClock.Instance.Now }
+      timestamp     = Date.now() }
     |> logger.Log
 
   /// Log a message with some accompanying data to the log
