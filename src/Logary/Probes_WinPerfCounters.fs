@@ -72,6 +72,8 @@ module private Impl =
   // TODO: consider this metric/probe for each performance counter instead
   // of having it for a list of PerfCounters?
 
+  // TODO: hook up to health checks, example with CPU EWMA impl on CPU usage?
+
   // in the first incarnation, this actor doesn't do a fan-out, so beware of slow
   // perf counters...
   let loop (conf : WinPerfCounterConf) (ri : RuntimeInfo) (inbox : IActor<_>) =
