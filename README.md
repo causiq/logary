@@ -283,3 +283,47 @@ module Mine =
 
  [apache]: https://www.apache.org/licenses/LICENSE-2.0.html
 
+# Refactor notes: Logary notes impl metrics
+Moving towards a dashboard inside the service at hand.
+
+## Step one - primitives
+
+Creating the infrastructure to hoise `PerformanceCounter` and `/proc` polling and continuous running on SQL statements into a probe.
+
+ - Make *metric* an actor interface like *probe*
+ - Make probe similar to *metric* at first
+ - Create a scheduling actor that can run `sample` on the probes and metrics
+ - Make HealthCheck a special case of probe that can interpret results
+
+### Outstanding Questions
+
+Handling of raw floats/doubles?
+
+Handling of histograms as opposed to simple reservoirs of data?
+
+## Step two - logary integration
+
+Tying metrics, probes, health checks together with targets (reporters) and the registry (+ scheduler).
+
+ - Register and unregister sampled metric in `Registry`
+ - Register and unregister sampled probe in `Registry`
+ - Register and unregister sampled health check in `Registry`
+ - All three above are *never* *sampled* unless:
+ - Use a `Rule` to connect a metric to a target, by specifying what *data point* to use as a gauge. This just calls *get_value* on a metric above.
+
+## Step three - creating custom probes
+
+When the infrastructure is in place, we can create probes that solve common problems.
+
+ - Proof of concept probe that uses Göran's SQL for SQL Server to continuously report metrics.
+
+## Step four - documenting the above
+
+ - Document how metrics, probes and health checks work and how they differ
+ - Document order of initialisation
+ - Document how to create custom (metric|probe|health check)
+ - Document CLR perf counters, finish writing most common counters
+
+## Step five - creating a dashboard
+
+The above is useless without a nice way to report the values. Create an in-app dashboard that can be used to access the histograms, guages and timers.
