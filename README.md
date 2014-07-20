@@ -263,19 +263,7 @@ module MyModule =
 
 If introducing a new type + corresponding module (see `Measure.fs` for example):
 
-Mine.fs:
-
-``` fsharp
-namespace Logary
-
-type mine =
-  { shaft : string
-  ; len   : int }
-
-module Mine =
-  let empty = { shaft = "empty shaft"; len = 50 }
-  // etc
-```
+Two-phase configuration; first create immutable configuration, then compile it. Second step: create running instances of everything from the configuration. This ensures that a logary instance is correct by construction.
 
 ## License
 
