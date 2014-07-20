@@ -1,5 +1,6 @@
 ﻿namespace Logary.Internals
 
+open System
 // DEPRECATED, refactor!
 
 // TODO: this module can be redone much nicer with an expressive API of possible
@@ -7,6 +8,7 @@
 
 /// A module that wraps the .Net TcpClient types/streams in a F#-ideomatic way,
 /// and behind an interface.
+[<Obsolete "Create a better abstraction; take a leaf from suave.io's book">]
 module Tcp =
 
   open System

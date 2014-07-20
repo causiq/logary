@@ -5,7 +5,7 @@
 ///
 /// TODO: graphite, riemann, health checks
 [<AutoOpen>]
-module TargetDefaults =
+module TargetsDefaults =
 
   open Logary
   open Logary.Targets

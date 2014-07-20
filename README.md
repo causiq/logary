@@ -282,6 +282,7 @@ Creating the infrastructure to hoise `PerformanceCounter` and `/proc` polling an
  - Make probe similar to *metric* at first
  - Create a scheduling actor that can run `sample` on the probes and metrics
  - Make HealthCheck a special case of probe that can interpret results
+ - A console text-writer target for the above sample
 
 ### Outstanding Questions
 
