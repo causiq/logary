@@ -3,6 +3,10 @@ open FSharp.Actor
 
 // inspiration: https://github.com/Feuerlabs/exometer/blob/master/doc/exometer_probe.md
 
+/// a DP Segment is a string that tells a tale about a segment of a hierarchial
+/// DP name
+type DPSegment = string // TODO: use or remove
+
 /// A data point is the name (atom) of a measure taken by a metric. It's not
 /// globally unique, but specific to a metric instance.
 type DP = DP of string

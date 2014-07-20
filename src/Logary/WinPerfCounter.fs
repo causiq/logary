@@ -24,7 +24,10 @@ type PerfCounter =
 [<Literal>]
 let AllInstances = "_Total"
 
-/// Type alias for PerformanceCounterCategory
+/// Type alias for System.Diagnostics.PerformanceCounter
+type PC = PerformanceCounter
+
+/// Type alias System.Diagnostics.for PerformanceCounterCategory
 type PCC = PerformanceCounterCategory
 
 /// Create a new performance counter category

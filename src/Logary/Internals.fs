@@ -1,5 +1,9 @@
 ﻿namespace Logary.Internals
 
+[<AutoOpen>]
+module internal UtilFns =
+  let flip f a b = f b a
+
 module internal Rnd =
   open System
 
