@@ -18,6 +18,8 @@ type WinPerfCountersMsg =
 
 type private WPCState =
   { lastValues : Map<PerfCounter, ``measure``> }
+ 
+let private emptyState = { lastValues = [] }
 
 let private calcPath (c : PerfCounter) =
   "TODO"
@@ -28,30 +30,31 @@ let private calcName (c : PerfCounter) =
 // TODO: implement things from TO_THINK_ABOUT
 
 let private loop (conf : WinPerfCounterConf) (inbox : IActor<_>) =
-  let rec loop () = async {
+  let rec loop state = async {
     let! msg, _ = inbox.Receive()
     match msg with
     | GetValue (datapoints, replChan) ->
       // what are the values for the requested data points?
       replChan.Reply(datapoints |> List.map (fun dp -> dp, Measure.empty))
-      return! loop ()
+      return! loop state
     | GetDataPoints replChan ->
       // what data points does this probe support?
       replChan.Reply [ DP "min"; DP "mean"; DP "99th percentile" ]
-      return! loop ()
+      return! loop state
     | Update msr ->
       // update the probe with the given measure
-      return! loop ()
+      return! loop state
     | Sample ->
       // read data from external sources and update state
-      return! loop ()
+      return! loop state
     | Shutdown ->
-      return! shutdown ()
+      return! shutdown state
     | Reset ->
-      return! loop ()
+      return! loop state
     }
-  and shutdown () = async.Return ()
 
-  loop ()
+  and shutdown state = async.Return ()
+
+  loop emptyState
 
 let create conf = MetricUtils.stdNamedMetric Probe (loop conf)
