@@ -31,7 +31,6 @@
     <DocumentationFile>bin\Release\Intelliplan.Logary.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="Example.fsx" />
     <None Include="README.md" />
     <Compile Include="WinPerfCounter.fs" />
     <Compile Include="Lenses.fs" />
@@ -54,17 +53,17 @@
     <Compile Include="Target.fs" />
     <Compile Include="Internals_Logger.fs" />
     <Compile Include="Formatting.fs" />
-    <Compile Include="Configuration_LogaryConf.fs" />
     <Compile Include="Targets_Core.fs" />
-    <Compile Include="Registry.fs" />
-    <Compile Include="Logging.fs" />
-    <Compile Include="Configuration_ValidationException.fs" />
-    <Compile Include="Configuration_Config.fs" />
-    <Compile Include="Configuration_FactoryApi.fs" />
-    <Compile Include="LoggerExtensions.fs" />
     <Compile Include="Targets_Nimrod.fs" />
     <Compile Include="Targets_Logstash.fs" />
     <Compile Include="Targets_Graphite.fs" />
+    <Compile Include="Configuration_LogaryConf.fs" />
+    <Compile Include="Registry.fs" />
+    <Compile Include="Logging.fs" />
+    <Compile Include="LoggerExtensions.fs" />
+    <Compile Include="Configuration_ValidationException.fs" />
+    <Compile Include="Configuration_Config.fs" />
+    <Compile Include="Configuration_FactoryApi.fs" />
     <Compile Include="Configuration_TargetsDefaults.fs" />
     <Compile Include="Configuration_MetricsDefaults.fs" />
     <None Include="packages.config" />

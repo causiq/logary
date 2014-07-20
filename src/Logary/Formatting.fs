@@ -1,12 +1,13 @@
 ﻿/// A module for converting log lines to text/strings.
 module Logary.Formatting
 
-open Newtonsoft.Json
-open Intelliplan.JsonNet
-
 open System
 
 open Microsoft.FSharp.Reflection
+
+open Newtonsoft.Json
+
+open Intelliplan.JsonNet
 
 ///Returns the case name of the object with union type 'ty.
 let internal caseNameOf (x:'a) =
