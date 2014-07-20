@@ -1,4 +1,4 @@
-namespace Logary.Target
+namespace Logary.Targets
 
 /// A module implementing a text writer target. Useful for writing to the
 /// console output, or writing to a custom text writer.
@@ -9,7 +9,7 @@ module TextWriter =
 
   open Logary
   open Logary.Internals
-  open Logary.Targets
+  open Logary.Target
   open Logary.Formatting
 
   /// Configuration for a text writer
@@ -82,14 +82,14 @@ module TextWriter =
     new(callParent : FactoryApi.ParentCallback<_>) =
       Builder(TextWriterConf.Default(System.Console.Out, System.Console.Error), callParent)
 
-    interface Logary.Targets.FactoryApi.SpecificTargetConf with
+    interface Logary.Target.FactoryApi.SpecificTargetConf with
       member x.Build name = create conf name
 
 /// The console Target for Logary
 module Console =
   open Logary
   open Logary.Formatting
-  open Logary.Targets
+  open Logary.Target
 
   /// Colours in hex
   type ConsoleColours =
@@ -133,7 +133,7 @@ module Console =
     new(callParent : FactoryApi.ParentCallback<_>) =
       Builder(ConsoleConf.Default, callParent)
 
-    interface Logary.Targets.FactoryApi.SpecificTargetConf with
+    interface Logary.Target.FactoryApi.SpecificTargetConf with
       member x.Build name = create conf name
 
 // boolean IsLogging() method, correct by excluded middle
@@ -146,7 +146,7 @@ module Debugger =
 
   open Logary
   open Logary.Internals
-  open Logary.Targets
+  open Logary.Target
   open Logary.Formatting
 
   type DebuggerConf =
@@ -193,5 +193,5 @@ module Debugger =
     new(callParent : FactoryApi.ParentCallback<_>) =
       Builder(DebuggerConf.Default, callParent)
 
-    interface Logary.Targets.FactoryApi.SpecificTargetConf with
+    interface Logary.Target.FactoryApi.SpecificTargetConf with
       member x.Build name = create conf name

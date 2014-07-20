@@ -18,6 +18,8 @@ open Logary.Target
 open Logary.Logging
 open Logary.Targets
 
+open Logary.HealthCheck
+
 [<EntryPoint>]
 let main argv =
   use logary =
@@ -25,6 +27,9 @@ let main argv =
       withTargets [
         Riemann.create (Riemann.RiemannConf.Create(tags = ["riemann-health"])) "riemann"
         Console.create (Console.ConsoleConf.Default) "console"
+      ] >>
+      withMetrics [
+        
       ] >>
       withRules [
         Rule.forAny "riemann"

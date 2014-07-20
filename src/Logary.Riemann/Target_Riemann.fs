@@ -1,4 +1,4 @@
-module Logary.Target.Riemann
+module Logary.Targets.Riemann
 
 // https://github.com/aphyr/riemann-ruby-client/blob/master/lib/riemann/event.rb
 // https://github.com/aphyr/riemann-java-client/tree/master/src/main/java/com
@@ -20,7 +20,7 @@ open System.Security.Cryptography.X509Certificates
 open Logary
 open Logary.Riemann.Client
 open Logary.Riemann.Messages
-open Logary.Targets
+open Logary.Target
 open Logary.Internals
 open Logary.Internals.Tcp
 
@@ -222,5 +222,5 @@ type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
   new(callParent : FactoryApi.ParentCallback<_>) =
     Builder(RiemannConf.Default, callParent)
 
-  interface Logary.Targets.FactoryApi.SpecificTargetConf with
+  interface Logary.Target.FactoryApi.SpecificTargetConf with
     member x.Build name = create conf name

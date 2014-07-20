@@ -1,4 +1,4 @@
-module Logary.Target.NLog
+module Logary.Targets.NLog
 
 type private Marker = interface end
 
@@ -9,8 +9,8 @@ open FSharp.Actor
 
 open Logary
 open Logary.Internals
-open Logary.Targets
-open Logary.Targets.TargetUtils
+open Logary.Target
+open Logary.Target.TargetUtils
 
 let private toNLogLevel = function
   | Verbose -> NLog.LogLevel.Trace

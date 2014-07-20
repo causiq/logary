@@ -9,7 +9,7 @@ module LoggerExtensions =
   open System.Collections.Generic
   open System.Runtime.InteropServices
 
-  open Logary.Targets
+  open Logary.Target
   open Logary.Internals
 
   let private toMap : obj -> _ = function

@@ -8,8 +8,6 @@ open System.IO
 open System.Text.RegularExpressions
 
 open Logary
-open Logary.Target
-open Logary.Targets
 open Logary.Measure
 open Logary.Formatting
 open Logary.Logging
@@ -19,9 +17,9 @@ open Logary.Internals.Tcp
 
 open TestDSL
 
-let isTarget name (t : TargetInstance) = t.name =? name
+let isTarget name (t : Target.TargetInstance) = t.name =? name
 
-open TextWriter
+open Logary.Targets.TextWriter
 
 [<Tests>]
 let tests =
@@ -36,11 +34,11 @@ let tests =
       |> ignore
 
     testCase "target lifecycle" <| fun _ ->
-      confTarget "tw" (create (TextWriterConf.Default(Fac.textWriter(), Fac.textWriter())))
-      |> validateTarget
-      |> initTarget { serviceName = "tests"; logger = NullLogger() }
-      |> send (LogLine.debug "Hello")
-      |> shutdownTarget
+      Target.confTarget "tw" (create (TextWriterConf.Default(Fac.textWriter(), Fac.textWriter())))
+      |> Target.validateTarget
+      |> Target.initTarget { serviceName = "tests"; logger = NullLogger() }
+      |> Target.send (LogLine.debug "Hello")
+      |> Target.shutdownTarget
       |> Async.RunSynchronously
       |> ignore
     ]

@@ -9,7 +9,7 @@ open Swensen.Unquote
 
 open ProtoBuf
 
-open Logary.Target.Riemann
+open Logary.Targets.Riemann
 open Logary.Riemann.Messages
 
 let roundtrip<'a when 'a : equality> (x : 'a) =

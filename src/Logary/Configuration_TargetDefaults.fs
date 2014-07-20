@@ -8,7 +8,7 @@
 module TargetDefaults =
 
   open Logary
-  open Logary.Target
+  open Logary.Targets
   open Logary.Rule
   open Logary.Configuration
 

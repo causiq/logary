@@ -1,5 +1,5 @@
 /// A Logary target for LogStash.
-module Logary.Target.Logstash
+module Logary.Targets.Logstash
 
 #nowarn "1104"
 
@@ -18,7 +18,7 @@ open Newtonsoft.Json.Linq
 
 open Logary
 open Logary.Formatting
-open Logary.Targets
+open Logary.Target
 open Logary.Internals
 open Logary.Internals.Tcp
 open Logary.Internals.Date
@@ -256,5 +256,5 @@ type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
   new(callParent : FactoryApi.ParentCallback<_>) =
     Builder(LogstashConf.Create("127.0.0.1"), callParent)
 
-  interface Logary.Targets.FactoryApi.SpecificTargetConf with
+  interface Logary.Target.FactoryApi.SpecificTargetConf with
     member x.Build name = create conf name

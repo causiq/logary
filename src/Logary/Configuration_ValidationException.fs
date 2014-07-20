@@ -1,7 +1,7 @@
 ﻿namespace Logary.Configuration
 
 open Logary
-open Logary.Targets
+open Logary.Target
 
 /// Thrown from 'validateLogary' if the configuration is wrong
 type ValidationException(msg, invalidRules : rule list, invalidTargets : TargetConf list) =

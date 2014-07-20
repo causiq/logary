@@ -6,7 +6,7 @@ open FSharp.Actor
 open NodaTime
 
 open Logary.Internals
-open Logary.Targets
+open Logary.Target
 open Logary.HealthCheck
 
 /// The messages that can be sent to the registry to interact with it and its
@@ -33,7 +33,7 @@ let getLogger =
 module internal Logging =
   open System
 
-  open Logary.Targets
+  open Logary.Target
   open Logary.Internals
   open Logary.Internals.Date
 
@@ -85,7 +85,7 @@ module Advanced =
   open Logary.Configuration
   open Logary.Measure
   open Logary.Rule
-  open Logary.Targets
+  open Logary.Target
   open Logary.HealthCheck
   open Logary.Internals
 
@@ -174,13 +174,13 @@ module Advanced =
   [<CompiledName "FromTargets">]
   let fromTargets name ilogger (targets : (LineFilter * MeasureFilter * TargetInstance * LogLevel) list) =
     { name    = name
-      targets = targets |> List.map (fun (lf, mf, ti, _) -> lf, mf, (Targets.actor ti))
+      targets = targets |> List.map (fun (lf, mf, ti, _) -> lf, mf, (Target.actor ti))
       level   = targets |> List.map (fun (_, _, _, level) -> level) |> List.min
       ilogger = ilogger }
     :> logger
 
   let private snd' (kv : System.Collections.Generic.KeyValuePair<_, _>) = kv.Value
-  let private actorInstance = snd' >> snd >> Option.get >> Targets.actor
+  let private actorInstance = snd' >> snd >> Option.get >> Target.actor
   let private wasSuccessful = function
     | SuccessWith(Ack, _)     -> 0
     | ExperiencedTimeout _    -> 1

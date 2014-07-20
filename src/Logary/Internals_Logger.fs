@@ -25,7 +25,7 @@ type NullLogger() =
 module internal Logging =
   open FSharp.Actor
 
-  open Logary.Targets
+  open Logary.Target
 
   /// A logger instance that keeps a reference to the actor targets that it
   /// logs to, as well as its name.
@@ -68,14 +68,14 @@ module internal Logging =
 
 type InternalLogger =
   { lvl  : LogLevel
-    trgs : Targets.TargetInstance list }
+    trgs : Target.TargetInstance list }
 
   // TODO: replace with LoggerInstance from module internal Logging
 
   interface logger with
     member x.Log line =
       if line.level >= x.lvl then
-        x.trgs |> List.iter (fun target -> line |> Targets.logTarget target)
+        x.trgs |> List.iter (fun target -> line |> Target.logTarget target)
     member x.Measure m =
       () // TODO: implement internal logging for measures
     member x.Level =

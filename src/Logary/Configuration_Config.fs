@@ -12,9 +12,9 @@ open NodaTime
 
 open Logary
 open Logary.Internals
-open Logary.Targets
-open Logary.Registry
 open Logary.Target
+open Logary.Registry
+open Logary.Targets
 
 /// Start logary configuration given a name of the service that is being configured.
 /// The name of the service is the foundation for a lot of the sorting that goes
@@ -40,7 +40,7 @@ let withTarget t conf =
 [<CompiledName "WithTargets">]
 let withTargets ts (conf : LogaryConf) =
   ts
-  |> Seq.map Targets.validateTarget
+  |> Seq.map Target.validateTarget
   |> Seq.fold (fun s t -> s |> withTarget t) conf
 
 /// Add a rule to the configuration - adds to existing rules.
@@ -53,6 +53,12 @@ let withRule r conf =
 [<CompiledName "WithRules">]
 let withRules rs conf =
   { conf with rules = (rs |> List.ofSeq) @ conf.rules }
+
+/// Adds a list of metric configurations to the configuration to run in the
+/// registry.
+[<CompiledName "WithMetrics">]
+let withMetrics ms conf =
+  conf
 
 /// Validate the configuration for Logary, throwing a ValidationException if
 /// configuration is invalid.

@@ -1,11 +1,11 @@
 // https://github.com/sbtourist/nimrod
-module Logary.Target.Nimrod
+module Logary.Targets.Nimrod
 
 open FSharp.Actor
 open NodaTime
 
 open Logary
-open Logary.Targets
+open Logary.Target
 open Logary.Measure
 open Logary.Internals
 open Logary.Internals.Tcp

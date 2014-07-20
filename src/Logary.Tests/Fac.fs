@@ -8,10 +8,10 @@ open FSharp.Actor
 
 open Logary
 open Logary.Internals
-open Logary.Target.TextWriter
+open Logary.Targets.TextWriter
 open Logary.Configuration.Config
 open Logary.Rule
-open Logary.Targets
+open Logary.Target
 
 open TestDSL
 

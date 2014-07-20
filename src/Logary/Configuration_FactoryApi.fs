@@ -11,8 +11,8 @@ open System.Reflection
 
 open Logary
 open Logary.Configuration
-open Logary.Targets
-open Logary.Targets.FactoryApi
+open Logary.Target
+open Logary.Target.FactoryApi
 
 type internal ConfBuilderT<'T when 'T :> SpecificTargetConf> =
   { parent      : ConfBuilder        // logary that is being configured
@@ -87,7 +87,7 @@ open System.Runtime.CompilerServices
 module FactoryApiExtensions =
   open System
   open Logary
-  open Logary.Targets.FactoryApi
+  open Logary.Target.FactoryApi
   open Logary.Configuration
 
   /// <summary>

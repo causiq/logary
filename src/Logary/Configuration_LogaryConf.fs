@@ -2,7 +2,7 @@
 
 open Logary
 open Logary.Internals
-open Logary.Targets
+open Logary.Target
 
 /// The logary configuration structure having a memory of all configured
 /// targets as well as the rules that map log lines and metrics to them.

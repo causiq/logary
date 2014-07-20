@@ -4,8 +4,8 @@ open Fuchu
 open Swensen.Unquote
 
 open Logary
-open Logary.Target.TextWriter
-open Logary.Targets
+open Logary.Targets.TextWriter
+open Logary.Target
 open Logary.Internals
 
 open TestDSL
