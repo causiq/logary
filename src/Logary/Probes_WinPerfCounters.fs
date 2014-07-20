@@ -21,6 +21,7 @@ type WinPerfCountersMsg =
 
 module Common =
 
+  /// nice metrics about CPU time
   let cpuTime =
     [ "% Processor Time"
       "% User Time"
@@ -65,8 +66,14 @@ module private Impl =
   let pcNextValue (DP dp) (pc : PC) =
     Measure.mkMeasure dp (nextValue pc)
 
-  // in the first incarnation, Sample doesn't do a fan-out, so beware of slow
-  // perf counters
+  // TODO: consider adding in a reservoir to hold the values? Or should this go
+  // somewhere else like in the targets or in the registry or somewhere else?
+
+  // TODO: consider this metric/probe for each performance counter instead
+  // of having it for a list of PerfCounters?
+
+  // in the first incarnation, this actor doesn't do a fan-out, so beware of slow
+  // perf counters...
   let loop (conf : WinPerfCounterConf) (ri : RuntimeInfo) (inbox : IActor<_>) =
     let rec init (pcs : PerfCounter list) =
       loop { lastValues = conf.initCounters
@@ -85,7 +92,7 @@ module private Impl =
           datapoints
           |> List.map (flip Map.tryFind state.lastValues)
           |> List.zip datapoints
-          |> List.filter (Option.isSome << snd)
+          |> List.filter (Option.isSome << snd) // the datapoints that had values
           |> List.map (function
             | dp, Some (pc, msr) -> dp, msr
             | dp, None -> failwith "isSome above says this won't happen")
@@ -120,12 +127,15 @@ module private Impl =
       }
 
     and reset state =
+      // return to init state after disposing all performance countrs
       state.lastValues |> Map.iter (fun dp (pc, _) -> pc.Dispose())
       init conf.initCounters
 
     and shutdown state =
+      // dispose all perf counters and exit
       state.lastValues |> Map.iter (fun dp (pc, _) -> pc.Dispose())
 
+    // initialise all perf counters
     init conf.initCounters
 
 let create conf = MetricUtils.stdNamedMetric Probe (Impl.loop conf)
