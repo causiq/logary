@@ -42,8 +42,12 @@ let instanceExists category instance =
 let counterExists category counter =
   PCC.CounterExists(counter, category)
 
+/// Gets the next value for the performance counter
+let nextValue (pc : PC) =
+  pc.NextValue() |> float
+
 /// Create a new performance counter given a WindowsPerfCounter record.
-let mkPc { category = cat; counter = cnt; instance = inst } =
+let mkPc { category = cat; counter = cnt; instance = inst } : PC option =
   if counterExists cat cnt then
     match inst with
     | Some inst when instanceExists cat inst ->
@@ -67,7 +71,7 @@ let pidToInstance category pid =
     cat.GetInstanceNames()
     |> Array.map (fun instName ->
       match mkPc { category = category; counter = "Process ID"; instance = Some instName } with
-      | Some pcProcId when int (pcProcId.NextValue()) = pid ->
+      | Some pcProcId when int (nextValue pcProcId) = pid ->
         instName
       | _ -> "")
     |> Array.tryFind (fun s -> s.Length > 0)

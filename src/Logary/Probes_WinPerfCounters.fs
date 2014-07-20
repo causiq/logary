@@ -29,7 +29,7 @@ module private Impl =
 
   /// A unified naming scheme for the names of performance counters
   module Naming =
-    let calcDP (c : PerfCounter) =
+    let toDP (c : PerfCounter) =
       let fstr instance =
         match instance with
         | None -> sprintf "%s|%s" c.category c.counter
@@ -49,10 +49,21 @@ module private Impl =
     | None -> mkPc (Naming.toCounter dp)
     | x -> x
 
+  let pcNextValue (DP dp) (pc : PC) =
+    Measure.mkMeasure dp (nextValue pc)
+
   // in the first incarnation, Sample doesn't do a fan-out, so beware of slow
   // perf counters
   let loop (conf : WinPerfCounterConf) (inbox : IActor<_>) =
-    let rec loop (state : WPCState) = async {
+    let rec init (pcs : PerfCounter list) =
+      loop { lastValues = conf.initCounters
+                          |> List.map WinPerfCounter.mkPc
+                          |> List.zip (conf.initCounters |> List.map Naming.toDP)
+                          |> List.filter (Option.isSome << snd)
+                          |> List.map (fun (dp, pc) -> dp, (pc.Value, Measure.empty))
+                          |> Map.ofList }
+
+    and loop (state : WPCState) = async {
       let! msg, _ = inbox.Receive()
       match msg with
       | GetValue (datapoints, replChan) ->
@@ -86,16 +97,22 @@ module private Impl =
           return! loop state'
       | Sample ->
         // read data from external sources and update state
-
-        return! loop state
+        let update key (pc, _) = pc, pcNextValue key pc
+        let state' = { state with lastValues = state.lastValues |> Map.map update }
+        return! loop state'
       | Shutdown ->
-        return! shutdown state
+        return shutdown state
       | Reset ->
-        return! loop state
+        return! reset state
       }
 
-    and shutdown state = async.Return ()
+    and reset state =
+      state.lastValues |> Map.iter (fun dp (pc, _) -> pc.Dispose())
+      init conf.initCounters
 
-    loop emptyState
+    and shutdown state =
+      state.lastValues |> Map.iter (fun dp (pc, _) -> pc.Dispose())
+
+    init conf.initCounters
 
 let create conf = MetricUtils.stdNamedMetric Probe (Impl.loop conf)
