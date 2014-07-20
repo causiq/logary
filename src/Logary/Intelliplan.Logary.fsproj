@@ -38,6 +38,7 @@
     <Compile Include="LogLevel.fs" />
     <Compile Include="Internals.fs" />
     <Compile Include="Internals_Deprecated.fs" />
+    <Compile Include="Scheduling.fs" />
     <Compile Include="LogLine.fs" />
     <Compile Include="Measure.fs" />
     <Compile Include="Logger.fs" />

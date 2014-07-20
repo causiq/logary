@@ -85,11 +85,11 @@ module HealthCheck =
       sprintf "HealthCheck(name=%s, exn=%A, value=%A, level=%A)"
         m.m_path (tryGetExn m) m.m_value m.m_level
 
-  /// Transform the measure to a result data.
-  [<CompiledName "AsResult"; Extension>]
-  let ofResult (m : _) =
-    MeasureWrapper m :> ResultData
-    |> HasValue
+  module Measure =
+    /// Transform the measure to a HealthCheck.ResultData.
+    let toResult (m : _) =
+      MeasureWrapper m :> ResultData
+      |> HasValue
 
   type HealthCheckMessage =
     | GetResult of HealthCheckResult Types.ReplyChannel
@@ -140,7 +140,8 @@ module HealthCheck =
         member x.Dispose ()  = () }
 
   // these replace the HealthChecks' actor implementations:
-  module Probe =
+  module internal ExampleProbe =
+    open Logary.Metric
 
     let private exampleProbe _ (* conf, logary conf etc ... *) (inbox : IActor<_>) =
       let rec loop () = async {
@@ -160,7 +161,7 @@ module HealthCheck =
         | Sample ->
           // read data from external sources and update state
           return! loop ()
-        | Terminate ->
+        | Shutdown ->
           return! shutdown ()
         | Reset ->
           return! loop ()
@@ -261,7 +262,7 @@ module HealthCheck =
                 |> float
                 |> measureTransform
                 |> Measure.setPath name
-                |> ofResult
+                |> Measure.toResult
               with
                 e -> NoValue
             member x.Dispose () =

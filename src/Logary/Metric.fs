@@ -1,92 +1,46 @@
 ﻿namespace Logary
 
-/// A scheduling actor that can call `Sample` on the metric/probe/health check.
-module Sampler =
-  // creds to Dave Thomas for his F# snippet
-  open System.Threading
-  
-  open FSharp.Actor
-
-  open NodaTime
-
-  type ScheduleMsg<'a> =
-    | Schedule of ('a -> unit) * 'a * Duration * Duration * CancellationTokenSource ReplyChannel
-    | ScheduleOnce of ('a -> unit) * 'a * Duration * CancellationTokenSource ReplyChannel
-
-  let private ms (d : Duration) =
-    d.ToTimeSpan().TotalMilliseconds |> int
-
-  let scheduleOnce (delay : Duration) msg receiver (cts: CancellationTokenSource) = async {
-    do! Async.Sleep (ms delay)
-    if cts.IsCancellationRequested then
-      cts.Dispose ()
-    else
-      receiver msg
-    }
-  
-  let scheduleMany initialDelay msg receiver delayBetween cts =
-    let rec loop time (cts: CancellationTokenSource) = async {
-      do! Async.Sleep time
-      if cts.IsCancellationRequested then
-        cts.Dispose ()
-      else
-        receiver msg
-      return! loop delayBetween cts
-    }
-    loop initialDelay cts
-
-  let scheduler (inbox : IActor<_>) =
-    let rec loop() = async {
-      let! msg, _ = inbox.Receive ()
-      let cs = new CancellationTokenSource()
-      match msg with
-      | Schedule (receiver, msg : 'a, initialDelay, delayBetween, replyChan) ->
-        Async.StartImmediate (scheduleMany (ms initialDelay) msg receiver (ms delayBetween) cs)
-        replyChan.Reply cs
-        return! loop ()
-      | ScheduleOnce (receiver, msg:'a, delay, replyChan) ->
-        Async.StartImmediate (scheduleOnce delay msg receiver cs)
-        replyChan.Reply cs
-        return! loop ()
-    }
-    loop ()
-  
-  /// Schedules a message to be sent to the receiver after the initialDelay.
-  /// If delayBetween is specified then the message is sent reoccuringly at the
-  /// delay between interval.
-  let schedule scheduler receiver msg initialDelay (delayBetween : _ option) =
-    let buildMessage replyChan =
-      match delayBetween with
-      | Some x ->
-        Schedule (receiver, msg, initialDelay, x, replyChan)
-      | _ ->
-        ScheduleOnce (receiver, msg, initialDelay, replyChan)
-    scheduler |> Actor.reqReply buildMessage Infinite
-
 module Metric =
   open FSharp.Actor
 
   // inspiration: https://github.com/Feuerlabs/exometer/blob/master/doc/exometer_probe.md
 
-  /// A data point is the name (atom) of a measure taken by a metric.
+  /// A data point is the name (atom) of a measure taken by a metric. It's not
+  /// globally unique, but specific to a metric instance.
   type DP = DP of string
+
+  type MetricType =
+    | Metric
+    | Probe
+    | HealthCheck
 
   /// The main interface to talk to metric instances with
   type MetricMsg =
-    /// The GetValue implementation shall retrieve the value of one or more data points from the probe.
+    /// The GetValue implementation shall retrieve the value of one or more data
+    /// points from the probe.
     | GetValue of DP list * ReplyChannel<(DP * ``measure``) list>
-    /// The GetDataPoints shall return a list with all data points supported by the probe
+    /// The GetDataPoints shall return a list with all data points supported by
+    /// the probe
     | GetDataPoints of ReplyChannel<DP list>
     /// Incorporate a new value into the metric maintained by the metric.
     | Update of ``measure``
-    /// The Sample implementation shall sample data from the subsystem the probe is integrated with.
+    /// The Sample implementation shall sample data from the subsystem the probe
+    /// is integrated with.
     | Sample
-    /// The custom probe shall release any resources associated with the given state and return ok.
-    | Terminate
+    /// The custom probe shall release any resources associated with the given
+    /// state and return ok.
+    | Shutdown
     /// The Reset shall reset the state of the probe to its initial state.
     | Reset
 
-  
+  /// Called by metric implementations; each metric implementation has as its
+  /// own responsibility to configure itself, so that is not done through this
+  /// function. Not to be called directly, only called from inside Logary;
+  /// each module: `Probe`, `Metric` and `HealthCheck` is responsible for having
+  /// a function that can create standard named metrics which is usable from
+  /// outside Logary.
+  let internal stdNamedMetric name ``type`` =
+    () // TODO
 
   module Reservoir =
 
