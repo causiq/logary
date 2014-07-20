@@ -19,6 +19,19 @@ type WinPerfCountersMsg =
   | Register of PerfCounter
   | Unregister of PerfCounter
 
+module Common =
+
+  let cpuTime =
+    [ "% Processor Time"
+      "% User Time"
+      "% Interrupt Time"
+      "% Processor Time" ]
+    |> List.map (fun counter ->
+      { category = "Processor"
+        counter  = counter
+        instance = Some AllInstances })
+    |> fun cs -> { initCounters = cs }
+
 module private Impl =
 
   type WPCState =
@@ -54,7 +67,7 @@ module private Impl =
 
   // in the first incarnation, Sample doesn't do a fan-out, so beware of slow
   // perf counters
-  let loop (conf : WinPerfCounterConf) (inbox : IActor<_>) =
+  let loop (conf : WinPerfCounterConf) (ri : RuntimeInfo) (inbox : IActor<_>) =
     let rec init (pcs : PerfCounter list) =
       loop { lastValues = conf.initCounters
                           |> List.map WinPerfCounter.mkPc

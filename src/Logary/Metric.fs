@@ -1,5 +1,8 @@
 ﻿module Logary.Metric
+
 open FSharp.Actor
+
+open Logary.Internals
 
 // inspiration: https://github.com/Feuerlabs/exometer/blob/master/doc/exometer_probe.md
 
@@ -15,6 +18,11 @@ type MetricType =
   | Metric
   | Probe
   | HealthCheck
+  override x.ToString() =
+    match x with
+    | Metric      -> "metric"
+    | Probe       -> "probe"
+    | HealthCheck -> "healthcheck"
 
 /// The main interface to talk to metric instances with
 type MetricMsg =
@@ -35,6 +43,11 @@ type MetricMsg =
   /// The Reset shall reset the state of the probe to its initial state.
   | Reset
 
+type MetricConf =
+  { name     : string
+    ``type`` : MetricType
+    initer   : RuntimeInfo -> IActor }
+
 module MetricUtils =
   /// Called by metric implementations; each metric implementation has as its
   /// own responsibility to configure itself, so that is not done through this
@@ -43,7 +56,12 @@ module MetricUtils =
   /// a function that can create standard named metrics which is usable from
   /// outside Logary.
   let stdNamedMetric ``type`` loop name =
-    () // TODO
+    { name     = name
+      ``type`` = ``type``
+      initer   = fun metadata ->
+        Actor.spawn
+          (Actor.Options.Create(sprintf "logaryRoot/%O/%s" ``type`` name))
+          (loop metadata) }
 
 module Reservoir =
 

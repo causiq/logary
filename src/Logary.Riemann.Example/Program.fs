@@ -15,10 +15,11 @@ open Logary
 open Logary.Configuration
 
 open Logary.Target
-open Logary.Logging
 open Logary.Targets
 
-open Logary.HealthCheck
+open Logary.Metrics
+
+open Logary.Logging
 
 [<EntryPoint>]
 let main argv =
@@ -29,7 +30,7 @@ let main argv =
         Console.create (Console.ConsoleConf.Default) "console"
       ] >>
       withMetrics [
-        
+        WinPerfCounters.create (WinPerfCounters.Common.cpuTime)
       ] >>
       withRules [
         Rule.forAny "riemann"
