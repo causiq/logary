@@ -182,35 +182,4 @@ module HealthCheck =
             disposables |> Seq.iter (fun d -> d.Dispose())
             hc.Dispose() }
 
-
-  // these replace the HealthChecks' actor implementations:
-  module internal ExampleProbe =
-    open Logary.Metric
-
-    let private exampleProbe _ (* conf, logary conf etc ... *) (inbox : IActor<_>) =
-      let rec loop () = async {
-        let! msg, _ = inbox.Receive()
-        match msg with
-        | GetValue (datapoints, replChan) ->
-          // what are the values for the requested data points?
-          replChan.Reply(datapoints |> List.map (fun dp -> dp, Measure.empty))
-          return! loop ()
-        | GetDataPoints replChan ->
-          // what data points does this probe support?
-          replChan.Reply [ DP "min"; DP "mean"; DP "99th percentile" ]
-          return! loop ()
-        | Update msr ->
-          // update the probe with the given measure
-          return! loop ()
-        | Sample ->
-          // read data from external sources and update state
-          return! loop ()
-        | Shutdown ->
-          return! shutdown ()
-        | Reset ->
-          return! loop ()
-        }
-      and shutdown () = async.Return ()
-
-      loop ()
  

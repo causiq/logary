@@ -38,7 +38,7 @@ module TextWriter =
       error     = err
       flush     = flush
       isErrorAt = cutOff }
-    metadata =
+    logaryData =
     (fun (inbox : IActor<_>) ->
       let rec loop () = async {
         let! msg, mopt = inbox.Receive()
@@ -62,10 +62,12 @@ module TextWriter =
           return () }
       loop ())
 
-  let [<CompiledName("Create")>] create conf = TargetUtils.stdNamedTarget (twLoop conf)
+  [<CompiledName("Create")>] 
+  let create conf = TargetUtils.stdNamedTarget (twLoop conf)
 
   /// Use from C# to create - uses tuple calling convention
-  let [<CompiledName("Create")>] createA (formatter, out, err, flush, isErrorAt, name) =
+  [<CompiledName("Create")>]
+  let createA (formatter, out, err, flush, isErrorAt, name) =
     create
       { formatter = formatter
         output    = out
