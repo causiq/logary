@@ -44,7 +44,7 @@
     <Compile Include="Logger.fs" />
     <Compile Include="Internals_RuntimeInfo.fs" />
     <Compile Include="Metric.fs" />
-    <Compile Include="Probes_WinPerfCounters.fs" />
+    <Compile Include="Metrics_WinPerfCounters.fs" />
     <Compile Include="HealthCheck.fs" />
     <Compile Include="TO_THINK_ABOUT.fs" />
     <Compile Include="LogManager.fs" />

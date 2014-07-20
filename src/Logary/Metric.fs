@@ -39,7 +39,7 @@ type MetricMsg =
   | Sample
   /// The custom probe shall release any resources associated with the given
   /// state and return ok.
-  | Shutdown
+  | Shutdown of Acks ReplyChannel
   /// The Reset shall reset the state of the probe to its initial state.
   | Reset
 
@@ -47,6 +47,23 @@ type MetricConf =
   { name     : string
     ``type`` : MetricType
     initer   : RuntimeInfo -> IActor }
+
+let getValue (dps : DP list) =
+  Actor.reqReply
+    (fun chan -> GetValue(dps, chan))
+    Infinite
+
+let getDataPoints (m : #IActor) =
+  Actor.reqReply
+    GetDataPoints
+    Infinite
+    m
+
+let shutdown (a : #IActor) =
+  Actor.reqReply
+    Shutdown
+    Infinite
+    a
 
 module MetricUtils =
   /// Called by metric implementations; each metric implementation has as its

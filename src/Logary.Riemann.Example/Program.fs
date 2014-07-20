@@ -30,11 +30,12 @@ let main argv =
         Console.create (Console.ConsoleConf.Default) "console"
       ] >>
       withMetrics [
-        WinPerfCounters.create (WinPerfCounters.Common.cpuTime)
+        WinPerfCounters.create (WinPerfCounters.Common.cpuTime) "cpuTime"
       ] >>
       withRules [
         Rule.forAny "riemann"
         Rule.forAny "console"
+        Rule.forAny "cpuTime"
       ]
     )
 

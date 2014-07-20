@@ -121,6 +121,8 @@ module internal Play =
                   instance = Some AllInstances }
       toHealthCheck wpc (Categorisation.percentBucket' 100.))
 
+  // TODO: what about CPU when percent >= .99 for over x seconds
+
   open System.Text
 
   let clr_proc =

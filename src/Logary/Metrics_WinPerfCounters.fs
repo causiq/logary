@@ -122,8 +122,8 @@ module private Impl =
         let update key (pc, _) = pc, pcNextValue key pc
         let state' = { state with lastValues = state.lastValues |> Map.map update }
         return! loop state'
-      | Shutdown ->
-        return shutdown state
+      | Shutdown replChan ->
+        return shutdown state replChan
       | Reset ->
         return! reset state
       }
@@ -133,9 +133,10 @@ module private Impl =
       state.lastValues |> Map.iter (fun dp (pc, _) -> pc.Dispose())
       init conf.initCounters
 
-    and shutdown state =
+    and shutdown state replChan =
       // dispose all perf counters and exit
       state.lastValues |> Map.iter (fun dp (pc, _) -> pc.Dispose())
+      replChan.Reply Ack
 
     // initialise all perf counters
     init conf.initCounters
