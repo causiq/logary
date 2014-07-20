@@ -20,8 +20,8 @@ open Logary.Targets
 
 [<EntryPoint>]
 let main argv =
-  let logary =
-    withLogary "Riemann.Example" (
+  use logary =
+    withLogary' "Riemann.Example" (
       withTargets [
         Riemann.create (Riemann.RiemannConf.Create(tags = ["riemann-health"])) "riemann"
         Console.create (Console.ConsoleConf.Default) "console"
@@ -31,7 +31,6 @@ let main argv =
         Rule.forAny "console"
       ]
     )
-    |> Config.asLogManager
 
 //  clr_proc |> Registry.RegisterHealthCheck logary
 //  cpus |> Registry.registerHealthChecks logary
