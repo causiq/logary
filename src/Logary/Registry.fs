@@ -66,7 +66,6 @@ module internal Logging =
   /// Singleton configuration entry point: call from the runLogary code.
   let startFlyweights ({ metadata = { logger = lgr } } as inst) =
     lock Globals.criticalSection <| fun () ->
-      LogLine.debug "Logging.logaryRun w/ logaryInstance" |> Logger.log lgr
       Globals.singleton := Some inst
       goFish ()
 
@@ -170,113 +169,118 @@ module Advanced =
                timedOut = Seq.any (function Nack _ -> true | _ -> false) [ fs; ss ] }
     }
 
-  /// Create a new Logger from the targets passed, with a given name.
-  [<CompiledName "FromTargets">]
-  let fromTargets name ilogger (targets : (LineFilter * MeasureFilter * TargetInstance * LogLevel) list) =
-    { name    = name
-      targets = targets |> List.map (fun (lf, mf, ti, _) -> lf, mf, (Target.actor ti))
-      level   = targets |> List.map (fun (_, _, _, level) -> level) |> List.min
-      ilogger = ilogger }
-    :> logger
+  module private Impl =
 
-  let private snd' (kv : System.Collections.Generic.KeyValuePair<_, _>) = kv.Value
-  let private actorInstance = snd' >> snd >> Option.get >> Target.actor
-  let private wasSuccessful = function
-    | SuccessWith(Ack, _)     -> 0
-    | ExperiencedTimeout _    -> 1
-    | SuccessWith(Nack(_), _) -> 1
-  let private bisectSuccesses = // see wasSuccessful f-n above
-    fun groups -> groups |> Seq.filter (fun (k, _) -> k = 0) |> Seq.map snd |> (fun s -> if Seq.isEmpty s then [] else Seq.exactlyOne s |> Seq.toList),
-                  groups |> Seq.filter (fun (k, _) -> k = 1) |> Seq.map snd |> (fun s -> if Seq.isEmpty s then [] else Seq.exactlyOne s |> Seq.toList)
-  let private nl = System.Environment.NewLine
-  let private toTextList s =
-    let sb = new Text.StringBuilder()
-    for x in s do sb.AppendLine(sprintf " * %A" x) |> ignore
-    sb.ToString()
+    /// Create a new Logger from the targets passed, with a given name.
+    [<CompiledName "FromTargets">]
+    let fromTargets name ilogger (targets : (LineFilter * MeasureFilter * TargetInstance * LogLevel) list) =
+      { name    = name
+        targets = targets |> List.map (fun (lf, mf, ti, _) -> lf, mf, (Target.actor ti))
+        level   = targets |> List.map (fun (_, _, _, level) -> level) |> List.min
+        ilogger = ilogger }
+      :> logger
 
-  /// The proivate state for the Registry
-  type private RegistryState =
-    { /// the supervisor, not of the registry actor, but of the targets and health
-      /// checks.
-      supervisor : IActor
+    let snd' (kv : System.Collections.Generic.KeyValuePair<_, _>) = kv.Value
+    let actorInstance = snd' >> snd >> Option.get >> Target.actor
+    let wasSuccessful = function
+      | SuccessWith(Ack, _)     -> 0
+      | ExperiencedTimeout _    -> 1
+      | SuccessWith(Nack(_), _) -> 1
+    let bisectSuccesses = // see wasSuccessful f-n above
+      fun groups -> groups |> Seq.filter (fun (k, _) -> k = 0) |> Seq.map snd |> (fun s -> if Seq.isEmpty s then [] else Seq.exactlyOne s |> Seq.toList),
+                    groups |> Seq.filter (fun (k, _) -> k = 1) |> Seq.map snd |> (fun s -> if Seq.isEmpty s then [] else Seq.exactlyOne s |> Seq.toList)
+    let nl = System.Environment.NewLine
+    let toTextList s =
+      let sb = new Text.StringBuilder()
+      for x in s do sb.AppendLine(sprintf " * %A" x) |> ignore
+      sb.ToString()
 
-      /// A map from the actor id to health check actor. It's implicit that each
-      /// of these actors are linked to the supervisor actor.
-      hcs        : Map<string, HealthCheckMessage IActor> }
+    /// The state for the Registry
+    type RegistryState =
+      { /// the supervisor, not of the registry actor, but of the targets and health
+        /// checks.
+        supervisor : IActor
 
-    /// Creates a new instance of the RegistryState given a supervisor.
-    static member Create (supervisor : IActor) =
-      { supervisor = supervisor
-        hcs        = Map.empty }
+        /// A map from the actor id to health check actor. It's implicit that each
+        /// of these actors are linked to the supervisor actor.
+        hcs        : Map<string, HealthCheckMessage IActor> }
 
-  /// The registry function that works as an actor.
-  let rec private registry conf initialState =
-    let targetActors = conf.targets |> Seq.map actorInstance
-    let ilogger = conf.metadata.logger
-    (fun (inbox : IActor<_>) ->
-      /// In the running state, the registry takes queries for loggers, gauges, etc...
-      let rec running state = async {
-        let! msg, _ = inbox.Receive()
-        match msg with
-        | GetLogger (name, chan) ->
-          chan.Reply( name |> getTargets conf |> fromTargets name ilogger )
-          return! running state
-        | RegisterHealthCheck actor ->
-          let state' = { state with hcs = state.hcs |> Map.add actor.Id actor }
-          state.supervisor.Watch actor
-          return! running state'
-        | UnregisterHealthCheck actor ->
-          let state' = { state with hcs = state.hcs |> Map.remove actor.Id }
-          state.supervisor.UnLink actor // TODO: upgrade FSharp.Actor
-          return! running state'
-        | FlushPending(dur, chan) ->
-          LogLine.info "registry: flush start" |> Logger.log ilogger
-          let! allFlushed =
+      /// Creates a new instance of the RegistryState given a supervisor.
+      static member Create (supervisor : IActor) =
+        { supervisor = supervisor
+          hcs        = Map.empty }
+
+    /// The registry function that works as an actor.
+    let rec registry conf initialState =
+      let targetActors = conf.targets |> Seq.map actorInstance
+      let ilogger = conf.metadata.logger
+      let log = LogLine.setPath "Logary.Registry.registry" >> Logger.log ilogger
+      (fun (inbox : IActor<_>) ->
+        /// In the running state, the registry takes queries for loggers, gauges, etc...
+        let rec running state = async {
+          let! msg, _ = inbox.Receive()
+          match msg with
+          | GetLogger (name, chan) ->
+            chan.Reply( name |> getTargets conf |> fromTargets name ilogger )
+            return! running state
+          | RegisterHealthCheck actor ->
+            let state' = { state with hcs = state.hcs |> Map.add actor.Id actor }
+            state.supervisor.Watch actor
+            return! running state'
+          | UnregisterHealthCheck actor ->
+            let state' = { state with hcs = state.hcs |> Map.remove actor.Id }
+            state.supervisor.UnLink actor // TODO: upgrade FSharp.Actor
+            return! running state'
+          | FlushPending(dur, chan) ->
+            LogLine.info "flush start" |> log
+            let! allFlushed =
+              targetActors
+              // wait for flushes across all targets
+              |> Seq.pmap (Actor.makeRpc Flush (Timeout(dur.ToTimeSpan ())))
+            let flushed, notFlushed =
+              allFlushed
+              |> Seq.groupBy wasSuccessful
+              |> bisectSuccesses
+
+            chan.Reply <|
+              if List.isEmpty notFlushed then
+                LogLine.info "flush Ack" |> log
+                Ack
+              else
+                let msg = sprintf "Failed target flushes:%s%s" nl (toTextList notFlushed)
+                LogLine.errorf "flush Nack - %s" msg |> log
+                Nack msg
+            return! running state
+          | ShutdownLogary(dur, ackChan) ->
+            return! shutdown dur ackChan }
+
+        /// In the shutdown state, the registry doesn't respond to messages, but rather tries to
+        /// flush and shut down all targets, doing internal logging as it goes.
+        and shutdown (dur : Duration) (ackChan : Acks ReplyChannel) = async {
+          LogLine.info "shutdown start" |> log
+          let! allShutdown =
             targetActors
-            // wait for flushes across all targets
-            |> Seq.pmap (Actor.makeRpc Flush (Timeout(dur.ToTimeSpan ())))
-          let flushed, notFlushed =
-            allFlushed
+            |> Seq.pmap (Actor.makeRpc ShutdownTarget (Timeout(dur.ToTimeSpan ())))
+          let stopped, failed =
+            allShutdown
             |> Seq.groupBy wasSuccessful
             |> bisectSuccesses
 
-          chan.Reply <|
-            if List.isEmpty notFlushed then
-              LogLine.info "registry: flush Ack" |> Logger.log ilogger
+          ackChan.Reply <|
+            if List.isEmpty failed then
+              LogLine.info "shutdown Ack" |> log
               Ack
-            else 
-              let msg = sprintf "Failed target flushes:%s%s" nl (toTextList notFlushed)
-              LogLine.errorf "registry: flush Nack - %s" msg |> Logger.log ilogger
+            else
+              let msg = sprintf "failed target shutdowns:%s%s" nl (toTextList failed)
+              LogLine.errorf "shutdown Nack%s%s" nl msg
+              |> LogLine.setData "failed" failed
+              |> log
               Nack msg
-          return! running state
-        | ShutdownLogary(dur, ackChan) ->
-          return! shutdown dur ackChan }
 
-      /// In the shutdown state, the registry doesn't respond to messages, but rather tries to
-      /// flush and shut down all targets, doing internal logging as it goes.
-      and shutdown (dur : Duration) (ackChan : Acks ReplyChannel) = async {
-        LogLine.info "registry: shutdown start" |> Logger.log ilogger
-        let! allShutdown =
-          targetActors
-          |> Seq.pmap (Actor.makeRpc ShutdownTarget (Timeout(dur.ToTimeSpan ())))
-        let stopped, failed =
-          allShutdown
-          |> Seq.groupBy wasSuccessful
-          |> bisectSuccesses
+          LogLine.info "shutting down immediately" |> log
+          return () }
 
-        ackChan.Reply <|
-          if List.isEmpty failed then
-            LogLine.info "registry: shutdown Ack" |> Logger.log ilogger
-            Ack
-          else
-            let msg = sprintf "Failed target shutdowns:%s%s" nl (toTextList failed)
-            LogLine.errorf "registry: shutdown Nack%s%s" nl msg |> Logger.log ilogger
-            Nack msg
-
-        LogLine.info "shutting down registry immediately" |> Logger.log ilogger
-        return () }
-
-      running initialState)
+        running initialState)
 
   /// Start a new registry with the given configuration. Will also launch/start
   /// all targets that are to run inside the registry. Returns a newly
@@ -285,26 +289,28 @@ module Advanced =
   /// It is not until runRegistry is called, that each target gets its service
   /// metadata, so it's no need to pass the metadata to the target before this.
   let runRegistry ({ metadata = { logger = lgr } } as conf : LogaryConf) =
+    let log = LogLine.setPath "Logary.Registry.runRegistry" >> Logger.log lgr
+
     let makeTargetLive = fst >> init conf.metadata
     let targets' =
       conf.targets
-      |> Seq.map (fun kv -> kv.Key, (fst kv.Value, Some(makeTargetLive (snd' kv))))
+      |> Seq.map (fun kv -> kv.Key, (fst kv.Value, Some(makeTargetLive (kv.Value))))
       |> Map.ofSeq
 
     let conf' = { conf with targets = targets' }
-    let targetActors = targets' |> Seq.map actorInstance
+    let targetActors = targets' |> Seq.map Impl.actorInstance
     let supervisor =
       Supervisor.spawn <| Supervisor.Options.Create(None, Supervisor.Strategy.OneForOne, Actor.Options.Create("logaryRoot/supervisor"))
       |> Supervisor.superviseAll targetActors
 
-    LogLine.debugf "runRegistry: supervisor status: %A" supervisor.Status |> Logger.log lgr
+    LogLine.debugf "supervisor status: %A" supervisor.Status |> log
 
     let logaryInstance =
       { supervisor = supervisor
         registry   = Actor.spawn (Actor.Options.Create("logaryRoot/registry"))
-                                 (registry conf' (RegistryState.Create supervisor))
+                                 (Impl.registry conf' (Impl.RegistryState.Create supervisor))
         metadata   = conf'.metadata }
 
-    LogLine.debugf "runRegistry: registry status: %A" logaryInstance.registry.Status |> Logger.log lgr
+    LogLine.debugf "registry status: %A" logaryInstance.registry.Status |> log
 
     logaryInstance

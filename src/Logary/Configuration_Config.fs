@@ -16,6 +16,10 @@ open Logary.Target
 open Logary.Registry
 open Logary.Targets
 
+let private shutdownLogger<'a when 'a :> logger> : 'a -> unit = box >> function
+  | :? System.IDisposable as d -> d.Dispose()
+  | _ -> ()
+
 /// Start logary configuration given a name of the service that is being configured.
 /// The name of the service is the foundation for a lot of the sorting that goes
 /// on with the logs after they have been sent.
@@ -29,6 +33,13 @@ let confLogary serviceName =
     metadata =
       { serviceName = serviceName
         logger      = InternalLogger.Create(Verbose, [ console ]) } }
+
+/// Configure an internal logger (disposing anything already there); make sure
+/// the logger you give is ready to use directly.
+[<CompiledName "WithInternalLogger">]
+let withInternalLogger lgr (conf : LogaryConf) =
+  shutdownLogger conf.metadata.logger
+  { conf with metadata = { conf.metadata with logger = lgr } }
 
 /// Add a new target to the configuration. You also need to supple a rule for
 /// the target.
@@ -65,10 +76,7 @@ let withMetrics ms conf =
 /// configuration is invalid.
 [<CompiledName "ValidateLogary"; Extension>]
 let validate ({ targets = targets; rules = rules; metadata = { logger = lgr } } as conf) =
-  let log =
-    LogLine.info
-    >> LogLine.setPath "Logary.Configuration.Config.validate"
-    >> Logger.log lgr
+  let log = LogLine.setPath "Logary.Configuration.Config.validate" >> Logger.log lgr
   let targets = targets |> Map.fold (fun acc k _ -> k :: acc) [] |> Set.ofList
   let invalidRules =
     [ for r in rules do
@@ -76,7 +84,7 @@ let validate ({ targets = targets; rules = rules; metadata = { logger = lgr } } 
           yield r ]
   match invalidRules with
   | [] ->
-    log "validation successful"
+    LogLine.info "validation successful" |> log
     conf
   | rs ->
     let msg = sprintf "validation failed for\n%A" rs
@@ -95,16 +103,13 @@ let runLogary conf =
 let shutdown' (flushDur : Duration) (shutdownDur : Duration)
   ({ registry = reg; metadata = { logger = lgr } } : LogaryInstance)
   = 
-  let log =
-    LogLine.info
-    >> LogLine.setPath "Logary.Configuration.Config.shutdown"
-    >> Logger.log lgr
+  let log = LogLine.setPath "Logary.Configuration.Config.shutdown" >> Logger.log lgr
   async {
-  log "start shutdown"
+  LogLine.info "start shutdown" |> log
   let! res = Advanced.flushAndShutdown flushDur shutdownDur reg
-  log "stop shutdown"
+  LogLine.info "stop shutdown" |> log
   Logging.shutdownFlyweights ()
-  match lgr with | :? IDisposable as d -> d.Dispose() | _ -> ()
+  shutdownLogger lgr
   return res
   }
 

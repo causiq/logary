@@ -2,6 +2,7 @@
 module Logary.Formatting
 
 open System
+open System.Globalization
 
 open Microsoft.FSharp.Reflection
 
@@ -24,7 +25,7 @@ type StringFormatter =
         sprintf "%s %s: %s [%s]%s%s%s"
           (string (caseNameOf l.level).[0])
           // https://noda-time.googlecode.com/hg/docs/api/html/M_NodaTime_OffsetDateTime_ToString.htm
-          (l.timestamp.ToDateTimeOffset().ToString("o"))
+          (l.timestamp.ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture))
           l.message
           l.path
           (match l.tags with [] -> "" | _ -> " {" + String.Join(", ", l.tags) + "}")
@@ -40,7 +41,7 @@ type StringFormatter =
   static member VerbatimNewline = { format = fun l -> sprintf "%s%s" l.message (Environment.NewLine) }
 
   /// <see cref="StringFormatter.LevelDatetimePathMessageNl" />
-  static member LevelDatetimePathMessage =
+  static member LevelDatetimeMessagePath =
     StringFormatter.Expanded (Environment.NewLine) ""
 
   /// LevelDatetimePathMessageNl outputs the most information of the log line
@@ -49,7 +50,7 @@ type StringFormatter =
   /// then the path in square brackets: [Path.Here], the message and a newline.
   /// Exceptions are called ToString() on and prints each line of the stack trace
   /// newline separated.
-  static member LevelDatetimePathMessageNl =
+  static member LevelDatetimeMessagePathNl =
     StringFormatter.Expanded (Environment.NewLine) (Environment.NewLine)
 
 open NodaTime.TimeZones

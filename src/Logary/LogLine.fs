@@ -72,6 +72,10 @@ module LogLine =
 
   let private s x = Some x
 
+  /// Sets the level of the log line
+  [<CompiledName "SetLevel">]
+  let setLevel = Lenses.level_.set
+
   /// Add a key-value pair to the data
   [<CompiledName "SetData">]
   let setData k = (Lenses.dataItem_ k).set

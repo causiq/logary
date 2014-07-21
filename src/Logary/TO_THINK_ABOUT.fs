@@ -171,4 +171,3 @@ module internal Play =
 
   // TODO: register new health checks as conf
   // TODO: register and unregister health checks at runtime
-  // TODO: 'acceptor' for metrics

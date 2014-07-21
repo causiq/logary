@@ -103,7 +103,7 @@ module Console =
     { formatter : StringFormatter
       colorMap  : (ConsoleColours -> Logary.LogLevel -> ConsoleColours) option }
     static member Default =
-      { formatter = StringFormatter.LevelDatetimePathMessage
+      { formatter = StringFormatter.LevelDatetimeMessagePath
         colorMap  = None (* fun col line -> 0x000000 black *) }
     static member Create formatter =
       { formatter = formatter
@@ -154,9 +154,9 @@ module Debugger =
   type DebuggerConf =
     { formatter : StringFormatter }
     static member Default =
-      { formatter = StringFormatter.LevelDatetimePathMessageNl }
+      { formatter = StringFormatter.LevelDatetimeMessagePathNl }
     static member Create ?formatter =
-      { formatter = defaultArg formatter (StringFormatter.LevelDatetimePathMessageNl) }
+      { formatter = defaultArg formatter (StringFormatter.LevelDatetimeMessagePathNl) }
 
   let private debuggerLoop conf metadata =
     (fun (inbox : IActor<_>) ->

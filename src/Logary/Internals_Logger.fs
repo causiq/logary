@@ -13,13 +13,7 @@ type NullLogger() =
     member x.Measure measur = ()
     member x.Level = Fatal
     member x.Name = "Logary.Internals.NullLogger"
-    
-//  let put lvl (m : string) : unit =
-//    let n = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture)
-//    let msg = sprintf "[%s] (logary) %s: %s" lvl n m
-//    (!Globals.write) msg
-//    if Debugger.IsAttached then
-//      Debugger.Log(LogLevel.Info.ToInt(), "Logary-Internal", m + Environment.NewLine)
+
 module internal Logging =
   open FSharp.Actor
 

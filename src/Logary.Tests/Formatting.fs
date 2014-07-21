@@ -41,7 +41,7 @@ let tests =
 
     testCase "StringFormatter.LevelDatetimePathMessageNl no exception, no tags" <| fun _ ->
       (because "logging with LevelDatetimePathMessageNl" <| fun () ->
-        { sampleMessage with tags = [] } |> StringFormatter.LevelDatetimePathMessageNl.format)
+        { sampleMessage with tags = [] } |> StringFormatter.LevelDatetimeMessagePathNl.format)
       |> should equal (
           sprintf "E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]%s"
             Environment.NewLine)
@@ -49,7 +49,7 @@ let tests =
 
     testCase "StringFormatter.LevelDatetimePathMessageNl no exception, tags" <| fun _ ->
       (because "logging with LevelDatetimePathMessageNl" <| fun () ->
-        sampleMessage |> StringFormatter.LevelDatetimePathMessageNl.format)
+        sampleMessage |> StringFormatter.LevelDatetimeMessagePathNl.format)
       |> should equal (
           sprintf "E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d] {error, bad}%s"
             Environment.NewLine)
@@ -59,7 +59,7 @@ let tests =
       let e = new Exception("Gremlings in the machinery")
       (because "logging with exception attached" <| fun () ->
         { sampleMessage with ``exception`` = e |> Some }
-        |> StringFormatter.LevelDatetimePathMessageNl.format)
+        |> StringFormatter.LevelDatetimeMessagePathNl.format)
       |> should equal (
         sprintf "E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d] {error, bad} cont...%s%O%s"
           Environment.NewLine
