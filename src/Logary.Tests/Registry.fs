@@ -18,7 +18,7 @@ open Logary.Configuration
 // framework API tests
 
 [<Tests>]
-let tests =
+let registry =
   testList "Registry" [
     yield testCase "getLogger" <| fun _ ->
       Fac.withLogary <| fun logary out err ->
@@ -46,14 +46,4 @@ let tests =
         |> should contain "hi there"
         |> should_not contain "after shutdown"
         |> thatsIt
-
-    yield testCase "timing f-n call" <| fun _ ->
-      Fac.withLogary <| fun logary stdout stderr ->
-//        let logger = "a.b.c.d" |> Registry.getLogger logary.registry |> Async.RunSynchronously
-//        let f = Logary.Derived.Metrics.Time.timelvl logger Info (logger.Name) <| fun () ->
-//          printfn "doing work ..."
-//          42
-//        // TODO: assert on Nimrod output
-//        f =? 42
-          ()
     ]

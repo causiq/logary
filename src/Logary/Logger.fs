@@ -42,24 +42,24 @@ module Logger =
 
   /// Write a verbose log entry to the logger
   [<CompiledName "Verbose">]
-  let verbose logger = log logger << logLine Verbose
+  let verbose logger = log logger << create' Verbose
 
   /// Write a debug log entry to the logger
   [<CompiledName "Debug">]
-  let debug logger = log logger << logLine Debug
+  let debug logger = log logger << create' Debug
 
   /// Write an info log entry to the logger
   [<CompiledName "Info">]
-  let info logger = log logger << logLine Info
+  let info logger = log logger << create' Info
 
   /// Write a warn log entry
   [<CompiledName "Warn">]
-  let warn logger = log logger << logLine Warn
+  let warn logger = log logger << create' Warn
 
   /// Write an error log entry
   [<CompiledName "Error">]
-  let error logger = log logger << logLine Error
+  let error logger = log logger << create' Error
 
   /// Write a fatal log entry
   [<CompiledName "Fatal">]
-  let fatal logger = log logger << logLine Fatal
+  let fatal logger = log logger << create' Fatal

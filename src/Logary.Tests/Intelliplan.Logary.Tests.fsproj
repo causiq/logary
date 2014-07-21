@@ -59,6 +59,7 @@
     <Compile Include="TestDSL.fs" />
     <Compile Include="Fac.fs" />
     <Compile Include="LogLevel.fs" />
+    <Compile Include="Formatting.fs" />
     <Compile Include="Rule.fs" />
     <Compile Include="Lifecycles.fs" />
     <Compile Include="Metrics.fs" />
@@ -69,7 +70,6 @@
     <Compile Include="HealthChecks.fs" />
     <Compile Include="Registry.fs" />
     <Compile Include="ExternalAssumptions.fs" />
-    <Compile Include="Formatting.fs" />
     <None Include="packages.config" />
     <None Include="App.config" />
     <Compile Include="AssemblyVersionInfo.fs" />

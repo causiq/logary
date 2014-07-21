@@ -1,7 +1,5 @@
 /// For information on what F# StringFormat<'T> takes as arguments see
 /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
-///
-/// TODO: make modular and configurable when Logary is started
 namespace Logary.Internals
 
 open Logary
@@ -41,7 +39,6 @@ module internal Logging =
 
       interface logger with
         member x.Log line =
-          // TODO: make functional:
           for accept, _, t in x.targets do
             try
               if accept line then
@@ -54,14 +51,16 @@ module internal Logging =
               |> Logger.log x.ilogger
 
         member x.Measure m =
-          try
-            (x.targets |> List.map (fun (_, _, x) -> x)) <-* Measure m
-          with
-          | Actor.ActorInvalidStatus msg ->
-            LogLine.errorf
-              "Sending metric to %s failed, because of target state. Actor said: '%s'" 
-              x.name msg
-            |> Logger.log x.ilogger
+          for _, accept, t in x.targets do
+            try
+              if accept m then
+                t <-- Measure m
+            with
+            | Actor.ActorInvalidStatus msg ->
+              LogLine.errorf
+                "Sending metric to %s failed, because of target state. Actor said: '%s'" 
+                x.name msg
+              |> Logger.log x.ilogger
 
         member x.Level =
           x.level

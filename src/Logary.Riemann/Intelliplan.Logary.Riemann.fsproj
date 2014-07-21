@@ -49,7 +49,7 @@
   <ItemGroup>
     <Compile Include="Messages.fs" />
     <Compile Include="Client.fs" />
-    <Compile Include="Target_Riemann.fs" />
+    <Compile Include="Targets_Riemann.fs" />
     <None Include="Riemann.proto" />
     <None Include="packages.config" />
     <Compile Include="AssemblyVersionInfo.fs" />
