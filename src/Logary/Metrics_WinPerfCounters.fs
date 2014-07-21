@@ -37,9 +37,6 @@ module private Impl =
 
   type WPCState =
     { lastValues : Map<DP, PC * ``measure``> }
- 
-  let emptyState =
-    { lastValues = Map.empty }
 
   /// A unified naming scheme for the names of performance counters
   module Naming =

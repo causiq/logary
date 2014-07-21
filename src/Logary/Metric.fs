@@ -24,7 +24,7 @@ type MetricType =
     | Probe       -> "probe"
     | HealthCheck -> "healthcheck"
 
-/// The main interface to talk to metric instances with
+/// The main protocol to talk to metric instances with
 type MetricMsg =
   /// The GetValue implementation shall retrieve the value of one or more data
   /// points from the probe.
@@ -47,6 +47,19 @@ type MetricConf =
   { name     : string
     ``type`` : MetricType
     initer   : RuntimeInfo -> IActor }
+
+/// Start configuring a metric with a metric factory
+let confMetric name (factory : string -> MetricConf) =
+  factory name
+
+let validate (conf : MetricConf) = conf
+
+let init metadata conf =
+  conf.initer metadata
+
+let update (m : ``measure``) actor =
+  actor <-- Update m
+  actor
 
 let getValue (dps : DP list) =
   Actor.reqReply

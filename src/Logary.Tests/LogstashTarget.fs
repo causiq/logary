@@ -24,9 +24,9 @@ let tests =
   testList "logstash target" [
     testCase "plain logging" <| fun _ ->
       let target = Logstash.create (Logstash.LogstashConf.Create("10.0.0.120", 1936us, StubTcp.StubWriterClient.Create)) "logstash-integration"
-      let subject = target |> initTarget { serviceName = "tests"; logger = NullLogger() }
+      let subject = target |> init { serviceName = "tests"; logger = NullLogger() }
       (because "logging warning to logstash" <| fun () ->
-        LogLine.warnTag "integration" "integration test" |> logTarget subject
+        LogLine.warnTag "integration" "integration test" |> sendLogline subject
         subject |> finaliseTarget
         ())
       |> thatsIt
@@ -39,7 +39,7 @@ let tests =
       let writer  = new StubTcp.StubWriterClient(true)
       let conf    = Logstash.LogstashConf.Create("127.0.0.1", clientFac = fun _ _ -> writer :> WriteClient)
       let target  = Logstash.create conf "logstash-integration"
-      let subject = target |> initTarget { serviceName = "tests"; logger = NullLogger() }
+      let subject = target |> init { serviceName = "tests"; logger = NullLogger() }
       let msg     = "integration test message"
       (because "logging warning to logstash" <| fun () ->
         LogLine.warnTag "integration" msg
@@ -47,7 +47,7 @@ let tests =
         |> LogLine.setData "data-key" "data-value"
         |> LogLine.setData "e" e1
         |> LogLine.setExn e2
-        |> logTarget subject
+        |> sendLogline subject
         subject |> finaliseTarget
         writer.ReadLines() |> Seq.exactlyOne |> Newtonsoft.Json.Linq.JObject.Parse)
       |> should' (fulfil (fun t -> "timestamp should not be null", not(t.["timestamp"] = null)))

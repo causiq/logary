@@ -22,7 +22,7 @@ open Logary.Targets
 [<CompiledName "ConfigureLogary">]
 let confLogary serviceName =
   let nullMd = { serviceName = serviceName; logger = NullLogger() }
-  let console = Console.create (Console.ConsoleConf.Default) "cons" |> initTarget nullMd
+  let console = Console.create (Console.ConsoleConf.Default) "cons" |> init nullMd
   { rules    = []
     targets  = Map.empty
     metadata =
@@ -40,7 +40,7 @@ let withTarget t conf =
 [<CompiledName "WithTargets">]
 let withTargets ts (conf : LogaryConf) =
   ts
-  |> Seq.map Target.validateTarget
+  |> Seq.map Target.validate
   |> Seq.fold (fun s t -> s |> withTarget t) conf
 
 /// Add a rule to the configuration - adds to existing rules.
@@ -87,7 +87,7 @@ let runLogary conf =
 
 /// Shutdown logary, waiting maximum flushDur + shutdownDur.
 [<CompiledName "ShutdownLogary">]
-let shutdownLogary' (flushDur : Duration) (shutdownDur : Duration)
+let shutdown' (flushDur : Duration) (shutdownDur : Duration)
   ({ registry = reg; metadata = { logger = lgr } } as inst : LogaryInstance)
   = async {
   LogLine.info "config: shutdownLogary start" |> Logger.log lgr
@@ -100,8 +100,8 @@ let shutdownLogary' (flushDur : Duration) (shutdownDur : Duration)
 /// Shutdown logary, waiting maximum 30 seconds, 15s for flush and 15s for
 /// shutdown.
 [<CompiledName "ShutdownLogary"; Extension>]
-let shutdownLogary =
-  shutdownLogary' (Duration.FromSeconds 15L) (Duration.FromSeconds 15L)
+let shutdown =
+  shutdown' (Duration.FromSeconds 15L) (Duration.FromSeconds 15L)
 
 /// Wrap the LogaryInstance as a LogManager
 [<CompiledName "AsLogManager"; Extension>]
@@ -111,8 +111,8 @@ let asLogManager (inst : LogaryInstance) =
       member x.RuntimeInfo        = inst.metadata
       member x.GetLogger name     = name |> getLogger inst.registry |> run
       member x.FlushPending dur   = Advanced.flushPending dur inst.registry |> run
-      member x.Shutdown fDur sDur = shutdownLogary' fDur sDur inst |> run
-      member x.Dispose ()         = shutdownLogary inst |> Async.Ignore |> run
+      member x.Shutdown fDur sDur = shutdown' fDur sDur inst |> run
+      member x.Dispose ()         = shutdown inst |> Async.Ignore |> run
   }
 
 /// Configure Logary completely with the given service name and rules and

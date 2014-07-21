@@ -75,7 +75,7 @@ type InternalLogger =
   interface logger with
     member x.Log line =
       if line.level >= x.lvl then
-        x.trgs |> List.iter (fun target -> line |> Target.logTarget target)
+        x.trgs |> List.iter (fun target -> line |> Target.sendLogline target)
     member x.Measure m =
       () // TODO: implement internal logging for measures
     member x.Level =

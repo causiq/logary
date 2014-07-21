@@ -7,15 +7,6 @@ open NodaTime
 open Logary
 open Logary.Metric.Reservoir
 
-type Assert =
-  static member FloatEqual(msg, expected, actual, ?epsilon) =
-    let epsilon = defaultArg epsilon 0.001
-    if expected <= actual + epsilon && expected >= actual - epsilon then
-      ()
-    else
-      Tests.failtestf "Expected %f to be %f within %f epsilon. %s"
-        actual expected epsilon msg
-
 [<Tests>]
 let snapshot =
   let sample = Snapshot.create [| 5L; 1L; 2L; 3L; 4L |]
@@ -93,9 +84,10 @@ let reservoirs =
 
     testList "sliding time window" [
       testCase "store duplicate ticks" <| fun _ ->
-        let testClock = { new IClock with
-                    member x.Now = Instant(20L) }
-
+        let testClock =
+          { new IClock with
+              member x.Now = Instant(20L) }
+        // TODO: might port sliding time window reservoir
         ()
       ]
 

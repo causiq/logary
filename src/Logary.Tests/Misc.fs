@@ -17,7 +17,7 @@ open Logary.Formatting
 open Logary.Logging
 
 open Logary.Targets
-open Logary.Configuration.Config
+open Logary.Configuration
 open System.Text.RegularExpressions
 open Internals.Tcp
 
@@ -237,7 +237,7 @@ let tests =
         let logger = "a.b.c.d" |> Registry.getLogger logary.registry |> Async.RunSynchronously
         (because "logging something, then shutting down" <| fun () ->
           "hi there" |> Logger.info logger
-          logary |> shutdownLogary |> Async.RunSynchronously |> ignore
+          logary |> Config.shutdown |> Async.RunSynchronously |> ignore
           "after shutdown" |> Logger.info logger
           out.ToString())
         |> should contain "hi there"

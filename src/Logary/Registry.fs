@@ -285,7 +285,7 @@ module Advanced =
   /// It is not until runRegistry is called, that each target gets its service
   /// metadata, so it's no need to pass the metadata to the target before this.
   let runRegistry ({ metadata = { logger = lgr } } as conf : LogaryConf) =
-    let makeTargetLive = fst >> initTarget conf.metadata
+    let makeTargetLive = fst >> init conf.metadata
     let targets' =
       conf.targets
       |> Seq.map (fun kv -> kv.Key, (fst kv.Value, Some(makeTargetLive (snd' kv))))

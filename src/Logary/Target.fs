@@ -48,11 +48,11 @@ let confTarget name (factory : string -> TargetConf) =
   factory name
 
 /// Validates the target according to its validation rules.
-let validateTarget (conf : TargetConf) = conf
+let validate (conf : TargetConf) = conf
 
 /// Initialises the target with metadata and a target configuration,
 /// yielding a TargetInstance in return which contains the running target.
-let initTarget metadata conf =
+let init metadata conf =
   conf.initer metadata
 
 /// Send the target a log line, returning the same instance
@@ -62,17 +62,17 @@ let send msg instance =
   instance
 
 /// Log to the target and just return unit
-let logTarget i logLine = send logLine i |> ignore
+let sendLogline i logLine = send logLine i |> ignore
 
 /// Send the metric to the target and return unit
-let metricTarget i msr = i.actor <-- Measure msr
+let sendMeasure i msr = i.actor <-- Measure msr
 
 /// Send a flush RPC to the target and return the async with the ACKs
-let flushTarget i =
+let flush i =
   i.actor |> Actor.makeRpc Flush Infinite
 
 /// Shutdown the target, waiting indefinitely for it to stop
-let shutdownTarget tInst =
+let shutdown tInst =
   tInst.actor |> Actor.makeRpc ShutdownTarget Infinite
 
 /// Module with utilities for Targets to use for formatting LogLines.

@@ -120,3 +120,8 @@ let raiseExn<'TExn when 'TExn :> exn> ctx =
     | _ -> Success // it raised another exception, that's a success
 
 let thatsIt = ignore
+
+
+[<AutoOpen>]
+module Exts =
+  let run a = a |> Async.RunSynchronously

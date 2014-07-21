@@ -32,7 +32,7 @@ let private actorLoop conf metadata =
             tags          = []
             ``exception`` = None
             timestamp     = m.m_timestamp }
-          |> logTarget conf.target
+          |> sendLogline conf.target
           return! loop ()
         | Log l ->
           return! running ()

@@ -35,7 +35,7 @@ let tests =
       |> thatsIt
 
     withMetric "get CPU values" <| fun mc inst ->
-      (because "has data points" <| fun _ ->  
+      (because "has data points" <| fun _ ->
         match inst |> Metric.getDataPoints |> run with
         | [] -> Tests.failtest "no dps"
         | dps -> inst |> Metric.getValue dps |> run, dps.Length)

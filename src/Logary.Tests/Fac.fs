@@ -9,17 +9,21 @@ open FSharp.Actor
 open Logary
 open Logary.Internals
 open Logary.Targets.TextWriter
-open Logary.Configuration.Config
+open Logary.Configuration
 open Logary.Rule
 open Logary.Target
 
 open TestDSL
+open Fuchu
 
 let emptyTarget =
   { name  = "empty target"
-    actor = Actor.spawn Actor.Options.Default (fun _ -> async { return () }) }
+    actor = Actor.spawn Actor.Options.Default (fun _ -> async.Return ()) }
 
 let emptyRule = Rule.forAny "empty target"
+
+/// { serviceName = "tests"; logger = NullLogger() }
+let emptyRuntime = { serviceName = "tests"; logger = NullLogger() }
 
 let textWriter () =
   let sb = new StringBuilder()
@@ -41,17 +45,17 @@ let withLogary f =
 
   f logary out err
 
-let finaliseLogary = shutdownLogary >> fun a ->
+let finaliseLogary = Config.shutdown >> fun a ->
   let state = Async.RunSynchronously a
   (because "finalise should always work" <| fun () ->
-    if state.Successful then () else failwithf "finaliseLogary failed %A" state)
+    if state.Successful then () else Tests.failtestf "finaliseLogary failed %A" state)
   |> thatsIt
 
-let finaliseTarget = shutdownTarget >> fun a ->
+let finaliseTarget = Target.shutdown >> fun a ->
   let acks = Async.RunSynchronously(a, 1000)
   match acks with
-  | FSharp.Actor.RPC.ExperiencedTimeout actor -> failwith "finalising target timeout"
+  | FSharp.Actor.RPC.ExperiencedTimeout actor -> Tests.failtest "finalising target timeout"
   | FSharp.Actor.RPC.SuccessWith(acks, actor) ->
     match acks with
-    | Nack desc -> failwith "would not shut down: %A"
+    | Nack desc -> Tests.failtestf "would not shut down: %s" desc
     | Ack -> ()

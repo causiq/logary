@@ -5,7 +5,6 @@ open Swensen.Unquote
 
 open Logary
 open Logary.Targets.TextWriter
-open Logary.Target
 open Logary.Internals
 
 open TestDSL
@@ -16,16 +15,16 @@ let tests =
   testList "CoreTargets" [
     testCase "initialising TextWriter target" <| fun _ ->
       let target = create (TextWriterConf.Default(System.Console.Out, System.Console.Error)) "sample console"
-      let instance = target.initer { serviceName = "tests"; logger = NullLogger() }
+      let instance = target.initer emptyRuntime
       instance.name =? "sample console"
 
     testCase "writing with Console target directly" <| fun _ ->
       let stdout = Fac.textWriter ()
       let target = create (TextWriterConf.Default(stdout, stdout)) "writing console target"
-      let instance = target |> initTarget { serviceName = "tests"; logger = NullLogger() }
+      let instance = target |> Target.init emptyRuntime
 
       (because "logging with info level and then finalising the target" <| fun () ->
-        "Hello World!" |> LogLine.info |> logTarget instance
+        "Hello World!" |> LogLine.info |> Target.sendLogline instance
         instance |> finaliseTarget
         stdout.ToString())
       |> should contain "Hello World!"
@@ -34,11 +33,11 @@ let tests =
     testCase "``error levels should be to error text writer``" <| fun _ ->
       let out, err = Fac.textWriter (), Fac.textWriter ()
       let target = create (TextWriterConf.Default(out, err)) "error writing"
-      let subject = target |> initTarget { serviceName = "tests"; logger = NullLogger() }
+      let subject = target |> Target.init emptyRuntime
 
       (because "logging 'Error line' and 'Fatal line' to the target" <| fun () ->
-        LogLine.error "Error line" |> logTarget subject
-        LogLine.fatal "Fatal line" |> logTarget subject
+        LogLine.error "Error line" |> Target.sendLogline subject
+        LogLine.fatal "Fatal line" |> Target.sendLogline subject
         subject |> finaliseTarget
         err.ToString())
       |> should contain "Error line"
