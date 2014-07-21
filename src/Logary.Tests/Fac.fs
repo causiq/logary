@@ -40,7 +40,7 @@ let withLogary f =
     confLogary "tests"
     |> withRule rule
     |> withTarget target
-    |> validateLogary
+    |> Config.validate
     |> runLogary
 
   f logary out err

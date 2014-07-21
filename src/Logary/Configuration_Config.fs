@@ -22,7 +22,8 @@ open Logary.Targets
 [<CompiledName "ConfigureLogary">]
 let confLogary serviceName =
   let nullMd = { serviceName = serviceName; logger = NullLogger() }
-  let console = Console.create (Console.ConsoleConf.Default) "cons" |> init nullMd
+  let console = Console.create (Console.ConsoleConf.Default) "cons"
+                |> Target.init nullMd
   { rules    = []
     targets  = Map.empty
     metadata =
@@ -63,7 +64,11 @@ let withMetrics ms conf =
 /// Validate the configuration for Logary, throwing a ValidationException if
 /// configuration is invalid.
 [<CompiledName "ValidateLogary"; Extension>]
-let validateLogary ({ targets = targets; rules = rules; metadata = { logger = lgr } } as conf) =
+let validate ({ targets = targets; rules = rules; metadata = { logger = lgr } } as conf) =
+  let log =
+    LogLine.info
+    >> LogLine.setPath "Logary.Configuration.Config.validate"
+    >> Logger.log lgr
   let targets = targets |> Map.fold (fun acc k _ -> k :: acc) [] |> Set.ofList
   let invalidRules =
     [ for r in rules do
@@ -71,7 +76,7 @@ let validateLogary ({ targets = targets; rules = rules; metadata = { logger = lg
           yield r ]
   match invalidRules with
   | [] ->
-    LogLine.info "validation successful" |> Logger.log lgr
+    log "validation successful"
     conf
   | rs ->
     let msg = sprintf "validation failed for\n%A" rs
@@ -81,19 +86,25 @@ let validateLogary ({ targets = targets; rules = rules; metadata = { logger = lg
 /// Start logary with a given configuration
 [<CompiledName "RunLogary"; Extension>]
 let runLogary conf =
-  let instance = Registry.Advanced.runRegistry conf
+  let instance = Advanced.runRegistry conf
   Logging.startFlyweights instance
   instance
 
 /// Shutdown logary, waiting maximum flushDur + shutdownDur.
 [<CompiledName "ShutdownLogary">]
 let shutdown' (flushDur : Duration) (shutdownDur : Duration)
-  ({ registry = reg; metadata = { logger = lgr } } as inst : LogaryInstance)
-  = async {
-  LogLine.info "config: shutdownLogary start" |> Logger.log lgr
+  ({ registry = reg; metadata = { logger = lgr } } : LogaryInstance)
+  = 
+  let log =
+    LogLine.info
+    >> LogLine.setPath "Logary.Configuration.Config.shutdown"
+    >> Logger.log lgr
+  async {
+  log "start shutdown"
   let! res = Advanced.flushAndShutdown flushDur shutdownDur reg
-  LogLine.info "config: shutdownLogary done" |> Logger.log lgr
+  log "stop shutdown"
   Logging.shutdownFlyweights ()
+  match lgr with | :? IDisposable as d -> d.Dispose() | _ -> ()
   return res
   }
 
@@ -122,7 +133,7 @@ let configure serviceName targets rules =
   confLogary serviceName
   |> withTargets (targets |> List.ofSeq)
   |> withRules (rules |> List.ofSeq)
-  |> validateLogary
+  |> validate
   |> runLogary
   |> asLogManager
 
@@ -133,7 +144,7 @@ let configure serviceName targets rules =
 [<CompiledName "WithLogaryInstance">]
 let withLogary serviceName fConf =
   fConf (confLogary serviceName)
-  |> validateLogary
+  |> validate
   |> runLogary
 
 /// Configure Logary completely with the given service name and a function that
@@ -143,6 +154,6 @@ let withLogary serviceName fConf =
 [<CompiledName "WithLogary">]
 let withLogary' serviceName fConf =
   fConf (confLogary serviceName)
-  |> validateLogary
+  |> validate
   |> runLogary
   |> asLogManager

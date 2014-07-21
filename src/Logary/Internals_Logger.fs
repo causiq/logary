@@ -66,22 +66,34 @@ module internal Logging =
         member x.Level =
           x.level
 
+/// This logger is special: in the above case the Registry takes the responsibility
+/// of shutting down all targets, but this is a stand-alone logger that is used
+/// to log everything in Logary with, so it needs to capable of handling its
+/// own disposal. It must not throw under any circumstances.
 type InternalLogger =
   { lvl  : LogLevel
     trgs : Target.TargetInstance list }
-
-  // TODO: replace with LoggerInstance from module internal Logging
-
   interface logger with
     member x.Log line =
-      if line.level >= x.lvl then
-        x.trgs |> List.iter (fun target -> line |> Target.sendLogline target)
-    member x.Measure m =
-      () // TODO: implement internal logging for measures
+      try
+        if line.level >= x.lvl then
+          x.trgs |> List.iter (flip Target.sendLogLine line)
+      with _ -> ()
+    member x.Measure (m : ``measure``) =
+      try
+        if m.m_level >= x.lvl then
+          x.trgs |> List.iter (flip Target.sendMeasure m)
+      with _ -> ()
     member x.Level =
       x.lvl
     member x.Name =
       "Logary.Internals.InternalLogger"
+  interface System.IDisposable with
+    member x.Dispose() =
+      try
+        x.trgs
+        |> List.iter (Target.shutdown >> Async.Ignore >> Async.RunSynchronously)
+      with _ -> ()
   static member Create(level, targets) =
     { lvl = level; trgs = targets } :> logger
 

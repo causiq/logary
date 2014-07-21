@@ -18,7 +18,7 @@ let tests =
 
     testCase "logary" <| fun _ ->
       Config.confLogary "tests"
-      |> Config.validateLogary
+      |> Config.validate
       |> Config.runLogary
       |> Config.shutdown
       |> run |> ignore

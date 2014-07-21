@@ -93,7 +93,7 @@ let tests =
           [ Rule.forAny "not-correct-target" ]
         |> withTargets
           [ confTarget "another-target-name" (TextWriter.create <| TextWriter.TextWriterConf.Default(out, out)) ]
-        |> validateLogary |> ignore)
+        |> validate |> ignore)
       |> should' raiseExn<Configuration.ValidationException>
       |> thatsIt
 
@@ -111,7 +111,7 @@ let tests =
         confTarget "t1" (TextWriter.create <| TextWriter.TextWriterConf.Default(out, out))
         confTarget "t2" (TextWriter.create <| TextWriter.TextWriterConf.Default(out, out))
       ]
-      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validateLogary |> runLogary
+      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
       // string = logger name = path
       let get = Registry.getLogger logary.registry
 
@@ -140,7 +140,7 @@ let tests =
       let targets =
         [ confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Default(out, out)) ]
 
-      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validateLogary |> runLogary
+      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
       try
         async {
           // when
@@ -174,7 +174,7 @@ let tests =
       let out = Fac.textWriter ()
       let rules   = [ { hiera  = Regex(".*"); target = "tw"; lineFilter = (fun line -> false); measureFilter = Rule.allowFilter; level = Debug } ]
       let targets = [ confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Default(out, out)) ]
-      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validateLogary |> runLogary
+      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
       try
         async {
           let! logr = Registry.getLogger logary.registry "my.path.here"
@@ -200,7 +200,7 @@ let tests =
         { hiera  = Regex(".*"); target = "tw"; lineFilter = (fun line -> line.path = "a.b.c"); measureFilter = Rule.allowFilter; level  = Verbose }
         ]
       let targets = [ confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Default(out, out)) ]
-      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validateLogary |> runLogary
+      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
       try
         async {
           let! shouldLog = Registry.getLogger logary.registry "a.b.c"

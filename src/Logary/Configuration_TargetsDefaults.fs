@@ -39,7 +39,7 @@ module TargetsDefaults =
   [<CompiledName "RunWithGoodDefaults">]
   let runWithGoodDefaults name =
     goodDefaults name
-    |> validateLogary
+    |> validate
     |> runLogary
 
   /// Run with console and debugger targets with sane configurations as well
@@ -47,5 +47,5 @@ module TargetsDefaults =
   [<CompiledName "RunWithGoodDefaultsAndLogstash">]
   let runWithGoodDefaultsAndLogstash name hostname port =
     goodDefaultsAndLogstash name hostname port
-    |> validateLogary
+    |> validate
     |> runLogary

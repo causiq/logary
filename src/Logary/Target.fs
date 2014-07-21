@@ -62,7 +62,7 @@ let send msg instance =
   instance
 
 /// Log to the target and just return unit
-let sendLogline i logLine = send logLine i |> ignore
+let sendLogLine i logLine = send logLine i |> ignore
 
 /// Send the metric to the target and return unit
 let sendMeasure i msr = i.actor <-- Measure msr
