@@ -54,12 +54,12 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Rule.fs" />
     <Compile Include="StubTcp.fs" />
     <Compile Include="Fuchu.fs" />
     <Compile Include="TestDSL.fs" />
     <Compile Include="Fac.fs" />
     <Compile Include="LogLevel.fs" />
+    <Compile Include="Rule.fs" />
     <Compile Include="Lifecycles.fs" />
     <Compile Include="Metrics.fs" />
     <Compile Include="WinPerfCountersMetrics.fs" />
@@ -67,7 +67,7 @@
     <Compile Include="LogstashTarget.fs" />
     <Compile Include="GraphiteTarget.fs" />
     <Compile Include="HealthChecks.fs" />
-    <Compile Include="Misc.fs" />
+    <Compile Include="Registry.fs" />
     <Compile Include="ExternalAssumptions.fs" />
     <Compile Include="Formatting.fs" />
     <None Include="packages.config" />

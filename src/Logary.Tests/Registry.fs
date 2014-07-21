@@ -19,8 +19,8 @@ open Logary.Configuration
 
 [<Tests>]
 let tests =
-  testList "Misc" [
-    yield testCase "retrieving logger for name" <| fun _ ->
+  testList "Registry" [
+    yield testCase "getLogger" <| fun _ ->
       Fac.withLogary <| fun logary out err ->
         let logger = "a.b.c.d" |> Registry.getLogger logary.registry |> Async.RunSynchronously
         let logger' = "a.b.c.d" |> (logary |> asLogManager).GetLogger
