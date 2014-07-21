@@ -20,7 +20,7 @@ type internal ConfBuilderT<'T when 'T :> SpecificTargetConf> =
     tcSpecific  : 'T option }
 with
   member internal x.SetTcSpecific tcs =
-    { x with tcSpecific = Some(tcs) }
+    { x with tcSpecific = Some tcs }
 
   interface TargetConfBuild<'T> with
 
@@ -99,7 +99,7 @@ module FactoryApiExtensions =
   /// <returns>The same as input</returns>
   [<Extension; CompiledName "Target">]
   let target<'T when 'T :> SpecificTargetConf> (builder : ConfBuilder) (name : string) =
-    builder.Target<'T> name (new Func<_, _>(fun t -> t))
+    builder.Target<'T> name (new Func<_, _>(id))
 
 /// The main entry point for object oriented languages to interface with Logary,
 /// to configure it.
@@ -111,4 +111,4 @@ type LogaryFactory =
     if configurator = null then nullArg "configurator"
     let c = Config.confLogary serviceName
     let cb = configurator.Invoke <| ConfBuilder(c)
-    cb.BuildLogary()
+    cb.BuildLogary ()
