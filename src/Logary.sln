@@ -36,6 +36,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{4FC4A3AC-C
 		..\README.md = ..\README.md
 	EndProjectSection
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.Dash", "Logary.Dash\Intelliplan.Logary.Dash.fsproj", "{BF4793A4-FCE8-4FBF-8E8D-6297B9A1B70B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -102,6 +104,10 @@ Global
 		{178B23D3-F676-43C3-880D-9E0BEFBAF019}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{178B23D3-F676-43C3-880D-9E0BEFBAF019}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{178B23D3-F676-43C3-880D-9E0BEFBAF019}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BF4793A4-FCE8-4FBF-8E8D-6297B9A1B70B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BF4793A4-FCE8-4FBF-8E8D-6297B9A1B70B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BF4793A4-FCE8-4FBF-8E8D-6297B9A1B70B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BF4793A4-FCE8-4FBF-8E8D-6297B9A1B70B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -119,7 +119,7 @@ module HealthCheck =
   /// actor but it needs to be registered in the registry for it to work on its
   /// own.
   let fromFn name f =
-    let a = Actor.spawn (Actor.Options.Create(sprintf "logaryRoot/healthCheck/%s" name))
+    let a = Actor.spawn (Ns.create (sprintf "hc/%s" name))
                         (mkFromFunction f)
     { new healthcheck with
         member x.Name = name

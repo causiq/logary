@@ -215,6 +215,8 @@ module TimeUnit =
     | Hours -> float NodaConstants.TicksPerHour
     | Days -> float NodaConstants.TicksPerStandardDay
 
+namespace NodaTime
+
 module Duration =
   let hours (dur : Duration) =
     float dur.Ticks / float NodaConstants.TicksPerHour

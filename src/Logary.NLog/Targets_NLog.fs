@@ -46,7 +46,7 @@ let private nlogLoop nlogConfig metadata =
         logger.Log(typeof<Marker>.DeclaringType, event)
         return! running ()
       | Measure m -> return! loop ()
-      | ShutdownTarget ackChan -> return shutdown () }
+      | Shutdown ackChan -> return shutdown () }
 
     and shutdown () = NLog.LogManager.Shutdown()
 

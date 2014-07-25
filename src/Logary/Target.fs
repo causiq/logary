@@ -21,7 +21,7 @@ type TargetMessage =
   /// your queue.
   | Flush          of Acks FSharp.Actor.Types.ReplyChannel
   /// Shut down! Also, reply when you're done shutting down!
-  | ShutdownTarget of Acks FSharp.Actor.Types.ReplyChannel
+  | Shutdown of Acks FSharp.Actor.Types.ReplyChannel
 
 /// A target instance is a spawned actor instance together with
 /// the name of this target instance.
@@ -30,9 +30,6 @@ type TargetInstance =
     actor  : IActor
     /// The human readable name of the target.
     name   : string }
-
-/// Get the actor from the target instance
-let actor ti = ti.actor
 
 /// A target configuration is the 'reference' to the to-be-run target while it
 /// is being configured, and before Logary fully starts up.
@@ -73,7 +70,7 @@ let flush i =
 
 /// Shutdown the target, waiting indefinitely for it to stop
 let shutdown tInst =
-  tInst.actor |> Actor.makeRpc ShutdownTarget Infinite
+  tInst.actor |> Actor.makeRpc Shutdown Infinite
 
 /// Module with utilities for Targets to use for formatting LogLines.
 /// Currently only wraps a target loop function with a name and spawns a new actor from it.
@@ -84,7 +81,7 @@ module TargetUtils =
   let stdNamedTarget loop name =
     { name = name
       initer = fun metadata ->
-      { actor = Actor.spawn (Actor.Options.Create(sprintf "logaryRoot/%s" name)) (loop metadata)
+      { actor = Actor.spawn (Ns.create (sprintf "target/%s" name)) (loop metadata)
         name  = name } }
 
 /// A module that contains the required interfaces to do an "object oriented" DSL

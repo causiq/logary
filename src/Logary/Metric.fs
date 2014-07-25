@@ -1,5 +1,7 @@
 ﻿module Logary.Metric
 
+open NodaTime
+
 open FSharp.Actor
 
 open Logary.Internals
@@ -46,11 +48,13 @@ type MetricMsg =
 type MetricConf =
   { name     : string
     ``type`` : MetricType
-    initer   : RuntimeInfo -> IActor }
+    initer   : RuntimeInfo -> IActor
+    /// the period to sample the metric's value at
+    sampling : Duration }
 
 /// Start configuring a metric with a metric factory
-let confMetric name (factory : string -> MetricConf) =
-  factory name
+let confMetric name sampling (factory : string -> Duration -> MetricConf) =
+  factory name sampling
 
 let validate (conf : MetricConf) = conf
 
@@ -60,6 +64,9 @@ let init metadata conf =
 let update (m : ``measure``) actor =
   actor <-- Update m
   actor
+
+let sample actor =
+  actor <-- Sample
 
 let getValue (dps : DP list) =
   Actor.reqReply
@@ -85,13 +92,14 @@ module MetricUtils =
   /// each module: `Probe`, `Metric` and `HealthCheck` is responsible for having
   /// a function that can create standard named metrics which is usable from
   /// outside Logary.
-  let stdNamedMetric ``type`` loop name =
+  let stdNamedMetric ``type`` loop name sampling =
     { name     = name
       ``type`` = ``type``
       initer   = fun metadata ->
         Actor.spawn
-          (Actor.Options.Create(sprintf "logaryRoot/%O/%s" ``type`` name))
-          (loop metadata) }
+          (Ns.create (sprintf "%O/%s" ``type`` name))
+          (loop metadata)
+      sampling = sampling }
 
 module Reservoir =
 

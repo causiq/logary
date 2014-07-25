@@ -1,5 +1,6 @@
 ﻿module Logary.Tests.Lifecycles
 
+open NodaTime
 open Swensen.Unquote
 open Fuchu
 
@@ -32,7 +33,10 @@ let tests =
       |> run |> ignore
 
     testCase "metric" <| fun _ ->
-      Metric.confMetric "no op metric" (NoopMetric.create { NoopMetric.NoopConf.isHappy = true })
+      Metric.confMetric
+        "no op metric"
+        (Duration.FromMilliseconds 500L)
+        (NoopMetric.create { NoopMetric.NoopConf.isHappy = true })
       |> Metric.validate
       |> Metric.init Fac.emptyRuntime
       |> Metric.update (Measure.mkMeasure "tests" 1.)

@@ -1,5 +1,23 @@
 ﻿namespace Logary.Internals
 
+module internal Ns =
+  open FSharp.Actor
+
+  /// The actor's root namespace
+  [<Literal>]
+  let ActorRootNs = "logary"
+
+  /// Create a namespace from the subcomponent identifier
+  /// A single place to create Actor options -- until FSharp.Actor changes again
+  let create subcomponent =
+    sprintf "%s/%s" ActorRootNs subcomponent
+    |> fun str -> Actor.Options.Create str
+
+module internal Seq =
+  let all f s = Seq.fold (fun acc t -> acc && f t) true s
+  let any f s = Seq.fold (fun acc t -> acc || f t) false s
+  let pmap (f : _ -> Async<_>) s = s |> Seq.map f |> Async.Parallel
+
 [<AutoOpen>]
 module internal UtilFns =
   let flip f a b = f b a

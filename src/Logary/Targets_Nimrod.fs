@@ -39,7 +39,7 @@ let private actorLoop conf metadata =
         | Flush chan ->
           chan.Reply Ack
           return! running ()
-        | ShutdownTarget ackChan ->
+        | Shutdown ackChan ->
           ackChan.Reply Ack
           return! shutdown () }
     and shutdown () = async { return () }

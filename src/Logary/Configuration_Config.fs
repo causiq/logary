@@ -13,6 +13,7 @@ open NodaTime
 open Logary
 open Logary.Internals
 open Logary.Target
+open Logary.Metric
 open Logary.Registry
 open Logary.Targets
 
@@ -32,7 +33,8 @@ let confLogary serviceName =
     targets  = Map.empty
     metadata =
       { serviceName = serviceName
-        logger      = InternalLogger.Create(Verbose, [ console ]) } }
+        logger      = InternalLogger.Create(Verbose, [ console ]) }
+    metrics  = Map.empty }
 
 /// Configure an internal logger (disposing anything already there); make sure
 /// the logger you give is ready to use directly.
@@ -44,7 +46,7 @@ let withInternalLogger lgr (conf : LogaryConf) =
 /// Add a new target to the configuration. You also need to supple a rule for
 /// the target.
 [<CompiledName "WithTarget">]
-let withTarget t conf =
+let withTarget (t : TargetConf) conf =
   { conf with targets = conf.targets |> Map.add t.name (t, None) }
 
 /// Add a list of targets to the configuration. You also need to supply a rule
@@ -66,11 +68,16 @@ let withRule r conf =
 let withRules rs conf =
   { conf with rules = (rs |> List.ofSeq) @ conf.rules }
 
+let withMetric (m : MetricConf) conf =
+  { conf with metrics = conf.metrics |> Map.add m.name (m, None) }
+
 /// Adds a list of metric configurations to the configuration to run in the
 /// registry.
 [<CompiledName "WithMetrics">]
 let withMetrics ms conf =
-  conf
+  ms
+  |> Seq.map Metric.validate
+  |> Seq.fold (fun s t -> s |> withMetric t) conf
 
 /// Validate the configuration for Logary, throwing a ValidationException if
 /// configuration is invalid.

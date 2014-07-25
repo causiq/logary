@@ -12,46 +12,49 @@ type ScheduleMsg<'a> =
   | Schedule of ('a -> unit) * 'a * Duration * Duration * CancellationTokenSource ReplyChannel
   | ScheduleOnce of ('a -> unit) * 'a * Duration * CancellationTokenSource ReplyChannel
 
-let private ms (d : Duration) =
-  d.ToTimeSpan().TotalMilliseconds |> int
+module private Impl =
 
-let private scheduleOnce (delay : Duration) msg receiver (cts: CancellationTokenSource) = async {
-  do! Async.Sleep (ms delay)
-  if cts.IsCancellationRequested then
-    cts.Dispose ()
-  else
-    receiver msg
-  }
-  
-let private scheduleMany initialDelay msg receiver delayBetween cts =
-  let rec loop time (cts: CancellationTokenSource) = async {
-    do! Async.Sleep time
+  let ms (d : Duration) =
+    d.ToTimeSpan().TotalMilliseconds |> int
+
+  let scheduleOnce (delay : Duration) msg receiver (cts: CancellationTokenSource) = async {
+    do! Async.Sleep (ms delay)
     if cts.IsCancellationRequested then
       cts.Dispose ()
     else
       receiver msg
-    return! loop delayBetween cts
-  }
-  loop initialDelay cts
+    }
 
-let private schedulerLoop (inbox : IActor<_>) =
-  let rec loop() = async {
-    let! msg, _ = inbox.Receive ()
-    let cs = new CancellationTokenSource()
-    match msg with
-    | Schedule (receiver, msg : 'a, initialDelay, delayBetween, replyChan) ->
-      Async.StartImmediate (scheduleMany (ms initialDelay) msg receiver (ms delayBetween) cs)
-      replyChan.Reply cs
-      return! loop ()
-    | ScheduleOnce (receiver, msg:'a, delay, replyChan) ->
-      Async.StartImmediate (scheduleOnce delay msg receiver cs)
-      replyChan.Reply cs
-      return! loop ()
-  }
-  loop ()
+  let scheduleMany initialDelay msg receiver delayBetween cts =
+    let rec loop time (cts: CancellationTokenSource) = async {
+      do! Async.Sleep time
+      if cts.IsCancellationRequested then
+        cts.Dispose ()
+      else
+        receiver msg
+      return! loop delayBetween cts
+    }
+    loop initialDelay cts
 
+  let loop (inbox : IActor<_>) =
+    let rec loop() = async {
+      let! msg, _ = inbox.Receive ()
+      let cs = new CancellationTokenSource()
+      match msg with
+      | Schedule (receiver, msg : 'a, initialDelay, delayBetween, replyChan) ->
+        Async.StartImmediate (scheduleMany (ms initialDelay) msg receiver (ms delayBetween) cs)
+        replyChan.Reply cs
+        return! loop ()
+      | ScheduleOnce (receiver, msg:'a, delay, replyChan) ->
+        Async.StartImmediate (scheduleOnce delay msg receiver cs)
+        replyChan.Reply cs
+        return! loop ()
+    }
+    loop ()
+
+/// Create a new scheduler actor
 let create () =
-  Actor.spawn (Actor.Options.Create "logaryRoot/scheduler") schedulerLoop
+  Actor.spawn (Ns.create "scheduler") Impl.loop
 
 /// Schedules a message to be sent to the receiver after the initialDelay.
 /// If delayBetween is specified then the message is sent reoccuringly at the

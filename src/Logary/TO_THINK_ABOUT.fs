@@ -1,4 +1,4 @@
-﻿module TO_THINK_ABOUT
+﻿module private TO_THINK_ABOUT
 
 open Logary
 
@@ -171,3 +171,7 @@ module internal Play =
 
   // TODO: register new health checks as conf
   // TODO: register and unregister health checks at runtime
+
+/// A map from the actor id to health check actor. It's implicit that each
+/// of these actors are linked to the supervisor actor.
+//        hcs        : Map<string, HealthCheckMessage IActor>

@@ -263,7 +263,9 @@ module MyModule =
 
 If introducing a new type + corresponding module (see `Measure.fs` for example):
 
-Two-phase configuration; first create immutable configuration, then compile it. Second step: create running instances of everything from the configuration. This ensures that a logary instance is correct by construction.
+Two-phase configuration; first create immutable configuration, then compile it.
+Second step: create running instances of everything from the configuration. This
+ensures that a logary instance is correct by construction.
 
 ## License
 
@@ -276,7 +278,8 @@ Moving towards a dashboard inside the service at hand.
 
 ## Step one - primitives
 
-Creating the infrastructure to hoise `PerformanceCounter` and `/proc` polling and continuous running on SQL statements into a probe.
+Creating the infrastructure to hoise `PerformanceCounter` and `/proc` polling
+and continuous running on SQL statements into a probe.
 
  - Make *metric* an actor interface like *probe*
  - Make probe similar to *metric* at first
@@ -305,6 +308,7 @@ Tying metrics, probes, health checks together with targets (reporters) and the r
 When the infrastructure is in place, we can create probes that solve common problems.
 
  - Proof of concept probe that uses Göran's SQL for SQL Server to continuously report metrics.
+
 
 ## Step four - documenting the above
 

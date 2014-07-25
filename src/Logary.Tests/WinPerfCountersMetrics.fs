@@ -5,6 +5,8 @@ open Swensen.Unquote
 
 open TestDSL
 
+open NodaTime
+
 open Logary
 open Logary.Internals
 open Logary.Metrics.WinPerfCounters
@@ -13,7 +15,7 @@ let run = Async.RunSynchronously
 let nullInfo = { serviceName = "tests"; logger = NullLogger() }
 
 let withMetric label f =
-  let mc = create Common.cpuTime "cpuTime"
+  let mc = create Common.cpuTime "cpuTime" (Duration.FromMilliseconds 200L)
   let inst = mc.initer nullInfo
   testCase label <| fun _ ->
     try

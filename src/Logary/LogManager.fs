@@ -9,7 +9,10 @@ open Logary.Internals
 /// A type that encapsulates the moving parts of a configured Logary.
 type LogaryInstance =
   { supervisor : IActor
+    /// to use with Logary.Registry
     registry   : IActor
+    /// to use with Logary.SCheduling (as the actor param)
+    scheduler  : IActor
     metadata   : RuntimeInfo }
 
 /// A type that gives information on how the shutdown went

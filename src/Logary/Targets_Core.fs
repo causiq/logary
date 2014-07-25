@@ -55,7 +55,7 @@ module TextWriter =
           err.Flush()
           chan.Reply Ack
           return! loop ()
-        | ShutdownTarget ackChan ->
+        | Shutdown ackChan ->
           out.Dispose()
           if not (obj.ReferenceEquals(out, err)) then err.Dispose() else ()
           ackChan.Reply Ack
@@ -176,7 +176,7 @@ module Debugger =
         | Flush chan ->
           chan.Reply Ack
           return! loop()
-        | ShutdownTarget chan ->
+        | Shutdown chan ->
           chan.Reply Ack
           return () }
       loop ())

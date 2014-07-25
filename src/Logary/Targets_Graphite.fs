@@ -91,7 +91,7 @@ let private graphiteLoop (conf : GraphiteConf) (svc : RuntimeInfo) =
         | Flush chan ->
           chan.Reply Ack
           return! running state
-        | ShutdownTarget ackChan ->
+        | Shutdown ackChan ->
           return! shutdown state ackChan }
 
     and shutdown state ackChan =

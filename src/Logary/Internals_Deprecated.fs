@@ -8,7 +8,6 @@ open System
 
 /// A module that wraps the .Net TcpClient types/streams in a F#-ideomatic way,
 /// and behind an interface.
-[<Obsolete "Create a better abstraction; take a leaf from suave.io's book">]
 module Tcp =
 
   open System
