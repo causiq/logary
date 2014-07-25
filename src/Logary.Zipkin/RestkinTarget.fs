@@ -1,21 +1,22 @@
 namespace Logary.Target
 
-open Types
-
 // https://github.com/racker/restkin
 // https://github.com/racker/tryfer
 /// A target for RestKin.
 module RestKin =
-  open Logary
-  open Logary.Targets
-  open Logary.Formatting
-  open Logary.Internals.InternalLogger
 
   open System
 
   open FSharp.Actor
+  
   open RestSharp
+
   open Newtonsoft.Json
+
+  open Logary
+  open Logary.Target
+  open Logary.Formatting
+  open Logary.Configuration
 
   type internal hex16long =
     { value : uint64 }
@@ -136,7 +137,7 @@ module RestKin =
   type private RestKinState =
     { client : IRestClient }
 
-  let private makeSpan (l : LogLine) =
+  let private makeSpan (l : logline) =
     // TODO: map name (path)
     // TODO: map trace id
     // TODO: map span
@@ -161,11 +162,11 @@ module RestKin =
           let traceReq = makeReq formatter tenant (makeSpan l)
           let! resp = client.PostTaskAsync traceReq
           return! loop state
-        | Metric m ->
+        | Measure m ->
           return! loop state
         | Flush chan ->
           return! loop state
-        | ShutdownTarget ackChan -> return () }
+        | Shutdown ackChan -> return () }
 
       loop { client = clientFac baseUri })
 
@@ -181,5 +182,5 @@ module RestKin =
     new(callParent : FactoryApi.ParentCallback<_>) =
       Builder(RestKinConf.Default, callParent)
 
-    interface Logary.Targets.FactoryApi.SpecificTargetConf with
+    interface Logary.Target.FactoryApi.SpecificTargetConf with
       member x.Build name = create conf name

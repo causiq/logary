@@ -39,7 +39,7 @@ let tests =
         (NoopMetric.create { NoopMetric.NoopConf.isHappy = true })
       |> Metric.validate
       |> Metric.init Fac.emptyRuntime
-      |> Metric.update (Measure.mkMeasure "tests" 1.)
+      |> Metric.update (Measure.create "tests" 1.)
       |> Metric.shutdown
       |> run |> ignore
     ]

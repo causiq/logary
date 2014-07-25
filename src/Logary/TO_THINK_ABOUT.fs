@@ -84,9 +84,10 @@ module internal Play =
   open HealthCheck
   open WinPerfCounter
 
-  let mkMeasure' fValueTr fLevel rawValue =
-    let m = Measure.mkMeasure "" (fValueTr rawValue)
-    { m with m_level = fLevel (getValueFloat m) }
+  module Measure =
+    let create' fValueTr fLevel rawValue =
+      let m = Measure.create "" (fValueTr rawValue)
+      { m with m_level = fLevel (getValueFloat m) }
 
   module Categorisation =
     /// Finds the bucket that is less than or equal in value to the sample, yielding
@@ -101,7 +102,7 @@ module internal Play =
     /// Divides a given value first by the divisor, then assigns it a bucket of
     /// `levels`
     let percentBucket divisor buckets labels =
-      mkMeasure'
+      Measure.create'
         (fun (v : float) -> v / divisor)
         (lteBucket buckets labels)
 

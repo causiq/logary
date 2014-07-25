@@ -6,13 +6,14 @@ open System.Net
 
 open FSharp.Actor
 
-open Logary
-open Logary.Targets
-open Logary.Internals
-
 open FsSql
 
 open NodaTime
+
+
+open Logary
+open Logary.Internals
+open Logary.Target
 
 type DBConf =
   { connFac : unit -> IDbConnection
@@ -21,81 +22,84 @@ type DBConf =
     { connFac = openConn
       schema  = None }
 
-type internal DBInternalState =
-  { conn    : IDbConnection
-    connMgr : Sql.ConnectionManager }
+module internal Impl =
 
-let private P = Sql.Parameter.make
-let private txn = Tx.transactionalWithIsolation IsolationLevel.ReadCommitted
+  type DBInternalState =
+    { conn    : IDbConnection
+      connMgr : Sql.ConnectionManager }
 
-let private printSchema = function
-  | Some (s : string) -> sprintf "%s." s
-  | None              -> String.Empty
+  let P = Sql.Parameter.make
+  let txn = Tx.transactionalWithIsolation IsolationLevel.ReadCommitted
 
-let private insertMetric schema (m : Measure) connMgr =
-  Sql.execNonQuery connMgr
-    (sprintf "INSERT INTO %sMetrics (Host, Path, EpochTicks, Level, Type, Value)
-     VALUES (@host, @path, @epoch, @level, @type, @value)" (printSchema schema))
-    [ P("@host", Dns.GetHostName())
-      P("@path", m.m_path)
-      P("@epoch", m.m_timestamp.Ticks)
-      P("@level", m.m_level.ToInt())
-      P("@value", m.m_value) ]
+  let printSchema = function
+    | Some (s : string) -> sprintf "%s." s
+    | None              -> String.Empty
 
-let private insertMetric' schema m = insertMetric schema m |> txn
+  let insertMeasure schema (m : ``measure``) connMgr =
+    Sql.execNonQuery connMgr
+      (sprintf "INSERT INTO %sMetrics (Host, Path, EpochTicks, Level, Type, Value)
+       VALUES (@host, @path, @epoch, @level, @type, @value)" (printSchema schema))
+      [ P("@host", Dns.GetHostName())
+        P("@path", m.m_path)
+        P("@epoch", m.m_timestamp.Ticks)
+        P("@level", m.m_level.ToInt())
+        P("@value", m.m_value) ]
 
-let private insertLogLine schema (l : LogLine) connMgr =
-  Sql.execNonQuery connMgr
-    (sprintf "INSERT INTO %sLogLines (Host, Message, Data, Path, EpochTicks, Level, Exception, Tags)
-     VALUES (@host, @message, @data, @path, @epoch, @level, @exception, @tags)" (printSchema schema))
-    [ P("@host", Dns.GetHostName())
-      P("@message", l.message)
-      P("@data", l.data)
-      P("@path", l.path)
-      P("@epoch", l.timestamp.Ticks)
-      P("@level", l.level.ToInt())
-      P("@exception", l.``exception`` |> Option.map (sprintf "%O") |> Option.getOrDefault)
-      P("@tags", String.Join(",", l.tags)) ]
+  let insertMeasure' schema m = insertMeasure schema m |> txn
 
-let private insertLogLine' schema l = insertLogLine schema l |> txn
+  let insertLogLine schema (l : logline) connMgr =
+    Sql.execNonQuery connMgr
+      (sprintf "INSERT INTO %sLogLines (Host, Message, Data, Path, EpochTicks, Level, Exception, Tags)
+       VALUES (@host, @message, @data, @path, @epoch, @level, @exception, @tags)" (printSchema schema))
+      [ P("@host", Dns.GetHostName())
+        P("@message", l.message)
+        P("@data", l.data)
+        P("@path", l.path)
+        P("@epoch", l.timestamp.Ticks)
+        P("@level", l.level.ToInt())
+        P("@exception", l.``exception`` |> Option.map (sprintf "%O") |> Option.getOrDefault)
+        P("@tags", String.Join(",", l.tags)) ]
 
-let private requestTraceLoop (conf : DBConf) (svc : ServiceMetadata) =
-  (fun (inbox : IActor<_>) ->
-    let rec init () = async {
-      InternalLogger.debug "target is opening connection to DB"
-      let c = conf.connFac ()
-      match c.State with
-      | ConnectionState.Broken
-      | ConnectionState.Closed -> c.Open()
-      | _ -> ()
-      return! running
-        { conn    = c
-          connMgr = Sql.withConnection c } }
+  let insertLogLine' schema l = insertLogLine schema l |> txn
 
-    and running state = async {
-      let! msg, mopt = inbox.Receive()
-      match msg with
-      | Log l ->
-        let _ = insertLogLine' conf.schema l state.connMgr
-        return! running state
+  let loop (conf : DBConf) (svc : RuntimeInfo) =
+    (fun (inbox : IActor<_>) ->
+      let log = LogLine.setPath "Logary.DB.loop" >> Logger.log svc.logger
+      let rec init () = async {
+        LogLine.debug "target is opening connection to DB" |> log
+        let c = conf.connFac ()
+        match c.State with
+        | ConnectionState.Broken
+        | ConnectionState.Closed -> c.Open()
+        | _ -> ()
+        return! running
+          { conn    = c
+            connMgr = Sql.withConnection c } }
 
-      | Metric ms ->
-        let _ = insertMetric' conf.schema ms state.connMgr
-        return! running state
+      and running state = async {
+        let! msg, mopt = inbox.Receive()
+        match msg with
+        | Log l ->
+          let _ = insertLogLine' conf.schema l state.connMgr
+          return! running state
 
-      | Flush chan ->
-        chan.Reply Ack
-        return! running state
+        | Measure msr ->
+          let _ = insertMeasure' conf.schema msr state.connMgr
+          return! running state
 
-      | ShutdownTarget ackChan ->
-        try state.conn.Dispose() with _ -> ()
-        ackChan.Reply Ack
-        return () }
+        | Flush chan ->
+          chan.Reply Ack
+          return! running state
 
-    init ())
+        | Shutdown ackChan ->
+          try state.conn.Dispose() with _ -> ()
+          ackChan.Reply Ack
+          return () }
+
+      init ())
 
 /// Create a new SqlServer target configuration.
-let create conf = TargetUtils.stdNamedTarget (requestTraceLoop conf)
+let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
 
 /// Create a new SqlServer target configuration.
 [<CompiledName("Create")>]

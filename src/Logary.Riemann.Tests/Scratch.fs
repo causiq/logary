@@ -7,7 +7,7 @@ open NodaTime
 
 let now = SystemClock.Instance.Now
 let ms s = Duration.FromMilliseconds s
-let mFromTime instant = mkMeasure "logary.tests.fn1" 1. |> setTimestamp instant
+let mFromTime instant = Measure.create "logary.tests.fn1" 1. |> setTimestamp instant
   
 let plus t1 t2 = t1 + t2
 let minus t1 t2 = t1 - t2

@@ -29,11 +29,11 @@ let private untilPred maxWait fPred =
 
 let pingSvdSe () =
   let mkError ex =
-    mkMeasure "app.resource.ping-svd" 0.
-               |> setDesc "ping completed with error"
-               |> setExn ex
-               |> setLevel Error
-               |> Measure.toResult
+    Measure.create "app.resource.ping-svd" 0.
+    |> setDesc "ping completed with error"
+    |> setExn ex
+    |> setLevel Error
+    |> Measure.toResult
   async {
     use p = new Ping()
     let awaitPong = Async.AwaitEvent(p.PingCompleted, p.SendAsyncCancel)
@@ -45,7 +45,7 @@ let pingSvdSe () =
       elif complete.Error <> null then
         return mkError complete.Error
       else
-        return mkMeasure "app.resource.ping-svd" 1. |> Measure.toResult
+        return Measure.create "app.resource.ping-svd" 1. |> Measure.toResult
         
     with e ->
       return mkError e }

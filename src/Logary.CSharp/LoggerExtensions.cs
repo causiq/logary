@@ -39,45 +39,28 @@ namespace Logary
             logger.Log(message, level, data, tags, path ?? logger.Name, exception);
         }
 
-        /// <summary>
-        /// Time the execution of the function passed and log the <see cref="MetricType"/>.Timer metric.
-        /// </summary>
-        /// <returns>f()</returns>
         public static T Time<T>(this logger logger, Func<T> f, LogLevel level = null)
         {
             if (logger == null) throw new ArgumentNullException("logger");
             if (f == null) throw new ArgumentNullException("f");
             level = level ?? LogLevel.Debug;
-            return Derived.Metrics.Time.TimePath(logger, level, null, f);
+            return f();
         }
 
-        /// <summary>
-        /// Time the execution of the function passed and log the <see cref="MetricType"/>.Timer metric.
-        /// </summary>
         public static void Time(this logger logger, Action a, LogLevel level = null)
         {
             if (logger == null) throw new ArgumentNullException("logger");
             if (a == null) throw new ArgumentNullException("a");
             level = level ?? LogLevel.Debug;
-            Derived.Metrics.Time.TimePath(logger, level, null, () =>
-                {
-                    a();
-                    return 0;
-                });
+            a();
         }
 
-        /// <summary>
-        /// Time the execution of the function passed and log the <see cref="MetricType"/>.Timer metric.
-        /// This method allows you to specify the path that consistutes the 'key' in a graphing system,
-        /// such as graphite.
-        /// </summary>
         public static T TimePath<T>(this logger logger, string path, Func<T> f, LogLevel level = null)
         {
             if (logger == null) throw new ArgumentNullException("logger");
             if (path == null) throw new ArgumentNullException("path");
             if (f == null) throw new ArgumentNullException("f");
-            level = level ?? LogLevel.Debug;
-            return Derived.Metrics.Time.TimePath(logger, level, path, f);
+            return f();
         }
 
         /// <summary>
@@ -113,14 +96,14 @@ namespace Logary
         /// <param name="e">The exception that occurred</param>
         /// <param name="tags">
         /// [Optional] Some tags - optional - if you pass them,
-        /// you will also be tagging with <see cref="Logary.Log.ExceptionTag"/>.
+        /// you will also be tagging with <see cref="Logary.LogLine.ExceptionTag"/>.
         /// </param>
         public static void FatalException(this logger logger, string message, Exception e, params string[] tags)
         {
             if (logger == null) throw new ArgumentNullException("logger");
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
-            logger.Log<object>(message, LogLevel.Fatal, null, MakeTags(Logary.Log.ExceptionTag, tags), logger.Name, e);
+            logger.Log<object>(message, LogLevel.Fatal, null, MakeTags(LogLine.ExceptionTag, tags), logger.Name, e);
         }
 
         /// <summary>
@@ -144,14 +127,14 @@ namespace Logary
         /// <param name="e">[NotNull] The exception that occurred</param>
         /// <param name="tags">
         /// [Optional] Some tags - optional - if you pass them,
-        /// you will also be tagging with <see cref="Logary.Log.ExceptionTag"/>.
+        /// you will also be tagging with <see cref="Logary.LogLine.ExceptionTag"/>.
         /// </param>
         public static void ErrorException(this logger logger, string message, Exception e, params string[] tags)
         {
             if (logger == null) throw new ArgumentNullException("logger");
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
-            logger.Log<object>(message, LogLevel.Error, null, MakeTags(Logary.Log.ExceptionTag, tags), logger.Name, e);
+            logger.Log<object>(message, LogLevel.Error, null, MakeTags(LogLine.ExceptionTag, tags), logger.Name, e);
         }
 
         /// <summary>
@@ -173,14 +156,14 @@ namespace Logary
         /// <param name="e">The exception that occurred</param>
         /// <param name="tags">
         /// [Optional] Some tags - optional - if you pass them,
-        /// you will also be tagging with <see cref="Logary.Log.ExceptionTag"/>.
+        /// you will also be tagging with <see cref="Logary.LogLine.ExceptionTag"/>.
         /// </param>
         public static void WarnException(this logger logger, string message, Exception e, params string[] tags)
         {
             if (logger == null) throw new ArgumentNullException("logger");
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
-            logger.Log<object>(message, LogLevel.Warn, null, MakeTags(Logary.Log.ExceptionTag, tags), logger.Name, e);
+            logger.Log<object>(message, LogLevel.Warn, null, MakeTags(LogLine.ExceptionTag, tags), logger.Name, e);
         }
 
         /// <summary>
@@ -202,14 +185,14 @@ namespace Logary
         /// <param name="e">The exception that occurred</param>
         /// <param name="tags">
         /// [Optional] Some tags - optional - if you pass them,
-        /// you will also be tagging with <see cref="Logary.Log.ExceptionTag"/>.
+        /// you will also be tagging with <see cref="Logary.LogLine.ExceptionTag"/>.
         /// </param>
         public static void InfoException(this logger logger, string message, Exception e, params string[] tags)
         {
             if (logger == null) throw new ArgumentNullException("logger");
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
-            logger.Log<object>(message, LogLevel.Info, null, MakeTags(Logary.Log.ExceptionTag, tags), logger.Name, e);
+            logger.Log<object>(message, LogLevel.Info, null, MakeTags(LogLine.ExceptionTag, tags), logger.Name, e);
         }
 
         /// <summary>
@@ -231,14 +214,14 @@ namespace Logary
         /// <param name="e">The exception that occurred</param>
         /// <param name="tags">
         /// [Optional] Some tags - optional - if you pass them,
-        /// you will also be tagging with <see cref="Logary.Log.ExceptionTag"/>.
+        /// you will also be tagging with <see cref="Logary.LogLine.ExceptionTag"/>.
         /// </param>
         public static void DebugException(this logger logger, string message, Exception e, params string[] tags)
         {
             if (logger == null) throw new ArgumentNullException("logger");
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
-            logger.Log<object>(message, LogLevel.Debug, null, MakeTags(Logary.Log.ExceptionTag, tags), logger.Name, e);
+            logger.Log<object>(message, LogLevel.Debug, null, MakeTags(LogLine.ExceptionTag, tags), logger.Name, e);
         }
 
         /// <summary>
@@ -260,14 +243,14 @@ namespace Logary
         /// <param name="e">The exception that occurred</param>
         /// <param name="tags">
         /// [Optional] Some tags - optional - if you pass them,
-        /// you will also be tagging with <see cref="Logary.Log.ExceptionTag"/>.
+        /// you will also be tagging with <see cref="Logary.LogLine.ExceptionTag"/>.
         /// </param>
         public static void VerboseException(this logger logger, string message, Exception e, params string[] tags)
         {
             if (logger == null) throw new ArgumentNullException("logger");
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
-            logger.Log<object>(message, LogLevel.Verbose, null, MakeTags(Logary.Log.ExceptionTag, tags), logger.Name, e);
+            logger.Log<object>(message, LogLevel.Verbose, null, MakeTags(LogLine.ExceptionTag, tags), logger.Name, e);
         }
 
         static IEnumerable<string> MakeTags(string logaryTag, params string[] tags)

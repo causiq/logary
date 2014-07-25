@@ -3,8 +3,7 @@
 /// expose the ConfBuilder type inside this module without any further ado.
 /// Besides that, this module doesn't contain much in terms of functionality/functions
 /// but lets you configure all of that through interaction with the types/classes/objects.
-[<AutoOpen>]
-module Logary.Configuration.FactoryApi
+namespace Logary.Configuration
 
 open System
 open System.Reflection

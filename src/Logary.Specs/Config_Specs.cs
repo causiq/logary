@@ -8,7 +8,7 @@ using Logary;
 using Logary.Configuration;
 using Machine.Specifications;
 using NodaTime;
-using TextWriter = Logary.Target.TextWriter;
+using TextWriter = Logary.Targets.TextWriter;
 
 // ReSharper disable InconsistentNaming
 // ReSharper disable UnusedMember.Local
@@ -33,8 +33,8 @@ namespace Intelliplan.Logary.Specs
 
         public static LogManager ConfigureForTextWriter(StringWriter tw)
         {
-            var twTarg = TextWriter.Create(Formatting.StringFormatter.LevelDatetimePathMessageNl, tw, tw, false, LogLevel.Error, "tw");
-            var twRule = Targets.Rule.Create(new Regex(@"^Intelliplan\.Logary\.Specs"), "tw", l => true, LogLevel.Verbose);
+            var twTarg = TextWriter.Create(Formatting.StringFormatter.LevelDatetimeMessagePathNl, tw, tw, false, LogLevel.Error, "tw");
+            var twRule = rule.Create(new Regex(@"^Intelliplan\.Logary\.Specs"), "tw", l => true, LogLevel.Verbose);
             return Config.Configure("Logary Specs C# low level API", new[] {twTarg}, new[] {twRule});
         }
     }
@@ -109,7 +109,7 @@ namespace Intelliplan.Logary.Specs
 
         Cleanup afterwards = () => manager.Dispose();
 
-        static Logger subject = Logging.GetCurrentLogger();
+        static logger subject = Logging.GetCurrentLogger();
         static LogManager manager;
         static StringWriter output;
     }
@@ -132,7 +132,7 @@ namespace Intelliplan.Logary.Specs
         It should_not_throw_when_calling_FlushPending = () => flushThrown.ShouldBeNull();
         It should_not_write_messages_to_text_writer = () => output.ToString().ShouldBeEmpty();
 
-        static Logger subject = Logging.GetCurrentLogger();
+        static logger subject = Logging.GetCurrentLogger();
         static LogManager manager;
         static StringWriter output;
         static Exception thrownException;
@@ -174,7 +174,7 @@ namespace Intelliplan.Logary.Specs
         static StringWriter output;
         static string subject;
 
-        static Logger GetLogger()
+        static logger GetLogger()
         {
             return manager.GetLogger("Intelliplan.Logary.Specs.When_initialising_then_disposing_then_reinitialising");
         }

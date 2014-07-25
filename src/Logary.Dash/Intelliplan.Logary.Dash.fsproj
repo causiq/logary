@@ -32,16 +32,12 @@
     <DocumentationFile>bin\Release\Logary.Dash.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="ManagedOpenSsl">
-      <HintPath>..\packages\Suave.0.9.0\lib\ManagedOpenSsl.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core, Version=4.3.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <Private>True</Private>
     </Reference>
     <Reference Include="suave">
-      <HintPath>..\packages\Suave.0.9.0\lib\suave.dll</HintPath>
+      <HintPath>..\packages\Suave.0.11.0\lib\suave.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
@@ -50,7 +46,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Targets_Dash.fs" />
-    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Fsharp.Actor\src\FSharp.Actor\FSharp.Actor-logary.fsproj">
@@ -64,17 +59,13 @@
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets" Condition=" Exists('$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets')" />
-  <Import Project="..\packages\Suave.0.9.0\build\suave.targets" Condition="Exists('..\packages\Suave.0.9.0\build\suave.targets')" />
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('..\packages\Suave.0.9.0\build\suave.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Suave.0.9.0\build\suave.targets'))" />
-  </Target>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

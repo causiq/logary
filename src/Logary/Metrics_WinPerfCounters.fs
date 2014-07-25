@@ -61,7 +61,7 @@ module private Impl =
     | x -> x
 
   let pcNextValue (DP dp) (pc : PC) =
-    Measure.mkMeasure dp (nextValue pc)
+    Measure.create dp (nextValue pc)
 
   // TODO: consider adding in a reservoir to hold the values? Or should this go
   // somewhere else like in the targets or in the registry or somewhere else?

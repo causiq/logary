@@ -29,9 +29,9 @@ let to_logary_line (l : Suave.Log.LogLine) =
 /// if logger.Level >= to_logary_level level then
 ///   f_line () |> to_logary_line |> Log.log logger
 ///
-type SuaveAdapter(logger : Logger) =
+type SuaveAdapter(logger : logger) =
   interface Suave.Log.Logger with
     member x.Log level f_line =
       // here it's important the Level of the logger is well tuned
       if to_logary_level level >= logger.Level then
-        f_line () |> to_logary_line |> Log.log logger
+        f_line () |> to_logary_line |> Logger.log logger

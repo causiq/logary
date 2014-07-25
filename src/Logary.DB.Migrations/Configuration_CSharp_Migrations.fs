@@ -7,7 +7,9 @@ open System.Data
 open System.Runtime.CompilerServices
 
 open Logary
-open Logary.Targets
+open Logary.Configuration
+open Logary.Target
+
 open Logary.DB
 open Logary.DB.Migrations
 open Logary.Target.DB
@@ -19,7 +21,7 @@ module MigrationBuilderEx =
   [<Extension; CompiledName "MigrateUp">]
   let migrateUp (builder      : ThirdStep,
                  processorFac : Func<IDbConnection, IMigrationProcessor>) =
-    let builder' = builder :> FactoryApi.ConfigReader<DBConf>
+    let builder' = builder :> ConfigReader<DBConf>
     let conf = builder'.ReadConf()
     let conn = conf.connFac ()
     let fac = ExistingConnectionProcessorFactory(conn, fun conn -> processorFac.Invoke conn)

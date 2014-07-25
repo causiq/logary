@@ -132,6 +132,12 @@ module LogLine =
     { empty with level = level
                  message = msg }
 
+  /// Create a new log line at the specified path for the given message.
+  [<CompiledName "Create">]
+  let create'' path msg =
+    { empty with path = path
+                 message = msg }
+
   /// Create a verbose log line with a message
   [<CompiledName "Verbose">]
   let verbose = create' Verbose

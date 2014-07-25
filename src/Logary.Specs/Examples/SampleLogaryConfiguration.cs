@@ -7,7 +7,7 @@ using FluentMigrator.Runner.Processors.Sqlite;
 using Logary;
 using Logary.Configuration;
 using Logary.DB.Migrations;
-using Logary.Target;
+using Logary.Targets;
 using Console = System.Console;
 
 namespace Intelliplan.Logary.Specs.Examples
@@ -16,7 +16,7 @@ namespace Intelliplan.Logary.Specs.Examples
     {
         public void UsageExample()
         {
-            var x = LogaryFactory.New("Logary Specs",
+            var x = FactoryApi.LogaryFactory.New("Logary Specs",
                 with => with.Target<TextWriter.Builder>(
                     "console1",
                     conf =>

@@ -2,7 +2,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Logary;
 using Logary.Configuration;
-using Logary.Target;
+using Logary.Targets;
 using Machine.Specifications;
 using NodaTime;
 
@@ -18,7 +18,7 @@ namespace Intelliplan.Logary.Specs
         Establish context = () =>
             {
                 writer = new System.IO.StringWriter(new StringBuilder());
-                manager = LogaryFactory.New("Logary Specs", with =>
+                manager = FactoryApi.LogaryFactory.New("Logary Specs", with =>
                     with.Target<TextWriter.Builder>(
                         "sample string writer", t =>
                             t.Target.WriteTo(writer, writer)
@@ -53,7 +53,7 @@ namespace Intelliplan.Logary.Specs
         Establish context = () =>
             {
                 writer = new System.IO.StringWriter(new StringBuilder());
-                manager = LogaryFactory.New("Logary Specs", with =>
+                manager = FactoryApi.LogaryFactory.New("Logary Specs", with =>
                     with.Target<TextWriter.Builder>(
                         "sample string writer", t =>
                             t.Target.WriteTo(writer, writer)

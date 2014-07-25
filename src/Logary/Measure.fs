@@ -176,8 +176,8 @@ module Measure =
 
   /// Make a new measure value from the type of measure it is, the value and the
   /// path it is taken at or represents
-  [<CompiledName "MkMeasure">]
-  let mkMeasure path value =
+  [<CompiledName "Create">]
+  let create path value =
     { empty with m_path = path
                  m_value = Some value }
 

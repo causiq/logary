@@ -20,7 +20,7 @@ module private Impl =
       | GetValue (dps, replChan) ->
         match dps with
         | (DP h as dp) :: _ when h = "calls" ->
-          replChan.Reply [ dp, Measure.mkMeasure h (float state.calls) ] //of DP list * ReplyChannel<(DP * ``measure``) list>
+          replChan.Reply [ dp, Measure.create h (float state.calls) ] //of DP list * ReplyChannel<(DP * ``measure``) list>
         | _ ->
           replChan.Reply []
         return! loop { calls = state.calls + 1I }

@@ -31,7 +31,7 @@ type Runner(fac      : MigrationProcessorFactory,
             connStr  : string,
             ?timeout : TimeSpan,
             ?showSql : bool,
-            ?logger  : Logger) =
+            ?logger  : logger) =
 
   let logger = defaultArg logger (Logging.getCurrentLogger())
 
@@ -39,7 +39,7 @@ type Runner(fac      : MigrationProcessorFactory,
   let showSql = defaultArg showSql true
 
   let mkRunner appContext =
-    let announcer = new TextWriterAnnouncer(Log.info logger, ShowSql = showSql)
+    let announcer = new TextWriterAnnouncer(Logger.info logger, ShowSql = showSql)
     let assembly  = Assembly.GetExecutingAssembly()
     let ctx       = new RunnerContext(announcer,
                                       Namespace = "Logary.DB.Migrations",
