@@ -1,5 +1,7 @@
 ﻿namespace Logary.Configuration
 
+open NodaTime
+
 open FSharp.Actor
 
 open Logary
@@ -23,7 +25,10 @@ type LogaryConf =
     metadata : RuntimeInfo
 
     /// A map of metrics by name
-    metrics  : Map<string, MetricConf * Option<IActor>> }
+    metrics  : Map<string, MetricConf * Option<IActor>>
+
+    /// how often do we poll metrics
+    pollPeriod : Duration }
 
 module LogaryConfLenses =
 
@@ -54,4 +59,13 @@ module LogaryConfLenses =
   /// read and write a very specific target actor
   let targetActor_ name =
     { get = fun x -> x.targets |> Map.find name |> fun (_, minst) -> minst |> Option.get
-      set = fun v x -> { x with targets = x.targets |> Map.put name (x.targets |> Map.find name |> fst, Some v) } }
+      set = fun v x ->
+        let value' = x.targets |> Map.find name |> fst, Some v
+        { x with targets = x.targets |> Map.put name value' } }
+
+  /// rad and write a very specific metric actor
+  let metricActor_ name =
+    { get = fun x -> x.metrics |> Map.find name |> (snd >> Option.get)
+      set = fun v x ->
+        let value' = x.metrics |> Map.find name |> fst, Some v
+        { x with metrics = x.metrics |> Map.put name value' } }

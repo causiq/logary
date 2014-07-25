@@ -55,6 +55,7 @@ module Measure =
 
   open NodaTime
 
+  open Logary
   open Logary.Internals
 
   /// lenses for the `measure``
@@ -202,6 +203,11 @@ module Measure =
     <|> Option.map float m.m_value'
     <|> Option.map float m.m_value''
     |> Option.get
+
+  module LogLine =
+    // TODO: expand to provide an OK mapping
+    let fromMeasure m =
+      LogLine.create' Info (getValueStr m)
 
 module TimeUnit =
   let ticksPerUnit = function

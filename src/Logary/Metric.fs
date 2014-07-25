@@ -16,6 +16,7 @@ type DPSegment = string // TODO: use or remove
 /// globally unique, but specific to a metric instance.
 type DP = DP of string
 
+/// The metric types available, which specify how logary polls/gets the metric.
 type MetricType =
   | Metric
   | Probe
@@ -58,27 +59,37 @@ let confMetric name sampling (factory : string -> Duration -> MetricConf) =
 
 let validate (conf : MetricConf) = conf
 
+/// initialises the configuration with the metadata to create a new metric-actor
 let init metadata conf =
   conf.initer metadata
 
-let update (m : ``measure``) actor =
-  actor <-- Update m
-  actor
-
-let sample actor =
-  actor <-- Sample
-
+/// The GetValue implementation shall retrieve the value of one or more data
+/// points from the probe.
 let getValue (dps : DP list) =
   Actor.reqReply
     (fun chan -> GetValue(dps, chan))
     Infinite
 
+/// The GetDataPoints shall return a list with all data points supported by
+/// the probe
 let getDataPoints (m : #IActor) =
   Actor.reqReply
     GetDataPoints
     Infinite
     m
 
+/// Incorporate a new value into the metric maintained by the metric.
+let update (m : ``measure``) actor =
+  actor <-- Update m
+  actor
+
+/// The Sample implementation shall sample data from the subsystem the probe
+/// is integrated with.
+let sample actor =
+  actor <-- Sample
+
+/// The custom probe shall release any resources associated with the given
+/// state and return ok.
 let shutdown (a : #IActor) =
   Actor.reqReply
     Shutdown

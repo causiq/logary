@@ -10,3 +10,8 @@ type ValidationException(msg, invalidRules : rule list, invalidTargets : TargetC
   member x.InvalidRules   = invalidRules
   /// Gets the invalid tagets that failed validation
   member x.InvalidTargets = invalidTargets
+
+  /// Builds a little string from the validation exception
+  override x.ToString() =
+    sprintf "ValidationException: %s\nInvalidRules: %A\nInvalidTargets: %A"
+      x.Message x.InvalidRules x.InvalidTargets

@@ -10,6 +10,8 @@ open Newtonsoft.Json
 
 open Intelliplan.JsonNet
 
+open Logary.Measure
+
 ///Returns the case name of the object with union type 'ty.
 let internal caseNameOf (x:'a) =
   match FSharpValue.GetUnionFields(x, typeof<'a>) with
@@ -18,9 +20,11 @@ let internal caseNameOf (x:'a) =
 /// A StringFormatter is the thing that takes a log line and returns it as a string
 /// that can be printed, sent or otherwise dealt with in a manner that suits the target.
 type StringFormatter =
-  { format : logline -> string }
+  { format : logline       -> string
+    m_format : ``measure`` -> string }
   static member private Expanded nl ending =
-    { format = fun l ->
+    let format' =
+      fun l ->
         let mex = l.``exception``
         sprintf "%s %s: %s [%s]%s%s%s"
           (string (caseNameOf l.level).[0])
@@ -30,15 +34,21 @@ type StringFormatter =
           l.path
           (match l.tags with [] -> "" | _ -> " {" + String.Join(", ", l.tags) + "}")
           (match mex with None -> "" | Some ex -> sprintf " cont...%s%O" nl ex)
-          ending }
+          ending
+    { format   = format'
+      m_format = LogLine.fromMeasure >> format' }
 
   /// Verbatim simply outputs the message and no other information
   /// and doesn't append a newline to the string.
-  static member Verbatim = { format = fun l -> l.message }
+  static member Verbatim =
+    { format   = fun l -> l.message
+      m_format = Measure.getValueStr }
 
   /// VerbatimNewline simply outputs the message and no other information
   /// and does append a newline to the string.
-  static member VerbatimNewline = { format = fun l -> sprintf "%s%s" l.message (Environment.NewLine) }
+  static member VerbatimNewline =
+    { format = fun l -> sprintf "%s%s" l.message (Environment.NewLine)
+      m_format = fun m -> sprintf "%s%s" (Measure.getValueStr m) (Environment.NewLine) }
 
   /// <see cref="StringFormatter.LevelDatetimePathMessageNl" />
   static member LevelDatetimeMessagePath =
@@ -92,8 +102,14 @@ type JsonFormatter =
       | Some f -> JsonFormatter.Settings(f)
     let serialiser = JsonSerializer.Create opts
     { format =
-      fun ll ->
-        use sw = new System.IO.StringWriter()
-        use w = new JsonTextWriter(sw)
-        serialiser.Serialize(w, ll)
-        sw.ToString() }
+        fun ll ->
+          use sw = new System.IO.StringWriter()
+          use w = new JsonTextWriter(sw)
+          serialiser.Serialize(w, ll)
+          sw.ToString()
+      m_format =
+        fun m ->
+          use sw = new System.IO.StringWriter()
+          use w = new JsonTextWriter(sw)
+          serialiser.Serialize(w, m)
+          sw.ToString() }

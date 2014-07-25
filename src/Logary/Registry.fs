@@ -15,18 +15,15 @@ open Logary.HealthCheck
 /// running targets.
 type RegistryMessage =
   | GetLogger             of string * logger ReplyChannel
-
+  | PollMetrics
   /// flush all pending messages from the registry to await shutdown
   | FlushPending          of Duration * Acks ReplyChannel
   /// shutdown the registry in full
   | ShutdownLogary        of Duration * Acks ReplyChannel
 
-let private getSome (thing : string * ReplyChannel<_> -> _) registry name =
-  registry |> Actor.reqReply (fun ret -> thing (name, ret)) Infinite
-
 /// Given the registry actor, and a name for the logger, get the logger from the registry.
-let getLogger =
-  getSome GetLogger
+let getLogger registry name =
+  registry |> Actor.reqReply (fun ret -> GetLogger (name, ret)) Infinite
 
 /// handling flyweights
 module internal Logging =
@@ -175,34 +172,42 @@ module Advanced =
         ilogger = ilogger }
       :> logger
 
-    let snd' (kv : System.Collections.Generic.KeyValuePair<_, _>) = kv.Value
     let wasSuccessful = function
       | SuccessWith(Ack, _)     -> 0
       | ExperiencedTimeout _    -> 1
       | SuccessWith(Nack(_), _) -> 1
+
     let bisectSuccesses = // see wasSuccessful f-n above
       fun groups -> groups |> Seq.filter (fun (k, _) -> k = 0) |> Seq.map snd |> (fun s -> if Seq.isEmpty s then [] else Seq.exactlyOne s |> Seq.toList),
                     groups |> Seq.filter (fun (k, _) -> k = 1) |> Seq.map snd |> (fun s -> if Seq.isEmpty s then [] else Seq.exactlyOne s |> Seq.toList)
+
     let nl = System.Environment.NewLine
+
     let toTextList s =
       let sb = new Text.StringBuilder()
       for x in s do sb.AppendLine(sprintf " * %A" x) |> ignore
       sb.ToString()
 
+    let pollMetrics registry =
+      registry <-- PollMetrics
+
     /// The state for the Registry
     type RegistryState =
       { /// the supervisor, not of the registry actor, but of the targets and probes and health checks.
-        supervisor : IActor
-        schedules  : (string * CancellationTokenSource) list }
+        supervisor     : IActor
+        schedules      : (string * CancellationTokenSource) list
+        pollMetrics    : CancellationTokenSource option }
 
     /// The registry function that works as an actor.
     let rec registry conf sup sched (inbox : IActor<_>) =
       let targets = conf.targets |> LogaryConfLenses.targetActors_.get
       let lgr = conf.metadata.logger
-      let log = LogLine.setPath "Logary.Registry.registry" >> Logger.log lgr
+      let regPath = "Logary.Registry.registry"
+      let log = LogLine.setPath regPath >> Logger.log lgr
 
       let rec init state = async {
         let ctss = System.Collections.Generic.List<_>()
+        // init sampling of metrics
         for m in conf.metrics do
           let (conf, actor) = m.Value
           match actor with
@@ -210,7 +215,13 @@ module Advanced =
             let! cts = Scheduling.schedule sched Metric.sample actor conf.sampling (Some conf.sampling)
             ctss.Add( m.Key, cts )
           | None -> ()
-        return! running { state with schedules = ctss |> List.ofSeq }
+
+        // init getting metrics' values
+        LogLine.debugf "will poll metrics every %O" conf.pollPeriod |> log
+        let! pollCts = Scheduling.schedule sched pollMetrics inbox conf.pollPeriod (Some conf.pollPeriod)
+
+        return! running { state with schedules = ctss |> List.ofSeq
+                                     pollMetrics = Some pollCts }
         }
 
       /// In the running state, the registry takes queries for loggers, gauges, etc...
@@ -219,6 +230,32 @@ module Advanced =
         match msg with
         | GetLogger (name, chan) ->
           chan.Reply( name |> getTargets conf |> fromTargets name lgr)
+          return! running state
+
+        // CONSIDER: move away from RPC (even though we're just reading memory
+        // in this case) towards fully asynchronous messaging and correlations
+        // between messages to create conversations
+        | PollMetrics ->
+          LogLine.debug "polling metrics" |> log
+          // CONSIDER: can parallelise this if it helps (as they are all disjunct)
+          for mtr in conf.metrics do
+            let mtrActor = (LogaryConfLenses.metricActor_ mtr.Key).get conf
+
+            // CONSIDER: can memoize get data points of it helps (this one will probably not change very often)
+            LogLine.debugf "get dps from %O" mtrActor |> log
+            let! dps = mtrActor |> Metric.getDataPoints
+
+            LogLine.debug "get logger" |> log
+            let mtrLgr  = mtr.Key |> getTargets conf |> fromTargets mtr.Key lgr
+
+            LogLine.debug "getting value from metrics" |> log
+            let! dpMsrL = mtrActor |> Metric.getValue dps
+
+            // CONSIDER: how to log each of these data points? And what path to give them?
+            dpMsrL
+            |> List.map (fun (Metric.DP dp, m) -> m |> Measure.setPath (sprintf "%s.%s" m.m_path dp))
+            |> List.iter (Logger.``measure`` mtrLgr)
+
           return! running state
 
         | FlushPending(dur, chan) ->
@@ -243,13 +280,20 @@ module Advanced =
               Nack msg
 
           return! running state
+
         | ShutdownLogary(dur, ackChan) ->
-          return! shutdown dur ackChan }
+          return! shutdown state dur ackChan }
 
       /// In the shutdown state, the registry doesn't respond to messages, but rather tries to
       /// flush and shut down all targets, doing internal logging as it goes.
-      and shutdown (dur : Duration) (ackChan : Acks ReplyChannel) = async {
-        LogLine.info "shutdown start" |> log
+      and shutdown state (dur : Duration) (ackChan : Acks ReplyChannel) = async {
+        LogLine.info "shutdown metrics polling" |> log
+        state.pollMetrics |> Option.iter (fun x -> x.Dispose())
+
+        LogLine.info "shutdown schedules" |> log
+        state.schedules |> List.iter (fun (_, x) -> x.Dispose())
+
+        LogLine.info "shutdown targets" |> log
         let! allShutdown =
           targets
           |> Seq.pmap (Actor.makeRpc Target.Shutdown (Timeout(dur.ToTimeSpan ())))
@@ -273,7 +317,11 @@ module Advanced =
         LogLine.info "shutting down immediately" |> log
         return () }
 
-      init { supervisor = sup; schedules = [] }
+      init { supervisor = sup; schedules = []; pollMetrics = None }
+
+    let create (conf : _) (sup : #IActor) (sched : #IActor) =
+      Actor.spawn (Ns.create "registry") (registry conf sup sched)
+      
 
   /// Start a new registry with the given configuration. Will also launch/start
   /// all targets that are to run inside the registry. Returns a newly
@@ -281,7 +329,7 @@ module Advanced =
   ///
   /// It is not until runRegistry is called, that each target gets its service
   /// metadata, so it's no need to pass the metadata to the target before this.
-  let runRegistry ({ metadata = { logger = lgr } } as conf : LogaryConf) =
+  let create ({ metadata = { logger = lgr } } as conf : LogaryConf) =
     let log = LogLine.setPath "Logary.Registry.runRegistry" >> Logger.log lgr
 
     let targets = conf.targets |> Map.map (fun _ (tconf, _) -> tconf, Some(Target.init conf.metadata tconf))
@@ -297,8 +345,7 @@ module Advanced =
     let sched = Scheduling.create ()
     LogLine.debugf "scheduler status: %A" sched.Status |> log
 
-    let reg = Actor.spawn (Ns.create "registry")
-                          (Impl.registry conf' sup sched)
+    let reg = Impl.create conf' sup sched
     LogLine.debugf "registry status: %A" reg.Status |> log
 
     { supervisor = sup

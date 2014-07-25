@@ -40,6 +40,13 @@ module Logger =
     |> fun l -> match l.path with "" -> { l with path = logger.Name } | _ -> l
     |> logger.Log
 
+  /// Write a measure
+  [<CompiledName "Measure">]
+  let ``measure`` (logger : logger) m =
+    (m : ``measure``)
+    |> fun m -> match m.m_path with "" -> { m with m_path = logger.Name } | _ -> m
+    |> logger.Measure
+
   /// Write a verbose log entry to the logger
   [<CompiledName "Verbose">]
   let verbose logger = log logger << create' Verbose

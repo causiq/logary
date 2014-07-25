@@ -21,27 +21,47 @@ let private shutdownLogger<'a when 'a :> logger> : 'a -> unit = box >> function
   | :? System.IDisposable as d -> d.Dispose()
   | _ -> ()
 
-/// Start logary configuration given a name of the service that is being configured.
-/// The name of the service is the foundation for a lot of the sorting that goes
-/// on with the logs after they have been sent.
-[<CompiledName "ConfigureLogary">]
-let confLogary serviceName =
-  let nullMd = { serviceName = serviceName; logger = NullLogger() }
-  let console = Console.create (Console.ConsoleConf.Default) "cons"
-                |> Target.init nullMd
-  { rules    = []
-    targets  = Map.empty
-    metadata =
-      { serviceName = serviceName
-        logger      = InternalLogger.Create(Verbose, [ console ]) }
-    metrics  = Map.empty }
+/// Create an internal logger from the level and targets given
+let createInternalLogger level targets =
+  InternalLogger.Create(level, targets)
 
 /// Configure an internal logger (disposing anything already there); make sure
-/// the logger you give is ready to use directly.
+/// the logger you give is ready to use directly. This function is different from
+/// `createInternalLogger` in that it doesn't re-initialise the internal logger
+/// for you, but leaves it up to you to give a proper logger for internal
+/// logging, instead. `withInternalTarget` uses this function itself after
+/// initialising empty metadata and a target.
 [<CompiledName "WithInternalLogger">]
 let withInternalLogger lgr (conf : LogaryConf) =
   shutdownLogger conf.metadata.logger
   { conf with metadata = { conf.metadata with logger = lgr } }
+
+/// Configure internal logging from a targets (these targets will get
+/// everything, without the metrics and/or log lines going through Rules).
+[<CompiledName "WithInternalTargets">]
+let withInternalTargets level tconfs (conf : LogaryConf) =
+  let nullMd = { serviceName = conf.metadata.serviceName; logger = NullLogger() }
+  let targets = tconfs |> List.map (Target.init nullMd)
+  let logger = createInternalLogger level targets
+  conf |> withInternalLogger logger
+
+let withInternalTarget level tconf =
+  withInternalTargets level [tconf]
+
+/// Start logary configuration given a name of the service that is being configured.
+/// The name of the service is the foundation for a lot of the sorting that goes
+/// on with the logs after they have been sent. By default the internal logging
+/// level will be Info, but you can use `withInternalTarget` to re-initialise
+/// the internal logging if you wish, with a different level.
+[<CompiledName "ConfigureLogary">]
+let confLogary serviceName =
+  { rules      = []
+    targets    = Map.empty
+    metrics    = Map.empty
+    pollPeriod = Duration.FromMilliseconds 500L
+    metadata   = { serviceName = serviceName
+                   logger      = NullLogger() } }
+  |> withInternalTarget Info (Console.create (Console.ConsoleConf.Default) "cons")
 
 /// Add a new target to the configuration. You also need to supple a rule for
 /// the target.
@@ -85,23 +105,23 @@ let withMetrics ms conf =
 let validate ({ targets = targets; rules = rules; metadata = { logger = lgr } } as conf) =
   let log = LogLine.setPath "Logary.Configuration.Config.validate" >> Logger.log lgr
   let targets = targets |> Map.fold (fun acc k _ -> k :: acc) [] |> Set.ofList
-  let invalidRules =
+
+  let orphanRules =
     [ for r in rules do
         if not(targets |> Set.contains r.target) then
           yield r ]
-  match invalidRules with
-  | [] ->
-    LogLine.info "validation successful" |> log
-    conf
+
+  match orphanRules with
+  | [] -> conf
   | rs ->
-    let msg = sprintf "validation failed for\n%A" rs
-    LogLine.error msg |> Logger.log lgr
-    raise <| ValidationException(msg, invalidRules, [])
+    let msg = sprintf "validation failed (no corresponding target) for rules:\n%A" rs
+    LogLine.error msg |> log
+    raise <| ValidationException(msg, orphanRules, [])
 
 /// Start logary with a given configuration
 [<CompiledName "RunLogary"; Extension>]
 let runLogary conf =
-  let instance = Advanced.runRegistry conf
+  let instance = Advanced.create conf
   Logging.startFlyweights instance
   instance
 

@@ -8,9 +8,9 @@ open FSharp.Actor
 
 open NodaTime
 
-type ScheduleMsg<'a> =
-  | Schedule of ('a -> unit) * 'a * Duration * Duration * CancellationTokenSource ReplyChannel
-  | ScheduleOnce of ('a -> unit) * 'a * Duration * CancellationTokenSource ReplyChannel
+type ScheduleMsg =
+  | Schedule of (obj -> unit) * obj * Duration * Duration * CancellationTokenSource ReplyChannel
+  | ScheduleOnce of (obj -> unit) * obj * Duration * CancellationTokenSource ReplyChannel
 
 module private Impl =
 
@@ -37,7 +37,7 @@ module private Impl =
     loop initialDelay cts
 
   let loop (inbox : IActor<_>) =
-    let rec loop() = async {
+    let rec loop () = async {
       let! msg, _ = inbox.Receive ()
       let cs = new CancellationTokenSource()
       match msg with
@@ -59,11 +59,11 @@ let create () =
 /// Schedules a message to be sent to the receiver after the initialDelay.
 /// If delayBetween is specified then the message is sent reoccuringly at the
 /// delay between interval.
-let schedule scheduler receiver msg initialDelay (delayBetween : _ option) =
+let schedule scheduler (receiver : 'a -> unit) (msg : 'a) initialDelay (delayBetween : _ option) =
   let buildMessage replyChan =
     match delayBetween with
     | Some x ->
-      Schedule (receiver, msg, initialDelay, x, replyChan)
+      Schedule (unbox >> receiver, msg, initialDelay, x, replyChan)
     | _ ->
-      ScheduleOnce (receiver, msg, initialDelay, replyChan)
+      ScheduleOnce (unbox >> receiver, msg, initialDelay, replyChan)
   scheduler |> Actor.reqReply buildMessage Infinite

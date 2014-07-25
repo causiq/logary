@@ -26,16 +26,18 @@ let main argv =
   use logary =
     withLogary' "Riemann.Example" (
       withTargets [
-        Riemann.create (Riemann.RiemannConf.Create(tags = ["riemann-health"])) "riemann"
+//        Riemann.create (Riemann.RiemannConf.Create(tags = ["riemann-health"])) "riemann"
         Console.create (Console.ConsoleConf.Default) "console"
       ] >>
       withMetrics [
         WinPerfCounters.create (WinPerfCounters.Common.cpuTime) "cpuTime" (Duration.FromMilliseconds 500L)
       ] >>
       withRules [
-        Rule.forAny "riemann"
+//        Rule.forAny "riemann"
         Rule.forAny "console"
-        Rule.forAny "cpuTime"
+      ] >>
+      withInternalTargets Info [
+        Console.create (Console.ConsoleConf.Default) "console"
       ]
     )
 
@@ -45,5 +47,6 @@ let main argv =
 // TODO:
 //  let logger = logary.GetLogger "Riemann.Example"
 //  ("disk /", 0.456) ||> Metrics.gauge logger
+  Console.ReadKey true |> ignore
 
   0 // return an integer exit code
