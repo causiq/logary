@@ -1,4 +1,4 @@
-﻿#if INTERACTIVE
+#if INTERACTIVE
 #r "bin/Release/FSharp.Actor.dll"
 #r "bin/Release/NodaTime.dll"
 #r "bin/Release/Intelliplan.Logary.dll"
@@ -6,20 +6,13 @@
 #endif
 
 open System
-open System.Text.RegularExpressions
 
-open FSharp.Actor
 open NodaTime
 
 open Logary
 open Logary.Configuration
-
-open Logary.Target
 open Logary.Targets
-
 open Logary.Metrics
-
-open Logary.Logging
 
 [<EntryPoint>]
 let main argv =
@@ -41,12 +34,5 @@ let main argv =
       ]
     )
 
-//  clr_proc |> Registry.RegisterHealthCheck logary
-//  cpus |> Registry.registerHealthChecks logary
-
-// TODO:
-//  let logger = logary.GetLogger "Riemann.Example"
-//  ("disk /", 0.456) ||> Metrics.gauge logger
   Console.ReadKey true |> ignore
-
-  0 // return an integer exit code
+  0

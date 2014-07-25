@@ -12,30 +12,37 @@ Install-Package Intelliplan.Logary
 This package works great with F#:
 
 ``` fsharp
+open System
+
+open NodaTime
+
 open Logary
 open Logary.Configuration
-
-type Settings = ...
-let app settings = ...
-
-let parse args : Settings = ...
+open Logary.Targets
+open Logary.Metrics
 
 [<EntryPoint>]
-let main args =
-  use logary = 
-    withLogary "My App Example" (
+let main argv =
+  use logary =
+    withLogary' "Riemann.Example" (
       withTargets [
         Riemann.create (Riemann.RiemannConf.Create(tags = ["riemann-health"])) "riemann"
         Console.create (Console.ConsoleConf.Default) "console"
       ] >>
+      withMetrics [
+        WinPerfCounters.create (WinPerfCounters.Common.cpuTime) "cpuTime" (Duration.FromMilliseconds 500L)
+      ] >>
       withRules [
-        Rule.Create(Regex(@".*"), "riemann", (fun _ -> true), LogLevel.Verbose)
-        Rule.Create(Regex(@".*"), "console", (fun _ -> true), LogLevel.Verbose)
+        Rule.forAny "riemann"
+        Rule.forAny "console"
+      ] >>
+      withInternalTargets Info [
+        Console.create (Console.ConsoleConf.Default) "console"
       ]
     )
-    |> Config.asLogManager
 
-  app (parse args)
+  Console.ReadKey true |> ignore
+  0
 ```
 
 #### C#/VB façade
