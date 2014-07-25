@@ -205,9 +205,10 @@ module Measure =
     |> Option.get
 
   module LogLine =
-    // TODO: expand to provide an OK mapping
     let fromMeasure m =
-      LogLine.create' Info (getValueStr m)
+      LogLine.create
+        (getValueStr m) m.m_data m.m_level m.m_tags m.m_path
+        None
 
 module TimeUnit =
   let ticksPerUnit = function

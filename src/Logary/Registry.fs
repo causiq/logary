@@ -236,6 +236,7 @@ module Advanced =
         // in this case) towards fully asynchronous messaging and correlations
         // between messages to create conversations
         | PollMetrics ->
+          // CONSIDER: a logMaybe function that checks level before creating LogLine
           LogLine.debug "polling metrics" |> log
           // CONSIDER: can parallelise this if it helps (as they are all disjunct)
           for mtr in conf.metrics do
@@ -249,12 +250,10 @@ module Advanced =
             let mtrLgr  = mtr.Key |> getTargets conf |> fromTargets mtr.Key lgr
 
             LogLine.debug "getting value from metrics" |> log
-            let! dpMsrL = mtrActor |> Metric.getValue dps
+            let! dpMsrs = mtrActor |> Metric.getValue dps
 
             // CONSIDER: how to log each of these data points? And what path to give them?
-            dpMsrL
-            |> List.map (fun (Metric.DP dp, m) -> m |> Measure.setPath (sprintf "%s.%s" m.m_path dp))
-            |> List.iter (Logger.``measure`` mtrLgr)
+            dpMsrs |> List.map snd |> List.iter (Logger.``measure`` mtrLgr)
 
           return! running state
 
