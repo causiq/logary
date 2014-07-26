@@ -18,7 +18,7 @@ namespace Intelliplan.Logary.Specs
         Establish context = () =>
             {
                 writer = new System.IO.StringWriter(new StringBuilder());
-                manager = FactoryApi.LogaryFactory.New("Logary Specs", with =>
+                manager = LogaryFactory.New("Logary Specs", with =>
                     with.Target<TextWriter.Builder>(
                         "sample string writer", t =>
                             t.Target.WriteTo(writer, writer)
@@ -36,7 +36,7 @@ namespace Intelliplan.Logary.Specs
             {
                 manager.GetLogger("Intelliplan.Logary.Specs.When_configuring_with_CSharp_API")
                        .Warn("the situation is dire", "oh-noes");
-                manager.FlushPending();
+                manager.FlushPending(Duration.FromSeconds(8L));
                 subject = writer.ToString();
             };
 
@@ -53,7 +53,7 @@ namespace Intelliplan.Logary.Specs
         Establish context = () =>
             {
                 writer = new System.IO.StringWriter(new StringBuilder());
-                manager = FactoryApi.LogaryFactory.New("Logary Specs", with =>
+                manager = LogaryFactory.New("Logary Specs", with =>
                     with.Target<TextWriter.Builder>(
                         "sample string writer", t =>
                             t.Target.WriteTo(writer, writer)
@@ -70,7 +70,7 @@ namespace Intelliplan.Logary.Specs
             {
                 manager.GetLogger("Intelliplan.Logary.Specs.When_configuring_filter_with_API")
                        .Warn("the situation is dire", "oh-noes");
-                manager.FlushPending();
+                manager.FlushPending(Duration.FromSeconds(8L));
                 subject = writer.ToString();
             };
 

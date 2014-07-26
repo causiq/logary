@@ -10,7 +10,6 @@ open Logary
 open Logary.Internals
 open Logary.Targets.TextWriter
 open Logary.Configuration
-open Logary.Rule
 open Logary.Target
 
 open TestDSL

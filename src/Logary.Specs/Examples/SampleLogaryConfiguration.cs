@@ -16,7 +16,7 @@ namespace Intelliplan.Logary.Specs.Examples
     {
         public void UsageExample()
         {
-            var x = FactoryApi.LogaryFactory.New("Logary Specs",
+            var x = LogaryFactory.New("Logary Specs",
                 with => with.Target<TextWriter.Builder>(
                     "console1",
                     conf =>

@@ -29,14 +29,6 @@ type rule =
     /// This is the level at which the target will accept log lines. It's inclusive, so
     /// anything below won't be accepted.
     level  : LogLevel }
-    /// Create a new rule with the given hiera, target, accept function and min level
-    /// acceptable.
-  static member Create(hiera, target, ?lineFilter, ?measureFilter, ?level) =
-    { hiera         = hiera
-      target        = target
-      lineFilter    = defaultArg lineFilter (fun _ -> true)
-      measureFilter = defaultArg measureFilter (fun _ -> true)
-      level         = defaultArg level Verbose }
 
   override x.GetHashCode () = hash (x.hiera.ToString(), x.target, x.level)
 
@@ -93,3 +85,17 @@ module Rule =
   /// name param).
   let forAny (name : string) =
     { empty with target = name }
+
+  /// Create a new rule with the given hiera, target, accept function and min level
+  /// acceptable.
+  let create hiera target lineFilter measureFilter level =
+    { hiera         = hiera
+      target        = target
+      lineFilter    = lineFilter
+      measureFilter = measureFilter
+      level         = level }
+
+  // C# interop
+  [<CompiledName "Create">]
+  let create' (hiera, target, lineFilter : Func<_, _>, measureFilter : Func<_, _>, level) =
+    create hiera target lineFilter.Invoke measureFilter.Invoke level

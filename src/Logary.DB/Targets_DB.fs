@@ -1,4 +1,4 @@
-﻿module Logary.Target.DB
+﻿module Logary.Targets.DB
 
 open System
 open System.Data

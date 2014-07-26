@@ -34,7 +34,7 @@ namespace Intelliplan.Logary.Specs
         public static LogManager ConfigureForTextWriter(StringWriter tw)
         {
             var twTarg = TextWriter.Create(Formatting.StringFormatter.LevelDatetimeMessagePathNl, tw, tw, false, LogLevel.Error, "tw");
-            var twRule = rule.Create(new Regex(@"^Intelliplan\.Logary\.Specs"), "tw", l => true, LogLevel.Verbose);
+            var twRule = Rule.Create(new Regex(@"^Intelliplan\.Logary\.Specs"), "tw", l => true, m => true, LogLevel.Verbose);
             return Config.Configure("Logary Specs C# low level API", new[] {twTarg}, new[] {twRule});
         }
     }

@@ -66,10 +66,10 @@ let tests =
       let rules = [
         // "path.1" will be match by two rules
         // "path.1.extra" will be match by one rule
-        rule.Create(Regex("path\.1"), "t1", (fun line -> false), level = Info)
-        rule.Create(Regex("path\.1\.extra"), "t1", (fun line -> false), level = Verbose)
-        rule.Create(Regex("path\.2"), "t2", (fun line -> false), level = Warn)
-        rule.Create(Regex("path\.2\.extra"), "t2", (fun line -> false), level = Error)
+        Rule.create (Regex("path\.1"))        "t1" (fun _ -> false) (fun _ -> false) Info
+        Rule.create (Regex("path\.1\.extra")) "t1" (fun _ -> false) (fun _ -> false) Verbose
+        Rule.create (Regex("path\.2"))        "t2" (fun _ -> false) (fun _ -> false) Warn
+        Rule.create (Regex("path\.2\.extra")) "t2" (fun _ -> false) (fun _ -> false) Error
       ]
       let targets = [
         Target.confTarget "t1" (TextWriter.create <| TextWriter.TextWriterConf.Default(out, out))

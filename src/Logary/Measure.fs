@@ -224,6 +224,7 @@ module TimeUnit =
 
 namespace NodaTime
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Duration =
   let hours (dur : Duration) =
     float dur.Ticks / float NodaConstants.TicksPerHour
