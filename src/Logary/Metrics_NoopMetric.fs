@@ -1,4 +1,6 @@
-﻿module Logary.Metrics.NoopMetric
+﻿/// A metric that just ignores all calls best it can
+module Logary.Metrics.Noop
+
 open FSharp.Actor
 
 open Logary

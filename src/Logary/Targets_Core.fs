@@ -32,41 +32,43 @@ module TextWriter =
         flush        = false
         isErrorAt    = LogLevel.Error }
 
-  let private twLoop
-    { formatter = formatter
-      output    = out
-      error     = err
-      flush     = flush
-      isErrorAt = cutOff }
-    logaryData =
-    (fun (inbox : IActor<_>) ->
-      let rec loop () = async {
-        let wl (tw : TextWriter) = (tw.WriteLine : string -> unit)
-        let! msg, mopt = inbox.Receive()
-        match msg with
-        | Log l ->
-          let tw = if l.level < cutOff then out else err
-          wl tw (formatter.format l)
-          do (if flush then tw.Flush() else ())
-          return! loop ()
-        | Measure m ->
-          let tw = if m.m_level < cutOff then out else err
-          wl tw (formatter.m_format m)
-          do (if flush then tw.Flush() else ())
-          return! loop ()
-        | Flush chan ->
-          out.Flush()
-          err.Flush()
-          chan.Reply Ack
-          return! loop ()
-        | Shutdown ackChan ->
-          out.Dispose()
-          if not (obj.ReferenceEquals(out, err)) then err.Dispose() else ()
-          ackChan.Reply Ack
-          return () }
-      loop ())
+  module internal Impl =
 
-  let create conf = TargetUtils.stdNamedTarget (twLoop conf)
+    let loop
+      { formatter = formatter
+        output    = out
+        error     = err
+        flush     = flush
+        isErrorAt = cutOff }
+      (ri : RuntimeInfo) =
+      (fun (inbox : IActor<_>) ->
+        let rec loop () = async {
+          let wl (tw : TextWriter) = (tw.WriteLine : string -> unit)
+          let! msg, mopt = inbox.Receive()
+          match msg with
+          | Log l ->
+            let tw = if l.level < cutOff then out else err
+            wl tw (formatter.format l)
+            do (if flush then tw.Flush() else ())
+            return! loop ()
+          | Measure m ->
+            let tw = if m.m_level < cutOff then out else err
+            wl tw (formatter.m_format m)
+            do (if flush then tw.Flush() else ())
+            return! loop ()
+          | Flush chan ->
+            out.Flush()
+            err.Flush()
+            chan.Reply Ack
+            return! loop ()
+          | Shutdown ackChan ->
+            out.Dispose()
+            if not (obj.ReferenceEquals(out, err)) then err.Dispose() else ()
+            ackChan.Reply Ack
+            return () }
+        loop ())
+
+  let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
 
   /// Use from C# to create - uses tuple calling convention
   [<CompiledName("Create")>]
