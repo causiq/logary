@@ -72,7 +72,7 @@ type InternalLogger =
         if line.level >= x.lvl then
           x.trgs |> List.iter (flip Target.sendLogLine line)
       with _ -> ()
-    member x.Measure (m : ``measure``) =
+    member x.Measure (m : Measure) =
       try
         if m.m_level >= x.lvl then
           x.trgs |> List.iter (flip Target.sendMeasure m)

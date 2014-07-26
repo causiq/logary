@@ -171,8 +171,13 @@ module RestKin =
       loop { client = clientFac baseUri })
 
   /// Create a new RestKin target
-  let [<CompiledName "Create">] create conf =
+  let create conf =
     TargetUtils.stdNamedTarget (restKinLoop conf)
+
+  /// C# interop
+  [<CompiledName "Create">]
+  let create' (conf, name) =
+    create conf name
 
   /// Use with LogaryFactory.New( s => s.Target< HERE >() )
   type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =

@@ -31,12 +31,12 @@ type MetricType =
 type MetricMsg =
   /// The GetValue implementation shall retrieve the value of one or more data
   /// points from the probe.
-  | GetValue of DP list * ReplyChannel<(DP * ``measure``) list>
+  | GetValue of DP list * ReplyChannel<(DP * Measure) list>
   /// The GetDataPoints shall return a list with all data points supported by
   /// the probe
   | GetDataPoints of ReplyChannel<DP list>
   /// Incorporate a new value into the metric maintained by the metric.
-  | Update of ``measure``
+  | Update of Measure
   /// The Sample implementation shall sample data from the subsystem the probe
   /// is integrated with.
   | Sample
@@ -79,7 +79,7 @@ let getDataPoints (m : #IActor) =
     m
 
 /// Incorporate a new value into the metric maintained by the metric.
-let update (m : ``measure``) actor =
+let update (m : Measure) actor =
   actor <-- Update m
   actor
 

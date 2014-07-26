@@ -228,7 +228,7 @@ let logstashLoop (conf : LogstashConf) metadata =
 let create conf = TargetUtils.stdNamedTarget (logstashLoop conf)
 
 [<CompiledName("Create")>]
-let CreateC(conf, name) = create conf name
+let create'(conf, name) = create conf name
 
 /// Use with LogaryFactory.New( s => s.Target< HERE >() )
 type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =

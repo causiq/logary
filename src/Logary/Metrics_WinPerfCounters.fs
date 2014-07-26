@@ -36,7 +36,7 @@ module Common =
 module private Impl =
 
   type WPCState =
-    { lastValues : Map<DP, PC * ``measure``> }
+    { lastValues : Map<DP, PC * Measure> }
 
   /// A unified naming scheme for the names of performance counters
   module Naming =
@@ -52,7 +52,7 @@ module private Impl =
       | ss when ss.Length = 2 -> { category = ss.[0]; counter = ss.[1]; instance = None }
       | ss -> { category = ss.[0]; counter = ss.[1]; instance = Some ss.[2] }
 
-  let tryGetPc (lastValues : Map<DP, PC * ``measure``>) dp =
+  let tryGetPc (lastValues : Map<DP, PC * Measure>) dp =
     lastValues
     |> Map.tryFind dp
     |> Option.map fst

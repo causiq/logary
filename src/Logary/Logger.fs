@@ -8,7 +8,7 @@ type Logger =
   abstract Log     : LogLine -> unit
 
   /// Write a measure to the logger.
-  abstract Measure : ``measure`` -> unit
+  abstract Measure : Measure -> unit
 
   /// Gets the currently set log level, aka. the granularity with which things
   /// are being logged
@@ -44,7 +44,7 @@ module Logger =
   /// Write a measure
   [<CompiledName "Measure">]
   let ``measure`` (logger : Logger) m =
-    (m : ``measure``)
+    (m : Measure)
     |> fun m -> match m.m_path with "" -> { m with m_path = logger.Name } | _ -> m
     |> logger.Measure
 

@@ -23,7 +23,7 @@ type Units =
   | MiB
 
 /// This is a measured event as it occurred or was at a point in time.
-type ``measure`` =
+type Measure =
   { /// The value of the measurement for floats
     m_value     : float option
     /// The value of the measurement for int64s

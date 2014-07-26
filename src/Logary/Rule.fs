@@ -11,7 +11,7 @@ type LineFilter = LogLine -> bool
 
 /// This is the accept filter that is before the measure is passed to the logger
 /// instance.
-type MeasureFilter = ``measure`` -> bool
+type MeasureFilter = Measure -> bool
 
 /// A rule specifies what log lines and metrics a target should accept.
 [<CustomEquality; NoComparison>]

@@ -106,9 +106,9 @@ let private graphiteLoop (conf : GraphiteConf) (svc : RuntimeInfo) =
 /// Create a new graphite target configuration.
 let create conf = TargetUtils.stdNamedTarget (graphiteLoop conf)
 
-/// Create a new graphite target configuration.
+/// C# interop: Create a new graphite target configuration.
 [<CompiledName("Create")>]
-let CreateC(conf, name)  = create conf name
+let create' (conf, name) = create conf name
 
 /// Use with LogaryFactory.New( s => s.Target< HERE >() )
 type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =

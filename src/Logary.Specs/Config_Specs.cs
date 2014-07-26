@@ -8,6 +8,7 @@ using Logary;
 using Logary.Configuration;
 using Machine.Specifications;
 using NodaTime;
+using Console = Logary.Targets.Console;
 using TextWriter = Logary.Targets.TextWriter;
 
 // ReSharper disable InconsistentNaming
@@ -33,9 +34,19 @@ namespace Intelliplan.Logary.Specs
 
         public static LogManager ConfigureForTextWriter(StringWriter tw)
         {
-            var twTarg = TextWriter.Create(Formatting.StringFormatter.LevelDatetimeMessagePathNl, tw, tw, false, LogLevel.Error, "tw");
-            var twRule = RuleModule.Create(new Regex(@"^Intelliplan\.Logary\.Specs"), "tw", l => true, m => true, LogLevel.Verbose);
-            return Config.Configure("Logary Specs C# low level API", new[] {twTarg}, new Metric.MetricConf[0], new[] {twRule});
+            var twTarg = TextWriter.Create(Formatting.StringFormatter.LevelDatetimeMessagePathNl,
+                                           tw, tw, false, LogLevel.Error, "tw");
+            var twRule = RuleModule.Create(new Regex(@"^Intelliplan\.Logary\.Specs"),
+                                           "tw", l => true, m => true, LogLevel.Verbose);
+
+            var internalTarg = Console.Create("cons", Console.ConsoleConf.Default);
+
+            return Config.Configure(
+                "Logary Specs C# low level API",
+                new[] {twTarg},
+                new Metric.MetricConf[0],
+                new[] {twRule},
+                LogLevel.Verbose, internalTarg);
         }
     }
 

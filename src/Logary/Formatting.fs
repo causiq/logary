@@ -21,7 +21,7 @@ let internal caseNameOf (x:'a) =
 /// that can be printed, sent or otherwise dealt with in a manner that suits the target.
 type StringFormatter =
   { format : LogLine       -> string
-    m_format : ``measure`` -> string }
+    m_format : Measure -> string }
   static member private Expanded nl ending =
     let format' =
       fun l ->

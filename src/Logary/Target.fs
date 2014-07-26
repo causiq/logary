@@ -16,7 +16,7 @@ type TargetMessage =
   /// Log this log line!
   | Log            of LogLine
   /// Log this metric!
-  | Measure        of ``measure``
+  | Measure        of Measure
   /// Flush log lines/metrics! Also, reply when you're done flushing
   /// your queue.
   | Flush          of Acks FSharp.Actor.Types.ReplyChannel

@@ -66,12 +66,11 @@ module TextWriter =
           return () }
       loop ())
 
-  [<CompiledName("Create")>] 
   let create conf = TargetUtils.stdNamedTarget (twLoop conf)
 
   /// Use from C# to create - uses tuple calling convention
   [<CompiledName("Create")>]
-  let createA (formatter, out, err, flush, isErrorAt, name) =
+  let create' (formatter, out, err, flush, isErrorAt, name) =
     create
       { formatter = formatter
         output    = out
@@ -113,7 +112,7 @@ module Console =
       { formatter = formatter
         colorMap  = None }
 
-  let [<CompiledName("Create")>] create conf =
+  let create conf =
     // TODO: coloured console output
     TextWriter.create
       { formatter = conf.formatter
@@ -122,8 +121,9 @@ module Console =
         flush     = false
         isErrorAt = Error }
 
-  let [<CompiledName("Create")>] createA(name, conf) = create conf name
-  let [<CompiledName("Create")>] createB(name) = create ConsoleConf.Default name
+  /// Use from C# to create - uses tuple calling convention
+  [<CompiledName("Create")>]
+  let create' (name, conf) = create conf name
 
   /// Use with LogaryFactory.New( s => s.Target<Console.Builder>() )
   type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
@@ -185,9 +185,10 @@ module Debugger =
           return () }
       loop ())
 
-  let [<CompiledName("Create")>] create conf = TargetUtils.stdNamedTarget (debuggerLoop conf)
+  let create conf = TargetUtils.stdNamedTarget (debuggerLoop conf)
 
-  let [<CompiledName("Create")>] createA(conf, name) = create conf name
+  [<CompiledName("Create")>]
+  let create' (conf, name) = create conf name
 
   /// Use with LogaryFactory.New( s => s.Target<Debugger.Builder>() )
   type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =

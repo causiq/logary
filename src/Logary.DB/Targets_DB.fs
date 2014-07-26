@@ -35,7 +35,7 @@ module internal Impl =
     | Some (s : string) -> sprintf "%s." s
     | None              -> String.Empty
 
-  let insertMeasure schema (m : ``measure``) connMgr =
+  let insertMeasure schema (m : Measure) connMgr =
     Sql.execNonQuery connMgr
       (sprintf "INSERT INTO %sMetrics (Host, Path, EpochTicks, Level, Type, Value)
        VALUES (@host, @path, @epoch, @level, @type, @value)" (printSchema schema))
@@ -101,9 +101,9 @@ module internal Impl =
 /// Create a new SqlServer target configuration.
 let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
 
-/// Create a new SqlServer target configuration.
+/// C# interop: Create a new SqlServer target configuration.
 [<CompiledName("Create")>]
-let CreateC(conf, name)  = create conf name
+let create' (conf, name) = create conf name
 
 /// In this step you have finished configuring all required things for the
 /// DB and can call Done() to complete the configuration.

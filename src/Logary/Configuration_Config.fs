@@ -45,6 +45,8 @@ let withInternalTargets level tconfs (conf : LogaryConf) =
   let logger = createInternalLogger level targets
   conf |> withInternalLogger logger
 
+/// Set the internal target for logary
+[<CompiledName "WithInternalTarget">]
 let withInternalTarget level tconf =
   withInternalTargets level [tconf]
 
@@ -88,6 +90,8 @@ let withRule r conf =
 let withRules rs conf =
   { conf with rules = (rs |> List.ofSeq) @ conf.rules }
 
+/// Adds a metric configuration to the configuration to run in the registry.
+[<CompiledName "WithMetric">]
 let withMetric (m : MetricConf) conf =
   { conf with metrics = conf.metrics |> Map.add m.name (m, None) }
 
@@ -161,11 +165,12 @@ let asLogManager (inst : LogaryInstance) =
 /// Configure Logary completely with the given service name and rules, targets
 /// and metrics. This will call the `validate` function too.
 [<CompiledName "Configure">]
-let configure serviceName targets metrics rules =
+let configure serviceName targets metrics rules (internalLevel, internalTarget) =
   confLogary serviceName
   |> withTargets (targets |> List.ofSeq)
   |> withRules (rules |> List.ofSeq)
   |> withMetrics (metrics |> List.ofSeq)
+  |> withInternalTarget internalLevel internalTarget
   |> validate
   |> runLogary
   |> asLogManager

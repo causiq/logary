@@ -47,4 +47,5 @@ let private actorLoop conf metadata =
 
 let create conf = TargetUtils.stdNamedTarget (actorLoop conf)
 
-let [<CompiledName("Create")>] CreateC(conf, name)  = create conf name
+[<CompiledName("Create")>]
+let create' (conf, name)  = create conf name
