@@ -39,15 +39,15 @@ module private Impl =
   let loop (inbox : IActor<_>) =
     let rec loop () = async {
       let! msg, _ = inbox.Receive ()
-      let cs = new CancellationTokenSource()
+      let cts = new CancellationTokenSource()
       match msg with
       | Schedule (receiver, msg : 'a, initialDelay, delayBetween, replyChan) ->
-        Async.StartImmediate (scheduleMany (ms initialDelay) msg receiver (ms delayBetween) cs)
-        replyChan.Reply cs
+        Async.StartImmediate (scheduleMany (ms initialDelay) msg receiver (ms delayBetween) cts)
+        replyChan.Reply cts
         return! loop ()
       | ScheduleOnce (receiver, msg:'a, delay, replyChan) ->
-        Async.StartImmediate (scheduleOnce delay msg receiver cs)
-        replyChan.Reply cs
+        Async.StartImmediate (scheduleOnce delay msg receiver cts)
+        replyChan.Reply cts
         return! loop ()
     }
     loop ()
