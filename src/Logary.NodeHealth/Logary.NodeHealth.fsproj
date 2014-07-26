@@ -5,12 +5,12 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>178b23d3-f676-43c3-880d-9e0befbaf019</ProjectGuid>
+    <ProjectGuid>2df5bde4-d1d7-4521-b13e-aaeaad21b8a4</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>Logary.Riemann.Example</RootNamespace>
-    <AssemblyName>Intelliplan.Logary.Riemann.Example</AssemblyName>
+    <RootNamespace>Logary.NodeHealth</RootNamespace>
+    <AssemblyName>Logary.NodeHealth</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <Name>Intelliplan.Logary.Riemann.Example</Name>
+    <Name>Logary.NodeHealth</Name>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -21,7 +21,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Debug\Logary.Riemann.Example.XML</DocumentationFile>
+    <DocumentationFile>bin\Debug\Logary.NodeHealth.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -32,57 +32,21 @@
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Release\Logary.Riemann.Example.XML</DocumentationFile>
+    <DocumentationFile>bin\Release\Logary.NodeHealth.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="FSharp.Core">
-      <HintPath>..\packages\FSharp.Core.3.0.0.2\lib\net40\FSharp.Core.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="mscorlib" />
-    <Reference Include="NodaTime">
-      <HintPath>..\packages\NodaTime.1.2.0\lib\net35-Client\NodaTime.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="policy.2.3.FSharp.Core">
-      <HintPath>..\packages\FSharp.Core.3.0.0.2\lib\net40\policy.2.3.FSharp.Core.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="protobuf-net">
-      <HintPath>..\packages\protobuf-net.2.0.0.668\lib\net40\protobuf-net.dll</HintPath>
+    <Reference Include="FSharp.Core, Version=4.3.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
-    <Reference Include="System.Xml" />
-    <Reference Include="UnionArgParser">
-      <HintPath>..\packages\UnionArgParser.0.7.0\lib\net40\UnionArgParser.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.fs" />
     <None Include="App.config" />
-    <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Fsharp.Actor\src\FSharp.Actor\FSharp.Actor-logary.fsproj">
-      <Name>FSharp.Actor-logary</Name>
-      <Project>{aa4bc25b-04f7-4b39-bf28-0b0058193ed9}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-    <ProjectReference Include="..\Logary.Riemann\Intelliplan.Logary.Riemann.fsproj">
-      <Name>Intelliplan.Logary.Riemann</Name>
-      <Project>{cc87925c-e4f2-4386-a322-8bc088de7b33}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-    <ProjectReference Include="..\Logary\Intelliplan.Logary.fsproj">
-      <Name>Intelliplan.Logary</Name>
-      <Project>{f7e5b6e8-5d55-4974-9ca7-4c94d810631f}</Project>
-      <Private>True</Private>
-    </ProjectReference>
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>

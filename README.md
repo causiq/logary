@@ -318,7 +318,7 @@ When the infrastructure is in place, we can create probes that solve common prob
 
 ## Step four - documenting the above
 
- - Document how metrics, probes and health checks work and how they differ
+ - [Document](https://github.com/tpetricek/FSharp.Formatting/issues/167#issuecomment-49972190) how metrics, probes and health checks work and how they differ
  - Document order of initialisation
  - Document how to create custom (metric|probe|health check)
  - Document CLR perf counters, finish writing most common counters
@@ -336,7 +336,13 @@ When the infrastructure is in place, we can create probes that solve common prob
 
 The above is useless without a nice way to report the values. Create an in-app dashboard that can be used to access the histograms, guages and timers.
 
-Let's just use the Apache 2.0 licensed [Metrics.Net](https://github.com/haf/Metrics.NET.FlotVisualization) dashboard, and make sure we can report same data:
+Let's just use the Apache 2.0 licensed [Metrics.Net](https://github.com/haf/Metrics.NET.FlotVisualization) dashboard.
+
+[Extend with JsonDiffPatch](https://github.com/benjamine/JsonDiffPatch) to avoid sending full state every time.
+
+Instead of polling, open a Server-Sent Event socket and get all patches from there, continuously applying it to the in-memory rep.
+
+Make sure we can report same data:
 
 ```
 {
