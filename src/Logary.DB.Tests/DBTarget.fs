@@ -38,7 +38,7 @@ module SQLiteDB =
             System.Diagnostics.Debugger.Log(6, "tests", str)
         member x.Measure _ = ()
         member x.Name = "DB test logger"
-        member x.Level = LogLevel.Verbose }
+        member x.Level = LogLevel.Info }
 
   open System
   open Logary.DB.Migrations
@@ -147,7 +147,8 @@ let targetTests =
 
       // given
       let target = start (fun () -> db)
-      LogLine.create'' "hello world" "a.b.c" |> Target.sendLogLine target
+      LogLine.create'' "a.b.c" "hello world"
+        |> Target.sendLogLine target
       LogLine.create "goodbye world" Map.empty Info ["tests"; "things"] "a.b.c" (Some (raised_exn "hoho"))
         |> Target.sendLogLine target
       flush target

@@ -37,8 +37,8 @@ module internal Impl =
 
   let insertMeasure schema (m : Measure) connMgr =
     Sql.execNonQuery connMgr
-      (sprintf "INSERT INTO %sMetrics (Host, Path, EpochTicks, Level, Type, Value)
-       VALUES (@host, @path, @epoch, @level, @type, @value)" (printSchema schema))
+      (sprintf "INSERT INTO %sMetrics (Host, Path, EpochTicks, Level, Value)
+       VALUES (@host, @path, @epoch, @level, @value)" (printSchema schema))
       [ P("@host", Dns.GetHostName())
         P("@path", m.m_path)
         P("@epoch", m.m_timestamp.Ticks)

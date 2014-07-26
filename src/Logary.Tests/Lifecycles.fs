@@ -36,7 +36,7 @@ let tests =
       Metric.confMetric
         "no op metric"
         (Duration.FromMilliseconds 500L)
-        (NoopMetric.create { NoopMetric.NoopConf.isHappy = true })
+        (Noop.create { Noop.NoopConf.isHappy = true })
       |> Metric.validate
       |> Metric.init Fac.emptyRuntime
       |> Metric.update (Measure.create "tests" 1.)
