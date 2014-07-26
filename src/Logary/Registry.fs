@@ -14,7 +14,7 @@ open Logary.HealthCheck
 /// The messages that can be sent to the registry to interact with it and its
 /// running targets.
 type RegistryMessage =
-  | GetLogger             of string * logger ReplyChannel
+  | GetLogger             of string * Logger ReplyChannel
   | PollMetrics
   /// flush all pending messages from the registry to await shutdown
   | FlushPending          of Duration * Acks ReplyChannel
@@ -44,7 +44,7 @@ module internal Logging =
         lock locker (fun () ->
           logManager := Some lm
           logger := Some <| Async.RunSynchronously(getLogger lm.registry name))
-    interface logger with
+    interface Logger with
       member x.Name = name
       member x.Log l = (!logger) |> Option.iter (fun logger -> logger.Log l)
       member x.Measure m = (!logger) |> Option.iter (fun logger -> logger.Measure m)
@@ -170,7 +170,7 @@ module Advanced =
         targets = targets |> List.map (fun (lf, mf, ti, _) -> lf, mf, ti.actor)
         level   = targets |> List.map (fun (_, _, _, level) -> level) |> List.min
         ilogger = ilogger }
-      :> logger
+      :> Logger
 
     let wasSuccessful = function
       | SuccessWith(Ack, _)     -> 0

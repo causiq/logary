@@ -28,7 +28,7 @@ type HealthCheckResult =
 
 /// You can centralise the service's health checks by registering instances
 /// of this interface.
-type healthcheck =
+type HealthCheck =
   inherit Named
   inherit IDisposable
   /// Performs a check with the health check.
@@ -36,6 +36,7 @@ type healthcheck =
 
 /// A module that makes it smooth to interact with running/starting/configuration of
 /// health checks.
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module HealthCheck =
 
   open System
@@ -121,7 +122,7 @@ module HealthCheck =
   let fromFn name f =
     let a = Actor.spawn (Ns.create (sprintf "hc/%s" name))
                         (mkFromFunction f)
-    { new healthcheck with
+    { new HealthCheck with
         member x.Name = name
         member x.GetValue () =
           a
@@ -134,7 +135,7 @@ module HealthCheck =
 
   /// Create a health check that will never yield a value
   let mkDead name =
-    { new healthcheck with
+    { new HealthCheck with
         member x.GetValue () = NoValue
         member x.Name        = name
         member x.Dispose ()  = () }
@@ -151,7 +152,7 @@ module HealthCheck =
     let toHealthCheckNamed name wpc measureTransform =
       match mkPc wpc with
       | Some counter ->
-        { new healthcheck with
+        { new HealthCheck with
             member x.Name = name
             member x.GetValue () =
               try
@@ -174,8 +175,8 @@ module HealthCheck =
     /// Takes a list of IDisposable things (performance counters, perhaps?) and
     /// wraps the call to Dispose() of the inner health check with calls to
     /// Dispose for each of the resources
-    let hasResources (disposables : #IDisposable seq) (hc : healthcheck) =
-      { new healthcheck with
+    let hasResources (disposables : #IDisposable seq) (hc : HealthCheck) =
+      { new HealthCheck with
           member x.Name = hc.Name
           member x.GetValue() = hc.GetValue()
           member x.Dispose() =

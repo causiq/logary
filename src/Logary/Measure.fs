@@ -3,7 +3,7 @@
 open FSharp.Actor
 open NodaTime
 
-type timeunit =
+type TimeUnit =
   | Nanoseconds
   /// Ticks as defined by `NodaTime.NodaConstants.TicksPerSecond`.
   | Ticks
@@ -14,10 +14,10 @@ type timeunit =
   | Hours
   | Days
 
-type units =
+type Units =
   /// e.g. 'requests' or 'users'; you can put an arbitrary unit here
   | Unit of string
-  | Time of timeunit
+  | Time of TimeUnit
   | Bytes
   | KiB
   | MiB
@@ -38,7 +38,7 @@ type ``measure`` =
     /// The level of the measure
     m_level     : LogLevel
     /// What unit this measure has
-    m_unit      : units
+    m_unit      : Units
     /// A map of string to anything; it is up to the target in question how to
     /// handle extra data on the metric
     m_data      : Map<string, obj>
@@ -50,6 +50,7 @@ type ``measure`` =
 /// time. f :: Measure list -> Instant -> SecondaryMeasure
 
 /// Module for dealing with measures
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Measure =
   open FSharp.Actor
 
@@ -210,6 +211,7 @@ module Measure =
         (getValueStr m) m.m_data m.m_level m.m_tags m.m_path
         None
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module TimeUnit =
   let ticksPerUnit = function
     | Ticks -> 1.

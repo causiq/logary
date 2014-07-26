@@ -15,7 +15,7 @@ open Logary.Target.FactoryApi
 
 type internal ConfBuilderT<'T when 'T :> SpecificTargetConf> =
   { parent      : ConfBuilder        // logary that is being configured
-    tr          : rule               // for this specific target
+    tr          : Rule               // for this specific target
     tcSpecific  : 'T option }
 with
   member internal x.SetTcSpecific tcs =
@@ -24,15 +24,15 @@ with
   interface TargetConfBuild<'T> with
 
     member x.MinLevel logLevel =
-      { x with tr = { x.tr with rule.level = logLevel } }
+      { x with tr = { x.tr with Rule.level = logLevel } }
       :> TargetConfBuild<'T>
 
     member x.SourceMatching regex =
-      { x with tr = { x.tr with rule.hiera = regex } }
+      { x with tr = { x.tr with Rule.hiera = regex } }
       :> TargetConfBuild<'T>
 
     member x.AcceptIf acceptor =
-      { x with tr = { x.tr with rule.lineFilter = acceptor.Invoke } }
+      { x with tr = { x.tr with Rule.lineFilter = acceptor.Invoke } }
       :> TargetConfBuild<'T>
 
     member x.Target = x.tcSpecific.Value

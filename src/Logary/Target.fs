@@ -14,7 +14,7 @@ open Logary.Internals
 /// The protocol that a target can speak
 type TargetMessage =
   /// Log this log line!
-  | Log            of logline
+  | Log            of LogLine
   /// Log this metric!
   | Measure        of ``measure``
   /// Flush log lines/metrics! Also, reply when you're done flushing
@@ -139,7 +139,7 @@ module FactoryApi =
     /// The function to call for every log line, to verify
     /// whether to let it through
     /// </param>
-    abstract member AcceptIf : Func<logline, bool> -> TargetConfBuild<'T>
+    abstract member AcceptIf : Func<LogLine, bool> -> TargetConfBuild<'T>
 
   /// All SpecificTargetConf implementors should take this as their single argument
   /// ctor, to go back into the parent context

@@ -7,7 +7,7 @@ open Logary
 
 /// This is the accept filter that is before the log line is passed to the logger
 /// instance.
-type LineFilter = logline -> bool
+type LineFilter = LogLine -> bool
 
 /// This is the accept filter that is before the measure is passed to the logger
 /// instance.
@@ -15,7 +15,7 @@ type MeasureFilter = ``measure`` -> bool
 
 /// A rule specifies what log lines and metrics a target should accept.
 [<CustomEquality; NoComparison>]
-type rule =
+type Rule =
   { /// This is the regular expression that the 'path' must match to be loggable
     hiera  : Regex
     /// This is the name of the target that this rule applies to
@@ -35,10 +35,10 @@ type rule =
   override x.Equals other =
     match other with
     | null -> false
-    | :? rule as o -> (x :> IEquatable<rule>).Equals(o)
+    | :? Rule as o -> (x :> IEquatable<Rule>).Equals(o)
     | _ -> false
 
-  interface System.IEquatable<rule> with
+  interface System.IEquatable<Rule> with
     member x.Equals r = r.hiera.ToString() = x.hiera.ToString() && r.target = x.target && r.level = x.level
 
   override x.ToString() =
@@ -47,6 +47,7 @@ type rule =
 
 /// Module for dealing with rules. Rules take care of filtering too verbose
 /// log lines and measures before they are sent to the targets.
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Rule =
 
   // filters:
@@ -54,7 +55,7 @@ module Rule =
   let allowFilter _ = true
 
   /// Find all rules matching the name, from the list of rules passed.
-  let matching (name : string) (rules : rule list) =
+  let matching (name : string) (rules : Rule list) =
     rules |> List.filter (fun r -> r.hiera.IsMatch name)
 
   /////////////////////

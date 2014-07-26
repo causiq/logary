@@ -8,7 +8,7 @@ open Logary
 /// that is actually *the* internal logger target, to avoid recursive calls to
 /// itself.
 type NullLogger() =
-  interface logger with
+  interface Logger with
     member x.Log line = ()
     member x.Measure measur = ()
     member x.Level = Fatal
@@ -26,12 +26,12 @@ module internal Logging =
       targets : (LineFilter * MeasureFilter * IActor) list
       level   : LogLevel
       /// the internal logger for this logger instance
-      ilogger : logger }
+      ilogger : Logger }
     with
       interface Named with
         member x.Name = x.name
 
-      interface logger with
+      interface Logger with
         member x.Log line =
           for accept, _, t in x.targets do
             try
@@ -66,7 +66,7 @@ module internal Logging =
 type InternalLogger =
   { lvl  : LogLevel
     trgs : Target.TargetInstance list }
-  interface logger with
+  interface Logger with
     member x.Log line =
       try
         if line.level >= x.lvl then
@@ -88,7 +88,7 @@ type InternalLogger =
         |> List.iter (Target.shutdown >> Async.Ignore >> Async.RunSynchronously)
       with _ -> ()
   static member Create(level, targets) =
-    { lvl = level; trgs = targets } :> logger
+    { lvl = level; trgs = targets } :> Logger
 
 module Try =
   /// Safely try to execute f, catching any exception thrown and logging that

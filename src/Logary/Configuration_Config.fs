@@ -17,7 +17,7 @@ open Logary.Metric
 open Logary.Registry
 open Logary.Targets
 
-let private shutdownLogger<'a when 'a :> logger> : 'a -> unit = box >> function
+let private shutdownLogger<'a when 'a :> Logger> : 'a -> unit = box >> function
   | :? System.IDisposable as d -> d.Dispose()
   | _ -> ()
 
@@ -158,13 +158,14 @@ let asLogManager (inst : LogaryInstance) =
       member x.Dispose ()         = shutdown inst |> Async.Ignore |> run
   }
 
-/// Configure Logary completely with the given service name and rules and
-/// targets. This will call the validateLogary function too.
+/// Configure Logary completely with the given service name and rules, targets
+/// and metrics. This will call the `validate` function too.
 [<CompiledName "Configure">]
-let configure serviceName targets rules =
+let configure serviceName targets metrics rules =
   confLogary serviceName
   |> withTargets (targets |> List.ofSeq)
   |> withRules (rules |> List.ofSeq)
+  |> withMetrics (metrics |> List.ofSeq)
   |> validate
   |> runLogary
   |> asLogManager

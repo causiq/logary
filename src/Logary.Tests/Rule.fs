@@ -19,7 +19,7 @@ let tests =
   testList "LogLevel" [  
     
     yield testCase "retrieving rule for name" <| fun _ ->
-      let rules = [] : rule list
+      let rules = [] : Rule list
       let found = rules |> Rule.matching "a.b.c"
       found =? []
 

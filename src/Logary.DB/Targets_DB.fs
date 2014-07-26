@@ -47,7 +47,7 @@ module internal Impl =
 
   let insertMeasure' schema m = insertMeasure schema m |> txn
 
-  let insertLogLine schema (l : logline) connMgr =
+  let insertLogLine schema (l : LogLine) connMgr =
     Sql.execNonQuery connMgr
       (sprintf "INSERT INTO %sLogLines (Host, Message, Data, Path, EpochTicks, Level, Exception, Tags)
        VALUES (@host, @message, @data, @path, @epoch, @level, @exception, @tags)" (printSchema schema))

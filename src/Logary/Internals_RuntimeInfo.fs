@@ -11,4 +11,4 @@ type RuntimeInfo =
     serviceName : string
 
     /// An internal logger for logary to use
-    logger      : logger }
+    logger      : Logger }

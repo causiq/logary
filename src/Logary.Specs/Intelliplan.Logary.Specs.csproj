@@ -61,6 +61,10 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Fsharp.Actor\src\FSharp.Actor\FSharp.Actor-logary.fsproj">
+      <Project>{aa4bc25b-04f7-4b39-bf28-0b0058193ed9}</Project>
+      <Name>FSharp.Actor-logary</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Logary.CSharp\Intelliplan.Logary.CSharp.csproj">
       <Project>{26fd79bd-2329-41b6-a86d-8f3992437cbe}</Project>
       <Name>Intelliplan.Logary.CSharp</Name>

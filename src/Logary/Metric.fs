@@ -118,12 +118,13 @@ module Reservoir =
   /// it ore like such?
   ///
   /// TODO: what about working on floats and other value types?
+  [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
   module Snapshot =
     open System
     // TODO: when I need to read values multiple times:
     // memoized snapshot to avoid recalculation of values after reading
 
-    type snapshot =
+    type Snapshot =
       { values : int64 [] }
 
     let create unsorted =
@@ -322,6 +323,6 @@ module Reservoir =
                      inited    = true
                      rate      = instantRate }
 
-    let rate (timeUnit : timeunit) state =
+    let rate (timeUnit : TimeUnit) state =
       // we know rate is in samples per tick
       state.rate * (TimeUnit.ticksPerUnit timeUnit)

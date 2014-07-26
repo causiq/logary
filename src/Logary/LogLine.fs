@@ -6,7 +6,7 @@ open NodaTime
 
 /// The log levels specify the severity of the message.
 [<StructuralEquality; NoComparison>]
-type logline =
+type LogLine =
     /// The message for the log line
   { message       : string
     /// A dictionary-alike object that keeps data to be logged
@@ -23,6 +23,7 @@ type logline =
     /// Optional exception
     ``exception`` : exn option }
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module LogLine =
   open Logary.Internals
 

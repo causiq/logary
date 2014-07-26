@@ -1,11 +1,11 @@
 ﻿namespace Logary
 
 /// Main interface used to log LogLines and Metrics.
-type logger =
+type Logger =
   inherit Named
 
   /// Write a log line to the logger.
-  abstract Log     : logline -> unit
+  abstract Log     : LogLine -> unit
 
   /// Write a measure to the logger.
   abstract Measure : ``measure`` -> unit
@@ -21,6 +21,7 @@ type logger =
 /// If you are using I recommend doing:
 /// `Install-Package Intelliplan.Logary.CSharp` instead of dealing with the
 /// interop problems that you will get from using this module directly.
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Logger =
   open System.Diagnostics
 
@@ -35,14 +36,14 @@ module Logger =
 
   /// Write a log entry from a log line.
   [<CompiledName "Log">]
-  let log (logger : logger) line =
-    (line : logline)
+  let log (logger : Logger) line =
+    (line : LogLine)
     |> fun l -> match l.path with "" -> { l with path = logger.Name } | _ -> l
     |> logger.Log
 
   /// Write a measure
   [<CompiledName "Measure">]
-  let ``measure`` (logger : logger) m =
+  let ``measure`` (logger : Logger) m =
     (m : ``measure``)
     |> fun m -> match m.m_path with "" -> { m with m_path = logger.Name } | _ -> m
     |> logger.Measure

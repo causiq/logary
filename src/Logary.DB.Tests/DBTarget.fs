@@ -29,7 +29,7 @@ let private inMemConnStrEmpheral = "FullUri=file::memory:"
 module SQLiteDB =
 
   let private consoleAndDebugger =
-    { new logger with
+    { new Logger with
         member x.Log line =
           let fm = Formatting.StringFormatter.VerbatimNewline
           let str = fm.format line

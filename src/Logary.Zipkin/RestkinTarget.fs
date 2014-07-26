@@ -137,7 +137,7 @@ module RestKin =
   type private RestKinState =
     { client : IRestClient }
 
-  let private makeSpan (l : logline) =
+  let private makeSpan (l : LogLine) =
     // TODO: map name (path)
     // TODO: map trace id
     // TODO: map span

@@ -14,7 +14,7 @@ open Logary.Metric
 type LogaryConf =
   { /// A list of rules that guide what targets are invoked for a given
     /// log line or measure.
-    rules    : rule list
+    rules    : Rule list
 
     /// A map of the targets by name. Some targets may not have been initialised
     /// (LogaryConf describes what-is-to-be before running it, thereafter it describes

@@ -31,7 +31,7 @@ type Runner(fac      : MigrationProcessorFactory,
             connStr  : string,
             ?timeout : TimeSpan,
             ?showSql : bool,
-            ?logger  : logger) =
+            ?logger  : Logger) =
 
   let logger = defaultArg logger (Logging.getCurrentLogger())
 

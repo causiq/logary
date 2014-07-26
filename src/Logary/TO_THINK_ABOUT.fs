@@ -41,7 +41,7 @@ module Time =
 
   /// Capture a timer metric with a given metric-level and metric-path.
   [<CompiledName "TimeLevel">]
-  let timelvl (logger : logger) lvl path f =
+  let timelvl (logger : Logger) lvl path f =
     if lvl < logger.Level then f ()
     else
       let now = Date.now ()
@@ -72,7 +72,7 @@ module Time =
   /// Time a function execution with a 'path' equal to the passed argument.
   /// Path may be null, and is then replaced with the logger name
   [<CompiledName "TimePath">]
-  let timePath (logger : logger) lvl path (f : System.Func<_>) =
+  let timePath (logger : Logger) lvl path (f : System.Func<_>) =
     let path = match path with null -> logger.Name | p -> p
     timelvl logger lvl path (fun () -> f.Invoke())
 
@@ -159,7 +159,7 @@ module internal Play =
     toHealthCheck wpc tf |> hasResources (descCounters |> List.map (fun (c, _, _) -> c))
 
   let printAll checks =
-    let printSingle (check : healthcheck) =
+    let printSingle (check : HealthCheck) =
       match check.GetValue() with
       | NoValue -> printfn "%s: -" check.Name
       | HasValue v ->
