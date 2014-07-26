@@ -21,7 +21,7 @@ module MigrationBuilderEx =
   [<Extension; CompiledName "MigrateUp">]
   let migrateUp (builder      : ThirdStep,
                  processorFac : Func<IDbConnection, IMigrationProcessor>) =
-    let builder' = builder :> ConfigReader<DBConf>
+    let builder' = builder :> FactoryApi.ConfigReader<DBConf>
     let conf = builder'.ReadConf()
     let conn = conf.connFac ()
     let fac = ExistingConnectionProcessorFactory(conn, processorFac.Invoke)
