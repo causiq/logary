@@ -60,10 +60,17 @@ let create () =
 /// If delayBetween is specified then the message is sent reoccuringly at the
 /// delay between interval.
 let schedule scheduler (receiver : 'a -> unit) (msg : 'a) initialDelay (delayBetween : _ option) =
+  // this is specific to scheduling/sending to actors:
+  let swallowInvalidState f x =
+    try
+      f x
+    with
+    | Actor.ActorInvalidStatus _ -> ()
+
   let buildMessage replyChan =
     match delayBetween with
     | Some x ->
-      Schedule (unbox >> receiver, msg, initialDelay, x, replyChan)
+      Schedule (unbox >> swallowInvalidState(receiver), msg, initialDelay, x, replyChan)
     | _ ->
       ScheduleOnce (unbox >> receiver, msg, initialDelay, replyChan)
   scheduler |> Actor.reqReply buildMessage Infinite
