@@ -58,7 +58,7 @@
     <Reference Include="System.Numerics" />
     <Reference Include="System.Xml" />
     <Reference Include="UnionArgParser">
-      <HintPath>..\packages\UnionArgParser.0.6.5\lib\net40\UnionArgParser.dll</HintPath>
+      <HintPath>..\packages\UnionArgParser.0.7.0\lib\net40\UnionArgParser.dll</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>
