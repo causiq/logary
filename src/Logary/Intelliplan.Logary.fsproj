@@ -32,6 +32,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="README.md" />
+    <Compile Include="Targets_Noop.fs" />
     <Compile Include="WinPerfCounter.fs" />
     <Compile Include="Lenses.fs" />
     <Compile Include="Named.fs" />
