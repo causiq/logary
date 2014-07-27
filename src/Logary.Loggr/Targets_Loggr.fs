@@ -30,6 +30,16 @@ module internal Impl =
 
   type State = { client : LogClient }
 
+  // really, we're using https://github.com/loggr/loggr-dotnet/blob/master/loggr-dotnet/LogClient.cs
+  // and that client could be written better for async stuff... Right now, if you
+  // have high throughput, this client will use up lots of thread pool threads
+  // since each log line is a separate request, not to mention how the load
+  // balancers on the other side might feel;
+  // the client can be rewritten to use async and also do the EndXXX call; but
+  // moreover, the HttpClient at
+  // https://github.com/loggr/loggr-dotnet/blob/master/loggr-dotnet/HttpClient.cs#L11
+  // simply does a synchronous call, so you're using an async thread from the
+  // thread pool to perform a synchronous call instead of a worker thread
   let loop (conf : LoggrConf) (ri : RuntimeInfo) (inbox : IActor<_>) =
     let rec init () = async {
       let client = LogClient(conf.logKey, conf.apiKey, conf.useTLS)
@@ -43,6 +53,7 @@ module internal Impl =
           match l.``exception`` with
           | None    -> Events.CreateFromVariable(l.data)
           | Some ex -> Events.CreateFromException ex
+        evt.Source ri.serviceName |> ignore
         evt.Text l.message |> ignore
         evt.Tags (l.tags |> Array.ofList) |> ignore
         evt.Timestamp (l.timestamp.ToDateTimeUtc ()) |> ignore
@@ -58,6 +69,7 @@ module internal Impl =
 
       | Measure msr ->
         let evt = Events.CreateFromVariable msr.m_data
+        evt.Source ri.serviceName |> ignore
         evt.Value (msr |> Measure.getValueFloat) |> ignore
         evt.UseLogClient state.client |> ignore
         evt.Post true |> ignore
