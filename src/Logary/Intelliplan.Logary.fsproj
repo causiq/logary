@@ -80,7 +80,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Intelliplan.JsonNet">
-      <HintPath>..\packages\Intelliplan.JsonNet.1.3.247\lib\net40\Intelliplan.JsonNet.dll</HintPath>
+      <HintPath>..\packages\Intelliplan.JsonNet.1.6.0\lib\net40\Intelliplan.JsonNet.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Intelliplan.JsonNet.NodaTime">
