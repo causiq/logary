@@ -43,4 +43,10 @@ module private Impl =
     }
     loop { calls = 0I }
 
+/// Create a new Noop metric that doesn't do very much
 let create conf = MetricUtils.stdNamedMetric Metric (Impl.loop conf)
+
+/// C# interop: Create a new Noop metric that doesn't do very much
+[<CompiledName "Create">]
+let create' (conf, name) =
+  create conf name

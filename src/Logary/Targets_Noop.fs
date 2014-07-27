@@ -31,13 +31,15 @@ module internal Impl =
 
     loop { state = false }
 
+/// Create a new Noop target
 let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
 
+/// C# Interop: Create a new Noop target
 [<CompiledName "Create">]
 let create' (conf, name) =
   create conf name
 
-/// Use with LogaryFactory.New( s => s.Target<TextWriter.Builder>() )
+/// Use with LogaryFactory.New( s => s.Target<Noop.Builder>() )
 type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
   member x.IsYes(yes : bool) =
     ! (callParent <| Builder({ conf with isYes = yes }, callParent))
