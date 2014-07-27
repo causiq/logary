@@ -1,6 +1,7 @@
 ﻿namespace Logary.Internals
 
 open System
+open System.IO
 // DEPRECATED, refactor!
 
 // TODO: this module can be redone much nicer with an expressive API of possible
@@ -9,8 +10,22 @@ open System
 /// A module that wraps the .Net TcpClient types/streams in a F#-ideomatic way,
 /// and behind an interface.
 module Tcp =
-
-  open System
+  /// Transfer the said amount from `source` stream to `target` stream
+  let transfer len (source : Stream) (target : Stream) =
+    let bufSize = 0x2000
+    let buf = Array.zeroCreate bufSize // TODO: extract
+    let rec read' amountRead = async {
+      if amountRead >= len then
+        return ()
+      else
+        let toRead = Math.Min(bufSize, len - amountRead)
+        let! wasRead = source.AsyncRead(buf, 0, toRead)
+        if wasRead <> toRead then
+          raise <| EndOfStreamException(sprintf "unexpected EOF (wasRead: %d, toRead: %d)" wasRead toRead)
+        else
+          do! target.AsyncWrite(buf, 0, wasRead)
+          return! read' (wasRead + amountRead) }
+    read' 0
 
   type WriteStream =
     /// WriteAsync : buffer -> offset? -> length?
