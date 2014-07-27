@@ -10,7 +10,6 @@ open FsSql
 
 open NodaTime
 
-
 open Logary
 open Logary.Internals
 open Logary.Target
