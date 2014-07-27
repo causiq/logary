@@ -33,6 +33,10 @@ module internal Impl =
 
 let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
 
+[<CompiledName "Create">]
+let create' (conf, name) =
+  create conf name
+
 /// Use with LogaryFactory.New( s => s.Target<TextWriter.Builder>() )
 type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
   member x.IsYes(yes : bool) =

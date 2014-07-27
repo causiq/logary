@@ -42,6 +42,7 @@
   <ItemGroup>
     <None Include="packages.config" />
     <Compile Include="AdapterTests.fs" />
+    <None Include="app.config" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FSharp.Core">

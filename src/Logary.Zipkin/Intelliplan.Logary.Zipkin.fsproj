@@ -61,6 +61,7 @@
     <None Include="Script.fsx" />
     <None Include="packages.config" />
     <Compile Include="AssemblyVersionInfo.fs" />
+    <None Include="app.config" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Fsharp.Actor\src\FSharp.Actor\FSharp.Actor-logary.fsproj">
