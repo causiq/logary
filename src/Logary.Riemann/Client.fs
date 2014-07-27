@@ -6,6 +6,7 @@ open System.IO
 
 open ProtoBuf
 
+open Logary.Internals.Tcp
 open Logary.Riemann.Messages
 
 /// Converts int to networkByteOrder
