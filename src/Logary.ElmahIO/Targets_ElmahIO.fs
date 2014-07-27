@@ -64,7 +64,7 @@ let create' (conf, name) =
 
 /// Use with LogaryFactory.New( s => s.Target<ElmahIO.Builder>().WithLogId("MY GUID HERE") )
 type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
-  member x.WIthLogId(logId : Guid) =
+  member x.WithLogId(logId : Guid) =
     ! (callParent <| Builder({ conf with logId = logId }, callParent))
 
   new(callParent : FactoryApi.ParentCallback<_>) =
