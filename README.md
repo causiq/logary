@@ -3,7 +3,13 @@
 Logary is a high performance, multi-target logging, metric, tracing and
 health-check library for mono and .Net.
 
-Follow Logary at twitter: [@logarylib](https://twitter.com/logarylib), chat and support and get support: [![Gitter chat](https://badges.gitter.im/logary.png)](https://gitter.im/logary), and finally, if you like the code, buy me a beer! [![Flattr this](https://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=haf&url=https%3A%2F%2Fgithub.com%2Flogary%2Flogary)
+Follow Logary at twitter: [@logarylib](https://twitter.com/logarylib)
+
+Chat and support and get support:
+[![Gitter chat](https://badges.gitter.im/logary.png)](https://gitter.im/logary/logary)
+
+If you like the code, buy me a beer!
+[![Flattr this](https://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=haf&url=https%3A%2F%2Fgithub.com%2Flogary%2Flogary)
 
 ```
 Install-Package Intelliplan.Logary
