@@ -61,6 +61,7 @@
     <EmbeddedResource Include="LogFileInfo.sql" />
     <EmbeddedResource Include="StallInfo.sql" />
     <EmbeddedResource Include="DiskVolumeInfo.sql" />
+    <EmbeddedResource Include="LatencyInfo.sql" />
     <EmbeddedResource Include="DriveLatencyInfo.sql" />
     <None Include="packages.config" />
   </ItemGroup>
