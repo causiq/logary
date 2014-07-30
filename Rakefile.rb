@@ -54,7 +54,7 @@ desc 'package nugets - finds all projects and package them'
 nugets_pack :create_nugets => ['build/pkg', :versioning, :build] do |p|
   p.files   = FileList['src/**/*.{csproj,fsproj,nuspec}'].
     exclude('src/Fsharp.Actor/*.nuspec').
-    exclude(/Fracture|Example|Tests|Spec|sample|packages/)
+    exclude(/Fracture|Example|Tests|Spec|Health|sample|packages/)
   p.out     = 'build/pkg'
   p.exe     = 'buildsupport/NuGet.exe'
   p.with_metadata do |m|
