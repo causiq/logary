@@ -11,14 +11,14 @@ open Logary
 type LogaryLogWriter(logger : Logger) =
 
   let fromSourceLevel = function
-    | SourceLevels.Verbose
-    | SourceLevels.All         -> Verbose
+    | SourceLevels.Off
+    | SourceLevels.Verbose     -> Verbose
+    | SourceLevels.All         -> Debug
     | SourceLevels.Information -> Info
     | SourceLevels.Warning     -> Warn
     | SourceLevels.Critical    -> Error
     | SourceLevels.Error       -> Fatal
-    | SourceLevels.Off         -> failwith "if you're stating SourceLevels.Off is the case, why are you logging it??"
-    | _ as l                   -> failwithf "unknown level value: %O" l
+    | _                        -> Verbose
 
   let fromLoggingLevel (level : LoggingLevel) =
     fromSourceLevel level.SourceLevel
