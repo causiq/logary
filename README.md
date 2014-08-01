@@ -6,13 +6,13 @@ Follow Logary at twitter: [@logarylib](https://twitter.com/logarylib).
 
 Installation:
 
-```
+``` powershell
 Install-Package Intelliplan.Logary
 ```
 
 ## Example
 
-```
+``` csharp
 using System;
 using System.Data.SQLite;
 using System.Text.RegularExpressions;
@@ -104,7 +104,7 @@ namespace Intelliplan.Logary.Specs.Examples
 
 Assuming you have Ruby 1.9.3 installed:
 
-```
+``` bash
 git clone git://github.com/logary/logary.git
 cd logary
 git submodule update --init
