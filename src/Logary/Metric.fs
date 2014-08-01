@@ -46,12 +46,27 @@ type MetricMsg =
   /// The Reset shall reset the state of the probe to its initial state.
   | Reset
 
+[<CustomEquality; CustomComparison>]
 type MetricConf =
   { name     : string
     ``type`` : MetricType
     initer   : RuntimeInfo -> IActor
     /// the period to sample the metric's value at
     sampling : Duration }
+with
+  override x.Equals(yobj) =
+      match yobj with
+      | :? MetricConf as y -> (x.name = y.name)
+      | _ -> false
+
+  override x.GetHashCode() =
+    hash x.name
+
+  interface System.IComparable with
+    member x.CompareTo yobj =
+      match yobj with
+      | :? MetricConf as y -> compare x.name y.name
+      | _ -> invalidArg "yobj" "cannot compare values of different types"
 
 /// Start configuring a metric with a metric factory
 let confMetric name sampling (factory : string -> Duration -> MetricConf) =

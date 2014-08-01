@@ -9,6 +9,8 @@ open Logary.Internals
 type NoopConf =
   { isYes : bool }
 
+let empty = { isYes = true }
+
 module internal Impl =
 
   type State = { state : bool }

@@ -16,8 +16,8 @@ open Logary.Targets
 
 [<Tests>]
 let tests =
-  testList "LogLevel" [  
-    
+  testList "LogLevel" [
+
     yield testCase "retrieving rule for name" <| fun _ ->
       let rules = [] : Rule list
       let found = rules |> Rule.matching "a.b.c"

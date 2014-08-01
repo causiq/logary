@@ -2,14 +2,19 @@
 
 open Logary
 open Logary.Target
+open Logary.Metric
 
 /// Thrown from 'validateLogary' if the configuration is wrong
-type ValidationException(msg, invalidRules : Rule list, invalidTargets : TargetConf list) =
+type ValidationException(msg, invalidRules : Rule list,
+                         invalidTargets : TargetConf list,
+                         invalidMetrics : MetricConf list) =
   inherit System.Exception(msg)
   /// Gets the invalid rules that failed validation
   member x.InvalidRules   = invalidRules
   /// Gets the invalid tagets that failed validation
   member x.InvalidTargets = invalidTargets
+  /// Gets the invalid metrics which didn't have any attached rules
+  member x.InvalidMetrics = invalidMetrics
 
   /// Builds a little string from the validation exception
   override x.ToString() =

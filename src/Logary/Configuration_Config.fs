@@ -120,7 +120,7 @@ let validate ({ targets = targets; rules = rules; metadata = { logger = lgr } } 
   | rs ->
     let msg = sprintf "validation failed (no corresponding target) for rules:\n%A" rs
     LogLine.error msg |> log
-    raise <| ValidationException(msg, orphanRules, [])
+    raise <| ValidationException(msg, orphanRules, [], [])
 
 /// Start logary with a given configuration
 [<CompiledName "RunLogary"; Extension>]

@@ -7,18 +7,35 @@ open Logary.Internals
 open Logary.Metric
 open Logary.AsmUtils
 
+type DatabaseName = string
+type FullyQualifiedPath = string
+type DriveName = string
+
+/// A discriminated union describing what sorts of things the probe should fetch
+/// data from.
+type LatencyProbeDataSources =
+  /// A single file is the lowest qualifier that gives unique latency results
+  | SingleFile of FullyQualifiedPath
+  /// A database consists of a single or many DataFiles and a single or many
+  /// LogFiles.
+  | Database of DatabaseName
+  /// E.g. 'C:' or 'D:' - usually all things on the drive have similar performance
+  /// metrics as it's the underlying device that sets the constraints. Do not
+  /// include the backslash in this name.
+  | Drive of DriveName
+
 type Conf =
-  { contentsOf : ResourceName -> string
-    }
+  { /// Getting the contents of an embedded resource file function.
+    contentsOf     : ResourceName -> string
+    /// A list of probe data sources
+    latencyTargets : LatencyProbeDataSources list }
 
 /// default config
 let empty =
-  { contentsOf = readResource }
+  { contentsOf     = readResource
+    latencyTargets = [] }
 
 module private Impl =
-
-  type Drive  = string
-  type DBFile = string
 
   type State =
     { lastLatencies : obj
@@ -28,18 +45,19 @@ module private Impl =
   // example data point, collected for a Duration
 
   // ns.category.perf_counter.instance
-  // ns    .component        .metric_name  .instance.specific_dp_value.calculated
-  // logary.sql_server_health.drive_latency.c       .read_ms
-  // logary.sql_server_health.drive_latency.c       .read_ms          .mean
-  // logary.sql_server_health.drive_latency.c       .read_ms          .max
+  // ns    .component        .metric_name       .instance.calculated
+  // logary.sql_server_health.drive_latency_read.c
+  // logary.sql_server_health.drive_latency_read.c       .mean // (reservoir)
+  // logary.sql_server_health.drive_latency_read.c       .max // (reservoir)
+  // logary.sql_server_health.cpu_queue_len.max // (reservoir)
 
   // guage shaped, polled ever n ms
-  // logary.sql_server_health.drive_latency.c          .read
-  // logary.sql_server_health.db_latency   .intelliplan.read
+  // logary.sql_server_health.drive_latency_read.c
+  // logary.sql_server_health.db_latency_read   .intelliplan.read
 
   let baseName = "logary.sql_server_health"
-  let driveLatency = String.concat "." [baseName; "drive_latency"]
-  let fileLatency = String.concat "." [baseName; "dbfile_latency"]
+  let driveLatency drive = String.concat "." [baseName; "drive_latency"; drive]
+  let fileLatency drive = String.concat "." [baseName; "dbfile_latency"; drive]
 
   // histogram shaped, values added every n ms
   // logary.sql_server_health.drive_latency.c.read_ms.mean
@@ -48,18 +66,24 @@ module private Impl =
   // logary.sql_server_health.drive_latency.c.read_ms.p75
 
   let loop (conf : Conf) (ri : RuntimeInfo) (inbox : IActor<_>) =
+    let log = LogLine.setPath "Logary.Metrics.SQLServerHealth"
+              >> Logger.log ri.logger
+
     let rec init () = async {
+      LogLine.info "init" |> log
       return! running ()
       }
-    
+
     and running state = async {
       let! msg, _ = inbox.Receive()
       match msg with
       | GetValue (dps, replChan) ->
+        LogLine.info "get value" |> log
         replChan.Reply []
         return! running ()
 
       | GetDataPoints replChan ->
+        LogLine.info "get dps" |> log
         let res = [] // TODO: need to query to get baseline drives and files
           
         replChan.Reply res
@@ -71,6 +95,7 @@ module private Impl =
         | None   -> return! running ()
 
       | Sample ->
+        LogLine.info "sample" |> log
         return! running state
 
       | Shutdown ackChan ->
@@ -82,10 +107,12 @@ module private Impl =
       }
 
     and reset state = async {
+      LogLine.info "reset" |> log
       return! init ()
       }
 
     and shutdown state = async {
+      LogLine.info "shutdown" |> log
       return ()
       }
 
@@ -99,7 +126,3 @@ let create conf = MetricUtils.stdNamedMetric Probe (Impl.loop conf)
 let create' (conf, name) =
   create conf name
 
-[<EntryPoint>]
-let main argv =
-  printfn "%s" (AsmUtils.readResource argv.[0])
-  0 // return an integer exit code

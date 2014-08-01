@@ -33,10 +33,26 @@ type TargetInstance =
 
 /// A target configuration is the 'reference' to the to-be-run target while it
 /// is being configured, and before Logary fully starts up.
+[<CustomEquality; NoComparison>]
 type TargetConf =
   { name   : string
     initer : RuntimeInfo -> TargetInstance }
   override x.ToString() = sprintf "TargetConf(name = %s)" x.name
+
+  override x.Equals(yobj) =
+      match yobj with
+      | :? TargetConf as y -> (x.name = y.name)
+      | _ -> false
+
+  override x.GetHashCode() =
+    hash x.name
+
+  interface System.IComparable with
+    member x.CompareTo yobj =
+      match yobj with
+      | :? TargetConf as y -> compare x.name y.name
+      | _ -> invalidArg "yobj" "cannot compare values of different types"
+
 
 /// 'API helper' method for flowing the target through
 /// a configurator factory that is then used to change the

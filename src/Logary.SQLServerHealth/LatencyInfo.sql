@@ -11,6 +11,7 @@ SELECT
     [Latency] =
         CASE WHEN ([num_of_reads] = 0 AND [num_of_writes] = 0)
             THEN 0 ELSE ([io_stall] / ([num_of_reads] + [num_of_writes])) END,
+
     --avg bytes per IOP
     [AvgBPerRead] =
         CASE WHEN [num_of_reads] = 0
@@ -32,7 +33,7 @@ FROM
 JOIN sys.master_files AS [mf]
     ON [vfs].[database_id] = [mf].[database_id]
     AND [vfs].[file_id] = [mf].[file_id]
--- WHERE [vfs].[file_id] = 2 -- log files
+WHERE [vfs].[file_id] = 2 -- log files
 -- ORDER BY [Latency] DESC
 -- ORDER BY [ReadLatency] DESC
-ORDER BY [WriteLatency] DESC;
+ORDER BY [WriteLatency] DESC
