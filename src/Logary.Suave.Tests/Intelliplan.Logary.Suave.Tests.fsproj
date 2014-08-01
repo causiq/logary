@@ -8,7 +8,7 @@
     <ProjectGuid>7d72b30b-f720-4be9-a97a-13e3cf5c11a2</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>Logary.Suave.Tests</RootNamespace>
-    <AssemblyName>Intelliplan.Logary.Suave.Tests</AssemblyName>
+    <AssemblyName>Logary.Suave.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <Name>Intelliplan.Logary.Suave.Tests</Name>
   </PropertyGroup>

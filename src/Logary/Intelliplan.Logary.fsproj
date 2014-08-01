@@ -8,7 +8,7 @@
     <ProjectGuid>{f7e5b6e8-5d55-4974-9ca7-4c94d810631f}</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>Intelliplan.Logary</RootNamespace>
-    <AssemblyName>Intelliplan.Logary</AssemblyName>
+    <AssemblyName>Logary</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <Name>Intelliplan.Logary</Name>
   </PropertyGroup>

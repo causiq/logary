@@ -7,7 +7,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{8f108b6a-0fbe-4d6e-8daa-b5ba1429c925}</ProjectGuid>
     <RootNamespace>Intelliplan.Logary.NLog</RootNamespace>
-    <AssemblyName>Intelliplan.Logary.NLog</AssemblyName>
+    <AssemblyName>Logary.NLog</AssemblyName>
     <OutputType>Library</OutputType>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <TargetFSharpCoreVersion Condition=" '$(TargetFSharpCoreVersion)' == '' ">4.3.0.0</TargetFSharpCoreVersion>

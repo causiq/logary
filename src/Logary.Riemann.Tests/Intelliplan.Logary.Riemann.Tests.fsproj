@@ -8,7 +8,7 @@
     <ProjectGuid>204fe42e-89fb-4fa4-9ce0-9fa4b387bc63</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>Intelliplan.Logary.Riemann.Tests</RootNamespace>
-    <AssemblyName>Intelliplan.Logary.Riemann.Tests</AssemblyName>
+    <AssemblyName>Logary.Riemann.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <Name>Intelliplan.Logary.Riemann.Tests</Name>
   </PropertyGroup>

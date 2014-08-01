@@ -8,7 +8,7 @@
     <ProjectGuid>a9d14445-2559-4df7-b1d4-61f0f190ee54</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>Logary.SqlServer</RootNamespace>
-    <AssemblyName>Intelliplan.Logary.DB</AssemblyName>
+    <AssemblyName>Logary.DB</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <Name>Intelliplan.Logary.DB</Name>
   </PropertyGroup>

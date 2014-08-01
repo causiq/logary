@@ -8,7 +8,7 @@
     <ProjectGuid>ffe1b4ac-742a-45c2-9f04-08ffd01a7796</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>Intelliplan.Logary.SqlServer.Migrations</RootNamespace>
-    <AssemblyName>Intelliplan.Logary.DB.Migrations</AssemblyName>
+    <AssemblyName>Logary.DB.Migrations</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <Name>Intelliplan.Logary.DB.Migrations</Name>
   </PropertyGroup>
