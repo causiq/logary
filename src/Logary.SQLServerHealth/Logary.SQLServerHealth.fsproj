@@ -59,6 +59,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
     <Compile Include="AsmUtils.fs" />
     <Compile Include="SQLServerHealth.fs" />
     <Compile Include="Program.fs" />
@@ -69,7 +70,6 @@
     <EmbeddedResource Include="DiskVolumeInfo.sql" />
     <EmbeddedResource Include="LatencyInfo.sql" />
     <EmbeddedResource Include="DriveLatencyInfo.sql" />
-    <Compile Include="AssemblyInfo.fs" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
