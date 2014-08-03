@@ -48,5 +48,6 @@ let main args =
       withMetrics [
         SQLServerHealth.create conf "sql_server_health" period
       ])
+  // TODO: add in TopShelf support
   System.Console.ReadKey true |> ignore
   0 // return an integer exit code

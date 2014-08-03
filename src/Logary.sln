@@ -48,9 +48,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "services", "services", "{77
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{60FC06B0-58BB-4D96-96FE-FD92EA4BAA5E}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.NodeHealth", "Logary.NodeHealth\Logary.NodeHealth.fsproj", "{2DF5BDE4-D1D7-4521-B13E-AAEAAD21B8A4}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.NodeHealth", "Logary.NodeHealth\Intelliplan.Logary.NodeHealth.fsproj", "{2DF5BDE4-D1D7-4521-B13E-AAEAAD21B8A4}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.SQLServerHealth", "Logary.SQLServerHealth\Logary.SQLServerHealth.fsproj", "{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.SQLServerHealth", "Logary.SQLServerHealth\Intelliplan.Logary.SQLServerHealth.fsproj", "{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "core", "core", "{EA09AD42-B4E2-4B0D-8960-E87277F46F04}"
 EndProject
@@ -64,7 +64,7 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.Logentri
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.Topshelf", "Logary.Topshelf\Intelliplan.Logary.Topshelf.fsproj", "{887CF8ED-4EEE-499B-B8D3-59EDA8A64BBF}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.SQLServerHealth.Tests", "Logary.SQLServerHealth.Tests\Logary.SQLServerHealth.Tests.fsproj", "{8E4E562E-ACDE-4325-8B12-7C0B240E9176}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.SQLServerHealth.Tests", "Logary.SQLServerHealth.Tests\Intelliplan.Logary.SQLServerHealth.Tests.fsproj", "{8E4E562E-ACDE-4325-8B12-7C0B240E9176}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

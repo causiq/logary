@@ -35,6 +35,9 @@ let empty =
   { contentsOf     = readResource
     latencyTargets = [] }
 
+module SQL =
+  ()
+
 module private Impl =
 
   type State =
