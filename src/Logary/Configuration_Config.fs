@@ -106,21 +106,33 @@ let withMetrics ms conf =
 /// Validate the configuration for Logary, throwing a ValidationException if
 /// configuration is invalid.
 [<CompiledName "ValidateLogary"; Extension>]
-let validate ({ targets = targets; rules = rules; metadata = { logger = lgr } } as conf) =
-  let log = LogLine.setPath "Logary.Configuration.Config.validate" >> Logger.log lgr
-  let targets = targets |> Map.fold (fun acc k _ -> k :: acc) [] |> Set.ofList
+let validate ({ targets  = targets
+                rules    = rules
+                metadata = { logger = lgr }
+                metrics  = metrics } as conf) =
+  let rtarget r = r.target
+  let tnames = targets |> Map.fold (fun acc k _ -> k :: acc) [] |> Set.ofList
 
-  let orphanRules =
-    [ for r in rules do
-        if not(targets |> Set.contains r.target) then
-          yield r ]
+  let rules', targets', metrics' =
+    rules |> Set.ofList,
+    targets |> Map.fold (fun acc _ (target, _) -> target :: acc) [] |> Set.ofList,
+    metrics |> Map.fold (fun acc _ (metric, _) -> metric :: acc) [] |> Set.ofList
 
-  match orphanRules with
-  | [] -> conf
-  | rs ->
-    let msg = sprintf "validation failed (no corresponding target) for rules:\n%A" rs
-    LogLine.error msg |> log
-    raise <| ValidationException(msg, orphanRules, [], [])
+  let oRules, oTargets, oMetrics =
+    let boundTargets =
+      rules
+      |> Seq.map (rtarget >> (flip Map.tryFind targets))
+      |> Seq.filter Option.isSome
+      |> Seq.map (Option.get >> fst)
+      |> Set.ofSeq
+    Set.filter (rtarget >> (flip Set.contains tnames) >> not) rules',
+    Set.filter (flip Set.contains boundTargets >> not) targets',
+    Set.filter (fun m -> List.isEmpty (Rule.matching m.name rules)) metrics'
+
+  match oRules.Count, oTargets.Count, oMetrics.Count with
+  | 0, 0, 0 -> conf
+  | _ -> raise (ValidationException("unbound rules/metrics/targets found",
+                                    oRules, oTargets, oMetrics))
 
 /// Start logary with a given configuration
 [<CompiledName "RunLogary"; Extension>]

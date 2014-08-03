@@ -22,6 +22,12 @@ module internal Seq =
 module internal UtilFns =
   let flip f a b = f b a
 
+[<AutoOpen>]
+module internal Comparison =
+  let thenCompare (a : 'a) (b : 'a) = function
+    | 0 -> compare a b
+    | x -> x
+
 module internal Rnd =
   open System
 

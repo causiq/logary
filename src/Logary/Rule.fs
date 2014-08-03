@@ -4,6 +4,7 @@ open System
 open System.Text.RegularExpressions
 
 open Logary
+open Logary.Internals
 
 /// This is the accept filter that is before the log line is passed to the logger
 /// instance.
@@ -14,23 +15,24 @@ type LineFilter = LogLine -> bool
 type MeasureFilter = Measure -> bool
 
 /// A rule specifies what log lines and metrics a target should accept.
-[<CustomEquality; NoComparison>]
+[<CustomEquality; CustomComparison>]
 type Rule =
   { /// This is the regular expression that the 'path' must match to be loggable
-    hiera  : Regex
+    hiera         : Regex
     /// This is the name of the target that this rule applies to
-    target : string
-    /// This is the accept filter that is before the log line is passed to the logger
-    /// instance.
-    lineFilter : LineFilter
-    /// This is the accept filter that is before the measure is passed to the logger
-    /// instance.
-    measureFilter : MeasureFilter
+    target        : string
     /// This is the level at which the target will accept log lines. It's inclusive, so
     /// anything below won't be accepted.
-    level  : LogLevel }
+    level         : LogLevel
+    /// This is the accept filter that is before the log line is passed to the logger
+    /// instance.
+    lineFilter    : LineFilter
+    /// This is the accept filter that is before the measure is passed to the logger
+    /// instance.
+    measureFilter : MeasureFilter }
 
-  override x.GetHashCode () = hash (x.hiera.ToString(), x.target, x.level)
+  override x.GetHashCode () =
+    hash (x.hiera.ToString(), x.target, x.level)
 
   override x.Equals other =
     match other with
@@ -39,7 +41,19 @@ type Rule =
     | _ -> false
 
   interface System.IEquatable<Rule> with
-    member x.Equals r = r.hiera.ToString() = x.hiera.ToString() && r.target = x.target && r.level = x.level
+    member x.Equals r =
+      r.hiera.ToString() = x.hiera.ToString()
+      && r.target = x.target
+      && r.level = x.level
+      
+  interface System.IComparable with
+    member x.CompareTo yobj =
+      match yobj with
+      | :? Rule as y ->
+        compare (x.hiera.ToString()) (y.hiera.ToString())
+        |> thenCompare x.target y.target
+        |> thenCompare x.level y.level
+      | _ -> invalidArg "yobj" "cannot compare values of different types"
 
   override x.ToString() =
     sprintf "Rule { hiera=%O; target=%s; level=%O }" x.hiera x.target x.level

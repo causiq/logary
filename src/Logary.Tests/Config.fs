@@ -35,6 +35,6 @@ let tests =
         (fun ex ->
           Assert.Contains("should contain orphan rule", r1, ex.InvalidRules)
           Assert.Contains("should contain orphan target", t1, ex.InvalidTargets)
-          Assert.Equal("should have zero invalid metrics", [], ex.InvalidMetrics))
+          Assert.Equal("should have zero invalid metrics", Set.empty, ex.InvalidMetrics))
 
     ]

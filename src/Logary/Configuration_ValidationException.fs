@@ -5,9 +5,10 @@ open Logary.Target
 open Logary.Metric
 
 /// Thrown from 'validateLogary' if the configuration is wrong
-type ValidationException(msg, invalidRules : Rule list,
-                         invalidTargets : TargetConf list,
-                         invalidMetrics : MetricConf list) =
+type ValidationException(msg,
+                         invalidRules   : Rule Set,
+                         invalidTargets : TargetConf Set,
+                         invalidMetrics : MetricConf Set) =
   inherit System.Exception(msg)
   /// Gets the invalid rules that failed validation
   member x.InvalidRules   = invalidRules

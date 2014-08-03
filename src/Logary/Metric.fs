@@ -1,5 +1,7 @@
 ﻿module Logary.Metric
 
+open System
+
 open NodaTime
 
 open FSharp.Actor
@@ -56,16 +58,22 @@ type MetricConf =
 with
   override x.Equals(yobj) =
       match yobj with
-      | :? MetricConf as y -> (x.name = y.name)
+      | :? MetricConf as y ->
+        x.name.Equals(y.name, StringComparison.InvariantCulture)
+        && x.``type``.Equals(y.``type``)
+        && x.sampling.Equals(y.sampling)
       | _ -> false
 
   override x.GetHashCode() =
-    hash x.name
+    hash (x.name, x.``type``, x.sampling)
 
   interface System.IComparable with
     member x.CompareTo yobj =
       match yobj with
-      | :? MetricConf as y -> compare x.name y.name
+      | :? MetricConf as y ->
+        compare x.name y.name
+        |> thenCompare x.``type`` y.``type``
+        |> thenCompare x.sampling y.sampling
       | _ -> invalidArg "yobj" "cannot compare values of different types"
 
 /// Start configuring a metric with a metric factory
