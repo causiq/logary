@@ -19,5 +19,5 @@ type ValidationException(msg,
 
   /// Builds a little string from the validation exception
   override x.ToString() =
-    sprintf "ValidationException: %s\nInvalidRules: %A\nInvalidTargets: %A"
-      x.Message x.InvalidRules x.InvalidTargets
+    sprintf "ValidationException: %s\nInvalidRules: %A\nInvalidTargets: %A\nInvalidMetrics: %A"
+      x.Message x.InvalidRules x.InvalidTargets x.InvalidMetrics

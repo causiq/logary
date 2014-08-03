@@ -10,6 +10,8 @@ open Logary.Metric
 type NoopConf =
   { isHappy : bool }
 
+let empty = { isHappy = true }
+
 module private Impl =
 
   type NoopState =
