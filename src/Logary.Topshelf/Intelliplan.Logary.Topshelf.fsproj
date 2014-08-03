@@ -49,8 +49,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Integration.fs" />
     <Compile Include="LogaryLogWriter.fs" />
+    <Compile Include="Integration.fs" />
     <None Include="Script.fsx" />
     <None Include="packages.config" />
     <None Include="app.config" />
