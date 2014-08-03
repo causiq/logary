@@ -131,8 +131,9 @@ let validate ({ targets  = targets
 
   match oRules.Count, oTargets.Count, oMetrics.Count with
   | 0, 0, 0 -> conf
-  | _ -> raise (ValidationException("unbound rules/metrics/targets found",
-                                    oRules, oTargets, oMetrics))
+  | _ -> raise (ValidationException("rules do not have matching tagets", oRules,
+                                    "targets do not have bound rules", oTargets,
+                                    "metrics have no matching rule hieras", oMetrics))
 
 /// Start logary with a given configuration
 [<CompiledName "RunLogary"; Extension>]

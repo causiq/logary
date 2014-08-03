@@ -56,8 +56,8 @@ type Rule =
       | _ -> invalidArg "yobj" "cannot compare values of different types"
 
   override x.ToString() =
-    sprintf "Rule { hiera=%O; target=%s; level=%O }" x.hiera x.target x.level
-
+    sprintf "Rule(hiera=%O, target=%s, level=%O)"
+      x.hiera x.target x.level
 
 /// Module for dealing with rules. Rules take care of filtering too verbose
 /// log lines and measures before they are sent to the targets.

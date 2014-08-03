@@ -76,6 +76,10 @@ with
         |> thenCompare x.sampling y.sampling
       | _ -> invalidArg "yobj" "cannot compare values of different types"
 
+  override x.ToString() =
+    sprintf "Metric(name=%s, type=%A, sampling=%O)"
+      x.name x.``type`` x.sampling
+
 /// Start configuring a metric with a metric factory
 let confMetric name sampling (factory : string -> Duration -> MetricConf) =
   factory name sampling

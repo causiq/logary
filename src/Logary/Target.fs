@@ -37,7 +37,8 @@ type TargetInstance =
 type TargetConf =
   { name   : string
     initer : RuntimeInfo -> TargetInstance }
-  override x.ToString() = sprintf "TargetConf(name = %s)" x.name
+  override x.ToString() =
+    sprintf "TargetConf(name = %s)" x.name
 
   override x.Equals other =
       match other with

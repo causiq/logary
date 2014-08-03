@@ -281,7 +281,7 @@ type Attribute =
       value = value }
 
   override x.ToString() =
-    sprintf "Attribute(%s => %s)" x.key x.value
+    sprintf "Attribute(%s: %s)" x.key x.value
 
   override x.Equals other =
     match other with
