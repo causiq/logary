@@ -23,6 +23,7 @@ type LogLine =
     /// Optional exception
     ``exception`` : exn option }
 
+/// The main module to create and set properties for a given LogLine.
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module LogLine =
   open Logary.Internals
@@ -106,7 +107,8 @@ module LogLine =
   [<Literal>]
   let ExceptionTag = "exn"
 
-  /// An empty log line with a current (now) timestamp.
+  /// An empty log line with a current (now) timestamp. Be warned: using this
+  /// doesn't set a new timestamp.
   [<CompiledName "Empty">]
   let empty =
     { message       = ""
@@ -124,20 +126,23 @@ module LogLine =
                  data          = data
                  level         = level
                  tags          = tags
+                 timestamp     = Date.now ()
                  path          = path
                  ``exception`` = ex }
 
   /// Create a new log line at the specified level for the given message.
   [<CompiledName "Create">]
   let create' level msg =
-    { empty with level = level
-                 message = msg }
+    { empty with level     = level
+                 timestamp = Date.now ()
+                 message   = msg }
 
   /// Create a new log line at the specified path for the given message.
   [<CompiledName "Create">]
   let create'' path msg =
-    { empty with path = path
-                 message = msg }
+    { empty with path      = path
+                 timestamp = Date.now ()
+                 message   = msg }
 
   /// Create a verbose log line with a message
   [<CompiledName "Verbose">]

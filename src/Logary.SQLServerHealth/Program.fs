@@ -47,7 +47,7 @@ let main args =
   use logary =
     withLogary' "Logary.SQLServerHealth" (
       withTargets [
-        Console.create (Console.empty) "console"
+        Console.create Console.empty "console"
       ] >>
       withRules [
         Rule.createForTarget "console"
