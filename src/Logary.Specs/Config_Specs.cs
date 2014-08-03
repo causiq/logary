@@ -39,7 +39,7 @@ namespace Intelliplan.Logary.Specs
             var twRule = RuleModule.Create(new Regex(@"^Intelliplan\.Logary\.Specs"),
                                            "tw", l => true, m => true, LogLevel.Verbose);
 
-            var internalTarg = Console.Create("cons", Console.ConsoleConf.Default);
+            var internalTarg = Console.Create("cons", Console.empty);
 
             return Config.Configure(
                 "Logary Specs C# low level API",

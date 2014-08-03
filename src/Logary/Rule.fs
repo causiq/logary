@@ -87,18 +87,27 @@ module Rule =
       measureFilter = fun _ -> true
       level         = Verbose }
 
-  /// Create a rule with the given regex/hiera, accept function and level given
-  /// a target configuration.
-  let forTarget hiera lineFilter measureFilter level (targetName : string) =
-    { hiera         = hiera
-      target        = targetName
-      lineFilter    = lineFilter
-      measureFilter = measureFilter
-      level         = level }
+  let setHiera (regex : Regex) (r : Rule) =
+    { r with hiera = regex }
+
+  let setHieraS (regex : string) (r : Rule) =
+    { r with hiera = Regex(regex) }
+
+  let setTarget (target : string) (r : Rule) =
+    { r with target = target }
+
+  let setLineFilter (lf : _ -> _) (r : Rule) =
+    { r with lineFilter = lf }
+
+  let setMeasureFilter (mf : _ -> _) (r : Rule) =
+    { r with measureFilter = mf }
+
+  let setLevel (l : LogLevel) (r : Rule) =
+    { r with level = l }
 
   /// Create a rule that accepts any input for a specified target (that's the
   /// name param).
-  let forAny (name : string) =
+  let createForTarget (name : string) =
     { empty with target = name }
 
   /// Create a new rule with the given hiera, target, accept function and min level

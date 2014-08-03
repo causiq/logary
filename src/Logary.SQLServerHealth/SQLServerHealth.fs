@@ -88,7 +88,7 @@ module private Impl =
       | GetDataPoints replChan ->
         LogLine.info "get dps" |> log
         let res = [] // TODO: need to query to get baseline drives and files
-          
+
         replChan.Reply res
         return! running ()
 

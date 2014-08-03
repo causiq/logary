@@ -54,7 +54,7 @@ and ConfBuilder(conf) =
 
     let container : ConfBuilderT<'T> =
       { parent     = x
-        tr         = Rule.forAny name
+        tr         = Rule.createForTarget name
         tcSpecific = None }
 
     let contRef = ref (container :> TargetConfBuild<_>)

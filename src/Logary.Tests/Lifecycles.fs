@@ -25,7 +25,7 @@ let tests =
       |> run |> ignore
 
     testCase "target" <| fun _ ->
-      Target.confTarget "tw" (TextWriter.create (TextWriter.TextWriterConf.Default(Fac.textWriter(), Fac.textWriter())))
+      Target.confTarget "tw" (TextWriter.create (TextWriter.TextWriterConf.Create(Fac.textWriter(), Fac.textWriter())))
       |> Target.validate
       |> Target.init Fac.emptyRuntime
       |> Target.send (LogLine.debug "Hello")

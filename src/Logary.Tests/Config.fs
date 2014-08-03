@@ -27,7 +27,7 @@ let ``invalid configs`` =
     with :? ValidationException as e ->
       f e
 
-  let r1 = Rule.forAny "r1"
+  let r1 = Rule.createForTarget "r1"
   let t1 = Noop.create Noop.empty "t1"
   let m1 = Metrics.Noop.create Metrics.Noop.empty "m1" (Duration.FromMilliseconds 500L)
 

@@ -3,6 +3,7 @@
 open NodaTime
 
 open Logary
+open Logary.Targets
 open Logary.Configuration
 
 open Logary.Metrics
@@ -45,6 +46,12 @@ let main args =
   let period, conf = parse args
   use logary =
     withLogary' "Logary.SQLServerHealth" (
+      withTargets [
+        Console.create (Console.empty) "console"
+      ] >>
+      withRules [
+        Rule.createForTarget "console"
+      ] >>
       withMetrics [
         SQLServerHealth.create conf "sql_server_health" period
       ])

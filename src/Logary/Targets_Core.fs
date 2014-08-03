@@ -25,7 +25,7 @@ module TextWriter =
       /// the log level that is considered 'important' enough to write to the
       /// error text writer
       isErrorAt  : LogLevel }
-    static member Default(output, error, ?formatter) =
+    static member Create(output, error, ?formatter) =
       { formatter    = defaultArg formatter <| JsonFormatter.Default()
         output       = output
         error        = error
@@ -87,7 +87,7 @@ module TextWriter =
       ! (callParent <| Builder({ conf with output = out; error = err }, callParent))
 
     new(callParent : FactoryApi.ParentCallback<_>) =
-      Builder(TextWriterConf.Default(System.Console.Out, System.Console.Error), callParent)
+      Builder(TextWriterConf.Create(System.Console.Out, System.Console.Error), callParent)
 
     interface Logary.Target.FactoryApi.SpecificTargetConf with
       member x.Build name = create conf name
@@ -106,13 +106,14 @@ module Console =
   /// Console configuration structure
   type ConsoleConf =
     { formatter : StringFormatter
-      colorMap  : (ConsoleColours -> Logary.LogLevel -> ConsoleColours) option }
-    static member Default =
-      { formatter = StringFormatter.LevelDatetimeMessagePath
-        colorMap  = None (* fun col line -> 0x000000 black *) }
+      colorMap  : (ConsoleColours -> LogLevel -> ConsoleColours) option }
     static member Create formatter =
       { formatter = formatter
         colorMap  = None }
+
+  let empty =
+    { formatter = StringFormatter.LevelDatetimeMessagePath
+      colorMap  = None (* fun col line -> 0x000000 black *) }
 
   let create conf =
     // TODO: coloured console output
@@ -139,7 +140,7 @@ module Console =
       ! (callParent <| Builder(conf, callParent))
 
     new(callParent : FactoryApi.ParentCallback<_>) =
-      Builder(ConsoleConf.Default, callParent)
+      Builder(empty, callParent)
 
     interface Logary.Target.FactoryApi.SpecificTargetConf with
       member x.Build name = create conf name

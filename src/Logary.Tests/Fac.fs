@@ -19,7 +19,7 @@ let emptyTarget =
   { name  = "empty target"
     actor = Actor.spawn Actor.Options.Default (fun _ -> async.Return ()) }
 
-let emptyRule = Rule.forAny "empty target"
+let emptyRule = Rule.createForTarget "empty target"
 
 /// { serviceName = "tests"; logger = NullLogger() }
 let emptyRuntime = { serviceName = "tests"; logger = NullLogger() }
@@ -31,9 +31,9 @@ let textWriter () =
 let withLogary f =
   let out, err = textWriter (), textWriter ()
 
-  let target = confTarget "cons" (create <| TextWriterConf.Default(out, err))
+  let target = confTarget "cons" (create <| TextWriterConf.Create(out, err))
 
-  let rule = Rule.forAny "cons"
+  let rule = Rule.createForTarget "cons"
 
   let logary =
     confLogary "tests"

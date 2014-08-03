@@ -19,11 +19,11 @@ module TargetsDefaults =
     // TODO: should include a Graphite target
     confLogary name
     |> withTargets
-      [ Console.create Console.ConsoleConf.Default "console"
+      [ Console.create Console.empty "console"
         Debugger.create Debugger.DebuggerConf.Default "debugger" ]
     |> withRules
-      [ { Rule.forAny "console" with level = Debug }
-        { Rule.forAny "debugger" with level = Debug } ]
+      [ { Rule.createForTarget "console" with level = Debug }
+        { Rule.createForTarget "debugger" with level = Debug } ]
 
   /// Run with console and debugger targets with sane configurations as well
   /// as a logstash configuration.
@@ -31,7 +31,7 @@ module TargetsDefaults =
   let goodDefaultsAndLogstash name hostname port =
     goodDefaults name
     |> withTarget (Logstash.create (Logstash.LogstashConf.Create(hostname, port)) "logstash")
-    |> withRule ({ Rule.forAny "logstash" with level = Debug })
+    |> withRule { Rule.createForTarget "logstash" with level = Debug }
 
   /// Start logary with sane SOA/service-defaults, remember to call
   /// shutdownLogary at the end of the program. Pass the name of the

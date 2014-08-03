@@ -54,9 +54,9 @@ let tests =
       (executing "validateLogary with a rule that doesn't have a matching target" <| fun () ->
         confLogary "tests"
         |> withRules
-          [ Rule.forAny "not-correct-target" ]
+          [ Rule.createForTarget "not-correct-target" ]
         |> withTargets
-          [ Target.confTarget "another-target-name" (TextWriter.create <| TextWriter.TextWriterConf.Default(out, out)) ]
+          [ Target.confTarget "another-target-name" (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
         |> validate |> ignore)
       |> should' raiseExn<Configuration.ValidationException>
       |> thatsIt
@@ -72,8 +72,8 @@ let tests =
         Rule.create (Regex("path\.2\.extra")) "t2" (fun _ -> false) (fun _ -> false) Error
       ]
       let targets = [
-        Target.confTarget "t1" (TextWriter.create <| TextWriter.TextWriterConf.Default(out, out))
-        Target.confTarget "t2" (TextWriter.create <| TextWriter.TextWriterConf.Default(out, out))
+        Target.confTarget "t1" (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out))
+        Target.confTarget "t2" (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out))
       ]
       let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
       // string = logger name = path
@@ -102,7 +102,7 @@ let tests =
           { Fac.emptyRule with lineFilter = (fun l -> l.path = "2") ; target = "tw" } ]
 
       let targets =
-        [ Target.confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Default(out, out)) ]
+        [ Target.confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
 
       let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
       try
@@ -137,7 +137,7 @@ let tests =
     yield testCase "filter should never pass anything through" <| fun _ ->
       let out = Fac.textWriter ()
       let rules   = [ { hiera  = Regex(".*"); target = "tw"; lineFilter = (fun line -> false); measureFilter = Rule.allowFilter; level = Debug } ]
-      let targets = [ Target.confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Default(out, out)) ]
+      let targets = [ Target.confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
       let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
       try
         async {
@@ -163,7 +163,7 @@ let tests =
         { hiera  = Regex(".*"); target = "tw"; lineFilter = (fun line -> false); measureFilter = Rule.allowFilter; level  = Verbose }
         { hiera  = Regex(".*"); target = "tw"; lineFilter = (fun line -> line.path = "a.b.c"); measureFilter = Rule.allowFilter; level  = Verbose }
         ]
-      let targets = [ Target.confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Default(out, out)) ]
+      let targets = [ Target.confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
       let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
       try
         async {

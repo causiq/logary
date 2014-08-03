@@ -63,7 +63,7 @@ let confLogary serviceName =
     pollPeriod = Duration.FromMilliseconds 500L
     metadata   = { serviceName = serviceName
                    logger      = NullLogger() } }
-  |> withInternalTarget Info (Console.create (Console.ConsoleConf.Default) "cons")
+  |> withInternalTarget Info (Console.create Console.empty "cons")
 
 /// Add a new target to the configuration. You also need to supple a rule for
 /// the target.
@@ -131,7 +131,7 @@ let validate ({ targets  = targets
 
   match oRules.Count, oTargets.Count, oMetrics.Count with
   | 0, 0, 0 -> conf
-  | _ -> raise (ValidationException("rules do not have matching tagets", oRules,
+  | _ -> raise (ValidationException("rules do not have matching targets", oRules,
                                     "targets do not have bound rules", oTargets,
                                     "metrics have no matching rule hieras", oMetrics))
 
