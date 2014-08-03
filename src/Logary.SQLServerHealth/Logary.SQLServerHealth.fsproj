@@ -61,6 +61,7 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="AsmUtils.fs" />
+    <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="SQLServerHealth.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
