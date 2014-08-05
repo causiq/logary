@@ -71,7 +71,7 @@ let main args =
       withRules [
         Rule.createForTarget "console"
       ] >>
-      withMetrics [
+      withMetrics (Duration.FromSeconds 10L) [
         SQLServerHealth.create conf "sql_server_health" period
       ])
   // TODO: add in TopShelf support

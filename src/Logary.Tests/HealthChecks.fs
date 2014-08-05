@@ -29,7 +29,7 @@ let private untilPred maxWait fPred =
 
 let pingSvdSe () =
   let mkError ex =
-    Measure.create "app.resource.ping-svd" 0.
+    Measure.create' "app.resource.ping-svd" 0.
     |> setDesc "ping completed with error"
     |> setExn ex
     |> setLevel Error
@@ -45,7 +45,7 @@ let pingSvdSe () =
       elif complete.Error <> null then
         return mkError complete.Error
       else
-        return Measure.create "app.resource.ping-svd" 1. |> Measure.toResult
+        return Measure.create' "app.resource.ping-svd" 1. |> Measure.toResult
         
     with e ->
       return mkError e }

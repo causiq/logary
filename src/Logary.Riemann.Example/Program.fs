@@ -22,7 +22,7 @@ let main argv =
 //        Riemann.create (Riemann.RiemannConf.Create(tags = ["riemann-health"])) "riemann"
         Console.create (Console.empty) "console"
       ] >>
-      withMetrics [
+      withMetrics (Duration.FromSeconds 4L) [
         WinPerfCounters.create (WinPerfCounters.Common.cpuTime) "cpuTime" (Duration.FromMilliseconds 500L)
       ] >>
       withRules [

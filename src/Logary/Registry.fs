@@ -250,10 +250,10 @@ module Advanced =
             let mtrLgr  = mtr.Key |> getTargets conf |> fromTargets mtr.Key lgr
 
             LogLine.debug "getting value from metrics" |> log
-            let! dpMsrs = mtrActor |> Metric.getValue dps
+            let! msrs = mtrActor |> Metric.getValue dps
 
-            // CONSIDER: how to log each of these data points? And what path to give them?
-            dpMsrs |> List.map snd |> List.iter (Logger.``measure`` mtrLgr)
+            // CONSIDER: how to log each of these data points/measures? And what path to give them?
+            msrs |> List.iter (Logger.``measure`` mtrLgr)
 
           return! running state
 

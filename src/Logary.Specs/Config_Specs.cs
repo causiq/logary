@@ -44,6 +44,7 @@ namespace Intelliplan.Logary.Specs
             return Config.Configure(
                 "Logary Specs C# low level API",
                 new[] {twTarg},
+                Duration.FromSeconds(4L),
                 new Metric.MetricConf[0],
                 new[] {twRule},
                 LogLevel.Verbose, internalTarg);

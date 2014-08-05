@@ -98,10 +98,11 @@ let withMetric (m : MetricConf) conf =
 /// Adds a list of metric configurations to the configuration to run in the
 /// registry.
 [<CompiledName "WithMetrics">]
-let withMetrics ms conf =
+let withMetrics pollPeriod ms conf =
   ms
   |> Seq.map Metric.validate
   |> Seq.fold (fun s t -> s |> withMetric t) conf
+  |> fun c -> { c with pollPeriod = pollPeriod }
 
 /// Validate the configuration for Logary, throwing a ValidationException if
 /// configuration is invalid.
@@ -178,11 +179,11 @@ let asLogManager (inst : LogaryInstance) =
 /// Configure Logary completely with the given service name and rules, targets
 /// and metrics. This will call the `validate` function too.
 [<CompiledName "Configure">]
-let configure serviceName targets metrics rules (internalLevel, internalTarget) =
+let configure serviceName targets pollPeriod metrics rules (internalLevel, internalTarget) =
   confLogary serviceName
   |> withTargets (targets |> List.ofSeq)
   |> withRules (rules |> List.ofSeq)
-  |> withMetrics (metrics |> List.ofSeq)
+  |> withMetrics pollPeriod (metrics |> List.ofSeq)
   |> withInternalTarget internalLevel internalTarget
   |> validate
   |> runLogary

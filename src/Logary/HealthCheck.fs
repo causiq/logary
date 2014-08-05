@@ -84,7 +84,7 @@ module HealthCheck =
       member x.Exception   = tryGetExn m
     override x.ToString() =
       sprintf "HealthCheck(name=%s, exn=%A, value=%A, level=%A)"
-        m.m_path (tryGetExn m) m.m_value m.m_level
+        (m.m_path |> Measure.getStringPath) (tryGetExn m) m.m_value m.m_level
 
   module Measure =
     /// Transform the measure to a HealthCheck.ResultData.
@@ -153,7 +153,7 @@ module HealthCheck =
       match mkPc wpc with
       | Some counter ->
         { new HealthCheck with
-            member x.Name = name
+            member x.Name = Measure.getStringPath name
             member x.GetValue () =
               try
                 counter.NextValue()
@@ -165,12 +165,13 @@ module HealthCheck =
                 e -> NoValue
             member x.Dispose () =
               counter.Dispose() }
-      | None -> mkDead name
+      | None -> mkDead (Measure.getStringPath name)
 
     let toHealthCheck wpc =
-      let inst = wpc.instance |> Option.fold (fun s t -> sprintf ".%s" t) ""
-      let name = sprintf "%s.%s%s" wpc.category wpc.counter inst
-      toHealthCheckNamed name wpc
+      let name =
+        [ wpc.category; wpc.counter ]
+        @ match wpc.instance with | None -> [] | Some i -> [i]
+      toHealthCheckNamed (DP name) wpc
 
     /// Takes a list of IDisposable things (performance counters, perhaps?) and
     /// wraps the call to Dispose() of the inner health check with calls to

@@ -66,8 +66,9 @@ module internal Impl =
 
       | Measure msr ->
         // doing key-value-pair style
-        let msg = sprintf "%s=%f" msr.m_path (msr |> Measure.getValueFloat)
-                  |> munge |> utf8.GetBytes
+        let msg =
+          sprintf "%s=%f" (msr.m_path |> Measure.getStringPath) (msr |> Measure.getValueFloat)
+          |> munge |> utf8.GetBytes
         do! LeClient.send msg stream conf.flush
         return! running state
 

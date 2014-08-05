@@ -158,6 +158,14 @@ module Measure =
                  m_value = F value }
 
   /// Make a new measure value from the type of measure it is, the value and the
+  /// path it is taken at or represents. This overload splits on dot '.'
+  [<CompiledName "Create">]
+  let create' (strPath : string) value =
+    let p = strPath.Split('.') |> List.ofArray
+    { empty with m_path  = DP p
+                 m_value = F value }
+
+  /// Make a new measure value from the type of measure it is, the value and the
   /// path it is taken at or represents
   [<CompiledName "FromFloat">]
   let fromFloat path unitt value =

@@ -43,14 +43,17 @@ module private Impl =
     let toDP (c : PerfCounter) =
       let fstr instance =
         match instance with
-        | None -> sprintf "%s|%s" c.category c.counter
-        | Some inst -> sprintf "%s|%s|%s" c.category c.counter inst
+        | None -> [ c.category; c.counter ]
+        | Some inst -> [ c.category; c.counter; inst ]
       fstr c.instance |> DP
 
     let toCounter (DP dp) =
-      match dp.Split '|' with
-      | ss when ss.Length = 2 -> { category = ss.[0]; counter = ss.[1]; instance = None }
-      | ss -> { category = ss.[0]; counter = ss.[1]; instance = Some ss.[2] }
+      match dp with
+      | [ category; counter ] ->
+        { category = category; counter = counter; instance = None }
+      | [ category; counter; instance ] ->
+        { category = category; counter = counter; instance = Some instance }
+      | _ -> failwithf "unknown performance counter name: %A" dp
 
   let tryGetPc (lastValues : Map<DP, PC * Measure>) dp =
     lastValues
@@ -60,7 +63,7 @@ module private Impl =
     | None -> mkPc (Naming.toCounter dp)
     | x -> x
 
-  let pcNextValue (DP dp) (pc : PC) =
+  let pcNextValue dp (pc : PC) =
     Measure.create dp (nextValue pc)
 
   // TODO: consider adding in a reservoir to hold the values? Or should this go
@@ -93,7 +96,7 @@ module private Impl =
           |> List.zip datapoints
           |> List.filter (Option.isSome << snd) // the datapoints that had values
           |> List.map (function
-            | dp, Some (pc, msr) -> dp, msr
+            | dp, Some (pc, msr) -> msr
             | dp, None -> failwith "isSome above says this won't happen")
         replChan.Reply ret
         return! loop state
@@ -104,16 +107,16 @@ module private Impl =
         return! loop state
       | Update msr ->
         // update specific DP
-        let key = DP msr.m_path
-        match tryGetPc state.lastValues key with
+        match tryGetPc state.lastValues msr.m_path with
         | None ->
           // perf counter key cannot be made a performance counter out of,
           // so continue with our business
           return! loop state
         | Some pc ->
           // otherwise update the state with the new measurement
-          let state' = { state with lastValues = state.lastValues |> Map.put key (pc, msr) }
-          return! loop state'
+          return! loop
+            { state with
+                lastValues = state.lastValues |> Map.put msr.m_path (pc, msr) }
       | Sample ->
         // read data from external sources and update state
         let update key (pc, _) = pc, pcNextValue key pc

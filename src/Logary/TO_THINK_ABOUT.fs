@@ -59,22 +59,6 @@ module Time =
           m_data      = Map.empty }
         |> logger.Measure
 
-  /// Capture a timer metric with a given metric-path
-  [<CompiledName "Time">]
-  let time logger path = timelvl logger LogLevel.Info path
-
-  /// Capture a timer metric with the logger's name as the metric-path
-  [<CompiledName "TimeLog">]
-  let timeLog logger = timelvl logger LogLevel.Info (logger.Name)
-
-  /// Time a function execution with a 'path' equal to the passed argument.
-  /// Path may be null, and is then replaced with the logger name
-  [<CompiledName "TimePath">]
-  let timePath (logger : Logger) lvl path (f : System.Func<_>) =
-    let path = match path with null -> logger.Name | p -> p
-    timelvl logger lvl path (fun () -> f.Invoke())
-
-
 module internal Play =
   open System
 
@@ -84,7 +68,7 @@ module internal Play =
 
   module Measure =
     let create' fValueTr fLevel rawValue =
-      let m = Measure.create "" (fValueTr rawValue)
+      let m = Measure.create (DP []) (fValueTr rawValue)
       { m with m_level = fLevel (getValueFloat m) }
 
   module Categorisation =

@@ -166,7 +166,7 @@ let empty =
     latencyTargets = []
     openConn       = fun () -> failwith "connection factory needs to be provided" }
 
-module private Impl =
+module internal Impl =
   open NodaTime
 
   open Logary.Internals
@@ -174,6 +174,9 @@ module private Impl =
 
   let dotToUnderscore (s : string) =
     s.Replace(".", "_")
+
+  let removeColon (s : string) =
+    s.Replace(":", "")
 
   type State =
     { connMgr  : Sql.ConnectionManager
@@ -184,72 +187,60 @@ module private Impl =
   type DPCalculator = IOInfo -> Measure
 
   let datapoints =
-    [ "io_stall_read", fun io -> Measure.fromInt64 "io_stall_read" (Units.Time Milliseconds) io.ioStallReadMs
-      "io_stall_write", fun io -> Measure.fromInt64 "io_stall_write" (Units.Time Milliseconds) io.ioStallWriteMs 
-      "io_stall", fun io -> Measure.fromInt64 "io_stall" (Units.Time Milliseconds) io.ioStall
-      "num_of_reads", fun io -> Measure.fromInt64 "num_of_reads" (Units.Unit "reads") io.numOfReads
-      "num_of_writes", fun io -> Measure.fromInt64 "num_of_writes" (Units.Unit "writes") io.numOfWrites
-      "num_of_bytes_read", fun io -> Measure.fromInt64 "num_of_bytes_read" Units.Bytes io.numOfBytesRead 
-      "num_of_bytes_written", fun io ->  Measure.fromInt64 "num_of_bytes_read" Units.Bytes io.numOfBytesRead
-      "read_latency", IOInfo.readLatency >> Measure.fromFloat "read_latency" (Units.Time Milliseconds)
+    let fromInt64 p = Measure.fromInt64 (DP [ p ])
+    [ "io_stall_read", fun io -> fromInt64 "io_stall_read" (Units.Time Milliseconds) io.ioStallReadMs
+      "io_stall_write", fun io -> fromInt64 "io_stall_write" (Units.Time Milliseconds) io.ioStallWriteMs 
+      "io_stall", fun io -> fromInt64 "io_stall" (Units.Time Milliseconds) io.ioStall
+      "num_of_reads", fun io -> fromInt64 "num_of_reads" (Units.Unit "reads") io.numOfReads
+      "num_of_writes", fun io -> fromInt64 "num_of_writes" (Units.Unit "writes") io.numOfWrites
+      "num_of_bytes_read", fun io -> fromInt64 "num_of_bytes_read" Units.Bytes io.numOfBytesRead 
+      "num_of_bytes_written", fun io -> fromInt64 "num_of_bytes_read" Units.Bytes io.numOfBytesRead
+      "read_latency", IOInfo.readLatency >> Measure.fromFloat (DP [ "read_latency" ]) (Units.Time Milliseconds)
        ]
     |> Map.ofList : Map<string, DPCalculator>
 
   /// ns: logary.sql_server_health
   /// prefix: drive | file (metric name prefix)
   /// instance: intelliplan.mdf
-  let dps ns prefix instance =
-    datapoints |> Seq.map (fun kv -> kv.Key) |> Seq.toList
-    |> List.map (fun metric -> sprintf "%s.%s_%s.%s" ns prefix metric instance)
-
-
-  // example data point, collected for a Duration
-
-  // ns.category.perf_counter.instance
-
-  // logary.sql_server_health.file_io_stall_read.
-
-  // ns    .component        .metric_name       .instance.calculated
-  // logary.sql_server_health.drive_latency_read.c
-  // logary.sql_server_health.drive_latency_read.c       .mean // (reservoir)
-  // logary.sql_server_health.drive_latency_read.c       .max // (reservoir)
-  // logary.sql_server_health.cpu_queue_len.max // (reservoir)
-
-  // guage shaped, polled ever n ms
-  // logary.sql_server_health.drive_latency_read.c
-  // logary.sql_server_health.db_latency_read   .intelliplan.read
-
-  // histogram shaped, values added every n ms
-  // logary.sql_server_health.drive_latency.read_ms.c.mean
-  // logary.sql_server_health.drive_latency_read.c.max
-  // logary.sql_server_health.drive_latency_read.c.p99
-  // logary.sql_server_health.drive_latency_read.c.p75
+  let dps prefix instance : DP list =
+    datapoints
+    |> Seq.map (fun kv -> kv.Key) |> Seq.toList
+    |> List.map (fun metric -> DP [ "logary"; "sql_server_health"; sprintf "%s_%s" prefix metric; instance ])
 
   let loop (conf : Conf) (ri : RuntimeInfo) (inbox : IActor<_>) =
     let log = LogLine.setPath "Logary.Metrics.SQLServerHealth"
               >> Logger.log ri.logger
 
-    let driveDps = dps "logary.sql_server_health" "drive"
-    let fileDps  = Path.GetFileName >> dotToUnderscore
-                   >> dps "logary.sql_server_health" "file"
+    let driveDps = removeColon >> dps "drive"
+    let fileDps  = Path.GetFileName >> dotToUnderscore >> dps "file"
 
     let rec init () = async {
       LogLine.info "init" |> log
-      let connMgr = Sql.withNewConnection conf.openConn
-      let measures = ioInfo connMgr |> Seq.toList
-      let driveDps    = measures |> List.map (fun l -> l.drive |> driveDps) |> List.concat
-      let fileDps     = measures |> List.map (fun l -> l.filePath |> fileDps) |> List.concat
+      let connMgr  = Sql.withNewConnection conf.openConn
+      let measures = ioInfo connMgr |> Seq.cache
+      let driveDps =
+        measures
+        |> Seq.distinctBy (fun m -> m.drive)
+        |> Seq.map (fun l -> l.drive |> driveDps)
+        |> List.ofSeq
+        |> List.concat
+      let fileDps  =
+        measures
+        |> Seq.distinctBy (fun info -> info.filePath)
+        |> Seq.map (fun info -> info.filePath |> fileDps)
+        |> List.ofSeq
+        |> List.concat
       return! running { connMgr  = connMgr
-                        lastIOs  = measures, Date.now ()
+                        lastIOs  = List.ofSeq measures, Date.now ()
                         deltaIOs = [], Duration.Epsilon
-                        dps      = List.map DP (driveDps @ fileDps) }
+                        dps      = driveDps @ fileDps }
       }
 
     and running ({ lastIOs = lastIOMeasures, lastIOInstant } as state) = async {
       let! msg, _ = inbox.Receive()
       match msg with
       | GetValue (dps, replChan) ->
-        LogLine.info "get value" |> log
+        LogLine.infof "get value, curr dps: %A" state.dps |> log
         replChan.Reply []
         return! running state
 
@@ -259,7 +250,7 @@ module private Impl =
         return! running state
 
       | Update msr ->
-        LogLine.infof "does not support updating path %s" msr.m_path |> log
+        LogLine.infof "does not support updating path %s" (Measure.getStringPath msr.m_path) |> log
         return! running state
 
       | Sample ->

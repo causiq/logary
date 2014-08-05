@@ -24,11 +24,12 @@ let private actorLoop conf metadata =
         match msg with
         | Measure m ->
           let ts = m.m_timestamp.Ticks / NodaConstants.TicksPerSecond
-          let m' = sprintf "[nimrod][%i][%s][%s][%s]" ts (m.ToString()) m.m_path (getValueStr m)
+          let path = Measure.getStringPath m.m_path
+          let m' = sprintf "[nimrod][%i][%s][%s][%s]" ts (m.ToString()) path (getValueStr m)
           { message       = m'
             level         = m.m_level
             data          = Map.empty
-            path          = m.m_path
+            path          = path
             tags          = []
             ``exception`` = None
             timestamp     = m.m_timestamp }

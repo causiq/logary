@@ -177,7 +177,7 @@ let targetTests =
 
     testCase "initialise and metric" <| fun _ ->
       let target = start (fun () -> SQLiteDB.openConn inMemConnStrEmpheral)
-      try (Measure.create "app.signin" 3.0) |> Target.sendMeasure target
+      try (Measure.create' "app.signin" 3.0) |> Target.sendMeasure target
       finally stop target
 
     testCase "metric and read back returns result" <| fun _ ->
@@ -192,8 +192,8 @@ let targetTests =
 
       // given
       let target = start (fun () -> db)
-      (Measure.create "web01.app.signin" 3.0) |> Target.sendMeasure target
-      (Measure.create "web02.app.signin" 6.0) |> Target.sendMeasure target
+      (Measure.create' "web01.app.signin" 3.0) |> Target.sendMeasure target
+      (Measure.create' "web02.app.signin" 6.0) |> Target.sendMeasure target
       flush target
 
       // then
