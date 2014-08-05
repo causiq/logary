@@ -10,14 +10,6 @@ open Logary.Internals
 
 // inspiration: https://github.com/Feuerlabs/exometer/blob/master/doc/exometer_probe.md
 
-/// a DP Segment is a string that tells a tale about a segment of a hierarchial
-/// DP name
-type DPSegment = string // TODO: use or remove
-
-/// A data point is the name (atom) of a measure taken by a metric. It's not
-/// globally unique, but specific to a metric instance.
-type DP = DP of string
-
 /// The metric types available, which specify how logary polls/gets the metric.
 type MetricType =
   | Metric
@@ -33,7 +25,7 @@ type MetricType =
 type MetricMsg =
   /// The GetValue implementation shall retrieve the value of one or more data
   /// points from the probe.
-  | GetValue of DP list * ReplyChannel<(DP * Measure) list>
+  | GetValue of DP list * ReplyChannel<Measure list>
   /// The GetDataPoints shall return a list with all data points supported by
   /// the probe
   | GetDataPoints of ReplyChannel<DP list>

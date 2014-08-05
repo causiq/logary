@@ -52,6 +52,7 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
     <Reference Include="System.Numerics" />
+    <Reference Include="System.Transactions" />
     <Reference Include="System.Xml" />
     <Reference Include="Topshelf">
       <HintPath>..\packages\Topshelf.3.1.3\lib\net40-full\Topshelf.dll</HintPath>
@@ -75,9 +76,9 @@
     <EmbeddedResource Include="StallInfo.sql" />
     <EmbeddedResource Include="DiskVolumeInfo.sql" />
     <EmbeddedResource Include="LatencyInfo.sql" />
+    <None Include="Test.sql" />
     <EmbeddedResource Include="DriveLatencyInfo.sql" />
     <None Include="packages.config" />
-    <None Include="Test.sql" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Fsharp.Actor\src\FSharp.Actor\FSharp.Actor-logary.fsproj">

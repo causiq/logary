@@ -32,9 +32,9 @@ module private Impl =
         replChan.Reply [ DP "calls" ]
         return! loop { calls = state.calls + 1I }
       | Update msr ->
-        match msr.m_value'' with
-        | Some v -> return! loop { calls = v }
-        | None   -> return! loop { calls = state.calls + 1I }
+        match msr.m_value with
+        | F f -> return! loop { calls = bigint f }
+        | L l   -> return! loop { calls = state.calls + 1I }
       | Sample ->
         return! loop state
       | Shutdown ackChan ->

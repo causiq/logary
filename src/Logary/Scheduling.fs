@@ -1,5 +1,6 @@
 ﻿/// A scheduling actor that can call `Sample` on the metric/probe/health check.
 module Logary.Internals.Scheduling
+#nowarn "64"
 
 // creds to Dave Thomas for his F# snippet
 open System.Threading

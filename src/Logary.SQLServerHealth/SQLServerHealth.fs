@@ -1,6 +1,7 @@
 ﻿module Logary.Metrics.SQLServerHealth
 
 open System
+open System.IO
 open System.Data
 
 open FSharp.Actor
@@ -30,10 +31,23 @@ type LatencyProbeDataSources =
   /// include the backslash in this name.
   | Drive of DriveName
 
-module Database =
-  open FsSql
+module StringUtils =
+  let camelToSnake (str : string) =
+    let rec r cs = function
+      | curr when curr = str.Length ->
+        new String(cs |> List.rev |> List.toArray)
+      | curr when Char.IsUpper str.[curr] && curr = 0 ->
+        r ((Char.ToLower str.[curr]) :: cs) (curr + 1)
+      | curr when Char.IsUpper str.[curr] ->
+        r ((Char.ToLower str.[curr]) :: '_' :: cs) (curr + 1)
+      | curr ->
+        r (str.[curr] :: cs) (curr + 1)
+    r [] 0
 
-  let internal P = Sql.Parameter.make
+module Database =
+  open System.Text.RegularExpressions
+
+  open FsSql
 
   type PLE =
     { serverName         : string
@@ -63,7 +77,7 @@ WHERE [object_name] LIKE N'%Buffer Node%' -- Handles named instances
       { ple with objectName   = ple.objectName.TrimEnd()
                  instanceName = ple.instanceName.TrimEnd() }
 
-  type LatencyDetails =
+  type IOInfo =
     { ioStallReadMs     : int64
       ioStallWriteMs    : int64
       ioStall           : int64
@@ -76,7 +90,21 @@ WHERE [object_name] LIKE N'%Buffer Node%' -- Handles named instances
       filePath          : FullyQualifiedPath
       fileType          : FileType }
 
-  let latencyInfo connMgr =
+  let delta earlier later =
+    if earlier.filePath <> later.filePath then invalidArg "later" "comparing different db files"
+    { ioStallReadMs     = later.ioStallReadMs - earlier.ioStallReadMs
+      ioStallWriteMs    = later.ioStallWriteMs - earlier.ioStallWriteMs
+      ioStall           = later.ioStall - earlier.ioStall
+      numOfReads        = later.numOfReads - earlier.numOfReads
+      numOfWrites       = later.numOfWrites - earlier.numOfWrites
+      numOfBytesRead    = later.numOfBytesRead - earlier.numOfBytesRead
+      numOfBytesWritten = later.numOfBytesWritten - earlier.numOfBytesWritten
+      drive             = later.drive
+      dbName            = later.dbName
+      filePath          = later.filePath
+      fileType          = later.fileType }
+
+  let ioInfo connMgr =
     let sql = "
 SELECT
   [io_stall_read_ms]             AS ioStallReadMs,
@@ -96,25 +124,33 @@ JOIN sys.master_files AS [mf]
   ON [vfs].[database_id] = [mf].[database_id]
   AND [vfs].[file_id] = [mf].[file_id]"
     Sql.execReader connMgr sql []
-    |> Sql.map (Sql.asRecord<LatencyDetails> "")
+    |> Sql.map (Sql.asRecord<IOInfo> "")
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module LatencyDetails =
+module IOInfo =
   open Database
 
+  let inline zeroDiv den nom =
+    if nom = 0L then 0. else float den / float nom
+
   let readLatency data =
-    if data.numOfReads = 0L then 0. else
-    float data.ioStallReadMs / float data.numOfReads
+    zeroDiv data.ioStallReadMs data.numOfReads
 
   let writeLatency data =
-    if data.numOfWrites = 0L then 0. else
-    float data.ioStallWriteMs / float data.numOfWrites
+    zeroDiv data.ioStallWriteMs data.numOfWrites
 
   let latency data =
-    if data.numOfWrites = 0L && data.numOfReads = 0L then 0. else
-    float data.ioStall / float (data.numOfReads + data.numOfWrites)
+    zeroDiv data.ioStall (data.numOfReads + data.numOfWrites)
 
+  let bytesPerRead data =
+    zeroDiv data.numOfBytesRead data.numOfReads
 
+  let bytesPerWrite data =
+    zeroDiv data.numOfBytesWritten data.numOfWrites
+
+  let bytesPerTransfer data =
+    zeroDiv (data.numOfBytesRead + data.numOfBytesWritten)
+            (data.numOfReads + data.numOfWrites)
 
 type Conf =
   { /// Getting the contents of an embedded resource file function.
@@ -131,13 +167,48 @@ let empty =
     openConn       = fun () -> failwith "connection factory needs to be provided" }
 
 module private Impl =
+  open NodaTime
+
+  open Logary.Internals
+  open Database
+
+  let dotToUnderscore (s : string) =
+    s.Replace(".", "_")
 
   type State =
-    { connMgr    : Sql.ConnectionManager }
+    { connMgr  : Sql.ConnectionManager
+      lastIOs  : IOInfo list * Instant
+      deltaIOs : IOInfo list * Duration
+      dps      : DP list }
+
+  type DPCalculator = IOInfo -> Measure
+
+  let datapoints =
+    [ "io_stall_read", fun io -> Measure.fromInt64 "io_stall_read" (Units.Time Milliseconds) io.ioStallReadMs
+      "io_stall_write", fun io -> Measure.fromInt64 "io_stall_write" (Units.Time Milliseconds) io.ioStallWriteMs 
+      "io_stall", fun io -> Measure.fromInt64 "io_stall" (Units.Time Milliseconds) io.ioStall
+      "num_of_reads", fun io -> Measure.fromInt64 "num_of_reads" (Units.Unit "reads") io.numOfReads
+      "num_of_writes", fun io -> Measure.fromInt64 "num_of_writes" (Units.Unit "writes") io.numOfWrites
+      "num_of_bytes_read", fun io -> Measure.fromInt64 "num_of_bytes_read" Units.Bytes io.numOfBytesRead 
+      "num_of_bytes_written", fun io ->  Measure.fromInt64 "num_of_bytes_read" Units.Bytes io.numOfBytesRead
+      "read_latency", IOInfo.readLatency >> Measure.fromFloat "read_latency" (Units.Time Milliseconds)
+       ]
+    |> Map.ofList : Map<string, DPCalculator>
+
+  /// ns: logary.sql_server_health
+  /// prefix: drive | file (metric name prefix)
+  /// instance: intelliplan.mdf
+  let dps ns prefix instance =
+    datapoints |> Seq.map (fun kv -> kv.Key) |> Seq.toList
+    |> List.map (fun metric -> sprintf "%s.%s_%s.%s" ns prefix metric instance)
+
 
   // example data point, collected for a Duration
 
   // ns.category.perf_counter.instance
+
+  // logary.sql_server_health.file_io_stall_read.
+
   // ns    .component        .metric_name       .instance.calculated
   // logary.sql_server_health.drive_latency_read.c
   // logary.sql_server_health.drive_latency_read.c       .mean // (reservoir)
@@ -148,48 +219,57 @@ module private Impl =
   // logary.sql_server_health.drive_latency_read.c
   // logary.sql_server_health.db_latency_read   .intelliplan.read
 
-  let baseName = "logary.sql_server_health"
-  let driveLatency drive = String.concat "." [baseName; "drive_latency"; drive]
-  let fileLatency drive = String.concat "." [baseName; "dbfile_latency"; drive]
-
   // histogram shaped, values added every n ms
-  // logary.sql_server_health.drive_latency.c.read_ms.mean
-  // logary.sql_server_health.drive_latency.c.read_ms.max
-  // logary.sql_server_health.drive_latency.c.read_ms.p99
-  // logary.sql_server_health.drive_latency.c.read_ms.p75
+  // logary.sql_server_health.drive_latency.read_ms.c.mean
+  // logary.sql_server_health.drive_latency_read.c.max
+  // logary.sql_server_health.drive_latency_read.c.p99
+  // logary.sql_server_health.drive_latency_read.c.p75
 
   let loop (conf : Conf) (ri : RuntimeInfo) (inbox : IActor<_>) =
     let log = LogLine.setPath "Logary.Metrics.SQLServerHealth"
               >> Logger.log ri.logger
 
+    let driveDps = dps "logary.sql_server_health" "drive"
+    let fileDps  = Path.GetFileName >> dotToUnderscore
+                   >> dps "logary.sql_server_health" "file"
+
     let rec init () = async {
       LogLine.info "init" |> log
-      return! running ()
+      let connMgr = Sql.withNewConnection conf.openConn
+      let measures = ioInfo connMgr |> Seq.toList
+      let driveDps    = measures |> List.map (fun l -> l.drive |> driveDps) |> List.concat
+      let fileDps     = measures |> List.map (fun l -> l.filePath |> fileDps) |> List.concat
+      return! running { connMgr  = connMgr
+                        lastIOs  = measures, Date.now ()
+                        deltaIOs = [], Duration.Epsilon
+                        dps      = List.map DP (driveDps @ fileDps) }
       }
 
-    and running state = async {
+    and running ({ lastIOs = lastIOMeasures, lastIOInstant } as state) = async {
       let! msg, _ = inbox.Receive()
       match msg with
       | GetValue (dps, replChan) ->
         LogLine.info "get value" |> log
         replChan.Reply []
-        return! running ()
+        return! running state
 
       | GetDataPoints replChan ->
         LogLine.info "get dps" |> log
-        let res = [] // TODO: need to query to get baseline drives and files
-
-        replChan.Reply res
-        return! running ()
+        replChan.Reply state.dps
+        return! running state
 
       | Update msr ->
-        match msr.m_value'' with
-        | Some v -> return! running ()
-        | None   -> return! running ()
+        LogLine.infof "does not support updating path %s" msr.m_path |> log
+        return! running state
 
       | Sample ->
         LogLine.info "sample" |> log
-        return! running state
+        let now    = Date.now ()
+        let curr   = ioInfo state.connMgr |> List.ofSeq
+        let dio    = (lastIOMeasures, curr) ||> List.map2 delta
+        let dioDur = now - lastIOInstant
+        return! running { state with lastIOs = curr, now
+                                     deltaIOs = dio, dioDur }
 
       | Shutdown ackChan ->
         ackChan.Reply Ack

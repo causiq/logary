@@ -14,9 +14,9 @@ open FsSql
 
 // a function that opens a connection
 let openConn() =
-    let conn = new SqlConnection("Data Source=.;Integrated Security=SSPI;Database=master;")
-    conn.Open()
-    conn :> IDbConnection
+  let conn = new SqlConnection("Data Source=.;Integrated Security=SSPI;Database=master;")
+  conn.Open()
+  conn :> IDbConnection
 
 // the connection manager, encapsulates how to create and dispose the connection
 let connMgr = Sql.withNewConnection openConn
@@ -24,4 +24,4 @@ let connMgr = Sql.withNewConnection openConn
 open Logary.Metrics.SQLServerHealth
 
 Database.ple connMgr
-Database.latencyInfo connMgr |> List.ofSeq |> List.map LatencyDetails.readLatency |> List.sort
+Database.latencyInfo connMgr |> List.ofSeq |> List.map LatencyInfo.readLatency |> List.sort

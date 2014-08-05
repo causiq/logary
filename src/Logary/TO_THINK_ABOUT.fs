@@ -50,9 +50,7 @@ module Time =
         f ()
       finally
         sw.Stop()
-        { m_value     = None
-          m_value'    = Some (sw.ElapsedTicks)
-          m_value''   = None
+        { m_value     = L (sw.ElapsedTicks)
           m_path      = path
           m_timestamp = now
           m_level     = lvl

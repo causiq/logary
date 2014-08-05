@@ -59,7 +59,7 @@ module internal Rnd =
       first <- false
     value
 
-module internal Date =
+module Date =
   open NodaTime
   let now () = SystemClock.Instance.Now
 

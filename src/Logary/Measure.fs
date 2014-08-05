@@ -22,17 +22,22 @@ type Units =
   | KiB
   | MiB
 
+/// A data point is the name (atom) of a measure taken by a metric. It's not
+/// globally unique, but specific to a metric instance.
+type DP = DP of string list
+
+/// A measure value is either a float of a int64 value
+type MeasureValue =
+  | F of float
+  | L of int64
+
 /// This is a measured event as it occurred or was at a point in time.
 type Measure =
-  { /// The value of the measurement for floats
-    m_value     : float option
-    /// The value of the measurement for int64s
-    m_value'    : int64 option
-    /// The value of the measurement for bigints
-    m_value''   : bigint option
+  { /// The value of the measurement
+    m_value     : MeasureValue
     /// The identifier for the measure - defaults to the path of the logger
     /// sending it -- this is also the 'name' of the measeure.
-    m_path      : string
+    m_path      : DP
     /// When the measurement was taken (start of capture of measure)
     m_timestamp : Instant
     /// The level of the measure
@@ -63,20 +68,10 @@ module Measure =
   module Lenses =
     open Lenses
 
-    /// float value
+    /// value of measurement
     let value_ =
       { get = fun x -> x.m_value
         set = fun v x -> { x with m_value = v } }
-
-    /// int64 value
-    let value'_ =
-      { get = fun x -> x.m_value'
-        set = fun v x -> { x with m_value' = v } }
-
-    /// bigint value
-    let value''_ =
-      { get = fun x -> x.m_value''
-        set = fun v x -> { x with m_value'' = v } }
 
     let path_ =
       { get = fun x -> x.m_path
@@ -139,25 +134,7 @@ module Measure =
   let setUnit value m = { m with m_unit = value }
 
   [<CompiledName "SetFloat">]
-  let setFloat value m =
-    { m with
-        m_value = Some value
-        m_value' = None
-        m_value'' = None }
-
-  [<CompiledName "SetInt64">]
-  let setInt64 value m =
-    { m with
-        m_value   = None
-        m_value'  = Some value
-        m_value'' = None }
-
-  [<CompiledName "SetBigint">]
-  let setBigint value m =
-    { m with
-        m_value   = None
-        m_value'  = None
-        m_value'' = Some value }
+  let setFloat value m = { m with m_value = F value }
 
   ///////////////////////
   // Factory functions //
@@ -165,10 +142,8 @@ module Measure =
 
   /// An empty `measure`
   let empty =
-    { m_value     = None
-      m_value'    = None
-      m_value''   = None
-      m_path      = ""
+    { m_value     = F 0.
+      m_path      = DP []
       m_timestamp = Date.now()
       m_level     = Info
       m_unit      = Unit "unit"
@@ -179,8 +154,22 @@ module Measure =
   /// path it is taken at or represents
   [<CompiledName "Create">]
   let create path value =
-    { empty with m_path = path
-                 m_value = Some value }
+    { empty with m_path  = path
+                 m_value = F value }
+
+  /// Make a new measure value from the type of measure it is, the value and the
+  /// path it is taken at or represents
+  [<CompiledName "FromFloat">]
+  let fromFloat path unitt value =
+    { empty with m_path  = path
+                 m_unit  = unitt
+                 m_value = F value }
+
+  [<CompiledName "FromInt64">]
+  let fromInt64 path unitt value =
+    { empty with m_path  = path
+                 m_unit  = unitt
+                 m_value = L value }
 
   let private (<|>) a b : 'a option =
     match a with
@@ -190,25 +179,24 @@ module Measure =
   open System
   open System.Globalization
 
-  let private toString x =
-    String.Format(CultureInfo.InvariantCulture, "{0}", [| x |])
-
   let getValueStr m =
-    Option.map (box >> toString) m.m_value
-    <|> Option.map (box >> toString) m.m_value'
-    <|> Option.map (box >> toString) m.m_value''
-    |> Option.get
+    match m.m_value with
+    | F f -> f.ToString(CultureInfo.InvariantCulture)
+    | L l -> l.ToString(CultureInfo.InvariantCulture)
 
   let getValueFloat m =
-    m.m_value
-    <|> Option.map float m.m_value'
-    <|> Option.map float m.m_value''
-    |> Option.get
+    match m.m_value with
+    | F f -> f
+    | L l -> float l
+
+  let getStringPath (DP ss : DP) =
+    String.concat "." ss
 
   module LogLine =
     let fromMeasure m =
       LogLine.create
-        (getValueStr m) m.m_data m.m_level m.m_tags m.m_path
+        (getValueStr m) m.m_data m.m_level m.m_tags
+        (getStringPath m.m_path)
         None
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

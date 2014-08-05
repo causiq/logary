@@ -45,7 +45,9 @@ module Logger =
   [<CompiledName "Measure">]
   let ``measure`` (logger : Logger) m =
     (m : Measure)
-    |> fun m -> match m.m_path with "" -> { m with m_path = logger.Name } | _ -> m
+    |> fun m -> match m.m_path with
+                | DP [] -> { m with m_path = DP [ logger.Name ] }
+                | _ -> m
     |> logger.Measure
 
   /// Write a verbose log entry to the logger
