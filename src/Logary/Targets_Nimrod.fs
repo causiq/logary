@@ -24,7 +24,7 @@ let private actorLoop conf metadata =
         match msg with
         | Measure m ->
           let ts = m.m_timestamp.Ticks / NodaConstants.TicksPerSecond
-          let path = Measure.getStringPath m.m_path
+          let path = m.m_path.joined
           let m' = sprintf "[nimrod][%i][%s][%s][%s]" ts (m.ToString()) path (getValueStr m)
           { message       = m'
             level         = m.m_level

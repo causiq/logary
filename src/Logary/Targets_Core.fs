@@ -178,7 +178,7 @@ module Debugger =
         | Log _ ->
           return! loop ()
         | Measure m when Debugger.IsLogging() ->
-          Debugger.Log(offLevel, Measure.getStringPath m.m_path, sprintf "%A" m)
+          Debugger.Log(offLevel, m.m_path.joined, sprintf "%A" m)
           return! loop ()
         | Flush chan ->
           chan.Reply Ack

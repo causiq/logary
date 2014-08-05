@@ -13,10 +13,7 @@ open Logary.Metrics
 
 [<Tests>]
 let datapoints =
-  let dps =
-    SQLServerHealth.Impl.dps "drive" "c"
-    |> Set.ofList
-    |> Set.map (fun (DP segs) -> String.concat "." segs)
+  let dps = SQLServerHealth.Impl.dps "drive" "c" |> Set.ofList |> Set.map DP.joined
   testList "getting all datapoints" [
     testCase "for drive c" <| fun _ ->
       Assert.Equal(
@@ -29,6 +26,11 @@ let datapoints =
           "logary.sql_server_health.drive_num_of_bytes_read.c"
           "logary.sql_server_health.drive_num_of_bytes_written.c"
           "logary.sql_server_health.drive_read_latency.c"
+          "logary.sql_server_health.drive_write_latency.c"
+          "logary.sql_server_health.drive_latency.c"
+          "logary.sql_server_health.drive_bytes_per_read.c"
+          "logary.sql_server_health.drive_bytes_per_write.c"
+          "logary.sql_server_health.drive_bytes_per_transfer.c"
           ] |> Set.ofList,
         dps)
     ]

@@ -85,7 +85,7 @@ let mkEventM
      m_unit      = u } as m ) =
   let tags = confTags |> Option.fold (fun s t -> s @ t) []
   Event.CreateDouble(Measure.getValueFloat m, asEpoch timestamp,
-                     mkState level, Measure.getStringPath path, hostname,
+                     mkState level, path.joined, hostname,
                      u.ToString(), tags, ttl, [])
 
 // TODO: a way of discriminating between ServiceName-s.

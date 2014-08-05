@@ -20,7 +20,7 @@ let internal caseNameOf (x:'a) =
 /// A StringFormatter is the thing that takes a log line and returns it as a string
 /// that can be printed, sent or otherwise dealt with in a manner that suits the target.
 type StringFormatter =
-  { format : LogLine       -> string
+  { format   : LogLine -> string
     m_format : Measure -> string }
   static member private Expanded nl ending =
     let format' =

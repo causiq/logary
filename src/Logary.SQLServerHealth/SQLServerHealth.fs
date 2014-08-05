@@ -152,6 +152,21 @@ module IOInfo =
     zeroDiv (data.numOfBytesRead + data.numOfBytesWritten)
             (data.numOfReads + data.numOfWrites)
 
+  let sumBy data f =
+    match data |> List.filter f with
+    | []            -> failwithf "filter returned no results"
+    | first :: rest ->
+      rest |> List.fold (fun (s : IOInfo) t ->
+        { s with
+            ioStallReadMs     = s.ioStallReadMs + t.ioStallReadMs
+            ioStallWriteMs    = s.ioStallWriteMs + t.ioStallWriteMs
+            ioStall           = s.ioStall + t.ioStall
+            numOfReads        = s.numOfReads + t.numOfReads
+            numOfWrites       = s.numOfWrites + t.numOfWrites
+            numOfBytesRead    = s.numOfBytesRead + t.numOfBytesRead
+            numOfBytesWritten = s.numOfBytesWritten + t.numOfBytesWritten })
+        first
+
 type Conf =
   { /// Getting the contents of an embedded resource file function.
     contentsOf     : ResourceName -> string
@@ -179,25 +194,43 @@ module internal Impl =
     s.Replace(":", "")
 
   type State =
-    { connMgr  : Sql.ConnectionManager
-      lastIOs  : IOInfo list * Instant
-      deltaIOs : IOInfo list * Duration
-      dps      : DP list }
+    { connMgr     : Sql.ConnectionManager
+      lastIOs     : IOInfo list * Instant
+      deltaIOs    : IOInfo list * Duration
+      dps         : DP list
+      sampleFresh : bool }
 
-  type DPCalculator = IOInfo -> Measure
+  type DPCalculator = IOInfo -> DP -> Measure
 
   let datapoints =
-    let fromInt64 p = Measure.fromInt64 (DP [ p ])
-    [ "io_stall_read", fun io -> fromInt64 "io_stall_read" (Units.Time Milliseconds) io.ioStallReadMs
-      "io_stall_write", fun io -> fromInt64 "io_stall_write" (Units.Time Milliseconds) io.ioStallWriteMs 
-      "io_stall", fun io -> fromInt64 "io_stall" (Units.Time Milliseconds) io.ioStall
-      "num_of_reads", fun io -> fromInt64 "num_of_reads" (Units.Unit "reads") io.numOfReads
-      "num_of_writes", fun io -> fromInt64 "num_of_writes" (Units.Unit "writes") io.numOfWrites
-      "num_of_bytes_read", fun io -> fromInt64 "num_of_bytes_read" Units.Bytes io.numOfBytesRead 
-      "num_of_bytes_written", fun io -> fromInt64 "num_of_bytes_read" Units.Bytes io.numOfBytesRead
-      "read_latency", IOInfo.readLatency >> Measure.fromFloat (DP [ "read_latency" ]) (Units.Time Milliseconds)
-       ]
+    let fromInt64 u v dp = Measure.fromInt64 dp u v
+    let fromFloat u v dp = Measure.fromFloat dp u v
+    [ "io_stall_read", fun io -> fromInt64 (Units.Time Milliseconds) io.ioStallReadMs
+      "io_stall_write", fun io -> fromInt64 (Units.Time Milliseconds) io.ioStallWriteMs 
+      "io_stall", fun io -> fromInt64 (Units.Time Milliseconds) io.ioStall
+      "num_of_reads", fun io -> fromInt64 (Units.Unit "reads") io.numOfReads
+      "num_of_writes", fun io -> fromInt64 (Units.Unit "writes") io.numOfWrites
+      "num_of_bytes_read", fun io -> fromInt64 Units.Bytes io.numOfBytesRead 
+      "num_of_bytes_written", fun io -> fromInt64 Units.Bytes io.numOfBytesRead
+      "read_latency", IOInfo.readLatency >> fromFloat (Units.Time Milliseconds)
+      "write_latency", IOInfo.writeLatency >> fromFloat (Units.Time Milliseconds)
+      "latency", IOInfo.latency >> fromFloat (Units.Time Milliseconds)
+      "bytes_per_read", IOInfo.bytesPerRead >> fromFloat Units.Bytes
+      "bytes_per_write", IOInfo.bytesPerWrite >> fromFloat Units.Bytes
+      "bytes_per_transfer", IOInfo.bytesPerTransfer >> fromFloat Units.Bytes
+    ]
     |> Map.ofList : Map<string, DPCalculator>
+
+  let formatPrefixMetric prefix metric =
+    sprintf "%s_%s" prefix metric
+
+  let formatFull prefix metric instance =
+    DP [ "logary"; "sql_server_health"; formatPrefixMetric prefix metric; instance ]
+
+  let findCalculator metric =
+    match datapoints |> Map.tryFind metric with
+    | None -> failwithf "unknown metric: '%s'" metric
+    | Some calculator -> calculator
 
   /// ns: logary.sql_server_health
   /// prefix: drive | file (metric name prefix)
@@ -205,14 +238,23 @@ module internal Impl =
   let dps prefix instance : DP list =
     datapoints
     |> Seq.map (fun kv -> kv.Key) |> Seq.toList
-    |> List.map (fun metric -> DP [ "logary"; "sql_server_health"; sprintf "%s_%s" prefix metric; instance ])
+    |> List.map (fun metric -> formatFull prefix metric instance)
+
+  let cleanDrive = removeColon
+  let driveDps = removeColon >> dps "drive"
+  let cleanFile = Path.GetFileName >> dotToUnderscore
+  let fileDps = cleanFile >> dps "file"
+
+  let byDrive drive info =
+    cleanDrive info.drive = drive
+  let byDbName db info =
+    info.dbName = db
+  let byFile file info =
+    cleanFile info.filePath = file
 
   let loop (conf : Conf) (ri : RuntimeInfo) (inbox : IActor<_>) =
     let log = LogLine.setPath "Logary.Metrics.SQLServerHealth"
               >> Logger.log ri.logger
-
-    let driveDps = removeColon >> dps "drive"
-    let fileDps  = Path.GetFileName >> dotToUnderscore >> dps "file"
 
     let rec init () = async {
       LogLine.info "init" |> log
@@ -224,25 +266,54 @@ module internal Impl =
         |> Seq.map (fun l -> l.drive |> driveDps)
         |> List.ofSeq
         |> List.concat
-      let fileDps  =
+      let fileDps =
         measures
         |> Seq.distinctBy (fun info -> info.filePath)
         |> Seq.map (fun info -> info.filePath |> fileDps)
         |> List.ofSeq
         |> List.concat
-      return! running { connMgr  = connMgr
-                        lastIOs  = List.ofSeq measures, Date.now ()
-                        deltaIOs = [], Duration.Epsilon
-                        dps      = driveDps @ fileDps }
+      return! running { connMgr     = connMgr
+                        lastIOs     = List.ofSeq measures, Date.now ()
+                        deltaIOs    = [], Duration.Epsilon
+                        dps         = driveDps @ fileDps
+                        // first measurement isn't delta based, can't be returned
+                        sampleFresh = false }
       }
 
-    and running ({ lastIOs = lastIOMeasures, lastIOInstant } as state) = async {
+    and running
+      ({ deltaIOs = deltas, dur
+         lastIOs  = lastIOMeasures, lastIOInstant  } as state) = async {
       let! msg, _ = inbox.Receive()
       match msg with
-      | GetValue (dps, replChan) ->
-        LogLine.infof "get value, curr dps: %A" state.dps |> log
+      | GetValue (_, replChan) when not state.sampleFresh ->
         replChan.Reply []
         return! running state
+
+      | GetValue (dps, replChan) ->
+        let values =
+          dps |> List.fold (fun s t ->
+            match t with
+            | DP [_ns; _probe; metricName; instance] ->
+              LogLine.infof "get value, curr dp: %A" t |> log
+              let calculator, summer =
+                match metricName with
+                | _ when metricName.StartsWith("drive_") ->
+                  findCalculator (metricName.Substring("drive_".Length)),
+                  byDrive instance
+                | _ when metricName.StartsWith("database_") ->
+                  findCalculator (metricName.Substring("database_".Length)),
+                  byDbName instance
+                | _ when metricName.StartsWith("file_") ->
+                  findCalculator (metricName.Substring("file_".Length)),
+                  byFile instance
+                | _ -> failwithf "unknown metric name %s" metricName
+              // TODO: summing ALL DPs for EVERY DP, instead of summing once and
+              // reading from there
+              calculator (IOInfo.sumBy deltas summer) t
+            | dp -> failwithf "unknown %A" dp
+            :: s) []
+        replChan.Reply values
+        return! running { state with sampleFresh = false }
 
       | GetDataPoints replChan ->
         LogLine.info "get dps" |> log
@@ -250,7 +321,10 @@ module internal Impl =
         return! running state
 
       | Update msr ->
-        LogLine.infof "does not support updating path %s" (Measure.getStringPath msr.m_path) |> log
+        LogLine.infof "does not support updating path %s" msr.m_path.joined |> log
+        return! running state
+
+      | Sample when state.sampleFresh ->
         return! running state
 
       | Sample ->
@@ -259,8 +333,9 @@ module internal Impl =
         let curr   = ioInfo state.connMgr |> List.ofSeq
         let dio    = (lastIOMeasures, curr) ||> List.map2 delta
         let dioDur = now - lastIOInstant
-        return! running { state with lastIOs = curr, now
-                                     deltaIOs = dio, dioDur }
+        return! running { state with lastIOs     = curr, now
+                                     deltaIOs    = dio, dioDur
+                                     sampleFresh = true }
 
       | Shutdown ackChan ->
         ackChan.Reply Ack

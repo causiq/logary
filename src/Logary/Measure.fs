@@ -13,6 +13,17 @@ type TimeUnit =
   | Minutes
   | Hours
   | Days
+with
+  override x.ToString() =
+    match x with
+    | Nanoseconds  -> "ns"
+    | Ticks        -> "ticks"
+    | Microseconds -> "µs"
+    | Milliseconds -> "ms"
+    | Seconds      -> "s"
+    | Minutes      -> "min"
+    | Hours        -> "h"
+    | Days         -> "days"
 
 type Units =
   /// e.g. 'requests' or 'users'; you can put an arbitrary unit here
@@ -21,10 +32,30 @@ type Units =
   | Bytes
   | KiB
   | MiB
+with
+  override x.ToString () =
+    match x with
+    | Unit u -> u
+    | Time t -> t.ToString()
+    | Bytes  -> "bytes"
+    | KiB    -> "KiB"
+    | MiB    -> "MiB"
 
 /// A data point is the name (atom) of a measure taken by a metric. It's not
 /// globally unique, but specific to a metric instance.
 type DP = DP of string list
+with
+  /// Gets the data point as a single string, where each segment is joined by a
+  /// dot '.'.
+  member x.joined =
+    let (DP segs) = x
+    String.concat "." segs
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module DP =
+  /// Gets the data point as a single string, where each segment is joined by a
+  /// dot '.'.
+  let joined (DP _ as dp) = dp.joined
 
 /// A measure value is either a float of a int64 value
 type MeasureValue =
@@ -197,14 +228,11 @@ module Measure =
     | F f -> f
     | L l -> float l
 
-  let getStringPath (DP ss : DP) =
-    String.concat "." ss
-
   module LogLine =
     let fromMeasure m =
       LogLine.create
         (getValueStr m) m.m_data m.m_level m.m_tags
-        (getStringPath m.m_path)
+        (sprintf "%s[%O]"m.m_path.joined m.m_unit)
         None
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

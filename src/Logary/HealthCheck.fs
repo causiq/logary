@@ -84,7 +84,7 @@ module HealthCheck =
       member x.Exception   = tryGetExn m
     override x.ToString() =
       sprintf "HealthCheck(name=%s, exn=%A, value=%A, level=%A)"
-        (m.m_path |> Measure.getStringPath) (tryGetExn m) m.m_value m.m_level
+        m.m_path.joined (tryGetExn m) m.m_value m.m_level
 
   module Measure =
     /// Transform the measure to a HealthCheck.ResultData.
@@ -153,7 +153,7 @@ module HealthCheck =
       match mkPc wpc with
       | Some counter ->
         { new HealthCheck with
-            member x.Name = Measure.getStringPath name
+            member x.Name = DP.joined name
             member x.GetValue () =
               try
                 counter.NextValue()
@@ -165,7 +165,7 @@ module HealthCheck =
                 e -> NoValue
             member x.Dispose () =
               counter.Dispose() }
-      | None -> mkDead (Measure.getStringPath name)
+      | None -> mkDead name.joined
 
     let toHealthCheck wpc =
       let name =

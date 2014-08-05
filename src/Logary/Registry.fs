@@ -218,7 +218,10 @@ module Advanced =
 
         // init getting metrics' values
         LogLine.debugf "will poll metrics every %O" conf.pollPeriod |> log
-        let! pollCts = Scheduling.schedule sched pollMetrics inbox conf.pollPeriod (Some conf.pollPeriod)
+        let! pollCts =
+          Scheduling.schedule sched pollMetrics inbox
+            (Duration.FromMilliseconds 200L)
+            (Some conf.pollPeriod)
 
         return! running { state with schedules = ctss |> List.ofSeq
                                      pollMetrics = Some pollCts }
