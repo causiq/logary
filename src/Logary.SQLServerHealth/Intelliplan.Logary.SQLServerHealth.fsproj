@@ -69,6 +69,7 @@
     <Compile Include="AsmUtils.fs" />
     <Compile Include="SQLServerIOInfo.fs" />
     <Compile Include="Program.fs" />
+    <Compile Include="SQLServerPLE.fs" />
     <None Include="Scripts.fsx" />
     <None Include="App.config" />
     <EmbeddedResource Include="PageLifeExpectancyInfo.sql" />

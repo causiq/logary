@@ -21,7 +21,7 @@ let openConn() =
 // the connection manager, encapsulates how to create and dispose the connection
 let connMgr = Sql.withNewConnection openConn
 
-open Logary.Metrics.SQLServerHealth
+open Logary.Metrics.SQLServerIOInfo
 
 Database.ple connMgr
 Database.latencyInfo connMgr |> List.ofSeq |> List.map LatencyInfo.readLatency |> List.sort

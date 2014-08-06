@@ -32,6 +32,10 @@
     <DocumentationFile>bin\Release\Logary.SQLServerHealth.Tests.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="FsSql">
+      <HintPath>..\packages\FsSql.0.1.0\lib\FsSql.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Fuchu">
       <HintPath>..\packages\Fuchu.0.4.0.0\lib\Fuchu.dll</HintPath>
       <Private>True</Private>
@@ -46,6 +50,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
