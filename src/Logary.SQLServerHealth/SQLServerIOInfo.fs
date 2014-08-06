@@ -1,4 +1,4 @@
-﻿module Logary.Metrics.SQLServerHealth
+﻿module Logary.Metrics.SQLServerIOInfo
 
 open System
 open System.IO
@@ -281,6 +281,7 @@ module internal Impl =
       }
 
     and running
+      // TODO: how to represent the duration when sending to the target?
       ({ deltaIOs = deltas, dur
          lastIOs  = lastIOMeasures, lastIOInstant  } as state) = async {
       let! msg, _ = inbox.Receive()
@@ -290,6 +291,7 @@ module internal Impl =
         return! running state
 
       | GetValue (dps, replChan) ->
+        // TODO: use conf.latencyTargets
         let values =
           dps |> List.fold (fun s t ->
             match t with

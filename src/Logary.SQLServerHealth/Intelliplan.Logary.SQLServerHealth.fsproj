@@ -67,7 +67,7 @@
     <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="AsmUtils.fs" />
-    <Compile Include="SQLServerHealth.fs" />
+    <Compile Include="SQLServerIOInfo.fs" />
     <Compile Include="Program.fs" />
     <None Include="Scripts.fsx" />
     <None Include="App.config" />
@@ -84,6 +84,11 @@
     <ProjectReference Include="..\Fsharp.Actor\src\FSharp.Actor\FSharp.Actor-logary.fsproj">
       <Name>FSharp.Actor-logary</Name>
       <Project>{aa4bc25b-04f7-4b39-bf28-0b0058193ed9}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\Logary.Riemann\Intelliplan.Logary.Riemann.fsproj">
+      <Name>Intelliplan.Logary.Riemann</Name>
+      <Project>{cc87925c-e4f2-4386-a322-8bc088de7b33}</Project>
       <Private>True</Private>
     </ProjectReference>
     <ProjectReference Include="..\Logary\Intelliplan.Logary.fsproj">

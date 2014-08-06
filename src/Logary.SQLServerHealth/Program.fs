@@ -2,6 +2,7 @@
 
 open System.Data
 open System.Data.SqlClient
+open System.Net
 
 open NodaTime
 
@@ -13,7 +14,7 @@ open Logary.Metrics
 
 open Nessos.UnionArgParser
 
-open SQLServerHealth
+open SQLServerIOInfo
 
 type Arguments =
   | Drive_Latency of DriveName
@@ -54,7 +55,7 @@ let parse args =
                                           Duration.FromMilliseconds)
                 |> Option.fold (fun _ t -> t) (Duration.FromMilliseconds(1000L))
   let connStr = parse.GetResult <@ Connection_String @>
-  let conf    = { SQLServerHealth.empty with
+  let conf    = { SQLServerIOInfo.empty with
                     latencyTargets = drives @ files
                     openConn       = fun () -> openConn connStr }
 
@@ -63,16 +64,20 @@ let parse args =
 [<EntryPoint>]
 let main args =
   let period, conf = parse args
+  let ip = Dns.GetHostEntry("riemann.a.dev.intelliplan.net")
   use logary =
     withLogary' "Logary.SQLServerHealth" (
       withTargets [
         Console.create Console.empty "console"
+        Riemann.create (Riemann.RiemannConf.Create(endpoint = IPEndPoint(ip.AddressList.[0], 5555)))
+          "riemann"
       ] >>
       withRules [
         Rule.createForTarget "console"
+        Rule.createForTarget "riemann"
       ] >>
       withMetrics (Duration.FromSeconds 10L) [
-        SQLServerHealth.create conf "sql_server_health" period
+        SQLServerIOInfo.create conf "sql_server_io_info" period
       ])
   // TODO: add in TopShelf support
   System.Console.ReadKey true |> ignore

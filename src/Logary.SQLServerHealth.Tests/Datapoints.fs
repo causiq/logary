@@ -13,7 +13,7 @@ open Logary.Metrics
 
 [<Tests>]
 let datapoints =
-  let dps = SQLServerHealth.Impl.dps "drive" "c" |> Set.ofList |> Set.map DP.joined
+  let dps = SQLServerIOInfo.Impl.dps "drive" "c" |> Set.ofList |> Set.map DP.joined
   testList "getting all datapoints" [
     testCase "for drive c" <| fun _ ->
       Assert.Equal(
