@@ -21,7 +21,7 @@ let connMgr = Sql.withNewConnection openConn
 [<Tests>]
 let integration =
   testList "[integration] executing sql statements" [
-    testCase "" <| fun _ ->
+    testCase "reading io info" <| fun _ ->
       let calculated =
         Database.ioInfo connMgr
         |> List.ofSeq |> List.map IOInfo.readLatency |> List.sort
