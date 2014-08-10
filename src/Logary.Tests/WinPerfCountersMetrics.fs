@@ -15,7 +15,7 @@ let run = Async.RunSynchronously
 let nullInfo = { serviceName = "tests"; logger = NullLogger() }
 
 let withMetric label f =
-  let mc = create Common.cpuTime "cpuTime" (Duration.FromMilliseconds 200L)
+  let mc = create Common.cpuTimeConf "cpuTime" (Duration.FromMilliseconds 200L)
   let inst = mc.initer nullInfo
   testCase label <| fun _ ->
     try

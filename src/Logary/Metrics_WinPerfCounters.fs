@@ -21,19 +21,9 @@ type WinPerfCountersMsg =
 
 module Common =
 
-  /// nice metrics about CPU time
-  let cpuTime =
-    [ "% Processor Time"
-      "% User Time"
-      "% Interrupt Time"
-      "% Processor Time" ]
-    |> List.map (fun counter ->
-      { category = "Processor"
-        counter  = counter
-        instance = Some AllInstances })
-    |> fun cs -> { initCounters = cs }
+  let cpuTimeConf = { initCounters = Processor.cpuTime }
 
-module private Impl =
+module internal Impl =
 
   type WPCState =
     { lastValues : Map<DP, PC * Measure> }

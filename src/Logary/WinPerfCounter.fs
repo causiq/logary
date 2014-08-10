@@ -8,9 +8,10 @@
 // https://stackoverflow.com/questions/4455187/wrong-calculated-cpu-usage-using-c-sharp-and-wmi
 
 /// A module that helps you interact with Windows Performance Counters. Wraps
-/// null-based APIs and guides the programmer with sane names and documentaation.
+/// null-based APIs and guides the programmer with sane names and documentation.
 module Logary.WinPerfCounter
 
+open System
 open System.Diagnostics
 
 /// A record that encapsulates the known information about a Windows Performance
@@ -33,6 +34,31 @@ type PCC = PerformanceCounterCategory
 /// Create a new performance counter category
 let mkPcc name =
   if PCC.Exists name then PCC name |> Some else None
+
+/// Gets all available performance counter categories
+let getPcc () : PCC list =
+  PCC.GetCategories() |> Array.toList
+
+/// Gets all available instance names for the given list of performance counter
+/// categories
+let getInstances (pcc : PCC) : string list =
+  pcc.GetInstanceNames() |> Array.toList
+
+/// Gets a list of performance counters for the given instance name and category.
+let getCounters (pcc : PCC) (instance : string) : PC list =
+  try
+    pcc.GetCounters instance |> Array.toList
+  with
+  | :? InvalidOperationException as e ->
+    // instance has gone away, e.g.
+    // > System.InvalidOperationException: Instance devenv/61 does not exist in category Thread.
+    []
+
+let getAllCounters () =
+  getPcc ()
+  |> List.map (fun pcc -> pcc, getInstances pcc)
+  |> List.map (fun (pcc, instances) ->
+    pcc, (instances |> List.map (fun inst -> inst, getCounters pcc inst)))
 
 /// Checks whether the instance exists in the category
 let instanceExists category instance =
@@ -79,3 +105,34 @@ let pidToInstance category pid =
 /// Gets the current process' id
 let pid () =
   Process.GetCurrentProcess().Id
+
+/// Sets the Performance Counter to check metrics that are for all instances
+/// running on the server.
+let setAllInstances pc =
+  { pc with instance = Some AllInstances }
+
+/// Sets the Performance Counter to only check metrics that are sliced to be for
+/// the current process.
+let setCurrentProcess pc =
+  { pc with instance = pidToInstance pc.category (pid ()) }
+
+/// Sets a specific instance on the Performance Counter.
+let setInstance (i : string option) pc =
+  { pc with instance = i }
+
+module Processor =
+  
+  /// nice metrics about CPU time
+  let cpuTime =
+    [ "% Processor Time"
+      "% User Time"
+      "% Interrupt Time"
+      "% Processor Time" ]
+    |> List.map (fun counter ->
+      { category = "Processor"
+        counter  = counter
+        instance = Some AllInstances })
+
+module PhysicalDisk =
+
+  let 
