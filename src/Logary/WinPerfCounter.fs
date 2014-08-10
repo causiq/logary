@@ -14,51 +14,59 @@ module Logary.WinPerfCounter
 open System
 open System.Diagnostics
 
-/// A record that encapsulates the known information about a Windows Performance
-/// Counter.
-type PerfCounter =
-  { category : string
-    counter  : string
-    instance : string option }
-
-/// The instance that is the sum of all instances. It's the literal `_Total`.
-[<Literal>]
-let AllInstances = "_Total"
+/// Type alias System.Diagnostics.for PerformanceCounterCategory
+type PCC = PerformanceCounterCategory
 
 /// Type alias for System.Diagnostics.PerformanceCounter
 type PC = PerformanceCounter
 
-/// Type alias System.Diagnostics.for PerformanceCounterCategory
-type PCC = PerformanceCounterCategory
+/// There are performance counters in these configurations, always with a category:
+///
+///   * No instance, just a counter
+///   * _Total (aka AllInstances in Logary)
+///   * Specific instance, which may or may not exist for long
+///
+/// A record that encapsulates the known information about a Windows Performance
+/// Counter.
+///
+/// See http://msdn.microsoft.com/en-us/library/vstudio/fxk122b4%28v=vs.100%29.aspx
+///
+/// Updated every 400 ms by Windows.
+type PerfCounter =
+  { category : string
+    counter  : string
+    instance : Instance }
+and Instance =
+  /// This PerfCounter has a very specific instance assigned
+  | Instance of string
+  /// This PerfCounter does not have any instances
+  | NotApplicable
 
-/// Create a new performance counter category
-let mkPcc name =
+module KnownInstances =
+  /// The instance that is the sum of all instances. It's the literal `_Total`.
+  [<Literal>]
+  let _Total = "_Total"
+
+  /// The instance that runs on operating system level.
+  [<Literal>]
+  let _Global_ = "_Global_"
+
+  [<Literal>]
+  let Default = "Default"
+
+/// Create a new performance counter category. It may not exist on the system
+/// that you are running the code on; hence the option-based return value
+let getPCC name =
   if PCC.Exists name then PCC name |> Some else None
 
 /// Gets all available performance counter categories
-let getPcc () : PCC list =
+let getAllPCC () : PCC list =
   PCC.GetCategories() |> Array.toList
 
 /// Gets all available instance names for the given list of performance counter
 /// categories
-let getInstances (pcc : PCC) : string list =
-  pcc.GetInstanceNames() |> Array.toList
-
-/// Gets a list of performance counters for the given instance name and category.
-let getCounters (pcc : PCC) (instance : string) : PC list =
-  try
-    pcc.GetCounters instance |> Array.toList
-  with
-  | :? InvalidOperationException as e ->
-    // instance has gone away, e.g.
-    // > System.InvalidOperationException: Instance devenv/61 does not exist in category Thread.
-    []
-
-let getAllCounters () =
-  getPcc ()
-  |> List.map (fun pcc -> pcc, getInstances pcc)
-  |> List.map (fun (pcc, instances) ->
-    pcc, (instances |> List.map (fun inst -> inst, getCounters pcc inst)))
+let getInstances (pcc : PCC) : _ list =
+  pcc.GetInstanceNames() |> Array.toList |> List.map Instance
 
 /// Checks whether the instance exists in the category
 let instanceExists category instance =
@@ -68,15 +76,43 @@ let instanceExists category instance =
 let counterExists category counter =
   PCC.CounterExists(counter, category)
 
+/// Gets a list of performance counters for the given instance and category.
+let getCounters (pcc : PCC) (instance : Instance) : _ list =
+  try
+    match instance with
+    | NotApplicable     ->
+      try pcc.GetCounters ()
+      // I haven't found a way to check this properly; not all categories return
+      // errors like this:
+      // System.ArgumentException: Counter is not single instance, an instance name needs to be specified.
+      with :? ArgumentException -> Array.empty
+    | Instance instance -> pcc.GetCounters instance
+    |> Array.map (fun pc -> { category = pcc.CategoryName
+                              counter  = pc.CounterName
+                              instance = instance })
+    |> Array.toList
+  with
+  | :? InvalidOperationException ->
+    // instance has gone away, e.g. if a thread is a perf counter instance but
+    // terminates before calling 'getCounters' on its perf counter instance.
+    // > System.InvalidOperationException: Instance devenv/61 does not exist in category Thread.
+    []
+
+let getAllCounters () =
+  getAllPCC ()
+  |> List.map (fun pcc -> pcc, getInstances pcc)
+  |> List.map (fun (pcc, instances) ->
+    pcc, (instances |> List.map (fun inst -> inst, getCounters pcc inst)))
+
 /// Gets the next value for the performance counter
 let nextValue (pc : PC) =
   pc.NextValue() |> float
 
 /// Create a new performance counter given a WindowsPerfCounter record.
-let mkPc { category = cat; counter = cnt; instance = inst } : PC option =
+let toPC { category = cat; counter = cnt; instance = inst } : PC option =
   if counterExists cat cnt then
     match inst with
-    | Some inst when instanceExists cat inst ->
+    | Instance inst when instanceExists cat inst ->
       new PerformanceCounter(cat, cnt, inst, true) |> Some
     | _ ->
       new PerformanceCounter(cat, cnt, "", true) |> Some
@@ -85,31 +121,36 @@ let mkPc { category = cat; counter = cnt; instance = inst } : PC option =
 
 /// Curried variant of `mkPc` that takes a category, counter and optional
 /// instance and creates an `Option<PerformanceCounter>` from it.
-let mkPc' category counter instance =
-  mkPc { category = category; counter = counter; instance = instance }
+let toPC' category counter instance =
+  toPC { category = category; counter = counter; instance = instance }
 
-/// try to find the instance performance counter for the pid, or return None
-/// if the process e.g. does no longer run and can therefore not be found
+/// try to find the instance performance counter for the pid, or return
+/// NotApplicable if the process e.g. does no longer run and can therefore not
+/// be found
 let pidToInstance category pid =
-  match mkPcc category with
-  | None -> None
+  match getPCC category with
+  | None ->
+    NotApplicable
   | Some cat ->
-    cat.GetInstanceNames()
-    |> Array.map (fun instName ->
-      match mkPc { category = category; counter = "Process ID"; instance = Some instName } with
+    getPCC "Process"
+    |> Option.get
+    |> getInstances
+    |> List.map (fun instance ->
+      match toPC' "Process" "ID Process" instance with
       | Some pcProcId when int (nextValue pcProcId) = pid ->
-        instName
+        pcProcId.InstanceName
       | _ -> "")
-    |> Array.tryFind (fun s -> s.Length > 0)
+    |> List.tryFind (fun s -> s.Length > 0)
+    |> Option.fold (fun _ t -> Instance t) NotApplicable
 
 /// Gets the current process' id
 let pid () =
   Process.GetCurrentProcess().Id
 
-/// Sets the Performance Counter to check metrics that are for all instances
-/// running on the server.
-let setAllInstances pc =
-  { pc with instance = Some AllInstances }
+/// Gets the performance counter instance for the given category for the current
+/// process.
+let pidInstance category =
+  pidToInstance category (pid ())
 
 /// Sets the Performance Counter to only check metrics that are sliced to be for
 /// the current process.
@@ -117,22 +158,137 @@ let setCurrentProcess pc =
   { pc with instance = pidToInstance pc.category (pid ()) }
 
 /// Sets a specific instance on the Performance Counter.
-let setInstance (i : string option) pc =
+let setInstance (i : Instance) pc =
   { pc with instance = i }
 
-module Processor =
-  
-  /// nice metrics about CPU time
-  let cpuTime =
-    [ "% Processor Time"
-      "% User Time"
-      "% Interrupt Time"
-      "% Processor Time" ]
-    |> List.map (fun counter ->
-      { category = "Processor"
-        counter  = counter
-        instance = Some AllInstances })
+module private Gen =
+  open System.Text.RegularExpressions
 
-module PhysicalDisk =
+  let munge name =
+    Regex.Replace(name, "[\./]", "_")
 
-  let 
+  /// SynchronizationNuma: A nice help text
+  ///
+  /// This performance counter does not have non-instance based counters
+  module ``SynchronizationNuma Example`` =
+
+    [<Literal>]
+    let Category = "SynchronizationNuma"
+
+    let PCC = getPCC Category
+
+    let instances () =
+      PCC |> Option.fold (fun s pcc -> getInstances pcc) []
+
+    let ``Exec. Resource no-Waits AcqShrdWaitForExcl/sec`` instance =
+      toPC' Category "Exec. Resource no-Waits AcqShrdWaitForExcl/sec" instance
+
+    let ``Exec. Resource Boost Excl. Owner/sec`` instance =
+      toPC' Category "Exec. Resource Boost Excl. Owner/sec" instance
+
+    // etc
+
+    let allCounters =
+      [ ``Exec. Resource no-Waits AcqShrdWaitForExcl/sec``
+        ``Exec. Resource Boost Excl. Owner/sec``
+        // etc
+      ]
+
+    let countersFor instance =
+      allCounters
+      |> List.map (fun f -> f instance)
+      |> List.filter Option.isSome
+      |> List.map Option.get
+
+  /// System: a nice help text here too
+  ///
+  /// This performance counter does not have instance based counters
+  module ``System Example`` =
+
+    [<Literal>]
+    let Category = "System"
+
+    let PCC = getPCC Category
+
+    let ``File Read Operations/sec`` =
+      { category = Category; counter = "File Read Operations/sec"; instance = NotApplicable }
+
+    // etc
+
+    let allCounters =
+      [ ``File Read Operations/sec`` ]
+
+  let gen () =
+
+    let genComment (pcc : PCC) { instance = i } =
+      sprintf
+         "/// %s: %s
+///
+/// %s"
+        pcc.CategoryName
+        pcc.CategoryHelp
+        (match i with
+        | NotApplicable -> "This performance counter does not have instance based counters"
+        | _             -> "This performance counter does not have non-instance based counters")
+
+    let genModuleHeader (pcc : PCC) =
+      sprintf """module ``%s`` =
+
+  [<Literal>]
+  let Category = "%s"
+
+  let PCC = getPCC Category"""
+        pcc.CategoryName
+        pcc.CategoryName
+
+    let genCounter pc =
+      let osPC = toPC pc |> Option.get
+      match pc with
+      | { category = cat; counter = cnt; instance = NotApplicable } ->
+        sprintf """  /// %s: %s
+  let ``%s`` =
+    %s"""
+          osPC.CounterName osPC.CounterHelp osPC.CounterName
+          (sprintf """{ category = "%s"; counter = "%s"; instance = NotApplicable }"""
+             cat cnt)
+      |  { category = cat; counter = cnt } ->
+        sprintf """  /// %s: %s
+  let ``%s`` instance =
+    %s"""
+          osPC.CounterName osPC.CounterHelp osPC.CounterName
+          (sprintf """{ category = "%s"; counter = "%s"; instance = instance }"""
+             cat cnt)
+
+    let genCounters (counters : PerfCounter list) =
+      counters
+      |> List.map genCounter
+      |> fun ctrs -> String.Join("\n", ctrs)
+
+    let genListing (counters : PerfCounter list) =
+      match counters with
+      | [] -> """  let allCounters = []"""
+      | hc :: rest ->
+        sprintf """
+  let allCounters =
+    [ ``%s``
+%s
+    ]"""
+          hc.counter
+          (rest
+           |> List.map (fun { counter = c } -> "``" + c + "``")
+           |> List.map (fun s -> "      " + s)
+           |> fun ss -> String.Join("\n", ss))
+
+    getAllPCC ()
+    |> List.map (fun pcc -> pcc, getInstances pcc)
+    |> List.sortBy (fun (pcc, _) -> pcc.CategoryName)
+    |> List.map (function
+      | pcc, []        -> pcc, getCounters pcc NotApplicable
+      | pcc, inst :: _ -> pcc, getCounters pcc inst)
+    |> List.map (fun (pcc, (c :: rest as counters)) ->
+      genComment pcc c
+      + (genModuleHeader pcc)
+      + (genCounters counters)
+      + (genListing counters))
+    |> fun modules ->
+      String.Join("\n", modules)

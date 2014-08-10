@@ -101,7 +101,7 @@ module internal Play =
     |> List.map (fun counter ->
       let wpc = { category = "Processor"
                   counter  = counter
-                  instance = Some AllInstances }
+                  instance = NotApplicable }
       toHealthCheck wpc (Categorisation.percentBucket' 100.))
 
   // TODO: what about CPU when percent >= .99 for over x seconds
@@ -121,7 +121,7 @@ module internal Play =
         "# Gen 0 Collections", id, ""
         "# Gen 1 Collections", id, ""
         "# Gen 2 Collections", id, "" ]
-      |> List.map (fun (counter, fval, valUnit) -> mkPc' cat counter inst, fval, valUnit)
+      |> List.map (fun (counter, fval, valUnit) -> toPC' cat counter inst, fval, valUnit)
       |> List.filter (fun (c, _, _) -> Option.isSome c)
       |> List.map (fun (c, fval, valUnit) -> c.Value, fval, valUnit)
 

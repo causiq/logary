@@ -150,7 +150,7 @@ module HealthCheck =
     /// in a Measure before returning. Suggested is to use `HealthChecks.setDesc`
     /// to give the measure a nice description with detailed data.
     let toHealthCheckNamed name wpc measureTransform =
-      match mkPc wpc with
+      match toPC wpc with
       | Some counter ->
         { new HealthCheck with
             member x.Name = DP.joined name
@@ -170,7 +170,7 @@ module HealthCheck =
     let toHealthCheck wpc =
       let name =
         [ wpc.category; wpc.counter ]
-        @ match wpc.instance with | None -> [] | Some i -> [i]
+        @ match wpc.instance with | NotApplicable -> [] | Instance i -> [i]
       toHealthCheckNamed (DP name) wpc
 
     /// Takes a list of IDisposable things (performance counters, perhaps?) and

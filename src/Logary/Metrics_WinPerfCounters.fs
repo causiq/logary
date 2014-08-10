@@ -21,7 +21,7 @@ type WinPerfCountersMsg =
 
 module Common =
 
-  let cpuTimeConf = { initCounters = Processor.cpuTime }
+  let cpuTimeConf = { initCounters = [] }// Processor.cpuTimeConf }
 
 module internal Impl =
 
@@ -33,16 +33,16 @@ module internal Impl =
     let toDP (c : PerfCounter) =
       let fstr instance =
         match instance with
-        | None -> [ c.category; c.counter ]
-        | Some inst -> [ c.category; c.counter; inst ]
+        | NotApplicable -> [ c.category; c.counter ]
+        | Instance inst -> [ c.category; c.counter; inst ]
       fstr c.instance |> DP
 
     let toCounter (DP dp) =
       match dp with
       | [ category; counter ] ->
-        { category = category; counter = counter; instance = None }
+        { category = category; counter = counter; instance = NotApplicable }
       | [ category; counter; instance ] ->
-        { category = category; counter = counter; instance = Some instance }
+        { category = category; counter = counter; instance = Instance instance }
       | _ -> failwithf "unknown performance counter name: %A" dp
 
   let tryGetPc (lastValues : Map<DP, PC * Measure>) dp =
@@ -50,7 +50,7 @@ module internal Impl =
     |> Map.tryFind dp
     |> Option.map fst
     |> function
-    | None -> mkPc (Naming.toCounter dp)
+    | None -> toPC (Naming.toCounter dp)
     | x -> x
 
   let pcNextValue dp (pc : PC) =
@@ -69,7 +69,7 @@ module internal Impl =
   let loop (conf : WinPerfCounterConf) (ri : RuntimeInfo) (inbox : IActor<_>) =
     let rec init (pcs : PerfCounter list) =
       loop { lastValues = conf.initCounters
-                          |> List.map WinPerfCounter.mkPc
+                          |> List.map WinPerfCounter.toPC
                           |> List.zip (conf.initCounters |> List.map Naming.toDP)
                           |> List.filter (Option.isSome << snd)
                           |> List.map (fun (dp, pc) -> dp, (pc.Value, Measure.empty))
