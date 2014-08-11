@@ -22,6 +22,13 @@ type WinPerfCountersMsg =
 module Common =
   open WinPerfCounters
 
+  let system =
+    [ System.``Context Switches/sec``
+      System.``Processor Queue Length`` ]
+
+  let dotnet instance =
+    [ ``_NET CLR Exceptions``.``# of Exceps Thrown / sec`` instance ]
+
   let cpuTime =
     [ Processor.``% Processor Time``
       Processor.``% User Time``
@@ -30,6 +37,38 @@ module Common =
     |> List.map (fun f -> f (Instance WinPerfCounter.KnownInstances._Total))
 
   let cpuTimeConf = { initCounters = cpuTime }
+
+  /// see aspNetRecommended
+  let aspNetGlobal =
+    [ ASP_NET.``Application Restarts``
+      ASP_NET.``Requests Queued``
+      ASP_NET.``Worker Process Restarts`` ]
+
+  /// see aspNetRecommended
+  let aspNet instance =
+    [ ``ASP_NET Applications``.``Errors Total`` instance
+      ``ASP_NET Applications``.``Requests/Sec`` instance ]
+
+  /// Useful ASP.Net counters, from
+  /// http://technet.microsoft.com/en-us/library/cc778343%28v=ws.10%29.aspx
+  ///
+  /// You can either pass the app domain instance process name, or you could use
+  /// WinPerfCounter.pidInstance () to get your own instance name. If you have
+  /// multiple processes with the same name executing, you will need to
+  /// discriminate by name.
+  ///
+  /// TODO: test this further; in two ways; as a ASP.Net metric, and as a server
+  /// health check that runs globally and uses the KnownInstances._Total
+  /// instance.
+  let aspNetRecommended instance =
+    aspNetGlobal
+    @ aspNet instance
+    @ cpuTime
+    @ system
+    @ dotnet instance
+
+  let aspNetRecommendedConf instance =
+    { initCounters = aspNetRecommended instance }
 
 module internal Impl =
 
