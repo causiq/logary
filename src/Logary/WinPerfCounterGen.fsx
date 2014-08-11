@@ -37,11 +37,11 @@ let gen () =
       sprintf """  /// %s: %s
   let ``%s`` =
     %s"""
-        osPC.CounterName osPC.CounterHelp osPC.CounterName
+        cnt (osPC.CounterHelp.Trim()) cnt
         (sprintf """{ category = "%s"; counter = "%s"; instance = NotApplicable }"""
             cat cnt)
-    | mOsPc , { category = cat; counter = cnt } ->
-      let help = match mOsPc with | None -> "" | Some osPC -> osPC.CounterHelp
+    | mOsPc, { category = cat; counter = cnt } ->
+      let help = match mOsPc with | None -> "-" | Some osPC -> osPC.CounterHelp.Trim()
       sprintf """  /// %s: %s
   let ``%s`` instance =
     %s"""
@@ -86,6 +86,7 @@ open Logary.WinPerfCounter"""
   |> List.map (function
     | pcc, []        -> pcc, getCounters pcc NotApplicable
     | pcc, inst :: _ -> pcc, getCounters pcc inst)
+  |> List.map (fun (pcc, counters) -> pcc, counters |> List.sortBy (fun x -> x.counter))
   |> List.map (fun (pcc, (c :: _ as counters)) ->
     genComment pcc c + "\n"
     + (genModuleHeader pcc) + "\n"
@@ -151,5 +152,5 @@ module ``System Example`` =
   let allCounters =
     [ ``File Read Operations/sec`` ]
 
-#load "WinPerfCounters.fs"
-Logary.WinPerfCounters.``WorkflowServiceHost 4_0_0_0``.``Workflows Created`` NotApplicable
+//#load "WinPerfCounters.fs"
+//Logary.WinPerfCounters.``WorkflowServiceHost 4_0_0_0``.``Workflows Created`` NotApplicable
