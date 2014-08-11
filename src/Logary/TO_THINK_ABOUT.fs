@@ -18,20 +18,6 @@ type Meter =
   inherit Named
   abstract Mark : uint32 -> unit
 
-/// A histogram measures the statistical distribution of values in a stream of data.
-/// In addition to minimum, maximum, mean, etc., it also measures median, 75th,
-/// 90th, 95th, 98th, 99th, and 99.9th percentiles.
-type Histogram =
-  abstract Update : float -> unit
-
-/// A timer measures both the rate that a particular piece of code is called
-/// and the distribution of its duration.
-type Timer =
-  inherit Named
-  abstract Start : unit -> TimerContext
-and TimerContext =
-  abstract Stop : unit -> unit
-
 module Time =
   open System.Diagnostics
 
@@ -110,7 +96,7 @@ module internal Play =
 
   let clr_proc =
     let cat = ".NET CLR Memory"
-    let inst = pidToInstance cat (pid ())
+    let inst = pidInstance ()
     let wpc = { category = cat; counter  = "% Time in GC"; instance = inst }
     let MiB = 1024.f * 1024.f
     let toMiB = (fun v -> v / MiB)
