@@ -17,6 +17,9 @@ open System.Diagnostics
 /// Type alias System.Diagnostics.for PerformanceCounterCategory
 type PCC = PerformanceCounterCategory
 
+/// Type alias for System.Diagnostics.PerformanceCounterCategoryType
+type PCCT = PerformanceCounterCategoryType
+
 /// Type alias for System.Diagnostics.PerformanceCounter
 type PC = PerformanceCounter
 
@@ -115,7 +118,18 @@ let toPC { category = cat; counter = cnt; instance = inst } : PC option =
     | Instance inst when instanceExists cat inst ->
       new PerformanceCounter(cat, cnt, inst, true) |> Some
     | _ ->
-      new PerformanceCounter(cat, cnt, "", true) |> Some
+      let pcc = getPCC cat |> Option.get
+      match pcc.CategoryType with
+      | PCCT.MultiInstance ->
+        // this perf counter category is multi-instance, and yet no instance has
+        // been given, which most likely means the call-site of toPC didn't find
+        // any instances in thie PCC. It's possible that in the future this PCC
+        // contains an instance, but until then, we can't create a perf counter
+        // from it.
+        None
+      | PCCT.Unknown | PCCT.SingleInstance ->
+        new PerformanceCounter(cat, cnt, "", true) |> Some
+      | typ -> failwithf "unknown type %A" typ
   else
     None
 
@@ -160,135 +174,3 @@ let setCurrentProcess pc =
 /// Sets a specific instance on the Performance Counter.
 let setInstance (i : Instance) pc =
   { pc with instance = i }
-
-module private Gen =
-  open System.Text.RegularExpressions
-
-  let munge name =
-    Regex.Replace(name, "[\./]", "_")
-
-  /// SynchronizationNuma: A nice help text
-  ///
-  /// This performance counter does not have non-instance based counters
-  module ``SynchronizationNuma Example`` =
-
-    [<Literal>]
-    let Category = "SynchronizationNuma"
-
-    let PCC = getPCC Category
-
-    let instances () =
-      PCC |> Option.fold (fun s pcc -> getInstances pcc) []
-
-    let ``Exec. Resource no-Waits AcqShrdWaitForExcl/sec`` instance =
-      toPC' Category "Exec. Resource no-Waits AcqShrdWaitForExcl/sec" instance
-
-    let ``Exec. Resource Boost Excl. Owner/sec`` instance =
-      toPC' Category "Exec. Resource Boost Excl. Owner/sec" instance
-
-    // etc
-
-    let allCounters =
-      [ ``Exec. Resource no-Waits AcqShrdWaitForExcl/sec``
-        ``Exec. Resource Boost Excl. Owner/sec``
-        // etc
-      ]
-
-    let countersFor instance =
-      allCounters
-      |> List.map (fun f -> f instance)
-      |> List.filter Option.isSome
-      |> List.map Option.get
-
-  /// System: a nice help text here too
-  ///
-  /// This performance counter does not have instance based counters
-  module ``System Example`` =
-
-    [<Literal>]
-    let Category = "System"
-
-    let PCC = getPCC Category
-
-    let ``File Read Operations/sec`` =
-      { category = Category; counter = "File Read Operations/sec"; instance = NotApplicable }
-
-    // etc
-
-    let allCounters =
-      [ ``File Read Operations/sec`` ]
-
-  let gen () =
-
-    let genComment (pcc : PCC) { instance = i } =
-      sprintf
-         "/// %s: %s
-///
-/// %s"
-        pcc.CategoryName
-        pcc.CategoryHelp
-        (match i with
-        | NotApplicable -> "This performance counter does not have instance based counters"
-        | _             -> "This performance counter does not have non-instance based counters")
-
-    let genModuleHeader (pcc : PCC) =
-      sprintf """module ``%s`` =
-
-  [<Literal>]
-  let Category = "%s"
-
-  let PCC = getPCC Category"""
-        pcc.CategoryName
-        pcc.CategoryName
-
-    let genCounter pc =
-      let osPC = toPC pc |> Option.get
-      match pc with
-      | { category = cat; counter = cnt; instance = NotApplicable } ->
-        sprintf """  /// %s: %s
-  let ``%s`` =
-    %s"""
-          osPC.CounterName osPC.CounterHelp osPC.CounterName
-          (sprintf """{ category = "%s"; counter = "%s"; instance = NotApplicable }"""
-             cat cnt)
-      |  { category = cat; counter = cnt } ->
-        sprintf """  /// %s: %s
-  let ``%s`` instance =
-    %s"""
-          osPC.CounterName osPC.CounterHelp osPC.CounterName
-          (sprintf """{ category = "%s"; counter = "%s"; instance = instance }"""
-             cat cnt)
-
-    let genCounters (counters : PerfCounter list) =
-      counters
-      |> List.map genCounter
-      |> fun ctrs -> String.Join("\n", ctrs)
-
-    let genListing (counters : PerfCounter list) =
-      match counters with
-      | [] -> """  let allCounters = []"""
-      | hc :: rest ->
-        sprintf """
-  let allCounters =
-    [ ``%s``
-%s
-    ]"""
-          hc.counter
-          (rest
-           |> List.map (fun { counter = c } -> "``" + c + "``")
-           |> List.map (fun s -> "      " + s)
-           |> fun ss -> String.Join("\n", ss))
-
-    getAllPCC ()
-    |> List.map (fun pcc -> pcc, getInstances pcc)
-    |> List.sortBy (fun (pcc, _) -> pcc.CategoryName)
-    |> List.map (function
-      | pcc, []        -> pcc, getCounters pcc NotApplicable
-      | pcc, inst :: _ -> pcc, getCounters pcc inst)
-    |> List.map (fun (pcc, (c :: rest as counters)) ->
-      genComment pcc c
-      + (genModuleHeader pcc)
-      + (genCounters counters)
-      + (genListing counters))
-    |> fun modules ->
-      String.Join("\n", modules)

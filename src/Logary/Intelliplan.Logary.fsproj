@@ -31,8 +31,10 @@
     <DocumentationFile>bin\Release\Intelliplan.Logary.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="WinPerfCounters.fs" />
     <None Include="README.md" />
     <Compile Include="WinPerfCounter.fs" />
+    <None Include="WinPerfCounterGen.fsx" />
     <Compile Include="Lenses.fs" />
     <Compile Include="Named.fs" />
     <Compile Include="LogLevel.fs" />
