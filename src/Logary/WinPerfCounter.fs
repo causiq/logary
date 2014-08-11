@@ -141,21 +141,17 @@ let toPC' category counter instance =
 /// try to find the instance performance counter for the pid, or return
 /// NotApplicable if the process e.g. does no longer run and can therefore not
 /// be found
-let pidToInstance category pid =
-  match getPCC category with
-  | None ->
-    NotApplicable
-  | Some cat ->
-    getPCC "Process"
-    |> Option.get
-    |> getInstances
-    |> List.map (fun instance ->
-      match toPC' "Process" "ID Process" instance with
-      | Some pcProcId when int (nextValue pcProcId) = pid ->
-        pcProcId.InstanceName
-      | _ -> "")
-    |> List.tryFind (fun s -> s.Length > 0)
-    |> Option.fold (fun _ t -> Instance t) NotApplicable
+let pidToInstance pid =
+  getPCC "Process"
+  |> Option.get
+  |> getInstances
+  |> List.map (fun instance ->
+    match toPC' "Process" "ID Process" instance with
+    | Some pcProcId when int (nextValue pcProcId) = pid ->
+      pcProcId.InstanceName
+    | _ -> "")
+  |> List.tryFind (fun s -> s.Length > 0)
+  |> Option.fold (fun _ t -> Instance t) NotApplicable
 
 /// Gets the current process' id
 let pid () =
@@ -163,13 +159,13 @@ let pid () =
 
 /// Gets the performance counter instance for the given category for the current
 /// process.
-let pidInstance category =
-  pidToInstance category (pid ())
+let pidInstance () =
+  pidToInstance (pid ())
 
 /// Sets the Performance Counter to only check metrics that are sliced to be for
 /// the current process.
 let setCurrentProcess pc =
-  { pc with instance = pidToInstance pc.category (pid ()) }
+  { pc with instance = pidToInstance (pid ()) }
 
 /// Sets a specific instance on the Performance Counter.
 let setInstance (i : Instance) pc =
