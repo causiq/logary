@@ -20,8 +20,16 @@ type WinPerfCountersMsg =
   | Unregister of PerfCounter
 
 module Common =
+  open WinPerfCounters
 
-  let cpuTimeConf = { initCounters = [] }// Processor.cpuTimeConf }
+  let cpuTime =
+    [ Processor.``% Processor Time``
+      Processor.``% User Time``
+      Processor.``Interrupts/sec``
+      Processor.``% Idle Time`` ]
+    |> List.map (fun f -> f (Instance WinPerfCounter.KnownInstances._Total))
+
+  let cpuTimeConf = { initCounters = cpuTime }
 
 module internal Impl =
 
@@ -68,7 +76,7 @@ module internal Impl =
   // perf counters...
   let loop (conf : WinPerfCounterConf) (ri : RuntimeInfo) (inbox : IActor<_>) =
     let rec init (pcs : PerfCounter list) =
-      loop { lastValues = conf.initCounters
+      loop { lastValues = pcs
                           |> List.map WinPerfCounter.toPC
                           |> List.zip (conf.initCounters |> List.map Naming.toDP)
                           |> List.filter (Option.isSome << snd)
