@@ -493,7 +493,8 @@ Make sure we can report same data:
             }
         }
     }
-}```
+}
+```
 
 # More on Logary
 
