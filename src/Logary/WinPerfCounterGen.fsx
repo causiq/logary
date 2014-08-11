@@ -6,7 +6,7 @@ open System.Text.RegularExpressions
 open Logary.WinPerfCounter
 
 let munge name =
-  Regex.Replace(name, "[\./]", "_")
+  Regex.Replace(name, "[\./,]", "_")
 
 let gen () =
 
@@ -150,3 +150,6 @@ module ``System Example`` =
 
   let allCounters =
     [ ``File Read Operations/sec`` ]
+
+#load "WinPerfCounters.fs"
+Logary.WinPerfCounters.``WorkflowServiceHost 4_0_0_0``.``Workflows Created`` NotApplicable

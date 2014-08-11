@@ -2651,7 +2651,7 @@ module ``FileSystem Disk Activity`` =
 /// Generic IKEv1, AuthIP, and IKEv2: Generic IKEv1, AuthIP, and IKEv2 is the set of Internet Protocol security (IPsec) Internet Key Exchange Version 1 (IKEv1), Authenticated IP (AuthIP), and Internet Key Exchange Version 2 (IKEv2) counters that are generic and do not apply to a specific Internet Protocol version.
 ///
 /// This performance counter does not have instance based counters
-module ``Generic IKEv1, AuthIP, and IKEv2`` =
+module ``Generic IKEv1_ AuthIP_ and IKEv2`` =
 
   [<Literal>]
   let Category = "Generic IKEv1, AuthIP, and IKEv2"
