@@ -4,6 +4,8 @@ require 'albacore'
 require 'albacore/tasks/versionizer'
 require 'albacore/ext/teamcity'
 
+Configuration = ENV['Configuration'] || 'Release'
+
 Albacore::Tasks::Versionizer.new :versioning
 
 desc 'Perform fast build (warn: doesn\'t d/l deps)'
@@ -33,7 +35,7 @@ end
 
 build :clean_sln do |b|
   b.target = 'Clean'
-  b.prop 'Configuration', 'Release'
+  b.prop 'Configuration', Configuration
   b.sln = 'src/Logary.sln'
 end
 
@@ -44,7 +46,7 @@ end
 
 desc 'perform full build'
 build :build => [:versioning, :assembly_info, :restore] do |b|
-  b.prop 'Configuration', 'Release'
+  b.prop 'Configuration', Configuration
   b.sln = 'src/Logary.sln'
 end
 
@@ -65,6 +67,14 @@ end
 
 desc 'package nugets - finds all projects and package them'
 task :nugets => ['build/pkg', :versioning, :build, :nugets_quick]
+
+task :tests do
+  Dir.glob("src/*.Tests/bin/#{Configuration}/*.Tests.exe").
+    reject { |exe| exe.include? 'SQL' or exe.include? '.DB' }.
+    each do |exe|
+    system exe, clr_command: true
+  end
+end
 
 task :default => :nugets
 
