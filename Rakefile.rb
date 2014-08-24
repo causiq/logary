@@ -50,8 +50,7 @@ end
 
 directory 'build/pkg'
 
-desc 'package nugets - finds all projects and package them'
-nugets_pack :create_nugets => ['build/pkg', :versioning, :build] do |p|
+nugets_pack :nugets_quick => :versioning do |p|
   p.files   = FileList['src/**/*.{csproj,fsproj,nuspec}'].
     exclude('src/Fsharp.Actor/*.nuspec').
     exclude(/Fracture|Example|Tests|Spec|Health|sample|packages/)
@@ -64,7 +63,10 @@ nugets_pack :create_nugets => ['build/pkg', :versioning, :build] do |p|
   end
 end
 
-task :default => :create_nugets
+desc 'package nugets - finds all projects and package them'
+task :nugets => ['build/pkg', :versioning, :build, :nugets_quick]
+
+task :default => :nugets
 
 namespace :docs do
   task :pre_reqs do
