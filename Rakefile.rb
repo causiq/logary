@@ -68,13 +68,16 @@ end
 desc 'package nugets - finds all projects and package them'
 task :nugets => ['build/pkg', :versioning, :build, :nugets_quick]
 
-task :tests => :build do
+task :tests_quick do
   Dir.glob("src/*.Tests/bin/#{Configuration}/*.Tests.exe").
     reject { |exe| exe.include? 'SQL' or exe.include? '.DB' }.
     each do |exe|
     system exe, clr_command: true
   end
 end
+
+desc 'run unit tests'
+task :tests => [:build, :tests_quick]
 
 task :default => [:tests, :nugets]
 
