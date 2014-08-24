@@ -72,7 +72,7 @@
     <Compile Include="Registry.fs" />
     <Compile Include="ExternalAssumptions.fs" />
     <None Include="packages.config" />
-    <None Include="App.config" />
+    <None Include="app.config" />
     <Compile Include="AssemblyVersionInfo.fs" />
     <None Include="Program.fsx" />
     <Compile Include="Program.fs" />
