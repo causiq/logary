@@ -11,8 +11,6 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.Riemann"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Intelliplan.Logary.Specs", "Logary.Specs\Intelliplan.Logary.Specs.csproj", "{A85B6894-33A4-4645-848D-D4D4D413A0C5}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FSharp.Actor-logary", "Fsharp.Actor\src\FSharp.Actor\FSharp.Actor-logary.fsproj", "{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}"
-EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.Suave", "Logary.Suave\Intelliplan.Logary.Suave.fsproj", "{5255B5AD-9DA9-495C-8B6D-740BB6DC164B}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.Suave.Tests", "Logary.Suave.Tests\Intelliplan.Logary.Suave.Tests.fsproj", "{7D72B30B-F720-4BE9-A97A-13E3CF5C11A2}"
@@ -66,6 +64,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.Topshelf
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.SQLServerHealth.Tests", "Logary.SQLServerHealth.Tests\Intelliplan.Logary.SQLServerHealth.Tests.fsproj", "{8E4E562E-ACDE-4325-8B12-7C0B240E9176}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FSharp.Actor-logary", "FSharp.Actor-logary\src\FSharp.Actor\FSharp.Actor-logary.fsproj", "{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -92,10 +92,6 @@ Global
 		{A85B6894-33A4-4645-848D-D4D4D413A0C5}.Debug|Any CPU.Build.0 = Release|Any CPU
 		{A85B6894-33A4-4645-848D-D4D4D413A0C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A85B6894-33A4-4645-848D-D4D4D413A0C5}.Release|Any CPU.Build.0 = Release|Any CPU
-		{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}.Release|Any CPU.Build.0 = Release|Any CPU
 		{5255B5AD-9DA9-495C-8B6D-740BB6DC164B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{5255B5AD-9DA9-495C-8B6D-740BB6DC164B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5255B5AD-9DA9-495C-8B6D-740BB6DC164B}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -168,6 +164,10 @@ Global
 		{8E4E562E-ACDE-4325-8B12-7C0B240E9176}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8E4E562E-ACDE-4325-8B12-7C0B240E9176}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8E4E562E-ACDE-4325-8B12-7C0B240E9176}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
