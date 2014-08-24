@@ -68,7 +68,7 @@ end
 desc 'package nugets - finds all projects and package them'
 task :nugets => ['build/pkg', :versioning, :build, :nugets_quick]
 
-task :tests do
+task :tests => :build do
   Dir.glob("src/*.Tests/bin/#{Configuration}/*.Tests.exe").
     reject { |exe| exe.include? 'SQL' or exe.include? '.DB' }.
     each do |exe|
@@ -76,7 +76,7 @@ task :tests do
   end
 end
 
-task :default => :nugets
+task :default => [:tests, :nugets]
 
 namespace :docs do
   task :pre_reqs do
