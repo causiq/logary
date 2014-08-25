@@ -68,16 +68,21 @@ end
 desc 'package nugets - finds all projects and package them'
 task :nugets => ['build/pkg', :versioning, :build, :nugets_quick]
 
-task :tests_quick do
+task :tests_unit do
   Dir.glob("src/*.Tests/bin/#{Configuration}/*.Tests.exe").
-    reject { |exe| exe.include? 'SQL' or exe.include? '.DB' }.
+    reject { |exe| exe.include? 'SQL' or exe.include? '.DB' or exe.include? 'Logentries' }.
     each do |exe|
     system exe, clr_command: true
   end
 end
 
+desc 'run integration tests'
+task :tests_integration do
+  system "src/Logary.Logentries.Tests/bin/#{Configuration}/Logary.Logentries.Tests.exe", clr_command: true
+end
+
 desc 'run unit tests'
-task :tests => [:build, :tests_quick]
+task :tests => [:build, :tests_unit]
 
 task :default => [:tests, :nugets]
 
