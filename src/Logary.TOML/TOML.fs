@@ -1,4 +1,5 @@
 ﻿module Logary.TOML
+// http://fssnip.net/jd
 // based on https://github.com/mackwic/To.ml and https://github.com/seliopou/toml
 open System
 open System.Globalization

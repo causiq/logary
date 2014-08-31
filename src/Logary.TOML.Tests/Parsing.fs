@@ -52,6 +52,42 @@ sku = 284758393
 color = "gray"
 """
 
+let hardExample = """
+# Test file for TOML
+# Only this one tries to emulate a TOML file written by a user of the kind of parser writers probably hate
+# This part you'll really hate
+
+[the]
+test_string = "You'll hate me after this - #"          # " Annoying, isn't it?
+
+    [the.hard]
+    test_array = [ "] ", " # "]      # ] There you go, parse this!
+    test_array2 = [ "Test #11 ]proved that", "Experiment #9 was a success" ]
+    # You didn't think it'd as easy as chucking out the last #, did you?
+    another_test_string = " Same thing, but with a string #"
+    harder_test_string = " And when \"'s are in the string, along with # \""   # "and comments are there too"
+    # Things will get harder
+    
+        [the.hard.bit#]
+        what? = "You don't think some user won't do that?"
+        multi_line_array = [
+            "]",
+            # ] Oh yes I did
+            ]
+
+# Each of the following keygroups/key value pairs should produce an error. Uncomment to them to test
+
+#[error]   if you didn't catch this, your parser is broken
+#string = "Anything other than tabs, spaces and newline after a keygroup or key value pair has ended should produce an error unless it is a comment"   like this
+#array = [
+#         "This might most likely happen in multiline arrays",
+#         Like here,
+#         "or here,
+#         and here"
+#         ]     End of array comment, forgot the #
+#number = 3.14  pi <--again forgot the #         
+"""
+
 open System
 
 open Fuchu
@@ -100,12 +136,59 @@ let basicExample =
     yield case "hosts" "clients.hosts" [ "alpha"; "omega" ]
     ]
 
+
+open System.Collections.Generic
+
 [<Tests>]
 let advancedExamples =
   testList "advanced" [
     testCase "can parse array" <| fun _ ->
       TOML.parse tableArr |> ignore
+
     testCase "products" <| fun _ ->
       let dic = TOML.parse tableArr
-      Assert.NotNull("should have products array", dic.["products[0]"])
+      Assert.NotNull("should have products list", dic.["products"])
+      let exp =
+        Dictionary([ "name", box "Hammer"
+                     "sku",  box 738594937L ] |> Map.ofList) :> IDictionary<string, obj>
+        :: upcast Dictionary()
+        :: upcast Dictionary([ "name",  box "Nail"
+                               "sku",   box 284758393L
+                               "color", box "gray"] |> Map.ofList)
+        :: []
+      Assert.Equal("should have products list", box exp, dic.["products"])
+    ]
+
+// specific to parser:
+let dic' = TOML.parse hardExample
+let value' key = dic'.[key] :?> 'a // if you type parser, change this f-n
+
+// helper:
+let case' msg key expected =
+  testCase msg (fun () ->
+    try
+      let value'' = value' key
+      Assert.Equal(key + ": " + msg, expected, value'')
+    with
+    | :? InvalidCastException ->
+      Tests.failtestf "cast to %O failed, type: %O"
+        (expected.GetType())
+        ((value' key : obj).GetType())
+    | :? KeyNotFoundException ->
+      let data = dic' |> Seq.fold (fun s t -> s + sprintf "%s: %A\n" t.Key t.Value) ""
+      Tests.failtestf "couldn't find key %s\ndata:\n%s" key data)
+
+[<Tests>]
+let hardTests =
+  testList "hard example" [
+    testCase "can parse" <| fun _ ->
+      TOML.parse hardExample |> ignore
+
+    case' "the.test_string" "the.test_string" "You'll hate me after this - #"
+    case' "parsing array with symbols" "the.hard.test_array" [ "] "; " # "]
+    case' "parsing array with symbols 2" "the.hard.test_array2" [ "Test #11 ]proved that"; "Experiment #9 was a success"]
+    case' "parsing string with comment char" "the.hard.another_test_string" "Same thing, but with a string #"
+    case' "parsing string with escapes" "the.hard.harder_test_string" " And when \"'s are in the string, along with # \""
+    case' "parsing funky key" "the.hard.bit#.what?" "You don't think some user won't do that?"
+    case' "parsing multi line array" "the.hard.bit#.multi_line_array" ["]"]
     ]
