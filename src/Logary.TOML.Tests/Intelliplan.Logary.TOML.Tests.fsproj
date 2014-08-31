@@ -39,7 +39,7 @@
     <Compile Include="ParseLogaryConfig.fs" />
     <Compile Include="Parsing.fs" />
     <Compile Include="Program.fs" />
-    <None Include="App.config" />
+    <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
