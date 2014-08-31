@@ -24,71 +24,59 @@ open Logary.Target
 open Logary.Internals
 open Logary.Internals.Tcp
 
-/// Make a stream from a TcpClient and an optional certificate validation
-/// function
-let private mkStream (client : TcpClient) = function
-  | Some f ->
-    let cb = new RemoteCertificateValidationCallback(fun _ -> f)
-    new SslStream(client.GetStream(),
-                  leaveInnerStreamOpen = false,
-                  userCertificateValidationCallback = cb)
-    :> Stream
-  | None ->
-    client.GetStream() :> Stream
+module Helpers =
+  let mkClient (ep : IPEndPoint) =
+    let c = new TcpClient(ep.Address.ToString(), ep.Port)
+    c.NoDelay <- true
+    c
 
-let private mkClient (ep : IPEndPoint) =
-  let c = new TcpClient(ep.Address.ToString(), ep.Port)
-  c.NoDelay <- true
-  c
+  // Note: is it possible to do 'per millisecond'?
+  // https://github.com/chillitom/Riemann.Net/blob/master/Riemann.Net/Event.cs#L25
+  let asEpoch (i : Instant) = i.Ticks / NodaConstants.TicksPerSecond
 
-// Note: is it possible to do 'per millisecond'?
-// https://github.com/chillitom/Riemann.Net/blob/master/Riemann.Net/Event.cs#L25
-let private asEpoch (i : Instant) = i.Ticks / NodaConstants.TicksPerSecond
+  /// Convert the LogLevel to a Riemann (service) state
+  let mkState = function
+    | Verbose | Debug | Info -> "ok"
+    | Warn                   -> "warning"
+    | Error | Fatal          -> "critical"
 
-/// Convert the LogLevel to a Riemann (service) state
-let private mkState = function
-  | Verbose | Debug | Info -> "ok"
-  | Warn                   -> "warning"
-  | Error | Fatal          -> "critical"
+  /// The default way of sending attributes; just do ToString() on them
+  let mkAttrsFromData (m : Map<string, obj>) =
+    m |> Seq.map (fun kvp -> Attribute(kvp.Key, kvp.Value.ToString())) |> List.ofSeq
 
-/// The default way of sending attributes; just do ToString() on them
-let mkAttrsFromData (m : Map<string, obj>) =
-  m |> Seq.map (fun kvp -> Attribute(kvp.Key, kvp.Value.ToString())) |> List.ofSeq
+  /// Create an Event from a LogLine, supplying a function that optionally changes
+  /// the event before yielding it.
+  let mkEventL
+    hostname ttl confTags mkAttrsFromData
+    ({ message       = message
+       data          = data
+       level         = level
+       tags          = tags
+       timestamp     = timestamp
+       path          = path
+       ``exception`` = ex } as ll) =
+    Event.CreateDouble(1.,
+                       asEpoch timestamp,
+                       mkState level,
+                       sprintf "%s.%s" path message, // path = metric name = riemann's 'service'
+                       hostname,
+                       "",
+                       confTags |> Option.fold (fun s t -> s @ t) tags,
+                       ttl,
+                       mkAttrsFromData data) // TODO: make attributes from map
 
-/// Create an Event from a LogLine, supplying a function that optionally changes
-/// the event before yielding it.
-let mkEventL
-  hostname ttl confTags mkAttrsFromData
-  ({ message       = message
-     data          = data
-     level         = level
-     tags          = tags
-     timestamp     = timestamp
-     path          = path
-     ``exception`` = ex } as ll) =
-  Event.CreateDouble(1.,
-                     asEpoch timestamp,
-                     mkState level,
-                     sprintf "%s.%s" path message, // path = metric name = riemann's 'service'
-                     hostname,
-                     "",
-                     confTags |> Option.fold (fun s t -> s @ t) tags,
-                     ttl,
-                     mkAttrsFromData data) // TODO: make attributes from map
+  /// Create an Event from a Measure
+  let mkEventM
+    hostname ttl confTags
+    ({ m_path      = path
+       m_timestamp = timestamp
+       m_level     = level
+       m_unit      = u } as m ) =
+    let tags = confTags |> Option.fold (fun s t -> s @ t) []
+    Event.CreateDouble(Measure.getValueFloat m, asEpoch timestamp,
+                       mkState level, path.joined, hostname,
+                       u.ToString(), tags, ttl, [])
 
-/// Create an Event from a Measure
-let mkEventM
-  hostname ttl confTags
-  ({ m_path      = path
-     m_timestamp = timestamp
-     m_level     = level
-     m_unit      = u } as m ) =
-  let tags = confTags |> Option.fold (fun s t -> s @ t) []
-  Event.CreateDouble(Measure.getValueFloat m, asEpoch timestamp,
-                     mkState level, path.joined, hostname,
-                     u.ToString(), tags, ttl, [])
-
-// TODO: a way of discriminating between ServiceName-s.
 
 /// The Riemann target will always use TCP in this version.
 type RiemannConf =
@@ -132,77 +120,93 @@ type RiemannConf =
     let ttl        = defaultArg ttl 10.f
     let hostname   = defaultArg hostname (Dns.GetHostName())
     { endpoint     = defaultArg endpoint (IPEndPoint(IPAddress.Loopback, 5555))
-      clientFac    = defaultArg clientFac mkClient
+      clientFac    = defaultArg clientFac Helpers.mkClient
       caValidation = defaultArg caValidation None
-      fLogLine     = defaultArg fLogLine (mkEventL hostname ttl tags mkAttrsFromData)
-      fMeasure     = defaultArg fMeasure (mkEventM hostname ttl tags)
+      fLogLine     = defaultArg fLogLine (Helpers.mkEventL hostname ttl tags Helpers.mkAttrsFromData)
+      fMeasure     = defaultArg fMeasure (Helpers.mkEventM hostname ttl tags)
       hostname     = hostname
       tags         = tags }
-  static member Default = RiemannConf.Create()
 
-type private RiemannTargetState =
-  { client : TcpClient
-    stream : Stream }
+let empty = RiemannConf.Create()
 
-// To Consider: could be useful to spawn multiple of this one: each is async and implement
-// an easy way to send/recv -- multiple will allow interleaving of said requests
+module internal Impl =
+  /// Make a stream from a TcpClient and an optional certificate validation
+  /// function
+  let mkStream (client : TcpClient) = function
+    | Some f ->
+      let cb = new RemoteCertificateValidationCallback(fun _ -> f)
+      new SslStream(client.GetStream(),
+                    leaveInnerStreamOpen = false,
+                    userCertificateValidationCallback = cb)
+      :> Stream
+    | None ->
+      client.GetStream() :> Stream
 
-// To Consider: sending multiple events to this
+  // TODO: a way of discriminating between ServiceName-s.
 
-// So currently we're in push mode; did a Guage, Histogram or other thing send
-// us this metric? Or are Logary 'more dump' and simply shovel the more simple
-// counters and measurements (e.g. function execution timing) to Riemann
-// so that riemann can make up its own data?
-//
-// See https://github.com/aphyr/riemann-java-client/blob/master/src/main/java/com/codahale/metrics/riemann/RiemannReporter.java#L282
-// https://github.com/aphyr/riemann-ruby-client/blob/master/lib/riemann/client/tcp.rb
+  type RiemannTargetState =
+    { client : TcpClient
+      stream : Stream }
 
-let riemannLoop (conf : RiemannConf) metadata =
-  (fun (inbox : IActor<_>) ->
-    let rec init () =
-      async {
-        let client = conf.clientFac conf.endpoint
-        let stream = mkStream client conf.caValidation
-        return! running { client = client
-                          stream = stream } }
+  // To Consider: could be useful to spawn multiple of this one: each is async and implement
+  // an easy way to send/recv -- multiple will allow interleaving of said requests
 
-    and running state =
-      async {
-        let! msg, mopt = inbox.Receive()
-        // The server will accept a repeated list of Events, and respond
-        // with a confirmation message with either an acknowledgement or an error.
-        // Check the `ok` boolean in the message; if false, message.error will
-        // be a descriptive string.
-        match msg with
-        | Log l ->
-          let evt = conf.fLogLine l
-          let! res = [ evt ] |> sendEvents state.stream
-          match res with
-          | Choice1Of2 () -> return! running state
-          | Choice2Of2 err -> raise <| Exception(sprintf "server error: %s" err)
-        | Measure msr ->
-          let evt = conf.fMeasure msr
-          let! res = [ evt ] |> sendEvents state.stream
-          match res with
-          | Choice1Of2 () -> return! running state
-          | Choice2Of2 err -> raise <| Exception(sprintf "server error: %s" err)
-        | Flush chan ->
-          chan.Reply Ack
-          return! running state
-        | Shutdown ackChan ->
-          return! shutdown state ackChan }
+  // To Consider: sending multiple events to this
 
-    and shutdown state ackChan =
-      async {
-        Try.safe "riemann target disposing tcp stream, then client" metadata.logger <| fun () ->
-          (state.stream :> IDisposable).Dispose()
-          (state.client :> IDisposable).Dispose()
-        ackChan.Reply Ack
-        return () }
-    init ())
+  // So currently we're in push mode; did a Guage, Histogram or other thing send
+  // us this metric? Or are Logary 'more dump' and simply shovel the more simple
+  // counters and measurements (e.g. function execution timing) to Riemann
+  // so that riemann can make up its own data?
+  //
+  // See https://github.com/aphyr/riemann-java-client/blob/master/src/main/java/com/codahale/metrics/riemann/RiemannReporter.java#L282
+  // https://github.com/aphyr/riemann-ruby-client/blob/master/lib/riemann/client/tcp.rb
+
+  let riemannLoop (conf : RiemannConf) metadata =
+    (fun (inbox : IActor<_>) ->
+      let rec init () =
+        async {
+          let client = conf.clientFac conf.endpoint
+          let stream = mkStream client conf.caValidation
+          return! running { client = client
+                            stream = stream } }
+
+      and running state =
+        async {
+          let! msg, mopt = inbox.Receive()
+          // The server will accept a repeated list of Events, and respond
+          // with a confirmation message with either an acknowledgement or an error.
+          // Check the `ok` boolean in the message; if false, message.error will
+          // be a descriptive string.
+          match msg with
+          | Log l ->
+            let evt = conf.fLogLine l
+            let! res = [ evt ] |> sendEvents state.stream
+            match res with
+            | Choice1Of2 () -> return! running state
+            | Choice2Of2 err -> raise <| Exception(sprintf "server error: %s" err)
+          | Measure msr ->
+            let evt = conf.fMeasure msr
+            let! res = [ evt ] |> sendEvents state.stream
+            match res with
+            | Choice1Of2 () -> return! running state
+            | Choice2Of2 err -> raise <| Exception(sprintf "server error: %s" err)
+          | Flush chan ->
+            chan.Reply Ack
+            return! running state
+          | Shutdown ackChan ->
+            return! shutdown state ackChan }
+
+      and shutdown state ackChan =
+        async {
+          Try.safe "riemann target disposing tcp stream, then client" metadata.logger <| fun () ->
+            (state.stream :> IDisposable).Dispose()
+            (state.client :> IDisposable).Dispose()
+          ackChan.Reply Ack
+          return () }
+      init ())
 
 /// Create a new Riemann target
-let create conf = TargetUtils.stdNamedTarget (riemannLoop conf)
+let create conf = TargetUtils.stdNamedTarget (Impl.riemannLoop conf)
 
 /// C# interop
 [<CompiledName("Create")>]
@@ -221,7 +225,7 @@ type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
     ! ( callParent x )
 
   new(callParent : FactoryApi.ParentCallback<_>) =
-    Builder(RiemannConf.Default, callParent)
+    Builder(empty, callParent)
 
   interface Logary.Target.FactoryApi.SpecificTargetConf with
     member x.Build name = create conf name

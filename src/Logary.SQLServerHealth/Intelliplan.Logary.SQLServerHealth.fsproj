@@ -34,6 +34,8 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DocumentationFile>bin\Release\Logary.SQLServerHealth.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
+    <StartArguments>
+    </StartArguments>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="FsSql">
