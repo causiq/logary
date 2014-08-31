@@ -1,4 +1,4 @@
-﻿module Program
+﻿module Logary.TOML.Tests
 
 open Fuchu
 

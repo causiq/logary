@@ -52,7 +52,7 @@ let parse args =
   let drives  = parse.PostProcessResults(<@ Drive_Latency @>, Drive)
   let files   = parse.PostProcessResults(<@ File_Latency @>, SingleFile)
   let period  = parse.TryPostProcessResult(<@ Sampling_Period @>,
-                                          Duration.FromMilliseconds)
+                                           Duration.FromMilliseconds)
                 |> Option.fold (fun _ t -> t) (Duration.FromMilliseconds(1000L))
   let connStr = parse.GetResult <@ Connection_String @>
   let conf    = { SQLServerIOInfo.empty with
@@ -79,6 +79,5 @@ let main args =
       withMetrics (Duration.FromSeconds 10L) [
         SQLServerIOInfo.create conf "sql_server_io_info" period
       ])
-  // TODO: add in TopShelf support
-  System.Console.ReadKey true |> ignore
-  0 // return an integer exit code
+
+  0
