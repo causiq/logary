@@ -1,3 +1,0 @@
-﻿module Logary.TOML.ParseMetric
-
-()

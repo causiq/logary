@@ -5,13 +5,16 @@ open System
 open System.Globalization
 open NodaTime
 open FParsec
-type Token = KeyGroup of string list | KeyValue of string * obj
+
+type Token =
+  | KeyGroup of string list
+  | KeyValue of string * obj
 
 let (<||>) p1 p2 = attempt (p1 |>> box) <|> attempt (p2 |>> box)
 let spc      = many (anyOf [' '; '\t']) 
 let lexeme s = pstring s .>> spc
 let lexemel s= pstring s .>> spaces
-let comment  = pchar '#' .>>. restOfLine false 
+let comment  = pchar '#' .>>. restOfLine false
 let blanks   = skipMany ((comment <||> spc) .>> newline .>> spc) .>> spc
 let brace p  = between (lexemel "[") (lexemel "]") p
 let pbool    = (lexeme "true" >>% true) <|> (lexeme "false" >>% false)
@@ -27,16 +30,17 @@ let kgKey    = (many1Chars (noneOf " \t\n].")) .>> spc
 let keygroup = blanks >>. brace (sepBy kgKey (lexeme ".")) |>> KeyGroup
 let document = blanks >>. many (keygroup <|> keyvalue .>> blanks)
 
-let parse text =
-  let toml = Collections.Generic.Dictionary<string, obj>()
-  let currentKg = ref []
+let parse text : Map<string, obj> =
   match run document text with
-  | Success(tokens,_,_) ->
-    for token in tokens do
-      match token with
-      | KeyGroup kg -> currentKg := kg
-      | KeyValue (key,value) -> 
-        let key = String.concat "." [ yield! !currentKg; yield key]
-        toml.Add(key, value)
-  | __ -> ()
-  toml
+  | Success(tokens, _, _) ->
+    tokens
+    |> List.fold
+        (fun (currentKg, m) t ->
+         match t with
+         | KeyGroup kg -> (kg, m)
+         | KeyValue (key, value) ->
+           let key = String.concat "." [ yield! currentKg; yield key]
+           [], m |> Map.add key value)
+        ([], Map.empty)
+    |> snd
+  | __ -> Map.empty

@@ -36,7 +36,7 @@
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets" Condition=" Exists('$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets')" />
   <ItemGroup>
-    <Compile Include="ParseMetric.fs" />
+    <Compile Include="ParseLogaryConfig.fs" />
     <Compile Include="Parsing.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
@@ -61,6 +61,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Logary.Riemann\Intelliplan.Logary.Riemann.fsproj">
+      <Name>Intelliplan.Logary.Riemann</Name>
+      <Project>{cc87925c-e4f2-4386-a322-8bc088de7b33}</Project>
+      <Private>True</Private>
+    </ProjectReference>
     <ProjectReference Include="..\Logary.TOML\Intelliplan.Logary.TOML.fsproj">
       <Name>Intelliplan.Logary.TOML</Name>
       <Project>{721781be-0632-480c-98d9-7341c7bc04d9}</Project>
