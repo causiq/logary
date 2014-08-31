@@ -44,7 +44,6 @@
     <Compile Include="TOML.fs" />
     <Compile Include="Config.fs" />
     <None Include="packages.config" />
-    <None Include="app.config" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FParsec">
