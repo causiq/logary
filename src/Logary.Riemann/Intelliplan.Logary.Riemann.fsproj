@@ -21,7 +21,7 @@
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>bin\Release\Intelliplan.Logary.Riemann.xml</DocumentationFile>
+    <DocumentationFile>bin\Release\Logary.Riemann.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="FSharp.Core">

@@ -19,7 +19,7 @@
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>bin\Debug\Intelliplan.Logary.xml</DocumentationFile>
+    <DocumentationFile>bin\Debug\Logary.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -28,7 +28,7 @@
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>bin\Release\Intelliplan.Logary.xml</DocumentationFile>
+    <DocumentationFile>bin\Release\Logary.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="WinPerfCounter.fs" />
