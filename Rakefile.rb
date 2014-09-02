@@ -25,7 +25,7 @@ asmver_files :assembly_info => :versioning do |a|
 
   # attributes are required:
   a.attributes assembly_description: 'Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net.',
-               assembly_configuration: 'RELEASE',
+               assembly_configuration: Configuration,
                assembly_company: 'Intelliplan International AB',
                assembly_copyright: "(c) #{Time.now.year} by Henrik Feldt",
                assembly_version: ENV['LONG_VERSION'],
@@ -71,7 +71,7 @@ task :nugets => ['build/pkg', :versioning, :build, :nugets_quick]
 
 task :tests_unit do
   Dir.glob("src/*.Tests/bin/#{Configuration}/*.Tests.exe").
-    reject { |exe| exe.include? 'SQL' or exe.include? '.DB' or exe.include? 'Logentries' }.
+    reject { |exe| exe.include? 'SQL' or exe.include? '.DB' or exe.include? 'Logentries' or exe.include? 'TOML' }.
     each do |exe|
     system exe, clr_command: true
   end
