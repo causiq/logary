@@ -39,6 +39,8 @@ namespace Logary
             logger.Log(message, level, data, tags, path ?? logger.Name, exception);
         }
 
+        /// <summary>
+        /// </summary>
         public static T Time<T>(this Logger logger, Func<T> f, LogLevel level = null)
         {
             if (logger == null) throw new ArgumentNullException("logger");
@@ -47,6 +49,8 @@ namespace Logary
             return f();
         }
 
+        /// <summary>
+        /// </summary>
         public static void Time(this Logger logger, Action a, LogLevel level = null)
         {
             if (logger == null) throw new ArgumentNullException("logger");
@@ -55,6 +59,8 @@ namespace Logary
             a();
         }
 
+        /// <summary>
+        /// </summary>
         public static T TimePath<T>(this Logger logger, string path, Func<T> f, LogLevel level = null)
         {
             if (logger == null) throw new ArgumentNullException("logger");
@@ -96,7 +102,7 @@ namespace Logary
         /// <param name="e">The exception that occurred</param>
         /// <param name="tags">
         /// [Optional] Some tags - optional - if you pass them,
-        /// you will also be tagging with <see cref="Logary.LogLine.ExceptionTag"/>.
+        /// you will also be tagging with <see cref="LogLineModule.ExceptionTag"/>.
         /// </param>
         public static void FatalException(this Logger logger, string message, Exception e, params string[] tags)
         {
@@ -127,7 +133,7 @@ namespace Logary
         /// <param name="e">[NotNull] The exception that occurred</param>
         /// <param name="tags">
         /// [Optional] Some tags - optional - if you pass them,
-        /// you will also be tagging with <see cref="Logary.LogLine.ExceptionTag"/>.
+        /// you will also be tagging with <see cref="LogLineModule.ExceptionTag"/>.
         /// </param>
         public static void ErrorException(this Logger logger, string message, Exception e, params string[] tags)
         {
@@ -156,7 +162,7 @@ namespace Logary
         /// <param name="e">The exception that occurred</param>
         /// <param name="tags">
         /// [Optional] Some tags - optional - if you pass them,
-        /// you will also be tagging with <see cref="Logary.LogLine.ExceptionTag"/>.
+        /// you will also be tagging with <see cref="LogLineModule.ExceptionTag"/>.
         /// </param>
         public static void WarnException(this Logger logger, string message, Exception e, params string[] tags)
         {
@@ -185,7 +191,7 @@ namespace Logary
         /// <param name="e">The exception that occurred</param>
         /// <param name="tags">
         /// [Optional] Some tags - optional - if you pass them,
-        /// you will also be tagging with <see cref="Logary.LogLine.ExceptionTag"/>.
+        /// you will also be tagging with <see cref="LogLineModule.ExceptionTag"/>.
         /// </param>
         public static void InfoException(this Logger logger, string message, Exception e, params string[] tags)
         {
@@ -214,7 +220,7 @@ namespace Logary
         /// <param name="e">The exception that occurred</param>
         /// <param name="tags">
         /// [Optional] Some tags - optional - if you pass them,
-        /// you will also be tagging with <see cref="Logary.LogLine.ExceptionTag"/>.
+        /// you will also be tagging with <see cref="LogLineModule.ExceptionTag"/>.
         /// </param>
         public static void DebugException(this Logger logger, string message, Exception e, params string[] tags)
         {
@@ -243,7 +249,7 @@ namespace Logary
         /// <param name="e">The exception that occurred</param>
         /// <param name="tags">
         /// [Optional] Some tags - optional - if you pass them,
-        /// you will also be tagging with <see cref="Logary.LogLine.ExceptionTag"/>.
+        /// you will also be tagging with <see cref="LogLineModule.ExceptionTag"/>.
         /// </param>
         public static void VerboseException(this Logger logger, string message, Exception e, params string[] tags)
         {
