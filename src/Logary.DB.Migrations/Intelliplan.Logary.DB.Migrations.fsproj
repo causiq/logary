@@ -50,12 +50,12 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="Defaults.fs" />
     <Compile Include="Runner.fs" />
     <Compile Include="Migrations.fs" />
     <Compile Include="Configuration_CSharp_Migrations.fs" />
     <Compile Include="Configuration_Migrations.fs" />
+    <Compile Include="AssemblyVersionInfo.fs" />
     <None Include="packages.config" />
     <None Include="app.config" />
   </ItemGroup>
