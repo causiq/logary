@@ -16,7 +16,7 @@ end
 desc 'restore all nugets as per the packages.config files'
 nugets_restore :restore do |p|
   p.out = 'src/packages'
-  p.exe = 'buildsupport/NuGet.exe'
+  p.exe = 'tools/NuGet.exe'
 end
 
 desc 'create assembly infos'
@@ -58,7 +58,7 @@ nugets_pack :nugets_quick => :versioning do |p|
     exclude('src/Fsharp.Actor/*.nuspec').
     exclude(/Fracture|Example|Tests|Spec|Health|sample|packages/)
   p.out           = 'build/pkg'
-  p.exe           = 'buildsupport/NuGet.exe'
+  p.exe           = 'tools/NuGet.exe'
   p.with_metadata do |m|
     m.description = 'Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net.'
     m.authors     = 'Henrik Feldt, Intelliplan International AB'
@@ -92,8 +92,8 @@ namespace :docs do
     { 'FAKE'              => '2.17.9',
       'FSharp.Formatting' => '2.4.10' }.
       each do |name, version|
-      system 'buildsupport/NuGet.exe', %W|
-        install #{name} -OutputDirectory buildsupport -Version #{version} -ExcludeVersion
+      system 'tools/NuGet.exe', %W|
+        install #{name} -OutputDirectory tools -Version #{version} -ExcludeVersion
       |, clr_command: true
     end
   end
@@ -108,12 +108,12 @@ namespace :docs do
       FileUtils.cp "src/vendor/FSharp/3.0/FSharp.Core.#{ext}", 'src/Logary/bin/Release/'
     end
 
-    system 'buildsupport/FAKE/tools/Fake.exe', 'buildsupport/docs.fsx', clr_command: true
+    system 'tools/FAKE/tools/Fake.exe', 'tools/docs.fsx', clr_command: true
   end
 
   # unused!! for reference only
   task :build2 => :pre_reqs do
-    system 'buildsupport/FSharp.Formatting.CommandTool/tools/fsformatting.exe', %w|
+    system 'tools/FSharp.Formatting.CommandTool/tools/fsformatting.exe', %w|
      metadataFormat --generate
                     --sourceRepo https://github.com/logary/logary
                     --sourceFolder /src/Logary

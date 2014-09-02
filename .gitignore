@@ -9,5 +9,5 @@ build/
 AssemblyVersionInfo.cs
 *.swp
 AssemblyVersionInfo.cs
-buildsupport/
+tools/
 *.user
