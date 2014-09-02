@@ -9,6 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Logary</RootNamespace>
     <AssemblyName>Logary.CSharp</AssemblyName>
+    <Name>Intelliplan.Logary.CSharp</Name>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
