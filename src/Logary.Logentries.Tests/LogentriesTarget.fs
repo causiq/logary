@@ -1,4 +1,4 @@
-﻿module Logary.Logentries.Tests
+﻿module Logary.Tests.Logentries
 
 open Fuchu
 
@@ -35,6 +35,3 @@ let targetTests =
         flush target
       finally stop target
     ]
-
-[<EntryPoint>]
-let main args = defaultMainThisAssembly args

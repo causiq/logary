@@ -60,10 +60,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Targets_NLog.fs" />
+    <Compile Include="AssemblyVersionInfo.fs" />
     <None Include="app.config" />
     <None Include="Script.fsx" />
     <None Include="packages.config" />
-    <Compile Include="AssemblyVersionInfo.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\FSharp.Actor-logary\src\FSharp.Actor\FSharp.Actor-logary.fsproj">

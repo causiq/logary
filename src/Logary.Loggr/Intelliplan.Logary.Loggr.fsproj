@@ -37,7 +37,7 @@
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets" Condition=" Exists('$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets')" />
   <ItemGroup>
     <Compile Include="Targets_Loggr.fs" />
-    <Content Include="App_Readme\README-loggr-dotnet.txt" />
+    <Compile Include="AssemblyVersionInfo.fs" />
     <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>

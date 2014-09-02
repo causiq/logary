@@ -3,7 +3,7 @@
 open System
 
 open Logary
-open Logary.TOML
+open Logary.TOML.Parser
 
 type Map'<'K, 'V> = System.Collections.Generic.IDictionary<'K, 'V>
 

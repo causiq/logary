@@ -50,6 +50,7 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="Defaults.fs" />
     <Compile Include="Runner.fs" />
     <Compile Include="Migrations.fs" />

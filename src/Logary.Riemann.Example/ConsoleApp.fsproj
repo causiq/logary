@@ -63,6 +63,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="Program.fs" />
     <None Include="app.config" />
     <None Include="packages.config" />

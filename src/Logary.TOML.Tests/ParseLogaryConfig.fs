@@ -1,4 +1,4 @@
-﻿module Logary.TOML.ParseMetric
+﻿module Logary.Tests.ParseMetric
 
 let sampleConfig = """
 [logary]

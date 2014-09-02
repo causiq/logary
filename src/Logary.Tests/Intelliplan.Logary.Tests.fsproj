@@ -71,11 +71,11 @@
     <Compile Include="HealthChecks.fs" />
     <Compile Include="Registry.fs" />
     <Compile Include="ExternalAssumptions.fs" />
+    <Compile Include="AssemblyVersionInfo.fs" />
+    <Compile Include="Program.fs" />
+    <None Include="Program.fsx" />
     <None Include="packages.config" />
     <None Include="app.config" />
-    <Compile Include="AssemblyVersionInfo.fs" />
-    <None Include="Program.fsx" />
-    <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\FSharp.Actor-logary\src\FSharp.Actor\FSharp.Actor-logary.fsproj">

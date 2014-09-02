@@ -1,4 +1,4 @@
-﻿module Logary.DB.Tests
+﻿module Logary.Tests.DB
 
 open Fuchu
 

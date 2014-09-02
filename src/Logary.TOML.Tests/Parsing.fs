@@ -1,4 +1,4 @@
-﻿module Parsing
+﻿module Logary.Tests.Parsing
 
 let example = """
 [group1]
@@ -93,10 +93,10 @@ open System
 open Fuchu
 open NodaTime
 
-open Logary
+open Logary.TOML
 
 // specific to parser:
-let dic = TOML.parse example
+let dic = Parser.parse example
 let value key = dic.[key] :?> 'a // if you type parser, change this f-n
 
 // helper:
@@ -115,7 +115,7 @@ let case msg key expected =
 let basicExample =
   testList "parsing contents" [
     yield testCase "no crash" <| fun _ ->
-      TOML.parse example |> ignore
+      Parser.parse example |> ignore
 
     yield case "should be true" "group1.key" true
     yield case "should be 1337" "group1.key2" 1337L
@@ -143,10 +143,10 @@ open System.Collections.Generic
 let advancedExamples =
   testList "advanced" [
     testCase "can parse array" <| fun _ ->
-      TOML.parse tableArr |> ignore
+      Parser.parse tableArr |> ignore
 
     testCase "products" <| fun _ ->
-      let dic = TOML.parse tableArr
+      let dic = Parser.parse tableArr
       Assert.NotNull("should have products list", dic.["products"])
       let exp =
         Dictionary([ "name", box "Hammer"
@@ -160,7 +160,7 @@ let advancedExamples =
     ]
 
 // specific to parser:
-let dic' = TOML.parse hardExample
+let dic' = Parser.parse hardExample
 let value' key = dic'.[key] :?> 'a // if you type parser, change this f-n
 
 // helper:
@@ -182,7 +182,7 @@ let case' msg key expected =
 let hardTests =
   testList "hard example" [
     testCase "can parse" <| fun _ ->
-      TOML.parse hardExample |> ignore
+      Parser.parse hardExample |> ignore
 
     case' "the.test_string" "the.test_string" "You'll hate me after this - #"
     case' "parsing array with symbols" "the.hard.test_array" [ "] "; " # "]

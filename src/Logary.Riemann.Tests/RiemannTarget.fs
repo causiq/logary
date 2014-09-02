@@ -1,4 +1,4 @@
-﻿module Logary.Riemann.Tests
+﻿module Logary.Tests.Riemann
 
 open System
 open System.Collections.Generic
@@ -40,6 +40,3 @@ let tests =
     testCase "Query" <| fun _ ->
       roundtrip <| Query("hi")
     ]
-
-[<EntryPoint>]
-let main args = defaultMainThisAssembly args

@@ -56,6 +56,7 @@
   <ItemGroup>
     <Compile Include="Datapoints.fs" />
     <Compile Include="Integration.fs" />
+    <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="Program.fs" />
     <None Include="Script.fsx" />
     <None Include="packages.config" />

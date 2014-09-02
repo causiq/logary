@@ -2,7 +2,7 @@
 
 open Logary
 open Logary.Suave
-open Suave
+open global.Suave
 
 open Fuchu
 
@@ -39,7 +39,3 @@ let tests =
       test_loggers Log.Info Log.Error line
       Assert.Equal("should have 'test' message", "test", (!line).message)
     ]
-
-[<EntryPoint>]
-let main argv =
-  defaultMainThisAssembly argv

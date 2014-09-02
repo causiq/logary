@@ -50,10 +50,10 @@
     <Compile Include="Messages.fs" />
     <Compile Include="Client.fs" />
     <Compile Include="Targets_Riemann.fs" />
+    <Compile Include="AssemblyVersionInfo.fs" />
     <None Include="app.config" />
     <None Include="Riemann.proto" />
     <None Include="packages.config" />
-    <Compile Include="AssemblyVersionInfo.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\FSharp.Actor-logary\src\FSharp.Actor\FSharp.Actor-logary.fsproj">

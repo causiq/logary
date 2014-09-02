@@ -6,7 +6,7 @@ open Logary
 open Logary.Target
 open Logary.Internals
 
-open Loggr
+open global.Loggr
 
 type LoggrConf =
   { /// Specify the log id of the log you're logging to in loggr.

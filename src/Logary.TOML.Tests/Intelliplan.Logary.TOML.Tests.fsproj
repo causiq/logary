@@ -38,6 +38,7 @@
   <ItemGroup>
     <Compile Include="ParseLogaryConfig.fs" />
     <Compile Include="Parsing.fs" />
+    <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="Program.fs" />
     <None Include="app.config" />
     <None Include="packages.config" />
