@@ -53,15 +53,16 @@ end
 directory 'build/pkg'
 
 nugets_pack :nugets_quick => :versioning do |p|
-  p.files   = FileList['src/**/*.{csproj,fsproj,nuspec}'].
+  p.configuration = Configuration
+  p.files         = FileList['src/**/*.{csproj,fsproj,nuspec}'].
     exclude('src/Fsharp.Actor/*.nuspec').
     exclude(/Fracture|Example|Tests|Spec|Health|sample|packages/)
-  p.out     = 'build/pkg'
-  p.exe     = 'buildsupport/NuGet.exe'
+  p.out           = 'build/pkg'
+  p.exe           = 'buildsupport/NuGet.exe'
   p.with_metadata do |m|
     m.description = 'Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net.'
-    m.authors = 'Henrik Feldt, Intelliplan International AB'
-    m.version = ENV['NUGET_VERSION']
+    m.authors     = 'Henrik Feldt, Intelliplan International AB'
+    m.version     = ENV['NUGET_VERSION']
   end
 end
 
