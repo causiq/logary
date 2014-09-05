@@ -12,3 +12,6 @@ AssemblyVersionInfo.cs
 tools/
 *.user
 Logary.userprefs
+*.pfx
+*.spc
+*.pvk
