@@ -4,8 +4,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>82770c4e-c5a7-4888-99a1-57935898bdd8</ProjectGuid>
+    <ProjectGuid>{82770C4E-C5A7-4888-99A1-57935898BDD8}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>Logary.Logentries.Tests</RootNamespace>
     <AssemblyName>Logary.Logentries.Tests</AssemblyName>
@@ -45,16 +44,13 @@
   <ItemGroup>
     <Reference Include="FSharp.Core">
       <HintPath>..\packages\FSharp.Core.3.0.0.2\lib\net40\FSharp.Core.dll</HintPath>
-      <Private>True</Private>
     </Reference>
     <Reference Include="Fuchu">
       <HintPath>..\packages\Fuchu.0.4.0.0\lib\Fuchu.dll</HintPath>
-      <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="policy.2.3.FSharp.Core">
       <HintPath>..\packages\FSharp.Core.3.0.0.2\lib\net40\policy.2.3.FSharp.Core.dll</HintPath>
-      <Private>True</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -62,18 +58,15 @@
     <Reference Include="System.Xml" />
     <ProjectReference Include="..\FSharp.Actor-logary\src\FSharp.Actor\FSharp.Actor-logary.fsproj">
       <Name>FSharp.Actor-logary</Name>
-      <Project>{aa4bc25b-04f7-4b39-bf28-0b0058193ed9}</Project>
-      <Private>True</Private>
+      <Project>{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}</Project>
     </ProjectReference>
     <ProjectReference Include="..\Logary.Logentries\Intelliplan.Logary.Logentries.fsproj">
       <Name>Intelliplan.Logary.Logentries</Name>
-      <Project>{7ed41c0d-f9ed-43e9-be10-6e7457b90235}</Project>
-      <Private>True</Private>
+      <Project>{7ED41C0D-F9ED-43E9-BE10-6E7457B90235}</Project>
     </ProjectReference>
     <ProjectReference Include="..\Logary\Intelliplan.Logary.fsproj">
       <Name>Intelliplan.Logary</Name>
-      <Project>{f7e5b6e8-5d55-4974-9ca7-4c94d810631f}</Project>
-      <Private>True</Private>
+      <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
     </ProjectReference>
   </ItemGroup>
 </Project>

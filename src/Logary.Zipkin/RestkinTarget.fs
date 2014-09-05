@@ -1,4 +1,4 @@
-namespace Logary.Target
+namespace Logary.Targets
 
 // https://github.com/racker/restkin
 // https://github.com/racker/tryfer

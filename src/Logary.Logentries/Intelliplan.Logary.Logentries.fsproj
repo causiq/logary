@@ -4,8 +4,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>7ed41c0d-f9ed-43e9-be10-6e7457b90235</ProjectGuid>
+    <ProjectGuid>{7ED41C0D-F9ED-43E9-BE10-6E7457B90235}</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>Logary.Logentries</RootNamespace>
     <AssemblyName>Logary.Logentries</AssemblyName>
@@ -45,20 +44,16 @@
   <ItemGroup>
     <Reference Include="FSharp.Core">
       <HintPath>..\packages\FSharp.Core.3.0.0.2\lib\net40\FSharp.Core.dll</HintPath>
-      <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\packages\Newtonsoft.Json.5.0.8\lib\net40\Newtonsoft.Json.dll</HintPath>
-      <Private>True</Private>
     </Reference>
     <Reference Include="NodaTime">
       <HintPath>..\packages\NodaTime.1.3.0\lib\net35-Client\NodaTime.dll</HintPath>
-      <Private>True</Private>
     </Reference>
     <Reference Include="policy.2.3.FSharp.Core">
       <HintPath>..\packages\FSharp.Core.3.0.0.2\lib\net40\policy.2.3.FSharp.Core.dll</HintPath>
-      <Private>True</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -66,13 +61,11 @@
     <Reference Include="System.Xml" />
     <ProjectReference Include="..\FSharp.Actor-logary\src\FSharp.Actor\FSharp.Actor-logary.fsproj">
       <Name>FSharp.Actor-logary</Name>
-      <Project>{aa4bc25b-04f7-4b39-bf28-0b0058193ed9}</Project>
-      <Private>True</Private>
+      <Project>{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}</Project>
     </ProjectReference>
     <ProjectReference Include="..\Logary\Intelliplan.Logary.fsproj">
       <Name>Intelliplan.Logary</Name>
-      <Project>{f7e5b6e8-5d55-4974-9ca7-4c94d810631f}</Project>
-      <Private>True</Private>
+      <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
     </ProjectReference>
   </ItemGroup>
 </Project>

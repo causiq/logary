@@ -4,8 +4,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>8e4e562e-acde-4325-8b12-7c0b240e9176</ProjectGuid>
+    <ProjectGuid>{8E4E562E-ACDE-4325-8B12-7C0B240E9176}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>Logary.SQLServerHealth.Tests</RootNamespace>
     <AssemblyName>Logary.SQLServerHealth.Tests</AssemblyName>
@@ -34,24 +33,19 @@
   <ItemGroup>
     <Reference Include="FSharp.Core">
       <HintPath>..\packages\FSharp.Core.3.0.0.2\lib\net40\FSharp.Core.dll</HintPath>
-      <Private>True</Private>
     </Reference>
     <Reference Include="FsSql">
       <HintPath>..\packages\FsSql.0.1.0\lib\FsSql.dll</HintPath>
-      <Private>True</Private>
     </Reference>
     <Reference Include="Fuchu">
       <HintPath>..\packages\Fuchu.0.4.0.0\lib\Fuchu.dll</HintPath>
-      <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="NodaTime">
       <HintPath>..\packages\NodaTime.1.3.0\lib\net35-Client\NodaTime.dll</HintPath>
-      <Private>True</Private>
     </Reference>
     <Reference Include="policy.2.3.FSharp.Core">
       <HintPath>..\packages\FSharp.Core.3.0.0.2\lib\net40\policy.2.3.FSharp.Core.dll</HintPath>
-      <Private>True</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -70,18 +64,15 @@
   <ItemGroup>
     <ProjectReference Include="..\FSharp.Actor-logary\src\FSharp.Actor\FSharp.Actor-logary.fsproj">
       <Name>FSharp.Actor-logary</Name>
-      <Project>{aa4bc25b-04f7-4b39-bf28-0b0058193ed9}</Project>
-      <Private>True</Private>
+      <Project>{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}</Project>
     </ProjectReference>
     <ProjectReference Include="..\Logary.SQLServerHealth\Intelliplan.Logary.SQLServerHealth.fsproj">
       <Name>Intelliplan.Logary.SQLServerHealth</Name>
-      <Project>{1dc3b89b-5586-4fd9-a40b-550aec87afe5}</Project>
-      <Private>True</Private>
+      <Project>{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5}</Project>
     </ProjectReference>
     <ProjectReference Include="..\Logary\Intelliplan.Logary.fsproj">
       <Name>Intelliplan.Logary</Name>
-      <Project>{f7e5b6e8-5d55-4974-9ca7-4c94d810631f}</Project>
-      <Private>True</Private>
+      <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
     </ProjectReference>
   </ItemGroup>
   <PropertyGroup>

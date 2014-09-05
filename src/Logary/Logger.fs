@@ -23,10 +23,6 @@ type Logger =
 /// interop problems that you will get from using this module directly.
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Logger =
-  open System.Diagnostics
-
-  open NodaTime
-
   open Logary
   open Logary.LogLine
 

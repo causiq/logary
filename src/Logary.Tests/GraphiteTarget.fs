@@ -8,10 +8,8 @@ open System.Text.RegularExpressions
 open Fac
 
 open Logary
-open Logary.Configuration
 open Logary.Target
 open Logary.Targets
-open Logary.Measure
 open Logary.Internals
 open Logary.Internals.Tcp
 
@@ -46,6 +44,7 @@ let tests =
 //        |> withTarget graphite
 //        |> validateLogary
 //        |> runLogary
+
 //
 //      let gauge = "test-gauge" |> Registry.getGauge logary.registry |> Async.RunSynchronously
 //      4.2 |> Gauge.putf gauge
