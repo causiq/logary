@@ -33,10 +33,11 @@ asmver_files :assembly_info => :versioning do |a|
                assembly_informational_version: ENV['BUILD_VERSION']
 end
 
+
 build :clean_sln do |b|
   b.target = 'Clean'
-  b.prop 'Configuration', Configuration
   b.sln = 'src/Logary.sln'
+  b.prop 'Configuration', Configuration
 end
 
 desc 'clean'
@@ -44,10 +45,34 @@ task :clean => [:clean_sln] do
   FileUtils.rm_rf 'build'
 end
 
+def maybe_sign conf
+  pfx, pass, spc, pvk = [
+    ENV['LOGARY_SIGN_ASSEMBLY_PFX'],
+    ENV['LOGARY_SIGN_ASSEMBLY_PASSWORD'],
+    ENV['LOGARY_SIGN_ASSEMBLY_SPC'],
+    ENV['LOGARY_SIGN_ASSEMBLY_PVK']
+  ]
+
+  return unless ((pfx && pass) || (spc && pvk))
+
+  info 'signing assembly'
+
+  if pfx && pass
+    info 'signing assembly with pfx'
+    conf.prop 'SignAssemblyPfx', pfx
+    conf.prop 'SignAssemblyPassword', pass
+  else
+    info 'signing assembly with spc'
+    conf.prop 'SignAssemblySPC', spc
+    conf.prop 'SignAssemblyPVK', pvk
+  end
+end
+
 desc 'perform full build'
 build :build => [:versioning, :assembly_info, :restore] do |b|
   b.prop 'Configuration', Configuration
   b.sln = 'src/Logary.sln'
+  maybe_sign b
 end
 
 directory 'build/pkg'

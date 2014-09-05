@@ -108,4 +108,22 @@
       <Project>{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}</Project>
     </ProjectReference>
   </ItemGroup>
+  <PropertyGroup>
+    <!-- This will give us the opportunity to sign Logary -->
+    <PostBuildEvent Condition=" '$(SignAssemblyPfx)' != '' And '$(SignAssemblyPassword)' != '' And '$(OS)' != 'Unix' ">
+      "$(ProjectPath)..\tools\signtool.exe" sign /f "$(SignAssemblyPfx)" /p "$(SignAssemblyPassword)" /t http://timestamp.verisign.com/scripts/timstamp.dll /du "https://github.com/logary/logary" "$(TargetPath)"
+    </PostBuildEvent>
+    <!-- see https://developer.mozilla.org/en/docs/Signing_an_executable_with_Authenticode -->
+    <PostBuildEvent Condition=" '$(SignAssemblySPC)' != '' And '$(SignAssemblyPVK)' != '' And '$(OS)' == 'Unix' ">
+      signcode \
+       -spc "$(SignAssemblySPC)" \
+       -v "$(SignAssemblyPVK)" \
+       -a sha2 -$ commercial \
+       -n "$(Name)" \
+       -i https://www.github.com/logary/logary \
+       -t http://timestamp.verisign.com/scripts/timstamp.dll \
+       -tr 10 \
+       "$(TargetPath)"
+    </PostBuildEvent>
+  </PropertyGroup>
 </Project>
