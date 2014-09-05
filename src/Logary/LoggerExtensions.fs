@@ -7,9 +7,7 @@ open System.Runtime.CompilerServices
 module LoggerExtensions =
   open System
   open System.Collections.Generic
-  open System.Runtime.InteropServices
 
-  open Logary.Target
   open Logary.Internals
 
   let private toMap : obj -> _ = function
@@ -32,7 +30,9 @@ module LoggerExtensions =
 
   /// Log a log line to the log
   [<Extension; CompiledName("Log")>]
-  let log (logger : Logger, message, level, data, tags, path, ``exception``) =
+  let log (logger : Logger, message, level, data, tags, path,
+           ``exception``,
+           timestamp : Nullable<NodaTime.Instant>) =
     if String.IsNullOrWhiteSpace message then nullArg "message"
     { message       = message
       level         = level
@@ -40,7 +40,7 @@ module LoggerExtensions =
       path          = match path with null -> logger.Name | _ -> path
       tags          = match tags with null -> [] | _ -> List.ofSeq tags
       ``exception`` = match ``exception`` with null -> None | _ -> Some ``exception``
-      timestamp     = Date.now() }
+      timestamp     = if timestamp.HasValue then timestamp.Value else Date.now() }
     |> logger.Log
 
   /// Log a message with some accompanying data to the log

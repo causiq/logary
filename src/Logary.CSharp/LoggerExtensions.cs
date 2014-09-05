@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using NodaTime;
 
 namespace Logary
 {
@@ -24,6 +25,9 @@ namespace Logary
         /// <param name="tags">A list of tags to attach to the log line</param>
         /// <param name="exception"></param>
         /// <param name="path"></param>
+        /// <param name="timestamp">
+        /// When the log entry was given; optional, defaults to when this method
+        /// is called</param>
         public static void Log(
             this Logger logger,
             LogLevel level,
@@ -31,12 +35,14 @@ namespace Logary
             object data = null,
             IEnumerable<string> tags = null,
             Exception exception = null,
-            string path = null)
+            string path = null,
+            Instant? timestamp = null)
         {
             if (logger == null) throw new ArgumentNullException("logger");
             if (level == null) throw new ArgumentNullException("level");
             if (message == null) throw new ArgumentNullException("message");
-            logger.Log(message, level, data, tags, path ?? logger.Name, exception);
+            logger.Log(message, level, data, tags, path ?? logger.Name, exception,
+                       timestamp ?? SystemClock.Instance.Now);
         }
 
         /// <summary>
@@ -91,7 +97,8 @@ namespace Logary
         {
             if (logger == null) throw new ArgumentNullException("logger");
             if (message == null) throw new ArgumentNullException("message");
-            logger.Log<object>(message, LogLevel.Fatal, null, tags, logger.Name, null);
+            logger.Log<object>(message, LogLevel.Fatal, null, tags, logger.Name,
+                               null, null);
         }
 
         /// <summary>
@@ -104,12 +111,15 @@ namespace Logary
         /// [Optional] Some tags - optional - if you pass them,
         /// you will also be tagging with <see cref="LogLineModule.ExceptionTag"/>.
         /// </param>
-        public static void FatalException(this Logger logger, string message, Exception e, params string[] tags)
+        public static void FatalException(this Logger logger, string message,
+                                          Exception e, params string[] tags)
         {
             if (logger == null) throw new ArgumentNullException("logger");
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
-            logger.Log<object>(message, LogLevel.Fatal, null, MakeTags(LogLineModule.ExceptionTag, tags), logger.Name, e);
+            logger.Log<object>(message, LogLevel.Fatal, null,
+                               MakeTags(LogLineModule.ExceptionTag, tags),
+                               logger.Name, e, null);
         }
 
         /// <summary>
@@ -122,7 +132,8 @@ namespace Logary
         {
             if (logger == null) throw new ArgumentNullException("logger");
             if (message == null) throw new ArgumentNullException("message");
-            logger.Log<object>(message, LogLevel.Error, null, tags, logger.Name, null);
+            logger.Log<object>(message, LogLevel.Error, null, tags, logger.Name,
+                               null, null);
         }
 
         /// <summary>
@@ -135,12 +146,15 @@ namespace Logary
         /// [Optional] Some tags - optional - if you pass them,
         /// you will also be tagging with <see cref="LogLineModule.ExceptionTag"/>.
         /// </param>
-        public static void ErrorException(this Logger logger, string message, Exception e, params string[] tags)
+        public static void ErrorException(this Logger logger, string message, Exception e,
+                                          params string[] tags)
         {
             if (logger == null) throw new ArgumentNullException("logger");
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
-            logger.Log<object>(message, LogLevel.Error, null, MakeTags(LogLineModule.ExceptionTag, tags), logger.Name, e);
+            logger.Log<object>(message, LogLevel.Error, null,
+                               MakeTags(LogLineModule.ExceptionTag, tags),
+                               logger.Name, e, null);
         }
 
         /// <summary>
@@ -151,7 +165,8 @@ namespace Logary
         /// <param name="tags">An optional collection of tags to attach to the log line</param>
         public static void Warn(this Logger logger, string message, params string[] tags)
         {
-            logger.Log<object>(message, LogLevel.Warn, null, tags, logger.Name, null);
+            logger.Log<object>(message, LogLevel.Warn, null, tags, logger.Name,
+                               null, null);
         }
 
         /// <summary>
@@ -169,7 +184,9 @@ namespace Logary
             if (logger == null) throw new ArgumentNullException("logger");
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
-            logger.Log<object>(message, LogLevel.Warn, null, MakeTags(LogLineModule.ExceptionTag, tags), logger.Name, e);
+            logger.Log<object>(message, LogLevel.Warn, null,
+                               MakeTags(LogLineModule.ExceptionTag, tags),
+                               logger.Name, e, null);
         }
 
         /// <summary>
@@ -180,7 +197,7 @@ namespace Logary
         /// <param name="tags">An optional collection of tags to attach to the log line</param>
         public static void Info(this Logger logger, string message, params string[] tags)
         {
-            logger.Log<object>(message, LogLevel.Info, null, tags, logger.Name, null);
+            logger.Log<object>(message, LogLevel.Info, null, tags, logger.Name, null, null);
         }
 
         /// <summary>
@@ -198,7 +215,9 @@ namespace Logary
             if (logger == null) throw new ArgumentNullException("logger");
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
-            logger.Log<object>(message, LogLevel.Info, null, MakeTags(LogLineModule.ExceptionTag, tags), logger.Name, e);
+            logger.Log<object>(message, LogLevel.Info, null,
+                               MakeTags(LogLineModule.ExceptionTag, tags),
+                               logger.Name, e, null);
         }
 
         /// <summary>
@@ -209,7 +228,8 @@ namespace Logary
         /// <param name="tags">An optional collection of tags to attach to the log line</param>
         public static void Debug(this Logger logger, string message, params string[] tags)
         {
-            logger.Log<object>(message, LogLevel.Debug, null, tags, logger.Name, null);
+            logger.Log<object>(message, LogLevel.Debug, null, tags, logger.Name,
+                               null, null);
         }
 
         /// <summary>
@@ -227,7 +247,9 @@ namespace Logary
             if (logger == null) throw new ArgumentNullException("logger");
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
-            logger.Log<object>(message, LogLevel.Debug, null, MakeTags(LogLineModule.ExceptionTag, tags), logger.Name, e);
+            logger.Log<object>(message, LogLevel.Debug, null,
+                               MakeTags(LogLineModule.ExceptionTag, tags),
+                               logger.Name, e, null);
         }
 
         /// <summary>
@@ -238,7 +260,8 @@ namespace Logary
         /// <param name="tags">An optional collection of tags to attach to the log line</param>
         public static void Verbose(this Logger logger, string message, params string[] tags)
         {
-            logger.Log<object>(message, LogLevel.Verbose, null, tags, logger.Name, null);
+            logger.Log<object>(message, LogLevel.Verbose, null, tags,
+                               logger.Name, null, null);
         }
 
         /// <summary>
@@ -256,7 +279,9 @@ namespace Logary
             if (logger == null) throw new ArgumentNullException("logger");
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
-            logger.Log<object>(message, LogLevel.Verbose, null, MakeTags(LogLineModule.ExceptionTag, tags), logger.Name, e);
+            logger.Log<object>(message, LogLevel.Verbose, null,
+                               MakeTags(LogLineModule.ExceptionTag, tags),
+                               logger.Name, e, null);
         }
 
         static IEnumerable<string> MakeTags(string logaryTag, params string[] tags)
