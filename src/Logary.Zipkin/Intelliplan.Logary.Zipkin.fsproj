@@ -53,6 +53,7 @@
     <Compile Include="Types.fs" />
     <Compile Include="RestkinTarget.fs" />
     <Compile Include="AssemblyVersionInfo.fs" />
+    <Compile Include="AssemblyInfo.fs" />
     <None Include="Script.fsx" />
     <None Include="packages.config" />
     <None Include="app.config" />

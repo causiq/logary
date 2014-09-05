@@ -56,6 +56,7 @@
     <Compile Include="Configuration_CSharp_Migrations.fs" />
     <Compile Include="Configuration_Migrations.fs" />
     <Compile Include="AssemblyVersionInfo.fs" />
+    <Compile Include="AssemblyInfo.fs" />
     <None Include="packages.config" />
     <None Include="app.config" />
   </ItemGroup>

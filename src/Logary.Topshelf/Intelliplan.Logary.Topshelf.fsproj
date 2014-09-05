@@ -50,6 +50,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyVersionInfo.fs" />
+    <Compile Include="AssemblyInfo.fs" />
     <Compile Include="LogaryLogWriter.fs" />
     <Compile Include="Integration.fs" />
     <None Include="Script.fsx" />

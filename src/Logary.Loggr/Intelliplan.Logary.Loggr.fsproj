@@ -34,6 +34,7 @@
   <ItemGroup>
     <Compile Include="Targets_Loggr.fs" />
     <Compile Include="AssemblyVersionInfo.fs" />
+    <Compile Include="AssemblyInfo.fs" />
     <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>

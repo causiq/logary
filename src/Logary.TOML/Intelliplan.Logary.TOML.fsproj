@@ -43,6 +43,7 @@
     <Compile Include="Parser.fs" />
     <Compile Include="Config.fs" />
     <Compile Include="AssemblyVersionInfo.fs" />
+    <Compile Include="AssemblyInfo.fs" />
     <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>
