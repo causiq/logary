@@ -82,10 +82,12 @@
       <HintPath>..\packages\FSharp.Core.3.0.0.2\lib\net40\FSharp.Core.dll</HintPath>
     </Reference>
     <Reference Include="Intelliplan.JsonNet">
-      <HintPath>..\packages\Intelliplan.JsonNet.1.6.0\lib\net40\Intelliplan.JsonNet.dll</HintPath>
+      <HintPath>..\packages\Intelliplan.JsonNet.1.7.0\lib\net40\Intelliplan.JsonNet.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="Intelliplan.JsonNet.NodaTime">
-      <HintPath>..\packages\Intelliplan.JsonNet.NodaTime.1.5.0\lib\net40\Intelliplan.JsonNet.NodaTime.dll</HintPath>
+      <HintPath>..\packages\Intelliplan.JsonNet.NodaTime.1.7.0\lib\net40\Intelliplan.JsonNet.NodaTime.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="Newtonsoft.Json">
