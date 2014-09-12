@@ -85,7 +85,7 @@ the observations!
 
 ## Building
 
-Assuming you have Ruby 1.9.3 installed:
+Assuming you have Ruby 1.9.3 or later installed:
 
 ```
 git clone git://github.com/logary/logary.git
