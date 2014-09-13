@@ -465,6 +465,10 @@ package the executable inside either a RPM or a Chocolatey package - then on
 Windows you install it and on unix you just run the exe with a service runner
 like [Supervisord](http://supervisord.org/).
 
+``` powershell
+Install-Package Intelliplan.Logary.Topshelf -Pre
+```
+
 ![Topshelf](https://raw.githubusercontent.com/logary/logary-assets/master/targets/topshelf.png)
 
 ## Services
