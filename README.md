@@ -114,7 +114,7 @@ targets">.Net developer friendly indeed</span>.
 Install-Package Intelliplan.Logary.ElmahIO
 ```
 
-![Elmah.IO](https://raw.githubusercontent.com/logary/logary-assets/master/targets/elmah.png)
+![Elmah.IO](https://raw.githubusercontent.com/logary/logary-assets/master/targets/elmahio.png)
 
 #### Target: Logary.Logentries
 
@@ -179,6 +179,8 @@ Install-Package Intelliplan.Logary.Zipkin
 
 #### Adapter: Suave
 
+Adapter for getting logs from Suave.
+
 > Suave is inspired in the simplicity of Happstack and born out of the
 > necessity of embedding web server capabilities in my own applications. Still
 > in its early stages Suave supports HTTPS, multiple TCP/IP bindings, Basic
@@ -192,12 +194,19 @@ Install-Package Intelliplan.Logary.Zipkin
 Install-Package Intelliplan.Logary.Suave
 ```
 
-![Suave](https://raw.githubusercontent.com/logary/logary-assets/master/targets/loggr.png)
+![Suave](https://raw.githubusercontent.com/logary/logary-assets/master/targets/suave.png)
 
 #### Adapter: Topshelf
 
-![Topshelf](https://raw.githubusercontent.com/logary/logary-assets/master/targets/topshelf.png)
+Adapter for getting logs from Topshelf.
 
+[Topshelf](http://topshelf-project.com/) is a Windows Services adapter - useful
+if you're building cross-platform applications with albacore, because you can
+package the executable inside either a RPM or a Chocolatey package - then on
+Windows you install it and on unix you just run the exe with a service runner
+like [Supervisord](http://supervisord.org/).
+
+![Topshelf](https://raw.githubusercontent.com/logary/logary-assets/master/targets/topshelf.png)
 
 ## Target Maintainers Wanted!
 
