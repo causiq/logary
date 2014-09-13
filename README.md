@@ -92,29 +92,23 @@ Install-Package Intelliplan.Logary.TOML
 
 ## Targets
 
-#### Target: Logary.DB
+#### Target: Logary.Logstash *builtin*
 
-This target logs asynchronously to a database, using ADO.Net. You can configure
-any connection factory through the target's configuration.
+This is the most mature target that we use the most at Intelliplan. Logstash is
+a log router that can move your logs to the best location available.
 
-The target also comes with **Logary.DB.Migrations** that set up the database
-state for both logs and metrics on boot, if not already existent.
+Blurb:
 
-``` powershell
-Install-Package Intelliplan.Logary.DB
-Install-Package Intelliplan.Logary.DB.Migrations
-```
+> **Manage events and logs**. Elasticsearch works seamlessly with Logstash to
+> collect, parse, index, and search logs
 
-#### Target: Logary.Dash
-
-Work in progress - aims to provide the same dashboard as Metrics.Net, allowing
-you runtime insight into your programs.
+**Part of the core assembly:**
 
 ``` powershell
-Install-Package Intelliplan.Logary.Dash
+Install-Package Intelliplan.Logary
 ```
 
-The dashboard uses the awesome F# web server [suave.io](http://suave.io/).
+![Logstash](https://raw.githubusercontent.com/logary/logary-assets/master/targets/logstash.png)
 
 #### Target: Logary.ElmahIO
 
@@ -161,17 +155,66 @@ Install-Package Intelliplan.Logary.Loggr
 
 #### Target: Riemann
 
+This target writes Measures to Riemann and is being used for sending metrics
+from SQLServerHealth, for example. Sending them to riemann gives a platform to
+start acting on what goes on in your system and can be a way to provide
+auto-scaling to your deployments based off of application metrics.
+
+Riemann is built in Clojure, and so is its config, so it gives you an
+opportunity to try something new and learn a nice language.
+
 Blurb:
 
-> **Riemann monitors distributed systems.**
-> Riemann aggregates events from your servers and applications with a powerful
-> stream processing language.
+> **Riemann monitors distributed systems.** Riemann aggregates events from your
+> servers and applications with a powerful stream processing language.
 
 ``` powershell
 Install-Package Intelliplan.Logary.Riemann
 ```
 
 ![Riemann](https://raw.githubusercontent.com/logary/logary-assets/master/targets/riemann.png)
+
+#### Target: Logary.DB
+
+This target logs asynchronously to a database, using ADO.Net. You can configure
+any connection factory through the target's configuration.
+
+The target also comes with **Logary.DB.Migrations** that set up the database
+state for both logs and metrics on boot, if not already existent.
+
+``` powershell
+Install-Package Intelliplan.Logary.DB
+Install-Package Intelliplan.Logary.DB.Migrations
+```
+
+#### Target: Logary.Nimrod *builtin*
+
+Nimrod is a metrics server based on log processing - as such it can handle both
+LogLines and Measures.
+
+Blurb:
+
+> Nimrod is a metrics server purely based on log processing: hence, it doesn't
+> affect the way you write your applications, nor has it any side effect on them.
+
+**Part of the core assembly:**
+
+``` powershell
+Install-Package Intelliplan.Logary
+```
+
+![Nimrod](https://raw.githubusercontent.com/logary/logary-assets/master/targets/nimrod.png)
+
+#### Target: Logary.Dash
+
+Work in progress - aims to provide the same dashboard as Metrics.Net, allowing
+you runtime insight into your programs.
+
+``` powershell
+Install-Package Intelliplan.Logary.Dash
+```
+
+The dashboard uses the awesome F# web server [suave.io](http://suave.io/).
 
 #### Target: Zipkin
 
