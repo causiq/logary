@@ -19,6 +19,8 @@ CentOS](https://tc-oss.intelliplan.net/project.html?projectId=Logary&tab=project
 Install-Package Intelliplan.Logary
 ```
 
+### API
+
 This package works great with F#:
 
 ``` fsharp
@@ -69,6 +71,12 @@ to get access to the extension methods, while having the nuget/dll referenced.
 ``` csharp
 using Logary;
 ```
+#### API: HealthChecks
+
+Health Checks are like probes, but know how to interpret the results into the
+warning-levels of `LogLevel`.
+
+### Targets
 
 #### Target: Logary.DB
 
@@ -106,6 +114,8 @@ targets">.Net developer friendly indeed</span>.
 Install-Package Intelliplan.Logary.ElmahIO
 ```
 
+![Elmah.IO](https://raw.githubusercontent.com/logary/logary-assets/master/targets/elmah.png)
+
 #### Target: Logary.Logentries
 
 The blurb:
@@ -135,10 +145,59 @@ Install-Package Intelliplan.Logary.Loggr
 
 ![Loggr](https://raw.githubusercontent.com/logary/logary-assets/master/targets/loggr.png)
 
-#### HealthChecks
+#### Target: Riemann
 
-Health Checks are like probes, but know how to interpret the results into the
-warning-levels of `LogLevel`.
+Blurb:
+
+> **Riemann monitors distributed systems.**
+> Riemann aggregates events from your servers and applications with a powerful
+> stream processing language.
+
+``` powershell
+Install-Package Intelliplan.Logary.Riemann
+```
+
+![Riemann](https://raw.githubusercontent.com/logary/logary-assets/master/targets/riemann.png)
+
+#### Target: Zipkin
+
+Blurb:
+
+> Zipkin is a distributed tracing system that helps us gather timing data for
+> all the disparate services at Twitter. It manages both the collection and
+> lookup of this data through a Collector and a Query service. We closely
+> modelled Zipkin after the Google Dapper paper. Follow @ZipkinProject for
+> updates.
+
+``` powershell
+Install-Package Intelliplan.Logary.Zipkin
+```
+
+![Zipkin](https://raw.githubusercontent.com/logary/logary-assets/master/targets/zipkin.png)
+
+### Adapters
+
+#### Adapter: Suave
+
+> Suave is inspired in the simplicity of Happstack and born out of the
+> necessity of embedding web server capabilities in my own applications. Still
+> in its early stages Suave supports HTTPS, multiple TCP/IP bindings, Basic
+> Access Authentication, Keep-Alive and HTTP compression.
+
+> Suave also takes advantage of F# asynchronous workflows to perform
+> non-blocking IO. In fact, Suave is written in a completely non-blocking
+> fashion throughout. Suave runs on Linux, OS X and Windows flawlessly.
+
+``` powershell
+Install-Package Intelliplan.Logary.Suave
+```
+
+![Suave](https://raw.githubusercontent.com/logary/logary-assets/master/targets/loggr.png)
+
+#### Adapter: Topshelf
+
+![Topshelf](https://raw.githubusercontent.com/logary/logary-assets/master/targets/topshelf.png)
+
 
 ## Target Maintainers Wanted!
 
@@ -151,8 +210,7 @@ Logary is the next generation logging framework. It observes some facts that it
 successfully builds its conceptual model from! It's written using functional
 programming in F# with only a single field 'global state' to facilitate logging
 with initialise-once static readonly fields. It never throws runtime exceptions
-if the configuration validates and never blocks the call-site. That said, onto
-the observations!
+if the configuration validates and never blocks the call-site.
 
 ## Building
 
