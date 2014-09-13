@@ -33,7 +33,7 @@ Install-Package Intelliplan.Logary -Pre
    - [Target: Logary.Loggr](#target-logaryloggr)
    - [Target: Logary.Riemann](#target-logaryriemann)
    - [Target: Logary.DB](#target-logarydb)
-   - [Target: Logary.Nimrod builtin](#target)
+   - [Target: Logary.Nimrod builtin](#target-logarynimrod-builtin)
    - [Target: Logary.Dash](#target-logarydash)
    - [Target: Logary.Zipkin](#target-zipkin)
  - [Adapters](#adapters)
