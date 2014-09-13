@@ -1,4 +1,4 @@
-# Logary
+# Logary v2.0
 
 Logary is a high performance, multi-target logging, metric, tracing and
 health-check library for mono and .Net.
@@ -18,6 +18,11 @@ CentOS](https://tc-oss.intelliplan.net/project.html?projectId=Logary&tab=project
 ``` powershell
 Install-Package Intelliplan.Logary -Pre
 ```
+## Table of Contents
+
+ - [API](#API)
+ - [API: C#/VB façade](#api-cvb-façade)
+ - [API: HealthChecks, Metrics, Probes](#api-healthchecks-metrics-probes)
 
 ## API
 
