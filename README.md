@@ -11,7 +11,11 @@ Chat and support and get support:
 If you like the code, buy me a beer!
 [![Flattr this](https://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=haf&url=https%3A%2F%2Fgithub.com%2Flogary%2Flogary)
 
-```
+Logary v2.0 aims to be compatible with the latest Mono and .Net 4.0. It is
+compiled with open source F# 3.0. [Logary is continously built on
+CentOS](https://tc-oss.intelliplan.net/project.html?projectId=Logary&tab=projectOverview).
+
+``` powershell
 Install-Package Intelliplan.Logary
 ```
 
@@ -51,23 +55,90 @@ let main argv =
   0
 ```
 
-#### C#/VB façade
+#### API: C#/VB façade
 
 This facade is useful when you're using C# 
 
-```
+``` powershell
 Install-Package Intelliplan.Logary.CSharp
 ```
 
-It adds extension methods to the `Logary` namespace. Just do:
+It adds extension methods to the `Logary` namespace. Just import the namespace
+to get access to the extension methods, while having the nuget/dll referenced.
 
 ``` csharp
 using Logary;
 ```
 
+#### Target: Logary.DB
+
+This target logs asynchronously to a database, using ADO.Net. You can configure
+any connection factory through the target's configuration.
+
+The target also comes with **Logary.DB.Migrations** that set up the database
+state for both logs and metrics on boot, if not already existent.
+
+``` powershell
+Install-Package Intelliplan.Logary.DB
+Install-Package Intelliplan.Logary.DB.Migrations
+```
+
+#### Target: Logary.Dash
+
+Work in progress - aims to provide the same dashboard as Metrics.Net, allowing
+you runtime insight into your programs.
+
+``` powershell
+Install-Package Intelliplan.Logary.Dash
+```
+
+The dashboard uses the awesome F# web server [suave.io](http://suave.io/).
+
+#### Target: Logary.ElmahIO
+
+Interop target if you are writing a web application and have
+[Elmah.IO](https://elmah.io/) as your log dashboard. <span title="Unless you're
+scared of the big, big world out there, consider using something that many other
+sorts of developers than .Net developers use, such as one of the other
+targets">.Net developer friendly indeed</span>.
+
+``` powershell
+Install-Package Intelliplan.Logary.ElmahIO
+```
+
+#### Target: Logary.Logentries
+
+The blurb:
+
+> Fast Search & Real-time Log Processing - Centralized search, aggregation, and
+> correlation. See query results in seconds.
+
+``` powershell
+Install-Package Intelliplan.Logary.Logentries
+```
+
+All logging to Logentries is encrypted.
+
+![Logentries](https://raw.githubusercontent.com/logary/logary-assets/master/targets/logentries.png)
+
+#### Target: Loggr
+
+The blurb:
+
+> **Monitor Your Web Apps in Realtime**
+> Get a control panel for your web app with event logging, user monitoring,
+> analytics, notifications and more
+
+``` powershell
+Install-Package Intelliplan.Logary.Loggr
+```
+
+![Loggr](https://raw.githubusercontent.com/logary/logary-assets/master/targets/loggr.png)
+
 #### HealthChecks
 
-...
+Health Checks are like probes, but know how to interpret the results into the
+warning-levels of `LogLevel`.
 
 ## Target Maintainers Wanted!
 
