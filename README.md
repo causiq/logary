@@ -19,7 +19,7 @@ CentOS](https://tc-oss.intelliplan.net/project.html?projectId=Logary&tab=project
 Install-Package Intelliplan.Logary
 ```
 
-### API
+## API
 
 This package works great with F#:
 
@@ -71,12 +71,26 @@ to get access to the extension methods, while having the nuget/dll referenced.
 ``` csharp
 using Logary;
 ```
-#### API: HealthChecks
+#### API: HealthChecks, Metrics, Probes
 
 Health Checks are like probes, but know how to interpret the results into the
 warning-levels of `LogLevel`.
 
-### Targets
+Metrics: This is currently fairly well-working - have a look at the SQLHealthService for
+an example of a Probe.
+
+#### API: Logary.TOML
+
+Currently work in progress.
+
+A configuration-file API for reading [Tom's Obvious, Minimal
+Language](https://github.com/toml-lang/toml) into a configuration of Logary.
+
+``` powershell
+Install-Package Intelliplan.Logary.TOML
+```
+
+## Targets
 
 #### Target: Logary.DB
 
@@ -161,6 +175,10 @@ Install-Package Intelliplan.Logary.Riemann
 
 #### Target: Zipkin
 
+Currently work in progress: LogLines and Measures become annotations to Spans
+which are correlated in process and then sent through Thrift to the Zipkin
+server as Spans/traces.
+
 Blurb:
 
 > Zipkin is a distributed tracing system that helps us gather timing data for
@@ -175,7 +193,7 @@ Install-Package Intelliplan.Logary.Zipkin
 
 ![Zipkin](https://raw.githubusercontent.com/logary/logary-assets/master/targets/zipkin.png)
 
-### Adapters
+## Adapters
 
 #### Adapter: Suave
 
@@ -207,6 +225,24 @@ Windows you install it and on unix you just run the exe with a service runner
 like [Supervisord](http://supervisord.org/).
 
 ![Topshelf](https://raw.githubusercontent.com/logary/logary-assets/master/targets/topshelf.png)
+
+## Services
+
+Services are Windows or Linux services aimed to provide a persistent facility
+for you who are deploying your software and need to monitor it. Currently there
+is a single service: **SQLServerHealth**.
+
+#### Service: Logary.SQLServerHealth
+
+This service is responsible for connecting using SSPI/Integrated Security to the
+database server that it is running on, and query the *master* database for
+performance related data.
+
+The queries are remembered and the timestamps of them used to send a stream of
+deltas - gauges if you want - to a target - currently Riemann - but configurable
+in code.
+
+
 
 ## Target Maintainers Wanted!
 
@@ -258,6 +294,8 @@ ensures that a logary instance is correct by construction.
 
  [apache]: https://www.apache.org/licenses/LICENSE-2.0.html
 
+-------------------------------
+
 # Refactor notes: Logary notes impl metrics
 Moving towards a dashboard inside the service at hand.
 
@@ -272,8 +310,6 @@ and continuous running on SQL statements into a probe.
  - A console text-writer target for the above sample
 
 ### Outstanding Questions
-
-Handling of raw floats/doubles?
 
 Handling of histograms as opposed to simple reservoirs of data?
 
