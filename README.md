@@ -39,7 +39,7 @@ Install-Package Intelliplan.Logary -Pre
  - [Adapters](#adapters)
    - [Adapter: Suave](#adapter-suave)
    - [Adapter: Topshelf](#adapter-topshelf)
- - [Services](#Services)
+ - [Services](#services)
    - [Service: Logary.SQLServerHealth](#service-logarysqlserverhealth)
  - [Target Maintainers Wanted!](#target-maintainers-wanted)
  - [Building](#building)
