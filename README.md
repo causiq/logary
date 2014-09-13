@@ -20,9 +20,40 @@ Install-Package Intelliplan.Logary -Pre
 ```
 ## Table of Contents
 
- - [API](#API)
- - [API: C#/VB façade](#api-cvb-façade)
- - [API: HealthChecks, Metrics, Probes](#api-healthchecks-metrics-probes)
+ - [Why?](#why)
+ - [API](#api)
+   - [API: C#/VB façade](#api-cvb-façade)
+   - [API: HealthChecks, Metrics, Probes](#api-healthchecks-metrics-probes)
+   - [API: Logary.TOML](#api-logarytoml)
+ - [Targets](#targets)
+   - [Target: Logary.Logstash builtin](#target-logarylogstash-builtin)
+   - [Target: Logary.Graphite builtin](#target-logarygraphite-builtin)
+   - [Target: Logary.ElmahIO](#target-logaryelmahio)
+   - [Target: Logary.Logentries](#target-logarylogentries)
+   - [Target: Logary.Loggr](#target-logaryloggr)
+   - [Target: Logary.Riemann](#target-logaryriemann)
+   - [Target: Logary.DB](#target-logarydb)
+   - [Target: Logary.Nimrod builtin](#target)
+   - [Target: Logary.Dash](#target-logarydash)
+   - [Target: Logary.Zipkin](#target-zipkin)
+ - [Adapters](#adapters)
+   - [Adapter: Suave](#adapter-suave)
+   - [Adapter: Topshelf](#adapter-topshelf)
+ - [Services](#Services)
+   - [Service: Logary.SQLServerHealth](#service-logarysqlserverhealth)
+ - [Target Maintainers Wanted!](#target-maintainers-wanted)
+ - [Building](#building)
+ - [Contributing & Code Style](#contributing--code-style)
+ - [License](#license)
+
+
+## Why?
+
+Logary is the next generation logging framework. It observes some facts that it
+successfully builds its conceptual model from! It's written using functional
+programming in F# with only a single field 'global state' to facilitate logging
+with initialise-once static readonly fields. It never throws runtime exceptions
+if the configuration validates and never blocks the call-site.
 
 ## API
 
@@ -266,7 +297,7 @@ Install-Package Intelliplan.Logary.Loggr -Pre
 
 ![Loggr](https://raw.githubusercontent.com/logary/logary-assets/master/targets/loggr.png)
 
-#### Target: Riemann
+#### Target: Logary.Riemann
 
 **For Measures**
 
@@ -336,7 +367,7 @@ Install-Package Intelliplan.Logary.Dash -Pre
 
 The dashboard uses the awesome F# web server [suave.io](http://suave.io/).
 
-#### Target: Zipkin
+#### Target: Logary.Zipkin
 
 **For LogLines - and adds Spans**
 
@@ -411,14 +442,6 @@ in code.
 
 Are you interested in maintaining a target? Let [me know](mailto:henrik@haf.se)
 or file a PR demonstrating your work.
-
-## Why?
-
-Logary is the next generation logging framework. It observes some facts that it
-successfully builds its conceptual model from! It's written using functional
-programming in F# with only a single field 'global state' to facilitate logging
-with initialise-once static readonly fields. It never throws runtime exceptions
-if the configuration validates and never blocks the call-site.
 
 ## Building
 
