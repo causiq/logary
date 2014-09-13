@@ -293,6 +293,12 @@ Best used in conjunction with [Grafana](http://grafana.org/) (a web front-end):
 
 ![Grafana](https://raw.githubusercontent.com/logary/logary-assets/master/targets/grafana.png)
 
+**Part of the core assembly:**
+
+``` powershell
+Install-Package Intelliplan.Logary -Pre
+```
+
 #### Target: Logary.ElmahIO
 
 **For LogLines**
