@@ -16,7 +16,7 @@ compiled with open source F# 3.0. [Logary is continously built on
 CentOS](https://tc-oss.intelliplan.net/project.html?projectId=Logary&tab=projectOverview).
 
 ``` powershell
-Install-Package Intelliplan.Logary
+Install-Package Intelliplan.Logary -Pre
 ```
 
 ## API
@@ -62,7 +62,7 @@ let main argv =
 This facade is useful when you're using C# 
 
 ``` powershell
-Install-Package Intelliplan.Logary.CSharp
+Install-Package Intelliplan.Logary.CSharp -Pre
 ```
 
 It adds extension methods to the `Logary` namespace. Just import the namespace
@@ -87,7 +87,7 @@ A configuration-file API for reading [Tom's Obvious, Minimal
 Language](https://github.com/toml-lang/toml) into a configuration of Logary.
 
 ``` powershell
-Install-Package Intelliplan.Logary.TOML
+Install-Package Intelliplan.Logary.TOML -Pre
 ```
 
 ## Targets
@@ -105,7 +105,7 @@ a log router that can move your logs to the best location available.
 **Part of the core assembly:**
 
 ``` powershell
-Install-Package Intelliplan.Logary
+Install-Package Intelliplan.Logary -Pre
 ```
 
 ![Logstash](https://raw.githubusercontent.com/logary/logary-assets/master/targets/logstash.png)
@@ -143,7 +143,7 @@ sorts of developers than .Net developers use, such as one of the other
 targets">.Net developer friendly indeed</span>.
 
 ``` powershell
-Install-Package Intelliplan.Logary.ElmahIO
+Install-Package Intelliplan.Logary.ElmahIO -Pre
 ```
 
 ![Elmah.IO](https://raw.githubusercontent.com/logary/logary-assets/master/targets/elmahio.png)
@@ -156,7 +156,7 @@ Install-Package Intelliplan.Logary.ElmahIO
 > correlation. See query results in seconds.
 
 ``` powershell
-Install-Package Intelliplan.Logary.Logentries
+Install-Package Intelliplan.Logary.Logentries -Pre
 ```
 
 All logging to Logentries is encrypted.
@@ -172,7 +172,7 @@ All logging to Logentries is encrypted.
 > analytics, notifications and more
 
 ``` powershell
-Install-Package Intelliplan.Logary.Loggr
+Install-Package Intelliplan.Logary.Loggr -Pre
 ```
 
 ![Loggr](https://raw.githubusercontent.com/logary/logary-assets/master/targets/loggr.png)
@@ -193,7 +193,7 @@ opportunity to try something new and learn a nice language.
 > servers and applications with a powerful stream processing language.
 
 ``` powershell
-Install-Package Intelliplan.Logary.Riemann
+Install-Package Intelliplan.Logary.Riemann -Pre
 ```
 
 ![Riemann](https://raw.githubusercontent.com/logary/logary-assets/master/targets/riemann.png)
@@ -214,8 +214,8 @@ The target also comes with **Logary.DB.Migrations** that set up the database
 state for both logs and metrics on boot, if not already existent.
 
 ``` powershell
-Install-Package Intelliplan.Logary.DB
-Install-Package Intelliplan.Logary.DB.Migrations
+Install-Package Intelliplan.Logary.DB -Pre
+Install-Package Intelliplan.Logary.DB.Migrations -Pre
 ```
 
 #### Target: Logary.Nimrod *builtin*
@@ -231,7 +231,7 @@ LogLines and Measures.
 **Part of the core assembly:**
 
 ``` powershell
-Install-Package Intelliplan.Logary
+Install-Package Intelliplan.Logary -Pre
 ```
 
 ![Nimrod](https://raw.githubusercontent.com/logary/logary-assets/master/targets/nimrod.png)
@@ -242,7 +242,7 @@ Work in progress - aims to provide the same dashboard as Metrics.Net, allowing
 you runtime insight into your programs.
 
 ``` powershell
-Install-Package Intelliplan.Logary.Dash
+Install-Package Intelliplan.Logary.Dash -Pre
 ```
 
 The dashboard uses the awesome F# web server [suave.io](http://suave.io/).
@@ -262,7 +262,7 @@ server as Spans/traces.
 > updates.
 
 ``` powershell
-Install-Package Intelliplan.Logary.Zipkin
+Install-Package Intelliplan.Logary.Zipkin -Pre
 ```
 
 ![Zipkin](https://raw.githubusercontent.com/logary/logary-assets/master/targets/zipkin.png)
@@ -283,7 +283,7 @@ Adapter for getting logs from Suave.
 > fashion throughout. Suave runs on Linux, OS X and Windows flawlessly.
 
 ``` powershell
-Install-Package Intelliplan.Logary.Suave
+Install-Package Intelliplan.Logary.Suave -Pre
 ```
 
 ![Suave](https://raw.githubusercontent.com/logary/logary-assets/master/targets/suave.png)
