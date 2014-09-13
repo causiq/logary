@@ -283,7 +283,7 @@ All logging to Logentries is encrypted.
 
 ![Logentries](https://raw.githubusercontent.com/logary/logary-assets/master/targets/logentries.png)
 
-#### Target: Loggr
+#### Target: Logary.Loggr
 
 **For LogLines**
 
