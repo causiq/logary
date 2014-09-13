@@ -17,6 +17,12 @@ let internal caseNameOf (x:'a) =
   match FSharpValue.GetUnionFields(x, typeof<'a>) with
   | case, _ -> case.Name
 
+let internal formatData nl (data : Map<string, obj>) =
+  let inspect = box >> function
+    | :? string as s -> "\"" + s + "\""
+    | x -> sprintf "%O" x
+  data |> Map.fold (fun s k t -> s + nl + "  " + k + " => " + inspect t) ""
+
 /// A StringFormatter is the thing that takes a log line and returns it as a string
 /// that can be printed, sent or otherwise dealt with in a manner that suits the target.
 type StringFormatter =
@@ -26,13 +32,14 @@ type StringFormatter =
     let format' =
       fun l ->
         let mex = l.``exception``
-        sprintf "%s %s: %s [%s]%s%s%s"
+        sprintf "%s %s: %s [%s]%s%s%s%s"
           (string (caseNameOf l.level).[0])
           // https://noda-time.googlecode.com/hg/docs/api/html/M_NodaTime_OffsetDateTime_ToString.htm
           (l.timestamp.ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture))
           l.message
           l.path
           (match l.tags with [] -> "" | _ -> " {" + String.Join(", ", l.tags) + "}")
+          (if l.data.IsEmpty then "" else formatData nl l.data)
           (match mex with None -> "" | Some ex -> sprintf " cont...%s%O" nl ex)
           ending
     { format   = format'
