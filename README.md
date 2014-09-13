@@ -26,6 +26,9 @@ Install-Package Intelliplan.Logary -Pre
    - [API: HealthChecks, Metrics, Probes](#api-healthchecks-metrics-probes)
    - [API: Logary.TOML](#api-logarytoml)
  - [Targets](#targets)
+   - [Target: Logary.TextWriter builtin](#target-logarytextwriter-builtin)
+   - [Target: Logary.Console builtin](#target-logaryconsole-builtin)
+   - [Target: Logary.Debugger builtin](#target-logarydebugger-builtin)
    - [Target: Logary.Logstash builtin](#target-logarylogstash-builtin)
    - [Target: Logary.Graphite builtin](#target-logarygraphite-builtin)
    - [Target: Logary.ElmahIO](#target-logaryelmahio)
@@ -211,6 +214,44 @@ Install-Package Intelliplan.Logary.TOML -Pre
 ```
 
 ## Targets
+
+#### Target: Logary.TextWriter *builtin*
+
+**For LogLines**
+
+Write to any text writer - such as one from `System.IO.File.OpenWrite`.
+
+**Part of the core assembly:**
+
+``` powershell
+Install-Package Intelliplan.Logary -Pre
+```
+
+#### Target: Logary.Console *builtin*
+
+**For LogLines**
+
+Writes output messages to `System.Console.Out` and Error, and Fatal LogLines
+to `System.Console.Error`.
+
+**Part of the core assembly:**
+
+``` powershell
+Install-Package Intelliplan.Logary -Pre
+```
+
+#### Target: Logary.Debugger *builtin*
+
+**For LogLines**
+
+Writes all output to the Debugger-console of Visual Studio, Xamarin Studio or
+MonoDevelop.
+
+**Part of the core assembly:**
+
+``` powershell
+Install-Package Intelliplan.Logary -Pre
+```
 
 #### Target: Logary.Logstash *builtin*
 
