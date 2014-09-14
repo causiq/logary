@@ -87,7 +87,11 @@ nugets_pack :nugets_quick => :versioning do |p|
   p.with_metadata do |m|
     m.description = 'Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net.'
     m.authors     = 'Henrik Feldt, Intelliplan International AB'
+    m.copyright   = 'Henrik Feldt, Intelliplan International AB'
     m.version     = ENV['NUGET_VERSION']
+    m.tags        = 'logging f# nosql log4net nlog serilog log logs metrics metrics.net measure performance perf semantic structured'
+    m.license_url = 'https://www.apache.org/licenses/LICENSE-2.0.html'
+    m.icon_url    = 'https://raw.githubusercontent.com/logary/logary-assets/master/graphics/LogaryLogoSquare32x32.png'
   end
 end
 
