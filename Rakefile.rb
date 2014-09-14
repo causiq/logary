@@ -111,6 +111,19 @@ task :tests_integration do
   system "src/Logary.Logentries.Tests/bin/#{Configuration}/Logary.Logentries.Tests.exe", clr_command: true
 end
 
+desc 'push all packages in build/pkg'
+task :nugets_push do
+  Dir.glob 'build/pkg/*.nupkg' do |path|
+    begin
+      system 'tools/NuGet.exe',
+             %W|push #{path}|,
+             clr_command: true
+    rescue => e
+      error e
+    end
+  end
+end
+
 desc 'run unit tests'
 task :tests => [:build, :tests_unit]
 
