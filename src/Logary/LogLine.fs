@@ -98,6 +98,10 @@ module LogLine =
   [<CompiledName "SetExn">]
   let setExn = s >> Lenses.exception_.set
 
+  /// Set the LogLine's timestamp
+  [<CompiledName "SetTimestamp">]
+  let setTimestamp = Lenses.timestamp_.set
+
   //////////////////////////
   // Construction methods //
   //////////////////////////
