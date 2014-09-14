@@ -6,7 +6,7 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>Intelliplan.Logary</RootNamespace>
+    <RootNamespace>Logary</RootNamespace>
     <AssemblyName>Logary</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <Name>Intelliplan.Logary</Name>

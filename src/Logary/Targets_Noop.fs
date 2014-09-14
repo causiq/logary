@@ -47,7 +47,7 @@ type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
     ! (callParent <| Builder({ conf with isYes = yes }, callParent))
 
   new(callParent : FactoryApi.ParentCallback<_>) =
-    Builder({ isYes = false }, callParent)
+    Builder(empty, callParent)
 
   interface Logary.Target.FactoryApi.SpecificTargetConf with
     member x.Build name = create conf name

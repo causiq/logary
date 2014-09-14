@@ -131,14 +131,22 @@ module HealthCheck =
         member x.Dispose() =
           a
           |> Actor.reqReply ShutdownHealthCheck Infinite |> Async.Ignore
-          |> Async.RunSynchronously }
+          |> Async.RunSynchronously
+      interface IComparable<string> with
+        member x.CompareTo other = name.CompareTo other
+      interface IEquatable<string> with
+        member x.Equals other = name.Equals other }
 
   /// Create a health check that will never yield a value
   let mkDead name =
     { new HealthCheck with
         member x.GetValue () = NoValue
         member x.Name        = name
-        member x.Dispose ()  = () }
+        member x.Dispose ()  = ()
+      interface IComparable<string> with
+        member x.CompareTo other = name.CompareTo other
+      interface IEquatable<string> with
+        member x.Equals other = name.Equals other }
       
   module WinPerfCounter =
     open Logary.WinPerfCounter
@@ -152,8 +160,9 @@ module HealthCheck =
     let toHealthCheckNamed name wpc measureTransform =
       match toPC wpc with
       | Some counter ->
+        let strName = DP.joined name
         { new HealthCheck with
-            member x.Name = DP.joined name
+            member x.Name = strName
             member x.GetValue () =
               try
                 counter.NextValue()
@@ -164,7 +173,11 @@ module HealthCheck =
               with
                 e -> NoValue
             member x.Dispose () =
-              counter.Dispose() }
+              counter.Dispose()
+          interface IComparable<string> with
+            member x.CompareTo other = strName.CompareTo other
+          interface IEquatable<string> with
+            member x.Equals other = name.Equals other }
       | None -> mkDead name.joined
 
     let toHealthCheck wpc =
@@ -182,6 +195,10 @@ module HealthCheck =
           member x.GetValue() = hc.GetValue()
           member x.Dispose() =
             disposables |> Seq.iter (fun d -> d.Dispose())
-            hc.Dispose() }
+            hc.Dispose()
+        interface IComparable<string> with
+          member x.CompareTo other = hc.Name.CompareTo other
+        interface IEquatable<string> with
+          member x.Equals other = hc.Name.Equals other }
 
  

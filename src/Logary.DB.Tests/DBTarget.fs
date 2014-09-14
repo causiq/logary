@@ -37,8 +37,11 @@ module SQLiteDB =
             System.Console.Write(str)
             System.Diagnostics.Debugger.Log(6, "tests", str)
         member x.Measure _ = ()
+        member x.Level = LogLevel.Info
+      interface Named with
         member x.Name = "DB test logger"
-        member x.Level = LogLevel.Info }
+        member x.CompareTo other = "DB test logger".CompareTo other
+        member x.Equals other = "DB test logger".Equals other }
 
   open System
   open Logary.DB.Migrations

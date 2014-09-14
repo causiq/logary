@@ -27,11 +27,6 @@ let getLogger registry name =
 
 /// handling flyweights
 module internal Logging =
-  open System
-
-  open Logary.Target
-  open Logary.Internals
-  open Logary.Internals.Date
 
   /// Flyweight logger impl - reconfigures to work when it is configured, and until then
   /// throws away all log lines.
@@ -44,11 +39,16 @@ module internal Logging =
         lock locker (fun () ->
           logManager := Some lm
           logger := Some <| Async.RunSynchronously(getLogger lm.registry name))
-    interface Logger with
+    interface Named with
       member x.Name = name
+      member x.CompareTo other = name.CompareTo other
+      member x.Equals other = name.Equals other
+
+    interface Logger with
       member x.Log l = (!logger) |> Option.iter (fun logger -> logger.Log l)
       member x.Measure m = (!logger) |> Option.iter (fun logger -> logger.Measure m)
       member x.Level = Verbose
+
 
   /// Iterate through all flywieghts and set the current LogManager for them
   let goFish () =

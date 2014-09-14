@@ -2,6 +2,8 @@
 /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
 namespace Logary.Internals
 
+open System
+
 open Logary
 
 /// A logger that does absolutely nothing, useful for feeding into the target
@@ -13,6 +15,10 @@ type NullLogger() =
     member x.Measure measur = ()
     member x.Level = Fatal
     member x.Name = "Logary.Internals.NullLogger"
+  interface IComparable<string> with
+    member x.CompareTo other = "Logary.Internals.NullLogger".CompareTo other
+  interface IEquatable<string> with
+    member x.Equals other = "Logary.Internals.NullLogger".Equals other
 
 module internal Logging =
   open FSharp.Actor
@@ -21,48 +27,65 @@ module internal Logging =
 
   /// A logger instance that keeps a reference to the actor targets that it
   /// logs to, as well as its name.
+  [<CustomEquality; CustomComparison>]
   type LoggerInstance =
     { name    : string
       targets : (LineFilter * MeasureFilter * IActor) list
       level   : LogLevel
       /// the internal logger for this logger instance
       ilogger : Logger }
-    with
-      interface Named with
-        member x.Name = x.name
+  with
+    interface Named with
+      member x.Name = x.name
 
-      interface Logger with
-        member x.Log line =
-          for accept, _, t in x.targets do
-            try
-              if accept line then
-                t <-- Log line
-            with
-            | Actor.ActorInvalidStatus msg ->
-              LogLine.errorf
-                "Logging to %s failed, because of target state. Actor said: '%s'"
-                x.name msg
-              |> Logger.log x.ilogger
+    interface Logger with
+      member x.Log line =
+        for accept, _, t in x.targets do
+          try
+            if accept line then
+              t <-- Log line
+          with
+          | Actor.ActorInvalidStatus msg ->
+            LogLine.errorf
+              "Logging to %s failed, because of target state. Actor said: '%s'"
+              x.name msg
+            |> Logger.log x.ilogger
 
-        member x.Measure m =
-          for _, accept, t in x.targets do
-            try
-              if accept m then
-                t <-- Measure m
-            with
-            | Actor.ActorInvalidStatus msg ->
-              LogLine.errorf
-                "Sending metric to %s failed, because of target state. Actor said: '%s'" 
-                x.name msg
-              |> Logger.log x.ilogger
+      member x.Measure m =
+        for _, accept, t in x.targets do
+          try
+            if accept m then
+              t <-- Measure m
+          with
+          | Actor.ActorInvalidStatus msg ->
+            LogLine.errorf
+              "Sending metric to %s failed, because of target state. Actor said: '%s'" 
+              x.name msg
+            |> Logger.log x.ilogger
 
-        member x.Level =
-          x.level
+      member x.Level =
+        x.level
+
+    override x.GetHashCode () =
+      x.name.GetHashCode()
+
+    interface IComparable<string> with
+      member x.CompareTo other = x.name.CompareTo other
+
+    override x.Equals (other : obj) =
+      match other with
+      | :? Named as named -> named.Equals x
+      | _ -> false
+
+    interface IEquatable<string> with
+      member x.Equals other = x.name.Equals other
+
 
 /// This logger is special: in the above case the Registry takes the responsibility
 /// of shutting down all targets, but this is a stand-alone logger that is used
 /// to log everything in Logary with, so it needs to capable of handling its
 /// own disposal. It must not throw under any circumstances.
+[<CustomEquality; CustomComparison>]
 type InternalLogger =
   { lvl  : LogLevel
     trgs : Target.TargetInstance list }
@@ -81,12 +104,28 @@ type InternalLogger =
       x.lvl
     member x.Name =
       "Logary.Internals.InternalLogger"
+
   interface System.IDisposable with
     member x.Dispose() =
       try
         x.trgs
         |> List.iter (Target.shutdown >> Async.Ignore >> Async.RunSynchronously)
       with _ -> ()
+
+  override x.GetHashCode () =
+    "Logary.Internals.InternalLogger".GetHashCode()
+
+  interface IComparable<string> with
+    member x.CompareTo other = "Logary.Internals.InternalLogger".CompareTo other
+
+  override x.Equals (other : obj) =
+    match other with
+    | :? Named as named -> named.Equals x
+    | _ -> false
+
+  interface IEquatable<string> with
+    member x.Equals other = "Logary.Internals.InternalLogger".Equals other
+
   static member Create(level, targets) =
     { lvl = level; trgs = targets } :> Logger
 

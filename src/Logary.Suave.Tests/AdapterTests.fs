@@ -7,11 +7,15 @@ open global.Suave
 open Fuchu
 
 let test_loggers (min_level : Log.LogLevel) (line_level : Log.LogLevel) (line : LogLine ref) =
-  let stub = { new Logger with
-                  member x.Log ll = line := ll
-                  member x.Measure m = ()
-                  member x.Level = Info
-                  member x.Name = "test stub" }
+  let stub =
+    { new Logger with
+        member x.Log ll = line := ll
+        member x.Measure m = ()
+        member x.Level = Info
+      interface Named with
+        member x.Name = "test stub"
+        member x.Equals other = "test stub".Equals other
+        member x.CompareTo other = "test stub".CompareTo other }
 
   let subject = SuaveAdapter(stub) :> Suave.Log.Logger
 
