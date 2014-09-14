@@ -42,6 +42,7 @@ Install-Package Intelliplan.Logary -Pre
  - [Adapters](#adapters)
    - [Adapter: Suave](#adapter-suave)
    - [Adapter: Topshelf](#adapter-topshelf)
+   - [Adapter: log4net](#adapter-log4net)
  - [Services](#services)
    - [Service: Logary.SQLServerHealth](#service-logarysqlserverhealth)
  - [Target Maintainers Wanted!](#target-maintainers-wanted)
@@ -470,6 +471,12 @@ Install-Package Intelliplan.Logary.Topshelf -Pre
 ```
 
 ![Topshelf](https://raw.githubusercontent.com/logary/logary-assets/master/targets/topshelf.png)
+
+#### Adapter: log4net
+
+Adapter for getting logs from log4net into Logary.
+
+[Please see documentation](http://logary.github.io/adapters/log4net/)
 
 ## Services
 
