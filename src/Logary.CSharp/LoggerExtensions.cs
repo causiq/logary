@@ -20,7 +20,8 @@ namespace Logary
         /// e.g. if using LogStash, these properties will be fields. For performance
         /// improvements, you can send a dictionary, or otherwise you can
         /// send an anonymous object whose public properties are then serialised
-        /// as a dictionary.</param>
+        /// as a dictionary.Important! the data object must be a key/value type, i.e. you can't
+        /// send a string, you must first wrap it in a anonymous object.</param>
         /// <param name="tags">A list of tags to attach to the log line</param>
         /// <param name="exception"></param>
         /// <param name="path"></param>
