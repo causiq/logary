@@ -44,7 +44,8 @@
       <HintPath>..\packages\FSharp.Core.3.0.0.2\lib\net40\policy.2.3.FSharp.Core.dll</HintPath>
     </Reference>
     <Reference Include="suave">
-      <HintPath>..\packages\Suave.0.11.0\lib\suave.dll</HintPath>
+      <HintPath>..\packages\Suave.0.15.0\lib\suave.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
