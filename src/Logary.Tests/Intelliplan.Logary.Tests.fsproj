@@ -64,6 +64,7 @@
     <Compile Include="Registry.fs" />
     <Compile Include="ExternalAssumptions.fs" />
     <Compile Include="AssemblyVersionInfo.fs" />
+    <Compile Include="Internals.fs" />
     <Compile Include="Program.fs" />
     <None Include="Program.fsx" />
     <None Include="packages.config" />

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Logary.Internals;
 using NodaTime;
 
 namespace Logary
@@ -42,7 +43,7 @@ namespace Logary
             if (level == null) throw new ArgumentNullException("level");
             if (message == null) throw new ArgumentNullException("message");
             logger.Log(message, level, data, tags, path ?? logger.Name, exception,
-                       timestamp ?? SystemClock.Instance.Now);
+                       timestamp ?? Date.now());
         }
 
         /// <summary>

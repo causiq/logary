@@ -1,4 +1,4 @@
-module Logary.Tests.Misc
+module Logary.Tests.Registry
 
 open Swensen.Unquote
 open Fuchu

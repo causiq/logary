@@ -12,11 +12,12 @@ open Intelliplan.JsonNet
 
 open Logary.Measure
 
-///Returns the case name of the object with union type 'ty.
+/// Returns the case name of the object with union type 'ty.
 let internal caseNameOf (x:'a) =
   match FSharpValue.GetUnionFields(x, typeof<'a>) with
   | case, _ -> case.Name
 
+/// Formats the data in a nice fashion for printing to e.g. the Debugger or Console.
 let internal formatData nl (data : Map<string, obj>) =
   let inspect = box >> function
     | :? string as s -> "\"" + s + "\""
@@ -85,7 +86,7 @@ type LogLevelStringConverter() =
 
   override x.ReadJson(reader, t, _, serializer) =
     match reader.TokenType with
-    | JsonToken.Null -> LogLevel.Info |> box
+    | JsonToken.Null   -> LogLevel.Info |> box
     | JsonToken.String -> LogLevel.FromString(reader.ReadAsString()) |> box
     | _ as t -> failwithf "invalid token %A when trying to read LogLevel" t
 

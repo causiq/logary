@@ -63,11 +63,44 @@ module Date =
   open NodaTime
   let now () = SystemClock.Instance.Now
 
-module internal Map =
+module Map =
   let put k v (m : Map<_,_>) =
     match m.TryFind k with
     | None -> m |> Map.add k v
     | Some _ -> m |> Map.remove k |> Map.add k v
+    
+  open System.Collections.Generic
+
+  /// This is basically an assembly-internal function; depend on at
+  /// your own misery.
+  let fromObj : obj -> _ = function
+    | null -> Map.empty
+    | :? IEnumerable<KeyValuePair<string, obj>> as data ->
+      data
+      |> Seq.map (fun kv -> (kv.Key, kv.Value))
+      |> Map.ofSeq
+    | :? System.Collections.IDictionary as dict ->
+      dict
+      |> Seq.cast<System.Collections.DictionaryEntry>
+      |> Seq.filter (fun kv -> match kv.Key with :? string -> true | _ -> false)
+      |> Seq.map (fun kv -> (kv.Key :?> string, kv.Value))
+      |> Map.ofSeq
+    | _ as data ->
+      let props = data.GetType() |> fun t -> t.GetProperties()
+      // If you find yourself reading these lines of code, because you logged a
+      // data object, but never found it in the output; it's because you didn't
+      // log an object with properties (such as a string) - instead log an
+      // anonymous object or a dictionary of some sort, which allows you to specify
+      // the key names to use.
+      // This function will return an empty if there are no properties on the
+      // object.
+      match props with
+      | null | _ when props.Length = 0 -> Map.empty
+      | _    ->
+        props
+        |> Array.filter (fun pi -> pi <> null && pi.Name <> null)
+        |> Array.map (fun pi -> (pi.Name, pi.GetValue(data, null)))
+        |> Map.ofArray
 
 [<AutoOpen>]
 module internal Set =
