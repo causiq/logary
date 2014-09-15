@@ -62,7 +62,7 @@ let newHierarchy fHierarchy =
   hierarchy.Configured <- true
 
 [<Tests>]
-let tests =
+let integration =
   testList "integration tests (memory only)" [
     testCase "starting log4net" <| fun _ ->
       newHierarchy (fun _ -> ())
@@ -82,6 +82,26 @@ let tests =
 
       Assert.Equal("should be empty", "", out.ToString())
       Assert.StringContains("should have 'oh noes' in it", "oh noes", err.ToString())
+    ]
+
+[<Tests>]
+let mappings =
+  testList "mapping properties' dictionary" [
+    testCase "can map empty" <| fun _ ->
+      let res = Map.empty |> Helpers.addProperties (new Util.PropertiesDictionary())
+      Assert.Equal("should be empty map", Map.empty, res)
+    testCase "can map primitives" <| fun _ ->
+      let subject = new Util.PropertiesDictionary()
+      subject.["first"] <- 1
+      subject.["second"] <- 1us
+      subject.["third"] <- 1L
+      subject.["fourth"] <- Nullable<_>(123)
+
+      let res = Map.empty |> Helpers.addProperties subject
+      Assert.Equal("has first", 1, unbox res.["first"])
+      Assert.Equal("has second", 1us, unbox res.["second"])
+      Assert.Equal("has third", 1L, unbox res.["third"])
+      Assert.Equal("has fourth", Nullable<_>(123), unbox res.["fourth"])
     ]
 
 ////////

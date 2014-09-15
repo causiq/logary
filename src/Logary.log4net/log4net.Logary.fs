@@ -3,7 +3,10 @@
 open System
 
 open NodaTime
+
+open log4net
 open log4net.Core
+open log4net.Util
 
 open Logary
 
@@ -26,12 +29,10 @@ module internal Impl =
           called := DateTime.UtcNow
         !value
 
-type LogaryAppender() =
-  inherit AppenderSkeleton()
+/// The functions of the log4net domain and logary codomain.
+module Helpers =
 
-  /// cache loggers for 2000 ms to avoid the loop that looks up appropriate loggers
-  let loggerFor = Impl.memoize (TimeSpan.FromMilliseconds 2000.) Logging.getLoggerByName
-
+  /// Map the log4net.Core.Level to a Logary.LogLevel.
   let mapLogLevel level =
     match level with
     | l when l = Level.Alert         -> LogLevel.Fatal
@@ -54,6 +55,18 @@ type LogaryAppender() =
     | l when l = Level.All           -> LogLevel.Verbose
     | _ -> LogLevel.Info
 
+  let addProperties (pd : PropertiesDictionary) state =
+    pd
+    |> Seq.cast<System.Collections.DictionaryEntry>
+    |> Seq.map (fun de -> string de.Key, de.Value)
+    |> Seq.fold (fun m (key, value) -> m |> Map.add key value) state
+
+type LogaryAppender() =
+  inherit AppenderSkeleton()
+
+  /// cache loggers for 2000 ms to avoid the loop that looks up appropriate loggers
+  let loggerFor = Impl.memoize (TimeSpan.FromMilliseconds 2000.) Logging.getLoggerByName
+
   override x.Append (evt : LoggingEvent) =
     let msg = base.RenderLoggingEvent(evt)
     let ex = match evt.ExceptionObject with null -> None | e -> Some e
@@ -65,7 +78,9 @@ type LogaryAppender() =
         "user",             box evt.UserName ]
       |> Map.ofList
 
-    LogLine.create msg data (mapLogLevel evt.Level) [] evt.LoggerName ex
+    let data' = data |> Helpers.addProperties evt.Properties
+
+    LogLine.create msg data' (Helpers.mapLogLevel evt.Level) [] evt.LoggerName ex
     |> LogLine.setTimestamp (Instant.FromDateTimeUtc (evt.TimeStamp.ToUniversalTime()))
     |> Logger.log (loggerFor evt.LoggerName)
 
