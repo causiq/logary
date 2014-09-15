@@ -92,7 +92,7 @@ module Map =
       // log an object with properties (such as a string) - instead log an
       // anonymous object or a dictionary of some sort, which allows you to specify
       // the key names to use.
-      // This function will return an empty if there are no properties on the
+      // This function will return an empty Map if there are no properties on the
       // object.
       match props with
       | null | _ when props.Length = 0 -> Map.empty
