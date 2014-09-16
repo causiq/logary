@@ -63,35 +63,126 @@ module Date =
   open NodaTime
   let now () = SystemClock.Instance.Now
 
+module internal Cache =
+  open System
+
+  let memoize<'TIn, 'TOut> pDur (f : 'TIn -> 'TOut) : ('TIn -> 'TOut) =
+    let locker = obj()
+    let indefinately = TimeSpan.MaxValue = pDur
+    let called = ref DateTime.MinValue
+    let value = ref Unchecked.defaultof<'TOut>
+    let hasValue = ref false
+    fun input ->
+      // avoiding race-conditions.
+      lock locker <| fun _ ->
+        if not !hasValue then
+          called := DateTime.UtcNow
+        if (not !hasValue) || (not indefinately && (!called).Add pDur < DateTime.UtcNow) then
+          hasValue := true
+          value := f input
+          called := DateTime.UtcNow
+        !value
+
 module Map =
   let put k v (m : Map<_,_>) =
     match m.TryFind k with
     | None -> m |> Map.add k v
     | Some _ -> m |> Map.remove k |> Map.add k v
-    
+
   open System
+  open System.Collections
   open System.Collections.Generic
+  open System.Globalization
+  open System.Reflection
+
+  // TODO: cache
+  let private props =
+    (fun (typ : Type) ->
+      typ.GetProperties() |> Array.map (fun p -> p.Name) |> Set.ofSeq)
+
+  // TODO: cache
+  let private prop =
+    let ts = TimeSpan.FromSeconds 1.
+    fun (name : string, typ : Type) ->
+      typ.GetProperty name
 
   /// This is basically an assembly-internal function; depend on at
   /// your own misery.
-  let fromObj : obj -> _ = function
+  let fromObj : obj -> _ =
+
+    let toS o =
+      match o with
+      | null -> ""
+      | _ ->
+        try Convert.ToString(box o, CultureInfo.InvariantCulture)
+        with | :? InvalidCastException -> o.ToString()
+
+    let tryMap f xs =
+      Seq.map f xs |> Seq.filter Option.isSome |> Seq.map Option.get
+
+    let foldPut s (k, v) = s |> put k v
+
+    let kvLike x =
+      let typ = x.GetType()
+      Set.contains "Key" (props typ) && Set.contains "Value" (props typ)
+
+    let tupleLike x =
+      let typ = x.GetType()
+      Set.contains "Item1" (props typ) && Set.contains "Item2" (props typ)
+
+    let read (kp : PropertyInfo) (vp : PropertyInfo) x =
+      if kp = null then raise (invalidArg "kp" "should not be null")
+      if vp = null then raise (invalidArg "vp" "should not be null")
+      try
+        let k   = kp.GetValue(x, null)
+        let v   = vp.GetValue(x, null)
+        Some(toS k, v)
+      with
+      | :? TargetException -> // bug in F# compiler
+        None
+    let readInner : obj -> (string * obj) option =
+      function
+      | :? KeyValuePair<string, obj> as kvp ->
+        Some (kvp.Key, kvp.Value)
+      | :? Tuple<string, obj> as t ->
+        Some (t.Item1, t.Item2)
+      | x when kvLike x ->
+        let typ = x.GetType()
+        let kp, vp  = prop ("Key", typ), prop ("Value", typ)
+        read kp vp x
+      | x when tupleLike x ->
+          let typ = x.GetType()
+          let kp, vp = prop ("Item1", typ), prop ("Item2", typ)
+          read kp vp x
+      | x -> None
+
+    function
     | null -> Map.empty
-    | :? IEnumerable<KeyValuePair<string, obj>> as data ->
-      try
-        data
-        |> Seq.map (fun kv -> (kv.Key, kv.Value))
-        |> Map.ofSeq
-      with
-      | :? InvalidCastException -> Map.empty
+    | :? System.Collections.IDictionary as dict
+      when dict.GetType().IsGenericType ->
+      let values = seq {
+         let e = dict.GetEnumerator()
+         while e.MoveNext() do
+           match e.Current with
+           | :? DictionaryEntry as entry ->
+             yield toS entry.Key, entry.Value
+           | _ -> () }
+      values |> Seq.fold foldPut Map.empty
+
     | :? System.Collections.IDictionary as dict ->
-      try
-        dict
-        |> Seq.cast<System.Collections.DictionaryEntry>
-        |> Seq.filter (fun kv -> match kv.Key with :? string -> true | _ -> false)
-        |> Seq.map (fun kv -> (kv.Key :?> string, kv.Value))
-        |> Map.ofSeq
-      with
-      | :? InvalidCastException -> Map.empty
+      dict
+      |> Seq.cast<System.Collections.DictionaryEntry>
+      |> Seq.map (fun de -> toS de.Key, de.Value)
+      |> Seq.fold foldPut Map.empty
+
+    | :? IEnumerable as data ->
+      seq {
+        let e = data.GetEnumerator()
+        while e.MoveNext() do
+          yield e.Current }
+      |> tryMap readInner
+      |> Seq.fold (fun s (k, v) -> s |> put k v) Map.empty
+
     | _ as data ->
       let props = data.GetType() |> fun t -> t.GetProperties()
       // If you find yourself reading these lines of code, because you logged a
@@ -104,13 +195,10 @@ module Map =
       match props with
       | null | _ when props.Length = 0 -> Map.empty
       | _    ->
-      try
         props
         |> Array.filter (fun pi -> pi <> null && pi.Name <> null)
         |> Array.map (fun pi -> (pi.Name, pi.GetValue(data, null)))
         |> Map.ofArray
-      with
-      | :? InvalidCastException -> Map.empty
 [<AutoOpen>]
 module internal Set =
   let (|EmptySet|_|) = function
