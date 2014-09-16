@@ -69,6 +69,7 @@ module Map =
     | None -> m |> Map.add k v
     | Some _ -> m |> Map.remove k |> Map.add k v
     
+  open System
   open System.Collections.Generic
 
   /// This is basically an assembly-internal function; depend on at
@@ -76,15 +77,21 @@ module Map =
   let fromObj : obj -> _ = function
     | null -> Map.empty
     | :? IEnumerable<KeyValuePair<string, obj>> as data ->
-      data
-      |> Seq.map (fun kv -> (kv.Key, kv.Value))
-      |> Map.ofSeq
+      try
+        data
+        |> Seq.map (fun kv -> (kv.Key, kv.Value))
+        |> Map.ofSeq
+      with
+      | :? InvalidCastException -> Map.empty
     | :? System.Collections.IDictionary as dict ->
-      dict
-      |> Seq.cast<System.Collections.DictionaryEntry>
-      |> Seq.filter (fun kv -> match kv.Key with :? string -> true | _ -> false)
-      |> Seq.map (fun kv -> (kv.Key :?> string, kv.Value))
-      |> Map.ofSeq
+      try
+        dict
+        |> Seq.cast<System.Collections.DictionaryEntry>
+        |> Seq.filter (fun kv -> match kv.Key with :? string -> true | _ -> false)
+        |> Seq.map (fun kv -> (kv.Key :?> string, kv.Value))
+        |> Map.ofSeq
+      with
+      | :? InvalidCastException -> Map.empty
     | _ as data ->
       let props = data.GetType() |> fun t -> t.GetProperties()
       // If you find yourself reading these lines of code, because you logged a
@@ -97,11 +104,13 @@ module Map =
       match props with
       | null | _ when props.Length = 0 -> Map.empty
       | _    ->
+      try
         props
         |> Array.filter (fun pi -> pi <> null && pi.Name <> null)
         |> Array.map (fun pi -> (pi.Name, pi.GetValue(data, null)))
         |> Map.ofArray
-
+      with
+      | :? InvalidCastException -> Map.empty
 [<AutoOpen>]
 module internal Set =
   let (|EmptySet|_|) = function
