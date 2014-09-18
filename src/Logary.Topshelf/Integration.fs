@@ -2,7 +2,7 @@
 
 open System.Runtime.CompilerServices
 
-[<Extension>]
+[<Extension; AutoOpen>]
 module LogaryConfiguratorExtensions =
   open Topshelf.HostConfigurators
   open Topshelf.Logging
