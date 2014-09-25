@@ -44,6 +44,7 @@
   <ItemGroup>
     <Compile Include="AssemblyVersionInfo.cs" />
     <Compile Include="LoggerExtensions.cs" />
+    <Compile Include="LogLineExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Logary.Internals;
@@ -13,9 +12,14 @@ namespace Logary
     public static class LoggerExtensions
     {
         /// <summary>
-        /// Write a log line to the logger. Exposes all parameters in a way that should make
+        /// C#-oriented-method: Write a log line to the logger. Exposes all parameters in a way that should make
         /// it very easy to use the logging behaviour from C#.
         /// </summary>
+        /// <remarks>
+        /// This method takes the **LogLevel** first, and then the message; to avoid having to grapple with
+        /// overload resolution. The other Log(string, LogLine ...) method is in F# and won't add the same
+        /// good defaults as this method.
+        /// </remarks>
         /// <param name="logger">Instance to invoke the extension method on</param>
         /// <param name="level"></param>
         /// <param name="message">A message to attach to the log line</param>
@@ -23,7 +27,12 @@ namespace Logary
         /// e.g. if using LogStash, these properties will be fields. For performance
         /// improvements, you can send a dictionary, or otherwise you can
         /// send an anonymous object whose public properties are then serialised
-        /// as a dictionary.</param>
+        /// as a dictionary.
+        /// This is the message that you want to log.
+        /// It's worth noting that a message without string.Format-ed parameters, is more equal
+        /// across time, and if you have custom data you want to pass, you should rather set
+        /// that data on the 'data' property of LogLine (with SetData and SetDatas).
+        /// </param>
         /// <param name="tags">A list of tags to attach to the log line</param>
         /// <param name="exception"></param>
         /// <param name="path"></param>
@@ -43,11 +52,47 @@ namespace Logary
             if (logger == null) throw new ArgumentNullException("logger");
             if (level == null) throw new ArgumentNullException("level");
             if (message == null) throw new ArgumentNullException("message");
+
             logger.Log(message, level, data, tags, path ?? logger.Name, exception,
                        timestamp ?? Date.now());
         }
 
         /// <summary>
+        /// C#-oriented-method: Write a log line to the logger. Exposes all parameters in a way that should make
+        /// it very easy to use the logging behaviour from C#.
+        /// </summary>
+        /// <remarks>
+        /// This method takes the **LogLevel** first, and then the message; to avoid having to grapple with
+        /// overload resolution. The other Log(string, LogLine ...) method is in F# and won't add the same
+        /// good defaults as this method.
+        /// </remarks>
+        /// <param name="logger"></param>
+        /// <param name="level"></param>
+        /// <param name="message">This is the message that you want to log.
+        /// It's worth noting that a message without string.Format-ed parameters, is more equal
+        /// across time, and if you have custom data you want to pass, you should rather set
+        /// that data on the 'data' property of LogLine (with SetData and SetDatas).</param>
+        /// <param name="setterTransformer">
+        /// There are extension methods in this library that go towards creating new instances
+        /// of LogLine that you can use to change the value inside this function.
+        /// </param>
+        public static void Log(
+            this Logger logger,
+            LogLevel level,
+            string message,
+            Func<LogLine, LogLine> setterTransformer)
+        {
+            if (logger == null) throw new ArgumentNullException("logger");
+            if (level == null) throw new ArgumentNullException("level");
+            if (message == null) throw new ArgumentNullException("message");
+            if (setterTransformer == null) throw new ArgumentNullException("setterTransformer");
+
+            var line = LogLineModule.Create(level, message);
+            logger.Log(setterTransformer(line));
+        }
+
+        /// <summary>
+        /// TBD
         /// </summary>
         public static T Time<T>(this Logger logger, Func<T> f, LogLevel level = null)
         {
@@ -58,6 +103,7 @@ namespace Logary
         }
 
         /// <summary>
+        /// TBD
         /// </summary>
         public static void Time(this Logger logger, Action a, LogLevel level = null)
         {
@@ -68,6 +114,7 @@ namespace Logary
         }
 
         /// <summary>
+        /// TBD
         /// </summary>
         public static T TimePath<T>(this Logger logger, string path, Func<T> f, LogLevel level = null)
         {
@@ -119,6 +166,7 @@ namespace Logary
             if (logger == null) throw new ArgumentNullException("logger");
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
+
             logger.Log<object>(message, LogLevel.Fatal, null,
                                MakeTags(LogLineModule.ExceptionTag, tags),
                                logger.Name, e, null);
@@ -134,6 +182,7 @@ namespace Logary
         {
             if (logger == null) throw new ArgumentNullException("logger");
             if (message == null) throw new ArgumentNullException("message");
+
             logger.Log<object>(message, LogLevel.Error, null, tags, logger.Name,
                                null, null);
         }
@@ -217,6 +266,7 @@ namespace Logary
             if (logger == null) throw new ArgumentNullException("logger");
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
+
             logger.Log<object>(message, LogLevel.Info, null,
                                MakeTags(LogLineModule.ExceptionTag, tags),
                                logger.Name, e, null);
@@ -249,6 +299,7 @@ namespace Logary
             if (logger == null) throw new ArgumentNullException("logger");
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
+
             logger.Log<object>(message, LogLevel.Debug, null,
                                MakeTags(LogLineModule.ExceptionTag, tags),
                                logger.Name, e, null);

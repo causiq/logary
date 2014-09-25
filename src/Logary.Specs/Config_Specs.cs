@@ -4,7 +4,6 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
-using Logary;
 using Logary.Configuration;
 using Machine.Specifications;
 using NodaTime;
@@ -16,7 +15,7 @@ using TextWriter = Logary.Targets.TextWriter;
 // ReSharper disable FieldCanBeMadeReadOnly.Local
 // ReSharper disable UnusedMember.Global
 
-namespace Intelliplan.Logary.Specs
+namespace Logary.Specs
 {
     static class LogaryTestFactory
     {

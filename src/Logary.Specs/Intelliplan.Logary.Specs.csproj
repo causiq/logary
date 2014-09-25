@@ -30,11 +30,16 @@
     <Reference Include="FluentMigrator.Runner">
       <HintPath>..\packages\FluentMigrator.Runner.1.1.1.26\lib\NET40\FluentMigrator.Runner.dll</HintPath>
     </Reference>
-    <Reference Include="Machine.Specifications">
-      <HintPath>..\packages\Machine.Specifications.0.5.16\lib\net40\Machine.Specifications.dll</HintPath>
+    <Reference Include="Machine.Specifications, Version=0.8.3.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\Machine.Specifications.0.8.3\lib\net45\Machine.Specifications.dll</HintPath>
     </Reference>
-    <Reference Include="Machine.Specifications.Clr4">
-      <HintPath>..\packages\Machine.Specifications.0.5.16\lib\net40\Machine.Specifications.Clr4.dll</HintPath>
+    <Reference Include="Machine.Specifications.Clr4, Version=0.8.3.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\Machine.Specifications.0.8.3\lib\net45\Machine.Specifications.Clr4.dll</HintPath>
+    </Reference>
+    <Reference Include="Machine.Specifications.Should">
+      <HintPath>..\packages\Machine.Specifications.Should.0.7.2\lib\net45\Machine.Specifications.Should.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
@@ -57,6 +62,7 @@
     <Compile Include="Config_Specs.cs" />
     <Compile Include="CSharp_Specs.cs" />
     <Compile Include="Examples\SampleLogaryConfiguration.cs" />
+    <Compile Include="LogLine_Specs.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.RegularExpressions;
-using Logary;
 using Logary.Configuration;
 using Logary.Targets;
 using Machine.Specifications;
@@ -11,7 +10,7 @@ using NodaTime;
 // ReSharper disable FieldCanBeMadeReadOnly.Local
 // ReSharper disable UnusedMember.Global
 
-namespace Intelliplan.Logary.Specs
+namespace Logary.Specs
 {
     public class When_configuring_with_CSharp_API
     {

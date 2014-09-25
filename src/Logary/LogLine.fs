@@ -74,13 +74,17 @@ module LogLine =
 
   let private s x = Some x
 
+  /// Set the message of the LogLine
+  [<CompiledName "SetMsg">]
+  let setMsg m line = Lenses.message_.set m line
+
   /// Sets the level of the log line
   [<CompiledName "SetLevel">]
-  let setLevel = Lenses.level_.set
+  let setLevel l line = Lenses.level_.set l line
 
   /// Add a key-value pair to the data
   [<CompiledName "SetData">]
-  let setData k = (Lenses.dataItem_ k).set
+  let setData k o line = (Lenses.dataItem_ k).set o line
 
   /// Add the key-value pairs to the data
   [<CompiledName "SetDatas">]
@@ -88,7 +92,7 @@ module LogLine =
 
   /// Sets the path of the log line
   [<CompiledName "SetPath">]
-  let setPath = Lenses.path_.set
+  let setPath p line = Lenses.path_.set p line
 
   /// Add a tag 't' to the log line 'line'.
   [<CompiledName "SetTag">]
@@ -96,11 +100,11 @@ module LogLine =
 
   /// Set the LogLine's main exception property
   [<CompiledName "SetExn">]
-  let setExn = s >> Lenses.exception_.set
+  let setExn e line = Lenses.exception_.set (Some e) line
 
   /// Set the LogLine's timestamp
   [<CompiledName "SetTimestamp">]
-  let setTimestamp = Lenses.timestamp_.set
+  let setTimestamp ts line = Lenses.timestamp_.set ts line
 
   //////////////////////////
   // Construction methods //
@@ -147,6 +151,25 @@ module LogLine =
     { empty with path      = path
                  timestamp = Date.now ()
                  message   = msg }
+
+  /// C# interop: BCL friendly parameters!
+  /// Create a new log line with the given values.
+  [<CompiledName "Create">]
+  let create''' message data level tags path (ex : exn) ts =
+    let data' =
+      (data : Collections.Generic.IDictionary<string, obj>)
+      |> Seq.fold (fun s kv -> s |> Map.add kv.Key kv.Value) Map.empty
+    let tags' =
+      (tags : string [])
+      |> Seq.fold (fun s t -> t :: s) []
+    let ex = match ex with | null -> None | e -> Some e
+    { empty with message       = message
+                 data          = data'
+                 level         = level
+                 tags          = tags'
+                 timestamp     = ts
+                 path          = path
+                 ``exception`` = ex }
 
   /// Create a verbose log line with a message
   [<CompiledName "Verbose">]
