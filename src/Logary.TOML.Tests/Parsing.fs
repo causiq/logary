@@ -1,5 +1,13 @@
 ﻿module Logary.Tests.Parsing
 
+open System
+open System.Collections.Generic
+
+open Fuchu
+open NodaTime
+
+open Logary.TOML
+
 let example = """
 [group1]
 key = true
@@ -38,6 +46,48 @@ hosts = [
   "omega"
   ]
 """
+
+
+// specific to parser:
+let dic = Parser.parse example
+let value key = dic.[key] :?> 'a // if you type parser, change this f-n
+
+// helper:
+let case msg key expected =
+  testCase msg (fun () ->
+    try
+      let value' = value key
+      Assert.Equal(key + ": " + msg, expected, value')
+    with
+    | :? InvalidCastException ->
+      Tests.failtestf "cast to %O failed, type: %O"
+        (expected.GetType())
+        ((value key : obj).GetType()))
+
+[<Tests>]
+let basicExample =
+  testList "parsing contents" [
+    yield testCase "no crash" <| fun _ ->
+      Parser.parse example |> ignore
+
+    yield case "should be true" "group1.key" true
+    yield case "should be 1337" "group1.key2" 1337L
+    yield case "should have title" "group1.title" "TOML Example"
+    yield case "should have owner name" "owner.name" "Tom Preston-Werner"
+    yield case "should have owner org" "owner.organization" "GitHub"
+    yield case "should have owner bio" "owner.bio" "GitHub Cofounder & CEO\nLikes tater tots and beer."
+    yield case "should have owner dob" "owner.dob" (Instant.FromUtc(1979, 05, 27, 7, 32))
+    yield case "should have database server" "database.server" "192.168.1.1"
+    yield case "should have database ports" "database.ports" [ 8001L; 8001L; 8002L ]
+    yield case "should have database connection_max" "database.connection_max" 5000L
+    yield case "should have enabled" "database.enabled" true
+    yield case "servers 1 ip" "servers.alpha.ip" "10.0.0.1"
+    yield case "servers 1 dc" "servers.alpha.dc" "eqdc10"
+    yield case "servers 2 ip" "servers.beta.ip" "10.0.0.2"
+    yield case "servers 2 ip" "servers.beta.dc" "eqdc10"
+    yield case "clients" "clients.data" [ box [box "gamma"; box "delta"]; box [box 1L; box 2L] ]
+    yield case "hosts" "clients.hosts" [ "alpha"; "omega" ]
+    ]
 
 let tableArr = """
 [[products]]
@@ -87,57 +137,6 @@ test_string = "You'll hate me after this - #"          # " Annoying, isn't it?
 #         ]     End of array comment, forgot the #
 #number = 3.14  pi <--again forgot the #         
 """
-
-open System
-
-open Fuchu
-open NodaTime
-
-open Logary.TOML
-
-// specific to parser:
-let dic = Parser.parse example
-let value key = dic.[key] :?> 'a // if you type parser, change this f-n
-
-// helper:
-let case msg key expected =
-  testCase msg (fun () ->
-    try
-      let value' = value key
-      Assert.Equal(key + ": " + msg, expected, value')
-    with
-    | :? InvalidCastException ->
-      Tests.failtestf "cast to %O failed, type: %O"
-        (expected.GetType())
-        ((value key : obj).GetType()))
-
-[<Tests>]
-let basicExample =
-  testList "parsing contents" [
-    yield testCase "no crash" <| fun _ ->
-      Parser.parse example |> ignore
-
-    yield case "should be true" "group1.key" true
-    yield case "should be 1337" "group1.key2" 1337L
-    yield case "should have title" "group1.title" "TOML Example"
-    yield case "should have owner name" "owner.name" "Tom Preston-Werner"
-    yield case "should have owner org" "owner.organization" "GitHub"
-    yield case "should have owner bio" "owner.bio" "GitHub Cofounder & CEO\nLikes tater tots and beer."
-    yield case "should have owner dob" "owner.dob" (Instant.FromUtc(1979, 05, 27, 7, 32))
-    yield case "should have database server" "database.server" "192.168.1.1"
-    yield case "should have database ports" "database.ports" [ 8001L; 8001L; 8002L ]
-    yield case "should have database connection_max" "database.connection_max" 5000L
-    yield case "should have enabled" "database.enabled" true
-    yield case "servers 1 ip" "servers.alpha.ip" "10.0.0.1"
-    yield case "servers 1 dc" "servers.alpha.dc" "eqdc10"
-    yield case "servers 2 ip" "servers.beta.ip" "10.0.0.2"
-    yield case "servers 2 ip" "servers.beta.dc" "eqdc10"
-    yield case "clients" "clients.data" [ box [box "gamma"; box "delta"]; box [box 1L; box 2L] ]
-    yield case "hosts" "clients.hosts" [ "alpha"; "omega" ]
-    ]
-
-
-open System.Collections.Generic
 
 [<Tests>]
 let advancedExamples =
