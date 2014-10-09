@@ -23,7 +23,8 @@ end
 def install_nuget name
   unless Dir.exist? "tools/#{name}"
     system 'tools/NuGet.exe',
-           %W|install -ExcludeVersion -OutputDirectory tools #{name}|
+           %W|install -ExcludeVersion -OutputDirectory tools #{name}|,
+           clr_command: true
   end
 end
 
