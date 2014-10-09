@@ -2,24 +2,6 @@ require 'albacore'
 require 'albacore/project'
 require 'albacore/paths'
 
-# reference: 
-# https://github.com/EventStore/EventStore/blob/dev/scripts/package-mono/package-mono.sh
-
-def mkbundle bin, configuration = 'Release'
-  fail 'on Windows, use another tool, e.g. ' if Albacore.windows?
-  fail 'invalid "bin" parameter' unless bin
-  material = Dir[Paths.join(bin, '*.{dll,config}')]
-  mono_config = 'TODO'
-  machine_config = 'TODO'
-  # this doesn't help me much since I'm not merging into an executable
-  system 'mkbundle',
-       %w|-o -oo logary.a|.concat(material).concat(
-         %W|--static --deps --config #{monoconfig} --machine-config #{machineconfig}|
-       )
-  system 'cc',
-       %W|-o logary #{ES_COMPILE_FLAGS} testclient.c testclient.a $MONOPREFIX/lib/libmonosgen-2.0.a $MONOPREFIX/lib/libMonoPosixHelper.a|
-end
-
 def install_nuget name
   unless Dir.exist? "tools/#{name}"
     system 'tools/NuGet.exe',
@@ -28,26 +10,37 @@ def install_nuget name
   end
 end
 
-def pack tool = 'tools/ILRepack/tools/ILRepack.exe'
-         dir = 'src/Logary/bin/Release'
-  files = %w|FSharp.Actor FSharp.Core Intelliplan.JsonNet.NodaTime
-             Intelliplan.JsonNet Newtonsoft.Json NodaTime
-             policy.2.3.FSharp.Core|.
-          map { |f| "#{dir}/#{f}.dll" }
+def pack files,
+         tool = 'tools/ilmerge/ILMerge.exe',
+         deps = %w(ilmerge)
 
   system tool,
-         %W|--keyfile:src/signing/LogaryPublic.snk --ver:#{ENV['FORMAL_VERSION']}
-            --xmldocs --internalize --parallel --index --verbose
-            --targetplatform:v4
-            --out:Logary.dll
-            --lib:tools/IKVM/lib|.
+    %W|/keyfile:src/signing/LogaryPublic.snk
+       /ver:#{ENV['FORMAL_VERSION'] || '1.2.3'}
+       /xmldocs /internalize
+       /targetplatform:v4
+       /out:build/Intelliplan.Logary-unit/Logary.dll
+       src/Logary/bin/Release/Logary.dll|.
          concat(files),
          clr_command: true
+
+  FileUtils.cp 'src/Logary/bin/Release/Logary.dll.config', 'build/Intelliplan.Logary-unit/Logary.dll.config'
 end
 
-desc 'pack the release of Logary with ILRepack'
-task :pack do
-  install_nuget 'IKVM'
-  install_nuget 'ILRepack'
-  pack
+directory 'build/Intelliplan.Logary-unit'
+
+task :pack_logary_quick => 'build/Intelliplan.Logary-unit' do
+  # ilpack_deps = %w(IKVM ILRepack)
+  proj = Albacore::Project.new 'src/Logary/Intelliplan.Logary.fsproj'
+
+  out = Paths.join('src/Logary', proj.output_path('Release')).to_s
+  files =["src/Logary/bin/Release/FSharp.Actor.dll", "src/Logary/bin/Release/FSharp.Core.dll", "src/Logary/bin/Release/Intelliplan.JsonNet.NodaTime.dll", "src/Logary/bin/Release/Intelliplan.JsonNet.dll", "src/Logary/bin/Release/Newtonsoft.Json.dll", "src/Logary/bin/Release/NodaTime.dll", "src/Logary/bin/Release/policy.2.3.FSharp.Core.dll"]
+
+  debug { "going to pack files: #{files.inspect}" }
+
+  pack files
+  pkg = Albacore::NugetModel::Package.new nil, files
 end
+
+desc 'pack the release of Logary with ilmerge'
+task :pack_logary => [:compile]
