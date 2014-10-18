@@ -198,12 +198,17 @@ module internal Impl =
       return { state with sendRecvStream = Some stream } }
 
   let logstashLoop (conf : LogstashConf) metadata =
-    let info, debug = Logger.info metadata.logger, Logger.debug metadata.logger
+    let ll level =
+      LogLine.create'' "Logary.Targets.Logstash.logstashLoop"
+      >> LogLine.setLevel level
+    let debug, info =
+      let log = Logger.log metadata.logger in
+      ll Debug >> log, ll Info  >> log
 
     (fun (inbox : IActor<_>) ->
       let rec init () =
         async { 
-          info "initing logstash target, connecting..."
+          info (sprintf "initing logstash target, connecting to %s:%d..." conf.hostname conf.port)
           let client = conf.clientFac conf.hostname conf.port
           info "initing logstash target, connected"
           return! running { client = client; sendRecvStream = None } }
