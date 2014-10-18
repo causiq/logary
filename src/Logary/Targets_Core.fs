@@ -111,6 +111,7 @@ module Console =
       { formatter = formatter
         colorMap  = None }
 
+  /// Default console target configuration.
   let empty =
     { formatter = StringFormatter.LevelDatetimeMessagePath
       colorMap  = None (* fun col line -> 0x000000 black *) }
@@ -148,6 +149,7 @@ module Console =
 // boolean IsLogging() method, correct by excluded middle
 #nowarn "25"
 
+/// The Debugger target is useful when running in Xamarin Studio or VS.
 module Debugger =
   open System.Diagnostics
 
@@ -160,10 +162,14 @@ module Debugger =
 
   type DebuggerConf =
     { formatter : StringFormatter }
-    static member Default =
-      { formatter = StringFormatter.LevelDatetimeMessagePathNl }
+    /// Create a new Debugger configuration with a given formatter (which
+    /// formats how the log line and metrics are printed)
     static member Create ?formatter =
       { formatter = defaultArg formatter (StringFormatter.LevelDatetimeMessagePathNl) }
+
+  /// Default debugger configuration
+  let empty =
+    { formatter = StringFormatter.LevelDatetimeMessagePathNl }
 
   let private debuggerLoop conf metadata =
     (fun (inbox : IActor<_>) ->
@@ -201,7 +207,7 @@ module Debugger =
       ! (callParent <| Builder({ conf with formatter = sf }, callParent))
 
     new(callParent : FactoryApi.ParentCallback<_>) =
-      Builder(DebuggerConf.Default, callParent)
+      Builder(empty, callParent)
 
     interface Logary.Target.FactoryApi.SpecificTargetConf with
       member x.Build name = create conf name

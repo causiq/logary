@@ -20,7 +20,7 @@ module TargetsDefaults =
     confLogary name
     |> withTargets
       [ Console.create Console.empty "console"
-        Debugger.create Debugger.DebuggerConf.Default "debugger" ]
+        Debugger.create Debugger.empty "debugger" ]
     |> withRules
       [ { Rule.createForTarget "console" with level = Debug }
         { Rule.createForTarget "debugger" with level = Debug } ]
