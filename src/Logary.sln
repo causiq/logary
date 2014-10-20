@@ -27,6 +27,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.DB", "Lo
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.DB.Tests", "Logary.DB.Tests\Intelliplan.Logary.DB.Tests.fsproj", "{69A84CB4-793D-46B4-87EF-E59FED669124}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Intelliplan.Logary.AspNet", "Logary.AspNet\Intelliplan.Logary.AspNet.fsproj", "{EA299EC3-1C9E-4DEE-B9D1-5840AA6A4C1C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -85,6 +87,10 @@ Global
 		{69A84CB4-793D-46B4-87EF-E59FED669124}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{69A84CB4-793D-46B4-87EF-E59FED669124}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{69A84CB4-793D-46B4-87EF-E59FED669124}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EA299EC3-1C9E-4DEE-B9D1-5840AA6A4C1C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EA299EC3-1C9E-4DEE-B9D1-5840AA6A4C1C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EA299EC3-1C9E-4DEE-B9D1-5840AA6A4C1C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EA299EC3-1C9E-4DEE-B9D1-5840AA6A4C1C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
