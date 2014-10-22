@@ -5,12 +5,11 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{8F108B6A-0FBE-4D6E-8DAA-B5BA1429C925}</ProjectGuid>
-    <RootNamespace>Intelliplan.Logary.NLog</RootNamespace>
+    <RootNamespace>Logary.NLog</RootNamespace>
     <AssemblyName>Logary.NLog</AssemblyName>
     <OutputType>Library</OutputType>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <Name>Intelliplan.Logary.NLog</Name>
-    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
