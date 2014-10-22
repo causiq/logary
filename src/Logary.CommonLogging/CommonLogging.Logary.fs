@@ -50,7 +50,14 @@ type internal Adapter(logger : Logger) =
       cb.Invoke(
         FormatMessageHandler(
           fun format args ->
-            String.Format(formatProvider, format, args)))
+            let res = fmt formatProvider format args
+            res |> LogLine.create' level
+            |> fun line ->
+              match ex with
+              | None -> line
+              | Some ex -> line |> LogLine.setExn ex
+            |> log
+            res))
 
   interface ILog with
     member x.IsTraceEnabled = logger.Level >= Verbose
