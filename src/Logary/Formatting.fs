@@ -82,12 +82,13 @@ type LogLevelStringConverter() =
     typ = typeof<LogLevel>
 
   override x.WriteJson(writer, value, serializer) =
-    match value :?> LogLevel with | _ as v -> writer.WriteRawValue(sprintf "\"%O\"" v)
+    match value :?> LogLevel with
+    | _ as v -> writer.WriteRawValue(sprintf "\"%O\"" v)
 
   override x.ReadJson(reader, t, _, serializer) =
     match reader.TokenType with
     | JsonToken.Null   -> LogLevel.Info |> box
-    | JsonToken.String -> LogLevel.FromString(reader.ReadAsString()) |> box
+    | JsonToken.String -> LogLevel.FromString(reader.Value :?> string) |> box
     | _ as t -> failwithf "invalid token %A when trying to read LogLevel" t
 
 /// Wrapper that constructs a Json.Net JSON formatter.

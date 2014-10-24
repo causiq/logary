@@ -27,4 +27,4 @@ let rec filterTests strs =
 
 [<EntryPoint>]
 let main args =
-  Logary.Tests.Parsing.basicExample |> Tests.run
+  Logary.Tests.LogaryConfig.correctParse |> Tests.run

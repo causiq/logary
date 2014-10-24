@@ -1,10 +1,16 @@
 ﻿namespace Logary.Configuration
 
+open System.Globalization
+open System.IO
+
+open Newtonsoft.Json
+
 open NodaTime
 
 open FSharp.Actor
 
 open Logary
+open Logary.Formatting
 open Logary.Internals
 open Logary.Target
 open Logary.Metric
@@ -69,3 +75,46 @@ module LogaryConfLenses =
       set = fun v x ->
         let value' = x.metrics |> Map.find name |> fst, Some v
         { x with metrics = x.metrics |> Map.put name value' } }
+
+/// DTOs used to reify a configuration from text
+module DTOs =
+
+  type RuleDto =
+    { hiera       : string
+      target      : string
+      level       : LogLevel }
+
+  type TargetDto =
+    { name        : string
+      ``module``  : string }
+
+  type MetricDto =
+    { name        : string
+      ``module``  : string }
+
+  type ConfDto =
+    { rules       : RuleDto list
+      targets     : TargetDto list
+      metrics     : MetricDto list
+      serviceName : string
+      pollPeriod  : Duration }
+
+  let write (writer : TextWriter) (dto : ConfDto) =
+    let opts = JsonFormatter.Settings ()
+    let serialiser = JsonSerializer.Create opts
+    serialiser.Serialize(writer, dto)
+
+  let write' (dto : ConfDto) =
+    use sw = new StringWriter(CultureInfo.InvariantCulture)
+    write sw dto
+    sw.ToString()
+
+  let read (reader : TextReader) =
+    let opts = JsonFormatter.Settings ()
+    let serialiser = JsonSerializer.Create opts
+    serialiser.Deserialize(reader, typeof<ConfDto>)
+    :?> ConfDto
+
+  let read' (conf : string) =
+    use sr = new StringReader(conf)
+    read sr
