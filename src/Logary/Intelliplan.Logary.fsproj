@@ -71,6 +71,7 @@
     <Compile Include="Configuration_Config.fs" />
     <Compile Include="Configuration_FactoryApi.fs" />
     <Compile Include="Configuration_TargetsDefaults.fs" />
+    <Compile Include="Configuration_ReifyDTOs.fs" />
     <Compile Include="Configuration_MetricsDefaults.fs" />
     <None Include="packages.config" />
     <None Include="App.config" />

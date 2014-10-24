@@ -85,17 +85,7 @@ let read' (conf : string) =
 
 [<Tests>]
 let ``loading config dtos`` =
-  testList "r/w config" [
-    testCase "can write log level" <| fun _ ->
-      Assert.Equal("should successfully serialise LogLevel",
-                   "\"info\"",
-                   write' Info)
-    testCase "can read log level" <| fun _ ->
-      Assert.Equal("should successfully deserialise LogLevel",
-                   Info,
-                   read' "\"info\"")
-    testCase "can read JSON into DTOs" <| fun _ ->
-      let json = """
+  let json = """
 { "serviceName": "tests"
 , "pollPeriod" : "00:00:00.5"
 , "rules"      : [
@@ -115,6 +105,16 @@ let ``loading config dtos`` =
   , "module"   : "Logary.Metrics.WinPerfCounters.Common, Intelliplan.Logary" }
 ] }
 """
+  testList "r/w config" [
+    testCase "can write log level" <| fun _ ->
+      Assert.Equal("should successfully serialise LogLevel",
+                   "\"info\"",
+                   write' Info)
+    testCase "can read log level" <| fun _ ->
+      Assert.Equal("should successfully deserialise LogLevel",
+                   Info,
+                   read' "\"info\"")
+    testCase "can read JSON into DTOs" <| fun _ ->
       // "should successfully deserialise DTOs"
       { rules       =
           [ { hiera  = ".*"
@@ -134,6 +134,14 @@ let ``loading config dtos`` =
           ]
         serviceName ="tests"
         pollPeriod  = Duration.FromMilliseconds 500L } =? DTOs.read' json
+    testCase "can read configuration from dtos - reify smoke" <| fun _ ->
+      let dto = read' json
+      reify dto |> ignore
+    testCase "can create configuration from dtos - reify" <| fun _ ->
+      let dto = read' json
+      let conf = reify dto
+      Assert.Equal("should have correct service name",
+                   dto.serviceName, conf.metadata.serviceName)
     ]
 
 [<Tests>]
