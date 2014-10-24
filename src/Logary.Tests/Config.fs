@@ -99,6 +99,9 @@ let ``loading config dtos`` =
 , "targets"    : [
   { "name"     : "console"
   , "module"   : "Logary.Targets.Console, Intelliplan.Logary" }
+, { "name"     : "noop"
+  , "module"   : "Logary.Targets.Noop, Intelliplan.Logary"
+  , "isYes"    : true }
 ]
 , "metrics"    : [
   { "name"     : "common"
@@ -133,20 +136,19 @@ let ``loading config dtos`` =
               ``module`` = "Logary.Metrics.WinPerfCounters.Common, Intelliplan.Logary" }
           ]
         serviceName ="tests"
-        pollPeriod  = Duration.FromMilliseconds 500L } =? DTOs.read' json
+        pollPeriod  = Duration.FromMilliseconds 500L } =? DTOs.readJson' json
     testCase "can read configuration from dtos - reify smoke" <| fun _ ->
-      let dto = read' json
+      let dto = readJson' json
       reify dto |> ignore
     testCase "can create configuration from dtos - reify" <| fun _ ->
-      let dto = read' json
+      let dto = readJson' json
       let conf = reify dto
       Assert.Equal("should have correct service name",
                    dto.serviceName, conf.metadata.serviceName)
-    ]
-
-[<Tests>]
-let ``valid configs`` =
-  testList "valid configs" [
-    testCase "rule for metric, no noop target" <| fun _ ->
-      ()
+      Assert.Equal("should have same no of targets",
+                   dto.targets.Length, conf.targets.Count)
+      Assert.Equal("should have same no of metrics",
+                   dto.metrics.Length, conf.metrics.Count)
+      Assert.Equal("should have same poll period",
+                   dto.pollPeriod, conf.pollPeriod)
     ]

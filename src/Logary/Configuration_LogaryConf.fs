@@ -99,22 +99,22 @@ module DTOs =
       serviceName : string
       pollPeriod  : Duration }
 
-  let write (writer : TextWriter) (dto : ConfDto) =
+  let writeJson (writer : TextWriter) (dto : ConfDto) =
     let opts = JsonFormatter.Settings ()
     let serialiser = JsonSerializer.Create opts
     serialiser.Serialize(writer, dto)
 
-  let write' (dto : ConfDto) =
+  let writeJson' (dto : ConfDto) =
     use sw = new StringWriter(CultureInfo.InvariantCulture)
-    write sw dto
+    writeJson sw dto
     sw.ToString()
 
-  let read (reader : TextReader) =
+  let readJson (reader : TextReader) =
     let opts = JsonFormatter.Settings ()
     let serialiser = JsonSerializer.Create opts
     serialiser.Deserialize(reader, typeof<ConfDto>)
     :?> ConfDto
 
-  let read' (conf : string) =
+  let readJson' (conf : string) =
     use sr = new StringReader(conf)
-    read sr
+    readJson sr
