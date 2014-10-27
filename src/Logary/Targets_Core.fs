@@ -186,6 +186,8 @@ module Debugger =
         | Measure m when Debugger.IsLogging() ->
           Debugger.Log(offLevel, m.m_path.joined, sprintf "%A" m)
           return! loop ()
+        | Measure _ ->
+          return! loop ()
         | Flush chan ->
           chan.Reply Ack
           return! loop()
