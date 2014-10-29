@@ -1,5 +1,6 @@
 ﻿module Logary.Targets.Dash
 
+open System.Reflection
 open System.Threading
 
 open FSharp.Actor
@@ -7,7 +8,12 @@ open FSharp.Actor
 open Suave
 open Suave.Types
 open Suave.Web
+open Suave.Http
 open Suave.Http.Successful
+open Suave.Http.Applicatives
+open Suave.Http.Embedded
+open Suave.Http.RequestErrors
+open Suave.Http.Writers
 
 open Logary
 open Logary.Target
@@ -16,13 +22,24 @@ open Logary.Internals
 type DashConf =
   { suaveConfig : SuaveConfig }
 
+/// the default configuration for the web server
+let empty =
+  { suaveConfig = Suave.Web.default_config }
+
 module internal Impl =
 
   type State =
     { webServer : CancellationTokenSource
     }
 
-  let app = OK "Hello World"
+  let app =
+    let from = Assembly.GetAssembly typeof<DashConf>
+    choose [
+      url "/" >>= resource from "index.full.html"
+      url "/json" >>= set_mime_type "application/json" <|> OK "{}"
+      url "/health" >>= set_mime_type "application/json" <|> OK "{}"
+      NOT_FOUND "Did not find route"
+      ]
 
   let formatDashInfo (startedInfo : Tcp.StartedData option []) =
     Array.fold (fun s t -> t |> function | None -> s | Some x -> s + sprintf "%O" x)
@@ -55,7 +72,8 @@ module internal Impl =
 
       | Shutdown ackChan ->
         ackChan.Reply Ack
-        return shutdown state }
+        return shutdown state
+      }
 
     and shutdown state =
       state.webServer.Dispose()

@@ -78,6 +78,10 @@
       <Name>Intelliplan.Logary</Name>
       <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\Logary.Dash\Intelliplan.Logary.Dash.fsproj">
+      <Project>{BF4793A4-FCE8-4FBF-8E8D-6297B9A1B70B}</Project>
+      <Name>Intelliplan.Logary.Dash</Name>
+    </ProjectReference>
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>

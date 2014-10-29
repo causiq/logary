@@ -83,11 +83,9 @@
     </Reference>
     <Reference Include="Intelliplan.JsonNet">
       <HintPath>..\packages\Intelliplan.JsonNet.1.7.0\lib\net40\Intelliplan.JsonNet.dll</HintPath>
-      <Private>True</Private>
     </Reference>
     <Reference Include="Intelliplan.JsonNet.NodaTime">
       <HintPath>..\packages\Intelliplan.JsonNet.NodaTime.1.7.0\lib\net40\Intelliplan.JsonNet.NodaTime.dll</HintPath>
-      <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="Newtonsoft.Json">

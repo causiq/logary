@@ -6,6 +6,7 @@
 #endif
 
 open System
+open System.Threading
 
 open NodaTime
 
@@ -16,25 +17,21 @@ open Logary.Metrics
 
 [<EntryPoint>]
 let main argv =
+  use mres = new ManualResetEventSlim()
   use logary =
     withLogary' "Riemann.Example" (
       withTargets [
-        Riemann.create (Riemann.RiemannConf.Create(tags = ["riemann-health"])) "riemann"
         Console.create (Console.empty) "console"
-        Logstash.create (Logstash.LogstashConf.Create("logstash.prod.corp.tld", 1939us)) "logstash"
+        Dash.create Dash.empty "dash"
       ] >>
       withMetrics (Duration.FromSeconds 4L) [
         WinPerfCounters.create (WinPerfCounters.Common.cpuTimeConf) "cpuTime" (Duration.FromMilliseconds 500L)
       ] >>
       withRules [
-        Rule.createForTarget "riemann"
         Rule.createForTarget "console"
-        Rule.createForTarget "logstash"
-      ] >>
-      withInternalTargets Info [
-        Console.create (Console.empty) "console"
+        Rule.createForTarget "dash"
       ]
     )
 
-  Console.ReadKey true |> ignore
+  mres.Wait()
   0
