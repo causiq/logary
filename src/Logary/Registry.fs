@@ -323,7 +323,6 @@ module Advanced =
 
     let create (conf : _) (sup : #IActor) (sched : #IActor) =
       Actor.spawn (Ns.create "registry") (registry conf sup sched)
-      
 
   /// Start a new registry with the given configuration. Will also launch/start
   /// all targets that are to run inside the registry. Returns a newly
@@ -339,7 +338,11 @@ module Advanced =
     let conf' = { conf with targets    = targets
                             metrics    = metrics }
 
-    let sopts = Supervisor.Options.Create(None, Supervisor.Strategy.OneForOne,
+    let strategy = (fun err (supervisor:IActor) (target:IActor) ->
+      System.Threading.Thread.Sleep 500 // or we'll crash with out of mem from gc
+      Supervisor.Strategy.OneForOne err supervisor target
+    )
+    let sopts = Supervisor.Options.Create(None, strategy,
                                           Ns.create "supervisor")
     let sup   = Supervisor.spawn sopts |> Supervisor.superviseAll (targetActors_.get targets)
     LogLine.debugf "supervisor status: %A" sup.Status |> log
