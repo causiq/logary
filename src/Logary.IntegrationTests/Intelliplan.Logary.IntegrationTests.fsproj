@@ -43,16 +43,13 @@
   <ItemGroup>
     <Reference Include="FSharp.Core">
       <HintPath>..\packages\FSharp.Core.3.0.0.2\lib\net40\FSharp.Core.dll</HintPath>
-      <Private>True</Private>
     </Reference>
     <Reference Include="Fuchu">
       <HintPath>..\packages\Fuchu.0.4.0.0\lib\Fuchu.dll</HintPath>
-      <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="policy.2.3.FSharp.Core">
       <HintPath>..\packages\FSharp.Core.3.0.0.2\lib\net40\policy.2.3.FSharp.Core.dll</HintPath>
-      <Private>True</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -61,53 +58,43 @@
   <ItemGroup>
     <ProjectReference Include="..\FSharp.Actor-logary\src\FSharp.Actor\FSharp.Actor-logary.fsproj">
       <Name>FSharp.Actor-logary</Name>
-      <Project>{aa4bc25b-04f7-4b39-bf28-0b0058193ed9}</Project>
-      <Private>True</Private>
+      <Project>{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}</Project>
     </ProjectReference>
     <ProjectReference Include="..\Logary.DB\Intelliplan.Logary.DB.fsproj">
       <Name>Intelliplan.Logary.DB</Name>
-      <Project>{a9d14445-2559-4df7-b1d4-61f0f190ee54}</Project>
-      <Private>True</Private>
+      <Project>{A9D14445-2559-4DF7-B1D4-61F0F190EE54}</Project>
     </ProjectReference>
     <ProjectReference Include="..\Logary.ElmahIO\Intelliplan.Logary.ElmahIO.fsproj">
       <Name>Intelliplan.Logary.ElmahIO</Name>
-      <Project>{d0e043cc-c0a2-42b3-8689-21468600035f}</Project>
-      <Private>True</Private>
+      <Project>{D0E043CC-C0A2-42B3-8689-21468600035F}</Project>
     </ProjectReference>
     <ProjectReference Include="..\Logary.Logentries\Intelliplan.Logary.Logentries.fsproj">
       <Name>Intelliplan.Logary.Logentries</Name>
-      <Project>{7ed41c0d-f9ed-43e9-be10-6e7457b90235}</Project>
-      <Private>True</Private>
+      <Project>{7ED41C0D-F9ED-43E9-BE10-6E7457B90235}</Project>
     </ProjectReference>
     <ProjectReference Include="..\Logary.Loggr\Intelliplan.Logary.Loggr.fsproj">
       <Name>Intelliplan.Logary.Loggr</Name>
-      <Project>{d9257f96-f74f-4ed1-b720-c9ce764e1962}</Project>
-      <Private>True</Private>
+      <Project>{D9257F96-F74F-4ED1-B720-C9CE764E1962}</Project>
     </ProjectReference>
     <ProjectReference Include="..\Logary.NLog\Intelliplan.Logary.NLog.fsproj">
       <Name>Intelliplan.Logary.NLog</Name>
-      <Project>{8f108b6a-0fbe-4d6e-8daa-b5ba1429c925}</Project>
-      <Private>True</Private>
+      <Project>{8F108B6A-0FBE-4D6E-8DAA-B5BA1429C925}</Project>
     </ProjectReference>
     <ProjectReference Include="..\Logary.Riemann\Intelliplan.Logary.Riemann.fsproj">
       <Name>Intelliplan.Logary.Riemann</Name>
-      <Project>{cc87925c-e4f2-4386-a322-8bc088de7b33}</Project>
-      <Private>True</Private>
+      <Project>{CC87925C-E4F2-4386-A322-8BC088DE7B33}</Project>
     </ProjectReference>
     <ProjectReference Include="..\Logary.SQLServerHealth\Intelliplan.Logary.SQLServerHealth.fsproj">
       <Name>Intelliplan.Logary.SQLServerHealth</Name>
-      <Project>{1dc3b89b-5586-4fd9-a40b-550aec87afe5}</Project>
-      <Private>True</Private>
+      <Project>{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5}</Project>
     </ProjectReference>
     <ProjectReference Include="..\Logary.Zipkin\Intelliplan.Logary.Zipkin.fsproj">
       <Name>Intelliplan.Logary.Zipkin</Name>
-      <Project>{2c3795a2-d88d-4635-bbaa-53503b7d9721}</Project>
-      <Private>True</Private>
+      <Project>{2C3795A2-D88D-4635-BBAA-53503B7D9721}</Project>
     </ProjectReference>
     <ProjectReference Include="..\Logary\Intelliplan.Logary.fsproj">
       <Name>Intelliplan.Logary</Name>
-      <Project>{f7e5b6e8-5d55-4974-9ca7-4c94d810631f}</Project>
-      <Private>True</Private>
+      <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
     </ProjectReference>
   </ItemGroup>
 </Project>

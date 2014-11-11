@@ -4,7 +4,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>bace7a04-036b-4a37-a2a9-968f79cd673a</ProjectGuid>
+    <ProjectGuid>{BACE7A04-036B-4A37-A2A9-968F79CD673A}</ProjectGuid>
     <RootNamespace>Logary.CommonLogging</RootNamespace>
     <AssemblyName>Logary.CommonLogging</AssemblyName>
     <OutputType>Library</OutputType>
@@ -56,7 +56,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Logary\Intelliplan.Logary.fsproj">
       <Name>Intelliplan.Logary</Name>
-      <Project>{f7e5b6e8-5d55-4974-9ca7-4c94d810631f}</Project>
+      <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
     </ProjectReference>
   </ItemGroup>
 </Project>
