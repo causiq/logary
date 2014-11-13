@@ -5,7 +5,7 @@ open System
 open NodaTime
 
 /// The log levels specify the severity of the message.
-[<CustomEquality; CustomComparison>]
+[<CustomEquality; CustomComparison; Serializable>]
 type LogLevel =
   /// The most verbose log level, more verbose than Debug.
   | Verbose
@@ -35,6 +35,7 @@ type LogLevel =
     /// Converts the string passed to a Loglevel.
     [<System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
     static member FromString str =
+      if str = null then nullArg "str"
       match (str : string).ToLowerInvariant() with
       | "verbose" -> Verbose
       | "debug"   -> Debug

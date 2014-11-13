@@ -1,5 +1,10 @@
 ﻿module Logary.Tests.Config
 
+open System.IO
+open System.Globalization
+
+open Newtonsoft.Json
+
 open Fuchu
 open Swensen.Unquote
 open TestDSL
@@ -9,7 +14,9 @@ open NodaTime
 
 open Logary
 open Logary.Configuration
+open Logary.Configuration.DTOs
 open Logary.Targets
+open Logary.Formatting
 
 type Assert =
   static member Contains(msg : string, xExpected : 'a, xs : 'a seq) =
@@ -56,9 +63,92 @@ let ``invalid configs`` =
           Assert.StringContains("string should contain name of metric", "m1", sprintf "%O" ex))
     ]
 
+let write (writer : TextWriter) (dto : 'a) =
+  let opts = JsonFormatter.Settings ()
+  let serialiser = JsonSerializer.Create opts
+  serialiser.Serialize(writer, dto)
+
+let write' (dto : 'a) =
+  use sw = new StringWriter(CultureInfo.InvariantCulture)
+  write sw dto
+  sw.ToString()
+
+let read (reader : TextReader) =
+  let opts = JsonFormatter.Settings ()
+  let serialiser = JsonSerializer.Create opts
+  serialiser.Deserialize(reader, typeof<'a>)
+  :?> 'a
+
+let read' (conf : string) =
+  use sr = new StringReader(conf)
+  read sr
+
 [<Tests>]
-let ``valid configs`` =
-  testList "valid configs" [
-    testCase "rule for metric, no noop target" <| fun _ ->
-      ()
+let ``loading config dtos`` =
+  let json = """
+{ "serviceName": "tests"
+, "pollPeriod" : "00:00:00.5"
+, "rules"      : [
+  { "hiera"    : ".*"
+  , "target"   : "console"
+  , "level"    : "info" }
+, { "hiera"    : "Intelliplan\\.Apps.*"
+  , "target"   : "common"
+  , "level"    : "verbose" }
+]
+, "targets"    : [
+  { "name"     : "console"
+  , "module"   : "Logary.Targets.Console, Intelliplan.Logary" }
+, { "name"     : "noop"
+  , "module"   : "Logary.Targets.Noop, Intelliplan.Logary"
+  , "isYes"    : true }
+]
+, "metrics"    : [
+  { "name"     : "common"
+  , "module"   : "Logary.Metrics.WinPerfCounters.Common, Intelliplan.Logary" }
+] }
+"""
+  testList "r/w config" [
+    testCase "can write log level" <| fun _ ->
+      Assert.Equal("should successfully serialise LogLevel",
+                   "\"info\"",
+                   write' Info)
+    testCase "can read log level" <| fun _ ->
+      Assert.Equal("should successfully deserialise LogLevel",
+                   Info,
+                   read' "\"info\"")
+    testCase "can read JSON into DTOs" <| fun _ ->
+      // "should successfully deserialise DTOs"
+      { rules       =
+          [ { hiera  = ".*"
+              target = "console"
+              level  = Info }
+            { hiera  = "Intelliplan\\.Apps.*"
+              target = "common"
+              level  = Verbose }
+          ]
+        targets     =
+          [ { name       = "console"
+              ``module`` = "Logary.Targets.Console, Intelliplan.Logary" }
+          ]
+        metrics     =
+          [ { name       = "common"
+              ``module`` = "Logary.Metrics.WinPerfCounters.Common, Intelliplan.Logary" }
+          ]
+        serviceName ="tests"
+        pollPeriod  = Duration.FromMilliseconds 500L } =? DTOs.readJson' json
+    testCase "can read configuration from dtos - reify smoke" <| fun _ ->
+      let dto = readJson' json
+      reify dto |> ignore
+    testCase "can create configuration from dtos - reify" <| fun _ ->
+      let dto = readJson' json
+      let conf = reify dto
+      Assert.Equal("should have correct service name",
+                   dto.serviceName, conf.metadata.serviceName)
+      Assert.Equal("should have same no of targets",
+                   dto.targets.Length, conf.targets.Count)
+      Assert.Equal("should have same no of metrics",
+                   dto.metrics.Length, conf.metrics.Count)
+      Assert.Equal("should have same poll period",
+                   dto.pollPeriod, conf.pollPeriod)
     ]

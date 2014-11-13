@@ -1,4 +1,4 @@
-﻿module Logary.Tests.ParseMetric
+﻿module Logary.Tests.LogaryConfig
 
 let sampleConfig = """
 [logary]
