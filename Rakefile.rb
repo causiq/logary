@@ -4,6 +4,8 @@ require 'albacore'
 require 'albacore/tasks/versionizer'
 require 'albacore/ext/teamcity'
 
+load 'tools/pack.rb'
+
 Configuration = ENV['Configuration'] || 'Release'
 
 Albacore::Tasks::Versionizer.new :versioning
@@ -69,7 +71,7 @@ def maybe_sign conf
 end
 
 desc 'perform full build'
-build :build => [:versioning, :assembly_info, :restore] do |b|
+build :compile => [:versioning, :assembly_info, :restore] do |b|
   b.prop 'Configuration', Configuration
   b.sln = 'src/Logary.sln'
   maybe_sign b
@@ -96,7 +98,7 @@ nugets_pack :nugets_quick => :versioning do |p|
 end
 
 desc 'package nugets - finds all projects and package them'
-task :nugets => ['build/pkg', :versioning, :build, :nugets_quick]
+task :nugets => ['build/pkg', :versioning, :compile, :nugets_quick]
 
 task :tests_unit do
   Dir.glob("src/*.Tests/bin/#{Configuration}/*.Tests.exe").
@@ -125,7 +127,7 @@ task :nugets_push do
 end
 
 desc 'run unit tests'
-task :tests => [:build, :tests_unit]
+task :tests => [:compile, :tests_unit]
 
 task :default => [:tests, :nugets]
 
