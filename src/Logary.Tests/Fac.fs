@@ -7,23 +7,22 @@ open System.Text
 open FSharp.Actor
 
 open Logary
-open Logary.Target.TextWriter
-open Logary.Configuration.Config
-
-open Rules
-open Targets
+open Logary.Internals
+open Logary.Targets.TextWriter
+open Logary.Configuration
+open Logary.Target
 
 open TestDSL
+open Fuchu
 
 let emptyTarget =
   { name  = "empty target"
-  ; actor = Actor.spawn Actor.Options.Default (fun _ -> async { return () }) }
+    actor = Actor.spawn Actor.Options.Default (fun _ -> async.Return ()) }
 
-let emptyRule =
-  { hiera  = Regex(".*")
-  ; target = "empty target"
-  ; accept = fun line -> true
-  ; level  = Verbose }
+let emptyRule = Rule.createForTarget "empty target"
+
+/// { serviceName = "tests"; logger = NullLogger() }
+let emptyRuntime = { serviceName = "tests"; logger = NullLogger() }
 
 let textWriter () =
   let sb = new StringBuilder()
@@ -32,35 +31,30 @@ let textWriter () =
 let withLogary f =
   let out, err = textWriter (), textWriter ()
 
-  let target = confTarget "cons" (create <| TextWriterConf.Default(out, err))
+  let target = confTarget "cons" (create <| TextWriterConf.Create(out, err))
 
-  let rule =
-    { accept = fun ll -> true
-    ; hiera = Regex(".*")
-    ; level = LogLevel.Verbose
-    ; target = target.name }
+  let rule = Rule.createForTarget "cons"
 
   let logary =
     confLogary "tests"
-    |> withRules   [ rule ]
-    |> withTargets [ target ]
-    |> validateLogary
+    |> withRule rule
+    |> withTarget target
+    |> Config.validate
     |> runLogary
 
   f logary out err
 
-let finaliseLogary = shutdownLogary >> fun a ->
-  let acks = Async.RunSynchronously(a, 1000)
+let finaliseLogary = Config.shutdown >> fun a ->
+  let state = Async.RunSynchronously a
   (because "finalise should always work" <| fun () ->
-    match acks with
-    | Nack desc -> failwithf "finaliseLogary failed %A" desc
-    | Ack -> ()) |> thatsIt
+    if state.Successful then () else Tests.failtestf "finaliseLogary failed %A" state)
+  |> thatsIt
 
-let finaliseTarget = shutdownTarget >> fun a ->
+let finaliseTarget = Target.shutdown >> fun a ->
   let acks = Async.RunSynchronously(a, 1000)
   match acks with
-  | FSharp.Actor.RPC.ExperiencedTimeout actor -> failwith "finalising target timeout"
+  | FSharp.Actor.RPC.ExperiencedTimeout actor -> Tests.failtest "finalising target timeout"
   | FSharp.Actor.RPC.SuccessWith(acks, actor) ->
     match acks with
-    | Nack desc -> failwith "would not shut down: %A"
+    | Nack desc -> Tests.failtestf "would not shut down: %s" desc
     | Ack -> ()

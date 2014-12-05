@@ -7,7 +7,7 @@ open FluentMigrator
 
 open Logary
 open Logary.DB
-open Logary.Target.DB
+open Logary.Targets.DB
 open Logary.DB.Migrations
 
 /// Migrate the given DB Conf up to the latest version of the Logary.DB target

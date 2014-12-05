@@ -9,4 +9,10 @@ build/
 AssemblyVersionInfo.cs
 *.swp
 AssemblyVersionInfo.cs
-buildsupport/
+tools/
+*.user
+Logary.userprefs
+*.pfx
+*.spc
+*.pvk
+.DS_Store

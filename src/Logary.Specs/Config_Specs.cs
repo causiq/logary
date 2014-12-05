@@ -4,17 +4,18 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
-using Logary;
 using Logary.Configuration;
 using Machine.Specifications;
-using TextWriter = Logary.Target.TextWriter;
+using NodaTime;
+using Console = Logary.Targets.Console;
+using TextWriter = Logary.Targets.TextWriter;
 
 // ReSharper disable InconsistentNaming
 // ReSharper disable UnusedMember.Local
 // ReSharper disable FieldCanBeMadeReadOnly.Local
 // ReSharper disable UnusedMember.Global
 
-namespace Intelliplan.Logary.Specs
+namespace Logary.Specs
 {
     static class LogaryTestFactory
     {
@@ -32,9 +33,20 @@ namespace Intelliplan.Logary.Specs
 
         public static LogManager ConfigureForTextWriter(StringWriter tw)
         {
-            var twTarg = TextWriter.Create(Formatting.StringFormatter.LevelDatetimePathMessageNl, tw, tw, false, LogLevel.Error, "tw");
-            var twRule = Targets.Rule.Create(new Regex(@"^Intelliplan\.Logary\.Specs"), "tw", l => true, LogLevel.Verbose);
-            return Config.Configure("Logary Specs C# low level API", new[] {twTarg}, new[] {twRule});
+            var twTarg = TextWriter.Create(Formatting.StringFormatter.LevelDatetimeMessagePathNl,
+                                           tw, tw, false, LogLevel.Error, "tw");
+            var twRule = RuleModule.Create(new Regex(@"^Intelliplan\.Logary\.Specs"),
+                                           "tw", l => true, m => true, LogLevel.Verbose);
+
+            var internalTarg = Console.Create("cons", Console.empty);
+
+            return Config.Configure(
+                "Logary Specs C# low level API",
+                new[] {twTarg},
+                Duration.FromSeconds(4L),
+                new Metric.MetricConf[0],
+                new[] {twRule},
+                LogLevel.Verbose, internalTarg);
         }
     }
 
@@ -101,7 +113,7 @@ namespace Intelliplan.Logary.Specs
             {
                 subject.Info("logged line");
 
-                manager.FlushPending();
+                manager.FlushPending(Duration.FromSeconds(20L));
             };
 
         It should_write_messages_to_text_writer = () => output.ToString().ShouldContain("logged line");
@@ -122,7 +134,7 @@ namespace Intelliplan.Logary.Specs
                 manager.Dispose();
 
                 thrownException = Catch.Exception(() => subject.Info("logged line"));
-                flushThrown = Catch.Exception(() => manager.FlushPending());
+                flushThrown = Catch.Exception(() => manager.FlushPending(Duration.FromSeconds(20L)));
             };
 
         Cleanup afterwards = () => manager.Dispose();
@@ -145,7 +157,7 @@ namespace Intelliplan.Logary.Specs
                 manager = LogaryTestFactory.GetManager(out output);
                 var logger = GetLogger();
                 logger.Debug("da 1st line", "testing");
-                manager.FlushPending();
+                manager.FlushPending(Duration.FromSeconds(20L));
                 var written = output.ToString();
                 written.ShouldContain("da 1st line");
                 written.ShouldContain("testing");
@@ -157,7 +169,7 @@ namespace Intelliplan.Logary.Specs
                 manager = LogaryTestFactory.GetManager(out output);
                 var logger = GetLogger();
                 logger.Debug("2nd here we go", "testing");
-                manager.FlushPending();
+                manager.FlushPending(Duration.FromSeconds(20L));
                 subject = output.ToString();
             };
 

@@ -7,6 +7,7 @@ open Fuchu
 open Logary
 open Logary.Target
 open Logary.Targets
+open Logary.Internals
 open Logary.Internals.Tcp
 
 open Logary.Tests.Fac
@@ -23,9 +24,9 @@ let tests =
   testList "logstash target" [
     testCase "plain logging" <| fun _ ->
       let target = Logstash.create (Logstash.LogstashConf.Create("10.0.0.120", 1936us, StubTcp.StubWriterClient.Create)) "logstash-integration"
-      let subject = target |> initTarget { serviceName = "tests" }
+      let subject = target |> init { serviceName = "tests"; logger = NullLogger() }
       (because "logging warning to logstash" <| fun () ->
-        Log.warnStrTag "integration" "integration test" |> logTarget subject
+        LogLine.warnTag "integration" "integration test" |> sendLogLine subject
         subject |> finaliseTarget
         ())
       |> thatsIt
@@ -38,15 +39,15 @@ let tests =
       let writer  = new StubTcp.StubWriterClient(true)
       let conf    = Logstash.LogstashConf.Create("127.0.0.1", clientFac = fun _ _ -> writer :> WriteClient)
       let target  = Logstash.create conf "logstash-integration"
-      let subject = target |> initTarget { serviceName = "tests" }
+      let subject = target |> init { serviceName = "tests"; logger = NullLogger() }
       let msg     = "integration test message"
       (because "logging warning to logstash" <| fun () ->
-        Log.warnStrTag "integration" msg
-        |> Log.setPath "a.b.c"
-        |> Log.setData "data-key" "data-value"
-        |> Log.setData "e" e1
-        |> Log.setExn e2
-        |> logTarget subject
+        LogLine.warnTag "integration" msg
+        |> LogLine.setPath "a.b.c"
+        |> LogLine.setData "data-key" "data-value"
+        |> LogLine.setData "e" e1
+        |> LogLine.setExn e2
+        |> sendLogLine subject
         subject |> finaliseTarget
         writer.ReadLines() |> Seq.exactlyOne |> Newtonsoft.Json.Linq.JObject.Parse)
       |> should' (fulfil (fun t -> "timestamp should not be null", not(t.["timestamp"] = null)))

@@ -22,8 +22,6 @@ type MetricsTable() =
         .WithColumnDescription("No. of ticks since Unix Epoch. 1 tick = 100 ns = 10 000 ms")
       .WithColumn("Level").AsInt16().NotNullable()
         .WithColumnDescription("See LogLevel.fs for disc union.")
-      .WithColumn("Type").AsInt16().NotNullable()
-        .WithColumnDescription("counter = 0|timer = 1|guauge = 2")
       .WithColumn("Value").AsDouble().NotNullable()
         .WithColumnDescription("The value of the measure.")
       .WithColumn("CorrelationId").AsString(255).Nullable().WithDefaultValue(null)
@@ -41,7 +39,6 @@ type MetricsTable() =
         .WithOptions().NonClustered()
         .OnColumn("EpochTicks").Descending()
         .OnColumn("Path").Ascending()
-        .OnColumn("Type").Ascending()
         .OnColumn("Level").Ascending()
       |> ignore
 

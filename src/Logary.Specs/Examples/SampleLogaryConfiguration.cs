@@ -7,7 +7,7 @@ using FluentMigrator.Runner.Processors.Sqlite;
 using Logary;
 using Logary.Configuration;
 using Logary.DB.Migrations;
-using Logary.Target;
+using Logary.Targets;
 using Console = System.Console;
 
 namespace Intelliplan.Logary.Specs.Examples

@@ -1,16 +1,16 @@
 using System.Text;
 using System.Text.RegularExpressions;
-using Logary;
 using Logary.Configuration;
-using Logary.Target;
+using Logary.Targets;
 using Machine.Specifications;
+using NodaTime;
 
 // ReSharper disable InconsistentNaming
 // ReSharper disable UnusedMember.Local
 // ReSharper disable FieldCanBeMadeReadOnly.Local
 // ReSharper disable UnusedMember.Global
 
-namespace Intelliplan.Logary.Specs
+namespace Logary.Specs
 {
     public class When_configuring_with_CSharp_API
     {
@@ -35,7 +35,7 @@ namespace Intelliplan.Logary.Specs
             {
                 manager.GetLogger("Intelliplan.Logary.Specs.When_configuring_with_CSharp_API")
                        .Warn("the situation is dire", "oh-noes");
-                manager.FlushPending();
+                manager.FlushPending(Duration.FromSeconds(8L));
                 subject = writer.ToString();
             };
 
@@ -69,7 +69,7 @@ namespace Intelliplan.Logary.Specs
             {
                 manager.GetLogger("Intelliplan.Logary.Specs.When_configuring_filter_with_API")
                        .Warn("the situation is dire", "oh-noes");
-                manager.FlushPending();
+                manager.FlushPending(Duration.FromSeconds(8L));
                 subject = writer.ToString();
             };
 

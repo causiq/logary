@@ -8,35 +8,35 @@ type AssertResult =
 
 and AssertContext<'a> =
   { message : string
-  ; item    : 'a 
-  ; negated : bool }
+    item    : 'a 
+    negated : bool }
 
 and Asserter<'a> = 'a -> AssertContext<'a> -> AssertResult
 
 let because msg fBecause =
   { message = msg
-  ; item    = fBecause()
-  ; negated = false }
+    item    = fBecause()
+    negated = false }
 
 let theSubject item =
   { message = ""
-  ; item    = item
-  ; negated = false }
+    item    = item
+    negated = false }
 
 let executing msg (f : unit -> _) =
   { message = msg
-  ; item    = f
-  ; negated = false }
+    item    = f
+    negated = false }
 
 let private nl = Environment.NewLine
 
 let theTuple f (tupleCtx : AssertContext<'a * 'b>) =
   f ({ item    = tupleCtx.item |> fst
-     ; message = tupleCtx.message
-     ; negated = tupleCtx.negated })
+       message = tupleCtx.message
+       negated = tupleCtx.negated })
     ({ item    = tupleCtx.item |> snd
-     ; message = tupleCtx.message
-     ; negated = tupleCtx.negated })
+       message = tupleCtx.message
+       negated = tupleCtx.negated })
 
 let should (asserter : Asserter<'a>) (expected : 'a) (ctx : AssertContext<_>) =
   match asserter expected ctx with
@@ -120,3 +120,8 @@ let raiseExn<'TExn when 'TExn :> exn> ctx =
     | _ -> Success // it raised another exception, that's a success
 
 let thatsIt = ignore
+
+
+[<AutoOpen>]
+module Exts =
+  let run a = a |> Async.RunSynchronously
