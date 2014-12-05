@@ -35,7 +35,7 @@
       <HintPath>..\packages\elmah.corelibrary.1.2.2\lib\Elmah.dll</HintPath>
     </Reference>
     <Reference Include="Elmah.Io">
-      <HintPath>..\packages\elmah.io.core.1.0.0.38\lib\net40\Elmah.Io.dll</HintPath>
+      <HintPath>..\packages\elmah.io.core.1.0.0.40\lib\net40\Elmah.Io.dll</HintPath>
     </Reference>
     <Reference Include="FSharp.Core">
       <HintPath>..\packages\FSharp.Core.3.0.0.2\lib\net40\FSharp.Core.dll</HintPath>
