@@ -3,6 +3,7 @@ require 'bundler/setup'
 require 'albacore'
 require 'albacore/tasks/versionizer'
 require 'albacore/ext/teamcity'
+require 'albacore/tasks/release'
 
 Configuration = ENV['Configuration'] || 'Release'
 
@@ -111,18 +112,11 @@ task :tests_integration do
   system "src/Logary.Logentries.Tests/bin/#{Configuration}/Logary.Logentries.Tests.exe", clr_command: true
 end
 
-desc 'push all packages in build/pkg'
-task :nugets_push do
-  Dir.glob 'build/pkg/*.nupkg' do |path|
-    begin
-      system 'tools/NuGet.exe',
-             %W|push #{path}|,
-             clr_command: true
-    rescue => e
-      error e
-    end
-  end
-end
+Albacore::Tasks::Release.new :release,
+                             pkg_dir: 'build/pkg',
+                             depend_on: :nugets,
+                             nuget_exe: 'tools/NuGet.exe',
+                             api_key: ENV['NUGET_KEY']
 
 desc 'run unit tests'
 task :tests => [:build, :tests_unit]
