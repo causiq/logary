@@ -171,6 +171,34 @@ module LogLine =
                  path          = path
                  ``exception`` = ex }
 
+  /// Create a LogLine given:
+  ///
+  ///  - `path`: the path of the log line; best curried at stop of function/module.
+  ///  - `level`: the level of the log line
+  ///  - `Printf.StringFormat<'a, LogLine> -> 'a`: the sprintf-like data to
+  ///
+  /// Example usage, at top of module/function:
+  /// 
+  /// ```
+  /// let log, logLine = Logger.log logger,
+  ///                    LogLine.createf "MyCompany.Module.fn"
+  /// ```
+  ///
+  /// then in the body:
+  ///
+  /// ```
+  /// logLine Info "successfully authenticated user" |> LogLine.setDatas [
+  ///   "email", box user_email
+  ///   "id", box id
+  /// ] |> log)
+  /// ```
+  ///
+  let createf path level =
+    Printf.kprintf (
+      create'' path
+      >> setLevel level
+    )
+
   /// Create a verbose log line with a message
   [<CompiledName "Verbose">]
   let verbose = create' Verbose
