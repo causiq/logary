@@ -117,6 +117,18 @@ Albacore::Tasks::Release.new :release,
                              depend_on: :nugets,
                              nuget_exe: 'tools/NuGet.exe',
                              api_key: ENV['NUGET_KEY']
+desc 'push all packages in build/pkg'
+task :nugets_push do
+  Dir.glob 'build/pkg/*.nupkg' do |path|
+    begin
+      system 'tools/NuGet.exe',
+             %W|push #{path}|,
+             clr_command: true
+    rescue => e
+      error e
+    end
+  end
+end
 
 desc 'run unit tests'
 task :tests => [:build, :tests_unit]
