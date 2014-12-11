@@ -27,7 +27,7 @@ asmver_files :assembly_info => :versioning do |a|
   # attributes are required:
   a.attributes assembly_description: 'Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net.',
                assembly_configuration: Configuration,
-               assembly_company: 'Intelliplan International AB',
+               assembly_company: 'Logibit AB',
                assembly_copyright: "(c) #{Time.now.year} by Henrik Feldt",
                assembly_version: ENV['LONG_VERSION'],
                assembly_file_version: ENV['LONG_VERSION'],
@@ -87,8 +87,8 @@ nugets_pack :nugets_quick => :versioning do |p|
   p.exe           = 'tools/NuGet.exe'
   p.with_metadata do |m|
     m.description = 'Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net.'
-    m.authors     = 'Henrik Feldt, Intelliplan International AB'
-    m.copyright   = 'Henrik Feldt, Intelliplan International AB'
+    m.authors     = 'Henrik Feldt, Logibit AB'
+    m.copyright   = 'Henrik Feldt, Logibit AB'
     m.version     = ENV['NUGET_VERSION']
     m.tags        = 'logging f# nosql log4net nlog serilog log logs metrics metrics.net measure performance perf semantic structured'
     m.license_url = 'https://www.apache.org/licenses/LICENSE-2.0.html'
