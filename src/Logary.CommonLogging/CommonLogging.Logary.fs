@@ -1,4 +1,4 @@
-﻿module Impl
+﻿namespace CommonLogging
 
 open System
 open System.Globalization
