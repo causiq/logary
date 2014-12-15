@@ -9,7 +9,8 @@
     <RootNamespace>Logary.Logentries</RootNamespace>
     <AssemblyName>Logary.Logentries</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <Name>Intelliplan.Logary.Logentries</Name>
+    <Name>Logary.Logentries</Name>
+    <Id>Intelliplan.Logary.Logentries</Id>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

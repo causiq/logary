@@ -1,4 +1,4 @@
-﻿module ZipkinExample
+module ZipkinExample
 
 open Logary
 open Logary.Target
@@ -7,15 +7,15 @@ open Logary.Configuration.Config
 [<EntryPoint>]
 let main argv =
   let logary =
-    confLogary "Intelliplan Logary Example"
+    confLogary "Logary Example"
     |> withRules
       [ Rules.forAny "console"
-      ; Rules.forAny "restkin"
-      ; Rules.forAny "debugger" ]
+        Rules.forAny "restkin"
+        Rules.forAny "debugger" ]
     |> withTargets
       [ Console.create Console.ConsoleConf.Default "console"
-      ; RestKin.create RestKin.RestKinConf.Default "restkin"
-      ; Debugger.create (Debugger.DebuggerConf.Default) "debugger" ]
+        RestKin.create RestKin.RestKinConf.Default "restkin"
+        Debugger.create (Debugger.DebuggerConf.Default) "debugger" ]
     |> validateLogary
     |> runLogary
 

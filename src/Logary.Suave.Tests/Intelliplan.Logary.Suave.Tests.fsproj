@@ -9,7 +9,8 @@
     <RootNamespace>Logary.Suave.Tests</RootNamespace>
     <AssemblyName>Logary.Suave.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <Name>Intelliplan.Logary.Suave.Tests</Name>
+    <Name>Logary.Suave.Tests</Name>
+    <Id>Intelliplan.Logary.Suave.Tests</Id>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

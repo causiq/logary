@@ -9,7 +9,8 @@
     <RootNamespace>Logary.SQLServerHealth.Tests</RootNamespace>
     <AssemblyName>Logary.SQLServerHealth.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <Name>Intelliplan.Logary.SQLServerHealth.Tests</Name>
+    <Name>Logary.SQLServerHealth.Tests</Name>
+    <Id>Intelliplan.Logary.SQLServerHealth.Tests</Id>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

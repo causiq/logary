@@ -1,7 +1,7 @@
 ﻿module Logary.Tests.ExternalAssumptions
 
 #if INTERACTIVE
-#r "bin/Release/Intelliplan.Logary.dll"
+#r "bin/Release/Logary.dll"
 #endif
 
 open Fuchu

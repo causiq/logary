@@ -9,7 +9,8 @@
     <RootNamespace>Logary.log4net</RootNamespace>
     <AssemblyName>Logary.log4net</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <Name>Intelliplan.Logary.log4net</Name>
+    <Name>Logary.log4net</Name>
+    <Id>Intelliplan.Logary.log4net</Id>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

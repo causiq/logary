@@ -9,7 +9,8 @@
     <RootNamespace>Logary.Dash</RootNamespace>
     <AssemblyName>Logary.Dash</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <Name>Intelliplan.Logary.Dash</Name>
+    <Name>Logary.Dash</Name>
+    <Id>Intelliplan.Logary.Dash</Id>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

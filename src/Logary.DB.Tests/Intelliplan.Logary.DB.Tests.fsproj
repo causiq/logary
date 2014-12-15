@@ -9,7 +9,8 @@
     <RootNamespace>Logary.DB.Tests</RootNamespace>
     <AssemblyName>Logary.DB.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <Name>Intelliplan.Logary.DB.Tests</Name>
+    <Name>Logary.DB.Tests</Name>
+    <Id>Intelliplan.Logary.DB.Tests</Id>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

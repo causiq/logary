@@ -11,8 +11,7 @@
     <AssemblyName>Logary.Zipkin.Example</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <TargetFSharpCoreVersion Condition=" '$(TargetFSharpCoreVersion)' == '' ">4.3.0.0</TargetFSharpCoreVersion>
-    <Name>Intelliplan.Logary.Zipkin.Example</Name>
-    <TargetFrameworkProfile />
+    <Name>Logary.Zipkin.Example</Name>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

@@ -9,7 +9,8 @@
     <RootNamespace>Logary.Zipkin</RootNamespace>
     <AssemblyName>Logary.Zipkin</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <Name>Intelliplan.Logary.Zipkin</Name>
+    <Name>Logary.Zipkin</Name>
+    <Id>Intelliplan.Logary.Zipkin</Id>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

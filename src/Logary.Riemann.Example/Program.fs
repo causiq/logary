@@ -1,8 +1,8 @@
 #if INTERACTIVE
 #r "bin/Release/FSharp.Actor.dll"
 #r "bin/Release/NodaTime.dll"
-#r "bin/Release/Intelliplan.Logary.dll"
-#r "bin/Release/Intelliplan.Logary.Riemann.dll"
+#r "bin/Release/Logary.dll"
+#r "bin/Release/Logary.Riemann.dll"
 #endif
 
 open System

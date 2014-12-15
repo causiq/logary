@@ -9,7 +9,8 @@
     <RootNamespace>Logary.Topshelf</RootNamespace>
     <AssemblyName>Logary.Topshelf</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <Name>Intelliplan.Logary.Topshelf</Name>
+    <Name>Logary.Topshelf</Name>
+    <Id>Intelliplan.Logary.Topshelf</Id>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

@@ -9,7 +9,8 @@
     <RootNamespace>Intelliplan.Logary</RootNamespace>
     <AssemblyName>Logary</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <Name>Intelliplan.Logary</Name>
+    <Name>Logary</Name>
+    <Id>Intelliplan.Logary</Id>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
