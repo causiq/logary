@@ -36,7 +36,8 @@ open Impl
 /// ```
 /// open EventStore.ClientAPI
 /// open EventStore.ClientAPI.Common.Log // here's the logger
-/// LogManager.SetLogFactory(fun name -> upcast LogaryLogger(lm.GetLogger(name)))
+/// //
+/// connBuilder.UseCustomLogger(lm.GetLogger("EventStore"))
 /// ```
 ///
 /// Happy logging!
