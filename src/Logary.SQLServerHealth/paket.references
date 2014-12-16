@@ -1,0 +1,6 @@
+FSharp.Core
+FsSql
+NodaTime
+Topshelf
+Topshelf.FSharp
+UnionArgParser

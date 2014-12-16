@@ -1,0 +1,35 @@
+source https://www.nuget.org/api/v2/
+
+nuget Common.Logging
+nuget Common.Logging.Core
+nuget elmah.corelibrary
+nuget elmah.io.core
+nuget EventStore.Client
+nuget FAKE 2.1.205-alpha
+nuget FluentMigrator
+nuget FluentMigrator.Runner
+nuget FParsec
+nuget FsCheck 0.9.2.0
+nuget FSharp.Core
+nuget FsSql
+nuget FsUnit
+nuget Fuchu
+nuget Fuchu.FsCheck
+nuget Intelliplan.JsonNet
+nuget Intelliplan.JsonNet.NodaTime
+nuget log4net
+nuget loggr-dotnet
+nuget Machine.Specifications
+nuget Machine.Specifications.Should
+nuget Newtonsoft.Json
+nuget NLog
+nuget NodaTime
+nuget NUnit
+nuget protobuf-net
+nuget RestSharp
+nuget Suave
+nuget System.Data.SQLite.Core
+nuget Topshelf
+nuget Topshelf.FSharp
+nuget UnionArgParser
+nuget Unquote

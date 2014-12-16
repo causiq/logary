@@ -78,7 +78,7 @@ let parseIP str =
   | true, ip -> ip
 
 let parse args =
-  let parser  = UnionArgParser<Arguments>()
+  let parser  = UnionArgParser.Create<Arguments>()
   let parse   = parser.Parse args
   let drives  = parse.PostProcessResults(<@ Drive_Latency @>, Drive)
   let files   = parse.PostProcessResults(<@ File_Latency @>, SingleFile)

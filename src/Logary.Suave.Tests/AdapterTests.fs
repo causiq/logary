@@ -21,7 +21,7 @@ let test_loggers (min_level : Log.LogLevel) (line_level : Log.LogLevel) (line : 
       level         = line_level
       path          = "test"
       ts_utc_ticks  = 0L
-      trace         = Log.TraceHeader.Empty }
+      trace         = Log.TraceHeader.empty }
 
 [<Tests>]
 let tests =

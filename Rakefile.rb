@@ -14,10 +14,14 @@ build :quick_build do |b|
   b.sln = 'src/Logary.sln'
 end
 
+task :paket_bootstrap do
+    system 'tools/paket.bootstrapper.exe', clr_command: true unless \
+          File.exists? 'tools/paket.exe'
+end
+
 desc 'restore all nugets as per the packages.config files'
-nugets_restore :restore do |p|
-  p.out = 'src/packages'
-  p.exe = 'tools/NuGet.exe'
+task :restore => :paket_bootstrap do
+    system 'tools/paket.exe', 'restore', clr_command: true
 end
 
 desc 'create assembly infos'
