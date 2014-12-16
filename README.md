@@ -19,6 +19,8 @@ CentOS](https://tc-oss.intelliplan.net/project.html?projectId=Logary&tab=project
 Install-Package Intelliplan.Logary
 ```
 
+At [https://logary.github.io/](https://logary.github.io) you can find the full documentation.
+
 ## Why?
 
 Logary is the next generation logging framework. It observes some facts that it
