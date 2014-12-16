@@ -46,7 +46,7 @@ module SQLiteDB =
   open FluentMigrator
   open FluentMigrator.Runner
   open FluentMigrator.Runner.Processors
-  open FluentMigrator.Runner.Processors.Sqlite
+  open FluentMigrator.Runner.Processors.SQLite
   open FluentMigrator.Runner.Generators.SQLite
 
   /// wrap the connection in a non-closing delegator for connections that are
@@ -75,7 +75,7 @@ module SQLiteDB =
           with get() = inner.State }
 
   /// used to avoid closing the SQLite connection in between migrations
-  type NonClosingSqliteProcessorFactory(conn : IDbConnection) =
+  type NonClosingSQLiteProcessorFactory(conn : IDbConnection) =
     inherit MigrationProcessorFactory()
     override x.Create (connStr : string, accouncer : IAnnouncer, opts : IMigrationProcessorOptions) =
       new SqliteProcessor(wrapConnNoClose conn,
@@ -92,7 +92,7 @@ module SQLiteDB =
   let openConn connStr =
     Logger.info consoleAndDebugger "openConn"
     let conn = openConnInner connStr ()
-    Runner(NonClosingSqliteProcessorFactory(conn), connStr, logger = consoleAndDebugger).MigrateUp()
+    Runner(NonClosingSQLiteProcessorFactory(conn), connStr, logger = consoleAndDebugger).MigrateUp()
     conn
 
   let connMgrShared = Sql.withNewConnection (fun () -> openConn inMemConnStrShared)
@@ -219,7 +219,7 @@ open FluentMigrator.Runner.Processors
 
 [<Tests>]
 let migrationTests =
-  let fac = Sqlite.SqliteProcessorFactory()
+  let fac = SQLite.SqliteProcessorFactory()
   let forgetful = "FullUri=file::memory:"
 
   testList "migrating sqlite db up and down" [

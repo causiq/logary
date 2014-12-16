@@ -3,7 +3,7 @@ using System.Data.SQLite;
 using System.Text.RegularExpressions;
 using FluentMigrator.Runner.Announcers;
 using FluentMigrator.Runner.Generators.SQLite;
-using FluentMigrator.Runner.Processors.Sqlite;
+using FluentMigrator.Runner.Processors.SQLite;
 using Logary;
 using Logary.Configuration;
 using Logary.DB.Migrations;
