@@ -124,7 +124,6 @@
   <ItemGroup>
     <Reference Include="loggr-dotnet">
       <HintPath>..\..\packages\loggr-dotnet\lib\loggr-dotnet.dll</HintPath>
-      <Private>True</Private>
       <Paket>True</Paket>
     </Reference>
   </ItemGroup>

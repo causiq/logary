@@ -133,14 +133,12 @@
   <ItemGroup>
     <Reference Include="FsSql">
       <HintPath>..\..\packages\FsSql\lib\FsSql.dll</HintPath>
-      <Private>True</Private>
       <Paket>True</Paket>
     </Reference>
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Fuchu">
       <HintPath>..\..\packages\Fuchu\lib\Fuchu.dll</HintPath>
-      <Private>True</Private>
       <Paket>True</Paket>
     </Reference>
   </ItemGroup>

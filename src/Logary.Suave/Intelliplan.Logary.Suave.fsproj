@@ -156,7 +156,6 @@
   <ItemGroup>
     <Reference Include="suave">
       <HintPath>..\..\packages\Suave\lib\suave.dll</HintPath>
-      <Private>True</Private>
       <Paket>True</Paket>
     </Reference>
   </ItemGroup>
