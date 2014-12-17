@@ -29,7 +29,7 @@ let empty =
 /// Logentries internal implementations
 module internal Impl =
   open System
-  open Logary.Logenties
+  open Logary.Logentries
 
   type State = { conn : TcpClient * Stream }
 

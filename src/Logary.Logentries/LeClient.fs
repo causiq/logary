@@ -1,4 +1,4 @@
-﻿module Logary.Logenties.LeClient
+﻿module Logary.Logentries.LeClient
 
 open System
 open System.IO
