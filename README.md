@@ -1,4 +1,4 @@
-# Logary v2.0
+# Logary v2.1
 
 Logary is a high performance, multi-target logging, metric, tracing and
 health-check library for mono and .Net.
