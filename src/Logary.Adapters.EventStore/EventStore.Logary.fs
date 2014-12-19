@@ -5,6 +5,7 @@
 
 open System
 open System.Globalization
+open System.Diagnostics
 
 open EventStore.ClientAPI
 
@@ -18,8 +19,9 @@ module internal Impl =
     LogLine.setPath logger.Name
     >> Logger.log logger
   
-  let handle_internal_exception logger ex text =
+  let handle_internal_exception logger (ex : exn) text =
     LogLine.error text
+    |> LogLine.setData "stack_trace" (new StackTrace(ex, true))
     |> LogLine.setExn ex
     |> Logger.log logger
     |> ignore
