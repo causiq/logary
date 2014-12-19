@@ -5,6 +5,7 @@
 
 open System
 open System.Globalization
+open System.Diagnostics
 
 open EventStore.ClientAPI
 
@@ -17,11 +18,26 @@ module internal Impl =
   let log (logger : Logger) =
     LogLine.setPath logger.Name
     >> Logger.log logger
+  
+  let handle_internal_exception logger (ex : exn) text =
+    LogLine.error text
+    |> LogLine.setData "stack_trace" (new StackTrace(ex, true))
+    |> LogLine.setExn ex
+    |> Logger.log logger
+    |> ignore
+    text
 
-  let fmt formatProvider format args = String.Format(formatProvider, format, args)
-
-  let write'' logger formatProvider format level ex args =
-    fmt formatProvider format args
+  let fmt (internal_logger : Logger) formatProvider format args = 
+    try
+      String.Format(formatProvider, format, args)
+    with
+      | :? FormatException as ex ->
+        handle_internal_exception internal_logger ex "EventStore string format error."
+      | :? ArgumentNullException as ex ->
+        handle_internal_exception internal_logger ex "EventStore string format error."
+        
+  let write'' logger internal_logger formatProvider format level ex args =
+    fmt internal_logger formatProvider format args
     |> LogLine.create' level
     |> fun line ->
       match ex with
@@ -41,8 +57,8 @@ open Impl
 /// ```
 ///
 /// Happy logging!
-type LogaryLogger(logger : Logger) =
-  let write'' = write'' logger
+type EventStoreAdapter(logger : Logger, internal_logger : Logger) =
+  let write'' = write'' logger internal_logger
   interface ILogger with
     member x.Error (format, args) =
       write'' invariantCulture format Error None args
