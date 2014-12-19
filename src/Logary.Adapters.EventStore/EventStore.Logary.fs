@@ -19,20 +19,20 @@ module internal Impl =
     >> Logger.log logger
   
   let handle_internal_exception logger ex text =
-        LogLine.error text
-        |> LogLine.setExn ex
-        |> Logger.log logger
-        |> ignore
-        text
+    LogLine.error text
+    |> LogLine.setExn ex
+    |> Logger.log logger
+    |> ignore
+    text
 
   let fmt (internal_logger : Logger) formatProvider format args = 
     try
       String.Format(formatProvider, format, args)
     with
       | :? FormatException as ex ->
-        handle_internal_exception internal_logger ex "EventStore.Logary.String.FormatException"
+        handle_internal_exception internal_logger ex "EventStore string format error."
       | :? ArgumentNullException as ex ->
-        handle_internal_exception internal_logger ex "EventStore.Logary.String.ArgumentNullException"
+        handle_internal_exception internal_logger ex "EventStore string format error."
         
   let write'' logger internal_logger formatProvider format level ex args =
     fmt internal_logger formatProvider format args
