@@ -18,22 +18,21 @@ module internal Impl =
     LogLine.setPath logger.Name
     >> Logger.log logger
   
+  let handle_internal_exception logger ex text =
+        LogLine.error text
+        |> LogLine.setExn ex
+        |> Logger.log logger
+        |> ignore
+        text
+
   let fmt (internal_logger : Logger) formatProvider format args = 
     try
       String.Format(formatProvider, format, args)
     with
-      | :? FormatException as exn ->
-        sprintf "%O" exn
-        |> LogLine.create' LogLevel.Error
-        |> internal_logger.Log
-        |> ignore
-        "String Format Error"
-      | :? ArgumentNullException as exn ->
-        sprintf "%O" exn
-        |> LogLine.create' LogLevel.Error
-        |> internal_logger.Log
-        |> ignore
-        "ArgumentNullException"
+      | :? FormatException as ex ->
+        handle_internal_exception internal_logger ex "EventStore.Logary.String.FormatException"
+      | :? ArgumentNullException as ex ->
+        handle_internal_exception internal_logger ex "EventStore.Logary.String.ArgumentNullException"
         
   let write'' logger internal_logger formatProvider format level ex args =
     fmt internal_logger formatProvider format args
