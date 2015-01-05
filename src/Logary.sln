@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{CB6B0EE7-19B3-4253-A1DA-B195C64C0AE6}"
@@ -246,7 +246,7 @@ Global
 		{647FB507-A552-4537-AA2C-E2274A3245EB} = {4755795D-4488-4013-81FC-9FD5D442B211}
 	EndGlobalSection
 	GlobalSection(MonoDevelopProperties) = preSolution
-		StartupItem = Logary.Tests\Intelliplan.Logary.Tests.fsproj
+		StartupItem = Logary.Suave.Tests\Intelliplan.Logary.Suave.Tests.fsproj
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
