@@ -19,22 +19,29 @@ module internal Impl =
     LogLine.setPath logger.Name
     >> Logger.log logger
   
-  let handle_internal_exception logger (ex : exn) text =
-    LogLine.error text
-    |> LogLine.setData "stack_trace" (new StackTrace(ex, true))
-    |> LogLine.setExn ex
+  let handle_internal_exception logger format args stackTrace =
+    LogLine.error "String.Format exception"
+    |> LogLine.setDatas [
+      "stack_trace", box stackTrace
+      "format", box format
+      "args", box args
+    ]
     |> Logger.log logger
-    |> ignore
-    text
 
-  let fmt (internal_logger : Logger) formatProvider format args = 
-    try
-      String.Format(formatProvider, format, args)
-    with
-      | :? FormatException as ex ->
-        handle_internal_exception internal_logger ex "EventStore string format error."
-      | :? ArgumentNullException as ex ->
-        handle_internal_exception internal_logger ex "EventStore string format error."
+  let fmt (internal_logger : Logger) formatProvider format (args : obj []) =
+    let rec fmt' failed =
+      try
+        if not failed then String.Format(formatProvider, format, args)
+        else
+          let st = new StackTrace(true)
+          handle_internal_exception internal_logger format args st
+          format
+      with
+        | :? FormatException ->
+          fmt' true
+        | :? ArgumentNullException ->
+          fmt' true
+    fmt' false
         
   let write'' logger internal_logger formatProvider format level ex args =
     fmt internal_logger formatProvider format args
