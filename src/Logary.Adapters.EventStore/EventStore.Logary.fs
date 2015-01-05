@@ -31,7 +31,8 @@ module internal Impl =
   let fmt (internal_logger : Logger) formatProvider format (args : obj []) =
     let rec fmt' failed =
       try
-        if not failed then String.Format(formatProvider, format, args)
+        if not failed && args.Length = 0 then format
+        elif not failed then String.Format(formatProvider, format, args)
         else
           let st = new StackTrace(true)
           handle_internal_exception internal_logger format args st
