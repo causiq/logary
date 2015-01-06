@@ -3,6 +3,7 @@ module Logary.Formatting
 
 open System
 open System.Globalization
+open System.Text
 
 open Microsoft.FSharp.Reflection
 
@@ -18,11 +19,29 @@ let internal caseNameOf (x:'a) =
   | case, _ -> case.Name
 
 /// Formats the data in a nice fashion for printing to e.g. the Debugger or Console.
-let internal formatData nl (data : Map<string, obj>) =
-  let inspect = box >> function
-    | :? string as s -> "\"" + s + "\""
-    | x -> sprintf "%O" x
-  data |> Map.fold (fun s k t -> s + nl + "  " + k + " => " + inspect t) ""
+let internal formatData (nl : string) (data : Map<string, obj>) =
+  // depth = 0-based 1-counting index of depth
+  let rec f (depth : int) (data : Map<string, obj>) =
+    let app (s : string) (sb : StringBuilder) =
+      sb.Append s
+    let inspect = box >> function
+      | :? string as s -> "\"" + s + "\""
+      | x when x.GetType().IsAssignableFrom(typeof<Map<string, obj>>) ->
+        let data' = x :?> Map<string, obj>
+        f (depth + 1) data' // recursively print maps
+      | null -> "null"
+      | x -> x.ToString()
+    data
+    |> Map.fold (fun sb k t ->
+        sb
+        |> app nl
+        |> app (new String(' ', depth * 2 + 2))
+        |> app k
+        |> app " => "
+        |> app (inspect t))
+      (StringBuilder())
+    |> fun sb -> sb.ToString()
+  f 0 data
 
 /// A StringFormatter is the thing that takes a log line and returns it as a string
 /// that can be printed, sent or otherwise dealt with in a manner that suits the target.
