@@ -128,7 +128,6 @@
   <ItemGroup>
     <Reference Include="FsSql">
       <HintPath>..\..\packages\FsSql\lib\FsSql.dll</HintPath>
-      <Private>True</Private>
       <Paket>True</Paket>
     </Reference>
   </ItemGroup>

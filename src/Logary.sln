@@ -253,7 +253,7 @@ Global
 		{647FB507-A552-4537-AA2C-E2274A3245EB} = {4755795D-4488-4013-81FC-9FD5D442B211}
 	EndGlobalSection
 	GlobalSection(MonoDevelopProperties) = preSolution
-		StartupItem = Logary.Suave.Tests\Logary.Adapters.Suave.Tests.fsproj
+		StartupItem = Logary.Tests\Logary.Tests.fsproj
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
