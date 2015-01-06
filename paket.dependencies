@@ -1,4 +1,4 @@
-source https://www.nuget.org/api/v2/
+source https://www.nuget.org/api/v2
 
 nuget Common.Logging
 nuget Common.Logging.Core
@@ -33,3 +33,4 @@ nuget Topshelf
 nuget Topshelf.FSharp
 nuget UnionArgParser
 nuget Unquote
+nuget Hawk

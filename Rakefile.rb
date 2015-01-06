@@ -169,7 +169,7 @@ namespace :docs do
      metadataFormat --generate
                     --sourceRepo https://github.com/logary/logary
                     --sourceFolder /src/Logary
-                    --dllFiles src/Logary/bin/Release/Intelliplan.Logary.dll
+                    --dllFiles src/Logary/bin/Release/Logary.dll
                     --outDir docs/output-api
                     --layoutRoots docs/layouts
                     --libDirs src/Logary/bin/Release
