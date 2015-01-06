@@ -25,11 +25,11 @@ let internal formatData (nl : string) (data : Map<string, obj>) =
     let app (s : string) (sb : StringBuilder) =
       sb.Append s
     let inspect = box >> function
+      | null -> "null"
       | :? string as s -> "\"" + s + "\""
       | x when x.GetType().IsAssignableFrom(typeof<Map<string, obj>>) ->
         let data' = x :?> Map<string, obj>
         f (depth + 1) data' // recursively print maps
-      | null -> "null"
       | x -> x.ToString()
     data
     |> Map.fold (fun sb k t ->

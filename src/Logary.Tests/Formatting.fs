@@ -71,12 +71,14 @@ let tests =
               [
                 "a", box (["b", box 1] |> Map.ofList)
                 "c", box 2
+                "d", box (Unchecked.defaultof<obj>)
+                "e", box (None : Option<int>)
               ] |> Map.ofList
         }
         |> StringFormatter.LevelDatetimeMessagePathNl.format)
       |> should equal (
           String.Format("E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d] {{error, bad}}" + 
-                        "{0}  a => {0}    b => 1{0}  c => 2{0}", Environment.NewLine))
+                        "{0}  a => {0}    b => 1{0}  c => 2{0}  d => null{0}  e => null{0}", Environment.NewLine))
       |> thatsIt
 
     testCase "StringFormatter.LevelDatetimePathMessageNl with exception, tags" <| fun _ ->
