@@ -10,7 +10,7 @@ AssemblyVersionInfo.cs
 *.swp
 AssemblyVersionInfo.cs
 tools/
-*.user
+**.user
 Logary.userprefs
 *.pfx
 *.spc
