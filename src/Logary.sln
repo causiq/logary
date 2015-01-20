@@ -252,9 +252,6 @@ Global
 		{CBFFFAEE-B183-4D0D-BBB1-FFFB6921F9DE} = {EA09AD42-B4E2-4B0D-8960-E87277F46F04}
 		{647FB507-A552-4537-AA2C-E2274A3245EB} = {4755795D-4488-4013-81FC-9FD5D442B211}
 	EndGlobalSection
-	GlobalSection(MonoDevelopProperties) = preSolution
-		StartupItem = Logary.Tests\Logary.Tests.fsproj
-	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection

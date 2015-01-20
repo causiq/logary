@@ -16,7 +16,6 @@ nuget FsUnit
 nuget Fuchu
 nuget Fuchu.FsCheck
 nuget Intelliplan.JsonNet
-nuget Intelliplan.JsonNet.NodaTime
 nuget log4net
 nuget loggr-dotnet
 nuget Machine.Specifications
@@ -34,3 +33,4 @@ nuget Topshelf.FSharp
 nuget UnionArgParser
 nuget Unquote
 nuget Hawk
+nuget NodaTime.Serialization.JsonNet
