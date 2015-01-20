@@ -63,6 +63,7 @@
   <ItemGroup>
     <Reference Include="Elmah">
       <HintPath>..\..\packages\elmah.corelibrary\lib\Elmah.dll</HintPath>
+      <Private>True</Private>
       <Paket>True</Paket>
     </Reference>
   </ItemGroup>
