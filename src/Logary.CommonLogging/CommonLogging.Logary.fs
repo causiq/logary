@@ -2,12 +2,26 @@
 
 open System
 open System.Globalization
+open System.Collections.Generic
 
 open Common.Logging
 
 open Logary
 
 type internal Adapter(logger : Logger) =
+
+  let stubVariablesContext () =
+    let dic = new Dictionary<string, obj>()
+    { new IVariablesContext with
+        member x.Set (key, value) =
+          dic.[key] <- value
+        member x.Get key = dic.[key]
+        member x.Contains key = dic.ContainsKey key
+        member x.Remove key = dic.Remove key |> ignore
+        member x.Clear () = dic.Clear () }
+
+  let gc = stubVariablesContext ()
+  let tc = stubVariablesContext ()
 
   let objToLine : obj -> LogLine = function
     | :? string as s -> { LogLine.empty with message = s }
@@ -59,6 +73,7 @@ type internal Adapter(logger : Logger) =
             |> log
             res))
 
+  // fucking too big interface
   interface ILog with
     member x.IsTraceEnabled = logger.Level >= Verbose
     member x.IsDebugEnabled = logger.Level >= Debug
@@ -138,6 +153,9 @@ type internal Adapter(logger : Logger) =
     member x.Fatal (cb, ex) = write''' invariantCulture cb (Some ex) Fatal
     member x.Fatal (formatProvider, cb) = write''' formatProvider cb None Fatal
     member x.Fatal (formatProvider, cb, ex) = write''' formatProvider cb (Some ex) Fatal
+
+    member x.GlobalVariablesContext = gc
+    member x.ThreadVariablesContext = tc
 
 type LogaryAdapter(lm : LogManager) =
   interface ILoggerFactoryAdapter with
