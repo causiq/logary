@@ -90,39 +90,50 @@ module Advanced =
   /// acceptor/filter (any matching acceptor).
   let getTargets conf name =
     let rules (rules, _, _) = rules
-    let createLineFilter rules =
-      let lfRules = Seq.map (fun r -> r.lineFilter) rules
-      fun l -> Seq.any (fun a -> a l) lfRules
-    let createMeasureFilter rules =
-      let mfRules = Seq.map (fun r -> r.measureFilter) rules
-      fun m -> Seq.any (fun mf -> mf m) mfRules
+
+    let createLineFilter minLvl rules =
+      let filters = Seq.map (fun r -> r.lineFilter) rules
+      fun (line : LogLine) ->
+        line.level >= minLvl
+        && filters |> Seq.any (fun filter -> filter line)
+
+    let createMeasureFilter minLvl rules =
+      let filters = Seq.map (fun r -> r.measureFilter) rules
+      fun (msr : Measure) ->
+        msr.m_level >= minLvl
+        && filters |> Seq.any (fun filter -> filter msr)
 
     conf.rules
     // first, filter by name
     |> matching name
 
     // map the target conf and target instance
-    |> List.map (fun r -> let t, ti = Map.find r.target conf.targets
-                          r, t, (Option.get ti))
+    |> List.map (fun r ->
+        let t, ti = Map.find r.target conf.targets
+        r, t, (Option.get ti))
 
     // rules applying to the same target are grouped
     |> Seq.groupBy (fun (r, t, ti) -> t.name)
 
     // combine acceptors with Seq.any/combineAccept
-    |> Seq.map (fun (_, ts) -> let _, t, ti = Seq.head ts in
-                                 let rs       = Seq.map rules ts
-                                 // find the min matching level from all rules for this target
-                                 createLineFilter rs,
-                                 createMeasureFilter rs,
-                                 t, ti,
-                                 (rs |> Seq.map (fun r -> r.level) |> Seq.min))
+    |> Seq.map (fun (_, ts) ->
+        let _, t, ti = Seq.head ts
+        let rs       = Seq.map rules ts
+        let minLvl   = rs |> Seq.map (fun r -> r.level) |> Seq.min
+        // find the min matching level from all rules for this target
+        createLineFilter minLvl rs,
+        createMeasureFilter minLvl rs,
+        t, ti,
+        minLvl)
 
     // targets should be distinctly returned (deduplicated, so that doubly matching
     // rules don't duply log)
-    |> Seq.distinctBy (fun (_, _, t, _, _) -> t.name)
+    |> Seq.distinctBy (fun (_, _, t, _, _) ->
+        t.name)
 
     // project only the lineFilter, measureFilter and the target instance
-    |> Seq.map (fun (lineFilter, measureFilter, _, ti, level) -> lineFilter, measureFilter, ti, level)
+    |> Seq.map (fun (lineFilter, measureFilter, _, ti, level) ->
+        lineFilter, measureFilter, ti, level)
 
     // back to a list
     |> List.ofSeq

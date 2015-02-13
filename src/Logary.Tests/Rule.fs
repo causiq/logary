@@ -134,6 +134,53 @@ let tests =
       finally
         finaliseLogary logary
 
+    yield testCase "multiplexing accept filters from given rules (levels)" <| fun _ ->
+      // given
+      let out = Fac.textWriter ()
+
+      let rules =
+        [ Rule.createForTarget "tw"
+            |> Rule.setLevel Info
+            |> Rule.setHiera (Regex("a.*"))
+
+          Rule.createForTarget "tw"
+            |> Rule.setLevel Info
+
+          Rule.createForTarget "tw"
+            |> Rule.setHiera (Regex("b"))
+            |> Rule.setLevel Debug ]
+
+      let targets =
+        [ Target.confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
+
+      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
+      try
+        async {
+          // when
+          let get = Registry.getLogger logary.registry
+          let! lgrA = "a" |> get
+          let! lgrB = "b" |> get
+
+          "first"  |> Logger.debug lgrA
+          "second"  |> Logger.info lgrA
+          "third"  |> Logger.debug lgrB
+          "fourth"  |> Logger.verbose lgrB
+          let! _ = Registry.Advanced.flushPending (Duration.FromSeconds(20L)) logary.registry
+
+          because "lgrA matches two rules, lgrB matches only one" (fun _ -> out.ToString())
+          |> should_not contain "first"
+          |> should contain "second"
+          |> should contain "third"
+          |> should_not contain "fourth"
+          |> should' (fulfil <| fun str -> "only single line 'first'", Regex.Matches(str, "first").Count = 0)
+          |> should' (fulfil <| fun str -> "only single line 'second'", Regex.Matches(str, "second").Count = 1)
+          |> should' (fulfil <| fun str -> "only single line 'third'", Regex.Matches(str, "third").Count = 1)
+          |> should' (fulfil <| fun str -> "only single line 'fourth'", Regex.Matches(str, "fourth").Count = 0)
+          |> thatsIt
+        } |> Async.RunSynchronously
+      finally
+        finaliseLogary logary
+
     yield testCase "filter should never pass anything through" <| fun _ ->
       let out = Fac.textWriter ()
       let rules   = [ { hiera  = Regex(".*"); target = "tw"; lineFilter = (fun line -> false); measureFilter = Rule.allowFilter; level = Debug } ]
