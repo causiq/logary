@@ -9,7 +9,7 @@ open Microsoft.FSharp.Reflection
 
 open Newtonsoft.Json
 
-open Intelliplan.JsonNet
+open Newtonsoft.Json.FSharp
 
 open Logary.Measure
 

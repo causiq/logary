@@ -1,14 +1,11 @@
-﻿#r "bin/Release/Fuchu.dll"
+﻿#I "bin/Release"
+#r "Fuchu.dll"
 open Fuchu
-#r "bin/Release/Intelliplan.Logary.dll"
+#r "Logary.dll"
 open Logary
-#r "bin/Release/FSharp.Core.dll"
-#r "bin/Release"
+#r "FSharp.Core.dll"
 
 #load "StubTcp.fs"
 #load "TestDSL.fs"
-#load "Tests.fs"
-
-
 
 Tests.run

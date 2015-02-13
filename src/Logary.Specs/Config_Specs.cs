@@ -35,7 +35,7 @@ namespace Logary.Specs
         {
             var twTarg = TextWriter.Create(Formatting.StringFormatter.LevelDatetimeMessagePathNl,
                                            tw, tw, false, LogLevel.Error, "tw");
-            var twRule = RuleModule.Create(new Regex(@"^Intelliplan\.Logary\.Specs"),
+            var twRule = RuleModule.Create(new Regex(@"^Logary\.Specs"),
                                            "tw", l => true, m => true, LogLevel.Verbose);
 
             var internalTarg = Console.Create("cons", Console.empty);
@@ -55,7 +55,7 @@ namespace Logary.Specs
         Because setting_up_logging = () =>
             {
                 manager = LogaryTestFactory.GetManager();
-                logger = manager.GetLogger("Intelliplan.Logary.Specs");
+                logger = manager.GetLogger("Logary.Specs");
             };
 
         Cleanup afterwards = () => manager.Dispose();
@@ -77,7 +77,7 @@ namespace Logary.Specs
         static string subject = Logging.GetCurrentLoggerName();
         static string nlogName = GetCurrentClassLogger();
 
-        It should_have_name_of_class_and_namespace = () => subject.ShouldEqual("Intelliplan.Logary.Specs.When_getting_current_logger_name");
+        It should_have_name_of_class_and_namespace = () => subject.ShouldEqual("Logary.Specs.When_getting_current_logger_name");
         It should_have_the_same_name_as_the_NLog_algorithm = () => nlogName.ShouldEqual(subject);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -187,7 +187,7 @@ namespace Logary.Specs
 
         static Logger GetLogger()
         {
-            return manager.GetLogger("Intelliplan.Logary.Specs.When_initialising_then_disposing_then_reinitialising");
+            return manager.GetLogger("Logary.Specs.When_initialising_then_disposing_then_reinitialising");
         }
     }
 }

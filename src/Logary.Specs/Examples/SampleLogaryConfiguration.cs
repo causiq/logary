@@ -10,7 +10,7 @@ using Logary.DB.Migrations;
 using Logary.Targets;
 using Console = System.Console;
 
-namespace Intelliplan.Logary.Specs.Examples
+namespace Logary.Specs.Examples
 {
     public class When_using_fluent_API
     {
@@ -37,7 +37,7 @@ namespace Intelliplan.Logary.Specs.Examples
                             .Port(1936)
                             .EventVersion(Logstash.EventVersion.One)
                             .Done())
-                    .Target<DB.Builder>("db",
+                    .Target<Logary.Targets.DB.Builder>("db",
                         conf => conf.Target
                             .ConnectionFactory(() => new SQLiteConnection())
                             .DefaultSchema()

@@ -33,7 +33,7 @@ namespace Logary.Specs
 
         Because reason = () =>
             {
-                manager.GetLogger("Intelliplan.Logary.Specs.When_configuring_with_CSharp_API")
+                manager.GetLogger("Logary.Specs.When_configuring_with_CSharp_API")
                        .Warn("the situation is dire", "oh-noes");
                 manager.FlushPending(Duration.FromSeconds(8L));
                 subject = writer.ToString();
@@ -67,7 +67,7 @@ namespace Logary.Specs
 
         Because reason = () =>
             {
-                manager.GetLogger("Intelliplan.Logary.Specs.When_configuring_filter_with_API")
+                manager.GetLogger("Logary.Specs.When_configuring_filter_with_API")
                        .Warn("the situation is dire", "oh-noes");
                 manager.FlushPending(Duration.FromSeconds(8L));
                 subject = writer.ToString();

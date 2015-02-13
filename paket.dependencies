@@ -15,7 +15,6 @@ nuget FsSql
 nuget FsUnit
 nuget Fuchu
 nuget Fuchu.FsCheck
-nuget Intelliplan.JsonNet
 nuget log4net
 nuget loggr-dotnet
 nuget Machine.Specifications
@@ -34,3 +33,4 @@ nuget UnionArgParser
 nuget Unquote
 nuget Hawk
 nuget NodaTime.Serialization.JsonNet
+nuget newtonsoft.json.fsharp

@@ -1,5 +1,5 @@
 FSharp.Core
-Intelliplan.JsonNet
 Newtonsoft.Json
+Newtonsoft.Json.FSharp
 NodaTime
 NodaTime.Serialization.JsonNet
