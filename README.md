@@ -1,7 +1,11 @@
-# Logary v2.1
+# Logary v3.0
 
 Logary is a high performance, multi-target logging, metric, tracing and
 health-check library for mono and .Net.
+
+For v3.0 we've updated all package names. You need to add 'Adapters', like so:
+'Logary.Adapters.Suave', 'Targets' or 'Services'. We've changed some namespaces;
+let the Obsolete attributes guide you.
 
 Follow Logary at twitter: [@logarylib](https://twitter.com/logarylib)
 
