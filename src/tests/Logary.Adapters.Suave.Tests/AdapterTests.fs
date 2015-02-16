@@ -1,8 +1,9 @@
 ﻿module Logary.Adapters.Suave.Tests.AdapterTests
 
-open Logary
-open Logary.Suave
 open global.Suave
+open global.Suave.Logging
+
+open Logary
 
 open Fuchu
 
