@@ -10,7 +10,7 @@
     <AssemblyName>Logary.ElmahIO</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <Name>Logary.ElmahIO</Name>
-    <Id>Intelliplan.Logary.ElmahIO</Id>
+
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

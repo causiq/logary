@@ -1,11 +1,11 @@
-﻿#I "bin/Release"
+#I "bin/Release"
 
 #r "Fuchu.dll"
 open Fuchu
 
-#r "Intelliplan.Logary.dll"
-#r "Intelliplan.Logary.DB.dll"
-#r "Intelliplan.Logary.DB.Migrations.dll"
+#r "Logary.dll"
+#r "Logary.DB.dll"
+#r "Logary.DB.Migrations.dll"
 
 #r "FluentMigrator.dll"
 #r "FluentMigrator.Runner.dll"

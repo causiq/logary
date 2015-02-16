@@ -23,7 +23,7 @@ open FSharp.MetadataFormat
 // --------------------------------------------------------------------------------------
 
 // Binaries that have XML documentation (in a corresponding generated XML file)
-let referenceBinaries = [ "Intelliplan.Logary.dll" ]
+let referenceBinaries = [ "Logary.dll" ]
 // Web site location for the generated documentation
 let website = "/"
 
@@ -31,7 +31,7 @@ let githubLink = "http://github.com/logary/logary"
 // Specify more information about your project
 let info =
   [ "project-name", "logary"
-    "project-author", "Henrik Feldt, Intelliplan International AB"
+    "project-author", "Henrik Feldt"
     "project-summary", "A high performance logging library written in F# for the CLR."
     "project-github", githubLink
     "project-nuget", "https://nuget.com/packages/Logary" ]

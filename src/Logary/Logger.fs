@@ -19,7 +19,7 @@ type Logger =
 /// the Registry module. To get a logger, have a look at the Logger module.
 ///
 /// If you are using I recommend doing:
-/// `Install-Package Intelliplan.Logary.CSharp` instead of dealing with the
+/// `Install-Package Logary.CSharp` instead of dealing with the
 /// interop problems that you will get from using this module directly.
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Logger =

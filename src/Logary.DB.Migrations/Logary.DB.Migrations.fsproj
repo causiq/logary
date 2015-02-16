@@ -10,7 +10,7 @@
     <AssemblyName>Logary.DB.Migrations</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <Name>Logary.DB.Migrations</Name>
-    <Id>Intelliplan.Logary.DB.Migrations</Id>
+
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

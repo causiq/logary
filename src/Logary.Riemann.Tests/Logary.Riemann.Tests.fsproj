@@ -10,7 +10,7 @@
     <AssemblyName>Logary.Riemann.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <Name>Logary.Riemann.Tests</Name>
-    <Id>Intelliplan.Logary.Riemann.Tests</Id>
+
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

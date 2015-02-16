@@ -10,7 +10,7 @@
     <AssemblyName>Logary.SQLServerHealth.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <Name>Logary.SQLServerHealth.Tests</Name>
-    <Id>Intelliplan.Logary.SQLServerHealth.Tests</Id>
+
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

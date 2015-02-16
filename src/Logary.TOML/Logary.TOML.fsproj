@@ -10,7 +10,7 @@
     <AssemblyName>Logary.TOML</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <Name>Logary.TOML</Name>
-    <Id>Intelliplan.Logary.TOML</Id>
+
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

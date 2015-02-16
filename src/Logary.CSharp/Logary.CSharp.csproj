@@ -10,7 +10,6 @@
     <RootNamespace>Logary</RootNamespace>
     <AssemblyName>Logary.CSharp</AssemblyName>
     <Name>Logary.CSharp</Name>
-    <Id>Intelliplan.Logary.CSharp</Id>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>

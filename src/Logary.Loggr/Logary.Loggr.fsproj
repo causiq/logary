@@ -10,7 +10,7 @@
     <AssemblyName>Logary.Loggr</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <Name>Logary.Loggr</Name>
-    <Id>Intelliplan.Logary.Loggr</Id>
+
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

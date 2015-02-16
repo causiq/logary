@@ -1,8 +1,6 @@
-﻿# Intelliplan Logary
+# Logary
 
 A smart, performant logging system for .Net and mono applications and services.
-
-Production tested for a long time at Intelliplan.
 
 ### Logging Integrations
 

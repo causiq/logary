@@ -10,7 +10,7 @@
     <OutputType>Library</OutputType>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <Name>Logary.CommonLogging</Name>
-    <Id>Intelliplan.Logary.CommonLogging</Id>
+
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>pdbonly</DebugType>

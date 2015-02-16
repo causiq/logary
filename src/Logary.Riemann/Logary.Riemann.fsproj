@@ -10,7 +10,7 @@
     <AssemblyName>Logary.Riemann</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <Name>Logary.Riemann</Name>
-    <Id>Intelliplan.Logary.Riemann</Id>
+
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>

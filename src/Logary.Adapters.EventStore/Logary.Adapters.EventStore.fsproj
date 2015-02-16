@@ -8,7 +8,7 @@
     <RootNamespace>Logary.Adapters.EventStore</RootNamespace>
     <AssemblyName>Logary.Adapters.EventStore</AssemblyName>
     <Name>Logary.Adapters.EventStore</Name>
-    <Id>Intelliplan.Logary.Adapters.EventStore</Id>
+
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
