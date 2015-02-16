@@ -1,0 +1,69 @@
+module Program
+
+open Fuchu
+
+open NodaTime
+
+open Logary
+open Logary.Configuration
+open Logary.Targets
+open Logary.Metrics
+
+/// Some mapping functions for Hawk LogLevels
+module internal NJFLogLevel =
+  open System
+  open Logary
+
+  // deliberatly not opening Newtonsoft.Json.FSharp, to keep types specific
+
+  /// Convert a suave log level to a logary log level
+  let to_logary : Newtonsoft.Json.FSharp.Logging.LogLevel -> LogLevel = function
+    | Newtonsoft.Json.FSharp.Logging.LogLevel.Verbose -> LogLevel.Verbose
+    | Newtonsoft.Json.FSharp.Logging.LogLevel.Debug   -> LogLevel.Debug
+    | Newtonsoft.Json.FSharp.Logging.LogLevel.Info    -> LogLevel.Info
+    | Newtonsoft.Json.FSharp.Logging.LogLevel.Warn    -> LogLevel.Warn
+    | Newtonsoft.Json.FSharp.Logging.LogLevel.Error   -> LogLevel.Error
+    | Newtonsoft.Json.FSharp.Logging.LogLevel.Fatal   -> LogLevel.Fatal
+
+module internal NJFLogLine =
+  open System
+  open NodaTime
+  open Logary
+
+  /// Convert a Suave LogLine to a Logary LogLine.
+  let to_logary (l : Newtonsoft.Json.FSharp.Logging.Logging.LogLine) =
+    { data          = l.data
+      message       = l.message
+      ``exception`` = None
+      level         = l.level |> NJFLogLevel.to_logary
+      tags          = []
+      path          = l.path
+      timestamp     = l.timestamp }
+
+open Logary
+
+type HawkAdapter(logger : Logger) =
+  interface Newtonsoft.Json.FSharp.Logging.Logger with
+    member x.Verbose f_line =
+      if Verbose >= logger.Level then
+        f_line () |> NJFLogLine.to_logary |> Logger.log logger
+    member x.Debug f_line =
+      if Debug >= logger.Level then
+        f_line () |> NJFLogLine.to_logary |> Logger.log logger
+    member x.Log line =
+      if NSJFLogLevel.to_logary line.level >= logger.Level then
+        line |> NJFLogLine.to_logary |> Logger.log logger
+
+[<EntryPoint>]
+let main argv = 
+  use logary =
+    withLogary' "Newtonsoft.Json.FSharp.Tests" (
+      withTarget (Console.create Console.empty "console")
+      >> withRule (Rule.createForTarget "console")
+    )
+
+  Newtonsoft.Json.FSharp.Logging.configure
+    (SystemClock.Instance)
+    (NewtonsoftAdapter (logary.GetLogger "Newtonsoft.Json.FSharp"))
+
+  defaultMainThisAssembly argv
