@@ -36,6 +36,12 @@ asmver_files :assembly_info => :versioning do |a|
                assembly_version: ENV['LONG_VERSION'],
                assembly_file_version: ENV['LONG_VERSION'],
                assembly_informational_version: ENV['BUILD_VERSION']
+  # optional, given an Albacore::Project and the configuration hash of the AsmVer task type
+  # example:
+  a.handle_config do |proj, conf|
+    conf.namespace = conf.namespace + "AsmVer"
+    conf
+  end
 end
 
 
@@ -113,7 +119,7 @@ end
 
 desc 'run integration tests'
 task :tests_integration do
-  system "src/Logary.Logentries.Tests/bin/#{Configuration}/Logary.Logentries.Tests.exe", clr_command: true
+  system "src/tests/Logary.IntegrationTests/bin/#{Configuration}/Logary.IntegrationTests.exe", clr_command: true
 end
 
 Albacore::Tasks::Release.new :release,
@@ -156,10 +162,6 @@ namespace :docs do
 
   desc 'build docs'
   task :build => [:pre_reqs, 'docs/files', 'docs/content', 'build/api'] do
-    %w|optdata sigdata|.each do |ext|
-      FileUtils.cp "src/vendor/FSharp/3.0/FSharp.Core.#{ext}", 'src/Logary/bin/Release/'
-    end
-
     system 'tools/FAKE/tools/Fake.exe', 'tools/docs.fsx', clr_command: true
   end
 

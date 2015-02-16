@@ -33,4 +33,4 @@ nuget UnionArgParser
 nuget Unquote
 nuget Hawk
 nuget NodaTime.Serialization.JsonNet
-nuget newtonsoft.json.fsharp
+nuget Newtonsoft.Json.FSharp
