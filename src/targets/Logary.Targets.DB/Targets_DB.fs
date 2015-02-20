@@ -28,7 +28,7 @@ module internal Impl =
       connMgr : Sql.ConnectionManager }
 
   let P = Sql.Parameter.make
-  let txn = Tx.transactionalWithIsolation IsolationLevel.ReadCommitted
+  let txn = Tx.transactional
 
   let printSchema = function
     | Some (s : string) -> sprintf "%s." s
