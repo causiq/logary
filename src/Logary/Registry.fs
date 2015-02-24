@@ -43,9 +43,11 @@ module internal Logging =
       member x.Configured lm =
         lock locker (fun () ->
           logManager := Some lm
-          logger := Some <| Async.RunSynchronously(getLogger lm.registry name))
+          logger := Some (Async.RunSynchronously(getLogger lm.registry name)))
     interface Logger with
       member x.Name = name
+      member x.LogVerbose fLine = (!logger) |> Option.iter (fun logger -> logger.LogVerbose fLine)
+      member x.LogDebug fLine = (!logger) |> Option.iter (fun logger -> logger.LogDebug fLine)
       member x.Log l = (!logger) |> Option.iter (fun logger -> logger.Log l)
       member x.Measure m = (!logger) |> Option.iter (fun logger -> logger.Measure m)
       member x.Level = Verbose

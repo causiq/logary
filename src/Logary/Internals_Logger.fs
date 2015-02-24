@@ -9,6 +9,8 @@ open Logary
 /// itself.
 type NullLogger() =
   interface Logger with
+    member x.LogVerbose fLine = ()
+    member x.LogDebug fLine = ()
     member x.Log line = ()
     member x.Measure measur = ()
     member x.Level = Fatal
@@ -32,6 +34,16 @@ module internal Logging =
         member x.Name = x.name
 
       interface Logger with
+        member x.LogVerbose fLine =
+          if Verbose >= x.level then
+            let logger : Logger = upcast x
+            logger.Log (fLine ()) // delegate down
+
+        member x.LogDebug fLine =
+          if Debug >= x.level then
+            let logger : Logger = upcast x
+            logger.Log (fLine ()) // delegate down
+
         member x.Log line =
           for accept, _, t in x.targets do
             try
@@ -67,6 +79,16 @@ type InternalLogger =
   { lvl  : LogLevel
     trgs : Target.TargetInstance list }
   interface Logger with
+    member x.LogVerbose fLine =
+      if Verbose >= x.lvl then
+        let logger : Logger = upcast x
+        logger.Log (fLine ())
+
+    member x.LogDebug fLine =
+      if Debug >= x.lvl then
+        let logger : Logger = upcast x
+        logger.Log (fLine ())
+
     member x.Log line =
       try
         if line.level >= x.lvl then

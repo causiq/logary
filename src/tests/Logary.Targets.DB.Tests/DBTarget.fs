@@ -30,10 +30,14 @@ module SQLiteDB =
 
   let private consoleAndDebugger =
     { new Logger with
+        member x.LogDebug fLine =
+          x.Log (fLine ())
+        member x.LogVerbose fLine =
+          x.Log (fLine ())
         member x.Log line =
           let fm = Formatting.StringFormatter.VerbatimNewline
           let str = fm.format line
-          if not <| String.IsNullOrWhiteSpace str then
+          if not (String.IsNullOrWhiteSpace str) then
             System.Console.Write(str)
             System.Diagnostics.Debugger.Log(6, "tests", str)
         member x.Measure _ = ()

@@ -9,6 +9,8 @@ open Fuchu
 
 let test_loggers (min_level : Logging.LogLevel) (line_level : Logging.LogLevel) (line : LogLine ref) =
   let stub = { new Logger with
+                  member x.LogVerbose fl = x.Log (fl ())
+                  member x.LogDebug fl = x.Log (fl ())
                   member x.Log ll = line := ll
                   member x.Measure m = ()
                   member x.Level = Info
@@ -31,10 +33,12 @@ let tests =
       let line : LogLine ref = ref (LogLine.create'' "a.b.c" "empty")
       test_loggers Logging.LogLevel.Info Logging.LogLevel.Debug line
       Assert.Equal("should have 'empty' message", "empty", (!line).message)
+
     testCase "logs same on Info level" <| fun _ ->
       let line : LogLine ref = ref (LogLine.create'' "a.b.c" "empty")
       test_loggers Logging.LogLevel.Info Logging.LogLevel.Info line
       Assert.Equal("should have 'test' message", "test", (!line).message)
+
     testCase "logs same on Error level" <| fun _ ->
       let line : LogLine ref = ref (LogLine.create'' "a.b.c" "empty")
       test_loggers Logging.LogLevel.Info Logging.LogLevel.Error line

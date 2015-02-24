@@ -4,15 +4,21 @@
 type Logger =
   inherit Named
 
+  /// Write a Verbose log line
+  abstract LogVerbose : (unit -> LogLine) -> unit
+
+  /// Write a Debug log line
+  abstract LogDebug   : (unit -> LogLine) -> unit
+
   /// Write a log line to the logger.
-  abstract Log     : LogLine -> unit
+  abstract Log        : LogLine -> unit
 
   /// Write a measure to the logger.
-  abstract Measure : Measure -> unit
+  abstract Measure    : Measure -> unit
 
   /// Gets the currently set log level, aka. the granularity with which things
   /// are being logged
-  abstract Level   : LogLevel
+  abstract Level      : LogLevel
 
 /// API for writing logs and measures.
 /// For gauges that run continuously based on a timer, have a look at
@@ -23,8 +29,15 @@ type Logger =
 /// interop problems that you will get from using this module directly.
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Logger =
+  open System
+
   open Logary
   open Logary.LogLine
+
+  let private ensurePath (loggerName : string) (line : LogLine) =
+    if String.IsNullOrEmpty line.path then
+      LogLine.setPath loggerName line
+    else line
 
   /////////////////////
   // Logging methods //
@@ -33,9 +46,19 @@ module Logger =
   /// Write a log entry from a log line.
   [<CompiledName "Log">]
   let log (logger : Logger) line =
-    (line : LogLine)
-    |> fun l -> match l.path with "" -> { l with path = logger.Name } | _ -> l
-    |> logger.Log
+    logger.Log (line |> ensurePath logger.Name)
+
+  /// Write a debug log line, given from the fLine callback, if the logger
+  /// accepts line with Verbose level.
+  [<CompiledName "LogVerbose">]
+  let logVerbose (logger : Logger) fLine =
+    logger.LogVerbose (fun () -> fLine () |> ensurePath logger.Name)
+
+  /// Write a debug log line, given from the fLine callback, if the logger
+  /// accepts line with Debug level.
+  [<CompiledName "LogDebug">]
+  let logDebug (logger : Logger) fLine =
+    logger.LogDebug (fun () -> fLine () |> ensurePath logger.Name)
 
   /// Write a measure
   [<CompiledName "Measure">]
