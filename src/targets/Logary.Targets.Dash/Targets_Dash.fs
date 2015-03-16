@@ -1,4 +1,4 @@
-﻿module Logary.Targets.Dash
+module Logary.Targets.Dash
 
 open System.Threading
 
@@ -32,7 +32,7 @@ module internal Impl =
     let log = LogLine.setPath "Logary.Targets.Dash.loop" >> Logger.log ri.logger
 
     let rec init () = async {
-      let listen, server = app |> web_server_async conf.suaveConfig
+      let listen, server = app |> startWebServerAsync conf.suaveConfig
       let cts = new CancellationTokenSource()
       Async.StartImmediate(server, cts.Token)
       let! started = listen
