@@ -7,7 +7,7 @@ NUGET
     elmah.corelibrary (1.2.2)
     elmah.io.core (1.0.0.40)
       elmah.corelibrary (>= 1.2.2)
-    EventStore.Client (3.0.1)
+    EventStore.Client.PreRelease (3.1.0)
     FAKE (2.1.205-alpha)
     FluentMigrator (1.4.0.0)
     FluentMigrator.Runner (1.4.0.0)

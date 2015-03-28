@@ -1,4 +1,4 @@
-﻿namespace EventStore.ClientAPI.Common.Log
+namespace EventStore.ClientAPI.Common.Log
 
 // in https://github.com/EventStore/EventStore/tree/dev/src/EventStore.ClientAPI/Common/Log
 // are all the defaults
@@ -18,7 +18,7 @@ module internal Impl =
   let log (logger : Logger) =
     LogLine.setPath logger.Name
     >> Logger.log logger
-  
+
   let handle_internal_exception logger format args stackTrace =
     LogLine.error "String.Format exception"
     |> LogLine.setDatas [
@@ -43,7 +43,7 @@ module internal Impl =
         | :? ArgumentNullException ->
           fmt' true
     fmt' false
-        
+
   let write'' logger internal_logger formatProvider format level ex args =
     fmt internal_logger formatProvider format args
     |> LogLine.create' level
