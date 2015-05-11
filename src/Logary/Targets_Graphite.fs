@@ -86,7 +86,7 @@ let private graphiteLoop (conf : GraphiteConf) (svc : RuntimeInfo) =
             return! running state'
           | None -> return! running state
         | Measure ({ m_value = v ; m_path  = p ; m_timestamp = ts } as ms) ->
-          let! state' = createMsg p (getValueStr ms) ts |> doWrite state
+          let! state' = createMsg (DP.joined p) (getValueStr ms) ts |> doWrite state
           return! running state'
         | Flush chan ->
           chan.Reply Ack
