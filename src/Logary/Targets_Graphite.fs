@@ -46,6 +46,15 @@ let private tryDispose (item : 'a option) =
         | :? IDisposable as disposable -> try disposable.Dispose() with _ -> ()
         | _ -> ()
 
+let private sanitizePath (DP paths) =
+  paths
+  |> Seq.map (fun r -> System.Text.RegularExpressions.Regex.Replace(r, "\s+", "_"))
+  |> Seq.map (fun r -> System.Text.RegularExpressions.Regex.Replace(r, "/", "-"))
+  |> Seq.map (fun r -> r.Replace("%", "pct"))
+  |> Seq.map (fun r -> System.Text.RegularExpressions.Regex.Replace(r, "[^a-zA-Z_\-0-9]", ""))
+  |> List.ofSeq
+  |> DP
+
 /// All graphite messages are of the following form.
 /// metric_path value timestamp\n
 let private createMsg path value (timestamp : Instant) =
@@ -86,7 +95,7 @@ let private graphiteLoop (conf : GraphiteConf) (svc : RuntimeInfo) =
             return! running state'
           | None -> return! running state
         | Measure ({ m_value = v ; m_path  = p ; m_timestamp = ts } as ms) ->
-          let! state' = createMsg (DP.joined p) (getValueStr ms) ts |> doWrite state
+          let! state' = createMsg (sanitizePath p |> DP.joined) (getValueStr ms) ts |> doWrite state
           return! running state'
         | Flush chan ->
           chan.Reply Ack
