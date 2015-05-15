@@ -46,12 +46,19 @@ let private tryDispose (item : 'a option) =
         | :? IDisposable as disposable -> try disposable.Dispose() with _ -> ()
         | _ -> ()
 
-let private sanitizePath (DP paths) =
+// Allowable characters in a graphite metric name:
+// alphanumeric
+// !#$%&"'*+-:;<=>?@[]\^_`|~
+// . is used as a path separator
+let private invalidPathCharacters =
+  System.Text.RegularExpressions.Regex("""[^a-zA-Z0-9!#\$%&"'\*\+\-:;<=>\?@\[\\\]\^_`\|~]""", Text.RegularExpressions.RegexOptions.Compiled)//"
+
+/// Sanitizes Graphite metric paths by converting / to - and replacing all other
+/// invalid characters with underscores.
+let internal sanitizePath (DP paths) =
   paths
-  |> Seq.map (fun r -> System.Text.RegularExpressions.Regex.Replace(r, "\s+", "_"))
-  |> Seq.map (fun r -> System.Text.RegularExpressions.Regex.Replace(r, "/", "-"))
-  |> Seq.map (fun r -> r.Replace("%", "pct"))
-  |> Seq.map (fun r -> System.Text.RegularExpressions.Regex.Replace(r, "[^a-zA-Z_\-0-9]", ""))
+  |> Seq.map (fun r -> r.Replace("/", "-"))
+  |> Seq.map (fun r -> invalidPathCharacters.Replace(r, "_"))
   |> List.ofSeq
   |> DP
 
