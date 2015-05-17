@@ -3,8 +3,8 @@ source https://www.nuget.org/api/v2
 nuget Common.Logging
 nuget Common.Logging.Core
 nuget EventStore.Client.PreRelease
-nuget elmah.corelibrary
-nuget elmah.io.core
+nuget elmah.corelibrary ~> 1
+nuget elmah.io.core ~> 1
 nuget FAKE 2.1.205-alpha
 nuget FluentMigrator
 nuget FluentMigrator.Runner
@@ -30,7 +30,7 @@ nuget System.Data.SQLite.Core
 nuget Topshelf
 nuget Topshelf.FSharp
 nuget UnionArgParser
-nuget Unquote
+nuget Unquote ~> 2.2
 nuget Hawk
 nuget NodaTime.Serialization.JsonNet
 nuget Newtonsoft.Json.FSharp
