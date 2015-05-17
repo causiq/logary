@@ -14,7 +14,7 @@ module LoggerExtensions =
   let log (logger : Logger, message, level, data, tags, path,
            ``exception``,
            timestamp : Nullable<NodaTime.Instant>) =
-    if String.IsNullOrWhiteSpace message then nullArg "message"
+    if message = null then nullArg "message"
     { message       = message
       level         = level
       data          = Map.fromObj data
@@ -27,7 +27,7 @@ module LoggerExtensions =
   /// Log a message with some accompanying data to the log
   [<Extension; CompiledName("Log")>]
   let logAnnotate (logger : Logger, message, level, data) =
-    if String.IsNullOrWhiteSpace message then nullArg "message"
+    if message = null then nullArg "message"
     { message       = message
       level         = level
       data          = Map.fromObj data

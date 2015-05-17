@@ -32,4 +32,7 @@ let tests =
       |> should be true
       |> thatsIt
 
+    testCase "sanitizePath" <| fun _ ->
+      let testPath = DP ["This is a metric path"; "path$Section%2.5"; "GET /post/1.2/"; "Multiple . spaces"]
+      Graphite.sanitizePath testPath =? DP ["This_is_a_metric_path"; "path$Section%2_5"; "GET_-post-1_2-"; "Multiple___spaces"]
     ]

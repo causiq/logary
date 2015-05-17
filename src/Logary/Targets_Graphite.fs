@@ -46,6 +46,22 @@ let private tryDispose (item : 'a option) =
         | :? IDisposable as disposable -> try disposable.Dispose() with _ -> ()
         | _ -> ()
 
+// Allowable characters in a graphite metric name:
+// alphanumeric
+// !#$%&"'*+-:;<=>?@[]\^_`|~
+// . is used as a path separator
+let private invalidPathCharacters =
+  System.Text.RegularExpressions.Regex("""[^a-zA-Z0-9!#\$%&"'\*\+\-:;<=>\?@\[\\\]\^_`\|~]""", Text.RegularExpressions.RegexOptions.Compiled)//"
+
+/// Sanitizes Graphite metric paths by converting / to - and replacing all other
+/// invalid characters with underscores.
+let internal sanitizePath (DP paths) =
+  paths
+  |> Seq.map (fun r -> r.Replace("/", "-"))
+  |> Seq.map (fun r -> invalidPathCharacters.Replace(r, "_"))
+  |> List.ofSeq
+  |> DP
+
 /// All graphite messages are of the following form.
 /// metric_path value timestamp\n
 let private createMsg path value (timestamp : Instant) =
@@ -86,7 +102,7 @@ let private graphiteLoop (conf : GraphiteConf) (svc : RuntimeInfo) =
             return! running state'
           | None -> return! running state
         | Measure ({ m_value = v ; m_path  = p ; m_timestamp = ts } as ms) ->
-          let! state' = createMsg p (getValueStr ms) ts |> doWrite state
+          let! state' = createMsg (sanitizePath p |> DP.joined) (getValueStr ms) ts |> doWrite state
           return! running state'
         | Flush chan ->
           chan.Reply Ack
