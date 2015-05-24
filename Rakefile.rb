@@ -132,7 +132,7 @@ task :nugets_push do
   Dir.glob 'build/pkg/*.nupkg' do |path|
     begin
       system 'tools/NuGet.exe',
-             %W|push #{path}|,
+             %W|push -ApiKey #{ENV['NUGET_KEY']} #{path}|,
              clr_command: true
     rescue => e
       error e
