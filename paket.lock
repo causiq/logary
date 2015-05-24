@@ -45,7 +45,7 @@ NUGET
     NUnit (2.6.4)
     protobuf-net (2.0.0.668)
     RestSharp (105.1.0)
-    Suave (0.27.0)
+    Suave (0.28.1)
       FSharp.Core (>= 3.1.2.1)
       FsPickler (>= 1.0.7)
     System.Data.SQLite.Core (1.0.96.0)

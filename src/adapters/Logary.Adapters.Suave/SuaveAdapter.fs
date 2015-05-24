@@ -1,4 +1,4 @@
-﻿namespace Suave.Logging
+namespace Suave.Logging
 
 open Logary
 
@@ -9,7 +9,7 @@ module SuaveLogLevel =
   // deliberatly not opening Suave, to keep types specific
 
   /// Convert a suave log level to a logary log level
-  let to_logary : Suave.Logging.LogLevel -> Logary.LogLevel = function
+  let toLogary : Suave.Logging.LogLevel -> Logary.LogLevel = function
     | Suave.Logging.LogLevel.Verbose -> LogLevel.Verbose
     | Suave.Logging.LogLevel.Debug   -> LogLevel.Debug
     | Suave.Logging.LogLevel.Info    -> LogLevel.Info
@@ -27,19 +27,19 @@ module SuaveLogLine =
     { data          = Map.empty
       message       = l.message
       ``exception`` = l.``exception``
-      level         = l.level |> SuaveLogLevel.to_logary
+      level         = l.level |> SuaveLogLevel.toLogary
       tags          = []
       path          = l.path
-      timestamp     =  NodaTime.Instant.FromDateTimeUtc(DateTime(l.ts_utc_ticks, DateTimeKind.Utc)) }
+      timestamp     =  NodaTime.Instant.FromDateTimeUtc(DateTime(l.tsUTCTicks, DateTimeKind.Utc)) }
 
 /// An adapter that takes a Logary logger and forwards all Suave logs to it. A simple implementation:
 ///
-/// if logger.Level >= to_logary_level level then
-///   f_line () |> to_logary_line |> Log.log logger
+/// if logger.Level >= toLogaryLevel level then
+///   fLine () |> toLogary |> Log.log logger
 ///
 type SuaveAdapter(logger : Logger) =
   interface Suave.Logging.Logger with
-    member x.Log level f_line =
+    member x.Log level fLine =
       // here it's important the Level of the logger is well tuned
-      if SuaveLogLevel.to_logary level >= logger.Level then
-        f_line () |> SuaveLogLine.to_logary |> Logger.log logger
+      if SuaveLogLevel.toLogary level >= logger.Level then
+        fLine () |> SuaveLogLine.to_logary |> Logger.log logger

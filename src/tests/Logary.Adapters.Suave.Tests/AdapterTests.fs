@@ -7,7 +7,7 @@ open Logary
 
 open Fuchu
 
-let test_loggers (min_level : Logging.LogLevel) (line_level : Logging.LogLevel) (line : LogLine ref) =
+let test_loggers (minLevel : Logging.LogLevel) (lineLevel : Logging.LogLevel) (line : LogLine ref) =
   let stub = { new Logger with
                   member x.LogVerbose fl = x.Log (fl ())
                   member x.LogDebug fl = x.Log (fl ())
@@ -18,12 +18,12 @@ let test_loggers (min_level : Logging.LogLevel) (line_level : Logging.LogLevel) 
 
   let subject = SuaveAdapter(stub) :> Suave.Logging.Logger
 
-  subject.Log line_level <| fun () ->
+  subject.Log lineLevel <| fun () ->
     { message       = "test"
       ``exception`` = None
-      level         = line_level
+      level         = lineLevel
       path          = "test"
-      ts_utc_ticks  = 0L
+      tsUTCTicks    = 0L
       trace         = Logging.TraceHeader.empty }
 
 [<Tests>]
