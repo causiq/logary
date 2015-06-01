@@ -23,14 +23,14 @@ module SuaveLogLine =
   open NodaTime
 
   /// Convert a Suave LogLine to a Logary LogLine.
-  let to_logary (l : Suave.Logging.LogLine) =
+  let toLogary (l : Suave.Logging.LogLine) =
     { data          = Map.empty
       message       = l.message
       ``exception`` = l.``exception``
       level         = l.level |> SuaveLogLevel.toLogary
       tags          = []
       path          = l.path
-      timestamp     =  NodaTime.Instant.FromDateTimeUtc(DateTime(l.tsUTCTicks, DateTimeKind.Utc)) }
+      timestamp     = NodaTime.Instant.FromDateTimeUtc(DateTime(l.tsUTCTicks, DateTimeKind.Utc)) }
 
 /// An adapter that takes a Logary logger and forwards all Suave logs to it. A simple implementation:
 ///
@@ -42,4 +42,4 @@ type SuaveAdapter(logger : Logger) =
     member x.Log level fLine =
       // here it's important the Level of the logger is well tuned
       if SuaveLogLevel.toLogary level >= logger.Level then
-        fLine () |> SuaveLogLine.to_logary |> Logger.log logger
+        fLine () |> SuaveLogLine.toLogary |> Logger.log logger

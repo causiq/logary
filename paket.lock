@@ -1,6 +1,11 @@
 NUGET
   remote: https://www.nuget.org/api/v2
   specs:
+    Aether (6.0)
+    Chiron (4.0.0)
+      Aether (>= 6.0.0)
+      FParsec (>= 1.0.1)
+      FSharp.Core (>= 3.1.2.1)
     Common.Logging (3.1.0)
       Common.Logging.Core (>= 3.1.0)
     Common.Logging.Core (3.1.0)
