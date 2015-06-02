@@ -4,6 +4,7 @@ nuget Chiron
 nuget Common.Logging
 nuget Common.Logging.Core
 nuget EventStore.Client.PreRelease
+nuget Mailgun.Api
 nuget elmah.corelibrary ~> 1
 nuget elmah.io.core ~> 1
 nuget FAKE 2.1.205-alpha
