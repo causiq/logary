@@ -132,9 +132,12 @@ module Impl =
 
 open Impl
 
-let app (logger : Logger) =
-  path "/i/logary/loglines" >>= choose [
-    GET >>= jsonOK "You can post a JSON structure to: /i/logary/logline"
+let api (logger : Logger) (verbatimPath : string option) =
+  let verbatimPath = defaultArg verbatimPath "/i/logary/loglines"
+  let getMsg = sprintf "You can post a JSON structure to: %s" verbatimPath
+
+  path verbatimPath >>= choose [
+    GET >>= jsonOK getMsg
     POST >>= request (fun r ->
       let data = Encoding.UTF8.GetString(r.rawForm)
       Logger.log logger (readLogline data)

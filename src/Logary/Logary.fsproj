@@ -8,7 +8,7 @@
     <OutputType>Library</OutputType>
     <RootNamespace>Logary</RootNamespace>
     <AssemblyName>Logary</AssemblyName>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <Name>Logary</Name>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">

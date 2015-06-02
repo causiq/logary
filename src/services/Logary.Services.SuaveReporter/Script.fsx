@@ -39,7 +39,7 @@ startWebServer defaultConfig (
   choose [
     path "/" >>= Files.browseFile root "index.html"
     Files.browse root
-    SuaveReporter.app (logary.GetLogger "Logary.Services.SuaveReporter")
+    SuaveReporter.api (logary.GetLogger "Logary.Services.SuaveReporter") None
     NOT_FOUND "Couldn't find the file you were looking for"
   ])
 

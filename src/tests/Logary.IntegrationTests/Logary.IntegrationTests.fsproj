@@ -7,6 +7,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Logary.IntegrationTests</RootNamespace>
     <AssemblyName>Logary.IntegrationTests</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -157,7 +158,6 @@
   <ItemGroup>
     <Reference Include="Fuchu">
       <HintPath>..\..\..\packages\Fuchu\lib\Fuchu.dll</HintPath>
-      <Private>True</Private>
       <Paket>True</Paket>
     </Reference>
   </ItemGroup>

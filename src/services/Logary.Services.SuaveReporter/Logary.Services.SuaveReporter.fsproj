@@ -46,6 +46,11 @@
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.1\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>
     <None Include="paket.references" />
+    <None Include="app\README.md" />
+    <None Include="app\app.js" />
+    <None Include="app\index.html" />
+    <None Include="app\package.json" />
+    <None Include="app\webpack.config.js" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="app\" />
