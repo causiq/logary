@@ -64,6 +64,22 @@ let tests =
             Environment.NewLine Environment.NewLine Environment.NewLine)
       |> thatsIt
 
+    testCase "StringFormatter.LevelDatetimePathMessageNl no exception, tags, data, list with map in it" <| fun _ ->
+      (because "logging with LevelDatetimePathMessageNl" <| fun () ->
+        { sampleMessage with data = Map [ "a", box "b"
+                                          "a2", box 24
+                                          "things", box
+                                            [ box 1
+                                              box 2
+                                              box (Map [1, "hello"]) ]
+                                        ]}
+        |> StringFormatter.LevelDatetimeMessagePathNl.format)
+      |> should equal (
+          String.Format("E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d] {{error, bad}}" +
+                        "{0}  a => \"b\"{0}  a2 => 24{0}  things => {0}    - 1{0}    - 2{0}    - {0}      1 => \"hello\"{0}",
+                        Environment.NewLine))
+      |> thatsIt
+
     testCase "StringFormatter.LevelDatetimePathMessageNl no exception, tags, nested data" <| fun _ ->
       (because "logging with LevelDatetimePathMessageNl" <| fun () ->
         { sampleMessage with

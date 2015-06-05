@@ -3,6 +3,8 @@ module Logary.Formatting
 
 open System
 open System.Globalization
+open System.Collections
+open System.Collections.Generic
 open System.Text
 
 open Microsoft.FSharp.Reflection
@@ -18,30 +20,57 @@ let internal caseNameOf (x:'a) =
   match FSharpValue.GetUnionFields(x, typeof<'a>) with
   | case, _ -> case.Name
 
+let app (s : string) (sb : StringBuilder) = sb.Append s
+  
+let rec print (nl : string) (depth : int) (x : obj) =
+  let indent () = new String(' ', depth * 2 + 2)
+  match x with
+  | null -> "null"
+  | :? string as s ->  "\"" + s + "\""
+  | x ->
+    let typ = x.GetType()
+    let interfaces =
+      typ.GetInterfaces()
+      |> Array.filter (fun it -> it.IsGenericType)
+      |> Array.map (fun it -> it.GetGenericTypeDefinition())
+      |> fun ii -> new HashSet<_>(ii)
+    let dicType = typeof<IDictionary<_, _>>.GetGenericTypeDefinition()
+
+    if interfaces.Contains dicType then
+      let ([| keyType; valueType |] as argTypes) = typ.GetGenericArguments()
+      let dicTypeFilled = dicType.MakeGenericType argTypes
+      let keysProp = dicTypeFilled.GetProperty "Keys"
+      let itemProp = dicTypeFilled.GetProperty "Item"
+      let item (key : 'a) = itemProp.GetValue(x, [| box key |])
+      keysProp.GetValue x :?> System.Collections.IEnumerable
+      |> Seq.cast<obj>
+      |> Seq.fold (fun sb key ->
+          sb
+          |> app nl
+          |> app (indent ())
+          |> app (key.ToString())
+          |> app " => "
+          |> app (print nl (depth + 1) (item key)))
+        (StringBuilder())
+      |> fun sb -> sb.ToString()
+    else
+      match x with
+      | :? System.Collections.IEnumerable as xs ->
+        xs
+        |> Seq.cast<obj>
+        |> Seq.fold (fun sb t ->
+            sb
+            |> app nl
+            |> app (indent ())
+            |> app "- "
+            |> app (print nl (depth + 1) t))
+          (StringBuilder())
+        |> fun sb -> sb.ToString()
+      | x -> x.ToString()
+
 /// Formats the data in a nice fashion for printing to e.g. the Debugger or Console.
 let internal formatData (nl : string) (data : Map<string, obj>) =
-  // depth = 0-based 1-counting index of depth
-  let rec f (depth : int) (data : Map<string, obj>) =
-    let app (s : string) (sb : StringBuilder) =
-      sb.Append s
-    let inspect = box >> function
-      | null -> "null"
-      | :? string as s -> "\"" + s + "\""
-      | x when x.GetType().IsAssignableFrom(typeof<Map<string, obj>>) ->
-        let data' = x :?> Map<string, obj>
-        f (depth + 1) data' // recursively print maps
-      | x -> x.ToString()
-    data
-    |> Map.fold (fun sb k t ->
-        sb
-        |> app nl
-        |> app (new String(' ', depth * 2 + 2))
-        |> app k
-        |> app " => "
-        |> app (inspect t))
-      (StringBuilder())
-    |> fun sb -> sb.ToString()
-  f 0 data
+  print nl 0 data
 
 /// A StringFormatter is the thing that takes a log line and returns it as a string
 /// that can be printed, sent or otherwise dealt with in a manner that suits the target.
@@ -59,7 +88,7 @@ type StringFormatter =
           l.message
           l.path
           (match l.tags with [] -> "" | _ -> " {" + String.Join(", ", l.tags) + "}")
-          (if l.data.IsEmpty then "" else formatData nl l.data)
+          (if Map.isEmpty l.data then "" else formatData nl l.data)
           (match mex with None -> "" | Some ex -> sprintf " cont...%s%O" nl ex)
           ending
     { format   = format'

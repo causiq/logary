@@ -63,7 +63,7 @@ let confLogary serviceName =
     pollPeriod = Duration.FromMilliseconds 500L
     metadata   = { serviceName = serviceName
                    logger      = NullLogger() } }
-  |> withInternalTarget Info (Console.create Console.empty "cons")
+  |> withInternalTarget Warn (Console.create Console.empty "cons")
 
 /// Add a new target to the configuration. You also need to supple a rule for
 /// the target.

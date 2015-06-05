@@ -1,5 +1,3 @@
-// Learn more about F# at http://fsharp.net. See the 'F# Tutorial' project
-// for more guidance on F# programming.
 #r "../../../packages/Suave/lib/net40/Suave.dll"
 open Suave.Web
 open Suave.Http
@@ -18,7 +16,7 @@ open Suave.Http.Applicatives
 open Logary
 open Logary.Configuration
 open Logary.Targets
-#load "App.fs"
+#load "SuaveReporter.fs"
 open Logary.Services
 
 open System.IO
