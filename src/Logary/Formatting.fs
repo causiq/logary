@@ -99,6 +99,11 @@ type StringFormatter =
     { format = fun x -> format.Invoke x
       m_format= fun m -> m_format.Invoke m }
 
+  /// Takes a c# Func delegate to initialise a StringFormatter with the default Measure -> string
+  static member Create (format:Func<LogLine, string>) = 
+    { format = fun x -> format.Invoke x
+      m_format= Measure.getValueStr }
+
   /// Verbatim simply outputs the message and no other information
   /// and doesn't append a newline to the string.
   static member Verbatim =
