@@ -46,10 +46,11 @@ module Encoder =
       let header =
         Option.fold (fun (s : Header) (t : MessageSigningConfig) ->
           let algo = t.hashAlgo ()
-          s.hmac_hash_function <- Some t.hash |> Nullable.ofOption
-          s.hmac_signer <- t.name
-          s.hmac_key_version <- Some t.version |> Nullable.ofOption
-          s.hmac <- fromZero msgMs algo.ComputeHash
+          s.hmac_hash_function <- (if t.hash = HmacHashFunction.MD5 then None else Some t.hash)
+                                  |> Nullable.ofOption
+          s.hmac_signer        <- t.name
+          s.hmac_key_version   <- Nullable t.version
+          s.hmac               <- fromZero msgMs algo.ComputeHash
           s)
           (Header(message_length = uint32 (msgMs.Length)))
           conf.signingConfig
