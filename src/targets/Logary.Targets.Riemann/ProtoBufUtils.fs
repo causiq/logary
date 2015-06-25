@@ -6,7 +6,7 @@ open System
 // http://bugsquash.blogspot.se/2010/09/nullable-in-f.html
 
 module Option =
-  let fromNullable (n: _ Nullable) =
+  let ofNullable (n: _ Nullable) =
     if n.HasValue then Some n.Value else None
 
   let toNullable = function
@@ -21,8 +21,8 @@ module Nullable =
   let getOrDefault n v = match n with Value x -> x | _ -> v
   let getOrElse (n: 'a Nullable) (v: 'a Lazy) = match n with Value x -> x | _ -> v.Force()
   let get (x: _ Nullable) = x.Value
-  let fromOption = Option.toNullable
-  let toOption = Option.fromNullable
+  let ofOption = Option.toNullable
+  let toOption = Option.ofNullable
   let fromCLRNull<'a when 'a : null and 'a : (new: unit -> 'a)> = function
     | null as v -> v
     | (v : 'a)  -> v

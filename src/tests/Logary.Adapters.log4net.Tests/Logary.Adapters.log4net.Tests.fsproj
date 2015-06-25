@@ -32,7 +32,7 @@
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
   </PropertyGroup>
-  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.1\Framework\v4.0\Microsoft.FSharp.Targets" />  
+  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.1\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>
     <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="Program.fs" />
@@ -65,6 +65,7 @@
   <ItemGroup>
     <Reference Include="Fuchu">
       <HintPath>..\..\..\packages\Fuchu\lib\Fuchu.dll</HintPath>
+      <Private>True</Private>
       <Paket>True</Paket>
     </Reference>
   </ItemGroup>
