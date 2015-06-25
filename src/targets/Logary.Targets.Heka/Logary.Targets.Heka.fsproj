@@ -1,125 +1,66 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{CC87925C-E4F2-4386-A322-8BC088DE7B33}</ProjectGuid>
+    <ProjectGuid>{BC4A5F70-0785-40D6-9EBE-4BB0E47A9EEC}</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>Logary.Targets.Riemann</RootNamespace>
-    <AssemblyName>Logary.Targets.Riemann</AssemblyName>
+    <RootNamespace>Logary.Targets.Heka</RootNamespace>
+    <AssemblyName>Logary.Targets.Heka</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>false</Optimize>
-    <Tailcalls>false</Tailcalls>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <WarningLevel>3</WarningLevel>
-    <DocumentationFile>bin\Release\Logary.Targets.Riemann.xml</DocumentationFile>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug</OutputPath>
+    <DefineConstants>DEBUG</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <ConsolePause>false</ConsolePause>
+    <PlatformTarget>
+    </PlatformTarget>
   </PropertyGroup>
-  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.1\Framework\v4.0\Microsoft.FSharp.Targets" />
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugSymbols>false</DebugSymbols>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release</OutputPath>
+    <ErrorReport>prompt</ErrorReport>
+    <ConsolePause>false</ConsolePause>
+    <GenerateTailCalls>true</GenerateTailCalls>
+    <PlatformTarget>
+    </PlatformTarget>
+    <DefineConstants>
+    </DefineConstants>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
+    <Reference Include="FSharp.Core" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
-    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ProtoBufUtils.fs" />
+    <Compile Include="..\Logary.Targets.Riemann\ProtoBufUtils.fs">
+      <Link>ProtoBufUtils.fs</Link>
+    </Compile>
     <Compile Include="Messages.fs" />
     <Compile Include="Client.fs" />
-    <Compile Include="Targets_Riemann.fs" />
-    <Compile Include="AssemblyVersionInfo.fs" />
-    <Compile Include="AssemblyInfo.fs" />
-    <None Include="app.config" />
-    <None Include="Riemann.proto" />
-    <None Include="paket.references" />
+    <Compile Include="Targets_Heka.fs" />
   </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.1\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>
-    <ProjectReference Include="..\..\FSharp.Actor-logary\src\FSharp.Actor\FSharp.Actor-logary.fsproj">
-      <Name>FSharp.Actor-logary</Name>
-      <Project>{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\Logary\Logary.fsproj">
-      <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
-      <Name>Logary</Name>
-    </ProjectReference>
+    <Compile Include="Script.fsx" />
+    <None Include="paket.references" />
+    <None Include="Message.proto" />
   </ItemGroup>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6')">
-      <ItemGroup>
-        <Reference Include="FSharp.Core">
-          <HintPath>..\..\..\packages\FSharp.Core\lib\net40\FSharp.Core.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition="$(TargetFrameworkIdentifier) == 'MonoAndroid'">
-      <ItemGroup>
-        <Reference Include="FSharp.Core">
-          <HintPath>..\..\..\packages\FSharp.Core\lib\MonoAndroid\FSharp.Core.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition="$(TargetFrameworkIdentifier) == 'MonoTouch'">
-      <ItemGroup>
-        <Reference Include="FSharp.Core">
-          <HintPath>..\..\..\packages\FSharp.Core\lib\MonoTouch\FSharp.Core.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCore') Or ($(TargetFrameworkProfile) == 'Profile7') Or ($(TargetFrameworkProfile) == 'Profile44')">
-      <ItemGroup>
-        <Reference Include="FSharp.Core">
-          <HintPath>..\..\..\packages\FSharp.Core\lib\portable-net45+netcore45+MonoAndroid1+MonoTouch1\FSharp.Core.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition="($(TargetFrameworkIdentifier) == 'Silverlight' And $(TargetFrameworkVersion) == 'v5.0') Or ($(TargetFrameworkProfile) == 'Profile24') Or ($(TargetFrameworkProfile) == 'Profile47')">
-      <ItemGroup>
-        <Reference Include="FSharp.Core">
-          <HintPath>..\..\..\packages\FSharp.Core\lib\portable-net45+sl5+netcore45+MonoAndroid1+MonoTouch1\FSharp.Core.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition="($(TargetFrameworkIdentifier) == 'WindowsPhone' And ($(TargetFrameworkVersion) == 'v8.0' Or $(TargetFrameworkVersion) == 'v8.1')) Or ($(TargetFrameworkProfile) == 'Profile31') Or ($(TargetFrameworkProfile) == 'Profile49') Or ($(TargetFrameworkProfile) == 'Profile78')">
-      <ItemGroup>
-        <Reference Include="FSharp.Core">
-          <HintPath>..\..\..\packages\FSharp.Core\lib\portable-net45+netcore45+wp8+MonoAndroid1+MonoTouch1\FSharp.Core.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition="($(TargetFrameworkIdentifier) == 'WindowsPhoneApp') Or ($(TargetFrameworkProfile) == 'Profile32') Or ($(TargetFrameworkProfile) == 'Profile84') Or ($(TargetFrameworkProfile) == 'Profile111') Or ($(TargetFrameworkProfile) == 'Profile151') Or ($(TargetFrameworkProfile) == 'Profile157') Or ($(TargetFrameworkProfile) == 'Profile259')">
-      <ItemGroup>
-        <Reference Include="FSharp.Core">
-          <HintPath>..\..\..\packages\FSharp.Core\lib\portable-net45+netcore45+wpa81+wp8+MonoAndroid1+MonoTouch1\FSharp.Core.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
   <Choose>
     <When Condition="($(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v3.5' Or $(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6')) Or ($(TargetFrameworkIdentifier) == 'MonoAndroid') Or ($(TargetFrameworkIdentifier) == 'MonoTouch')">
       <ItemGroup>
         <Reference Include="NodaTime">
           <HintPath>..\..\..\packages\NodaTime\lib\net35-Client\NodaTime.dll</HintPath>
           <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+        <Reference Include="System.Xml">
           <Paket>True</Paket>
         </Reference>
       </ItemGroup>
@@ -129,6 +70,9 @@
         <Reference Include="NodaTime">
           <HintPath>..\..\..\packages\NodaTime\lib\portable-net4+sl5+netcore45+wpa81+wp8+MonoAndroid1+MonoTouch1+XamariniOS1\NodaTime.dll</HintPath>
           <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+        <Reference Include="System.Xml">
           <Paket>True</Paket>
         </Reference>
       </ItemGroup>

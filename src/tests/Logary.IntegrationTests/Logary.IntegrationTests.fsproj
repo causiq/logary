@@ -61,10 +61,6 @@
       <Project>{2C3795A2-D88D-4635-BBAA-53503B7D9721}</Project>
       <Name>Logary.Targets.Zipkin</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\targets\Logary.Targets.Riemann\Logary.Targets.Riemann.fsproj">
-      <Project>{CC87925C-E4F2-4386-A322-8BC088DE7B33}</Project>
-      <Name>Logary.Targets.Riemann</Name>
-    </ProjectReference>
     <ProjectReference Include="..\..\targets\Logary.Targets.NLog\Logary.Targets.NLog.fsproj">
       <Project>{8F108B6A-0FBE-4D6E-8DAA-B5BA1429C925}</Project>
       <Name>Logary.Targets.NLog</Name>
@@ -88,6 +84,10 @@
     <ProjectReference Include="..\..\services\Logary.Services.SQLServerHealth\Logary.Services.SQLServerHealth.fsproj">
       <Project>{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5}</Project>
       <Name>Logary.Services.SQLServerHealth</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\targets\Logary.Targets.Riemann\Logary.Targets.Riemann.fsproj">
+      <Project>{CC87925C-E4F2-4386-A322-8BC088DE7B33}</Project>
+      <Name>Logary.Targets.Riemann</Name>
     </ProjectReference>
   </ItemGroup>
   <Choose>
@@ -158,7 +158,6 @@
   <ItemGroup>
     <Reference Include="Fuchu">
       <HintPath>..\..\..\packages\Fuchu\lib\Fuchu.dll</HintPath>
-      <Private>True</Private>
       <Paket>True</Paket>
     </Reference>
   </ItemGroup>
