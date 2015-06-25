@@ -21,16 +21,23 @@ type Header =
   val mutable message_length : uint32
 
   [<ProtoMember(3, IsRequired=false)>]
-  val mutable hmac_hash_function : HmacHashFunction
+  val mutable hmac_hash_function : HmacHashFunction Nullable
 
   [<ProtoMember(4, IsRequired=false)>]
   val mutable hmac_signer : string
 
   [<ProtoMember(5, IsRequired=false)>]
-  val mutable hmac_key_version : uint32
+  val mutable hmac_key_version : uint32 Nullable
 
   [<ProtoMember(6, IsRequired=false)>]
   val mutable hmac : byte []
+
+  new () =
+    { message_length = 0u
+      hmac_hash_function = Nullable ()
+      hmac_signer = null
+      hmac_key_version = Nullable ()
+      hmac = null }
 
 type ValueType =
   | STRING  = 0
@@ -45,7 +52,7 @@ type Field =
   val mutable name : string
 
   [<ProtoMember(2, IsRequired=false)>] 
-  val mutable value_type : ValueType
+  val mutable value_type : ValueType Nullable
 
   [<ProtoMember(3, IsRequired=false)>] 
   val mutable representation : string
@@ -67,8 +74,8 @@ type Field =
 
   new () =
     { name = ""
-      value_type = ValueType.STRING
-      representation = ""
+      value_type = Nullable ()
+      representation = null
       value_string = null
       value_bytes  = null
       value_integer = null
@@ -156,20 +163,20 @@ type Message =
   [<ProtoMember(9, IsRequired=false)>] 
   val mutable hostname : string
 
-  [<ProtoMember(10, IsRequired=true)>] 
+  [<ProtoMember(10, IsRequired=false)>]
   val mutable fields : Field List
 
   new () =
-    { uuid        = Guid.Empty.ToByteArray()
+    { uuid        = null
       timestamp   = 0L
-      ``type``    = "heka.logary" // e.g. "stat.cpu_time"
-      logger      = "" // LogLine.path
-      severity    = (7).n
-      payload     = ""
-      env_version = Logary.Internals.Lib.LogaryVersion
-      pid         = None |> Option.toNullable
-      hostname    = ""
-      fields      = List () }
+      ``type``    = null // "heka.logary" // e.g. "stat.cpu_time"
+      logger      = null // LogLine.path
+      severity    = Nullable () //(7).n
+      payload     = null
+      env_version = null // Logary.Internals.Lib.LogaryVersion
+      pid         = Nullable ()
+      hostname    = null
+      fields      = null }
 
   new (uuid : Guid, ts, tp, logger, severity, payload, envVer, pid, hostname, fields) =
     { uuid        = uuid.ToByteArray()

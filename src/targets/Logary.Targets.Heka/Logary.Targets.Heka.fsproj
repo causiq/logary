@@ -44,6 +44,8 @@
       <Link>ProtoBufUtils.fs</Link>
     </Compile>
     <Compile Include="Messages.fs" />
+    <Compile Include="Constants.fs" />
+    <Compile Include="Types.fs" />
     <Compile Include="Client.fs" />
     <Compile Include="Targets_Heka.fs" />
   </ItemGroup>
