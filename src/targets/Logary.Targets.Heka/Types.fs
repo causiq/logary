@@ -1,8 +1,11 @@
 namespace Logary.Heka
 
 open System
+open System.Net
+open System.Net.Security
 open System.Text
 open System.Security.Cryptography
+open System.Security.Cryptography.X509Certificates
 open Logary.Heka.Messages
 open Logary.Heka.Constants
 
@@ -24,7 +27,7 @@ type MessageSigningConfig =
 
   static member Empty =
     { name    = ""
-      // default to SHA1
+      // default to HMACSHA1, the strongest HMAC algo supported by Heka
       hash    = HmacHashFunction.SHA1
       key     = ""
       version = 0u }
@@ -35,8 +38,12 @@ type MessageSigningConfig =
       key     = key
       version = defaultArg version 0u }
 
+type UseTLS = bool
+
 type HekaConfig =
   { maxMessageSize : uint32
+    endpoint       : IPEndPoint * UseTLS
+    caValidation   : X509Certificate -> X509Chain -> SslPolicyErrors -> bool
     signingConfig  : MessageSigningConfig option }
 
   member x.maxRecordSize =
@@ -45,5 +52,12 @@ type HekaConfig =
     + x.maxMessageSize
 
   static member Empty =
+    let defaultCaValidation : X509Certificate -> X509Chain -> SslPolicyErrors -> bool =
+      fun cer chn err ->
+        ServicePointManager.ServerCertificateValidationCallback.Invoke(null, cer, chn, err)
+
     { maxMessageSize = uint32 (UInt16.MaxValue) + 1u // 64 * 1024
+      // https://hekad.readthedocs.org/en/latest/config/inputs/tcp.html
+      endpoint       = IPEndPoint(IPAddress.IPv6Loopback, 5565), false
+      caValidation   = defaultCaValidation
       signingConfig  = None }
