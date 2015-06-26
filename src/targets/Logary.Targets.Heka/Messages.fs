@@ -45,7 +45,7 @@ type ValueType =
   | BYTES   = 1
   | INTEGER = 2
   | DOUBLE  = 3
-  | BOOL    = 5
+  | BOOL    = 4
 
 [<ProtoContract>]
 type Field =
@@ -133,6 +133,18 @@ type Field =
       value_double = null
       value_bool = List (bs : _ seq) }
 
+  override x.ToString() =
+    sprintf "Field(name = %s, representation = %s, value_type = %s, value = %O)"
+            x.name x.representation
+            (Enum.GetName(typeof<ValueType>, x.value_type))
+            (match x.value_type |> Nullable.toOption |> Option.get with
+             | ValueType.STRING  -> box x.value_string
+             | ValueType.BYTES   -> box x.value_bytes
+             | ValueType.INTEGER -> box x.value_integer
+             | ValueType.DOUBLE  -> box x.value_double
+             | _
+             | ValueType.BOOL    -> box x.value_bool)
+
 [<ProtoContract>]
 type Message =
   [<ProtoMember(1, IsRequired=true)>] 
@@ -190,3 +202,46 @@ type Message =
       pid         = pid |> Option.toNullable
       hostname    = hostname
       fields      = fields }
+
+  override x.ToString() =
+    sprintf "Message(uuid = %s, timestamp = %d, type = %s, logger = %s, severity = %s, payload = %s, env_version = %s, pid = %s, hostname = %s, field count = %d)"
+            (match x.uuid with null -> "null" | _ -> Guid(x.uuid).ToString())
+            x.timestamp
+            (match x.``type`` with null -> "null" | _ -> x.``type``)
+            (match x.logger with null -> "null" | _ -> x.logger)
+            (x.severity |> Nullable.fold (fun s t -> t.ToString()) "null")
+            (match x.payload with null -> "null" | _ -> x.payload)
+            (match x.env_version with null -> "null" | _ -> x.env_version)
+            (x.pid |> Nullable.fold (fun s t -> t.ToString()) "null")
+            (match x.hostname with null -> "null" | _ -> x.hostname)
+            (match x.fields with null -> 0 | fs -> fs.Count)
+
+  override x.Equals other =
+    match other with
+    | :? Message as tother -> (x :> IEquatable<Message>).Equals tother
+    | _ -> false
+
+  override x.GetHashCode() =
+    hash x.uuid
+    ^^^ 293 * hash x.timestamp
+    ^^^ 293 * hash x.``type``
+    ^^^ 293 * hash x.logger
+    ^^^ 293 * hash x.severity
+    ^^^ 293 * hash x.payload
+    ^^^ 293 * hash x.env_version
+    ^^^ 293 * hash x.pid
+    ^^^ 293 * hash x.hostname
+    ^^^ 293 * hash x.fields
+
+  interface IEquatable<Message> with
+    member x.Equals other =
+      x.uuid           =~? other.uuid
+      && x.timestamp   = other.timestamp
+      && x.``type``    =?? other.``type``
+      && x.logger      =?? other.logger
+      && x.severity    =? other.severity
+      && x.payload     =?? other.payload
+      && x.env_version =?? other.env_version
+      && x.pid         =? other.pid
+      && x.hostname    =?? other.hostname
+      && x.fields      =~? other.fields

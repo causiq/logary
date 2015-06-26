@@ -94,12 +94,31 @@ let structEq a b =
   | Null, Null       -> true // in this case, null=null
   | _                -> false // if one is, other isn't, not eq
 
+let nullEq a b f =
+  match a, b with
+  | null, null -> true
+  | null, _
+  | _, null -> false
+  | _ -> f a b
+
 let inline (+?) a b = (liftNullable (+)) a b
 let inline (-?) a b = (liftNullable (-)) a b
 let inline ( *?) a b = (liftNullable ( *)) a b
 let inline (/?) a b = (liftNullable (/)) a b
 let inline (>?) a b = (mapBoolOp (>)) a b
+
+/// if-nullable-has-value then compare structural
 let inline (=?) a b = structEq a b
+
+/// if-not-null then compare structural
+let inline (=??) a b = nullEq a b (=)
+
+/// nullable seq length and pairwise equality
+let inline (=~?) a b =
+  nullEq a b (fun a b ->
+    let a, b = Seq.cache a, Seq.cache b
+    Seq.length a = Seq.length b && Seq.forall2 (=) a b)
+
 let inline (>=?) a b = a >? b || a = b
 let inline (<?) a b = (mapBoolOp (<)) a b
 let inline (<=?) a b = a <? b || a = b

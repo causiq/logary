@@ -3,9 +3,11 @@
 open Fuchu
 open System
 open System.IO
+open Logary
 open Logary.Heka
 open Logary.Heka.Messages
 open Logary.Heka.Client
+open Logary.Targets.Heka
 
 [<Tests>]
 let encoders =
@@ -84,6 +86,14 @@ let encoders =
       | Choice2Of2 (MessageTooLarge err) ->
         Assert.Equal("error msg", "Message too big, requires 65556 (MAX_MESSAGE_SIZE = 65536)",
                      err)
+  ]
+
+[<Tests>]
+let transformToMessage =
+  testList "converting a log line to a Message" [
+    testCase "just message" <| fun _ ->
+      let ll = LogLine.create' LogLevel.Info "hello world"
+      Assert.Equal("should eq msg", Message(), ll |> Message.ofLogLine)
   ]
 
 [<EntryPoint>]
