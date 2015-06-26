@@ -54,7 +54,7 @@ and EventVersion =
 module internal Impl =
   type LogstashState =
     { client         : WriteClient
-    ; sendRecvStream : WriteStream option }
+      sendRecvStream : WriteStream option }
 
   let (=>) k v = k, v
   type NewtonsoftSerialisable =
@@ -144,12 +144,12 @@ module internal Impl =
         // bug in logstash: json codec not accepted from tcp input,
         // json_lines barfs on @timestamp name, no error log
         [ yield "timestamp" => box x.``@timestamp``
-          yield "@version"   => box x.``@version``
-          yield "tags"       => box (List.toArray x.tags)
-          yield "message"    => box x.message
-          yield "path"       => box x.path
-          yield "hostname"   => box x.hostname
-          yield "level"      => box x.level
+          yield "@version"  => box x.``@version``
+          yield "tags"      => box (List.toArray x.tags)
+          yield "message"   => box x.message
+          yield "path"      => box x.path
+          yield "hostname"  => box x.hostname
+          yield "level"     => box x.level
           match x.``exception`` with
           | Some e -> yield "exception"  => box e
           | _      -> () ]
@@ -162,15 +162,14 @@ module internal Impl =
     Option.map box
     >> Option.iter (function
       | :? IDisposable as d ->
-        Try.safe "disposing in riemann target" ilogger <| fun () ->
+        Try.safe "disposing in logstash target" ilogger <| fun () ->
           d.Dispose()
       | _ -> ())
 
   /// All logstash messages are of the following form.
   /// json-event\n
   let createMsg evtVer (jss : JsonSerializerSettings) serviceName (logLine : LogLine) =
-    let jsonSettings = JsonFormatter.Settings()
-    let ser = JsonSerializer.Create jsonSettings
+    let ser = JsonSerializer.Create jss
     let fbox (f : LogLine -> 'a) = fun l -> f l :> NewtonsoftSerialisable
     let mkEvent = function
       | Zero -> fbox EventV0.FromLogLine

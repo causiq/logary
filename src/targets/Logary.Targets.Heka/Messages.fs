@@ -203,6 +203,10 @@ type Message =
       hostname    = hostname
       fields      = fields }
 
+  member x.addField f =
+    x.fields <- match x.fields with null -> List () | fs -> fs
+    x.fields.Add f
+
   override x.ToString() =
     sprintf "Message(uuid = %s, timestamp = %d, type = %s, logger = %s, severity = %s, payload = %s, env_version = %s, pid = %s, hostname = %s, field count = %d)"
             (match x.uuid with null -> "null" | _ -> Guid(x.uuid).ToString())

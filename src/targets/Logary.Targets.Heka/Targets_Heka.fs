@@ -13,11 +13,30 @@ open Logary.Heka.Messages
 open Logary.Target
 open Logary.Internals
 
+type Logary.LogLevel with
+  static member toSeverity = function
+    | Verbose -> 7
+    | Debug   -> 7
+    | Info    -> 6
+    | Warn    -> 4
+    | Error   -> 3
+    | Fatal   -> 2
+
 type Logary.Heka.Messages.Message with
   static member ofLogLine (line : LogLine) =
-    Message()
+    let msg = Message(logger = line.path)
+    msg.severity <- Nullable (line.level |> LogLevel.toSeverity)
+    msg.payload <- line.message
+    msg
+
   static member ofMeasure (msr : Measure) =
-    Message()
+    let msg = Message(logger = DP.joined msr.m_path)
+    msg.severity <- Nullable (msr.m_level |> LogLevel.toSeverity)
+    msg
+
+/// The message type most often used in filters inside Heka (see e.g. the getting-
+/// started guide).
+let MessageType = "heka.logary"
 
 module internal Impl =
 
@@ -28,8 +47,9 @@ module internal Impl =
       Logger.warn ri.logger err
 
   type State =
-    { client : TcpClient
-      stream : Stream }
+    { client   : TcpClient
+      stream   : Stream
+      hostname : string }
 
   let loop (conf : HekaConfig) (ri : RuntimeInfo) (inbox : IActor<_>) =
     let rec initialise () = async {
@@ -42,11 +62,17 @@ module internal Impl =
           new SslStream(client.GetStream(), false, validate) :> Stream
         else
           client.GetStream() :> Stream
-      return! running { client = client; stream = stream }
+      let hostname = Dns.GetHostName()
+      return! running { client = client; stream = stream; hostname = hostname }
       }
 
     and running state = async {
-      let write msg = async {
+      let write (msg : Message) = async {
+        msg.hostname    <- state.hostname
+        msg.env_version <- Lib.LogaryVersion
+        msg.``type``    <- MessageType
+        msg.addField (Field("service", Nullable ValueType.STRING, null,
+                            [ ri.serviceName ]))
         match msg |> Encoder.encode conf state.stream with
         | Choice1Of2 run ->
           do! run
@@ -70,7 +96,7 @@ module internal Impl =
     and shutdown state ackChan =
       let dispose x = (x :> IDisposable).Dispose()
       async {
-        Try.safe "riemann target disposing tcp stream, then client" ri.logger <| fun () ->
+        Try.safe "heka target disposing tcp stream, then client" ri.logger <| fun () ->
           dispose state.stream
           dispose state.client
         ackChan.Reply Ack
