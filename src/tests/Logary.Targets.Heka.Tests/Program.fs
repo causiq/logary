@@ -17,6 +17,11 @@ let encoders =
     | Choice2Of2 err -> Tests.failtestf "error: %A" err
     ms.ToArray()
 
+  let givenSigned signerName payload =
+    let sign = MessageSigningConfig.Create(signerName, key = "", hashAlgo = HmacHashFunction.MD5)
+    let conf = { emptyConf with signingConfig = Some sign }
+    conf, Message(``type`` = "TEST", timestamp = 1416840893000000000L, payload = payload)
+
   testList "protobuf encoding" [
     testCase "encode message stream" <| fun _ ->
       let msg = Message(``type`` = "TEST", timestamp = 1416840893000000000L)
@@ -32,9 +37,7 @@ let encoders =
       Assert.Equal("should contain same data", expected, encode emptyConf msg)
 
     testCase "encode message stream signed" <| fun _ ->
-      let sign = MessageSigningConfig.Create("test", key = "", hashAlgo = HmacHashFunction.MD5)
-      let conf = { emptyConf with signingConfig = Some sign }
-      let msg  = Message(``type`` = "TEST", timestamp = 1416840893000000000L)
+      let conf, msg = givenSigned "test" null
       let expected =
         [| 0x1e; 0x1c;
            // header:
@@ -54,6 +57,33 @@ let encoders =
            0x4; 0x54; 0x45; 0x53; 0x54
         |] |> Array.map byte
       Assert.Equal("header should contain extra data", expected, encode conf msg)
+
+    testCase "too large header" <| fun _ ->
+      let conf, msg = givenSigned (String.replicate (int Constants.MaxHeaderSize) "x") null
+      use ms = new MemoryStream()
+      match Encoder.encode conf ms msg with
+      | Choice1Of2 promise ->
+        Async.RunSynchronously promise
+        Tests.failtest "should have returned failure due to large header"
+      | Choice2Of2 (MessageTooLarge err) ->
+        Tests.failtest "unexpected return value"
+      | Choice2Of2 (HeaderTooLarge err) ->
+        Assert.Equal("error msg", "Message header too big, requires 280 (MAX_HEADER_SIZE = 255)",
+                     err)
+
+    testCase "too large message" <| fun _ ->
+      let msg = Message(``type`` = "TEST", timestamp = 1416840893000000000L,
+                        payload = String.replicate (int emptyConf.maxMessageSize) "x")
+      use ms = new MemoryStream()
+      match Encoder.encode emptyConf ms msg with
+      | Choice1Of2 promise ->
+        Async.RunSynchronously promise
+        Tests.failtest "should have returned failure due to large header"
+      | Choice2Of2 (HeaderTooLarge err) ->
+        Tests.failtest "unexpected return value"
+      | Choice2Of2 (MessageTooLarge err) ->
+        Assert.Equal("error msg", "Message too big, requires 65556 (MAX_MESSAGE_SIZE = 65536)",
+                     err)
   ]
 
 [<EntryPoint>]

@@ -45,5 +45,5 @@ type HekaConfig =
     + x.maxMessageSize
 
   static member Empty =
-    { maxMessageSize = UInt32.MaxValue // 64 * 2014
+    { maxMessageSize = uint32 (UInt16.MaxValue) + 1u // 64 * 1024
       signingConfig  = None }
