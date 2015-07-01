@@ -1,0 +1,11 @@
+heka:
+  image: haaf/heka:latest
+
+app:
+  build: .
+  ports:
+   - "5000:5000"
+  volumes:
+   - ./bin:/app/bin
+  links:
+   - heka
