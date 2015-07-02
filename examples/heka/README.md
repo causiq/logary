@@ -12,6 +12,10 @@ example. (see below)
 docker-compose up
 ```
 
+## Where's haaf/heka?
+
+[haf/docker-heka](https://github.com/haf/docker-heka/blob/master/Dockerfile)
+
 ## Don't have Docker Compose?
 
 See [installation instructions](https://docs.docker.com/compose/)
