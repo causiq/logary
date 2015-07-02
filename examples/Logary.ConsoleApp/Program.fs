@@ -17,7 +17,7 @@ open Logary.Metrics
 [<EntryPoint>]
 let main argv =
   use logary =
-    withLogary' "Riemann.Example" (
+    withLogary' "Logary.ConsoleApp" (
       withTargets [
         Riemann.create (Riemann.RiemannConf.Create(tags = ["riemann-health"])) "riemann"
         Console.create (Console.empty) "console"
