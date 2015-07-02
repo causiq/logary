@@ -1,4 +1,8 @@
-﻿module private Logary.ProtoBufUtils
+﻿#if INTERACTIVE
+module Logary.ProtoBufUtils
+#else
+module private Logary.ProtoBufUtils
+#endif
 
 open System
 

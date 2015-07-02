@@ -38,7 +38,7 @@ let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
 
 /// C# Interop: Create a new Noop target
 [<CompiledName "Create">]
-let create' (conf, name) =
+let createInterop (conf, name) =
   create conf name
 
 /// Use with LogaryFactory.New( s => s.Target<Noop.Builder>() )

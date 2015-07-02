@@ -13,6 +13,8 @@ open Logary.Heka.Messages
 open Logary.Target
 open Logary.Internals
 
+type HekaConfig = Logary.Heka.HekaConfig
+
 type Logary.LogLevel with
   static member toSeverity = function
     | Verbose -> 7
@@ -109,7 +111,7 @@ let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
 
 /// C# Interop: Create a new Noop target
 [<CompiledName "Create">]
-let create' (conf, name) =
+let createInterop (conf, name) =
   create conf name
 
 /// Use with LogaryFactory.New( s => s.Target<Heka.Builder>() )
