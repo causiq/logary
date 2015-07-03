@@ -28,7 +28,7 @@ open System.Net.Sockets
 let conf = HekaConfig.Empty
 
 let client = new TcpClient()
-client.ConnectAsync(IPAddress.Parse("127.0.0.1"), 5566).Wait()
+client.ConnectAsync(IPAddress.Parse("127.0.0.1"), 5565).Wait()
 let stream = client.GetStream() :> Stream
 
 
