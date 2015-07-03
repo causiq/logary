@@ -1,8 +1,12 @@
 #!/usr/bin/env fsharpi
 #r "../../packages/FSharp.Core/lib/net40/FSharp.Core.dll"
-#r "bin/Debug/FSharp.Actor.dll"
-#r "bin/Debug/Logary.dll"
-#r "../../packages/NodaTime/lib/net35-Client/NodaTime.dll"
+#I "bin/Debug"
+#r "FSharp.Actor.dll"
+#r "Logary.dll"
+#r "NodaTime.dll"
+#I "../../packages/Hopac/lib/net45"
+#r "../../packages/Hopac/lib/net45/Hopac.Core.dll"
+#r "../../packages/Hopac/lib/net45/Hopac.dll"
 
 open NodaTime
 
@@ -153,3 +157,43 @@ type Message =
     fields    : Field list
     context   : LogContext
     timestamp : Instant }
+
+open Hopac
+open Hopac.Alt.Infixes
+open Hopac.TopLevel
+
+let mb : BoundedMb<int> = BoundedMb.create 2 |> run
+BoundedMb.put mb 42 <|>? timeOutMillis 10 |> run
+BoundedMb.take mb |>>? printfn "Got %A" <|>? timeOutMillis 1 |> run
+
+// use case: pipeline of input mb, fn that changes the name, output mb
+// arity(Message 
+type Segment = Message -> Message list
+
+/// sample segments you can tie together to scale/calculate
+module Segments =
+  let changeName toSomething : Segment =
+    fun m -> { m with Message.name = toSomething } :: []
+
+  let scale scale : Segment =
+    let scaleValue = function
+      | LineValue.Measure v ->
+        match v with
+        | DataModel.DataPointValue.Gauge value ->
+          match value with
+          | Float f -> Float (scale * f)
+          | x -> x
+          |> DataModel.DataPointValue.Gauge
+        | x -> x
+        |> LineValue.Measure
+      | x -> x
+    fun m -> { m with Message.value = scaleValue m.value } :: []
+
+let segmentJob (seg : Segment) (inp : BoundedMb<_>) (outp : BoundedMb<_>) =
+  let proc = Job.delay <| fun () ->
+    BoundedMb.take inp |>>? seg >>=? BoundedMb.put outp
+  Job.foreverServer proc
+
+let loggerMb : BoundedMb<Message> = BoundedMb.create 2 |> run
+let targetMb : BoundedMb<Message list> = BoundedMb.create 2 |> run
+let scaleIt = segmentJob (Segments.scale 4.) loggerMb targetMb

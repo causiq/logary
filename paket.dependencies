@@ -4,6 +4,7 @@ nuget Chiron
 nuget Common.Logging
 nuget Common.Logging.Core
 nuget EventStore.Client.PreRelease
+nuget Hopac
 nuget Mailgun.Api
 nuget elmah.corelibrary ~> 1
 nuget elmah.io.core ~> 1

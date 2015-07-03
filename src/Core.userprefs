@@ -1,4 +1,4 @@
-﻿<Properties>
+﻿<Properties StartupItem="FSharp.Actor-logary/src/FSharp.Actor/FSharp.Actor-logary.fsproj">
   <MonoDevelop.Ide.Workspace />
   <MonoDevelop.Ide.Workbench />
   <MonoDevelop.Ide.DebuggingService.Breakpoints>
