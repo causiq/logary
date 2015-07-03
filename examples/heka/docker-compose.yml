@@ -3,7 +3,7 @@ heka:
   ports:
    - 4352
   volumes:
-   - hekad/:/etc/hekad
+   - heka.d/:/etc/heka.d
 
 app:
   build: .
