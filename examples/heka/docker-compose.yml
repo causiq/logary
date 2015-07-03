@@ -1,11 +1,11 @@
 heka:
   image: haaf/heka:latest
   ports:
-   - "5000:5000"
+   - 4352
   volumes:
-   - ./hekad:/etc/hekad
+   - hekad/:/etc/hekad
 
 app:
-  build: . --no-cache
+  build: .
   links:
    - heka
