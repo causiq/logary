@@ -1,0 +1,14 @@
+﻿<Properties StartupItem="../FSharp.Actor-logary/src/FSharp.Actor/FSharp.Actor-logary.fsproj">
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MonoDevelop.Ide.Workbench ActiveDocument="../targets/Logary.Targets.Heka/Targets_Heka.fs">
+    <Files>
+      <File FileName="../targets/Logary.Targets.Heka/Script.fsx" Line="19" Column="1" />
+      <File FileName="../targets/Logary.Targets.Heka/Targets_Heka.fs" Line="59" Column="46" />
+      <File FileName="../targets/Logary.Targets.Heka/Integration.fsx" Line="28" Column="32" />
+    </Files>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+</Properties>

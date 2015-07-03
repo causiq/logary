@@ -5,7 +5,6 @@
 #r "Logary.dll"
 #r "Logary.Targets.Heka.dll"
 #r "protobuf-net.dll"
-
 open Logary
 open Logary.Configuration
 open Logary.Targets
@@ -30,9 +29,3 @@ let logary =
       Console.create (Console.empty) "console"
     ]
   )
-
-
-
-
-
-logary.Dispose()

@@ -55,15 +55,23 @@ module internal Impl =
 
   let loop (conf : HekaConfig) (ri : RuntimeInfo) (inbox : IActor<_>) =
     let rec initialise () = async {
+      Logger.debug ri.logger "initialising heka target"
+      failwith "THIS SHOULD SHOW UP IN DOCKER"
       let ep, useTLS = conf.endpoint
-      let client = new TcpClient(ep)
+      let client = new TcpClient()
       client.NoDelay <- true
+      do! client.ConnectAsync(ep.Address, ep.Port)
+
       let stream =
         if useTLS then
           let validate = new RemoteCertificateValidationCallback(fun _ -> conf.caValidation)
-          new SslStream(client.GetStream(), false, validate) :> Stream
+          let sslStream = new SslStream(client.GetStream(), false, validate)
+          //sslStream.AuthenticateAsClient(ep.Address) // or ep.Hostname
+          sslStream :> Stream
         else
           client.GetStream() :> Stream
+      Logger.debug ri.logger "tcp stream open"
+
       let hostname = Dns.GetHostName()
       return! running { client = client; stream = stream; hostname = hostname }
       }
@@ -82,6 +90,7 @@ module internal Impl =
           logFailure ri err
         return! running state
         }
+
       let! msg, _ = inbox.Receive()
       match msg with
       | Log l ->

@@ -58,6 +58,6 @@ type HekaConfig =
 
     { maxMessageSize = uint32 (UInt16.MaxValue) + 1u // 64 * 1024
       // https://hekad.readthedocs.org/en/latest/config/inputs/tcp.html
-      endpoint       = IPEndPoint(IPAddress.IPv6Loopback, 5565), false
+      endpoint       = IPEndPoint(IPAddress.Loopback, 5565), false
       caValidation   = defaultCaValidation
       signingConfig  = None }
