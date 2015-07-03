@@ -53,6 +53,7 @@
     <None Include="paket.references" />
     <None Include="Message.proto" />
     <None Include="Script.fsx" />
+    <None Include="Integration.fsx" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Logary\Logary.fsproj">
