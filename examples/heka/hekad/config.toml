@@ -1,0 +1,12 @@
+[hekad]
+maxprocs = 2
+
+[TcpInput]
+address = ":5565"
+
+[PayloadEncoder]
+append_newlines = false
+
+[LogOutput]
+message_matcher = "TRUE"
+encoder = "PayloadEncoder"

@@ -1,4 +1,5 @@
 module Program
+open System
 open System.Threading
 open Logary
 open Logary.Configuration
@@ -9,7 +10,8 @@ open NodaTime
 
 [<EntryPoint>]
 let main args =
-  printfn "starting logary"
+  printfn "starting logary w00"
+
   use logary =
     withLogary' "Heka.Example" (
       withTargets [
@@ -23,13 +25,14 @@ let main args =
         Rule.createForTarget "heka"
         Rule.createForTarget "console"
       ] >>
-      withInternalTargets Info [
+      withInternalTargets Debug [
         Console.create (Console.empty) "console"
       ]
     )
 
-  printfn "blocking forever! yey!"
+  printfn "started"
 
   use mre = new ManualResetEventSlim(false)
-  mre.Wait() // wait forever
+  Console.CancelKeyPress.Add(fun _ -> mre.Set() |> ignore)
+  mre.Wait()
   0

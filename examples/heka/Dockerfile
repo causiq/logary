@@ -18,4 +18,4 @@ RUN mozroots --import --sync --machine
 
 COPY bin $APP_PREFIX/bin
 WORKDIR $APP_PREFIX/bin
-ENTRYPOINT /usr/bin/env mono $APP_PREFIX/heka.exe
+ENTRYPOINT /usr/bin/env mono $APP_PREFIX/bin/heka.exe

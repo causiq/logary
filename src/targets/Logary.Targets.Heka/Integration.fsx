@@ -1,11 +1,10 @@
-#!/usr/bin/env fsharpi
-#I "bin/"
-#r "FSharp.Core.dll"
+﻿#I "bin/Debug"
 #r "FSharp.Actor.dll"
-#r "Logary.dll"
 #r "NodaTime.dll"
-#r "protobuf-net.dll"
+#r "Newtonsoft.Json.dll"
+#r "Logary.dll"
 #r "Logary.Targets.Heka.dll"
+#r "protobuf-net.dll"
 
 open Logary
 open Logary.Configuration
@@ -13,8 +12,6 @@ open Logary.Targets
 open Logary.Targets.Heka
 open Logary.Metrics
 open NodaTime
-
-printfn "starting logary"
 
 let logary =
   withLogary' "Heka.Example" (
@@ -29,15 +26,13 @@ let logary =
       Rule.createForTarget "heka"
       Rule.createForTarget "console"
     ] >>
-    withInternalTargets Info [
+    withInternalTargets Debug [
       Console.create (Console.empty) "console"
     ]
   )
 
-printfn "blocking forever! yey!"
 
-open System.Threading
-let mre = new ManualResetEventSlim(false)
-mre.Wait() // wait forever
+
+
 
 logary.Dispose()
