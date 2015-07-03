@@ -1,4 +1,5 @@
 module Program
+
 open System
 open System.Threading
 open Logary
@@ -6,16 +7,17 @@ open Logary.Configuration
 open Logary.Targets
 open Logary.Targets.Heka
 open Logary.Metrics
+open System.Net
 open NodaTime
 
 [<EntryPoint>]
 let main args =
-  printfn "starting logary w00"
+  printfn "starting logary with heka target..."
 
   use logary =
     withLogary' "Heka.Example" (
       withTargets [
-        Heka.create (HekaConfig.Empty) "heka"
+        Heka.create ({ HekaConfig.Empty with endpoint = IPEndPoint(IPAddress.Parse("127.0.0.1"), 5565 ), false }) "heka"
         Console.create (Console.empty) "console"
       ] >>
       withMetrics (Duration.FromSeconds 4L) [
@@ -35,4 +37,5 @@ let main args =
   use mre = new ManualResetEventSlim(false)
   Console.CancelKeyPress.Add(fun _ -> mre.Set() |> ignore)
   mre.Wait()
+
   0

@@ -64,11 +64,22 @@ module Encoder =
         Choice2Of2 (HeaderTooLarge msg)
       else
         Choice1Of2 (async {
-          use msgMs = msgMs
-          use hdrMs = hdrMs
-          do s.WriteByte Constants.RecordSeparator
-          do s.WriteByte (byte (hdrMs.Length))
-          do! fromZero hdrMs (fun ms -> ms.CopyToAsync s)
-          do s.WriteByte Constants.UnitSeparator
-          do! fromZero msgMs (fun ms -> ms.CopyToAsync s)
+          try
+            use msgMs = msgMs
+            use hdrMs = hdrMs
+            printfn "write record separator"
+            do s.WriteByte Constants.RecordSeparator
+            do! Async.Sleep 200
+            printfn "write header length"
+            do s.WriteByte (byte (hdrMs.Length))
+            do! Async.Sleep 200
+            printfn "write header"
+            do! fromZero hdrMs (fun ms -> ms.CopyToAsync s)
+            do! Async.Sleep 200
+            printfn "write unit separator"
+            do s.WriteByte Constants.UnitSeparator
+            do! Async.Sleep 200
+            printfn "write unit message"
+            do! fromZero msgMs (fun ms -> ms.CopyToAsync s)
+          with e -> printfn "BAM!! %A" e
         })

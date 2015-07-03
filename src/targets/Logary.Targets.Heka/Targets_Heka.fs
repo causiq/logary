@@ -54,9 +54,11 @@ module internal Impl =
       hostname : string }
 
   let loop (conf : HekaConfig) (ri : RuntimeInfo) (inbox : IActor<_>) =
+    let debug = LogLine.debug >> LogLine.setPath "Logary.Targets.Heka" >> Logger.log ri.logger
+
     let rec initialise () = async {
-      Logger.debug ri.logger "initialising heka target"
-      failwith "THIS SHOULD SHOW UP IN DOCKER"
+      debug "initialising heka target"
+
       let ep, useTLS = conf.endpoint
       let client = new TcpClient()
       client.NoDelay <- true
@@ -70,7 +72,8 @@ module internal Impl =
           sslStream :> Stream
         else
           client.GetStream() :> Stream
-      Logger.debug ri.logger "tcp stream open"
+
+      debug "initialise: tcp stream open"
 
       let hostname = Dns.GetHostName()
       return! running { client = client; stream = stream; hostname = hostname }
@@ -78,18 +81,29 @@ module internal Impl =
 
     and running state = async {
       let write (msg : Message) = async {
+        msg.uuid        <- Guid.NewGuid().ToByteArray()
         msg.hostname    <- state.hostname
         msg.env_version <- Lib.LogaryVersion
         msg.``type``    <- MessageType
         msg.addField (Field("service", Nullable ValueType.STRING, null,
                             [ ri.serviceName ]))
+
         match msg |> Encoder.encode conf state.stream with
         | Choice1Of2 run ->
-          do! run
+          debug "running: writing to heka"
+          try
+            do! run
+            debug "running: wrote to heka"
+          with e -> LogLine.error "error writing to heka"
+                    |> LogLine.setPath "Logary.Targets.Heka"
+                    |> LogLine.setExn e |> Logger.log ri.logger
         | Choice2Of2 err ->
           logFailure ri err
+        debug "running: recursing"
         return! running state
         }
+
+      debug "running: receiving"
 
       let! msg, _ = inbox.Receive()
       match msg with

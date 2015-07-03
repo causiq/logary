@@ -147,33 +147,33 @@ type Field =
 
 [<ProtoContract>]
 type Message =
-  [<ProtoMember(1, IsRequired=true)>] 
+  [<ProtoMember(1, IsRequired=true)>]
   val mutable uuid : byte []
 
   /// Nanoseconds since unix epoch
-  [<ProtoMember(2, IsRequired=true)>] 
+  [<ProtoMember(2, IsRequired=true)>]
   val mutable timestamp : int64
 
   /// heka.logary
-  [<ProtoMember(3, IsRequired=false)>] 
+  [<ProtoMember(3, IsRequired=false)>]
   val mutable ``type`` : string
 
-  [<ProtoMember(4, IsRequired=false)>] 
+  [<ProtoMember(4, IsRequired=false)>]
   val mutable logger : string
 
-  [<ProtoMember(5, IsRequired=false); DefaultValue 7>] 
+  [<ProtoMember(5, IsRequired=false); DefaultValue 7>]
   val mutable severity : int32 Nullable
 
-  [<ProtoMember(6, IsRequired=false)>] 
+  [<ProtoMember(6, IsRequired=false)>]
   val mutable payload : string
 
-  [<ProtoMember(7, IsRequired=false)>] 
+  [<ProtoMember(7, IsRequired=false)>]
   val mutable env_version : string
 
-  [<ProtoMember(8, IsRequired=false)>] 
+  [<ProtoMember(8, IsRequired=false)>]
   val mutable pid : int32 Nullable
 
-  [<ProtoMember(9, IsRequired=false)>] 
+  [<ProtoMember(9, IsRequired=false)>]
   val mutable hostname : string
 
   [<ProtoMember(10, IsRequired=false)>]
