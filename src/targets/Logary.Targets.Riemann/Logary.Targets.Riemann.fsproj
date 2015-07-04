@@ -29,6 +29,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ProtoBufUtils.fs" />
     <Compile Include="Messages.fs" />
     <Compile Include="Client.fs" />
     <Compile Include="Targets_Riemann.fs" />

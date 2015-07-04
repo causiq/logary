@@ -29,7 +29,7 @@ module Tcp =
 
   type WriteStream =
     /// WriteAsync : buffer -> offset? -> length?
-    abstract Write : byte array -> unit Async
+    abstract Write : byte array -> Async<unit>
 
   type WriteClient =
     inherit IDisposable

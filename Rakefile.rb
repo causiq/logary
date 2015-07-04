@@ -5,7 +5,7 @@ require 'albacore/tasks/versionizer'
 require 'albacore/ext/teamcity'
 require 'albacore/tasks/release'
 
-Configuration = ENV['Configuration'] || 'Release'
+Configuration = ENV['CONFIGURATION'] || 'Release'
 
 Albacore::Tasks::Versionizer.new :versioning
 

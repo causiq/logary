@@ -40,17 +40,18 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Script.fsx" />
+    <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="SuaveReporter.fs" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.1\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>
-    <None Include="paket.references" />
     <None Include="app\README.md" />
     <None Include="app\app.js" />
     <None Include="app\index.html" />
     <None Include="app\package.json" />
     <None Include="app\webpack.config.js" />
+    <None Include="Script.fsx" />
+    <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="app\" />

@@ -1,0 +1,42 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "FSharp.Actor-logary", "FSharp.Actor-logary\src\FSharp.Actor\FSharp.Actor-logary.fsproj", "{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary", "Logary\Logary.fsproj", "{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Heka", "targets\Logary.Targets.Heka\Logary.Targets.Heka.fsproj", "{BC4A5F70-0785-40D6-9EBE-4BB0E47A9EEC}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Heka.Tests", "tests\Logary.Targets.Heka.Tests\Logary.Targets.Heka.Tests.fsproj", "{EDE8A833-C15D-47FE-BFF2-0A24FAA22728}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "example", "example", "{652F0AC7-EDBB-4B13-98C8-3FF6FBF38C90}"
+	ProjectSection(SolutionItems) = preProject
+		..\examples\heka\heka.fs = ..\examples\heka\heka.fs
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BC4A5F70-0785-40D6-9EBE-4BB0E47A9EEC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BC4A5F70-0785-40D6-9EBE-4BB0E47A9EEC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BC4A5F70-0785-40D6-9EBE-4BB0E47A9EEC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BC4A5F70-0785-40D6-9EBE-4BB0E47A9EEC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EDE8A833-C15D-47FE-BFF2-0A24FAA22728}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EDE8A833-C15D-47FE-BFF2-0A24FAA22728}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EDE8A833-C15D-47FE-BFF2-0A24FAA22728}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EDE8A833-C15D-47FE-BFF2-0A24FAA22728}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+	EndGlobalSection
+EndGlobal

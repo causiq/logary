@@ -1,0 +1,6 @@
+[PayloadEncoder]
+append_newlines = false
+
+[LogOutput]
+message_matcher = "Type == 'heka.logary'"
+encoder = "PayloadEncoder"

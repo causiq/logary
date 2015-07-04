@@ -6,13 +6,9 @@ open System.Globalization
 open System.Collections
 open System.Collections.Generic
 open System.Text
-
 open Microsoft.FSharp.Reflection
-
 open Newtonsoft.Json
-
 open Newtonsoft.Json.FSharp
-
 open Logary.Measure
 
 /// Returns the case name of the object with union type 'ty.
