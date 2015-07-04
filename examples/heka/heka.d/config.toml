@@ -7,6 +7,6 @@ maxprocs = 2
 address = ":5565"
 
 [FileOutput]
-message_matcher = "TRUE"
+message_matcher = "Type == 'heka.logary'"
 encoder = "ProtobufEncoder"
 path = "/var/log/heka/sample.log"
