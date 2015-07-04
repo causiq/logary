@@ -6,6 +6,7 @@ open System.Net
 open System.Net.Sockets
 open System.Net.Security
 open FSharp.Actor
+open NodaTime
 open Logary
 open Logary.Heka
 open Logary.Heka.Client
@@ -29,11 +30,14 @@ type Logary.Heka.Messages.Message with
     let msg = Message(logger = line.path)
     msg.severity <- Nullable (line.level |> LogLevel.toSeverity)
     msg.payload <- line.message
+    msg.timestamp <- line.timestamp.Ticks * 100L
     msg
 
   static member ofMeasure (msr : Measure) =
     let msg = Message(logger = DP.joined msr.m_path)
     msg.severity <- Nullable (msr.m_level |> LogLevel.toSeverity)
+    msg.timestamp <- msr.m_timestamp.Ticks * 100L
+    msg.payload <- match msr.m_value with | F f -> string f | L l -> string l
     msg
 
 /// The message type most often used in filters inside Heka (see e.g. the getting-
@@ -90,20 +94,11 @@ module internal Impl =
 
         match msg |> Encoder.encode conf state.stream with
         | Choice1Of2 run ->
-          debug "running: writing to heka"
-          try
-            do! run
-            debug "running: wrote to heka"
-          with e -> LogLine.error "error writing to heka"
-                    |> LogLine.setPath "Logary.Targets.Heka"
-                    |> LogLine.setExn e |> Logger.log ri.logger
+          do! run
         | Choice2Of2 err ->
           logFailure ri err
-        debug "running: recursing"
         return! running state
         }
-
-      debug "running: receiving"
 
       let! msg, _ = inbox.Receive()
       match msg with
