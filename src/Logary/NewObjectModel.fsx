@@ -153,15 +153,18 @@ type Message =
     value     : PointValue
     fields    : Field list
     context   : LogContext
-    timestamp : Instant }
+    timestamp : int64 }
+
+  static member Create(name, value, ?fields, ?context, ?timestamp) =
+    { name = name
+      value = value
+      fields = defaultArg fields []
+      context = defaultArg context LogContext.empty
+      timestamp = defaultArg timestamp 0L }
 
 open Hopac
 open Hopac.Alt.Infixes
 open Hopac.TopLevel
-
-let mb : BoundedMb<int> = BoundedMb.create 2 |> run
-BoundedMb.put mb 42 <|>? timeOutMillis 10 |> run
-BoundedMb.take mb |>>? printfn "Got %A" <|>? timeOutMillis 1 |> run
 
 // use case: pipeline of input mb, fn that changes the name, output mb
 // arity(Message 
@@ -187,6 +190,14 @@ let segmentJob (seg : Segment) (inp : BoundedMb<_>) (outp : BoundedMb<_>) =
     BoundedMb.take inp |>>? seg >>=? BoundedMb.put outp
   Job.foreverServer proc
 
-let loggerMb : BoundedMb<Message> = BoundedMb.create 2 |> run
-let targetMb : BoundedMb<Message list> = BoundedMb.create 2 |> run
-let scaleIt = segmentJob (Segments.scale 4.) loggerMb targetMb
+module Sample =
+
+  let mb : BoundedMb<int> = BoundedMb.create 2 |> run
+  BoundedMb.put mb 42 <|>? timeOutMillis 10 |> run
+  BoundedMb.take mb |>>? printfn "Got %A" <|>? timeOutMillis 1 |> run
+
+  let loggerMb : BoundedMb<Message> = BoundedMb.create 2 |> run
+  let targetMb : BoundedMb<Message list> = BoundedMb.create 2 |> run
+  let scaleIt = segmentJob (Segments.scale 4.) loggerMb targetMb
+
+  BoundedMb.put loggerMb (
