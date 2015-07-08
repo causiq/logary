@@ -82,6 +82,7 @@ module internal Impl =
       hostname       : string
       /// an optional exception
       ``exception``  : exn option }
+
     static member FromLogLine (l : LogLine) =
       { ``@timestamp`` = l.timestamp
         ``@version``   = 1

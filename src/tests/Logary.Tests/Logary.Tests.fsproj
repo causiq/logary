@@ -44,7 +44,6 @@
     <Compile Include="GraphiteTarget.fs" />
     <Compile Include="HealthChecks.fs" />
     <Compile Include="Registry.fs" />
-    <Compile Include="ExternalAssumptions.fs" />
     <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="Internals.fs" />
     <Compile Include="Program.fs" />
@@ -141,14 +140,12 @@
   <ItemGroup>
     <Reference Include="Fuchu">
       <HintPath>..\..\..\packages\Fuchu\lib\Fuchu.dll</HintPath>
-      <Private>True</Private>
       <Paket>True</Paket>
     </Reference>
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Fuchu.FsCheck">
       <HintPath>..\..\..\packages\Fuchu.FsCheck\lib\Fuchu.FsCheck.dll</HintPath>
-      <Private>True</Private>
       <Paket>True</Paket>
     </Reference>
   </ItemGroup>

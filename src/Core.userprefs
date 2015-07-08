@@ -9,4 +9,8 @@
     <BreakpointStore />
   </MonoDevelop.Ide.DebuggingService.Breakpoints>
   <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+  <DisabledProjects>
+    <String>targets/Logary.Targets.Logstash/Logary.Targets.Logstash.fsproj</String>
+    <String>tests/Logary.Targets.Logstash.Tests/Logary.Targets.Logstash.Tests.fsproj</String>
+  </DisabledProjects>
 </Properties>
