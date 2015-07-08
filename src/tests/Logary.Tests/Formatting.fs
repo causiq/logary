@@ -2,13 +2,9 @@
 
 open Fuchu
 open Swensen.Unquote
-
 open System
 open System.IO
-
 open NodaTime
-open Newtonsoft.Json
-
 open Logary
 open Logary.Formatting
 open Logary.Tests.TestDSL
@@ -121,7 +117,7 @@ let tests =
 
     testCase "``JsonFormatter has no newline characters``" <| fun _ ->
       (because "logging message with newline in it" <| fun () ->
-          { sampleMessage with message = "here\n  we\ngo!" } |> JsonFormatter.Default().format)
+          { sampleMessage with message = "here\n  we\ngo!" } |> JsonFormatter.Default.format)
       |> should equal ("""{"message":"here\n  we\ngo!","data":{},"level":"error","tags":["error","bad"],""" +
                       """"timestamp":"1970-01-01T00:00:03.1234567Z","path":"a.b.c.d"}""")
       |> thatsIt

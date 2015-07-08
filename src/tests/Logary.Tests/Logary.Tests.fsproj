@@ -41,7 +41,6 @@
     <Compile Include="Metrics.fs" />
     <Compile Include="WinPerfCountersMetrics.fs" />
     <Compile Include="CoreTargets.fs" />
-    <Compile Include="LogstashTarget.fs" />
     <Compile Include="GraphiteTarget.fs" />
     <Compile Include="HealthChecks.fs" />
     <Compile Include="Registry.fs" />

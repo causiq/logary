@@ -4,18 +4,11 @@ module Logary.Targets.Logstash
 #nowarn "1104"
 
 open FSharp.Actor
-
-open Newtonsoft.Json
-
 open NodaTime
-
 open System
 open System.Net
 open System.Net.Sockets
 open System.IO
-
-open Newtonsoft.Json.Linq
-
 open Logary
 open Logary.Formatting
 open Logary.Target
@@ -28,7 +21,6 @@ type LogstashConf =
   { hostname     : string
     port         : uint16
     clientFac    : string -> uint16 -> WriteClient
-    jsonSettings : JsonSerializerSettings
     evtVer       : EventVersion }
   /// Create a new logstash configuration structure, optionally specifying
   /// overrides on port, client tcp factory, the formatter to log with
@@ -38,12 +30,11 @@ type LogstashConf =
   static member Create(hostname, ?port, ?clientFac, ?jsonSettings, ?evtVer) =
     let port = defaultArg port 1936us
     let clientFac = defaultArg clientFac (fun host port -> new TcpWriteClient(new TcpClient(host, int port)) :> WriteClient)
-    let jss = defaultArg jsonSettings (JsonFormatter.Settings())
+    let jss = defaultArg jsonSettings JsonFormatter.Default
     let evtVer = defaultArg evtVer One
     { hostname     = hostname
       port         = port
       clientFac    = clientFac
-      jsonSettings = jss
       evtVer       = evtVer }
 
 /// What version of events to output (zero is the oldest version, one the newer)
@@ -57,44 +48,6 @@ module internal Impl =
       sendRecvStream : WriteStream option }
 
   let (=>) k v = k, v
-  type NewtonsoftSerialisable =
-    abstract Serialise : JsonSerializer -> Linq.JObject -> Linq.JObject
-
-    (* Event version 0:
-       https://gist.github.com/jordansissel/2996677
-  {
-    "@source":"unknown",
-    "@type":null,"
-    @tags":[],
-    "@fields":{},
-    "@message":"Hello world",
-    "@timestamp":"2012-06-26T15:58:20.135353Z"
-  }*)
-
-  /// Logstash event version v0
-  type EventV0 =
-    { ``@source``    : string
-      ``@tags``      : string list
-      ``@fields``    : Map<string, obj>
-      ``@message``   : string
-      ``@timestamp`` : Instant }
-    /// Create an EventV0 from the log line passed as a parameter.
-    static member FromLogLine (l : LogLine) =
-      { ``@source``    = Dns.GetHostName()
-        ``@tags``      = l.tags
-        ``@fields``    = l.data
-        ``@message``   = l.message
-        ``@timestamp`` = l.timestamp }
-
-    interface NewtonsoftSerialisable with
-      member x.Serialise ser jobj =
-        [ "@source"    => box x.``@source``
-          "@tags"      => box (List.toArray x.``@tags``)
-          "@fields"    => box (x.``@fields``)
-          "@message"   => box x.``@message``
-          "@timestamp" => box x.``@timestamp`` ]
-        |> List.iter (fun (k,v) -> jobj.[k] <- Linq.JToken.FromObject(v, ser))
-        jobj
 
     (* Event version 1:
        https://logstash.jira.com/browse/LOGSTASH-675
@@ -139,22 +92,21 @@ module internal Impl =
         level          = l.level.ToString()
         ``exception``  = l.``exception`` }
 
-    interface NewtonsoftSerialisable with
-      member x.Serialise ser jobj =
-        // bug in logstash: json codec not accepted from tcp input,
-        // json_lines barfs on @timestamp name, no error log
-        [ yield "timestamp" => box x.``@timestamp``
-          yield "@version"  => box x.``@version``
-          yield "tags"      => box (List.toArray x.tags)
-          yield "message"   => box x.message
-          yield "path"      => box x.path
-          yield "hostname"  => box x.hostname
-          yield "level"     => box x.level
-          match x.``exception`` with
-          | Some e -> yield "exception"  => box e
-          | _      -> () ]
-        |> List.iter (fun (k, v) -> jobj.[k] <- Linq.JToken.FromObject(v, ser))
-        jobj
+    member x.Serialise ser jobj =
+      // bug in logstash: json codec not accepted from tcp input,
+      // json_lines barfs on @timestamp name, no error log
+      [ yield "timestamp" => box x.``@timestamp``
+        yield "@version"  => box x.``@version``
+        yield "tags"      => box (List.toArray x.tags)
+        yield "message"   => box x.message
+        yield "path"      => box x.path
+        yield "hostname"  => box x.hostname
+        yield "level"     => box x.level
+        match x.``exception`` with
+        | Some e -> yield "exception"  => box e
+        | _      -> () ]
+      |> List.iter (fun (k, v) -> jobj.[k] <- Linq.JToken.FromObject(v, ser))
+      jobj
 
   let utf8 = System.Text.Encoding.UTF8
 

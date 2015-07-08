@@ -1,8 +1,8 @@
 ﻿<Properties StartupItem="FSharp.Actor-logary/src/FSharp.Actor/FSharp.Actor-logary.fsproj">
   <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
-  <MonoDevelop.Ide.Workbench ActiveDocument="Logary/NewObjectModel.fsx">
+  <MonoDevelop.Ide.Workbench ActiveDocument="targets/Logary.Targets.Logstash/paket.references">
     <Files>
-      <File FileName="Logary/NewObjectModel.fsx" Line="155" Column="26" />
+      <File FileName="targets/Logary.Targets.Logstash/paket.references" Line="5" Column="8" />
     </Files>
   </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.DebuggingService.Breakpoints>
