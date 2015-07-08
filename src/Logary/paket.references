@@ -1,5 +1,5 @@
 FSharp.Core
-Newtonsoft.Json
-Newtonsoft.Json.FSharp
 NodaTime
-NodaTime.Serialization.JsonNet
+File:Aether.fs
+File:Chiron.fs
+FParsec

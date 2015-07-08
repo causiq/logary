@@ -3,6 +3,5 @@ FluentMigrator.Runner
 FSharp.Core
 FsSql
 Fuchu
-Newtonsoft.Json
 NodaTime
 System.Data.SQLite.Core

@@ -130,30 +130,27 @@ module DataModel =
 
   type PointName = string list
 
-  type DataPointValue =
+  type PointValue =
     /// Value at point in time
     | Gauge of Value
     /// A rate, hence is Value per TimeUnit
     | RateOf of Value * float //seconds
     /// Any sort of derived measure
     | Derived of Value * Units
+    /// All simple-valued fields' values can be templated into the template string
+    /// when outputting the value in the target.
+    | LogLine of template:string
 
   type Field =
     { name  : PointName
       unit  : Units
       value : ComplexValue }
 
-  type LineValue =
-    | Measure of DataPointValue
-    /// All simple-valued fields' values can be templated into the template string
-    /// when outputting the value in the target.
-    | LogLine of template:string
-
 open DataModel
 
 type Message =
   { name      : PointName
-    value     : LineValue
+    value     : PointValue
     fields    : Field list
     context   : LogContext
     timestamp : Instant }
@@ -177,15 +174,11 @@ module Segments =
 
   let scale scale : Segment =
     let scaleValue = function
-      | LineValue.Measure v ->
-        match v with
-        | DataModel.DataPointValue.Gauge value ->
-          match value with
-          | Float f -> Float (scale * f)
-          | x -> x
-          |> DataModel.DataPointValue.Gauge
+      | DataModel.PointValue.Gauge value ->
+        match value with
+        | Float f -> Float (scale * f)
         | x -> x
-        |> LineValue.Measure
+        |> DataModel.PointValue.Gauge
       | x -> x
     fun m -> { m with Message.value = scaleValue m.value } :: []
 

@@ -1,5 +1,4 @@
 require 'bundler/setup'
-
 require 'albacore'
 require 'albacore/tasks/versionizer'
 require 'albacore/ext/teamcity'
@@ -15,20 +14,18 @@ build :quick_build do |b|
 end
 
 task :paket_bootstrap do
-    system 'tools/paket.bootstrapper.exe', clr_command: true unless \
-          File.exists? 'tools/paket.exe'
+  system 'tools/paket.bootstrapper.exe', clr_command: true unless \
+         File.exists? 'tools/paket.exe'
 end
 
 desc 'restore all nugets as per the packages.config files'
 task :restore => :paket_bootstrap do
-    system 'tools/paket.exe', 'restore', clr_command: true
+  system 'tools/paket.exe', 'restore', clr_command: true
 end
 
 desc 'create assembly infos'
 asmver_files :assembly_info => :versioning do |a|
   a.files = FileList['**/*proj'] # optional, will find all projects recursively by default
-
-  # attributes are required:
   a.attributes assembly_description: 'Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net.',
                assembly_configuration: Configuration,
                assembly_company: 'Logibit AB',
@@ -36,8 +33,6 @@ asmver_files :assembly_info => :versioning do |a|
                assembly_version: ENV['LONG_VERSION'],
                assembly_file_version: ENV['LONG_VERSION'],
                assembly_informational_version: ENV['BUILD_VERSION']
-  # optional, given an Albacore::Project and the configuration hash of the AsmVer task type
-  # example:
   a.handle_config do |proj, conf|
     conf.namespace = conf.namespace + "AsmVer"
     conf
@@ -77,6 +72,12 @@ def maybe_sign conf
     conf.prop 'SignAssemblySPC', spc
     conf.prop 'SignAssemblyPVK', pvk
   end
+end
+
+task :paket_replace do
+  next if File.exists? 'paket-files/xyncro/aether/src/Aether/Aether.fs.bak'
+  sh %{ruby -pi.bak -e "gsub(/module Aether/, 'module internal Aether')" paket-files/xyncro/aether/src/Aether/Aether.fs}
+  sh %{ruby -pi.bak -e "gsub(/module Chiron/, 'module internal Chiron')" paket-files/xyncro/chiron/src/Chiron/Chiron.fs}
 end
 
 desc 'perform full build'

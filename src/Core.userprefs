@@ -1,6 +1,10 @@
 ﻿<Properties StartupItem="FSharp.Actor-logary/src/FSharp.Actor/FSharp.Actor-logary.fsproj">
-  <MonoDevelop.Ide.Workspace />
-  <MonoDevelop.Ide.Workbench />
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MonoDevelop.Ide.Workbench ActiveDocument="Logary/NewObjectModel.fsx">
+    <Files>
+      <File FileName="Logary/NewObjectModel.fsx" Line="155" Column="26" />
+    </Files>
+  </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.DebuggingService.Breakpoints>
     <BreakpointStore />
   </MonoDevelop.Ide.DebuggingService.Breakpoints>

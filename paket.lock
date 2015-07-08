@@ -45,16 +45,8 @@ NUGET
       Chiron (>= 4.0.0)
       Http.fs-prerelease (>= 2.3.0)
       NodaTime (>= 1.3.1)
-    Newtonsoft.Json (6.0.8)
-    Newtonsoft.Json.FSharp (3.2.2)
-      FSharp.Core (>= 3.1.2.1)
-      Newtonsoft.Json (>= 6.0.8)
-      NodaTime (>= 1.3.0)
     NLog (4.0.0)
     NodaTime (1.3.1)
-    NodaTime.Serialization.JsonNet (1.3.1)
-      Newtonsoft.Json (>= 4.5.11)
-      NodaTime (>= 1.3.0)
     NUnit (2.6.4)
     protobuf-net (2.0.0.668)
     RestSharp (105.1.0)
@@ -67,3 +59,10 @@ NUGET
       Topshelf (>= 3.1.3)
     UnionArgParser (0.8.7)
     Unquote (2.2.2)
+GITHUB
+  remote: xyncro/chiron
+  specs:
+    src/Chiron/Chiron.fs (b446507de62ecd18ac1d24361a773d17b897d1d2)
+  remote: xyncro/aether
+  specs:
+    src/Aether/Aether.fs (d87e627e2124bc7297ef65929793a99a21795244)

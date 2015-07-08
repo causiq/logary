@@ -22,7 +22,6 @@ nuget log4net
 nuget loggr-dotnet
 nuget Machine.Specifications
 nuget Machine.Specifications.Should
-nuget Newtonsoft.Json
 nuget NLog
 nuget NodaTime
 nuget NUnit
@@ -35,5 +34,6 @@ nuget Topshelf.FSharp
 nuget UnionArgParser
 nuget Unquote ~> 2.2
 nuget Hawk
-nuget NodaTime.Serialization.JsonNet
-nuget Newtonsoft.Json.FSharp
+
+github xyncro/chiron src/Chiron/Chiron.fs
+github xyncro/aether src/Aether/Aether.fs
