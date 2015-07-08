@@ -26,7 +26,7 @@ module TextWriter =
       /// error text writer
       isErrorAt  : LogLevel }
     static member Create(output, error, ?formatter) =
-      { formatter    = defaultArg formatter <| JsonFormatter.Default()
+      { formatter    = defaultArg formatter JsonFormatter.Default
         output       = output
         error        = error
         flush        = false

@@ -7,8 +7,6 @@ open System.Collections
 open System.Collections.Generic
 open System.Text
 open Microsoft.FSharp.Reflection
-open Newtonsoft.Json
-open Newtonsoft.Json.FSharp
 open Logary.Measure
 
 /// Returns the case name of the object with union type 'ty.
@@ -126,52 +124,11 @@ type StringFormatter =
     StringFormatter.Expanded (Environment.NewLine) (Environment.NewLine)
 
 open NodaTime.TimeZones
-open NodaTime.Serialization.JsonNet
-
-/// A LogLevel to/from string converter for Json.Net.
-type LogLevelStringConverter() =
-  inherit JsonConverter()
-
-  override x.CanConvert typ =
-    typ = typeof<LogLevel>
-
-  override x.WriteJson(writer, value, serializer) =
-    match value :?> LogLevel with | _ as v -> writer.WriteRawValue(sprintf "\"%O\"" v)
-
-  override x.ReadJson(reader, t, _, serializer) =
-    match reader.TokenType with
-    | JsonToken.Null   -> LogLevel.Info |> box
-    | JsonToken.String -> LogLevel.FromString(reader.ReadAsString()) |> box
-    | _ as t -> failwithf "invalid token %A when trying to read LogLevel" t
 
 /// Wrapper that constructs a Json.Net JSON formatter.
 type JsonFormatter =
-  /// Construct some JSON.Net JsonSerializerSettings, with all the
-  /// types that are relevant to serialize in a custom way in Logary.
-  static member Settings ?funOpts =
-    JsonSerializerSettings()
-    |> fun o -> (defaultArg funOpts (fun x -> x)) o
-    |> fun o -> o.Converters.Add <| LogLevelStringConverter() ; o
-    |> Serialisation.extend
-    |> fun o -> o.ConfigureForNodaTime(new DateTimeZoneCache(TzdbDateTimeZoneSource.Default))
-
   /// Create a new JSON formatter with optional function that can modify the serialiser
   /// settings before any other alteration is done.
-  static member Default ?funOpts =
-    let opts =
-      match funOpts with
-      | None -> JsonFormatter.Settings()
-      | Some f -> JsonFormatter.Settings(f)
-    let serialiser = JsonSerializer.Create opts
-    { format =
-        fun ll ->
-          use sw = new System.IO.StringWriter()
-          use w = new JsonTextWriter(sw)
-          serialiser.Serialize(w, ll)
-          sw.ToString()
-      m_format =
-        fun m ->
-          use sw = new System.IO.StringWriter()
-          use w = new JsonTextWriter(sw)
-          serialiser.Serialize(w, m)
-          sw.ToString() }
+  static member Default =
+    { format = (fun ll -> "")
+      m_format = fun m -> ""}
