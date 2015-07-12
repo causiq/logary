@@ -1,14 +1,4 @@
-#!/usr/bin/env fsharpi
-#r "../../packages/FSharp.Core/lib/net40/FSharp.Core.dll"
-#I "bin/Debug"
-#r "FSharp.Actor.dll"
-#r "Logary.dll"
-#r "NodaTime.dll"
-#I "../../packages/Hopac/lib/net45"
-#r "../../packages/Hopac/lib/net45/Hopac.Core.dll"
-#r "../../packages/Hopac/lib/net45/Hopac.dll"
-
-open NodaTime
+namespace Logary
 
 module DataModel =
   open System.Net
@@ -169,7 +159,7 @@ type Message =
     { name = name
       value = value
       fields = defaultArg fields []
-      context = defaultArg context LogContext.empty
+      context = defaultArg context (LogContext.Create("tests"))
       timestamp = defaultArg timestamp 0L }
 
 open Hopac
@@ -187,10 +177,10 @@ module Segments =
 
   let scale scale : Segment =
     let scaleValue = function
-      | DataModel.PointValue.Gauge value ->
+      | DataModel.PointValue.Gauge (value, units) ->
         match value with
-        | Float f -> Float (scale * f)
-        | x -> x
+        | Float f -> Float (scale * f), units
+        | x -> x, units
         |> DataModel.PointValue.Gauge
       | x -> x
     fun m -> { m with Message.value = scaleValue m.value } :: []
@@ -200,16 +190,14 @@ let segmentJob (seg : Segment) (inp : BoundedMb<_>) (outp : BoundedMb<_>) =
     BoundedMb.take inp |>>? seg >>=? BoundedMb.put outp
   Job.foreverServer proc
 
-module Sample =
+let mb : BoundedMb<int> = BoundedMb.create 2 |> run
+BoundedMb.put mb 42 <|>? timeOutMillis 10 |> run
+BoundedMb.take mb |>>? printfn "Got %A" <|>? timeOutMillis 1 |> run
 
-  let mb : BoundedMb<int> = BoundedMb.create 2 |> run
-  BoundedMb.put mb 42 <|>? timeOutMillis 10 |> run
-  BoundedMb.take mb |>>? printfn "Got %A" <|>? timeOutMillis 1 |> run
+let msg = Message.Create(["cpu_jiffies"], PointValue.Gauge(Value.Float 56., Units.Div(BaseUnit.Metre, BaseUnit.Second)))
 
-  let msg = Message.Create([], )
+let loggerMb : BoundedMb<Message> = BoundedMb.create 2 |> run
+let targetMb : BoundedMb<Message list> = BoundedMb.create 2 |> run
+let scaleIt = segmentJob (Segments.scale 4.) loggerMb targetMb
 
-  let loggerMb : BoundedMb<Message> = BoundedMb.create 2 |> run
-  let targetMb : BoundedMb<Message list> = BoundedMb.create 2 |> run
-  let scaleIt = segmentJob (Segments.scale 4.) loggerMb targetMb
-
-  BoundedMb.put loggerMb 
+//BoundedMb.put loggerMb msg
