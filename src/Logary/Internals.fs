@@ -217,8 +217,3 @@ type Acks =
   | Ack
   /// It didn't go well.
   | Nack of NackDescription
-
-module Lib =
-  open System.Reflection
-  let LogaryVersion =
-    Assembly.GetExecutingAssembly().GetName().Version.ToString()

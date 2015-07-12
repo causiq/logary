@@ -11,6 +11,7 @@
 open NodaTime
 
 module DataModel =
+  open System.Net
 
   type ContentType = string
 
@@ -118,23 +119,32 @@ module DataModel =
       sampled      : bool }
 
   type LogContext =
-    { datacenter : string option
+    { datacenter : string
       hostname   : string
       service    : string
-      ns         : string
-      func       : string
+      ns         : string option
+      func       : string option
       file       : string option
-      lineNo     : uint32
+      lineNo     : uint32 option
       envVersion : string
       span       : Span option }
+
+    static member Create(service : string) =
+      { datacenter = "dc1"
+        hostname   = Dns.GetHostName()
+        service    = service
+        ns         = None
+        func       = None
+        file       = None
+        lineNo     = None
+        envVersion = LogaryVersion
+        span       = None }
 
   type PointName = string list
 
   type PointValue =
     /// Value at point in time
-    | Gauge of Value
-    /// A rate, hence is Value per TimeUnit
-    | RateOf of Value * float //seconds
+    | Gauge of Value * Units
     /// Any sort of derived measure
     | Derived of Value * Units
     /// All simple-valued fields' values can be templated into the template string
@@ -196,8 +206,10 @@ module Sample =
   BoundedMb.put mb 42 <|>? timeOutMillis 10 |> run
   BoundedMb.take mb |>>? printfn "Got %A" <|>? timeOutMillis 1 |> run
 
+  let msg = Message.Create([], )
+
   let loggerMb : BoundedMb<Message> = BoundedMb.create 2 |> run
   let targetMb : BoundedMb<Message list> = BoundedMb.create 2 |> run
   let scaleIt = segmentJob (Segments.scale 4.) loggerMb targetMb
 
-  BoundedMb.put loggerMb (
+  BoundedMb.put loggerMb 
