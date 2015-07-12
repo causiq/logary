@@ -1,10 +1,6 @@
 ﻿<Properties StartupItem="FSharp.Actor-logary/src/FSharp.Actor/FSharp.Actor-logary.fsproj">
   <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
-  <MonoDevelop.Ide.Workbench ActiveDocument="targets/Logary.Targets.Logstash/paket.references">
-    <Files>
-      <File FileName="targets/Logary.Targets.Logstash/paket.references" Line="5" Column="8" />
-    </Files>
-  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.Workbench />
   <MonoDevelop.Ide.DebuggingService.Breakpoints>
     <BreakpointStore />
   </MonoDevelop.Ide.DebuggingService.Breakpoints>
@@ -12,5 +8,7 @@
   <DisabledProjects>
     <String>targets/Logary.Targets.Logstash/Logary.Targets.Logstash.fsproj</String>
     <String>tests/Logary.Targets.Logstash.Tests/Logary.Targets.Logstash.Tests.fsproj</String>
+    <String>Logary.WinPerfCounters/Logary.WinPerfCounters.fsproj</String>
+    <String>tests/Logary.WinPerfCounters.Tests/Logary.WinPerfCounters.Tests.fsproj</String>
   </DisabledProjects>
 </Properties>

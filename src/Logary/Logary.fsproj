@@ -40,10 +40,6 @@
       <Paket>True</Paket>
       <Link>paket-files\Chiron.fs</Link>
     </Compile>
-    <Compile Include="WinPerfCounter.fs" />
-    <Compile Include="WinPerfCounters.fs" />
-    <None Include="WinPerfCounterGen.fsx">
-    </None>
     <Compile Include="Prelude.fs" />
     <Compile Include="Lenses.fs" />
     <Compile Include="Named.fs" />
@@ -56,7 +52,6 @@
     <Compile Include="Logger.fs" />
     <Compile Include="Internals_RuntimeInfo.fs" />
     <Compile Include="Metric.fs" />
-    <Compile Include="Metrics_WinPerfCounters.fs" />
     <Compile Include="Metrics_Noop.fs" />
     <Compile Include="HealthCheck.fs" />
     <Compile Include="LogManager.fs" />
@@ -68,7 +63,6 @@
     <Compile Include="Formatting.fs" />
     <Compile Include="Targets_Core.fs" />
     <Compile Include="Targets_Noop.fs" />
-    <Compile Include="Targets_Nimrod.fs" />
     <Compile Include="Targets_Graphite.fs" />
     <Compile Include="Configuration_LogaryConf.fs" />
     <Compile Include="Registry.fs" />
@@ -77,12 +71,12 @@
     <Compile Include="Configuration_ValidationException.fs" />
     <Compile Include="Configuration_Config.fs" />
     <Compile Include="Configuration_FactoryApi.fs" />
-    <Compile Include="Configuration_MetricsDefaults.fs" />
     <None Include="paket.references" />
     <None Include="App.config" />
     <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="DataModel.fs" />
+    <None Include="Playground.fsx" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
