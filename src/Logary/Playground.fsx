@@ -6,6 +6,7 @@
 #I "../../packages/Hopac/lib/net45"
 #r "Hopac.Core.dll"
 #r "Hopac.dll"
+open System
 open Hopac
 open Hopac.Alt.Infixes
 open Hopac.TopLevel
@@ -24,7 +25,7 @@ module Segments =
   let scale scale : Segment =
     let rnd = System.Random()
     let scaleValue = function
-      | DataModel.PointValue.Gauge (value, units) ->
+      | PointValue.Gauge (value, units) ->
         match value with
         | Float f -> Float (scale * f * (rnd.NextDouble())), units
         | x -> x, units
@@ -37,19 +38,18 @@ let segmentJob (seg : Segment) (inp : BoundedMb<_>) (outp : BoundedMb<_>) =
     BoundedMb.take inp |>>? seg >>=? BoundedMb.put outp
   Job.foreverServer proc
 
-let mb : BoundedMb<int> = BoundedMb.create 2 |> run
-BoundedMb.put mb 42 <|>? timeOutMillis 10 |> run
-BoundedMb.take mb |>>? printfn "Got %A" <|>? timeOutMillis 1 |> run
-
+let print xs =
+  let rec fixp = function
+  | [] -> ()
+  | (x : Message) :: xs -> printfn "%A" x.value ; fixp xs
+  fixp xs
 let msg = Message.Create(["cpu_jiffies"], PointValue.Gauge(Value.Float 56., Units.Div(BaseUnit.Metre, BaseUnit.Second)))
 
 let loggerMb : BoundedMb<Message> = BoundedMb.create 1 |> run
 let targetMb : BoundedMb<Message list> = BoundedMb.create 1 |> run
 
-let scaleSegment = segmentJob (Segments.scale 4.) loggerMb targetMb
-run scaleSegment
+segmentJob (Segments.scale 4.) loggerMb targetMb |> run
 
 BoundedMb.put loggerMb msg <|>? timeOutMillis 10 |> run
-let msgs = BoundedMb.take targetMb
-           <|>? (timeOutMillis 1 |>>? (fun () -> []))
-           |> run
+
+BoundedMb.take targetMb <|>? (timeOutMillis 1 |>>? (fun () -> [])) |> run |> print
