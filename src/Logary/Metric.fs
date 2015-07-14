@@ -158,12 +158,12 @@ module Reservoir =
       if size s = 0 then
         0.
       else
-        let pos = q * float (s.values.Length + 1)
+        let pos = q * float (size s + 1)
         match pos with
         | _ when pos < 1. ->
           float s.values.[0]
-        | _ when pos >= float s.values.Length ->
-          float s.values.[s.values.Length - 1]
+        | _ when pos >= float (size s) ->
+          float s.values.[size s - 1]
         | _ ->
           let lower = s.values.[int pos - 1]
           let upper = s.values.[int pos]
@@ -345,3 +345,17 @@ module Reservoir =
     let rate (timeUnit : TimeUnit) state =
       // we know rate is in samples per tick
       state.rate * (TimeUnit.ticksPerUnit timeUnit)
+
+    (* This type is monoidal, since it can't use `mappend:a->a->a`, but needs
+       mappend: a -> b -> a
+       so that it can be used in a fold
+    type Event =
+      | Tick
+      | Update of int64
+
+    let monOneMinuteEWMA =
+      { new Monoid<_>() with
+          member x.Zero () = create M1Alpha
+          member x.Combine(a, b) =
+            match a with Tick -> tick b | Update v -> update b v }
+    *)
