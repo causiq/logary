@@ -22,7 +22,7 @@ nuget log4net
 nuget loggr-dotnet
 nuget Machine.Specifications
 nuget Machine.Specifications.Should
-nuget Newtonsoft.Json
+nuget Newtonsoft.Json ~> 6
 nuget NLog
 nuget NodaTime
 nuget NUnit
