@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env fsharpi
+#!/usr/bin/env MONO_GC_DEBUG=nursery-canaries MONO_OPTIONS=-O=-aot fsharpi
 #I "bin/Debug"
 #r "FSharp.Actor.dll"
 #r "Logary.dll"
@@ -9,8 +9,6 @@
 #r "FsMachines.dll"
 open System
 open Hopac
-open Hopac.Alt.Infixes
-open Hopac.TopLevel
 
 // see https://github.com/arnolddevos/FlowLib/blob/master/src/main/scala/flowlib/Monitored.scala
 
@@ -34,40 +32,21 @@ let reducer (zero : 'State) apply isReduced complete =
       member x.complete state = complete (state :?> 'State) }
 
 let reducerf (zero : 'R) (apply : 'R -> 'A -> Context<'R>) =
-  { new Reducer<'A, 'R, 'R> with
-      member x.zero = zero
-      member x.apply state a = apply state a
+  { new ReducerT<'A, 'R> with
+      member x.zero = box zero
+      member x.apply state a = apply (state :?> 'R) a |> mapContext id
       member x.isReduced state = false
-      member x.complete state = state }
-
-type Educed<'XS> = (obj * 'XS) option
-
-type Educers = Educers with
-  // typeclass Educer<'R<_>> =
-  //   abstract step<'A> : 'R<'A> -> Educed<'A, 'R<'A>>
-
-  static member inline Step (xs : _ list) : Educed<_ list> =
-    match xs with
-    | []      -> None
-    | x :: xs -> Some (box x, xs)
-
-  static member inline Step (xs : _ seq) : Educed<_ seq> =
-    match xs with
-    | xs when Seq.isEmpty xs -> None
-    | xs -> Some (box (Seq.head xs), Seq.skip 1 xs)
-
-  static member inline Step (xs : System.Collections.IEnumerator) : Educed<_> =
-    if xs.MoveNext() then
-
-  static member inline Step (mx : _ option) : Educed<_ option> =
-    mx
-    |> Option.bind (fun x -> Some (box x, None))
+      member x.complete state = state :?> 'R }
 
 type Transducer<'A, 'B> =
   abstract apply<'R> : ReducerT<'A, 'R> -> ReducerT<'B, 'R>
 
-// def transduce[R[_]:Educible, A, B, S](r: R[A], t: Transducer[B, A], f: Reducer[B, S]): Context[S] = 
-//    educe(r, t(f))
+let compose (tb : Transducer<_, _>) (ta : Transducer<_, _>) =
+  { new Transducer<'C, 'B> with
+      member x.apply fc = tb.apply (ta.apply fc)  }
+
+let (<.<) tb ta = compose ta tb
+let (>.>) ta tb = compose ta tb
 
 type Cat<'A>() =
   interface Transducer<'A, 'A> with
@@ -116,14 +95,7 @@ type Take<'A>(n) =
 let take n : Transducer<_, _> =
   upcast Take n
 
-let inline internal stepDefaults (a: ^a, _: ^b) =
-  ((^a or ^b) : (static member Step : ^a -> Educed< ^a>) a)
-
-let inline internal step (x : 'a) : Educed<'a> =
-  stepDefaults (x, Educers)
-
-// like xlist
-let inline educe (xs : _ seq) (r : Reducer<'A, 'R, 'State>) : Context<'R> =
+let inline educe (r : Reducer<'A, 'R, 'State>) (xs : _ seq) : Context<'R> =
   use e = xs.GetEnumerator()
   let rec loop (state : 'State) : Context<'R> =
     if r.isReduced state then
@@ -135,4 +107,15 @@ let inline educe (xs : _ seq) (r : Reducer<'A, 'R, 'State>) : Context<'R> =
         r.complete state |> inContext
   loop r.zero
 
-educe [ 1; 2; 3 ] (reducerf 0 (fun acc x -> acc + x |> inContext))
+// educe (reducerf 0 (fun acc x -> acc + x |> inContext)) [ 1; 2; 3 ] |> run
+
+module List =
+  let consReducer _ : ReducerT<'A, 'A list> =
+    reducerf [] (fun xs x -> x :: xs |> inContext)
+
+  let transduce (tr : Transducer<_, _>) =
+    educe (tr.apply (consReducer ()))
+
+let tf = take 2UL >.> map (fun x -> x * 4)
+
+printfn "%A" (List.transduce tf [ 1; 2; 3 ] |> run)
