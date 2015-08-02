@@ -80,6 +80,8 @@
     <Compile Include="DataModel.fs" />
     <None Include="Playground.fsx" />
     <None Include="paket.references" />
+    <None Include="Script.fsx" />
+    <None Include="ScriptTr2.fsx" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />

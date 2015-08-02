@@ -11,79 +11,128 @@ open System
 open Hopac
 open Hopac.Alt.Infixes
 open Hopac.TopLevel
-open Logary
-open Logary.DataModel
-open Logary.Metric.Reservoir
 
-// use case: pipeline of input mb, fn that changes the name, output mb
-// arity(Message 
-type Segment = Message -> Message list
+// see https://github.com/arnolddevos/FlowLib/blob/master/src/main/scala/flowlib/Monitored.scala
 
-/// sample segments you can tie together to scale/calculate
-module Segments =
-  let changeName toSomething : Segment =
-    fun m -> { m with Message.name = toSomething } :: []
+type Context<'T> = Job<'T>
+let inContext x = Job.result x
+let mapContext f m = Job.map (f >> box) m
 
-  let scale scale : Segment =
-    let rnd = System.Random()
-    let scaleValue = function
-      | PointValue.Gauge (value, units) ->
-        match value with
-        | Float f -> Float (scale * f * (rnd.NextDouble())), units
-        | x -> x, units
-        |> DataModel.PointValue.Gauge
-      | x -> x
-    fun m -> { m with Message.value = scaleValue m.value } :: []
+type Reducer<'A, 'R, 'State> =
+  abstract zero      : 'State
+  abstract apply     : 'State -> 'A -> Context<'State>
+  abstract isReduced : 'State -> bool
+  abstract complete  : 'State -> 'R
 
-let segmentJob (seg : Segment) (inp : BoundedMb<_>) (outp : BoundedMb<_>) =
-  let proc = Job.delay <| fun () ->
-    BoundedMb.take inp |>>? seg >>=? BoundedMb.put outp
-  Job.foreverServer proc
+type ReducerT<'A, 'R> = Reducer<'A, 'R, obj>
 
-let print xs =
-  let rec fixp = function
-  | [] -> ()
-  | (x : Message) :: xs -> printfn "%A" x.value ; fixp xs
-  fixp xs
+let reducer (zero : 'State) apply isReduced complete =
+  { new Reducer<_, _, obj> with
+      member x.zero = box zero
+      member x.apply state a = apply (state :?> 'State) a
+      member x.isReduced state = isReduced (state :?> 'State)
+      member x.complete state = complete (state :?> 'State) }
 
-let msg = Message.Create(["cpu_jiffies"], PointValue.Gauge(Value.Float 56., Units.Div(BaseUnit.Metre, BaseUnit.Second)))
+let reducerf (zero : 'R) (apply : 'R -> 'A -> Context<'R>) =
+  { new Reducer<'A, 'R, 'R> with
+      member x.zero = zero
+      member x.apply state a = apply state a
+      member x.isReduced state = false
+      member x.complete state = state }
 
-let loggerMb : BoundedMb<Message> = BoundedMb.create 1 |> run
-let targetMb : BoundedMb<Message list> = BoundedMb.create 1 |> run
+type Educed<'XS> = (obj * 'XS) option
 
-segmentJob (Segments.scale 4.) loggerMb targetMb |> run
+type Educers = Educers with
+  // typeclass Educer<'R<_>> =
+  //   abstract step<'A> : 'R<'A> -> Educed<'A, 'R<'A>>
 
-// BoundedMb.put loggerMb msg <|>? timeOutMillis 10 |> run
-// BoundedMb.take targetMb <|>? (timeOutMillis 1 |>>? (fun () -> [])) |> run |> print
+  static member inline Step (xs : _ list) : Educed<_ list> =
+    match xs with
+    | []      -> None
+    | x :: xs -> Some (box x, xs)
 
-let mapping : ('a -> 'b) -> ('r -> 'b -> 'r) -> ('r -> 'a -> 'r) =
-  fun f red1 ->
-    fun state item ->
-      red1 state (f item)
+  static member inline Step (xs : _ seq) : Educed<_ seq> =
+    match xs with
+    | xs when Seq.isEmpty xs -> None
+    | xs -> Some (box (Seq.head xs), Seq.skip 1 xs)
 
-let filtering : ('a -> bool) -> ('r -> 'a -> 'r) -> ('r -> 'a -> 'r) =
-  fun p xf r a -> if p a then xf r a else r
+  static member inline Step (xs : System.Collections.IEnumerator) : Educed<_> =
+    if xs.MoveNext() then
 
-let flatmapping : ('a -> 'b list) -> ('r -> 'b -> 'r) -> ('r -> 'a -> 'r) =
-  fun f xf r a -> List.fold xf r (f a)
+  static member inline Step (mx : _ option) : Educed<_ option> =
+    mx
+    |> Option.bind (fun x -> Some (box x, None))
 
-let conjRed xs x = xs @ [x]
+type Transducer<'A, 'B> =
+  abstract apply<'R> : ReducerT<'A, 'R> -> ReducerT<'B, 'R>
 
-let xlist (tr : ('r -> 'b -> 'r) -> ('r -> 'a -> 'r)) =
-  List.fold (tr conjRed) []
+// def transduce[R[_]:Educible, A, B, S](r: R[A], t: Transducer[B, A], f: Reducer[B, S]): Context[S] = 
+//    educe(r, t(f))
 
-let xmap : ('a -> 'b) -> 'a list -> 'b list =
-  fun f -> xlist <| mapping f
+type Cat<'A>() =
+  interface Transducer<'A, 'A> with
+    member x.apply r = r
 
-let xfilter : ('a -> bool) -> 'a list -> 'a list =
-  fun p -> xlist <| filtering p
+let cat () : Transducer<'A, 'A> = upcast Cat ()
 
-let xflatmap : ('a -> 'b list) -> 'a list -> 'b list =
-  fun f -> xlist <| flatmapping f
+/// This helper performs the basic transformation for a stateless transducer.
+type Proxy<'A, 'B, 'R, 'State>(f : Reducer<'A, 'R, 'State>,
+                               g : 'State -> 'B -> Context<'State>) =
+  interface Reducer<'B, 'R, 'State> with
+    member x.zero = f.zero
+    member x.apply state b = g state b
+    member x.isReduced state = f.isReduced state
+    member x.complete state = f.complete state
 
-// transducer
-let xform (r1 : ('r -> int -> 'r)) : ('r -> int -> 'r) =
-  mapping ((+) 1) r1 // << filtering (fun x -> x % 2 = 0) << flatmapping (fun x -> printfn "fm: %A" x ; [0 .. x])
+let proxy f g : Reducer<_, _, _> =
+  upcast Proxy (f, g)
 
-//printfn "%A" <| xlist xform [1..5]
-printfn "%A" <| xlist (mapping ((+) 1) << filtering (fun x -> x % 2 = 0) << flatmapping (fun x -> printfn "fm: %A" x ; [0 .. x])) [1..5]
+/// Fundamental Mapping transducer
+let map f =
+  { new Transducer<'A, 'B> with
+      member x.apply r =
+        proxy r <| fun state b ->
+          r.apply state (f b)
+  }
+
+let filter pred =
+  { new Transducer<'A, 'A> with
+      member x.apply r =
+        proxy r <| fun state a ->
+          if pred a then r.apply state a else inContext state
+  }
+
+let remove pred = filter (pred >> not)
+
+type Take<'A>(n) =
+  interface Transducer<'A, 'A> with
+    member x.apply (r : ReducerT<'A, 'R>) =
+      reducer (r.zero, n)
+              (fun (so, counter) a ->
+                mapContext (fun so' -> so', counter - 1UL) (r.apply so a))
+              (fun (so, counter) -> counter = 0UL || r.isReduced so)
+              (fun (so, counter) -> r.complete so)
+
+let take n : Transducer<_, _> =
+  upcast Take n
+
+let inline internal stepDefaults (a: ^a, _: ^b) =
+  ((^a or ^b) : (static member Step : ^a -> Educed< ^a>) a)
+
+let inline internal step (x : 'a) : Educed<'a> =
+  stepDefaults (x, Educers)
+
+// like xlist
+let inline educe (xs : _ seq) (r : Reducer<'A, 'R, 'State>) : Context<'R> =
+  use e = xs.GetEnumerator()
+  let rec loop (state : 'State) : Context<'R> =
+    if r.isReduced state then
+      r.complete state |> inContext
+    else
+      if e.MoveNext() then
+        r.apply state e.Current |> Job.bind loop
+      else
+        r.complete state |> inContext
+  loop r.zero
+
+educe [ 1; 2; 3 ] (reducerf 0 (fun acc x -> acc + x |> inContext))
