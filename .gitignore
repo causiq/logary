@@ -18,3 +18,4 @@ Logary.userprefs
 .DS_Store
 App_Readme/
 paket-files/
+*.userprefs
