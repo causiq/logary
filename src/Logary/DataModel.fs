@@ -139,7 +139,7 @@ module DataModel =
     | Derived of Value * Units
     /// All simple-valued fields' values can be templated into the template string
     /// when outputting the value in the target.
-    | LogLine of template:string
+    | Event of name:string * templateDescription:string
 
   type Field =
     { name  : PointName
@@ -153,11 +153,13 @@ type Message =
     value     : PointValue
     fields    : Field list
     context   : LogContext
+    level     : LogLevel
     timestamp : int64 }
 
   static member Create(name, value, ?fields, ?context, ?timestamp) =
-    { name = name
-      value = value
-      fields = defaultArg fields []
-      context = defaultArg context (LogContext.Create("tests"))
+    { name      = name
+      value     = value
+      fields    = defaultArg fields []
+      context   = defaultArg context (LogContext.Create("tests"))
+      level     = Debug
       timestamp = defaultArg timestamp 0L }
