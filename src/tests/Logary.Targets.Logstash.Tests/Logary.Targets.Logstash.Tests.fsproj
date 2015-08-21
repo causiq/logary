@@ -39,7 +39,7 @@
   <ItemGroup>
     <Compile Include="LogstashTarget.fs" />
   </ItemGroup>
-  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.1\Framework\v4.0\Microsoft.FSharp.Targets" />
+  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>
     <ProjectReference Include="..\..\targets\Logary.Targets.Logstash\Logary.Targets.Logstash.fsproj">
       <Project>{F9AAC195-D3F7-4160-A829-5F9775791AD5}</Project>

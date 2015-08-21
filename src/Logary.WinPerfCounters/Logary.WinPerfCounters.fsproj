@@ -44,7 +44,7 @@
     <Compile Include="HealthCheck.WinPerfCounters.fs" />
     <Compile Include="Metrics.WinPerfCounters.fs" />
   </ItemGroup>
-  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.1\Framework\v4.0\Microsoft.FSharp.Targets" />
+  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>
     <None Include="WinPerfCounterGen.fsx" />
   </ItemGroup>

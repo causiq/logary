@@ -1,3 +1,4 @@
+framework: net45
 source https://www.nuget.org/api/v2
 
 nuget Chiron
@@ -23,6 +24,7 @@ nuget log4net
 nuget loggr-dotnet
 nuget Machine.Specifications
 nuget Machine.Specifications.Should
+nuget Newtonsoft.Json ~> 6
 nuget NLog
 nuget NodaTime
 nuget NUnit

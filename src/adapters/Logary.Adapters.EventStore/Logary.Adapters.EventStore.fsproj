@@ -46,7 +46,7 @@
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="EventStore.Logary.fs" />
   </ItemGroup>
-  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.1\Framework\v4.0\Microsoft.FSharp.Targets" />
+  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>
     <None Include="paket.references" />
   </ItemGroup>
@@ -57,7 +57,7 @@
     </ProjectReference>
   </ItemGroup>
   <Choose>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6')) Or ($(TargetFrameworkIdentifier) == 'MonoAndroid') Or ($(TargetFrameworkIdentifier) == 'MonoTouch')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
         <Reference Include="EventStore.ClientAPI">
           <HintPath>..\..\..\packages\EventStore.Client.PreRelease\lib\net45\EventStore.ClientAPI.dll</HintPath>
