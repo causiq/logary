@@ -4,19 +4,13 @@ open System
 open System.Data
 open System.Data.SqlClient
 open System.Net
-
 open NodaTime
-
 open Topshelf
-
 open Logary
 open Logary.Targets
 open Logary.Configuration
-
 open Logary.Metrics
-
 open Nessos.UnionArgParser
-
 open SQLServerIOInfo
 
 exception RiemannServerNotFound of System.Net.Sockets.SocketException * string

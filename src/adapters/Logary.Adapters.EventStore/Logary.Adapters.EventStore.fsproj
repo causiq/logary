@@ -61,7 +61,29 @@
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
         <Reference Include="EventStore.ClientAPI">
-          <HintPath>..\..\..\packages\EventStore.Client.PreRelease\lib\net45\EventStore.ClientAPI.dll</HintPath>
+          <HintPath>..\..\..\packages\EventStore.Client.PreRelease\lib\net40\EventStore.ClientAPI.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
+        <Reference Include="Newtonsoft.Json">
+          <HintPath>..\..\..\packages\Newtonsoft.Json\lib\net45\Newtonsoft.Json.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
+        <Reference Include="protobuf-net">
+          <HintPath>..\..\..\packages\protobuf-net\lib\net40\protobuf-net.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
