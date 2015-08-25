@@ -139,27 +139,38 @@ module DataModel =
     | Derived of Value * Units
     /// All simple-valued fields' values can be templated into the template string
     /// when outputting the value in the target.
-    | Event of name:string * templateDescription:string
+    | Event of template:string
 
   type Field =
-    { name  : PointName
-      unit  : Units
-      value : ComplexValue }
+    { value : ComplexValue 
+      unit  : Units option }
 
 open DataModel
 
 type Message =
   { name      : PointName
     value     : PointValue
-    fields    : Field list
+
+    /// basically the data
+    fields    : Map<PointName, Field>
+
+    /// the principal/actor/user/tenant/act-as/oauth-id data
+    session   : Map<PointName, Field> 
+
+    /// where in the code?
     context   : LogContext
+
+    /// what urgency?
     level     : LogLevel
+
+    /// when?
     timestamp : int64 }
 
-  static member Create(name, value, ?fields, ?context, ?timestamp) =
+  static member Create(name, value, ?fields, ?session, ?context, ?timestamp) =
     { name      = name
       value     = value
-      fields    = defaultArg fields []
+      fields    = defaultArg fields Map.empty
+      session   = defaultArg session Map.empty
       context   = defaultArg context (LogContext.Create("tests"))
       level     = Debug
       timestamp = defaultArg timestamp 0L }
