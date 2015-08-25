@@ -92,32 +92,34 @@ let parse args =
 let main args =
   let period, appconf, riemann = parse args
   let logary = ref None
-  with_topshelf <| fun conf ->
-    run_as_network_service conf
-    naming_from_this_asm conf
-    with_recovery conf (restart (TimeSpan.FromSeconds 20.))
-    service conf <| fun _ ->
-      { new ServiceControl with
-          member x.Start hc =
-            logary :=
-              withLogary' "Logary.SQLServerHealth" (
-                withTargets [
-                  Console.create Console.empty "console"
-                  Riemann.create (Riemann.RiemannConf.Create(endpoint = riemann))
-                    "riemann"
-                ] >>
-                withRules [
-                  Rule.createForTarget "console"
-                  Rule.createForTarget "riemann"
-                ] >>
-                withMetrics (Duration.FromSeconds 10L) [
-                  SQLServerIOInfo.create appconf "sql_server_io_info" period
-                ])
-              |> Some
-            true
-          member x.Stop hc =
-            match !logary with
-            | None -> ()
-            | Some l -> l.Dispose()
-            true
-      }
+
+  let start hc =
+    logary :=
+      withLogary' "Logary.SQLServerHealth" (
+        withTargets [
+          Console.create Console.empty "console"
+          Riemann.create (Riemann.RiemannConf.Create(endpoint = riemann))
+            "riemann"
+        ] >>
+        withRules [
+          Rule.createForTarget "console"
+          Rule.createForTarget "riemann"
+        ] >>
+        withMetrics (Duration.FromSeconds 10L) [
+          SQLServerIOInfo.create appconf "sql_server_io_info" period
+        ])
+      |> Some
+    true
+
+  let stop hc =
+    match !logary with
+    | None -> ()
+    | Some l -> l.Dispose()
+    true
+
+  Service.Default
+  |> with_start start
+  |> run_as_network_service
+  |> naming_from_this_asm
+  |> with_recovery (ServiceRecovery.Default |> restart (TimeSpan.FromSeconds 20.))
+  |> run
