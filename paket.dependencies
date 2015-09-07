@@ -1,3 +1,4 @@
+framework: net45
 source https://www.nuget.org/api/v2
 
 nuget Chiron
@@ -38,3 +39,4 @@ nuget Hawk
 
 github xyncro/chiron src/Chiron/Chiron.fs
 github xyncro/aether src/Aether/Aether.fs
+github haf/YoLo YoLo.fs
