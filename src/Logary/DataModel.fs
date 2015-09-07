@@ -8,8 +8,8 @@ type ContentType = string
 
 type Value =
   | String of string
-  | Bool of bool // NOTE: new
-  | Float of decimal // NOTE: changed from float
+  | Bool of bool
+  | Float of decimal
   | Int64 of int64
   | BigInt of bigint
   | Binary of byte [] * ContentType
