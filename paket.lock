@@ -76,4 +76,7 @@ GITHUB
     src/Chiron/Chiron.fs (b446507de62ecd18ac1d24361a773d17b897d1d2)
   remote: xyncro/aether
   specs:
-    src/Aether/Aether.fs (d87e627e2124bc7297ef65929793a99a21795244)
+    src/Aether/Aether.fs (de800e5a05e52a5a3ff4712b425f9341f1d22d15)
+  remote: haf/YoLo
+  specs:
+    YoLo.fs (158bb37b834df6dba87a07df941a5db0eebf4a67)

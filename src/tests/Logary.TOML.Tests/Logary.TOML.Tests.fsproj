@@ -1,62 +1,65 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{EDE8A833-C15D-47FE-BFF2-0A24FAA22728}</ProjectGuid>
+    <ProjectGuid>{CBFFFAEE-B183-4D0D-BBB1-FFFB6921F9DE}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>Logary.Targets.Heka.Tests</RootNamespace>
-    <AssemblyName>Logary.Targets.Heka.Tests</AssemblyName>
+    <RootNamespace>Logary.TOML.Tests</RootNamespace>
+    <AssemblyName>Logary.TOML.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug</OutputPath>
-    <DefineConstants>DEBUG</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <PlatformTarget>
-    </PlatformTarget>
-    <ConsolePause>false</ConsolePause>
+    <Tailcalls>false</Tailcalls>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <WarningLevel>3</WarningLevel>
+    <DocumentationFile>bin\Debug\Logary.TOML.Tests.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugSymbols>false</DebugSymbols>
+    <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release</OutputPath>
-    <ErrorReport>prompt</ErrorReport>
-    <Externalconsole>true</Externalconsole>
-    <GenerateTailCalls>true</GenerateTailCalls>
-    <PlatformTarget>
-    </PlatformTarget>
-    <DefineConstants>
-    </DefineConstants>
+    <Tailcalls>true</Tailcalls>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <WarningLevel>3</WarningLevel>
+    <DocumentationFile>bin\Release\Logary.TOML.Tests.xml</DocumentationFile>
+    <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
+  <PropertyGroup>
+    <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
+  </PropertyGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.1\Framework\v4.0\Microsoft.FSharp.Targets" />
+  <ItemGroup>
+    <Compile Include="ParseLogaryConfig.fs" />
+    <Compile Include="Parsing.fs" />
+    <Compile Include="AssemblyVersionInfo.fs" />
+    <Compile Include="Program.fs" />
+    <None Include="app.config" />
+    <None Include="paket.references" />
+  </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
+    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AssemblyVersionInfo.fs" />
-    <Compile Include="Program.fs" />
-  </ItemGroup>
-  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
-  <ItemGroup>
-    <None Include="paket.references" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\targets\Logary.Targets.Heka\Logary.Targets.Heka.fsproj">
-      <Project>{BC4A5F70-0785-40D6-9EBE-4BB0E47A9EEC}</Project>
-      <Name>Logary.Targets.Heka</Name>
-    </ProjectReference>
     <ProjectReference Include="..\..\Logary\Logary.fsproj">
       <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
       <Name>Logary</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\FSharp.Actor-logary\src\FSharp.Actor\FSharp.Actor-logary.fsproj">
-      <Project>{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}</Project>
-      <Name>FSharp.Actor-logary</Name>
+    <ProjectReference Include="..\..\Logary.TOML\Logary.TOML.fsproj">
+      <Project>{721781BE-0632-480C-98D9-7341C7BC04D9}</Project>
+      <Name>Logary.TOML</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\targets\Logary.Targets.Riemann\Logary.Targets.Riemann.fsproj">
+      <Project>{CC87925C-E4F2-4386-A322-8BC088DE7B33}</Project>
+      <Name>Logary.Targets.Riemann</Name>
     </ProjectReference>
   </ItemGroup>
   <Choose>
@@ -86,20 +89,6 @@
       <ItemGroup>
         <Reference Include="NodaTime">
           <HintPath>..\..\..\packages\NodaTime\lib\net35-Client\NodaTime.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="System.Xml">
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <ItemGroup>
-        <Reference Include="protobuf-net">
-          <HintPath>..\..\..\packages\protobuf-net\lib\net40\protobuf-net.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>

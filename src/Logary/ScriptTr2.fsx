@@ -27,7 +27,7 @@ let xflatmap : ('a -> 'b list) -> 'a list -> 'b list =
 let xform (r1 : ('r -> int -> 'r)) : ('r -> int -> 'r) =
   mapping ((+) 1) r1 // << filtering (fun x -> x % 2 = 0) << flatmapping (fun x -> printfn "fm: %A" x ; [0 .. x])
 
-//printfn "%A" <| xlist xform [1..5]
+printfn "%A" <| xlist xform [1..5]
 printfn "%A" <| xlist (mapping ((+) 1) << filtering (fun x -> x % 2 = 0) << flatmapping (fun x -> printfn "fm: %A" x ; [0 .. x])) [1..5]
 
 

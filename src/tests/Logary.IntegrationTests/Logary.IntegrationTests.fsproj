@@ -112,11 +112,4 @@
       </ItemGroup>
     </When>
   </Choose>
-  <ItemGroup>
-    <Reference Include="Fuchu">
-      <HintPath>..\..\..\packages\Fuchu\lib\Fuchu.dll</HintPath>
-      <Private>True</Private>
-      <Paket>True</Paket>
-    </Reference>
-  </ItemGroup>
 </Project>
