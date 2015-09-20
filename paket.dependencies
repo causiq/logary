@@ -15,7 +15,7 @@ nuget FluentMigrator < 1.5
 nuget FluentMigrator.Runner < 1.5
 nuget FParsec
 nuget FsCheck 0.9.2.0
-nuget FSharp.Core ~> 3.1.2
+nuget FSharp.Core
 nuget FsSql
 nuget FsUnit
 nuget Fuchu

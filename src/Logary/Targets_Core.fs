@@ -46,14 +46,10 @@ module TextWriter =
           let wl (tw : TextWriter) = (tw.WriteLine : string -> unit)
           let! msg, mopt = inbox.Receive()
           match msg with
+          | Measure l
           | Log l ->
             let tw = if l.level < cutOff then out else err
             wl tw (formatter.format l)
-            do (if flush then tw.Flush() else ())
-            return! loop ()
-          | Measure m ->
-            let tw = if m.m_level < cutOff then out else err
-            wl tw (formatter.m_format m)
             do (if flush then tw.Flush() else ())
             return! loop ()
           | Flush chan ->

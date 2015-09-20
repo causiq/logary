@@ -17,7 +17,7 @@ open Logary.Metric
 open Logary.Registry
 open Logary.Targets
 
-let private shutdownLogger<'a when 'a :> Logger> : 'a -> unit = box >> function
+let private shutdownLogger<'a when 'a :> MessageLogger> : 'a -> unit = box >> function
   | :? System.IDisposable as d -> d.Dispose()
   | _ -> ()
 
@@ -147,8 +147,8 @@ let runLogary conf =
 [<CompiledName "ShutdownLogary">]
 let shutdown' (flushDur : Duration) (shutdownDur : Duration)
   ({ registry = reg; metadata = { logger = lgr } } : LogaryInstance)
-  = 
-  let log = LogLine.setPath "Logary.Configuration.Config.shutdown" >> Logger.log lgr
+  =
+  let log = Message.setPath "Logary.Configuration.Config.shutdown" >> MessageLogger.log lgr
   async {
   LogLine.info "start shutdown" |> log
   let! res = Advanced.flushAndShutdown flushDur shutdownDur reg

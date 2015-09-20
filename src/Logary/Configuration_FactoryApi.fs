@@ -32,7 +32,7 @@ with
       :> TargetConfBuild<'T>
 
     member x.AcceptIf acceptor =
-      { x with tr = { x.tr with Rule.lineFilter = acceptor.Invoke } }
+      { x with tr = { x.tr with Rule.messageFilter = acceptor.Invoke } }
       :> TargetConfBuild<'T>
 
     member x.Target = x.tcSpecific.Value

@@ -48,8 +48,9 @@
       <Link>paket-files\Chiron.fs</Link>
     </Compile>
     <Compile Include="Lenses.fs" />
-    <Compile Include="Named.fs" />
     <Compile Include="LogLevel.fs" />
+    <Compile Include="DataModel.fs" />
+    <Compile Include="Named.fs" />
     <Compile Include="Internals.fs" />
     <Compile Include="Internals_Deprecated.fs" />
     <Compile Include="Scheduling.fs" />
@@ -80,7 +81,6 @@
     <None Include="App.config" />
     <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="DataModel.fs" />
     <None Include="Playground.fsx" />
     <None Include="paket.references" />
     <None Include="Script.fsx" />

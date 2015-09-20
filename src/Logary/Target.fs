@@ -9,14 +9,15 @@ open System.Text.RegularExpressions
 
 open FSharp.Actor
 
+open Logary.DataModel
 open Logary.Internals
 
 /// The protocol that a target can speak
 type TargetMessage =
   /// Log this log line!
-  | Log            of LogLine
+  | Log            of Message
   /// Log this metric!
-  | Measure        of Measure
+  | Measure        of Message
   /// Flush log lines/metrics! Also, reply when you're done flushing
   /// your queue.
   | Flush          of Acks FSharp.Actor.Types.ReplyChannel
@@ -161,7 +162,7 @@ module FactoryApi =
     /// The function to call for every log line, to verify
     /// whether to let it through
     /// </param>
-    abstract member AcceptIf : Func<LogLine, bool> -> TargetConfBuild<'T>
+    abstract member AcceptIf : Func<Message, bool> -> TargetConfBuild<'T>
 
   /// All SpecificTargetConf implementors should take this as their single argument
   /// ctor, to go back into the parent context

@@ -4,6 +4,7 @@ open System
 open System.Text.RegularExpressions
 
 open Logary
+open Logary.DataModel
 open Logary.Internals
 
 /// This is the accept filter that is before the log line is passed to the logger
@@ -13,6 +14,10 @@ type LineFilter = LogLine -> bool
 /// This is the accept filter that is before the measure is passed to the logger
 /// instance.
 type MeasureFilter = Measure -> bool
+
+/// This is the accept filter that is before the message is passed to the logger
+/// TODO: everything
+type MessageFilter = Message -> bool
 
 /// A rule specifies what log lines and metrics a target should accept.
 [<CustomEquality; CustomComparison>]
@@ -26,10 +31,11 @@ type Rule =
     level         : LogLevel
     /// This is the accept filter that is before the log line is passed to the logger
     /// instance.
-    lineFilter    : LineFilter
+    //lineFilter    : LineFilter
     /// This is the accept filter that is before the measure is passed to the logger
     /// instance.
-    measureFilter : MeasureFilter }
+    //measureFilter : MeasureFilter
+    messageFilter : MessageFilter}
 
   override x.GetHashCode () =
     hash (x.hiera.ToString(), x.target, x.level)
@@ -45,7 +51,7 @@ type Rule =
       r.hiera.ToString() = x.hiera.ToString()
       && r.target = x.target
       && r.level = x.level
-      
+
   interface System.IComparable with
     member x.CompareTo yobj =
       match yobj with
@@ -83,8 +89,7 @@ module Rule =
   let empty =
     { hiera         = allHiera
       target        = ""
-      lineFilter    = fun _ -> true
-      measureFilter = fun _ -> true
+      messageFilter = fun _ -> true
       level         = Verbose }
 
   let setHiera (regex : Regex) (r : Rule) =
@@ -96,11 +101,8 @@ module Rule =
   let setTarget (target : string) (r : Rule) =
     { r with target = target }
 
-  let setLineFilter (lf : _ -> _) (r : Rule) =
-    { r with lineFilter = lf }
-
-  let setMeasureFilter (mf : _ -> _) (r : Rule) =
-    { r with measureFilter = mf }
+  let setMessageFilter (mf : _ -> _) (r : Rule) =
+    { r with messageFilter = mf }
 
   let setLevel (l : LogLevel) (r : Rule) =
     { r with level = l }
@@ -112,14 +114,13 @@ module Rule =
 
   /// Create a new rule with the given hiera, target, accept function and min level
   /// acceptable.
-  let create hiera target lineFilter measureFilter level =
+  let create hiera target messageFilter level =
     { hiera         = hiera
       target        = target
-      lineFilter    = lineFilter
-      measureFilter = measureFilter
+      messageFilter    = messageFilter
       level         = level }
 
   // C# interop
   [<CompiledName "Create">]
-  let create' (hiera, target, lineFilter : Func<_, _>, measureFilter : Func<_, _>, level) =
-    create hiera target lineFilter.Invoke measureFilter.Invoke level
+  let create' (hiera, target, messageFilter : Func<_, _>, level) =
+    create hiera target messageFilter.Invoke level

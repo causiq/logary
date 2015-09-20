@@ -1,6 +1,7 @@
 namespace Logary.DataModel
 
 open System
+open Logary
 open Logary.Utils.Aether
 open Logary.Utils.Aether.Operators
 
@@ -126,7 +127,7 @@ module Capture =
   [<RequireQualifiedAccess>]
   module Value =
 
-    let inline init (a: 'a) : Value<'a> = 
+    let inline init (a: 'a) : Value<'a> =
       fun value ->
         ValueResult a, value
 
@@ -161,7 +162,7 @@ module Capture =
    Symbolic operators for working with Value<'a> functions, providing
    an operator based concise alternative to the primitive Json<'a> combinators
    given as part of Functional.
-   
+
    This module is not opened by default, as symbolic operators are a matter
    of taste and may also clash with other operators from other libraries. *)
 
@@ -247,7 +248,7 @@ module Mapping =
   open Operators
 
   (* To
-  
+
       *)
 
   (* Defaults *)
@@ -293,7 +294,7 @@ module Mapping =
 
     static member inline ToValue (x: DateTime) =
       Value.setLensPartial Value.StringPLens (x.ToUniversalTime().ToString("o"))
-    
+
     static member inline ToValue (x: DateTimeOffset) =
       Value.setLensPartial Value.StringPLens (x.ToString("o"))
 
@@ -427,7 +428,7 @@ module Units =
   let doScale (fFactor : float -> int64) (scaledUnits : string list) =
     fun (decimals : uint16) (scaledDecimals : uint16) (value : float) ->
       (value : float), "KiB"
-        
+
   let scale units : uint16 -> uint16 -> float -> float*string =
     match units with
     | Bits -> (fun _ -> 1000L), ["b"; "Kib"; "Mib"; "Gib"; "Tib"; "Pib"; "Eib"; "Zib"; "Yib"]
@@ -441,7 +442,7 @@ module Units =
       let value, prefix = scale un 3us 3us v
       //let value = formatValue value
       sprintf "%s %f" prefix value
-    | Suffix -> 
+    | Suffix ->
       let value, suffix = scale un 3us 3us v
       sprintf "%f %s" value suffix
 
@@ -478,7 +479,7 @@ type PointValue =
   | Event of template:string
 
 type Field = Field of Value * Units option // move outside this module
-    
+
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>] // remove when field moved outside
 module Field =
 
@@ -498,7 +499,7 @@ type Message =
     /// where in the code?
     context   : LogContext
     /// what urgency?
-    level     : string
+    level     : LogLevel
     /// when?
     timestamp : int64 }
 
@@ -516,9 +517,18 @@ type Logging =
   static member get(modulee, file, line) =
     { new Logger with
       member x.log m = () }
-  
+
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Message =
+  open NodaTime
+
+  let inline field name value =
+    Lens.setPartial (Message.field_ name) (Field.init value)
+
+  let inline fieldUnit name value units =
+    Lens.setPartial (Message.field_ name) (Field.initWithUnit value units)
+
+  //module Lenses =
 
   let event level msg =
     { name = [] // check in logger
@@ -527,10 +537,112 @@ module Message =
       session = Object Map.empty // default, hoist to static
       context = LogContext.Create "" // fix, take from logger
       level   = level // fix
-      timestamp = 0L } // fix
+      timestamp = SystemClock.Instance.Now.Ticks }
 
-  let inline field name value =
-    Lens.setPartial (Message.field_ name) (Field.init value)
+  let metric level unit value =
+    { name = []
+      value = Gauge (value, unit)
+      fields = Map.empty
+      session = Object Map.empty // TODO
+      context = LogContext.Create "" // TODO
+      level = level
+      timestamp = SystemClock.Instance.Now.Ticks
+    }
 
-  let inline fieldUnit name value units =
-    Lens.setPartial (Message.field_ name) (Field.initWithUnit value units)
+
+  /// Create a verbose log line with a message
+  [<CompiledName "Verbose">]
+  let verbose = event Verbose
+
+  /// Create a verbose log line, for help constructing format string, see:
+  /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
+  [<CompiledName "VerboseFormat">]
+  let verbosef fmt = Printf.kprintf (event Verbose) fmt
+
+  /// Create a debug log line with a message
+  [<CompiledName "Debug">]
+  let debug = event Debug
+
+  /// Write a debug log entry, for help constructing format string, see:
+  /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
+  [<CompiledName "DebugFormat">]
+  let debugf fmt = Printf.kprintf (event LogLevel.Debug) fmt
+
+  /// Create an info log line with a message
+  [<CompiledName "Info">]
+  let info = event Info
+
+  /// Write a info log entry, for help constructing format string, see:
+  /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
+  [<CompiledName "InfoFormat">]
+  let infof fmt = Printf.kprintf (event LogLevel.Info) fmt
+
+  /// Create an warn log line with a message
+  [<CompiledName "Warn">]
+  let warn = event LogLevel.Warn
+
+  /// Write a warn log entry, for help constructing format string, see:
+  /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
+  [<CompiledName "WarnFormat">]
+  let warnf fmt = Printf.kprintf (event LogLevel.Warn) fmt
+
+  /// Create an error log line with a message
+  [<CompiledName "Error">]
+  let error = event LogLevel.Error
+
+  /// Write a error log entry, for help constructing format string, see:
+  /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
+  [<CompiledName "ErrorFormat">]
+  let errorf fmt = Printf.kprintf (event LogLevel.Error) fmt
+
+  /// Create a fatal log entry with a message
+  [<CompiledName "Fatal">]
+  let fatal = event Fatal
+
+  /// Write a fatal log entry, for help constructing format string, see:
+  /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
+  [<CompiledName "FatalFormat">]
+  let fatalf fmt = Printf.kprintf (event Fatal) fmt
+
+  let setContext ctx msg = {msg with context = ctx}
+
+  //let errors
+
+  /// Temporary workaround for LogLine -> DataModel port
+  let setPath p msg = {msg with context = LogContext.Create p}
+
+  let rec private exnToFields (e : exn) =
+    let fields = [
+      ("type", String (e.GetType ()).FullName)
+      ("message", String e.Message)
+      ("targetsite", String e.TargetSite.ReflectedType.Name)
+      ("backtrace", String e.StackTrace)]
+
+    Map <|
+      if e.InnerException <> null then
+        ("inner", Object <| exnToFields e.InnerException) :: fields
+      else
+        fields
+
+  /// Adds a new exception to the "errors" field in the message.
+  /// AggregateExceptions are automatically expanded into multiple different exceptions.
+  let addExn (e : exn) msg =
+    let errorsGL = Message.field_ "errors"
+    let errorsSL = field "errors"
+
+    let (Field (Array errors, None)) =
+      defaultArg (Lens.getPartial errorsGL msg)
+                 (Field.init (Array []))
+
+    let newErrors =
+      List.map Object <|
+        match e with
+        | :? AggregateException as ae ->
+          Seq.map exnToFields ae.InnerExceptions |> Seq.toList
+        | _ ->
+          [exnToFields e]
+
+    errorsSL (Array (errors @ newErrors)) msg
+
+  /// Temporary workaround for LogLine -> DataModel port.
+  let setExn = addExn

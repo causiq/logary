@@ -6,6 +6,7 @@ open NodaTime
 
 open FSharp.Actor
 
+open Logary.DataModel
 open Logary.Internals
 
 // inspiration: https://github.com/Feuerlabs/exometer/blob/master/doc/exometer_probe.md
@@ -25,12 +26,12 @@ type MetricType =
 type MetricMsg =
   /// The GetValue implementation shall retrieve the value of one or more data
   /// points from the probe.
-  | GetValue of DP list * ReplyChannel<Measure list>
+  | GetValue of DP list * ReplyChannel<Message list>
   /// The GetDataPoints shall return a list with all data points supported by
   /// the probe
   | GetDataPoints of ReplyChannel<DP list>
   /// Incorporate a new value into the metric maintained by the metric.
-  | Update of Measure
+  | Update of Message
   /// The Sample implementation shall sample data from the subsystem the probe
   /// is integrated with.
   | Sample
@@ -98,7 +99,7 @@ let getDataPoints (m : #IActor) =
     m
 
 /// Incorporate a new value into the metric maintained by the metric.
-let update (m : Measure) actor =
+let update (m : Message) actor =
   actor <-- Update m
   actor
 
@@ -285,11 +286,11 @@ module Reservoir =
     /// alpha coefficient for the `SamplePeriod` tick period, with one minute
     /// EWMA
     let M1Alpha = xMinuteAlpha SamplePeriod OneMinute, SamplePeriod
-    
+
     /// alpha coefficient for the `SamplePeriod` tick period, with five minutes
     /// EWMA
     let M5Alpha = xMinuteAlpha SamplePeriod FiveMinutes, SamplePeriod
-    
+
     /// alpha coefficient for the `SamplePeriod` tick period, with fifteen minutes
     /// EWMA
     let M15Alpha = xMinuteAlpha SamplePeriod FifteenMinutes, SamplePeriod

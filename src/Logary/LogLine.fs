@@ -178,7 +178,7 @@ module LogLine =
   ///  - `Printf.StringFormat<'a, LogLine> -> 'a`: the sprintf-like data to
   ///
   /// Example usage, at top of module/function:
-  /// 
+  ///
   /// ```
   /// let log, logLine = Logger.log logger,
   ///                    LogLine.createf "MyCompany.Module.fn"
@@ -250,7 +250,7 @@ module LogLine =
   /// Create a warn log line with a message and a tag
   [<CompiledName "WarnTag">]
   let warnTag tag = setTag tag << create' Warn
-  
+
   /// Create an error log line with a message
   [<CompiledName "Error">]
   let error = create' Error
@@ -267,7 +267,7 @@ module LogLine =
   /// Create a fatal log entry with a message
   [<CompiledName "Fatal">]
   let fatal = create' Fatal
- 
+
   /// Write a fatal log entry, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
   [<CompiledName "FatalFormat">]
@@ -276,3 +276,5 @@ module LogLine =
   /// Create a fatal log entry with a message and a tag
   [<CompiledName "FatalTag">]
   let fatalTag tag = setTag tag << create' Fatal
+
+  let toMessage (line: LogLine) = ()

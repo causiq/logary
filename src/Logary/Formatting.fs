@@ -7,6 +7,8 @@ open System.Collections
 open System.Collections.Generic
 open System.Text
 open Microsoft.FSharp.Reflection
+
+open Logary.DataModel
 open Logary.Measure
 
 /// Returns the case name of the object with union type 'ty.
@@ -15,7 +17,7 @@ let internal caseNameOf (x:'a) =
   | case, _ -> case.Name
 
 let app (s : string) (sb : StringBuilder) = sb.Append s
-  
+
 let rec print (nl : string) (depth : int) (x : obj) =
   let indent () = new String(' ', depth * 2 + 2)
   match x with
@@ -69,11 +71,10 @@ let internal formatData (nl : string) (data : Map<string, obj>) =
 /// A StringFormatter is the thing that takes a log line and returns it as a string
 /// that can be printed, sent or otherwise dealt with in a manner that suits the target.
 type StringFormatter =
-  { format   : LogLine -> string
-    m_format : Measure -> string }
+  { format   : Message -> string }
   static member private Expanded nl ending =
     let format' =
-      fun l ->
+      fun (l : Message) ->
         let mex = l.``exception``
         sprintf "%s %s: %s [%s]%s%s%s%s"
           (string (caseNameOf l.level).[0])
@@ -85,18 +86,15 @@ type StringFormatter =
           (if Map.isEmpty l.data then "" else formatData nl l.data)
           (match mex with None -> "" | Some ex -> sprintf " cont...%s%O" nl ex)
           ending
-    { format   = format'
-      m_format = LogLine.fromMeasure >> format' }
+    { format  = format' }
 
   /// Takes c# Func delegates to initialise a StringFormatter
-  static member Create (format:Func<LogLine, string>, m_format:Func<Measure, string>) = 
-    { format = fun x -> format.Invoke x
-      m_format= fun m -> m_format.Invoke m }
+  static member Create (format : Func<Message, string>) =
+    { format = fun x -> format.Invoke x }
 
   /// Takes a c# Func delegate to initialise a StringFormatter with the default Measure -> string
-  static member Create (format:Func<LogLine, string>) = 
-    { format = fun x -> format.Invoke x
-      m_format= Measure.getValueStr }
+  static member Create (format : Func<Message, string>) =
+    { format = fun x -> format.Invoke x }
 
   /// Verbatim simply outputs the message and no other information
   /// and doesn't append a newline to the string.
@@ -130,5 +128,4 @@ type JsonFormatter =
   /// Create a new JSON formatter with optional function that can modify the serialiser
   /// settings before any other alteration is done.
   static member Default =
-    { format = (fun ll -> "")
-      m_format = fun m -> ""}
+    { format = (fun ll -> "") }

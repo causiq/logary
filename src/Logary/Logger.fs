@@ -1,5 +1,6 @@
 ﻿namespace Logary
 
+(*
 /// Main interface used to log LogLines and Metrics.
 type Logger =
   inherit Named
@@ -19,7 +20,27 @@ type Logger =
   /// Gets the currently set log level, aka. the granularity with which things
   /// are being logged
   abstract Level      : LogLevel
+  *)
+type MessageLogger =
+  inherit Named
 
+  /// Write a Verbose log line
+  abstract LogVerbose : (unit -> DataModel.Message) -> unit
+
+  /// Write a Debug log line
+  abstract LogDebug   : (unit -> DataModel.Message) -> unit
+
+  /// Write a log line to the logger.
+  abstract Log        : DataModel.Message -> unit
+
+  /// Write a measure to the logger.
+  abstract Measure    : DataModel.Message -> unit
+
+  /// Gets the currently set log level, aka. the granularity with which things
+  /// are being logged
+  abstract Level      : LogLevel
+
+(*
 /// API for writing logs and measures.
 /// For gauges that run continuously based on a timer, have a look at
 /// the Registry module. To get a logger, have a look at the Logger module.
@@ -92,3 +113,61 @@ module Logger =
   /// Write a fatal log entry
   [<CompiledName "Fatal">]
   let fatal logger = log logger << create' Fatal
+*)
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module MessageLogger =
+  open System
+
+  open Logary
+  open Logary.DataModel
+
+  /////////////////////
+  // Logging methods //
+  /////////////////////
+
+  /// Write a log entry from a log line.
+  [<CompiledName "Log">]
+  let log (logger : MessageLogger) line =
+    logger.Log line
+
+  /// Write a debug log line, given from the fLine callback, if the logger
+  /// accepts line with Verbose level.
+  [<CompiledName "LogVerbose">]
+  let logVerbose (logger : MessageLogger) fLine =
+    logger.LogVerbose fLine
+
+  /// Write a debug log line, given from the fLine callback, if the logger
+  /// accepts line with Debug level.
+  [<CompiledName "LogDebug">]
+  let logDebug (logger : MessageLogger) fLine =
+    logger.LogDebug fLine
+
+  /// Write a measure
+  [<CompiledName "Measure">]
+  let ``measure`` (logger : MessageLogger) m =
+    logger.Measure m
+
+  /// Write a verbose log entry to the logger
+  [<CompiledName "Verbose">]
+  let verbose logger = log logger << Message.event LogLevel.Verbose
+
+  /// Write a debug log entry to the logger
+  [<CompiledName "Debug">]
+  let debug logger = log logger << Message.event LogLevel.Debug
+
+  /// Write an info log entry to the logger
+  [<CompiledName "Info">]
+  let info logger = log logger << Message.event LogLevel.Info
+
+  /// Write a warn log entry
+  [<CompiledName "Warn">]
+  let warn logger = log logger << Message.event LogLevel.Warn
+
+  /// Write an error log entry
+  [<CompiledName "Error">]
+  let error logger = log logger << Message.event LogLevel.Error
+
+  /// Write a fatal log entry
+  [<CompiledName "Fatal">]
+  let fatal logger = log logger << Message.event LogLevel.Fatal
