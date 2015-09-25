@@ -175,12 +175,12 @@ module Debugger =
         let! msg, opts = inbox.Receive()
         match msg with
         | Log l when Debugger.IsLogging() ->
-          Debugger.Log(offLevel, l.path, l |> formatter.format)
+          Debugger.Log(offLevel, l.context.service, l |> formatter.format)
           return! loop()
         | Log _ ->
           return! loop ()
         | Measure m when Debugger.IsLogging() ->
-          Debugger.Log(offLevel, m.m_path.joined, sprintf "%A" m)
+          Debugger.Log(offLevel, m.context.service, sprintf "%A" m)
           return! loop ()
         | Measure _ ->
           return! loop ()

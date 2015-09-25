@@ -14,6 +14,7 @@ open NodaTime
 
 open Logary.Registry.Logging
 open Logary.Internals
+open Logary.DataModel
 
 module Seq =
   let last xs = Seq.reduce (fun _ x -> x) xs
@@ -52,9 +53,9 @@ let getLoggerByName name =
       | None ->
         let logger = FWL name :> FlyweightLogger
         Globals.flyweights := logger :: !Globals.flyweights
-        logger :> Logger
+        logger :> MessageLogger
       | Some { registry = reg; metadata = { logger = logger } } ->
-        logger.Log (LogLine.debugf "getting logger by name: %s" name)
+        logger.Log (Message.debugf "getting logger by name: %s" name)
         name |> Registry.getLogger reg |> Async.RunSynchronously
 
 /// Gets the current logger from the context that this method was called

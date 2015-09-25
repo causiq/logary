@@ -528,7 +528,13 @@ module Message =
   let inline fieldUnit name value units =
     Lens.setPartial (Message.field_ name) (Field.initWithUnit value units)
 
-  //module Lenses =
+  module Fields =
+    let errorsGet = Message.field_ "errors"
+    let errorsSet (value: Value) = field "errors" value
+
+    module Exception =
+      let type_ = Lens.mapPartial Value.ObjectPLens (fun s -> s)
+      //let message_ =
 
   let event level msg =
     { name = [] // check in logger
@@ -605,8 +611,6 @@ module Message =
   let fatalf fmt = Printf.kprintf (event Fatal) fmt
 
   let setContext ctx msg = {msg with context = ctx}
-
-  //let errors
 
   /// Temporary workaround for LogLine -> DataModel port
   let setPath p msg = {msg with context = LogContext.Create p}

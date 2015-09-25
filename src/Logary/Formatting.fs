@@ -75,16 +75,19 @@ type StringFormatter =
   static member private Expanded nl ending =
     let format' =
       fun (l : Message) ->
-        let mex = l.``exception``
-        sprintf "%s %s: %s [%s]%s%s%s%s"
+        // TODO / HACKHACKHACK: only serializes a few fields
+        //let mex = l.``exception``
+        sprintf "%s %s: %s [%s]%s"
           (string (caseNameOf l.level).[0])
           // https://noda-time.googlecode.com/hg/docs/api/html/M_NodaTime_OffsetDateTime_ToString.htm
-          (l.timestamp.ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture))
-          l.message
-          l.path
-          (match l.tags with [] -> "" | _ -> " {" + String.Join(", ", l.tags) + "}")
-          (if Map.isEmpty l.data then "" else formatData nl l.data)
-          (match mex with None -> "" | Some ex -> sprintf " cont...%s%O" nl ex)
+          (NodaTime.Instant(l.timestamp).ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture))
+          //l.message
+          ((function Event format -> format | _ -> "") l.value)
+          //l.path
+          (l.context.ToString ())
+          //(match l.tags with [] -> "" | _ -> " {" + String.Join(", ", l.tags) + "}")
+          //(if Map.isEmpty l.data then "" else formatData nl l.data)
+          //(match mex with None -> "" | Some ex -> sprintf " cont...%s%O" nl ex)
           ending
     { format  = format' }
 
@@ -92,21 +95,21 @@ type StringFormatter =
   static member Create (format : Func<Message, string>) =
     { format = fun x -> format.Invoke x }
 
-  /// Takes a c# Func delegate to initialise a StringFormatter with the default Measure -> string
-  static member Create (format : Func<Message, string>) =
-    { format = fun x -> format.Invoke x }
-
   /// Verbatim simply outputs the message and no other information
   /// and doesn't append a newline to the string.
+  // TODO: serialize properly
   static member Verbatim =
-    { format   = fun l -> l.message
-      m_format = Measure.getValueStr }
+    { format   =
+      fun m ->
+        match m.value with
+        | Event event -> event
+        | Gauge (value, unit) -> value.ToString () }
 
   /// VerbatimNewline simply outputs the message and no other information
   /// and does append a newline to the string.
   static member VerbatimNewline =
-    { format = fun l -> sprintf "%s%s" l.message (Environment.NewLine)
-      m_format = fun m -> sprintf "%s%s" (Measure.getValueStr m) (Environment.NewLine) }
+    { format = fun m -> sprintf "%s%s" (StringFormatter.Verbatim.format m) (Environment.NewLine)}
+      //format = fun m -> sprintf "%s%s" (Measure.getValueStr m) (Environment.NewLine) }
 
   /// <see cref="StringFormatter.LevelDatetimePathMessageNl" />
   static member LevelDatetimeMessagePath =
