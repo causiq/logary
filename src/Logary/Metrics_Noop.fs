@@ -6,6 +6,7 @@ open FSharp.Actor
 open Logary
 open Logary.Internals
 open Logary.Metric
+open Logary.DataModel
 
 type NoopConf =
   { isHappy : bool }
@@ -23,18 +24,17 @@ module private Impl =
       match msg with
       | GetValue (dps, replChan) ->
         match dps with
-        | (DP h as dp) :: _ when h = [ "calls" ] ->
-          replChan.Reply [ Measure.create dp (float state.calls) ] //of DP list * ReplyChannel<(DP * ``measure``) list>
+        | pn :: _ when pn = [ "calls" ] ->
+          replChan.Reply [ Message.metric pn LogLevel.Info Units.Scalar (BigInt state.calls) ]
         | _ ->
           replChan.Reply []
         return! loop { calls = state.calls + 1I }
       | GetDataPoints replChan ->
-        replChan.Reply [ DP [ "calls" ] ]
+        replChan.Reply [ [ "calls" ] ]
         return! loop { calls = state.calls + 1I }
       | Update msr ->
-        match msr.m_value with
-        | F f -> return! loop { calls = bigint f }
-        | L l   -> return! loop { calls = state.calls + 1I }
+        match msr.value with
+        | Derived (Int64 l, _) -> return! loop { calls = state.calls + 1I }
       | Sample ->
         return! loop state
       | Shutdown ackChan ->

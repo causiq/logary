@@ -129,7 +129,7 @@ let validate ({ targets  = targets
       |> Set.ofSeq
     Set.filter (rtarget >> (flip Set.contains tnames) >> not) rules',
     Set.filter (flip Set.contains boundTargets >> not) targets',
-    Set.filter (fun m -> List.isEmpty (Rule.matching m.name rules)) metrics'
+    Set.filter (fun (m : MetricConf) -> List.isEmpty (Rule.matching m.name rules)) metrics'
 
   match oRules.Count, oTargets.Count, oMetrics.Count with
   | 0, 0, 0 -> conf

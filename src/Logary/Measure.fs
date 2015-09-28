@@ -3,6 +3,8 @@
 open FSharp.Actor
 open NodaTime
 
+open Logary.DataModel
+
 type TimeUnit =
   | Nanoseconds
   /// Ticks as defined by `NodaTime.NodaConstants.TicksPerSecond`.
@@ -43,7 +45,7 @@ with
 
 /// A data point is the name (atom) of a measure taken by a metric. It's not
 /// globally unique, but specific to a metric instance.
-type DP = DP of string list
+type DP = DP of PointName
 with
   /// Gets the data point as a single string, where each segment is joined by a
   /// dot '.'.

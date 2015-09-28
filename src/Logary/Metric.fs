@@ -26,10 +26,10 @@ type MetricType =
 type MetricMsg =
   /// The GetValue implementation shall retrieve the value of one or more data
   /// points from the probe.
-  | GetValue of DP list * ReplyChannel<Message list>
+  | GetValue of PointName list * ReplyChannel<Message list>
   /// The GetDataPoints shall return a list with all data points supported by
   /// the probe
-  | GetDataPoints of ReplyChannel<DP list>
+  | GetDataPoints of ReplyChannel<PointName list>
   /// Incorporate a new value into the metric maintained by the metric.
   | Update of Message
   /// The Sample implementation shall sample data from the subsystem the probe
@@ -85,7 +85,7 @@ let init metadata conf =
 
 /// The GetValue implementation shall retrieve the value of one or more data
 /// points from the probe.
-let getValue (dps : DP list) =
+let getValue (dps : PointName list) =
   Actor.reqReply
     (fun chan -> GetValue(dps, chan))
     Infinite

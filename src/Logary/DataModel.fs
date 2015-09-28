@@ -469,6 +469,10 @@ type LogContext =
 
 type PointName = string list
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module PointName =
+  let joined name = String.concat "." name
+
 type PointValue =
   /// Value at point in time
   | Gauge of Value * Units
@@ -545,8 +549,8 @@ module Message =
       level   = level // fix
       timestamp = SystemClock.Instance.Now.Ticks }
 
-  let metric level unit value =
-    { name = []
+  let metric dp level unit value =
+    { name = dp
       value = Gauge (value, unit)
       fields = Map.empty
       session = Object Map.empty // TODO
