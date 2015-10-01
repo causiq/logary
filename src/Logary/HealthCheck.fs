@@ -2,14 +2,14 @@ namespace Logary
 
 open System
 
-open Logary.Measure
+open Logary.DataModel
 open Logary.Metric
 
 /// The details a result
 type ResultData =
   /// If the health check is for a value (which it probably is) then it should
   /// contain the measure generated.
-  abstract Measure     : Measure
+  abstract Measure     : Message
 
   /// Gets the description detailing what went badly with the evaluation of the
   /// health check. Useful for drilling down.
@@ -17,7 +17,7 @@ type ResultData =
 
   /// Gets the optional exception that was thrown as a part of the evaluation
   /// of the health check.
-  abstract Exception   : exn option
+  //abstract Exception   : exn option
 
 /// A result of the health check. Either Healthy or Unhealthy
 type HealthCheckResult =
@@ -45,46 +45,49 @@ module HealthCheck =
   open FSharp.Actor
 
   open Logary.Internals
-  open Logary.Measure
 
   /// A key in the `data` map inside the `Measure` type.
   [<Literal>]
   let Description = "description"
 
-  /// A key in the `data` map inside the `Measure` type.
-  [<Literal>]
-  let Exception = "exception"
-
   /// Sets the description property of the measurement's data map
   [<CompiledName "SetDescription">]
-  let setDesc description m =
-    m |> setData Description description
+  let setDesc (description: string) m =
+    Message.field Description description m
 
+  (*
   /// Sets the exception property of the measurement's data map
   [<CompiledName "SetException">]
   let setExn e m =
-    m |> setData Exception e
+    Message.addExn e m
+  *)
 
   /// Tries to get the description value from the measure.
   [<CompiledName "TryGetDescription">]
   let tryGetDesc m =
-    m.m_data |> Map.tryFind Description |> Option.fold (fun s t -> t :?> string) ""
+    match Message.tryGetField Description m with
+    | (Some (Field (String s, _))) ->  s
+    | _ -> ""
+
+  (*
+  TODO/BREAKING: Can't be implemented as-is with the new object model
 
   /// Tries to get an exception from the measure
   [<CompiledName "TryGetException">]
   let tryGetExn m =
     m.m_data |> Map.tryFind Exception |> Option.map (fun x -> x :?> exn)
+  *)
 
   /// An implementation of the ResultData interface that wraps a Measure and
   /// uses its 'data' Map to read.
-  type MeasureWrapper(m : _) =
+  type MeasureWrapper(m : Message) =
     interface ResultData with
       member x.Measure     = m
       member x.Description = tryGetDesc m
-      member x.Exception   = tryGetExn m
+      //member x.Exception   = tryGetExn m
     override x.ToString() =
-      sprintf "HealthCheck(name=%s, exn=%A, value=%A, level=%A)"
-        m.m_path.joined (tryGetExn m) m.m_value m.m_level
+      sprintf "HealthCheck(name=%s, value=%A, level=%A)"
+        (PointName.joined m.name) m.value m.level
 
   module Measure =
     /// Transform the measure to a HealthCheck.ResultData.
@@ -139,4 +142,3 @@ module HealthCheck =
         member x.GetValue () = NoValue
         member x.Name        = name
         member x.Dispose ()  = () }
-     

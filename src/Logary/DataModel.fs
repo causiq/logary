@@ -381,6 +381,28 @@ type Units =
   | Log10 of Units // Log of base:float * BaseUnit
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Duration =
+  open NodaTime
+  let hours (dur : Duration) =
+    float dur.Ticks / float NodaConstants.TicksPerHour
+
+  let minutes (dur : Duration) =
+    float dur.Ticks / float NodaConstants.TicksPerMinute
+
+  let seconds (dur : Duration) =
+    float dur.Ticks / float NodaConstants.TicksPerSecond
+
+  let milliseconds (dur : Duration) =
+    float dur.Ticks / float NodaConstants.TicksPerMillisecond
+
+  let microseconds =
+    ((*) 1000.) << milliseconds
+  let ticks (dur : Duration) =
+    float dur.Ticks
+  let nanoseconds =
+    ((*) 1000.) << microseconds
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Units =
 
   let rec symbol = function
@@ -531,6 +553,9 @@ module Message =
 
   let inline fieldUnit name value units =
     Lens.setPartial (Message.field_ name) (Field.initWithUnit value units)
+
+  let inline tryGetField name =
+    Lens.getPartial (Message.field_ name)
 
   module Fields =
     let errorsGet = Message.field_ "errors"

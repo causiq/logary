@@ -14,7 +14,6 @@ open System.Globalization
 open Logary
 open Logary.Internals
 open Logary.Target
-open Logary.Measure
 open Logary.Internals.Tcp
 open Logary.DataModel
 

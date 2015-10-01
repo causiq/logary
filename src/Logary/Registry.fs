@@ -82,7 +82,6 @@ module Advanced =
   open Logary
   open Logary.Configuration
   open Logary.Configuration.LogaryConfLenses
-  open Logary.Measure
   open Logary.Rule
   open Logary.Target
   open Logary.HealthCheck

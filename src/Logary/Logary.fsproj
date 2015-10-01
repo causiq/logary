@@ -54,8 +54,6 @@
     <Compile Include="Internals.fs" />
     <Compile Include="Internals_Deprecated.fs" />
     <Compile Include="Scheduling.fs" />
-    <Compile Include="LogLine.fs" />
-    <Compile Include="Measure.fs" />
     <Compile Include="Logger.fs" />
     <Compile Include="Internals_RuntimeInfo.fs" />
     <Compile Include="Metric.fs" />

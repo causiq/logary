@@ -267,6 +267,7 @@ module Reservoir =
   /// `update`s at any point between the ticks.
   module ExpWeightedMovAvg =
     open NodaTime
+    open Logary.DataModel
 
     /// The period in between ticks; it's a duration of time between two data
     /// points.
@@ -297,6 +298,7 @@ module Reservoir =
 
     type EWMAState =
       { inited    : bool
+        /// in samples per tick
         rate      : float
         uncounted : int64
         alpha     : float
@@ -342,10 +344,6 @@ module Reservoir =
         { state with uncounted = 0L
                      inited    = true
                      rate      = instantRate }
-
-    let rate (timeUnit : TimeUnit) state =
-      // we know rate is in samples per tick
-      state.rate * (TimeUnit.ticksPerUnit timeUnit)
 
     (* This type is monoidal, since it can't use `mappend:a->a->a`, but needs
        mappend: a -> b -> a

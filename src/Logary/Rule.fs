@@ -7,14 +7,6 @@ open Logary
 open Logary.DataModel
 open Logary.Internals
 
-/// This is the accept filter that is before the log line is passed to the logger
-/// instance.
-type LineFilter = LogLine -> bool
-
-/// This is the accept filter that is before the measure is passed to the logger
-/// instance.
-type MeasureFilter = Measure -> bool
-
 /// This is the accept filter that is before the message is passed to the logger
 /// TODO: everything
 type MessageFilter = Message -> bool

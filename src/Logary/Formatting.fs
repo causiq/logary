@@ -9,7 +9,6 @@ open System.Text
 open Microsoft.FSharp.Reflection
 
 open Logary.DataModel
-open Logary.Measure
 
 /// Returns the case name of the object with union type 'ty.
 let internal caseNameOf (x:'a) =
