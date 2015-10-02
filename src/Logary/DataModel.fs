@@ -536,13 +536,13 @@ type Message =
     static member field_ name : PLens<Message, Field> =
       Message.fields_ >-?> (Logary.Utils.Aether.mapPLens [name])
 
-type Logger =
+(*type Logger =
   abstract log : Message -> unit
 
 type Logging =
   static member get(modulee, file, line) =
     { new Logger with
-      member x.log m = () }
+      member x.log m = () }*)
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Message =

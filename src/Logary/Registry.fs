@@ -14,7 +14,7 @@ open Logary.HealthCheck
 /// The messages that can be sent to the registry to interact with it and its
 /// running targets.
 type RegistryMessage =
-  | GetLogger             of string * MessageLogger ReplyChannel
+  | GetLogger             of string * Logger ReplyChannel
   | PollMetrics
   /// flush all pending messages from the registry to await shutdown
   | FlushPending          of Duration * Acks ReplyChannel
@@ -46,7 +46,7 @@ module internal Logging =
         lock locker (fun () ->
           logManager := Some lm
           logger := Some (Async.RunSynchronously(getLogger lm.registry name)))
-    interface MessageLogger with
+    interface Logger with
       member x.LogVerbose fLine = (!logger) |> Option.iter (fun logger -> logger.LogVerbose fLine)
       member x.LogDebug fLine = (!logger) |> Option.iter (fun logger -> logger.LogDebug fLine)
       member x.Log l = (!logger) |> Option.iter (fun logger -> logger.Log l)
@@ -178,7 +178,7 @@ module Advanced =
         targets = targets |> List.map (fun (mf, ti, _) -> mf, ti.actor)
         level   = targets |> List.map (fun (_, _, level) -> level) |> List.min
         ilogger = ilogger }
-      :> MessageLogger
+      :> Logger
 
     let wasSuccessful = function
       | SuccessWith(Ack, _)     -> 0
@@ -212,7 +212,7 @@ module Advanced =
       let lgr = conf.metadata.logger
       let regPath = "Logary.Registry.registry"
       //let log = LogLine.setPath regPath >> Logger.log lgr
-      let log = Message.setContext (LogContext.Create regPath) >> MessageLogger.log lgr
+      let log = Message.setContext (LogContext.Create regPath) >> Logger.log lgr
 
       let rec init state = async {
         let ctss = System.Collections.Generic.List<_>()
@@ -265,7 +265,7 @@ module Advanced =
             let! msrs = mtrActor |> Metric.getValue dps
 
             // CONSIDER: how to log each of these data points/measures? And what path to give them?
-            msrs |> List.iter (MessageLogger.``measure`` mtrLgr)
+            msrs |> List.iter (Logger.``measure`` mtrLgr)
 
           return! running state
 
@@ -340,7 +340,7 @@ module Advanced =
   /// It is not until runRegistry is called, that each target gets its service
   /// metadata, so it's no need to pass the metadata to the target before this.
   let create ({ metadata = { logger = lgr } } as conf : LogaryConf) =
-    let log = Message.setPath "Logary.Registry.runRegistry" >> MessageLogger.log lgr
+    let log = Message.setPath "Logary.Registry.runRegistry" >> Logger.log lgr
 
     let targets = conf.targets |> Map.map (fun _ (tconf, _) -> tconf, Some(Target.init conf.metadata tconf))
     let metrics = conf.metrics |> Map.map (fun _ (mconf, _) -> mconf, Some(Metric.init conf.metadata mconf))

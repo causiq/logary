@@ -53,7 +53,7 @@ let getLoggerByName name =
       | None ->
         let logger = FWL name :> FlyweightLogger
         Globals.flyweights := logger :: !Globals.flyweights
-        logger :> MessageLogger
+        logger :> Logger
       | Some { registry = reg; metadata = { logger = logger } } ->
         logger.Log (Message.debugf "getting logger by name: %s" name)
         name |> Registry.getLogger reg |> Async.RunSynchronously

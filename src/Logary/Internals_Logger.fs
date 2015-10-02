@@ -8,7 +8,7 @@ open Logary
 /// that is actually *the* internal logger target, to avoid recursive calls to
 /// itself.
 type NullLogger() =
-  interface MessageLogger with
+  interface Logger with
     member x.LogVerbose fLine = ()
     member x.LogDebug fLine = ()
     member x.Log line = ()
@@ -29,20 +29,20 @@ module internal Logging =
       targets : (MessageFilter * IActor) list
       level   : LogLevel
       /// the internal logger for this logger instance
-      ilogger : MessageLogger }
+      ilogger : Logger }
     with
       interface Named with
         member x.Name = x.name
 
-      interface MessageLogger with
+      interface Logger with
         member x.LogVerbose fMsg =
           if Verbose >= x.level then
-            let logger : MessageLogger = upcast x
+            let logger : Logger = upcast x
             logger.Log (fMsg ()) // delegate down
 
         member x.LogDebug fMsg =
           if Debug >= x.level then
-            let logger : MessageLogger = upcast x
+            let logger : Logger = upcast x
             logger.Log (fMsg ()) // delegate down
 
         member x.Log msg =
@@ -55,7 +55,7 @@ module internal Logging =
               Message.errorf
                 "Logging to %s failed, because of target state. Actor said: '%s'"
                 x.name msg
-              |> MessageLogger.log x.ilogger
+              |> Logger.log x.ilogger
 
         member x.Measure m =
           for accept, t in x.targets do
@@ -67,7 +67,7 @@ module internal Logging =
               Message.errorf
                 "Sending metric to %s failed, because of target state. Actor said: '%s'"
                 x.name msg
-              |> MessageLogger.log x.ilogger
+              |> Logger.log x.ilogger
 
         member x.Level =
           x.level
@@ -79,15 +79,15 @@ module internal Logging =
 type InternalLogger =
   { lvl  : LogLevel
     trgs : Target.TargetInstance list }
-  interface MessageLogger with
+  interface Logger with
     member x.LogVerbose fLine =
       if Verbose >= x.lvl then
-        let logger : MessageLogger = upcast x
+        let logger : Logger = upcast x
         logger.Log (fLine ())
 
     member x.LogDebug fLine =
       if Debug >= x.lvl then
-        let logger : MessageLogger = upcast x
+        let logger : Logger = upcast x
         logger.Log (fLine ())
 
     member x.Log line =
@@ -111,7 +111,7 @@ type InternalLogger =
         |> List.iter (Target.shutdown >> Async.Ignore >> Async.RunSynchronously)
       with _ -> ()
   static member Create(level, targets) =
-    { lvl = level; trgs = targets } :> MessageLogger
+    { lvl = level; trgs = targets } :> Logger
 
 module Try =
   open Logary.DataModel
@@ -120,7 +120,7 @@ module Try =
   /// exception internally. Returns unit, irregardless of the codomain of f.
   let safe label ilogger f =
     try let x = f () in ()
-    with e -> Message.error label |> Message.setExn e |> MessageLogger.log ilogger
+    with e -> Message.error label |> Message.setExn e |> Logger.log ilogger
 
   /// Safely try to execute f, catching a thrown the exception type specified
   /// by the generic type parameter and logging that exception internally.
@@ -128,7 +128,7 @@ module Try =
   /// codomain of f.
   let safeT<'a when 'a :> exn> label ilogger f =
     try let x = f () in ()
-    with :? 'a as e -> Message.error label |> Message.setExn e |> MessageLogger.log ilogger
+    with :? 'a as e -> Message.error label |> Message.setExn e |> Logger.log ilogger
 
   /// Safely try to execute asynchronous function f, catching any thrown
   /// exception and logging exception internally. Returns async<unit>
@@ -137,7 +137,7 @@ module Try =
     try
       let! x = f ()
       return ()
-    with e -> Message.error label |> Message.setExn e |> MessageLogger.log ilogger }
+    with e -> Message.error label |> Message.setExn e |> Logger.log ilogger }
 
   /// Safely try to execute asynchronous function f, catching any thrown exception and logging
   /// that exception internally.

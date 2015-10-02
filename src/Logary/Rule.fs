@@ -11,7 +11,7 @@ open Logary.Internals
 /// TODO: everything
 type MessageFilter = Message -> bool
 
-/// A rule specifies what log lines and metrics a target should accept.
+/// A rule specifies what messages a target should accept.
 [<CustomEquality; CustomComparison>]
 type Rule =
   { /// This is the regular expression that the 'path' must match to be loggable
@@ -21,12 +21,8 @@ type Rule =
     /// This is the level at which the target will accept log lines. It's inclusive, so
     /// anything below won't be accepted.
     level         : LogLevel
-    /// This is the accept filter that is before the log line is passed to the logger
+    /// This is the accept filter that is before the message is passed to the logger
     /// instance.
-    //lineFilter    : LineFilter
-    /// This is the accept filter that is before the measure is passed to the logger
-    /// instance.
-    //measureFilter : MeasureFilter
     messageFilter : MessageFilter}
 
   override x.GetHashCode () =
@@ -109,7 +105,7 @@ module Rule =
   let create hiera target messageFilter level =
     { hiera         = hiera
       target        = target
-      messageFilter    = messageFilter
+      messageFilter = messageFilter
       level         = level }
 
   // C# interop
