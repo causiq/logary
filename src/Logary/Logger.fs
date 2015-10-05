@@ -30,27 +30,30 @@ module Logger =
   // Logging methods //
   /////////////////////
 
+  let private setContext (logger : Logger) (msg : Message) =
+    Message.setContext (LogContext.Create logger.Name) msg
+
   /// Write a log entry from a log line.
   [<CompiledName "Log">]
-  let log (logger : Logger) line =
-    logger.Log line
+  let log (logger : Logger) msg =
+    logger.Log (setContext logger msg)
 
   /// Write a debug log line, given from the fLine callback, if the logger
   /// accepts line with Verbose level.
   [<CompiledName "LogVerbose">]
-  let logVerbose (logger : Logger) fLine =
-    logger.LogVerbose fLine
+  let logVerbose (logger : Logger) fMsg =
+    logger.LogVerbose (fMsg >> setContext logger)
 
   /// Write a debug log line, given from the fLine callback, if the logger
   /// accepts line with Debug level.
   [<CompiledName "LogDebug">]
-  let logDebug (logger : Logger) fLine =
-    logger.LogDebug fLine
+  let logDebug (logger : Logger) fMsg =
+    logger.LogDebug (fMsg >> setContext logger)
 
   /// Write a measure
   [<CompiledName "Measure">]
-  let ``measure`` (logger : Logger) m =
-    logger.Measure m
+  let ``measure`` (logger : Logger) msg =
+    logger.Measure (setContext logger msg)
 
   /// Write a verbose log entry to the logger
   [<CompiledName "Verbose">]
