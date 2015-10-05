@@ -574,13 +574,23 @@ module Message =
       level   = level // fix
       timestamp = SystemClock.Instance.Now.Ticks }
 
-  let metric dp level unit value =
+  let metric dp unit value =
     { name = dp
       value = Gauge (value, unit)
       fields = Map.empty
       session = Object Map.empty // TODO
       context = LogContext.Create "" // TODO
-      level = level
+      level = LogLevel.Info
+      timestamp = SystemClock.Instance.Now.Ticks
+    }
+
+  let metric' dp value =
+    { name = dp
+      value = Gauge (value, Units.Scalar)
+      fields = Map.empty
+      session = Object Map.empty // TODO
+      context = LogContext.Create "" // TODO
+      level = LogLevel.Info
       timestamp = SystemClock.Instance.Now.Ticks
     }
 

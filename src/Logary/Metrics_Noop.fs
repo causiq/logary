@@ -25,7 +25,7 @@ module private Impl =
       | GetValue (dps, replChan) ->
         match dps with
         | pn :: _ when pn = [ "calls" ] ->
-          replChan.Reply [ Message.metric pn LogLevel.Info Units.Scalar (BigInt state.calls) ]
+          replChan.Reply [ Message.metric pn Units.Scalar (BigInt state.calls) ]
         | _ ->
           replChan.Reply []
         return! loop { calls = state.calls + 1I }
