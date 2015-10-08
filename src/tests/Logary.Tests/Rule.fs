@@ -11,6 +11,7 @@ open System.Text.RegularExpressions
 open NodaTime
 
 open Logary
+open Logary.DataModel
 open Logary.Configuration
 open Logary.Targets
 
@@ -66,10 +67,10 @@ let tests =
       let rules = [
         // "path.1" will be match by two rules
         // "path.1.extra" will be match by one rule
-        Rule.create (Regex("path\.1"))        "t1" (fun _ -> false) (fun _ -> false) Info
-        Rule.create (Regex("path\.1\.extra")) "t1" (fun _ -> false) (fun _ -> false) Verbose
-        Rule.create (Regex("path\.2"))        "t2" (fun _ -> false) (fun _ -> false) Warn
-        Rule.create (Regex("path\.2\.extra")) "t2" (fun _ -> false) (fun _ -> false) Error
+        Rule.create (Regex("path\.1"))        "t1" (fun _ -> false) Info
+        Rule.create (Regex("path\.1\.extra")) "t1" (fun _ -> false) Verbose
+        Rule.create (Regex("path\.2"))        "t2" (fun _ -> false) Warn
+        Rule.create (Regex("path\.2\.extra")) "t2" (fun _ -> false) LogLevel.Error
       ]
       let targets = [
         Target.confTarget "t1" (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out))
@@ -98,8 +99,8 @@ let tests =
       let out = Fac.textWriter ()
 
       let rules =
-        [ { Fac.emptyRule with lineFilter = (fun l -> l.path = "1") ; target = "tw" }
-          { Fac.emptyRule with lineFilter = (fun l -> l.path = "2") ; target = "tw" } ]
+        [ { Fac.emptyRule with messageFilter = (fun l -> l.name = ["1"]) ; target = "tw" }
+          { Fac.emptyRule with messageFilter = (fun l -> l.name = ["2"]) ; target = "tw" } ]
 
       let targets =
         [ Target.confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
@@ -183,7 +184,13 @@ let tests =
 
     yield testCase "filter should never pass anything through" <| fun _ ->
       let out = Fac.textWriter ()
-      let rules   = [ { hiera  = Regex(".*"); target = "tw"; lineFilter = (fun line -> false); measureFilter = Rule.allowFilter; level = Debug } ]
+
+      let filter msg =
+        match msg.value with
+        | Event _ -> false
+        | _ -> true
+
+      let rules   = [ { hiera  = Regex(".*"); target = "tw"; messageFilter = filter; level = Debug } ]
       let targets = [ Target.confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
       let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
       try
@@ -206,9 +213,20 @@ let tests =
 
     yield testCase "filter should only pass through one path" <| fun _ ->
       let out = Fac.textWriter ()
+
+      let filter1 msg =
+        match msg.value with
+        | Event _ -> false
+        | _ -> true
+
+      let filter2 msg =
+        match msg.value with
+        | Event _ -> msg.name = ["a";"b";"c"]
+        | _ -> true
+
       let rules   = [
-        { hiera  = Regex(".*"); target = "tw"; lineFilter = (fun line -> false); measureFilter = Rule.allowFilter; level  = Verbose }
-        { hiera  = Regex(".*"); target = "tw"; lineFilter = (fun line -> line.path = "a.b.c"); measureFilter = Rule.allowFilter; level  = Verbose }
+        { hiera  = Regex(".*"); target = "tw"; messageFilter = filter1; level  = Verbose }
+        { hiera  = Regex(".*"); target = "tw"; messageFilter = filter2; level  = Verbose }
         ]
       let targets = [ Target.confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
       let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary

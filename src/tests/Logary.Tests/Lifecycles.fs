@@ -7,6 +7,7 @@ open Fuchu
 open Logary.Configuration
 
 open Logary
+open Logary.DataModel
 open Logary.Logging
 open Logary.Targets
 open Logary.Metrics
@@ -28,7 +29,7 @@ let tests =
       Target.confTarget "tw" (TextWriter.create (TextWriter.TextWriterConf.Create(Fac.textWriter(), Fac.textWriter())))
       |> Target.validate
       |> Target.init Fac.emptyRuntime
-      |> Target.send (LogLine.debug "Hello")
+      |> Target.send (Message.debug "Hello")
       |> Target.shutdown
       |> run |> ignore
 
@@ -39,7 +40,7 @@ let tests =
         (Noop.create { Noop.NoopConf.isHappy = true })
       |> Metric.validate
       |> Metric.init Fac.emptyRuntime
-      |> Metric.update (Measure.create' "tests" 1.)
+      |> Metric.update (Message.metric' ["tests"] (Float 1.0M))
       |> Metric.shutdown
       |> run |> ignore
     ]

@@ -89,7 +89,7 @@ module HealthCheck =
       sprintf "HealthCheck(name=%s, value=%A, level=%A)"
         (PointName.joined m.name) m.value m.level
 
-  module Measure =
+  module Message =
     /// Transform the measure to a HealthCheck.ResultData.
     let toResult (m : _) =
       MeasureWrapper m :> ResultData

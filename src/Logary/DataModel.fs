@@ -651,6 +651,8 @@ module Message =
 
   let setContext ctx msg = {msg with context = ctx}
 
+  let setLevel lvl msg = {msg with level = lvl}
+
   /// Temporary workaround for LogLine -> DataModel port
   let setPath p msg = {msg with context = LogContext.Create p}
 

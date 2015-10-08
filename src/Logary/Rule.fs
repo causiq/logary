@@ -23,7 +23,7 @@ type Rule =
     level         : LogLevel
     /// This is the accept filter that is before the message is passed to the logger
     /// instance.
-    messageFilter : MessageFilter}
+    messageFilter : MessageFilter }
 
   override x.GetHashCode () =
     hash (x.hiera.ToString(), x.target, x.level)
