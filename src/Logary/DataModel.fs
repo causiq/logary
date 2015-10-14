@@ -657,11 +657,11 @@ module Message =
   let setPath p msg = {msg with context = LogContext.Create p}
 
   let rec private exnToFields (e : exn) =
-    let fields = [
-      ("type", String (e.GetType ()).FullName)
-      ("message", String e.Message)
-      ("targetsite", String e.TargetSite.ReflectedType.Name)
-      ("backtrace", String e.StackTrace)]
+    let fields =
+      [("type", String (e.GetType ()).FullName);
+       ("message", String e.Message)] @
+      (if e.TargetSite <> null then [("targetsite", String <| e.TargetSite.ToString ())] else []) @
+      (if e.StackTrace <> null then [("backtrace", String e.StackTrace)] else [])
 
     Map <|
       if e.InnerException <> null then

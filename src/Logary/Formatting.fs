@@ -17,55 +17,46 @@ let internal caseNameOf (x:'a) =
 
 let app (s : string) (sb : StringBuilder) = sb.Append s
 
-let rec print (nl : string) (depth : int) (x : obj) =
-  let indent () = new String(' ', depth * 2 + 2)
-  match x with
-  | null -> "null"
-  | :? string as s ->  "\"" + s + "\""
-  | x ->
-    let typ = x.GetType()
-    let interfaces =
-      typ.GetInterfaces()
-      |> Array.filter (fun it -> it.IsGenericType)
-      |> Array.map (fun it -> it.GetGenericTypeDefinition())
-      |> fun ii -> new HashSet<_>(ii)
-    let dicType = typeof<IDictionary<_, _>>.GetGenericTypeDefinition()
-
-    if interfaces.Contains dicType then
-      let ([| keyType; valueType |] as argTypes) = typ.GetGenericArguments()
-      let dicTypeFilled = dicType.MakeGenericType argTypes
-      let keysProp = dicTypeFilled.GetProperty "Keys"
-      let itemProp = dicTypeFilled.GetProperty "Item"
-      let item (key : 'a) = itemProp.GetValue(x, [| box key |])
-      keysProp.GetValue x :?> System.Collections.IEnumerable
-      |> Seq.cast<obj>
-      |> Seq.fold (fun sb key ->
-          sb
-          |> app nl
-          |> app (indent ())
-          |> app (key.ToString())
-          |> app " => "
-          |> app (print nl (depth + 1) (item key)))
-        (StringBuilder())
-      |> fun sb -> sb.ToString()
-    else
-      match x with
-      | :? System.Collections.IEnumerable as xs ->
-        xs
-        |> Seq.cast<obj>
-        |> Seq.fold (fun sb t ->
-            sb
-            |> app nl
-            |> app (indent ())
-            |> app "- "
-            |> app (print nl (depth + 1) t))
-          (StringBuilder())
-        |> fun sb -> sb.ToString()
-      | x -> x.ToString()
+let rec printValue (nl: string) (depth: int) (value : Value) =
+  let indent = new String(' ', depth * 2 + 2)
+  match value with
+  | String s -> "\"" + s + "\""
+  | Bool b -> b.ToString ()
+  | Float f -> f.ToString ()
+  | Int64 i -> i.ToString ()
+  | BigInt b -> b.ToString ()
+  | Binary (b, _) -> System.BitConverter.ToString b |> fun s -> s.Replace("-", "")
+  | Fraction (n, d) -> sprintf "%d/%d" n d
+  | Array list ->
+    list
+    |> Seq.fold (fun (sb: StringBuilder) t ->
+        sb
+        |> app nl
+        |> app indent
+        |> app "- "
+        |> app (printValue nl (depth + 1) t))
+      (StringBuilder ())
+    |> fun sb -> sb.ToString ()
+  | Object m ->
+    m
+    |> Map.toSeq
+    |> Seq.fold (fun (sb: StringBuilder) (key, value) ->
+        sb
+        |> app nl
+        |> app indent
+        |> app key
+        |> app " => "
+        |> app (printValue nl (depth + 1) value))
+      (StringBuilder ())
+    |> fun sb -> sb.ToString ()
 
 /// Formats the data in a nice fashion for printing to e.g. the Debugger or Console.
-let internal formatData (nl : string) (data : Map<string, obj>) =
-  print nl 0 data
+let internal formatFields (nl : string) (fields : Map<PointName, Field>) =
+  Map.toSeq fields
+  |> Seq.map (fun (key, (Field (value, _))) -> (PointName.joined key, value))
+  |> Map.ofSeq
+  |> Object
+  |> printValue nl 0
 
 /// A StringFormatter is the thing that takes a log line and returns it as a string
 /// that can be printed, sent or otherwise dealt with in a manner that suits the target.
@@ -76,18 +67,20 @@ type StringFormatter =
       fun (l : Message) ->
         // TODO / HACKHACKHACK: only serializes a few fields
         //let mex = l.``exception``
-        sprintf "%s %s: %s [%s]%s"
-          (string (caseNameOf l.level).[0])
-          // https://noda-time.googlecode.com/hg/docs/api/html/M_NodaTime_OffsetDateTime_ToString.htm
-          (NodaTime.Instant(l.timestamp).ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture))
-          //l.message
-          ((function Event format -> format | _ -> "") l.value)
-          //l.path
-          (l.context.ToString ())
-          //(match l.tags with [] -> "" | _ -> " {" + String.Join(", ", l.tags) + "}")
-          //(if Map.isEmpty l.data then "" else formatData nl l.data)
-          //(match mex with None -> "" | Some ex -> sprintf " cont...%s%O" nl ex)
-          ending
+        let msg =
+          sprintf "%s %s: %s [%s]%s%s"
+            (string (caseNameOf l.level).[0])
+            // https://noda-time.googlecode.com/hg/docs/api/html/M_NodaTime_OffsetDateTime_ToString.htm
+            (NodaTime.Instant(l.timestamp).ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture))
+            //l.message
+            ((function Event format -> format | _ -> "") l.value)
+            //l.path
+            (l.context.service)
+            //(match l.tags with [] -> "" | _ -> " {" + String.Join(", ", l.tags) + "}")
+            (if Map.isEmpty l.fields then "" else formatFields nl l.fields)
+            //(match mex with None -> "" | Some ex -> sprintf " cont...%s%O" nl ex)
+            ending
+        msg
     { format  = format' }
 
   /// Takes c# Func delegates to initialise a StringFormatter
@@ -129,5 +122,6 @@ open NodaTime.TimeZones
 type JsonFormatter =
   /// Create a new JSON formatter with optional function that can modify the serialiser
   /// settings before any other alteration is done.
+  /// HACKHACKHACK: uses default text serializer
   static member Default =
-    { format = (fun ll -> "") }
+    { format = StringFormatter.Verbatim.format }

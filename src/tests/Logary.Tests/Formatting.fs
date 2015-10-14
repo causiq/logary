@@ -11,11 +11,11 @@ open Logary.DataModel
 open Logary.Tests.TestDSL
 
 let private sampleMessage : Message =
-  { name      = ["a";"b";"c";"d"]
+  { name      = []
     value     = Event "this is bad"
     fields    = Map.empty
     session   = Object Map.empty
-    context   = LogContext.Create ""
+    context   = LogContext.Create "a.b.c.d"
     timestamp = Instant.FromSecondsSinceUnixEpoch(3L).PlusTicks(1234567L).Ticks
     level     = LogLevel.Error }
 
@@ -49,7 +49,7 @@ let tests =
         { sampleMessage with fields = [ ["a"], Field (String "b", None); ["a2"], Field (Int64 24L, None) ] |> Map.ofList }
         |> StringFormatter.LevelDatetimeMessagePathNl.format)
       |> should equal (
-          sprintf "E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d] {error, bad}%s  a => \"b\"%s  a2 => 24%s"
+          sprintf "E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]%s  a => \"b\"%s  a2 => 24%s"
             Environment.NewLine Environment.NewLine Environment.NewLine)
       |> thatsIt
 
@@ -67,7 +67,7 @@ let tests =
         }
         |> StringFormatter.LevelDatetimeMessagePathNl.format)
       |> should equal (
-          String.Format("E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d] {{error, bad}}" +
+          String.Format("E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]" +
                         "{0}  a => \"b\"{0}  a2 => 24{0}  things => {0}    - 1{0}    - 2{0}    - {0}      1 => \"hello\"{0}",
                         Environment.NewLine))
       |> thatsIt
@@ -86,7 +86,7 @@ let tests =
         }
         |> StringFormatter.LevelDatetimeMessagePathNl.format)
       |> should equal (
-          String.Format("E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d] {{error, bad}}" +
+          String.Format("E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]" +
                         "{0}  a => {0}    b => 1{0}  c => 2{0}", Environment.NewLine))
       |> thatsIt
 
@@ -97,7 +97,7 @@ let tests =
         |> Message.addExn e
         |> StringFormatter.LevelDatetimeMessagePathNl.format)
       |> should equal (
-        sprintf "E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d] {error, bad} cont...%s%O%s"
+        sprintf "E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d] cont...%s%O%s"
           Environment.NewLine e Environment.NewLine)
       |> thatsIt
     testCase "StringFormatter.LevelDatetimePathMessageNl with exception, data" <| fun _ ->
@@ -107,7 +107,7 @@ let tests =
         |> Message.addExn e
         |> StringFormatter.LevelDatetimeMessagePathNl.format)
       |> should equal (
-        sprintf "E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d] {error, bad}%s  a => \"b\"%s  a2 => 24 cont...%s%O%s"
+        sprintf "E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]%s  a => \"b\"%s  a2 => 24 cont...%s%O%s"
           Environment.NewLine Environment.NewLine // for data
           Environment.NewLine e Environment.NewLine) // for exn
       |> thatsIt

@@ -34,7 +34,10 @@ module private Impl =
         return! loop { calls = state.calls + 1I }
       | Update msr ->
         match msr.value with
-        | Derived (Int64 l, _) -> return! loop { calls = state.calls + 1I }
+        | Derived (Int64 l, _) ->
+          return! loop { calls = state.calls + 1I }
+        | _ ->
+          return! loop state
       | Sample ->
         return! loop state
       | Shutdown ackChan ->
