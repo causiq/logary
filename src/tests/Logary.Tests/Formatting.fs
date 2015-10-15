@@ -97,8 +97,9 @@ let tests =
         |> Message.addExn e
         |> StringFormatter.LevelDatetimeMessagePathNl.format)
       |> should equal (
-        sprintf "E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d] cont...%s%O%s"
-          Environment.NewLine e Environment.NewLine)
+        String.Format("E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]" +
+                      "{0}  errors => {0}    - {0}      message => \"{1}\"{0}      type => \"{2}\"{0}",
+                      Environment.NewLine, e.Message, (e.GetType ()).FullName))
       |> thatsIt
     testCase "StringFormatter.LevelDatetimePathMessageNl with exception, data" <| fun _ ->
       let e = new Exception("Gremlings in the machinery")
@@ -107,9 +108,10 @@ let tests =
         |> Message.addExn e
         |> StringFormatter.LevelDatetimeMessagePathNl.format)
       |> should equal (
-        sprintf "E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]%s  a => \"b\"%s  a2 => 24 cont...%s%O%s"
-          Environment.NewLine Environment.NewLine // for data
-          Environment.NewLine e Environment.NewLine) // for exn
+        String.Format("E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]"+
+                      "{0}  a => \"b\"{0}  a2 => 24{0}" +
+                      "  errors => {0}    - {0}      message => \"{1}\"{0}      type => \"{2}\"{0}",
+                      Environment.NewLine, e.Message, (e.GetType ()).FullName))
       |> thatsIt
 
     testCase "``JsonFormatter has no newline characters``" <| fun _ ->
