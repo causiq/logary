@@ -90,10 +90,8 @@ let reservoirs =
         // TODO: might port sliding time window reservoir
         ()
       ]
-    ]
 
-    // TODO ! ! Un-comment
-    (*testList "exponentially weighted moving average" [
+    testList "exponentially weighted moving average" [
       let testEWMA explaination instance (expectations : _ list) =
 
         let flip f a b = f b a
@@ -106,7 +104,7 @@ let reservoirs =
         let actual =
           [ for i in 1..expectations.Length - 1 do yield i ]
           |> List.scan (fun s t -> passMinute s) initState
-          |> List.map (ExpWeightedMovAvg.rate Seconds)
+          |> List.map (ExpWeightedMovAvg.rate (Duration.FromSeconds 1L))
 
         testCase explaination <| fun _ ->
           List.zip expectations actual
@@ -171,4 +169,4 @@ let reservoirs =
           0.23594443
           0.22072766 ]
       ]
-    ]*)
+    ]

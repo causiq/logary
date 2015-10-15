@@ -345,6 +345,10 @@ module Reservoir =
                      inited    = true
                      rate      = instantRate }
 
+    let rate (inUnit : Duration) state =
+      // we know rate is in samples per tick
+      state.rate * float inUnit.Ticks
+
     (* This type is monoidal, since it can't use `mappend:a->a->a`, but needs
        mappend: a -> b -> a
        so that it can be used in a fold
