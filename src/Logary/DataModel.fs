@@ -468,7 +468,6 @@ module Units =
       let value, suffix = scale un 3us 3us v
       sprintf "%f %s" value suffix
 
-
 type LogContext =
     { datacenter : string
       hostname   : string
@@ -536,14 +535,6 @@ type Message =
     static member field_ name : PLens<Message, Field> =
       Message.fields_ >-?> (Logary.Utils.Aether.mapPLens [name])
 
-(*type Logger =
-  abstract log : Message -> unit
-
-type Logging =
-  static member get(modulee, file, line) =
-    { new Logger with
-      member x.log m = () }*)
-
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Message =
   open NodaTime
@@ -560,10 +551,6 @@ module Message =
   module Fields =
     let errorsGet = Message.field_ "errors"
     let errorsSet (value: Value) = field "errors" value
-
-    module Exception =
-      let type_ = Lens.mapPartial Value.ObjectPLens (fun s -> s)
-      //let message_ =
 
   let event level msg =
     { name = [] // check in logger
