@@ -109,10 +109,73 @@ type StringFormatter =
 
 open NodaTime.TimeZones
 
+module internal Json =
+  open Logary.Utils.Chiron
+  open Logary.Utils.Chiron.Operators
+
+  let inline toNumber i = (decimal >> Json.Number) i
+
+  let rec valueToJson (value : Value) =
+    match value with
+    | Value.String s -> Json.String s
+    | Value.Bool b -> Json.Bool b
+    | Value.Float f -> toNumber f
+    | Value.Int64 i -> toNumber i
+    // TODO/CONSIDER: Should big integers be serialized as numbers or strings?
+    // Although the JSON spec doesn't have any restrictions on how big numbers are supported,
+    // few if any JSON implementations support arbitrary precision integers.
+    | Value.BigInt bi -> toNumber bi
+    // TODO/CONSIDER:
+    // - Is a base64 string the best format for binary data?
+    // - Would it make sense to store the length of the encoded data?
+    | Value.Binary (bytes, mime) ->
+      [("mime",   Json.String mime)
+       ("base64", Json.String (System.Convert.ToBase64String bytes))]
+      |> Map |> Json.Object
+    | Value.Fraction (nom, denom) ->
+      [("nom",   toNumber nom)
+       ("denom", toNumber denom)]
+      |> Map |> Json.Object
+    | Value.Object values -> Map.map (fun _ v -> valueToJson v) values |> Json.Object
+    | Value.Array items -> List.map (valueToJson) items |> Json.Array
+
+  let fieldsToJson (fields : Map<PointName, Field>) =
+    Map.toSeq fields
+    |> Seq.map (fun (k, Field (v, _)) -> (PointName.joined k, valueToJson v))
+    |> Map |> Json.Object
+
+  let contextToJson (ctx : LogContext) =
+    [("service", Json.String ctx.service)
+     ("datacenter", Json.String ctx.datacenter)
+     ("hostname", Json.String ctx.hostname)
+     ("envVersion", Json.String ctx.envVersion)] @
+    (match ctx.file   with Some s -> [("file", Json.String s)] | None -> []) @
+    (match ctx.func   with Some s -> [("func", Json.String s)] | None -> []) @
+    (match ctx.ns     with Some s -> [("ns",   Json.String s)] | None -> []) @
+    (match ctx.lineNo with Some i -> [("lineNo", toNumber i)]  | None -> [])
+    |> Map |> Json.Object
+
+  let messageToJson (msg: Message) =
+    [("name", Json.String <| PointName.joined msg.name)
+     ("session", valueToJson msg.session)
+     ("level", Json.String <| msg.level.ToString ())
+     ("timestamp", Json.String <| NodaTime.Instant(msg.timestamp).ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture))
+     ("session", valueToJson msg.session)
+     ("context", contextToJson msg.context)
+     ("data", fieldsToJson msg.fields)] @
+    (match msg.value with
+     | Event m ->        [("type", Json.String "event");   ("message", Json.String m)]
+     | Gauge   (g, u) -> [("type", Json.String "gauge");   ("value", valueToJson g);
+                          ("unit", Json.String <| Units.symbol u)]
+     | Derived (d, u) -> [("type", Json.String "derived"); ("value", valueToJson d);
+                          ("unit", Json.String <| Units.symbol u)])
+    |> Map |> Json.Object
+
+  let format = Json.format
+
 /// Wrapper that constructs a Json.Net JSON formatter.
 type JsonFormatter =
   /// Create a new JSON formatter with optional function that can modify the serialiser
   /// settings before any other alteration is done.
-  /// HACKHACKHACK: uses default text serializer
   static member Default =
-    { format = StringFormatter.Verbatim.format }
+    { format = fun msg -> Json.format (Json.messageToJson msg) }
