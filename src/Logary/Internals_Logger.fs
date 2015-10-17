@@ -120,7 +120,7 @@ module Try =
   /// exception internally. Returns unit, irregardless of the codomain of f.
   let safe label ilogger f =
     try let x = f () in ()
-    with e -> Message.error label |> Message.setExn e |> Logger.log ilogger
+    with e -> Message.error label |> Message.addExn e |> Logger.log ilogger
 
   /// Safely try to execute f, catching a thrown the exception type specified
   /// by the generic type parameter and logging that exception internally.
@@ -128,7 +128,7 @@ module Try =
   /// codomain of f.
   let safeT<'a when 'a :> exn> label ilogger f =
     try let x = f () in ()
-    with :? 'a as e -> Message.error label |> Message.setExn e |> Logger.log ilogger
+    with :? 'a as e -> Message.error label |> Message.addExn e |> Logger.log ilogger
 
   /// Safely try to execute asynchronous function f, catching any thrown
   /// exception and logging exception internally. Returns async<unit>
@@ -137,7 +137,7 @@ module Try =
     try
       let! x = f ()
       return ()
-    with e -> Message.error label |> Message.setExn e |> Logger.log ilogger }
+    with e -> Message.error label |> Message.addExn e |> Logger.log ilogger }
 
   /// Safely try to execute asynchronous function f, catching any thrown exception and logging
   /// that exception internally.

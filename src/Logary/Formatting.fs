@@ -65,22 +65,14 @@ type StringFormatter =
   static member private Expanded nl ending =
     let format' =
       fun (l : Message) ->
-        // TODO / HACKHACKHACK: only serializes a few fields
-        //let mex = l.``exception``
-        let msg =
-          sprintf "%s %s: %s [%s]%s%s"
-            (string (caseNameOf l.level).[0])
-            // https://noda-time.googlecode.com/hg/docs/api/html/M_NodaTime_OffsetDateTime_ToString.htm
-            (NodaTime.Instant(l.timestamp).ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture))
-            //l.message
-            ((function Event format -> format | _ -> "") l.value)
-            //l.path
-            (l.context.service)
-            //(match l.tags with [] -> "" | _ -> " {" + String.Join(", ", l.tags) + "}")
-            (if Map.isEmpty l.fields then "" else formatFields nl l.fields)
-            //(match mex with None -> "" | Some ex -> sprintf " cont...%s%O" nl ex)
-            ending
-        msg
+        sprintf "%s %s: %s [%s]%s%s"
+          (string (caseNameOf l.level).[0])
+          // https://noda-time.googlecode.com/hg/docs/api/html/M_NodaTime_OffsetDateTime_ToString.htm
+          (NodaTime.Instant(l.timestamp).ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture))
+          ((function Event format -> format | _ -> "") l.value)
+          l.context.service
+          (if Map.isEmpty l.fields then "" else formatFields nl l.fields)
+          ending
     { format  = format' }
 
   /// Takes c# Func delegates to initialise a StringFormatter
@@ -101,7 +93,6 @@ type StringFormatter =
   /// and does append a newline to the string.
   static member VerbatimNewline =
     { format = fun m -> sprintf "%s%s" (StringFormatter.Verbatim.format m) (Environment.NewLine)}
-      //format = fun m -> sprintf "%s%s" (Measure.getValueStr m) (Environment.NewLine) }
 
   /// <see cref="StringFormatter.LevelDatetimePathMessageNl" />
   static member LevelDatetimeMessagePath =

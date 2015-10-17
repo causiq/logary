@@ -582,66 +582,64 @@ module Message =
     }
 
 
-  /// Create a verbose log line with a message
+  /// Create a verbose event message
   [<CompiledName "Verbose">]
   let verbose = event Verbose
 
-  /// Create a verbose log line, for help constructing format string, see:
+  /// Create a verbose event message, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
   [<CompiledName "VerboseFormat">]
   let verbosef fmt = Printf.kprintf (event Verbose) fmt
 
-  /// Create a debug log line with a message
+  /// Create a debug event message
   [<CompiledName "Debug">]
   let debug = event Debug
 
-  /// Write a debug log entry, for help constructing format string, see:
+  /// Create a debug event message, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
   [<CompiledName "DebugFormat">]
   let debugf fmt = Printf.kprintf (event LogLevel.Debug) fmt
 
-  /// Create an info log line with a message
+  /// Create an info event message
   [<CompiledName "Info">]
   let info = event Info
 
-  /// Write a info log entry, for help constructing format string, see:
+  /// Create a info event message, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
   [<CompiledName "InfoFormat">]
   let infof fmt = Printf.kprintf (event LogLevel.Info) fmt
 
-  /// Create an warn log line with a message
+  /// Create an warn event message
   [<CompiledName "Warn">]
   let warn = event LogLevel.Warn
 
-  /// Write a warn log entry, for help constructing format string, see:
+  /// Create a warn event message for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
   [<CompiledName "WarnFormat">]
   let warnf fmt = Printf.kprintf (event LogLevel.Warn) fmt
 
-  /// Create an error log line with a message
+  /// Create an error event message
   [<CompiledName "Error">]
   let error = event LogLevel.Error
 
-  /// Write a error log entry, for help constructing format string, see:
+  /// Write a error event message, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
   [<CompiledName "ErrorFormat">]
   let errorf fmt = Printf.kprintf (event LogLevel.Error) fmt
 
-  /// Create a fatal log entry with a message
+  /// Create a fatal event message
   [<CompiledName "Fatal">]
   let fatal = event Fatal
 
-  /// Write a fatal log entry, for help constructing format string, see:
+  /// Create a fatal event message, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
   [<CompiledName "FatalFormat">]
   let fatalf fmt = Printf.kprintf (event Fatal) fmt
 
-  let setContext ctx msg = {msg with context = ctx}
+  let setContext ctx msg  = {msg with context = ctx}
+  let setContext' ctx = setContext <| LogContext.Create ctx
 
   let setLevel lvl msg = {msg with level = lvl}
-
-  /// Temporary workaround for LogLine -> DataModel port
-  let setPath p msg = {msg with context = LogContext.Create p}
 
   let rec private exnToFields (e : exn) =
     let fields =
@@ -675,6 +673,3 @@ module Message =
           [exnToFields e]
 
     errorsSL (Array (errors @ newErrors)) msg
-
-  /// Temporary workaround for LogLine -> DataModel port.
-  let setExn = addExn

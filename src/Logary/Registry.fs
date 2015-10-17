@@ -340,7 +340,7 @@ module Advanced =
   /// It is not until runRegistry is called, that each target gets its service
   /// metadata, so it's no need to pass the metadata to the target before this.
   let create ({ metadata = { logger = lgr } } as conf : LogaryConf) =
-    let log = Message.setPath "Logary.Registry.runRegistry" >> Logger.log lgr
+    let log = Message.setContext' "Logary.Registry.runRegistry" >> Logger.log lgr
 
     let targets = conf.targets |> Map.map (fun _ (tconf, _) -> tconf, Some(Target.init conf.metadata tconf))
     let metrics = conf.metrics |> Map.map (fun _ (mconf, _) -> mconf, Some(Metric.init conf.metadata mconf))
