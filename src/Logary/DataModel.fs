@@ -539,12 +539,15 @@ type Message =
 module Message =
   open NodaTime
 
+  /// Get a partial setter lens to a field
   let inline field name value =
     Lens.setPartial (Message.field_ name) (Field.init value)
 
+  /// Get a partial setter lens to a field with an unit
   let inline fieldUnit name value units =
     Lens.setPartial (Message.field_ name) (Field.initWithUnit value units)
 
+  /// Get a partial getter lens to a field
   let inline tryGetField name =
     Lens.getPartial (Message.field_ name)
 
@@ -552,6 +555,7 @@ module Message =
     let errorsGet = Message.field_ "errors"
     let errorsSet (value: Value) = field "errors" value
 
+  /// Creates a new event message with level
   let event level msg =
     { name = [] // check in logger
       value = Event msg
@@ -561,6 +565,7 @@ module Message =
       level   = level // fix
       timestamp = SystemClock.Instance.Now.Ticks }
 
+  /// Creates a new metric message with data point name, unit and value
   let metric dp unit value =
     { name = dp
       value = Gauge (value, unit)
@@ -571,6 +576,7 @@ module Message =
       timestamp = SystemClock.Instance.Now.Ticks
     }
 
+  /// Creates a new metric message with data point name and scalar value
   let metric' dp value =
     { name = dp
       value = Gauge (value, Units.Scalar)
@@ -657,11 +663,8 @@ module Message =
   /// Adds a new exception to the "errors" field in the message.
   /// AggregateExceptions are automatically expanded into multiple different exceptions.
   let addExn (e : exn) msg =
-    let errorsGL = Message.field_ "errors"
-    let errorsSL = field "errors"
-
     let (Field (Array errors, None)) =
-      defaultArg (Lens.getPartial errorsGL msg)
+      defaultArg (Lens.getPartial Fields.errorsGet msg)
                  (Field.init (Array []))
 
     let newErrors =
@@ -672,4 +675,4 @@ module Message =
         | _ ->
           [exnToFields e]
 
-    errorsSL (Array (errors @ newErrors)) msg
+    Fields.errorsSet (Array (errors @ newErrors)) msg

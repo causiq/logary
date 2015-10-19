@@ -1,10 +1,10 @@
 ﻿module Logary.Tests.Formatting
 
-open Fuchu
-open Swensen.Unquote
 open System
-open System.IO
+
+open Fuchu
 open NodaTime
+
 open Logary
 open Logary.Formatting
 open Logary.DataModel
@@ -78,10 +78,6 @@ let tests =
             fields =
               [ ["a"], (Field (["b", Int64 1L] |> Map.ofList |> Object, None))
                 ["c"], (Field (Int64 2L, None))
-                // TODO / CONSIDER
-                // The new object model can't represent nulls or nones
-                //["d"], (Field (Unchecked.defaultof<obj>))
-                //["e"], box (None : Option<int>)
               ] |> Map.ofList
         }
         |> StringFormatter.LevelDatetimeMessagePathNl.format)
