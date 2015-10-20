@@ -14,7 +14,7 @@ type Value =
   | Int64 of int64
   | BigInt of bigint
   | Binary of byte [] * ContentType
-  | Fraction of int * int
+  | Fraction of int64 * int64
   | Object of Map<string, Value> // NOTE: moved from ComplexValue
   | Array of Value list // NOTE: moved from ComplexValue
 
@@ -44,7 +44,7 @@ type Value =
       (function | Binary (bs, ct) -> Some (bs, ct)
                 | _ -> None), Binary
 
-  static member FractionPIso : PIso<Value, int * int> =
+  static member FractionPIso : PIso<Value, int64 * int64> =
       (function | Fraction (n, d) -> Some (n, d)
                 | _ -> None), Fraction
 
@@ -76,7 +76,7 @@ type Value =
   static member BinaryPLens : PLens<Value, byte[] * ContentType> =
       idLens <-?> Value.BinaryPIso
 
-  static member FractionPLens : PLens<Value, int * int> =
+  static member FractionPLens : PLens<Value, int64 * int64> =
       idLens <-?> Value.FractionPIso
 
   static member ArrayPLens : PLens<Value, Value list> =
