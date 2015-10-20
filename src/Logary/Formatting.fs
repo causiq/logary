@@ -70,7 +70,7 @@ type StringFormatter =
           // https://noda-time.googlecode.com/hg/docs/api/html/M_NodaTime_OffsetDateTime_ToString.htm
           (NodaTime.Instant(l.timestamp).ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture))
           ((function Event format -> format | _ -> "") l.value)
-          l.context.service
+          (Message.Context.serviceGet l)
           (if Map.isEmpty l.fields then "" else formatFields nl l.fields)
           ending
     { format  = format' }
