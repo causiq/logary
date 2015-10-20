@@ -468,26 +468,6 @@ module Units =
       let value, suffix = scale un 3us 3us v
       sprintf "%f %s" value suffix
 
-type LogContext =
-    { datacenter : string
-      hostname   : string
-      service    : string
-      ns         : string option
-      func       : string option
-      file       : string option
-      lineNo     : uint32 option
-      envVersion : string }
-
-    static member Create(service : string) =
-      { datacenter = "dc1"
-        hostname   = "coinduction"
-        service    = service
-        ns         = None
-        func       = None
-        file       = None
-        lineNo     = None
-        envVersion = "0.0.0" }
-
 type PointName = string list
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -522,7 +502,7 @@ type Message =
     /// the principal/actor/user/tenant/act-as/oauth-id data
     session   : Value // NOTE: changed from Map<PointName, Field>
     /// where in the code?
-    context   : LogContext
+    context   : Map<string, Value>
     /// what urgency?
     level     : LogLevel
     /// when?
@@ -532,8 +512,15 @@ type Message =
       (fun x -> x.fields),
       (fun v x -> { x with fields = v })
 
+    static member contextFields_ : Lens<Message, Map<string, Value>> =
+      (fun x -> x.context),
+      (fun v x -> { x with context = v})
+
     static member field_ name : PLens<Message, Field> =
       Message.fields_ >-?> (Logary.Utils.Aether.mapPLens [name])
+
+    static member contextField_ name : PLens<Message, Value> =
+      Message.contextFields_ >-?> (Logary.Utils.Aether.mapPLens name)
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Message =
@@ -551,9 +538,30 @@ module Message =
   let inline tryGetField name =
     Lens.getPartial (Message.field_ name)
 
+  let inline contextField name value =
+    Lens.setPartial (Message.contextField_ name) (value)
+
+  let inline tryGetContextField name =
+    Lens.getPartial (Message.contextField_ name)
+
   module Fields =
-    let errorsGet = Message.field_ "errors"
-    let errorsSet (value: Value) = field "errors" value
+    let errors = Message.field_ "errors"
+    let errorsGet =
+      Lens.getPartial errors
+      >> Option.bind (function Field (Array a, None) -> Some a | _  -> None)
+
+    let errorsSet (value: Value list) =
+      Lens.setPartial errors (Field (Array value, None))
+
+  module Context =
+    /// Gets the context field 'service', or an empty string if the field doesn't exist or is of the wrong type.
+    let service = Message.contextField_ "service"
+    let serviceGet =
+      Lens.getPartial service
+      >> Option.bind (function String s -> Some s | _ -> None)
+      >> (fun x -> defaultArg x "")
+
+    let serviceSet = String >> Lens.setPartial service
 
   /// Creates a new event message with level
   let event level msg =
@@ -561,7 +569,7 @@ module Message =
       value = Event msg
       fields = Map.empty
       session = Object Map.empty // default, hoist to static
-      context = LogContext.Create "" // fix, take from logger
+      context = Map.empty // fix, take from logger
       level   = level // fix
       timestamp = SystemClock.Instance.Now.Ticks }
 
@@ -571,7 +579,7 @@ module Message =
       value = Gauge (value, unit)
       fields = Map.empty
       session = Object Map.empty // TODO
-      context = LogContext.Create "" // TODO
+      context = Map.empty // TODO
       level = LogLevel.Info
       timestamp = SystemClock.Instance.Now.Ticks
     }
@@ -582,7 +590,7 @@ module Message =
       value = Gauge (value, Units.Scalar)
       fields = Map.empty
       session = Object Map.empty // TODO
-      context = LogContext.Create "" // TODO
+      context = Map.empty // TODO
       level = LogLevel.Info
       timestamp = SystemClock.Instance.Now.Ticks
     }
@@ -643,7 +651,7 @@ module Message =
   let fatalf fmt = Printf.kprintf (event Fatal) fmt
 
   let setContext ctx msg  = {msg with context = ctx}
-  let setContext' ctx = setContext <| LogContext.Create ctx
+  let setContext' ctx = contextField "service" (String ctx)
 
   let setLevel lvl msg = {msg with level = lvl}
 
@@ -663,9 +671,7 @@ module Message =
   /// Adds a new exception to the "errors" field in the message.
   /// AggregateExceptions are automatically expanded into multiple different exceptions.
   let addExn (e : exn) msg =
-    let (Field (Array errors, None)) =
-      defaultArg (Lens.getPartial Fields.errorsGet msg)
-                 (Field.init (Array []))
+    let errors = defaultArg (Fields.errorsGet msg) []
 
     let newErrors =
       List.map Object <|
@@ -675,4 +681,4 @@ module Message =
         | _ ->
           [exnToFields e]
 
-    Fields.errorsSet (Array (errors @ newErrors)) msg
+    Fields.errorsSet (errors @ newErrors) msg

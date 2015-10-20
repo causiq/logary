@@ -98,7 +98,7 @@ let private graphiteLoop (conf : GraphiteConf) (svc : RuntimeInfo) =
         match msg with
         | Log l ->
           let (Event message) = l.value
-          let! state' = createMsg l.context.service message (Instant l.timestamp) |> doWrite state
+          let! state' = createMsg (Message.Context.serviceGet l) message (Instant l.timestamp) |> doWrite state
           return! running state'
         | Measure ms ->
           let! state' = createMsg (sanitizePath ms.name |> PointName.joined) (formatMeasure ms.value) (Instant ms.timestamp) |> doWrite state

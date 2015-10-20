@@ -33,7 +33,7 @@ module Logger =
   /////////////////////
 
   let private setContext (logger : Logger) (msg : Message) =
-    {msg with context = {msg.context with service = logger.Name}}
+    Message.Context.serviceSet logger.Name msg
 
   /// Write a log entry from a log line.
   [<CompiledName "Log">]

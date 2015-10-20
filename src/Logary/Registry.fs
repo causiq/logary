@@ -212,7 +212,7 @@ module Advanced =
       let lgr = conf.metadata.logger
       let regPath = "Logary.Registry.registry"
       //let log = LogLine.setPath regPath >> Logger.log lgr
-      let log = Message.setContext (LogContext.Create regPath) >> Logger.log lgr
+      let log = Message.Context.serviceSet regPath >> Logger.log lgr
 
       let rec init state = async {
         let ctss = System.Collections.Generic.List<_>()

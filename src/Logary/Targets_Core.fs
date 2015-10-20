@@ -152,6 +152,7 @@ module Debugger =
   open FSharp.Actor
 
   open Logary
+  open Logary.DataModel
   open Logary.Internals
   open Logary.Target
   open Logary.Formatting
@@ -175,12 +176,12 @@ module Debugger =
         let! msg, opts = inbox.Receive()
         match msg with
         | Log l when Debugger.IsLogging() ->
-          Debugger.Log(offLevel, l.context.service, l |> formatter.format)
+          Debugger.Log(offLevel, Message.Context.serviceGet l, l |> formatter.format)
           return! loop()
         | Log _ ->
           return! loop ()
         | Measure m when Debugger.IsLogging() ->
-          Debugger.Log(offLevel, m.context.service, sprintf "%A" m)
+          Debugger.Log(offLevel, Message.Context.serviceGet m, sprintf "%A" m)
           return! loop ()
         | Measure _ ->
           return! loop ()

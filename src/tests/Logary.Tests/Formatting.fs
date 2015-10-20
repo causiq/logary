@@ -15,7 +15,7 @@ let private sampleMessage : Message =
     value     = Event "this is bad"
     fields    = Map.empty
     session   = Object Map.empty
-    context   = LogContext.Create "a.b.c.d"
+    context   = Map [("service", String "a.b.c.d")]
     timestamp = Instant.FromSecondsSinceUnixEpoch(3L).PlusTicks(1234567L).Ticks
     level     = LogLevel.Error }
 
