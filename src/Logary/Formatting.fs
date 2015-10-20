@@ -144,17 +144,6 @@ module internal Json =
     |> Seq.map (fun (k, Field (v, _)) -> (PointName.joined k, valueToJson v))
     |> Map |> Json.Object
 
-  let contextToJson (ctx : LogContext) =
-    [("service", Json.String ctx.service)
-     ("datacenter", Json.String ctx.datacenter)
-     ("hostname", Json.String ctx.hostname)
-     ("envVersion", Json.String ctx.envVersion)] @
-    (match ctx.file   with Some s -> [("file", Json.String s)] | None -> []) @
-    (match ctx.func   with Some s -> [("func", Json.String s)] | None -> []) @
-    (match ctx.ns     with Some s -> [("ns",   Json.String s)] | None -> []) @
-    (match ctx.lineNo with Some i -> [("lineNo", toNumber i)]  | None -> [])
-    |> Map |> Json.Object
-
   let isEmpty = function
   | String "" -> true
   | Object v -> v.IsEmpty
@@ -167,7 +156,7 @@ module internal Json =
      ("level", Json.String <| msg.level.ToString ())
      ("timestamp", Json.String <| NodaTime.Instant(msg.timestamp).ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture))
      ("session", valueToJson msg.session)
-     ("context", contextToJson msg.context)
+     ("context", Map.map (fun _ v -> valueToJson v) msg.context |> Json.Object)
      ("data", fieldsToJson msg.fields)] @
     (match msg.value with
      | Event m ->        [("type", Json.String "event");   ("message", Json.String m)]
