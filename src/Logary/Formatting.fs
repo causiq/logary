@@ -155,6 +155,12 @@ module internal Json =
     (match ctx.lineNo with Some i -> [("lineNo", toNumber i)]  | None -> [])
     |> Map |> Json.Object
 
+  let isEmpty = function
+  | String "" -> true
+  | Object v -> v.IsEmpty
+  | Array [] -> true
+  | _ -> false
+
   let messageToJson (msg: Message) =
     [("name", Json.String <| PointName.joined msg.name)
      ("session", valueToJson msg.session)
@@ -169,6 +175,7 @@ module internal Json =
                           ("unit", Json.String <| Units.symbol u)]
      | Derived (d, u) -> [("type", Json.String "derived"); ("value", valueToJson d);
                           ("unit", Json.String <| Units.symbol u)])
+    |> Seq.filter (snd >> isEmpty >> not)
     |> Map |> Json.Object
 
   let format = Json.format
