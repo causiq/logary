@@ -8,7 +8,6 @@ open Logary.DataModel
 open Logary.Internals
 
 /// This is the accept filter that is before the message is passed to the logger
-/// TODO: everything
 type MessageFilter = Message -> bool
 
 /// A rule specifies what messages a target should accept.

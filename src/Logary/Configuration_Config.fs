@@ -149,7 +149,7 @@ let runLogary conf =
 let shutdown' (flushDur : Duration) (shutdownDur : Duration)
   ({ registry = reg; metadata = { logger = lgr } } : LogaryInstance)
   =
-  let log = Message.setContext' "Logary.Configuration.Config.shutdown" >> Logger.log lgr
+  let log = Message.Context.serviceSet "Logary.Configuration.Config.shutdown" >> Logger.log lgr
   async {
   Message.info "start shutdown" |> log
   let! res = Advanced.flushAndShutdown flushDur shutdownDur reg

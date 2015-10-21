@@ -650,10 +650,8 @@ module Message =
   [<CompiledName "FatalFormat">]
   let fatalf fmt = Printf.kprintf (event Fatal) fmt
 
-  let setContext ctx msg  = {msg with context = ctx}
-  let setContext' ctx = contextField "service" (String ctx)
-
   let setLevel lvl msg = {msg with level = lvl}
+  let setTimestamp ts msg = {msg with timestamp = ts}
 
   let rec private exnToFields (e : exn) =
     let fields =

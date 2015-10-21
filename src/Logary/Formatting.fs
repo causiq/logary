@@ -15,7 +15,7 @@ let internal caseNameOf (x:'a) =
   match FSharpValue.GetUnionFields(x, typeof<'a>) with
   | case, _ -> case.Name
 
-let app (s : string) (sb : StringBuilder) = sb.Append s
+let private app (s : string) (sb : StringBuilder) = sb.Append s
 
 let rec printValue (nl: string) (depth: int) (value : Value) =
   let indent = new String(' ', depth * 2 + 2)
@@ -58,7 +58,7 @@ let internal formatFields (nl : string) (fields : Map<PointName, Field>) =
   |> Object
   |> printValue nl 0
 
-/// A StringFormatter is the thing that takes a log line and returns it as a string
+/// A StringFormatter is the thing that takes a message and returns it as a string
 /// that can be printed, sent or otherwise dealt with in a manner that suits the target.
 type StringFormatter =
   { format   : Message -> string }
@@ -121,13 +121,7 @@ module internal Json =
     | Value.Bool b -> Json.Bool b
     | Value.Float f -> toNumber f
     | Value.Int64 i -> toNumber i
-    // TODO/CONSIDER: Should big integers be serialized as numbers or strings?
-    // Although the JSON spec doesn't have any restrictions on how big numbers are supported,
-    // few if any JSON implementations support arbitrary precision integers.
     | Value.BigInt bi -> toNumber bi
-    // TODO/CONSIDER:
-    // - Is a base64 string the best format for binary data?
-    // - Would it make sense to store the length of the encoded data?
     | Value.Binary (bytes, mime) ->
       [("mime",   Json.String mime)
        ("base64", Json.String (System.Convert.ToBase64String bytes))]
@@ -169,9 +163,8 @@ module internal Json =
 
   let format = Json.format
 
-/// Wrapper that constructs a Json.Net JSON formatter.
+/// A JsonFormatter takes a message and converts it into a JSON string.
 type JsonFormatter =
-  /// Create a new JSON formatter with optional function that can modify the serialiser
-  /// settings before any other alteration is done.
+  /// Creates a new JSON formatter.
   static member Default =
     { format = fun msg -> Json.format (Json.messageToJson msg) }
