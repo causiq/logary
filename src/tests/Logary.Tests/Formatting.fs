@@ -113,7 +113,7 @@ let tests =
     testCase "``JsonFormatter has no newline characters``" <| fun _ ->
       (because "logging message with newline in it" <| fun () ->
           { sampleMessage with value = Event "here\n  we\ngo!" } |> JsonFormatter.Default.format)
-      |> should equal ("""{"message":"here\n  we\ngo!","data":{},"level":"error","tags":["error","bad"],""" +
-                      """"timestamp":"1970-01-01T00:00:03.1234567Z","path":"a.b.c.d"}""")
+      |> should equal ("""{"context":{"service":"a.b.c.d"},"level":"error","message":"here\n  we\ngo!",""" +
+                       """"timestamp":"1970-01-01T00:00:03.1234567+00:00","type":"event"}""")
       |> thatsIt
     ]
