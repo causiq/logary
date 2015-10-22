@@ -17,3 +17,5 @@ Logary.userprefs
 *.pvk
 .DS_Store
 App_Readme/
+paket-files/
+*.userprefs

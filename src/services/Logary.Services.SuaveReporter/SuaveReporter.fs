@@ -64,33 +64,33 @@ module Impl =
 
   let readLogline (input : string) =
     let o =
-      idLens
-      <-?> Json.ObjectPIso
+      Aether.id_
+      >-?> Json.Object_
 
     let root prop =
-      o >??> Aether.mapPLens prop
+      o >??> Aether.key_ prop
 
     let errors = 
       root "errors"
-      >??> Json.ArrayPLens
+      >??> Json.Array_
 
     let message =
       errors
-      >??> Aether.headPLens
-      >??> Json.ObjectPLens
-      >??> Aether.mapPLens "message"
-      >??> Json.StringPLens
+      >??> Aether.head_
+      >??> Json.Object_
+      >??> Aether.key_ "message"
+      >??> Json.String_
 
     let tryParseTs =
       InstantPattern.GeneralPattern.Parse
       >> (fun may -> if may.Success then Some may.Value else None)
 
-    let timestamp = root "timestamp" >??> Json.StringPLens
-    let data      = root "data" >??> Json.ObjectPLens
-    let session   = root "session" >??> Json.ObjectPLens
-    let context   = root "context" >??> Json.ObjectPLens
-    let tags      = root "tags" >??> Json.ArrayPLens
-    let level     = root "level" >??> Json.StringPLens
+    let timestamp = root "timestamp" >??> Json.String_
+    let data      = root "data" >??> Json.Object_
+    let session   = root "session" >??> Json.Object_
+    let context   = root "context" >??> Json.Object_
+    let tags      = root "tags" >??> Json.Array_
+    let level     = root "level" >??> Json.String_
 
     let json = Json.parse input
 
@@ -118,7 +118,7 @@ module Impl =
         |> Option.fold (fun s t -> LogLevel.FromString t) LogLevel.Error
       tags          =
         Lens.getPartialOrElse tags [] json
-        |> List.map (fun json -> json, idLens <-?> Json.StringPIso)
+        |> List.map (fun json -> json, Aether.id_ >-?> Json.String_)
         |> List.map (fun (json, lens) -> Lens.getPartial lens json)
         |> List.filter Option.isSome
         |> List.map Option.get
