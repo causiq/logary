@@ -7,7 +7,7 @@ open Suave.Http.Applicatives
 #I "../../../packages/FParsec/lib/net40-client"
 //#r "../../../packages/FParsec/lib/net40-client/FParsecCS.dll"
 #r "../../../packages/FParsec/lib/net40-client/FParsec.dll"
-#r "../../../packages/Aether/lib/net40/Aether.dll"
+#r "../../../packages/Aether/lib/net35/Aether.dll"
 #r "../../../packages/Chiron/lib/net45/Chiron.dll"
 #r "../../../packages/NodaTime/lib/net35-Client/NodaTime.dll"
 
