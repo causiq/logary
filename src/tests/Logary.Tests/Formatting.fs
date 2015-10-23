@@ -36,6 +36,13 @@ let tests =
       |> should equal (sprintf "hi there%s" Environment.NewLine)
       |> thatsIt
 
+    testCase "StringFormatter.VerbatimNewlineTemplated" <| fun _ ->
+      (because "logging verbatim with newline, templated" <| fun () ->
+        {(Message.info "what's {@direction}") with fields = [(["direction"], Field (String "up", None))] |> Map.ofList}
+        |> StringFormatter.VerbatimNewline.format)
+      |> should equal (sprintf "what's up%s" Environment.NewLine)
+      |> thatsIt
+
     testCase "StringFormatter.LevelDatetimePathMessageNl no exception" <| fun _ ->
       (because "logging with LevelDatetimePathMessageNl" <| fun () ->
         sampleMessage |> StringFormatter.LevelDatetimeMessagePathNl.format)

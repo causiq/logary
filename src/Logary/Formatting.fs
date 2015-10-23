@@ -8,7 +8,28 @@ open System.Collections.Generic
 open System.Text
 open Microsoft.FSharp.Reflection
 
+open Logary.Utils.FsMessageTemplates
 open Logary.DataModel
+
+let internal formatMessage (template:string) (args : Map<PointName, Field>) =
+  let template = Parser.parse template
+  let sb       = System.Text.StringBuilder()
+
+  let append (sb : System.Text.StringBuilder) (s : string) = sb.Append s |> ignore
+
+  template.Tokens
+  |> Seq.map (function
+              | Text (_, t) -> t
+              | Prop (_, p) ->
+                let (Field (value, units)) = Map.find [p.Name] args
+                match units with
+                | Some units ->
+                  Units.formatWithUnit Units.Suffix (units) value
+                | None ->
+                  Units.formatValue value)
+  |> Seq.iter (append sb)
+  sb.ToString()
+
 
 /// Returns the case name of the object with union type 'ty.
 let internal caseNameOf (x:'a) =
@@ -64,14 +85,14 @@ type StringFormatter =
   { format   : Message -> string }
   static member private Expanded nl ending =
     let format' =
-      fun (l : Message) ->
+      fun (m : Message) ->
         sprintf "%s %s: %s [%s]%s%s"
-          (string (caseNameOf l.level).[0])
+          (string (caseNameOf m.level).[0])
           // https://noda-time.googlecode.com/hg/docs/api/html/M_NodaTime_OffsetDateTime_ToString.htm
-          (NodaTime.Instant(l.timestamp).ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture))
-          ((function Event format -> format | _ -> "") l.value)
-          (Message.Context.serviceGet l)
-          (if Map.isEmpty l.fields then "" else formatFields nl l.fields)
+          (NodaTime.Instant(m.timestamp).ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture))
+          ((function Event format -> formatMessage format m.fields | _ -> "") m.value)
+          (Message.Context.serviceGet m)
+          (if Map.isEmpty m.fields then "" else formatFields nl m.fields)
           ending
     { format  = format' }
 
@@ -86,8 +107,8 @@ type StringFormatter =
     { format   =
       fun m ->
         match m.value with
-        | Event event -> event
-        | Gauge (value, unit) -> value.ToString () }
+        | Event format -> formatMessage format m.fields
+        | Gauge (value, unit) | Derived (value, unit) -> value.ToString () }
 
   /// VerbatimNewline simply outputs the message and no other information
   /// and does append a newline to the string.
@@ -153,7 +174,7 @@ module internal Json =
      ("context", Map.map (fun _ v -> valueToJson v) msg.context |> Json.Object)
      ("data", fieldsToJson msg.fields)] @
     (match msg.value with
-     | Event m ->        [("type", Json.String "event");   ("message", Json.String m)]
+     | Event m ->        [("type", Json.String "event");   ("message", Json.String <| formatMessage m msg.fields)]
      | Gauge   (g, u) -> [("type", Json.String "gauge");   ("value", valueToJson g);
                           ("unit", Json.String <| Units.symbol u)]
      | Derived (d, u) -> [("type", Json.String "derived"); ("value", valueToJson d);

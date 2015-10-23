@@ -113,6 +113,14 @@ module Escaping =
         new string (List.toArray (escape [] [ for c in s -> unbox c ]))
 
 [<AutoOpen>]
+module Conversions =
+  let asDecimal = function
+  | Float f -> Some f
+  | Int64 i -> Some (decimal i)
+  | BigInt bi -> Some (decimal bi)
+  | _ -> None
+
+[<AutoOpen>]
 module Capture =
 
   // TODO: this structure is both a Reader and Writer monad, but only needs
@@ -446,27 +454,27 @@ module Units =
     | value when value < 3600L * 1000000000000L -> 3600L * 1000000000000L
     | value -> 86400L * 1000000000000L
 
+  // TODO: re-enable scaling
+  (*
   // grafana/public/app/kbn.js:374@g20d5d0e
-  let doScale (fFactor : float -> int64) (scaledUnits : string list) =
-    fun (decimals : uint16) (scaledDecimals : uint16) (value : float) ->
-      (value : float), "KiB"
+  let doScale (fFactor : decimal -> int64) (scaledUnits : string list) =
+    fun (decimals : uint16) (scaledDecimals : uint16) (value : decimal) ->
+      (value : decimal), "KiB"
 
-  let scale units : uint16 -> uint16 -> float -> float*string =
+  let scale units : uint16 -> uint16 -> decimal -> float*string =
     match units with
     | Bits -> (fun _ -> 1000L), ["b"; "Kib"; "Mib"; "Gib"; "Tib"; "Pib"; "Eib"; "Zib"; "Yib"]
     | Bytes -> (fun _ -> 1024L), ["B"; "KiB"; "MiB"; "GiB"; "TiB"; "PiB"; "EiB"; "ZiB"; "YiB"]
     | Seconds -> scaleSeconds, ["ns"; "µs"; "ms"; "s"; "min"; "h"; "days"]
     ||> doScale
+   *)
 
-  let formatWithUnit orient un v =
+  let formatWithUnit orient un value =
     match orient with
     | Prefix ->
-      let value, prefix = scale un 3us 3us v
-      //let value = formatValue value
-      sprintf "%s %f" prefix value
+      sprintf "%s %s" (symbol un) (formatValue value)
     | Suffix ->
-      let value, suffix = scale un 3us 3us v
-      sprintf "%f %s" value suffix
+      sprintf "%s %s" (formatValue value) (symbol un)
 
 type PointName = string list
 
