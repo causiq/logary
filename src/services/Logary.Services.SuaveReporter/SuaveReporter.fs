@@ -64,8 +64,7 @@ module Impl =
 
   let readLogline (input : string) =
     let o =
-      Aether.id_
-      >-?> Json.Object_
+      Json.Object_
 
     let root prop =
       o >??> Aether.key_ prop
@@ -118,7 +117,7 @@ module Impl =
         |> Option.fold (fun s t -> LogLevel.FromString t) LogLevel.Error
       tags          =
         Lens.getPartialOrElse tags [] json
-        |> List.map (fun json -> json, Aether.id_ >-?> Json.String_)
+        |> List.map (fun json -> json, Json.String_)
         |> List.map (fun (json, lens) -> Lens.getPartial lens json)
         |> List.filter Option.isSome
         |> List.map Option.get
