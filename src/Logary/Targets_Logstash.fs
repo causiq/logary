@@ -165,7 +165,7 @@ module internal Impl =
     Option.map box
     >> Option.iter (function
       | :? IDisposable as d ->
-        Try.safe "disposing in riemann target" ilogger <| fun () ->
+        Try.safe "disposing in logstash target" ilogger <| fun () ->
           d.Dispose()
       | _ -> ())
 
