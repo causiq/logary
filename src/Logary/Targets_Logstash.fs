@@ -29,22 +29,25 @@ type LogstashConf =
     port         : uint16
     clientFac    : string -> uint16 -> WriteClient
     jsonSettings : JsonSerializerSettings
-    evtVer       : EventVersion }
+    evtVer       : EventVersion
+    defaultTags  : string list }
   /// Create a new logstash configuration structure, optionally specifying
   /// overrides on port, client tcp factory, the formatter to log with
   /// and what event versioning scheme to use when writing to log stash
   /// (version 0 is for logstash version 1.1.x and version 1 is for logstash
   /// version 1.2.x and above)
-  static member Create(hostname, ?port, ?clientFac, ?jsonSettings, ?evtVer) =
+  static member Create(hostname, ?port, ?clientFac, ?jsonSettings, ?evtVer, ?defaultTags) =
     let port = defaultArg port 1936us
     let clientFac = defaultArg clientFac (fun host port -> new TcpWriteClient(new TcpClient(host, int port)) :> WriteClient)
     let jss = defaultArg jsonSettings (JsonFormatter.Settings())
     let evtVer = defaultArg evtVer One
+    let defaultTags = defaultArg defaultTags []
     { hostname     = hostname
       port         = port
       clientFac    = clientFac
       jsonSettings = jss
-      evtVer       = evtVer }
+      evtVer       = evtVer
+      defaultTags  = defaultTags }
 
 /// What version of events to output (zero is the oldest version, one the newer)
 and EventVersion =
@@ -79,9 +82,9 @@ module internal Impl =
       ``@message``   : string
       ``@timestamp`` : Instant }
     /// Create an EventV0 from the log line passed as a parameter.
-    static member FromLogLine (l : LogLine) =
+    static member FromLogLine defaultTags (l : LogLine) =
       { ``@source``    = Dns.GetHostName()
-        ``@tags``      = l.tags
+        ``@tags``      = l.tags @ defaultTags
         ``@fields``    = l.data
         ``@message``   = l.message
         ``@timestamp`` = l.timestamp }
@@ -129,10 +132,10 @@ module internal Impl =
       hostname       : string
       /// an optional exception
       ``exception``  : exn option }
-    static member FromLogLine (l : LogLine) =
+    static member FromLogLine defaultTags (l : LogLine) =
       { ``@timestamp`` = l.timestamp
         ``@version``   = 1
-        tags           = l.tags
+        tags           = l.tags @ defaultTags
         message        = l.message
         path           = l.path
         hostname       = Dns.GetHostName()
@@ -168,10 +171,10 @@ module internal Impl =
 
   /// All logstash messages are of the following form.
   /// json-event\n
-  let createMsg evtVer (jss : JsonSerializerSettings) serviceName (logLine : LogLine) =
+  let createMsg evtVer (jss : JsonSerializerSettings) defaultTags serviceName (logLine : LogLine) =
     let jsonSettings = JsonFormatter.Settings()
     let ser = JsonSerializer.Create jsonSettings
-    let fbox (f : LogLine -> 'a) = fun l -> f l :> NewtonsoftSerialisable
+    let fbox (f : string list -> LogLine -> 'a) = fun l -> f defaultTags l :> NewtonsoftSerialisable
     let mkEvent = function
       | Zero -> fbox EventV0.FromLogLine
       | One  -> fbox Event.FromLogLine
@@ -220,7 +223,7 @@ module internal Impl =
           | Log line ->
             let! state' =
               line
-              |> createMsg conf.evtVer conf.jsonSettings metadata.serviceName
+              |> createMsg conf.evtVer conf.jsonSettings conf.defaultTags metadata.serviceName
               |> doWrite debug state
             return! running state'
           | Measure _ ->
