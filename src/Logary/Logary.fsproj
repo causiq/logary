@@ -49,7 +49,7 @@
     </Compile>
     <Compile Include="Lenses.fs" />
     <Compile Include="LogLevel.fs" />
-    <Compile Include="MessageTemplate.fs" />
+    <Compile Include="MessageTemplates.fs" />
     <Compile Include="DataModel.fs" />
     <Compile Include="Named.fs" />
     <Compile Include="Internals.fs" />

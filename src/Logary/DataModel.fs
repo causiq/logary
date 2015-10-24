@@ -482,6 +482,9 @@ type PointName = string list
 module PointName =
   let joined name = String.concat "." name
 
+  [<CompiledName "FromString">]
+  let fromString (s: string) = s.Split ([|'.'|]) |> Array.toList
+
 type PointValue =
   /// Value at point in time
   | Gauge of Value * Units
@@ -552,26 +555,35 @@ module Message =
   let inline tryGetContextField name =
     Lens.getPartial (Message.contextField_ name)
 
+  /// Contains lenses and functions for manipulating message fields.
   module Fields =
     let errors = Message.field_ "errors"
-    let errorsGet =
-      Lens.getPartial errors
-      >> Option.bind (function Field (Array a, None) -> Some a | _  -> None)
 
-    let errorsSet (value: Value list) =
+    [<CompiledName "GetErrors">]
+    let errorsGet m =
+      Lens.getPartial errors m
+      |> Option.bind (function Field (Array a, None) -> Some a | _  -> None)
+
+    [<CompiledName "SetErrors">]
+    let errorsSet value =
       Lens.setPartial errors (Field (Array value, None))
 
+  /// Contains lenses and functions for manipulating message contexts.
   module Context =
     /// Gets the context field 'service', or an empty string if the field doesn't exist or is of the wrong type.
     let service = Message.contextField_ "service"
-    let serviceGet =
-      Lens.getPartial service
-      >> Option.bind (function String s -> Some s | _ -> None)
-      >> (fun x -> defaultArg x "")
 
-    let serviceSet = String >> Lens.setPartial service
+    [<CompiledName "GetService">]
+    let serviceGet m =
+      Lens.getPartial service m
+      |> Option.bind (function String s -> Some s | _ -> None)
+      |> (fun x -> defaultArg x "")
+
+    [<CompiledName "SetService">]
+    let serviceSet s msg = Lens.setPartial service (String s) msg
 
   /// Creates a new event message with level
+  [<CompiledName "CreateEvent">]
   let event level msg =
     { name = [] // check in logger
       value = Event msg
@@ -582,6 +594,7 @@ module Message =
       timestamp = SystemClock.Instance.Now.Ticks }
 
   /// Creates a new metric message with data point name, unit and value
+  [<CompiledName "CreateMetric">]
   let metric dp unit value =
     { name = dp
       value = Gauge (value, unit)
@@ -593,6 +606,7 @@ module Message =
     }
 
   /// Creates a new metric message with data point name and scalar value
+  [<CompiledName "CreateMetric">]
   let metric' dp value =
     { name = dp
       value = Gauge (value, Units.Scalar)
@@ -658,8 +672,19 @@ module Message =
   [<CompiledName "FatalFormat">]
   let fatalf fmt = Printf.kprintf (event Fatal) fmt
 
+  [<CompiledName "SetLevel">]
   let setLevel lvl msg = {msg with level = lvl}
+
+  [<CompiledName "SetTimestamp">]
   let setTimestamp ts msg = {msg with timestamp = ts}
+
+  /// Replaces the value of the message with a new Event with the supplied format
+  [<CompiledName "SetEvent">]
+  let setEvent format msg = {msg with value = Event format}
+
+  [<CompiledName "AddFields">]
+  let addFields (fields: (PointName * Field) seq) msg =
+    {msg with fields = Map.fold (fun acc k v -> Map.add k v acc) msg.fields (Map fields)}
 
   let rec private exnToFields (e : exn) =
     let fields =
@@ -675,7 +700,8 @@ module Message =
         fields
 
   /// Adds a new exception to the "errors" field in the message.
-  /// AggregateExceptions are automatically expanded into multiple different exceptions.
+  /// AggregateExceptions are automatically expanded.
+  [<CompiledName "AddException">]
   let addExn (e : exn) msg =
     let errors = defaultArg (Fields.errorsGet msg) []
 
