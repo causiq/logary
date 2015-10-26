@@ -53,6 +53,14 @@ namespace Logary
         }
 
         /// <summary>
+        /// Serializes the object into fields and adds them to the message
+        /// </summary>
+        public static Message AddData(this Message msg, object obj)
+        {
+            return MessageModule.AddData(obj, msg);
+        }
+
+        /// <summary>
         /// Set the Message's timestamp
         /// </summary>
         public static Message SetTimestamp(this Message msg, Instant timestamp)

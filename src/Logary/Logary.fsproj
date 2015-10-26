@@ -50,9 +50,9 @@
     <Compile Include="Lenses.fs" />
     <Compile Include="LogLevel.fs" />
     <Compile Include="MessageTemplates.fs" />
+    <Compile Include="Internals.fs" />
     <Compile Include="DataModel.fs" />
     <Compile Include="Named.fs" />
-    <Compile Include="Internals.fs" />
     <Compile Include="Internals_Deprecated.fs" />
     <Compile Include="Scheduling.fs" />
     <Compile Include="Logger.fs" />

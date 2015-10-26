@@ -1,6 +1,7 @@
 namespace Logary.DataModel
 
 open System
+open System.Reflection
 open Logary
 open Logary.Utils.Aether
 open Logary.Utils.Aether.Operators
@@ -372,6 +373,50 @@ module Mapping =
     let inline serialize a =
       toValue a
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Value =
+    open Logary.Internals
+    open System.Collections.Generic
+
+    let rec fromObject : obj -> Value = function
+
+    // Built-in types
+    | :? bool as b    -> Bool b
+    | :? int8 as i    -> Int64 (int64 i)
+    | :? uint8 as i   -> Int64 (int64 i)
+    | :? int16 as i   -> Int64 (int64 i)
+    | :? uint16 as i  -> Int64 (int64 i)
+    | :? int32 as i   -> Int64 (int64 i)
+    | :? uint32 as i  -> Int64 (int64 i)
+    | :? int64 as i   -> Int64 (int64 i)
+    | :? uint64 as i  -> Float (decimal i)
+    | :? bigint as i  -> BigInt i
+    | :? decimal as d -> Float d
+    | :? float32 as f -> Float (decimal f)
+    | :? float as f   -> Float (decimal f)
+    | :? char as c    -> String (string c)
+    | :? string as s  -> String s
+
+    // Common BCL types
+    | :? Guid as g              -> String (string g)
+    | :? DateTime as dt         -> String (dt.ToUniversalTime().ToString("o"))
+    | :? DateTimeOffset as dto  -> String (dto.ToString("o"))
+
+    // Collections
+    | :? (byte array) as bytes -> Binary (bytes, "application/octet-stream")
+    | :? IEnumerable<KeyValuePair<string, obj>> as dict ->
+      Seq.map (fun (KeyValue (k, v)) -> (k, fromObject v)) dict
+      |> Map |> Object
+    | :? IEnumerable<obj> as ie ->
+      Seq.map fromObject ie
+      |> Seq.toList |> Array
+
+    // POCOs
+    | a ->
+      Map.fromObj a
+      |> Map.map (fun _ v -> fromObject v)
+      |> Object
+
 type Units =
   | Bits
   | Bytes
@@ -536,6 +581,7 @@ type Message =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Message =
   open NodaTime
+  open Logary.Internals
 
   /// Get a partial setter lens to a field
   let inline field name value =
@@ -685,6 +731,14 @@ module Message =
   [<CompiledName "AddFields">]
   let addFields (fields: (PointName * Field) seq) msg =
     {msg with fields = Map.fold (fun acc k v -> Map.add k v acc) msg.fields (Map fields)}
+
+  [<CompiledName "AddData">]
+  let addData (data: obj) msg =
+    let fields =
+      Map.fromObj data
+      |> Seq.map (fun (KeyValue (k, v)) -> ([k], Field (Value.fromObject v, None)))
+
+    addFields fields msg
 
   let rec private exnToFields (e : exn) =
     let fields =

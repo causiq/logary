@@ -25,7 +25,7 @@ namespace Logary
         /// <param name="logger">Instance to invoke the extension method on</param>
         /// <param name="level"></param>
         /// <param name="message">A message to attach to the log line</param>
-        /// <param name="fields">Data to attach to the log line being sent to the target;
+        /// <param name="data">Data to attach to the log line being sent to the target;
         /// e.g. if using LogStash, these properties will be fields. For performance
         /// improvements, you can send a dictionary, or otherwise you can
         /// send an anonymous object whose public properties are then serialised
@@ -43,7 +43,7 @@ namespace Logary
             this Logger logger,
             LogLevel level,
             string message,
-            IEnumerable<KeyValuePair<string, Field>> fields = null,
+            object data,
             string service = null,
             Instant? timestamp = null)
         {
@@ -51,10 +51,11 @@ namespace Logary
             if (level == null) throw new ArgumentNullException("level");
             if (message == null) throw new ArgumentNullException("message");
 
-            var msg = MessageModule.CreateEvent(level, message)
-                      .SetFields(fields ?? new Dictionary<string, Field>())
-                      .SetService(service ?? logger.Name)
-                      .SetTimestamp(timestamp ?? SystemClock.Instance.Now);
+            var msg = MessageModule.CreateEvent(level, message);
+
+            if (service != null) msg.SetService(service);
+            if (data != null) msg.AddData(data);
+            if (timestamp != null) msg.SetTimestamp(timestamp.Value);
 
             logger.Log(msg);
         }
