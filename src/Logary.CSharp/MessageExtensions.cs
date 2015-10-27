@@ -47,7 +47,7 @@ namespace Logary
         /// <summary>
         /// Add the key-value pairs to the data
         /// </summary>
-        public static Message SetFields(this Message msg, IEnumerable<KeyValuePair<string, Field>> fields)
+        public static Message AddFields(this Message msg, IEnumerable<KeyValuePair<string, Field>> fields)
         {
             return MessageModule.AddFields(fields.Select(kv => Tuple.Create(PointNameModule.FromString(kv.Key), kv.Value)), msg);
         }

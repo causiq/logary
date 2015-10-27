@@ -19,17 +19,16 @@ let internal formatMessage (template:string) (args : Map<PointName, Field>) =
 
   template.Tokens
   |> Seq.map (function
-              | Text (_, t) -> t
-              | Prop (_, p) ->
-                let (Field (value, units)) = Map.find [p.Name] args
-                match units with
-                | Some units ->
-                  Units.formatWithUnit Units.Suffix (units) value
-                | None ->
-                  Units.formatValue value)
+    | Text (_, t) -> t
+    | Prop (_, p) ->
+      let (Field (value, units)) = Map.find [p.Name] args
+      match units with
+      | Some units ->
+        Units.formatWithUnit Units.Suffix (units) value
+      | None ->
+        Units.formatValue value)
   |> Seq.iter (append sb)
   sb.ToString()
-
 
 /// Returns the case name of the object with union type 'ty.
 let internal caseNameOf (x:'a) =

@@ -113,7 +113,6 @@ module Escaping =
 
         new string (List.toArray (escape [] [ for c in s -> unbox c ]))
 
-[<AutoOpen>]
 module Conversions =
   let asDecimal = function
   | Float f -> Some f
