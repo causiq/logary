@@ -123,4 +123,13 @@ let tests =
       |> should equal ("""{"context":{"service":"a.b.c.d"},"level":"error","message":"here\n  we\ngo!",""" +
                        """"timestamp":"1970-01-01T00:00:03.1234567+00:00","type":"event"}""")
       |> thatsIt
+
+    testCase "Formatting.templateFromFormat, simple case" <| fun _ ->
+      let format = "This {0} contains {1} words."
+      let args : obj[] = [|"sentence"; 4|]
+      (because "converting a String.Format into a message template" <| fun () ->
+        Formatting.templateFromFormat format args)
+      |> should equal ("This {arg0} contains {arg1} words.",
+                       [("arg0", Field (String "sentence", None)); ("arg1", Field (Int64 4L, None))])
+      |> thatsIt
     ]

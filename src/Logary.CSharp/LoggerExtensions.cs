@@ -136,7 +136,11 @@ namespace Logary
         /// <param name="args">Arguments to the format string</param>
         public static void LogFormat(this Logger logger, LogLevel level, string formatStringMessage, params object[] args)
         {
-            logger.Log(string.Format(formatStringMessage, args), level);
+            // TODO/CONSIDER: Should most of this be moved to the core library?
+            var messageTemplate = Formatting.TemplateFromFormat(formatStringMessage, args);
+            var msg = MessageModule.CreateEvent(level, messageTemplate.Item1);
+            MessageModule.AddFields(messageTemplate.Item2, msg);
+            logger.Log(msg);
         }
 
         /// <summary>
