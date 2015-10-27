@@ -40,7 +40,7 @@ let tests =
         (Noop.create { Noop.NoopConf.isHappy = true })
       |> Metric.validate
       |> Metric.init Fac.emptyRuntime
-      |> Metric.update (Message.metric' ["tests"] (Float 1.0M))
+      |> Metric.update (Message.metric ["tests"] (Float 1.0M))
       |> Metric.shutdown
       |> run |> ignore
     ]

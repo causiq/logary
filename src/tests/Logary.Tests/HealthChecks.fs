@@ -29,7 +29,7 @@ let private untilPred maxWait fPred =
 
 let pingSvdSe () =
   let mkError ex =
-    Message.metric' ["app";"resource";"ping-svd"] (Float 0.0M)
+    Message.metric ["app";"resource";"ping-svd"] (Float 0.0M)
     |> setDesc "ping completed with error"
     |> Message.addExn ex
     |> Message.setLevel LogLevel.Error
@@ -45,7 +45,7 @@ let pingSvdSe () =
       elif complete.Error <> null then
         return mkError complete.Error
       else
-        return Message.metric' ["app";"resource";"ping-svd"] (Float 1.0M) |> Message.toResult
+        return Message.metric ["app";"resource";"ping-svd"] (Float 1.0M) |> Message.toResult
 
     with e ->
       return mkError e }

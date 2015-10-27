@@ -641,7 +641,7 @@ module Message =
 
   /// Creates a new metric message with data point name, unit and value
   [<CompiledName "CreateMetric">]
-  let metric dp unit value =
+  let metricWithUnit dp unit value =
     { name = dp
       value = Gauge (value, unit)
       fields = Map.empty
@@ -653,7 +653,7 @@ module Message =
 
   /// Creates a new metric message with data point name and scalar value
   [<CompiledName "CreateMetric">]
-  let metric' dp value =
+  let metric dp value =
     { name = dp
       value = Gauge (value, Units.Scalar)
       fields = Map.empty
