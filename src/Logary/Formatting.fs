@@ -38,7 +38,7 @@ let internal caseNameOf (x:'a) =
 let private app (s : string) (sb : StringBuilder) = sb.Append s
 
 /// Converts a String.Format-style format string and an array of arguments into
-/// a Serilog message template and a set of fields.
+/// a message template and a set of fields.
 [<CompiledName "TemplateFromFormat">]
 let templateFromFormat (format: string) (args: obj[]) =
   let fields = Seq.mapi (fun i v -> ([sprintf "arg%i" i], Field (Value.fromObject v, None))) args |> Seq.toList
