@@ -2,6 +2,7 @@
 
 open FSharp.Actor
 open Logary
+open Logary.DataModel
 open Logary.Target
 open Logary.Internals
 open Mailgun.Api
@@ -11,9 +12,9 @@ type Domain = string
 
 type MailgunLogaryConf =
   { mailgun    : Configured
-    templater  : LogLine -> MailBody
-    getOpts    : Domain * LogLine -> SendOpts
-    msgFactory : MailgunLogaryConf -> MailBody * SendOpts * LogLine -> Message
+    templater  : DataModel.Message -> MailBody
+    getOpts    : Domain * DataModel.Message -> SendOpts
+    msgFactory : MailgunLogaryConf -> MailBody * SendOpts * DataModel.Message -> Message
     from       : MailAddress
     ``to``     : MailAddress list
     cc         : MailAddress list
@@ -24,20 +25,19 @@ type MailgunLogaryConf =
 
 module internal Impl =
 
-  let templater line =
+  let templater msg =
     let formatter = Formatting.StringFormatter.LevelDatetimeMessagePathNl
-    TextBody (formatter.format line)
+    TextBody (formatter.format msg)
 
-  let getOpts (domain, line) =
-    { SendOpts.Create domain with
-        tag = match line.tags with | x :: _ -> Some x | _ -> None }
+  let getOpts (domain, msg) = SendOpts.Create domain
 
-  let msgFactory conf (body, opts, line) =
+  let msgFactory conf (body, opts, msg) =
     { from        = conf.from
       ``to``      = conf.``to``
       cc          = conf.cc
       bcc         = conf.bcc
-      subject     = line.message
+      // CONSIDER: If the message is a measure, the subject line will be just the value with unit.
+      subject     = Formatting.formatMessage msg
       body        = body
       attachments = [] }
 
@@ -56,8 +56,8 @@ module internal Impl =
           use x = response
           ()
         | x ->
-          LogLine.error "unknown response from Mailgun"
-          |> LogLine.setData "response" x
+          Message.error "unknown response from Mailgun"
+          |> Message.addData (["response", x] |> Map)
           |> Logger.log ri.logger
         return! loop ()
       | Measure msr ->
@@ -91,7 +91,7 @@ let empty =
     ``to``     = []
     cc         = []
     bcc        = []
-    minLevel   = Error
+    minLevel   = LogLevel.Error
     domain     = "example.com"
   }
 
@@ -131,7 +131,7 @@ type Builder(conf : MailgunLogaryConf, callParent : FactoryApi.ParentCallback<Bu
 
   member x.Mailgun(config : Configured) =
     ! (callParent <| Builder({ conf with mailgun = config }, callParent))
-    
+
   new(callParent : FactoryApi.ParentCallback<_>) =
     Builder(empty, callParent)
 

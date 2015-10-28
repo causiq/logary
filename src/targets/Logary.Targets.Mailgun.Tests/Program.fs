@@ -5,6 +5,7 @@ open System.Net.Mail
 open Mailgun.Api
 open Fuchu
 open Logary
+open Logary.DataModel
 open Logary.Internals
 open Logary.Targets.Mailgun
 
@@ -41,7 +42,7 @@ let tests =
     testCase "can send test e-mail" <| fun _ ->
       let target = start ()
       try
-        (LogLine.error "hello world") |> Target.sendLogLine target
+        (Message.error "hello world") |> Target.sendLogLine target
         flush target
       finally stop target
 

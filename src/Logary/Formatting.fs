@@ -11,7 +11,7 @@ open Microsoft.FSharp.Reflection
 open Logary.Utils.FsMessageTemplates
 open Logary.DataModel
 
-let internal formatMessage (template:string) (args : Map<PointName, Field>) =
+let internal formatTemplate (template:string) (args : Map<PointName, Field>) =
   let template = Parser.parse template
   let sb       = System.Text.StringBuilder()
 
@@ -29,6 +29,12 @@ let internal formatMessage (template:string) (args : Map<PointName, Field>) =
         Units.formatValue value)
   |> Seq.iter (append sb)
   sb.ToString()
+
+let formatMessage (msg: Message) =
+  match msg.value with
+  | Event t -> formatTemplate t msg.fields
+  | Gauge (v, u)
+  | Derived (v, u) -> Units.formatWithUnit Units.UnitOrientation.Prefix u v
 
 /// Returns the case name of the object with union type 'ty.
 let internal caseNameOf (x:'a) =
@@ -99,7 +105,7 @@ type StringFormatter =
           (string (caseNameOf m.level).[0])
           // https://noda-time.googlecode.com/hg/docs/api/html/M_NodaTime_OffsetDateTime_ToString.htm
           (NodaTime.Instant(m.timestamp).ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture))
-          ((function Event format -> formatMessage format m.fields | _ -> "") m.value)
+          ((function Event format -> formatTemplate format m.fields | _ -> "") m.value)
           (Message.Context.serviceGet m)
           (if Map.isEmpty m.fields then "" else formatFields nl m.fields)
           ending
@@ -116,7 +122,7 @@ type StringFormatter =
     { format   =
       fun m ->
         match m.value with
-        | Event format -> formatMessage format m.fields
+        | Event format -> formatTemplate format m.fields
         | Gauge (value, unit) | Derived (value, unit) -> value.ToString () }
 
   /// VerbatimNewline simply outputs the message and no other information
@@ -183,7 +189,7 @@ module internal Json =
      ("context", Map.map (fun _ v -> valueToJson v) msg.context |> Json.Object)
      ("data", fieldsToJson msg.fields)] @
     (match msg.value with
-     | Event m ->        [("type", Json.String "event");   ("message", Json.String <| formatMessage m msg.fields)]
+     | Event m ->        [("type", Json.String "event");   ("message", Json.String <| formatTemplate m msg.fields)]
      | Gauge   (g, u) -> [("type", Json.String "gauge");   ("value", valueToJson g);
                           ("unit", Json.String <| Units.symbol u)]
      | Derived (d, u) -> [("type", Json.String "derived"); ("value", valueToJson d);

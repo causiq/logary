@@ -727,6 +727,10 @@ module Message =
   [<CompiledName "SetEvent">]
   let setEvent format msg = {msg with value = Event format}
 
+  [<CompiledName "AddField">]
+  let addField ((name, field) : (PointName * Field)) msg =
+    {msg with fields = Map.add name field msg.fields}
+
   [<CompiledName "AddFields">]
   let addFields (fields: (PointName * Field) seq) msg =
     {msg with fields = Map.fold (fun acc k v -> Map.add k v acc) msg.fields (Map fields)}
