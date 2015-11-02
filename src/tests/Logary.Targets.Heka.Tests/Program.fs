@@ -92,8 +92,8 @@ let encoders =
 let transformToMessage =
   testList "converting a log line to a Message" [
     testCase "just message" <| fun _ ->
-      let ll = LogLine.create' LogLevel.Info "hello world"
-      Assert.Equal("should eq msg", Message(), ll |> Message.ofLogLine)
+      let ll = DataModel.Message.event Info "hello world"
+      Assert.Equal("should eq msg", Message(), ll |> Message.ofMessage)
   ]
 
 [<EntryPoint>]

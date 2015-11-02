@@ -53,7 +53,7 @@ let templateFromFormat (format: string) (args: obj[]) =
   let template = Seq.fold (fun acc i -> String.replace (sprintf "{%i}" i) (sprintf "{arg%i}" i) acc) format [0..args.Length]
   (template, fields)
 
-let rec printValue (nl: string) (depth: int) (value : Value) =
+let rec private printValue (nl: string) (depth: int) (value : Value) =
   let indent = new String(' ', depth * 2 + 2)
   match value with
   | String s -> "\"" + s + "\""
@@ -145,7 +145,7 @@ type StringFormatter =
 
 open NodaTime.TimeZones
 
-module internal Json =
+module Json =
   open Logary.Utils.Chiron
   open Logary.Utils.Chiron.Operators
 

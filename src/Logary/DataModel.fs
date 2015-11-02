@@ -406,6 +406,7 @@ module Value =
     | :? IEnumerable<KeyValuePair<string, obj>> as dict ->
       Seq.map (fun (KeyValue (k, v)) -> (k, fromObject v)) dict
       |> Map |> Object
+    //| :? Map<string, obj> as map -> Map.map (fun _ v -> fromObject v) map |> Object
     | :? IEnumerable<obj> as ie ->
       Seq.map fromObject ie
       |> Seq.toList |> Array

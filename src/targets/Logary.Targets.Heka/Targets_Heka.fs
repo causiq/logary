@@ -12,6 +12,7 @@ open Logary.Heka.Client
 open Logary.Heka.Messages
 open Logary.Target
 open Logary.Internals
+open Logary.Formatting
 
 type HekaConfig = Logary.Heka.HekaConfig
 
@@ -24,17 +25,66 @@ type Logary.LogLevel with
     | Error   -> 3
     | Fatal   -> 2
 
-type Logary.Heka.Messages.Message with
-  static member ofLogLine (line : LogLine) =
-    let msg = Message(logger = line.path)
-    msg.severity <- Nullable (line.level |> LogLevel.toSeverity)
-    msg.payload <- line.message
-    msg
+type Logary.Heka.Messages.Field with
+  static member ofField (name: string, (value, units)) =
+    let unitsS = defaultArg (Option.map (DataModel.Units.symbol) units) ""
 
-  static member ofMeasure (msr : Measure) =
-    let msg = Message(logger = DP.joined msr.m_path)
-    msg.severity <- Nullable (msr.m_level |> LogLevel.toSeverity)
-    msg
+    // TODO: This should be reformatted if possible to avoid ridiculous amounts of copypaste
+    match value with
+    | DataModel.String s when s.Length > 0 ->
+      Some <| Messages.Field(name, Nullable ValueType.STRING, unitsS, [s])
+    // TODO/CONSIDER: Heka doesn't support arbitrary precision integers, so we use a string instead.
+    | DataModel.BigInt bi ->
+      Some <| Messages.Field(name, Nullable ValueType.STRING, unitsS, [bi.ToString ()])
+    | DataModel.Float f ->
+      Some <| Messages.Field(name, Nullable ValueType.DOUBLE, unitsS, [float f])
+    | DataModel.Bool b ->
+      Some <| Messages.Field(name, Nullable ValueType.BOOL, unitsS, [b])
+    | DataModel.Binary (bytes, mime) when bytes.Length > 0 ->
+      Some <| Messages.Field(name, Nullable ValueType.BYTES, mime, [bytes])
+    // TODO/CONSIDER: We assume here that arrays are homogenous, even though object model permits heterogenous arrays.
+    | DataModel.Array arr when not arr.IsEmpty ->
+      // TODO: Figure out a way to implement arrays neatly without copypaste
+      match arr.Head with
+      | DataModel.String _ ->
+        Some <| Messages.Field(name, Nullable ValueType.STRING, unitsS,
+                               Seq.choose (fst DataModel.Value.StringPIso) arr)
+      | DataModel.BigInt _ ->
+        Some <| Messages.Field(name, Nullable ValueType.STRING, unitsS,
+                               Seq.choose (fst DataModel.Value.BigIntPIso) arr
+                               |> Seq.map (string))
+      | DataModel.Float _ ->
+        Some <| Messages.Field(name, Nullable ValueType.DOUBLE, unitsS,
+                               Seq.choose (fst DataModel.Value.FloatPIso) arr
+                               |> Seq.map (float))
+      | DataModel.Bool _ ->
+        Some <| Messages.Field(name, Nullable ValueType.BOOL, unitsS,
+                               Seq.choose (fst DataModel.Value.BoolPIso) arr)
+      | DataModel.Binary _ ->
+        // TODO: Handle mime types some way
+        Some <| Messages.Field(name, Nullable ValueType.BYTES, unitsS,
+                               Seq.choose (fst DataModel.Value.BinaryPIso) arr
+                               |> Seq.map (fst))
+    | DataModel.Object m as o when not m.IsEmpty ->
+      Some <| Messages.Field(name, Nullable ValueType.STRING, "json",
+                             [Json.format <| Json.valueToJson o])
+    // TODO/CONSIDER: Fractions could also be serialized into an int array with a clarifying representation string
+    | DataModel.Fraction _ as frac ->
+      Some <| Messages.Field(name, Nullable ValueType.STRING, "json",
+                             [Json.format <| Json.valueToJson frac])
+
+
+type Logary.Heka.Messages.Message with
+  static member ofMessage (msg : DataModel.Message) =
+    let hmsg = Message(logger = DataModel.PointName.joined msg.name)
+    hmsg.severity <- Nullable (msg.level |> LogLevel.toSeverity)
+    hmsg.timestamp <- msg.timestamp
+
+    match msg.value with
+    | DataModel.Event _ -> hmsg.payload <- Formatting.formatMessage msg
+    | _ -> ()
+
+    hmsg
 
 /// The message type most often used in filters inside Heka (see e.g. the getting-
 /// started guide).
@@ -54,7 +104,7 @@ module internal Impl =
       hostname : string }
 
   let loop (conf : HekaConfig) (ri : RuntimeInfo) (inbox : IActor<_>) =
-    let debug = LogLine.debug >> LogLine.setPath "Logary.Targets.Heka" >> Logger.log ri.logger
+    let debug = DataModel.Message.debug >> DataModel.Message.Context.serviceSet "Logary.Targets.Heka" >> Logger.log ri.logger
 
     let rec initialise () = async {
       debug "initialising heka target"
@@ -83,7 +133,8 @@ module internal Impl =
       let write (msg : Message) = async {
         msg.uuid        <- Guid.NewGuid().ToByteArray()
         msg.hostname    <- state.hostname
-        msg.env_version <- Lib.LogaryVersion
+        // TODO: fix
+        msg.env_version <- "4.0.0"
         msg.``type``    <- MessageType
         msg.addField (Field("service", Nullable ValueType.STRING, null,
                             [ ri.serviceName ]))
@@ -94,9 +145,9 @@ module internal Impl =
           try
             do! run
             debug "running: wrote to heka"
-          with e -> LogLine.error "error writing to heka"
-                    |> LogLine.setPath "Logary.Targets.Heka"
-                    |> LogLine.setExn e |> Logger.log ri.logger
+          with e -> DataModel.Message.error "error writing to heka"
+                    |> DataModel.Message.Context.serviceSet "Logary.Targets.Heka"
+                    |> DataModel.Message.addExn e |> Logger.log ri.logger
         | Choice2Of2 err ->
           logFailure ri err
         debug "running: recursing"
@@ -107,10 +158,8 @@ module internal Impl =
 
       let! msg, _ = inbox.Receive()
       match msg with
-      | Log l ->
-        return! write (Message.ofLogLine l)
-      | Measure msr ->
-        return! write (Message.ofMeasure msr)
+      | Log msg | Measure msg ->
+        return! write (Message.ofMessage msg)
       | Flush ackChan ->
         ackChan.Reply Ack
         return! running state
