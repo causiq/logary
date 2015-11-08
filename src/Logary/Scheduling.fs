@@ -30,8 +30,8 @@ module Cancellation =
               getCh    = Ch.Now.create () }
 
     Job.iterateServer false (fun x ->
-      Alt.choose [Alt.map (fun _ -> false) (Ch.take c.cancelCh)
-                  Alt.map (fun _ -> x)     (Ch.give c.getCh x)])
+      Alt.choose [Alt.map (fun _ -> true) (Ch.take c.cancelCh)
+                  Alt.map (fun _ -> x)    (Ch.give c.getCh x)])
     |> Job.start |> ignore
 
     c
