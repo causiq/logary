@@ -2,6 +2,8 @@
 module Logary.Metrics.Noop
 
 open FSharp.Actor
+open Hopac
+open Hopac.Alt.Infixes
 
 open Logary
 open Logary.Internals
@@ -12,6 +14,42 @@ type NoopConf =
   { isHappy : bool }
 
 let empty = { isHappy = true }
+
+module private HopacImpl =
+
+  type NoopState =
+    { calls : bigint }
+
+  let loop (conf : NoopConf) (ri : RuntimeInfo) (ch: MetricCh) =
+
+    let handleRequest state msg = job {
+      match msg with
+      | HopacGetValue dps ->
+        match dps with
+        | pn :: _ when pn = [ "calls" ] ->
+          do! Ch.give ch.dpValueCh [ Message.metric pn (BigInt state.calls) ]
+        | _ ->
+          do! Ch.give ch.dpValueCh []
+        return {state with calls = state.calls + 1I}
+      | HopacSample ->
+        return state
+      | HopacReset ->
+        return {state with calls = 0I}
+    }
+
+    let handleUpdate state msg =
+      match msg.value with
+      | Derived (BigInt i, _)
+        -> {state with calls = i}
+      | _
+        -> {state with calls = state.calls + 1I}
+      |> Job.result
+
+    Job.iterateServer {calls = 0I} <| fun state ->
+      Alt.choose [Ch.take ch.requestCh >>=? handleRequest state
+                  Ch.take ch.updateCh  >>=? handleUpdate state
+                  Ch.give ch.dpNameCh  [ [ "calls"] ] >>%? state
+                  Ch.give ch.shutdownCh Ack >>%? state]
 
 module private Impl =
 
@@ -34,8 +72,8 @@ module private Impl =
         return! loop { calls = state.calls + 1I }
       | Update msr ->
         match msr.value with
-        | Derived (Int64 l, _) ->
-          return! loop { calls = state.calls + 1I }
+        | Derived (BigInt i, _) ->
+          return! loop { calls = i }
         | _ ->
           return! loop state
       | Sample ->

@@ -5,6 +5,7 @@ open System
 open NodaTime
 
 open FSharp.Actor
+open Hopac
 
 open Logary.DataModel
 open Logary.Internals
@@ -40,6 +41,19 @@ type MetricMsg =
   | Shutdown of Acks ReplyChannel
   /// The Reset shall reset the state of the probe to its initial state.
   | Reset
+
+type HopacMetricMsg =
+  | HopacGetValue of PointName list
+  | HopacSample
+  | HopacReset
+
+type MetricCh = {
+  requestCh:  Ch<HopacMetricMsg>
+  dpValueCh:  Ch<Message list>
+  updateCh:   Ch<Message>
+  dpNameCh:   Ch<PointName list>
+  shutdownCh: Ch<Acks>
+}
 
 [<CustomEquality; CustomComparison>]
 type MetricConf =
@@ -90,6 +104,11 @@ let getValue (dps : PointName list) =
     (fun chan -> GetValue(dps, chan))
     Infinite
 
+let hopacGetValue (dps : PointName list) ch = job {
+  do! Ch.give ch.requestCh (HopacGetValue dps)
+  return! Ch.take ch.dpValueCh
+}
+
 /// The GetDataPoints shall return a list with all data points supported by
 /// the probe
 let getDataPoints (m : #IActor) =
@@ -98,15 +117,27 @@ let getDataPoints (m : #IActor) =
     Infinite
     m
 
+let hopacGetDataPoints ch = job {
+  return! Ch.take ch.dpNameCh
+}
+
 /// Incorporate a new value into the metric maintained by the metric.
 let update (m : Message) actor =
   actor <-- Update m
   actor
 
+let hopacUpdate (m: Message) ch = job {
+  do! Ch.give ch.updateCh m
+}
+
 /// The Sample implementation shall sample data from the subsystem the probe
 /// is integrated with.
 let sample actor =
   actor <-- Sample
+
+let hopacSample ch = job {
+  do! Ch.give ch.requestCh HopacSample
+}
 
 /// The custom probe shall release any resources associated with the given
 /// state and return ok.
@@ -115,6 +146,10 @@ let shutdown (a : #IActor) =
     Shutdown
     Infinite
     a
+
+let hopacShutdown ch = job {
+  return! Ch.take ch.shutdownCh
+}
 
 module MetricUtils =
   /// Called by metric implementations; each metric implementation has as its
