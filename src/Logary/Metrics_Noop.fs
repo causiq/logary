@@ -87,7 +87,8 @@ module private Impl =
     loop { calls = 0I }
 
 /// Create a new Noop metric that doesn't do very much
-let create conf = MetricUtils.stdNamedMetric Metric (Impl.loop conf)
+let create conf      = MetricUtils.stdNamedMetric      Metric (Impl.loop conf)
+let hopacCreate conf = MetricUtils.hopacStdNamedMetric Metric (HopacImpl.loop conf)
 
 /// C# interop: Create a new Noop metric that doesn't do very much
 [<CompiledName "Create">]

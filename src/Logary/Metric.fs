@@ -52,8 +52,16 @@ type MetricCh = {
   dpValueCh:  Ch<Message list>
   updateCh:   Ch<Message>
   dpNameCh:   Ch<PointName list>
-  shutdownCh: Ch<Acks>
-}
+  shutdownCh: Ch<Acks> }
+
+with
+
+  static member create () = {
+    requestCh  = Ch.Now.create ()
+    dpValueCh  = Ch.Now.create ()
+    updateCh   = Ch.Now.create ()
+    dpNameCh   = Ch.Now.create ()
+    shutdownCh = Ch.Now.create () }
 
 [<CustomEquality; CustomComparison>]
 type MetricConf =
@@ -62,6 +70,40 @@ type MetricConf =
     initer   : RuntimeInfo -> IActor
     /// the period to sample the metric's value at
     sampling : Duration }
+
+with
+  override x.Equals(yobj) =
+      match yobj with
+      | :? MetricConf as y ->
+        x.name.Equals(y.name, StringComparison.InvariantCulture)
+        && x.``type``.Equals(y.``type``)
+        && x.sampling.Equals(y.sampling)
+      | _ -> false
+
+  override x.GetHashCode() =
+    hash (x.name, x.``type``, x.sampling)
+
+  interface System.IComparable with
+    member x.CompareTo yobj =
+      match yobj with
+      | :? MetricConf as y ->
+        compare x.name y.name
+        |> thenCompare x.``type`` y.``type``
+        |> thenCompare x.sampling y.sampling
+      | _ -> invalidArg "yobj" "cannot compare values of different types"
+
+  override x.ToString() =
+    sprintf "Metric(name=%s, type=%A, sampling=%O)"
+      x.name x.``type`` x.sampling
+
+[<CustomEquality; CustomComparison>]
+type HopacMetricConf =
+  { name        : string
+    ``type``    : MetricType
+    hopacIniter : RuntimeInfo -> Job<unit>
+    /// the period to sample the metric's value at
+    sampling    : Duration }
+
 with
   override x.Equals(yobj) =
       match yobj with
@@ -165,6 +207,13 @@ module MetricUtils =
         Actor.spawn
           (Ns.create (sprintf "%O/%s" ``type`` name))
           (loop metadata)
+      sampling = sampling }
+
+  let hopacStdNamedMetric ``type`` loop name sampling =
+    { name        = name
+      ``type``    = ``type``
+      hopacIniter = fun metadata ->
+        Job.start (loop metadata (MetricCh.create ()))
       sampling = sampling }
 
 module Reservoir =
