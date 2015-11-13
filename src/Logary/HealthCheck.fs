@@ -43,6 +43,7 @@ module HealthCheck =
   open System.Runtime.CompilerServices
 
   open FSharp.Actor
+  open Hopac
 
   open Logary.Internals
 
@@ -99,6 +100,15 @@ module HealthCheck =
     | GetResult of HealthCheckResult Types.ReplyChannel
     | ShutdownHealthCheck of Acks Types.ReplyChannel
 
+  type HopacHealthCheckMessage =
+    | HopacGetResult
+    | HopacShutdownHealthCheck
+
+  type HopacHealthCheckInstance =
+    { reqCh      : HopacHealthCheckMessage Ch
+      resultCh   : HealthCheckResult Ch
+      shutdownCh : Acks Ch }
+
   type HealthCheckInstance =
     { actor : HealthCheckMessage IActor }
 
@@ -119,6 +129,25 @@ module HealthCheck =
           return () }
       running { last = NoValue })
 
+  let private hopacMkFromFunction (fn : unit -> Job<HealthCheckResult>) =
+    let ch = { reqCh      = Ch.Now.create ()
+               resultCh   = Ch.Now.create ()
+               shutdownCh = Ch.Now.create () }
+
+    let rec running _ = job {
+        let! req = Ch.take ch.reqCh
+        match req with
+        | HopacGetResult ->
+          let! x = fn ()
+          do! Ch.give ch.resultCh x
+          return! running { last = x }
+        | HopacShutdownHealthCheck ->
+          do! Ch.give ch.shutdownCh Ack
+          return ()
+      }
+    (ch, running {last = NoValue })
+
+
   /// Create a new health check from a checking function. This will create an
   /// actor but it needs to be registered in the registry for it to work on its
   /// own.
@@ -135,6 +164,24 @@ module HealthCheck =
           a
           |> Actor.reqReply ShutdownHealthCheck Infinite |> Async.Ignore
           |> Async.RunSynchronously }
+
+  let hopacFromFn name f =
+    let (ch, fjob) = hopacMkFromFunction f
+    Job.start fjob |> ignore
+
+    { new HealthCheck with
+        member x.Name = name
+        member x.GetValue () =
+          (job {
+            do! Ch.give ch.reqCh HopacGetResult
+            return! Ch.take ch.resultCh
+          }) |> Job.Global.run
+        member x.Dispose() =
+          (job {
+            do! Ch.give ch.reqCh HopacShutdownHealthCheck
+            do! Ch.take ch.shutdownCh |> Alt.Ignore
+          }) |> Job.Global.run
+    }
 
   /// Create a health check that will never yield a value
   let mkDead name =
