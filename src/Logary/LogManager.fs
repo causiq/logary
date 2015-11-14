@@ -6,6 +6,14 @@ open FSharp.Actor
 
 open Logary.Internals
 
+open Hopac
+
+type HopacLogaryInstance =
+  { supervisor : Job<unit>
+    registry   : Job<unit>
+    scheduler  : Job<unit>
+    metadata   : RuntimeInfo }
+
 /// A type that encapsulates the moving parts of a configured Logary.
 type LogaryInstance =
   { supervisor : IActor

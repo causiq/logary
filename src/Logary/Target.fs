@@ -8,6 +8,7 @@ open System
 open System.Text.RegularExpressions
 
 open FSharp.Actor
+open Hopac
 
 open Logary.DataModel
 open Logary.Internals
@@ -24,6 +25,10 @@ type TargetMessage =
   /// Shut down! Also, reply when you're done shutting down!
   | Shutdown of Acks FSharp.Actor.Types.ReplyChannel
 
+type HopacTargetMessage =
+  | HopacFlush of Ch<Acks>
+  | HopacShutdown of Ch<Acks>
+
 /// A target instance is a spawned actor instance together with
 /// the name of this target instance.
 type TargetInstance =
@@ -31,6 +36,40 @@ type TargetInstance =
     actor  : IActor
     /// The human readable name of the target.
     name   : string }
+
+type HopacTargetInstance =
+  { logMb : BoundedMb<Message>
+    reqCh : Ch<HopacTargetMessage>
+    name : string }
+
+/// A target configuration is the 'reference' to the to-be-run target while it
+/// is being configured, and before Logary fully starts up.
+[<CustomEquality; CustomComparison>]
+type HopacTargetConf =
+  { name   : string
+    initer : RuntimeInfo -> HopacTargetInstance }
+  override x.ToString() =
+    sprintf "TargetConf(name = %s)" x.name
+
+  override x.Equals other =
+      match other with
+      | :? HopacTargetConf as other ->
+        x.name.Equals(other.name, StringComparison.InvariantCulture)
+      | _ -> false
+
+  override x.GetHashCode() =
+    hash x.name
+
+  interface System.IEquatable<HopacTargetConf> with
+    member x.Equals other =
+      x.name.Equals (other.name, StringComparison.InvariantCulture)
+
+  interface System.IComparable with
+    member x.CompareTo yobj =
+      match yobj with
+      | :? HopacTargetConf as y -> compare x.name y.name
+      | _ -> invalidArg "yobj" "cannot compare values of different types"
+
 
 /// A target configuration is the 'reference' to the to-be-run target while it
 /// is being configured, and before Logary fully starts up.
@@ -75,10 +114,17 @@ let validate (conf : TargetConf) = conf
 let init metadata conf =
   conf.initer metadata
 
+let hopacInit metadata (conf : HopacTargetConf) =
+  conf.initer metadata
+
 /// Send the target a log line, returning the same instance
 /// as was passed in.
 let send msg instance =
   instance.actor <-- Log msg
+  instance
+
+let hopacSend msg (instance : HopacTargetInstance) =
+  Job.Global.start (BoundedMb.put instance.logMb msg)
   instance
 
 /// Log to the target and just return unit
@@ -91,9 +137,21 @@ let sendMeasure i msr = i.actor <-- Measure msr
 let flush i =
   i.actor |> Actor.makeRpc Flush Infinite
 
+let hopacFlush i = job {
+  let! ackCh = Ch.create ()
+  do! Ch.give i.reqCh (HopacFlush ackCh)
+  return! Ch.take ackCh
+}
+
 /// Shutdown the target, waiting indefinitely for it to stop
 let shutdown tInst =
   tInst.actor |> Actor.makeRpc Shutdown Infinite
+
+let hopacShutdown i = job {
+  let! ackCh = Ch.create ()
+  do! Ch.give i.reqCh (HopacShutdown ackCh)
+  return! Ch.take ackCh
+}
 
 /// Module with utilities for Targets to use for formatting LogLines.
 /// Currently only wraps a target loop function with a name and spawns a new actor from it.
@@ -107,6 +165,19 @@ module TargetUtils =
       { actor = Actor.spawn (Ns.create (sprintf "target/%s" name)) (loop metadata)
         name  = name } }
 
+  // TODO: Complete guesswork.
+  let private defaultMbBuffer = 128
+
+  // TODO: Make mb buffer size configurable
+  let hopacStdNamedTarget loop name : HopacTargetConf =
+    { name = name
+      initer = fun metadata ->
+        Job.Global.start (loop metadata)
+        { logMb = BoundedMb.create defaultMbBuffer |> Job.Global.run
+          reqCh = Ch.Now.create () 
+          name = name } }
+
+// TODO: Make the new Hopac-based system support this
 /// A module that contains the required interfaces to do an "object oriented" DSL
 /// per target
 module FactoryApi =
