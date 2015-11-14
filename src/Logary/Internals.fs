@@ -205,6 +205,28 @@ module internal Set =
     | (s : _ Set) when s.Count = 0 -> Some EmptySet
     | _ -> None
 
+// TODO: remove the prefixes when FSharp.Actors is removed.
+type HopacTimeout =
+  | HopacInfinite
+  | HopacTimeout of System.TimeSpan
+
+type HopacTimeoutResult<'a> =
+  | HopacTimedOut
+  | HopacSuccess of 'a
+
+[<AutoOpen>]
+module internal Job =
+  open Hopac
+  open Hopac.Alt.Infixes
+
+  let withTimeout timeout j =
+    match timeout with
+    | HopacInfinite -> Job.map HopacSuccess j
+    | HopacTimeout ts -> job {
+      let! isDone = Promise.start j
+      return! (timeOut ts >>%? HopacTimedOut) <|>? (Alt.map HopacSuccess (Promise.read isDone))
+    }
+
 // TODO: consider moving NackDescription and Acks to Logary ns instead of Internals
 
 /// A description of why no Ack was received like was expected.
