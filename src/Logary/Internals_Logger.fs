@@ -17,24 +17,23 @@ type NullLogger() =
     member x.Name = "Logary.Internals.NullLogger"
 
 module internal Logging =
-  open FSharp.Actor
+  open Hopac
 
   open Logary.DataModel
   open Logary.Target
 
-  /// A logger instance that keeps a reference to the actor targets that it
-  /// logs to, as well as its name.
   type LoggerInstance =
     { name    : string
-      targets : (MessageFilter * IActor) list
+      targets : (MessageFilter * TargetInstance) list
       level   : LogLevel
-      /// the internal logger for this logger instance
       ilogger : Logger }
     with
       interface Named with
         member x.Name = x.name
 
       interface Logger with
+        member x.Level: LogLevel = x.level
+        
         member x.LogVerbose fMsg =
           if Verbose >= x.level then
             let logger : Logger = upcast x
@@ -47,30 +46,14 @@ module internal Logging =
 
         member x.Log msg =
           for accept, t in x.targets do
-            try
-              if accept msg then
-                t <-- Log msg
-            with
-            | Actor.ActorInvalidStatus msg ->
-              Message.errorf
-                "Logging to %s failed, because of target state. Actor said: '%s'"
-                x.name msg
-              |> Logger.log x.ilogger
+            if accept msg then
+              Job.Global.run (BoundedMb.put t.logMb msg)
 
-        member x.Measure m =
-          for accept, t in x.targets do
-            try
-              if accept m then
-                t <-- Measure m
-            with
-            | Actor.ActorInvalidStatus msg ->
-              Message.errorf
-                "Sending metric to %s failed, because of target state. Actor said: '%s'"
-                x.name msg
-              |> Logger.log x.ilogger
-
-        member x.Level =
-          x.level
+        // TODO / CONSIDER: This function is just an alias for .Log.
+        // Should it be removed from the 
+        member x.Measure msr =
+          let logger : Logger = upcast x
+          logger.Log msr
 
 /// This logger is special: in the above case the Registry takes the responsibility
 /// of shutting down all targets, but this is a stand-alone logger that is used
@@ -93,7 +76,7 @@ type InternalLogger =
     member x.Log line =
       try
         if line.level >= x.lvl then
-          x.trgs |> List.iter (flip Target.sendLogLine line)
+          x.trgs |> List.iter (Target.send line >> ignore)
       with _ -> ()
     member x.Measure m =
       try

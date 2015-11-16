@@ -4,7 +4,6 @@ open System
 
 open NodaTime
 
-open FSharp.Actor
 open Hopac
 
 open Logary.DataModel
@@ -27,80 +26,31 @@ type MetricType =
 type MetricMsg =
   /// The GetValue implementation shall retrieve the value of one or more data
   /// points from the probe.
-  | GetValue of PointName list * ReplyChannel<Message list>
-  /// The GetDataPoints shall return a list with all data points supported by
-  /// the probe
-  | GetDataPoints of ReplyChannel<PointName list>
-  /// Incorporate a new value into the metric maintained by the metric.
-  | Update of Message
+  | GetValue of (PointName list * Ch<Message list>)
   /// The Sample implementation shall sample data from the subsystem the probe
   /// is integrated with.
   | Sample
-  /// The custom probe shall release any resources associated with the given
-  /// state and return ok.
-  | Shutdown of Acks ReplyChannel
   /// The Reset shall reset the state of the probe to its initial state.
   | Reset
-
-type HopacMetricMsg =
-  | HopacGetValue of PointName list
-  | HopacSample
-  | HopacReset
+  /// The custom probe shall release any resources associated with the given
+  /// state and return ok.
+  | Shutdown of IVar<Acks>
 
 type MetricCh = {
-  requestCh:  Ch<HopacMetricMsg>
-  dpValueCh:  Ch<Message list>
+  requestCh:  Ch<MetricMsg>
   updateCh:   Ch<Message>
-  dpNameCh:   Ch<PointName list>
-  shutdownCh: Ch<Acks> }
-
+  dpNameCh:   Ch<PointName list> }
 with
-
   static member create () = {
     requestCh  = Ch.Now.create ()
-    dpValueCh  = Ch.Now.create ()
     updateCh   = Ch.Now.create ()
-    dpNameCh   = Ch.Now.create ()
-    shutdownCh = Ch.Now.create () }
+    dpNameCh   = Ch.Now.create () }
 
 [<CustomEquality; CustomComparison>]
 type MetricConf =
-  { name     : string
-    ``type`` : MetricType
-    initer   : RuntimeInfo -> IActor
-    /// the period to sample the metric's value at
-    sampling : Duration }
-
-with
-  override x.Equals(yobj) =
-      match yobj with
-      | :? MetricConf as y ->
-        x.name.Equals(y.name, StringComparison.InvariantCulture)
-        && x.``type``.Equals(y.``type``)
-        && x.sampling.Equals(y.sampling)
-      | _ -> false
-
-  override x.GetHashCode() =
-    hash (x.name, x.``type``, x.sampling)
-
-  interface System.IComparable with
-    member x.CompareTo yobj =
-      match yobj with
-      | :? MetricConf as y ->
-        compare x.name y.name
-        |> thenCompare x.``type`` y.``type``
-        |> thenCompare x.sampling y.sampling
-      | _ -> invalidArg "yobj" "cannot compare values of different types"
-
-  override x.ToString() =
-    sprintf "Metric(name=%s, type=%A, sampling=%O)"
-      x.name x.``type`` x.sampling
-
-[<CustomEquality; CustomComparison>]
-type HopacMetricConf =
   { name        : string
     ``type``    : MetricType
-    hopacIniter : RuntimeInfo -> Job<unit>
+    initer      : RuntimeInfo -> Job<unit>
     /// the period to sample the metric's value at
     sampling    : Duration }
 
@@ -135,62 +85,42 @@ let confMetric name sampling (factory : string -> Duration -> MetricConf) =
 
 let validate (conf : MetricConf) = conf
 
-/// initialises the configuration with the metadata to create a new metric-actor
+ /// initialises the configuration with the metadata to create a new metric-actor
 let init metadata conf =
   conf.initer metadata
 
 /// The GetValue implementation shall retrieve the value of one or more data
 /// points from the probe.
-let getValue (dps : PointName list) =
-  Actor.reqReply
-    (fun chan -> GetValue(dps, chan))
-    Infinite
-
-let hopacGetValue (dps : PointName list) ch = job {
-  do! Ch.give ch.requestCh (HopacGetValue dps)
-  return! Ch.take ch.dpValueCh
+let getValue (dps : PointName list) ch = job {
+  // TODO: Should be cached or parametrized
+  let! resultCh = Ch.create ()
+  do! Ch.give ch.requestCh (GetValue (dps, resultCh))
+  return! Ch.take resultCh
 }
 
 /// The GetDataPoints shall return a list with all data points supported by
 /// the probe
-let getDataPoints (m : #IActor) =
-  Actor.reqReply
-    GetDataPoints
-    Infinite
-    m
-
-let hopacGetDataPoints ch = job {
+let getDataPoints ch = job {
   return! Ch.take ch.dpNameCh
 }
 
 /// Incorporate a new value into the metric maintained by the metric.
-let update (m : Message) actor =
-  actor <-- Update m
-  actor
-
-let hopacUpdate (m: Message) ch = job {
+let update (m: Message) ch = job {
   do! Ch.give ch.updateCh m
 }
 
 /// The Sample implementation shall sample data from the subsystem the probe
 /// is integrated with.
-let sample actor =
-  actor <-- Sample
-
-let hopacSample ch = job {
-  do! Ch.give ch.requestCh HopacSample
+let sample ch = job {
+  do! Ch.give ch.requestCh Sample
 }
 
 /// The custom probe shall release any resources associated with the given
 /// state and return ok.
-let shutdown (a : #IActor) =
-  Actor.reqReply
-    Shutdown
-    Infinite
-    a
-
-let hopacShutdown ch = job {
-  return! Ch.take ch.shutdownCh
+let shutdown ch = job {
+  let! ack = IVar.create ()
+  do! Ch.give ch.requestCh (Shutdown ack)
+  return! ack
 }
 
 module MetricUtils =
@@ -201,18 +131,9 @@ module MetricUtils =
   /// a function that can create standard named metrics which is usable from
   /// outside Logary.
   let stdNamedMetric ``type`` loop name sampling =
-    { name     = name
-      ``type`` = ``type``
-      initer   = fun metadata ->
-        Actor.spawn
-          (Ns.create (sprintf "%O/%s" ``type`` name))
-          (loop metadata)
-      sampling = sampling }
-
-  let hopacStdNamedMetric ``type`` loop name sampling =
     { name        = name
       ``type``    = ``type``
-      hopacIniter = fun metadata ->
+      initer = fun metadata ->
         Job.start (loop metadata (MetricCh.create ()))
       sampling = sampling }
 

@@ -7,7 +7,6 @@ module Logary.Target
 open System
 open System.Text.RegularExpressions
 
-open FSharp.Actor
 open Hopac
 
 open Logary.DataModel
@@ -15,61 +14,19 @@ open Logary.Internals
 
 /// The protocol that a target can speak
 type TargetMessage =
-  /// Log this log line!
-  | Log            of Message
-  /// Log this metric!
-  | Measure        of Message
-  /// Flush log lines/metrics! Also, reply when you're done flushing
+  /// Flush messages! Also, reply when you're done flushing
   /// your queue.
-  | Flush          of Acks FSharp.Actor.Types.ReplyChannel
+  | Flush of IVar<Acks>
   /// Shut down! Also, reply when you're done shutting down!
-  | Shutdown of Acks FSharp.Actor.Types.ReplyChannel
-
-type HopacTargetMessage =
-  | HopacFlush of Ch<Acks>
-  | HopacShutdown of Ch<Acks>
+  | Shutdown of IVar<Acks>
 
 /// A target instance is a spawned actor instance together with
 /// the name of this target instance.
 type TargetInstance =
-  { /// The backing actor instance of the target.
-    actor  : IActor
-    /// The human readable name of the target.
-    name   : string }
-
-type HopacTargetInstance =
   { logMb : BoundedMb<Message>
-    reqCh : Ch<HopacTargetMessage>
+    reqCh : Ch<TargetMessage>
+    /// The human readable name of the target.
     name : string }
-
-/// A target configuration is the 'reference' to the to-be-run target while it
-/// is being configured, and before Logary fully starts up.
-[<CustomEquality; CustomComparison>]
-type HopacTargetConf =
-  { name   : string
-    initer : RuntimeInfo -> HopacTargetInstance }
-  override x.ToString() =
-    sprintf "TargetConf(name = %s)" x.name
-
-  override x.Equals other =
-      match other with
-      | :? HopacTargetConf as other ->
-        x.name.Equals(other.name, StringComparison.InvariantCulture)
-      | _ -> false
-
-  override x.GetHashCode() =
-    hash x.name
-
-  interface System.IEquatable<HopacTargetConf> with
-    member x.Equals other =
-      x.name.Equals (other.name, StringComparison.InvariantCulture)
-
-  interface System.IComparable with
-    member x.CompareTo yobj =
-      match yobj with
-      | :? HopacTargetConf as y -> compare x.name y.name
-      | _ -> invalidArg "yobj" "cannot compare values of different types"
-
 
 /// A target configuration is the 'reference' to the to-be-run target while it
 /// is being configured, and before Logary fully starts up.
@@ -99,7 +56,6 @@ type TargetConf =
       | :? TargetConf as y -> compare x.name y.name
       | _ -> invalidArg "yobj" "cannot compare values of different types"
 
-
 /// 'API helper' method for flowing the target through
 /// a configurator factory that is then used to change the
 /// TargetConf value that is returned.
@@ -111,65 +67,40 @@ let validate (conf : TargetConf) = conf
 
 /// Initialises the target with metadata and a target configuration,
 /// yielding a TargetInstance in return which contains the running target.
-let init metadata conf =
+let init metadata (conf : TargetConf) =
   conf.initer metadata
 
-let hopacInit metadata (conf : HopacTargetConf) =
-  conf.initer metadata
-
-/// Send the target a log line, returning the same instance
+/// Send the target a message, returning the same instance
 /// as was passed in.
-let send msg instance =
-  instance.actor <-- Log msg
-  instance
-
-let hopacSend msg (instance : HopacTargetInstance) =
+let send msg (instance : TargetInstance) =
   Job.Global.start (BoundedMb.put instance.logMb msg)
   instance
 
-/// Log to the target and just return unit
-let sendLogLine i logLine = send logLine i |> ignore
-
-/// Send the metric to the target and return unit
-let sendMeasure i msr = i.actor <-- Measure msr
-
 /// Send a flush RPC to the target and return the async with the ACKs
-let flush i =
-  i.actor |> Actor.makeRpc Flush Infinite
-
-let hopacFlush i = job {
-  let! ackCh = Ch.create ()
-  do! Ch.give i.reqCh (HopacFlush ackCh)
-  return! Ch.take ackCh
+let flush i = job {
+  let! ack = IVar.create ()
+  do! Ch.give i.reqCh (Flush ack)
+  return! ack
 }
 
 /// Shutdown the target, waiting indefinitely for it to stop
-let shutdown tInst =
-  tInst.actor |> Actor.makeRpc Shutdown Infinite
-
-let hopacShutdown i = job {
-  let! ackCh = Ch.create ()
-  do! Ch.give i.reqCh (HopacShutdown ackCh)
-  return! Ch.take ackCh
+let shutdown i = job {
+  let! ack = IVar.create ()
+  do! Ch.give i.reqCh (Shutdown ack)
+  return! IVar.read ack
 }
 
 /// Module with utilities for Targets to use for formatting LogLines.
 /// Currently only wraps a target loop function with a name and spawns a new actor from it.
 module TargetUtils =
 
-  /// Create a new standard named target, with no particular namespace,
-  /// given an actor-based loop function and a name for the target.
-  let stdNamedTarget loop name =
-    { name = name
-      initer = fun metadata ->
-      { actor = Actor.spawn (Ns.create (sprintf "target/%s" name)) (loop metadata)
-        name  = name } }
-
   // TODO: Complete guesswork.
   let private defaultMbBuffer = 128
 
   // TODO: Make mb buffer size configurable
-  let hopacStdNamedTarget loop name : HopacTargetConf =
+  /// Create a new standard named target, with no particular namespace,
+  /// given a job function and a name for the target.
+  let stdNamedTarget loop name : TargetConf =
     { name = name
       initer = fun metadata ->
         Job.Global.start (loop metadata)

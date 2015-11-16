@@ -15,10 +15,6 @@ type ResultData =
   /// health check. Useful for drilling down.
   abstract Description : string
 
-  /// Gets the optional exception that was thrown as a part of the evaluation
-  /// of the health check.
-  //abstract Exception   : exn option
-
 /// A result of the health check. Either Healthy or Unhealthy
 type HealthCheckResult =
   /// This health check has no value available.
@@ -56,28 +52,12 @@ module HealthCheck =
   let setDesc (description: string) m =
     Message.field Description description m
 
-  (*
-  /// Sets the exception property of the measurement's data map
-  [<CompiledName "SetException">]
-  let setExn e m =
-    Message.addExn e m
-  *)
-
   /// Tries to get the description value from the measure.
   [<CompiledName "TryGetDescription">]
   let tryGetDesc m =
     match Message.tryGetField Description m with
     | (Some (Field (String s, _))) ->  s
     | _ -> ""
-
-  (*
-  TODO/BREAKING: Can't be implemented as-is with the new object model
-
-  /// Tries to get an exception from the measure
-  [<CompiledName "TryGetException">]
-  let tryGetExn m =
-    m.m_data |> Map.tryFind Exception |> Option.map (fun x -> x :?> exn)
-  *)
 
   /// An implementation of the ResultData interface that wraps a Measure and
   /// uses its 'data' Map to read.
@@ -97,89 +77,49 @@ module HealthCheck =
       |> HasValue
 
   type HealthCheckMessage =
-    | GetResult of HealthCheckResult Types.ReplyChannel
-    | ShutdownHealthCheck of Acks Types.ReplyChannel
-
-  type HopacHealthCheckMessage =
-    | HopacGetResult
-    | HopacShutdownHealthCheck
-
-  type HopacHealthCheckInstance =
-    { reqCh      : HopacHealthCheckMessage Ch
-      resultCh   : HealthCheckResult Ch
-      shutdownCh : Acks Ch }
+    | GetResult of Ch<HealthCheckResult>
+    | ShutdownHealthCheck of IVar<Acks>
 
   type HealthCheckInstance =
-    { actor : HealthCheckMessage IActor }
+    { reqCh      : HealthCheckMessage Ch }
 
   type private FnCheckerState =
     { last : HealthCheckResult }
 
-  let private mkFromFunction fn =
-    (fun (inbox : IActor<_>) ->
-      let rec running state = async {
-        let! msg, mopts = inbox.Receive()
-        match msg with
-        | GetResult chan ->
-          let! x = fn ()
-          chan.Reply x
-          return! running  { last = x }
-        | ShutdownHealthCheck ackChan ->
-          ackChan.Reply Ack
-          return () }
-      running { last = NoValue })
-
-  let private hopacMkFromFunction (fn : unit -> Job<HealthCheckResult>) =
-    let ch = { reqCh      = Ch.Now.create ()
-               resultCh   = Ch.Now.create ()
-               shutdownCh = Ch.Now.create () }
+  let private mkFromFunction (fn : unit -> Job<HealthCheckResult>) =
+    let ch = { reqCh = Ch.Now.create () }
 
     let rec running _ = job {
         let! req = Ch.take ch.reqCh
         match req with
-        | HopacGetResult ->
+        | GetResult resCh ->
           let! x = fn ()
-          do! Ch.give ch.resultCh x
+          do! Ch.give resCh x
           return! running { last = x }
-        | HopacShutdownHealthCheck ->
-          do! Ch.give ch.shutdownCh Ack
+        | ShutdownHealthCheck ivar ->
+          do! IVar.fill ivar Ack
           return ()
       }
     (ch, running {last = NoValue })
 
-
-  /// Create a new health check from a checking function. This will create an
-  /// actor but it needs to be registered in the registry for it to work on its
-  /// own.
   let fromFn name f =
-    let a = Actor.spawn (Ns.create (sprintf "hc/%s" name))
-                        (mkFromFunction f)
-    { new HealthCheck with
-        member x.Name = name
-        member x.GetValue () =
-          a
-          |> Actor.reqReply GetResult Infinite
-          |> Async.RunSynchronously
-        member x.Dispose() =
-          a
-          |> Actor.reqReply ShutdownHealthCheck Infinite |> Async.Ignore
-          |> Async.RunSynchronously }
-
-  let hopacFromFn name f =
-    let (ch, fjob) = hopacMkFromFunction f
+    let (ch, fjob) = mkFromFunction f
     Job.start fjob |> ignore
 
     { new HealthCheck with
         member x.Name = name
         member x.GetValue () =
           (job {
-            do! Ch.give ch.reqCh HopacGetResult
-            return! Ch.take ch.resultCh
+            // TODO / PERF?: This channel could be reused or replaced with an IVar
+            let! responseCh = Ch.create ()
+            do! Ch.give ch.reqCh (GetResult (responseCh))
+            return! Ch.take responseCh
           }) |> Job.Global.run
         member x.Dispose() =
           (job {
-            do! Ch.give ch.reqCh HopacShutdownHealthCheck
-            do! Ch.take ch.shutdownCh |> Alt.Ignore
+            let! ack = IVar.create ()
+            do! Ch.give ch.reqCh (ShutdownHealthCheck ack)
+            do! Alt.Ignore <| IVar.read ack
           }) |> Job.Global.run
     }
 

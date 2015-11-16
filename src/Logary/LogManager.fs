@@ -8,19 +8,13 @@ open Logary.Internals
 
 open Hopac
 
-type HopacLogaryInstance =
-  { supervisor : Job<unit>
-    registry   : Job<unit>
-    scheduler  : Job<unit>
-    metadata   : RuntimeInfo }
-
 /// A type that encapsulates the moving parts of a configured Logary.
 type LogaryInstance =
-  { supervisor : IActor
+  { supervisor : Job<unit>
     /// to use with Logary.Registry
-    registry   : IActor
+    registry   : Job<unit>
     /// to use with Logary.SCheduling (as the actor param)
-    scheduler  : IActor
+    scheduler  : Job<unit>
     metadata   : RuntimeInfo }
 
 /// A type that gives information on how the shutdown went
