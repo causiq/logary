@@ -17,7 +17,7 @@ type MetricsTable() =
       .WithColumn("Host").AsString(255).NotNullable()
         .WithColumnDescription("Hostname/DNS name of sender")
       .WithColumn("Path").AsString(255).NotNullable().WithDefaultValue(String.Empty)
-        .WithColumnDescription("Where's the metric taken from; see graphite type paths")
+        .WithColumnDescription("Where''s the metric taken from; see graphite type paths")
       .WithColumn("EpochTicks").AsInt64()
         .WithColumnDescription("No. of ticks since Unix Epoch. 1 tick = 100 ns = 10 000 ms")
       .WithColumn("Level").AsInt16().NotNullable()
