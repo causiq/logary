@@ -130,6 +130,6 @@ let tests =
       (because "converting a String.Format into a message template" <| fun () ->
         Formatting.templateFromFormat format args)
       |> should equal ("This {arg0} contains {arg1} words.",
-                       [("arg0", Field (String "sentence", None)); ("arg1", Field (Int64 4L, None))])
+                       [(["arg0"], Field (String "sentence", None)); (["arg1"], Field (Int64 4L, None))])
       |> thatsIt
     ]

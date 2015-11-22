@@ -4,26 +4,22 @@ module Logary.Registry
 open System.Threading
 
 open FSharp.Actor
+open Hopac
+open Hopac.Alt.Infixes
 
 open NodaTime
 
 open Logary.Internals
+open Logary.Internals.Scheduling
 open Logary.Target
 open Logary.HealthCheck
 
-/// The messages that can be sent to the registry to interact with it and its
-/// running targets.
-type RegistryMessage =
-  | GetLogger             of string * Logger ReplyChannel
-  | PollMetrics
-  /// flush all pending messages from the registry to await shutdown
-  | FlushPending          of Duration * Acks ReplyChannel
-  /// shutdown the registry in full
-  | ShutdownLogary        of Duration * Acks ReplyChannel
-
 /// Given the registry actor, and a name for the logger, get the logger from the registry.
-let getLogger registry name =
-  registry |> Actor.reqReply (fun ret -> GetLogger (name, ret)) Infinite
+let getLogger (registry : RegistryInstance) name = job {
+    let! resultCh = Ch.create ()
+    do! Ch.give registry.reqCh (GetLogger (name, resultCh))
+    return! Ch.take resultCh
+  }
 
 /// handling flyweights
 module internal Logging =
@@ -45,7 +41,7 @@ module internal Logging =
       member x.Configured lm =
         lock locker (fun () ->
           logManager := Some lm
-          logger := Some (Async.RunSynchronously(getLogger lm.registry name)))
+          logger := Some (Job.Global.run (getLogger lm.registry name)))
     interface Logger with
       member x.LogVerbose fLine = (!logger) |> Option.iter (fun logger -> logger.LogVerbose fLine)
       member x.LogDebug fLine = (!logger) |> Option.iter (fun logger -> logger.LogDebug fLine)
@@ -138,34 +134,37 @@ module Advanced =
   /// how that went. E.g. if there's a target is has a backlog, it might not be able to
   /// flush all its pending entries within the allotted timeout (200 ms at the time of writing)
   /// but will then instead return Nack/failed RPC.
-  let flushPending dur (registry : IActor) =
-    if registry.Status <> ActorStatus.Running then async { return Nack "registry not running" }
-    /// Timeout=Infinite below is for THIS call, internally registry has a timeout per target.
-    else registry |> Actor.reqReply (fun c -> FlushPending(dur, c)) Infinite
+  let flushPending dur (registry : RegistryInstance) =
+    let flushJob = job {
+      let! ack = IVar.create ()
+      do! Ch.give registry.reqCh (FlushPending (dur, ack))
+      return! ack }
+
+    Job.Global.startIgnore flushJob
+    flushJob
 
   /// Shutdown the registry. This will first flush all pending entries for all targets inside the
   /// registry, and then proceed to sending ShutdownTarget to all of them. If this doesn't
   /// complete within the allotted timeout, (200 ms for flush, 200 ms for shutdown), it will
   /// return Nack to the caller (of shutdown).
-  let shutdown dur (registry : IActor) =
-    if registry.Status <> ActorStatus.Running then async { return Nack "registry not running" }
-    /// Timeout=Infinite below is for THIS call, internally registry has a timeout per target.
-    else registry |> Actor.reqReply (fun c -> ShutdownLogary(dur, c)) Infinite
+  let shutdown dur (registry : RegistryInstance) =
+    let shutdownJob = job {
+      let! ack = IVar.create ()
+      do! Ch.give registry.reqCh (ShutdownLogary (dur, ack))
+      return! ack }
+
+    Job.Global.startIgnore shutdownJob
+    shutdownJob
 
   /// Flush all registry targets, then shut it down -- the registry internals
   /// take care of timeouts, not these methods
-  let flushAndShutdown durFlush durShutdown (registry : IActor) = async {
-    if registry.Status <> ActorStatus.Running then
-      return { flushed = Nack "registry not running"
-               stopped = Nack "registry not running"
-               timedOut = false }
-    else
-      let! fs = flushPending durFlush registry
-      let! ss = shutdown durShutdown registry
-      // TODO: granular Ack handling for each target
-      return { flushed = fs
-               stopped = ss
-               timedOut = Seq.any (function Nack _ -> true | _ -> false) [ fs; ss ] }
+  let flushAndShutdown durFlush durShutdown (registry : RegistryInstance) = job {
+    let! fs = flushPending durFlush registry
+    let! ss = shutdown durShutdown registry
+    // TODO: granular Ack handling for each target
+    return { flushed = fs
+             stopped = ss
+             timedOut = Seq.any (function Nack _ -> true | _ -> false) [ fs; ss ] }
     }
 
   module private Impl =
@@ -175,15 +174,15 @@ module Advanced =
     [<CompiledName "FromTargets">]
     let fromTargets name ilogger (targets : (MessageFilter * TargetInstance * LogLevel) list) =
       { name    = name
-        targets = targets |> List.map (fun (mf, ti, _) -> mf, ti.actor)
+        targets = targets |> List.map (fun (mf, ti, _) -> mf, ti)
         level   = targets |> List.map (fun (_, _, level) -> level) |> List.min
         ilogger = ilogger }
       :> Logger
 
     let wasSuccessful = function
-      | SuccessWith(Ack, _)     -> 0
-      | ExperiencedTimeout _    -> 1
-      | SuccessWith(Nack(_), _) -> 1
+      | HopacSuccess Ack      -> 0
+      | HopacTimedOut         -> 1
+      | HopacSuccess (Nack _) -> 1
 
     let bisectSuccesses = // see wasSuccessful f-n above
       fun groups -> groups |> Seq.filter (fun (k, _) -> k = 0) |> Seq.map snd |> (fun s -> if Seq.isEmpty s then [] else Seq.exactlyOne s |> Seq.toList),
@@ -196,38 +195,70 @@ module Advanced =
       for x in s do sb.AppendLine(sprintf " * %A" x) |> ignore
       sb.ToString()
 
-    let pollMetrics registry =
-      registry <-- PollMetrics
+    let pollMetrics (registry: Ch<RegistryMessage>) =
+      Job.Global.run <| Ch.give registry PollMetrics
 
     /// The state for the Registry
     type RegistryState =
       { /// the supervisor, not of the registry actor, but of the targets and probes and health checks.
-        supervisor     : IActor
-        schedules      : (string * CancellationTokenSource) list
-        pollMetrics    : CancellationTokenSource option }
+        supervisor     : unit
+        schedules      : (string * Cancellation) list
+        pollMetrics    : Cancellation option }
 
     /// The registry function that works as an actor.
-    let rec registry conf sup sched (inbox : IActor<_>) =
+    let rec registry conf sup sched (inbox : Ch<RegistryMessage>) =
       let targets = conf.targets |> LogaryConfLenses.targetActors_.get
       let lgr = conf.metadata.logger
       let regPath = "Logary.Registry.registry"
-      //let log = LogLine.setPath regPath >> Logger.log lgr
       let log = Message.Context.serviceSet regPath >> Logger.log lgr
 
-      let rec init state = async {
+      /// In the shutdown state, the registry doesn't respond to messages, but rather tries to
+      /// flush and shut down all targets, doing internal logging as it goes.
+      let shutdown state (dur : Duration) (ack : IVar<Acks>) = job {
+        Message.info "shutdown metrics polling" |> log
+        do! defaultArg (Option.map (fun x -> Ch.give x.cancelCh ()) state.pollMetrics) (Alt.unit ())
+
+        Message.info "shutdown schedules" |> log
+        for (_, x) in state.schedules do do! Ch.give x.cancelCh ()
+
+        Message.info "shutdown targets" |> log
+        let! allShutdown =
+          targets
+          |> Seq.pjmap (Target.shutdown >> Job.withTimeout (HopacTimeout (dur.ToTimeSpan ())))
+
+        let stopped, failed =
+          allShutdown
+          |> Seq.groupBy wasSuccessful
+          |> bisectSuccesses
+
+        do! IVar.fill ack <|
+          if List.isEmpty failed then
+            Message.info "shutdown Ack" |> log
+            Ack
+          else
+            let msg = sprintf "failed target shutdowns:%s%s" nl (toTextList failed)
+            Message.errorf "shutdown Nack%s%s" nl msg
+            |> Message.field "failed" (Value.fromObject failed)
+            |> log
+            Nack msg
+
+        Message.info "shutting down immediately" |> log
+        return () }
+
+      let rec init state = job {
         let ctss = System.Collections.Generic.List<_>()
         // init sampling of metrics
         for m in conf.metrics do
-          let (conf, actor) = m.Value
-          match actor with
-          | Some actor ->
-            let! cts = Scheduling.schedule sched Metric.sample actor conf.sampling (Some conf.sampling)
+          let (conf, mi) = m.Value
+          match mi with
+          | Some mi ->
+            let cts = Scheduling.schedule sched Metric.sample mi conf.sampling (Some conf.sampling)
             ctss.Add( m.Key, cts )
           | None -> ()
 
         // init getting metrics' values
         Message.debugf "will poll metrics every %O" conf.pollPeriod |> log
-        let! pollCts =
+        let pollCts =
           Scheduling.schedule sched pollMetrics inbox
             (Duration.FromMilliseconds 200L)
             (Some conf.pollPeriod)
@@ -237,11 +268,11 @@ module Advanced =
         }
 
       /// In the running state, the registry takes queries for loggers, gauges, etc...
-      and running state = async {
-        let! msg, _ = inbox.Receive()
+      and running state : Job<unit> = job {
+        let! msg = Ch.take inbox
         match msg with
         | GetLogger (name, chan) ->
-          chan.Reply( name |> getTargets conf |> fromTargets name lgr)
+          do! Ch.give chan (name |> getTargets conf |> fromTargets name lgr)
           return! running state
 
         // CONSIDER: move away from RPC (even though we're just reading memory
@@ -252,36 +283,40 @@ module Advanced =
           Message.debug "polling metrics" |> log
           // CONSIDER: can parallelise this if it helps (as they are all disjunct)
           for mtr in conf.metrics do
-            let mtrActor = (LogaryConfLenses.metricActor_ mtr.Key).get conf
+            let metricInstance = (LogaryConfLenses.metricActor_ mtr.Key).get conf
 
             // CONSIDER: can memoize get data points of it helps (this one will probably not change very often)
-            Message.debugf "get dps from %O" mtrActor |> log
-            let! dps = mtrActor |> Metric.getDataPoints
+            Message.debugf "get dps from %O" metricInstance |> log
+            let! dps = metricInstance |> Metric.getDataPoints
 
             Message.debug "get logger" |> log
             let mtrLgr  = mtr.Key |> getTargets conf |> fromTargets mtr.Key lgr
 
             Message.debug "getting value from metrics" |> log
-            let! msrs = mtrActor |> Metric.getValue dps
+            let! msrs = metricInstance |> Metric.getValue dps
 
             // CONSIDER: how to log each of these data points/measures? And what path to give them?
             msrs |> List.iter (Logger.``measure`` mtrLgr)
 
           return! running state
 
-        | FlushPending(dur, chan) ->
+        | FlushPending(dur, ack) ->
           Message.info "flush start" |> log
-          let! allFlushed =
-            targets
-            // wait for flushes across all targets
-            |> Seq.pmap (Actor.makeRpc Flush (Timeout(dur.ToTimeSpan ())))
+
+          let! allFlushed = targets |> Seq.pjmap (fun (x: TargetInstance) ->
+            job {
+              let! promise = IVar.create ()
+              do! Ch.give x.reqCh (Flush promise)
+              return! IVar.read promise
+              }
+            |> Job.withTimeout (HopacTimeout (dur.ToTimeSpan ())))
 
           let flushed, notFlushed =
             allFlushed
             |> Seq.groupBy wasSuccessful
             |> bisectSuccesses
 
-          chan.Reply <|
+          do! IVar.fill ack <|
             if List.isEmpty notFlushed then
               Message.info "flush Ack" |> log
               Ack
@@ -292,46 +327,15 @@ module Advanced =
 
           return! running state
 
-        | ShutdownLogary(dur, ackChan) ->
-          return! shutdown state dur ackChan }
-
-      /// In the shutdown state, the registry doesn't respond to messages, but rather tries to
-      /// flush and shut down all targets, doing internal logging as it goes.
-      and shutdown state (dur : Duration) (ackChan : Acks ReplyChannel) = async {
-        Message.info "shutdown metrics polling" |> log
-        state.pollMetrics |> Option.iter (fun x -> x.Dispose())
-
-        Message.info "shutdown schedules" |> log
-        state.schedules |> List.iter (fun (_, x) -> x.Dispose())
-
-        Message.info "shutdown targets" |> log
-        let! allShutdown =
-          targets
-          |> Seq.pmap (Actor.makeRpc Target.Shutdown (Timeout(dur.ToTimeSpan ())))
-
-        let stopped, failed =
-          allShutdown
-          |> Seq.groupBy wasSuccessful
-          |> bisectSuccesses
-
-        ackChan.Reply <|
-          if List.isEmpty failed then
-            Message.info "shutdown Ack" |> log
-            Ack
-          else
-            let msg = sprintf "failed target shutdowns:%s%s" nl (toTextList failed)
-            Message.errorf "shutdown Nack%s%s" nl msg
-            |> Message.field "failed" (Int64 (int64 failed.Length)) // TODOTODOTODO: Serialize 'failed'
-            |> log
-            Nack msg
-
-        Message.info "shutting down immediately" |> log
-        return () }
+        | ShutdownLogary(dur, ack) ->
+          return! shutdown state dur ack }
 
       init { supervisor = sup; schedules = []; pollMetrics = None }
 
-    let create (conf : _) (sup : #IActor) (sched : #IActor) =
-      Actor.spawn (Ns.create "registry") (registry conf sup sched)
+    let create (conf : LogaryConf) (sup : _) (sched : Ch<ScheduleMsg>) : RegistryInstance =
+      let regCh = Ch.Now.create ()
+      Job.Global.start (registry conf sup sched regCh)
+      {reqCh = regCh}
 
   /// Start a new registry with the given configuration. Will also launch/start
   /// all targets that are to run inside the registry. Returns a newly
@@ -347,7 +351,18 @@ module Advanced =
     let conf' = { conf with targets    = targets
                             metrics    = metrics }
 
-    let strategy = (fun err (supervisor:IActor) (target:IActor) ->
+    let sched = Scheduling.create ()
+    //Message.debugf "scheduler status: %A" sched.Status |> log
+
+    let reg = Impl.create conf' () sched
+
+    { supervisor = Job.unit ()
+      registry = reg
+      scheduler = sched
+      metadata = conf'.metadata}
+
+
+    (*let strategy = (fun err (supervisor:IActor) (target:IActor) ->
       System.Threading.Thread.Sleep 500 // or we'll crash with out of mem from gc
       Supervisor.Strategy.OneForOne err supervisor target
     )
@@ -365,4 +380,6 @@ module Advanced =
     { supervisor = sup
       registry   = reg
       scheduler  = sched
-      metadata   = conf'.metadata }
+      metadata   = conf'.metadata }*)
+
+

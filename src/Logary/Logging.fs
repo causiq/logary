@@ -8,7 +8,7 @@ open System.Reflection
 open System.Diagnostics
 open System.Runtime.CompilerServices
 
-open FSharp.Actor
+open Hopac
 
 open NodaTime
 
@@ -56,7 +56,7 @@ let getLoggerByName name =
         logger :> Logger
       | Some { registry = reg; metadata = { logger = logger } } ->
         logger.Log (Message.debugf "getting logger by name: %s" name)
-        name |> Registry.getLogger reg |> Async.RunSynchronously
+        name |> Registry.getLogger reg |> Job.Global.run
 
 /// Gets the current logger from the context that this method was called
 /// in.

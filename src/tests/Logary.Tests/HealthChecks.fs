@@ -5,6 +5,8 @@ open Swensen.Unquote
 
 open System.Text.RegularExpressions
 
+open Hopac
+
 open Fac
 
 open Logary
@@ -34,7 +36,7 @@ let pingSvdSe () =
     |> Message.addExn ex
     |> Message.setLevel LogLevel.Error
     |> Message.toResult
-  async {
+  job {
     use p = new Ping()
     let awaitPong = Async.AwaitEvent(p.PingCompleted, p.SendAsyncCancel)
     try

@@ -225,6 +225,13 @@
           <Paket>True</Paket>
         </Reference>
       </ItemGroup>
+      <ItemGroup>
+        <Reference Include="Hopac.Platform">
+          <HintPath>..\..\packages\Hopac\lib\net45\Hopac.Platform.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
     </When>
   </Choose>
 </Project>

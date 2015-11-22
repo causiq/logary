@@ -1,6 +1,7 @@
 module Logary.Tests.TestDSL
 
 open System
+open Hopac
 
 type AssertResult =
   | Success
@@ -124,4 +125,4 @@ let thatsIt = ignore
 
 [<AutoOpen>]
 module Exts =
-  let run a = a |> Async.RunSynchronously
+  let run a = a |> Job.Global.run

@@ -3,7 +3,7 @@
 [<AutoOpen>]
 module Logary.Configuration.Config
 
-open FSharp.Actor
+open Hopac
 
 open System
 open System.Runtime.CompilerServices
@@ -147,16 +147,15 @@ let runLogary conf =
 /// Shutdown logary, waiting maximum flushDur + shutdownDur.
 [<CompiledName "ShutdownLogary">]
 let shutdown' (flushDur : Duration) (shutdownDur : Duration)
-  ({ registry = reg; metadata = { logger = lgr } } : LogaryInstance)
-  =
+  ({ registry = reg; metadata = { logger = lgr } } : LogaryInstance) =
   let log = Message.Context.serviceSet "Logary.Configuration.Config.shutdown" >> Logger.log lgr
-  async {
-  Message.info "start shutdown" |> log
-  let! res = Advanced.flushAndShutdown flushDur shutdownDur reg
-  Message.info "stop shutdown" |> log
-  Logging.shutdownFlyweights ()
-  shutdownLogger lgr
-  return res
+  job {
+    Message.info "start shutdown" |> log
+    let! res = Advanced.flushAndShutdown flushDur shutdownDur reg
+    Message.info "stop shutdown" |> log
+    Logging.shutdownFlyweights ()
+    shutdownLogger lgr
+    return res
   }
 
 /// Shutdown logary, waiting maximum 30 seconds, 15s for flush and 15s for
@@ -168,13 +167,13 @@ let shutdown =
 /// Wrap the LogaryInstance as a LogManager
 [<CompiledName "AsLogManager"; Extension>]
 let asLogManager (inst : LogaryInstance) =
-  let run = Async.RunSynchronously
+  let run = Job.Global.run
   { new LogManager with
       member x.RuntimeInfo        = inst.metadata
       member x.GetLogger name     = name |> getLogger inst.registry |> run
       member x.FlushPending dur   = Advanced.flushPending dur inst.registry |> run
       member x.Shutdown fDur sDur = shutdown' fDur sDur inst |> run
-      member x.Dispose ()         = shutdown inst |> Async.Ignore |> run
+      member x.Dispose ()         = shutdown inst |> Job.Ignore |> run
   }
 
 /// Configure Logary completely with the given service name and rules, targets

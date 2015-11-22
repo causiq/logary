@@ -1,5 +1,6 @@
 ﻿module Logary.Tests.Rule
 
+open Hopac
 open Fuchu
 open Swensen.Unquote
 open TestDSL
@@ -82,16 +83,16 @@ let tests =
 
       // when getting targets
 
-      let no1 = "path.1" |> get |> Async.RunSynchronously
+      let no1 = "path.1" |> get |> Job.Global.run
       Assert.Equal("path1 should be Info", Info, no1.Level)
 
-      let no1 = "path.1.extra" |> get |> Async.RunSynchronously
+      let no1 = "path.1.extra" |> get |> Job.Global.run
       Assert.Equal("path.1.extra should be Verbose", Verbose, no1.Level) // this one goes downwards
 
-      let no2 = "path.2" |> get |> Async.RunSynchronously
+      let no2 = "path.2" |> get |> Job.Global.run
       Assert.Equal("path.2 should be Warn", Warn, no2.Level)
 
-      let no2 = "path.2.extra" |> get |> Async.RunSynchronously
+      let no2 = "path.2.extra" |> get |> Job.Global.run
       Assert.Equal("path.2.extra should be warn", Warn, no2.Level) // this one goes upwards
 
     yield testCase "multiplexing accept filters from given rules" <| fun _ ->
@@ -107,7 +108,7 @@ let tests =
 
       let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
       try
-        async {
+        job {
           // when
           let get = Registry.getLogger logary.registry
           let! no1 = "1" |> get
@@ -131,7 +132,7 @@ let tests =
           |> should' (fulfil <| fun str -> "only single line 'second'", Regex.Matches(str, "second").Count = 1)
           |> should' (fulfil <| fun str -> "zero matches for 'third'", Regex.Matches(str, "third").Count = 0)
           |> thatsIt
-        } |> Async.RunSynchronously
+        } |> Job.Global.run
       finally
         finaliseLogary logary
 
@@ -156,15 +157,15 @@ let tests =
 
       let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
       try
-        async {
+        job {
           // when
           let get = Registry.getLogger logary.registry
-          let! lgrA = "a" |> get
-          let! lgrB = "b" |> get
+          let! lgrA = get "a"
+          let! lgrB = get "b"
 
-          "first"  |> Logger.debug lgrA
+          "first"   |> Logger.debug lgrA
           "second"  |> Logger.info lgrA
-          "third"  |> Logger.debug lgrB
+          "third"   |> Logger.debug lgrB
           "fourth"  |> Logger.verbose lgrB
           let! _ = Registry.Advanced.flushPending (Duration.FromSeconds(20L)) logary.registry
 
@@ -178,7 +179,7 @@ let tests =
           |> should' (fulfil <| fun str -> "only single line 'third'", Regex.Matches(str, "third").Count = 1)
           |> should' (fulfil <| fun str -> "only single line 'fourth'", Regex.Matches(str, "fourth").Count = 0)
           |> thatsIt
-        } |> Async.RunSynchronously
+        } |> Job.Global.run
       finally
         finaliseLogary logary
 
@@ -194,7 +195,7 @@ let tests =
       let targets = [ Target.confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
       let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
       try
-        async {
+        job {
           let! logr = Registry.getLogger logary.registry "my.path.here"
           (because "configured rule 'tw' with level=Debug, should have that level on logger" <| fun _ ->
             logr.Level)
@@ -207,7 +208,7 @@ let tests =
             out.ToString())
           |> should equal ""
           |> thatsIt }
-        |> Async.RunSynchronously
+        |> Job.Global.run
       finally
         finaliseLogary logary
 
@@ -231,7 +232,7 @@ let tests =
       let targets = [ Target.confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
       let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
       try
-        async {
+        job {
           let! shouldLog = Registry.getLogger logary.registry "a.b.c"
           "this message should go through" |> Logger.debug shouldLog
           let! shouldDrop = Registry.getLogger logary.registry "a.x.y"
@@ -242,7 +243,7 @@ let tests =
           |> should contain "this message should go through"
           |> should_not contain "this message should be dropped"
           |> thatsIt }
-        |> Async.RunSynchronously
+        |> Job.Global.run
       finally
         finaliseLogary logary
 

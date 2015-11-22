@@ -2,7 +2,7 @@
 /// server.
 module Logary.Targets.Graphite
 
-open FSharp.Actor
+open Hopac
 
 open NodaTime
 
@@ -77,7 +77,7 @@ let private createMsg path value (timestamp : Instant) =
     tags |> List.tryFind (fun t -> t.StartsWith("path"))*)
 
 let private doWrite state m =
-  async {
+  job {
     let stream =
       match state.sendRecvStream with
       | None   -> state.client.GetStream()
@@ -86,35 +86,36 @@ let private doWrite state m =
     return { state with sendRecvStream = Some stream } }
 
 let private graphiteLoop (conf : GraphiteConf) (svc : RuntimeInfo) =
-  (fun (inbox : IActor<_>) ->
-    let rec init () =
-      async {
-        let client = conf.clientFac conf.hostname conf.port
-        return! running { client = client; sendRecvStream = None } }
-
-    and running state =
-      async {
-        let! msg, mopt = inbox.Receive()
-        match msg with
-        | Log l ->
-          let (Event message) = l.value
-          let! state' = createMsg (Message.Context.serviceGet l) message (Instant l.timestamp) |> doWrite state
-          return! running state'
-        | Measure ms ->
-          let! state' = createMsg (sanitizePath ms.name |> PointName.joined) (formatMeasure ms.value) (Instant ms.timestamp) |> doWrite state
-          return! running state'
-        | Flush chan ->
-          chan.Reply Ack
-          return! running state
-        | Shutdown ackChan ->
-          return! shutdown state ackChan }
-
-    and shutdown state ackChan =
-      async {
+  (fun (reqCh : Ch<_>) ->
+    let shutdown state ack =
+      job {
         state.sendRecvStream |> tryDispose
         try (state.client :> IDisposable).Dispose() with _ -> ()
-        ackChan.Reply Ack
+        do! IVar.fill ack Ack
         return () }
+
+    let rec running state =
+      job {
+        let! msg = Ch.take reqCh
+        match msg with
+        | Log l ->
+          match l.value with
+          | Event message -> 
+            let! state' = createMsg (Message.Context.serviceGet l) message (Instant l.timestamp) |> doWrite state
+            return! running state'
+          | Gauge _ | Derived _ ->
+            let! state' = createMsg (sanitizePath l.name |> PointName.joined) (formatMeasure l.value) (Instant l.timestamp) |> doWrite state
+            return! running state'
+        | Flush ack ->
+          do! IVar.fill ack Ack
+          return! running state
+        | Shutdown ack ->
+          return! shutdown state ack }
+
+    let init () =
+      job {
+        let client = conf.clientFac conf.hostname conf.port
+        return! running { client = client; sendRecvStream = None } }
 
     init ())
 

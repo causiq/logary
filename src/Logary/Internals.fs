@@ -14,9 +14,12 @@ module internal Ns =
     |> fun str -> Actor.Options.Create str
 
 module internal Seq =
+  open Hopac
+
   let all f s = Seq.fold (fun acc t -> acc && f t) true s
   let any f s = Seq.fold (fun acc t -> acc || f t) false s
   let pmap (f : _ -> Async<_>) s = s |> Seq.map f |> Async.Parallel
+  let pjmap (f : _ -> Job<_>) s = s |> Seq.map f |> Job.conCollect
 
 [<AutoOpen>]
 module internal UtilFns =

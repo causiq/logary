@@ -16,6 +16,7 @@ open Logary.Internals
 type TargetMessage =
   /// Flush messages! Also, reply when you're done flushing
   /// your queue.
+  | Log of Message
   | Flush of IVar<Acks>
   /// Shut down! Also, reply when you're done shutting down!
   | Shutdown of IVar<Acks>
@@ -23,8 +24,7 @@ type TargetMessage =
 /// A target instance is a spawned actor instance together with
 /// the name of this target instance.
 type TargetInstance =
-  { logMb : BoundedMb<Message>
-    reqCh : Ch<TargetMessage>
+  { reqCh : Ch<TargetMessage>
     /// The human readable name of the target.
     name : string }
 
@@ -73,8 +73,13 @@ let init metadata (conf : TargetConf) =
 /// Send the target a message, returning the same instance
 /// as was passed in.
 let send msg (instance : TargetInstance) =
-  Job.Global.start (BoundedMb.put instance.logMb msg)
+  Job.Global.start (Ch.give instance.reqCh (Log msg))
   instance
+
+/// Same as Target.send, but with the arguments the other way around and
+/// it doesn't return the instance.
+let send' instance msg =
+  send msg instance |> ignore
 
 /// Send a flush RPC to the target and return the async with the ACKs
 let flush i = job {
@@ -94,18 +99,14 @@ let shutdown i = job {
 /// Currently only wraps a target loop function with a name and spawns a new actor from it.
 module TargetUtils =
 
-  // TODO: Complete guesswork.
-  let private defaultMbBuffer = 128
-
-  // TODO: Make mb buffer size configurable
   /// Create a new standard named target, with no particular namespace,
   /// given a job function and a name for the target.
   let stdNamedTarget loop name : TargetConf =
     { name = name
       initer = fun metadata ->
-        Job.Global.start (loop metadata)
-        { logMb = BoundedMb.create defaultMbBuffer |> Job.Global.run
-          reqCh = Ch.Now.create () 
+        let ch = Ch.Now.create ()
+        Job.Global.start (loop metadata ch)
+        { reqCh = ch
           name = name } }
 
 // TODO: Make the new Hopac-based system support this

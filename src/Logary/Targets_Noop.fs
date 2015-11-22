@@ -1,6 +1,6 @@
 ﻿module Logary.Targets.Noop
 
-open FSharp.Actor
+open Hopac
 
 open Logary
 open Logary.Target
@@ -15,19 +15,17 @@ module internal Impl =
 
   type State = { state : bool }
 
-  let loop (conf : NoopConf) (ri : RuntimeInfo) (inbox : IActor<_>) =
-    let rec loop state = async {
-      let! msg, _ = inbox.Receive()
+  let loop (conf : NoopConf) (ri : RuntimeInfo) (reqCh : Ch<_>) =
+    let rec loop state = job {
+      let! msg = Ch.take reqCh
       match msg with
       | Log l ->
         return! loop state
-      | Measure msr ->
+      | Flush ack ->
+        do! IVar.fill ack Ack
         return! loop state
-      | Flush ackChan ->
-        ackChan.Reply Ack
-        return! loop state
-      | Shutdown ackChan ->
-        ackChan.Reply Ack
+      | Shutdown ack ->
+        do! IVar.fill ack Ack
         return ()
       }
 

@@ -4,7 +4,7 @@ open System.IO
 open System.Text.RegularExpressions
 open System.Text
 
-open FSharp.Actor
+open Hopac
 
 open Logary
 open Logary.Internals
@@ -15,9 +15,10 @@ open Logary.Target
 open TestDSL
 open Fuchu
 
+
 let emptyTarget =
   { name  = "empty target"
-    actor = Actor.spawn Actor.Options.Default (fun _ -> async.Return ()) }
+    reqCh = Ch.Now.create () }
 
 let emptyRule = Rule.createForTarget "empty target"
 
@@ -45,16 +46,17 @@ let withLogary f =
   f logary out err
 
 let finaliseLogary = Config.shutdown >> fun a ->
-  let state = Async.RunSynchronously a
+  let state = Job.Global.run a
   (because "finalise should always work" <| fun () ->
     if state.Successful then () else Tests.failtestf "finaliseLogary failed %A" state)
   |> thatsIt
 
 let finaliseTarget = Target.shutdown >> fun a ->
-  let acks = Async.RunSynchronously(a, 1000)
+  let acks = Job.withTimeout (HopacTimeout (System.TimeSpan.FromSeconds(1.0))) a
+             |> Job.Global.run
   match acks with
-  | FSharp.Actor.RPC.ExperiencedTimeout actor -> Tests.failtest "finalising target timeout"
-  | FSharp.Actor.RPC.SuccessWith(acks, actor) ->
+  | HopacTimedOut -> Tests.failtest "finalising target timeout"
+  | HopacSuccess acks ->
     match acks with
     | Nack desc -> Tests.failtestf "would not shut down: %s" desc
     | Ack -> ()

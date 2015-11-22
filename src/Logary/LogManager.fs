@@ -1,20 +1,30 @@
 ﻿namespace Logary
 
 open NodaTime
-
-open FSharp.Actor
+open Hopac
 
 open Logary.Internals
 
-open Hopac
+/// The messages that can be sent to the registry to interact with it and its
+/// running targets.
+type RegistryMessage =
+  | GetLogger             of string * Ch<Logger>
+  | PollMetrics
+  /// flush all pending messages from the registry to await shutdown
+  | FlushPending          of Duration * IVar<Acks>
+  /// shutdown the registry in full
+  | ShutdownLogary        of Duration * IVar<Acks>
+
+type RegistryInstance =
+  { reqCh : Ch<RegistryMessage> }
 
 /// A type that encapsulates the moving parts of a configured Logary.
 type LogaryInstance =
   { supervisor : Job<unit>
     /// to use with Logary.Registry
-    registry   : Job<unit>
+    registry   : RegistryInstance
     /// to use with Logary.SCheduling (as the actor param)
-    scheduler  : Job<unit>
+    scheduler  : Ch<Scheduling.ScheduleMsg>
     metadata   : RuntimeInfo }
 
 /// A type that gives information on how the shutdown went

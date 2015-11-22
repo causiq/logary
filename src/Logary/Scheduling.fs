@@ -15,7 +15,7 @@ type NamedJob<'a> = NamedJob of name: string * Job<'a>
 type Cancellation = {
   cancelCh: Ch<unit>
   getCh: Ch<bool>
-} 
+}
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Cancellation =
@@ -85,19 +85,20 @@ module private Impl =
 let create () =
   let ch = Ch.Now.create ()
   Job.Global.start (Impl.loop ch)
-  mb
+  ch
 
 /// Schedules a message to be sent to the receiver after the initialDelay.
 /// If delayBetween is specified then the message is sent reoccuringly at the
 /// delay between interval.
 let schedule scheduler (receiver : 'a -> unit) (msg : 'a) initialDelay (delayBetween: _ option) =
   let cts = Cancellation.create ()
+
   let message =
     match delayBetween with
     | Some x ->
-      Schedule (receiver, msg, initialDelay, x, cts)
+      Schedule (unbox >> receiver, msg, initialDelay, x, cts)
     | None ->
-      ScheduleOnce (receiver, msg, initialDelay, cts)
+      ScheduleOnce (unbox >> receiver, unbox msg, initialDelay, cts)
 
-  Ch.send scheduler message |> Job.start |> ignore
+  Ch.send scheduler message |> Job.Global.run
   cts

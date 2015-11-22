@@ -5,7 +5,7 @@ namespace Logary.Targets
 module TextWriter =
   open System.IO
 
-  open FSharp.Actor
+  open Hopac
 
   open Logary
   open Logary.Internals
@@ -41,30 +41,31 @@ module TextWriter =
         flush     = flush
         isErrorAt = cutOff }
       (ri : RuntimeInfo) =
-      (fun (inbox : IActor<_>) ->
-        let rec loop () = async {
+      (fun (reqCh : Ch<TargetMessage>) ->
+        let rec loop () = job {
           let wl (tw : TextWriter) = (tw.WriteLine : string -> unit)
-          let! msg, mopt = inbox.Receive()
+          let! msg = Ch.take reqCh
           match msg with
-          | Measure l
           | Log l ->
             let tw = if l.level < cutOff then out else err
             wl tw (formatter.format l)
             do (if flush then tw.Flush() else ())
             return! loop ()
-          | Flush chan ->
+          | Flush ack ->
             out.Flush()
             err.Flush()
-            chan.Reply Ack
+            do! IVar.fill ack Ack
             return! loop ()
-          | Shutdown ackChan ->
+          | Shutdown ack ->
             out.Dispose()
             if not (obj.ReferenceEquals(out, err)) then err.Dispose() else ()
-            ackChan.Reply Ack
+            do! IVar.fill ack Ack
             return () }
         loop ())
 
-  let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
+  let create (conf : TextWriterConf) =
+    let wtf = (Impl.loop conf)
+    TargetUtils.stdNamedTarget (Impl.loop conf)
 
   /// Use from C# to create - uses tuple calling convention
   [<CompiledName("Create")>]
@@ -149,7 +150,7 @@ module Console =
 module Debugger =
   open System.Diagnostics
 
-  open FSharp.Actor
+  open Hopac
 
   open Logary
   open Logary.DataModel
@@ -169,27 +170,22 @@ module Debugger =
     { formatter = StringFormatter.LevelDatetimeMessagePathNl }
 
   let private debuggerLoop conf metadata =
-    (fun (inbox : IActor<_>) ->
+    (fun (reqCh : Ch<_>) ->
       let formatter = conf.formatter
       let offLevel = 6
-      let rec loop () = async {
-        let! msg, opts = inbox.Receive()
+      let rec loop () = job {
+        let! msg = Ch.take reqCh
         match msg with
         | Log l when Debugger.IsLogging() ->
           Debugger.Log(offLevel, Message.Context.serviceGet l, l |> formatter.format)
           return! loop()
         | Log _ ->
           return! loop ()
-        | Measure m when Debugger.IsLogging() ->
-          Debugger.Log(offLevel, Message.Context.serviceGet m, sprintf "%A" m)
-          return! loop ()
-        | Measure _ ->
-          return! loop ()
-        | Flush chan ->
-          chan.Reply Ack
+        | Flush ack ->
+          do! IVar.fill ack Ack
           return! loop()
-        | Shutdown chan ->
-          chan.Reply Ack
+        | Shutdown ack ->
+          do! IVar.fill ack Ack
           return () }
       loop ())
 

@@ -24,7 +24,7 @@ let tests =
       let instance = target |> Target.init emptyRuntime
 
       (because "logging with info level and then finalising the target" <| fun () ->
-        "Hello World!" |> Message.info |> Target.sendLogLine instance
+        "Hello World!" |> Message.info |> Target.send' instance
         instance |> finaliseTarget
         stdout.ToString())
       |> should contain "Hello World!"
@@ -36,8 +36,8 @@ let tests =
       let subject = target |> Target.init emptyRuntime
 
       (because "logging 'Error line' and 'Fatal line' to the target" <| fun () ->
-        Message.error "Error line" |> Target.sendLogLine subject
-        Message.fatal "Fatal line" |> Target.sendLogLine subject
+        Message.error "Error line" |> Target.send' subject
+        Message.fatal "Fatal line" |> Target.send' subject
         subject |> finaliseTarget
         err.ToString())
       |> should contain "Error line"

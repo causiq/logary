@@ -2,6 +2,7 @@
 /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
 namespace Logary.Internals
 
+open Hopac
 open Logary
 
 /// A logger that does absolutely nothing, useful for feeding into the target
@@ -17,8 +18,6 @@ type NullLogger() =
     member x.Name = "Logary.Internals.NullLogger"
 
 module internal Logging =
-  open Hopac
-
   open Logary.DataModel
   open Logary.Target
 
@@ -47,7 +46,7 @@ module internal Logging =
         member x.Log msg =
           for accept, t in x.targets do
             if accept msg then
-              Job.Global.run (BoundedMb.put t.logMb msg)
+              Job.Global.run (Ch.give t.reqCh (Log msg))
 
         // TODO / CONSIDER: This function is just an alias for .Log.
         // Should it be removed from the 
@@ -73,16 +72,13 @@ type InternalLogger =
         let logger : Logger = upcast x
         logger.Log (fLine ())
 
-    member x.Log line =
+    member x.Log msg =
       try
-        if line.level >= x.lvl then
-          x.trgs |> List.iter (Target.send line >> ignore)
+        if msg.level >= x.lvl then
+          x.trgs |> List.iter (Target.send msg >> ignore)
       with _ -> ()
-    member x.Measure m =
-      try
-        if m.level >= x.lvl then
-          x.trgs |> List.iter (flip Target.sendMeasure m)
-      with _ -> ()
+    member x.Measure msg =
+      (x :> Logger).Log msg
     member x.Level =
       x.lvl
     member x.Name =
@@ -91,7 +87,7 @@ type InternalLogger =
     member x.Dispose() =
       try
         x.trgs
-        |> List.iter (Target.shutdown >> Async.Ignore >> Async.RunSynchronously)
+        |> List.iter (Target.shutdown >> Job.Ignore >> Job.Global.run)
       with _ -> ()
   static member Create(level, targets) =
     { lvl = level; trgs = targets } :> Logger
@@ -116,7 +112,7 @@ module Try =
   /// Safely try to execute asynchronous function f, catching any thrown
   /// exception and logging exception internally. Returns async<unit>
   /// irregardless of the codomain of f.
-  let safeAsync label ilogger f = async {
+  let safeAsync label ilogger (f: unit -> Job<_>) = job {
     try
       let! x = f ()
       return ()
@@ -129,4 +125,4 @@ module Try =
   /// WARNING: do not call inside a synchronisation context that is used to run asynchronous
   /// workflows, or you will block all async going on.
   let safeAsyncForce label ilogger f =
-    safeAsync label ilogger f |> Async.RunSynchronously
+    safeAsync label ilogger f |> Job.Global.run

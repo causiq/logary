@@ -36,7 +36,7 @@ type MetricMsg =
   /// state and return ok.
   | Shutdown of IVar<Acks>
 
-type MetricCh = {
+type MetricInstance = {
   requestCh:  Ch<MetricMsg>
   updateCh:   Ch<Message>
   dpNameCh:   Ch<PointName list> }
@@ -50,7 +50,7 @@ with
 type MetricConf =
   { name        : string
     ``type``    : MetricType
-    initer      : RuntimeInfo -> Job<unit>
+    initer      : RuntimeInfo -> MetricInstance
     /// the period to sample the metric's value at
     sampling    : Duration }
 
@@ -91,35 +91,35 @@ let init metadata conf =
 
 /// The GetValue implementation shall retrieve the value of one or more data
 /// points from the probe.
-let getValue (dps : PointName list) ch = job {
+let getValue (dps : PointName list) mi = job {
   // TODO: Should be cached or parametrized
   let! resultCh = Ch.create ()
-  do! Ch.give ch.requestCh (GetValue (dps, resultCh))
+  do! Ch.give mi.requestCh (GetValue (dps, resultCh))
   return! Ch.take resultCh
 }
 
 /// The GetDataPoints shall return a list with all data points supported by
 /// the probe
-let getDataPoints ch = job {
-  return! Ch.take ch.dpNameCh
+let getDataPoints mi = job {
+  return! Ch.take mi.dpNameCh
 }
 
 /// Incorporate a new value into the metric maintained by the metric.
-let update (m: Message) ch = job {
-  do! Ch.give ch.updateCh m
-}
+let update (m: Message) mi =
+  let updateJob = job { do! Ch.give mi.updateCh m }
+  Job.Global.start updateJob
+  mi
 
 /// The Sample implementation shall sample data from the subsystem the probe
 /// is integrated with.
-let sample ch = job {
-  do! Ch.give ch.requestCh Sample
-}
+let sample mi =
+  (Ch.give mi.requestCh Sample) |> Job.Global.start
 
 /// The custom probe shall release any resources associated with the given
 /// state and return ok.
-let shutdown ch = job {
+let shutdown mi = job {
   let! ack = IVar.create ()
-  do! Ch.give ch.requestCh (Shutdown ack)
+  do! Ch.give mi.requestCh (Shutdown ack)
   return! ack
 }
 
@@ -134,7 +134,9 @@ module MetricUtils =
     { name        = name
       ``type``    = ``type``
       initer = fun metadata ->
-        Job.start (loop metadata (MetricCh.create ()))
+        let instance = MetricInstance.create ()
+        Job.Global.start (loop metadata instance)
+        instance
       sampling = sampling }
 
 module Reservoir =

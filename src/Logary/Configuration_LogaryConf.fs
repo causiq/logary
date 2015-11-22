@@ -2,7 +2,7 @@
 
 open NodaTime
 
-open FSharp.Actor
+open Hopac
 
 open Logary
 open Logary.Internals
@@ -25,7 +25,7 @@ type LogaryConf =
     metadata : RuntimeInfo
 
     /// A map of metrics by name
-    metrics  : Map<string, MetricConf * Option<IActor>>
+    metrics  : Map<string, MetricConf * Option<MetricInstance>>
 
     /// how often do we poll metrics
     pollPeriod : Duration }
@@ -53,7 +53,7 @@ module LogaryConfLenses =
 
   /// read all configuration's actors
   let targetActors_ =
-    { get = fun (x : Map<_, _>) -> x |> Seq.map (fun kv -> kv.Value |> snd |> Option.get |> fun x -> x.actor)
+    { get = fun (x : Map<_, _>) -> x |> Seq.map (fun kv -> kv.Value |> snd |> Option.get)
       set = fun _ _ -> failwith "cannot set target actors" }
 
   /// read and write a very specific target actor

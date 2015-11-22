@@ -19,7 +19,7 @@ module private Impl =
   type NoopState =
     { calls : bigint }
 
-  let loop (conf : NoopConf) (ri : RuntimeInfo) (ch: MetricCh) =
+  let loop (conf : NoopConf) (ri : RuntimeInfo) (ch: MetricInstance) =
 
     let handleRequest state msg = job {
       match msg with
