@@ -151,7 +151,7 @@ module Advanced =
     let shutdownJob = job {
       let! ack = IVar.create ()
       do! Ch.give registry.reqCh (ShutdownLogary (dur, ack))
-      return! ack }
+      return! IVar.read ack }
 
     Job.Global.startIgnore shutdownJob
     shutdownJob
@@ -216,10 +216,11 @@ module Advanced =
       /// flush and shut down all targets, doing internal logging as it goes.
       let shutdown state (dur : Duration) (ack : IVar<Acks>) = job {
         Message.info "shutdown metrics polling" |> log
-        do! defaultArg (Option.map (fun x -> Ch.give x.cancelCh ()) state.pollMetrics) (Alt.unit ())
+
+        do! defaultArg (Option.map (Cancellation.cancel) state.pollMetrics) (Job.unit ())
 
         Message.info "shutdown schedules" |> log
-        for (_, x) in state.schedules do do! Ch.give x.cancelCh ()
+        for (_, x) in state.schedules do do! Cancellation.cancel x
 
         Message.info "shutdown targets" |> log
         let! allShutdown =
@@ -270,6 +271,7 @@ module Advanced =
       /// In the running state, the registry takes queries for loggers, gauges, etc...
       and running state : Job<unit> = job {
         let! msg = Ch.take inbox
+        printfn "%A" msg
         match msg with
         | GetLogger (name, chan) ->
           do! Ch.give chan (name |> getTargets conf |> fromTargets name lgr)
@@ -303,13 +305,9 @@ module Advanced =
         | FlushPending(dur, ack) ->
           Message.info "flush start" |> log
 
-          let! allFlushed = targets |> Seq.pjmap (fun (x: TargetInstance) ->
-            job {
-              let! promise = IVar.create ()
-              do! Ch.give x.reqCh (Flush promise)
-              return! IVar.read promise
-              }
-            |> Job.withTimeout (HopacTimeout (dur.ToTimeSpan ())))
+          let! allFlushed =
+            targets
+            |> Seq.pjmap (Target.flush >> Job.withTimeout (HopacTimeout (dur.ToTimeSpan ())))
 
           let flushed, notFlushed =
             allFlushed
@@ -328,7 +326,8 @@ module Advanced =
           return! running state
 
         | ShutdownLogary(dur, ack) ->
-          return! shutdown state dur ack }
+          do! shutdown state dur ack
+          return () }
 
       init { supervisor = sup; schedules = []; pollMetrics = None }
 

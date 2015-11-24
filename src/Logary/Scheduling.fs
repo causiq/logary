@@ -6,36 +6,25 @@ module Logary.Internals.Scheduling
 open System.Threading
 
 open Hopac
-open Hopac.Job.Infixes
+open Hopac.Alt.Infixes
 
 open NodaTime
 
 type NamedJob<'a> = NamedJob of name: string * Job<'a>
 
-type Cancellation = {
-  cancelCh: Ch<unit>
-  getCh: Ch<bool>
-}
+type Cancellation = { cancelled: IVar<unit> }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Cancellation =
-  let create () =
-    let c = { cancelCh = Ch.Now.create ()
-              getCh    = Ch.Now.create () }
+  let create () = { cancelled = IVar.Now.create () }
 
-    Job.iterateServer false (fun x ->
-      Alt.choose [Alt.map (fun _ -> true) (Ch.take c.cancelCh)
-                  Alt.map (fun _ -> x)    (Ch.give c.getCh x)])
-    |> Job.Global.start
-
-    c
-
-  let get cancellation = job {
-    return! Ch.take cancellation.getCh
+  let isCancelled cancellation = job {
+    let a = (Alt.map (fun _ -> true) <| IVar.read cancellation.cancelled) <|>? (Alt.always false)
+    return! a
   }
 
   let cancel cancellation = job {
-    do! Ch.give cancellation.cancelCh ()
+    do! IVar.fill cancellation.cancelled ()
   }
 
 type ScheduleMsg =
@@ -49,7 +38,7 @@ module private Impl =
 
   let schedeluOnce delay msg receiver cts = job {
     do! timeOutMillis delay
-    let! cancelled = Cancellation.get cts
+    let! cancelled = Cancellation.isCancelled cts
 
     if not cancelled then
       receiver msg
@@ -58,7 +47,7 @@ module private Impl =
   let scheduleMany initialDelay msg receiver delayBetween cts = Job.delay <| fun () ->
     let rec loop time cts = job {
       do! timeOutMillis time
-      let! cancelled = Cancellation.get cts
+      let! cancelled = Cancellation.isCancelled cts
 
       if not cancelled then
         receiver msg
