@@ -6,7 +6,7 @@ module Logary.Internals.Scheduling
 open System.Threading
 
 open Hopac
-open Hopac.Alt.Infixes
+open Hopac.Infixes
 
 open NodaTime
 
@@ -19,7 +19,7 @@ module Cancellation =
   let create () = { cancelled = IVar.Now.create () }
 
   let isCancelled cancellation = job {
-    let a = (Alt.map (fun _ -> true) <| IVar.read cancellation.cancelled) <|>? (Alt.always false)
+    let a = (IVar.read cancellation.cancelled ^->. true) <|> (Alt.always false)
     return! a
   }
 

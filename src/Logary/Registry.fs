@@ -5,7 +5,7 @@ open System.Threading
 
 open FSharp.Actor
 open Hopac
-open Hopac.Alt.Infixes
+open Hopac.Infixes
 
 open NodaTime
 

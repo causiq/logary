@@ -2,7 +2,7 @@
 module Logary.Metrics.Noop
 
 open Hopac
-open Hopac.Alt.Infixes
+open Hopac.Infixes
 
 open Logary
 open Logary.Internals
@@ -48,9 +48,9 @@ module private Impl =
       |> Job.result
 
     Job.iterateServer {calls = 0I} <| fun state ->
-      Alt.choose [Ch.take ch.requestCh >>=? handleRequest state
-                  Ch.take ch.updateCh  >>=? handleUpdate state
-                  Ch.give ch.dpNameCh  [ [ "calls"] ] >>%? state]
+      Alt.choose [Ch.take ch.requestCh ^=> handleRequest state
+                  Ch.take ch.updateCh  ^=> handleUpdate state
+                  Ch.give ch.dpNameCh  [ [ "calls"] ] ^->. state]
 
 /// Create a new Noop metric that doesn't do very much
 let create conf = MetricUtils.stdNamedMetric Metric (Impl.loop conf)

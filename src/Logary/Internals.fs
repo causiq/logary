@@ -220,14 +220,14 @@ type HopacTimeoutResult<'a> =
 [<AutoOpen>]
 module internal Job =
   open Hopac
-  open Hopac.Alt.Infixes
+  open Hopac.Infixes
 
   let withTimeout timeout j =
     match timeout with
     | HopacInfinite -> Job.map HopacSuccess j
     | HopacTimeout ts -> job {
       let! isDone = Promise.start j
-      return! (timeOut ts >>%? HopacTimedOut) <|>? (Alt.map HopacSuccess (Promise.read isDone))
+      return! (timeOut ts ^->. HopacTimedOut) <|> (Promise.read isDone ^-> HopacSuccess)
     }
 
 // TODO: consider moving NackDescription and Acks to Logary ns instead of Internals

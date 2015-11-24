@@ -43,7 +43,7 @@ NUGET
     Hawk (0.9.1)
       FSharp.Core (>= 3.1.2.1)
       NodaTime (>= 1.3.1)
-    Hopac (0.0.0.47)
+    Hopac (0.1.0)
       FSharp.Core (>= 3.1.2.1)
     Http.fs-prerelease (2.3.0)
       FSharp.Core (>= 3.1.2.1)
