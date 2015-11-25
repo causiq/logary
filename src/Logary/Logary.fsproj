@@ -92,12 +92,6 @@
     <Reference Include="System.Numerics" />
     <Reference Include="System.Xml" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\FSharp.Actor-logary\src\FSharp.Actor\FSharp.Actor-logary.fsproj">
-      <Name>FSharp.Actor-logary</Name>
-      <Project>{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}</Project>
-    </ProjectReference>
-  </ItemGroup>
   <PropertyGroup>
     <!-- This will give us the opportunity to sign Logary -->
     <PostBuildEvent Condition=" '$(SignAssemblyPfx)' != '' And '$(SignAssemblyPassword)' != '' And '$(OS)' != 'Unix' ">

@@ -38,7 +38,6 @@ module HealthCheck =
   open System
   open System.Runtime.CompilerServices
 
-  open FSharp.Actor
   open Hopac
 
   open Logary.Internals

@@ -1,7 +1,6 @@
 ﻿namespace Logary.Internals
 
 module internal Ns =
-  open FSharp.Actor
 
   /// The actor's root namespace
   [<Literal>]
@@ -9,9 +8,9 @@ module internal Ns =
 
   /// Create a namespace from the subcomponent identifier
   /// A single place to create Actor options -- until FSharp.Actor changes again
-  let create subcomponent =
+  (*let create subcomponent =
     sprintf "%s/%s" ActorRootNs subcomponent
-    |> fun str -> Actor.Options.Create str
+    |> fun str -> Actor.Options.Create str*)
 
 module internal Seq =
   open Hopac
