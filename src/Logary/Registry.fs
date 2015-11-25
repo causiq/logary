@@ -145,7 +145,7 @@ module Advanced =
   let shutdown dur (registry : RegistryInstance) = job {
       let! ack = IVar.create ()
       do! Ch.give registry.reqCh (ShutdownLogary (dur, ack))
-      return! IVar.read ack }
+      return! ack }
 
   /// Flush all registry targets, then shut it down -- the registry internals
   /// take care of timeouts, not these methods
@@ -171,9 +171,9 @@ module Advanced =
       :> Logger
 
     let wasSuccessful = function
-      | HopacSuccess Ack      -> 0
-      | HopacTimedOut         -> 1
-      | HopacSuccess (Nack _) -> 1
+      | Success Ack      -> 0
+      | TimedOut         -> 1
+      | Success (Nack _) -> 1
 
     let bisectSuccesses = // see wasSuccessful f-n above
       fun groups -> groups |> Seq.filter (fun (k, _) -> k = 0) |> Seq.map snd |> (fun s -> if Seq.isEmpty s then [] else Seq.exactlyOne s |> Seq.toList),
@@ -216,7 +216,7 @@ module Advanced =
         Message.info "shutdown targets" |> log
         let! allShutdown =
           targets
-          |> Seq.pjmap (Target.shutdown >> Job.withTimeout (HopacTimeout (dur.ToTimeSpan ())))
+          |> Seq.pjmap (Target.shutdown >> Job.withTimeout (Timeout (dur.ToTimeSpan ())))
 
         let stopped, failed =
           allShutdown
@@ -296,7 +296,7 @@ module Advanced =
 
           let! allFlushed =
             targets
-            |> Seq.pjmap (Target.flush >> Job.withTimeout (HopacTimeout (dur.ToTimeSpan ())))
+            |> Seq.pjmap (Target.flush >> Job.withTimeout (Timeout (dur.ToTimeSpan ())))
 
           let flushed, notFlushed =
             allFlushed

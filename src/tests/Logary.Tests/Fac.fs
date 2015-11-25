@@ -52,11 +52,11 @@ let finaliseLogary = Config.shutdown >> fun a ->
   |> thatsIt
 
 let finaliseTarget = Target.shutdown >> fun a ->
-  let acks = Job.withTimeout (HopacTimeout (System.TimeSpan.FromSeconds(1.0))) a
+  let acks = Job.withTimeout (Timeout (System.TimeSpan.FromSeconds(1.0))) a
              |> Job.Global.run
   match acks with
-  | HopacTimedOut -> Tests.failtest "finalising target timeout"
-  | HopacSuccess acks ->
+  | TimedOut -> Tests.failtest "finalising target timeout"
+  | Success acks ->
     match acks with
     | Nack desc -> Tests.failtestf "would not shut down: %s" desc
     | Ack -> ()

@@ -12,15 +12,14 @@ open NodaTime
 
 type NamedJob<'a> = NamedJob of name: string * Job<'a>
 
-type Cancellation = { cancelled: IVar<unit> }
+type Cancellation = private { cancelled: IVar<unit> }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Cancellation =
   let create () = { cancelled = IVar.Now.create () }
 
   let isCancelled cancellation = job {
-    let a = (IVar.read cancellation.cancelled ^->. true) <|> (Alt.always false)
-    return! a
+    return! (IVar.read cancellation.cancelled ^->. true) <|> (Alt.always false)
   }
 
   let cancel cancellation = job {

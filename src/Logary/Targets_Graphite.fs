@@ -100,7 +100,7 @@ let private graphiteLoop (conf : GraphiteConf) (svc : RuntimeInfo) =
         match msg with
         | Log l ->
           match l.value with
-          | Event message -> 
+          | Event message ->
             let! state' = createMsg (Message.Context.serviceGet l) message (Instant l.timestamp) |> doWrite state
             return! running state'
           | Gauge _ | Derived _ ->

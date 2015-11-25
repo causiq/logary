@@ -208,13 +208,13 @@ module internal Set =
     | _ -> None
 
 // TODO: remove the prefixes when FSharp.Actors is removed.
-type HopacTimeout =
-  | HopacInfinite
-  | HopacTimeout of System.TimeSpan
+type Timeout =
+  | Infinite
+  | Timeout of System.TimeSpan
 
-type HopacTimeoutResult<'a> =
-  | HopacTimedOut
-  | HopacSuccess of 'a
+type TimeoutResult<'a> =
+  | TimedOut
+  | Success of 'a
 
 [<AutoOpen>]
 module internal Job =
@@ -223,10 +223,10 @@ module internal Job =
 
   let withTimeout timeout j =
     match timeout with
-    | HopacInfinite -> Job.map HopacSuccess j
-    | HopacTimeout ts -> job {
+    | Infinite -> Job.map Success j
+    | Timeout ts -> job {
       let! isDone = Promise.start j
-      return! (timeOut ts ^->. HopacTimedOut) <|> (Promise.read isDone ^-> HopacSuccess)
+      return! (timeOut ts ^->. TimedOut) <|> (Promise.read isDone ^-> Success)
     }
 
 // TODO: consider moving NackDescription and Acks to Logary ns instead of Internals

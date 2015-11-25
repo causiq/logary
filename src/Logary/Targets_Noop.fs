@@ -19,7 +19,7 @@ module internal Impl =
     let rec loop state = job {
       let! msg = Ch.take reqCh
       match msg with
-      | Log l ->
+      | Log _ ->
         return! loop state
       | Flush ack ->
         do! IVar.fill ack Ack
