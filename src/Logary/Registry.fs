@@ -133,27 +133,19 @@ module Advanced =
   /// how that went. E.g. if there's a target is has a backlog, it might not be able to
   /// flush all its pending entries within the allotted timeout (200 ms at the time of writing)
   /// but will then instead return Nack/failed RPC.
-  let flushPending dur (registry : RegistryInstance) =
-    let flushJob = job {
+  let flushPending dur (registry : RegistryInstance) = job {
       let! ack = IVar.create ()
       do! Ch.give registry.reqCh (FlushPending (dur, ack))
       return! ack }
-
-    Job.Global.startIgnore flushJob
-    flushJob
 
   /// Shutdown the registry. This will first flush all pending entries for all targets inside the
   /// registry, and then proceed to sending ShutdownTarget to all of them. If this doesn't
   /// complete within the allotted timeout, (200 ms for flush, 200 ms for shutdown), it will
   /// return Nack to the caller (of shutdown).
-  let shutdown dur (registry : RegistryInstance) =
-    let shutdownJob = job {
+  let shutdown dur (registry : RegistryInstance) = job {
       let! ack = IVar.create ()
       do! Ch.give registry.reqCh (ShutdownLogary (dur, ack))
       return! IVar.read ack }
-
-    Job.Global.startIgnore shutdownJob
-    shutdownJob
 
   /// Flush all registry targets, then shut it down -- the registry internals
   /// take care of timeouts, not these methods
@@ -241,7 +233,6 @@ module Advanced =
             |> Message.field "failed" (Value.fromObject failed)
             |> log
             Nack msg
-
         Message.info "shutting down immediately" |> log
         return () }
 
@@ -270,7 +261,6 @@ module Advanced =
       /// In the running state, the registry takes queries for loggers, gauges, etc...
       and running state : Job<unit> = job {
         let! msg = Ch.take inbox
-        printfn "%A" msg
         match msg with
         | GetLogger (name, chan) ->
           do! Ch.give chan (name |> getTargets conf |> fromTargets name lgr)
@@ -325,8 +315,7 @@ module Advanced =
           return! running state
 
         | ShutdownLogary(dur, ack) ->
-          do! shutdown state dur ack
-          return () }
+          return! shutdown state dur ack }
 
       init { supervisor = sup; schedules = []; pollMetrics = None }
 

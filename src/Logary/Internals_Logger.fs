@@ -46,7 +46,7 @@ module internal Logging =
         member x.Log msg =
           for accept, t in x.targets do
             if accept msg then
-              Job.Global.run (Ch.give t.reqCh (Log msg))
+              Job.Global.start (Ch.give t.reqCh (Log msg))
 
         // TODO / CONSIDER: This function is just an alias for .Log.
         // Should it be removed from the 
