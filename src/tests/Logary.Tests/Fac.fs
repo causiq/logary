@@ -21,8 +21,6 @@ let emptyTarget =
     reqCh = Ch.Now.create () }
 
 let emptyRule = Rule.createForTarget "empty target"
-
-/// { serviceName = "tests"; logger = NullLogger() }
 let emptyRuntime = { serviceName = "tests"; logger = NullLogger() }
 
 let textWriter () =

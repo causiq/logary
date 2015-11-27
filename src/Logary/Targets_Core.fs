@@ -64,7 +64,6 @@ module TextWriter =
         loop ())
 
   let create (conf : TextWriterConf) =
-    let wtf = (Impl.loop conf)
     TargetUtils.stdNamedTarget (Impl.loop conf)
 
   /// Use from C# to create - uses tuple calling convention

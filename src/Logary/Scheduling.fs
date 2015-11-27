@@ -35,7 +35,7 @@ module private Impl =
   let ms (d: Duration) =
     d.ToTimeSpan().TotalMilliseconds |> int
 
-  let schedeluOnce delay msg receiver cts = job {
+  let scheduleOnce delay msg receiver cts = job {
     do! timeOutMillis delay
     let! cancelled = Cancellation.isCancelled cts
 
@@ -63,7 +63,7 @@ module private Impl =
         do! Job.start (scheduleMany (ms initialDelay) msg receiver (ms delayBetween) cts)
         return! loop ()
       | ScheduleOnce (receiver, msg : 'a, delay, cts) ->
-        do! Job.start (schedeluOnce (ms delay) msg receiver cts)
+        do! Job.start (scheduleOnce (ms delay) msg receiver cts)
         return! loop ()
     }
 
