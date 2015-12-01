@@ -10,8 +10,6 @@ open Hopac.Infixes
 
 open NodaTime
 
-type NamedJob<'a> = NamedJob of name: string * Job<'a>
-
 type Cancellation = private { cancelled: IVar<unit> }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

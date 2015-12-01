@@ -82,6 +82,7 @@ module Advanced =
   open Logary.HealthCheck
   open Logary.DataModel
   open Logary.Internals
+  open Logary.Supervisor
 
   /// Given a configuration and name to find all targets for, looks up all targets
   /// from the configuration matching the passed name and create a composite
@@ -192,7 +193,7 @@ module Advanced =
     /// The state for the Registry
     type RegistryState =
       { /// the supervisor, not of the registry actor, but of the targets and probes and health checks.
-        supervisor     : unit
+        supervisor     : Supervisor.Instance
         schedules      : (string * Cancellation) list
         pollMetrics    : Cancellation option }
 
@@ -319,7 +320,7 @@ module Advanced =
 
       init { supervisor = sup; schedules = []; pollMetrics = None }
 
-    let create (conf : LogaryConf) (sup : _) (sched : Ch<ScheduleMsg>) : RegistryInstance =
+    let create (conf : LogaryConf) (sup : Supervisor.Instance) (sched : Ch<ScheduleMsg>) : RegistryInstance =
       let regCh = Ch.Now.create ()
       Job.Global.start (registry conf sup sched regCh)
       {reqCh = regCh}
@@ -333,40 +334,26 @@ module Advanced =
   let create ({ metadata = { logger = lgr } } as conf : LogaryConf) =
     let log = Message.Context.serviceSet "Logary.Registry.runRegistry" >> Logger.log lgr
 
+    let sopts = Supervisor.Options.create (lgr, 10, TimeSpan.FromMilliseconds 500.0)
+    let sup = Supervisor.create sopts
+
+    // Supervisor must be running so we can register new jobs
+    Supervisor.start sup
+
     let targets = conf.targets |> Map.map (fun _ (tconf, _) -> tconf, Some(Target.init conf.metadata tconf))
     let metrics = conf.metrics |> Map.map (fun _ (mconf, _) -> mconf, Some(Metric.init conf.metadata mconf))
     let conf' = { conf with targets    = targets
                             metrics    = metrics }
 
-    let sched = Scheduling.create ()
-    //Message.debugf "scheduler status: %A" sched.Status |> log
-
-    let reg = Impl.create conf' () sched
-
-    { supervisor = Job.unit ()
-      registry = reg
-      scheduler = sched
-      metadata = conf'.metadata}
-
-
-    (*let strategy = (fun err (supervisor:IActor) (target:IActor) ->
-      System.Threading.Thread.Sleep 500 // or we'll crash with out of mem from gc
-      Supervisor.Strategy.OneForOne err supervisor target
-    )
-    let sopts = Supervisor.Options.Create(None, strategy,
-                                          Ns.create "supervisor")
-    let sup   = Supervisor.spawn sopts |> Supervisor.superviseAll (targetActors_.get targets)
-    Message.debugf "supervisor status: %A" sup.Status |> log
+    let register = Supervisor.register sup
+    targetActors_.get targets
+    |> Seq.iter (fun ti -> Job.Global.run << register <| NamedJob.create ti.name ti.job)
 
     let sched = Scheduling.create ()
-    Message.debugf "scheduler status: %A" sched.Status |> log
 
     let reg = Impl.create conf' sup sched
-    Message.debugf "registry status: %A" reg.Status |> log
 
     { supervisor = sup
-      registry   = reg
-      scheduler  = sched
-      metadata   = conf'.metadata }*)
-
-
+      registry = reg
+      scheduler = sched
+      metadata = conf'.metadata }

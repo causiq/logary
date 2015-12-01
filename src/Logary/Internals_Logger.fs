@@ -49,7 +49,6 @@ module internal Logging =
               Job.Global.start (Ch.give t.reqCh (Log msg))
 
         // TODO / CONSIDER: This function is just an alias for .Log.
-        // Should it be removed from the 
         member x.Measure msr =
           let logger : Logger = upcast x
           logger.Log msr

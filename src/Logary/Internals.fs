@@ -1,5 +1,20 @@
 ﻿namespace Logary.Internals
 
+type NamedJob<'a> =
+  { name: string
+    job: Hopac.Job<'a> } with
+
+  override this.ToString () = sprintf "Job: %s" this.name
+
+/// Provides operations on named jobs
+module NamedJob =
+  open Hopac
+
+  let create str = fun job -> {name = str; job = job}
+
+  /// Starts running the given named job on the global scheduler.
+  let spawn nj = nj.job |> Job.Global.start
+
 module internal Ns =
 
   /// The actor's root namespace
@@ -7,10 +22,9 @@ module internal Ns =
   let ActorRootNs = "logary"
 
   /// Create a namespace from the subcomponent identifier
-  /// A single place to create Actor options -- until FSharp.Actor changes again
-  (*let create subcomponent =
+  let create subcomponent =
     sprintf "%s/%s" ActorRootNs subcomponent
-    |> fun str -> Actor.Options.Create str*)
+    |> NamedJob.create
 
 module internal Seq =
   open Hopac
@@ -207,7 +221,6 @@ module internal Set =
     | (s : _ Set) when s.Count = 0 -> Some EmptySet
     | _ -> None
 
-// TODO: remove the prefixes when FSharp.Actors is removed.
 type Timeout =
   | Infinite
   | Timeout of System.TimeSpan
@@ -221,6 +234,9 @@ module internal Job =
   open Hopac
   open Hopac.Infixes
 
+  /// Returns a new job with a timeout.
+  /// If the job finishes before the timeout, it will return a Success.
+  /// If the job takes longer than the timeout to execute, it will return a TimedOut.
   let withTimeout timeout j =
     match timeout with
     | Infinite -> Job.map Success j
@@ -228,6 +244,19 @@ module internal Job =
       let! isDone = Promise.start j
       return! (timeOut ts ^->. TimedOut) <|> (Promise.read isDone ^-> Success)
     }
+
+  /// Returns a wrapped job and a function for checking the status of the job.
+  let watch (j : Job<_>) =
+    let isRunning = ref false
+    let wj = job {
+      try
+        isRunning := true
+        do! j
+      finally
+        isRunning := false
+    }
+
+    (wj, fun () -> !isRunning)
 
 // TODO: consider moving NackDescription and Acks to Logary ns instead of Internals
 

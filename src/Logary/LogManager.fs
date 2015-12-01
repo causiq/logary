@@ -4,6 +4,7 @@ open NodaTime
 open Hopac
 
 open Logary.Internals
+open Logary.Supervisor
 
 /// The messages that can be sent to the registry to interact with it and its
 /// running targets.
@@ -20,7 +21,7 @@ type RegistryInstance =
 
 /// A type that encapsulates the moving parts of a configured Logary.
 type LogaryInstance =
-  { supervisor : Job<unit>
+  { supervisor : Supervisor.Instance
     /// to use with Logary.Registry
     registry   : RegistryInstance
     /// to use with Logary.SCheduling (as the actor param)

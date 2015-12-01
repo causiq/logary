@@ -24,9 +24,11 @@ type TargetMessage =
 /// A target instance is a spawned actor instance together with
 /// the name of this target instance.
 type TargetInstance =
-  { reqCh : Ch<TargetMessage>
+  { job       : Job<unit>
+    reqCh     : Ch<TargetMessage>
     /// The human readable name of the target.
-    name : string }
+    name      : string
+    isRunning : unit -> bool}
 
 /// A target configuration is the 'reference' to the to-be-run target while it
 /// is being configured, and before Logary fully starts up.
@@ -72,9 +74,10 @@ let init metadata (conf : TargetConf) =
 
 /// Send the target a message, returning the same instance
 /// as was passed in.
-let send msg (instance : TargetInstance) =
-  Job.Global.start (Ch.give instance.reqCh (Log msg))
-  instance
+let send msg (i : TargetInstance) =
+  if i.isRunning () then
+    Job.Global.start (Ch.give i.reqCh (Log msg))
+  i
 
 /// Same as Target.send, but with the arguments the other way around and
 /// it doesn't return the instance.
@@ -82,18 +85,24 @@ let send' instance msg =
   send msg instance |> ignore
 
 /// Send a flush RPC to the target and return the async with the ACKs
-let flush i = job {
-  let! ack = IVar.create ()
-  do! Ch.give i.reqCh (Flush ack)
-  return! ack
-}
+let flush i =
+  if not (i.isRunning ()) then (Alt.always Ack :> Job<_>) else
+
+  job {
+    let! ack = IVar.create ()
+    do! Ch.give i.reqCh (Flush ack)
+    return! ack
+  }
 
 /// Shutdown the target, waiting indefinitely for it to stop
-let shutdown i = job {
-  let! ack = IVar.create ()
-  do! Ch.give i.reqCh (Shutdown ack)
-  return! IVar.read ack
-}
+let shutdown i =
+  if not (i.isRunning ()) then (Alt.always Ack :> Job<_>) else
+
+  job {
+    let! ack = IVar.create ()
+    do! Ch.give i.reqCh (Shutdown ack)
+    return! IVar.read ack
+  }
 
 /// Module with utilities for Targets to use for formatting LogLines.
 /// Currently only wraps a target loop function with a name and spawns a new actor from it.
@@ -101,15 +110,17 @@ module TargetUtils =
 
   /// Create a new standard named target, with no particular namespace,
   /// given a job function and a name for the target.
-  let stdNamedTarget loop name : TargetConf =
+  let stdNamedTarget (loop : RuntimeInfo -> Ch<_> -> Job<unit>) name : TargetConf =
     { name = name
       initer = fun metadata ->
         let ch = Ch.Now.create ()
-        Job.Global.start (loop metadata ch)
-        { reqCh = ch
-          name = name } }
+        let j, isRunning = Job.watch (loop metadata ch)
 
-// TODO: Make the new Hopac-based system support this
+        { job     = j
+          reqCh   = ch
+          name    = name
+          isRunning = isRunning } }
+
 /// A module that contains the required interfaces to do an "object oriented" DSL
 /// per target
 module FactoryApi =

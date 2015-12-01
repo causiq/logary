@@ -8,6 +8,7 @@ open Hopac
 
 open Logary
 open Logary.Internals
+open Logary.Targets
 open Logary.Targets.TextWriter
 open Logary.Configuration
 open Logary.Target
@@ -15,10 +16,7 @@ open Logary.Target
 open TestDSL
 open Fuchu
 
-
-let emptyTarget =
-  { name  = "empty target"
-    reqCh = Ch.Now.create () }
+let emptyTarget = Noop.create {isYes = true} "empty target"
 
 let emptyRule = Rule.createForTarget "empty target"
 let emptyRuntime = { serviceName = "tests"; logger = NullLogger() }
