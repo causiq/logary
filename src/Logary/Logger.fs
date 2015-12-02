@@ -5,17 +5,14 @@ open Logary.DataModel
 type Logger =
   inherit Named
 
-  /// Write a Verbose log line
+  /// Write a Verbose message
   abstract LogVerbose : (unit -> Message) -> unit
 
-  /// Write a Debug log line
+  /// Write a Debug message
   abstract LogDebug   : (unit -> Message) -> unit
 
-  /// Write a log line to the logger.
+  /// Write a message to the logger.
   abstract Log        : Message -> unit
-
-  /// Write a measure to the logger.
-  abstract Measure    : Message -> unit
 
   /// Gets the currently set log level, aka. the granularity with which things
   /// are being logged
@@ -35,7 +32,7 @@ module Logger =
   let private setContext (logger : Logger) (msg : Message) =
     Message.Context.serviceSet logger.Name msg
 
-  /// Write a log entry from a log line.
+  /// Write a message.
   [<CompiledName "Log">]
   let log (logger : Logger) msg =
     logger.Log (setContext logger msg)
@@ -51,11 +48,6 @@ module Logger =
   [<CompiledName "LogDebug">]
   let logDebug (logger : Logger) fMsg =
     logger.LogDebug (fMsg >> setContext logger)
-
-  /// Write a measure
-  [<CompiledName "Measure">]
-  let ``measure`` (logger : Logger) msg =
-    logger.Measure (setContext logger msg)
 
   /// Write a verbose log entry to the logger
   [<CompiledName "Verbose">]

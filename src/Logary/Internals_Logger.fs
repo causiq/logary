@@ -13,7 +13,6 @@ type NullLogger() =
     member x.LogVerbose fLine = ()
     member x.LogDebug fLine = ()
     member x.Log line = ()
-    member x.Measure measur = ()
     member x.Level = Fatal
     member x.Name = "Logary.Internals.NullLogger"
 
@@ -48,11 +47,6 @@ module internal Logging =
             if accept msg then
               Job.Global.start (Ch.give t.reqCh (Log msg))
 
-        // TODO / CONSIDER: This function is just an alias for .Log.
-        member x.Measure msr =
-          let logger : Logger = upcast x
-          logger.Log msr
-
 /// This logger is special: in the above case the Registry takes the responsibility
 /// of shutting down all targets, but this is a stand-alone logger that is used
 /// to log everything in Logary with, so it needs to capable of handling its
@@ -76,8 +70,6 @@ type InternalLogger =
         if msg.level >= x.lvl then
           x.trgs |> List.iter (Target.send msg >> ignore)
       with _ -> ()
-    member x.Measure msg =
-      (x :> Logger).Log msg
     member x.Level =
       x.lvl
     member x.Name =

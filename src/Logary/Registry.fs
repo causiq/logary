@@ -45,7 +45,6 @@ module internal Logging =
       member x.LogVerbose fLine = (!logger) |> Option.iter (fun logger -> logger.LogVerbose fLine)
       member x.LogDebug fLine = (!logger) |> Option.iter (fun logger -> logger.LogDebug fLine)
       member x.Log l = (!logger) |> Option.iter (fun logger -> logger.Log l)
-      member x.Measure m = (!logger) |> Option.iter (fun logger -> logger.Measure m)
       member x.Level = Verbose
 
   /// Iterate through all flywieghts and set the current LogManager for them
@@ -288,7 +287,7 @@ module Advanced =
             let! msrs = metricInstance |> Metric.getValue dps
 
             // CONSIDER: how to log each of these data points/measures? And what path to give them?
-            msrs |> List.iter (Logger.``measure`` mtrLgr)
+            msrs |> List.iter (Logger.log mtrLgr)
 
           return! running state
 
