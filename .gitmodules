@@ -1,3 +1,0 @@
-[submodule "src/FSharp.Actor-logary"]
-	path = src/FSharp.Actor-logary
-	url = https://github.com/logary/FSharp.Actor-logary.git
