@@ -36,10 +36,10 @@ type MetricMsg =
   /// state and return ok.
   | Shutdown of IVar<Acks>
 
-type MetricInstance = {
-  requestCh:  Ch<MetricMsg>
-  updateCh:   Ch<Message>
-  dpNameCh:   Ch<PointName list> }
+type MetricInstance =
+  { requestCh:  Ch<MetricMsg>
+    updateCh:   Ch<Message>
+    dpNameCh:   Ch<PointName list> }
 with
   static member create () = {
     requestCh  = Ch.Now.create ()

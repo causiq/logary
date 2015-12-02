@@ -631,12 +631,12 @@ module Message =
   /// Creates a new event message with level
   [<CompiledName "CreateEvent">]
   let event level msg =
-    { name = [] // check in logger
+    { name = []
       value = Event msg
       fields = Map.empty
-      session = Object Map.empty // default, hoist to static
-      context = Map.empty // fix, take from logger
-      level   = level // fix
+      session = Object Map.empty
+      context = Map.empty
+      level   = level
       timestamp = SystemClock.Instance.Now.Ticks }
 
   /// Creates a new metric message with data point name, unit and value
@@ -645,8 +645,8 @@ module Message =
     { name = dp
       value = Gauge (value, unit)
       fields = Map.empty
-      session = Object Map.empty // TODO
-      context = Map.empty // TODO
+      session = Object Map.empty
+      context = Map.empty
       level = LogLevel.Info
       timestamp = SystemClock.Instance.Now.Ticks
     }
@@ -657,8 +657,8 @@ module Message =
     { name = dp
       value = Gauge (value, Units.Scalar)
       fields = Map.empty
-      session = Object Map.empty // TODO
-      context = Map.empty // TODO
+      session = Object Map.empty
+      context = Map.empty
       level = LogLevel.Info
       timestamp = SystemClock.Instance.Now.Ticks
     }
@@ -772,3 +772,22 @@ module Message =
           [exnToFields e]
 
     Fields.errorsSet (errors @ newErrors) msg
+
+  /// Converts a String.Format-style format string and an array of arguments into
+  /// a message template and a set of fields.
+  [<CompiledName "TemplateFromFormat">]
+  let private templateFromFormat (format: string) (args: obj[]) =
+    let fields = Seq.mapi (fun i v -> ([sprintf "arg%i" i], Field (Value.fromObject v, None))) args |> Seq.toList
+
+    // Replace {0}..{n} with {arg0}..{argn}
+    let template = Seq.fold (fun acc i -> String.replace (sprintf "{%i}" i) (sprintf "{arg%i}" i) acc) format [0..args.Length]
+    (template, fields)
+
+  /// Creates a new event with given level, format and arguments.
+  /// Format may contain String.Format-esque format placeholders.
+  [<CompiledName "CreateFormattedEvent">]
+  let eventf (level, format, [<ParamArray>] args: obj[]) =
+    let (template, fields) = templateFromFormat format args
+
+    event level template
+    |> addFields fields

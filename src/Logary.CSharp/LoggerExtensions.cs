@@ -136,11 +136,11 @@ namespace Logary
         /// <param name="args">Arguments to the format string</param>
         public static void LogFormat(this Logger logger, LogLevel level, string formatStringMessage, params object[] args)
         {
-            // TODO/CONSIDER: Should most of this be moved to the core library?
-            var messageTemplate = Formatting.TemplateFromFormat(formatStringMessage, args);
-            var msg = MessageModule.CreateEvent(level, messageTemplate.Item1);
-            MessageModule.AddFields(messageTemplate.Item2, msg);
-            logger.Log(msg);
+            if (logger == null) throw new ArgumentNullException("logger");
+            if (level == null) throw new ArgumentNullException("level");
+            if (formatStringMessage == null) throw new ArgumentNullException("formatStringMessage");
+
+            logger.Log(MessageModule.CreateFormattedEvent(level, formatStringMessage, args));
         }
 
         /// <summary>
@@ -148,7 +148,6 @@ namespace Logary
         /// </summary>
         /// <param name="logger">logger to invoke the Log call on</param>
         /// <param name="message">Message to pass to the targets</param>
-        /// <param name="tags">An optional collection of tags to attach to the log line</param>
         public static void Fatal(this Logger logger, string message)
         {
             if (logger == null) throw new ArgumentNullException("logger");
@@ -163,7 +162,6 @@ namespace Logary
         /// <param name="logger">logger to invoke the Log call on</param>
         /// <param name="message">Message to pass to the targets</param>
         /// <param name="e">The exception that occurred</param>
-        /// </param>
         public static void FatalException(this Logger logger, string message, Exception e)
         {
             if (logger == null) throw new ArgumentNullException("logger");
@@ -287,7 +285,6 @@ namespace Logary
         /// </summary>
         /// <param name="logger">logger to invoke the Log call on</param>
         /// <param name="message">Message to pass to the targets</param>
-        /// <param name="tags">An optional collection of tags to attach to the log line</param>
         public static void Verbose(this Logger logger, string message)
         {
             logger.Log(message, LogLevel.Verbose);

@@ -134,18 +134,18 @@ module Advanced =
   /// flush all its pending entries within the allotted timeout (200 ms at the time of writing)
   /// but will then instead return Nack/failed RPC.
   let flushPending dur (registry : RegistryInstance) = job {
-      let! ack = IVar.create ()
-      do! Ch.give registry.reqCh (FlushPending (dur, ack))
-      return! ack }
+    let! ack = IVar.create ()
+    do! Ch.give registry.reqCh (FlushPending (dur, ack))
+    return! ack }
 
   /// Shutdown the registry. This will first flush all pending entries for all targets inside the
   /// registry, and then proceed to sending ShutdownTarget to all of them. If this doesn't
   /// complete within the allotted timeout, (200 ms for flush, 200 ms for shutdown), it will
   /// return Nack to the caller (of shutdown).
   let shutdown dur (registry : RegistryInstance) = job {
-      let! ack = IVar.create ()
-      do! Ch.give registry.reqCh (ShutdownLogary (dur, ack))
-      return! ack }
+    let! ack = IVar.create ()
+    do! Ch.give registry.reqCh (ShutdownLogary (dur, ack))
+    return! ack }
 
   /// Flush all registry targets, then shut it down -- the registry internals
   /// take care of timeouts, not these methods
@@ -208,7 +208,7 @@ module Advanced =
       let shutdown state (dur : Duration) (ack : IVar<Acks>) = job {
         Message.info "shutdown metrics polling" |> log
 
-        do! defaultArg (Option.map (Cancellation.cancel) state.pollMetrics) (Job.unit ())
+        do! defaultArg (Option.map Cancellation.cancel state.pollMetrics) (Job.unit ())
 
         Message.info "shutdown schedules" |> log
         for (_, x) in state.schedules do do! Cancellation.cancel x
