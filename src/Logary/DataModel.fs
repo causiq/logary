@@ -718,6 +718,9 @@ module Message =
   [<CompiledName "FatalFormat">]
   let fatalf fmt = Printf.kprintf (event Fatal) fmt
 
+  [<CompiledName "SetName">]
+  let setName name (msg : Message) = {msg with name = name}
+
   [<CompiledName "SetLevel">]
   let setLevel lvl msg = {msg with level = lvl}
 

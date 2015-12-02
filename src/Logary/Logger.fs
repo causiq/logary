@@ -29,25 +29,27 @@ module Logger =
   // Logging methods //
   /////////////////////
 
-  let private setContext (logger : Logger) (msg : Message) =
-    Message.Context.serviceSet logger.Name msg
+  let private ensureName (logger : Logger) (msg : Message) =
+    match msg.name with
+    | [] -> Message.setName [logger.Name] msg
+    | _  -> msg
 
   /// Write a message.
   [<CompiledName "Log">]
   let log (logger : Logger) msg =
-    logger.Log (setContext logger msg)
+    logger.Log (ensureName logger msg)
 
   /// Write a debug log line, given from the fLine callback, if the logger
   /// accepts line with Verbose level.
   [<CompiledName "LogVerbose">]
   let logVerbose (logger : Logger) fMsg =
-    logger.LogVerbose (fMsg >> setContext logger)
+    logger.LogVerbose (fMsg >> ensureName logger)
 
   /// Write a debug log line, given from the fLine callback, if the logger
   /// accepts line with Debug level.
   [<CompiledName "LogDebug">]
   let logDebug (logger : Logger) fMsg =
-    logger.LogDebug (fMsg >> setContext logger)
+    logger.LogDebug (fMsg >> ensureName logger)
 
   /// Write a verbose log entry to the logger
   [<CompiledName "Verbose">]

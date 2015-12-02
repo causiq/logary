@@ -100,8 +100,8 @@ let tests =
       let out = Fac.textWriter ()
 
       let rules =
-        [ { Fac.emptyRule with messageFilter = (fun l -> (Message.Context.serviceGet l) = "1") ; target = "tw" }
-          { Fac.emptyRule with messageFilter = (fun l -> (Message.Context.serviceGet l) = "2") ; target = "tw" } ]
+        [ { Fac.emptyRule with messageFilter = (fun msg -> msg.name = ["1"]) ; target = "tw" }
+          { Fac.emptyRule with messageFilter = (fun msg -> msg.name = ["2"]) ; target = "tw" } ]
 
       let targets =
         [ Target.confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
@@ -222,7 +222,7 @@ let tests =
 
       let filter2 msg =
         match msg.value with
-        | Event _ -> (Message.Context.serviceGet msg) = "a.b.c"
+        | Event _ -> msg.name = ["a.b.c"]
         | _ -> true
 
       let rules   = [
