@@ -5,7 +5,7 @@ module Logary.Targets.Riemann
 
 open ProtoBuf
 
-open FSharp.Actor
+open Hopac
 
 open NodaTime
 

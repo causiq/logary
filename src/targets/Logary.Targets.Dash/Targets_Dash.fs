@@ -2,7 +2,7 @@ module Logary.Targets.Dash
 
 open System.Threading
 
-open FSharp.Actor
+open Hopac
 
 open Suave
 open Suave.Types

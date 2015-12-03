@@ -3,7 +3,7 @@ module Logary.Targets.Logstash
 
 #nowarn "1104"
 
-open FSharp.Actor
+open Hopac
 open NodaTime
 open System
 open System.Net

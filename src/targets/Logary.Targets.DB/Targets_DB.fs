@@ -4,7 +4,7 @@ open System
 open System.Data
 open System.Net
 
-open FSharp.Actor
+open Hopac
 
 open FsSql
 

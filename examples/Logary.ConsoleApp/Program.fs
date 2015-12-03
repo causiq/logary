@@ -1,8 +1,10 @@
 #if INTERACTIVE
-#r "bin/Release/FSharp.Actor.dll"
-#r "bin/Release/NodaTime.dll"
-#r "bin/Release/Logary.dll"
-#r "bin/Release/Logary.Riemann.dll"
+#I "bin/Release"
+#r "Hopac.Core.dll"
+#r "Hopac.dll"
+#r "NodaTime.dll"
+#r "Logary.dll"
+#r "Logary.Riemann.dll"
 #endif
 
 open System

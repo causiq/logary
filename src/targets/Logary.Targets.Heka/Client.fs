@@ -9,7 +9,7 @@ open Logary.Heka
 open Logary.Heka.Messages
 
 // Async.Bind : Task -> ...
-open FSharp.Actor
+open Hopac
 
 type EncodingError =
   | HeaderTooLarge of string

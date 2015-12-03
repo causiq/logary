@@ -5,7 +5,7 @@ open System.IO
 open System.Net
 open System.Net.Sockets
 open System.Net.Security
-open FSharp.Actor
+open Hopac
 open Logary
 open Logary.Heka
 open Logary.Heka.Client

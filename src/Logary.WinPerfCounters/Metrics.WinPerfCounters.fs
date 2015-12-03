@@ -2,7 +2,7 @@
 
 open System.Diagnostics
 
-open FSharp.Actor
+open Hopac
 
 open Logary
 open Logary.Measure

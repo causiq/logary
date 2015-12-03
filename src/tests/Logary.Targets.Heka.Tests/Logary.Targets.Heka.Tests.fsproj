@@ -54,10 +54,6 @@
       <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
       <Name>Logary</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\FSharp.Actor-logary\src\FSharp.Actor\FSharp.Actor-logary.fsproj">
-      <Project>{AA4BC25B-04F7-4B39-BF28-0B0058193ED9}</Project>
-      <Name>FSharp.Actor-logary</Name>
-    </ProjectReference>
   </ItemGroup>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">

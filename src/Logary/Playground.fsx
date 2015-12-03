@@ -1,11 +1,9 @@
-#!/usr/bin/env MONO_GC_DEBUG=nursery-canaries MONO_OPTIONS=-O=-aot fsharpi
+#!/usr/bin/env fsharpi
 #I "bin/Debug"
-#r "FSharp.Actor.dll"
-#r "Logary.dll"
-#r "NodaTime.dll"
-#I "../../packages/Hopac/lib/net45"
 #r "Hopac.Core.dll"
 #r "Hopac.dll"
+#r "Logary.dll"
+#r "NodaTime.dll"
 #r "FsMachines.dll"
 open System
 open Hopac

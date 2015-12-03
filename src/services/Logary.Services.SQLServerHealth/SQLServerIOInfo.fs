@@ -4,7 +4,7 @@ open System
 open System.IO
 open System.Data
 
-open FSharp.Actor
+open Hopac
 
 open Logary
 open Logary.Internals
