@@ -69,12 +69,19 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
-        <Reference Include="FsPickler">
-          <HintPath>..\..\..\packages\FsPickler\lib\net45\FsPickler.dll</HintPath>
+        <Reference Include="Hopac.Core">
+          <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.Core.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
-        <Reference Include="System.Runtime.Serialization">
+        <Reference Include="Hopac.Platform">
+          <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.Platform.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+        <Reference Include="Hopac">
+          <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.dll</HintPath>
+          <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
       </ItemGroup>

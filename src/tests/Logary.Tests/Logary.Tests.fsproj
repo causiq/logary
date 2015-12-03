@@ -70,7 +70,7 @@
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
         <Reference Include="FsCheck">
-          <HintPath>..\..\..\packages\FsCheck\lib\net40-Client\FsCheck.dll</HintPath>
+          <HintPath>..\..\..\packages\FsCheck\lib\net45\FsCheck.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
@@ -113,8 +113,18 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
-        <Reference Include="Newtonsoft.Json">
-          <HintPath>..\..\..\packages\Newtonsoft.Json\lib\net45\Newtonsoft.Json.dll</HintPath>
+        <Reference Include="Hopac.Core">
+          <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.Core.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+        <Reference Include="Hopac.Platform">
+          <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.Platform.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+        <Reference Include="Hopac">
+          <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
@@ -137,31 +147,6 @@
       <ItemGroup>
         <Reference Include="Unquote">
           <HintPath>..\..\..\packages\Unquote\lib\net40\Unquote.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <ItemGroup>
-        <Reference Include="Hopac.Core">
-          <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.Core.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-      <ItemGroup>
-        <Reference Include="Hopac">
-          <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-      <ItemGroup>
-        <Reference Include="Hopac.Platform">
-          <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.Platform.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>

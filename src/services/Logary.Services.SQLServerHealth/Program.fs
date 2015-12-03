@@ -15,7 +15,7 @@ open Logary.Configuration
 
 open Logary.Metrics
 
-open Nessos.UnionArgParser
+open Nessor.Argu
 
 open SQLServerIOInfo
 
@@ -78,7 +78,7 @@ let parseIP str =
   | true, ip -> ip
 
 let parse args =
-  let parser  = UnionArgParser.Create<Arguments>()
+  let parser  = Argu.Create<Arguments>()
   let parse   = parser.Parse args
   let drives  = parse.PostProcessResults(<@ Drive_Latency @>, Drive)
   let files   = parse.PostProcessResults(<@ File_Latency @>, SingleFile)

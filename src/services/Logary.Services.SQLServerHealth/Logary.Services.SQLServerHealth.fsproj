@@ -79,6 +79,17 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
+        <Reference Include="Argu">
+          <HintPath>..\..\..\packages\Argu\lib\net40\Argu.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
         <Reference Include="FSharp.Core">
           <HintPath>..\..\..\packages\FSharp.Core\lib\net40\FSharp.Core.dll</HintPath>
           <Private>True</Private>
@@ -92,6 +103,27 @@
       <ItemGroup>
         <Reference Include="FsSql">
           <HintPath>..\..\..\packages\FsSql\lib\NET40\FsSql.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
+        <Reference Include="Hopac.Core">
+          <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.Core.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+        <Reference Include="Hopac.Platform">
+          <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.Platform.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+        <Reference Include="Hopac">
+          <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
@@ -125,17 +157,6 @@
       <ItemGroup>
         <Reference Include="Topshelf.FSharp">
           <HintPath>..\..\..\packages\Topshelf.FSharp\lib\net40\Topshelf.FSharp.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <ItemGroup>
-        <Reference Include="UnionArgParser">
-          <HintPath>..\..\..\packages\UnionArgParser\lib\net40\UnionArgParser.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>

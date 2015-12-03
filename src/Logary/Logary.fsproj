@@ -32,9 +32,6 @@
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>
-    <Content Include="app.config">
-      <Paket>True</Paket>
-    </Content>
     <Compile Include="..\..\paket-files\haf\YoLo\YoLo.fs">
       <Paket>True</Paket>
       <Link>paket-files\YoLo.fs</Link>
@@ -127,60 +124,10 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'" />
-  </Choose>
-  <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
         <Reference Include="FSharp.Core">
           <HintPath>..\..\packages\FSharp.Core\lib\net40\FSharp.Core.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'" />
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <ItemGroup>
-        <Reference Include="FSharpx.Collections">
-          <HintPath>..\..\packages\FSharpx.Collections\lib\net40\FSharpx.Collections.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <ItemGroup>
-        <Reference Include="FSharpx.Extras">
-          <HintPath>..\..\packages\FSharpx.Extras\lib\40\FSharpx.Extras.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <ItemGroup>
-        <Reference Include="FsMachines">
-          <HintPath>..\..\packages\FsMachines\lib\net45\FsMachines.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <ItemGroup>
-        <Reference Include="NodaTime">
-          <HintPath>..\..\packages\NodaTime\lib\net35-Client\NodaTime.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
@@ -195,17 +142,24 @@
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
-      </ItemGroup>
-      <ItemGroup>
+        <Reference Include="Hopac.Platform">
+          <HintPath>..\..\packages\Hopac\lib\net45\Hopac.Platform.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
         <Reference Include="Hopac">
           <HintPath>..\..\packages\Hopac\lib\net45\Hopac.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
       </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
-        <Reference Include="Hopac.Platform">
-          <HintPath>..\..\packages\Hopac\lib\net45\Hopac.Platform.dll</HintPath>
+        <Reference Include="NodaTime">
+          <HintPath>..\..\packages\NodaTime\lib\net35-Client\NodaTime.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>

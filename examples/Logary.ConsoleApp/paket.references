@@ -1,4 +1,5 @@
 FSharp.Core
 NodaTime
+Hopac
 protobuf-net
-UnionArgParser
+Argu

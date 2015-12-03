@@ -21,70 +21,70 @@ type Value =
 
   (* Isomorphisms *)
 
-  static member StringPIso : PIso<Value, string> =
+  static member String__ : PIso<Value, string> =
       (function | String x -> Some x
                 | _ -> None), String
 
-  static member BoolPIso : PIso<Value, bool> =
+  static member Bool__ : PIso<Value, bool> =
       (function | Bool x -> Some x
                 | _ -> None), Bool
 
-  static member FloatPIso : PIso<Value, decimal> =
+  static member Float__ : PIso<Value, decimal> =
       (function | Float x -> Some x
                 | _ -> None), Float
 
-  static member IntPIso : PIso<Value, int64> =
+  static member Int__ : PIso<Value, int64> =
       (function | Int64 x -> Some x
                 | _ -> None), Int64
 
-  static member BigIntPIso : PIso<Value, bigint> =
+  static member BigInt__ : PIso<Value, bigint> =
       (function | BigInt x -> Some x
                 | _ -> None), BigInt
 
-  static member BinaryPIso : PIso<Value, byte [] * ContentType> =
+  static member Binary__ : PIso<Value, byte [] * ContentType> =
       (function | Binary (bs, ct) -> Some (bs, ct)
                 | _ -> None), Binary
 
-  static member FractionPIso : PIso<Value, int64 * int64> =
+  static member Fraction__ : PIso<Value, int64 * int64> =
       (function | Fraction (n, d) -> Some (n, d)
                 | _ -> None), Fraction
 
-  static member ArrayPIso : PIso<Value, Value list> =
+  static member Array__ : PIso<Value, Value list> =
       (function | Array x -> Some x
                 | _ -> None), Array
 
-  static member ObjectPIso : PIso<Value, Map<string, Value>> =
+  static member Object__ : PIso<Value, Map<string, Value>> =
       (function | Object x -> Some x
                 | _ -> None), Object
 
   (* Lenses *)
 
   static member StringPLens : PLens<Value, string> =
-      idLens <-?> Value.StringPIso
+      id_ <-?> Value.String__
 
   static member BoolPLens : PLens<Value, bool> =
-      idLens <-?> Value.BoolPIso
+      id_ <-?> Value.Bool__
 
   static member FloatPLens : PLens<Value, decimal> =
-      idLens <-?> Value.FloatPIso
+      id_ <-?> Value.Float__
 
   static member IntPLens : PLens<Value, int64> =
-      idLens <-?> Value.IntPIso
+      id_ <-?> Value.Int__
 
   static member BigIntPLens : PLens<Value, bigint> =
-      idLens <-?> Value.BigIntPIso
+      id_ <-?> Value.BigInt__
 
   static member BinaryPLens : PLens<Value, byte[] * ContentType> =
-      idLens <-?> Value.BinaryPIso
+      id_ <-?> Value.Binary__
 
   static member FractionPLens : PLens<Value, int64 * int64> =
-      idLens <-?> Value.FractionPIso
+      id_ <-?> Value.Fraction__
 
   static member ArrayPLens : PLens<Value, Value list> =
-      idLens <-?> Value.ArrayPIso
+      id_ <-?> Value.Array__
 
   static member ObjectPLens : PLens<Value, Map<string, Value>> =
-      idLens <-?> Value.ObjectPIso
+      id_ <-?> Value.Object__
 
 module Escaping =
     let private unescaped i =
@@ -312,7 +312,7 @@ module Mapping =
     (* Json Type *)
 
     static member inline ToValue (x: Value) =
-        Value.setLens idLens x
+        Value.setLens id_ x
 
   (* Mapping Functions
 
@@ -332,42 +332,42 @@ module Mapping =
     (* Arrays *)
 
     static member inline ToValue (x: 'a array) =
-      Value.setLens idLens (Array ((Array.toList >> List.map toValue) x))
+      Value.setLens id_ (Array ((Array.toList >> List.map toValue) x))
 
     (* Lists *)
 
     static member inline ToValue (x: 'a list) =
-      Value.setLens idLens (Array (List.map toValue x))
+      Value.setLens id_ (Array (List.map toValue x))
 
     (* Maps *)
 
     static member inline ToValue (x: Map<string,'a>) =
-      Value.setLens idLens (Object (Map.map (fun _ a -> toValue a) x))
+      Value.setLens id_ (Object (Map.map (fun _ a -> toValue a) x))
 
     (* Options *)
 
     static member inline ToValue (x: 'a option) =
       match x with | None -> Value.init ()
-                   | Some a -> Value.setLens idLens (toValue a)
+                   | Some a -> Value.setLens id_ (toValue a)
 
     (* Sets *)
 
     static member inline ToValue (x: Set<'a>) =
-      Value.setLens idLens (Array ((Set.toList >> List.map toValue) x))
+      Value.setLens id_ (Array ((Set.toList >> List.map toValue) x))
 
     (* Tuples *)
 
     static member inline ToValue ((a, b)) =
-      Value.setLens idLens (Array [ toValue a; toValue b ])
+      Value.setLens id_ (Array [ toValue a; toValue b ])
 
     static member inline ToValue ((a, b, c)) =
-      Value.setLens idLens (Array [ toValue a; toValue b; toValue c ])
+      Value.setLens id_ (Array [ toValue a; toValue b; toValue c ])
 
   [<RequireQualifiedAccess>]
   module Value =
 
     let inline write key value =
-      Value.setLensPartial (Value.ObjectPLens >??> mapPLens key) (toValue value)
+      Value.setLensPartial (Value.ObjectPLens >??> key_ key) (toValue value)
 
     let inline serialize a =
       toValue a
@@ -573,10 +573,10 @@ type Message =
       (fun v x -> { x with context = v})
 
     static member field_ name : PLens<Message, Field> =
-      Message.fields_ >-?> (Logary.Utils.Aether.mapPLens [name])
+      Message.fields_ >-?> (key_ [name])
 
     static member contextField_ name : PLens<Message, Value> =
-      Message.contextFields_ >-?> (Logary.Utils.Aether.mapPLens name)
+      Message.contextFields_ >-?> (key_ name)
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Message =

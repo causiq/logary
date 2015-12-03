@@ -97,6 +97,38 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
+        <Reference Include="FSharp.Core">
+          <HintPath>..\..\..\packages\FSharp.Core\lib\net40\FSharp.Core.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
+        <Reference Include="Hopac.Core">
+          <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.Core.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+        <Reference Include="Hopac.Platform">
+          <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.Platform.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+        <Reference Include="Hopac">
+          <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
         <Reference Include="Machine.Specifications.Clr4">
           <HintPath>..\..\..\packages\Machine.Specifications\lib\net45\Machine.Specifications.Clr4.dll</HintPath>
           <Private>True</Private>
@@ -134,6 +166,13 @@
   </Choose>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <PropertyGroup>
+        <__paket__System_Data_SQLite_Core_targets>net45\System.Data.SQLite.Core</__paket__System_Data_SQLite_Core_targets>
+      </PropertyGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
         <Reference Include="System.Data.SQLite">
           <HintPath>..\..\..\packages\System.Data.SQLite.Core\lib\net45\System.Data.SQLite.dll</HintPath>
@@ -141,13 +180,6 @@
           <Paket>True</Paket>
         </Reference>
       </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <PropertyGroup>
-        <__paket__System_Data_SQLite_Core_targets>net45\System.Data.SQLite.Core</__paket__System_Data_SQLite_Core_targets>
-      </PropertyGroup>
     </When>
   </Choose>
   <Import Project="..\..\..\packages\System.Data.SQLite.Core\build\$(__paket__System_Data_SQLite_Core_targets).targets" Condition="Exists('..\..\..\packages\System.Data.SQLite.Core\build\$(__paket__System_Data_SQLite_Core_targets).targets')" Label="Paket" />

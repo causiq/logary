@@ -1,2 +1,4 @@
 FSharp.Core
+NodaTime
+Hopac
 EventStore.Client.PreRelease

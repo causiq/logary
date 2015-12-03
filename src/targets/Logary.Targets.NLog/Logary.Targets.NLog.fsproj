@@ -64,35 +64,18 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
-        <Reference Include="Newtonsoft.Json">
-          <HintPath>..\..\..\packages\Newtonsoft.Json\lib\net45\Newtonsoft.Json.dll</HintPath>
+        <Reference Include="Hopac.Core">
+          <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.Core.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.0')">
-      <ItemGroup>
-        <Reference Include="NLog">
-          <HintPath>..\..\..\packages\NLog\lib\net40\NLog.dll</HintPath>
+        <Reference Include="Hopac.Platform">
+          <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.Platform.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition="$(TargetFrameworkIdentifier) == 'Silverlight' And $(TargetFrameworkVersion) == 'v4.0'">
-      <ItemGroup>
-        <Reference Include="NLog">
-          <HintPath>..\..\..\packages\NLog\lib\sl4\NLog.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition="$(TargetFrameworkIdentifier) == 'Silverlight' And $(TargetFrameworkVersion) == 'v5.0'">
-      <ItemGroup>
-        <Reference Include="NLog">
-          <HintPath>..\..\..\packages\NLog\lib\sl5\NLog.dll</HintPath>
+        <Reference Include="Hopac">
+          <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>

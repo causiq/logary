@@ -1,3 +1,4 @@
-log4net
-NodaTime
 FSharp.Core
+NodaTime
+Hopac
+log4net

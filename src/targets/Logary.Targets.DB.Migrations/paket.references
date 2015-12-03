@@ -1,3 +1,5 @@
+FSharp.Core
+NodaTime
+Hopac
 FluentMigrator
 FluentMigrator.Runner
-FSharp.Core
