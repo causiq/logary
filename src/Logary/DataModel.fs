@@ -33,7 +33,7 @@ type Value =
       (function | Float x -> Some x
                 | _ -> None), Float
 
-  static member Int__ : PIso<Value, int64> =
+  static member Int64__ : PIso<Value, int64> =
       (function | Int64 x -> Some x
                 | _ -> None), Int64
 
@@ -69,7 +69,7 @@ type Value =
       id_ <-?> Value.Float__
 
   static member IntPLens : PLens<Value, int64> =
-      id_ <-?> Value.Int__
+      id_ <-?> Value.Int64__
 
   static member BigIntPLens : PLens<Value, bigint> =
       id_ <-?> Value.BigInt__

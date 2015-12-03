@@ -34,93 +34,98 @@ type GraphiteConf =
       port = port
       clientFac = clientFac }
 
-type private GraphiteState =
-  { client         : WriteClient
-    sendRecvStream : WriteStream option }
+module internal Impl =
 
-let private utf8 = System.Text.Encoding.UTF8
+  type GraphiteState =
+    { client         : WriteClient
+      sendRecvStream : WriteStream option }
 
-let private tryDispose (item : 'a option) =
-  if item.IsNone then ()
-  else match item.Value |> box with
-        | :? IDisposable as disposable -> try disposable.Dispose() with _ -> ()
-        | _ -> ()
+  let tryDispose (item : 'a option) =
+    if item.IsNone then ()
+    else match item.Value |> box with
+          | :? IDisposable as disposable -> try disposable.Dispose() with _ -> ()
+          | _ -> ()
 
-// Allowable characters in a graphite metric name:
-// alphanumeric
-// !#$%&"'*+-:;<=>?@[]\^_`|~
-// . is used as a path separator
-let private invalidPathCharacters =
-  System.Text.RegularExpressions.Regex("""[^a-zA-Z0-9!#\$%&"'\*\+\-:;<=>\?@\[\\\]\^_`\|~]""", Text.RegularExpressions.RegexOptions.Compiled)//"
+  // Allowable characters in a graphite metric name:
+  // alphanumeric
+  // !#$%&"'*+-:;<=>?@[]\^_`|~
+  // . is used as a path separator
+  let invalidPathCharacters =
+    System.Text.RegularExpressions.Regex("""[^a-zA-Z0-9!#\$%&"'\*\+\-:;<=>\?@\[\\\]\^_`\|~]""", Text.RegularExpressions.RegexOptions.Compiled)//"
 
-/// Sanitizes Graphite metric paths by converting / to - and replacing all other
-/// invalid characters with underscores.
-let internal sanitizePath (paths: string list) =
-  paths
-  |> Seq.map (fun r -> r.Replace("/", "-"))
-  |> Seq.map (fun r -> invalidPathCharacters.Replace(r, "_"))
-  |> List.ofSeq
+  /// Sanitizes Graphite metric paths by converting / to - and replacing all other
+  /// invalid characters with underscores.
+  let sanitizePath (paths: string list) =
+    paths
+    |> Seq.map (fun r -> r.Replace("/", "-"))
+    |> Seq.map (fun r -> invalidPathCharacters.Replace(r, "_"))
+    |> List.ofSeq
 
-let private formatMeasure = (function Gauge (v, _) | Derived (v, _) -> v) >> Units.formatValue
+  let formatMeasure = (function Gauge (v, _) | Derived (v, _) -> v) >> Units.formatValue
 
-/// All graphite messages are of the following form.
-/// metric_path value timestamp\n
-let private createMsg path value (timestamp : Instant) =
-  let line = String.Format("{0} {1} {2}\n", path, value, timestamp.Ticks / NodaConstants.TicksPerSecond)
-  utf8.GetBytes line
+  /// All graphite messages are of the following form.
+  /// metric_path value timestamp\n
+  let createMsg path value (timestamp : Instant) =
+    let line = String.Format("{0} {1} {2}\n", path, value, timestamp.Ticks / NodaConstants.TicksPerSecond)
+    UTF8.bytes line
 
-(*let private findPath (tags : string list) =
-  let tags' = tags |> List.fold (fun s t -> s |> Set.add t) Set.empty
-  if not (tags' |> Set.contains TriggerTag) then
-    None
-  else
-    tags |> List.tryFind (fun t -> t.StartsWith("path"))*)
+  (*let private findPath (tags : string list) =
+    let tags' = tags |> List.fold (fun s t -> s |> Set.add t) Set.empty
+    if not (tags' |> Set.contains TriggerTag) then
+      None
+    else
+      tags |> List.tryFind (fun t -> t.StartsWith("path"))*)
 
-let private doWrite state m =
-  job {
-    let stream =
-      match state.sendRecvStream with
-      | None   -> state.client.GetStream()
-      | Some s -> s
-    do! stream.Write( m )
-    return { state with sendRecvStream = Some stream } }
+  let doWrite state m =
+    job {
+      let stream =
+        match state.sendRecvStream with
+        | None   -> state.client.GetStream()
+        | Some s -> s
+      do! stream.Write m
+      return { state with sendRecvStream = Some stream } }
 
-let private graphiteLoop (conf : GraphiteConf) (svc : RuntimeInfo) =
-  (fun (reqCh : Ch<_>) ->
-    let shutdown state ack =
-      job {
+  let loop (conf : GraphiteConf) (svc : RuntimeInfo) =
+    (fun (reqCh : Ch<_>) ->
+      let shutdown state ack = job {
         state.sendRecvStream |> tryDispose
         try (state.client :> IDisposable).Dispose() with _ -> ()
         do! IVar.fill ack Ack
-        return () }
+        return ()
+      }
 
-    let rec running state =
-      job {
+      let rec running state = job {
         let! msg = Ch.take reqCh
         match msg with
-        | Log l ->
-          match l.value with
+        | Log logMsg ->
+          match logMsg.value with
           | Event message ->
-            let! state' = createMsg (Message.Context.serviceGet l) message (Instant l.timestamp) |> doWrite state
+            let! state' = createMsg (Message.Context.serviceGet logMsg) message (Instant logMsg.timestamp) |> doWrite state
             return! running state'
           | Gauge _ | Derived _ ->
-            let! state' = createMsg (sanitizePath l.name |> PointName.joined) (formatMeasure l.value) (Instant l.timestamp) |> doWrite state
+            let! state' =
+              createMsg (sanitizePath logMsg.name
+              |> PointName.joined) (formatMeasure logMsg.value) (Instant logMsg.timestamp)
+              |> doWrite state
             return! running state'
+
         | Flush ack ->
           do! IVar.fill ack Ack
           return! running state
+
         | Shutdown ack ->
-          return! shutdown state ack }
+          return! shutdown state ack
+      }
 
-    let init () =
-      job {
+      let init () = job {
         let client = conf.clientFac conf.hostname conf.port
-        return! running { client = client; sendRecvStream = None } }
+        return! running { client = client; sendRecvStream = None }
+      }
 
-    init ())
+      init ())
 
 /// Create a new graphite target configuration.
-let create conf = TargetUtils.stdNamedTarget (graphiteLoop conf)
+let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
 
 /// C# interop: Create a new graphite target configuration.
 [<CompiledName("Create")>]
