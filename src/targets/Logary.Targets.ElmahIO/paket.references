@@ -1,4 +1,5 @@
-elmah.corelibrary
-elmah.io.core
 FSharp.Core
 NodaTime
+Hopac
+elmah.corelibrary
+elmah.io.core

@@ -3,17 +3,12 @@
 open System
 open System.IO
 open System.Text
-
 open log4net
 open log4net.Layout
 open log4net.Repository.Hierarchy
-
 open log4net.Appender
-
 open NodaTime
-
 open Fuchu
-
 open Logary
 open Logary.Internals
 open Logary.Targets.TextWriter

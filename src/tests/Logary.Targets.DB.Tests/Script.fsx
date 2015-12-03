@@ -12,7 +12,8 @@ open Fuchu
 
 #r "FsSql.dll"
 
-#r "FSharp.Actor.dll"
+#r "Hopac.Core.dll"
+#r "Hopac.dll"
 
 #r "System.Data.dll"
 #r "System.Data.SQLite.dll"

@@ -9,7 +9,7 @@ open Logary.Heka
 open Logary.Heka.Messages
 
 // Async.Bind : Task -> ...
-open FSharp.Actor
+open Hopac
 
 type EncodingError =
   | HeaderTooLarge of string
@@ -63,7 +63,7 @@ module Encoder =
         use x = hdrMs
         Choice2Of2 (HeaderTooLarge msg)
       else
-        Choice1Of2 (async {
+        Choice1Of2 (job {
           try
             use msgMs = msgMs
             use hdrMs = hdrMs

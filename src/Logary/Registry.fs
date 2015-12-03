@@ -224,15 +224,15 @@ module Advanced =
           |> bisectSuccesses
 
         do! IVar.fill ack <|
-          if List.isEmpty failed then
-            Message.info "shutdown Ack" |> log
-            Ack
-          else
-            let msg = sprintf "failed target shutdowns:%s%s" nl (toTextList failed)
-            Message.errorf "shutdown Nack%s%s" nl msg
-            |> Message.field "failed" (Value.fromObject failed)
-            |> log
-            Nack msg
+            if List.isEmpty failed then
+              Message.info "shutdown Ack" |> log
+              Ack
+            else
+              let msg = sprintf "failed target shutdowns:%s%s" nl (toTextList failed)
+              Message.errorf "shutdown Nack%s%s" nl msg
+              |> Message.field "failed" (Value.fromObject failed)
+              |> log
+              Nack msg
         Message.info "shutting down immediately" |> log
         return () }
 
@@ -304,13 +304,13 @@ module Advanced =
             |> bisectSuccesses
 
           do! IVar.fill ack <|
-            if List.isEmpty notFlushed then
-              Message.info "flush Ack" |> log
-              Ack
-            else
-              let msg = sprintf "Failed target flushes:%s%s" nl (toTextList notFlushed)
-              Message.errorf "flush Nack - %s" msg |> log
-              Nack msg
+              if List.isEmpty notFlushed then
+                Message.info "flush Ack" |> log
+                Ack
+              else
+                let msg = sprintf "Failed target flushes:%s%s" nl (toTextList notFlushed)
+                Message.errorf "flush Nack - %s" msg |> log
+                Nack msg
 
           return! running state
 

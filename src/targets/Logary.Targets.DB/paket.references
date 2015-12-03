@@ -1,3 +1,4 @@
 FSharp.Core
-FsSql
 NodaTime
+Hopac
+FsSql

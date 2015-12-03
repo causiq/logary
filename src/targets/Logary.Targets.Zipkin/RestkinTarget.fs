@@ -6,13 +6,8 @@ namespace Logary.Targets
 module RestKin =
 
   open System
-
-  open FSharp.Actor
-  
+  open Hopac
   open RestSharp
-
-  open Newtonsoft.Json
-
   open Logary
   open Logary.Target
   open Logary.Formatting

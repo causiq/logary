@@ -1,5 +1,6 @@
 ﻿#I "bin/Debug"
-#r "FSharp.Actor.dll"
+#r "Hopac.Core.dll"
+#r "Hopac.dll"
 #r "NodaTime.dll"
 #r "Newtonsoft.Json.dll"
 #r "Logary.dll"

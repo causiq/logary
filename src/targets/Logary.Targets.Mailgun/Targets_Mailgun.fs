@@ -1,6 +1,6 @@
 ﻿module Logary.Targets.Mailgun
 
-open FSharp.Actor
+open Hopac
 open Logary
 open Logary.DataModel
 open Logary.Target

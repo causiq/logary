@@ -1,3 +1,4 @@
 FSharp.Core
-NLog
 NodaTime
+Hopac
+NLog

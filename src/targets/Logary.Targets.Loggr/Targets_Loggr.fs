@@ -1,6 +1,6 @@
 ﻿module Logary.Targets.Loggr
 
-open FSharp.Actor
+open Hopac
 
 open Logary
 open Logary.Target

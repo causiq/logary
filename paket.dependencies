@@ -8,14 +8,14 @@ nuget EventStore.Client.PreRelease
 nuget FsMachines
 nuget Hopac
 nuget Mailgun.Api
-nuget elmah.corelibrary ~> 1
-nuget elmah.io.core ~> 1
-nuget FAKE 2.1.205-alpha
-nuget FluentMigrator < 1.5
-nuget FluentMigrator.Runner < 1.5
+nuget elmah.corelibrary
+nuget elmah.io.core
+nuget FAKE
+nuget FluentMigrator
+nuget FluentMigrator.Runner
 nuget FParsec
-nuget FsCheck 0.9.2.0
-nuget FSharp.Core
+nuget FsCheck
+nuget FSharp.Core ~> 3
 nuget FsSql
 nuget FsUnit
 nuget Fuchu
@@ -24,7 +24,6 @@ nuget log4net
 nuget loggr-dotnet
 nuget Machine.Specifications
 nuget Machine.Specifications.Should
-nuget Newtonsoft.Json ~> 6
 nuget NLog
 nuget NodaTime
 nuget NUnit
@@ -34,10 +33,10 @@ nuget Suave
 nuget System.Data.SQLite.Core
 nuget Topshelf
 nuget Topshelf.FSharp
-nuget UnionArgParser
-nuget Unquote ~> 2.2
+nuget Argu
+nuget Unquote
 nuget Hawk
 
-github xyncro/chiron src/Chiron/Chiron.fs
-github xyncro/aether src/Aether/Aether.fs
+github xyncro/chiron:e0f4c122b21cb02d47ae3f4f83924b2dcb8dea9e src/Chiron/Chiron.fs
+github xyncro/aether:5b5c05db2414562e9f3f679d42284638e63b9f3a src/Aether/Aether.fs
 github haf/YoLo YoLo.fs

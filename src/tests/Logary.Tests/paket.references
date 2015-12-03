@@ -1,6 +1,7 @@
-FsCheck
 FSharp.Core
+NodaTime
+Hopac
+FsCheck
 Fuchu
 Fuchu.FsCheck
-NodaTime
 Unquote

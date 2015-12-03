@@ -2,11 +2,8 @@
 
 open System
 open System.Net
-
 open Fuchu
-
-open FSharp.Actor
-
+open Hopac
 open Logary
 open Logary.Targets
 open Logary.Internals

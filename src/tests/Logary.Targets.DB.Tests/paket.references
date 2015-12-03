@@ -1,7 +1,8 @@
+FSharp.Core
+NodaTime
+Hopac
 FluentMigrator
 FluentMigrator.Runner
-FSharp.Core
 FsSql
-Fuchu
-NodaTime
 System.Data.SQLite.Core
+Fuchu

@@ -1,2 +1,5 @@
 FSharp.Core
+NodaTime
+Hopac
+FParsec
 Fuchu

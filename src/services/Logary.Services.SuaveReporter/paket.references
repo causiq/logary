@@ -1,4 +1,7 @@
 FSharp.Core
 NodaTime
+Hopac
 Suave
-Chiron
+FParsec
+File:Aether.fs
+File:Chiron.fs

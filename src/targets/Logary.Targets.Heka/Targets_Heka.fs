@@ -5,7 +5,7 @@ open System.IO
 open System.Net
 open System.Net.Sockets
 open System.Net.Security
-open FSharp.Actor
+open Hopac
 open Logary
 open Logary.Heka
 open Logary.Heka.Client
@@ -33,41 +33,62 @@ type Logary.Heka.Messages.Field with
     match value with
     | DataModel.String s when s.Length > 0 ->
       Some <| Messages.Field(name, Nullable ValueType.STRING, unitsS, [s])
+
     // TODO/CONSIDER: Heka doesn't support arbitrary precision integers, so we use a string instead.
     | DataModel.BigInt bi ->
       Some <| Messages.Field(name, Nullable ValueType.STRING, unitsS, [bi.ToString ()])
+
     | DataModel.Float f ->
       Some <| Messages.Field(name, Nullable ValueType.DOUBLE, unitsS, [float f])
+
     | DataModel.Bool b ->
       Some <| Messages.Field(name, Nullable ValueType.BOOL, unitsS, [b])
+
     | DataModel.Binary (bytes, mime) when bytes.Length > 0 ->
       Some <| Messages.Field(name, Nullable ValueType.BYTES, mime, [bytes])
     // TODO/CONSIDER: We assume here that arrays are homogenous, even though object model permits heterogenous arrays.
+
     | DataModel.Array arr when not arr.IsEmpty ->
-      // TODO: Figure out a way to implement arrays neatly without copypaste
+      // TODO: Figure out a way to implement arrays neatly without copy-paste
       match arr.Head with
       | DataModel.String _ ->
         Some <| Messages.Field(name, Nullable ValueType.STRING, unitsS,
-                               Seq.choose (fst DataModel.Value.StringPIso) arr)
+                               Seq.choose (fst DataModel.Value.String__) arr)
+
+      | DataModel.Int64 i ->
+        Some <| Messages.Field(name, Nullable ValueType.INTEGER, unitsS,
+                               Seq.choose (fst DataModel.Value.Int64__) arr)
+
       | DataModel.BigInt _ ->
         Some <| Messages.Field(name, Nullable ValueType.STRING, unitsS,
-                               Seq.choose (fst DataModel.Value.BigIntPIso) arr
+                               Seq.choose (fst DataModel.Value.BigInt__) arr
                                |> Seq.map (string))
       | DataModel.Float _ ->
         Some <| Messages.Field(name, Nullable ValueType.DOUBLE, unitsS,
-                               Seq.choose (fst DataModel.Value.FloatPIso) arr
+                               Seq.choose (fst DataModel.Value.Float__) arr
                                |> Seq.map (float))
       | DataModel.Bool _ ->
         Some <| Messages.Field(name, Nullable ValueType.BOOL, unitsS,
-                               Seq.choose (fst DataModel.Value.BoolPIso) arr)
+                               Seq.choose (fst DataModel.Value.Bool__) arr)
       | DataModel.Binary _ ->
         // TODO: Handle mime types some way
         Some <| Messages.Field(name, Nullable ValueType.BYTES, unitsS,
-                               Seq.choose (fst DataModel.Value.BinaryPIso) arr
+                               Seq.choose (fst DataModel.Value.Binary__) arr
                                |> Seq.map (fst))
+
+      | DataModel.Array _ ->
+        failwith "TODO"
+
+      | DataModel.Fraction _ ->
+        failwith "TODO"
+
+      | DataModel.Object _ ->
+        failwith "TODO"
+
     | DataModel.Object m as o when not m.IsEmpty ->
       Some <| Messages.Field(name, Nullable ValueType.STRING, "json",
                              [Json.format <| Json.valueToJson o])
+
     // TODO/CONSIDER: Fractions could also be serialized into an int array with a clarifying representation string
     | DataModel.Fraction _ as frac ->
       Some <| Messages.Field(name, Nullable ValueType.STRING, "json",
@@ -103,34 +124,35 @@ module internal Impl =
       stream   : Stream
       hostname : string }
 
-  let loop (conf : HekaConfig) (ri : RuntimeInfo) (inbox : IActor<_>) =
+  let loop (conf : HekaConfig) (ri : RuntimeInfo) (reqCh : Ch<_>) =
     let debug = DataModel.Message.debug >> DataModel.Message.Context.serviceSet "Logary.Targets.Heka" >> Logger.log ri.logger
 
-    let rec initialise () = async {
-      debug "initialising heka target"
+    let rec initialise () =
+      job {
+        debug "initialising heka target"
 
-      let ep, useTLS = conf.endpoint
-      let client = new TcpClient()
-      client.NoDelay <- true
-      do! client.ConnectAsync(ep.Address, ep.Port)
+        let ep, useTLS = conf.endpoint
+        let client = new TcpClient()
+        client.NoDelay <- true
+        do! client.ConnectAsync(ep.Address, ep.Port)
 
-      let stream =
-        if useTLS then
-          let validate = new RemoteCertificateValidationCallback(fun _ -> conf.caValidation)
-          let sslStream = new SslStream(client.GetStream(), false, validate)
-          //sslStream.AuthenticateAsClient(ep.Address) // or ep.Hostname
-          sslStream :> Stream
-        else
-          client.GetStream() :> Stream
+        let stream =
+          if useTLS then
+            let validate = new RemoteCertificateValidationCallback(fun _ -> conf.caValidation)
+            let sslStream = new SslStream(client.GetStream(), false, validate)
+            //sslStream.AuthenticateAsClient(ep.Address) // or ep.Hostname
+            sslStream :> Stream
+          else
+            client.GetStream() :> Stream
 
-      debug "initialise: tcp stream open"
+        debug "initialise: tcp stream open"
 
-      let hostname = Dns.GetHostName()
-      return! running { client = client; stream = stream; hostname = hostname }
+        let hostname = Dns.GetHostName()
+        return! (running : _ -> Job<_>) { client = client; stream = stream; hostname = hostname }
       }
 
-    and running state = async {
-      let write (msg : Message) = async {
+    and running state = job {
+      let write (msg : Message) = job {
         msg.uuid        <- Guid.NewGuid().ToByteArray()
         msg.hostname    <- state.hostname
         // TODO: fix
@@ -152,28 +174,26 @@ module internal Impl =
           logFailure ri err
         debug "running: recursing"
         return! running state
-        }
+      }
 
       debug "running: receiving"
 
-      let! msg, _ = inbox.Receive()
+      let! msg = Ch.take reqCh
       match msg with
-      | Log msg | Measure msg ->
+      | Log msg ->
         return! write (Message.ofMessage msg)
-      | Flush ackChan ->
-        ackChan.Reply Ack
-        return! running state
-      | Shutdown ackChan ->
-        return! shutdown state ackChan
-      }
 
-    and shutdown state ackChan =
-      let dispose x = (x :> IDisposable).Dispose()
-      async {
+      | Flush ack ->
+        do! IVar.fill ack Ack
+        return! running state
+
+      | Shutdown ack ->
+        let dispose x = (x :> IDisposable).Dispose()
         Try.safe "heka target disposing tcp stream, then client" ri.logger <| fun () ->
           dispose state.stream
           dispose state.client
-        ackChan.Reply Ack
+
+        do! IVar.fill ack Ack
       }
 
     initialise ()

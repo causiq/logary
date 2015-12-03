@@ -82,7 +82,7 @@ task :paket_replace do
 end
 
 desc 'perform full build'
-build :build => [:versioning, :assembly_info, :restore] do |b|
+build :build => [:versioning, :assembly_info, :restore, :paket_replace] do |b|
   b.prop 'Configuration', Configuration
   b.sln = 'src/Logary.sln'
   maybe_sign b

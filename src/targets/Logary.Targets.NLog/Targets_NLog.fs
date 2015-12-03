@@ -5,7 +5,7 @@ type private Marker = interface end
 open NLog
 open NLog.Config
 
-open FSharp.Actor
+open Hopac
 
 open Logary
 open Logary.Internals
