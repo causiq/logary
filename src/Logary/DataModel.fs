@@ -3,6 +3,8 @@ namespace Logary.DataModel
 open System
 open System.Reflection
 open Logary
+open Logary.Utils.Chiron
+open Logary.Utils.Chiron.Operators
 open Logary.Utils.Aether
 open Logary.Utils.Aether.Operators
 
@@ -22,94 +24,166 @@ type Value =
   (* Isomorphisms *)
 
   static member String__ : PIso<Value, string> =
-      (function | String x -> Some x
-                | _ -> None), String
+    (function | String x -> Some x
+              | _ -> None), String
 
   static member Bool__ : PIso<Value, bool> =
-      (function | Bool x -> Some x
-                | _ -> None), Bool
+    (function | Bool x -> Some x
+              | _ -> None), Bool
 
   static member Float__ : PIso<Value, decimal> =
-      (function | Float x -> Some x
-                | _ -> None), Float
+    (function | Float x -> Some x
+              | _ -> None), Float
 
   static member Int64__ : PIso<Value, int64> =
-      (function | Int64 x -> Some x
-                | _ -> None), Int64
+    (function | Int64 x -> Some x
+              | _ -> None), Int64
 
   static member BigInt__ : PIso<Value, bigint> =
-      (function | BigInt x -> Some x
-                | _ -> None), BigInt
+    (function | BigInt x -> Some x
+              | _ -> None), BigInt
 
   static member Binary__ : PIso<Value, byte [] * ContentType> =
-      (function | Binary (bs, ct) -> Some (bs, ct)
-                | _ -> None), Binary
+    (function | Binary (bs, ct) -> Some (bs, ct)
+              | _ -> None), Binary
 
   static member Fraction__ : PIso<Value, int64 * int64> =
-      (function | Fraction (n, d) -> Some (n, d)
-                | _ -> None), Fraction
+    (function | Fraction (n, d) -> Some (n, d)
+              | _ -> None), Fraction
 
   static member Array__ : PIso<Value, Value list> =
-      (function | Array x -> Some x
-                | _ -> None), Array
+    (function | Array x -> Some x
+              | _ -> None), Array
 
   static member Object__ : PIso<Value, Map<string, Value>> =
-      (function | Object x -> Some x
-                | _ -> None), Object
+    (function | Object x -> Some x
+              | _ -> None), Object
 
   (* Lenses *)
 
-  static member StringPLens : PLens<Value, string> =
-      id_ <-?> Value.String__
+  static member String_ : PLens<Value, string> =
+    id_ <-?> Value.String__
 
-  static member BoolPLens : PLens<Value, bool> =
+  static member Bool_ : PLens<Value, bool> =
       id_ <-?> Value.Bool__
 
-  static member FloatPLens : PLens<Value, decimal> =
-      id_ <-?> Value.Float__
+  static member Float_ : PLens<Value, decimal> =
+    id_ <-?> Value.Float__
 
-  static member IntPLens : PLens<Value, int64> =
-      id_ <-?> Value.Int64__
+  static member Int64_ : PLens<Value, int64> =
+    id_ <-?> Value.Int64__
 
-  static member BigIntPLens : PLens<Value, bigint> =
-      id_ <-?> Value.BigInt__
+  static member BigInt_ : PLens<Value, bigint> =
+    id_ <-?> Value.BigInt__
 
-  static member BinaryPLens : PLens<Value, byte[] * ContentType> =
-      id_ <-?> Value.Binary__
+  static member Binary_ : PLens<Value, byte[] * ContentType> =
+    id_ <-?> Value.Binary__
 
-  static member FractionPLens : PLens<Value, int64 * int64> =
-      id_ <-?> Value.Fraction__
+  static member Fraction_ : PLens<Value, int64 * int64> =
+    id_ <-?> Value.Fraction__
 
-  static member ArrayPLens : PLens<Value, Value list> =
-      id_ <-?> Value.Array__
+  static member Array_ : PLens<Value, Value list> =
+    id_ <-?> Value.Array__
 
-  static member ObjectPLens : PLens<Value, Map<string, Value>> =
-      id_ <-?> Value.Object__
+  static member Object_ : PLens<Value, Map<string, Value>> =
+    id_ <-?> Value.Object__
+
+  static member ToJson (v : Value) =
+    match v with
+    | String s ->
+      Json.Lens.setPartial Json.String_ s
+
+    | Bool b ->
+      Json.Lens.setPartial Json.Bool_ b
+
+    | Float f -> 
+      Json.Lens.setPartial Json.Number_ f
+
+    | Int64 i ->
+      Json.Lens.setPartial Json.Number_ (decimal i)
+
+    | BigInt bi ->
+      Json.Lens.setPartial Json.Number_ (decimal bi)
+
+    | Binary (bs, contentType) ->
+      Json.write "mime" contentType
+      *> Json.write "data" ("base64:" + Convert.ToBase64String bs)
+
+    | Fraction (n, d) ->
+      Json.write "fraction" (n, d)
+
+    | Array values ->
+      Json.write "array" (values |> List.map Json.serialize)
+
+    | Object o ->
+      Json.Lens.setPartial Json.Object_ (o |> Map.map (fun k v -> Json.serialize v))
+
+  static member FromJson (_ : Value) =
+    fun json ->
+      match json with
+      | Json.String str ->
+        JsonResult.Value (String str), json
+
+      | Json.Bool b ->
+        JsonResult.Value (Bool b), json
+
+      | Json.Number f ->
+        JsonResult.Value (Float f), json
+
+      | Json.Array arr ->
+        match arr |> List.traverseChoiceA Json.tryDeserialize with
+        | Choice1Of2 values ->
+          JsonResult.Value (Array values), json
+
+        | Choice2Of2 err ->
+          JsonResult.Error err, json
+
+      | Json.Object o ->
+        o
+        |> Seq.map (fun kv -> kv.Key, kv.Value)
+        |> Seq.toList
+        |> List.traverseChoiceA (fun (key, jValue) ->
+          match Json.tryDeserialize jValue with
+          | Choice1Of2 (vValue : Value) ->
+            Choice1Of2 (key, vValue)
+
+          | Choice2Of2 err ->
+            Choice2Of2 err)
+        |> Choice.map Map.ofList
+        |> function
+        | Choice1Of2 (result : Map<string, Value>) ->
+          JsonResult.Value (Object result), json
+
+        | Choice2Of2 err ->
+          JsonResult.Error err, json
+
+      | Json.Null () ->
+        JsonResult.Error "Cannot handle Null json values", json
 
 module Escaping =
     let private unescaped i =
-            i >= 0x20 && i <= 0x21
-         || i >= 0x23 && i <= 0x5b
-         || i >= 0x5d && i <= 0x10ffff
+         i >= 0x20 && i <= 0x21
+      || i >= 0x23 && i <= 0x5b
+      || i >= 0x5d && i <= 0x10ffff
 
     let escape (s: string) =
         let rec escape r =
-            function | [] -> r
-                     | h :: t when (unescaped (int h)) ->
-                        escape (r @ [ h ]) t
-                     | h :: t ->
-                        let n =
-                            match h with
-                            | '"' -> [ '\\'; '"' ]
-                            | '\\' -> [ '\\'; '\\' ]
-                            | '\b' -> [ '\\'; 'b' ]
-                            | '\f' -> [ '\\'; 'f' ]
-                            | '\n' -> [ '\\'; 'n' ]
-                            | '\r' -> [ '\\'; 'r' ]
-                            | '\t' -> [ '\\'; 't' ]
-                            | x -> [ '\\'; 'u' ] @ [ for c in ((int x).ToString ("X4")) -> unbox c ]
+          function | [] -> r
+                   | h :: t when (unescaped (int h)) ->
+                      escape (r @ [ h ]) t
+                   | h :: t ->
+                      let n =
+                          match h with
+                          | '"' -> [ '\\'; '"' ]
+                          | '\\' -> [ '\\'; '\\' ]
+                          | '\b' -> [ '\\'; 'b' ]
+                          | '\f' -> [ '\\'; 'f' ]
+                          | '\n' -> [ '\\'; 'n' ]
+                          | '\r' -> [ '\\'; 'r' ]
+                          | '\t' -> [ '\\'; 't' ]
+                          | x -> [ '\\'; 'u' ] @ [ for c in ((int x).ToString ("X4")) -> unbox c ]
 
-                        escape (r @ n) t
+                      escape (r @ n) t
 
         new string (List.toArray (escape [] [ for c in s -> unbox c ]))
 
@@ -266,48 +340,48 @@ module Mapping =
     (* Basic Types *)
 
     static member inline ToValue (x: bool) =
-      Value.setLensPartial Value.BoolPLens x
+      Value.setLensPartial Value.Bool_ x
 
     static member inline ToValue (x: decimal) =
-      Value.setLensPartial Value.FloatPLens x
+      Value.setLensPartial Value.Float_ x
 
     static member inline ToValue (x: float) =
-      Value.setLensPartial Value.FloatPLens (decimal x)
+      Value.setLensPartial Value.Float_ (decimal x)
 
     static member inline ToValue (x: int) =
-      Value.setLensPartial Value.FloatPLens (decimal x)
+      Value.setLensPartial Value.Float_ (decimal x)
 
     static member inline ToValue (x: int16) =
-      Value.setLensPartial Value.IntPLens (int64 x)
+      Value.setLensPartial Value.Int64_ (int64 x)
 
     static member inline ToValue (x: int64) =
-      Value.setLensPartial Value.IntPLens x
+      Value.setLensPartial Value.Int64_ x
 
     static member inline ToValue (x: single) =
-      Value.setLensPartial Value.FloatPLens (decimal x)
+      Value.setLensPartial Value.Float_ (decimal x)
 
     static member inline ToValue (x: string) =
-      Value.setLensPartial Value.StringPLens x
+      Value.setLensPartial Value.String_ x
 
     static member inline ToValue (x: uint16) =
-      Value.setLensPartial Value.IntPLens (int64 x)
+      Value.setLensPartial Value.Int64_ (int64 x)
 
     static member inline ToValue (x: uint32) =
-      Value.setLensPartial Value.IntPLens (int64 x)
+      Value.setLensPartial Value.Int64_ (int64 x)
 
     static member inline ToValue (x: uint64) =
-        Value.setLensPartial Value.FloatPLens (decimal x)
+        Value.setLensPartial Value.Float_ (decimal x)
 
     (* Common Types *)
 
     static member inline ToValue (x: DateTime) =
-      Value.setLensPartial Value.StringPLens (x.ToUniversalTime().ToString("o"))
+      Value.setLensPartial Value.String_ (x.ToUniversalTime().ToString("o"))
 
     static member inline ToValue (x: DateTimeOffset) =
-      Value.setLensPartial Value.StringPLens (x.ToString("o"))
+      Value.setLensPartial Value.String_ (x.ToString("o"))
 
     static member inline ToValue (x: Guid) =
-      Value.setLensPartial Value.StringPLens (string x)
+      Value.setLensPartial Value.String_ (string x)
 
     (* Json Type *)
 
@@ -367,7 +441,7 @@ module Mapping =
   module Value =
 
     let inline write key value =
-      Value.setLensPartial (Value.ObjectPLens >??> key_ key) (toValue value)
+      Value.setLensPartial (Value.Object_ >??> key_ key) (toValue value)
 
     let inline serialize a =
       toValue a
@@ -433,6 +507,39 @@ type Units =
   | Root of Units
   | Log10 of Units // Log of base:float * BaseUnit
 
+  static member symbol = function
+    | Bits -> "b"
+    | Bytes -> "B"
+    | Seconds -> "s"
+    | Metres -> "m"
+    | Scalar -> ""
+    | Amperes -> "A"
+    | Kelvins -> "K"
+    | Moles -> "mol"
+    | Candelas -> "cd"
+    | Mul (a, b) -> String.Concat [ "("; Units.symbol a; "*"; Units.symbol b; ")" ]
+    | Pow (a, b) -> String.Concat [ Units.symbol a; "^("; Units.symbol b; ")" ]
+    | Div (a, b) -> String.Concat [ "("; Units.symbol a; "/"; Units.symbol b; ")" ]
+    | Root a -> String.Concat [ "sqrt("; Units.symbol a; ")" ]
+    | Log10 a -> String.Concat [ "log10("; Units.symbol a; ")" ]
+
+  static member ToJson (u : Units) =
+    Json.Lens.setPartial Json.String_ (u |> Units.symbol)
+
+  static member FromJson (_ : Units) =
+        function
+        | "b" -> Bits
+        | "B" -> Bytes
+        | "s" -> Seconds
+        | "m" -> Metres
+        | "" -> Scalar
+        | "A" -> Amperes
+        | "K" -> Kelvins
+        | "mol" -> Moles
+        | "cd" -> Candelas
+        | x -> failwith "TODO: implement units parser"
+    <!> Json.Lens.getPartial Json.String_
+
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Duration =
   open NodaTime
@@ -457,22 +564,6 @@ module Duration =
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Units =
-
-  let rec symbol = function
-    | Bits -> "b"
-    | Bytes -> "B"
-    | Seconds -> "s"
-    | Metres -> "m"
-    | Scalar -> ""
-    | Amperes -> "A"
-    | Kelvins -> "K"
-    | Moles -> "mol"
-    | Candelas -> "cd"
-    | Mul (a, b) -> String.Concat [ "("; symbol a; "*"; symbol b; ")" ]
-    | Pow (a, b) -> String.Concat [ symbol a; "^("; symbol b; ")" ]
-    | Div (a, b) -> String.Concat [ "("; symbol a; "/"; symbol b; ")" ]
-    | Root a -> String.Concat [ "sqrt("; symbol a; ")" ]
-    | Log10 a -> String.Concat [ "log10("; symbol a; ")" ]
 
   type UnitOrientation =
     | Prefix
@@ -517,9 +608,9 @@ module Units =
   let formatWithUnit orient un value =
     match orient with
     | Prefix ->
-      sprintf "%s %s" (symbol un) (formatValue value)
+      sprintf "%s %s" (Units.symbol un) (formatValue value)
     | Suffix ->
-      sprintf "%s %s" (formatValue value) (symbol un)
+      sprintf "%s %s" (formatValue value) (Units.symbol un)
 
 type PointName = string list
 
@@ -530,6 +621,12 @@ module PointName =
   [<CompiledName "FromString">]
   let fromString (s: string) = s.Split ([|'.'|]) |> Array.toList
 
+module Chiron =
+  let inline internal (|PropertyWith|) (fromJson : Json< ^a>) key =
+       Lens.getPartial (Json.Object_ >??> key_ key)
+    >> Option.bind (fromJson >> function | Value a, _ -> Some (a : 'a)
+                                         | _, _ -> None)
+
 type PointValue =
   /// Value at point in time
   | Gauge of Value * Units
@@ -538,8 +635,59 @@ type PointValue =
   /// All simple-valued fields' values can be templated into the template string
   /// when outputting the value in the target.
   | Event of template:string
+with
+  static member private valueUnitsToJson (value : Value, units : Units) : Json<unit> =
+    Json.write "value" value
+    *> Json.write "units" units
 
-type Field = Field of Value * Units option // move outside this module
+  static member private valueUnitsFromJson : Json<Value * Units> =
+    (fun value units -> value, units)
+    <!> Json.read "value"
+    <*> Json.read "units"
+
+  static member ToJson (pv : PointValue) : Json<unit> =
+    let inJsonObject writer =
+      writer (Json.Object Map.empty) |> snd
+
+    match pv with
+    | Gauge (value, units) ->
+      Json.writeWith (PointValue.valueUnitsToJson >> inJsonObject) "gauge" (value, units)
+
+    | Derived (value, units) ->
+      Json.writeWith (PointValue.valueUnitsToJson >> inJsonObject) "derived" (value, units)
+
+    | Event template ->
+      Json.write "event" template
+
+  static member FromJson (_ : PointValue) : Json<PointValue> =
+    fun json ->
+      match json with
+      // TODO: why does the compiler require Some (..) here??
+      | Chiron.PropertyWith PointValue.valueUnitsFromJson "gauge" (Some (value, units)) ->
+        JsonResult.Value (Gauge (value, units)), json
+
+      // TODO: why does the compiler require Some (..) here??
+      | Chiron.PropertyWith PointValue.valueUnitsFromJson "derived" (Some (value, units)) ->
+        JsonResult.Value (Derived (value, units)), json
+
+      // TODO: as opposed to here...
+      | Property "event" event ->
+        JsonResult.Value (Event event), json
+
+      | json ->
+        Json.error (sprintf "Cannot convert JSON %A to PointValue" json) json
+
+type Field =
+  Field of Value * Units option // move outside this module
+with
+  static member ToJson (Field (value, maybeUnit)) =
+    Json.write "value" value
+    *> Json.write "units" maybeUnit
+
+  static member FromJson (_ : Field) =
+    (fun value units -> Field (value, units))
+    <!> Json.read "value"
+    <*> Json.tryRead "units"
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>] // remove when field moved outside
 module Field =
@@ -577,6 +725,32 @@ type Message =
 
     static member contextField_ name : PLens<Message, Value> =
       Message.contextFields_ >-?> (key_ name)
+
+    static member ToJson (m : Message) =
+      Json.write "name" m.name
+      *> Json.write "value" m.value
+      *> Json.write "fields" (m.fields |> Seq.map (fun kv -> String.concat "." kv.Key, kv.Value) |> Map.ofSeq)
+      *> Json.write "session" m.session
+      *> Json.write "context" m.context
+      *> Json.write "level" m.level
+      *> Json.write "timestamp" m.timestamp
+
+    static member FromJson (_ : Message) =
+      (fun name value (fields : Map<string, _>) session context level ts ->
+        { name = name
+          value = value
+          fields = fields |> Seq.map (fun kv -> (kv.Key |> String.split '.'), kv.Value) |> Map.ofSeq
+          session = session
+          context = context
+          level = level
+          timestamp = ts })
+      <!> Json.read "name"
+      <*> Json.read "value"
+      <*> Json.read "fields"
+      <*> Json.read "session"
+      <*> Json.read "context"
+      <*> Json.read "level"
+      <*> Json.read "timestamp"
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Message =

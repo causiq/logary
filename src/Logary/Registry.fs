@@ -75,7 +75,6 @@ module Advanced =
 
   open Logary
   open Logary.Configuration
-  open Logary.Configuration.LogaryConfLenses
   open Logary.Rule
   open Logary.Target
   open Logary.HealthCheck
@@ -198,7 +197,7 @@ module Advanced =
 
     /// The registry function that works as an actor.
     let rec registry conf sup sched (inbox : Ch<RegistryMessage>) =
-      let targets = conf.targets |> LogaryConfLenses.targetActors_.get
+      let targets = conf.targets |> Seq.map (fun kv -> kv.Value |> snd |> Option.get)
       let lgr = conf.metadata.logger
       let regPath = "Logary.Registry.registry"
       let log = Message.Context.serviceSet regPath >> Logger.log lgr
@@ -274,7 +273,8 @@ module Advanced =
           Message.debug "polling metrics" |> log
           // CONSIDER: can parallelise this if it helps (as they are all disjunct)
           for mtr in conf.metrics do
-            let metricInstance = (LogaryConfLenses.metricActor_ mtr.Key).get conf
+            let getMetricInst name = fun x -> x.metrics |> Map.find name |> (snd >> Option.get)
+            let metricInstance = getMetricInst mtr.Key conf
 
             // CONSIDER: can memoize get data points of it helps (this one will probably not change very often)
             Message.debugf "get dps from %O" metricInstance |> log
@@ -345,7 +345,9 @@ module Advanced =
                             metrics    = metrics }
 
     let register = Supervisor.register sup
-    targetActors_.get targets
+
+    targets
+    |> Seq.map (fun kv -> kv.Value |> snd |> Option.get)
     |> Seq.iter (fun ti -> Job.Global.run << register <| NamedJob.create ti.name ti.job)
 
     let sched = Scheduling.create ()

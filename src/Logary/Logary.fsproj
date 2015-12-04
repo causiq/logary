@@ -44,7 +44,6 @@
       <Paket>True</Paket>
       <Link>paket-files\Chiron.fs</Link>
     </Compile>
-    <Compile Include="Lenses.fs" />
     <Compile Include="LogLevel.fs" />
     <Compile Include="MessageTemplates.fs" />
     <Compile Include="Internals.fs" />
