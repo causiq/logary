@@ -61,7 +61,10 @@ module internal Impl =
     |> Seq.map (fun r -> invalidPathCharacters.Replace(r, "_"))
     |> List.ofSeq
 
-  let formatMeasure = (function Gauge (v, _) | Derived (v, _) -> v) >> Units.formatValue
+  let formatMeasure = Units.formatValue << function
+    | Gauge (v, _)
+    | Derived (v, _) -> v
+    | Event template -> Int64 0L
 
   /// All graphite messages are of the following form.
   /// metric_path value timestamp\n

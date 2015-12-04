@@ -41,9 +41,9 @@ module internal Impl =
       body        = body
       attachments = [] }
 
-  let loop (conf : MailgunLogaryConf) (ri : RuntimeInfo) (inbox : IActor<_>) =
-    let rec loop () = async {
-      let! msg, _ = inbox.Receive()
+  let loop (conf : MailgunLogaryConf) (ri : RuntimeInfo) (reqCh : Ch<_>) =
+    let rec loop () = job {
+      let! msg = Ch.take reqCh
       match msg with
       | Log line ->
         if line.level < conf.minLevel then return! loop ()
@@ -60,25 +60,24 @@ module internal Impl =
           |> Message.addData (["response", x] |> Map)
           |> Logger.log ri.logger
         return! loop ()
-      | Measure msr ->
+
+      | Flush ack ->
+        do! IVar.fill ack Ack
         return! loop ()
-      | Flush ackChan ->
-        ackChan.Reply Ack
-        return! loop ()
-      | Shutdown ackChan ->
-        ackChan.Reply Ack
-        return ()
+
+      | Shutdown ack ->
+        do! IVar.fill ack Ack
       }
 
     if conf.``to`` = [] then
       Logger.error ri.logger "no `to` configured in Mailgun target"
-      async.Return ()
+      Job.result ()
     elif conf.from.Host = "example.com" then
       Logger.error ri.logger "you cannot send e-mail to example.com in Mailgun target"
-      async.Return ()
+      Job.result ()
     elif conf.domain = "example.com" then
       Logger.error ri.logger "you cannot send e-mail from example.com in Mailgun target"
-      async.Return ()
+      Job.result ()
     else
       loop ()
 

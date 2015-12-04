@@ -631,12 +631,12 @@ module Message =
   /// Creates a new event message with level
   [<CompiledName "CreateEvent">]
   let event level msg =
-    { name = []
-      value = Event msg
-      fields = Map.empty
-      session = Object Map.empty
-      context = Map.empty
-      level   = level
+    { name      = []
+      value     = Event msg
+      fields    = Map.empty
+      session   = Object Map.empty
+      context   = Map.empty
+      level     = level
       timestamp = SystemClock.Instance.Now.Ticks }
 
   /// Creates a new metric message with data point name, unit and value
