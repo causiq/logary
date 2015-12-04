@@ -3,6 +3,7 @@
 open Fuchu
 open System
 open System.IO
+open Hopac
 open Logary
 open Logary.Heka
 open Logary.Heka.Messages
@@ -15,7 +16,7 @@ let encoders =
   let encode conf msg =
     use ms = new MemoryStream()
     match Encoder.encode conf ms msg with
-    | Choice1Of2 promise -> Async.RunSynchronously promise
+    | Choice1Of2 promise -> run promise
     | Choice2Of2 err -> Tests.failtestf "error: %A" err
     ms.ToArray()
 
@@ -65,7 +66,7 @@ let encoders =
       use ms = new MemoryStream()
       match Encoder.encode conf ms msg with
       | Choice1Of2 promise ->
-        Async.RunSynchronously promise
+        run promise
         Tests.failtest "should have returned failure due to large header"
       | Choice2Of2 (MessageTooLarge err) ->
         Tests.failtest "unexpected return value"
@@ -79,7 +80,7 @@ let encoders =
       use ms = new MemoryStream()
       match Encoder.encode emptyConf ms msg with
       | Choice1Of2 promise ->
-        Async.RunSynchronously promise
+        run promise
         Tests.failtest "should have returned failure due to large header"
       | Choice2Of2 (HeaderTooLarge err) ->
         Tests.failtest "unexpected return value"
@@ -90,10 +91,18 @@ let encoders =
 
 [<Tests>]
 let transformToMessage =
-  testList "converting a log line to a Message" [
+  testList "converting a Logary Message to a Heka Message" [
     testCase "just message" <| fun _ ->
-      let ll = DataModel.Message.event Info "hello world"
-      Assert.Equal("should eq msg", Message(), ll |> Message.ofMessage)
+      let ll =
+        { DataModel.Message.event Info "hello world" with
+            name      = [ "Logibit"; "Web"; "Sample"; "Run" ]
+            timestamp = 1234567L }
+      Assert.Equal("should eq msg",
+        Message(payload   = "hello world",
+                severity  = Nullable 6,
+                logger    = "Logibit.Web.Sample.Run",
+                timestamp = 1234567L),
+        ll |> Message.ofMessage)
   ]
 
 [<EntryPoint>]
