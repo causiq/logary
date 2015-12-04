@@ -81,7 +81,7 @@ let send msg (i : TargetInstance) =
 
 /// Same as Target.send, but with the arguments the other way around and
 /// it doesn't return the instance.
-let send' instance msg =
+let sendMessage instance msg =
   send msg instance |> ignore
 
 /// Send a flush RPC to the target and return the async with the ACKs
