@@ -1,8 +1,9 @@
 namespace Logary
 
 open System
-
 open NodaTime
+open Logary.Utils.Chiron
+open Logary.Utils.Chiron.Operators
 
 /// The log levels specify the severity of the message.
 [<CustomEquality; CustomComparison>]
@@ -21,75 +22,81 @@ type LogLevel =
   /// log lines that cause the application to crash or become
   /// unusable.
   | Fatal
-  with
-    /// Convert the LogLevel to a string
-    override x.ToString () =
-      match x with
-      | Verbose -> "verbose"
-      | Debug   -> "debug"
-      | Info    -> "info"
-      | Warn    -> "warn"
-      | Error   -> "error"
-      | Fatal   -> "fatal"
+with
+  /// Convert the LogLevel to a string
+  override x.ToString () =
+    match x with
+    | Verbose -> "verbose"
+    | Debug   -> "debug"
+    | Info    -> "info"
+    | Warn    -> "warn"
+    | Error   -> "error"
+    | Fatal   -> "fatal"
 
-    /// Converts the string passed to a Loglevel.
-    [<System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
-    static member FromString str =
-      match (str : string).ToLowerInvariant() with
-      | "verbose" -> Verbose
-      | "debug"   -> Debug
-      | "info"    -> Info
-      | "warn"    -> Warn
-      | "error"   -> Error
-      | "fatal"   -> Fatal
-      | _         -> Info
+  /// Converts the string passed to a Loglevel.
+  [<System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
+  static member FromString str =
+    match (str : string).ToLowerInvariant() with
+    | "verbose" -> Verbose
+    | "debug"   -> Debug
+    | "info"    -> Info
+    | "warn"    -> Warn
+    | "error"   -> Error
+    | "fatal"   -> Fatal
+    | _         -> Info
 
-    /// Turn the LogLevel into an integer
-    [<System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
-    member x.ToInt () =
-      (function
-      | Verbose -> 1
-      | Debug   -> 2
-      | Info    -> 3
-      | Warn    -> 4
-      | Error   -> 5
-      | Fatal   -> 6) x
+  static member FromJson (_ : LogLevel) =
+    LogLevel.FromString <!> Json.Lens.getPartial Json.String_
 
-    /// Turn an integer into a LogLevel
-    [<System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
-    static member FromInt i =
-      (function
-      | 1 -> Verbose
-      | 2 -> Debug
-      | 3 -> Info
-      | 4 -> Warn
-      | 5 -> Error
-      | 6 -> Fatal
-      | _ as i -> failwithf "rank %i not available" i) i
+  static member ToJson (l : LogLevel) : Json<unit> =
+    Json.Lens.setPartial Json.String_ (l.ToString())
 
-    static member op_LessThan (a, b) = (a :> IComparable<LogLevel>).CompareTo(b) < 0
-    static member op_LessThanOrEqual (a, b) = (a :> IComparable<LogLevel>).CompareTo(b) <= 0
-    static member op_GreaterThan (a, b) = (a :> IComparable<LogLevel>).CompareTo(b) > 0
-    static member op_GreaterThanOrEqual (a, b) = (a :> IComparable<LogLevel>).CompareTo(b) >= 0
+  /// Turn the LogLevel into an integer
+  [<System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
+  member x.ToInt () =
+    (function
+    | Verbose -> 1
+    | Debug   -> 2
+    | Info    -> 3
+    | Warn    -> 4
+    | Error   -> 5
+    | Fatal   -> 6) x
 
-    override x.Equals other = (x :> IComparable).CompareTo other = 0
+  /// Turn an integer into a LogLevel
+  [<System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
+  static member FromInt i =
+    (function
+    | 1 -> Verbose
+    | 2 -> Debug
+    | 3 -> Info
+    | 4 -> Warn
+    | 5 -> Error
+    | 6 -> Fatal
+    | _ as i -> failwithf "rank %i not available" i) i
 
-    override x.GetHashCode () = x.ToInt ()
+  static member op_LessThan (a, b) = (a :> IComparable<LogLevel>).CompareTo(b) < 0
+  static member op_LessThanOrEqual (a, b) = (a :> IComparable<LogLevel>).CompareTo(b) <= 0
+  static member op_GreaterThan (a, b) = (a :> IComparable<LogLevel>).CompareTo(b) > 0
+  static member op_GreaterThanOrEqual (a, b) = (a :> IComparable<LogLevel>).CompareTo(b) >= 0
 
-    interface IComparable with
-      member x.CompareTo other =
-        match other with
-        | null        -> 1
-        | :? LogLevel as tother ->
-          (x :> IComparable<LogLevel>).CompareTo tother
-        | _ -> failwith <| sprintf "invalid comparison %A to %A" x other
+  override x.Equals other = (x :> IComparable).CompareTo other = 0
 
-    interface IComparable<LogLevel> with
-      member x.CompareTo other =
-        compare (x.ToInt()) (other.ToInt())
+  override x.GetHashCode () = x.ToInt ()
 
-    interface IEquatable<LogLevel> with
-      member x.Equals other =
-        x.ToInt() = other.ToInt()
+  interface IComparable with
+    member x.CompareTo other =
+      match other with
+      | null        -> 1
+      | :? LogLevel as tother ->
+        (x :> IComparable<LogLevel>).CompareTo tother
+      | _ -> failwith <| sprintf "invalid comparison %A to %A" x other
 
-    // http://stackoverflow.com/questions/5557899/f-implement-icomparable-for-hashseta
+  interface IComparable<LogLevel> with
+    member x.CompareTo other =
+      compare (x.ToInt()) (other.ToInt())
+
+  interface IEquatable<LogLevel> with
+    member x.Equals other =
+      x.ToInt() = other.ToInt()
+
+  // http://stackoverflow.com/questions/5557899/f-implement-icomparable-for-hashseta

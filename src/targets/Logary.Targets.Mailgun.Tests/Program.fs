@@ -1,9 +1,11 @@
 ﻿module Logary.Targets.Mailgun.Tests.Program
 
+open Fuchu
+
 open System
 open System.Net.Mail
+open Hopac
 open Mailgun.Api
-open Fuchu
 open Logary
 open Logary.DataModel
 open Logary.Internals
@@ -11,9 +13,9 @@ open Logary.Targets.Mailgun
 
 let emptyRuntime = { serviceName = "tests"; logger = NullLogger() }
 
-let flush = Target.flush >> Async.Ignore >> Async.RunSynchronously
+let flush = Target.flush >> Job.Ignore >> run
 
-let stop = Target.shutdown >> Async.Ignore >> Async.RunSynchronously
+let stop = Target.shutdown >> Job.Ignore >> run
 
 let env k =
   match Environment.GetEnvironmentVariable k with
@@ -42,7 +44,7 @@ let tests =
     testCase "can send test e-mail" <| fun _ ->
       let target = start ()
       try
-        (Message.error "hello world") |> Target.sendLogLine target
+        (Message.error "hello world") |> Target.sendMessage target
         flush target
       finally stop target
 

@@ -3,7 +3,6 @@ bin/
 *.suo
 AssemblyVersionInfo.fs
 packages/
-vendor/
 AssemblyVersionInfo.cs
 build/
 AssemblyVersionInfo.cs

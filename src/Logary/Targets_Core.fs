@@ -25,7 +25,7 @@ module TextWriter =
       /// the log level that is considered 'important' enough to write to the
       /// error text writer
       isErrorAt  : LogLevel }
-    static member Create(output, error, ?formatter) =
+    static member Create(output, error, ?formatter : StringFormatter) =
       { formatter    = defaultArg formatter JsonFormatter.Default
         output       = output
         error        = error
@@ -109,7 +109,7 @@ module Console =
 
   /// Default console target configuration.
   let empty =
-    { formatter = StringFormatter.LevelDatetimeMessagePath
+    { formatter = StringFormatter.levelDatetimeMessagePath
       colorMap  = None (* fun col line -> 0x000000 black *) }
 
   let create conf =
@@ -152,7 +152,6 @@ module Debugger =
   open Hopac
 
   open Logary
-  open Logary.DataModel
   open Logary.Internals
   open Logary.Target
   open Logary.Formatting
@@ -162,36 +161,40 @@ module Debugger =
     /// Create a new Debugger configuration with a given formatter (which
     /// formats how the log line and metrics are printed)
     static member Create ?formatter =
-      { formatter = defaultArg formatter (StringFormatter.LevelDatetimeMessagePathNl) }
+      { formatter = defaultArg formatter (StringFormatter.levelDatetimeMessagePathNl) }
 
   /// Default debugger configuration
   let empty =
-    { formatter = StringFormatter.LevelDatetimeMessagePathNl }
+    { formatter = StringFormatter.levelDatetimeMessagePathNl }
 
-  let private debuggerLoop conf metadata =
-    (fun (reqCh : Ch<_>) ->
-      let formatter = conf.formatter
-      let offLevel = 6
-      let rec loop () = job {
-        let! msg = Ch.take reqCh
-        match msg with
-        | Log l when Debugger.IsLogging() ->
-          Debugger.Log(offLevel, Message.Context.serviceGet l, l |> formatter.format)
-          return! loop()
-        | Log _ ->
-          return! loop ()
-        | Flush ack ->
-          do! IVar.fill ack Ack
-          return! loop()
-        | Shutdown ack ->
-          do! IVar.fill ack Ack
-          return () }
-      loop ())
+  module private Impl =
 
-  let create conf = TargetUtils.stdNamedTarget (debuggerLoop conf)
+    let loop conf metadata =
+      (fun (reqCh : Ch<_>) ->
+        let formatter = conf.formatter
+        let offLevel = 6
+        let rec loop () = job {
+          let! msg = Ch.take reqCh
+          match msg with
+          | Log message when Debugger.IsLogging() ->
+            let path = message.name.ToString()
+            Debugger.Log(offLevel, path, formatter.format message)
+            return! loop()
 
-  [<CompiledName("Create")>]
-  let create' (conf, name) = create conf name
+          | Log _ ->
+            return! loop ()
+
+          | Flush ack ->
+            do! IVar.fill ack Ack
+            return! loop()
+
+          | Shutdown ack ->
+            do! IVar.fill ack Ack
+        }
+        loop ())
+
+  let create conf =
+    TargetUtils.stdNamedTarget (Impl.loop conf)
 
   /// Use with LogaryFactory.New( s => s.Target<Debugger.Builder>() )
   type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =

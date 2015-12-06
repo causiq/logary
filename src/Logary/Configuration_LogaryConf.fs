@@ -13,59 +13,39 @@ open Logary.Metric
 /// targets as well as the rules that map log lines and metrics to them.
 type LogaryConf =
   { /// A list of rules that guide what targets are invoked for a given
-    /// log line or measure.
-    rules    : Rule list
+    /// message.
+    rules       : Rule list
 
     /// A map of the targets by name. Some targets may not have been initialised
     /// (LogaryConf describes what-is-to-be before running it, thereafter it describes
     /// what has been configured, and the targets instances aren't None anymore.)
-    targets  : Map<string, TargetConf * Option<TargetInstance>>
+    targets     : Map<PointName, TargetConf * TargetInstance option>
 
     /// Service metadata - what name etc.
-    metadata : RuntimeInfo
+    runtimeInfo : RuntimeInfo
 
-    /// A map of metrics by name
-    metrics  : Map<string, MetricConf * Option<MetricInstance>>
+    /// A map of metrics by name.
+    metrics     : Map<PointName, MetricConf * MetricInstance option>
 
-    /// how often do we poll metrics
-    pollPeriod : Duration }
+    /// How often do we poll metrics?
+    pollPeriod  : Duration }
 
-module LogaryConfLenses =
+  static member rules_ =
+    (fun x -> x.rules),
+    fun v x -> { x with rules = v }
 
-  open Logary.Lenses
-  open Logary.Internals
+  static member targets_ =
+    (fun x -> x.targets),
+    fun v x -> { x with targets = v }
 
-  let rules_ =
-    { get = fun x -> x.rules
-      set = fun v x -> { x with rules = v } }
+  static member runtimeInfo_ =
+    (fun x -> x.runtimeInfo),
+    fun v (x : LogaryConf) -> { x with runtimeInfo = v }
 
-  let targets_ =
-    { get = fun x -> x.targets
-      set = fun v x -> { x with targets = v } }
+  static member metrics_ =
+    (fun x -> x.metrics),
+    fun v x -> { x with metrics = v }
 
-  let metadata_ =
-    { get = fun x -> x.metadata
-      set = fun v x -> { x with metadata = v } }
-
-  let metrics_ =
-    { get = fun x -> x.metrics
-      set = fun v x -> { x with metrics = v } }
-
-  /// read all configuration's actors
-  let targetActors_ =
-    { get = fun (x : Map<_, _>) -> x |> Seq.map (fun kv -> kv.Value |> snd |> Option.get)
-      set = fun _ _ -> failwith "cannot set target actors" }
-
-  /// read and write a very specific target actor
-  let targetActor_ name =
-    { get = fun x -> x.targets |> Map.find name |> fun (_, minst) -> minst |> Option.get
-      set = fun v x ->
-        let value' = x.targets |> Map.find name |> fst, Some v
-        { x with targets = x.targets |> Map.put name value' } }
-
-  /// rad and write a very specific metric actor
-  let metricActor_ name =
-    { get = fun x -> x.metrics |> Map.find name |> (snd >> Option.get)
-      set = fun v x ->
-        let value' = x.metrics |> Map.find name |> fst, Some v
-        { x with metrics = x.metrics |> Map.put name value' } }
+  static member pollPeriod_ =
+    (fun x -> x.pollPeriod),
+    fun v x -> { x with pollPeriod = v }

@@ -4,7 +4,6 @@ open System
 open System.Text.RegularExpressions
 
 open Logary
-open Logary.DataModel
 open Logary.Internals
 
 /// This is the accept filter that is before the message is passed to the logger
@@ -15,8 +14,8 @@ type MessageFilter = Message -> bool
 type Rule =
   { /// This is the regular expression that the 'path' must match to be loggable
     hiera         : Regex
-    /// This is the name of the target that this rule applies to
-    target        : string
+    /// This is the name of the target that this rule applies to.
+    target        : PointName
     /// This is the level at which the target will accept log lines. It's inclusive, so
     /// anything below won't be accepted.
     level         : LogLevel
@@ -49,7 +48,7 @@ type Rule =
       | _ -> invalidArg "yobj" "cannot compare values of different types"
 
   override x.ToString() =
-    sprintf "Rule(hiera=%O, target=%s, level=%O)"
+    sprintf "Rule(hiera=%O, target=%O, level=%O)"
       x.hiera x.target x.level
 
 /// Module for dealing with rules. Rules take care of filtering too verbose
@@ -62,8 +61,8 @@ module Rule =
   let allowFilter _ = true
 
   /// Find all rules matching the name, from the list of rules passed.
-  let matching (name : string) (rules : Rule list) =
-    rules |> List.filter (fun r -> r.hiera.IsMatch name)
+  let matching (name : PointName) (rules : Rule list) =
+    rules |> List.filter (fun r -> r.hiera.IsMatch (PointName.format name))
 
   /////////////////////
   // Creating rules: //
@@ -75,7 +74,7 @@ module Rule =
   /// won't work, e.g. using the `createForTarget` method.
   let empty =
     { hiera         = allHiera
-      target        = ""
+      target        = PointName.empty
       messageFilter = fun _ -> true
       level         = Verbose }
 
@@ -85,7 +84,7 @@ module Rule =
   let setHieraS (regex : string) (r : Rule) =
     { r with hiera = Regex(regex) }
 
-  let setTarget (target : string) (r : Rule) =
+  let setTarget (target : PointName) (r : Rule) =
     { r with target = target }
 
   let setMessageFilter (mf : _ -> _) (r : Rule) =
@@ -96,7 +95,7 @@ module Rule =
 
   /// Create a rule that accepts any input for a specified target (that's the
   /// name param).
-  let createForTarget (name : string) =
+  let createForTarget (name : PointName) =
     { empty with target = name }
 
   /// Create a new rule with the given hiera, target, accept function and min level
@@ -106,8 +105,3 @@ module Rule =
       target        = target
       messageFilter = messageFilter
       level         = level }
-
-  // C# interop
-  [<CompiledName "Create">]
-  let create' (hiera, target, messageFilter : Func<_, _>, level) =
-    create hiera target messageFilter.Invoke level

@@ -1,25 +1,18 @@
 ﻿module Logary.Services.SuaveReporter
 
 open System.Text
-open Suave
-open Suave.Types
-open Suave.Model
-open Suave.Http
-open Suave.Http.Applicatives
-open Suave.Http.RequestErrors
-open Suave.Http.Successful
 
 open Logary
+open Logary.DataModel
+open Logary.Utils.Aether
+open Logary.Utils.Aether.Operators
+open Logary.Utils.Chiron
+open Logary.Utils.Chiron.Operators
 
 module Impl =
   open NodaTime
   open NodaTime.Text
-
   open System
-  open Aether
-  open Aether.Operators
-  open Chiron
-  open Chiron.Operators
   open Suave.Http
 
   type internal Random with
@@ -31,116 +24,42 @@ module Impl =
 
   let internal r = Random()
 
-  type Message =
+  type JsonMsg =
     { message : string
       id      : uint64 }
 
-    static member ToJson (m : Message) : Json<unit> =
+    static member ToJson (m : JsonMsg) : Json<unit> =
       Json.write "message" m.message
       *> Json.write "id" m.id
 
-    static member FromJson (_ : Message) : Json<Message> =
+    static member FromJson (_ : JsonMsg) : Json<JsonMsg> =
       (fun m id -> { message = m
                      id      = id |> Option.fold (fun s t -> t) 0UL })
       <!> Json.read "message"
       <*> Json.tryRead "id"
+
+open Impl
+open Suave
+open Suave.Types
+open Suave.Model
+open Suave.Http
+open Suave.Http.Applicatives
+open Suave.Http.RequestErrors
+open Suave.Http.Successful
+
+let api (logger : Logger) (verbatimPath : string option) : WebPart =
+  let verbatimPath = defaultArg verbatimPath "/i/logary/loglines"
+  let getMsg = sprintf "You can post a JSON structure to: %s" verbatimPath
 
   let jsonMsg msg =
     { message = msg; id = r.NextUInt64() }
     |> Json.serialize
     |> Json.format
 
-  let jsonOK msg =
-    jsonMsg msg
-    |> fun json -> OK json >>= Writers.setMimeType "application/json"
-
-  let rec jsonToClr = function
-    | Json.String s -> box s
-    | Json.Number d -> box d
-    | Json.Array arr -> box (List.map jsonToClr arr)
-    | Json.Bool b -> box b
-    | Json.Null _ -> box None
-    | Json.Object m -> box (m |> Map.map (fun k v -> jsonToClr v))
-
-  let readLogline (input : string) =
-    let o =
-      idLens
-      <-?> Json.ObjectPIso
-
-    let root prop =
-      o >??> Aether.mapPLens prop
-
-    let errors = 
-      root "errors"
-      >??> Json.ArrayPLens
-
-    let message =
-      errors
-      >??> Aether.headPLens
-      >??> Json.ObjectPLens
-      >??> Aether.mapPLens "message"
-      >??> Json.StringPLens
-
-    let tryParseTs =
-      InstantPattern.GeneralPattern.Parse
-      >> (fun may -> if may.Success then Some may.Value else None)
-
-    let timestamp = root "timestamp" >??> Json.StringPLens
-    let data      = root "data" >??> Json.ObjectPLens
-    let session   = root "session" >??> Json.ObjectPLens
-    let context   = root "context" >??> Json.ObjectPLens
-    let tags      = root "tags" >??> Json.ArrayPLens
-    let level     = root "level" >??> Json.StringPLens
-
-    let json = Json.parse input
-
-    { message       = Lens.getPartialOrElse message "js log" json
-      data          =
-        Map [ "context",
-                Lens.getPartialOrElse context Map.empty json
-                |> Map.map (fun k v -> jsonToClr v)
-                |> box
-              "session",
-                Lens.getPartialOrElse session Map.empty json
-                |> Map.map (fun k v -> jsonToClr v)
-                |> box
-              "data",
-                Lens.getPartialOrElse data Map.empty json
-                |> Map.map (fun k v -> jsonToClr v)
-                |> box
-              "errors",
-                Lens.getPartialOrElse errors List.empty json
-                |> List.map (fun v -> jsonToClr v)
-                |> box
-            ]
-      level         =
-        Lens.getPartial level json
-        |> Option.fold (fun s t -> LogLevel.FromString t) LogLevel.Error
-      tags          =
-        Lens.getPartialOrElse tags [] json
-        |> List.map (fun json -> json, idLens <-?> Json.StringPIso)
-        |> List.map (fun (json, lens) -> Lens.getPartial lens json)
-        |> List.filter Option.isSome
-        |> List.map Option.get
-      timestamp     = 
-        Lens.getPartial timestamp json
-        |> Option.bind tryParseTs
-        |> Option.fold (fun s t -> t)
-                       (SystemClock.Instance.Now)
-      path          = ""
-      ``exception`` = None }
-
-open Impl
-
-let api (logger : Logger) (verbatimPath : string option) =
-  let verbatimPath = defaultArg verbatimPath "/i/logary/loglines"
-  let getMsg = sprintf "You can post a JSON structure to: %s" verbatimPath
-
   path verbatimPath >>= choose [
-    GET >>= jsonOK getMsg
-    POST >>= request (fun r ->
-      let data = Encoding.UTF8.GetString(r.rawForm)
-      Logger.log logger (readLogline data)
-      CREATED (jsonMsg "Created")
-    )
+    GET >>= OK (jsonMsg getMsg)
+    POST >>= Binding.bindReq
+              (Lens.get HttpRequest.rawForm_ >> UTF8.toString >> Json.tryParse >> Choice.bind Json.tryDeserialize)
+              (fun msg -> Logger.log logger msg; CREATED (jsonMsg "Created"))
+              BAD_REQUEST
   ]

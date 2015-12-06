@@ -25,7 +25,7 @@ module internal HawkLogLine =
   open Logary
 
   /// Convert a Suave LogLine to a Logary LogLine.
-  let toLogary (l : logibit.hawk.Logging.LogLine) =
+  let toLogary (l : logibit.hawk.Logging.LogLine) : Message =
     { data          = l.data
       message       = l.message
       ``exception`` = None

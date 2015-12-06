@@ -12,9 +12,9 @@ open Hopac
 
 open NodaTime
 
+open Logary
 open Logary.Registry.Logging
 open Logary.Internals
-open Logary.DataModel
 
 module Seq =
   let last xs = Seq.reduce (fun _ x -> x) xs
@@ -30,7 +30,10 @@ let private (|IsNull|_|) value = if obj.ReferenceEquals(value, null) then Some()
 /// Gets the current name, as defined by the class-name + namespace that the logger is in.
 [<CompiledName "GetCurrentLoggerName"; MethodImpl(MethodImplOptions.NoInlining); System.Diagnostics.Contracts.Pure>]
 let getCurrentLoggerName () =
-  let getName (meth : MethodBase, dt : Type) = match dt with null -> meth.Name | _ -> dt.FullName
+  let getName (meth : MethodBase, dt : Type) =
+    match dt with
+    | null -> PointName.ofSingle meth.Name
+    | _ -> PointName.parse dt.FullName
   let sf, m = let sf' = StackFrame(toSkip, false) in sf', sf'.GetMethod()
   let cont (dt : Type) = not <| (dt = null) && dt.Module.Name.Equals("mscorlib.dll", StringComparison.OrdinalIgnoreCase)
   let frame_still_unrolling_or_is_in_dotnet_core = cont << snd
@@ -54,9 +57,10 @@ let getLoggerByName name =
         let logger = FWL name :> FlyweightLogger
         Globals.flyweights := logger :: !Globals.flyweights
         logger :> Logger
-      | Some { registry = reg; metadata = { logger = logger } } ->
-        logger.Log (Message.debugf "getting logger by name: %s" name)
-        name |> Registry.getLogger reg |> Job.Global.run
+      | Some inst ->
+        inst.runtimeInfo.logger.logDebug (fun _ ->
+          Message.debugf "getting logger by name: %O" name)
+        name |> Registry.getLogger inst.registry |> Job.Global.run
 
 /// Gets the current logger from the context that this method was called
 /// in.

@@ -1,0 +1,3 @@
+[submodule "vendor/logary-js"]
+	path = vendor/logary-js
+	url = https://github.com/logary/logary-js.git

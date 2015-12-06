@@ -27,82 +27,81 @@ type Logary.LogLevel with
 
 type Logary.Heka.Messages.Field with
   static member ofField (name: string, (value, units)) =
-    let unitsS = defaultArg (Option.map (DataModel.Units.symbol) units) ""
+    let unitsS = defaultArg (Option.map (Units.symbol) units) ""
 
     // TODO: This should be reformatted if possible to avoid ridiculous amounts of copypaste
     match value with
-    | DataModel.String s when s.Length > 0 ->
+    | String s when s.Length > 0 ->
       Some <| Messages.Field(name, Nullable ValueType.STRING, unitsS, [s])
 
     // TODO/CONSIDER: Heka doesn't support arbitrary precision integers, so we use a string instead.
-    | DataModel.BigInt bi ->
+    | BigInt bi ->
       Some <| Messages.Field(name, Nullable ValueType.STRING, unitsS, [bi.ToString ()])
 
-    | DataModel.Float f ->
+    | Float f ->
       Some <| Messages.Field(name, Nullable ValueType.DOUBLE, unitsS, [float f])
 
-    | DataModel.Bool b ->
+    | Bool b ->
       Some <| Messages.Field(name, Nullable ValueType.BOOL, unitsS, [b])
 
-    | DataModel.Binary (bytes, mime) when bytes.Length > 0 ->
+    | Binary (bytes, mime) when bytes.Length > 0 ->
       Some <| Messages.Field(name, Nullable ValueType.BYTES, mime, [bytes])
     // TODO/CONSIDER: We assume here that arrays are homogenous, even though object model permits heterogenous arrays.
 
-    | DataModel.Array arr when not arr.IsEmpty ->
+    | Array arr when not arr.IsEmpty ->
       // TODO: Figure out a way to implement arrays neatly without copy-paste
       match arr.Head with
-      | DataModel.String _ ->
+      | String _ ->
         Some <| Messages.Field(name, Nullable ValueType.STRING, unitsS,
-                               Seq.choose (fst DataModel.Value.String__) arr)
+                               Seq.choose (fst Value.String__) arr)
 
-      | DataModel.Int64 i ->
+      | Int64 i ->
         Some <| Messages.Field(name, Nullable ValueType.INTEGER, unitsS,
-                               Seq.choose (fst DataModel.Value.Int64__) arr)
+                               Seq.choose (fst Value.Int64__) arr)
 
-      | DataModel.BigInt _ ->
+      | BigInt _ ->
         Some <| Messages.Field(name, Nullable ValueType.STRING, unitsS,
-                               Seq.choose (fst DataModel.Value.BigInt__) arr
+                               Seq.choose (fst Value.BigInt__) arr
                                |> Seq.map (string))
-      | DataModel.Float _ ->
+      | Float _ ->
         Some <| Messages.Field(name, Nullable ValueType.DOUBLE, unitsS,
-                               Seq.choose (fst DataModel.Value.Float__) arr
+                               Seq.choose (fst Value.Float__) arr
                                |> Seq.map (float))
-      | DataModel.Bool _ ->
+      | Bool _ ->
         Some <| Messages.Field(name, Nullable ValueType.BOOL, unitsS,
-                               Seq.choose (fst DataModel.Value.Bool__) arr)
-      | DataModel.Binary _ ->
+                               Seq.choose (fst Value.Bool__) arr)
+      | Binary _ ->
         // TODO: Handle mime types some way
         Some <| Messages.Field(name, Nullable ValueType.BYTES, unitsS,
-                               Seq.choose (fst DataModel.Value.Binary__) arr
+                               Seq.choose (fst Value.Binary__) arr
                                |> Seq.map (fst))
 
-      | DataModel.Array _ ->
+      | Array _ ->
         failwith "TODO"
 
-      | DataModel.Fraction _ ->
+      | Fraction _ ->
         failwith "TODO"
 
-      | DataModel.Object _ ->
+      | Object _ ->
         failwith "TODO"
 
-    | DataModel.Object m as o when not m.IsEmpty ->
+    | Object m as o when not m.IsEmpty ->
       Some <| Messages.Field(name, Nullable ValueType.STRING, "json",
                              [Json.format <| Json.valueToJson o])
 
     // TODO/CONSIDER: Fractions could also be serialized into an int array with a clarifying representation string
-    | DataModel.Fraction _ as frac ->
+    | Fraction _ as frac ->
       Some <| Messages.Field(name, Nullable ValueType.STRING, "json",
                              [Json.format <| Json.valueToJson frac])
 
-
 type Logary.Heka.Messages.Message with
-  static member ofMessage (msg : DataModel.Message) =
-    let hmsg = Message(logger = DataModel.PointName.joined msg.name)
+  static member ofMessage (msg : Logary.Message) =
+    let hmsg = Message(logger = PointName.joined msg.name)
     hmsg.severity <- Nullable (msg.level |> LogLevel.toSeverity)
     hmsg.timestamp <- msg.timestamp
 
     match msg.value with
-    | DataModel.Event _ -> hmsg.payload <- Formatting.formatMessage msg
+    | Event _ -> hmsg.payload <- Formatting.formatMessage msg
     | _ -> ()
 
     hmsg
@@ -125,7 +124,7 @@ module internal Impl =
       hostname : string }
 
   let loop (conf : HekaConfig) (ri : RuntimeInfo) (reqCh : Ch<_>) =
-    let debug = DataModel.Message.debug >> DataModel.Message.Context.serviceSet "Logary.Targets.Heka" >> Logger.log ri.logger
+    let debug = Message.debug >> Logger.log ri.logger
 
     let rec initialise () =
       job {
@@ -167,9 +166,9 @@ module internal Impl =
           try
             do! run
             debug "running: wrote to heka"
-          with e -> DataModel.Message.error "error writing to heka"
-                    |> DataModel.Message.Context.serviceSet "Logary.Targets.Heka"
-                    |> DataModel.Message.addExn e |> Logger.log ri.logger
+          with e -> Message.error "error writing to heka"
+                    |> Message.addExn e
+                    |> Logger.log ri.logger
         | Choice2Of2 err ->
           logFailure ri err
         debug "running: recursing"
@@ -199,12 +198,8 @@ module internal Impl =
     initialise ()
 
 /// Create a new Noop target
-let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
-
-/// C# Interop: Create a new Noop target
-[<CompiledName "Create">]
-let createInterop (conf, name) =
-  create conf name
+let create conf =
+  TargetUtils.stdNamedTarget (Impl.loop conf)
 
 /// Use with LogaryFactory.New( s => s.Target<Heka.Builder>() )
 type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =

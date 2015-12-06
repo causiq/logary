@@ -9,7 +9,7 @@ open System.Text.RegularExpressions
 
 open Hopac
 
-open Logary.DataModel
+open Logary
 open Logary.Internals
 
 /// The protocol that a target can speak
@@ -27,30 +27,32 @@ type TargetInstance =
   { job       : Job<unit>
     reqCh     : Ch<TargetMessage>
     /// The human readable name of the target.
-    name      : string
-    isRunning : unit -> bool}
+    name      : PointName }
 
 /// A target configuration is the 'reference' to the to-be-run target while it
 /// is being configured, and before Logary fully starts up.
 [<CustomEquality; CustomComparison>]
 type TargetConf =
-  { name   : string
+  { name   : PointName
     initer : RuntimeInfo -> TargetInstance }
+
   override x.ToString() =
-    sprintf "TargetConf(name = %s)" x.name
+    sprintf "TargetConf(name = %O)" x.name
 
   override x.Equals other =
-      match other with
-      | :? TargetConf as other ->
-        x.name.Equals(other.name, StringComparison.InvariantCulture)
-      | _ -> false
+    match other with
+    | :? TargetConf as other ->
+      x.name = other.name
+
+    | _ ->
+      false
 
   override x.GetHashCode() =
     hash x.name
 
   interface System.IEquatable<TargetConf> with
     member x.Equals other =
-      x.name.Equals (other.name, StringComparison.InvariantCulture)
+      x.name = other.name
 
   interface System.IComparable with
     member x.CompareTo yobj =
@@ -75,19 +77,17 @@ let init metadata (conf : TargetConf) =
 /// Send the target a message, returning the same instance
 /// as was passed in.
 let send msg (i : TargetInstance) =
-  if i.isRunning () then
-    Job.Global.start (Ch.give i.reqCh (Log msg))
+  // TODO: this is susceptible to being an unbounded queue
+  Job.Global.start (Ch.give i.reqCh (Log msg))
   i
 
 /// Same as Target.send, but with the arguments the other way around and
 /// it doesn't return the instance.
-let send' instance msg =
+let sendMessage instance msg =
   send msg instance |> ignore
 
 /// Send a flush RPC to the target and return the async with the ACKs
 let flush i =
-  if not (i.isRunning ()) then (Alt.always Ack :> Job<_>) else
-
   job {
     let! ack = IVar.create ()
     do! Ch.give i.reqCh (Flush ack)
@@ -96,8 +96,6 @@ let flush i =
 
 /// Shutdown the target, waiting indefinitely for it to stop
 let shutdown i =
-  if not (i.isRunning ()) then (Alt.always Ack :> Job<_>) else
-
   job {
     let! ack = IVar.create ()
     do! Ch.give i.reqCh (Shutdown ack)
@@ -114,12 +112,10 @@ module TargetUtils =
     { name = name
       initer = fun metadata ->
         let ch = Ch.Now.create ()
-        let j, isRunning = Job.watch (loop metadata ch)
-
-        { job     = j
-          reqCh   = ch
-          name    = name
-          isRunning = isRunning } }
+        { job       = loop metadata ch
+          reqCh     = ch
+          name      = name }
+    }
 
 /// A module that contains the required interfaces to do an "object oriented" DSL
 /// per target
@@ -150,7 +146,7 @@ module FactoryApi =
   type SpecificTargetConf =
     /// Build the target configuration from a name (and previously called
     /// methods on the instance behind the interface).
-    abstract Build : string -> TargetConf
+    abstract Build : PointName -> TargetConf
 
   /// You cannot supply your own implementation of this interface; its aim is
   /// not to provide Liskov substitution, but rather to guide you to use the

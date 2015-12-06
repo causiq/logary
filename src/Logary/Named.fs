@@ -4,4 +4,4 @@ namespace Logary
 /// or a logger or a meter.
 type Named =
   /// Gets the name of the instance
-  abstract Name : string
+  abstract name : PointName
