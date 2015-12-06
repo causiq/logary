@@ -5,9 +5,8 @@ open System.Threading
 
 open Hopac
 open Hopac.Infixes
-
 open NodaTime
-
+open Logary.Utils.Aether
 open Logary.Internals
 open Logary.Internals.Scheduling
 open Logary.Target
@@ -15,10 +14,10 @@ open Logary.HealthCheck
 
 /// Given the registry actor, and a name for the logger, get the logger from the registry.
 let getLogger (registry : RegistryInstance) name = job {
-    let! resultCh = Ch.create ()
-    do! Ch.give registry.reqCh (GetLogger (name, resultCh))
-    return! Ch.take resultCh
-  }
+  let! resultCh = Ch.create ()
+  do! Ch.give registry.reqCh (GetLogger (name, resultCh))
+  return! Ch.take resultCh
+}
 
 /// handling flyweights
 module internal Logging =
@@ -34,18 +33,21 @@ module internal Logging =
     let locker = obj()
     let logManager = ref None
     let logger = ref None
+
     interface Named with
-      member x.Name = name
+      member x.name = name
+
     interface FlyweightLogger with
       member x.Configured lm =
         lock locker (fun () ->
           logManager := Some lm
           logger := Some (Job.Global.run (getLogger lm.registry name)))
+
     interface Logger with
-      member x.LogVerbose fLine = (!logger) |> Option.iter (fun logger -> logger.LogVerbose fLine)
-      member x.LogDebug fLine = (!logger) |> Option.iter (fun logger -> logger.LogDebug fLine)
-      member x.Log l = (!logger) |> Option.iter (fun logger -> logger.Log l)
-      member x.Level = Verbose
+      member x.logVerbose fLine = (!logger) |> Option.iter (fun logger -> logger.logVerbose fLine)
+      member x.logDebug fLine = (!logger) |> Option.iter (fun logger -> logger.logDebug fLine)
+      member x.log l = (!logger) |> Option.iter (fun logger -> logger.log l)
+      member x.level = Verbose
 
   /// Iterate through all flywieghts and set the current LogManager for them
   let goFish () =
@@ -78,14 +80,13 @@ module Advanced =
   open Logary.Rule
   open Logary.Target
   open Logary.HealthCheck
-  open Logary.DataModel
   open Logary.Internals
   open Logary.Supervisor
 
   /// Given a configuration and name to find all targets for, looks up all targets
   /// from the configuration matching the passed name and create a composite
   /// acceptor/filter (any matching acceptor).
-  let getTargets conf name =
+  let getTargets conf (name : PointName) =
     let rules (rules, _, _) = rules
 
     let createFilter minLvl rules =
@@ -132,19 +133,24 @@ module Advanced =
   /// how that went. E.g. if there's a target is has a backlog, it might not be able to
   /// flush all its pending entries within the allotted timeout (200 ms at the time of writing)
   /// but will then instead return Nack/failed RPC.
-  let flushPending dur (registry : RegistryInstance) = job {
-    let! ack = IVar.create ()
-    do! Ch.give registry.reqCh (FlushPending (dur, ack))
-    return! ack }
+  let flushPending dur (registry : RegistryInstance) : Alt<unit> = Alt.withNackJob <| fun nack ->
+    Ch.create () >>= (fun flushCh ->
+    registry.reqCh *<+ (FlushPending (flushCh, nack)) >>-.
+    flushCh)
 
+  // TODO: use Alt<..> instead:
+  
   /// Shutdown the registry. This will first flush all pending entries for all targets inside the
   /// registry, and then proceed to sending ShutdownTarget to all of them. If this doesn't
   /// complete within the allotted timeout, (200 ms for flush, 200 ms for shutdown), it will
   /// return Nack to the caller (of shutdown).
-  let shutdown dur (registry : RegistryInstance) = job {
+  let shutdown dur (registry : RegistryInstance) : Job<Acks> = job {
     let! ack = IVar.create ()
     do! Ch.give registry.reqCh (ShutdownLogary (dur, ack))
-    return! ack }
+    return! ack
+  }
+
+  // TODO: use Alt<..> instead:
 
   /// Flush all registry targets, then shut it down -- the registry internals
   /// take care of timeouts, not these methods
@@ -155,10 +161,9 @@ module Advanced =
     return { flushed = fs
              stopped = ss
              timedOut = Seq.any (function Nack _ -> true | _ -> false) [ fs; ss ] }
-    }
+  }
 
   module private Impl =
-    open Logary.DataModel
 
     /// Create a new Logger from the targets passed, with a given name.
     [<CompiledName "FromTargets">]
@@ -191,16 +196,16 @@ module Advanced =
     /// The state for the Registry
     type RegistryState =
       { /// the supervisor, not of the registry actor, but of the targets and probes and health checks.
-        supervisor     : Supervisor.Instance
-        schedules      : (string * Cancellation) list
-        pollMetrics    : Cancellation option }
+        supervisor  : Supervisor.Instance
+        schedules   : (PointName * Cancellation) list
+        pollMetrics : Cancellation option }
 
     /// The registry function that works as an actor.
     let rec registry conf sup sched (inbox : Ch<RegistryMessage>) =
       let targets = conf.targets |> Seq.map (fun kv -> kv.Value |> snd |> Option.get)
-      let lgr = conf.metadata.logger
-      let regPath = "Logary.Registry.registry"
-      let log = Message.Context.serviceSet regPath >> Logger.log lgr
+      let lgr = conf.runtimeInfo.logger
+      let regPath = PointName ["Logary"; "Registry"; "registry" ]
+      let log = Lens.set Message.name_ regPath >> Logger.log lgr
 
       /// In the shutdown state, the registry doesn't respond to messages, but rather tries to
       /// flush and shut down all targets, doing internal logging as it goes.
@@ -210,12 +215,13 @@ module Advanced =
         do! defaultArg (Option.map Cancellation.cancel state.pollMetrics) (Job.unit ())
 
         Message.info "shutdown schedules" |> log
-        for (_, x) in state.schedules do do! Cancellation.cancel x
+        for (_, x) in state.schedules do
+          do! Cancellation.cancel x
 
         Message.info "shutdown targets" |> log
         let! allShutdown =
           targets
-          |> Seq.pjmap (Target.shutdown >> Job.withTimeout (Timeout (dur.ToTimeSpan ())))
+          |> Seq.pjmap (Target.shutdown >> Job.withTimeout (Timeout dur))
 
         let stopped, failed =
           allShutdown
@@ -236,24 +242,28 @@ module Advanced =
         return () }
 
       let rec init state = job {
-        let ctss = System.Collections.Generic.List<_>()
-        // init sampling of metrics
-        for m in conf.metrics do
-          let (conf, mi) = m.Value
-          match mi with
-          | Some mi ->
-            let cts = Scheduling.schedule sched Metric.sample mi conf.sampling (Some conf.sampling)
-            ctss.Add( m.Key, cts )
-          | None -> ()
+        let ctss =
+          // init sampling of metrics
+          conf.metrics
+          |> Seq.map (fun (KeyValue (key, (conf, mi))) ->
+            key,
+            mi |> Option.map (fun mi ->
+              let initialDelay, interval = conf.sampling, Some conf.sampling
+              Scheduling.schedule sched Metric.sample mi initialDelay interval
+            )
+          )
+          |> Seq.filter (snd >> Option.isSome)
+          |> Seq.map (fun (key, cancellation) -> key, Option.get cancellation)
 
         // init getting metrics' values
         Message.debugf "will poll metrics every %O" conf.pollPeriod |> log
+
         let pollCts =
           Scheduling.schedule sched pollMetrics inbox
             (Duration.FromMilliseconds 200L)
             (Some conf.pollPeriod)
 
-        return! running { state with schedules = ctss |> List.ofSeq
+        return! running { state with schedules = List.ofSeq ctss
                                      pollMetrics = Some pollCts }
         }
 
@@ -281,7 +291,7 @@ module Advanced =
             let! dps = metricInstance |> Metric.getDataPoints
 
             Message.debug "get logger" |> log
-            let mtrLgr  = mtr.Key |> getTargets conf |> fromTargets mtr.Key lgr
+            let mtrLgr = mtr.Key |> getTargets conf |> fromTargets mtr.Key lgr
 
             Message.debug "getting value from metrics" |> log
             let! msrs = metricInstance |> Metric.getValue dps
@@ -296,7 +306,7 @@ module Advanced =
 
           let! allFlushed =
             targets
-            |> Seq.pjmap (Target.flush >> Job.withTimeout (Timeout (dur.ToTimeSpan ())))
+            |> Seq.pjmap (Target.flush >> Job.withTimeout (Timeout dur))
 
           let flushed, notFlushed =
             allFlushed
@@ -330,31 +340,46 @@ module Advanced =
   ///
   /// It is not until runRegistry is called, that each target gets its service
   /// metadata, so it's no need to pass the metadata to the target before this.
-  let create ({ metadata = { logger = lgr } } as conf : LogaryConf) =
-    let log = Message.Context.serviceSet "Logary.Registry.runRegistry" >> Logger.log lgr
+  let create (conf : LogaryConf) =
+    let log =
+      Lens.set Message.name_ (PointName [ "Logary"; "Registry"; "create" ])
+      >> Logger.log conf.runtimeInfo.logger
 
-    let sopts = Supervisor.Options.create (lgr, 10, TimeSpan.FromMilliseconds 500.0)
+    let sopts = Supervisor.Options.create (conf.runtimeInfo.logger, 10u, Duration.FromMilliseconds 500L)
     let sup = Supervisor.create sopts
 
     // Supervisor must be running so we can register new jobs
     Supervisor.start sup
 
-    let targets = conf.targets |> Map.map (fun _ (tconf, _) -> tconf, Some(Target.init conf.metadata tconf))
-    let metrics = conf.metrics |> Map.map (fun _ (mconf, _) -> mconf, Some(Metric.init conf.metadata mconf))
-    let conf' = { conf with targets    = targets
-                            metrics    = metrics }
+    let targets =
+      conf.targets
+      |> Map.map (fun _ (tconf, _) ->
+        tconf,
+        Some(Target.init conf.runtimeInfo tconf))
+
+    let metrics =
+      conf.metrics
+      |> Map.map (fun _ (mconf, _) ->
+        mconf,
+        Some(Metric.init conf.runtimeInfo mconf))
+
+    let confNext = { conf with targets    = targets
+                               metrics    = metrics }
 
     let register = Supervisor.register sup
 
     targets
     |> Seq.map (fun kv -> kv.Value |> snd |> Option.get)
-    |> Seq.iter (fun ti -> Job.Global.run << register <| NamedJob.create ti.name ti.job)
+    |> Seq.iter (fun ti ->
+      let (PointName name) = ti.name
+      let namedJob = NamedJob.create name ti.job
+      Job.Global.run (register namedJob))
 
     let sched = Scheduling.create ()
 
-    let reg = Impl.create conf' sup sched
+    let reg = Impl.create confNext sup sched
 
-    { supervisor = sup
-      registry = reg
-      scheduler = sched
-      metadata = conf'.metadata }
+    { supervisor  = sup
+      registry    = reg
+      scheduler   = sched
+      runtimeInfo = confNext.runtimeInfo }

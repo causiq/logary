@@ -10,39 +10,38 @@ open Logary
 /// itself.
 type NullLogger() =
   interface Logger with
-    member x.LogVerbose fLine = ()
-    member x.LogDebug fLine = ()
-    member x.Log line = ()
-    member x.Level = Fatal
-    member x.Name = "Logary.Internals.NullLogger"
+    member x.logVerbose fLine = ()
+    member x.logDebug fLine = ()
+    member x.log line = ()
+    member x.level = Fatal
+    member x.name = PointName.ofList [ "Logary"; "Internals"; "NullLogger" ]
 
 module internal Logging =
-  open Logary.DataModel
   open Logary.Target
 
   type LoggerInstance =
-    { name    : string
+    { name    : PointName
       targets : (MessageFilter * TargetInstance) list
       level   : LogLevel
       ilogger : Logger }
     with
       interface Named with
-        member x.Name = x.name
+        member x.name = x.name
 
       interface Logger with
-        member x.Level: LogLevel = x.level
-        
-        member x.LogVerbose fMsg =
+        member x.level: LogLevel = x.level
+
+        member x.logVerbose fMsg =
           if Verbose >= x.level then
             let logger : Logger = upcast x
-            logger.Log (fMsg ()) // delegate down
+            logger.log (fMsg ()) // delegate down
 
-        member x.LogDebug fMsg =
+        member x.logDebug fMsg =
           if Debug >= x.level then
             let logger : Logger = upcast x
-            logger.Log (fMsg ()) // delegate down
+            logger.log (fMsg ()) // delegate down
 
-        member x.Log msg =
+        member x.log msg =
           for accept, t in x.targets do
             if accept msg then
               Job.Global.start (Ch.give t.reqCh (Log msg))
@@ -54,37 +53,44 @@ module internal Logging =
 type InternalLogger =
   { lvl  : LogLevel
     trgs : Target.TargetInstance list }
+
   interface Logger with
-    member x.LogVerbose fLine =
+    member x.logVerbose fLine =
       if Verbose >= x.lvl then
         let logger : Logger = upcast x
-        logger.Log (fLine ())
+        logger.log (fLine ())
 
-    member x.LogDebug fLine =
+    member x.logDebug fLine =
       if Debug >= x.lvl then
         let logger : Logger = upcast x
-        logger.Log (fLine ())
+        logger.log (fLine ())
 
-    member x.Log msg =
+    member x.log msg =
       try
         if msg.level >= x.lvl then
           x.trgs |> List.iter (Target.send msg >> ignore)
-      with _ -> ()
-    member x.Level =
+      with _ ->
+        ()
+
+    member x.level =
       x.lvl
-    member x.Name =
-      "Logary.Internals.InternalLogger"
+
+    member x.name =
+      PointName.ofList ["Logary"; "Internals"; "InternalLogger" ]
+
   interface System.IDisposable with
     member x.Dispose() =
       try
         x.trgs
         |> List.iter (Target.shutdown >> Job.Ignore >> Job.Global.run)
       with _ -> ()
-  static member Create(level, targets) =
-    { lvl = level; trgs = targets } :> Logger
+
+  static member create level targets =
+    { lvl = level
+      trgs = targets }
+    :> Logger
 
 module Try =
-  open Logary.DataModel
 
   /// Safely try to execute f, catching any exception thrown and logging that
   /// exception internally. Returns unit, irregardless of the codomain of f.

@@ -1,29 +1,26 @@
 ﻿namespace Logary
 
-open Logary.DataModel
-
 type Logger =
   inherit Named
 
   /// Write a Verbose message
-  abstract LogVerbose : (unit -> Message) -> unit
+  abstract logVerbose : (unit -> Message) -> unit
 
   /// Write a Debug message
-  abstract LogDebug   : (unit -> Message) -> unit
+  abstract logDebug   : (unit -> Message) -> unit
 
   /// Write a message to the logger.
-  abstract Log        : Message -> unit
+  abstract log        : Message -> unit
 
   /// Gets the currently set log level, aka. the granularity with which things
   /// are being logged
-  abstract Level      : LogLevel
+  abstract level      : LogLevel
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Logger =
   open System
 
   open Logary
-  open Logary.DataModel
 
   /////////////////////
   // Logging methods //
@@ -31,25 +28,28 @@ module Logger =
 
   let private ensureName (logger : Logger) (msg : Message) =
     match msg.name with
-    | [] -> Message.setName [logger.Name] msg
-    | _  -> msg
+    | PointName [] -> 
+      Message.setName logger.name msg
+
+    | _  ->
+      msg
 
   /// Write a message.
   [<CompiledName "Log">]
   let log (logger : Logger) msg =
-    logger.Log (ensureName logger msg)
+    logger.log (ensureName logger msg)
 
   /// Write a debug log line, given from the fLine callback, if the logger
   /// accepts line with Verbose level.
   [<CompiledName "LogVerbose">]
   let logVerbose (logger : Logger) fMsg =
-    logger.LogVerbose (fMsg >> ensureName logger)
+    logger.logVerbose (fMsg >> ensureName logger)
 
   /// Write a debug log line, given from the fLine callback, if the logger
   /// accepts line with Debug level.
   [<CompiledName "LogDebug">]
   let logDebug (logger : Logger) fMsg =
-    logger.LogDebug (fMsg >> ensureName logger)
+    logger.logDebug (fMsg >> ensureName logger)
 
   /// Write a verbose log entry to the logger
   [<CompiledName "Verbose">]

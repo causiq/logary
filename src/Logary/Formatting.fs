@@ -7,24 +7,29 @@ open System.Collections
 open System.Collections.Generic
 open System.Text
 open Microsoft.FSharp.Reflection
-
+open NodaTime
+open Logary
+open Logary.Utils
 open Logary.Utils.FsMessageTemplates
-open Logary.DataModel
 
-let internal formatTemplate (template:string) (args : Map<PointName, Field>) =
+let internal formatTemplate (template : string) (args : Map<PointName, Field>) =
   let template = Parser.parse template
-  let sb       = System.Text.StringBuilder()
+  let sb       = StringBuilder()
 
-  let append (sb : System.Text.StringBuilder) (s : string) = sb.Append s |> ignore
+  let append (sb : StringBuilder) (s : string) =
+    sb.Append s |> ignore
 
   template.Tokens
   |> Seq.map (function
-    | Text (_, t) -> t
+    | Text (_, t) ->
+      t
+
     | Prop (_, p) ->
-      let (Field (value, units)) = Map.find [p.Name] args
+      let (Field (value, units)) = Map.find (PointName.ofSingle p.Name) args
       match units with
       | Some units ->
         Units.formatWithUnit Units.Suffix (units) value
+
       | None ->
         Units.formatValue value)
   |> Seq.iter (append sb)
@@ -32,9 +37,12 @@ let internal formatTemplate (template:string) (args : Map<PointName, Field>) =
 
 let formatMessage (msg: Message) =
   match msg.value with
-  | Event t -> formatTemplate t msg.fields
+  | Event t ->
+    formatTemplate t msg.fields
+
   | Gauge (v, u)
-  | Derived (v, u) -> Units.formatWithUnit Units.UnitOrientation.Prefix u v
+  | Derived (v, u) ->
+    Units.formatWithUnit Units.UnitOrientation.Prefix u v
 
 /// Returns the case name of the object with union type 'ty.
 let internal caseNameOf (x:'a) =
@@ -51,7 +59,7 @@ let rec private printValue (nl: string) (depth: int) (value : Value) =
   | Float f -> f.ToString ()
   | Int64 i -> i.ToString ()
   | BigInt b -> b.ToString ()
-  | Binary (b, _) -> System.BitConverter.ToString b |> fun s -> s.Replace("-", "")
+  | Binary (b, _) -> BitConverter.ToString b |> fun s -> s.Replace("-", "")
   | Fraction (n, d) -> sprintf "%d/%d" n d
   | Array list ->
     list
@@ -87,42 +95,50 @@ let internal formatFields (nl : string) (fields : Map<PointName, Field>) =
 /// A StringFormatter is the thing that takes a message and returns it as a string
 /// that can be printed, sent or otherwise dealt with in a manner that suits the target.
 type StringFormatter =
-  { format   : Message -> string }
-  static member private Expanded nl ending =
-    let format' =
-      fun (m : Message) ->
-        sprintf "%s %s: %s [%s]%s%s"
-          (string (caseNameOf m.level).[0])
-          // https://noda-time.googlecode.com/hg/docs/api/html/M_NodaTime_OffsetDateTime_ToString.htm
-          (NodaTime.Instant(m.timestamp).ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture))
-          ((function Event format -> formatTemplate format m.fields | _ -> "") m.value)
-          (Message.Context.serviceGet m)
-          (if Map.isEmpty m.fields then "" else formatFields nl m.fields)
-          ending
-    { format  = format' }
+  abstract format : Message -> string
 
-  /// Takes c# Func delegates to initialise a StringFormatter
-  static member Create (format : Func<Message, string>) =
-    { format = fun x -> format.Invoke x }
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module StringFormatter =
+
+  let internal expanded nl ending : StringFormatter =
+    { new StringFormatter with
+        member x.format m = 
+          sprintf "%s %s: %s [%s]%s%s"
+            (string (caseNameOf m.level).[0])
+            // https://noda-time.googlecode.com/hg/docs/api/html/M_NodaTime_OffsetDateTime_ToString.htm
+            (Instant(m.timestamp).ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture))
+            ((function Event format -> formatTemplate format m.fields | _ -> "") m.value)
+            (Aether.Lens.get Message.name_ m |> sprintf "%O")
+            (if Map.isEmpty m.fields then "" else formatFields nl m.fields)
+            ending
+    }
 
   /// Verbatim simply outputs the message and no other information
   /// and doesn't append a newline to the string.
   // TODO: serialize properly
-  static member Verbatim =
-    { format   =
-      fun m ->
-        match m.value with
-        | Event format -> formatTemplate format m.fields
-        | Gauge (value, unit) | Derived (value, unit) -> value.ToString () }
+  let verbatim =
+    { new StringFormatter with
+        member x.format m =
+          match m.value with
+          | Event format ->
+            formatTemplate format m.fields
+
+          | Gauge (value, unit)
+          | Derived (value, unit) ->
+            value.ToString()
+    }
 
   /// VerbatimNewline simply outputs the message and no other information
   /// and does append a newline to the string.
-  static member VerbatimNewline =
-    { format = fun m -> sprintf "%s%s" (StringFormatter.Verbatim.format m) (Environment.NewLine)}
+  let verbatimNewLine =
+    { new StringFormatter with
+        member x.format m =
+          sprintf "%s%s" (verbatim.format m) (Environment.NewLine)
+    }
 
   /// <see cref="StringFormatter.LevelDatetimePathMessageNl" />
-  static member LevelDatetimeMessagePath =
-    StringFormatter.Expanded (Environment.NewLine) ""
+  let levelDatetimeMessagePath =
+    expanded Environment.NewLine ""
 
   /// LevelDatetimePathMessageNl outputs the most information of the log line
   /// in text format, starting with the level as a single character,
@@ -130,8 +146,8 @@ type StringFormatter =
   /// then the path in square brackets: [Path.Here], the message and a newline.
   /// Exceptions are called ToString() on and prints each line of the stack trace
   /// newline separated.
-  static member LevelDatetimeMessagePathNl =
-    StringFormatter.Expanded (Environment.NewLine) (Environment.NewLine)
+  let levelDatetimeMessagePathNl =
+    expanded Environment.NewLine Environment.NewLine
 
 open NodaTime.TimeZones
 
@@ -190,7 +206,10 @@ module Json =
   let format = Json.format
 
 /// A JsonFormatter takes a message and converts it into a JSON string.
-type JsonFormatter =
+module JsonFormatter =
   /// Creates a new JSON formatter.
-  static member Default =
-    { format = fun msg -> Json.format (Json.messageToJson msg) }
+  let Default =
+    { new StringFormatter with
+        member x.format msg =
+          Json.format (Json.messageToJson msg)
+    }

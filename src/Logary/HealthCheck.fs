@@ -2,18 +2,18 @@ namespace Logary
 
 open System
 
-open Logary.DataModel
+open Logary
 open Logary.Metric
 
 /// The details a result
 type ResultData =
   /// If the health check is for a value (which it probably is) then it should
   /// contain the measure generated.
-  abstract Measure     : Message
+  abstract measure     : Message
 
   /// Gets the description detailing what went badly with the evaluation of the
   /// health check. Useful for drilling down.
-  abstract Description : string
+  abstract description : string
 
 /// A result of the health check. Either Healthy or Unhealthy
 type HealthCheckResult =
@@ -28,7 +28,7 @@ type HealthCheck =
   inherit Named
   inherit IDisposable
   /// Performs a check with the health check.
-  abstract GetValue : unit -> HealthCheckResult
+  abstract getValue : unit -> HealthCheckResult
 
 /// A module that makes it smooth to interact with running/starting/configuration of
 /// health checks.
@@ -62,8 +62,8 @@ module HealthCheck =
   /// uses its 'data' Map to read.
   type MeasureWrapper(m : Message) =
     interface ResultData with
-      member x.Measure     = m
-      member x.Description = tryGetDesc m
+      member x.measure     = m
+      member x.description = tryGetDesc m
       //member x.Exception   = tryGetExn m
     override x.ToString() =
       sprintf "HealthCheck(name=%s, value=%A, level=%A)"
@@ -106,8 +106,8 @@ module HealthCheck =
     Job.start fjob |> ignore
 
     { new HealthCheck with
-        member x.Name = name
-        member x.GetValue () =
+        member x.name = name
+        member x.getValue () =
           (job {
             // TODO / PERF?: This channel could be reused or replaced with an IVar
             let! responseCh = Ch.create ()
@@ -123,8 +123,8 @@ module HealthCheck =
     }
 
   /// Create a health check that will never yield a value
-  let mkDead name =
+  let createDead name =
     { new HealthCheck with
-        member x.GetValue () = NoValue
-        member x.Name        = name
+        member x.getValue () = NoValue
+        member x.name        = name
         member x.Dispose ()  = () }

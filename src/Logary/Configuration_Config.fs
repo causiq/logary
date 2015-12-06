@@ -3,20 +3,16 @@
 [<AutoOpen>]
 module Logary.Configuration.Config
 
-open Hopac
-
 open System
 open System.Runtime.CompilerServices
-
+open Hopac
 open NodaTime
-
 open Logary
 open Logary.Internals
 open Logary.Target
 open Logary.Metric
 open Logary.Registry
 open Logary.Targets
-open Logary.DataModel
 
 let private shutdownLogger<'a when 'a :> Logger> : 'a -> unit = box >> function
   | :? System.IDisposable as d -> d.Dispose()
@@ -24,7 +20,7 @@ let private shutdownLogger<'a when 'a :> Logger> : 'a -> unit = box >> function
 
 /// Create an internal logger from the level and targets given
 let createInternalLogger level targets =
-  InternalLogger.Create(level, targets)
+  InternalLogger.create level targets
 
 /// Configure an internal logger (disposing anything already there); make sure
 /// the logger you give is ready to use directly. This function is different from
@@ -34,14 +30,14 @@ let createInternalLogger level targets =
 /// initialising empty metadata and a target.
 [<CompiledName "WithInternalLogger">]
 let withInternalLogger lgr (conf : LogaryConf) =
-  shutdownLogger conf.metadata.logger
-  { conf with metadata = { conf.metadata with logger = lgr } }
+  shutdownLogger conf.runtimeInfo.logger
+  { conf with runtimeInfo = { conf.runtimeInfo with logger = lgr } }
 
 /// Configure internal logging from a targets (these targets will get
 /// everything, without the metrics and/or log lines going through Rules).
 [<CompiledName "WithInternalTargets">]
 let withInternalTargets level tconfs (conf : LogaryConf) =
-  let nullMd = { serviceName = conf.metadata.serviceName; logger = NullLogger() }
+  let nullMd = { serviceName = conf.runtimeInfo.serviceName; logger = NullLogger() }
   let targets = tconfs |> List.map (Target.init nullMd)
   let logger = createInternalLogger level targets
   conf |> withInternalLogger logger
@@ -58,13 +54,13 @@ let withInternalTarget level tconf =
 /// the internal logging if you wish, with a different level.
 [<CompiledName "ConfigureLogary">]
 let confLogary serviceName =
-  { rules      = []
-    targets    = Map.empty
-    metrics    = Map.empty
-    pollPeriod = Duration.FromMilliseconds 500L
-    metadata   = { serviceName = serviceName
-                   logger      = NullLogger() } }
-  |> withInternalTarget Warn (Console.create Console.empty "cons")
+  { rules       = []
+    targets     = Map.empty
+    metrics     = Map.empty
+    pollPeriod  = Duration.FromMilliseconds 500L
+    runtimeInfo = { serviceName = serviceName
+                    logger      = NullLogger() } }
+  |> withInternalTarget Warn (Console.create Console.empty (PointName.ofSingle "cons"))
 
 /// Add a new target to the configuration. You also need to supple a rule for
 /// the target.
@@ -108,10 +104,10 @@ let withMetrics pollPeriod ms conf =
 /// Validate the configuration for Logary, throwing a ValidationException if
 /// configuration is invalid.
 [<CompiledName "ValidateLogary"; Extension>]
-let validate ({ targets  = targets
-                rules    = rules
-                metadata = { logger = lgr }
-                metrics  = metrics } as conf) =
+let validate ({ targets     = targets
+                rules       = rules
+                runtimeInfo = { logger = lgr }
+                metrics     = metrics } as conf) =
   let rtarget r = r.target
   let tnames = targets |> Map.fold (fun acc k _ -> k :: acc) [] |> Set.ofList
 
@@ -146,34 +142,45 @@ let runLogary conf =
 
 /// Shutdown logary, waiting maximum flushDur + shutdownDur.
 [<CompiledName "ShutdownLogary">]
-let shutdown' (flushDur : Duration) (shutdownDur : Duration)
-  ({ registry = reg; metadata = { logger = lgr } } : LogaryInstance) =
-  let log = Message.Context.serviceSet "Logary.Configuration.Config.shutdown" >> Logger.log lgr
+let shutdown (flushDur : Duration) (shutdownDur : Duration) (inst : LogaryInstance) =
+  let log =
+    Message.setName (PointName ["Logary"; "Configuration"; "Config"; "shutdown"])
+    >> Logger.log inst.runtimeInfo.logger
+
   job {
     Message.info "start shutdown" |> log
-    let! res = Advanced.flushAndShutdown flushDur shutdownDur reg
+    let! res = Advanced.flushAndShutdown flushDur shutdownDur inst.registry
     Message.info "stop shutdown" |> log
     Logging.shutdownFlyweights ()
-    shutdownLogger lgr
+    shutdownLogger inst.runtimeInfo.logger
     return res
   }
 
 /// Shutdown logary, waiting maximum 30 seconds, 15s for flush and 15s for
 /// shutdown.
 [<CompiledName "ShutdownLogary"; Extension>]
-let shutdown =
-  shutdown' (Duration.FromSeconds 15L) (Duration.FromSeconds 15L)
+let shutdownSimple =
+  shutdown (Duration.FromSeconds 15L) (Duration.FromSeconds 15L)
 
 /// Wrap the LogaryInstance as a LogManager
 [<CompiledName "AsLogManager"; Extension>]
 let asLogManager (inst : LogaryInstance) =
   let run = Job.Global.run
   { new LogManager with
-      member x.RuntimeInfo        = inst.metadata
-      member x.GetLogger name     = name |> getLogger inst.registry |> run
-      member x.FlushPending dur   = Advanced.flushPending dur inst.registry |> run
-      member x.Shutdown fDur sDur = shutdown' fDur sDur inst |> run
-      member x.Dispose ()         = shutdown inst |> Job.Ignore |> run
+      member x.runtimeInfo =
+        inst.runtimeInfo
+
+      member x.getLogger name =
+        name |> getLogger inst.registry |> run
+
+      member x.flushPending dur =
+        Advanced.flushPending dur inst.registry |> run
+
+      member x.shutdown fDur sDur =
+        shutdown fDur sDur inst |> run
+
+      member x.Dispose () =
+        shutdownSimple inst |> Job.Ignore |> run
   }
 
 /// Configure Logary completely with the given service name and rules, targets

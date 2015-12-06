@@ -10,12 +10,12 @@ open System
 open System.Net
 open System.Net.Sockets
 open System.Globalization
-
+open System.Text.RegularExpressions
 open Logary
+open Logary.Utils
 open Logary.Internals
 open Logary.Target
 open Logary.Internals.Tcp
-open Logary.DataModel
 
 /// Put this tag on your message (message must be a parseable value)
 /// if you want graphite to find it, or use the Metrics API of Logary.
@@ -51,15 +51,15 @@ module internal Impl =
   // !#$%&"'*+-:;<=>?@[]\^_`|~
   // . is used as a path separator
   let invalidPathCharacters =
-    System.Text.RegularExpressions.Regex("""[^a-zA-Z0-9!#\$%&"'\*\+\-:;<=>\?@\[\\\]\^_`\|~]""", Text.RegularExpressions.RegexOptions.Compiled)//"
+    Regex("""[^a-zA-Z0-9!#\$%&"'\*\+\-:;<=>\?@\[\\\]\^_`\|~]""", RegexOptions.Compiled)
 
-  /// Sanitizes Graphite metric paths by converting / to - and replacing all other
+  /// Sanitises Graphite metric paths by converting / to - and replacing all other
   /// invalid characters with underscores.
-  let sanitizePath (paths: string list) =
-    paths
-    |> Seq.map (fun r -> r.Replace("/", "-"))
-    |> Seq.map (fun r -> invalidPathCharacters.Replace(r, "_"))
-    |> List.ofSeq
+  let sanitisePath (PointName segments) =
+    segments
+    |> List.map (fun x -> x.Replace("/", "-"))
+    |> List.map (fun x -> invalidPathCharacters.Replace(x, "_"))
+    |> PointName.ofList
 
   let formatMeasure = Units.formatValue << function
     | Gauge (v, _)
@@ -68,7 +68,7 @@ module internal Impl =
 
   /// All graphite messages are of the following form.
   /// metric_path value timestamp\n
-  let createMsg path value (timestamp : Instant) =
+  let createMsg (path : String) value (timestamp : Instant) =
     let line = String.Format("{0} {1} {2}\n", path, value, timestamp.Ticks / NodaConstants.TicksPerSecond)
     UTF8.bytes line
 
@@ -102,13 +102,18 @@ module internal Impl =
         match msg with
         | Log logMsg ->
           match logMsg.value with
-          | Event message ->
-            let! state' = createMsg (Message.Context.serviceGet logMsg) message (Instant logMsg.timestamp) |> doWrite state
+          | Event template ->
+            let path = PointName.format logMsg.name
+            let instant = Instant logMsg.timestamp
+            let graphiteMsg = createMsg path template instant
+            let! state' = graphiteMsg |> doWrite state
             return! running state'
-          | Gauge _ | Derived _ ->
+
+          | Gauge _
+          | Derived _ ->
+            let path = sanitisePath logMsg.name
             let! state' =
-              createMsg (sanitizePath logMsg.name
-              |> PointName.joined) (formatMeasure logMsg.value) (Instant logMsg.timestamp)
+              createMsg (PointName.format path) (formatMeasure logMsg.value) (Instant logMsg.timestamp)
               |> doWrite state
             return! running state'
 
@@ -129,10 +134,6 @@ module internal Impl =
 
 /// Create a new graphite target configuration.
 let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
-
-/// C# interop: Create a new graphite target configuration.
-[<CompiledName("Create")>]
-let create' (conf, name) = create conf name
 
 /// Use with LogaryFactory.New( s => s.Target< HERE >() )
 type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =

@@ -6,7 +6,7 @@ open NodaTime
 
 open Hopac
 
-open Logary.DataModel
+open Logary
 open Logary.Internals
 
 // inspiration: https://github.com/Feuerlabs/exometer/blob/master/doc/exometer_probe.md
@@ -48,7 +48,7 @@ with
 
 [<CustomEquality; CustomComparison>]
 type MetricConf =
-  { name        : string
+  { name        : PointName
     ``type``    : MetricType
     initer      : RuntimeInfo -> MetricInstance
     /// the period to sample the metric's value at
@@ -58,7 +58,7 @@ with
   override x.Equals(yobj) =
       match yobj with
       | :? MetricConf as y ->
-        x.name.Equals(y.name, StringComparison.InvariantCulture)
+        x.name = y.name
         && x.``type``.Equals(y.``type``)
         && x.sampling.Equals(y.sampling)
       | _ -> false
@@ -77,7 +77,7 @@ with
 
   override x.ToString() =
     sprintf "Metric(name=%s, type=%A, sampling=%O)"
-      x.name x.``type`` x.sampling
+      (PointName.format x.name) x.``type`` x.sampling
 
 /// Start configuring a metric with a metric factory
 let confMetric name sampling (factory : string -> Duration -> MetricConf) =
@@ -274,7 +274,6 @@ module Reservoir =
   /// `update`s at any point between the ticks.
   module ExpWeightedMovAvg =
     open NodaTime
-    open Logary.DataModel
 
     /// The period in between ticks; it's a duration of time between two data
     /// points.

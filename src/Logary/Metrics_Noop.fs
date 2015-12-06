@@ -1,4 +1,4 @@
-﻿/// A metric that just ignores all calls best it can
+﻿  /// A metric that just ignores all calls best it can
 module Logary.Metrics.Noop
 
 open Hopac
@@ -7,7 +7,6 @@ open Hopac.Infixes
 open Logary
 open Logary.Internals
 open Logary.Metric
-open Logary.DataModel
 
 type NoopConf =
   { isHappy : bool }
@@ -25,7 +24,7 @@ module private Impl =
       match msg with
       | GetValue (dps, resultCh) ->
         match dps with
-        | pn :: _ when pn = [ "calls" ] ->
+        | pn :: _ when pn = PointName.ofSingle "calls" ->
           do! Ch.give resultCh [ Message.metric pn (BigInt state.calls) ]
         | _ ->
           do! Ch.give resultCh []
@@ -47,15 +46,13 @@ module private Impl =
         -> {state with calls = state.calls + 1I}
       |> Job.result
 
-    Job.iterateServer {calls = 0I} <| fun state ->
-      Alt.choose [Ch.take ch.requestCh ^=> handleRequest state
-                  Ch.take ch.updateCh  ^=> handleUpdate state
-                  Ch.give ch.dpNameCh  [ [ "calls"] ] ^->. state]
+    Job.iterateServer { calls = 0I } <| fun state ->
+      Alt.choose [
+        Ch.take ch.requestCh ^=> handleRequest state
+        Ch.take ch.updateCh  ^=> handleUpdate state
+        Ch.give ch.dpNameCh  [ PointName.ofSingle "calls" ] ^->. state
+      ]
 
 /// Create a new Noop metric that doesn't do very much
-let create conf = MetricUtils.stdNamedMetric Metric (Impl.loop conf)
-
-/// C# interop: Create a new Noop metric that doesn't do very much
-[<CompiledName "Create">]
-let create' (conf, name) =
-  create conf name
+let create conf =
+  MetricUtils.stdNamedMetric Metric (Impl.loop conf)

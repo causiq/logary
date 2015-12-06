@@ -1,33 +1,40 @@
 ﻿namespace Logary.Internals
 
-type NamedJob<'a> =
-  { name: string
-    job: Hopac.Job<'a> } with
+open Hopac
+open NodaTime
+open System.Threading
 
-  override this.ToString () = sprintf "Job: %s" this.name
+type NamedJob<'a> =
+  { name : string list
+    job  : Job<'a> }
+with
+  override x.ToString() =
+    sprintf "Job[%O]" (String.concat "." x.name)
 
 /// Provides operations on named jobs
 module NamedJob =
-  open Hopac
 
-  let create str = fun job -> {name = str; job = job}
+  let create name =
+    fun job ->
+      { name = name
+        job  = job }
 
   /// Starts running the given named job on the global scheduler.
-  let spawn nj = nj.job |> Job.Global.start
+  let spawn nj =
+    nj.job |> Job.Global.start
 
 module internal Ns =
 
   /// The actor's root namespace
   [<Literal>]
-  let ActorRootNs = "logary"
+  let LogaryRootNs = "logary"
 
   /// Create a namespace from the subcomponent identifier
   let create subcomponent =
-    sprintf "%s/%s" ActorRootNs subcomponent
+    [ LogaryRootNs; subcomponent ]
     |> NamedJob.create
 
 module internal Seq =
-  open Hopac
 
   let all f s = Seq.fold (fun acc t -> acc && f t) true s
   let any f s = Seq.fold (fun acc t -> acc || f t) false s
@@ -117,7 +124,6 @@ module Map =
 
   // TODO: cache
   let private prop =
-    let ts = TimeSpan.FromSeconds 1.
     fun (name : string, typ : Type) ->
       typ.GetProperty name
 
@@ -222,7 +228,7 @@ module internal Set =
 
 type Timeout =
   | Infinite
-  | Timeout of System.TimeSpan
+  | Timeout of Duration
 
 type TimeoutResult<'a> =
   | TimedOut
@@ -238,24 +244,15 @@ module internal Job =
   /// If the job takes longer than the timeout to execute, it will return a TimedOut.
   let withTimeout timeout j =
     match timeout with
-    | Infinite -> Job.map Success j
+    | Infinite ->
+      Job.map Success j
+
     | Timeout ts -> job {
       let! isDone = Promise.start j
-      return! (timeOut ts ^->. TimedOut) <|> (Promise.read isDone ^-> Success)
+      return! 
+        timeOut (ts.ToTimeSpan()) ^->. TimedOut
+        <|> Promise.read isDone ^-> Success
     }
-
-  /// Returns a wrapped job and a function for checking the status of the job.
-  let watch (j : Job<_>) =
-    let isRunning = ref false
-    let wj = job {
-      try
-        isRunning := true
-        do! j
-      finally
-        isRunning := false
-    }
-
-    (wj, fun () -> !isRunning)
 
 // TODO: consider moving NackDescription and Acks to Logary ns instead of Internals
 
