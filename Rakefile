@@ -10,7 +10,7 @@ Albacore::Tasks::Versionizer.new :versioning
 
 desc 'Perform fast build (warn: doesn\'t d/l deps)'
 build :quick_build do |b|
-  b.sln = 'src/Logary.sln'
+  b.sln = 'src/v4.sln'
 end
 
 task :paket_bootstrap do
@@ -42,7 +42,7 @@ end
 
 build :clean_sln do |b|
   b.target = 'Clean'
-  b.sln = 'src/Logary.sln'
+  b.sln = 'src/v4.sln'
   b.prop 'Configuration', Configuration
 end
 
@@ -84,7 +84,7 @@ end
 desc 'perform full build'
 build :build => [:versioning, :assembly_info, :restore, :paket_replace] do |b|
   b.prop 'Configuration', Configuration
-  b.sln = 'src/Logary.sln'
+  b.sln = 'src/v4.sln'
   maybe_sign b
 end
 
