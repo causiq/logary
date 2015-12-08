@@ -12,7 +12,7 @@ nuget FAKE 2.1.205-alpha
 nuget FluentMigrator < 1.5
 nuget FluentMigrator.Runner < 1.5
 nuget FParsec
-nuget FsCheck 0.9.2.0
+nuget FsCheck
 nuget FSharp.Core ~> 3.1.2
 nuget FsSql
 nuget FsUnit
@@ -22,7 +22,7 @@ nuget log4net
 nuget loggr-dotnet
 nuget Machine.Specifications
 nuget Machine.Specifications.Should
-nuget Newtonsoft.Json ~> 6
+nuget Newtonsoft.Json ~> 7
 nuget NLog
 nuget NodaTime
 nuget NUnit
@@ -32,8 +32,10 @@ nuget Suave
 nuget System.Data.SQLite.Core
 nuget Topshelf
 nuget Topshelf.FSharp
-nuget UnionArgParser
-nuget Unquote ~> 2.2
+nuget Argu
+nuget Unquote
 nuget Hawk
 nuget NodaTime.Serialization.JsonNet
 nuget Newtonsoft.Json.FSharp
+
+github haf/expecto-patronum ExpectoPatronum/Assert.fs

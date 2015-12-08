@@ -10,7 +10,7 @@ open Logary
 open Logary.Targets
 open Logary.Configuration
 open Logary.Metrics
-open Nessos.UnionArgParser
+open Nessos.Argu
 open SQLServerIOInfo
 
 exception RiemannServerNotFound of System.Net.Sockets.SocketException * string
@@ -72,7 +72,7 @@ let parseIP str =
   | true, ip -> ip
 
 let parse args =
-  let parser  = UnionArgParser.Create<Arguments>()
+  let parser  = ArgumentParser.Create<Arguments>()
   let parse   = parser.Parse args
   let drives  = parse.PostProcessResults(<@ Drive_Latency @>, Drive)
   let files   = parse.PostProcessResults(<@ File_Latency @>, SingleFile)

@@ -2,4 +2,4 @@ FSharp.Core
 Newtonsoft.Json
 NodaTime
 protobuf-net
-UnionArgParser
+Argu

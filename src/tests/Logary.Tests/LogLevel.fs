@@ -9,9 +9,9 @@ open Logary
 
 [<Tests>]
 let tests =
-  testList "LogLevel" [    
+  testList "LogLevel" [
     yield testCase "can compare LogLevels" <| fun _ ->
-      Info <? Error
+      Assert.isLessThan Info Error "Info is a lesser level than Error"
       Error >? Info
 
     for i in 1..6 do

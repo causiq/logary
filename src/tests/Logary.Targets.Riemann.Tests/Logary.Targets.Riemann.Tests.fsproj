@@ -107,7 +107,7 @@
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
         <Reference Include="Unquote">
-          <HintPath>..\..\..\packages\Unquote\lib\net40\Unquote.dll</HintPath>
+          <HintPath>..\..\..\packages\Unquote\lib\net45\Unquote.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
