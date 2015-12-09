@@ -102,7 +102,7 @@ module StringFormatter =
 
   let internal expanded nl ending : StringFormatter =
     { new StringFormatter with
-        member x.format m = 
+        member x.format m =
           sprintf "%s %s: %s [%s]%s%s"
             (string (caseNameOf m.level).[0])
             // https://noda-time.googlecode.com/hg/docs/api/html/M_NodaTime_OffsetDateTime_ToString.htm
@@ -167,18 +167,18 @@ module Json =
     | Value.Binary (bytes, mime) ->
       [("mime",   Json.String mime)
        ("base64", Json.String (System.Convert.ToBase64String bytes))]
-      |> Map |> Json.Object
+      |> Map.ofSeq |> Json.Object
     | Value.Fraction (nom, denom) ->
       [("nom",   toNumber nom)
        ("denom", toNumber denom)]
-      |> Map |> Json.Object
+      |> Map.ofSeq |> Json.Object
     | Value.Object values -> Map.map (fun _ v -> valueToJson v) values |> Json.Object
     | Value.Array items -> List.map (valueToJson) items |> Json.Array
 
   let fieldsToJson (fields : Map<PointName, Field>) =
     Map.toSeq fields
     |> Seq.map (fun (k, Field (v, _)) -> (PointName.joined k, valueToJson v))
-    |> Map |> Json.Object
+    |> Map.ofSeq |> Json.Object
 
   let isEmpty = function
   | String "" -> true
@@ -201,7 +201,7 @@ module Json =
      | Derived (d, u) -> [("type", Json.String "derived"); ("value", valueToJson d);
                           ("unit", Json.String <| Units.symbol u)])
     |> Seq.filter (snd >> isEmpty >> not)
-    |> Map |> Json.Object
+    |> Map.ofSeq |> Json.Object
 
   let format = Json.format
 

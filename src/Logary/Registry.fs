@@ -133,30 +133,34 @@ module Advanced =
   /// how that went. E.g. if there's a target is has a backlog, it might not be able to
   /// flush all its pending entries within the allotted timeout (200 ms at the time of writing)
   /// but will then instead return Nack/failed RPC.
-  let flushPending dur (registry : RegistryInstance) : Alt<unit> = Alt.withNackJob <| fun nack ->
-    Ch.create () >>= (fun flushCh ->
-    registry.reqCh *<+ (FlushPending (flushCh, nack)) >>-.
-    flushCh)
+  let flushPending (registry : RegistryInstance) : Alt<unit> = Alt.withNackJob <| fun nack -> job {
+    let! flushCh = Ch.create ()
+    do! registry.reqCh *<+ (FlushPending (flushCh, nack))
+    return flushCh }
 
   // TODO: use Alt<..> instead:
-  
+
   /// Shutdown the registry. This will first flush all pending entries for all targets inside the
   /// registry, and then proceed to sending ShutdownTarget to all of them. If this doesn't
   /// complete within the allotted timeout, (200 ms for flush, 200 ms for shutdown), it will
   /// return Nack to the caller (of shutdown).
-  let shutdown dur (registry : RegistryInstance) : Job<Acks> = job {
-    let! ack = IVar.create ()
-    do! Ch.give registry.reqCh (ShutdownLogary (dur, ack))
-    return! ack
-  }
+  let shutdown (registry : RegistryInstance) : Alt<unit> = Alt.withNackJob <| fun nack -> job {
+    let! shutdownCh = Ch.create ()
+    do! registry.reqCh *<+ (ShutdownLogary (shutdownCh, nack))
+    return shutdownCh }
 
   // TODO: use Alt<..> instead:
 
   /// Flush all registry targets, then shut it down -- the registry internals
   /// take care of timeouts, not these methods
-  let flushAndShutdown durFlush durShutdown (registry : RegistryInstance) = job {
-    let! fs = flushPending durFlush registry
-    let! ss = shutdown durShutdown registry
+  let flushAndShutdown (durFlush : Duration) (durShutdown : Duration) (registry : RegistryInstance) = job {
+    let! fs =
+      flushPending registry ^->. Ack <|>
+      timeOut (durFlush.ToTimeSpan ()) ^->. Nack "Flush timed out"
+    let! ss =
+      shutdown registry ^->. Ack <|>
+      timeOut (durShutdown.ToTimeSpan ()) ^->. Nack "Shutdown timed out"
+
     // TODO: granular Ack handling for each target
     return { flushed = fs
              stopped = ss
@@ -209,7 +213,7 @@ module Advanced =
 
       /// In the shutdown state, the registry doesn't respond to messages, but rather tries to
       /// flush and shut down all targets, doing internal logging as it goes.
-      let shutdown state (dur : Duration) (ack : IVar<Acks>) = job {
+      let shutdown state (ackCh : Ch<unit>) (nack : Promise<unit>) = job {
         Message.info "shutdown metrics polling" |> log
 
         do! defaultArg (Option.map Cancellation.cancel state.pollMetrics) (Job.unit ())
@@ -221,23 +225,24 @@ module Advanced =
         Message.info "shutdown targets" |> log
         let! allShutdown =
           targets
-          |> Seq.pjmap (Target.shutdown >> Job.withTimeout (Timeout dur))
+          |> Seq.pjmap (fun t -> Target.shutdown t  ^->. Success Ack <|>
+                                  timeOutMillis 200 ^->. TimedOut)
 
         let stopped, failed =
           allShutdown
           |> Seq.groupBy wasSuccessful
           |> bisectSuccesses
 
-        do! IVar.fill ack <|
-            if List.isEmpty failed then
-              Message.info "shutdown Ack" |> log
-              Ack
-            else
-              let msg = sprintf "failed target shutdowns:%s%s" nl (toTextList failed)
-              Message.errorf "shutdown Nack%s%s" nl msg
-              |> Message.field "failed" (Value.fromObject failed)
-              |> log
-              Nack msg
+        if List.isEmpty failed then
+          Message.info "shutdown Ack" |> log
+        else
+          let msg = sprintf "failed target shutdowns:%s%s" nl (toTextList failed)
+          Message.errorf "shutdown Nack%s%s" nl msg
+          |> Message.field "failed" (Value.fromObject failed)
+          |> log
+
+        do! Ch.give ackCh () <|> nack
+
         Message.info "shutting down immediately" |> log
         return () }
 
@@ -301,31 +306,31 @@ module Advanced =
 
           return! running state
 
-        | FlushPending(dur, ack) ->
+        | FlushPending(ackCh, nack) ->
           Message.info "flush start" |> log
 
           let! allFlushed =
             targets
-            |> Seq.pjmap (Target.flush >> Job.withTimeout (Timeout dur))
+            |> Seq.pjmap (fun t -> Target.flush t    ^->. Success Ack <|>
+                                   timeOutMillis 200 ^->. TimedOut)
 
           let flushed, notFlushed =
             allFlushed
             |> Seq.groupBy wasSuccessful
             |> bisectSuccesses
 
-          do! IVar.fill ack <|
-              if List.isEmpty notFlushed then
-                Message.info "flush Ack" |> log
-                Ack
-              else
-                let msg = sprintf "Failed target flushes:%s%s" nl (toTextList notFlushed)
-                Message.errorf "flush Nack - %s" msg |> log
-                Nack msg
+          if List.isEmpty notFlushed then
+            Message.info "flush Ack" |> log
+          else
+            let msg = sprintf "Failed target flushes:%s%s" nl (toTextList notFlushed)
+            Message.errorf "flush Nack - %s" msg |> log
+
+          do! Ch.give ackCh () <|> nack
 
           return! running state
 
-        | ShutdownLogary(dur, ack) ->
-          return! shutdown state dur ack }
+        | ShutdownLogary(ackCh, nack) ->
+          return! shutdown state ackCh nack }
 
       init { supervisor = sup; schedules = []; pollMetrics = None }
 

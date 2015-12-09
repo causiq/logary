@@ -4,22 +4,20 @@ module Logary.Target
 
 #nowarn "1104"
 
-open System
-open System.Text.RegularExpressions
-
 open Hopac
+open Hopac.Infixes
 
 open Logary
 open Logary.Internals
 
 /// The protocol that a target can speak
 type TargetMessage =
+  | Log of Message
   /// Flush messages! Also, reply when you're done flushing
   /// your queue.
-  | Log of Message
-  | Flush of IVar<Acks>
+  | Flush of ackCh: Ch<unit> * nack: Promise<unit>
   /// Shut down! Also, reply when you're done shutting down!
-  | Shutdown of IVar<Acks>
+  | Shutdown of ackCh: Ch<unit> * nack: Promise<unit>
 
 /// A target instance is a spawned actor instance together with
 /// the name of this target instance.
@@ -87,20 +85,16 @@ let sendMessage instance msg =
   send msg instance |> ignore
 
 /// Send a flush RPC to the target and return the async with the ACKs
-let flush i =
-  job {
-    let! ack = IVar.create ()
-    do! Ch.give i.reqCh (Flush ack)
-    return! ack
-  }
+let flush i = Alt.withNackJob <| fun nack -> job {
+  let! ackCh = Ch.create ()
+  do! i.reqCh *<+ (Flush (ackCh, nack))
+  return ackCh }
 
 /// Shutdown the target, waiting indefinitely for it to stop
-let shutdown i =
-  job {
-    let! ack = IVar.create ()
-    do! Ch.give i.reqCh (Shutdown ack)
-    return! IVar.read ack
-  }
+let shutdown i = Alt.withNackJob <| fun nack -> job {
+  let! ackCh = Ch.create ()
+  do! i.reqCh *<+ (Shutdown (ackCh, nack))
+  return ackCh }
 
 /// Module with utilities for Targets to use for formatting LogLines.
 /// Currently only wraps a target loop function with a name and spawns a new actor from it.

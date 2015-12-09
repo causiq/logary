@@ -3,10 +3,11 @@
 [<AutoOpen>]
 module Logary.Configuration.Config
 
-open System
 open System.Runtime.CompilerServices
 open Hopac
+open Hopac.Infixes
 open NodaTime
+
 open Logary
 open Logary.Internals
 open Logary.Target
@@ -174,10 +175,10 @@ let asLogManager (inst : LogaryInstance) =
         name |> getLogger inst.registry |> run
 
       member x.flushPending dur =
-        Advanced.flushPending dur inst.registry |> run
+        Advanced.flushPending inst.registry <|> timeOut (dur.ToTimeSpan ())
 
       member x.shutdown fDur sDur =
-        shutdown fDur sDur inst |> run
+        shutdown fDur sDur inst
 
       member x.Dispose () =
         shutdownSimple inst |> Job.Ignore |> run

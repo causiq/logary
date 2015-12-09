@@ -12,7 +12,6 @@ open System.Text.RegularExpressions
 open NodaTime
 
 open Logary
-open Logary.DataModel
 open Logary.Configuration
 open Logary.Targets
 

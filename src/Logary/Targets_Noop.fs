@@ -1,6 +1,7 @@
 ﻿module Logary.Targets.Noop
 
 open Hopac
+open Hopac.Infixes
 
 open Logary
 open Logary.Target
@@ -21,11 +22,11 @@ module internal Impl =
       match msg with
       | Log _ ->
         return! loop state
-      | Flush ack ->
-        do! IVar.fill ack Ack
+      | Flush (ackCh, nack) ->
+        do! Ch.give ackCh () <|> nack
         return! loop state
-      | Shutdown ack ->
-        do! IVar.fill ack Ack
+      | Shutdown (ackCh, nack) ->
+        do! Ch.give ackCh () <|> nack
         return ()
       }
 

@@ -10,7 +10,6 @@ open Hopac
 open Fac
 
 open Logary
-open Logary.DataModel
 open Logary.HealthCheck
 open Logary.Internals.Tcp
 

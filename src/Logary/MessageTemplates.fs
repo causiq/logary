@@ -314,10 +314,10 @@ module Parser =
 
     let parsePropertyToken (buffer:StringBuilder) (start:int) (mt:string) (rz: ResizeArray<Token>) : int =
         let appendChar (ch:char) = buffer.Append(ch) |> ignore
-        let mutable wasProperty = false
-        let foundProp (p:PropertyToken) = rz.Add(Token.Prop(start, p)); wasProperty <- true
+        let wasProperty = ref false
+        let foundProp (p:PropertyToken) = rz.Add(Token.Prop(start, p)); wasProperty := true
         let nextIndex = findPropOrAppendText start mt appendChar foundProp
-        if not wasProperty then
+        if not !wasProperty then
             rz.Add(Token.Text(start, buffer.ToStringAndClear()))
         nextIndex
 
@@ -461,11 +461,11 @@ module Destructure =
         match tryCastAs<System.Collections.IEnumerable>(r.Value) with
         | e when Object.ReferenceEquals(null, e) -> TemplatePropertyValue.Empty
         | e when isScalarDict valueType ->
-            let mutable keyProp, valueProp = Unchecked.defaultof<PropertyInfo>, Unchecked.defaultof<PropertyInfo>
-            let getKey o = if keyProp = null then keyProp <- o.GetType().GetRuntimeProperty("Key")
-                           keyProp.GetValue(o)
-            let getValue o = if valueProp = null then valueProp <- o.GetType().GetRuntimeProperty("Value")
-                             valueProp.GetValue(o)
+            let keyProp, valueProp = ref Unchecked.defaultof<PropertyInfo>, ref Unchecked.defaultof<PropertyInfo>
+            let getKey o = if !keyProp = null then keyProp := o.GetType().GetRuntimeProperty("Key")
+                           (!keyProp).GetValue(o)
+            let getValue o = if !valueProp = null then valueProp := o.GetType().GetRuntimeProperty("Value")
+                             (!valueProp).GetValue(o)
             let skvps = e |> Seq.cast<obj>
                           |> Seq.map (fun o -> getKey o, getValue o)
                           |> Seq.map (fun (key, value) ->

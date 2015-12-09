@@ -12,7 +12,7 @@ type RegistryMessage =
   /// Get a logger for the given point name (the path of the logger)
   | GetLogger of PointName * Ch<Logger>
 
-  /// 
+  ///
   | PollMetrics
 
   /// Flush all pending messages from the registry to await shutdown and ack on
@@ -21,7 +21,7 @@ type RegistryMessage =
   | FlushPending of ackCh:Ch<unit> * nack:Promise<unit>
 
   /// shutdown the registry in full
-  | ShutdownLogary of Duration * IVar<Acks>
+  | ShutdownLogary of ackCh:Ch<unit> * nack:Promise<unit>
 
 type RegistryInstance =
   { reqCh : Ch<RegistryMessage> }

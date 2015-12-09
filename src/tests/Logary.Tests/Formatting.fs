@@ -7,7 +7,7 @@ open NodaTime
 
 open Logary
 open Logary.Formatting
-open Logary.DataModel
+
 open Logary.Tests.TestDSL
 
 let private sampleMessage : Message =
@@ -63,9 +63,9 @@ let tests =
     testCase "StringFormatter.LevelDatetimePathMessageNl no exception, data, list with map in it" <| fun _ ->
       (because "logging with LevelDatetimePathMessageNl" <| fun () ->
         { sampleMessage with
-            fields = [ ["a"], (Field (String "b", None))
-                       ["a2"], (Field (Int64 24L, None))
-                       ["things"],
+            fields = [ PointName.ofSingle "a", (Field (String "b", None))
+                       PointName.ofSingle "a2", (Field (Int64 24L, None))
+                       PointName.ofSingle "things",
                          (Field (Array
                            [ Int64 1L
                              Int64 2L

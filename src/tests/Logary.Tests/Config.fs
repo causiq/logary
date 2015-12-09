@@ -27,9 +27,9 @@ let ``invalid configs`` =
     with :? ValidationException as e ->
       f e
 
-  let r1 = Rule.createForTarget "r1"
-  let t1 = Noop.create Noop.empty "t1"
-  let m1 = Metrics.Noop.create Metrics.Noop.empty "m1" (Duration.FromMilliseconds 500L)
+  let r1 = Rule.createForTarget (PointName.ofSingle "r1")
+  let t1 = Noop.create Noop.empty (PointName.ofSingle "r1")
+  let m1 = Metrics.Noop.create Metrics.Noop.empty (PointName.ofSingle "r1") (Duration.FromMilliseconds 500L)
 
   testList "invalid configs" [
     testCase "mismatched rules/targets" <| fun _ ->

@@ -3,16 +3,15 @@
 module Logary.Targets.Graphite
 
 open Hopac
+open Hopac.Infixes
 
 open NodaTime
 
 open System
-open System.Net
 open System.Net.Sockets
-open System.Globalization
 open System.Text.RegularExpressions
+
 open Logary
-open Logary.Utils
 open Logary.Internals
 open Logary.Target
 open Logary.Internals.Tcp
@@ -90,10 +89,9 @@ module internal Impl =
 
   let loop (conf : GraphiteConf) (svc : RuntimeInfo) =
     (fun (reqCh : Ch<_>) ->
-      let shutdown state ack = job {
+      let shutdown state = job {
         state.sendRecvStream |> tryDispose
         try (state.client :> IDisposable).Dispose() with _ -> ()
-        do! IVar.fill ack Ack
         return ()
       }
 
@@ -117,12 +115,13 @@ module internal Impl =
               |> doWrite state
             return! running state'
 
-        | Flush ack ->
-          do! IVar.fill ack Ack
+        | Flush (ackCh, nack) ->
+          do! Ch.give ackCh () <|> nack
           return! running state
 
-        | Shutdown ack ->
-          return! shutdown state ack
+        | Shutdown (ackCh, nack) ->
+          do! shutdown state
+          do! Ch.give ackCh () <|> nack
       }
 
       let init () = job {

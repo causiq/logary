@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using NodaTime;
 
+using Logary;
 using Logary.Internals;
-using Logary.DataModel;
 
 namespace Logary
 {

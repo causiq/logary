@@ -6,6 +6,7 @@ module TextWriter =
   open System.IO
 
   open Hopac
+  open Hopac.Infixes
 
   open Logary
   open Logary.Internals
@@ -51,15 +52,15 @@ module TextWriter =
             wl tw (formatter.format l)
             do (if flush then tw.Flush() else ())
             return! loop ()
-          | Flush ack ->
+          | Flush (ackCh, nack) ->
             out.Flush()
             err.Flush()
-            do! IVar.fill ack Ack
+            do! Ch.give ackCh () <|> nack
             return! loop ()
-          | Shutdown ack ->
+          | Shutdown (ackCh, nack) ->
             out.Dispose()
             if not (obj.ReferenceEquals(out, err)) then err.Dispose() else ()
-            do! IVar.fill ack Ack
+            do! Ch.give ackCh () <|> nack
             return () }
         loop ())
 
@@ -150,6 +151,7 @@ module Debugger =
   open System.Diagnostics
 
   open Hopac
+  open Hopac.Infixes
 
   open Logary
   open Logary.Internals
@@ -184,12 +186,12 @@ module Debugger =
           | Log _ ->
             return! loop ()
 
-          | Flush ack ->
-            do! IVar.fill ack Ack
+          | Flush (ackCh, nack) ->
+            do! Ch.give ackCh () <|> nack
             return! loop()
 
-          | Shutdown ack ->
-            do! IVar.fill ack Ack
+          | Shutdown (ackCh, nack) ->
+            do! Ch.give ackCh () <|> nack
         }
         loop ())
 

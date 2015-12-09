@@ -96,7 +96,7 @@ type Value =
     | Bool b ->
       Json.Lens.setPartial Json.Bool_ b
 
-    | Float f -> 
+    | Float f ->
       Json.Lens.setPartial Json.Number_ f
 
     | Int64 i ->
@@ -479,7 +479,7 @@ module Value =
     | :? (byte array) as bytes -> Binary (bytes, "application/octet-stream")
     | :? IEnumerable<KeyValuePair<string, obj>> as dict ->
       Seq.map (fun (KeyValue (k, v)) -> (k, fromObject v)) dict
-      |> Map |> Object
+      |> Map.ofSeq |> Object
     //| :? Map<string, obj> as map -> Map.map (fun _ v -> fromObject v) map |> Object
     | :? IEnumerable<obj> as ie ->
       Seq.map fromObject ie
@@ -972,7 +972,7 @@ module Message =
       (if e.TargetSite <> null then [("targetsite", String <| e.TargetSite.ToString ())] else []) @
       (if e.StackTrace <> null then [("backtrace", String e.StackTrace)] else [])
 
-    Map <|
+    Map.ofSeq <|
       if e.InnerException <> null then
         ("inner", Object <| exnToFields e.InnerException) :: fields
       else
