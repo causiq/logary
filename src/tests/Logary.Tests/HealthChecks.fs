@@ -57,5 +57,5 @@ let tests =
       let h = fromFn "ping haf.se" pingSvdSe
       let gotUnhealthy = untilPred 10000 <| fun i ->
         match h.GetValue () with HasValue _ -> true | _ -> false
-      gotUnhealthy =? false
+      Assert.Equal("is false", false, gotUnhealthy)
     ]

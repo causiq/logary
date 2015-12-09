@@ -24,7 +24,7 @@ let tests =
       let conf = Graphite.GraphiteConf.Create("localhost", clientFac = fun a b -> client :> WriteClient)
       let graphite = Graphite.create conf "graphite-target"
       let instance = graphite.initer { serviceName = "tests"; logger = NullLogger() }
-      instance.name =? "graphite-target"
+      Assert.Equal("inst name is graphite", instance.name, "graphite-target")
 
       (because "shutting down the target" <| fun () ->
         instance |> finaliseTarget
@@ -34,5 +34,7 @@ let tests =
 
     testCase "sanitizePath" <| fun _ ->
       let testPath = DP ["This is a metric path"; "path$Section%2.5"; "GET /post/1.2/"; "Multiple . spaces"]
-      Graphite.sanitizePath testPath =? DP ["This_is_a_metric_path"; "path$Section%2_5"; "GET_-post-1_2-"; "Multiple___spaces"]
+      Assert.Equal("sanitised path",
+                   Graphite.sanitizePath testPath,
+                   DP ["This_is_a_metric_path"; "path$Section%2_5"; "GET_-post-1_2-"; "Multiple___spaces"])
     ]

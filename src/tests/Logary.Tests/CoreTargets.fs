@@ -16,7 +16,7 @@ let tests =
     testCase "initialising TextWriter target" <| fun _ ->
       let target = create (TextWriterConf.Create(System.Console.Out, System.Console.Error)) "sample console"
       let instance = target.initer emptyRuntime
-      instance.name =? "sample console"
+      Assert.Equal("instance name should eq sample console", instance.name, "sample console")
 
     testCase "writing with Console target directly" <| fun _ ->
       let stdout = Fac.textWriter ()

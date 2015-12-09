@@ -27,7 +27,7 @@ let withMetric label f =
 let tests =
   testList "WinPertCounters metrics" [
     withMetric "initialising" <| fun mc inst ->
-      mc.name =? "cpuTime"
+      Assert.Equal("eq cpuTime", mc.name, "cpuTime")
 
     withMetric "get empty list of values"  <| fun mc inst ->
       (because "getting empty list of values" <| fun _ ->

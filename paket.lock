@@ -72,4 +72,4 @@ NUGET
 GITHUB
   remote: haf/expecto-patronum
   specs:
-    ExpectoPatronum/Assert.fs (5e72901d9dc6c598d4cec79b577ae5040034a4b4)
+    ExpectoPatronum/Assert.fs (7a8734f80a1e8dab75e25283ee98382267030f5b)
