@@ -57,7 +57,7 @@ namespace Logary
             if (data != null) msg.AddData(data);
             if (timestamp != null) msg.SetTimestamp(timestamp.Value);
 
-            logger.Log(msg);
+            logger.log(msg);
         }
 
         /// <summary>
@@ -91,7 +91,7 @@ namespace Logary
             if (setterTransformer == null) throw new ArgumentNullException("setterTransformer");
 
             var line = MessageModule.CreateEvent(level, message);
-            logger.Log(setterTransformer(line));
+            logger.log(setterTransformer(line));
         }
 
         /// <summary>
@@ -140,7 +140,7 @@ namespace Logary
             if (level == null) throw new ArgumentNullException("level");
             if (formatStringMessage == null) throw new ArgumentNullException("formatStringMessage");
 
-            logger.Log(MessageModule.CreateFormattedEvent(level, formatStringMessage, args));
+            logger.log(MessageModule.CreateFormattedEvent(level, formatStringMessage, args));
         }
 
         /// <summary>
@@ -168,11 +168,11 @@ namespace Logary
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
 
-            logger.Log(MessageModule.CreateEvent(LogLevel.Fatal, message).AddException(e));
+            logger.log(MessageModule.CreateEvent(LogLevel.Fatal, message).AddException(e));
         }
 
         /// <summary>
-        /// Log a error log message with a collection optional of tags
+        /// Log a error log message
         /// </summary>
         /// <param name="logger">logger to invoke the Log call on</param>
         /// <param name="message">Message to pass to the targets</param>
@@ -185,7 +185,7 @@ namespace Logary
         }
 
         /// <summary>
-        /// Log a error log message with a collection optional of tags
+        /// Log a error log message
         /// </summary>
         /// <param name="logger">[NotNull] logger to invoke the Log call on</param>
         /// <param name="message">[NotNull] Message to pass to the targets</param>
@@ -196,11 +196,11 @@ namespace Logary
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
 
-            logger.Log(MessageModule.CreateEvent(LogLevel.Error, message).AddException(e));
+            logger.log(MessageModule.CreateEvent(LogLevel.Error, message).AddException(e));
         }
 
         /// <summary>
-        /// Log a warn log message with a collection optional of tags
+        /// Log a warn log message
         /// </summary>
         /// <param name="logger">logger to invoke the Log call on</param>
         /// <param name="message">Message to pass to the targets</param>
@@ -213,7 +213,7 @@ namespace Logary
         }
 
         /// <summary>
-        /// Log a warn log message with a collection optional of tags
+        /// Log a warn log message
         /// </summary>
         /// <param name="logger">logger to invoke the Log call on</param>
         /// <param name="message">Message to pass to the targets</param>
@@ -224,11 +224,11 @@ namespace Logary
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
 
-            logger.Log(MessageModule.CreateEvent(LogLevel.Warn, message).AddException(e));
+            logger.log(MessageModule.CreateEvent(LogLevel.Warn, message).AddException(e));
         }
 
         /// <summary>
-        /// Log a info log message with a collection optional of tags
+        /// Log a info log message
         /// </summary>
         /// <param name="logger">logger to invoke the Log call on</param>
         /// <param name="message">Message to pass to the targets</param>
@@ -241,7 +241,7 @@ namespace Logary
         }
 
         /// <summary>
-        /// Log a info log message with a collection optional of tags
+        /// Log a info log message
         /// </summary>
         /// <param name="logger">logger to invoke the Log call on</param>
         /// <param name="message">Message to pass to the targets</param>
@@ -252,11 +252,11 @@ namespace Logary
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
 
-            logger.Log(MessageModule.CreateEvent(LogLevel.Info, message).AddException(e));
+            logger.log(MessageModule.CreateEvent(LogLevel.Info, message).AddException(e));
         }
 
         /// <summary>
-        /// Log a debug log message with a collection optional of tags
+        /// Log a debug log message
         /// </summary>
         /// <param name="logger">logger to invoke the Log call on</param>
         /// <param name="message">Message to pass to the targets</param>
@@ -266,7 +266,7 @@ namespace Logary
         }
 
         /// <summary>
-        /// Log a debug log message with a collection optional of tags
+        /// Log a debug log message
         /// </summary>
         /// <param name="logger">logger to invoke the Log call on</param>
         /// <param name="message">Message to pass to the targets</param>
@@ -277,11 +277,11 @@ namespace Logary
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
 
-            logger.Log(MessageModule.CreateEvent(LogLevel.Debug, message).AddException(e));
+            logger.log(MessageModule.CreateEvent(LogLevel.Debug, message).AddException(e));
         }
 
         /// <summary>
-        /// Log a verbose log message with a collection optional of tags
+        /// Log a verbose log message
         /// </summary>
         /// <param name="logger">logger to invoke the Log call on</param>
         /// <param name="message">Message to pass to the targets</param>
@@ -291,7 +291,7 @@ namespace Logary
         }
 
         /// <summary>
-        /// Log a verbose log message with a collection optional of tags
+        /// Log a verbose log message
         /// </summary>
         /// <param name="logger">logger to invoke the Log call on</param>
         /// <param name="message">Message to pass to the targets</param>
@@ -302,7 +302,7 @@ namespace Logary
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
 
-            logger.Log(MessageModule.CreateEvent(LogLevel.Verbose, message).AddException(e));
+            logger.log(MessageModule.CreateEvent(LogLevel.Verbose, message).AddException(e));
         }
     }
 }
