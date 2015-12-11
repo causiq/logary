@@ -22,11 +22,11 @@ let tests =
       Config.confLogary "tests"
       |> Config.validate
       |> Config.runLogary
-      |> Config.shutdown
+      |> Config.shutdownSimple
       |> run |> ignore
 
     testCase "target" <| fun _ ->
-      Target.confTarget "tw" (TextWriter.create (TextWriter.TextWriterConf.Create(Fac.textWriter(), Fac.textWriter())))
+      Target.confTarget (pn "tw") (TextWriter.create (TextWriter.TextWriterConf.Create(Fac.textWriter(), Fac.textWriter())))
       |> Target.validate
       |> Target.init Fac.emptyRuntime
       |> Target.send (Message.debug "Hello")
@@ -35,12 +35,12 @@ let tests =
 
     testCase "metric" <| fun _ ->
       Metric.confMetric
-        "no op metric"
+        (pn "no op metric")
         (Duration.FromMilliseconds 500L)
         (Noop.create { Noop.NoopConf.isHappy = true })
       |> Metric.validate
       |> Metric.init Fac.emptyRuntime
-      |> Metric.update (Message.metric ["tests"] (Float 1.0M))
+      |> Metric.update (Message.metric (pn "tests") (Float 1.0M))
       |> Metric.shutdown
       |> run |> ignore
     ]

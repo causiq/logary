@@ -80,7 +80,7 @@ with
       (PointName.format x.name) x.``type`` x.sampling
 
 /// Start configuring a metric with a metric factory
-let confMetric name sampling (factory : string -> Duration -> MetricConf) =
+let confMetric name sampling (factory : PointName -> Duration -> MetricConf) =
   factory name sampling
 
 let validate (conf : MetricConf) = conf

@@ -1,5 +1,6 @@
 module Logary.Tests.TestDSL
 
+open Logary
 open System
 open Hopac
 
@@ -33,7 +34,11 @@ let private nl = Environment.NewLine
 
 open Logary
 
-let pn s = Logary.PointName [s]
+/// Alias for PointName.ofSingle
+let pn  = PointName.ofSingle
+
+/// Wrapper for PointName.parse
+let pnp = PointName.parse
 
 let theTuple f (tupleCtx : AssertContext<'a * 'b>) =
   f ({ item    = tupleCtx.item |> fst
