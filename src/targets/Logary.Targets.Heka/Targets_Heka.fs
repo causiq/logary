@@ -34,21 +34,46 @@ type Logary.Heka.Messages.Field with
     | String s when s.Length > 0 ->
       Some <| Messages.Field(name, Nullable ValueType.STRING, unitsS, [s])
 
-    // TODO/CONSIDER: Heka doesn't support arbitrary precision integers, so we use a string instead.
-    | BigInt bi ->
-      Some <| Messages.Field(name, Nullable ValueType.STRING, unitsS, [bi.ToString ()])
+    | String _ ->
+      None
+
+    | Bool b ->
+      Some <| Messages.Field(name, Nullable ValueType.BOOL, unitsS, [b])
 
     | Float f ->
       Some <| Messages.Field(name, Nullable ValueType.DOUBLE, unitsS, [float f])
 
-    | Bool b ->
-      Some <| Messages.Field(name, Nullable ValueType.BOOL, unitsS, [b])
+    | Int64 i ->
+      Some <| Messages.Field(name, Nullable ValueType.INTEGER, unitsS, [i])
+
+    // TODO/CONSIDER: Heka doesn't support arbitrary precision integers, so we use a string instead.
+    | BigInt bi ->
+      Some <| Messages.Field(name, Nullable ValueType.STRING, unitsS, [bi.ToString ()])
 
     | Binary (bytes, mime) when bytes.Length > 0 ->
       Some <| Messages.Field(name, Nullable ValueType.BYTES, mime, [bytes])
     // TODO/CONSIDER: We assume here that arrays are homogenous, even though object model permits heterogenous arrays.
 
-    | Array arr when not arr.IsEmpty ->
+    | Binary (bytes, mime) ->
+      None
+
+    | Object m as o when not m.IsEmpty ->
+      Some <| Messages.Field(name, Nullable ValueType.STRING, "json",
+                             [Json.format <| Json.valueToJson o])
+
+    | Object _ ->
+      None
+
+    // TODO/CONSIDER: Fractions could also be serialized into an int array with
+    // a clarifying representation string
+    | Fraction _ as frac ->
+      Some <| Messages.Field(name, Nullable ValueType.STRING, "json",
+                             [Json.format <| Json.valueToJson frac])
+
+    | Array arr when arr.IsEmpty ->
+      None
+
+    | Array arr ->
       // TODO: Figure out a way to implement arrays neatly without copy-paste
       match arr.Head with
       | String _ ->
@@ -84,15 +109,6 @@ type Logary.Heka.Messages.Field with
 
       | Object _ ->
         failwith "TODO"
-
-    | Object m as o when not m.IsEmpty ->
-      Some <| Messages.Field(name, Nullable ValueType.STRING, "json",
-                             [Json.format <| Json.valueToJson o])
-
-    // TODO/CONSIDER: Fractions could also be serialized into an int array with a clarifying representation string
-    | Fraction _ as frac ->
-      Some <| Messages.Field(name, Nullable ValueType.STRING, "json",
-                             [Json.format <| Json.valueToJson frac])
 
 type Logary.Heka.Messages.Message with
   static member ofMessage (msg : Logary.Message) =
