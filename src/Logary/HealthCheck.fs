@@ -9,7 +9,7 @@ open Logary.Metric
 type ResultData =
   /// If the health check is for a value (which it probably is) then it should
   /// contain the measure generated.
-  abstract measure     : Message
+  abstract msr         : Message
 
   /// Gets the description detailing what went badly with the evaluation of the
   /// health check. Useful for drilling down.
@@ -62,7 +62,7 @@ module HealthCheck =
   /// uses its 'data' Map to read.
   type MeasureWrapper(m : Message) =
     interface ResultData with
-      member x.measure     = m
+      member x.msr         = m
       member x.description = tryGetDesc m
       //member x.Exception   = tryGetExn m
     override x.ToString() =

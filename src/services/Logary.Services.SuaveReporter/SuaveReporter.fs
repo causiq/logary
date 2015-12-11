@@ -3,7 +3,6 @@
 open System.Text
 
 open Logary
-open Logary.DataModel
 open Logary.Utils.Aether
 open Logary.Utils.Aether.Operators
 open Logary.Utils.Chiron

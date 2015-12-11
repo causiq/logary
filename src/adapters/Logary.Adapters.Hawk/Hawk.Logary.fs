@@ -3,7 +3,6 @@
 /// Some mapping functions for Hawk LogLevels
 module internal HawkLogLevel =
   open System
-
   open Logary
 
   // deliberatly not opening Hawk, to keep types specific
@@ -19,20 +18,15 @@ module internal HawkLogLevel =
 
 module internal HawkLogLine =
   open System
-
   open NodaTime
-
   open Logary
+  open Logary.Operators
 
   /// Convert a Suave LogLine to a Logary LogLine.
   let toLogary (l : logibit.hawk.Logging.LogLine) : Message =
-    { data          = l.data
-      message       = l.message
-      ``exception`` = None
-      level         = l.level |> HawkLogLevel.toLogary
-      tags          = []
-      path          = l.path
-      timestamp     = l.timestamp }
+    Message.event (HawkLogLevel.toLogary l.level) l.message
+    |> Message.setName (PointName.parse l.path)
+    |> Message.setTicks l.timestamp.Ticks
 
 open Logary
 

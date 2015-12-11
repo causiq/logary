@@ -26,6 +26,7 @@ type GraphiteConf =
   { hostname  : string
     port      : uint16
     clientFac : string -> uint16 -> WriteClient }
+
   static member Create(hostname, ?port, ?clientFac) =
     let port = defaultArg port 2003us
     let clientFac = defaultArg clientFac (fun host port -> new TcpWriteClient(new TcpClient(host, int port)) :> WriteClient)

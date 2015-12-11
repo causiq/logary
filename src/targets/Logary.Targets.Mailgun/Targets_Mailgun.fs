@@ -2,7 +2,6 @@
 
 open Hopac
 open Logary
-open Logary.DataModel
 open Logary.Target
 open Logary.Internals
 open Mailgun.Api
@@ -12,9 +11,9 @@ type Domain = string
 
 type MailgunLogaryConf =
   { mailgun    : Configured
-    templater  : DataModel.Message -> MailBody
-    getOpts    : Domain * DataModel.Message -> SendOpts
-    msgFactory : MailgunLogaryConf -> MailBody * SendOpts * DataModel.Message -> Message
+    templater  : Logary.Message -> MailBody
+    getOpts    : Domain * Logary.Message -> SendOpts
+    msgFactory : MailgunLogaryConf -> MailBody * SendOpts * Logary.Message -> Message
     from       : MailAddress
     ``to``     : MailAddress list
     cc         : MailAddress list
@@ -26,7 +25,7 @@ type MailgunLogaryConf =
 module internal Impl =
 
   let templater msg =
-    let formatter = Formatting.StringFormatter.LevelDatetimeMessagePathNl
+    let formatter = Formatting.StringFormatter.levelDatetimeMessagePathNl
     TextBody (formatter.format msg)
 
   let getOpts (domain, msg) = SendOpts.Create domain
@@ -45,11 +44,11 @@ module internal Impl =
     let rec loop () = job {
       let! msg = Ch.take reqCh
       match msg with
-      | Log line ->
-        if line.level < conf.minLevel then return! loop ()
-        let body  = conf.templater line
-        let opts  = conf.getOpts (conf.domain, line)
-        let msg   = conf.msgFactory conf (body, opts, line)
+      | Log logMsg ->
+        if logMsg.level < conf.minLevel then return! loop ()
+        let body  = conf.templater logMsg
+        let opts  = conf.getOpts (conf.domain, logMsg)
+        let msg   = conf.msgFactory conf (body, opts, logMsg)
         let! resp = Messages.send conf.mailgun opts msg
         match resp with
         | Result response ->
@@ -61,12 +60,12 @@ module internal Impl =
           |> Logger.log ri.logger
         return! loop ()
 
-      | Flush ack ->
-        do! IVar.fill ack Ack
+      | Flush (ack, nack) ->
+        do! Ch.give ack ()
         return! loop ()
 
-      | Shutdown ack ->
-        do! IVar.fill ack Ack
+      | Shutdown (ack, nack) ->
+        do! Ch.give ack ()
       }
 
     if conf.``to`` = [] then

@@ -10,6 +10,8 @@ open Logary.Utils.Aether.Operators
 
 type ContentType = string
 
+type EpochNanoSeconds = int64
+
 type Value =
   | String of string
   | Bool of bool
@@ -750,8 +752,8 @@ type Message =
     context   : Map<string, Value>
     /// what urgency?
     level     : LogLevel
-    /// when?
-    timestamp : int64 }
+    /// when? nanoseconds since UNIX epoch
+    timestamp : EpochNanoSeconds }
 
     static member name_ : Lens<Message, PointName> =
       (fun x -> x.name),
@@ -846,38 +848,38 @@ module Message =
     let service_ : PLens<Message, string> =
       contextValue_ "service" >??> Value.String_
 
-  /// Creates a new event message with level
+  /// Creates a new event message template with level
   [<CompiledName "CreateEvent">]
-  let event level msg =
+  let event level template =
     { name      = PointName.empty
-      value     = Event msg
+      value     = Event template
       fields    = Map.empty
       session   = Object Map.empty
       context   = Map.empty
       level     = level
-      timestamp = SystemClock.Instance.Now.Ticks }
+      timestamp = Date.timestamp() }
 
   /// Creates a new metric message with data point name, unit and value
   [<CompiledName "CreateMetric">]
   let metricWithUnit dp unit value =
-    { name = dp
-      value = Gauge (value, unit)
-      fields = Map.empty
-      session = Object Map.empty
-      context = Map.empty
-      level = LogLevel.Info
-      timestamp = SystemClock.Instance.Now.Ticks }
+    { name      = dp
+      value     = Gauge (value, unit)
+      fields    = Map.empty
+      session   = Object Map.empty
+      context   = Map.empty
+      level     = Debug
+      timestamp = Date.timestamp() }
 
   /// Creates a new metric message with data point name and scalar value
   [<CompiledName "CreateMetric">]
   let metric dp value =
-    { name = dp
-      value = Gauge (value, Units.Scalar)
-      fields = Map.empty
-      session = Object Map.empty
-      context = Map.empty
-      level = LogLevel.Info
-      timestamp = SystemClock.Instance.Now.Ticks }
+    { name      = dp
+      value     = Gauge (value, Units.Scalar)
+      fields    = Map.empty
+      session   = Object Map.empty
+      context   = Map.empty
+      level     = Debug
+      timestamp = Date.timestamp() }
 
   /// Create a verbose event message
   [<CompiledName "Verbose">]
@@ -939,8 +941,21 @@ module Message =
   [<CompiledName "SetLevel">]
   let setLevel lvl msg = { msg with level = lvl}
 
-  [<CompiledName "SetTimestamp">]
-  let setTimestamp ts msg = { msg with timestamp = ts}
+  /// Sets the number of nanoseconds since epoch.
+  [<CompiledName "SetEpochNano">]
+  let setEpochNano (ts : EpochNanoSeconds) msg =
+    { msg with timestamp = ts }
+
+  /// Sets the number of ticks since epoch. There are 10 ticks per micro-second,
+  /// so a tick is a 1/10th microsecond, so it's 100 nanoseconds long.
+  [<CompiledName "SetTicks">]
+  let setTicks (ticks : int64) msg =
+    { msg with timestamp = ticks * 100L }
+
+  /// Update the message with the current timestamp.
+  [<CompiledName "UpdateTimestamp">]
+  let updateTimestamp msg =
+    { msg with timestamp = Date.timestamp () }
 
   /// Replaces the value of the message with a new Event with the supplied format
   [<CompiledName "SetEvent">]

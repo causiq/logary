@@ -7,7 +7,6 @@ open System.Net.Mail
 open Hopac
 open Mailgun.Api
 open Logary
-open Logary.DataModel
 open Logary.Internals
 open Logary.Targets.Mailgun
 
@@ -33,7 +32,7 @@ let start () =
                                       "haf.se",
                                       getOpts = getOpts)
 
-  Target.init emptyRuntime (create conf "mailgun")
+  Target.init emptyRuntime (create conf (PointName.ofSingle "mailgun"))
 
 [<Tests>]
 let tests =

@@ -94,8 +94,8 @@ let transformToMessage =
   testList "converting a Logary Message to a Heka Message" [
     testCase "just message" <| fun _ ->
       let ll =
-        { DataModel.Message.event Info "hello world" with
-            name      = [ "Logibit"; "Web"; "Sample"; "Run" ]
+        { Message.event Info "hello world" with
+            name      = PointName.ofList [ "Logibit"; "Web"; "Sample"; "Run" ]
             timestamp = 1234567L }
       Assert.Equal("should eq msg",
         Message(payload   = "hello world",

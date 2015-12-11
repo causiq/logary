@@ -182,17 +182,17 @@ module internal Impl =
       | Log msg ->
         return! write (Message.ofMessage msg)
 
-      | Flush ack ->
-        do! IVar.fill ack Ack
+      | Flush (ack, nack) ->
+        do! Ch.give ack ()
         return! running state
 
-      | Shutdown ack ->
+      | Shutdown (ack, nack) ->
         let dispose x = (x :> IDisposable).Dispose()
         Try.safe "heka target disposing tcp stream, then client" ri.logger <| fun () ->
           dispose state.stream
           dispose state.client
 
-        do! IVar.fill ack Ack
+        do! Ch.give ack ()
       }
 
     initialise ()
