@@ -9,7 +9,7 @@ type AssertResult =
 
 and AssertContext<'a> =
   { message : string
-    item    : 'a 
+    item    : 'a
     negated : bool }
 
 and Asserter<'a> = 'a -> AssertContext<'a> -> AssertResult
@@ -31,6 +31,10 @@ let executing msg (f : unit -> _) =
 
 let private nl = Environment.NewLine
 
+open Logary
+
+let pn s = Logary.PointName [s]
+
 let theTuple f (tupleCtx : AssertContext<'a * 'b>) =
   f ({ item    = tupleCtx.item |> fst
        message = tupleCtx.message
@@ -42,7 +46,7 @@ let theTuple f (tupleCtx : AssertContext<'a * 'b>) =
 let should (asserter : Asserter<'a>) (expected : 'a) (ctx : AssertContext<_>) =
   match asserter expected ctx with
   | Success -> ctx
-  | Failure msg -> 
+  | Failure msg ->
     failwith <| sprintf "because %s:%s%s%s" ctx.message nl nl msg
 
 let should' asserter (ctx : AssertContext<_>) =
@@ -54,14 +58,14 @@ let should' asserter (ctx : AssertContext<_>) =
 let should_not (asserter : Asserter<'a>) (expected : 'a) (ctx : AssertContext<_>) =
   match asserter expected { ctx with negated = true } with
   | Success -> ctx
-  | Failure msg -> 
+  | Failure msg ->
     failwith <| sprintf "because %s:%s%s%s" ctx.message nl nl msg
 
 // asserters
 
 let be expected ctx =
   match ctx.item with
-  | _ as v when 
+  | _ as v when
     (ctx.negated || v = expected)
     || (not ctx.negated || (not <| v = expected)) -> Success
   | _ as v ->
@@ -74,7 +78,7 @@ let contain substr ctx =
     && (not ctx.negated || (not <| (ctx.item : string).Contains(substr))) then
     Success
   else
-    Failure (sprintf "expected the %s '%s'%s to%s contain substring '%s'" 
+    Failure (sprintf "expected the %s '%s'%s to%s contain substring '%s'"
       (ctx.item.GetType().Name)
       ctx.item
       nl
