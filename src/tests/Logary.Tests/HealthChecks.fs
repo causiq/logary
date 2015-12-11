@@ -30,7 +30,7 @@ let private untilPred maxWait fPred =
 
 let pingSvdSe () =
   let mkError ex =
-    Message.metric ["app";"resource";"ping-svd"] (Float 0.0M)
+    Message.metric (PointName.ofList ["app";"resource";"ping-svd"]) (Float 0.0M)
     |> setDesc "ping completed with error"
     |> Message.addExn ex
     |> Message.setLevel LogLevel.Error
@@ -46,7 +46,7 @@ let pingSvdSe () =
       elif complete.Error <> null then
         return mkError complete.Error
       else
-        return Message.metric ["app";"resource";"ping-svd"] (Float 1.0M) |> Message.toResult
+        return Message.metric (PointName.ofList ["app";"resource";"ping-svd"]) (Float 1.0M) |> Message.toResult
 
     with e ->
       return mkError e }
@@ -55,8 +55,8 @@ let tests =
   testList "health checks" [
     testCase "real ping" <| fun _ ->
       Fuchu.Tests.skiptest "does network IO"
-      let h = fromFn "ping haf.se" pingSvdSe
+      let h = fromFn (pn "ping haf.se") pingSvdSe
       let gotUnhealthy = untilPred 10000 <| fun i ->
-        match h.GetValue () with HasValue _ -> true | _ -> false
+        match h.getValue () with HasValue _ -> true | _ -> false
       gotUnhealthy =? false
     ]

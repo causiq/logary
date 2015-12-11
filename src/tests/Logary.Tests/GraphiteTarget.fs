@@ -22,9 +22,9 @@ let tests =
     testCase "initialising" <| fun _ ->
       let client = new StubWriterClient(false)
       let conf = Graphite.GraphiteConf.Create("localhost", clientFac = fun a b -> client :> WriteClient)
-      let graphite = Graphite.create conf "graphite-target"
+      let graphite = Graphite.create conf (pn "graphite-target")
       let instance = graphite.initer { serviceName = "tests"; logger = NullLogger() }
-      instance.name =? "graphite-target"
+      instance.name =? (pn "graphite-target")
 
       (because "shutting down the target" <| fun () ->
         instance |> finaliseTarget
@@ -33,6 +33,6 @@ let tests =
       |> thatsIt
 
     testCase "sanitizePath" <| fun _ ->
-      let testPath = ["This is a metric path"; "path$Section%2.5"; "GET /post/1.2/"; "Multiple . spaces"]
-      Graphite.sanitizePath testPath =? ["This_is_a_metric_path"; "path$Section%2_5"; "GET_-post-1_2-"; "Multiple___spaces"]
+      let testPath = PointName.ofList ["This is a metric path"; "path$Section%2.5"; "GET /post/1.2/"; "Multiple . spaces"]
+      Graphite.Impl.sanitisePath testPath =? (PointName.ofList ["This_is_a_metric_path"; "path$Section%2_5"; "GET_-post-1_2-"; "Multiple___spaces"])
     ]

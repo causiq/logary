@@ -1013,7 +1013,7 @@ module Message =
   /// Converts a String.Format-style format string and an array of arguments into
   /// a message template and a set of fields.
   [<CompiledName "TemplateFromFormat">]
-  let private templateFromFormat (format : string) (args : obj[]) =
+  let internal templateFromFormat (format : string) (args : obj[]) =
     let fields =
       args
       |> Seq.mapi (fun i v ->

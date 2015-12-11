@@ -7,7 +7,7 @@ open Fuchu
 open Logary.Configuration
 
 open Logary
-open Logary.DataModel
+
 open Logary.Logging
 open Logary.Targets
 open Logary.Metrics

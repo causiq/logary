@@ -41,7 +41,7 @@ namespace Logary
         /// </summary>
         public static Message SetService(this Message msg, string path)
         {
-            return MessageModule.Context.SetService(path, msg);
+            return MessageModule.Context.service_.Item2.Invoke(path).Invoke(msg);
         }
 
         /// <summary>

@@ -159,7 +159,7 @@ let tests =
         job {
           // when
           let get = Registry.getLogger logary.registry
-          let! lgrA = get "a"
+          let! lgrA = get (PointName.ofSingle "a")
           let! lgrB = get "b"
 
           "first"   |> Logger.debug lgrA

@@ -61,7 +61,7 @@ type TargetConf =
 /// 'API helper' method for flowing the target through
 /// a configurator factory that is then used to change the
 /// TargetConf value that is returned.
-let confTarget name (factory : string -> TargetConf) =
+let confTarget name (factory : PointName -> TargetConf) =
   factory name
 
 /// Validates the target according to its validation rules.
