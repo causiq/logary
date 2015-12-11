@@ -2,7 +2,7 @@
 
 open System
 open System.Runtime.CompilerServices
-
+open NodaTime
 open Logary
 open Logary.Utils.Aether
 open Logary.Internals
@@ -15,16 +15,22 @@ module LoggerExtensions =
 
   /// Log a message to the log
   [<Extension; CompiledName("Log")>]
-  let log (logger : Logger, message, level, name : PointName, timestamp : Nullable<NodaTime.Instant>) =
-    if message = null then nullArg "message"
-    let msg = Message.event level message
-    Message.setTimestamp (if timestamp.HasValue then timestamp.Value.Ticks else msg.timestamp) msg
+  let log (logger : Logger, template, level, name : PointName, timestamp : Nullable<Instant>) =
+    if template = null then nullArg "template"
+
+    let setTimestamp =
+      if timestamp.HasValue
+      then Message.setTicks timestamp.Value.Ticks
+      else Message.updateTimestamp
+
+    Message.event level template
+    |> setTimestamp
     |> Message.setName name
     |> logger.log
 
   /// Log a message to the log
   [<Extension; CompiledName("Log")>]
-  let logAnnotate (logger : Logger, message, level) =
-    if message = null then nullArg "message"
-    Message.event level message
+  let logAnnotate (logger : Logger, template, level) =
+    if template = null then nullArg "template"
+    Message.event level template
     |> logger.log

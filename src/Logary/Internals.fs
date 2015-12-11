@@ -83,7 +83,15 @@ module internal Rnd =
 
 module Date =
   open NodaTime
-  let now () = SystemClock.Instance.Now
+
+  // TO CONSIDER: Make IClock configurable
+  let internal clock = ref SystemClock.Instance
+
+  let TicksPerNano = 10
+
+  /// Returns the number of nanoseconds since epoch
+  let timestamp () : int64 =
+    (!clock).Now.Ticks * 100L
 
 module internal Cache =
   open System

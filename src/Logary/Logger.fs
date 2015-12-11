@@ -19,7 +19,6 @@ type Logger =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Logger =
   open System
-
   open Logary
 
   /////////////////////
