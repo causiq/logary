@@ -17,7 +17,7 @@ module Cancellation =
   let create () = { cancelled = IVar.Now.create () }
 
   let isCancelled cancellation = job {
-    return! (IVar.read cancellation.cancelled ^->. true) <|> (Alt.always false)
+    return! (cancellation.cancelled ^->. true) <|> (Alt.always false)
   }
 
   let cancel cancellation = job {
@@ -70,7 +70,7 @@ module private Impl =
 /// Creates a new scheduler job
 let create () =
   let ch = Ch.Now.create ()
-  Job.Global.start (Impl.loop ch)
+  Job.Global.server (Impl.loop ch)
   ch
 
 /// Schedules a message to be sent to the receiver after the initialDelay.

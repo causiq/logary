@@ -35,9 +35,6 @@ type HealthCheck =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module HealthCheck =
 
-  open System
-  open System.Runtime.CompilerServices
-
   open Hopac
 
   open Logary.Internals
@@ -55,16 +52,15 @@ module HealthCheck =
   [<CompiledName "TryGetDescription">]
   let tryGetDesc m =
     match Message.tryGetField Description m with
-    | (Some (Field (String s, _))) ->  s
-    | _ -> ""
+    | (Some (Field (String s, _))) -> Some s
+    | _ -> None
 
   /// An implementation of the ResultData interface that wraps a Measure and
   /// uses its 'data' Map to read.
   type MeasureWrapper(m : Message) =
     interface ResultData with
       member x.msr         = m
-      member x.description = tryGetDesc m
-      //member x.Exception   = tryGetExn m
+      member x.description = defaultArg (tryGetDesc m) ""
     override x.ToString() =
       sprintf "HealthCheck(name=%s, value=%A, level=%A)"
         (PointName.joined m.name) m.value m.level
@@ -76,7 +72,7 @@ module HealthCheck =
       |> HasValue
 
   type HealthCheckMessage =
-    | GetResult of Ch<HealthCheckResult>
+    | GetResult of IVar<HealthCheckResult>
     | ShutdownHealthCheck of IVar<Acks>
 
   type HealthCheckInstance =
@@ -91,9 +87,9 @@ module HealthCheck =
     let rec running _ = job {
         let! req = Ch.take ch.reqCh
         match req with
-        | GetResult resCh ->
+        | GetResult ivar ->
           let! x = fn ()
-          do! Ch.give resCh x
+          do! IVar.fill ivar x
           return! running { last = x }
         | ShutdownHealthCheck ivar ->
           do! IVar.fill ivar Ack
@@ -110,9 +106,9 @@ module HealthCheck =
         member x.getValue () =
           (job {
             // TODO / PERF?: This channel could be reused or replaced with an IVar
-            let! responseCh = Ch.create ()
-            do! Ch.give ch.reqCh (GetResult (responseCh))
-            return! Ch.take responseCh
+            let! ivar = IVar.create ()
+            do! Ch.give ch.reqCh (GetResult ivar)
+            return! ivar
           }) |> Job.Global.run
         member x.Dispose() =
           (job {

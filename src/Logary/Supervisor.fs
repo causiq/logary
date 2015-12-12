@@ -53,6 +53,7 @@ let rec private supervise instance (nj : NamedJob<_>) = job {
   | Choice1Of2 _ ->
     // If the job is finished without an exception (presumably shut down),
     // stop supervising.
+    do! Ch.give instance.ch (Unregister (PointName.ofList nj.name))
     ()
 
   | Choice2Of2 ex ->
