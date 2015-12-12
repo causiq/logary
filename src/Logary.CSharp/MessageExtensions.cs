@@ -65,7 +65,7 @@ namespace Logary
         /// </summary>
         public static Message SetTimestamp(this Message msg, Instant timestamp)
         {
-            return MessageModule.SetTimestamp(timestamp.Ticks, msg);
+            return MessageModule.SetTicks(timestamp.Ticks, msg);
         }
     }
 }
