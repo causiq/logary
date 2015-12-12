@@ -7,7 +7,6 @@ open System.Runtime.CompilerServices
 open Hopac
 open Hopac.Infixes
 open NodaTime
-
 open Logary
 open Logary.Internals
 open Logary.Target
@@ -138,8 +137,7 @@ let validate ({ targets     = targets
 [<CompiledName "RunLogary"; Extension>]
 let runLogary conf =
   let instance = Advanced.create conf
-  Logging.startFlyweights instance
-  instance
+  Logging.startFlyweights instance >>-. instance
 
 /// Shutdown logary, waiting maximum flushDur + shutdownDur.
 [<CompiledName "ShutdownLogary">]
@@ -149,9 +147,9 @@ let shutdown (flushDur : Duration) (shutdownDur : Duration) (inst : LogaryInstan
     >> Logger.log inst.runtimeInfo.logger
 
   job {
-    Message.info "start shutdown" |> log
+    do! Message.info "start shutdown" |> log
     let! res = Advanced.flushAndShutdown flushDur shutdownDur inst.registry
-    Message.info "stop shutdown" |> log
+    do! Message.info "stop shutdown" |> log
     Logging.shutdownFlyweights ()
     shutdownLogger inst.runtimeInfo.logger
     return res
@@ -166,7 +164,6 @@ let shutdownSimple =
 /// Wrap the LogaryInstance as a LogManager
 [<CompiledName "AsLogManager"; Extension>]
 let asLogManager (inst : LogaryInstance) =
-  let run = Job.Global.run
   { new LogManager with
       member x.runtimeInfo =
         inst.runtimeInfo
@@ -195,7 +192,7 @@ let configure serviceName targets pollPeriod metrics rules (internalLevel, inter
   |> withInternalTarget internalLevel internalTarget
   |> validate
   |> runLogary
-  |> asLogManager
+  >>- asLogManager
 
 /// Configure Logary completely with the given service name and a function that
 /// configured the configuration. This will call the `validateLogary` function
@@ -216,4 +213,4 @@ let withLogary' serviceName fConf =
   fConf (confLogary serviceName)
   |> validate
   |> runLogary
-  |> asLogManager
+  >>- asLogManager

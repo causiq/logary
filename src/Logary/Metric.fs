@@ -1,11 +1,9 @@
 ﻿module Logary.Metric
 
 open System
-
 open NodaTime
-
 open Hopac
-
+open Hopac.Infixes
 open Logary
 open Logary.Internals
 
@@ -42,9 +40,9 @@ type MetricInstance =
     dpNameCh:   Ch<PointName list> }
 with
   static member create () = {
-    requestCh  = Ch.Now.create ()
-    updateCh   = Ch.Now.create ()
-    dpNameCh   = Ch.Now.create () }
+    requestCh  = Ch ()
+    updateCh   = Ch ()
+    dpNameCh   = Ch () }
 
 [<CustomEquality; CustomComparison>]
 type MetricConf =
@@ -91,51 +89,46 @@ let init metadata conf =
 
 /// The GetValue implementation shall retrieve the value of one or more data
 /// points from the probe.
-let getValue (dps : PointName list) mi = job {
-  // TODO: Should be cached or parametrized
-  let! resultCh = Ch.create ()
-  do! Ch.give mi.requestCh (GetValue (dps, resultCh))
-  return! Ch.take resultCh
-}
+let getValue (dps : PointName list) mi =
+  let resultCh = Ch ()
+  mi.requestCh *<+ GetValue (dps, resultCh) >>=.
+  resultCh
 
 /// The GetDataPoints shall return a list with all data points supported by
 /// the probe
-let getDataPoints mi = job {
-  return! Ch.take mi.dpNameCh
-}
+let getDataPoints mi =
+  Ch.take mi.dpNameCh :> Job<_>
 
 /// Incorporate a new value into the metric maintained by the metric.
 let update (m: Message) mi =
-  let updateJob = job { do! Ch.give mi.updateCh m }
-  Job.Global.start updateJob
+  Ch.send mi.updateCh m |> Job.start |> ignore
   mi
 
 /// The Sample implementation shall sample data from the subsystem the probe
 /// is integrated with.
 let sample mi =
-  (Ch.give mi.requestCh Sample) |> Job.Global.start
+  Ch.send mi.requestCh Sample |> Job.start
 
 /// The custom probe shall release any resources associated with the given
 /// state and return ok.
-let shutdown mi = job {
-  let! ack = IVar.create ()
-  do! Ch.give mi.requestCh (Shutdown ack)
-  return! ack
-}
+let shutdown mi =
+  let ack = IVar ()
+  mi.requestCh *<+ Shutdown ack >>=. ack
 
 module MetricUtils =
+
   /// Called by metric implementations; each metric implementation has as its
   /// own responsibility to configure itself, so that is not done through this
   /// function. Not to be called directly, only called from inside Logary;
   /// each module: `Probe`, `Metric` and `HealthCheck` is responsible for having
   /// a function that can create standard named metrics which is usable from
   /// outside Logary.
-  let stdNamedMetric ``type`` loop name sampling =
+  let stdNamedMetric ``type`` (loop : _ -> _ -> Job<unit>) name sampling =
     { name        = name
       ``type``    = ``type``
       initer = fun metadata ->
         let instance = MetricInstance.create ()
-        Job.Global.start (loop metadata instance)
+        Job.Global.queue (loop metadata instance)
         instance
       sampling = sampling }
 

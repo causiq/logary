@@ -102,12 +102,12 @@ let private loop (instance : Instance) =
 
       match restarted, instance.options.maxRestarts with
       | r, mr when r > mr ->
-        Message.errorf "Job \"%O\" has crashed too many times and won't be restarted." name |> log
+        do! Message.errorf "Job \"%O\" has crashed too many times and won't be restarted." name |> log
         do! IVar.fill shouldRestart false
         return! f jobs
 
       | _ ->
-        Message.errorf "Job \"%O\" has crashed and will be restarted." name |> log
+        do! Message.errorf "Job \"%O\" has crashed and will be restarted." name |> log
         do! IVar.fill shouldRestart true
         return! f (Map.add name (restarted + 1u) jobs)
   }

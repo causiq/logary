@@ -99,13 +99,14 @@ module internal Impl =
       let rec running state = job {
         let! msg = Ch.take reqCh
         match msg with
-        | Log logMsg ->
+        | Log (logMsg, ack) ->
           match logMsg.value with
           | Event template ->
             let path = PointName.format logMsg.name
             let instant = Instant logMsg.timestamp
             let graphiteMsg = createMsg path template instant
             let! state' = graphiteMsg |> doWrite state
+            do! ack *<= ()
             return! running state'
 
           | Gauge _

@@ -1,17 +1,14 @@
 ﻿module Logary.Tests.Rule
 
+open Fuchu
 open Hopac
 open Hopac.Infixes
-open Fuchu
 open Swensen.Unquote
 open TestDSL
 open Fac
-
 open System
 open System.Text.RegularExpressions
-
 open NodaTime
-
 open Logary
 open Logary.Configuration
 open Logary.Targets
@@ -77,22 +74,22 @@ let tests =
         Target.confTarget (pn "t1") (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out))
         Target.confTarget (pn "t2") (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out))
       ]
-      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
+      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary |> run
       // string = logger name = path
-      let get = Registry.getLogger logary.registry
+      let get = Registry.getLogger logary.registry >> run
 
       // when getting targets
 
-      let no1 = pnp "path.1" |> get |> Job.Global.run
+      let no1 = pnp "path.1" |> get
       Assert.Equal("path1 should be Info", Info, no1.level)
 
-      let no1 = pnp "path.1.extra" |> get |> Job.Global.run
+      let no1 = pnp "path.1.extra" |> get
       Assert.Equal("path.1.extra should be Verbose", Verbose, no1.level) // this one goes downwards
 
-      let no2 = pnp "path.2" |> get |> Job.Global.run
+      let no2 = pnp "path.2" |> get
       Assert.Equal("path.2 should be Warn", Warn, no2.level)
 
-      let no2 = pnp "path.2.extra" |> get |> Job.Global.run
+      let no2 = pnp "path.2.extra" |> get
       Assert.Equal("path.2.extra should be warn", Warn, no2.level) // this one goes upwards
 
     yield testCase "multiplexing accept filters from given rules" <| fun _ ->
@@ -106,7 +103,7 @@ let tests =
       let targets =
         [ Target.confTarget (pn "tw") (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
 
-      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
+      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary |> run
       try
         job {
           // when
@@ -116,9 +113,9 @@ let tests =
           let! no3 = pn "3" |> get
 
           // 1 and 2 should go through, not 3
-          "first"  |> Logger.debug no1
-          "second" |> Logger.debug no2
-          "third"  |> Logger.debug no3
+          do! "first"  |> Logger.debug no1
+          do! "second" |> Logger.debug no2
+          do! "third"  |> Logger.debug no3
 
           // wait for logging to complete; then
           let! _ = Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000
@@ -132,7 +129,7 @@ let tests =
           |> should' (fulfil <| fun str -> "only single line 'second'", Regex.Matches(str, "second").Count = 1)
           |> should' (fulfil <| fun str -> "zero matches for 'third'", Regex.Matches(str, "third").Count = 0)
           |> thatsIt
-        } |> Job.Global.run
+        } |> run
       finally
         finaliseLogary logary
 
@@ -155,7 +152,7 @@ let tests =
       let targets =
         [ Target.confTarget (pn "tw") (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
 
-      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
+      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary |> run
       try
         job {
           // when
@@ -163,10 +160,10 @@ let tests =
           let! lgrA = get (PointName.ofSingle "a")
           let! lgrB = get (pn "b")
 
-          "first"   |> Logger.debug lgrA
-          "second"  |> Logger.info lgrA
-          "third"   |> Logger.debug lgrB
-          "fourth"  |> Logger.verbose lgrB
+          do! "first"   |> Logger.debug lgrA
+          do! "second"  |> Logger.info lgrA
+          do! "third"   |> Logger.debug lgrB
+          do! "fourth"  |> Logger.verbose lgrB
           let! _ = Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000
 
           because "lgrA matches two rules, lgrB matches only one" (fun _ -> out.ToString())
@@ -193,7 +190,7 @@ let tests =
 
       let rules   = [ { hiera  = Regex(".*"); target = pn "tw"; messageFilter = filter; level = Debug } ]
       let targets = [ Target.confTarget (pn "tw") (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
-      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
+      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary |> run
       try
         job {
           let! logr = Registry.getLogger logary.registry (pnp "my.path.here")
@@ -202,7 +199,7 @@ let tests =
           |> should equal LogLevel.Debug
           |> thatsIt
 
-          "my message comes here" |> Logger.debug logr
+          do! "my message comes here" |> Logger.debug logr
           let! _ = Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000
           (because "it was logged but accept is always returning false" <| fun () ->
             out.ToString())
@@ -230,7 +227,7 @@ let tests =
         { hiera  = Regex(".*"); target = pn "tw"; messageFilter = filter2; level  = Verbose }
         ]
       let targets = [ Target.confTarget (pn "tw") (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
-      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
+      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary |> run
       try
         job {
           let! shouldLog = Registry.getLogger logary.registry (pnp "a.b.c")

@@ -13,59 +13,63 @@ open Logary.Target
 open Logary.HealthCheck
 
 /// Given the registry actor, and a name for the logger, get the logger from the registry.
-let getLogger (registry : RegistryInstance) name = job {
-  let! resultCh = Ch.create ()
-  do! Ch.give registry.reqCh (GetLogger (name, resultCh))
-  return! Ch.take resultCh
-}
+let getLogger (registry : RegistryInstance) name : Job<Logger> =
+  let resCh = Ch ()
+  registry.reqCh *<+ GetLogger (name, resCh) >>=.
+  resCh
 
 /// handling flyweights
 module internal Logging =
+  open Hopac.Infixes
   open System
-
   open Logary.Target
   open Logary.Internals
   open Logary.Internals.Date
 
-  /// Flyweight logger impl - reconfigures to work when it is configured, and until then
-  /// throws away all log lines.
+  /// Flyweight logger impl - reconfigures to work when it is configured, and
+  /// until then throws away all log lines.
   type FWL(name) =
-    let locker = obj()
-    let logManager = ref None
-    let logger = ref None
+    let state = IVar.Now.create ()
+
+    let logger (f : Logger -> Alt<unit>) =
+      if IVar.Now.isFull state then
+        IVar.Now.get state |> (snd >> f)
+      else
+        Alt.always ()
 
     interface Named with
       member x.name = name
 
     interface FlyweightLogger with
-      member x.Configured lm =
-        lock locker (fun () ->
-          logManager := Some lm
-          logger := Some (Job.Global.run (getLogger lm.registry name)))
+      member x.configured lm =
+        getLogger lm.registry name >>= fun logger ->
+        state *<= (lm, logger)
 
     interface Logger with
-      member x.logVerbose fLine = (!logger) |> Option.iter (fun logger -> logger.logVerbose fLine)
-      member x.logDebug fLine = (!logger) |> Option.iter (fun logger -> logger.logDebug fLine)
-      member x.log l = (!logger) |> Option.iter (fun logger -> logger.log l)
-      member x.level = Verbose
+      member x.logVerbose fLine =
+        logger (flip Logger.logVerbose fLine)
 
-  /// Iterate through all flywieghts and set the current LogManager for them
-  let goFish () =
-    lock Globals.criticalSection <| fun () ->
-      match !Globals.singleton with
-      | None -> ()
-      | Some lm ->
-        !Globals.flyweights |> List.iter (fun f -> f.Configured lm)
-        Globals.flyweights := []
+      member x.logDebug fLine =
+        logger (flip Logger.logDebug fLine)
+
+      member x.log l =
+        logger (flip Logger.log l)
+
+      member x.level =
+        Verbose
 
   /// Singleton configuration entry point: call from the runLogary code.
   let startFlyweights inst =
     lock Globals.criticalSection <| fun () ->
       Globals.singleton := Some inst
-      goFish ()
+
+      // Iterate through all flywieghts and set the current LogManager for them
+      !Globals.flyweights
+      |> List.traverseJobA (fun f -> f.configured inst) >>- fun _ ->
+      Globals.flyweights := []
 
   /// Singleton configuration exit point: call from shutdownLogary code
-  let shutdownFlyweights _ =
+  let shutdownFlyweights () =
     lock Globals.criticalSection <| fun () ->
       Globals.singleton := None
       Globals.flyweights := []
@@ -136,9 +140,8 @@ module Advanced =
   let flushPending (registry : RegistryInstance) : Alt<unit> = Alt.withNackJob <| fun nack -> job {
     let! flushCh = Ch.create ()
     do! registry.reqCh *<+ (FlushPending (flushCh, nack))
-    return flushCh }
-
-  // TODO: use Alt<..> instead:
+    return flushCh
+  }
 
   /// Shutdown the registry. This will first flush all pending entries for all targets inside the
   /// registry, and then proceed to sending ShutdownTarget to all of them. If this doesn't
@@ -147,7 +150,8 @@ module Advanced =
   let shutdown (registry : RegistryInstance) : Alt<unit> = Alt.withNackJob <| fun nack -> job {
     let! shutdownCh = Ch.create ()
     do! registry.reqCh *<+ (ShutdownLogary (shutdownCh, nack))
-    return shutdownCh }
+    return shutdownCh
+  }
 
   // TODO: use Alt<..> instead:
 
@@ -195,7 +199,7 @@ module Advanced =
       sb.ToString()
 
     let pollMetrics (registry: Ch<RegistryMessage>) =
-      Job.Global.run <| Ch.give registry PollMetrics
+      Job.start (Ch.send registry PollMetrics)
 
     /// The state for the Registry
     type RegistryState =
@@ -207,26 +211,24 @@ module Advanced =
     /// The registry function that works as an actor.
     let rec registry conf sup sched (inbox : Ch<RegistryMessage>) =
       let targets = conf.targets |> Seq.map (fun kv -> kv.Value |> snd |> Option.get)
-      let lgr = conf.runtimeInfo.logger
       let regPath = PointName ["Logary"; "Registry"; "registry" ]
-      let log = Lens.set Message.name_ regPath >> Logger.log lgr
+      let log = Message.setName regPath >> Logger.log conf.runtimeInfo.logger
 
       /// In the shutdown state, the registry doesn't respond to messages, but rather tries to
       /// flush and shut down all targets, doing internal logging as it goes.
       let shutdown state (ackCh : Ch<unit>) (nack : Promise<unit>) = job {
-        Message.info "shutdown metrics polling" |> log
-
+        do! Message.info "shutdown metrics polling" |> log
         do! defaultArg (Option.map Cancellation.cancel state.pollMetrics) (Job.unit ())
 
-        Message.info "shutdown schedules" |> log
+        do! Message.info "cancel schedules" |> log
         for (_, x) in state.schedules do
           do! Cancellation.cancel x
 
-        Message.info "shutdown targets" |> log
+        do! Message.info "shutdown targets" |> log
         let! allShutdown =
           targets
-          |> Seq.pjmap (fun t -> Target.shutdown t  ^->. Success Ack <|>
-                                  timeOutMillis 200 ^->. TimedOut)
+          |> Seq.pjmap (fun t -> Target.shutdown t  ^->. Success Ack
+                                 <|> timeOutMillis 200 ^->. TimedOut)
 
         let stopped, failed =
           allShutdown
@@ -234,20 +236,19 @@ module Advanced =
           |> bisectSuccesses
 
         if List.isEmpty failed then
-          Message.info "shutdown Ack" |> log
+          do! Message.info "shutdown Ack" |> log
         else
           let msg = sprintf "failed target shutdowns:%s%s" nl (toTextList failed)
-          Message.errorf "shutdown Nack%s%s" nl msg
-          |> Message.field "failed" (Value.fromObject failed)
-          |> log
+          do! Message.errorf "shutdown Nack%s%s" nl msg
+              |> Message.field "failed" (Value.fromObject failed)
+              |> log
 
         do! Ch.give ackCh () <|> nack
-
-        Message.info "shutting down immediately" |> log
-        return () }
+        return! Message.info "shutting down immediately" |> log
+      }
 
       let rec init state = job {
-        let ctss =
+        let! ctss =
           // init sampling of metrics
           conf.metrics
           |> Seq.map (fun (KeyValue (key, (conf, mi))) ->
@@ -258,15 +259,17 @@ module Advanced =
             )
           )
           |> Seq.filter (snd >> Option.isSome)
-          |> Seq.map (fun (key, cancellation) -> key, Option.get cancellation)
+          |> Seq.map (fun (a, b) -> a, Option.get b)
+          |> List.ofSeq
+          |> List.traverseJobA (fun (key, cancellation : Job<Cancellation>) ->
+            cancellation >>- (fun ct -> key, ct))
 
         // init getting metrics' values
-        Message.debugf "will poll metrics every %O" conf.pollPeriod |> log
-
-        let pollCts =
+        do! Message.debugf "will poll metrics every %O" conf.pollPeriod |> log
+        let! pollCts =
           Scheduling.schedule sched pollMetrics inbox
-            (Duration.FromMilliseconds 200L)
-            (Some conf.pollPeriod)
+                              (Duration.FromMilliseconds 200L)
+                              (Some conf.pollPeriod)
 
         return! running { state with schedules = List.ofSeq ctss
                                      pollMetrics = Some pollCts }
@@ -277,7 +280,12 @@ module Advanced =
         let! msg = Ch.take inbox
         match msg with
         | GetLogger (name, chan) ->
-          do! Ch.give chan (name |> getTargets conf |> fromTargets name lgr)
+          let logger =
+            name
+            |> getTargets conf
+            |> fromTargets name conf.runtimeInfo.logger
+
+          do! Ch.give chan logger
           return! running state
 
         // CONSIDER: move away from RPC (even though we're just reading memory
@@ -285,29 +293,30 @@ module Advanced =
         // between messages to create conversations
         | PollMetrics ->
           // CONSIDER: a logMaybe function that checks level before creating LogLine
-          Message.debug "polling metrics" |> log
+          do! Message.debug "polling metrics" |> log
           // CONSIDER: can parallelise this if it helps (as they are all disjunct)
           for mtr in conf.metrics do
             let getMetricInst name = fun x -> x.metrics |> Map.find name |> (snd >> Option.get)
             let metricInstance = getMetricInst mtr.Key conf
 
             // CONSIDER: can memoize get data points of it helps (this one will probably not change very often)
-            Message.debugf "get dps from %O" metricInstance |> log
+            do! Message.debugf "get dps from %O" metricInstance |> log
             let! dps = metricInstance |> Metric.getDataPoints
 
-            Message.debug "get logger" |> log
-            let mtrLgr = mtr.Key |> getTargets conf |> fromTargets mtr.Key lgr
+            do! Message.debug "get logger" |> log
+            let mtrLgr = mtr.Key |> getTargets conf |> fromTargets mtr.Key conf.runtimeInfo.logger
 
-            Message.debug "getting value from metrics" |> log
+            do! Message.debug "getting value from metrics" |> log
             let! msrs = metricInstance |> Metric.getValue dps
 
             // CONSIDER: how to log each of these data points/measures? And what path to give them?
-            msrs |> List.iter (Logger.log mtrLgr)
+            for m in msrs do
+              do! Logger.log mtrLgr m
 
           return! running state
 
         | FlushPending(ackCh, nack) ->
-          Message.info "flush start" |> log
+          do! Message.info "flush start" |> log
 
           let! allFlushed =
             targets
@@ -320,10 +329,10 @@ module Advanced =
             |> bisectSuccesses
 
           if List.isEmpty notFlushed then
-            Message.info "flush Ack" |> log
+            do! Message.info "flush Ack" |> log
           else
             let msg = sprintf "Failed target flushes:%s%s" nl (toTextList notFlushed)
-            Message.errorf "flush Nack - %s" msg |> log
+            do! Message.errorf "flush Nack - %s" msg |> log
 
           do! Ch.give ackCh () <|> nack
 
@@ -347,7 +356,7 @@ module Advanced =
   /// metadata, so it's no need to pass the metadata to the target before this.
   let create (conf : LogaryConf) =
     let log =
-      Lens.set Message.name_ (PointName [ "Logary"; "Registry"; "create" ])
+      Message.setName (PointName [ "Logary"; "Registry"; "create" ])
       >> Logger.log conf.runtimeInfo.logger
 
     let sopts = Supervisor.Options.create (conf.runtimeInfo.logger, 10u, Duration.FromMilliseconds 500L)
@@ -360,13 +369,13 @@ module Advanced =
       conf.targets
       |> Map.map (fun _ (tconf, _) ->
         tconf,
-        Some(Target.init conf.runtimeInfo tconf))
+        Some (Target.init conf.runtimeInfo tconf))
 
     let metrics =
       conf.metrics
       |> Map.map (fun _ (mconf, _) ->
         mconf,
-        Some(Metric.init conf.runtimeInfo mconf))
+        Some (Metric.init conf.runtimeInfo mconf))
 
     let confNext = { conf with targets    = targets
                                metrics    = metrics }

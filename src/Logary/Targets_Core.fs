@@ -3,11 +3,10 @@ namespace Logary.Targets
 /// A module implementing a text writer target. Useful for writing to the
 /// console output, or writing to a custom text writer.
 module TextWriter =
-  open System.IO
 
+  open System.IO
   open Hopac
   open Hopac.Infixes
-
   open Logary
   open Logary.Internals
   open Logary.Target
@@ -26,6 +25,7 @@ module TextWriter =
       /// the log level that is considered 'important' enough to write to the
       /// error text writer
       isErrorAt  : LogLevel }
+
     static member Create(output, error, ?formatter : StringFormatter) =
       { formatter    = defaultArg formatter JsonFormatter.Default
         output       = output
@@ -45,38 +45,31 @@ module TextWriter =
       (fun (reqCh : Ch<TargetMessage>) ->
         let rec loop () = job {
           let wl (tw : TextWriter) = (tw.WriteLine : string -> unit)
+
           let! msg = Ch.take reqCh
           match msg with
-          | Log l ->
+          | Log (l, ack) ->
             let tw = if l.level < cutOff then out else err
             wl tw (formatter.format l)
             do (if flush then tw.Flush() else ())
+            do! ack *<= ()
             return! loop ()
-          | Flush (ackCh, nack) ->
+
+          | Flush (ack, nack) ->
             out.Flush()
             err.Flush()
-            do! Ch.give ackCh () <|> nack
+            do! Ch.give ack () <|> nack
             return! loop ()
+
           | Shutdown (ackCh, nack) ->
             out.Dispose()
             if not (obj.ReferenceEquals(out, err)) then err.Dispose() else ()
             do! Ch.give ackCh () <|> nack
-            return () }
+        }
         loop ())
 
   let create (conf : TextWriterConf) =
     TargetUtils.stdNamedTarget (Impl.loop conf)
-
-  /// Use from C# to create - uses tuple calling convention
-  [<CompiledName("Create")>]
-  let create' (formatter, out, err, flush, isErrorAt, name) =
-    create
-      { formatter = formatter
-        output    = out
-        error     = err
-        flush     = flush
-        isErrorAt = isErrorAt }
-      name
 
   /// Use with LogaryFactory.New( s => s.Target<TextWriter.Builder>() )
   type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
@@ -121,10 +114,6 @@ module Console =
         error     = System.Console.Error
         flush     = false
         isErrorAt = Error }
-
-  /// Use from C# to create - uses tuple calling convention
-  [<CompiledName("Create")>]
-  let create' (name, conf) = create conf name
 
   /// Use with LogaryFactory.New( s => s.Target<Console.Builder>() )
   type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
@@ -178,9 +167,10 @@ module Debugger =
         let rec loop () = job {
           let! msg = Ch.take reqCh
           match msg with
-          | Log message when Debugger.IsLogging() ->
+          | Log (message, ack) when Debugger.IsLogging() ->
             let path = message.name.ToString()
             Debugger.Log(offLevel, path, formatter.format message)
+            do! ack *<= ()
             return! loop()
 
           | Log _ ->

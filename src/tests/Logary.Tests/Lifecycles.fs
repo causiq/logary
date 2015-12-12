@@ -3,15 +3,12 @@
 open NodaTime
 open Swensen.Unquote
 open Fuchu
-
 open Logary.Configuration
-
 open Logary
-
 open Logary.Logging
 open Logary.Targets
 open Logary.Metrics
-
+open Hopac
 open TestDSL
 
 [<Tests>]
@@ -22,16 +19,18 @@ let tests =
       Config.confLogary "tests"
       |> Config.validate
       |> Config.runLogary
+      |> run
       |> Config.shutdownSimple
-      |> run |> ignore
+      |> run
+      |> ignore
 
     testCase "target" <| fun _ ->
-      Target.confTarget (pn "tw") (TextWriter.create (TextWriter.TextWriterConf.Create(Fac.textWriter(), Fac.textWriter())))
-      |> Target.validate
-      |> Target.init Fac.emptyRuntime
-      |> Target.send (Message.debug "Hello")
-      |> Target.shutdown
-      |> run |> ignore
+      let target =
+        Target.confTarget (pn "tw") (TextWriter.create (TextWriter.TextWriterConf.Create(Fac.textWriter(), Fac.textWriter())))
+        |> Target.validate
+        |> Target.init Fac.emptyRuntime
+      (Message.debug "Hello") |> Target.send target |> run
+      Target.shutdown target |> run |> ignore
 
     testCase "metric" <| fun _ ->
       Metric.confMetric
@@ -42,5 +41,6 @@ let tests =
       |> Metric.init Fac.emptyRuntime
       |> Metric.update (Message.metric (pn "tests") (Float 1.0M))
       |> Metric.shutdown
-      |> run |> ignore
+      |> run
+      |> ignore
     ]

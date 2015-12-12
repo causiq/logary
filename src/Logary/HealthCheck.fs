@@ -37,9 +37,7 @@ module HealthCheck =
 
   open System
   open System.Runtime.CompilerServices
-
   open Hopac
-
   open Logary.Internals
 
   /// A key in the `data` map inside the `Measure` type.
@@ -93,8 +91,9 @@ module HealthCheck =
         match req with
         | GetResult resCh ->
           let! x = fn ()
-          do! Ch.give resCh x
+          do! Ch.send resCh x
           return! running { last = x }
+
         | ShutdownHealthCheck ivar ->
           do! IVar.fill ivar Ack
           return ()
@@ -111,9 +110,10 @@ module HealthCheck =
           (job {
             // TODO / PERF?: This channel could be reused or replaced with an IVar
             let! responseCh = Ch.create ()
-            do! Ch.give ch.reqCh (GetResult (responseCh))
+            do! Ch.send ch.reqCh (GetResult (responseCh))
             return! Ch.take responseCh
           }) |> Job.Global.run
+
         member x.Dispose() =
           (job {
             let! ack = IVar.create ()

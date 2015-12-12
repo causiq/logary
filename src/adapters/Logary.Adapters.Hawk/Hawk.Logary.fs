@@ -29,12 +29,22 @@ module internal HawkLogLine =
     |> Message.setTicks l.timestamp.Ticks
 
 open Logary
+open Hopac
 
 type HawkAdapter(logger : Logger) =
   interface logibit.hawk.Logging.Logger with
     member x.Verbose fLine =
-      (fLine >> HawkLogLine.toLogary) |> Logger.logVerbose logger
+      (fLine >> HawkLogLine.toLogary)
+      |> Logger.logVerbose logger
+      |> queue
+
     member x.Debug fLine =
-      (fLine >> HawkLogLine.toLogary |> Logger.logDebug logger)
+      fLine >> HawkLogLine.toLogary
+      |> Logger.logDebug logger
+      |> queue
+
     member x.Log line =
-      line |> HawkLogLine.toLogary |> Logger.log logger
+      line
+      |> HawkLogLine.toLogary
+      |> Logger.log logger
+      |> queue

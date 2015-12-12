@@ -20,14 +20,16 @@ module internal Impl =
     let rec loop state = job {
       let! msg = Ch.take reqCh
       match msg with
-      | Log _ ->
+      | Log (_, ack) ->
+        do! ack *<= ()
         return! loop state
+
       | Flush (ackCh, nack) ->
         do! Ch.give ackCh () <|> nack
         return! loop state
+
       | Shutdown (ackCh, nack) ->
         do! Ch.give ackCh () <|> nack
-        return ()
       }
 
     loop { state = false }

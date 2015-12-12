@@ -35,7 +35,7 @@ let start () =
   Target.init emptyRuntime (create conf (PointName.ofSingle "mailgun"))
 
 [<Tests>]
-let tests =
+let helloWorld =
   testList "giving it a spin" [
     testCase "initialise" <| fun _ ->
       stop (start ())
@@ -43,10 +43,11 @@ let tests =
     testCase "can send test e-mail" <| fun _ ->
       let target = start ()
       try
-        (Message.error "hello world") |> Target.sendMessage target
-        flush target
+        Message.error "hello world"
+        |> Target.send target
+        |> run
+        |> flush
       finally stop target
-
   ]
 
 [<EntryPoint>]

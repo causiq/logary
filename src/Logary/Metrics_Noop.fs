@@ -26,13 +26,17 @@ module private Impl =
         match dps with
         | pn :: _ when pn = PointName.ofSingle "calls" ->
           do! Ch.give resultCh [ Message.metric pn (BigInt state.calls) ]
+
         | _ ->
           do! Ch.give resultCh []
-        return {state with calls = state.calls + 1I}
+        return { state with calls = state.calls + 1I }
+
       | Sample ->
         return state
+
       | Reset ->
-        return {state with calls = 0I}
+        return { state with calls = 0I }
+
       | Shutdown ack ->
         do! IVar.fill ack Ack
         return state
@@ -42,8 +46,10 @@ module private Impl =
       match msg.value with
       | Derived (BigInt i, _)
         -> {state with calls = i}
+
       | _
         -> {state with calls = state.calls + 1I}
+
       |> Job.result
 
     Job.iterateServer { calls = 0I } <| fun state ->

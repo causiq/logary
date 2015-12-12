@@ -14,8 +14,10 @@ type Cancellation = private { cancelled: IVar<unit> }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Cancellation =
-  let create () = { cancelled = IVar.Now.create () }
+  let create () =
+    { cancelled = IVar.Now.create () }
 
+  // https://github.com/logary/logary/pull/92#issuecomment-164139379
   let isCancelled cancellation = job {
     return! (IVar.read cancellation.cancelled ^->. true) <|> (Alt.always false)
   }
@@ -25,29 +27,29 @@ module Cancellation =
   }
 
 type ScheduleMsg =
-  | Schedule of (obj -> unit) * obj * Duration * Duration * Cancellation
-  | ScheduleOnce of (obj -> unit) * obj * Duration * Cancellation
+  | Schedule of (obj -> Job<unit>) * obj * Duration * Duration * Cancellation
+  | ScheduleOnce of (obj -> Job<unit>) * obj * Duration * Cancellation
 
 module private Impl =
 
   let ms (d: Duration) =
     d.ToTimeSpan().TotalMilliseconds |> int
 
-  let scheduleOnce delay msg receiver cts = job {
+  let scheduleOnce delay msg (receiver : _ -> Job<unit>) cts = job {
     do! timeOutMillis delay
     let! cancelled = Cancellation.isCancelled cts
 
     if not cancelled then
-      receiver msg
+      do! receiver msg
   }
 
-  let scheduleMany initialDelay msg receiver delayBetween cts = Job.delay <| fun () ->
+  let scheduleMany initialDelay msg (receiver : _ -> Job<unit>) delayBetween cts = Job.delay <| fun () ->
     let rec loop time cts = job {
       do! timeOutMillis time
       let! cancelled = Cancellation.isCancelled cts
 
       if not cancelled then
-        receiver msg
+        do! receiver msg
         return! loop delayBetween cts
     }
 
@@ -60,6 +62,7 @@ module private Impl =
       | Schedule (receiver, msg : 'a, initialDelay, delayBetween, cts) ->
         do! Job.start (scheduleMany (ms initialDelay) msg receiver (ms delayBetween) cts)
         return! loop ()
+
       | ScheduleOnce (receiver, msg : 'a, delay, cts) ->
         do! Job.start (scheduleOnce (ms delay) msg receiver cts)
         return! loop ()
@@ -69,22 +72,22 @@ module private Impl =
 
 /// Creates a new scheduler job
 let create () =
-  let ch = Ch.Now.create ()
-  Job.Global.start (Impl.loop ch)
+  let ch = Ch ()
+  Job.Global.server (Impl.loop ch)
   ch
 
 /// Schedules a message to be sent to the receiver after the initialDelay.
 /// If delayBetween is specified then the message is sent reoccuringly at the
 /// delay between interval.
-let schedule scheduler (receiver : 'a -> unit) (msg : 'a) initialDelay (delayBetween: _ option) =
+let schedule scheduler (receiver : 'a -> Job<unit>) (msg : 'a) initialDelay (delayBetween: _ option) =
   let cts = Cancellation.create ()
 
   let message =
     match delayBetween with
     | Some x ->
       Schedule (unbox >> receiver, msg, initialDelay, x, cts)
+
     | None ->
       ScheduleOnce (unbox >> receiver, unbox msg, initialDelay, cts)
 
-  Ch.send scheduler message |> Job.Global.run
-  cts
+  Ch.send scheduler message |> Job.map (fun _ -> cts)
