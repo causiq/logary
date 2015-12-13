@@ -3,6 +3,7 @@
 namespace Logary.Internals
 
 open Hopac
+open Hopac.Infixes
 open Logary
 
 /// A logger that does absolutely nothing, useful for feeding into the target
@@ -104,7 +105,7 @@ type InternalLogger =
     member x.Dispose() =
       try
         x.trgs
-        |> List.iter (Target.shutdown >> Job.Ignore >> Job.Global.run)
+        |> List.iter (fun t -> Target.shutdown t <|> timeOutMillis 200 |> run)
       with _ -> ()
 
   static member create level targets =
