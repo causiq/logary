@@ -6,29 +6,21 @@ module Logary.Logging
 open System
 open System.Reflection
 open System.Diagnostics
+open System.Diagnostics.Contracts
 open System.Runtime.CompilerServices
-
 open Hopac
-
+open Hopac.Infixes
 open NodaTime
-
 open Logary
 open Logary.Registry.Logging
 open Logary.Internals
-
-module Seq =
-  let last xs = Seq.reduce (fun _ x -> x) xs
-
-let private successor s = Some (s+1, s+1)
-let private toSkip = 2
-let private (|IsNull|_|) value = if obj.ReferenceEquals(value, null) then Some() else None
 
 ////////////////
 // PUBLIC API //
 ////////////////
 
 /// Gets the current name, as defined by the class-name + namespace that the logger is in.
-[<CompiledName "GetCurrentLoggerName"; MethodImpl(MethodImplOptions.NoInlining); System.Diagnostics.Contracts.Pure>]
+[<CompiledName "GetCurrentLoggerName"; MethodImpl(MethodImplOptions.NoInlining); Pure>]
 let getCurrentLoggerName () =
   let getName (meth : MethodBase, dt : Type) =
     match dt with
@@ -49,7 +41,9 @@ let getCurrentLoggerName () =
 [<CompiledName "GetLoggerByName">]
 let getLoggerByName name =
   match name with
-  | IsNull    -> nullArg "name"
+  | IsNull    ->
+    nullArg "name"
+
   | _ as name ->
     lock Globals.criticalSection <| fun () ->
       match !Globals.singleton with
@@ -57,10 +51,13 @@ let getLoggerByName name =
         let logger = FWL name :> FlyweightLogger
         Globals.flyweights := logger :: !Globals.flyweights
         logger :> Logger
+
       | Some inst ->
-        inst.runtimeInfo.logger.logDebug (fun _ ->
-          Message.debugf "getting logger by name: %O" name)
-        name |> Registry.getLogger inst.registry |> Job.Global.run
+        Logger.logDebug inst.runtimeInfo.logger (fun _ ->
+          Message.debugf "getting logger by name '%O'" name)
+        >>=. (name |> Registry.getLogger inst.registry)
+        // this should be the only location we actually do the run call
+        |> Job.Global.run
 
 /// Gets the current logger from the context that this method was called
 /// in.

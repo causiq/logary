@@ -7,7 +7,8 @@ namespace Logary.Configuration
 
 open System
 open System.Reflection
-
+open Hopac
+open Hopac.Infixes
 open Logary
 open Logary.Configuration
 open Logary.Target
@@ -41,7 +42,7 @@ with
 /// Logary rules as well as configuring specific targets.
 and ConfBuilder(conf) =
   member internal x.BuildLogary () =
-    conf |> Config.validate |> runLogary |> asLogManager
+    conf |> Config.validate |> runLogary >>- asLogManager
 
   /// Configure a target of the type with a name specified by the parameter
   /// name
@@ -106,7 +107,7 @@ type LogaryFactory =
   /// Configure a new Logary instance. This will also give real targets to the flyweight
   /// targets that have been declared statically in your code. If you call this
   /// you get a log manager that you can later dispose, to shutdown all targets.
-  static member New(serviceName : string, configurator : Func<ConfBuilder, ConfBuilder>) : LogManager =
+  static member New(serviceName : string, configurator : Func<ConfBuilder, ConfBuilder>) : Job<LogManager> =
     if configurator = null then nullArg "configurator"
     let c = Config.confLogary serviceName
     let cb = configurator.Invoke <| ConfBuilder(c)

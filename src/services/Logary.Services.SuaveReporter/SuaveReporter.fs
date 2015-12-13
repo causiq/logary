@@ -38,6 +38,7 @@ module Impl =
       <*> Json.tryRead "id"
 
 open Impl
+open Hopac
 open Suave
 open Suave.Types
 open Suave.Model
@@ -59,6 +60,8 @@ let api (logger : Logger) (verbatimPath : string option) : WebPart =
     GET >>= OK (jsonMsg getMsg)
     POST >>= Binding.bindReq
               (Lens.get HttpRequest.rawForm_ >> UTF8.toString >> Json.tryParse >> Choice.bind Json.tryDeserialize)
-              (fun msg -> Logger.log logger msg; CREATED (jsonMsg "Created"))
+              (fun msg ->
+                Logger.log logger msg |> queue
+                CREATED (jsonMsg "Created"))
               BAD_REQUEST
   ]

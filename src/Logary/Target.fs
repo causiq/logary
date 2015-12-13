@@ -6,26 +6,27 @@ module Logary.Target
 
 open Hopac
 open Hopac.Infixes
-
 open Logary
 open Logary.Internals
 
 /// The protocol that a target can speak
 type TargetMessage =
-  | Log of Message
-  /// Flush messages! Also, reply when you're done flushing
-  /// your queue.
+  /// Log and send something that can be acked with the message.
+  | Log of Message * ack:IVar<unit>
+
+  /// Flush messages! Also, reply when you're done flushing your queue.
   | Flush of ackCh: Ch<unit> * nack: Promise<unit>
+
   /// Shut down! Also, reply when you're done shutting down!
   | Shutdown of ackCh: Ch<unit> * nack: Promise<unit>
 
 /// A target instance is a spawned actor instance together with
 /// the name of this target instance.
 type TargetInstance =
-  { job       : Job<unit>
-    reqCh     : Ch<TargetMessage>
+  { job   : Job<unit>
+    reqCh : Ch<TargetMessage>
     /// The human readable name of the target.
-    name      : PointName }
+    name  : PointName }
 
 /// A target configuration is the 'reference' to the to-be-run target while it
 /// is being configured, and before Logary fully starts up.
@@ -73,28 +74,21 @@ let init metadata (conf : TargetConf) =
   conf.initer metadata
 
 /// Send the target a message, returning the same instance
-/// as was passed in.
-let send msg (i : TargetInstance) =
+/// as was passed in when the Message was acked.
+let send (i : TargetInstance) msg : Job<TargetInstance> =
+  let ack = IVar ()
   // TODO: this is susceptible to being an unbounded queue
-  Job.Global.start (Ch.give i.reqCh (Log msg))
-  i
-
-/// Same as Target.send, but with the arguments the other way around and
-/// it doesn't return the instance.
-let sendMessage instance msg =
-  send msg instance |> ignore
+  i.reqCh *<+ Log (msg, ack) >>=. ack >>-. i
 
 /// Send a flush RPC to the target and return the async with the ACKs
-let flush i = Alt.withNackJob <| fun nack -> job {
-  let! ackCh = Ch.create ()
-  do! i.reqCh *<+ (Flush (ackCh, nack))
-  return ackCh }
+let flush i = Alt.withNackJob <| fun nack ->
+  let ackCh = Ch ()
+  i.reqCh *<+ (Flush (ackCh, nack)) >>-. ackCh
 
 /// Shutdown the target, waiting indefinitely for it to stop
-let shutdown i = Alt.withNackJob <| fun nack -> job {
-  let! ackCh = Ch.create ()
-  do! i.reqCh *<+ (Shutdown (ackCh, nack))
-  return ackCh }
+let shutdown i = Alt.withNackJob <| fun nack ->
+  let ackCh = Ch ()
+  i.reqCh *<+ Shutdown (ackCh, nack) >>-. ackCh
 
 /// Module with utilities for Targets to use for formatting LogLines.
 /// Currently only wraps a target loop function with a name and spawns a new actor from it.
@@ -105,7 +99,7 @@ module TargetUtils =
   let stdNamedTarget (loop : RuntimeInfo -> Ch<_> -> Job<unit>) name : TargetConf =
     { name = name
       initer = fun metadata ->
-        let ch = Ch.Now.create ()
+        let ch = Ch ()
         { job       = loop metadata ch
           reqCh     = ch
           name      = name }

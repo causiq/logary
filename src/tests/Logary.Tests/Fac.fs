@@ -3,22 +3,18 @@
 open System.IO
 open System.Text.RegularExpressions
 open System.Text
-
-open Hopac
-open Hopac.Infixes
-
 open Logary
 open Logary.Internals
 open Logary.Targets
 open Logary.Targets.TextWriter
 open Logary.Configuration
 open Logary.Target
-
 open TestDSL
 open Fuchu
+open Hopac
+open Hopac.Infixes
 
 let emptyTarget = Noop.create {isYes = true} (pn "empty target")
-
 let emptyRule = Rule.createForTarget (pn "empty target")
 let emptyRuntime = { serviceName = "tests"; logger = NullLogger() }
 
@@ -39,6 +35,7 @@ let withLogary f =
     |> withTarget target
     |> Config.validate
     |> runLogary
+    |> run
 
   f logary out err
 

@@ -6,6 +6,7 @@ open System.Net
 open System.Net.Sockets
 open System.Net.Security
 open Hopac
+open Hopac.Infixes
 open Logary
 open Logary.Heka
 open Logary.Heka.Client
@@ -115,10 +116,12 @@ type Logary.Heka.Messages.Message with
     let hmsg = Message(logger = PointName.joined msg.name)
     hmsg.severity <- Nullable (msg.level |> LogLevel.toSeverity)
     hmsg.timestamp <- msg.timestamp
-
     match msg.value with
-    | Event _ -> hmsg.payload <- Formatting.formatMessage msg
-    | _ -> ()
+    | Event _ ->
+      hmsg.payload <- Formatting.formatMessage msg
+
+    | _ ->
+      ()
 
     hmsg
 
@@ -144,7 +147,7 @@ module internal Impl =
 
     let rec initialise () =
       job {
-        debug "initialising heka target"
+        do! debug "initialising heka target"
 
         let ep, useTLS = conf.endpoint
         let client = new TcpClient()
@@ -160,7 +163,7 @@ module internal Impl =
           else
             client.GetStream() :> Stream
 
-        debug "initialise: tcp stream open"
+        do! debug "initialise: tcp stream open"
 
         let hostname = Dns.GetHostName()
         return! (running : _ -> Job<_>) { client = client; stream = stream; hostname = hostname }
@@ -178,37 +181,42 @@ module internal Impl =
 
         match msg |> Encoder.encode conf state.stream with
         | Choice1Of2 run ->
-          debug "running: writing to heka"
+          do! debug "running: writing to heka"
           try
             do! run
-            debug "running: wrote to heka"
-          with e -> Message.error "error writing to heka"
-                    |> Message.addExn e
-                    |> Logger.log ri.logger
+            do! debug "running: wrote to heka"
+
+          with e ->
+            do! Message.error "error writing to heka"
+                |> Message.addExn e
+                |> Logger.log ri.logger
+
         | Choice2Of2 err ->
-          logFailure ri err
-        debug "running: recursing"
+          do! logFailure ri err
+
+        do! debug "running: recursing"
         return! running state
       }
 
-      debug "running: receiving"
+      do! debug "running: receiving"
 
       let! msg = Ch.take reqCh
       match msg with
-      | Log msg ->
+      | Log (msg, ack) ->
         return! write (Message.ofMessage msg)
 
-      | Flush (ack, nack) ->
-        do! Ch.give ack ()
+      | Flush (ackCh, nack) ->
+        do! Ch.give ackCh () <|> nack
         return! running state
 
-      | Shutdown (ack, nack) ->
+      | Shutdown (ackCh, nack) ->
         let dispose x = (x :> IDisposable).Dispose()
-        Try.safe "heka target disposing tcp stream, then client" ri.logger <| fun () ->
+        do! Try.safe "heka target disposing tcp stream, then client" ri.logger (Job.delay (fun () ->
           dispose state.stream
           dispose state.client
+          Job.result ()))
 
-        do! Ch.give ack ()
+        do! Ch.give ackCh () <|> nack
       }
 
     initialise ()

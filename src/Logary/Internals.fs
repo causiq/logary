@@ -39,10 +39,59 @@ module internal Seq =
   let all f s = Seq.fold (fun acc t -> acc && f t) true s
   let any f s = Seq.fold (fun acc t -> acc || f t) false s
   let pjmap f s = s |> Seq.map f |> Job.conCollect
+  let last xs = Seq.reduce (fun _ x -> x) xs
+
+type Timeout =
+  | Infinite
+  | Timeout of Duration
+
+type TimeoutResult<'a> =
+  | TimedOut
+  | Success of 'a
+
+module internal Job =
+
+  open Hopac
+  open Hopac.Infixes
+
+  /// Returns a new job with a timeout.
+  /// If the job finishes before the timeout, it will return a Success.
+  /// If the job takes longer than the timeout to execute, it will return a TimedOut.
+  let withTimeout timeout j =
+    match timeout with
+    | Infinite ->
+      Job.map Success j
+
+    | Timeout ts -> job {
+      let! isDone = Promise.start j
+      return! 
+        timeOut (ts.ToTimeSpan()) ^->. TimedOut
+        <|> Promise.read isDone ^-> Success
+    }
+
+  let apply fJob xJob =
+    fJob <*> xJob >>- fun (fN, x) -> fN x
+
+module internal List =
+  open Hopac.Infixes
+  
+  /// Map a Job producing function over a list to get a new Job using
+  /// applicative style (parallel). ('a -> Job<'b>) -> 'a list -> Job<'b list>
+  let rec traverseJobA (f : 'a -> Job<'b>) (list : 'a list) : Job<'b list> =
+    let cons head tail = head :: tail
+    let initState = Job.result []
+    let folder head tail =
+      Job.apply (Job.apply (Job.result cons) (f head)) tail
+
+    List.foldBack folder list initState
 
 [<AutoOpen>]
 module internal UtilFns =
   let flip f a b = f b a
+
+  let successor s = Some (s+1, s+1)
+  let toSkip = 2
+  let (|IsNull|_|) value = if obj.ReferenceEquals(value, null) then Some() else None
 
 [<AutoOpen>]
 module internal Comparison =
@@ -114,16 +163,12 @@ module internal Cache =
         !value
 
 module Map =
-  let put k v (m : Map<_,_>) =
-    match m.TryFind k with
-    | None -> m |> Map.add k v
-    | Some _ -> m |> Map.remove k |> Map.add k v
-
   open System
   open System.Collections
   open System.Collections.Generic
   open System.Globalization
   open System.Reflection
+  open Logary.YoLo
 
   // TODO: cache
   let private props =
@@ -149,7 +194,7 @@ module Map =
     let tryMap f xs =
       Seq.map f xs |> Seq.filter Option.isSome |> Seq.map Option.get
 
-    let foldPut s (k, v) = s |> put k v
+    let foldPut s (k, v) = s |> Map.put k v
 
     let kvLike x =
       let typ = x.GetType()
@@ -210,7 +255,7 @@ module Map =
         while e.MoveNext() do
           yield e.Current }
       |> tryMap readInner
-      |> Seq.fold (fun s (k, v) -> s |> put k v) Map.empty
+      |> Seq.fold (fun s (k, v) -> s |> Map.put k v) Map.empty
 
     | _ as data ->
       let props = data.GetType() |> fun t -> t.GetProperties()
@@ -228,39 +273,12 @@ module Map =
         |> Array.filter (fun pi -> pi <> null && pi.Name <> null)
         |> Array.map (fun pi -> (pi.Name, pi.GetValue(data, null)))
         |> Map.ofArray
+
 [<AutoOpen>]
 module internal Set =
   let (|EmptySet|_|) = function
     | (s : _ Set) when s.Count = 0 -> Some EmptySet
     | _ -> None
-
-type Timeout =
-  | Infinite
-  | Timeout of Duration
-
-type TimeoutResult<'a> =
-  | TimedOut
-  | Success of 'a
-
-[<AutoOpen>]
-module internal Job =
-  open Hopac
-  open Hopac.Infixes
-
-  /// Returns a new job with a timeout.
-  /// If the job finishes before the timeout, it will return a Success.
-  /// If the job takes longer than the timeout to execute, it will return a TimedOut.
-  let withTimeout timeout j =
-    match timeout with
-    | Infinite ->
-      Job.map Success j
-
-    | Timeout ts -> job {
-      let! isDone = Promise.start j
-      return! 
-        timeOut (ts.ToTimeSpan()) ^->. TimedOut
-        <|> Promise.read isDone ^-> Success
-    }
 
 // TODO: consider moving NackDescription and Acks to Logary ns instead of Internals
 

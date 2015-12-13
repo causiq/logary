@@ -36,7 +36,6 @@ type HealthCheck =
 module HealthCheck =
 
   open Hopac
-
   open Logary.Internals
 
   /// A key in the `data` map inside the `Measure` type.
@@ -91,6 +90,7 @@ module HealthCheck =
           let! x = fn ()
           do! IVar.fill ivar x
           return! running { last = x }
+
         | ShutdownHealthCheck ivar ->
           do! IVar.fill ivar Ack
           return ()
@@ -105,11 +105,11 @@ module HealthCheck =
         member x.name = name
         member x.getValue () =
           (job {
-            // TODO / PERF?: This channel could be reused or replaced with an IVar
             let! ivar = IVar.create ()
             do! Ch.give ch.reqCh (GetResult ivar)
             return! ivar
           }) |> Job.Global.run
+
         member x.Dispose() =
           (job {
             let! ack = IVar.create ()

@@ -1,16 +1,18 @@
 ﻿namespace Logary
 
+open Hopac
+
 type Logger =
   inherit Named
 
   /// Write a Verbose message
-  abstract logVerbose : (unit -> Message) -> unit
+  abstract logVerbose : (unit -> Message) -> Alt<unit>
 
   /// Write a Debug message
-  abstract logDebug   : (unit -> Message) -> unit
+  abstract logDebug   : (unit -> Message) -> Alt<unit>
 
   /// Write a message to the logger.
-  abstract log        : Message -> unit
+  abstract log        : Message -> Alt<unit>
 
   /// Gets the currently set log level, aka. the granularity with which things
   /// are being logged

@@ -1,17 +1,14 @@
 module Logary.Tests.Registry
 
-open Hopac
-open Swensen.Unquote
-open Fuchu
-open TestDSL
-open Fac
-
 open System
 open System.IO
 open System.Text.RegularExpressions
-
+open Fuchu
+open Hopac
+open Swensen.Unquote
+open TestDSL
+open Fac
 open NodaTime
-
 open Logary
 open Logary.Targets
 open Logary.Configuration
@@ -23,11 +20,11 @@ let registry =
   testList "Registry" [
     yield testCase "getLogger" <| fun _ ->
       Fac.withLogary <| fun logary out err ->
-        let logger = (pnp "a.b.c.d") |> Registry.getLogger logary.registry |> Job.Global.run
-        let logger' = (pnp "a.b.c.d") |> (logary |> asLogManager).getLogger
+        let logger = pnp "a.b.c.d" |> Registry.getLogger logary.registry |> run
+        let logger' = pnp "a.b.c.d" |> (logary |> asLogManager).getLogger
         (because "logging normally" <| fun () ->
-          "Hello world" |> Logger.info logger
-          "Goodbye cruel world" |> Logger.fatal logger'
+          "Hello world" |> Logger.info logger |> run
+          "Goodbye cruel world" |> Logger.fatal logger' |> run
           logary |> finaliseLogary
           out.ToString(), err.ToString())
         |> theTuple
@@ -38,11 +35,11 @@ let registry =
 
     yield testCase "after shutting down no logging happens" <| fun _ ->
       Fac.withLogary <| fun logary out err ->
-        let logger = (pnp "a.b.c.d") |> Registry.getLogger logary.registry |> Job.Global.run
+        let logger = (pnp "a.b.c.d") |> Registry.getLogger logary.registry |> run
         (because "logging something, then shutting down" <| fun () ->
-          "hi there" |> Logger.info logger
-          logary |> Config.shutdownSimple |> Job.Global.run |> ignore
-          "after shutdown" |> Logger.info logger
+          "hi there" |> Logger.info logger |> run
+          logary |> Config.shutdownSimple |> run |> ignore
+          "after shutdown" |> Logger.info logger |> run
           out.ToString())
         |> should contain "hi there"
         |> should_not contain "after shutdown"

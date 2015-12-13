@@ -1,6 +1,7 @@
 ﻿module Logary.Targets.Mailgun
 
 open Hopac
+open Hopac.Infixes
 open Logary
 open Logary.Target
 open Logary.Internals
@@ -40,11 +41,11 @@ module internal Impl =
       body        = body
       attachments = [] }
 
-  let loop (conf : MailgunLogaryConf) (ri : RuntimeInfo) (reqCh : Ch<_>) =
+  let loop (conf : MailgunLogaryConf) (ri : RuntimeInfo) (reqCh : Ch<_>) : Job<unit> =
     let rec loop () = job {
       let! msg = Ch.take reqCh
       match msg with
-      | Log logMsg ->
+      | Log (logMsg, ack) ->
         if logMsg.level < conf.minLevel then return! loop ()
         let body  = conf.templater logMsg
         let opts  = conf.getOpts (conf.domain, logMsg)
@@ -54,29 +55,32 @@ module internal Impl =
         | Result response ->
           use x = response
           ()
+
         | x ->
-          Message.error "unknown response from Mailgun"
-          |> Message.addData (["response", x] |> Map)
-          |> Logger.log ri.logger
+          do! Message.error "unknown response from Mailgun"
+              |> Message.addData (["response", x] |> Map)
+              |> Logger.log ri.logger
+
+        do! ack *<= ()
         return! loop ()
 
       | Flush (ack, nack) ->
-        do! Ch.give ack ()
+        do! Ch.give ack () <|> nack
         return! loop ()
 
       | Shutdown (ack, nack) ->
-        do! Ch.give ack ()
+        return! Alt.choose [
+          Ch.give ack () ^->. ()
+          nack ^=> loop
+        ]
       }
 
     if conf.``to`` = [] then
-      Logger.error ri.logger "no `to` configured in Mailgun target"
-      Job.result ()
+      upcast Logger.error ri.logger "no `to` configured in Mailgun target"
     elif conf.from.Host = "example.com" then
-      Logger.error ri.logger "you cannot send e-mail to example.com in Mailgun target"
-      Job.result ()
+      upcast Logger.error ri.logger "you cannot send e-mail to example.com in Mailgun target"
     elif conf.domain = "example.com" then
-      Logger.error ri.logger "you cannot send e-mail from example.com in Mailgun target"
-      Job.result ()
+      upcast Logger.error ri.logger "you cannot send e-mail from example.com in Mailgun target"
     else
       loop ()
 

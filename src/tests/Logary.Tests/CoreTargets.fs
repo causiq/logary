@@ -2,12 +2,10 @@
 
 open Fuchu
 open Swensen.Unquote
-
 open Logary
 open Logary.Targets.TextWriter
-
+open Hopac
 open TestDSL
-
 open Fac
 
 let tests =
@@ -23,8 +21,10 @@ let tests =
       let instance = target |> Target.init emptyRuntime
 
       (because "logging with info level and then finalising the target" <| fun () ->
-        "Hello World!" |> Message.info |> Target.sendMessage instance
-        instance |> finaliseTarget
+        Message.info "Hello World!"
+        |> Target.send instance
+        |> run
+        |> finaliseTarget
         stdout.ToString())
       |> should contain "Hello World!"
       |> thatsIt
@@ -35,9 +35,15 @@ let tests =
       let subject = target |> Target.init emptyRuntime
 
       (because "logging 'Error line' and 'Fatal line' to the target" <| fun () ->
-        Message.error "Error line" |> Target.sendMessage subject
-        Message.fatal "Fatal line" |> Target.sendMessage subject
-        subject |> finaliseTarget
+        Message.error "Error line"
+        |> Target.send subject
+        |> run
+        |> ignore
+
+        Message.fatal "Fatal line"
+        |> Target.send subject
+        |> run
+        |> finaliseTarget
         err.ToString())
       |> should contain "Error line"
       |> should contain "Fatal line"
