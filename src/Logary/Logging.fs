@@ -45,19 +45,20 @@ let getLoggerByName name =
     nullArg "name"
 
   | _ as name ->
-    lock Globals.criticalSection <| fun () ->
-      match !Globals.singleton with
-      | None ->
-        let logger = FWL name :> FlyweightLogger
-        Globals.flyweights := logger :: !Globals.flyweights
-        logger :> Logger
+    match !Globals.singleton with
+    | None ->
+      let logger = Flyweight name :> FlyweightLogger
+      Globals.addFlyweight logger
+      logger :> Logger
 
-      | Some inst ->
-        Logger.logDebug inst.runtimeInfo.logger (fun _ ->
-          Message.debugf "getting logger by name '%O'" name)
-        >>=. (name |> Registry.getLogger inst.registry)
-        // this should be the only location we actually do the run call
-        |> Job.Global.run
+    | Some inst ->
+      Logger.logDebug inst.runtimeInfo.logger (fun _ ->
+        Message.debugf "getting logger by name '%O'" name)
+      >>=. (name |> Registry.getLogger inst.registry)
+      // this should be the only location we actually do the run call, because
+      // we absolutely need it initialising static variables synchronously at
+      // the call-site
+      |> Job.Global.run
 
 /// Gets the current logger from the context that this method was called
 /// in.

@@ -5,6 +5,7 @@ open System.IO
 open System.Text.RegularExpressions
 open Fuchu
 open Hopac
+open Hopac.Infixes
 open Swensen.Unquote
 open TestDSL
 open Fac
@@ -34,14 +35,22 @@ let registry =
         |> thatsIt
 
     yield testCase "after shutting down no logging happens" <| fun _ ->
+      printfn "next"
       Fac.withLogary <| fun logary out err ->
         let logger = (pnp "a.b.c.d") |> Registry.getLogger logary.registry |> run
         (because "logging something, then shutting down" <| fun () ->
           "hi there" |> Logger.info logger |> run
           logary |> Config.shutdownSimple |> run |> ignore
-          "after shutdown" |> Logger.info logger |> run
+          printfn "unit test back in control"
+          let didLog =
+            Alt.choose [
+              timeOut (TimeSpan.FromMilliseconds 20.0) ^->. false
+              ("after shutdown" |> Logger.info logger) ^->. true
+            ] |> run
+          Assert.Equal("should be false", false, didLog)
+          logary |> finaliseLogary
           out.ToString())
         |> should contain "hi there"
-        |> should_not contain "after shutdown"
+        |> shouldNot contain "after shutdown"
         |> thatsIt
     ]

@@ -29,7 +29,7 @@ let tests =
         Target.confTarget (pn "tw") (TextWriter.create (TextWriter.TextWriterConf.Create(Fac.textWriter(), Fac.textWriter())))
         |> Target.validate
         |> Target.init Fac.emptyRuntime
-      (Message.debug "Hello") |> Target.send target |> run
+      (Message.debug "Hello") |> Target.send target |> run |> ignore
       Target.shutdown target |> run |> ignore
 
     testCase "metric" <| fun _ ->

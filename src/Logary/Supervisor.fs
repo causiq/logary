@@ -41,9 +41,8 @@ let private log instance =
 
 /// Register the given job to be supervised. The job will be automatically
 /// restarted if it crashes. A job can only be registered once.
-let register instace namedJob = job {
-  do! Ch.give instace.ch (Register namedJob)
-}
+let register instace namedJob =
+  Ch.give instace.ch (Register namedJob)
 
 /// Supervision loop for a single job.
 let rec private supervise instance (nj : NamedJob<_>) = job {
@@ -116,7 +115,7 @@ let private loop (instance : Instance) =
 
 let create options =
   { options = options
-    ch      = Ch.Now.create () }
+    ch      = Ch () }
 
 let start instance =
-  Job.Global.start (loop instance)
+  server (loop instance)

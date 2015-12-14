@@ -20,13 +20,18 @@ module internal Logging =
   open Logary.Target
   open Hopac.Infixes
 
-  let send targets msg =
+  let send targets msg : Alt<_> =
+    printfn "sending msg"
     Alt.withNackJob <| fun nack ->
-    let ack = IVar ()
-    targets |> List.traverseJobA (fun target ->
-      upcast (Log (msg, ack) |> Ch.give target.reqCh 
-              <|> nack))
-    >>-. ack
+      let res : Alt<_> =
+        (targets |> List.traverseAltA (fun target -> Alt.prepareJob <| fun _ ->
+          let ack = IVar ()
+          target.reqCh *<+ Log (msg, ack) >>- (fun _ -> printfn "nack full? %b" nack.Full) >>-.
+          (ack ^=> (fun _ -> printfn "ack Log"; ack) <|>
+           nack ^-> (fun _ -> printfn "nack Log")))
+        )
+        ^->. ()
+      Job.result () >>- (fun () -> printfn "send job called"; res)
 
   type LoggerInstance =
     { name    : PointName
@@ -100,28 +105,7 @@ type InternalLogger =
     member x.name =
       PointName.ofList ["Logary"; "Internals"; "InternalLogger" ]
 
-  interface System.IDisposable with
-    member x.Dispose() =
-      try
-        x.trgs
-        |> List.iter (Target.shutdown >> Job.Ignore >> Job.Global.run)
-      with _ -> ()
-
   static member create level targets =
     { lvl = level
       trgs = targets }
     :> Logger
-
-module Try =
-  open Hopac.Infixes
-
-  /// Safely try to execute asynchronous function f, catching any thrown
-  /// exception and logging exception internally. Returns async<unit>
-  /// irregardless of the codomain of f.
-  let safe label logger (runnable: Job<_>) =
-    Job.startIgnore (Job.catch runnable >>= (function
-    | Choice1Of2 () ->
-      Job.result ()
-
-    | Choice2Of2 e ->
-      Message.error label |> Message.addExn e |> Logger.log logger :> Job<_>))

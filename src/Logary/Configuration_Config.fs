@@ -141,7 +141,7 @@ let runLogary conf =
 
 /// Shutdown logary, waiting maximum flushDur + shutdownDur.
 [<CompiledName "ShutdownLogary">]
-let shutdown (flushDur : Duration) (shutdownDur : Duration) (inst : LogaryInstance) =
+let shutdown (flushDur : Duration) (shutdownDur : Duration) (inst : LogaryInstance) : Job<_> =
   let log =
     Message.setName (PointName ["Logary"; "Configuration"; "Config"; "shutdown"])
     >> Logger.log inst.runtimeInfo.logger

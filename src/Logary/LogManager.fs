@@ -10,7 +10,7 @@ open Logary.Supervisor
 /// running targets.
 type RegistryMessage =
   /// Get a logger for the given point name (the path of the logger)
-  | GetLogger of PointName * Ch<Logger>
+  | GetLogger of logger:PointName * replCh:Ch<Logger>
 
   ///
   | PollMetrics

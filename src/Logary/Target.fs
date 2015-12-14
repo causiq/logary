@@ -12,7 +12,7 @@ open Logary.Internals
 /// The protocol that a target can speak
 type TargetMessage =
   /// Log and send something that can be acked with the message.
-  | Log of Message * ack:IVar<unit>
+  | Log of message:Message * ack:IVar<unit>
 
   /// Flush messages! Also, reply when you're done flushing your queue.
   | Flush of ackCh: Ch<unit> * nack: Promise<unit>
@@ -76,8 +76,8 @@ let init metadata (conf : TargetConf) =
 /// Send the target a message, returning the same instance
 /// as was passed in when the Message was acked.
 let send (i : TargetInstance) msg : Job<TargetInstance> =
-  let ack = IVar ()
   // TODO: this is susceptible to being an unbounded queue
+  let ack = IVar ()
   i.reqCh *<+ Log (msg, ack) >>=. ack >>-. i
 
 /// Send a flush RPC to the target and return the async with the ACKs

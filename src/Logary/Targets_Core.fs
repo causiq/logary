@@ -35,38 +35,41 @@ module TextWriter =
 
   module internal Impl =
 
-    let loop
-      { formatter = formatter
-        output    = out
-        error     = err
-        flush     = flush
-        isErrorAt = cutOff }
-      (ri : RuntimeInfo) =
-      (fun (reqCh : Ch<TargetMessage>) ->
-        let rec loop () = job {
-          let wl (tw : TextWriter) = (tw.WriteLine : string -> unit)
+    let loop (twConf : TextWriterConf) (ri : RuntimeInfo) (reqCh : Ch<TargetMessage>) =
+      let writeLine (tw : TextWriter) = (tw.WriteLineAsync : string -> _)
 
-          let! msg = Ch.take reqCh
-          match msg with
-          | Log (l, ack) ->
-            let tw = if l.level < cutOff then out else err
-            wl tw (formatter.format l)
-            do (if flush then tw.Flush() else ())
-            do! ack *<= ()
-            return! loop ()
+      let rec loop () = job {
+        printfn "textwriter awaiting"
+        let! msg = Ch.take reqCh
+        printfn "textwriter got msg %A" msg
+        match msg with
+        | Log (logMsg, ack) ->
+          let writer = if logMsg.level < twConf.isErrorAt then twConf.output else twConf.error
 
-          | Flush (ack, nack) ->
-            out.Flush()
-            err.Flush()
-            do! Ch.give ack () <|> nack
-            return! loop ()
+          do! writeLine writer (twConf.formatter.format logMsg)
+          if twConf.flush then
+            do! writer.FlushAsync()
 
-          | Shutdown (ackCh, nack) ->
-            out.Dispose()
-            if not (obj.ReferenceEquals(out, err)) then err.Dispose() else ()
-            do! Ch.give ackCh () <|> nack
-        }
-        loop ())
+          do! ack *<= ()
+          return! loop ()
+
+        | Flush (ack, nack) ->
+          do! twConf.output.FlushAsync()
+          do! twConf.error.FlushAsync()
+          do! Ch.give ack () <|> nack
+          return! loop ()
+
+        | Shutdown (ackCh, nack) ->
+          printfn "textwriter: disposing"
+          twConf.output.Dispose()
+          if not (obj.ReferenceEquals(twConf.output, twConf.error)) then
+            twConf.error.Dispose()
+
+          printfn "textwriter: acking"
+          do! Ch.give ackCh () <|> nack
+          printfn "textwriter: zero"
+      }
+      loop ()
 
   let create (conf : TextWriterConf) =
     TargetUtils.stdNamedTarget (Impl.loop conf)

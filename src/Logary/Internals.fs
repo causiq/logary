@@ -72,6 +72,13 @@ module internal Job =
   let apply fJob xJob =
     fJob <*> xJob >>- fun (fN, x) -> fN x
 
+module internal Alt =
+  open Hopac.Infixes
+
+  let apply (fAlt : Alt<'a -> 'b>) (xAlt : Alt<'a>) =
+    let one = fAlt <+> xAlt
+    one ^-> fun (fA, x) -> printfn "alt map"; fA x
+
 module internal List =
   open Hopac.Infixes
   
@@ -82,6 +89,14 @@ module internal List =
     let initState = Job.result []
     let folder head tail =
       Job.apply (Job.apply (Job.result cons) (f head)) tail
+
+    List.foldBack folder list initState
+
+  let rec traverseAltA (f : _ -> Alt<'b>) list : Alt<'b list> =
+    let cons head tail = head :: tail
+    let initState = Alt.always []
+    let folder head tail =
+      Alt.apply (Alt.apply (Alt.always cons) (f head)) tail
 
     List.foldBack folder list initState
 

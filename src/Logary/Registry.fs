@@ -28,8 +28,8 @@ module internal Logging =
 
   /// Flyweight logger impl - reconfigures to work when it is configured, and
   /// until then throws away all log lines.
-  type FWL(name) =
-    let state = IVar.Now.create ()
+  type Flyweight(name) =
+    let state = IVar ()
 
     let logger (f : Logger -> Alt<unit>) =
       if IVar.Now.isFull state then
@@ -59,26 +59,23 @@ module internal Logging =
         Verbose
 
   /// Singleton configuration entry point: call from the runLogary code.
-  let startFlyweights inst =
-    lock Globals.criticalSection <| fun () ->
-      Globals.singleton := Some inst
-
-      // Iterate through all flywieghts and set the current LogManager for them
-      !Globals.flyweights
-      |> List.traverseJobA (fun f -> f.configured inst) >>- fun _ ->
-      Globals.flyweights := []
+  let startFlyweights inst : Job<unit> =
+    // Iterate through all flywieghts and set the current LogManager for them
+    Globals.withFlyweights <| fun flyweights ->
+      flyweights
+      |> List.traverseJobA (fun f -> f.configured inst)
+      >>- fun (_ : unit list) ->
+        Globals.singleton := Some inst
+        Globals.clearFlywieghts ()
 
   /// Singleton configuration exit point: call from shutdownLogary code
   let shutdownFlyweights () =
-    lock Globals.criticalSection <| fun () ->
-      Globals.singleton := None
-      Globals.flyweights := []
+    Globals.singleton := None
+    Globals.clearFlywieghts ()
 
 module Advanced =
   open System
-
   open Logging
-
   open Logary
   open Logary.Configuration
   open Logary.Rule
@@ -208,8 +205,9 @@ module Advanced =
         schedules   : (PointName * Cancellation) list
         pollMetrics : Cancellation option }
 
-    /// The registry function that works as an actor.
-    let rec registry conf sup sched (inbox : Ch<RegistryMessage>) =
+    /// The registry function that works as a supervisor and runtime state holder
+    /// for Logary.
+    let rec registry conf sup sched (inbox : Ch<RegistryMessage>) : Job<_> =
       let targets = conf.targets |> Seq.map (fun kv -> kv.Value |> snd |> Option.get)
       let regPath = PointName ["Logary"; "Registry"; "registry" ]
       let log = Message.setName regPath >> Logger.log conf.runtimeInfo.logger
@@ -276,7 +274,7 @@ module Advanced =
         }
 
       /// In the running state, the registry takes queries for loggers, gauges, etc...
-      and running state : Job<unit> = job {
+      and running state : Job<_> = job {
         let! msg = Ch.take inbox
         match msg with
         | GetLogger (name, chan) ->
@@ -343,10 +341,12 @@ module Advanced =
 
       init { supervisor = sup; schedules = []; pollMetrics = None }
 
-    let create (conf : LogaryConf) (sup : Supervisor.Instance) (sched : Ch<ScheduleMsg>) : RegistryInstance =
-      let regCh = Ch.Now.create ()
+    let create (conf : LogaryConf) (sup : Supervisor.Instance)
+               (sched : Ch<ScheduleMsg>)
+               : RegistryInstance =
+      let regCh = Ch ()
       Job.Global.start (registry conf sup sched regCh)
-      {reqCh = regCh}
+      { reqCh = regCh }
 
   /// Start a new registry with the given configuration. Will also launch/start
   /// all targets that are to run inside the registry. Returns a newly
@@ -377,22 +377,22 @@ module Advanced =
         mconf,
         Some (Metric.init conf.runtimeInfo mconf))
 
-    let confNext = { conf with targets    = targets
-                               metrics    = metrics }
+    let confNext = { conf with targets = targets
+                               metrics = metrics }
 
-    let register = Supervisor.register sup
-
-    targets
-    |> Seq.map (fun kv -> kv.Value |> snd |> Option.get)
-    |> Seq.iter (fun ti ->
-      let (PointName name) = ti.name
-      let namedJob = NamedJob.create name ti.job
-      Job.Global.run (register namedJob))
+    let listen =
+      targets
+      |> Seq.map (fun kv -> kv.Value |> snd |> Option.get)
+      |> List.ofSeq
+      |> List.traverseJobA (fun ti ->
+        let (PointName name) = ti.name
+        let namedJob = NamedJob.create name ti.job
+        Supervisor.register sup namedJob :> Job<_>)
+      >>-. ()
+      |> run // TODO: consider this blocking call?
 
     let sched = Scheduling.create ()
-
     let reg = Impl.create confNext sup sched
-
     { supervisor  = sup
       registry    = reg
       scheduler   = sched
