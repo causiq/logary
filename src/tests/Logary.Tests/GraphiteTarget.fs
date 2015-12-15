@@ -2,17 +2,14 @@
 
 open Fuchu
 open Swensen.Unquote
-
 open System.Text.RegularExpressions
-
+open Hopac
 open Fac
-
 open Logary
 open Logary.Target
 open Logary.Targets
 open Logary.Internals
 open Logary.Internals.Tcp
-
 open Logary.Tests.StubTcp
 open Logary.Tests.TestDSL
 
@@ -23,7 +20,7 @@ let tests =
       let client = new StubWriterClient(false)
       let conf = Graphite.GraphiteConf.Create("localhost", clientFac = fun a b -> client :> WriteClient)
       let graphite = Graphite.create conf (pn "graphite-target")
-      let instance = graphite.initer { serviceName = "tests"; logger = NullLogger() }
+      let instance = graphite.initer { serviceName = "tests"; logger = NullLogger() } |> run
       instance.name =? (pn "graphite-target")
 
       (because "shutting down the target" <| fun () ->

@@ -9,31 +9,29 @@ open Hopac.Infixes
 open Logary
 open Logary.Internals
 
-/// The protocol that a target can speak
+/// The protocol for a targets runtime path (not the shutdown).
 type TargetMessage =
   /// Log and send something that can be acked with the message.
   | Log of message:Message * ack:IVar<unit>
 
   /// Flush messages! Also, reply when you're done flushing your queue.
-  | Flush of ackCh: Ch<unit> * nack: Promise<unit>
+  | Flush of ackCh:Ch<unit> * nack:Promise<unit>
 
-  /// Shut down! Also, reply when you're done shutting down!
-  | Shutdown of ackCh: Ch<unit> * nack: Promise<unit>
-
-/// A target instance is a spawned actor instance together with
-/// the name of this target instance.
+/// A target instance is a spawned actor instance together with the name of this
+/// target instance.
 type TargetInstance =
-  { job   : Job<unit>
-    reqCh : Ch<TargetMessage>
+  { server   : Job<unit>
+    requests : BoundedMb<TargetMessage>
+    shutdown : Ch<IVar<unit>>
     /// The human readable name of the target.
-    name  : PointName }
+    name     : PointName }
 
 /// A target configuration is the 'reference' to the to-be-run target while it
 /// is being configured, and before Logary fully starts up.
 [<CustomEquality; CustomComparison>]
 type TargetConf =
   { name   : PointName
-    initer : RuntimeInfo -> TargetInstance }
+    initer : RuntimeInfo -> Job<TargetInstance> }
 
   override x.ToString() =
     sprintf "TargetConf(name = %O)" x.name
@@ -68,27 +66,33 @@ let confTarget name (factory : PointName -> TargetConf) =
 /// Validates the target according to its validation rules.
 let validate (conf : TargetConf) = conf
 
-/// Initialises the target with metadata and a target configuration,
-/// yielding a TargetInstance in return which contains the running target.
+/// Initialises the target with metadata and a target configuration, yielding a
+/// TargetInstance in return which contains the running target.
 let init metadata (conf : TargetConf) =
   conf.initer metadata
 
-/// Send the target a message, returning the same instance
-/// as was passed in when the Message was acked.
-let send (i : TargetInstance) msg : Job<TargetInstance> =
-  // TODO: this is susceptible to being an unbounded queue
+/// Send the target a message, returning the same instance as was passed in when
+/// the Message was acked.
+let log (i : TargetInstance) (msg : Message) : Alt<Promise<unit>> =
   let ack = IVar ()
-  i.reqCh *<+ Log (msg, ack) >>=. ack >>-. i
+  (Log (msg, ack) |> BoundedMb.put i.requests)
+  ^->. (ack :> Promise<unit>)
 
-/// Send a flush RPC to the target and return the async with the ACKs
-let flush i = Alt.withNackJob <| fun nack ->
+/// Send a flush RPC to the target and return the async with the ACKs. This will
+/// create an Alt that is composed of a job that blocks on placing the Message
+/// in the queue first, and *then* is selective on the ack/nack once the target
+/// has picked up the TargetMessage.
+let flush i =
+  Alt.withNackJob <| fun nack ->
   let ackCh = Ch ()
-  i.reqCh *<+ (Flush (ackCh, nack)) >>-. ackCh
+  (Flush (ackCh, nack)) |> BoundedMb.put i.requests >>-.
+  ackCh
 
-/// Shutdown the target, waiting indefinitely for it to stop
-let shutdown i = Alt.withNackJob <| fun nack ->
-  let ackCh = Ch ()
-  i.reqCh *<+ Shutdown (ackCh, nack) >>-. ackCh
+/// Shutdown the target. The commit point is that the target accepts the
+/// shutdown signal and the promise returned is that shutdown has finished.
+let shutdown i : Alt<Promise<_>> =
+  let p = IVar ()
+  i.shutdown *<- p ^->. (p :> Promise<_>)
 
 /// Module with utilities for Targets to use for formatting LogLines.
 /// Currently only wraps a target loop function with a name and spawns a new actor from it.
@@ -96,13 +100,16 @@ module TargetUtils =
 
   /// Create a new standard named target, with no particular namespace,
   /// given a job function and a name for the target.
-  let stdNamedTarget (loop : RuntimeInfo -> Ch<_> -> Job<unit>) name : TargetConf =
+  let stdNamedTarget (loop : RuntimeInfo -> BoundedMb<_> -> Ch<IVar<unit>> -> Job<unit>) name : TargetConf =
     { name = name
-      initer = fun metadata ->
-        let ch = Ch ()
-        { job       = loop metadata ch
-          reqCh     = ch
-          name      = name }
+      initer = fun metadata -> job {
+        let! requests = BoundedMb.create 5
+        let! shutdown = Ch.create ()
+        return { server   = loop metadata requests shutdown
+                 requests = requests
+                 shutdown = shutdown
+                 name     = name }
+      }
     }
 
 /// A module that contains the required interfaces to do an "object oriented" DSL

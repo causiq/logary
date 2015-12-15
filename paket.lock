@@ -86,3 +86,6 @@ GITHUB
   remote: haf/YoLo
   specs:
     YoLo.fs (0d120146e4c558b1b7cb1763161dcf33e31de22b)
+  remote: haf/expecto-patronum
+  specs:
+    ExpectoPatronum/Assert.fs (7a8734f80a1e8dab75e25283ee98382267030f5b)

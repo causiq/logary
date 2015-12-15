@@ -24,7 +24,7 @@ type MetricType =
 type MetricMsg =
   /// The GetValue implementation shall retrieve the value of one or more data
   /// points from the probe.
-  | GetValue of (PointName list * Ch<Message list>)
+  | GetValue of PointName list * Ch<Message list>
   /// The Sample implementation shall sample data from the subsystem the probe
   /// is integrated with.
   | Sample
@@ -35,20 +35,20 @@ type MetricMsg =
   | Shutdown of IVar<Acks>
 
 type MetricInstance =
-  { requestCh:  Ch<MetricMsg>
-    updateCh:   Ch<Message>
-    dpNameCh:   Ch<PointName list> }
+  { requestCh : Ch<MetricMsg>
+    updateCh  : Ch<Message>
+    dpNameCh  : Ch<PointName list> }
 with
   static member create () = {
-    requestCh  = Ch ()
-    updateCh   = Ch ()
-    dpNameCh   = Ch () }
+    requestCh = Ch ()
+    updateCh  = Ch ()
+    dpNameCh  = Ch () }
 
 [<CustomEquality; CustomComparison>]
 type MetricConf =
   { name        : PointName
     ``type``    : MetricType
-    initer      : RuntimeInfo -> MetricInstance
+    initer      : RuntimeInfo -> Job<MetricInstance>
     /// the period to sample the metric's value at
     sampling    : Duration }
 
@@ -129,7 +129,7 @@ module MetricUtils =
       initer = fun metadata ->
         let instance = MetricInstance.create ()
         Job.Global.queue (loop metadata instance)
-        instance
+        Job.result instance
       sampling = sampling }
 
 module Reservoir =

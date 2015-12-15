@@ -31,11 +31,11 @@ module internal Logging =
   type Flyweight(name) =
     let state = IVar ()
 
-    let logger (f : Logger -> Alt<unit>) =
+    let logger (f : Logger -> Alt<_>) def =
       if IVar.Now.isFull state then
         IVar.Now.get state |> (snd >> f)
       else
-        Alt.always ()
+        Alt.always def
 
     interface Named with
       member x.name = name
@@ -47,13 +47,22 @@ module internal Logging =
 
     interface Logger with
       member x.logVerbose fLine =
-        logger (flip Logger.logVerbose fLine)
+        logger (flip Logger.logVerbose fLine) ()
+
+      member x.logVerboseWithAck fLine =
+        logger (flip Logger.logVerboseWithAck fLine) (Promise.Now.withValue ())
 
       member x.logDebug fLine =
-        logger (flip Logger.logDebug fLine)
+        logger (flip Logger.logDebug fLine) ()
+
+      member x.logDebugWithAck fLine =
+        logger (flip Logger.logDebugWithAck fLine) (Promise.Now.withValue ())
 
       member x.log l =
-        logger (flip Logger.log l)
+        logger (flip Logger.log l) ()
+
+      member x.logWithAck l =
+        logger (flip Logger.logWithAck l) (Promise.Now.withValue ())
 
       member x.level =
         Verbose
@@ -369,13 +378,15 @@ module Advanced =
       conf.targets
       |> Map.map (fun _ (tconf, _) ->
         tconf,
-        Some (Target.init conf.runtimeInfo tconf))
+        // TODO: consider this blocking call?
+        Some (Target.init conf.runtimeInfo tconf |> run))
 
     let metrics =
       conf.metrics
       |> Map.map (fun _ (mconf, _) ->
         mconf,
-        Some (Metric.init conf.runtimeInfo mconf))
+        // TODO: consider this blocking call?
+        Some (Metric.init conf.runtimeInfo mconf |> run))
 
     let confNext = { conf with targets = targets
                                metrics = metrics }
@@ -386,7 +397,7 @@ module Advanced =
       |> List.ofSeq
       |> List.traverseJobA (fun ti ->
         let (PointName name) = ti.name
-        let namedJob = NamedJob.create name ti.job
+        let namedJob = NamedJob.create name ti.server
         Supervisor.register sup namedJob :> Job<_>)
       >>-. ()
       |> run // TODO: consider this blocking call?

@@ -16,21 +16,27 @@ module internal Impl =
 
   type State = { state : bool }
 
-  let loop (conf : NoopConf) (ri : RuntimeInfo) (reqCh : Ch<_>) =
-    let rec loop state = job {
-      let! msg = Ch.take reqCh
-      match msg with
-      | Log (_, ack) ->
-        do! ack *<= ()
-        return! loop state
+  let loop (conf : NoopConf) (ri : RuntimeInfo)
+           (requests : BoundedMb<_>)
+           (shutdown : Ch<_>) =
+    let rec loop (state : State) : Job<unit> =
+      Alt.choose [
+        shutdown ^=> fun ack ->
+          ack *<= () :> Job<_>
 
-      | Flush (ackCh, nack) ->
-        do! Ch.give ackCh () <|> nack
-        return! loop state
+        BoundedMb.take requests ^=> function
+          | Log (_, ack) ->
+            job {
+              do! ack *<= ()
+              return! loop { state = not state.state }
+            }
 
-      | Shutdown (ackCh, nack) ->
-        do! Ch.give ackCh () <|> nack
-      }
+          | Flush (ackCh, nack) ->
+            job {
+              do! Ch.give ackCh () <|> nack
+              return! loop { state = not state.state }
+            }
+      ] :> Job<_>
 
     loop { state = false }
 

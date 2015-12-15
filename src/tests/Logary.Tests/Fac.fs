@@ -39,6 +39,9 @@ let withLogary f =
 
   f logary out err
 
+let logTarget target =
+  Target.log target >> run >> run
+
 let finaliseLogary = Config.shutdownSimple >> fun a ->
   let state = Job.Global.run a
   (because "finalise should always work" <| fun () ->

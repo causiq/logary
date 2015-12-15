@@ -41,10 +41,13 @@ module internal Impl =
       sendRecvStream : WriteStream option }
 
   let tryDispose (item : 'a option) =
-    if item.IsNone then ()
-    else match item.Value |> box with
-          | :? IDisposable as disposable -> try disposable.Dispose() with _ -> ()
-          | _ -> ()
+    if item.IsNone then
+      ()
+    else
+      match item.Value |> box with
+      | :? IDisposable as disposable ->
+        try disposable.Dispose() with _ -> ()
+      | _ -> ()
 
   // Allowable characters in a graphite metric name:
   // alphanumeric
@@ -72,13 +75,6 @@ module internal Impl =
     let line = String.Format("{0} {1} {2}\n", path, value, timestamp.Ticks / NodaConstants.TicksPerSecond)
     UTF8.bytes line
 
-  (*let private findPath (tags : string list) =
-    let tags' = tags |> List.fold (fun s t -> s |> Set.add t) Set.empty
-    if not (tags' |> Set.contains TriggerTag) then
-      None
-    else
-      tags |> List.tryFind (fun t -> t.StartsWith("path"))*)
-
   let doWrite state m =
     job {
       let stream =
@@ -88,50 +84,47 @@ module internal Impl =
       do! stream.Write m
       return { state with sendRecvStream = Some stream } }
 
-  let loop (conf : GraphiteConf) (svc : RuntimeInfo) =
-    (fun (reqCh : Ch<_>) ->
-      let shutdown state = job {
-        state.sendRecvStream |> tryDispose
-        try (state.client :> IDisposable).Dispose() with _ -> ()
-        return ()
-      }
+  let loop (conf : GraphiteConf) (svc : RuntimeInfo) (requests : BoundedMb<_>)
+           (shutdown : Ch<_>) =
+    let rec running state : Job<unit> =
+      Alt.choose [
+        shutdown ^=> fun ack ->
+          state.sendRecvStream |> tryDispose
+          try (state.client :> IDisposable).Dispose() with _ -> ()
+          ack *<= () :> Job<_>
 
-      let rec running state = job {
-        let! msg = Ch.take reqCh
-        match msg with
-        | Log (logMsg, ack) ->
-          match logMsg.value with
-          | Event template ->
-            let path = PointName.format logMsg.name
-            let instant = Instant logMsg.timestamp
-            let graphiteMsg = createMsg path template instant
-            let! state' = graphiteMsg |> doWrite state
-            do! ack *<= ()
-            return! running state'
+        BoundedMb.take requests ^=> function
+          | Log (logMsg, ack) ->
+            match logMsg.value with
+            | Event template ->
+              job {
+                let path = PointName.format logMsg.name
+                let instant = Instant logMsg.timestamp
+                let graphiteMsg = createMsg path template instant
+                let! state' = graphiteMsg |> doWrite state
+                do! ack *<= ()
+                return! running state'
+              }
 
-          | Gauge _
-          | Derived _ ->
-            let path = sanitisePath logMsg.name
-            let! state' =
-              createMsg (PointName.format path) (formatMeasure logMsg.value) (Instant logMsg.timestamp)
-              |> doWrite state
-            return! running state'
+            | Gauge _
+            | Derived _ ->
+              job {
+                let path = sanitisePath logMsg.name
+                let instant = Instant logMsg.timestamp
+                let pointName = PointName.format path 
+                let bs = createMsg pointName (formatMeasure logMsg.value) instant
+                let! state' = bs |> doWrite state
+                return! running state'
+              }
+          | Flush (ackCh, nack) ->
+            job {
+              do! Ch.give ackCh () <|> nack
+              return! running state
+            }
+      ] :> Job<_>
 
-        | Flush (ackCh, nack) ->
-          do! Ch.give ackCh () <|> nack
-          return! running state
-
-        | Shutdown (ackCh, nack) ->
-          do! shutdown state
-          do! Ch.give ackCh () <|> nack
-      }
-
-      let init () = job {
-        let client = conf.clientFac conf.hostname conf.port
-        return! running { client = client; sendRecvStream = None }
-      }
-
-      init ())
+    let client = conf.clientFac conf.hostname conf.port
+    running { client = client; sendRecvStream = None }
 
 /// Create a new graphite target configuration.
 let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)

@@ -35,40 +35,44 @@ module TextWriter =
 
   module internal Impl =
 
-    let loop (twConf : TextWriterConf) (ri : RuntimeInfo) (reqCh : Ch<TargetMessage>) =
+    let loop (twConf : TextWriterConf) (ri : RuntimeInfo)
+             (requests : BoundedMb<TargetMessage>)
+             (shutdown : Ch<IVar<unit>>) =
+
       let writeLine (tw : TextWriter) = (tw.WriteLineAsync : string -> _)
 
-      let rec loop () = job {
-        printfn "textwriter awaiting"
-        let! msg = Ch.take reqCh
-        printfn "textwriter got msg %A" msg
-        match msg with
-        | Log (logMsg, ack) ->
-          let writer = if logMsg.level < twConf.isErrorAt then twConf.output else twConf.error
+      let rec loop () : Job<unit> =
+        Alt.choose [
+          shutdown ^=> fun ack ->
+            printfn "textwriter: disposing"
+            twConf.output.Dispose()
 
-          do! writeLine writer (twConf.formatter.format logMsg)
-          if twConf.flush then
-            do! writer.FlushAsync()
+            if not (obj.ReferenceEquals(twConf.output, twConf.error)) then
+              twConf.error.Dispose()
 
-          do! ack *<= ()
-          return! loop ()
+            (ack *<= () :> Job<_>)
 
-        | Flush (ack, nack) ->
-          do! twConf.output.FlushAsync()
-          do! twConf.error.FlushAsync()
-          do! Ch.give ack () <|> nack
-          return! loop ()
+          BoundedMb.take requests ^=> function
+            | Log (logMsg, ack) ->
+              job {
+                let writer = if logMsg.level < twConf.isErrorAt then twConf.output else twConf.error
+                do! writeLine writer (twConf.formatter.format logMsg)
+                if twConf.flush then
+                  do! writer.FlushAsync()
 
-        | Shutdown (ackCh, nack) ->
-          printfn "textwriter: disposing"
-          twConf.output.Dispose()
-          if not (obj.ReferenceEquals(twConf.output, twConf.error)) then
-            twConf.error.Dispose()
+                do! ack *<= ()
+                return! loop ()
+              }
 
-          printfn "textwriter: acking"
-          do! Ch.give ackCh () <|> nack
-          printfn "textwriter: zero"
-      }
+            | Flush (ack, nack) ->
+              job {
+                do! twConf.output.FlushAsync()
+                do! twConf.error.FlushAsync()
+                do! Ch.give ack () <|> nack
+                return! loop ()
+              }
+        ] :> Job<_>
+
       loop ()
 
   let create (conf : TextWriterConf) =
@@ -163,30 +167,38 @@ module Debugger =
 
   module private Impl =
 
-    let loop conf metadata =
-      (fun (reqCh : Ch<_>) ->
-        let formatter = conf.formatter
-        let offLevel = 6
-        let rec loop () = job {
-          let! msg = Ch.take reqCh
-          match msg with
-          | Log (message, ack) when Debugger.IsLogging() ->
-            let path = message.name.ToString()
-            Debugger.Log(offLevel, path, formatter.format message)
-            do! ack *<= ()
-            return! loop()
+    let loop conf metadata
+             (requests : BoundedMb<_>)
+             (shutdown : Ch<_>) =
+      let formatter = conf.formatter
+      let offLevel = 6
 
-          | Log _ ->
-            return! loop ()
+      let rec loop () : Job<unit> =
+        Alt.choose [
+          shutdown ^=> fun ack ->
+            ack *<= () :> Job<_>
 
-          | Flush (ackCh, nack) ->
-            do! Ch.give ackCh () <|> nack
-            return! loop()
+          BoundedMb.take requests ^=> function
+            | Log (message, ack) when Debugger.IsLogging() ->
+              job {
+                let path = PointName.format message.name
+                Debugger.Log(offLevel, path, formatter.format message)
+                do! ack *<= ()
+                return! loop ()
+              }
 
-          | Shutdown (ackCh, nack) ->
-            do! Ch.give ackCh () <|> nack
-        }
-        loop ())
+            | Log _ ->
+              loop ()
+
+            | Flush (ackCh, nack) ->
+              job {
+                do! Ch.give ackCh () <|> nack
+                return! loop ()
+              }
+
+        ] :> Job<_>
+
+      loop ()
 
   let create conf =
     TargetUtils.stdNamedTarget (Impl.loop conf)

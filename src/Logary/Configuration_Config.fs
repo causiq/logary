@@ -19,6 +19,7 @@ let private shutdownLogger<'a when 'a :> Logger> : 'a -> unit = box >> function
   | _ -> ()
 
 /// Create an internal logger from the level and targets given
+[<CompiledName "CreateInternalLogger">]
 let createInternalLogger level targets =
   InternalLogger.create level targets
 
@@ -37,9 +38,13 @@ let withInternalLogger lgr (conf : LogaryConf) =
 /// everything, without the metrics and/or log lines going through Rules).
 [<CompiledName "WithInternalTargets">]
 let withInternalTargets level tconfs (conf : LogaryConf) =
-  let nullMd = { serviceName = conf.runtimeInfo.serviceName; logger = NullLogger() }
-  let targets = tconfs |> List.map (Target.init nullMd)
-  let logger = createInternalLogger level targets
+  let nullMd =
+    { serviceName = conf.runtimeInfo.serviceName
+      logger      = NullLogger() }
+  let targets = Job.conCollect (tconfs |> List.map (Target.init nullMd))
+  // TODO: consider this run method call
+  let targets' = targets |> run |> List.ofSeq
+  let logger = createInternalLogger level targets'
   conf |> withInternalLogger logger
 
 /// Set the internal target for logary

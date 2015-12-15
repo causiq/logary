@@ -3,7 +3,9 @@
 namespace Logary.Internals
 
 open Hopac
+open Hopac.Infixes
 open Logary
+open Logary.Target
 
 /// A logger that does absolutely nothing, useful for feeding into the target
 /// that is actually *the* internal logger target, to avoid recursive calls to
@@ -11,27 +13,25 @@ open Logary
 type NullLogger() =
   interface Logger with
     member x.logVerbose fLine = Alt.always ()
+    member x.logVerboseWithAck fLine = Alt.always (Promise.Now.withValue ())
     member x.logDebug fLine = Alt.always ()
+    member x.logDebugWithAck fLine = Alt.always (Promise.Now.withValue ())
     member x.log line = Alt.always ()
+    member x.logWithAck line = Alt.always (Promise.Now.withValue ())
     member x.level = Fatal
     member x.name = PointName.ofList [ "Logary"; "Internals"; "NullLogger" ]
 
 module internal Logging =
-  open Logary.Target
-  open Hopac.Infixes
 
-  let send targets msg : Alt<_> =
+  let send (targets : _ list) msg : Alt<Promise<unit>> =
+    let latch = Latch targets.Length
     printfn "sending msg"
-    Alt.withNackJob <| fun nack ->
-      let res : Alt<_> =
-        (targets |> List.traverseAltA (fun target -> Alt.prepareJob <| fun _ ->
-          let ack = IVar ()
-          target.reqCh *<+ Log (msg, ack) >>- (fun _ -> printfn "nack full? %b" nack.Full) >>-.
-          (ack ^=> (fun _ -> printfn "ack Log"; ack) <|>
-           nack ^-> (fun _ -> printfn "nack Log")))
-        )
-        ^->. ()
-      Job.result () >>- (fun () -> printfn "send job called"; res)
+    (targets |> List.traverseAltA (fun target ->
+      let ack = IVar ()
+      ((Log (msg, ack)) |> BoundedMb.put target.requests)
+      ^=>. Latch.decrement latch
+    ))
+    ^->. memo (Latch.await latch)
 
   type LoggerInstance =
     { name    : PointName
@@ -53,6 +53,9 @@ module internal Logging =
           else
             Alt.always ()
 
+        member x.logVerboseWithAck fMsg =
+          failwith "not implemented"
+
         member x.logDebug fMsg =
           if Debug >= x.level then
             let logger : Logger = upcast x
@@ -60,12 +63,22 @@ module internal Logging =
           else
             Alt.always ()
 
+        member x.logDebugWithAck fMsg =
+          failwith "not implemented"
+
         member x.log msg : Alt<unit> =
+          (x :> Logger).logWithAck msg ^->. ()
+
+        member x.logWithAck msg : Alt<Promise<unit>> =
           let targets =
             x.targets
-            |> List.choose (fun (accept, t) -> if accept msg then Some t else None)
+            |> List.choose (fun (accept, t) ->
+              if accept msg then Some t else None)
 
-          msg |> send targets
+          match targets with
+          | []      -> Alt.always (Promise.Now.withValue ())
+          | targets -> msg |> send targets
+
 
 /// This logger is special: in the above case the Registry takes the responsibility
 /// of shutting down all targets, but this is a stand-alone logger that is used
@@ -83,6 +96,9 @@ type InternalLogger =
       else
         Alt.always ()
 
+    member x.logVerboseWithAck fLine =
+      failwith "not implemented"
+
     member x.logDebug fLine =
       if Debug >= x.lvl then
         let logger : Logger = upcast x
@@ -90,14 +106,17 @@ type InternalLogger =
       else
         Alt.always ()
 
+    member x.logDebugWithAck fLine =
+      failwith "not implemented"
+
     member x.log msg =
-      try
-        if msg.level >= x.lvl then
-          msg |> Logging.send x.trgs
-        else
-          Alt.always ()
-      with _ ->
+      if msg.level >= x.lvl then
+        (msg |> Logging.send x.trgs) ^->. ()
+      else
         Alt.always ()
+
+    member x.logWithAck msg =
+      failwith "not implemented"
 
     member x.level =
       x.lvl

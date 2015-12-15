@@ -1,11 +1,13 @@
 ﻿module Program
 
+open System.Globalization
+open System.Threading
 open Fuchu
 
 [<EntryPoint>]
 let main args =
-  System.Threading.Thread.CurrentThread.CurrentCulture <- System.Globalization.CultureInfo.GetCultureInfo("en-US")
-  System.Threading.Thread.CurrentThread.CurrentUICulture<- System.Globalization.CultureInfo.GetCultureInfo("en-US")
-  //defaultMainThisAssembly args
-  Logary.Tests.Registry.registry
-  |> Tests.run
+  let enUS = CultureInfo "en-US"
+  Thread.CurrentThread.CurrentCulture   <- enUS
+  Thread.CurrentThread.CurrentUICulture <- enUS
+  defaultMainThisAssembly args
+  //Logary.Tests.Registry.registry |> Tests.run
