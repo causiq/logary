@@ -106,7 +106,7 @@ module HealthCheck =
         member x.getValue () =
           (job {
             let! ivar = IVar.create ()
-            do! Ch.give ch.reqCh (GetResult ivar)
+            do! Ch.send ch.reqCh (GetResult ivar)
             return! ivar
           }) |> Job.Global.run
 

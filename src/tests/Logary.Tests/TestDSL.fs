@@ -60,7 +60,7 @@ let should' asserter (ctx : AssertContext<_>) =
   | Failure msg ->
     failwith <| sprintf "because %s:%s%s%s" ctx.message nl nl msg
 
-let should_not (asserter : Asserter<'a>) (expected : 'a) (ctx : AssertContext<_>) =
+let shouldNot (asserter : Asserter<'a>) (expected : 'a) (ctx : AssertContext<_>) =
   match asserter expected { ctx with negated = true } with
   | Success -> ctx
   | Failure msg ->

@@ -64,7 +64,7 @@ module internal Job =
 
     | Timeout ts -> job {
       let! isDone = Promise.start j
-      return! 
+      return!
         timeOut (ts.ToTimeSpan()) ^->. TimedOut
         <|> Promise.read isDone ^-> Success
     }
@@ -72,9 +72,16 @@ module internal Job =
   let apply fJob xJob =
     fJob <*> xJob >>- fun (fN, x) -> fN x
 
+module internal Alt =
+  open Hopac.Infixes
+
+  let apply (fAlt : Alt<'a -> 'b>) (xAlt : Alt<'a>) =
+    let one = fAlt <+> xAlt
+    one ^-> fun (fA, x) -> printfn "alt map"; fA x
+
 module internal List =
   open Hopac.Infixes
-  
+
   /// Map a Job producing function over a list to get a new Job using
   /// applicative style (parallel). ('a -> Job<'b>) -> 'a list -> Job<'b list>
   let rec traverseJobA (f : 'a -> Job<'b>) (list : 'a list) : Job<'b list> =
@@ -82,6 +89,14 @@ module internal List =
     let initState = Job.result []
     let folder head tail =
       Job.apply (Job.apply (Job.result cons) (f head)) tail
+
+    List.foldBack folder list initState
+
+  let rec traverseAltA (f : _ -> Alt<'b>) list : Alt<'b list> =
+    let cons head tail = head :: tail
+    let initState = Alt.always []
+    let folder head tail =
+      Alt.apply (Alt.apply (Alt.always cons) (f head)) tail
 
     List.foldBack folder list initState
 

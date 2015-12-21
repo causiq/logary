@@ -124,7 +124,7 @@ let tests =
             out.ToString())
           |> should contain "first"
           |> should contain "second"
-          |> should_not contain "third"
+          |> shouldNot contain "third"
           |> should' (fulfil <| fun str -> "only single line 'first'", Regex.Matches(str, "first").Count = 1)
           |> should' (fulfil <| fun str -> "only single line 'second'", Regex.Matches(str, "second").Count = 1)
           |> should' (fulfil <| fun str -> "zero matches for 'third'", Regex.Matches(str, "third").Count = 0)
@@ -167,10 +167,10 @@ let tests =
           let! _ = Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000
 
           because "lgrA matches two rules, lgrB matches only one" (fun _ -> out.ToString())
-          |> should_not contain "first"
+          |> shouldNot contain "first"
           |> should contain "second"
           |> should contain "third"
-          |> should_not contain "fourth"
+          |> shouldNot contain "fourth"
           |> should' (fulfil <| fun str -> "only single line 'first'", Regex.Matches(str, "first").Count = 0)
           |> should' (fulfil <| fun str -> "only single line 'second'", Regex.Matches(str, "second").Count = 1)
           |> should' (fulfil <| fun str -> "only single line 'third'", Regex.Matches(str, "third").Count = 1)
@@ -231,14 +231,14 @@ let tests =
       try
         job {
           let! shouldLog = Registry.getLogger logary.registry (pnp "a.b.c")
-          "this message should go through" |> Logger.debug shouldLog
+          do! "this message should go through" |> Logger.debug shouldLog
           let! shouldDrop = Registry.getLogger logary.registry (pnp "a.x.y")
-          "this message should be dropped" |> Logger.debug shouldDrop
+          do! "this message should be dropped" |> Logger.debug shouldDrop
           let! _ = Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000
           (because "we only accept path a.b.c, other never" <| fun () ->
             out.ToString())
           |> should contain "this message should go through"
-          |> should_not contain "this message should be dropped"
+          |> shouldNot contain "this message should be dropped"
           |> thatsIt }
         |> Job.Global.run
       finally

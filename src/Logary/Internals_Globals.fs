@@ -8,9 +8,6 @@
 module internal Globals =
   open Logary
 
-  /// This instance is the locked object for the singleton configuration.
-  let criticalSection = obj()
-
   /// This is the "Global Variable" containing the last configured
   /// Logary instance. If you configure more than one logary instance
   /// this will be replaced. It is internal so that noone
@@ -20,4 +17,17 @@ module internal Globals =
   let singleton : LogaryInstance option ref = ref None
 
   /// A list of all loggers yet to be configured
-  let flyweights : FlyweightLogger list ref = ref []
+  let private flyweights : FlyweightLogger list ref = ref []
+
+  let private flyweightLock = obj ()
+
+  let addFlyweight (fwl : FlyweightLogger) =
+    lock flyweightLock <| fun _ ->
+      flyweights := fwl :: !flyweights
+
+  /// Gives f a snapshot of the current flyweights
+  let withFlyweights f =
+    f !flyweights
+
+  let clearFlywieghts () =
+    lock flyweightLock (fun _ -> flyweights := [])

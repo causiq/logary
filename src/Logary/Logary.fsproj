@@ -79,6 +79,7 @@
     <None Include="Playground.fsx" />
     <None Include="paket.references" />
     <None Include="ScriptTr2.fsx" />
+    <Compile Include="Try.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />

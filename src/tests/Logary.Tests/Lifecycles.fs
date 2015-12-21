@@ -29,7 +29,9 @@ let tests =
         Target.confTarget (pn "tw") (TextWriter.create (TextWriter.TextWriterConf.Create(Fac.textWriter(), Fac.textWriter())))
         |> Target.validate
         |> Target.init Fac.emptyRuntime
-      (Message.debug "Hello") |> Target.send target |> run |> ignore
+        |> run
+
+      (Message.debug "Hello") |> Target.log target |> run |> ignore
       Target.shutdown target |> run |> ignore
 
     testCase "metric" <| fun _ ->
@@ -39,6 +41,7 @@ let tests =
         (Noop.create { Noop.NoopConf.isHappy = true })
       |> Metric.validate
       |> Metric.init Fac.emptyRuntime
+      |> run
       |> Metric.update (Message.metric (pn "tests") (Float 1.0M))
       |> Metric.shutdown
       |> run
