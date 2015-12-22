@@ -17,13 +17,11 @@ module Cancellation =
   let create () =
     { cancelled = IVar.Now.create () }
 
-  // https://github.com/logary/logary/pull/92#issuecomment-164139379
-  let isCancelled cancellation = job {
-    return! (cancellation.cancelled ^->. true) <|> (Alt.always false)
-  }
+  let isCancelled cancellation =
+    IVar.Now.isFull cancellation.cancelled
 
   let cancel cancellation = job {
-    do! IVar.fill cancellation.cancelled ()
+    do! IVar.tryFill cancellation.cancelled ()
   }
 
 type ScheduleMsg =
@@ -37,18 +35,16 @@ module private Impl =
 
   let scheduleOnce delay msg (receiver : _ -> Job<unit>) cts = job {
     do! timeOutMillis delay
-    let! cancelled = Cancellation.isCancelled cts
 
-    if not cancelled then
+    if not <| Cancellation.isCancelled cts then
       do! receiver msg
   }
 
   let scheduleMany initialDelay msg (receiver : _ -> Job<unit>) delayBetween cts = Job.delay <| fun () ->
     let rec loop time cts = job {
       do! timeOutMillis time
-      let! cancelled = Cancellation.isCancelled cts
 
-      if not cancelled then
+      if not <| Cancellation.isCancelled cts then
         do! receiver msg
         return! loop delayBetween cts
     }

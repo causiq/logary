@@ -1,16 +1,11 @@
 /// The registry is the composition root of Logary
 module Logary.Registry
 
-open System.Threading
-
 open Hopac
 open Hopac.Infixes
 open NodaTime
-open Logary.Utils.Aether
 open Logary.Internals
 open Logary.Internals.Scheduling
-open Logary.Target
-open Logary.HealthCheck
 
 /// Given the registry actor, and a name for the logger, get the logger from the registry.
 let getLogger (registry : RegistryInstance) name : Job<Logger> =
@@ -143,21 +138,15 @@ module Advanced =
   /// how that went. E.g. if there's a target is has a backlog, it might not be able to
   /// flush all its pending entries within the allotted timeout (200 ms at the time of writing)
   /// but will then instead return Nack/failed RPC.
-  let flushPending (registry : RegistryInstance) : Alt<unit> = Alt.withNackJob <| fun nack -> job {
-    let! flushCh = Ch.create ()
-    do! registry.reqCh *<+ (FlushPending (flushCh, nack))
-    return flushCh
-  }
+  let flushPending (registry : RegistryInstance) : Alt<unit> =
+    registry.reqCh *<+->- fun flushCh nack -> FlushPending (flushCh, nack)
 
   /// Shutdown the registry. This will first flush all pending entries for all targets inside the
   /// registry, and then proceed to sending ShutdownTarget to all of them. If this doesn't
   /// complete within the allotted timeout, (200 ms for flush, 200 ms for shutdown), it will
   /// return Nack to the caller (of shutdown).
-  let shutdown (registry : RegistryInstance) : Alt<unit> = Alt.withNackJob <| fun nack -> job {
-    let! shutdownCh = Ch.create ()
-    do! registry.reqCh *<+ (ShutdownLogary (shutdownCh, nack))
-    return shutdownCh
-  }
+  let shutdown (registry : RegistryInstance) : Alt<unit> =
+    registry.reqCh *<+->- fun shutdownCh nack -> ShutdownLogary (shutdownCh, nack)
 
   // TODO: use Alt<..> instead:
 

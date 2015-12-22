@@ -1,6 +1,8 @@
 ﻿namespace Logary.Internals
 
 open Hopac
+open Hopac.Extensions.Seq
+
 open NodaTime
 open System.Threading
 
@@ -38,7 +40,7 @@ module internal Seq =
 
   let all f s = Seq.fold (fun acc t -> acc && f t) true s
   let any f s = Seq.fold (fun acc t -> acc || f t) false s
-  let pjmap f s = s |> Seq.map f |> Job.conCollect
+  let pjmap = Con.mapJob
   let last xs = Seq.reduce (fun _ x -> x) xs
 
 type Timeout =
