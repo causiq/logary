@@ -1,14 +1,13 @@
 ﻿module Logary.Tests.Lifecycles
 
 open NodaTime
-open Swensen.Unquote
 open Fuchu
 open Logary.Configuration
 open Logary
-open Logary.Logging
 open Logary.Targets
 open Logary.Metrics
 open Hopac
+open Hopac.Infixes
 open TestDSL
 
 [<Tests>]
@@ -31,8 +30,14 @@ let tests =
         |> Target.init Fac.emptyRuntime
         |> run
 
-      (Message.debug "Hello") |> Target.log target |> run |> ignore
-      Target.shutdown target |> run |> ignore
+      Message.debug "Hello"
+      |> Target.log target
+      |> run
+      |> ignore
+
+      Target.shutdown target <|> (timeOutMillis 200 ^->. Promise.Now.never ())
+      |> run
+      |> ignore
 
     testCase "metric" <| fun _ ->
       Metric.confMetric
