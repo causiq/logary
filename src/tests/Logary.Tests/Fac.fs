@@ -41,6 +41,7 @@ let withLogary f =
     |> withTarget target
     |> Config.validate
     |> runLogary
+    |> Async.RunSynchronously
 
   f logary out err
 

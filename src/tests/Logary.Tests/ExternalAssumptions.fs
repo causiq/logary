@@ -20,6 +20,6 @@ let givens () = goodDefaults "tests" |> fun conf -> { conf with rules = conf.rul
 let ``retrieving rule for name`` () =
   testCase "all should be warn" <| fun _ ->
     let lconf = givens ()
-    lconf |> validate |> runLogary |> shutdown |> Async.RunSynchronously |> ignore
+    lconf |> validate |> runLogary |> Async.RunSynchronously |> shutdown |> Async.RunSynchronously |> ignore
     Assert.Equal("all levels should be Warn",
                  lconf.rules |> List.fold (fun acc r -> r.level = Warn && acc) true, true)

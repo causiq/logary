@@ -21,6 +21,7 @@ let tests =
       Config.confLogary "tests"
       |> Config.validate
       |> Config.runLogary
+      |> Async.RunSynchronously
       |> Config.shutdown
       |> run |> ignore
 

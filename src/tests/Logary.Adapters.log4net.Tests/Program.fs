@@ -36,10 +36,11 @@ let withLogary f =
     |> withTarget target
     |> Config.validate
     |> runLogary
+    |> Async.RunSynchronously
 
   f logary out err
 
-let finaliseLogary = Config.shutdown >> fun a ->
+let finaliseLogary : _ -> unit = Config.shutdown >> fun a ->
   let state = Async.RunSynchronously a
   Assert.Equal(sprintf "should succeed: %O" state, true, state.Successful)
 

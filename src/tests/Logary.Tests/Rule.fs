@@ -74,7 +74,7 @@ let tests =
         Target.confTarget "t1" (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out))
         Target.confTarget "t2" (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out))
       ]
-      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
+      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary |> Async.RunSynchronously
       // string = logger name = path
       let get = Registry.getLogger logary.registry
 
@@ -103,7 +103,7 @@ let tests =
       let targets =
         [ Target.confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
 
-      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
+      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary |> Async.RunSynchronously
       try
         async {
           // when
@@ -152,7 +152,7 @@ let tests =
       let targets =
         [ Target.confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
 
-      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
+      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary |> Async.RunSynchronously
       try
         async {
           // when
@@ -184,7 +184,7 @@ let tests =
       let out = Fac.textWriter ()
       let rules   = [ { hiera  = Regex(".*"); target = "tw"; lineFilter = (fun line -> false); measureFilter = Rule.allowFilter; level = Debug } ]
       let targets = [ Target.confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
-      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
+      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary |> Async.RunSynchronously
       try
         async {
           let! logr = Registry.getLogger logary.registry "my.path.here"
@@ -210,7 +210,7 @@ let tests =
         { hiera  = Regex(".*"); target = "tw"; lineFilter = (fun line -> line.path = "a.b.c"); measureFilter = Rule.allowFilter; level  = Verbose }
         ]
       let targets = [ Target.confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
-      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary
+      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary |> Async.RunSynchronously
       try
         async {
           let! shouldLog = Registry.getLogger logary.registry "a.b.c"

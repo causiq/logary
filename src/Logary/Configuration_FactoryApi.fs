@@ -41,7 +41,7 @@ with
 /// Logary rules as well as configuring specific targets.
 and ConfBuilder(conf) =
   member internal x.BuildLogary () =
-    conf |> Config.validate |> runLogary |> asLogManager
+    conf |> Config.validate |> runLogary |> Async.RunSynchronously |> asLogManager
 
   /// Configure a target of the type with a name specified by the parameter
   /// name
