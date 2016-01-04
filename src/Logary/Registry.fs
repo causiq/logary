@@ -22,13 +22,12 @@ type RegistryMessage =
   | ShutdownLogary        of Duration * Acks ReplyChannel
 
 /// Given the registry actor, and a name for the logger, get the logger from the registry.
-let getLogger registry name =
+let getLogger registry name : Async<Logger> =
   registry |> Actor.reqReply (fun ret -> GetLogger (name, ret)) Infinite
 
 /// handling flyweights
 module internal Logging =
   open System
-
   open Logary.Target
   open Logary.Internals
   open Logary.Internals.Date
@@ -36,14 +35,13 @@ module internal Logging =
   /// Flyweight logger impl - reconfigures to work when it is configured, and until then
   /// throws away all log lines.
   type FWL(name) =
-    let locker = obj()
-    let logManager = ref None
-    let logger = ref None
+    let logger : Logger option ref = ref None
     interface FlyweightLogger with
       member x.Configured lm =
-        lock locker (fun () ->
-          logManager := Some lm
-          logger := Some (Async.RunSynchronously(getLogger lm.registry name)))
+        async {
+          let! lgr = getLogger lm.registry name
+          logger := Some lgr
+        }
     interface Logger with
       member x.Name = name
       member x.LogVerbose fLine = (!logger) |> Option.iter (fun logger -> logger.LogVerbose fLine)
@@ -52,26 +50,22 @@ module internal Logging =
       member x.Measure m = (!logger) |> Option.iter (fun logger -> logger.Measure m)
       member x.Level = Verbose
 
-  /// Iterate through all flywieghts and set the current LogManager for them
-  let goFish () =
-    lock Globals.criticalSection <| fun () ->
+  /// Singleton configuration entry point: call from the runLogary code.
+  let startFlyweights inst =
+    async {
+      Globals.singleton := Some inst
       match !Globals.singleton with
       | None -> ()
       | Some lm ->
-        !Globals.flyweights |> List.iter (fun f -> f.Configured lm)
+        for fw in !Globals.flyweights do
+          do! fw.Configured lm
         Globals.flyweights := []
-
-  /// Singleton configuration entry point: call from the runLogary code.
-  let startFlyweights inst =
-    lock Globals.criticalSection <| fun () ->
-      Globals.singleton := Some inst
-      goFish ()
+    }
 
   /// Singleton configuration exit point: call from shutdownLogary code
   let shutdownFlyweights _ =
-    lock Globals.criticalSection <| fun () ->
-      Globals.singleton := None
-      Globals.flyweights := []
+    Globals.singleton := None
+    Globals.flyweights := []
 
 module Advanced =
   open System

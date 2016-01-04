@@ -140,22 +140,23 @@ let validate ({ targets  = targets
 [<CompiledName "RunLogary"; Extension>]
 let runLogary conf =
   let instance = Advanced.create conf
-  Logging.startFlyweights instance
-  instance
+  async {
+    do! Logging.startFlyweights instance
+    return instance
+  }
 
 /// Shutdown logary, waiting maximum flushDur + shutdownDur.
 [<CompiledName "ShutdownLogary">]
 let shutdown' (flushDur : Duration) (shutdownDur : Duration)
-  ({ registry = reg; metadata = { logger = lgr } } : LogaryInstance)
-  = 
+  ({ registry = reg; metadata = { logger = lgr } } : LogaryInstance) =
   let log = LogLine.setPath "Logary.Configuration.Config.shutdown" >> Logger.log lgr
   async {
-  LogLine.info "start shutdown" |> log
-  let! res = Advanced.flushAndShutdown flushDur shutdownDur reg
-  LogLine.info "stop shutdown" |> log
-  Logging.shutdownFlyweights ()
-  shutdownLogger lgr
-  return res
+    LogLine.info "start shutdown" |> log
+    let! res = Advanced.flushAndShutdown flushDur shutdownDur reg
+    LogLine.info "stop shutdown" |> log
+    Logging.shutdownFlyweights ()
+    shutdownLogger lgr
+    return res
   }
 
 /// Shutdown logary, waiting maximum 30 seconds, 15s for flush and 15s for
@@ -187,6 +188,7 @@ let configure serviceName targets pollPeriod metrics rules (internalLevel, inter
   |> withInternalTarget internalLevel internalTarget
   |> validate
   |> runLogary
+  |> Async.RunSynchronously
   |> asLogManager
 
 /// Configure Logary completely with the given service name and a function that
@@ -208,4 +210,5 @@ let withLogary' serviceName fConf =
   fConf (confLogary serviceName)
   |> validate
   |> runLogary
+  |> Async.RunSynchronously
   |> asLogManager

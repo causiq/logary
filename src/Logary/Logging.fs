@@ -47,18 +47,19 @@ let getLoggerByName name =
   match name with
   | IsNull    -> nullArg "name"
   | _ as name ->
-    lock Globals.criticalSection <| fun () ->
-      match !Globals.singleton with
-      | None ->
-        let logger = FWL name :> FlyweightLogger
-        Globals.flyweights := logger :: !Globals.flyweights
-        logger :> Logger
-      | Some { registry = reg; metadata = { logger = logger } } ->
-        logger.Log (LogLine.debugf "getting logger by name: %s" name)
-        name |> Registry.getLogger reg |> Async.RunSynchronously
+    match !Globals.singleton with
+    | None ->
+      let logger = FWL name :> FlyweightLogger
+      logger.Log (LogLine.debugf "getting logger flyweight by name: %s" name)
+      lock Globals.criticalSection (fun () ->
+        Globals.flyweights := logger :: !Globals.flyweights)
+      logger :> Logger
+    | Some { registry = reg; metadata = { logger = logger } } ->
+      logger.Log (LogLine.debugf "getting logger by name: %s" name)
+      name |> Registry.getLogger reg |> Async.RunSynchronously
 
 /// Gets the current logger from the context that this method was called
 /// in.
 [<CompiledName "GetCurrentLogger"; MethodImpl(MethodImplOptions.NoInlining)>]
 let getCurrentLogger () =
-  getLoggerByName <| getCurrentLoggerName ()
+  getLoggerByName (getCurrentLoggerName ())
