@@ -2,11 +2,11 @@ FRAMEWORK: NET45
 NUGET
   remote: https://nuget.org/api/v2
   specs:
-    Aether (7.0.2)
+    Aether (8.1.1)
     Argu (1.1.3)
-    Chiron (5.2.1)
-      Aether (>= 7.0.1)
-      FParsec (>= 1.0.2)
+    Chiron (6.0.1)
+      Aether (>= 8.0.2 < 9.0.0)
+      FParsec (>= 1.0.0 < 2.0.0)
     Common.Logging (3.3.1)
       Common.Logging.Core (>= 3.3.1)
     Common.Logging.Core (3.3.1)

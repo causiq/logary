@@ -2,12 +2,11 @@
 
 open System.Text
 open Suave
-open Suave.Types
 open Suave.Model
-open Suave.Http
-open Suave.Http.Applicatives
-open Suave.Http.RequestErrors
-open Suave.Http.Successful
+open Suave.Filters
+open Suave.RequestErrors
+open Suave.Successful
+open Suave.Operators
 
 open Logary
 
@@ -20,8 +19,8 @@ module Impl =
   open Aether.Operators
   open Chiron
   open Chiron.Operators
-  open Suave.Http
-
+  open Suave.Operators
+  
   type internal Random with
     /// generate a new random ulong64 value
     member x.NextUInt64() =
@@ -50,9 +49,8 @@ module Impl =
     |> Json.serialize
     |> Json.format
 
-  let jsonOK msg =
-    jsonMsg msg
-    |> fun json -> OK json >>= Writers.setMimeType "application/json"
+  let jsonOK msg : WebPart =
+    OK (jsonMsg msg) >=> Writers.setMimeType "application/json"
 
   let rec jsonToClr = function
     | Json.String s -> box s
@@ -67,29 +65,29 @@ module Impl =
       Json.Object_
 
     let root prop =
-      o >??> Aether.key_ prop
+      o >?> Aether.Optics.Map.key_ prop
 
     let errors = 
       root "errors"
-      >??> Json.Array_
+      >?> Json.Array_
 
     let message =
       errors
-      >??> Aether.head_
-      >??> Json.Object_
-      >??> Aether.key_ "message"
-      >??> Json.String_
+      >?> Aether.Optics.List.head_
+      >?> Json.Object_
+      >?> Aether.Optics.Map.key_ "message"
+      >?> Json.String_
 
     let tryParseTs =
       InstantPattern.GeneralPattern.Parse
       >> (fun may -> if may.Success then Some may.Value else None)
 
-    let timestamp = root "timestamp" >??> Json.String_
-    let data      = root "data" >??> Json.Object_
-    let session   = root "session" >??> Json.Object_
-    let context   = root "context" >??> Json.Object_
-    let tags      = root "tags" >??> Json.Array_
-    let level     = root "level" >??> Json.String_
+    let timestamp = root "timestamp" >?> Json.String_
+    let data      = root "data" >?> Json.Object_
+    let session   = root "session" >?> Json.Object_
+    let context   = root "context" >?> Json.Object_
+    let tags      = root "tags" >?> Json.Array_
+    let level     = root "level" >?> Json.String_
 
     let json = Json.parse input
 
@@ -113,16 +111,16 @@ module Impl =
                 |> box
             ]
       level         =
-        Lens.getPartial level json
+        Optic.get level json
         |> Option.fold (fun s t -> LogLevel.FromString t) LogLevel.Error
       tags          =
-        Lens.getPartialOrElse tags [] json
+        Optic.getOrElse tags [] json
         |> List.map (fun json -> json, Json.String_)
-        |> List.map (fun (json, lens) -> Lens.getPartial lens json)
+        |> List.map (fun (json, lens) -> Optic.get lens json)
         |> List.filter Option.isSome
         |> List.map Option.get
       timestamp     = 
-        Lens.getPartial timestamp json
+        Optic.get timestamp json
         |> Option.bind tryParseTs
         |> Option.fold (fun s t -> t)
                        (SystemClock.Instance.Now)
@@ -135,9 +133,9 @@ let api (logger : Logger) (verbatimPath : string option) =
   let verbatimPath = defaultArg verbatimPath "/i/logary/loglines"
   let getMsg = sprintf "You can post a JSON structure to: %s" verbatimPath
 
-  path verbatimPath >>= choose [
-    GET >>= jsonOK getMsg
-    POST >>= request (fun r ->
+  path verbatimPath >=> choose [
+    GET >=> jsonOK getMsg
+    POST >=> request (fun r ->
       let data = Encoding.UTF8.GetString(r.rawForm)
       Logger.log logger (readLogline data)
       CREATED (jsonMsg "Created")

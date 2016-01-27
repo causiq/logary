@@ -5,9 +5,8 @@ open System.Threading
 open FSharp.Actor
 
 open Suave
-open Suave.Types
 open Suave.Web
-open Suave.Http.Successful
+open Suave.Successful
 
 open Logary
 open Logary.Target
