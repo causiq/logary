@@ -1,16 +1,14 @@
 #r "../../../packages/Suave/lib/net40/Suave.dll"
-open Suave.Web
-open Suave.Http
-open Suave.Http.RequestErrors
-open Suave.Http.Applicatives
-
+open Suave
+open Suave.RequestErrors
+open Suave.Filters
+open Suave.Operators
 #I "../../../packages/FParsec/lib/net40-client"
 //#r "../../../packages/FParsec/lib/net40-client/FParsecCS.dll"
 #r "../../../packages/FParsec/lib/net40-client/FParsec.dll"
 #r "../../../packages/Aether/lib/net35/Aether.dll"
-#r "../../../packages/Chiron/lib/net45/Chiron.dll"
+#r "../../../packages/Chiron/lib/net40/Chiron.dll"
 #r "../../../packages/NodaTime/lib/net35-Client/NodaTime.dll"
-
 #I "bin/Debug"
 #r "bin/Debug/Logary.dll"
 open Logary
@@ -35,7 +33,7 @@ let logary =
 
 startWebServer defaultConfig (
   choose [
-    path "/" >>= Files.browseFile root "index.html"
+    path "/" >=> Files.browseFile root "index.html"
     Files.browse root
     SuaveReporter.api (logary.GetLogger "Logary.Services.SuaveReporter") None
     NOT_FOUND "Couldn't find the file you were looking for"

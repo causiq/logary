@@ -28,6 +28,11 @@ module Impl =
       x.NextBytes buffer
       BitConverter.ToUInt64(buffer, 0)
 
+  module Option =
+    let orElse x = function
+      | None -> x
+      | Some y -> y
+
   let internal r = Random()
 
   type Message =
@@ -91,22 +96,22 @@ module Impl =
 
     let json = Json.parse input
 
-    { message       = Lens.getPartialOrElse message "js log" json
+    { message       = Optic.get message json |> Option.orElse "js log"
       data          =
         Map [ "context",
-                Lens.getPartialOrElse context Map.empty json
+                Optic.get context json |> Option.orElse Map.empty
                 |> Map.map (fun k v -> jsonToClr v)
                 |> box
               "session",
-                Lens.getPartialOrElse session Map.empty json
+                Optic.get session json |> Option.orElse Map.empty
                 |> Map.map (fun k v -> jsonToClr v)
                 |> box
               "data",
-                Lens.getPartialOrElse data Map.empty json
+                Optic.get data json |> Option.orElse Map.empty
                 |> Map.map (fun k v -> jsonToClr v)
                 |> box
               "errors",
-                Lens.getPartialOrElse errors List.empty json
+                Optic.get errors json |> Option.orElse List.empty
                 |> List.map (fun v -> jsonToClr v)
                 |> box
             ]
@@ -114,7 +119,8 @@ module Impl =
         Optic.get level json
         |> Option.fold (fun s t -> LogLevel.FromString t) LogLevel.Error
       tags          =
-        Optic.getOrElse tags [] json
+        Optic.get tags json
+        |> Option.orElse []
         |> List.map (fun json -> json, Json.String_)
         |> List.map (fun (json, lens) -> Optic.get lens json)
         |> List.filter Option.isSome
