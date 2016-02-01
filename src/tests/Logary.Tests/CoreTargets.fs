@@ -15,11 +15,13 @@ let tests =
       let target = create (TextWriterConf.Create(System.Console.Out, System.Console.Error)) (PointName.ofSingle "sample console")
       let instance = target.initer emptyRuntime |> run
       instance.name =? PointName.ofSingle "sample console"
+      start instance.server |> ignore
 
     testCase "writing with Console target directly" <| fun _ ->
       let stdout = Fac.textWriter ()
       let target = create (TextWriterConf.Create(stdout, stdout)) (PointName.ofSingle "writing console target")
       let instance = target |> Target.init emptyRuntime |> run
+      start instance.server |> ignore
 
       (because "logging with info level and then finalising the target" <| fun () ->
         Message.info "Hello World!" |> logTarget instance
@@ -32,6 +34,7 @@ let tests =
       let out, err = Fac.textWriter (), Fac.textWriter ()
       let target = create (TextWriterConf.Create(out, err)) (PointName.ofSingle "error writing")
       let subject = target |> Target.init emptyRuntime |> run
+      start subject.server |> ignore
 
       (because "logging 'Error line' and 'Fatal line' to the target" <| fun () ->
         Message.error "Error line" |> logTarget subject

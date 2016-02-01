@@ -21,6 +21,7 @@ let tests =
       let conf = Graphite.GraphiteConf.Create("localhost", clientFac = fun a b -> client :> WriteClient)
       let graphite = Graphite.create conf (pn "graphite-target")
       let instance = graphite.initer { serviceName = "tests"; logger = NullLogger() } |> run
+      start instance.server
       instance.name =? (pn "graphite-target")
 
       (because "shutting down the target" <| fun () ->
