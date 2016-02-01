@@ -51,6 +51,7 @@ let pingSvdSe () =
     with e ->
       return mkError e }
 
+[<Tests>]
 let tests =
   testList "health checks" [
     testCase "real ping" <| fun _ ->

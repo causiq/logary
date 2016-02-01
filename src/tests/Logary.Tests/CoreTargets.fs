@@ -8,6 +8,7 @@ open Hopac
 open TestDSL
 open Fac
 
+[<Tests>]
 let tests =
   testList "CoreTargets" [
     testCase "initialising TextWriter target" <| fun _ ->
