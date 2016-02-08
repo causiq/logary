@@ -2,7 +2,7 @@
 
 **This is a pre-release version**. v3.x is at
 [releases/v3.x](https://github.com/logary/logary/tree/releases/v3.x). We
-consider this branch "fairly" stable at this point, so it's the master branch.
+consider the master branch fairly stable at this point.
 
 Logary is a high performance, multi-target logging, metric, tracing and
 health-check library for mono and .Net and [JavaScript](https://github.com/logary/logary-js),
