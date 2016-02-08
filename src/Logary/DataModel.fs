@@ -1008,6 +1008,12 @@ module Message =
       let exns = Lens.getPartialOrElse Fields.errors_ [] msg
       exns @ (flattenedExns |> List.map Object)
 
+    // If there's no "errors" field, add it
+    let msg =
+      match Lens.getPartial Fields.errors_ msg with
+      | Some x -> msg
+      | None -> addField (PointName.ofSingle "errors", Field.init (Array [])) msg
+
     Lens.setPartial Fields.errors_ exnsNext msg
 
   /// Converts a String.Format-style format string and an array of arguments into
