@@ -28,8 +28,8 @@ let ``invalid configs`` =
       f e
 
   let r1 = Rule.createForTarget (PointName.ofSingle "r1")
-  let t1 = Noop.create Noop.empty (PointName.ofSingle "r1")
-  let m1 = Metrics.Noop.create Metrics.Noop.empty (PointName.ofSingle "r1") (Duration.FromMilliseconds 500L)
+  let t1 = Noop.create Noop.empty (PointName.ofSingle "t1")
+  let m1 = Metrics.Noop.create Metrics.Noop.empty (PointName.ofSingle "m1") (Duration.FromMilliseconds 500L)
 
   testList "invalid configs" [
     testCase "mismatched rules/targets" <| fun _ ->
