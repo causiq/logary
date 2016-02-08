@@ -41,39 +41,47 @@ module internal Impl =
       body        = body
       attachments = [] }
 
-  let loop (conf : MailgunLogaryConf) (ri : RuntimeInfo) (reqCh : Ch<_>) : Job<unit> =
-    let rec loop () = job {
-      let! msg = Ch.take reqCh
-      match msg with
-      | Log (logMsg, ack) ->
-        if logMsg.level < conf.minLevel then return! loop ()
-        let body  = conf.templater logMsg
-        let opts  = conf.getOpts (conf.domain, logMsg)
-        let msg   = conf.msgFactory conf (body, opts, logMsg)
-        let! resp = Messages.send conf.mailgun opts msg
-        match resp with
-        | Result response ->
-          use x = response
-          ()
+  let loop (conf : MailgunLogaryConf)
+           (ri : RuntimeInfo)
+           (requests : BoundedMb<TargetMessage>)
+           (shutdown : Ch<IVar<unit>>)
+           : Job<unit>=
 
-        | x ->
-          do! Message.error "unknown response from Mailgun"
-              |> Message.addData (["response", x] |> Map)
-              |> Logger.log ri.logger
+    let rec loop () : Job<unit> =
+      Alt.choose [
+        shutdown ^=> fun ack ->
+          ack *<= ()
 
-        do! ack *<= ()
-        return! loop ()
+        BoundedMb.take requests ^=> function
+          | Log (logMsg, ack) ->
+            job {
+              if logMsg.level < conf.minLevel then return! loop ()
+              let body  = conf.templater logMsg
+              let opts  = conf.getOpts (conf.domain, logMsg)
+              let msg   = conf.msgFactory conf (body, opts, logMsg)
+              let! resp = Messages.send conf.mailgun opts msg
+              match resp with
+              | Result response ->
+                use x = response
+                ()
 
-      | Flush (ack, nack) ->
-        do! Ch.give ack () <|> nack
-        return! loop ()
+              | x ->
+                do! Message.error "unknown response from Mailgun"
+                    |> Message.addData (["response", x] |> Map)
+                    |> Logger.log ri.logger
 
-      | Shutdown (ack, nack) ->
-        return! Alt.choose [
-          Ch.give ack () ^->. ()
-          nack ^=> loop
-        ]
-      }
+              do! ack *<= ()
+              return! loop ()
+            }
+
+          | Flush (ack, nack) ->
+            Alt.choose [
+              Ch.give ack ()
+              nack :> Alt<_>
+            ] ^=> loop
+            :> Job<_>
+
+      ] :> Job<_>
 
     if conf.``to`` = [] then
       upcast Logger.error ri.logger "no `to` configured in Mailgun target"

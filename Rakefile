@@ -93,7 +93,6 @@ directory 'build/pkg'
 nugets_pack :nugets_quick => :versioning do |p|
   p.configuration = Configuration
   p.files         = FileList['src/**/*.{csproj,fsproj,nuspec}'].
-    exclude('src/Fsharp.Actor/*.nuspec').
     exclude(/Fracture|Example|Tests|Spec|Health|sample|packages/)
   p.out           = 'build/pkg'
   p.exe           = 'tools/NuGet.exe'

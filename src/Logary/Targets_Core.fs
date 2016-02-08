@@ -35,7 +35,8 @@ module TextWriter =
 
   module internal Impl =
 
-    let loop (twConf : TextWriterConf) (ri : RuntimeInfo)
+    let loop (twConf : TextWriterConf)
+             (ri : RuntimeInfo)
              (requests : BoundedMb<TargetMessage>)
              (shutdown : Ch<IVar<unit>>) =
 

@@ -142,10 +142,14 @@ module internal Impl =
       stream   : Stream
       hostname : string }
 
-  let loop (conf : HekaConfig) (ri : RuntimeInfo) (reqCh : Ch<_>) =
+  let loop (conf : HekaConfig)
+           (ri : RuntimeInfo)
+           (requests : BoundedMb<TargetMessage>)
+           (shutdown : Ch<IVar<unit>>) =
+
     let debug = Message.debug >> Logger.log ri.logger
 
-    let rec initialise () =
+    let rec initialise () : Job<unit> =
       job {
         do! debug "initialising heka target"
 
@@ -166,10 +170,10 @@ module internal Impl =
         do! debug "initialise: tcp stream open"
 
         let hostname = Dns.GetHostName()
-        return! (running : _ -> Job<_>) { client = client; stream = stream; hostname = hostname }
+        return! running { client = client; stream = stream; hostname = hostname }
       }
 
-    and running state = job {
+    and running state : Job<unit> =
       let write (msg : Message) = job {
         msg.uuid        <- Guid.NewGuid().ToByteArray()
         msg.hostname    <- state.hostname
@@ -193,31 +197,33 @@ module internal Impl =
 
         | Choice2Of2 err ->
           do! logFailure ri err
-
-        do! debug "running: recursing"
-        return! running state
       }
 
-      do! debug "running: receiving"
+      Alt.choose [
+        shutdown ^=> fun ack ->
+          let dispose x = (x :> IDisposable).Dispose()
+          job {
+            do! Try.safe "heka target disposing tcp stream, then client" ri.logger (Job.delay (fun () ->
+              dispose state.stream
+              dispose state.client
+              Job.result ()))
+            do! ack *<= ()
+          }
 
-      let! msg = Ch.take reqCh
-      match msg with
-      | Log (msg, ack) ->
-        return! write (Message.ofMessage msg)
+        BoundedMb.take requests ^=> function
+          | Log (logMsg, ack) ->
+            debug "running: received message"
+            >>=. write (Message.ofMessage logMsg)
+            >>=. running state
 
-      | Flush (ackCh, nack) ->
-        do! Ch.give ackCh () <|> nack
-        return! running state
+          | Flush (ack, nack) ->
+            Alt.choose [
+              Ch.give ack ()
+              nack :> Alt<_>
+            ] ^=>. running state
+            :> Job<_>
 
-      | Shutdown (ackCh, nack) ->
-        let dispose x = (x :> IDisposable).Dispose()
-        do! Try.safe "heka target disposing tcp stream, then client" ri.logger (Job.delay (fun () ->
-          dispose state.stream
-          dispose state.client
-          Job.result ()))
-
-        do! Ch.give ackCh () <|> nack
-      }
+      ] :> Job<_>
 
     initialise ()
 
