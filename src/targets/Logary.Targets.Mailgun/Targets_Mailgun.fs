@@ -75,8 +75,10 @@ module internal Impl =
             }
 
           | Flush (ack, nack) ->
-            ack *<- () <|> nack
-            ^=> loop
+            Alt.choose [
+              Ch.give ack ()
+              nack :> Alt<_>
+            ] ^=> loop
             :> Job<_>
 
       ] :> Job<_>

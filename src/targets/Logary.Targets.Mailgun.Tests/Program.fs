@@ -5,6 +5,7 @@ open Fuchu
 open System
 open System.Net.Mail
 open Hopac
+open Hopac.Infixes
 open Mailgun.Api
 open Logary
 open Logary.Internals
@@ -12,9 +13,7 @@ open Logary.Targets.Mailgun
 
 let emptyRuntime = { serviceName = "tests"; logger = NullLogger() }
 
-let flush = Target.flush >> Job.Ignore >> run
-
-let stop = Target.shutdown >> Job.Ignore >> run
+let flush = Target.flush >> Job.Ignore >> Job.Global.run
 
 let env k =
   match Environment.GetEnvironmentVariable k with
@@ -33,21 +32,32 @@ let start () =
                                       getOpts = getOpts)
 
   Target.init emptyRuntime (create conf (PointName.ofSingle "mailgun"))
+  |> run
+  |> fun inst -> inst.server |> start; inst
+
+let finaliseTarget = Target.shutdown >> fun a ->
+  a ^-> TimeoutResult.Success <|> timeOutMillis 1000 ^->. TimedOut
+  |> Job.Global.run
+  |> function
+  | TimedOut -> Tests.failtest "finalising target timeout"
+  | TimeoutResult.Success _ -> ()
 
 [<Tests>]
 let helloWorld =
   testList "giving it a spin" [
     testCase "initialise" <| fun _ ->
-      stop (start ())
+      finaliseTarget (start ())
 
     testCase "can send test e-mail" <| fun _ ->
       let target = start ()
       try
         Message.error "hello world"
-        |> Target.send target
+        |> Target.log target
         |> run
-        |> flush
-      finally stop target
+        |> run
+
+        target |> flush
+      finally finaliseTarget target
   ]
 
 [<EntryPoint>]
