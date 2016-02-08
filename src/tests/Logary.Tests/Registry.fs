@@ -35,7 +35,6 @@ let registry =
         |> thatsIt
 
     yield testCase "after shutting down no logging happens" <| fun _ ->
-      printfn "next"
       Fac.withLogary <| fun logary out err ->
         let logger = (pnp "a.b.c.d") |> Registry.getLogger logary.registry |> run
         (because "logging something, then shutting down" <| fun () ->

@@ -48,9 +48,9 @@ let finaliseLogary = Config.shutdownSimple >> fun a ->
     if state.successful then () else Tests.failtestf "finaliseLogary failed %A" state)
   |> thatsIt
 
-let finaliseTarget = Target.shutdown >> fun a ->
+let finaliseTarget t = Target.shutdown t |> fun a ->
   let acks = a ^-> TimeoutResult.Success <|> timeOutMillis 1000 ^->. TimedOut
              |> Job.Global.run
   match acks with
-  | TimedOut -> Tests.failtest "finalising target timeout"
+  | TimedOut -> Tests.failtestf "finalising target timed out: %A" t
   | TimeoutResult.Success _ -> ()

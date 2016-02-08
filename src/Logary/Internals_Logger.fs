@@ -24,7 +24,6 @@ type NullLogger() =
 module internal Logging =
   let send (targets : _ list) msg : Alt<Promise<unit>> =
     let latch = Latch targets.Length
-    printfn "sending msg"
     (targets |> List.traverseAltA (fun target ->
       let ack = IVar ()
       ((Log (msg, ack)) |> BoundedMb.put target.requests)

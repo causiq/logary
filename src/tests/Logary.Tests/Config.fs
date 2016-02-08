@@ -23,7 +23,7 @@ let ``invalid configs`` =
     try
       let conf = confLogary "tests" |> f_conf
       conf |> validate |> ignore
-      Tests.failtest "expected validation failure for conf: %A" conf |> ignore
+      Tests.failtestf "expected validation failure for conf: %A" conf |> ignore
     with :? ValidationException as e ->
       f e
 

@@ -52,6 +52,7 @@ let rec private supervise instance (nj : NamedJob<_>) = job {
   | Choice1Of2 _ ->
     // If the job is finished without an exception (presumably shut down),
     // stop supervising.
+    do! Message.infof "Job '%A' has quit and will be unregistered." nj.name |> log instance
     do! Ch.give instance.ch (Unregister (PointName.ofList nj.name))
     ()
 
@@ -81,6 +82,7 @@ let private loop (instance : Instance) =
       if jobs |> Map.containsKey (PointName nj.name) then
         failwithf "Job \"%O\" has already been registered." (PointName nj.name)
 
+      do! Message.infof "Now supervising '%A'." nj.name |> log
       do! Job.start (supervise instance nj)
       return! f (Map.add (PointName nj.name) 0u jobs)
 

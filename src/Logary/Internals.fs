@@ -79,7 +79,7 @@ module internal Alt =
 
   let apply (fAlt : Alt<'a -> 'b>) (xAlt : Alt<'a>) =
     let one = fAlt <+> xAlt
-    one ^-> fun (fA, x) -> printfn "alt map"; fA x
+    one ^-> fun (fA, x) -> fA x
 
 module internal List =
   open Hopac.Infixes

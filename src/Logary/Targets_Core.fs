@@ -44,7 +44,6 @@ module TextWriter =
       let rec loop () : Job<unit> =
         Alt.choose [
           shutdown ^=> fun ack ->
-            printfn "textwriter: disposing"
             twConf.output.Dispose()
 
             if not (obj.ReferenceEquals(twConf.output, twConf.error)) then
