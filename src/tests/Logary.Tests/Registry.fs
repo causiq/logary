@@ -40,14 +40,7 @@ let registry =
         (because "logging something, then shutting down" <| fun () ->
           "hi there" |> Logger.info logger |> run
           logary |> Config.shutdownSimple |> run |> ignore
-          printfn "unit test back in control"
-          let didLog =
-            Alt.choose [
-              timeOut (TimeSpan.FromMilliseconds 20.0) ^->. false
-              ("after shutdown" |> Logger.info logger) ^->. true
-            ] |> run
-          Assert.Equal("should be false", false, didLog)
-          logary |> finaliseLogary
+          "after shutdown" |> Logger.info logger |> run
           out.ToString())
         |> should contain "hi there"
         |> shouldNot contain "after shutdown"
