@@ -22,7 +22,7 @@ let tests =
       let graphite = Graphite.create conf (pn "graphite-target")
       let instance = graphite.initer { serviceName = "tests"; logger = NullLogger() } |> run
       start instance.server
-      instance.name =? (pn "graphite-target")
+      Assert.Equal("instance name should match", instance.name, (pn "graphite-target"))
 
       (because "shutting down the target" <| fun () ->
         instance |> finaliseTarget
@@ -32,5 +32,7 @@ let tests =
 
     testCase "sanitizePath" <| fun _ ->
       let testPath = PointName.ofList ["This is a metric path"; "path$Section%2.5"; "GET /post/1.2/"; "Multiple . spaces"]
-      Graphite.Impl.sanitisePath testPath =? (PointName.ofList ["This_is_a_metric_path"; "path$Section%2_5"; "GET_-post-1_2-"; "Multiple___spaces"])
+      let sanitised = Graphite.Impl.sanitisePath testPath
+      let expected = PointName.ofList ["This_is_a_metric_path"; "path$Section%2_5"; "GET_-post-1_2-"; "Multiple___spaces"]
+      Assert.Equal("sanitised equals", sanitised, expected)
     ]

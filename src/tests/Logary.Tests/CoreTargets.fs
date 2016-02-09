@@ -14,7 +14,7 @@ let tests =
     testCase "initialising TextWriter target" <| fun _ ->
       let target = create (TextWriterConf.Create(System.Console.Out, System.Console.Error)) (PointName.ofSingle "sample console")
       let instance = target.initer emptyRuntime |> run
-      instance.name =? PointName.ofSingle "sample console"
+      Assert.Equal("instance name should eq sample console", instance.name, PointName.ofSingle "sample console")
       start instance.server |> ignore
 
     testCase "writing with Console target directly" <| fun _ ->

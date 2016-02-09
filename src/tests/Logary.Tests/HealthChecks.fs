@@ -59,5 +59,5 @@ let tests =
       let h = fromFn (pn "ping haf.se") pingSvdSe
       let gotUnhealthy = untilPred 10000 <| fun i ->
         match h.getValue () with HasValue _ -> true | _ -> false
-      gotUnhealthy =? false
+      Assert.isFalse gotUnhealthy "is not unhealthy"
     ]

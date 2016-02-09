@@ -20,7 +20,7 @@ let tests =
     yield testCase "retrieving rule for name" <| fun _ ->
       let rules = [] : Rule list
       let found = rules |> Rule.matching (pnp "a.b.c")
-      found =? []
+      Assert.Equal("empty", found, [])
 
     yield testCase "retrieving existing rule for name" <| fun _ ->
       let found = [ Fac.emptyRule ] |> Rule.matching (pn "a")
@@ -31,12 +31,12 @@ let tests =
     yield testCase "retrieving rule that doesn't match fails" <| fun _ ->
       let funnyRules = [ { Fac.emptyRule with hiera = Regex("^$") } ]
       let found = funnyRules |> Rule.matching (pn "a")
-      found =? []
+      Assert.Equal("empty", found, [])
 
     yield testCase "retrieving two matching rules" <| fun _ ->
       let rules = [ Fac.emptyRule ; { Fac.emptyRule with hiera = Regex(@"^a\.b") }]
       let found = rules |> Rule.matching (pnp "a.b.c")
-      found =? rules
+      Assert.Equal("eq rules", found, rules)
 
     yield testCase "retrieving two matching rules one non-matching" <| fun _ ->
       let rules =
@@ -46,7 +46,7 @@ let tests =
       rules
       |> Rule.matching (pnp "a.b.c")
       |> List.zip [ Fac.emptyRule; { Fac.emptyRule with hiera =  Regex(@"^a\.b") } ]
-      |> List.iter (fun (found, expected) -> found =? expected)
+      |> List.iter (fun (found, expected) -> Assert.Equal("found eq expected", found, expected))
 
     yield testCase "misconfiguring logary rule/target throws" <| fun _ ->
       let out = Fac.textWriter ()
