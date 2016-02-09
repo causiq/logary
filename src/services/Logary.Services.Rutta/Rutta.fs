@@ -249,29 +249,33 @@ module Router =
   let private logger = Logging.getCurrentLogger ()
 
   // FOCUS:
-  let pullFrom binding pars =
-    use context = new Context()
-    use receiver = Context.pull context
-    Socket.bind receiver binding
+  let pullFrom binding = function
+    | Router_Target ep ->
+      use context = new Context()
+      use receiver = Context.pull context
+      Socket.bind receiver binding
 
-    let rec outer () =
-      try // TODO: remove and use non cancelling
-        // TODO: handle cancellation so that we don't block on recv
-        let data = Socket.tryRecv receiver
+      let rec outer () =
+        try // TODO: remove and use non cancelling
+          // TODO: handle cancellation so that we don't block on recv
+          let data = Socket.tryRecv receiver
 
-        // TODO: deserialise
-        global.Logary.Message.debug "TODO: deserialise data above"
-        |> Logger.logWithAck logger
-        |> run // TODO: can we do this non-blocking?
-        |> ignore // TODO: await ack
+          // TODO: deserialise
+          global.Logary.Message.debug "TODO: deserialise data above"
+          |> Logger.logWithAck logger
+          |> run // TODO: can we do this non-blocking?
+          |> ignore // TODO: await ack
 
-        outer ()
+          outer ()
 
-      with
-      | :? TimeoutException ->
-        outer ()
+        with
+        | :? TimeoutException ->
+          outer ()
 
-    outer ()
+      outer ()
+
+    | x ->
+      Choice2Of2 (sprintf "unknown parameter %A" x)
 
   let xsubBind binding pars =
     use context = new Context()
@@ -388,17 +392,23 @@ let execute argv exiting : int =
   |> List.fold detailedParse (Choice2Of3 [])
   |> function
   | Choice1Of3 (modeName, start, pars) ->
-    start pars
-    exiting.Wait()
-    0
+    match start pars with
+    | Choice1Of2 () ->
+      exiting.Wait()
+      0
+
+    | Choice2Of2 error ->
+      eprintfn "%s" error
+      2
+
 
   | Choice2Of3 pars ->
     eprintfn "No mode given. You must pass one of: { --push-to, --pub-to, --router, --router-sub, --proxy } for Rutta to work."
-    1
+    10
 
   | Choice3Of3 error ->
     eprintfn "%s" error
-    10
+    20
 
 let startWindows argv : int =
   let exiting = new ManualResetEventSlim(false)
