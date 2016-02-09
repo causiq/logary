@@ -33,7 +33,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
-    <Reference Include="FSharp.Core" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
@@ -41,7 +40,7 @@
   <ItemGroup>
     <Compile Include="..\..\..\paket-files\haf\YoLo\YoLo.fs">
       <Paket>True</Paket>
-      <Link>paket-files/YoLo.fs</Link>
+      <Link>paket-files\YoLo.fs</Link>
     </Compile>
     <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="Rutta.fs" />

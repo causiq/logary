@@ -215,24 +215,113 @@ module Health =
 
 module Shipper =
 
-  let pushTo binding pars =
-    ()
+  open fszmq
+
+  let pushTo connect pars =
+    use context = new Context()
+    use sender = Context.push context
+    Socket.connect sender connect
+
+    let rec outer () =
+      Socket.sendAll sender []
+      outer ()
+    outer ()
 
   let pubTo connect pars =
-    ()
+    use context = new Context()
+    use publisher = Context.pub context
+    Socket.connect publisher connect
+
+    let rec outer () =
+      Socket.sendAll publisher []
+      outer ()
+
+    outer ()
 
 module Router =
 
+  open Hopac
+  open System
+  open Logary
+  open fszmq
+
+  let private logger = Logging.getCurrentLogger ()
+
   let pullFrom binding pars =
-    ()
+    use context = new Context()
+    use receiver = Context.pull context
+    Socket.bind receiver binding
+
+    let rec outer () =
+      try // TODO: remove and use non cancelling
+        // TODO: handle cancellation so that we don't block on recv
+        let data = Socket.tryRecv receiver
+
+        // TODO: deserialise
+        global.Logary.Message.debug "TODO: deserialise data above"
+        |> Logger.logWithAck logger
+        |> run // TODO: can we do this non-blocking?
+        |> ignore // TODO: await ack
+
+        outer ()
+
+      with
+      | :? TimeoutException ->
+        outer ()
+
+    outer ()
 
   let xsubBind binding pars =
-    ()
+    use context = new Context()
+    use receiver = Context.xsub context
+    Socket.bind receiver binding
+
+    let rec outer () =
+      try // TODO: remove and use non cancelling
+        // TODO: handle cancellation so that we don't block on recv
+        let data = Socket.tryRecv receiver
+
+        // TODO: deserialise
+        global.Logary.Message.debug "TODO: deserialise data above"
+        |> Logger.logWithAck logger
+        |> run // TODO: can we do this non-blocking?
+        |> ignore // TODO: await ack
+
+        outer ()
+
+      with
+      | :? TimeoutException ->
+        outer ()
+
+    outer ()
 
 module Proxy =
 
+  open fszmq
+
   let proxy xsubBind xpubBind pars =
-    ()
+    use context = new Context()
+    use subscriber = Context.xsub context
+    use publisher = Context.xpub context
+    Socket.bind subscriber xsubBind
+    Socket.bind publisher xpubBind
+
+    let rec outer () =
+      match Socket.tryRecv subscriber 0x2000 0 with
+      | None ->
+        outer ()
+
+      | Some data ->
+        if Socket.recvMore subscriber then
+          Socket.sendMore publisher data |> ignore
+          outer ()
+
+        else
+          Socket.send publisher data
+          outer ()
+
+    outer ()
+
 
 open System
 open System.Threading
