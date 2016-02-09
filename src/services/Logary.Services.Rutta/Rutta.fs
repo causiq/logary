@@ -217,6 +217,7 @@ module Shipper =
 
   open fszmq
 
+  // FOCUS:
   let pushTo connect pars =
     use context = new Context()
     use sender = Context.push context
@@ -247,6 +248,7 @@ module Router =
 
   let private logger = Logging.getCurrentLogger ()
 
+  // FOCUS:
   let pullFrom binding pars =
     use context = new Context()
     use receiver = Context.pull context
