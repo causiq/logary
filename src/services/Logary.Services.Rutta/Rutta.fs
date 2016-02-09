@@ -155,9 +155,6 @@ You can configure Consol to health check Rutta:
 
 *)
 
-open Topshelf
-open Time
-open Logary
 open Argu
 
 type Args =
@@ -181,6 +178,7 @@ with
       | Proxy (_,_) -> "Runs Rutta in Proxy mode (XSUB/fan-in of Messages, forward to SUB sockets via XPUB). The first is the XSUB socket (in), the second is the XPUB socket (out)."
 
 module Health =
+  open Logary
   open System
   open System.Threading
   open Suave
@@ -189,7 +187,7 @@ module Health =
   open Suave.Successful
 
   let app =
-    GET >=> path "/health" >=> OK (sprintf "Logary Rutta %s" (YoLo.App.getVersion ()))
+    GET >=> path "/health" >=> OK (sprintf "Logary Rutta %s" (App.getVersion ()))
 
   /// Start a Suave web server on the passed ip and port and return a disposable
   /// token to use to shut the server down.
@@ -217,9 +215,7 @@ module Proxy =
 
 open System
 open System.Threading
-
-let isMono () =
-  Type.GetType "Mono.Runtime" <> null
+open Topshelf
 
 let startUnix argv =
   let parser = ArgumentParser.Create<Args>()
@@ -229,14 +225,36 @@ let startUnix argv =
   use health =
     parsed.GetResult(<@ Health @>, defaultValue = ("127.0.0.1", 8888))
     ||> Health.startServer
-  
+
+  let start =
+    parsed.GetAllResults None
+    |> List.fold (function
+    | Choice1Of2 (_, pars) -> function
+      |
+    | Choice2Of2 pars -> function
+      | Push_To _ ->
+      | Pub_To _ -> "Runs Rutta in Shipper/PUB mode (send Messages from a node to proxy)"
+      | Router _ -> "Runs Rutta in Router mode (PULL fan-in of Messages, forward to Target)."
+      | Router_Sub _ ->
+      | Router_Target _ ->
+      | Health _ ->
+      | Proxy (_,_) ->
+    ) (Choice2Of2 []) // Choice2Of2 = failure to find a meaningful 
+
   exiting.Wait()
   0
 
 let startWindows argv =
   let exiting = new ManualResetEventSlim(false)
 
+  let enqueue f =
+    ThreadPool.QueueUserWorkItem(fun _ -> f ()) |> ignore
+
   let start hc =
+    enqueue <| fun _ ->
+      // TODO
+
+      exiting.Wait()
     true
 
   let stop hc =
@@ -244,11 +262,11 @@ let startWindows argv =
     true
 
   Service.Default
-  |> with_recovery (ServiceRecovery.Default |> restart (s 5))
+  |> with_recovery (ServiceRecovery.Default |> restart (Time.s 5))
   |> with_start start
   |> with_stop (fun hc -> exiting.Set() ; stop hc)
   |> run
 
 [<EntryPoint>]
 let main argv =
-  if isMono () then startUnix argv else startWindows argv
+  if Type.GetType "Mono.Runtime" <> null then startUnix argv else startWindows argv
