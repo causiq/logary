@@ -166,7 +166,7 @@ type Args =
   | [<PrintLabels>] Router of pullBindSocket:string
   | [<PrintLabels>] Router_Sub of subConnectSocket:string
   | [<PrintLabels>] Router_Target of logaryTargetUri:string
-  | [<PrintLabels>] Health of ip:string * port:uint16
+  | [<PrintLabels>] Health of ip:string * port:int
   | [<PrintLabels>] Proxy of xsubConnectToSocket:string * xpubBindSocket:string
 with
   interface IArgParserTemplate with
@@ -181,6 +181,8 @@ with
       | Proxy (_,_) -> "Runs Rutta in Proxy mode (XSUB/fan-in of Messages, forward to SUB sockets via XPUB). The first is the XSUB socket (in), the second is the XPUB socket (out)."
 
 module Health =
+  open System
+  open System.Threading
   open Suave
   open Suave.Operators
   open Suave.Filters
@@ -189,16 +191,20 @@ module Health =
   let app =
     GET >=> path "/health" >=> OK (sprintf "Logary Rutta %s" (YoLo.App.getVersion ()))
 
-  /// Start a Suave web server on the passed ip and port and return the
-  /// cancellation token to use to shut the server down.
+  /// Start a Suave web server on the passed ip and port and return a disposable
+  /// token to use to shut the server down.
   let startServer ip port =
+    let cts = new CancellationTokenSource()
+
     let config =
-      { defaultConfig with bindings = [ HttpBinding.mkSimple HTTP ip port ] }
+      { defaultConfig with
+          bindings = [ HttpBinding.mkSimple HTTP ip port ]
+          cancellationToken = cts.Token }
 
     let ready, handle = startWebServerAsync config app
     Async.Start handle
 
-    config.cancellationToken
+    { new IDisposable with member x.Dispose() = cts.Cancel () }
 
 module Router =
   ()
@@ -209,36 +215,40 @@ module Shipper =
 module Proxy =
   ()
 
-[<EntryPoint>]
-let main argv =
+open System
+open System.Threading
 
+let isMono () =
+  Type.GetType "Mono.Runtime" <> null
+
+let startUnix argv =
   let parser = ArgumentParser.Create<Args>()
- 
+  let parsed = parser.Parse argv
+  use exiting = new ManualResetEventSlim(false)
+  use sub = Console.CancelKeyPress.Subscribe(fun _ -> exiting.Set())
+  use health =
+    parsed.GetResult(<@ Health @>, defaultValue = ("127.0.0.1", 8888))
+    ||> Health.startServer
+  
+  exiting.Wait()
+  0
 
-
-  let info : string -> unit = fun s -> Console.WriteLine(sprintf "%s logger/sample-service: %s" (DateTime.UtcNow.ToString("o")) s)
-  let sleep (time : TimeSpan) = System.Threading.Thread.Sleep(time)
+let startWindows argv =
+  let exiting = new ManualResetEventSlim(false)
 
   let start hc =
-    info "sample service starting"
-
-    (s 30) |> HostControl.request_more_time hc
-    sleep (s 1)
-
-    Threading.ThreadPool.QueueUserWorkItem(fun cb ->
-        sleep (s 3)
-        info "requesting stop"
-        hc |> HostControl.stop) |> ignore
-
-    info "sample service started"
-    true 
-    
-  let stop hc =
-    info "sample service stopped"
     true
-  
+
+  let stop hc =
+    exiting.Dispose()
+    true
+
   Service.Default
+  |> with_recovery (ServiceRecovery.Default |> restart (s 5))
   |> with_start start
-  |> with_recovery (ServiceRecovery.Default |> restart (min 10))
-  |> with_stop stop
+  |> with_stop (fun hc -> exiting.Set() ; stop hc)
   |> run
+
+[<EntryPoint>]
+let main argv =
+  if isMono () then startUnix argv else startWindows argv
