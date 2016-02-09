@@ -56,23 +56,23 @@ The Proxy – from Shipper to Router
 ----------------------------------
 
 Proxies take inputs from Shippers or other Proxies which publish Messages
-using XPUB sockets:
+using XPUB sockets. The shipper CONNECTs its PUB socket like such:
 
 ``` bash
-./rutta --pub-to tcp://headnode:7111
+./rutta --pub-to tcp://headnode:7113
 ```
 
-The Proxy is run this way, by providing a XSUB socket binding and a XPUB socket
-binding:
+The Proxy is run by providing a XSUB socket binding and a XPUB socket
+binding which it forwards to:
 
 ``` bash
-./rutta --proxy tcp://10.42.0.1:7111 tcp://192.168.10.10:7112
+./rutta --proxy tcp://10.42.0.1:7113 tcp://192.168.10.10:7113
 ```
 
 During network splits, the receiving
 [XSUB socket drops messages](http://api.zeromq.org/3-2:zmq-socket#toc12).
 
-You can then connect to the Proxy with a Router that routes it to the final
+You can then CONNECT to the Proxy with a Router that routes it to the final
 Target (like InfluxDB in this example):
 
 ``` bash
@@ -97,12 +97,21 @@ BINDs a PULL socket on a specified NIC/IP and PORT.
 Configures a single internal Target that pushes the received data.
 
 ``` bash
-./rutta --router tcp://192.168.10.10:7113 \
+./rutta --router tcp://192.168.10.10:6113 \
         --router-target influxdb://user:pass@host:8086/write?db=databaseName
 ```
 
 During network splits, the listening
 [PULL socket blocks](http://api.zeromq.org/3-2:zmq-socket#toc15).
+
+### Subscribing Routers
+
+BINDs a XSUB socket (because this is a fan-in, not a fan-out, in which case we'd
+connect a SUB) to the passed binding.
+
+``` bash
+./rutta --router-sub tcp://192.160.10.10:7113
+```
 
 Serialisation
 -------------
@@ -163,8 +172,8 @@ type Args =
   | [<PrintLabels>] Router of pullBindSocket:string
   | [<PrintLabels>] Router_Sub of subConnectSocket:string
   | [<PrintLabels>] Router_Target of logaryTargetUri:string
-  | [<PrintLabels>] Health of ip:string * port:int
   | [<PrintLabels>] Proxy of xsubConnectToSocket:string * xpubBindSocket:string
+  | [<PrintLabels>] Health of ip:string * port:int
 with
   interface IArgParserTemplate with
     member s.Usage =
@@ -174,8 +183,8 @@ with
       | Router _ -> "Runs Rutta in Router mode (PULL fan-in of Messages, forward to Target)."
       | Router_Sub _ -> "Runs Rutta in Router XSUB mode for PUB sockets to publish to."
       | Router_Target _ -> "Implied by --router. Specifies where the Router target should forward its data"
-      | Health _ -> "Give Rutta binding information"
       | Proxy (_,_) -> "Runs Rutta in Proxy mode (XSUB/fan-in of Messages, forward to SUB sockets via XPUB). The first is the XSUB socket (in), the second is the XPUB socket (out)."
+      | Health _ -> "Give Rutta binding information"
 
 module Health =
   open Logary
@@ -204,57 +213,110 @@ module Health =
 
     { new IDisposable with member x.Dispose() = cts.Cancel () }
 
-module Router =
-  ()
-
 module Shipper =
-  ()
+
+  let pushTo binding pars =
+    ()
+
+  let pubTo connect pars =
+    ()
+
+module Router =
+
+  let pullFrom binding pars =
+    ()
+
+  let xsubBind binding pars =
+    ()
 
 module Proxy =
-  ()
+
+  let proxy xsubBind xpubBind pars =
+    ()
 
 open System
 open System.Threading
 open Topshelf
 
-let startUnix argv =
+let detailedParse : _ -> _ -> Choice<string * _ * _, _, string> = function
+  // we already have a mode set
+  | Choice1Of3 (modeName, start, pars) as curr -> function
+    | Router_Target _ as par ->
+      Choice1Of3 (modeName, start, par :: pars)
+
+    // no mode cares about this:
+    | Health _ ->
+      curr
+
+    // no other known flags that are not modes:
+    | otherMode ->
+      let msg =
+        sprintf "%A given after having configured the '%s' mode; invalid parameters, exiting..."
+          otherMode modeName
+      Choice3Of3 msg
+
+  // still collecting parameters
+  | Choice2Of3 pars -> function
+    | Push_To connect ->
+      Choice1Of3 ("shipper push", Shipper.pushTo connect, pars)
+
+    | Pub_To connect ->
+      Choice1Of3 ("shipper pub", Shipper.pubTo connect, pars)
+
+    | Router binding ->
+      Choice1Of3 ("router pull", Router.pullFrom binding, pars)
+
+    | Router_Sub binding ->
+      Choice1Of3 ("router xsub", Router.xsubBind binding, pars)
+
+    | Proxy (xsubBind, xpubBind) ->
+      Choice1Of3 ("proxy", Proxy.proxy xsubBind xpubBind, pars)
+
+    | Router_Target _ as par ->
+      Choice2Of3 (par :: pars)
+
+    | Health _ ->
+      Choice2Of3 pars
+
+  | Choice3Of3 msg ->
+    fun _ -> Choice3Of3 msg
+
+let execute argv exiting : int =
   let parser = ArgumentParser.Create<Args>()
   let parsed = parser.Parse argv
   use exiting = new ManualResetEventSlim(false)
-  use sub = Console.CancelKeyPress.Subscribe(fun _ -> exiting.Set())
   use health =
     parsed.GetResult(<@ Health @>, defaultValue = ("127.0.0.1", 8888))
     ||> Health.startServer
 
-  let start =
-    parsed.GetAllResults None
-    |> List.fold (function
-    | Choice1Of2 (_, pars) -> function
-      |
-    | Choice2Of2 pars -> function
-      | Push_To _ ->
-      | Pub_To _ -> "Runs Rutta in Shipper/PUB mode (send Messages from a node to proxy)"
-      | Router _ -> "Runs Rutta in Router mode (PULL fan-in of Messages, forward to Target)."
-      | Router_Sub _ ->
-      | Router_Target _ ->
-      | Health _ ->
-      | Proxy (_,_) ->
-    ) (Choice2Of2 []) // Choice2Of2 = failure to find a meaningful 
+  // Choice1Of3 = mode found
+  // Choice2Of3 = no mode found
+  // Choice3Of3 = more than one mode found
 
-  exiting.Wait()
-  0
+  parsed.GetAllResults()
+  |> List.fold detailedParse (Choice2Of3 [])
+  |> function
+  | Choice1Of3 (modeName, start, pars) ->
+    start pars
+    exiting.Wait()
+    0
 
-let startWindows argv =
+  | Choice2Of3 pars ->
+    eprintfn "No mode given. You must pass one of: { --push-to, --pub-to, --router, --router-sub, --proxy } for Rutta to work."
+    1
+
+  | Choice3Of3 error ->
+    eprintfn "%s" error
+    10
+
+let startWindows argv : int =
   let exiting = new ManualResetEventSlim(false)
 
   let enqueue f =
     ThreadPool.QueueUserWorkItem(fun _ -> f ()) |> ignore
 
   let start hc =
-    enqueue <| fun _ ->
-      // TODO
-
-      exiting.Wait()
+    enqueue (fun _ -> execute argv exiting |> ignore)
     true
 
   let stop hc =
@@ -266,6 +328,11 @@ let startWindows argv =
   |> with_start start
   |> with_stop (fun hc -> exiting.Set() ; stop hc)
   |> run
+
+let startUnix argv : int =
+  let exiting = new ManualResetEventSlim(false)
+  use sub = Console.CancelKeyPress.Subscribe(fun _ -> exiting.Set())
+  execute argv exiting
 
 [<EntryPoint>]
 let main argv =
