@@ -27,6 +27,8 @@ Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Services.LogRouter",
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.WinPerfCounters", "Logary.WinPerfCounters\Logary.WinPerfCounters.fsproj", "{DD5137FC-22E5-47DA-88F1-3D3F1E7E8381}"
 EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Services.Rutta", "services\Logary.Services.Rutta\Logary.Services.Rutta.fsproj", "{E88982FD-E257-41BA-A343-B56976CCB3A1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

@@ -41,6 +41,8 @@ NUGET
     FsUnit (2.0.0)
       FSharp.Core (>= 3.1.2.5)
       NUnit (3.0.1)
+    fszmq (12.1.1)
+      FSharp.Core
     Fuchu (1.0.3)
       FSharp.Core (>= 3.1.2.1)
     Fuchu.FsCheck (1.0.3)

@@ -5,8 +5,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{E88982FD-E257-41BA-A343-B56976CCB3A1}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>Logary.Services.LogRouter</RootNamespace>
-    <AssemblyName>Logary.Services.LogRouter</AssemblyName>
+    <RootNamespace>Logary.Services.Rutta</RootNamespace>
+    <AssemblyName>rutta</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -39,8 +39,12 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\..\..\paket-files\haf\YoLo\YoLo.fs">
+      <Paket>True</Paket>
+      <Link>paket-files/YoLo.fs</Link>
+    </Compile>
     <Compile Include="AssemblyVersionInfo.fs" />
-    <Compile Include="Program.fs" />
+    <Compile Include="Rutta.fs" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.1\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>
@@ -57,6 +61,17 @@
       <ItemGroup>
         <Reference Include="Argu">
           <HintPath>..\..\..\packages\Argu\lib\net40\Argu.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
+        <Reference Include="fszmq">
+          <HintPath>..\..\..\packages\fszmq\lib\net40\fszmq.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
@@ -93,6 +108,17 @@
           <Paket>True</Paket>
         </Reference>
         <Reference Include="System.Xml">
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
+        <Reference Include="Suave">
+          <HintPath>..\..\..\packages\Suave\lib\net40\Suave.dll</HintPath>
+          <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
       </ItemGroup>
