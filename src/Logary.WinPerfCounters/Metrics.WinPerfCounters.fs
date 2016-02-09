@@ -5,7 +5,6 @@ open System.Diagnostics
 open Hopac
 
 open Logary
-open Logary.Measure
 open Logary.Metric
 open Logary.Internals
 
