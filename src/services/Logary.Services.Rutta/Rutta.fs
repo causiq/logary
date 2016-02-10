@@ -224,7 +224,8 @@ module Shipper =
     Socket.connect sender connect
 
     let rec outer () =
-      Socket.sendAll sender []
+      Socket.sendAll sender ["Hello World"B]
+      System.Threading.Thread.Sleep 2000
       outer ()
     outer ()
 
@@ -270,7 +271,9 @@ module Router =
         >> withRule (Rule.createForTarget (PointName.ofSingle "influxdb"))
       )
       |> run
+
     let targetLogger = forwarder.getLogger (PointName.parse "Logary.Services.Rutta.Router")
+
     { zmqCtx    = context
       receiver  = receiver
       forwarder = forwarder
@@ -278,24 +281,30 @@ module Router =
 
   // FOCUS:
   let pullFrom binding = function
-    | Router_Target ep:: _ ->
+    | Router_Target ep :: _ ->
       use state = init binding Context.pull "PULL"
 
       let rec outer () =
         try // TODO: remove and use non cancelling
           // TODO: handle cancellation so that we don't block on recv
-          let data = Socket.tryRecv state.receiver
+          match Socket.tryRecv state.receiver 0x2000 0 with
+          | None ->
+            outer ()
 
-          // TODO: deserialise
-          global.Logary.Message.debug "TODO: deserialise data above"
-          |> Logger.logWithAck state.logger
-          |> Job.Ignore
-          |> queue
+          | Some data ->
+            // TODO: deserialise data properly
+            printfn "got message of length %i" data.Length
 
-          outer ()
+            global.Logary.Message.debug "TODO: deserialise data above"
+            |> Logger.logWithAck state.logger
+            |> Job.Ignore
+            |> queue
+
+            outer ()
 
         with
         | :? TimeoutException ->
+          printfn "timeout exception in router"
           outer ()
 
       outer ()
@@ -400,22 +409,21 @@ let detailedParse : _ -> _ -> Choice<string * _ * _, _, string> = function
   | Choice3Of3 msg ->
     fun _ -> Choice3Of3 msg
 
-let execute argv exiting : int =
+let execute argv (exiting : ManualResetEventSlim) : int =
   let parser = ArgumentParser.Create<Args>()
   let parsed = parser.Parse argv
-  use exiting = new ManualResetEventSlim(false)
-  use health =
-    parsed.GetResult(<@ Health @>, defaultValue = ("127.0.0.1", 8888))
-    ||> Health.startServer
-
-  // Choice1Of3 = mode found
-  // Choice2Of3 = no mode found
-  // Choice3Of3 = more than one mode found
 
   parsed.GetAllResults()
   |> List.fold detailedParse (Choice2Of3 [])
   |> function
+  // Choice1Of3 = mode found
+  // Choice2Of3 = no mode found
+  // Choice3Of3 = more than one mode found
   | Choice1Of3 (modeName, start, pars) ->
+    use health =
+      parsed.GetResult(<@ Health @>, defaultValue = ("127.0.0.1", 8888))
+      ||> Health.startServer
+
     match start pars with
     | Choice1Of2 () ->
       exiting.Wait()
@@ -424,7 +432,6 @@ let execute argv exiting : int =
     | Choice2Of2 error ->
       eprintfn "%s" error
       2
-
 
   | Choice2Of3 pars ->
     eprintfn "No mode given. You must pass one of: { --push-to, --pub-to, --router, --router-sub, --proxy } for Rutta to work."
