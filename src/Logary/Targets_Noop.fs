@@ -43,11 +43,6 @@ module internal Impl =
 /// Create a new Noop target
 let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
 
-/// C# Interop: Create a new Noop target
-[<CompiledName "Create">]
-let createInterop (conf, name) =
-  create conf name
-
 /// Use with LogaryFactory.New( s => s.Target<Noop.Builder>() )
 type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
   member x.IsYes(yes : bool) =

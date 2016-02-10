@@ -244,27 +244,53 @@ module Router =
   open Hopac
   open System
   open Logary
+  open Logary.Configuration
+  open Logary.Targets
   open fszmq
 
-  let private logger = Logging.getCurrentLogger ()
+  type State =
+    { zmqCtx : Context
+      receiver : Socket
+      forwarder : LogManager
+      logger : Logger }
+    interface IDisposable with
+      member x.Dispose() =
+        (x.zmqCtx :> IDisposable).Dispose()
+        (x.receiver :> IDisposable).Dispose()
+        (x.forwarder :> IDisposable).Dispose()
+
+  let private init binding createSocket mode : State =
+    let context = new Context()
+    let receiver = createSocket context
+    Socket.bind receiver binding
+
+    let forwarder =
+      withLogaryManager (sprintf "Logary Rutta[%s]" mode) (
+        withTarget (Noop.create Noop.empty (PointName.ofSingle "influxdb"))
+        >> withRule (Rule.createForTarget (PointName.ofSingle "influxdb"))
+      )
+      |> run
+    let targetLogger = forwarder.getLogger (PointName.parse "Logary.Services.Rutta.Router")
+    { zmqCtx    = context
+      receiver  = receiver
+      forwarder = forwarder
+      logger    = targetLogger }
 
   // FOCUS:
   let pullFrom binding = function
-    | Router_Target ep ->
-      use context = new Context()
-      use receiver = Context.pull context
-      Socket.bind receiver binding
+    | Router_Target ep:: _ ->
+      use state = init binding Context.pull "PULL"
 
       let rec outer () =
         try // TODO: remove and use non cancelling
           // TODO: handle cancellation so that we don't block on recv
-          let data = Socket.tryRecv receiver
+          let data = Socket.tryRecv state.receiver
 
           // TODO: deserialise
           global.Logary.Message.debug "TODO: deserialise data above"
-          |> Logger.logWithAck logger
-          |> run // TODO: can we do this non-blocking?
-          |> ignore // TODO: await ack
+          |> Logger.logWithAck state.logger
+          |> Job.Ignore
+          |> queue
 
           outer ()
 
@@ -275,23 +301,21 @@ module Router =
       outer ()
 
     | x ->
-      Choice2Of2 (sprintf "unknown parameter %A" x)
+      Choice2Of2 (sprintf "unknown parameter(s) %A" x)
 
   let xsubBind binding pars =
-    use context = new Context()
-    use receiver = Context.xsub context
-    Socket.bind receiver binding
+    use state = init binding Context.xsub "XSUB"
 
     let rec outer () =
       try // TODO: remove and use non cancelling
         // TODO: handle cancellation so that we don't block on recv
-        let data = Socket.tryRecv receiver
+        let data = Socket.tryRecv state.receiver
 
         // TODO: deserialise
         global.Logary.Message.debug "TODO: deserialise data above"
-        |> Logger.logWithAck logger
-        |> run // TODO: can we do this non-blocking?
-        |> ignore // TODO: await ack
+        |> Logger.logWithAck state.logger
+        |> Job.Ignore
+        |> queue
 
         outer ()
 

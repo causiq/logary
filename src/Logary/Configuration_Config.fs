@@ -203,7 +203,7 @@ let configure serviceName targets pollPeriod metrics rules (internalLevel, inter
 /// configured the configuration. This will call the `validateLogary` function
 /// too. The un-primed version of the function `withLogary` doesn't return a
 /// `LogManager` but the F#-oriented LogaryInstance.
-[<CompiledName "WithLogaryInstance">]
+[<CompiledName "WithLogary">]
 let withLogary serviceName fConf =
   fConf (confLogary serviceName)
   |> validate
@@ -213,8 +213,8 @@ let withLogary serviceName fConf =
 /// configured the configuration. This will call the `validateLogary` function
 /// too. The un-primed version of the function `withLogary` doesn't return a
 /// `LogManager` but the F#-oriented LogaryInstance.
-[<CompiledName "WithLogary">]
-let withLogary' serviceName fConf =
+[<CompiledName "WithLogaryManager">]
+let withLogaryManager serviceName fConf =
   fConf (confLogary serviceName)
   |> validate
   |> runLogary

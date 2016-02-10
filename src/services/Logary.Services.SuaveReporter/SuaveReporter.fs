@@ -31,7 +31,6 @@ open Impl
 open Hopac
 open Suave
 open Suave.Model
-open Suave
 open Suave.Filters
 open Suave.RequestErrors
 open Suave.Successful
@@ -41,6 +40,12 @@ open Suave.Utils
 let api (logger : Logger) (verbatimPath : string option) : WebPart =
   let verbatimPath = defaultArg verbatimPath "/i/logary/loglines"
   let getMsg = sprintf "You can post a JSON structure to: %s" verbatimPath
+
+  let readJson =
+    Lens.get HttpRequest.rawForm_
+    >> UTF8.toString
+    >> Json.tryParse
+    >> Choice.bind Json.tryDeserialize
 
   let jsonMsg msg =
     { message = msg; id = ThreadSafeRandom.nextUInt64 () }
