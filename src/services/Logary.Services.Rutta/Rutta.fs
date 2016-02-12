@@ -59,14 +59,14 @@ Proxies take inputs from Shippers or other Proxies which publish Messages
 using XPUB sockets. The shipper CONNECTs its PUB socket like such:
 
 ``` bash
-./rutta --pub-to tcp://headnode:7113
+./rutta --pub-to tcp://headnode:7111
 ```
 
 The Proxy is run by providing a XSUB socket binding and a XPUB socket
 binding which it forwards to:
 
 ``` bash
-./rutta --proxy tcp://10.42.0.1:7113 tcp://192.168.10.10:7113
+./rutta --proxy tcp://10.42.0.1:7111 tcp://192.168.10.10:7111
 ```
 
 During network splits, the receiving
@@ -76,7 +76,7 @@ You can then CONNECT to the Proxy with a Router that routes it to the final
 Target (like InfluxDB in this example):
 
 ``` bash
-./rutta --router-sub tcp://192.168.10.10:7113 \
+./rutta --router-sub tcp://192.168.10.10:7111 \
         --router-target influxdb://user:pass@host:8086/write?db=databaseName
 ```
 
@@ -97,7 +97,7 @@ BINDs a PULL socket on a specified NIC/IP and PORT.
 Configures a single internal Target that pushes the received data.
 
 ``` bash
-./rutta --router tcp://192.168.10.10:6113 \
+./rutta --router tcp://192.168.10.10:6111 \
         --router-target influxdb://user:pass@host:8086/write?db=databaseName
 ```
 
@@ -110,7 +110,7 @@ BINDs a XSUB socket (because this is a fan-in, not a fan-out, in which case we'd
 connect a SUB) to the passed binding.
 
 ``` bash
-./rutta --router-sub tcp://192.160.10.10:7113
+./rutta --router-sub tcp://192.160.10.10:7111
 ```
 
 Serialisation
