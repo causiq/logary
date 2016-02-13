@@ -69,8 +69,8 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
-        <Reference Include="logibit.hawk">
-          <HintPath>..\..\..\packages\Hawk\lib\net40\logibit.hawk.dll</HintPath>
+        <Reference Include="Logibit.Hawk">
+          <HintPath>..\..\..\packages\Hawk\lib\net40\Logibit.Hawk.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
