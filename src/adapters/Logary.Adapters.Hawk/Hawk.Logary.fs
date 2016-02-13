@@ -1,4 +1,4 @@
-﻿namespace logibit.hawk
+﻿namespace Logibit.Hawk
 
 /// Some mapping functions for Hawk LogLevels
 module internal HawkLogLevel =

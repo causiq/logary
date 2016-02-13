@@ -74,12 +74,10 @@
     <Compile Include="Configuration_ValidationException.fs" />
     <Compile Include="Configuration_Config.fs" />
     <Compile Include="Configuration_FactoryApi.fs" />
+    <Compile Include="Try.fs" />
     <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="AssemblyInfo.fs" />
-    <None Include="Playground.fsx" />
     <None Include="paket.references" />
-    <None Include="ScriptTr2.fsx" />
-    <Compile Include="Try.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
