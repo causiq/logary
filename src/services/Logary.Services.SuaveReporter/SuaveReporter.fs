@@ -41,7 +41,7 @@ let api (logger : Logger) (verbatimPath : string option) : WebPart =
   let verbatimPath = defaultArg verbatimPath "/i/logary/loglines"
   let getMsg = sprintf "You can post a JSON structure to: %s" verbatimPath
 
-  let readJson =
+  let inline readJson () =
     Lens.get HttpRequest.rawForm_
     >> UTF8.toString
     >> Json.tryParse
@@ -55,7 +55,7 @@ let api (logger : Logger) (verbatimPath : string option) : WebPart =
   path verbatimPath >=> choose [
     GET >=> OK (jsonMsg getMsg)
     POST >=> Binding.bindReq
-              (Lens.get HttpRequest.rawForm_ >> UTF8.toString >> Json.tryParse >> Choice.bind Json.tryDeserialize)
+              (readJson ())
               (fun msg ->
                 Logger.log logger msg |> queue
                 CREATED (jsonMsg "Created"))
