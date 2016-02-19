@@ -337,29 +337,24 @@ module Router =
 module Proxy =
 
   open fszmq
+  open fszmq.Socket
 
-  let proxy xsubBind xpubBind pars =
+  let proxy xsubBind xpubBind _ =
+    printfn """use proxy:
+    ping-mode takes the read-socket and then the write-socket
+    (frontend) --proxy-mode tcp://127.0.0.1:6556 tcp://127.0.0.1:5555
+  """
+
     use context = new Context()
-    use subscriber = Context.xsub context
-    use publisher = Context.xpub context
-    Socket.bind subscriber xsubBind
-    Socket.bind publisher xpubBind
+    use writer = Context.xsub context
+    bind writer xpubBind
 
-    let rec outer () =
-      match Socket.tryRecv subscriber 0x2000 0 with
-      | None ->
-        outer ()
+    use reader = Context.xpub context
+    bind reader xsubBind
 
-      | Some data ->
-        if Socket.recvMore subscriber then
-          Socket.sendMore publisher data |> ignore
-          outer ()
-
-        else
-          Socket.send publisher data
-          outer ()
-
-    outer ()
+    printfn "%s" "spawning proxy"
+    Proxying.proxy writer reader None
+    Choice1Of2 ()
 
 
 open System
