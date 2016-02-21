@@ -36,6 +36,7 @@ NUGET
       FSharpx.Collections (>= 1.10.1)
     FsMachines (0.2.0)
       FSharpx.Extras (>= 1.10.2)
+    FsPickler (1.8.0)
     FsSql (2.1.0)
       FSharp.Core (>= 3.1.2.1)
     FsUnit (2.0.0)

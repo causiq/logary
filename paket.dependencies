@@ -6,6 +6,7 @@ nuget Common.Logging
 nuget Common.Logging.Core
 nuget EventStore.Client.PreRelease
 nuget FsMachines
+nuget FsPickler
 nuget fszmq
 nuget Hopac
 nuget Mailgun.Api

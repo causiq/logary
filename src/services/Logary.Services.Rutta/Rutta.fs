@@ -213,47 +213,161 @@ module Health =
 
     { new IDisposable with member x.Dispose() = cts.Cancel () }
 
+module Serialisation =
+  open System.IO
+  open Logary
+  open Nessos.FsPickler
+  open Nessos.FsPickler.Combinators
+
+  (*
+  let pValue : Pickler<Value> =
+    Pickler.auto
+
+  let pUnits =
+    Pickler.sum (fun x bits bytes ss ms scls amps kels mols cdls mul pow div root log ->
+      match x with
+      | Bits -> bits ()
+      | Bytes -> bytes ()
+      | Seconds -> ss ()
+      | Metres -> ms ()
+      | Scalar -> scls ()
+      | Amperes -> amps ()
+      | Kelvins -> kels ()
+      | Moles -> mols ()
+      | Candelas -> cdls ()
+      | Mul (u1, u2) -> mul (u1, u2)
+      | Pow (u1, u2) -> pow (u1, u2)
+      | Div (u1, u2) -> div (u1, u2)
+      | Root u -> root u
+      | Log10 u -> log u)
+    ^+ Pickler.variant Bits*)
+
+  let private binarySerializer = FsPickler.CreateBinarySerializer ()
+
+  let serialise (msg : Logary.Message) : byte [] =
+    binarySerializer.Pickle msg
+
+  let deserialise (datas : byte [] []) : Logary.Message =
+    use ms = new MemoryStream(datas |> Array.fold (fun s t -> s + t.Length) 0)
+    for bs in datas do ms.Write(bs, 0, bs.Length)
+    ms.Seek(0L, SeekOrigin.Begin) |> ignore
+    binarySerializer.UnPickle (ms.ToArray())
+
 module Shipper =
-
+  open System
+  open Nessos.FsPickler
+  open Hopac
+  open Hopac.Infixes
+  open Logary
+  open Logary.Target
+  open Logary.Internals
   open fszmq
+  open fszmq.Socket
 
-  // FOCUS:
-  let pushTo connect pars =
-    use context = new Context()
-    use sender = Context.push context
-    Socket.connect sender connect
+  type ShipperConf =
+    | PublishTo of connectTo:string
+    | PushTo of connectTo:string
+    | Unconfigured
 
-    let rec outer () =
-      Socket.sendAll sender ["Hello World"B]
-      System.Threading.Thread.Sleep 2000
-      outer ()
-    outer ()
+  let empty =
+    Unconfigured
 
-  let pubTo connect pars =
-    use context = new Context()
-    use publisher = Context.pub context
-    Socket.connect publisher connect
+  module internal Impl =
 
-    let rec outer () =
-      Socket.sendAll publisher []
-      outer ()
+    type State =
+      { zmqCtx : Context
+        sender : Socket }
+      interface IDisposable with
+        member x.Dispose() =
+          (x.zmqCtx :> IDisposable).Dispose()
+          (x.sender :> IDisposable).Dispose()
 
-    outer ()
+    let createState connectTo createSocket mode : State =
+      let context = new Context()
+      let sender = createSocket context
+      Socket.connect sender connectTo
+      { zmqCtx = context
+        sender = sender }
+
+    let serve (conf : ShipperConf)
+              (ri : RuntimeInfo)
+              (requests : BoundedMb<_>)
+              (shutdown : Ch<_>) =
+
+      let rec init = function
+        | Unconfigured ->
+          failwith "Rutta.Shipper should not start in Unconfigured"
+
+        | PublishTo connectTo ->
+          createState connectTo Context.pub "PUB"
+          |> loop
+
+        | PushTo connectTo ->
+          createState connectTo Context.push "PUSH"
+          |> loop
+
+      and loop (state : State) : Job<unit> =
+        Alt.choose [
+          shutdown ^=> fun ack -> job {
+            do! Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
+            return! ack *<= ()
+          }
+
+          BoundedMb.take requests ^=> function
+            | Log (msg, ack) ->
+              job {
+                let bytes = Serialisation.serialise msg
+                do! Job.Scheduler.isolate (fun _ -> bytes |>> state.sender)
+                do! ack *<= ()
+                return! loop state
+              }
+
+            | Flush (ackCh, nack) ->
+              job {
+                do! Ch.give ackCh () <|> nack
+                return! loop state
+              }
+        ] :> Job<_>
+
+      init conf
+
+  /// Create a new Shipper target
+  let create conf = TargetUtils.stdNamedTarget (Impl.serve conf)
+
+  /// Use with LogaryFactory.New( s => s.Target<Noop.Builder>() )
+  type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+    member x.PublishTo(connectTo : string) =
+      ! (callParent <| Builder(PublishTo connectTo, callParent))
+
+    new(callParent : FactoryApi.ParentCallback<_>) =
+      Builder(empty, callParent)
+
+    interface Logary.Target.FactoryApi.SpecificTargetConf with
+      member x.Build name = create conf name
+
+  let internal pushTo connectTo pars : Choice<unit, string> =
+    Choice.create ()
+
+  let internal pubTo connectTo pars : Choice<unit, string> =
+    Choice.create ()
 
 module Router =
 
   open Hopac
   open System
+  open System.IO
   open Logary
   open Logary.Configuration
   open Logary.Targets
   open fszmq
+  open Nessos.FsPickler
+  open Nessos.FsPickler.Combinators
 
   type State =
-    { zmqCtx : Context
-      receiver : Socket
+    { zmqCtx    : Context
+      receiver  : Socket
       forwarder : LogManager
-      logger : Logger }
+      logger    : Logger }
     interface IDisposable with
       member x.Dispose() =
         (x.zmqCtx :> IDisposable).Dispose()
@@ -279,60 +393,35 @@ module Router =
       forwarder = forwarder
       logger    = targetLogger }
 
-  // FOCUS:
+  let rec private recvLoop receiver logger =
+    match Socket.recvAll receiver with
+    | null
+    | [||] ->
+      // note: sending empty messages
+      ()
+
+    | datas ->
+      //Binary.unpickle msgPickler data
+      Serialisation.deserialise datas
+      |> Logger.logWithAck logger
+      |> Job.Ignore
+      |> queue
+
+      recvLoop receiver logger
+
   let pullFrom binding = function
     | Router_Target ep :: _ ->
       use state = init binding Context.pull "PULL"
-
-      let rec outer () =
-        try // TODO: remove and use non cancelling
-          // TODO: handle cancellation so that we don't block on recv
-          match Socket.tryRecv state.receiver 0x2000 0 with
-          | None ->
-            outer ()
-
-          | Some data ->
-            // TODO: deserialise data properly
-            printfn "got message of length %i" data.Length
-
-            global.Logary.Message.debug "TODO: deserialise data above"
-            |> Logger.logWithAck state.logger
-            |> Job.Ignore
-            |> queue
-
-            outer ()
-
-        with
-        | :? TimeoutException ->
-          printfn "timeout exception in router"
-          outer ()
-
-      outer ()
+      recvLoop state.receiver state.logger
+      |> Choice1Of2
 
     | x ->
       Choice2Of2 (sprintf "unknown parameter(s) %A" x)
 
-  let xsubBind binding pars =
+  let xsubBind binding pars : Choice<unit, string> =
     use state = init binding Context.xsub "XSUB"
-
-    let rec outer () =
-      try // TODO: remove and use non cancelling
-        // TODO: handle cancellation so that we don't block on recv
-        let data = Socket.tryRecv state.receiver
-
-        // TODO: deserialise
-        global.Logary.Message.debug "TODO: deserialise data above"
-        |> Logger.logWithAck state.logger
-        |> Job.Ignore
-        |> queue
-
-        outer ()
-
-      with
-      | :? TimeoutException ->
-        outer ()
-
-    outer ()
+    recvLoop state.receiver state.logger
+    Choice.create ()
 
 module Proxy =
 
@@ -340,9 +429,8 @@ module Proxy =
   open fszmq.Socket
 
   let proxy xsubBind xpubBind _ =
-    printfn """use proxy:
-    ping-mode takes the read-socket and then the write-socket
-    (frontend) --proxy-mode tcp://127.0.0.1:6556 tcp://127.0.0.1:5555
+    printfn """Proxy usage: takes the read-socket and then the write-socket
+    --proxy-mode tcp://127.0.0.1:6556 tcp://127.0.0.1:5555
   """
 
     use context = new Context()
@@ -355,7 +443,6 @@ module Proxy =
     printfn "%s" "spawning proxy"
     Proxying.proxy writer reader None
     Choice1Of2 ()
-
 
 open System
 open System.Threading
