@@ -1,4 +1,4 @@
-﻿module Logary.Services.Rutta
+﻿namespace Logary.Services.Rutta
 open System.Reflection
 [<assembly: AssemblyTitle("Logary Rutta – a router/proxy/shipper for Windows and Unix")>]
 ()
@@ -444,110 +444,112 @@ module Proxy =
     Proxying.proxy writer reader None
     Choice1Of2 ()
 
-open System
-open System.Threading
-open Topshelf
+module Program =
 
-let detailedParse : _ -> _ -> Choice<string * _ * _, _, string> = function
-  // we already have a mode set
-  | Choice1Of3 (modeName, start, pars) as curr -> function
-    | Router_Target _ as par ->
-      Choice1Of3 (modeName, start, par :: pars)
+  open System
+  open System.Threading
+  open Topshelf
 
-    // no mode cares about this:
-    | Health _ ->
-      curr
+  let detailedParse : _ -> _ -> Choice<string * _ * _, _, string> = function
+    // we already have a mode set
+    | Choice1Of3 (modeName, start, pars) as curr -> function
+      | Router_Target _ as par ->
+        Choice1Of3 (modeName, start, par :: pars)
 
-    // no other known flags that are not modes:
-    | otherMode ->
-      let msg =
-        sprintf "%A given after having configured the '%s' mode; invalid parameters, exiting..."
-          otherMode modeName
-      Choice3Of3 msg
+      // no mode cares about this:
+      | Health _ ->
+        curr
 
-  // still collecting parameters
-  | Choice2Of3 pars -> function
-    | Push_To connect ->
-      Choice1Of3 ("shipper push", Shipper.pushTo connect, pars)
+      // no other known flags that are not modes:
+      | otherMode ->
+        let msg =
+          sprintf "%A given after having configured the '%s' mode; invalid parameters, exiting..."
+            otherMode modeName
+        Choice3Of3 msg
 
-    | Pub_To connect ->
-      Choice1Of3 ("shipper pub", Shipper.pubTo connect, pars)
+    // still collecting parameters
+    | Choice2Of3 pars -> function
+      | Push_To connect ->
+        Choice1Of3 ("shipper push", Shipper.pushTo connect, pars)
 
-    | Router binding ->
-      Choice1Of3 ("router pull", Router.pullFrom binding, pars)
+      | Pub_To connect ->
+        Choice1Of3 ("shipper pub", Shipper.pubTo connect, pars)
 
-    | Router_Sub binding ->
-      Choice1Of3 ("router xsub", Router.xsubBind binding, pars)
+      | Router binding ->
+        Choice1Of3 ("router pull", Router.pullFrom binding, pars)
 
-    | Proxy (xsubBind, xpubBind) ->
-      Choice1Of3 ("proxy", Proxy.proxy xsubBind xpubBind, pars)
+      | Router_Sub binding ->
+        Choice1Of3 ("router xsub", Router.xsubBind binding, pars)
 
-    | Router_Target _ as par ->
-      Choice2Of3 (par :: pars)
+      | Proxy (xsubBind, xpubBind) ->
+        Choice1Of3 ("proxy", Proxy.proxy xsubBind xpubBind, pars)
 
-    | Health _ ->
-      Choice2Of3 pars
+      | Router_Target _ as par ->
+        Choice2Of3 (par :: pars)
 
-  | Choice3Of3 msg ->
-    fun _ -> Choice3Of3 msg
+      | Health _ ->
+        Choice2Of3 pars
 
-let execute argv (exiting : ManualResetEventSlim) : int =
-  let parser = ArgumentParser.Create<Args>()
-  let parsed = parser.Parse argv
+    | Choice3Of3 msg ->
+      fun _ -> Choice3Of3 msg
 
-  parsed.GetAllResults()
-  |> List.fold detailedParse (Choice2Of3 [])
-  |> function
-  // Choice1Of3 = mode found
-  // Choice2Of3 = no mode found
-  // Choice3Of3 = more than one mode found
-  | Choice1Of3 (modeName, start, pars) ->
-    use health =
-      parsed.GetResult(<@ Health @>, defaultValue = ("127.0.0.1", 8888))
-      ||> Health.startServer
+  let execute argv (exiting : ManualResetEventSlim) : int =
+    let parser = ArgumentParser.Create<Args>()
+    let parsed = parser.Parse argv
 
-    match start pars with
-    | Choice1Of2 () ->
-      exiting.Wait()
-      0
+    parsed.GetAllResults()
+    |> List.fold detailedParse (Choice2Of3 [])
+    |> function
+    // Choice1Of3 = mode found
+    // Choice2Of3 = no mode found
+    // Choice3Of3 = more than one mode found
+    | Choice1Of3 (modeName, start, pars) ->
+      use health =
+        parsed.GetResult(<@ Health @>, defaultValue = ("127.0.0.1", 8888))
+        ||> Health.startServer
 
-    | Choice2Of2 error ->
+      match start pars with
+      | Choice1Of2 () ->
+        exiting.Wait()
+        0
+
+      | Choice2Of2 error ->
+        eprintfn "%s" error
+        2
+
+    | Choice2Of3 pars ->
+      eprintfn "No mode given. You must pass one of: { --push-to, --pub-to, --router, --router-sub, --proxy } for Rutta to work."
+      10
+
+    | Choice3Of3 error ->
       eprintfn "%s" error
-      2
+      20
 
-  | Choice2Of3 pars ->
-    eprintfn "No mode given. You must pass one of: { --push-to, --pub-to, --router, --router-sub, --proxy } for Rutta to work."
-    10
+  let startWindows argv : int =
+    let exiting = new ManualResetEventSlim(false)
 
-  | Choice3Of3 error ->
-    eprintfn "%s" error
-    20
+    let enqueue f =
+      ThreadPool.QueueUserWorkItem(fun _ -> f ()) |> ignore
 
-let startWindows argv : int =
-  let exiting = new ManualResetEventSlim(false)
+    let start hc =
+      enqueue (fun _ -> execute argv exiting |> ignore)
+      true
 
-  let enqueue f =
-    ThreadPool.QueueUserWorkItem(fun _ -> f ()) |> ignore
+    let stop hc =
+      exiting.Dispose()
+      true
 
-  let start hc =
-    enqueue (fun _ -> execute argv exiting |> ignore)
-    true
+    Service.Default
+    |> with_recovery (ServiceRecovery.Default |> restart (Time.s 5))
+    |> with_start start
+    |> with_stop (fun hc -> exiting.Set() ; stop hc)
+    |> run
 
-  let stop hc =
-    exiting.Dispose()
-    true
+  let startUnix argv : int =
+    let exiting = new ManualResetEventSlim(false)
+    use sub = Console.CancelKeyPress.Subscribe(fun _ -> exiting.Set())
+    execute argv exiting
 
-  Service.Default
-  |> with_recovery (ServiceRecovery.Default |> restart (Time.s 5))
-  |> with_start start
-  |> with_stop (fun hc -> exiting.Set() ; stop hc)
-  |> run
-
-let startUnix argv : int =
-  let exiting = new ManualResetEventSlim(false)
-  use sub = Console.CancelKeyPress.Subscribe(fun _ -> exiting.Set())
-  execute argv exiting
-
-[<EntryPoint>]
-let main argv =
-  if Type.GetType "Mono.Runtime" <> null then startUnix argv else startWindows argv
+  [<EntryPoint>]
+  let main argv =
+    if Type.GetType "Mono.Runtime" <> null then startUnix argv else startWindows argv
