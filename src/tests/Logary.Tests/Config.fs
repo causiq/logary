@@ -10,6 +10,7 @@ open NodaTime
 open Logary
 open Logary.Configuration
 open Logary.Targets
+open Logary.Configuration_Uri
 
 type Assert =
   static member Contains(msg : string, xExpected : 'a, xs : 'a seq) =
@@ -56,9 +57,24 @@ let ``invalid configs`` =
           Assert.StringContains("string should contain name of metric", "m1", sprintf "%O" ex))
     ]
 
+type ArbConfig =
+  { db : string
+    batchSize : int }
+
 [<Tests>]
 let ``valid configs`` =
   testList "valid configs" [
     testCase "rule for metric, no noop target" <| fun _ ->
       ()
+
+    testCase "parsing uri to target config" <| fun _ ->
+      let expectedConfig = 
+        { db = "databaseName"
+          batchSize = 123 }
+
+      let actualConfig = parseConfig<ArbConfig> "influxdb://user:pass@host:8086/write?db=databaseName&batchSize=123"
+
+      Assert.equal actualConfig expectedConfig "Record should equal .....?"
+      ()
     ]
+

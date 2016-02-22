@@ -202,7 +202,6 @@ module Reservoir =
   module Uniform =
     open System
     open System.Diagnostics.Contracts
-
     open Logary.Internals
 
     let private DefaultSize = 1028

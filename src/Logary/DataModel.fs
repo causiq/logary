@@ -450,48 +450,48 @@ module Mapping =
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Value =
-    open Logary.Internals
-    open System.Collections.Generic
+  open Logary.Internals
+  open System.Collections.Generic
 
-    let rec fromObject : obj -> Value = function
+  let rec fromObject : obj -> Value = function
 
-    // Built-in types
-    | :? bool as b    -> Bool b
-    | :? int8 as i    -> Int64 (int64 i)
-    | :? uint8 as i   -> Int64 (int64 i)
-    | :? int16 as i   -> Int64 (int64 i)
-    | :? uint16 as i  -> Int64 (int64 i)
-    | :? int32 as i   -> Int64 (int64 i)
-    | :? uint32 as i  -> Int64 (int64 i)
-    | :? int64 as i   -> Int64 (int64 i)
-    | :? uint64 as i  -> Float (decimal i)
-    | :? bigint as i  -> BigInt i
-    | :? decimal as d -> Float d
-    | :? float32 as f -> Float (decimal f)
-    | :? float as f   -> Float (decimal f)
-    | :? char as c    -> String (string c)
-    | :? string as s  -> String s
+  // Built-in types
+  | :? bool as b    -> Bool b
+  | :? int8 as i    -> Int64 (int64 i)
+  | :? uint8 as i   -> Int64 (int64 i)
+  | :? int16 as i   -> Int64 (int64 i)
+  | :? uint16 as i  -> Int64 (int64 i)
+  | :? int32 as i   -> Int64 (int64 i)
+  | :? uint32 as i  -> Int64 (int64 i)
+  | :? int64 as i   -> Int64 (int64 i)
+  | :? uint64 as i  -> Float (decimal i)
+  | :? bigint as i  -> BigInt i
+  | :? decimal as d -> Float d
+  | :? float32 as f -> Float (decimal f)
+  | :? float as f   -> Float (decimal f)
+  | :? char as c    -> String (string c)
+  | :? string as s  -> String s
 
-    // Common BCL types
-    | :? Guid as g              -> String (string g)
-    | :? DateTime as dt         -> String (dt.ToUniversalTime().ToString("o"))
-    | :? DateTimeOffset as dto  -> String (dto.ToString("o"))
+  // Common BCL types
+  | :? Guid as g              -> String (string g)
+  | :? DateTime as dt         -> String (dt.ToUniversalTime().ToString("o"))
+  | :? DateTimeOffset as dto  -> String (dto.ToString("o"))
 
-    // Collections
-    | :? (byte array) as bytes -> Binary (bytes, "application/octet-stream")
-    | :? IEnumerable<KeyValuePair<string, obj>> as dict ->
-      Seq.map (fun (KeyValue (k, v)) -> (k, fromObject v)) dict
-      |> Map.ofSeq |> Object
-    //| :? Map<string, obj> as map -> Map.map (fun _ v -> fromObject v) map |> Object
-    | :? IEnumerable<obj> as ie ->
-      Seq.map fromObject ie
-      |> Seq.toList |> Array
+  // Collections
+  | :? (byte array) as bytes -> Binary (bytes, "application/octet-stream")
+  | :? IEnumerable<KeyValuePair<string, obj>> as dict ->
+    Seq.map (fun (KeyValue (k, v)) -> (k, fromObject v)) dict
+    |> Map.ofSeq |> Object
+  //| :? Map<string, obj> as map -> Map.map (fun _ v -> fromObject v) map |> Object
+  | :? IEnumerable<obj> as ie ->
+    Seq.map fromObject ie
+    |> Seq.toList |> Array
 
-    // POCOs
-    | a ->
-      Map.fromObj a
-      |> Map.map (fun _ v -> fromObject v)
-      |> Object
+  // POCOs
+  | a ->
+    Map.fromObj a
+    |> Map.map (fun _ v -> fromObject v)
+    |> Object
 
 type Units =
   | Bits

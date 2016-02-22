@@ -2,17 +2,12 @@
 
 open Fuchu
 open Swensen.Unquote
-
 open System.Text.RegularExpressions
-
 open Hopac
-
 open Fac
-
 open Logary
 open Logary.HealthCheck
 open Logary.Internals.Tcp
-
 open Logary.Tests.StubTcp
 open Logary.Tests.TestDSL
 
@@ -34,7 +29,7 @@ let pingSvdSe () =
     |> setDesc "ping completed with error"
     |> Message.addExn ex
     |> Message.setLevel LogLevel.Error
-    |> Message.toResult
+    |> HealthCheckResult.ofMessage
   job {
     use p = new Ping()
     let awaitPong = Async.AwaitEvent(p.PingCompleted, p.SendAsyncCancel)
@@ -46,7 +41,9 @@ let pingSvdSe () =
       elif complete.Error <> null then
         return mkError complete.Error
       else
-        return Message.metric (PointName.ofList ["app";"resource";"ping-svd"]) (Float 1.0M) |> Message.toResult
+        return Message.metric (PointName.ofList ["app";"resource";"ping-svd"])
+                              (Float 1.0M)
+               |> Message.toHealthCheckResult
 
     with e ->
       return mkError e }
@@ -58,6 +55,6 @@ let tests =
       Fuchu.Tests.skiptest "does network IO"
       let h = fromFn (pn "ping haf.se") pingSvdSe
       let gotUnhealthy = untilPred 10000 <| fun i ->
-        match h.getValue () with HasValue _ -> true | _ -> false
+        match h.getValue () |> Job.Global.run with HasValue _ -> true | _ -> false
       Assert.isFalse gotUnhealthy "is not unhealthy"
     ]

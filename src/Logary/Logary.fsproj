@@ -78,6 +78,7 @@
     <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="AssemblyInfo.fs" />
     <None Include="paket.references" />
+    <Compile Include="Configuration_Uri.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />

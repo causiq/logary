@@ -1,15 +1,15 @@
 namespace Logary
 
 open System
-
 open Logary
 open Logary.Metric
+open Hopac
 
 /// The details a result
 type ResultData =
   /// If the health check is for a value (which it probably is) then it should
   /// contain the measure generated.
-  abstract msr         : Message
+  abstract message     : Message
 
   /// Gets the description detailing what went badly with the evaluation of the
   /// health check. Useful for drilling down.
@@ -28,7 +28,7 @@ type HealthCheck =
   inherit Named
   inherit IDisposable
   /// Performs a check with the health check.
-  abstract getValue : unit -> HealthCheckResult
+  abstract getValue : unit -> Job<HealthCheckResult>
 
 /// A module that makes it smooth to interact with running/starting/configuration of
 /// health checks.
@@ -56,18 +56,23 @@ module HealthCheck =
 
   /// An implementation of the ResultData interface that wraps a Measure and
   /// uses its 'data' Map to read.
-  type MeasureWrapper(m : Message) =
+  type MessageWrapper(m : Message) =
     interface ResultData with
-      member x.msr         = m
+      member x.message     = m
       member x.description = defaultArg (tryGetDesc m) ""
     override x.ToString() =
       sprintf "HealthCheck(name=%s, value=%A, level=%A)"
         (PointName.joined m.name) m.value m.level
 
-  module Message =
+  module HealthCheckResult =
     /// Transform the measure to a HealthCheck.ResultData.
-    let toResult (m : _) =
-      MeasureWrapper m :> ResultData
+    let ofMessage (m : _) =
+      MessageWrapper m :> ResultData
+      |> HasValue
+
+  module Message =
+    let toHealthCheckResult (m : _) =
+      MessageWrapper m :> ResultData
       |> HasValue
 
   type HealthCheckMessage =
@@ -75,7 +80,7 @@ module HealthCheck =
     | ShutdownHealthCheck of IVar<Acks>
 
   type HealthCheckInstance =
-    { reqCh      : HealthCheckMessage Ch }
+    { reqCh : HealthCheckMessage Ch }
 
   type private FnCheckerState =
     { last : HealthCheckResult }
@@ -108,9 +113,10 @@ module HealthCheck =
             let! ivar = IVar.create ()
             do! Ch.send ch.reqCh (GetResult ivar)
             return! ivar
-          }) |> Job.Global.run
+          })
 
         member x.Dispose() =
+          // TODO: consider non concurrent disposing method
           (job {
             let! ack = IVar.create ()
             do! Ch.give ch.reqCh (ShutdownHealthCheck ack)
@@ -121,6 +127,6 @@ module HealthCheck =
   /// Create a health check that will never yield a value
   let createDead name =
     { new HealthCheck with
-        member x.getValue () = NoValue
+        member x.getValue () = Job.result NoValue
         member x.name        = name
         member x.Dispose ()  = () }
