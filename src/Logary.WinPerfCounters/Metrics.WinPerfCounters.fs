@@ -72,7 +72,7 @@ module Common =
 module internal Impl =
 
   type WPCState =
-    { lastValues : Map<DP, PC * Measure> }
+    { lastValues : Map<PointName, PointName * Value> }
 
   /// A unified naming scheme for the names of performance counters
   module Naming =
@@ -81,9 +81,9 @@ module internal Impl =
         match instance with
         | NotApplicable -> [ c.category; c.counter ]
         | Instance inst -> [ c.category; c.counter; inst ]
-      fstr c.instance |> DP
+      PointName (fstr c.instance)
 
-    let toCounter (DP dp) =
+    let toCounter (PointName dp) =
       match dp with
       | [ category; counter ] ->
         { category = category; counter = counter; instance = NotApplicable }
@@ -91,7 +91,7 @@ module internal Impl =
         { category = category; counter = counter; instance = Instance instance }
       | _ -> failwithf "unknown performance counter name: %A" dp
 
-  let tryGetPc (lastValues : Map<DP, PC * Measure>) dp =
+  let tryGetPc (lastValues : Map<PointName, PC * Value>) dp =
     lastValues
     |> Map.tryFind dp
     |> Option.map fst
@@ -100,7 +100,7 @@ module internal Impl =
     | x -> x
 
   let pcNextValue dp (pc : PC) =
-    Measure.create dp (nextValue pc)
+    Float (decimal (nextValue pc))
 
   // TODO: consider adding in a reservoir to hold the values? Or should this go
   // somewhere else like in the targets or in the registry or somewhere else?

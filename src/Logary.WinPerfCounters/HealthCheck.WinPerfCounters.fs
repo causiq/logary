@@ -4,6 +4,7 @@ open System
 open Logary
 open Logary.HealthCheck
 open Logary.WinPerfCounter
+open Hopac
 
 /// Create a new HealthCheck from a WindowsPerfCounter record and a transformation
 /// function `measureTransform`.
@@ -24,12 +25,13 @@ let toHealthCheckNamed name wpc measureTransform =
             |> measureTransform
             |> Message.setName name
             |> HealthCheckResult.ofMessage
+            |> Job.result
           with
-            e -> NoValue
+            e -> Job.result NoValue
         member x.Dispose () =
           counter.Dispose() }
   | None ->
-    mkDead name.joined
+    createDead name
 
 let toHealthCheck wpc =
   let name =
