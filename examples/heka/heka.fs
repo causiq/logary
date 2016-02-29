@@ -15,7 +15,7 @@ let main args =
   printfn "starting logary with heka target..."
 
   use logary =
-    withLogary' "Heka.Example" (
+    withLogarySimple "Heka.Example" (
       withTargets [
         Heka.create ({ HekaConfig.Empty with endpoint = IPEndPoint(IPAddress.Parse("127.0.0.1"), 5565 ), false }) "heka"
         Console.create (Console.empty) "console"

@@ -38,17 +38,4 @@ let tests =
       Target.shutdown target <|> (timeOutMillis 200 ^->. Promise.Now.never ())
       |> run
       |> ignore
-
-    testCase "metric" <| fun _ ->
-      Metric.confMetric
-        (pn "no op metric")
-        (Duration.FromMilliseconds 500L)
-        (Noop.create { Noop.NoopConf.isHappy = true })
-      |> Metric.validate
-      |> Metric.init Fac.emptyRuntime
-      |> run
-      |> Metric.update (Message.metric (pn "tests") (Float 1.0M))
-      |> Metric.shutdown
-      |> run
-      |> ignore
     ]

@@ -15,7 +15,7 @@ type EpochNanoSeconds = int64
 type Value =
   | String of string
   | Bool of bool
-  | Float of decimal
+  | Float of float
   | Int64 of int64
   | BigInt of bigint
   | Binary of byte [] * ContentType
@@ -33,7 +33,7 @@ type Value =
     (function | Bool x -> Some x
               | _ -> None), Bool
 
-  static member Float__ : PIso<Value, decimal> =
+  static member Float__ : PIso<Value, float> =
     (function | Float x -> Some x
               | _ -> None), Float
 
@@ -69,7 +69,7 @@ type Value =
   static member Bool_ : PLens<Value, bool> =
       id_ <-?> Value.Bool__
 
-  static member Float_ : PLens<Value, decimal> =
+  static member Float_ : PLens<Value, float> =
     id_ <-?> Value.Float__
 
   static member Int64_ : PLens<Value, int64> =
@@ -99,7 +99,7 @@ type Value =
       Json.Lens.setPartial Json.Bool_ b
 
     | Float f ->
-      Json.Lens.setPartial Json.Number_ f
+      Json.Lens.setPartial Json.Number_ (decimal f)
 
     | Int64 i ->
       Json.Lens.setPartial Json.Number_ (decimal i)
@@ -130,7 +130,7 @@ type Value =
         JsonResult.Value (Bool b), json
 
       | Json.Number f ->
-        JsonResult.Value (Float f), json
+        JsonResult.Value (Float (float f)), json
 
       | Json.Array arr ->
         match arr |> List.traverseChoiceA Json.tryDeserialize with
@@ -188,13 +188,6 @@ module Escaping =
                     escape (r @ n) t
 
       new string (List.toArray (escape [] [ for c in s -> unbox c ]))
-
-module Conversions =
-  let asDecimal = function
-  | Float f -> Some f
-  | Int64 i -> Some (decimal i)
-  | BigInt bi -> Some (decimal bi)
-  | _ -> None
 
 [<AutoOpen>]
 module Capture =
@@ -345,13 +338,13 @@ module Mapping =
       Value.setLensPartial Value.Bool_ x
 
     static member inline ToValue (x: decimal) =
-      Value.setLensPartial Value.Float_ x
+      Value.setLensPartial Value.Float_ (float x)
 
     static member inline ToValue (x: float) =
-      Value.setLensPartial Value.Float_ (decimal x)
+      Value.setLensPartial Value.Float_ x
 
     static member inline ToValue (x: int) =
-      Value.setLensPartial Value.Float_ (decimal x)
+      Value.setLensPartial Value.Float_ (float x)
 
     static member inline ToValue (x: int16) =
       Value.setLensPartial Value.Int64_ (int64 x)
@@ -360,7 +353,7 @@ module Mapping =
       Value.setLensPartial Value.Int64_ x
 
     static member inline ToValue (x: single) =
-      Value.setLensPartial Value.Float_ (decimal x)
+      Value.setLensPartial Value.Float_ (float x)
 
     static member inline ToValue (x: string) =
       Value.setLensPartial Value.String_ x
@@ -372,7 +365,7 @@ module Mapping =
       Value.setLensPartial Value.Int64_ (int64 x)
 
     static member inline ToValue (x: uint64) =
-        Value.setLensPartial Value.Float_ (decimal x)
+        Value.setLensPartial Value.Float_ (float x)
 
     (* Common Types *)
 
@@ -456,21 +449,21 @@ module Value =
   let rec fromObject : obj -> Value = function
 
   // Built-in types
-  | :? bool as b    -> Bool b
-  | :? int8 as i    -> Int64 (int64 i)
-  | :? uint8 as i   -> Int64 (int64 i)
-  | :? int16 as i   -> Int64 (int64 i)
-  | :? uint16 as i  -> Int64 (int64 i)
-  | :? int32 as i   -> Int64 (int64 i)
-  | :? uint32 as i  -> Int64 (int64 i)
-  | :? int64 as i   -> Int64 (int64 i)
-  | :? uint64 as i  -> Float (decimal i)
-  | :? bigint as i  -> BigInt i
-  | :? decimal as d -> Float d
-  | :? float32 as f -> Float (decimal f)
-  | :? float as f   -> Float (decimal f)
-  | :? char as c    -> String (string c)
-  | :? string as s  -> String s
+  | :? bool as b     -> Bool b
+  | :? int8 as i     -> Int64 (int64 i)
+  | :? uint8 as i    -> Int64 (int64 i)
+  | :? int16 as i    -> Int64 (int64 i)
+  | :? uint16 as i   -> Int64 (int64 i)
+  | :? int32 as i    -> Int64 (int64 i)
+  | :? uint32 as i   -> Int64 (int64 i)
+  | :? int64 as i    -> Int64 (int64 i)
+  | :? uint64 as i   -> Float (float i)
+  | :? bigint as i   -> BigInt i
+  | :? decimal as d  -> Float (float d)
+  | :? float32 as f32-> Float (float f32)
+  | :? float as f    -> Float f
+  | :? char as c     -> String (string c)
+  | :? string as s   -> String s
 
   // Common BCL types
   | :? Guid as g              -> String (string g)

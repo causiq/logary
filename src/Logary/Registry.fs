@@ -193,15 +193,11 @@ module Advanced =
       for x in s do sb.AppendLine(sprintf " * %A" x) |> ignore
       sb.ToString()
 
-    let pollMetrics (registry: Ch<RegistryMessage>) =
-      Job.start (Ch.send registry PollMetrics)
-
     /// The state for the Registry
     type RegistryState =
       { /// the supervisor, not of the registry actor, but of the targets and probes and health checks.
         supervisor  : Supervisor.Instance
-        schedules   : (PointName * Cancellation) list
-        pollMetrics : Cancellation option }
+        schedules   : (PointName * Cancellation) list }
 
     /// The registry function that works as a supervisor and runtime state holder
     /// for Logary.
@@ -214,7 +210,7 @@ module Advanced =
       /// flush and shut down all targets, doing internal logging as it goes.
       let shutdown state (ackCh : Ch<unit>) (nack : Promise<unit>) = job {
         do! Message.info "shutdown metrics polling" |> log
-        do! defaultArg (Option.map Cancellation.cancel state.pollMetrics) (Job.unit ())
+        do! state.schedules |> List.traverseJobA (snd >> Cancellation.cancel) |> Job.Ignore
 
         do! Message.info "cancel schedules" |> log
         for (_, x) in state.schedules do
@@ -245,30 +241,23 @@ module Advanced =
 
       let rec init state = job {
         let! ctss =
-          // init sampling of metrics
           conf.metrics
-          |> Seq.map (fun (KeyValue (key, (conf, mi))) ->
-            key,
-            mi |> Option.map (fun mi ->
-              let initialDelay, interval = conf.sampling, Some conf.sampling
-              Scheduling.schedule sched Metric.sample mi initialDelay interval
-            )
-          )
-          |> Seq.filter (snd >> Option.isSome)
-          |> Seq.map (fun (a, b) -> a, Option.get b)
-          |> List.ofSeq
-          |> List.traverseJobA (fun (key, cancellation : Job<Cancellation>) ->
-            cancellation >>- (fun ct -> key, ct))
+          |> Seq.toList
+          |> List.traverseJobA (function
+            | KeyValue (name, mconf) -> job {
+              let! instance = mconf.create name
+              do! Message.debugf "will poll %O every %O" name mconf.tickInterval |> log
 
-        // init getting metrics' values
-        do! Message.debugf "will poll metrics every %O" conf.pollPeriod |> log
-        let! pollCts =
-          Scheduling.schedule sched pollMetrics inbox
-                              (Duration.FromMilliseconds 200L)
-                              (Some conf.pollPeriod)
+              let! tickCts =
+                Scheduling.schedule sched Metric.tick instance mconf.tickInterval
+                                    (Some mconf.tickInterval)
+              do! Message.debugf "getting logger for metric %O" name |> log
+              let logger = name |> getTargets conf |> fromTargets name conf.runtimeInfo.logger
+              Metric.tapMessages instance |> Stream.consumeJob (Logger.log logger)
+              return name, tickCts
+            })
 
-        return! running { state with schedules = List.ofSeq ctss
-                                     pollMetrics = Some pollCts }
+        return! running { state with schedules = ctss }
         }
 
       /// In the running state, the registry takes queries for loggers, gauges, etc...
@@ -282,33 +271,6 @@ module Advanced =
             |> fromTargets name conf.runtimeInfo.logger
 
           do! Ch.give chan logger
-          return! running state
-
-        // CONSIDER: move away from RPC (even though we're just reading memory
-        // in this case) towards fully asynchronous messaging and correlations
-        // between messages to create conversations
-        | PollMetrics ->
-          // CONSIDER: a logMaybe function that checks level before creating LogLine
-          do! Message.debug "polling metrics" |> log
-          // CONSIDER: can parallelise this if it helps (as they are all disjunct)
-          for mtr in conf.metrics do
-            let getMetricInst name = fun x -> x.metrics |> Map.find name |> (snd >> Option.get)
-            let metricInstance = getMetricInst mtr.Key conf
-
-            // CONSIDER: can memoize get data points of it helps (this one will probably not change very often)
-            do! Message.debugf "get dps from %O" metricInstance |> log
-            let! dps = metricInstance |> Metric.getDataPoints
-
-            do! Message.debug "get logger" |> log
-            let mtrLgr = mtr.Key |> getTargets conf |> fromTargets mtr.Key conf.runtimeInfo.logger
-
-            do! Message.debug "getting value from metrics" |> log
-            let! msrs = metricInstance |> Metric.getValue dps
-
-            // CONSIDER: how to log each of these data points/measures? And what path to give them?
-            for m in msrs do
-              do! Logger.log mtrLgr m
-
           return! running state
 
         | FlushPending(ackCh, nack) ->
@@ -337,7 +299,7 @@ module Advanced =
         | ShutdownLogary(ackCh, nack) ->
           return! shutdown state ackCh nack }
 
-      init { supervisor = sup; schedules = []; pollMetrics = None }
+      init { supervisor = sup; schedules = [] }
 
     let create (conf : LogaryConf) (sup : Supervisor.Instance)
                (sched : Ch<ScheduleMsg>)
@@ -370,15 +332,7 @@ module Advanced =
         // TODO: consider this blocking call?
         Some (Target.init conf.runtimeInfo tconf |> run))
 
-    let metrics =
-      conf.metrics
-      |> Map.map (fun _ (mconf, _) ->
-        mconf,
-        // TODO: consider this blocking call?
-        Some (Metric.init conf.runtimeInfo mconf |> run))
-
-    let confNext = { conf with targets = targets
-                               metrics = metrics }
+    let confNext = { conf with targets = targets }
 
     let listen =
       targets

@@ -49,10 +49,6 @@
       <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
       <Name>Logary</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\src\targets\Logary.Targets.Riemann\Logary.Targets.Riemann.fsproj">
-      <Project>{CC87925C-E4F2-4386-A322-8BC088DE7B33}</Project>
-      <Name>Logary.Targets.Riemann</Name>
-    </ProjectReference>
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>

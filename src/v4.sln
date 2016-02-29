@@ -7,10 +7,12 @@ Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Heka", "targ
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Heka.Tests", "tests\Logary.Targets.Heka.Tests\Logary.Targets.Heka.Tests.fsproj", "{EDE8A833-C15D-47FE-BFF2-0A24FAA22728}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "example", "example", "{652F0AC7-EDBB-4B13-98C8-3FF6FBF38C90}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{652F0AC7-EDBB-4B13-98C8-3FF6FBF38C90}"
 	ProjectSection(SolutionItems) = preProject
 		..\examples\heka\heka.fs = ..\examples\heka\heka.fs
 	EndProjectSection
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.ConsoleApp", "..\examples\Logary.ConsoleApp\Logary.ConsoleApp.fsproj", "{178B23D3-F676-43C3-880D-9E0BEFBAF019}"
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Mailgun", "targets\Logary.Targets.Mailgun\Logary.Targets.Mailgun.fsproj", "{1F23C428-A95F-4977-BE77-3D626116CCB8}"
 EndProject
@@ -36,6 +38,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{178B23D3-F676-43C3-880D-9E0BEFBAF019}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{178B23D3-F676-43C3-880D-9E0BEFBAF019}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{178B23D3-F676-43C3-880D-9E0BEFBAF019}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{178B23D3-F676-43C3-880D-9E0BEFBAF019}.Release|Any CPU.Build.0 = Release|Any CPU
 		{1F23C428-A95F-4977-BE77-3D626116CCB8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{1F23C428-A95F-4977-BE77-3D626116CCB8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1F23C428-A95F-4977-BE77-3D626116CCB8}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -86,5 +92,6 @@ Global
 		{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{178B23D3-F676-43C3-880D-9E0BEFBAF019} = {652F0AC7-EDBB-4B13-98C8-3FF6FBF38C90}
 	EndGlobalSection
 EndGlobal

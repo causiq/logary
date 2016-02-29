@@ -30,7 +30,6 @@ let ``invalid configs`` =
 
   let r1 = Rule.createForTarget (PointName.ofSingle "r1")
   let t1 = Noop.create Noop.empty (PointName.ofSingle "t1")
-  let m1 = Metrics.Noop.create Metrics.Noop.empty (PointName.ofSingle "m1") (Duration.FromMilliseconds 500L)
 
   testList "invalid configs" [
     testCase "mismatched rules/targets" <| fun _ ->
@@ -38,8 +37,7 @@ let ``invalid configs`` =
         (withRule r1 >> withTarget t1)
         (fun ex ->
           Assert.Contains("should contain orphan rule", r1, ex.InvalidRules)
-          Assert.Contains("should contain orphan target", t1, ex.InvalidTargets)
-          Assert.Equal("should have zero invalid metrics", Set.empty, ex.InvalidMetrics))
+          Assert.Contains("should contain orphan target", t1, ex.InvalidTargets))
 
     testCase "missing target" <| fun _ ->
       throws (withRule r1) (fun ex ->
@@ -50,11 +48,6 @@ let ``invalid configs`` =
       throws (withTarget t1) (fun ex ->
           Assert.Contains("should contain orphan target", t1, ex.InvalidTargets)
           Assert.StringContains("string should contain name of target", "t1", sprintf "%O" ex))
-
-    testCase "missing rule for metric" <| fun _ ->
-      throws (withMetric m1) (fun ex ->
-          Assert.Contains("should contain orphan metric", m1, ex.InvalidMetrics)
-          Assert.StringContains("string should contain name of metric", "m1", sprintf "%O" ex))
     ]
 
 type ArbConfig =

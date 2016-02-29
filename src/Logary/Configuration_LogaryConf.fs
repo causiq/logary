@@ -21,14 +21,11 @@ type LogaryConf =
     /// what has been configured, and the targets instances aren't None anymore.)
     targets     : Map<PointName, TargetConf * TargetInstance option>
 
-    /// Service metadata - what name etc.
-    runtimeInfo : RuntimeInfo
-
     /// A map of metrics by name.
-    metrics     : Map<PointName, MetricConf * MetricInstance option>
+    metrics     : Map<PointName, MetricConf>
 
-    /// How often do we poll metrics?
-    pollPeriod  : Duration }
+    /// Service metadata - what name etc.
+    runtimeInfo : RuntimeInfo }
 
   static member rules_ =
     (fun x -> x.rules),
@@ -45,7 +42,3 @@ type LogaryConf =
   static member metrics_ =
     (fun x -> x.metrics),
     fun v x -> { x with metrics = v }
-
-  static member pollPeriod_ =
-    (fun x -> x.pollPeriod),
-    fun v x -> { x with pollPeriod = v }

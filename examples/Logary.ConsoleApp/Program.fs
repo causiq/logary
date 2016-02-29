@@ -8,35 +8,42 @@
 #endif
 
 open System
-
 open NodaTime
-
+open Hopac
 open Logary
 open Logary.Configuration
 open Logary.Targets
+open Logary.Metric
 open Logary.Metrics
+
+module internal Sample =
+
+  let loginsPerSecond : Job<Stream<Message>> = job {
+    let! counter = Core.counter (PointName.ofSingle "logins")
+    let! ewma = Reservoirs.ewma (PointName.ofSingle "logins")
+    do! ewma |> Metric.consume (Metric.tap counter)
+    return Metric.tapMessages ewma
+  }
 
 [<EntryPoint>]
 let main argv =
   use logary =
-    withLogary' "Logary.ConsoleApp" (
+    withLogaryManager "Logary.ConsoleApp" (
       withTargets [
-        Riemann.create (Riemann.RiemannConf.Create(tags = ["riemann-health"])) "riemann"
-        Console.create (Console.empty) "console"
-        Logstash.create (Logstash.LogstashConf.Create("logstash.prod.corp.tld", 1939us)) "logstash"
+        Console.create (Console.empty) (PointName.ofSingle "console")
       ] >>
       withMetrics (Duration.FromSeconds 4L) [
-        WinPerfCounters.create (WinPerfCounters.Common.cpuTimeConf) "cpuTime" (Duration.FromMilliseconds 500L)
+        //WinPerfCounters.create (WinPerfCounters.Common.cpuTimeConf) "cpuTime" (Duration.FromMilliseconds 500L)
+
       ] >>
       withRules [
-        Rule.createForTarget "riemann"
-        Rule.createForTarget "console"
-        Rule.createForTarget "logstash"
+        Rule.createForTarget (PointName.ofSingle "console")
       ] >>
       withInternalTargets Info [
-        Console.create (Console.empty) "console"
+        Console.create Console.empty (PointName.ofSingle "console")
       ]
     )
+    |> run
 
   Console.ReadKey true |> ignore
   0

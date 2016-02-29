@@ -87,3 +87,4 @@ let schedule scheduler (receiver : 'a -> Job<unit>) (msg : 'a) initialDelay (del
       ScheduleOnce (unbox >> receiver, unbox msg, initialDelay, cts)
 
   Ch.send scheduler message |> Job.map (fun _ -> cts)
+

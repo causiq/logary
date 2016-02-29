@@ -62,7 +62,6 @@ let confLogary serviceName =
   { rules       = []
     targets     = Map.empty
     metrics     = Map.empty
-    pollPeriod  = Duration.FromMilliseconds 500L
     runtimeInfo = { serviceName = serviceName
                     logger      = NullLogger() } }
   |> withInternalTarget Warn (Console.create Console.empty (PointName.ofSingle "cons"))
@@ -95,16 +94,15 @@ let withRules rs conf =
 /// Adds a metric configuration to the configuration to run in the registry.
 [<CompiledName "WithMetric">]
 let withMetric (m : MetricConf) conf =
-  { conf with metrics = conf.metrics |> Map.add m.name (m, None) }
+  { conf with metrics = conf.metrics |> Map.add m.name m }
 
 /// Adds a list of metric configurations to the configuration to run in the
 /// registry.
 [<CompiledName "WithMetrics">]
-let withMetrics pollPeriod ms conf =
+let withMetrics ms conf =
   ms
   |> Seq.map Metric.validate
   |> Seq.fold (fun s t -> s |> withMetric t) conf
-  |> fun c -> { c with pollPeriod = pollPeriod }
 
 /// Validate the configuration for Logary, throwing a ValidationException if
 /// configuration is invalid.
@@ -116,12 +114,11 @@ let validate ({ targets     = targets
   let rtarget r = r.target
   let tnames = targets |> Map.fold (fun acc k _ -> k :: acc) [] |> Set.ofList
 
-  let rules', targets', metrics' =
+  let rules', targets' =
     rules |> Set.ofList,
-    targets |> Map.fold (fun acc _ (target, _) -> target :: acc) [] |> Set.ofList,
-    metrics |> Map.fold (fun acc _ (metric, _) -> metric :: acc) [] |> Set.ofList
+    targets |> Map.fold (fun acc _ (target, _) -> target :: acc) [] |> Set.ofList
 
-  let oRules, oTargets, oMetrics =
+  let oRules, oTargets =
     let boundTargets =
       rules
       |> Seq.map (rtarget >> (flip Map.tryFind targets))
@@ -129,14 +126,12 @@ let validate ({ targets     = targets
       |> Seq.map (Option.get >> fst)
       |> Set.ofSeq
     Set.filter (rtarget >> (flip Set.contains tnames) >> not) rules',
-    Set.filter (flip Set.contains boundTargets >> not) targets',
-    Set.filter (fun (m : MetricConf) -> List.isEmpty (Rule.matching m.name rules)) metrics'
+    Set.filter (flip Set.contains boundTargets >> not) targets'
 
-  match oRules.Count, oTargets.Count, oMetrics.Count with
-  | 0, 0, 0 -> conf
+  match oRules.Count, oTargets.Count with
+  | 0, 0 -> conf
   | _ -> raise (ValidationException("rules do not have matching targets", oRules,
-                                    "targets do not have bound rules", oTargets,
-                                    "metrics have no matching rule hieras", oMetrics))
+                                    "targets do not have bound rules", oTargets))
 
 /// Start logary with a given configuration
 [<CompiledName "RunLogary"; Extension>]
@@ -191,9 +186,9 @@ let asLogManager (inst : LogaryInstance) =
 [<CompiledName "Configure">]
 let configure serviceName targets pollPeriod metrics rules (internalLevel, internalTarget) =
   confLogary serviceName
-  |> withTargets (targets |> List.ofSeq)
-  |> withRules (rules |> List.ofSeq)
-  |> withMetrics pollPeriod (metrics |> List.ofSeq)
+  |> withTargets (List.ofSeq targets)
+  |> withRules (List.ofSeq rules)
+  |> withMetrics (List.ofSeq metrics)
   |> withInternalTarget internalLevel internalTarget
   |> validate
   |> runLogary

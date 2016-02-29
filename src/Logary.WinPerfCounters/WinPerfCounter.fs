@@ -39,6 +39,7 @@ type PerfCounter =
   { category : string
     counter  : string
     instance : Instance }
+
 and Instance =
   /// This PerfCounter has a very specific instance assigned
   | Instance of string

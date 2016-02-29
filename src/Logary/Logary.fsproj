@@ -54,7 +54,7 @@
     <Compile Include="Logger.fs" />
     <Compile Include="Internals_RuntimeInfo.fs" />
     <Compile Include="Metric.fs" />
-    <Compile Include="Metrics_Noop.fs" />
+    <Compile Include="Metrics_Core.fs" />
     <Compile Include="HealthCheck.fs" />
     <Compile Include="Supervisor.fs" />
     <Compile Include="LogManager.fs" />

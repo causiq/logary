@@ -12,9 +12,6 @@ type RegistryMessage =
   /// Get a logger for the given point name (the path of the logger)
   | GetLogger of logger:PointName * replCh:Ch<Logger>
 
-  ///
-  | PollMetrics
-
   /// Flush all pending messages from the registry to await shutdown and ack on
   /// the `ackCh` when done. If the client nacks the request, the `nack` promise
   /// is filled with a unit value.

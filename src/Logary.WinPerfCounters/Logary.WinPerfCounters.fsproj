@@ -41,8 +41,8 @@
     <None Include="paket.references" />
     <Compile Include="WinPerfCounter.fs" />
     <Compile Include="WinPerfCounters.fs" />
-    <Compile Include="HealthCheck.WinPerfCounters.fs" />
-    <Compile Include="Metrics.WinPerfCounters.fs" />
+    <Compile Include="Metrics_WinPerfCounters.fs" />
+    <Compile Include="HealthCheck_WinPerfCounters.fs" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.1\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>

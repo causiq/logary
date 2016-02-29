@@ -77,19 +77,23 @@ module internal Impl =
   /// A unified naming scheme for the names of performance counters
   module Naming =
     let toDP (c : PerfCounter) =
-      let fstr instance =
+      let nameInstance instance =
         match instance with
         | NotApplicable -> [ c.category; c.counter ]
         | Instance inst -> [ c.category; c.counter; inst ]
-      PointName (fstr c.instance)
+
+      PointName (nameInstance c.instance)
 
     let toCounter (PointName dp) =
       match dp with
       | [ category; counter ] ->
         { category = category; counter = counter; instance = NotApplicable }
+
       | [ category; counter; instance ] ->
         { category = category; counter = counter; instance = Instance instance }
-      | _ -> failwithf "unknown performance counter name: %A" dp
+
+      | _ ->
+        failwithf "unknown performance counter name: %A" dp
 
   let tryGetPc (lastValues : Map<PointName, PC * Value>) dp =
     lastValues

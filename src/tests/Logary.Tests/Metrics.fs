@@ -1,11 +1,40 @@
 ﻿module Logary.Tests.Metrics
 
 open Fuchu
-
 open NodaTime
-
+open Hopac
 open Logary
-open Logary.Metric.Reservoir
+open Logary.Metrics
+open Logary.Metrics.Reservoirs
+
+[<Tests>]
+let builtInMetrics =
+  let take n stream =
+    stream |> Stream.take n |> Stream.toSeq |> run |> Seq.toList
+
+  testList "built-ins" [
+    testList "simplest counter" [
+      let counter = Counters.counter (PointName.ofSingle "logins") |> run
+
+      yield testCase "initial" <| fun _ ->
+        let stream = Metric.tap counter
+        Metric.tick counter |> run
+        Assert.equal (stream |> take 1L) [Int64 0L, Units.Scalar] "zero at start"
+
+      yield testCase "counting to three" <| fun _ ->
+        let stream = Metric.tap counter
+        counter |> Metric.update (Int64 1L, Units.Scalar) |> run
+        Metric.tick counter |> run
+        counter |> Metric.update (Int64 1L, Units.Scalar) |> run
+        counter |> Metric.update (Int64 1L, Units.Scalar) |> run
+        Metric.tick counter |> run
+        let actual = stream |> take 2L
+        Assert.equal actual [
+            Int64 1L, Units.Scalar
+            Int64 2L, Units.Scalar
+          ] "one and then two after two single counts"
+    ]
+  ]
 
 [<Tests>]
 let snapshot =
