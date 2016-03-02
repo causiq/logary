@@ -50,9 +50,11 @@ let ``invalid configs`` =
           Assert.StringContains("string should contain name of target", "t1", sprintf "%O" ex))
     ]
 
+
 type ArbConfig =
   { db : string
     batchSize : int }
+
 
 [<Tests>]
 let ``valid configs`` =
@@ -69,5 +71,9 @@ let ``valid configs`` =
 
       Assert.equal actualConfig expectedConfig "Record should equal .....?"
       ()
-    ]
 
+    testCase "" <| fun _ ->
+        let conn = "influxdb://root:root@host:8086/write?db=wadus"
+        let test = "measurement,tkey1=tval1,tkey2=tval2 fkey=fval,fkey2=fval2 1234567890000000000"
+        ()
+    ]

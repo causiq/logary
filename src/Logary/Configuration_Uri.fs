@@ -2,6 +2,7 @@
 open Microsoft.FSharp.Reflection
 open System
 open System.Reflection
+open Logary
 
 type internal Helper() =
   static member getDefaultGeneric<'T> () =
@@ -16,6 +17,8 @@ type internal Helper() =
 let parseConfig<'recordType> uriString =
 //  let parsedPort = 8086us
 //  let dbName = "dbName"
+  
+  let endpoint = "{scheme}user:pass@host:8086/write"
 
   let argVals = 
     let uri = Uri uriString

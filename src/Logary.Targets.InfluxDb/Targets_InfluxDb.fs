@@ -1,4 +1,4 @@
-﻿module Logary.Targets.Noop
+﻿module Logary.Targets.InfluxDb
 
 open Hopac
 open Hopac.Infixes
@@ -6,6 +6,16 @@ open Hopac.Infixes
 open Logary
 open Logary.Target
 open Logary.Internals
+
+let msgToString (message : Message) : string =
+  let valueToString = function
+    | Gauge (Float v,u) -> float v
+    | Derived (Float v,u) -> float v
+    | _ -> failwith ""
+
+  sprintf "%O value=%.2fi" message.name (valueToString message.value)
+
+
 
 // This is representative of the config you 
 // would use for the target you are creating
@@ -31,10 +41,12 @@ module internal Impl =
 
         // 'When there is a request' call this function
         BoundedMb.take requests ^=> function
-          | Log (_, ack) ->
+          | Log (msg, ack) ->
             job {
               // do something with the message
               // specific to the target you are creating
+
+
 
               // This is a simple acknowledgement using unit as the signal
               do! ack *<= ()
