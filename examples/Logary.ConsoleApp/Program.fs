@@ -31,9 +31,9 @@ module internal Sample =
       | _ ->
         state
 
-    let toValue (counter : PerfCounter) =
-      let pc = toPC counter |> Option.get // from state initialisation post-condition
-      Float (WinPerfCounter.nextValue pc)
+    let toValue (counter : PerfCounter, pc : PC) =
+      let value = WinPerfCounter.nextValue pc
+      Float value
       |> Message.metricWithUnit pn Units.Scalar
       |> Message.setName (PointName.ofPerfCounter counter)
 
@@ -42,7 +42,9 @@ module internal Sample =
 
     let counters =
       WinPerfCounters.Common.cpuTime
-      |> List.filter (WinPerfCounter.toPC >> Option.isSome)
+      |> List.map (fun counter -> counter, WinPerfCounter.toPC counter)
+      |> List.filter (snd >> Option.isSome)
+      |> List.map (fun (counter, pc) -> counter, Option.get pc)
 
     Metric.create reducer counters ticker
 

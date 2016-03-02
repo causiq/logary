@@ -118,7 +118,7 @@ type Logary.Heka.Messages.Message with
     hmsg.timestamp <- msg.timestamp
     match msg.value with
     | Event _ ->
-      hmsg.payload <- Formatting.formatMessage msg
+      hmsg.payload <- Formatting.MessageParts.formatValueShallow msg
 
     | _ ->
       ()

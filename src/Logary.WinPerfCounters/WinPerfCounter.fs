@@ -116,8 +116,9 @@ let nextValue (pc : PC) =
 let toPC { category = cat; counter = cnt; instance = inst } : PC option =
   if counterExists cat cnt then
     match inst with
-    | Instance inst when instanceExists cat inst ->
-      new PerformanceCounter(cat, cnt, inst, true) |> Some
+    | Instance inst when true -> //this is bugged on mono: instanceExists cat inst ->
+      let pc = new PerformanceCounter(cat, cnt, inst, true)
+      Some pc
     | _ ->
       let pcc = getPCC cat |> Option.get
       match pcc.CategoryType with
