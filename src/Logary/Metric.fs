@@ -6,6 +6,7 @@ open Hopac
 open Hopac.Infixes
 open Logary
 open Logary.Internals
+open Logary.Utils.Aether
 
 // inspiration: https://github.com/Feuerlabs/exometer/blob/master/doc/exometer_probe.md
 
@@ -17,18 +18,22 @@ type Metric =
 type MetricConf =
   { tickInterval : Duration
     name         : PointName
-    create       : PointName -> Job<Metric>
+    initialise   : PointName -> Job<Metric>
   }
+  static member create (tickInterval : Duration) (name : PointName) creator =
+    { tickInterval = tickInterval
+      name         = name
+      initialise   = creator }
+
   interface Named with
     member x.name = x.name
+
 
 let validate (conf : MetricConf) =
   if conf.name = PointName.empty then
     failwith "empty metric name given"
 
   conf
-
-open Logary.Utils.Aether
 
 let create (reduce : 'state -> Value * Units -> 'state)
            initial

@@ -5,7 +5,7 @@ module Logary.WinPerfCounters
 open System
 open System.Diagnostics
 
-open Logary.WinPerfCounter
+open Logary.Metrics.WinPerfCounter
 /// .NET CLR Data: .Net CLR Data
 ///
 /// This performance counter does not have instance based counters

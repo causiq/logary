@@ -245,7 +245,7 @@ module Advanced =
           |> Seq.toList
           |> List.traverseJobA (function
             | KeyValue (name, mconf) -> job {
-              let! instance = mconf.create name
+              let! instance = mconf.initialise name
               do! Message.debugf "will poll %O every %O" name mconf.tickInterval |> log
 
               let! tickCts =

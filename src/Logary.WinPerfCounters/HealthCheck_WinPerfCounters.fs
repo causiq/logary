@@ -3,7 +3,7 @@
 open System
 open Logary
 open Logary.HealthCheck
-open Logary.WinPerfCounter
+open Logary.Metrics.WinPerfCounter
 open Hopac
 
 /// Create a new HealthCheck from a WindowsPerfCounter record and a transformation

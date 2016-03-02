@@ -8,7 +8,7 @@ open Logary
 open Logary.Metric
 open Logary.Internals
 
-open Logary.WinPerfCounter
+open Logary.Metrics.WinPerfCounter
 
 /// Configuration for the WinPerfCounters probe
 type WinPerfCounterConf =
@@ -69,20 +69,11 @@ module Common =
   let aspNetRecommendedConf instance =
     { initCounters = aspNetRecommended instance }
 
-module internal Impl =
-
   type WPCState =
     { lastValues : Map<PointName, PointName * Value> }
 
   /// A unified naming scheme for the names of performance counters
   module Naming =
-    let toDP (c : PerfCounter) =
-      let nameInstance instance =
-        match instance with
-        | NotApplicable -> [ c.category; c.counter ]
-        | Instance inst -> [ c.category; c.counter; inst ]
-
-      PointName (nameInstance c.instance)
 
     let toCounter (PointName dp) =
       match dp with
@@ -104,4 +95,5 @@ module internal Impl =
     | x -> x
 
   let pcNextValue dp (pc : PC) =
-    Float (decimal (nextValue pc))
+    Float (nextValue pc)
+

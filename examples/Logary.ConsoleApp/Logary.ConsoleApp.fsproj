@@ -49,6 +49,10 @@
       <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
       <Name>Logary</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\src\Logary.WinPerfCounters\Logary.WinPerfCounters.fsproj">
+      <Project>{DD5137FC-22E5-47DA-88F1-3D3F1E7E8381}</Project>
+      <Name>Logary.WinPerfCounters</Name>
+    </ProjectReference>
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>

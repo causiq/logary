@@ -9,7 +9,7 @@
 
 /// A module that helps you interact with Windows Performance Counters. Wraps
 /// null-based APIs and guides the programmer with sane names and documentation.
-module Logary.WinPerfCounter
+module Logary.Metrics.WinPerfCounter
 
 open System
 open System.Diagnostics
@@ -171,3 +171,14 @@ let setCurrentProcess pc =
 /// Sets a specific instance on the Performance Counter.
 let setInstance (i : Instance) pc =
   { pc with instance = i }
+
+module PointName =
+  open Logary
+
+  let ofPerfCounter (c : PerfCounter) =
+    let nameInstance instance =
+      match instance with
+      | NotApplicable -> [ c.category; c.counter ]
+      | Instance inst -> [ c.category; c.counter; inst ]
+
+    PointName (nameInstance c.instance)
