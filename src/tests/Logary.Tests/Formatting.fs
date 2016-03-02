@@ -16,7 +16,7 @@ let private sampleMessage : Message =
     fields    = Map.empty
     session   = Object Map.empty
     context   = Map.empty
-    timestamp = Instant.FromSecondsSinceUnixEpoch(3L).PlusTicks(1234567L).Ticks
+    timestamp = Instant.FromSecondsSinceUnixEpoch(3L).PlusTicks(1234567L).Ticks * 100L
     level     = LogLevel.Error }
 
 [<Tests>]

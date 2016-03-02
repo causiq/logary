@@ -94,6 +94,12 @@ module MessageParts =
     |> Object
     |> printValue nl 0
 
+  /// Format a timestamp in nanoseconds since epoch into a ISO8601 string
+  let formatTimestamp (ts : int64) =
+    Instant.FromTicksSinceUnixEpoch(ts / 100L (* ns per tick *))
+      .ToDateTimeOffset()
+      .ToString("o", CultureInfo.InvariantCulture)
+
 /// A StringFormatter is the thing that takes a message and returns it as a string
 /// that can be printed, sent or otherwise dealt with in a manner that suits the target.
 type StringFormatter =
@@ -108,10 +114,7 @@ module StringFormatter =
         member x.format m =
           let level = string (caseNameOf m.level).[0]
           // https://noda-time.googlecode.com/hg/docs/api/html/M_NodaTime_OffsetDateTime_ToString.htm
-          let time =
-            Instant.FromTicksSinceUnixEpoch(m.timestamp / 100L (* ns per tick *))
-              .ToDateTimeOffset()
-              .ToString("o", CultureInfo.InvariantCulture)
+          let time = formatTimestamp m.timestamp
           let body = formatValueShallow m
           let name = m.name.ToString()
           let fields = (if Map.isEmpty m.fields then "" else formatFields nl m.fields)
@@ -218,13 +221,14 @@ module Json =
   let messageToJson (msg: Message) =
     // TODO: consider using native message formatting attached as static methods
     // on Message.
-    [("name", Json.String <| PointName.joined msg.name)
-     ("session", valueToJson msg.session)
-     ("level", Json.String <| msg.level.ToString ())
-     ("timestamp", Json.String <| NodaTime.Instant(msg.timestamp).ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture))
-     ("session", valueToJson msg.session)
-     ("context", Map.map (fun _ v -> valueToJson v) msg.context |> Json.Object)
-     ("data", fieldsToJson msg.fields)] @
+    [ "name", Json.String <| PointName.joined msg.name
+      "session", valueToJson msg.session
+      "level", Json.String <| msg.level.ToString ()
+      "timestamp", Json.String (MessageParts.formatTimestamp msg.timestamp)
+      "session", valueToJson msg.session
+      "context", Map.map (fun _ v -> valueToJson v) msg.context |> Json.Object
+      "data", fieldsToJson msg.fields
+    ] @
     (match msg.value with
      | Event m ->
        let message = MessageParts.formatTemplate m msg.fields

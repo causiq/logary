@@ -935,8 +935,8 @@ module Message =
   let setLevel lvl msg = { msg with level = lvl}
 
   /// Sets the number of nanoseconds since epoch.
-  [<CompiledName "SetEpochNano">]
-  let setEpochNano (ts : EpochNanoSeconds) msg =
+  [<CompiledName "SetNanoEpoch">]
+  let setNanoEpoch (ts : EpochNanoSeconds) msg =
     { msg with timestamp = ts }
 
   /// Sets the number of ticks since epoch. There are 10 ticks per micro-second,

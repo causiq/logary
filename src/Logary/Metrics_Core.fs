@@ -235,6 +235,7 @@ module Reservoirs =
                      rate      = instantRate }
 
     let rate (inUnit : Duration) state =
+      // TODO: consider using nanoseconds like timestamp on Message.
       // we know rate is in samples per tick
       state.rate * float inUnit.Ticks
 

@@ -18,7 +18,7 @@ NUGET
     EventStore.Client.PreRelease (3.1.1)
       Newtonsoft.Json (>= 6.0.8)
       protobuf-net (>= 2.0.0.668)
-    FAKE (4.20.0)
+    FAKE (4.21.0)
     FluentMigrator (1.6.1)
     FluentMigrator.Runner (1.6.1)
       FluentMigrator (>= 1.6.1)
@@ -88,7 +88,7 @@ GITHUB
     src/Aether/Aether.fs (5b5c05db2414562e9f3f679d42284638e63b9f3a)
   remote: haf/YoLo
   specs:
-    YoLo.fs (9e3a94ff589419c438e5f3ab504b5ae3ce1fcdae)
+    YoLo.fs (9f32a5589e37f398af3d90f9985f579f162e9735)
   remote: haf/expecto-patronum
   specs:
-    ExpectoPatronum/Assert.fs (7a8734f80a1e8dab75e25283ee98382267030f5b)
+    ExpectoPatronum/Assert.fs (26e41c24000c7bcdcae3e9c0be942b71d11dae20)
