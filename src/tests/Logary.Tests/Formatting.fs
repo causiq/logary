@@ -104,6 +104,7 @@ let tests =
                       "{0}  errors => {0}    - {0}      message => \"{1}\"{0}      type => \"{2}\"{0}",
                       Environment.NewLine, e.Message, (e.GetType ()).FullName))
       |> thatsIt
+
     testCase "StringFormatter.LevelDatetimePathMessageNl with exception, data" <| fun _ ->
       let e = new Exception("Gremlings in the machinery")
       (because "logging with exception attached" <| fun () ->
@@ -132,4 +133,5 @@ let tests =
       |> should equal ("This {arg0} contains {arg1} words.",
                        [(pn "arg0", Field (String "sentence", None)); (pn "arg1", Field (Int64 4L, None))])
       |> thatsIt
+
     ]

@@ -37,7 +37,7 @@ module internal Impl =
       cc          = conf.cc
       bcc         = conf.bcc
       // CONSIDER: If the message is a measure, the subject line will be just the value with unit.
-      subject     = Formatting.formatMessage msg
+      subject     = Formatting.MessageParts.formatValueShallow msg
       body        = body
       attachments = [] }
 

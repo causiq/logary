@@ -12,85 +12,87 @@ open Logary
 open Logary.Utils
 open Logary.Utils.FsMessageTemplates
 
-let internal formatTemplate (template : string) (args : Map<PointName, Field>) =
-  let template = Parser.parse template
-  let sb       = StringBuilder()
+module MessageParts =
 
-  let append (sb : StringBuilder) (s : string) =
-    sb.Append s |> ignore
+  let formatTemplate (template : string) (args : Map<PointName, Field>) =
+    let template = Parser.parse template
+    let sb       = StringBuilder()
 
-  template.Tokens
-  |> Seq.map (function
-    | Text (_, t) ->
-      t
+    let append (sb : StringBuilder) (s : string) =
+      sb.Append s |> ignore
 
-    | Prop (_, p) ->
-      let (Field (value, units)) = Map.find (PointName.ofSingle p.Name) args
-      match units with
-      | Some units ->
-        Units.formatWithUnit Units.Suffix (units) value
+    template.Tokens
+    |> Seq.map (function
+      | Text (_, t) ->
+        t
 
-      | None ->
-        Units.formatValue value)
-  |> Seq.iter (append sb)
-  sb.ToString()
+      | Prop (_, p) ->
+        let (Field (value, units)) = Map.find (PointName.ofSingle p.Name) args
+        match units with
+        | Some units ->
+          Units.formatWithUnit Units.Suffix (units) value
 
-let formatMessage (msg: Message) =
-  match msg.value with
-  | Event t ->
-    formatTemplate t msg.fields
+        | None ->
+          Units.formatValue value)
+    |> Seq.iter (append sb)
+    sb.ToString()
 
-  | Gauge (v, u)
-  | Derived (v, u) ->
-    Units.formatWithUnit Units.UnitOrientation.Prefix u v
+  let formatValueShallow (msg: Message) =
+    match msg.value with
+    | Event t ->
+      formatTemplate t msg.fields
 
-/// Returns the case name of the object with union type 'ty.
-let internal caseNameOf (x:'a) =
-  match FSharpValue.GetUnionFields(x, typeof<'a>) with
-  | case, _ -> case.Name
+    | Gauge (v, u)
+    | Derived (v, u) ->
+      Units.formatWithUnit Units.UnitOrientation.Prefix u v
 
-let private app (s : string) (sb : StringBuilder) = sb.Append s
+  /// Returns the case name of the object with union type 'ty.
+  let caseNameOf (x:'a) =
+    match FSharpValue.GetUnionFields(x, typeof<'a>) with
+    | case, _ -> case.Name
 
-let rec private printValue (nl: string) (depth: int) (value : Value) =
-  let indent = new String(' ', depth * 2 + 2)
-  match value with
-  | String s -> "\"" + s + "\""
-  | Bool b -> b.ToString ()
-  | Float f -> f.ToString ()
-  | Int64 i -> i.ToString ()
-  | BigInt b -> b.ToString ()
-  | Binary (b, _) -> BitConverter.ToString b |> fun s -> s.Replace("-", "")
-  | Fraction (n, d) -> sprintf "%d/%d" n d
-  | Array list ->
-    list
-    |> Seq.fold (fun (sb: StringBuilder) t ->
-        sb
-        |> app nl
-        |> app indent
-        |> app "- "
-        |> app (printValue nl (depth + 1) t))
-      (StringBuilder ())
-    |> fun sb -> sb.ToString ()
-  | Object m ->
-    m
-    |> Map.toSeq
-    |> Seq.fold (fun (sb: StringBuilder) (key, value) ->
-        sb
-        |> app nl
-        |> app indent
-        |> app key
-        |> app " => "
-        |> app (printValue nl (depth + 1) value))
-      (StringBuilder ())
-    |> fun sb -> sb.ToString ()
+  let private app (s : string) (sb : StringBuilder) = sb.Append s
 
-/// Formats the data in a nice fashion for printing to e.g. the Debugger or Console.
-let internal formatFields (nl : string) (fields : Map<PointName, Field>) =
-  Map.toSeq fields
-  |> Seq.map (fun (key, (Field (value, _))) -> (PointName.joined key, value))
-  |> Map.ofSeq
-  |> Object
-  |> printValue nl 0
+  let rec printValue (nl: string) (depth: int) (value : Value) =
+    let indent = new String(' ', depth * 2 + 2)
+    match value with
+    | String s -> "\"" + s + "\""
+    | Bool b -> b.ToString ()
+    | Float f -> f.ToString ()
+    | Int64 i -> i.ToString ()
+    | BigInt b -> b.ToString ()
+    | Binary (b, _) -> BitConverter.ToString b |> fun s -> s.Replace("-", "")
+    | Fraction (n, d) -> sprintf "%d/%d" n d
+    | Array list ->
+      list
+      |> Seq.fold (fun (sb: StringBuilder) t ->
+          sb
+          |> app nl
+          |> app indent
+          |> app "- "
+          |> app (printValue nl (depth + 1) t))
+        (StringBuilder ())
+      |> fun sb -> sb.ToString ()
+    | Object m ->
+      m
+      |> Map.toSeq
+      |> Seq.fold (fun (sb: StringBuilder) (key, value) ->
+          sb
+          |> app nl
+          |> app indent
+          |> app key
+          |> app " => "
+          |> app (printValue nl (depth + 1) value))
+        (StringBuilder ())
+      |> fun sb -> sb.ToString ()
+
+  /// Formats the data in a nice fashion for printing to e.g. the Debugger or Console.
+  let formatFields (nl : string) (fields : Map<PointName, Field>) =
+    Map.toSeq fields
+    |> Seq.map (fun (key, (Field (value, _))) -> PointName.joined key, value)
+    |> Map.ofSeq
+    |> Object
+    |> printValue nl 0
 
 /// A StringFormatter is the thing that takes a message and returns it as a string
 /// that can be printed, sent or otherwise dealt with in a manner that suits the target.
@@ -99,18 +101,21 @@ type StringFormatter =
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module StringFormatter =
+  open MessageParts
 
   let internal expanded nl ending : StringFormatter =
     { new StringFormatter with
         member x.format m =
-          sprintf "%s %s: %s [%s]%s%s"
-            (string (caseNameOf m.level).[0])
-            // https://noda-time.googlecode.com/hg/docs/api/html/M_NodaTime_OffsetDateTime_ToString.htm
-            (Instant(m.timestamp).ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture))
-            ((function Event format -> formatTemplate format m.fields | _ -> "") m.value)
-            (Aether.Lens.get Message.name_ m |> sprintf "%O")
-            (if Map.isEmpty m.fields then "" else formatFields nl m.fields)
-            ending
+          let level = string (caseNameOf m.level).[0]
+          // https://noda-time.googlecode.com/hg/docs/api/html/M_NodaTime_OffsetDateTime_ToString.htm
+          let time =
+            Instant.FromTicksSinceUnixEpoch(m.timestamp / 100L (* ns per tick *))
+              .ToDateTimeOffset()
+              .ToString("o", CultureInfo.InvariantCulture)
+          let body = formatValueShallow m
+          let name = m.name.ToString()
+          let fields = (if Map.isEmpty m.fields then "" else formatFields nl m.fields)
+          sprintf "%s %s: %s [%s]%s%s" level time body name fields ending
     }
 
   /// Verbatim simply outputs the message and no other information
@@ -159,21 +164,38 @@ module Json =
 
   let rec valueToJson (value : Value) =
     match value with
-    | Value.String s -> Json.String s
-    | Value.Bool b -> Json.Bool b
-    | Value.Float f -> toNumber f
-    | Value.Int64 i -> toNumber i
+    | Value.String s ->
+      Json.String s
+
+    | Value.Bool b ->
+      Json.Bool b
+
+    | Value.Float f ->
+      toNumber f
+
+    | Value.Int64 i ->
+      toNumber i
+
     | Value.BigInt bi -> toNumber bi
     | Value.Binary (bytes, mime) ->
-      [("mime",   Json.String mime)
-       ("base64", Json.String (System.Convert.ToBase64String bytes))]
-      |> Map.ofSeq |> Json.Object
+      [ "mime",   Json.String mime
+        "base64", Json.String (System.Convert.ToBase64String bytes) ]
+      |> Map.ofList
+      |> Json.Object
+
     | Value.Fraction (nom, denom) ->
-      [("nom",   toNumber nom)
-       ("denom", toNumber denom)]
-      |> Map.ofSeq |> Json.Object
-    | Value.Object values -> Map.map (fun _ v -> valueToJson v) values |> Json.Object
-    | Value.Array items -> List.map (valueToJson) items |> Json.Array
+      [ "nom",   toNumber nom
+        "denom", toNumber denom ]
+      |> Map.ofList
+      |> Json.Object
+
+    | Value.Object values ->
+      Map.map (fun _ v -> valueToJson v) values
+      |> Json.Object
+
+    | Value.Array items ->
+      List.map (valueToJson) items
+      |> Json.Array
 
   let fieldsToJson (fields : Map<PointName, Field>) =
     Map.toSeq fields
@@ -181,12 +203,21 @@ module Json =
     |> Map.ofSeq |> Json.Object
 
   let isEmpty = function
-  | String "" -> true
-  | Object v -> v.IsEmpty
-  | Array [] -> true
-  | _ -> false
+    | String "" ->
+      true
+
+    | Object v ->
+      v.IsEmpty
+
+    | Array [] ->
+      true
+
+    | _ ->
+      false
 
   let messageToJson (msg: Message) =
+    // TODO: consider using native message formatting attached as static methods
+    // on Message.
     [("name", Json.String <| PointName.joined msg.name)
      ("session", valueToJson msg.session)
      ("level", Json.String <| msg.level.ToString ())
@@ -195,7 +226,10 @@ module Json =
      ("context", Map.map (fun _ v -> valueToJson v) msg.context |> Json.Object)
      ("data", fieldsToJson msg.fields)] @
     (match msg.value with
-     | Event m ->        [("type", Json.String "event");   ("message", Json.String <| formatTemplate m msg.fields)]
+     | Event m ->
+       let message = MessageParts.formatTemplate m msg.fields
+       [ "type", Json.String "event"
+         "message", Json.String message ]
      | Gauge   (g, u) -> [("type", Json.String "gauge");   ("value", valueToJson g);
                           ("unit", Json.String <| Units.symbol u)]
      | Derived (d, u) -> [("type", Json.String "derived"); ("value", valueToJson d);

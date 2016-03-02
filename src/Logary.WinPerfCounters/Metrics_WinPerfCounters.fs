@@ -96,4 +96,3 @@ module Common =
 
   let pcNextValue dp (pc : PC) =
     Float (nextValue pc)
-

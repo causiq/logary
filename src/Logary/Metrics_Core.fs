@@ -7,6 +7,7 @@ open NodaTime
 open Hopac
 
 module Counters =
+
   let counter pn : Job<Metric> =
     let reducer state = function
       | Int64 i, _ when state = Int64.MaxValue && i > 0L ->

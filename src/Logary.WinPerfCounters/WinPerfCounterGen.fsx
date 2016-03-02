@@ -1,9 +1,10 @@
-﻿#load "WinPerfCounter.fs"
+#r "bin/Debug/Logary.dll"
+#load "WinPerfCounter.fs"
 
 open System
 open System.Text.RegularExpressions
 
-open Logary.WinPerfCounter
+open Logary.Metrics.WinPerfCounter
 
 let munge name =
   Regex.Replace(name, "[\./,]", "_")
