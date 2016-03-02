@@ -6,6 +6,7 @@ open Hopac.Infixes
 open Logary
 open Logary.Target
 open Logary.Internals
+open System
 
 let msgToString (message : Message) : string =
   let valueToString = function
@@ -13,7 +14,11 @@ let msgToString (message : Message) : string =
     | Derived (Float v,u) -> float v
     | _ -> failwith ""
 
-  sprintf "%O value=%.2fi" message.name (valueToString message.value)
+  sprintf 
+    "%O value=%.2fi %i" 
+    message.name 
+    (valueToString message.value)
+    message.timestamp
 
 
 
