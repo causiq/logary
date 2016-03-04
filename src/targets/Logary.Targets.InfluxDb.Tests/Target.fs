@@ -62,20 +62,16 @@ let writesOverHttp =
 
   testList "writes over HTTP" [
     testCase "write to Suave" <| fun _ ->
-      let msg = 
-        Message.metric (PointName.parse "Processor.% User Time._Total") (Float 0.3463)
+      let msg = Message.metric (PointName.parse "Processor.% User Time._Total") (Float 0.3463)
       use state = withServer ()
-      printfn "started"
 
       let target = start ()
       try
-        printfn "logging"
         msg
         |> Target.log target
         |> run
         |> run
 
-        printfn "read response"
         let body =
           IVar.read state.req
           |> run
@@ -83,6 +79,5 @@ let writesOverHttp =
 
         Assert.equal body (Serialisation.serialiseMessage msg) "should eq"
       finally
-        printfn "finalise target"
         finaliseTarget target
   ]
