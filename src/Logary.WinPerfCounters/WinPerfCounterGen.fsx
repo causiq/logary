@@ -91,11 +91,15 @@ open Logary.Metrics.WinPerfCounter"""
     | pcc, []        -> pcc, getCounters pcc NotApplicable
     | pcc, inst :: _ -> pcc, getCounters pcc inst)
   |> List.map (fun (pcc, counters) -> pcc, counters |> List.sortBy (fun x -> x.counter))
-  |> List.map (fun (pcc, (c :: _ as counters)) ->
-    genComment pcc c + "\n"
-    + (genModuleHeader pcc) + "\n"
-    + (genCounters counters) + "\n"
-    + (genListing counters) + "\n")
+  |> List.map (function
+    | pcc, (c :: _ as counters) ->
+      let counters = counters |> Seq.distinct |> List.ofSeq
+      genComment pcc c + "\n"
+      + (genModuleHeader pcc) + "\n"
+      + (genCounters counters) + "\n"
+      + (genListing counters) + "\n"
+    | pcc, [] ->
+      "")
   |> fun modules ->
     genFileHeader () + "\n"
     + String.Join("\n", modules)

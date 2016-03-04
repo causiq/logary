@@ -76,9 +76,22 @@ let getInstances (pcc : PCC) : _ list =
 let instanceExists category instance =
   PCC.InstanceExists(instance, category)
 
+(*
+Reason for try-with:
+
+System.InvalidOperationException: Category does not exist.
+   at System.Diagnostics.PerformanceCounterLib.CounterExists(String machine, String category, String counter)
+   at System.Diagnostics.PerformanceCounterCategory.CounterExists(String counterName, String categoryName, String machineName)
+   at System.Diagnostics.PerformanceCounterCategory.CounterExists(String counterName, String categoryName)
+   at Logary.Metrics.WinPerfCounter.counterExists(String category, String counter) in \src\Logary.WinPerfCounters\WinPerfCounter.fs:line 81
+*)
 /// Checks whether the counter in the category exists
 let counterExists category counter =
-  PCC.CounterExists(counter, category)
+  try
+    PCC.CounterExists(counter, category)
+  with
+  | :? InvalidOperationException as e when e.Message.Contains("does not exist") ->
+    false
 
 /// Gets a list of performance counters for the given instance and category.
 let getCounters (pcc : PCC) (instance : Instance) : _ list =

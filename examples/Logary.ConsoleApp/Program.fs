@@ -16,6 +16,7 @@ open Logary.Targets
 open Logary.Metric
 open Logary.Metrics
 open Logary.Metrics.WinPerfCounter
+open Logary.Metrics.WinPerfCounter
 
 module internal Sample =
 
@@ -26,7 +27,7 @@ module internal Sample =
     return Metric.tapMessages ewma
   }
 
-  let cpuTime pn : Job<Metric> =
+  let metricFrom counters pn : Job<Metric> =
     let reducer state = function
       | _ ->
         state
@@ -41,12 +42,35 @@ module internal Sample =
       state, state |> List.map toValue
 
     let counters =
-      WinPerfCounters.Common.cpuTime
+      counters
       |> List.map (fun counter -> counter, WinPerfCounter.toPC counter)
       |> List.filter (snd >> Option.isSome)
       |> List.map (fun (counter, pc) -> counter, Option.get pc)
 
     Metric.create reducer counters ticker
+
+  let cpuTime pn : Job<Metric> =
+    metricFrom WinPerfCounters.Common.cpuTime pn
+
+  let m6000s pn : Job<Metric> =
+    let gpu counter instance =
+      { category = "GPU"
+        counter  = counter
+        instance = Instance instance }
+
+    let counters =
+      [ for inst in [ "08:00"; "84:00" ] do
+          let inst' = sprintf "quadro m6000(%s)" inst
+          yield gpu "GPU Fan Speed (%)" inst'
+          yield gpu "GPU Time (%)" inst'
+          yield gpu "GPU Memory Usage (%)" inst'
+          yield gpu "GPU Memory Used (MB)" inst'
+          yield gpu "GPU Power Usage (Watts)" inst'
+          yield gpu "GPU SM Clock (MHz)" inst'
+          yield gpu "GPU Temperature (degrees C)" inst'
+      ]
+
+    metricFrom counters pn
 
 open System.Threading
 
@@ -63,6 +87,7 @@ let main argv =
       withMetrics [
         //WinPerfCounters.create (WinPerfCounters.Common.cpuTimeConf) "cpuTime" (Duration.FromMilliseconds 500L)
         MetricConf.create (Duration.FromMilliseconds 500L) (PointName.ofSingle "cpu") Sample.cpuTime
+        MetricConf.create (Duration.FromMilliseconds 500L) (PointName.ofSingle "gpu") Sample.m6000s
       ] >>
       withRules [
         Rule.createForTarget (PointName.ofSingle "console")
