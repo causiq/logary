@@ -10,8 +10,7 @@ open Logary.Targets.InfluxDb
 [<Tests>]
 let transformToMessage =
   testList "converting a Logary Message to a InfluxDb Message" [
-
-    testCase "Simplest Valid Point (measurement + field)" <| fun _ ->
+    testCase "simplest valid point (measurement + field)" <| fun _ ->
       let metricValue =
         Message.metric (PointName.parse "hpc-c-001.windows.cpu % usage") 
                        (Value.Float 0.33)
@@ -20,7 +19,6 @@ let transformToMessage =
         msgToString metricValue)
 
     testCase "With timestamp" <| fun _ ->
-
       let metricValue =
         Message.metric (PointName.parse "")
                        (Value.Float 0.22)
