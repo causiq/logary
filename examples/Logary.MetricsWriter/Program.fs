@@ -19,8 +19,9 @@ module Sample =
 
     let ticker (rnd : Random, prevValue) =
       let value =
-        let v = rnd.NextDouble() * 0.3
-        if v + prevValue < -1. || v + prevValue > 1. then -v + prevValue
+        let v = (rnd.NextDouble() - 0.5) * 0.3
+        if abs v < 0.03 then rnd.NextDouble() - 0.5
+        elif v + prevValue < -1. || v + prevValue > 1. then -v + prevValue
         else v + prevValue
 
       let msg = Message.metric pn (Float value)
