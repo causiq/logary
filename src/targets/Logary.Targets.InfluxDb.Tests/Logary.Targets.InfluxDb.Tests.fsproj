@@ -41,7 +41,7 @@
   <ItemGroup>
     <Compile Include="..\..\..\paket-files\haf\expecto-patronum\ExpectoPatronum\Assert.fs">
       <Paket>True</Paket>
-      <Link>paket-files/Assert.fs</Link>
+      <Link>paket-files\Assert.fs</Link>
     </Compile>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Program.fs" />
@@ -54,6 +54,10 @@
     <ProjectReference Include="..\..\Logary\Logary.fsproj">
       <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
       <Name>Logary</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Logary.Targets.InfluxDb\Logary.Targets.InfluxDb.fsproj">
+      <Project>{4ACE8A29-6D75-4956-B45C-22C82EAFCFD5}</Project>
+      <Name>Logary.Targets.InfluxDb</Name>
     </ProjectReference>
   </ItemGroup>
   <Choose>

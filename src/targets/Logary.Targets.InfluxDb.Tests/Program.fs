@@ -8,26 +8,39 @@ open Logary
 open Logary.Targets.InfluxDb
 
 [<Tests>]
-let transformToMessage =
-  testList "converting a Logary Message to a InfluxDb Message" [
-    testCase "simplest valid point (measurement + field)" <| fun _ ->
-      let metricValue =
-        Message.metric (PointName.parse "hpc-c-001.windows.cpu % usage") 
-                       (Value.Float 0.33)
-      Assert.StringContains("should contain value",
-        "0.33i",
-        msgToString metricValue)
+let lineProtocol =
+  testList "syntax for line protocol" [
+    // measurement[,tag_key1=tag_value1...] field_key=field_value[,field_key2=field_value2] [timestamp]
 
-    testCase "With timestamp" <| fun _ ->
-      let metricValue =
-        Message.metric (PointName.parse "")
-                       (Value.Float 0.22)
-        |> Message.setNanoEpoch (1435362189575692182L)
+    testCase "serialise timestamp" <| fun _ ->
+      Assert.equal (Serialisation.serialiseTimestamp 1439587925L)
+                   "1439587925"
+                   "Should be identical to Logary"
 
+    testCase "for example 1" <| fun _ ->
+      let msg =
+        Message.metric (PointName.ofSingle "measurement") (Float 12.)
+        |> Message.setNanoEpoch 1439587925L
+      let subject = Serialisation.serialiseMessage msg
+      Assert.equal subject "measurement value=12 1439587925"
+                   "should serialise correctly"
 
-      Assert.StringContains("should have a timestamp when included in the message",
-        "1435362189575692182",
-        msgToString metricValue)
+    testCase "for example" <| fun _ ->
+      let msg =
+        Object
+          ([ "value", Float 12.
+             "otherVal", Float 21. ] |> Map.ofList)
+        |> Message.metric (PointName.ofSingle "measurement")
+        |> Message.contextValue "foo" (String "bar")
+        |> Message.contextValue "bat" (String "baz")
+        // Timestamps must be in Unix time and are assumed to be in nanoseconds
+        |> Message.setNanoEpoch 1439587925L
+
+      let subject = Serialisation.serialiseMessage msg
+
+      Assert.equal subject
+                   "measurement,bat=baz,foo=bar otherVal=21,value=12 1439587925"
+                   "should equal"
   ]
 
 [<EntryPoint>]

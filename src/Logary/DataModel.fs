@@ -20,8 +20,8 @@ type Value =
   | BigInt of bigint
   | Binary of byte [] * ContentType
   | Fraction of int64 * int64
-  | Object of Map<string, Value> // NOTE: moved from ComplexValue
-  | Array of Value list // NOTE: moved from ComplexValue
+  | Object of Map<string, Value>
+  | Array of Value list
 
   (* Isomorphisms *)
 
