@@ -2,7 +2,7 @@
 
 open Hopac
 open Hopac.Infixes
-
+open HttpFs.Client
 open Logary
 open Logary.Target
 open Logary.Internals
@@ -177,25 +177,30 @@ type InfluxDbConf =
     /// sets the target retention policy for the write. If not present the default retention policy is used
     retention : string option }
 
+  static member create(ep, db, ?user, ?password, ?consistency, ?retention) =
+    { endpoint    = ep
+      db          = db
+      user        = defaultArg user None
+      password    = defaultArg password None
+      consistency = defaultArg consistency Quorum
+      retention   = defaultArg retention None }
+
 let empty =
   { endpoint    = Uri "http://127.0.0.1/write"
     db          = "SET_ME"
     user        = None
     password    = None
     consistency = Quorum
-    retention   = None}
+    retention   = None }
 
 // When creating a new target this module gives the barebones
 // for the approach you may need to take.
 module internal Impl =
 
-  // This is a placeholder for specific implementations
-  type State = { state : bool }
-
   let loop (conf : InfluxDbConf) (ri : RuntimeInfo)
            (requests : BoundedMb<_>)
            (shutdown : Ch<_>) =
-    let rec loop (state : State) : Job<unit> =
+    let rec loop () : Job<unit> =
       Alt.choose [
         shutdown ^=> fun ack ->
           ack *<= () :> Job<_>
@@ -203,23 +208,27 @@ module internal Impl =
         // 'When there is a request' call this function
         BoundedMb.take requests ^=> function
           | Log (msg, ack) ->
-            job {
-              // do something with the message
-              // specific to the target you are creating
+            let body = Serialisation.serialiseMessage msg
+            let req =
+              createRequest Post conf.endpoint
+              |> withQueryStringItem "db" conf.db
+              |> withBody (BodyString body)
 
-              // This is a simple acknowledgement using unit as the signal
+            job {
+              use! resp = getResponse req
+              if resp.StatusCode <> 200 then failwithf "got response code %i" resp.StatusCode
               do! ack *<= ()
-              return! loop { state = not state.state }
+              return! loop ()
             }
           
           | Flush (ackCh, nack) ->
             job {
               do! Ch.give ackCh () <|> nack
-              return! loop { state = not state.state }
+              return! loop ()
             }
       ] :> Job<_>
 
-    loop { state = false }
+    loop ()
 
 /// Create a new Noop target
 let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)

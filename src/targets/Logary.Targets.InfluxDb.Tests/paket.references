@@ -6,3 +6,5 @@ Fuchu
 Fuchu.FsCheck
 Unquote
 File:Assert.fs
+Suave
+Http.fs-prerelease
