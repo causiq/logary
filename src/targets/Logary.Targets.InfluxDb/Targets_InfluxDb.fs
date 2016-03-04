@@ -186,8 +186,8 @@ type InfluxDbConf =
       retention   = defaultArg retention None }
 
 let empty =
-  { endpoint    = Uri "http://127.0.0.1/write"
-    db          = "SET_ME"
+  { endpoint    = Uri "http://127.0.0.1:8086/write"
+    db          = "logary"
     user        = None
     password    = None
     consistency = Quorum
@@ -200,6 +200,12 @@ module internal Impl =
   let loop (conf : InfluxDbConf) (ri : RuntimeInfo)
            (requests : BoundedMb<_>)
            (shutdown : Ch<_>) =
+    let endpoint =
+      let ub = UriBuilder(conf.endpoint)
+      ub.Path <- "/write"
+      ub.Query <- "db=" + conf.db
+      ub.Uri
+
     let rec loop () : Job<unit> =
       Alt.choose [
         shutdown ^=> fun ack ->
@@ -210,13 +216,19 @@ module internal Impl =
           | Log (msg, ack) ->
             let body = Serialisation.serialiseMessage msg
             let req =
-              createRequest Post conf.endpoint
-              |> withQueryStringItem "db" conf.db
+              createRequest Post endpoint
               |> withBody (BodyString body)
 
             job {
               use! resp = getResponse req
-              if resp.StatusCode <> 200 then failwithf "got response code %i" resp.StatusCode
+              if resp.StatusCode > 299 then
+                let! body = Response.readBodyAsString resp
+                do! Logger.log ri.logger (
+                      Message.event Error "problem receiving response"
+                      |> Message.field "statusCode" resp.StatusCode
+                      |> Message.field "body" body)
+                printfn "body: %s, response %A" body resp
+                failwithf "got response code %i" resp.StatusCode
               do! ack *<= ()
               return! loop ()
             }

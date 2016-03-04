@@ -12,6 +12,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{65
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.ConsoleApp", "..\examples\Logary.ConsoleApp\Logary.ConsoleApp.fsproj", "{178B23D3-F676-43C3-880D-9E0BEFBAF019}"
 EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.MetricsWriter", "..\examples\Logary.MetricsWriter\Logary.MetricsWriter.fsproj", "{1724A791-AC1F-4F79-9E1D-AB8F125B85BF}"
+EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Tests", "tests\Logary.Tests\Logary.Tests.fsproj", "{886DFAE8-C01A-43E2-A275-7F1E41CA0342}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "metrics", "metrics", "{152C4686-D809-4B56-8512-1DCD3469921B}"
@@ -52,6 +54,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1724A791-AC1F-4F79-9E1D-AB8F125B85BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1724A791-AC1F-4F79-9E1D-AB8F125B85BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1724A791-AC1F-4F79-9E1D-AB8F125B85BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1724A791-AC1F-4F79-9E1D-AB8F125B85BF}.Release|Any CPU.Build.0 = Release|Any CPU
 		{178B23D3-F676-43C3-880D-9E0BEFBAF019}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{178B23D3-F676-43C3-880D-9E0BEFBAF019}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{178B23D3-F676-43C3-880D-9E0BEFBAF019}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -115,6 +121,7 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{178B23D3-F676-43C3-880D-9E0BEFBAF019} = {652F0AC7-EDBB-4B13-98C8-3FF6FBF38C90}
+		{1724A791-AC1F-4F79-9E1D-AB8F125B85BF} = {652F0AC7-EDBB-4B13-98C8-3FF6FBF38C90}
 		{DD5137FC-22E5-47DA-88F1-3D3F1E7E8381} = {152C4686-D809-4B56-8512-1DCD3469921B}
 		{BC4A5F70-0785-40D6-9EBE-4BB0E47A9EEC} = {9EDEE48D-A88E-40D4-A460-616047ACEE08}
 		{EDE8A833-C15D-47FE-BFF2-0A24FAA22728} = {9EDEE48D-A88E-40D4-A460-616047ACEE08}

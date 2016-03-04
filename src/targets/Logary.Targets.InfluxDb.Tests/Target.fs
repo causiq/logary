@@ -9,7 +9,6 @@ open System.Text
 open System.Threading
 open Fuchu
 open Suave
-open Suave.Successful
 open Suave.Operators
 open Hopac
 open Hopac.Infixes
@@ -33,8 +32,7 @@ let finaliseTarget = Target.shutdown >> fun a ->
   | TimedOut -> Tests.failtest "finalising target timeout"
   | TimeoutResult.Success _ -> ()
 
-type State(cts : CancellationTokenSource
-  ) =
+type State(cts : CancellationTokenSource) =
   let request = IVar ()
 
   member x.req = request
@@ -55,7 +53,7 @@ let writesOverHttp =
     let listening, srv =
       startWebServerAsync cfg (request (fun r ->
         IVar.fill state.req r |> run
-        OK "HO HO HO"))
+        Successful.NO_CONTENT))
     Async.Start srv
     listening |> Async.Ignore |> Async.RunSynchronously
     state
@@ -72,12 +70,15 @@ let writesOverHttp =
         |> run
         |> run
 
-        let body =
+        let req =
           IVar.read state.req
           |> run
-          |> fun (r : HttpRequest) -> r.rawForm |> Encoding.UTF8.GetString
 
-        Assert.equal body (Serialisation.serialiseMessage msg) "should eq"
+        Assert.equal (req.rawForm |> Encoding.UTF8.GetString)
+                     (Serialisation.serialiseMessage msg)
+                     "should eq"
+
+        Assert.equal (req.queryParam "db") (Choice1Of2 "tests") "should write to tests db"
       finally
         finaliseTarget target
   ]
