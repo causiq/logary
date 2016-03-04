@@ -82,6 +82,49 @@ let lineProtocol =
       Assert.equal (Serialisation.serialiseMessage msg)
                    @"total\ disk\ free,volumes=/net\,/home\,/ value=442221834240i 1435362189575692182"
                    "should equal"
+
+    testCase "Escaping Equals Signs" <| fun _ ->
+      Tests.skiptest "TODO"
+
+      let msg =
+        Message.metric (PointName.ofSingle "disk_free") (Int64 442221834240L)
+        |> Message.contextValue "a=b" (String "x=z")
+        |> Message.setNanoEpoch 1435362189575692182L
+
+      Assert.equal (Serialisation.serialiseMessage msg)
+                   @"disk_free,a\=b=y\=z value=442221834240i 1435362189575692182"
+                   "should equal"
+
+    testCase "With Backslash in Tag Value" <| fun _ ->
+      Tests.skiptest "TODO"
+
+      let msg =
+        Message.metric (PointName.ofSingle "disk_free") (Int64 442221834240L)
+        |> Message.contextValue "path" (String @"C:\Windows")
+        |> Message.setNanoEpoch 1435362189575692182L
+
+      Assert.equal (Serialisation.serialiseMessage msg)
+                   @"disk_free,path=C:\Windows value=442221834240i 1435362189575692182"
+                   "should equal"
+
+    testCase "Escaping Field Key" <| fun _ ->
+      Tests.skiptest "TODO"
+
+      let msg =
+        Message.metric (PointName.ofSingle "disk_free") (
+          Object ([ "value", Int64 442221834240L
+                    "working directories", String @"C:\My Documents\Stuff for examples,C:\My Documents" ]
+                  |> Map.ofList))
+        |> Message.setNanoEpoch 1435362189575692182L
+
+      Assert.equal (Serialisation.serialiseMessage msg)
+                   @"disk_free value=442221834240i,working\ directories=""C:\My Documents\Stuff for examples,C:\My Documents"""
+                   "should equal"
+
+    testCase "Showing all escaping and quoting behavior" <| fun _ ->
+      Tests.skiptest "TODO"
+
+      // TODO: type out test from https://docs.influxdata.com/influxdb/v0.10/write_protocols/write_syntax/
   ]
 
 [<EntryPoint>]
