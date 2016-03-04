@@ -72,6 +72,16 @@ let lineProtocol =
       Assert.equal (Serialisation.serialiseMessage msg)
                    "disk_free disk_type=\"SSD\",free_space=442221834240i 1435362189575692182"
                    "should equal"
+
+    testCase "Escaping Commas and Spaces" <| fun _ ->
+      let msg =
+        Message.metric (PointName.ofSingle "total disk free") (Int64 442221834240L)
+        |> Message.contextValue "volumes" (String "/net,/home,/")
+        |> Message.setNanoEpoch 1435362189575692182L
+
+      Assert.equal (Serialisation.serialiseMessage msg)
+                   @"total\ disk\ free,volumes=/net\,/home\,/ value=442221834240i 1435362189575692182"
+                   "should equal"
   ]
 
 [<EntryPoint>]

@@ -13,14 +13,18 @@ module Serialisation =
   let serialiseTimestamp (ts : EpochNanoSeconds) =
     ts.ToString(Culture.invariant)
 
+  let escapeString (s : string) =
+    s.Replace(" ", @"\ ")
+     .Replace(",", @"\,")
+
   let serialiseStringTag (s : string) =
-    s
+    escapeString s
 
   let serialiseStringValue (s : string) =
-    "\"" + s + "\""
+    "\"" + escapeString s + "\""
 
   let serialisePointName (pn : PointName) =
-    pn.ToString()
+    escapeString (pn.ToString())
 
   let printTags = function
     | [] ->
