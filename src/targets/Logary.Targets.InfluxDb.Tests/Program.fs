@@ -41,6 +41,37 @@ let lineProtocol =
       Assert.equal subject
                    "measurement,bat=baz,foo=bar otherVal=21,value=12 1439587925"
                    "should equal"
+
+    testCase "Simplest Valid Point (measurement + field + ts)" <| fun _ ->
+      let msg =
+        Message.metric (PointName.ofSingle "disk_free") (Int64 442221834240L)
+        |> Message.setNanoEpoch 1435362189575692182L
+
+      Assert.equal (Serialisation.serialiseMessage msg)
+                   "disk_free value=442221834240i 1435362189575692182"
+                   "should equal"
+
+    testCase "With Tags + ts" <| fun _ ->
+      let msg =
+        Message.metric (PointName.ofSingle "disk_free") (Int64 442221834240L)
+        |> Message.contextValue "hostname" (String "server01")
+        |> Message.contextValue "disk_type" (String "SSD")
+        |> Message.setNanoEpoch 1435362189575692182L
+
+      Assert.equal (Serialisation.serialiseMessage msg)
+                   "disk_free,disk_type=SSD,hostname=server01 value=442221834240i 1435362189575692182"
+                   "should equal"
+
+    testCase "Multiple Fields" <| fun _ ->
+      let msg =
+        Message.metric (PointName.ofSingle "disk_free") (
+          Object ([ "free_space", Int64 442221834240L
+                    "disk_type", String "SSD" ] |> Map.ofList))
+        |> Message.setNanoEpoch 1435362189575692182L
+
+      Assert.equal (Serialisation.serialiseMessage msg)
+                   "disk_free disk_type=\"SSD\",free_space=442221834240i 1435362189575692182"
+                   "should equal"
   ]
 
 [<EntryPoint>]

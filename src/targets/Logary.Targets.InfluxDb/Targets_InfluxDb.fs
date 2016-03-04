@@ -13,8 +13,11 @@ module Serialisation =
   let serialiseTimestamp (ts : EpochNanoSeconds) =
     ts.ToString(Culture.invariant)
 
-  let serialiseString (s : string) =
+  let serialiseStringTag (s : string) =
     s
+
+  let serialiseStringValue (s : string) =
+    "\"" + s + "\""
 
   let serialisePointName (pn : PointName) =
     pn.ToString()
@@ -47,8 +50,10 @@ module Serialisation =
       >> Seq.sortBy fst
       >> List.ofSeq
 
-    let rec simpleValue (kvs : (string * string) list)
-                        (values : (string * string) list) = function
+    let rec simpleValue
+      isTag
+      (kvs : (string * string) list)
+      (values : (string * string) list) = function
       | Float v ->
         kvs, ("value", v.ToString(Culture.invariant)) :: values
 
@@ -56,7 +61,8 @@ module Serialisation =
         kvs, ("value", v.ToString(Culture.invariant) + "i") :: values
 
       | String s ->
-        kvs, ("value", serialiseString s) :: values
+        let fser = if isTag then serialiseStringTag else serialiseStringValue
+        kvs, ("value", fser s) :: values
 
       | Bool true ->
         kvs, ("value", "true") :: values
@@ -89,14 +95,14 @@ module Serialisation =
       | Array _ as a ->
         complexValue kvs values a
 
-    and extractSimple v =
-      match simpleValue [] [] v with
+    and extractSimple isTag v =
+      match simpleValue isTag [] [] v with
       | _, (_, str) :: _ -> Some str
       | _ -> None
 
     and complexValue kvs values = function
       | Object mapKvs ->
-        let newValues = mapKvs |> mapExtract extractSimple
+        let newValues = mapKvs |> mapExtract (extractSimple false)
         kvs, newValues @ values
 
       | Array arr ->
@@ -105,7 +111,7 @@ module Serialisation =
             acc
 
           | h :: tail ->
-            match extractSimple h with
+            match extractSimple false h with
             | Some str ->
               array (i + 1) ((sprintf "arr_%i" i, str) :: acc) tail
             | None ->
@@ -118,22 +124,22 @@ module Serialisation =
 
     let outer context =
       let context' =
-        context |> mapExtract extractSimple
+        context |> mapExtract (extractSimple true)
 
       function
       | Gauge (value, Scalar)
       | Derived (value, Scalar) ->
-        simpleValue context' [] value
+        simpleValue false context' [] value
 
       | Gauge (value, units)
       | Derived (value, units) ->
-        let kvs, values = simpleValue context' [] value
+        let kvs, values = simpleValue false context' [] value
         ("unit", Units.symbol units) :: kvs,
         values
 
       | Event templ ->
         // TODO: provide hash
-        simpleValue context' [] (Value.Int64 1L)
+        simpleValue false context' [] (Value.Int64 1L)
 
     let kvs, values = outer message.context message.value
 
