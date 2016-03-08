@@ -26,7 +26,7 @@ NUGET
     FsCheck (2.2.4)
       FSharp.Core (>= 3.1.2.5)
     FSharp.Control.AsyncSeq (2.0.3)
-    FSharp.Core (3.1.2.5)
+    FSharp.Core (4.0.0.1)
     FSharpx.Async (1.12.0)
       FSharp.Control.AsyncSeq
     FSharpx.Collections (1.14.0)
@@ -92,3 +92,14 @@ GITHUB
   remote: haf/expecto-patronum
   specs:
     ExpectoPatronum/Assert.fs (26e41c24000c7bcdcae3e9c0be942b71d11dae20)
+GROUP Library
+NUGET
+  remote: https://www.nuget.org/api/v2
+  specs:
+    FSharp.Core (3.1.2.5)
+
+GROUP Services
+NUGET
+  remote: https://www.nuget.org/api/v2
+  specs:
+    FSharp.Core (4.0.0.1)

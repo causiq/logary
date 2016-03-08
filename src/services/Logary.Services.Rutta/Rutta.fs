@@ -255,12 +255,19 @@ module Serialisation =
 
 module Shipper =
   open System
+  open System.Threading
   open Nessos.FsPickler
+  open NodaTime
   open Hopac
   open Hopac.Infixes
   open Logary
   open Logary.Target
+  open Logary.Targets
+  open Logary.Metric
+  open Logary.Metrics
+  open Logary.Metrics.WinPerfCounter
   open Logary.Internals
+  open Logary.Configuration
   open fszmq
   open fszmq.Socket
 
@@ -286,6 +293,7 @@ module Shipper =
       let context = new Context()
       let sender = createSocket context
       Socket.connect sender connectTo
+      //Socket.bind sender connectTo
       { zmqCtx = context
         sender = sender }
 
@@ -345,11 +353,91 @@ module Shipper =
     interface Logary.Target.FactoryApi.SpecificTargetConf with
       member x.Build name = create conf name
 
-  let internal pushTo connectTo pars : Choice<unit, string> =
+  module internal Sample =
+  
+    let metricFrom counters pn : Job<Metric> =
+      let reducer state = function
+        | _ ->
+          state
+
+      let toValue (counter : PerfCounter, pc : PC) =
+        let value = WinPerfCounter.nextValue pc
+        Float value
+        |> Message.metricWithUnit pn Units.Scalar
+        |> Message.setName (PointName.ofPerfCounter counter)
+
+      let ticker state =
+        state, state |> List.map toValue
+
+      let counters =
+        counters
+        |> List.map (fun counter -> counter, WinPerfCounter.toPC counter)
+        |> List.filter (snd >> Option.isSome)
+        |> List.map (fun (counter, pc) -> counter, Option.get pc)
+
+      Metric.create reducer counters ticker
+
+    let cpuTime pn : Job<Metric> =
+      metricFrom WinPerfCounters.Common.cpuTime pn
+
+    let m6000s pn : Job<Metric> =
+      let gpu counter instance =
+        { category = "GPU"
+          counter  = counter
+          instance = Instance instance }
+
+      let counters =
+        [ for inst in [ "08:00"; "84:00" ] do
+            let inst' = sprintf "quadro m6000(%s)" inst
+            yield gpu "GPU Fan Speed (%)" inst'
+            yield gpu "GPU Time (%)" inst'
+            yield gpu "GPU Memory Usage (%)" inst'
+            yield gpu "GPU Memory Used (MB)" inst'
+            yield gpu "GPU Power Usage (Watts)" inst'
+            yield gpu "GPU SM Clock (MHz)" inst'
+            yield gpu "GPU Temperature (degrees C)" inst'
+        ]
+
+      metricFrom counters pn
+
+  let private runLogary shipperConf =
+    // TODO: handle with configuration, selection of what data points to
+    // gather.
+    
+    use mre = new ManualResetEventSlim(false)
+    use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
+
+    use logary =
+      withLogaryManager "Logary.Examples.ConsoleApp" (
+        withTargets [
+          Console.create (Console.empty) (PointName.ofSingle "console")
+          create shipperConf (PointName.ofSingle "rutta-shipper")
+        ] >>
+        withMetrics [
+          //WinPerfCounters.create (WinPerfCounters.Common.cpuTimeConf) "cpuTime" (Duration.FromMilliseconds 500L)
+          MetricConf.create (Duration.FromMilliseconds 500L) (PointName.ofSingle "cpu") Sample.cpuTime
+          MetricConf.create (Duration.FromMilliseconds 500L) (PointName.ofSingle "gpu") Sample.m6000s
+        ] >>
+        withRules [
+          Rule.createForTarget (PointName.ofSingle "console")
+          Rule.createForTarget (PointName.ofSingle "rutta-shipper")
+        ] >>
+        withInternalTargets Info [
+          Console.create Console.empty (PointName.ofSingle "console")
+        ]
+      )
+      |> run
+
+    mre.Wait()
     Choice.create ()
 
+  let internal pushTo connectTo pars : Choice<unit, string> =
+    printfn "%s" "spawning shipper in PUSH mode"
+    runLogary (PushTo connectTo)
+
   let internal pubTo connectTo pars : Choice<unit, string> =
-    Choice.create ()
+    printfn "%s" "spawning shipper in PUB mode"
+    runLogary (PublishTo connectTo)
 
 module Router =
 
@@ -377,12 +465,18 @@ module Router =
   let private init binding createSocket mode : State =
     let context = new Context()
     let receiver = createSocket context
-    Socket.bind receiver binding
-
+    
     let forwarder =
       withLogaryManager (sprintf "Logary Rutta[%s]" mode) (
-        withTarget (Noop.create Noop.empty (PointName.ofSingle "influxdb"))
-        >> withRule (Rule.createForTarget (PointName.ofSingle "influxdb"))
+        withTargets [
+          //Console.create Console.empty (PointName.ofSingle "console")
+          InfluxDb.create (InfluxDb.InfluxDbConf.create(Uri "http://172.25.3.15:8086/write", "bhf-sthlm-hpc"))
+                          (PointName.ofSingle "influxdb")
+        ]
+        >> withRules [
+          Rule.createForTarget (PointName.ofSingle "influxdb")
+          //Rule.createForTarget (PointName.ofSingle "console")
+        ]
       )
       |> run
 
@@ -395,54 +489,55 @@ module Router =
 
   let rec private recvLoop receiver logger =
     match Socket.recvAll receiver with
-    | null
-    | [||] ->
-      // note: sending empty messages
-      ()
-
+    // note: sending empty messages
+    | null | [||] -> ()
     | datas ->
-      //Binary.unpickle msgPickler data
-      Serialisation.deserialise datas
+      let message = Serialisation.deserialise datas
+
+      message
       |> Logger.logWithAck logger
-      |> Job.Ignore
+      |> run
       |> queue
 
       recvLoop receiver logger
 
   let pullFrom binding = function
     | Router_Target ep :: _ ->
+      printfn "spawning router in PULL mode from %s" binding
       use state = init binding Context.pull "PULL"
-      recvLoop state.receiver state.logger
-      |> Choice1Of2
+      Socket.bind state.receiver binding
+      Choice.create (recvLoop state.receiver state.logger)
 
     | x ->
       Choice2Of2 (sprintf "unknown parameter(s) %A" x)
 
   let xsubBind binding pars : Choice<unit, string> =
-    use state = init binding Context.xsub "XSUB"
-    recvLoop state.receiver state.logger
-    Choice.create ()
+    printfn "spawning router in SUB mode from %s" binding
+    use state = init binding Context.sub "SUB"
+    Socket.subscribe state.receiver [""B]
+    Socket.connect state.receiver binding
+    Choice.create (recvLoop state.receiver state.logger)
 
 module Proxy =
-
+  open Logary
   open fszmq
   open fszmq.Socket
 
   let proxy xsubBind xpubBind _ =
-    printfn """Proxy usage: takes the read-socket and then the write-socket
-    --proxy-mode tcp://127.0.0.1:6556 tcp://127.0.0.1:5555
-  """
+    printfn """Proxy usage: takes the XSUB read-socket (that PUB sockets CONNECT to) \
+               and then the XPUB write-socket (that SUB sockets CONNECT to). \
+               --proxy %s %s"""
+            xsubBind xpubBind
 
     use context = new Context()
-    use writer = Context.xsub context
-    bind writer xpubBind
-
-    use reader = Context.xpub context
+    use reader = Context.xsub context
     bind reader xsubBind
 
+    use writer = Context.xpub context
+    bind writer xpubBind
+
     printfn "%s" "spawning proxy"
-    Proxying.proxy writer reader None
-    Choice1Of2 ()
+    Choice.create (Proxying.proxy reader writer None)
 
 module Program =
 
@@ -552,4 +647,8 @@ module Program =
 
   [<EntryPoint>]
   let main argv =
-    if Type.GetType "Mono.Runtime" <> null then startUnix argv else startWindows argv
+    let isDashed = argv.Length >= 1 && argv.[0] = "--"
+    if Type.GetType "Mono.Runtime" <> null || isDashed then
+      startUnix (if isDashed then argv.[1..] else argv)
+    else
+      startWindows argv

@@ -14,8 +14,16 @@ module Serialisation =
     ts.ToString(Culture.invariant)
 
   let escapeString (s : string) =
-    s.Replace(" ", @"\ ")
+    s.ToLowerInvariant()
+    //s.Replace(" ", @"\ ")
      .Replace(",", @"\,")
+
+    // TEMP:
+     .Replace(" ", "_")
+     .Replace("%", "pct")
+     .Replace(":", "_")
+     .Replace("(", "_lpar_")
+     .Replace(")", "_rpar_")
 
   let serialiseStringTag (s : string) =
     escapeString s
@@ -215,22 +223,23 @@ module internal Impl =
         BoundedMb.take requests ^=> function
           | Log (msg, ack) ->
             let body = Serialisation.serialiseMessage msg
-            let req =
-              createRequest Post endpoint
-              |> withBody (BodyString body)
-
             job {
+              let req =
+                createRequest Post endpoint
+                |> withKeepAlive true
+                |> withBody (BodyString body)
               use! resp = getResponse req
+              let! body = Response.readBodyAsString resp
               if resp.StatusCode > 299 then
-                let! body = Response.readBodyAsString resp
                 do! Logger.log ri.logger (
                       Message.event Error "problem receiving response"
                       |> Message.field "statusCode" resp.StatusCode
                       |> Message.field "body" body)
                 printfn "body: %s, response %A" body resp
                 failwithf "got response code %i" resp.StatusCode
-              do! ack *<= ()
-              return! loop ()
+              else
+                do! ack *<= ()
+                return! loop ()
             }
           
           | Flush (ackCh, nack) ->

@@ -7,7 +7,6 @@ nuget Common.Logging.Core
 nuget EventStore.Client.PreRelease
 nuget FsMachines
 nuget FsPickler
-nuget fszmq
 nuget Hopac
 nuget Mailgun.Api
 nuget elmah.corelibrary
@@ -17,7 +16,6 @@ nuget FluentMigrator
 nuget FluentMigrator.Runner
 nuget FParsec
 nuget FsCheck
-nuget FSharp.Core ~> 3
 nuget FsSql
 nuget FsUnit
 nuget Fuchu
@@ -33,14 +31,23 @@ nuget protobuf-net
 nuget RestSharp
 nuget Suave
 nuget System.Data.SQLite.Core
-nuget Topshelf
-nuget Topshelf.FSharp
 nuget Argu
 nuget Unquote
 nuget Hawk
 nuget Http.fs-prerelease
+nuget Topshelf
+nuget Topshelf.FSharp
+nuget fszmq
 
 github xyncro/chiron:e0f4c122b21cb02d47ae3f4f83924b2dcb8dea9e src/Chiron/Chiron.fs
 github xyncro/aether:5b5c05db2414562e9f3f679d42284638e63b9f3a src/Aether/Aether.fs
 github haf/YoLo YoLo.fs
 github haf/expecto-patronum ExpectoPatronum/Assert.fs
+
+group Library
+  source https://www.nuget.org/api/v2
+  nuget FSharp.Core ~> 3
+
+group Services
+  source https://www.nuget.org/api/v2
+  nuget FSharp.Core ~> 4

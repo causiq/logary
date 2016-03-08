@@ -1,4 +1,5 @@
-﻿module Logary.Configuration_Uri
+﻿namespace Logary.Configuration
+
 open Microsoft.FSharp.Reflection
 open System
 open System.Reflection
@@ -14,42 +15,43 @@ type internal Helper() =
       .MakeGenericMethod(t)
       .Invoke(null, null)
 
-let parseConfig<'recordType> uriString =
-//  let parsedPort = 8086us
-//  let dbName = "dbName"
+module Uri =
+  let parseConfig<'recordType> uriString =
+  //  let parsedPort = 8086us
+  //  let dbName = "dbName"
   
-  let endpoint = "{scheme}user:pass@host:8086/write"
+    let endpoint = "{scheme}user:pass@host:8086/write"
 
-  let argVals = 
-    let uri = Uri uriString
+    let argVals = 
+      let uri = Uri uriString
 
-    let convertTo t (v:string) : obj=
-      match t with
-      | t when t = typeof<string> ->
-        box v
+      let convertTo t (v:string) : obj=
+        match t with
+        | t when t = typeof<string> ->
+          box v
 
-      | t when t = typeof<int32> ->
-        box (int v)
+        | t when t = typeof<int32> ->
+          box (int v)
 
-    let qVals = 
-      uri.Query
-      |> String.trimc '?'
-      |> String.split '&'
-      |> List.map (String.split '=' >> function
-        | [ k; v] -> k, v
-        | other -> failwithf "unexpected %A" other)
-      |> Map.ofList
+      let qVals = 
+        uri.Query
+        |> String.trimc '?'
+        |> String.split '&'
+        |> List.map (String.split '=' >> function
+          | [ k; v] -> k, v
+          | other -> failwithf "unexpected %A" other)
+        |> Map.ofList
 
-    FSharpType.GetRecordFields(typeof<'recordType>)
-    |> Array.map (fun p ->
-      p.PropertyType, p.Name)
+      FSharpType.GetRecordFields(typeof<'recordType>)
+      |> Array.map (fun p ->
+        p.PropertyType, p.Name)
 
-    |> Array.map (fun (t,n) ->
-      match qVals |> Map.tryFind n with
-      | Some v ->
-        v |> convertTo t
+      |> Array.map (fun (t,n) ->
+        match qVals |> Map.tryFind n with
+        | Some v ->
+          v |> convertTo t
 
-      | None ->
-        Helper.getDefault t)
+        | None ->
+          Helper.getDefault t)
 
-  FSharpValue.MakeRecord(typeof<'recordType>, argVals) :?> 'recordType
+    FSharpValue.MakeRecord(typeof<'recordType>, argVals) :?> 'recordType
