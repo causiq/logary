@@ -1,46 +1,50 @@
 #r "../../../packages/Suave/lib/net40/Suave.dll"
-open Suave.Web
+open Suave
 open Suave.Http
 open Suave.RequestErrors
 open Suave.Filters
+open Suave.Operators
 
 #I "../../../packages/FParsec/lib/net40-client"
 //#r "../../../packages/FParsec/lib/net40-client/FParsecCS.dll"
 #r "../../../packages/FParsec/lib/net40-client/FParsec.dll"
-#r "../../../packages/Aether/lib/net40/Aether.dll"
-#r "../../../packages/Chiron/lib/net45/Chiron.dll"
+#r "../../../packages/Aether/lib/net35/Aether.dll"
+#r "../../../packages/Chiron/lib/net40/Chiron.dll"
 #r "../../../packages/NodaTime/lib/net35-Client/NodaTime.dll"
 
 #I "bin/Debug"
 #r "bin/Debug/Logary.dll"
+#r "bin/Debug/Hopac.Core.dll"
+#r "bin/Debug/Hopac.dll"
 open Logary
 open Logary.Configuration
 open Logary.Targets
+open Hopac
+#load "../../../paket-files/haf/YoLo/YoLo.fs"
 #load "SuaveReporter.fs"
 open Logary.Services
-
 open System.IO
 
-let root = Path.GetFullPath "./app"
+let root = Path.GetFullPath (Path.Combine (__SOURCE_DIRECTORY__, "app"))
 
 let logary =
-  withLogary' "Logary.Services.SuaveReporter" (
+  withLogaryManager "Logary.Services.SuaveReporter" (
     withTargets [
-      Console.create Console.empty "console"
+      Console.create Console.empty (PointName.ofSingle "console")
     ] >>
     withRules [
-      Rule.createForTarget "console"
+      Rule.createForTarget (PointName.ofSingle "console")
     ]
   )
+  |> run
 
 startWebServer defaultConfig (
   choose [
-    path "/" >>= Files.browseFile root "index.html"
+    path "/" >=> Files.browseFile root "index.html" >=> Writers.setMimeType "text/html; charset=utf-8"
     Files.browse root
-    SuaveReporter.api (logary.GetLogger "Logary.Services.SuaveReporter") None
+    SuaveReporter.api (logary.getLogger (PointName.parse "Logary.Services.SuaveReporter")) None
     NOT_FOUND "Couldn't find the file you were looking for"
   ])
-
 
 (* Sample input
 {
