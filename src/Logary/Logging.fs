@@ -15,13 +15,10 @@ open Logary
 open Logary.Registry.Logging
 open Logary.Internals
 
-////////////////
-// PUBLIC API //
-////////////////
-
 /// Gets the current name, as defined by the class-name + namespace that the logger is in.
 [<CompiledName "GetCurrentLoggerName"; MethodImpl(MethodImplOptions.NoInlining); Pure>]
 let getCurrentLoggerName () =
+  let toSkip = 2
   let getName (meth : MethodBase, dt : Type) =
     match dt with
     | null -> PointName.ofSingle meth.Name
@@ -29,6 +26,7 @@ let getCurrentLoggerName () =
   let sf, m = let sf' = StackFrame(toSkip, false) in sf', sf'.GetMethod()
   let cont (dt : Type) = not <| (dt = null) && dt.Module.Name.Equals("mscorlib.dll", StringComparison.OrdinalIgnoreCase)
   let frame_still_unrolling_or_is_in_dotnet_core = cont << snd
+  let successor s = Some (s+1, s+1)
 
   Seq.unfold successor toSkip
   |> Seq.map (fun framesToSkip -> let m = StackFrame(framesToSkip, false).GetMethod() in m, m.DeclaringType)
@@ -58,11 +56,10 @@ let getLoggerByPointName name =
 /// Gets a logger by a given name.
 [<CompiledName "GetLoggerByName">]
 let getLoggerByName name =
-  PointName.parse name
-  |> getLoggerByPointName
+  getLoggerByPointName (PointName.parse name)
 
 /// Gets the current logger from the context that this method was called
 /// in.
 [<CompiledName "GetCurrentLogger"; MethodImpl(MethodImplOptions.NoInlining)>]
 let getCurrentLogger () =
-  getLoggerByPointName <| getCurrentLoggerName ()
+  getLoggerByPointName (getCurrentLoggerName ())

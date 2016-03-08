@@ -103,14 +103,6 @@ module internal List =
     List.foldBack folder list initState
 
 [<AutoOpen>]
-module internal UtilFns =
-  let flip f a b = f b a
-
-  let successor s = Some (s+1, s+1)
-  let toSkip = 2
-  let (|IsNull|_|) value = if obj.ReferenceEquals(value, null) then Some() else None
-
-[<AutoOpen>]
 module internal Comparison =
   let thenCompare (a : 'a) (b : 'a) = function
     | 0 -> compare a b
