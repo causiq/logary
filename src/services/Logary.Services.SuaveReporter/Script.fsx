@@ -1,8 +1,8 @@
 #r "../../../packages/Suave/lib/net40/Suave.dll"
 open Suave.Web
 open Suave.Http
-open Suave.Http.RequestErrors
-open Suave.Http.Applicatives
+open Suave.RequestErrors
+open Suave.Filters
 
 #I "../../../packages/FParsec/lib/net40-client"
 //#r "../../../packages/FParsec/lib/net40-client/FParsecCS.dll"
