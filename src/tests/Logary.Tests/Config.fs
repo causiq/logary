@@ -9,8 +9,8 @@ open NodaTime
 
 open Logary
 open Logary.Configuration
+open Logary.Configuration.Uri
 open Logary.Targets
-open Logary.Configuration_Uri
 
 type Assert =
   static member Contains(msg : string, xExpected : 'a, xs : 'a seq) =
@@ -50,11 +50,9 @@ let ``invalid configs`` =
           Assert.StringContains("string should contain name of target", "t1", sprintf "%O" ex))
     ]
 
-
 type ArbConfig =
   { db : string
     batchSize : int }
-
 
 [<Tests>]
 let ``valid configs`` =

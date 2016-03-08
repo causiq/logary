@@ -33,6 +33,9 @@ module Uri =
         | t when t = typeof<int32> ->
           box (int v)
 
+        | _ ->
+          failwith "TODO: finish implementing URI configuration"
+
       let qVals = 
         uri.Query
         |> String.trimc '?'
