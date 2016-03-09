@@ -233,8 +233,8 @@ module internal Impl =
               if resp.StatusCode > 299 then
                 do! Logger.log ri.logger (
                       Message.event Error "problem receiving response"
-                      |> Message.field "statusCode" resp.StatusCode
-                      |> Message.field "body" body)
+                      |> Message.setField "statusCode" resp.StatusCode
+                      |> Message.setField "body" body)
                 printfn "body: %s, response %A" body resp
                 failwithf "got response code %i" resp.StatusCode
               else

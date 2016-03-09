@@ -147,9 +147,9 @@ let shutdown (flushDur : Duration) (shutdownDur : Duration) (inst : LogaryInstan
     >> Logger.log inst.runtimeInfo.logger
 
   job {
-    do! Message.info "start shutdown" |> log
+    do! Message.eventInfo "start shutdown" |> log
     let! res = Advanced.flushAndShutdown flushDur shutdownDur inst.registry
-    do! Message.info "stop shutdown" |> log
+    do! Message.eventInfo "stop shutdown" |> log
     Logging.shutdownFlyweights ()
     shutdownLogger inst.runtimeInfo.logger
     return res

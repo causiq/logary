@@ -1,7 +1,7 @@
 {
   "name": "logary-js-example",
   "dependencies": {
-    "logary-js": "^0.7.3"
+    "logary-js": "file:../../../../vendor/logary-js"
   },
   "devDependencies": {
     "jsx-loader": "^0.13.2",
@@ -10,6 +10,6 @@
     "webpack": "^1.9.10"
   },
   "scripts": {
-    "build": "webpack"
+    "build": "./node_modules/webpack/bin/webpack.js --progress --display-error-details --display-reasons --colors --config webpack.config.js"
   }
 }

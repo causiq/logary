@@ -1,8 +1,6 @@
-var LogaryClient = require('logary-js'),
-    jQuery       = require('jquery');
+var LogaryClient = require('logary-js/lib/client');
 
 (function() {
-  // this by default both logs to server & console
   var logary = new LogaryClient();
 
   try {

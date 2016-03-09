@@ -209,14 +209,14 @@ module Advanced =
       /// In the shutdown state, the registry doesn't respond to messages, but rather tries to
       /// flush and shut down all targets, doing internal logging as it goes.
       let shutdown state (ackCh : Ch<unit>) (nack : Promise<unit>) = job {
-        do! Message.info "shutdown metrics polling" |> log
+        do! Message.eventInfo "shutdown metrics polling" |> log
         do! state.schedules |> List.traverseJobA (snd >> Cancellation.cancel) |> Job.Ignore
 
-        do! Message.info "cancel schedules" |> log
+        do! Message.eventInfo "cancel schedules" |> log
         for (_, x) in state.schedules do
           do! Cancellation.cancel x
 
-        do! Message.info "shutdown targets" |> log
+        do! Message.eventInfo "shutdown targets" |> log
         let! allShutdown =
           targets
           |> Seq.pjmap (fun t -> Target.shutdown t  ^->. Success Ack
@@ -228,15 +228,15 @@ module Advanced =
           |> bisectSuccesses
 
         if List.isEmpty failed then
-          do! Message.info "shutdown Ack" |> log
+          do! Message.eventInfo "shutdown Ack" |> log
         else
           let msg = sprintf "failed target shutdowns:%s%s" nl (toTextList failed)
-          do! Message.errorf "shutdown Nack%s%s" nl msg
-              |> Message.field "failed" (Value.fromObject failed)
+          do! Message.eventErrorf "shutdown Nack%s%s" nl msg
+              |> Message.setField "failed" (Value.fromObject failed)
               |> log
 
         do! Ch.give ackCh () <|> nack
-        return! Message.info "shutting down immediately" |> log
+        return! Message.eventInfo "shutting down immediately" |> log
       }
 
       let rec init state = job {
@@ -246,12 +246,12 @@ module Advanced =
           |> List.traverseJobA (function
             | KeyValue (name, mconf) -> job {
               let! instance = mconf.initialise name
-              do! Message.debugf "will poll %O every %O" name mconf.tickInterval |> log
+              do! Message.eventDebugf "will poll %O every %O" name mconf.tickInterval |> log
 
               let! tickCts =
                 Scheduling.schedule sched Metric.tick instance mconf.tickInterval
                                     (Some mconf.tickInterval)
-              do! Message.debugf "getting logger for metric %O" name |> log
+              do! Message.eventDebugf "getting logger for metric %O" name |> log
               let logger = name |> getTargets conf |> fromTargets name conf.runtimeInfo.logger
               Metric.tapMessages instance |> Stream.consumeJob (Logger.log logger)
               return name, tickCts
@@ -274,7 +274,7 @@ module Advanced =
           return! running state
 
         | FlushPending(ackCh, nack) ->
-          do! Message.info "flush start" |> log
+          do! Message.eventInfo "flush start" |> log
 
           let! allFlushed =
             targets
@@ -287,10 +287,10 @@ module Advanced =
             |> bisectSuccesses
 
           if List.isEmpty notFlushed then
-            do! Message.info "flush Ack" |> log
+            do! Message.eventInfo "flush Ack" |> log
           else
             let msg = sprintf "Failed target flushes:%s%s" nl (toTextList notFlushed)
-            do! Message.errorf "flush Nack - %s" msg |> log
+            do! Message.eventErrorf "flush Nack - %s" msg |> log
 
           do! Ch.give ackCh () <|> nack
 

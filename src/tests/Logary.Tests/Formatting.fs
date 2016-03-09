@@ -24,21 +24,21 @@ let tests =
   testList "formatting" [
     testCase "StringFormatter.Verbatim" <| fun _ ->
       (because "formatting the message verbatim" <| fun _ ->
-        Message.error "hello world"
+        Message.eventError "hello world"
         |> StringFormatter.verbatim.format)
       |> should equal "hello world"
       |> thatsIt
 
     testCase "StringFormatter.VerbatimNewline" <| fun _ ->
       (because "logging verbatim with newline" <| fun () ->
-        Message.info "hi there"
+        Message.eventInfo "hi there"
         |> StringFormatter.verbatimNewLine.format)
       |> should equal (sprintf "hi there%s" Environment.NewLine)
       |> thatsIt
 
     testCase "StringFormatter.VerbatimNewlineTemplated" <| fun _ ->
       (because "logging verbatim with newline, templated" <| fun () ->
-        {(Message.info "what's {@direction}") with fields = [(pn "direction", Field (String "up", None))] |> Map.ofList}
+        {(Message.eventInfo "what's {@direction}") with fields = [(pn "direction", Field (String "up", None))] |> Map.ofList}
         |> StringFormatter.verbatimNewLine.format)
       |> should equal (sprintf "what's up%s" Environment.NewLine)
       |> thatsIt

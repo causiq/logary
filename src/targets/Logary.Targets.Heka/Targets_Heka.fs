@@ -147,7 +147,7 @@ module internal Impl =
            (requests : BoundedMb<TargetMessage>)
            (shutdown : Ch<IVar<unit>>) =
 
-    let debug = Message.debug >> Logger.log ri.logger
+    let debug = Message.eventDebug >> Logger.log ri.logger
 
     let rec initialise () : Job<unit> =
       job {

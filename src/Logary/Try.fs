@@ -13,4 +13,4 @@ let safe label logger (runnable: Job<_>) =
     Job.result ()
 
   | Choice2Of2 e ->
-    Message.error label |> Message.addExn e |> Logger.log logger :> Job<_>))  
+    Message.eventError label |> Message.addExn e |> Logger.log logger :> Job<_>))  

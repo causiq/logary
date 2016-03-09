@@ -45,7 +45,7 @@ module HealthCheck =
   /// Sets the description property of the measurement's data map
   [<CompiledName "SetDescription">]
   let setDesc (description: string) m =
-    Message.field Description description m
+    Message.setField Description description m
 
   /// Tries to get the description value from the measure.
   [<CompiledName "TryGetDescription">]

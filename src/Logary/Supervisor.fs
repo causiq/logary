@@ -52,7 +52,7 @@ let rec private supervise instance (nj : NamedJob<_>) = job {
   | Choice1Of2 _ ->
     // If the job is finished without an exception (presumably shut down),
     // stop supervising.
-    do! Message.infof "Job '%A' has quit and will be unregistered." nj.name |> log instance
+    do! Message.eventInfof "Job '%A' has quit and will be unregistered." nj.name |> log instance
     do! Ch.give instance.ch (Unregister (PointName.ofList nj.name))
     ()
 
@@ -82,7 +82,7 @@ let private loop (instance : Instance) =
       if jobs |> Map.containsKey (PointName nj.name) then
         failwithf "Job \"%O\" has already been registered." (PointName nj.name)
 
-      do! Message.infof "Now supervising '%A'." nj.name |> log
+      do! Message.eventInfof "Now supervising '%A'." nj.name |> log
       do! Job.start (supervise instance nj)
       return! f (Map.add (PointName nj.name) 0u jobs)
 
@@ -104,12 +104,12 @@ let private loop (instance : Instance) =
 
       match restarted, instance.options.maxRestarts with
       | r, mr when r > mr ->
-        do! Message.errorf "Job \"%O\" has crashed too many times and won't be restarted." name |> log
+        do! Message.eventErrorf "Job \"%O\" has crashed too many times and won't be restarted." name |> log
         do! IVar.fill shouldRestart false
         return! f jobs
 
       | _ ->
-        do! Message.errorf "Job \"%O\" has crashed and will be restarted." name |> log
+        do! Message.eventErrorf "Job \"%O\" has crashed and will be restarted." name |> log
         do! IVar.fill shouldRestart true
         return! f (Map.add name (restarted + 1u) jobs)
   }

@@ -40,9 +40,14 @@ let logary =
 
 startWebServer defaultConfig (
   choose [
-    path "/" >=> Files.browseFile root "index.html" >=> Writers.setMimeType "text/html; charset=utf-8"
+    path "/"
+      >=> Files.browseFile root "index.html"
+      >=> Writers.setMimeType "text/html; charset=utf-8"
+
     Files.browse root
+
     SuaveReporter.api (logary.getLogger (PointName.parse "Logary.Services.SuaveReporter")) None
+
     NOT_FOUND "Couldn't find the file you were looking for"
   ])
 

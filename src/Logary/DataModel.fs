@@ -808,15 +808,18 @@ module Message =
     Message.fields_ >-?> key_ (PointName.ofSingle name)
 
   /// Get a partial setter lens to a field
-  let inline field name value =
+  [<CompiledName "SetField">]
+  let inline setField name value =
     Lens.setPartial (field_ name) (Field.init value)
 
   /// Get a partial setter lens to a field with an unit
-  let inline fieldUnit name value units =
+  [<CompiledName "SetFieldUnit">]
+  let inline setFieldUnit name value units =
     Lens.setPartial (field_ name) (Field.initWithUnit value units)
 
   /// Get a partial getter lens to a field
-  let inline tryGetField name =
+  [<CompiledName "TryGetField">]
+  let tryGetField name =
     Lens.getPartial (field_ name)
 
   let contextValue_ name : PLens<Message, Value> =
@@ -842,7 +845,7 @@ module Message =
       contextValue_ "service" >??> Value.String_
 
   /// Creates a new event message template with level
-  [<CompiledName "CreateEvent">]
+  [<CompiledName "Event">]
   let event level template =
     { name      = PointName.empty
       value     = Event template
@@ -853,7 +856,7 @@ module Message =
       timestamp = Date.timestamp() }
 
   /// Creates a new metric message with data point name, unit and value
-  [<CompiledName "CreateMetric">]
+  [<CompiledName "Metric">]
   let metricWithUnit dp unit value =
     { name      = dp
       value     = Gauge (value, unit)
@@ -864,7 +867,7 @@ module Message =
       timestamp = Date.timestamp() }
 
   /// Creates a new metric message with data point name and scalar value
-  [<CompiledName "CreateMetric">]
+  [<CompiledName "Metric">]
   let metric dp value =
     { name      = dp
       value     = Gauge (value, Units.Scalar)
@@ -875,61 +878,62 @@ module Message =
       timestamp = Date.timestamp() }
 
   /// Create a verbose event message
-  [<CompiledName "Verbose">]
-  let verbose = event Verbose
+  [<CompiledName "EventVerbose">]
+  let eventVerbose = event Verbose
 
   /// Create a verbose event message, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
-  [<CompiledName "VerboseFormat">]
-  let verbosef fmt = Printf.kprintf (event Verbose) fmt
+  [<CompiledName "EventVerboseFormat">]
+  let eventVerbosef fmt = Printf.kprintf (event Verbose) fmt
 
   /// Create a debug event message
-  [<CompiledName "Debug">]
-  let debug = event Debug
+  [<CompiledName "EventDebug">]
+  let eventDebug = event Debug
 
   /// Create a debug event message, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
-  [<CompiledName "DebugFormat">]
-  let debugf fmt = Printf.kprintf (event LogLevel.Debug) fmt
+  [<CompiledName "EventDebugFormat">]
+  let eventDebugf fmt = Printf.kprintf (event LogLevel.Debug) fmt
 
   /// Create an info event message
-  [<CompiledName "Info">]
-  let info = event Info
+  [<CompiledName "EventInfo">]
+  let eventInfo = event Info
 
   /// Create a info event message, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
-  [<CompiledName "InfoFormat">]
-  let infof fmt = Printf.kprintf (event LogLevel.Info) fmt
+  [<CompiledName "EventInfoFormat">]
+  let eventInfof fmt = Printf.kprintf (event LogLevel.Info) fmt
 
   /// Create an warn event message
-  [<CompiledName "Warn">]
-  let warn = event LogLevel.Warn
+  [<CompiledName "EventWarn">]
+  let eventWarn = event LogLevel.Warn
 
   /// Create a warn event message for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
-  [<CompiledName "WarnFormat">]
-  let warnf fmt = Printf.kprintf (event LogLevel.Warn) fmt
+  [<CompiledName "EventWarnFormat">]
+  let eventWarnf fmt = Printf.kprintf (event LogLevel.Warn) fmt
 
   /// Create an error event message
-  [<CompiledName "Error">]
-  let error = event LogLevel.Error
+  [<CompiledName "EventError">]
+  let eventError = event LogLevel.Error
 
   /// Write a error event message, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
-  [<CompiledName "ErrorFormat">]
-  let errorf fmt = Printf.kprintf (event LogLevel.Error) fmt
+  [<CompiledName "EventErrorFormat">]
+  let eventErrorf fmt = Printf.kprintf (event LogLevel.Error) fmt
 
   /// Create a fatal event message
-  [<CompiledName "Fatal">]
-  let fatal = event Fatal
+  [<CompiledName "EventFatal">]
+  let eventFatal = event Fatal
 
   /// Create a fatal event message, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
-  [<CompiledName "FatalFormat">]
-  let fatalf fmt = Printf.kprintf (event Fatal) fmt
+  [<CompiledName "EventFatalFormat">]
+  let eventFatalf fmt = Printf.kprintf (event Fatal) fmt
 
   [<CompiledName "SetName">]
-  let setName name (msg : Message) = { msg with name = name }
+  let setName name (msg : Message) =
+    { msg with name = name }
 
   [<CompiledName "SetLevel">]
   let setLevel lvl msg = { msg with level = lvl}
@@ -952,7 +956,8 @@ module Message =
 
   /// Replaces the value of the message with a new Event with the supplied format
   [<CompiledName "SetEvent">]
-  let setEvent format msg = { msg with value = Event format}
+  let setEvent format msg =
+    { msg with value = Event format}
 
   [<CompiledName "AddField">]
   let addField ((name, field) : (PointName * Field)) msg =
