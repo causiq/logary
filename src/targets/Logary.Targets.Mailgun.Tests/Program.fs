@@ -51,7 +51,7 @@ let helloWorld =
     testCase "can send test e-mail" <| fun _ ->
       let target = start ()
       try
-        Message.error "hello world"
+        Message.eventError "hello world"
         |> Target.log target
         |> run
         |> run

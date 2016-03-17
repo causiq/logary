@@ -24,7 +24,7 @@ let tests =
       start instance.server |> ignore
 
       (because "logging with info level and then finalising the target" <| fun () ->
-        Message.info "Hello World!" |> logTarget instance
+        Message.eventInfo "Hello World!" |> logTarget instance
         instance |> finaliseTarget
         stdout.ToString())
       |> should contain "Hello World!"
@@ -37,8 +37,8 @@ let tests =
       start subject.server |> ignore
 
       (because "logging 'Error line' and 'Fatal line' to the target" <| fun () ->
-        Message.error "Error line" |> logTarget subject
-        Message.fatal "Fatal line" |> logTarget subject
+        Message.eventError "Error line" |> logTarget subject
+        Message.eventFatal "Fatal line" |> logTarget subject
         subject |> finaliseTarget
         err.ToString())
       |> should contain "Error line"

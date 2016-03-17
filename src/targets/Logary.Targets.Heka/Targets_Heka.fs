@@ -191,7 +191,7 @@ module internal Impl =
             do! debug "running: wrote to heka"
 
           with e ->
-            do! Message.error "error writing to heka"
+            do! Message.eventError "error writing to heka"
                 |> Message.addExn e
                 |> Logger.log ri.logger
 

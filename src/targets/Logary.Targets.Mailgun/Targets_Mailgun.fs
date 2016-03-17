@@ -66,7 +66,7 @@ module internal Impl =
                 ()
 
               | x ->
-                do! Message.error "unknown response from Mailgun"
+                do! Message.eventError "unknown response from Mailgun"
                     |> Message.addData (["response", x] |> Map.ofList)
                     |> Logger.log ri.logger
 

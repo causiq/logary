@@ -30,7 +30,7 @@ let tests =
         |> Target.init Fac.emptyRuntime
         |> run
 
-      Message.debug "Hello"
+      Message.eventDebug "Hello"
       |> Target.log target
       |> run
       |> ignore
