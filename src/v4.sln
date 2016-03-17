@@ -48,6 +48,8 @@ Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.FsSql", "ad
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.Hawk", "adapters\Logary.Adapters.Hawk\Logary.Adapters.Hawk.fsproj", "{9AF9D1E1-33A4-42C7-825F-D41CD3ECEBDD}"
 EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.Suave", "adapters\Logary.Adapters.Suave\Logary.Adapters.Suave.fsproj", "{5255B5AD-9DA9-495C-8B6D-740BB6DC164B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -70,6 +72,10 @@ Global
 		{4ACE8A29-6D75-4956-B45C-22C82EAFCFD5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4ACE8A29-6D75-4956-B45C-22C82EAFCFD5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4ACE8A29-6D75-4956-B45C-22C82EAFCFD5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5255B5AD-9DA9-495C-8B6D-740BB6DC164B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5255B5AD-9DA9-495C-8B6D-740BB6DC164B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5255B5AD-9DA9-495C-8B6D-740BB6DC164B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5255B5AD-9DA9-495C-8B6D-740BB6DC164B}.Release|Any CPU.Build.0 = Release|Any CPU
 		{647D929B-4ACE-4099-A25F-D7FF06588F88}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{647D929B-4ACE-4099-A25F-D7FF06588F88}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{647D929B-4ACE-4099-A25F-D7FF06588F88}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -134,6 +140,7 @@ Global
 		{C76BBED8-93D4-4073-924C-3E5564EEA1DB} = {7AF7A2EB-BFB3-485B-B403-CA757603A228}
 		{6E3A10AE-BB8D-471B-B0EA-8B3879A5B6F9} = {0375AB74-8796-4E3F-8436-8657EAE50D9D}
 		{9AF9D1E1-33A4-42C7-825F-D41CD3ECEBDD} = {0375AB74-8796-4E3F-8436-8657EAE50D9D}
+		{5255B5AD-9DA9-495C-8B6D-740BB6DC164B} = {0375AB74-8796-4E3F-8436-8657EAE50D9D}
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

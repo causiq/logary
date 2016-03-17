@@ -47,13 +47,11 @@
   <ItemGroup>
     <ProjectReference Include="..\..\metrics\Logary.Metrics.WinPerfCounters\Logary.Metrics.WinPerfCounters.fsproj">
       <Name>Logary.Metrics.WinPerfCounters</Name>
-      <Project>{dd5137fc-22e5-47da-88f1-3d3f1e7e8381}</Project>
-      <Private>True</Private>
+      <Project>{DD5137FC-22E5-47DA-88F1-3D3F1E7E8381}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\targets\Logary.Targets.InfluxDb\Logary.Targets.InfluxDb.fsproj">
       <Name>Logary.Targets.InfluxDb</Name>
-      <Project>{4ace8a29-6d75-4956-b45c-22c82eafcfd5}</Project>
-      <Private>True</Private>
+      <Project>{4ACE8A29-6D75-4956-B45C-22C82EAFCFD5}</Project>
     </ProjectReference>
     <Reference Include="mscorlib" />
     <Reference Include="System" />

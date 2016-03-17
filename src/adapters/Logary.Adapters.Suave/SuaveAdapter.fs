@@ -1,6 +1,7 @@
 namespace Suave.Logging
 
 open Logary
+open Hopac
 
 /// Some mapping functions for Suave LogLevels
 module SuaveLogLevel =
@@ -19,18 +20,13 @@ module SuaveLogLevel =
 
 module SuaveLogLine =
   open System
-
   open NodaTime
 
   /// Convert a Suave LogLine to a Logary LogLine.
   let toLogary (l : Suave.Logging.LogLine) =
-    { data          = Map.empty
-      message       = l.message
-      ``exception`` = l.``exception``
-      level         = l.level |> SuaveLogLevel.toLogary
-      tags          = []
-      path          = l.path
-      timestamp     = NodaTime.Instant.FromDateTimeUtc(DateTime(l.tsUTCTicks, DateTimeKind.Utc)) }
+    Message.event (SuaveLogLevel.toLogary l.level) l.message
+    |> Message.setName (PointName.parse l.path)
+    |> Message.setTicks l.tsUTCTicks
 
 /// An adapter that takes a Logary logger and forwards all Suave logs to it. A simple implementation:
 ///
@@ -41,5 +37,6 @@ type SuaveAdapter(logger : Logger) =
   interface Suave.Logging.Logger with
     member x.Log level fLine =
       // here it's important the Level of the logger is well tuned
-      if SuaveLogLevel.toLogary level >= logger.Level then
-        fLine () |> SuaveLogLine.toLogary |> Logger.log logger
+      fLine >> SuaveLogLine.toLogary
+      |> Logger.logDebug logger
+      |> queue
