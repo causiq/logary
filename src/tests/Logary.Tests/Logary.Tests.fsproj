@@ -41,7 +41,7 @@
   <ItemGroup>
     <Compile Include="..\..\..\paket-files\haf\expecto-patronum\ExpectoPatronum\Assert.fs">
       <Paket>True</Paket>
-      <Link>paket-files\Assert.fs</Link>
+      <Link>paket-files/Assert.fs</Link>
     </Compile>
     <Compile Include="StubTcp.fs" />
     <Compile Include="TestDSL.fs" />

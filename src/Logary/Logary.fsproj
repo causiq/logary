@@ -34,15 +34,15 @@
   <ItemGroup>
     <Compile Include="..\..\paket-files\haf\YoLo\YoLo.fs">
       <Paket>True</Paket>
-      <Link>paket-files\YoLo.fs</Link>
+      <Link>paket-files/YoLo.fs</Link>
     </Compile>
     <Compile Include="..\..\paket-files\xyncro\aether\src\Aether\Aether.fs">
       <Paket>True</Paket>
-      <Link>paket-files\Aether.fs</Link>
+      <Link>paket-files/Aether.fs</Link>
     </Compile>
     <Compile Include="..\..\paket-files\xyncro\chiron\src\Chiron\Chiron.fs">
       <Paket>True</Paket>
-      <Link>paket-files\Chiron.fs</Link>
+      <Link>paket-files/Chiron.fs</Link>
     </Compile>
     <Compile Include="LogLevel.fs" />
     <Compile Include="MessageTemplates.fs" />
