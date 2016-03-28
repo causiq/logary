@@ -133,9 +133,9 @@ module internal Impl =
 
   let logFailure (ri : RuntimeInfo) = function
     | HeaderTooLarge err ->
-      Logger.warn ri.logger err
+      Message.eventWarn err |> Logger.log ri.logger
     | MessageTooLarge err ->
-      Logger.warn ri.logger err
+      Message.eventWarn err |> Logger.log ri.logger
 
   type State =
     { client   : TcpClient

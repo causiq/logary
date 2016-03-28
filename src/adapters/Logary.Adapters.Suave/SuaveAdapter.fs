@@ -23,10 +23,11 @@ module SuaveLogLine =
   open NodaTime
 
   /// Convert a Suave LogLine to a Logary LogLine.
-  let toLogary (l : Suave.Logging.LogLine) =
+  let toLogary (l : Suave.Logging.LogLine) : Message =
     Message.event (SuaveLogLevel.toLogary l.level) l.message
     |> Message.setName (PointName.parse l.path)
     |> Message.setTicks l.tsUTCTicks
+    |> (l.``exception`` |> Option.fold (fun s t -> Message.addExn t) id)
 
 /// An adapter that takes a Logary logger and forwards all Suave logs to it. A simple implementation:
 ///

@@ -53,6 +53,11 @@ type Rule =
 
 /// Module for dealing with rules. Rules take care of filtering too verbose
 /// log lines and measures before they are sent to the targets.
+///
+/// Rules compose to the maximal filter. I.e. if you have one rule for your
+/// target that specifies all Message-s must be of Debug level, and then another
+/// filter that specifies they have to be of Info level, then the rule of Info
+/// will win, and all Debug-level messages will be filtered from the stream.
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Rule =
 
@@ -87,6 +92,9 @@ module Rule =
   let setTarget (target : PointName) (r : Rule) =
     { r with target = target }
 
+  /// Sets the rule's message filter. Remember that if you want to apply multiple
+  /// message filters, you need to create a new Rule, or you'll overwrite the
+  /// existing message filter.
   let setMessageFilter (mf : _ -> _) (r : Rule) =
     { r with messageFilter = mf }
 

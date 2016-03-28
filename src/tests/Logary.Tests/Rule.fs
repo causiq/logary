@@ -15,7 +15,7 @@ open Logary.Targets
 
 [<Tests>]
 let tests =
-  testList "LogLevel" [
+  testList "Rule" [
 
     yield testCase "retrieving rule for name" <| fun _ ->
       let rules = [] : Rule list
@@ -113,9 +113,9 @@ let tests =
           let! no3 = pn "3" |> get
 
           // 1 and 2 should go through, not 3
-          do! "first"  |> Logger.debug no1
-          do! "second" |> Logger.debug no2
-          do! "third"  |> Logger.debug no3
+          do! Message.eventDebug "first"  |> Logger.log no1
+          do! Message.eventDebug "second" |> Logger.log no2
+          do! Message.eventDebug "third"  |> Logger.log no3
 
           // wait for logging to complete; then
           let! _ = Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000
@@ -160,10 +160,10 @@ let tests =
           let! lgrA = get (PointName.ofSingle "a")
           let! lgrB = get (pn "b")
 
-          do! "first"   |> Logger.debug lgrA
-          do! "second"  |> Logger.info lgrA
-          do! "third"   |> Logger.debug lgrB
-          do! "fourth"  |> Logger.verbose lgrB
+          do! Message.eventDebug "first"    |> Logger.log lgrA
+          do! Message.eventInfo "second"    |> Logger.log lgrA
+          do! Message.eventDebug "third"    |> Logger.log lgrB
+          do! Message.eventVerbose "fourth" |> Logger.log lgrB
           let! _ = Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000
 
           because "lgrA matches two rules, lgrB matches only one" (fun _ -> out.ToString())
@@ -175,6 +175,34 @@ let tests =
           |> should' (fulfil <| fun str -> "only single line 'second'", Regex.Matches(str, "second").Count = 1)
           |> should' (fulfil <| fun str -> "only single line 'third'", Regex.Matches(str, "third").Count = 1)
           |> should' (fulfil <| fun str -> "only single line 'fourth'", Regex.Matches(str, "fourth").Count = 0)
+          |> thatsIt
+        } |> Job.Global.run
+      finally
+        finaliseLogary logary
+
+    yield testCase "calls message filter" <| fun _ ->
+      let out = Fac.textWriter ()
+      let catcher = ref None
+      let rules =
+        [ Rule.createForTarget (pnp "tw")
+            |> Rule.setMessageFilter (fun m -> catcher := Some m; false)
+        ]
+      let targets =
+        [ Target.confTarget (pn "tw") (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
+
+      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary |> run
+      try
+        job {
+          // when
+          let get = Registry.getLogger logary.registry
+          let! lgrA = get (PointName.ofSingle "a")
+
+          do! Message.eventDebug "first" |> Logger.log lgrA
+          let! _ = Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000
+
+          (because "it was logged but filter is always returning false" <| fun () ->
+            out.ToString(), !catcher |> Option.isSome)
+          |> should equal ("", true)
           |> thatsIt
         } |> Job.Global.run
       finally
@@ -199,7 +227,7 @@ let tests =
           |> should equal LogLevel.Debug
           |> thatsIt
 
-          do! "my message comes here" |> Logger.debug logr
+          do! Message.eventDebug "my message comes here" |> Logger.log logr
           let! _ = Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000
           (because "it was logged but accept is always returning false" <| fun () ->
             out.ToString())
@@ -231,15 +259,17 @@ let tests =
       try
         job {
           let! shouldLog = Registry.getLogger logary.registry (pnp "a.b.c")
-          do! "this message should go through" |> Logger.debug shouldLog
+          do! Message.eventDebug "this message should go through" |> Logger.log shouldLog
           let! shouldDrop = Registry.getLogger logary.registry (pnp "a.x.y")
-          do! "this message should be dropped" |> Logger.debug shouldDrop
+          do! Message.eventDebug "this message should be dropped" |> Logger.log shouldDrop
           let! _ = Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000
+
           (because "we only accept path a.b.c, other never" <| fun () ->
             out.ToString())
           |> should contain "this message should go through"
           |> shouldNot contain "this message should be dropped"
           |> thatsIt }
+
         |> Job.Global.run
       finally
         finaliseLogary logary

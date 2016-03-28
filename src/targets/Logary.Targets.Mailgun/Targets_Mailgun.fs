@@ -84,11 +84,11 @@ module internal Impl =
       ] :> Job<_>
 
     if conf.``to`` = [] then
-      upcast Logger.error ri.logger "no `to` configured in Mailgun target"
+      upcast (Message.eventError "no `to` configured in Mailgun target" |>  Logger.log ri.logger)
     elif conf.from.Host = "example.com" then
-      upcast Logger.error ri.logger "you cannot send e-mail to example.com in Mailgun target"
+      upcast (Message.eventError "you cannot send e-mail to example.com in Mailgun target" |> Logger.log ri.logger)
     elif conf.domain = "example.com" then
-      upcast Logger.error ri.logger "you cannot send e-mail from example.com in Mailgun target"
+      upcast (Message.eventError "you cannot send e-mail from example.com in Mailgun target" |> Logger.log  ri.logger)
     else
       loop ()
 

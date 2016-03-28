@@ -365,7 +365,7 @@ module Mapping =
       Value.setLensPartial Value.Int64_ (int64 x)
 
     static member inline ToValue (x: uint64) =
-        Value.setLensPartial Value.Float_ (float x)
+      Value.setLensPartial Value.Float_ (float x)
 
     (* Common Types *)
 
@@ -378,10 +378,13 @@ module Mapping =
     static member inline ToValue (x: Guid) =
       Value.setLensPartial Value.String_ (string x)
 
+    //static member inline ToValue (x: Uri) =
+    //  Value.setLensPartial Value.String_ (x.ToString())
+
     (* Json Type *)
 
     static member inline ToValue (x: Value) =
-        Value.setLens id_ x
+      Value.setLens id_ x
 
   (* Mapping Functions
 

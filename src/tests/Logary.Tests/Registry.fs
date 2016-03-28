@@ -24,8 +24,8 @@ let registry =
         let logger = pnp "a.b.c.d" |> Registry.getLogger logary.registry |> run
         let logger' = pnp "a.b.c.d" |> (logary |> asLogManager).getLogger
         (because "logging normally" <| fun () ->
-          "Hello world" |> Logger.info logger |> run
-          "Goodbye cruel world" |> Logger.fatal logger' |> run
+          Message.eventInfo "Hello world" |> Logger.log logger |> run
+          Message.eventFatal "Goodbye cruel world" |> Logger.log logger' |> run
           logary |> finaliseLogary
           out.ToString(), err.ToString())
         |> theTuple
@@ -38,9 +38,9 @@ let registry =
       Fac.withLogary <| fun logary out err ->
         let logger = (pnp "a.b.c.d") |> Registry.getLogger logary.registry |> run
         (because "logging something, then shutting down" <| fun () ->
-          "hi there" |> Logger.info logger |> run
+          Message.eventInfo "hi there" |> Logger.log logger |> run
           logary |> Config.shutdownSimple |> run |> ignore
-          "after shutdown" |> Logger.info logger |> run
+          Message.eventInfo "after shutdown" |> Logger.log logger |> run
           out.ToString())
         |> should contain "hi there"
         |> shouldNot contain "after shutdown"

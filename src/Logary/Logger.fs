@@ -92,27 +92,3 @@ module Logger =
   [<CompiledName "LogDebugWithAck">]
   let logDebugWithAck (logger : Logger) fMsg =
     logger.logDebugWithAck (fMsg >> ensureName logger)
-
-  /// Write a verbose log entry to the logger
-  [<CompiledName "Verbose">]
-  let verbose logger = log logger << Message.event LogLevel.Verbose
-
-  /// Write a debug log entry to the logger
-  [<CompiledName "Debug">]
-  let debug logger = log logger << Message.event LogLevel.Debug
-
-  /// Write an info log entry to the logger
-  [<CompiledName "Info">]
-  let info logger = log logger << Message.event LogLevel.Info
-
-  /// Write a warn log entry
-  [<CompiledName "Warn">]
-  let warn logger = log logger << Message.event LogLevel.Warn
-
-  /// Write an error log entry
-  [<CompiledName "Error">]
-  let error logger = log logger << Message.event LogLevel.Error
-
-  /// Write a fatal log entry
-  [<CompiledName "Fatal">]
-  let fatal logger = log logger << Message.event LogLevel.Fatal
