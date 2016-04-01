@@ -1,3 +1,4 @@
+FSharp.Core
 NodaTime
 Hopac
 Topshelf.FSharp
@@ -6,6 +7,3 @@ fszmq
 Suave
 File:YoLo.fs
 FsPickler
-
-group Services
-  FSharp.Core

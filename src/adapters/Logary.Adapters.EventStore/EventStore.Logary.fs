@@ -6,52 +6,48 @@ namespace EventStore.ClientAPI.Common.Log
 open System
 open System.Globalization
 open System.Diagnostics
-
 open EventStore.ClientAPI
-
 open Logary
+open Hopac
 
 module internal Impl =
 
   let invariantCulture = CultureInfo.InvariantCulture
 
   let log (logger : Logger) =
-    LogLine.setPath logger.Name
+    Message.setName logger.name
     >> Logger.log logger
 
-  let handle_internal_exception logger format args stackTrace =
-    LogLine.error "String.Format exception"
-    |> LogLine.setDatas [
-      "stack_trace", box stackTrace
-      "format", box format
-      "args", box args
-    ]
+  let handleInternalException logger (format : string) args (stackTrace : StackTrace) =
+    Message.eventFormat (Warn, format, args)
+    |> Message.setFieldFromObject "stackFrames" (stackTrace.GetFrames())
     |> Logger.log logger
+    |> start
 
-  let fmt (internal_logger : Logger) formatProvider format (args : obj []) =
+  let fmt (internalLogger : Logger) formatProvider format (args : obj []) =
     let rec fmt' failed =
       try
         if not failed && args.Length = 0 then format
         elif not failed then String.Format(formatProvider, format, args)
         else
           let st = new StackTrace(true)
-          handle_internal_exception internal_logger format args st
+          handleInternalException internalLogger format args st
           format
       with
         | :? FormatException ->
           fmt' true
+
         | :? ArgumentNullException ->
           fmt' true
+
     fmt' false
 
-  let write'' logger internal_logger formatProvider format level ex args =
-    fmt internal_logger formatProvider format args
-    |> LogLine.create' level
-    |> fun line ->
-      match ex with
-      | None -> line
-      | Some ex -> line |> LogLine.setExn ex
+  let write'' logger formatProvider format level (ex : exn option) args =
+    fmt logger formatProvider format args
+    |> Message.event level
+    |> (ex |> Option.fold (fun s t -> Message.addExn t) id)
     |> Logger.log logger
+    |> start
 
 open Impl
 
@@ -65,8 +61,8 @@ open Impl
 /// ```
 ///
 /// Happy logging!
-type EventStoreAdapter(logger : Logger, internal_logger : Logger) =
-  let write'' = write'' logger internal_logger
+type EventStoreAdapter(logger : Logger) =
+  let write'' = write'' logger
   interface ILogger with
     member x.Error (format, args) =
       write'' invariantCulture format Error None args

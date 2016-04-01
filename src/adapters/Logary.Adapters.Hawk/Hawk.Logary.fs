@@ -26,6 +26,7 @@ module internal HawkLogLine =
   let toLogary (l : Logibit.Hawk.Logging.LogLine) : Message =
     Message.event (HawkLogLevel.toLogary l.level) l.message
     |> Message.setName (PointName.parse l.path)
+    |> Message.setFieldsFromMap l.data
     |> Message.setTicks l.timestamp.Ticks
 
 open Logary

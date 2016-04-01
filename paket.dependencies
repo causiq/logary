@@ -47,7 +47,3 @@ github haf/expecto-patronum ExpectoPatronum/Assert.fs
 group Library
   source https://www.nuget.org/api/v2
   nuget FSharp.Core ~> 3
-
-group Services
-  source https://www.nuget.org/api/v2
-  nuget FSharp.Core ~> 4

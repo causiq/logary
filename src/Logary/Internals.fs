@@ -191,11 +191,12 @@ module Map =
 
   /// This is basically an assembly-internal function; depend on at
   /// your own misery.
-  let fromObj : obj -> _ =
-
+  let fromObject : obj -> _ =
     let toS o =
       match o with
-      | null -> ""
+      | null ->
+        ""
+
       | _ ->
         try Convert.ToString(box o, CultureInfo.InvariantCulture)
         with | :? InvalidCastException -> o.ToString()
@@ -223,6 +224,7 @@ module Map =
       with
       | :? TargetException -> // bug in F# compiler
         None
+
     let readInner : obj -> (string * obj) option =
       function
       | :? KeyValuePair<string, obj> as kvp ->
@@ -240,7 +242,9 @@ module Map =
       | x -> None
 
     function
-    | null -> Map.empty
+    | null ->
+      Map.empty
+
     | :? System.Collections.IDictionary as dict
       when dict.GetType().IsGenericType ->
       let values = seq {

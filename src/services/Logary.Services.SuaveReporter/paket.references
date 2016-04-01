@@ -1,8 +1,6 @@
+FSharp.Core
 NodaTime
 Hopac
 Suave
 FParsec
 File:YoLo.fs
-
-group Services
-  FSharp.Core

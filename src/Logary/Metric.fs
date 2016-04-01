@@ -77,7 +77,7 @@ let consume other m = Stream.iterJob (fun x -> m.updateCh *<- x) other |> Job.st
 
 /// Stream the values of this metric
 let tap m =
-  Stream.Src.tap m.outputs |> Stream.mapFun (Lens.get Message.value_ >> function
+  Stream.Src.tap m.outputs |> Stream.mapFun (Lens.get Message.Lenses.value_ >> function
     | Gauge (v, u) -> v, u
     | Derived (v, u) -> v, u
     | Event e -> Int64 1L, Units.Scalar)

@@ -31,15 +31,15 @@ type FsSqlAdapter(logger : Logger) =
     member x.Verbose fLine =
       fLine >> FsSqlLogLine.toLogary
       |> Logger.logVerbose logger
-      |> queue
+      |> start
 
     member x.Debug fLine =
       fLine >> FsSqlLogLine.toLogary
       |> Logger.logDebug logger
-      |> queue
+      |> start
 
     member x.Log line =
       line
       |> FsSqlLogLine.toLogary
       |> Logger.log logger
-      |> queue
+      |> start

@@ -1,6 +1,4 @@
+FSharp.Core
 NodaTime
 Hopac
 Argu
-
-group Services
-  FSharp.Core

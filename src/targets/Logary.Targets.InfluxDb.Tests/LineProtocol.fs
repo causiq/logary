@@ -30,8 +30,8 @@ let lineProtocol =
           ([ "value", Float 12.
              "otherVal", Float 21. ] |> Map.ofList)
         |> Message.metric (PointName.ofSingle "measurement")
-        |> Message.contextValue "foo" (String "bar")
-        |> Message.contextValue "bat" (String "baz")
+        |> Message.setContext "foo" "bar"
+        |> Message.setContextValue "bat" (String "baz")
         // Timestamps must be in Unix time and are assumed to be in nanoseconds
         |> Message.setNanoEpoch 1439587925L
 
@@ -53,8 +53,8 @@ let lineProtocol =
     testCase "With Tags + ts" <| fun _ ->
       let msg =
         Message.metric (PointName.ofSingle "disk_free") (Int64 442221834240L)
-        |> Message.contextValue "hostname" (String "server01")
-        |> Message.contextValue "disk_type" (String "SSD")
+        |> Message.setContext "hostname" "server01"
+        |> Message.setContext "disk_type" "SSD"
         |> Message.setNanoEpoch 1435362189575692182L
 
       Assert.equal (Serialisation.serialiseMessage msg)
@@ -75,7 +75,7 @@ let lineProtocol =
     testCase "Escaping Commas and Spaces" <| fun _ ->
       let msg =
         Message.metric (PointName.ofSingle "total disk free") (Int64 442221834240L)
-        |> Message.contextValue "volumes" (String "/net,/home,/")
+        |> Message.setContextValue "volumes" (String "/net,/home,/")
         |> Message.setNanoEpoch 1435362189575692182L
 
       Assert.equal (Serialisation.serialiseMessage msg)
@@ -87,7 +87,7 @@ let lineProtocol =
 
       let msg =
         Message.metric (PointName.ofSingle "disk_free") (Int64 442221834240L)
-        |> Message.contextValue "a=b" (String "x=z")
+        |> Message.setContextValue "a=b" (String "x=z")
         |> Message.setNanoEpoch 1435362189575692182L
 
       Assert.equal (Serialisation.serialiseMessage msg)
@@ -99,7 +99,7 @@ let lineProtocol =
 
       let msg =
         Message.metric (PointName.ofSingle "disk_free") (Int64 442221834240L)
-        |> Message.contextValue "path" (String @"C:\Windows")
+        |> Message.setContextValue "path" (String @"C:\Windows")
         |> Message.setNanoEpoch 1435362189575692182L
 
       Assert.equal (Serialisation.serialiseMessage msg)

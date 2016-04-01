@@ -450,44 +450,54 @@ module Value =
   open System.Collections.Generic
 
   let rec fromObject : obj -> Value = function
+    // Built-in types
+    | :? bool as b     -> Bool b
+    | :? int8 as i     -> Int64 (int64 i)
+    | :? uint8 as i    -> Int64 (int64 i)
+    | :? int16 as i    -> Int64 (int64 i)
+    | :? uint16 as i   -> Int64 (int64 i)
+    | :? int32 as i    -> Int64 (int64 i)
+    | :? uint32 as i   -> Int64 (int64 i)
+    | :? int64 as i    -> Int64 (int64 i)
+    | :? uint64 as i   -> Float (float i)
+    | :? bigint as i   -> BigInt i
+    | :? decimal as d  -> Float (float d)
+    | :? float32 as f32-> Float (float f32)
+    | :? float as f    -> Float f
+    | :? char as c     -> String (string c)
+    | :? string as s   -> String s
 
-  // Built-in types
-  | :? bool as b     -> Bool b
-  | :? int8 as i     -> Int64 (int64 i)
-  | :? uint8 as i    -> Int64 (int64 i)
-  | :? int16 as i    -> Int64 (int64 i)
-  | :? uint16 as i   -> Int64 (int64 i)
-  | :? int32 as i    -> Int64 (int64 i)
-  | :? uint32 as i   -> Int64 (int64 i)
-  | :? int64 as i    -> Int64 (int64 i)
-  | :? uint64 as i   -> Float (float i)
-  | :? bigint as i   -> BigInt i
-  | :? decimal as d  -> Float (float d)
-  | :? float32 as f32-> Float (float f32)
-  | :? float as f    -> Float f
-  | :? char as c     -> String (string c)
-  | :? string as s   -> String s
+    // Common BCL types
+    | :? Guid as g             -> String (string g)
+    | :? DateTime as dt        -> String (dt.ToUniversalTime().ToString("o"))
+    | :? DateTimeOffset as dto -> String (dto.ToString("o"))
 
-  // Common BCL types
-  | :? Guid as g              -> String (string g)
-  | :? DateTime as dt         -> String (dt.ToUniversalTime().ToString("o"))
-  | :? DateTimeOffset as dto  -> String (dto.ToString("o"))
+    // Collections
+    | :? (byte array) as bytes ->
+      Binary (bytes, "application/octet-stream")
 
-  // Collections
-  | :? (byte array) as bytes -> Binary (bytes, "application/octet-stream")
-  | :? IEnumerable<KeyValuePair<string, obj>> as dict ->
-    Seq.map (fun (KeyValue (k, v)) -> (k, fromObject v)) dict
-    |> Map.ofSeq |> Object
-  //| :? Map<string, obj> as map -> Map.map (fun _ v -> fromObject v) map |> Object
-  | :? IEnumerable<obj> as ie ->
-    Seq.map fromObject ie
-    |> Seq.toList |> Array
+    | :? Array as arr ->
+      [ for i in 0..arr.Length-1 do
+          yield fromObject (arr.GetValue i) ]
+      |> Array
 
-  // POCOs
-  | a ->
-    Map.fromObj a
-    |> Map.map (fun _ v -> fromObject v)
-    |> Object
+    | :? IEnumerable<KeyValuePair<string, obj>> as dict ->
+      dict
+      |> Seq.map (fun (KeyValue (k, v)) -> (k, fromObject v))
+      |> Map.ofSeq
+      |> Object
+
+    //| :? Map<string, obj> as map -> Map.map (fun _ v -> fromObject v) map |> Object
+    | :? IEnumerable<obj> as ie ->
+      Seq.map fromObject ie
+      |> Seq.toList
+      |> Array
+
+    // POCOs
+    | a ->
+      Map.fromObject a
+      |> Map.map (fun _ v -> fromObject v)
+      |> Object
 
 type Units =
   | Bits
@@ -751,26 +761,6 @@ type Message =
     /// when? nanoseconds since UNIX epoch
     timestamp : EpochNanoSeconds }
 
-    static member name_ : Lens<Message, PointName> =
-      (fun x -> x.name),
-      fun v x -> { x with name = v }
-
-    static member value_ : Lens<Message, PointValue> =
-      (fun x -> x.value),
-      fun v x -> { x with value = v }
-
-    static member fields_ : Lens<Message, Map<PointName, Field>> =
-      (fun x -> x.fields),
-      (fun v x -> { x with fields = v })
-
-    static member session_ : Lens<Message, Value> =
-      (fun x -> x.session),
-      fun v x -> { x with session = v }
-
-    static member context_ : Lens<Message, Map<string, Value>> =
-      (fun x -> x.context),
-      (fun v x -> { x with context = v })
-
     static member ToJson (m : Message) =
       Json.write "name" m.name
       *> Json.write "value" m.value
@@ -807,45 +797,133 @@ module Message =
   open NodaTime
   open Logary.Internals
 
-  let field_ name : PLens<Message, Field> =
-    Message.fields_ >-?> key_ (PointName.ofSingle name)
+  [<Literal>]
+  let ErrorsFieldName = "errors"
+
+  [<Literal>]
+  let ServiceFieldName = "service"
+
+  module Lenses =
+
+    let name_ : Lens<Message, PointName> =
+      (fun x -> x.name),
+      fun v x -> { x with name = v }
+
+    let value_ : Lens<Message, PointValue> =
+      (fun x -> x.value),
+      fun v x -> { x with value = v }
+
+    let fields_ : Lens<Message, Map<PointName, Field>> =
+      (fun x -> x.fields),
+      (fun v x -> { x with fields = v })
+
+    let session_ : Lens<Message, Value> =
+      (fun x -> x.session),
+      fun v x -> { x with session = v }
+
+    let context_ : Lens<Message, Map<string, Value>> =
+      (fun x -> x.context),
+      (fun v x -> { x with context = v })
+
+    let field_ name : PLens<Message, Field> =
+      fields_ >-?> key_ (PointName.ofSingle name)
+
+    let contextValue_ name : PLens<Message, Value> =
+      context_ >-?> key_ name
+
+    /// Lens to the context field 'service'
+    let service_ : PLens<Message, string> =
+      contextValue_ ServiceFieldName >??> Value.String_
+
+    /// Lens you can use to get the list of errors in this message.
+    let errors_ : PLens<Message, Value list> =
+      field_ ErrorsFieldName >?-> Field.value_ >??> Value.Array_
+
+  ///////////////// FIELDS ////////////////////
 
   /// Get a partial setter lens to a field
   [<CompiledName "SetField">]
   let inline setField name value =
-    Lens.setPartial (field_ name) (Field.init value)
+    Lens.setPartial (Lenses.field_ name) (Field.init value)
 
   /// Get a partial setter lens to a field with an unit
   [<CompiledName "SetFieldUnit">]
   let inline setFieldUnit name value units =
-    Lens.setPartial (field_ name) (Field.initWithUnit value units)
+    Lens.setPartial (Lenses.field_ name) (Field.initWithUnit value units)
+
+  /// You can also choose to construct a Field yourself, using the object model
+  /// that Logary has for its data. That way you don't have to rely on having
+  /// static ToValue methods on your data objects.
+  [<CompiledName "SetFieldValue">]
+  let setFieldValue (name : string) (field : Field) msg =
+    Lens.setPartial (Lenses.field_ name) field msg
+
+  [<CompiledName "SetFieldValues">]
+  let setFieldValues (fields : (string * Field) list) msg =
+    fields |> List.fold (fun m (name, value) -> setFieldValue name value m) msg
+
+  [<CompiledName "SetFieldsFromMap">]
+  let setFieldsFromMap (m : Map<string, obj>) msg =
+    m
+    |> Seq.map (fun (KeyValue (k, v)) -> k, Field (Value.fromObject v, None))
+    |> List.ofSeq
+    |> fun fields -> setFieldValues fields msg
+
+  [<CompiledName "SetFieldFromObject">]
+  let setFieldFromObject name (data : obj) msg =
+    setFieldValue name (Field (Value.fromObject data, None)) msg
+
+  /// Reflects over the object and sets the appropriate fields.
+  [<CompiledName "SetFieldsFromObject">]
+  let setFieldsFromObject (data : obj) msg =
+    Map.fromObject data
+    |> Seq.map (fun (KeyValue (k, v)) -> k, Field (Value.fromObject v, None))
+    |> List.ofSeq
+    |> fun fields -> setFieldValues fields msg
 
   /// Get a partial getter lens to a field
   [<CompiledName "TryGetField">]
   let tryGetField name =
-    Lens.getPartial (field_ name)
+    Lens.getPartial (Lenses.field_ name)
 
-  let contextValue_ name : PLens<Message, Value> =
-    Message.context_ >-?> key_ name
+  ///////////////// CONTEXT ////////////////////
 
-  let inline contextValue name value =
-    Lens.setPartial (contextValue_ name) (value)
+  /// Sets a context value by trying to find the ToValue method on the type
+  /// passed.
+  [<CompiledName "SetContext">]
+  let inline setContext name value msg =
+    Lens.setPartial (Lenses.contextValue_ name) (Value.serialize value) msg
 
-  let inline tryGetContextValue name =
-    Lens.getPartial (contextValue_ name)
+  /// Sets a context value.
+  [<CompiledName "SetContextValue">]
+  let setContextValue name value msg =
+    Lens.setPartial (Lenses.contextValue_ name) value msg
 
-  /// Contains lenses and functions for manipulating message fields.
-  module Fields =
+  [<CompiledName "SetContextValues">]
+  let setContextValues (values : (string * Value) list) msg =
+    values |> List.fold (fun m (name, value) -> setContextValue name value m) msg
 
-    let errors_ : PLens<Message, Value list> =
-      field_ "errors" >?-> Field.value_ >??> Value.Array_
+  [<CompiledName "SetContextFromMap">]
+  let setContextFromMap (m : Map<string, obj>) msg =
+    m
+    |> Seq.map (fun (KeyValue (k, v)) -> k, Value.fromObject v)
+    |> List.ofSeq
+    |> fun fields -> setContextValues fields msg
 
-  /// Contains lenses and functions for manipulating message contexts.
-  module Context =
+  /// Uses reflection to set all 
+  [<CompiledName "SetContextFromObject">]
+  let setContextFromObject (data : obj) msg =
+    Map.fromObject data
+    |> Seq.map (fun (KeyValue (k, v)) -> k, Value.fromObject v)
+    |> List.ofSeq
+    |> fun values -> setContextValues values msg
 
-    /// Lens to the context field 'service'
-    let service_ : PLens<Message, string> =
-      contextValue_ "service" >??> Value.String_
+  /// Tries to get a context value
+  [<CompiledName "TryGetContext">]
+  let inline tryGetContext name msg =
+    Lens.getPartial (Lenses.contextValue_ name) msg
+
+  ///////////////// CTORS ////////////////////
 
   /// Creates a new event message template with level
   [<CompiledName "Event">]
@@ -934,6 +1012,29 @@ module Message =
   [<CompiledName "EventFatalFormat">]
   let eventFatalf fmt = Printf.kprintf (event Fatal) fmt
 
+  /// Converts a String.Format-style format string and an array of arguments into
+  /// a message template and a set of fields.
+  let internal templateFromFormat (format : string) (args : obj[]) =
+    let fields =
+      args
+      |> Array.mapi (fun i v ->
+        sprintf "arg%i" i,
+        Field (Value.fromObject v, None))
+      |> List.ofArray
+
+    // Replace {0}..{n} with {arg0}..{argn}
+    let template = Seq.fold (fun acc i -> String.replace (sprintf "{%i}" i) (sprintf "{arg%i}" i) acc) format [0..args.Length]
+    (template, fields)
+
+  /// Creates a new event with given level, format and arguments. Format may
+  /// contain String.Format-esque format placeholders.
+  [<CompiledName "EventFormat">]
+  let eventFormat (level, format, [<ParamArray>] args : obj[]) =
+    let (template, fields) = templateFromFormat format args
+    event level template |> setFieldValues fields
+
+  ///////////////// PROPS ////////////////////
+
   [<CompiledName "SetName">]
   let setName name (msg : Message) =
     { msg with name = name }
@@ -962,25 +1063,6 @@ module Message =
   let setEvent format msg =
     { msg with value = Event format}
 
-  [<CompiledName "AddField">]
-  let addField ((name, field) : (PointName * Field)) msg =
-    {msg with fields = Map.add name field msg.fields}
-
-  [<CompiledName "AddFields">]
-  let addFields (fields: (PointName * Field) seq) msg =
-    {msg with fields = Map.fold (fun acc k v -> Map.add k v acc) msg.fields (Map fields)}
-
-  // TODO: this data should be structured on the F# side of things, not obj
-  [<CompiledName "AddData">]
-  let addData (data: obj) msg =
-    let fields =
-      Map.fromObj data
-      |> Seq.map (fun (KeyValue (k, v)) ->
-          PointName.ofSingle k,
-          Field (Value.fromObject v, None))
-
-    addFields fields msg
-
   let rec private exnToFields (e : exn) =
     let fields =
       [("type", String (e.GetType ()).FullName);
@@ -1006,37 +1088,16 @@ module Message =
         exnToFields e :: []
 
     let exnsNext =
-      let exns = Lens.getPartialOrElse Fields.errors_ [] msg
+      let exns = Lens.getPartialOrElse Lenses.errors_ [] msg
       exns @ (flattenedExns |> List.map Object)
 
     // If there's no "errors" field, add it
     let msg =
-      match Lens.getPartial Fields.errors_ msg with
-      | Some x -> msg
-      | None -> addField (PointName.ofSingle "errors", Field.init (Array [])) msg
+      match Lens.getPartial Lenses.errors_ msg with
+      | Some x ->
+        msg
 
-    Lens.setPartial Fields.errors_ exnsNext msg
+      | None ->
+        setFieldValue "errors" (Field.init (Array [])) msg
 
-  /// Converts a String.Format-style format string and an array of arguments into
-  /// a message template and a set of fields.
-  [<CompiledName "TemplateFromFormat">]
-  let internal templateFromFormat (format : string) (args : obj[]) =
-    let fields =
-      args
-      |> Seq.mapi (fun i v ->
-        PointName.ofSingle (sprintf "arg%i" i),
-        Field (Value.fromObject v, None))
-      |> Seq.toList
-
-    // Replace {0}..{n} with {arg0}..{argn}
-    let template = Seq.fold (fun acc i -> String.replace (sprintf "{%i}" i) (sprintf "{arg%i}" i) acc) format [0..args.Length]
-    (template, fields)
-
-  /// Creates a new event with given level, format and arguments.
-  /// Format may contain String.Format-esque format placeholders.
-  [<CompiledName "CreateFormattedEvent">]
-  let eventf (level, format, [<ParamArray>] args : obj[]) =
-    let (template, fields) = templateFromFormat format args
-
-    event level template
-    |> addFields fields
+    Lens.setPartial Lenses.errors_ exnsNext msg
