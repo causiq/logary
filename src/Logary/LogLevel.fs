@@ -36,7 +36,7 @@ with
   /// Converts the string passed to a Loglevel.
   [<System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
   static member FromString str =
-    match (str : string).ToLowerInvariant() with
+    match String.toLowerInvariant str with
     | "verbose" -> Verbose
     | "debug"   -> Debug
     | "info"    -> Info
