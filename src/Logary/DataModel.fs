@@ -1076,7 +1076,15 @@ module Message =
         if e.TargetSite <> null then 
           yield "targetSite", String (e.TargetSite.ToString ())
         if e.StackTrace <> null then
-          yield "stacktrace", String e.StackTrace ]
+          yield "stackTrace", String e.StackTrace
+        if e.Source <> null then
+          yield "source", String e.Source
+        if e.HelpLink <> null then
+          yield "helpLink", String e.HelpLink
+        if e.HResult <> 0 then
+          yield "hResult", Int64 (int64 e.HResult)
+        if e.Data <> null then
+          yield "data", Value.fromObject e.Data ]
 
     Map.ofSeq <|
       if e.InnerException <> null then
