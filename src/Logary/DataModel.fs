@@ -1053,6 +1053,12 @@ module Message =
   let setTicks (ticks : int64) msg =
     { msg with timestamp = ticks * 100L }
 
+  /// Sets the number of ticks as specified by DateTime and DateTimeOffset,
+  /// which starts at zero the 0001-01-01 00:00:00 instant.
+  [<CompiledName "SetUTCTicks">]
+  let setUTCTicks (ticks : int64) msg =
+    { msg with timestamp = ticks - DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).Ticks }
+
   /// Update the message with the current timestamp.
   [<CompiledName "UpdateTimestamp">]
   let updateTimestamp msg =
@@ -1065,10 +1071,12 @@ module Message =
 
   let rec private exnToFields (e : exn) =
     let fields =
-      [("type", String (e.GetType ()).FullName);
-       ("message", String e.Message)] @
-      (if e.TargetSite <> null then [("targetsite", String <| e.TargetSite.ToString ())] else []) @
-      (if e.StackTrace <> null then [("backtrace", String e.StackTrace)] else [])
+      [ yield "type", String (e.GetType ()).FullName
+        yield "message", String e.Message
+        if e.TargetSite <> null then 
+          yield "targetSite", String (e.TargetSite.ToString ())
+        if e.StackTrace <> null then
+          yield "stacktrace", String e.StackTrace ]
 
     Map.ofSeq <|
       if e.InnerException <> null then
