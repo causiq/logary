@@ -101,7 +101,7 @@ let tests =
         |> StringFormatter.levelDatetimeMessagePathNl.format)
       |> should equal (
         String.Format("E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]" +
-                      "{0}  errors => {0}    - {0}      message => \"{1}\"{0}      type => \"{2}\"{0}",
+                      "{0}  errors => {0}    - {0}      hResult => -2146233088{0}      message => \"{1}\"{0}      type => \"{2}\"{0}",
                       Environment.NewLine, e.Message, (e.GetType ()).FullName))
       |> thatsIt
 
@@ -114,7 +114,7 @@ let tests =
       |> should equal (
         String.Format("E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]"+
                       "{0}  a => \"b\"{0}  a2 => 24{0}" +
-                      "  errors => {0}    - {0}      message => \"{1}\"{0}      type => \"{2}\"{0}",
+                      "  errors => {0}    - {0}      hResult => -2146233088{0}      message => \"{1}\"{0}      type => \"{2}\"{0}",
                       Environment.NewLine, e.Message, (e.GetType ()).FullName))
       |> thatsIt
 
