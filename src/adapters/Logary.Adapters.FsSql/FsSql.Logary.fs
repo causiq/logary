@@ -24,7 +24,7 @@ module internal FsSqlLogLine =
   let toLogary (l : FsSql.Logging.LogLine) =
     Message.event (FsSqlLogLevel.toLogary l.level) l.message
     |> Message.setName (PointName.parse l.path)
-    |> Message.setTicks (Instant.FromDateTimeUtc(DateTime(l.timestamp)).Ticks)
+    |> Message.setUTCTicks l.timestamp
 
 type FsSqlAdapter(logger : Logger) =
   interface FsSql.Logging.Logger with
