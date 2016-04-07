@@ -22,7 +22,7 @@ nuget Logary
 At [https://logary.github.io/](https://logary.github.io) you can find the full documentation.
 
 Sponsored by
-[qvitoo – A.I. bookkeeping and Suave in production since many years](https://qvitoo.com/?utm_source=github&utm_campaign=logary).
+[qvitoo – A.I. bookkeeping and Logary in production since many years](https://qvitoo.com/?utm_source=github&utm_campaign=logary).
 
 ## Why?
 
