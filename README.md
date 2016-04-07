@@ -19,9 +19,9 @@ Just add this to your paket.dependencies:
 nuget Logary
 ```
 
-
-
 At [https://logary.github.io/](https://logary.github.io) you can find the full documentation.
+
+Sponsored by [qvitoo – A.I. bookkeeping](https://qvitoo.com/?utm_source=github).
 
 ## Why?
 
