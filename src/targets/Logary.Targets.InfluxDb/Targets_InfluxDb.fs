@@ -2,6 +2,7 @@
 
 open Hopac
 open Hopac.Infixes
+open Hopac.Extensions
 open HttpFs.Client
 open Logary
 open Logary.Target
@@ -205,8 +206,26 @@ let empty =
 // for the approach you may need to take.
 module internal Impl =
 
+  let reqestAckJobCreator request =
+    match request with
+    | Log (msg, ack) ->
+      job {
+          do! ack *<= ()
+      }
+    | Flush (ackCh, nack) ->
+      job {
+        do! Ch.give ackCh () <|> nack
+      }
+
+  let extractMessage request = 
+    match request with
+    | Log (msg, ack) -> 
+      Serialisation.serialiseMessage msg
+    | Flush (achCh, nack) ->
+      ""
+
   let loop (conf : InfluxDbConf) (ri : RuntimeInfo)
-           (requests : BoundedMb<_>)
+           (requests : RingBuffer<_>)
            (shutdown : Ch<_>) =
     let endpoint =
       let ub = UriBuilder(conf.endpoint)
@@ -215,15 +234,18 @@ module internal Impl =
       ub.Uri
 
     let rec loop () : Job<unit> =
-      Alt.choose [
-        shutdown ^=> fun ack ->
-          ack *<= () :> Job<_>
+      let theJob =
+        Alt.choose [
+          shutdown ^=> fun ack ->
+            ack *<= () :> Job<_>
 
-        // 'When there is a request' call this function
-        BoundedMb.take requests ^=> function
-          | Log (msg, ack) ->
-            let body = Serialisation.serialiseMessage msg
-            job {
+          // 'When there is a request' call this function
+          RingBuffer.takeBatch 100 requests ^=> fun reqs ->
+            
+            let messageTexts = Seq.map extractMessage reqs
+            let body = messageTexts |> String.concat "\r\n"
+
+            job {              
               let req =
                 createRequest Post endpoint
                 |> withKeepAlive true
@@ -237,18 +259,13 @@ module internal Impl =
                       |> Message.setField "body" body)
                 printfn "body: %s, response %A" body resp
                 failwithf "got response code %i" resp.StatusCode
-              else
-                do! ack *<= ()
-                return! loop ()
-            }
-          
-          | Flush (ackCh, nack) ->
-            job {
-              do! Ch.give ackCh () <|> nack
-              return! loop ()
-            }
-      ] :> Job<_>
+              else   
+                do! Array.iterJobIgnore reqestAckJobCreator reqs
+            }             
+              
+        ] :> Job<_>
 
+      theJob
     loop ()
 
 /// Create a new Noop target
