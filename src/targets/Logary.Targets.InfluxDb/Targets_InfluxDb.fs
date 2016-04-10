@@ -221,7 +221,7 @@ module internal Impl =
     match request with
     | Log (msg, ack) -> 
       Serialisation.serialiseMessage msg
-    | Flush (achCh, nack) ->
+    | _ ->
       ""
 
   let loop (conf : InfluxDbConf) (ri : RuntimeInfo)
@@ -240,20 +240,18 @@ module internal Impl =
 
         // 'When there is a request' call this function
         RingBuffer.takeBatch 100 requests ^=> fun reqs ->
-          printfn "Influx: Got %i messages" reqs.Length
+          //printfn "Influx: Got %i messages" reqs.Length
 
           let messageTexts = Seq.map extractMessage reqs
-          let body = messageTexts |> String.concat "\r\n"
+          let body = messageTexts |> String.concat "\n"
 
-          job {              
-              printfn "body: [\r\n%s\r\n]" body
+          job {    
+              //printfn "body: [\r\n%s\r\n]" body
               let req =
                 createRequest Post endpoint
                 |> withKeepAlive true
                 |> withBody (BodyString body)
-              printfn "sending req"
               use! resp = getResponse req
-              printfn "req sent"
               let! body = Response.readBodyAsString resp
               if resp.StatusCode > 299 then
                 do! Logger.log ri.logger (
@@ -263,10 +261,9 @@ module internal Impl =
                 printfn "body: %s, response %A" body resp
                 failwithf "got response code %i" resp.StatusCode
               else   
-                do! Array.iterJobIgnore reqestAckJobCreator reqs
+                //printfn "Acking"
+                do! Seq.iterJobIgnore reqestAckJobCreator reqs
                 return! loop ()
-
-              //do! timeOut (TimeSpan.FromSeconds 1.2)
           }
               
       ] :> Job<_>
