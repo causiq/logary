@@ -26,7 +26,7 @@ module internal Logging =
     let latch = Latch targets.Length
     (targets |> List.traverseAltA (fun target ->
       let ack = IVar ()
-      ((Log (msg, ack)) |> BoundedMb.put target.requests)
+      ((Log (msg, ack)) |> RingBuffer.put target.requests)
       ^=>. Latch.decrement latch
     ))
     ^->. memo (Latch.await latch)

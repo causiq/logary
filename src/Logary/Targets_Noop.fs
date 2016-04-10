@@ -22,7 +22,7 @@ module internal Impl =
   type State = { state : bool }
 
   let loop (conf : NoopConf) (ri : RuntimeInfo)
-           (requests : BoundedMb<_>)
+           (requests : RingBuffer<_>)
            (shutdown : Ch<_>) =
     let rec loop (state : State) : Job<unit> =
       Alt.choose [
@@ -30,7 +30,7 @@ module internal Impl =
           ack *<= () :> Job<_>
 
         // 'When there is a request' call this function
-        BoundedMb.take requests ^=> function
+        RingBuffer.take requests ^=> function
           | Log (_, ack) ->
             job {
               // do something with the message

@@ -43,7 +43,7 @@ module internal Impl =
 
   let loop (conf : MailgunLogaryConf)
            (ri : RuntimeInfo)
-           (requests : BoundedMb<TargetMessage>)
+           (requests : RingBuffer<TargetMessage>)
            (shutdown : Ch<IVar<unit>>)
            : Job<unit>=
 
@@ -52,7 +52,7 @@ module internal Impl =
         shutdown ^=> fun ack ->
           ack *<= ()
 
-        BoundedMb.take requests ^=> function
+        RingBuffer.take requests ^=> function
           | Log (logMsg, ack) ->
             job {
               if logMsg.level < conf.minLevel then return! loop ()

@@ -144,7 +144,7 @@ module internal Impl =
 
   let loop (conf : HekaConfig)
            (ri : RuntimeInfo)
-           (requests : BoundedMb<TargetMessage>)
+           (requests : RingBuffer<TargetMessage>)
            (shutdown : Ch<IVar<unit>>) =
 
     let debug = Message.eventDebug >> Logger.log ri.logger
@@ -210,7 +210,7 @@ module internal Impl =
             do! ack *<= ()
           }
 
-        BoundedMb.take requests ^=> function
+        RingBuffer.take requests ^=> function
           | Log (logMsg, ack) ->
             debug "running: received message"
             >>=. write (Message.ofMessage logMsg)

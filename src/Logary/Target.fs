@@ -21,7 +21,7 @@ type TargetMessage =
 /// target instance.
 type TargetInstance =
   { server   : Job<unit>
-    requests : BoundedMb<TargetMessage>
+    requests : RingBuffer<TargetMessage>
     shutdown : Ch<IVar<unit>>
     /// The human readable name of the target.
     name     : PointName }
@@ -75,7 +75,7 @@ let init metadata (conf : TargetConf) =
 /// the Message was acked.
 let log (i : TargetInstance) (msg : Message) : Alt<Promise<unit>> =
   let ack = IVar ()
-  (Log (msg, ack) |> BoundedMb.put i.requests)
+  (Log (msg, ack) |> RingBuffer.put i.requests)
   ^->. (ack :> Promise<unit>)
 
 /// Send a flush RPC to the target and return the async with the ACKs. This will
@@ -85,7 +85,7 @@ let log (i : TargetInstance) (msg : Message) : Alt<Promise<unit>> =
 let flush i =
   Alt.withNackJob <| fun nack ->
   let ackCh = Ch ()
-  (Flush (ackCh, nack)) |> BoundedMb.put i.requests >>-.
+  (Flush (ackCh, nack)) |> RingBuffer.put i.requests >>-.
   ackCh
 
 /// Shutdown the target. The commit point is that the target accepts the
@@ -100,10 +100,10 @@ module TargetUtils =
 
   /// Create a new standard named target, with no particular namespace,
   /// given a job function and a name for the target.
-  let stdNamedTarget (loop : RuntimeInfo -> BoundedMb<_> -> Ch<IVar<unit>> -> Job<unit>) name : TargetConf =
+  let stdNamedTarget (loop : RuntimeInfo -> RingBuffer<_> -> Ch<IVar<unit>> -> Job<unit>) name : TargetConf =
     { name = name
       initer = fun metadata -> job {
-        let! requests = BoundedMb.create 5
+        let! requests = RingBuffer.create 5
         let! shutdown = Ch.create ()
         return { server   = loop metadata requests shutdown
                  requests = requests
