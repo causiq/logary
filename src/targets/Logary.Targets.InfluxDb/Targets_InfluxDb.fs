@@ -234,23 +234,26 @@ module internal Impl =
       ub.Uri
 
     let rec loop () : Job<unit> =
-      let theJob =
-        Alt.choose [
-          shutdown ^=> fun ack ->
-            ack *<= () :> Job<_>
+      Alt.choose [
+        shutdown ^=> fun ack ->
+          ack *<= () :> Job<_>
 
-          // 'When there is a request' call this function
-          RingBuffer.takeBatch 100 requests ^=> fun reqs ->
-            
-            let messageTexts = Seq.map extractMessage reqs
-            let body = messageTexts |> String.concat "\r\n"
+        // 'When there is a request' call this function
+        RingBuffer.takeBatch 100 requests ^=> fun reqs ->
+          printfn "Influx: Got %i messages" reqs.Length
 
-            job {              
+          let messageTexts = Seq.map extractMessage reqs
+          let body = messageTexts |> String.concat "\r\n"
+
+          job {              
+              printfn "body: [\r\n%s\r\n]" body
               let req =
                 createRequest Post endpoint
                 |> withKeepAlive true
                 |> withBody (BodyString body)
+              printfn "sending req"
               use! resp = getResponse req
+              printfn "req sent"
               let! body = Response.readBodyAsString resp
               if resp.StatusCode > 299 then
                 do! Logger.log ri.logger (
@@ -261,11 +264,13 @@ module internal Impl =
                 failwithf "got response code %i" resp.StatusCode
               else   
                 do! Array.iterJobIgnore reqestAckJobCreator reqs
-            }             
-              
-        ] :> Job<_>
+                return! loop ()
 
-      theJob
+              //do! timeOut (TimeSpan.FromSeconds 1.2)
+          }
+              
+      ] :> Job<_>
+      
     loop ()
 
 /// Create a new Noop target
