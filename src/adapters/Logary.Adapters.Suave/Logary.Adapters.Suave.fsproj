@@ -19,6 +19,7 @@
     <WarningLevel>3</WarningLevel>
     <DocumentationFile>bin\Debug\Logary.Adapters.Suave.xml</DocumentationFile>
     <PlatformTarget>AnyCPU</PlatformTarget>
+    <NoWarn>2003</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -30,28 +31,8 @@
     <DocumentationFile>bin\Release\Logary.Adapters.Suave.xml</DocumentationFile>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
+    <NoWarn>2003</NoWarn>
   </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="mscorlib" />
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Numerics" />
-    <Reference Include="System.Xml" />
-    <Content Include="app.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="SuaveAdapter.fs" />
-    <Compile Include="Deprecated.fs" />
-    <Compile Include="AssemblyVersionInfo.fs" />
-    <Compile Include="AssemblyInfo.fs" />
-    <None Include="paket.references" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\Logary\Logary.fsproj">
-      <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
-      <Name>Logary</Name>
-    </ProjectReference>
-  </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
   </PropertyGroup>
@@ -110,4 +91,23 @@
       </ItemGroup>
     </When>
   </Choose>
+  <ItemGroup>
+    <Content Include="app.config" />
+    <Compile Include="SuaveAdapter.fs" />
+    <Compile Include="Deprecated.fs" />
+    <Compile Include="AssemblyVersionInfo.fs" />
+    <Compile Include="AssemblyInfo.fs" />
+    <None Include="paket.references" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Xml" />
+    <ProjectReference Include="..\..\Logary\Logary.fsproj">
+      <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
+      <Name>Logary</Name>
+    </ProjectReference>
+  </ItemGroup>
 </Project>

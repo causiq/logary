@@ -16,8 +16,8 @@
     <DefineConstants>DEBUG</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <ConsolePause>false</ConsolePause>
-    <PlatformTarget>
-    </PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
+    <NoWarn>2003</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugSymbols>false</DebugSymbols>
@@ -26,42 +26,12 @@
     <ErrorReport>prompt</ErrorReport>
     <ConsolePause>false</ConsolePause>
     <GenerateTailCalls>true</GenerateTailCalls>
-    <PlatformTarget>
-    </PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
     <DefineConstants>
     </DefineConstants>
+    <NoWarn>2003</NoWarn>
   </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="mscorlib" />
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Numerics" />
-    <Content Include="app.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="AssemblyVersionInfo.fs" />
-    <Compile Include="..\Logary.Targets.Riemann\ProtoBufUtils.fs">
-      <Link>ProtoBufUtils.fs</Link>
-    </Compile>
-    <Compile Include="Messages.fs" />
-    <Compile Include="Constants.fs" />
-    <Compile Include="Types.fs" />
-    <Compile Include="Client.fs" />
-    <Compile Include="Targets_Heka.fs" />
-  </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
-  <ItemGroup>
-    <None Include="paket.references" />
-    <None Include="Message.proto" />
-    <None Include="Script.fsx" />
-    <None Include="Integration.fsx" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\Logary\Logary.fsproj">
-      <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
-      <Name>Logary</Name>
-    </ProjectReference>
-  </ItemGroup>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
@@ -119,4 +89,30 @@
       </ItemGroup>
     </When>
   </Choose>
+  <ItemGroup>
+    <Content Include="app.config" />
+    <Compile Include="AssemblyVersionInfo.fs" />
+    <Compile Include="..\Logary.Targets.Riemann\ProtoBufUtils.fs">
+      <Link>ProtoBufUtils.fs</Link>
+    </Compile>
+    <Compile Include="Messages.fs" />
+    <Compile Include="Constants.fs" />
+    <Compile Include="Types.fs" />
+    <Compile Include="Client.fs" />
+    <Compile Include="Targets_Heka.fs" />
+    <None Include="paket.references" />
+    <None Include="Message.proto" />
+    <None Include="Script.fsx" />
+    <None Include="Integration.fsx" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+    <ProjectReference Include="..\..\Logary\Logary.fsproj">
+      <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
+      <Name>Logary</Name>
+    </ProjectReference>
+  </ItemGroup>
 </Project>
