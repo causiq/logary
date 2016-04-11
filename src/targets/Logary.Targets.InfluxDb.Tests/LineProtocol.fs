@@ -75,23 +75,21 @@ let lineProtocol =
     testCase "Escaping Commas and Spaces" <| fun _ ->
       let msg =
         Message.metric (PointName.ofSingle "total disk free") (Int64 442221834240L)
-        |> Message.setContextValue "volumes" (String "/net,/home,/")
+        |> Message.setContextValue "volumes in,computer" (String "/net,/home,/")
         |> Message.setNanoEpoch 1435362189575692182L
 
       Assert.equal (Serialisation.serialiseMessage msg)
-                   @"total\ disk\ free,volumes=/net\,/home\,/ value=442221834240i 1435362189575692182"
+                   @"total\ disk\ free,volumes\ in\,computer=/net\,/home\,/ value=442221834240i 1435362189575692182"
                    "should equal"
 
-    testCase "Escaping Equals Signs" <| fun _ ->
-      Tests.skiptest "TODO"
-
+    testCase "Escaping Equals Signs" <| fun _ ->   
       let msg =
         Message.metric (PointName.ofSingle "disk_free") (Int64 442221834240L)
         |> Message.setContextValue "a=b" (String "x=z")
         |> Message.setNanoEpoch 1435362189575692182L
 
       Assert.equal (Serialisation.serialiseMessage msg)
-                   @"disk_free,a\=b=y\=z value=442221834240i 1435362189575692182"
+                   @"disk_free,a\=b=x\=z value=442221834240i 1435362189575692182"
                    "should equal"
 
     testCase "With Backslash in Tag Value" <| fun _ ->

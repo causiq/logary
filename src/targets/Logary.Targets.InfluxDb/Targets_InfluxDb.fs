@@ -14,13 +14,13 @@ module Serialisation =
   let serialiseTimestamp (ts : EpochNanoSeconds) =
     ts.ToString(Culture.invariant)
 
-  let escapeString (s : string) =
-    s.ToLowerInvariant()
-    //s.Replace(" ", @"\ ")
+  let escapeString (s : string) =   
+    s
      .Replace(",", @"\,")
+     .Replace(" ", "\ ")
+     .Replace("=", "\=")
 
-    // TEMP:
-     .Replace(" ", "_")
+    // TEMP:     
      .Replace("%", "pct")
      .Replace(":", "_")
      .Replace("(", "_lpar_")
@@ -42,7 +42,7 @@ module Serialisation =
     | xs ->
       // TO CONSIDER: assumes values are escaped
       let joined =
-        xs |> List.map (fun (x, y) -> sprintf "%s=%s" x y)
+        xs |> List.map (fun (x, y) -> sprintf "%s=%s" (escapeString x) y)
            |> String.concat ","
       "," + joined
 
@@ -219,6 +219,7 @@ module internal Impl =
     match request with
     | Log (msg, ack) -> 
       Serialisation.serialiseMessage msg
+      
     | _ ->
       ""
 
