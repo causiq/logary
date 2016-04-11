@@ -209,13 +209,11 @@ module internal Impl =
   let reqestAckJobCreator request =
     match request with
     | Log (msg, ack) ->
-      job {
-          do! ack *<= ()
-      }
+      ack *<= ()
+       
     | Flush (ackCh, nack) ->
-      job {
-        do! Ch.give ackCh () <|> nack
-      }
+      Ch.give ackCh () <|> nack :> Job<_>
+      
 
   let extractMessage request = 
     match request with
@@ -246,11 +244,12 @@ module internal Impl =
           let body = messageTexts |> String.concat "\n"
 
           job {    
-              //printfn "body: [\r\n%s\r\n]" body
-              let req =
-                createRequest Post endpoint
-                |> withKeepAlive true
-                |> withBody (BodyString body)
+            //printfn "body: [\r\n%s\r\n]" body
+            let req =
+              createRequest Post endpoint
+              |> withKeepAlive true
+              |> withBody (BodyString body)
+            try
               use! resp = getResponse req
               let! body = Response.readBodyAsString resp
               if resp.StatusCode > 299 then
@@ -264,6 +263,7 @@ module internal Impl =
                 //printfn "Acking"
                 do! Seq.iterJobIgnore reqestAckJobCreator reqs
                 return! loop ()
+            with e -> printfn "%A" e
           }
               
       ] :> Job<_>
