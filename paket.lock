@@ -96,8 +96,3 @@ GITHUB
   specs:
     RingBuffer.fs (84a1e146fbd18b323aed7f11e5c2e51523781719)
       Hopac
-GROUP Library
-NUGET
-  remote: https://www.nuget.org/api/v2
-  specs:
-    FSharp.Core (3.1.2.5)
