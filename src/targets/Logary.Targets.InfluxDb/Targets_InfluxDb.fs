@@ -18,19 +18,17 @@ module Serialisation =
     s
      .Replace(",", @"\,")
      .Replace(" ", "\ ")
-     .Replace("=", "\=")
+     .Replace("=", "\=")    
 
-    // TEMP:     
-     .Replace("%", "pct")
-     .Replace(":", "_")
-     .Replace("(", "_lpar_")
-     .Replace(")", "_rpar_")
+  let escapeStringValue (s : string) =   
+    s
+     .Replace("\"", "\\\"")
 
   let serialiseStringTag (s : string) =
     escapeString s
 
   let serialiseStringValue (s : string) =
-    "\"" + escapeString s + "\""
+    "\"" + escapeStringValue s + "\""
 
   let serialisePointName (pn : PointName) =
     escapeString (pn.ToString())
@@ -52,7 +50,7 @@ module Serialisation =
 
     | xs ->
       // TO CONSIDER: assumes values are escaped
-      xs |> List.map (fun (x, y) -> sprintf "%s=%s" x y)
+      xs |> List.map (fun (x, y) -> sprintf "%s=%s" (escapeString x) y)
          |> String.concat ","
 
   let serialiseMessage (message : Message) : string =

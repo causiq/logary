@@ -6,13 +6,18 @@ open Hopac
 open Logary
 open Logary.Targets.InfluxDb
 
+let stringEqual (actual : 'a) (expected : 'a) (msg : string) =
+  if expected = actual then ()
+  else Tests.failtestf "Expected %A \r\nto equal %A. \r\n %s"
+                       actual expected msg
+
 [<Tests>]
 let lineProtocol =
   testList "syntax for line protocol" [
     // measurement[,tag_key1=tag_value1...] field_key=field_value[,field_key2=field_value2] [timestamp]
 
     testCase "serialise timestamp" <| fun _ ->
-      Assert.equal (Serialisation.serialiseTimestamp 1439587925L)
+      stringEqual (Serialisation.serialiseTimestamp 1439587925L)
                    "1439587925"
                    "Should be identical to Logary"
 
@@ -21,7 +26,7 @@ let lineProtocol =
         Message.metric (PointName.ofSingle "measurement") (Float 12.)
         |> Message.setNanoEpoch 1439587925L
       let subject = Serialisation.serialiseMessage msg
-      Assert.equal subject "measurement value=12 1439587925"
+      stringEqual subject "measurement value=12 1439587925"
                    "should serialise correctly"
 
     testCase "for example" <| fun _ ->
@@ -37,7 +42,7 @@ let lineProtocol =
 
       let subject = Serialisation.serialiseMessage msg
 
-      Assert.equal subject
+      stringEqual subject
                    "measurement,bat=baz,foo=bar otherVal=21,value=12 1439587925"
                    "should equal"
 
@@ -46,7 +51,7 @@ let lineProtocol =
         Message.metric (PointName.ofSingle "disk_free") (Int64 442221834240L)
         |> Message.setNanoEpoch 1435362189575692182L
 
-      Assert.equal (Serialisation.serialiseMessage msg)
+      stringEqual (Serialisation.serialiseMessage msg)
                    "disk_free value=442221834240i 1435362189575692182"
                    "should equal"
 
@@ -57,7 +62,7 @@ let lineProtocol =
         |> Message.setContext "disk_type" "SSD"
         |> Message.setNanoEpoch 1435362189575692182L
 
-      Assert.equal (Serialisation.serialiseMessage msg)
+      stringEqual (Serialisation.serialiseMessage msg)
                    "disk_free,disk_type=SSD,hostname=server01 value=442221834240i 1435362189575692182"
                    "should equal"
 
@@ -68,7 +73,7 @@ let lineProtocol =
                     "disk_type", String "SSD" ] |> Map.ofList))
         |> Message.setNanoEpoch 1435362189575692182L
 
-      Assert.equal (Serialisation.serialiseMessage msg)
+      stringEqual (Serialisation.serialiseMessage msg)
                    "disk_free disk_type=\"SSD\",free_space=442221834240i 1435362189575692182"
                    "should equal"
 
@@ -78,7 +83,7 @@ let lineProtocol =
         |> Message.setContextValue "volumes in,computer" (String "/net,/home,/")
         |> Message.setNanoEpoch 1435362189575692182L
 
-      Assert.equal (Serialisation.serialiseMessage msg)
+      stringEqual (Serialisation.serialiseMessage msg)
                    @"total\ disk\ free,volumes\ in\,computer=/net\,/home\,/ value=442221834240i 1435362189575692182"
                    "should equal"
 
@@ -88,38 +93,43 @@ let lineProtocol =
         |> Message.setContextValue "a=b" (String "x=z")
         |> Message.setNanoEpoch 1435362189575692182L
 
-      Assert.equal (Serialisation.serialiseMessage msg)
+      stringEqual (Serialisation.serialiseMessage msg)
                    @"disk_free,a\=b=x\=z value=442221834240i 1435362189575692182"
                    "should equal"
 
-    testCase "With Backslash in Tag Value" <| fun _ ->
-      Tests.skiptest "TODO"
-
+    testCase "With Backslash in Tag Value" <| fun _ ->      
       let msg =
         Message.metric (PointName.ofSingle "disk_free") (Int64 442221834240L)
         |> Message.setContextValue "path" (String @"C:\Windows")
         |> Message.setNanoEpoch 1435362189575692182L
 
-      Assert.equal (Serialisation.serialiseMessage msg)
+      stringEqual (Serialisation.serialiseMessage msg)
                    @"disk_free,path=C:\Windows value=442221834240i 1435362189575692182"
                    "should equal"
 
-    testCase "Escaping Field Key" <| fun _ ->
-      Tests.skiptest "TODO"
-
+    testCase "Escaping Field Key" <| fun _ -> 
       let msg =
         Message.metric (PointName.ofSingle "disk_free") (
           Object ([ "value", Int64 442221834240L
                     "working directories", String @"C:\My Documents\Stuff for examples,C:\My Documents" ]
                   |> Map.ofList))
-        |> Message.setNanoEpoch 1435362189575692182L
+        |> Message.setNanoEpoch 1435362189575692182L     
 
-      Assert.equal (Serialisation.serialiseMessage msg)
-                   @"disk_free value=442221834240i,working\ directories=""C:\My Documents\Stuff for examples,C:\My Documents"""
+      stringEqual (Serialisation.serialiseMessage msg)
+                   @"disk_free value=442221834240i,working\ directories=""C:\My Documents\Stuff for examples,C:\My Documents"" 1435362189575692182"
                    "should equal"
 
-    testCase "Showing all escaping and quoting behavior" <| fun _ ->
-      Tests.skiptest "TODO"
+    testCase "Showing all escaping and quoting behavior" <| fun _ ->     
+      let msg =
+        Message.metric (PointName.ofSingle "\"measurement with quotes\"") (            
+          Object ([ @"field_key\\\\", String "string field value, only \" need be quoted"]                    
+                  |> Map.ofList))        
+        |> Message.setContextValue "tag key with spaces" (String "tag,value,with\"commas\"")
+        |> Message.setContextValue "tag key with spaces" (String "tag,value,with\"commas\"")
+        |> Message.setNanoEpoch 1435362189575692182L     
 
-      // TODO: type out test from https://docs.influxdata.com/influxdb/v0.10/write_protocols/write_syntax/
+      stringEqual (Serialisation.serialiseMessage msg)
+                   @"""measurement\ with\ quotes"",tag\ key\ with\ spaces=tag\,value\,with""commas"" field_key\\\\=""string field value, only \"" need be quoted"" 1435362189575692182"
+                   "should equal"
+   
   ]
