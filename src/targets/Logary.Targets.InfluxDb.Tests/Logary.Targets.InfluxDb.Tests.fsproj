@@ -39,6 +39,7 @@
       <Link>paket-files/Assert.fs</Link>
     </Compile>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="TestHelpers.fs" />
     <Compile Include="LineProtocol.fs" />
     <Compile Include="Target.fs" />
     <Compile Include="Program.fs" />
