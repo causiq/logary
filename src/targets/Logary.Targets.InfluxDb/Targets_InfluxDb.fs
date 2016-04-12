@@ -2,6 +2,7 @@
 
 open Hopac
 open Hopac.Infixes
+open Hopac.Extensions
 open HttpFs.Client
 open Logary
 open Logary.Target
@@ -13,23 +14,21 @@ module Serialisation =
   let serialiseTimestamp (ts : EpochNanoSeconds) =
     ts.ToString(Culture.invariant)
 
-  let escapeString (s : string) =
-    s.ToLowerInvariant()
-    //s.Replace(" ", @"\ ")
+  let escapeString (s : string) =   
+    s
      .Replace(",", @"\,")
+     .Replace(" ", "\ ")
+     .Replace("=", "\=")    
 
-    // TEMP:
-     .Replace(" ", "_")
-     .Replace("%", "pct")
-     .Replace(":", "_")
-     .Replace("(", "_lpar_")
-     .Replace(")", "_rpar_")
+  let escapeStringValue (s : string) =   
+    s
+     .Replace("\"", "\\\"")
 
   let serialiseStringTag (s : string) =
     escapeString s
 
   let serialiseStringValue (s : string) =
-    "\"" + escapeString s + "\""
+    "\"" + escapeStringValue s + "\""
 
   let serialisePointName (pn : PointName) =
     escapeString (pn.ToString())
@@ -41,7 +40,7 @@ module Serialisation =
     | xs ->
       // TO CONSIDER: assumes values are escaped
       let joined =
-        xs |> List.map (fun (x, y) -> sprintf "%s=%s" x y)
+        xs |> List.map (fun (x, y) -> sprintf "%s=%s" (escapeString x) y)
            |> String.concat ","
       "," + joined
 
@@ -51,7 +50,7 @@ module Serialisation =
 
     | xs ->
       // TO CONSIDER: assumes values are escaped
-      xs |> List.map (fun (x, y) -> sprintf "%s=%s" x y)
+      xs |> List.map (fun (x, y) -> sprintf "%s=%s" (escapeString x) y)
          |> String.concat ","
 
   let serialiseMessage (message : Message) : string =
@@ -205,8 +204,25 @@ let empty =
 // for the approach you may need to take.
 module internal Impl =
 
+  let reqestAckJobCreator request =
+    match request with
+    | Log (msg, ack) ->
+      ack *<= ()
+       
+    | Flush (ackCh, nack) ->
+      Ch.give ackCh () <|> nack :> Job<_>
+      
+
+  let extractMessage request = 
+    match request with
+    | Log (msg, ack) -> 
+      Serialisation.serialiseMessage msg
+      
+    | _ ->
+      ""
+
   let loop (conf : InfluxDbConf) (ri : RuntimeInfo)
-           (requests : BoundedMb<_>)
+           (requests : RingBuffer<_>)
            (shutdown : Ch<_>) =
     let endpoint =
       let ub = UriBuilder(conf.endpoint)
@@ -220,14 +236,19 @@ module internal Impl =
           ack *<= () :> Job<_>
 
         // 'When there is a request' call this function
-        BoundedMb.take requests ^=> function
-          | Log (msg, ack) ->
-            let body = Serialisation.serialiseMessage msg
-            job {
-              let req =
-                createRequest Post endpoint
-                |> withKeepAlive true
-                |> withBody (BodyString body)
+        RingBuffer.takeBatch 100 requests ^=> fun reqs ->
+          //printfn "Influx: Got %i messages" reqs.Length
+
+          let messageTexts = Seq.map extractMessage reqs
+          let body = messageTexts |> String.concat "\n"
+
+          job {    
+            //printfn "body: [\r\n%s\r\n]" body
+            let req =
+              createRequest Post endpoint
+              |> withKeepAlive true
+              |> withBody (BodyString body)
+            try
               use! resp = getResponse req
               let! body = Response.readBodyAsString resp
               if resp.StatusCode > 299 then
@@ -237,18 +258,15 @@ module internal Impl =
                       |> Message.setField "body" body)
                 printfn "body: %s, response %A" body resp
                 failwithf "got response code %i" resp.StatusCode
-              else
-                do! ack *<= ()
+              else   
+                //printfn "Acking"
+                do! Seq.iterJobIgnore reqestAckJobCreator reqs
                 return! loop ()
-            }
-          
-          | Flush (ackCh, nack) ->
-            job {
-              do! Ch.give ackCh () <|> nack
-              return! loop ()
-            }
+            with e -> printfn "%A" e
+          }
+              
       ] :> Job<_>
-
+      
     loop ()
 
 /// Create a new Noop target

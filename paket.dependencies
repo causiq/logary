@@ -38,12 +38,11 @@ nuget Http.fs-prerelease
 nuget Topshelf
 nuget Topshelf.FSharp
 nuget fszmq
+nuget FSharp.Core
 
 github xyncro/chiron:e0f4c122b21cb02d47ae3f4f83924b2dcb8dea9e src/Chiron/Chiron.fs
 github xyncro/aether:5b5c05db2414562e9f3f679d42284638e63b9f3a src/Aether/Aether.fs
 github haf/YoLo YoLo.fs
 github haf/expecto-patronum ExpectoPatronum/Assert.fs
+github logary/RingBuffer RingBuffer.fs
 
-group Library
-  source https://www.nuget.org/api/v2
-  nuget FSharp.Core ~> 3

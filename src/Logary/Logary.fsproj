@@ -19,6 +19,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <DocumentationFile>bin\Debug\Logary.xml</DocumentationFile>
+    <NoWarn>2003</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -29,9 +30,14 @@
     <WarningLevel>3</WarningLevel>
     <DocumentationFile>bin\Release\Logary.xml</DocumentationFile>
     <DebugSymbols>true</DebugSymbols>
+    <NoWarn>2003</NoWarn>
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>
+    <Compile Include="..\..\paket-files\logary\RingBuffer\RingBuffer.fs">
+      <Paket>True</Paket>
+      <Link>paket-files/RingBuffer.fs</Link>
+    </Compile>
     <Compile Include="..\..\paket-files\haf\YoLo\YoLo.fs">
       <Paket>True</Paket>
       <Link>paket-files/YoLo.fs</Link>

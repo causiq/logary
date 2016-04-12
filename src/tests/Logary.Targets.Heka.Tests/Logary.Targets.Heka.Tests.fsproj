@@ -18,6 +18,7 @@
     <PlatformTarget>
     </PlatformTarget>
     <ConsolePause>false</ConsolePause>
+    <NoWarn>2003</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugSymbols>false</DebugSymbols>
@@ -30,6 +31,7 @@
     </PlatformTarget>
     <DefineConstants>
     </DefineConstants>
+    <NoWarn>2003</NoWarn>
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>

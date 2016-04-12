@@ -37,7 +37,7 @@ module TextWriter =
 
     let loop (twConf : TextWriterConf)
              (ri : RuntimeInfo)
-             (requests : BoundedMb<TargetMessage>)
+             (requests : RingBuffer<TargetMessage>)
              (shutdown : Ch<IVar<unit>>) =
 
       let writeLine (tw : TextWriter) = (tw.WriteLineAsync : string -> _)
@@ -52,7 +52,7 @@ module TextWriter =
 
             (ack *<= () :> Job<_>)
 
-          BoundedMb.take requests ^=> function
+          RingBuffer.take requests ^=> function
             | Log (logMsg, ack) ->
               job {
                 let writer = if logMsg.level < twConf.isErrorAt then twConf.output else twConf.error
@@ -168,7 +168,7 @@ module Debugger =
   module private Impl =
 
     let loop conf metadata
-             (requests : BoundedMb<_>)
+             (requests : RingBuffer<_>)
              (shutdown : Ch<_>) =
       let formatter = conf.formatter
       let offLevel = 6
@@ -178,7 +178,7 @@ module Debugger =
           shutdown ^=> fun ack ->
             ack *<= () :> Job<_>
 
-          BoundedMb.take requests ^=> function
+          RingBuffer.take requests ^=> function
             | Log (message, ack) when Debugger.IsLogging() ->
               job {
                 let path = PointName.format message.name

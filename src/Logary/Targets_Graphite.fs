@@ -84,7 +84,7 @@ module internal Impl =
       do! stream.Write m
       return { state with sendRecvStream = Some stream } }
 
-  let loop (conf : GraphiteConf) (svc : RuntimeInfo) (requests : BoundedMb<_>)
+  let loop (conf : GraphiteConf) (svc : RuntimeInfo) (requests : RingBuffer<_>)
            (shutdown : Ch<_>) =
     let rec running state : Job<unit> =
       Alt.choose [
@@ -93,7 +93,7 @@ module internal Impl =
           try (state.client :> IDisposable).Dispose() with _ -> ()
           ack *<= () :> Job<_>
 
-        BoundedMb.take requests ^=> function
+        RingBuffer.take requests ^=> function
           | Log (logMsg, ack) ->
             match logMsg.value with
             | Event template ->

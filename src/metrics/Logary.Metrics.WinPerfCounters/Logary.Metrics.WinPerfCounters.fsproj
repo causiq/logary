@@ -18,6 +18,7 @@
     <ConsolePause>false</ConsolePause>
     <PlatformTarget>
     </PlatformTarget>
+    <NoWarn>2003</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugSymbols>false</DebugSymbols>
@@ -30,32 +31,9 @@
     </PlatformTarget>
     <DefineConstants>
     </DefineConstants>
+    <NoWarn>2003</NoWarn>
   </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="mscorlib" />
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Numerics" />
-    <Content Include="app.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="paket.references" />
-    <Compile Include="AssemblyVersionInfo.fs" />
-    <Compile Include="WinPerfCounter.fs" />
-    <Compile Include="WinPerfCounters.fs" />
-    <Compile Include="Metrics_WinPerfCounters.fs" />
-    <Compile Include="HealthCheck_WinPerfCounters.fs" />
-  </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
-  <ItemGroup>
-    <None Include="WinPerfCounterGen.fsx" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\Logary\Logary.fsproj">
-      <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
-      <Name>Logary</Name>
-    </ProjectReference>
-  </ItemGroup>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
@@ -102,4 +80,24 @@
       </ItemGroup>
     </When>
   </Choose>
+  <ItemGroup>
+    <Content Include="app.config" />
+    <None Include="paket.references" />
+    <Compile Include="AssemblyVersionInfo.fs" />
+    <Compile Include="WinPerfCounter.fs" />
+    <Compile Include="WinPerfCounters.fs" />
+    <Compile Include="Metrics_WinPerfCounters.fs" />
+    <Compile Include="HealthCheck_WinPerfCounters.fs" />
+    <None Include="WinPerfCounterGen.fsx" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+    <ProjectReference Include="..\..\Logary\Logary.fsproj">
+      <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
+      <Name>Logary</Name>
+    </ProjectReference>
+  </ItemGroup>
 </Project>

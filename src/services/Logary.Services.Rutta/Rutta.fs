@@ -299,7 +299,7 @@ module Shipper =
 
     let serve (conf : ShipperConf)
               (ri : RuntimeInfo)
-              (requests : BoundedMb<_>)
+              (requests : RingBuffer<_>)
               (shutdown : Ch<_>) =
 
       let rec init = function
@@ -321,7 +321,7 @@ module Shipper =
             return! ack *<= ()
           }
 
-          BoundedMb.take requests ^=> function
+          RingBuffer.take requests ^=> function
             | Log (msg, ack) ->
               job {
                 let bytes = Serialisation.serialise msg
