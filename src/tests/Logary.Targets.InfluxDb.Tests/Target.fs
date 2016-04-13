@@ -130,8 +130,6 @@ let writesOverHttp =
         let target = start ()
           
         try
-          printfn "Started test 3"
-        
           let ackPromise = Target.log target msg 
                            |> run
 
