@@ -182,15 +182,18 @@ type InfluxDbConf =
     /// set the number of nodes that must confirm the write. If the requirement is not met the return value will be partial write if some points in the batch fail, or write failure if all points in the batch fail.
     consistency : Consistency
     /// sets the target retention policy for the write. If not present the default retention policy is used
-    retention : string option }
+    retention : string option
+    /// Sets how many measurements should be batched together if new measurements are produced faster than we can write them one by one. Default is 100. 
+    batchSize : uint16  }
 
-  static member create(ep, db, ?user, ?password, ?consistency, ?retention) =
+  static member create(ep, db, ?user, ?password, ?consistency, ?retention, ?batchSize) =
     { endpoint    = ep
       db          = db
       user        = defaultArg user None
       password    = defaultArg password None
       consistency = defaultArg consistency Quorum
-      retention   = defaultArg retention None }
+      retention   = defaultArg retention None
+      batchSize   = defaultArg batchSize 100us }
 
 let empty =
   { endpoint    = Uri "http://127.0.0.1:8086/write"
@@ -198,7 +201,8 @@ let empty =
     user        = None
     password    = None
     consistency = Quorum
-    retention   = None }
+    retention   = None
+    batchSize   = 100us }
 
 // When creating a new target this module gives the barebones
 // for the approach you may need to take.
@@ -236,7 +240,7 @@ module internal Impl =
           ack *<= () :> Job<_>
 
         // 'When there is a request' call this function
-        RingBuffer.takeBatch 100 requests ^=> fun reqs ->
+        RingBuffer.takeBatch (uint32 conf.batchSize) requests ^=> fun reqs ->
           //printfn "Influx: Got %i messages" reqs.Length
 
           let messageTexts = Seq.map extractMessage reqs

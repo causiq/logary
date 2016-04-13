@@ -40,7 +40,7 @@ let main argv =
   use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
 
   let influxConf =
-    InfluxDb.create (InfluxDb.InfluxDbConf.create(Uri "http://192.168.99.100:8086/write", "logary"))
+    InfluxDb.create (InfluxDb.InfluxDbConf.create(Uri "http://192.168.99.100:8086/write", "logary", batchSize = 500us))
                     (PointName.ofSingle "influxdb")
 
   use logary =

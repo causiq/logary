@@ -113,6 +113,7 @@ task :nugets => ['build/pkg', :versioning, :build, :nugets_quick]
 task :tests_unit do
   Dir.glob("src/tests/**/bin/#{Configuration}/*.Tests.exe").
     reject { |exe| exe.include? 'SQL' or exe.include? '.DB' or exe.include? 'Logentries' or exe.include? 'TOML' }.
+	reject { |exe| exe.include? 'Mailgun'}.
     each do |exe|
     system exe, clr_command: true
   end
