@@ -91,6 +91,31 @@ let tests =
 
       let no2 = pnp "path.2.extra" |> get
       Assert.Equal("path.2.extra should be warn", Warn, no2.level) // this one goes upwards
+      
+
+    yield testCase "middleware" <| fun _ ->
+      let noop = fun reservoirs next message -> next message
+      let hostname = fun reservoirs next message -> next (message |> Message.setContext "hostname" (System.Net.Dns.GetHostName()))
+      //let compose mids =
+      //  List.foldBack (fun next composed -> 
+
+
+      let out = Fac.textWriter ()
+      let testTarget = Target.confTarget (pn "t1") (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out))
+
+      let logary = confLogary "tests" |> withRule (Rule.createForTarget (pn "t1"))  |> withTarget testTarget |> validate |> runLogary |> run
+
+      let logger = Registry.getMiddlewareLogger hostname logary.registry (PointName.ofSingle "hi") |> run
+      try
+        job {
+          do! Logger.log logger (Message.eventDebug "there")
+        } |> run
+      finally
+        finaliseLogary logary
+
+      Assert.Equal("LogResult", "there", out.ToString())      
+      Assert.isTrue (out.ToString().Contains(System.Net.Dns.GetHostName())) "Should contain hostname"
+      
 
     yield testCase "multiplexing accept filters from given rules" <| fun _ ->
       // given

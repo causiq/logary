@@ -36,6 +36,35 @@
     <NoWarn>2003</NoWarn>
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
+  <ItemGroup>
+    <Content Include="app.config" />
+    <Compile Include="..\..\..\paket-files\haf\YoLo\YoLo.fs">
+      <Paket>True</Paket>
+      <Link>paket-files/YoLo.fs</Link>
+    </Compile>
+    <Compile Include="AssemblyVersionInfo.fs" />
+    <Compile Include="SuaveReporter.fs" />
+    <None Include="app\README.md" />
+    <None Include="app\app.js" />
+    <None Include="app\index.html" />
+    <None Include="app\package.json" />
+    <None Include="app\webpack.config.js" />
+    <None Include="Script.fsx" />
+    <None Include="paket.references" />
+    <None Include="..\..\..\vendor\logary-js\src\client.coffee">
+      <Link>reference-source\client.coffee</Link>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+    <ProjectReference Include="..\..\Logary\Logary.fsproj">
+      <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
+      <Name>Logary</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
@@ -109,33 +138,4 @@
       </ItemGroup>
     </When>
   </Choose>
-  <ItemGroup>
-    <Content Include="app.config" />
-    <Compile Include="..\..\..\paket-files\haf\YoLo\YoLo.fs">
-      <Paket>True</Paket>
-      <Link>paket-files/YoLo.fs</Link>
-    </Compile>
-    <Compile Include="AssemblyVersionInfo.fs" />
-    <Compile Include="SuaveReporter.fs" />
-    <None Include="app\README.md" />
-    <None Include="app\app.js" />
-    <None Include="app\index.html" />
-    <None Include="app\package.json" />
-    <None Include="app\webpack.config.js" />
-    <None Include="Script.fsx" />
-    <None Include="paket.references" />
-    <None Include="..\..\..\vendor\logary-js\src\client.coffee">
-      <Link>reference-source\client.coffee</Link>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <Reference Include="mscorlib" />
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Numerics" />
-    <ProjectReference Include="..\..\Logary\Logary.fsproj">
-      <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
-      <Name>Logary</Name>
-    </ProjectReference>
-  </ItemGroup>
 </Project>

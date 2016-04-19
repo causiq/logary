@@ -13,6 +13,11 @@ let getLogger (registry : RegistryInstance) name : Job<Logger> =
   registry.reqCh *<+ GetLogger (name, resCh) >>=.
   resCh
 
+let getMiddlewareLogger middlware registry name : Job<Logger> =
+  let resCh = Ch ()
+  registry.reqCh *<+ GetLogger (name, resCh) >>=.
+  resCh
+
 /// handling flyweights
 module internal Logging =
   open Hopac.Infixes
@@ -41,23 +46,23 @@ module internal Logging =
         state *<= (lm, logger)
 
     interface Logger with
-      member x.logVerbose fLine =
-        logger (flip Logger.logVerbose fLine) ()
+      member x.logVerbose fMessage =
+        logger (flip Logger.logVerbose fMessage) ()
 
-      member x.logVerboseWithAck fLine =
-        logger (flip Logger.logVerboseWithAck fLine) (Promise.Now.withValue ())
+      member x.logVerboseWithAck fMessage =
+        logger (flip Logger.logVerboseWithAck fMessage) (Promise.Now.withValue ())
 
-      member x.logDebug fLine =
-        logger (flip Logger.logDebug fLine) ()
+      member x.logDebug fMessage =
+        logger (flip Logger.logDebug fMessage) ()
 
-      member x.logDebugWithAck fLine =
-        logger (flip Logger.logDebugWithAck fLine) (Promise.Now.withValue ())
+      member x.logDebugWithAck fMessage =
+        logger (flip Logger.logDebugWithAck fMessage) (Promise.Now.withValue ())
 
-      member x.log l =
-        logger (flip Logger.log l) ()
+      member x.log message =
+        logger (flip Logger.log message) ()
 
-      member x.logWithAck l =
-        logger (flip Logger.logWithAck l) (Promise.Now.withValue ())
+      member x.logWithAck message =
+        logger (flip Logger.logWithAck message) (Promise.Now.withValue ())
 
       member x.level =
         Verbose
@@ -168,8 +173,52 @@ module Advanced =
 
   module private Impl =
 
+    type MiddlewareFacadeLogger(middleware : (Message -> Alt<Promise<unit>>) -> Message -> Alt<Promise<unit>>, logger : Logger) as x =
+      let ifLevel level otherwise f =
+        let xLogger = x :> Logger
+        if xLogger.level <= level then
+          f ()
+        else
+          otherwise
+
+      interface Logger with
+        member x.logVerbose fMessage =
+          ifLevel Verbose (Alt.always ()) <| fun _ ->
+            let msg = fMessage ()
+            middleware (Logger.logWithAck logger) msg
+            |> Alt.afterFun ignore
+
+        member x.logVerboseWithAck fMessage =
+          ifLevel Verbose (Alt.always (Promise.Now.withValue ())) <| fun _ ->
+            let msg = fMessage ()
+            middleware (Logger.logWithAck logger) msg
+
+        member x.logDebug fMessage =
+          ifLevel Verbose (Alt.always ()) <| fun _ ->
+            let msg = fMessage ()
+            middleware (Logger.logWithAck logger) msg
+            |> Alt.afterFun ignore
+
+        member x.logDebugWithAck fMessage =
+          ifLevel Verbose (Alt.always (Promise.Now.withValue ())) <| fun _ ->
+            let msg = fMessage ()
+            middleware (Logger.logWithAck logger) msg
+
+        member x.log message =
+          middleware (Logger.logWithAck logger) message
+          |> Alt.afterFun ignore
+
+        member x.logWithAck message =
+          middleware (Logger.logWithAck logger) message
+
+        member x.level =
+          logger.level
+
+    let applyMiddleware reservoirs (middleware : 'rs -> (Message -> Alt<Promise<unit>>) -> Message -> _) logger =
+      MiddlewareFacadeLogger(middleware reservoirs, logger)
+      :> Logger
+
     /// Create a new Logger from the targets passed, with a given name.
-    [<CompiledName "FromTargets">]
     let fromTargets name ilogger (targets : (MessageFilter * TargetInstance * LogLevel) list) =
       { name    = name
         targets = targets |> List.map (fun (mf, ti, _) -> mf, ti)
@@ -264,11 +313,12 @@ module Advanced =
       and running state : Job<_> = job {
         let! msg = Ch.take inbox
         match msg with
-        | GetLogger (name, chan) ->
+        | GetLogger (name, middleware, chan) ->
           let logger =
             name
             |> getTargets conf
             |> fromTargets name conf.runtimeInfo.logger
+            |> applyMiddleware middleware
 
           do! Ch.give chan logger
           return! running state
