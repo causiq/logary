@@ -162,7 +162,7 @@ module Shipper =
 
           RingBuffer.take requests ^=> function
             | Log (msg, ack) ->
-              job {
+              job {              
                 let bytes = Serialisation.serialise msg
                 do! Job.Scheduler.isolate (fun _ -> bytes |>> state.sender)
                 do! ack *<= ()
