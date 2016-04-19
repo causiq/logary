@@ -34,6 +34,7 @@
     <PlatformTarget>
     </PlatformTarget>
     <NoWarn>2003</NoWarn>
+    <StartArguments>-- --pub-to tcp://hpc-head-001:7112</StartArguments>
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>

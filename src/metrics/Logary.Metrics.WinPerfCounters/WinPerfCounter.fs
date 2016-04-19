@@ -13,6 +13,7 @@ module Logary.Metrics.WinPerfCounter
 
 open System
 open System.Diagnostics
+open Logary
 
 /// Type alias System.Diagnostics.for PerformanceCounterCategory
 type PCC = PerformanceCounterCategory
@@ -38,7 +39,7 @@ type PC = PerformanceCounter
 type PerfCounter =
   { category : string
     counter  : string
-    instance : Instance }
+    instance : Instance }  
 
 and Instance =
   /// This PerfCounter has a very specific instance assigned
@@ -196,3 +197,14 @@ module PointName =
       | Instance inst -> [ c.category; c.counter; inst ]
 
     PointName (nameInstance c.instance)
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module PerfCounter =
+  open Logary.Internals
+
+  let private ofPerfCounter =
+    Cache.memoize PointName.ofPerfCounter
+
+  let toValue ((perfCounter, pc) : PerfCounter * PC) =
+    Float (nextValue pc)
+    |> Message.metricWithUnit (ofPerfCounter perfCounter) Units.Scalar

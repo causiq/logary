@@ -41,12 +41,6 @@ module internal Sample =
     let ticker state =
       state, state |> List.map toValue
 
-    let counters =
-      counters
-      |> List.map (fun counter -> counter, WinPerfCounter.toPC counter)
-      |> List.filter (snd >> Option.isSome)
-      |> List.map (fun (counter, pc) -> counter, Option.get pc)
-
     Metric.create reducer counters ticker
 
   let cpuTime pn : Job<Metric> =
@@ -69,6 +63,7 @@ module internal Sample =
           yield gpu "GPU SM Clock (MHz)" inst'
           yield gpu "GPU Temperature (degrees C)" inst'
       ]
+      |> WinPerfCounters.Common.ofPerfCounters
 
     metricFrom counters pn
 

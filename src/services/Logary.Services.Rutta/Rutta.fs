@@ -353,77 +353,36 @@ module Shipper =
     interface Logary.Target.FactoryApi.SpecificTargetConf with
       member x.Build name = create conf name
 
-  module internal Sample =
-  
-    let metricFrom counters pn : Job<Metric> =
-      let reducer state = function
-        | _ ->
-          state
-
-      let toValue (counter : PerfCounter, pc : PC) =
-        let value = WinPerfCounter.nextValue pc
-        Float value
-        |> Message.metricWithUnit pn Units.Scalar
-        |> Message.setName (PointName.ofPerfCounter counter)
-
-      let ticker state =
-        state, state |> List.map toValue
-
-      let counters =
-        counters
-        |> List.map (fun counter -> counter, WinPerfCounter.toPC counter)
-        |> List.filter (snd >> Option.isSome)
-        |> List.map (fun (counter, pc) -> counter, Option.get pc)
-
-      Metric.create reducer counters ticker
-
-    let cpuTime pn : Job<Metric> =
-      metricFrom WinPerfCounters.Common.cpuTime pn
-
-    let m6000s pn : Job<Metric> =
-      let gpu counter instance =
-        { category = "GPU"
-          counter  = counter
-          instance = Instance instance }
-
-      let counters =
-        [ for inst in [ "08:00"; "84:00" ] do
-            let inst' = sprintf "quadro m6000(%s)" inst
-            yield gpu "GPU Fan Speed (%)" inst'
-            yield gpu "GPU Time (%)" inst'
-            yield gpu "GPU Memory Usage (%)" inst'
-            yield gpu "GPU Memory Used (MB)" inst'
-            yield gpu "GPU Power Usage (Watts)" inst'
-            yield gpu "GPU SM Clock (MHz)" inst'
-            yield gpu "GPU Temperature (degrees C)" inst'
-        ]
-
-      metricFrom counters pn
-
   let private runLogary shipperConf =
     // TODO: handle with configuration, selection of what data points to
     // gather.
-    
+    let createMetric name metric =
+      MetricConf.create (Duration.FromMilliseconds 400L) (PointName.ofSingle name) metric
+
     use mre = new ManualResetEventSlim(false)
     use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
 
     use logary =
-      withLogaryManager "Logary.Examples.ConsoleApp" (
+      withLogaryManager "Rutta" (
         withTargets [
-          Console.create (Console.empty) (PointName.ofSingle "console")
+          //Noop.create (Noop.empty) (PointName.ofSingle "noop")
+          //Console.create (Console.empty) (PointName.ofSingle "console")
           create shipperConf (PointName.ofSingle "rutta-shipper")
         ] >>
         withMetrics [
-          //WinPerfCounters.create (WinPerfCounters.Common.cpuTimeConf) "cpuTime" (Duration.FromMilliseconds 500L)
-          MetricConf.create (Duration.FromMilliseconds 500L) (PointName.ofSingle "cpu") Sample.cpuTime
-          MetricConf.create (Duration.FromMilliseconds 500L) (PointName.ofSingle "gpu") Sample.m6000s
+          createMetric "cpuTime" WinPerfCounters.cpuTime
+          createMetric "gpuMetrics" WinPerfCounters.gpuMetrics
+          //createMetric "nvidiaMetrics" WinPerfCounters.nvidiaMetrics
+          createMetric "cpuInformation" WinPerfCounters.cpuInformation
+          createMetric "networkInterface" WinPerfCounters.networkInterface
         ] >>
         withRules [
-          Rule.createForTarget (PointName.ofSingle "console")
+          //Rule.createForTarget (PointName.ofSingle "noop")
+          //Rule.createForTarget (PointName.ofSingle "console")
           Rule.createForTarget (PointName.ofSingle "rutta-shipper")
         ] >>
         withInternalTargets Info [
-          Console.create Console.empty (PointName.ofSingle "console")
+          Console.create Console.empty (PointName.ofSingle "internal")
         ]
       )
       |> run

@@ -10,29 +10,36 @@ open Logary.Metrics.AllWinPerfCounters
 
 module Common =
 
-  //let system =
-  //  [ System.``Context Switches/sec``
-  //    System.``Processor Queue Length`` ]
+  let ofPerfCounters counters =
+    counters
+    |> List.map (fun counter -> counter, toPC counter)
+    |> List.filter (snd >> Option.isSome)
+    |> List.map (fun (counter, pc) -> counter, Option.get pc)
 
-  //let dotnet instance =
-  //  [ ``_NET CLR Exceptions``.``# of Exceps Thrown / sec`` instance ]
+
+  let system =
+    [ System.``Context Switches/sec``
+      System.``Processor Queue Length`` ]
+    |> ofPerfCounters
 
   let dotnet instance =
     [ ``_NET CLR Memory``.``Gen 0 Promoted Bytes/Sec`` instance
       ``_NET CLR Memory``.``Gen 1 Promoted Bytes/Sec`` instance
       ``_NET CLR Memory``.``# Bytes in all Heaps`` instance
+      ``_NET CLR Exceptions``.``# of Exceps Thrown / sec`` instance
     ]
+    |> ofPerfCounters
 
   let cpuTime =
     [ Processor.``% Processor Time``
       Processor.``% User Time``
       Processor.``% Interrupt Time``
       Processor.``% Privileged Time``
-      //Processor.``Interrupts/sec``
-      //Processor.``% Idle Time`` 
-
+      Processor.``Interrupts/sec``
+      Processor.``% Idle Time`` 
     ]
-    |> List.map (fun f -> f (Instance WinPerfCounter.KnownInstances._Total))
+    |> List.map (fun f -> f (Instance KnownInstances._Total))
+    |> ofPerfCounters
 
   let proc instance =
     [ Process.``% Processor Time`` instance
@@ -40,6 +47,7 @@ module Common =
       Process.``% Privileged Time`` instance
       Process.``Virtual Bytes`` instance
     ]
+    |> ofPerfCounters
 
   /// Useful ASP.Net counters, from
   /// http://technet.microsoft.com/en-us/library/cc778343%28v=ws.10%29.aspx
@@ -61,27 +69,70 @@ module Common =
     @ proc procInstance
     @ dotnet procInstance
 
-  /// A unified naming scheme for the names of performance counters
-  module Naming =
+  let byCategory pcc =
+    WinPerfCounter.getPCC pcc
+    // gets all the instances for this performance counter category
+    |> Option.map (fun pcc -> pcc, getInstances pcc)
+    // transform the list of instances into a list
+    |> Option.map (fun (pcc, instances) ->
+      instances
+      // find all counters for these instances (instance = actual GPU instance)
+      |> List.collect (getCounters pcc)
+      // get the Diagnostics perf counters for them
+      |> ofPerfCounters)
+    
+/// A list of "common" performance metrics.
+open WinPerfCounter
 
-    let toCounter (PointName dp) =
-      match dp with
-      | [ category; counter ] ->
-        { category = category; counter = counter; instance = NotApplicable }
+let private ofCounters counters =
+  let reducer state msg = state
+  let ticker (state : (PerfCounter * PC) list) = state, state |> List.map PerfCounter.toValue
+  Metric.create reducer counters ticker
 
-      | [ category; counter; instance ] ->
-        { category = category; counter = counter; instance = Instance instance }
+/// The "GPU" category is installed by the nVIDIA drivers
+let tryGPUMetric _ : Job<Metric> option =
+  Common.byCategory "GPU" |> Option.map ofCounters
+  
+let gpuMetrics _ : Job<Metric> =
+  match tryGPUMetric () with
+  | None ->
+    failwith "No GPUs configured (or drivers thereof) on this machine"
 
-      | _ ->
-        failwithf "unknown performance counter name: %A" dp
+  | Some metric ->
+    metric
 
-  let tryGetPc (lastValues : Map<PointName, PC * Value>) dp =
-    lastValues
-    |> Map.tryFind dp
-    |> Option.map fst
-    |> function
-    | None -> toPC (Naming.toCounter dp)
-    | x -> x
+let tryNVidiaGPUMetric _ : Job<Metric> option =
+  Common.byCategory "NVIDIA GPU" |> Option.map ofCounters
+  
+let nvidiaMetrics pn : Job<Metric> =
+  match tryNVidiaGPUMetric () with
+  | None ->
+    failwith "No nVIDIA GPUs configured (or drivers thereof) on this machine"
 
-  let pcNextValue (pc : PC) =
-    Float (nextValue pc)
+  | Some metric ->
+    metric
+
+let cpuTime _ : Job<Metric> =
+  ofCounters Common.cpuTime
+
+let tryCpuInformation _ : Job<Metric> option =
+  Common.byCategory "Processor Information" |> Option.map ofCounters
+
+let cpuInformation _ : Job<Metric> =
+  match tryCpuInformation () with
+  | None ->
+    failwith "The performance counter category 'Processor Information' wasn't available on this machine"
+
+  | Some metric ->
+    metric
+
+let tryNetworkInterface _ : Job<Metric> option =
+  Common.byCategory "Network Interface" |> Option.map ofCounters
+
+let networkInterface pn =
+  match tryNetworkInterface pn with
+  | None ->
+    failwith "The performance counter category 'Network Interface' wasn't available on this machine"
+
+  | Some metric ->
+    metric

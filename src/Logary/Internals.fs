@@ -151,25 +151,13 @@ module Date =
   let timestamp () : int64 =
     (!clock).Now.Ticks * 100L
 
-module internal Cache =
+module Cache =
   open System
+  open System.Collections.Concurrent
 
-  let memoize<'TIn, 'TOut> pDur (f : 'TIn -> 'TOut) : ('TIn -> 'TOut) =
-    let locker = obj()
-    let indefinately = TimeSpan.MaxValue = pDur
-    let called = ref DateTime.MinValue
-    let value = ref Unchecked.defaultof<'TOut>
-    let hasValue = ref false
-    fun input ->
-      // avoiding race-conditions.
-      lock locker <| fun _ ->
-        if not !hasValue then
-          called := DateTime.UtcNow
-        if (not !hasValue) || (not indefinately && (!called).Add pDur < DateTime.UtcNow) then
-          hasValue := true
-          value := f input
-          called := DateTime.UtcNow
-        !value
+  let memoize<'input, 'output> (f : 'input -> 'output) : ('input -> 'output) =
+    let cache = ConcurrentDictionary<'input, 'output>()
+    fun x -> cache.GetOrAdd(x, f)
 
 module Map =
   open System
