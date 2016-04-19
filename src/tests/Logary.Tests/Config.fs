@@ -1,5 +1,6 @@
 ﻿module Logary.Tests.Config
 
+open System
 open Fuchu
 open Swensen.Unquote
 open TestDSL
@@ -49,29 +50,89 @@ let ``invalid configs`` =
           Assert.Contains("should contain orphan target", t1, ex.InvalidTargets)
           Assert.StringContains("string should contain name of target", "t1", sprintf "%O" ex))
     ]
+    
+type Consistency =
+  | Yolo
+  | Quorum
+
+  /// Use this pattern for parsing DUs
+  static member tryParse (s : string) =
+    match s with
+    | "Yolo" ->
+      Choice.create (box Yolo)
+
+    | "Quorum" ->
+      Choice.create (box Quorum)
+
+    | ugh ->
+      Choice.createSnd (sprintf "%s wasn't a case in the DU named Consistency" ugh)
 
 type ArbConfig =
-  { db : string
-    batchSize : int }
+  { db          : string
+    batchSize   : uint16 
+    endpoint    : Uri
+    username    : string option
+    password    : string option
+    consistency : Consistency
+  }
+
+  static member empty =
+    { db = ""
+      batchSize = 12us
+      endpoint = Uri "http://example.com"
+      username = None
+      password = None
+      consistency = Quorum }
 
 [<Tests>]
-let ``valid configs`` =
-  testList "valid configs" [
-    testCase "rule for metric, no noop target" <| fun _ ->
-      ()
+let uriParser =
+  let subject =
+    "influxdb+http://haf:w00t@host:8086/write?db=databaseName&batchSize=123"
 
-    testCase "parsing uri to target config" <| fun _ ->
-      let expectedConfig = 
-        { db = "databaseName"
-          batchSize = 123 }
+  let expectedConfig = 
+    { db          = "databaseName"
+      batchSize   = 123us
+      endpoint = Uri "http://host:8086/write?db=databaseName&batchSize=123"
+      username    = Some "haf"
+      password    = Some "w00t"
+      consistency = Quorum }
 
-      let actualConfig = parseConfig<ArbConfig> "influxdb://user:pass@host:8086/write?db=databaseName&batchSize=123"
+  testList "uri parser" [
+    testList "type coercions" [
+      let data =
+        [ "1", typeof<uint16>, box 1us
+          "1", typeof<uint32>, box 1u
+          "1", typeof<uint64>, box 1UL
+          "1", typeof<int16>, box 1s
+          "1", typeof<int32>, box 1
+          "1", typeof<int64>, box 1L
+          "s", typeof<string>, box "s"
+          "http://haf.se", typeof<Uri>, box (Uri "http://haf.se")
+          null, typeof<Option<string>>, box None
+          "1.34", typeof<float>, box 1.34
+          "1.34", typeof<Single>, box (single 1.34)
+          "1.34", typeof<decimal>, box 1.34m
+          "Quorum", typeof<Consistency>, box Quorum
+        ]
 
-      Assert.equal actualConfig expectedConfig "Record should equal .....?"
-      ()
-
-    testCase "" <| fun _ ->
-        let conn = "influxdb://root:root@host:8086/write?db=wadus"
-        let test = "measurement,tkey1=tval1,tkey2=tval2 fkey=fval,fkey2=fval2 1234567890000000000"
-        ()
+      yield testCase "can box for fun and profit" <| fun _ ->
+        for input, typ, expected in data do
+          Assert.equal (Uri.convertTo typ input) expected (sprintf "should convert to %s" typ.Name)
     ]
+
+    testList "configs" [
+      testCase "parsing uri to target config" <| fun _ ->
+        let actualConfig = parseConfig<ArbConfig> ArbConfig.empty subject
+        Assert.equal actualConfig expectedConfig "should be correctly interpreted"
+
+      testCase "can override with qs" <| fun _ ->
+        let extraExtra = "&username=anotherUser&password=testing"
+        let actualConfig = parseConfig<ArbConfig> ArbConfig.empty (subject + extraExtra)
+        let expectedConfig =
+          { expectedConfig with 
+              endpoint = Uri ("http://host:8086/write?db=databaseName&batchSize=123" + extraExtra)
+              username = Some "anotherUser"
+              password = Some "testing" }
+        Assert.equal actualConfig expectedConfig "qs overrides username-password next to domain"
+    ]
+  ]

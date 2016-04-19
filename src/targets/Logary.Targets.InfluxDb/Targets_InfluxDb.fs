@@ -176,7 +176,7 @@ type InfluxDbConf =
     /// REQUIRED - sets the target database for the write
     db        : string
     /// if authentication is enabled, you must authenticate as a user with write permissions to the target database
-    user      : string option
+    username  : string option
     /// if authentication is enabled, you must authenticate as a user with write permissions to the target database
     password  : string option
     /// set the number of nodes that must confirm the write. If the requirement is not met the return value will be partial write if some points in the batch fail, or write failure if all points in the batch fail.
@@ -184,12 +184,12 @@ type InfluxDbConf =
     /// sets the target retention policy for the write. If not present the default retention policy is used
     retention : string option
     /// Sets how many measurements should be batched together if new measurements are produced faster than we can write them one by one. Default is 100. 
-    batchSize : uint16  }
+    batchSize : uint16 }
 
   static member create(ep, db, ?user, ?password, ?consistency, ?retention, ?batchSize) =
     { endpoint    = ep
       db          = db
-      user        = defaultArg user None
+      username    = defaultArg user None
       password    = defaultArg password None
       consistency = defaultArg consistency Quorum
       retention   = defaultArg retention None
@@ -198,7 +198,7 @@ type InfluxDbConf =
 let empty =
   { endpoint    = Uri "http://127.0.0.1:8086/write"
     db          = "logary"
-    user        = None
+    username    = None
     password    = None
     consistency = Quorum
     retention   = None
@@ -234,6 +234,11 @@ module internal Impl =
       ub.Query <- "db=" + conf.db
       ub.Uri
 
+    let tryAddAuth conf =
+      conf.username
+      |> Option.bind (fun u -> conf.password |> Option.map (fun p -> u, p))
+      |> Option.fold (fun _ (u, p) -> withBasicAuthentication u p) id
+
     let rec loop () : Job<unit> =
       Alt.choose [
         shutdown ^=> fun ack ->
@@ -252,6 +257,7 @@ module internal Impl =
               createRequest Post endpoint
               |> withKeepAlive true
               |> withBody (BodyString body)
+              |> tryAddAuth conf
             try
               use! resp = getResponse req
               let! body = Response.readBodyAsString resp
