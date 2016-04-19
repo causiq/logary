@@ -462,16 +462,17 @@ module Router =
         (x.receiver :> IDisposable).Dispose()
         (x.forwarder :> IDisposable).Dispose()
 
-  let private init binding createSocket mode : State =
+  
+  let private init binding targetUri createSocket mode : State =
     let context = new Context()
-    let receiver = createSocket context
+    let receiver = createSocket context    
+    let config = Uri.parseConfig<InfluxDb.InfluxDbConf> InfluxDb.empty targetUri
     
     let forwarder =
       withLogaryManager (sprintf "Logary Rutta[%s]" mode) (
         withTargets [
           //Console.create Console.empty (PointName.ofSingle "console")
-          InfluxDb.create (InfluxDb.InfluxDbConf.create(Uri "http://172.25.3.15:8086/write", "bhf-sthlm-hpc"))
-                          (PointName.ofSingle "influxdb")
+          InfluxDb.create config (PointName.ofSingle "influxdb")
         ]
         >> withRules [
           Rule.createForTarget (PointName.ofSingle "influxdb")
@@ -502,21 +503,25 @@ module Router =
       recvLoop receiver logger
 
   let pullFrom binding = function
-    | Router_Target ep :: _ ->
+    | Router_Target target :: _ ->
       printfn "spawning router in PULL mode from %s" binding
-      use state = init binding Context.pull "PULL"
+      use state = init binding target Context.pull "PULL" 
       Socket.bind state.receiver binding
       Choice.create (recvLoop state.receiver state.logger)
 
     | x ->
       Choice2Of2 (sprintf "unknown parameter(s) %A" x)
 
-  let xsubBind binding pars : Choice<unit, string> =
-    printfn "spawning router in SUB mode from %s" binding
-    use state = init binding Context.sub "SUB"
-    Socket.subscribe state.receiver [""B]
-    Socket.connect state.receiver binding
-    Choice.create (recvLoop state.receiver state.logger)
+  let xsubBind binding = function
+    | Router_Target target :: _ ->
+      printfn "spawning router in SUB mode from %s" binding
+      use state = init binding target Context.sub "SUB"
+      Socket.subscribe state.receiver [""B]
+      Socket.connect state.receiver binding
+      Choice.create (recvLoop state.receiver state.logger)
+
+    | x ->
+      Choice2Of2 (sprintf "unknown parameter(s) %A" x)
 
 module Proxy =
   open Logary
