@@ -118,6 +118,15 @@ module Shipper =
   let empty =
     Unconfigured
 
+  let enricher msg serviceName =
+    let hostname = System.Net.Dns.GetHostName()
+    let newMessage = 
+      msg 
+        |> Message.setContext "hostname" hostname
+        |> Message.setContext "serviceName" serviceName
+
+    newMessage
+
   module internal Impl =
 
     type State =
@@ -134,7 +143,7 @@ module Shipper =
       Socket.connect sender connectTo
       //Socket.bind sender connectTo
       { zmqCtx = context
-        sender = sender }
+        sender = sender }   
 
     let serve (conf : ShipperConf)
               (ri : RuntimeInfo)
@@ -162,8 +171,9 @@ module Shipper =
 
           RingBuffer.take requests ^=> function
             | Log (msg, ack) ->
-              job {
-                let bytes = Serialisation.serialise msg
+              job {                
+                let newMessage = enricher msg ri.serviceName
+                let bytes = Serialisation.serialise newMessage
                 do! Job.Scheduler.isolate (fun _ -> bytes |>> state.sender)
                 do! ack *<= ()
                 return! loop state

@@ -41,18 +41,25 @@
     </Compile>
     <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="Parsing.fs" />
+    <Compile Include="MessageEnrichment.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <Content Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\services\Logary.Services.Rutta\Logary.Services.Rutta.fsproj">
+      <Name>Logary.Services.Rutta</Name>
+      <Project>{e88982fd-e257-41ba-a343-b56976ccb3a1}</Project>
+      <Private>True</Private>
+    </ProjectReference>
     <Reference Include="mscorlib" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
-    <ProjectReference Include="..\..\services\Logary.Services.Rutta\Logary.Services.Rutta.fsproj">
-      <Project>{E88982FD-E257-41BA-A343-B56976CCB3A1}</Project>
-      <Name>Logary.Services.Rutta</Name>
+    <ProjectReference Include="..\..\Logary\Logary.fsproj">
+      <Name>Logary</Name>
+      <Project>{f7e5b6e8-5d55-4974-9ca7-4c94d810631f}</Project>
+      <Private>True</Private>
     </ProjectReference>
   </ItemGroup>
   <Choose>
