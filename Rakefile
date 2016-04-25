@@ -78,6 +78,7 @@ task :paket_replace do
   sh %{ruby -pi.bak -e "gsub(/module Aether/, 'module Logary.Utils.Aether')" paket-files/xyncro/aether/src/Aether/Aether.fs}
   sh %{ruby -pi.bak -e "gsub(/module Chiron/, 'module Logary.Utils.Chiron')" paket-files/xyncro/chiron/src/Chiron/Chiron.fs}
   sh %{ruby -pi.bak -e "gsub(/module internal YoLo/, 'module internal Logary.YoLo')" paket-files/haf/YoLo/YoLo.fs}
+  sh %{ruby -pi.bak -e "gsub(/module Hopac/, 'namespace Logary.Internals')" paket-files/logary/RingBuffer/RingBuffer.fs"}  
 end
 
 desc 'perform full build'
