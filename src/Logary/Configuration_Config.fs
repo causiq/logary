@@ -193,9 +193,9 @@ let asLogManager (inst : LogaryInstance) =
 /// Configure Logary completely with the given service name and rules, targets
 /// and metrics. This will call the `validate` function too.
 [<CompiledName "Configure">]
-let configure serviceName middleware targets metrics rules (internalLevel, internalTarget) =
+let configure serviceName targets metrics rules (internalLevel, internalTarget) =
   confLogary serviceName
-  |> withMiddlewares (List.ofSeq middleware)
+  //|> withMiddlewares (List.ofSeq middleware)
   |> withTargets (List.ofSeq targets)
   |> withRules (List.ofSeq rules)
   |> withMetrics (List.ofSeq metrics)
