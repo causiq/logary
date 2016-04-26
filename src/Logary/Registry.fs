@@ -399,4 +399,5 @@ module Advanced =
     { supervisor  = sup
       registry    = reg
       scheduler   = sched
-      runtimeInfo = confNext.runtimeInfo }
+      runtimeInfo = confNext.runtimeInfo
+      middleware  = confNext.middleware }

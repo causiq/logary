@@ -62,11 +62,11 @@
     <Compile Include="Metrics_Core.fs" />
     <Compile Include="HealthCheck.fs" />
     <Compile Include="Supervisor.fs" />
+    <Compile Include="Middleware.fs" />
     <Compile Include="LogManager.fs" />
     <Compile Include="Internals_FlyweightLogger.fs" />
     <Compile Include="Internals_Globals.fs" />
     <Compile Include="Rule.fs" />
-    <Compile Include="Middleware.fs" />
     <Compile Include="Target.fs" />
     <Compile Include="Internals_Logger.fs" />
     <Compile Include="Formatting.fs" />

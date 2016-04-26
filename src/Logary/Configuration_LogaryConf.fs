@@ -7,6 +7,7 @@ open Hopac
 open Logary
 open Logary.Internals
 open Logary.Target
+open Logary.Middleware
 open Logary.Metric
 
 /// The logary configuration structure having a memory of all configured
@@ -25,7 +26,10 @@ type LogaryConf =
     metrics     : Map<PointName, MetricConf>
 
     /// Service metadata - what name etc.
-    runtimeInfo : RuntimeInfo }
+    runtimeInfo : RuntimeInfo
+
+    /// Extra middleware
+    middleware  : Mid list }
 
   static member rules_ =
     (fun x -> x.rules),
@@ -40,5 +44,9 @@ type LogaryConf =
     fun v (x : LogaryConf) -> { x with runtimeInfo = v }
 
   static member metrics_ =
+    (fun x -> x.metrics),
+    fun v x -> { x with metrics = v }
+
+  static member middleware_ =
     (fun x -> x.metrics),
     fun v x -> { x with metrics = v }

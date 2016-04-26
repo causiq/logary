@@ -7,9 +7,12 @@ namespace Logary.Configuration
 
 open System
 open System.Reflection
+open System.Threading.Tasks
+open System.Runtime.CompilerServices
 open Hopac
 open Hopac.Infixes
 open Logary
+open Logary.Internals
 open Logary.Configuration
 open Logary.Target
 open Logary.Target.FactoryApi
@@ -44,6 +47,11 @@ and ConfBuilder(conf) =
   member internal x.BuildLogary () =
     conf |> Config.validate |> runLogary >>- asLogManager
 
+  member x.Use(middleware : Func<Func<Message, Message>, Func<Message, Message>>) : ConfBuilder =
+    conf
+    |> Config.withMiddleware (fun next msg -> middleware.Invoke(new Func<_,_>(next)).Invoke msg)
+    |> ConfBuilder
+
   /// Configure a target of the type with a name specified by the parameter
   /// name
   member x.Target<'T when 'T :> SpecificTargetConf>
@@ -75,12 +83,10 @@ and ConfBuilder(conf) =
     // referentially transparent
     let targetConf = f.Invoke(!contRef) :?> ConfBuilderT<'T>
 
-    ConfBuilder(
-      conf
-      |> withRule targetConf.tr
-      |> withTarget (targetConf.tcSpecific.Value.Build name))
-
-open System.Runtime.CompilerServices
+    conf
+    |> withRule targetConf.tr
+    |> withTarget (targetConf.tcSpecific.Value.Build name)
+    |> ConfBuilder
 
 /// Extensions to make it easier to construct Logary
 [<Extension; AutoOpen>]
@@ -107,8 +113,8 @@ type LogaryFactory =
   /// Configure a new Logary instance. This will also give real targets to the flyweight
   /// targets that have been declared statically in your code. If you call this
   /// you get a log manager that you can later dispose, to shutdown all targets.
-  static member New(serviceName : string, configurator : Func<ConfBuilder, ConfBuilder>) : Job<LogManager> =
+  static member New(serviceName : string, configurator : Func<ConfBuilder, ConfBuilder>) : Task<LogManager> =
     if configurator = null then nullArg "configurator"
-    let c = Config.confLogary serviceName
-    let cb = configurator.Invoke <| ConfBuilder(c)
-    cb.BuildLogary ()
+    let config = Config.confLogary serviceName
+    let cb = configurator.Invoke (ConfBuilder config)
+    cb.BuildLogary () |> CSharpFacade.toTask

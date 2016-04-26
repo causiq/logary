@@ -5,6 +5,7 @@ open NodaTime
 open Hopac
 open Logary.Internals
 open Logary.Supervisor
+open Logary.Middleware
 
 /// The messages that can be sent to the registry to interact with it and its
 /// running targets.
@@ -31,7 +32,9 @@ type LogaryInstance =
     /// to use with Logary.SCheduling (as the actor param)
     scheduler   : Ch<Scheduling.ScheduleMsg>
     /// Runtime data, internal to Logary. E.g. the internal logger instance.
-    runtimeInfo : RuntimeInfo }
+    runtimeInfo : RuntimeInfo
+    /// Extra middleware
+    middleware  : Mid list }
 
 /// A type that gives information on how the shutdown went
 type ShutdownState =

@@ -291,8 +291,8 @@ module internal CSharpFacade =
   open System.Runtime.CompilerServices
 
   /// Convert the job to a task and queue its execution, since Tasks are hot.
-  [<Extension>]
-  let ToTask<'a> (job : Job<'a>) =
+  [<CompiledName "ToTask"; Extension>]
+  let toTask<'a> (job : Job<'a>) =
     let tcs = new TaskCompletionSource<'a>()
     job |> Job.bind (fun res -> tcs.SetResult res; Job.result ()) |> queue
     tcs.Task

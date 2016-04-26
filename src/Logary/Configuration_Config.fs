@@ -63,7 +63,8 @@ let confLogary serviceName =
     targets     = Map.empty
     metrics     = Map.empty
     runtimeInfo = { serviceName = serviceName
-                    logger      = NullLogger() } }
+                    logger      = NullLogger() }
+    middleware  = [] }
   |> withInternalTarget Warn (Console.create Console.empty (PointName.ofSingle "cons"))
 
 /// Add a new target to the configuration. You also need to supple a rule for
@@ -103,6 +104,14 @@ let withMetrics ms conf =
   ms
   |> Seq.map Metric.validate
   |> Seq.fold (fun s t -> s |> withMetric t) conf
+
+[<CompiledName "WithMiddleware">]
+let withMiddleware middleware conf =
+  { conf with LogaryConf.middleware = middleware :: conf.middleware }
+
+[<CompiledName "WithMiddleware">]
+let withMiddlewares middlewares conf =
+  { conf with LogaryConf.middleware = middlewares @ conf.middleware }
 
 /// Validate the configuration for Logary, throwing a ValidationException if
 /// configuration is invalid.
@@ -184,8 +193,9 @@ let asLogManager (inst : LogaryInstance) =
 /// Configure Logary completely with the given service name and rules, targets
 /// and metrics. This will call the `validate` function too.
 [<CompiledName "Configure">]
-let configure serviceName targets metrics rules (internalLevel, internalTarget) =
+let configure serviceName middleware targets metrics rules (internalLevel, internalTarget) =
   confLogary serviceName
+  |> withMiddlewares (List.ofSeq middleware)
   |> withTargets (List.ofSeq targets)
   |> withRules (List.ofSeq rules)
   |> withMetrics (List.ofSeq metrics)

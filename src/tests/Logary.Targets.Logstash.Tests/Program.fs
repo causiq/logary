@@ -10,7 +10,6 @@ open Logary
 open Logary.Target
 open Logary.Targets
 open Logary.Internals
-open Logary.Internals.Tcp
 
 let emptyRuntime = { serviceName = "tests"; logger = NullLogger() }
 
