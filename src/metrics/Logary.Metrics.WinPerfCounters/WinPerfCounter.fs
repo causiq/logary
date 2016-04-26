@@ -207,4 +207,4 @@ module PerfCounter =
 
   let toValue ((perfCounter, pc) : PerfCounter * PC) =
     Float (nextValue pc)
-    |> Message.metricWithUnit (ofPerfCounter perfCounter) Units.Scalar
+    |> Message.derivedWithUnit (ofPerfCounter perfCounter) Units.Scalar

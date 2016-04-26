@@ -44,20 +44,11 @@ module internal Logging =
         state *<= (lm, logger)
 
     interface Logger with
-      member x.logVerbose fMessage =
-        logger (flip Logger.logVerbose fMessage) ()
-
       member x.logVerboseWithAck fMessage =
         logger (flip Logger.logVerboseWithAck fMessage) (Promise.Now.withValue ())
 
-      member x.logDebug fMessage =
-        logger (flip Logger.logDebug fMessage) ()
-
       member x.logDebugWithAck fMessage =
         logger (flip Logger.logDebugWithAck fMessage) (Promise.Now.withValue ())
-
-      member x.log message =
-        logger (flip Logger.log message) ()
 
       member x.logWithAck message =
         logger (flip Logger.logWithAck message) (Promise.Now.withValue ())
@@ -183,29 +174,15 @@ module Advanced =
         member x.name = name
 
       interface Logger with
-        member x.logVerbose fMessage =
-          ifLevel Verbose (Alt.always ()) <| fun _ ->
-            let msg = fMessage ()
-            middleware msg |> Alt.afterFun ignore
-
         member x.logVerboseWithAck fMessage =
           ifLevel Verbose (Alt.always (Promise.Now.withValue ())) <| fun _ ->
             let msg = fMessage ()
             middleware msg
 
-        member x.logDebug fMessage =
-          ifLevel Verbose (Alt.always ()) <| fun _ ->
-            let msg = fMessage ()
-            middleware msg |> Alt.afterFun ignore
-
         member x.logDebugWithAck fMessage =
-          ifLevel Verbose (Alt.always (Promise.Now.withValue ())) <| fun _ ->
+          ifLevel Debug (Alt.always (Promise.Now.withValue ())) <| fun _ ->
             let msg = fMessage ()
             middleware msg
-
-        member x.log message =
-          middleware message
-          |> Alt.afterFun ignore
 
         member x.logWithAck message =
           middleware message
@@ -216,6 +193,7 @@ module Advanced =
     let applyMiddleware reservoirs (middleware : 'rs -> Message -> Message) logger =
       let target msg =
         middleware reservoirs msg |> Logger.logWithAck logger
+
       MiddlewareFacadeLogger(target, logger.name, logger.level) :> Logger
 
     /// Create a new Logger from the targets passed, with a given name.

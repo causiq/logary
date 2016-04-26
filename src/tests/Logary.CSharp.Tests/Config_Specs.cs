@@ -68,12 +68,12 @@ namespace Logary.Specs
         static LogManager manager;
         static Logger logger;
 
-        It can_log_verbose = () => logger.Verbose("Hello world");
-        It can_log_debug = () => logger.Debug("Hello world");
-        It can_log_info = () => logger.Info("Hello world");
-        It can_log_warn = () => logger.Warn("Hello world");
-        It can_log_error = () => logger.Error("Hello world");
-        It can_log_fatal = () => logger.Fatal("Hello world");
+        It can_log_verbose = () => logger.LogEvent(LogLevel.Verbose, "Hello world");
+        It can_log_debug = () => logger.LogEvent(LogLevel.Debug, "Hello world");
+        It can_log_info = () => logger.LogEvent(LogLevel.Info, "Hello world");
+        It can_log_warn = () => logger.LogEvent(LogLevel.Warn, "Hello world");
+        It can_log_error = () => logger.LogEvent(LogLevel.Error, "Hello world");
+        It can_log_fatal = () => logger.LogEvent(LogLevel.Fatal, "Hello world");
     }
 
     [Pure]

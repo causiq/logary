@@ -283,10 +283,10 @@ type Acks =
   /// It didn't go well.
   | Nack of NackDescription
 
-
 module internal CSharpFacade =
 
   open Hopac
+  open System
   open System.Threading.Tasks
   open System.Runtime.CompilerServices
 
@@ -296,3 +296,11 @@ module internal CSharpFacade =
     let tcs = new TaskCompletionSource<'a>()
     job |> Job.bind (fun res -> tcs.SetResult res; Job.result ()) |> queue
     tcs.Task
+
+  [<CompiledName "ToFSharpFunc">]
+  let toFSharpFunc (f : Func<_>) : unit -> _ =
+    f.Invoke
+
+  [<CompiledName "ToFSharpFunc">]
+  let toFSharpFunc1 (f : Func<_, _>) : _ -> _ =
+    fun x -> f.Invoke x

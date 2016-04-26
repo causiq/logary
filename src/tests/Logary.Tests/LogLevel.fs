@@ -12,7 +12,7 @@ let tests =
 
     for i in 1..6 do
       let (l1, l2) = i, i
-      let l1, l2 = LogLevel.FromInt l1, LogLevel.FromInt l2
+      let l1, l2 = LogLevel.ofInt l1, LogLevel.ofInt l2
       yield testCase "can equate LogLevel structural" <| fun _ ->
         Assert.Equal("are equal", l1, l2)
 
@@ -24,7 +24,7 @@ let tests =
 
     for i in 1..5 do
       let (l1, l2) = i, (i + 1)
-      let l1, l2 = LogLevel.FromInt l1, LogLevel.FromInt l2
+      let l1, l2 = LogLevel.ofInt l1, LogLevel.ofInt l2
       yield testCase "can compare LogLevel less structural" <| fun _ ->
         Assert.isLessThan l1 l2 "should be less"
 

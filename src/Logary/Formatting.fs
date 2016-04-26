@@ -1,4 +1,4 @@
-﻿/// A module for converting log lines to text/strings.
+﻿/// A module for converting Messages to text/strings.
 module Logary.Formatting
 
 open System
@@ -148,7 +148,7 @@ module StringFormatter =
   let levelDatetimeMessagePath =
     expanded Environment.NewLine ""
 
-  /// LevelDatetimePathMessageNl outputs the most information of the log line
+  /// LevelDatetimePathMessageNl outputs the most information of the Message
   /// in text format, starting with the level as a single character,
   /// then the ISO8601 format of a DateTime (with +00:00 to show UTC time),
   /// then the path in square brackets: [Path.Here], the message and a newline.

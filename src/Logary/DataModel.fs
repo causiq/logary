@@ -847,6 +847,7 @@ type Message =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Message =
   open NodaTime
+  open System.Diagnostics
   open Logary.Internals
 
   [<Literal>]
@@ -983,24 +984,50 @@ module Message =
       level     = level
       timestamp = Date.timestamp() }
 
-  /// Creates a new metric message with data point name, unit and value
-  [<CompiledName "Metric">]
-  let metricWithUnit dp unit value =
+  /// Creates a new gauge message with data point name, unit and value
+  [<CompiledName "Gauge">]
+  let gaugeWithUnit dp units value =
     { name      = dp
-      value     = Gauge (value, unit)
+      value     = Gauge (value, units)
       fields    = Map.empty
       context   = Map.empty
-      level     = Debug
+      level     = LogLevel.Debug
       timestamp = Date.timestamp() }
 
-  /// Creates a new metric message with data point name and scalar value
-  [<CompiledName "Metric">]
-  let metric dp value =
+  [<Obsolete "Use gaugeWithUnit (C#: Gauge)"; CompiledName "Metric">]
+  let metricWithUnit dp units value =
+    gaugeWithUnit dp units value
+
+  /// Creates a new gauge message with data point name and scalar value
+  [<CompiledName "Gauge">]
+  let gauge dp value =
     { name      = dp
       value     = Gauge (value, Units.Scalar)
       fields    = Map.empty
       context   = Map.empty
-      level     = Debug
+      level     = LogLevel.Debug
+      timestamp = Date.timestamp() }
+
+  [<Obsolete "Use gauge (C#: Gauge)"; CompiledName "Metric">]
+  let metric dp value =
+    gauge dp value
+
+  [<CompiledName "Derived">]
+  let derivedWithUnit dp units value =
+    { name      = dp
+      value     = Derived (value, units)
+      fields    = Map.empty
+      context   = Map.empty
+      level     = LogLevel.Debug
+      timestamp = Date.timestamp() }
+
+  [<CompiledName "Derived">]
+  let derived dp value =
+    { name      = dp
+      value     = Derived (value, Units.Scalar)
+      fields    = Map.empty
+      context   = Map.empty
+      level     = LogLevel.Debug
       timestamp = Date.timestamp() }
 
   /// Create a verbose event message
@@ -1014,7 +1041,7 @@ module Message =
 
   /// Create a debug event message
   [<CompiledName "EventDebug">]
-  let eventDebug = event Debug
+  let eventDebug = event LogLevel.Debug
 
   /// Create a debug event message, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
@@ -1055,7 +1082,7 @@ module Message =
   /// Create a fatal event message, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
   [<CompiledName "EventFatalFormat">]
-  let eventFatalf fmt = Printf.kprintf (event Fatal) fmt
+  let eventFatalf fmt = Printf.kprintf (event LogLevel.Fatal) fmt
 
   /// Converts a String.Format-style format string and an array of arguments into
   /// a message template and a set of fields.
@@ -1073,52 +1100,68 @@ module Message =
 
   /// Creates a new event with given level, format and arguments. Format may
   /// contain String.Format-esque format placeholders.
-  [<CompiledName "EventFormat"; Extension>]
+  [<CompiledName "EventFormat">]
   let eventFormat (level, format, [<ParamArray>] args : obj[]) =
     let (template, fields) = templateFromFormat format args
     event level template |> setFieldValues fields
 
+  /// Run the function `f` and measure how long it takes; logging that
+  /// measurement as a Gauge in the unit Seconds.
+  [<CompiledName "Time";>]
+  let time pointName f =
+    let sw = Stopwatch.StartNew()
+    let res = f ()
+    sw.Stop()
+
+    let value =
+      Float (float sw.ElapsedTicks / float NodaConstants.TicksPerSecond)
+
+    let message =
+      gaugeWithUnit pointName Units.Seconds value
+
+    res, message
+
   ///////////////// PROPS ////////////////////
 
   /// Sets the messages's name
-  [<CompiledName "SetName"; Extension>]
+  [<CompiledName "SetName">]
   let setName name (msg : Message) =
     { msg with name = name }
 
   /// Sets the message's level.
-  [<CompiledName "SetLevel"; Extension>]
+  [<CompiledName "SetLevel">]
   let setLevel lvl msg = { msg with level = lvl}
 
   /// Sets the number of nanoseconds since epoch.
-  [<CompiledName "SetNanoEpoch"; Extension>]
+  [<CompiledName "SetNanoEpoch">]
   let setNanoEpoch (ts : EpochNanoSeconds) msg =
     { msg with timestamp = ts }
 
   /// Sets the number of ticks since epoch. There are 10 ticks per micro-second,
   /// so a tick is a 1/10th microsecond, so it's 100 nanoseconds long.
-  [<CompiledName "SetTicks"; Extension>]
+  [<CompiledName "SetTicks">]
   let setTicks (ticks : int64) msg =
     { msg with timestamp = ticks * 100L }
 
   /// Sets the number of ticks as specified by DateTime and DateTimeOffset,
   /// which starts at zero the 0001-01-01 00:00:00 instant.
-  [<CompiledName "SetUTCTicks"; Extension>]
+  [<CompiledName "SetUTCTicks">]
   let setUTCTicks (ticks : int64) msg =
     { msg with timestamp = ticks - DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).Ticks }
 
   /// Update the message with the current timestamp.
-  [<CompiledName "UpdateTimestamp"; Extension>]
+  [<CompiledName "UpdateTimestamp">]
   let updateTimestamp msg =
     { msg with timestamp = Date.timestamp () }
 
   /// Replaces the value of the message with a new Event with the supplied format
-  [<CompiledName "SetEvent"; Extension>]
+  [<CompiledName "SetEvent">]
   let setEvent format msg =
     { msg with value = Event format}
 
   /// Adds a new exception to the "errors" field in the message.
   /// AggregateExceptions are automatically expanded.
-  [<CompiledName "AddException"; Extension>]
+  [<CompiledName "AddException">]
   let addExn (e : exn) msg =
     let flattenedExns =
       match e with

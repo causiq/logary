@@ -39,7 +39,7 @@ let private log =
   let supervisorName = PointName [| "Logary"; "Supervisor" |]
   fun instance ->
     Message.setName supervisorName
-    >> instance.options.logger.log
+    >> Logger.log instance.options.logger
 
 /// Register the given job to be supervised. The job will be automatically
 /// restarted if it crashes. A job can only be registered once.
@@ -54,7 +54,8 @@ let rec private supervise instance (nj : NamedJob<_>) = job {
   | Choice1Of2 _ ->
     // If the job is finished without an exception (presumably shut down),
     // stop supervising.
-    do! Message.eventInfof "Job '%s' has quit and will be unregistered." nj.name |> log instance
+    do! Message.eventInfof "Job '%s' has quit and will be unregistered." nj.name
+        |> log instance
     do! Ch.give instance.ch (Unregister nj.name)
 
   | Choice2Of2 ex ->

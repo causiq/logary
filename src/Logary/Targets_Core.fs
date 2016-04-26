@@ -15,7 +15,7 @@ module TextWriter =
 
   /// Configuration for a text writer
   type TextWriterConf =
-    { /// A string formatter to specify how to write the log lines
+    { /// A string formatter to specify how to write the Message
       formatter  : StringFormatter
       /// the non-error text writer to output to
       output     : TextWriter
@@ -165,7 +165,7 @@ module Debugger =
     { formatter : StringFormatter }
 
     /// Create a new Debugger configuration with a given formatter (which
-    /// formats how the log line and metrics are printed)
+    /// formats how the Messages and Gauges/Derived-s are printed)
     [<CompiledName "Create">]
     static member create(?formatter) =
       { formatter = defaultArg formatter (StringFormatter.levelDatetimeMessagePathNl) }
