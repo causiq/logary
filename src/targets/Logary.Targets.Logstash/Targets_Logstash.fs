@@ -23,7 +23,7 @@ type LogstashConf =
     clientFac    : string -> uint16 -> WriteClient
     evtVer       : EventVersion }
   /// Create a new logstash configuration structure, optionally specifying
-  /// overrides on port, client tcp factory, the formatter to log with
+  /// overrides on port, client TCP factory, the formatter to log with
   /// and what event versioning scheme to use when writing to log stash
   /// (version 0 is for logstash version 1.1.x and version 1 is for logstash
   /// version 1.2.x and above)
