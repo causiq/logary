@@ -7,11 +7,11 @@ open NodaTime
 open System.Threading
 
 type NamedJob<'a> =
-  { name : string list
+  { name : string
     job  : Job<'a> }
 with
   override x.ToString() =
-    sprintf "Job[%O]" (String.concat "." x.name)
+    sprintf "Job[%s]" x.name
 
 /// Provides operations on named jobs
 module NamedJob =
@@ -24,17 +24,6 @@ module NamedJob =
   /// Starts running the given named job on the global scheduler.
   let spawn nj =
     nj.job |> Job.Global.start
-
-module internal Ns =
-
-  /// The actor's root namespace
-  [<Literal>]
-  let LogaryRootNs = "logary"
-
-  /// Create a namespace from the subcomponent identifier
-  let create subcomponent =
-    [ LogaryRootNs; subcomponent ]
-    |> NamedJob.create
 
 module internal Seq =
 
@@ -179,7 +168,7 @@ module Map =
 
   /// This is basically an assembly-internal function; depend on at
   /// your own misery.
-  let fromObject : obj -> _ =
+  let ofObject : obj -> _ =
     let toS o =
       match o with
       | null ->
@@ -293,3 +282,17 @@ type Acks =
   | Ack
   /// It didn't go well.
   | Nack of NackDescription
+
+
+module internal CSharpFacade =
+
+  open Hopac
+  open System.Threading.Tasks
+  open System.Runtime.CompilerServices
+
+  /// Convert the job to a task and queue its execution, since Tasks are hot.
+  [<Extension>]
+  let ToTask<'a> (job : Job<'a>) =
+    let tcs = new TaskCompletionSource<'a>()
+    job |> Job.bind (fun res -> tcs.SetResult res; Job.result ()) |> queue
+    tcs.Task

@@ -62,7 +62,7 @@ module HealthCheck =
       member x.description = defaultArg (tryGetDesc m) ""
     override x.ToString() =
       sprintf "HealthCheck(name=%s, value=%A, level=%A)"
-        (PointName.joined m.name) m.value m.level
+        (PointName.format m.name) m.value m.level
 
   module HealthCheckResult =
     /// Transform the measure to a HealthCheck.ResultData.

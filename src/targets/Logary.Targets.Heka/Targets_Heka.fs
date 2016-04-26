@@ -5,6 +5,7 @@ open System.IO
 open System.Net
 open System.Net.Sockets
 open System.Net.Security
+open Logary.Utils.Chiron
 open Hopac
 open Hopac.Infixes
 open Logary
@@ -60,7 +61,7 @@ type Logary.Heka.Messages.Field with
 
     | Object m as o when not m.IsEmpty ->
       Some <| Messages.Field(name, Nullable ValueType.STRING, "json",
-                             [Json.format <| Json.valueToJson o])
+                             [Json.format (Json.serialize o)])
 
     | Object _ ->
       None
@@ -69,7 +70,7 @@ type Logary.Heka.Messages.Field with
     // a clarifying representation string
     | Fraction _ as frac ->
       Some <| Messages.Field(name, Nullable ValueType.STRING, "json",
-                             [Json.format <| Json.valueToJson frac])
+                             [Json.format <| Json.serialize frac])
 
     | Array arr when arr.IsEmpty ->
       None
@@ -113,7 +114,7 @@ type Logary.Heka.Messages.Field with
 
 type Logary.Heka.Messages.Message with
   static member ofMessage (msg : Logary.Message) =
-    let hmsg = Message(logger = PointName.joined msg.name)
+    let hmsg = Message(logger = PointName.format msg.name)
     hmsg.severity <- Nullable (msg.level |> LogLevel.toSeverity)
     hmsg.timestamp <- msg.timestamp
     match msg.value with
@@ -178,7 +179,7 @@ module internal Impl =
         msg.uuid        <- Guid.NewGuid().ToByteArray()
         msg.hostname    <- state.hostname
         // TODO: fix
-        msg.env_version <- "4.0.0"
+        msg.env_version <- "4.0.7"
         msg.``type``    <- MessageType
         msg.addField (Field("service", Nullable ValueType.STRING, null,
                             [ ri.serviceName ]))

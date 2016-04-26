@@ -25,7 +25,7 @@ let tests =
 
     testCase "target" <| fun _ ->
       let target =
-        Target.confTarget (pn "tw") (TextWriter.create (TextWriter.TextWriterConf.Create(Fac.textWriter(), Fac.textWriter())))
+        Target.confTarget (PointName.ofSingle "tw") (TextWriter.create (TextWriter.TextWriterConf.create(Fac.textWriter(), Fac.textWriter())))
         |> Target.validate
         |> Target.init Fac.emptyRuntime
         |> run

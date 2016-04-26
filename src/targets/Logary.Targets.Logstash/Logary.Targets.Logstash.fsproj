@@ -40,13 +40,9 @@
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>
-    <Compile Include="..\..\..\paket-files\xyncro\aether\src\Aether\Aether.fs">
+    <Compile Include="..\..\..\paket-files\haf\YoLo\YoLo.fs">
       <Paket>True</Paket>
-      <Link>paket-files/Aether.fs</Link>
-    </Compile>
-    <Compile Include="..\..\..\paket-files\xyncro\chiron\src\Chiron\Chiron.fs">
-      <Paket>True</Paket>
-      <Link>paket-files/Chiron.fs</Link>
+      <Link>paket-files/YoLo.fs</Link>
     </Compile>
     <Compile Include="Targets_Logstash.fs" />
   </ItemGroup>
@@ -62,13 +58,8 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
-        <Reference Include="FParsec">
-          <HintPath>..\..\..\packages\FParsec\lib\net40-client\FParsec.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="FParsecCS">
-          <HintPath>..\..\..\packages\FParsec\lib\net40-client\FParsecCS.dll</HintPath>
+        <Reference Include="FSharp.Core">
+          <HintPath>..\..\..\packages\FSharp.Core\lib\net40\FSharp.Core.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
@@ -78,8 +69,8 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
-        <Reference Include="FSharp.Core">
-          <HintPath>..\..\..\packages\FSharp.Core\lib\net40\FSharp.Core.dll</HintPath>
+        <Reference Include="fszmq">
+          <HintPath>..\..\..\packages\fszmq\lib\net40\fszmq.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>

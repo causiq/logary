@@ -49,8 +49,7 @@
     </ProjectReference>
     <ProjectReference Include="..\..\src\metrics\Logary.Metrics.WinPerfCounters\Logary.Metrics.WinPerfCounters.fsproj">
       <Name>Logary.Metrics.WinPerfCounters</Name>
-      <Project>{dd5137fc-22e5-47da-88f1-3d3f1e7e8381}</Project>
-      <Private>True</Private>
+      <Project>{DD5137FC-22E5-47DA-88F1-3D3F1E7E8381}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\src\targets\Logary.Targets.InfluxDb\Logary.Targets.InfluxDb.fsproj">
       <Project>{4ACE8A29-6D75-4956-B45C-22C82EAFCFD5}</Project>

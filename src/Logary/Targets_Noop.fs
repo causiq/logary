@@ -27,13 +27,14 @@ module internal Impl =
     let rec loop (state : State) : Job<unit> =
       Alt.choose [
         shutdown ^=> fun ack ->
+          // do! Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
           ack *<= () :> Job<_>
 
         // 'When there is a request' call this function
         RingBuffer.take requests ^=> function
-          | Log (_, ack) ->
+          | Log (message, ack) ->
             job {
-              // do something with the message
+              // do something with the `message` value
               // specific to the target you are creating
 
               // This is a simple acknowledgement using unit as the signal
@@ -51,7 +52,8 @@ module internal Impl =
     loop { state = false }
 
 /// Create a new Noop target
-let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
+[<CompiledName "Create">]
+let create conf name = TargetUtils.stdNamedTarget (Impl.loop conf) name
 
 /// Use with LogaryFactory.New( s => s.Target<Noop.Builder>() )
 type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =

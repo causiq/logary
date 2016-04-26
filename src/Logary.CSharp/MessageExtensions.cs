@@ -15,7 +15,7 @@ namespace Logary
         /// <summary>
         /// Sets the format of the message
         /// </summary>
-        public static Message SetMessage(this Message msg, string format)
+        public static Message SetEvent(this Message msg, string format)
         {
             return MessageModule.SetEvent(format, msg);
         }
@@ -37,27 +37,19 @@ namespace Logary
         }
 
         /// <summary>
-        /// Sets the service of the message
-        /// </summary>
-        public static Message SetService(this Message msg, string path)
-        {
-            return MessageModule.Context.service_.Item2.Invoke(path).Invoke(msg);
-        }
-
-        /// <summary>
         /// Add the key-value pairs to the data
         /// </summary>
-        public static Message AddFields(this Message msg, IEnumerable<KeyValuePair<string, Field>> fields)
+        public static Message SetFieldsFromObject(this Message msg, IEnumerable<KeyValuePair<string, Field>> fields)
         {
-            return MessageModule.AddFields(fields.Select(kv => Tuple.Create(PointNameModule.FromString(kv.Key), kv.Value)), msg);
+             return MessageModule.SetFieldsFromObject(fields.Select(kv => Tuple.Create(PointNameModule.Parse(kv.Key), kv.Value)), msg);
         }
 
         /// <summary>
         /// Serializes the object into fields and adds them to the message
         /// </summary>
-        public static Message AddData(this Message msg, object obj)
+        public static Message SetFieldsFromObject(this Message msg, object obj)
         {
-            return MessageModule.AddData(obj, msg);
+            return MessageModule.SetFieldsFromObject(obj, msg);
         }
 
         /// <summary>

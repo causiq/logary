@@ -2,6 +2,7 @@ namespace Logary
 
 open System
 open System.Reflection
+open System.Runtime.CompilerServices
 open Logary
 open Logary.Utils.Chiron
 open Logary.Utils.Chiron.Operators
@@ -161,6 +162,62 @@ type Value =
 
       | Json.Null () ->
         JsonResult.Error "Cannot handle Null json values", json
+
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Value =
+  open Logary.Internals
+  open System.Collections.Generic
+
+  let rec ofObject : obj -> Value = function
+    // Built-in types
+    | :? bool as b     -> Bool b
+    | :? int8 as i     -> Int64 (int64 i)
+    | :? uint8 as i    -> Int64 (int64 i)
+    | :? int16 as i    -> Int64 (int64 i)
+    | :? uint16 as i   -> Int64 (int64 i)
+    | :? int32 as i    -> Int64 (int64 i)
+    | :? uint32 as i   -> Int64 (int64 i)
+    | :? int64 as i    -> Int64 (int64 i)
+    | :? uint64 as i   -> Float (float i)
+    | :? bigint as i   -> BigInt i
+    | :? decimal as d  -> Float (float d)
+    | :? float32 as f32-> Float (float f32)
+    | :? float as f    -> Float f
+    | :? char as c     -> String (string c)
+    | :? string as s   -> String s
+
+    // Common BCL types
+    | :? Guid as g             -> String (string g)
+    | :? DateTime as dt        -> String (dt.ToUniversalTime().ToString("o"))
+    | :? DateTimeOffset as dto -> String (dto.ToString("o"))
+
+    // Collections
+    | :? (byte array) as bytes ->
+      Binary (bytes, "application/octet-stream")
+
+    | :? Array as arr ->
+      [ for i in 0..arr.Length-1 do
+          yield ofObject (arr.GetValue i) ]
+      |> Array
+
+    | :? IEnumerable<KeyValuePair<string, obj>> as dict ->
+      dict
+      |> Seq.map (fun (KeyValue (k, v)) -> (k, ofObject v))
+      |> Map.ofSeq
+      |> Object
+
+    //| :? Map<string, obj> as map -> Map.map (fun _ v -> fromObject v) map |> Object
+    | :? IEnumerable<obj> as ie ->
+      Seq.map ofObject ie
+      |> Seq.toList
+      |> Array
+
+    // POCOs
+    | a ->
+      Map.ofObject a
+      |> Map.map (fun _ v -> ofObject v)
+      |> Object
 
 module Escaping =
     let private unescaped i =
@@ -375,11 +432,37 @@ module Mapping =
     static member inline ToValue (x: DateTimeOffset) =
       Value.setLensPartial Value.String_ (x.ToString("o"))
 
-    static member inline ToValue (x: Guid) =
+    static member inline ToValue (x: Guid) : Value<unit> =
       Value.setLensPartial Value.String_ (string x)
 
-    //static member inline ToValue (x: Uri) =
-    //  Value.setLensPartial Value.String_ (x.ToString())
+    static member inline ToValue (x: Uri) =
+      Value.setLensPartial Value.String_ (x.ToString())
+
+    static member inline ToValue (e: exn) : Value<unit> =
+      let rec serialise (e : exn) =
+        let fields =
+          [ yield "type", String (e.GetType ()).FullName
+            yield "message", String e.Message
+            if e.TargetSite <> null then 
+              yield "targetSite", String (e.TargetSite.ToString ())
+            if e.StackTrace <> null then
+              yield "stackTrace", String e.StackTrace
+            if e.Source <> null then
+              yield "source", String e.Source
+            if e.HelpLink <> null then
+              yield "helpLink", String e.HelpLink
+            if e.HResult <> 0 then
+              yield "hResult", Int64 (int64 e.HResult)
+            if e.Data <> null && e.Data.Count > 0 then
+              yield "data", Value.ofObject e.Data ]
+
+        Map.ofSeq <|
+          if e.InnerException <> null then
+            ("inner", Object <| serialise e.InnerException) :: fields
+          else
+            fields
+
+      Value.setLensPartial Value.Object_ (serialise e)
 
     (* Json Type *)
 
@@ -441,63 +524,8 @@ module Mapping =
     let inline write key value =
       Value.setLensPartial (Value.Object_ >??> key_ key) (toValue value)
 
-    let inline serialize a =
+    let inline serialize (a : ^a) : Value =
       toValue a
-
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module Value =
-  open Logary.Internals
-  open System.Collections.Generic
-
-  let rec fromObject : obj -> Value = function
-    // Built-in types
-    | :? bool as b     -> Bool b
-    | :? int8 as i     -> Int64 (int64 i)
-    | :? uint8 as i    -> Int64 (int64 i)
-    | :? int16 as i    -> Int64 (int64 i)
-    | :? uint16 as i   -> Int64 (int64 i)
-    | :? int32 as i    -> Int64 (int64 i)
-    | :? uint32 as i   -> Int64 (int64 i)
-    | :? int64 as i    -> Int64 (int64 i)
-    | :? uint64 as i   -> Float (float i)
-    | :? bigint as i   -> BigInt i
-    | :? decimal as d  -> Float (float d)
-    | :? float32 as f32-> Float (float f32)
-    | :? float as f    -> Float f
-    | :? char as c     -> String (string c)
-    | :? string as s   -> String s
-
-    // Common BCL types
-    | :? Guid as g             -> String (string g)
-    | :? DateTime as dt        -> String (dt.ToUniversalTime().ToString("o"))
-    | :? DateTimeOffset as dto -> String (dto.ToString("o"))
-
-    // Collections
-    | :? (byte array) as bytes ->
-      Binary (bytes, "application/octet-stream")
-
-    | :? Array as arr ->
-      [ for i in 0..arr.Length-1 do
-          yield fromObject (arr.GetValue i) ]
-      |> Array
-
-    | :? IEnumerable<KeyValuePair<string, obj>> as dict ->
-      dict
-      |> Seq.map (fun (KeyValue (k, v)) -> (k, fromObject v))
-      |> Map.ofSeq
-      |> Object
-
-    //| :? Map<string, obj> as map -> Map.map (fun _ v -> fromObject v) map |> Object
-    | :? IEnumerable<obj> as ie ->
-      Seq.map fromObject ie
-      |> Seq.toList
-      |> Array
-
-    // POCOs
-    | a ->
-      Map.fromObject a
-      |> Map.map (fun _ v -> fromObject v)
-      |> Object
 
 type Units =
   | Bits
@@ -621,12 +649,12 @@ module Units =
       sprintf "%s %s" (formatValue value) (Units.symbol un)
 
 type PointName =
-  PointName of hierarchy:string list
+  PointName of hierarchy:string[]
 with
   override x.ToString() =
     let (PointName hiera) = x in String.concat "." hiera
 
-  static member hierarchy_ : Lens<PointName, string list> =
+  static member hierarchy_ : Lens<PointName, string[]> =
     (fun (PointName h) -> h),
     fun v x -> PointName v
 
@@ -638,27 +666,33 @@ with
       | Choice2Of2 err -> Json.error err json
 
   static member ToJson (PointName xs) : Json<unit> =
-    Json.Lens.setPartial Json.Array_ (xs |> List.map Json.String)
+    Json.Lens.setPartial Json.Array_ (xs |> Array.map Json.String |> List.ofArray)
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module PointName =
 
-  let empty = PointName []
+  let empty = PointName Array.empty
 
+  [<CompiledName "OfSingle">]
   let ofSingle (segment : string) =
-    PointName [ segment ]
+    PointName [| segment |]
 
+  [<CompiledName "OfList">]
   let ofList (hiera : string list) =
+    PointName (Array.ofList hiera)
+
+  /// Creates a point name of the array. As a performance optimisation, Logary
+  /// assumes that you do not change the array contents afterwards, and will
+  /// treat this value like an immutable value.
+  [<CompiledName "OfArray">]
+  let ofArray (hiera : string[]) =
     PointName hiera
 
-  [<CompiledName "Joined">]
-  let joined (pn : PointName) =
-    pn.ToString()
-
-  [<CompiledName "FromString">]
+  [<CompiledName "Parse">]
   let parse (s: string) =
-    String.split '.' s |> ofList
+    String.splita '.' s |> ofArray
 
+  [<CompiledName "Format">]
   let format (pn : PointName) =
     pn.ToString()
 
@@ -744,50 +778,68 @@ module Field =
   let inline initWithUnit value units =
     Field (Value.serialize value, Some units)
 
-  let inline init value =
+  let inline init (value : ^a) =
     Field (Value.serialize value, None)
 
+/// This is the main value type of Logary. It spans both logging and metrics.
 type Message =
-  { name      : PointName
+  { /// The 'path' or 'name' of this data point. Do not confuse template in
+    /// (Event template) = message.value
+    ///
+    name      : PointName
+    /// The main value for this metric or event. Either a Gauge, a Derived or an
+    /// Event. (A discriminated union type)
     value     : PointValue
-    /// the semantic-logging data
+    /// The semantic-logging data. This corresponds to the 'data' field in other
+    /// logging abstractions.
     fields    : Map<PointName, Field>
-    /// the principal/actor/user/tenant/act-as/oauth-id data
-    session   : Value
-    /// where in the code?
+    /// Where in the code? Who did the operation? What tenant did the principal
+    /// who did it belong to? Put things your normally do 'GROUP BY' on in this
+    /// Map.
     context   : Map<string, Value>
-    /// what urgency?
+    /// What urgency? For events you're interested in tracking in some metrics
+    /// interface, like Grafana or logs you normally expose in your dashboards
+    /// in Kibana (like 'Event "User logged in'), you want LogLevel.Info. Debug
+    /// is what you put in so that you can see what goes awry when things do go
+    /// awry, and finally you can use Verbose on things that run every single
+    /// request; for when you really need to do 'sanity checking' in production.
     level     : LogLevel
-    /// when? nanoseconds since UNIX epoch
+    /// When? nanoseconds since UNIX epoch.
     timestamp : EpochNanoSeconds }
 
+    /// Gets the timestamp as .Net/Mono ticks (100 ns per tick).
+    member x.timestampTicks : int64 =
+      x.timestamp / 100L
+
     static member ToJson (m : Message) =
+      let fields' =
+        m.fields
+        |> Seq.map (function KeyValue(key, value) -> PointName.format key, value)
+        |> Map.ofSeq
+
       Json.write "name" m.name
       *> Json.write "value" m.value
-      *> Json.write "fields" (m.fields |> Seq.map (fun kv -> kv.Key.ToString(), kv.Value) |> Map.ofSeq)
-      *> Json.write "session" m.session
+      *> Json.write "fields" fields'
       *> Json.write "context" m.context
       *> Json.write "level" m.level
       *> Json.write "timestamp" m.timestamp
 
     static member FromJson (_ : Message) =
-      (fun name value (fields : Map<string, _>) session context level ts ->
+      (fun name value (fields : Map<string, _>) context level ts ->
         let fields =
           fields
-          |> Seq.map (fun kv -> PointName (kv.Key |> String.split '.'), kv.Value)
+          |> Seq.map (fun kv -> PointName (kv.Key |> String.splita '.'), kv.Value)
           |> Map.ofSeq
 
-        { name    = name
-          value   = value
-          fields  = fields
-          session = session
-          context = context
-          level   = level
+        { name      = name
+          value     = value
+          fields    = fields
+          context   = context
+          level     = level
           timestamp = ts })
       <!> Json.read "name"
       <*> Json.read "value"
       <*> Json.read "fields"
-      <*> Json.read "session"
       <*> Json.read "context"
       <*> Json.read "level"
       <*> Json.read "timestamp"
@@ -817,10 +869,6 @@ module Message =
       (fun x -> x.fields),
       (fun v x -> { x with fields = v })
 
-    let session_ : Lens<Message, Value> =
-      (fun x -> x.session),
-      fun v x -> { x with session = v }
-
     let context_ : Lens<Message, Map<string, Value>> =
       (fun x -> x.context),
       (fun v x -> { x with context = v })
@@ -842,19 +890,19 @@ module Message =
   ///////////////// FIELDS ////////////////////
 
   /// Get a partial setter lens to a field
-  [<CompiledName "SetField">]
+  [<CompiledName "SetField"; Extension>]
   let inline setField name value =
     Lens.setPartial (Lenses.field_ name) (Field.init value)
 
   /// Get a partial setter lens to a field with an unit
-  [<CompiledName "SetFieldUnit">]
+  [<CompiledName "SetFieldUnit"; Extension>]
   let inline setFieldUnit name value units =
     Lens.setPartial (Lenses.field_ name) (Field.initWithUnit value units)
 
   /// You can also choose to construct a Field yourself, using the object model
   /// that Logary has for its data. That way you don't have to rely on having
   /// static ToValue methods on your data objects.
-  [<CompiledName "SetFieldValue">]
+  [<CompiledName "SetFieldValue"; Extension>]
   let setFieldValue (name : string) (field : Field) msg =
     Lens.setPartial (Lenses.field_ name) field msg
 
@@ -865,19 +913,19 @@ module Message =
   [<CompiledName "SetFieldsFromMap">]
   let setFieldsFromMap (m : Map<string, obj>) msg =
     m
-    |> Seq.map (fun (KeyValue (k, v)) -> k, Field (Value.fromObject v, None))
+    |> Seq.map (fun (KeyValue (k, v)) -> k, Field (Value.ofObject v, None))
     |> List.ofSeq
     |> fun fields -> setFieldValues fields msg
 
-  [<CompiledName "SetFieldFromObject">]
+  [<CompiledName "SetFieldFromObject"; Extension>]
   let setFieldFromObject name (data : obj) msg =
-    setFieldValue name (Field (Value.fromObject data, None)) msg
+    setFieldValue name (Field (Value.ofObject data, None)) msg
 
   /// Reflects over the object and sets the appropriate fields.
-  [<CompiledName "SetFieldsFromObject">]
+  [<CompiledName "SetFieldsFromObject"; Extension>]
   let setFieldsFromObject (data : obj) msg =
-    Map.fromObject data
-    |> Seq.map (fun (KeyValue (k, v)) -> k, Field (Value.fromObject v, None))
+    Map.ofObject data
+    |> Seq.map (fun (KeyValue (k, v)) -> k, Field (Value.ofObject v, None))
     |> List.ofSeq
     |> fun fields -> setFieldValues fields msg
 
@@ -895,7 +943,7 @@ module Message =
     Lens.setPartial (Lenses.contextValue_ name) (Value.serialize value) msg
 
   /// Sets a context value.
-  [<CompiledName "SetContextValue">]
+  [<CompiledName "SetContextValue"; Extension>]
   let setContextValue name value msg =
     Lens.setPartial (Lenses.contextValue_ name) value msg
 
@@ -906,15 +954,15 @@ module Message =
   [<CompiledName "SetContextFromMap">]
   let setContextFromMap (m : Map<string, obj>) msg =
     m
-    |> Seq.map (fun (KeyValue (k, v)) -> k, Value.fromObject v)
+    |> Seq.map (fun (KeyValue (k, v)) -> k, Value.ofObject v)
     |> List.ofSeq
     |> fun fields -> setContextValues fields msg
 
   /// Uses reflection to set all 
-  [<CompiledName "SetContextFromObject">]
+  [<CompiledName "SetContextFromObject"; Extension>]
   let setContextFromObject (data : obj) msg =
-    Map.fromObject data
-    |> Seq.map (fun (KeyValue (k, v)) -> k, Value.fromObject v)
+    Map.ofObject data
+    |> Seq.map (fun (KeyValue (k, v)) -> k, Value.ofObject v)
     |> List.ofSeq
     |> fun values -> setContextValues values msg
 
@@ -931,7 +979,6 @@ module Message =
     { name      = PointName.empty
       value     = Event template
       fields    = Map.empty
-      session   = Object Map.empty
       context   = Map.empty
       level     = level
       timestamp = Date.timestamp() }
@@ -942,7 +989,6 @@ module Message =
     { name      = dp
       value     = Gauge (value, unit)
       fields    = Map.empty
-      session   = Object Map.empty
       context   = Map.empty
       level     = Debug
       timestamp = Date.timestamp() }
@@ -953,7 +999,6 @@ module Message =
     { name      = dp
       value     = Gauge (value, Units.Scalar)
       fields    = Map.empty
-      session   = Object Map.empty
       context   = Map.empty
       level     = Debug
       timestamp = Date.timestamp() }
@@ -1019,7 +1064,7 @@ module Message =
       args
       |> Array.mapi (fun i v ->
         sprintf "arg%i" i,
-        Field (Value.fromObject v, None))
+        Field (Value.ofObject v, None))
       |> List.ofArray
 
     // Replace {0}..{n} with {arg0}..{argn}
@@ -1028,84 +1073,63 @@ module Message =
 
   /// Creates a new event with given level, format and arguments. Format may
   /// contain String.Format-esque format placeholders.
-  [<CompiledName "EventFormat">]
+  [<CompiledName "EventFormat"; Extension>]
   let eventFormat (level, format, [<ParamArray>] args : obj[]) =
     let (template, fields) = templateFromFormat format args
     event level template |> setFieldValues fields
 
   ///////////////// PROPS ////////////////////
 
-  [<CompiledName "SetName">]
+  /// Sets the messages's name
+  [<CompiledName "SetName"; Extension>]
   let setName name (msg : Message) =
     { msg with name = name }
 
-  [<CompiledName "SetLevel">]
+  /// Sets the message's level.
+  [<CompiledName "SetLevel"; Extension>]
   let setLevel lvl msg = { msg with level = lvl}
 
   /// Sets the number of nanoseconds since epoch.
-  [<CompiledName "SetNanoEpoch">]
+  [<CompiledName "SetNanoEpoch"; Extension>]
   let setNanoEpoch (ts : EpochNanoSeconds) msg =
     { msg with timestamp = ts }
 
   /// Sets the number of ticks since epoch. There are 10 ticks per micro-second,
   /// so a tick is a 1/10th microsecond, so it's 100 nanoseconds long.
-  [<CompiledName "SetTicks">]
+  [<CompiledName "SetTicks"; Extension>]
   let setTicks (ticks : int64) msg =
     { msg with timestamp = ticks * 100L }
 
   /// Sets the number of ticks as specified by DateTime and DateTimeOffset,
   /// which starts at zero the 0001-01-01 00:00:00 instant.
-  [<CompiledName "SetUTCTicks">]
+  [<CompiledName "SetUTCTicks"; Extension>]
   let setUTCTicks (ticks : int64) msg =
     { msg with timestamp = ticks - DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).Ticks }
 
   /// Update the message with the current timestamp.
-  [<CompiledName "UpdateTimestamp">]
+  [<CompiledName "UpdateTimestamp"; Extension>]
   let updateTimestamp msg =
     { msg with timestamp = Date.timestamp () }
 
   /// Replaces the value of the message with a new Event with the supplied format
-  [<CompiledName "SetEvent">]
+  [<CompiledName "SetEvent"; Extension>]
   let setEvent format msg =
     { msg with value = Event format}
 
-  let rec private exnToFields (e : exn) =
-    let fields =
-      [ yield "type", String (e.GetType ()).FullName
-        yield "message", String e.Message
-        if e.TargetSite <> null then 
-          yield "targetSite", String (e.TargetSite.ToString ())
-        if e.StackTrace <> null then
-          yield "stackTrace", String e.StackTrace
-        if e.Source <> null then
-          yield "source", String e.Source
-        if e.HelpLink <> null then
-          yield "helpLink", String e.HelpLink
-        if e.HResult <> 0 then
-          yield "hResult", Int64 (int64 e.HResult)
-        if e.Data <> null && e.Data.Count > 0 then
-          yield "data", Value.fromObject e.Data ]
-
-    Map.ofSeq <|
-      if e.InnerException <> null then
-        ("inner", Object <| exnToFields e.InnerException) :: fields
-      else
-        fields
-
   /// Adds a new exception to the "errors" field in the message.
   /// AggregateExceptions are automatically expanded.
-  [<CompiledName "AddException">]
+  [<CompiledName "AddException"; Extension>]
   let addExn (e : exn) msg =
     let flattenedExns =
       match e with
       | :? AggregateException as ae ->
-        ae.InnerExceptions |> Seq.map exnToFields |> Seq.toList
+        ae.InnerExceptions |> Seq.map toValue |> Seq.toList
       | _ ->
-        exnToFields e :: []
+        toValue e :: []
 
     let exnsNext =
       let exns = Lens.getPartialOrElse Lenses.errors_ [] msg
-      exns @ (flattenedExns |> List.map Object)
+      exns @ flattenedExns
 
     // If there's no "errors" field, add it
     let msg =
@@ -1114,6 +1138,6 @@ module Message =
         msg
 
       | None ->
-        setFieldValue "errors" (Field.init (Array [])) msg
+        setFieldValue "errors" (Field (Array [], None)) msg
 
     Lens.setPartial Lenses.errors_ exnsNext msg

@@ -25,7 +25,7 @@ namespace Logary
         /// <param name="logger">Instance to invoke the extension method on</param>
         /// <param name="level"></param>
         /// <param name="message">A message to attach to the log line</param>
-        /// <param name="data">Data to attach to the log line being sent to the target;
+        /// <param name="fields">Data to attach to the log line being sent to the target;
         /// e.g. if using LogStash, these properties will be fields. For performance
         /// improvements, you can send a dictionary, or otherwise you can
         /// send an anonymous object whose public properties are then serialised
@@ -35,29 +35,26 @@ namespace Logary
         /// across time, and if you have custom data you want to pass, you should rather set
         /// that data on the 'data' property of LogLine (with SetData and SetDatas).
         /// </param>
-        /// <param name="service"></param>
         /// <param name="timestamp">
         /// When the log entry was given; optional, defaults to when this method
-        /// is called</param>
+        /// is called
+        /// </param>
         public static void Log(
             this Logger logger,
             LogLevel level,
             string message,
-            object data,
-            string service = null,
+            object fields,
             Instant? timestamp = null)
         {
             if (logger == null) throw new ArgumentNullException("logger");
             if (level == null) throw new ArgumentNullException("level");
             if (message == null) throw new ArgumentNullException("message");
 
-            var msg = MessageModule.CreateEvent(level, message);
-
-            if (service != null) msg.SetService(service);
-            if (data != null) msg.AddData(data);
+            var msg = MessageModule.Event(level, message);
+            if (fields != null) msg.SetFieldsFromObject(fields);
             if (timestamp != null) msg.SetTimestamp(timestamp.Value);
 
-            logger.log(msg);
+            logger.log(msg).Start();
         }
 
         /// <summary>
@@ -90,8 +87,8 @@ namespace Logary
             if (message == null) throw new ArgumentNullException("message");
             if (setterTransformer == null) throw new ArgumentNullException("setterTransformer");
 
-            var line = MessageModule.CreateEvent(level, message);
-            logger.log(setterTransformer(line));
+            var line = MessageModule.Event(level, message);
+            logger.log(setterTransformer(line)).Start();
         }
 
         /// <summary>
@@ -140,7 +137,7 @@ namespace Logary
             if (level == null) throw new ArgumentNullException("level");
             if (formatStringMessage == null) throw new ArgumentNullException("formatStringMessage");
 
-            logger.log(MessageModule.CreateFormattedEvent(level, formatStringMessage, args));
+            logger.log(MessageModule.EventFormat(level, formatStringMessage, args)).Start();
         }
 
         /// <summary>
@@ -153,7 +150,7 @@ namespace Logary
             if (logger == null) throw new ArgumentNullException("logger");
             if (message == null) throw new ArgumentNullException("message");
 
-            logger.Log(message, LogLevel.Fatal);
+            logger.Log(message, LogLevel.Fatal).Start();
         }
 
         /// <summary>
@@ -168,7 +165,7 @@ namespace Logary
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
 
-            logger.log(MessageModule.CreateEvent(LogLevel.Fatal, message).AddException(e));
+            logger.log(MessageModule.Event(LogLevel.Fatal, message).AddException(e)).Start();
         }
 
         /// <summary>
@@ -181,7 +178,7 @@ namespace Logary
             if (logger == null) throw new ArgumentNullException("logger");
             if (message == null) throw new ArgumentNullException("message");
 
-            logger.Log(message, LogLevel.Error);
+            logger.Log(message, LogLevel.Error).Start();
         }
 
         /// <summary>
@@ -196,7 +193,7 @@ namespace Logary
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
 
-            logger.log(MessageModule.CreateEvent(LogLevel.Error, message).AddException(e));
+            logger.log(MessageModule.Event(LogLevel.Error, message).AddException(e)).Start();
         }
 
         /// <summary>
@@ -209,7 +206,7 @@ namespace Logary
             if (logger == null) throw new ArgumentNullException("logger");
             if (message == null) throw new ArgumentNullException("message");
 
-            logger.Log(message, LogLevel.Warn);
+            logger.Log(message, LogLevel.Warn).Start();
         }
 
         /// <summary>
@@ -224,7 +221,7 @@ namespace Logary
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
 
-            logger.log(MessageModule.CreateEvent(LogLevel.Warn, message).AddException(e));
+            logger.log(MessageModule.Event(LogLevel.Warn, message).AddException(e)).Start();
         }
 
         /// <summary>
@@ -237,7 +234,7 @@ namespace Logary
             if (logger == null) throw new ArgumentNullException("logger");
             if (message == null) throw new ArgumentNullException("message");
 
-            logger.Log(message, LogLevel.Info);
+            logger.Log(message, LogLevel.Info).Start();
         }
 
         /// <summary>
@@ -252,7 +249,7 @@ namespace Logary
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
 
-            logger.log(MessageModule.CreateEvent(LogLevel.Info, message).AddException(e));
+            logger.log(MessageModule.Event(LogLevel.Info, message).AddException(e)).Start();
         }
 
         /// <summary>
@@ -262,7 +259,7 @@ namespace Logary
         /// <param name="message">Message to pass to the targets</param>
         public static void Debug(this Logger logger, string message)
         {
-            logger.Log(message, LogLevel.Debug);
+            logger.Log(message, LogLevel.Debug).Start();
         }
 
         /// <summary>
@@ -277,7 +274,7 @@ namespace Logary
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
 
-            logger.log(MessageModule.CreateEvent(LogLevel.Debug, message).AddException(e));
+            logger.log(MessageModule.Event(LogLevel.Debug, message).AddException(e)).Start();
         }
 
         /// <summary>
@@ -287,7 +284,7 @@ namespace Logary
         /// <param name="message">Message to pass to the targets</param>
         public static void Verbose(this Logger logger, string message)
         {
-            logger.Log(message, LogLevel.Verbose);
+            logger.Log(message, LogLevel.Verbose).Start();
         }
 
         /// <summary>
@@ -302,7 +299,7 @@ namespace Logary
             if (message == null) throw new ArgumentNullException("message");
             if (e == null) throw new ArgumentNullException("e");
 
-            logger.log(MessageModule.CreateEvent(LogLevel.Verbose, message).AddException(e));
+            logger.log(MessageModule.Event(LogLevel.Verbose, message).AddException(e)).Start();
         }
     }
 }

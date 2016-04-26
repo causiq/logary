@@ -6,7 +6,7 @@ using FluentMigrator.Runner.Generators.SQLite;
 using FluentMigrator.Runner.Processors.SQLite;
 using Logary;
 using Logary.Configuration;
-using Logary.DB.Migrations;
+//using Logary.DB.Migrations;
 using Logary.Targets;
 using Console = System.Console;
 
@@ -18,12 +18,12 @@ namespace Logary.Specs.Examples
         {
             var x = LogaryFactory.New("Logary Specs",
                 with => with.Target<TextWriter.Builder>(
-                    "console1",
+                    PointName.NewPointName("console1"),
                     conf =>
-                    conf.Target.WriteTo(Console.Out, Console.Error)
-                        .MinLevel(LogLevel.Verbose)
-                        .AcceptIf(line => true)
-                        .SourceMatching(new Regex(".*"))
+                        conf.Target.WriteTo(Console.Out, Console.Error)
+                            .MinLevel(LogLevel.Verbose)
+                            .AcceptIf(line => true)
+                            .SourceMatching(new Regex(".*"))
                     )
                     .Target<Graphite.Builder>(
                         "graphite",
@@ -33,20 +33,18 @@ namespace Logary.Specs.Examples
                     .Target<Logstash.Builder>(
                         "ls",
                         conf => conf.Target
-                            .Hostname("localhost")
-                            .Port(1936)
-                            .EventVersion(Logstash.EventVersion.One)
+                            .PublishTo("tcp://192.168.100.99:5001")
                             .Done())
-                    .Target<Logary.Targets.DB.Builder>("db",
-                        conf => conf.Target
-                            .ConnectionFactory(() => new SQLiteConnection())
-                            .DefaultSchema()
-                            .MigrateUp(
-                                conn => new SqliteProcessor(conn,
-                                    new SqliteGenerator(),
-                                    new ConsoleAnnouncer(),
-                                    new MigrationOptions(false, "", 60),
-                                    new SqliteDbFactory())))
+                    //.Target<Logary.Targets.DB.Builder>("db",
+                    //    conf => conf.Target
+                    //       .ConnectionFactory(() => new SQLiteConnection())
+                    //        .DefaultSchema()
+                    //        .MigrateUp(
+                    //            conn => new SqliteProcessor(conn,
+                    //                new SqliteGenerator(),
+                    //                new ConsoleAnnouncer(),
+                    //                new MigrationOptions(false, "", 60),
+                    //                new SqliteDbFactory())))
                 );
 
             var logger = x.GetLogger("Sample.Config");

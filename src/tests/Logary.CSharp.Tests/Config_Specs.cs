@@ -33,20 +33,25 @@ namespace Logary.Specs
 
         public static LogManager ConfigureForTextWriter(StringWriter tw)
         {
-            var twTarg = TextWriter.Create(Formatting.StringFormatter.LevelDatetimeMessagePathNl,
-                                           tw, tw, false, LogLevel.Error, "tw");
-            var twRule = RuleModule.Create(new Regex(@"^Logary\.Specs"),
-                                           "tw", l => true, m => true, LogLevel.Verbose);
+            var twTarg =
+                TextWriter.Create(
+                    TextWriter.TextWriterConf.Create(tw, tw,
+                        new Microsoft.FSharp.Core.FSharpOption<Formatting.StringFormatter>(Formatting.StringFormatterModule.levelDatetimeMessagePathNl)),
+                    PointNameModule.OfSingle("tw"));
+            var twRule =
+                RuleModule.Create (new Regex (@"^Logary\.Specs"), PointNameModule.Parse ("tw"), LogLevel.Verbose,
+                    message => true);
 
-            var internalTarg = Console.Create("cons", Console.empty);
+            var internalTarg = Console.Create(Console.empty, PointNameModule.Parse("console"));
 
             return Config.Configure(
                 "Logary Specs C# low level API",
                 new[] {twTarg},
-                Duration.FromSeconds(4L),
                 new Metric.MetricConf[0],
                 new[] {twRule},
-                LogLevel.Verbose, internalTarg);
+                LogLevel.Verbose, internalTarg)
+                    .ToTask()
+                    .Result;
         }
     }
 
@@ -74,11 +79,11 @@ namespace Logary.Specs
     [Pure]
     public class When_getting_current_logger_name
     {
-        static string subject = Logging.GetCurrentLoggerName();
+        static PointName subject = Logging.GetCurrentLoggerName();
         static string nlogName = GetCurrentClassLogger();
 
-        It should_have_name_of_class_and_namespace = () => subject.ShouldEqual("Logary.Specs.When_getting_current_logger_name");
-        It should_have_the_same_name_as_the_NLog_algorithm = () => nlogName.ShouldEqual(subject);
+        It should_have_name_of_class_and_namespace = () => subject.ShouldEqual(PointNameModule.Parse("Logary.Specs.When_getting_current_logger_name"));
+        It should_have_the_same_name_as_the_NLog_algorithm = () => nlogName.ShouldEqual(PointNameModule.Format(subject));
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static string GetCurrentClassLogger()
@@ -113,7 +118,7 @@ namespace Logary.Specs
             {
                 subject.Info("logged line");
 
-                manager.FlushPending(Duration.FromSeconds(20L));
+                Hopac.Job.Global.run(manager.flushPending(Duration.FromSeconds(20L)));
             };
 
         It should_write_messages_to_text_writer = () => output.ToString().ShouldContain("logged line");
@@ -134,7 +139,7 @@ namespace Logary.Specs
                 manager.Dispose();
 
                 thrownException = Catch.Exception(() => subject.Info("logged line"));
-                flushThrown = Catch.Exception(() => manager.FlushPending(Duration.FromSeconds(20L)));
+                flushThrown = Catch.Exception(() => manager.flushPending(Duration.FromSeconds(20L)));
             };
 
         Cleanup afterwards = () => manager.Dispose();
@@ -157,7 +162,7 @@ namespace Logary.Specs
                 manager = LogaryTestFactory.GetManager(out output);
                 var logger = GetLogger();
                 logger.Debug("da 1st line", "testing");
-                manager.FlushPending(Duration.FromSeconds(20L));
+                manager.flushPending(Duration.FromSeconds(20L));
                 var written = output.ToString();
                 written.ShouldContain("da 1st line");
                 written.ShouldContain("testing");

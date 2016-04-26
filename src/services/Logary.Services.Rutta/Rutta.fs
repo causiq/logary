@@ -1,4 +1,4 @@
-﻿namespace Logary.Services.Rutta
+namespace Logary.Services.Rutta
 open System.Reflection
 [<assembly: AssemblyTitle("Logary Rutta – a router/proxy/shipper for Windows and Unix")>]
 ()
@@ -143,7 +143,7 @@ module Shipper =
       Socket.connect sender connectTo
       //Socket.bind sender connectTo
       { zmqCtx = context
-        sender = sender }   
+        sender = sender }
 
     let serve (conf : ShipperConf)
               (ri : RuntimeInfo)
@@ -171,7 +171,7 @@ module Shipper =
 
           RingBuffer.take requests ^=> function
             | Log (msg, ack) ->
-              job {                
+              job {
                 let newMessage = enricher msg ri.serviceName
                 let bytes = Serialisation.serialise newMessage
                 do! Job.Scheduler.isolate (fun _ -> bytes |>> state.sender)

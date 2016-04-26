@@ -14,8 +14,8 @@ open Fuchu
 open Hopac
 open Hopac.Infixes
 
-let emptyTarget = Noop.create {isYes = true} (pn "empty target")
-let emptyRule = Rule.createForTarget (pn "empty target")
+let emptyTarget = Noop.create {isYes = true} (PointName.ofSingle "empty target")
+let emptyRule = Rule.createForTarget (PointName.ofSingle "empty target")
 let emptyRuntime = { serviceName = "tests"; logger = NullLogger() }
 
 let textWriter () =
@@ -25,9 +25,9 @@ let textWriter () =
 let withLogary f =
   let out, err = textWriter (), textWriter ()
 
-  let target = confTarget (pn "cons") (create <| TextWriterConf.Create(out, err))
+  let target = confTarget (PointName.ofSingle "cons") (create (TextWriterConf.create(out, err)))
 
-  let rule = Rule.createForTarget (pn "cons")
+  let rule = Rule.createForTarget (PointName.ofSingle "cons")
 
   let logary =
     confLogary "tests"

@@ -49,8 +49,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\services\Logary.Services.Rutta\Logary.Services.Rutta.fsproj">
       <Name>Logary.Services.Rutta</Name>
-      <Project>{e88982fd-e257-41ba-a343-b56976ccb3a1}</Project>
-      <Private>True</Private>
+      <Project>{E88982FD-E257-41BA-A343-B56976CCB3A1}</Project>
     </ProjectReference>
     <Reference Include="mscorlib" />
     <Reference Include="System" />
@@ -58,8 +57,7 @@
     <Reference Include="System.Numerics" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj">
       <Name>Logary</Name>
-      <Project>{f7e5b6e8-5d55-4974-9ca7-4c94d810631f}</Project>
-      <Private>True</Private>
+      <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
     </ProjectReference>
   </ItemGroup>
   <Choose>

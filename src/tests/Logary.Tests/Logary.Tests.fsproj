@@ -43,9 +43,8 @@
   <ItemGroup>
     <Compile Include="..\..\..\paket-files\haf\expecto-patronum\ExpectoPatronum\Assert.fs">
       <Paket>True</Paket>
-      <Link>paket-files/Assert.fs</Link>
+      <Link>paket-files\Assert.fs</Link>
     </Compile>
-    <Compile Include="StubTcp.fs" />
     <Compile Include="TestDSL.fs" />
     <Compile Include="Fac.fs" />
     <Compile Include="LogLevel.fs" />
@@ -61,6 +60,7 @@
     <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="Internals.fs" />
     <Compile Include="Value.fs" />
+    <Compile Include="Functional.fs" />
     <Compile Include="Program.fs" />
     <None Include="Program.fsx" />
     <None Include="paket.references" />

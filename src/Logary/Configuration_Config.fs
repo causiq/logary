@@ -143,7 +143,7 @@ let runLogary conf =
 [<CompiledName "ShutdownLogary">]
 let shutdown (flushDur : Duration) (shutdownDur : Duration) (inst : LogaryInstance) : Job<_> =
   let log =
-    Message.setName (PointName ["Logary"; "Configuration"; "Config"; "shutdown"])
+    Message.setName (PointName [| "Logary"; "Configuration"; "Config"; "shutdown" |])
     >> Logger.log inst.runtimeInfo.logger
 
   job {
@@ -184,7 +184,7 @@ let asLogManager (inst : LogaryInstance) =
 /// Configure Logary completely with the given service name and rules, targets
 /// and metrics. This will call the `validate` function too.
 [<CompiledName "Configure">]
-let configure serviceName targets pollPeriod metrics rules (internalLevel, internalTarget) =
+let configure serviceName targets metrics rules (internalLevel, internalTarget) =
   confLogary serviceName
   |> withTargets (List.ofSeq targets)
   |> withRules (List.ofSeq rules)

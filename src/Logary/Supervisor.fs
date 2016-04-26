@@ -8,7 +8,7 @@ open Logary.Internals
 open Logary.Utils
 
 type internal SupervisorState =
-  Map<PointName, uint32>
+  Map<string, uint32>
 
 type SupervisorMessage =
   /// Register the given job to be supervised. The job will be automatically
@@ -16,10 +16,10 @@ type SupervisorMessage =
   | Register of NamedJob<unit>
   /// Removes a job from the supervision list. Used by the supervisor loop to
   /// signal that the job has finished without error.
-  | Unregister of name:PointName
+  | Unregister of name:string
   /// Used by a supervisor job to report crashes.
   /// The supervisor sets the IVar to indicate if the job should be restarted.
-  | JobErrored of name:PointName * exn:exn option * shouldRestart:IVar<bool>
+  | JobErrored of name:string * exn:exn option * shouldRestart:IVar<bool>
 
 type Options =
   { logger       : Logger
@@ -35,9 +35,11 @@ type Instance =
   { options : Options
     ch      : Ch<SupervisorMessage> }
 
-let private log instance =
-  Message.setName (PointName.ofList ["Logary"; "Supervisor"])
-  >> instance.options.logger.log
+let private log =
+  let supervisorName = PointName [| "Logary"; "Supervisor" |]
+  fun instance ->
+    Message.setName supervisorName
+    >> instance.options.logger.log
 
 /// Register the given job to be supervised. The job will be automatically
 /// restarted if it crashes. A job can only be registered once.
@@ -52,22 +54,21 @@ let rec private supervise instance (nj : NamedJob<_>) = job {
   | Choice1Of2 _ ->
     // If the job is finished without an exception (presumably shut down),
     // stop supervising.
-    do! Message.eventInfof "Job '%A' has quit and will be unregistered." nj.name |> log instance
-    do! Ch.give instance.ch (Unregister (PointName.ofList nj.name))
-    ()
+    do! Message.eventInfof "Job '%s' has quit and will be unregistered." nj.name |> log instance
+    do! Ch.give instance.ch (Unregister nj.name)
 
   | Choice2Of2 ex ->
     // Ask the supervisor if the job should be restarted
     let! shouldRestart = IVar.create ()
     // TODO: do we ever NOT feed JobErrored an exception?
-    do! JobErrored (PointName nj.name, Some ex, shouldRestart) |> Ch.give instance.ch
+    do! JobErrored (nj.name, Some ex, shouldRestart) |> Ch.give instance.ch
     let! restart = IVar.read shouldRestart
 
     if restart then
       do! timeOut (instance.options.restartDelay.ToTimeSpan())
       return! supervise instance nj
     else
-      do! Unregister (PointName nj.name) |> Ch.give instance.ch
+      do! Unregister nj.name |> Ch.give instance.ch
 }
 
 /// Main supervisor loop.
@@ -79,12 +80,12 @@ let private loop (instance : Instance) =
     match msg with
     | Register nj ->
       // A job can only be registered once.
-      if jobs |> Map.containsKey (PointName nj.name) then
-        failwithf "Job \"%O\" has already been registered." (PointName nj.name)
+      if jobs |> Map.containsKey nj.name then
+        failwithf "Job \"%s\" has already been registered." nj.name
 
-      do! Message.eventInfof "Now supervising '%A'." nj.name |> log
+      do! Message.eventInfof "Now supervising '%s'." nj.name |> log
       do! Job.start (supervise instance nj)
-      return! f (Map.add (PointName nj.name) 0u jobs)
+      return! f (Map.add nj.name 0u jobs)
 
     | Unregister name ->
       if Map.containsKey name jobs then
@@ -104,12 +105,12 @@ let private loop (instance : Instance) =
 
       match restarted, instance.options.maxRestarts with
       | r, mr when r > mr ->
-        do! Message.eventErrorf "Job \"%O\" has crashed too many times and won't be restarted." name |> log
+        do! Message.eventErrorf "Job \"%s\" has crashed too many times and won't be restarted." name |> log
         do! IVar.fill shouldRestart false
         return! f jobs
 
       | _ ->
-        do! Message.eventErrorf "Job \"%O\" has crashed and will be restarted." name |> log
+        do! Message.eventErrorf "Job \"%s\" has crashed and will be restarted." name |> log
         do! IVar.fill shouldRestart true
         return! f (Map.add name (restarted + 1u) jobs)
   }

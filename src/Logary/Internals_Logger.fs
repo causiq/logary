@@ -35,6 +35,7 @@ module internal Logging =
     { name    : PointName
       targets : (MessageFilter * TargetInstance) list
       level   : LogLevel
+      /// Internal logger
       ilogger : Logger }
     with
       interface Named with

@@ -58,7 +58,7 @@ module Logger =
 
   let private ensureName (logger : Logger) (msg : Message) =
     match msg.name with
-    | PointName [] ->
+    | PointName [||] ->
       Message.setName logger.name msg
 
     | _  ->

@@ -193,8 +193,8 @@ module PointName =
   let ofPerfCounter (c : PerfCounter) =
     let nameInstance instance =
       match instance with
-      | NotApplicable -> [ c.category; c.counter ]
-      | Instance inst -> [ c.category; c.counter; inst ]
+      | NotApplicable -> [| c.category; c.counter |]
+      | Instance inst -> [| c.category; c.counter; inst |]
 
     PointName (nameInstance c.instance)
 

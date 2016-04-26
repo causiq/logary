@@ -7,8 +7,6 @@ open Hopac
 open Fac
 open Logary
 open Logary.HealthCheck
-open Logary.Internals.Tcp
-open Logary.Tests.StubTcp
 open Logary.Tests.TestDSL
 
 open System.Net.NetworkInformation
@@ -53,7 +51,7 @@ let tests =
   testList "health checks" [
     testCase "real ping" <| fun _ ->
       Fuchu.Tests.skiptest "does network IO"
-      let h = fromFn (pn "ping haf.se") pingSvdSe
+      let h = fromFn (PointName.ofSingle "ping haf.se") pingSvdSe
       let gotUnhealthy = untilPred 10000 <| fun i ->
         match h.getValue () |> Job.Global.run with HasValue _ -> true | _ -> false
       Assert.isFalse gotUnhealthy "is not unhealthy"
