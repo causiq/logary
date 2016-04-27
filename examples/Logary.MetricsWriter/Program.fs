@@ -24,7 +24,7 @@ module Sample =
         elif v + prevValue < -1. || v + prevValue > 1. then -v + prevValue
         else v + prevValue
 
-      let msg = Message.metric pn (Float value)
+      let msg = Message.gauge pn (Float value)
 
       (rnd, value), [ msg ]
 
