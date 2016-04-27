@@ -97,14 +97,14 @@ namespace Logary
         }
 
         /// <summary>
-        /// TBD
+        /// Use to time the time it takes to execute function <c>f</c>.
         /// </summary>
         public static T Time<T>(this Logger logger, Func<T> f, LogLevel level = null)
         {
             if (logger == null) throw new ArgumentNullException("logger");
             if (f == null) throw new ArgumentNullException("f");
             level = level ?? LogLevel.Debug;
-            return f();
+            return LoggerModule.Time<T>(logger, null, CSharpFacade.ToFSharpFunc(f));
         }
 
         /// <summary>
@@ -119,7 +119,8 @@ namespace Logary
         }
 
         /// <summary>
-        /// TBD
+        /// Use to time the time it takes to execute function <c>f</c>. The subPath can be your function name, for
+        /// example.
         /// </summary>
         public static T TimePath<T>(this Logger logger, string subPath, Func<T> f, LogLevel level = null)
         {

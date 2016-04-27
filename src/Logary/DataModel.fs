@@ -1174,8 +1174,8 @@ module Message =
 
   /// Sets the number of ticks since epoch. There are 10 ticks per micro-second,
   /// so a tick is a 1/10th microsecond, so it's 100 nanoseconds long.
-  [<CompiledName "SetTicks">]
-  let setTicks (ticks : int64) msg =
+  [<CompiledName "SetTicksEpoch">]
+  let setTicksEpoch (ticks : int64) msg =
     { msg with timestamp = ticks * 100L }
 
   /// Sets the number of ticks as specified by DateTime and DateTimeOffset,

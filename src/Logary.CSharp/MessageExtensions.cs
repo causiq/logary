@@ -53,11 +53,19 @@ namespace Logary
         }
 
         /// <summary>
-        /// Set the Message's timestamp
+        /// Set the Message's timestamp.
         /// </summary>
         public static Message SetTimestamp(this Message msg, Instant timestamp)
         {
-            return MessageModule.SetTicks(timestamp.Ticks, msg);
+            return MessageModule.SetTicksEpoch(timestamp.Ticks, msg);
+        }
+
+        /// <summary>
+        /// Set the Message's timestamp.
+        /// </summary>
+        public static Message SetTimestamp(this Message msg, DateTimeOffset timestamp)
+        {
+            return SetTimestamp(Instant.FromDateTimeOffset(timestamp), msg);
         }
 
         /// <summary>

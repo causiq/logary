@@ -27,7 +27,7 @@ module internal HawkLogLine =
     Message.event (HawkLogLevel.toLogary l.level) l.message
     |> Message.setName (PointName.parse l.path)
     |> Message.setFieldsFromMap l.data
-    |> Message.setTicks l.timestamp.Ticks
+    |> Message.setTicksEpoch l.timestamp.Ticks
 
 open Logary
 open Hopac
