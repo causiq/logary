@@ -35,15 +35,18 @@ namespace Logary
         /// that data on the 'data' property of LogLine (with SetData and SetDatas).
         /// </param>
         /// <param name="timestamp">
-        /// When the log entry was given; optional, defaults to when this method
-        /// is called.
+        /// When the Message was 'actual'. Optional, defaults to when this method is called.
+        /// </param>
+        /// <param name="exn">
+        /// Any exception associated with the event in this Message. Optional, defaults to null.
         /// </param>
         public static void LogEvent(
             this Logger logger,
             LogLevel level,
             string template,
             object fields = null,
-            Instant? timestamp = null)
+            Instant? timestamp = null,
+            Exception exn = null)
         {
             if (logger == null) throw new ArgumentNullException("logger");
             if (level == null) throw new ArgumentNullException("level");
@@ -52,6 +55,7 @@ namespace Logary
             var msg = MessageModule.Event(level, template);
             if (fields != null) msg.SetFieldsFromObject(fields);
             if (timestamp != null) msg.SetTimestamp(timestamp.Value);
+            if (exn != null) msg.AddException (exn);
 
             logger.Log(msg).Start();
         }

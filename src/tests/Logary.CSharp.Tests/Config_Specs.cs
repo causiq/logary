@@ -116,7 +116,7 @@ namespace Logary.Specs
         
         Because logging_line_and_flushing = () =>
             {
-                subject.Info("logged line");
+                subject.LogEvent(LogLevel.Info, "logged line");
 
                 Hopac.Job.Global.run(manager.flushPending(Duration.FromSeconds(20L)));
             };
@@ -138,7 +138,7 @@ namespace Logary.Specs
             {
                 manager.Dispose();
 
-                thrownException = Catch.Exception(() => subject.Info("logged line"));
+                thrownException = Catch.Exception(() => subject.LogEvent(LogLevel.Info, "logged line"));
                 flushThrown = Catch.Exception(() => manager.flushPending(Duration.FromSeconds(20L)));
             };
 
@@ -161,7 +161,7 @@ namespace Logary.Specs
             {
                 manager = LogaryTestFactory.GetManager(out output);
                 var logger = GetLogger();
-                logger.Debug("da 1st line", "testing");
+                logger.LogEvent(LogLevel.Info, "da 1st line", new { tags = new[] { "testing" } });
                 manager.flushPending(Duration.FromSeconds(20L));
                 var written = output.ToString();
                 written.ShouldContain("da 1st line");
@@ -173,7 +173,7 @@ namespace Logary.Specs
             {
                 manager = LogaryTestFactory.GetManager(out output);
                 var logger = GetLogger();
-                logger.Debug("2nd here we go", "testing");
+                logger.LogEvent(LogLevel.Debug, "2nd here we go", new { tags = new[] { "testing" } });
                 manager.FlushPending(Duration.FromSeconds(20L));
                 subject = output.ToString();
             };

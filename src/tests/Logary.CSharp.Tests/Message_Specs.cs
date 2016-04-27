@@ -9,7 +9,7 @@ using NodaTime;
 
 namespace Logary.Specs
 {
-    public class When_changing_properties_on_LogLine
+    public class When_changing_properties_on_Message
     {
         static Message subject;
 
@@ -20,7 +20,7 @@ namespace Logary.Specs
                     PointValue.NewEvent("initial message"),
                     new Dictionary<string, object>(),
                     LogLevel.Warn,
-                    new[] { "another tag" }, "a.b.c", null, Instant.FromTicksSinceUnixEpoch(1234));
+                    SystemClock.Instance.Now.Ticks * 100L);
             };
 
         It should_allow_changing_template =

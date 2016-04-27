@@ -3,6 +3,7 @@ namespace Logary
 open System
 open System.Reflection
 open System.Runtime.CompilerServices
+open System.Runtime.InteropServices
 open Logary
 open Logary.Utils.Chiron
 open Logary.Utils.Chiron.Operators
@@ -752,6 +753,38 @@ with
       | json ->
         Json.error (sprintf "Cannot convert JSON %A to PointValue" json) json
 
+/// Extensions for C#
+type PointValue with
+  /// Tries to get the gauge value
+  member x.TryGetGauge([<Out>] gauge:byref<Tuple<Value, Units>>) =
+    match x with
+    | Gauge (value, units) ->
+      gauge <- new Tuple<Value, Units>(value, units)
+      true
+
+    | _ ->
+      false
+
+  /// Tries to get the derived value
+  member x.TryGetDerived([<Out>] derived:byref<Tuple<Value, Units>>) =
+    match x with
+    | Derived (value, units) ->
+      derived <- new Tuple<Value, Units>(value, units)
+      true
+
+    | _ ->
+      false
+
+  /// Tries to get the Event template value (log message)
+  member x.TryGetEvent([<Out>] template:byref<string>) =
+    match x with
+    | Event value ->
+      template <- value
+      true
+
+    | _ ->
+      false
+
 type Field =
   Field of Value * Units option // move outside this module
 with
@@ -807,7 +840,9 @@ type Message =
     /// When? nanoseconds since UNIX epoch.
     timestamp : EpochNanoSeconds }
 
-    /// Gets the timestamp as .Net/Mono ticks (100 ns per tick).
+    /// Gets the timestamp as NodaTime ticks (100 ns per tick). If you're getting
+    /// for DateTime and/or DateTimeOffset, remember that those start at
+    /// 0001-01-01.
     member x.timestampTicks : int64 =
       x.timestamp / 100L
 

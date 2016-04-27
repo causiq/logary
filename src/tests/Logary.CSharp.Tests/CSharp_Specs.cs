@@ -22,7 +22,8 @@ namespace Logary.Specs
                         "sample string writer", t =>
                             t.Target.WriteTo(writer, writer)
                              .MinLevel(LogLevel.Verbose)
-                             .SourceMatching(new Regex(".*"))));
+                             .SourceMatching(new Regex(".*"))))
+                    .Result;
             };
 
         Cleanup cleanup = () =>
@@ -34,7 +35,7 @@ namespace Logary.Specs
         Because reason = () =>
             {
                 manager.GetLogger("Logary.Specs.When_configuring_with_CSharp_API")
-                       .Warn("the situation is dire", "oh-noes");
+                       .LogEvent(LogLevel.Warn, "the situation is dire", "oh-noes");
                 manager.FlushPending(Duration.FromSeconds(8L));
                 subject = writer.ToString();
             };
@@ -52,11 +53,12 @@ namespace Logary.Specs
         Establish context = () =>
             {
                 writer = new System.IO.StringWriter(new StringBuilder());
-                manager = LogaryFactory.New("Logary Specs", with =>
-                    with.Target<TextWriter.Builder>(
-                        "sample string writer", t =>
-                            t.Target.WriteTo(writer, writer)
-                             .AcceptIf(line => !line.path.Contains("When_configuring_filter_with_API"))));
+                manager = LogaryFactory.New("Logary Specs",
+                    with => with.Target<TextWriter.Builder>(
+                        "sample string writer",
+                        t => t.Target.WriteTo(writer, writer)
+                              .AcceptIf(line => !line.name.ToString().Contains("When_configuring_filter_with_API"))))
+                    .Result;
             };
 
         Cleanup cleanup = () =>
@@ -68,7 +70,7 @@ namespace Logary.Specs
         Because reason = () =>
             {
                 manager.GetLogger("Logary.Specs.When_configuring_filter_with_API")
-                       .Warn("the situation is dire", "oh-noes");
+                    .LogEvent(LogLevel.Warn, "the situation is dire", "oh-noes");
                 manager.FlushPending(Duration.FromSeconds(8L));
                 subject = writer.ToString();
             };

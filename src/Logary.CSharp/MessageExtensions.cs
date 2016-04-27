@@ -13,7 +13,7 @@ namespace Logary
     public static class MessageExtensions
     {
         /// <summary>
-        /// Sets the format of the message
+        /// Sets the format of the message.
         /// </summary>
         public static Message SetEvent(this Message msg, string format)
         {
@@ -58,6 +58,16 @@ namespace Logary
         public static Message SetTimestamp(this Message msg, Instant timestamp)
         {
             return MessageModule.SetTicks(timestamp.Ticks, msg);
+        }
+
+        /// <summary>
+        /// Gets the timestamp as an Instant, which is on the UTC timeline.
+        /// </summary>
+        /// <returns>The timestamp.</returns>
+        /// <param name="msg">Message.</param>
+        public static Instant GetTimestamp(this Message msg)
+        {
+            return Instant.FromTicksSinceUnixEpoch(msg.timestampTicks);
         }
     }
 }

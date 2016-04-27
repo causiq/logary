@@ -18,7 +18,7 @@ namespace Logary.Specs.Examples
         {
             var x = LogaryFactory.New("Logary Specs",
                 with => with.Target<TextWriter.Builder>(
-                    PointName.NewPointName("console1"),
+                    "console1",
                     conf =>
                         conf.Target.WriteTo(Console.Out, Console.Error)
                             .MinLevel(LogLevel.Verbose)
@@ -45,18 +45,20 @@ namespace Logary.Specs.Examples
                     //                new ConsoleAnnouncer(),
                     //                new MigrationOptions(false, "", 60),
                     //                new SqliteDbFactory())))
-                );
+                ).Result;
 
             var logger = x.GetLogger("Sample.Config");
 
-            logger.Log("Hello world", LogLevel.Debug, new
+            logger.LogEvent(LogLevel.Debug, "Hello world",  new
                 {
                     important = "yes"
                 });
 
-            logger.Log(LogLevel.Fatal, "Fatal application error on finaliser thread");
+            logger.LogEvent(LogLevel.Fatal, "Fatal application error on finaliser thread");
 
-            logger.Verbose("immegawd immegawd immegawd!!", "tag1", "tag2");
+            logger.LogEvent(LogLevel.Verbose, "immegawd immegawd immegawd!!", new {
+                tags = new [] { "tag1", "tag2" }
+            });
 
             var val = logger.TimePath("sample.config.compute_answer_to_everything", () =>
                 {
@@ -66,9 +68,11 @@ namespace Logary.Specs.Examples
                     return 32;
                 });
 
-            logger.LogFormat(LogLevel.Warn, "{0} is the answer to the universe and everything", val);
+            logger.LogEventFormat(LogLevel.Warn, "{0} is the answer to the universe and everything", val);
 
-            logger.Time(() => logger.Debug("I wonder how long this takes", "introspection", "navel-gazing"));
+            logger.Time(() => logger.LogEvent(LogLevel.Debug, "I wonder how long this takes", new {
+                tags = new[] { "introspection", "navel-gazing" }
+            }));
 
             try
             {
@@ -76,7 +80,9 @@ namespace Logary.Specs.Examples
             }
             catch (Exception e)
             {
-                logger.DebugException("expecting haywire, so we're telling with debug", e, "haywire", "external");
+                logger.LogEvent(LogLevel.Fatal, "expecting haywire, so we're telling with debug", new {
+                    tags = new[] {  "haywire", "external" },
+                }, exn: e);
             }
         }
     }

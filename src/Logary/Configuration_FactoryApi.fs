@@ -52,12 +52,12 @@ and ConfBuilder(conf) =
     |> Config.withMiddleware (fun next msg -> middleware.Invoke(new Func<_,_>(next)).Invoke msg)
     |> ConfBuilder
 
+  member x.Target<'T when 'T :> SpecificTargetConf>(name : string, f : Func<TargetConfBuild<'T>, TargetConfBuild<'T>>) : ConfBuilder =
+    x.Target((PointName.parse name), f)
+
   /// Configure a target of the type with a name specified by the parameter
   /// name
-  member x.Target<'T when 'T :> SpecificTargetConf>
-    (name : PointName)
-    (f : Func<TargetConfBuild<'T>, TargetConfBuild<'T>>)
-    : ConfBuilder =
+  member x.Target<'T when 'T :> SpecificTargetConf>(name : PointName, f : Func<TargetConfBuild<'T>, TargetConfBuild<'T>>) : ConfBuilder =
 
     let builderType = typeof<'T>
 
@@ -105,7 +105,7 @@ module FactoryApiExtensions =
   /// <returns>The same as input</returns>
   [<Extension; CompiledName "Target">]
   let target<'T when 'T :> SpecificTargetConf> (builder : ConfBuilder) (name : string) =
-    builder.Target<'T> (PointName.parse name) (new Func<_, _>(id))
+    builder.Target<'T>(name, new Func<_, _>(id))
 
 /// The main entry point for object oriented languages to interface with Logary,
 /// to configure it.
