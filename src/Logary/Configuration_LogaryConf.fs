@@ -48,5 +48,5 @@ type LogaryConf =
     fun v x -> { x with metrics = v }
 
   static member middleware_ =
-    (fun x -> x.metrics),
-    fun v x -> { x with metrics = v }
+    (fun x -> x.middleware),
+    fun v (x : LogaryConf) -> { x with middleware = v }

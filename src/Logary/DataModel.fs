@@ -891,19 +891,19 @@ module Message =
   ///////////////// FIELDS ////////////////////
 
   /// Get a partial setter lens to a field
-  [<CompiledName "SetField"; Extension>]
+  [<CompiledName "SetField">]
   let inline setField name value =
     Lens.setPartial (Lenses.field_ name) (Field.init value)
 
   /// Get a partial setter lens to a field with an unit
-  [<CompiledName "SetFieldUnit"; Extension>]
+  [<CompiledName "SetFieldUnit">]
   let inline setFieldUnit name value units =
     Lens.setPartial (Lenses.field_ name) (Field.initWithUnit value units)
 
   /// You can also choose to construct a Field yourself, using the object model
   /// that Logary has for its data. That way you don't have to rely on having
   /// static ToValue methods on your data objects.
-  [<CompiledName "SetFieldValue"; Extension>]
+  [<CompiledName "SetFieldValue">]
   let setFieldValue (name : string) (field : Field) msg =
     Lens.setPartial (Lenses.field_ name) field msg
 
@@ -918,12 +918,12 @@ module Message =
     |> List.ofSeq
     |> fun fields -> setFieldValues fields msg
 
-  [<CompiledName "SetFieldFromObject"; Extension>]
+  [<CompiledName "SetFieldFromObject">]
   let setFieldFromObject name (data : obj) msg =
     setFieldValue name (Field (Value.ofObject data, None)) msg
 
   /// Reflects over the object and sets the appropriate fields.
-  [<CompiledName "SetFieldsFromObject"; Extension>]
+  [<CompiledName "SetFieldsFromObject">]
   let setFieldsFromObject (data : obj) msg =
     Map.ofObject data
     |> Seq.map (fun (KeyValue (k, v)) -> k, Field (Value.ofObject v, None))
@@ -944,7 +944,7 @@ module Message =
     Lens.setPartial (Lenses.contextValue_ name) (Value.serialize value) msg
 
   /// Sets a context value.
-  [<CompiledName "SetContextValue"; Extension>]
+  [<CompiledName "SetContextValue">]
   let setContextValue name value msg =
     Lens.setPartial (Lenses.contextValue_ name) value msg
 
@@ -960,7 +960,7 @@ module Message =
     |> fun fields -> setContextValues fields msg
 
   /// Uses reflection to set all 
-  [<CompiledName "SetContextFromObject"; Extension>]
+  [<CompiledName "SetContextFromObject">]
   let setContextFromObject (data : obj) msg =
     Map.ofObject data
     |> Seq.map (fun (KeyValue (k, v)) -> k, Value.ofObject v)
