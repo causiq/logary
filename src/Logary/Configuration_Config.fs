@@ -105,10 +105,25 @@ let withMetrics ms conf =
   |> Seq.map Metric.validate
   |> Seq.fold (fun s t -> s |> withMetric t) conf
 
+/// Middleware registered first will run first. So
+///
+/// |> withMiddleware messageId
+/// |> withMiddleware principalDetails
+///
+/// will first run messageId, then principalDetails. So if messageId is the same
+/// middleware as we have in logary-js, then this order would be in error.
 [<CompiledName "WithMiddleware">]
 let withMiddleware middleware conf =
   { conf with LogaryConf.middleware = middleware :: conf.middleware }
 
+/// Preferred over `withMiddleware`, because the order these are registered in
+/// is the order in which they are run on an incoming Message.
+///
+/// |> withMiddleware messageId
+/// |> withMiddleware principalDetails
+///
+/// will first run messageId, then principalDetails. So if messageId is the same
+/// middleware as we have in logary-js, then this order would be in error.
 [<CompiledName "WithMiddleware">]
 let withMiddlewares middlewares conf =
   { conf with LogaryConf.middleware = middlewares @ conf.middleware }
