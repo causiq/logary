@@ -38,7 +38,7 @@ open Suave.Operators
 open Suave.Utils
 
 let api (logger : Logger) (verbatimPath : string option) : WebPart =
-  let verbatimPath = defaultArg verbatimPath "/i/logary/loglines"
+  let verbatimPath = defaultArg verbatimPath "/i/logary"
   let getMsg = sprintf "You can post a JSON structure to: %s" verbatimPath
 
   let inline readJson () =
