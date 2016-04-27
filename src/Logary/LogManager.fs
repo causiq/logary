@@ -56,6 +56,7 @@ type ShutdownState =
 /// up logary
 type LogManager =
   inherit IAsyncDisposable
+  inherit IDisposable
 
   /// Gets the service name that is used to filter and process the logs further
   /// downstream. This property is configured at initialisation of Logary.

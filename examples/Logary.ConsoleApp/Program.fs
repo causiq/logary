@@ -91,6 +91,7 @@ let main argv =
       withInternalTargets Info [
         Console.create Console.empty (PointName.ofSingle "console")
       ]
+      >> run
     )
     |> run
 

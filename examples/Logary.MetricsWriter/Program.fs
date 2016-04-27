@@ -48,17 +48,18 @@ let main argv =
       withTargets [
         Console.create (Console.empty) (PointName.ofSingle "console")
         influxConf
-      ] >>
-      withMetrics [
+      ]
+      >> withMetrics [
         MetricConf.create (Duration.FromMilliseconds 500L) (PointName.ofSingle "henrik") Sample.randomWalk
-      ] >>
-      withRules [
+      ]
+      >> withRules [
         Rule.createForTarget (PointName.ofSingle "console")
         Rule.createForTarget (PointName.ofSingle "influxdb")
-      ] >>
-      withInternalTargets Info [
+      ]
+      >> withInternalTargets Info [
         Console.create Console.empty (PointName.ofSingle "console")
       ]
+      >> run
     )
     |> run
 

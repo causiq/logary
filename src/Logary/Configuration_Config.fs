@@ -214,7 +214,10 @@ let asLogManager (inst : LogaryInstance) =
         shutdown fDur sDur inst
 
       member x.DisposeAsync () =
-        shutdownSimple inst |> Job.Ignore
+        memo (shutdownSimple inst |> Job.Ignore) :> Job<_>
+
+      member x.Dispose() =
+        x.DisposeAsync() |> run 
   }
 
 /// Configure Logary completely with the given service name and rules, targets

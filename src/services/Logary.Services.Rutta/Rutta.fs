@@ -217,22 +217,23 @@ module Shipper =
           //Noop.create (Noop.empty) (PointName.ofSingle "noop")
           //Console.create (Console.empty) (PointName.ofSingle "console")
           create shipperConf (PointName.ofSingle "rutta-shipper")
-        ] >>
-        withMetrics [
+        ]
+        >> withMetrics [
           createMetric "cpuTime" WinPerfCounters.cpuTime
           createMetric "gpuMetrics" WinPerfCounters.gpuMetrics
           //createMetric "nvidiaMetrics" WinPerfCounters.nvidiaMetrics
           createMetric "cpuInformation" WinPerfCounters.cpuInformation
           createMetric "networkInterface" WinPerfCounters.networkInterface
-        ] >>
-        withRules [
+        ]
+        >> withRules [
           //Rule.createForTarget (PointName.ofSingle "noop")
           //Rule.createForTarget (PointName.ofSingle "console")
           Rule.createForTarget (PointName.ofSingle "rutta-shipper")
-        ] >>
-        withInternalTargets Info [
+        ]
+        >> withInternalTargets Info [
           Console.create Console.empty (PointName.ofSingle "internal")
         ]
+        >> run
       )
       |> run
 
