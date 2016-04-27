@@ -86,7 +86,7 @@ module HealthCheck =
     { last : HealthCheckResult }
 
   let private mkFromFunction (fn : unit -> Job<HealthCheckResult>) =
-    let ch = { reqCh = Ch.Now.create () }
+    let ch = { reqCh = Ch() }
 
     let rec running _ = job {
         let! req = Ch.take ch.reqCh
