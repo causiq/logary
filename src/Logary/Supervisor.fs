@@ -43,8 +43,8 @@ let private log =
 
 /// Register the given job to be supervised. The job will be automatically
 /// restarted if it crashes. A job can only be registered once.
-let register instace namedJob =
-  Ch.give instace.ch (Register namedJob)
+let register instance namedJob =
+  Ch.give instance.ch (Register namedJob) :> Job<_>
 
 /// Supervision loop for a single job.
 let rec private supervise instance (nj : NamedJob<_>) = job {

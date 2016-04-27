@@ -365,17 +365,17 @@ module Advanced =
     let listen =
       targets
       |> Seq.map (fun kv -> kv.Value |> snd |> Option.get)
-      |> List.ofSeq
-      |> List.traverseJobA (fun ti ->
+      |> Seq.map (fun ti ->
         let namedJob = NamedJob.create (PointName.format ti.name) ti.server
-        Supervisor.register sup namedJob :> Job<_>)
-      >>-. ()
-      |> run // TODO: consider this blocking call?
+        Supervisor.register sup namedJob)
+      |> Job.conIgnore
 
     let sched = Scheduling.create ()
     let reg = Impl.create confNext sup sched
+
+    listen |> Job.map (fun _ ->
     { supervisor  = sup
       registry    = reg
       scheduler   = sched
       runtimeInfo = confNext.runtimeInfo
-      middleware  = confNext.middleware }
+      middleware  = confNext.middleware })

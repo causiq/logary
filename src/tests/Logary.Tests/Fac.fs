@@ -22,6 +22,12 @@ let textWriter () =
   let sb = new StringBuilder()
   new StringWriter(sb)
 
+let finaliseLogary = Config.shutdownSimple >> fun a ->
+  let state = Job.Global.run a
+  (because "finalise should always work" <| fun () ->
+    if state.successful then () else Tests.failtestf "finaliseLogary failed %A" state)
+  |> thatsIt
+
 let withLogary f =
   let out, err = textWriter (), textWriter ()
 
@@ -37,16 +43,12 @@ let withLogary f =
     |> runLogary
     |> run
 
+  //try 
   f logary out err
+  //finally finaliseLogary logary
 
 let logTarget target =
   Target.log target >> run >> run
-
-let finaliseLogary = Config.shutdownSimple >> fun a ->
-  let state = Job.Global.run a
-  (because "finalise should always work" <| fun () ->
-    if state.successful then () else Tests.failtestf "finaliseLogary failed %A" state)
-  |> thatsIt
 
 let finaliseTarget t = Target.shutdown t |> fun a ->
   let acks = a ^-> TimeoutResult.Success <|> timeOutMillis 1000 ^->. TimedOut

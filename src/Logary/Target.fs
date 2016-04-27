@@ -20,7 +20,7 @@ type TargetMessage =
 /// A target instance is a spawned actor instance together with the name of this
 /// target instance.
 type TargetInstance =
-  { server   : Job<unit>
+  { server   : Job<unit> // TODO: Job<Void>
     requests : RingBuffer<TargetMessage>
     shutdown : Ch<IVar<unit>>
     /// The human readable name of the target.
@@ -63,12 +63,9 @@ type TargetConf =
 let confTarget name (factory : PointName -> TargetConf) =
   factory name
 
-/// Validates the target according to its validation rules.
-let validate (conf : TargetConf) = conf
-
 /// Initialises the target with metadata and a target configuration, yielding a
 /// TargetInstance in return which contains the running target.
-let init metadata (conf : TargetConf) =
+let init metadata (conf : TargetConf) : Job<TargetInstance> =
   conf.initer metadata
 
 /// Send the target a message, returning the same instance as was passed in when
@@ -104,7 +101,7 @@ module TargetUtils =
     { name = name
       initer = fun metadata -> job {
         let! requests = RingBuffer.create 500u
-        let! shutdown = Ch.create ()
+        let shutdown = Ch ()
         return { server   = loop metadata requests shutdown
                  requests = requests
                  shutdown = shutdown

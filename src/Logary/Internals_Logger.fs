@@ -2,6 +2,7 @@
 /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
 namespace Logary.Internals
 
+open System
 open Hopac
 open Hopac.Infixes
 open Logary
@@ -81,6 +82,10 @@ type InternalLogger =
   { lvl  : LogLevel
     trgs : Target.TargetInstance list }
 
+  interface IAsyncDisposable with
+    member x.DisposeAsync() =
+      x.trgs |> Seq.map Target.shutdown |> Job.conIgnore
+
   interface Logger with
     member x.logVerboseWithAck fMsg =
       if Verbose >= x.lvl then
@@ -105,7 +110,6 @@ type InternalLogger =
     member x.name =
       PointName.ofList ["Logary"; "Internals"; "InternalLogger" ]
 
-  static member create level targets =
-    { lvl = level
-      trgs = targets }
+  static member create level (targets : #seq<_>) =
+    { lvl = level; trgs = List.ofSeq targets }
     :> Logger

@@ -9,5 +9,5 @@ let main args =
   let enUS = CultureInfo "en-US"
   Thread.CurrentThread.CurrentCulture   <- enUS
   Thread.CurrentThread.CurrentUICulture <- enUS
-  defaultMainThisAssembly args
-  //Logary.Tests.Registry.registry |> Tests.run
+  //defaultMainThisAssembly args
+  Logary.Tests.Registry.registryMid |> Tests.run
