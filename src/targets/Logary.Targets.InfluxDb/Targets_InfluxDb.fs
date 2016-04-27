@@ -266,7 +266,7 @@ module internal Impl =
                       Message.event Error "problem receiving response"
                       |> Message.setField "statusCode" resp.StatusCode
                       |> Message.setField "body" body)
-                printfn "body: %s, response %A" body resp
+                //printfn "body: %s, response %A" body resp
                 failwithf "got response code %i" resp.StatusCode
               else   
                 //printfn "Acking"

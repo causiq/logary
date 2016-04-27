@@ -16,7 +16,7 @@ let private untilPred maxWait fPred =
   let sleep = 20
   Seq.unfold (fun s -> if s < maxWait then Some(s+sleep, s+sleep) else printfn "n" ; None) 0
   |> Seq.map (fun x -> System.Threading.Thread.Sleep(sleep) ; x)
-  |> spy "sleep"
+  //|> spy "sleep"
   |> Seq.skipWhile (not<<fPred)
   |> Seq.isEmpty
   |> not

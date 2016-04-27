@@ -19,7 +19,7 @@ open Logary.Targets
 open Logary.Targets.Heka
 open Logary.Metrics
 open NodaTime
-
+open Hopac
 open System
 open System.IO
 open System.Net
@@ -45,7 +45,7 @@ let msg = Message(``type`` = "heka.logary",
 let ms = new MemoryStream()
 
 match msg |> Encoder.encode conf ms with
-| Choice1Of2 run -> run |> Async.RunSynchronously
+| Choice1Of2 theJob -> theJob |> run
 | Choice2Of2 e -> failwithf "%A" e
 
 printfn "uuid: %s" (BitConverter.ToString(msg.uuid).Replace("-", ""))
