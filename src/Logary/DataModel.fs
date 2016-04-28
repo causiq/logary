@@ -10,6 +10,12 @@ open Logary.Utils.Chiron.Operators
 open Logary.Utils.Aether
 open Logary.Utils.Aether.Operators
 
+module Json =
+  let inline maybeWrite key value =
+    match value with
+    | Some v -> Json.write key v
+    | None -> fun json -> Value (), json
+
 type ContentType = string
 
 type EpochNanoSeconds = int64
@@ -104,23 +110,23 @@ type Value =
       Json.Lens.setPartial Json.Number_ (decimal f)
 
     | Int64 i ->
-      Json.Lens.setPartial Json.Number_ (decimal i)
+      Json.write "Int64" (decimal i)
 
     | BigInt bi ->
-      Json.Lens.setPartial Json.Number_ (decimal bi)
+      Json.write "BigInt" (decimal bi)
 
     | Binary (bs, contentType) ->
       Json.write "mime" contentType
       *> Json.write "data" ("base64:" + Convert.ToBase64String bs)
 
     | Fraction (n, d) ->
-      Json.write "fraction" (n, d)
+      Json.write "fraction" (Json.Array [Json.Number (decimal n); Json.Number (decimal d)])
 
     | Array values ->
-      Json.write "array" (values |> List.map Json.serialize)
+      Json.Lens.setPartial Json.Array_ (values |> List.map Json.serialize)
 
     | Object o ->
-      Json.Lens.setPartial Json.Object_ (o |> Map.map (fun k v -> Json.serialize v))
+      Json.write "object" (o |> Map.map (fun k v -> Json.serialize v))
 
   static member FromJson (_ : Value) =
     fun json ->
@@ -143,23 +149,15 @@ type Value =
           JsonResult.Error err, json
 
       | Json.Object o ->
-        o
-        |> Seq.map (fun kv -> kv.Key, kv.Value)
-        |> Seq.toList
-        |> List.traverseChoiceA (fun (key, jValue) ->
-          match Json.tryDeserialize jValue with
-          | Choice1Of2 (vValue : Value) ->
-            Choice1Of2 (key, vValue)
-
-          | Choice2Of2 err ->
-            Choice2Of2 err)
-        |> Choice.map Map.ofList
-        |> function
-        | Choice1Of2 (result : Map<string, Value>) ->
-          JsonResult.Value (Object result), json
-
-        | Choice2Of2 err ->
-          JsonResult.Error err, json
+        let (|Val|_|) = Map.tryFind
+        match o with
+        | Val "Int64" (Json.Number i) -> JsonResult.Value (Int64 (int64 i)), json
+        | Val "BigInt" (Json.Number i) -> JsonResult.Value (BigInt (bigint i)), json
+        | Val "mime" (Json.String mimeType) & Val "data" (Json.String data) ->
+          let bytes = Convert.FromBase64String (data.Substring(7))
+          JsonResult.Value (Binary (bytes, mimeType)), json
+        | Val "fraction" (Json.Array [Json.Number n; Json.Number d]) ->
+          JsonResult.Value (Fraction (int64 n, int64 d)), json
 
       | Json.Null () ->
         JsonResult.Error "Cannot handle Null json values", json
@@ -798,7 +796,7 @@ with
 
   static member ToJson (Field (value, maybeUnit)) : Json<unit> =
     Json.write "value" value
-    *> Json.write "units" maybeUnit
+    *> Json.maybeWrite "units" maybeUnit
 
   static member FromJson (_ : Field) : Json<Field> =
     (fun value units -> Field (value, units))
