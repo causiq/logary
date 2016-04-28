@@ -38,10 +38,11 @@ let tests =
             name      = PointName ["pn"]
             value     = Event "Let's see"
             fields    = Map [
-                          PointName ["errors"], Field (Logary.Array [
-                            (Logary.String "hello world 1")
-                            (Logary.String "hello world 2")
-                          ], None)
+                          PointName ["errors"], Field
+                            (Logary.Array [
+                                (Logary.String "hello world 1")
+                                (Logary.String "hello world 2")
+                            ], None)
                         ]
             session   = Logary.Bool true
             context   = Map.empty
