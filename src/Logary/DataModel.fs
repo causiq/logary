@@ -10,6 +10,12 @@ open Logary.Utils.Chiron.Operators
 open Logary.Utils.Aether
 open Logary.Utils.Aether.Operators
 
+module Json =
+  let inline maybeWrite key value =
+    match value with
+    | Some v -> Json.write key v
+    | None -> fun json -> Value (), json
+
 type ContentType = string
 
 type EpochNanoSeconds = int64
@@ -104,10 +110,10 @@ type Value =
       Json.Lens.setPartial Json.Number_ (decimal f)
 
     | Int64 i ->
-      Json.Lens.setPartial Json.Number_ (decimal i)
+      Json.write "Int64" (decimal i)
 
     | BigInt bi ->
-      Json.Lens.setPartial Json.Number_ (decimal bi)
+      Json.write "BigInt" (decimal bi)
 
     | Binary (bs, contentType) ->
       Json.write "mime" contentType
@@ -117,7 +123,7 @@ type Value =
       Json.write "fraction" (n, d)
 
     | Array values ->
-      Json.write "array" (values |> List.map Json.serialize)
+      Json.Lens.setPartial Json.Array_ (values |> List.map Json.serialize)
 
     | Object o ->
       Json.Lens.setPartial Json.Object_ (o |> Map.map (fun k v -> Json.serialize v))
@@ -798,7 +804,7 @@ with
 
   static member ToJson (Field (value, maybeUnit)) : Json<unit> =
     Json.write "value" value
-    *> Json.write "units" maybeUnit
+    *> Json.maybeWrite "units" maybeUnit
 
   static member FromJson (_ : Field) : Json<Field> =
     (fun value units -> Field (value, units))

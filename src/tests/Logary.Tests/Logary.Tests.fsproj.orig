@@ -60,9 +60,12 @@
     <Compile Include="Registry.fs" />
     <Compile Include="Internals.fs" />
     <Compile Include="Value.fs" />
-    <Compile Include="Message.fs" />
+<<<<<<< ours
     <Compile Include="Functional.fs" />
     <Compile Include="Supervisor.fs" />
+=======
+    <Compile Include="Message.fs" />
+>>>>>>> theirs
     <Compile Include="Program.fs" />
     <None Include="Program.fsx" />
     <None Include="paket.references" />
