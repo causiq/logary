@@ -120,13 +120,13 @@ type Value =
       *> Json.write "data" ("base64:" + Convert.ToBase64String bs)
 
     | Fraction (n, d) ->
-      Json.write "fraction" (n, d)
+      Json.write "fraction" (Json.Array [Json.Number (decimal n); Json.Number (decimal d)])
 
     | Array values ->
       Json.Lens.setPartial Json.Array_ (values |> List.map Json.serialize)
 
     | Object o ->
-      Json.Lens.setPartial Json.Object_ (o |> Map.map (fun k v -> Json.serialize v))
+      Json.write "object" (o |> Map.map (fun k v -> Json.serialize v))
 
   static member FromJson (_ : Value) =
     fun json ->
@@ -149,23 +149,15 @@ type Value =
           JsonResult.Error err, json
 
       | Json.Object o ->
-        o
-        |> Seq.map (fun kv -> kv.Key, kv.Value)
-        |> Seq.toList
-        |> List.traverseChoiceA (fun (key, jValue) ->
-          match Json.tryDeserialize jValue with
-          | Choice1Of2 (vValue : Value) ->
-            Choice1Of2 (key, vValue)
-
-          | Choice2Of2 err ->
-            Choice2Of2 err)
-        |> Choice.map Map.ofList
-        |> function
-        | Choice1Of2 (result : Map<string, Value>) ->
-          JsonResult.Value (Object result), json
-
-        | Choice2Of2 err ->
-          JsonResult.Error err, json
+        let (|Val|_|) = Map.tryFind
+        match o with
+        | Val "Int64" (Json.Number i) -> JsonResult.Value (Int64 (int64 i)), json
+        | Val "BigInt" (Json.Number i) -> JsonResult.Value (BigInt (bigint i)), json
+        | Val "mime" (Json.String mimeType) & Val "data" (Json.String data) ->
+          let bytes = Convert.FromBase64String (data.Substring(7))
+          JsonResult.Value (Binary (bytes, mimeType)), json
+        | Val "fraction" (Json.Array [Json.Number n; Json.Number d]) ->
+          JsonResult.Value (Fraction (int64 n, int64 d)), json
 
       | Json.Null () ->
         JsonResult.Error "Cannot handle Null json values", json
