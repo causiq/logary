@@ -1,0 +1,12 @@
+---
+language: csharp
+mono:
+  - latest
+  - 3.12.0
+
+install:
+  - apt-get install -y ruby ruby-dev bundler
+  - bundle
+
+script:
+  - bundle exec rake
