@@ -11,7 +11,7 @@ open Logary.Middleware
 /// running targets.
 type RegistryMessage =
   /// Get a logger for the given point name (the path of the logger)
-  | GetLogger of logger:PointName * middleware:(unit -> Message -> Message) * replCh:IVar<Logger>
+  | GetLogger of logger:PointName * middleware:(Message -> Message) * replCh:IVar<Logger>
 
   /// Flush all pending messages from the registry to await shutdown and ack on
   /// the `ackCh` when done. If the client nacks the request, the `nack` promise
