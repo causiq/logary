@@ -10,11 +10,18 @@ open Logary.Utils.Chiron.Operators
 open Logary.Utils.Aether
 open Logary.Utils.Aether.Operators
 
+[<AutoOpen>]
 module Json =
   let inline maybeWrite key value =
     match value with
     | Some v -> Json.write key v
     | None -> fun json -> Value (), json
+  let (|Val|_|) = Map.tryFind
+  let (|Only|_|) name m =
+    match m with
+    | Val name value when m |> Seq.length = 1 ->
+      Some value
+        | _ -> None
 
 type ContentType = string
 
@@ -149,12 +156,6 @@ type Value =
           JsonResult.Error err, json
 
       | Json.Object o ->
-        let (|Val|_|) = Map.tryFind
-        let (|Only|_|) name m =
-          match m with
-          | Val name value when m |> Seq.length = 1 ->
-            Some value
-          | _ -> None
 
         match o with
         | Only "Int64" (Json.Number i) -> JsonResult.Value (Int64 (int64 i)), json
@@ -610,7 +611,6 @@ type Units =
         | "cd" -> Candelas |> JsonResult.Value, json
         | _ -> JsonResult.Error "Unknown unit type represented as string", json
       | Json.Object o ->
-        let (|Val|_|) = Map.tryFind
         match o with
         | Val "multipleA" a & Val "multipleB" b ->
           Mul(Json.deserialize a, Json.deserialize b) |> JsonResult.Value, json
@@ -623,6 +623,7 @@ type Units =
         | Val "log10" a ->
           Log10 (Json.deserialize a) |> JsonResult.Value, json
         | _ -> JsonResult.Error "Unknown unit type represented as object", json
+      | _ -> JsonResult.Error "Unknown unit", json
 
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -849,9 +850,25 @@ with
     *> Json.maybeWrite "units" maybeUnit
 
   static member FromJson (_ : Field) : Json<Field> =
-    (fun value units -> Field (value, units))
-    <!> Json.read "value"
-    <*> Json.tryRead "units"
+    // not all fields have units; be flexible in format
+    // for those that don't to make it easier for javascript
+    // users
+    fun json ->
+      match json with
+      | Json.Object o ->
+        match o with
+        | Only "value" value ->
+          Field (Json.deserialize value, None)
+          |> JsonResult.Value, json
+        | Val "value" value & Val "units" units ->
+          Field (Json.deserialize value, Some (Json.deserialize units))
+          |> JsonResult.Value, json
+        | _ ->
+          Field (Json.deserialize json, None)
+          |> JsonResult.Value, json
+      | _ ->
+        Field (Json.deserialize json, None)
+        |> JsonResult.Value, json
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>] // remove when field moved outside
 module Field =
