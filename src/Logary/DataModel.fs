@@ -126,7 +126,7 @@ type Value =
       Json.Lens.setPartial Json.Array_ (values |> List.map Json.serialize)
 
     | Object o ->
-      Json.write "object" (o |> Map.map (fun k v -> Json.serialize v))
+      Json.Lens.setPartial Json.Object_ (o |> Map.map (fun k v -> Json.serialize v))
 
   static member FromJson (_ : Value) =
     fun json ->
@@ -150,14 +150,23 @@ type Value =
 
       | Json.Object o ->
         let (|Val|_|) = Map.tryFind
+        let (|Only|_|) name m =
+          match m with
+          | Val name value when m |> Seq.length = 1 ->
+            Some value
+          | _ -> None
+
         match o with
-        | Val "Int64" (Json.Number i) -> JsonResult.Value (Int64 (int64 i)), json
-        | Val "BigInt" (Json.Number i) -> JsonResult.Value (BigInt (bigint i)), json
-        | Val "mime" (Json.String mimeType) & Val "data" (Json.String data) ->
+        | Only "Int64" (Json.Number i) -> JsonResult.Value (Int64 (int64 i)), json
+        | Only "BigInt" (Json.Number i) -> JsonResult.Value (BigInt (bigint i)), json
+        | Val "mime" (Json.String mimeType) & Val "data" (Json.String data)
+            when data.StartsWith "base64:" ->
           let bytes = Convert.FromBase64String (data.Substring(7))
           JsonResult.Value (Binary (bytes, mimeType)), json
-        | Val "fraction" (Json.Array [Json.Number n; Json.Number d]) ->
+        | Only "fraction" (Json.Array [Json.Number n; Json.Number d]) ->
           JsonResult.Value (Fraction (int64 n, int64 d)), json
+        | _ ->
+          (o |> Map.map (fun k v -> Json.deserialize v) |> Object) |> JsonResult.Value, json
 
       | Json.Null () ->
         JsonResult.Error "Cannot handle Null json values", json
@@ -559,21 +568,62 @@ type Units =
     | Log10 a -> String.Concat [ "log10("; Units.symbol a; ")" ]
 
   static member ToJson (u : Units) =
-    Json.Lens.setPartial Json.String_ (u |> Units.symbol)
+    match u with
+    | Bits
+    | Bytes
+    | Seconds
+    | Metres
+    | Scalar
+    | Amperes
+    | Kelvins
+    | Moles
+    | Candelas ->
+      Json.Lens.setPartial Json.String_ (u |> Units.symbol)
+    | Mul (a, b) ->
+      Json.write "multipleA" a
+      *> Json.write "multipleB" b
+    | Pow (a, b) ->
+      Json.write "base" a
+      *> Json.write "exponent" b
+    | Div (a, b) ->
+      Json.write "dividend" a
+      *> Json.write "divider" b
+    | Root a ->
+      Json.write "root" a
+    | Log10 a ->
+      Json.write "log10" a
 
   static member FromJson (_ : Units) =
-        function
-        | "b" -> Bits
-        | "B" -> Bytes
-        | "s" -> Seconds
-        | "m" -> Metres
-        | "" -> Scalar
-        | "A" -> Amperes
-        | "K" -> Kelvins
-        | "mol" -> Moles
-        | "cd" -> Candelas
-        | x -> failwith "TODO: implement units parser"
-    <!> Json.Lens.getPartial Json.String_
+    fun json ->
+      match json with
+      | Json.String s ->
+
+        match s with
+        | "b" -> Bits |> JsonResult.Value, json
+        | "B" -> Bytes |> JsonResult.Value, json
+        | "s" -> Seconds |> JsonResult.Value, json
+        | "m" -> Metres |> JsonResult.Value, json
+        | "" -> Scalar |> JsonResult.Value, json
+        | "A" -> Amperes |> JsonResult.Value, json
+        | "K" -> Kelvins |> JsonResult.Value, json
+        | "mol" -> Moles |> JsonResult.Value, json
+        | "cd" -> Candelas |> JsonResult.Value, json
+        | _ -> JsonResult.Error "Unknown unit type represented as string", json
+      | Json.Object o ->
+        let (|Val|_|) = Map.tryFind
+        match o with
+        | Val "multipleA" a & Val "multipleB" b ->
+          Mul(Json.deserialize a, Json.deserialize b) |> JsonResult.Value, json
+        | Val "base" b & Val "exponent" e ->
+          Pow(Json.deserialize b, Json.deserialize e) |> JsonResult.Value, json
+        | Val "dividend" a & Val "divider" b ->
+          Div(Json.deserialize a, Json.deserialize b) |> JsonResult.Value, json
+        | Val "root" a ->
+          Root (Json.deserialize a) |> JsonResult.Value, json
+        | Val "log10" a ->
+          Log10 (Json.deserialize a) |> JsonResult.Value, json
+        | _ -> JsonResult.Error "Unknown unit type represented as object", json
+
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Duration =
