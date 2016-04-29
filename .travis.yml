@@ -1,11 +1,13 @@
 ---
 language: csharp
 mono:
-  - latest
-  - 3.12.0
+  - 4.2.3
+
+before_install:
+   - rvm install 2.2.3
 
 install:
-  - apt-get install -y ruby ruby-dev bundler
+  - gem install bundler
   - bundle
 
 script:
