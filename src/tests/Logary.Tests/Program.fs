@@ -3,7 +3,6 @@
 open System.Globalization
 open System.Threading
 open Fuchu
-open System
 
 [<EntryPoint>]
 let main args =

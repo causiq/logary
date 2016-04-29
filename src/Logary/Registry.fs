@@ -9,12 +9,12 @@ open Logary.Internals.Scheduling
 
 /// Given the registry actor, and a name for the logger, get the logger from the registry.
 let getLogger (registry : RegistryInstance) name : Job<Logger> =
-  registry.reqCh *<+=>- fun resCh -> GetLogger (name, id, resCh)
+  registry.reqCh *<+=>- fun resCh -> GetLogger (name, None, resCh)
   :> Job<_>
 
-//let getMiddlewareLogger (middleware : Middleware.Mid) registry name : Job<Logger> =
-//  registry.reqCh *<+=>- fun resCh -> GetLogger (name, middleware, resCh)
-//  :> Job<_>
+let getLoggerWithMiddleware (middleware : Middleware.Mid) registry name : Job<Logger> =
+  registry.reqCh *<+=>- fun resCh -> GetLogger (name, Some middleware, resCh)
+  :> Job<_>
 
 /// handling flyweights
 module internal Logging =
@@ -291,9 +291,15 @@ module Advanced =
       and running state : Job<_> = job {
         let! msg = Ch.take inbox
         match msg with
-        | GetLogger (name, middleware, chan) ->
-          do! Message.eventDebugf "composing %i middlewares found in config" (List.length conf.middleware) |> log
-          let composedMiddleware = Middleware.compose conf.middleware
+        | GetLogger (name, extraMiddleware, chan) ->
+
+          let middleware =
+            match extraMiddleware with
+            | None -> conf.middleware
+            | Some mid -> mid :: conf.middleware
+                       
+          do! Message.eventDebugf "composing %i middlewares" (List.length middleware) |> log
+          let composedMiddleware = Middleware.compose middleware
           
           let logger =
             name

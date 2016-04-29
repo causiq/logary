@@ -48,7 +48,7 @@ let registry =
 [<Tests>]
 let registryMid =
   testList "registry and middleware" [
-    testCase "logger uses middleware" <| fun _ ->
+    yield testCase "logger uses middleware" <| fun _ ->
       let out, err =
         Fac.textWriter(), Fac.textWriter()
       let tw =
@@ -87,4 +87,19 @@ let registryMid =
       Assert.StringContains("should have context 'messageId' key",
                             "\"messageId\":\"theMessageId\"",
                             err.ToString())
+
+    yield testCase "logger uses middleware supplied when getting logger" <| fun _ ->
+      
+      let middleware next msg =
+        msg |> Message.setContext "getLogger" "inserted" |> next 
+
+      Fac.withLogary <| fun logary out err ->                      
+        let logger = (pnp "a.b.c.d") |> Registry.getLoggerWithMiddleware middleware logary.registry |> run
+        Message.eventError "User clicked wrong button" |> Logger.log logger |> run
+        logary |> Fac.finaliseLogary
+
+      
+        Assert.StringContains("should have context 'getLogger' key",
+                              "\"getLogger\":\"inserted\"",
+                              err.ToString())
   ]
