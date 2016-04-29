@@ -52,11 +52,13 @@ let tests =
 
     testCase "StringFormatter.LevelDatetimePathMessageNl no exception, data" <| fun _ ->
       (because "logging with LevelDatetimePathMessageNl" <| fun () ->
-        { sampleMessage with fields = [PointName.ofSingle "a", Field (String "b", None); PointName.ofSingle "a2", Field (Int64 24L, None) ] |> Map.ofList }
+        { sampleMessage with
+            fields = Map [PointName.ofSingle "a", Field (String "b", None); PointName.ofSingle "a2", Field (Int64 24L, None) ]
+            context = Map ["a", String "b"]}
         |> StringFormatter.levelDatetimeMessagePathNl.format)
       |> should equal (
-          sprintf "E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]%s  a => \"b\"%s  a2 => 24%s"
-            Environment.NewLine Environment.NewLine Environment.NewLine)
+          sprintf "E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]%s  a => \"b\"%s  a2 => 24%s  Context:%s    a => \"b\"%s"
+            Environment.NewLine Environment.NewLine Environment.NewLine Environment.NewLine Environment.NewLine)
       |> thatsIt
 
     testCase "StringFormatter.LevelDatetimePathMessageNl no exception, data, list with map in it" <| fun _ ->

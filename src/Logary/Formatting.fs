@@ -94,6 +94,20 @@ module MessageParts =
     |> Object
     |> printValue nl 0
 
+  /// Formats the data in a nice fashion for printing to e.g. the Debugger or Console.
+  let formatContext (nl : string) (context : Map<string, Value>) =
+    let s = StringBuilder()
+    let cs =
+      Map.toSeq context
+      |> Seq.map (fun (key, value) -> key, value)
+      |> Map.ofSeq
+      |> Object
+      |> printValue nl 1
+    s.Append(nl)
+     .Append("  Context:")
+     .Append(cs) |> ignore
+    s.ToString()
+
   /// Format a timestamp in nanoseconds since epoch into a ISO8601 string
   let formatTimestamp (ticks : int64) =
     Instant.FromTicksSinceUnixEpoch(ticks)
@@ -118,7 +132,8 @@ module StringFormatter =
           let body = formatValueShallow m
           let name = m.name.ToString()
           let fields = (if Map.isEmpty m.fields then "" else formatFields nl m.fields)
-          sprintf "%s %s: %s [%s]%s%s" level time body name fields ending
+          let context = (if Map.isEmpty m.context then "" else formatContext nl m.context)
+          sprintf "%s %s: %s [%s]%s%s%s" level time body name fields context ending
     }
 
   /// Verbatim simply outputs the message and no other information

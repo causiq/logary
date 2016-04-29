@@ -93,10 +93,12 @@ type LogaryArbs () =
           return String str
 
         }
-    inner 0
+    inner 0 |> Arb.fromGen
 
 
 let config = { Config.Default with Arbitrary = [typeof<LogaryArbs>] }
+
+let exampleJson = """{"context":{"service":"qvitoo.com","logger":"ErrorLogger","user":{"id":"0d11fb5eb21342e99c1c032e338d2dc6","email":"unverified"}},"name":["qvitoo","com","ErrorLogger"],"messageId":"b0c2832666bebdbefc9e1478b363dbcaaf6c1b82a0a1957bf82f3db9bf031299","value":{"event":"Window onerror"},"fields":{"errors":[{"type":"error","status":502,"xhr":{},"originalEvent":{"isTrusted":true}}]},"level":"error","timestamp":1461937540536000000}"""
 
 [<Tests>]
 let tests =
@@ -105,10 +107,14 @@ let tests =
         let f = Field (Logary.String "hello", None)
         Assert.Equal("field round trip", f, roundTrip f)
 
-      testPropertyWithConfig { config with MaxTest = 5 } "Can round trip all fields" <| fun (f : Field) ->
+      testPropertyWithConfig config "Can round trip all fields" <| fun (f : Field) ->
         f = roundTrip f
 
-      testCase "Can round trip a specific message 1" <| fun () ->
+      testCase "can deserialize exampleJson" <| fun () ->
+        let (m : Message) = exampleJson |> Json.parse |> Json.deserialize
+        Assert.Equal("example json", typeof<Message>, m.GetType())
+
+      testCase "can round trip a specific message 1" <| fun () ->
         let m = {
             name      = PointName [|"pn"|]
             value     = Event "Let's see"
@@ -138,6 +144,6 @@ let tests =
           }
         Assert.Equal("roundtrip", m, roundTrip m)
 
-      testPropertyWithConfig { config with MaxTest = 1 } "Serialization of message can round trip" <| fun (message : Message) ->
+      testPropertyWithConfig config "Serialization of message can round trip" <| fun (message : Message) ->
         message = roundTrip message
     ]
