@@ -16,9 +16,85 @@ type LogaryArbs () =
   static member PointName () =
     gen {
         let! length = Gen.choose (1, 5)
-        let! names = Gen.listOfLength length (Arb.Default.NonEmptyString().Generator)
-        return PointName (List.map (fun (NonEmptyString s) -> s) names |> List.toArray)
+        let! rawNames = Gen.listOfLength length (Arb.Default.NonEmptyString().Generator)
+        let names =
+          rawNames
+          |> List.map (fun (NonEmptyString s) -> s)
+          |> List.map (fun s -> s.Replace('.', 'a'))
+          |> List.toArray
+        return PointName names
     } |> Arb.fromGen
+  // not all floats round trip exactly, we don't care
+  static member SafeFloat () =
+    Arb.Default.Int32()
+    |> Arb.convert float int32
+  static member Value () =
+    let rec inner depth =
+      gen {
+        let! i = Gen.choose (1, 9)
+        match i with
+        | 1 ->
+          let! str = LogaryArbs.string().Generator
+          return String str
+        | 2 ->
+          let! b = Arb.generate<bool>
+          return Bool b
+        | 3 ->
+          let! f = LogaryArbs.SafeFloat().Generator
+          return Float f
+        | 4 ->
+          let! i64 = Arb.generate<int64>
+          return Int64 i64
+        | 5 ->
+          let! bi = Arb.generate<bigint>
+          return BigInt bi
+        | 6 ->
+          let! bytes = Arb.generate<byte []>
+          let! ct = Arb.generate<ContentType>
+          return Binary (bytes, ct)
+        | 7 ->
+          let! (a, b) = Arb.generate<int64 * int64>
+          return Fraction (a, b)
+        | 8 ->
+          if depth <= 3 then
+            let! (PointName names) = LogaryArbs.PointName().Generator
+            let! values =
+              [for i in 1..Array.length names -> inner (depth + 1)]
+              |> List.fold (fun vs v -> gen {
+                let! value = v
+                let! values = vs
+                return value::values
+              }) (Gen.constant [])
+
+            let o =
+              values
+              |> Seq.zip names
+              |> Map.ofSeq
+            return Object o
+          else
+            let! str = Arb.generate<string>
+            return String str
+        | 9 ->
+          if depth <= 3 then
+            let! i = Gen.choose (1, 5)
+            let! values =
+              [for i in 1..i -> inner (depth + 1)]
+              |> List.fold (fun vs v -> gen {
+                let! value = v
+                let! values = vs
+                return value::values
+              }) (Gen.constant [])
+            return Array values
+          else
+            let! str = Arb.generate<string>
+            return String str
+        | _ ->
+          let! str = Arb.generate<string>
+          return String str
+
+        }
+    inner 0
+
 
 let config = { Config.Default with Arbitrary = [typeof<LogaryArbs>] }
 
@@ -29,7 +105,7 @@ let tests =
         let f = Field (Logary.String "hello", None)
         Assert.Equal("field round trip", f, roundTrip f)
 
-      testPropertyWithConfig config "Can round trip all fields" <| fun (f : Field) ->
+      testPropertyWithConfig { config with MaxTest = 5 } "Can round trip all fields" <| fun (f : Field) ->
         f = roundTrip f
 
       testCase "Can round trip a specific message 1" <| fun () ->
@@ -62,6 +138,6 @@ let tests =
           }
         Assert.Equal("roundtrip", m, roundTrip m)
 
-      testPropertyWithConfig config "Serialization of message can round trip" <| fun (message : Message) ->
+      testPropertyWithConfig { config with MaxTest = 1 } "Serialization of message can round trip" <| fun (message : Message) ->
         message = roundTrip message
     ]
