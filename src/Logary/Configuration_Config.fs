@@ -14,9 +14,12 @@ open Logary.Metric
 open Logary.Registry
 open Logary.Targets
 
-let private shutdownLogger<'a when 'a :> Logger> : 'a -> unit = box >> function
-  | :? System.IDisposable as d -> d.Dispose()
-  | _ -> ()
+let private shutdownLogger<'a when 'a :> Logger> : 'a -> Job<unit> = box >> function
+  | :? IAsyncDisposable as d ->
+    d.DisposeAsync()
+
+  | _ ->
+    Job.result ()
 
 /// Create an internal logger from the level and targets given
 [<CompiledName "CreateInternalLogger">]
@@ -32,20 +35,29 @@ let createInternalLogger level targets =
 [<CompiledName "WithInternalLogger">]
 let withInternalLogger lgr (conf : LogaryConf) =
   shutdownLogger conf.runtimeInfo.logger
-  { conf with runtimeInfo = { conf.runtimeInfo with logger = lgr } }
+  |> Job.map (fun _ ->
+    { conf with runtimeInfo = { conf.runtimeInfo with logger = lgr } })
 
 /// Configure internal logging from a targets (these targets will get
 /// everything, without the metrics and/or log lines going through Rules).
 [<CompiledName "WithInternalTargets">]
 let withInternalTargets level tconfs (conf : LogaryConf) =
-  let nullMd =
+  let internalRuntime =
     { serviceName = conf.runtimeInfo.serviceName
       logger      = NullLogger() }
-  let targets = Job.conCollect (tconfs |> List.map (Target.init nullMd))
-  // TODO: consider this run method call
-  let targets' = targets |> run |> List.ofSeq
-  let logger = createInternalLogger level targets'
-  conf |> withInternalLogger logger
+  job {
+    printfn "configuring internal targets"
+    let! targets =
+      tconfs
+      |> List.map (Target.init internalRuntime)
+      |> Job.conCollect
+
+    printfn "starting internal targets"
+    for targetLoop in targets |> Seq.map (fun t -> t.server) do
+      queue targetLoop
+
+    return! withInternalLogger (createInternalLogger level targets) conf
+  }
 
 /// Set the internal target for logary
 [<CompiledName "WithInternalTarget">]
@@ -63,8 +75,8 @@ let confLogary serviceName =
     targets     = Map.empty
     metrics     = Map.empty
     runtimeInfo = { serviceName = serviceName
-                    logger      = NullLogger() } }
-  |> withInternalTarget Warn (Console.create Console.empty (PointName.ofSingle "cons"))
+                    logger      = NullLogger() }
+    middleware  = [] }
 
 /// Add a new target to the configuration. You also need to supple a rule for
 /// the target.
@@ -77,7 +89,6 @@ let withTarget (t : TargetConf) conf =
 [<CompiledName "WithTargets">]
 let withTargets ts (conf : LogaryConf) =
   ts
-  |> Seq.map Target.validate
   |> Seq.fold (fun s t -> s |> withTarget t) conf
 
 /// Add a rule to the configuration - adds to existing rules.
@@ -103,6 +114,29 @@ let withMetrics ms conf =
   ms
   |> Seq.map Metric.validate
   |> Seq.fold (fun s t -> s |> withMetric t) conf
+
+/// Middleware registered first will run first. So
+///
+/// |> withMiddleware messageId
+/// |> withMiddleware principalDetails
+///
+/// will first run messageId, then principalDetails. So if messageId is the same
+/// middleware as we have in logary-js, then this order would be in error.
+[<CompiledName "WithMiddleware">]
+let withMiddleware middleware conf =
+  { conf with LogaryConf.middleware = middleware :: conf.middleware }
+
+/// Preferred over `withMiddleware`, because the order these are registered in
+/// is the order in which they are run on an incoming Message.
+///
+/// |> withMiddleware messageId
+/// |> withMiddleware principalDetails
+///
+/// will first run messageId, then principalDetails. So if messageId is the same
+/// middleware as we have in logary-js, then this order would be in error.
+[<CompiledName "WithMiddleware">]
+let withMiddlewares middlewares conf =
+  { conf with LogaryConf.middleware = middlewares @ conf.middleware }
 
 /// Validate the configuration for Logary, throwing a ValidationException if
 /// configuration is invalid.
@@ -135,15 +169,17 @@ let validate ({ targets     = targets
 
 /// Start logary with a given configuration
 [<CompiledName "RunLogary"; Extension>]
-let runLogary conf =
-  let instance = Advanced.create conf
-  Logging.startFlyweights instance >>-. instance
+let runLogary (conf : LogaryConf) =
+  Message.eventDebug "Run Logary"
+  |> Logger.log conf.runtimeInfo.logger
+  >>=. Registry.Advanced.create conf
+  >>= fun registry -> Logging.startFlyweights registry |> Job.map (fun _ -> registry)
 
 /// Shutdown logary, waiting maximum flushDur + shutdownDur.
 [<CompiledName "ShutdownLogary">]
 let shutdown (flushDur : Duration) (shutdownDur : Duration) (inst : LogaryInstance) : Job<_> =
   let log =
-    Message.setName (PointName ["Logary"; "Configuration"; "Config"; "shutdown"])
+    Message.setName (PointName [| "Logary"; "Configuration"; "Config"; "shutdown" |])
     >> Logger.log inst.runtimeInfo.logger
 
   job {
@@ -151,7 +187,7 @@ let shutdown (flushDur : Duration) (shutdownDur : Duration) (inst : LogaryInstan
     let! res = Advanced.flushAndShutdown flushDur shutdownDur inst.registry
     do! Message.eventInfo "stop shutdown" |> log
     Logging.shutdownFlyweights ()
-    shutdownLogger inst.runtimeInfo.logger
+    do! shutdownLogger inst.runtimeInfo.logger
     return res
   }
 
@@ -177,21 +213,25 @@ let asLogManager (inst : LogaryInstance) =
       member x.shutdown fDur sDur =
         shutdown fDur sDur inst
 
-      member x.Dispose () =
-        shutdownSimple inst |> Job.Ignore |> run
+      member x.DisposeAsync () =
+        memo (shutdownSimple inst |> Job.Ignore) :> Job<_>
+
+      member x.Dispose() =
+        x.DisposeAsync() |> run 
   }
 
 /// Configure Logary completely with the given service name and rules, targets
 /// and metrics. This will call the `validate` function too.
 [<CompiledName "Configure">]
-let configure serviceName targets pollPeriod metrics rules (internalLevel, internalTarget) =
+let configure serviceName targets metrics rules (internalLevel, internalTarget) =
   confLogary serviceName
+  //|> withMiddlewares (List.ofSeq middleware)
   |> withTargets (List.ofSeq targets)
   |> withRules (List.ofSeq rules)
   |> withMetrics (List.ofSeq metrics)
   |> withInternalTarget internalLevel internalTarget
-  |> validate
-  |> runLogary
+  >>- validate
+  >>= runLogary
   >>- asLogManager
 
 /// Configure Logary completely with the given service name and a function that

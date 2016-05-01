@@ -5,6 +5,7 @@ namespace Logary.Targets
 module TextWriter =
 
   open System.IO
+  open System.Runtime.CompilerServices
   open Hopac
   open Hopac.Infixes
   open Logary
@@ -14,7 +15,7 @@ module TextWriter =
 
   /// Configuration for a text writer
   type TextWriterConf =
-    { /// A string formatter to specify how to write the log lines
+    { /// A string formatter to specify how to write the Message
       formatter  : StringFormatter
       /// the non-error text writer to output to
       output     : TextWriter
@@ -26,7 +27,8 @@ module TextWriter =
       /// error text writer
       isErrorAt  : LogLevel }
 
-    static member Create(output, error, ?formatter : StringFormatter) =
+    [<CompiledName "Create">]
+    static member create(output, error, ?formatter : StringFormatter) =
       { formatter    = defaultArg formatter JsonFormatter.Default
         output       = output
         error        = error
@@ -75,8 +77,9 @@ module TextWriter =
 
       loop ()
 
-  let create (conf : TextWriterConf) =
-    TargetUtils.stdNamedTarget (Impl.loop conf)
+  [<CompiledName "Create">]
+  let create (conf : TextWriterConf) name =
+    TargetUtils.stdNamedTarget (Impl.loop conf) name
 
   /// Use with LogaryFactory.New( s => s.Target<TextWriter.Builder>() )
   type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
@@ -84,13 +87,14 @@ module TextWriter =
       ! (callParent <| Builder({ conf with output = out; error = err }, callParent))
 
     new(callParent : FactoryApi.ParentCallback<_>) =
-      Builder(TextWriterConf.Create(System.Console.Out, System.Console.Error), callParent)
+      Builder(TextWriterConf.create(System.Console.Out, System.Console.Error), callParent)
 
     interface Logary.Target.FactoryApi.SpecificTargetConf with
       member x.Build name = create conf name
 
 /// The console Target for Logary
 module Console =
+  open System.Runtime.CompilerServices
   open Logary
   open Logary.Formatting
   open Logary.Target
@@ -104,7 +108,9 @@ module Console =
   type ConsoleConf =
     { formatter : StringFormatter
       colorMap  : (ConsoleColours -> LogLevel -> ConsoleColours) option }
-    static member Create formatter =
+
+    [<CompiledName "Create">]
+    static member create formatter =
       { formatter = formatter
         colorMap  = None }
 
@@ -113,7 +119,8 @@ module Console =
     { formatter = StringFormatter.levelDatetimeMessagePath
       colorMap  = None (* fun col line -> 0x000000 black *) }
 
-  let create conf =
+  [<CompiledName "Create">]
+  let create conf name =
     // TODO: coloured console output
     TextWriter.create
       { formatter = conf.formatter
@@ -121,6 +128,7 @@ module Console =
         error     = System.Console.Error
         flush     = false
         isErrorAt = Error }
+      name
 
   /// Use with LogaryFactory.New( s => s.Target<Console.Builder>() )
   type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
@@ -145,10 +153,9 @@ module Console =
 /// The Debugger target is useful when running in Xamarin Studio or VS.
 module Debugger =
   open System.Diagnostics
-
+  open System.Runtime.CompilerServices
   open Hopac
   open Hopac.Infixes
-
   open Logary
   open Logary.Internals
   open Logary.Target
@@ -156,9 +163,11 @@ module Debugger =
 
   type DebuggerConf =
     { formatter : StringFormatter }
+
     /// Create a new Debugger configuration with a given formatter (which
-    /// formats how the log line and metrics are printed)
-    static member Create ?formatter =
+    /// formats how the Messages and Gauges/Derived-s are printed)
+    [<CompiledName "Create">]
+    static member create(?formatter) =
       { formatter = defaultArg formatter (StringFormatter.levelDatetimeMessagePathNl) }
 
   /// Default debugger configuration
@@ -200,8 +209,9 @@ module Debugger =
 
       loop ()
 
-  let create conf =
-    TargetUtils.stdNamedTarget (Impl.loop conf)
+  [<CompiledName "Create">]
+  let create conf name =
+    TargetUtils.stdNamedTarget (Impl.loop conf) name
 
   /// Use with LogaryFactory.New( s => s.Target<Debugger.Builder>() )
   type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =

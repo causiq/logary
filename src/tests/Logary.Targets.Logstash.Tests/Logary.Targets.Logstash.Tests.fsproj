@@ -18,6 +18,7 @@
     <ConsolePause>false</ConsolePause>
     <PlatformTarget>
     </PlatformTarget>
+    <Externalconsole>true</Externalconsole>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugSymbols>false</DebugSymbols>
@@ -28,6 +29,8 @@
     <GenerateTailCalls>true</GenerateTailCalls>
     <PlatformTarget>
     </PlatformTarget>
+    <DefineConstants>
+    </DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
@@ -38,7 +41,11 @@
     <Content Include="app.config" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="LogstashTarget.fs" />
+    <Compile Include="..\..\..\paket-files\haf\expecto-patronum\ExpectoPatronum\Assert.fs">
+      <Paket>True</Paket>
+      <Link>paket-files\Assert.fs</Link>
+    </Compile>
+    <Compile Include="Program.fs" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>
@@ -57,13 +64,8 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
-        <Reference Include="FParsec">
-          <HintPath>..\..\..\packages\FParsec\lib\net40-client\FParsec.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="FParsecCS">
-          <HintPath>..\..\..\packages\FParsec\lib\net40-client\FParsecCS.dll</HintPath>
+        <Reference Include="Fuchu">
+          <HintPath>..\..\..\packages\Fuchu\lib\Fuchu.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>

@@ -34,9 +34,6 @@ let private nl = Environment.NewLine
 
 open Logary
 
-/// Alias for PointName.ofSingle
-let pn  = PointName.ofSingle
-
 /// Wrapper for PointName.parse
 let pnp = PointName.parse
 

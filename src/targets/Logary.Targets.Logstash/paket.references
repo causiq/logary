@@ -1,6 +1,5 @@
 FSharp.Core
-NodaTime
 Hopac
-FParsec
-File:Aether.fs
-File:Chiron.fs
+NodaTime
+fszmq
+File:YoLo.fs

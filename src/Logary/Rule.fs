@@ -83,33 +83,53 @@ module Rule =
       messageFilter = fun _ -> true
       level         = Verbose }
 
+  /// Sets the hiera regex field.
+  [<CompiledName "SetHiera">]
   let setHiera (regex : Regex) (r : Rule) =
     { r with hiera = regex }
 
-  let setHieraS (regex : string) (r : Rule) =
+  /// Sets the hiera regex field from a string.
+  [<CompiledName "SetHiera">]
+  let setHieraString (regex : string) (r : Rule) =
     { r with hiera = Regex(regex) }
 
+  /// Sets the target that this rule is applied to. Useful for filtering down
+  /// specific targets.
+  [<CompiledName "SetTarget">]
   let setTarget (target : PointName) (r : Rule) =
     { r with target = target }
 
   /// Sets the rule's message filter. Remember that if you want to apply multiple
   /// message filters, you need to create a new Rule, or you'll overwrite the
   /// existing message filter.
+  [<CompiledName "SetMessageFilter">]
   let setMessageFilter (mf : _ -> _) (r : Rule) =
     { r with messageFilter = mf }
 
+  [<CompiledName "SetLevel">]
   let setLevel (l : LogLevel) (r : Rule) =
     { r with level = l }
 
   /// Create a rule that accepts any input for a specified target (that's the
   /// name param).
+  [<CompiledName "Create">]
   let createForTarget (name : PointName) =
     { empty with target = name }
 
   /// Create a new rule with the given hiera, target, accept function and min level
   /// acceptable.
+  [<CompiledName "Create">]
   let create hiera target messageFilter level =
     { hiera         = hiera
       target        = target
       messageFilter = messageFilter
+      level         = level }
+
+  /// Create a new rule with the given hiera, target, accept function and min level
+  /// acceptable.
+  [<CompiledName "Create">]
+  let createFunc hiera target level (messageFilter : Func<_, _>) =
+    { hiera         = hiera
+      target        = target
+      messageFilter = fun m -> messageFilter.Invoke m
       level         = level }

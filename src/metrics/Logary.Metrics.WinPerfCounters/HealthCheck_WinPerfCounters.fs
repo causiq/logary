@@ -35,8 +35,16 @@ let toHealthCheckNamed name wpc measureTransform =
 
 let toHealthCheck wpc =
   let name =
-    [ wpc.category; wpc.counter ]
-    @ match wpc.instance with | NotApplicable -> [] | Instance i -> [i]
+    [| yield wpc.category;
+       yield wpc.counter
+       match wpc.instance with
+       | NotApplicable ->
+         ()
+
+       | Instance i ->
+         yield i
+    |]
+
   toHealthCheckNamed (PointName name) wpc
 
 /// Takes a list of IDisposable things (performance counters, perhaps?) and
@@ -49,5 +57,3 @@ let hasResources (disposables : #IDisposable seq) (hc : HealthCheck) =
       member x.Dispose() =
         disposables |> Seq.iter (fun d -> d.Dispose())
         hc.Dispose() }
-
-

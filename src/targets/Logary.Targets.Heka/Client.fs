@@ -67,19 +67,19 @@ module Encoder =
           try
             use msgMs = msgMs
             use hdrMs = hdrMs
-            printfn "write record separator"
+            //printfn "write record separator"
             do s.WriteByte Constants.RecordSeparator
-            do! Async.Sleep 200
-            printfn "write header length"
+            //do! Async.Sleep 200
+            //printfn "write header length"
             do s.WriteByte (byte (hdrMs.Length))
-            do! Async.Sleep 200
-            printfn "write header"
+            //do! Async.Sleep 200
+            //printfn "write header"
             do! fromZero hdrMs (fun ms -> ms.CopyToAsync s)
-            do! Async.Sleep 200
-            printfn "write unit separator"
+            //do! Async.Sleep 200
+            //printfn "write unit separator"
             do s.WriteByte Constants.UnitSeparator
-            do! Async.Sleep 200
-            printfn "write unit message"
+            //do! Async.Sleep 200
+            //printfn "write unit message"
             do! fromZero msgMs (fun ms -> ms.CopyToAsync s)
           with e -> printfn "BAM!! %A" e
         })

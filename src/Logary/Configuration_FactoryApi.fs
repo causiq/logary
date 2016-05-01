@@ -7,9 +7,12 @@ namespace Logary.Configuration
 
 open System
 open System.Reflection
+open System.Threading.Tasks
+open System.Runtime.CompilerServices
 open Hopac
 open Hopac.Infixes
 open Logary
+open Logary.Internals
 open Logary.Configuration
 open Logary.Target
 open Logary.Target.FactoryApi
@@ -44,12 +47,17 @@ and ConfBuilder(conf) =
   member internal x.BuildLogary () =
     conf |> Config.validate |> runLogary >>- asLogManager
 
+  member x.Use(middleware : Func<Func<Message, Message>, Func<Message, Message>>) : ConfBuilder =
+    conf
+    |> Config.withMiddleware (fun next msg -> middleware.Invoke(new Func<_,_>(next)).Invoke msg)
+    |> ConfBuilder
+
+  member x.Target<'T when 'T :> SpecificTargetConf>(name : string, f : Func<TargetConfBuild<'T>, TargetConfBuild<'T>>) : ConfBuilder =
+    x.Target((PointName.parse name), f)
+
   /// Configure a target of the type with a name specified by the parameter
   /// name
-  member x.Target<'T when 'T :> SpecificTargetConf>
-    (name : PointName)
-    (f : Func<TargetConfBuild<'T>, TargetConfBuild<'T>>)
-    : ConfBuilder =
+  member x.Target<'T when 'T :> SpecificTargetConf>(name : PointName, f : Func<TargetConfBuild<'T>, TargetConfBuild<'T>>) : ConfBuilder =
 
     let builderType = typeof<'T>
 
@@ -75,12 +83,10 @@ and ConfBuilder(conf) =
     // referentially transparent
     let targetConf = f.Invoke(!contRef) :?> ConfBuilderT<'T>
 
-    ConfBuilder(
-      conf
-      |> withRule targetConf.tr
-      |> withTarget (targetConf.tcSpecific.Value.Build name))
-
-open System.Runtime.CompilerServices
+    conf
+    |> withRule targetConf.tr
+    |> withTarget (targetConf.tcSpecific.Value.Build name)
+    |> ConfBuilder
 
 /// Extensions to make it easier to construct Logary
 [<Extension; AutoOpen>]
@@ -99,7 +105,7 @@ module FactoryApiExtensions =
   /// <returns>The same as input</returns>
   [<Extension; CompiledName "Target">]
   let target<'T when 'T :> SpecificTargetConf> (builder : ConfBuilder) (name : string) =
-    builder.Target<'T> (PointName.parse name) (new Func<_, _>(id))
+    builder.Target<'T>(name, new Func<_, _>(id))
 
 /// The main entry point for object oriented languages to interface with Logary,
 /// to configure it.
@@ -107,8 +113,8 @@ type LogaryFactory =
   /// Configure a new Logary instance. This will also give real targets to the flyweight
   /// targets that have been declared statically in your code. If you call this
   /// you get a log manager that you can later dispose, to shutdown all targets.
-  static member New(serviceName : string, configurator : Func<ConfBuilder, ConfBuilder>) : Job<LogManager> =
+  static member New(serviceName : string, configurator : Func<ConfBuilder, ConfBuilder>) : Task<LogManager> =
     if configurator = null then nullArg "configurator"
-    let c = Config.confLogary serviceName
-    let cb = configurator.Invoke <| ConfBuilder(c)
-    cb.BuildLogary ()
+    let config = Config.confLogary serviceName
+    let cb = configurator.Invoke (ConfBuilder config)
+    cb.BuildLogary () |> CSharpFacade.toTask

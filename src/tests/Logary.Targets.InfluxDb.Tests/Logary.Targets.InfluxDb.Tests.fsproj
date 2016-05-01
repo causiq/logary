@@ -48,8 +48,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\targets\Logary.Targets.InfluxDb\Logary.Targets.InfluxDb.fsproj">
       <Name>Logary.Targets.InfluxDb</Name>
-      <Project>{4ace8a29-6d75-4956-b45c-22c82eafcfd5}</Project>
-      <Private>True</Private>
+      <Project>{4ACE8A29-6D75-4956-B45C-22C82EAFCFD5}</Project>
     </ProjectReference>
     <Reference Include="mscorlib" />
     <Reference Include="System" />

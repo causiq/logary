@@ -24,7 +24,7 @@ module Sample =
         elif v + prevValue < -1. || v + prevValue > 1. then -v + prevValue
         else v + prevValue
 
-      let msg = Message.metric pn (Float value)
+      let msg = Message.gauge pn (Float value)
 
       (rnd, value), [ msg ]
 
@@ -48,17 +48,18 @@ let main argv =
       withTargets [
         Console.create (Console.empty) (PointName.ofSingle "console")
         influxConf
-      ] >>
-      withMetrics [
+      ]
+      >> withMetrics [
         MetricConf.create (Duration.FromMilliseconds 500L) (PointName.ofSingle "henrik") Sample.randomWalk
-      ] >>
-      withRules [
+      ]
+      >> withRules [
         Rule.createForTarget (PointName.ofSingle "console")
         Rule.createForTarget (PointName.ofSingle "influxdb")
-      ] >>
-      withInternalTargets Info [
+      ]
+      >> withInternalTargets Info [
         Console.create Console.empty (PointName.ofSingle "console")
       ]
+      >> run
     )
     |> run
 

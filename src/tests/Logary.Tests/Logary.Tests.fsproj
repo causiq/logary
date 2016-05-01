@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -43,9 +43,9 @@
   <ItemGroup>
     <Compile Include="..\..\..\paket-files\haf\expecto-patronum\ExpectoPatronum\Assert.fs">
       <Paket>True</Paket>
-      <Link>paket-files/Assert.fs</Link>
+      <Link>paket-files\Assert.fs</Link>
     </Compile>
-    <Compile Include="StubTcp.fs" />
+    <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="TestDSL.fs" />
     <Compile Include="Fac.fs" />
     <Compile Include="LogLevel.fs" />
@@ -58,9 +58,11 @@
     <Compile Include="GraphiteTarget.fs" />
     <Compile Include="HealthChecks.fs" />
     <Compile Include="Registry.fs" />
-    <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="Internals.fs" />
     <Compile Include="Value.fs" />
+    <Compile Include="Message.fs" />
+    <Compile Include="Functional.fs" />
+    <Compile Include="Supervisor.fs" />
     <Compile Include="Program.fs" />
     <None Include="Program.fsx" />
     <None Include="paket.references" />
@@ -68,8 +70,8 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Logary\Logary.fsproj">
-      <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
       <Name>Logary</Name>
+      <Project>{f7e5b6e8-5d55-4974-9ca7-4c94d810631f}</Project>
     </ProjectReference>
   </ItemGroup>
   <Choose>

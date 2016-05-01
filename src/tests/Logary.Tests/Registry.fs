@@ -6,13 +6,11 @@ open System.Text.RegularExpressions
 open Fuchu
 open Hopac
 open Hopac.Infixes
-open Swensen.Unquote
 open TestDSL
-open Fac
-open NodaTime
 open Logary
 open Logary.Targets
 open Logary.Configuration
+open Logary.Tests
 
 // framework API tests
 
@@ -26,7 +24,7 @@ let registry =
         (because "logging normally" <| fun () ->
           Message.eventInfo "Hello world" |> Logger.log logger |> run
           Message.eventFatal "Goodbye cruel world" |> Logger.log logger' |> run
-          logary |> finaliseLogary
+          logary |> Fac.finaliseLogary
           out.ToString(), err.ToString())
         |> theTuple
           (fun first second ->
@@ -46,3 +44,62 @@ let registry =
         |> shouldNot contain "after shutdown"
         |> thatsIt
     ]
+
+[<Tests>]
+let registryMid =
+  testList "registry and middleware" [
+    yield testCase "logger uses middleware" <| fun _ ->
+      let out, err =
+        Fac.textWriter(), Fac.textWriter()
+      let tw =
+        TextWriter.TextWriterConf.create(out, err, Formatting.JsonFormatter.Default)
+
+      let logary =
+        confLogary "my service"
+        |> withRule (Rule.createForTarget (PointName.ofSingle "tw"))
+        |> withTarget (Target.confTarget (PointName.ofSingle "tw") (TextWriter.create tw))
+        |> withMiddleware (fun next msg ->
+          msg |> Message.setContext "service" "my service" |> next)
+        |> withMiddleware (fun next msg ->
+          msg |> Message.setContext "hostname" "localhost" |> next)
+        |> withMiddleware (fun next msg ->
+          msg |> Message.setContext "messageId" "theMessageId" |> next)
+        |> validate
+        |> withInternalTarget LogLevel.Verbose (Console.create Console.empty (PointName.ofSingle "internal"))
+        >>= runLogary
+        |> run
+
+      let logger = (pnp "a.b.c.d") |> Registry.getLogger logary.registry |> run
+
+      Message.eventError "User clicked wrong button" |> Logger.log logger |> run
+
+      logary |> Fac.finaliseLogary
+
+      
+      Assert.StringContains("should have context 'service' key",
+                            "\"service\":\"my service\"",
+                            err.ToString())
+      
+      Assert.StringContains("should have context 'hostname' key",
+                            "\"hostname\":\"localhost\"",
+                            err.ToString())
+
+      Assert.StringContains("should have context 'messageId' key",
+                            "\"messageId\":\"theMessageId\"",
+                            err.ToString())
+
+    yield testCase "logger uses middleware supplied when getting logger" <| fun _ ->
+      
+      let middleware next msg =
+        msg |> Message.setContext "getLogger" "inserted" |> next 
+
+      Fac.withLogary <| fun logary out err ->                      
+        let logger = (pnp "a.b.c.d") |> Registry.getLoggerWithMiddleware middleware logary.registry |> run
+        Message.eventError "User clicked wrong button" |> Logger.log logger |> run
+        logary |> Fac.finaliseLogary
+
+      
+        Assert.StringContains("should have context 'getLogger' key",
+                              "\"getLogger\":\"inserted\"",
+                              err.ToString())
+  ]

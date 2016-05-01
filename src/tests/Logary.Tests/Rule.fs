@@ -23,14 +23,14 @@ let tests =
       Assert.Equal("empty", found, [])
 
     yield testCase "retrieving existing rule for name" <| fun _ ->
-      let found = [ Fac.emptyRule ] |> Rule.matching (pn "a")
+      let found = [ Fac.emptyRule ] |> Rule.matching (PointName.ofSingle "a")
       theSubject found.Head.target
-      |> should equal (pn "empty target")
+      |> should equal (PointName.ofSingle "empty target")
       |> thatsIt
 
     yield testCase "retrieving rule that doesn't match fails" <| fun _ ->
       let funnyRules = [ { Fac.emptyRule with hiera = Regex("^$") } ]
-      let found = funnyRules |> Rule.matching (pn "a")
+      let found = funnyRules |> Rule.matching (PointName.ofSingle "a")
       Assert.Equal("empty", found, [])
 
     yield testCase "retrieving two matching rules" <| fun _ ->
@@ -53,9 +53,9 @@ let tests =
       (executing "validateLogary with a rule that doesn't have a matching target" <| fun () ->
         confLogary "tests"
         |> withRules
-          [ Rule.createForTarget (pn "not-correct-target") ]
+          [ Rule.createForTarget (PointName.ofSingle "not-correct-target") ]
         |> withTargets
-          [ Target.confTarget (pn "another-target-name") (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
+          [ Target.confTarget (PointName.ofSingle "another-target-name") (TextWriter.create <| TextWriter.TextWriterConf.create(out, out)) ]
         |> validate |> ignore)
       |> should' raiseExn<Configuration.ValidationException>
       |> thatsIt
@@ -65,14 +65,14 @@ let tests =
       let rules = [
         // "path.1" will be match by two rules
         // "path.1.extra" will be match by one rule
-        Rule.create (Regex("path\.1"))        (pn "t1") (fun _ -> false) Info
-        Rule.create (Regex("path\.1\.extra")) (pn "t1") (fun _ -> false) Verbose
-        Rule.create (Regex("path\.2"))        (pn "t2") (fun _ -> false) Warn
-        Rule.create (Regex("path\.2\.extra")) (pn "t2") (fun _ -> false) LogLevel.Error
+        Rule.create (Regex("path\.1"))        (PointName.ofSingle "t1") (fun _ -> false) Info
+        Rule.create (Regex("path\.1\.extra")) (PointName.ofSingle "t1") (fun _ -> false) Verbose
+        Rule.create (Regex("path\.2"))        (PointName.ofSingle "t2") (fun _ -> false) Warn
+        Rule.create (Regex("path\.2\.extra")) (PointName.ofSingle "t2") (fun _ -> false) LogLevel.Error
       ]
       let targets = [
-        Target.confTarget (pn "t1") (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out))
-        Target.confTarget (pn "t2") (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out))
+        Target.confTarget (PointName.ofSingle "t1") (TextWriter.create <| TextWriter.TextWriterConf.create(out, out))
+        Target.confTarget (PointName.ofSingle "t2") (TextWriter.create <| TextWriter.TextWriterConf.create(out, out))
       ]
       let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary |> run
       // string = logger name = path
@@ -91,26 +91,50 @@ let tests =
 
       let no2 = pnp "path.2.extra" |> get
       Assert.Equal("path.2.extra should be warn", Warn, no2.level) // this one goes upwards
+      
+
+    yield testCase "middleware" <| fun _ ->
+      Tests.skiptest "TODO"
+      let noop = fun logaryState next message -> next message
+      let hostname = fun logaryState next message -> next (message |> Message.setContext "hostname" (System.Net.Dns.GetHostName()))
+
+      let mids =
+        [ hostname
+          fun _ next msg -> next msg ]
+
+      let out = Fac.textWriter ()
+      let testTarget = Target.confTarget (PointName.ofSingle "t1") (TextWriter.create <| TextWriter.TextWriterConf.create(out, out))
+
+      let logary = confLogary "tests" |> withRule (Rule.createForTarget (PointName.ofSingle "t1"))  |> withTarget testTarget |> validate |> runLogary |> run
+
+      let logger = Registry.getLogger logary.registry (PointName.ofSingle "hi") |> run
+      try
+        Logger.log logger (Message.eventDebug "there") |> run
+      finally
+        finaliseLogary logary
+
+      Assert.Equal("LogResult", "there", out.ToString())
+      Assert.isTrue (out.ToString().Contains(System.Net.Dns.GetHostName())) "Should contain hostname"
 
     yield testCase "multiplexing accept filters from given rules" <| fun _ ->
       // given
       let out = Fac.textWriter ()
 
       let rules =
-        [ { Fac.emptyRule with messageFilter = (fun msg -> msg.name = pn "1") ; target = pn "tw" }
-          { Fac.emptyRule with messageFilter = (fun msg -> msg.name = pn "2") ; target = pn "tw" } ]
+        [ { Fac.emptyRule with messageFilter = (fun msg -> msg.name = PointName.ofSingle "1") ; target = PointName.ofSingle "tw" }
+          { Fac.emptyRule with messageFilter = (fun msg -> msg.name = PointName.ofSingle "2") ; target = PointName.ofSingle "tw" } ]
 
       let targets =
-        [ Target.confTarget (pn "tw") (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
+        [ Target.confTarget (PointName.ofSingle "tw") (TextWriter.create <| TextWriter.TextWriterConf.create(out, out)) ]
 
       let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary |> run
       try
         job {
           // when
           let get = Registry.getLogger logary.registry
-          let! no1 = pn "1" |> get
-          let! no2 = pn "2" |> get
-          let! no3 = pn "3" |> get
+          let! no1 = PointName.ofSingle "1" |> get
+          let! no2 = PointName.ofSingle "2" |> get
+          let! no3 = PointName.ofSingle "3" |> get
 
           // 1 and 2 should go through, not 3
           do! Message.eventDebug "first"  |> Logger.log no1
@@ -138,19 +162,19 @@ let tests =
       let out = Fac.textWriter ()
 
       let rules =
-        [ Rule.createForTarget (pn "tw")
+        [ Rule.createForTarget (PointName.ofSingle "tw")
             |> Rule.setLevel Info
             |> Rule.setHiera (Regex("a.*"))
 
-          Rule.createForTarget (pn "tw")
+          Rule.createForTarget (PointName.ofSingle "tw")
             |> Rule.setLevel Info
 
-          Rule.createForTarget (pn "tw")
+          Rule.createForTarget (PointName.ofSingle "tw")
             |> Rule.setHiera (Regex("b"))
             |> Rule.setLevel Debug ]
 
       let targets =
-        [ Target.confTarget (pn "tw") (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
+        [ Target.confTarget (PointName.ofSingle "tw") (TextWriter.create <| TextWriter.TextWriterConf.create(out, out)) ]
 
       let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary |> run
       try
@@ -158,7 +182,7 @@ let tests =
           // when
           let get = Registry.getLogger logary.registry
           let! lgrA = get (PointName.ofSingle "a")
-          let! lgrB = get (pn "b")
+          let! lgrB = get (PointName.ofSingle "b")
 
           do! Message.eventDebug "first"    |> Logger.log lgrA
           do! Message.eventInfo "second"    |> Logger.log lgrA
@@ -188,7 +212,7 @@ let tests =
             |> Rule.setMessageFilter (fun m -> catcher := Some m; false)
         ]
       let targets =
-        [ Target.confTarget (pn "tw") (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
+        [ Target.confTarget (PointName.ofSingle "tw") (TextWriter.create <| TextWriter.TextWriterConf.create(out, out)) ]
 
       let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary |> run
       try
@@ -216,8 +240,8 @@ let tests =
         | Event _ -> false
         | _ -> true
 
-      let rules   = [ { hiera  = Regex(".*"); target = pn "tw"; messageFilter = filter; level = Debug } ]
-      let targets = [ Target.confTarget (pn "tw") (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
+      let rules   = [ { hiera  = Regex(".*"); target = PointName.ofSingle "tw"; messageFilter = filter; level = Debug } ]
+      let targets = [ Target.confTarget (PointName.ofSingle "tw") (TextWriter.create <| TextWriter.TextWriterConf.create(out, out)) ]
       let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary |> run
       try
         job {
@@ -251,10 +275,10 @@ let tests =
         | _ -> true
 
       let rules   = [
-        { hiera  = Regex(".*"); target = pn "tw"; messageFilter = filter1; level  = Verbose }
-        { hiera  = Regex(".*"); target = pn "tw"; messageFilter = filter2; level  = Verbose }
+        { hiera  = Regex(".*"); target = PointName.ofSingle "tw"; messageFilter = filter1; level  = Verbose }
+        { hiera  = Regex(".*"); target = PointName.ofSingle "tw"; messageFilter = filter2; level  = Verbose }
         ]
-      let targets = [ Target.confTarget (pn "tw") (TextWriter.create <| TextWriter.TextWriterConf.Create(out, out)) ]
+      let targets = [ Target.confTarget (PointName.ofSingle "tw") (TextWriter.create <| TextWriter.TextWriterConf.create(out, out)) ]
       let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary |> run
       try
         job {

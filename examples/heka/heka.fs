@@ -12,7 +12,7 @@ open NodaTime
 
 [<EntryPoint>]
 let main args =
-  printfn "starting logary with heka target..."
+  //printfn "starting logary with heka target..."
 
   use logary =
     withLogarySimple "Heka.Example" (
@@ -32,7 +32,7 @@ let main args =
       ]
     )
 
-  printfn "started"
+  //printfn "started"
 
   use mre = new ManualResetEventSlim(false)
   Console.CancelKeyPress.Add(fun _ -> mre.Set() |> ignore)

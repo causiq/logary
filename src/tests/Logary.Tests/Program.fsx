@@ -4,8 +4,11 @@ open Fuchu
 #r "Logary.dll"
 open Logary
 #r "FSharp.Core.dll"
-
-#load "StubTcp.fs"
+#r "Hopac.Core.dll"
+#r "Hopac.dll"
+#r "NodaTime.dll"
 #load "TestDSL.fs"
+#load "Fac.fs"
+#load "Registry.fs"
 
-Tests.run
+Tests.run Logary.Tests.Registry.registryMid

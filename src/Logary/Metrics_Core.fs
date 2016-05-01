@@ -23,7 +23,7 @@ module Counters =
         state
 
     let ticker state =
-      0L, [ Message.metricWithUnit pn Units.Scalar (Int64 state) ]
+      0L, [ Message.gaugeWithUnit pn Units.Scalar (Int64 state) ]
 
     Metric.create reducer 0L ticker
 
@@ -240,6 +240,9 @@ module Reservoirs =
       state.rate * float inUnit.Ticks
 
   let ewma (PointName pns) =
+    let pn =
+      PointName [| yield! pns; yield "EWMA_5min"|]
+
     let reducer state = function
       | Int64 i, _ ->
         ExpWeightedMovAvg.update state i
@@ -252,9 +255,7 @@ module Reservoirs =
         state |> ExpWeightedMovAvg.rate (Duration.FromSeconds 1L)
 
       let msg =
-        Message.metricWithUnit (PointName (pns @ ["5m_ewma"]))
-                               Units.Scalar
-                               (Float value)
+        Message.derivedWithUnit pn Units.Scalar (Float value)
       state, [ msg ]
 
     create reducer ExpWeightedMovAvg.fiveMinutesEWMA ticker

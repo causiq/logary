@@ -52,7 +52,8 @@ let writesOverHttp =
     let state = new State(cts)
     let cfg =
       { defaultConfig with bindings = [ HttpBinding.mkSimple HTTP "127.0.0.1" 9011 ]
-                           cancellationToken = cts.Token }
+                           cancellationToken = cts.Token
+                           logger = Suave.Logging.Loggers.saneDefaultsFor Suave.Logging.LogLevel.Fatal }
     let listening, srv =
       startWebServerAsync cfg (request (fun r ctx -> async {
         do! Async.Global.ofJob (Ch.give state.req r)
@@ -64,7 +65,7 @@ let writesOverHttp =
 
   testList "writes over HTTP" [
     testCase "write to Suave" <| fun _ ->
-      let msg = Message.metric (PointName.parse "Processor.% User Time._Total") (Float 0.3463)
+      let msg = Message.gauge (PointName.parse "Processor.% User Time._Total") (Float 0.3463)
       use state = withServer ()
 
       let target = start ()
@@ -89,11 +90,11 @@ let writesOverHttp =
         
          
     testCase "write to Suave in batch" <| fun _ ->
-      let msg = Message.metric (PointName.parse "Number 1") (Float 0.3463)
-      let msg2 = Message.metric (PointName.parse "Number 2") (Float 0.3463)
-      let msg3 = Message.metric (PointName.parse "Number 3") (Float 0.3463)
+      let msg = Message.gauge (PointName.parse "Number 1") (Float 0.3463)
+      let msg2 = Message.gauge (PointName.parse "Number 2") (Float 0.3463)
+      let msg3 = Message.gauge (PointName.parse "Number 3") (Float 0.3463)
 
-      use state = withServer ()       
+      use state = withServer ()
       let target = start ()
           
       try
@@ -124,9 +125,9 @@ let writesOverHttp =
         finaliseTarget target
 
     testCase "make sure target acks" <| fun _ ->
-        let msg = Message.metric (PointName.parse "Number 1") (Float 0.3463)       
+        let msg = Message.gauge (PointName.parse "Number 1") (Float 0.3463)
 
-        use state = withServer ()       
+        use state = withServer ()
         let target = start ()
           
         try

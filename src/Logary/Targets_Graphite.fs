@@ -4,41 +4,37 @@ module Logary.Targets.Graphite
 
 open Hopac
 open Hopac.Infixes
-
 open NodaTime
-
 open System
+open System.Runtime.CompilerServices
 open System.Net.Sockets
 open System.Text.RegularExpressions
-
 open Logary
 open Logary.Internals
 open Logary.Target
-open Logary.Internals.Tcp
 
 /// Put this tag on your message (message must be a parseable value)
 /// if you want graphite to find it, or use the Metrics API of Logary.
-let [<Literal>] TriggerTag = "plottable"
+[<Literal>]
+let TriggerTag = "plottable"
 
 /// Configuration for loggin to graphite.
 /// TODO: prefixing with hostname etc
 type GraphiteConf =
   { hostname  : string
-    port      : uint16
-    clientFac : string -> uint16 -> WriteClient }
+    port      : uint16 }
 
-  static member Create(hostname, ?port, ?clientFac) =
+  [<CompiledName "Create">]
+  static member create(hostname, ?port) =
     let port = defaultArg port 2003us
-    let clientFac = defaultArg clientFac (fun host port -> new TcpWriteClient(new TcpClient(host, int port)) :> WriteClient)
     { hostname = hostname
-      port = port
-      clientFac = clientFac }
+      port     = port }
 
 module internal Impl =
 
   type GraphiteState =
-    { client         : WriteClient
-      sendRecvStream : WriteStream option }
+    { client         : TcpClient
+      sendRecvStream : System.Net.Sockets.NetworkStream option }
 
   let tryDispose (item : 'a option) =
     if item.IsNone then
@@ -60,14 +56,17 @@ module internal Impl =
   /// invalid characters with underscores.
   let sanitisePath (PointName segments) =
     segments
-    |> List.map (fun x -> x.Replace("/", "-"))
-    |> List.map (fun x -> invalidPathCharacters.Replace(x, "_"))
-    |> PointName.ofList
+    |> Array.map (fun x -> x.Replace("/", "-"))
+    |> Array.map (fun x -> invalidPathCharacters.Replace(x, "_"))
+    |> PointName.ofArray
 
   let formatMeasure = Units.formatValue << function
     | Gauge (v, _)
-    | Derived (v, _) -> v
-    | Event template -> Int64 0L
+    | Derived (v, _) ->
+      v
+
+    | Event template ->
+      Int64 0L
 
   /// All graphite messages are of the following form.
   /// metric_path value timestamp\n
@@ -75,14 +74,16 @@ module internal Impl =
     let line = String.Format("{0} {1} {2}\n", path, value, timestamp.Ticks / NodaConstants.TicksPerSecond)
     UTF8.bytes line
 
-  let doWrite state m =
+  let doWrite state buffer =
     job {
       let stream =
         match state.sendRecvStream with
         | None   -> state.client.GetStream()
         | Some s -> s
-      do! stream.Write m
-      return { state with sendRecvStream = Some stream } }
+
+      do! stream.AsyncWrite buffer
+      return { state with sendRecvStream = Some stream }
+    }
 
   let loop (conf : GraphiteConf) (svc : RuntimeInfo) (requests : RingBuffer<_>)
            (shutdown : Ch<_>) =
@@ -99,7 +100,7 @@ module internal Impl =
             | Event template ->
               job {
                 let path = PointName.format logMsg.name
-                let instant = Instant logMsg.timestamp
+                let instant = Instant logMsg.timestampTicks
                 let graphiteMsg = createMsg path template instant
                 let! state' = graphiteMsg |> doWrite state
                 do! ack *<= ()
@@ -110,7 +111,7 @@ module internal Impl =
             | Derived _ ->
               job {
                 let path = sanitisePath logMsg.name
-                let instant = Instant logMsg.timestamp
+                let instant = Instant logMsg.timestampTicks
                 let pointName = PointName.format path
                 let bs = createMsg pointName (formatMeasure logMsg.value) instant
                 let! state' = bs |> doWrite state
@@ -123,21 +124,21 @@ module internal Impl =
             }
       ] :> Job<_>
 
-    let client = conf.clientFac conf.hostname conf.port
-    running { client = client; sendRecvStream = None }
+    running { client = new TcpClient(conf.hostname, int conf.port); sendRecvStream = None }
 
 /// Create a new graphite target configuration.
-let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
+[<CompiledName "Create">]
+let create conf name = TargetUtils.stdNamedTarget (Impl.loop conf) name
 
 /// Use with LogaryFactory.New( s => s.Target< HERE >() )
 type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
 
   /// Specify where to connect
   member x.ConnectTo(hostname, port) =
-    ! (callParent <| Builder(GraphiteConf.Create(hostname, port), callParent))
+    ! (callParent <| Builder(GraphiteConf.create(hostname, port), callParent))
 
   new(callParent : FactoryApi.ParentCallback<_>) =
-    Builder(GraphiteConf.Create(""), callParent)
+    Builder(GraphiteConf.create(""), callParent)
 
   interface Logary.Target.FactoryApi.SpecificTargetConf with
     member x.Build name = create conf name

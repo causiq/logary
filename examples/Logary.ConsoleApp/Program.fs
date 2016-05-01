@@ -35,7 +35,7 @@ module internal Sample =
     let toValue (counter : PerfCounter, pc : PC) =
       let value = WinPerfCounter.nextValue pc
       Float value
-      |> Message.metricWithUnit pn Units.Scalar
+      |> Message.derivedWithUnit pn Units.Scalar
       |> Message.setName (PointName.ofPerfCounter counter)
 
     let ticker state =
@@ -91,6 +91,7 @@ let main argv =
       withInternalTargets Info [
         Console.create Console.empty (PointName.ofSingle "console")
       ]
+      >> run
     )
     |> run
 

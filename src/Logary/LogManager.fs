@@ -5,12 +5,13 @@ open NodaTime
 open Hopac
 open Logary.Internals
 open Logary.Supervisor
+open Logary.Middleware
 
 /// The messages that can be sent to the registry to interact with it and its
 /// running targets.
 type RegistryMessage =
   /// Get a logger for the given point name (the path of the logger)
-  | GetLogger of logger:PointName * replCh:Ch<Logger>
+  | GetLogger of logger:PointName * middleware:Middleware.Mid option * replCh:IVar<Logger>
 
   /// Flush all pending messages from the registry to await shutdown and ack on
   /// the `ackCh` when done. If the client nacks the request, the `nack` promise
@@ -31,7 +32,9 @@ type LogaryInstance =
     /// to use with Logary.SCheduling (as the actor param)
     scheduler   : Ch<Scheduling.ScheduleMsg>
     /// Runtime data, internal to Logary. E.g. the internal logger instance.
-    runtimeInfo : RuntimeInfo }
+    runtimeInfo : RuntimeInfo
+    /// Extra middleware
+    middleware  : Mid list }
 
 /// A type that gives information on how the shutdown went
 type ShutdownState =
@@ -52,6 +55,7 @@ type ShutdownState =
 /// This is also a synchronous wrapper around the asynchronous actors that make
 /// up logary
 type LogManager =
+  inherit IAsyncDisposable
   inherit IDisposable
 
   /// Gets the service name that is used to filter and process the logs further

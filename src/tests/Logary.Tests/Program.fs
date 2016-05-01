@@ -10,4 +10,3 @@ let main args =
   Thread.CurrentThread.CurrentCulture   <- enUS
   Thread.CurrentThread.CurrentUICulture <- enUS
   defaultMainThisAssembly args
-  //Logary.Tests.Registry.registry |> Tests.run

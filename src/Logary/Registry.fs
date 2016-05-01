@@ -9,9 +9,12 @@ open Logary.Internals.Scheduling
 
 /// Given the registry actor, and a name for the logger, get the logger from the registry.
 let getLogger (registry : RegistryInstance) name : Job<Logger> =
-  let resCh = Ch ()
-  registry.reqCh *<+ GetLogger (name, resCh) >>=.
-  resCh
+  registry.reqCh *<+=>- fun resCh -> GetLogger (name, None, resCh)
+  :> Job<_>
+
+let getLoggerWithMiddleware (middleware : Middleware.Mid) registry name : Job<Logger> =
+  registry.reqCh *<+=>- fun resCh -> GetLogger (name, Some middleware, resCh)
+  :> Job<_>
 
 /// handling flyweights
 module internal Logging =
@@ -41,23 +44,14 @@ module internal Logging =
         state *<= (lm, logger)
 
     interface Logger with
-      member x.logVerbose fLine =
-        logger (flip Logger.logVerbose fLine) ()
+      member x.logVerboseWithAck fMessage =
+        logger (flip Logger.logVerboseWithAck fMessage) (Promise.Now.withValue ())
 
-      member x.logVerboseWithAck fLine =
-        logger (flip Logger.logVerboseWithAck fLine) (Promise.Now.withValue ())
+      member x.logDebugWithAck fMessage =
+        logger (flip Logger.logDebugWithAck fMessage) (Promise.Now.withValue ())
 
-      member x.logDebug fLine =
-        logger (flip Logger.logDebug fLine) ()
-
-      member x.logDebugWithAck fLine =
-        logger (flip Logger.logDebugWithAck fLine) (Promise.Now.withValue ())
-
-      member x.log l =
-        logger (flip Logger.log l) ()
-
-      member x.logWithAck l =
-        logger (flip Logger.logWithAck l) (Promise.Now.withValue ())
+      member x.logWithAck message =
+        logger (flip Logger.logWithAck message) (Promise.Now.withValue ())
 
       member x.level =
         Verbose
@@ -168,8 +162,41 @@ module Advanced =
 
   module private Impl =
 
+    type MiddlewareFacadeLogger(middleware : Message -> Alt<Promise<unit>>, name, level) as x =
+      let ifLevel level otherwise f =
+        let xLogger = x :> Logger
+        if xLogger.level <= level then
+          f ()
+        else
+          otherwise
+
+      interface Named with
+        member x.name = name
+
+      interface Logger with
+        member x.logVerboseWithAck fMessage =
+          ifLevel Verbose (Alt.always (Promise.Now.withValue ())) <| fun _ ->
+            let msg = fMessage ()
+            middleware msg
+
+        member x.logDebugWithAck fMessage =
+          ifLevel Debug (Alt.always (Promise.Now.withValue ())) <| fun _ ->
+            let msg = fMessage ()
+            middleware msg
+
+        member x.logWithAck message =
+          middleware message
+
+        member x.level =
+          level
+
+    let applyMiddleware (middleware : Message -> Message) logger =
+      let target msg =
+        middleware msg |> Logger.logWithAck logger
+
+      MiddlewareFacadeLogger(target, logger.name, logger.level) :> Logger
+
     /// Create a new Logger from the targets passed, with a given name.
-    [<CompiledName "FromTargets">]
     let fromTargets name ilogger (targets : (MessageFilter * TargetInstance * LogLevel) list) =
       { name    = name
         targets = targets |> List.map (fun (mf, ti, _) -> mf, ti)
@@ -203,7 +230,7 @@ module Advanced =
     /// for Logary.
     let rec registry conf sup sched (inbox : Ch<RegistryMessage>) : Job<_> =
       let targets = conf.targets |> Seq.map (fun kv -> kv.Value |> snd |> Option.get)
-      let regPath = PointName ["Logary"; "Registry"; "registry" ]
+      let regPath = PointName [| "Logary"; "Registry"; "registry" |]
       let log = Message.setName regPath >> Logger.log conf.runtimeInfo.logger
 
       /// In the shutdown state, the registry doesn't respond to messages, but rather tries to
@@ -232,7 +259,7 @@ module Advanced =
         else
           let msg = sprintf "failed target shutdowns:%s%s" nl (toTextList failed)
           do! Message.eventErrorf "shutdown Nack%s%s" nl msg
-              |> Message.setField "failed" (Value.fromObject failed)
+              |> Message.setField "failed" (Value.ofObject failed)
               |> log
 
         do! Ch.give ackCh () <|> nack
@@ -264,13 +291,23 @@ module Advanced =
       and running state : Job<_> = job {
         let! msg = Ch.take inbox
         match msg with
-        | GetLogger (name, chan) ->
+        | GetLogger (name, extraMiddleware, chan) ->
+
+          let middleware =
+            match extraMiddleware with
+            | None -> conf.middleware
+            | Some mid -> mid :: conf.middleware
+                       
+          do! Message.eventDebugf "composing %i middlewares" (List.length middleware) |> log
+          let composedMiddleware = Middleware.compose middleware
+          
           let logger =
             name
             |> getTargets conf
             |> fromTargets name conf.runtimeInfo.logger
+            |> applyMiddleware (composedMiddleware)
 
-          do! Ch.give chan logger
+          do! IVar.fill chan logger
           return! running state
 
         | FlushPending(ackCh, nack) ->
@@ -316,7 +353,7 @@ module Advanced =
   /// metadata, so it's no need to pass the metadata to the target before this.
   let create (conf : LogaryConf) =
     let log =
-      Message.setName (PointName [ "Logary"; "Registry"; "create" ])
+      Message.setName (PointName [| "Logary"; "Registry"; "create" |])
       >> Logger.log conf.runtimeInfo.logger
 
     let sopts = Supervisor.Options.create (conf.runtimeInfo.logger, 10u, Duration.FromMilliseconds 500L)
@@ -337,17 +374,17 @@ module Advanced =
     let listen =
       targets
       |> Seq.map (fun kv -> kv.Value |> snd |> Option.get)
-      |> List.ofSeq
-      |> List.traverseJobA (fun ti ->
-        let (PointName name) = ti.name
-        let namedJob = NamedJob.create name ti.server
-        Supervisor.register sup namedJob :> Job<_>)
-      >>-. ()
-      |> run // TODO: consider this blocking call?
+      |> Seq.map (fun ti ->
+        let namedJob = NamedJob.create (PointName.format ti.name) ti.server
+        Supervisor.register sup namedJob)
+      |> Job.conIgnore
 
     let sched = Scheduling.create ()
     let reg = Impl.create confNext sup sched
+
+    listen |> Job.map (fun _ ->
     { supervisor  = sup
       registry    = reg
       scheduler   = sched
-      runtimeInfo = confNext.runtimeInfo }
+      runtimeInfo = confNext.runtimeInfo
+      middleware  = confNext.middleware })

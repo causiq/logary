@@ -43,8 +43,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\targets\Logary.Targets.Mailgun\Logary.Targets.Mailgun.fsproj">
       <Name>Logary.Targets.Mailgun</Name>
-      <Project>{1f23c428-a95f-4977-be77-3d626116ccb8}</Project>
-      <Private>True</Private>
+      <Project>{1F23C428-A95F-4977-BE77-3D626116CCB8}</Project>
     </ProjectReference>
     <Reference Include="mscorlib" />
     <Reference Include="System" />

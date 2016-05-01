@@ -7,8 +7,6 @@ open Hopac
 open Fac
 open Logary
 open Logary.HealthCheck
-open Logary.Internals.Tcp
-open Logary.Tests.StubTcp
 open Logary.Tests.TestDSL
 
 open System.Net.NetworkInformation
@@ -18,14 +16,14 @@ let private untilPred maxWait fPred =
   let sleep = 20
   Seq.unfold (fun s -> if s < maxWait then Some(s+sleep, s+sleep) else printfn "n" ; None) 0
   |> Seq.map (fun x -> System.Threading.Thread.Sleep(sleep) ; x)
-  |> spy "sleep"
+  //|> spy "sleep"
   |> Seq.skipWhile (not<<fPred)
   |> Seq.isEmpty
   |> not
 
 let pingSvdSe () =
   let mkError ex =
-    Message.metric (PointName.ofList ["app";"resource";"ping-svd"]) (Float 0.0)
+    Message.gauge (PointName.ofList ["app";"resource";"ping-svd"]) (Float 0.0)
     |> setDesc "ping completed with error"
     |> Message.addExn ex
     |> Message.setLevel LogLevel.Error
@@ -41,7 +39,7 @@ let pingSvdSe () =
       elif complete.Error <> null then
         return mkError complete.Error
       else
-        return Message.metric (PointName.ofList ["app";"resource";"ping-svd"])
+        return Message.gauge (PointName.ofList ["app";"resource";"ping-svd"])
                               (Float 1.0)
                |> Message.toHealthCheckResult
 
@@ -53,7 +51,7 @@ let tests =
   testList "health checks" [
     testCase "real ping" <| fun _ ->
       Fuchu.Tests.skiptest "does network IO"
-      let h = fromFn (pn "ping haf.se") pingSvdSe
+      let h = fromFn (PointName.ofSingle "ping haf.se") pingSvdSe
       let gotUnhealthy = untilPred 10000 <| fun i ->
         match h.getValue () |> Job.Global.run with HasValue _ -> true | _ -> false
       Assert.isFalse gotUnhealthy "is not unhealthy"
