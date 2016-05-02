@@ -77,5 +77,18 @@ namespace Logary
         {
             return Instant.FromTicksSinceUnixEpoch(msg.timestampTicks);
         }
+
+        /// <summary>
+        /// Sets context values from the given object. The intention behind this method
+        /// is that you give it an anonymous object and that that object forms has the properties
+        /// whose names you want as keys.
+        /// </summary>
+        /// <returns>The context object.</returns>
+        /// <param name="message">Message to base the new message off of.</param>
+        /// <param name="o">Object with properties and data.</param>
+        public static Message SetContextFromObject(this Message message, object o)
+        {
+            return MessageModule.SetContextFromObject(o, message);
+        }
     }
 }
