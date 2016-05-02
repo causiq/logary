@@ -229,33 +229,6 @@ module Value =
       |> Map.map (fun _ v -> ofObject v)
       |> Object
 
-module Escaping =
-    let private unescaped i =
-         i >= 0x20 && i <= 0x21
-      || i >= 0x23 && i <= 0x5b
-      || i >= 0x5d && i <= 0x10ffff
-
-    let escape (s: string) =
-      let rec escape r =
-        function | [] -> r
-                 | h :: t when (unescaped (int h)) ->
-                    escape (r @ [ h ]) t
-                 | h :: t ->
-                    let n =
-                      match h with
-                      | '"' -> [ '\\'; '"' ]
-                      | '\\' -> [ '\\'; '\\' ]
-                      | '\b' -> [ '\\'; 'b' ]
-                      | '\f' -> [ '\\'; 'f' ]
-                      | '\n' -> [ '\\'; 'n' ]
-                      | '\r' -> [ '\\'; 'r' ]
-                      | '\t' -> [ '\\'; 't' ]
-                      | x -> [ '\\'; 'u' ] @ [ for c in ((int x).ToString ("X4")) -> unbox c ]
-
-                    escape (r @ n) t
-
-      new string (List.toArray (escape [] [ for c in s -> unbox c ]))
-
 [<AutoOpen>]
 module Capture =
 
