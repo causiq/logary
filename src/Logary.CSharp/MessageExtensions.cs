@@ -90,5 +90,16 @@ namespace Logary
         {
             return MessageModule.SetContextFromObject(o, message);
         }
+
+        /// <summary>
+        /// Sets the context values from the Tuple[string, Value].
+        /// </summary>
+        /// <returns>The context values.</returns>
+        /// <param name="message">Message to add the contxt values to.</param>
+        /// <param name="values">Values to add.</param>
+        public static Message SetContextValues(this Message message, params Tuple<string, Value>[] values)
+        {
+            return MessageModule.SetContextValues(values, message);
+        }
     }
 }

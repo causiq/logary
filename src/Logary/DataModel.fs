@@ -178,6 +178,7 @@ module Value =
   open Logary.Internals
   open System.Collections.Generic
 
+  [<CompiledName "OfObject">]
   let rec ofObject : obj -> Value = function
     // Built-in types
     | :? bool as b     -> Bool b
@@ -1008,8 +1009,8 @@ module Message =
     Lens.setPartial (Lenses.field_ name) field msg
 
   [<CompiledName "SetFieldValues">]
-  let setFieldValues (fields : (string * Field) list) msg =
-    fields |> List.fold (fun m (name, value) -> setFieldValue name value m) msg
+  let setFieldValues (fields : (string * Field) seq) msg =
+    fields |> Seq.fold (fun m (name, value) -> setFieldValue name value m) msg
 
   [<CompiledName "SetFieldsFromMap">]
   let setFieldsFromMap (m : Map<string, obj>) msg =
@@ -1049,8 +1050,8 @@ module Message =
     Lens.setPartial (Lenses.contextValue_ name) value msg
 
   [<CompiledName "SetContextValues">]
-  let setContextValues (values : (string * Value) list) msg =
-    values |> List.fold (fun m (name, value) -> setContextValue name value m) msg
+  let setContextValues (values : (string * Value) seq) msg =
+    values |> Seq.fold (fun m (name, value) -> setContextValue name value m) msg
 
   [<CompiledName "SetContextFromMap">]
   let setContextFromMap (m : Map<string, obj>) msg =
