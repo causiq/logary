@@ -1,4 +1,4 @@
-﻿namespace Logary.Internals
+namespace Logary.Internals
 
 open Logary
 

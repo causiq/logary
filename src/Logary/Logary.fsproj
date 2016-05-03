@@ -57,7 +57,7 @@
     <Compile Include="Named.fs" />
     <Compile Include="Scheduling.fs" />
     <Compile Include="Logger.fs" />
-    <Compile Include="Internals_RuntimeInfo.fs" />
+    <Compile Include="RuntimeInfo.fs" />
     <Compile Include="Metric.fs" />
     <Compile Include="Metrics_Core.fs" />
     <Compile Include="HealthCheck.fs" />

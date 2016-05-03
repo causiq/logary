@@ -22,24 +22,8 @@
     <WarningLevel>4</WarningLevel>
     <Prefer32Bit>false</Prefer32Bit>
     <DocumentationFile>bin\Release\Logary.CSharp.xml</DocumentationFile>
-  </PropertyGroup>
-  <PropertyGroup>
-    <!-- This will give us the opportunity to sign Logary -->
-    <PostBuildEvent Condition=" '$(SignAssemblyPfx)' != '' And '$(SignAssemblyPassword)' != '' And '$(OS)' != 'Unix' ">
-      "$(ProjectPath)..\tools\signtool.exe" sign /f "$(SignAssemblyPfx)" /p "$(SignAssemblyPassword)" /t http://timestamp.verisign.com/scripts/timstamp.dll /du "https://github.com/logary/logary" "$(TargetPath)"
-    </PostBuildEvent>
-    <!-- see https://developer.mozilla.org/en/docs/Signing_an_executable_with_Authenticode -->
-    <PostBuildEvent Condition=" '$(SignAssemblySPC)' != '' And '$(SignAssemblyPVK)' != '' And '$(OS)' == 'Unix' ">
-      signcode \
-       -spc "$(SignAssemblySPC)" \
-       -v "$(SignAssemblyPVK)" \
-       -a sha2 -$ commercial \
-       -n "$(Name)" \
-       -i https://www.github.com/logary/logary \
-       -t http://timestamp.verisign.com/scripts/timstamp.dll \
-       -tr 10 \
-       "$(TargetPath)"
-    </PostBuildEvent>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>../../tools/logary.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -68,13 +52,6 @@
     <None Include="paket.references" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
   <PropertyGroup>
     <RootDirectory Condition=" '$(RootDirectory)' == '' ">../..</RootDirectory>
   </PropertyGroup>

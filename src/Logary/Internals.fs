@@ -283,7 +283,9 @@ type Acks =
   /// It didn't go well.
   | Nack of NackDescription
 
-module internal CSharpFacade =
+
+/// NOT a part of the public API. DO NOT DEPEND ON THIS.
+module CSharpFacade =
 
   open Hopac
   open System
