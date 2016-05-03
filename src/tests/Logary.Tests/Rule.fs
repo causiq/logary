@@ -13,6 +13,8 @@ open Logary
 open Logary.Configuration
 open Logary.Targets
 
+module Assert = ExpectoPatronum.Expect
+
 [<Tests>]
 let tests =
   testList "Rule" [

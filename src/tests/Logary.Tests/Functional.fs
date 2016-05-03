@@ -4,6 +4,8 @@ open Fuchu
 open Logary
 open Hopac
 
+module Assert = ExpectoPatronum.Expect
+
 type LoggerNext =
   Message -> Alt<Promise<Message>>
 

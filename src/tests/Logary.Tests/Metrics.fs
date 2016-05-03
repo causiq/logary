@@ -7,6 +7,8 @@ open Logary
 open Logary.Metrics
 open Logary.Metrics.Reservoirs
 
+module Assert = ExpectoPatronum.Expect
+
 [<Tests>]
 let builtInMetrics =
   let take n stream =
