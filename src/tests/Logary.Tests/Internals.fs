@@ -4,6 +4,8 @@ open System.Collections.Generic
 open Fuchu
 open Logary.Internals
 
+module Assert = ExpectoPatronum.Expect
+
 [<Tests>]
 let maps =
   testList "Map.ofObject" [

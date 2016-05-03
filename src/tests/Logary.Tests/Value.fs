@@ -3,6 +3,8 @@
 open Fuchu
 open Logary
 
+module Assert = ExpectoPatronum.Expect
+
 [<Tests>]
 let valueTests =
   testList "value tests" [

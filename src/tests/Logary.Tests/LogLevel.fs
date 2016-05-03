@@ -4,6 +4,8 @@ open Fuchu
 open System
 open Logary
 
+module Assert = ExpectoPatronum.Expect
+
 [<Tests>]
 let tests =
   testList "LogLevel" [

@@ -11,6 +11,8 @@ open Logary.Tests.TestDSL
 
 open System.Net.NetworkInformation
 
+module Assert = ExpectoPatronum.Expect
+
 let private untilPred maxWait fPred =
   let spy msg = let doubleSpy = printfn "%s: %A" msg in Seq.map doubleSpy
   let sleep = 20

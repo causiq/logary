@@ -13,6 +13,8 @@ open Logary.Configuration
 open Logary.Configuration.Uri
 open Logary.Targets
 
+module Assert = ExpectoPatronum.Expect
+
 type Assert =
   static member Contains(msg : string, xExpected : 'a, xs : 'a seq) =
     match Seq.tryFind ((=) xExpected) xs with

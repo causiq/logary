@@ -11,6 +11,8 @@ open Logary.Target
 open Logary.Targets
 open Logary.Internals
 
+module Assert = ExpectoPatronum.Expect
+
 let emptyRuntime = { serviceName = "tests"; logger = NullLogger() }
 
 let flush = Target.flush >> Job.Ignore >> Job.Global.run
