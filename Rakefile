@@ -52,14 +52,13 @@ task :clean => [:clean_sln] do
 end
 
 def maybe_sign conf
-  pfx, pass, spc, pvk = [
+  pfx, pass, sign = [
     ENV['LOGARY_SIGN_ASSEMBLY_PFX'],
     ENV['LOGARY_SIGN_ASSEMBLY_PASSWORD'],
-    ENV['LOGARY_SIGN_ASSEMBLY_SPC'],
-    ENV['LOGARY_SIGN_ASSEMBLY_PVK']
+    ENV['LOGARY_SIGN_ASSEMBLY']
   ]
 
-  return unless ((pfx && pass) || (spc && pvk))
+  return unless ((pfx && pass) || sign)
 
   info 'signing assembly'
 
@@ -68,9 +67,9 @@ def maybe_sign conf
     conf.prop 'SignAssemblyPfx', pfx
     conf.prop 'SignAssemblyPassword', pass
   else
-    info 'signing assembly with spc'
-    conf.prop 'SignAssemblySPC', spc
-    conf.prop 'SignAssemblyPVK', pvk
+    # brew install osslsigncode
+    info 'signing assembly with spc/pvk'
+    conf.prop 'SignAssembly', 'true'
   end
 end
 
