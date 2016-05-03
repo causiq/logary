@@ -74,7 +74,6 @@
       <Project>{f7e5b6e8-5d55-4974-9ca7-4c94d810631f}</Project>
     </ProjectReference>
   </ItemGroup>
-  <Import Project="$(MSBuildProjectDirectory)\..\..\..\tools\msbuild-sign.targets" />
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>

@@ -36,7 +36,7 @@ asmver_files :assembly_info => :versioning do |a|
         relative_path_from(Pathname.new(File.join(FileUtils.pwd, 'src', proj.proj_path_base, '..'))).
         to_s
     conf.change_attributes do |attrs|
-      attrs[:assembly_key_file] = path
+      attrs[:assembly_key_file] = path unless proj.proj_filename.include? 'csproj'
     end
     conf
   end

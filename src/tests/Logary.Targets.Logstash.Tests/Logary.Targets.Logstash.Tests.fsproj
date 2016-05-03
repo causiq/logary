@@ -61,7 +61,6 @@
   <ItemGroup>
     <None Include="paket.references" />
   </ItemGroup>
-  <Import Project="$(MSBuildProjectDirectory)\..\..\..\tools\msbuild-sign.targets" />
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
