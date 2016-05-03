@@ -1,4 +1,4 @@
-# Logary v4.0.0-alpha
+# Logary v4.0.0
 
 **This is a pre-release version**. v3.x is at
 [releases/v3.x](https://github.com/logary/logary/tree/releases/v3.x). We
@@ -46,6 +46,16 @@ git clone git://github.com/logary/logary.git
 cd logary
 git submodule update --init
 bundle && bundle exec rake
+```
+
+### Building a signed version
+
+``` bash
+# first place your files here:
+# tools/logary.pvk
+# tools/logary.pvk.password
+# tools/logary.spc
+LOGARY_SIGN_ASSEMBLY=true bundle exec rake
 ```
 
 ## License
