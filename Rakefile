@@ -8,11 +8,6 @@ Configuration = ENV['CONFIGURATION'] || 'Release'
 
 Albacore::Tasks::Versionizer.new :versioning
 
-desc 'Perform fast build (warn: doesn\'t d/l deps)'
-build :quick_build do |b|
-  b.sln = 'src/v4.sln'
-end
-
 task :paket_bootstrap do
   system 'tools/paket.bootstrapper.exe', clr_command: true unless \
          File.exists? 'tools/paket.exe'
@@ -33,12 +28,19 @@ asmver_files :assembly_info => :versioning do |a|
                assembly_version: ENV['LONG_VERSION'],
                assembly_file_version: ENV['LONG_VERSION'],
                assembly_informational_version: ENV['BUILD_VERSION']
+
   a.handle_config do |proj, conf|
     conf.namespace = conf.namespace + "AsmVer"
+    conf.attributes[:assembly_key_file] = 
     conf
   end
 end
-
+task :paket_replace do
+  sh %{ruby -pi.bak -e "gsub(/module Aether/, 'module Logary.Utils.Aether')" paket-files/xyncro/aether/src/Aether/Aether.fs}
+  sh %{ruby -pi.bak -e "gsub(/module Chiron/, 'module Logary.Utils.Chiron')" paket-files/xyncro/chiron/src/Chiron/Chiron.fs}
+  sh %{ruby -pi.bak -e "gsub(/module internal YoLo/, 'module internal Logary.YoLo')" paket-files/haf/YoLo/YoLo.fs}
+  sh %{ruby -pi.bak -e "gsub(/module Hopac/, 'namespace Logary.Internals')" paket-files/logary/RingBuffer/RingBuffer.fs}
+end
 
 build :clean_sln do |b|
   b.target = 'Clean'
@@ -58,7 +60,8 @@ def maybe_sign conf
     ENV['LOGARY_SIGN_ASSEMBLY']
   ]
 
-  return unless ((pfx && pass) || sign)
+  return unless sign
+  pass ||= File.read 'tools/logary.password'
 
   info 'signing assembly'
 
@@ -70,22 +73,19 @@ def maybe_sign conf
     # brew install osslsigncode
     info 'signing assembly with spc/pvk'
     conf.prop 'SignAssembly', 'true'
+    conf.prop 'SignAssemblyPassword', pass
   end
 end
 
-task :paket_replace do
-  sh %{ruby -pi.bak -e "gsub(/module Aether/, 'module Logary.Utils.Aether')" paket-files/xyncro/aether/src/Aether/Aether.fs}
-  sh %{ruby -pi.bak -e "gsub(/module Chiron/, 'module Logary.Utils.Chiron')" paket-files/xyncro/chiron/src/Chiron/Chiron.fs}
-  sh %{ruby -pi.bak -e "gsub(/module internal YoLo/, 'module internal Logary.YoLo')" paket-files/haf/YoLo/YoLo.fs}
-  sh %{ruby -pi.bak -e "gsub(/module Hopac/, 'namespace Logary.Internals')" paket-files/logary/RingBuffer/RingBuffer.fs}
-end
-
-desc 'perform full build'
-build :build => [:versioning, :assembly_info, :restore, :paket_replace] do |b|
+desc 'Perform quick build'
+build :build_quick do |b|
   b.prop 'Configuration', Configuration
   b.sln = 'src/v4.sln'
   maybe_sign b
 end
+
+desc 'Perform full build'
+build :build => [:versioning, :assembly_info, :restore, :paket_replace, :build_quick]
 
 directory 'build/pkg'
 

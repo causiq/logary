@@ -93,36 +93,6 @@
     <Reference Include="System.Numerics" />
     <Reference Include="System.Xml" />
   </ItemGroup>
-  <PropertyGroup>
-    <!-- This will give us the opportunity to sign Logary -->
-    <PostBuildEvent Condition=" '$(SignAssemblyPfx)' != '' And '$(OS)' != 'Unix' ">
-      <!-- "$(ProjectPath)..\..\tools\signtool.exe" sign /f "$(SignAssemblyPfx)" /t http://timestamp.verisign.com/scripts/timstamp.dll /du "https://github.com/logary/logary" "$(TargetPath)" -->
-    </PostBuildEvent>
-    <!-- see https://developer.mozilla.org/en/docs/Signing_an_executable_with_Authenticode -->
-    <PostBuildEvent Condition=" '$(SignAssemblySPC)' != '' And '$(SignAssemblyPVK)' != '' And '$(OS)' == 'Unix' ">
-      signcode \
-       -spc "$(SignAssemblySPC)" \
-       -v "$(SignAssemblyPVK)" \
-       -a sha2 -$ commercial \
-       -n "$(Name)" \
-       -i https://www.github.com/logary/logary \
-       -t http://timestamp.verisign.com/scripts/timstamp.dll \
-       -tr 10 \
-       "$(TargetPath)"
-    </PostBuildEvent>
-  </PropertyGroup>
-  <!-- This will give us the opportunity to sign Logary -->
-  <Target Name="AfterBuild">
-    <Exec Condition=" '$(SignAssemblyPfx)' != '' And '$(SignAssemblyPassword)' != '' And '$(OS)' != 'Unix' "
-          Command='"$(ProjectPath)..\tools\signtool.exe" sign /f "$(SignAssemblyPfx)" /p "$(SignAssemblyPassword)" /t http://timestamp.verisign.com/scripts/timstamp.dll /du "https://github.com/logary/logary" "$(TargetPath)"' />
-  </Target>
-  <!-- see https://developer.mozilla.org/en/docs/Signing_an_executable_with_Authenticode -->
-  <Target Name="AfterBuild">
-    <!--<Exec Condition=" '$(SignAssemblySPC)' != '' And '$(SignAssemblyPVK)' != '' "
-          Command='signcode -spc "$(SignAssemblySPC)" -v "$(SignAssemblyPVK)" -a sha1 -$ commercial -n "$(Name)" -i https://www.github.com/logary/logary -t http://timestamp.verisign.com/scripts/timstamp.dll -tr 10 "$(TargetPath)"' />-->
-    <Exec Condition=" '$(SignAssembly)' != '' "
-          Command='osslsigncode sign -h sha512 -certs "$(ProjectPath)../../tools/logary.spc" -passfile "$(ProjectPath)../../tools/logary.pvk.password" -key "$(ProjectPath)../../tools/logary.pvk" -n "$(Name)" -t http://timestamp.verisign.com/scripts/timstamp.dll -in "$(TargetPath)" -out "$(TargetPath).signed" &amp;&amp; mv "$(TargetPath).signed" "$(TargetPath)"' />
-  </Target>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
@@ -182,4 +152,8 @@
       </ItemGroup>
     </When>
   </Choose>
+  <PropertyGroup>
+    <RootDirectory Condition=" '$(RootDirectory)' == '' ">../..</RootDirectory>
+  </PropertyGroup>
+  <Import Project="$(MSBuildProjectDirectory)\..\..\tools\msbuild-sign.targets" />
 </Project>

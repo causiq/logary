@@ -51,4 +51,8 @@
       <Name>Logary</Name>
     </ProjectReference>
   </ItemGroup>
+  <PropertyGroup>
+    <RootDirectory Condition=" '$(RootDirectory)' == '' ">../..</RootDirectory>
+  </PropertyGroup>
+  <Import Project="$(MSBuildProjectDirectory)/../../tools/msbuild-sign.targets" />
 </Project>

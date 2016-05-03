@@ -56,6 +56,7 @@ bundle && bundle exec rake
 # tools/logary.pvk.password
 # tools/logary.spc
 LOGARY_SIGN_ASSEMBLY=true bundle exec rake
+# DEBUG=true LOGARY_SIGN_ASSEMBLY=true bundle exec rake
 ```
 
 ## License

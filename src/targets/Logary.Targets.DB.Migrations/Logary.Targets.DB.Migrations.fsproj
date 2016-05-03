@@ -129,4 +129,5 @@
       </ItemGroup>
     </When>
   </Choose>
+  <Import Project="$(MSBuildProjectDirectory)\..\..\..\tools\msbuild-sign.targets" />
 </Project>
