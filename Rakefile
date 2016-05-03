@@ -1,4 +1,5 @@
 require 'bundler/setup'
+require 'pathname'
 require 'albacore'
 require 'albacore/tasks/versionizer'
 require 'albacore/ext/teamcity'
@@ -31,7 +32,12 @@ asmver_files :assembly_info => :versioning do |a|
 
   a.handle_config do |proj, conf|
     conf.namespace = conf.namespace + "AsmVer"
-    conf.attributes[:assembly_key_file] = 
+    path = Pathname.new(File.join(FileUtils.pwd, 'tools/logary.snk')).
+        relative_path_from(Pathname.new(File.join(FileUtils.pwd, 'src', proj.proj_path_base, '..'))).
+        to_s
+    conf.change_attributes do |attrs|
+      attrs[:assembly_key_file] = path
+    end
     conf
   end
 end
