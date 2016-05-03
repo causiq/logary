@@ -58,6 +58,7 @@
       <Name>Logary</Name>
     </ProjectReference>
   </ItemGroup>
+  <Import Project="$(MSBuildProjectDirectory)\..\..\..\tools\msbuild-sign.targets" />
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
@@ -126,5 +127,4 @@
       </ItemGroup>
     </When>
   </Choose>
-  <Import Project="$(MSBuildProjectDirectory)\..\..\..\tools\msbuild-sign.targets" />
 </Project>

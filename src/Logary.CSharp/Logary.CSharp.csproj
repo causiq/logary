@@ -75,6 +75,10 @@
   <Target Name="AfterBuild">
   </Target>
   -->
+  <PropertyGroup>
+    <RootDirectory Condition=" '$(RootDirectory)' == '' ">../..</RootDirectory>
+  </PropertyGroup>
+  <Import Project="$(MSBuildProjectDirectory)\..\..\tools\msbuild-sign.targets" />
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
@@ -118,8 +122,4 @@
       </ItemGroup>
     </When>
   </Choose>
-  <PropertyGroup>
-    <RootDirectory Condition=" '$(RootDirectory)' == '' ">../..</RootDirectory>
-  </PropertyGroup>
-  <Import Project="$(MSBuildProjectDirectory)\..\..\tools\msbuild-sign.targets" />
 </Project>
