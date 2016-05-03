@@ -1,0 +1,19 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <RootDirectory Condition=" '$(RootDirectory)' == '' ">../../..</RootDirectory>
+  </PropertyGroup>
+
+  <!-- This will give us the opportunity to sign Logary -->
+  <Target Name="AfterBuild">
+    <Exec Condition=" '$(SignAssemblyPfx)' != '' And '$(SignAssemblyPassword)' != '' And '$(OS)' != 'Unix' "
+          Command='"$(RootDirectory)/tools/signtool.exe" sign /f "$(SignAssemblyPfx)" /p "$(SignAssemblyPassword)" /t http://timestamp.verisign.com/scripts/timstamp.dll /du "https://github.com/logary/logary" "$(TargetPath)"' />
+  </Target>
+  <!-- see
+    https://developer.mozilla.org/en/docs/Signing_an_executable_with_Authenticode
+    http://ilostmynotes.blogspot.se/2014/10/authenticode-signing-windows.html
+  -->
+  <Target Name="AfterBuild">
+    <Exec Condition=" '$(SignAssembly)' != '' And '$(SignAssemblyPassword)' != '' "
+          Command='osslsigncode sign -h sha512 -certs "$(RootDirectory)/tools/logary.spc" -key "$(RootDirectory)/tools/logary.pvk" -pass "$(SignAssemblyPassword)" -n "$(Name)" -t http://timestamp.verisign.com/scripts/timstamp.dll -in "$(TargetPath)" -out "$(TargetPath).signed" &amp;&amp; mv "$(TargetPath).signed" "$(TargetPath)"' />
+  </Target>
+</Project>
