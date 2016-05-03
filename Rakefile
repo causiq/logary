@@ -63,7 +63,7 @@ def maybe_sign conf
   pfx, pass, sign = [
     ENV['LOGARY_SIGN_ASSEMBLY_PFX'],
     ENV['LOGARY_SIGN_ASSEMBLY_PASSWORD'],
-    ENV['LOGARY_SIGN_ASSEMBLY']
+    ENV['LOGARY_SIGN_ASSEMBLY'] || File.exists?('./tools/logary.password')
   ]
 
   return unless sign

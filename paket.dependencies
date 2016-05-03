@@ -1,7 +1,6 @@
 framework: net45
 source https://www.nuget.org/api/v2
 
-nuget Chiron
 nuget Common.Logging
 nuget Common.Logging.Core
 nuget EventStore.Client.PreRelease
