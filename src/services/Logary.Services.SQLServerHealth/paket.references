@@ -1,6 +1,6 @@
 FSharp.Core
 NodaTime
-Hopac
+Hopac-StrongName
 FsSql
 Topshelf
 Topshelf.FSharp

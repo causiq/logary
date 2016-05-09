@@ -1,6 +1,6 @@
 FSharp.Core
 NodaTime
-Hopac
+Hopac-StrongName
 FParsec
 Http.fs-prerelease
 File:Aether.fs
