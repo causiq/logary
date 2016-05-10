@@ -87,11 +87,12 @@ desc 'Perform quick build'
 build :build_quick do |b|
   b.prop 'Configuration', Configuration
   b.sln = 'src/v4.sln'
+  b.add_parameter '/m'
   maybe_sign b
 end
 
 desc 'Perform full build'
-build :build => [:versioning, :assembly_info, :restore, :paket_replace, :build_quick]
+task :build => [:versioning, :assembly_info, :restore, :paket_replace, :build_quick]
 
 directory 'build/pkg'
 
