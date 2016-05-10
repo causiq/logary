@@ -77,7 +77,7 @@ NUGET
     Topshelf.FSharp (2.1)
       Topshelf (>= 3.2)
     Unquote (3.1.1)
-  remote: /Users/henfel/dev/Hopac/nuget
+  remote: ./../localpackages
   specs:
     Hopac-StrongName (0.1.4)
       FSharp.Core (>= 3.1.2.5)
