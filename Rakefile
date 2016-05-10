@@ -91,7 +91,7 @@ build :build_quick do |b|
 end
 
 desc 'Perform full build'
-build :build => [:versioning, :assembly_info, :restore, :paket_replace, :build_quick]
+task :build => [:versioning, :assembly_info, :restore, :paket_replace, :build_quick]
 
 directory 'build/pkg'
 
