@@ -32,23 +32,21 @@
     <DefineConstants>
     </DefineConstants>
   </PropertyGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>
-    <Reference Include="mscorlib" />
-    <Reference Include="FSharp.Core" />
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Numerics" />
     <Content Include="app.config" />
-  </ItemGroup>
-  <ItemGroup>
     <Compile Include="..\..\..\paket-files\haf\expecto-patronum\ExpectoPatronum\Assert.fs">
       <Paket>True</Paket>
       <Link>paket-files/Assert.fs</Link>
     </Compile>
     <Compile Include="Program.fs" />
+    <None Include="paket.references" />
   </ItemGroup>
-  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
     <ProjectReference Include="..\..\targets\Logary.Targets.Logstash\Logary.Targets.Logstash.fsproj">
       <Project>{F9AAC195-D3F7-4160-A829-5F9775791AD5}</Project>
       <Name>Logary.Targets.Logstash</Name>
@@ -58,9 +56,17 @@
       <Name>Logary</Name>
     </ProjectReference>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="paket.references" />
-  </ItemGroup>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
+        <Reference Include="FSharp.Core">
+          <HintPath>..\..\..\packages\FSharp.Core\lib\net40\FSharp.Core.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
