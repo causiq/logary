@@ -136,4 +136,14 @@ let tests =
                          "arg1", Field (Int64 4L, None) ])
       |> thatsIt
 
+    testCase "Formatting.templateFromFormat, named fields" <| fun _ ->
+      let format = "This {gramaticalStructure} contains {wordCount} words."
+      let args : obj[] = [|"sentence"; 4|]
+      (because "fields are matched left-to-right in message template" <| fun () ->
+        Message.templateFromFormat format args)
+      |> should equal ("This {gramaticalStructure} contains {wordCount} words.",
+                       [ "gramaticalStructure", Field (String "sentence", None)
+                         "wordCount", Field (Int64 4L, None) ])
+      |> thatsIt
+
     ]
