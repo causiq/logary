@@ -36,7 +36,7 @@ asmver_files :assembly_info => :versioning do |a|
         relative_path_from(Pathname.new(File.join(FileUtils.pwd, 'src', proj.proj_path_base, '..'))).
         to_s
     conf.change_attributes do |attrs|
-      attrs[:assembly_key_file] = path unless proj.proj_filename.include? 'csproj'
+      attrs[:assembly_key_file] = path unless proj.proj_filename.include? 'csproj' or proj.proj_filename.include? 'Services' or proj.proj_filename.include? 'Tests'
     end
     conf
   end
@@ -91,7 +91,7 @@ build :build_quick do |b|
 end
 
 desc 'Perform full build'
-build :build => [:versioning, :assembly_info, :restore, :paket_replace, :build_quick]
+task :build => [:versioning, :assembly_info, :restore, :paket_replace, :build_quick]
 
 directory 'build/pkg'
 
