@@ -90,7 +90,6 @@ desc 'Perform quick build'
 build :build_quick do |b|
   b.prop 'Configuration', Configuration
   b.sln = 'src/v4.sln'
-  b.add_parameter '/m'
   maybe_sign b
 end
 
