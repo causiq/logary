@@ -1,7 +1,6 @@
 redirects: on
 framework: net45
 source https://www.nuget.org/api/v2
-source ./../localpackages
 
 nuget Common.Logging
 nuget Common.Logging.Core
