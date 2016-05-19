@@ -6,6 +6,7 @@ require 'albacore/ext/teamcity'
 require 'albacore/tasks/release'
 
 Configuration = ENV['CONFIGURATION'] || 'Release'
+LogaryStrongName = (ENV['LOGARY_STRONG_NAME'] && true) || false
 
 Albacore::Tasks::Versionizer.new :versioning
 
@@ -32,11 +33,13 @@ asmver_files :assembly_info => :versioning do |a|
 
   a.handle_config do |proj, conf|
     conf.namespace = conf.namespace + "AsmVer"
-    path = Pathname.new(File.join(FileUtils.pwd, 'tools/logary.snk')).
-        relative_path_from(Pathname.new(File.join(FileUtils.pwd, 'src', proj.proj_path_base, '..'))).
-        to_s
-    conf.change_attributes do |attrs|
-      attrs[:assembly_key_file] = path unless proj.proj_filename.include? 'csproj' or proj.proj_filename.include? 'Services' or proj.proj_filename.include? 'Tests'
+    if LogaryStrongName
+      path = Pathname.new(File.join(FileUtils.pwd, 'tools/logary.snk')).
+          relative_path_from(Pathname.new(File.join(FileUtils.pwd, 'src', proj.proj_path_base, '..'))).
+          to_s
+      conf.change_attributes do |attrs|
+        attrs[:assembly_key_file] = path unless proj.proj_filename.include? 'csproj' or proj.proj_filename.include? 'Services' or proj.proj_filename.include? 'Tests'
+      end
     end
     conf
   end
@@ -65,6 +68,10 @@ def maybe_sign conf
     ENV['LOGARY_SIGN_ASSEMBLY_PASSWORD'],
     ENV['LOGARY_SIGN_ASSEMBLY'] || File.exists?('./tools/logary.password')
   ]
+
+  if LogaryStrongName
+    conf.prop 'StrongNameAssembly', 'true'
+  end
 
   return unless sign
   pass ||= File.read 'tools/logary.password'
