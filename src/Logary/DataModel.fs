@@ -1163,15 +1163,11 @@ module Message =
   /// A destructuring strategy for FsMessageTemplates which simply treats 
   /// everything as a 'Scalar' object which can later be handled by Logary
   /// as `Field (Value.ofObject o, None)`
-  let internal destructureEverythingAsScalarObject : Destructurer =
+  let internal destructureAllAsScalar : Destructurer =
     fun request -> TemplatePropertyValue.ScalarValue request.Value
   
   let internal captureNamesAndValuesAsScalars (t: Template) (args: obj[]) = 
-    let selfLogByIgnoring : SelfLogger = fun (t, v) -> ()
-    Capturing.capturePropertiesWith
-      selfLogByIgnoring
-      destructureEverythingAsScalarObject
-      1 t args
+    Capturing.capturePropertiesWith ignore destructureAllAsScalar 1 t args
 
   let internal convertToNameAndField (pnv : PropertyNameAndValue) : string * Field =
     match pnv.Value with
@@ -1182,26 +1178,9 @@ module Message =
   /// a message template and a set of fields.
   let internal templateFromFormat (format : string) (args : obj[]) =
     let parsedTemplate = Parser.parse format
-    let isPositional = parsedTemplate.Positionals <> Unchecked.defaultof<PropertyToken[]>
-    let positionalFixedTemplate =
-      if isPositional then
-        // if the properties are all positional {0}, {1}..{N} then convert them {arg0}, {arg1}..{argN}
-        let collectedProps = ResizeArray<PropertyToken>(parsedTemplate.Positionals.Length)
-        let prependArgName (pt : PropertyToken) =
-          let p = PropertyToken("arg" + pt.Name, pt.Pos, pt.Destr, pt.Align, pt.Format)
-          collectedProps.Add(p)
-          p
-
-        let tokenOrPrependArgNameProp t = match t with Text _ as tt -> tt | Prop (start, pt) -> Prop(start, prependArgName pt)
-        let tokensWithArgNameInProps = parsedTemplate.Tokens |> Seq.map tokenOrPrependArgNameProp |> Array.ofSeq
-        let newFormatString = String.Join("", tokensWithArgNameInProps |> Array.map string)
-        Template(newFormatString, tokensWithArgNameInProps, isNamed = false, properties = collectedProps.ToArray())
-      else
-        parsedTemplate
-
-    let scalarNamesAndValues = captureNamesAndValuesAsScalars positionalFixedTemplate args
-    let fields = scalarNamesAndValues |> Seq.map convertToNameAndField |> List.ofSeq
-    (positionalFixedTemplate.FormatString, fields)
+    let scalarNamesAndValues = captureNamesAndValuesAsScalars parsedTemplate args
+    let fields = scalarNamesAndValues |> Seq.map (convertToNameAndField) |> List.ofSeq
+    (format, fields)
 
   /// Creates a new event with given level, format and arguments. Format may
   /// contain String.Format-esque format placeholders.
