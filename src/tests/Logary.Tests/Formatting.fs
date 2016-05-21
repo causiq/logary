@@ -152,7 +152,7 @@ let tests =
       let args : obj[] = [|0;1;2;3|] 
       (because "fields are matched positionally when all are numbered" <| fun () ->
         Message.templateFromFormat format args)
-      |> should equal ("This {2} . {2} . {0} . {0}",
+      |> should equal ("Positionally - two {2} . {2} . zero {0} . {0}",
                        [ ("0", Field (Int64 0L, None))
                          ("2", Field (Int64 2L, None)) ])
       |> thatsIt
