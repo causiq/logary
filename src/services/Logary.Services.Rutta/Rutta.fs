@@ -25,15 +25,6 @@ with
       | Proxy (_,_) -> "Runs Rutta in Proxy mode (XSUB/fan-in of Messages, forward to SUB sockets via XPUB). The first is the XSUB socket (in), the second is the XPUB socket (out)."
       | Health _ -> "Give Rutta binding information"
 
-module Middleware =
-  let addHostNameMiddleware next msg =
-      let hostname = System.Net.Dns.GetHostName()
-      let newMessage = 
-        msg 
-        |> Logary.Message.setContext "hostname" hostname        
-
-      newMessage |> next
-
 module Health =
   open Logary
   open System
@@ -96,7 +87,7 @@ module Shipper =
           //Console.create (Console.empty) (PointName.ofSingle "console")
           create shipperConf (PointName.ofSingle "rutta-shipper")
         ]
-        >> withMiddleware Middleware.addHostNameMiddleware
+        >> withMiddleware Middleware.Common.addHostName
         >> withMetrics [
           createMetric "cpuTime" WinPerfCounters.cpuTime
           createMetric "gpuMetrics" WinPerfCounters.gpuMetrics

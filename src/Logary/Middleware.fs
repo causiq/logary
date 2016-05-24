@@ -40,3 +40,12 @@ let compose : Mid list -> Message -> Message = function
 
   | middlewares ->
     List.foldBack (fun f composed -> f composed) middlewares id
+
+module Common = 
+  let addHostName next msg =
+    let hostname = System.Net.Dns.GetHostName()
+    let newMessage = 
+      msg 
+      |> Logary.Message.setContext "hostname" hostname        
+
+    newMessage |> next

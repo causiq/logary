@@ -13,7 +13,7 @@ let messageEnrichment =
       let hostname = System.Net.Dns.GetHostName()
       
       let msg = Logary.Message.event LogLevel.Info "Info" 
-      let enrichedMsg = Logary.Services.Rutta.Middleware.addHostNameMiddleware id msg
+      let enrichedMsg = Middleware.Common.addHostName id msg
         
       Assert.Equal("Should contain hostname key", true, enrichedMsg.context.ContainsKey("hostname"))
       Assert.Equal("Should contain hostname value", Value.String hostname, enrichedMsg.context.Item("hostname"))
