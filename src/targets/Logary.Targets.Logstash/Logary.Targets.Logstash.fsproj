@@ -30,32 +30,30 @@
     </PlatformTarget>
     <DefineConstants>
     </DefineConstants>
+    <NoWarn>2003</NoWarn>
   </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="mscorlib" />
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Numerics" />
-    <Content Include="app.config" />
-  </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
+  <Import Project="$(MSBuildProjectDirectory)\..\..\..\tools\msbuild-sign.targets" />
   <ItemGroup>
+    <Content Include="app.config" />
     <Compile Include="..\..\..\paket-files\haf\YoLo\YoLo.fs">
       <Paket>True</Paket>
       <Link>paket-files/YoLo.fs</Link>
     </Compile>
     <Compile Include="Targets_Logstash.fs" />
+    <None Include="paket.references" />
+    <Compile Include="AssemblyVersionInfo.fs" />
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj">
       <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
       <Name>Logary</Name>
     </ProjectReference>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="paket.references" />
-  </ItemGroup>
-  <Import Project="$(MSBuildProjectDirectory)\..\..\..\tools\msbuild-sign.targets" />
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
