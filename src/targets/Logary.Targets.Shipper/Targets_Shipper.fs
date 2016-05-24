@@ -61,15 +61,6 @@ type ShipperConf =
 let empty =
   Unconfigured
 
-let enricher msg serviceName =
-  let hostname = System.Net.Dns.GetHostName()
-  let newMessage = 
-    msg 
-      |> Message.setContext "hostname" hostname
-      |> Message.setContext "serviceName" serviceName
-
-  newMessage
-
 module internal Impl =
 
   type State =
@@ -114,9 +105,8 @@ module internal Impl =
 
         RingBuffer.take requests ^=> function
           | Log (msg, ack) ->
-            job {
-              let newMessage = enricher msg ri.serviceName
-              let bytes = Serialisation.serialise newMessage
+            job {              
+              let bytes = Serialisation.serialise msg
               do! Job.Scheduler.isolate (fun _ -> bytes |>> state.sender)
               do! ack *<= ()
               return! loop state
