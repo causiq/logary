@@ -48,6 +48,7 @@
     </Compile>
     <Compile Include="Targets_InfluxDb.fs" />
     <None Include="paket.references" />
+    <Compile Include="AssemblyVersionInfo.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
