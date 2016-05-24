@@ -56,6 +56,11 @@
       <Name>Logary.Targets.InfluxDb</Name>
       <Project>{4ACE8A29-6D75-4956-B45C-22C82EAFCFD5}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\..\targets\Logary.Targets.Shipper\Logary.Targets.Shipper.fsproj">
+      <Name>Logary.Targets.Shipper</Name>
+      <Project>{7db39e8e-da06-4e4b-a3e2-1a0facec941c}</Project>
+      <Private>True</Private>
+    </ProjectReference>
     <Reference Include="mscorlib" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
