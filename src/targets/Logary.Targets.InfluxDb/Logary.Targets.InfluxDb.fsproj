@@ -30,6 +30,7 @@
     <GenerateTailCalls>true</GenerateTailCalls>
     <PlatformTarget>
     </PlatformTarget>
+    <NoWarn>2003</NoWarn>
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>
@@ -48,6 +49,7 @@
     </Compile>
     <Compile Include="Targets_InfluxDb.fs" />
     <None Include="paket.references" />
+    <Compile Include="AssemblyVersionInfo.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
