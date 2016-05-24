@@ -1158,19 +1158,29 @@ module Message =
   [<CompiledName "EventFatalFormat">]
   let eventFatalf fmt = Printf.kprintf (event LogLevel.Fatal) fmt
 
+  open Logary.Utils.FsMessageTemplates
+
+  /// A destructuring strategy for FsMessageTemplates which simply treats 
+  /// everything as a 'Scalar' object which can later be handled by Logary
+  /// as `Field (Value.ofObject o, None)`
+  let internal destructureAllAsScalar : Destructurer =
+    fun request -> TemplatePropertyValue.ScalarValue request.Value
+  
+  let internal captureNamesAndValuesAsScalars (t: Template) (args: obj[]) = 
+    Capturing.capturePropertiesWith ignore destructureAllAsScalar 1 t args
+
+  let internal convertToNameAndField (pnv : PropertyNameAndValue) : string * Field =
+    match pnv.Value with
+    | ScalarValue v -> pnv.Name, Field (Value.ofObject v, None)
+    | _ -> failwith "This should never happen. In Logary we extract all properties as Scalar"
+
   /// Converts a String.Format-style format string and an array of arguments into
   /// a message template and a set of fields.
   let internal templateFromFormat (format : string) (args : obj[]) =
-    let fields =
-      args
-      |> Array.mapi (fun i v ->
-        sprintf "arg%i" i,
-        Field (Value.ofObject v, None))
-      |> List.ofArray
-
-    // Replace {0}..{n} with {arg0}..{argn}
-    let template = Seq.fold (fun acc i -> String.replace (sprintf "{%i}" i) (sprintf "{arg%i}" i) acc) format [0..args.Length]
-    (template, fields)
+    let parsedTemplate = Parser.parse format
+    let scalarNamesAndValues = captureNamesAndValuesAsScalars parsedTemplate args
+    let fields = scalarNamesAndValues |> Seq.map (convertToNameAndField) |> List.ofSeq
+    (format, fields)
 
   /// Creates a new event with given level, format and arguments. Format may
   /// contain String.Format-esque format placeholders.

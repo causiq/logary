@@ -131,9 +131,40 @@ let tests =
       let args : obj[] = [|"sentence"; 4|]
       (because "converting a String.Format into a message template" <| fun () ->
         Message.templateFromFormat format args)
-      |> should equal ("This {arg0} contains {arg1} words.",
-                       [ "arg0", Field (String "sentence", None)
-                         "arg1", Field (Int64 4L, None) ])
+      |> should equal ("This {0} contains {1} words.",
+                       [ "0", Field (String "sentence", None)
+                         "1", Field (Int64 4L, None) ])
+      |> thatsIt
+      
+    testCase "Formatting.templateFromFormat, named and positional fields" <| fun _ ->
+      let format = "This {gramaticalStructure} contains {wordCount} {0}."
+      let args : obj[] = [|"sentence"; 4; "words"|]
+      (because "fields are matched left-to-right when any fields are named" <| fun () ->
+        Message.templateFromFormat format args)
+      |> should equal ("This {gramaticalStructure} contains {wordCount} {0}.",
+                       [ "gramaticalStructure", Field (String "sentence", None)
+                         "wordCount", Field (Int64 4L, None)
+                         "0", Field (String "words", None) ])
+      |> thatsIt
+
+    testCase "Formatting.templateFromFormat, positional fields" <| fun _ ->
+      let format = "Positionally - two {2} . {2} . zero {0} . {0}"
+      let args : obj[] = [|0;1;2;3|] 
+      (because "fields are matched positionally when all are numbered" <| fun () ->
+        Message.templateFromFormat format args)
+      |> should equal ("Positionally - two {2} . {2} . zero {0} . {0}",
+                       [ ("0", Field (Int64 0L, None))
+                         ("2", Field (Int64 2L, None)) ])
+      |> thatsIt
+
+    testCase "Formatting.templateFromFormat, named fields" <| fun _ ->
+      let format = "This {gramaticalStructure} contains {wordCount} words."
+      let args : obj[] = [|"sentence"; 4|]
+      (because "fields are matched left-to-right in message template" <| fun () ->
+        Message.templateFromFormat format args)
+      |> should equal ("This {gramaticalStructure} contains {wordCount} words.",
+                       [ "gramaticalStructure", Field (String "sentence", None)
+                         "wordCount", Field (Int64 4L, None) ])
       |> thatsIt
 
     ]
