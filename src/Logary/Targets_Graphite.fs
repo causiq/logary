@@ -30,7 +30,7 @@ type GraphiteConf =
     { hostname = hostname
       port     = port }
 
-module internal Impl =
+module Impl =
 
   type GraphiteState =
     { client         : TcpClient

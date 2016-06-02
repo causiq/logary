@@ -853,6 +853,21 @@ module Field =
   let inline init (value : ^a) =
     Field (Value.serialize value, None)
 
+  /// Converts a String.Format-style format string and an array of arguments into
+  /// a message template and a set of fields.
+  let templateFromFormat (format : string) (args : obj[]) =
+    let fields =
+      args
+      |> Array.mapi (fun i v ->
+        sprintf "arg%i" i,
+        Field (Value.ofObject v, None))
+      |> List.ofArray
+
+    // Replace {0}..{n} with {arg0}..{argn}
+    let template = Seq.fold (fun acc i -> String.replace (sprintf "{%i}" i) (sprintf "{arg%i}" i) acc) format [0..args.Length]
+    (template, fields)
+
+
 /// This is the main value type of Logary. It spans both logging and metrics.
 type Message =
   { /// The 'path' or 'name' of this data point. Do not confuse template in
@@ -1176,7 +1191,7 @@ module Message =
 
   /// Converts a String.Format-style format string and an array of arguments into
   /// a message template and a set of fields.
-  let internal templateFromFormat (format : string) (args : obj[]) =
+  let templateFromFormat (format : string) (args : obj[]) =
     let parsedTemplate = Parser.parse format
     let scalarNamesAndValues = captureNamesAndValuesAsScalars parsedTemplate args
     let fields = scalarNamesAndValues |> Seq.map (convertToNameAndField) |> List.ofSeq
@@ -1186,7 +1201,7 @@ module Message =
   /// contain String.Format-esque format placeholders.
   [<CompiledName "EventFormat">]
   let eventFormat (level, format, [<ParamArray>] args : obj[]) =
-    let (template, fields) = templateFromFormat format args
+    let (template, fields) = Field.templateFromFormat format args
     event level template |> setFieldValues fields
 
   /// Run the function `f` and measure how long it takes; logging that
