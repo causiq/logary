@@ -26,4 +26,4 @@ DEPENDENCIES
   albacore (>= 2.3.6)
 
 BUNDLED WITH
-   1.11.2
+   1.12.3

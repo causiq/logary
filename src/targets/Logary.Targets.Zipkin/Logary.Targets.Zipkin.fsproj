@@ -35,12 +35,16 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
+    <Reference Include="Thrift">
+      <HintPath>..\..\..\..\Zipkin.Tracer\src\Zipkin.Tracer\bin\Debug\Thrift.dll</HintPath>
+    </Reference>
+    <Reference Include="Zipkin.Tracer">
+      <HintPath>..\..\..\..\Zipkin.Tracer\src\Zipkin.Tracer\bin\Debug\ZipKin.Tracer.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Types.fs" />
-    <Compile Include="RestkinTarget.fs" />
     <Compile Include="AssemblyVersionInfo.fs" />
-    <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Targets_Zipkin.fs" />
     <None Include="Script.fsx" />
     <None Include="paket.references" />
     <None Include="app.config" />
@@ -87,11 +91,6 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
-        <Reference Include="NodaTime">
-          <HintPath>..\..\..\packages\NodaTime\lib\net35-Client\NodaTime.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
         <Reference Include="System.Xml">
           <Paket>True</Paket>
         </Reference>
@@ -99,14 +98,6 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <ItemGroup>
-        <Reference Include="RestSharp">
-          <HintPath>..\..\..\packages\RestSharp\lib\net45\RestSharp.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'" />
   </Choose>
 </Project>
