@@ -16,11 +16,6 @@ namespace Logary
         /// C#-oriented-method: Write an Event to the logger. Exposes all parameters in a way that should make
         /// it very easy to use the logging behaviour from C#.
         /// </summary>
-        /// <remarks>
-        /// This method takes the **LogLevel** first, and then the message; to avoid having to grapple with
-        /// overload resolution. The other Log(string, LogLine ...) method is in F# and won't add the same
-        /// good defaults as this method.
-        /// </remarks>
         /// <param name="logger">Instance to invoke the extension method on</param>
         /// <param name="level"></param>
         /// <param name="template">A template message to attach to the event</param>
@@ -30,9 +25,6 @@ namespace Logary
         /// send an anonymous object whose public properties are then serialised
         /// as a dictionary.
         /// This is the message that you want to log.
-        /// It's worth noting that a message without string.Format-ed parameters, is more equal
-        /// across time, and if you have custom data you want to pass, you should rather set
-        /// that data on the 'data' property of LogLine (with SetData and SetDatas).
         /// </param>
         /// <param name="timestamp">
         /// When the Message was 'actual'. Optional, defaults to when this method is called.
@@ -53,9 +45,9 @@ namespace Logary
             if (template == null) throw new ArgumentNullException("template");
 
             var msg = MessageModule.Event(level, template);
-            if (fields != null) msg.SetFieldsFromObject(fields);
-            if (timestamp != null) msg.SetTimestamp(timestamp.Value);
-            if (exn != null) msg.AddException (exn);
+            if (fields != null) msg = msg.SetFieldsFromObject(fields);
+            if (timestamp != null) msg = msg.SetTimestamp(timestamp.Value);
+            if (exn != null) msg = msg.AddException (exn);
 
             logger.Log(msg).Start();
         }
@@ -64,11 +56,6 @@ namespace Logary
         /// C#-oriented-method: Write an Event to the logger. Exposes all parameters in a way that should make
         /// it very easy to use the logging behaviour from C#.
         /// </summary>
-        /// <remarks>
-        /// This method takes the **LogLevel** first, and then the message; to avoid having to grapple with
-        /// overload resolution. The other Log(string, LogLine ...) method is in F# and won't add the same
-        /// good defaults as this method.
-        /// </remarks>
         /// <param name="logger"></param>
         /// <param name="level"></param>
         /// <param name="template">
@@ -78,7 +65,7 @@ namespace Logary
         /// that data on the 'data' property of Message (with SetField and SetContext*).</param>
         /// <param name="setterTransformer">
         /// There are extension methods in this library that go towards creating new instances
-        /// of LogLine that you can use to change the value inside this function.
+        /// of Message that you can use to change the value inside this function.
         /// </param>
         public static void LogEvent(
             this Logger logger,
@@ -98,24 +85,25 @@ namespace Logary
 
         /// <summary>
         /// Use to time the time it takes to execute function <c>f</c>.
+        /// Logging is a Gauge in the unit seconds
         /// </summary>
-        public static T Time<T>(this Logger logger, Func<T> f, LogLevel level = null)
+        public static T Time<T>(this Logger logger, Func<T> f)
         {
             if (logger == null) throw new ArgumentNullException("logger");
             if (f == null) throw new ArgumentNullException("f");
-            level = level ?? LogLevel.Debug;
-            return LoggerModule.Time<T>(logger, null, CSharpFacade.ToFSharpFunc(f));
+           
+            return LoggerModule.Time(logger, null, CSharpFacade.ToFSharpFunc(f));
         }
 
         /// <summary>
         /// Use to time the time it takes to execute action <c>a</c>.
         /// </summary>
-        public static void Time(this Logger logger, Action a, LogLevel level = null)
+        public static void Time(this Logger logger, Action a)
         {
             Time (logger, () => {
                 a ();
                 return 0;
-            }, level);
+            });
         }
 
         /// <summary>
