@@ -5,4 +5,5 @@ FluentMigrator
 FluentMigrator.Runner
 Machine.Specifications
 Machine.Specifications.Should
+Machine.Specifications.Runner.Console 
 System.Data.SQLite.Core
