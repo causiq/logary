@@ -61,59 +61,60 @@ module Serialisation =
       >> Seq.sortBy fst
       >> List.ofSeq
 
-    let rec simpleValue
+    let rec getValues
+      (valueKey : string)
       isTag
       (kvs : (string * string) list)
-      (values : (string * string) list) = function
+      (values : (string * string) list)  = function
       | Float v ->
-        kvs, ("value", v.ToString(Culture.invariant)) :: values
+        kvs, (valueKey, v.ToString(Culture.invariant)) :: values
 
       | Int64 v ->
-        kvs, ("value", v.ToString(Culture.invariant) + "i") :: values
+        kvs, (valueKey, v.ToString(Culture.invariant) + "i") :: values
 
       | String s ->
         let fser = if isTag then serialiseStringTag else serialiseStringValue
-        kvs, ("value", fser s) :: values
+        kvs, (valueKey, fser s) :: values
 
       | Bool true ->
-        kvs, ("value", "true") :: values
+        kvs, (valueKey, "true") :: values
 
       | Bool false ->
-        kvs, ("value", "false") :: values
+        kvs, (valueKey, "false") :: values
 
       | BigInt v ->
         if v > bigint Int64.MaxValue then
           let str = Int64.MaxValue.ToString(Culture.invariant) + "i"
-          kvs, ("value", str) :: values
+          kvs, (valueKey, str) :: values
         elif v < bigint Int64.MinValue then
           let str = Int64.MinValue.ToString(Culture.invariant) + "i"
-          kvs, ("value", str) :: values
+          kvs, (valueKey, str) :: values
         else
           let str = v.ToString(Culture.invariant) + "i"
-          kvs, ("value", str) :: values
+          kvs, (valueKey, str) :: values
 
       | Binary (bs, ct) ->
         ("value_ct", ct) :: kvs,
-        ("value", Convert.ToBase64String(bs)) :: values
+        (valueKey, Convert.ToBase64String(bs)) :: values
 
       | Fraction (n, d) ->
         kvs,
-        ("value", (n / d).ToString(Culture.invariant)) :: values
+        (valueKey, (n / d).ToString(Culture.invariant)) :: values
 
       | Object _ as o ->
-        complexValue kvs values o
+        complexValue valueKey kvs values o
 
       | Array _ as a ->
-        complexValue kvs values a
+        complexValue valueKey kvs values a
 
-    and extractSimple isTag v =
-      match simpleValue isTag [] [] v with
+    and extractSimple valueKey isTag v =
+      match getValues valueKey isTag [] [] v with
       | _, (_, str) :: _ -> Some str
       | _ -> None
 
-    and complexValue kvs values = function
+    and complexValue valueKey kvs values = function
       | Object mapKvs ->
-        let newValues = mapKvs |> mapExtract (extractSimple false)
+        let newValues = mapKvs |> mapExtract (extractSimple valueKey false)
         kvs, newValues @ values
 
       | Array arr ->
@@ -122,7 +123,7 @@ module Serialisation =
             acc
 
           | h :: tail ->
-            match extractSimple false h with
+            match extractSimple valueKey false h with
             | Some str ->
               array (i + 1) ((sprintf "arr_%i" i, str) :: acc) tail
             | None ->
@@ -133,9 +134,11 @@ module Serialisation =
       | x ->
         failwithf "'%A' is not a complex value" x
 
+    let simpleValue = getValues "value"
+
     let outer context =
       let context' =
-        context |> mapExtract (extractSimple true)
+        context |> mapExtract (extractSimple "value" true)
 
       function
       | Gauge (value, Scalar)
@@ -149,10 +152,22 @@ module Serialisation =
         values
 
       | Event templ ->
-        // TODO: provide hash
-        simpleValue false context' [] (Value.Int64 1L)
+        let kvs, values = simpleValue false context' [] (Value.Int64 1L)
+        ("Event", serialiseStringTag templ) :: kvs, values
+
+    let fieldValues (fields : Map<PointName, Field>)  =
+      Map.toSeq fields
+      |> Seq.map (fun (key, (Field (value, _))) -> PointName.format key, value)
+      |> Map.ofSeq
+      |> Value.Object
+      |> getValues "value" false [] []
+
+    let fieldkvs, fieldvalues = fieldValues message.fields
 
     let kvs, values = outer message.context message.value
+
+    let kvs = List.concat [fieldkvs; kvs]
+    let values = List.concat [fieldvalues; values]
 
     sprintf "%O%s %s %i"
             (serialisePointName message.name)
