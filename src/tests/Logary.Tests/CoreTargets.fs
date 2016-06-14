@@ -11,13 +11,13 @@ open Fac
 [<Tests>]
 let tests =
   testList "CoreTargets" [
-    testCase "initialising TextWriter target" <| fun _ ->
+    testCase "writing with Console target directly" <| fun _ ->
       let target = create (TextWriterConf.create(System.Console.Out, System.Console.Error)) (PointName.ofSingle "sample console")
       let instance = target.initer emptyRuntime |> run
       Assert.Equal("instance name should eq sample console", instance.name, PointName.ofSingle "sample console")
       start instance.server |> ignore
 
-    testCase "writing with Console target directly" <| fun _ ->
+    testCase "initialising TextWriter target" <| fun _ ->
       let stdout = Fac.textWriter ()
       let target = create (TextWriterConf.create(stdout, stdout)) (PointName.ofSingle "writing console target")
       let instance = target |> Target.init emptyRuntime |> run
@@ -28,6 +28,23 @@ let tests =
         instance |> finaliseTarget
         stdout.ToString())
       |> should contain "Hello World!"
+      |> thatsIt
+
+    testCase "initialising TextWriter target" <| fun _ ->
+      let stdout = Fac.textWriter ()
+      let target = create (TextWriterConf.create(stdout, stdout)) (PointName.ofSingle "writing console target")
+      let instance = target |> Target.init emptyRuntime |> run
+      start instance.server |> ignore
+
+      let x = dict ["foo", "bar"]
+      (because "logging with fields then finalising the target" <| fun () ->
+        Message.eventInfo "Hello World!" |> Message.setFieldFromObject "the Name" x |> logTarget instance
+        instance |> finaliseTarget
+        stdout.ToString())
+      |> should contain "Hello World!"
+      |> should contain "foo"
+      |> should contain "bar"
+      |> should contain "the Name"
       |> thatsIt
 
     testCase "``error levels should be to error text writer``" <| fun _ ->
