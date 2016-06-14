@@ -76,7 +76,7 @@ namespace Logary.Specs
         It can_log_fatal = () => logger.LogEvent(LogLevel.Fatal, "Hello world");
     }
 
-    [Pure]
+    [Pure, Ignore("Does not work on Mono")]
     public class When_getting_current_logger_name
     {
         static PointName subject = Logging.GetCurrentLoggerName();
