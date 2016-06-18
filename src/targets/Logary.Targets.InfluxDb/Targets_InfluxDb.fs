@@ -14,13 +14,13 @@ module Serialisation =
   let serialiseTimestamp (ts : EpochNanoSeconds) =
     ts.ToString(Culture.invariant)
 
-  let escapeString (s : string) =   
+  let escapeString (s : string) =
     s
      .Replace(",", @"\,")
      .Replace(" ", "\ ")
-     .Replace("=", "\=")    
+     .Replace("=", "\=")
 
-  let escapeStringValue (s : string) =   
+  let escapeStringValue (s : string) =
     s
      .Replace("\"", "\\\"")
 
@@ -237,7 +237,7 @@ module internal Impl =
     let tryAddAuth conf =
       conf.username
       |> Option.bind (fun u -> conf.password |> Option.map (fun p -> u, p))
-      |> Option.fold (fun _ (u, p) -> withBasicAuthentication u p) id
+      |> Option.fold (fun _ (u, p) -> Request.basicAuthentication u p) id
 
     let rec loop () : Job<unit> =
       Alt.choose [
@@ -254,20 +254,20 @@ module internal Impl =
           job {    
             //printfn "body: [\r\n%s\r\n]" body
             let req =
-              createRequest Post endpoint
-              |> withKeepAlive true
-              |> withBody (BodyString body)
+              Request.create Post endpoint
+              |> Request.keepAlive true
+              |> Request.body (BodyString body)
               |> tryAddAuth conf
             try
               use! resp = getResponse req
               let! body = Response.readBodyAsString resp
-              if resp.StatusCode > 299 then
+              if resp.statusCode > 299 then
                 do! Logger.log ri.logger (
                       Message.event Error "problem receiving response"
-                      |> Message.setField "statusCode" resp.StatusCode
+                      |> Message.setField "statusCode" resp.statusCode
                       |> Message.setField "body" body)
                 //printfn "body: %s, response %A" body resp
-                failwithf "got response code %i" resp.StatusCode
+                failwithf "got response code %i" resp.statusCode
               else   
                 //printfn "Acking"
                 do! Seq.iterJobIgnore reqestAckJobCreator reqs
