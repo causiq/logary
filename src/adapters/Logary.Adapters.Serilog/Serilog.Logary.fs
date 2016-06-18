@@ -19,10 +19,8 @@ module SerilogEvent =
     | _ -> LogLevel.Info
 
   let logEventPropertyValueToObj (lep : LogEventPropertyValue) =
-    match lep with
-    | :? ScalarValue as sv -> sv.Value
-    // | :? StructureValue as stv -> box (stv.Properties |> Seq.map (fun p -> p.Value))
-    | _ -> box lep
+    // TODO: consider if passing serilog values directly into Logary is appropriate
+    box lep
 
   let toLogary (event : Serilog.Events.LogEvent) =
     let fields =
