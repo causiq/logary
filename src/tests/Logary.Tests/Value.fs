@@ -13,6 +13,10 @@ let valueTests =
                    (Array [ Int64 1L; Int64 2L; Int64 3L ])
                    "should convert boxed array of ints to Value.Array of Int64"
 
+    testCase "converting null array" <| fun _ ->
+      let arr = [|null|]
+      Value.ofObject arr |> ignore
+
     testProperty "converting arbitrary array" <| fun (arr : _[]) ->
       Value.ofObject arr |> ignore
   ]

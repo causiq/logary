@@ -4,6 +4,7 @@ open System
 open System.Reflection
 open System.Runtime.CompilerServices
 open System.Runtime.InteropServices
+open Microsoft.FSharp.Reflection
 open Logary
 open Logary.Utils.Chiron
 open Logary.Utils.Chiron.Operators
@@ -208,26 +209,43 @@ module Value =
 
     | :? Array as arr ->
       [ for i in 0..arr.Length-1 do
-          yield ofObject (arr.GetValue i) ]
+          let v = arr.GetValue i
+          if v <> null then yield ofObject v ]
       |> Array
 
     | :? IEnumerable<KeyValuePair<string, obj>> as dict ->
       dict
-      |> Seq.map (fun (KeyValue (k, v)) -> (k, ofObject v))
+      |> Seq.choose (function
+        | KeyValue (k, v) when v <> null ->
+          Some (k, ofObject v)
+
+        | otherwise ->
+          None)
+
       |> Map.ofSeq
       |> Object
 
     //| :? Map<string, obj> as map -> Map.map (fun _ v -> fromObject v) map |> Object
     | :? IEnumerable<obj> as ie ->
-      Seq.map ofObject ie
+      ie
+      |> Seq.filter ((<>) null)
+      |> Seq.map ofObject
       |> Seq.toList
       |> Array
 
+    | du when FSharpType.IsUnion (du.GetType()) ->
+      let uci, _ = FSharpValue.GetUnionFields(du, du.GetType())
+      String uci.Name
+
     // POCOs
-    | a ->
-      Map.ofObject a
+    | a when a <> null ->
+      a
+      |> Map.ofObject
       |> Map.map (fun _ v -> ofObject v)
       |> Object
+
+    | otherwise ->
+      failwithf "Cannot convert %A to a Value" otherwise
 
 [<AutoOpen>]
 module Capture =
@@ -426,7 +444,7 @@ module Mapping =
         let fields =
           [ yield "type", String (e.GetType ()).FullName
             yield "message", String e.Message
-            if e.TargetSite <> null then 
+            if e.TargetSite <> null then
               yield "targetSite", String (e.TargetSite.ToString ())
             if e.StackTrace <> null then
               yield "stackTrace", String e.StackTrace
@@ -1048,7 +1066,7 @@ module Message =
     |> List.ofSeq
     |> fun fields -> setContextValues fields msg
 
-  /// Uses reflection to set all 
+  /// Uses reflection to set all
   [<CompiledName "SetContextFromObject">]
   let setContextFromObject (data : obj) msg =
     Map.ofObject data
@@ -1175,13 +1193,13 @@ module Message =
 
   open Logary.Utils.FsMessageTemplates
 
-  /// A destructuring strategy for FsMessageTemplates which simply treats 
+  /// A destructuring strategy for FsMessageTemplates which simply treats
   /// everything as a 'Scalar' object which can later be handled by Logary
   /// as `Field (Value.ofObject o, None)`
   let internal destructureAllAsScalar : Destructurer =
     fun request -> TemplatePropertyValue.ScalarValue request.Value
-  
-  let internal captureNamesAndValuesAsScalars (t: Template) (args: obj[]) = 
+
+  let internal captureNamesAndValuesAsScalars (t: Template) (args: obj[]) =
     Capturing.capturePropertiesWith ignore destructureAllAsScalar 1 t args
 
   let internal convertToNameAndField (pnv : PropertyNameAndValue) : string * Field =
