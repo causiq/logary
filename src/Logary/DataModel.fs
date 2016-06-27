@@ -1264,7 +1264,7 @@ module Message =
   /// which starts at zero the 0001-01-01 00:00:00 instant.
   [<CompiledName "SetUTCTicks">]
   let setUTCTicks (ticks : int64) msg =
-    { msg with timestamp = ticks - DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).Ticks }
+    setTicksEpoch (ticks - DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).Ticks) msg
 
   /// Update the message with the current timestamp.
   [<CompiledName "UpdateTimestamp">]
