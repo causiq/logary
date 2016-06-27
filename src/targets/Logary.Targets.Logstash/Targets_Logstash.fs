@@ -98,7 +98,7 @@ module internal Impl =
                 Json.format (serialise message)
                 |> UTF8.bytes
 
-              do! Job.Scheduler.isolate (fun _ -> bytes |>> state.sender)
+              do! Job.Scheduler.isolate (fun _ -> state.sender <~| (UTF8.bytes (message.name.ToString())) <<|  bytes)
 
               do! ack *<= ()
               return! loop state
