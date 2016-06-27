@@ -70,7 +70,7 @@ module internal Impl =
   let createState publishTo : State =
     let context = new Context()
     let sender = Context.pub context
-    Socket.connect sender publishTo
+    Socket.bind sender publishTo
 
     { zmqCtx = context
       sender = sender }
