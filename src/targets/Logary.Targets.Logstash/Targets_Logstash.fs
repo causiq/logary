@@ -25,7 +25,7 @@ open Logary.Utils.Chiron
 /// This is the default address this Target publishes messages to.
 [<Literal>]
 let DefaultPublishTo =
-  "tcp://127.0.0.1:5001"
+  "tcp://127.0.0.1:2120"
 
 type LogstashConf =
   { publishTo  : string
