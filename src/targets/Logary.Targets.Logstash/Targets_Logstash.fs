@@ -27,14 +27,18 @@ open Logary.Utils.Chiron
 let DefaultPublishTo =
   "tcp://127.0.0.1:2120"
 
+type LogstashMode = PUSHPULL | PUBSUB
+
 type LogstashConf =
   { publishTo  : string
-    logMetrics : bool }
+    logMetrics : bool
+    mode       : LogstashMode }
 
   /// Create a new Logstash target config.
-  static member create(?publishTo, ?logMetrics) =
+  static member create(?publishTo, ?logMetrics, ?mode) =
     { publishTo  = defaultArg publishTo DefaultPublishTo
-      logMetrics = defaultArg logMetrics false }
+      logMetrics = defaultArg logMetrics false
+      mode       = defaultArg mode PUSHPULL }
 
 let serialise : Message -> Json =
   fun message ->
@@ -67,11 +71,19 @@ module internal Impl =
         (x.zmqCtx :> IDisposable).Dispose()
         (x.sender :> IDisposable).Dispose()
 
-  let createState publishTo : State =
-    let context = new Context()
-    let sender = Context.pub context
-    Socket.bind sender publishTo
+  let createSender context publishTo = function
+    | PUSHPULL ->
+      let sender = Context.push context
+      Socket.connect sender publishTo
+      sender
+    | PUBSUB ->
+      let sender = Context.sub context
+      Socket.bind sender publishTo
+      sender
 
+  let createState publishTo mode : State =
+    let context = new Context()
+    let sender = createSender context publishTo mode
     { zmqCtx = context
       sender = sender }
 
@@ -81,7 +93,7 @@ module internal Impl =
            (shutdown : Ch<_>) =
 
     let rec init config =
-      createState config.publishTo |> loop
+      createState config.publishTo config.mode |> loop
 
     and loop (state : State) : Job<unit> =
       Alt.choose [
