@@ -7,6 +7,8 @@ open Logary
 open Logary.Targets.InfluxDb
 open TestHelpers
 
+type myObj = {foo : string; number : int}
+
 [<Tests>]
 let lineProtocol =
   testList "syntax for line protocol" [
@@ -128,4 +130,38 @@ let lineProtocol =
                    @"""measurement\ with\ quotes"",tag\ key\ with\ spaces=tag\,value\,with""commas"" field_key\\\\=""string field value, only \"" need be quoted"" 1435362189575692182"
                    "should equal"
    
+    testCase "Simple event template gets logged as tag" <| fun _ ->
+      let msg =
+        Message.eventInfo "Template"      
+        |> Message.setName (PointName.ofSingle "Meassurement")
+        |> Message.setNanoEpoch 1435362189575692182L
+
+      stringEqual (Serialisation.serialiseMessage msg) 
+                  @"Meassurement,Event=Template value=1i 1435362189575692182"
+                  "should equal"
+
+    testCase "Simple event fields gets logged as fields" <| fun _ ->
+      let msg =
+        Message.eventInfo "Template"
+        |> Message.setField "Field1" "value1"
+        |> Message.setField "Field2" 2L
+        |> Message.setName (PointName.ofSingle "Meassurement")
+        |> Message.setNanoEpoch 1435362189575692182L
+
+      stringEqual (Serialisation.serialiseMessage msg) 
+                  @"Meassurement,Event=Template Field1=""value1"",Field2=2i,value=1i 1435362189575692182"
+                  "should equal"
+
+    testCase "Simple event complex field gets logged as fields" <| fun _ ->
+     
+      let obj = {foo = "bar"; number = 1}
+      let msg =
+        Message.eventInfo "Template"
+        |> Message.setFieldsFromObject obj
+        |> Message.setName (PointName.ofSingle "Meassurement")
+        |> Message.setNanoEpoch 1435362189575692182L
+
+      stringEqual (Serialisation.serialiseMessage msg) 
+                  @"Meassurement,Event=Template foo=""bar"",number=1i,value=1i 1435362189575692182"
+                  "should equal"
   ]
