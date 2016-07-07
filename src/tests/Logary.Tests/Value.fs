@@ -1,7 +1,10 @@
 ﻿module Logary.Tests.Value
 
+open System
+open System.Collections.Generic
 open Fuchu
 open Logary
+open FsCheck
 
 module Assert = ExpectoPatronum.Expect
 
@@ -17,6 +20,25 @@ let valueTests =
       let arr = [|null|]
       Value.ofObject arr |> ignore
 
+    testProperty "converting null IEnumerable<>" <| fun (aList : list<_>)  ->
+      let a = aList :>  IEnumerable<obj>
+      Value.ofObject a |> ignore
+
     testProperty "converting arbitrary array" <| fun (arr : _[]) ->
       Value.ofObject arr |> ignore
+
+    testProperty "converting arbitrary object" <| fun (a : System.Object) ->
+      Value.ofObject a |> ignore
+
+    testProperty "converting arbitrary FSharp list" <| fun (a : list<_>) ->
+      Value.ofObject a |> ignore
+
+    testProperty "converting arbitrary System.Collections.Generic.List" <| fun (a : List<_>) ->
+      Value.ofObject a |> ignore
+    
+    testProperty "converting arbitrary list" <| fun (a : list<KeyValuePair<string, obj>>) ->
+      Value.ofObject a |> ignore
   ]
+
+  
+  
