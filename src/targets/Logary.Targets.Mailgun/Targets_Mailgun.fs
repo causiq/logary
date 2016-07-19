@@ -36,6 +36,7 @@ module internal Impl =
       ``to``      = conf.``to``
       cc          = conf.cc
       bcc         = conf.bcc
+      inlineImgs  = []
       // CONSIDER: If the message is a measure, the subject line will be just the value with unit.
       subject     = Formatting.MessageParts.formatValueShallow msg
       body        = body
