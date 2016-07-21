@@ -204,8 +204,11 @@ let asLogManager (inst : LogaryInstance) =
       member x.runtimeInfo =
         inst.runtimeInfo
 
+      member x.getLoggerAsync name =
+        getLogger inst.registry name
+
       member x.getLogger name =
-        name |> getLogger inst.registry |> run
+        x.getLoggerAsync name |> run
 
       member x.flushPending dur =
         Advanced.flushPending inst.registry <|> timeOut (dur.ToTimeSpan ())
