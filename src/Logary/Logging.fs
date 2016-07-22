@@ -35,6 +35,27 @@ let getCurrentLoggerName () =
   |> Seq.last
   |> getName
 
+type PromisedLogger (name, requestedLogger : Job<Logger>) =
+  let promised = Promise.Now.delay requestedLogger
+  interface Named with
+    member x.name = name
+
+  interface Logger with
+    member x.logVerboseWithAck fMessage =
+      Promise.read promised
+      |> Alt.afterJob (fun logger -> logger.logVerboseWithAck fMessage)
+
+    member x.logDebugWithAck fMessage =
+      Promise.read promised
+      |> Alt.afterJob (fun logger -> logger.logDebugWithAck fMessage)
+
+    member x.logWithAck fMessage =
+      Promise.read promised
+      |> Alt.afterJob (fun logger -> logger.logWithAck fMessage)
+
+    member x.level =
+      Verbose
+
 [<CompiledName "GetLoggerByPointName">]
 let getLoggerByPointName name =
   if box name = null then nullArg "name"
@@ -51,7 +72,7 @@ let getLoggerByPointName name =
     // this should be the only location we actually do the run call, because
     // we absolutely need it initialising static variables synchronously at
     // the call-site
-    |> Job.Global.run
+    |> fun l -> PromisedLogger(name, l) :> Logger
 
 /// Gets a logger by a given name.
 [<CompiledName "GetLoggerByName">]
