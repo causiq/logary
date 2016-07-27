@@ -2,7 +2,8 @@
 
 ## Why?
 
-Logary is a high-performance, semantic logging, health and metrics library for .Net.
+Logary is a high-performance, semantic logging, health and metrics library for
+.Net.
 
 These are some reasons why you should use Logary:
 
@@ -181,7 +182,7 @@ An event is the most simple gauge of value 1.
 
 A derived value from one or many gauge.
 
-### Hierarchal logging
+### Hierarchial logging
 
 It means that you can have one `Rule`/`Logger` at level `Info` for namespace
 `MyCompany` and another `Rule` that matches loggers at `MyCompany.Submodule`
@@ -192,44 +193,41 @@ increasing the verbosity of its output (decreasing its log level).
 
 ### Log Level
 
-The highest log level is `Fatal` which should be reserved for things that
-make your service/process crash. Things like; "my disk is full and I'm a
-database trying to start", or "I'm a 2-tier service built with a database,
-which I cannot do any work without" warrant the `Fatal` level.
+The highest log level is `Fatal` which should be reserved for things that make
+your service/process crash. Things like; "my disk is full and I'm a database
+trying to start", or "I'm a 2-tier service built with a database, which I cannot
+do any work without" warrant the `Fatal` level.
 
 At this level human being are normally directly alerted.
 
-The next level is `Error` which should be reserved for what you consider
-to be edge-cases. E.g. if the data received from a socket is corrupt, or
-there was an unhandled exception that you as a programmer did not have in
-your mental model while writing the code. These events should be logged at
-the `Error` level.
+The next level is `Error` which should be reserved for what you consider to be
+edge-cases. E.g. if the data received from a socket is corrupt, or there was an
+unhandled exception that you as a programmer did not have in your mental model
+while writing the code. These events should be logged at the `Error` level.
 
 At this level human being are normally directly alerted.
 
-`Warn` are for things like 100 failed password attempts within 5 minutes,
-for one of your users, or a temporary network glitch while communicating
-with a "resource" such as your database.
+`Warn` are for things like 100 failed password attempts within 5 minutes, for
+one of your users, or a temporary network glitch while communicating with a
+"resource" such as your database.
 
-If these events for an anomoly and persist over time, humans may be
-alerted.
+If these events for an anomoly and persist over time, humans may be alerted.
 
-At `Info` level, I like to put events and gauges that measure company-
-relevant stuff, like when users sign in, sign up, an integration has
-to perform a retry or a service was started/restarted.
+At `Info` level, I like to put events and gauges that measure company- relevant
+stuff, like when users sign in, sign up, an integration has to perform a retry
+or a service was started/restarted.
 
 `Debug` level is the default level and the work-horse. You normally log all
 metrics at this level.
 
-`Verbose` is the level when you want that little extra. Not normally
-enabled.
+`Verbose` is the level when you want that little extra. Not normally enabled.
 
 ### Field and Fields
 
-Message fields may be interpolated (injected) into the template string of
-an `Event`. The word "template" is used, because the template string should
-not vary between requests/users, but be a 'static' string, which can be
-hashed and used for grouping in your logging infrastructure.
+Message fields may be interpolated (injected) into the template string of an
+`Event`. The word "template" is used, because the template string should not
+vary between requests/users, but be a 'static' string, which can be hashed and
+used for grouping in your logging infrastructure.
 
 When reading legacy code, you'll often find code like:
 
@@ -252,8 +250,8 @@ representing the user's name is added to the message.
 By doing it this way, we can be sure that the structured log data remains
 structured.
 
-The second function `setFieldFromObject` is used when the compiler
-complains that `setField` finds no available overloads.
+The second function `setFieldFromObject` is used when the compiler complains
+that `setField` finds no available overloads.
 
 ## Target Maintainers Wanted!
 
