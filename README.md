@@ -12,7 +12,7 @@ These are some reasons why you should use Logary:
  - `Logary.CSharp` for C# idiomatic logging code
  - doesn't throw exceptions (on your callers)
  - low latency logging, efficient use of resources
- - advanced `Rule`-based system supports hierarchial logging
+ - advanced `Rule`-based system supports hierarchical logging
  - you can create your own metrics and derived/computed metrics or;
  - you can treat events as a Gauge of 1, ship it to Influx and be done with it
 
@@ -154,7 +154,7 @@ At [https://logary.github.io/](https://logary.github.io) you can find the full d
 
 ## Data Model
 
-The core type is **`Message`** which is the smallest unit your can log. It has
+The core type is **`Message`** which is the smallest unit you can log. It has
 three sorts of point values: `Event`, `Gauge` and `Derived`. An event is
 normally a single line of code and carries a template string. E.g. "User
 logged in" is an event's template string, and the `Message` would have a field
@@ -182,7 +182,7 @@ An event is the most simple gauge of value 1.
 
 A derived value from one or many gauge.
 
-### Hierarchial logging
+### Hierarchical logging
 
 It means that you can have one `Rule`/`Logger` at level `Info` for namespace
 `MyCompany` and another `Rule` that matches loggers at `MyCompany.Submodule`
@@ -205,13 +205,13 @@ edge-cases. E.g. if the data received from a socket is corrupt, or there was an
 unhandled exception that you as a programmer did not have in your mental model
 while writing the code. These events should be logged at the `Error` level.
 
-At this level human being are normally directly alerted.
+At this level human beings are normally directly alerted.
 
 `Warn` are for things like 100 failed password attempts within 5 minutes, for
 one of your users, or a temporary network glitch while communicating with a
 "resource" such as your database.
 
-If these events for an anomoly and persist over time, humans may be alerted.
+If these events for an anomaly and persist over time, humans may be alerted.
 
 At `Info` level, I like to put events and gauges that measure company- relevant
 stuff, like when users sign in, sign up, an integration has to perform a retry
