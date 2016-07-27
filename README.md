@@ -154,7 +154,10 @@ At [https://logary.github.io/](https://logary.github.io) you can find the full d
 ## Data Model
 
 The core type is **`Message`** which is the smallest unit your can log. It has
-three sorts of point values: `Event`, `Gauge` and `Derived`.
+three sorts of point values: `Event`, `Gauge` and `Derived`. An event is
+normally a single line of code and carries a template string. E.g. "User
+logged in" is an event's template string, and the `Message` would have a field
+"user" => "haf".
 
 ### PointName
 
@@ -220,6 +223,37 @@ metrics at this level.
 
 `Verbose` is the level when you want that little extra. Not normally
 enabled.
+
+### Field and Fields
+
+Message fields may be interpolated (injected) into the template string of
+an `Event`. The word "template" is used, because the template string should
+not vary between requests/users, but be a 'static' string, which can be
+hashed and used for grouping in your logging infrastructure.
+
+When reading legacy code, you'll often find code like:
+
+``` fsharp
+logger.LogInfo("User {0} logged in", user.name)
+```
+
+In Logary, it could look like this:
+
+``` fsharp
+Message.event Info "User logged in"
+|> Message.setField "user" user.name
+|> Message.setFieldFromObject "picture" user.bitmap
+|> Logger.logSimple logger
+```
+
+Note how the event's template string is a compile time constant, but a field
+representing the user's name is added to the message.
+
+By doing it this way, we can be sure that the structured log data remains
+structured.
+
+The second function `setFieldFromObject` is used when the compiler
+complains that `setField` finds no available overloads.
 
 ## Target Maintainers Wanted!
 
