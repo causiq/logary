@@ -10,7 +10,7 @@ These are some reasons why you should use Logary:
  - F# idiomatic logging code
  - `Logary.CSharp` for C# idiomatic logging code
  - doesn't throw exceptions (on your callers)
- - fast, efficient
+ - low latency logging, efficient use of resources
  - advanced `Rule`-based system supports hierarchial logging
  - you can create your own metrics and derived/computed metrics or;
  - you can treat events as a Gauge of 1, ship it to Influx and be done with it
@@ -168,11 +168,58 @@ What you expect: `"User logged in"` with a field `"userName"`, `"haf"`.
 
 ### PointValue.Gauge
 
-A metric value.
+An instantaneous value. Imagine the needle showing the speed your car is going
+or a digital display showing the same instantaneous metric value of your car's
+speed.
+
+An event is the most simple gauge of value 1.
 
 ### PointValue.Derived
 
-A derived metric value, from one or many gauges.
+A derived value from one or many gauge.
+
+### Hierarchal logging
+
+It means that you can have one `Rule`/`Logger` at level `Info` for namespace
+`MyCompany` and another `Rule` that matches loggers at `MyCompany.Submodule`
+which allows Messages of level `Debug` to go through.
+
+A normal use-case for this is when you want to debug a particular module, by
+increasing the verbosity of its output (decreasing its log level).
+
+### Log Level
+
+The highest log level is `Fatal` which should be reserved for things that
+make your service/process crash. Things like; "my disk is full and I'm a
+database trying to start", or "I'm a 2-tier service built with a database,
+which I cannot do any work without" warrant the `Fatal` level.
+
+At this level human being are normally directly alerted.
+
+The next level is `Error` which should be reserved for what you consider
+to be edge-cases. E.g. if the data received from a socket is corrupt, or
+there was an unhandled exception that you as a programmer did not have in
+your mental model while writing the code. These events should be logged at
+the `Error` level.
+
+At this level human being are normally directly alerted.
+
+`Warn` are for things like 100 failed password attempts within 5 minutes,
+for one of your users, or a temporary network glitch while communicating
+with a "resource" such as your database.
+
+If these events for an anomoly and persist over time, humans may be
+alerted.
+
+At `Info` level, I like to put events and gauges that measure company-
+relevant stuff, like when users sign in, sign up, an integration has
+to perform a retry or a service was started/restarted.
+
+`Debug` level is the default level and the work-horse. You normally log all
+metrics at this level.
+
+`Verbose` is the level when you want that little extra. Not normally
+enabled.
 
 ## Target Maintainers Wanted!
 
