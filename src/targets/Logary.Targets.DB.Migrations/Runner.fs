@@ -39,7 +39,8 @@ type Runner(fac      : MigrationProcessorFactory,
   let showSql = defaultArg showSql true
 
   let mkRunner appContext =
-    let announcer = new TextWriterAnnouncer(Logger.info logger, ShowSql = showSql)
+    let announcer = new TextWriterAnnouncer(Message.event Info >> Logger.logSimple logger,
+                                            ShowSql = showSql)
     let assembly  = Assembly.GetExecutingAssembly()
     let ctx       = new RunnerContext(announcer,
                                       Namespace = "Logary.DB.Migrations",
@@ -74,7 +75,9 @@ type Runner(fac      : MigrationProcessorFactory,
 open System.Data
 
 /// used to avoid closing the SQLite connection in between migrations
-type ExistingConnectionProcessorFactory(conn : IDbConnection, processorFac : IDbConnection -> IMigrationProcessor) =
+type ExistingConnectionProcessorFactory(conn : IDbConnection,
+                                        processorFac : IDbConnection -> IMigrationProcessor) =
   inherit MigrationProcessorFactory()
+
   override x.Create (connStr : string, accouncer : IAnnouncer, opts : IMigrationProcessorOptions) =
     processorFac conn

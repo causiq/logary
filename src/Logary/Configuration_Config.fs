@@ -44,18 +44,16 @@ let withInternalLogger lgr (conf : LogaryConf) =
 let withInternalTargets level tconfs (conf : LogaryConf) =
   let internalRuntime =
     { serviceName = conf.runtimeInfo.serviceName
+      clock       = !Date.clock
       logger      = NullLogger() }
+
   job {
-    printfn "configuring internal targets"
     let! targets =
       tconfs
       |> List.map (Target.init internalRuntime)
       |> Job.conCollect
 
-    printfn "starting internal targets"
-    for targetLoop in targets |> Seq.map (fun t -> t.server) do
-      queue targetLoop
-
+    targets |> Seq.iter Target.runTarget
     return! withInternalLogger (createInternalLogger level targets) conf
   }
 
@@ -75,6 +73,7 @@ let confLogary serviceName =
     targets     = Map.empty
     metrics     = Map.empty
     runtimeInfo = { serviceName = serviceName
+                    clock       = !Date.clock
                     logger      = NullLogger() }
     middleware  = [] }
 

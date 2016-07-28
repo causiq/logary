@@ -37,6 +37,7 @@ let getCurrentLoggerName () =
 
 type PromisedLogger (name, requestedLogger : Job<Logger>) =
   let promised = Promise.Now.delay requestedLogger
+
   interface Named with
     member x.name = name
 
@@ -49,9 +50,15 @@ type PromisedLogger (name, requestedLogger : Job<Logger>) =
       Promise.read promised
       |> Alt.afterJob (fun logger -> logger.logDebugWithAck fMessage)
 
-    member x.logWithAck fMessage =
+    member x.logWithAck message =
       Promise.read promised
-      |> Alt.afterJob (fun logger -> logger.logWithAck fMessage)
+      |> Alt.afterJob (fun logger -> logger.logWithAck message)
+
+    member x.logSimple message =
+      Promise.read promised
+      |> Alt.afterJob (fun logger -> logger.logWithAck message)
+      |> Job.Ignore
+      |> start
 
     member x.level =
       Verbose

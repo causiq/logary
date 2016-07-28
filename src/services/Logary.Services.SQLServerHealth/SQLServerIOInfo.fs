@@ -169,27 +169,29 @@ module internal Impl =
     { connMgr     : Sql.ConnectionManager
       lastIOs     : IOInfo list * Instant
       deltaIOs    : IOInfo list * Duration
-      dps         : DP list
+      dps         : PointName list
       sampleFresh : bool }
 
-  type DPCalculator = IOInfo -> DP -> Measure
+  type DPCalculator = IOInfo -> PointName -> Message
 
   let datapoints =
-    let fromInt64 u v dp = Measure.fromInt64 dp u v
-    let fromFloat u v dp = Measure.fromFloat dp u v
-    [ "io_stall_read", fun io -> fromInt64 (Units.Time Milliseconds) io.ioStallReadMs
-      "io_stall_write", fun io -> fromInt64 (Units.Time Milliseconds) io.ioStallWriteMs 
-      "io_stall", fun io -> fromInt64 (Units.Time Milliseconds) io.ioStall
-      "num_of_reads", fun io -> fromInt64 (Units.Unit "reads") io.numOfReads
-      "num_of_writes", fun io -> fromInt64 (Units.Unit "writes") io.numOfWrites
-      "num_of_bytes_read", fun io -> fromInt64 Units.Bytes io.numOfBytesRead 
-      "num_of_bytes_written", fun io -> fromInt64 Units.Bytes io.numOfBytesRead
-      "read_latency", IOInfo.readLatency >> fromFloat (Units.Time Milliseconds)
-      "write_latency", IOInfo.writeLatency >> fromFloat (Units.Time Milliseconds)
-      "latency", IOInfo.latency >> fromFloat (Units.Time Milliseconds)
-      "bytes_per_read", IOInfo.bytesPerRead >> fromFloat Units.Bytes
-      "bytes_per_write", IOInfo.bytesPerWrite >> fromFloat Units.Bytes
-      "bytes_per_transfer", IOInfo.bytesPerTransfer >> fromFloat Units.Bytes
+    let ofInt64 u v dp = Message.gaugeWithUnit dp u (Int64 v)
+    let ofInt64Simple v dp = Message.gaugeWithUnit dp Scalar (Int64 v)
+    let ofFloat u v dp = Message.gaugeWithUnit dp u (Float v)
+    let inline ofMs v = ofFloat Seconds (float v / 1000.)
+    [ "io_stall_read",        fun io -> ofMs io.ioStallReadMs
+      "io_stall_write",       fun io -> ofMs io.ioStallWriteMs
+      "io_stall",             fun io -> ofMs io.ioStall
+      "num_of_reads",         fun io -> ofInt64Simple io.numOfReads
+      "num_of_writes",        fun io -> ofInt64Simple io.numOfWrites
+      "num_of_bytes_read",    fun io -> ofInt64 Bytes io.numOfBytesRead 
+      "num_of_bytes_written", fun io -> ofInt64 Bytes io.numOfBytesRead
+      "read_latency",         IOInfo.readLatency >> ofMs
+      "write_latency",        IOInfo.writeLatency >> ofMs
+      "latency",              IOInfo.latency >> ofMs
+      "bytes_per_read",       IOInfo.bytesPerRead >> ofFloat Bytes
+      "bytes_per_write",      IOInfo.bytesPerWrite >> ofFloat Bytes
+      "bytes_per_transfer",   IOInfo.bytesPerTransfer >> ofFloat Bytes
     ]
     |> Map.ofList : Map<string, DPCalculator>
 
@@ -197,7 +199,7 @@ module internal Impl =
     sprintf "%s_%s" prefix metric
 
   let formatFull prefix metric instance =
-    DP [ "logary"; "sql_server_health"; formatPrefixMetric prefix metric; instance ]
+    PointName [| "Logary"; "SqlServerHealth"; formatPrefixMetric prefix metric; instance |]
 
   let findCalculator metric =
     match datapoints |> Map.tryFind metric with
@@ -206,8 +208,8 @@ module internal Impl =
 
   /// ns: logary.sql_server_health
   /// prefix: drive | file (metric name prefix)
-  /// instance: intelliplan.mdf
-  let dps prefix instance : DP list =
+  /// instance: mydb.mdf
+  let dps prefix instance : PointName list =
     datapoints
     |> Seq.map (fun kv -> kv.Key) |> Seq.toList
     |> List.map (fun metric -> formatFull prefix metric instance)
@@ -219,17 +221,23 @@ module internal Impl =
 
   let byDrive drive info =
     cleanDrive info.drive = drive
+
   let byDbName db info =
     info.dbName = db
+
   let byFile file info =
     cleanFile info.filePath = file
 
-  let loop (conf : Conf) (ri : RuntimeInfo) (inbox : IActor<_>) =
-    let log = LogLine.setPath "Logary.Metrics.SQLServerHealth"
-              >> Logger.log ri.logger
+  let loop (conf : Conf) (ri : RuntimeInfo)
+           (requests : RingBuffer<_>)
+           (shutdown : Ch<_>) =
+
+    let log =
+      Message.setName (PointName [| "Logary"; "Services"; "SQLServerHealth" |])
+      >> Logger.logSimple ri.logger
 
     let rec init () = async {
-      LogLine.info "init" |> log
+      Message.event Info "Initialised" |> log
       let connMgr  = Sql.withNewConnection conf.openConn
       let measures = ioInfo connMgr |> Seq.cache
       let driveDps =
@@ -238,14 +246,16 @@ module internal Impl =
         |> Seq.map (fun l -> l.drive |> driveDps)
         |> List.ofSeq
         |> List.concat
+
       let fileDps =
         measures
         |> Seq.distinctBy (fun info -> info.filePath)
         |> Seq.map (fun info -> info.filePath |> fileDps)
         |> List.ofSeq
         |> List.concat
+
       return! running { connMgr     = connMgr
-                        lastIOs     = List.ofSeq measures, Date.now ()
+                        lastIOs     = List.ofSeq measures, Date.instant ()
                         deltaIOs    = [], Duration.Epsilon
                         dps         = driveDps @ fileDps
                         // first measurement isn't delta based, can't be returned
@@ -257,6 +267,7 @@ module internal Impl =
       // should we divide to get a rate and send the rate?
       ({ deltaIOs = deltas, dur
          lastIOs  = lastIOMeasures, lastIOInstant  } as state) = async {
+
       let! msg, _ = inbox.Receive()
       match msg with
       | GetValue (_, replChan) when not state.sampleFresh ->
@@ -320,23 +331,7 @@ module internal Impl =
         return! reset state
       }
 
-    and reset state = async {
-      LogLine.info "reset" |> log
-      return! init ()
-      }
-
-    and shutdown state = async {
-      LogLine.info "shutdown" |> log
-      return ()
-      }
-
     init ()
 
 /// Create the new SQLServer Health metric
 let create conf = MetricUtils.stdNamedMetric Probe (Impl.loop conf)
-
-/// C# interop: Create a new Noop metric that doesn't do very much
-[<CompiledName "Create">]
-let create' (conf, name) =
-  create conf name
-

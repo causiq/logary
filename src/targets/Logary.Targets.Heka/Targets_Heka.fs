@@ -143,6 +143,11 @@ module internal Impl =
       stream   : Stream
       hostname : string }
 
+    interface IDisposable with
+      member x.Dispose () =
+        (x.client :> IDisposable).Dispose()
+        x.stream.Dispose()
+
   let loop (conf : HekaConfig)
            (ri : RuntimeInfo)
            (requests : RingBuffer<TargetMessage>)
@@ -178,7 +183,7 @@ module internal Impl =
       let write (msg : Message) = job {
         msg.uuid        <- Guid.NewGuid().ToByteArray()
         msg.hostname    <- state.hostname
-        // TODO: fix
+        // TODO: ensure right Logary version is sent
         msg.env_version <- "4.0.7"
         msg.``type``    <- MessageType
         msg.addField (Field("service", Nullable ValueType.STRING, null,
@@ -204,10 +209,9 @@ module internal Impl =
         shutdown ^=> fun ack ->
           let dispose x = (x :> IDisposable).Dispose()
           job {
-            do! Try.safe "heka target disposing tcp stream, then client" ri.logger (Job.delay (fun () ->
-              dispose state.stream
-              dispose state.client
-              Job.result ()))
+            do Try.safe "heka target disposing tcp stream, then client" ri.logger
+                        (state :> IDisposable).Dispose
+                        ()
             do! ack *<= ()
           }
 

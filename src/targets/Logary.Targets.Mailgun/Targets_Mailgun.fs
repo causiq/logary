@@ -128,11 +128,6 @@ type MailgunLogaryConf with
 /// Create a new Mailgun target
 let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
 
-/// C# Interop: Create a new Mailgun target
-[<CompiledName "Create">]
-let create' (conf, name) =
-  create conf name
-
 /// Use with LogaryFactory.New( s => s.Target<Mailgun.Builder>() )
 type Builder(conf : MailgunLogaryConf, callParent : FactoryApi.ParentCallback<Builder>) =
   member x.MailData(from : MailAddress, ``to`` : MailAddress list, domain : Domain) =

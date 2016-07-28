@@ -20,7 +20,7 @@ type TargetMessage =
 /// A target instance is a spawned actor instance together with the name of this
 /// target instance.
 type TargetInstance =
-  { server   : Job<unit> // TODO: Job<Void>
+  { server   : Job<unit>
     requests : RingBuffer<TargetMessage>
     shutdown : Ch<IVar<unit>>
     /// The human readable name of the target.
@@ -67,6 +67,11 @@ let confTarget name (factory : PointName -> TargetConf) =
 /// TargetInstance in return which contains the running target.
 let init metadata (conf : TargetConf) : Job<TargetInstance> =
   conf.initer metadata
+
+/// Enqueues the target's loop on the global scheduler. Use with care, or you'll
+/// have more than one loop running.
+let runTarget (inst : TargetInstance) : unit =
+  queue inst.server
 
 /// Send the target a message, returning the same instance as was passed in when
 /// the Message was acked.

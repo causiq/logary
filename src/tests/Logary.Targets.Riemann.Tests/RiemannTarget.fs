@@ -35,7 +35,7 @@ let tests =
       roundtrip <| State(1L, "st", "svc", "hst", "desc", false, list ["t1"; "t2"], 2.)
 
     testCase "Event" <| fun _ ->
-      roundtrip <| Event.CreateDouble(1337., 1L, "st", "svc", "hst", "desc", list ["t1"; "t2"], 2.f, [])
+      roundtrip <| Event.createDouble(1337., 1L, "st", "svc", "hst", "desc", list ["t1"; "t2"], 2.f, [])
 
     testCase "Query" <| fun _ ->
       roundtrip <| Query("hi")

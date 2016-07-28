@@ -3,10 +3,8 @@
 open System
 open System.Net
 open System.IO
-
+open Hopac
 open ProtoBuf
-
-open Logary.Internals.Tcp
 open Logary.Riemann.Messages
 
 /// Converts int to networkByteOrder
@@ -19,7 +17,7 @@ let fromBytes (buf : byte []) =
   IPAddress.NetworkToHostOrder i
 
 /// Reads a Riemann-length from a stream at its current position
-let readLen (stream : Stream) = async {
+let readLen (stream : Stream) = job {
   let lenBuf = Array.zeroCreate 4 // TODO: use extracted buf
   let! wasRead = stream.AsyncRead(lenBuf, 0, 4) // TODO: faster with no async?
   if wasRead = 4 then
@@ -31,7 +29,7 @@ let writeLen len (stream : Stream) = async {
   do! toBytes len |> fun b -> stream.AsyncWrite(b, 0, 4)
   }
 
-let send (stream : Stream) (msg : byte array) = async {
+let send (stream : Stream) (msg : byte array) = job {
   do! stream.AsyncWrite(toBytes msg.Length)
   do! stream.AsyncWrite(msg, 0, msg.Length)
   do stream.Flush() // TODO: blocking?
@@ -40,7 +38,7 @@ let send (stream : Stream) (msg : byte array) = async {
 let private transfer len (source : Stream) (target : Stream) =
   let bufSize = 0x2000
   let buf = Array.zeroCreate bufSize // TODO: extract
-  let rec read' amountRead = async {
+  let rec read' amountRead = job {
     if amountRead >= len then
       return ()
     else
@@ -53,7 +51,7 @@ let private transfer len (source : Stream) (target : Stream) =
         return! read' (wasRead + amountRead) }
   read' 0
 
-let sendMessage (stream : Stream) (msg : Msg) = async {
+let sendMessage (stream : Stream) (msg : Msg) = job {
   use ms = new MemoryStream() // TODO: re-use MS?
   Serializer.Serialize(ms, msg)
   let len = int (ms.Position)
@@ -62,7 +60,7 @@ let sendMessage (stream : Stream) (msg : Msg) = async {
   do! transfer len ms stream
   }
 
-let readMessage (stream : Stream) = async {
+let readMessage (stream : Stream) = job {
   let! toRead = readLen stream
   use ms = new MemoryStream() // TODO: re-use MS?
   do! transfer toRead stream ms
@@ -70,14 +68,14 @@ let readMessage (stream : Stream) = async {
   return Serializer.Deserialize<Msg> ms
   }
 
-let sendEvents (stream : Stream) (es : Event seq) = async {
+let sendEvents (stream : Stream) (es : Event seq) = job {
   do! Msg(false, "", [], Unchecked.defaultof<Query>, es) |> sendMessage stream
   let! (response : Msg) = readMessage stream
   if not response.ok then return Choice2Of2 response.error
   else return Choice1Of2 ()
   }
 
-let sendQuery (stream : Stream) (q : Query) = async {
+let sendQuery (stream : Stream) (q : Query) = job {
   do! Msg(false,"", [], q, []) |> sendMessage stream
   let! (response : Msg) = readMessage stream
   if not response.ok then return Choice2Of2 response.error

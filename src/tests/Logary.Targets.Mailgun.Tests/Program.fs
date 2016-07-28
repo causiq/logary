@@ -1,7 +1,7 @@
 ﻿module Logary.Targets.Mailgun.Tests.Program
 
 open Fuchu
-
+open NodaTime
 open System
 open System.Net.Mail
 open Hopac
@@ -11,7 +11,10 @@ open Logary
 open Logary.Internals
 open Logary.Targets.Mailgun
 
-let emptyRuntime = { serviceName = "tests"; logger = NullLogger() }
+let emptyRuntime =
+  { serviceName = "tests"
+    clock       = SystemClock.Instance
+    logger      = NullLogger() }
 
 let flush = Target.flush >> Job.Ignore >> Job.Global.run
 

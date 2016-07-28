@@ -32,10 +32,26 @@ type Logger =
   /// it will be garbage collected in the end, whether it's awaited or not.
   abstract logWithAck : Message -> Alt<Promise<unit>>
 
+  /// Like logWithAck, but doesn't wait for the log line to finish being
+  /// persisted. This should be fine as long as your app is up 'for a while'
+  /// after calling this, or if you flush the registry before shutting down
+  /// your app (mostly; there will be a small interval before the job start
+  /// during which Logary will not have the value in its data structures).
+  ///
+  /// If you don't know which of the functions on Logger to use, you may
+  /// use this one and it "will just work".
+  ///
+  /// (Using this function means that you always commit to sending the log
+  /// message; this means that if any of your targets' incoming message buffers
+  /// are full, this call will hang forever)
+  abstract logSimple : Message -> unit
+
   /// Gets the currently set log level, aka. the granularity with which things
   /// are being logged.
   abstract level : LogLevel
 
+/// The Logger module provides functions for expressing how a Message should be
+/// logged.
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix); Extension>]
 module Logger =
   open System
@@ -66,6 +82,12 @@ module Logger =
   let log (logger : Logger) msg : Alt<unit> =
     logger.logWithAck (ensureName logger msg)
     |> Alt.afterFun ignore
+ 
+  /// Write a message but don't wait for the message to finish being logged,
+  /// instead start the Alt on the Hopac scheduler.
+  [<CompiledName "LogSimple"; Extension>]
+  let logSimple (logger : Logger) msg : unit =
+    log logger msg |> start
 
   [<CompiledName "LogWithAck"; Extension>]
   let logWithAck (logger : Logger) msg : Alt<Promise<unit>> =
@@ -122,3 +144,17 @@ module Logger =
   [<CompiledName "Time"; Extension>]
   let timeSimple (logger : Logger) f =
     time logger null f
+
+/// A logger that does absolutely nothing, useful for feeding into the target
+/// that is actually *the* internal logger target, to avoid recursive calls to
+/// itself.
+type NullLogger() =
+  let instaPromise =
+    Alt.always (Promise.Now.withValue ())
+  interface Logger with
+    member x.logVerboseWithAck messageFactory = instaPromise
+    member x.logDebugWithAck messageFactory = instaPromise
+    member x.logWithAck message = instaPromise
+    member x.logSimple message = ()
+    member x.level = Fatal
+    member x.name = PointName.ofList [ "Logary"; "Internals"; "NullLogger" ]

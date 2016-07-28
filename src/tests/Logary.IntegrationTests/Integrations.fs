@@ -2,6 +2,7 @@
 
 open System
 open System.Net
+open NodaTime
 open Fuchu
 open Hopac
 open Logary
@@ -27,26 +28,32 @@ let parseIP str =
     | Choice2Of2 e  -> raise (Exception (str, e))
   | true, ip -> ip
 
-let ri = { serviceName = "tests"; logger = NullLogger() }
+let ri =
+  { serviceName = "tests"
+    clock       = SystemClock.Instance
+    logger      = NullLogger() }
 
 [<Tests>]
 let integration =
-  let flush = Target.flush >> Async.Ignore >> Async.RunSynchronously
-  let stop = Target.shutdown >> Async.Ignore >> Async.RunSynchronously
+  let flush = Target.flush >> Job.Ignore >> run
+  let stop = Target.shutdown >> Job.Ignore >> run
   let localhost = parseIP "localhost"
 
   testList "riemann" [
     testCase "sending metrics to riemann" <| fun _ ->
       let riemann =
         Riemann.create
-          (Riemann.RiemannConf.Create(endpoint = IPEndPoint(localhost, 5555)))
-          "riemann"
+          (Riemann.RiemannConf.create(endpoint = IPEndPoint(localhost, 5555)))
+          (PointName.ofSingle "riemann")
         |> Target.init ri
+        |> run
+
       try
-        Measure.create' "logary.tests.integration" 14.7
-        |> Target.sendMeasure riemann
+        Message.gauge (PointName.parse "Logary.Tests.Integration") (Float 14.7)
+        |> Target.log riemann
+        |> Job.Ignore
+        |> run
         flush riemann
       finally
         stop riemann
-
     ]

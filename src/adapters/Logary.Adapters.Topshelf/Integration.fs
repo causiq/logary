@@ -11,14 +11,22 @@ module LogaryConfiguratorExtensions =
 
   [<Extension; CompiledName "UseLogary">]
   let useLogary (_ : HostConfigurator) (logary : LogManager) =
-    let ilog = logary.GetLogger "Topshelf"
+    let ilog = logary.getLogger (PointName [| "Topshelf" |])
+
     HostLogger.UseLogger
       { new HostLoggerConfigurator with
           member x.CreateLogWriterFactory () =
             { new LogWriterFactory with
                 member x.Get name =
-                  TopshelfAdapter(logary.GetLogger name) :> LogWriter
+                  TopshelfAdapter(logary.getLogger (PointName [| name |]))
+                  :> LogWriter
+
                 member x.Shutdown () =
-                  LogLine.verbose "LogWriterFactory shutdown called, but Logary integration doesn't support shutting down logary through TopShelf, as it's initialised outside."
-                  |> Logger.log ilog
-                  () } }
+                  let message =
+                    "LogWriterFactory shutdown called, but Logary integration " +
+                    "doesn't support shutting down logary through Topshelf, " +
+                    "as it's initialised outside."
+
+                  Message.event Verbose message |> Logger.logSimple ilog
+            }
+      }

@@ -3,106 +3,160 @@
 open System
 open System.Data
 open System.Net
-
 open Hopac
-
+open Hopac.Infixes
 open FsSql
-
-open NodaTime
-
-open Logary
 open Logary.Internals
 open Logary.Target
+open Logary.Utils.Chiron
+open Logary
 
 type DBConf =
-  { connFac : unit -> IDbConnection
-    schema  : string option }
-  static member Create openConn =
-    { connFac = openConn
-      schema  = None }
+  { connectionFactory : unit -> IDbConnection
+    schema            : string option }
+
+  static member create openConn =
+    { connectionFactory = openConn
+      schema            = None }
 
 module internal Impl =
 
   type DBInternalState =
-    { conn    : IDbConnection
-      connMgr : Sql.ConnectionManager }
+    { connection : IDbConnection
+      connMgr    : Sql.ConnectionManager }
+
+    interface IDisposable with
+      member x.Dispose () =
+        x.connection.Dispose()
 
   let P = Sql.Parameter.make
   let txn = Tx.transactional
 
   let printSchema = function
-    | Some (s : string) -> sprintf "%s." s
-    | None              -> String.Empty
+    | Some (s : string) ->
+      sprintf "%s." s
 
-  let insertMeasure schema (m : Measure) connMgr =
+    | None ->
+      String.Empty
+
+  let remapFields fields =
+    fields
+    |> Seq.map (function KeyValue(key, value) -> PointName.format key, value)
+    |> Map.ofSeq
+
+  let sharedParameters (m : Message) =
+    [ P("@host", Dns.GetHostName())
+      P("@name", m.name)
+      P("@fields", remapFields m.fields |> Json.serialize |> Json.format)
+      P("@context", m.context |> Json.serialize |> Json.format)
+      P("@epoch", m.timestamp)
+      P("@level", m.level.toInt ()) ]
+
+  let insertGauge schema (m : Message) (v : Value) connMgr =
     Sql.execNonQuery connMgr
-      (sprintf "INSERT INTO %sMetrics (Host, Path, EpochTicks, Level, Value)
-       VALUES (@host, @path, @epoch, @level, @value)" (printSchema schema))
-      [ P("@host", Dns.GetHostName())
-        P("@path", m.m_path)
-        P("@epoch", m.m_timestamp.Ticks)
-        P("@level", m.m_level.ToInt())
-        P("@value", m.m_value) ]
+      (sprintf "INSERT INTO %sGauges (Value, Host, Name, Fields, Context, EpochNanos, Level)
+       VALUES (@value, @host, @name, @fields, @context, @epoch, @level)" (printSchema schema))
+      [ yield P("@value", Value.toDouble v)
+        yield! sharedParameters m ]
 
-  let insertMeasure' schema m = insertMeasure schema m |> txn
+  let insertGaugeTx schema m v =
+    insertGauge schema m v |> txn
 
-  let insertLogLine schema (l : LogLine) connMgr =
+  let insertEvent schema (m : Message) (template : string) connMgr =
     Sql.execNonQuery connMgr
-      (sprintf "INSERT INTO %sLogLines (Host, Message, Data, Path, EpochTicks, Level, Exception, Tags)
+      (sprintf "INSERT INTO %sEvents (Host, Message, Data, Path, EpochTicks, Level, Exception, Tags)
        VALUES (@host, @message, @data, @path, @epoch, @level, @exception, @tags)" (printSchema schema))
-      [ P("@host", Dns.GetHostName())
-        P("@message", l.message)
-        P("@data", l.data)
-        P("@path", l.path)
-        P("@epoch", l.timestamp.Ticks)
-        P("@level", l.level.ToInt())
-        P("@exception", l.``exception`` |> Option.map (sprintf "%O") |> Option.getOrDefault)
-        P("@tags", String.Join(",", l.tags)) ]
+      [ yield P("@template", template)
+        yield! sharedParameters m ]
 
-  let insertLogLine' schema l = insertLogLine schema l |> txn
+  let insertEventTx schema message template =
+    insertEvent schema message template |> txn
 
-  let loop (conf : DBConf) (svc : RuntimeInfo) =
-    (fun (inbox : IActor<_>) ->
-      let log = LogLine.setPath "Logary.DB.loop" >> Logger.log svc.logger
-      let rec init () = async {
-        LogLine.debug "target is opening connection to DB" |> log
-        let c = conf.connFac ()
-        match c.State with
-        | ConnectionState.Broken
-        | ConnectionState.Closed -> c.Open()
-        | _ -> ()
-        return! running
-          { conn    = c
-            connMgr = Sql.withConnection c } }
+  let ensureOpen (c : IDbConnection) =
+    match c.State with
+    | ConnectionState.Broken
+    | ConnectionState.Closed ->
+      c.Open()
+      c
 
-      and running state = async {
-        let! msg, mopt = inbox.Receive()
-        match msg with
-        | Log l ->
-          let _ = insertLogLine' conf.schema l state.connMgr
-          return! running state
+    | _ ->
+      c
 
-        | Measure msr ->
-          let _ = insertMeasure' conf.schema msr state.connMgr
-          return! running state
+  let execInsert log (insert : Sql.ConnectionManager -> _) connMgr =
+    match insert connMgr with
+    | Tx.Commit _ ->
+      ()
 
-        | Flush chan ->
-          chan.Reply Ack
-          return! running state
+    | Tx.Rollback _ ->
+      Message.event Error "Insert was rolled back"
+      |> log
+      |> start
 
-        | Shutdown ackChan ->
-          try state.conn.Dispose() with _ -> ()
-          ackChan.Reply Ack
-          return () }
+    | Tx.Failed ex ->
+      Message.event Error "Insert failed"
+      |> log
+      |> start
 
-      init ())
+  let loop (conf : DBConf)
+           (svc: RuntimeInfo)
+           (requests : RingBuffer<_>)
+           (shutdown : Ch<_>) =
+
+    let log =
+      Message.setName (PointName [| "Logary"; "DB"; "loop" |])
+      >> Logger.log svc.logger
+
+    let rec init () =
+      log (Message.event Debug "DB target is opening connection")
+      |> Job.bind (fun _ ->
+        let c = ensureOpen (conf.connectionFactory ())
+        running { connection = c
+                  connMgr    = Sql.withConnection c })
+
+    and running state : Job<_> =
+      Alt.choose [
+        shutdown ^=> fun ack ->
+          job {
+            do! Job.Scheduler.isolate <| fun _ ->
+              Try.safe "DB target disposing connection"
+                       svc.logger
+                       (state :> IDisposable).Dispose
+                       ()
+            do! ack *<= ()
+          }
+
+        RingBuffer.take requests ^=> function
+          | Log (message, ack) ->
+            let insert =
+              match message.value with
+              | Event template ->
+                insertEventTx conf.schema message template
+
+              | Gauge (value, units) ->
+                insertGaugeTx conf.schema message value
+
+              | Derived (value, units) ->
+                insertGaugeTx conf.schema message value
+
+            Job.Scheduler.isolate (fun _ -> execInsert log insert state.connMgr)
+            >>=. running state
+
+          | Flush (ackCh, nack) ->
+            job {
+              do! Ch.give ackCh () <|> nack
+              return! running state
+            }
+
+      ] :> Job<_>
+
+    init ()
 
 /// Create a new SqlServer target configuration.
 let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
 
 /// C# interop: Create a new SqlServer target configuration.
 [<CompiledName("Create")>]
-let create' (conf, name) = create conf name
+let createSimple (conf, name) = create conf name
 
 /// In this step you have finished configuring all required things for the
 /// DB and can call Done() to complete the configuration.
@@ -124,12 +178,12 @@ and SecondStep =
 and Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
 
   new(callParent : FactoryApi.ParentCallback<_>) =
-    let conf = DBConf.Create (fun () -> failwith "inner build error")
+    let conf = DBConf.create (fun () -> failwith "inner build error")
     Builder(conf, callParent)
 
   /// configure how to create connections to the database.
   member x.ConnectionFactory(conn : Func<IDbConnection>) =
-    Builder({ conf with connFac = fun () -> conn.Invoke() }, callParent)
+    Builder({ conf with connectionFactory = fun () -> conn.Invoke() }, callParent)
     :> SecondStep
 
   interface SecondStep with

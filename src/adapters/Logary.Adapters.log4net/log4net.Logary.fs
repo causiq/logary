@@ -30,7 +30,7 @@ module internal Impl =
         !value
 
 /// The functions of the log4net domain and logary codomain.
-module Helpers =
+module LogaryHelpers =
 
   /// Map the log4net.Core.Level to a Logary.LogLevel.
   let mapLogLevel level =
@@ -61,12 +61,15 @@ module Helpers =
     |> Seq.map (fun de -> string de.Key, de.Value)
     |> Seq.fold (fun m (key, value) -> m |> Map.add key value) state
 
+open LogaryHelpers
 
 type LogaryLog4NetAppender() =
   inherit AppenderSkeleton()
 
   /// cache loggers for 2000 ms to avoid the loop that looks up appropriate loggers
-  let loggerFor = Impl.memoize (TimeSpan.FromMilliseconds 2000.) Logging.getLoggerByName
+  let loggerFor =
+    Impl.memoize (TimeSpan.FromMilliseconds 2000.)
+                 Logging.getLoggerByName
 
   override x.Append (evt : LoggingEvent) =
     let msg = base.RenderLoggingEvent(evt)
@@ -79,11 +82,14 @@ type LogaryLog4NetAppender() =
         "user",             box evt.UserName ]
       |> Map.ofList
 
-    let data' = data |> Helpers.addProperties evt.Properties
+    let data' = data |> LogaryHelpers.addProperties evt.Properties
 
-    LogLine.create msg data' (Helpers.mapLogLevel evt.Level) [] evt.LoggerName ex
-    |> LogLine.setTimestamp (Instant.FromDateTimeUtc (evt.TimeStamp.ToUniversalTime()))
-    |> Logger.log (loggerFor evt.LoggerName)
+    Message.event (LogaryHelpers.mapLogLevel evt.Level) msg
+    |> Message.setFieldsFromMap data'
+    |> Message.setName (PointName.parse evt.LoggerName)
+    |> (ex |> Option.fold (fun s -> Message.addExn) id)
+    |> Message.setUTCTicks (evt.TimeStamp.ToUniversalTime()).Ticks
+    |> Logger.logSimple (loggerFor evt.LoggerName)
 
   override x.RequiresLayout = true
 

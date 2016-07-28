@@ -2,9 +2,7 @@
 
 open System
 open System.Diagnostics
-
 open Topshelf.Logging
-
 open Logary
 
 type TopshelfAdapter(logger : Logger) =
@@ -22,122 +20,134 @@ type TopshelfAdapter(logger : Logger) =
   let fromLoggingLevel (level : LoggingLevel) =
     fromSourceLevel level.SourceLevel
 
-  let setLevel (level : LoggingLevel) (l : LogLine) =
+  let setLevel (level : LoggingLevel) (l : Message) =
     { l with level = fromLoggingLevel level }
 
-  let objToLine : obj -> LogLine = function
-    | :? string as s -> { LogLine.empty with message = s }
-    | o -> LogLine.create "unknown data" Map.empty Info [] logger.Name None
+  let objToLine : obj -> Message = function
+    | :? string as s ->
+      Message.event Debug s
 
-  let log = LogLine.setPath logger.Name >> Logger.log logger
+    | o ->
+      Message.event Info "unknown data"
+      |> Message.setName logger.name
+
+  let log =
+    Message.setName logger.name
+    >> Logger.logSimple logger
 
   interface LogWriter with
 
-    member x.IsDebugEnabled = logger.Level <= Debug
-    member x.IsInfoEnabled = logger.Level <= Info
-    member x.IsWarnEnabled = logger.Level <= Warn
-    member x.IsErrorEnabled = logger.Level <= Error
-    member x.IsFatalEnabled = logger.Level <= Fatal
+    member x.IsDebugEnabled = logger.level <= Debug
+    member x.IsInfoEnabled = logger.level <= Info
+    member x.IsWarnEnabled = logger.level <= Warn
+    member x.IsErrorEnabled = logger.level <= Error
+    member x.IsFatalEnabled = logger.level <= Fatal
 
     /////////////////// Log ///////////////
     member x.Log (level, o : obj) =
       o |> objToLine |> setLevel level |> log
 
     member x.Log (level, o : obj, e : exn) =
-      o |> objToLine |> setLevel level |> LogLine.setExn e |> log
+      o |> objToLine |> setLevel level |> Message.addExn e |> log
 
     member x.Log (level, fO : LogWriterOutputProvider) =
-      if logger.Level <= fromLoggingLevel level then
+      if logger.level <= fromLoggingLevel level then
         (fO.Invoke >> objToLine >> setLevel level) () |> log
 
     member x.LogFormat (level, formatProvider, format, args) =
-      { LogLine.empty with
-          message = String.Format(formatProvider, format, args)
-          level   = fromLoggingLevel level }
+      Message.eventFormat (fromLoggingLevel level, format, args)
       |> log
 
     member x.LogFormat (level, format, args) =
-      { LogLine.empty with
-          message = String.Format(format, args)
-          level   = fromLoggingLevel level }
+      Message.eventFormat (fromLoggingLevel level, format, args)
       |> log
 
     /////////////////// DEBUG ///////////////
     member x.Debug (o : obj) =
-      o |> objToLine |> LogLine.setLevel Debug |> log
+      o |> objToLine |> Message.setLevel Debug |> log
 
     member x.Debug (o, ex) =
-      o |> objToLine |> LogLine.setLevel Debug |> LogLine.setExn ex |> log
+      o |> objToLine |> Message.setLevel Debug |> Message.addExn ex |> log
 
     member x.Debug (fO : LogWriterOutputProvider) =
-      (fO.Invoke >> objToLine >> LogLine.setLevel Debug) () |> log
+      (fO.Invoke >> objToLine >> Message.setLevel Debug) () |> log
 
     member x.DebugFormat (formatProvider, format, args) =
-      LogLine.create' Debug (String.Format(formatProvider, format, args)) |> log
+      Message.eventFormat (Debug, format, args)
+      |> log
 
     member x.DebugFormat (format, args) =
-      LogLine.create' Debug (String.Format(format, args)) |> log
+      Message.eventFormat (Debug, format, args)
+      |> log
 
     /////////////////// INFO ///////////////
     member x.Info (o : obj) =
-      o |> objToLine |> LogLine.setLevel Info |> log
+      o |> objToLine |> Message.setLevel Info |> log
 
     member x.Info (o, ex) =
-      o |> objToLine |> LogLine.setLevel Info |> LogLine.setExn ex |> log
+      o |> objToLine |> Message.setLevel Info |> Message.addExn ex |> log
 
     member x.Info (fO : LogWriterOutputProvider) =
-      (fO.Invoke >> objToLine >> LogLine.setLevel Info) () |> log
+      (fO.Invoke >> objToLine >> Message.setLevel Info) () |> log
 
     member x.InfoFormat (formatProvider, format, args) =
-      LogLine.create' Info (String.Format(formatProvider, format, args)) |> log
+      Message.eventFormat (Info, format, args)
+      |> log
 
     member x.InfoFormat (format, args) =
-      LogLine.create' Info (String.Format(format, args)) |> log
+      Message.eventFormat (Info, format, args)
+      |> log
 
     /////////////////// WARN ///////////////
     member x.Warn (o : obj) =
-      o |> objToLine |> LogLine.setLevel Warn |> log
+      o |> objToLine |> Message.setLevel Warn |> log
 
     member x.Warn (o, ex) =
-      o |> objToLine |> LogLine.setLevel Warn |> LogLine.setExn ex |> log
+      o |> objToLine |> Message.setLevel Warn |> Message.addExn ex |> log
 
     member x.Warn (fO : LogWriterOutputProvider) =
-      (fO.Invoke >> objToLine >> LogLine.setLevel Warn) () |> log
+      (fO.Invoke >> objToLine >> Message.setLevel Warn) () |> log
 
     member x.WarnFormat (formatProvider, format, args) =
-      LogLine.create' Warn (String.Format(formatProvider, format, args)) |> log
+      Message.eventFormat (Warn, format, args)
+      |> log
 
     member x.WarnFormat (format, args) =
-      LogLine.create' Warn (String.Format(format, args)) |> log
+      Message.eventFormat (Warn, format, args)
+      |> log
 
     /////////////////// ERROR ///////////////
     member x.Error (o : obj) =
-      o |> objToLine |> LogLine.setLevel Error |> log
+      o |> objToLine |> Message.setLevel Error |> log
 
     member x.Error (o, ex) =
-      o |> objToLine |> LogLine.setLevel Error |> LogLine.setExn ex |> log
+      o |> objToLine |> Message.setLevel Error |> Message.addExn ex |> log
 
     member x.Error (fO : LogWriterOutputProvider) =
-      (fO.Invoke >> objToLine >> LogLine.setLevel Error) () |> log
+      (fO.Invoke >> objToLine >> Message.setLevel Error) () |> log
 
     member x.ErrorFormat (formatProvider, format, args) =
-      LogLine.create' Error (String.Format(formatProvider, format, args)) |> log
+      Message.eventFormat (Error, format, args)
+      |> log
 
     member x.ErrorFormat (format, args) =
-      LogLine.create' Error (String.Format(format, args)) |> log
+      Message.eventFormat (Error, format, args)
+      |> log
 
     /////////////////// FATAL ///////////////
     member x.Fatal (o : obj) =
-      o |> objToLine |> LogLine.setLevel Fatal |> log
+      o |> objToLine |> Message.setLevel Fatal |> log
 
     member x.Fatal (o, ex) =
-      o |> objToLine |> LogLine.setLevel Fatal |> LogLine.setExn ex |> log
+      o |> objToLine |> Message.setLevel Fatal |> Message.addExn ex |> log
 
     member x.Fatal (fO : LogWriterOutputProvider) =
-      (fO.Invoke >> objToLine >> LogLine.setLevel Fatal) () |> log
+      (fO.Invoke >> objToLine >> Message.setLevel Fatal) () |> log
 
     member x.FatalFormat (formatProvider, format, args) =
-      LogLine.create' Fatal (String.Format(formatProvider, format, args)) |> log
+      Message.eventFormat (Fatal, format, args)
+      |> log
 
     member x.FatalFormat (format, args) =
-      LogLine.create' Fatal (String.Format(format, args)) |> log
+      Message.eventFormat (Error, format, args)
+      |> log

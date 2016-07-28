@@ -12,6 +12,8 @@
     <Name>Logary.CSharp</Name>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <SignAssembly Condition=" '$(StrongNameAssembly)' != '' ">true</SignAssembly>
+    <AssemblyOriginatorKeyFile Condition=" '$(StrongNameAssembly)' != '' ">..\..\tools\logary.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -22,8 +24,6 @@
     <WarningLevel>4</WarningLevel>
     <Prefer32Bit>false</Prefer32Bit>
     <DocumentationFile>bin\Release\Logary.CSharp.xml</DocumentationFile>
-    <SignAssembly>true</SignAssembly>
-    <AssemblyOriginatorKeyFile Condition="'$(StrongNameAssembly)' != ''">../../tools/logary.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />

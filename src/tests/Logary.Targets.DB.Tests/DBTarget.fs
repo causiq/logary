@@ -1,20 +1,22 @@
 ﻿module Logary.Tests.DB
 
 open Fuchu
-
 open System
 open System.Data
 open System.Data.SQLite
 open System.Net
-
+open NodaTime
+open Hopac
 open Logary
 open Logary.Configuration
 open Logary.Metric
 open Logary.Internals
-open Logary.Measure
 open Logary.Targets
 
-let emptyRuntime = { serviceName = "tests"; logger = NullLogger() }
+let runtime =
+  { serviceName = "tests"
+    clock       = SystemClock.Instance
+    logger      = NullLogger() }
 
 /// this one is a per-process db
 [<Literal>]
@@ -29,20 +31,15 @@ let private inMemConnStrEmpheral = "FullUri=file::memory:"
 module SQLiteDB =
 
   let private consoleAndDebugger =
-    { new Logger with
-        member x.LogDebug fLine =
-          x.Log (fLine ())
-        member x.LogVerbose fLine =
-          x.Log (fLine ())
-        member x.Log line =
-          let fm = Formatting.StringFormatter.VerbatimNewline
-          let str = fm.format line
-          if not (String.IsNullOrWhiteSpace str) then
-            System.Console.Write(str)
-            System.Diagnostics.Debugger.Log(6, "tests", str)
-        member x.Measure _ = ()
-        member x.Name = "DB test logger"
-        member x.Level = LogLevel.Info }
+    let targets =
+      [ Console.create Console.empty (PointName.ofSingle "console")
+        Debugger.create Debugger.empty (PointName.ofSingle "debugger") ]
+      |> List.map (Target.init runtime)
+      |> Job.conCollect
+      |> run
+
+    targets |> Seq.iter (Target.runTarget)
+    InternalLogger.create Info targets
 
   open System
   open Logary.DB.Migrations
@@ -82,9 +79,9 @@ module SQLiteDB =
   type NonClosingSQLiteProcessorFactory(conn : IDbConnection) =
     inherit MigrationProcessorFactory()
     override x.Create (connStr : string, accouncer : IAnnouncer, opts : IMigrationProcessorOptions) =
-      new SqliteProcessor(wrapConnNoClose conn,
-                          new SqliteGenerator(), accouncer, opts,
-                          new SqliteDbFactory())
+      new SQLiteProcessor(wrapConnNoClose conn,
+                          new SQLiteGenerator(), accouncer, opts,
+                          new SQLiteDbFactory())
       :> IMigrationProcessor
 
   let private openConnInner connStr () =
@@ -94,7 +91,7 @@ module SQLiteDB =
 
   /// open and migrate with the given connection string
   let openConn connStr =
-    Logger.info consoleAndDebugger "openConn"
+    Message.event Info "Open Connection" |> Logger.logSimple consoleAndDebugger
     let conn = openConnInner connStr ()
     Runner(NonClosingSQLiteProcessorFactory(conn), connStr, logger = consoleAndDebugger).MigrateUp()
     conn
@@ -115,13 +112,14 @@ let read (m : Map<string, obj>) k =
 
 [<Tests>]
 let targetTests =
-  let flush = Target.flush >> Async.Ignore >> Async.RunSynchronously
+  let flush = Target.flush >> Job.Ignore >> run
 
-  let stop = Target.shutdown >> Async.Ignore >> Async.RunSynchronously
+  let stop = Target.shutdown >> Job.Ignore >> run
 
-  let start f_conn =
-    let conf = DB.DBConf.Create f_conn
-    Target.init emptyRuntime (DB.create conf "db-target")
+  let start connFac =
+    let conf = DB.DBConf.create connFac
+    Target.init runtime (DB.create conf (PointName.ofSingle "db-target"))
+    |> run
 
   testList "db target" [
     testCase "smoke" <| fun _ ->
@@ -135,7 +133,7 @@ let targetTests =
     testCase "initialise and log" <| fun _ ->
       let target = start (fun () -> SQLiteDB.openConn inMemConnStrEmpheral)
       try
-        (LogLine.info "hello world") |> Target.sendLogLine target
+        Message.event Info "hello world" |> Target.log target |> Job.Ignore |> run
         flush target
       finally stop target
 
@@ -143,7 +141,7 @@ let targetTests =
       use db = SQLiteDB.openConn inMemConnStrShared
       let mgr = Sql.withConnection db
 
-      let countSql = "SELECT COUNT(*) FROM LogLines"
+      let countSql = "SELECT COUNT(*) FROM Events"
 
       // pre-conditions
       let count = Sql.execScalar mgr countSql [] |> Option.get
@@ -151,10 +149,18 @@ let targetTests =
 
       // given
       let target = start (fun () -> db)
-      LogLine.create'' "a.b.c" "hello world"
-        |> Target.sendLogLine target
-      LogLine.create "goodbye world" Map.empty Info ["tests"; "things"] "a.b.c" (Some (raised_exn "hoho"))
-        |> Target.sendLogLine target
+      Message.event Info "hello world"
+      |> Message.setName (PointName.parse "a.b.c")
+      |> Target.log target
+      |> Job.Ignore
+      |> run
+      Message.event Info "goodbye world" 
+      |> Message.setName (PointName.parse "a.b.c")
+      |> Message.addExn (raised_exn "hoho")
+      |> Target.log target
+      |> Job.Ignore
+      |> run
+
       flush target
 
       // then
@@ -162,13 +168,13 @@ let targetTests =
         let count = Sql.execScalar mgr countSql [] |> Option.get
         Assert.Equal("count should be two log lines", 2L, count)
 
-        let records = Sql.execReader mgr "SELECT * FROM LogLines" [] |> Sql.map Sql.asMap
+        let records = Sql.execReader mgr "SELECT * FROM Events" [] |> Sql.map Sql.asMap
 
         for r in records do
           let read k : 'a = read r k
           Assert.Equal("should have host name from computer DNS", Dns.GetHostName(), read "Host")
           Assert.Equal("should have path from", "a.b.c", read "Path")
-          Assert.Equal("should have info level", int64 (Info.ToInt()), read "Level")
+          Assert.Equal("should have info level", int64 (Info.toInt ()), read "Level")
 
           if read "Message" = "goodbye world" then
             Assert.Equal("should have comma-separated tags", "tests,things", read "Tags")
@@ -181,7 +187,7 @@ let targetTests =
 
     testCase "initialise and metric" <| fun _ ->
       let target = start (fun () -> SQLiteDB.openConn inMemConnStrEmpheral)
-      try (Measure.create' "app.signin" 3.0) |> Target.sendMeasure target
+      try Message.gauge (PointName.parse "app.signin") (Int64 3L) |> Target.log target |> Job.Ignore |> run
       finally stop target
 
     testCase "metric and read back returns result" <| fun _ ->
@@ -196,8 +202,8 @@ let targetTests =
 
       // given
       let target = start (fun () -> db)
-      (Measure.create' "web01.app.signin" 3.0) |> Target.sendMeasure target
-      (Measure.create' "web02.app.signin" 6.0) |> Target.sendMeasure target
+      Message.gauge (PointName.parse "web01.app.signin") (Int64 3L) |> Target.log target |> Job.Ignore |> run
+      Message.gauge (PointName.parse "web02.app.signin") (Int64 6L) |> Target.log target |> Job.Ignore |> run
       flush target
 
       // then
@@ -211,7 +217,7 @@ let targetTests =
           let read k : 'a = read r k
           Assert.Equal("should have host name from computer DNS", Dns.GetHostName(), read "Host")
           Assert.StringContains("should have path from from metric", ".app.signin", read "Path")
-          Assert.Equal("should have info level", int64 (Info.ToInt()), read "Level")
+          Assert.Equal("should have info level", int64 (Info.toInt()), read "Level")
 //          Assert.Equal("should have counter type", DB.typeAsInt16 MetricType.Counter |> int64, read "Type")
           Assert.Equal("value is 3 or 6", true, read "Value" = 3.M || read "Value" = 6.M)
       finally
@@ -223,7 +229,7 @@ open FluentMigrator.Runner.Processors
 
 [<Tests>]
 let migrationTests =
-  let fac = SQLite.SqliteProcessorFactory()
+  let fac = SQLite.SQLiteProcessorFactory()
   let forgetful = "FullUri=file::memory:"
 
   testList "migrating sqlite db up and down" [

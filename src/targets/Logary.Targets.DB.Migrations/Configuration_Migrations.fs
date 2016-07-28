@@ -15,6 +15,6 @@ let migrateUp
   (conf : DBConf)
   (processorFac : IDbConnection -> IMigrationProcessor) =
 
-  let conn = conf.connFac ()
+  let conn = conf.connectionFactory ()
   let fac = ExistingConnectionProcessorFactory(conn, processorFac)
   Runner(fac, "").MigrateUp()

@@ -9,7 +9,10 @@ open log4net.Repository.Hierarchy
 open log4net.Appender
 open NodaTime
 open Fuchu
+open Hopac
+open Hopac.Infixes
 open Logary
+open Logary.Target
 open Logary.Internals
 open Logary.Targets.TextWriter
 open Logary.Configuration
@@ -21,9 +24,9 @@ let textWriter () =
 let withLogary f =
   let out, err = textWriter (), textWriter ()
 
-  let target = Target.confTarget "cons" (create <| TextWriterConf.Create(out, err))
+  let target = confTarget (PointName.ofSingle "cons") (create (TextWriterConf.create(out, err)))
 
-  let rule = Rule.createForTarget "cons"
+  let rule = Rule.createForTarget (PointName.ofSingle "cons")
 
   let logary =
     confLogary "tests"
@@ -31,21 +34,20 @@ let withLogary f =
     |> withTarget target
     |> Config.validate
     |> runLogary
+    |> run
 
   f logary out err
 
-let finaliseLogary = Config.shutdown >> fun a ->
-  let state = Async.RunSynchronously a
-  Assert.Equal(sprintf "should succeed: %O" state, true, state.Successful)
+let finaliseLogary = Config.shutdownSimple >> fun a ->
+  let state = run a
+  Assert.Equal("finalise should always work", true, state.successful)
 
-let finaliseTarget = Target.shutdown >> fun a ->
-  let acks = Async.RunSynchronously(a, 1000)
+let finaliseTarget t = Target.shutdown t |> fun a ->
+  let acks = a ^-> TimeoutResult.Success <|> timeOutMillis 1000 ^->. TimedOut
+             |> Job.Global.run
   match acks with
-  | FSharp.Actor.RPC.ExperiencedTimeout actor -> Tests.failtest "finalising target timeout"
-  | FSharp.Actor.RPC.SuccessWith(acks, actor) ->
-    match acks with
-    | Nack desc -> Tests.failtestf "would not shut down: %s" desc
-    | Ack -> ()
+  | TimedOut -> Tests.failtestf "finalising target timed out: %A" t
+  | TimeoutResult.Success _ -> ()
 
 let newHierarchy fHierarchy =
   let tracer = new TraceAppender()
@@ -61,13 +63,15 @@ let integration =
   testList "integration tests (memory only)" [
     testCase "starting log4net" <| fun _ ->
       newHierarchy (fun _ -> ())
+
     testCase "logging to log4net logs to logary" <| fun _ ->
+
       let logaryAppender = LogaryAppender()
       let patternLayout = new PatternLayout(ConversionPattern = "%m")
       logaryAppender.Layout <- patternLayout
 
       let hiera = newHierarchy (fun hiera -> hiera.Root.AddAppender logaryAppender)
-      let log4 = log4net.LogManager.GetLogger("logary.tests")
+      let log4 = log4net.LogManager.GetLogger("Logary.Tests")
 
       let out, err =
         withLogary <| fun logary out err ->
@@ -83,8 +87,9 @@ let integration =
 let mappings =
   testList "mapping properties' dictionary" [
     testCase "can map empty" <| fun _ ->
-      let res = Map.empty |> Helpers.addProperties (new Util.PropertiesDictionary())
+      let res = Map.empty |> LogaryHelpers.addProperties (new Util.PropertiesDictionary())
       Assert.Equal("should be empty map", Map.empty, res)
+
     testCase "can map primitives" <| fun _ ->
       let subject = new Util.PropertiesDictionary()
       subject.["first"] <- 1
@@ -92,7 +97,7 @@ let mappings =
       subject.["third"] <- 1L
       subject.["fourth"] <- Nullable<_>(123)
 
-      let res = Map.empty |> Helpers.addProperties subject
+      let res = Map.empty |> LogaryHelpers.addProperties subject
       Assert.Equal("has first", 1, unbox res.["first"])
       Assert.Equal("has second", 1us, unbox res.["second"])
       Assert.Equal("has third", 1L, unbox res.["third"])

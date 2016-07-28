@@ -1,5 +1,6 @@
 ﻿module Logary.Targets.InfluxDb.Tests.TargetTests
 
+open NodaTime
 open Logary
 open Logary.Configuration
 open Logary.Internals
@@ -17,7 +18,10 @@ open TestHelpers
 
 module Assert = ExpectoPatronum.Expect
 
-let emptyRuntime = { serviceName = "tests"; logger = NullLogger() }
+let emptyRuntime =
+  { serviceName = "tests"
+    clock       = SystemClock.Instance
+    logger      = NullLogger() }
 
 let flush = Target.flush >> Job.Ignore >> Job.Global.run
 
@@ -127,27 +131,27 @@ let writesOverHttp =
         finaliseTarget target
 
     testCase "make sure target acks" <| fun _ ->
-        let msg = Message.gauge (PointName.parse "Number 1") (Float 0.3463)
+      let msg = Message.gauge (PointName.parse "Number 1") (Float 0.3463)
 
-        use state = withServer ()
-        let target = start ()
-          
-        try
-          let ackPromise = Target.log target msg 
-                           |> run
+      use state = withServer ()
+      let target = start ()
+        
+      try
+        let ackPromise = Target.log target msg 
+                         |> run
 
-          let req2 = Ch.take state.req
-                     |> run
-          
-          Alt.choose ([
-                      ackPromise :> Alt<_>
-                      timeOut (TimeSpan.FromMilliseconds 100.0)
-                     ]) |> run
+        let req2 = Ch.take state.req
+                   |> run
+        
+        Alt.choose ([
+                    ackPromise :> Alt<_>
+                    timeOut (TimeSpan.FromMilliseconds 100.0)
+                   ]) |> run
 
-          let messageIsAcked = Promise.Now.isFulfilled ackPromise
+        let messageIsAcked = Promise.Now.isFulfilled ackPromise
 
-          Assert.isTrue (messageIsAcked) "message should be acked"
+        Assert.isTrue (messageIsAcked) "message should be acked"
 
-        finally
-          finaliseTarget target
+      finally
+        finaliseTarget target
   ]

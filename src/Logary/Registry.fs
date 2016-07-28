@@ -53,6 +53,11 @@ module internal Logging =
       member x.logWithAck message =
         logger (flip Logger.logWithAck message) (Promise.Now.withValue ())
 
+      member x.logSimple message =
+        logger (flip Logger.logWithAck message) (Promise.Now.withValue ())
+        |> Job.Ignore
+        |> start
+
       member x.level =
         Verbose
 
@@ -80,7 +85,6 @@ module Advanced =
   open Logary.Target
   open Logary.HealthCheck
   open Logary.Internals
-  open Logary.Supervisor
 
   /// Given a configuration and name to find all targets for, looks up all targets
   /// from the configuration matching the passed name and create a composite
@@ -186,6 +190,11 @@ module Advanced =
 
         member x.logWithAck message =
           middleware message
+
+        member x.logSimple message =
+          middleware message
+          |> Job.Ignore
+          |> start
 
         member x.level =
           level

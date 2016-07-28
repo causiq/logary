@@ -16,8 +16,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{4FC4A3AC-C
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "targets", "targets", "{978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "vendor", "vendor", "{23EBF3E1-3DD4-435C-ACC7-962E76233258}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "adapters", "adapters", "{56BB77A4-DF59-49EC-92E6-C9CA2C2E9FDE}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "services", "services", "{773A5105-2248-4C5B-ACFD-44D9C267D270}"
@@ -28,73 +26,81 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "core", "core", "{EA09AD42-B
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "integration-tests", "integration-tests", "{4755795D-4488-4013-81FC-9FD5D442B211}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Riemann", "targets\Logary.Targets.Riemann\Logary.Targets.Riemann.fsproj", "{CC87925C-E4F2-4386-A322-8BC088DE7B33}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Riemann", "targets\Logary.Targets.Riemann\Logary.Targets.Riemann.fsproj", "{CC87925C-E4F2-4386-A322-8BC088DE7B33}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Zipkin", "targets\Logary.Targets.Zipkin\Logary.Targets.Zipkin.fsproj", "{2C3795A2-D88D-4635-BBAA-53503B7D9721}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.DB.Migrations", "targets\Logary.Targets.DB.Migrations\Logary.Targets.DB.Migrations.fsproj", "{FFE1B4AC-742A-45C2-9F04-08FFD01A7796}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.DB.Migrations", "targets\Logary.Targets.DB.Migrations\Logary.Targets.DB.Migrations.fsproj", "{FFE1B4AC-742A-45C2-9F04-08FFD01A7796}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.DB", "targets\Logary.Targets.DB\Logary.Targets.DB.fsproj", "{A9D14445-2559-4DF7-B1D4-61F0F190EE54}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.DB", "targets\Logary.Targets.DB\Logary.Targets.DB.fsproj", "{A9D14445-2559-4DF7-B1D4-61F0F190EE54}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.DB.Tests", "tests\Logary.Targets.DB.Tests\Logary.Targets.DB.Tests.fsproj", "{69A84CB4-793D-46B4-87EF-E59FED669124}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.DB.Tests", "tests\Logary.Targets.DB.Tests\Logary.Targets.DB.Tests.fsproj", "{69A84CB4-793D-46B4-87EF-E59FED669124}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Riemann.Tests", "tests\Logary.Targets.Riemann.Tests\Logary.Targets.Riemann.Tests.fsproj", "{204FE42E-89FB-4FA4-9CE0-9FA4B387BC63}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Riemann.Tests", "tests\Logary.Targets.Riemann.Tests\Logary.Targets.Riemann.Tests.fsproj", "{204FE42E-89FB-4FA4-9CE0-9FA4B387BC63}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Mailgun", "targets\Logary.Targets.Mailgun\Logary.Targets.Mailgun.fsproj", "{1F23C428-A95F-4977-BE77-3D626116CCB8}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Dash", "targets\Logary.Targets.Dash\Logary.Targets.Dash.fsproj", "{BF4793A4-FCE8-4FBF-8E8D-6297B9A1B70B}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Heka", "targets\Logary.Targets.Heka\Logary.Targets.Heka.fsproj", "{BC4A5F70-0785-40D6-9EBE-4BB0E47A9EEC}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.NLog", "targets\Logary.Targets.NLog\Logary.Targets.NLog.fsproj", "{8F108B6A-0FBE-4D6E-8DAA-B5BA1429C925}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Heka.Tests", "tests\Logary.Targets.Heka.Tests\Logary.Targets.Heka.Tests.fsproj", "{EDE8A833-C15D-47FE-BFF2-0A24FAA22728}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.ElmahIO", "targets\Logary.Targets.ElmahIO\Logary.Targets.ElmahIO.fsproj", "{D0E043CC-C0A2-42B3-8689-21468600035F}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.Suave.Tests", "tests\Logary.Adapters.Suave.Tests\Logary.Adapters.Suave.Tests.fsproj", "{7D72B30B-F720-4BE9-A97A-13E3CF5C11A2}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Loggr", "targets\Logary.Targets.Loggr\Logary.Targets.Loggr.fsproj", "{D9257F96-F74F-4ED1-B720-C9CE764E1962}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.Suave", "adapters\Logary.Adapters.Suave\Logary.Adapters.Suave.fsproj", "{5255B5AD-9DA9-495C-8B6D-740BB6DC164B}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Logentries", "targets\Logary.Targets.Logentries\Logary.Targets.Logentries.fsproj", "{7ED41C0D-F9ED-43E9-BE10-6E7457B90235}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.Topshelf", "adapters\Logary.Adapters.Topshelf\Logary.Adapters.Topshelf.fsproj", "{887CF8ED-4EEE-499B-B8D3-59EDA8A64BBF}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Logentries.Tests", "tests\Logary.Targets.Logentries.Tests\Logary.Targets.Logentries.Tests.fsproj", "{82770C4E-C5A7-4888-99A1-57935898BDD8}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.log4net", "adapters\Logary.Adapters.log4net\Logary.Adapters.log4net.fsproj", "{0F5BEF2F-4F6B-4E4A-A0BB-0255F177C71D}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Mailgun", "targets\Logary.Targets.Mailgun\Logary.Targets.Mailgun.fsproj", "{1F23C428-A95F-4977-BE77-3D626116CCB8}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.log4net.Tests", "tests\Logary.Adapters.log4net.Tests\Logary.Adapters.log4net.Tests.fsproj", "{08C004AB-734D-457E-9CFD-B37ED6883502}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Mailgun.Tests", "targets\Logary.Targets.Mailgun.Tests\Logary.Targets.Mailgun.Tests.fsproj", "{E3C8C506-1B69-4EBC-89AE-24D686AA274C}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.CommonLogging", "adapters\Logary.Adapters.CommonLogging\Logary.Adapters.CommonLogging.fsproj", "{BACE7A04-036B-4A37-A2A9-968F79CD673A}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Heka", "targets\Logary.Targets.Heka\Logary.Targets.Heka.fsproj", "{BC4A5F70-0785-40D6-9EBE-4BB0E47A9EEC}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.EventStore", "adapters\Logary.Adapters.EventStore\Logary.Adapters.EventStore.fsproj", "{56014DF9-C99C-4D7F-939F-30A80D20296B}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Heka.Tests", "tests\Logary.Targets.Heka.Tests\Logary.Targets.Heka.Tests.fsproj", "{EDE8A833-C15D-47FE-BFF2-0A24FAA22728}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.Hawk", "adapters\Logary.Adapters.Hawk\Logary.Adapters.Hawk.fsproj", "{9AF9D1E1-33A4-42C7-825F-D41CD3ECEBDD}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Suave.Tests", "tests\Logary.Adapters.Suave.Tests\Logary.Adapters.Suave.Tests.fsproj", "{7D72B30B-F720-4BE9-A97A-13E3CF5C11A2}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Services.SQLServerHealth", "services\Logary.Services.SQLServerHealth\Logary.Services.SQLServerHealth.fsproj", "{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Suave", "adapters\Logary.Adapters.Suave\Logary.Adapters.Suave.fsproj", "{5255B5AD-9DA9-495C-8B6D-740BB6DC164B}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Services.SQLServerHealth.Tests", "tests\Logary.Services.SQLServerHealth.Tests\Logary.Services.SQLServerHealth.Tests.fsproj", "{8E4E562E-ACDE-4325-8B12-7C0B240E9176}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Topshelf", "adapters\Logary.Adapters.Topshelf\Logary.Adapters.Topshelf.fsproj", "{887CF8ED-4EEE-499B-B8D3-59EDA8A64BBF}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Services.SuaveReporter", "services\Logary.Services.SuaveReporter\Logary.Services.SuaveReporter.fsproj", "{C76BBED8-93D4-4073-924C-3E5564EEA1DB}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.log4net", "adapters\Logary.Adapters.log4net\Logary.Adapters.log4net.fsproj", "{0F5BEF2F-4F6B-4E4A-A0BB-0255F177C71D}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.log4net.Tests", "tests\Logary.Adapters.log4net.Tests\Logary.Adapters.log4net.Tests.fsproj", "{08C004AB-734D-457E-9CFD-B37ED6883502}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.CommonLogging", "adapters\Logary.Adapters.CommonLogging\Logary.Adapters.CommonLogging.fsproj", "{BACE7A04-036B-4A37-A2A9-968F79CD673A}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.EventStore", "adapters\Logary.Adapters.EventStore\Logary.Adapters.EventStore.fsproj", "{56014DF9-C99C-4D7F-939F-30A80D20296B}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Hawk", "adapters\Logary.Adapters.Hawk\Logary.Adapters.Hawk.fsproj", "{9AF9D1E1-33A4-42C7-825F-D41CD3ECEBDD}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Services.SQLServerHealth", "services\Logary.Services.SQLServerHealth\Logary.Services.SQLServerHealth.fsproj", "{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Services.SQLServerHealth.Tests", "tests\Logary.Services.SQLServerHealth.Tests\Logary.Services.SQLServerHealth.Tests.fsproj", "{8E4E562E-ACDE-4325-8B12-7C0B240E9176}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Services.SuaveReporter", "services\Logary.Services.SuaveReporter\Logary.Services.SuaveReporter.fsproj", "{C76BBED8-93D4-4073-924C-3E5564EEA1DB}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.ConsoleApp", "..\examples\Logary.ConsoleApp\Logary.ConsoleApp.fsproj", "{178B23D3-F676-43C3-880D-9E0BEFBAF019}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.ConsoleApp", "..\examples\Logary.ConsoleApp\Logary.ConsoleApp.fsproj", "{178B23D3-F676-43C3-880D-9E0BEFBAF019}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logary.CSharp", "Logary.CSharp\Logary.CSharp.csproj", "{26FD79BD-2329-41B6-A86D-8F3992437CBE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logary.Specs", "tests\Logary.Specs\Logary.Specs.csproj", "{A85B6894-33A4-4645-848D-D4D4D413A0C5}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Tests", "tests\Logary.Tests\Logary.Tests.fsproj", "{886DFAE8-C01A-43E2-A275-7F1E41CA0342}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Tests", "tests\Logary.Tests\Logary.Tests.fsproj", "{886DFAE8-C01A-43E2-A275-7F1E41CA0342}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary", "Logary\Logary.fsproj", "{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary", "Logary\Logary.fsproj", "{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.IntegrationTests", "tests\Logary.IntegrationTests\Logary.IntegrationTests.fsproj", "{647FB507-A552-4537-AA2C-E2274A3245EB}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.IntegrationTests", "tests\Logary.IntegrationTests\Logary.IntegrationTests.fsproj", "{647FB507-A552-4537-AA2C-E2274A3245EB}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Logstash", "targets\Logary.Targets.Logstash\Logary.Targets.Logstash.fsproj", "{F9AAC195-D3F7-4160-A829-5F9775791AD5}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Logstash", "targets\Logary.Targets.Logstash\Logary.Targets.Logstash.fsproj", "{F9AAC195-D3F7-4160-A829-5F9775791AD5}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Mailgun.Tests", "tests\Logary.Targets.Mailgun.Tests\Logary.Targets.Mailgun.Tests.fsproj", "{E3C8C506-1B69-4EBC-89AE-24D686AA274C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logary.CSharp.Tests", "tests\Logary.CSharp.Tests\Logary.CSharp.Tests.csproj", "{A85B6894-33A4-4645-848D-D4D4D413A0C5}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.Facade", "adapters\Logary.Adapters.Facade\Logary.Adapters.Facade.fsproj", "{15226ED2-C66B-4AA2-B15D-ACFF8A45454A}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Facade", "Logary.Facade\Logary.Facade.fsproj", "{FDA71626-E557-4D33-842F-2C4611768538}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.FsSql", "adapters\Logary.Adapters.FsSql\Logary.Adapters.FsSql.fsproj", "{6E3A10AE-BB8D-471B-B0EA-8B3879A5B6F9}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "metrics", "metrics", "{B3FA7806-592C-4F81-BBCE-7AB1180CD7CD}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Metrics.WinPerfCounters", "metrics\Logary.Metrics.WinPerfCounters\Logary.Metrics.WinPerfCounters.fsproj", "{DD5137FC-22E5-47DA-88F1-3D3F1E7E8381}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.InfluxDb", "targets\Logary.Targets.InfluxDb\Logary.Targets.InfluxDb.fsproj", "{4ACE8A29-6D75-4956-B45C-22C82EAFCFD5}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.InfluxDb.Tests", "tests\Logary.Targets.InfluxDb.Tests\Logary.Targets.InfluxDb.Tests.fsproj", "{647D929B-4ACE-4099-A25F-D7FF06588F88}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Services.Rutta", "services\Logary.Services.Rutta\Logary.Services.Rutta.fsproj", "{E88982FD-E257-41BA-A343-B56976CCB3A1}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Shipper", "targets\Logary.Targets.Shipper\Logary.Targets.Shipper.fsproj", "{7DB39E8E-DA06-4E4B-A3E2-1A0FACEC941C}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Services.Rutta.Tests", "tests\Logary.Services.Rutta.Tests\Logary.Services.Rutta.Tests.fsproj", "{698814F7-8E47-4272-9228-B498F949B1A2}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Logstash.Tests", "tests\Logary.Targets.Logstash.Tests\Logary.Targets.Logstash.Tests.fsproj", "{D30C57E7-BA12-4E95-BCF2-8BE5B0EF9D56}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -106,10 +112,6 @@ Global
 		{CC87925C-E4F2-4386-A322-8BC088DE7B33}.Debug|Any CPU.Build.0 = Release|Any CPU
 		{CC87925C-E4F2-4386-A322-8BC088DE7B33}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CC87925C-E4F2-4386-A322-8BC088DE7B33}.Release|Any CPU.Build.0 = Release|Any CPU
-		{2C3795A2-D88D-4635-BBAA-53503B7D9721}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{2C3795A2-D88D-4635-BBAA-53503B7D9721}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{2C3795A2-D88D-4635-BBAA-53503B7D9721}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{2C3795A2-D88D-4635-BBAA-53503B7D9721}.Release|Any CPU.Build.0 = Release|Any CPU
 		{FFE1B4AC-742A-45C2-9F04-08FFD01A7796}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{FFE1B4AC-742A-45C2-9F04-08FFD01A7796}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FFE1B4AC-742A-45C2-9F04-08FFD01A7796}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -126,38 +128,10 @@ Global
 		{204FE42E-89FB-4FA4-9CE0-9FA4B387BC63}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{204FE42E-89FB-4FA4-9CE0-9FA4B387BC63}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{204FE42E-89FB-4FA4-9CE0-9FA4B387BC63}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BF4793A4-FCE8-4FBF-8E8D-6297B9A1B70B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BF4793A4-FCE8-4FBF-8E8D-6297B9A1B70B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BF4793A4-FCE8-4FBF-8E8D-6297B9A1B70B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BF4793A4-FCE8-4FBF-8E8D-6297B9A1B70B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{8F108B6A-0FBE-4D6E-8DAA-B5BA1429C925}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8F108B6A-0FBE-4D6E-8DAA-B5BA1429C925}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8F108B6A-0FBE-4D6E-8DAA-B5BA1429C925}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8F108B6A-0FBE-4D6E-8DAA-B5BA1429C925}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D0E043CC-C0A2-42B3-8689-21468600035F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D0E043CC-C0A2-42B3-8689-21468600035F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D0E043CC-C0A2-42B3-8689-21468600035F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D0E043CC-C0A2-42B3-8689-21468600035F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D9257F96-F74F-4ED1-B720-C9CE764E1962}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D9257F96-F74F-4ED1-B720-C9CE764E1962}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D9257F96-F74F-4ED1-B720-C9CE764E1962}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D9257F96-F74F-4ED1-B720-C9CE764E1962}.Release|Any CPU.Build.0 = Release|Any CPU
-		{7ED41C0D-F9ED-43E9-BE10-6E7457B90235}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7ED41C0D-F9ED-43E9-BE10-6E7457B90235}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7ED41C0D-F9ED-43E9-BE10-6E7457B90235}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7ED41C0D-F9ED-43E9-BE10-6E7457B90235}.Release|Any CPU.Build.0 = Release|Any CPU
-		{82770C4E-C5A7-4888-99A1-57935898BDD8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{82770C4E-C5A7-4888-99A1-57935898BDD8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{82770C4E-C5A7-4888-99A1-57935898BDD8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{82770C4E-C5A7-4888-99A1-57935898BDD8}.Release|Any CPU.Build.0 = Release|Any CPU
 		{1F23C428-A95F-4977-BE77-3D626116CCB8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{1F23C428-A95F-4977-BE77-3D626116CCB8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1F23C428-A95F-4977-BE77-3D626116CCB8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1F23C428-A95F-4977-BE77-3D626116CCB8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E3C8C506-1B69-4EBC-89AE-24D686AA274C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E3C8C506-1B69-4EBC-89AE-24D686AA274C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E3C8C506-1B69-4EBC-89AE-24D686AA274C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E3C8C506-1B69-4EBC-89AE-24D686AA274C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{BC4A5F70-0785-40D6-9EBE-4BB0E47A9EEC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{BC4A5F70-0785-40D6-9EBE-4BB0E47A9EEC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BC4A5F70-0785-40D6-9EBE-4BB0E47A9EEC}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -218,10 +192,6 @@ Global
 		{26FD79BD-2329-41B6-A86D-8F3992437CBE}.Debug|Any CPU.Build.0 = Release|Any CPU
 		{26FD79BD-2329-41B6-A86D-8F3992437CBE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{26FD79BD-2329-41B6-A86D-8F3992437CBE}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A85B6894-33A4-4645-848D-D4D4D413A0C5}.Debug|Any CPU.ActiveCfg = Release|Any CPU
-		{A85B6894-33A4-4645-848D-D4D4D413A0C5}.Debug|Any CPU.Build.0 = Release|Any CPU
-		{A85B6894-33A4-4645-848D-D4D4D413A0C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A85B6894-33A4-4645-848D-D4D4D413A0C5}.Release|Any CPU.Build.0 = Release|Any CPU
 		{886DFAE8-C01A-43E2-A275-7F1E41CA0342}.Debug|Any CPU.ActiveCfg = Release|Any CPU
 		{886DFAE8-C01A-43E2-A275-7F1E41CA0342}.Debug|Any CPU.Build.0 = Release|Any CPU
 		{886DFAE8-C01A-43E2-A275-7F1E41CA0342}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -238,25 +208,65 @@ Global
 		{F9AAC195-D3F7-4160-A829-5F9775791AD5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F9AAC195-D3F7-4160-A829-5F9775791AD5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F9AAC195-D3F7-4160-A829-5F9775791AD5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E3C8C506-1B69-4EBC-89AE-24D686AA274C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E3C8C506-1B69-4EBC-89AE-24D686AA274C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E3C8C506-1B69-4EBC-89AE-24D686AA274C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E3C8C506-1B69-4EBC-89AE-24D686AA274C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A85B6894-33A4-4645-848D-D4D4D413A0C5}.Debug|Any CPU.ActiveCfg = Release|Any CPU
+		{A85B6894-33A4-4645-848D-D4D4D413A0C5}.Debug|Any CPU.Build.0 = Release|Any CPU
+		{A85B6894-33A4-4645-848D-D4D4D413A0C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A85B6894-33A4-4645-848D-D4D4D413A0C5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{15226ED2-C66B-4AA2-B15D-ACFF8A45454A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{15226ED2-C66B-4AA2-B15D-ACFF8A45454A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{15226ED2-C66B-4AA2-B15D-ACFF8A45454A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{15226ED2-C66B-4AA2-B15D-ACFF8A45454A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FDA71626-E557-4D33-842F-2C4611768538}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FDA71626-E557-4D33-842F-2C4611768538}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FDA71626-E557-4D33-842F-2C4611768538}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FDA71626-E557-4D33-842F-2C4611768538}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6E3A10AE-BB8D-471B-B0EA-8B3879A5B6F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6E3A10AE-BB8D-471B-B0EA-8B3879A5B6F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6E3A10AE-BB8D-471B-B0EA-8B3879A5B6F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6E3A10AE-BB8D-471B-B0EA-8B3879A5B6F9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DD5137FC-22E5-47DA-88F1-3D3F1E7E8381}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DD5137FC-22E5-47DA-88F1-3D3F1E7E8381}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DD5137FC-22E5-47DA-88F1-3D3F1E7E8381}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DD5137FC-22E5-47DA-88F1-3D3F1E7E8381}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4ACE8A29-6D75-4956-B45C-22C82EAFCFD5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4ACE8A29-6D75-4956-B45C-22C82EAFCFD5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4ACE8A29-6D75-4956-B45C-22C82EAFCFD5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4ACE8A29-6D75-4956-B45C-22C82EAFCFD5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{647D929B-4ACE-4099-A25F-D7FF06588F88}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{647D929B-4ACE-4099-A25F-D7FF06588F88}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{647D929B-4ACE-4099-A25F-D7FF06588F88}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{647D929B-4ACE-4099-A25F-D7FF06588F88}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E88982FD-E257-41BA-A343-B56976CCB3A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E88982FD-E257-41BA-A343-B56976CCB3A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E88982FD-E257-41BA-A343-B56976CCB3A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E88982FD-E257-41BA-A343-B56976CCB3A1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7DB39E8E-DA06-4E4B-A3E2-1A0FACEC941C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7DB39E8E-DA06-4E4B-A3E2-1A0FACEC941C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7DB39E8E-DA06-4E4B-A3E2-1A0FACEC941C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7DB39E8E-DA06-4E4B-A3E2-1A0FACEC941C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{698814F7-8E47-4272-9228-B498F949B1A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{698814F7-8E47-4272-9228-B498F949B1A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{698814F7-8E47-4272-9228-B498F949B1A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{698814F7-8E47-4272-9228-B498F949B1A2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D30C57E7-BA12-4E95-BCF2-8BE5B0EF9D56}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D30C57E7-BA12-4E95-BCF2-8BE5B0EF9D56}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D30C57E7-BA12-4E95-BCF2-8BE5B0EF9D56}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D30C57E7-BA12-4E95-BCF2-8BE5B0EF9D56}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{CC87925C-E4F2-4386-A322-8BC088DE7B33} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
-		{2C3795A2-D88D-4635-BBAA-53503B7D9721} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{FFE1B4AC-742A-45C2-9F04-08FFD01A7796} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{A9D14445-2559-4DF7-B1D4-61F0F190EE54} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{69A84CB4-793D-46B4-87EF-E59FED669124} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{204FE42E-89FB-4FA4-9CE0-9FA4B387BC63} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
-		{BF4793A4-FCE8-4FBF-8E8D-6297B9A1B70B} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
-		{8F108B6A-0FBE-4D6E-8DAA-B5BA1429C925} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
-		{D0E043CC-C0A2-42B3-8689-21468600035F} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
-		{D9257F96-F74F-4ED1-B720-C9CE764E1962} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
-		{7ED41C0D-F9ED-43E9-BE10-6E7457B90235} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
-		{82770C4E-C5A7-4888-99A1-57935898BDD8} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{1F23C428-A95F-4977-BE77-3D626116CCB8} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
-		{E3C8C506-1B69-4EBC-89AE-24D686AA274C} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{BC4A5F70-0785-40D6-9EBE-4BB0E47A9EEC} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{EDE8A833-C15D-47FE-BFF2-0A24FAA22728} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{7D72B30B-F720-4BE9-A97A-13E3CF5C11A2} = {56BB77A4-DF59-49EC-92E6-C9CA2C2E9FDE}
@@ -272,10 +282,21 @@ Global
 		{C76BBED8-93D4-4073-924C-3E5564EEA1DB} = {773A5105-2248-4C5B-ACFD-44D9C267D270}
 		{178B23D3-F676-43C3-880D-9E0BEFBAF019} = {60FC06B0-58BB-4D96-96FE-FD92EA4BAA5E}
 		{26FD79BD-2329-41B6-A86D-8F3992437CBE} = {EA09AD42-B4E2-4B0D-8960-E87277F46F04}
-		{A85B6894-33A4-4645-848D-D4D4D413A0C5} = {EA09AD42-B4E2-4B0D-8960-E87277F46F04}
 		{886DFAE8-C01A-43E2-A275-7F1E41CA0342} = {EA09AD42-B4E2-4B0D-8960-E87277F46F04}
 		{F7E5B6E8-5D55-4974-9CA7-4C94D810631F} = {EA09AD42-B4E2-4B0D-8960-E87277F46F04}
 		{647FB507-A552-4537-AA2C-E2274A3245EB} = {4755795D-4488-4013-81FC-9FD5D442B211}
 		{F9AAC195-D3F7-4160-A829-5F9775791AD5} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
+		{E3C8C506-1B69-4EBC-89AE-24D686AA274C} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
+		{A85B6894-33A4-4645-848D-D4D4D413A0C5} = {EA09AD42-B4E2-4B0D-8960-E87277F46F04}
+		{15226ED2-C66B-4AA2-B15D-ACFF8A45454A} = {56BB77A4-DF59-49EC-92E6-C9CA2C2E9FDE}
+		{6E3A10AE-BB8D-471B-B0EA-8B3879A5B6F9} = {56BB77A4-DF59-49EC-92E6-C9CA2C2E9FDE}
+		{DD5137FC-22E5-47DA-88F1-3D3F1E7E8381} = {B3FA7806-592C-4F81-BBCE-7AB1180CD7CD}
+		{4ACE8A29-6D75-4956-B45C-22C82EAFCFD5} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
+		{647D929B-4ACE-4099-A25F-D7FF06588F88} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
+		{E88982FD-E257-41BA-A343-B56976CCB3A1} = {773A5105-2248-4C5B-ACFD-44D9C267D270}
+		{7DB39E8E-DA06-4E4B-A3E2-1A0FACEC941C} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
+		{698814F7-8E47-4272-9228-B498F949B1A2} = {773A5105-2248-4C5B-ACFD-44D9C267D270}
+		{FDA71626-E557-4D33-842F-2C4611768538} = {EA09AD42-B4E2-4B0D-8960-E87277F46F04}
+		{D30C57E7-BA12-4E95-BCF2-8BE5B0EF9D56} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 	EndGlobalSection
 EndGlobal

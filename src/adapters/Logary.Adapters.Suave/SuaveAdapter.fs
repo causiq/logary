@@ -40,4 +40,4 @@ type SuaveAdapter(logger : Logger) =
       // here it's important the Level of the logger is well tuned
       fLine >> SuaveLogLine.toLogary
       |> Logger.logDebug logger
-      |> queue
+      |> start 

@@ -19,3 +19,6 @@ Heka.userprefs
 App_Readme/
 paket-files/
 *.userprefs
+build.cmd
+build.fsx
+build.sh

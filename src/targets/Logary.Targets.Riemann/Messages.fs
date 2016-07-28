@@ -223,17 +223,17 @@ type Event =
       metric_d      = Nullable ()
       metric_f      = Nullable () }
 
-  static member CreateInt64(value, time, state, service, host, description, tags, ttl, attributes) =
+  static member createInt64(value, time, state, service, host, description, tags, ttl, attributes) =
     let x = Event(time, state, service, host, description, tags, ttl, attributes)
     x.metric_sint64 <- Nullable value
     x
 
-  static member CreateDouble(value, time, state, service, host, description, tags, ttl, attributes) =
+  static member createDouble(value, time, state, service, host, description, tags, ttl, attributes) =
     let x = Event(time, state, service, host, description, tags, ttl, attributes)
     x.metric_d <- Nullable value
     x
 
-  static member CreateSingle(value, time, state, service, host, description, tags, ttl, attributes) =
+  static member createSingle(value, time, state, service, host, description, tags, ttl, attributes) =
     let x = Event(time, state, service, host, description, tags, ttl, attributes)
     x.metric_f <- Nullable value
     x

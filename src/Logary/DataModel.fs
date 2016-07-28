@@ -250,6 +250,70 @@ module Value =
     | otherwise ->
       failwithf "Cannot convert %A to a Value" otherwise
 
+  /// Do an approximate conversion of the value to double
+  let toDouble = function
+    | String _ ->
+      1.
+
+    | Bool true ->
+      1.
+
+    | Bool false ->
+      0.
+
+    | Float f ->
+      f
+
+    | Int64 i64 ->
+      float i64
+
+    | BigInt bi ->
+      float bi
+
+    | Binary _ ->
+      0.
+
+    | Fraction (n, d) ->
+      float n / float d
+
+    | Object _ ->
+      0.
+
+    | Array _ ->
+      0.
+
+  /// Do an approximate conversion of the value to string
+  let rec toString = function
+    | String str ->
+      str
+
+    | Bool true ->
+      "true"
+
+    | Bool false ->
+      "false"
+
+    | Float f ->
+      string f
+
+    | Int64 i64 ->
+      string i64
+
+    | BigInt bi ->
+      string bi
+
+    | Binary (bytes, ct) ->
+      sprintf "content-type:%s,base64:%s" ct (Convert.ToBase64String bytes)
+
+    | Fraction (n, d) ->
+      string (float n / float d)
+
+    | Object _ ->
+      "" // TO CONSIDER: do something with objects
+
+    | Array values ->
+      String.concat "," (values |> List.map toString)
+
 [<AutoOpen>]
 module Capture =
 
@@ -1104,10 +1168,6 @@ module Message =
       level     = LogLevel.Debug
       timestamp = Date.timestamp() }
 
-  [<Obsolete "Use gaugeWithUnit (C#: Gauge)"; CompiledName "Metric">]
-  let metricWithUnit dp units value =
-    gaugeWithUnit dp units value
-
   /// Creates a new gauge message with data point name and scalar value
   [<CompiledName "Gauge">]
   let gauge dp value =
@@ -1117,10 +1177,6 @@ module Message =
       context   = Map.empty
       level     = LogLevel.Debug
       timestamp = Date.timestamp() }
-
-  [<Obsolete "Use gauge (C#: Gauge)"; CompiledName "Metric">]
-  let metric dp value =
-    gauge dp value
 
   [<CompiledName "Derived">]
   let derivedWithUnit dp units value =
@@ -1301,6 +1357,8 @@ module Message =
         msg
 
       | None ->
-        setFieldValue "errors" (Field (Array [], None)) msg
+        setFieldValue ErrorsFieldName (Field (Array [], None)) msg
 
     Lens.setPartial Lenses.errors_ exnsNext msg
+
+  

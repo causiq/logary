@@ -1,7 +1,7 @@
 ﻿module Program
 
 open System
-
+open NodaTime
 open Fuchu
 open Hopac
 open Hopac.Infixes
@@ -13,7 +13,10 @@ open Logary.Internals
 
 module Assert = ExpectoPatronum.Expect
 
-let emptyRuntime = { serviceName = "tests"; logger = NullLogger() }
+let emptyRuntime =
+  { serviceName = "tests"
+    clock       = SystemClock.Instance
+    logger      = NullLogger() }
 
 let flush = Target.flush >> Job.Ignore >> Job.Global.run
 
@@ -32,7 +35,6 @@ let finaliseTarget = Target.shutdown >> fun a ->
   | TimedOut -> Tests.failtest "finalising target timeout"
   | TimeoutResult.Success _ -> ()
 
-
 let raisedExn msg =
   let e = ref None : exn option ref
   try raise <| ApplicationException(msg)
@@ -46,7 +48,7 @@ let target =
   testList "logstash" [
     testCase "start and stop" <| fun _ ->
       let target = Logstash.create targConf (PointName.ofSingle "logstash-integration")
-      let subject = target |> init { serviceName = "tests"; logger = NullLogger() } |> run
+      let subject = target |> init emptyRuntime |> run
       Message.eventWarn "integration test" |> Target.log subject |> run |> run
       subject |> finaliseTarget
 

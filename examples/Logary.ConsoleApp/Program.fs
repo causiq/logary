@@ -95,5 +95,12 @@ let main argv =
     )
     |> run
 
+  let logger =
+    logary.getLogger (PointName [| "Logary"; "Samples"; "main" |])
+
+  Message.event Info "User logged in"
+  |> Message.setField "userName" "haf"
+  |> Logger.logSimple logger
+
   mre.Wait()
   0

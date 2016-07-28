@@ -23,17 +23,20 @@ type internal Adapter(logger : Logger) =
   let gc = stubVariablesContext ()
   let tc = stubVariablesContext ()
 
-  let objToLine : obj -> LogLine = function
-    | :? string as s -> { LogLine.empty with message = s }
-    | o -> LogLine.create "unknown data" Map.empty Info [] logger.Name None
+  let objToLine : obj -> Message = function
+    | :? string as s ->
+      Message.event Debug s
+
+    | o ->
+      Message.event Info "Unknown Data from log4net"
+      |> Message.setFieldFromObject "data" o
+      |> Message.setName logger.name
 
   let log =
-    LogLine.setPath logger.Name
-    >> Logger.log logger
+    Message.setName logger.name >> Logger.logSimple logger
 
   let llog level =
-    LogLine.setLevel level
-    >> log
+    Message.setLevel level >> log
 
   let invariantCulture = CultureInfo.InvariantCulture
 
@@ -43,44 +46,40 @@ type internal Adapter(logger : Logger) =
     message |> objToLine |> llog level
 
   let write' (message : obj) level ex =
-    message |> objToLine
-    |> LogLine.setExn ex
+    message
+    |> objToLine
+    |> Message.addExn ex
     |> llog level
 
   let write'' formatProvider format level ex args =
     fmt formatProvider format args
-    |> LogLine.create' level
-    |> fun line ->
-      match ex with
-      | None -> line
-      | Some ex -> line |> LogLine.setExn ex
+    |> Message.event level
+    |> (ex |> Option.fold (fun s -> Message.addExn) id)
     |> log
 
   let write''' (formatProvider : IFormatProvider)
                (cb : Action<FormatMessageHandler>)
                (ex : exn option)
                level =
-    if logger.Level >= level then
+    if logger.level >= level then
       cb.Invoke(
         FormatMessageHandler(
           fun format args ->
             let res = fmt formatProvider format args
-            res |> LogLine.create' level
-            |> fun line ->
-              match ex with
-              | None -> line
-              | Some ex -> line |> LogLine.setExn ex
+            res
+            |> Message.event level
+            |> (ex |> Option.fold (fun s -> Message.addExn) id)
             |> log
             res))
 
   // fucking too big interface
   interface ILog with
-    member x.IsTraceEnabled = logger.Level >= Verbose
-    member x.IsDebugEnabled = logger.Level >= Debug
-    member x.IsInfoEnabled = logger.Level >= Info
-    member x.IsWarnEnabled = logger.Level >= Warn
-    member x.IsErrorEnabled = logger.Level >= Error
-    member x.IsFatalEnabled = logger.Level >= Fatal
+    member x.IsTraceEnabled = logger.level >= Verbose
+    member x.IsDebugEnabled = logger.level >= Debug
+    member x.IsInfoEnabled = logger.level >= Info
+    member x.IsWarnEnabled = logger.level >= Warn
+    member x.IsErrorEnabled = logger.level >= Error
+    member x.IsFatalEnabled = logger.level >= Fatal
 
     member x.Trace (message : obj) = write message Verbose
     member x.Trace (message : obj, ex) = write' message Verbose ex
@@ -160,6 +159,6 @@ type internal Adapter(logger : Logger) =
 type LogaryAdapter(lm : LogManager) =
   interface ILoggerFactoryAdapter with
     member x.GetLogger (typ : Type) =
-      Adapter(lm.GetLogger(typ.FullName)) :> ILog
+      Adapter(PointName.parse typ.FullName |> lm.getLogger) :> ILog
     member x.GetLogger (name : string) =
-      Adapter(lm.GetLogger name) :> ILog
+      Adapter(PointName.parse name |> lm.getLogger) :> ILog

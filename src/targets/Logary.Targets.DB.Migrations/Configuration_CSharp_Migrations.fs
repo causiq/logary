@@ -23,7 +23,7 @@ module MigrationBuilderEx =
                  processorFac : Func<IDbConnection, IMigrationProcessor>) =
     let builder' = builder :> FactoryApi.ConfigReader<DBConf>
     let conf = builder'.ReadConf()
-    let conn = conf.connFac ()
+    let conn = conf.connectionFactory ()
     let fac = ExistingConnectionProcessorFactory(conn, processorFac.Invoke)
     Runner(fac, "", logger = logger).MigrateUp()
     builder.Done conf

@@ -1,5 +1,6 @@
 ﻿module Logary.Tests.GraphiteTarget
 
+open NodaTime
 open Fuchu
 open Swensen.Unquote
 open System.Text.RegularExpressions
@@ -18,7 +19,7 @@ let tests =
       Tests.skiptest "until custom tcp"
       let conf = Graphite.GraphiteConf.create("localhost")
       let graphite = Graphite.create conf (PointName.ofSingle "graphite-target")
-      let instance = graphite.initer { serviceName = "tests"; logger = NullLogger() } |> run
+      let instance = graphite.initer { serviceName = "tests"; clock = SystemClock.Instance; logger = NullLogger() } |> run
       //start instance.server
       Assert.Equal("instance name should match", instance.name, (PointName.ofSingle "graphite-target"))
 

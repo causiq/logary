@@ -140,6 +140,10 @@ module Date =
   let timestamp () : int64 =
     (!clock).Now.Ticks * 100L
 
+  /// Gets the current instant from the global clock
+  let instant () : Instant =
+    (!clock).Now
+
 module Cache =
   open System
   open System.Collections.Concurrent

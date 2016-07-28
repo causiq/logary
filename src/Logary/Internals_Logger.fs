@@ -63,16 +63,12 @@ module internal Logging =
         |> List.choose (fun (accept, t) -> if accept message then Some t else None)
         |> logWithAck message
 
-/// A logger that does absolutely nothing, useful for feeding into the target
-/// that is actually *the* internal logger target, to avoid recursive calls to
-/// itself.
-type NullLogger() =
-  interface Logger with
-    member x.logVerboseWithAck fLine = Logging.instaPromise
-    member x.logDebugWithAck fLine = Logging.instaPromise
-    member x.logWithAck line = Logging.instaPromise
-    member x.level = Fatal
-    member x.name = PointName.ofList [ "Logary"; "Internals"; "NullLogger" ]
+      member x.logSimple message : unit =
+        x.targets
+        |> List.choose (fun (accept, t) -> if accept message then Some t else None)
+        |> logWithAck message
+        |> Job.Ignore
+        |> start
 
 /// This logger is special: in the above case the Registry takes the responsibility
 /// of shutting down all targets, but this is a stand-alone logger that is used
@@ -103,6 +99,9 @@ type InternalLogger =
 
     member x.logWithAck message =
       x.trgs |> Logging.logWithAck message
+
+    member x.logSimple message =
+      x.trgs |> Logging.logWithAck message |> Job.Ignore |> start
 
     member x.level =
       x.lvl

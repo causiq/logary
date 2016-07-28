@@ -3,6 +3,7 @@
 open System.IO
 open System.Text.RegularExpressions
 open System.Text
+open NodaTime
 open Logary
 open Logary.Internals
 open Logary.Targets
@@ -16,7 +17,10 @@ open Hopac.Infixes
 
 let emptyTarget = Noop.create {isYes = true} (PointName.ofSingle "empty target")
 let emptyRule = Rule.createForTarget (PointName.ofSingle "empty target")
-let emptyRuntime = { serviceName = "tests"; logger = NullLogger() }
+let emptyRuntime =
+  { serviceName = "tests"
+    clock       = SystemClock.Instance
+    logger      = NullLogger() }
 
 let textWriter () =
   let sb = new StringBuilder()

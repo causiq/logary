@@ -5,7 +5,7 @@ module Logary.DB.Migrations.Defaults
 let Schema = "Logary"
 
 [<Literal>]
-let MetricsTable = "Metrics"
+let GaugesTable = "Gauges"
 
 [<Literal>]
-let LogLinesTable = "LogLines"
+let EventsTable = "Events"

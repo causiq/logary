@@ -40,7 +40,6 @@
   <ItemGroup>
     <Content Include="app.config" />
     <Compile Include="SuaveAdapter.fs" />
-    <Compile Include="Deprecated.fs" />
     <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="AssemblyInfo.fs" />
     <None Include="paket.references" />
