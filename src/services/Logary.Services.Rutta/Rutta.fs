@@ -6,13 +6,13 @@ open System.Reflection
 open Argu
 
 type Args =
-  | [<PrintLabels>] Push_To of pushConnectToSocket:string
-  | [<PrintLabels>] Pub_To of pubBindSocket:string
-  | [<PrintLabels>] Router of pullBindSocket:string
-  | [<PrintLabels>] Router_Sub of subConnectSocket:string
-  | [<PrintLabels>] Router_Target of logaryTargetUri:string
-  | [<PrintLabels>] Proxy of xsubConnectToSocket:string * xpubBindSocket:string
-  | [<PrintLabels>] Health of ip:string * port:int
+  | Push_To of pushConnectToSocket:string
+  | Pub_To of pubBindSocket:string
+  | Router of pullBindSocket:string
+  | Router_Sub of subConnectSocket:string
+  | Router_Target of logaryTargetUri:string
+  | Proxy of xsubConnectToSocket:string * xpubBindSocket:string
+  | Health of ip:string * port:int
 with
   interface IArgParserTemplate with
     member s.Usage =
@@ -56,7 +56,7 @@ module Shipper =
 
   open System
   open System.Threading
-  open Nessos.FsPickler
+  open MBrace.FsPickler
   open NodaTime
   open Hopac
   open Hopac.Infixes
@@ -127,8 +127,8 @@ module Router =
   open Logary.Configuration
   open Logary.Targets
   open fszmq
-  open Nessos.FsPickler
-  open Nessos.FsPickler.Combinators
+  open MBrace.FsPickler
+  open MBrace.FsPickler.Combinators
 
   type State =
     { zmqCtx    : Context

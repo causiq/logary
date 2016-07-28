@@ -93,7 +93,7 @@ end
 desc 'Perform quick build'
 build :build_quick do |b|
   b.prop 'Configuration', Configuration
-  b.sln = 'src/v4.sln'
+  b.sln = 'src/Logary.sln'
   maybe_sign b
 end
 

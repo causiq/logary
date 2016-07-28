@@ -1,11 +1,10 @@
 redirects: on
-framework: net45
+framework: >= net45
 source https://www.nuget.org/api/v2
 
 nuget Common.Logging
 nuget Common.Logging.Core
-nuget EventStore.Client.PreRelease
-nuget FsMachines
+nuget EventStore.Client
 nuget FsPickler
 nuget Hopac
 nuget Mailgun.Api
@@ -14,29 +13,23 @@ nuget elmah.io.core
 nuget FAKE
 nuget FluentMigrator
 nuget FluentMigrator.Runner
-nuget FParsec
 nuget FsCheck
 nuget FsSql
-nuget FsUnit
 nuget Fuchu
 nuget Fuchu.FsCheck
 nuget log4net
-nuget loggr-dotnet
 nuget Machine.Specifications
 nuget Machine.Specifications.Should
 nuget Machine.Specifications.Runner.Console
-nuget NLog
 nuget NodaTime
-nuget NUnit
 nuget protobuf-net
-nuget RestSharp
 nuget Suave
 nuget System.Data.SQLite.Core
 nuget Argu
 nuget Unquote
 nuget Hawk
 nuget Http.fs-prerelease
-nuget Topshelf
+nuget Topshelf ~> 3
 nuget Topshelf.FSharp
 nuget fszmq
 nuget FSharp.Core

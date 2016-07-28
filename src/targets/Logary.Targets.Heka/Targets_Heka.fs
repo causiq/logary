@@ -162,7 +162,7 @@ module internal Impl =
         let ep, useTLS = conf.endpoint
         let client = new TcpClient()
         client.NoDelay <- true
-        do! client.ConnectAsync(ep.Address, ep.Port)
+        do! Job.awaitUnitTask (client.ConnectAsync(ep.Address, ep.Port))
 
         let stream =
           if useTLS then

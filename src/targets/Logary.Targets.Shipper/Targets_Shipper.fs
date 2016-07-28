@@ -2,7 +2,7 @@
 
 open System
 open System.Threading
-open Nessos.FsPickler
+open MBrace.FsPickler
 open Hopac
 open Hopac.Infixes
 open Logary
@@ -16,8 +16,7 @@ open fszmq.Socket
 module Serialisation =
   open System.IO
   open Logary
-  open Nessos.FsPickler
-  open Nessos.FsPickler.Combinators
+  open MBrace.FsPickler.Combinators
 
   (*
   let pValue : Pickler<Value> =

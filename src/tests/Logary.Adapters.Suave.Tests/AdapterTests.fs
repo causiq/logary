@@ -2,19 +2,31 @@
 
 open global.Suave
 open global.Suave.Logging
-
+open System.Threading
 open Logary
-
+open Hopac
 open Fuchu
 
-let test_loggers (minLevel : Logging.LogLevel) (lineLevel : Logging.LogLevel) (line : LogLine ref) =
+let testLoggers (minLevel : LogLevel) (lineLevel : Logging.LogLevel) (message : Message ref) =
   let stub = { new Logger with
-                  member x.LogVerbose fl = x.Log (fl ())
-                  member x.LogDebug fl = x.Log (fl ())
-                  member x.Log ll = line := ll
-                  member x.Measure m = ()
-                  member x.Level = Info
-                  member x.Name = "test stub" }
+                  member x.logVerboseWithAck fac =
+                    x.logWithAck (fac ())
+
+                  member x.logDebugWithAck fac =
+                    x.logWithAck (fac ())
+
+                  member x.logWithAck msg =
+                    message := msg
+                    Alt.always (Promise.Now.withValue ())
+
+                  member x.logSimple msg =
+                    message := msg
+
+                  member x.level =
+                    minLevel
+
+                  member x.name =
+                    PointName.ofSingle "test stub" }
 
   let subject = SuaveAdapter(stub) :> Suave.Logging.Logger
 
@@ -26,21 +38,32 @@ let test_loggers (minLevel : Logging.LogLevel) (lineLevel : Logging.LogLevel) (l
       tsUTCTicks    = 0L
       trace         = Logging.TraceHeader.empty }
 
+type Message with
+  member x.message =
+    match x.value with
+    | Event templ ->
+      templ
+
+    | x ->
+      failwithf "Unexpected %A" x
+
 [<Tests>]
 let tests =
   testList "with levels" [
     testCase "logs nothing on Debug level" <| fun _ ->
-      let line : LogLine ref = ref (LogLine.create'' "a.b.c" "empty")
-      test_loggers Logging.LogLevel.Info Logging.LogLevel.Debug line
-      Assert.Equal("should have 'empty' message", "empty", (!line).message)
+      let msg : Message ref = ref (Message.event Info "empty" |> Message.setName (PointName.parse "a.b.c"))
+      testLoggers Info Logging.LogLevel.Debug msg
+      Assert.Equal("should have 'empty' message", "empty", (!msg).message)
 
     testCase "logs same on Info level" <| fun _ ->
-      let line : LogLine ref = ref (LogLine.create'' "a.b.c" "empty")
-      test_loggers Logging.LogLevel.Info Logging.LogLevel.Info line
-      Assert.Equal("should have 'test' message", "test", (!line).message)
+      let msg : Message ref = ref (Message.event Info "empty" |> Message.setName (PointName.parse "a.b.c"))
+      testLoggers Debug Logging.LogLevel.Info msg
+      while (!msg).message = "empty" do Thread.Sleep 500
+      Assert.Equal("should have 'test' message", "test", (!msg).message)
 
     testCase "logs same on Error level" <| fun _ ->
-      let line : LogLine ref = ref (LogLine.create'' "a.b.c" "empty")
-      test_loggers Logging.LogLevel.Info Logging.LogLevel.Error line
-      Assert.Equal("should have 'test' message", "test", (!line).message)
+      let msg : Message ref = ref (Message.event Info "empty" |> Message.setName (PointName.parse "a.b.c"))
+      testLoggers Info Logging.LogLevel.Error msg
+      while (!msg).message = "empty" do Thread.Sleep 500
+      Assert.Equal("should have 'test' message", "test", (!msg).message)
     ]

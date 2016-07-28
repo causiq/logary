@@ -38,6 +38,9 @@ type SuaveAdapter(logger : Logger) =
   interface Suave.Logging.Logger with
     member x.Log level fLine =
       // here it's important the Level of the logger is well tuned
-      fLine >> SuaveLogLine.toLogary
-      |> Logger.logDebug logger
-      |> start 
+      if logger.level <= SuaveLogLevel.toLogary level then
+        fLine ()
+        |> SuaveLogLine.toLogary
+        |> Logger.logSimple logger
+      else
+        ()

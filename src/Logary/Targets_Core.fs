@@ -58,9 +58,9 @@ module TextWriter =
             | Log (logMsg, ack) ->
               job {
                 let writer = if logMsg.level < twConf.isErrorAt then twConf.output else twConf.error
-                do! writeLine writer (twConf.formatter.format logMsg)
+                do! Job.awaitUnitTask (writeLine writer (twConf.formatter.format logMsg))
                 if twConf.flush then
-                  do! writer.FlushAsync()
+                  do! Job.awaitUnitTask (writer.FlushAsync())
 
                 do! ack *<= ()
                 return! loop ()
@@ -68,8 +68,8 @@ module TextWriter =
 
             | Flush (ack, nack) ->
               job {
-                do! twConf.output.FlushAsync()
-                do! twConf.error.FlushAsync()
+                do! Job.awaitUnitTask (twConf.output.FlushAsync())
+                do! Job.awaitUnitTask (twConf.error.FlushAsync())
                 do! Ch.give ack () <|> nack
                 return! loop ()
               }

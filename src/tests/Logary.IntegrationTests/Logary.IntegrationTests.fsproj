@@ -53,33 +53,9 @@
       <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
       <Name>Logary</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\targets\Logary.Targets.Zipkin\Logary.Targets.Zipkin.fsproj">
-      <Project>{2C3795A2-D88D-4635-BBAA-53503B7D9721}</Project>
-      <Name>Logary.Targets.Zipkin</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\targets\Logary.Targets.NLog\Logary.Targets.NLog.fsproj">
-      <Project>{8F108B6A-0FBE-4D6E-8DAA-B5BA1429C925}</Project>
-      <Name>Logary.Targets.NLog</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\targets\Logary.Targets.Loggr\Logary.Targets.Loggr.fsproj">
-      <Project>{D9257F96-F74F-4ED1-B720-C9CE764E1962}</Project>
-      <Name>Logary.Targets.Loggr</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\targets\Logary.Targets.Logentries\Logary.Targets.Logentries.fsproj">
-      <Project>{7ED41C0D-F9ED-43E9-BE10-6E7457B90235}</Project>
-      <Name>Logary.Targets.Logentries</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\targets\Logary.Targets.ElmahIO\Logary.Targets.ElmahIO.fsproj">
-      <Project>{D0E043CC-C0A2-42B3-8689-21468600035F}</Project>
-      <Name>Logary.Targets.ElmahIO</Name>
-    </ProjectReference>
     <ProjectReference Include="..\..\targets\Logary.Targets.DB\Logary.Targets.DB.fsproj">
       <Project>{A9D14445-2559-4DF7-B1D4-61F0F190EE54}</Project>
       <Name>Logary.Targets.DB</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\services\Logary.Services.SQLServerHealth\Logary.Services.SQLServerHealth.fsproj">
-      <Project>{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5}</Project>
-      <Name>Logary.Services.SQLServerHealth</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\targets\Logary.Targets.Riemann\Logary.Targets.Riemann.fsproj">
       <Project>{CC87925C-E4F2-4386-A322-8BC088DE7B33}</Project>
@@ -87,7 +63,7 @@
     </ProjectReference>
   </ItemGroup>
   <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3')">
       <ItemGroup>
         <Reference Include="FSharp.Core">
           <HintPath>..\..\..\packages\FSharp.Core\lib\net40\FSharp.Core.dll</HintPath>
@@ -98,7 +74,7 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3')">
       <ItemGroup>
         <Reference Include="Fuchu">
           <HintPath>..\..\..\packages\Fuchu\lib\Fuchu.dll</HintPath>
@@ -109,7 +85,7 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3')">
       <ItemGroup>
         <Reference Include="Hopac.Core">
           <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.Core.dll</HintPath>
@@ -130,7 +106,7 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3')">
       <ItemGroup>
         <Reference Include="NodaTime">
           <HintPath>..\..\..\packages\NodaTime\lib\net35-Client\NodaTime.dll</HintPath>
