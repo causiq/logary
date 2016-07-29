@@ -72,4 +72,3 @@ GITHUB
     ExpectoPatronum/Assert.fs (ef7588dae13f3ab81fd78d620202874673c519b0)
   remote: logary/RingBuffer
     RingBuffer.fs (4557d607737e748b54eb6de3ec5e5cd02247b2a5)
-      Hopac
