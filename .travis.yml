@@ -1,5 +1,6 @@
 ---
 language: csharp
+
 mono:
   - 4.2.3
   - 4.4.1
@@ -15,3 +16,8 @@ install:
 
 script:
   - bundle exec rake
+
+matrix:
+  allow_failures:
+   - mono: latest
+   - mono: weekly
