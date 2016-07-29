@@ -1274,7 +1274,8 @@ module Message =
 
   /// Converts a String.Format-style format string and an array of arguments into
   /// a message template and a set of fields.
-  let internal templateFormat (format : string) (args : obj[]) =
+  [<CompiledName "EventFormat">]
+  let templateFormat (format : string) (args : obj[]) =
     let parsedTemplate =
       Parser.parse format
 
@@ -1283,10 +1284,10 @@ module Message =
 
     let fields =
       scalarNamesAndValues
-      |> Seq.map (convertToNameAndField)
+      |> Seq.map convertToNameAndField
       |> List.ofSeq
 
-    format, fields
+    event LogLevel.Debug format |> setFieldValues fields
 
   /// Creates a new event with given level, format and arguments. Format may
   /// contain String.Format-esque format placeholders.

@@ -18,6 +18,20 @@ let private sampleMessage : Message =
     timestamp = Instant.FromSecondsSinceUnixEpoch(3L).PlusTicks(1234567L).Ticks * 100L
     level     = LogLevel.Error }
 
+let extractFormatFields msg =
+  let template =
+    match msg.value with
+    | Event template ->
+      template
+
+    | x -> Tests.failtestf "unexpected %A" x
+
+  let fields =
+    msg.fields
+    |> Seq.map (fun (KeyValue (key, value)) -> PointName.format key, value)
+
+  template, Set.ofSeq fields
+
 [<Tests>]
 let tests =
   testList "formatting" [
@@ -126,45 +140,45 @@ let tests =
                        """"timestamp":3123456700,"value":{"event":"here\n  we\ngo!"}}""")
       |> thatsIt
 
-    testCase "Formatting.templateFromFormat, simple case" <| fun _ ->
+    testCase "Formatting.templateFormat, simple case" <| fun _ ->
       let format = "This {0} contains {1} words."
       let args : obj[] = [|"sentence"; 4|]
       (because "converting a String.Format into a message template" <| fun () ->
-        Message.templateFromFormat format args)
+        extractFormatFields (Message.templateFormat format args))
       |> should equal ("This {0} contains {1} words.",
-                       [ "0", Field (String "sentence", None)
-                         "1", Field (Int64 4L, None) ])
+                       Set [ "0", Field (String "sentence", None)
+                             "1", Field (Int64 4L, None) ])
       |> thatsIt
       
-    testCase "Formatting.templateFromFormat, named and positional fields" <| fun _ ->
+    testCase "Formatting.templateFormat, named and positional fields" <| fun _ ->
       let format = "This {gramaticalStructure} contains {wordCount} {0}."
       let args : obj[] = [|"sentence"; 4; "words"|]
       (because "fields are matched left-to-right when any fields are named" <| fun () ->
-        Message.templateFromFormat format args)
+        extractFormatFields (Message.templateFormat format args))
       |> should equal ("This {gramaticalStructure} contains {wordCount} {0}.",
-                       [ "gramaticalStructure", Field (String "sentence", None)
-                         "wordCount", Field (Int64 4L, None)
-                         "0", Field (String "words", None) ])
+                       Set [ "gramaticalStructure", Field (String "sentence", None)
+                             "wordCount", Field (Int64 4L, None)
+                             "0", Field (String "words", None) ])
       |> thatsIt
 
-    testCase "Formatting.templateFromFormat, positional fields" <| fun _ ->
+    testCase "Formatting.templateFormat, positional fields" <| fun _ ->
       let format = "Positionally - two {2} . {2} . zero {0} . {0}"
       let args : obj[] = [|0;1;2;3|] 
       (because "fields are matched positionally when all are numbered" <| fun () ->
-        Message.templateFromFormat format args)
+        extractFormatFields (Message.templateFormat format args))
       |> should equal ("Positionally - two {2} . {2} . zero {0} . {0}",
-                       [ ("0", Field (Int64 0L, None))
-                         ("2", Field (Int64 2L, None)) ])
+                       Set [ ("0", Field (Int64 0L, None))
+                             ("2", Field (Int64 2L, None)) ])
       |> thatsIt
 
-    testCase "Formatting.templateFromFormat, named fields" <| fun _ ->
+    testCase "Formatting.templateFormat, named fields" <| fun _ ->
       let format = "This {gramaticalStructure} contains {wordCount} words."
       let args : obj[] = [|"sentence"; 4|]
       (because "fields are matched left-to-right in message template" <| fun () ->
-        Message.templateFromFormat format args)
+        extractFormatFields (Message.templateFormat format args))
       |> should equal ("This {gramaticalStructure} contains {wordCount} words.",
-                       [ "gramaticalStructure", Field (String "sentence", None)
-                         "wordCount", Field (Int64 4L, None) ])
+                       Set [ "gramaticalStructure", Field (String "sentence", None)
+                             "wordCount", Field (Int64 4L, None) ])
       |> thatsIt
 
     ]

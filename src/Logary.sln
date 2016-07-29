@@ -106,6 +106,12 @@ Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.MetricsWriter", "..\
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Facade.Tests", "tests\Logary.Facade.Tests\Logary.Facade.Tests.fsproj", "{643498E7-F0DC-4665-9EA9-FB3EBF0F6A88}"
 EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.Facade.Tests", "tests\Logary.Adapters.Facade.Tests\Logary.Adapters.Facade.Tests.fsproj", "{2B2FCE14-8E8D-407A-81FD-D648B0A1AA74}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Servizz", "..\examples\Servizz\Servizz.fsproj", "{AF0A49FA-0DD6-4BEB-B271-4B179C9B76DC}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Libryy", "..\examples\Libryy\Libryy.fsproj", "{A64CF176-66D8-459F-BF45-AF5B5C3098A2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -268,6 +274,18 @@ Global
 		{643498E7-F0DC-4665-9EA9-FB3EBF0F6A88}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{643498E7-F0DC-4665-9EA9-FB3EBF0F6A88}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{643498E7-F0DC-4665-9EA9-FB3EBF0F6A88}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2B2FCE14-8E8D-407A-81FD-D648B0A1AA74}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2B2FCE14-8E8D-407A-81FD-D648B0A1AA74}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2B2FCE14-8E8D-407A-81FD-D648B0A1AA74}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2B2FCE14-8E8D-407A-81FD-D648B0A1AA74}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AF0A49FA-0DD6-4BEB-B271-4B179C9B76DC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AF0A49FA-0DD6-4BEB-B271-4B179C9B76DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AF0A49FA-0DD6-4BEB-B271-4B179C9B76DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AF0A49FA-0DD6-4BEB-B271-4B179C9B76DC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A64CF176-66D8-459F-BF45-AF5B5C3098A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A64CF176-66D8-459F-BF45-AF5B5C3098A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A64CF176-66D8-459F-BF45-AF5B5C3098A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A64CF176-66D8-459F-BF45-AF5B5C3098A2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -312,5 +330,8 @@ Global
 		{8E4E562E-ACDE-4325-8B12-7C0B240E9176} = {773A5105-2248-4C5B-ACFD-44D9C267D270}
 		{1724A791-AC1F-4F79-9E1D-AB8F125B85BF} = {60FC06B0-58BB-4D96-96FE-FD92EA4BAA5E}
 		{643498E7-F0DC-4665-9EA9-FB3EBF0F6A88} = {EA09AD42-B4E2-4B0D-8960-E87277F46F04}
+		{2B2FCE14-8E8D-407A-81FD-D648B0A1AA74} = {56BB77A4-DF59-49EC-92E6-C9CA2C2E9FDE}
+		{AF0A49FA-0DD6-4BEB-B271-4B179C9B76DC} = {60FC06B0-58BB-4D96-96FE-FD92EA4BAA5E}
+		{A64CF176-66D8-459F-BF45-AF5B5C3098A2} = {60FC06B0-58BB-4D96-96FE-FD92EA4BAA5E}
 	EndGlobalSection
 EndGlobal

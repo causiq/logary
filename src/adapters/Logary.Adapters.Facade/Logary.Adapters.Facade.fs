@@ -21,5 +21,11 @@ type LogaryFacadeAdapter(ns : string, asm : string) =
     member x.logSimple message =
       ()
 
-    member x.level = Fatal
-    member x.name = PointName.ofList [ "Logary"; "Adapters"; "Facade" ]
+    member x.level =
+      Fatal
+
+    member x.name =
+      PointName.ofList [ "Logary"; "Adapters"; "Facade" ]
+
+  static member create ns asm =
+    LogaryFacadeAdapter(ns, asm)
