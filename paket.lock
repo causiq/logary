@@ -4,6 +4,7 @@ NUGET
   remote: https://www.nuget.org/api/v2
     Aether (8.1.2)
     Argu (3.2)
+    Castle.Core (3.3.3)
     Chiron (6.2)
       Aether (>= 8.0.2 < 9.0)
       FParsec (>= 1.0 < 2.0)
@@ -76,3 +77,5 @@ GITHUB
   remote: logary/RingBuffer
     RingBuffer.fs (4557d607737e748b54eb6de3ec5e5cd02247b2a5)
       Hopac
+  remote: logary/logary
+    src/Logary.Facade/Facade.fs (a3c39946ff197f6e98b294600a0bebcf15e518fd)
