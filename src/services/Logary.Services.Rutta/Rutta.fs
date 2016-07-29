@@ -141,7 +141,6 @@ module Router =
         (x.receiver :> IDisposable).Dispose()
         (x.forwarder :> IDisposable).Dispose()
 
-  
   let private init binding targetUri createSocket mode : State =
     let context = new Context()
     let receiver = createSocket context    

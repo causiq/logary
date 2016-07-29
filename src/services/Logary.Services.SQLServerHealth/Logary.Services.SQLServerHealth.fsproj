@@ -49,7 +49,7 @@
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="AsmUtils.fs" />
     <Compile Include="SQLServerPLE.fs" />
-    <Compile Include="SQLServerIOInfo.fs" />
+    <Compile Include="Metrics_SQLServerHealth.fs" />
     <Compile Include="Program.fs" />
     <None Include="Scripts.fsx" />
     <None Include="App.config" />

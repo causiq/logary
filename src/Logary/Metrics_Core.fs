@@ -259,12 +259,3 @@ module Reservoirs =
       state, [ msg ]
 
     create reducer ExpWeightedMovAvg.fiveMinutesEWMA ticker
-
-module internal Sample =
-
-  let loginsPerSecond : Job<Stream<Message>> = job {
-    let! counter = Counters.counter (PointName.ofSingle "logins")
-    let! ewma = Reservoirs.ewma (PointName.ofSingle "logins")
-    do! ewma |> Metric.consume (Metric.tap counter)
-    return Metric.tapMessages ewma
-  }

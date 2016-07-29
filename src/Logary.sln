@@ -58,10 +58,6 @@ Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.EventStore"
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.Hawk", "adapters\Logary.Adapters.Hawk\Logary.Adapters.Hawk.fsproj", "{9AF9D1E1-33A4-42C7-825F-D41CD3ECEBDD}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Services.SQLServerHealth", "services\Logary.Services.SQLServerHealth\Logary.Services.SQLServerHealth.fsproj", "{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5}"
-EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Services.SQLServerHealth.Tests", "tests\Logary.Services.SQLServerHealth.Tests\Logary.Services.SQLServerHealth.Tests.fsproj", "{8E4E562E-ACDE-4325-8B12-7C0B240E9176}"
-EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Services.SuaveReporter", "services\Logary.Services.SuaveReporter\Logary.Services.SuaveReporter.fsproj", "{C76BBED8-93D4-4073-924C-3E5564EEA1DB}"
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.ConsoleApp", "..\examples\Logary.ConsoleApp\Logary.ConsoleApp.fsproj", "{178B23D3-F676-43C3-880D-9E0BEFBAF019}"
@@ -101,6 +97,12 @@ EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Services.Rutta.Tests", "tests\Logary.Services.Rutta.Tests\Logary.Services.Rutta.Tests.fsproj", "{698814F7-8E47-4272-9228-B498F949B1A2}"
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Logstash.Tests", "tests\Logary.Targets.Logstash.Tests\Logary.Targets.Logstash.Tests.fsproj", "{D30C57E7-BA12-4E95-BCF2-8BE5B0EF9D56}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Services.SQLServerHealth", "services\Logary.Services.SQLServerHealth\Logary.Services.SQLServerHealth.fsproj", "{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Services.SQLServerHealth.Tests", "tests\Logary.Services.SQLServerHealth.Tests\Logary.Services.SQLServerHealth.Tests.fsproj", "{8E4E562E-ACDE-4325-8B12-7C0B240E9176}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.MetricsWriter", "..\examples\Logary.MetricsWriter\Logary.MetricsWriter.fsproj", "{1724A791-AC1F-4F79-9E1D-AB8F125B85BF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -172,14 +174,6 @@ Global
 		{9AF9D1E1-33A4-42C7-825F-D41CD3ECEBDD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9AF9D1E1-33A4-42C7-825F-D41CD3ECEBDD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9AF9D1E1-33A4-42C7-825F-D41CD3ECEBDD}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5}.Release|Any CPU.Build.0 = Release|Any CPU
-		{8E4E562E-ACDE-4325-8B12-7C0B240E9176}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8E4E562E-ACDE-4325-8B12-7C0B240E9176}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8E4E562E-ACDE-4325-8B12-7C0B240E9176}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8E4E562E-ACDE-4325-8B12-7C0B240E9176}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C76BBED8-93D4-4073-924C-3E5564EEA1DB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C76BBED8-93D4-4073-924C-3E5564EEA1DB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C76BBED8-93D4-4073-924C-3E5564EEA1DB}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -256,6 +250,18 @@ Global
 		{D30C57E7-BA12-4E95-BCF2-8BE5B0EF9D56}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D30C57E7-BA12-4E95-BCF2-8BE5B0EF9D56}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D30C57E7-BA12-4E95-BCF2-8BE5B0EF9D56}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8E4E562E-ACDE-4325-8B12-7C0B240E9176}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8E4E562E-ACDE-4325-8B12-7C0B240E9176}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8E4E562E-ACDE-4325-8B12-7C0B240E9176}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8E4E562E-ACDE-4325-8B12-7C0B240E9176}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1724A791-AC1F-4F79-9E1D-AB8F125B85BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1724A791-AC1F-4F79-9E1D-AB8F125B85BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1724A791-AC1F-4F79-9E1D-AB8F125B85BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1724A791-AC1F-4F79-9E1D-AB8F125B85BF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -277,8 +283,6 @@ Global
 		{BACE7A04-036B-4A37-A2A9-968F79CD673A} = {56BB77A4-DF59-49EC-92E6-C9CA2C2E9FDE}
 		{56014DF9-C99C-4D7F-939F-30A80D20296B} = {56BB77A4-DF59-49EC-92E6-C9CA2C2E9FDE}
 		{9AF9D1E1-33A4-42C7-825F-D41CD3ECEBDD} = {56BB77A4-DF59-49EC-92E6-C9CA2C2E9FDE}
-		{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5} = {773A5105-2248-4C5B-ACFD-44D9C267D270}
-		{8E4E562E-ACDE-4325-8B12-7C0B240E9176} = {773A5105-2248-4C5B-ACFD-44D9C267D270}
 		{C76BBED8-93D4-4073-924C-3E5564EEA1DB} = {773A5105-2248-4C5B-ACFD-44D9C267D270}
 		{178B23D3-F676-43C3-880D-9E0BEFBAF019} = {60FC06B0-58BB-4D96-96FE-FD92EA4BAA5E}
 		{26FD79BD-2329-41B6-A86D-8F3992437CBE} = {EA09AD42-B4E2-4B0D-8960-E87277F46F04}
@@ -298,5 +302,8 @@ Global
 		{698814F7-8E47-4272-9228-B498F949B1A2} = {773A5105-2248-4C5B-ACFD-44D9C267D270}
 		{FDA71626-E557-4D33-842F-2C4611768538} = {EA09AD42-B4E2-4B0D-8960-E87277F46F04}
 		{D30C57E7-BA12-4E95-BCF2-8BE5B0EF9D56} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
+		{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5} = {773A5105-2248-4C5B-ACFD-44D9C267D270}
+		{8E4E562E-ACDE-4325-8B12-7C0B240E9176} = {773A5105-2248-4C5B-ACFD-44D9C267D270}
+		{1724A791-AC1F-4F79-9E1D-AB8F125B85BF} = {60FC06B0-58BB-4D96-96FE-FD92EA4BAA5E}
 	EndGlobalSection
 EndGlobal

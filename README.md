@@ -16,8 +16,8 @@ These are some reasons why you should use Logary:
  - you can create your own metrics and derived/computed metrics or;
  - you can treat events as a Gauge of 1, ship it to Influx and be done with it
 
-Sponsored by
-[qvitoo – A.I. bookkeeping and Logary in production since many years](https://qvitoo.com/?utm_source=github&utm_campaign=logary).
+Created by [Henrik Feldt, et al](https://haf.github.io) and sponsored by
+[qvitoo – A.I. bookkeeping](https://qvitoo.com/?utm_source=github&utm_campaign=logary).
 
 ## Install it
 
@@ -114,45 +114,60 @@ At [https://logary.github.io/](https://logary.github.io) you can find the full d
 
 ## Overview
 
- - Logary – the main package and logging and metrics library.
- - Logary.CSharp - C# facade which makes it more 'object oriented'.
- - Logary.Facade - a single file you can import into your own F# library.
- - Adapters (things that you inject into libraries to send to Logary):
-   * Logary.Adapters.CommonLogging – so that CommonLogging can log to Logary.
-   * Logary.Adapters.EventStore – so that [EventStore](https://geteventstore.com/) can ship its logs via Logary.
-   * Logary.Adapters.Facade – an adapter for the above; works for arbitrary namespace.
-   * Logary.Adapters.FsSql – an adapter for the [FsSql](https://www.nuget.org/packages/FsSql/) library.
-   * Logary.Adapters.Hawk - an adapter for Logibit's [Hawk](https://www.nuget.org/packages/Hawk/) library.
-   * Logary.Adapters.log4net – an adapter for log4net to log into Logary.
-   * Logary.Adapters.Suave – an adapter for Suave to log into Logary.
-   * Logary.Adapters.Topshelf – an adapter for Topshelf to log into Logary.
- - Metrics (things that talk to the environment to get data):
-   * Logary.Metrics.WinPerfCounters – an API to access Windows Performance Counters.
- - Targets (things that write messages/events/metrics to something):
-   * Logary.Targets.DB – target for writing logs into an arbitrary database.
-     (SQL Server, MySQL, PostgreSQL, sqlite and so on...)
-   * Logary.Targets.DB.Migrations – uses [FluentMigrator](https://github.com/schambers/fluentmigrator/)
+Logary is itself a library for metrics and events with extensible inputs, *adapters*, and
+outputs, *targets*. Further, its *services* run as their own processes or in
+[Suave](https://suave.io/?utm_source=github&utm_campaign=logary).
+
+ - **Logary** – the main logging and metrics library. Your app depends on this.
+ - Logary.CSharp - C# facade which makes it more *object oriented*.
+ - Logary.Facade - single file to use in your F# library.
+ - **Logary.Targets** (from *Logary* into DBs and monitoring infra):
+   * DB – write logs into an arbitrary database: SQL Server, MySQL, PostgreSQL, sqlite and so on...
+   * *DB.Migrations* – uses [FluentMigrator](https://github.com/schambers/fluentmigrator/)
      to create and then upgrade your DB between versions of Logary.
-   * Logary.Targets.Heka – target for writing events and metrics to Heka.
-   * Logary.Targets.InfluxDb – target for writing metrics and annotations (from events) to InfluxDb.
-   * Logary.Targets.Logstash – target for writing events and events to Logstash over ZeroMQ.
-   * Logary.Targets.Mailgun – target for e-mailing yourself warnings, errors and fatal errors.
-   * Logary.Targets.Riemann – target for sending events and metrics to Riemann
-   * Logary.Targets.Shipper – a target that sends events and metrics to the Router or Proxy (see services)
- - Services (things that run as services on their own):
-   * Logary.Services.Rutta – a service that either:
-     - Ships Windows Performance Counters to the `Router` or `Proxy`, pushing via a PUB or PUSH ZeroMQ socket
-     - Proxies `Message`s between the `Shipper` and the `Router`, listening on a ZeroMQ XSUB/XPUB socket
-     - Routes `Message`s to Targets, listening on a ZeroMQ SUB or PULL socket
-     - Note that the shipping feature is its own target as well. Why? So that you can send logs in an efficient,
+   * Heka – ships *Events* and *Metrics* into Heka.
+   * InfluxDb – ships *Events* (as annotations) and *Metrics* into [InfluxDb](https://influxdata.com).
+   * Logstash – ships *Events* and *Metrics* into [Logstash](https://www.elastic.co/products/logstash)
+     [over](https://www.elastic.co/guide/en/logstash/current/plugins-inputs-zeromq.html)
+     [ZeroMQ](http://zeromq.org/).
+   * <span title="A transactional e-mail service that lets you send e-mail with code">Mailgun</span>
+     – ships *Events* over e-mail – send yourself warnings, errors and fatal errors
+     via [Mailgun](http://www.mailgun.com/).
+   * <span title="The sharpest clojurian knife in the drawer for acting on metrics">Riemann</span>
+     – ships *Events* (as a 1-valued gauage) and *Metrics* into [Riemann](http://riemann.io/).
+   * Shipper – ships *Messages* (*Events*/*Metrics*) to the `Router` or `Proxy` (see `Rutta` above)
+ - **Logary.Adapters** (from *X* into Logary):
+   * <span title="Make yourself dependent on not just one, but two logging frameworks">CommonLogging</span>
+     – *moar abstract* logs into Logary.
+   * EventStore – [EventStore](https://geteventstore.com/) logs into Logary.
+   * *Facade* –  receiver for `Logary.Facade` logs.
+   * <span title="F# API for dealing with DBs">FsSql</span> –
+     [FsSql](https://www.nuget.org/packages/FsSql/) logs into Logary.
+   * <span title="A web authorisation library">Hawk</span> - Logibit's
+     [Hawk](https://www.nuget.org/packages/Hawk/) logs into Logary.
+   * log4net – lets log4net log into Logary.
+   * <span title="Suave is a web server library that makes you happy">Suave</span> – ships
+     [Suave](https://suave.io) to logs into Logary.
+   * <span title="Topshelf is a Windows service host">Topshelf</span> – ships
+     [Topshelf](https://www.nuget.org/packages/Topshelf/) logs into Logary.
+ - **Logary.Metrics** (from *environment* into Logary):
+   * WinPerfCounters – an API to access Windows Performance Counters.
+ - **Logary.Services** (stand-alone functionality):
+   * Rutta – a godly service of three:
+     1. *Ships* Windows Performance Counters to the `Router` or `Proxy`, pushing via a PUB or PUSH ZeroMQ socket.
+     2. *Proxies* `Messages` between the `Shipper` and the `Router`, listening on a ZeroMQ XSUB/XPUB socket.
+     3. *Routes* `Messages` to Targets, listening on a ZeroMQ SUB or PULL socket.
+     <blockquote>
+       Note that the shipping feature is its own target as well. Why? So that you can send logs in an efficient,
        high-performance manner between machines, without going through a potentially destructure
        mapping to another serialisation format or through another log router (Heka, Logstash) which
        also may change your data structure.
-   * Logary.Services.SQLServerHealth – an unmaintained service that keep track of performance for highly loaded SQL Servers
-   * Logary.Services.SuaveReporter – a well-maintained Suave WebPart that you run as a part of your Suave
+     </blockquote>
+   * SQLServerHealth – a service that keep track of IO/latency performance for highly loaded SQL Servers
+   * SuaveReporter – a well-maintained Suave WebPart that you run as a part of your Suave
      server, which enables you to use [logary-js](https://www.npmjs.com/package/logary-js).
 
-## Data Model
+## Tutorial and Data Model
 
 The core type is **`Message`** which is the smallest unit you can log. It has
 three sorts of point values: `Event`, `Gauge` and `Derived`. An event is
@@ -182,7 +197,7 @@ An event is the most simple gauge of value 1.
 
 A derived value from one or many gauge.
 
-### Hierarchical logging
+### Rule & Hierarchical logging
 
 It means that you can have one `Rule`/`Logger` at level `Info` for namespace
 `MyCompany` and another `Rule` that matches loggers at `MyCompany.Submodule`
@@ -253,6 +268,224 @@ structured.
 The second function `setFieldFromObject` is used when the compiler complains
 that `setField` finds no available overloads.
 
+### Logging from modules
+
+Let's say you have a module in your F# code that you want to log from. You
+can either get a logger like shown in *Hello World*, or you can do something
+like this:
+
+``` fsharp
+module MyCompany.Sub.MyModule
+
+open Logary
+
+let logger = Logging.getCurrentLogger ()
+
+let logInUser () =
+  // do something
+  Message.event Info "User logged in" |> Logger.logSimple logger
+  // do more stuff
+```
+
+If you want to name your logger with a specific name, you can use
+`Logging.getLoggerByName` instead.
+
+### Logging from a class
+
+Similarly, sometimes you want to log from a class, and perhaps log some metrics too.
+
+```fsharp
+namespace MyCompany.Sub
+
+open Logary
+
+type Worker() =
+  let logger =
+    Logging.getLoggerByName "MyCompany.Sub.Worker"
+
+  let workAmount =
+    PointName [| "MyCompany"; "Sub"; "Worker"; "work_done" |]
+
+  let getAnswers (amount : float) =
+    // work work work
+    42 * amount
+
+  member x.Work (amount : float) =
+    // Initially, log how much work is to be done
+    // the only "supported" metric is a gauge (a value at an instant)
+    // and a derived metric (something you've computed from gauges)
+    Message.gauge workName (Float amount) |> Logger.logSimple logger
+
+    // do some work, logging how long it takes:
+    let everything = Logger.time logger (fun () -> getAnswers amount)
+
+    // return result
+    everything
+```
+
+In this example you learnt how to send arbitrary metrics to Logary (the gauge)
+and also how to time how long certain method calls take in your system.
+
+Make it a habit to log these sort of gauges all over your code base while
+you write your code, to make it much easier to understand the system as it
+develops.
+
+In fact, the more you do this, the more use you will have of Logary and of
+the dashboard you put up in Kibana (via Logstash) or Grafana (via InfluxDb).
+Put it up on a big TV in your office and you'll develop a second sense of
+whether the system is doing well or not, just from looking at the graphs.
+
+### Ticked metrics and gauges – random walk
+
+In the previous section you saw how to create a gauge at a point in your code,
+but sometimes you need a metric that runs continuously over time.
+
+This is possible because Logary contains code that can both tick your
+metric's computation function at a regular interval, and also has provisions
+for sending your metric other metrics, so that you can chain metrics
+together.
+
+The `ticker` is where you should return Messages (Gauge or Derived values) and
+keep track of how 'far long' you've computed, as to avoid returning the same
+messages multiple times.
+
+The `reducer` is what allows your metric to receive values from other metrics,
+or from your system-at-large – like the above showcased Gauge logging.
+
+Let's create a metric that just outputs a random walk. Start by opening the
+relevant namespaces and modules.
+
+```fsharp
+open System // access to Random
+open Hopac // access to Job
+open Logary // access to the Logary Data Model
+open Logary.Metric // access the module functions for metrics
+```
+
+Now you can start thinking about what the metric should do and implement the
+`ticker : 'state -> 'state * Message list`:
+
+```fsharp
+// we'll assume the state is the Random instance an previously outputted
+// value:
+let ticker (rnd : Random, prevValue) =
+
+  // calculate the next value based on some heuristic or algorithm
+  let value =
+    let v = (rnd.NextDouble() - 0.5) * 0.3
+    if abs v < 0.03 then rnd.NextDouble() - 0.5
+    elif v + prevValue < -1. || v + prevValue > 1. then -v + prevValue
+    else v + prevValue
+
+  // create a new Message/Gauge metric with this value
+  let msg = Message.gauge pn (Float value)
+
+  // return the new state as well as the Messages you want to feed into
+  // Logary
+  (rnd, value), [ msg ]
+```
+
+Remember that you also needed to supply a reducer. In this case, the random
+walk metric doesn't have any input from other metrics, so let's just return
+the same state as we get in:
+
+```fsharp
+let reducer state = function
+  | _ ->
+    state
+```
+
+We also need to create some initial state, so that our metric has someplace
+to start computing:
+
+```fsharp
+let state =
+  let rnd = Random()
+  rnd, rnd.NextDouble()
+```
+
+Let's write it all up into a Metric which the consuming programmer is
+free to name as she pleases:
+
+```fsharp
+let randomWalk (pn : PointName) : Job<Metric> =
+  Metric.create reducer state ticker
+```
+
+Finally, we'll tell Logary about our metric and extend our "Hello World" sample
+with shipping metrics into InfluxDb:
+
+```fsharp
+// open ... like above
+open System.Threading
+
+[<EntryPoint>]
+let main argv =
+  use mre = new ManualResetEventSlim(false)
+  use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
+
+  let influxConf =
+    InfluxDb.create (InfluxDb.InfluxDbConf.create(Uri "http://192.168.99.100:8086/write", "logary", batchSize = 500us))
+                    (PointName.ofSingle "influxdb")
+
+  use logary =
+    withLogaryManager "Logary.Examples.MetricsWriter" (
+      withTargets [
+        Console.create (Console.empty) (PointName.ofSingle "console")
+        influxConf
+      ]
+      >> withMetrics [
+        MetricConf.create (Duration.FromMilliseconds 500L) (PointName.ofSingle "henrik") Sample.randomWalk
+      ]
+      >> withRules [
+        Rule.createForTarget (PointName.ofSingle "console")
+        Rule.createForTarget (PointName.ofSingle "influxdb")
+      ]
+      >> withInternalTargets Info [
+        Console.create Console.empty (PointName.ofSingle "console")
+      ]
+      >> run
+    )
+    |> run
+
+  mre.Wait()
+  0
+```
+
+Now when run, your metric will feed a random walk into InfluxDb, listening on 192.168.99.100.
+
+### Derived metrics
+
+The above example was self-sufficient, but you sometimes want to create derived metrics
+from events or gauges happening inside your own application.
+
+This sample demonstrates how to create a derived metric from other simpler
+ones. It generates an exponentially weighted moving average from
+login gauges. The login gauges are sent one-by-one from the login code.
+
+```fsharp
+open Logary
+open Logary.Metrics
+open Hopac
+
+let loginLoad : Job<Stream<Message>> = job {
+  let! counter = Counters.counter (PointName.ofSingle "logins")
+  let! ewma = Reservoirs.ewma (PointName.ofSingle "loginsEWMA")
+  do! ewma |> Metric.consume (Metric.tap counter)
+  return Metric.tapMessages ewma
+}
+```
+
+By wrapping it up like this, you can drastically reduce the amount of code
+a given service sends by pre-computing much of it.
+
+It's also a good sample of reservoir usage; a fancy name of saying that
+it's an algorithm which works on more than one gauge at a time, to produce
+a derived metric.
+
+**More documentation on derived metrics to follow!** (including how to register
+them in Logary).
+
 ## Target Maintainers Wanted!
 
 Are you interested in maintaining a target? Let [me know](mailto:henrik@haf.se)
@@ -282,8 +515,14 @@ LOGARY_SIGN_ASSEMBLY=true bundle exec rake
 
 ## Contributing
 
-Clone it like above. Ensure you can build it. Open `v4.sln`. 
+Clone it like above. Ensure you can build it. Open `Logary.sln`. 
 Make a change, send a PR towards master.
+
+### Writing a new target
+
+ 1. Create a new .net 4.5 class library in F#, under `target` and add that to Logary.sln.
+ 1. Copy the code from Logary's Target_Noop.fs, which contains the basic structure.
+    There are more docs in this file.
 
 ## License
 

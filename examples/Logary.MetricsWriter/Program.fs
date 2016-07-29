@@ -36,6 +36,8 @@ module Sample =
 
 [<EntryPoint>]
 let main argv =
+  let inline ms v = Duration.FromMilliseconds (int64 v)
+  let pn name = PointName [| "Logary"; "Samples"; name |]
   use mre = new ManualResetEventSlim(false)
   use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
 
@@ -50,7 +52,7 @@ let main argv =
         influxConf
       ]
       >> withMetrics [
-        MetricConf.create (Duration.FromMilliseconds 500L) (PointName.ofSingle "henrik") Sample.randomWalk
+        MetricConf.create (ms 500) (pn "randomWalk") Sample.randomWalk
       ]
       >> withRules [
         Rule.createForTarget (PointName.ofSingle "console")
@@ -66,3 +68,21 @@ let main argv =
   mre.Wait()
   0
 
+module DerivedSample =
+
+  /// This sample demonstrates how to create a derived metric from other simpler
+  /// ones. It generates an exponentially weighted moving average from
+  /// login gauges. The login gauges are sent one-by-one from the login code.
+  ///
+  /// By wrapping it up like this, you can drastically reduce the amount of code
+  /// a given service sends by pre-computing much of it.
+  ///
+  /// It's also a good sample of reservoir usage; a fancy name of saying that
+  /// it's an algorithm which works on more than one gauge at a time, to produce
+  /// a derived metric.
+  let loginLoad : Job<Stream<Message>> = job {
+    let! counter = Counters.counter (PointName.ofSingle "logins")
+    let! ewma = Reservoirs.ewma (PointName.ofSingle "loginsEWMA")
+    do! ewma |> Metric.consume (Metric.tap counter)
+    return Metric.tapMessages ewma
+  }

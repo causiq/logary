@@ -4,12 +4,14 @@ open System
 open System.Data
 open System.Data.SqlClient
 open System.Net
+open System.Threading
 open NodaTime
 open Topshelf
 open Logary
+open Logary.Metric
+open Logary.Metrics
 open Logary.Targets
 open Logary.Configuration
-open Logary.Metrics
 open Argu
 open SQLServerIOInfo
 
@@ -72,7 +74,7 @@ let parseIP str =
   | true, ip -> ip
 
 let parse args =
-  let parser  = Argu.Create<Arguments>()
+  let parser = ArgumentParser.Create<Arguments>()
   let parse   = parser.Parse args
   let drives  = parse.PostProcessResults(<@ Drive_Latency @>, Drive)
   let files   = parse.PostProcessResults(<@ File_Latency @>, SingleFile)
@@ -88,36 +90,59 @@ let parse args =
 
   period, conf, IPEndPoint(riemann, port)
 
+let execute period sqlConf riemann argv (exiting : ManualResetEventSlim) =
+  use logary =
+    let pn s = PointName.ofSingle s
+    let cons, rm = pn "console", pn "riemann"
+    withLogaryManager "Logary.Services.SQLServerHealth" (
+      withTargets [
+        Console.create Console.empty cons
+        Riemann.create (Riemann.RiemannConf.create(endpoint = riemann))
+                       rm
+      ]
+      >> withRules [
+        Rule.createForTarget cons
+        Rule.createForTarget rm
+      ]
+      >> withMetrics [
+        MetricConf.
+        SQLServerIOInfo.create appconf "sql_server_io_info" period
+      ])
+
+  exiting.Wait()
+  0
+
+let startWindows period sqlConf riemann argv : int =
+  let exiting = new ManualResetEventSlim(false)
+
+  let enqueue f =
+    ThreadPool.QueueUserWorkItem(fun _ -> f ()) |> ignore
+
+  let start hc =
+    enqueue (fun _ -> execute period sqlConf riemann argv exiting |> ignore)
+    true
+
+  let stop hc =
+    exiting.Dispose()
+    true
+
+  Service.Default
+  |> with_recovery (ServiceRecovery.Default |> restart (Time.s 5))
+  |> with_start start
+  |> with_stop (fun hc -> exiting.Set() ; stop hc)
+  |> run
+
+let startUnix period sqlConf riemann argv : int =
+  let exiting = new ManualResetEventSlim(false)
+  use sub = Console.CancelKeyPress.Subscribe(fun _ -> exiting.Set())
+  execute period sqlConf riemann argv exiting
+
 [<EntryPoint>]
 let main args =
-  let period, appconf, riemann = parse args
-  let logary = ref None
-  with_topshelf <| fun conf ->
-    run_as_network_service conf
-    naming_from_this_asm conf
-    with_recovery conf (restart (TimeSpan.FromSeconds 20.))
-    service conf <| fun _ ->
-      { new ServiceControl with
-          member x.Start hc =
-            logary :=
-              withLogary' "Logary.SQLServerHealth" (
-                withTargets [
-                  Console.create Console.empty "console"
-                  Riemann.create (Riemann.RiemannConf.Create(endpoint = riemann))
-                    "riemann"
-                ] >>
-                withRules [
-                  Rule.createForTarget "console"
-                  Rule.createForTarget "riemann"
-                ] >>
-                withMetrics (Duration.FromSeconds 10L) [
-                  SQLServerIOInfo.create appconf "sql_server_io_info" period
-                ])
-              |> Some
-            true
-          member x.Stop hc =
-            match !logary with
-            | None -> ()
-            | Some l -> l.Dispose()
-            true
-      }
+  let period, sqlConf, riemann = parse args
+  let isDashed = args.Length >= 1 && args.[0] = "--"
+  if Type.GetType "Mono.Runtime" <> null || isDashed then
+    if isDashed then args.[1..] else args
+    |> startUnix period sqlConf riemann
+  else
+    startWindows period sqlConf riemann args

@@ -1,4 +1,4 @@
-﻿module Logary.Metrics.SQLServerIOInfo
+﻿module Logary.Metrics.SQLServerHealth
 
 open System
 open System.IO
@@ -12,10 +12,13 @@ open Logary.Metric
 open Logary.AsmUtils
 
 type DatabaseName = string
+
 type FullyQualifiedPath = string
+
 type FileType =
   | DataFile = 1
   | LogFile  = 2
+
 type DriveName = string
 
 /// A discriminated union describing what sorts of things the probe should fetch
@@ -139,7 +142,7 @@ module IOInfo =
             numOfBytesWritten = s.numOfBytesWritten + t.numOfBytesWritten })
         first
 
-type Conf =
+type SQLServerHealthConf =
   { /// Getting the contents of an embedded resource file function.
     contentsOf     : ResourceName -> string
     /// A list of probe data sources
@@ -228,7 +231,7 @@ module internal Impl =
   let byFile file info =
     cleanFile info.filePath = file
 
-  let loop (conf : Conf) (ri : RuntimeInfo)
+  let loop (conf : SQLServerHealthConf) (ri : RuntimeInfo)
            (requests : RingBuffer<_>)
            (shutdown : Ch<_>) =
 
@@ -334,4 +337,5 @@ module internal Impl =
     init ()
 
 /// Create the new SQLServer Health metric
-let create conf = MetricUtils.stdNamedMetric Probe (Impl.loop conf)
+let create conf =
+  Metric.create Impl.reducer Impl.state Impl.ticker
