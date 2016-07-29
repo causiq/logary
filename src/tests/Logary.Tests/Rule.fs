@@ -3,7 +3,6 @@
 open Fuchu
 open Hopac
 open Hopac.Infixes
-open Swensen.Unquote
 open TestDSL
 open Fac
 open System

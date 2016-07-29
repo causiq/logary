@@ -1,7 +1,6 @@
 ﻿module Logary.Tests.CoreTargets
 
 open Fuchu
-open Swensen.Unquote
 open Logary
 open Logary.Targets.TextWriter
 open Hopac

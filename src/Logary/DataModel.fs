@@ -13,16 +13,21 @@ open Logary.Utils.Aether.Operators
 
 [<AutoOpen>]
 module Json =
+
   let inline maybeWrite key value =
     match value with
     | Some v -> Json.write key v
     | None -> fun json -> Value (), json
+
   let (|Val|_|) = Map.tryFind
+
   let (|Only|_|) name m =
     match m with
     | Val name value when m |> Seq.length = 1 ->
       Some value
-        | _ -> None
+
+    | _ ->
+      None
 
 type ContentType = string
 
@@ -939,8 +944,8 @@ module Field =
     Field (Value.serialize value, None)
 
   /// Converts a String.Format-style format string and an array of arguments into
-  /// a message template and a set of fields.
-  let templateFromFormat (format : string) (args : obj[]) =
+  /// an Event template and a set of Fields.
+  let templateFormat (format : string) (args : obj[]) =
     let fields =
       args
       |> Array.mapi (fun i v ->
@@ -948,12 +953,16 @@ module Field =
         Field (Value.ofObject v, None))
       |> List.ofArray
 
+    let replaceAt str i =
+      str |> String.replace (sprintf "{%i}" i) (sprintf "{arg%i}" i)
+
     // Replace {0}..{n} with {arg0}..{argn}
-    let template = Seq.fold (fun acc i -> String.replace (sprintf "{%i}" i) (sprintf "{arg%i}" i) acc) format [0..args.Length]
-    (template, fields)
+    let template = [ 0 .. args.Length ] |> Seq.fold replaceAt format
 
+    template, fields
 
-/// This is the main value type of Logary. It spans both logging and metrics.
+/// This is record that is logged. It's capable of representing both metrics
+/// (gauges) and events.
 type Message =
   { /// The 'path' or 'name' of this data point. Do not confuse template in
     /// (Event template) = message.value
@@ -962,19 +971,13 @@ type Message =
     /// The main value for this metric or event. Either a Gauge, a Derived or an
     /// Event. (A discriminated union type)
     value     : PointValue
-    /// The semantic-logging data. This corresponds to the 'data' field in other
-    /// logging abstractions.
+    /// The semantic-logging data.
     fields    : Map<PointName, Field>
     /// Where in the code? Who did the operation? What tenant did the principal
     /// who did it belong to? Put things your normally do 'GROUP BY' on in this
     /// Map.
     context   : Map<string, Value>
-    /// What urgency? For events you're interested in tracking in some metrics
-    /// interface, like Grafana or logs you normally expose in your dashboards
-    /// in Kibana (like 'Event "User logged in'), you want LogLevel.Info. Debug
-    /// is what you put in so that you can see what goes awry when things do go
-    /// awry, and finally you can use Verbose on things that run every single
-    /// request; for when you really need to do 'sanity checking' in production.
+    /// How important? See the docs on the LogLevel type for details.
     level     : LogLevel
     /// When? nanoseconds since UNIX epoch.
     timestamp : EpochNanoSeconds }
@@ -1221,7 +1224,7 @@ module Message =
   /// Create a info event message, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
   [<CompiledName "EventInfoFormat">]
-  let eventInfof fmt = Printf.kprintf (event LogLevel.Info) fmt
+  let eventInfof fmt = Printf.kprintf (event Info) fmt
 
   /// Create an warn event message
   [<CompiledName "EventWarn">]
@@ -1230,7 +1233,7 @@ module Message =
   /// Create a warn event message for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
   [<CompiledName "EventWarnFormat">]
-  let eventWarnf fmt = Printf.kprintf (event LogLevel.Warn) fmt
+  let eventWarnf fmt = Printf.kprintf (event Warn) fmt
 
   /// Create an error event message
   [<CompiledName "EventError">]
@@ -1248,7 +1251,7 @@ module Message =
   /// Create a fatal event message, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
   [<CompiledName "EventFatalFormat">]
-  let eventFatalf fmt = Printf.kprintf (event LogLevel.Fatal) fmt
+  let eventFatalf fmt = Printf.kprintf (event Fatal) fmt
 
   open Logary.Utils.FsMessageTemplates
 
@@ -1263,22 +1266,35 @@ module Message =
 
   let internal convertToNameAndField (pnv : PropertyNameAndValue) : string * Field =
     match pnv.Value with
-    | ScalarValue v -> pnv.Name, Field (Value.ofObject v, None)
-    | _ -> failwith "This should never happen. In Logary we extract all properties as Scalar"
+    | ScalarValue v ->
+      pnv.Name, Field (Value.ofObject v, None)
+
+    | _ ->
+      failwith "This should never happen. In Logary we extract all properties as Scalar"
 
   /// Converts a String.Format-style format string and an array of arguments into
   /// a message template and a set of fields.
-  let templateFromFormat (format : string) (args : obj[]) =
-    let parsedTemplate = Parser.parse format
-    let scalarNamesAndValues = captureNamesAndValuesAsScalars parsedTemplate args
-    let fields = scalarNamesAndValues |> Seq.map (convertToNameAndField) |> List.ofSeq
-    (format, fields)
+  let internal templateFormat (format : string) (args : obj[]) =
+    let parsedTemplate =
+      Parser.parse format
+
+    let scalarNamesAndValues =
+      captureNamesAndValuesAsScalars parsedTemplate args
+
+    let fields =
+      scalarNamesAndValues
+      |> Seq.map (convertToNameAndField)
+      |> List.ofSeq
+
+    format, fields
 
   /// Creates a new event with given level, format and arguments. Format may
   /// contain String.Format-esque format placeholders.
   [<CompiledName "EventFormat">]
-  let eventFormat (level, format, [<ParamArray>] args : obj[]) =
-    let (template, fields) = Field.templateFromFormat format args
+  let eventFormat (level, format, [<ParamArray>] args : obj[]) : Message =
+    let template, fields =
+      Field.templateFormat format args
+
     event level template |> setFieldValues fields
 
   /// Run the function `f` and measure how long it takes; logging that
@@ -1360,5 +1376,3 @@ module Message =
         setFieldValue ErrorsFieldName (Field (Array [], None)) msg
 
     Lens.setPartial Lenses.errors_ exnsNext msg
-
-  

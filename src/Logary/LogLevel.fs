@@ -9,21 +9,28 @@ open Logary.Utils.Chiron.Operators
 /// The log levels specify the severity of the message.
 [<CustomEquality; CustomComparison>]
 type LogLevel =
-  /// The most verbose log level, more verbose than Debug.
+  /// The log message is not that important; can be used for intricate debugging.
   | Verbose
-  /// Less verbose than Verbose, more verbose than Info
+  /// The log message is at a default level, debug level. Useful for shipping to
+  /// infrastructure that further processes it, but not so useful for human
+  /// inspection in its raw format, except during development.
   | Debug
-  /// Less verbose than Debug, more verbose than Warn
+  /// The log message is informational; e.g. the service started, stopped or
+  /// some important business event occurred.
   | Info
-  /// Less verbose than Info, more verbose than Error
+  /// The log message is a warning; e.g. there was an unhandled exception or
+  /// an even occurred which was unexpected. Sometimes human corrective action
+  /// is needed.
   | Warn
-  /// Less verbose than Warn, more verbose than Fatal
+  /// The log message is at an error level, meaning an unhandled exception
+  /// occurred at a location where it is deemed important to keeping the service
+  /// running. A human should take corrective action.
   | Error
-  /// The least verbose level. Will only pass through fatal Messages that cause
-  /// the application to crash or become unusable.
+  /// The log message denotes a fatal error which cannot be recovered from. The
+  /// service should be shut down. Human corrective action is needed.
   | Fatal
 with
-  /// Convert the LogLevel to a string
+  /// Converts the LogLevel to a string
   override x.ToString () =
     match x with
     | Verbose -> "verbose"
@@ -36,6 +43,7 @@ with
   /// Converts the string passed to a Loglevel.
   [<EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
   static member ofString str =
+    if str = null then invalidArg "str" "may not be null"
     match String.toLowerInvariant str with
     | "verbose" -> Verbose
     | "debug"   -> Debug
@@ -74,29 +82,42 @@ with
     | 6 -> Fatal
     | _ as i -> failwithf "LogLevel matching integer %i is not available" i) i
 
-  static member op_LessThan (a, b) = (a :> IComparable<LogLevel>).CompareTo(b) < 0
-  static member op_LessThanOrEqual (a, b) = (a :> IComparable<LogLevel>).CompareTo(b) <= 0
-  static member op_GreaterThan (a, b) = (a :> IComparable<LogLevel>).CompareTo(b) > 0
-  static member op_GreaterThanOrEqual (a, b) = (a :> IComparable<LogLevel>).CompareTo(b) >= 0
-
-  override x.Equals other = (x :> IComparable).CompareTo other = 0
-
-  override x.GetHashCode () = x.toInt ()
-
-  interface IComparable with
-    member x.CompareTo other =
-      match other with
-      | null        -> 1
-      | :? LogLevel as tother ->
-        (x :> IComparable<LogLevel>).CompareTo tother
-      | _ -> failwith <| sprintf "invalid comparison %A to %A" x other
-
   interface IComparable<LogLevel> with
     member x.CompareTo other =
       compare (x.toInt()) (other.toInt())
 
+  static member op_LessThan (a, b) =
+    (a :> IComparable<LogLevel>).CompareTo(b) < 0
+
+  static member op_LessThanOrEqual (a, b) =
+    (a :> IComparable<LogLevel>).CompareTo(b) <= 0
+
+  static member op_GreaterThan (a, b) =
+    (a :> IComparable<LogLevel>).CompareTo(b) > 0
+
+  static member op_GreaterThanOrEqual (a, b) =
+    (a :> IComparable<LogLevel>).CompareTo(b) >= 0
+
+  override x.GetHashCode () =
+    x.toInt ()
+
+  interface IComparable with
+    member x.CompareTo other =
+      match other with
+      | null ->
+        1
+
+      | :? LogLevel as tother ->
+        (x :> IComparable<LogLevel>).CompareTo tother
+
+      | _ ->
+        failwithf "invalid comparison %A to %A" x other
+
   interface IEquatable<LogLevel> with
     member x.Equals other =
       x.toInt() = other.toInt()
+  
+  override x.Equals other =
+    (x :> IComparable).CompareTo other = 0
 
   // http://stackoverflow.com/questions/5557899/f-implement-icomparable-for-hashseta

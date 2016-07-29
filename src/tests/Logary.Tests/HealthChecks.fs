@@ -1,7 +1,6 @@
 ﻿module Logary.Tests.HealthChecks
 
 open Fuchu
-open Swensen.Unquote
 open System.Text.RegularExpressions
 open Hopac
 open Fac

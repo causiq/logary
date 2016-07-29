@@ -1,9 +1,7 @@
 FSharp.Core
 NodaTime
 Hopac
-FsCheck
 Fuchu
 Fuchu.FsCheck
-Unquote
 File:Assert.fs
 File:YoLo.fs

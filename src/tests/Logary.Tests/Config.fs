@@ -2,7 +2,6 @@
 
 open System
 open Fuchu
-open Swensen.Unquote
 open TestDSL
 open Fac
 

@@ -3,12 +3,8 @@
 open System
 open System.Collections.Generic
 open System.IO
-
 open Fuchu
-open Swensen.Unquote
-
 open ProtoBuf
-
 open Logary.Targets.Riemann
 open Logary.Riemann.Messages
 
