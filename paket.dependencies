@@ -28,7 +28,7 @@ nuget System.Data.SQLite.Core
 nuget Argu
 nuget Unquote
 nuget Hawk
-nuget Http.fs-prerelease
+nuget Http.fs
 nuget Topshelf ~> 3
 nuget Topshelf.FSharp
 nuget fszmq

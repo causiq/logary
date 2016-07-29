@@ -114,7 +114,7 @@
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3')">
       <ItemGroup>
         <Reference Include="HttpFs">
-          <HintPath>..\..\..\packages\Http.fs-prerelease\lib\net40\HttpFs.dll</HintPath>
+          <HintPath>..\..\..\packages\Http.fs\lib\net40\HttpFs.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
