@@ -6,14 +6,15 @@ open System.Data.SqlClient
 open System.Net
 open System.Threading
 open NodaTime
+open Hopac
 open Topshelf
 open Logary
 open Logary.Metric
 open Logary.Metrics
+open Logary.Metrics.SQLServerHealth
 open Logary.Targets
 open Logary.Configuration
 open Argu
-open SQLServerIOInfo
 
 exception RiemannServerNotFound of System.Net.Sockets.SocketException * string
 with
@@ -82,7 +83,7 @@ let parse args =
                                            Duration.FromMilliseconds)
                 |> Option.fold (fun _ t -> t) (Duration.FromMilliseconds(1000L))
   let connStr = parse.GetResult <@ Connection_String @>
-  let conf    = { SQLServerIOInfo.empty with
+  let conf    = { SQLServerHealth.empty with
                     latencyTargets = drives @ files
                     openConn       = fun () -> openConn connStr }
   let riemann = parse.PostProcessResult(<@ Riemann_Host @>, parseIP)
@@ -90,10 +91,11 @@ let parse args =
 
   period, conf, IPEndPoint(riemann, port)
 
-let execute period sqlConf riemann argv (exiting : ManualResetEventSlim) =
+let execute interval sqlConf riemann argv (exiting : ManualResetEventSlim) =
   use logary =
     let pn s = PointName.ofSingle s
-    let cons, rm = pn "console", pn "riemann"
+    let cons, rm, metricName = pn "console", pn "riemann", pn "SQLHealth"
+
     withLogaryManager "Logary.Services.SQLServerHealth" (
       withTargets [
         Console.create Console.empty cons
@@ -105,9 +107,8 @@ let execute period sqlConf riemann argv (exiting : ManualResetEventSlim) =
         Rule.createForTarget rm
       ]
       >> withMetrics [
-        MetricConf.
-        SQLServerIOInfo.create appconf "sql_server_io_info" period
-      ])
+        MetricConf.create interval metricName (SQLServerHealth.create sqlConf)
+      ]) |> Hopac.TopLevel.run
 
   exiting.Wait()
   0

@@ -1,14 +1,11 @@
 ﻿module Integration
 
 open Fuchu
-
 open System
 open System.Data
 open System.Data.SqlClient
-
 open FsSql
-
-open Logary.Metrics.SQLServerIOInfo
+open Logary.Metrics.SQLServerHealth
 
 // a function that opens a connection
 let openConn() =
@@ -16,14 +13,19 @@ let openConn() =
   conn.Open()
   conn :> IDbConnection
 
-let connMgr = Sql.withNewConnection openConn
+let connMgr =
+  Sql.withNewConnection openConn
 
 [<Tests>]
 let integration =
   testList "[integration] executing sql statements" [
     testCase "reading io info" <| fun _ ->
+      Tests.skiptest "No SQL Server on OS X"
       let calculated =
         Database.ioInfo connMgr
-        |> List.ofSeq |> List.map IOInfo.readLatency |> List.sort
+        |> List.ofSeq
+        |> List.map IOInfo.readLatency
+        |> List.sort
+
       Assert.Equal("should not be empty", calculated.Length = 0, false)
     ]

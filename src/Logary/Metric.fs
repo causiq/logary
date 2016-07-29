@@ -18,8 +18,8 @@ type Metric =
 type MetricConf =
   { tickInterval : Duration
     name         : PointName
-    initialise   : PointName -> Job<Metric>
-  }
+    initialise   : PointName -> Job<Metric> }
+
   static member create (tickInterval : Duration) (name : PointName) creator =
     { tickInterval = tickInterval
       name         = name

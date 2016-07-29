@@ -3,9 +3,7 @@
 open System
 open System.IO
 open System.Data
-
 open Hopac
-
 open Logary
 open Logary.Internals
 open Logary.Metric
@@ -157,10 +155,13 @@ let empty =
     openConn       = fun () -> failwith "connection factory needs to be provided" }
 
 module internal Impl =
-  open NodaTime
 
+  open NodaTime
   open Logary.Internals
   open Database
+
+  let logger =
+    Logging.getLoggerByName "Logary.Metrics.SQLServerHealth.Impl"
 
   let dotToUnderscore (s : string) =
     s.Replace(".", "_")
@@ -175,7 +176,8 @@ module internal Impl =
       dps         : PointName list
       sampleFresh : bool }
 
-  type DPCalculator = IOInfo -> PointName -> Message
+  type DPCalculator =
+    IOInfo -> PointName -> Message
 
   let datapoints =
     let ofInt64 u v dp = Message.gaugeWithUnit dp u (Int64 v)
@@ -202,14 +204,17 @@ module internal Impl =
     sprintf "%s_%s" prefix metric
 
   let formatFull prefix metric instance =
-    PointName [| "Logary"; "SqlServerHealth"; formatPrefixMetric prefix metric; instance |]
+    PointName [| "Logary"; "Metrics"; "SQLServerHealth"; formatPrefixMetric prefix metric; instance |]
 
   let findCalculator metric =
     match datapoints |> Map.tryFind metric with
-    | None -> failwithf "unknown metric: '%s'" metric
-    | Some calculator -> calculator
+    | None ->
+      failwithf "unknown metric: '%s'" metric
 
-  /// ns: logary.sql_server_health
+    | Some calculator ->
+      calculator
+
+  /// ns: Logary.Metrics.SQLServerHealth
   /// prefix: drive | file (metric name prefix)
   /// instance: mydb.mdf
   let dps prefix instance : PointName list =
@@ -217,10 +222,17 @@ module internal Impl =
     |> Seq.map (fun kv -> kv.Key) |> Seq.toList
     |> List.map (fun metric -> formatFull prefix metric instance)
 
-  let cleanDrive = removeColon
-  let driveDps = removeColon >> dps "drive"
-  let cleanFile = Path.GetFileName >> dotToUnderscore
-  let fileDps = cleanFile >> dps "file"
+  let cleanDrive =
+    removeColon
+
+  let driveDps =
+    removeColon >> dps "drive"
+
+  let cleanFile =
+    Path.GetFileName >> dotToUnderscore
+
+  let fileDps =
+    cleanFile >> dps "file"
 
   let byDrive drive info =
     cleanDrive info.drive = drive
@@ -231,111 +243,76 @@ module internal Impl =
   let byFile file info =
     cleanFile info.filePath = file
 
-  let loop (conf : SQLServerHealthConf) (ri : RuntimeInfo)
-           (requests : RingBuffer<_>)
-           (shutdown : Ch<_>) =
+  let init conf =
+    Message.event Info "Initialising" |> Logger.logSimple logger
 
-    let log =
-      Message.setName (PointName [| "Logary"; "Services"; "SQLServerHealth" |])
-      >> Logger.logSimple ri.logger
+    let connMgr =
+      Sql.withNewConnection conf.openConn
 
-    let rec init () = async {
-      Message.event Info "Initialised" |> log
-      let connMgr  = Sql.withNewConnection conf.openConn
-      let measures = ioInfo connMgr |> Seq.cache
-      let driveDps =
-        measures
-        |> Seq.distinctBy (fun m -> m.drive)
-        |> Seq.map (fun l -> l.drive |> driveDps)
-        |> List.ofSeq
-        |> List.concat
+    let measures =
+      ioInfo connMgr |> Seq.cache
 
-      let fileDps =
-        measures
-        |> Seq.distinctBy (fun info -> info.filePath)
-        |> Seq.map (fun info -> info.filePath |> fileDps)
-        |> List.ofSeq
-        |> List.concat
+    let driveDps =
+      measures
+      |> Seq.distinctBy (fun m -> m.drive)
+      |> Seq.map (fun l -> l.drive |> driveDps)
+      |> List.ofSeq
+      |> List.concat
 
-      return! running { connMgr     = connMgr
-                        lastIOs     = List.ofSeq measures, Date.instant ()
-                        deltaIOs    = [], Duration.Epsilon
-                        dps         = driveDps @ fileDps
-                        // first measurement isn't delta based, can't be returned
-                        sampleFresh = false }
-      }
+    let fileDps =
+      measures
+      |> Seq.distinctBy (fun info -> info.filePath)
+      |> Seq.map (fun info -> info.filePath |> fileDps)
+      |> List.ofSeq
+      |> List.concat
 
-    and running
-      // TODO: how to represent the duration when sending to the target?
-      // should we divide to get a rate and send the rate?
-      ({ deltaIOs = deltas, dur
-         lastIOs  = lastIOMeasures, lastIOInstant  } as state) = async {
+    { connMgr     = connMgr
+      lastIOs     = List.ofSeq measures, Date.instant ()
+      deltaIOs    = [], Duration.Epsilon
+      dps         = driveDps @ fileDps
+      sampleFresh = false }
 
-      let! msg, _ = inbox.Receive()
-      match msg with
-      | GetValue (_, replChan) when not state.sampleFresh ->
-        replChan.Reply []
-        return! running state
+  let reducer state values =
+    let lastIOMeasures, lastIOInstant = state.lastIOs
+    let now    = Date.instant ()
+    let curr   = ioInfo state.connMgr |> List.ofSeq
+    let dio    = (lastIOMeasures, curr) ||> List.map2 delta
+    let dioDur = now - lastIOInstant
+    { state with lastIOs     = curr, now
+                 deltaIOs    = dio, dioDur
+                 sampleFresh = true }
 
-      | GetValue (dps, replChan) ->
-        // TODO: use conf.latencyTargets
-        let values =
-          dps |> List.fold (fun s t ->
-            match t with
-            | DP [_ns; _probe; metricName; instance] ->
-              LogLine.infof "get value, curr dp: %A" t |> log
-              let calculator, summer =
-                match metricName with
-                | _ when metricName.StartsWith("drive_") ->
-                  findCalculator (metricName.Substring("drive_".Length)),
-                  byDrive instance
-                | _ when metricName.StartsWith("database_") ->
-                  findCalculator (metricName.Substring("database_".Length)),
-                  byDbName instance
-                | _ when metricName.StartsWith("file_") ->
-                  findCalculator (metricName.Substring("file_".Length)),
-                  byFile instance
-                | _ -> failwithf "unknown metric name %s" metricName
-              // TODO: summing ALL DPs for EVERY DP, instead of summing once and
-              // reading from there
-              calculator (IOInfo.sumBy deltas summer) t
-            | dp -> failwithf "unknown %A" dp
-            :: s) []
-        replChan.Reply values
-        return! running { state with sampleFresh = false }
+  let getValues state =
+    state.dps |> List.fold (fun acc t ->
+      match t with
+      | PointName [|_ns; "Metrics"; _; metricName; instance |] ->
+        let calculator, summer =
+          match metricName with
+          | _ when metricName.StartsWith("drive_") ->
+            findCalculator (metricName.Substring("drive_".Length)),
+            byDrive instance
 
-      | GetDataPoints replChan ->
-        LogLine.info "get dps" |> log
-        replChan.Reply state.dps
-        return! running state
+          | _ when metricName.StartsWith("database_") ->
+            findCalculator (metricName.Substring("database_".Length)),
+            byDbName instance
 
-      | Update msr ->
-        LogLine.infof "does not support updating path %s" msr.m_path.joined |> log
-        return! running state
+          | _ when metricName.StartsWith("file_") ->
+            findCalculator (metricName.Substring("file_".Length)),
+            byFile instance
 
-      | Sample when state.sampleFresh ->
-        return! running state
+          | _ -> failwithf "unknown metric name %s" metricName
 
-      | Sample ->
-        LogLine.info "sample" |> log
-        let now    = Date.now ()
-        let curr   = ioInfo state.connMgr |> List.ofSeq
-        let dio    = (lastIOMeasures, curr) ||> List.map2 delta
-        let dioDur = now - lastIOInstant
-        return! running { state with lastIOs     = curr, now
-                                     deltaIOs    = dio, dioDur
-                                     sampleFresh = true }
+        // TODO: summing ALL DPs for EVERY DP, instead of summing once and
+        // reading from there
+        let deltas, _ = state.deltaIOs
+        calculator (IOInfo.sumBy deltas summer) t
 
-      | Shutdown ackChan ->
-        ackChan.Reply Ack
-        return! shutdown state
+      | dp -> failwithf "unknown %A" dp
+      :: acc) []
 
-      | Reset ->
-        return! reset state
-      }
-
-    init ()
+  let ticker state =
+    state, getValues state
 
 /// Create the new SQLServer Health metric
-let create conf =
-  Metric.create Impl.reducer Impl.state Impl.ticker
+let create conf pn =
+  Metric.create Impl.reducer (Impl.init conf) Impl.ticker

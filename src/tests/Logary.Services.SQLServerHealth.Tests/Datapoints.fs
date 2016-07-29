@@ -13,24 +13,30 @@ open Logary.Metrics
 
 [<Tests>]
 let datapoints =
-  let dps = SQLServerIOInfo.Impl.dps "drive" "c" |> Set.ofList |> Set.map DP.joined
+  let dps =
+    SQLServerHealth.Impl.dps "drive" "c"
+    |> Set.ofList
+
   testList "getting all datapoints" [
     testCase "for drive c" <| fun _ ->
       Assert.Equal(
         "should eq set",
-        [ "logary.sql_server_health.drive_io_stall_read.c"
-          "logary.sql_server_health.drive_io_stall_write.c"
-          "logary.sql_server_health.drive_io_stall.c"
-          "logary.sql_server_health.drive_num_of_reads.c"
-          "logary.sql_server_health.drive_num_of_writes.c"
-          "logary.sql_server_health.drive_num_of_bytes_read.c"
-          "logary.sql_server_health.drive_num_of_bytes_written.c"
-          "logary.sql_server_health.drive_read_latency.c"
-          "logary.sql_server_health.drive_write_latency.c"
-          "logary.sql_server_health.drive_latency.c"
-          "logary.sql_server_health.drive_bytes_per_read.c"
-          "logary.sql_server_health.drive_bytes_per_write.c"
-          "logary.sql_server_health.drive_bytes_per_transfer.c"
-          ] |> Set.ofList,
+        [ "drive_io_stall_read.c"
+          "drive_io_stall_write.c"
+          "drive_io_stall.c"
+          "drive_num_of_reads.c"
+          "drive_num_of_writes.c"
+          "drive_num_of_bytes_read.c"
+          "drive_num_of_bytes_written.c"
+          "drive_read_latency.c"
+          "drive_write_latency.c"
+          "drive_latency.c"
+          "drive_bytes_per_read.c"
+          "drive_bytes_per_write.c"
+          "drive_bytes_per_transfer.c"
+        ]
+        |> List.map (sprintf "Logary.Metrics.SQLServerHealth.%s")
+        |> List.map PointName.parse
+        |> Set.ofList,
         dps)
     ]
