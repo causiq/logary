@@ -4,6 +4,7 @@ NUGET
   remote: https://www.nuget.org/api/v2
     Aether (8.1.2)
     Argu (3.2)
+    Castle.Core (3.3.3)
     Chiron (6.2)
       Aether (>= 8.0.2 < 9.0)
       FParsec (>= 1.0 < 2.0)
@@ -72,7 +73,9 @@ GITHUB
   remote: haf/YoLo
     YoLo.fs (1973b6171f7bc183339f04f7e6ef526ea18c3f5b)
   remote: haf/expecto-patronum
-    ExpectoPatronum/Assert.fs (ef7588dae13f3ab81fd78d620202874673c519b0)
+    ExpectoPatronum/Assert.fs (45ad4c524e16190ad105676f925f1e0bf09fa8f0)
   remote: logary/RingBuffer
     RingBuffer.fs (4557d607737e748b54eb6de3ec5e5cd02247b2a5)
       Hopac
+  remote: logary/logary
+    src/Logary.Facade/Facade.fs (a3c39946ff197f6e98b294600a0bebcf15e518fd)

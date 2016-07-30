@@ -67,6 +67,10 @@
       <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
       <Name>Logary</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\..\examples\Libryy\Libryy.fsproj">
+      <Project>{A64CF176-66D8-459F-BF45-AF5B5C3098A2}</Project>
+      <Name>Libryy</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(FSharpTargetsPath)" />
   <Choose>
