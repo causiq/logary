@@ -73,7 +73,7 @@ GITHUB
   remote: haf/YoLo
     YoLo.fs (1973b6171f7bc183339f04f7e6ef526ea18c3f5b)
   remote: haf/expecto-patronum
-    ExpectoPatronum/Assert.fs (ef7588dae13f3ab81fd78d620202874673c519b0)
+    ExpectoPatronum/Assert.fs (45ad4c524e16190ad105676f925f1e0bf09fa8f0)
   remote: logary/RingBuffer
     RingBuffer.fs (4557d607737e748b54eb6de3ec5e5cd02247b2a5)
       Hopac
