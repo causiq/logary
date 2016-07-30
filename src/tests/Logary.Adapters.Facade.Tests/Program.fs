@@ -51,12 +51,12 @@ let tests =
       Expect.equal 42 res "Should get result back"
       Expect.equal (!msg).level Warn "Should have logged at Warn level"
       Expect.equal (!msg).value (Event "Hey {ho}") "Should have logged event template"
-      // TODO: fields
-      // TODO: timestamp
-      // TODO: name
+      let field = (!msg).fields |> Map.find (PointName.ofSingle "myField")
+      Expect.equal field (Field (Int64 223L, None)) "Should have logged field as Int64"
+      Expect.equal (!msg).timestamp 1234L "Should have correct timestamp"
+      Expect.equal (!msg).name (PointName.parse "Libryy.Core.work") "Should have set name"
 
     testCase "end to end with adapter, logSimple method" <| fun _ ->
-      Tests.skiptest "WIP"
       let libryyLogger, msg = createSubject ()
       let res = Libryy.Core.simpleWork libryyLogger
       Expect.equal 43 res "Should get result back"

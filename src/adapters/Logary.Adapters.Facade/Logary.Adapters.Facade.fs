@@ -1,14 +1,15 @@
 namespace Logary.Adapters.Facade
 
-open Logary
-open Logary.Internals
 open System
 open System.Reflection
 open System.Collections.Concurrent
+open FSharp.Reflection
 open Castle.DynamicProxy
 open Hopac
 open Hopac.Extensions
 open Hopac.Infixes
+open Logary
+open Logary.Internals
 
 module LogaryFacadeAdapter =
   let private findMethod : Type * string -> MethodInfo =
@@ -18,8 +19,19 @@ module LogaryFacadeAdapter =
     Cache.memoize (fun (typ, prop) -> typ.GetProperty prop)
 
   let toPointValue (o : obj) : PointValue =
-    // TODO: remaining work
-    Event "hardcoded"
+    let typ = o.GetType()
+    let cases = Microsoft.FSharp.Reflection.FSharpType.GetUnionCases(typ)
+    let info, values = FSharpValue.GetUnionFields(o, typ)
+    match info.Name, values with
+    | "Event", [| template |] ->
+      Event (template :?> string)
+
+    | "Gauge", [| value; units |] ->
+      Gauge (Int64 (value :?> int64), Units.Scalar)
+
+    | caseName, values ->
+      let valuesStr = values |> Array.map string |> String.concat ", "
+      failwithf "Unknown union case '%s (%s)' on '%s'" caseName valuesStr typ.FullName
 
   let toLogLevel (o : obj) : LogLevel =
     let typ = o.GetType()
@@ -40,7 +52,8 @@ module LogaryFacadeAdapter =
     |> Message.setFieldsFromMap (readProperty "fields" :?> Map<string, obj>)
 
   let toMsgFactory (o : obj) : unit -> Message =
-    let invokeMethod = o.GetType().GetMethod("Invoke")
+    let typ = o.GetType()
+    let invokeMethod = findMethod (typ, "Invoke")
     fun () -> toMsg (invokeMethod.Invoke(o, [| () |]))
 
   let (|Log|LogSimple|) (invocation : IInvocation) : Choice<_, _> =
@@ -83,24 +96,25 @@ module LogaryFacadeAdapter =
     let logSimple (msg : Message) : unit =
       logger.logSimple msg
 
+    let rawPrint (invocation : IInvocation) =
+      printfn "Invocation"
+      printfn "=========="
+      printfn "Args: "
+      for arg in invocation.Arguments do
+        let argType = arg.GetType()
+        printfn " - %A\n   : %s" arg (argType.FullName)
+        printfn "   :> %s" argType.BaseType.FullName
+
+      printfn "Method.Name: %s" invocation.Method.Name
+
     interface IInterceptor with
-      member x.Intercept invokation =
-        printfn "Invokation"
-        printfn "=========="
-        printfn "Args: "
-        for arg in invokation.Arguments do
-          let argType = arg.GetType()
-          printfn " - %A\n   : %s" arg (argType.FullName)
-          printfn "   :> %s" argType.BaseType.FullName
-
-        printfn "Method.Name: %s" invokation.Method.Name
-
-        match invokation with
+      member x.Intercept invocation =
+        match invocation with
         | Log (level, msgFactory) ->
-          invokation.ReturnValue <- log level msgFactory
+          invocation.ReturnValue <- log level msgFactory
 
         | LogSimple message ->
-          invokation.ReturnValue <- logSimple message
+          invocation.ReturnValue <- logSimple message
 
   let create (typ : Type) logger : obj =
     if typ = null then invalidArg "typ" "is null"
