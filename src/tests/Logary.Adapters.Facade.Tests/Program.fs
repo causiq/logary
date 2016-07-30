@@ -62,9 +62,8 @@ let tests =
       Expect.equal 43 res "Should get result back"
       Expect.equal (!msg).level Error "Should have logged at Error level"
       Expect.equal (!msg).value (Event "Too simplistic") "Should have logged event template"
-      // TODO: fields
-      // TODO: timestamp
-      // TODO: name
+      Expect.notEqual (!msg).timestamp 0L "Should have non-zero timestamp"
+      Expect.notEqual (!msg).name (PointName [||]) "Should have non-empty point name"
   ]
 
 [<EntryPoint>]
