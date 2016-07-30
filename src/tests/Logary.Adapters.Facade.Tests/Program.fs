@@ -7,7 +7,8 @@ open Logary.Adapters.Facade
 open Hopac
 
 let stubLogger (minLevel : LogLevel)
-               (message : Message ref) =
+               (message : Message ref)
+               name =
 
   { new Logger with
       member x.logVerboseWithAck fac =
@@ -27,13 +28,13 @@ let stubLogger (minLevel : LogLevel)
         minLevel
 
       member x.name =
-        PointName.ofSingle "stub" }
+        PointName.parse name }
 
 [<Tests>]
 let tests =
   let createSubject () =
     let msg = ref (Message.event Info "empty")
-    let stub = stubLogger LogLevel.Info msg
+    let stub = stubLogger LogLevel.Info msg "Libryy.Core"
 
     LogaryFacadeAdapter.createGeneric<Libryy.Logging.Logger> stub,
     msg
@@ -41,7 +42,7 @@ let tests =
   testList "facade" [
     testCase "create adapter" <| fun _ ->
       let msg = ref (Message.event Info "empty")
-      let stub = stubLogger LogLevel.Info msg
+      let stub = stubLogger LogLevel.Info msg "Libryy.Core"
       let logger = LogaryFacadeAdapter.createString "Libryy.Logging.Logger, Libryy" stub
       Expect.isNotNull logger "Should have gotten logger back"
 
@@ -64,7 +65,8 @@ let tests =
       Expect.equal (!msg).value (Event "Too simplistic") "Should have logged event template"
       Expect.notEqual (!msg).timestamp 0L "Should have non-zero timestamp"
       Expect.notEqual (!msg).name (PointName [||]) "Should have non-empty point name"
-      Expect.equal (!msg).name (PointName [| "Libryy" |]) "Should have point name corresponding to library"
+      Expect.equal (!msg).name (PointName [| "Libryy"; "Core" |])
+                   "Should have point name corresponding to the passed logger"
   ]
 
 [<EntryPoint>]

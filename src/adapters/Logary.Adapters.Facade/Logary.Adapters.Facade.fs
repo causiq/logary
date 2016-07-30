@@ -18,17 +18,15 @@ module LogaryFacadeAdapter =
   let private findProperty : Type * string -> PropertyInfo =
     Cache.memoize (fun (typ, prop) -> typ.GetProperty prop)
 
-  let defaultName (typ : Type) = function
+  let defaultName (fallback : string[]) = function
     | [||] ->
-      let fullName = typ.Assembly.FullName
-      [| fullName.Substring(0, fullName.IndexOf(',')) |]
+      fallback
 
     | otherwise ->
       otherwise
 
   let toPointValue (o : obj) : PointValue =
     let typ = o.GetType()
-    let cases = Microsoft.FSharp.Reflection.FSharpType.GetUnionCases(typ)
     let info, values = FSharpValue.GetUnionFields(o, typ)
     match info.Name, values with
     | "Event", [| template |] ->
@@ -47,11 +45,11 @@ module LogaryFacadeAdapter =
     let toInt = findMethod (typ, "toInt")
     LogLevel.ofInt (toInt.Invoke(o, null) :?> int)
 
-  let toMsg (o : obj) : Message =
+  let toMsg fallbackName (o : obj) : Message =
     let typ = o.GetType()
     let readProperty name = (findProperty (typ, name)).GetValue o
 
-    { name      = PointName (readProperty "name" :?> string [] |> defaultName typ)
+    { name      = PointName (readProperty "name" :?> string [] |> defaultName fallbackName)
       value     = readProperty "value" |> toPointValue
       fields    = Map.empty
       context   = Map.empty
@@ -59,20 +57,20 @@ module LogaryFacadeAdapter =
       level     = readProperty "level" |> toLogLevel }
     |> Message.setFieldsFromMap (readProperty "fields" :?> Map<string, obj>)
 
-  let toMsgFactory (o : obj) : unit -> Message =
+  let toMsgFactory fallbackName (o : obj) : unit -> Message =
     let typ = o.GetType()
     let invokeMethod = findMethod (typ, "Invoke")
-    fun () -> toMsg (invokeMethod.Invoke(o, [| () |]))
+    fun () -> toMsg fallbackName (invokeMethod.Invoke(o, [| () |]))
 
-  let (|Log|LogSimple|) (invocation : IInvocation) : Choice<_, _> =
+  let (|Log|LogSimple|) ((invocation, defaultName) : IInvocation * string[]) : Choice<_, _> =
     match invocation.Method.Name with
     | "log" ->
       let level = toLogLevel invocation.Arguments.[0]
-      let factory = toMsgFactory invocation.Arguments.[1]
+      let factory = toMsgFactory defaultName invocation.Arguments.[1]
       Log (level, factory)
 
     | "logSimple" ->
-      let msg = toMsg invocation.Arguments.[0]
+      let msg = toMsg defaultName invocation.Arguments.[0]
       LogSimple msg
 
     | meth ->
@@ -83,6 +81,7 @@ module LogaryFacadeAdapter =
   /// which it should be loaded from, and this adapter will use (memoized) reflection
   /// to properly bind to the facade.
   type private I(logger : Logger) =
+    let (PointName defaultName) = logger.name
 
     // Codomains of these two functions are equal to codomains of Facade's
     // functions:
@@ -117,7 +116,7 @@ module LogaryFacadeAdapter =
 
     interface IInterceptor with
       member x.Intercept invocation =
-        match invocation with
+        match invocation, defaultName with
         | Log (level, msgFactory) ->
           invocation.ReturnValue <- log level msgFactory
 
