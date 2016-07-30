@@ -18,6 +18,14 @@ module LogaryFacadeAdapter =
   let private findProperty : Type * string -> PropertyInfo =
     Cache.memoize (fun (typ, prop) -> typ.GetProperty prop)
 
+  let defaultName (typ : Type) = function
+    | [||] ->
+      let fullName = typ.Assembly.FullName
+      [| fullName.Substring(0, fullName.IndexOf(',')) |]
+
+    | otherwise ->
+      otherwise
+
   let toPointValue (o : obj) : PointValue =
     let typ = o.GetType()
     let cases = Microsoft.FSharp.Reflection.FSharpType.GetUnionCases(typ)
@@ -43,7 +51,7 @@ module LogaryFacadeAdapter =
     let typ = o.GetType()
     let readProperty name = (findProperty (typ, name)).GetValue o
 
-    { name      = PointName (readProperty "name" :?> string [])
+    { name      = PointName (readProperty "name" :?> string [] |> defaultName typ)
       value     = readProperty "value" |> toPointValue
       fields    = Map.empty
       context   = Map.empty

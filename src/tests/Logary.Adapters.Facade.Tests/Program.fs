@@ -64,6 +64,7 @@ let tests =
       Expect.equal (!msg).value (Event "Too simplistic") "Should have logged event template"
       Expect.notEqual (!msg).timestamp 0L "Should have non-zero timestamp"
       Expect.notEqual (!msg).name (PointName [||]) "Should have non-empty point name"
+      Expect.equal (!msg).name (PointName [| "Libryy" |]) "Should have point name corresponding to library"
   ]
 
 [<EntryPoint>]
