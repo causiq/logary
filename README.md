@@ -335,6 +335,36 @@ the dashboard you put up in Kibana (via Logstash) or Grafana (via InfluxDb).
 Put it up on a big TV in your office and you'll develop a second sense of
 whether the system is doing well or not, just from looking at the graphs.
 
+### Logging fields & templating
+
+Logary supports templating through
+[FsMessageTemplates](https://github.com/messagetemplates/messagetemplates-fsharp).
+All you have to do is write your templates like:
+
+```fsharp
+Message.event "Hi {user}!"
+|> Message.setFieldValue "user" "haf"
+```
+
+And then targets that support templating will output them 'filled out'.
+
+Message Templates are a superset of standard .NET format strings, so any format
+string acceptable to string.Format() will also be correctly processed by
+FsMessageTemplates.
+
+ * Property names are written between { and } brackets
+ * Brackets can be escaped by doubling them, e.g. {{ will be rendered as {
+ * Formats that use numeric property names, like {0} and {1} exclusively, will
+   be matched with the Format method's parameters by treating the property names
+   as indexes; this is identical to string.Format()'s behaviour
+ * If any of the property names are non-numeric, then all property names will be
+   matched from left-to-right with the Format method's parameters
+ * Property names may be prefixed with an optional operator, @ or $, to control
+   how the property is serialised
+ * Property names may be suffixed with an optional format, e.g. :000, to control
+   how the property is rendered; these format strings behave exactly as their
+   counterparts within the string.Format() syntax
+
 ### Ticked metrics and gauges – random walk
 
 In the previous section you saw how to create a gauge at a point in your code,
