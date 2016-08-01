@@ -3,6 +3,7 @@ FRAMEWORK: >= NET45
 NUGET
   remote: https://www.nuget.org/api/v2
     Aether (8.1.2)
+    ApacheThrift (0.9.3)
     Argu (3.2)
     Castle.Core (3.3.3)
     Chiron (6.2)
@@ -78,4 +79,4 @@ GITHUB
     RingBuffer.fs (4557d607737e748b54eb6de3ec5e5cd02247b2a5)
       Hopac
   remote: logary/logary
-    src/Logary.Facade/Facade.fs (c9bd0ef167adf27d6c54f6ae9fd6c18f98fc957a)
+    src/Logary.Facade/Facade.fs (1873a5886da048fdde8a74135bb1940ec59558ca)
