@@ -41,6 +41,7 @@
   <ItemGroup>
     <Compile Include="Logary.Adapters.Facade.fs" />
     <None Include="paket.references" />
+    <Compile Include="AssemblyVersionInfo.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Logary\Logary.fsproj">

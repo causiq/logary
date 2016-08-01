@@ -36,6 +36,7 @@
     <Compile Include="FsSql.Logary.fs" />
     <None Include="paket.references" />
     <Content Include="app.config" />
+    <Compile Include="AssemblyVersionInfo.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
