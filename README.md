@@ -304,7 +304,7 @@ type Worker() =
     Logging.getLoggerByName "MyCompany.Sub.Worker"
 
   let workAmount =
-    PointName [| "MyCompany"; "Sub"; "Worker"; "work_done" |]
+    PointName [| "MyCompany"; "Sub"; "Worker"; "workDone" |]
 
   let getAnswers (amount : float) =
     // work work work
@@ -485,6 +485,70 @@ a derived metric.
 
 **More documentation on derived metrics to follow!** (including how to register
 them in Logary).
+
+## Using logary in a library
+
+The above guide serves to explain how you use Logary in a service or
+application, but what if you have a library and don't want to take a dependency
+on a particular logging framework?
+
+For this use-case Logary provides F# facades that you can reference using paket.
+I've created a [sample
+library](https://github.com/logary/logary/tree/master/examples/Libryy) for you
+to have a look at. Note how `paket.references` specifies `Facade.fs` as a file
+dependency. The corresponding `paket.dependencies` contains the entry below.
+
+```
+github logary/logary src/Logary.Facade/Facade.fs
+```
+
+In my Rakefile I have a small replacement script, which sets the library's
+namespace inside the referenced `Facade.fs` file.
+
+```bash
+ruby -pi.bak -e \
+  "gsub(/namespace Logary.Facade/, 'namespace Libryy.Logging')" \
+  paket-files/logary/logary/src/Logary.Facade/Facade.fs
+```
+
+The service/application which *does* reference the `Logary` nuget, also
+references `Logary.Adapters.Facade` and then creates a new Logger specifically
+for the library which it aims to ship logs from.
+
+```fsharp
+  use logary =
+    withLogaryManager "Servizz.Program" (
+      withTargets [ Console.create Console.empty (PointName.ofSingle "console") ]
+      >> withRules [ Rule.createForTarget (PointName.ofSingle "console") ])
+    |> run
+
+  let libLogger = LogaryFacadeAdapter.createGeneric logger
+  let res = Libryy.Core.work libLogger
+```
+
+Inside the library you use the logger just like you'd expect:
+
+``` fsharp
+module Libryy.Core
+
+// Note: this library has no reference to Logary proper
+open Libryy.Logging
+
+let work (logger : Logger) =
+  fun () ->
+      Message.event Warn "Hey {user}!"
+      |> Message.setFieldValue "user" "haf"
+      |> Message.setSingleName "Libryy.Core.work"
+      |> Message.setTimestamp 1470047883029045000L
+  |> logger.log Warn
+  |> Async.RunSynchronously
+
+  42
+
+let simpleWork (logger : Logger) =
+  logger.logSimple (Message.event Error "Too simplistic")
+  43
+```
 
 ## Target Maintainers Wanted!
 

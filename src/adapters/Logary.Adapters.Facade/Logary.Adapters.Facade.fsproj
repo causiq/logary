@@ -40,7 +40,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Logary.Adapters.Facade.fs" />
-    <None Include="Script.fsx" />
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>

@@ -91,11 +91,14 @@ module LogaryFacadeAdapter =
         let prom = IVar ()
 
         // kick off the logging no matter what
-        start (Logger.logWithAck logger (msgFactory ()) ^=> IVar.fill prom)
+        let message = msgFactory ()
+
+        start (Logger.logWithAck logger message ^=> IVar.fill prom)
 
         // take the promise from within the IVar and make it an Async (which is
         // "hot" in that starting it will return "immediately" and be idempotent)
-        (prom ^=> id) |> Async.Global.ofJob
+        (prom ^=> id)
+        |> Async.Global.ofJob
 
       else
         async.Return ()

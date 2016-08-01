@@ -1,15 +1,14 @@
 ﻿module Libryy.Core
 
-open Libryy.Logging
-
 // Note: this library has no reference to Logary proper
+open Libryy.Logging
 
 let work (logger : Logger) =
   fun () ->
-      Message.event Warn "Hey {ho}"
-      |> Message.setTimestamp 1234L
-      |> Message.setFieldValue "myField" 223
+      Message.event Warn "Hey {user}!"
+      |> Message.setFieldValue "user" "haf"
       |> Message.setSingleName "Libryy.Core.work"
+      |> Message.setTimestamp 1470047883029045000L
   |> logger.log Warn
   |> Async.RunSynchronously
 
