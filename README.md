@@ -541,27 +541,12 @@ ruby -pi.bak -e \
   paket-files/logary/logary/src/Logary.Facade/Facade.fs
 ```
 
-The service/application which *does* reference the `Logary` nuget, also
-references `Logary.Adapters.Facade` and then creates a new Logger specifically
-for the library which it aims to ship logs from.
-
-```fsharp
-  use logary =
-    withLogaryManager "Servizz.Program" (
-      withTargets [ Console.create Console.empty (PointName.ofSingle "console") ]
-      >> withRules [ Rule.createForTarget (PointName.ofSingle "console") ])
-    |> run
-
-  let libLogger = LogaryFacadeAdapter.createGeneric logger
-  let res = Libryy.Core.work libLogger
-```
-
 Inside the library you use the logger just like you'd expect:
 
 ``` fsharp
 module Libryy.Core
 
-// Note: this library has no reference to Logary proper
+// Note: this library has no reference to Logary proper!
 open Libryy.Logging
 
 let work (logger : Logger) =
@@ -578,6 +563,28 @@ let work (logger : Logger) =
 let simpleWork (logger : Logger) =
   logger.logSimple (Message.event Error "Too simplistic")
   43
+```
+
+The service/application which *does* reference the `Logary` nuget, also
+references `Logary.Adapters.Facade` and then creates a new Logger specifically
+for the library which it aims to ship logs from.
+
+```fsharp
+  use logary =
+    withLogaryManager "Servizz.Program" (
+      withTargets [ Console.create Console.empty (PointName.ofSingle "console") ]
+      >> withRules [ Rule.createForTarget (PointName.ofSingle "console") ])
+    |> run
+
+  let libLogger = LogaryFacadeAdapter.createGeneric logger
+  let res = Libryy.Core.work libLogger
+```
+
+Outputs:
+
+```
+W 2016-08-01T10:38:03.0290450+00:00: Hey haf! [Libryy.Core.work]
+  user => "haf"
 ```
 
 ## Target Maintainers Wanted!
