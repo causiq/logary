@@ -570,6 +570,11 @@ references `Logary.Adapters.Facade` and then creates a new Logger specifically
 for the library which it aims to ship logs from.
 
 ```fsharp
+// opens ...
+open Logary.Adapters.Facade
+
+// let main ... =
+
   use logary =
     withLogaryManager "Servizz.Program" (
       withTargets [ Console.create Console.empty (PointName.ofSingle "console") ]
