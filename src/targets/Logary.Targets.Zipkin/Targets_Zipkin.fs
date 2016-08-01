@@ -135,31 +135,31 @@ module internal Impl =
       Annotations.Binary(key, val2str other)
 
   let annotateSpan state (message : Message) = 
-      match Map.tryFind "spanId" message.context with
-      | Some (Int64 recId) ->
-        let spanId = uint64 recId
-        let span =
-          match Map.tryFind spanId state.activeSpans with
-          | None ->
-            makeSpan message
+    match Map.tryFind "spanId" message.context with
+    | Some (Int64 recId) ->
+      let spanId = uint64 recId
+      let span =
+        match Map.tryFind spanId state.activeSpans with
+        | None ->
+          makeSpan message
 
-          | Some s ->
-            s
+        | Some s ->
+          s
 
-        let annotation =
-          val2ann Units.UnitOrientation.Suffix message.timestampTicks message.value
+      let annotation =
+        val2ann Units.UnitOrientation.Suffix message.timestampTicks message.value
 
-        span.Record annotation
+      span.Record annotation
 
-        message.fields
-        |> Map.toSeq
-        |> Seq.map val2bin
-        |> Seq.iter span.Record
+      message.fields
+      |> Map.toSeq
+      |> Seq.map val2bin
+      |> Seq.iter span.Record
 
-        { state with activeSpans = Map.add spanId span state.activeSpans }
+      { state with activeSpans = Map.add spanId span state.activeSpans }
 
-      | _ ->
-        state
+    | _ ->
+      state
 
   let loop (config : ZipkinConf)
            (ri : RuntimeInfo)
@@ -181,11 +181,12 @@ module internal Impl =
           }
 
         RingBuffer.take requests ^=> function
-          | Log(logMsg, ack) -> 
+          | Log(logMsg, ack) ->
             let nextState = annotateSpan state logMsg
             ack *<= () |> Job.bind (fun _ -> loop nextState)
 
           | Flush(ack, nack) -> 
+            // TODO: move this to a flush mechanism instead
             let spans =
               state.activeSpans
               |> Map.toSeq

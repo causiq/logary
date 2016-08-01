@@ -15,12 +15,12 @@ using Logary.Zipkin.Thrift;
 namespace Logary.Zipkin
 {
     /// <summary>
-    /// A collector sending all data to zipkin endpoint     using HTTP protocol.
+    /// A collector sending all data to zipkin endpoint using HTTP protocol.
     /// Spans are encoded using Thrift format.
     /// </summary>
     public class HttpCollector : ISpanCollector
     {
-        private Uri _url;
+        readonly Uri _url;
 
         public HttpCollector(Uri url)
         {
