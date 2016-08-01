@@ -591,6 +591,129 @@ Outputs:
 W 2016-08-01T10:38:03.0290450+00:00: Hey haf! [Libryy.Core.work]
   user => "haf"
 ```
+## Rutta
+
+Rutta is software for shipping Messages between computers. Either from your own
+services or from Windows Performance Counters. This is useful if you want your
+services to ship all logs to a central point, before batching it and sending it
+off to InfluxDb. It's also useful if you want to firewall off a single subnet
+for certain processing and only have a single point ship logs and metrics.
+
+v1: Hard-coded supported target types. Initially we'll just support InfluxDB.  
+v2: More configurable target configuration that supports any target.
+
+This service can run in three modes; Shipper, Router and Proxy. Servers can be
+implemented using Hopac's lightweight servers. Communication is implemented
+using ZMQ and a binary serialisation format.
+
+Bindings look may look like this:
+
+  - `Shipper -> Router`
+  - `Shipper -> Proxy`
+  - `Proxy -> Proxy`
+  - `Proxy -> Router`
+
+[ZMQ socket reference](http://api.zeromq.org/3-2:zmq-socket)
+
+On Windows you do `./rutta.exe -- --pub-to ...` - note the twp extra dashes
+before the parameter list. This is to avoid Topshelf munching the arguments
+away.
+
+### The Shipper – from environment to Proxy or Router
+
+Enables log shipping from hosts that are not directly connected to the router
+nor to InfluxDB.
+
+Should be spawnable on Unix. Should be service-installable on Windows using
+TopShelf.
+
+#### Pushing Shippers
+
+Shippers CONNECT PUSH sockets to the Router's PULL socket.
+See http://lists.zeromq.org/pipermail/zeromq-dev/2012-February/015917.html
+
+``` bash
+./rutta --push-to tcp://headnode:6111
+```
+
+During network splits, the sending
+[PUSH socket blocks](http://api.zeromq.org/3-2:zmq-socket#toc14).
+
+#### Publishing Shippers
+
+``` bash
+./rutta --pub-to tcp://headnode:7111
+```
+
+During network splits, the sending XPUSH socket drops messages.
+
+### The Proxy – from Shipper to Router
+
+Proxies take inputs from Shippers or other Proxies which publish Messages
+using XPUB sockets:
+
+``` bash
+./rutta --pub-to tcp://headnode:7111
+```
+
+The Proxy is run this way, by providing a XSUB socket binding and a XPUB socket
+binding:
+
+``` bash
+./rutta --proxy tcp://10.42.0.1:7111 tcp://192.168.10.10:7112
+```
+
+During network splits, the receiving
+[XSUB socket drops messages](http://api.zeromq.org/3-2:zmq-socket#toc12).
+
+You can then connect to the Proxy with a Router that routes it to the final
+Target (like InfluxDB in this example):
+
+``` bash
+./rutta --router-sub tcp://192.168.10.10:7113 \
+        --router-target influxdb://user:pass@host:8086/write?db=databaseName
+```
+
+During network splits, the sending
+[XPUB socket drops messages](http://api.zeromq.org/3-2:zmq-socket#toc11).
+
+### The Router – from Shipper or Proxy to Target
+
+Implements Fan-In using PULL or SUB of Messages from ZMQ. Forwards internally
+to a Target.
+
+V1 only implements the InfluxDB target.
+
+#### Pulling Routers
+
+BINDs a PULL socket on a specified NIC/IP and PORT. Configures a single
+internal Target that pushes the received data.
+
+``` bash
+./rutta --router tcp://192.168.10.10:7113 \
+        --router-target influxdb://user:pass@host:8086/write?db=databaseName
+```
+
+During network splits, the listening
+[PULL socket blocks](http://api.zeromq.org/3-2:zmq-socket#toc15).
+
+#### Subscribing Routers
+
+BINDs a SUB socket on a specified NIC/IP and POST. Configures a single internal
+Target that pushes the received data.
+
+``` bash
+./rutta --router-sub tcp://192.168.10.10:7113 \
+        --router-target influxdb://user:pass@host:8086/write?db=databaseName
+```
+
+**Serialisation** for Rutta is done using
+[FsPickler](https://nessos.github.io/FsPickler/tutorial.html#Picklers-and-Pickler-combinators).
+Since FsPickler uses a binary format, it should be assume to break for any given
+minor upgrade of FsPickler.
+
+Each ZMQ message contains a Message (see DataModel.fs) in the binary form
+given by the serialiser chosen.
 
 ## Target Maintainers Wanted!
 
