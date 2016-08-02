@@ -460,3 +460,16 @@ module Message =
   /// Sets the level on the log message.
   let setLevel (level : LogLevel) (x : Message) =
     { x with level = level }
+
+  /// Adds an exception to the Message, to the 'errors' field, inside a list.
+  let addExn ex (x : Message) =
+    let fields' =
+      match Map.tryFind "errors" x.fields with
+      | None ->
+        x.fields |> Map.add "errors" (box [ box ex ])
+      
+      | Some errors ->
+        let arr : obj list = unbox errors
+        x.fields |> Map.remove "errors" |> Map.add "errors" (box ex :: arr)
+
+    { x with fields = fields' }
