@@ -5,7 +5,6 @@
 namespace Logary.Facade
 
 open System
-open System.ComponentModel
 open System.Runtime.CompilerServices
 
 /// The log level denotes how 'important' the gauge or event message is.
@@ -43,7 +42,6 @@ type LogLevel =
     | Fatal   -> "fatal"
 
   /// Converts the string passed to a Loglevel.
-  [<EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
   static member ofString (str : string) =
     if str = null then invalidArg "str" "may not be null"
     match str.ToLowerInvariant() with
@@ -56,7 +54,6 @@ type LogLevel =
     | _         -> Info
 
   /// Turn the LogLevel into an integer
-  [<EditorBrowsable(EditorBrowsableState.Never)>]
   member x.toInt () =
     (function
     | Verbose -> 1
@@ -67,7 +64,6 @@ type LogLevel =
     | Fatal   -> 6) x
 
   /// Turn an integer into a LogLevel
-  [<EditorBrowsable(EditorBrowsableState.Never)>]
   static member ofInt i =
     (function
     | 1 -> Verbose
@@ -275,7 +271,7 @@ module internal Formatting =
   let internal defaultFormatter (message : Message) =
 
     let formatLevel (level : LogLevel) =
-      "[" + Char.ToUpperInvariant(message.level.ToString().[0]).ToString() + "] "
+      "[" + Char.ToUpperInvariant(level.ToString().[0]).ToString() + "] "
 
     let formatInstant (utcTicks : int64) =
       (DateTime(utcTicks, DateTimeKind.Utc).ToString("o")) + ": "
