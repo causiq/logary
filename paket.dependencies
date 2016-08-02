@@ -2,6 +2,7 @@ redirects: on
 framework: >= net45
 source https://www.nuget.org/api/v2
 
+nuget FSharp.Core redirects: force
 nuget Castle.Core
 nuget Common.Logging
 nuget Common.Logging.Core
@@ -33,7 +34,6 @@ nuget Http.fs
 nuget Topshelf ~> 3
 nuget Topshelf.FSharp
 nuget fszmq
-nuget FSharp.Core
 nuget ApacheThrift
 
 github xyncro/chiron:e0f4c122b21cb02d47ae3f4f83924b2dcb8dea9e src/Chiron/Chiron.fs
