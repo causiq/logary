@@ -34,6 +34,42 @@ OR:
 Install-Package Logary
 ```
 
+## Table of Contents
+* [Why?](#why)
+* [Install it](#install-it)
+* [Hello World](#hello-world)
+* [v4](#v4)
+* [Overview](#overview)
+* [Tutorial and Data Model](#tutorial-and-data-model)
+  * [PointName](#pointname)
+  * [PointValue\.Event](#pointvalueevent)
+  * [PointValue\.Gauge](#pointvaluegauge)
+  * [PointValue\.Derived](#pointvaluederived)
+  * [Rule &amp; Hierarchical logging](#rule--hierarchical-logging)
+  * [Log Level](#log-level)
+  * [Field and Fields](#field-and-fields)
+  * [Logging from modules](#logging-from-modules)
+  * [Logging from a class](#logging-from-a-class)
+  * [Logging fields &amp; templating](#logging-fields--templating)
+  * [Ticked metrics and gauges – random walk](#ticked-metrics-and-gauges--random-walk)
+  * [Derived metrics](#derived-metrics)
+* [Using logary in a library](#using-logary-in-a-library)
+  * [More reading:](#more-reading)
+* [Rutta](#rutta)
+  * [The Shipper – from environment to Proxy or Router](#the-shipper--from-environment-to-proxy-or-router)
+    * [Pushing Shippers](#pushing-shippers)
+    * [Publishing Shippers](#publishing-shippers)
+  * [The Proxy – from Shipper to Router](#the-proxy--from-shipper-to-router)
+  * [The Router – from Shipper or Proxy to Target](#the-router--from-shipper-or-proxy-to-target)
+    * [Pulling Routers](#pulling-routers)
+    * [Subscribing Routers](#subscribing-routers)
+* [Target Maintainers Wanted\!](#target-maintainers-wanted)
+* [Building](#building)
+  * [Building a signed version](#building-a-signed-version)
+* [Contributing](#contributing)
+  * [Writing a new target](#writing-a-new-target)
+* [License](#license)
+
 ## Hello World
 
 ```fsharp
