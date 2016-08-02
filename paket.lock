@@ -79,4 +79,4 @@ GITHUB
     RingBuffer.fs (4557d607737e748b54eb6de3ec5e5cd02247b2a5)
       Hopac
   remote: logary/logary
-    src/Logary.Facade/Facade.fs (1873a5886da048fdde8a74135bb1940ec59558ca)
+    src/Logary.Facade/Facade.fs (2f84efda89d6ef9b8dd988a36a48128552f65dc9)

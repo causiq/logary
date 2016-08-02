@@ -62,12 +62,17 @@ module LogaryFacadeAdapter =
     let invokeMethod = findMethod (typ, "Invoke")
     fun () -> toMsg fallbackName (invokeMethod.Invoke(o, [| () |]))
 
-  let (|Log|LogSimple|) ((invocation, defaultName) : IInvocation * string[]) : Choice<_, _> =
+  let (|Log|LogWithAck|LogSimple|) ((invocation, defaultName) : IInvocation * string[]) : Choice<_, _, _> =
     match invocation.Method.Name with
     | "log" ->
       let level = toLogLevel invocation.Arguments.[0]
       let factory = toMsgFactory defaultName invocation.Arguments.[1]
       Log (level, factory)
+
+    | "logWithAck" ->
+      let level = toLogLevel invocation.Arguments.[0]
+      let factory = toMsgFactory defaultName invocation.Arguments.[1]
+      LogWithAck (level, factory)
 
     | "logSimple" ->
       let msg = toMsg defaultName invocation.Arguments.[0]
@@ -86,7 +91,7 @@ module LogaryFacadeAdapter =
     // Codomains of these two functions are equal to codomains of Facade's
     // functions:
 
-    let log (level : LogLevel) (msgFactory : unit -> Message) : Async<unit> =
+    let logWithAck (level : LogLevel) (msgFactory : unit -> Message) : Async<unit> =
       if logger.level <= level then
         let prom = IVar ()
 
@@ -102,6 +107,9 @@ module LogaryFacadeAdapter =
 
       else
         async.Return ()
+
+    let log level msgFactory : unit =
+      logWithAck level msgFactory |> Async.StartImmediate
 
     let logSimple (msg : Message) : unit =
       logger.logSimple msg
@@ -122,6 +130,9 @@ module LogaryFacadeAdapter =
         match invocation, defaultName with
         | Log (level, msgFactory) ->
           invocation.ReturnValue <- log level msgFactory
+
+        | LogWithAck (level, msgFactory) ->
+          invocation.ReturnValue <- logWithAck level msgFactory
 
         | LogSimple message ->
           invocation.ReturnValue <- logSimple message

@@ -48,14 +48,14 @@ let tests =
       let msg = msg |> Message.setLevel Warn
       Expect.equal msg.level Warn "Should have Warn level now"
 
-    testCase "ConsoleLogger logSimple" <| fun _ ->
-      let logger = ConsoleWindowLogger(Debug) :> Logger
+    testCase "ConsoleTarget logSimple" <| fun _ ->
+      let logger = ConsoleWindowTarget(Debug) :> Logger
       Message.event Info "Aliens descended" |> logger.logSimple
 
     testProperty "Loggers.create" <| fun level ->
-      Loggers.create level |> ignore
+      Targets.create level |> ignore
 
-    testProperty "Loggers.create and logSimple" <| fun level ->
-      let logger = Loggers.create level
+    testProperty "Targets.create and logSimple" <| fun level ->
+      let logger = Targets.create level
       Message.event Debug "Hi {name}" |> logger.logSimple
   ]

@@ -152,24 +152,6 @@ module DateTimeOffset =
     epoch / 100L
     + DateTimeOffset(1970, 1, 1, 0, 0, 0, TimeSpan.Zero).Ticks
 
-type LoggingConfig =
-  { timestamp : unit -> int64 }
-
-module internal Global =
-
-  let DefaultConfig =
-    { timestamp = fun () -> DateTimeOffset.timestamp DateTimeOffset.UtcNow }
-
-  let private config = ref DefaultConfig
-
-  let timestamp () : EpochNanoSeconds =
-    (!config).timestamp ()
-
-  /// Call from the initialisation of your library. Initialises the
-  /// Logary.Facade globally/per process.
-  let initialise cfg =
-    config := cfg
-
 /// This is record that is logged. It's capable of representing both metrics
 /// (gauges) and events. See https://github.com/logary/logary for details.
 type Message =
@@ -192,60 +174,10 @@ type Message =
     DateTimeOffset.ticksUTC x.timestamp
 
   /// If you're looking for how to transform the Message's fields, then use the
-  /// static methods rather than instance methods, since you'll be creating new
+  /// module methods rather than instance methods, since you'll be creating new
   /// values rather than changing an existing value.
   member x.README =
     ()
-
-  /// Create a new event log message.
-  static member event level template =
-    { name      = [||]
-      value     = Event template
-      fields    = Map.empty
-      timestamp = Global.timestamp ()
-      level     = level }
-
-  /// Create a new instantaneous value in a log message.
-  static member gauge value units =
-    { name      = [||]
-      value     = Gauge (value, units)
-      fields    = Map.empty
-      timestamp = Global.timestamp ()
-      level     = Debug }
-
-  /// Sets the name/path of the log message.
-  static member setName (name : string[]) (x : Message) =
-    { x with name = name }
-
-  /// Sets the name as a single string; if this string contains dots, the string
-  /// will be split on these dots.
-  static member setSingleName (name : string) (x : Message) =
-    if name = null then invalidArg "name" "may not be null"
-
-    let name' =
-      name.Split([|'.'|], StringSplitOptions.RemoveEmptyEntries)
-
-    x |> Message.setName name'
-
-  /// Sets the value of the field on the log message.
-  static member setFieldValue (key : string) (value : obj) (x : Message) =
-    let put k v m =
-      match m |> Map.tryFind k with
-      | None ->
-        m |> Map.add k v
-
-      | Some _ ->
-        m |> Map.remove k |> Map.add k v
-
-    { x with fields = x.fields |> put key value }
-
-  /// Sets the timestamp on the log message.
-  static member setTimestamp (ts : EpochNanoSeconds) (x : Message) =
-    { x with timestamp = ts }
-
-  /// Sets the level on the log message.
-  static member setLevel (level : LogLevel) (x : Message) =
-    { x with level = level }
 
 /// The logger is the interface for calling code to use for logging.
 type Logger =
@@ -253,14 +185,24 @@ type Logger =
   /// itself completes when the logging infrastructure has finished writing that
   /// Message. Completes directly if nothing is logged. What the ack means from
   /// a durability standpoint depends on the logging infrastructure you're using
-  /// behind this facade.
-  abstract member log : LogLevel -> (unit -> Message) -> Async<unit>
+  /// behind this facade. Will not block, besides doing the computation inside
+  /// the callback. You should not do blocking operations in the callback.
+  abstract member logWithAck : LogLevel -> (unit -> Message) -> Async<unit>
+
+  /// Evaluates the callback if the log level is enabled. Will not block,
+  /// besides doing the computation inside the callback. You should not do
+  /// blocking operations in the callback.
+  abstract member log : LogLevel -> (unit -> Message) -> unit
 
   /// Logs the message without awaiting the logging infrastructure's ack of
   /// having successfully written the log message. What the ack means from a
   /// durability standpoint depends on the logging infrastructure you're using
   /// behind this facade.
   abstract member logSimple : Message -> unit
+
+type LoggingConfig =
+  { timestamp : unit -> int64
+    logger    : Logger }
 
 module internal Formatting =
 
@@ -301,29 +243,10 @@ module internal Formatting =
     formatName message.name +
     formatExn message.fields
 
-/// A logger to use for combining a number of other loggers
-type CombiningLogger(otherLoggers : Logger list) =
-  let sendToAll level msgFactory =
-    async {
-      let! _ =
-        otherLoggers
-        |> List.map (fun l -> l.log level msgFactory)
-        |> Async.Parallel
-      return ()
-    }
-
-  interface Logger with
-    member x.log level msgFactory =
-      sendToAll level msgFactory
-
-    member x.logSimple msg =
-      sendToAll msg.level (fun () -> msg)
-      |> Async.Start
-
 /// Log a line with the given format, printing the current time in UTC ISO-8601 format
 /// and then the string, like such:
 /// '2013-10-13T13:03:50.2950037Z: today is the day'
-type ConsoleWindowLogger(minLevel, ?formatter, ?colourise, ?originalColor, ?consoleSemaphore) =
+type ConsoleWindowTarget(minLevel, ?formatter, ?colourise, ?originalColor, ?consoleSemaphore) =
   let sem           = defaultArg consoleSemaphore (obj())
   let originalColor = defaultArg originalColor Console.ForegroundColor
   let formatter     = defaultArg formatter Formatting.defaultFormatter
@@ -349,34 +272,172 @@ type ConsoleWindowLogger(minLevel, ?formatter, ?colourise, ?originalColor, ?cons
       (write << formatter) message
 
   interface Logger with
-    member x.log level f =
+    member x.logWithAck level f =
       if level >= minLevel then
         log (toColour level) (f ())
       async.Return ()
+
+    member x.log level f =
+      if level >= minLevel then
+        log (toColour level) (f ())
 
     member x.logSimple msg =
       if msg.level >= minLevel then
         log (toColour msg.level) msg
 
-type OutputWindowLogger(minLevel, ?formatter) =
+type OutputWindowTarget(minLevel, ?formatter) =
   let formatter = defaultArg formatter Formatting.defaultFormatter
   let log msg = System.Diagnostics.Debug.WriteLine(formatter msg)
 
   interface Logger with
     member x.log level msgFactory =
       if level >= minLevel then log (msgFactory ())
+
+    member x.logWithAck level msgFactory =
+      if level >= minLevel then log (msgFactory ())
       async.Return ()
 
     member x.logSimple msg =
       if msg.level >= minLevel then log msg
 
-module Loggers =
+/// A logger to use for combining a number of other loggers
+type CombiningTarget(otherLoggers : Logger list) =
+  let sendToAll level msgFactory =
+    async {
+      let! _ =
+        otherLoggers
+        |> List.map (fun l -> l.logWithAck level msgFactory)
+        |> Async.Parallel
+      return ()
+    }
+
+  interface Logger with
+    member x.logWithAck level msgFactory =
+      sendToAll level msgFactory
+
+    member x.log level msgFactory =
+      for logger in otherLoggers do
+        logger.log level msgFactory
+
+    member x.logSimple msg =
+      sendToAll msg.level (fun () -> msg)
+      |> Async.Start
+
+module Targets =
 
   let create level =
     if level >= LogLevel.Info then
-      ConsoleWindowLogger(level) :> Logger
+      ConsoleWindowTarget(level) :> Logger
     else
-      CombiningLogger(
-        [ ConsoleWindowLogger(level)
-          OutputWindowLogger(level) ])
+      CombiningTarget(
+        [ ConsoleWindowTarget(level)
+          OutputWindowTarget(level) ])
       :> Logger
+
+module Global =
+
+  /// The global default configuration, which logs to Console at Info level.
+  let DefaultConfig =
+    { timestamp = fun () -> DateTimeOffset.timestamp DateTimeOffset.UtcNow
+      logger    = ConsoleWindowTarget(Info) }
+
+  let private config = ref DefaultConfig
+  let private locker = obj ()
+
+  /// The flyweight just references the current configuration. If you want
+  /// multiple per-process logging setups, then don't use the static methods,
+  /// but instead pass a Logger instance around, setting the name field of the
+  /// Message value you pass into the logger.
+  type internal Flyweight(name : string[]) =
+    member x.name = name
+    interface Logger with
+      member x.log level msgFactory =
+        (!config).logger.log level msgFactory
+
+      member x.logWithAck level msgFactory =
+        (!config).logger.logWithAck level msgFactory
+
+      member x.logSimple message =
+        (!config).logger.logSimple message
+
+  let internal getStaticLogger (name : string []) =
+    Flyweight name
+
+  let timestamp () : EpochNanoSeconds =
+    (!config).timestamp ()
+
+  /// Call from the initialisation of your library. Initialises the
+  /// Logary.Facade globally/per process.
+  let initialise cfg =
+    config := cfg
+
+/// Module for acquiring static loggers (when you don't want or can't)
+/// pass loggers as values.
+module Log =
+
+  /// Create a named logger. Full stop (.) acts as segment delimiter in the
+  /// hierachy of namespaces and loggers.
+  let create (name : string) =
+    if name = null then invalidArg "name" "name is null"
+    Global.getStaticLogger (name.Split([|'.'|], StringSplitOptions.RemoveEmptyEntries))
+    :> Logger
+
+  /// Create an hierarchically named logger
+  let createHiera (name : string[]) =
+    if name = null then invalidArg "name" "name is null"
+    if name.Length = 0 then invalidArg "name" "must have >0 segments"
+    Global.getStaticLogger name
+    :> Logger
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Message =
+
+  /// Create a new event log message.
+  let event level template =
+    { name      = [||]
+      value     = Event template
+      fields    = Map.empty
+      timestamp = Global.timestamp ()
+      level     = level }
+
+  /// Create a new instantaneous value in a log message.
+  let gauge value units =
+    { name      = [||]
+      value     = Gauge (value, units)
+      fields    = Map.empty
+      timestamp = Global.timestamp ()
+      level     = Debug }
+
+  /// Sets the name/path of the log message.
+  let setName (name : string[]) (x : Message) =
+    { x with name = name }
+
+  /// Sets the name as a single string; if this string contains dots, the string
+  /// will be split on these dots.
+  let setSingleName (name : string) (x : Message) =
+    if name = null then invalidArg "name" "may not be null"
+
+    let name' =
+      name.Split([|'.'|], StringSplitOptions.RemoveEmptyEntries)
+
+    x |> setName name'
+
+  /// Sets the value of the field on the log message.
+  let setFieldValue (key : string) (value : obj) (x : Message) =
+    let put k v m =
+      match m |> Map.tryFind k with
+      | None ->
+        m |> Map.add k v
+
+      | Some _ ->
+        m |> Map.remove k |> Map.add k v
+
+    { x with fields = x.fields |> put key value }
+
+  /// Sets the timestamp on the log message.
+  let setTimestamp (ts : EpochNanoSeconds) (x : Message) =
+    { x with timestamp = ts }
+
+  /// Sets the level on the log message.
+  let setLevel (level : LogLevel) (x : Message) =
+    { x with level = level }

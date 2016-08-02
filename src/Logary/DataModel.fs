@@ -1205,6 +1205,8 @@ module Message =
 
   /// Create a verbose event message, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
+  /// Warning: Prefer not formatting data into the event's template, in order to
+  /// keep you logging structured!
   [<CompiledName "EventVerboseFormat">]
   let eventVerbosef fmt = Printf.kprintf (event Verbose) fmt
 
@@ -1214,6 +1216,8 @@ module Message =
 
   /// Create a debug event message, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
+  /// Warning: Prefer not formatting data into the event's template, in order to
+  /// keep you logging structured!
   [<CompiledName "EventDebugFormat">]
   let eventDebugf fmt = Printf.kprintf (event LogLevel.Debug) fmt
 
@@ -1223,6 +1227,8 @@ module Message =
 
   /// Create a info event message, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
+  /// Warning: Prefer not formatting data into the event's template, in order to
+  /// keep you logging structured!
   [<CompiledName "EventInfoFormat">]
   let eventInfof fmt = Printf.kprintf (event Info) fmt
 
@@ -1232,6 +1238,8 @@ module Message =
 
   /// Create a warn event message for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
+  /// Warning: Prefer not formatting data into the event's template, in order to
+  /// keep you logging structured!
   [<CompiledName "EventWarnFormat">]
   let eventWarnf fmt = Printf.kprintf (event Warn) fmt
 
@@ -1241,6 +1249,8 @@ module Message =
 
   /// Write a error event message, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
+  /// Warning: Prefer not formatting data into the event's template, in order to
+  /// keep you logging structured!
   [<CompiledName "EventErrorFormat">]
   let eventErrorf fmt = Printf.kprintf (event LogLevel.Error) fmt
 
@@ -1250,6 +1260,8 @@ module Message =
 
   /// Create a fatal event message, for help constructing format string, see:
   /// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
+  /// Warning: Prefer not formatting data into the event's template, in order to
+  /// keep you logging structured!
   [<CompiledName "EventFatalFormat">]
   let eventFatalf fmt = Printf.kprintf (event Fatal) fmt
 

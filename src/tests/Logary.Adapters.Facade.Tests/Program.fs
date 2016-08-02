@@ -67,6 +67,9 @@ let tests =
       Expect.notEqual (!msg).name (PointName [||]) "Should have non-empty point name"
       Expect.equal (!msg).name (PointName [| "Libryy"; "Core" |])
                    "Should have point name corresponding to the passed logger"
+
+    testCase "end to end with adapter, logWithAck method" <| fun _ ->
+      ()
   ]
 
 [<EntryPoint>]
