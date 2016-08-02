@@ -88,7 +88,7 @@ module LogaryFacadeAdapter =
   type private I(logger : Logger) =
     let (PointName defaultName) = logger.name
 
-    // Codomains of these two functions are equal to codomains of Facade's
+    // Codomains of these three functions are equal to codomains of Facade's
     // functions:
 
     let logWithAck (level : LogLevel) (msgFactory : unit -> Message) : Async<unit> =
@@ -102,8 +102,7 @@ module LogaryFacadeAdapter =
 
         // take the promise from within the IVar and make it an Async (which is
         // "hot" in that starting it will return "immediately" and be idempotent)
-        (prom ^=> id)
-        |> Async.Global.ofJob
+        (prom ^=> id) |> Async.Global.ofJob
 
       else
         async.Return ()

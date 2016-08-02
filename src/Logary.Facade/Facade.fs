@@ -202,7 +202,7 @@ type Logger =
 
 type LoggingConfig =
   { timestamp : unit -> int64
-    logger    : Logger }
+    getLogger : string[] -> Logger }
 
 module internal Formatting =
 
@@ -265,7 +265,7 @@ type ConsoleWindowTarget(minLevel, ?formatter, ?colourise, ?originalColor, ?cons
     if colourise then
       lock sem <| fun _ ->
         Console.ForegroundColor <- color
-        (write << formatter) message
+        message |> formatter |> write
         Console.ForegroundColor <- originalColor
     else
       // we don't need to take another lock, since Console.WriteLine does that for us
@@ -339,7 +339,7 @@ module Global =
   /// The global default configuration, which logs to Console at Info level.
   let DefaultConfig =
     { timestamp = fun () -> DateTimeOffset.timestamp DateTimeOffset.UtcNow
-      logger    = ConsoleWindowTarget(Info) }
+      getLogger = fun name -> ConsoleWindowTarget(Info) :> Logger }
 
   let private config = ref DefaultConfig
   let private locker = obj ()
@@ -349,16 +349,35 @@ module Global =
   /// but instead pass a Logger instance around, setting the name field of the
   /// Message value you pass into the logger.
   type internal Flyweight(name : string[]) =
-    member x.name = name
+    let initialLogger = (!config).getLogger name
+    let mutable actualLogger : Logger option = None
+
+    let withLogger action =
+      let logger =
+        if Object.ReferenceEquals(!config, DefaultConfig) then
+          initialLogger
+        elif actualLogger = None then
+          lock locker <| fun _ ->
+            if actualLogger = None then
+              let logger' = (!config).getLogger name
+              actualLogger <- Some logger'
+              logger'
+            else
+              actualLogger |> Option.get
+        else
+          actualLogger |> Option.get
+
+      action logger
+
     interface Logger with
       member x.log level msgFactory =
-        (!config).logger.log level msgFactory
+        withLogger (fun logger -> logger.log level msgFactory)
 
       member x.logWithAck level msgFactory =
-        (!config).logger.logWithAck level msgFactory
+        withLogger (fun logger -> logger.logWithAck level msgFactory)
 
       member x.logSimple message =
-        (!config).logger.logSimple message
+        withLogger (fun logger -> logger.logSimple message)
 
   let internal getStaticLogger (name : string []) =
     Flyweight name
