@@ -1,20 +1,25 @@
 # Logary v4
 
+Follow Logary at twitter: [@logarylib](https://twitter.com/logarylib)
+
+Chat and support and get support:
+[![Gitter chat](https://badges.gitter.im/logary.png)](https://gitter.im/logary/logary)
+
 ## Why?
 
 Logary is a high-performance, semantic logging, health and metrics library for
 .Net.
 
-These are some reasons why you should use Logary:
-
- - do semantic logging – combine with Kibana/Logstash
- - F# idiomatic logging code
- - `Logary.CSharp` for C# idiomatic logging code
- - doesn't throw exceptions (on your callers)
- - low latency logging, efficient use of resources
- - advanced `Rule`-based system supports hierarchical logging
- - you can create your own metrics and derived/computed metrics or;
- - you can treat events as a Gauge of 1, ship it to Influx and be done with it
+ - Full support for Semantic Logging
+ - F# idiomatic code
+ - Using C#? Then `Logary.CSharp` is for you!
+ - Looking for an F# alternative to LibLog?
+   [`Logary.Facade`](#using-logary-in-a-library) is for you.
+ - Never throws exceptions
+ - Low latency logging – evaluate your Message only if level is met
+ - Supports [Hierarchical logging](#rule--hierarchical-logging)
+ - Add metrics to your service/app!
+ - A wide range of adapters and targets to choose from!
 
 Created by [Henrik Feldt, et al](https://haf.github.io) and sponsored by
 [qvitoo – A.I. bookkeeping](https://qvitoo.com/?utm_source=github&utm_campaign=logary).
@@ -127,18 +132,10 @@ let main argv =
 
 ## v4
 
-**This is a pre-release version**. v3.x is at
-[releases/v3.x](https://github.com/logary/logary/tree/releases/v3.x). We
-consider the master branch stable at this point.
-
 Logary is a high performance, multi-target logging, metric, tracing and
-health-check library for mono and .Net and [JavaScript](https://github.com/logary/logary-js),
+health-check library for mono and .Net and ,
 with a healthy dose of [documentation](https://logary.github.io/).
 
-Follow Logary at twitter: [@logarylib](https://twitter.com/logarylib)
-
-Chat and support and get support:
-[![Gitter chat](https://badges.gitter.im/logary.png)](https://gitter.im/logary/logary)
 
 Just add this to your paket.dependencies:
 
