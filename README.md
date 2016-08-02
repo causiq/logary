@@ -43,7 +43,6 @@ Install-Package Logary
 * [Why?](#why)
 * [Install it](#install-it)
 * [Hello World](#hello-world)
-* [v4](#v4)
 * [Overview](#overview)
 * [Tutorial and Data Model](#tutorial-and-data-model)
   * [PointName](#pointname)
@@ -129,21 +128,6 @@ let main argv =
   mre.Wait()
   0
 ```
-
-## v4
-
-Logary is a high performance, multi-target logging, metric, tracing and
-health-check library for mono and .Net and ,
-with a healthy dose of [documentation](https://logary.github.io/).
-
-
-Just add this to your paket.dependencies:
-
-``` paket
-nuget Logary
-```
-
-At [https://logary.github.io/](https://logary.github.io) you can find the full documentation.
 
 ## Overview
 
