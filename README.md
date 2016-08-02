@@ -541,6 +541,15 @@ ruby -pi.bak -e \
   paket-files/logary/logary/src/Logary.Facade/Facade.fs
 ```
 
+Or in FAKE style:
+
+```fsharp
+Target "LoggingFile" (fun _ ->
+    ReplaceInFiles [ "namespace Logary.Facade", "namespace Kafunk.Logging" ]
+                   [ "paket-files/logary/logary/src/Logary.Facade/Facade.fs" ]
+)
+```
+
 Inside the library you use the logger just like you'd expect:
 
 ``` fsharp
