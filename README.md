@@ -54,7 +54,7 @@ Install-Package Logary
   * [Ticked metrics and gauges – random walk](#ticked-metrics-and-gauges--random-walk)
   * [Derived metrics](#derived-metrics)
 * [Using logary in a library](#using-logary-in-a-library)
-  * [More reading:](#more-reading)
+  * [More reading](#more-reading)
 * [Rutta](#rutta)
   * [The Shipper – from environment to Proxy or Router](#the-shipper--from-environment-to-proxy-or-router)
     * [Pushing Shippers](#pushing-shippers)
@@ -641,7 +641,7 @@ W 2016-08-01T10:38:03.0290450+00:00: Hey haf! [Libryy.Core.work]
   user => "haf"
 ```
 
-### More reading:
+### More reading
 
  - [Facade.fs](https://github.com/logary/logary/blob/master/src/Logary.Facade/Facade.fs)
  - [Facade unit tests](https://github.com/logary/logary/blob/master/src/tests/Logary.Facade.Tests/Facade.fs)
