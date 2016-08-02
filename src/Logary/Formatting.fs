@@ -27,13 +27,15 @@ module MessageParts =
         t
 
       | Prop (_, p) ->
-        let (Field (value, units)) = Map.find (PointName.ofSingle p.Name) args
-        match units with
-        | Some units ->
-          Units.formatWithUnit Units.Suffix (units) value
-
-        | None ->
-          Units.formatValue value)
+        match Map.tryFind (PointName.ofSingle p.Name) args with
+        | Some (Field (value, units)) -> 
+            match units with
+            | Some units ->
+              Units.formatWithUnit Units.Suffix (units) value
+            | None ->
+              Units.formatValue value
+        | None -> p.ToString()
+        )
     |> Seq.iter (append sb)
     sb.ToString()
 
