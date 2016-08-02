@@ -3,8 +3,10 @@
 open Fuchu
 open ExpectoPatronum
 open Logary
+open Logary.Internals
 open Logary.Adapters.Facade
 open Hopac
+open NodaTime
 
 let stubLogger (minLevel : LogLevel)
                (message : Message ref)
@@ -28,47 +30,72 @@ let stubLogger (minLevel : LogLevel)
         minLevel
 
       member x.name =
-        PointName.parse name }
+        name }
+
+let stubLogManager (message : Message ref) =
+  { new LogManager with
+      member x.runtimeInfo =
+        RuntimeInfo.create ("Facade Tests", SystemClock.Instance)
+
+      member x.getLoggerAsync name =
+        Job.result (stubLogger Verbose message name)
+
+      member x.getLogger name =
+        stubLogger Verbose message name
+
+      member x.flushPending dur =
+        Alt.always ()
+
+      member x.shutdown fDur sDur =
+        Job.result { flushed = Ack
+                     stopped = Ack
+                     timedOut = false }
+
+      member x.DisposeAsync () =
+        Job.result ()
+
+      member x.Dispose() =
+        x.DisposeAsync() |> run
+  }
 
 [<Tests>]
 let tests =
-  let createSubject () =
-    let msg = ref (Message.event Info "empty")
-    let stub = stubLogger LogLevel.Info msg "Libryy.Core"
-
-    LogaryFacadeAdapter.createGeneric<Libryy.Logging.Logger> stub,
-    msg
-
   let assertWorkMessage (msg : Message) =
-      Expect.equal msg.level Warn "Should have logged at Warn level"
-      Expect.equal msg.value (Event "Hey {user}!") "Should have logged event template"
-      let field = msg.fields |> Map.find (PointName.ofSingle "user")
-      Expect.equal field (Field (String "haf", None)) "Should have logged user as String"
-      Expect.equal msg.timestamp 1470047883029045000L "Should have correct timestamp"
-      Expect.equal msg.name (PointName.parse "Libryy.Core.work") "Should have set name"
+    Expect.equal msg.level Warn "Should have logged at Warn level"
+    Expect.equal msg.value (Event "Hey {user}!") "Should have logged event template"
+    let field = msg.fields |> Map.find (PointName.ofSingle "user")
+    Expect.equal field (Field (String "haf", None)) "Should have logged user as String"
+    Expect.equal msg.timestamp 1470047883029045000L "Should have correct timestamp"
+    Expect.equal msg.name (PointName.parse "Libryy.Core.work") "Should have set name"
 
   testList "facade" [
     testList "logger" [
-      testCase "create adapter" <| fun _ ->
+      let createLoggerSubject () =
         let msg = ref (Message.event Info "empty")
-        let stub = stubLogger LogLevel.Info msg "Libryy.Core"
-        let logger = LogaryFacadeAdapter.createString "Libryy.Logging.Logger, Libryy" stub
+        let stub = stubLogger LogLevel.Info msg (PointName.parse "Libryy.Core")
+        LoggerAdapter.createGeneric<Libryy.Logging.Logger> stub,
+        msg
+
+      yield testCase "create adapter" <| fun _ ->
+        let msg = ref (Message.event Info "empty")
+        let stub = stubLogger LogLevel.Info msg (PointName.parse "Libryy.Core")
+        let logger = LoggerAdapter.createString "Libryy.Logging.Logger, Libryy" stub
         Expect.isNotNull logger "Should have gotten logger back"
 
-      testCase "end to end with adapter, full logWithAck method" <| fun _ ->
-        let libryyLogger, msg = createSubject ()
+      yield testCase "end to end with adapter, full logWithAck method" <| fun _ ->
+        let libryyLogger, msg = createLoggerSubject ()
         let res = Libryy.Core.work libryyLogger
         Expect.equal 42 res "Should get result back"
         assertWorkMessage (!msg)
 
-      testCase "end to end with adapter, log method" <| fun _ ->
-        let libryyLogger, msg = createSubject ()
+      yield testCase "end to end with adapter, log method" <| fun _ ->
+        let libryyLogger, msg = createLoggerSubject ()
         let res = Libryy.Core.workNonAsync libryyLogger
         Expect.equal 45 res "Should get result back"
         assertWorkMessage (!msg)
 
-      testCase "end to end with adapter, logSimple method" <| fun _ ->
-        let libryyLogger, msg = createSubject ()
+      yield testCase "end to end with adapter, logSimple method" <| fun _ ->
+        let libryyLogger, msg = createLoggerSubject ()
         let res = Libryy.Core.simpleWork libryyLogger
         Expect.equal 43 res "Should get result back"
         Expect.equal (!msg).level Error "Should have logged at Error level"
@@ -78,8 +105,17 @@ let tests =
         Expect.equal (!msg).name (PointName [| "Libryy"; "Core" |])
                      "Should have point name corresponding to the passed logger"
     ]
-    testList "global config" [
 
+    testList "global config" [
+      let createLogManagerSubject () =
+        let msg = ref (Message.event Info "empty")
+        stubLogManager msg, msg
+
+      yield testCase "initialise with LogManager" <| fun _ ->
+        let logManager, msg = createLogManagerSubject ()
+        LogaryFacadeAdapter.initialise<Libryy.Logging.Logger> logManager
+        let res = Libryy.Core.staticWork ()
+        Expect.equal res 49 "Should return 49"
     ]
   ]
 

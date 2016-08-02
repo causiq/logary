@@ -11,14 +11,15 @@ open Hopac.Infixes
 open Logary
 open Logary.Internals
 
-module LogaryFacadeAdapter =
+/// Utilities for creating a single logger in the target 
+module LoggerAdapter =
   let private findMethod : Type * string -> MethodInfo =
     Cache.memoize (fun (typ, meth) -> typ.GetMethod meth)
 
   let private findProperty : Type * string -> PropertyInfo =
     Cache.memoize (fun (typ, prop) -> typ.GetProperty prop)
 
-  let defaultName (fallback : string[]) = function
+  let private defaultName (fallback : string[]) = function
     | [||] ->
       fallback
 
@@ -147,3 +148,34 @@ module LogaryFacadeAdapter =
 
   let createGeneric<'logger when 'logger : not struct> logger : 'logger =
     create typeof<'logger> logger :?> 'logger
+
+module LogaryFacadeAdapter =
+
+  let createConfig configType loggerType (logManager : LogManager) =
+    let values : obj array =
+      FSharpType.GetRecordFields(configType)
+      |> Array.map (fun field ->
+        match field.Name with
+        | "getLogger" ->
+          box (fun name ->
+            PointName name
+            |> logManager.getLogger
+            |> LoggerAdapter.create loggerType)
+
+        | "timestamp" ->
+          box (fun () -> Date.timestamp ())
+
+        | name ->
+          failwithf "Unknown field '%s' of the config record '%s'" name configType.FullName)
+
+    FSharpValue.MakeRecord(configType, values)
+
+  let initialise<'logger> (logManager : LogManager) : unit =
+    let loggerType = typeof<'logger>
+    let asm = loggerType.Assembly
+    let ns = loggerType.Namespace
+    let configType = Type.GetType(ns + ".LoggingConfig, " + asm.FullName)
+    let globalType = Type.GetType(ns + ".Global, " + asm.FullName)
+    let fn = globalType.GetMethod("initialise")
+    let cfg = createConfig configType loggerType logManager
+    fn.Invoke(null, [| cfg |]) |> ignore

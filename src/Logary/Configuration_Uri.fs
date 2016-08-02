@@ -75,8 +75,6 @@ module Uri =
 
     | true, converter ->
       converter v
-    
-  
 
   let parseConfig<'recordType> (emptyValue : 'recordType) uriString =
     let argVals = 
