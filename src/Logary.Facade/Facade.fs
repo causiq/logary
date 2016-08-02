@@ -200,6 +200,28 @@ type Logger =
   /// behind this facade.
   abstract member logSimple : Message -> unit
 
+/// Syntactic sugar on top of Logger for F# libraries.
+[<AutoOpen>]
+module internal LoggerEx =
+  type Logger with
+    member x.verbose (msgFactory : LogLevel -> Message) : unit =
+      x.log Verbose msgFactory
+
+    member x.debug (msgFactory : LogLevel -> Message) : unit =
+      x.log Debug msgFactory
+
+    member x.info msgFactory : unit =
+      x.log Info msgFactory
+
+    member x.warn msgFactory : unit =
+      x.log Warn msgFactory
+
+    member x.error msgFactory : unit =
+      x.log Error msgFactory
+
+    member x.fatal msgFactory : unit =
+      x.log Fatal msgFactory
+
 type LoggingConfig =
   { timestamp : unit -> int64
     getLogger : string[] -> Logger }
