@@ -28,13 +28,13 @@ module internal FsSqlLogLine =
 
 type FsSqlAdapter(logger : Logger) =
   interface FsSql.Logging.Logger with
-    member x.Verbose fLine =
-      fLine >> FsSqlLogLine.toLogary
+    member x.Verbose lineFactory =
+      ignore >> lineFactory >> FsSqlLogLine.toLogary
       |> Logger.logVerbose logger
       |> start
 
-    member x.Debug fLine =
-      fLine >> FsSqlLogLine.toLogary
+    member x.Debug lineFactory =
+      ignore >> lineFactory >> FsSqlLogLine.toLogary
       |> Logger.logDebug logger
       |> start
 

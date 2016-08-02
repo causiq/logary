@@ -34,13 +34,13 @@ open Hopac
 
 type HawkAdapter(logger : Logger) =
   interface Logibit.Hawk.Logging.Logger with
-    member x.Verbose fLine =
-      (fLine >> HawkLogLine.toLogary)
+    member x.Verbose lineFactory =
+      (ignore >> lineFactory >> HawkLogLine.toLogary)
       |> Logger.logVerbose logger
       |> queue
 
-    member x.Debug fLine =
-      fLine >> HawkLogLine.toLogary
+    member x.Debug lineFactory =
+      ignore >> lineFactory >> HawkLogLine.toLogary
       |> Logger.logDebug logger
       |> queue
 

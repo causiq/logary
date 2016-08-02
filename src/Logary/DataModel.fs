@@ -1161,6 +1161,13 @@ module Message =
       level     = level
       timestamp = Date.timestamp() }
 
+
+  /// Creates a new event message template with level. Compared to `event`,
+  /// this function has its parameters' order flipped.
+  [<CompiledName "Event">]
+  let eventX template level =
+    event level template
+
   /// Creates a new gauge message with data point name, unit and value
   [<CompiledName "Gauge">]
   let gaugeWithUnit dp units value =

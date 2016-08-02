@@ -9,14 +9,14 @@ type Logger =
   inherit Named
 
   /// Also see `Logger.logDebugWithAck` and `Logger.log`.
-  abstract logVerboseWithAck : (unit -> Message) -> Alt<Promise<unit>>
+  abstract logVerboseWithAck : (LogLevel -> Message) -> Alt<Promise<unit>>
 
   /// Deferred debug-levelled log; only evaluates the callback if any rule for
   /// applicative to this logger causes its input at debug-level to be handed to
   /// a target.
   ///
   /// Also see `Logger.log`.
-  abstract logDebugWithAck : (unit -> Message) -> Alt<Promise<unit>>
+  abstract logDebugWithAck : (LogLevel -> Message) -> Alt<Promise<unit>>
 
   /// Write a message to the Logger. The returned value represents the commit
   /// point that Logary has acquired the message. The alternative is always
@@ -96,9 +96,9 @@ module Logger =
   /// Write a debug log line, given from the fLine callback, if the logger
   /// accepts line with Verbose level.
   [<CompiledName "LogVerbose"; Extension>]
-  let logVerbose (logger : Logger) fMessage : Alt<unit> =
+  let logVerbose (logger : Logger) msgFactory : Alt<unit> =
     ifLevel logger Verbose (Alt.always ()) <| fun _ ->
-      logger.logVerboseWithAck (fMessage >> ensureName logger)
+      logger.logVerboseWithAck (msgFactory >> ensureName logger)
       |> Alt.afterFun ignore
 
   [<CompiledName "LogVerboseWithAck"; Extension>]

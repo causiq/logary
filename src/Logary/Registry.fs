@@ -178,14 +178,14 @@ module Advanced =
         member x.name = name
 
       interface Logger with
-        member x.logVerboseWithAck fMessage =
+        member x.logVerboseWithAck msgFactory =
           ifLevel Verbose (Alt.always (Promise.Now.withValue ())) <| fun _ ->
-            let msg = fMessage ()
+            let msg = msgFactory Verbose
             middleware msg
 
-        member x.logDebugWithAck fMessage =
+        member x.logDebugWithAck msgFactory =
           ifLevel Debug (Alt.always (Promise.Now.withValue ())) <| fun _ ->
-            let msg = fMessage ()
+            let msg = msgFactory Verbose
             middleware msg
 
         member x.logWithAck message =

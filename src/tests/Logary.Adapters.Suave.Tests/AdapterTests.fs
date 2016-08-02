@@ -9,11 +9,11 @@ open Fuchu
 
 let testLoggers (minLevel : LogLevel) (lineLevel : Logging.LogLevel) (message : Message ref) =
   let stub = { new Logger with
-                  member x.logVerboseWithAck fac =
-                    x.logWithAck (fac ())
+                  member x.logVerboseWithAck msgFactory =
+                    x.logWithAck (msgFactory Verbose)
 
-                  member x.logDebugWithAck fac =
-                    x.logWithAck (fac ())
+                  member x.logDebugWithAck msgFactory =
+                    x.logWithAck (msgFactory Debug)
 
                   member x.logWithAck msg =
                     message := msg

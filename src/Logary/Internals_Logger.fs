@@ -44,17 +44,17 @@ module internal Logging =
       member x.level: LogLevel =
         x.level
 
-      member x.logVerboseWithAck fMsg =
+      member x.logVerboseWithAck msgFactory =
         if Verbose >= x.level then
           let logger : Logger = upcast x
-          logger.logWithAck (fMsg ()) // delegate down
+          logger.logWithAck (msgFactory Verbose) // delegate down
         else
           instaPromise
 
-      member x.logDebugWithAck fMsg =
+      member x.logDebugWithAck msgFactory =
         if Debug >= x.level then
           let logger : Logger = upcast x
-          logger.logWithAck (fMsg ()) // delegate down
+          logger.logWithAck (msgFactory Debug) // delegate down
         else
           instaPromise
 
@@ -83,17 +83,17 @@ type InternalLogger =
       x.trgs |> Seq.map Target.shutdown |> Job.conIgnore
 
   interface Logger with
-    member x.logVerboseWithAck fMsg =
+    member x.logVerboseWithAck msgFactory =
       if Verbose >= x.lvl then
         let logger : Logger = upcast x
-        logger.logWithAck (fMsg ()) // delegate down
+        logger.logWithAck (msgFactory Verbose) // delegate down
       else
         Logging.instaPromise
 
-    member x.logDebugWithAck fMsg =
+    member x.logDebugWithAck msgFactory =
       if Debug >= x.lvl then
         let logger : Logger = upcast x
-        logger.logWithAck (fMsg ()) // delegate down
+        logger.logWithAck (msgFactory Debug) // delegate down
       else
         Logging.instaPromise
 
