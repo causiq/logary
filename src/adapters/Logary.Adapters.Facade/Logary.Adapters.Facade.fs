@@ -157,13 +157,17 @@ module LogaryFacadeAdapter =
       |> Array.map (fun field ->
         match field.Name with
         | "getLogger" ->
-          box (fun name ->
-            PointName name
-            |> logManager.getLogger
-            |> LoggerAdapter.create loggerType)
+          FSharpValue.MakeFunction(
+            field.PropertyType,
+            (unbox >> fun name ->
+              PointName name
+              |> logManager.getLogger
+              |> LoggerAdapter.create loggerType))
 
         | "timestamp" ->
-          box (fun () -> Date.timestamp ())
+          FSharpValue.MakeFunction(
+            field.PropertyType,
+            fun _ -> Date.timestamp () |> box)
 
         | name ->
           failwithf "Unknown field '%s' of the config record '%s'" name configType.FullName)

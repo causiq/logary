@@ -116,6 +116,8 @@ let tests =
         LogaryFacadeAdapter.initialise<Libryy.Logging.Logger> logManager
         let res = Libryy.Core.staticWork ()
         Expect.equal res 49 "Should return 49"
+        Expect.equal (!msg).level Debug "Should have logged at Debug level"
+        Expect.equal (!msg).value (Event "A debug log") "Should have logged event template"
     ]
   ]
 
