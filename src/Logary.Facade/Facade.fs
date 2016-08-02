@@ -339,7 +339,7 @@ module Global =
   /// The global default configuration, which logs to Console at Info level.
   let DefaultConfig =
     { timestamp = fun () -> DateTimeOffset.timestamp DateTimeOffset.UtcNow
-      getLogger = fun name -> ConsoleWindowTarget(Info) :> Logger }
+      getLogger = fun _ -> ConsoleWindowTarget(Info) :> Logger }
 
   let private config = ref DefaultConfig
   let private locker = obj ()
@@ -418,6 +418,12 @@ module Message =
       fields    = Map.empty
       timestamp = Global.timestamp ()
       level     = level }
+
+  /// Create a new event log message – like `event` but with parameters flipped.
+  /// Useful to use with `Logger.log` with point-free style, to reduce the
+  /// noise.
+  let eventX template level =
+    event level template
 
   /// Create a new instantaneous value in a log message.
   let gauge value units =
