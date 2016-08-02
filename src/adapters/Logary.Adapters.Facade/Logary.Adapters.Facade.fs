@@ -11,7 +11,8 @@ open Hopac.Infixes
 open Logary
 open Logary.Internals
 
-/// Utilities for creating a single logger in the target 
+/// Utilities for creating a single 'MyLib.Logging.Logger' in the target type
+/// space.
 module LoggerAdapter =
   let private findMethod : Type * string -> MethodInfo =
     Cache.memoize (fun (typ, meth) -> typ.GetMethod meth)
@@ -26,6 +27,8 @@ module LoggerAdapter =
     | otherwise ->
       otherwise
 
+  /// Convert the object instance to a PointValue. Is used from the
+  /// other code in this module.
   let toPointValue (o : obj) : PointValue =
     let typ = o.GetType()
     let info, values = FSharpValue.GetUnionFields(o, typ)
@@ -40,12 +43,16 @@ module LoggerAdapter =
       let valuesStr = values |> Array.map string |> String.concat ", "
       failwithf "Unknown union case '%s (%s)' on '%s'" caseName valuesStr typ.FullName
 
+  /// Convert the object instance to a LogLevel. Is used from the
+  /// other code in this module.
   let toLogLevel (o : obj) : LogLevel =
     let typ = o.GetType()
     let par = typ, "toInt"
     let toInt = findMethod (typ, "toInt")
     LogLevel.ofInt (toInt.Invoke(o, null) :?> int)
 
+  /// Convert the object instance to a Logary.DataModel.Message. Is used from the
+  /// other code in this module.
   let toMsg fallbackName (o : obj) : Message =
     let typ = o.GetType()
     let readProperty name = (findProperty (typ, name)).GetValue o
@@ -58,12 +65,14 @@ module LoggerAdapter =
       level     = readProperty "level" |> toLogLevel }
     |> Message.setFieldsFromMap (readProperty "fields" :?> Map<string, obj>)
 
+  /// Convert the object instance to a message factory method. Is used from the
+  /// other code in this module.
   let toMsgFactory fallbackName (o : obj) : unit -> Message =
     let typ = o.GetType()
     let invokeMethod = findMethod (typ, "Invoke")
     fun () -> toMsg fallbackName (invokeMethod.Invoke(o, [| () |]))
 
-  let (|Log|LogWithAck|LogSimple|) ((invocation, defaultName) : IInvocation * string[]) : Choice<_, _, _> =
+  let internal (|Log|LogWithAck|LogSimple|) ((invocation, defaultName) : IInvocation * string[]) : Choice<_, _, _> =
     match invocation.Method.Name with
     | "log" ->
       let level = toLogLevel invocation.Arguments.[0]
@@ -94,11 +103,11 @@ module LoggerAdapter =
 
     let logWithAck (level : LogLevel) (msgFactory : unit -> Message) : Async<unit> =
       if logger.level <= level then
+        // a placeholder for the Promise ack from Logary proper
         let prom = IVar ()
 
         // kick off the logging no matter what
         let message = msgFactory ()
-
         start (Logger.logWithAck logger message ^=> IVar.fill prom)
 
         // take the promise from within the IVar and make it an Async (which is
@@ -106,9 +115,12 @@ module LoggerAdapter =
         (prom ^=> id) |> Async.Global.ofJob
 
       else
+        // Since the level was too low for the logger, don't send to Logary
         async.Return ()
 
     let log level msgFactory : unit =
+      // start immediate because in the normal case we can put the Message
+      // in the RingBuffer without any extra time taken
       logWithAck level msgFactory |> Async.StartImmediate
 
     let logSimple (msg : Message) : unit =
@@ -122,7 +134,6 @@ module LoggerAdapter =
         let argType = arg.GetType()
         printfn " - %A\n   : %s" arg (argType.FullName)
         printfn "   :> %s" argType.BaseType.FullName
-
       printfn "Method.Name: %s" invocation.Method.Name
 
     interface IInterceptor with
@@ -137,20 +148,32 @@ module LoggerAdapter =
         | LogSimple message ->
           invocation.ReturnValue <- logSimple message
 
+  /// Create a target assembly's logger from the given type, which delegates to
+  /// the passed Logary proper Logger.
   let create (typ : Type) logger : obj =
     if typ = null then invalidArg "typ" "is null"
     let generator = new ProxyGenerator()
     let facade = I logger :> IInterceptor
     generator.CreateInterfaceProxyWithoutTarget(typ, facade)
 
+  /// Create a target assembly's logger from the given type-string, which
+  /// delegates to the passed Logary proper logger.
   let createString (typ : string) logger : obj =
     create (Type.GetType typ) logger
 
+  /// Creates a target assembly's logger from the passed generic logger type
+  /// which delegates to the passed Logary-proper's logger. This is the function
+  /// you'll normally use if you use this module. Otherwise, please see
+  /// LogaryFacadeAdapter.
   let createGeneric<'logger when 'logger : not struct> logger : 'logger =
     create typeof<'logger> logger :?> 'logger
 
+/// An adapter for creating a `getLogger` function. 
 module LogaryFacadeAdapter =
 
+  /// You should probably gaze at `initialise` rather than this function. This
+  /// function creates a configuration matching the `configType`; and it also
+  /// needs the `loggerType` of the target assembly for orientation.
   let createConfig configType loggerType (logManager : LogManager) =
     let values : obj array =
       FSharpType.GetRecordFields(configType)
@@ -174,6 +197,9 @@ module LogaryFacadeAdapter =
 
     FSharpValue.MakeRecord(configType, values)
 
+  /// Initialises the global state in the target assembly, but calling
+  /// YourAssembly.Logging.Global.initialise with a configuration value which
+  /// is pointing to Logary.
   let initialise<'logger> (logManager : LogManager) : unit =
     let loggerType = typeof<'logger>
     let asm = loggerType.Assembly
