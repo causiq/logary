@@ -137,10 +137,14 @@ module internal Impl =
   let annotateSpan state (message : Message) = 
     match Map.tryFind "spanId" message.context with
     | Some (Int64 recId) ->
-      let spanId = uint64 recId
+      let spanId =
+        uint64 recId
+
       let span =
         match Map.tryFind spanId state.activeSpans with
         | None ->
+          // TODO: handle client open client close
+          // TODO: handle server open server close
           makeSpan message
 
         | Some s ->
