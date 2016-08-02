@@ -67,23 +67,24 @@ module LoggerAdapter =
 
   /// Convert the object instance to a message factory method. Is used from the
   /// other code in this module.
-  let toMsgFactory fallbackName (o : obj) : LogLevel -> Message =
+  let toMsgFactory fallbackName oLevel (o : obj) : LogLevel -> Message =
     let typ = o.GetType()
     let invokeMethod = findMethod (typ, "Invoke")
     fun level ->
-      let oLevel = toLogLevel level
-      toMsg fallbackName (invokeMethod.Invoke(o, [| () |]))
+      toMsg fallbackName (invokeMethod.Invoke(o, [| oLevel |]))
 
   let internal (|Log|LogWithAck|LogSimple|) ((invocation, defaultName) : IInvocation * string[]) : Choice<_, _, _> =
     match invocation.Method.Name with
     | "log" ->
-      let level = toLogLevel invocation.Arguments.[0]
-      let factory = toMsgFactory defaultName invocation.Arguments.[1]
+      let oLevel = invocation.Arguments.[0]
+      let level = toLogLevel oLevel
+      let factory = toMsgFactory defaultName oLevel invocation.Arguments.[1]
       Log (level, factory)
 
     | "logWithAck" ->
-      let level = toLogLevel invocation.Arguments.[0]
-      let factory = toMsgFactory defaultName invocation.Arguments.[1]
+      let oLevel = invocation.Arguments.[0]
+      let level = toLogLevel oLevel
+      let factory = toMsgFactory defaultName oLevel invocation.Arguments.[1]
       LogWithAck (level, factory)
 
     | "logSimple" ->

@@ -6,23 +6,22 @@ open Libryy.Logging
 let coreLogger = Log.create "Libryy.Core"
 
 let work (logger : Logger) =
-  fun () ->
-      Message.event Warn "Hey {user}!"
-      |> Message.setFieldValue "user" "haf"
-      |> Message.setSingleName "Libryy.Core.work"
-      |> Message.setTimestamp 1470047883029045000L
-  |> logger.logWithAck Warn
+  logger.logWithAck Warn (
+    Message.eventX "Hey {user}!"
+    >> Message.setFieldValue "user" "haf"
+    >> Message.setSingleName "Libryy.Core.work"
+    >> Message.setTimestamp 1470047883029045000L)
   |> Async.RunSynchronously
 
   42
 
 let workNonAsync (logger : Logger) =
-  fun () ->
-      Message.event Warn "Hey {user}!"
-      |> Message.setFieldValue "user" "haf"
-      |> Message.setSingleName "Libryy.Core.work"
-      |> Message.setTimestamp 1470047883029045000L
-  |> logger.log Warn
+  logger.log Warn (
+    Message.eventX "Hey {user}!"
+    >> Message.setFieldValue "user" "haf"
+    >> Message.setSingleName "Libryy.Core.work"
+    >> Message.setTimestamp 1470047883029045000L)
+
   45
 
 let simpleWork (logger : Logger) =
