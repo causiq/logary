@@ -67,10 +67,12 @@ module LoggerAdapter =
 
   /// Convert the object instance to a message factory method. Is used from the
   /// other code in this module.
-  let toMsgFactory fallbackName (o : obj) : unit -> Message =
+  let toMsgFactory fallbackName (o : obj) : LogLevel -> Message =
     let typ = o.GetType()
     let invokeMethod = findMethod (typ, "Invoke")
-    fun () -> toMsg fallbackName (invokeMethod.Invoke(o, [| () |]))
+    fun level ->
+      let oLevel = toLogLevel level
+      toMsg fallbackName (invokeMethod.Invoke(o, [| () |]))
 
   let internal (|Log|LogWithAck|LogSimple|) ((invocation, defaultName) : IInvocation * string[]) : Choice<_, _, _> =
     match invocation.Method.Name with
@@ -101,13 +103,13 @@ module LoggerAdapter =
     // Codomains of these three functions are equal to codomains of Facade's
     // functions:
 
-    let logWithAck (level : LogLevel) (msgFactory : unit -> Message) : Async<unit> =
+    let logWithAck (level : LogLevel) (msgFactory : LogLevel -> Message) : Async<unit> =
       if logger.level <= level then
         // a placeholder for the Promise ack from Logary proper
         let prom = IVar ()
 
         // kick off the logging no matter what
-        let message = msgFactory ()
+        let message = msgFactory level
         start (Logger.logWithAck logger message ^=> IVar.fill prom)
 
         // take the promise from within the IVar and make it an Async (which is

@@ -187,12 +187,12 @@ type Logger =
   /// a durability standpoint depends on the logging infrastructure you're using
   /// behind this facade. Will not block, besides doing the computation inside
   /// the callback. You should not do blocking operations in the callback.
-  abstract member logWithAck : LogLevel -> (unit -> Message) -> Async<unit>
+  abstract member logWithAck : LogLevel -> (LogLevel -> Message) -> Async<unit>
 
   /// Evaluates the callback if the log level is enabled. Will not block,
   /// besides doing the computation inside the callback. You should not do
   /// blocking operations in the callback.
-  abstract member log : LogLevel -> (unit -> Message) -> unit
+  abstract member log : LogLevel -> (LogLevel -> Message) -> unit
 
   /// Logs the message without awaiting the logging infrastructure's ack of
   /// having successfully written the log message. What the ack means from a
@@ -272,14 +272,14 @@ type ConsoleWindowTarget(minLevel, ?formatter, ?colourise, ?originalColor, ?cons
       (write << formatter) message
 
   interface Logger with
-    member x.logWithAck level f =
+    member x.logWithAck level msgFactory =
       if level >= minLevel then
-        log (toColour level) (f ())
+        log (toColour level) (msgFactory level)
       async.Return ()
 
-    member x.log level f =
+    member x.log level msgFactory =
       if level >= minLevel then
-        log (toColour level) (f ())
+        log (toColour level) (msgFactory level)
 
     member x.logSimple msg =
       if msg.level >= minLevel then
@@ -291,10 +291,10 @@ type OutputWindowTarget(minLevel, ?formatter) =
 
   interface Logger with
     member x.log level msgFactory =
-      if level >= minLevel then log (msgFactory ())
+      if level >= minLevel then log (msgFactory level)
 
     member x.logWithAck level msgFactory =
-      if level >= minLevel then log (msgFactory ())
+      if level >= minLevel then log (msgFactory level)
       async.Return ()
 
     member x.logSimple msg =
@@ -320,7 +320,7 @@ type CombiningTarget(otherLoggers : Logger list) =
         logger.log level msgFactory
 
     member x.logSimple msg =
-      sendToAll msg.level (fun () -> msg)
+      sendToAll msg.level (fun _ -> msg)
       |> Async.Start
 
 module Targets =
