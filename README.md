@@ -604,6 +604,14 @@ Outputs:
 W 2016-08-01T10:38:03.0290450+00:00: Hey haf! [Libryy.Core.work]
   user => "haf"
 ```
+
+### More reading:
+
+ - [Facade.fs](https://github.com/logary/logary/blob/master/src/Logary.Facade/Facade.fs)
+ - [Facade unit tests](https://github.com/logary/logary/blob/master/src/tests/Logary.Facade.Tests/Facade.fs)
+ - [Facade Adapter](https://github.com/logary/logary/blob/master/src/adapters/Logary.Adapters.Facade/Logary.Adapters.Facade.fs)
+ - [Facade Adapter unit tests](https://github.com/logary/logary/blob/master/src/tests/Logary.Adapters.Facade.Tests/Program.fs)
+
 ## Rutta
 
 Rutta is software for shipping Messages between computers. Either from your own
