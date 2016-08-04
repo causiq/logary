@@ -85,10 +85,7 @@ module internal Impl =
            (requests : RingBuffer<_>)
            (shutdown : Ch<_>) =
 
-    let rec init config =
-      loop ()
-
-    and loop (state : unit) : Job<unit> =
+    let rec loop (_ : unit) : Job<unit> =
       Alt.choose [
         shutdown ^=> fun ack -> job {
           do! ack *<= ()
@@ -98,17 +95,17 @@ module internal Impl =
             job {
               let! _ = sendToElasticSearch conf.publishTo conf._type message
               do! ack *<= ()
-              return! loop state
+              return! loop ()
             }
 
           | Flush (ackCh, nack) ->
             job {
               do! Ch.give ackCh () <|> nack
-              return! loop state
+              return! loop ()
             }
       ] :> Job<_>
 
-    init conf
+    loop ()
 
 let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
 
