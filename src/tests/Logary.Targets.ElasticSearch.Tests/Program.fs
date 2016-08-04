@@ -21,8 +21,10 @@ let emptyRuntime =
 let flush = Target.flush >> Job.Ignore >> Job.Global.run
 
 let targConf =
+  ElasticSearch.ElasticSearchConf.create()
 
 let start () =
+  Target.init emptyRuntime (ElasticSearch.create targConf (PointName.ofSingle "influxdb"))
   |> run
   |> fun inst -> inst.server |> start; inst
 
@@ -43,7 +45,9 @@ let now = Message.setUTCTicks System.DateTime.UtcNow.Ticks
 
 [<Tests>]
 let target =
+  testList "elasticsearch" [
     testCase "start and stop" <| fun _ ->
+      let target = ElasticSearch.create targConf (PointName.ofSingle "elasticsearch-integration")
       let subject = target |> init emptyRuntime |> run
       Message.eventWarn "integration test" |> Target.log subject |> run |> run
       subject |> finaliseTarget
@@ -61,6 +65,7 @@ let target =
         |> Message.setContext "service" "tests"
         |> Message.addExn e2
         |> now
+        |> ElasticSearch.serialise
 
       let expected =
         [ "@timestamp", Json.String ""
