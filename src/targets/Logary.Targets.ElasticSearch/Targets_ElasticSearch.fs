@@ -78,7 +78,7 @@ module internal Impl =
       Request.createUrl Post endpointUrl
       |> Request.body (RequestBody.BodyRaw bytes)
 
-    Request.responseAsString request |> run |> ignore
+    Request.responseAsString request
 
   let loop (conf : ElasticSearchConf)
            (ri : RuntimeInfo)
@@ -93,7 +93,7 @@ module internal Impl =
         RingBuffer.take requests ^=> function
           | Log (message, ack) ->
             job {
-              do! Job.Scheduler.isolate (fun _ -> sendToElasticSearch conf.publishTo conf._type message)
+              let! _ = sendToElasticSearch conf.publishTo conf._type message
               do! ack *<= ()
               return! loop state
             }
