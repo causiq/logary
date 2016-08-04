@@ -90,6 +90,9 @@ module internal Impl =
 
     and loop (state : unit) : Job<unit> =
       Alt.choose [
+        shutdown ^=> fun ack -> job {
+          do! ack *<= ()
+        }
         RingBuffer.take requests ^=> function
           | Log (message, ack) ->
             job {
