@@ -116,6 +116,10 @@ type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
   member x.PublishTo(publishTo : string) =
     Builder({ conf with publishTo = publishTo }, callParent)
 
+  /// Change "_type" value, by default is "logs".
+  member x.Type(_type : string) =
+    Builder({ conf with _type = _type }, callParent)
+
   member x.Done() =
     ! (callParent x)
 
