@@ -1,6 +1,4 @@
-/// A Logary target for Logstash that logs to its ZeroMQ input. See
-/// https://www.elastic.co/guide/en/logstash/current/plugins-inputs-zeromq.html
-/// for information about how to configure it.
+/// A Logary target for Elasticsearch
 module Logary.Targets.ElasticSearch
 
 #nowarn "1104"
