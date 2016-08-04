@@ -28,6 +28,7 @@ let DefaultPublishTo =
 type ElasticSearchConf =
   { /// Server URL, by default "http://localhost:9200"
     publishTo  : string
+    /// ElasticSearch document "_type", by default "logs"
     _type : string }
 
   /// Create a new ElasticSearch target config.
