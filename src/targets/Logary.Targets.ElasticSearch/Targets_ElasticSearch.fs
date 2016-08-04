@@ -64,8 +64,8 @@ module internal Impl =
     let charsLen = chars.Length
     let random = System.Random()
     fun len -> 
-        let randomChars = [|for i in 0..len -> chars.[random.Next(charsLen)]|]
-        new System.String(randomChars)
+      let randomChars = [|for i in 0..len -> chars.[random.Next(charsLen)]|]
+      new System.String(randomChars)
  
   let sendToElasticSearch elasticUrl _type (message : Message) =
     let _index  = "logary-" + DateTime.UtcNow.ToString("yyy-mm-dd")
