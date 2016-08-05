@@ -2,7 +2,7 @@ redirects: on
 framework: >= net45
 source https://www.nuget.org/api/v2
 
-nuget FSharp.Core redirects: force
+nuget FSharp.Core ~> 4 redirects: force
 nuget Castle.Core
 nuget Common.Logging
 nuget Common.Logging.Core
