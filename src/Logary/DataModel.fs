@@ -943,24 +943,6 @@ module Field =
   let inline init (value : ^a) =
     Field (Value.serialize value, None)
 
-  /// Converts a String.Format-style format string and an array of arguments into
-  /// an Event template and a set of Fields.
-  let templateFormat (format : string) (args : obj[]) =
-    let fields =
-      args
-      |> Array.mapi (fun i v ->
-        sprintf "arg%i" i,
-        Field (Value.ofObject v, None))
-      |> List.ofArray
-
-    let replaceAt str i =
-      str |> String.replace (sprintf "{%i}" i) (sprintf "{arg%i}" i)
-
-    // Replace {0}..{n} with {arg0}..{argn}
-    let template = [ 0 .. args.Length ] |> Seq.fold replaceAt format
-
-    template, fields
-
 /// This is record that is logged. It's capable of representing both metrics
 /// (gauges) and events.
 type Message =
@@ -1291,10 +1273,10 @@ module Message =
     | _ ->
       failwith "This should never happen. In Logary we extract all properties as Scalar"
 
-  /// Converts a String.Format-style format string and an array of arguments into
-  /// a message template and a set of fields.
+  /// Creates a new event with given level, format and arguments. Format may
+  /// contain String.Format-esque format placeholders.
   [<CompiledName "EventFormat">]
-  let templateFormat (format : string) (args : obj[]) =
+  let eventFormat (level, format, [<ParamArray>] args : obj[]) : Message =
     let parsedTemplate =
       Parser.parse format
 
@@ -1306,16 +1288,13 @@ module Message =
       |> Seq.map convertToNameAndField
       |> List.ofSeq
 
-    event LogLevel.Debug format |> setFieldValues fields
+    event level format |> setFieldValues fields
 
-  /// Creates a new event with given level, format and arguments. Format may
-  /// contain String.Format-esque format placeholders.
+  /// Converts a String.Format-style format string and an array of arguments into
+  /// a message template and a set of fields.
   [<CompiledName "EventFormat">]
-  let eventFormat (level, format, [<ParamArray>] args : obj[]) : Message =
-    let template, fields =
-      Field.templateFormat format args
-
-    event level template |> setFieldValues fields
+  let templateFormat (format : string) ([<ParamArray>] args : obj[]) =
+    eventFormat (LogLevel.Debug, format, args)
 
   /// Run the function `f` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Seconds.
