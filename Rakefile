@@ -158,7 +158,7 @@ end
 
 test_runner :tests_spec do |tests|
   tests.files = FileList['src/tests/Logary.CSharp.Tests/bin/Release/*.Tests.dll']
-  tests.exe = 'packages\Machine.Specifications.Runner.Console\tools\mspec-clr4.exe' 
+  tests.exe = 'packages\Machine.Specifications.Runner.Console\tools\mspec-clr4.exe'
   #tests.add_parameter ''
   #tests.native_exe # when you don't want to use 'mono' as the native executable on non-windows systems
 end
