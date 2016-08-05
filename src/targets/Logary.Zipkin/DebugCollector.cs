@@ -26,13 +26,14 @@ namespace Logary.Zipkin
         public DebugCollector() : this(System.Console.Out)
         {
         }
-
+#pragma warning disable 1998
         public async Task CollectAsync(params Span[] spans)
         {
             foreach (var span in spans)
-                _writer.WriteLine(span.ToString());
+                _writer.WriteLine(span);
 
             _writer.Flush();
         }
+#pragma warning restore 1998
     }
 }

@@ -21,7 +21,7 @@ module internal Logging =
     ^->. memo (Latch.await latch)
 
   let instaPromise =
-    Alt.always (Promise.Now.withValue ())
+    Alt.always (Promise (())) // new promise with unit value
 
   let logWithAck message : _ list -> Alt<Promise<unit>> = function
     | []      ->

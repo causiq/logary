@@ -23,7 +23,7 @@ let emptyRuntime =
     clock       = SystemClock.Instance
     logger      = NullLogger() }
 
-let flush = Target.flush >> Job.Ignore >> Job.Global.run
+let flush = Target.flush >> Job.Ignore >> run
 
 let start () =
   let targConf =
@@ -35,13 +35,13 @@ let start () =
 
 let finaliseTarget = Target.shutdown >> fun a ->
   a ^-> TimeoutResult.Success <|> timeOutMillis 1000 ^->. TimedOut
-  |> Job.Global.run
+  |> run
   |> function
   | TimedOut -> Tests.failtest "finalising target timeout"
   | TimeoutResult.Success _ -> ()
 
 type State(cts : CancellationTokenSource) =
-  let request = Ch.Now.create ()
+  let request = Ch ()
 
   member x.req = request
 
@@ -62,7 +62,7 @@ let writesOverHttp =
                            logger = Suave.Logging.Loggers.saneDefaultsFor Suave.Logging.LogLevel.Fatal }
     let listening, srv =
       startWebServerAsync cfg (request (fun r ctx -> async {
-        do! Async.Global.ofJob (Ch.give state.req r)
+        do! Job.toAsync (Ch.give state.req r)
         return! Successful.NO_CONTENT ctx 
       }))
     Async.Start(srv, cts.Token)

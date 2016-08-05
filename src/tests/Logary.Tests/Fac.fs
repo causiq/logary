@@ -27,7 +27,7 @@ let textWriter () =
   new StringWriter(sb)
 
 let finaliseLogary = Config.shutdownSimple >> fun a ->
-  let state = Job.Global.run a
+  let state = run a
   (because "finalise should always work" <| fun () ->
     if state.successful then () else Tests.failtestf "finaliseLogary failed %A" state)
   |> thatsIt
@@ -56,7 +56,7 @@ let logTarget target =
 
 let finaliseTarget t = Target.shutdown t |> fun a ->
   let acks = a ^-> TimeoutResult.Success <|> timeOutMillis 1000 ^->. TimedOut
-             |> Job.Global.run
+             |> run
   match acks with
   | TimedOut -> Tests.failtestf "finalising target timed out: %A" t
   | TimeoutResult.Success _ -> ()

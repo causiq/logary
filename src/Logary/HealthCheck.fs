@@ -26,7 +26,7 @@ type HealthCheckResult =
 /// of this interface.
 type HealthCheck =
   inherit Named
-  inherit IDisposable
+  inherit IAsyncDisposable
   /// Performs a check with the health check.
   abstract getValue : unit -> Job<HealthCheckResult>
 
@@ -109,19 +109,18 @@ module HealthCheck =
     { new HealthCheck with
         member x.name = name
         member x.getValue () =
-          (job {
-            let! ivar = IVar.create ()
+          job {
+            let! ivar = IVar ()
             do! Ch.send ch.reqCh (GetResult ivar)
-            return! ivar
-          })
+            return! (ivar :> Job<_>)
+          }
 
-        member x.Dispose() =
-          // TODO: consider non concurrent disposing method
-          (job {
-            let! ack = IVar.create ()
+        member x.DisposeAsync() =
+          job {
+            let! ack = IVar ()
             do! Ch.give ch.reqCh (ShutdownHealthCheck ack)
-            do! Alt.Ignore <| IVar.read ack
-          }) |> Job.Global.run
+            do! Alt.Ignore (IVar.read ack)
+          }
     }
 
   /// Create a health check that will never yield a value
@@ -129,4 +128,4 @@ module HealthCheck =
     { new HealthCheck with
         member x.getValue () = Job.result NoValue
         member x.name        = name
-        member x.Dispose ()  = () }
+        member x.DisposeAsync ()  = Job.result () }

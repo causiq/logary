@@ -21,7 +21,7 @@ let stubLogger (minLevel : LogLevel)
 
       member x.logWithAck msg =
         message := msg
-        Alt.always (Promise.Now.withValue ())
+        Alt.always (Promise (()))
 
       member x.logSimple msg =
         message := msg

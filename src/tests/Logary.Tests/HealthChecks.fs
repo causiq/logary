@@ -54,6 +54,6 @@ let tests =
       Fuchu.Tests.skiptest "does network IO"
       let h = fromFn (PointName.ofSingle "ping haf.se") pingSvdSe
       let gotUnhealthy = untilPred 10000 <| fun i ->
-        match h.getValue () |> Job.Global.run with HasValue _ -> true | _ -> false
+        match h.getValue () |> run with HasValue _ -> true | _ -> false
       Assert.isFalse gotUnhealthy "is not unhealthy"
     ]

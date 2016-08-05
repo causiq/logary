@@ -44,7 +44,7 @@ let finaliseLogary = Config.shutdownSimple >> fun a ->
 
 let finaliseTarget t = Target.shutdown t |> fun a ->
   let acks = a ^-> TimeoutResult.Success <|> timeOutMillis 1000 ^->. TimedOut
-             |> Job.Global.run
+             |> run
   match acks with
   | TimedOut -> Tests.failtestf "finalising target timed out: %A" t
   | TimeoutResult.Success _ -> ()

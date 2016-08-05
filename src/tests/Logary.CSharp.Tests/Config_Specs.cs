@@ -118,7 +118,7 @@ namespace Logary.Specs
             {
                 subject.LogEvent(LogLevel.Info, "logged line");
 
-                Hopac.Job.Global.run(manager.flushPending(Duration.FromSeconds(20L)));
+                Hopac.Hopac.run(manager.flushPending(Duration.FromSeconds(20L)));
             };
 
         It should_write_messages_to_text_writer = () => output.ToString().ShouldContain("logged line");

@@ -60,7 +60,7 @@ let rec private supervise instance (nj : NamedJob<_>) = job {
 
   | Choice2Of2 ex ->
     // Ask the supervisor if the job should be restarted
-    let! shouldRestart = IVar.create ()
+    let! shouldRestart = IVar ()
     // TODO: do we ever NOT feed JobErrored an exception?
     do! JobErrored (nj.name, Some ex, shouldRestart) |> Ch.give instance.ch
     let! restart = IVar.read shouldRestart

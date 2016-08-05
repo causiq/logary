@@ -108,7 +108,7 @@ let execute interval sqlConf riemann argv (exiting : ManualResetEventSlim) =
       ]
       >> withMetrics [
         MetricConf.create interval metricName (SQLServerHealth.create sqlConf)
-      ]) |> Hopac.TopLevel.run
+      ]) |> Hopac.Hopac.run
 
   exiting.Wait()
   0

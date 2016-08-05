@@ -28,8 +28,10 @@ let toHealthCheckNamed name wpc measureTransform =
             |> Job.result
           with
             e -> Job.result NoValue
-        member x.Dispose () =
-          counter.Dispose() }
+
+        member x.DisposeAsync () =
+          counter.Dispose()
+          Job.result () }
   | None ->
     createDead name
 
@@ -54,6 +56,6 @@ let hasResources (disposables : #IDisposable seq) (hc : HealthCheck) =
   { new HealthCheck with
       member x.name = hc.name
       member x.getValue() = hc.getValue()
-      member x.Dispose() =
+      member x.DisposeAsync() =
         disposables |> Seq.iter (fun d -> d.Dispose())
-        hc.Dispose() }
+        hc.DisposeAsync() }

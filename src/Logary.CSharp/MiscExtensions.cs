@@ -45,7 +45,7 @@ namespace Logary
         /// <param name="job">Job to start.</param>
         public static void Start(this Job<Microsoft.FSharp.Core.Unit> job)
         {
-            Hopac.Job.Global.start(job);
+            Hopac.Hopac.start(job);
         }
 
         /// <summary>

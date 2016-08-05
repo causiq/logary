@@ -3,6 +3,9 @@
 /// on what F# StringFormat<'T> takes as arguments see http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
 module Logary.Logging
 
+// see https://github.com/Hopac/Hopac/commit/5a60797462deff83135fa0ee02403671045774ff#commitcomment-18537866
+#nowarn "44"
+
 open System
 open System.Reflection
 open System.Diagnostics
@@ -36,7 +39,7 @@ let getCurrentLoggerName () =
   |> getName
 
 type PromisedLogger (name, requestedLogger : Job<Logger>) =
-  let promised = Promise.Now.delay requestedLogger
+  let promised = memo requestedLogger
 
   interface Named with
     member x.name = name

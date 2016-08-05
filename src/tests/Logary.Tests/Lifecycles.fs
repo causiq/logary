@@ -34,7 +34,7 @@ let tests =
       |> run
       |> ignore
 
-      Target.shutdown target <|> (timeOutMillis 200 ^->. Promise.Now.never ())
+      Target.shutdown target <|> (timeOutMillis 200 ^->. Promise ())
       |> run
       |> ignore
     ]

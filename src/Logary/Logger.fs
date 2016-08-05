@@ -150,7 +150,7 @@ module Logger =
 /// itself.
 type NullLogger() =
   let instaPromise =
-    Alt.always (Promise.Now.withValue ())
+    Alt.always (Promise (())) // new promise with unit value
   interface Logger with
     member x.logVerboseWithAck messageFactory = instaPromise
     member x.logDebugWithAck messageFactory = instaPromise

@@ -115,7 +115,7 @@ module LoggerAdapter =
 
         // take the promise from within the IVar and make it an Async (which is
         // "hot" in that starting it will return "immediately" and be idempotent)
-        (prom ^=> id) |> Async.Global.ofJob
+        (prom ^=> id) |> Job.toAsync
 
       else
         // Since the level was too low for the logger, don't send to Logary

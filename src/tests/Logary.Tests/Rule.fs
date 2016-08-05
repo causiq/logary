@@ -201,7 +201,7 @@ let tests =
           |> should' (fulfil <| fun str -> "only single line 'third'", Regex.Matches(str, "third").Count = 1)
           |> should' (fulfil <| fun str -> "only single line 'fourth'", Regex.Matches(str, "fourth").Count = 0)
           |> thatsIt
-        } |> Job.Global.run
+        } |> run
       finally
         finaliseLogary logary
 
@@ -229,7 +229,7 @@ let tests =
             out.ToString(), !catcher |> Option.isSome)
           |> should equal ("", true)
           |> thatsIt
-        } |> Job.Global.run
+        } |> run
       finally
         finaliseLogary logary
 
@@ -258,7 +258,7 @@ let tests =
             out.ToString())
           |> should equal ""
           |> thatsIt }
-        |> Job.Global.run
+        |> run
       finally
         finaliseLogary logary
 
@@ -295,7 +295,7 @@ let tests =
           |> shouldNot contain "this message should be dropped"
           |> thatsIt }
 
-        |> Job.Global.run
+        |> run
       finally
         finaliseLogary logary
 

@@ -1,10 +1,9 @@
 ﻿namespace Logary.Internals
 
-open Hopac
-open Hopac.Extensions.Seq
-
 open NodaTime
 open System.Threading
+open Hopac
+open Hopac.Extensions.Seq
 
 type NamedJob<'a> =
   { name : string
@@ -23,7 +22,7 @@ module NamedJob =
 
   /// Starts running the given named job on the global scheduler.
   let spawn nj =
-    nj.job |> Job.Global.start
+    nj.job |> start
 
 module internal Seq =
 

@@ -45,16 +45,16 @@ module internal Logging =
 
     interface Logger with
       member x.logVerboseWithAck fMessage =
-        logger (flip Logger.logVerboseWithAck fMessage) (Promise.Now.withValue ())
+        logger (flip Logger.logVerboseWithAck fMessage) (Promise (())) // new promise with unit value
 
       member x.logDebugWithAck fMessage =
-        logger (flip Logger.logDebugWithAck fMessage) (Promise.Now.withValue ())
+        logger (flip Logger.logDebugWithAck fMessage) (Promise (())) // new promise with unit value
 
       member x.logWithAck message =
-        logger (flip Logger.logWithAck message) (Promise.Now.withValue ())
+        logger (flip Logger.logWithAck message) (Promise (())) // new promise with unit value
 
       member x.logSimple message =
-        logger (flip Logger.logWithAck message) (Promise.Now.withValue ())
+        logger (flip Logger.logWithAck message) (Promise (())) // new promise with unit value
         |> Job.Ignore
         |> start
 
@@ -179,12 +179,12 @@ module Advanced =
 
       interface Logger with
         member x.logVerboseWithAck msgFactory =
-          ifLevel Verbose (Alt.always (Promise.Now.withValue ())) <| fun _ ->
+          ifLevel Verbose (Alt.always (Promise (()))) <| fun _ ->
             let msg = msgFactory Verbose
             middleware msg
 
         member x.logDebugWithAck msgFactory =
-          ifLevel Debug (Alt.always (Promise.Now.withValue ())) <| fun _ ->
+          ifLevel Debug (Alt.always (Promise (()))) <| fun _ ->
             let msg = msgFactory Verbose
             middleware msg
 
@@ -351,7 +351,7 @@ module Advanced =
                (sched : Ch<ScheduleMsg>)
                : RegistryInstance =
       let regCh = Ch ()
-      Job.Global.start (registry conf sup sched regCh)
+      start (registry conf sup sched regCh)
       { reqCh = regCh }
 
   /// Start a new registry with the given configuration. Will also launch/start

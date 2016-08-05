@@ -2,12 +2,9 @@
 module Logary.Internals.Scheduling
 #nowarn "64"
 
-// creds to Dave Thomas for his F# snippet
 open System.Threading
-
 open Hopac
 open Hopac.Infixes
-
 open NodaTime
 
 type Cancellation = private { cancelled: IVar<unit> }
@@ -15,7 +12,7 @@ type Cancellation = private { cancelled: IVar<unit> }
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Cancellation =
   let create () =
-    { cancelled = IVar.Now.create () }
+    { cancelled = IVar () }
 
   let isCancelled cancellation =
     IVar.Now.isFull cancellation.cancelled
@@ -69,7 +66,7 @@ module private Impl =
 /// Creates a new scheduler job
 let create () =
   let ch = Ch ()
-  Job.Global.server (Impl.loop ch)
+  server (Impl.loop ch)
   ch
 
 /// Schedules a message to be sent to the receiver after the initialDelay.
