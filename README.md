@@ -629,6 +629,17 @@ W 2016-08-01T10:38:03.0290450+00:00: Hey haf! [Libryy.Core.work]
  - [Facade Adapter](https://github.com/logary/logary/blob/master/src/adapters/Logary.Adapters.Facade/Logary.Adapters.Facade.fs)
  - [Facade Adapter unit tests](https://github.com/logary/logary/blob/master/src/tests/Logary.Adapters.Facade.Tests/Program.fs)
 
+## RabbitMQ Target
+
+I've written a full RabbitMQ target that includes publisher confirms and durable
+messaging. It's fully usable from C# too (since C#-ists like RMQ), through the
+[builder
+API](https://github.com/logary/logary/blob/master/src/targets/Logary.Targets.RabbitMQ/Targets_RabbitMQ.fs#L359).
+
+Docs are [in this
+code](https://github.com/logary/logary/blob/master/src/targets/Logary.Targets.RabbitMQ/Targets_RabbitMQ.fs#L29)
+– and you'll find the code fairly readable.
+
 ## Rutta
 
 Rutta is software for shipping Messages between computers. Either from your own
