@@ -38,7 +38,7 @@ let finaliseLogary = Config.shutdownSimple >> fun a ->
   let state = run a
   Assert.Equal("finalise should always work", true, state.successful)
 
-let fatalSerilogLogary template ([<ParamArray>] args) =
+let fatalSerilogLogary template ([<ParamArray>] args: obj[]) =
     withLogary <| fun logary out err ->
         let consLogger = Logary.Logging.getLoggerByName "textWriter"
         let serilogLogger = LoggerConfiguration()
