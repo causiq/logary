@@ -24,7 +24,7 @@ type TlsConf =
   { /// The location of the TLS certiface
     certPath : string
     /// The password to the TLS certificate (pfx formatted)
-    certPassword : string }
+    certPassword : string option }
 
 /// This is the configuration for the RabbitMQ target
 type RabbitMQConf =
@@ -146,7 +146,8 @@ module internal Impl =
   let createConnection (clientName : string) (conf : RabbitMQConf) =
     let tls =
       conf.tls |> Option.fold (fun s t ->
-        SslOption(conf.hostname, t.certPath, true, CertPassphrase = t.certPassword)
+        let pass = t.certPassword |> Option.fold (fun s t -> t) null
+        SslOption(conf.hostname, t.certPath, true, CertPassphrase = pass)
       ) (SslOption())
 
     let fac =
@@ -160,7 +161,8 @@ module internal Impl =
         NetworkRecoveryInterval = TimeSpan.FromSeconds 30.,
         TopologyRecoveryEnabled = true,
         Port = int conf.port,
-        Ssl = tls
+        Ssl = tls,
+        RequestedConnectionTimeout = int (conf.connectionTimeout.ToTimeSpan().TotalMilliseconds)
       )
 
     let conn = fac.CreateConnection(clientName)
@@ -187,13 +189,6 @@ module internal Impl =
         m |> Map.remove k,
         Some x
 
-  let clearInflights (m, acked) msgId =
-    match m |> Map.pop msgId with
-    | m', Some (iAck, msg) ->
-      m', (iAck, msg) :: acked
-    | m', None ->
-      m', acked
-
   let topic (conf : RabbitMQConf) (message : Message) =
     conf.topic.Replace("{0}", message.level.ToString())
 
@@ -202,10 +197,11 @@ module internal Impl =
     props.AppId <- conf.appId |> Option.fold (fun s t -> t) (PointName.format message.name)
     props.ContentEncoding <- "utf8"
     props.ContentType <- "application/json; charset=utf-8"
-    props.Timestamp <- AmqpTimestamp((* assume in seconds *) message.timestamp / 1000000L)
+    props.Timestamp <-
+      AmqpTimestamp((* assume in seconds since epoch *) message.timestamp / 1000000L)
     props.UserId <- conf.username
-    let msgId = Counter.next ()
     props.DeliveryMode <- byte conf.deliveryMode
+    let msgId = Counter.next () // this generates the delivery tag in a sequential manner
     props.MessageId <- string msgId
     props, msgId
 
@@ -223,6 +219,33 @@ module internal Impl =
     Json.serialize message |> Json.format |> UTF8.bytes |> compress conf.compression
 
   let selectConfirm ilogger state (kont : State -> Job<unit>) : Alt<_> =
+
+    let clearInflights (m, acked) msgId =
+      match m |> Map.pop msgId with
+      | m', Some (iAck, msg) ->
+        m', (iAck, msg) :: acked
+      | m', None ->
+        m', acked
+
+    let ackSingle inflight deliveryTag =
+      match state.inflight |> Map.pop deliveryTag with
+      | inflight', Some (iAck, msg) ->
+        iAck *<= () |> Job.map (fun _ -> inflight')
+
+      | inflight', None ->
+        Job.result inflight'
+
+    let ackMany state deliveryTag =
+      let inflight', acked =
+        [ state.lastAck .. state.lastAck + deliveryTag ]
+        |> List.fold clearInflights (state.inflight, [])
+
+      // ack callers inside process:
+      acked
+      |> List.map (fst >> fun iAck -> IVar.fill iAck ())
+      |> Job.conCollect
+      |> Job.map (fun _ -> inflight')
+
     Alt.choose [
       Stream.values state.nacks ^=> fun nack ->
         // TO CONSIDER: handle nacks somehow...
@@ -230,40 +253,30 @@ module internal Impl =
         // Some googling should be needed for the exact semantics – but most likely it's
         // failing because you have no consumers configured.
         Message.event Info "Got {nack}"
-        |> Message.setFieldFromObject "nack" nack
+        |> Message.setField "deliveryTag" nack.DeliveryTag
+        |> Message.setField "multiple" nack.Multiple
         |> Logger.log ilogger
         |> Job.bind (fun _ -> job {
-          let m', msgOpt = state.inflight |> Map.pop nack.DeliveryTag
-          do! msgOpt |> Option.fold (fun s (iAck, _) -> iAck *<= ()) (Job.unit ())
-          return! kont { state with inflight = m' }
+          if nack.Multiple then
+            let! inflight' = ackMany state nack.DeliveryTag
+            return! kont { state with inflight = inflight' }
+          else
+            let! inflight' = ackSingle state.inflight nack.DeliveryTag
+            return! kont { state with inflight = inflight'
+                                      lastAck = nack.DeliveryTag }
         })
 
       Stream.values state.acks ^=> fun ack ->
-        if ack.Multiple then
-          let inflight', acked =
-            [ state.lastAck .. state.lastAck + ack.DeliveryTag ]
-            |> List.fold clearInflights (state.inflight, [])
-
-          job {
-            // ack callers inside process:
-            for iAck, msg in acked do
-              do! iAck *<= ()
-
+        job {
+          if ack.Multiple then
+            let! inflight' = ackMany state ack.DeliveryTag
             return! kont { state with inflight = inflight'
                                       lastAck  = ack.DeliveryTag }
-          }
-        else
-          job {
-            match state.inflight |> Map.pop ack.DeliveryTag with
-            | inflight', Some (iAck, msg) ->
-              do! iAck *<= ()
-              return! kont { state with inflight = inflight'
-                                        lastAck  = ack.DeliveryTag }
-
-            | inflight', None ->
-              return! kont { state with inflight = inflight'
-                                        lastAck  = ack.DeliveryTag }
-          }
+          else
+            let! inflight' = ackSingle state.inflight ack.DeliveryTag
+            return! kont { state with inflight = inflight'
+                                      lastAck  = ack.DeliveryTag }
+        }
     ]
 
   let loop (conf : RabbitMQConf)
@@ -305,9 +318,14 @@ module internal Impl =
           | Flush (ackCh, nack) ->
             flushing (ackCh, nack) state
 
+        // shutdown closes the connection and channel but does not flush
         shutdown ^=> fun ack ->
           job {
-            do! Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
+            do! Job.Scheduler.isolate <| fun _ ->
+              Try.safe "RabbitMQ target disposing connection and model/channel"
+                       ri.logger
+                       (state :> IDisposable).Dispose
+                       ()
             return! ack *<= ()
           }
       ] :> Job<_>
@@ -338,19 +356,72 @@ let create conf name = TargetUtils.stdNamedTarget (Impl.loop conf) name
 // methods on this Builder class which are exposed to the caller (configuration
 // code).
 
-/// Use with LogaryFactory.New( s => s.Target<YOUR TARGET NAME.Builder>() )
+/// Use with LogaryFactory.New( s => s.Target<RabbitMQ.Builder>() )
 type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+  let update conf' =
+    ! (callParent <| Builder(conf', callParent))
 
-  // place your own configuration methods here
+  member x.VHost(vhost) =
+    update { conf with vHost = vhost }
 
-  member x.IsYes(yes : bool) =
-    ! (callParent <| Builder({ conf with isYes = yes }, callParent))
+  member x.UserName username =
+    update { conf with username = username }
 
-  // your own configuration methods end here
+  member x.Password pass =
+    update { conf with password = pass }
+
+  member x.Protocol proto =
+    update { conf with protocol = proto }
+
+  member x.Hostname hostname =
+    update { conf with hostname = hostname }
+
+  member x.Port port =
+    update { conf with port = port }
+
+  member x.Topic topic =
+    update { conf with topic = topic }
+
+  member x.Exchange exchange =
+    update { conf with exchange = exchange }
+
+  member x.ExchangeType typ =
+    update { conf with exchangeType = typ }
+
+  member x.DurableExchange () =
+    update { conf with durable = true }
+
+  member x.EphemeralExchange () =
+    update { conf with durable = false }
+
+  member x.Passive () =
+    update { conf with passive = true }
+
+  member x.Active () =
+    update { conf with passive = false }
+
+  member x.AppId app =
+    if app = null then invalidArg "app" "must not be null"
+    update { conf with appId = Some app }
+
+  member x.EnableTls(path, ?pass) =
+    update { conf with tls = Some { certPath = path; certPassword = pass }}
+
+  member x.PersistentDelivery () =
+    update { conf with deliveryMode = DeliveryMode.Persistent }
+
+  member x.NonPersistentDelivery () =
+    update { conf with deliveryMode = DeliveryMode.NonPersistent }
+
+  member x.ConnectionTimeout (dur : Duration) =
+    update { conf with connectionTimeout = dur }
+
+  member x.CompressGZip () =
+    update { conf with compression = GZip }
 
   // c'tor, always include this one in your code
   new(callParent : FactoryApi.ParentCallback<_>) =
-    Builder({ isYes = false }, callParent)
+    Builder(empty, callParent)
 
   // this is called in the end, after calling all your custom configuration
   // methods (above) which in turn take care of making the F# record that

@@ -297,7 +297,7 @@ module internal Impl =
 /// Create a new Noop target
 let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
 
-/// Use with LogaryFactory.New( s => s.Target<Noop.Builder>() )
+/// Use with LogaryFactory.New( s => s.Target<InfluxDb.Builder>() )
 type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
   // TODO: expose for C# peeps
   member x.WriteEndpoint(writeEndpoint : Uri) =
