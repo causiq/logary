@@ -56,6 +56,7 @@ NUGET
       NodaTime (>= 1.3.2)
     NodaTime (1.3.2)
     protobuf-net (2.1)
+    RabbitMQ.Client (3.6.5)
     Suave (1.1.3)
       FSharp.Core (>= 3.1.2.5)
     System.Data.SQLite.Core (1.0.102)
@@ -76,4 +77,4 @@ GITHUB
     RingBuffer.fs (4557d607737e748b54eb6de3ec5e5cd02247b2a5)
       Hopac
   remote: logary/logary
-    src/Logary.Facade/Facade.fs (cd9771ea6dbd46d10c55be27ac60ba73daf04179)
+    src/Logary.Facade/Facade.fs (34563600a87eef64c72f7dd4e1b2de432e9cddde)

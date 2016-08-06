@@ -25,6 +25,7 @@ nuget Machine.Specifications.Should
 nuget Machine.Specifications.Runner.Console
 nuget NodaTime
 nuget protobuf-net
+nuget RabbitMQ.Client
 nuget Suave
 nuget System.Data.SQLite.Core
 nuget Argu

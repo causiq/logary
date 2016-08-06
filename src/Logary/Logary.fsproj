@@ -1,15 +1,14 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
+    <Name>Logary</Name>
+    <AssemblyName>Logary</AssemblyName>
+    <RootNamespace>Logary</RootNamespace>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</ProjectGuid>
+    <ProjectGuid>f7e5b6e8-5d55-4974-9ca7-4c94d810631f</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>Logary</RootNamespace>
-    <AssemblyName>Logary</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <Name>Logary</Name>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -18,30 +17,17 @@
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>bin\Debug\Logary.xml</DocumentationFile>
-    <NoWarn>2003</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>PdbOnly</DebugType>
     <Optimize>true</Optimize>
     <Tailcalls>true</Tailcalls>
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>bin\Release\Logary.xml</DocumentationFile>
-    <DebugSymbols>true</DebugSymbols>
-    <NoWarn>2003</NoWarn>
   </PropertyGroup>
-  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>
-    <Compile Include="..\..\paket-files\logary\RingBuffer\RingBuffer.fs">
-      <Paket>True</Paket>
-      <Link>paket-files/RingBuffer.fs</Link>
-    </Compile>
-    <Compile Include="..\..\paket-files\haf\YoLo\YoLo.fs">
-      <Paket>True</Paket>
-      <Link>paket-files/YoLo.fs</Link>
-    </Compile>
     <Compile Include="..\..\paket-files\xyncro\aether\src\Aether\Aether.fs">
       <Paket>True</Paket>
       <Link>paket-files/Aether.fs</Link>
@@ -50,6 +36,27 @@
       <Paket>True</Paket>
       <Link>paket-files/Chiron.fs</Link>
     </Compile>
+    <Compile Include="..\..\paket-files\haf\YoLo\YoLo.fs">
+      <Paket>True</Paket>
+      <Link>paket-files/YoLo.fs</Link>
+    </Compile>
+    <Compile Include="..\..\paket-files\logary\RingBuffer\RingBuffer.fs">
+      <Paket>True</Paket>
+      <Link>paket-files/RingBuffer.fs</Link>
+    </Compile>
+    <Reference Include="mscorlib" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../targets/Logary.Targets.RabbitMQ/Logary.Targets.RabbitMQ.fsproj">
+      <Name>Logary.Targets.RabbitMQ.fsproj</Name>
+      <Project>{fe1bc08f-a41a-41cc-9f03-996ea9b3b477}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="LogLevel.fs" />
     <Compile Include="MessageTemplates.fs" />
     <Compile Include="Internals.fs" />
@@ -86,16 +93,8 @@
     <None Include="paket.references" />
     <Content Include="app.config" />
   </ItemGroup>
-  <ItemGroup>
-    <Reference Include="mscorlib" />
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Numerics" />
-    <Reference Include="System.Xml" />
-  </ItemGroup>
-  <PropertyGroup>
-    <RootDirectory Condition=" '$(RootDirectory)' == '' ">../..</RootDirectory>
-  </PropertyGroup>
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
   <Import Project="$(MSBuildProjectDirectory)\..\..\tools\msbuild-sign.targets" />
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3')">
