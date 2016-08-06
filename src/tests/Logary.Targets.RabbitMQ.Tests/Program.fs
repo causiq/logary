@@ -1,6 +1,8 @@
 module Logary.Targets.RabbitMQ.Tests
 
+open Fuchu
+
 [<EntryPoint>]
 let main argv =
-    printfn "%A" argv
-    0 // return an integer exit code
+  printfn "%A" argv
+  0

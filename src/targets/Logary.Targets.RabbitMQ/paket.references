@@ -1,1 +1,4 @@
-FSharp.CoreRabbitMQ.Client
+FSharp.Core
+RabbitMQ.Client
+Hopac
+NodaTime

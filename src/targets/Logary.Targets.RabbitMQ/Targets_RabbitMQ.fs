@@ -1,84 +1,334 @@
 module Logary.Targets.RabbitMQ
 
+open System
+open NodaTime
 open Hopac
 open Hopac.Infixes
 open Logary
 open Logary.Target
 open Logary.Internals
+open RabbitMQ.Client
+open RabbitMQ.Client.Framing
 
-// This is representative of the config you would use for the target you are
-// creating
+type Compression =
+  | NoCompression
+  | GZip
 
-/// DOCUMENT YOUR CONFIG
-type NoopConf =
-    /// Most often we agree – document your fields
-  { isYes : bool }
+type DeliveryMode =
+  | NonPersistent = 1uy
+  | Persistent = 2uy
 
-let empty = { isYes = true }
+type Port = uint16
 
-// When creating a new target this module gives the barebones
-// for the approach you may need to take.
+type TlsConf =
+  { /// The location of the TLS certiface
+    certPath : string
+    /// The password to the TLS certificate (pfx formatted)
+    certPassword : string }
+
+/// This is the configuration for the RabbitMQ target
+type RabbitMQConf =
+  { /// Sets the virtual host to send messages to.
+    /// Defaults to '/'
+    vHost    : string
+
+    /// Sets the username for the connection. Defaults to 'guest'
+    username : string
+
+    /// Sets the password for the connection. Default to 'guest'.
+    password : string
+
+    /// Sets the AMQP protocol (version) to use
+    /// for communications with the RabbitMQ broker. The default 
+    /// is the RabbitMQ.Client-library's default protocol.
+    /// Default is the latest supported.
+    protocol : IProtocol
+
+    /// Sets the host name of the broker to log to.
+    hostname : string 
+
+    ///	Sets the port to use for connections to the message broker 
+    /// (this is the broker's listening port). The default is '5672'. 
+    port     : Port
+
+    ///	Sets the routing key (aka. topic) with which
+    ///	to send messages. Defaults to {0}, which in the end is 'error' for log.Error("..."), and
+    ///	so on. An example could be setting this property to 'ApplicationType.MyApp.Web.{0}'.
+    ///	The default is '{0}'.
+    topic    : string
+
+    /// Sets the exchange to bind the logger output to. Default is 'logary'.
+    exchange : string
+
+    /// Sets the exchange type to bind the logger output to. Default is 'topic'. Also see
+    /// `ExchangeType`.
+    exchangeType : string
+
+    /// Sets the setting specifying whether the exchange
+    ///	is durable (persisted across restarts). Default is true.
+    durable : bool
+
+    /// Sets the setting specifying whether the exchange should be declared or used passively.
+    /// Defaults to false.
+    passive : bool
+
+    /// Gets or sets the application id to specify when sending. Defaults to None,
+    /// and then IBasicProperties.AppId will be the name of the logger instead.
+    appId : string option
+
+    /// Optional TLS configuration
+    tls : TlsConf option
+
+    /// Persistent or non-persistent. Default to Persistent (2).
+    deliveryMode : DeliveryMode
+
+    /// How long to wait for a connection before failing the initialisation
+    connectionTimeout : Duration
+
+    /// Compression method to use. Defaults to None
+    compression : Compression
+  }
+
+/// Default RabbitMQ config
+let empty =
+  { vHost             = "/"
+    username          = "guest"
+    password          = "guest"
+    hostname          = "localhost"
+    port              = 5672us
+    topic             = "{0}"
+    protocol          = Protocols.DefaultProtocol
+    exchange          = "logary"
+    exchangeType      = ExchangeType.Topic
+    durable           = true
+    passive           = false
+    appId             = None
+    tls               = None
+    deliveryMode      = DeliveryMode.Persistent
+    connectionTimeout = Duration.FromSeconds 10L
+    compression       = NoCompression }
+
 module internal Impl =
+  open Logary.YoLo
+  open Logary.Utils.Chiron
 
-  // This is a placeholder for specific state that your target requires
-  type State = { state : bool }
+  module Counter =
+    open System
+    open System.Threading
 
-  // This is the main entry point of the target. It returns a Job<unit>
-  // and as such doesn't have side effects until the Job is started.
-  let loop (conf : NoopConf) // the conf is specific to your target
-           (ri : RuntimeInfo) // this one,
-           (requests : RingBuffer<_>) // this one, and,
-           (shutdown : Ch<_>) = // this one should always be taken in this order
+    let mutable private counter = 0L
 
-    let rec loop (state : State) : Job<unit> =
-      // Alt.choose will pick the channel/alternative that first gives a value
+    let next () =
+      Interlocked.Increment(& counter) |> uint64
+
+  type MessageId = uint64
+
+  /// State holder for the RabbitMQ target
+  type State =
+    { connection : IConnection
+      // aka Channel
+      model      : IModel
+      // https://www.rabbitmq.com/dotnet-api-guide.html#common-patterns – see section on publisher
+      // confirms
+      // Also https://www.rabbitmq.com/confirms.html
+      inflight   : Map<MessageId, IVar<unit> * Message>
+      // https://www.rabbitmq.com/releases/rabbitmq-dotnet-client/v3.6.5/rabbitmq-dotnet-client-3.6.5-client-htmldoc/html/namespace-RabbitMQ.Client.Events.html
+      acks       : Stream<Events.BasicAckEventArgs>
+      nacks      : Stream<Events.BasicNackEventArgs>
+      /// Last uint64 value received on nack or ack channels
+      lastAck    : MessageId }
+
+    interface IDisposable with
+      member x.Dispose () =
+        x.model.Close(200us, "Client shutting down")
+        x.connection.Dispose()
+
+  let createConnection (clientName : string) (conf : RabbitMQConf) =
+    let tls =
+      conf.tls |> Option.fold (fun s t ->
+        SslOption(conf.hostname, t.certPath, true, CertPassphrase = t.certPassword)
+      ) (SslOption())
+
+    let fac =
+      ConnectionFactory(
+        HostName = conf.hostname,
+        VirtualHost = conf.vHost,
+        UserName = conf.username,
+        Password = conf.password,
+        RequestedHeartbeat = 60us,
+        AutomaticRecoveryEnabled = true,
+        NetworkRecoveryInterval = TimeSpan.FromSeconds 30.,
+        TopologyRecoveryEnabled = true,
+        Port = int conf.port,
+        Ssl = tls
+      )
+
+    let conn = fac.CreateConnection(clientName)
+    conn.AutoClose <- false // closed when disposed
+    conn
+
+  let createModel (conn : IConnection) =
+    let model = conn.CreateModel()
+    model.ConfirmSelect()
+    let acks = Stream.Src.create ()
+    model.BasicAcks.Add(Stream.Src.value acks >> start)
+    let nacks = Stream.Src.create ()
+    model.BasicNacks.Add(Stream.Src.value nacks >> start)
+    model, Stream.Src.tap acks, Stream.Src.tap nacks
+
+  module Map =
+    /// Try-find the item and also remove it if found.
+    let pop k m =
+      match m |> Map.tryFind k with
+      | None ->
+        m, None
+
+      | Some x ->
+        m |> Map.remove k,
+        Some x
+
+  let clearInflights (m, acked) msgId =
+    match m |> Map.pop msgId with
+    | m', Some (iAck, msg) ->
+      m', (iAck, msg) :: acked
+    | m', None ->
+      m', acked
+
+  let topic (conf : RabbitMQConf) (message : Message) =
+    conf.topic.Replace("{0}", message.level.ToString())
+
+  let props (model : IModel) (conf : RabbitMQConf) (message : Message) =
+    let props = model.CreateBasicProperties()
+    props.AppId <- conf.appId |> Option.fold (fun s t -> t) (PointName.format message.name)
+    props.ContentEncoding <- "utf8"
+    props.ContentType <- "application/json; charset=utf-8"
+    props.Timestamp <- AmqpTimestamp((* assume in seconds *) message.timestamp / 1000000L)
+    props.UserId <- conf.username
+    let msgId = Counter.next ()
+    props.DeliveryMode <- byte conf.deliveryMode
+    props.MessageId <- string msgId
+    props, msgId
+
+  let compress = function
+    | NoCompression ->
+      id
+    | GZip ->
+      fun bytes ->
+        let ms = new IO.MemoryStream()
+        use gz = new IO.Compression.GZipStream(ms, IO.Compression.CompressionMode.Compress)
+        gz.Write(bytes, 0, bytes.Length)
+        ms.ToArray()
+
+  let body (conf : RabbitMQConf) (message : Message) =
+    Json.serialize message |> Json.format |> UTF8.bytes |> compress conf.compression
+
+  let selectConfirm ilogger state (kont : State -> Job<unit>) : Alt<_> =
+    Alt.choose [
+      Stream.values state.nacks ^=> fun nack ->
+        // TO CONSIDER: handle nacks somehow...
+        // Right now we'll just remove the message from the list of inflight messages
+        // Some googling should be needed for the exact semantics – but most likely it's
+        // failing because you have no consumers configured.
+        Message.event Info "Got {nack}"
+        |> Message.setFieldFromObject "nack" nack
+        |> Logger.log ilogger
+        |> Job.bind (fun _ -> job {
+          let m', msgOpt = state.inflight |> Map.pop nack.DeliveryTag
+          do! msgOpt |> Option.fold (fun s (iAck, _) -> iAck *<= ()) (Job.unit ())
+          return! kont { state with inflight = m' }
+        })
+
+      Stream.values state.acks ^=> fun ack ->
+        if ack.Multiple then
+          let inflight', acked =
+            [ state.lastAck .. state.lastAck + ack.DeliveryTag ]
+            |> List.fold clearInflights (state.inflight, [])
+
+          job {
+            // ack callers inside process:
+            for iAck, msg in acked do
+              do! iAck *<= ()
+
+            return! kont { state with inflight = inflight'
+                                      lastAck  = ack.DeliveryTag }
+          }
+        else
+          job {
+            match state.inflight |> Map.pop ack.DeliveryTag with
+            | inflight', Some (iAck, msg) ->
+              do! iAck *<= ()
+              return! kont { state with inflight = inflight'
+                                        lastAck  = ack.DeliveryTag }
+
+            | inflight', None ->
+              return! kont { state with inflight = inflight'
+                                        lastAck  = ack.DeliveryTag }
+          }
+    ]
+
+  let loop (conf : RabbitMQConf)
+           (ri : RuntimeInfo)
+           (requests : RingBuffer<_>)
+           (shutdown : Ch<_>) =
+
+    let rec connect () : Job<unit> =
+      let conn = createConnection ri.serviceName conf
+      let model, acks, nacks = createModel conn
+      active { connection = conn
+               model      = model
+               acks       = acks
+               nacks      = nacks
+               inflight   = Map.empty
+               lastAck    = 0UL }
+
+    // in the active state we selectively accept ACK and NACKs from RabbitMQ whilst
+    // consuming messages from our RingBuffer, one by one. RabbitMQ has its own
+    // IO thread with its own queue, so the 'publish' operation doesn't mean anything
+    // from a durability perspective; instead it is the publisher confirms that we've
+    // enabled that matters (see `createModel`) – and the function `selectConfirm`
+    and active (state : State) : Job<unit> =
       Alt.choose [
-        // When you get the shutdown value, you need to dispose of your resources
-        // off of Hopac's execution context (see Scheduler.isolate below) and
-        // then send a unit to the ack channel, to tell the requester that
-        // you're done disposing.
-        shutdown ^=> fun ack ->
-          // do! Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
-          ack *<= () :> Job<_>
+        selectConfirm ri.logger state active
 
-        // The ring buffer will fill up with messages that you can then consume below.
-        // There's a specific ring buffer for each target.
         RingBuffer.take requests ^=> function
-          // The Log discriminated union case contains a message which can have
-          // either an Event or a Gauge `value` property.
           | Log (message, ack) ->
             job {
-              // Do something with the `message` value specific to the target
-              // you are creating.
-
-              // This is a simple acknowledgement using unit as the signal
-              do! ack *<= ()
-              return! loop { state = not state.state }
+              let topic = topic conf message
+              let props, msgId = props state.model conf message
+              let body = body conf message
+              let inflight' = state.inflight |> Map.add msgId (ack, message)
+              
+              state.model.BasicPublish(conf.exchange, topic, props, body)
+              return! active { state with inflight = inflight' }
             }
 
-          // Since the RingBuffer is fair, when you receive the flush message, all
-          // you have to do is ensure the previous Messages were successfully written
-          // and then ack. Alternatively the caller can decide it's not worth the wait
-          // and signal the nack, in which case you may try to abort the flush or
-          // simply continue the flush in the background.
           | Flush (ackCh, nack) ->
-            job {
-              // Put your flush logic here...
+            flushing (ackCh, nack) state
 
-              // then perform the ack
-              do! Ch.give ackCh () <|> nack
-
-              // then continue processing messages
-              return! loop { state = not state.state }
-            }
-      // The target is always 'responsive', so we may commit to the alternative
-      // by upcasting it to a job and returning that.
+        shutdown ^=> fun ack ->
+          job {
+            do! Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
+            return! ack *<= ()
+          }
       ] :> Job<_>
 
-    // start the inner loop by the exit of the outer loop function
-    loop { state = false }
+    // in the `flushing` state, we'll just select on the confirm channel until
+    // the inflight messages list is empty
+    and flushing (ackCh, nack) (state : State) =
+      if Map.isEmpty state.inflight then
+        job {
+          do! Ch.give ackCh () <|> nack
+          return! active state
+        }
+      else
+        Alt.choose [
+          nack ^=>. active state
+          selectConfirm ri.logger state (flushing (ackCh, nack))
+        ] :> Job<_>
 
-/// Create a new YOUR TARGET NAME HERE target
+    connect ()
+
+/// Create a new RabbitMQ target.
 [<CompiledName "Create">]
 let create conf name = TargetUtils.stdNamedTarget (Impl.loop conf) name
 
