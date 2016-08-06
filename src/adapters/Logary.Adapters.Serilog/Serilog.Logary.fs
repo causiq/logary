@@ -1,4 +1,4 @@
-﻿namespace Serilog.Appender
+﻿namespace Logary.Adapters.Serilog
 
 open System
 open NodaTime
@@ -18,9 +18,13 @@ module SerilogEvent =
     | l when l = LogEventLevel.Verbose      -> LogLevel.Verbose
     | _ -> LogLevel.Info
 
-  let logEventPropertyValueToObj (lep : LogEventPropertyValue) =
-    // TODO: consider if passing serilog values directly into Logary is appropriate
-    box lep
+  let rec logEventPropertyValueToObj (lep : LogEventPropertyValue) =
+    match lep with
+    | :? ScalarValue as s -> s.Value
+    | :? StructureValue as st -> box (st.Properties |> Seq.map (fun pnv -> pnv.Name, logEventPropertyValueToObj pnv.Value) |> Map.ofSeq)
+    | :? SequenceValue as sv -> box (sv.Elements |> Seq.map logEventPropertyValueToObj)
+    | :? DictionaryValue as dv -> box dv
+    | _ -> failwithf "Logary->Serilog adapter doesn't yet support %s" (lep.GetType().FullName)
 
   let toLogary (event : Serilog.Events.LogEvent) =
     let fields =
@@ -39,5 +43,6 @@ type LogarySerilogSink(logaryLogger : Logger) =
     member x.Emit (event: Serilog.Events.LogEvent) =
       event
       |> SerilogEvent.toLogary
-      |> Logger.log logaryLogger
-      |> Hopac.TopLevel.queue
+      |> Logger.logSimple logaryLogger
+
+
