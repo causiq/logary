@@ -40,8 +40,10 @@ Install-Package Logary
 ```
 
 ## Table of Contents
+* [Logary v4](#logary-v4)
 * [Why?](#why)
 * [Install it](#install-it)
+* [Table of Contents](#table-of-contents)
 * [Hello World](#hello-world)
 * [Overview](#overview)
 * [Tutorial and Data Model](#tutorial-and-data-model)
@@ -59,6 +61,7 @@ Install-Package Logary
   * [Derived metrics](#derived-metrics)
 * [Using logary in a library](#using-logary-in-a-library)
   * [More reading](#more-reading)
+* [RabbitMQ Target](#rabbitmq-target)
 * [Rutta](#rutta)
   * [The Shipper – from environment to Proxy or Router](#the-shipper--from-environment-to-proxy-or-router)
     * [Pushing Shippers](#pushing-shippers)
@@ -72,6 +75,7 @@ Install-Package Logary
   * [Building a signed version](#building-a-signed-version)
 * [Contributing](#contributing)
   * [Writing a new target](#writing-a-new-target)
+  * [Notes](#notes)
 * [License](#license)
 
 ## Hello World
