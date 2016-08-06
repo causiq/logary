@@ -94,16 +94,17 @@ let integration =
             logaryJsonOutput)
 
     testCase "logging a fatal template with destructured dictionary to Serilog logs to logary" <| fun _ ->
-        let out, err = fatalSerilogLogary "Found numbers {@numbers}" [| seq { 1..4 } |]
+        let numbersToValuesDict = System.Collections.Generic.Dictionary(["1",1; "2",2] |> dict)
+        let out, err = fatalSerilogLogary "Found dictionary {@numbers}" [| numbersToValuesDict |]
         Assert.Equal("should be empty", "", out.ToString())
         
         let logaryJsonOutput = err.ToString()
         Assert.StringContains("should be 'fatal' level", "\"level\":\"fatal\"", logaryJsonOutput)
 
         Assert.StringContains("should have the message template in it",
-            "\"event\":\"Found numbers {@numbers}\"", logaryJsonOutput)
-        Assert.StringContains("should have a structure with the right fields in it",
-            "{\"numbers\":{\"value\":[{\"Int64\":1},{\"Int64\":2},{\"Int64\":3},{\"Int64\":4}]}}",
+            "\"event\":\"Found dictionary {@numbers}\"", logaryJsonOutput)
+        Assert.StringContains("should have a map value with the right fields in it",
+            "{\"numbers\":{\"value\":{\"1\":{\"Int64\":1},\"2\":{\"Int64\":2}}}}",
             logaryJsonOutput)
     ]
 

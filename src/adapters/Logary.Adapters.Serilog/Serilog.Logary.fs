@@ -23,7 +23,7 @@ module SerilogEvent =
     | :? ScalarValue as s -> s.Value
     | :? StructureValue as st -> box (st.Properties |> Seq.map (fun pnv -> pnv.Name, logEventPropertyValueToObj pnv.Value) |> Map.ofSeq)
     | :? SequenceValue as sv -> box (sv.Elements |> Seq.map logEventPropertyValueToObj)
-    | :? DictionaryValue as dv -> box dv
+    | :? DictionaryValue as dv -> box (dv.Elements |> Seq.map (fun e -> logEventPropertyValueToObj e.Key, logEventPropertyValueToObj e.Value) |> dict)
     | _ -> failwithf "Logary->Serilog adapter doesn't yet support %s" (lep.GetType().FullName)
 
   let toLogary (event : Serilog.Events.LogEvent) =
