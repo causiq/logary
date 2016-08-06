@@ -791,6 +791,11 @@ Make a change, send a PR towards master.
  1. Copy the code from Logary's Target_Noop.fs, which contains the basic structure.
     There are more docs in this file.
 
+### Notes
+
+ - To balance the app.config files, try `mono tools/paket.exe install
+   --redirects --clean-redirects --createnewbindingfiles`
+
 ## License
 
 [Apache 2.0][apache]
