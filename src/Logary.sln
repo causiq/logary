@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.24720.0
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{CB6B0EE7-19B3-4253-A1DA-B195C64C0AE6}"
 	ProjectSection(SolutionItems) = preProject
@@ -121,6 +121,10 @@ EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.ElasticSearch", "targets\Logary.Targets.ElasticSearch\Logary.Targets.ElasticSearch.fsproj", "{64A5B3B2-0F73-44B5-A178-C66A9DB830D6}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.ElasticSearch.Tests", "tests\Logary.Targets.ElasticSearch.Tests\Logary.Targets.ElasticSearch.Tests.fsproj", "{2A4CB8E9-C123-4E07-A814-CF6B74FFC87D}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Serilog", "adapters\Logary.Adapters.Serilog\Logary.Adapters.Serilog.fsproj", "{87F226DC-340C-45C6-8104-60836406F792}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Serilog.Tests", "tests\Logary.Adapters.Serilog.Tests\Logary.Adapters.Serilog.Tests.fsproj", "{4ACF59F0-8B98-49B7-9A5E-36EC2E63722C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -316,6 +320,14 @@ Global
 		{2A4CB8E9-C123-4E07-A814-CF6B74FFC87D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2A4CB8E9-C123-4E07-A814-CF6B74FFC87D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2A4CB8E9-C123-4E07-A814-CF6B74FFC87D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{87F226DC-340C-45C6-8104-60836406F792}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{87F226DC-340C-45C6-8104-60836406F792}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{87F226DC-340C-45C6-8104-60836406F792}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{87F226DC-340C-45C6-8104-60836406F792}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4ACF59F0-8B98-49B7-9A5E-36EC2E63722C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4ACF59F0-8B98-49B7-9A5E-36EC2E63722C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4ACF59F0-8B98-49B7-9A5E-36EC2E63722C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4ACF59F0-8B98-49B7-9A5E-36EC2E63722C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -368,5 +380,7 @@ Global
 		{0315A342-21D1-43E5-B678-D96C4E523093} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{64A5B3B2-0F73-44B5-A178-C66A9DB830D6} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{2A4CB8E9-C123-4E07-A814-CF6B74FFC87D} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
+		{87F226DC-340C-45C6-8104-60836406F792} = {56BB77A4-DF59-49EC-92E6-C9CA2C2E9FDE}
+		{4ACF59F0-8B98-49B7-9A5E-36EC2E63722C} = {56BB77A4-DF59-49EC-92E6-C9CA2C2E9FDE}
 	EndGlobalSection
 EndGlobal
