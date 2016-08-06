@@ -2,7 +2,6 @@ require 'bundler/setup'
 require 'pathname'
 require 'albacore'
 require 'albacore/tasks/versionizer'
-require 'albacore/ext/teamcity'
 require 'albacore/tasks/release'
 
 Configuration = ENV['CONFIGURATION'] || 'Release'
