@@ -578,15 +578,14 @@ module Libryy.Core
 
 // Note: this library has no reference to Logary proper!
 open Libryy.Logging
+open Libryy.Logging.Message
 
 let work (logger : Logger) =
-  fun () ->
-      Message.event Warn "Hey {user}!"
-      |> Message.setFieldValue "user" "haf"
-      |> Message.setSingleName "Libryy.Core.work"
-      |> Message.setTimestamp 1470047883029045000L
-  |> logger.log Warn
-  |> Async.RunSynchronously
+  logger.warn (
+    eventX "Hey {user}!"
+    >> setField"user" "haf"
+    >> setSingleName "Libryy.Core.work"
+    >> setTimestamp 1470047883029045000L)
 
   42
 
@@ -612,7 +611,8 @@ open Logary.Adapters.Facade
     |> run
 
   // for the statics:
-  LogaryFacadeAdapter.initialise logary
+  LogaryFacadeAdapter.initialise<Libryy.Logging.Logger> logary
+  // calls Librry.Logging.Global.initialise ( new logger inst )
 
   // if you need a Logger instance:
   let logger = logary.getLogger (PointName.ofSingle "Libryy")
@@ -625,6 +625,11 @@ Outputs:
 W 2016-08-01T10:38:03.0290450+00:00: Hey haf! [Libryy.Core.work]
   user => "haf"
 ```
+
+By default, the Facade has a global console logger that logs at Info level.
+
+The reason for this is that people normally expect output to come in the
+'just installed' case, without hunting for *.Logging.Global.initialise first.
 
 ### More reading
 
