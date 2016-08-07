@@ -571,6 +571,13 @@ Target "LoggingFile" (fun _ ->
 )
 ```
 
+Now add to `paket.references` (replace `Utils` with the folder (or nothing) of
+your choice):
+
+```
+File: Facade.fs Utils
+```
+
 Inside the library you use the logger just like you'd expect:
 
 ``` fsharp
