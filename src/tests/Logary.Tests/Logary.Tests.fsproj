@@ -58,6 +58,7 @@
     <Compile Include="Rule.fs" />
     <Compile Include="Lifecycles.fs" />
     <Compile Include="Metrics.fs" />
+    <Compile Include="Metrics_Derived.fs" />
     <Compile Include="CoreTargets.fs" />
     <Compile Include="GraphiteTarget.fs" />
     <Compile Include="HealthChecks.fs" />

@@ -28,7 +28,7 @@ type MetricConf =
   interface Named with
     member x.name = x.name
 
-
+/// Validate the metric configuration.
 let validate (conf : MetricConf) =
   if conf.name = PointName.empty then
     failwith "empty metric name given"

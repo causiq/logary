@@ -1,13 +1,12 @@
 ﻿module Logary.Tests.Metrics
 
 open Fuchu
+open ExpectoPatronum
 open NodaTime
 open Hopac
 open Logary
 open Logary.Metrics
 open Logary.Metrics.Reservoirs
-
-module Assert = ExpectoPatronum.Expect
 
 [<Tests>]
 let builtInMetrics =
@@ -21,7 +20,7 @@ let builtInMetrics =
       yield testCase "initial" <| fun _ ->
         let stream = Metric.tap counter
         Metric.tick counter |> run
-        Assert.equal (stream |> take 1L) [Int64 0L, Units.Scalar] "zero at start"
+        Expect.equal (stream |> take 1L) [Int64 0L, Units.Scalar] "zero at start"
 
       yield testCase "counting to three" <| fun _ ->
         let stream = Metric.tap counter
@@ -31,7 +30,7 @@ let builtInMetrics =
         counter |> Metric.update (Int64 1L, Units.Scalar) |> run
         Metric.tick counter |> run
         let actual = stream |> take 2L
-        Assert.equal actual [
+        Expect.equal actual [
             Int64 1L, Units.Scalar
             Int64 2L, Units.Scalar
           ] "one and then two after two single counts"
@@ -45,58 +44,67 @@ let snapshot =
 
   testList "calculating snapshot values" [
     testCase "small quantiles are first value" <| fun _ ->
-      Assert.floatEqual (Snapshot.quantile sample 0.) 1. None "should be the one"
+      Expect.floatEqual (Snapshot.quantile sample 0.) 1. None
+                        "should be the one"
 
     testCase "big quantiles are last values" <| fun _ ->
-      Assert.floatEqual (Snapshot.quantile sample 1.) 5. None "should be the five"
+      Expect.floatEqual (Snapshot.quantile sample 1.) 5. None
+                        "should be the five"
 
     testCase "median" <| fun _ ->
-      Assert.floatEqual (Snapshot.median sample) 3. None "should have median"
+      Expect.floatEqual (Snapshot.median sample) 3. None
+                        "should have median"
 
     testCase "75th percentile" <| fun _ ->
-      Assert.floatEqual (Snapshot.percentile75th sample) 4.5 None "should have 75th percentile"
+      Expect.floatEqual (Snapshot.percentile75th sample) 4.5 None
+                        "should have 75th percentile"
 
     testCase "95th percentile" <| fun _ ->
-      Assert.floatEqual (Snapshot.percentile95th sample) 5. None "should have 95th percentile"
+      Expect.floatEqual (Snapshot.percentile95th sample) 5. None
+                        "should have 95th percentile"
 
     testCase "98th percentile" <| fun _ ->
-      Assert.floatEqual (Snapshot.percentile98th sample) 5. None "should have 98th percentile"
+      Expect.floatEqual (Snapshot.percentile98th sample) 5. None
+                        "should have 98th percentile"
 
     testCase "99th percentile" <| fun _ ->
-      Assert.floatEqual 5. (Snapshot.percentile99th sample) None "should have 99th percentile"
+      Expect.floatEqual (Snapshot.percentile99th sample) 5. None 
+                        "should have 99th percentile"
 
     testCase "999th percentile" <| fun _ ->
-      Assert.floatEqual (Snapshot.percentile999th sample) 5. None "should have 999th percentile"
+      Expect.floatEqual (Snapshot.percentile999th sample) 5. None 
+                        "should have 999th percentile"
 
     testCase "has values" <| fun _ ->
-      Assert.Equal("should have values ordered", Snapshot.values sample, [| 1L; 2L; 3L; 4L; 5L |])
+      Expect.equal (Snapshot.values sample) [| 1L; 2L; 3L; 4L; 5L |]
+                   "should have values ordered"
 
     testCase "has size" <| fun _ ->
-      Assert.Equal("should have five size", 5, Snapshot.size sample)
+      Expect.equal (Snapshot.size sample) 5 "should have five size"
 
     testCase "has mimimum value" <| fun _ ->
-      Assert.Equal("has a mimimum value", 1L, Snapshot.min sample)
+      Expect.equal (Snapshot.min sample) 1L "has a mimimum value"
 
     testCase "has maximum value" <| fun _ ->
-      Assert.Equal("has a maximum value", 5L, Snapshot.max sample)
+      Expect.equal (Snapshot.max sample) 5L "has a maximum value"
 
     testCase "has mean value" <| fun _ ->
-      Assert.Equal("has a mean value", 3., Snapshot.mean sample)
+      Expect.equal (Snapshot.mean sample) 3. "has a mean value"
 
     testCase "has stdDev" <| fun _ ->
-      Assert.floatEqual (Snapshot.stdDev sample) 1.5811 (Some 0.0001) "has stdDev"
+      Expect.floatEqual (Snapshot.stdDev sample) 1.5811 (Some 0.0001) "has stdDev"
 
     testCase "empty: min" <| fun _ ->
-      Assert.Equal("zero", 0L, Snapshot.min empty)
+      Expect.equal (Snapshot.min empty) 0L "zero"
 
     testCase "empty: max" <| fun _ ->
-      Assert.Equal("zero", 0L, Snapshot.max empty)
+      Expect.equal (Snapshot.max empty) 0L "zero"
 
     testCase "empty: mean" <| fun _ ->
-      Assert.floatEqual (Snapshot.mean empty) 0. None "zero"
+      Expect.floatEqual (Snapshot.mean empty) 0. None "zero"
 
     testCase "empty: std dev" <| fun _ ->
-      Assert.floatEqual (Snapshot.mean empty) 0. None "zero"
+      Expect.floatEqual (Snapshot.mean empty) 0. None "zero"
     ]
 
 [<Tests>]
@@ -106,29 +114,29 @@ let reservoirs =
       let state =
         [ 0L .. 999L ]
         |> List.fold Uniform.update (Uniform.create 100)
-      Assert.Equal("should have 100L size", 100, Uniform.size state)
+      Expect.equal (Uniform.size state) 100 "should have 100L size"
 
       let snap = Uniform.snapshot state
-      Assert.Equal("snapshot has as many", 100, Snapshot.size snap)
+      Expect.equal (Snapshot.size snap) 100 "snapshot has as many"
       for v in snap.values do
-        Assert.Equal(sprintf "'%d' should be in [0, 999]" v, true, 0L <= v && v <= 999L)
+        Expect.isTrue (0L <= v && v <= 999L) (sprintf "'%d' should be in [0, 999]" v)
 
     testCase "sliding: small" <| fun _ ->
       let state =
         [ 1L; 2L ]
         |> List.fold SlidingWindow.update (SlidingWindow.create 3)
       let snap = SlidingWindow.snapshot state
-      Assert.Equal("has two", 2I, state.count)
-      Assert.Equal("size has two", 2, SlidingWindow.size state)
-      Assert.Equal("snap has two", 2, snap.values.Length)
-      Assert.Equal("should have correct order", [| 1L; 2L; |], Snapshot.values snap)
+      Expect.equal state.count 2I "has two"
+      Expect.equal (SlidingWindow.size state) 2 "size has two"
+      Expect.equal (snap.values.Length) 2 "snap has two"
+      Expect.equal (Snapshot.values snap) [| 1L; 2L; |] "should have correct order"
 
     testCase "sliding: only last values" <| fun _ ->
       let state =
         [ 1L..5L ]
         |> List.fold SlidingWindow.update (SlidingWindow.create 3)
       let snap = SlidingWindow.snapshot state
-      Assert.Equal("should have correct order", [| 3L..5L |], Snapshot.values snap)
+      Expect.equal (Snapshot.values snap) [| 3L..5L |] "should have correct order"
 
     testList "sliding time window" [
       testCase "store duplicate ticks" <| fun _ ->
@@ -157,7 +165,7 @@ let reservoirs =
         testCase explaination <| fun _ ->
           List.zip expectations actual
           |> List.iteri (fun index (expected, actual) ->
-            Assert.floatEqual actual expected (Some 0.00000001)
+            Expect.floatEqual actual expected (Some 0.00000001)
                               (sprintf "Index %d, should calculate correct EWMA" index))
 
       yield testEWMA "1 min"
