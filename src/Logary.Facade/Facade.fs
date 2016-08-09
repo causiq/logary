@@ -234,6 +234,7 @@ module internal Formatting =
   let FieldExnKey = "exn"
 
   let fieldRegex =
+    // https://msdn.microsoft.com/en-us/library/bs2twtah.aspx#balancing_group_definition
     Regex(@"( (?<B>\{) [\s\w]+ (?<-B>\}) )", RegexOptions.IgnorePatternWhitespace ||| RegexOptions.Compiled)
 
   let extractMatches fields (template : string) =
