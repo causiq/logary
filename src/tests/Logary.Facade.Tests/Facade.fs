@@ -8,6 +8,8 @@ open ExpectoPatronum
 [<Tests>]
 let tests =
   let msg = Message.event Info "hi {name}"
+  // don't print to console
+  Global.initialise { Global.DefaultConfig with getLogger = fun _ -> Targets.create Fatal }
 
   testList "generic" [
     testProperty "DateTime" <| fun (dt : DateTime) ->
@@ -56,6 +58,47 @@ let tests =
       Targets.create level |> ignore
 
     testProperty "Targets.create and logSimple" <| fun level ->
+      Tests.skiptest "verbose test"
       let logger = Targets.create level
-      Message.event Debug "Hi {name}" |> logger.logSimple
+      Message.event Verbose "Hi {name}" |> logger.logSimple
+
+    testCase "extract matches" <| fun _ ->
+      let str = "Hi {ho}, we're { something going on  } special"
+      let fields = Map [ "ho", box "hola"; "something going on", box "very" ]
+      let subject = Formatting.extractMatches fields str
+      Expect.equal subject.Length 2 "Should match two things"
+      Expect.equal (subject |> List.map (fun (name, _, _) -> name))
+                   ["ho"; "something going on"]
+                   "Should extract correct names"
+      Expect.equal (subject |> List.map (fun (_, _, m) -> m.Value))
+                   ["{ho}"; "{ something going on  }"]
+                   "Should extract correct match values"
+
+    testCase "extract matches evil" <| fun _ ->
+      let strEvil = "{a}{b}{  c}{d  } {e} fghij {k}} {l} m {{}}"
+      let aThroughL =['a'..'l'] |> List.map string 
+      let fields = aThroughL |> List.map (fun s -> s, s) |> Map.ofList
+      let strEvilRes = "abcd e fghij k} l m {{}}"
+      let subject = Formatting.extractMatches fields strEvil
+      Expect.equal subject.Length 7 "Should match 7 things, a-l, not m and not {}"
+      Expect.equal (subject |> List.map (fun (name, value, _) -> name))
+                   ["a"; "b"; "c"; "d"; "e"; "k"; "l"] 
+                   "Should extract relevant names"
+      Expect.equal (subject |> List.map (fun (_, _, m) -> m.Index))
+                   [0; 3; 6; 11; 17; 27; 32]
+                   "Should extract correct indicies"
+
+    testCase "format template properly" <| fun _ ->
+      let str = "Hi {ho}, we're { something going on  } special"
+      let fields = Map [ "ho", box "hola"; "something going on", box "very" ]
+      let now = Global.timestamp ()
+      let nowDto = DateTimeOffset.ticksUTC now |> fun ticks -> DateTimeOffset(ticks, TimeSpan.Zero)
+      let msg =
+        Message.event Info str
+        |> fun m -> { m with fields = fields; timestamp = now }
+        |> Message.setSingleName "Logary.Facade.Tests"
+      let subject = Formatting.defaultFormatter msg
+      Expect.equal subject
+                   (sprintf "[I] %s: Hi hola, we're very special [Logary.Facade.Tests]" (nowDto.ToString("o")))
+                   "Should format correctly"
   ]

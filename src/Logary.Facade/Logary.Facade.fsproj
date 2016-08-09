@@ -39,6 +39,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyVersionInfo.fs" />
+    <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Facade.fs" />
   </ItemGroup>
   <ItemGroup>

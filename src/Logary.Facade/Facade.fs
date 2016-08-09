@@ -233,8 +233,20 @@ module internal Formatting =
   [<Literal>]
   let FieldExnKey = "exn"
 
+  let extractMatches fields (template : string) =
+    Regex.Matches(template, @"( (?<B>\{) [\s\w]+ (?<-B>\}) )", RegexOptions.IgnorePatternWhitespace)
+    |> Seq.cast<Match>
+    |> Seq.toList
+    |> List.choose (fun m ->
+      let name = m.Value.Trim([| '{'; '}'; ' '|])
+      if fields |> Map.containsKey name then
+        Some (name, fields |> Map.find name, m)
+      else
+        None)
+
   /// let the ISO8601 love flow
-  let internal defaultFormatter (message : Message) =
+  let defaultFormatter (message : Message) =
+    printfn "Formatting %A" message
 
     let app (x : obj) (sb : StringBuilder) =
       sb.Append x |> ignore
@@ -243,23 +255,15 @@ module internal Formatting =
       "[" + Char.ToUpperInvariant(level.ToString().[0]).ToString() + "] "
 
     let formatInstant (utcTicks : int64) =
-      (DateTime(utcTicks, DateTimeKind.Utc).ToString("o")) + ": "
+      (DateTimeOffset(utcTicks, TimeSpan.Zero).ToString("o")) + ": "
 
     let formatValue fields = function
       | Event template ->
-        let matches =
-          Regex.Matches(template, @"\{[\s\w]+\}")
-          |> Seq.cast<Match>
-          |> Seq.toList
-          |> List.choose (fun m ->
-            let name = m.Value.Trim([| '{'; '}'|])
-            if fields |> Map.containsKey name then
-              Some (name, fields |> Map.find name, m)
-            else
-              None)
+        let matches = extractMatches fields template
 
         let folder (length, index, chPos, builder) (_, value : obj, m : Match) =
-          builder |> app (template.Substring(chPos, m.Index))
+          printfn "index: %i, chPos: %i, builder: %O, m.Index: %i, m.Value: %s" index chPos builder m.Index m.Value
+          builder |> app (template.Substring(chPos, m.Index - chPos))
           builder |> app (sprintf "%O" value)
           let chPos = chPos + (m.Index - chPos) + m.Value.Length
 
@@ -272,7 +276,7 @@ module internal Formatting =
           matches |> Seq.fold folder (matches.Length, 0, 0, StringBuilder())
 
         matches |> List.map (fun (name, _, _) -> name),
-        builder.ToString()
+        if builder.Length = 0 then template else builder.ToString()
 
       | Gauge (value, units) ->
         [],
