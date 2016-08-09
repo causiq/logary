@@ -186,9 +186,7 @@ module Value =
 
   [<CompiledName "OfObject">]
   let rec ofObject : obj -> Value = function
-    
     | null -> String ""
-    
     // Built-in types
     | :? bool as b     -> Bool b
     | :? int8 as i     -> Int64 (int64 i)

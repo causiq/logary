@@ -251,7 +251,8 @@ module Map =
       |> Seq.fold (fun s (k, v) -> s |> Map.put k v) Map.empty
 
     | _ as data ->
-      let props = data.GetType() |> fun t -> t.GetProperties()
+      let props =
+        data.GetType().GetProperties(BindingFlags.Instance ||| BindingFlags.Public)
       // If you find yourself reading these lines of code, because you logged a
       // data object, but never found it in the output; it's because you didn't
       // log an object with properties (such as a string) - instead log an
@@ -260,8 +261,11 @@ module Map =
       // This function will return an empty Map if there are no properties on the
       // object.
       match props with
-      | null | _ when props.Length = 0 -> Map.empty
-      | _    ->
+      | null
+      | _ when props.Length = 0 ->
+        Map.empty
+
+      | _ ->
         props
         |> Array.filter (fun pi -> pi <> null && pi.Name <> null)
         |> Array.map (fun pi -> (pi.Name, pi.GetValue(data, null)))
