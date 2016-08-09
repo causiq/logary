@@ -246,8 +246,6 @@ module internal Formatting =
 
   /// let the ISO8601 love flow
   let defaultFormatter (message : Message) =
-    printfn "Formatting %A" message
-
     let app (x : obj) (sb : StringBuilder) =
       sb.Append x |> ignore
 
@@ -262,7 +260,7 @@ module internal Formatting =
         let matches = extractMatches fields template
 
         let folder (length, index, chPos, builder) (_, value : obj, m : Match) =
-          printfn "index: %i, chPos: %i, builder: %O, m.Index: %i, m.Value: %s" index chPos builder m.Index m.Value
+          //printfn "index: %i, chPos: %i, builder: %O, m.Index: %i, m.Value: %s" index chPos builder m.Index m.Value
           builder |> app (template.Substring(chPos, m.Index - chPos))
           builder |> app (sprintf "%O" value)
           let chPos = chPos + (m.Index - chPos) + m.Value.Length
