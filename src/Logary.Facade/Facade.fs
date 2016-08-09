@@ -233,8 +233,11 @@ module internal Formatting =
   [<Literal>]
   let FieldExnKey = "exn"
 
+  let fieldRegex =
+    Regex(@"( (?<B>\{) [\s\w]+ (?<-B>\}) )", RegexOptions.IgnorePatternWhitespace ||| RegexOptions.Compiled)
+
   let extractMatches fields (template : string) =
-    Regex.Matches(template, @"( (?<B>\{) [\s\w]+ (?<-B>\}) )", RegexOptions.IgnorePatternWhitespace)
+    fieldRegex.Matches template
     |> Seq.cast<Match>
     |> Seq.toList
     |> List.choose (fun m ->
