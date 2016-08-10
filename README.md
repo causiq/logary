@@ -345,7 +345,7 @@ let logInUser () =
 ```
 
 If you want to name your logger with a specific name, you can use
-`Logging.getLoggerByName` instead.
+`Logging.getLoggerByName` instead. (Different for Facade file)
 
 ### Logging from a class
 

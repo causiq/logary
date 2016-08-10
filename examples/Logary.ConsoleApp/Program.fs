@@ -75,10 +75,22 @@ let main argv =
   use mre = new ManualResetEventSlim(false)
   use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
 
+  let rmqConf =
+    { RabbitMQ.empty with
+        appId = Some "Logary.ConsoleApp"
+        username = "appuser-12345"
+        password = "TopSecret1234"
+        tls = { RabbitMQ.TlsConf.certPath = "./certs/mycert.pfx"
+                RabbitMQ.TlsConf.certPassword = Some "AnotherSecret1243567" }
+              |> Some
+        compression = RabbitMQ.Compression.GZip
+    }
+
   use logary =
-    withLogaryManager "Logary.Examples.ConsoleApp" (
+    withLogaryManager "Logary.ConsoleApp" (
       withTargets [
-        Console.create (Console.empty) (PointName.ofSingle "console")
+        Console.create Console.empty (PointName.ofSingle "console")
+        RabbitMQ.create rmqConf (PointName.ofSingle "rabbitmq")
       ] >>
       withMetrics [
         //WinPerfCounters.create (WinPerfCounters.Common.cpuTimeConf) "cpuTime" (Duration.FromMilliseconds 500L)
@@ -87,6 +99,7 @@ let main argv =
       ] >>
       withRules [
         Rule.createForTarget (PointName.ofSingle "console")
+        Rule.createForTarget (PointName.ofSingle "rabbitmq")
       ] >>
       withInternalTargets Info [
         Console.create Console.empty (PointName.ofSingle "console")
