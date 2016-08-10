@@ -675,19 +675,29 @@ messages.
 Using the event-templates, you can pass more information to be logged:
 
 ```fsharp
-with e ->
+with ex ->
   logger.error (
     eventX "Unhandled exception for {user}"
     >> setField "user" user.name
     >> addExn ex)
 ```
 
+Note the placeholder `{user}` for the user's name in the event template. By
+default these will be printed to the console, and if you use
+`Logary.Adapters.Facade` you may use all the templating features of
+[MessageTemplates](https://github.com/messagetemplates/) for plain-text targets.
+
 ### More reading
 
  - [Facade.fs](https://github.com/logary/logary/blob/master/src/Logary.Facade/Facade.fs)
+   – the actual file that gets imported into your library.
  - [Facade unit tests](https://github.com/logary/logary/blob/master/src/tests/Logary.Facade.Tests/Facade.fs)
+   – the unit tests for the facade file.
  - [Facade Adapter](https://github.com/logary/logary/blob/master/src/adapters/Logary.Adapters.Facade/Logary.Adapters.Facade.fs)
+   – the facade adapter (advanced code)
  - [Facade Adapter unit tests](https://github.com/logary/logary/blob/master/src/tests/Logary.Adapters.Facade.Tests/Program.fs)
+   – the unit tests for the adapter which are also good documentation on how to
+   use it.
 
 ## RabbitMQ Target
 
