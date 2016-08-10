@@ -43,3 +43,15 @@ github haf/YoLo YoLo.fs
 github haf/expecto-patronum ExpectoPatronum/Assert.fs
 github logary/RingBuffer RingBuffer.fs
 github logary/logary src/Logary.Facade/Facade.fs
+
+group Examples
+    redirects: on
+    framework: >= net45
+    source https://www.nuget.org/api/v2
+    nuget Logary
+    nuget Logary.CSharp
+    nuget Logary.Targets.InfluxDb
+    nuget Logary.Targets.ElasticSearch
+    nuget Logary.Targets.RabbitMQ
+    nuget Logary.Targets.DB
+    nuget Logary.Targets.Logstash

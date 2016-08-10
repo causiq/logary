@@ -1,0 +1,7 @@
+﻿group Examples
+Logary
+Logary.CSharp
+Logary.Targets.DB
+Logary.Targets.RabbitMQ
+Logary.Targets.ElasticSearch
+Logary.Targets.Logstash

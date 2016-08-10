@@ -767,6 +767,62 @@ Docs are [in this
 code](https://github.com/logary/logary/blob/master/src/targets/Logary.Targets.RabbitMQ/Targets_RabbitMQ.fs#L29)
 – and you'll find the code fairly readable.
 
+### Usage
+
+```fsharp
+
+  let rmqConf =
+    { RabbitMQ.empty with
+        appId = Some "Logary.ConsoleApp"
+        username = "appuser-12345"
+        password = "TopSecret1234"
+        tls = { RabbitMQ.TlsConf.certPath = "./certs/mycert.pfx"
+                RabbitMQ.TlsConf.certPassword = Some "AnotherSecret1243567" }
+              |> Some
+        compression = RabbitMQ.Compression.GZip
+    }
+
+```
+
+Then inside `withTargets`:
+
+```fsharp
+RabbitMQ.create rmqConf (PointName.ofSingle "rabbitmq")
+```
+
+And the Rule for it:
+
+```fsharp
+Rule.createForTarget (PointName.ofSingle "rabbitmq")
+```
+
+### From NLog.RabbitMQ, log4net.RabbitMQ?
+
+Here's how you could configure the RabbitMQ target with C#:
+
+```csharp
+
+
+```
+
+## Comparison to NLog and log4net
+
+Why Logary instead of one of the classic logging frameworks?
+
+ - You get semantic logging with Logary
+ - More targets to choose from
+ - Larger community of target writers
+ - Easier to write targets; they can crash and that's handled by Logary internally
+ - Support for zero-dependency usage through Logary.Facade
+ - Better/more extensive Rule-based hierarchies
+ - Targets can be decoupled from the network and Ack is a first-level primitive
+ - You get back an `Alt<Promise<unit>>` that you can use to synchronise your calling code for when the log message is durable; you can't do this with NLog or log4net
+ - Your targets have been properly implemented (no more YoLo coding)
+ - There's an object model you can use from the calling code
+ - Logary is F#
+ - Logary doesn't keep static state around; easy to refactor, easy to extend
+ - and so on...
+
 ## Rutta
 
 Rutta is software for shipping Messages between computers. Either from your own

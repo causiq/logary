@@ -404,7 +404,8 @@ type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
     if app = null then invalidArg "app" "must not be null"
     update { conf with appId = Some app }
 
-  member x.EnableTls(path, ?pass) =
+  member x.EnableTls(path, nullablePass : string) =
+    let pass = if nullablePass = null then None else Some nullablePass
     update { conf with tls = Some { certPath = path; certPassword = pass }}
 
   member x.PersistentDelivery () =
