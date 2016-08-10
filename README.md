@@ -66,6 +66,9 @@ Install-Package Logary
       * [A note on the FSI](#a-note-on-the-fsi)
       * [More reading](#more-reading)
     * [RabbitMQ Target](#rabbitmq-target)
+      * [Usage](#usage)
+      * [From NLog\.RabbitMQ, log4net\.RabbitMQ?](#from-nlograbbitmq-log4netrabbitmq)
+    * [Comparison to NLog and log4net](#comparison-to-nlog-and-log4net)
     * [Rutta](#rutta)
       * [The Shipper – from environment to Proxy or Router](#the-shipper--from-environment-to-proxy-or-router)
         * [Pushing Shippers](#pushing-shippers)
@@ -81,6 +84,7 @@ Install-Package Logary
       * [Writing a new target](#writing-a-new-target)
       * [Notes](#notes)
     * [License](#license)
+
 
 
 ## Hello World
