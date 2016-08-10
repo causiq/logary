@@ -601,6 +601,21 @@ let simpleWork (logger : Logger) =
   43
 ```
 
+Or statically:
+
+```fsharp
+module Libryy.Core
+
+open Libryy.Logging
+open Libryy.Logging.Message
+
+let internal logger = Log.create "Libryy.Core"
+
+let work () =
+  logger.info (eventX "Started work")
+  48
+```
+
 The service/application which *does* reference the `Logary` nuget, also
 references `Logary.Adapters.Facade` and then creates a new Logger specifically
 for the library which it aims to ship logs from.
