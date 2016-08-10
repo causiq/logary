@@ -158,10 +158,10 @@ let lineProtocol =
       let msg =
         Message.eventInfo "Template"
         |> Message.setFieldsFromObject obj
-        |> Message.setName (PointName.ofSingle "Meassurement")
+        |> Message.setName (PointName.ofSingle "Measurement")
         |> Message.setNanoEpoch 1435362189575692182L
 
       stringEqual (Serialisation.serialiseMessage msg) 
-                  @"Meassurement,Event=Template foo=""bar"",number=1i,value=1i 1435362189575692182"
+                  @"Measurement,Event=Template foo=""bar"",number=1i,value=1i 1435362189575692182"
                   "should equal"
   ]

@@ -150,7 +150,7 @@ let writesOverHttp =
 
         let messageIsAcked = Promise.Now.isFulfilled ackPromise
 
-        Assert.isTrue (messageIsAcked) "message should be acked"
+        Assert.isTrue messageIsAcked "message should be acked"
 
       finally
         finaliseTarget target
