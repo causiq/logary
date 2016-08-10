@@ -216,7 +216,7 @@ An event is the most simple gauge of value 1.
 
 ### PointValue.Derived
 
-A derived value from one or many gauge.
+A derived value from one or many gauges.
 
 ### Rule & Hierarchical logging
 
@@ -226,6 +226,37 @@ which allows Messages of level `Debug` to go through.
 
 A normal use-case for this is when you want to debug a particular module, by
 increasing the verbosity of its output (decreasing its log level).
+
+Rules are 'optimistic' by default in that if at least one (or more) rules match a given `Message`, the most "open" will decide if it gets logged. So if you have two rules:
+
+```fsharp
+withRules [
+  Rule.createForTarget "console" Info
+  Rule.createForTarget "console" Debug
+]
+```
+
+Then the `Debug` level will "win" and show log output. More general, a `Rule`
+looks like this:
+
+```fsharp
+/// A rule specifies what messages a target should accept.
+[<CustomEquality; CustomComparison>]
+type Rule =
+  { /// This is the regular expression that the 'path' must match to be loggable
+    hiera         : Regex
+    /// This is the name of the target that this rule applies to.
+    target        : PointName
+    /// This is the level at which the target will accept log lines. It's inclusive, so
+    /// anything below won't be accepted.
+    level         : LogLevel
+    /// This is the accept filter that is before the message is passed to the logger
+    /// instance.
+    messageFilter : MessageFilter }
+```
+
+And you can find the configuration on the module with the same name. The
+`Rule.empty` value is one where you accept any logs from anything.
 
 ### Log Level
 
