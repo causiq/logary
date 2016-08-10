@@ -670,6 +670,18 @@ pass to the `error` extension method is a factory function, and the `Message`
 module provides `gauge`, `event` and `eventX` to create the two sorts of
 messages.
 
+### Passing more information
+
+Using the event-templates, you can pass more information to be logged:
+
+```fsharp
+with e ->
+  logger.error (
+    eventX "Unhandled exception for {user}"
+    >> setField "user" user.name
+    >> addExn ex)
+```
+
 ### More reading
 
  - [Facade.fs](https://github.com/logary/logary/blob/master/src/Logary.Facade/Facade.fs)
