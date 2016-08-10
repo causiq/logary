@@ -801,9 +801,16 @@ Rule.createForTarget (PointName.ofSingle "rabbitmq")
 Here's how you could configure the RabbitMQ target with C#:
 
 ```csharp
-
-
+.Target<Logary.Targets.RabbitMQ.Builder>(
+    "rabbitmq",
+    conf => conf.Target
+        .EnableTls("./cert/path.pfx", "TopSecret12345")
+        // many more knobs to tweak if you continue dotting
+        .Done()
+)
 ```
+
+Have a look at [this example](https://github.com/logary/logary/tree/master/examples/Logary.CSharpExample) for more details.
 
 ## Comparison to NLog and log4net
 
