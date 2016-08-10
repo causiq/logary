@@ -651,7 +651,24 @@ W 2016-08-01T10:38:03.0290450+00:00: Hey haf! [Libryy.Core.work]
 By default, the Facade has a global console logger that logs at Info level.
 
 The reason for this is that people normally expect output to come in the
-'just installed' case, without hunting for *.Logging.Global.initialise first.
+'just installed' case, without hunting for \*.Logging.Global.initialise first.
+
+### How do the `error` and `log` methods differ?
+
+If you look inside `Facade.fs` you'll find that `LoggerEx` has `error`, `info`,
+etc... as extension methods on the `Logger` interface and that these are marked
+internal to the library you're working inside.
+
+`error`, `info` and so on are actually message factories that take a `LogLevel`
+and return a `Message`. By using them like this `logger.error (eventX "templ")`,
+you're only evaluating the constructor for `Message` if and only if the level of
+your logger is greater or equal to `error`.
+
+If we were to expand the point-free style (eta-expansion), it would look like
+this: `logger.error (fun level -> Message.eventX "templ" level)`, i.e. what you
+pass to the `error` extension method is a factory function, and the `Message`
+module provides `gauge`, `event` and `eventX` to create the two sorts of
+messages.
 
 ### More reading
 
@@ -679,8 +696,8 @@ services to ship all logs to a central point, before batching it and sending it
 off to InfluxDb. It's also useful if you want to firewall off a single subnet
 for certain processing and only have a single point ship logs and metrics.
 
-v1: Hard-coded supported target types. Initially we'll just support InfluxDB.  
-v2: More configurable target configuration that supports any target.
+ - v1: Hard-coded supported target types. Initially we'll just support InfluxDB.
+ - v2: More configurable target configuration that supports any target.
 
 This service can run in three modes; Shipper, Router and Proxy. Servers can be
 implemented using Hopac's lightweight servers. Communication is implemented
@@ -824,7 +841,7 @@ LOGARY_SIGN_ASSEMBLY=true bundle exec rake
 
 ## Contributing
 
-Clone it like above. Ensure you can build it. Open `Logary.sln`. 
+Clone it like above. Ensure you can build it. Open `Logary.sln`.
 Make a change, send a PR towards master.
 
 ### Writing a new target
