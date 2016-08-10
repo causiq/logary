@@ -63,6 +63,7 @@ Install-Package Logary
     * [Using logary in a library](#using-logary-in-a-library)
       * [How do the error and log methods differ?](#how-do-the-error-and-log-methods-differ)
       * [Passing more information](#passing-more-information)
+      * [A note on the FSI](#a-note-on-the-fsi)
       * [More reading](#more-reading)
     * [RabbitMQ Target](#rabbitmq-target)
     * [Rutta](#rutta)
@@ -80,6 +81,7 @@ Install-Package Logary
       * [Writing a new target](#writing-a-new-target)
       * [Notes](#notes)
     * [License](#license)
+
 
 ## Hello World
 
@@ -650,9 +652,16 @@ let work () =
   48
 ```
 
-The service/application which *does* reference the `Logary` nuget, also
-references `Logary.Adapters.Facade` and then creates a new Logger specifically
-for the library which it aims to ship logs from.
+The service/application which *does* reference the `Logary` nuget and the `Facade` one:
+
+```
+source https://www.nuget.org/api/v2
+nuget Logary
+nuget Logary.Adapters.Facade
+```
+
+The calling service/application then creates a new Logger specifically for the
+library which it aims to ship/extract logs from.
 
 ```fsharp
 // opens ...
@@ -720,6 +729,20 @@ Note the placeholder `{user}` for the user's name in the event template. By
 default these will be printed to the console, and if you use
 `Logary.Adapters.Facade` you may use all the templating features of
 [MessageTemplates](https://github.com/messagetemplates/) for plain-text targets.
+
+### A note on the FSI
+
+`Logary.Adapters.Facade`, the adapter for the library Facade, works by
+generating a dynamic interface implementation at runtime. It doesn't work very
+well if your library is being used from the F# interactive and all the
+library's code, including the `Logger` interface is only available in the
+interactive state. You'll end up with a `StackOverflowException` if you try
+this.
+
+However, the beauty is that when you're in the interactive, you can just let
+the library handle logging through the default Facade targets; i.e. you don't
+have to initialise Logary proper to use and read logs in the console, from the
+Facade.
 
 ### More reading
 
