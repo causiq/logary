@@ -993,6 +993,38 @@ tools/paket.exe install --redirects --clean-redirects --createnewbindingfiles`
  1. Copy the code from Logary's Target_Noop.fs, which contains the basic structure.
     There are more docs in this file.
 
+## Commercial Targets
+
+Logary is a production-grade logging and metrics library. We've also built
+targets that integrate with external paid services. These are listed here.
+
+### Elmah.IO
+
+![Elmah screenshot](./tools/elmah.png)
+
+Target upcoming.
+
+### Mixpanel
+
+Learn how people use your app with the world's most advanced mobile & web
+analytics.
+
+![Mixpanel screenshot](./tools/mixpanel.png)
+
+[Purchase today](mailto:henrik@haf.se?subject=Logary Mixpanel Target)
+
+#### Features
+
+ - Ship logs from your iOS, Android app
+ - Ship logs and handle user identification and unique-id tracking from web
+ - Use your own domain and server (over HTTPS)
+ - Logary listens on your server and forwards your events into Mixpanel
+ - Add granular server-side event filtering/enriching/correlation for better
+   insights before shipping them onwards.
+ - Log web app usage even when Mixpanel is blocked client-side
+
+[Send an e-mail to purchase](mailto:henrik@haf.se?subject=Logary Mixpanel Target)
+
 ### Want your SaaS-logging service as a Target?
 
 Absolutely! You have two options;
