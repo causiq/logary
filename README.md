@@ -1032,7 +1032,7 @@ This assumes you have an account at [Mixpanel](https://mixpanel.com).
 
 ### elmah.io
 
-![elmah screenshot](./tools/elmah.png)
+[![elmah screenshot](./tools/elmah.png)](https://elmah.io "Go to elmah.io to see their offering.")
 
 ```
 source https://www.nuget.org/api/v2
