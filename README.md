@@ -82,10 +82,8 @@ Install-Package Logary
       * [Building a signed version](#building-a-signed-version)
     * [Contributing](#contributing)
       * [Writing a new target](#writing-a-new-target)
-      * [Notes](#notes)
+      * [Want your SaaS\-logging service as a Target?](#want-your-saas-logging-service-as-a-target)
     * [License](#license)
-
-
 
 ## Hello World
 
@@ -987,8 +985,9 @@ LOGARY_SIGN_ASSEMBLY=true bundle exec rake
 
 ## Contributing
 
-Clone it like above. Ensure you can build it. Open `Logary.sln`.
-Make a change, send a PR towards master.
+Clone it like above. Ensure you can build it. Open `Logary.sln`.  Make a change,
+send a PR towards master. To balance the app.config files, try `mono
+tools/paket.exe install --redirects --clean-redirects --createnewbindingfiles`
 
 ### Writing a new target
 
@@ -1004,16 +1003,13 @@ Absolutely! You have two options;
     code-base, including documentation, code-doc, the C# builder API and a
     sample in this file. Then keep that code up-to-date when Logary evolves and
     your SaaS service changes its APIs.
- 1. Ask [me to](mailto:henrik@haf.se) write a target for you; for a small
-    initial fee and then a monthly maintenance fee you'll have it! This is by
-    far the easiest option and ensures that your Target is stable and easy to
-    use for your customers. I'll even write some Markdown/HTML-formatted docs
-    for your site about how to use Logary with your target.
+ 1. [Send me an e-mail](mailto:henrik@haf.se) and I'll target the target for
+    you. Pricing: a small initial fee and then a monthly maintenance fee, you'll
+    have a beautiful way of getting logs and metrics to your servers!
 
-### Notes
-
- - To balance the app.config files, try `mono tools/paket.exe install
-   --redirects --clean-redirects --createnewbindingfiles`
+    This is by far the easiest option and ensures that your Target is stable and
+    easy to use for your customers. I'll even write some Markdown/HTML-formatted
+    docs for your site about how to use Logary with your target.
 
 ## License
 
