@@ -1023,6 +1023,7 @@ analytics.
 
 [Send an e-mail to purchase](mailto:henrik@haf.se?subject=Logary Mixpanel Target)
 
+Assumes you have an account at [Mixpanel](https://mixpanel.com).
 
 ### elmah.io
 
