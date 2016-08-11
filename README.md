@@ -1002,18 +1002,12 @@ tools/paket.exe install --redirects --clean-redirects --createnewbindingfiles`
 Logary is a production-grade logging and metrics library. We've also built
 targets that integrate with external paid services. These are listed here.
 
-### Elmah.IO
-
-![Elmah screenshot](./tools/elmah.png)
-
-Target upcoming.
-
 ### Mixpanel
+
+![Mixpanel screenshot](./tools/mixpanel.png)
 
 Learn how people use your app with the world's most advanced mobile & web
 analytics.
-
-![Mixpanel screenshot](./tools/mixpanel.png)
 
 [Purchase today](mailto:henrik@haf.se?subject=Logary Mixpanel Target)
 
@@ -1028,6 +1022,13 @@ analytics.
  - Log web app usage even when Mixpanel is blocked client-side
 
 [Send an e-mail to purchase](mailto:henrik@haf.se?subject=Logary Mixpanel Target)
+
+
+### Elmah.IO
+
+![Elmah screenshot](./tools/elmah.png)
+
+Target upcoming.
 
 ### Want your SaaS-logging service as a Target?
 
