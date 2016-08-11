@@ -32,6 +32,13 @@ module internal Impl =
       | LogLevel.Error -> Severity.Error
       | LogLevel.Fatal -> Severity.Fatal
 
+  let formatField (Field (v, u)) =
+    match u with
+    | None ->
+      Units.formatValue v
+    | Some u ->
+      Units.formatWithUnit Units.UnitOrientation.Suffix u v
+
   let getData (message : Logary.Message) =
     Seq.concat [
       message.context
@@ -39,8 +46,8 @@ module internal Impl =
         k, Units.formatValue v
       )
       message.fields
-      |> Seq.map (fun (KeyValue (k, Field (v, u))) ->
-        PointName.format k, Units.formatWithUnit Units.UnitOrientation.Suffix u v
+      |> Seq.map (fun (KeyValue (k, field)) ->
+        PointName.format k, formatField field
       )
     ]
     |> Seq.map (fun (k, v) -> Elmah.Io.Client.Item(Key = k, Value = v))
@@ -56,8 +63,8 @@ module internal Impl =
 
   let inline tryGet (message : Logary.Message) (key : string) : string option =
     match Lens.getPartial (field_ key) message with
-    | Some (Field (value, units)) ->
-      Some (Units.formatWithUnit Units.UnitOrientation.Suffix units value)
+    | Some field ->
+      Some (formatField field)
     | None ->
       None
 
@@ -140,11 +147,6 @@ module internal Impl =
           Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
           >>=. ack *<= ()
       ] :> Job<_>
-
-(*     let err = Error ex
-      err.ApplicationName <- ri.serviceName
-      err.Time <- l.timestamp.ToDateTimeUtc()
-      let! entryId = Async.FromBeginEnd(err, state.log.BeginLog, state.log.EndLog) *)
 
     loop { logger = new Logger(conf.logId) }
 
