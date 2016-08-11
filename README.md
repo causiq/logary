@@ -996,6 +996,20 @@ Make a change, send a PR towards master.
  1. Copy the code from Logary's Target_Noop.fs, which contains the basic structure.
     There are more docs in this file.
 
+### Want your SaaS-logging service as a Target?
+
+Absolutely! You have two options;
+
+ 1. Send a PR with your target that is of equivalent quality as the rest of the
+    code-base, including documentation, code-doc, the C# builder API and a
+    sample in this file. Then keep that code up-to-date when Logary evolves and
+    your SaaS service changes its APIs.
+ 1. Ask [me to](mailto:henrik@haf.se) write a target for you; for a small
+    initial fee and then a monthly maintenance fee you'll have it! This is by
+    far the easiest option and ensures that your Target is stable and easy to
+    use for your customers. I'll even write some Markdown/HTML-formatted docs
+    for your site about how to use Logary with your target.
+
 ### Notes
 
  - To balance the app.config files, try `mono tools/paket.exe install
