@@ -1029,7 +1029,36 @@ Assumes you have an account at [Mixpanel](https://mixpanel.com).
 
 ![elmah screenshot](./tools/elmah.png)
 
-Target upcoming.
+```
+source https://www.nuget.org/api/v2
+nuget Logary.Targets.Elmah.Io
+```
+
+OR:
+
+```
+Install-Package Logary.Targets.Elmah.Io
+```
+
+#### Usage
+
+```fsharp
+withTargets [
+  // ...
+  ElmahIO.create { ElmahIO with apiKey = "GUID_HERE" } (PointName.ofSingle "elmah.io")
+] >>
+withRules [
+ // ...
+ Rule.createForTarget (PointName.ofSingle "elmah.io")
+]
+```
+
+```csharp
+// ...
+.Target<ElmahIO.Builder>(
+  "elmah.io",
+  conf => conf.Target.SendTo(apiKey: "GUID_HERE"))
+```
 
 ### Want your SaaS-logging service as a Target?
 
