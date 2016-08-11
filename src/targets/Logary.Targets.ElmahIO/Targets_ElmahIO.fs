@@ -101,6 +101,9 @@ module internal Impl =
   let sendMessage (logger : ILogger) (m : Elmah.Io.Client.Message) =
     Job.fromBeginEnd (fun (cb, o) -> logger.BeginLog(m, cb, o)) logger.EndLog
 
+  let format (message : Logary.Message) =
+    Formatting.StringFormatter.levelDatetimeMessagePath.format message
+
   type State =
     { logger : ILogger }
     interface IDisposable with
@@ -115,12 +118,11 @@ module internal Impl =
       Alt.choose [
         RingBuffer.take requests ^=> function
           | Log (Event template as message, ack) ->
-            let formatted = Formatting.StringFormatter.levelDatetimeMessagePath.format message
             let elmahMessage =
               Elmah.Io.Client.Message(template,
                 Id = (match tryGet message "messageId" with None -> null | Some x -> x),
                 Application = ri.serviceName,
-                Detail = formatted,
+                Detail = format message,
                 Source = PointName.format message.name,
                 StatusCode = Option.toNullable (tryGetInt message "statusCode"),
                 DateTime = Instant.FromTicksSinceUnixEpoch(message.timestampTicks).ToDateTimeUtc(),

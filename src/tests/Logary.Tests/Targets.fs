@@ -20,6 +20,24 @@ let envForce k (parser : string -> 't) : 't =
   | Choice2Of2 error ->
     failwith error
 
+let innermost () =
+  raise (Exception "Bad things going on")
+
+let middleWay () =
+  1 + 3 |> ignore
+  innermost ()
+
+let withException f =
+  try
+    middleWay ()
+  with e ->
+    f e
+
+let exnMsg =
+  Message.event Error "Unhandled exception"
+  |> Message.setSimpleName "A.B.C"
+  |> withException Message.addExn
+
 module Target =
 
   /// Send the message to the target and wait for it to ack it.
@@ -65,7 +83,7 @@ let basicTests targetName (configFactory : string -> Target.TargetConf) =
 
       Expect.isNotNull instance.server "Should have Job<unit> as #server"
 
-    testCase "start and stop" <| fun _ ->
+    testCase "start, log and stop" <| fun _ ->
       let target =
         Target.confTarget "basic2" configFactory
 
@@ -78,6 +96,20 @@ let basicTests targetName (configFactory : string -> Target.TargetConf) =
         Message.eventInfo "Hello World!"
         |> Target.logAndWait instance
 
+      finally
+        Target.finalise instance
+
+    testCase "log exception message" <| fun _ ->
+      let instance =
+        configFactory
+        |> Target.confTarget "exnMsg"
+        |> Target.init Fac.emptyRuntime
+        |> run
+
+      Target.runTarget instance
+
+      try
+        exnMsg |> Target.logAndWait instance
       finally
         Target.finalise instance
   ]

@@ -12,18 +12,6 @@ open Logary.Tests
 let target =
   ElmahIO.create { logId = envForce "ELMAH_IO_LOG_ID" Guid.Parse }
 
-let innermost () =
-  raise (Exception "Bad things going on")
-
-let middleWay () =
-  1 + 3 |> ignore
-  innermost ()
-
-let withException f =
-  try
-    middleWay ()
-  with e ->
-    f e
 
 [<Tests>]
 let tests =
@@ -38,14 +26,12 @@ let tests =
         Expect.equal typ "A.B" "Should have name of Message as type"
 
       testCase "of message with exception" <| fun _ ->
-        let msg =
-          Message.event Error "Unhandled exception"
-          |> Message.setSimpleName "A.B.C"
-          |> withException Message.addExn
-
-        let typ = ElmahIO.Impl.getType msg
-
+        let typ = ElmahIO.Impl.getType exnMsg
         Expect.equal typ "System.Exception" "Should have exception type as type"
+
+      testCase "formatting message captures exception details" <| fun _ ->
+        let str = ElmahIO.Impl.format exnMsg
+        Expect.stringContains str "middleWay" "Should contain parts of StackTrace."
     ]
   ]
 
