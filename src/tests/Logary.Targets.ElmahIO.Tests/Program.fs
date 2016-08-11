@@ -32,6 +32,8 @@ let tests =
       testCase "formatting message captures exception details" <| fun _ ->
         let str = ElmahIO.Impl.format exnMsg
         Expect.stringContains str "middleWay" "Should contain parts of StackTrace."
+
+
     ]
   ]
 

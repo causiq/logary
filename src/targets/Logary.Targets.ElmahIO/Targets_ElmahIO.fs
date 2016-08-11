@@ -34,25 +34,23 @@ module internal Impl =
       | LogLevel.Error -> Severity.Error
       | LogLevel.Fatal -> Severity.Fatal
 
-  let formatField (Field (v, u)) =
-    match u with
-    | None ->
-      Units.formatValue v
-    | Some u ->
-      Units.formatWithUnit Units.UnitOrientation.Suffix u v
-
   let getData (message : Logary.Message) =
     Seq.concat [
       message.context
-      |> Seq.map (fun (KeyValue (k, v)) ->
-        k, Units.formatValue v
+      |> Seq.collect (fun (KeyValue (k, v)) ->
+        Formatting.MessageParts.formatValueLeafs [k] v
       )
       message.fields
-      |> Seq.map (fun (KeyValue (k, field)) ->
-        PointName.format k, formatField field
+      |> Seq.collect (fun (KeyValue (k, (Field (value, units)))) ->
+        let root = PointName.format k
+        Formatting.MessageParts.formatValueLeafs [root] value
       )
     ]
-    |> Seq.map (fun (k, v) -> Elmah.Io.Client.Item(Key = k, Value = v))
+    |> Seq.map (fun (k, v) ->
+      Elmah.Io.Client.Item(
+        Key = PointName.format k,
+        Value = v
+      ))
     |> fun xs -> Collections.Generic.List<_>(xs)
 
   let firstError_ =
@@ -74,11 +72,15 @@ module internal Impl =
       PointName.format message.name
 
   let tryGet (message : Logary.Message) (key : string) : string option =
-    match Lens.getPartial (field_ key) message with
-    | Some field ->
-      Some (formatField field)
-    | None ->
-      None
+    Lens.getPartial (field_ key) message
+    |> Option.bind (function
+    | Field (value, units) ->
+      let (PointName parts) = PointName.parse key
+      let formatted =
+        Formatting.MessageParts.formatValueLeafs (List.ofArray parts) value
+      formatted
+      |> Seq.tryHead
+      |> Option.map snd)
 
   let tryGetInt (message : Logary.Message) (key : string) : int option = 
     match Lens.getPartial (field_ key) message with
@@ -114,8 +116,18 @@ module internal Impl =
            (requests : RingBuffer<_>)
            (shutdown : Ch<_>) =
 
+    let internalError = Ch ()
+
     let rec loop (state : State) : Job<unit> =
       Alt.choose [
+        internalError ^=> fun (args : FailEventArgs) ->
+          let message, ex = args.Message, args.Error
+          Message.eventError message.Title
+          |> Message.setFieldFromObject "message" message
+          |> Message.addExn ex
+          |> Logger.logSimple ri.logger
+          loop state
+
         RingBuffer.take requests ^=> function
           | Log (Event template as message, ack) ->
             let elmahMessage =
@@ -162,7 +174,12 @@ module internal Impl =
           >>=. ack *<= ()
       ] :> Job<_>
 
-    loop { logger = new Logger(conf.logId) }
+    let state =
+      { logger = new Logger(conf.logId) }
+
+    state.logger.OnMessageFail.Add (Ch.send internalError >> start)
+
+    loop state
 
 /// Create a new Elmah.IO target
 let create conf =

@@ -53,9 +53,10 @@ module MessageParts =
     match FSharpValue.GetUnionFields(x, typeof<'a>) with
     | case, _ -> case.Name
 
-  let private app (s : string) (sb : StringBuilder) = sb.Append s
+  let private app (s : string) (sb : StringBuilder) =
+    sb.Append s
 
-  let rec printValue (nl: string) (depth: int) (value : Value) =
+  let rec formatValue (nl: string) (depth: int) (value : Value) =
     let indent = new String(' ', depth * 2 + 2)
     match value with
     | String s -> "\"" + s + "\""
@@ -72,7 +73,7 @@ module MessageParts =
           |> app nl
           |> app indent
           |> app "- "
-          |> app (printValue nl (depth + 1) t))
+          |> app (formatValue nl (depth + 1) t))
         (StringBuilder ())
       |> fun sb -> sb.ToString ()
     | Object m ->
@@ -84,9 +85,35 @@ module MessageParts =
           |> app indent
           |> app key
           |> app " => "
-          |> app (printValue nl (depth + 1) value))
+          |> app (formatValue nl (depth + 1) value))
         (StringBuilder ())
       |> fun sb -> sb.ToString ()
+
+  let rec formatValueLeafs (ns : string list) (value : Value) =
+    let rns = lazy (PointName.ofList (List.rev ns))
+    seq {
+      match value with
+      | String s ->
+        yield rns.Value, s
+      | Bool b ->
+        yield rns.Value, b.ToString()
+      | Float f ->
+        yield rns.Value, f.ToString()
+      | Int64 i ->
+        yield rns.Value, i.ToString ()
+      | BigInt b ->
+        yield rns.Value, b.ToString ()
+      | Binary (b, _) ->
+        yield rns.Value, BitConverter.ToString b |> fun s -> s.Replace("-", "")
+      | Fraction (n, d) ->
+        yield rns.Value, sprintf "%d/%d" n d
+      | Array list ->
+        for item in list do
+          yield! formatValueLeafs ns item
+      | Object m ->
+        for KeyValue (k, v) in m do
+          yield! formatValueLeafs (k :: ns) v
+    }
 
   /// Formats the data in a nice fashion for printing to e.g. the Debugger or Console.
   let formatFields (nl : string) (fields : Map<PointName, Field>) =
@@ -94,7 +121,7 @@ module MessageParts =
     |> Seq.map (fun (key, (Field (value, _))) -> PointName.format key, value)
     |> Map.ofSeq
     |> Object
-    |> printValue nl 0
+    |> formatValue nl 0
 
   /// Formats the data in a nice fashion for printing to e.g. the Debugger or Console.
   let formatContext (nl : string) (context : Map<string, Value>) =
@@ -104,7 +131,7 @@ module MessageParts =
       |> Seq.map (fun (key, value) -> key, value)
       |> Map.ofSeq
       |> Object
-      |> printValue nl 1
+      |> formatValue nl 1
     s.Append(nl)
      .Append("  Context:")
      .Append(cs) |> ignore
