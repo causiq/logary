@@ -1050,9 +1050,14 @@ Install-Package Logary.Targets.Elmah.Io
 Configure *elmah.io* just like you would any normal target.
 
 ```fsharp
+open Logary
+open Logary.Configuration
+open Logary.Targets
+open Logary.Targets.ElmahIO
+
 withTargets [
   // ...
-  ElmahIO.create { ElmahIO with logId = "GUID_HERE" } "elmah.io"
+  ElmahIO.create { logId = "GUID_HERE" } "elmah.io"
 ] >>
 withRules [
  // ...
@@ -1066,7 +1071,7 @@ Or from C#:
 // ...
 .Target<ElmahIO.Builder>(
   "elmah.io",
-  conf => conf.Target.SendTo(apiKey: "GUID_HERE"))
+  conf => conf.Target.WithLogId("GUID_HERE"))
 ```
 
 This assumes you have an account at [elmah.io](https://elmah.io).
