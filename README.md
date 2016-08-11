@@ -1074,6 +1074,10 @@ Or from C#:
   conf => conf.Target.WithLogId("GUID_HERE"))
 ```
 
+#### What does it look like?
+
+![View from application](./tools/elmah-screenshot-app.png)
+
 This assumes you have an account at [elmah.io](https://elmah.io).
 
 ### Want your SaaS-logging service as a Target?
