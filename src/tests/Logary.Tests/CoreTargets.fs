@@ -2,29 +2,31 @@
 
 open Fuchu
 open Logary
+open Logary.Targets
+open Logary.Tests.Targets
 open Logary.Targets.TextWriter
 open Hopac
 open TestDSL
 open Fac
 
+let textWriterConf =
+  TextWriterConf.create(System.Console.Out, System.Console.Error)
+
 [<Tests>]
 let tests =
   testList "CoreTargets" [
-    testCase "writing with Console target directly" <| fun _ ->
-      let target = create (TextWriterConf.create(System.Console.Out, System.Console.Error)) "sample console"
-      let instance = target.initer emptyRuntime |> run
-      Assert.Equal("instance name should eq sample console", instance.name, PointName.ofSingle "sample console")
-      start instance.server |> ignore
+    Targets.basicTests "text writer" (TextWriter.create textWriterConf)
+    Targets.integrationTests "text writer" (TextWriter.create textWriterConf)
 
-    testCase "initialising TextWriter target" <| fun _ ->
+    testCase "printing Hello World" <| fun _ ->
       let stdout = Fac.textWriter ()
       let target = create (TextWriterConf.create(stdout, stdout)) "writing console target"
       let instance = target |> Target.init emptyRuntime |> run
       start instance.server |> ignore
 
       (because "logging with info level and then finalising the target" <| fun () ->
-        Message.eventInfo "Hello World!" |> logTarget instance
-        instance |> finaliseTarget
+        Message.eventInfo "Hello World!" |> Target.logAndWait instance
+        Target.finalise instance
         stdout.ToString())
       |> should contain "Hello World!"
       |> thatsIt
@@ -37,8 +39,8 @@ let tests =
 
       let x = dict ["foo", "bar"]
       (because "logging with fields then finalising the target" <| fun () ->
-        Message.eventInfo "Hello World!" |> Message.setFieldFromObject "the Name" x |> logTarget instance
-        instance |> finaliseTarget
+        Message.event Info "Hello World!" |> Message.setFieldFromObject "the Name" x |> Target.logAndWait instance
+        Target.finalise instance
         stdout.ToString())
       |> should contain "Hello World!"
       |> should contain "foo"
@@ -53,9 +55,9 @@ let tests =
       start subject.server |> ignore
 
       (because "logging 'Error line' and 'Fatal line' to the target" <| fun () ->
-        Message.eventError "Error line" |> logTarget subject
-        Message.eventFatal "Fatal line" |> logTarget subject
-        subject |> finaliseTarget
+        Message.eventError "Error line" |> Target.logAndWait subject
+        Message.eventFatal "Fatal line" |> Target.logAndWait subject
+        Target.finalise subject
         err.ToString())
       |> should contain "Error line"
       |> should contain "Fatal line"

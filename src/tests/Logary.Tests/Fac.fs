@@ -50,13 +50,3 @@ let withLogary f =
   //try 
   f logary out err
   //finally finaliseLogary logary
-
-let logTarget target =
-  Target.log target >> run >> run
-
-let finaliseTarget t = Target.shutdown t |> fun a ->
-  let acks = a ^-> TimeoutResult.Success <|> timeOutMillis 1000 ^->. TimedOut
-             |> run
-  match acks with
-  | TimedOut -> Tests.failtestf "finalising target timed out: %A" t
-  | TimeoutResult.Success _ -> ()

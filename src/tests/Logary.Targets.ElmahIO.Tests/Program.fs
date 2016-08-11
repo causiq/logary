@@ -1,18 +1,21 @@
 ﻿module Program
 
+open System
 open Fuchu
 open Hopac
 open Logary
 open Logary.Targets
+open Logary.Tests.Targets
+open Logary.Tests
+
+let target =
+  ElmahIO.create { logId = envForce "ELMAH_IO_LOG_ID" Guid.Parse }
 
 [<Tests>]
 let tests =
   testList "elmah.io tests" [
-    testCase "basic" <| fun _ ->
-      Logary.Tests.Targets.basicTests (ElmahIO.create ElmahIO.empty "elmahio")
-
-    testCase "integration" <| fun _ ->
-      Logary.Tests.Targets.integrationTests (ElmahIO.create ElmahIO.empty "elmahio")
+    Targets.basicTests "elmah.io" target
+    Targets.integrationTests "elmah.io" target
   ]
 
 [<EntryPoint>]

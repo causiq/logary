@@ -39,6 +39,7 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
     <Content Include="app.config" />
+    <Compile Include="AssemblyVersionInfo.fs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Targets_ElmahIO.fs" />

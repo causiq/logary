@@ -118,7 +118,7 @@ module internal Impl =
                 User = (match tryGet message "user.name" with None -> null | Some x -> x),
                 Severity = Nullable<_>(Severity.ofLogLevel message.level),
                 Url = (match tryGet message "url" with None -> null | Some x -> x),
-                //Method = tryGetContext "method",
+                //Method -> new property in master,
                 Version = Logary.YoLo.App.getVersion(),
                 //ServerVariables, // too sensitive to ship
                 //QueryString, // too sensitive to ship
@@ -153,7 +153,11 @@ module internal Impl =
     loop { logger = new Logger(conf.logId) }
 
 /// Create a new Elmah.IO target
-let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
+let create conf =
+  if conf.logId = Guid.Empty then
+    failwith "Cannot configure target with empty logId"
+
+  TargetUtils.stdNamedTarget (Impl.loop conf)
 
 /// Use with LogaryFactory.New( s => s.Target<ElmahIO.Builder>().WithLogId("MY GUID HERE") )
 type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
