@@ -1047,6 +1047,7 @@ module Message =
       contextValue_ ServiceFieldName >??> Value.String_
 
     /// Lens you can use to get the list of errors in this message.
+    /// Also see Logary errors: https://gist.github.com/haf/1a5152b77ec64bf10fe8583a081dbbbf
     let errors_ : PLens<Message, Value list> =
       field_ ErrorsFieldName >?-> Field.value_ >??> Value.Array_
 
@@ -1317,10 +1318,15 @@ module Message =
 
   ///////////////// PROPS ////////////////////
 
-  /// Sets the messages's name
+  /// Sets the name of the message to a PointName
   [<CompiledName "SetName">]
   let setName name (msg : Message) =
     { msg with name = name }
+
+  /// Sets the name of the message from a string.
+  [<CompiledName "SetName">]
+  let setSimpleName name (msg : Message) =
+    { msg with name = PointName.parse name }
 
   /// Sets the message's level.
   [<CompiledName "SetLevel">]

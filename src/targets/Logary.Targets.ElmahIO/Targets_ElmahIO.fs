@@ -55,22 +55,32 @@ module internal Impl =
     |> Seq.map (fun (k, v) -> Elmah.Io.Client.Item(Key = k, Value = v))
     |> fun xs -> Collections.Generic.List<_>(xs)
 
+  let firstError_ =
+    errors_
+    >??> head_
+
+  let firstErrorType_ =
+    firstError_
+    >??> Value.Object_
+    >??> key_ "type"
+    >??> Value.String_
+
   let getType (message : Logary.Message) =
-    match Lens.getPartial errors_ message with
-    | Some errors ->
-      "errors"
+    match Lens.getPartial firstErrorType_ message with
+    | Some typ ->
+      typ
 
     | None ->
       PointName.format message.name
 
-  let inline tryGet (message : Logary.Message) (key : string) : string option =
+  let tryGet (message : Logary.Message) (key : string) : string option =
     match Lens.getPartial (field_ key) message with
     | Some field ->
       Some (formatField field)
     | None ->
       None
 
-  let inline tryGetInt (message : Logary.Message) (key : string) : int option = 
+  let tryGetInt (message : Logary.Message) (key : string) : int option = 
     match Lens.getPartial (field_ key) message with
     | Some (Field (value, units)) ->
       match Int32.TryParse (Units.formatValue value) with
