@@ -24,7 +24,7 @@ let targConf =
   ElasticSearch.ElasticSearchConf.create()
 
 let start () =
-  Target.init emptyRuntime (ElasticSearch.create targConf (PointName.ofSingle "influxdb"))
+  Target.init emptyRuntime (ElasticSearch.create targConf "elasticsearch")
   |> run
   |> fun inst -> inst.server |> start; inst
 
@@ -47,7 +47,7 @@ let now = Message.setUTCTicks System.DateTime.UtcNow.Ticks
 let target =
   testList "elasticsearch" [
     testCase "start and stop" <| fun _ ->
-      let target = ElasticSearch.create targConf (PointName.ofSingle "elasticsearch-integration")
+      let target = ElasticSearch.create targConf "elasticsearch-integration"
       let subject = target |> init emptyRuntime |> run
       Message.eventWarn "integration test" |> Target.log subject |> run |> run
       subject |> finaliseTarget

@@ -15,8 +15,8 @@ open Fuchu
 open Hopac
 open Hopac.Infixes
 
-let emptyTarget = Noop.create {isYes = true} (PointName.ofSingle "empty target")
-let emptyRule = Rule.createForTarget (PointName.ofSingle "empty target")
+let emptyTarget = Noop.create {isYes = true} "empty target"
+let emptyRule = Rule.createForTarget "empty target"
 let emptyRuntime =
   { serviceName = "tests"
     clock       = SystemClock.Instance
@@ -35,9 +35,9 @@ let finaliseLogary = Config.shutdownSimple >> fun a ->
 let withLogary f =
   let out, err = textWriter (), textWriter ()
 
-  let target = confTarget (PointName.ofSingle "cons") (create (TextWriterConf.create(out, err)))
+  let target = confTarget "cons" (create (TextWriterConf.create(out, err)))
 
-  let rule = Rule.createForTarget (PointName.ofSingle "cons")
+  let rule = Rule.createForTarget "cons"
 
   let logary =
     confLogary "tests"
@@ -50,13 +50,3 @@ let withLogary f =
   //try 
   f logary out err
   //finally finaliseLogary logary
-
-let logTarget target =
-  Target.log target >> run >> run
-
-let finaliseTarget t = Target.shutdown t |> fun a ->
-  let acks = a ^-> TimeoutResult.Success <|> timeOutMillis 1000 ^->. TimedOut
-             |> run
-  match acks with
-  | TimedOut -> Tests.failtestf "finalising target timed out: %A" t
-  | TimeoutResult.Success _ -> ()

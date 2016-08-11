@@ -114,15 +114,15 @@ let main argv =
     withLogaryManager "Logary.Examples.ConsoleApp" (
       // output to the console
       withTargets [
-        Console.create (Console.empty) (PointName.ofSingle "console")
+        Console.create (Console.empty) "console"
       ] >>
       // continuously log CPU stats
       withMetrics [
-        MetricConf.create (Duration.FromMilliseconds 500L) (PointName.ofSingle "cpu") Sample.cpuTime
+        MetricConf.create (Duration.FromMilliseconds 500L) "cpu" Sample.cpuTime
       ] >>
       // "link" or "enable" the loggers to send everything to the configured target
       withRules [
-        Rule.createForTarget (PointName.ofSingle "console")
+        Rule.createForTarget "console"
       ]
       // "compile" the configuration of targets, above
       >> run
@@ -1021,9 +1021,14 @@ analytics.
    insights before shipping them onwards.
  - Log web app usage even when Mixpanel is blocked client-side
 
-[Send an e-mail to purchase](mailto:henrik@haf.se?subject=Logary Mixpanel Target)
+#### What's included?
 
-Assumes you have an account at [Mixpanel](https://mixpanel.com).
+We like open source – so in the purchase the reference source is provided so
+that it can be debugged like the rest of Logary.
+
+[Send an e-mail to purchase](mailto:henrik@haf.se?subject=Logary%20Mixpanel%20Target)
+
+This assumes you have an account at [Mixpanel](https://mixpanel.com).
 
 ### elmah.io
 
@@ -1042,16 +1047,20 @@ Install-Package Logary.Targets.Elmah.Io
 
 #### Usage
 
+Configure *elmah.io* just like you would any normal target.
+
 ```fsharp
 withTargets [
   // ...
-  ElmahIO.create { ElmahIO with apiKey = "GUID_HERE" } (PointName.ofSingle "elmah.io")
+  ElmahIO.create { ElmahIO with logId = "GUID_HERE" } "elmah.io"
 ] >>
 withRules [
  // ...
- Rule.createForTarget (PointName.ofSingle "elmah.io")
+ Rule.createForTarget "elmah.io"
 ]
 ```
+
+Or from C#:
 
 ```csharp
 // ...
@@ -1059,6 +1068,8 @@ withRules [
   "elmah.io",
   conf => conf.Target.SendTo(apiKey: "GUID_HERE"))
 ```
+
+This assumes you have an account at [elmah.io](https://elmah.io).
 
 ### Want your SaaS-logging service as a Target?
 

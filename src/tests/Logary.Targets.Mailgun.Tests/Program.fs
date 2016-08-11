@@ -34,7 +34,7 @@ let start () =
                                       "haf.se",
                                       getOpts = getOpts)
 
-  Target.init emptyRuntime (create conf (PointName.ofSingle "mailgun"))
+  Target.init emptyRuntime (create conf "mailgun")
   |> run
   |> fun inst -> inst.server |> start; inst
 

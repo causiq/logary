@@ -37,12 +37,12 @@ namespace Logary.Specs
                 TextWriter.Create(
                     TextWriter.TextWriterConf.Create(tw, tw,
                         new Microsoft.FSharp.Core.FSharpOption<Formatting.StringFormatter>(Formatting.StringFormatterModule.levelDatetimeMessagePathNl)),
-                    PointNameModule.OfSingle("tw"));
+                    "tw");
             var twRule =
-                RuleModule.Create (new Regex (@"^Logary\.Specs"), PointNameModule.Parse ("tw"), LogLevel.Verbose,
+                RuleModule.Create (new Regex (@"^Logary\.Specs"), "tw", LogLevel.Verbose,
                     message => true);
 
-            var internalTarg = Console.Create(Console.empty, PointNameModule.Parse("console"));
+            var internalTarg = Console.Create(Console.empty, "console");
 
             return Config.Configure(
                 "Logary Specs C# low level API",

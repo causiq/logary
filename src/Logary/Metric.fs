@@ -20,9 +20,9 @@ type MetricConf =
     name         : PointName
     initialise   : PointName -> Job<Metric> }
 
-  static member create (tickInterval : Duration) (name : PointName) creator =
+  static member create (tickInterval : Duration) (name : string) creator =
     { tickInterval = tickInterval
-      name         = name
+      name         = PointName.parse name
       initialise   = creator }
 
   interface Named with

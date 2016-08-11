@@ -104,7 +104,7 @@ module Advanced =
 
     // map the target conf and target instance
     |> List.map (fun r ->
-        let t, ti = Map.find r.target conf.targets
+        let t, ti = Map.find r.targetName conf.targets
         r, t, (Option.get ti))
 
     // rules applying to the same target are grouped

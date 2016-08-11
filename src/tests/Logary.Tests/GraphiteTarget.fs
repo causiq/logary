@@ -8,6 +8,7 @@ open Fac
 open Logary
 open Logary.Target
 open Logary.Targets
+open Logary.Tests.Targets
 open Logary.Internals
 open Logary.Tests.TestDSL
 
@@ -17,13 +18,13 @@ let tests =
     testCase "initialising" <| fun _ ->
       Tests.skiptest "until custom tcp"
       let conf = Graphite.GraphiteConf.create("localhost")
-      let graphite = Graphite.create conf (PointName.ofSingle "graphite-target")
+      let graphite = Graphite.create conf "graphite-target"
       let instance = graphite.initer { serviceName = "tests"; clock = SystemClock.Instance; logger = NullLogger() } |> run
       //start instance.server
       Assert.Equal("instance name should match", instance.name, (PointName.ofSingle "graphite-target"))
 
       (because "shutting down the target" <| fun () ->
-        instance |> finaliseTarget
+        Target.finalise instance
         true)
       |> should be true
       |> thatsIt

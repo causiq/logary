@@ -127,6 +127,7 @@ task :tests_unit do
   Dir.glob("src/tests/**/bin/#{Configuration}/*.Tests.exe").
     reject { |exe| (exe.include? '.DB' and !Albacore.windows?) }.
     keep_if { |exe| !exe.include?('Mailgun') || (ENV['MAILGUN_API_KEY'] && exe.include?('Mailgun')) }.
+    keep_if { |exe| !exe.include?('ElmahIO') || (ENV['ELMAH_IO_LOG_ID'] && exe.include?('ElmahIO')) }.
     each do |exe|
     system exe, clr_command: true
   end

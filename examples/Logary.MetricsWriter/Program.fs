@@ -63,23 +63,23 @@ let main argv =
 
   let influxConf =
     InfluxDb.create (InfluxDb.InfluxDbConf.create(Uri "http://192.168.99.100:8086/write", "logary", batchSize = 500us))
-                    (PointName.ofSingle "influxdb")
+                    "influxdb"
 
   use logary =
     withLogaryManager "Logary.Examples.MetricsWriter" (
       withTargets [
-        Console.create (Console.empty) (PointName.ofSingle "console")
+        Console.create (Console.empty) "console"
         influxConf
       ]
       >> withMetrics [
-        MetricConf.create (ms 500) (pn "randomWalk") Sample.randomWalk
+        MetricConf.create (ms 500) "randomWalk" Sample.randomWalk
       ]
       >> withRules [
-        Rule.createForTarget (PointName.ofSingle "console")
-        Rule.createForTarget (PointName.ofSingle "influxdb")
+        Rule.createForTarget "console"
+        Rule.createForTarget "influxdb"
       ]
       >> withInternalTargets Info [
-        Console.create Console.empty (PointName.ofSingle "console")
+        Console.create Console.empty "console"
       ]
       >> run
     )

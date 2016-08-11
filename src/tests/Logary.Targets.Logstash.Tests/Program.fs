@@ -24,7 +24,7 @@ let targConf =
   Logstash.LogstashConf.create()
 
 let start () =
-  Target.init emptyRuntime (Logstash.create targConf (PointName.ofSingle "influxdb"))
+  Target.init emptyRuntime (Logstash.create targConf "influxdb")
   |> run
   |> fun inst -> inst.server |> start; inst
 
@@ -47,7 +47,7 @@ let now = Message.setUTCTicks System.DateTime.UtcNow.Ticks
 let target =
   testList "logstash" [
     testCase "start and stop" <| fun _ ->
-      let target = Logstash.create targConf (PointName.ofSingle "logstash-integration")
+      let target = Logstash.create targConf "logstash-integration"
       let subject = target |> init emptyRuntime |> run
       Message.eventWarn "integration test" |> Target.log subject |> run |> run
       subject |> finaliseTarget
