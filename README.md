@@ -1078,6 +1078,26 @@ Or from C#:
 
 ![View from application](./tools/elmah-screenshot-app.png)
 
+You'll get the same view by logging this `Message`:
+
+```fsharp
+type Tenant =
+  { tenantId : string
+    permissions : string }
+
+let exnMsg =
+  Message.event Error "Unhandled exception"
+  |> Message.setSimpleName "A.B.C"
+  |> Message.setFieldFromObject "tenant" { tenantId = "12345"; permissions = "RWX" }
+  |> Message.setContextFromMap (Map
+    [ "user", box (Map
+        [ "name", box "haf"
+          "id", box "deadbeef234567"
+        ])
+    ])
+  |> withException Message.addExn
+```
+
 This assumes you have an account at [elmah.io](https://elmah.io).
 
 ### Want your SaaS-logging service as a Target?
