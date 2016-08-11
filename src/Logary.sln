@@ -124,6 +124,8 @@ Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.ElasticSearc
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.RabbitMQ", "targets\Logary.Targets.RabbitMQ\Logary.Targets.RabbitMQ.fsproj", "{FE1BC08F-A41A-41CC-9F03-996EA9B3B477}"
 EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.ElmahIO", "targets\Logary.Targets.ElmahIO\Logary.Targets.ElmahIO.fsproj", "{BEE0293D-C090-48A4-867D-5B40F4C8D35F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -322,6 +324,10 @@ Global
 		{FE1BC08F-A41A-41CC-9F03-996EA9B3B477}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FE1BC08F-A41A-41CC-9F03-996EA9B3B477}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FE1BC08F-A41A-41CC-9F03-996EA9B3B477}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BEE0293D-C090-48A4-867D-5B40F4C8D35F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BEE0293D-C090-48A4-867D-5B40F4C8D35F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BEE0293D-C090-48A4-867D-5B40F4C8D35F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BEE0293D-C090-48A4-867D-5B40F4C8D35F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -375,5 +381,6 @@ Global
 		{64A5B3B2-0F73-44B5-A178-C66A9DB830D6} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{2A4CB8E9-C123-4E07-A814-CF6B74FFC87D} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{FE1BC08F-A41A-41CC-9F03-996EA9B3B477} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
+		{BEE0293D-C090-48A4-867D-5B40F4C8D35F} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 	EndGlobalSection
 EndGlobal

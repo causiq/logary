@@ -13,6 +13,8 @@ NUGET
       Common.Logging.Core (>= 3.3.1)
     Common.Logging.Core (3.3.1)
     elmah.corelibrary (1.2.2)
+    elmah.io (2.0.29)
+      elmah.io.core (>= 2.0.29)
     elmah.io.client (2.0.29)
     elmah.io.core (2.0.29)
       elmah.corelibrary (>= 1.2.2)
@@ -70,14 +72,14 @@ GITHUB
   remote: xyncro/aether
     src/Aether/Aether.fs (5b5c05db2414562e9f3f679d42284638e63b9f3a)
   remote: haf/YoLo
-    YoLo.fs (f122eebb2ab82e06ac31ce51f3b4632fb26fd130)
+    YoLo.fs (c8cab523cd9cc30d3a5a450249de561e5069dc6d)
   remote: haf/expecto-patronum
     ExpectoPatronum/Assert.fs (45ad4c524e16190ad105676f925f1e0bf09fa8f0)
   remote: logary/RingBuffer
     RingBuffer.fs (4557d607737e748b54eb6de3ec5e5cd02247b2a5)
       Hopac
   remote: logary/logary
-    src/Logary.Facade/Facade.fs (da61368c9e5f8cf0466d56a3504a81aa64f4011b)
+    src/Logary.Facade/Facade.fs (92130592b3b225937a0a0f5a34f87053c800b7cb)
 GROUP Examples
 REDIRECTS: ON
 FRAMEWORK: >= NET45
