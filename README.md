@@ -83,9 +83,9 @@ Install-Package Logary
     * [Contributing](#contributing)
       * [Writing a new target](#writing-a-new-target)
     * [Commercial Targets](#commercial-targets)
-      * [Elmah\.IO](#elmahio)
       * [Mixpanel](#mixpanel)
         * [Features](#features)
+      * [Elmah\.IO](#elmahio)
       * [Want your SaaS\-logging service as a Target?](#want-your-saas-logging-service-as-a-target)
     * [License](#license)
 
