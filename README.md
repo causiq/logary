@@ -1004,7 +1004,7 @@ targets that integrate with external paid services. These are listed here.
 
 ### Mixpanel
 
-![Mixpanel screenshot](./tools/mixpanel.png)
+![Mixpanel screenshot](./tools/mixpanel-screenshot.png "Event processing, analytics on the web")
 
 Learn how people use your app with the world's most advanced mobile & web
 analytics.
