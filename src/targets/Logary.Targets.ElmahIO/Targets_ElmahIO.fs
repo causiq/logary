@@ -110,7 +110,7 @@ module internal Impl =
                 Severity = Nullable<_>(Severity.ofLogLevel message.level),
                 Url = (match tryGet message "url" with None -> null | Some x -> x),
                 //Method = tryGetContext "method",
-                Version = Logary.Utils.YoLo.App.getVersion(),
+                Version = Logary.YoLo.App.getVersion(),
                 //ServerVariables, // too sensitive to ship
                 //QueryString, // too sensitive to ship
                 //Form, // too sensitive to ship
