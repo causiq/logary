@@ -85,7 +85,7 @@ Install-Package Logary
     * [Commercial Targets](#commercial-targets)
       * [Mixpanel](#mixpanel)
         * [Features](#features)
-      * [Elmah\.IO](#elmahio)
+      * [elmah\.io](#elmahio)
       * [Want your SaaS\-logging service as a Target?](#want-your-saas-logging-service-as-a-target)
     * [License](#license)
 
@@ -1024,9 +1024,9 @@ analytics.
 [Send an e-mail to purchase](mailto:henrik@haf.se?subject=Logary Mixpanel Target)
 
 
-### Elmah.IO
+### elmah.io
 
-![Elmah screenshot](./tools/elmah.png)
+![elmah screenshot](./tools/elmah.png)
 
 Target upcoming.
 
