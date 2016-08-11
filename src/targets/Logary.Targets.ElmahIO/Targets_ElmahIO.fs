@@ -17,6 +17,8 @@ type ElmahIOConf =
     /// on it and then taking the logId from the address bar.
     logId : Guid }
 
+let empty = { logId = Guid.Empty }
+
 module internal Impl =
   open Logary.Message.Lenses
   open Logary.Utils.Aether
@@ -152,11 +154,6 @@ module internal Impl =
 
 /// Create a new Elmah.IO target
 let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
-
-/// C# interop: Create a new Elmah.IO target
-[<CompiledName "Create">]
-let create' (conf, name) =
-  create conf name
 
 /// Use with LogaryFactory.New( s => s.Target<ElmahIO.Builder>().WithLogId("MY GUID HERE") )
 type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =

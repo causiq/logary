@@ -24,9 +24,9 @@ let textWriter () =
 let withLogary f =
   let out, err = textWriter (), textWriter ()
 
-  let target = confTarget (PointName.ofSingle "cons") (create (TextWriterConf.create(out, err)))
+  let target = confTarget "cons" (create (TextWriterConf.create(out, err)))
 
-  let rule = Rule.createForTarget (PointName.ofSingle "cons")
+  let rule = Rule.createForTarget "cons"
 
   let logary =
     confLogary "tests"

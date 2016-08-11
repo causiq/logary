@@ -29,7 +29,7 @@ let start () =
   let targConf =
     InfluxDbConf.create(Uri "http://127.0.0.1:9011/write", "tests")
 
-  Target.init emptyRuntime (create targConf (PointName.ofSingle "influxdb"))
+  Target.init emptyRuntime (create targConf "influxdb")
   |> run
   |> fun inst -> inst.server |> start; inst
 

@@ -30,8 +30,8 @@ let ``invalid configs`` =
     with :? ValidationException as e ->
       f e
 
-  let r1 = Rule.createForTarget (PointName.ofSingle "r1")
-  let t1 = Noop.create Noop.empty (PointName.ofSingle "t1")
+  let r1 = Rule.createForTarget "r1"
+  let t1 = Noop.create Noop.empty "t1"
 
   testList "invalid configs" [
     testCase "mismatched rules/targets" <| fun _ ->

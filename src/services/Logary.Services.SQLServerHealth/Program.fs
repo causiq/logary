@@ -94,7 +94,7 @@ let parse args =
 let execute interval sqlConf riemann argv (exiting : ManualResetEventSlim) =
   use logary =
     let pn s = PointName.ofSingle s
-    let cons, rm, metricName = pn "console", pn "riemann", pn "SQLHealth"
+    let cons, rm, metricName = "console", "riemann", "SQLHealth"
 
     withLogaryManager "Logary.Services.SQLServerHealth" (
       withTargets [

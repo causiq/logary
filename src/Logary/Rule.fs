@@ -15,13 +15,16 @@ type Rule =
   { /// This is the regular expression that the 'path' must match to be loggable
     hiera         : Regex
     /// This is the name of the target that this rule applies to.
-    target        : PointName
+    target        : string
     /// This is the level at which the target will accept log lines. It's inclusive, so
     /// anything below won't be accepted.
     level         : LogLevel
     /// This is the accept filter that is before the message is passed to the logger
     /// instance.
     messageFilter : MessageFilter }
+
+  member x.targetName =
+    PointName.parse x.target
 
   override x.GetHashCode () =
     hash (x.hiera.ToString(), x.target, x.level)
@@ -79,7 +82,7 @@ module Rule =
   /// won't work, e.g. using the `createForTarget` method.
   let empty =
     { hiera         = allHiera
-      target        = PointName.empty
+      target        = String.Empty
       messageFilter = fun _ -> true
       level         = Verbose }
 
@@ -96,7 +99,7 @@ module Rule =
   /// Sets the target that this rule is applied to. Useful for filtering down
   /// specific targets.
   [<CompiledName "SetTarget">]
-  let setTarget (target : PointName) (r : Rule) =
+  let setTarget (target : string) (r : Rule) =
     { r with target = target }
 
   /// Sets the rule's message filter. Remember that if you want to apply multiple
@@ -113,7 +116,7 @@ module Rule =
   /// Create a rule that accepts any input for a specified target (that's the
   /// name param).
   [<CompiledName "Create">]
-  let createForTarget (name : PointName) =
+  let createForTarget (name : string) =
     { empty with target = name }
 
   /// Create a new rule with the given hiera, target, accept function and min level

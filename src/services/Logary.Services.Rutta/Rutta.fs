@@ -75,7 +75,7 @@ module Shipper =
     // TODO: handle with configuration, selection of what data points to
     // gather.
     let createMetric name metric =
-      MetricConf.create (Duration.FromMilliseconds 400L) (PointName.ofSingle name) metric
+      MetricConf.create (Duration.FromMilliseconds 400L) name metric
 
     use mre = new ManualResetEventSlim(false)
     use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
@@ -85,7 +85,7 @@ module Shipper =
         withTargets [
           //Noop.create (Noop.empty) (PointName.ofSingle "noop")
           //Console.create (Console.empty) (PointName.ofSingle "console")
-          create shipperConf (PointName.ofSingle "rutta-shipper")
+          create shipperConf "rutta-shipper"
         ]
         >> withMiddleware Middleware.Common.addHostName
         >> withMetrics [
@@ -98,10 +98,10 @@ module Shipper =
         >> withRules [
           //Rule.createForTarget (PointName.ofSingle "noop")
           //Rule.createForTarget (PointName.ofSingle "console")
-          Rule.createForTarget (PointName.ofSingle "rutta-shipper")
+          Rule.createForTarget "rutta-shipper"
         ]
         >> withInternalTargets Info [
-          Console.create Console.empty (PointName.ofSingle "internal")
+          Console.create Console.empty "internal"
         ]
         >> run
       )
@@ -150,10 +150,10 @@ module Router =
       withLogaryManager (sprintf "Logary Rutta[%s]" mode) (
         withTargets [
           //Console.create Console.empty (PointName.ofSingle "console")
-          InfluxDb.create config (PointName.ofSingle "influxdb")
+          InfluxDb.create config "influxdb"
         ]
         >> withRules [
-          Rule.createForTarget (PointName.ofSingle "influxdb")
+          Rule.createForTarget "influxdb"
           //Rule.createForTarget (PointName.ofSingle "console")
         ]
       )

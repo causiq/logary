@@ -17,8 +17,8 @@ let main argv =
 
   use logary =
     withLogaryManager "Servizz.Program" (
-      withTargets [ Console.create Console.empty (PointName.ofSingle "console") ]
-      >> withRules [ Rule.createForTarget (PointName.ofSingle "console") ])
+      withTargets [ Console.create Console.empty "console" ]
+      >> withRules [ Rule.createForTarget "console" ])
     |> run
 
   // for the statics:

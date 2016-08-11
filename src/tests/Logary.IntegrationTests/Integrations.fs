@@ -44,7 +44,7 @@ let integration =
       let riemann =
         Riemann.create
           (Riemann.RiemannConf.create(endpoint = IPEndPoint(localhost, 5555)))
-          (PointName.ofSingle "riemann")
+          "riemann"
         |> Target.init ri
         |> run
 

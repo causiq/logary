@@ -11,14 +11,14 @@ open Fac
 let tests =
   testList "CoreTargets" [
     testCase "writing with Console target directly" <| fun _ ->
-      let target = create (TextWriterConf.create(System.Console.Out, System.Console.Error)) (PointName.ofSingle "sample console")
+      let target = create (TextWriterConf.create(System.Console.Out, System.Console.Error)) "sample console"
       let instance = target.initer emptyRuntime |> run
       Assert.Equal("instance name should eq sample console", instance.name, PointName.ofSingle "sample console")
       start instance.server |> ignore
 
     testCase "initialising TextWriter target" <| fun _ ->
       let stdout = Fac.textWriter ()
-      let target = create (TextWriterConf.create(stdout, stdout)) (PointName.ofSingle "writing console target")
+      let target = create (TextWriterConf.create(stdout, stdout)) "writing console target"
       let instance = target |> Target.init emptyRuntime |> run
       start instance.server |> ignore
 
@@ -31,7 +31,7 @@ let tests =
 
     testCase "initialising TextWriter target" <| fun _ ->
       let stdout = Fac.textWriter ()
-      let target = create (TextWriterConf.create(stdout, stdout)) (PointName.ofSingle "writing console target")
+      let target = create (TextWriterConf.create(stdout, stdout)) "writing console target"
       let instance = target |> Target.init emptyRuntime |> run
       start instance.server |> ignore
 
@@ -48,7 +48,7 @@ let tests =
 
     testCase "``error levels should be to error text writer``" <| fun _ ->
       let out, err = Fac.textWriter (), Fac.textWriter ()
-      let target = create (TextWriterConf.create(out, err)) (PointName.ofSingle "error writing")
+      let target = create (TextWriterConf.create(out, err)) "error writing"
       let subject = target |> Target.init emptyRuntime |> run
       start subject.server |> ignore
 

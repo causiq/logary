@@ -56,8 +56,8 @@ let registryMid =
 
       let logary =
         confLogary "my service"
-        |> withRule (Rule.createForTarget (PointName.ofSingle "tw"))
-        |> withTarget (Target.confTarget (PointName.ofSingle "tw") (TextWriter.create tw))
+        |> withRule (Rule.createForTarget "tw")
+        |> withTarget (Target.confTarget "tw" (TextWriter.create tw))
         |> withMiddleware (fun next msg ->
           msg |> Message.setContext "service" "my service" |> next)
         |> withMiddleware (fun next msg ->
@@ -65,7 +65,7 @@ let registryMid =
         |> withMiddleware (fun next msg ->
           msg |> Message.setContext "messageId" "theMessageId" |> next)
         |> validate
-        |> withInternalTarget LogLevel.Verbose (Console.create Console.empty (PointName.ofSingle "internal"))
+        |> withInternalTarget LogLevel.Verbose (Console.create Console.empty "internal")
         >>= runLogary
         |> run
 

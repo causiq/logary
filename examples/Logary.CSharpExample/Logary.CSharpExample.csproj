@@ -38,6 +38,12 @@
   <ItemGroup>
     <None Include="paket.references" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\targets\Logary.Targets.RabbitMQ\Logary.Targets.RabbitMQ.fsproj">
+      <Project>{FE1BC08F-A41A-41CC-9F03-996EA9B3B477}</Project>
+      <Name>Logary.Targets.RabbitMQ</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3')">
@@ -178,11 +184,6 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3')">
       <ItemGroup>
-        <Reference Include="Logary.Targets.RabbitMQ">
-          <HintPath>..\..\packages\examples\Logary.Targets.RabbitMQ\lib\net40\Logary.Targets.RabbitMQ.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
       </ItemGroup>
     </When>
   </Choose>

@@ -144,7 +144,7 @@ let validate ({ targets     = targets
                 rules       = rules
                 runtimeInfo = { logger = lgr }
                 metrics     = metrics } as conf) =
-  let rtarget r = r.target
+  let rtarget (r : Rule) = r.targetName
   let tnames = targets |> Map.fold (fun acc k _ -> k :: acc) [] |> Set.ofList
 
   let rules', targets' =

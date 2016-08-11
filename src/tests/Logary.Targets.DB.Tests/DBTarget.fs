@@ -32,8 +32,8 @@ module SQLiteDB =
 
   let private consoleAndDebugger =
     let targets =
-      [ Console.create Console.empty (PointName.ofSingle "console")
-        Debugger.create Debugger.empty (PointName.ofSingle "debugger") ]
+      [ Console.create Console.empty "console"
+        Debugger.create Debugger.empty "debugger" ]
       |> List.map (Target.init runtime)
       |> Job.conCollect
       |> run
@@ -118,7 +118,7 @@ let targetTests =
 
   let start connFac =
     let conf = DB.DBConf.create connFac
-    Target.init runtime (DB.create conf (PointName.ofSingle "db-target"))
+    Target.init runtime (DB.create conf "db-target")
     |> run
 
   testList "db target" [

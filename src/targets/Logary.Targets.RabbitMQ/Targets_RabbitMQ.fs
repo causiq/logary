@@ -359,7 +359,7 @@ let create conf name = TargetUtils.stdNamedTarget (Impl.loop conf) name
 /// Use with LogaryFactory.New( s => s.Target<RabbitMQ.Builder>() )
 type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
   let update conf' =
-    ! (callParent <| Builder(conf', callParent))
+    Builder(conf', callParent)
 
   member x.VHost(vhost) =
     update { conf with vHost = vhost }
@@ -419,6 +419,9 @@ type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
 
   member x.CompressGZip () =
     update { conf with compression = GZip }
+
+  member x.Done() =
+    ! (callParent x)
 
   // c'tor, always include this one in your code
   new(callParent : FactoryApi.ParentCallback<_>) =

@@ -89,20 +89,20 @@ let main argv =
   use logary =
     withLogaryManager "Logary.ConsoleApp" (
       withTargets [
-        Console.create Console.empty (PointName.ofSingle "console")
-        RabbitMQ.create rmqConf (PointName.ofSingle "rabbitmq")
+        Console.create Console.empty "console"
+        RabbitMQ.create rmqConf "rabbitmq"
       ] >>
       withMetrics [
         //WinPerfCounters.create (WinPerfCounters.Common.cpuTimeConf) "cpuTime" (Duration.FromMilliseconds 500L)
-        MetricConf.create (Duration.FromMilliseconds 500L) (PointName.ofSingle "cpu") Sample.cpuTime
-        MetricConf.create (Duration.FromMilliseconds 500L) (PointName.ofSingle "gpu") Sample.m6000s
+        MetricConf.create (Duration.FromMilliseconds 500L) "cpu" Sample.cpuTime
+        MetricConf.create (Duration.FromMilliseconds 500L) "gpu" Sample.m6000s
       ] >>
       withRules [
-        Rule.createForTarget (PointName.ofSingle "console")
-        Rule.createForTarget (PointName.ofSingle "rabbitmq")
+        Rule.createForTarget "console"
+        Rule.createForTarget "rabbitmq"
       ] >>
       withInternalTargets Info [
-        Console.create Console.empty (PointName.ofSingle "console")
+        Console.create Console.empty "console"
       ]
       >> run
     )

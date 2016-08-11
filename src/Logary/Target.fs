@@ -60,7 +60,7 @@ type TargetConf =
 /// 'API helper' method for flowing the target through
 /// a configurator factory that is then used to change the
 /// TargetConf value that is returned.
-let confTarget name (factory : PointName -> TargetConf) =
+let confTarget name (factory : string -> TargetConf) =
   factory name
 
 /// Initialises the target with metadata and a target configuration, yielding a
@@ -103,14 +103,15 @@ module TargetUtils =
   /// Create a new standard named target, with no particular namespace,
   /// given a job function and a name for the target.
   let stdNamedTarget (loop : RuntimeInfo -> RingBuffer<_> -> Ch<IVar<unit>> -> Job<unit>) name : TargetConf =
-    { name = name
+    let name' = PointName.parse name
+    { name = name'
       initer = fun metadata -> job {
         let! requests = RingBuffer.create 500u
         let shutdown = Ch ()
         return { server   = loop metadata requests shutdown
                  requests = requests
                  shutdown = shutdown
-                 name     = name }
+                 name     = name' }
       }
     }
 
@@ -143,7 +144,7 @@ module FactoryApi =
   type SpecificTargetConf =
     /// Build the target configuration from a name (and previously called
     /// methods on the instance behind the interface).
-    abstract Build : PointName -> TargetConf
+    abstract Build : string -> TargetConf
 
   /// You cannot supply your own implementation of this interface; its aim is
   /// not to provide Liskov substitution, but rather to guide you to use the
