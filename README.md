@@ -826,11 +826,9 @@ Why Logary instead of one of the classic logging frameworks?
  - Better/more extensive Rule-based hierarchies
  - Targets can be decoupled from the network and Ack is a first-level primitive
  - You get back an `Alt<Promise<unit>>` that you can use to synchronise your calling code for when the log message is durable; you can't do this with NLog or log4net
- - Your targets have been properly implemented (no more YoLo coding)
  - There's an object model you can use from the calling code
- - Logary is F#
+ - Logary is F#, so it's easier to keep bug-free than other languages would.
  - Logary doesn't keep static state around; easy to refactor, easy to extend
- - and so on...
 
 ## Rutta
 
