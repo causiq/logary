@@ -74,12 +74,12 @@ GITHUB
   remote: haf/YoLo
     YoLo.fs (c8cab523cd9cc30d3a5a450249de561e5069dc6d)
   remote: haf/expecto-patronum
-    ExpectoPatronum/Assert.fs (45ad4c524e16190ad105676f925f1e0bf09fa8f0)
+    ExpectoPatronum/Assert.fs (576e0332c96af83373631c1a9f506b16050cf653)
   remote: logary/RingBuffer
     RingBuffer.fs (4557d607737e748b54eb6de3ec5e5cd02247b2a5)
       Hopac
   remote: logary/logary
-    src/Logary.Facade/Facade.fs (cc6dd306cd694da549c892bafe2a3d9af367492e)
+    src/Logary.Facade/Facade.fs (ca2b39fc7d480b2abcf1fb8d1099ce92b2c123a2)
 GROUP Examples
 REDIRECTS: ON
 FRAMEWORK: >= NET45
