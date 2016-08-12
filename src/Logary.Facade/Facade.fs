@@ -298,7 +298,7 @@ module internal Formatting =
     let formatFields (ignored : Set<string>) (fields : Map<string, obj>) =
       if not (Map.isEmpty fields) then
         fields
-        |> Seq.filter (fun (KeyValue (k, v)) -> not (ignored |> Set.contains k))
+        |> Seq.filter (fun (KeyValue (k, _)) -> not (ignored |> Set.contains k))
         |> Seq.map (fun (KeyValue (k, v)) -> sprintf "\n - %s: %O" k v)
         |> String.concat ""
       else
