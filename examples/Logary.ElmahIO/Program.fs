@@ -26,7 +26,7 @@ let main argv =
     withLogaryManager "Logary.ElmahIO" (
       withTargets [
         Console.create Console.empty "console"
-        ElmahIO.create { logId = "GUID_HERE" } "elmah.io"
+        ElmahIO.create { logId = envForce "ELMAH_IO_LOG_ID" Guid.Parse } "elmah.io"
       ] >>
       withRules [
         Rule.createForTarget "console"
