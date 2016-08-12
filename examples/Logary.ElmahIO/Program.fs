@@ -32,9 +32,6 @@ let main argv =
         Rule.createForTarget "console"
         Rule.createForTarget "elmah.io"
       ]
-      withInternalTargets Info [
-        Console.create Console.empty "console"
-      ]
       >> run
     )
     |> run
