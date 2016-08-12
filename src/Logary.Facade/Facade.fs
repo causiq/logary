@@ -277,11 +277,11 @@ module internal Formatting =
         let _, _, _, builder =
           matches |> Seq.fold folder (matches.Length, 0, 0, StringBuilder())
 
-        matches |> List.map (fun (name, _, _) -> name),
+        matches |> List.map (fun (name, _, _) -> name) |> Set.ofList,
         if builder.Length = 0 then template else builder.ToString()
 
       | Gauge (value, units) ->
-        [],
+        Set.empty,
         sprintf "%i %s" value units
 
     let formatName (name : string[]) =
@@ -295,10 +295,10 @@ module internal Formatting =
       | Some ex ->
         " exn:\n" + ex.ToString()
 
-    let formatFields ignored (fields : Map<string, obj>) =
+    let formatFields (ignored : Set<string>) (fields : Map<string, obj>) =
       if not (Map.isEmpty fields) then
         fields
-        |> Seq.filter (fun (KeyValue (k, v)) -> not (ignored |> List.contains k))
+        |> Seq.filter (fun (KeyValue (k, v)) -> not (ignored |> Set.contains k))
         |> Seq.map (fun (KeyValue (k, v)) -> sprintf "\n - %s: %O" k v)
         |> String.concat ""
       else
