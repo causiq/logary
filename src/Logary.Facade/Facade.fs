@@ -554,6 +554,6 @@ module Message =
       
       | Some errors ->
         let arr : obj list = unbox errors
-        x.fields |> Map.remove "errors" |> Map.add "errors" (box (box ex :: arr))
+        x.fields |> Map.add "errors" (box (box ex :: arr))
 
     { x with fields = fields' }
