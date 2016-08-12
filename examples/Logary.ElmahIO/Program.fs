@@ -13,8 +13,7 @@ open Hopac
 open Logary
 open Logary.Configuration
 open Logary.Targets
-
-
+open Logary.Targets.ElmahIO
 open System.Threading
 
 [<EntryPoint>]
@@ -23,10 +22,13 @@ let main argv =
   use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
 
   use logary =
+    let elmahioConf =
+      { logId = Guid.Parse(Environment.GetEnvironmentVariable("ELMAH_IO_LOG_ID")) }
+
     withLogaryManager "Logary.ElmahIO" (
       withTargets [
         Console.create Console.empty "console"
-        ElmahIO.create { logId = envForce "ELMAH_IO_LOG_ID" Guid.Parse } "elmah.io"
+        ElmahIO.create elmahioConf "elmah.io"
       ] >>
       withRules [
         Rule.createForTarget "console"
