@@ -37,40 +37,6 @@
   <PropertyGroup Condition="'$(VisualStudioVersion)' == '10.0' OR '$(VisualStudioVersion)' == '11.0'">
     <FSharpTargetsPath>$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets</FSharpTargetsPath>
   </PropertyGroup>
-  <ItemGroup>
-    <Compile Include="..\..\..\paket-files\haf\expecto-patronum\ExpectoPatronum\Assert.fs">
-      <Paket>True</Paket>
-      <Link>paket-files/Assert.fs</Link>
-    </Compile>
-    <Compile Include="..\..\..\paket-files\haf\YoLo\YoLo.fs">
-      <Paket>True</Paket>
-      <Link>paket-files/YoLo.fs</Link>
-    </Compile>
-    <Reference Include="mscorlib" />
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Numerics" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Program.fs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="paket.references" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\adapters\Logary.Adapters.Facade\Logary.Adapters.Facade.fsproj">
-      <Project>{15226ED2-C66B-4AA2-B15D-ACFF8A45454A}</Project>
-      <Name>Logary.Adapters.Facade</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\Logary\Logary.fsproj">
-      <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
-      <Name>Logary</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\examples\Libryy\Libryy.fsproj">
-      <Project>{A64CF176-66D8-459F-BF45-AF5B5C3098A2}</Project>
-      <Name>Libryy</Name>
-    </ProjectReference>
-  </ItemGroup>
   <Import Project="$(FSharpTargetsPath)" />
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3')">
@@ -151,4 +117,35 @@
       </ItemGroup>
     </When>
   </Choose>
+  <ItemGroup>
+    <Compile Include="..\..\..\paket-files\haf\expecto-patronum\ExpectoPatronum\Assert.fs">
+      <Paket>True</Paket>
+      <Link>paket-files/Assert.fs</Link>
+    </Compile>
+    <Compile Include="..\..\..\paket-files\haf\YoLo\YoLo.fs">
+      <Paket>True</Paket>
+      <Link>paket-files/YoLo.fs</Link>
+    </Compile>
+    <Compile Include="Program.fs" />
+    <None Include="paket.references" />
+    <Content Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+    <ProjectReference Include="..\..\adapters\Logary.Adapters.Facade\Logary.Adapters.Facade.fsproj">
+      <Project>{15226ED2-C66B-4AA2-B15D-ACFF8A45454A}</Project>
+      <Name>Logary.Adapters.Facade</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Logary\Logary.fsproj">
+      <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
+      <Name>Logary</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\examples\Libryy\Libryy.fsproj">
+      <Project>{A64CF176-66D8-459F-BF45-AF5B5C3098A2}</Project>
+      <Name>Libryy</Name>
+    </ProjectReference>
+  </ItemGroup>
 </Project>
