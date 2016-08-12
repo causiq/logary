@@ -3,7 +3,7 @@
 open Hopac
 open Logary
 
-/// Some mapping functions for Hawk LogLevels
+/// Some mapping functions for FsSql LogLevels
 module internal FsSqlLogLevel =
   open System
 
