@@ -13,10 +13,10 @@ Logary is a high-performance, semantic logging, health and metrics library for
  - Full support for Semantic Logging
  - F# idiomatic code
  - Using C#? Then `Logary.CSharp` is for you!
- - Looking for an F# alternative to LibLog?
-   [`Logary.Facade`](#using-logary-in-a-library) is for you.
+ - Looking for an F# alternative to [`LibLog`](https://github.com/damianh/LibLog)?
+   Jump to [`Logary.Facade`](#using-logary-in-a-library).
  - Never throws exceptions
- - Low latency logging – evaluate your Message only if level is met
+ - Low overhead logging – evaluate your Message only if a level is switched on
  - Supports [Hierarchical logging](#rule--hierarchical-logging)
  - Add metrics to your service/app!
  - A wide range of adapters and targets to choose from!
@@ -151,7 +151,7 @@ outputs, *targets*. Further, its *services* run as their own processes or in
 [Suave](https://suave.io/?utm_source=github&utm_campaign=logary).
 
  - **Logary** – the main logging and metrics library. Your app depends on this.
- - Logary.CSharp - C# facade which makes it more *object oriented*.
+ - Logary.CSharp - C# facade that makes it more *object oriented*.
  - Logary.Facade - single file to use in your F# library.
  - **Logary.Targets** (from *Logary* into DBs and monitoring infra):
    * DB – write logs into an arbitrary database: SQL Server, MySQL, PostgreSQL, sqlite and so on...
@@ -191,26 +191,26 @@ outputs, *targets*. Further, its *services* run as their own processes or in
      3. *Routes* `Messages` to Targets, listening on a ZeroMQ SUB or PULL socket.
      <blockquote>
        Note that the shipping feature is its own target as well. Why? So that you can send logs in an efficient,
-       high-performance manner between machines, without going through a potentially destructure
+       high-performance manner between machines, without going through a potentially destructive
        mapping to another serialisation format or through another log router (Heka, Logstash) which
        also may change your data structure.
      </blockquote>
-   * SQLServerHealth – a service that keep track of IO/latency performance for highly loaded SQL Servers
+   * SQLServerHealth – a service that keeps track of IO/latency performance for highly loaded SQL Servers
    * SuaveReporter – a well-maintained Suave WebPart that you run as a part of your Suave
-     server, which enables you to use [logary-js](https://www.npmjs.com/package/logary-js).
+     server, that enables you to use [logary-js](https://www.npmjs.com/package/logary-js).
 
 ## Tutorial and Data Model
 
-The core type is **`Message`** which is the smallest unit you can log. It has
-three sorts of point values: `Event`, `Gauge` and `Derived`. An event is
+The core type is **`Message`**, which is the smallest unit you can log. It has
+three kinds of point values: `Event`, `Gauge` and `Derived`. An event is
 normally a single line of code and carries a template string. E.g. "User
 logged in" is an event's template string, and the `Message` would have a field
 "user" => "haf".
 
 ### PointName
 
-A point is a location where you send a metric or event from. Usually a module
-and in mature projects you also often have the name of the function that you log
+A point is a location where you send a metric or event from. Usually a module;
+in mature projects you also often have the name of the function that you log
 from as a part of the point name.
 
 ### PointValue.Event
@@ -238,7 +238,8 @@ which allows Messages of level `Debug` to go through.
 A normal use-case for this is when you want to debug a particular module, by
 increasing the verbosity of its output (decreasing its log level).
 
-Rules are 'optimistic' by default in that if at least one (or more) rules match a given `Message`, the most "open" will decide if it gets logged. So if you have two rules:
+Rules are 'optimistic' by default in that if at least one (or more) rules match a given `Message`,
+the most "open" will decide if it gets logged. So if you have two rules:
 
 ```fsharp
 withRules [
@@ -247,7 +248,7 @@ withRules [
 ]
 ```
 
-Then the `Debug` level will "win" and show log output. More general, a `Rule`
+Then the `Debug` level will "win" and show log output. More generally, a `Rule`
 looks like this:
 
 ```fsharp
@@ -266,32 +267,32 @@ type Rule =
     messageFilter : MessageFilter }
 ```
 
-And you can find the configuration on the module with the same name. The
-`Rule.empty` value is one where you accept any logs from anything.
+You can find the configuration in the module with the same name. The
+`Rule.empty` value is a null one that accepts all logs from anything.
 
 ### Log Level
 
-The highest log level is `Fatal` which should be reserved for things that make
+The highest log level is `Fatal`, which should be reserved for things that make
 your service/process crash. Things like; "my disk is full and I'm a database
-trying to start", or "I'm a 2-tier service built with a database, which I cannot
+trying to start", or "I'm a 2-tier service built with a database, that I cannot
 do any work without" warrant the `Fatal` level.
 
-At this level human being are normally directly alerted.
+At this level human beings are normally directly alerted.
 
-The next level is `Error` which should be reserved for what you consider to be
+The next level is `Error`, which should be reserved for what you consider to be
 edge-cases. E.g. if the data received from a socket is corrupt, or there was an
 unhandled exception that you as a programmer did not have in your mental model
 while writing the code. These events should be logged at the `Error` level.
 
 At this level human beings are normally directly alerted.
 
-`Warn` are for things like 100 failed password attempts within 5 minutes, for
+`Warn` is for things like 100 failed password attempts within 5 minutes, for
 one of your users, or a temporary network glitch while communicating with a
 "resource" such as your database.
 
-If these events for an anomaly and persist over time, humans may be alerted.
+If these events for an anomaly persist over time, humans may be alerted.
 
-At `Info` level, I like to put events and gauges that measure company- relevant
+At `Info` level, I like to put events and gauges that measure company-relevant
 stuff, like when users sign in, sign up, an integration has to perform a retry
 or a service was started/restarted.
 
@@ -304,7 +305,7 @@ metrics at this level.
 
 Message fields may be interpolated (injected) into the template string of an
 `Event`. The word "template" is used, because the template string should not
-vary between requests/users, but be a 'static' string, which can be hashed and
+vary between requests/users, but be a 'static' string, that can be hashed and
 used for grouping in your logging infrastructure.
 
 When reading legacy code, you'll often find code like:
@@ -351,7 +352,7 @@ let logInUser () =
 ```
 
 If you want to name your logger with a specific name, you can use
-`Logging.getLoggerByName` instead. (Different for Facade file)
+`Logging.getLoggerByName` instead. (This is different for the Facade file)
 
 ### Logging from a class
 
@@ -409,24 +410,24 @@ Message.event "Hi {user}!"
 |> Message.setFieldValue "user" "haf"
 ```
 
-And then targets that support templating will output them 'filled out'.
+This enables targets that support templating to output them 'filled out'.
 
 Message Templates are a superset of standard .NET format strings, so any format
 string acceptable to string.Format() will also be correctly processed by
 FsMessageTemplates.
 
- * Property names are written between { and } brackets
- * Brackets can be escaped by doubling them, e.g. {{ will be rendered as {
- * Formats that use numeric property names, like {0} and {1} exclusively, will
-   be matched with the Format method's parameters by treating the property names
-   as indexes; this is identical to string.Format()'s behaviour
+ * Property names are written between `{` and `}` braces
+ * Braces can be escaped by doubling them, e.g. `{{` will be rendered as `{`
+ * Formats that use numeric property names, like `{0}` and `{1}` exclusively, will
+   be matched with the `Format` method's parameters by treating the property names
+   as indexes; this is identical to `string.Format()`'s behaviour
  * If any of the property names are non-numeric, then all property names will be
-   matched from left-to-right with the Format method's parameters
- * Property names may be prefixed with an optional operator, @ or $, to control
+   matched from left-to-right with the `Format` method's parameters
+ * Property names may be prefixed with an optional operator, `@` or `$`, to control
    how the property is serialised
- * Property names may be suffixed with an optional format, e.g. :000, to control
+ * Property names may be suffixed with an optional format, e.g. `:000`, to control
    how the property is rendered; these format strings behave exactly as their
-   counterparts within the string.Format() syntax
+   counterparts within the `string.Format()` syntax
 
 ### Ticked metrics and gauges – random walk
 
@@ -438,8 +439,8 @@ metric's computation function at a regular interval, and also has provisions
 for sending your metric other metrics, so that you can chain metrics
 together.
 
-The `ticker` is where you should return Messages (Gauge or Derived values) and
-keep track of how 'far long' you've computed, as to avoid returning the same
+The `ticker` is where you return Messages (Gauge or Derived values) to
+keep track of how 'far along' you've reached, in order to avoid returning the same
 messages multiple times.
 
 The `reducer` is what allows your metric to receive values from other metrics,
@@ -459,7 +460,7 @@ Now you can start thinking about what the metric should do and implement the
 `ticker : 'state -> 'state * Message list`:
 
 ```fsharp
-// we'll assume the state is the Random instance an previously outputted
+// we'll assume the state is the Random instance and previously outputted
 // value:
 let ticker (rnd : Random, prevValue) =
 
@@ -497,7 +498,7 @@ let state =
   rnd, rnd.NextDouble()
 ```
 
-Let's write it all up into a Metric which the consuming programmer is
+Let's write it all up into a Metric that the consuming programmer is
 free to name as she pleases:
 
 ```fsharp
@@ -545,7 +546,7 @@ let main argv =
   0
 ```
 
-Now when run, your metric will feed a random walk into InfluxDb, listening on 192.168.99.100.
+Now when run, your metric will feed a random walk into InfluxDb listening on `192.168.99.100`.
 
 ### Derived metrics
 
@@ -573,7 +574,7 @@ By wrapping it up like this, you can drastically reduce the amount of code
 a given service sends by pre-computing much of it.
 
 It's also a good sample of reservoir usage; a fancy name of saying that
-it's an algorithm which works on more than one gauge at a time, to produce
+it's an algorithm that works on more than one gauge at a time, to produce
 a derived metric.
 
 **More documentation on derived metrics to follow!** (including how to register
@@ -583,9 +584,9 @@ them in Logary).
 
 The above guide serves to explain how you use Logary in a service or
 application, but what if you have a library and don't want to take a dependency
-on a particular logging framework?
+on a specific logging framework, or logging abstraction/indirection library ?
 
-For this use-case Logary provides F# facades that you can reference using paket.
+For this use-case, Logary provides F# facades that you can easily reference using Paket.
 I've created a [sample
 library](https://github.com/logary/logary/tree/master/examples/Libryy) for you
 to have a look at. Note how `paket.references` specifies `Facade.fs` as a file
@@ -595,7 +596,7 @@ dependency. The corresponding `paket.dependencies` contains the entry below.
 github logary/logary src/Logary.Facade/Facade.fs
 ```
 
-In my Rakefile I have a small replacement script, which sets the library's
+In my Rakefile I have a small replacement script that sets the library's
 namespace inside the referenced `Facade.fs` file.
 
 ```bash
@@ -613,11 +614,11 @@ Target "LoggingFile" (fun _ ->
 )
 ```
 
-Now add to `paket.references` (replace `Utils` with the folder (or nothing) of
-your choice):
+Now add to `paket.references` (replace `Logging` with a folder name of your choice, 
+or remove to have Paket not place the (single) file in a folder within the project):
 
 ```
-File: Facade.fs Utils
+File: Facade.fs Logging
 ```
 
 Inside the library you use the logger just like you'd expect:
@@ -632,7 +633,7 @@ open Libryy.Logging.Message
 let work (logger : Logger) =
   logger.warn (
     eventX "Hey {user}!"
-    >> setField"user" "haf"
+    >> setField "user" "haf"
     >> setSingleName "Libryy.Core.work"
     >> setTimestamp 1470047883029045000L)
 
@@ -658,7 +659,7 @@ let work () =
   48
 ```
 
-The service/application which *does* reference the `Logary` nuget and the `Facade` one:
+Any service/application that uses `Libryy` *does* reference the `Logary` and `Facade` nugets, e.g.:
 
 ```
 source https://www.nuget.org/api/v2
@@ -666,8 +667,8 @@ nuget Logary
 nuget Logary.Adapters.Facade
 ```
 
-The calling service/application then creates a new Logger specifically for the
-library which it aims to ship/extract logs from.
+The calling service/application then creates a new `Logger` specifically for the
+library that it aims to ship/extract logs from.
 
 ```fsharp
 // opens ...
@@ -697,10 +698,10 @@ W 2016-08-01T10:38:03.0290450+00:00: Hey haf! [Libryy.Core.work]
   user => "haf"
 ```
 
-By default, the Facade has a global console logger that logs at Info level.
+By default, the Facade has a global console logger that logs at `Info` level.
 
 The reason for this is that people normally expect output to come in the
-'just installed' case, without hunting for \*.Logging.Global.initialise first.
+'just installed' case, without hunting for `\*.Logging.Global.initialise` first.
 
 ### How do the `error` and `log` methods differ?
 
@@ -716,7 +717,7 @@ your logger is greater or equal to `error`.
 If we were to expand the point-free style (eta-expansion), it would look like
 this: `logger.error (fun level -> Message.eventX "templ" level)`, i.e. what you
 pass to the `error` extension method is a factory function, and the `Message`
-module provides `gauge`, `event` and `eventX` to create the two sorts of
+module provides `gauge`, `event` and `eventX` to create the different kinds of
 messages.
 
 ### Passing more information
@@ -759,7 +760,7 @@ Facade.
  - [Facade Adapter](https://github.com/logary/logary/blob/master/src/adapters/Logary.Adapters.Facade/Logary.Adapters.Facade.fs)
    – the facade adapter (advanced code)
  - [Facade Adapter unit tests](https://github.com/logary/logary/blob/master/src/tests/Logary.Adapters.Facade.Tests/Program.fs)
-   – the unit tests for the adapter which are also good documentation on how to
+   – the unit tests for the adapter, which are also good documentation on how to
    use it.
 
 ## RabbitMQ Target
@@ -826,12 +827,13 @@ Why Logary instead of one of the classic logging frameworks?
  - More targets to choose from
  - Larger community of target writers
  - Easier to write targets; they can crash and that's handled by Logary internally
- - Support for zero-dependency usage through Logary.Facade
- - Better/more extensive Rule-based hierarchies
+ - Support for zero-dependency usage through `Logary.Facade`
+ - Better/more extensive `Rule`-based hierarchies
  - Targets can be decoupled from the network and Ack is a first-level primitive
- - You get back an `Alt<Promise<unit>>` that you can use to synchronise your calling code for when the log message is durable; you can't do this with NLog or log4net
+ - You get back an `Alt<Promise<unit>>` that you can use to synchronise your calling code
+   for when the log message is required to be durable; you can't do this with NLog or log4net
  - There's an object model you can use from the calling code
- - Logary is F#, so it's easier to keep bug-free than other languages would.
+ - Logary is F#, so it's easier to keep bug-free relative to many other languages
  - Logary doesn't keep static state around; easy to refactor, easy to extend
 
 ## Rutta
@@ -858,7 +860,7 @@ Bindings look may look like this:
 
 [ZMQ socket reference](http://api.zeromq.org/3-2:zmq-socket)
 
-On Windows you do `./rutta.exe -- --pub-to ...` - note the twp extra dashes
+On Windows you do `./rutta.exe -- --pub-to ...` - note the two extra dashes
 before the parameter list. This is to avoid Topshelf munching the arguments
 away.
 
@@ -892,7 +894,7 @@ During network splits, the sending XPUSH socket drops messages.
 
 ### The Proxy – from Shipper to Router
 
-Proxies take inputs from Shippers or other Proxies which publish Messages
+Proxies take inputs from Shippers or other Proxies that publish Messages
 using XPUB sockets:
 
 ``` bash
@@ -952,7 +954,7 @@ Target that pushes the received data.
 
 **Serialisation** for Rutta is done using
 [FsPickler](https://nessos.github.io/FsPickler/tutorial.html#Picklers-and-Pickler-combinators).
-Since FsPickler uses a binary format, it should be assume to break for any given
+Since FsPickler uses a binary format, it should be assumed to break for any given
 minor upgrade of FsPickler.
 
 Each ZMQ message contains a Message (see DataModel.fs) in the binary form
@@ -994,7 +996,7 @@ tools/paket.exe install --redirects --clean-redirects --createnewbindingfiles`
 ### Writing a new target
 
  1. Create a new .net 4.5 class library in F#, under `target` and add that to Logary.sln.
- 1. Copy the code from Logary's Target_Noop.fs, which contains the basic structure.
+ 1. Copy the code from Logary's `Target_Noop.fs`, which contains the basic structure.
     There are more docs in this file.
 
 ## Commercial Targets
