@@ -14,7 +14,7 @@ open Elmah.Io.Client
 /// https://elmah.io/
 type ElmahIOConf =
   { /// You can get the log id from the https://elmah.io/dashboard/ page by clicking
-    /// on it and then taking the logId from the address bar.
+    /// on the settings icon and then taking the logId from the tutorial.
     logId : Guid }
 
 let empty = { logId = Guid.Empty }
