@@ -1,13 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using Logary.Configuration;
-using Logary.Targets;
 
-namespace Logary.ElmahIO.CSharp
+namespace Logary.ElmahIO.CSharpExample
 {
     public class Program
     {

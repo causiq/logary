@@ -130,7 +130,7 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.ElmahIO.Test
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.ElmahIO", "..\examples\Logary.ElmahIO\Logary.ElmahIO.fsproj", "{B8C08E1B-1F53-4AC8-864C-7A453D151519}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logary.ElmahIO.CSharp", "..\examples\Logary.ElmahIO.CSharp\Logary.ElmahIO.CSharp.csproj", "{72F93478-DE52-4E58-8F5A-90EF53016674}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logary.ElmahIO.CSharpExample", "..\examples\Logary.ElmahIO.CSharpExample\Logary.ElmahIO.CSharpExample.csproj", "{72F93478-DE52-4E58-8F5A-90EF53016674}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
