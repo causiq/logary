@@ -56,3 +56,4 @@ group Examples
     nuget Logary.Targets.RabbitMQ
     nuget Logary.Targets.DB
     nuget Logary.Targets.Logstash
+    nuget Logary.Targets.ElmahIO
