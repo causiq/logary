@@ -89,7 +89,25 @@ Install-Package Logary
       * [Want your SaaS\-logging service as a Target?](#want-your-saas-logging-service-as-a-target)
     * [License](#license)
 
-## Hello World
+## Hello World (C#)
+
+```csharp
+// NuGet: Install-Package Logary
+string loggerId = "Logary.MyLogger";
+using (var logary = Logary.Configuration.LogaryFactory.New(loggerId,
+    // You could define multiple targets. For HelloWorld, we use only console:
+    with => with.Target<Logary.Targets.TextWriter.Builder>(
+        "myFirstTarget",conf => conf.Target.WriteTo(System.Console.Out, System.Console.Error)
+        )).Result)
+{
+    // Then let's log a message. For HelloWorld, we log a string:
+    var logger = logary.getLogger(Logary.PointNameModule.Parse(loggerId));
+    logger.logSimple(Logary.MessageModule.Event(Logary.LogLevel.Info, "Hello World!"));
+    System.Console.ReadLine();
+}
+```
+
+## Hello World (F#)
 
 ```fsharp
 open System
