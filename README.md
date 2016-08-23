@@ -632,7 +632,7 @@ Target "LoggingFile" (fun _ ->
 )
 ```
 
-Now add to `paket.references` (replace `Logging` with a folder name of your choice, 
+Now add to `paket.references` (replace `Logging` with a folder name of your choice,
 or remove to have Paket not place the (single) file in a folder within the project):
 
 ```
