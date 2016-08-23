@@ -1074,8 +1074,13 @@ Logging and Metrics into your daily operations.
  - Supports custom 'enrichers' to let you specify e.g. user, teams, recipients,
    tags, entity and notes, to name a few.
  - Ready to use from both F# and C#
+ - Use derived metrics to create load-level alerts
+ - Stay on top of your infrastructure
+ - Avoid blacklisting your transactional e-mail service
 
 [Purchase today](mailto:henrik@haf.se?subject=Logary%20OpsGenie%20Target)
+
+This assumes you have an account at [OpsGenie](https://www.opsgenie.com/).
 
 ### elmah.io
 
