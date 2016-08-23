@@ -45,7 +45,8 @@ Install-Package Logary
     * [Why?](#why)
     * [Install it](#install-it)
     * [Table of Contents](#table-of-contents)
-    * [Hello World](#hello-world)
+    * [Hello World (C\#)](#hello-world-c)
+    * [Hello World (F\#)](#hello-world-f)
     * [Overview](#overview)
     * [Tutorial and Data Model](#tutorial-and-data-model)
       * [PointName](#pointname)
@@ -85,7 +86,12 @@ Install-Package Logary
     * [Commercial Targets](#commercial-targets)
       * [Mixpanel](#mixpanel)
         * [Features](#features)
+        * [What's included?](#whats-included)
+      * [OpsGenie](#opsgenie)
+        * [Features](#features-1)
       * [elmah\.io](#elmahio)
+        * [Usage](#usage-1)
+        * [What does it look like?](#what-does-it-look-like)
       * [Want your SaaS\-logging service as a Target?](#want-your-saas-logging-service-as-a-target)
     * [License](#license)
 
@@ -1049,6 +1055,27 @@ that it can be debugged like the rest of Logary.
 [Send an e-mail to purchase](mailto:henrik@haf.se?subject=Logary%20Mixpanel%20Target)
 
 This assumes you have an account at [Mixpanel](https://mixpanel.com).
+
+### OpsGenie
+
+![OpsGenie screenshot](./tools/opsgenie-screenshot.png "Alerting and escalation")
+
+You can't rely on any one notification method for critical alerts. Get alert
+notifications via iOS & Android push, SMS, and phone calls; escalate
+automatically to team members if the alert is not acknowledged.
+
+The Logary target for OpsGenie ensures that you can bring in your HealthChecks,
+Logging and Metrics into your daily operations.
+
+#### Features
+
+ - Connect using your own API key
+ - Make Logary events into new alerts
+ - Supports custom 'enrichers' to let you specify e.g. user, teams, recipients,
+   tags, entity and notes, to name a few.
+ - Ready to use from both F# and C#
+
+[Purchase today](mailto:henrik@haf.se?subject=Logary%20OpsGenie%20Target)
 
 ### elmah.io
 
