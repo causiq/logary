@@ -991,6 +991,8 @@ or file a PR demonstrating your work.
 
 ## Building
 
+[![Logary on Windows](https://ci.appveyor.com/api/projects/status/uf2n4l6a0tp7jq4p?svg=true)](https://ci.appveyor.com/project/haf/logary) [![Logary on Linux](https://travis-ci.org/logary/logary.svg?branch=master)](https://travis-ci.org/logary/logary)
+
 Assuming you have Ruby 1.9.3 or later installed:
 
 ``` bash
