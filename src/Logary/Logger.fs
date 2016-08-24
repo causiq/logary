@@ -87,7 +87,11 @@ module Logger =
   /// instead start the Alt on the Hopac scheduler.
   [<CompiledName "LogSimple"; Extension>]
   let logSimple (logger : Logger) msg : unit =
-    log logger msg |> start
+    Alt.choose [
+      log logger msg
+      timeOutMillis 5000
+    ]
+    |> start
 
   [<CompiledName "LogWithAck"; Extension>]
   let logWithAck (logger : Logger) msg : Alt<Promise<unit>> =
