@@ -126,7 +126,11 @@ Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.ElmahIO", "t
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logary.CSharpExample", "..\examples\Logary.CSharpExample\Logary.CSharpExample.csproj", "{1C1A1003-40E3-4C79-A24B-0FC8667E6D28}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.ElmahIO.Tests", "tests\Logary.Targets.ElmahIO.Tests\Logary.Targets.ElmahIO.Tests.fsproj", "{E243DC23-2B01-4050-AB68-8354D00F354D}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.ElmahIO.Tests", "tests\Logary.Targets.ElmahIO.Tests\Logary.Targets.ElmahIO.Tests.fsproj", "{E243DC23-2B01-4050-AB68-8354D00F354D}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.ElmahIO", "..\examples\Logary.ElmahIO\Logary.ElmahIO.fsproj", "{B8C08E1B-1F53-4AC8-864C-7A453D151519}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logary.ElmahIO.CSharpExample", "..\examples\Logary.ElmahIO.CSharpExample\Logary.ElmahIO.CSharpExample.csproj", "{72F93478-DE52-4E58-8F5A-90EF53016674}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -334,6 +338,14 @@ Global
 		{E243DC23-2B01-4050-AB68-8354D00F354D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E243DC23-2B01-4050-AB68-8354D00F354D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E243DC23-2B01-4050-AB68-8354D00F354D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8C08E1B-1F53-4AC8-864C-7A453D151519}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8C08E1B-1F53-4AC8-864C-7A453D151519}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8C08E1B-1F53-4AC8-864C-7A453D151519}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8C08E1B-1F53-4AC8-864C-7A453D151519}.Release|Any CPU.Build.0 = Release|Any CPU
+		{72F93478-DE52-4E58-8F5A-90EF53016674}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{72F93478-DE52-4E58-8F5A-90EF53016674}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{72F93478-DE52-4E58-8F5A-90EF53016674}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{72F93478-DE52-4E58-8F5A-90EF53016674}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -389,5 +401,7 @@ Global
 		{BEE0293D-C090-48A4-867D-5B40F4C8D35F} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{1C1A1003-40E3-4C79-A24B-0FC8667E6D28} = {60FC06B0-58BB-4D96-96FE-FD92EA4BAA5E}
 		{E243DC23-2B01-4050-AB68-8354D00F354D} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
+		{B8C08E1B-1F53-4AC8-864C-7A453D151519} = {60FC06B0-58BB-4D96-96FE-FD92EA4BAA5E}
+		{72F93478-DE52-4E58-8F5A-90EF53016674} = {60FC06B0-58BB-4D96-96FE-FD92EA4BAA5E}
 	EndGlobalSection
 EndGlobal
