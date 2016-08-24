@@ -77,10 +77,10 @@ module Uri =
       converter v
 
   let parseConfig<'recordType> (emptyValue : 'recordType) uriString =
-    let argVals = 
+    let argVals =
       let uri = Uri uriString
 
-      let qVals = 
+      let qVals =
         uri.Query
         |> String.trimc '?'
         |> String.split '&'
@@ -98,17 +98,17 @@ module Uri =
         | Some v ->
           v |> convertTo typ
 
-        | None when String.equalsCaseInsensitve name "endpoint" 
+        | None when String.equalsCaseInsensitive name "endpoint"
                  && typ = typeof<Uri> ->
           let ub = UriBuilder uri
           let scheme' = if uri.Scheme.Contains("+") then uri.Scheme.Substring(uri.Scheme.IndexOf("+") + 1)
-                        else uri.Scheme 
+                        else uri.Scheme
           ub.Scheme <- scheme'
           ub.UserName <- ""
           ub.Password <- ""
           box ub.Uri
 
-        | None when String.equalsCaseInsensitve name "username" ->
+        | None when String.equalsCaseInsensitive name "username" ->
           match uri.UserInfo with
           | Info (user, _) ->
             box (Some user)
@@ -116,7 +116,7 @@ module Uri =
           | NoInfo ->
             defaultValue
 
-        | None when String.equalsCaseInsensitve name "password" ->
+        | None when String.equalsCaseInsensitive name "password" ->
           match uri.UserInfo with
           | Info (_, pass) ->
             box (Some pass)
