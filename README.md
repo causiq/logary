@@ -98,8 +98,12 @@ Install-Package Logary
       * [Getting MissingMethodException from Hopac\.Core](#getting-missingmethodexception-from-hopaccore)
       * [Is v4\.0\.x a stable version?](#is-v40x-a-stable-version)
       * [Isn't v4\.0\.x supposed to be API\-stable?](#isnt-v40x-supposed-to-be-api-stable)
+      * [Why does Logary depend on FParsec?](#why-does-logary-depend-on-fparsec)
+      * [Why do you depend on Hopac?](#why-do-you-depend-on-hopac)
+      * [How do I use Hopac from C\#?](#how-do-i-use-hopac-from-c)
+      * [What's logVerboseWithAck, logWithAck and how does it differ from logSimple?](#whats-logverbosewithack-logwithack-and-how-does-it-differ-from-logsimple)
+        * [logWithAck – so what's up with Promise?](#logwithack--so-whats-up-with-promise)
     * [License](#license)
-
 
 ## Hello World (C#)
 
