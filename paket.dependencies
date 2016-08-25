@@ -53,7 +53,6 @@ group Examples
     nuget Logary.CSharp
     nuget Logary.Targets.InfluxDb
     nuget Logary.Targets.ElasticSearch
-    nuget Logary.Targets.RabbitMQ
     nuget Logary.Targets.DB
     nuget Logary.Targets.Logstash
     nuget Logary.Targets.Elmah.Io
