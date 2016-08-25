@@ -93,7 +93,13 @@ Install-Package Logary
         * [Usage](#usage-1)
         * [What does it look like?](#what-does-it-look-like)
       * [Want your SaaS\-logging service as a Target?](#want-your-saas-logging-service-as-a-target)
+    * [FAQ](#faq)
+      * [Getting MissingMethodException from FSharp\.Core](#getting-missingmethodexception-from-fsharpcore)
+      * [Getting MissingMethodException from Hopac\.Core](#getting-missingmethodexception-from-hopaccore)
+      * [Is v4\.0\.x a stable version?](#is-v40x-a-stable-version)
+      * [Isn't v4\.0\.x supposed to be API\-stable?](#isnt-v40x-supposed-to-be-api-stable)
     * [License](#license)
+
 
 ## Hello World (C#)
 
@@ -1170,8 +1176,49 @@ Absolutely! You have two options;
     easy to use for your customers. I'll even write some Markdown/HTML-formatted
     docs for your site about how to use Logary with your target.
 
+## FAQ
+
+### Getting MissingMethodException from FSharp.Core
+
+You need to add a rebind to the latest F# version in your executable:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <runtime>
+    <assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">
+      <dependentAssembly>
+        <Paket>True</Paket>
+        <assemblyIdentity name="FSharp.Core" publicKeyToken="b03f5f7f11d50a3a" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-999.999.999.999" newVersion="4.4.0.0" />
+      </dependentAssembly>
+    </assemblyBinding>
+  </runtime>
+</configuration>
+```
+
+### Getting MissingMethodException from Hopac.Core
+
+Inspect the version specified in the [Logary package][nuget-logary] and ensure
+that you have that exact version installed. Hopac is currently pre-v1 so it is
+often doing breaking changes between versions.
+
+### Is v4.0.x a stable version?
+
+It's stable to run. The API is stable. We're still working the derived-metrics
+experience. We may introduce a few more ABI/API breakages before 4.0 RTM.
+
+
+### Isn't v4.0.x supposed to be API-stable?
+
+We're not doing pre-release versions because they make it impossible for other
+packages to be released as stable versions. But we need to work through Logary
+in production; as such you can imagine that qvitoo is taking the risk and cost
+of making v4.0 RTM as stable and reliable as can be.
+
 ## License
 
 [Apache 2.0][apache]
 
  [apache]: https://www.apache.org/licenses/LICENSE-2.0.html
+ [nuget-logary]: https://www.nuget.org/packages/Logary/
