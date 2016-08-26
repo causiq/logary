@@ -1,6 +1,7 @@
 ﻿namespace Logary
 
 open Hopac
+open System
 open System.Runtime.CompilerServices
 
 /// See the docs on Logger.log for a description on how Ack works in conjunction
@@ -82,14 +83,18 @@ module Logger =
   let log (logger : Logger) msg : Alt<unit> =
     logger.logWithAck (ensureName logger msg)
     |> Alt.afterFun ignore
- 
+
+  let private simpleTimeout msg =
+    timeOutMillis 5000
+    |> Alt.afterFun (fun msg -> Console.Error.WriteLine("Log message timed out\nMsg: {0}", msg))
+
   /// Write a message but don't wait for the message to finish being logged,
   /// instead start the Alt on the Hopac scheduler.
   [<CompiledName "LogSimple"; Extension>]
   let logSimple (logger : Logger) msg : unit =
     Alt.choose [
       log logger msg
-      timeOutMillis 5000
+      simpleTimeout msg
     ]
     |> start
 
