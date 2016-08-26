@@ -3,7 +3,7 @@ language: csharp
 
 mono:
   - 4.2.3
-  - 4.6.0
+  - 4.4.2
   - weekly
   - latest
 
@@ -19,6 +19,5 @@ script:
 
 matrix:
   allow_failures:
-   - mono: 4.4.1
    - mono: latest
    - mono: weekly
