@@ -851,7 +851,31 @@ Here's how you could configure the RabbitMQ target with C#:
 )
 ```
 
-Have a look at [this example](https://github.com/logary/logary/tree/master/examples/Logary.CSharpExample) for more details.
+Have a look at [this
+example](https://github.com/logary/logary/tree/master/examples/Logary.CSharpExample)
+an example of how to configure the RabbitMQ target.
+
+Here's how to replace your loggers:
+
+```csharp
+using NLog;
+// snip
+private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
+```
+
+With:
+
+```fsharp
+using Logary;
+// snip
+private static readonly Logger _logger = Logging.GetCurrentLogger();
+```
+
+You can then use the extension methods on `Logger`, available through the nuget
+called `Logary.CSharp`.
+
+If you [browse elmah.io's blog](http://blog.elmah.io/support-for-logary/) you'll
+find another example of using Logary from C#.
 
 ## Comparison to NLog and log4net
 
