@@ -559,23 +559,23 @@ let main argv =
 
   let influxConf =
     InfluxDb.create (InfluxDb.InfluxDbConf.create(Uri "http://192.168.99.100:8086/write", "logary", batchSize = 500us))
-                    (PointName.ofSingle "influxdb")
+                    "influxdb"
 
   use logary =
     withLogaryManager "Logary.Examples.MetricsWriter" (
       withTargets [
-        Console.create (Console.empty) (PointName.ofSingle "console")
+        Console.create (Console.empty) "console"
         influxConf
       ]
       >> withMetrics [
-        MetricConf.create (Duration.FromMilliseconds 500L) (PointName.ofSingle "henrik") Sample.randomWalk
+        MetricConf.create (Duration.FromMilliseconds 500L) "henrik" Sample.randomWalk
       ]
       >> withRules [
-        Rule.createForTarget (PointName.ofSingle "console")
-        Rule.createForTarget (PointName.ofSingle "influxdb")
+        Rule.createForTarget "console"
+        Rule.createForTarget "influxdb"
       ]
       >> withInternalTargets Info [
-        Console.create Console.empty (PointName.ofSingle "console")
+        Console.create Console.empty "console"
       ]
       >> run
     )
@@ -717,8 +717,8 @@ open Logary.Adapters.Facade
 
   use logary =
     withLogaryManager "Servizz.Program" (
-      withTargets [ Console.create Console.empty (PointName.ofSingle "console") ]
-      >> withRules [ Rule.createForTarget (PointName.ofSingle "console") ])
+      withTargets [ Console.create Console.empty "console" ]
+      >> withRules [ Rule.createForTarget "console" ])
     |> run
 
   // for the statics:
@@ -833,13 +833,13 @@ code](https://github.com/logary/logary/blob/master/src/targets/Logary.Targets.Ra
 Then inside `withTargets`:
 
 ```fsharp
-RabbitMQ.create rmqConf (PointName.ofSingle "rabbitmq")
+RabbitMQ.create rmqConf "rabbitmq"
 ```
 
 And the Rule for it:
 
 ```fsharp
-Rule.createForTarget (PointName.ofSingle "rabbitmq")
+Rule.createForTarget "rabbitmq"
 ```
 
 ### From NLog.RabbitMQ, log4net.RabbitMQ?
