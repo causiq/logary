@@ -38,6 +38,10 @@ namespace Logary.CSharpExample
                             .Type("logs") // index-name
                             .Done()
                     )
+                //   .Target<Logary.Targets.RabbitMQ.Builder>(
+                //       "rabbitmq",
+                //       conf => conf.Target.EnableTls("./cert/path.pfx", "TopSecret12345").Done()
+                //   )
                 // currently Windows only:
                 /*
                     .Target<DB.Builder>("db",
