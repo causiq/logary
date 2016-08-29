@@ -93,18 +93,35 @@ Install-Package Logary
         * [Usage](#usage-1)
         * [What does it look like?](#what-does-it-look-like)
       * [Want your SaaS\-logging service as a Target?](#want-your-saas-logging-service-as-a-target)
+    * [FAQ](#faq)
+      * [Getting MissingMethodException from FSharp\.Core](#getting-missingmethodexception-from-fsharpcore)
+      * [Getting MissingMethodException from Hopac\.Core](#getting-missingmethodexception-from-hopaccore)
+      * [Is v4\.0\.x a stable version?](#is-v40x-a-stable-version)
+      * [Isn't v4\.0\.x supposed to be API\-stable?](#isnt-v40x-supposed-to-be-api-stable)
+      * [Why does Logary depend on FParsec?](#why-does-logary-depend-on-fparsec)
+      * [Why do you depend on Hopac?](#why-do-you-depend-on-hopac)
+      * [How do I use Hopac from C\#?](#how-do-i-use-hopac-from-c)
+      * [What's logVerboseWithAck, logWithAck and how does it differ from logSimple?](#whats-logverbosewithack-logwithack-and-how-does-it-differ-from-logsimple)
+        * [logWithAck – so what's up with Promise?](#logwithack--so-whats-up-with-promise)
     * [License](#license)
 
 ## Hello World (C#)
 
 ```csharp
+using Logary;
+using Logary.Configuration;
+using Logary.Targets;
+
+// snip
+
 // NuGet: Install-Package Logary
 string loggerId = "Logary.MyLogger";
-using (var logary = Logary.Configuration.LogaryFactory.New(loggerId,
+using (var logary = LogaryFactory.New(loggerId,
     // You could define multiple targets. For HelloWorld, we use only console:
-    with => with.Target<Logary.Targets.TextWriter.Builder>(
-        "myFirstTarget",conf => conf.Target.WriteTo(System.Console.Out, System.Console.Error)
-        )).Result)
+    with => with.Target<TextWriter.Builder>(
+        "myFirstTarget",
+        conf => conf.Target.WriteTo(System.Console.Out, System.Console.Error)
+      )).Result)
 {
     // Then let's log a message. For HelloWorld, we log a string:
     var logger = logary.getLogger(Logary.PointNameModule.Parse(loggerId));
@@ -148,8 +165,6 @@ let main argv =
       withRules [
         Rule.createForTarget "console"
       ]
-      // "compile" the configuration of targets, above
-      >> run
     )
     // "compile" the Logary instance
     |> run
@@ -544,23 +559,23 @@ let main argv =
 
   let influxConf =
     InfluxDb.create (InfluxDb.InfluxDbConf.create(Uri "http://192.168.99.100:8086/write", "logary", batchSize = 500us))
-                    (PointName.ofSingle "influxdb")
+                    "influxdb"
 
   use logary =
     withLogaryManager "Logary.Examples.MetricsWriter" (
       withTargets [
-        Console.create (Console.empty) (PointName.ofSingle "console")
+        Console.create (Console.empty) "console"
         influxConf
       ]
       >> withMetrics [
-        MetricConf.create (Duration.FromMilliseconds 500L) (PointName.ofSingle "henrik") Sample.randomWalk
+        MetricConf.create (Duration.FromMilliseconds 500L) "henrik" Sample.randomWalk
       ]
       >> withRules [
-        Rule.createForTarget (PointName.ofSingle "console")
-        Rule.createForTarget (PointName.ofSingle "influxdb")
+        Rule.createForTarget "console"
+        Rule.createForTarget "influxdb"
       ]
       >> withInternalTargets Info [
-        Console.create Console.empty (PointName.ofSingle "console")
+        Console.create Console.empty "console"
       ]
       >> run
     )
@@ -702,8 +717,8 @@ open Logary.Adapters.Facade
 
   use logary =
     withLogaryManager "Servizz.Program" (
-      withTargets [ Console.create Console.empty (PointName.ofSingle "console") ]
-      >> withRules [ Rule.createForTarget (PointName.ofSingle "console") ])
+      withTargets [ Console.create Console.empty "console" ]
+      >> withRules [ Rule.createForTarget "console" ])
     |> run
 
   // for the statics:
@@ -818,13 +833,13 @@ code](https://github.com/logary/logary/blob/master/src/targets/Logary.Targets.Ra
 Then inside `withTargets`:
 
 ```fsharp
-RabbitMQ.create rmqConf (PointName.ofSingle "rabbitmq")
+RabbitMQ.create rmqConf "rabbitmq"
 ```
 
 And the Rule for it:
 
 ```fsharp
-Rule.createForTarget (PointName.ofSingle "rabbitmq")
+Rule.createForTarget "rabbitmq"
 ```
 
 ### From NLog.RabbitMQ, log4net.RabbitMQ?
@@ -841,7 +856,31 @@ Here's how you could configure the RabbitMQ target with C#:
 )
 ```
 
-Have a look at [this example](https://github.com/logary/logary/tree/master/examples/Logary.CSharpExample) for more details.
+Have a look at [this
+example](https://github.com/logary/logary/tree/master/examples/Logary.CSharpExample)
+an example of how to configure the RabbitMQ target.
+
+Here's how to replace your loggers:
+
+```csharp
+using NLog;
+// snip
+private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
+```
+
+With:
+
+```fsharp
+using Logary;
+// snip
+private static readonly Logger _logger = Logging.GetCurrentLogger();
+```
+
+You can then use the extension methods on `Logger`, available through the nuget
+called `Logary.CSharp`.
+
+If you [browse elmah.io's blog](http://blog.elmah.io/support-for-logary/) you'll
+find another example of using Logary from C#.
 
 ## Comparison to NLog and log4net
 
@@ -1170,8 +1209,134 @@ Absolutely! You have two options;
     easy to use for your customers. I'll even write some Markdown/HTML-formatted
     docs for your site about how to use Logary with your target.
 
+## FAQ
+
+### Getting MissingMethodException from FSharp.Core
+
+You need to add a rebind to the latest F# version in your executable:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <runtime>
+    <assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">
+      <dependentAssembly>
+        <Paket>True</Paket>
+        <assemblyIdentity name="FSharp.Core" publicKeyToken="b03f5f7f11d50a3a" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-999.999.999.999" newVersion="4.4.0.0" />
+      </dependentAssembly>
+    </assemblyBinding>
+  </runtime>
+</configuration>
+```
+
+### Getting MissingMethodException from Hopac.Core
+
+Inspect the version specified in the [Logary package][nuget-logary] and ensure
+that you have that exact version installed. Hopac is currently pre-v1 so it is
+often doing breaking changes between versions.
+
+### Is v4.0.x a stable version?
+
+It's stable to run. The API is stable. We're still working the derived-metrics
+experience. We may introduce a few more ABI/API breakages before 4.0 RTM.
+
+### Isn't v4.0.x supposed to be API-stable?
+
+We're not doing pre-release versions because they make it impossible for other
+packages to be released as stable versions. But we need to work through Logary
+in production; as such you can imagine that qvitoo is taking the risk and cost
+of making v4.0 RTM as stable and reliable as can be.
+
+### Why does Logary depend on FParsec?
+
+For two reasons;
+
+ 1. Aether and Chiron are vendored in `Logary.Utils.{Aether,Chiron}` and depend
+    on it – it makes it easy for Logary types to be JSON-serialisable.
+ 1. We may use it to parse the message templates in the future
+
+We previously depended on Newtonsoft.Json, but that library is often depended on
+from other packages and we want Logary to be as free of dependencies as
+possible, in order to make it as stable as possible.
+
+### Why do you depend on Hopac?
+
+Hopac supports a few things that async doesn't:
+
+ 1. Rendezvous and selective concurrency primitives (select A or B)
+ 2. Negative ACKs instead of CancellationToken-s
+
+We also wanted support for synchronous rendezvous between
+channels/job/alts/promises/etc. This still supports asynchronous operations
+towards the outside. Together it makes for an excellent choice for cooperating
+'agents', like the *Registry* and *Supervisor* and *Target Instance* that we
+have in the library.
+
+Besides the technical upsides, it's a good thing there's a book written about
+the concurrency model that Hopac implements – [Concurrent Programming in
+ML](https://www.amazon.com/Concurrent-Programming-ML-John-Reppy/dp/0521714729/)
+which lets us get developers up to speed quickly.
+
+Finally, our unit tests sped up 30x when porting from Async. The performance
+boost is a nice feature of a logging framework and comes primarily from less GC
+collection and the 'hand off' between synchronising concurrency primitives being
+synchronously scheduled inside Hopac rather than implemented using
+Thread/Semaphore/Monitor primitives on top of the ThreadPool.
+
+### How do I use Hopac from C#?
+
+You don't – if you're interested in using the semantics of the `Alt`-ernatives
+returned from `log` and `logWithAck` – then you can convert them to Task with
+[`AsTask()`](https://github.com/logary/logary/blob/4987c421849464d23b61ea4b64f8e48a6df21f12/src/Logary.CSharp/MiscExtensions.cs#L57)
+
+Remember to pull in `Logary.CSharp` to make this happen. You'll also have to
+open the `Logary` namespace.
+
+### What's `logVerboseWithAck`, `logWithAck` and how does it differ from `logSimple`?
+
+To start with, if you're new to Logary, you can use `logSimple` and it will work
+like most other logging frameworks. So what are those semantics exactly?
+
+Logary runs its targets concurrently. When you log a Message, all targets whose
+Rules make it relevant for your Message, receives the Message, each target tries
+to send that Message to its, well, target.
+
+Because running out of memory generally is unwanted, each target has a
+RingBuffer that [the messages are put
+into](https://github.com/logary/logary/blob/4987c421849464d23b61ea4b64f8e48a6df21f12/src/Logary/Internals_Logger.fs#L13-L21)
+when you use the `Logger`. Unless all targets' `RingBuffer` accept the
+`Message`, the call to `log` doesn't complete. This is similar to how other
+logging frameworks work.
+
+But then, what about the call to log? Behind the scenes it calls `lockWithAck`
+and tries to commit to the returned `Alt<Promise<unit>>` (the outer Alt, that
+is). If the `RingBuffer` is full then this `Alt` cannot be committed to, so
+there's code that drops the log message after 5000 ms.
+
+Hence; `logSimple` tries its best to log your message but if you app crashes
+directly after calling `logSimple` or your *Logstash* or other target
+infrastructure is down, you cannot be sure everything is logged. The decision
+was made that it's more important that your app keeps running than that *all*
+targets you have configured successfully log your Messages.
+
+#### `logWithAck` – so what's up with `Promise`?
+
+The outer `Alt` ensures that the Message has been placed in all configured
+targets' RingBuffers.
+
+The inner `Promise` that the Message has successfully been written from all
+Targets that received it. It ensures that your logging infrastructure has
+received the message.
+
+It's up to each target to deal with Acks in its own way, but a 'best-practices'
+Ack implementation can be seen in the RabbitMQ target.  It's a best-practices
+Ack implementation because RabbitMQ supports publisher confirms (that serve as
+Acks), asynchronous publish and also durable messaging.
+
 ## License
 
 [Apache 2.0][apache]
 
  [apache]: https://www.apache.org/licenses/LICENSE-2.0.html
+ [nuget-logary]: https://www.nuget.org/packages/Logary/
