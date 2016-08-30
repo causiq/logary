@@ -283,29 +283,23 @@ module internal FsMtParser =
       override x.ToString() = x.AppendPropertyString(StringBuilder()).ToString()
 
   module internal Internal =
-      let inline findNextNonPropText (startAt: int) (template: string) (foundText: string->unit) : int =
+
+      let inline findNextNonPropText (sb:StringBuilder) (startAt: int) (template: string) (foundText: string->unit) : int =
           let chars = template
           let tlen = chars.Length
-          // Don't create a stringBuilder until we have to
-          let mutable sb = Unchecked.defaultof<StringBuilder>
-          let append (c:char) =
-              if isNull sb then sb <- StringBuilder()
-              sb.Append(c) |> ignore
+          let inline append (c:char) = sb.Append(c) |> ignore
           let rec go i =
               if i >= tlen then tlen
               else
                   let c = chars.[i]
                   match c with
-                  | '{' -> if (i+1) < tlen && chars.[i+1] = '{' then
-                              append c
-                              go (i+2)
-                           else i // bail out at the start of a property
-                  | '}' when (i+1) < tlen && chars.[i+1] = '}' ->
-                      append c
-                      go (i+2)
+                  | '{' -> if (i+1) < tlen && chars.[i+1] = '{' then append c; go (i+2) else i
+                  | '}' when (i+1) < tlen && chars.[i+1] = '}' -> append c; go (i+2)
                   | _ -> append c; go (i+1)
           let nextIndex = go startAt
-          if (not (isNull sb) && sb.Length > 0) then foundText (sb.ToString())
+          if (not (isNull sb) && sb.Length > 0) then
+              foundText (sb.ToString())
+              sb.Clear() |> ignore
           nextIndex
 
       let inline isLetterOrDigit c = System.Char.IsLetterOrDigit c
@@ -331,6 +325,7 @@ module internal FsMtParser =
               Range(startIndex, this.End)
           override __.ToString() = (string startIndex) + ", " + (string endIndex)
           member inline this.IsEmpty = startIndex = -1 && endIndex = -1
+          static member Substring (s:string, startIndex, endIndex) = s.Substring(startIndex, (endIndex - startIndex) + 1)
           static member Empty = Range(-1, -1)
 
       let inline tryGetFirstCharInRange predicate (s:string) (range:Range) =
@@ -344,29 +339,6 @@ module internal FsMtParser =
           | -1 -> false | i -> i <= range.End
       let inline hasAny predicate (s:string) = hasAnyInRange predicate s (Range(0, s.Length - 1))
       let inline indexOfInRange s range c = tryGetFirstCharInRange ((=) c) s range
-      let inline tryParseIntFromRange (s:string) (range:Range) =
-          if range.Length = 1 && '0' <= s.[0] && s.[0] <= '9' then
-              int (s.[range.Start]) - 48
-          else
-              let indexOfLastCharPlus1 = range.End+1
-              let rec go isNeg numSoFar i =
-                  if i = indexOfLastCharPlus1 then
-                      if isNeg then -numSoFar else numSoFar
-                  else
-                      let c = s.[i]
-                      if c = '-' then
-                          if i = range.Start then go true (numSoFar) (i+1)
-                          else -1 // no '-' character allowed other than first char
-                      elif '0' <= c && c <= '9' then
-                          go isNeg (10*numSoFar + int c - 48) (i+1)
-                      else -1
-
-              go false 0 range.Start
-
-      let inline parseIntOrNegative1 s =
-          if System.String.IsNullOrEmpty(s) then -1
-          else tryParseIntFromRange s (Range(0, s.Length-1))
-
       let inline tryGetPropInRange (template:string) (within : Range) : Property =
           let nameRange, formatRange =
               match indexOfInRange template within ':' with
@@ -381,35 +353,31 @@ module internal FsMtParser =
               let format = if formatRange.IsEmpty then null else formatRange.GetSubString template
               Property(propertyName, format)
 
-      let findPropOrText (start:int) (template:string) (foundText: string->unit)
-                                                       (foundProp: Property->unit) : int =
+      let findPropOrText (start:int) (template:string)
+                         (foundText: string->unit) (foundProp: Property->unit) : int =
           let first = start
           let nextInvalidCharIndex =
               match tryGetFirstChar (not << isValidCharInPropTag) template (first+1) with
               | -1 -> template.Length | idx -> idx
 
           if nextInvalidCharIndex = template.Length || template.[nextInvalidCharIndex] <> '}' then
-              foundText (Range(first, (nextInvalidCharIndex - 1)).GetSubString(template))
+              foundText (Range.Substring(template, first, (nextInvalidCharIndex - 1)))
               nextInvalidCharIndex
           else
               let nextIndex = nextInvalidCharIndex + 1
               let propInsidesRng = Range(first + 1, nextIndex - 2)
               match tryGetPropInRange template propInsidesRng with
-              | prop when obj.ReferenceEquals(prop, Property.Empty) ->
-                  foundText (Range(first, (nextIndex - 1)).GetSubString(template))
-              | prop ->
-                  foundProp prop
-              | _ ->
-                  foundText (Range(first, (nextIndex - 1)).GetSubString(template))
+              | prop when not (obj.ReferenceEquals(prop, Property.Empty)) -> foundProp prop
+              | _ -> foundText (Range.Substring(template, first, (nextIndex - 1)))
               nextIndex
 
-  let parseParts (s:string) (foundText: string->unit) (foundProp: Property->unit) =
-      let tlen = s.Length
+  let parseParts buffer (template:string) (foundText: string->unit) (foundProp: Property->unit) =
+      let tlen = template.Length
       let rec go start =
           if start >= tlen then ()
-          else match Internal.findNextNonPropText start s foundText with
+          else match Internal.findNextNonPropText buffer start template foundText with
                   | next when next <> start -> go next
-                  | _ -> go (Internal.findPropOrText start s foundText foundProp)
+                  | _ -> go (Internal.findPropOrText start template foundText foundProp)
       go 0
 
 module internal Formatting =
@@ -419,7 +387,7 @@ module internal Formatting =
   [<Literal>]
   let FieldExnKey = "exn"
 
-  let formatValueThemed (theme: LiterateTheme) (printFieldNames: bool) (fields: Map<string,obj>) = function
+  let formatValueThemed (buffer:StringBuilder) (theme: LiterateTheme) (printFieldNames: bool) (fields: Map<string,obj>) = function
     | Event template ->
       let themedParts = ResizeArray<string * ConsoleColor>()
       let matchedFields = ResizeArray<string>()
@@ -447,7 +415,7 @@ module internal Formatting =
           // but using 'LevelFatal' so it really stands out.
           themedParts.Add (prop.ToString(), theme.LevelFatal)
 
-      FsMtParser.parseParts template foundText foundProp
+      FsMtParser.parseParts buffer template foundText foundProp
       Set.ofSeq matchedFields, List.ofSeq themedParts
 
     | Gauge (value, units) ->
@@ -455,7 +423,8 @@ module internal Formatting =
                    sprintf "%s" units, theme.KeywordSymbol ]
 
   let formatValue (fields: Map<string,obj>) (pv: PointValue) =
-    let matchedFields, themedParts = formatValueThemed LiterateTheme.Default false fields pv
+    let matchedFields, themedParts =
+      formatValueThemed (StringBuilder()) LiterateTheme.Default false fields pv
     matchedFields,  System.String.Join("", themedParts |> List.map fst)
 
   /// let the ISO8601 love flow
@@ -546,9 +515,10 @@ module internal Formatting =
     let formatLocalTime (utcTicks : int64) =
       DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss"), theme.Subtext
 
+    let buffer = StringBuilder()
     let themedMessageParts =
       message.value
-      |> formatValueThemed theme printFieldNames message.fields
+      |> formatValueThemed buffer theme printFieldNames message.fields
       |> fun (_, themedParts) -> themedParts
 
     let themedExceptionParts =
