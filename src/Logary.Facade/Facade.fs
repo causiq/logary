@@ -276,42 +276,16 @@ module internal FsMtParser =
       member __.Format = format
       member internal x.AppendPropertyString(sb: StringBuilder, ?replacementName) =
           let replacementName = defaultArg replacementName name
-          sb.Append("{")
-              .Append(replacementName)
-              .Append(match x.Format with null | "" -> "" | _ -> ":" + x.Format)
-              .Append("}")
+          sb.Append("{").Append(replacementName)
+            .Append(match x.Format with null | "" -> "" | _ -> ":" + x.Format).Append("}")
       override x.ToString() = x.AppendPropertyString(StringBuilder()).ToString()
 
   module internal Internal =
-
-      let inline findNextNonPropText (sb:StringBuilder) (startAt: int) (template: string) (foundText: string->unit) : int =
-          let chars = template
-          let tlen = chars.Length
-          let inline append (c:char) = sb.Append(c) |> ignore
-          let rec go i =
-              if i >= tlen then tlen
-              else
-                  let c = chars.[i]
-                  match c with
-                  | '{' -> if (i+1) < tlen && chars.[i+1] = '{' then append c; go (i+2) else i
-                  | '}' when (i+1) < tlen && chars.[i+1] = '}' -> append c; go (i+2)
-                  | _ -> append c; go (i+1)
-          let nextIndex = go startAt
-          if (not (isNull sb) && sb.Length > 0) then
-              foundText (sb.ToString())
-              sb.Clear() |> ignore
-          nextIndex
 
       let inline isLetterOrDigit c = System.Char.IsLetterOrDigit c
       let inline isValidInPropName c = c = '_' || System.Char.IsLetterOrDigit c
       let inline isValidInFormat c = c <> '}' && (c = ' ' || isLetterOrDigit c || System.Char.IsPunctuation c)
       let inline isValidCharInPropTag c = c = ':' || isValidInPropName c || isValidInFormat c
-      let inline tryGetFirstChar predicate (s:string) first =
-          let len = s.Length
-          let rec go i =
-              if i >= len then -1
-              else if not (predicate s.[i]) then go (i+1) else i
-          go first
 
       [<Struct>]
       type Range(startIndex:int, endIndex:int) =
@@ -319,11 +293,6 @@ module internal FsMtParser =
           member inline this.End = endIndex
           member inline this.Length = (endIndex - startIndex) + 1
           member inline this.GetSubString (s:string) = s.Substring(startIndex, this.Length)
-          member inline this.IncreaseBy startNum endNum = Range(startIndex+startNum, endIndex+endNum)
-          member inline this.Right (startFromIndex:int) =
-              if startFromIndex < startIndex then invalidArg "startFromIndex" "startFromIndex must be >= Start"
-              Range(startIndex, this.End)
-          override __.ToString() = (string startIndex) + ", " + (string endIndex)
           member inline this.IsEmpty = startIndex = -1 && endIndex = -1
           static member Substring (s:string, startIndex, endIndex) = s.Substring(startIndex, (endIndex - startIndex) + 1)
           static member Empty = Range(-1, -1)
@@ -334,27 +303,51 @@ module internal FsMtParser =
               else if not (predicate s.[i]) then go (i+1) else i
           go range.Start
 
+      let inline tryGetFirstChar predicate (s:string) first =
+          tryGetFirstCharInRange predicate s (Range(first, s.Length - 1))
+
       let inline hasAnyInRange predicate (s:string) (range:Range) =
           match tryGetFirstChar (predicate) s range.Start with
           | -1 -> false | i -> i <= range.End
-      let inline hasAny predicate (s:string) = hasAnyInRange predicate s (Range(0, s.Length - 1))
+
+      let inline hasAny predicate (s:string) =
+          hasAnyInRange predicate s (Range(0, s.Length - 1))
+
       let inline indexOfInRange s range c = tryGetFirstCharInRange ((=) c) s range
+
       let inline tryGetPropInRange (template:string) (within : Range) : Property =
           let nameRange, formatRange =
               match indexOfInRange template within ':' with
               | -1 -> within, Range.Empty // no format
-              | fmtIdx -> Range(within.Start, fmtIdx-1), Range(fmtIdx+1, within.End) // has format part
+              | formatIndex -> Range(within.Start, formatIndex-1), Range(formatIndex+1, within.End) // has format part
           let propertyName = nameRange.GetSubString template
           if propertyName = "" || (hasAny (not<<isValidInPropName) propertyName) then
-            Property.Empty
+              Property.Empty
           elif (not formatRange.IsEmpty) && (hasAnyInRange (not<<isValidInFormat) template formatRange) then
-            Property.Empty
+              Property.Empty
           else
               let format = if formatRange.IsEmpty then null else formatRange.GetSubString template
               Property(propertyName, format)
 
+      let inline findNextNonPropText (buffer:StringBuilder) (startAt: int) (template: string) (foundText: string->unit) : int =
+          let inline append (c:char) = buffer.Append(c) |> ignore
+          let rec go i =
+              if i >= template.Length then
+                template.Length
+              else
+                  let c = template.[i]
+                  match c with
+                  | '{' -> if (i+1) < template.Length && template.[i+1] = '{' then append c; go (i+2) else i
+                  | '}' when (i+1) < template.Length && template.[i+1] = '}' -> append c; go (i+2)
+                  | _ -> append c; go (i+1)
+          let nextIndex = go startAt
+          if (buffer.Length > 0) then
+              foundText (buffer.ToString())
+              buffer.Clear() |> ignore
+          nextIndex
+
       let findPropOrText (start:int) (template:string)
-                         (foundText: string->unit) (foundProp: Property->unit) : int =
+                          (foundText: string->unit) (foundProp: Property->unit) : int =
           let first = start
           let nextInvalidCharIndex =
               match tryGetFirstChar (not << isValidCharInPropTag) template (first+1) with
@@ -371,7 +364,7 @@ module internal FsMtParser =
               | _ -> foundText (Range.Substring(template, first, (nextIndex - 1)))
               nextIndex
 
-  let parseParts buffer (template:string) (foundText: string->unit) (foundProp: Property->unit) =
+  let parseParts buffer (template:string) foundText foundProp =
       let tlen = template.Length
       let rec go start =
           if start >= tlen then ()
