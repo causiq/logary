@@ -137,6 +137,35 @@ let tests =
                       cartTotal.ToString(),   NumericSymbol ]
                     "literate tokenized parts must be correct"
 
+    testCase "literate tokenizes missing field with a scary-looking theme (LevelFatal)" <| fun _ ->
+      let str = "Added {item} to cart {cartId:X} for {loginUserId} who now has total ${cartTotal}"
+      let itemName, cartId, loginUserId, cartTotal = "TicTacs", Guid.NewGuid(), "AdamC", 123.45M
+      let fields = Map [ "item", box itemName
+                         // "cartId", box cartId
+                         // "loginUserId", box loginUserId
+                         "cartTotal", box cartTotal ]
+      let now = Global.timestamp ()
+      let nowDto = DateTimeOffset(DateTimeOffset.ticksUTC now, TimeSpan.Zero)
+      let msg = Message.event Info str |> fun m -> { m with fields = fields; timestamp = now }
+      let nowTimeString = nowDto.LocalDateTime.ToString("HH:mm:ss")
+      let context = { LiterateContext.Create() with PrintTemplateFieldNames = false }
+      let colourParts = Formatting.literateTokenizer context msg
+      Expect.equal colourParts
+                    [ "[",                    Punctuation
+                      nowTimeString,          Subtext
+                      " ",                    Subtext
+                      "INF",                  LevelInfo
+                      "] ",                   Punctuation
+                      "Added ",               Text
+                      "TicTacs",              StringSymbol
+                      " to cart ",            Text
+                      "{cartId:X}",           LevelFatal
+                      " for ",                Text
+                      "{loginUserId}",        LevelFatal
+                      " who now has total $", Text
+                      cartTotal.ToString(),   NumericSymbol ]
+                    "literate tokenized parts must be correct"
+
     testCase "literate tokenizes without field names correctly" <| fun _ ->
       let str = "Added {item} to cart {cartId} for {loginUserId} who now has total ${cartTotal}"
       let itemName, cartId, loginUserId, cartTotal = "TicTacs", Guid.NewGuid(), "AdamC", 123.45M
