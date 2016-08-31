@@ -226,45 +226,42 @@ type LoggingConfig =
   { timestamp : unit -> int64
     getLogger : string[] -> Logger }
 
-/// Defines a theme for the <see cref="LiterateConsoleTarget"/>.
-type LiterateTheme =
-    { Text : ConsoleColor
-      Subtext : ConsoleColor
-      Punctuation : ConsoleColor
-      // The colours for the various log levels
-      LevelVerbose : ConsoleColor
-      LevelDebug : ConsoleColor
-      LevelInfo : ConsoleColor
-      LevelWarning : ConsoleColor
-      LevelError : ConsoleColor
-      LevelFatal : ConsoleColor
-      /// The colour of special keywords like 'true' or 'false'
-      KeywordSymbol : ConsoleColor
-      /// The colour of numeric values like int, int64, decimal, and so on
-      NumericSymbol : ConsoleColor
-      StringSymbol : ConsoleColor
-      OtherSymbol : ConsoleColor
-      NameSymbol : ConsoleColor
-      RawText : ConsoleColor }
-  with
-    /// Gets the default theme for the <see cref="LiterateConsoleTarget"/>.
-    static member Default =
-        { Text = ConsoleColor.White
-          Subtext = ConsoleColor.Gray
-          Punctuation = ConsoleColor.DarkGray
-          LevelVerbose = ConsoleColor.Gray
-          LevelDebug = ConsoleColor.Gray
-          LevelInfo = ConsoleColor.White
-          LevelWarning = ConsoleColor.Yellow
-          LevelError = ConsoleColor.Red
-          LevelFatal = ConsoleColor.Red
-          KeywordSymbol = ConsoleColor.Blue
-          NumericSymbol = ConsoleColor.Magenta
-          StringSymbol = ConsoleColor.Cyan
-          OtherSymbol = ConsoleColor.Green
-          NameSymbol = ConsoleColor.Gray
-          RawText = ConsoleColor.Yellow
-        }
+/// The output tokens, which can be potentially coloured.
+type LiterateToken =
+  | Text | Subtext
+  | Punctuation
+  | LevelVerbose | LevelDebug | LevelInfo | LevelWarning | LevelError | LevelFatal
+  | KeywordSymbol | NumericSymbol | StringSymbol | OtherSymbol | NameSymbol
+
+type LiterateContext =
+  { FormatProvider: IFormatProvider
+    Buffer: System.Text.StringBuilder
+    Theme: LiterateToken -> ConsoleColor
+    PrintTemplateFieldNames: bool }
+  static member Create(?formatProvider) =
+    // note: literate is meant for human consumption, and so the default
+    // format provider of 'Current' is appropriate here. The reader expects
+    // to see the dates, numbers, currency, etc formatted in the local culture
+    { FormatProvider = defaultArg formatProvider Globalization.CultureInfo.CurrentCulture
+      Buffer = System.Text.StringBuilder()
+      Theme = function
+              | Text -> ConsoleColor.White
+              | Subtext -> ConsoleColor.Gray
+              | Punctuation -> ConsoleColor.DarkGray
+              | LevelVerbose -> ConsoleColor.Gray
+              | LevelDebug -> ConsoleColor.Gray
+              | LevelInfo -> ConsoleColor.White
+              | LevelWarning -> ConsoleColor.Yellow
+              | LevelError -> ConsoleColor.Red
+              | LevelFatal -> ConsoleColor.Red
+              | KeywordSymbol -> ConsoleColor.Blue
+              | NumericSymbol -> ConsoleColor.Magenta
+              | StringSymbol -> ConsoleColor.Cyan
+              | OtherSymbol -> ConsoleColor.Green
+              | NameSymbol -> ConsoleColor.Gray
+      PrintTemplateFieldNames = false }
+  static member CreateInvariant() =
+    LiterateContext.Create(Globalization.CultureInfo.InvariantCulture)
 
 module internal FsMtParser =
   open System.Text
@@ -380,13 +377,12 @@ module internal Formatting =
   [<Literal>]
   let FieldExnKey = "exn"
 
-  let formatValueThemed (buffer:StringBuilder) (theme: LiterateTheme) (printFieldNames: bool) (fields: Map<string,obj>) = function
+  let formatValueLiterate (context: LiterateContext) (fields: Map<string,obj>) = function
     | Event template ->
-      let themedParts = ResizeArray<string * ConsoleColor>()
+      let themedParts = ResizeArray<string * LiterateToken>()
       let matchedFields = ResizeArray<string>()
-      let foundText (text: string) = themedParts.Add (text, theme.Text)
+      let foundText (text: string) = themedParts.Add (text, Text)
       let foundProp (prop: FsMtParser.Property) =
-        matchedFields.Add prop.Name
         match Map.tryFind prop.Name fields with
         | Some propValue ->
           // render using string.Format, so the formatting is applied
@@ -395,29 +391,30 @@ module internal Formatting =
           // find the right theme colour based on data type
           let valueColour =
             match propValue with
-            | :? bool -> theme.KeywordSymbol
-            | :? int16 | :? int32 | :? int64 | :? decimal | :? float -> theme.NumericSymbol
-            | :? string | :? char -> theme.StringSymbol
-            | _ -> theme.OtherSymbol
-          if printFieldNames then
-            themedParts.Add ("["+prop.Name+"] ", theme.Subtext)
-          themedParts.Add (fieldAsText, valueColour)
+            | :? bool -> KeywordSymbol
+            | :? int16 | :? int32 | :? int64 | :? decimal | :? float -> NumericSymbol
+            | :? string | :? char -> StringSymbol
+            | _ -> OtherSymbol
+          if context.PrintTemplateFieldNames then
+            themedParts.Add ("["+prop.Name+"] ", Subtext)
           matchedFields.Add prop.Name
+          themedParts.Add (fieldAsText, valueColour)
+
         | None ->
           // if the property wasn't provided, just render the missing value
           // but using 'LevelFatal' so it really stands out.
-          themedParts.Add (prop.ToString(), theme.LevelFatal)
+          themedParts.Add (prop.ToString(), LevelFatal)
 
-      FsMtParser.parseParts buffer template foundText foundProp
+      FsMtParser.parseParts context.Buffer template foundText foundProp
       Set.ofSeq matchedFields, List.ofSeq themedParts
 
     | Gauge (value, units) ->
-      Set.empty, [ sprintf "%i" value, theme.NumericSymbol
-                   sprintf "%s" units, theme.KeywordSymbol ]
+      Set.empty, [ sprintf "%i" value, NumericSymbol
+                   sprintf "%s" units, KeywordSymbol ]
 
   let formatValue (fields: Map<string,obj>) (pv: PointValue) =
     let matchedFields, themedParts =
-      formatValueThemed (StringBuilder()) LiterateTheme.Default false fields pv
+      formatValueLiterate (LiterateContext.CreateInvariant()) fields pv
     matchedFields,  System.String.Join("", themedParts |> List.map fst)
 
   /// let the ISO8601 love flow
@@ -462,74 +459,76 @@ module internal Formatting =
     formatExn message.fields +
     formatFields matchedFields message.fields
 
-  let literateExceptionColorizer (theme: LiterateTheme) (ex: exn) =
+  let literateExceptionColorizer (context: LiterateContext) (ex: exn) =
     let stackFrameLinePrefix = "   "
     use exnLines = new System.IO.StringReader(ex.ToString())
     let rec go lines =
       match exnLines.ReadLine() with
       | null -> lines // finished reading
       | line -> if line.StartsWith(stackFrameLinePrefix) then
-                  go (lines @ [ line, theme.Subtext; Environment.NewLine, theme.Text ])
+                  go (lines @ [ line, Subtext; Environment.NewLine, Text ])
                 else
-                  go (lines @ [ line, theme.Text; Environment.NewLine, theme.Text ])
+                  go (lines @ [ line, Text; Environment.NewLine, Text ])
     go []
 
-  let literateLogLevelColorizer (theme: LiterateTheme) = function
-    | Debug ->    "DBG", theme.LevelDebug
-    | Error ->    "ERR", theme.LevelError
-    | Fatal ->    "FTL", theme.LevelFatal
-    | Info ->     "INF", theme.LevelInfo
-    | Verbose ->  "VRB", theme.LevelVerbose
-    | Warn ->     "WRN", theme.LevelWarning
+  let literateLogLevelTokenizer = function
+    | Debug ->    "DBG", LevelDebug
+    | Error ->    "ERR", LevelError
+    | Fatal ->    "FTL", LevelFatal
+    | Info ->     "INF", LevelInfo
+    | Verbose ->  "VRB", LevelVerbose
+    | Warn ->     "WRN", LevelWarning
 
-  let literateColorizeExceptions theme message =
+  let literateColorizeExceptions (context: LiterateContext) message =
     let exnExceptionParts =
       match message.fields.TryFind FieldExnKey with
       | Some (:? Exception as ex) ->
-        literateExceptionColorizer theme ex
-        @ [ Environment.NewLine, theme.Text ]
+        literateExceptionColorizer context ex
+        @ [ Environment.NewLine, Text ]
       | _ -> [] // there is no spoon
     let errorsExceptionParts =
       match message.fields.TryFind "errors" with
       | Some (:? List<obj> as exnListAsObjList) ->
         exnListAsObjList |> List.collect (function
           | :? exn as ex ->
-            literateExceptionColorizer theme ex
-            @ [ Environment.NewLine, theme.Text ]
+            literateExceptionColorizer context ex
+            @ [ Environment.NewLine, Text ]
           | _ -> [])
       | _ -> []
 
     exnExceptionParts @ errorsExceptionParts
 
-  /// Format a message for display to a user, providing console
-  /// colours to enhance readability. Sample:
+  /// Split a structured message up into theme-able parts (tokens), allowing the
+  /// final output to display to a user with colours to enhance readability.
+  /// Final output sample:
   /// "[11:00:01 INF] Hello, world! There are 100 items in your cart: [Item1, Item2, Item3]"
-  let literateColorizer (theme: LiterateTheme) (message: Message) (printFieldNames: bool) : (string * ConsoleColor) list =
+  /// TODO: sample string*Token list ? too confusing?
+  let literateTokenizer (context: LiterateContext) (message: Message) : (string * LiterateToken) list =
     let formatLocalTime (utcTicks : int64) =
-      DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss"), theme.Subtext
+      DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss", context.FormatProvider)
+      , Subtext
 
-    let buffer = StringBuilder()
     let themedMessageParts =
       message.value
-      |> formatValueThemed buffer theme printFieldNames message.fields
+      |> formatValueLiterate context message.fields
       |> fun (_, themedParts) -> themedParts
 
     let themedExceptionParts =
       if not themedMessageParts.IsEmpty then
-        let exnParts = literateColorizeExceptions theme message
+        let exnParts = literateColorizeExceptions context message
         if not exnParts.IsEmpty then
-          [ Environment.NewLine, theme.Text ]
+          [ Environment.NewLine, Text ]
           @ exnParts
-          @ [ Environment.NewLine, theme.Text ]
+          @ [ Environment.NewLine, Text ]
         else []
       else []
 
     [
-      "[", theme.Punctuation
+      "[", Punctuation
       formatLocalTime message.utcTicks
-      " ", theme.Subtext
-      literateLogLevelColorizer theme message.level
-      "] ", theme.Subtext
+      " ", Subtext
+      literateLogLevelTokenizer message.level
+      "] ", Subtext
     ]
     @ themedMessageParts
     @ themedExceptionParts
@@ -545,24 +544,27 @@ module internal Formatting =
 /// Logs a line in a format that is great for human consumption,
 /// using console colours to enhance readability.
 /// Sample: [10:30:49 INF] User "AdamC" began the "checkout" process with 100 cart items
-type LiterateConsoleTarget(minLevel, ?theme, ?colorize, ?colorWriter, ?printTemplateFieldNames, ?consoleSemaphore) =
+type LiterateConsoleTarget(minLevel, ?context, ?colorize, ?colorWriter, ?consoleSemaphore) =
   let sem           = defaultArg consoleSemaphore (obj())
-  let theme         = defaultArg theme LiterateTheme.Default
-  let printTemplateFieldNames = defaultArg printTemplateFieldNames false
-  let colorize      = defaultArg colorize Formatting.literateColorizer
+  let context       = defaultArg context (LiterateContext.Create())
+  let tokenize      = defaultArg colorize Formatting.literateTokenizer
   let colorWriter   = defaultArg colorWriter Formatting.literateDefaultColorWriter sem
-  let colorizeThenNewLine t m = (colorize t m printTemplateFieldNames) @ [Environment.NewLine, theme.Text]
+
+  let colorizeThenNewLine message =
+    (tokenize context message) @ [Environment.NewLine, Text]
+    |> List.map (fun (s, t) -> s, context.Theme(t))
+
   interface Logger with
     member x.logWithAck level msgFactory =
       if level >= minLevel then
-        colorWriter (colorizeThenNewLine theme (msgFactory level))
+        colorWriter (colorizeThenNewLine (msgFactory level))
       async.Return ()
     member x.log level msgFactory =
       if level >= minLevel then
-        colorWriter (colorizeThenNewLine theme (msgFactory level))
+        colorWriter (colorizeThenNewLine (msgFactory level))
     member x.logSimple msg =
       if msg.level >= minLevel then
-        colorWriter (colorizeThenNewLine theme msg)
+        colorWriter (colorizeThenNewLine msg)
 
 /// Log a line with the given format, printing the current time in UTC ISO-8601 format
 /// and then the string, like such:
