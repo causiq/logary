@@ -5,6 +5,23 @@ open Fuchu
 open Logary.Facade
 open ExpectoPatronum
 
+
+type internal TemplateToken =
+    | TextToken of string
+    | PropToken of name:string * format:string
+    with override x.ToString() =
+                    match x with
+                    | TextToken s -> "TEXT("+s+")"
+                    | PropToken (n,f) -> "PROP("+n+":"+f+")"
+
+let internal parseTemplateTokens template =
+    let tokens = ResizeArray<TemplateToken>()
+    let foundText t = tokens.Add (TextToken(t))
+    let foundProp (p: FsMtParser.Property) =
+        tokens.Add (PropToken(p.Name, p.Format))
+    FsMtParser.parseParts (System.Text.StringBuilder()) template foundText foundProp
+    tokens |> List.ofSeq
+
 [<Tests>]
 let tests =
   let msg = Message.event Info "hi {name}"
@@ -61,34 +78,33 @@ let tests =
       Tests.skiptest "verbose test"
       let logger = Targets.create level
       Message.event Verbose "Hi {name}" |> logger.logSimple
-//
-//    testCase "extract matches" <| fun _ ->
-//      let str = "Hi {ho}, we're { something going on  } special"
-//      let fields = Map [ "ho", box "hola"; "something going on", box "very" ]
-//      let subject = Formatting.extractMatches fields str
-//      Expect.equal subject.Length 2 "Should match two things"
-//      Expect.equal (subject |> List.map (fun (name, _, _) -> name))
-//                   ["ho"; "something going on"]
-//                   "Should extract correct names"
-//      Expect.equal (subject |> List.map (fun (_, _, m) -> m.Value))
-//                   ["{ho}"; "{ something going on  }"]
-//                   "Should extract correct match values"
 
-//    testCase "extract matches evil" <| fun _ ->
-//      let strEvil = "{a}{b}{  c}{d  } {e} fghij {k}} {l} m {{}}"
-//      let aThroughL =['a'..'l'] |> List.map string
-//      let fields = aThroughL |> List.map (fun s -> s, s) |> Map.ofList
-//      let strEvilRes = "abcd e fghij k} l m {{}}"
-//      let subject = Formatting.extractMatches fields strEvil
-//      Expect.equal subject.Length 7 "Should match 7 things, a-l, not m and not {}"
-//      Expect.equal (subject |> List.map (fun (name, value, _) -> name))
-//                   ["a"; "b"; "c"; "d"; "e"; "k"; "l"]
-//                   "Should extract relevant names"
-//      Expect.equal (subject |> List.map (fun (_, _, m) -> m.Index))
-//                   [0; 3; 6; 11; 17; 27; 32]
-//                   "Should extract correct indicies"
+    testCase "extract invalid property tokens as text" <| fun _ ->
+      let template = "Hi {ho:##.###}, we're { something going on } special"
+      let fields = Map [ "ho", box "hola"; "something going on", box "very" ]
+      let tokens = parseTemplateTokens template
+      Expect.equal tokens.Length 5 "Extracts 4 texts parts and 1 property part"
+      Expect.equal tokens
+                   [
+                    TextToken ("Hi ")
+                    PropToken ("ho", "##.###")
+                    TextToken (", we're ") // <- a quirk of the parser
+                    TextToken ("{ something going on }")
+                    TextToken (" special")
+                   ]
+                   "Should extract correct name and format parts"
 
-    testCase "colourises using literate theme correctly" <| fun _ ->
+    testCase "handles evil property strings correctly" <| fun _ ->
+      let template = "{a}{b}{  c}{d  } {e} fghij {k}} {l} m {{}}"
+      // validity:     +  +  --    --   +         +    +     --
+      let expectedPropertyNames = ["a"; "b"; "e"; "k"; "l"]
+      let strEvilRes = "abcd e fghij k} l m {{}}"
+      let subject = parseTemplateTokens template
+      Expect.equal (subject |> List.choose (function PropToken (n,f) -> Some n | _ -> None))
+                   expectedPropertyNames
+                   "Should extract relevant names"
+
+    testCase "literate tokenizes with field names correctly" <| fun _ ->
       let str = "Added {item} to cart {cartId} for {loginUserId} who now has total ${cartTotal}"
       let itemName, cartId, loginUserId, cartTotal = "TicTacs", Guid.NewGuid(), "AdamC", 123.45M
       let fields = Map [ "item", box itemName
@@ -99,32 +115,60 @@ let tests =
       let nowDto = DateTimeOffset(DateTimeOffset.ticksUTC now, TimeSpan.Zero)
       let msg = Message.event Info str |> fun m -> { m with fields = fields; timestamp = now }
       let nowTimeString = nowDto.LocalDateTime.ToString("HH:mm:ss")
-      let theme = LiterateTheme.Default
-      let colourParts = Formatting.literateColorizer theme msg true
+      let context = { LiterateContext.Create() with PrintTemplateFieldNames = true }
+      let colourParts = Formatting.literateTokenizer context msg
       Expect.equal colourParts
-                   [
-                    "[",                    theme.Punctuation
-                    nowTimeString,          theme.Subtext
-                    " ",                    theme.Subtext
-                    "INF",                  theme.LevelInfo
-                    "] ",                   theme.Punctuation
-                    "Hi ",                  theme.Text
-                    "Added ",               theme.Text
-                    "[item] ",              theme.Subtext
-                    "TicTacs",              theme.StringSymbol
-                    " to cart ",            theme.Text
-                    "[cartId] ",            theme.Subtext
-                    cartId.ToString(),      theme.OtherSymbol
-                    " for ",                theme.Text
-                    "[loginUserId] ",       theme.Subtext
-                    loginUserId,            theme.StringSymbol
-                    " who now has total $", theme.Text
-                    "[cartTotal] ",         theme.Subtext
-                    cartTotal.ToString(),   theme.NumericSymbol
-                   ]
-                   "Should format colours correctly"
+                    [ "[",                    Punctuation
+                      nowTimeString,          Subtext
+                      " ",                    Subtext
+                      "INF",                  LevelInfo
+                      "] ",                   Punctuation
+                      "Added ",               Text
+                      "[item] ",              Subtext
+                      "TicTacs",              StringSymbol
+                      " to cart ",            Text
+                      "[cartId] ",            Subtext
+                      cartId.ToString(),      OtherSymbol
+                      " for ",                Text
+                      "[loginUserId] ",       Subtext
+                      loginUserId,            StringSymbol
+                      " who now has total $", Text
+                      "[cartTotal] ",         Subtext
+                      cartTotal.ToString(),   NumericSymbol ]
+                    "literate tokenized parts must be correct"
 
-    testCase "format template properly" <| fun _ ->
+    testCase "literate tokenizes without field names correctly" <| fun _ ->
+      let str = "Added {item} to cart {cartId} for {loginUserId} who now has total ${cartTotal}"
+      let itemName, cartId, loginUserId, cartTotal = "TicTacs", Guid.NewGuid(), "AdamC", 123.45M
+      let fields = Map [ "item", box itemName
+                         "cartId", box cartId
+                         "loginUserId", box loginUserId
+                         "cartTotal", box cartTotal ]
+      let now = Global.timestamp ()
+      let nowDto = DateTimeOffset(DateTimeOffset.ticksUTC now, TimeSpan.Zero)
+      let msg = Message.event Info str |> fun m -> { m with fields = fields; timestamp = now }
+      let nowTimeString = nowDto.LocalDateTime.ToString("HH:mm:ss")
+      let context = { LiterateContext.Create() with PrintTemplateFieldNames = false }
+      let colourParts = Formatting.literateTokenizer context msg
+      Expect.equal colourParts
+                    [ "[",                    Punctuation
+                      nowTimeString,          Subtext
+                      " ",                    Subtext
+                      "INF",                  LevelInfo
+                      "] ",                   Punctuation
+                      "Added ",               Text
+                      "TicTacs",              StringSymbol
+                      " to cart ",            Text
+                      cartId.ToString(),      OtherSymbol
+                      " for ",                Text
+                      loginUserId,            StringSymbol
+                      " who now has total $", Text
+                      cartTotal.ToString(),   NumericSymbol ]
+                    "literate tokenized parts must be correct"
+
+
+    testCase "format template with invalid property correctly" <| fun _ ->
+      // spaces are not valid in property names, so the 'property' is treated as text
       let str = "Hi {ho}, we're { something going on  } special"
       let fields = Map [ "ho", box "hola"; "something going on", box "very" ]
       let now = Global.timestamp ()
@@ -135,6 +179,6 @@ let tests =
         |> Message.setSingleName "Logary.Facade.Tests"
       let subject = Formatting.defaultFormatter msg
       Expect.equal subject
-                   (sprintf "[I] %s: Hi hola, we're very special [Logary.Facade.Tests]" (nowDto.ToString("o")))
+                   (sprintf "[I] %s: Hi hola, we're { something going on  } special [Logary.Facade.Tests]\n - something going on: very" (nowDto.ToString("o")))
                    "Should format correctly"
   ]
