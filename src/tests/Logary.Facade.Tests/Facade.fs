@@ -19,7 +19,7 @@ let internal parseTemplateTokens template =
     let foundText t = tokens.Add (TextToken(t))
     let foundProp (p: FsMtParser.Property) =
         tokens.Add (PropToken(p.Name, p.Format))
-    FsMtParser.parseParts (System.Text.StringBuilder()) template foundText foundProp
+    FsMtParser.parseParts template foundText foundProp
     tokens |> List.ofSeq
 
 [<Tests>]

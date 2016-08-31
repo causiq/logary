@@ -326,21 +326,19 @@ module internal FsMtParser =
             let format = if formatRange.IsEmpty then null else formatRange.GetSubString template
             Property(propertyName, format)
 
-    let inline findNextNonPropText (buffer:StringBuilder) (startAt: int) (template: string) (foundText: string->unit) : int =
-        let inline append (c:char) = buffer.Append(c) |> ignore
+    let inline findNextNonPropText (startAt: int) (template: string) (foundText: string->unit) : int =
         let rec go i =
             if i >= template.Length then
               template.Length
             else
                 let c = template.[i]
                 match c with
-                | '{' -> if (i+1) < template.Length && template.[i+1] = '{' then append c; go (i+2) else i
-                | '}' when (i+1) < template.Length && template.[i+1] = '}' -> append c; go (i+2)
-                | _ -> append c; go (i+1)
+                | '{' -> if (i+1) < template.Length && template.[i+1] = '{' then go (i+2) else i
+                | '}' when (i+1) < template.Length && template.[i+1] = '}' -> go (i+2)
+                | _ -> go (i+1)
         let nextIndex = go startAt
-        if (buffer.Length > 0) then
-            foundText (buffer.ToString())
-            buffer.Clear() |> ignore
+        if (nextIndex > startAt) then
+            foundText (Range.Substring(template, startAt, nextIndex - 1))
         nextIndex
 
     let findPropOrText (start:int) (template:string)
@@ -361,11 +359,11 @@ module internal FsMtParser =
             | _ -> foundText (Range.Substring(template, first, (nextIndex - 1)))
             nextIndex
 
-  let parseParts buffer (template:string) foundText foundProp =
+  let parseParts (template:string) foundText foundProp =
       let tlen = template.Length
       let rec go start =
           if start >= tlen then ()
-          else match Internal.findNextNonPropText buffer start template foundText with
+          else match Internal.findNextNonPropText start template foundText with
                   | next when next <> start -> go next
                   | _ -> go (Internal.findPropOrText start template foundText foundProp)
       go 0
@@ -405,7 +403,7 @@ module internal Formatting =
           // but using 'LevelFatal' so it really stands out.
           themedParts.Add (prop.ToString(), LevelFatal)
 
-      FsMtParser.parseParts context.Buffer template foundText foundProp
+      FsMtParser.parseParts template foundText foundProp
       Set.ofSeq matchedFields, List.ofSeq themedParts
 
     | Gauge (value, units) ->
