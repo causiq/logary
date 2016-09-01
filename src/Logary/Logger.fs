@@ -113,7 +113,7 @@ module Logger =
   /// accepts line with Debug level.
   [<CompiledName "LogDebug"; Extension>]
   let logDebug (logger : Logger) fMessage =
-    ifLevel logger Verbose (Alt.always ()) <| fun _ ->
+    ifLevel logger Debug (Alt.always ()) <| fun _ ->
       logger.logDebugWithAck (fMessage >> ensureName logger)
       |> Alt.afterFun ignore
 
