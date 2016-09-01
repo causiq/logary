@@ -157,7 +157,7 @@ module Parser =
         else startAt, Empty.textToken
 
     let inline isLetterOrDigit c = System.Char.IsLetterOrDigit c
-    let inline isValidInPropName c = c = '_' || System.Char.IsLetterOrDigit c
+    let inline isValidInPropName c = c = '_' || c = '.' || System.Char.IsLetterOrDigit c
     let inline isValidInDestrHint c = c = '@' || c = '$'
     let inline isValidInAlignment c = c = '-' || System.Char.IsDigit c
     let inline isValidInFormat c = c <> '}' && (c = ' ' || isLetterOrDigit c || System.Char.IsPunctuation c)

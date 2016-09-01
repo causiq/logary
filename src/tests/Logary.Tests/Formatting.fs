@@ -181,6 +181,16 @@ let tests =
                              "wordCount", Field (Int64 4L, None) ])
       |> thatsIt
 
+    testCase "Formatting.templateFormat, named fields with '.'" <| fun _ ->
+      let format = "This {gramatical.structure} contains {wordCount} words."
+      let args : obj[] = [|"sentence"; 4|]
+      (because "fields are matched left-to-right in message template" <| fun () ->
+        extractFormatFields (Message.templateFormat format args))
+      |> should equal ("This {gramatical.structure} contains {wordCount} words.",
+                       Set [ "gramatical.structure", Field (String "sentence", None)
+                             "wordCount", Field (Int64 4L, None) ])
+      |> thatsIt
+
     testCase "Formatting.templateFormat, named fields, missing last" <| fun _ ->
       let format = "This {gramaticalStructure} contains {wordCount} words."
       let args : obj[] = [|"sentence"|]
