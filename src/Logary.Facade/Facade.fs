@@ -232,19 +232,18 @@ type LiterateToken =
   | Punctuation
   | LevelVerbose | LevelDebug | LevelInfo | LevelWarning | LevelError | LevelFatal
   | KeywordSymbol | NumericSymbol | StringSymbol | OtherSymbol | NameSymbol
+  | MissingTemplateField
 
-type LiterateContext =
-  { FormatProvider: IFormatProvider
-    Buffer: System.Text.StringBuilder
-    Theme: LiterateToken -> ConsoleColor
-    PrintTemplateFieldNames: bool }
-  static member Create(?formatProvider) =
+type LiterateOptions =
+  { formatProvider: IFormatProvider
+    theme: LiterateToken -> ConsoleColor
+    printTemplateFieldNames: bool }
+  static member create(?formatProvider) =
     // note: literate is meant for human consumption, and so the default
     // format provider of 'Current' is appropriate here. The reader expects
     // to see the dates, numbers, currency, etc formatted in the local culture
-    { FormatProvider = defaultArg formatProvider Globalization.CultureInfo.CurrentCulture
-      Buffer = System.Text.StringBuilder()
-      Theme = function
+    { formatProvider = defaultArg formatProvider Globalization.CultureInfo.CurrentCulture
+      theme = function
               | Text -> ConsoleColor.White
               | Subtext -> ConsoleColor.Gray
               | Punctuation -> ConsoleColor.DarkGray
@@ -259,25 +258,36 @@ type LiterateContext =
               | StringSymbol -> ConsoleColor.Cyan
               | OtherSymbol -> ConsoleColor.Green
               | NameSymbol -> ConsoleColor.Gray
-      PrintTemplateFieldNames = false }
-  static member CreateInvariant() =
-    LiterateContext.Create(Globalization.CultureInfo.InvariantCulture)
+              | MissingTemplateField -> ConsoleColor.Red
+
+      printTemplateFieldNames = false }
+  static member createInvariant() =
+    LiterateOptions.create(Globalization.CultureInfo.InvariantCulture)
+
+[<AutoOpen>]
+module internal Literals =
+  [<Literal>]
+  let internal FieldExnKey = "exn"
+
+  [<Literal>]
+  let FieldErrorsKey = "errors"
 
 module internal FsMtParser =
   open System.Text
 
   type Property(name:string, format: string) =
-      static let emptyInstance = Property("", null)
-      static member Empty = emptyInstance
-      member __.Name = name
-      member __.Format = format
-      member internal x.AppendPropertyString(sb: StringBuilder, ?replacementName) =
-          let replacementName = defaultArg replacementName name
-          sb.Append("{").Append(replacementName)
-            .Append(match x.Format with null | "" -> "" | _ -> ":" + x.Format).Append("}")
-      override x.ToString() = x.AppendPropertyString(StringBuilder()).ToString()
+    static let emptyInstance = Property("", null)
+    static member Empty = emptyInstance
+    member x.Name = name
+    member x.Format = format
+    member internal x.AppendPropertyString(sb: StringBuilder, ?replacementName) =
+      sb.Append("{")
+        .Append(defaultArg replacementName name)
+        .Append(match x.Format with null | "" -> "" | _ -> ":" + x.Format)
+        .Append("}")
+    override x.ToString() = x.AppendPropertyString(StringBuilder()).ToString()
 
-  module internal Internal =
+  module internal ParserBits =
 
     let inline isLetterOrDigit c = System.Char.IsLetterOrDigit c
     let inline isValidInPropName c = c = '_' || System.Char.IsLetterOrDigit c
@@ -286,30 +296,28 @@ module internal FsMtParser =
 
     [<Struct>]
     type Range(startIndex:int, endIndex:int) =
-        member inline this.Start = startIndex
-        member inline this.End = endIndex
-        member inline this.Length = (endIndex - startIndex) + 1
-        member inline this.GetSubString (s:string) = s.Substring(startIndex, this.Length)
-        member inline this.IsEmpty = startIndex = -1 && endIndex = -1
-        static member Substring (s:string, startIndex, endIndex) = s.Substring(startIndex, (endIndex - startIndex) + 1)
-        static member Empty = Range(-1, -1)
+      member inline this.Start = startIndex
+      member inline this.End = endIndex
+      member inline this.Length = (endIndex - startIndex) + 1
+      member inline this.GetSubString (s:string) = s.Substring(startIndex, this.Length)
+      member inline this.IsEmpty = startIndex = -1 && endIndex = -1
+      static member Substring (s:string, startIndex, endIndex) = s.Substring(startIndex, (endIndex - startIndex) + 1)
+      static member Empty = Range(-1, -1)
 
     let inline tryGetFirstCharInRange predicate (s:string) (range:Range) =
-        let rec go i =
-            if i > range.End then -1
-            else if not (predicate s.[i]) then go (i+1) else i
-        go range.Start
+      let rec go i =
+        if i > range.End then -1
+        else if not (predicate s.[i]) then go (i+1) else i
+      go range.Start
 
     let inline tryGetFirstChar predicate (s:string) first =
-        tryGetFirstCharInRange predicate s (Range(first, s.Length - 1))
+      tryGetFirstCharInRange predicate s (Range(first, s.Length - 1))
 
     let inline hasAnyInRange predicate (s:string) (range:Range) =
-        match tryGetFirstChar (predicate) s range.Start with
-        | -1 -> false | i -> i <= range.End
+      match tryGetFirstChar (predicate) s range.Start with
+      | -1 -> false | i -> i <= range.End
 
-    let inline hasAny predicate (s:string) =
-        hasAnyInRange predicate s (Range(0, s.Length - 1))
-
+    let inline hasAny predicate (s:string) = hasAnyInRange predicate s (Range(0, s.Length - 1))
     let inline indexOfInRange s range c = tryGetFirstCharInRange ((=) c) s range
 
     let inline tryGetPropInRange (template:string) (within : Range) : Property =
@@ -326,13 +334,11 @@ module internal FsMtParser =
             let format = if formatRange.IsEmpty then null else formatRange.GetSubString template
             Property(propertyName, format)
 
-    let inline findNextNonPropText (startAt: int) (template: string) (foundText: string->unit) : int =
+    let findNextNonPropText (startAt: int) (template: string) (foundText: string->unit) : int =
         let rec go i =
-            if i >= template.Length then
-              template.Length
+            if i >= template.Length then template.Length
             else
-                let c = template.[i]
-                match c with
+                match template.[i] with
                 | '{' -> if (i+1) < template.Length && template.[i+1] = '{' then go (i+2) else i
                 | '}' when (i+1) < template.Length && template.[i+1] = '}' -> go (i+2)
                 | _ -> go (i+1)
@@ -342,40 +348,40 @@ module internal FsMtParser =
         nextIndex
 
     let findPropOrText (start:int) (template:string)
-                        (foundText: string->unit) (foundProp: Property->unit) : int =
-        let first = start
-        let nextInvalidCharIndex =
-            match tryGetFirstChar (not << isValidCharInPropTag) template (first+1) with
-            | -1 -> template.Length | idx -> idx
+                        (foundText: string->unit)
+                        (foundProp: Property->unit) : int =
+      let first = start
+      let nextInvalidCharIndex =
+        match tryGetFirstChar (not << isValidCharInPropTag) template (first+1) with
+        | -1 -> template.Length | idx -> idx
 
-        if nextInvalidCharIndex = template.Length || template.[nextInvalidCharIndex] <> '}' then
-            foundText (Range.Substring(template, first, (nextInvalidCharIndex - 1)))
-            nextInvalidCharIndex
-        else
-            let nextIndex = nextInvalidCharIndex + 1
-            let propInsidesRng = Range(first + 1, nextIndex - 2)
-            match tryGetPropInRange template propInsidesRng with
-            | prop when not (obj.ReferenceEquals(prop, Property.Empty)) -> foundProp prop
-            | _ -> foundText (Range.Substring(template, first, (nextIndex - 1)))
-            nextIndex
+      if nextInvalidCharIndex = template.Length || template.[nextInvalidCharIndex] <> '}' then
+        foundText (Range.Substring(template, first, (nextInvalidCharIndex - 1)))
+        nextInvalidCharIndex
+      else
+        let nextIndex = nextInvalidCharIndex + 1
+        let propInsidesRng = Range(first + 1, nextIndex - 2)
+        match tryGetPropInRange template propInsidesRng with
+        | prop when not (obj.ReferenceEquals(prop, Property.Empty)) -> foundProp prop
+        | _ -> foundText (Range.Substring(template, first, (nextIndex - 1)))
+        nextIndex
 
-  let parseParts (template:string) foundText foundProp =
-      let tlen = template.Length
-      let rec go start =
-          if start >= tlen then ()
-          else match Internal.findNextNonPropText start template foundText with
-                  | next when next <> start -> go next
-                  | _ -> go (Internal.findPropOrText start template foundText foundProp)
-      go 0
+  /// Parses template strings such as "Hello, {PropertyWithFormat:##.##}"
+  /// and calls the 'foundTextF' or 'foundPropF' functions as the tokens
+  /// are encountered.
+  let parseParts (template:string) foundTextF foundPropF =
+    let tlen = template.Length
+    let rec go start =
+      if start >= tlen then ()
+      else match ParserBits.findNextNonPropText start template foundTextF with
+              | next when next <> start -> go next
+              | _ -> go (ParserBits.findPropOrText start template foundTextF foundPropF)
+    go 0
 
 module internal Formatting =
   open System.Text
-  open System.Text.RegularExpressions
 
-  [<Literal>]
-  let FieldExnKey = "exn"
-
-  let literateFormatValue (context: LiterateContext) (fields: Map<string,obj>) = function
+  let literateFormatValue (options: LiterateOptions) (fields: Map<string,obj>) = function
     | Event template ->
       let themedParts = ResizeArray<string * LiterateToken>()
       let matchedFields = ResizeArray<string>()
@@ -385,23 +391,21 @@ module internal Formatting =
         | Some propValue ->
           // render using string.Format, so the formatting is applied
           let stringFormatTemplate = prop.AppendPropertyString(StringBuilder(), "0").ToString()
-          let fieldAsText = System.String.Format (stringFormatTemplate, [| propValue |])
+          let fieldAsText = String.Format (options.formatProvider, stringFormatTemplate, [| propValue |])
           // find the right theme colour based on data type
           let valueColour =
             match propValue with
             | :? bool -> KeywordSymbol
-            | :? int16 | :? int32 | :? int64 | :? decimal | :? float -> NumericSymbol
+            | :? int16 | :? int32 | :? int64 | :? decimal | :? float | :? double -> NumericSymbol
             | :? string | :? char -> StringSymbol
             | _ -> OtherSymbol
-          if context.PrintTemplateFieldNames then
+          if options.printTemplateFieldNames then
             themedParts.Add ("["+prop.Name+"] ", Subtext)
           matchedFields.Add prop.Name
           themedParts.Add (fieldAsText, valueColour)
 
         | None ->
-          // if the property wasn't provided, just render the missing value
-          // but using 'LevelFatal' so it really stands out.
-          themedParts.Add (prop.ToString(), LevelFatal)
+          themedParts.Add (prop.ToString(), MissingTemplateField)
 
       FsMtParser.parseParts template foundText foundProp
       Set.ofSeq matchedFields, List.ofSeq themedParts
@@ -412,8 +416,90 @@ module internal Formatting =
 
   let formatValue (fields: Map<string,obj>) (pv: PointValue) =
     let matchedFields, themedParts =
-      literateFormatValue (LiterateContext.CreateInvariant()) fields pv
+      literateFormatValue (LiterateOptions.createInvariant()) fields pv
     matchedFields,  System.String.Join("", themedParts |> List.map fst)
+
+  let literateExceptionColorizer (options: LiterateOptions) (ex: exn) =
+    let stackFrameLinePrefix = "   "
+    use exnLines = new System.IO.StringReader(ex.ToString())
+    let rec go lines =
+      match exnLines.ReadLine() with
+      | null -> lines // finished reading
+      | line -> if line.StartsWith(stackFrameLinePrefix) then
+                  go (lines @ [ line, Subtext; Environment.NewLine, Text ])
+                else
+                  go (lines @ [ line, Text; Environment.NewLine, Text ])
+    go []
+
+  let literateLogLevelTokenizer = function
+    | Debug ->    "DBG", LevelDebug
+    | Error ->    "ERR", LevelError
+    | Fatal ->    "FTL", LevelFatal
+    | Info ->     "INF", LevelInfo
+    | Verbose ->  "VRB", LevelVerbose
+    | Warn ->     "WRN", LevelWarning
+
+  let literateColorizeExceptions (context: LiterateOptions) message =
+    let exnExceptionParts =
+      match message.fields.TryFind FieldExnKey with
+      | Some (:? Exception as ex) ->
+        literateExceptionColorizer context ex
+        @ [ Environment.NewLine, Text ]
+      | _ -> [] // there is no spoon
+    let errorsExceptionParts =
+      match message.fields.TryFind FieldErrorsKey with
+      | Some (:? List<obj> as exnListAsObjList) ->
+        exnListAsObjList |> List.collect (function
+          | :? exn as ex ->
+            literateExceptionColorizer context ex
+            @ [ Environment.NewLine, Text ]
+          | _ -> [])
+      | _ -> []
+
+    exnExceptionParts @ errorsExceptionParts
+
+  /// Split a structured message up into theme-able parts (tokens), allowing the
+  /// final output to display to a user with colours to enhance readability.
+  /// Final output sample:
+  /// "[11:00:01 INF] Hello, world! There are 100 items in your cart: [Item1, Item2, Item3]"
+  /// TODO: sample string*Token list ? too confusing?
+  let literateDefaultTokenizer (context: LiterateOptions) (message: Message) : (string * LiterateToken) list =
+    let formatLocalTime (utcTicks : int64) =
+      DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss", context.formatProvider)
+      , Subtext
+
+    let themedMessageParts =
+      message.value
+      |> literateFormatValue context message.fields
+      |> fun (_, themedParts) -> themedParts
+
+    let themedExceptionParts =
+      if not themedMessageParts.IsEmpty then
+        let exnParts = literateColorizeExceptions context message
+        if not exnParts.IsEmpty then
+          [ Environment.NewLine, Text ]
+          @ exnParts
+          @ [ Environment.NewLine, Text ]
+        else []
+      else []
+
+    [
+      "[", Punctuation
+      formatLocalTime message.utcTicks
+      " ", Subtext
+      literateLogLevelTokenizer message.level
+      "] ", Punctuation
+    ]
+    @ themedMessageParts
+    @ themedExceptionParts
+
+  let literateDefaultColorWriter sem (parts: (string * ConsoleColor) list) =
+    lock sem <| fun _ ->
+      parts |> List.iter (fun (text, color) ->
+        Console.ForegroundColor <- color
+        Console.Write(text)
+      )
+      Console.ResetColor()
 
   /// let the ISO8601 love flow
   let defaultFormatter (message : Message) =
@@ -457,100 +543,18 @@ module internal Formatting =
     formatExn message.fields +
     formatFields matchedFields message.fields
 
-  let literateExceptionColorizer (context: LiterateContext) (ex: exn) =
-    let stackFrameLinePrefix = "   "
-    use exnLines = new System.IO.StringReader(ex.ToString())
-    let rec go lines =
-      match exnLines.ReadLine() with
-      | null -> lines // finished reading
-      | line -> if line.StartsWith(stackFrameLinePrefix) then
-                  go (lines @ [ line, Subtext; Environment.NewLine, Text ])
-                else
-                  go (lines @ [ line, Text; Environment.NewLine, Text ])
-    go []
-
-  let literateLogLevelTokenizer = function
-    | Debug ->    "DBG", LevelDebug
-    | Error ->    "ERR", LevelError
-    | Fatal ->    "FTL", LevelFatal
-    | Info ->     "INF", LevelInfo
-    | Verbose ->  "VRB", LevelVerbose
-    | Warn ->     "WRN", LevelWarning
-
-  let literateColorizeExceptions (context: LiterateContext) message =
-    let exnExceptionParts =
-      match message.fields.TryFind FieldExnKey with
-      | Some (:? Exception as ex) ->
-        literateExceptionColorizer context ex
-        @ [ Environment.NewLine, Text ]
-      | _ -> [] // there is no spoon
-    let errorsExceptionParts =
-      match message.fields.TryFind "errors" with
-      | Some (:? List<obj> as exnListAsObjList) ->
-        exnListAsObjList |> List.collect (function
-          | :? exn as ex ->
-            literateExceptionColorizer context ex
-            @ [ Environment.NewLine, Text ]
-          | _ -> [])
-      | _ -> []
-
-    exnExceptionParts @ errorsExceptionParts
-
-  /// Split a structured message up into theme-able parts (tokens), allowing the
-  /// final output to display to a user with colours to enhance readability.
-  /// Final output sample:
-  /// "[11:00:01 INF] Hello, world! There are 100 items in your cart: [Item1, Item2, Item3]"
-  /// TODO: sample string*Token list ? too confusing?
-  let literateTokenizer (context: LiterateContext) (message: Message) : (string * LiterateToken) list =
-    let formatLocalTime (utcTicks : int64) =
-      DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss", context.FormatProvider)
-      , Subtext
-
-    let themedMessageParts =
-      message.value
-      |> literateFormatValue context message.fields
-      |> fun (_, themedParts) -> themedParts
-
-    let themedExceptionParts =
-      if not themedMessageParts.IsEmpty then
-        let exnParts = literateColorizeExceptions context message
-        if not exnParts.IsEmpty then
-          [ Environment.NewLine, Text ]
-          @ exnParts
-          @ [ Environment.NewLine, Text ]
-        else []
-      else []
-
-    [
-      "[", Punctuation
-      formatLocalTime message.utcTicks
-      " ", Subtext
-      literateLogLevelTokenizer message.level
-      "] ", Punctuation
-    ]
-    @ themedMessageParts
-    @ themedExceptionParts
-
-  let literateDefaultColorWriter sem (parts: (string * ConsoleColor) list) =
-    lock sem <| fun _ ->
-      parts |> List.iter (fun (text, color) ->
-        Console.ForegroundColor <- color
-        Console.Write(text)
-      )
-      Console.ResetColor()
-
 /// Logs a line in a format that is great for human consumption,
 /// using console colours to enhance readability.
 /// Sample: [10:30:49 INF] User "AdamC" began the "checkout" process with 100 cart items
-type LiterateConsoleTarget(minLevel, ?context, ?colorize, ?colorWriter, ?consoleSemaphore) =
+type LiterateConsoleTarget(minLevel, ?options, ?literateTokenizer, ?outputWriter, ?consoleSemaphore) =
   let sem           = defaultArg consoleSemaphore (obj())
-  let context       = defaultArg context (LiterateContext.Create())
-  let tokenize      = defaultArg colorize Formatting.literateTokenizer
-  let colorWriter   = defaultArg colorWriter Formatting.literateDefaultColorWriter sem
+  let options       = defaultArg options (LiterateOptions.create())
+  let tokenize      = defaultArg literateTokenizer Formatting.literateDefaultTokenizer
+  let colorWriter   = defaultArg outputWriter Formatting.literateDefaultColorWriter sem
 
   let colorizeThenNewLine message =
-    (tokenize context message) @ [Environment.NewLine, Text]
-    |> List.map (fun (s, t) -> s, context.Theme(t))
+    (tokenize options message) @ [Environment.NewLine, Text]
+    |> List.map (fun (s, t) -> s, options.theme(t))
 
   interface Logger with
     member x.logWithAck level msgFactory =
@@ -789,12 +793,12 @@ module Message =
   /// Adds an exception to the Message, to the 'errors' field, inside a list.
   let addExn ex (x : Message) =
     let fields' =
-      match Map.tryFind "errors" x.fields with
+      match Map.tryFind FieldErrorsKey x.fields with
       | None ->
-        x.fields |> Map.add "errors" (box [ box ex ])
+        x.fields |> Map.add FieldErrorsKey (box [ box ex ])
 
       | Some errors ->
         let arr : obj list = unbox errors
-        x.fields |> Map.add "errors" (box (box ex :: arr))
+        x.fields |> Map.add FieldErrorsKey (box (box ex :: arr))
 
     { x with fields = fields' }
