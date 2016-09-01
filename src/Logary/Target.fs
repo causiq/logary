@@ -20,7 +20,7 @@ type TargetMessage =
 /// A target instance is a spawned actor instance together with the name of this
 /// target instance.
 type TargetInstance =
-  { server   : Job<unit>
+  { server   : (obj -> Job<unit>) -> obj option -> Job<unit>
     requests : RingBuffer<TargetMessage>
     shutdown : Ch<IVar<unit>>
     /// The human readable name of the target.
@@ -68,11 +68,6 @@ let confTarget name (factory : string -> TargetConf) =
 let init metadata (conf : TargetConf) : Job<TargetInstance> =
   conf.initer metadata
 
-/// Enqueues the target's loop on the global scheduler. Use with care, or you'll
-/// have more than one loop running.
-let runTarget (inst : TargetInstance) : unit =
-  queue inst.server
-
 /// Send the target a message, returning the same instance as was passed in when
 /// the Message was acked.
 let log (i : TargetInstance) (msg : Message) : Alt<Promise<unit>> =
@@ -103,6 +98,19 @@ module TargetUtils =
   /// Create a new standard named target, with no particular namespace,
   /// given a job function and a name for the target.
   let stdNamedTarget (loop : RuntimeInfo -> RingBuffer<_> -> Ch<IVar<unit>> -> Job<unit>) name : TargetConf =
+    let name' = PointName.parse name
+    { name = name'
+      initer = fun metadata -> job {
+        let! requests = RingBuffer.create 500u
+        let shutdown = Ch ()
+        return { server   = fun _ _ -> loop metadata requests shutdown
+                 requests = requests
+                 shutdown = shutdown
+                 name     = name' }
+      }
+    }
+
+  let willAwareNamedTarget loop name : TargetConf =
     let name' = PointName.parse name
     { name = name'
       initer = fun metadata -> job {

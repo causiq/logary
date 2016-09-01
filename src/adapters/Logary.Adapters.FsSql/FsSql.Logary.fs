@@ -23,7 +23,7 @@ module internal FsSqlLogLine =
   /// Convert a Suave LogLine to a Logary LogLine.
   let toLogary (l : FsSql.Logging.LogLine) =
     Message.event (FsSqlLogLevel.toLogary l.level) l.message
-    |> Message.setName (PointName.parse l.path)
+    |> Message.setName (if l.path <> "" then PointName.parse l.path else PointName.ofSingle "FsSql")
     |> Message.setUTCTicks l.timestamp
 
 type FsSqlAdapter(logger : Logger) =

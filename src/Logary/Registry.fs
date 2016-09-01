@@ -365,11 +365,7 @@ module Advanced =
       Message.setName (PointName [| "Logary"; "Registry"; "create" |])
       >> Logger.log conf.runtimeInfo.logger
 
-    let sopts = Supervisor.Options.create (conf.runtimeInfo.logger, 10u, Duration.FromMilliseconds 500L)
-    let sup = Supervisor.create sopts
-
-    // Supervisor must be running so we can register new jobs
-    Supervisor.start sup
+    let sup = Supervisor.create conf.runtimeInfo.logger
 
     let targets =
       conf.targets
@@ -384,8 +380,12 @@ module Advanced =
       targets
       |> Seq.map (fun kv -> kv.Value |> snd |> Option.get)
       |> Seq.map (fun ti ->
-        let namedJob = NamedJob.create (PointName.format ti.name) ti.server
-        Supervisor.register sup namedJob)
+        let (minionInfo : Supervisor.MinionInfo) =
+          { name     = ti.name
+            policy   = Supervisor.Delayed (Duration.FromSeconds 1L)
+            job      = ti.server
+            shutdown = ti.shutdown }
+        sup.register *<+ minionInfo)
       |> Job.conIgnore
 
     let sched = Scheduling.create ()
