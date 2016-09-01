@@ -237,12 +237,20 @@ type LiterateToken =
 type LiterateOptions =
   { formatProvider: IFormatProvider
     theme: LiterateToken -> ConsoleColor
+    getLogLevelText: LogLevel -> string
     printTemplateFieldNames: bool }
   static member create(?formatProvider) =
     // note: literate is meant for human consumption, and so the default
     // format provider of 'Current' is appropriate here. The reader expects
     // to see the dates, numbers, currency, etc formatted in the local culture
     { formatProvider = defaultArg formatProvider Globalization.CultureInfo.CurrentCulture
+      getLogLevelText = function
+              | Debug ->    "DBG"
+              | Error ->    "ERR"
+              | Fatal ->    "FTL"
+              | Info ->     "INF"
+              | Verbose ->  "VRB"
+              | Warn ->     "WRN"
       theme = function
               | Text -> ConsoleColor.White
               | Subtext -> ConsoleColor.Gray
@@ -278,12 +286,12 @@ module internal FsMtParser =
   type Property(name:string, format: string) =
     static let emptyInstance = Property("", null)
     static member Empty = emptyInstance
-    member x.Name = name
-    member x.Format = format
+    member x.name = name
+    member x.format = format
     member internal x.AppendPropertyString(sb: StringBuilder, ?replacementName) =
       sb.Append("{")
         .Append(defaultArg replacementName name)
-        .Append(match x.Format with null | "" -> "" | _ -> ":" + x.Format)
+        .Append(match x.format with null | "" -> "" | _ -> ":" + x.format)
         .Append("}")
     override x.ToString() = x.AppendPropertyString(StringBuilder()).ToString()
 
@@ -296,86 +304,101 @@ module internal FsMtParser =
 
     [<Struct>]
     type Range(startIndex:int, endIndex:int) =
-      member inline this.Start = startIndex
-      member inline this.End = endIndex
-      member inline this.Length = (endIndex - startIndex) + 1
-      member inline this.GetSubString (s:string) = s.Substring(startIndex, this.Length)
-      member inline this.IsEmpty = startIndex = -1 && endIndex = -1
-      static member Substring (s:string, startIndex, endIndex) = s.Substring(startIndex, (endIndex - startIndex) + 1)
-      static member Empty = Range(-1, -1)
+      member inline this.start = startIndex
+      member inline this.``end`` = endIndex
+      member inline this.length = (endIndex - startIndex) + 1
+      member inline this.getSubstring (s:string) = s.Substring(startIndex, this.length)
+      member inline this.isEmpty = startIndex = -1 && endIndex = -1
+      static member substring (s:string, startIndex, endIndex) = s.Substring(startIndex, (endIndex - startIndex) + 1)
+      static member empty = Range(-1, -1)
 
     let inline tryGetFirstCharInRange predicate (s:string) (range:Range) =
       let rec go i =
-        if i > range.End then -1
+        if i > range.``end`` then -1
         else if not (predicate s.[i]) then go (i+1) else i
-      go range.Start
+      go range.start
 
     let inline tryGetFirstChar predicate (s:string) first =
       tryGetFirstCharInRange predicate s (Range(first, s.Length - 1))
 
     let inline hasAnyInRange predicate (s:string) (range:Range) =
-      match tryGetFirstChar (predicate) s range.Start with
-      | -1 -> false | i -> i <= range.End
+      match tryGetFirstChar (predicate) s range.start with
+      | -1 -> false | i -> i <= range.``end``
 
     let inline hasAny predicate (s:string) = hasAnyInRange predicate s (Range(0, s.Length - 1))
     let inline indexOfInRange s range c = tryGetFirstCharInRange ((=) c) s range
 
     let inline tryGetPropInRange (template:string) (within : Range) : Property =
-        let nameRange, formatRange =
-            match indexOfInRange template within ':' with
-            | -1 -> within, Range.Empty // no format
-            | formatIndex -> Range(within.Start, formatIndex-1), Range(formatIndex+1, within.End) // has format part
-        let propertyName = nameRange.GetSubString template
-        if propertyName = "" || (hasAny (not<<isValidInPropName) propertyName) then
-            Property.Empty
-        elif (not formatRange.IsEmpty) && (hasAnyInRange (not<<isValidInFormat) template formatRange) then
-            Property.Empty
-        else
-            let format = if formatRange.IsEmpty then null else formatRange.GetSubString template
-            Property(propertyName, format)
+      // Attempts to validate and parse a property token within the specified range inside
+      // the template string. If the property insides contains any invalid characters,
+      // then the `Property.Empty' instance is returned (hence the name 'try')
+      let nameRange, formatRange =
+        match indexOfInRange template within ':' with
+        | -1 -> within, Range.empty // no format
+        | formatIndex -> Range(within.start, formatIndex-1), Range(formatIndex+1, within.``end``) // has format part
+      let propertyName = nameRange.getSubstring template
+      if propertyName = "" || (hasAny (not<<isValidInPropName) propertyName) then
+        Property.Empty
+      elif (not formatRange.isEmpty) && (hasAnyInRange (not<<isValidInFormat) template formatRange) then
+        Property.Empty
+      else
+        let format = if formatRange.isEmpty then null else formatRange.getSubstring template
+        Property(propertyName, format)
 
     let findNextNonPropText (startAt: int) (template: string) (foundText: string->unit) : int =
-        let rec go i =
-            if i >= template.Length then template.Length
-            else
-                match template.[i] with
-                | '{' -> if (i+1) < template.Length && template.[i+1] = '{' then go (i+2) else i
-                | '}' when (i+1) < template.Length && template.[i+1] = '}' -> go (i+2)
-                | _ -> go (i+1)
-        let nextIndex = go startAt
-        if (nextIndex > startAt) then
-            foundText (Range.Substring(template, startAt, nextIndex - 1))
-        nextIndex
+      // Finds the next text token (starting from the 'startAt' index) and returns the next character
+      // index within the template string. If the end of the template string is reached, or the start
+      // of a property token is found (i.e. a single { character), then the 'consumed' text is passed
+      // to the 'foundText' method, and index of the next character is returned.
+      let rec go i =
+        if i >= template.Length then template.Length
+        else
+          match template.[i] with
+          | '{' -> if (i+1) < template.Length && template.[i+1] = '{' then go (i+2) else i
+          | '}' when (i+1) < template.Length && template.[i+1] = '}' -> go (i+2)
+          | _ -> go (i+1)
+      let nextIndex = go startAt
+      if (nextIndex > startAt) then
+        foundText (Range.substring(template, startAt, nextIndex - 1))
+      nextIndex
 
     let findPropOrText (start:int) (template:string)
-                        (foundText: string->unit)
-                        (foundProp: Property->unit) : int =
-      let first = start
+                       (foundText: string->unit)
+                       (foundProp: Property->unit) : int =
+      // Attempts to find the indices of the next property in the template
+      // string (starting from the 'start' index). Once the start and end of
+      // the property token is known, it will be further validated (by the
+      // tryGetPropInRange method). If the range turns out to be invalid, it's
+      // not a property token, and we return it as text instead. We also need
+      // to handle some special case here: if the end of the string is reached,
+      // without finding the close brace (we just signal 'foundText' in that case).
       let nextInvalidCharIndex =
-        match tryGetFirstChar (not << isValidCharInPropTag) template (first+1) with
+        match tryGetFirstChar (not << isValidCharInPropTag) template (start+1) with
         | -1 -> template.Length | idx -> idx
 
       if nextInvalidCharIndex = template.Length || template.[nextInvalidCharIndex] <> '}' then
-        foundText (Range.Substring(template, first, (nextInvalidCharIndex - 1)))
+        foundText (Range.substring(template, start, (nextInvalidCharIndex - 1)))
         nextInvalidCharIndex
       else
         let nextIndex = nextInvalidCharIndex + 1
-        let propInsidesRng = Range(first + 1, nextIndex - 2)
+        let propInsidesRng = Range(start + 1, nextIndex - 2)
         match tryGetPropInRange template propInsidesRng with
-        | prop when not (obj.ReferenceEquals(prop, Property.Empty)) -> foundProp prop
-        | _ -> foundText (Range.Substring(template, first, (nextIndex - 1)))
+        | prop when not (obj.ReferenceEquals(prop, Property.Empty)) ->
+          foundProp prop
+        | _ ->
+          foundText (Range.substring(template, start, (nextIndex - 1)))
         nextIndex
 
   /// Parses template strings such as "Hello, {PropertyWithFormat:##.##}"
-  /// and calls the 'foundTextF' or 'foundPropF' functions as the tokens
-  /// are encountered.
+  /// and calls the 'foundTextF' or 'foundPropF' functions as the text or
+  /// property tokens are encountered.
   let parseParts (template:string) foundTextF foundPropF =
     let tlen = template.Length
     let rec go start =
       if start >= tlen then ()
       else match ParserBits.findNextNonPropText start template foundTextF with
-              | next when next <> start -> go next
-              | _ -> go (ParserBits.findPropOrText start template foundTextF foundPropF)
+            | next when next <> start -> go next
+            | _ -> go (ParserBits.findPropOrText start template foundTextF foundPropF)
     go 0
 
 module internal Formatting =
@@ -387,7 +410,7 @@ module internal Formatting =
       let matchedFields = ResizeArray<string>()
       let foundText (text: string) = themedParts.Add (text, Text)
       let foundProp (prop: FsMtParser.Property) =
-        match Map.tryFind prop.Name fields with
+        match Map.tryFind prop.name fields with
         | Some propValue ->
           // render using string.Format, so the formatting is applied
           let stringFormatTemplate = prop.AppendPropertyString(StringBuilder(), "0").ToString()
@@ -400,8 +423,8 @@ module internal Formatting =
             | :? string | :? char -> StringSymbol
             | _ -> OtherSymbol
           if options.printTemplateFieldNames then
-            themedParts.Add ("["+prop.Name+"] ", Subtext)
-          matchedFields.Add prop.Name
+            themedParts.Add ("["+prop.name+"] ", Subtext)
+          matchedFields.Add prop.name
           themedParts.Add (fieldAsText, valueColour)
 
         | None ->
@@ -431,14 +454,6 @@ module internal Formatting =
                   go (lines @ [ line, Text; Environment.NewLine, Text ])
     go []
 
-  let literateLogLevelTokenizer = function
-    | Debug ->    "DBG", LevelDebug
-    | Error ->    "ERR", LevelError
-    | Fatal ->    "FTL", LevelFatal
-    | Info ->     "INF", LevelInfo
-    | Verbose ->  "VRB", LevelVerbose
-    | Warn ->     "WRN", LevelWarning
-
   let literateColorizeExceptions (context: LiterateOptions) message =
     let exnExceptionParts =
       match message.fields.TryFind FieldExnKey with
@@ -460,22 +475,19 @@ module internal Formatting =
 
   /// Split a structured message up into theme-able parts (tokens), allowing the
   /// final output to display to a user with colours to enhance readability.
-  /// Final output sample:
-  /// "[11:00:01 INF] Hello, world! There are 100 items in your cart: [Item1, Item2, Item3]"
-  /// TODO: sample string*Token list ? too confusing?
-  let literateDefaultTokenizer (context: LiterateOptions) (message: Message) : (string * LiterateToken) list =
+  let literateDefaultTokenizer (options: LiterateOptions) (message: Message) : (string * LiterateToken) list =
     let formatLocalTime (utcTicks : int64) =
-      DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss", context.formatProvider)
-      , Subtext
+      DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss", options.formatProvider),
+      Subtext
 
     let themedMessageParts =
       message.value
-      |> literateFormatValue context message.fields
+      |> literateFormatValue options message.fields
       |> fun (_, themedParts) -> themedParts
 
     let themedExceptionParts =
       if not themedMessageParts.IsEmpty then
-        let exnParts = literateColorizeExceptions context message
+        let exnParts = literateColorizeExceptions options message
         if not exnParts.IsEmpty then
           [ Environment.NewLine, Text ]
           @ exnParts
@@ -483,13 +495,19 @@ module internal Formatting =
         else []
       else []
 
-    [
-      "[", Punctuation
+    let getLogLevelToken = function
+      | Verbose -> LevelVerbose
+      | Debug -> LevelDebug
+      | Info -> LevelInfo
+      | Warn -> LevelWarning
+      | Error -> LevelError
+      | Fatal -> LevelFatal
+
+    [ "[", Punctuation
       formatLocalTime message.utcTicks
       " ", Subtext
-      literateLogLevelTokenizer message.level
-      "] ", Punctuation
-    ]
+      options.getLogLevelText message.level, getLogLevelToken message.level
+      "] ", Punctuation ]
     @ themedMessageParts
     @ themedExceptionParts
 

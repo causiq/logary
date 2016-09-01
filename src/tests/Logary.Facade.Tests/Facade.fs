@@ -5,22 +5,22 @@ open Fuchu
 open Logary.Facade
 open ExpectoPatronum
 
-
 type internal TemplateToken =
-    | TextToken of string
-    | PropToken of name:string * format:string
-    with override x.ToString() =
-                    match x with
-                    | TextToken s -> "TEXT("+s+")"
-                    | PropToken (n,f) -> "PROP("+n+":"+f+")"
+  | TextToken of string
+  | PropToken of name:string * format:string
+  with
+    override x.ToString() =
+      match x with
+      | TextToken s -> "TEXT("+s+")"
+      | PropToken (n,f) -> "PROP("+n+":"+f+")"
 
 let internal parseTemplateTokens template =
-    let tokens = ResizeArray<TemplateToken>()
-    let foundText t = tokens.Add (TextToken(t))
-    let foundProp (p: FsMtParser.Property) =
-        tokens.Add (PropToken(p.Name, p.Format))
-    FsMtParser.parseParts template foundText foundProp
-    tokens |> List.ofSeq
+  let tokens = ResizeArray<TemplateToken>()
+  let foundText t = tokens.Add (TextToken(t))
+  let foundProp (p: FsMtParser.Property) =
+    tokens.Add (PropToken(p.name, p.format))
+  FsMtParser.parseParts template foundText foundProp
+  tokens |> List.ofSeq
 
 [<Tests>]
 let tests =
@@ -85,20 +85,17 @@ let tests =
       let tokens = parseTemplateTokens template
       Expect.equal tokens.Length 5 "Extracts 4 texts parts and 1 property part"
       Expect.equal tokens
-                   [
-                    TextToken ("Hi ")
-                    PropToken ("ho", "##.###")
-                    TextToken (", we're ") // <- a quirk of the parser
-                    TextToken ("{ something going on }")
-                    TextToken (" special")
-                   ]
+                   [ TextToken ("Hi ")
+                     PropToken ("ho", "##.###")
+                     TextToken (", we're ") // <- a quirk of the parser
+                     TextToken ("{ something going on }")
+                     TextToken (" special") ]
                    "Should extract correct name and format parts"
 
     testCase "handles evil property strings correctly" <| fun _ ->
       let template = "{a}{b}{  c}{d  } {e} fghij {k}} {l} m {{}}"
       // validity:     +  +  --    --   +         +    +     --
       let expectedPropertyNames = ["a"; "b"; "e"; "k"; "l"]
-      let strEvilRes = "abcd e fghij k} l m {{}}"
       let subject = parseTemplateTokens template
       Expect.equal (subject |> List.choose (function PropToken (n,f) -> Some n | _ -> None))
                    expectedPropertyNames
