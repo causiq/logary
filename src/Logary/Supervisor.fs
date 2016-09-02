@@ -129,6 +129,7 @@ let create logger =
       | Some (jobId, minionState) ->
         minionState.info.shutdown *<-=>- id
         >>-. SupervisorState.removeMinion jobId state
+        >>-. SupervisorState.removeDelayed name state
       | None ->
         Message.eventWarn "Received request to unregister unknown job"
         |> Message.setField "name" (PointName.format name)
