@@ -83,6 +83,8 @@ Install-Package Logary
       * [Building a signed version](#building-a-signed-version)
     * [Contributing](#contributing)
       * [Writing a new target](#writing-a-new-target)
+        * [Target guidelines](#target-guidelines)
+        * [Publishing your target](#publishing-your-target)
     * [Commercial Targets](#commercial-targets)
       * [Mixpanel](#mixpanel)
         * [Features](#features)
@@ -105,7 +107,6 @@ Install-Package Logary
       * [What's logVerboseWithAck, logWithAck and how does it differ from logSimple?](#whats-logverbosewithack-logwithack-and-how-does-it-differ-from-logsimple)
         * [logWithAck – so what's up with Promise?](#logwithack--so-whats-up-with-promise)
     * [License](#license)
-
 
 ## Hello World (C#)
 
@@ -1062,9 +1063,67 @@ tools/paket.exe install --redirects --clean-redirects --createnewbindingfiles`
 
 ### Writing a new target
 
+Are you thinking of creating a new Target for Logary? It's a good idea if you
+can't find the right Target for your use case. It can also be useful if you have
+an internal metrics or log message engine in your company you wish to ship to.
+
  1. Create a new .net 4.5 class library in F#, under `target` and add that to Logary.sln.
  1. Copy the code from Logary's `Target_Noop.fs`, which contains the basic structure.
-    There are more docs in this file.
+    There are more docs in this file, to a file named `Target_MyTarget.fs` in
+    your new project.
+ 1. Add a nuget reference (or project reference if you're intending to send a
+    PR) to `Logary`
+ 1. Write your Target and your Target's tests to ensure that it works
+   - Remember to test when the call to your server throws exceptions or fails
+   - You should use [Http.fs](https://github.com/haf/Http.fs) as the HTTP client
+     if it's a HTTP target
+
+#### Target guidelines
+
+When writing the Target, it's useful to keep these guidelines in mind.
+
+ - It should be able to handle shutdown messages from the shutdown channel
+ - It should not handle 'unexpected' exceptions, like network loss or a full
+   disk by itself, but instead crash with an exception – the Logary supervisor
+   will restart it after a short duration.
+ - Things that are part of the target API, like different response status codes
+   of a REST API should be handled inside the Target.
+ - Don't do blocking calls;
+   * Convert `Task<_>` and `Async<_>` to `Job<_>` by using the Hopac
+     [conversion methods][hopac-fromAsync]
+   * If you need to block, use [Scheduler.isolate][hopac-isolate] so that your
+     blocking call doesn't stop all Targets.
+ - Choose whether to create a target that can re-send crashing messages by
+   choosing between `TargetUtils.{willAwareNamedTarget, stdNamedTarget}`
+ - You can choose between consuming Messages one-by-one through
+   [`RingBuffer.take`][ringbuffer] or in batches with `RingBuffer.takeBatch`
+ - If you take a batch and the network call to send it off fails, consider
+   sending the batch to the `willChannel` and throw an exception. Your target
+   will be re-instantiated with the batch and you can now send the messages
+   one-by-one to your target, throwing away poison messages (things that always
+   crash).
+ - If your target throws an exception, the batch of Messages or the Message
+   you've taken from the `RingBuffer` will be gone, unless you send it to the
+   *will* channel.
+ - Exiting the loop will cause your Target to shut down. So don't catch
+   *all* exceptions without recursing afterwards. The supervisor does *not*
+   restart targets that exit on their own.
+ - If your target can understand a service name, then you should always add the
+   service name from `RuntimeInfo.serviceName` as passed to your loop function.
+ - The `RuntimeInfo` contains a simple internal logger that you can assume
+   always will accept your Messages. It allows you to debug and log exceptions
+   from your target. By default it will write output to the STDOUT stream.
+ - If you don't implement the last-will functionality, a caller that awaits the
+   Promise in `Alt<Promise<unit>>` as returned from `logWithAck`, will block
+   forever if your target ever crashes.
+
+#### Publishing your target
+
+When your Target is finished, either ping [@haf](https://github.com/haf) on
+github, [@henrikfeldt](https://twitter.com/henrikfeldt) on twitter, or send a PR
+to this README with your implementation documented. I can assist in
+proof-reading your code, to ensure that it follows the empirical lessons learnt
+operating huge systems with Logary.
 
 ## Commercial Targets
 
@@ -1322,7 +1381,7 @@ Rules make it relevant for your Message, receives the Message, each target tries
 to send that Message to its, well, target.
 
 Because running out of memory generally is unwanted, each target has a
-RingBuffer that [the messages are put
+[RingBuffer][ringbuffer] that [the messages are put
 into](https://github.com/logary/logary/blob/4987c421849464d23b61ea4b64f8e48a6df21f12/src/Logary/Internals_Logger.fs#L13-L21)
 when you use the `Logger`. Unless all targets' `RingBuffer` accept the
 `Message`, the call to `log` doesn't complete. This is similar to how other
@@ -1359,3 +1418,6 @@ Acks), asynchronous publish and also durable messaging.
 
  [apache]: https://www.apache.org/licenses/LICENSE-2.0.html
  [nuget-logary]: https://www.nuget.org/packages/Logary/
+ [ringbuffer]: https://github.com/logary/RingBuffer
+ [hopac-fromAsync]: https://hopac.github.io/Hopac/Hopac.html#def:val%20Hopac.Job.fromAsync
+ [hopac-isolate]: https://hopac.github.io/Hopac/Hopac.html#def:val%20Hopac.Job.Scheduler.isolate
