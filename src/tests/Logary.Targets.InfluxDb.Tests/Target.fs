@@ -31,7 +31,7 @@ let start () =
 
   Target.init emptyRuntime (create targConf "influxdb")
   |> run
-  |> fun inst -> inst.server |> start; inst
+  |> fun inst -> inst.server (fun _ -> Job.result ()) None |> start; inst
 
 let finaliseTarget = Target.shutdown >> fun a ->
   a ^-> TimeoutResult.Success <|> timeOutMillis 1000 ^->. TimedOut

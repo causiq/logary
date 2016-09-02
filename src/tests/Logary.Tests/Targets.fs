@@ -92,8 +92,6 @@ let basicTests targetName (configFactory : string -> Target.TargetConf) =
                    (PointName.ofSingle "basic1")
                    "Should be named 'basic1'"
 
-      Expect.isNotNull instance.server "Should have Job<unit> as #server"
-
     testCase "start, log and stop" <| fun _ ->
       let target =
         Target.confTarget "basic2" configFactory
@@ -101,7 +99,7 @@ let basicTests targetName (configFactory : string -> Target.TargetConf) =
       let instance =
         target |> Target.init Fac.emptyRuntime |> run
 
-      start instance.server
+      start <| instance.server (fun _ -> Job.result ()) None
 
       try
         Message.eventInfo "Hello World!"
@@ -117,7 +115,8 @@ let basicTests targetName (configFactory : string -> Target.TargetConf) =
         |> Target.init Fac.emptyRuntime
         |> run
 
-      Target.runTarget instance
+      instance.server (fun _ -> Job.result ()) None
+      |> queue
 
       try
         exnMsg |> Target.logAndWait instance

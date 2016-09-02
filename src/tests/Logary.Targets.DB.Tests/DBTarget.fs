@@ -38,7 +38,7 @@ module SQLiteDB =
       |> Job.conCollect
       |> run
 
-    targets |> Seq.iter (Target.runTarget)
+    targets |> Seq.iter (fun target -> target.server (fun _ -> Job.result ()) None |> start)
     InternalLogger.create Info targets
 
   open System

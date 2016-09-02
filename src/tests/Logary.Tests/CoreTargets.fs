@@ -22,7 +22,8 @@ let tests =
       let stdout = Fac.textWriter ()
       let target = create (TextWriterConf.create(stdout, stdout)) "writing console target"
       let instance = target |> Target.init emptyRuntime |> run
-      start instance.server |> ignore
+      instance.server (fun _ -> Job.result ()) None
+      |> start
 
       (because "logging with info level and then finalising the target" <| fun () ->
         Message.eventInfo "Hello World!" |> Target.logAndWait instance
@@ -35,7 +36,8 @@ let tests =
       let stdout = Fac.textWriter ()
       let target = create (TextWriterConf.create(stdout, stdout)) "writing console target"
       let instance = target |> Target.init emptyRuntime |> run
-      start instance.server |> ignore
+      instance.server (fun _ -> Job.result ()) None
+      |> start
 
       let x = dict ["foo", "bar"]
       (because "logging with fields then finalising the target" <| fun () ->
@@ -52,7 +54,8 @@ let tests =
       let out, err = Fac.textWriter (), Fac.textWriter ()
       let target = create (TextWriterConf.create(out, err)) "error writing"
       let subject = target |> Target.init emptyRuntime |> run
-      start subject.server |> ignore
+      subject.server (fun _ -> Job.result ()) None
+      |> start
 
       (because "logging 'Error line' and 'Fatal line' to the target" <| fun () ->
         Message.eventError "Error line" |> Target.logAndWait subject

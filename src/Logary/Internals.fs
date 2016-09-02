@@ -5,25 +5,6 @@ open System.Threading
 open Hopac
 open Hopac.Extensions.Seq
 
-type NamedJob<'a> =
-  { name : string
-    job  : Job<'a> }
-with
-  override x.ToString() =
-    sprintf "Job[%s]" x.name
-
-/// Provides operations on named jobs
-module NamedJob =
-
-  let create name =
-    fun job ->
-      { name = name
-        job  = job }
-
-  /// Starts running the given named job on the global scheduler.
-  let spawn nj =
-    nj.job |> start
-
 module internal Seq =
 
   let all f s = Seq.fold (fun acc t -> acc && f t) true s

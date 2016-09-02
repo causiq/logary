@@ -53,7 +53,7 @@ let withInternalTargets level tconfs (conf : LogaryConf) =
       |> List.map (Target.init internalRuntime)
       |> Job.conCollect
 
-    targets |> Seq.iter Target.runTarget
+    targets |> Seq.iter (fun ti -> ti.server (fun _ -> Job.result ()) None |> start)
     return! withInternalLogger (createInternalLogger level targets) conf
   }
 
