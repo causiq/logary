@@ -92,7 +92,6 @@ let tests =
 
       let no2 = pnp "path.2.extra" |> get
       Assert.Equal("path.2.extra should be warn", Warn, no2.level) // this one goes upwards
-      
 
     yield testCase "middleware" <| fun _ ->
       Tests.skiptest "TODO"

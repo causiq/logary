@@ -236,7 +236,6 @@ module internal Impl =
     match request with
     | Log (msg, ack) -> 
       Serialisation.serialiseMessage msg
-      
     | _ ->
       ""
 
@@ -261,37 +260,31 @@ module internal Impl =
 
         // 'When there is a request' call this function
         RingBuffer.takeBatch (uint32 conf.batchSize) requests ^=> fun reqs ->
-          //printfn "Influx: Got %i messages" reqs.Length
 
           let messageTexts = Seq.map extractMessage reqs
           let body = messageTexts |> String.concat "\n"
 
-          job {    
-            //printfn "body: [\r\n%s\r\n]" body
+          job {
             let req =
               Request.create Post endpoint
               |> Request.keepAlive true
               |> Request.body (BodyString body)
               |> tryAddAuth conf
-            try
-              use! resp = getResponse req
-              let! body = Response.readBodyAsString resp
-              if resp.statusCode > 299 then
-                do! Logger.log ri.logger (
-                      Message.event Error "problem receiving response"
-                      |> Message.setField "statusCode" resp.statusCode
-                      |> Message.setField "body" body)
-                //printfn "body: %s, response %A" body resp
-                failwithf "got response code %i" resp.statusCode
-              else   
-                //printfn "Acking"
-                do! Seq.iterJobIgnore reqestAckJobCreator reqs
-                return! loop ()
-            with e -> printfn "%A" e
+            use! resp = getResponse req
+            let! body = Response.readBodyAsString resp
+            if resp.statusCode > 299 then
+              do! Logger.log ri.logger (
+                    Message.event Error "problem receiving response"
+                    |> Message.setField "statusCode" resp.statusCode
+                    |> Message.setField "body" body)
+              //printfn "body: %s, response %A" body resp
+              failwithf "got response code %i" resp.statusCode
+            else
+              //printfn "Acking"
+              do! Seq.iterJobIgnore reqestAckJobCreator reqs
+              return! loop ()
           }
-              
       ] :> Job<_>
-      
     loop ()
 
 /// Create a new Noop target

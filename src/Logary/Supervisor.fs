@@ -26,11 +26,15 @@ type private MinionState =
 
 type private JobId = private JobId of int
 
+type private Reason =
+  | Failure of Exception
+  | Complete
+
 type private SupervisorState =
   {
     ident     : int
     minions   : Map<JobId, MinionState>
-    processes : Map<JobId, Alt<JobId>>
+    processes : Map<JobId, Alt<JobId * Reason>>
     delayed   : Map<PointName, Alt<PointName * (SupervisorState -> Job<SupervisorState>)>>
   }
 
@@ -41,11 +45,11 @@ module private SupervisorState =
         processes = Map.remove jobId state.processes
         minions   = Map.remove jobId state.minions }
 
-  let addMinion jobId minionState (p : Proc) will state =
+  let addMinion jobId minionState (reason : Alt<Reason>) will state =
     { state with
         ident = state.ident + 1
         processes =
-          Map.add jobId (p ^-> (fun () -> jobId)) state.processes
+          Map.add jobId (reason ^-> (fun r -> (jobId, r))) state.processes
         minions   =
           Map.add jobId minionState state.minions }
 
@@ -103,13 +107,18 @@ let create logger =
       else
         let jobId = JobId state.ident
         let minionState = { info = minionInfo; state = will }
-        Proc.start (minionInfo.job (fun o -> Ch.send lastWillCh (jobId, o)) will)
-        >>= fun p ->
-              Message.eventVerbose "Minion started"
-              |> Message.setField "name" (PointName.format minionInfo.name)
-              |> Message.setField "jobId" (sprintf "%A" jobId)
-              |> Logger.log logger
-              >>-. SupervisorState.addMinion jobId minionState p will state
+        let work =
+          minionInfo.job (fun o -> Ch.give lastWillCh (jobId, o) :> Job<_>) will
+        let reason = IVar()
+        let guarded =
+          Job.tryIn work (fun () -> Job.result Complete) (fun e -> Job.result (Failure e))
+          >>= (fun r -> reason *<= r)
+        guarded |> start
+        Message.eventVerbose "Minion started"
+        |> Message.setField "name" (PointName.format minionInfo.name)
+        |> Message.setField "jobId" (sprintf "%A" jobId)
+        |> Logger.log logger
+        >>-. SupervisorState.addMinion jobId minionState reason will state
 
   let unregisterMinion name state =
     Message.eventVerbose "Unregistering started"
@@ -126,16 +135,15 @@ let create logger =
         |> Logger.log logger
         >>-. state
 
-  let handleTermination state jobId =
-    let minionState = Map.find jobId state.minions
+  let handlePolicy jobId minionState state =
     match minionState.info.policy with
     | Terminate ->
-      Message.eventDebug "Minion terminated; removing from supervision"
+      Message.eventDebug "Failure policy: Terminate. Removing from supervision."
       |> Message.setField "name" (PointName.format minionState.info.name)
       |> Logger.log logger
       >>-. SupervisorState.removeMinion jobId state
     | Restart ->
-      Message.eventDebug "Minion terminated; restarting"
+      Message.eventDebug "Failure policy: Restart. Restarting."
       |> Message.setField "name" (PointName.format minionState.info.name)
       |> Logger.log logger
       >>-. SupervisorState.removeMinion jobId state
@@ -145,13 +153,27 @@ let create logger =
         timeOut <| delay.ToTimeSpan()
         >>-. (minionState.info.name, startMinion minionState.info minionState.state)
         |> memo
-      Message.eventDebug "Minion terminated; restarting after delay"
+      Message.eventDebug "Failure policy: Delayed. Restarting after delay."
       |> Message.setField "name" (PointName.format minionState.info.name)
       |> Message.setField "delay" (delay.ToString())
       |> Logger.log logger
       >>-. (state
             |> SupervisorState.removeMinion jobId
             |> SupervisorState.addDelayed minionState.info.name (Promise.read promise))
+
+  let handleTermination state jobId reason =
+    let minionState = Map.find jobId state.minions
+    match reason with
+    | Complete ->
+      Message.eventDebug "Minion exited without exception, removing from supervision"
+      |> Message.setField "name" (PointName.format minionState.info.name)
+      |> Logger.log logger
+      >>-. SupervisorState.removeMinion jobId state
+    | Failure e ->
+      Message.eventError "Minion failed"
+      |> Message.addExn e
+      |> Logger.log logger
+      >>=. handlePolicy jobId minionState state
 
   let replaceLastWill state (jobId, will) =
     Message.eventVerbose "New will received"
@@ -212,7 +234,7 @@ let create logger =
         |> Map.toSeq
         |> Seq.map snd
         |> Alt.choose
-        |> Alt.afterJob (fun jid -> handleTermination state jid)
+        |> Alt.afterJob (fun (jid, reason) -> handleTermination state jid reason)
       ] |> Alt.afterJob loop
     ]
 
