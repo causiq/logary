@@ -1260,7 +1260,7 @@ This assumes you have an account at [elmah.io](https://elmah.io).
 
 ### SumoLogic (community-contributed)
 
-[![SumoLogic screensho](./tools/sumologic-screenshot.png)](https://www.sumologic.com/ "Go to sumologic.com to see their offer")
+[![SumoLogic screenshot](./tools/sumologic-screenshot.png)](https://www.sumologic.com/ "Go to sumologic.com to see their offer")
 
 SumoLogic is a hosted service (at about 99 USD per month) that unifies logging,
 metrics, analytics and dashboards in a single service. As such it's a perfect
