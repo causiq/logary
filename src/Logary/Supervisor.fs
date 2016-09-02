@@ -24,7 +24,11 @@ type private MinionState =
     state : obj option
   }
 
-type private JobId = private JobId of int
+type private JobId =
+  | JobId of int
+  override x.ToString () =
+    let (JobId i) = x
+    sprintf "JobId %d" i
 
 type private Reason =
   | Failure of Exception
@@ -49,7 +53,7 @@ module private SupervisorState =
     { state with
         ident = state.ident + 1
         processes =
-          Map.add jobId (reason ^-> (fun r -> (jobId, r))) state.processes
+          Map.add jobId (reason ^-> (fun r -> jobId, r)) state.processes
         minions   =
           Map.add jobId minionState state.minions }
 
@@ -116,7 +120,7 @@ let create logger =
         guarded |> start
         Message.eventVerbose "Minion started"
         |> Message.setField "name" (PointName.format minionInfo.name)
-        |> Message.setField "jobId" (sprintf "%A" jobId)
+        |> Message.setField "jobId" (jobId.ToString())
         |> Logger.log logger
         >>-. SupervisorState.addMinion jobId minionState reason will state
 
@@ -178,7 +182,7 @@ let create logger =
 
   let replaceLastWill state (jobId, will) =
     Message.eventVerbose "New will received"
-    |> Message.setField "jobId" (sprintf "%A" jobId)
+    |> Message.setField "jobId" (jobId.ToString())
     |> Logger.log logger
     >>-. SupervisorState.updateWill jobId will state
 

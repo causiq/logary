@@ -14,36 +14,6 @@ open ExpectoPatronum
 let textWriterConf =
   TextWriterConf.create(System.Console.Out, System.Console.Error)
 
-// type SimpleLogger() =
-//   let write msg =
-//     textWriterConf.formatter.format msg
-//     |> printfn "%A"
-
-//   let instaPromise =
-//     Alt.always (Promise (())) // new promise with unit value
-//   interface Logger with
-//     member x.logVerboseWithAck msgFactory =
-//       let logger : Logger = upcast x
-//       if Verbose >= logger.level then
-//         let logger : Logger = upcast x
-//         logger.logWithAck (msgFactory Verbose) // delegate down
-//       else
-//         instaPromise
-//     member x.logDebugWithAck msgFactory =
-//       let logger : Logger = upcast x
-//       if Debug >= logger.level then
-//         logger.logWithAck (msgFactory Debug) // delegate down
-//       else
-//         instaPromise
-//     member x.logWithAck message =
-//       write message
-//       instaPromise
-//     member x.logSimple message = write message
-//     member x.level = Fatal
-//     member x.name = PointName.ofList [ "Logary"; "Tests"; "SimpleLogger" ]
-
-// let internalLogger = SimpleLogger()
-
 let internalLogger = NullLogger()
 
 [<Tests>]
@@ -73,11 +43,11 @@ let supervisorTests =
       let p sendWill state =
         match state with
         | None ->
-            sendWill (box "hello")
-            |> Job.map (fun () -> failwith "Arrrgh")
+          sendWill (box "hello")
+          |> Job.map (fun () -> failwith "Arrrgh")
         | Some _ ->
-            IVar.tryFill hasRun () |> start
-            timeOutMillis 1000 :> Job<_>
+          IVar.tryFill hasRun () |> start
+          timeOutMillis 1000 :> Job<_>
       let proc = { name     = PointName.parse "bang"
                    policy   = Supervisor.Delayed (Duration.FromMilliseconds 10L)
                    job      = p
@@ -95,10 +65,10 @@ let supervisorTests =
       let rec loop sendWill state =
         match state with
         | None ->
-            sendWill (box "hello")
+          sendWill (box "hello")
         | Some _ ->
-            IVar.tryFill hasRerun () |> start
-            timeOutMillis 1000 :> Job<_>
+          IVar.tryFill hasRerun () |> start
+          timeOutMillis 1000 :> Job<_>
       let proc = { name     = PointName.parse "bang"
                    policy   = Supervisor.Delayed (Duration.FromMilliseconds 10L)
                    job      = loop
