@@ -92,6 +92,7 @@ Install-Package Logary
       * [elmah\.io](#elmahio)
         * [Usage](#usage-1)
         * [What does it look like?](#what-does-it-look-like)
+      * [SumoLogic (community\-contributed)](#sumologic-community-contributed)
       * [Want your SaaS\-logging service as a Target?](#want-your-saas-logging-service-as-a-target)
     * [FAQ](#faq)
       * [Getting MissingMethodException from FSharp\.Core](#getting-missingmethodexception-from-fsharpcore)
@@ -104,6 +105,7 @@ Install-Package Logary
       * [What's logVerboseWithAck, logWithAck and how does it differ from logSimple?](#whats-logverbosewithack-logwithack-and-how-does-it-differ-from-logsimple)
         * [logWithAck – so what's up with Promise?](#logwithack--so-whats-up-with-promise)
     * [License](#license)
+
 
 ## Hello World (C#)
 
@@ -1192,6 +1194,23 @@ let exnMsg =
 ```
 
 This assumes you have an account at [elmah.io](https://elmah.io).
+
+### SumoLogic (community-contributed)
+
+[![SumoLogic screensho](./tools/sumologic-screenshot.png)](https://www.sumologic.com/ "Go to sumologic.com to see their offer")
+
+SumoLogic is a hosted service (at about 99 USD per month) that unifies logging,
+metrics, analytics and dashboards in a single service. As such it's a perfect
+Target for Logary, since Logary supports both logs and metrics.
+
+Have a look at @neoeinstein's
+[Logary.Targets.SumoLogic](https://neoeinstein.github.io/Logary.Targets.SumoLogic/)
+for the official docs and a sample of how to use it.
+
+```
+source https://www.nuget.org/api/v2
+nuget Logary.Targets.SumoLogic
+```
 
 ### Want your SaaS-logging service as a Target?
 
