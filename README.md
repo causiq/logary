@@ -1096,7 +1096,7 @@ When writing the Target, it's useful to keep these guidelines in mind.
  - Choose whether to create a target that can re-send crashing messages by
    choosing between `TargetUtils.{willAwareNamedTarget, stdNamedTarget}`
  - You can choose between consuming Messages one-by-one through
-   [`RingBuffer.take`][ringbuffer] or in batches with `RingBuffer.takeBatch`
+   [`RingBuffer.take`][github-ringbuffer] or in batches with `RingBuffer.takeBatch`
  - If you take a batch and the network call to send it off fails, consider
    sending the batch to the `willChannel` and throw an exception. Your target
    will be re-instantiated with the batch and you can now send the messages
@@ -1116,6 +1116,10 @@ When writing the Target, it's useful to keep these guidelines in mind.
  - If you don't implement the last-will functionality, a caller that awaits the
    Promise in `Alt<Promise<unit>>` as returned from `logWithAck`, will block
    forever if your target ever crashes.
+ - If you need to do JSON serialisation, consider using `Logary.Utils.Chiron`
+   and `Logary.Utils.Aether`, which are vendored copies of
+   [Chiron][github-chiron] and [Aether][github-aether]. Have a look at the
+   [Logstash Target][src-logstash] for an example.
 
 #### Publishing your target
 
@@ -1381,7 +1385,7 @@ Rules make it relevant for your Message, receives the Message, each target tries
 to send that Message to its, well, target.
 
 Because running out of memory generally is unwanted, each target has a
-[RingBuffer][ringbuffer] that [the messages are put
+[RingBuffer][github-ringbuffer] that [the messages are put
 into](https://github.com/logary/logary/blob/4987c421849464d23b61ea4b64f8e48a6df21f12/src/Logary/Internals_Logger.fs#L13-L21)
 when you use the `Logger`. Unless all targets' `RingBuffer` accept the
 `Message`, the call to `log` doesn't complete. This is similar to how other
@@ -1418,6 +1422,9 @@ Acks), asynchronous publish and also durable messaging.
 
  [apache]: https://www.apache.org/licenses/LICENSE-2.0.html
  [nuget-logary]: https://www.nuget.org/packages/Logary/
- [ringbuffer]: https://github.com/logary/RingBuffer
+ [github-ringbuffer]: https://github.com/logary/RingBuffer
+ [src-logstash]: https://github.com/logary/logary/blob/master/src/targets/Logary.Targets.Logstash/Targets_Logstash.fs
+ [github-aether]: https://github.com/xyncro/aether
+ [github-chiron]: https://github.com/xyncro/chiron
  [hopac-fromAsync]: https://hopac.github.io/Hopac/Hopac.html#def:val%20Hopac.Job.fromAsync
  [hopac-isolate]: https://hopac.github.io/Hopac/Hopac.html#def:val%20Hopac.Job.Scheduler.isolate
