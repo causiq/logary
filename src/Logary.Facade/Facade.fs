@@ -323,7 +323,10 @@ module internal FsMtParser =
 
     let inline hasAnyInRange predicate (s : string) (range : Range) =
       match tryGetFirstChar (predicate) s range.start with
-      | -1 -> false | i -> i <= range.``end``
+      | -1 ->
+        false
+      | i ->
+        i <= range.``end``
 
     let inline hasAny predicate (s : string) = hasAnyInRange predicate s (Range(0, s.Length - 1))
     let inline indexOfInRange s range c = tryGetFirstCharInRange ((=) c) s range
@@ -334,8 +337,10 @@ module internal FsMtParser =
       // then the `Property.Empty' instance is returned (hence the name 'try')
       let nameRange, formatRange =
         match indexOfInRange template within ':' with
-        | -1 -> within, Range.empty // no format
-        | formatIndex -> Range(within.start, formatIndex-1), Range(formatIndex+1, within.``end``) // has format part
+        | -1 ->
+          within, Range.empty // no format
+        | formatIndex ->
+          Range(within.start, formatIndex-1), Range(formatIndex+1, within.``end``) // has format part
       let propertyName = nameRange.getSubstring template
       if propertyName = "" || (hasAny (not<<isValidInPropName) propertyName) then
         Property.empty
@@ -354,17 +359,20 @@ module internal FsMtParser =
         if i >= template.Length then template.Length
         else
           match template.[i] with
-          | '{' -> if (i+1) < template.Length && template.[i+1] = '{' then go (i+2) else i
-          | '}' when (i+1) < template.Length && template.[i+1] = '}' -> go (i+2)
-          | _ -> go (i+1)
+          | '{' ->
+            if (i+1) < template.Length && template.[i+1] = '{' then go (i+2) else i
+          | '}' when (i+1) < template.Length && template.[i+1] = '}' ->
+            go (i+2)
+          | _ ->
+            go (i+1)
       let nextIndex = go startAt
       if (nextIndex > startAt) then
         foundText (Range.substring(template, startAt, nextIndex - 1))
       nextIndex
 
     let findPropOrText (start : int) (template : string)
-                       (foundText : string->unit)
-                       (foundProp : Property->unit) : int =
+                       (foundText : string -> unit)
+                       (foundProp : Property -> unit) : int =
       // Attempts to find the indices of the next property in the template
       // string (starting from the 'start' index). Once the start and end of
       // the property token is known, it will be further validated (by the
@@ -374,7 +382,10 @@ module internal FsMtParser =
       // without finding the close brace (we just signal 'foundText' in that case).
       let nextInvalidCharIndex =
         match tryGetFirstChar (not << isValidCharInPropTag) template (start+1) with
-        | -1 -> template.Length | idx -> idx
+        | -1 ->
+          template.Length
+        | idx ->
+          idx
 
       if nextInvalidCharIndex = template.Length || template.[nextInvalidCharIndex] <> '}' then
         foundText (Range.substring(template, start, (nextInvalidCharIndex - 1)))
@@ -397,8 +408,10 @@ module internal FsMtParser =
     let rec go start =
       if start >= tlen then ()
       else match ParserBits.findNextNonPropText start template foundTextF with
-            | next when next <> start -> go next
-            | _ -> go (ParserBits.findPropOrText start template foundTextF foundPropF)
+            | next when next <> start ->
+              go next
+            | _ ->
+              go (ParserBits.findPropOrText start template foundTextF foundPropF)
     go 0
 
 module internal Formatting =
@@ -418,10 +431,14 @@ module internal Formatting =
           // find the right theme colour based on data type
           let valueColour =
             match propValue with
-            | :? bool -> KeywordSymbol
-            | :? int16 | :? int32 | :? int64 | :? decimal | :? float | :? double -> NumericSymbol
-            | :? string | :? char -> StringSymbol
-            | _ -> OtherSymbol
+            | :? bool ->
+              KeywordSymbol
+            | :? int16 | :? int32 | :? int64 | :? decimal | :? float | :? double ->
+              NumericSymbol
+            | :? string | :? char ->
+              StringSymbol
+            | _ ->
+              OtherSymbol
           if options.printTemplateFieldNames then
             themedParts.Add ("["+prop.name+"] ", Subtext)
           matchedFields.Add prop.name
@@ -447,13 +464,15 @@ module internal Formatting =
     use exnLines = new System.IO.StringReader(ex.ToString())
     let rec go lines =
       match exnLines.ReadLine() with
-      | null -> List.rev lines // finished reading
-      | line -> if line.StartsWith(stackFrameLinePrefix) then
-                  // subtext
-                  go ((Environment.NewLine, Text) :: ((line, Subtext) :: lines))
-                else
-                  // regular text
-                  go ((Environment.NewLine, Text) :: ((line, Text) :: lines))
+      | null ->
+        List.rev lines // finished reading
+      | line ->
+        if line.StartsWith(stackFrameLinePrefix) then
+          // subtext
+          go ((Environment.NewLine, Text) :: ((line, Subtext) :: lines))
+        else
+          // regular text
+          go ((Environment.NewLine, Text) :: ((line, Text) :: lines))
     go []
 
   let literateColorizeExceptions (context : LiterateOptions) message =
@@ -462,7 +481,8 @@ module internal Formatting =
       | Some (:? Exception as ex) ->
         literateExceptionColorizer context ex
         @ [ Environment.NewLine, Text ]
-      | _ -> [] // there is no spoon
+      | _ ->
+        [] // there is no spoon
     let errorsExceptionParts =
       match message.fields.TryFind FieldErrorsKey with
       | Some (:? List<obj> as exnListAsObjList) ->
@@ -470,8 +490,10 @@ module internal Formatting =
           | :? exn as ex ->
             literateExceptionColorizer context ex
             @ [ Environment.NewLine, Text ]
-          | _ -> [])
-      | _ -> []
+          | _ ->
+            [])
+      | _ ->
+        []
 
     exnExceptionParts @ errorsExceptionParts
 
@@ -542,8 +564,10 @@ module internal Formatting =
     let formatFields (ignored : Set<string>) (fields : Map<string, obj>) =
       if not (Map.isEmpty fields) then
         fields
-        |> Seq.filter (fun (KeyValue (k, _)) -> not (ignored |> Set.contains k))
-        |> Seq.map (fun (KeyValue (k, v)) -> sprintf "\n - %s: %O" k v)
+        |> Seq.filter (fun (KeyValue (k, _)) ->
+          not (ignored |> Set.contains k))
+        |> Seq.map (fun (KeyValue (k, v)) ->
+          sprintf "\n - %s: %O" k v)
         |> String.concat ""
       else
         ""
@@ -570,7 +594,8 @@ type LiterateConsoleTarget(minLevel, ?options, ?literateTokenizer, ?outputWriter
 
   let colorizeThenNewLine message =
     (tokenize options message) @ [Environment.NewLine, Text]
-    |> List.map (fun (s, t) -> s, options.theme(t))
+    |> List.map (fun (s, t) ->
+      s, options.theme(t))
 
   interface Logger with
     member x.logWithAck level msgFactory =
@@ -647,7 +672,8 @@ type CombiningTarget(otherLoggers : Logger list) =
     async {
       let! _ =
         otherLoggers
-        |> List.map (fun l -> l.logWithAck level msgFactory)
+        |> List.map (fun l ->
+          l.logWithAck level msgFactory)
         |> Async.Parallel
       return ()
     }
