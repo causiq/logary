@@ -86,8 +86,8 @@ let tests =
       let msg = msg |> Message.setLevel Warn
       Expect.equal msg.level Warn "Should have Warn level now"
 
-    testCase "ConsoleTarget logSimple" <| fun _ ->
-      let logger = ConsoleWindowTarget(Warn) :> Logger
+    testCase "LiterateConsoleTarget logSimple" <| fun _ ->
+      let logger = LiterateConsoleTarget(Warn) :> Logger
       Message.event Info "Aliens descended" |> logger.logSimple
 
     testProperty "Loggers.create" <| fun level ->
