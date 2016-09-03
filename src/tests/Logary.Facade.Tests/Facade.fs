@@ -22,6 +22,25 @@ let internal parseTemplateTokens template =
   FsMtParser.parseParts template foundText foundProp
   tokens |> List.ofSeq
 
+type Assert with
+  static member literateMessagePartsEqual (template, fields, expectedMessageParts, ?options, ?logLevel, ?tokenizer) =
+    let options = defaultArg options (LiterateOptions.create())
+    let tokenizer = defaultArg tokenizer Formatting.literateDefaultTokenizer
+    let logLevel = defaultArg logLevel Info
+    let now = Global.timestamp ()
+    let nowDto = DateTimeOffset(DateTimeOffset.ticksUTC now, TimeSpan.Zero)
+    let msg = Message.event logLevel template |> fun m -> { m with fields = fields; timestamp = now }
+    let nowTimeString = nowDto.LocalDateTime.ToString("HH:mm:ss", options.formatProvider)
+    let actualTokens = tokenizer options msg
+    let expectedTokens = [  "[",                    Punctuation
+                            nowTimeString,          Subtext
+                            " ",                    Subtext
+                            "INF",                  LevelInfo
+                            "] ",                   Punctuation ]
+                            @ expectedMessageParts
+
+    Expect.equal actualTokens expectedTokens "literate tokenized parts must be correct"
+
 [<Tests>]
 let tests =
   let msg = Message.event Info "hi {name}"
@@ -108,31 +127,25 @@ let tests =
                          "cartId", box cartId
                          "loginUserId", box loginUserId
                          "cartTotal", box cartTotal ]
-      let now = Global.timestamp ()
-      let nowDto = DateTimeOffset(DateTimeOffset.ticksUTC now, TimeSpan.Zero)
-      let msg = Message.event Info template |> fun m -> { m with fields = fields; timestamp = now }
-      let nowTimeString = nowDto.LocalDateTime.ToString("HH:mm:ss")
       let options = { LiterateOptions.create() with printTemplateFieldNames = true }
-      let tokens = Formatting.literateDefaultTokenizer options msg
-      Expect.equal tokens
-                    [ "[",                    Punctuation
-                      nowTimeString,          Subtext
-                      " ",                    Subtext
-                      "INF",                  LevelInfo
-                      "] ",                   Punctuation
-                      "Added ",               Text
-                      "[item] ",              Subtext
-                      "TicTacs",              StringSymbol
-                      " to cart ",            Text
-                      "[cartId] ",            Subtext
-                      cartId.ToString(),      OtherSymbol
-                      " for ",                Text
-                      "[loginUserId] ",       Subtext
-                      loginUserId,            StringSymbol
-                      " who now has total $", Text
-                      "[cartTotal] ",         Subtext
-                      cartTotal.ToString(),   NumericSymbol ]
-                    "literate tokenized parts must be correct"
+      let expectedMessageParts =
+        [ "Added ",               Text
+          "[item] ",              Subtext
+          "TicTacs",              StringSymbol
+          " to cart ",            Text
+          "[cartId] ",            Subtext
+          cartId.ToString(),      OtherSymbol
+          " for ",                Text
+          "[loginUserId] ",       Subtext
+          loginUserId,            StringSymbol
+          " who now has total $", Text
+          "[cartTotal] ",         Subtext
+          cartTotal.ToString(),   NumericSymbol ]
+      Assert.literateMessagePartsEqual (template, fields, expectedMessageParts, options)
+
+    testCase "literate can tokenize an empty message template" <| fun _ ->
+      let emptyFields = Map.empty<string,obj>
+      Assert.literateMessagePartsEqual ("", emptyFields, [])
 
     testCase "literate tokenizes missing field with a scary-looking theme (MissingTemplateField)" <| fun _ ->
       let template = "Added {item} to cart {cartId:X} for {loginUserId} who now has total ${cartTotal}"
@@ -141,27 +154,80 @@ let tests =
                          // "cartId", box cartId
                          // "loginUserId", box loginUserId
                          "cartTotal", box cartTotal ]
+      let options = { LiterateOptions.create() with printTemplateFieldNames = false }
+      let expectedMessageParts =
+        [ "Added ",               Text
+          "TicTacs",              StringSymbol
+          " to cart ",            Text
+          "{cartId:X}",           MissingTemplateField
+          " for ",                Text
+          "{loginUserId}",        MissingTemplateField
+          " who now has total $", Text
+          cartTotal.ToString(),   NumericSymbol ]
+      Assert.literateMessagePartsEqual (template, fields, expectedMessageParts)
+
+    testCase "literate default tokenizer uses the options `getLogLevelText()` correctly" <| fun _ ->
+      let customGetLogLevelText = function Verbose->"A"|Debug->"B"|Info->"C"|Warn->"D"|Error->"E"|Fatal->"F"
+      let options = { LiterateOptions.createInvariant() with
+                        getLogLevelText = customGetLogLevelText }
       let now = Global.timestamp ()
       let nowDto = DateTimeOffset(DateTimeOffset.ticksUTC now, TimeSpan.Zero)
-      let msg = Message.event Info template |> fun m -> { m with fields = fields; timestamp = now }
+      let msg level = Message.event level "" |> fun m -> { m with timestamp = now }
       let nowTimeString = nowDto.LocalDateTime.ToString("HH:mm:ss")
-      let options = { LiterateOptions.create() with printTemplateFieldNames = false }
-      let tokens = Formatting.literateDefaultTokenizer options msg
-      Expect.equal tokens
-                    [ "[",                    Punctuation
-                      nowTimeString,          Subtext
-                      " ",                    Subtext
-                      "INF",                  LevelInfo
-                      "] ",                   Punctuation
-                      "Added ",               Text
-                      "TicTacs",              StringSymbol
-                      " to cart ",            Text
-                      "{cartId:X}",           MissingTemplateField
-                      " for ",                Text
-                      "{loginUserId}",        MissingTemplateField
-                      " who now has total $", Text
-                      cartTotal.ToString(),   NumericSymbol ]
-                    "literate tokenized parts must be correct"
+      [ Verbose,  LevelVerbose,   "A"
+        Debug,    LevelDebug,     "B"
+        Info,     LevelInfo,      "C"
+        Warn,     LevelWarning,   "D"
+        Error,    LevelError,     "E"
+        Fatal,    LevelFatal,     "F" ]
+      |> List.iter (fun (logLevel, expectedLevelToken, expectedText) ->
+        let tokens = Formatting.literateDefaultTokenizer options (msg logLevel)
+        Expect.equal tokens [ "[",            Punctuation
+                              nowTimeString,  Subtext
+                              " ",            Subtext
+                              expectedText,   expectedLevelToken
+                              "] ",           Punctuation ]
+                      (sprintf "expect log level %A to render as token %A with text %s" logLevel expectedLevelToken expectedText)
+      )
+
+    testPropertyWithConfig FsCheck.Config.QuickThrowOnFailure "literate default tokenizer uses the options `formatProvider` correctly" <| fun (amount: decimal, date: DateTimeOffset) ->
+      [ "fr-FR"; "da-DK"; "de-DE"; "en-AU"; "en-US"; ]
+      |> List.iter (fun cultureName ->
+        let options = { LiterateOptions.createInvariant() with
+                          formatProvider = System.Globalization.CultureInfo(cultureName) }
+        let cultureSensitiveTemplate = "As of {date:F}, you have a balance of {amount:C2}"
+        let cultureSensitiveFields = Map [ "amount", box amount
+                                           "date", box date ]
+        let expectedMessageParts =
+          [ "As of ", Text
+            date.ToString("F", options.formatProvider), OtherSymbol
+            ", you have a balance of ", Text
+            amount.ToString("C2", options.formatProvider), NumericSymbol ]
+
+        Assert.literateMessagePartsEqual (cultureSensitiveTemplate, cultureSensitiveFields, expectedMessageParts, options)
+      )
+
+    testCase "literate default tokenizer can yield exception tokens from the 'errors' and 'exn' fields, even with an empty template" <| fun _ ->
+      let template = ""
+      let exceptionForExnField = exn "exn field"
+      let exceptionObjListForErrorsField = [ box (exn "errors field 1"); box (exn "errors field 2") ]
+      let fields = Map [ Literals.FieldExnKey,    box exceptionForExnField
+                         Literals.FieldErrorsKey, box exceptionObjListForErrorsField ]
+      let nl = Environment.NewLine
+      let expectedMessageParts =
+        [ nl, Text //<-- empty message will just start rendering exceptions on a new line
+          "System.Exception: exn field", Text //<-- The exception
+          nl, Text
+          nl, Text
+          "System.Exception: errors field 1", Text
+          nl, Text
+          nl, Text
+          "System.Exception: errors field 2", Text
+          nl, Text
+          nl, Text
+          nl, Text //<-- Extra newline at the end
+        ]
+      Assert.literateMessagePartsEqual (template, fields, expectedMessageParts)
 
     testCase "literate tokenizes without field names correctly" <| fun _ ->
       let template = "Added {item} to cart {cartId} for {loginUserId} who now has total ${cartTotal}"
@@ -170,28 +236,17 @@ let tests =
                          "cartId", box cartId
                          "loginUserId", box loginUserId
                          "cartTotal", box cartTotal ]
-      let now = Global.timestamp ()
-      let nowDto = DateTimeOffset(DateTimeOffset.ticksUTC now, TimeSpan.Zero)
-      let msg = Message.event Info template |> fun m -> { m with fields = fields; timestamp = now }
-      let nowTimeString = nowDto.LocalDateTime.ToString("HH:mm:ss")
       let options = { LiterateOptions.create() with printTemplateFieldNames = false }
-      let tokens = Formatting.literateDefaultTokenizer options msg
-      Expect.equal tokens
-                    [ "[",                    Punctuation
-                      nowTimeString,          Subtext
-                      " ",                    Subtext
-                      "INF",                  LevelInfo
-                      "] ",                   Punctuation
-                      "Added ",               Text
-                      "TicTacs",              StringSymbol
-                      " to cart ",            Text
-                      cartId.ToString(),      OtherSymbol
-                      " for ",                Text
-                      loginUserId,            StringSymbol
-                      " who now has total $", Text
-                      cartTotal.ToString(),   NumericSymbol ]
-                    "literate tokenized parts must be correct"
-
+      let expectedMessageParts =
+        [ "Added ",               Text
+          "TicTacs",              StringSymbol
+          " to cart ",            Text
+          cartId.ToString(),      OtherSymbol
+          " for ",                Text
+          loginUserId,            StringSymbol
+          " who now has total $", Text
+          cartTotal.ToString(),   NumericSymbol ]
+      Assert.literateMessagePartsEqual (template, fields, expectedMessageParts, options)
 
     testCase "format template with invalid property correctly" <| fun _ ->
       // spaces are not valid in property names, so the 'property' is treated as text

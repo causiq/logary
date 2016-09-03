@@ -285,7 +285,7 @@ module internal FsMtParser =
 
   type Property(name:string, format: string) =
     static let emptyInstance = Property("", null)
-    static member Empty = emptyInstance
+    static member empty = emptyInstance
     member x.name = name
     member x.format = format
     member internal x.AppendPropertyString(sb: StringBuilder, ?replacementName) =
@@ -304,13 +304,13 @@ module internal FsMtParser =
 
     [<Struct>]
     type Range(startIndex:int, endIndex:int) =
-      member inline this.start = startIndex
-      member inline this.``end`` = endIndex
-      member inline this.length = (endIndex - startIndex) + 1
-      member inline this.getSubstring (s:string) = s.Substring(startIndex, this.length)
-      member inline this.isEmpty = startIndex = -1 && endIndex = -1
-      static member substring (s:string, startIndex, endIndex) = s.Substring(startIndex, (endIndex - startIndex) + 1)
-      static member empty = Range(-1, -1)
+      member inline x.start = startIndex
+      member inline x.``end`` = endIndex
+      member inline x.length = (endIndex - startIndex) + 1
+      member inline x.getSubstring (s:string) = s.Substring(startIndex, x.length)
+      member inline x.isEmpty = startIndex = -1 && endIndex = -1
+      static member inline substring (s:string, startIndex, endIndex) = s.Substring(startIndex, (endIndex - startIndex) + 1)
+      static member inline empty = Range(-1, -1)
 
     let inline tryGetFirstCharInRange predicate (s:string) (range:Range) =
       let rec go i =
@@ -338,9 +338,9 @@ module internal FsMtParser =
         | formatIndex -> Range(within.start, formatIndex-1), Range(formatIndex+1, within.``end``) // has format part
       let propertyName = nameRange.getSubstring template
       if propertyName = "" || (hasAny (not<<isValidInPropName) propertyName) then
-        Property.Empty
+        Property.empty
       elif (not formatRange.isEmpty) && (hasAnyInRange (not<<isValidInFormat) template formatRange) then
-        Property.Empty
+        Property.empty
       else
         let format = if formatRange.isEmpty then null else formatRange.getSubstring template
         Property(propertyName, format)
@@ -383,7 +383,7 @@ module internal FsMtParser =
         let nextIndex = nextInvalidCharIndex + 1
         let propInsidesRng = Range(start + 1, nextIndex - 2)
         match tryGetPropInRange template propInsidesRng with
-        | prop when not (obj.ReferenceEquals(prop, Property.Empty)) ->
+        | prop when not (obj.ReferenceEquals(prop, Property.empty)) ->
           foundProp prop
         | _ ->
           foundText (Range.substring(template, start, (nextIndex - 1)))
@@ -447,11 +447,13 @@ module internal Formatting =
     use exnLines = new System.IO.StringReader(ex.ToString())
     let rec go lines =
       match exnLines.ReadLine() with
-      | null -> lines // finished reading
+      | null -> List.rev lines // finished reading
       | line -> if line.StartsWith(stackFrameLinePrefix) then
-                  go (lines @ [ line, Subtext; Environment.NewLine, Text ])
+                  // subtext
+                  go ((Environment.NewLine, Text) :: ((line, Subtext) :: lines))
                 else
-                  go (lines @ [ line, Text; Environment.NewLine, Text ])
+                  // regular text
+                  go ((Environment.NewLine, Text) :: ((line, Text) :: lines))
     go []
 
   let literateColorizeExceptions (context: LiterateOptions) message =
@@ -481,18 +483,14 @@ module internal Formatting =
       Subtext
 
     let themedMessageParts =
-      message.value
-      |> literateFormatValue options message.fields
-      |> fun (_, themedParts) -> themedParts
+      message.value |> literateFormatValue options message.fields |> snd
 
     let themedExceptionParts =
-      if not themedMessageParts.IsEmpty then
-        let exnParts = literateColorizeExceptions options message
-        if not exnParts.IsEmpty then
-          [ Environment.NewLine, Text ]
-          @ exnParts
-          @ [ Environment.NewLine, Text ]
-        else []
+      let exnParts = literateColorizeExceptions options message
+      if not exnParts.IsEmpty then
+        [ Environment.NewLine, Text ]
+        @ exnParts
+        @ [ Environment.NewLine, Text ]
       else []
 
     let getLogLevelToken = function
