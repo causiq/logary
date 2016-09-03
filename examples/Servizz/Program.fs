@@ -22,7 +22,7 @@ let main argv =
     |> run
 
   // for the statics:
-  LogaryFacadeAdapter.initialise logary
+  LogaryFacadeAdapter.initialise<Libryy.Logging.Logger> logary
 
   // if you need a Logger instance:
   let logger = logary.getLogger (PointName.ofSingle "Libryy")
