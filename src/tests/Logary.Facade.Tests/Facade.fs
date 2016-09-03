@@ -32,11 +32,11 @@ type Assert with
     let msg = Message.event logLevel template |> fun m -> { m with fields = fields; timestamp = now }
     let nowTimeString = nowDto.LocalDateTime.ToString("HH:mm:ss", options.formatProvider)
     let actualTokens = tokenizer options msg
-    let expectedTokens = [  "[",                    Punctuation
-                            nowTimeString,          Subtext
-                            " ",                    Subtext
-                            "INF",                  LevelInfo
-                            "] ",                   Punctuation ]
+    let expectedTokens = [  "[",                              Punctuation
+                            nowTimeString,                    Subtext
+                            " ",                              Subtext
+                            options.getLogLevelText logLevel, LevelInfo
+                            "] ",                             Punctuation ]
                             @ expectedMessageParts
 
     Expect.equal actualTokens expectedTokens "literate tokenized parts must be correct"
