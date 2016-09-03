@@ -223,8 +223,9 @@ module internal LoggerEx =
       x.log Fatal msgFactory
 
 type LoggingConfig =
-  { timestamp : unit -> int64
-    getLogger : string[] -> Logger }
+  { timestamp        : unit -> int64
+    getLogger        : string[] -> Logger
+    consoleSemaphore : obj }
 
 /// The output tokens, which can be potentially coloured.
 type LiterateToken =
@@ -235,10 +236,11 @@ type LiterateToken =
   | MissingTemplateField
 
 type LiterateOptions =
-  { formatProvider: IFormatProvider
-    theme: LiterateToken -> ConsoleColor
-    getLogLevelText: LogLevel -> string
-    printTemplateFieldNames: bool }
+  { formatProvider          : IFormatProvider
+    theme                   : LiterateToken -> ConsoleColor
+    getLogLevelText         : LogLevel -> string
+    printTemplateFieldNames : bool }
+
   static member create(?formatProvider) =
     // note: literate is meant for human consumption, and so the default
     // format provider of 'Current' is appropriate here. The reader expects
@@ -267,13 +269,14 @@ type LiterateOptions =
               | OtherSymbol -> ConsoleColor.Green
               | NameSymbol -> ConsoleColor.Gray
               | MissingTemplateField -> ConsoleColor.Red
-
       printTemplateFieldNames = false }
+
   static member createInvariant() =
     LiterateOptions.create(Globalization.CultureInfo.InvariantCulture)
 
 [<AutoOpen>]
 module internal Literals =
+
   [<Literal>]
   let internal FieldExnKey = "exn"
 
@@ -414,6 +417,7 @@ module internal FsMtParser =
               go (ParserBits.findPropOrText start template foundTextF foundPropF)
     go 0
 
+/// Internal module for formatting text for printing to the console.
 module internal Formatting =
   open System.Text
 
@@ -609,48 +613,6 @@ type LiterateConsoleTarget(minLevel, ?options, ?literateTokenizer, ?outputWriter
       if msg.level >= minLevel then
         colorWriter (colorizeThenNewLine msg)
 
-/// Log a line with the given format, printing the current time in UTC ISO-8601 format
-/// and then the string, like such:
-/// '2013-10-13T13:03:50.2950037Z: today is the day'
-type ConsoleWindowTarget(minLevel, ?formatter, ?colourise, ?originalColor, ?consoleSemaphore) =
-  let sem           = defaultArg consoleSemaphore (obj())
-  let originalColor = defaultArg originalColor Console.ForegroundColor
-  let formatter     = defaultArg formatter Formatting.defaultFormatter
-  let colourise     = defaultArg colourise true
-  let write         = System.Console.WriteLine : string -> unit
-
-  let toColour = function
-    | LogLevel.Verbose -> ConsoleColor.DarkGreen
-    | LogLevel.Debug   -> ConsoleColor.Green
-    | LogLevel.Info    -> ConsoleColor.White
-    | LogLevel.Warn    -> ConsoleColor.Yellow
-    | LogLevel.Error   -> ConsoleColor.DarkRed
-    | LogLevel.Fatal   -> ConsoleColor.Red
-
-  let log color message =
-    if colourise then
-      lock sem <| fun _ ->
-        Console.ForegroundColor <- color
-        message |> formatter |> write
-        Console.ForegroundColor <- originalColor
-    else
-      // we don't need to take another lock, since Console.WriteLine does that for us
-      (write << formatter) message
-
-  interface Logger with
-    member x.logWithAck level msgFactory =
-      if level >= minLevel then
-        log (toColour level) (msgFactory level)
-      async.Return ()
-
-    member x.log level msgFactory =
-      if level >= minLevel then
-        log (toColour level) (msgFactory level)
-
-    member x.logSimple msg =
-      if msg.level >= minLevel then
-        log (toColour msg.level) msg
-
 type OutputWindowTarget(minLevel, ?formatter) =
   let formatter = defaultArg formatter Formatting.defaultFormatter
   let log msg = System.Diagnostics.Debug.WriteLine(formatter msg)
@@ -690,26 +652,21 @@ type CombiningTarget(otherLoggers : Logger list) =
       sendToAll msg.level (fun _ -> msg)
       |> Async.Start
 
-module Targets =
-
-  let create level =
-    if level >= LogLevel.Info then
-      ConsoleWindowTarget(level) :> Logger
-    else
-      CombiningTarget(
-        [ ConsoleWindowTarget(level)
-          OutputWindowTarget(level) ])
-      :> Logger
-
 module Global =
+
+  /// This is the global semaphore for colourising the console output. Ensure
+  /// that the same semaphore is used across libraries by using the Logary
+  /// Facade Adapter in the final composing app/service.
+  let internal consoleSemaphore = obj ()
 
   /// The global default configuration, which logs to Console at Info level.
   let DefaultConfig =
-    { timestamp = fun () -> DateTimeOffset.timestamp DateTimeOffset.UtcNow
-      getLogger = fun _ -> ConsoleWindowTarget(Info) :> Logger }
+    { timestamp        = fun () -> DateTimeOffset.timestamp DateTimeOffset.UtcNow
+      getLogger        = fun _ -> LiterateConsoleTarget(Info) :> Logger
+      consoleSemaphore = consoleSemaphore }
 
   let private config = ref DefaultConfig
-  let private locker = obj ()
+  let private configSemaphore = obj ()
 
   /// The flyweight just references the current configuration. If you want
   /// multiple per-process logging setups, then don't use the static methods,
@@ -724,7 +681,7 @@ module Global =
         if Object.ReferenceEquals(!config, DefaultConfig) then
           initialLogger
         elif actualLogger = None then
-          lock locker <| fun _ ->
+          lock configSemaphore <| fun _ ->
             if actualLogger = None then
               let logger' = (!config).getLogger name
               actualLogger <- Some logger'
@@ -759,6 +716,22 @@ module Global =
   /// Logary.Facade globally/per process.
   let initialise cfg =
     config := cfg
+
+module Targets =
+
+  /// Create a new target. Prefer `Log.create` in your own libraries, or let the
+  /// composing app replace your target instance through your configuration.
+  ///
+  /// Will log to console (colourised) by default, and also to the output window
+  /// in your IDE if you specify a level below Info.
+  let create level =
+    if level >= LogLevel.Info then
+      LiterateConsoleTarget(level, consoleSemaphore = Global.consoleSemaphore) :> Logger
+    else
+      CombiningTarget(
+        [ LiterateConsoleTarget(level, consoleSemaphore = Global.consoleSemaphore)
+          OutputWindowTarget(level) ])
+      :> Logger
 
 /// Module for acquiring static loggers (when you don't want or can't)
 /// pass loggers as values.
