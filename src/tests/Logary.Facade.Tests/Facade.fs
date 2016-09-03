@@ -120,6 +120,15 @@ let tests =
                    expectedPropertyNames
                    "Should extract relevant names"
 
+    testCase "treats `{{` and `}}` as escaped braces" <| fun _ ->
+      let template = "hello {{errors}} you {are} an {{exn}}"
+      let tokens = parseTemplateTokens template
+      Expect.equal tokens
+                    [ TextToken("hello {{errors}} you ")
+                      PropToken("are", null)
+                      TextToken(" an {{exn}}") ]
+
+                   "double open or close braces are escaped"
     testCase "literate tokenizes with field names correctly" <| fun _ ->
       let template = "Added {item} to cart {cartId} for {loginUserId} who now has total ${cartTotal}"
       let itemName, cartId, loginUserId, cartTotal = "TicTacs", Guid.NewGuid(), "AdamC", 123.45M
@@ -147,7 +156,7 @@ let tests =
       let emptyFields = Map.empty<string,obj>
       Assert.literateMessagePartsEqual ("", emptyFields, [])
 
-    testCase "literate tokenizes missing field with a scary-looking theme (MissingTemplateField)" <| fun _ ->
+    testCase "literate tokenizes missing fields with the `MissingTemplateField` token" <| fun _ ->
       let template = "Added {item} to cart {cartId:X} for {loginUserId} who now has total ${cartTotal}"
       let itemName, cartId, loginUserId, cartTotal = "TicTacs", Guid.NewGuid(), "AdamC", 123.45M
       let fields = Map [ "item", box itemName
@@ -195,16 +204,16 @@ let tests =
       |> List.iter (fun cultureName ->
         let options = { LiterateOptions.createInvariant() with
                           formatProvider = System.Globalization.CultureInfo(cultureName) }
-        let cultureSensitiveTemplate = "As of {date:F}, you have a balance of {amount:C2}"
-        let cultureSensitiveFields = Map [ "amount", box amount
-                                           "date", box date ]
+        let template = "As of {date:F}, you have a balance of {amount:C2}"
+        let fields = Map [ "amount", box amount
+                           "date", box date ]
         let expectedMessageParts =
-          [ "As of ", Text
-            date.ToString("F", options.formatProvider), OtherSymbol
-            ", you have a balance of ", Text
-            amount.ToString("C2", options.formatProvider), NumericSymbol ]
+          [ "As of ",                                       Text
+            date.ToString("F", options.formatProvider),     OtherSymbol
+            ", you have a balance of ",                     Text
+            amount.ToString("C2", options.formatProvider),  NumericSymbol ]
 
-        Assert.literateMessagePartsEqual (cultureSensitiveTemplate, cultureSensitiveFields, expectedMessageParts, options)
+        Assert.literateMessagePartsEqual (template, fields, expectedMessageParts, options)
       )
 
     testCase "literate default tokenizer can yield exception tokens from the 'errors' and 'exn' fields, even with an empty template" <| fun _ ->
