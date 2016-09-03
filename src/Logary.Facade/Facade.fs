@@ -283,12 +283,12 @@ module internal Literals =
 module internal FsMtParser =
   open System.Text
 
-  type Property(name:string, format: string) =
+  type Property(name : string, format : string) =
     static let emptyInstance = Property("", null)
     static member empty = emptyInstance
     member x.name = name
     member x.format = format
-    member internal x.AppendPropertyString(sb: StringBuilder, ?replacementName) =
+    member internal x.AppendPropertyString(sb : StringBuilder, ?replacementName) =
       sb.Append("{")
         .Append(defaultArg replacementName name)
         .Append(match x.format with null | "" -> "" | _ -> ":" + x.format)
@@ -303,32 +303,32 @@ module internal FsMtParser =
     let inline isValidCharInPropTag c = c = ':' || isValidInPropName c || isValidInFormat c
 
     [<Struct>]
-    type Range(startIndex:int, endIndex:int) =
+    type Range(startIndex : int, endIndex : int) =
       member inline x.start = startIndex
       member inline x.``end`` = endIndex
       member inline x.length = (endIndex - startIndex) + 1
-      member inline x.getSubstring (s:string) = s.Substring(startIndex, x.length)
+      member inline x.getSubstring (s : string) = s.Substring(startIndex, x.length)
       member inline x.isEmpty = startIndex = -1 && endIndex = -1
-      static member inline substring (s:string, startIndex, endIndex) = s.Substring(startIndex, (endIndex - startIndex) + 1)
+      static member inline substring (s : string, startIndex, endIndex) = s.Substring(startIndex, (endIndex - startIndex) + 1)
       static member inline empty = Range(-1, -1)
 
-    let inline tryGetFirstCharInRange predicate (s:string) (range:Range) =
+    let inline tryGetFirstCharInRange predicate (s : string) (range : Range) =
       let rec go i =
         if i > range.``end`` then -1
         else if not (predicate s.[i]) then go (i+1) else i
       go range.start
 
-    let inline tryGetFirstChar predicate (s:string) first =
+    let inline tryGetFirstChar predicate (s : string) first =
       tryGetFirstCharInRange predicate s (Range(first, s.Length - 1))
 
-    let inline hasAnyInRange predicate (s:string) (range:Range) =
+    let inline hasAnyInRange predicate (s : string) (range : Range) =
       match tryGetFirstChar (predicate) s range.start with
       | -1 -> false | i -> i <= range.``end``
 
-    let inline hasAny predicate (s:string) = hasAnyInRange predicate s (Range(0, s.Length - 1))
+    let inline hasAny predicate (s : string) = hasAnyInRange predicate s (Range(0, s.Length - 1))
     let inline indexOfInRange s range c = tryGetFirstCharInRange ((=) c) s range
 
-    let inline tryGetPropInRange (template:string) (within : Range) : Property =
+    let inline tryGetPropInRange (template : string) (within : Range) : Property =
       // Attempts to validate and parse a property token within the specified range inside
       // the template string. If the property insides contains any invalid characters,
       // then the `Property.Empty' instance is returned (hence the name 'try')
@@ -345,7 +345,7 @@ module internal FsMtParser =
         let format = if formatRange.isEmpty then null else formatRange.getSubstring template
         Property(propertyName, format)
 
-    let findNextNonPropText (startAt: int) (template: string) (foundText: string->unit) : int =
+    let findNextNonPropText (startAt : int) (template : string) (foundText : string->unit) : int =
       // Finds the next text token (starting from the 'startAt' index) and returns the next character
       // index within the template string. If the end of the template string is reached, or the start
       // of a property token is found (i.e. a single { character), then the 'consumed' text is passed
@@ -362,9 +362,9 @@ module internal FsMtParser =
         foundText (Range.substring(template, startAt, nextIndex - 1))
       nextIndex
 
-    let findPropOrText (start:int) (template:string)
-                       (foundText: string->unit)
-                       (foundProp: Property->unit) : int =
+    let findPropOrText (start : int) (template : string)
+                       (foundText : string->unit)
+                       (foundProp : Property->unit) : int =
       // Attempts to find the indices of the next property in the template
       // string (starting from the 'start' index). Once the start and end of
       // the property token is known, it will be further validated (by the
@@ -392,7 +392,7 @@ module internal FsMtParser =
   /// Parses template strings such as "Hello, {PropertyWithFormat:##.##}"
   /// and calls the 'foundTextF' or 'foundPropF' functions as the text or
   /// property tokens are encountered.
-  let parseParts (template:string) foundTextF foundPropF =
+  let parseParts (template : string) foundTextF foundPropF =
     let tlen = template.Length
     let rec go start =
       if start >= tlen then ()
@@ -404,7 +404,7 @@ module internal FsMtParser =
 module internal Formatting =
   open System.Text
 
-  let literateFormatValue (options: LiterateOptions) (fields: Map<string,obj>) = function
+  let literateFormatValue (options : LiterateOptions) (fields : Map<string,obj>) = function
     | Event template ->
       let themedParts = ResizeArray<string * LiterateToken>()
       let matchedFields = ResizeArray<string>()
@@ -437,12 +437,12 @@ module internal Formatting =
       Set.empty, [ sprintf "%i" value, NumericSymbol
                    sprintf "%s" units, KeywordSymbol ]
 
-  let formatValue (fields: Map<string,obj>) (pv: PointValue) =
+  let formatValue (fields : Map<string,obj>) (pv : PointValue) =
     let matchedFields, themedParts =
       literateFormatValue (LiterateOptions.createInvariant()) fields pv
-    matchedFields,  System.String.Join("", themedParts |> List.map fst)
+    matchedFields, System.String.Join("", themedParts |> List.map fst)
 
-  let literateExceptionColorizer (options: LiterateOptions) (ex: exn) =
+  let literateExceptionColorizer (options : LiterateOptions) (ex : exn) =
     let stackFrameLinePrefix = "   "
     use exnLines = new System.IO.StringReader(ex.ToString())
     let rec go lines =
@@ -456,7 +456,7 @@ module internal Formatting =
                   go ((Environment.NewLine, Text) :: ((line, Text) :: lines))
     go []
 
-  let literateColorizeExceptions (context: LiterateOptions) message =
+  let literateColorizeExceptions (context : LiterateOptions) message =
     let exnExceptionParts =
       match message.fields.TryFind FieldExnKey with
       | Some (:? Exception as ex) ->
@@ -477,7 +477,7 @@ module internal Formatting =
 
   /// Split a structured message up into theme-able parts (tokens), allowing the
   /// final output to display to a user with colours to enhance readability.
-  let literateDefaultTokenizer (options: LiterateOptions) (message: Message) : (string * LiterateToken) list =
+  let literateDefaultTokenizer (options : LiterateOptions) (message : Message) : (string * LiterateToken) list =
     let formatLocalTime (utcTicks : int64) =
       DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss", options.formatProvider),
       Subtext
@@ -509,7 +509,7 @@ module internal Formatting =
     @ themedMessageParts
     @ themedExceptionParts
 
-  let literateDefaultColorWriter sem (parts: (string * ConsoleColor) list) =
+  let literateDefaultColorWriter sem (parts : (string * ConsoleColor) list) =
     lock sem <| fun _ ->
       parts |> List.iter (fun (text, color) ->
         Console.ForegroundColor <- color
