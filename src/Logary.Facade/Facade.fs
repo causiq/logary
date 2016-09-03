@@ -417,7 +417,7 @@ module internal FsMtParser =
 module internal Formatting =
   open System.Text
 
-  let literateFormatValue (options : LiterateOptions) (fields : Map<string,obj>) = function
+  let literateFormatValue (options : LiterateOptions) (fields : Map<string, obj>) = function
     | Event template ->
       let themedParts = ResizeArray<string * LiterateToken>()
       let matchedFields = ResizeArray<string>()
@@ -454,10 +454,10 @@ module internal Formatting =
       Set.empty, [ sprintf "%i" value, NumericSymbol
                    sprintf "%s" units, KeywordSymbol ]
 
-  let formatValue (fields : Map<string,obj>) (pv : PointValue) =
+  let formatValue (fields : Map<string, obj>) (pv : PointValue) =
     let matchedFields, themedParts =
       literateFormatValue (LiterateOptions.createInvariant()) fields pv
-    matchedFields, System.String.Join("", themedParts |> List.map fst)
+    matchedFields, System.String.Concat(themedParts |> List.map fst)
 
   let literateExceptionColorizer (options : LiterateOptions) (ex : exn) =
     let stackFrameLinePrefix = "   "
