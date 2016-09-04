@@ -227,52 +227,53 @@ type LoggingConfig =
     getLogger        : string[] -> Logger
     consoleSemaphore : obj }
 
-/// The output tokens, which can be potentially coloured.
-type LiterateToken =
-  | Text | Subtext
-  | Punctuation
-  | LevelVerbose | LevelDebug | LevelInfo | LevelWarning | LevelError | LevelFatal
-  | KeywordSymbol | NumericSymbol | StringSymbol | OtherSymbol | NameSymbol
-  | MissingTemplateField
+module Literate =
+  /// The output tokens, which can be potentially coloured.
+  type LiterateToken =
+    | Text | Subtext
+    | Punctuation
+    | LevelVerbose | LevelDebug | LevelInfo | LevelWarning | LevelError | LevelFatal
+    | KeywordSymbol | NumericSymbol | StringSymbol | OtherSymbol | NameSymbol
+    | MissingTemplateField
 
-type LiterateOptions =
-  { formatProvider          : IFormatProvider
-    theme                   : LiterateToken -> ConsoleColor
-    getLogLevelText         : LogLevel -> string
-    printTemplateFieldNames : bool }
+  type LiterateOptions =
+    { formatProvider          : IFormatProvider
+      theme                   : LiterateToken -> ConsoleColor
+      getLogLevelText         : LogLevel -> string
+      printTemplateFieldNames : bool }
 
-  static member create(?formatProvider) =
-    // note: literate is meant for human consumption, and so the default
-    // format provider of 'Current' is appropriate here. The reader expects
-    // to see the dates, numbers, currency, etc formatted in the local culture
-    { formatProvider = defaultArg formatProvider Globalization.CultureInfo.CurrentCulture
-      getLogLevelText = function
-              | Debug ->    "DBG"
-              | Error ->    "ERR"
-              | Fatal ->    "FTL"
-              | Info ->     "INF"
-              | Verbose ->  "VRB"
-              | Warn ->     "WRN"
-      theme = function
-              | Text -> ConsoleColor.White
-              | Subtext -> ConsoleColor.Gray
-              | Punctuation -> ConsoleColor.DarkGray
-              | LevelVerbose -> ConsoleColor.Gray
-              | LevelDebug -> ConsoleColor.Gray
-              | LevelInfo -> ConsoleColor.White
-              | LevelWarning -> ConsoleColor.Yellow
-              | LevelError -> ConsoleColor.Red
-              | LevelFatal -> ConsoleColor.Red
-              | KeywordSymbol -> ConsoleColor.Blue
-              | NumericSymbol -> ConsoleColor.Magenta
-              | StringSymbol -> ConsoleColor.Cyan
-              | OtherSymbol -> ConsoleColor.Green
-              | NameSymbol -> ConsoleColor.Gray
-              | MissingTemplateField -> ConsoleColor.Red
-      printTemplateFieldNames = false }
+    static member create(?formatProvider) =
+      // note: literate is meant for human consumption, and so the default
+      // format provider of 'Current' is appropriate here. The reader expects
+      // to see the dates, numbers, currency, etc formatted in the local culture
+      { formatProvider = defaultArg formatProvider Globalization.CultureInfo.CurrentCulture
+        getLogLevelText = function
+                | Debug ->    "DBG"
+                | Error ->    "ERR"
+                | Fatal ->    "FTL"
+                | Info ->     "INF"
+                | Verbose ->  "VRB"
+                | Warn ->     "WRN"
+        theme = function
+                | Text -> ConsoleColor.White
+                | Subtext -> ConsoleColor.Gray
+                | Punctuation -> ConsoleColor.DarkGray
+                | LevelVerbose -> ConsoleColor.Gray
+                | LevelDebug -> ConsoleColor.Gray
+                | LevelInfo -> ConsoleColor.White
+                | LevelWarning -> ConsoleColor.Yellow
+                | LevelError -> ConsoleColor.Red
+                | LevelFatal -> ConsoleColor.Red
+                | KeywordSymbol -> ConsoleColor.Blue
+                | NumericSymbol -> ConsoleColor.Magenta
+                | StringSymbol -> ConsoleColor.Cyan
+                | OtherSymbol -> ConsoleColor.Green
+                | NameSymbol -> ConsoleColor.Gray
+                | MissingTemplateField -> ConsoleColor.Red
+        printTemplateFieldNames = false }
 
-  static member createInvariant() =
-    LiterateOptions.create(Globalization.CultureInfo.InvariantCulture)
+    static member createInvariant() =
+      LiterateOptions.create(Globalization.CultureInfo.InvariantCulture)
 
 [<AutoOpen>]
 module internal Literals =
@@ -420,6 +421,7 @@ module internal FsMtParser =
 /// Internal module for formatting text for printing to the console.
 module internal Formatting =
   open System.Text
+  open Literate
 
   let literateFormatValue (options : LiterateOptions) (fields : Map<string, obj>) = function
     | Event template ->
@@ -537,11 +539,16 @@ module internal Formatting =
 
   let literateDefaultColorWriter sem (parts : (string * ConsoleColor) list) =
     lock sem <| fun _ ->
+      let originalColour = Console.ForegroundColor
+      let mutable currentColour = originalColour
       parts |> List.iter (fun (text, color) ->
-        Console.ForegroundColor <- color
+        if currentColour <> color then
+          Console.ForegroundColor <- color
+          currentColour <- color
         Console.Write(text)
       )
-      Console.ResetColor()
+      if currentColour <> originalColour then
+        Console.ForegroundColor <- originalColour
 
   /// let the ISO8601 love flow
   let defaultFormatter (message : Message) =
@@ -592,12 +599,12 @@ module internal Formatting =
 /// Sample: [10:30:49 INF] User "AdamC" began the "checkout" process with 100 cart items
 type LiterateConsoleTarget(minLevel, ?options, ?literateTokenizer, ?outputWriter, ?consoleSemaphore) =
   let sem           = defaultArg consoleSemaphore (obj())
-  let options       = defaultArg options (LiterateOptions.create())
+  let options       = defaultArg options (Literate.LiterateOptions.create())
   let tokenize      = defaultArg literateTokenizer Formatting.literateDefaultTokenizer
   let colorWriter   = defaultArg outputWriter Formatting.literateDefaultColorWriter sem
 
   let colorizeThenNewLine message =
-    (tokenize options message) @ [Environment.NewLine, Text]
+    (tokenize options message) @ [Environment.NewLine, Literate.Text]
     |> List.map (fun (s, t) ->
       s, options.theme(t))
 

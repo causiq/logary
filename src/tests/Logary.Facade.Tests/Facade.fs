@@ -3,6 +3,7 @@
 open System
 open Fuchu
 open Logary.Facade
+open Logary.Facade.Literate
 open ExpectoPatronum
 
 type internal TemplateToken =
