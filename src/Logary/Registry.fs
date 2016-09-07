@@ -282,12 +282,12 @@ module Advanced =
           |> List.traverseJobA (function
             | KeyValue (name, mconf) -> job {
               let! instance = mconf.initialise name
-              do! Message.eventDebugf "will poll %O every %O" name mconf.tickInterval |> log
+              do! Message.eventVerbosef "Will poll %O every %O" name mconf.tickInterval |> log
 
               let! tickCts =
                 Scheduling.schedule sched Metric.tick instance mconf.tickInterval
                                     (Some mconf.tickInterval)
-              do! Message.eventDebugf "getting logger for metric %O" name |> log
+              do! Message.eventVerbosef "Getting logger for metric %O" name |> log
               let logger = name |> getTargets conf |> fromTargets name conf.runtimeInfo.logger
               Metric.tapMessages instance |> Stream.consumeJob (Logger.log logger)
               return name, tickCts
@@ -306,10 +306,10 @@ module Advanced =
             match extraMiddleware with
             | None -> conf.middleware
             | Some mid -> mid :: conf.middleware
-                       
-          do! Message.eventDebugf "composing %i middlewares" (List.length middleware) |> log
+
+          do! Message.eventVerbosef "Composing %i middlewares" (List.length middleware) |> log
           let composedMiddleware = Middleware.compose middleware
-          
+
           let logger =
             name
             |> getTargets conf
