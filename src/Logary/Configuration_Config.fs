@@ -163,13 +163,13 @@ let validate ({ targets     = targets
 
   match oRules.Count, oTargets.Count with
   | 0, 0 -> conf
-  | _ -> raise (ValidationException("rules do not have matching targets", oRules,
-                                    "targets do not have bound rules", oTargets))
+  | _ -> raise (ValidationException("Rules do not have matching targets", oRules,
+                                    "Targets do not have bound rules", oTargets))
 
 /// Start logary with a given configuration
 [<CompiledName "RunLogary"; Extension>]
 let runLogary (conf : LogaryConf) =
-  Message.eventDebug "Run Logary"
+  Message.eventDebug "Running Logary"
   |> Logger.log conf.runtimeInfo.logger
   >>=. Registry.Advanced.create conf
   >>= fun registry -> Logging.startFlyweights registry |> Job.map (fun _ -> registry)
@@ -182,9 +182,9 @@ let shutdown (flushDur : Duration) (shutdownDur : Duration) (inst : LogaryInstan
     >> Logger.log inst.runtimeInfo.logger
 
   job {
-    do! Message.eventInfo "start shutdown" |> log
+    do! Message.eventDebug "Shutting down Logary" |> log
     let! res = Advanced.flushAndShutdown flushDur shutdownDur inst.registry
-    do! Message.eventInfo "stop shutdown" |> log
+    do! Message.eventVerbose "Shutting down Logary completed or timed out" |> log
     Logging.shutdownFlyweights ()
     do! shutdownLogger inst.runtimeInfo.logger
     return res
@@ -219,7 +219,7 @@ let asLogManager (inst : LogaryInstance) =
         memo (shutdownSimple inst |> Job.Ignore) :> Job<_>
 
       member x.Dispose() =
-        x.DisposeAsync() |> run 
+        x.DisposeAsync() |> run
   }
 
 /// Configure Logary completely with the given service name and rules, targets

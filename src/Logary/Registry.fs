@@ -245,14 +245,14 @@ module Advanced =
       /// In the shutdown state, the registry doesn't respond to messages, but rather tries to
       /// flush and shut down all targets, doing internal logging as it goes.
       let shutdown state (ackCh : Ch<unit>) (nack : Promise<unit>) = job {
-        do! Message.eventInfo "shutdown metrics polling" |> log
+        do! Message.eventInfo "Shutting down polling of the metrics" |> log
         do! state.schedules |> List.traverseJobA (snd >> Cancellation.cancel) |> Job.Ignore
 
-        do! Message.eventInfo "cancel schedules" |> log
+        do! Message.eventInfo "Cancelling schedules" |> log
         for (_, x) in state.schedules do
           do! Cancellation.cancel x
 
-        do! Message.eventInfo "shutdown targets" |> log
+        do! Message.eventInfo "Shutting down targets" |> log
         let! allShutdown =
           targets
           |> Seq.pjmap (fun t -> Target.shutdown t  ^->. Success Ack
@@ -264,15 +264,15 @@ module Advanced =
           |> bisectSuccesses
 
         if List.isEmpty failed then
-          do! Message.eventInfo "shutdown Ack" |> log
+          do! Message.eventVerbose "Shutdown Ack" |> log
         else
-          let msg = sprintf "failed target shutdowns:%s%s" nl (toTextList failed)
-          do! Message.eventErrorf "shutdown Nack%s%s" nl msg
+          let msg = sprintf "Failed target shutdowns:%s%s" nl (toTextList failed)
+          do! Message.eventErrorf "Shutdown Nack%s%s" nl msg
               |> Message.setField "failed" (Value.ofObject failed)
               |> log
 
         do! Ch.give ackCh () <|> nack
-        return! Message.eventInfo "shutting down immediately" |> log
+        return! Message.eventVerbose "Shutting down immediately" |> log
       }
 
       let rec init state = job {
@@ -320,7 +320,7 @@ module Advanced =
           return! running state
 
         | FlushPending(ackCh, nack) ->
-          do! Message.eventInfo "flush start" |> log
+          do! Message.eventDebug "Starting to flush" |> log
 
           let! allFlushed =
             targets
@@ -333,10 +333,12 @@ module Advanced =
             |> bisectSuccesses
 
           if List.isEmpty notFlushed then
-            do! Message.eventInfo "flush Ack" |> log
+            do! Message.eventVerbose "Completed flush" |> log
           else
             let msg = sprintf "Failed target flushes:%s%s" nl (toTextList notFlushed)
-            do! Message.eventErrorf "flush Nack - %s" msg |> log
+            do! Message.eventErrorf "Flush failed with {nack}"
+                |> Message.setField "nack" msg
+                |> log
 
           do! Ch.give ackCh () <|> nack
 

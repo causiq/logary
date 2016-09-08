@@ -76,8 +76,8 @@ let getLoggerByPointName name =
     logger :> Logger
 
   | Some inst ->
-    Logger.logDebug inst.runtimeInfo.logger (fun _ ->
-      Message.eventDebugf "getting logger by name '%O'" name)
+    Logger.logVerbose inst.runtimeInfo.logger (fun _ ->
+      Message.eventVerbosef "Getting logger by name '%O'" name)
     >>=. (name |> Registry.getLogger inst.registry)
     // this should be the only location we actually do the run call, because
     // we absolutely need it initialising static variables synchronously at
