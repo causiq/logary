@@ -620,6 +620,21 @@ type LiterateConsoleTarget(minLevel, ?options, ?literateTokenizer, ?outputWriter
       if msg.level >= minLevel then
         colorWriter (colorizeThenNewLine msg)
 
+type TextWriterTarget(minLevel, writer : System.IO.TextWriter, ?formatter) =
+  let formatter = defaultArg formatter Formatting.defaultFormatter
+  let log msg = writer.WriteLine(formatter msg)
+
+  interface Logger with
+    member x.log level msgFactory =
+      if level >= minLevel then log (msgFactory level)
+
+    member x.logWithAck level msgFactory =
+      if level >= minLevel then log (msgFactory level)
+      async.Return ()
+
+    member x.logSimple msg =
+      if msg.level >= minLevel then log msg
+
 type OutputWindowTarget(minLevel, ?formatter) =
   let formatter = defaultArg formatter Formatting.defaultFormatter
   let log msg = System.Diagnostics.Debug.WriteLine(formatter msg)
