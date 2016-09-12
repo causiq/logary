@@ -171,7 +171,7 @@ module LoggerAdapter =
   let createGeneric<'logger when 'logger : not struct> logger : 'logger =
     create typeof<'logger> logger :?> 'logger
 
-/// An adapter for creating a `getLogger` function. 
+/// An adapter for creating a `getLogger` function.
 module LogaryFacadeAdapter =
 
   /// You should probably gaze at `initialise` rather than this function. This
@@ -195,6 +195,8 @@ module LogaryFacadeAdapter =
             field.PropertyType,
             fun _ -> Date.timestamp () |> box)
 
+        | "consoleSemaphore" ->
+          obj() // Todo: should this come from Logary now? where?
         | name ->
           failwithf "Unknown field '%s' of the config record '%s'" name configType.FullName)
 

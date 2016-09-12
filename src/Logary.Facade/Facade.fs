@@ -108,7 +108,7 @@ type LogLevel =
   interface IEquatable<LogLevel> with
     member x.Equals other =
       x.toInt() = other.toInt()
-  
+
   override x.Equals other =
     (x :> IComparable).CompareTo other = 0
 
@@ -223,30 +223,332 @@ module internal LoggerEx =
       x.log Fatal msgFactory
 
 type LoggingConfig =
-  { timestamp : unit -> int64
-    getLogger : string[] -> Logger }
+  { timestamp        : unit -> int64
+    getLogger        : string[] -> Logger
+    consoleSemaphore : obj }
 
-module internal Formatting =
-  open System.Text
-  open System.Text.RegularExpressions
+module Literate =
+  /// The output tokens, which can be potentially coloured.
+  type LiterateToken =
+    | Text | Subtext
+    | Punctuation
+    | LevelVerbose | LevelDebug | LevelInfo | LevelWarning | LevelError | LevelFatal
+    | KeywordSymbol | NumericSymbol | StringSymbol | OtherSymbol | NameSymbol
+    | MissingTemplateField
+
+  type LiterateOptions =
+    { formatProvider          : IFormatProvider
+      theme                   : LiterateToken -> ConsoleColor
+      getLogLevelText         : LogLevel -> string
+      printTemplateFieldNames : bool }
+
+    static member create(?formatProvider) =
+      // note: literate is meant for human consumption, and so the default
+      // format provider of 'Current' is appropriate here. The reader expects
+      // to see the dates, numbers, currency, etc formatted in the local culture
+      { formatProvider = defaultArg formatProvider Globalization.CultureInfo.CurrentCulture
+        getLogLevelText = function
+                | Debug ->    "DBG"
+                | Error ->    "ERR"
+                | Fatal ->    "FTL"
+                | Info ->     "INF"
+                | Verbose ->  "VRB"
+                | Warn ->     "WRN"
+        theme = function
+                | Text -> ConsoleColor.White
+                | Subtext -> ConsoleColor.Gray
+                | Punctuation -> ConsoleColor.DarkGray
+                | LevelVerbose -> ConsoleColor.Gray
+                | LevelDebug -> ConsoleColor.Gray
+                | LevelInfo -> ConsoleColor.White
+                | LevelWarning -> ConsoleColor.Yellow
+                | LevelError -> ConsoleColor.Red
+                | LevelFatal -> ConsoleColor.Red
+                | KeywordSymbol -> ConsoleColor.Blue
+                | NumericSymbol -> ConsoleColor.Magenta
+                | StringSymbol -> ConsoleColor.Cyan
+                | OtherSymbol -> ConsoleColor.Green
+                | NameSymbol -> ConsoleColor.Gray
+                | MissingTemplateField -> ConsoleColor.Red
+        printTemplateFieldNames = false }
+
+    static member createInvariant() =
+      LiterateOptions.create(Globalization.CultureInfo.InvariantCulture)
+
+[<AutoOpen>]
+module internal Literals =
 
   [<Literal>]
-  let FieldExnKey = "exn"
+  let internal FieldExnKey = "exn"
 
-  let fieldRegex =
-    // https://msdn.microsoft.com/en-us/library/bs2twtah.aspx#balancing_group_definition
-    Regex(@"( (?<B>\{) [\s\w]+ (?<-B>\}) )", RegexOptions.IgnorePatternWhitespace ||| RegexOptions.Compiled)
+  [<Literal>]
+  let FieldErrorsKey = "errors"
 
-  let extractMatches fields (template : string) =
-    fieldRegex.Matches template
-    |> Seq.cast<Match>
-    |> Seq.toList
-    |> List.choose (fun m ->
-      let name = m.Value.Trim([| '{'; '}'; ' '|])
-      if fields |> Map.containsKey name then
-        Some (name, fields |> Map.find name, m)
+module internal FsMtParser =
+  open System.Text
+
+  type Property(name : string, format : string) =
+    static let emptyInstance = Property("", null)
+    static member empty = emptyInstance
+    member x.name = name
+    member x.format = format
+    member internal x.AppendPropertyString(sb : StringBuilder, ?replacementName) =
+      sb.Append("{")
+        .Append(defaultArg replacementName name)
+        .Append(match x.format with null | "" -> "" | _ -> ":" + x.format)
+        .Append("}")
+    override x.ToString() = x.AppendPropertyString(StringBuilder()).ToString()
+
+  module internal ParserBits =
+
+    let inline isLetterOrDigit c = System.Char.IsLetterOrDigit c
+    let inline isValidInPropName c = c = '_' || System.Char.IsLetterOrDigit c
+    let inline isValidInFormat c = c <> '}' && (c = ' ' || isLetterOrDigit c || System.Char.IsPunctuation c)
+    let inline isValidCharInPropTag c = c = ':' || isValidInPropName c || isValidInFormat c
+
+    [<Struct>]
+    type Range(startIndex : int, endIndex : int) =
+      member inline x.start = startIndex
+      member inline x.``end`` = endIndex
+      member inline x.length = (endIndex - startIndex) + 1
+      member inline x.getSubstring (s : string) = s.Substring(startIndex, x.length)
+      member inline x.isEmpty = startIndex = -1 && endIndex = -1
+      static member inline substring (s : string, startIndex, endIndex) = s.Substring(startIndex, (endIndex - startIndex) + 1)
+      static member inline empty = Range(-1, -1)
+
+    let inline tryGetFirstCharInRange predicate (s : string) (range : Range) =
+      let rec go i =
+        if i > range.``end`` then -1
+        else if not (predicate s.[i]) then go (i+1) else i
+      go range.start
+
+    let inline tryGetFirstChar predicate (s : string) first =
+      tryGetFirstCharInRange predicate s (Range(first, s.Length - 1))
+
+    let inline hasAnyInRange predicate (s : string) (range : Range) =
+      match tryGetFirstChar (predicate) s range.start with
+      | -1 ->
+        false
+      | i ->
+        i <= range.``end``
+
+    let inline hasAny predicate (s : string) = hasAnyInRange predicate s (Range(0, s.Length - 1))
+    let inline indexOfInRange s range c = tryGetFirstCharInRange ((=) c) s range
+
+    let inline tryGetPropInRange (template : string) (within : Range) : Property =
+      // Attempts to validate and parse a property token within the specified range inside
+      // the template string. If the property insides contains any invalid characters,
+      // then the `Property.Empty' instance is returned (hence the name 'try')
+      let nameRange, formatRange =
+        match indexOfInRange template within ':' with
+        | -1 ->
+          within, Range.empty // no format
+        | formatIndex ->
+          Range(within.start, formatIndex-1), Range(formatIndex+1, within.``end``) // has format part
+      let propertyName = nameRange.getSubstring template
+      if propertyName = "" || (hasAny (not<<isValidInPropName) propertyName) then
+        Property.empty
+      elif (not formatRange.isEmpty) && (hasAnyInRange (not<<isValidInFormat) template formatRange) then
+        Property.empty
       else
-        None)
+        let format = if formatRange.isEmpty then null else formatRange.getSubstring template
+        Property(propertyName, format)
+
+    let findNextNonPropText (startAt : int) (template : string) (foundText : string->unit) : int =
+      // Finds the next text token (starting from the 'startAt' index) and returns the next character
+      // index within the template string. If the end of the template string is reached, or the start
+      // of a property token is found (i.e. a single { character), then the 'consumed' text is passed
+      // to the 'foundText' method, and index of the next character is returned.
+      let rec go i =
+        if i >= template.Length then template.Length
+        else
+          match template.[i] with
+          | '{' ->
+            if (i+1) < template.Length && template.[i+1] = '{' then go (i+2) else i
+          | '}' when (i+1) < template.Length && template.[i+1] = '}' ->
+            go (i+2)
+          | _ ->
+            go (i+1)
+      let nextIndex = go startAt
+      if (nextIndex > startAt) then
+        foundText (Range.substring(template, startAt, nextIndex - 1))
+      nextIndex
+
+    let findPropOrText (start : int) (template : string)
+                       (foundText : string -> unit)
+                       (foundProp : Property -> unit) : int =
+      // Attempts to find the indices of the next property in the template
+      // string (starting from the 'start' index). Once the start and end of
+      // the property token is known, it will be further validated (by the
+      // tryGetPropInRange method). If the range turns out to be invalid, it's
+      // not a property token, and we return it as text instead. We also need
+      // to handle some special case here: if the end of the string is reached,
+      // without finding the close brace (we just signal 'foundText' in that case).
+      let nextInvalidCharIndex =
+        match tryGetFirstChar (not << isValidCharInPropTag) template (start+1) with
+        | -1 ->
+          template.Length
+        | idx ->
+          idx
+
+      if nextInvalidCharIndex = template.Length || template.[nextInvalidCharIndex] <> '}' then
+        foundText (Range.substring(template, start, (nextInvalidCharIndex - 1)))
+        nextInvalidCharIndex
+      else
+        let nextIndex = nextInvalidCharIndex + 1
+        let propInsidesRng = Range(start + 1, nextIndex - 2)
+        match tryGetPropInRange template propInsidesRng with
+        | prop when not (obj.ReferenceEquals(prop, Property.empty)) ->
+          foundProp prop
+        | _ ->
+          foundText (Range.substring(template, start, (nextIndex - 1)))
+        nextIndex
+
+  /// Parses template strings such as "Hello, {PropertyWithFormat:##.##}"
+  /// and calls the 'foundTextF' or 'foundPropF' functions as the text or
+  /// property tokens are encountered.
+  let parseParts (template : string) foundTextF foundPropF =
+    let tlen = template.Length
+    let rec go start =
+      if start >= tlen then ()
+      else match ParserBits.findNextNonPropText start template foundTextF with
+            | next when next <> start ->
+              go next
+            | _ ->
+              go (ParserBits.findPropOrText start template foundTextF foundPropF)
+    go 0
+
+/// Internal module for formatting text for printing to the console.
+module internal Formatting =
+  open System.Text
+  open Literate
+
+  let literateFormatValue (options : LiterateOptions) (fields : Map<string, obj>) = function
+    | Event template ->
+      let themedParts = ResizeArray<string * LiterateToken>()
+      let matchedFields = ResizeArray<string>()
+      let foundText (text: string) = themedParts.Add (text, Text)
+      let foundProp (prop: FsMtParser.Property) =
+        match Map.tryFind prop.name fields with
+        | Some propValue ->
+          // render using string.Format, so the formatting is applied
+          let stringFormatTemplate = prop.AppendPropertyString(StringBuilder(), "0").ToString()
+          let fieldAsText = String.Format (options.formatProvider, stringFormatTemplate, [| propValue |])
+          // find the right theme colour based on data type
+          let valueColour =
+            match propValue with
+            | :? bool ->
+              KeywordSymbol
+            | :? int16 | :? int32 | :? int64 | :? decimal | :? float | :? double ->
+              NumericSymbol
+            | :? string | :? char ->
+              StringSymbol
+            | _ ->
+              OtherSymbol
+          if options.printTemplateFieldNames then
+            themedParts.Add ("["+prop.name+"] ", Subtext)
+          matchedFields.Add prop.name
+          themedParts.Add (fieldAsText, valueColour)
+
+        | None ->
+          themedParts.Add (prop.ToString(), MissingTemplateField)
+
+      FsMtParser.parseParts template foundText foundProp
+      Set.ofSeq matchedFields, List.ofSeq themedParts
+
+    | Gauge (value, units) ->
+      Set.empty, [ sprintf "%i" value, NumericSymbol
+                   sprintf "%s" units, KeywordSymbol ]
+
+  let formatValue (fields : Map<string, obj>) (pv : PointValue) =
+    let matchedFields, themedParts =
+      literateFormatValue (LiterateOptions.createInvariant()) fields pv
+    matchedFields, System.String.Concat(themedParts |> List.map fst)
+
+  let literateExceptionColorizer (options : LiterateOptions) (ex : exn) =
+    let stackFrameLinePrefix = "   "
+    use exnLines = new System.IO.StringReader(ex.ToString())
+    let rec go lines =
+      match exnLines.ReadLine() with
+      | null ->
+        List.rev lines // finished reading
+      | line ->
+        if line.StartsWith(stackFrameLinePrefix) then
+          // subtext
+          go ((Environment.NewLine, Text) :: ((line, Subtext) :: lines))
+        else
+          // regular text
+          go ((Environment.NewLine, Text) :: ((line, Text) :: lines))
+    go []
+
+  let literateColorizeExceptions (context : LiterateOptions) message =
+    let exnExceptionParts =
+      match message.fields.TryFind FieldExnKey with
+      | Some (:? Exception as ex) ->
+        literateExceptionColorizer context ex
+        @ [ Environment.NewLine, Text ]
+      | _ ->
+        [] // there is no spoon
+    let errorsExceptionParts =
+      match message.fields.TryFind FieldErrorsKey with
+      | Some (:? List<obj> as exnListAsObjList) ->
+        exnListAsObjList |> List.collect (function
+          | :? exn as ex ->
+            literateExceptionColorizer context ex
+            @ [ Environment.NewLine, Text ]
+          | _ ->
+            [])
+      | _ ->
+        []
+
+    exnExceptionParts @ errorsExceptionParts
+
+  /// Split a structured message up into theme-able parts (tokens), allowing the
+  /// final output to display to a user with colours to enhance readability.
+  let literateDefaultTokenizer (options : LiterateOptions) (message : Message) : (string * LiterateToken) list =
+    let formatLocalTime (utcTicks : int64) =
+      DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss", options.formatProvider),
+      Subtext
+
+    let themedMessageParts =
+      message.value |> literateFormatValue options message.fields |> snd
+
+    let themedExceptionParts =
+      let exnParts = literateColorizeExceptions options message
+      if not exnParts.IsEmpty then
+        [ Environment.NewLine, Text ]
+        @ exnParts
+        @ [ Environment.NewLine, Text ]
+      else []
+
+    let getLogLevelToken = function
+      | Verbose -> LevelVerbose
+      | Debug -> LevelDebug
+      | Info -> LevelInfo
+      | Warn -> LevelWarning
+      | Error -> LevelError
+      | Fatal -> LevelFatal
+
+    [ "[", Punctuation
+      formatLocalTime message.utcTicks
+      " ", Subtext
+      options.getLogLevelText message.level, getLogLevelToken message.level
+      "] ", Punctuation ]
+    @ themedMessageParts
+    @ themedExceptionParts
+
+  let literateDefaultColorWriter sem (parts : (string * ConsoleColor) list) =
+    lock sem <| fun _ ->
+      let originalColour = Console.ForegroundColor
+      let mutable currentColour = originalColour
+      parts |> List.iter (fun (text, color) ->
+        if currentColour <> color then
+          Console.ForegroundColor <- color
+          currentColour <- color
+        Console.Write(text)
+      )
+      if currentColour <> originalColour then
+        Console.ForegroundColor <- originalColour
 
   /// let the ISO8601 love flow
   let defaultFormatter (message : Message) =
@@ -258,31 +560,6 @@ module internal Formatting =
 
     let formatInstant (utcTicks : int64) =
       (DateTimeOffset(utcTicks, TimeSpan.Zero).ToString("o")) + ": "
-
-    let formatValue fields = function
-      | Event template ->
-        let matches = extractMatches fields template
-
-        let folder (length, index, chPos, builder) (_, value : obj, m : Match) =
-          //printfn "index: %i, chPos: %i, builder: %O, m.Index: %i, m.Value: %s" index chPos builder m.Index m.Value
-          builder |> app (template.Substring(chPos, m.Index - chPos))
-          builder |> app (sprintf "%O" value)
-          let chPos = chPos + (m.Index - chPos) + m.Value.Length
-
-          if length - 1 = index then
-            builder |> app (template.Substring(chPos, template.Length - chPos))
-
-          length, index + 1, chPos, builder
-
-        let _, _, _, builder =
-          matches |> Seq.fold folder (matches.Length, 0, 0, StringBuilder())
-
-        matches |> List.map (fun (name, _, _) -> name) |> Set.ofList,
-        if builder.Length = 0 then template else builder.ToString()
-
-      | Gauge (value, units) ->
-        Set.empty,
-        sprintf "%i %s" value units
 
     let formatName (name : string[]) =
       " [" + String.concat "." name + "]"
@@ -298,8 +575,10 @@ module internal Formatting =
     let formatFields (ignored : Set<string>) (fields : Map<string, obj>) =
       if not (Map.isEmpty fields) then
         fields
-        |> Seq.filter (fun (KeyValue (k, _)) -> not (ignored |> Set.contains k))
-        |> Seq.map (fun (KeyValue (k, v)) -> sprintf "\n - %s: %O" k v)
+        |> Seq.filter (fun (KeyValue (k, _)) ->
+          not (ignored |> Set.contains k))
+        |> Seq.map (fun (KeyValue (k, v)) ->
+          sprintf "\n - %s: %O" k v)
         |> String.concat ""
       else
         ""
@@ -315,47 +594,46 @@ module internal Formatting =
     formatExn message.fields +
     formatFields matchedFields message.fields
 
-/// Log a line with the given format, printing the current time in UTC ISO-8601 format
-/// and then the string, like such:
-/// '2013-10-13T13:03:50.2950037Z: today is the day'
-type ConsoleWindowTarget(minLevel, ?formatter, ?colourise, ?originalColor, ?consoleSemaphore) =
+/// Logs a line in a format that is great for human consumption,
+/// using console colours to enhance readability.
+/// Sample: [10:30:49 INF] User "AdamC" began the "checkout" process with 100 cart items
+type LiterateConsoleTarget(minLevel, ?options, ?literateTokenizer, ?outputWriter, ?consoleSemaphore) =
   let sem           = defaultArg consoleSemaphore (obj())
-  let originalColor = defaultArg originalColor Console.ForegroundColor
-  let formatter     = defaultArg formatter Formatting.defaultFormatter
-  let colourise     = defaultArg colourise true
-  let write         = System.Console.WriteLine : string -> unit
+  let options       = defaultArg options (Literate.LiterateOptions.create())
+  let tokenize      = defaultArg literateTokenizer Formatting.literateDefaultTokenizer
+  let colorWriter   = defaultArg outputWriter Formatting.literateDefaultColorWriter sem
 
-  let toColour = function
-    | LogLevel.Verbose -> ConsoleColor.DarkGreen
-    | LogLevel.Debug   -> ConsoleColor.Green
-    | LogLevel.Info    -> ConsoleColor.White
-    | LogLevel.Warn    -> ConsoleColor.Yellow
-    | LogLevel.Error   -> ConsoleColor.DarkRed
-    | LogLevel.Fatal   -> ConsoleColor.Red
-
-  let log color message =
-    if colourise then
-      lock sem <| fun _ ->
-        Console.ForegroundColor <- color
-        message |> formatter |> write
-        Console.ForegroundColor <- originalColor
-    else
-      // we don't need to take another lock, since Console.WriteLine does that for us
-      (write << formatter) message
+  let colorizeThenNewLine message =
+    (tokenize options message) @ [Environment.NewLine, Literate.Text]
+    |> List.map (fun (s, t) ->
+      s, options.theme(t))
 
   interface Logger with
     member x.logWithAck level msgFactory =
       if level >= minLevel then
-        log (toColour level) (msgFactory level)
+        colorWriter (colorizeThenNewLine (msgFactory level))
       async.Return ()
-
     member x.log level msgFactory =
       if level >= minLevel then
-        log (toColour level) (msgFactory level)
-
+        colorWriter (colorizeThenNewLine (msgFactory level))
     member x.logSimple msg =
       if msg.level >= minLevel then
-        log (toColour msg.level) msg
+        colorWriter (colorizeThenNewLine msg)
+
+type TextWriterTarget(minLevel, writer : System.IO.TextWriter, ?formatter) =
+  let formatter = defaultArg formatter Formatting.defaultFormatter
+  let log msg = writer.WriteLine(formatter msg)
+
+  interface Logger with
+    member x.log level msgFactory =
+      if level >= minLevel then log (msgFactory level)
+
+    member x.logWithAck level msgFactory =
+      if level >= minLevel then log (msgFactory level)
+      async.Return ()
+
+    member x.logSimple msg =
+      if msg.level >= minLevel then log msg
 
 type OutputWindowTarget(minLevel, ?formatter) =
   let formatter = defaultArg formatter Formatting.defaultFormatter
@@ -378,7 +656,8 @@ type CombiningTarget(otherLoggers : Logger list) =
     async {
       let! _ =
         otherLoggers
-        |> List.map (fun l -> l.logWithAck level msgFactory)
+        |> List.map (fun l ->
+          l.logWithAck level msgFactory)
         |> Async.Parallel
       return ()
     }
@@ -395,26 +674,21 @@ type CombiningTarget(otherLoggers : Logger list) =
       sendToAll msg.level (fun _ -> msg)
       |> Async.Start
 
-module Targets =
-
-  let create level =
-    if level >= LogLevel.Info then
-      ConsoleWindowTarget(level) :> Logger
-    else
-      CombiningTarget(
-        [ ConsoleWindowTarget(level)
-          OutputWindowTarget(level) ])
-      :> Logger
-
 module Global =
+
+  /// This is the global semaphore for colourising the console output. Ensure
+  /// that the same semaphore is used across libraries by using the Logary
+  /// Facade Adapter in the final composing app/service.
+  let internal consoleSemaphore = obj ()
 
   /// The global default configuration, which logs to Console at Info level.
   let DefaultConfig =
-    { timestamp = fun () -> DateTimeOffset.timestamp DateTimeOffset.UtcNow
-      getLogger = fun _ -> ConsoleWindowTarget(Info) :> Logger }
+    { timestamp        = fun () -> DateTimeOffset.timestamp DateTimeOffset.UtcNow
+      getLogger        = fun _ -> LiterateConsoleTarget(Info) :> Logger
+      consoleSemaphore = consoleSemaphore }
 
   let private config = ref DefaultConfig
-  let private locker = obj ()
+  let private configSemaphore = obj ()
 
   /// The flyweight just references the current configuration. If you want
   /// multiple per-process logging setups, then don't use the static methods,
@@ -429,7 +703,7 @@ module Global =
         if Object.ReferenceEquals(!config, DefaultConfig) then
           initialLogger
         elif actualLogger = None then
-          lock locker <| fun _ ->
+          lock configSemaphore <| fun _ ->
             if actualLogger = None then
               let logger' = (!config).getLogger name
               actualLogger <- Some logger'
@@ -464,6 +738,22 @@ module Global =
   /// Logary.Facade globally/per process.
   let initialise cfg =
     config := cfg
+
+module Targets =
+
+  /// Create a new target. Prefer `Log.create` in your own libraries, or let the
+  /// composing app replace your target instance through your configuration.
+  ///
+  /// Will log to console (colourised) by default, and also to the output window
+  /// in your IDE if you specify a level below Info.
+  let create level =
+    if level >= LogLevel.Info then
+      LiterateConsoleTarget(level, consoleSemaphore = Global.consoleSemaphore) :> Logger
+    else
+      CombiningTarget(
+        [ LiterateConsoleTarget(level, consoleSemaphore = Global.consoleSemaphore)
+          OutputWindowTarget(level) ])
+      :> Logger
 
 /// Module for acquiring static loggers (when you don't want or can't)
 /// pass loggers as values.
@@ -540,12 +830,12 @@ module Message =
   /// Adds an exception to the Message, to the 'errors' field, inside a list.
   let addExn ex (x : Message) =
     let fields' =
-      match Map.tryFind "errors" x.fields with
+      match Map.tryFind FieldErrorsKey x.fields with
       | None ->
-        x.fields |> Map.add "errors" (box [ box ex ])
-      
+        x.fields |> Map.add FieldErrorsKey (box [ box ex ])
+
       | Some errors ->
         let arr : obj list = unbox errors
-        x.fields |> Map.add "errors" (box (box ex :: arr))
+        x.fields |> Map.add FieldErrorsKey (box (box ex :: arr))
 
     { x with fields = fields' }

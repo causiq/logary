@@ -3,7 +3,44 @@
 open System
 open Fuchu
 open Logary.Facade
+open Logary.Facade.Literate
 open ExpectoPatronum
+
+type internal TemplateToken =
+  | TextToken of string
+  | PropToken of name:string * format:string
+  with
+    override x.ToString() =
+      match x with
+      | TextToken s -> "TEXT("+s+")"
+      | PropToken (n,f) -> "PROP("+n+":"+f+")"
+
+let internal parseTemplateTokens template =
+  let tokens = ResizeArray<TemplateToken>()
+  let foundText t = tokens.Add (TextToken(t))
+  let foundProp (p: FsMtParser.Property) =
+    tokens.Add (PropToken(p.name, p.format))
+  FsMtParser.parseParts template foundText foundProp
+  tokens |> List.ofSeq
+
+type Assert with
+  static member literateMessagePartsEqual (template, fields, expectedMessageParts, ?options, ?logLevel, ?tokenizer) =
+    let options = defaultArg options (LiterateOptions.create())
+    let tokenizer = defaultArg tokenizer Formatting.literateDefaultTokenizer
+    let logLevel = defaultArg logLevel Info
+    let now = Global.timestamp ()
+    let nowDto = DateTimeOffset(DateTimeOffset.ticksUTC now, TimeSpan.Zero)
+    let msg = Message.event logLevel template |> fun m -> { m with fields = fields; timestamp = now }
+    let nowTimeString = nowDto.LocalDateTime.ToString("HH:mm:ss", options.formatProvider)
+    let actualTokens = tokenizer options msg
+    let expectedTokens = [  "[",                              Punctuation
+                            nowTimeString,                    Subtext
+                            " ",                              Subtext
+                            options.getLogLevelText logLevel, LevelInfo
+                            "] ",                             Punctuation ]
+                            @ expectedMessageParts
+
+    Expect.equal actualTokens expectedTokens "literate tokenized parts must be correct"
 
 [<Tests>]
 let tests =
@@ -50,8 +87,8 @@ let tests =
       let msg = msg |> Message.setLevel Warn
       Expect.equal msg.level Warn "Should have Warn level now"
 
-    testCase "ConsoleTarget logSimple" <| fun _ ->
-      let logger = ConsoleWindowTarget(Warn) :> Logger
+    testCase "LiterateConsoleTarget logSimple" <| fun _ ->
+      let logger = LiterateConsoleTarget(Warn) :> Logger
       Message.event Info "Aliens descended" |> logger.logSimple
 
     testProperty "Loggers.create" <| fun level ->
@@ -62,33 +99,167 @@ let tests =
       let logger = Targets.create level
       Message.event Verbose "Hi {name}" |> logger.logSimple
 
-    testCase "extract matches" <| fun _ ->
-      let str = "Hi {ho}, we're { something going on  } special"
+    testCase "extract invalid property tokens as text" <| fun _ ->
+      let template = "Hi {ho:##.###}, we're { something going on } special"
       let fields = Map [ "ho", box "hola"; "something going on", box "very" ]
-      let subject = Formatting.extractMatches fields str
-      Expect.equal subject.Length 2 "Should match two things"
-      Expect.equal (subject |> List.map (fun (name, _, _) -> name))
-                   ["ho"; "something going on"]
-                   "Should extract correct names"
-      Expect.equal (subject |> List.map (fun (_, _, m) -> m.Value))
-                   ["{ho}"; "{ something going on  }"]
-                   "Should extract correct match values"
+      let tokens = parseTemplateTokens template
+      Expect.equal tokens.Length 5 "Extracts 4 texts parts and 1 property part"
+      Expect.equal tokens
+                   [ TextToken ("Hi ")
+                     PropToken ("ho", "##.###")
+                     TextToken (", we're ") // <- a quirk of the parser
+                     TextToken ("{ something going on }")
+                     TextToken (" special") ]
+                   "Should extract correct name and format parts"
 
-    testCase "extract matches evil" <| fun _ ->
-      let strEvil = "{a}{b}{  c}{d  } {e} fghij {k}} {l} m {{}}"
-      let aThroughL =['a'..'l'] |> List.map string 
-      let fields = aThroughL |> List.map (fun s -> s, s) |> Map.ofList
-      let strEvilRes = "abcd e fghij k} l m {{}}"
-      let subject = Formatting.extractMatches fields strEvil
-      Expect.equal subject.Length 7 "Should match 7 things, a-l, not m and not {}"
-      Expect.equal (subject |> List.map (fun (name, value, _) -> name))
-                   ["a"; "b"; "c"; "d"; "e"; "k"; "l"] 
+    testCase "handles evil property strings correctly" <| fun _ ->
+      let template = "{a}{b}{  c}{d  } {e} fghij {k}} {l} m {{}}"
+      // validity:     +  +  --    --   +         +    +     --
+      let expectedPropertyNames = ["a"; "b"; "e"; "k"; "l"]
+      let subject = parseTemplateTokens template
+      Expect.equal (subject |> List.choose (function PropToken (n,f) -> Some n | _ -> None))
+                   expectedPropertyNames
                    "Should extract relevant names"
-      Expect.equal (subject |> List.map (fun (_, _, m) -> m.Index))
-                   [0; 3; 6; 11; 17; 27; 32]
-                   "Should extract correct indicies"
 
-    testCase "format template properly" <| fun _ ->
+    testCase "treats `{{` and `}}` as escaped braces" <| fun _ ->
+      let template = "hello {{errors}} you {are} an {{exn}}"
+      let tokens = parseTemplateTokens template
+      Expect.equal tokens
+                    [ TextToken("hello {{errors}} you ")
+                      PropToken("are", null)
+                      TextToken(" an {{exn}}") ]
+
+                   "double open or close braces are escaped"
+    testCase "literate tokenizes with field names correctly" <| fun _ ->
+      let template = "Added {item} to cart {cartId} for {loginUserId} who now has total ${cartTotal}"
+      let itemName, cartId, loginUserId, cartTotal = "TicTacs", Guid.NewGuid(), "AdamC", 123.45M
+      let fields = Map [ "item", box itemName
+                         "cartId", box cartId
+                         "loginUserId", box loginUserId
+                         "cartTotal", box cartTotal ]
+      let options = { LiterateOptions.create() with printTemplateFieldNames = true }
+      let expectedMessageParts =
+        [ "Added ",               Text
+          "[item] ",              Subtext
+          "TicTacs",              StringSymbol
+          " to cart ",            Text
+          "[cartId] ",            Subtext
+          cartId.ToString(),      OtherSymbol
+          " for ",                Text
+          "[loginUserId] ",       Subtext
+          loginUserId,            StringSymbol
+          " who now has total $", Text
+          "[cartTotal] ",         Subtext
+          cartTotal.ToString(),   NumericSymbol ]
+      Assert.literateMessagePartsEqual (template, fields, expectedMessageParts, options)
+
+    testCase "literate can tokenize an empty message template" <| fun _ ->
+      let emptyFields = Map.empty<string,obj>
+      Assert.literateMessagePartsEqual ("", emptyFields, [])
+
+    testCase "literate tokenizes missing fields with the `MissingTemplateField` token" <| fun _ ->
+      let template = "Added {item} to cart {cartId:X} for {loginUserId} who now has total ${cartTotal}"
+      let itemName, cartId, loginUserId, cartTotal = "TicTacs", Guid.NewGuid(), "AdamC", 123.45M
+      let fields = Map [ "item", box itemName
+                         // "cartId", box cartId
+                         // "loginUserId", box loginUserId
+                         "cartTotal", box cartTotal ]
+      let options = { LiterateOptions.create() with printTemplateFieldNames = false }
+      let expectedMessageParts =
+        [ "Added ",               Text
+          "TicTacs",              StringSymbol
+          " to cart ",            Text
+          "{cartId:X}",           MissingTemplateField
+          " for ",                Text
+          "{loginUserId}",        MissingTemplateField
+          " who now has total $", Text
+          cartTotal.ToString(),   NumericSymbol ]
+      Assert.literateMessagePartsEqual (template, fields, expectedMessageParts)
+
+    testCase "literate default tokenizer uses the options `getLogLevelText()` correctly" <| fun _ ->
+      let customGetLogLevelText = function Verbose->"A"|Debug->"B"|Info->"C"|Warn->"D"|Error->"E"|Fatal->"F"
+      let options = { LiterateOptions.createInvariant() with
+                        getLogLevelText = customGetLogLevelText }
+      let now = Global.timestamp ()
+      let nowDto = DateTimeOffset(DateTimeOffset.ticksUTC now, TimeSpan.Zero)
+      let msg level = Message.event level "" |> fun m -> { m with timestamp = now }
+      let nowTimeString = nowDto.LocalDateTime.ToString("HH:mm:ss")
+      [ Verbose,  LevelVerbose,   "A"
+        Debug,    LevelDebug,     "B"
+        Info,     LevelInfo,      "C"
+        Warn,     LevelWarning,   "D"
+        Error,    LevelError,     "E"
+        Fatal,    LevelFatal,     "F" ]
+      |> List.iter (fun (logLevel, expectedLevelToken, expectedText) ->
+        let tokens = Formatting.literateDefaultTokenizer options (msg logLevel)
+        Expect.equal tokens [ "[",            Punctuation
+                              nowTimeString,  Subtext
+                              " ",            Subtext
+                              expectedText,   expectedLevelToken
+                              "] ",           Punctuation ]
+                      (sprintf "expect log level %A to render as token %A with text %s" logLevel expectedLevelToken expectedText)
+      )
+
+    testPropertyWithConfig FsCheck.Config.QuickThrowOnFailure "literate default tokenizer uses the options `formatProvider` correctly" <| fun (amount: decimal, date: DateTimeOffset) ->
+      [ "fr-FR"; "da-DK"; "de-DE"; "en-AU"; "en-US"; ]
+      |> List.iter (fun cultureName ->
+        let options = { LiterateOptions.createInvariant() with
+                          formatProvider = System.Globalization.CultureInfo(cultureName) }
+        let template = "As of {date:F}, you have a balance of {amount:C2}"
+        let fields = Map [ "amount", box amount
+                           "date", box date ]
+        let expectedMessageParts =
+          [ "As of ",                                       Text
+            date.ToString("F", options.formatProvider),     OtherSymbol
+            ", you have a balance of ",                     Text
+            amount.ToString("C2", options.formatProvider),  NumericSymbol ]
+
+        Assert.literateMessagePartsEqual (template, fields, expectedMessageParts, options)
+      )
+
+    testCase "literate default tokenizer can yield exception tokens from the 'errors' and 'exn' fields, even with an empty template" <| fun _ ->
+      let template = ""
+      let exceptionForExnField = exn "exn field"
+      let exceptionObjListForErrorsField = [ box (exn "errors field 1"); box (exn "errors field 2") ]
+      let fields = Map [ Literals.FieldExnKey,    box exceptionForExnField
+                         Literals.FieldErrorsKey, box exceptionObjListForErrorsField ]
+      let nl = Environment.NewLine
+      let expectedMessageParts =
+        [ nl, Text //<-- empty message will just start rendering exceptions on a new line
+          "System.Exception: exn field", Text //<-- The exception
+          nl, Text
+          nl, Text
+          "System.Exception: errors field 1", Text
+          nl, Text
+          nl, Text
+          "System.Exception: errors field 2", Text
+          nl, Text
+          nl, Text
+          nl, Text //<-- Extra newline at the end
+        ]
+      Assert.literateMessagePartsEqual (template, fields, expectedMessageParts)
+
+    testCase "literate tokenizes without field names correctly" <| fun _ ->
+      let template = "Added {item} to cart {cartId} for {loginUserId} who now has total ${cartTotal}"
+      let itemName, cartId, loginUserId, cartTotal = "TicTacs", Guid.NewGuid(), "AdamC", 123.45M
+      let fields = Map [ "item", box itemName
+                         "cartId", box cartId
+                         "loginUserId", box loginUserId
+                         "cartTotal", box cartTotal ]
+      let options = { LiterateOptions.create() with printTemplateFieldNames = false }
+      let expectedMessageParts =
+        [ "Added ",               Text
+          "TicTacs",              StringSymbol
+          " to cart ",            Text
+          cartId.ToString(),      OtherSymbol
+          " for ",                Text
+          loginUserId,            StringSymbol
+          " who now has total $", Text
+          cartTotal.ToString(),   NumericSymbol ]
+      Assert.literateMessagePartsEqual (template, fields, expectedMessageParts, options)
+
+    testCase "format template with invalid property correctly" <| fun _ ->
+      // spaces are not valid in property names, so the 'property' is treated as text
       let str = "Hi {ho}, we're { something going on  } special"
       let fields = Map [ "ho", box "hola"; "something going on", box "very" ]
       let now = Global.timestamp ()
@@ -99,6 +270,6 @@ let tests =
         |> Message.setSingleName "Logary.Facade.Tests"
       let subject = Formatting.defaultFormatter msg
       Expect.equal subject
-                   (sprintf "[I] %s: Hi hola, we're very special [Logary.Facade.Tests]" (nowDto.ToString("o")))
+                   (sprintf "[I] %s: Hi hola, we're { something going on  } special [Logary.Facade.Tests]\n - something going on: very" (nowDto.ToString("o")))
                    "Should format correctly"
   ]
