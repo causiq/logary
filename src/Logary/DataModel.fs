@@ -608,6 +608,11 @@ type Units =
   | Kelvins
   | Moles
   | Candelas
+  | Other of unit:string
+  // E.g. to denote nano-seconds since epoch;
+  // 1474139353507070000 would be Scaled(Seconds, 10.**9.) since year 1970
+  // so to get back to seconds, you'd divide the value by 10.**9.
+  | Scaled of units:Units * scale:int64
   | Mul of Units * Units
   | Pow of Units * Units
   | Div of Units * Units
@@ -624,6 +629,8 @@ type Units =
     | Kelvins -> "K"
     | Moles -> "mol"
     | Candelas -> "cd"
+    | Other other -> other
+    | Scaled(units, scale) -> sprintf "%s / %i" (Units.symbol units) scale
     | Mul (a, b) -> String.Concat [ "("; Units.symbol a; "*"; Units.symbol b; ")" ]
     | Pow (a, b) -> String.Concat [ Units.symbol a; "^("; Units.symbol b; ")" ]
     | Div (a, b) -> String.Concat [ "("; Units.symbol a; "/"; Units.symbol b; ")" ]
@@ -642,6 +649,11 @@ type Units =
     | Moles
     | Candelas ->
       Json.Lens.setPartial Json.String_ (u |> Units.symbol)
+    | Other other ->
+      Json.write "other" other
+    | Scaled (units, scale) ->
+      Json.write "units" units
+      *> Json.write "scale" scale
     | Mul (a, b) ->
       Json.write "multipleA" a
       *> Json.write "multipleB" b
@@ -660,7 +672,6 @@ type Units =
     fun json ->
       match json with
       | Json.String s ->
-
         match s with
         | "b" -> Bits |> JsonResult.Value, json
         | "B" -> Bytes |> JsonResult.Value, json
@@ -671,9 +682,13 @@ type Units =
         | "K" -> Kelvins |> JsonResult.Value, json
         | "mol" -> Moles |> JsonResult.Value, json
         | "cd" -> Candelas |> JsonResult.Value, json
-        | _ -> JsonResult.Error "Unknown unit type represented as string", json
+
       | Json.Object o ->
         match o with
+        | Val "other" other ->
+          Other (Json.deserialize other) |> JsonResult.Value, json
+        | Val "units" units & Val "scale" scale ->
+          Scaled (Json.deserialize units, Json.deserialize scale) |> JsonResult.Value, json
         | Val "multipleA" a & Val "multipleB" b ->
           Mul(Json.deserialize a, Json.deserialize b) |> JsonResult.Value, json
         | Val "base" b & Val "exponent" e ->
@@ -1302,7 +1317,7 @@ module Message =
 
   /// Run the function `f` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Seconds.
-  [<CompiledName "Time";>]
+  [<CompiledName "Time">]
   let time pointName (f : unit -> 'res) : 'res * Message =
     let sw = Stopwatch.StartNew()
     let res = f ()

@@ -7,6 +7,7 @@ open System
 open NodaTime
 open Logary.Utils.Chiron
 open Logary
+open ExpectoPatronum
 
 let inline roundTrip (m : 'a) : 'a =
   m |> Json.serialize |> Json.format |> Json.parse |> Json.deserialize
@@ -168,6 +169,12 @@ let tests =
           timestamp = 0L
         }
       Assert.Equal("roundtrip", m, roundTrip m)
+
+    testCase "Message.time can be called" <| fun () ->
+      let res, msg =
+        Message.time (PointName [| "Tests.Message.time" |]) (fun _ -> 367)
+
+      Expect.equal res 367 "should have correct return value"
 
     testPropertyWithConfig config "Serialization of message can round trip" <| fun (message : Message) ->
       message = roundTrip message
