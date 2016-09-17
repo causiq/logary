@@ -1372,6 +1372,19 @@ module Message =
   let setSimpleName name (msg : Message) =
     { msg with name = PointName.parse name }
 
+  /// Sets the last bit of the Message name value to the given `nameEnding`.
+  /// This is useful when you have functions calling a static logger, but you
+  /// want to make the Message say what function it was created from.
+  /// Note: lastBitName MAY BE NULL!
+  [<CompiledName "SetNameEnding">]
+  let setNameEnding (nameEnding : string) : Message -> Message = function
+    | { name = PointName segments } as m
+      when not (nameEnding = null)
+        && not (String.isEmpty nameEnding) ->
+      { m with name = PointName (Array.append segments [| nameEnding |]) }
+    | m ->
+      m
+
   /// Sets the message's level.
   [<CompiledName "SetLevel">]
   let setLevel lvl msg = { msg with level = lvl}

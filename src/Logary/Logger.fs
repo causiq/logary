@@ -77,15 +77,6 @@ module Logger =
     else
       otherwise
 
-  /// NOTE: lastBitPath MAY BE NULL!!!
-  let private setLastBit (lastBitPath : string) : Message -> Message = function
-    | { name = PointName segments } as m
-      when not (lastBitPath = null)
-        && not (String.isEmpty lastBitPath) ->
-      { m with name = PointName (Array.append segments [| lastBitPath |]) }
-    | m ->
-      m
-
   /// Log a message, but don't await all targets to flush.
   [<CompiledName "Log"; Extension>]
   let log (logger : Logger) msg : Alt<unit> =
@@ -163,7 +154,7 @@ module Logger =
                   (f : unit -> 'res)
                   : 'res * Alt<Promise<unit>> =
     let res, message = Message.time logger.name f
-    res, logWithAck logger (setLastBit lastBitPath message)
+    res, logWithAck logger (Message.setNameEnding lastBitPath message)
 
   [<CompiledName "Time"; Extension>]
   let time (logger : Logger)
@@ -171,7 +162,7 @@ module Logger =
            (f : unit -> 'res)
            : 'res * Alt<unit> =
     let res, message = Message.time logger.name f
-    res, log logger (setLastBit lastBitPath message)
+    res, log logger (Message.setNameEnding lastBitPath message)
 
   [<CompiledName "Time"; Extension>]
   let timeX (logger : Logger)
