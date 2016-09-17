@@ -121,8 +121,8 @@ namespace Logary
             if (logger == null) throw new ArgumentNullException("logger");
             if (subPath == null) throw new ArgumentNullException("subPath");
             if (f == null) throw new ArgumentNullException("f");
-            var res = LoggerModule.TimeAt<T>(logger, subPath, CSharp.ToFSharpFunc(f));
-            CSharp.ToTask(res.Item2).Wait();
+            var res = LoggerModule.Time<T>(logger, subPath, CSharp.ToFSharpFunc(f));
+            CSharp.ToTask<Microsoft.FSharp.Core.Unit>(res.Item2).Wait();
             return res.Item1;
         }
 
