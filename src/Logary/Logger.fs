@@ -55,6 +55,8 @@ type Logger =
 /// logged.
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix); Extension>]
 module Logger =
+  open Hopac
+  open Hopac.Infixes
   open System
   open System.Diagnostics
   open Logary
@@ -163,6 +165,7 @@ module Logger =
            (nameEnding : string)
            (f : 'input -> 'res)
            : 'input -> 'res * Alt<unit> =
+
     let name = logger.name |> PointName.setEnding nameEnding
     fun input ->
       let res, message = Message.time name f input
@@ -172,16 +175,90 @@ module Logger =
   let timeX (logger : Logger)
             (f : 'input -> 'res)
             : 'input -> 'res * Alt<unit> =
-    fun input ->
-      let res, message = Message.time logger.name f input
-      res, log logger message
+    time logger null f
 
   /// Run the function `f` and measure how long it takes; logging that
-  /// measurement as a Gauge in the unit Seconds.
+  /// measurement as a Gauge in the unit Scaled(Seconds, 10^9).
   [<CompiledName "TimeSimple"; Extension>]
-  let timeSimple (logger : Logger) (f : 'input -> 'res) : 'input -> 'res =
+  let timeSimple (logger : Logger)
+                 (nameEnding : string)
+                 (f : 'input -> 'res)
+                 : 'input -> 'res =
+
+    let name = logger.name |> PointName.setEnding nameEnding
     fun input ->
-      let res, message = Message.time logger.name f input
+      let res, message = Message.time name f input
+      logSimple logger message
+      res
+
+  /// Run the function `f` and measure how long it takes; logging that
+  /// measurement as a Gauge in the unit Scaled(Seconds, 10^9).
+  [<CompiledName "TimeSimple"; Extension>]
+  let timeSimpleX (logger : Logger)
+                  (f : 'input -> 'res)
+                  : 'input -> 'res =
+    timeSimple logger null f
+
+  [<CompiledName "TimeWithAck"; Extension>]
+  let timeAsyncWithAck (logger : Logger)
+                       (nameEnding : string)
+                       (f : 'input -> Async<'res>)
+                       : 'input -> Async<'res * Alt<Promise<unit>>> =
+    let name = logger.name |> PointName.setEnding nameEnding
+    fun input ->
+      Message.timeAsync name f input |> Async.map (fun (res, message) ->
+      res, logWithAck logger message)
+
+  [<CompiledName "TimeSimple"; Extension>]
+  let timeAsyncSimple (logger : Logger)
+                      (nameEnding : string)
+                      (f : 'input -> Async<'res>)
+                      : 'input -> Async<'res> =
+    let name = logger.name |> PointName.setEnding nameEnding
+    fun input ->
+      Message.timeAsync name f input |> Async.map (fun (res, message) ->
+      logSimple logger message
+      res)
+
+  [<CompiledName "TimeWithAck"; Extension>]
+  let timeJobWithAck (logger : Logger)
+                     (nameEnding : string)
+                     (f : 'input -> Job<'res>)
+                     : 'input -> Job<'res * Alt<Promise<unit>>> =
+    let name = logger.name |> PointName.setEnding nameEnding
+    fun input ->
+      Message.timeJob name f input |> Job.map (fun (res, message) ->
+      res, logWithAck logger message)
+
+  [<CompiledName "TimeSimple"; Extension>]
+  let timeJobSimple (logger : Logger)
+                    (nameEnding : string)
+                    (f : 'input -> Job<'res>)
+                    : 'input -> Job<'res> =
+    let name = logger.name |> PointName.setEnding nameEnding
+    fun input ->
+      Message.timeJob name f input |> Job.map (fun (res, message) ->
+      logSimple logger message
+      res)
+
+  [<CompiledName "TimeWithAck"; Extension>]
+  let timeAltWithAck (logger : Logger)
+                     (nameEnding : string)
+                     (f : 'input -> Alt<'res>)
+                     : 'input -> Alt<'res * Alt<Promise<unit>>> =
+    let name = logger.name |> PointName.setEnding nameEnding
+    fun input ->
+      Message.timeAlt name f input ^-> fun (res, message) ->
+      res, logWithAck logger message
+
+  [<CompiledName "TimeSimple"; Extension>]
+  let timeAltSimple (logger : Logger)
+                    (nameEnding : string)
+                    (f : 'input -> Alt<'res>)
+                    : 'input -> Alt<'res> =
+    let name = logger.name |> PointName.setEnding nameEnding
+    fun input ->
+      Message.timeAlt name f input ^-> fun (res, message) ->
       logSimple logger message
       res
 

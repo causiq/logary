@@ -1363,6 +1363,7 @@ module Message =
 
       res, message
 
+  [<CompiledName "TimeAsync">]
   let timeAsync pointName (fn : 'input -> Async<'res>) : 'input -> Async<'res * Message> =
     fun input ->
       async {
@@ -1377,19 +1378,33 @@ module Message =
         return res, gaugeWithUnit pointName units value
       }
 
+  [<CompiledName "TimeJob">]
   let timeJob pointName (fn : 'input -> Job<'res>) : 'input -> Job<'res * Message> =
     fun input ->
       job {
         let sw = Stopwatch.StartNew()
         let! res = fn input
-        sw.Stop()
-
         let value, units =
+          sw.Stop()
           Int64 (sw.ElapsedTicks * Constants.NanosPerTick),
           Scaled(Seconds, Constants.NanosPerSecond)
-
         return res, gaugeWithUnit pointName units value
       }
+
+  [<CompiledName "TimeAlt">]
+  let timeAlt pointName (fn : 'input -> Alt<'res>) : 'input -> Alt<'res * Message> =
+    fun input ->
+    Alt.prepareFun (fun () ->
+      let sw = Stopwatch.StartNew()
+      fn input ^-> fun res ->
+      sw.Stop()
+
+      let value, units =
+        Int64 (sw.ElapsedTicks * Constants.NanosPerTick),
+        Scaled(Seconds, Constants.NanosPerSecond)
+
+      res, gaugeWithUnit pointName units value
+    )
 
   ///////////////// PROPS ////////////////////
 
