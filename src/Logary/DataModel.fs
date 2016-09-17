@@ -834,6 +834,11 @@ module PointName =
   let format (pn : PointName) =
     pn.ToString()
 
+  [<CompiledName "SetEnding">]
+  let setEnding (nameEnding : string) (PointName segments as original) =
+    if nameEnding = null then original else
+    PointName (Array.append segments [| nameEnding |])
+
 module Chiron =
   let inline internal (|PropertyWith|) (fromJson : Json< ^a>) key =
        Lens.getPartial (Json.Object_ >??> key_ key)
@@ -898,7 +903,6 @@ type PointValue with
     | Gauge (value, units) ->
       gauge <- new Tuple<Value, Units>(value, units)
       true
-
     | _ ->
       false
 
@@ -908,7 +912,6 @@ type PointValue with
     | Derived (value, units) ->
       derived <- new Tuple<Value, Units>(value, units)
       true
-
     | _ ->
       false
 
@@ -918,7 +921,6 @@ type PointValue with
     | Event value ->
       template <- value
       true
-
     | _ ->
       false
 
@@ -1050,6 +1052,8 @@ module SystemDateEx =
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Message =
+  open Hopac
+  open Hopac.Infixes
   open NodaTime
   open System.Diagnostics
   open Logary.Internals
@@ -1344,21 +1348,48 @@ module Message =
   /// Run the function `f` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Seconds.
   [<CompiledName "Time">]
-  let time pointName (f : unit -> 'res) : 'res * Message =
-    let sw = Stopwatch.StartNew()
-    let res = f ()
-    sw.Stop()
+  let time pointName (f : 'input -> 'res) : 'input -> 'res * Message =
+    fun input ->
+      let sw = Stopwatch.StartNew()
+      let res = f input
+      sw.Stop()
 
-    let value =
-      Int64 (sw.ElapsedTicks * Constants.NanosPerTick)
+      let value, units =
+        Int64 (sw.ElapsedTicks * Constants.NanosPerTick),
+        Scaled(Seconds, Constants.NanosPerSecond)
 
-    let units =
-      Scaled(Seconds, Constants.NanosPerSecond)
+      let message =
+        gaugeWithUnit pointName units value
 
-    let message =
-      gaugeWithUnit pointName units value
+      res, message
 
-    res, message
+  let timeAsync pointName (fn : 'input -> Async<'res>) : 'input -> Async<'res * Message> =
+    fun input ->
+      async {
+        let sw = Stopwatch.StartNew()
+        let! res = fn input
+        sw.Stop()
+
+        let value, units =
+          Int64 (sw.ElapsedTicks * Constants.NanosPerTick),
+          Scaled(Seconds, Constants.NanosPerSecond)
+
+        return res, gaugeWithUnit pointName units value
+      }
+
+  let timeJob pointName (fn : 'input -> Job<'res>) : 'input -> Job<'res * Message> =
+    fun input ->
+      job {
+        let sw = Stopwatch.StartNew()
+        let! res = fn input
+        sw.Stop()
+
+        let value, units =
+          Int64 (sw.ElapsedTicks * Constants.NanosPerTick),
+          Scaled(Seconds, Constants.NanosPerSecond)
+
+        return res, gaugeWithUnit pointName units value
+      }
 
   ///////////////// PROPS ////////////////////
 
@@ -1378,10 +1409,10 @@ module Message =
   /// Note: lastBitName MAY BE NULL!
   [<CompiledName "SetNameEnding">]
   let setNameEnding (nameEnding : string) : Message -> Message = function
-    | { name = PointName segments } as m
+    | { name = pn } as m
       when not (nameEnding = null)
         && not (String.isEmpty nameEnding) ->
-      { m with name = PointName (Array.append segments [| nameEnding |]) }
+      { m with name = pn |> PointName.setEnding nameEnding }
     | m ->
       m
 

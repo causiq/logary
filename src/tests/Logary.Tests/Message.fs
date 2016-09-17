@@ -3,6 +3,7 @@ module Logary.Tests.Message
 open Fuchu
 open Fuchu.FuchuFsCheck
 open FsCheck
+open Hopac
 open System
 open NodaTime
 open Logary.Utils.Chiron
@@ -107,6 +108,12 @@ type DU =
   | A
   | B
 
+let getValueAndUnit (msg : Message) =
+  match msg.value with
+  | Gauge (value, units) -> value, units
+  | Derived (_, _) -> Tests.failtestf "Unexpected Gauge value"
+  | Event _ -> Tests.failtestf "Unexpected Event value"
+
 [<Tests>]
 let tests =
   testList "serialization" [
@@ -176,15 +183,35 @@ let tests =
 
     testCase "Message.time can be called" <| fun () ->
       let res, msg =
-        Message.time (PointName [| "Tests.Message.time" |]) (fun _ -> 367)
+        Message.time (PointName [| "Tests.Message.time" |]) (fun () -> 367) ()
 
-      let value, units =
-        match msg.value with
-        | Gauge (value, units) -> value, units
-        | Derived (_, _) -> Tests.failtestf "Unexpected Gauge value"
-        | Event _ -> Tests.failtestf "Unexpected Event value"
+      let value, units = getValueAndUnit msg
 
       Expect.equal res 367 "should have correct return value"
+      Expect.equal units (Scaled(Seconds, int64 (10.**9.)))  "correctly scaled unit (nanos)"
+
+    testCase "PointName.setEnding" <| fun _ ->
+      let pn = PointName [| "A"; "B" |] |> PointName.setEnding "C"
+      Expect.equal pn (PointName [| "A"; "B"; "C" |]) "Should have set the ending"
+
+    testCase "Message.timeAsync can be called" <| fun _ ->
+      let slow () = async { do! Async.Sleep 10
+                            return 357 }
+      let res, msg = Message.timeAsync (PointName.parse "A.B.C") slow () |> Async.RunSynchronously
+
+      let value, units = getValueAndUnit msg
+
+      Expect.equal res 357 "Should have value"
+      Expect.equal units (Scaled(Seconds, int64 (10.**9.)))  "correctly scaled unit (nanos)"
+
+    testCase "Message.timeJob can be called" <| fun _ ->
+      let slow () = job { do! timeOutMillis 10
+                          return 357 }
+      let res, msg = Message.timeJob (PointName.parse "A.B.C") slow () |> run
+
+      let value, units = getValueAndUnit msg
+
+      Expect.equal res 357 "Should have value"
       Expect.equal units (Scaled(Seconds, int64 (10.**9.)))  "correctly scaled unit (nanos)"
 
     testPropertyWithConfig config "Serialization of message can round trip" <| fun (message : Message) ->

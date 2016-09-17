@@ -144,40 +144,46 @@ module Logger =
 
   /// Run the function `f` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Seconds. As an exception to the rule,
-  /// it is allowed to pass lastBitPath as null to this function. This
+  /// it is allowed to pass `nameEnding` as null to this function. This
   /// function returns the full schabang; i.e. it will let you wait for
   /// acks if you want. If you do not start/commit to the Alt, the
   /// logging of the gauge will never happen.
   [<CompiledName "TimeWithAck"; Extension>]
   let timeWithAck (logger : Logger)
-                  (lastBitPath : string)
-                  (f : unit -> 'res)
-                  : 'res * Alt<Promise<unit>> =
-    let res, message = Message.time logger.name f
-    res, logWithAck logger (Message.setNameEnding lastBitPath message)
+                  (nameEnding : string)
+                  (f : 'input -> 'res)
+                  : 'input -> 'res * Alt<Promise<unit>> =
+    let name = logger.name |> PointName.setEnding nameEnding
+    fun input ->
+      let res, message = Message.time name f input
+      res, logWithAck logger message
 
   [<CompiledName "Time"; Extension>]
   let time (logger : Logger)
-           (lastBitPath : string)
-           (f : unit -> 'res)
-           : 'res * Alt<unit> =
-    let res, message = Message.time logger.name f
-    res, log logger (Message.setNameEnding lastBitPath message)
+           (nameEnding : string)
+           (f : 'input -> 'res)
+           : 'input -> 'res * Alt<unit> =
+    let name = logger.name |> PointName.setEnding nameEnding
+    fun input ->
+      let res, message = Message.time name f input
+      res, log logger message
 
   [<CompiledName "Time"; Extension>]
   let timeX (logger : Logger)
-            (f : unit -> 'res)
-            : 'res * Alt<unit> =
-    let res, message = Message.time logger.name f
-    res, log logger message
+            (f : 'input -> 'res)
+            : 'input -> 'res * Alt<unit> =
+    fun input ->
+      let res, message = Message.time logger.name f input
+      res, log logger message
 
   /// Run the function `f` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Seconds.
   [<CompiledName "TimeSimple"; Extension>]
-  let timeSimple (logger : Logger) (f : unit -> 'res) : 'res =
-    let res, message = Message.time logger.name f
-    logSimple logger message
-    res
+  let timeSimple (logger : Logger) (f : 'input -> 'res) : 'input -> 'res =
+    fun input ->
+      let res, message = Message.time logger.name f input
+      logSimple logger message
+      res
 
 /// A logger that does absolutely nothing, useful for feeding into the target
 /// that is actually *the* internal logger target, to avoid recursive calls to
