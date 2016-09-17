@@ -6,7 +6,6 @@ open System.Runtime.CompilerServices
 module LogaryConfiguratorExtensions =
   open Topshelf.HostConfigurators
   open Topshelf.Logging
-
   open Logary
 
   [<Extension; CompiledName "UseLogary">]
@@ -18,7 +17,8 @@ module LogaryConfiguratorExtensions =
           member x.CreateLogWriterFactory () =
             { new LogWriterFactory with
                 member x.Get name =
-                  TopshelfAdapter(logary.getLogger (PointName [| name |]))
+                  let pn = PointName.parse name
+                  TopshelfAdapter(logary.getLogger pn)
                   :> LogWriter
 
                 member x.Shutdown () =

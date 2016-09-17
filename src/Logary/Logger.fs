@@ -68,7 +68,6 @@ module Logger =
     match msg.name with
     | PointName [||] ->
       Message.setName logger.name msg
-
     | _  ->
       msg
 
@@ -78,26 +77,52 @@ module Logger =
     else
       otherwise
 
-  /// Write a message.
+  /// NOTE: lastBitPath MAY BE NULL!!!
+  let private setLastBit (lastBitPath : string) : Message -> Message = function
+    | { name = PointName segments } as m
+      when not (lastBitPath = null)
+        && not (String.isEmpty lastBitPath) ->
+      { m with name = PointName (Array.append segments [| lastBitPath |]) }
+    | m ->
+      m
+
+  /// Log a message, but don't await all targets to flush.
   [<CompiledName "Log"; Extension>]
   let log (logger : Logger) msg : Alt<unit> =
-    logger.logWithAck (ensureName logger msg)
+    let msg = ensureName logger msg
+    logger.logWithAck msg
     |> Alt.afterFun ignore
 
   let private simpleTimeout msg =
     timeOutMillis 5000
-    |> Alt.afterFun (fun msg -> Console.Error.WriteLine("Log message timed out\nMsg: {0}", msg))
+    |> Alt.afterFun (fun msg ->
+      Console.Error.WriteLine("Logary message timed out. This means that you have an underperforming Logary target. {0}Logary Message: {1}",
+                              Environment.NewLine, msg))
 
-  /// Write a message but don't wait for the message to finish being logged,
-  /// instead start the Alt on the Hopac scheduler.
-  [<CompiledName "LogSimple"; Extension>]
-  let logSimple (logger : Logger) msg : unit =
+  /// Log a message, but don't await all targets to flush. Also, if it takes more
+  /// than 5 seconds to add the log message to the buffer; simply drop the message.
+  [<CompiledName "LogWithTimeout"; Extension>]
+  let logWithTimeout (logger : Logger) msg : Alt<unit> =
     Alt.choose [
       log logger msg
       simpleTimeout msg
     ]
-    |> start
 
+  /// Log a message, but don't synchronously wait for the message to be placed
+  /// inside Logary's buffers. Instead the message will be added to Logary's
+  /// buffers asynchronously with a timeout of 5 seconds, and will then be
+  /// dropped. We avoid the unbounded buffer problem by dropping the message.
+  /// If you have dropped messages, they will be logged to STDERR. You should load-
+  /// test your app to ensure that your targets can send at a rate high enough
+  /// without dropping messages.
+  [<CompiledName "LogSimple"; Extension>]
+  let logSimple (logger : Logger) msg : unit =
+    start (logWithTimeout logger msg)
+
+  /// Log a message, which returns a promise. The first Alt denotes having the
+  /// Message placed in all Targets' buffers. The inner Promise denotes having
+  /// the message properly flushed to all target's underlying targets. Targets
+  /// whose rules do not match the message will not be awaited.
   [<CompiledName "LogWithAck"; Extension>]
   let logWithAck (logger : Logger) msg : Alt<Promise<unit>> =
     logger.logWithAck (ensureName logger msg)
@@ -128,31 +153,39 @@ module Logger =
 
   /// Run the function `f` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Seconds. As an exception to the rule,
-  /// it is allowed to pass lastBitPath as null to this function.
+  /// it is allowed to pass lastBitPath as null to this function. This
+  /// function returns the full schabang; i.e. it will let you wait for
+  /// acks if you want.
+  [<CompiledName "TimeWithAck"; Extension>]
+  let timeWithAck (logger : Logger)
+                  (lastBitPath : string)
+                  (f : unit -> 'res)
+                  : 'res * Alt<Promise<unit>> =
+    let res, message = Message.time logger.name f
+    res, logWithAck logger (setLastBit lastBitPath message)
+
+  [<CompiledName "TimeAt"; Extension>]
+  let timeAt (logger : Logger)
+             (lastBitPath : string)
+             (f : unit -> 'res)
+             : 'res * Alt<unit> =
+    let res, message = Message.time logger.name f
+    res, log logger (setLastBit lastBitPath message)
+
   [<CompiledName "Time"; Extension>]
-  let time (logger : Logger) lastBitPath f =
-    // NOTE: lastBitPath MAY BE NULL!!!
-    let setLastBit = function
-      | { name = PointName segments } as m
-        when not (lastBitPath = null)
-          && not (String.isEmpty lastBitPath) ->
-        { m with name = PointName (Array.append segments [| lastBitPath |]) }
-
-      | m ->
-        m
-
-    try
-      let res, message = Message.time logger.name f
-      log logger (setLastBit message) |> start
-      res
-    with _ ->
-      reraise ()
+  let time (logger : Logger)
+           (f : unit -> 'res)
+           : 'res * Alt<unit> =
+    let res, message = Message.time logger.name f
+    res, log logger message
 
   /// Run the function `f` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Seconds.
-  [<CompiledName "Time"; Extension>]
+  [<CompiledName "TimeSimple"; Extension>]
   let timeSimple (logger : Logger) f =
-    time logger null f
+    let res, message = Message.time logger.name f
+    logSimple logger message
+    res
 
 /// A logger that does absolutely nothing, useful for feeding into the target
 /// that is actually *the* internal logger target, to avoid recursive calls to
@@ -166,4 +199,4 @@ type NullLogger() =
     member x.logWithAck message = instaPromise
     member x.logSimple message = ()
     member x.level = Fatal
-    member x.name = PointName.ofList [ "Logary"; "Internals"; "NullLogger" ]
+    member x.name = PointName.ofList [ "Logary"; "NullLogger" ]

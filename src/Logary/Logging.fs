@@ -38,11 +38,26 @@ let getCurrentLoggerName () =
   |> Seq.last
   |> getName
 
+/// The promised logger is constructed through a the asynchronous call to
+/// getLogger (i.e. the call to the Registry's getLogger channel). Every
+/// call will return a job that is started on the global scheduler, which
+/// assumes that the promise will be returned at some point in the (close)
+/// future. If this assumption does not hold, we'll get an issue where all
+/// of the log-method calls will put work on the global Hopac scheduler,
+/// which in turn causes the 'unbounded queue' problem. However, it's
+/// safe to assume that the promise will be completed shortly after the c'tor
+/// of this type is called.
 type PromisedLogger(name, requestedLogger : Job<Logger>) =
   let promised = memo requestedLogger
 
-  static member create name logger =
+  /// Create a new `Logger` with the given name and `Job<Logger>` – nice to
+  /// use for creating loggers that need to be immediately available.
+  static member create (PointName contents as name) logger =
+    if logger = null then nullArg "logger"
+    if contents = null then nullArg "name"
     PromisedLogger(name, logger) :> Logger
+
+  // interface implementations;
 
   interface Named with
     member x.name = name
@@ -82,9 +97,6 @@ let getLoggerByPointName name =
     Logger.logVerbose inst.runtimeInfo.logger (fun _ ->
       Message.eventVerbosef "Getting logger by name '%O'" name)
     >>=. (name |> Registry.getLogger inst.registry)
-    // this should be the only location we actually do the run call, because
-    // we absolutely need it initialising static variables synchronously at
-    // the call-site
     |> PromisedLogger.create name
 
 /// Gets a logger by a given name.

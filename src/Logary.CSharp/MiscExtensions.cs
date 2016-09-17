@@ -2,6 +2,7 @@
 using Hopac;
 using System.Threading.Tasks;
 using NodaTime;
+using Logary.Internals;
 
 namespace Logary
 {
@@ -30,7 +31,7 @@ namespace Logary
         /// </summary>
         public static Task FlushPending(this LogManager logManager, Duration waitTime)
         {
-            return logManager.flushPending (waitTime).ToTask();
+            return logManager.flushPending(waitTime).ToTask();
         }
     }
 
@@ -40,23 +41,22 @@ namespace Logary
     public static class HopacExtensions
     {
         /// <summary>
-        /// Start the job
+        /// Start the job, but don't await it. This will queue it for running on
+        /// Hopac and will wait until it's completed.
         /// </summary>
-        /// <param name="job">Job to start.</param>
         public static void Start(this Job<Microsoft.FSharp.Core.Unit> job)
         {
-            Hopac.Hopac.start(job);
+            global::Hopac.Hopac.start(job);
         }
 
         /// <summary>
-        /// Convert the task to a job.
+        /// Create a new task from the given job, started on another synchronization
+        /// context than the job is running on. This will `start` the job on Hopac's
+        /// scheduler but the task won't return on that same thread.
         /// </summary>
-        /// <returns>The task.</returns>
-        /// <param name="job">Job to convert to a task.</param>
-        /// <typeparam name="T">The 1st type parameter.</typeparam>
         public static Task<T> ToTask<T>(this Job<T> job)
         {
-            return Logary.Internals.CSharpFacade.ToTask(job);
+            return global::Logary.Internals.CSharp.ToTask(job);
         }
     }
 

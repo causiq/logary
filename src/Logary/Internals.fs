@@ -2,6 +2,7 @@
 
 open NodaTime
 open System.Threading
+open System.Runtime.CompilerServices
 open Hopac
 open Hopac.Extensions.Seq
 
@@ -271,20 +272,15 @@ type Acks =
   /// It didn't go well.
   | Nack of NackDescription
 
-
-/// NOT a part of the public API. DO NOT DEPEND ON THIS.
-module CSharpFacade =
-
-  open Hopac
+module internal CSharp =
   open System
+  open Hopac
   open System.Threading.Tasks
-  open System.Runtime.CompilerServices
 
-  /// Convert the job to a task and queue its execution, since Tasks are hot.
-  [<CompiledName "ToTask"; Extension>]
-  let toTask<'a> (job : Job<'a>) =
+  [<CompiledName "ToTask">]
+  let internal toTask<'a> (jj : Job<'a>) : Task<'a> =
     let tcs = new TaskCompletionSource<'a>()
-    job |> Job.bind (fun res -> tcs.SetResult res; Job.result ()) |> queue
+    jj |> Job.map (tcs.SetResult >> ignore) |> start
     tcs.Task
 
   [<CompiledName "ToFSharpFunc">]

@@ -110,7 +110,8 @@ type LogaryFactory =
   /// targets that have been declared statically in your code. If you call this
   /// you get a log manager that you can later dispose, to shutdown all targets.
   static member New(serviceName : string, configurator : Func<ConfBuilder, ConfBuilder>) : Task<LogManager> =
+    if serviceName = null then nullArg "serviceName"
     if configurator = null then nullArg "configurator"
     let config = Config.confLogary serviceName
     let cb = configurator.Invoke (ConfBuilder config)
-    cb.BuildLogary () |> CSharpFacade.toTask
+    cb.BuildLogary () |> CSharp.toTask

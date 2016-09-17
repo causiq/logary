@@ -49,7 +49,8 @@ namespace Logary
             if (timestamp != null) msg = msg.SetTimestamp(timestamp.Value);
             if (exn != null) msg = msg.AddException (exn);
 
-            logger.Log(msg).Start();
+            var inLogary = logger.LogWithTimeout(msg).ToTask();
+            inLogary.Wait(); // ignore Promise<unit>
         }
 
         /// <summary>
@@ -80,7 +81,8 @@ namespace Logary
 
             var message = MessageModule.Event(level, template);
             var messageNext = setterTransformer(message);
-            logger.Log(messageNext).Start();
+            var inLogary = logger.LogWithTimeout(messageNext).ToTask();
+            inLogary.Wait(); // ignore Promise<unit>
         }
 
         /// <summary>
@@ -91,17 +93,21 @@ namespace Logary
         {
             if (logger == null) throw new ArgumentNullException("logger");
             if (f == null) throw new ArgumentNullException("f");
-           
-            return LoggerModule.Time(logger, null, CSharpFacade.ToFSharpFunc(f));
+
+            var res = LoggerModule.Time<T>(logger, CSharp.ToFSharpFunc(f));
+            res.Item2.ToTask().Wait();
+            return res.Item1;
         }
 
         /// <summary>
         /// Use to time the time it takes to execute action <c>a</c>.
         /// </summary>
-        public static void Time(this Logger logger, Action a)
+        public static void Time(this Logger logger, Action action)
         {
-            Time (logger, () => {
-                a ();
+            if (logger == null) throw new ArgumentNullException("logger");
+            if (action == null) throw new ArgumentNullException("action");
+            Time(logger, () => {
+                action();
                 return 0;
             });
         }
@@ -115,7 +121,9 @@ namespace Logary
             if (logger == null) throw new ArgumentNullException("logger");
             if (subPath == null) throw new ArgumentNullException("subPath");
             if (f == null) throw new ArgumentNullException("f");
-            return LoggerModule.Time<T>(logger, subPath, CSharpFacade.ToFSharpFunc(f));
+            var res = LoggerModule.TimeAt<T>(logger, subPath, CSharp.ToFSharpFunc(f));
+            CSharp.ToTask(res.Item2).Wait();
+            return res.Item1;
         }
 
         /// <summary>
@@ -131,7 +139,9 @@ namespace Logary
             if (level == null) throw new ArgumentNullException("level");
             if (formatStringMessage == null) throw new ArgumentNullException("formatStringMessage");
 
-            logger.Log(MessageModule.EventFormat(level, formatStringMessage, args)).Start();
+            var message = MessageModule.EventFormat(level, formatStringMessage, args);
+            var inLogary = CSharp.ToTask(logger.LogWithTimeout(message));
+            inLogary.Wait(); // ignore Promise<unit>
         }
     }
 }
