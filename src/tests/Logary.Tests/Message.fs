@@ -170,11 +170,22 @@ let tests =
         }
       Assert.Equal("roundtrip", m, roundTrip m)
 
+    testCase "{DateTime, DateTimeOffset}.timestamp" <| fun () ->
+      DateTime.UtcNow.timestamp |> ignore
+      DateTimeOffset.UtcNow.timestamp |> ignore
+
     testCase "Message.time can be called" <| fun () ->
       let res, msg =
         Message.time (PointName [| "Tests.Message.time" |]) (fun _ -> 367)
 
+      let value, units =
+        match msg.value with
+        | Gauge (value, units) -> value, units
+        | Derived (_, _) -> Tests.failtestf "Unexpected Gauge value"
+        | Event _ -> Tests.failtestf "Unexpected Event value"
+
       Expect.equal res 367 "should have correct return value"
+      Expect.equal units (Scaled(Seconds, int64 (10.**9.)))  "correctly scaled unit (nanos)"
 
     testPropertyWithConfig config "Serialization of message can round trip" <| fun (message : Message) ->
       message = roundTrip message

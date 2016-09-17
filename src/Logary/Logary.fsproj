@@ -53,6 +53,7 @@
   <ItemGroup>
     <Compile Include="LogLevel.fs" />
     <Compile Include="MessageTemplates.fs" />
+    <Compile Include="Constants.fs" />
     <Compile Include="Internals.fs" />
     <Compile Include="DataModel.fs" />
     <Compile Include="Named.fs" />

@@ -1,5 +1,6 @@
 ﻿namespace Logary.Internals
 
+open Logary
 open NodaTime
 open System.Threading
 open System.Runtime.CompilerServices
@@ -115,11 +116,9 @@ module Date =
   // TO CONSIDER: Make IClock configurable
   let internal clock = ref SystemClock.Instance
 
-  let TicksPerNano = 10
-
   /// Returns the number of nanoseconds since epoch
   let timestamp () : int64 =
-    (!clock).Now.Ticks * 100L
+    (!clock).Now.Ticks * Constants.NanosPerTick
 
   /// Gets the current instant from the global clock
   let instant () : Instant =

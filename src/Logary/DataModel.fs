@@ -612,6 +612,9 @@ type Units =
   // E.g. to denote nano-seconds since epoch;
   // 1474139353507070000 would be Scaled(Seconds, 10.**9.) since year 1970
   // so to get back to seconds, you'd divide the value by 10.**9.
+  // E.g. an op that takes 5ms would be represented as
+  // Gauge(5000000, Scaled(Seconds, 10.**9.)) (ns) OR:
+  // Gauge(50000, Scaled(Seconds, 10**7.)) (ticks)
   | Scaled of units:Units * scale:int64
   | Mul of Units * Units
   | Pow of Units * Units
@@ -682,6 +685,9 @@ type Units =
         | "K" -> Kelvins |> JsonResult.Value, json
         | "mol" -> Moles |> JsonResult.Value, json
         | "cd" -> Candelas |> JsonResult.Value, json
+        | unknown ->
+          let msg = sprintf "Unknown unit type represented as string '%s'" unknown
+          JsonResult.Error msg, json
 
       | Json.Object o ->
         match o with
@@ -986,7 +992,7 @@ type Message =
     /// for DateTime and/or DateTimeOffset, remember that those start at
     /// 0001-01-01.
     member x.timestampTicks : int64 =
-      x.timestamp / 100L
+      x.timestamp / Constants.NanosPerTick
 
     static member ToJson (m : Message) =
       let fields' =
@@ -1020,6 +1026,27 @@ type Message =
       <*> Json.read "context"
       <*> Json.read "level"
       <*> Json.read "timestamp"
+
+/// Extensions to facilitate converting DateTime and DateTimeOffset to EpochNanoSeconds.
+[<AutoOpen; Extension>]
+module SystemDateEx =
+
+  type DateTime with
+    /// Gets the EpochNanoSeconds from the DateTime at UTC.
+    [<Extension>]
+    member x.timestamp : EpochNanoSeconds =
+      if not (x.Kind = DateTimeKind.Utc) then
+        invalidArg "x" (sprintf "Expected '%O' to be in UTC format" x)
+      else
+        (x.Ticks - DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).Ticks)
+        * Constants.NanosPerTick
+
+  type DateTimeOffset with
+    /// Gets the EpochNanoSeconds from the DateTimeOffset.
+    [<Extension>]
+    member x.timestamp : EpochNanoSeconds =
+      (x.Ticks - DateTimeOffset(1970, 1, 1, 0, 0, 0, TimeSpan.Zero).Ticks)
+      * Constants.NanosPerTick
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Message =
@@ -1161,7 +1188,6 @@ module Message =
       context   = Map.empty
       level     = level
       timestamp = Date.timestamp() }
-
 
   /// Creates a new event message template with level. Compared to `event`,
   /// this function has its parameters' order flipped.
@@ -1324,10 +1350,13 @@ module Message =
     sw.Stop()
 
     let value =
-      Float (float sw.ElapsedTicks / float NodaConstants.TicksPerSecond)
+      Int64 (sw.ElapsedTicks * Constants.NanosPerTick)
+
+    let units =
+      Scaled(Seconds, Constants.NanosPerSecond)
 
     let message =
-      gaugeWithUnit pointName Units.Seconds value
+      gaugeWithUnit pointName units value
 
     res, message
 
@@ -1356,7 +1385,7 @@ module Message =
   /// so a tick is a 1/10th microsecond, so it's 100 nanoseconds long.
   [<CompiledName "SetTicksEpoch">]
   let setTicksEpoch (ticks : int64) msg =
-    { msg with timestamp = ticks * 100L }
+    { msg with timestamp = ticks * Constants.NanosPerTick }
 
   /// Sets the number of ticks as specified by DateTime and DateTimeOffset,
   /// which starts at zero the 0001-01-01 00:00:00 instant.
