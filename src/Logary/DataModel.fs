@@ -1303,7 +1303,7 @@ module Message =
   /// Run the function `f` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Seconds.
   [<CompiledName "Time";>]
-  let time pointName f =
+  let time pointName (f : unit -> 'res) : 'res * Message =
     let sw = Stopwatch.StartNew()
     let res = f ()
     sw.Stop()

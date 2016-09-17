@@ -155,7 +155,8 @@ module Logger =
   /// measurement as a Gauge in the unit Seconds. As an exception to the rule,
   /// it is allowed to pass lastBitPath as null to this function. This
   /// function returns the full schabang; i.e. it will let you wait for
-  /// acks if you want.
+  /// acks if you want. If you do not start/commit to the Alt, the
+  /// logging of the gauge will never happen.
   [<CompiledName "TimeWithAck"; Extension>]
   let timeWithAck (logger : Logger)
                   (lastBitPath : string)
@@ -164,25 +165,25 @@ module Logger =
     let res, message = Message.time logger.name f
     res, logWithAck logger (setLastBit lastBitPath message)
 
-  [<CompiledName "TimeAt"; Extension>]
-  let timeAt (logger : Logger)
-             (lastBitPath : string)
-             (f : unit -> 'res)
-             : 'res * Alt<unit> =
+  [<CompiledName "Time"; Extension>]
+  let time (logger : Logger)
+           (lastBitPath : string)
+           (f : unit -> 'res)
+           : 'res * Alt<unit> =
     let res, message = Message.time logger.name f
     res, log logger (setLastBit lastBitPath message)
 
   [<CompiledName "Time"; Extension>]
-  let time (logger : Logger)
-           (f : unit -> 'res)
-           : 'res * Alt<unit> =
+  let timeX (logger : Logger)
+            (f : unit -> 'res)
+            : 'res * Alt<unit> =
     let res, message = Message.time logger.name f
     res, log logger message
 
   /// Run the function `f` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Seconds.
   [<CompiledName "TimeSimple"; Extension>]
-  let timeSimple (logger : Logger) f =
+  let timeSimple (logger : Logger) (f : unit -> 'res) : 'res =
     let res, message = Message.time logger.name f
     logSimple logger message
     res
