@@ -301,7 +301,6 @@ module Advanced =
         let! msg = Ch.take inbox
         match msg with
         | GetLogger (name, extraMiddleware, chan) ->
-
           let middleware =
             match extraMiddleware with
             | None -> conf.middleware

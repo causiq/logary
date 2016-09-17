@@ -277,10 +277,8 @@ module internal Impl =
                     Message.event Error "problem receiving response"
                     |> Message.setField "statusCode" resp.statusCode
                     |> Message.setField "body" body)
-              //printfn "body: %s, response %A" body resp
               failwithf "got response code %i" resp.statusCode
             else
-              //printfn "Acking"
               do! Seq.iterJobIgnore reqestAckJobCreator reqs
               return! loop ()
           }

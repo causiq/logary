@@ -183,6 +183,9 @@ module LogaryFacadeAdapter =
       |> Array.map (fun field ->
         match field.Name with
         | "getLogger" ->
+          // getLogger on LogManager will return a PromisedLogger, which
+          // will have its value set as the promise returns; this is on the
+          // order of milliseconds
           FSharpValue.MakeFunction(
             field.PropertyType,
             (unbox >> fun name ->
@@ -197,6 +200,7 @@ module LogaryFacadeAdapter =
 
         | "consoleSemaphore" ->
           obj() // Todo: should this come from Logary now? where?
+
         | name ->
           failwithf "Unknown field '%s' of the config record '%s'" name configType.FullName)
 

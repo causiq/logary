@@ -25,7 +25,7 @@ let main argv =
   LogaryFacadeAdapter.initialise<Libryy.Logging.Logger> logary
 
   // if you need a Logger instance:
-  let logger = logary.getLogger (PointName.ofSingle "Libryy")
+  let logger = logary.getLogger (PointName [| "Libryy" |])
   let res = Libryy.Core.work (LoggerAdapter.createGeneric logger)
 
   mre.Wait()
