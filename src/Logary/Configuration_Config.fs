@@ -8,6 +8,7 @@ open Hopac
 open Hopac.Infixes
 open NodaTime
 open Logary
+open Logary.Logging
 open Logary.Internals
 open Logary.Target
 open Logary.Metric
@@ -207,7 +208,8 @@ let asLogManager (inst : LogaryInstance) =
         getLogger inst.registry name
 
       member x.getLogger name =
-        x.getLoggerAsync name |> run
+        getLogger inst.registry name
+        |> PromisedLogger.create name
 
       member x.flushPending dur =
         Advanced.flushPending inst.registry <|> timeOut (dur.ToTimeSpan ())

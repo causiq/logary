@@ -38,8 +38,11 @@ let getCurrentLoggerName () =
   |> Seq.last
   |> getName
 
-type PromisedLogger (name, requestedLogger : Job<Logger>) =
+type PromisedLogger(name, requestedLogger : Job<Logger>) =
   let promised = memo requestedLogger
+
+  static member create name logger =
+    PromisedLogger(name, logger) :> Logger
 
   interface Named with
     member x.name = name
@@ -82,7 +85,7 @@ let getLoggerByPointName name =
     // this should be the only location we actually do the run call, because
     // we absolutely need it initialising static variables synchronously at
     // the call-site
-    |> fun l -> PromisedLogger(name, l) :> Logger
+    |> PromisedLogger.create name
 
 /// Gets a logger by a given name.
 [<CompiledName "GetLoggerByName">]
