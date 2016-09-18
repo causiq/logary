@@ -622,11 +622,39 @@ a derived metric.
 **More documentation on derived metrics to follow!** (including how to register
 them in Logary).
 
+Sample:
+
+ - https://gist.github.com/thinkbeforecoding/f2f4c7ba8f2a717058c50011192870c8
+
+WIP:
+
+ - https://gist.github.com/haf/dc6b83aa153908efddc5f341b29fdbdc
+
+## Console logging
+
+Console logging is only meant for human consumption; don't rely on it for
+logging in your actual services. As such, Logary is able to do improvements
+to its console target, so that it's as good as possible for human
+consumption.
+
+Generally, we have `Message -> Colouriser -> Writer`. Here the `Message` is
+what is fed from callers and metrics into the target. The colouriser has a
+signature alike `Message -> (string * Colour) list`, which maps some projection
+of the message into the domain of strings and their corresponding colours; i.e.
+actual colourised lines of output.
+
+It's the `Writer` that takes the string-colour pairs and display those on the
+terminal like so `(string * Coolour) list -> unit`.
+
+The console target supports different themes. A theme is a subsystem of the
+colouriser that takes a `Token -> Colour`. Different themes makes for different
+moods.
+
 ## Using logary in a library
 
 The above guide serves to explain how you use Logary in a service or
 application, but what if you have a library and don't want to take a dependency
-on a specific logging framework, or logging abstraction/indirection library ?
+on a specific logging framework, or logging abstraction/indirection library?
 
 For this use-case, Logary provides F# facades that you can easily reference using Paket.
 I've created a [sample
