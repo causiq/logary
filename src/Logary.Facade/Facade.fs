@@ -353,25 +353,39 @@ module internal FsMtParser =
       else
         let format = if formatRange.isEmpty then null else formatRange.getSubstring template
         Property(propertyName, format)
-
+        
     let findNextNonPropText (startAt : int) (template : string) (foundText : string->unit) : int =
       // Finds the next text token (starting from the 'startAt' index) and returns the next character
       // index within the template string. If the end of the template string is reached, or the start
       // of a property token is found (i.e. a single { character), then the 'consumed' text is passed
       // to the 'foundText' method, and index of the next character is returned.
+      let mutable escapedBuilder = Unchecked.defaultof<StringBuilder> // don't create one until it's needed
+      let inline append (ch : char) = if not (isNull escapedBuilder) then escapedBuilder.Append(ch) |> ignore
+      let inline createStringBuilderAndPopulate i =
+        if isNull escapedBuilder then
+          escapedBuilder <- StringBuilder() // found escaped open-brace, take the slow path
+          for chIndex = startAt to i-1 do append template.[chIndex] // append all existing chars
       let rec go i =
-        if i >= template.Length then template.Length
+        if i >= template.Length then
+          template.Length // bail out at the end of the string
         else
-          match template.[i] with
+          let ch = template.[i]
+          match ch with
           | '{' ->
-            if (i+1) < template.Length && template.[i+1] = '{' then go (i+2) else i
+            if (i+1) < template.Length && template.[i+1] = '{' then
+              createStringBuilderAndPopulate i; append ch; go (i+2)
+            else i // found an open brace (potentially a property), so bail out
           | '}' when (i+1) < template.Length && template.[i+1] = '}' ->
-            go (i+2)
+            createStringBuilderAndPopulate i; append ch; go (i+2)
           | _ ->
-            go (i+1)
+            append ch; go (i+1)
+
       let nextIndex = go startAt
-      if (nextIndex > startAt) then
-        foundText (Range.substring(template, startAt, nextIndex - 1))
+      if (nextIndex > startAt) then // if we 'consumed' any characters, signal that we 'foundText'
+        if isNull escapedBuilder then
+          foundText (Range.substring(template, startAt, nextIndex - 1))
+        else
+          foundText (escapedBuilder.ToString())
       nextIndex
 
     let findPropOrText (start : int) (template : string)
