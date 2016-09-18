@@ -61,6 +61,7 @@ Install-Package Logary
       * [Logging fields &amp; templating](#logging-fields--templating)
       * [Ticked metrics and gauges – random walk](#ticked-metrics-and-gauges--random-walk)
       * [Derived metrics](#derived-metrics)
+    * [Console logging](#console-logging)
     * [Using logary in a library](#using-logary-in-a-library)
       * [How do the error and log methods differ?](#how-do-the-error-and-log-methods-differ)
       * [Passing more information](#passing-more-information)
