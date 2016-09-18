@@ -485,7 +485,7 @@ module internal Formatting =
       literateFormatValue (LiterateOptions.createInvariant()) fields pv
     matchedFields, System.String.Concat(themedParts |> List.map fst)
 
-  let literateExceptionColorizer (options : LiterateOptions) (ex : exn) =
+  let literateExceptionColouriser (options : LiterateOptions) (ex : exn) =
     let stackFrameLinePrefix = "   "
     use exnLines = new System.IO.StringReader(ex.ToString())
     let rec go lines =
@@ -501,11 +501,11 @@ module internal Formatting =
           go ((Environment.NewLine, Text) :: ((line, Text) :: lines))
     go []
 
-  let literateColorizeExceptions (context : LiterateOptions) message =
+  let literateColouriseExceptions (context : LiterateOptions) message =
     let exnExceptionParts =
       match message.fields.TryFind FieldExnKey with
       | Some (:? Exception as ex) ->
-        literateExceptionColorizer context ex
+        literateExceptionColouriser context ex
         @ [ Environment.NewLine, Text ]
       | _ ->
         [] // there is no spoon
@@ -514,7 +514,7 @@ module internal Formatting =
       | Some (:? List<obj> as exnListAsObjList) ->
         exnListAsObjList |> List.collect (function
           | :? exn as ex ->
-            literateExceptionColorizer context ex
+            literateExceptionColouriser context ex
             @ [ Environment.NewLine, Text ]
           | _ ->
             [])
@@ -525,7 +525,7 @@ module internal Formatting =
 
   /// Split a structured message up into theme-able parts (tokens), allowing the
   /// final output to display to a user with colours to enhance readability.
-  let literateDefaultTokenizer (options : LiterateOptions) (message : Message) : (string * LiterateToken) list =
+  let literateDefaultTokeniser (options : LiterateOptions) (message : Message) : (string * LiterateToken) list =
     let formatLocalTime (utcTicks : int64) =
       DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss", options.formatProvider),
       Subtext
@@ -534,7 +534,7 @@ module internal Formatting =
       message.value |> literateFormatValue options message.fields |> snd
 
     let themedExceptionParts =
-      let exnParts = literateColorizeExceptions options message
+      let exnParts = literateColouriseExceptions options message
       if not exnParts.IsEmpty then
         [ Environment.NewLine, Text ]
         @ exnParts
@@ -557,14 +557,14 @@ module internal Formatting =
     @ themedMessageParts
     @ themedExceptionParts
 
-  let literateDefaultColorWriter sem (parts : (string * ConsoleColor) list) =
+  let literateDefaultColourWriter sem (parts : (string * ConsoleColor) list) =
     lock sem <| fun _ ->
       let originalColour = Console.ForegroundColor
       let mutable currentColour = originalColour
-      parts |> List.iter (fun (text, color) ->
-        if currentColour <> color then
-          Console.ForegroundColor <- color
-          currentColour <- color
+      parts |> List.iter (fun (text, colour) ->
+        if currentColour <> colour then
+          Console.ForegroundColor <- colour
+          currentColour <- colour
         Console.Write(text)
       )
       if currentColour <> originalColour then
@@ -588,7 +588,6 @@ module internal Formatting =
       match fields |> Map.tryFind FieldExnKey with
       | None ->
         String.Empty
-
       | Some ex ->
         " exn:\n" + ex.ToString()
 
@@ -617,28 +616,28 @@ module internal Formatting =
 /// Logs a line in a format that is great for human consumption,
 /// using console colours to enhance readability.
 /// Sample: [10:30:49 INF] User "AdamC" began the "checkout" process with 100 cart items
-type LiterateConsoleTarget(minLevel, ?options, ?literateTokenizer, ?outputWriter, ?consoleSemaphore) =
-  let sem           = defaultArg consoleSemaphore (obj())
-  let options       = defaultArg options (Literate.LiterateOptions.create())
-  let tokenize      = defaultArg literateTokenizer Formatting.literateDefaultTokenizer
-  let colorWriter   = defaultArg outputWriter Formatting.literateDefaultColorWriter sem
+type LiterateConsoleTarget(minLevel, ?options, ?literateTokeniser, ?outputWriter, ?consoleSemaphore) =
+  let sem          = defaultArg consoleSemaphore (obj())
+  let options      = defaultArg options (Literate.LiterateOptions.create())
+  let tokenise     = defaultArg literateTokeniser Formatting.literateDefaultTokeniser
+  let colourWriter = defaultArg outputWriter Formatting.literateDefaultColourWriter sem
 
-  let colorizeThenNewLine message =
-    (tokenize options message) @ [Environment.NewLine, Literate.Text]
+  let colouriseThenNewLine message =
+    (tokenise options message) @ [Environment.NewLine, Literate.Text]
     |> List.map (fun (s, t) ->
       s, options.theme(t))
 
   interface Logger with
     member x.logWithAck level msgFactory =
       if level >= minLevel then
-        colorWriter (colorizeThenNewLine (msgFactory level))
+        colourWriter (colouriseThenNewLine (msgFactory level))
       async.Return ()
     member x.log level msgFactory =
       if level >= minLevel then
-        colorWriter (colorizeThenNewLine (msgFactory level))
+        colourWriter (colouriseThenNewLine (msgFactory level))
     member x.logSimple msg =
       if msg.level >= minLevel then
-        colorWriter (colorizeThenNewLine msg)
+        colourWriter (colouriseThenNewLine msg)
 
 type TextWriterTarget(minLevel, writer : System.IO.TextWriter, ?formatter) =
   let formatter = defaultArg formatter Formatting.defaultFormatter
