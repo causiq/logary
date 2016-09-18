@@ -9,6 +9,7 @@ open Logary.Target
 open Logary.Internals
 open System
 
+/// An implementation for the InfluxDb-specific string format.
 module Serialisation =
 
   let serialiseTimestamp (ts : EpochNanoSeconds) =
@@ -61,11 +62,11 @@ module Serialisation =
       >> Seq.sortBy fst
       >> List.ofSeq
 
-    let rec getValues
-      (valueKey : string)
-      isTag
-      (kvs : (string * string) list)
-      (values : (string * string) list)  = function
+    let rec getValues (valueKey : string)
+                      isTag
+                      (kvs : (string * string) list)
+                      (values : (string * string) list) =
+      function
       | Float v ->
         kvs, (valueKey, v.ToString(Culture.invariant)) :: values
 
@@ -182,7 +183,11 @@ type Consistency =
   | Quorum
   ///  the data must be written to disk by all valid nodes
   | All
-  /// a write is confirmed if hinted-handoff is successful, even if all target nodes report a write failure In this context, “valid node” means a node that hosts a copy of the shard containing the series being written to. In a clustered system, the replication factor should equal the number of valid nodes.
+  /// a write is confirmed if hinted-handoff is successful, even if all target
+  /// nodes report a write failure In this context, “valid node” means a node
+  /// that hosts a copy of the shard containing the series being written to. In
+  /// a clustered system, the replication factor should equal the number of
+  /// valid nodes.
   | Any
 
 type InfluxDbConf =
@@ -219,18 +224,14 @@ let empty =
     retention   = None
     batchSize   = 100us }
 
-// When creating a new target this module gives the barebones
-// for the approach you may need to take.
 module internal Impl =
 
   let reqestAckJobCreator request =
     match request with
     | Log (msg, ack) ->
       ack *<= ()
-       
     | Flush (ackCh, nack) ->
       Ch.give ackCh () <|> nack :> Job<_>
-      
 
   let extractMessage request = 
     match request with
@@ -258,9 +259,7 @@ module internal Impl =
         shutdown ^=> fun ack ->
           ack *<= () :> Job<_>
 
-        // 'When there is a request' call this function
         RingBuffer.takeBatch (uint32 conf.batchSize) requests ^=> fun reqs ->
-
           let messageTexts = Seq.map extractMessage reqs
           let body = messageTexts |> String.concat "\n"
 
@@ -277,6 +276,7 @@ module internal Impl =
                     Message.event Error "problem receiving response"
                     |> Message.setField "statusCode" resp.statusCode
                     |> Message.setField "body" body)
+              // will cause the target to restart through the supervisor
               failwithf "got response code %i" resp.statusCode
             else
               do! Seq.iterJobIgnore reqestAckJobCreator reqs
@@ -285,14 +285,59 @@ module internal Impl =
       ] :> Job<_>
     loop ()
 
-/// Create a new Noop target
-let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
+/// Create a new InfluxDb target
+let create conf =
+  TargetUtils.stdNamedTarget (Impl.loop conf)
 
 /// Use with LogaryFactory.New( s => s.Target<InfluxDb.Builder>() )
 type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
-  // TODO: expose for C# peeps
+  let update conf' =
+    Builder(conf', callParent)
+
+  /// if authentication is enabled, you must authenticate as a user with write permissions to the target database
+  member x.Authenticate (username, password) =
+    update { conf with username = Some username
+                       password = Some password }
+
+  /// the data must be written to disk by at least 1 valid node
+  member x.ConsistencyOne() =
+    update { conf with consistency = One }
+
+  /// the data must be written to disk by (N/2 + 1) valid nodes (N is the replication factor for the target retention policy)
+  member x.ConsistencyQuorum() =
+    update { conf with consistency = Quorum }
+
+  ///  the data must be written to disk by all valid nodes
+  member x.ConsistencyAll() =
+    update { conf with consistency = All }
+
+  /// a write is confirmed if hinted-handoff is successful, even if all target
+  /// nodes report a write failure In this context, “valid node” means a node
+  /// that hosts a copy of the shard containing the series being written to. In
+  /// a clustered system, the replication factor should equal the number of
+  /// valid nodes.
+  member x.ConsistencyAny() =
+    update { conf with consistency = Any }
+
+  /// sets the target retention policy for the write. If not present the default retention policy is used
+  member x.Retention policy =
+    update { conf with retention = Some policy }
+
+  /// Sets how many measurements should be batched together if new measurements are produced faster than we can write them one by one. Default is 100. 
+  member x.BatchSize size =
+    update { conf with batchSize = uint16 size }
+
+  /// Sets the target database for the write - defaults to `logary`.
+  member x.DB db =
+    update { conf with db = db }
+
+  /// the write endpoint to send the values to
   member x.WriteEndpoint(writeEndpoint : Uri) =
-    ! (callParent <| Builder({ conf with endpoint = writeEndpoint }, callParent))
+    update { conf with endpoint = writeEndpoint }
+
+  /// You've finished configuring the InfluxDb target.
+  member x.Done() =
+    ! (callParent x)
 
   new(callParent : FactoryApi.ParentCallback<_>) =
     Builder(empty, callParent)
