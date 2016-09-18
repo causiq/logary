@@ -80,13 +80,10 @@ type LogLevel =
 
   static member op_LessThan (a, b) =
     (a :> IComparable<LogLevel>).CompareTo(b) < 0
-
   static member op_LessThanOrEqual (a, b) =
     (a :> IComparable<LogLevel>).CompareTo(b) <= 0
-
   static member op_GreaterThan (a, b) =
     (a :> IComparable<LogLevel>).CompareTo(b) > 0
-
   static member op_GreaterThanOrEqual (a, b) =
     (a :> IComparable<LogLevel>).CompareTo(b) >= 0
 
@@ -98,10 +95,8 @@ type LogLevel =
       match other with
       | null ->
         1
-
       | :? LogLevel as tother ->
         (x :> IComparable<LogLevel>).CompareTo tother
-
       | _ ->
         failwithf "invalid comparison %A to %A" x other
 
@@ -126,7 +121,7 @@ type PointValue =
 /// The # of nanoseconds after 1970-01-01 00:00:00.
 type EpochNanoSeconds = int64
 
-/// Extensions to DateTime.
+/// Helper functions for transforming DateTime to timestamps in unix epoch.
 module DateTime =
 
   /// Get the Logary timestamp off the DateTime.
@@ -134,12 +129,12 @@ module DateTime =
     (dt.Ticks - DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).Ticks)
     * 100L
 
-  /// Get the DateTimeOffset ticks off from the EpochNanoSeconds
+  /// Get the DateTimeOffset ticks off from the EpochNanoSeconds.
   let ticksUTC (epoch : EpochNanoSeconds) : int64 =
     epoch / 100L
     + DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).Ticks
 
-/// Extensions to DateTimeOffset.
+/// Helper functions for transforming DateTimeOffset to timestamps in unix epoch.
 module DateTimeOffset =
 
   /// Get the Logary timestamp off the DateTimeOffset.
@@ -223,8 +218,17 @@ module internal LoggerEx =
       x.log Fatal msgFactory
 
 type LoggingConfig =
-  { timestamp        : unit -> int64
+  { /// The `timestamp` function should preferably be monotonic and not 'jumpy'
+    /// or take much time to call.
+    timestamp        : unit -> int64
+    /// The `getLogger` function returns a logger that directly can be logged to.
     getLogger        : string[] -> Logger
+    /// When composing apps from the outside-in (rather than having a unified
+    /// framework with static/global config) with libraries (again, rather than
+    /// a unified framework) like is best-practice, there's not necessarily a
+    /// way to coordinate around the STDOUT and STDERR streams between
+    /// different libraries running things on different threads. Use Logary's
+    /// adapter to replace this semaphore with a global semaphore. 
     consoleSemaphore : obj }
 
 module Literate =
@@ -242,7 +246,7 @@ module Literate =
       getLogLevelText         : LogLevel -> string
       printTemplateFieldNames : bool }
 
-    static member create(?formatProvider) =
+    static member create ?formatProvider =
       // note: literate is meant for human consumption, and so the default
       // format provider of 'Current' is appropriate here. The reader expects
       // to see the dates, numbers, currency, etc formatted in the local culture
@@ -273,13 +277,14 @@ module Literate =
         printTemplateFieldNames = false }
 
     static member createInvariant() =
-      LiterateOptions.create(Globalization.CultureInfo.InvariantCulture)
+      LiterateOptions.create Globalization.CultureInfo.InvariantCulture
 
-[<AutoOpen>]
-module internal Literals =
+/// Module that contains the 'known' keys of the Maps in the Message type's
+/// fields/runtime data.
+module Literals =
 
   [<Literal>]
-  let internal FieldExnKey = "exn"
+  let FieldExnKey = "exn"
 
   [<Literal>]
   let FieldErrorsKey = "errors"
@@ -435,6 +440,7 @@ module internal FsMtParser =
 /// Internal module for formatting text for printing to the console.
 module internal Formatting =
   open System.Text
+  open Literals
   open Literate
 
   let literateFormatValue (options : LiterateOptions) (fields : Map<string, obj>) = function
@@ -792,6 +798,7 @@ module Log =
 /// module is especially helpful to open to make calls into Logary's facade small.
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Message =
+  open Literals
 
   /// Create a new event log message.
   let event level template =

@@ -3,6 +3,7 @@
 open System
 open Fuchu
 open Logary.Facade
+open Logary.Facade.Literals
 open Logary.Facade.Literate
 open ExpectoPatronum
 
@@ -221,8 +222,8 @@ let tests =
       let template = ""
       let exceptionForExnField = exn "exn field"
       let exceptionObjListForErrorsField = [ box (exn "errors field 1"); box (exn "errors field 2") ]
-      let fields = Map [ Literals.FieldExnKey,    box exceptionForExnField
-                         Literals.FieldErrorsKey, box exceptionObjListForErrorsField ]
+      let fields = Map [ FieldExnKey,    box exceptionForExnField
+                         FieldErrorsKey, box exceptionObjListForErrorsField ]
       let nl = Environment.NewLine
       let expectedMessageParts =
         [ nl, Text //<-- empty message will just start rendering exceptions on a new line

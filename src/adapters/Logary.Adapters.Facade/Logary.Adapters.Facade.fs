@@ -23,7 +23,6 @@ module LoggerAdapter =
   let private defaultName (fallback : string[]) = function
     | [||] ->
       fallback
-
     | otherwise ->
       otherwise
 

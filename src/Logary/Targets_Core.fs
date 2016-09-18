@@ -104,7 +104,7 @@ module Console =
     { foregroundColor : int
       backgroundColor : int }
 
-  /// Console configuration structure
+  /// Console configuration structure.
   type ConsoleConf =
     { formatter : StringFormatter
       colorMap  : (ConsoleColours -> LogLevel -> ConsoleColours) option }
