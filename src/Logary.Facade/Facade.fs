@@ -672,14 +672,11 @@ type OutputWindowTarget(minLevel, ?formatter) =
 /// A logger to use for combining a number of other loggers
 type CombiningTarget(otherLoggers : Logger list) =
   let sendToAll level msgFactory =
-    async {
-      let! _ =
-        otherLoggers
-        |> List.map (fun l ->
-          l.logWithAck level msgFactory)
-        |> Async.Parallel
-      return ()
-    }
+    otherLoggers
+    |> List.map (fun l ->
+      l.logWithAck level msgFactory)
+    |> Async.Parallel
+    |> Async.Ignore // Async<unit>
 
   interface Logger with
     member x.logWithAck level msgFactory =
