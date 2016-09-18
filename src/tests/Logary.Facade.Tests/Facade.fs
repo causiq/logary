@@ -121,13 +121,13 @@ let tests =
                    expectedPropertyNames
                    "Should extract relevant names"
 
-    testCase "treats `{{` and `}}` as escaped braces" <| fun _ ->
-      let template = "hello {{errors}} you {are} an {{exn}}"
+    testCase "treats `{{` and `}}` as escaped braces, resulting in a single brace in the output" <| fun _ ->
+      let template = "hello {{@nonPropWithFormat:##}} {{you}} {are} a {{NonPropNoFormat}}"
       let tokens = parseTemplateTokens template
       Expect.equal tokens
-                    [ TextToken("hello {{errors}} you ")
+                    [ TextToken("hello {@nonPropWithFormat:##} {you} ")
                       PropToken("are", null)
-                      TextToken(" an {{exn}}") ]
+                      TextToken(" a {NonPropNoFormat}") ]
 
                    "double open or close braces are escaped"
     testCase "literate tokenizes with field names correctly" <| fun _ ->
