@@ -424,12 +424,12 @@ module internal FsMtParser =
   let parseParts (template : string) foundTextF foundPropF =
     let tlen = template.Length
     let rec go start =
-      if start >= tlen then ()
-      else match ParserBits.findNextNonPropText start template foundTextF with
-            | next when next <> start ->
-              go next
-            | _ ->
-              go (ParserBits.findPropOrText start template foundTextF foundPropF)
+      if start >= tlen then () else
+      match ParserBits.findNextNonPropText start template foundTextF with
+      | next when next <> start ->
+        go next
+      | _ ->
+        go (ParserBits.findPropOrText start template foundTextF foundPropF)
     go 0
 
 /// Internal module for formatting text for printing to the console.
@@ -753,8 +753,9 @@ module Global =
   let initialise cfg =
     config := cfg
 
+/// "Shortcut" for creating targets; useful at the top-level configuration point of
+/// your library.
 module Targets =
-
   /// Create a new target. Prefer `Log.create` in your own libraries, or let the
   /// composing app replace your target instance through your configuration.
   ///
@@ -787,6 +788,8 @@ module Log =
     Global.getStaticLogger name
     :> Logger
 
+/// The Message module contains functions that can help callers compose messages. This
+/// module is especially helpful to open to make calls into Logary's facade small.
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Message =
 
@@ -800,7 +803,7 @@ module Message =
 
   /// Create a new event log message – like `event` but with parameters flipped.
   /// Useful to use with `Logger.log` with point-free style, to reduce the
-  /// noise.
+  /// noise. E.g. `logger.logVerbose (eventX "Returned {code}" >> setField "code" 24)`
   let eventX template level =
     event level template
 
