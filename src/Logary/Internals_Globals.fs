@@ -16,6 +16,10 @@ module internal Globals =
   /// or use IoC with a contextual lookup to resolve proper loggers.
   let singleton : LogaryInstance option ref = ref None
 
+  /// This is the global console semaphore to use when printing in a multi-
+  /// threaded manner to STDOUT or STDERR.
+  let consoleSemaphore = obj ()
+
   /// A list of all loggers yet to be configured
   let private flyweights : FlyweightLogger list ref = ref []
 

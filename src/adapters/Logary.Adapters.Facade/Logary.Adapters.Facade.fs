@@ -198,7 +198,7 @@ module LogaryFacadeAdapter =
             fun _ -> Date.timestamp () |> box)
 
         | "consoleSemaphore" ->
-          obj() // Todo: should this come from Logary now? where?
+          Logary.Internals.Globals.consoleSemaphore
 
         | name ->
           failwithf "Unknown field '%s' of the config record '%s'" name configType.FullName)

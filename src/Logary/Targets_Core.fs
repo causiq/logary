@@ -25,15 +25,18 @@ module TextWriter =
       flush      : bool
       /// the log level that is considered 'important' enough to write to the
       /// error text writer
-      isErrorAt  : LogLevel }
+      isErrorAt  : LogLevel
+      /// The semaphore to use when printing to the text writer.
+      semaphore  : obj option }
 
     [<CompiledName "Create">]
-    static member create(output, error, ?formatter : StringFormatter) =
-      { formatter    = defaultArg formatter JsonFormatter.Default
-        output       = output
-        error        = error
-        flush        = false
-        isErrorAt    = LogLevel.Error }
+    static member create(output, error, ?formatter : StringFormatter, ?semaphore : obj) =
+      { formatter = defaultArg formatter JsonFormatter.Default
+        output    = output
+        error     = error
+        flush     = false
+        isErrorAt = LogLevel.Error
+        semaphore = semaphore }
 
   module internal Impl =
 
@@ -42,7 +45,19 @@ module TextWriter =
              (requests : RingBuffer<TargetMessage>)
              (shutdown : Ch<IVar<unit>>) =
 
-      let writeLine (tw : TextWriter) = (tw.WriteLineAsync : string -> _)
+      // Note: writing lines does not matching the behaviour wanted from the
+      // coloured console target.
+      let writeLine (tw : TextWriter) (str : string) : Job<unit> =
+        match twConf.semaphore with
+        | Some sem ->
+          // this should be the default for the console unless explicitly disabled;
+          // the combination of locks and async isn't very good, so we'll use the
+          // synchronous function to do the write if we have a semaphore
+          Job.Scheduler.isolate <| fun _ ->
+            lock sem <| fun _ ->
+              tw.WriteLine str
+        | None ->
+          Job.awaitUnitTask (tw.WriteLineAsync str)
 
       let rec loop () : Job<unit> =
         Alt.choose [
@@ -52,13 +67,14 @@ module TextWriter =
             if not (obj.ReferenceEquals(twConf.output, twConf.error)) then
               twConf.error.Dispose()
 
-            (ack *<= () :> Job<_>)
+            ack *<= () :> Job<_>
 
           RingBuffer.take requests ^=> function
             | Log (logMsg, ack) ->
               job {
                 let writer = if logMsg.level < twConf.isErrorAt then twConf.output else twConf.error
-                do! Job.awaitUnitTask (writeLine writer (twConf.formatter.format logMsg))
+                do! writeLine writer (twConf.formatter.format logMsg)
+
                 if twConf.flush then
                   do! Job.awaitUnitTask (writer.FlushAsync())
 
@@ -96,6 +112,7 @@ module TextWriter =
 module Console =
   open System.Runtime.CompilerServices
   open Logary
+  open Logary.Internals
   open Logary.Formatting
   open Logary.Target
 
@@ -127,7 +144,8 @@ module Console =
         output    = System.Console.Out
         error     = System.Console.Error
         flush     = false
-        isErrorAt = Error }
+        isErrorAt = Error
+        semaphore = Some Globals.consoleSemaphore }
       name
 
   /// Use with LogaryFactory.New( s => s.Target<Console.Builder>() )

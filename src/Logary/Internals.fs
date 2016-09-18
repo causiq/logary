@@ -157,7 +157,6 @@ module Map =
       match o with
       | null ->
         ""
-
       | _ ->
         try Convert.ToString(box o, CultureInfo.InvariantCulture)
         with | :? InvalidCastException -> o.ToString()
