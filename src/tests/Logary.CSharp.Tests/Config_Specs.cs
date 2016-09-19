@@ -36,7 +36,8 @@ namespace Logary.Specs
             var twTarg =
                 TextWriter.Create(
                     TextWriter.TextWriterConf.Create(tw, tw,
-                        new Microsoft.FSharp.Core.FSharpOption<Formatting.StringFormatter>(Formatting.StringFormatterModule.levelDatetimeMessagePathNl)),
+                        new Microsoft.FSharp.Core.FSharpOption<Formatting.StringFormatter>(Formatting.StringFormatterModule.levelDatetimeMessagePathNl),
+                        new Microsoft.FSharp.Core.FSharpOption<object>(new object())),
                     "tw");
             var twRule =
                 RuleModule.Create (new Regex (@"^Logary\.Specs"), "tw", LogLevel.Verbose,
