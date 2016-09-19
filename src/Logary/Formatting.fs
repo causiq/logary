@@ -23,10 +23,10 @@ module MessageParts =
 
     template.Tokens
     |> Seq.map (function
-      | Text (_, t) ->
+      | TextToken (_, t) ->
         t
 
-      | Prop (_, p) ->
+      | PropToken (_, p) ->
         match Map.tryFind (PointName.ofSingle p.Name) args with
         | Some (Field (value, units)) -> 
             match units with
