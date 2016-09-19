@@ -17,8 +17,8 @@ let main argv =
 
   use logary =
     withLogaryManager "Servizz.Program" (
-      withTargets [ Console.create Console.empty "console" ]
-      >> withRules [ Rule.createForTarget "console" ])
+      withTargets [ LiterateConsole.create LiterateConsole.empty "literate" ]
+      >> withRules [ Rule.createForTarget "literate" ])
     |> run
 
   // for the statics:
@@ -26,7 +26,9 @@ let main argv =
 
   // if you need a Logger instance:
   let logger = logary.getLogger (PointName [| "Libryy" |])
-  let res = Libryy.Core.work (LoggerAdapter.createGeneric logger)
+
+  for i = 0 to 100 do
+    Libryy.Core.work (LoggerAdapter.createGeneric logger) |> ignore
 
   mre.Wait()
   0

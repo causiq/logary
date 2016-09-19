@@ -108,6 +108,234 @@ module TextWriter =
     interface Logary.Target.FactoryApi.SpecificTargetConf with
       member x.Build name = create conf name
 
+module LiterateConsole =
+  open System
+  open System.Globalization
+  open Logary
+  open Logary.Formatting
+  open Logary.Target
+  open Logary.Internals
+  open Hopac
+
+  /// The output tokens, which can be potentially coloured.
+  type LiterateToken =
+    | Text | Subtext
+    | Punctuation
+    | LevelVerbose | LevelDebug | LevelInfo | LevelWarning | LevelError | LevelFatal
+    | KeywordSymbol | NumericSymbol | StringSymbol | OtherSymbol | NameSymbol
+    | MissingTemplateField
+
+  /// Console configuration structure
+  type LiterateConsoleConf =
+    { formatProvider    : IFormatProvider
+      getLogLevelText   : LogLevel -> string
+      tokenise          : LiterateConsoleConf -> Message -> (string * LiterateToken) list 
+      theme             : LiterateToken -> ConsoleColor
+      colourWriter      : obj -> (string * ConsoleColor) list -> unit }
+
+  module internal LiterateFormatting =
+    open System.Text
+    open Logary.Utils.FsMessageTemplates
+
+    let literateExceptionColorizer (options : LiterateConsoleConf) (typeName) (message) (stackTrace) =
+      let stackFrameLinePrefix = "   "
+      let messageNlStackTrace = System.String.Join(Environment.NewLine, [ typeName; ": "; message; stackTrace ])
+      use exnLines = new System.IO.StringReader(messageNlStackTrace)
+      let rec go lines =
+        match exnLines.ReadLine() with
+        | null ->
+          List.rev lines // finished reading
+        | line ->
+          if line.StartsWith(stackFrameLinePrefix) then
+            // subtext
+            go ((Environment.NewLine, Text) :: ((line, Subtext) :: lines))
+          else
+            // regular text
+            go ((Environment.NewLine, Text) :: ((line, Text) :: lines))
+      go []
+
+    let literateColorizeExceptions (context : LiterateConsoleConf) message =
+      let exns = Utils.Aether.Lens.getPartialOrElse Message.Lenses.errors_ [] message
+      let getStringFromMapOrFail exnObjMap fieldName =
+        match exnObjMap |> Map.find fieldName with
+        | String m -> m
+        | _ -> failwithf "Couldn't find %s in %A" fieldName exnObjMap
+
+      match exns with
+      | [] -> []
+      | values ->
+        values
+        |> List.choose (function | Object v -> Some v | _ -> None)
+        |> List.map (fun exnObjMap ->
+          let exnTypeName = getStringFromMapOrFail exnObjMap "type"
+          let message = getStringFromMapOrFail exnObjMap "message"
+          let stackTrace = getStringFromMapOrFail exnObjMap "stackTrace"
+          literateExceptionColorizer context exnTypeName message stackTrace
+          @ [ Environment.NewLine, Text ]
+        )
+        |> List.concat
+
+    let rec literateFormatField (options : LiterateConsoleConf)
+                                (prop : Property)
+                                (propValue : Field) =
+      let value, units = match propValue with Field (v, u) -> v, u | _ -> failwith "never happens"
+      match value with
+      | Value.Array items -> [ "todo", OtherSymbol ] // TODO:
+      | Value.String s -> [ s, StringSymbol ]
+      | Value.Bool b -> [ b.ToString(), KeywordSymbol ]
+      | Value.Float f -> [ f.ToString(), NumericSymbol ]
+      | Value.Int64 i -> [ i.ToString(), NumericSymbol ]
+      | Value.BigInt bi -> [ bi.ToString(), NumericSymbol ]
+      | Value.Binary (x, y) -> [ "todo", OtherSymbol ] // TODO:
+      | Value.Fraction (x, y) -> [ "todo", OtherSymbol ] // TODO:
+      | Value.Object o -> [ o.ToString(), OtherSymbol ] // TODO: recurse
+
+    let literateFormatValue (options : LiterateConsoleConf) (fields : Map<PointName, Field>) = function
+      | Event eventTemplate ->
+        let themedParts = ResizeArray<string * LiterateToken>()
+        let matchedFields = ResizeArray<string>()
+        let themedParts =
+          Parser.parse(eventTemplate).Tokens
+          |> Seq.collect (function
+            | PropToken (_, prop) ->
+              match Map.tryFind (PointName.ofSingle prop.Name) fields with
+              | Some field ->
+                matchedFields.Add prop.Name
+                literateFormatField options prop field
+              | None ->
+                [ prop.ToString(), MissingTemplateField ]
+            | TextToken (_, text) ->
+              [ text, Text ])
+
+        Set.ofSeq matchedFields, List.ofSeq themedParts
+
+      | Derived (value, units)
+      | Gauge (value, units) ->
+        Set.empty, [ Units.formatValue value, NumericSymbol
+                     Units.symbol units, KeywordSymbol ]
+
+    /// Split a structured message up into theme-able parts (tokens), allowing the
+    /// final output to display to a user with colours to enhance readability.
+    let literateDefaultTokenizer (options : LiterateConsoleConf) (message : Message) : (string * LiterateToken) list =
+      let formatLocalTime (utcTicks : EpochNanoSeconds) =
+        DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss", options.formatProvider),
+        Subtext
+
+      let themedMessageParts =
+        message.value |> literateFormatValue options message.fields |> snd
+
+      let themedExceptionParts =
+        let exnParts = literateColorizeExceptions options message
+        if not exnParts.IsEmpty then
+          [ Environment.NewLine, Text ]
+          @ exnParts
+          @ [ Environment.NewLine, Text ]
+        else []
+
+      let getLogLevelToken = function
+        | Verbose -> LevelVerbose
+        | Debug -> LevelDebug
+        | Info -> LevelInfo
+        | Warn -> LevelWarning
+        | Error -> LevelError
+        | Fatal -> LevelFatal
+
+      [ "[", Punctuation
+        formatLocalTime message.timestamp
+        " ", Subtext
+        options.getLogLevelText message.level, getLogLevelToken message.level
+        "] ", Punctuation ]
+      @ themedMessageParts
+      @ themedExceptionParts
+
+    let consoleWriteLineColourParts (parts : (string * ConsoleColor) list) =
+        let originalColour = Console.ForegroundColor
+        let mutable currentColour = originalColour
+        parts |> List.iter (fun (text, color) ->
+          if currentColour <> color then
+            Console.ForegroundColor <- color
+            currentColour <- color
+          Console.Write(text)
+        )
+        if currentColour <> originalColour then
+          Console.ForegroundColor <- originalColour
+        Console.WriteLine()
+
+    let consoleWriteColourPartsAtomically sem (parts : (string * ConsoleColor) list) =
+      lock sem <| fun _ -> consoleWriteLineColourParts parts
+
+  /// Default console target configuration.
+  let empty =
+    { formatProvider = Globalization.CultureInfo.CurrentCulture
+      getLogLevelText = function
+              | Debug ->    "DBG"
+              | Error ->    "ERR"
+              | Fatal ->    "FTL"
+              | Info ->     "INF"
+              | Verbose ->  "VRB"
+              | Warn ->     "WRN"
+      tokenise = LiterateFormatting.literateDefaultTokenizer
+      theme = function
+              | Text -> ConsoleColor.White
+              | Subtext -> ConsoleColor.Gray
+              | Punctuation -> ConsoleColor.DarkGray
+              | LevelVerbose -> ConsoleColor.Gray
+              | LevelDebug -> ConsoleColor.Gray
+              | LevelInfo -> ConsoleColor.White
+              | LevelWarning -> ConsoleColor.Yellow
+              | LevelError -> ConsoleColor.Red
+              | LevelFatal -> ConsoleColor.Red
+              | KeywordSymbol -> ConsoleColor.Blue
+              | NumericSymbol -> ConsoleColor.Magenta
+              | StringSymbol -> ConsoleColor.Cyan
+              | OtherSymbol -> ConsoleColor.Green
+              | NameSymbol -> ConsoleColor.Gray
+              | MissingTemplateField -> ConsoleColor.Red
+      colourWriter = LiterateFormatting.consoleWriteColourPartsAtomically }
+
+
+  module internal Impl =
+    open Hopac
+    open Hopac.Infixes
+
+    let loop (lcConf : LiterateConsoleConf)
+             (ri : RuntimeInfo)
+             (requests : RingBuffer<TargetMessage>)
+             (shutdown : Ch<IVar<unit>>) =
+
+      let output (data : (string * ConsoleColor) list) : Job<unit> =
+        Job.Scheduler.isolate <| fun _ ->
+          lcConf.colourWriter Logary.Internals.Globals.consoleSemaphore data
+        
+      let rec loop () : Job<unit> =
+        Alt.choose [
+          shutdown ^=> fun ack ->
+            ack *<= () :> Job<_>
+
+          RingBuffer.take requests ^=> function
+            | Log (logMsg, ack) ->
+              job {
+                let tokens = lcConf.tokenise lcConf logMsg
+                let themedParts = tokens |> List.map (fun (text, token) -> text, lcConf.theme token)
+                do! output themedParts
+                do! ack *<= ()
+                return! loop ()
+              }
+
+            | Flush (ack, nack) ->
+              job {
+                do! Ch.give ack () <|> nack
+                return! loop ()
+              }
+        ] :> Job<_>
+      
+      loop()
+  
+  [<CompiledName "Create">]
+  let create conf name =
+    TargetUtils.stdNamedTarget (Impl.loop conf) name
+
+
 /// The console Target for Logary
 module Console =
   open System.Runtime.CompilerServices
