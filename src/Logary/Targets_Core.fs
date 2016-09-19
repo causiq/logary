@@ -117,25 +117,27 @@ module LiterateConsole =
   open Logary.Internals
   open Hopac
 
-  /// The output tokens, which can be potentially coloured.
-  type LiterateToken =
-    | Text | Subtext
-    | Punctuation
-    | LevelVerbose | LevelDebug | LevelInfo | LevelWarning | LevelError | LevelFatal
-    | KeywordSymbol | NumericSymbol | StringSymbol | OtherSymbol | NameSymbol
-    | MissingTemplateField
+  module Tokens =
+    /// The output tokens, which can be potentially coloured.
+    type LiterateToken =
+      | Text | Subtext
+      | Punctuation
+      | LevelVerbose | LevelDebug | LevelInfo | LevelWarning | LevelError | LevelFatal
+      | KeywordSymbol | NumericSymbol | StringSymbol | OtherSymbol | NameSymbol
+      | MissingTemplateField
 
   /// Console configuration structure
   type LiterateConsoleConf =
     { formatProvider    : IFormatProvider
       getLogLevelText   : LogLevel -> string
-      tokenise          : LiterateConsoleConf -> Message -> (string * LiterateToken) list 
-      theme             : LiterateToken -> ConsoleColor
+      tokenise          : LiterateConsoleConf -> Message -> (string * Tokens.LiterateToken) list 
+      theme             : Tokens.LiterateToken -> ConsoleColor
       colourWriter      : obj -> (string * ConsoleColor) list -> unit }
 
   module internal LiterateFormatting =
     open System.Text
     open Logary.Utils.FsMessageTemplates
+    open Tokens
 
     let literateExceptionColorizer (options : LiterateConsoleConf) (typeName) (message) (stackTrace) =
       let stackFrameLinePrefix = "   "
@@ -178,9 +180,12 @@ module LiterateConsole =
     let rec literateFormatField (options : LiterateConsoleConf)
                                 (prop : Property)
                                 (propValue : Field) =
-      let value, units = match propValue with Field (v, u) -> v, u | _ -> failwith "never happens"
+      let value, units = match propValue with Field (v, u) -> v, u
       match value with
-      | Value.Array items -> [ "todo", OtherSymbol ] // TODO:
+      | Value.Array items ->
+        [ "[ ", Punctuation ]
+          @ (items |> List.collect (fun v -> literateFormatField options prop (Field (v, None))))
+          @ [ " ]", Punctuation ]
       | Value.String s -> [ s, StringSymbol ]
       | Value.Bool b -> [ b.ToString(), KeywordSymbol ]
       | Value.Float f -> [ f.ToString(), NumericSymbol ]
@@ -276,21 +281,21 @@ module LiterateConsole =
               | Warn ->     "WRN"
       tokenise = LiterateFormatting.literateDefaultTokenizer
       theme = function
-              | Text -> ConsoleColor.White
-              | Subtext -> ConsoleColor.Gray
-              | Punctuation -> ConsoleColor.DarkGray
-              | LevelVerbose -> ConsoleColor.Gray
-              | LevelDebug -> ConsoleColor.Gray
-              | LevelInfo -> ConsoleColor.White
-              | LevelWarning -> ConsoleColor.Yellow
-              | LevelError -> ConsoleColor.Red
-              | LevelFatal -> ConsoleColor.Red
-              | KeywordSymbol -> ConsoleColor.Blue
-              | NumericSymbol -> ConsoleColor.Magenta
-              | StringSymbol -> ConsoleColor.Cyan
-              | OtherSymbol -> ConsoleColor.Green
-              | NameSymbol -> ConsoleColor.Gray
-              | MissingTemplateField -> ConsoleColor.Red
+              | Tokens.Text -> ConsoleColor.White
+              | Tokens.Subtext -> ConsoleColor.Gray
+              | Tokens.Punctuation -> ConsoleColor.DarkGray
+              | Tokens.LevelVerbose -> ConsoleColor.Gray
+              | Tokens.LevelDebug -> ConsoleColor.Gray
+              | Tokens.LevelInfo -> ConsoleColor.White
+              | Tokens.LevelWarning -> ConsoleColor.Yellow
+              | Tokens.LevelError -> ConsoleColor.Red
+              | Tokens.LevelFatal -> ConsoleColor.Red
+              | Tokens.KeywordSymbol -> ConsoleColor.Blue
+              | Tokens.NumericSymbol -> ConsoleColor.Magenta
+              | Tokens.StringSymbol -> ConsoleColor.Cyan
+              | Tokens.OtherSymbol -> ConsoleColor.Green
+              | Tokens.NameSymbol -> ConsoleColor.Gray
+              | Tokens.MissingTemplateField -> ConsoleColor.Red
       colourWriter = LiterateFormatting.consoleWriteColourPartsAtomically }
 
 

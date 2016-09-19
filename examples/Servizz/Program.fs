@@ -26,9 +26,11 @@ let main argv =
 
   // if you need a Logger instance:
   let logger = logary.getLogger (PointName [| "Libryy" |])
+  let libryyLogger = LoggerAdapter.createGeneric logger
 
-  for i = 0 to 100 do
-    Libryy.Core.work (LoggerAdapter.createGeneric logger) |> ignore
+  // Do lots of libryy work
+  for i = 0 to 10 do
+    Libryy.Core.work libryyLogger |> ignore
 
   mre.Wait()
   0
