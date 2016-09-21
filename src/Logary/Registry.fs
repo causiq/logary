@@ -207,9 +207,13 @@ module Advanced =
 
     /// Create a new Logger from the targets passed, with a given name.
     let fromTargets name ilogger (targets : (MessageFilter * TargetInstance * LogLevel) list) =
+      let minLevel =
+        match targets |> List.map (fun (_, _, level) -> level) with
+        | [] -> Fatal
+        | levels -> List.min levels
       { name    = name
         targets = targets |> List.map (fun (mf, ti, _) -> mf, ti)
-        level   = targets |> List.map (fun (_, _, level) -> level) |> List.min
+        level   = minLevel
         ilogger = ilogger }
       :> Logger
 
