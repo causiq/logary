@@ -1050,6 +1050,26 @@ module SystemDateEx =
       (x.Ticks - DateTimeOffset(1970, 1, 1, 0, 0, 0, TimeSpan.Zero).Ticks)
       * Constants.NanosPerTick
 
+/// Extensions to facilitate reading Diagnostics.Stopwatch as a value that
+/// suits Logary
+[<AutoOpen; Extension>]
+module StopwatchEx =
+  open System.Diagnostics
+
+  type Stopwatch with
+    /// Convert the current value of the Stopwatch to a gauge's value and unit.
+    [<Extension; CompiledName "ToGauge">]
+    member sw.toGauge() : (Value * Units) =
+      Int64 (sw.ElapsedTicks * Constants.NanosPerTick),
+      Scaled(Seconds, Constants.NanosPerSecond)
+
+    [<Extension; CompiledName "Time">]
+    static member time (fn : unit -> 'res) : 'res * (Value * Units) =
+      let sw = Stopwatch.StartNew()
+      let res = fn ()
+      sw.Stop()
+      res, sw.toGauge()
+
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Message =
   open Hopac
@@ -1354,12 +1374,8 @@ module Message =
       let res = f input
       sw.Stop()
 
-      let value, units =
-        Int64 (sw.ElapsedTicks * Constants.NanosPerTick),
-        Scaled(Seconds, Constants.NanosPerSecond)
-
-      let message =
-        gaugeWithUnit pointName units value
+      let value, units = sw.toGauge()
+      let message = gaugeWithUnit pointName units value
 
       res, message
 
@@ -1371,10 +1387,7 @@ module Message =
         let! res = fn input
         sw.Stop()
 
-        let value, units =
-          Int64 (sw.ElapsedTicks * Constants.NanosPerTick),
-          Scaled(Seconds, Constants.NanosPerSecond)
-
+        let value, units = sw.toGauge()
         return res, gaugeWithUnit pointName units value
       }
 
@@ -1386,8 +1399,7 @@ module Message =
         let! res = fn input
         let value, units =
           sw.Stop()
-          Int64 (sw.ElapsedTicks * Constants.NanosPerTick),
-          Scaled(Seconds, Constants.NanosPerSecond)
+          sw.toGauge()
         return res, gaugeWithUnit pointName units value
       }
 
@@ -1399,9 +1411,7 @@ module Message =
       fn input ^-> fun res ->
       sw.Stop()
 
-      let value, units =
-        Int64 (sw.ElapsedTicks * Constants.NanosPerTick),
-        Scaled(Seconds, Constants.NanosPerSecond)
+      let value, units = sw.toGauge()
 
       res, gaugeWithUnit pointName units value
     )
