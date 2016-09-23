@@ -792,6 +792,8 @@ with
   override x.ToString() =
     let (PointName hiera) = x in String.concat "." hiera
 
+  static member ToValue (v : PointName) = Value.setLensPartial Value.String_ (v.ToString())
+
   static member hierarchy_ : Lens<PointName, string[]> =
     (fun (PointName h) -> h),
     fun v x -> PointName v
