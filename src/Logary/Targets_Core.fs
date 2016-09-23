@@ -177,25 +177,45 @@ module LiterateConsole =
         )
         |> List.concat
 
-    let rec literateFormatField (options : LiterateConsoleConf)
+    let rec formatValueWithProvider (formatProvider : IFormatProvider) = function
+      | String s -> s
+      | Bool true -> "true"
+      | Bool false -> "false"
+      | Float f -> f.ToString(formatProvider)
+      | Int64 i -> i.ToString(formatProvider)
+      | BigInt bi -> bi.ToString(formatProvider)
+      | Binary (b, ct) -> System.BitConverter.ToString b |> fun s -> s.Replace("-", "")
+      | Fraction (n, d) -> System.String.Format(formatProvider, "{0}/{1}", n, d)
+      | Array values -> String.Concat ["["; values |> List.map (formatValueWithProvider formatProvider) |> String.concat ", "; "]"]
+      | Object m ->
+          [ "["
+            Map.toList m
+                |> List.map (fun (key, value) -> key + "=" + (formatValueWithProvider formatProvider value))
+                |> String.concat ", "
+            "]" ]
+          |> String.Concat
+
+    let rec literateFormatField (conf : LiterateConsoleConf)
                                 (prop : Property)
                                 (propValue : Field) =
       let value, units = match propValue with Field (v, u) -> v, u
+      let fp = conf.formatProvider
+      Logary.Formatting.MessageParts.formatValue
       match value with
       | Value.Array items ->
         [ "[ ", Punctuation ]
-          @ (items |> List.collect (fun v -> literateFormatField options prop (Field (v, None))))
+          @ (items |> List.collect (fun v -> literateFormatField conf prop (Field (v, None))))
           @ [ " ]", Punctuation ]
       | Value.String s -> [ s, StringSymbol ]
-      | Value.Bool b -> [ b.ToString(), KeywordSymbol ]
-      | Value.Float f -> [ f.ToString(), NumericSymbol ]
-      | Value.Int64 i -> [ i.ToString(), NumericSymbol ]
-      | Value.BigInt bi -> [ bi.ToString(), NumericSymbol ]
-      | Value.Binary (x, y) -> [ "todo", OtherSymbol ] // TODO:
-      | Value.Fraction (x, y) -> [ "todo", OtherSymbol ] // TODO:
+      | Value.Bool b -> [ b.ToString(fp), KeywordSymbol ]
+      | Value.Float f -> [ f.ToString(prop.Format, fp), NumericSymbol ]
+      | Value.Int64 i -> [ i.ToString(prop.Format, fp), NumericSymbol ]
+      | Value.BigInt bi -> [ bi.ToString(prop.Format, fp), NumericSymbol ]
+      | Value.Binary (x, y) -> [ "todo (binary)", OtherSymbol ] // TODO:
+      | Value.Fraction (x, y) -> [ "todo (fraction)", OtherSymbol ] // TODO:
       | Value.Object o -> [ o.ToString(), OtherSymbol ] // TODO: recurse
 
-    let literateFormatValue (options : LiterateConsoleConf) (fields : Map<PointName, Field>) = function
+    let literateFormatValue (options : LiterateConsoleConf) (message : Message) = function
       | Event eventTemplate ->
         let themedParts = ResizeArray<string * LiterateToken>()
         let matchedFields = ResizeArray<string>()
@@ -203,7 +223,7 @@ module LiterateConsole =
           Parser.parse(eventTemplate).Tokens
           |> Seq.collect (function
             | PropToken (_, prop) ->
-              match Map.tryFind (PointName.ofSingle prop.Name) fields with
+              match Map.tryFind (PointName.ofSingle prop.Name) message.fields with
               | Some field ->
                 matchedFields.Add prop.Name
                 literateFormatField options prop field
@@ -214,10 +234,22 @@ module LiterateConsole =
 
         Set.ofSeq matchedFields, List.ofSeq themedParts
 
-      | Derived (value, units)
+      | Derived (value, units) ->
+        Set.empty, [ "Metric (derived) ", Subtext
+                     formatValueWithProvider options.formatProvider value, NumericSymbol
+                     " ", Subtext
+                     Units.symbol units, Text
+                     " (", Punctuation
+                     message.name.ToString(), Text
+                     ")", Punctuation ]
       | Gauge (value, units) ->
-        Set.empty, [ Units.formatValue value, NumericSymbol
-                     Units.symbol units, KeywordSymbol ]
+        Set.empty, [ "Metric (guage) ", Subtext
+                     formatValueWithProvider options.formatProvider value, NumericSymbol
+                     " ", Subtext
+                     Units.symbol units, Text
+                     " (", Punctuation
+                     message.name.ToString(), Text
+                     ")", Punctuation ]
 
     /// Split a structured message up into theme-able parts (tokens), allowing the
     /// final output to display to a user with colours to enhance readability.
@@ -227,8 +259,8 @@ module LiterateConsole =
         Subtext
 
       let themedMessageParts =
-        message.value |> literateFormatValue options message.fields |> snd
-
+        message.value |> literateFormatValue options message |> snd
+        
       let themedExceptionParts =
         let exnParts = literateColorizeExceptions options message
         if not exnParts.IsEmpty then
