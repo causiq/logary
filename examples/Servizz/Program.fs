@@ -21,12 +21,21 @@ let main argv =
       >> withRules [ Rule.createForTarget "console" ])
     |> run
 
-  // for the statics:
+  // Initialise Libryy so it logs to Logary (proper)
   LogaryFacadeAdapter.initialise<Libryy.Logging.Logger> logary
 
   // if you need a Logger instance:
   let logger = logary.getLogger (PointName [| "Libryy" |])
-  let res = Libryy.Core.work (LoggerAdapter.createGeneric logger)
+  let librryLogger = LoggerAdapter.createGeneric logger
+
+  let workResult = Libryy.Core.work librryLogger
+  Message.eventDebug "Got {workResult} from Libryy" |> Message.setField "workResult" workResult |> logger.logSimple
+
+  let simpleWorkExnResult = Libryy.Core.simpleWorkThatCatchesAndLogsAnErrorAndException librryLogger
+  Message.eventDebug "Got {simpleWorkExnResult} from Libryy" |> Message.setField "simpleWorkExnResult" simpleWorkExnResult |> logger.logSimple
+
+  let staticWorkResult = Libryy.Core.staticWork()
+  Message.eventDebug "Got {staticWorkResult} from Libryy" |> Message.setField "staticWorkResult" staticWorkResult |> logger.logSimple
 
   mre.Wait()
   0
