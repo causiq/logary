@@ -193,7 +193,7 @@ let main argv =
 
 Logary is itself a library for metrics and events with extensible inputs, *adapters*, and
 outputs, *targets*. Further, its *services* run as their own processes or in
-[Suave](https://suave.io/?utm_source=github&utm_campaign=logary).
+[Suave][suave-site].
 
  - **Logary** – the main logging and metrics library. Your app depends on this.
  - Logary.CSharp - C# facade that makes it more *object oriented*.
@@ -219,7 +219,7 @@ outputs, *targets*. Further, its *services* run as their own processes or in
    * EventStore – [EventStore](https://geteventstore.com/) logs into Logary.
    * *Facade* –  receiver for `Logary.Facade` logs.
    * <span title="F# API for dealing with DBs">FsSql</span> –
-     [FsSql](https://www.nuget.org/packages/FsSql/) logs into Logary.
+     [FsSql][fssql-nuget] logs into Logary.
    * <span title="A web authorisation library">Hawk</span> - Logibit's
      [Hawk](https://www.nuget.org/packages/Hawk/) logs into Logary.
    * log4net – lets log4net log into Logary.
@@ -876,6 +876,46 @@ And the Rule for it:
 Rule.createForTarget "rabbitmq"
 ```
 
+## EventStore adapter
+
+Use to extract logs from [GetEventStore.com][eventstore-site].
+
+```fsharp
+let logger = Logging.getLoggerByName "EventStore"
+let adapter = EventStoreAdapter logger
+```
+
+## FsSQL
+
+Use to extract logs from [fssql-github].
+
+```fsharp
+let logger = Logging.getLoggerByName "FsSql"
+let adapter = FsSqlAdapter logger
+```
+
+## Suave
+
+Use to extract logs from [Suave.io][suave-site].
+
+```fsharp
+let logger = Logging.getLoggerByName "Suave"
+let adapter = SuaveAdapter logger
+let config = { defaultConfig with logger = adapter }
+startWebServer config (Successful.OK "Hi there")
+```
+
+## Topshelf
+
+Use to extract logs from [Topshelf (Plain HTTP)][topshelf-site].
+
+```fsharp
+open Logary
+open Topshelf.Logging
+use logary = // ... create logary
+let host = HostFactory.New(fun x -> x.UseLogary(logary))
+```
+
 ### From NLog.RabbitMQ, log4net.RabbitMQ?
 
 Here's how you could configure the RabbitMQ target with C#:
@@ -1524,3 +1564,8 @@ Acks), asynchronous publish and also durable messaging.
  [github-chiron]: https://github.com/xyncro/chiron
  [hopac-fromAsync]: https://hopac.github.io/Hopac/Hopac.html#def:val%20Hopac.Job.fromAsync
  [hopac-isolate]: https://hopac.github.io/Hopac/Hopac.html#def:val%20Hopac.Job.Scheduler.isolate
+ [eventstore-site]: https://geteventstore.com
+ [fssql-nuget]: https://www.nuget.org/packages/FsSql/
+ [fssql-github]: https://github.com/mausch/FsSql
+ [suave-site]: https://suave.io/?utm_source=github&utm_campaign=logary
+ [topshelf-site]: http://topshelf-project.com/

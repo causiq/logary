@@ -245,11 +245,11 @@ libraries, without taking a dependency on Logary. That way you reduce churn.
 
 Get logs from libraries.
 
- - F# Facade adapter
- - EventStore
- - FsSql
- - Suave
- - Topshelf
+ - F# [Facade adapter][readme-facadeadapter]
+ - [EventStore][readme-eventstore]
+ - [FsSql][readme-fssql]
+ - [Suave][readme-suave]
+ - [Topshelf][readme-topshelf]
  - ...
 
 ---
@@ -295,7 +295,12 @@ Use together with [logary-js][github-logaryjs].
 
  [readme-gauge]: https://github.com/logary/logary#pointvaluegauge
  [readme-facade]: https://github.com/logary/logary#using-logary-in-a-library
+ [readme-facadeadapter]: https://github.com/logary/logary#the-logary-facade-adapter
  [readme-datamodel]: https://github.com/logary/logary#tutorial-and-data-model
+ [readme-eventstore]: https://github.com/logary/logary#evenstore-adapter
+ [readme-fssql]: https://github.com/logary/logary#fssql-adapter
+ [readme-suave]: https://github.com/logary/logary#suave-adapter
+ [readme-topshelf]: https://github.com/logary/logary#topshelf-adapter
  [github-logary]: https://github.com/logary/logary#logary-v4
  [github-haf]: https://github.com/haf
  [github-contributors]: https://github.com/logary/logary/graphs/contributors
