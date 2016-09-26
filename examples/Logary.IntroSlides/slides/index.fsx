@@ -64,7 +64,7 @@ let logger = Logging.getLoggerByName "MyApp.Program"
 let logary =
   withLogaryManager "Logary.Examples.ConsoleApp" (
     withTargets [ Console.create (Console.empty) "console" ] >>
-    withRules [Rule.createForTarget "console"])
+    withRules [ Rule.createForTarget "console" ])
   |> Hopac.run
 
 (**
@@ -216,7 +216,28 @@ loop ()
  - Callers can **NACK/abort flush** that take too long
  - **Let-it-crash**. The hidden **supervisor** will restart => stable software
  - Supports **stashing state** with supervisor on exceptions
+ - Supports back-pressure through its RingBuffers
 
+***
+
+## The Facade
+
+The [Logary Facade][readme-facade] lets you log in a structured manner from
+libraries, without taking a dependency on Logary. That way you reduce churn.
+
+    [lang=fsharp]
+    open Libryy.Logging
+
+    let coreLogger = Log.create "Libryy.Core"
+
+    let work (logger : Logger) =
+      logger.logWithAck Warn (
+        Message.eventX "Hey {user}!"
+        >> Message.setFieldValue "user" "haf"
+        >> Message.setSingleName "Libryy.Core.work"
+        >> Message.setTimestamp 1470047883029045000L)
+      |> Async.RunSynchronously
+      42
 
 ***
 
@@ -235,21 +256,50 @@ Get logs from libraries.
 
 ## Adapters – F# facade
 
-Lets you log in a structured manner from libraries, without taking a dependency
-on Logary.
+Lets you extract the logs from any library using the [Logary
+Facade][readme-facade] without writing any code for it.
+
+It will automatically translate logged data into Logary's
+[DataModel][readme-datamodel].
 
 ***
 
-## Services
+## Services – Rutta
 
- - Rutta
- - SQLServerHealth
- - SuaveReporter
+Lets you **ship** *from* nodes in a subnet, to a **proxy** that can forward to a
+**router** that knows about your targets.
 
+---
+
+## Services – SQLServerHealth
+
+A service that runs on heavily loaded SQL Server instances to ship their metrics
+
+---
+
+## Services – SuaveReporter
+
+A service you can use for logging over HTTP. API is isomorphic to that of
+`Message`, built using [Suave.io][suave-io] to be scalable and light-weight.
+
+Use together with [logary-js][github-logaryjs].
+
+***
+
+## In summary
+
+ - A one-stop-shop for logging and metrics
+ - Heavily [documented][github-logary]
+ - Community and commercial support available
+ - Constructed using the lessons learned from building distributed systems
 
  [readme-gauge]: https://github.com/logary/logary#pointvaluegauge
+ [readme-facade]: https://github.com/logary/logary#using-logary-in-a-library
+ [readme-datamodel]: https://github.com/logary/logary#tutorial-and-data-model
+ [github-logary]: https://github.com/logary/logary#logary-v4
  [github-haf]: https://github.com/haf
  [github-contributors]: https://github.com/logary/logary/graphs/contributors
+ [github-logaryjs]: https://github.com/logary/logary-js#logary-js
  [twitter-logarylib]: https://twitter.com/logarylib
-
+ [suave-io]: https://suave.io
 *)

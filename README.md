@@ -63,6 +63,7 @@ Install-Package Logary
       * [Derived metrics](#derived-metrics)
     * [Console logging](#console-logging)
     * [Using logary in a library](#using-logary-in-a-library)
+      * [The Logary Facade Adapter](#the-logary-facade-adapter)
       * [How do the error and log methods differ?](#how-do-the-error-and-log-methods-differ)
       * [Passing more information](#passing-more-information)
       * [A note on the FSI](#a-note-on-the-fsi)
@@ -736,6 +737,8 @@ source https://www.nuget.org/api/v2
 nuget Logary
 nuget Logary.Adapters.Facade
 ```
+
+### The Logary Facade Adapter
 
 The calling service/application then creates a new `Logger` specifically for the
 library that it aims to ship/extract logs from.
