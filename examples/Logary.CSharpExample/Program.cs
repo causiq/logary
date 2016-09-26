@@ -59,7 +59,7 @@ namespace Logary.CSharpExample
             {
                 var logger = logary.GetLogger("Logary.CSharpExample");
 
-                logger.LogEvent(LogLevel.Debug, "Hello world", new
+                logger.LogEvent(LogLevel.Debug, "Hello world. Important? {important}", new
                 {
                     important = "yes"
                 });
