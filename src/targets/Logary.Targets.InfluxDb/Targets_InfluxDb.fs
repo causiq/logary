@@ -291,7 +291,7 @@ let create conf =
 
 /// Use with LogaryFactory.New( s => s.Target<InfluxDb.Builder>() )
 type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
-  let update (conf' : InfluxDbConf) : InfluxDbConf =
+  let update (conf' : InfluxDbConf) : Builder =
     Builder(conf', callParent)
 
   /// if authentication is enabled, you must authenticate as a user with write permissions to the target database
