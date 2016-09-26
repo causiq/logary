@@ -18,7 +18,7 @@ NUGET
       elmah.corelibrary (>= 1.2.2)
       elmah.io.client (>= 2.0.29)
     EventStore.Client (3.9)
-    FAKE (4.40)
+    FAKE (4.40.1)
     FluentMigrator (1.6.2)
     FluentMigrator.Runner (1.6.2)
       FluentMigrator (>= 1.6.2)
@@ -39,9 +39,9 @@ NUGET
       Fuchu (>= 1.0.3)
     Hopac (0.3.21)
       FSharp.Core (>= 3.1.2.5)
-    Http.fs (4.0.2)
+    Http.fs (4.1)
       FSharp.Core (>= 3.1.2.5)
-      Hopac (>= 0.3.13)
+      Hopac (>= 0.3.21)
     log4net (2.0.5)
     Machine.Specifications (0.11)
     Machine.Specifications.Runner.Console (0.9.2)
@@ -74,7 +74,7 @@ GITHUB
     RingBuffer.fs (4557d607737e748b54eb6de3ec5e5cd02247b2a5)
       Hopac
   remote: logary/logary
-    src/Logary.Facade/Facade.fs (cec251e64a6714ad028ab384c14478f301a8663b)
+    src/Logary.Facade/Facade.fs (fb7f4398f4895a7c02483d08163ac1aeee737a66)
 GROUP Examples
 REDIRECTS: ON
 FRAMEWORK: >= NET45
