@@ -74,7 +74,7 @@ GITHUB
     RingBuffer.fs (4557d607737e748b54eb6de3ec5e5cd02247b2a5)
       Hopac
   remote: logary/logary
-    src/Logary.Facade/Facade.fs (fb7f4398f4895a7c02483d08163ac1aeee737a66)
+    src/Logary.Facade/Facade.fs (e4c1f295e8538916bcc44741a5d5158631172c60)
 GROUP Examples
 REDIRECTS: ON
 FRAMEWORK: >= NET45
@@ -89,9 +89,9 @@ NUGET
       FSharp.Core
     Hopac (0.3.21)
       FSharp.Core (>= 3.1.2.5)
-    Http.fs (4.0.2)
+    Http.fs (4.1)
       FSharp.Core (>= 3.1.2.5)
-      Hopac (>= 0.3.13)
+      Hopac (>= 0.3.21)
     Logary (4.0.112)
       FParsec (>= 1.0.2)
       FSharp.Core (>= 4.0.0.1)
