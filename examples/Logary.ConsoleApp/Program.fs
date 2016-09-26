@@ -163,7 +163,7 @@ module Timing =
     let reduce state = function
       | Float v, Seconds ->
         int64 (v * float Constants.NanosPerSecond) :: state
-      | Int64 v, Scaled (Seconds, Constants.NanosPerSecond) as input ->
+      | Int64 v, Scaled (Seconds, float Constants.NanosPerSecond) as input ->
         v :: state
       | _ -> state
 
