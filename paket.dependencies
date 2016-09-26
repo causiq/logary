@@ -1,5 +1,5 @@
 redirects: on
-framework: net45
+framework: net45, net452
 source https://www.nuget.org/api/v2
 source https://www.myget.org/F/haf/api/v3/index.json
 
@@ -32,7 +32,7 @@ nuget System.Data.SQLite.Core
 nuget Argu
 nuget Unquote
 nuget Http.fs
-nuget Topshelf ~> 3
+nuget Topshelf
 nuget Topshelf.FSharp
 nuget fszmq
 nuget ApacheThrift
