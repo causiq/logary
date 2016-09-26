@@ -885,7 +885,7 @@ let logger = Logging.getLoggerByName "EventStore"
 let adapter = EventStoreAdapter logger
 ```
 
-## FsSQL
+## FsSQL adapter
 
 Use to extract logs from [fssql-github].
 
@@ -894,7 +894,7 @@ let logger = Logging.getLoggerByName "FsSql"
 let adapter = FsSqlAdapter logger
 ```
 
-## Suave
+## Suave adapter
 
 Use to extract logs from [Suave.io][suave-site].
 
@@ -905,7 +905,7 @@ let config = { defaultConfig with logger = adapter }
 startWebServer config (Successful.OK "Hi there")
 ```
 
-## Topshelf
+## Topshelf adapter
 
 Use to extract logs from [Topshelf (Plain HTTP)][topshelf-site].
 
