@@ -1,8 +1,10 @@
 ﻿namespace Topshelf.Logging
 
 open System
+open System.Runtime.CompilerServices
 open System.Diagnostics
 open Topshelf.Logging
+open Topshelf.HostConfigurators
 open Logary
 
 type TopshelfAdapter(logger : Logger) =
@@ -151,3 +153,23 @@ type TopshelfAdapter(logger : Logger) =
     member x.FatalFormat (format, args) =
       Message.eventFormat (Error, format, args)
       |> log
+
+type LogaryWriterFactory(logary : LogManager) =
+  interface LogWriterFactory with
+    member x.Get name =
+      let llogger = logary.getLogger (PointName.parse name)
+      TopshelfAdapter llogger :> LogWriter
+    member x.Shutdown () =
+      ()
+
+type LogaryHostLoggerConfigurator(logary : LogManager) =
+  interface HostLoggerConfigurator with
+    member x.CreateLogWriterFactory() =
+      LogaryWriterFactory(logary) :> LogWriterFactory
+
+[<Extension>]
+module ConfiguratorExtensions =
+
+  [<Extension; CompiledName "UseLogary">]
+  let useLogary (hc : HostConfigurator) (logary : LogManager) =
+    HostLogger.UseLogger(new LogaryHostLoggerConfigurator(logary))
