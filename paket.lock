@@ -74,7 +74,7 @@ GITHUB
     RingBuffer.fs (4557d607737e748b54eb6de3ec5e5cd02247b2a5)
       Hopac
   remote: logary/logary
-    src/Logary.Facade/Facade.fs (13394cd372f686eb2e51e0c8cfc454595d724fa9)
+    src/Logary.Facade/Facade.fs (77a9724dc9551ef40b54bc78753528a0b02b09d4)
 GROUP Examples
 REDIRECTS: ON
 FRAMEWORK: >= NET45
