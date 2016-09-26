@@ -1,6 +1,7 @@
-﻿namespace Logary.Utils.FsMessageTemplates
+﻿module internal Logary.Utils.FsMessageTemplates
 
-// From https://github.com/adamchester/MessageTemplates/blob/master/FsMessageTemplates/MessageTemplates.fs
+// From https://github.com/messagetemplates/messagetemplates-fsharp
+// https://github.com/messagetemplates/messagetemplates-fsharp/blob/78a7c2ade80cccd6ebdffacf03393bdd68f622b8/src/FsMessageTemplates/MessageTemplates.fs
 
 open System.Text
 open System.IO
@@ -39,8 +40,8 @@ type AlignInfo =
     static member Invalid = AlignInfo(isValid=false)
 
 [<Struct>]
-type PropertyToken(name:string, pos:int, destr:DestrHint, align: AlignInfo, format: string) =
-    static member Empty = PropertyToken("", -1, DestrHint.Default, AlignInfo.Empty, null)
+type Property(name:string, pos:int, destr:DestrHint, align: AlignInfo, format: string) =
+    static member Empty = Property("", -1, DestrHint.Default, AlignInfo.Empty, null)
     member __.Name = name
     member __.Pos = pos
     member __.Destr = destr
@@ -52,24 +53,25 @@ type PropertyToken(name:string, pos:int, destr:DestrHint, align: AlignInfo, form
             .AppendIf(includeDestr && x.Destr <> DestrHint.Default, x.Destr.ToDestrChar())
             .Append(name)
             .AppendIf(not x.Align.IsEmpty, "," + ((if x.Align.Direction = Direction.Left then "-" else "") + string x.Align.Width))
-            .AppendIf(x.Format <> null, ":" + x.Format)
+            .Append(match x.Format with null -> "" | _ -> ":" + x.Format)
             .Append("}")
     override x.ToString() = x.AppendPropertyString(StringBuilder(), true, name).ToString()
 
 type Token =
-| Text of startIndex:int * text:string
-| Prop of startIndex:int * PropertyToken
-    override x.ToString() = match x with | Text (_, s) -> s | Prop (_, pd) -> (string pd)
+| TextToken of startIndex: int * text: string
+| PropToken of startIndex: int * prop: Property
+    override x.ToString() = match x with | TextToken (_, s) -> s | PropToken (_, pd) -> (string pd)
 
-type Template(formatString:string, tokens: Token[], isNamed:bool, properties:PropertyToken[]) =
-    let named = if isNamed then properties else Unchecked.defaultof<PropertyToken[]>
-    let positional = if isNamed then Unchecked.defaultof<PropertyToken[]> else properties
+type Template(formatString:string, tokens: Token[], isNamed:bool, properties:Property[]) =
+    let named = if isNamed then properties else Unchecked.defaultof<Property[]>
+    let positional = if isNamed then Unchecked.defaultof<Property[]> else properties
     member this.Tokens = tokens :> Token seq
     member this.FormatString = formatString
-    member this.Properties = properties :> PropertyToken seq
+    member this.Properties = properties :> Property seq
     member internal this.Named = named
     member internal this.Positionals = positional
     member internal this.HasAnyProperties = properties.Length > 0
+    override this.ToString() = sprintf "T (tokens = %A)" tokens
 
 type ScalarKeyValuePair = TemplatePropertyValue * TemplatePropertyValue
 and PropertyNameAndValue = { Name:string; Value:TemplatePropertyValue }
@@ -104,7 +106,7 @@ and
         member internal x.Log = nullLogger
         /// During destructuring, this is called to 'recursively' destructure child properties
         /// or sequence elements.
-        member inline internal x.TryAgainWithValue (newValue:obj) =
+        member x.TryAgainWithValue (newValue:obj) =
             let nextDepth = x.CurrentDepth + 1
             if nextDepth > x.MaxDepth then Defaults.scalarNull
             else
@@ -121,53 +123,12 @@ and
 
 [<RequireQualifiedAccess>]
 module Empty =
-    let textToken = Text(0, "")
-    let propToken = Prop(0, PropertyToken.Empty)
+    let textToken = TextToken(0, "")
+    let propToken = PropToken(0, Property.Empty)
     let textTokenArray = [| textToken |]
     let scalarNull = Defaults.scalarNull
 
 module Parser =
-
-    /// Appends text characters from the template string started at a specified character index
-    /// and returns when the end of the template string is reached, or the start of a property
-    /// is encountered. Returns the next character index.
-    let inline appendTextUntilNextProp (startAt:int) (template:string) (append: char->unit) : int =
-        let chars = template
-        let tlen = chars.Length
-        let rec go i =
-            if i >= tlen then tlen
-            else
-                let c = chars.[i]
-                match c with
-                | '{' -> if (i+1) < tlen && chars.[i+1] = '{' then
-                            append c; go (i+2)
-                         else i // bail out at the start of a property
-                | '}' when (i+1) < tlen && chars.[i+1] = '}' -> append c; go (i+2)
-                | _ -> append c; go (i+1)
-        go startAt
-
-    /// Parses a text token inside the template string, starting at a specified character number within the
-    /// template string, and returning the 'next' character index + the parsed text token. The StringBuilder
-    /// is used as a temporary buffer for collecting the text token characters, and is cleared before returning.
-    /// The text token is 'finished' when an open brace is encountered (or the end of the template string is
-    /// reached (whichever comes first).
-    let inline parseTextToken (sb:StringBuilder) (startAt:int) (template:string) : int*Token =
-        let nextIndex = appendTextUntilNextProp startAt template (fun (ch:char) -> sb.Append(ch) |> ignore)
-        if nextIndex <> startAt then nextIndex, Token.Text(startAt, sb.ToStringAndClear())
-        else startAt, Empty.textToken
-
-    let inline isLetterOrDigit c = System.Char.IsLetterOrDigit c
-    let inline isValidInPropName c = c = '_' || System.Char.IsLetterOrDigit c
-    let inline isValidInDestrHint c = c = '@' || c = '$'
-    let inline isValidInAlignment c = c = '-' || System.Char.IsDigit c
-    let inline isValidInFormat c = c <> '}' && (c = ' ' || isLetterOrDigit c || System.Char.IsPunctuation c)
-    let inline isValidCharInPropTag c = c = ':' || isValidInPropName c || isValidInFormat c || isValidInDestrHint c
-    let inline tryGetFirstChar predicate (s:string) first =
-        let len = s.Length
-        let rec go i =
-            if i >= len then -1
-            else if not (predicate s.[i]) then go (i+1) else i
-        go first
 
     [<Struct>]
     type Range(startIndex:int, endIndex:int) =
@@ -182,6 +143,64 @@ module Parser =
         override __.ToString() = (string startIndex) + ", " + (string endIndex)
         member this.IsEmpty = startIndex = -1 && endIndex = -1
         static member Empty = Range(-1, -1)
+
+    let inline findNextNonPropText (startAt : int) (template : string) (foundText : string->unit) : int =
+      // Finds the next text token (starting from the 'startAt' index) and returns the next character
+      // index within the template string. If the end of the template string is reached, or the start
+      // of a property token is found (i.e. a single { character), then the 'consumed' text is passed
+      // to the 'foundText' method, and index of the next character is returned.
+      let mutable escapedBuilder = Unchecked.defaultof<StringBuilder> // don't create one until it's needed
+      let inline append (ch : char) = if not (isNull escapedBuilder) then escapedBuilder.Append(ch) |> ignore
+      let inline createStringBuilderAndPopulate i =
+        if isNull escapedBuilder then
+          escapedBuilder <- StringBuilder() // found escaped open-brace, take the slow path
+          for chIndex = startAt to i-1 do append template.[chIndex] // append all existing chars
+      let rec go i =
+        if i >= template.Length then
+          template.Length // bail out at the end of the string
+        else
+          let ch = template.[i]
+          match ch with
+          | '{' ->
+            if (i+1) < template.Length && template.[i+1] = '{' then
+              createStringBuilderAndPopulate i
+              append ch; go (i+2)
+            else i // found an open brace (potentially a property), so bail out
+          | '}' when (i+1) < template.Length && template.[i+1] = '}' ->
+            createStringBuilderAndPopulate i
+            append ch; go (i+2)
+          | _ ->
+            append ch; go (i+1)
+
+      let nextIndex = go startAt
+      if (nextIndex > startAt) then // if we 'consumed' any characters, signal that we 'foundText'
+        if isNull escapedBuilder then
+          foundText (Range(startAt, nextIndex - 1).GetSubString(template))
+        else
+          foundText (escapedBuilder.ToString())
+      nextIndex
+
+    /// Parses a text token inside the template string, starting at a specified character number within the
+    /// template string, and returning the 'next' character index + the parsed text token. 
+    /// The text token is 'finished' when an open brace is encountered (or the end of the template string is
+    /// reached, whichever comes first).
+    let inline parseTextToken (startAt:int) (template:string) : int*Token =
+        let mutable textFound : string = ""
+        let nextIndex = findNextNonPropText startAt template (fun t -> textFound <- t)
+        if nextIndex <> startAt then nextIndex, Token.TextToken(startAt, textFound)
+        else startAt, Empty.textToken
+
+    let inline isValidInPropName c = c = '_' || System.Char.IsLetterOrDigit c
+    let inline isValidInDestrHint c = c = '@' || c = '$'
+    let inline isValidInAlignment c = c = '-' || System.Char.IsDigit c
+    let inline isValidInFormat c = c <> '}' && (c = ' ' || System.Char.IsLetterOrDigit c || System.Char.IsPunctuation c)
+    let inline isValidCharInPropTag c = c = ':' || isValidInPropName c || isValidInFormat c || isValidInDestrHint c
+    let inline tryGetFirstChar predicate (s:string) first =
+        let len = s.Length
+        let rec go i =
+            if i >= len then -1
+            else if not (predicate s.[i]) then go (i+1) else i
+        go first
 
     let inline tryGetFirstCharRng predicate (s:string) (rng:Range) =
         let rec go i =
@@ -271,54 +290,51 @@ module Parser =
             else
                 if alignRange.IsEmpty then
                     let format = if formatRange.IsEmpty then null else formatRange.GetSubString t
-                    let pt = PropertyToken(propertyName, parseIntOrNegative1 propertyName, destr, AlignInfo.Empty, format)
-                    Prop(within.Start - 1, pt)
+                    let pt = Property(propertyName, parseIntOrNegative1 propertyName, destr, AlignInfo.Empty, format)
+                    PropToken(within.Start - 1, pt)
                 else
                     let ai = tryParseAlignInfoRng t alignRange
                     if not ai.IsValid then Empty.propToken
                     else
                         let format = if formatRange.IsEmpty then null else formatRange.GetSubString t
-                        let pt = PropertyToken(propertyName, parseIntOrNegative1 propertyName, destr, ai, format)
-                        Prop(within.Start - 1, pt)
+                        let pt = Property(propertyName, parseIntOrNegative1 propertyName, destr, ai, format)
+                        PropToken(within.Start - 1, pt)
 
     /// Parses the property token in the template string from the start character index, and
     /// calls the 'foundProp' method. If the property is malformed, the 'appendTextChar' method
     /// is called instead for each character consumed. Finally, the next character index is returned.
-    let findPropOrAppendText (start:int) (template:string) (appendTextChar: char->unit)
-                                                           (foundProp: PropertyToken->unit) : int =
-        let first = start
-        let inline appendAll first last = for i = first to last do appendTextChar template.[i]
-
+    let findPropOrAppendText (start:int) (template:string) (foundText: string -> unit)
+                                                           (foundProp: Property -> unit) : int =
         // skip over characters after the open-brace, until we reach a character that
         // is *NOT* a valid part of the property tag. this will be the close brace character
         // if the template is actually a well-formed property tag.
         let nextInvalidCharIndex =
-            match tryGetFirstChar (not << isValidCharInPropTag) template (first+1) with
+            match tryGetFirstChar (not << isValidCharInPropTag) template (start+1) with
             | -1 -> template.Length | idx -> idx
 
         // if we stopped at the end of the string or the last char wasn't a close brace
         // then we treat all the characters we found as a text token, and finish.
         if nextInvalidCharIndex = template.Length || template.[nextInvalidCharIndex] <> '}' then
-            appendAll first (nextInvalidCharIndex - 1)
+            foundText (Range(start, nextInvalidCharIndex - 1).GetSubString(template))
             nextInvalidCharIndex
         else
             // skip over the trailing "}" close prop tag
             let nextIndex = nextInvalidCharIndex + 1
-            let propInsidesRng = Range(first + 1, nextIndex - 2)
+            let propInsidesRng = Range(start + 1, nextIndex - 2)
             match tryGetPropInSubString template propInsidesRng with
-            | t when obj.ReferenceEquals(t, Empty.propToken) -> appendAll first (nextIndex - 1)
-            | Prop (_,pt) -> foundProp pt
-            | _ -> appendAll first (nextIndex - 1)
+            | PropToken (_,pt) as p when not (obj.ReferenceEquals(p, Empty.propToken)) -> foundProp pt
+            | _ -> foundText (Range(start, nextIndex - 1).GetSubString(template))
 
             nextIndex
 
-    let parsePropertyToken (buffer:StringBuilder) (start:int) (mt:string) (rz: ResizeArray<Token>) : int =
-        let appendChar (ch:char) = buffer.Append(ch) |> ignore
-        let wasProperty = ref false
-        let foundProp (p:PropertyToken) = rz.Add(Token.Prop(start, p)); wasProperty := true
-        let nextIndex = findPropOrAppendText start mt appendChar foundProp
-        if not !wasProperty then
-            rz.Add(Token.Text(start, buffer.ToStringAndClear()))
+    let parsePropertyToken (start: int) (mt: string) (rz: ResizeArray<Token>) : int =
+        let mutable wasProperty = false
+        let mutable text = ""
+        let foundProp (p:Property) = rz.Add (PropToken (start, p)); wasProperty <- true
+        let foundText t = text <- t
+        let nextIndex = findPropOrAppendText start mt foundText foundProp
+        if not wasProperty then
+            rz.Add (TextToken (start, text))
         nextIndex
 
     let parseTokens (mt:string) =
@@ -329,20 +345,20 @@ module Parser =
             let rz = ResizeArray<Token>()
             let rec go start =
                 if start >= tlen then rz.ToArray()
-                else match parseTextToken sb start mt with
+                else match parseTextToken start mt with
                      | next, tok when next <> start ->
                         rz.Add tok; go next
                      | _, _ ->
                         // no text token parsed, try a property. note that this will
                         // append a text token if the property turns out to be malformed.
-                        go (parsePropertyToken sb start mt rz)
+                        go (parsePropertyToken start mt rz)
             go 0
 
-    let parseParts (s:string) (foundText: char->unit) (foundProp: PropertyToken->unit) =
+    let parseParts (s:string) (foundText: string->unit) (foundProp: Property->unit) =
         let tlen = s.Length
         let rec go start =
             if start >= tlen then ()
-            else match appendTextUntilNextProp start s foundText with
+            else match findNextNonPropText start s foundText with
                  | next when next <> start -> go next
                  | _ -> go (findPropOrAppendText start s foundText foundProp)
         go 0
@@ -350,11 +366,11 @@ module Parser =
     let parse (s:string) =
         let tokens = s |> parseTokens
         let mutable allPos, anyPos = true, false
-        let rzProps = ResizeArray<PropertyToken>()
+        let rzProps = ResizeArray<Property>()
         for i = 0 to (tokens.Length-1) do
             let t = tokens.[i]
             match t with
-            | Prop (_, pt) ->
+            | PropToken (_, pt) ->
                 rzProps.Add pt
                 if pt.IsPositional then anyPos <- true else allPos <- false
             | _ -> ()
@@ -382,7 +398,7 @@ module Destructure =
         elif scalarTypeHash.Contains(r.Value.GetType()) then (ScalarValue r.Value)
         else TemplatePropertyValue.Empty
 
-    let tryNullable (r:DestructureRequest) =
+    let inline tryNullable (r:DestructureRequest) =
         let t = r.Value.GetType()
         let isNullable = t.IsConstructedGenericType && t.GetGenericTypeDefinition() = typedefof<Nullable<_>>
         if isNullable then
@@ -416,7 +432,7 @@ module Destructure =
         | :? System.Reflection.MemberInfo as m -> ScalarValue m
         | _ -> TemplatePropertyValue.Empty
 
-    let tryScalarDestructure (r:DestructureRequest) =
+    let inline tryScalarDestructure (r:DestructureRequest) =
         match tryBuiltInTypesOrNull r with
         | ekt1 when isEmptyKeepTrying ekt1 ->
             match tryNullable r with
@@ -570,8 +586,36 @@ module Capturing =
 
     let defaultDestructureNoCustoms : Destructurer = Destructure.tryAllWithCustom Destructure.alwaysKeepTrying Destructure.alwaysKeepTrying
 
+    open Microsoft.FSharp.Reflection
+
+    let destructureFSharpTypes (req: DestructureRequest) : TemplatePropertyValue =
+      let value = req.Value
+      match req.Value.GetType() with
+      | t when FSharpType.IsTuple t ->
+          let tupleValues =
+              value
+              |> FSharpValue.GetTupleFields
+              |> Seq.map req.TryAgainWithValue
+              |> Seq.toList
+          SequenceValue tupleValues
+      | t when t.IsConstructedGenericType && t.GetGenericTypeDefinition() = typedefof<List<_>> ->
+          let objEnumerable = value :?> System.Collections.IEnumerable |> Seq.cast<obj>
+          SequenceValue(objEnumerable |> Seq.map req.TryAgainWithValue |> Seq.toList)
+      | t when FSharpType.IsUnion t ->
+          let case, fields = FSharpValue.GetUnionFields(value, t)
+          let properties =
+              (case.GetFields(), fields)
+              ||> Seq.map2 (fun propInfo value ->
+                  { Name = propInfo.Name
+                    Value = req.TryAgainWithValue value })
+              |> Seq.toList
+          StructureValue(case.Name, properties)
+      | _ -> TemplatePropertyValue.Empty
+
+    let builtInFSharpTypesDestructurer : Destructurer = destructureFSharpTypes
+
     let capturePositionals (log:SelfLogger) (destr:Destructurer) (maxDepth:int)
-                           (template:string) (props:PropertyToken[]) (args:obj[]) =
+                           (template:string) (props:Property[]) (args:obj[]) =
         let result = ref (Array.zeroCreate<PropertyNameAndValue>(args.Length))
         for p in props do
             if p.Pos < 0 || p.Pos >= args.Length then
@@ -595,7 +639,7 @@ module Capturing =
         !result
 
     let captureNamed (log:SelfLogger) (destr:Destructurer) (maxDepth:int)
-                     (template:string) (props:PropertyToken[]) (args:obj[]) =
+                     (template:string) (props:Property[]) (args:obj[]) =
         let mutable matchedRun = props.Length
         if props.Length <> args.Length then
             matchedRun <- min props.Length args.Length
@@ -634,8 +678,9 @@ module Capturing =
 module Formatting =
     /// Recursively writes the string representation of the template property
     /// value to the provided TextWriter. The provided format string is only
-    /// used for a ScalarValue v when v implements System.IFormattable.
-    /// TODO: ICustomFormattable?
+    /// used for a ScalarValue v when v implements System.IFormattable or the
+    /// ScalarValue v when the TextWriter.FormatProvider has a format of type
+    /// ICustomFormatter.
     let rec writePropValue (w: TextWriter) (tpv: TemplatePropertyValue) (format: string) =
         match tpv with
         | ScalarValue sv ->
@@ -647,9 +692,16 @@ module Formatting =
                     w.Write "\""
                     w.Write (s.Replace("\"", "\\\""))
                     w.Write "\""
-            | :? System.IFormattable as f ->
-                w.Write (f.ToString(format, w.FormatProvider))
-            | _ -> w.Write(sv.ToString())
+            | _ ->
+              let customFormatter = w.FormatProvider.GetFormat(typeof<System.ICustomFormatter>) :?> System.ICustomFormatter
+              match customFormatter with
+              | cf when not (isNull cf) ->
+                w.Write (cf.Format(format, sv, w.FormatProvider))
+              | _ ->
+                match sv with
+                | :? System.IFormattable as f -> w.Write (f.ToString(format, w.FormatProvider))
+                | _ -> w.Write(sv.ToString())
+                
         | SequenceValue svs ->
             w.Write '['
             let lastIndex = svs.Length - 1
@@ -685,8 +737,8 @@ module Formatting =
     /// for named properties and destructure-formatting.
     let writeToken (buffer: StringBuilder) (w: TextWriter) (token:Token) (value:TemplatePropertyValue) =
         match token, value with
-        | Token.Text (_, raw), _ -> w.Write raw
-        | Token.Prop (_, pt), pv ->
+        | Token.TextToken (_, raw), _ -> w.Write raw
+        | Token.PropToken (_, pt), pv ->
             if Destructure.isEmptyKeepTrying pv then
                 let propertyTokenAsString = pt.AppendPropertyString(buffer, true, pt.Name).ToStringAndClear()
                 w.Write propertyTokenAsString
@@ -737,8 +789,8 @@ module Formatting =
         let buffer = StringBuilder()
         for t in template.Tokens do
             match t with
-            | Token.Text _ as tt -> writeToken buffer w tt TemplatePropertyValue.Empty
-            | Token.Prop (_, pd) as tp ->
+            | Token.TextToken _ as tt -> writeToken buffer w tt TemplatePropertyValue.Empty
+            | Token.PropToken (_, pd) as tp ->
                 let value = getValueForPropName pd.Name
                 writeToken buffer w tp value
 
@@ -754,8 +806,8 @@ module Formatting =
         let buffer = StringBuilder()
         for tok in t.Tokens do
             match tok with
-            | Token.Text _ as tt -> writeToken buffer w tt TemplatePropertyValue.Empty
-            | Token.Prop (_, pd) as tp ->
+            | Token.TextToken _ as tt -> writeToken buffer w tt TemplatePropertyValue.Empty
+            | Token.PropToken (_, pd) as tp ->
                 let value = getValueByName pd.Name
                 writeToken buffer w tp value
 
