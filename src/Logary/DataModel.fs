@@ -614,8 +614,8 @@ type Units =
   // so to get back to seconds, you'd divide the value by 10.**9.
   // E.g. an op that takes 5ms would be represented as
   // Gauge(5000000, Scaled(Seconds, 10.**9.)) (ns) OR:
-  // Gauge(50000, Scaled(Seconds, 10**7.)) (ticks)
-  | Scaled of units:Units * scale:int64
+  // Gauge(50000, Scaled(Seconds, 10**7.)) (ticks):
+  | Scaled of units:Units * scale:float
   | Mul of Units * Units
   | Pow of Units * Units
   | Div of Units * Units
@@ -633,7 +633,7 @@ type Units =
     | Moles -> "mol"
     | Candelas -> "cd"
     | Other other -> other
-    | Scaled(units, scale) -> sprintf "%s / %i" (Units.symbol units) scale
+    | Scaled(units, scale) -> sprintf "%s / %f" (Units.symbol units) scale
     | Mul (a, b) -> String.Concat [ "("; Units.symbol a; "*"; Units.symbol b; ")" ]
     | Pow (a, b) -> String.Concat [ Units.symbol a; "^("; Units.symbol b; ")" ]
     | Div (a, b) -> String.Concat [ "("; Units.symbol a; "/"; Units.symbol b; ")" ]
@@ -1061,7 +1061,7 @@ module StopwatchEx =
     [<Extension; CompiledName "ToGauge">]
     member sw.toGauge() : (Value * Units) =
       Int64 (sw.ElapsedTicks * Constants.NanosPerTick),
-      Scaled(Seconds, Constants.NanosPerSecond)
+      Scaled(Seconds, float Constants.NanosPerSecond)
 
     [<Extension; CompiledName "Time">]
     static member time (fn : unit -> 'res) : 'res * (Value * Units) =

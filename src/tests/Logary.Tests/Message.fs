@@ -188,7 +188,7 @@ let tests =
       let value, units = getValueAndUnit msg
 
       Expect.equal res 367 "should have correct return value"
-      Expect.equal units (Scaled(Seconds, int64 (10.**9.)))  "correctly scaled unit (nanos)"
+      Expect.equal units (Scaled(Seconds, 1e9))  "correctly scaled unit (nanos)"
 
     testCase "PointName.setEnding" <| fun _ ->
       let pn = PointName [| "A"; "B" |] |> PointName.setEnding "C"
@@ -202,7 +202,7 @@ let tests =
       let value, units = getValueAndUnit msg
 
       Expect.equal res 357 "Should have value"
-      Expect.equal units (Scaled(Seconds, int64 (10.**9.)))  "correctly scaled unit (nanos)"
+      Expect.equal units (Scaled(Seconds, 1e9))  "correctly scaled unit (nanos)"
 
     testCase "Message.timeJob can be called" <| fun _ ->
       let slow () = job { do! timeOutMillis 10
@@ -212,7 +212,7 @@ let tests =
       let value, units = getValueAndUnit msg
 
       Expect.equal res 357 "Should have value"
-      Expect.equal units (Scaled(Seconds, int64 (10.**9.)))  "correctly scaled unit (nanos)"
+      Expect.equal units (Scaled(Seconds, 1e9))  "correctly scaled unit (nanos)"
 
     testPropertyWithConfig config "Serialization of message can round trip" <| fun (message : Message) ->
       message = roundTrip message

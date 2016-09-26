@@ -71,6 +71,7 @@ Install-Package Logary
       * [Usage](#usage)
       * [From NLog\.RabbitMQ, log4net\.RabbitMQ?](#from-nlograbbitmq-log4netrabbitmq)
     * [Comparison to NLog and log4net](#comparison-to-nlog-and-log4net)
+    * [Comparison to Codahale metrics &amp; Metrics\.NET](#comparison-to-codahale-metrics--metricsnet)
     * [Rutta](#rutta)
       * [The Shipper – from environment to Proxy or Router](#the-shipper--from-environment-to-proxy-or-router)
         * [Pushing Shippers](#pushing-shippers)
@@ -625,11 +626,9 @@ them in Logary).
 
 Sample:
 
- - https://gist.github.com/thinkbeforecoding/f2f4c7ba8f2a717058c50011192870c8
+ - https://github.com/logary/logary/blob/master/examples/Logary.ConsoleApp/Program.fs#L140
 
-WIP:
-
- - https://gist.github.com/haf/dc6b83aa153908efddc5f341b29fdbdc
+[WIP](https://gist.github.com/haf/dc6b83aa153908efddc5f341b29fdbdc)
 
 ## Console logging
 
@@ -930,6 +929,71 @@ Why Logary instead of one of the classic logging frameworks?
  - There's an object model you can use from the calling code
  - Logary is F#, so it's easier to keep bug-free relative to many other languages
  - Logary doesn't keep static state around; easy to refactor, easy to extend
+
+## Comparison to Codahale metrics & Metrics.NET
+
+Why Logary rather than Metrics.NET, the primary alternative?
+
+In order to understand the differences, you first need to understand the
+vocabulary. Logary uses the name `Message` to mean either an `Event`, a `Gauge`
+or a `Derived`. This comes from analysing the different sorts of things one
+would like to ship from an app.
+
+Starting with an `Event`; this is the main value when you're logging (in fact,
+it's Logary.PointValue.Event(template:string) that you're using.) An event is
+like a Gauge at a particular instant on the global timeline with a value of 1
+(one).
+
+Which brings us to what a `Gauge` is. It's a specific value at an instant. It's
+what you see as a temporature on a thermometer in your apartment, e.g. `10.2
+degrees celcius`. In the International System of Units (SI-Units), you could say
+it's the same as `283.2 K`. Logary aims to be the foundational layer for all
+your metrics, so it uses these units. A `Gauge` value of your temperature could
+be created like so `Message.gaugeWithUnit Kelvin (Float 283.2)` or `Gauge (Float
+283.2, Kelvin)`.
+
+A `Derived` metric, like `Kelvin/s` is useful if you're planning on writing a
+thermostat to control the temperature. A change in target temperature causes a
+rate of change.
+
+Another sample metric could be represented by the name `[| "MyApp"; "API"
+"requests" |]` and `PointValue` of `Derived (Float 144.2, Div (Scalar,
+Seconds))`, if the API is experiencing a request rate of 144.2 requests per
+second.
+
+Armed with this knowledge, we can now do a mapping between Codahale's metrics
+and those of Logary:
+
+ - `Gauges` (measuring instantaneous values) -> `PointValue.Gauge(.., ..)`.
+ - `Timers` (measuring durations) -> `PointValue.Gauge(.., Scaled(Seconds,
+   10e9)` (in nanoseconds)
+ - `Meter` (measuring rates) -> `PointValue.Derived(.., Div(Scalar, Seconds))`
+   or `PointValue.Derived(.., Div(Other "requests", Seconds))`
+ - `Counters` (counting events) -> `PointValue.Event("User logged in")`
+ - `Histograms` (tracking value distributions) -> `PointValue.Derived` (with
+   suffixes) and `Reservoir`s.
+
+Metrics like the above are taken from different sources:
+
+ - At call site (e.g. "`Event` happened", or "it took `50 ns to connect`")
+ - At a process level, derived from `Gauge` and `Event` from different
+   call-sites in your app (e.g. "The 99.9th percentile of '{time} ns to connect'
+   is 145 ns").
+ - At process level, taken from the operating system (Process is using 36.3% of
+   CPU)
+ - At a system level (e.g. the CPU utilisation is 0.352% – which can be
+   represented as
+
+   ```fsharp
+   let mhz = Div(Scaled(Hz, 1e-6)) in
+   Gauge(Fraction (1300, 36800), Div(mhz, mhz))
+   ```
+
+   as collected by Rutta's Shipper from a compute node.
+
+The aim of Logary is to connect values from call-sites, to configurable
+derivations, such as percentiles(, potentially again to derivations), and
+finally to targets which can then store them.
 
 ## Rutta
 
