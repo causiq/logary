@@ -228,7 +228,7 @@ type LoggingConfig =
     /// a unified framework) like is best-practice, there's not necessarily a
     /// way to coordinate around the STDOUT and STDERR streams between
     /// different libraries running things on different threads. Use Logary's
-    /// adapter to replace this semaphore with a global semaphore. 
+    /// adapter to replace this semaphore with a global semaphore.
     consoleSemaphore : obj }
 
 module Literate =
@@ -306,6 +306,11 @@ module internal FsMtParser =
 
   module internal ParserBits =
 
+    let inline isNull o =
+      match o with
+      | null -> true
+      | _ -> false
+
     let inline isLetterOrDigit c = System.Char.IsLetterOrDigit c
     let inline isValidInPropName c = c = '_' || System.Char.IsLetterOrDigit c
     let inline isValidInFormat c = c <> '}' && (c = ' ' || isLetterOrDigit c || System.Char.IsPunctuation c)
@@ -358,7 +363,7 @@ module internal FsMtParser =
       else
         let format = if formatRange.isEmpty then null else formatRange.getSubstring template
         Property(propertyName, format)
-        
+
     let findNextNonPropText (startAt : int) (template : string) (foundText : string->unit) : int =
       // Finds the next text token (starting from the 'startAt' index) and returns the next character
       // index within the template string. If the end of the template string is reached, or the start
