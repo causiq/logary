@@ -18,7 +18,6 @@ open Logary.Targets
 let private shutdownLogger<'a when 'a :> Logger> : 'a -> Job<unit> = box >> function
   | :? IAsyncDisposable as d ->
     d.DisposeAsync()
-
   | _ ->
     Job.result ()
 

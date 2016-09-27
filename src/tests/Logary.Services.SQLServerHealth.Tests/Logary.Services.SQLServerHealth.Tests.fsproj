@@ -50,8 +50,9 @@
       <Name>Logary</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\services\Logary.Services.SQLServerHealth\Logary.Services.SQLServerHealth.fsproj">
-      <Project>{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5}</Project>
       <Name>Logary.Services.SQLServerHealth</Name>
+      <Project>{1dc3b89b-5586-4fd9-a40b-550aec87afe5}</Project>
+      <Private>True</Private>
     </ProjectReference>
   </ItemGroup>
   <PropertyGroup>

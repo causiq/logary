@@ -98,10 +98,14 @@ type InternalLogger =
         Logging.instaPromise
 
     member x.logWithAck message =
-      x.trgs |> Logging.logWithAck message
+      if message.level >= x.lvl then
+        x.trgs |> Logging.logWithAck message
+      else
+        Logging.instaPromise
 
     member x.logSimple message =
-      x.trgs |> Logging.logWithAck message |> Job.Ignore |> start
+      if message.level >= x.lvl then
+        x.trgs |> Logging.logWithAck message |> Job.Ignore |> start
 
     member x.level =
       x.lvl
