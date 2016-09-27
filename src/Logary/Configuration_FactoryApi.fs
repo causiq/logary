@@ -47,13 +47,16 @@ and ConfBuilder(conf) =
   member internal x.BuildLogary () =
     conf |> Config.validate |> runLogary >>- asLogManager
 
+  /// Call this method to add middleware to Logary. Middleware is useful for interrogating
+  /// the context that logging is performed in. It can for example ensure all messages
+  /// have a context field 'service' that specifies what service the code is running in.
   member x.Use(middleware : Func<Func<Message, Message>, Func<Message, Message>>) : ConfBuilder =
     conf
     |> Config.withMiddleware (fun next msg -> middleware.Invoke(new Func<_,_>(next)).Invoke msg)
     |> ConfBuilder
 
-  /// Configure a target of the type with a name specified by the parameter
-  /// name
+  /// Configure a target of the type with a name specified by the parameter name.
+  /// The callback, which is the second parameter, lets you configure the target.
   member x.Target<'T when 'T :> SpecificTargetConf>(name : string, f : Func<TargetConfBuild<'T>, TargetConfBuild<'T>>) : ConfBuilder =
     let builderType = typeof<'T>
 
