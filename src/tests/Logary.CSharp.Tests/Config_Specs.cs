@@ -50,7 +50,7 @@ namespace Logary.Specs
                 new[] {twTarg},
                 new Metric.MetricConf[0],
                 new[] {twRule},
-                LogLevel.Verbose, internalTarg)
+                LogLevel.Warn, internalTarg)
                     .ToTask()
                     .Result;
         }
@@ -192,7 +192,6 @@ namespace Logary.Specs
         static LogManager manager;
         static StringWriter output;
         static string subject;
-
         static Logger GetLogger()
         {
             return manager.GetLogger("Logary.Specs.When_initialising_then_disposing_then_reinitialising");
