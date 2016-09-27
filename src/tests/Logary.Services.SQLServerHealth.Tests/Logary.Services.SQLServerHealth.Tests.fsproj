@@ -8,7 +8,8 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Logary.Services.SQLServerHealth.Tests</RootNamespace>
     <AssemblyName>Logary.Services.SQLServerHealth.Tests</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
