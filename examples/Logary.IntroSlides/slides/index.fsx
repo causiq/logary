@@ -50,16 +50,20 @@ nuget Logary
 
 ### Hello World – Starting
 
+<div style="display: none">
 *)
 #r "Hopac.dll"
 #r "Hopac.Core.dll"
 #r "Logary.dll"
+#r "Logary.WinPerfCounters.dll"
 open Hopac
 open Logary
 open Logary.Targets
 open Logary.Configuration
-
-let logger = Logging.getLoggerByName "MyApp.Program"
+(**
+</div>
+*)
+let logger = Logging.getLoggerByName "Sample"
 
 let logary =
   withLogaryManager "Logary.Examples.ConsoleApp" (
@@ -110,6 +114,31 @@ This creates a [Gauge][readme-gauge] value.
    to the `Message` value
  - `level` specifies how urgent the gauge is – useful in *health checks*
 
+---
+
+
+## Hello World – Gauges (Counter)
+
+*)
+let dp = PointName.parse "MyApp.Requests"
+Message.gaugeWithUnit dp Scalar (Int64 1L) |> logger.logSimple
+(**
+
+---
+
+## Hello World – Derived Metrics (Meters & Histograms)
+
+*)
+open Logary.Metrics
+
+let loginsPerSecond : Job<Stream<Message>> = job {
+  let! counter = Counters.counter (PointName.ofSingle "logins")
+  let! ewma = Reservoirs.ewma (PointName.ofSingle "logins")
+  do! ewma |> Metric.consume (Metric.tap counter)
+  return Metric.tapMessages ewma
+}
+(**
+
 ***
 
 ## Hello World – C# – Events
@@ -126,6 +155,72 @@ This creates a [Gauge][readme-gauge] value.
     [lang=csharp]
     logger.TimePath("Sample.fun", () => 66);
 
+***
+
+## Gauges & Metrics
+
+Supports polling.
+
+<div style="display: none">
+*)
+open Logary.Metric
+open Logary.Metrics
+open Logary.Metrics.WinPerfCounter
+
+let metricFrom counters pn : Job<Metric> =
+  let reducer state = function
+    | _ ->
+      state
+
+  let toValue (counter : PerfCounter, pc : PC) =
+    let value = WinPerfCounter.nextValue pc
+    Float value
+    |> Message.derivedWithUnit pn Units.Scalar
+    |> Message.setName (PointName.ofPerfCounter counter)
+
+  let ticker state =
+    state, state |> List.map toValue
+
+  Metric.create reducer counters ticker
+(**
+</div>
+*)
+let m6000s pn : Job<Metric> = // server Quadro gphx
+  let gpu counter instance =
+    { category = "GPU"; counter = counter; instance = Instance instance }
+  let counters =
+    [ for inst in [ "08:00"; "84:00" ] do
+        let name = sprintf "quadro m6000(%s)" inst
+        yield gpu "GPU Fan Speed (%)" name
+        yield gpu "GPU Time (%)" name
+        yield gpu "GPU Memory Usage (%)" name
+        yield gpu "GPU Memory Used (MB)" name
+        yield gpu "GPU Power Usage (Watts)" name
+        yield gpu "GPU SM Clock (MHz)" name
+        yield gpu "GPU Temperature (degrees C)" name
+    ] |> WinPerfCounters.Common.ofPerfCounters
+  metricFrom counters pn
+(**
+
+---
+
+## Gauges & Metrics (2)
+
+Custom metric: a random walk
+*)
+open System
+let create pn : Job<Metric> =
+  let reducer state = function _ -> state
+  let ticker (rnd : Random, prevValue) =
+    let value =
+      let v = (rnd.NextDouble() - 0.5) * 0.3
+      if abs v < 0.03 then rnd.NextDouble() - 0.5
+      elif v + prevValue < -1. || v + prevValue > 1. then -v + prevValue
+      else v + prevValue
+    (rnd, value), [ Message.gaugeWithUnit pn Seconds (Float value) ]
+  let state = let rnd = Random() in rnd, rnd.NextDouble()
+  Metric.create reducer state ticker
+(**
 
 ***
 
@@ -212,11 +307,16 @@ loop ()
 
  - Allows for **async network communication**
  - Explicit **flush** can be used to ensure 'baseline' between all targets
- - Callers can **wait for ACKs**
  - Callers can **NACK/abort flush** that take too long
- - **Let-it-crash**. The hidden **supervisor** will restart => stable software
- - Supports **stashing state** with supervisor on exceptions
+ - Callers can **wait for ACKs**
+
+---
+
+## Targets – Why? (2)
+
  - Supports back-pressure through its RingBuffers
+ - Supports **stashing state** with supervisor on exceptions
+ - **Let-it-crash**. The hidden **supervisor** will restart => stable software
 
 ***
 
@@ -271,18 +371,30 @@ Lets you **ship** *from* nodes in a subnet, to a **proxy** that can forward to a
 
 ---
 
-## Services – SQLServerHealth
+## Services – Rutta (2)
+
+<img title="Rutta architecture" src="images/rutta.png" width="700" />
+
+---
+
+## Services – SQL Server Health
 
 A service that runs on heavily loaded SQL Server instances to ship their metrics
 
 ---
 
-## Services – SuaveReporter
+## Services – Suave Reporter
 
 A service you can use for logging over HTTP. API is isomorphic to that of
 `Message`, built using [Suave.io][suave-io] to be scalable and light-weight.
 
-Use together with [logary-js][github-logaryjs].
+---
+
+## Services – SuaveReporter (2)
+
+Use together with [logary-js][github-logaryjs]
+
+<img title="Logary JS at NPM" src="images/logary-js-screen.png" />
 
 ***
 

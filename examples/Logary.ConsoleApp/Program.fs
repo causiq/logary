@@ -19,7 +19,6 @@ open Logary.Targets
 open Logary.Metric
 open Logary.Metrics
 open Logary.Metrics.WinPerfCounter
-open Logary.Metrics.WinPerfCounter
 
 module internal Sample =
 
