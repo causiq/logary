@@ -38,7 +38,7 @@ let getSampleException () =
   with
   | ex -> ex
 
-let simpleWorkThatCatchesAndLogsAnErrorAndException (logger : Logger) =
+let generateAndLogExn (logger : Logger) =
   let ex = getSampleException()
   logger.logSimple (Message.event Error "An error with an attached exception" |> Message.addExn ex)
   99

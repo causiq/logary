@@ -249,11 +249,10 @@ module Map =
         props
         |> Array.filter (fun pi -> pi <> null && pi.Name <> null)
         |> Array.map (fun pi ->
-          let mutable value = null
-          try
-            value <- pi.GetValue(data, null)
-          with ex ->
-            value <- (sprintf "Property accessor %s on %s threw an exception: %s" pi.Name pi.ReflectedType.FullName (ex.ToString()))
+          let value =
+            try pi.GetValue(data, null)
+            with ex ->
+              box (sprintf "Property accessor %s on %s threw an exception: %O" pi.Name pi.ReflectedType.FullName ex)
           pi.Name, value)
         |> Map.ofArray
 

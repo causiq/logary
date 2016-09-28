@@ -31,7 +31,7 @@ let main argv =
   let workResult = Libryy.Core.work librryLogger
   Message.eventDebug "Got {workResult} from Libryy" |> Message.setField "workResult" workResult |> logger.logSimple
 
-  let simpleWorkExnResult = Libryy.Core.simpleWorkThatCatchesAndLogsAnErrorAndException librryLogger
+  let simpleWorkExnResult = Libryy.Core.generateAndLogExn librryLogger
   Message.eventDebug "Got {simpleWorkExnResult} from Libryy" |> Message.setField "simpleWorkExnResult" simpleWorkExnResult |> logger.logSimple
 
   let staticWorkResult = Libryy.Core.staticWork()
