@@ -649,7 +649,7 @@ of the message into the domain of strings and their corresponding colours; i.e.
 actual colourised lines of output.
 
 It's the `Writer` that takes the string-colour pairs and display those on the
-terminal like so `(string * Coolour) list -> unit`.
+terminal like so `(string * Colour) list -> unit`.
 
 The console target supports different themes. A theme is a subsystem of the
 colouriser that takes a `Token -> Colour`. Different themes makes for different
