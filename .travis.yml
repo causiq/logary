@@ -21,3 +21,4 @@ matrix:
   allow_failures:
    - mono: latest
    - mono: weekly
+   - mono: 4.4.2
