@@ -38,6 +38,8 @@ namespace Logary.CSharpExample
                             .Type("logs") // index-name
                             .Done()
                     )
+                    .Target<InfluxDb.Builder>("influx")
+                    //.Metrics(m => m.WithAllCounters())
                 //   .Target<Logary.Targets.RabbitMQ.Builder>(
                 //       "rabbitmq",
                 //       conf => conf.Target.EnableTls("./cert/path.pfx", "TopSecret12345").Done()

@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using NodaTime;
 
-using Logary;
-
 namespace Logary
 {
     /// <summary>

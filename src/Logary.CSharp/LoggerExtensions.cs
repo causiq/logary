@@ -1,9 +1,5 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using NodaTime;
-using Logary;
-using Logary.Internals;
 
 namespace Logary
 {
@@ -94,7 +90,7 @@ namespace Logary
             if (logger == null) throw new ArgumentNullException("logger");
             if (f == null) throw new ArgumentNullException("f");
 
-            var res = LoggerModule.Time<Microsoft.FSharp.Core.Unit, T>(logger, CSharp.ToFSharpFunc(f)).Invoke(null);
+            var res = logger.Time(f.ToFSharpFunc()).Invoke(null);
             res.Item2.ToTask().Wait();
             return res.Item1;
         }
@@ -121,8 +117,8 @@ namespace Logary
             if (logger == null) throw new ArgumentNullException("logger");
             if (subPath == null) throw new ArgumentNullException("subPath");
             if (f == null) throw new ArgumentNullException("f");
-            var res = LoggerModule.Time<Microsoft.FSharp.Core.Unit, T>(logger, subPath, CSharp.ToFSharpFunc(f)).Invoke(null);
-            CSharp.ToTask<Microsoft.FSharp.Core.Unit>(res.Item2).Wait();
+            var res = logger.Time(subPath, f.ToFSharpFunc()).Invoke(null);
+            CSharp.ToTask(res.Item2).Wait();
             return res.Item1;
         }
 

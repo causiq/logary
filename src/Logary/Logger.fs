@@ -151,14 +151,28 @@ module Logger =
   /// acks if you want. If you do not start/commit to the Alt, the
   /// logging of the gauge will never happen.
   [<CompiledName "TimeWithAck"; Extension>]
+  let timeWithAckT (logger : Logger)
+                   (nameEnding : string)
+                   (f : 'input -> 'res)
+                   (transform : Message -> Message)
+                   : 'input -> 'res * Alt<Promise<unit>> =
+    let name = logger.name |> PointName.setEnding nameEnding
+    fun input ->
+      let res, message = Message.time name f input
+      res, logWithAck logger (transform message)
+
+  /// Run the function `f` and measure how long it takes; logging that
+  /// measurement as a Gauge in the unit Seconds. As an exception to the rule,
+  /// it is allowed to pass `nameEnding` as null to this function. This
+  /// function returns the full schabang; i.e. it will let you wait for
+  /// acks if you want. If you do not start/commit to the Alt, the
+  /// logging of the gauge will never happen.
+  [<CompiledName "TimeWithAck"; Extension>]
   let timeWithAck (logger : Logger)
                   (nameEnding : string)
                   (f : 'input -> 'res)
                   : 'input -> 'res * Alt<Promise<unit>> =
-    let name = logger.name |> PointName.setEnding nameEnding
-    fun input ->
-      let res, message = Message.time name f input
-      res, logWithAck logger message
+    timeWithAckT logger nameEnding f id
 
   [<CompiledName "Time"; Extension>]
   let time (logger : Logger)

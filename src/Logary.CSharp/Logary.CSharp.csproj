@@ -34,10 +34,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyVersionInfo.cs" />
+    <Compile Include="HopacJobExtensions.cs" />
     <Compile Include="LoggerExtensions.cs" />
     <Compile Include="MessageExtensions.cs" />
+    <Compile Include="PointValueExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="MiscExtensions.cs" />
+    <Compile Include="LogManagerExtensions.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

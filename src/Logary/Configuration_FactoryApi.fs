@@ -87,6 +87,10 @@ and ConfBuilder(conf) =
     |> withTarget (targetConf.tcSpecific.Value.Build name)
     |> ConfBuilder
 
+  member x.Metrics(configurator : Func<MetricsConfBuild, MetricsConfBuild>) =
+    // TODO: implement API for configuring metrics
+    conf |> ConfBuilder
+
 /// Extensions to make it easier to construct Logary
 [<Extension; AutoOpen>]
 module FactoryApiExtensions =

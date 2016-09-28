@@ -9,7 +9,7 @@ nuget Common.Logging
 nuget Common.Logging.Core
 nuget EventStore.Client
 nuget FsPickler
-nuget Hopac
+nuget Hopac 0.3.22
 nuget Mailgun.Api
 nuget elmah.corelibrary
 nuget elmah.io.core
