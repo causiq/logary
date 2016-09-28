@@ -248,7 +248,12 @@ module Map =
       | _ ->
         props
         |> Array.filter (fun pi -> pi <> null && pi.Name <> null)
-        |> Array.map (fun pi -> (pi.Name, pi.GetValue(data, null)))
+        |> Array.map (fun pi ->
+          let value =
+            try pi.GetValue(data, null)
+            with ex ->
+              box (sprintf "Property accessor %s on %s threw an exception: %O" pi.Name pi.ReflectedType.FullName ex)
+          pi.Name, value)
         |> Map.ofArray
 
 [<AutoOpen>]
