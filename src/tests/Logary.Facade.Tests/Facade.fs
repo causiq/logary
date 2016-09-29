@@ -232,7 +232,6 @@ let tests =
           "System.Exception: errors field 1", Text
           nl, Text
           "System.Exception: errors field 2", Text
-          nl, Text //<-- Extra newline at the end
         ]
       Assert.literateMessagePartsEqual (template, fields, expectedMessageParts)
 
