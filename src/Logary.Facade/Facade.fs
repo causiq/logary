@@ -511,7 +511,6 @@ module internal Formatting =
       match message.fields.TryFind FieldExnKey with
       | Some (:? Exception as ex) ->
         literateExceptionColouriser context ex
-        @ [ Environment.NewLine, Text ]
       | _ ->
         [] // there is no spoon
     let errorsExceptionParts =
@@ -520,7 +519,6 @@ module internal Formatting =
         exnListAsObjList |> List.collect (function
           | :? exn as ex ->
             literateExceptionColouriser context ex
-            @ [ Environment.NewLine, Text ]
           | _ ->
             [])
       | _ ->
@@ -543,7 +541,6 @@ module internal Formatting =
       if not exnParts.IsEmpty then
         [ Environment.NewLine, Text ]
         @ exnParts
-        @ [ Environment.NewLine, Text ]
       else []
 
     let getLogLevelToken = function
