@@ -149,7 +149,7 @@ module Serialisation =
       | Gauge (value, units)
       | Derived (value, units) ->
         let kvs, values = simpleValue false context' [] value
-        ("unit", Units.symbol units) :: kvs,
+        ("unit", serialiseStringTag <| Units.symbol units) :: kvs,
         values
 
       | Event templ ->
