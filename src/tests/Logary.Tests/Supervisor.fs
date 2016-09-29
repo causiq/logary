@@ -46,16 +46,15 @@ let supervisorTests =
           sendWill (box "hello")
           |> Job.map (fun () -> failwith "Arrrgh")
         | Some _ ->
-          IVar.tryFill hasRun () |> start
-          timeOutMillis 1000 :> Job<_>
+          IVar.tryFill hasRun ()
       let proc = { name     = PointName.parse "bang"
-                   policy   = Supervisor.Delayed (Duration.FromMilliseconds 10L)
+                   policy   = Supervisor.Delayed (Duration.FromMilliseconds 1L)
                    job      = p
                    shutdown = Ch() }
       sup.register *<- proc |> run
       let result =
         Alt.choose [IVar.read hasRun |> Alt.afterFun (fun () -> true)
-                    timeOutMillis 100 |> Alt.afterFun (fun () -> false)]
+                    timeOutMillis 10000 |> Alt.afterFun (fun () -> false)]
         |> run
       Expect.isTrue result "Supervisor should restart failing job"
 
