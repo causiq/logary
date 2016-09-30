@@ -229,14 +229,9 @@ let tests =
         [ nl, Text //<-- empty message will just start rendering exceptions on a new line
           "System.Exception: exn field", Text //<-- The exception
           nl, Text
-          nl, Text
           "System.Exception: errors field 1", Text
           nl, Text
-          nl, Text
           "System.Exception: errors field 2", Text
-          nl, Text
-          nl, Text
-          nl, Text //<-- Extra newline at the end
         ]
       Assert.literateMessagePartsEqual (template, fields, expectedMessageParts)
 

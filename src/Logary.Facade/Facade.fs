@@ -500,10 +500,12 @@ module internal Formatting =
       | line ->
         if line.StartsWith(stackFrameLinePrefix) then
           // subtext
-          go ((Environment.NewLine, Text) :: ((line, Subtext) :: lines))
+          go ((line, Subtext) :: (Environment.NewLine, Text) :: lines)
+        else if String.IsNullOrWhiteSpace line then
+          go lines
         else
           // regular text
-          go ((Environment.NewLine, Text) :: ((line, Text) :: lines))
+          go ((line, Text) :: (Environment.NewLine, Text) :: lines)
     go []
 
   let literateColouriseExceptions (context : LiterateOptions) message =
@@ -511,7 +513,6 @@ module internal Formatting =
       match message.fields.TryFind FieldExnKey with
       | Some (:? Exception as ex) ->
         literateExceptionColouriser context ex
-        @ [ Environment.NewLine, Text ]
       | _ ->
         [] // there is no spoon
     let errorsExceptionParts =
@@ -520,7 +521,6 @@ module internal Formatting =
         exnListAsObjList |> List.collect (function
           | :? exn as ex ->
             literateExceptionColouriser context ex
-            @ [ Environment.NewLine, Text ]
           | _ ->
             [])
       | _ ->
@@ -538,13 +538,7 @@ module internal Formatting =
     let themedMessageParts =
       message.value |> literateFormatValue options message.fields |> snd
 
-    let themedExceptionParts =
-      let exnParts = literateColouriseExceptions options message
-      if not exnParts.IsEmpty then
-        [ Environment.NewLine, Text ]
-        @ exnParts
-        @ [ Environment.NewLine, Text ]
-      else []
+    let themedExceptionParts = literateColouriseExceptions options message
 
     let getLogLevelToken = function
       | Verbose -> LevelVerbose
