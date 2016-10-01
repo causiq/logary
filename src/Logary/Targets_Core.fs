@@ -183,6 +183,9 @@ module LiterateConsole =
       | KeywordSymbol | NumericSymbol | StringSymbol | OtherSymbol | NameSymbol
       | MissingTemplateField
 
+  type ConsoleColours = { foreground : ConsoleColor; background : ConsoleColor option }
+  type ColouredText = { text : string; colours : ConsoleColours }
+
   /// Console configuration structure
   type LiterateConsoleConf =
     { formatProvider    : IFormatProvider
@@ -190,11 +193,11 @@ module LiterateConsole =
       getLogLevelText   : LogLevel -> string
       /// Converts a message into the appropriate tokens which can later be themed with colours.
       tokenise          : LiterateConsoleConf -> Message -> (string * Tokens.LiterateToken) list 
-      /// Converts a token into the appropriate Forground*Background colours.
-      theme             : Tokens.LiterateToken -> (ConsoleColor * ConsoleColor option)
+      /// Converts a token into the appropriate Foreground*Background colours.
+      theme             : Tokens.LiterateToken -> ConsoleColours
       /// Takes an object (console semaphore) and a list of string*colour pairs and writes them
       /// to the console with the appropriate colours.
-      colourWriter      : obj -> (string * ConsoleColor * ConsoleColor option) list -> unit }
+      colourWriter      : obj -> ColouredText list -> unit }
 
   module internal LiterateFormatting =
     open System.Text
@@ -366,7 +369,7 @@ module LiterateConsole =
       @ themedMessageParts
       @ themedExceptionParts
 
-    let consoleWriteLineColourParts (parts : (string * ConsoleColor * ConsoleColor option) list) =
+    let consoleWriteLineColourParts (parts : ColouredText list) =
         let originalForegroundColour = Console.ForegroundColor
         let originalBackgroundColour = Console.BackgroundColor
         let mutable currentForegroundColour = originalForegroundColour
@@ -385,19 +388,19 @@ module LiterateConsole =
               Console.BackgroundColor <- originalBackgroundColour
               currentBackgroundColour <- originalBackgroundColour
           
-        parts |> List.iter (fun (text, forgroundColour, backgroundColour) ->
-          maybeResetBgColour backgroundColour
-          if currentForegroundColour <> forgroundColour then
-            Console.ForegroundColor <- forgroundColour
-            currentForegroundColour <- forgroundColour
-          Console.Write(text)
+        parts |> List.iter (fun part ->
+          maybeResetBgColour part.colours.background
+          if currentForegroundColour <> part.colours.foreground then
+            Console.ForegroundColor <- part.colours.foreground
+            currentForegroundColour <- part.colours.foreground
+          Console.Write(part.text)
         )
         if currentForegroundColour <> originalForegroundColour then
           Console.ForegroundColor <- originalForegroundColour
         maybeResetBgColour None
         Console.WriteLine()
 
-    let consoleWriteColourPartsAtomically sem (parts : (string * ConsoleColor * ConsoleColor option) list) =
+    let consoleWriteColourPartsAtomically sem (parts : ColouredText list) =
       lock sem <| fun _ -> consoleWriteLineColourParts parts
 
   /// Default console target configuration.
@@ -412,21 +415,21 @@ module LiterateConsole =
               | Warn ->     "WRN"
       tokenise = LiterateFormatting.literateDefaultTokenizer
       theme = function
-              | Tokens.Text -> ConsoleColor.White, None
-              | Tokens.Subtext -> ConsoleColor.Gray, None
-              | Tokens.Punctuation -> ConsoleColor.DarkGray, None
-              | Tokens.LevelVerbose -> ConsoleColor.Gray, None
-              | Tokens.LevelDebug -> ConsoleColor.Gray, None
-              | Tokens.LevelInfo -> ConsoleColor.White, None
-              | Tokens.LevelWarning -> ConsoleColor.Yellow, None
-              | Tokens.LevelError -> ConsoleColor.Red, None
-              | Tokens.LevelFatal -> ConsoleColor.White, Some ConsoleColor.Red
-              | Tokens.KeywordSymbol -> ConsoleColor.Blue, None
-              | Tokens.NumericSymbol -> ConsoleColor.Magenta, None
-              | Tokens.StringSymbol -> ConsoleColor.Cyan, None
-              | Tokens.OtherSymbol -> ConsoleColor.Green, None
-              | Tokens.NameSymbol -> ConsoleColor.Gray, None
-              | Tokens.MissingTemplateField -> ConsoleColor.Red, None
+              | Tokens.Text ->  { foreground=ConsoleColor.White; background=None }
+              | Tokens.Subtext -> { foreground=ConsoleColor.Gray; background=None }
+              | Tokens.Punctuation -> { foreground=ConsoleColor.DarkGray; background=None }
+              | Tokens.LevelVerbose -> { foreground=ConsoleColor.Gray; background=None }
+              | Tokens.LevelDebug -> { foreground=ConsoleColor.Gray; background=None }
+              | Tokens.LevelInfo -> { foreground=ConsoleColor.White; background=None }
+              | Tokens.LevelWarning -> { foreground=ConsoleColor.Yellow; background=None }
+              | Tokens.LevelError -> { foreground=ConsoleColor.Red; background=None }
+              | Tokens.LevelFatal -> { foreground=ConsoleColor.White; background=Some ConsoleColor.Red }
+              | Tokens.KeywordSymbol -> { foreground=ConsoleColor.Blue; background=None }
+              | Tokens.NumericSymbol -> { foreground=ConsoleColor.Magenta; background=None }
+              | Tokens.StringSymbol -> { foreground=ConsoleColor.Cyan; background=None }
+              | Tokens.OtherSymbol -> { foreground=ConsoleColor.Green; background=None }
+              | Tokens.NameSymbol -> { foreground=ConsoleColor.Gray; background=None }
+              | Tokens.MissingTemplateField -> { foreground=ConsoleColor.Red; background=None }
       colourWriter = LiterateFormatting.consoleWriteColourPartsAtomically }
 
 
@@ -439,7 +442,7 @@ module LiterateConsole =
              (requests : RingBuffer<TargetMessage>)
              (shutdown : Ch<IVar<unit>>) =
 
-      let output (data : (string * ConsoleColor * ConsoleColor option) list) : Job<unit> =
+      let output (data : ColouredText list) : Job<unit> =
         Job.Scheduler.isolate <| fun _ ->
           lcConf.colourWriter Logary.Internals.Globals.consoleSemaphore data
         
@@ -453,8 +456,8 @@ module LiterateConsole =
               job {
                 let tokens = lcConf.tokenise lcConf logMsg
                 let themedParts = tokens |> List.map (fun (text, token) ->
-                                                        let fgAndBg = lcConf.theme token
-                                                        text, fst fgAndBg, snd fgAndBg )
+                                                        let colours = lcConf.theme token
+                                                        { text=text; colours=colours })
                 do! output themedParts
                 do! ack *<= ()
                 return! loop ()
