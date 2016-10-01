@@ -204,7 +204,7 @@ module LiterateConsole =
     open Logary.Utils.FsMessageTemplates
     open Tokens
 
-    let literateExceptionColorizer (options : LiterateConsoleConf) (typeName) (message) (stackTrace) =
+    let literateExceptionTokeniser (options : LiterateConsoleConf) (typeName) (message) (stackTrace) =
       let stackFrameLinePrefix = "   "
       let messageNlStackTrace = String.Concat (typeName, ": ", message, Environment.NewLine, stackTrace)
       use exnLines = new System.IO.StringReader(messageNlStackTrace)
@@ -223,7 +223,7 @@ module LiterateConsole =
             go ((line, Text) :: (Environment.NewLine, Text) :: lines)
       go []
 
-    let literateColorizeExceptions (context : LiterateConsoleConf) message =
+    let literateTokeniseMessageExceptions (context : LiterateConsoleConf) message =
       let exns = Utils.Aether.Lens.getPartialOrElse Message.Lenses.errors_ [] message
       let getStringFromMapOrFail exnObjMap fieldName =
         match exnObjMap |> Map.find fieldName with
@@ -243,149 +243,138 @@ module LiterateConsole =
           let exnTypeName = getStringFromMapOrFail exnObjMap "type"
           let message = getStringFromMapOrFail exnObjMap "message"
           let stackTrace = getStringFromMapOrDefault "" exnObjMap "stackTrace"
-          literateExceptionColorizer context exnTypeName message stackTrace
+          literateExceptionTokeniser context exnTypeName message stackTrace
         )
         |> List.concat
 
-    let rec formatValueWithProvider (formatProvider : IFormatProvider) = function
-      | String s -> s
-      | Bool true -> "true"
-      | Bool false -> "false"
-      | Float f -> f.ToString(formatProvider)
-      | Int64 i -> i.ToString(formatProvider)
-      | BigInt bi -> bi.ToString(formatProvider)
-      | Binary (b, ct) -> System.BitConverter.ToString b |> fun s -> s.Replace("-", "")
-      | Fraction (n, d) -> System.String.Format(formatProvider, "{0}/{1}", n, d)
-      | Array values -> String.Concat ["["; values |> List.map (formatValueWithProvider formatProvider) |> String.concat ", "; "]"]
-      | Object m ->
-          [ "["
-            Map.toList m
-                |> List.map (fun (key, value) -> key + "=" + (formatValueWithProvider formatProvider value))
-                |> String.concat ", "
-            "]" ]
-          |> String.Concat
 
-    let rec literateFormatField (conf : LiterateConsoleConf)
+    let literateTokeniseArray conf prop arrValue recurse =
+      let items = match arrValue with Array items -> items | _ -> failwithf "cannot tokenise %A with %s" arrValue (prop.ToString())
+      let valueTokens =
+        items
+        |> List.toArray
+        |> fun valArray ->
+          valArray |> Array.mapi (fun i v -> seq {
+            yield! recurse conf prop v
+            if i < (valArray.Length - 1) then
+              yield ", ", Punctuation
+          })
+        |> Seq.concat
+        |> List.ofSeq
+
+      seq {
+          yield "[", Punctuation
+          yield! valueTokens 
+          yield "]", Punctuation 
+      }
+      |> List.ofSeq
+
+    let literateTokeniseObject conf prop objValue recurse =
+      let stringValueMap = match objValue with Object svm -> svm | _ -> failwithf "cannot tokenise %A with %s" objValue (prop.ToString())
+      let objectTokens =
+        stringValueMap
+        |> Map.toArray
+        |> fun valArray ->
+          valArray |> Array.mapi (fun i (k, v) -> seq {
+            if k <> "_typeTag" then
+              yield k, Subtext
+              yield "=", Punctuation
+              yield! recurse conf prop v
+              if i < (valArray.Length - 1) then
+                yield ", ", Punctuation
+          })
+        |> Seq.concat
+        |> List.ofSeq
+
+      seq {
+        match stringValueMap.TryFind("_typeTag") with
+          | Some (String tt) ->
+            yield tt, (if objectTokens.IsEmpty then OtherSymbol else Subtext)
+            if not objectTokens.IsEmpty then yield " ", Subtext
+          | _ -> ()
+        if not objectTokens.IsEmpty then
+          yield "{", Punctuation
+          yield! objectTokens 
+          yield "}", Punctuation 
+      }
+      |> List.ofSeq
+  
+    let literateTokeniseBinary conf prop binary =
+      let x, y = match binary with Binary (x,y) -> x,y | _ -> failwithf "cannot tokenise %A with %s" binary (prop.ToString())
+      let maxBytes = 15
+      seq {
+        yield (x |> Array.take(min x.Length maxBytes) |> Array.map (fun b -> b.ToString("X2")) |> String.Concat), StringSymbol
+        if x.Length > maxBytes then
+          yield "... (", Punctuation
+          yield string x.Length, Subtext
+          yield " bytes", Subtext
+          yield ")", Punctuation
+        yield " (", Punctuation
+        yield y, Subtext
+        yield ")", Punctuation
+      }
+      |> List.ofSeq
+
+    let rec literateTokeniseField (conf : LiterateConsoleConf)
                                 (prop : Property)
                                 (propValue : Field) =
+      let recurseTokenise = fun c p v -> literateTokeniseField c p (Field (v, None))
       let value, units = match propValue with Field (v, u) -> v, u
       let fp = conf.formatProvider
       match value with
-      | Value.Array items ->
-        let valueTokens =
-          items
-          |> List.toArray
-          |> fun valArray ->
-            valArray |> Array.mapi (fun i v -> seq {
-              yield! literateFormatField conf prop (Field (v, None))
-              if i < (valArray.Length - 1) then
-                yield ", ", Punctuation
-            })
-          |> Seq.concat
-          |> List.ofSeq
-
-        seq {
-            yield "[", Punctuation
-            yield! valueTokens 
-            yield "]", Punctuation 
-        }
-        |> List.ofSeq
+      | Value.Array _ as arr -> literateTokeniseArray conf prop arr recurseTokenise
       | Value.String s -> [ s, StringSymbol ]
       | Value.Bool b -> [ b.ToString().ToLowerInvariant(), KeywordSymbol ]
       | Value.Float f -> [ f.ToString(prop.Format, fp), NumericSymbol ]
       | Value.Int64 i -> [ i.ToString(prop.Format, fp), NumericSymbol ]
       | Value.BigInt bi -> [ bi.ToString(prop.Format, fp), NumericSymbol ]
-      | Value.Binary (x, y) ->
-        let maxBytes = 15
-        seq {
-          yield (x |> Array.take(min x.Length maxBytes) |> Array.map (fun b -> b.ToString("X2")) |> String.Concat), StringSymbol
-          if x.Length > maxBytes then
-            yield "... (", Punctuation
-            yield string x.Length, Subtext
-            yield " bytes", Subtext
-            yield ")", Punctuation
-          yield " (", Punctuation
-          yield y, Subtext
-          yield ")", Punctuation
-        }
-        |> List.ofSeq
+      | Value.Binary (_, _) as binary -> literateTokeniseBinary conf prop binary
       | Value.Fraction (x, y) -> [ "todo (fraction)", OtherSymbol ] // TODO:
-      | Value.Object stringValueMap ->
-        let objectTokens =
-          stringValueMap
-          |> Map.toArray
-          |> fun valArray ->
-            valArray |> Array.mapi (fun i (k, v) -> seq {
-              if k <> "_typeTag" then
-                yield k, Subtext
-                yield "=", Punctuation
-                yield! literateFormatField conf prop (Field (v, None))
-                if i < (valArray.Length - 1) then
-                  yield ", ", Punctuation
-            })
-          |> Seq.concat
-          |> List.ofSeq
+      | Value.Object _ as o -> literateTokeniseObject conf prop o recurseTokenise
 
-        seq {
-          match stringValueMap.TryFind("_typeTag") with
-            | Some (String tt) ->
-              yield tt, (if objectTokens.IsEmpty then OtherSymbol else Subtext)
-              if not objectTokens.IsEmpty then yield " ", Subtext
-            | _ -> ()
-          if not objectTokens.IsEmpty then
-            yield "{", Punctuation
-            yield! objectTokens 
-            yield "}", Punctuation 
-        }
-        |> List.ofSeq
-
-    let literateFormatValue (options : LiterateConsoleConf) (message : Message) = function
+    let literateTokenisePointValue (options : LiterateConsoleConf) (message : Message) = function
       | Event eventTemplate ->
-        let themedParts = ResizeArray<string * LiterateToken>()
-        let matchedFields = ResizeArray<string>()
+        let textAndTokens = ResizeArray<string * LiterateToken>()
         let themedParts =
           Parser.parse(eventTemplate).Tokens
           |> Seq.collect (function
             | PropToken (_, prop) ->
               match Map.tryFind (PointName.ofSingle prop.Name) message.fields with
               | Some field ->
-                matchedFields.Add prop.Name
-                literateFormatField options prop field
+                literateTokeniseField options prop field
               | None ->
                 [ prop.ToString(), MissingTemplateField ]
             | TextToken (_, text) ->
               [ text, Text ])
 
-        Set.ofSeq matchedFields, List.ofSeq themedParts
+        List.ofSeq themedParts
 
       | Derived (value, units) ->
-        Set.empty, [ "Metric (derived) ", Subtext
-                     formatValueWithProvider options.formatProvider value, NumericSymbol
-                     " ", Subtext
-                     Units.symbol units, Text
-                     " (", Punctuation
-                     message.name.ToString(), Text
-                     ")", Punctuation ]
+        [ "Metric (derived) ", Subtext
+          "todo: value", NumericSymbol
+          " ", Subtext
+          Units.symbol units, Text
+          " (", Punctuation
+          message.name.ToString(), Text
+          ")", Punctuation ]
       | Gauge (value, units) ->
-        Set.empty, [ "Metric (guage) ", Subtext
-                     formatValueWithProvider options.formatProvider value, NumericSymbol
-                     " ", Subtext
-                     Units.symbol units, Text
-                     " (", Punctuation
-                     message.name.ToString(), Text
-                     ")", Punctuation ]
+        [ "Metric (guage) ", Subtext
+          "todo: value", NumericSymbol
+          " ", Subtext
+          Units.symbol units, Text
+          " (", Punctuation
+          message.name.ToString(), Text
+          ")", Punctuation ]
 
     /// Split a structured message up into theme-able parts (tokens), allowing the
     /// final output to display to a user with colours to enhance readability.
-    let literateDefaultTokenizer (options : LiterateConsoleConf) (message : Message) : (string * LiterateToken) list =
+    let literateDefaultTokeniser (options : LiterateConsoleConf) (message : Message) : (string * LiterateToken) list =
       let formatLocalTime (utcTicks : EpochNanoSeconds) =
         DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss", options.formatProvider),
         Subtext
 
-      let themedMessageParts =
-        message.value |> literateFormatValue options message |> snd
-        
-      let themedExceptionParts = literateColorizeExceptions options message
+      let messageTokens = message.value |> literateTokenisePointValue options message
+      let exceptionTokens = literateTokeniseMessageExceptions options message
 
       let getLogLevelToken = function
         | Verbose -> LevelVerbose
@@ -395,13 +384,16 @@ module LiterateConsole =
         | Error -> LevelError
         | Fatal -> LevelFatal
 
-      [ "[", Punctuation
-        formatLocalTime message.timestamp
-        " ", Subtext
-        options.getLogLevelText message.level, getLogLevelToken message.level
-        "] ", Punctuation ]
-      @ themedMessageParts
-      @ themedExceptionParts
+      seq {
+        yield "[", Punctuation
+        yield formatLocalTime message.timestamp
+        yield " ", Subtext
+        yield options.getLogLevelText message.level, getLogLevelToken message.level
+        yield "] ", Punctuation
+        yield! messageTokens
+        yield! exceptionTokens
+      }
+      |> List.ofSeq
 
     module DefaultTheme =
       let textColours = { foreground=ConsoleColor.White; background=None }
@@ -473,7 +465,7 @@ module LiterateConsole =
               | Info ->     "INF"
               | Verbose ->  "VRB"
               | Warn ->     "WRN"
-      tokenise = LiterateFormatting.literateDefaultTokenizer
+      tokenise = LiterateFormatting.literateDefaultTokeniser
       theme = LiterateFormatting.DefaultTheme.theme
       colourWriter = LiterateFormatting.consoleWriteColourPartsAtomically }
 
