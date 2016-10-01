@@ -10,7 +10,10 @@ open System.Threading
 
 let logger = Logging.getLoggerByName "Servizz.Program"
 
-type MyDu = UserLoggedIn of name:string | UserLoggedOut of name:string
+type Speed = Fast | Slow | Other of speed:int
+type Event =
+| UserLoggedIn of name:string * roles:string list
+| UserLoggedOut of name:string * speedAtTimeOfLeaving: Speed
 
 [<EntryPoint>]
 let main argv =
@@ -30,17 +33,26 @@ let main argv =
   let logger = logary.getLogger (PointName [| "Libryy" |])
   let librryLogger = LoggerAdapter.createGeneric logger
   
-  let gotLibryyResultEvent = Message.templateEvent<int, MyDu> (Debug, "Got {LibryyResult} from Libryy, {@Event}")
-  let logLibryyResult result event = gotLibryyResultEvent result event |> logger.logSimple
+  let specialEvent = Message.templateEvent<Event>(Info, "Special event {@Event}")
+  logger.logSimple (specialEvent (UserLoggedIn ("adam", [ "admin" ])))
+  logger.logSimple (specialEvent (UserLoggedIn ("haf", [ "authenticatedUser"; "powerUser" ])))
+  logger.logSimple (specialEvent (UserLoggedIn ("mavnn", [ "general" ])))
+
+  logger.logSimple (specialEvent (UserLoggedOut ("adam", Fast)))
+  logger.logSimple (specialEvent (UserLoggedOut ("haf", Slow)))
+  logger.logSimple (specialEvent (UserLoggedOut ("mavnn", (Other 10))))
+
+  let gotLibryyResultEvent = Message.templateEvent<int> (Debug, "Got {LibryyResult} from Libryy")
+  let logLibryyResult result = gotLibryyResultEvent result |> logger.logSimple
 
   let workResult = Libryy.Core.work librryLogger
-  logLibryyResult workResult (UserLoggedIn "adam")
+  logLibryyResult workResult
 
   let simpleWorkExnResult = Libryy.Core.generateAndLogExn librryLogger
-  logLibryyResult simpleWorkExnResult (UserLoggedIn "haf")
+  logLibryyResult simpleWorkExnResult
 
   let staticWorkResult = Libryy.Core.staticWork()
-  logLibryyResult staticWorkResult (UserLoggedIn "mavnn")
+  logLibryyResult staticWorkResult
 
   mre.Wait()
   0

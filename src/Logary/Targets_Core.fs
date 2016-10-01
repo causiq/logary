@@ -276,25 +276,31 @@ module LiterateConsole =
       | Value.Binary (x, y) -> [ "todo (binary)", OtherSymbol ] // TODO:
       | Value.Fraction (x, y) -> [ "todo (fraction)", OtherSymbol ] // TODO:
       | Value.Object stringValueMap ->
-        let maybeTypeTag = match stringValueMap.TryFind("_typeTag") with
-                           | Some (String tt) -> Some tt
-                           | _ -> None
-
         let objectTokens =
           stringValueMap
-          |> Map.toSeq
-          |> Seq.collect (fun (k, v) ->
-            match k with
-            | "_typeTag" -> []
-            | _ ->
-              [ k, Subtext; ": ", Punctuation ]
-              @ literateFormatField conf prop (Field (v, None)))
+          |> Map.remove "_typeTag" // type tag is rendered separately
+          |> Map.toArray
+          |> fun valArray ->
+            valArray |> Array.mapi (fun i (k, v) -> seq {
+              yield k, Subtext
+              yield ": ", Punctuation
+              yield! literateFormatField conf prop (Field (v, None))
+              if i < (valArray.Length - 1) then
+                yield ", ", Punctuation
+            })
+          |> Seq.concat
           |> List.ofSeq
 
-        (match maybeTypeTag with Some tt -> [tt, OtherSymbol; " ", Text ] | None -> [])
-        @ [ "[ ", Punctuation ]
-        @ objectTokens
-        @ [ " ]", Punctuation ]
+        seq {
+          match stringValueMap.TryFind("_typeTag") with
+            | Some (String tt) -> yield tt, OtherSymbol; yield " ", Text
+            | _ -> ()
+          if not objectTokens.IsEmpty then
+            yield "[ ", Punctuation
+            yield! objectTokens 
+            yield " ]", Punctuation 
+        }
+        |> List.ofSeq
 
     let literateFormatValue (options : LiterateConsoleConf) (message : Message) = function
       | Event eventTemplate ->
