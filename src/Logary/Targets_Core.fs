@@ -268,9 +268,24 @@ module LiterateConsole =
       let fp = conf.formatProvider
       match value with
       | Value.Array items ->
-        [ "[ ", Punctuation ]
-          @ (items |> List.collect (fun v -> literateFormatField conf prop (Field (v, None))))
-          @ [ " ]", Punctuation ]
+        let valueTokens =
+          items
+          |> List.toArray
+          |> fun valArray ->
+            valArray |> Array.mapi (fun i v -> seq {
+              yield! literateFormatField conf prop (Field (v, None))
+              if i < (valArray.Length - 1) then
+                yield ", ", Punctuation
+            })
+          |> Seq.concat
+          |> List.ofSeq
+
+        seq {
+            yield "[", Punctuation
+            yield! valueTokens 
+            yield "]", Punctuation 
+        }
+        |> List.ofSeq
       | Value.String s -> [ s, StringSymbol ]
       | Value.Bool b -> [ b.ToString(fp), KeywordSymbol ]
       | Value.Float f -> [ f.ToString(prop.Format, fp), NumericSymbol ]
@@ -281,27 +296,29 @@ module LiterateConsole =
       | Value.Object stringValueMap ->
         let objectTokens =
           stringValueMap
-          |> Map.remove "_typeTag" // type tag is rendered separately
           |> Map.toArray
           |> fun valArray ->
             valArray |> Array.mapi (fun i (k, v) -> seq {
-              yield k, Subtext
-              yield ": ", Punctuation
-              yield! literateFormatField conf prop (Field (v, None))
-              if i < (valArray.Length - 1) then
-                yield ", ", Punctuation
+              if k <> "_typeTag" then
+                yield k, Subtext
+                yield "=", Punctuation
+                yield! literateFormatField conf prop (Field (v, None))
+                if i < (valArray.Length - 1) then
+                  yield ", ", Punctuation
             })
           |> Seq.concat
           |> List.ofSeq
 
         seq {
           match stringValueMap.TryFind("_typeTag") with
-            | Some (String tt) -> yield tt, OtherSymbol; yield " ", Text
+            | Some (String tt) ->
+              yield tt, (if objectTokens.IsEmpty then OtherSymbol else Subtext)
+              if not objectTokens.IsEmpty then yield " ", Subtext
             | _ -> ()
           if not objectTokens.IsEmpty then
-            yield "[ ", Punctuation
+            yield "{", Punctuation
             yield! objectTokens 
-            yield " ]", Punctuation 
+            yield "}", Punctuation 
         }
         |> List.ofSeq
 
@@ -422,7 +439,7 @@ module LiterateConsole =
               | Tokens.LevelDebug -> { foreground=ConsoleColor.Gray; background=None }
               | Tokens.LevelInfo -> { foreground=ConsoleColor.White; background=None }
               | Tokens.LevelWarning -> { foreground=ConsoleColor.Yellow; background=None }
-              | Tokens.LevelError -> { foreground=ConsoleColor.Red; background=None }
+              | Tokens.LevelError -> { foreground=ConsoleColor.White; background=Some ConsoleColor.Red }
               | Tokens.LevelFatal -> { foreground=ConsoleColor.White; background=Some ConsoleColor.Red }
               | Tokens.KeywordSymbol -> { foreground=ConsoleColor.Blue; background=None }
               | Tokens.NumericSymbol -> { foreground=ConsoleColor.Magenta; background=None }
