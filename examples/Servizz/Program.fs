@@ -10,6 +10,8 @@ open System.Threading
 
 let logger = Logging.getLoggerByName "Servizz.Program"
 
+type MyDu = UserLoggedIn of name:string | UserLoggedOut of name:string
+
 [<EntryPoint>]
 let main argv =
   use mre = new ManualResetEventSlim(false)
@@ -17,7 +19,7 @@ let main argv =
 
   use logary =
     withLogaryManager "Servizz.Program" (
-      withTargets [ Console.create Console.empty "console" ]
+      withTargets [ LiterateConsole.create LiterateConsole.empty "console" ]
       >> withRules [ Rule.createForTarget "console" ])
     |> run
 
@@ -27,15 +29,18 @@ let main argv =
   // if you need a Logger instance:
   let logger = logary.getLogger (PointName [| "Libryy" |])
   let librryLogger = LoggerAdapter.createGeneric logger
+  
+  let gotLibryyResultEvent = Message.templateEvent<int, MyDu> (Debug, "Got {LibryyResult} from Libryy, {@Event}")
+  let logLibryyResult result event = gotLibryyResultEvent result event |> logger.logSimple
 
   let workResult = Libryy.Core.work librryLogger
-  Message.eventDebug "Got {workResult} from Libryy" |> Message.setField "workResult" workResult |> logger.logSimple
+  logLibryyResult workResult (UserLoggedIn "adam")
 
   let simpleWorkExnResult = Libryy.Core.generateAndLogExn librryLogger
-  Message.eventDebug "Got {simpleWorkExnResult} from Libryy" |> Message.setField "simpleWorkExnResult" simpleWorkExnResult |> logger.logSimple
+  logLibryyResult simpleWorkExnResult (UserLoggedIn "haf")
 
   let staticWorkResult = Libryy.Core.staticWork()
-  Message.eventDebug "Got {staticWorkResult} from Libryy" |> Message.setField "staticWorkResult" staticWorkResult |> logger.logSimple
+  logLibryyResult staticWorkResult (UserLoggedIn "mavnn")
 
   mre.Wait()
   0

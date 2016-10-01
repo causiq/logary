@@ -212,10 +212,12 @@ module LiterateConsole =
         | line ->
           if line.StartsWith(stackFrameLinePrefix) then
             // subtext
-            go ((Environment.NewLine, Text) :: ((line, Subtext) :: lines))
+            go ((line, Subtext) :: (Environment.NewLine, Text) :: lines)
+          else if String.IsNullOrWhiteSpace line then
+            go lines
           else
             // regular text
-            go ((Environment.NewLine, Text) :: ((line, Text) :: lines))
+            go ((line, Text) :: (Environment.NewLine, Text) :: lines)
       go []
 
     let literateColorizeExceptions (context : LiterateConsoleConf) message =
@@ -235,7 +237,6 @@ module LiterateConsole =
           let message = getStringFromMapOrFail exnObjMap "message"
           let stackTrace = getStringFromMapOrFail exnObjMap "stackTrace"
           literateExceptionColorizer context exnTypeName message stackTrace
-          @ [ Environment.NewLine, Text ]
         )
         |> List.concat
 
@@ -274,7 +275,26 @@ module LiterateConsole =
       | Value.BigInt bi -> [ bi.ToString(prop.Format, fp), NumericSymbol ]
       | Value.Binary (x, y) -> [ "todo (binary)", OtherSymbol ] // TODO:
       | Value.Fraction (x, y) -> [ "todo (fraction)", OtherSymbol ] // TODO:
-      | Value.Object o -> [ o.ToString(), OtherSymbol ] // TODO: recurse
+      | Value.Object stringValueMap ->
+        let maybeTypeTag = match stringValueMap.TryFind("_typeTag") with
+                           | Some (String tt) -> Some tt
+                           | _ -> None
+
+        let objectTokens =
+          stringValueMap
+          |> Map.toSeq
+          |> Seq.collect (fun (k, v) ->
+            match k with
+            | "_typeTag" -> []
+            | _ ->
+              [ k, Subtext; ": ", Punctuation ]
+              @ literateFormatField conf prop (Field (v, None)))
+          |> List.ofSeq
+
+        (match maybeTypeTag with Some tt -> [tt, OtherSymbol; " ", Text ] | None -> [])
+        @ [ "[ ", Punctuation ]
+        @ objectTokens
+        @ [ " ]", Punctuation ]
 
     let literateFormatValue (options : LiterateConsoleConf) (message : Message) = function
       | Event eventTemplate ->
@@ -322,13 +342,7 @@ module LiterateConsole =
       let themedMessageParts =
         message.value |> literateFormatValue options message |> snd
         
-      let themedExceptionParts =
-        let exnParts = literateColorizeExceptions options message
-        if not exnParts.IsEmpty then
-          [ Environment.NewLine, Text ]
-          @ exnParts
-          @ [ Environment.NewLine, Text ]
-        else []
+      let themedExceptionParts = literateColorizeExceptions options message
 
       let getLogLevelToken = function
         | Verbose -> LevelVerbose

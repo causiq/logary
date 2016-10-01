@@ -29,67 +29,6 @@
     <WarningLevel>3</WarningLevel>
     <DocumentationFile>bin\Release\Logary.xml</DocumentationFile>
   </PropertyGroup>
-  <ItemGroup>
-    <Compile Include="..\..\paket-files\xyncro\aether\src\Aether\Aether.fs">
-      <Paket>True</Paket>
-      <Link>paket-files/Aether.fs</Link>
-    </Compile>
-    <Compile Include="..\..\paket-files\xyncro\chiron\src\Chiron\Chiron.fs">
-      <Paket>True</Paket>
-      <Link>paket-files/Chiron.fs</Link>
-    </Compile>
-    <Compile Include="..\..\paket-files\haf\YoLo\YoLo.fs">
-      <Paket>True</Paket>
-      <Link>paket-files/YoLo.fs</Link>
-    </Compile>
-    <Compile Include="..\..\paket-files\logary\RingBuffer\RingBuffer.fs">
-      <Paket>True</Paket>
-      <Link>paket-files/RingBuffer.fs</Link>
-    </Compile>
-    <Reference Include="mscorlib" />
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Numerics" />
-    <Reference Include="System.Xml" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="LogLevel.fs" />
-    <Compile Include="MessageTemplates.fs" />
-    <Compile Include="Constants.fs" />
-    <Compile Include="Internals.fs" />
-    <Compile Include="DataModel.fs" />
-    <Compile Include="Named.fs" />
-    <Compile Include="Scheduling.fs" />
-    <Compile Include="Logger.fs" />
-    <Compile Include="RuntimeInfo.fs" />
-    <Compile Include="Metric.fs" />
-    <Compile Include="Metrics_Core.fs" />
-    <Compile Include="HealthCheck.fs" />
-    <Compile Include="Supervisor.fs" />
-    <Compile Include="Middleware.fs" />
-    <Compile Include="LogManager.fs" />
-    <Compile Include="Internals_FlyweightLogger.fs" />
-    <Compile Include="Internals_Globals.fs" />
-    <Compile Include="Rule.fs" />
-    <Compile Include="Target.fs" />
-    <Compile Include="Internals_Logger.fs" />
-    <Compile Include="Formatting.fs" />
-    <Compile Include="Targets_Core.fs" />
-    <Compile Include="Targets_Noop.fs" />
-    <Compile Include="Targets_Graphite.fs" />
-    <Compile Include="Configuration_LogaryConf.fs" />
-    <Compile Include="Registry.fs" />
-    <Compile Include="Logging.fs" />
-    <Compile Include="Configuration_ValidationException.fs" />
-    <Compile Include="Configuration_Config.fs" />
-    <Compile Include="Configuration_FactoryApi.fs" />
-    <Compile Include="Configuration_Uri.fs" />
-    <Compile Include="Try.fs" />
-    <Compile Include="AssemblyVersionInfo.fs" />
-    <Compile Include="AssemblyInfo.fs" />
-    <None Include="paket.references" />
-    <Content Include="app.config" />
-  </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
   <Import Project="$(MSBuildProjectDirectory)\..\..\tools\msbuild-sign.targets" />
@@ -152,4 +91,66 @@
       </ItemGroup>
     </When>
   </Choose>
+  <ItemGroup>
+    <Compile Include="..\..\paket-files\xyncro\aether\src\Aether\Aether.fs">
+      <Paket>True</Paket>
+      <Link>paket-files/Aether.fs</Link>
+    </Compile>
+    <Compile Include="..\..\paket-files\xyncro\chiron\src\Chiron\Chiron.fs">
+      <Paket>True</Paket>
+      <Link>paket-files/Chiron.fs</Link>
+    </Compile>
+    <Compile Include="..\..\paket-files\haf\YoLo\YoLo.fs">
+      <Paket>True</Paket>
+      <Link>paket-files/YoLo.fs</Link>
+    </Compile>
+    <Compile Include="..\..\paket-files\logary\RingBuffer\RingBuffer.fs">
+      <Paket>True</Paket>
+      <Link>paket-files/RingBuffer.fs</Link>
+    </Compile>
+    <Compile Include="LogLevel.fs" />
+    <Compile Include="MessageTemplates.fs" />
+    <Compile Include="Constants.fs" />
+    <Compile Include="Internals.fs" />
+    <Compile Include="DataModel.fs" />
+    <Compile Include="TemplateFormat.fs" />
+    <Compile Include="Named.fs" />
+    <Compile Include="Scheduling.fs" />
+    <Compile Include="Logger.fs" />
+    <Compile Include="RuntimeInfo.fs" />
+    <Compile Include="Metric.fs" />
+    <Compile Include="Metrics_Core.fs" />
+    <Compile Include="HealthCheck.fs" />
+    <Compile Include="Supervisor.fs" />
+    <Compile Include="Middleware.fs" />
+    <Compile Include="LogManager.fs" />
+    <Compile Include="Internals_FlyweightLogger.fs" />
+    <Compile Include="Internals_Globals.fs" />
+    <Compile Include="Rule.fs" />
+    <Compile Include="Target.fs" />
+    <Compile Include="Internals_Logger.fs" />
+    <Compile Include="Formatting.fs" />
+    <Compile Include="Targets_Core.fs" />
+    <Compile Include="Targets_Noop.fs" />
+    <Compile Include="Targets_Graphite.fs" />
+    <Compile Include="Configuration_LogaryConf.fs" />
+    <Compile Include="Registry.fs" />
+    <Compile Include="Logging.fs" />
+    <Compile Include="Configuration_ValidationException.fs" />
+    <Compile Include="Configuration_Config.fs" />
+    <Compile Include="Configuration_FactoryApi.fs" />
+    <Compile Include="Configuration_Uri.fs" />
+    <Compile Include="Try.fs" />
+    <Compile Include="AssemblyVersionInfo.fs" />
+    <Compile Include="AssemblyInfo.fs" />
+    <None Include="paket.references" />
+    <Content Include="app.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
 </Project>
