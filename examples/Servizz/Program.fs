@@ -37,6 +37,10 @@ let main argv =
   let logger = logary.getLogger (PointName [| "Libryy" |])
   let librryLogger = LoggerAdapter.createGeneric logger
   
+  let someEventWithBinaryData = Message.templateEvent<string, byte[]> (Debug, "Some binary ({Disposition}) is {Binary}")
+  someEventWithBinaryData "too big" (System.Text.Encoding.ASCII.GetBytes("hey haf, too many bytes, have to truncate!")) |> logger.logSimple
+  someEventWithBinaryData "small" (System.Text.Encoding.ASCII.GetBytes("hey haf!")) |> logger.logSimple
+
   let userSystemEvent = Message.templateEvent<LoginLogoutEvent>(Info, "Special event {@Event}")
   userSystemEvent (UserLoggedIn ("adam", [ "admin" ])) |> logger.logSimple
   userSystemEvent (UserLoggedIn ("haf", [ "authenticatedUser"; "powerUser" ])) |> logger.logSimple

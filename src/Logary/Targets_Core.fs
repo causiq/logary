@@ -229,6 +229,10 @@ module LiterateConsole =
         match exnObjMap |> Map.find fieldName with
         | String m -> m
         | _ -> failwithf "Couldn't find %s in %A" fieldName exnObjMap
+      let getStringFromMapOrDefault defaultIfMissing exnObjMap fieldName =
+        match exnObjMap |> Map.tryFind fieldName with
+        | Some (String m) -> m
+        | _ -> defaultIfMissing
 
       match exns with
       | [] -> []
@@ -238,7 +242,7 @@ module LiterateConsole =
         |> List.map (fun exnObjMap ->
           let exnTypeName = getStringFromMapOrFail exnObjMap "type"
           let message = getStringFromMapOrFail exnObjMap "message"
-          let stackTrace = getStringFromMapOrFail exnObjMap "stackTrace"
+          let stackTrace = getStringFromMapOrDefault "" exnObjMap "stackTrace"
           literateExceptionColorizer context exnTypeName message stackTrace
         )
         |> List.concat
@@ -287,11 +291,24 @@ module LiterateConsole =
         }
         |> List.ofSeq
       | Value.String s -> [ s, StringSymbol ]
-      | Value.Bool b -> [ b.ToString(fp), KeywordSymbol ]
+      | Value.Bool b -> [ b.ToString().ToLowerInvariant(), KeywordSymbol ]
       | Value.Float f -> [ f.ToString(prop.Format, fp), NumericSymbol ]
       | Value.Int64 i -> [ i.ToString(prop.Format, fp), NumericSymbol ]
       | Value.BigInt bi -> [ bi.ToString(prop.Format, fp), NumericSymbol ]
-      | Value.Binary (x, y) -> [ "todo (binary)", OtherSymbol ] // TODO:
+      | Value.Binary (x, y) ->
+        let maxBytes = 15
+        seq {
+          yield (x |> Array.take(min x.Length maxBytes) |> Array.map (fun b -> b.ToString("X2")) |> String.Concat), StringSymbol
+          if x.Length > maxBytes then
+            yield "... (", Punctuation
+            yield string x.Length, Subtext
+            yield " bytes", Subtext
+            yield ")", Punctuation
+          yield " (", Punctuation
+          yield y, Subtext
+          yield ")", Punctuation
+        }
+        |> List.ofSeq
       | Value.Fraction (x, y) -> [ "todo (fraction)", OtherSymbol ] // TODO:
       | Value.Object stringValueMap ->
         let objectTokens =
@@ -386,6 +403,32 @@ module LiterateConsole =
       @ themedMessageParts
       @ themedExceptionParts
 
+    module DefaultTheme =
+      let textColours = { foreground=ConsoleColor.White; background=None }
+      let subtextColours = { foreground=ConsoleColor.Gray; background=None }
+      let punctuationColours = { foreground=ConsoleColor.DarkGray; background=None }
+      let levelVerboseColours = { foreground=ConsoleColor.Gray; background=None }
+      let levelDebugColours = { foreground=ConsoleColor.Gray; background=None }
+      let levelInfoColours = { foreground=ConsoleColor.White; background=None }
+      let levelWarningColours = { foreground=ConsoleColor.Yellow; background=None }
+      let levelErrorColours = { foreground=ConsoleColor.White; background=Some ConsoleColor.Red }
+      let levelFatalColours = { foreground=ConsoleColor.White; background=Some ConsoleColor.Red }
+      let keywordSymbolColours = { foreground=ConsoleColor.Blue; background=None }
+      let numericSymbolColours = { foreground=ConsoleColor.Magenta; background=None }
+      let stringSymbolColours = { foreground=ConsoleColor.Cyan; background=None }
+      let otherSymbolColours = { foreground=ConsoleColor.Green; background=None }
+      let nameSymbolColours = { foreground=ConsoleColor.Gray; background=None }
+      let missingTemplateFieldColours = { foreground=ConsoleColor.Red; background=None }
+
+      let theme = function
+        | Tokens.Text -> textColours | Tokens.Subtext -> subtextColours | Tokens.Punctuation -> punctuationColours
+        | Tokens.LevelVerbose -> levelVerboseColours | Tokens.LevelDebug -> levelDebugColours
+        | Tokens.LevelInfo -> levelInfoColours | Tokens.LevelWarning -> levelWarningColours
+        | Tokens.LevelError -> levelErrorColours | Tokens.LevelFatal -> levelFatalColours
+        | Tokens.KeywordSymbol -> keywordSymbolColours | Tokens.NumericSymbol -> numericSymbolColours
+        | Tokens.StringSymbol -> stringSymbolColours | Tokens.OtherSymbol -> otherSymbolColours
+        | Tokens.NameSymbol -> nameSymbolColours | Tokens.MissingTemplateField -> missingTemplateFieldColours
+
     let consoleWriteLineColourParts (parts : ColouredText list) =
         let originalForegroundColour = Console.ForegroundColor
         let originalBackgroundColour = Console.BackgroundColor
@@ -431,22 +474,7 @@ module LiterateConsole =
               | Verbose ->  "VRB"
               | Warn ->     "WRN"
       tokenise = LiterateFormatting.literateDefaultTokenizer
-      theme = function
-              | Tokens.Text ->  { foreground=ConsoleColor.White; background=None }
-              | Tokens.Subtext -> { foreground=ConsoleColor.Gray; background=None }
-              | Tokens.Punctuation -> { foreground=ConsoleColor.DarkGray; background=None }
-              | Tokens.LevelVerbose -> { foreground=ConsoleColor.Gray; background=None }
-              | Tokens.LevelDebug -> { foreground=ConsoleColor.Gray; background=None }
-              | Tokens.LevelInfo -> { foreground=ConsoleColor.White; background=None }
-              | Tokens.LevelWarning -> { foreground=ConsoleColor.Yellow; background=None }
-              | Tokens.LevelError -> { foreground=ConsoleColor.White; background=Some ConsoleColor.Red }
-              | Tokens.LevelFatal -> { foreground=ConsoleColor.White; background=Some ConsoleColor.Red }
-              | Tokens.KeywordSymbol -> { foreground=ConsoleColor.Blue; background=None }
-              | Tokens.NumericSymbol -> { foreground=ConsoleColor.Magenta; background=None }
-              | Tokens.StringSymbol -> { foreground=ConsoleColor.Cyan; background=None }
-              | Tokens.OtherSymbol -> { foreground=ConsoleColor.Green; background=None }
-              | Tokens.NameSymbol -> { foreground=ConsoleColor.Gray; background=None }
-              | Tokens.MissingTemplateField -> { foreground=ConsoleColor.Red; background=None }
+      theme = LiterateFormatting.DefaultTheme.theme
       colourWriter = LiterateFormatting.consoleWriteColourPartsAtomically }
 
 
