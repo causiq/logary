@@ -192,7 +192,7 @@ module LiterateConsole =
       /// Converts a log level into a display string.
       getLogLevelText   : LogLevel -> string
       /// Converts a message into the appropriate tokens which can later be themed with colours.
-      tokenise          : LiterateConsoleConf -> Message -> (string * Tokens.LiterateToken) seq 
+      tokenise          : LiterateConsoleConf -> Message -> (string * Tokens.LiterateToken) seq
       /// Converts a token into the appropriate Foreground*Background colours.
       theme             : Tokens.LiterateToken -> ConsoleColours
       /// Takes an object (console semaphore) and a list of string*colour pairs and writes them
@@ -224,7 +224,7 @@ module LiterateConsole =
           line <- exnLines.ReadLine()
       }
 
-    /// Get the exceptions out from the Message (errors_) 
+    /// Get the exceptions out from the Message (errors_)
     let literateTokeniseMessageExceptions (context : LiterateConsoleConf) message =
       let exns = Utils.Aether.Lens.getPartialOrElse Message.Lenses.errors_ [] message
       let getStringFromMapOrFail exnObjMap fieldName =
@@ -264,8 +264,8 @@ module LiterateConsole =
 
       seq {
           yield "[", Punctuation
-          yield! valueTokens 
-          yield "]", Punctuation 
+          yield! valueTokens
+          yield "]", Punctuation
       }
 
     let literateTokeniseObject conf prop objValue recurse =
@@ -297,8 +297,8 @@ module LiterateConsole =
           if maybeTypeTag.IsSome then
             yield " ", Subtext
           yield "{", Punctuation
-          yield! objectTokens 
-          yield "}", Punctuation 
+          yield! objectTokens
+          yield "}", Punctuation
       }
 
     let literateTokeniseBinary conf prop binary =
@@ -432,7 +432,7 @@ module LiterateConsole =
         let originalForegroundColour = Console.ForegroundColor
         let originalBackgroundColour = Console.BackgroundColor
 
-        // The console APIs are quite slow and clumsy. We avoid changing the foreground 
+        // The console APIs are quite slow and clumsy. We avoid changing the foreground
         // and background colours whenever possible, which speeds things up a bit.
         let mutable currentForegroundColour = originalForegroundColour
         let mutable currentBackgroundColour = originalBackgroundColour
@@ -447,9 +447,11 @@ module LiterateConsole =
             match currentBackgroundColour with
             | c when c = originalBackgroundColour -> ()
             | otherwise ->
-              Console.BackgroundColor <- originalBackgroundColour
+              // calling reset here helps with different default background colours
+              Console.ResetColor()
+              currentForegroundColour <- Console.ForegroundColor
               currentBackgroundColour <- originalBackgroundColour
-          
+
         parts |> Seq.iter (fun part ->
           maybeResetBgColour part.colours.background
           if currentForegroundColour <> part.colours.foreground then
@@ -492,7 +494,7 @@ module LiterateConsole =
       let output (data : ColouredText seq) : Job<unit> =
         Job.Scheduler.isolate <| fun _ ->
           lcConf.colourWriter Logary.Internals.Globals.consoleSemaphore data
-        
+
       let rec loop () : Job<unit> =
         Alt.choose [
           shutdown ^=> fun ack ->
@@ -522,9 +524,9 @@ module LiterateConsole =
                 return! loop ()
               }
         ] :> Job<_>
-      
+
       loop()
-  
+
   [<CompiledName "Create">]
   let create conf name =
     TargetUtils.stdNamedTarget (Impl.loop conf) name
