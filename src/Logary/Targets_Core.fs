@@ -192,37 +192,38 @@ module LiterateConsole =
       /// Converts a log level into a display string.
       getLogLevelText   : LogLevel -> string
       /// Converts a message into the appropriate tokens which can later be themed with colours.
-      tokenise          : LiterateConsoleConf -> Message -> (string * Tokens.LiterateToken) list 
+      tokenise          : LiterateConsoleConf -> Message -> (string * Tokens.LiterateToken) seq 
       /// Converts a token into the appropriate Foreground*Background colours.
       theme             : Tokens.LiterateToken -> ConsoleColours
       /// Takes an object (console semaphore) and a list of string*colour pairs and writes them
       /// to the console with the appropriate colours.
-      colourWriter      : obj -> ColouredText list -> unit }
+      colourWriter      : obj -> ColouredText seq -> unit }
 
   module internal LiterateFormatting =
     open System.Text
     open Logary.Utils.FsMessageTemplates
     open Tokens
 
-    let literateExceptionTokeniser (options : LiterateConsoleConf) (typeName) (message) (stackTrace) =
+    let literateTokeniseException (options : LiterateConsoleConf) (typeName) (message) (stackTrace) =
       let stackFrameLinePrefix = "   "
-      let messageNlStackTrace = String.Concat (typeName, ": ", message, Environment.NewLine, stackTrace)
-      use exnLines = new System.IO.StringReader(messageNlStackTrace)
-      let rec go lines =
-        match exnLines.ReadLine() with
-        | null ->
-          List.rev lines // finished reading
-        | line ->
+      let typeMessageNlStackTrace = String.Concat (typeName, ": ", message, Environment.NewLine, stackTrace)
+      let exnLines = new System.IO.StringReader(typeMessageNlStackTrace)
+      seq {
+        let mutable line = exnLines.ReadLine()
+        while not (isNull line) do
           if line.StartsWith(stackFrameLinePrefix) then
             // subtext
-            go ((line, Subtext) :: (Environment.NewLine, Text) :: lines)
-          else if String.IsNullOrWhiteSpace line then
-            go lines
+            yield Environment.NewLine, Subtext
+            yield line, Subtext
           else
             // regular text
-            go ((line, Text) :: (Environment.NewLine, Text) :: lines)
-      go []
+            yield Environment.NewLine, Text
+            yield line, Text
 
+          line <- exnLines.ReadLine()
+      }
+
+    /// Get the exceptions out from the Message (errors_) 
     let literateTokeniseMessageExceptions (context : LiterateConsoleConf) message =
       let exns = Utils.Aether.Lens.getPartialOrElse Message.Lenses.errors_ [] message
       let getStringFromMapOrFail exnObjMap fieldName =
@@ -235,7 +236,7 @@ module LiterateConsole =
         | _ -> defaultIfMissing
 
       match exns with
-      | [] -> []
+      | [] -> Seq.empty
       | values ->
         values
         |> List.choose (function | Object v -> Some v | _ -> None)
@@ -243,62 +244,62 @@ module LiterateConsole =
           let exnTypeName = getStringFromMapOrFail exnObjMap "type"
           let message = getStringFromMapOrFail exnObjMap "message"
           let stackTrace = getStringFromMapOrDefault "" exnObjMap "stackTrace"
-          literateExceptionTokeniser context exnTypeName message stackTrace
+          literateTokeniseException context exnTypeName message stackTrace
         )
-        |> List.concat
-
+        |> Seq.concat
 
     let literateTokeniseArray conf prop arrValue recurse =
       let items = match arrValue with Array items -> items | _ -> failwithf "cannot tokenise %A with %s" arrValue (prop.ToString())
+      let mutable isFirst = true
       let valueTokens =
         items
-        |> List.toArray
-        |> fun valArray ->
-          valArray |> Array.mapi (fun i v -> seq {
-            yield! recurse conf prop v
-            if i < (valArray.Length - 1) then
+        |> List.map (fun v -> seq {
+            if not isFirst then
               yield ", ", Punctuation
+            isFirst <- false
+            yield! recurse conf prop v
           })
         |> Seq.concat
-        |> List.ofSeq
 
       seq {
           yield "[", Punctuation
           yield! valueTokens 
           yield "]", Punctuation 
       }
-      |> List.ofSeq
 
     let literateTokeniseObject conf prop objValue recurse =
       let stringValueMap = match objValue with Object svm -> svm | _ -> failwithf "cannot tokenise %A with %s" objValue (prop.ToString())
+      let mutable isFirst = true
       let objectTokens =
         stringValueMap
-        |> Map.toArray
-        |> fun valArray ->
-          valArray |> Array.mapi (fun i (k, v) -> seq {
+        |> Map.toSeq
+        |> Seq.rev
+        |> Seq.map (fun (k, v) -> seq {
             if k <> "_typeTag" then
+              if not isFirst then
+                yield ", ", Punctuation
+              isFirst <- false
               yield k, Subtext
               yield "=", Punctuation
               yield! recurse conf prop v
-              if i < (valArray.Length - 1) then
-                yield ", ", Punctuation
           })
         |> Seq.concat
-        |> List.ofSeq
 
+      let maybeTypeTag = stringValueMap |> Map.tryFind ("_typeTag")
+      let hasAnyValues = stringValueMap |> Map.exists (fun k v -> k <> "_typeTag")
       seq {
-        match stringValueMap.TryFind("_typeTag") with
+        match maybeTypeTag with
           | Some (String tt) ->
-            yield tt, (if objectTokens.IsEmpty then OtherSymbol else Subtext)
-            if not objectTokens.IsEmpty then yield " ", Subtext
+            yield tt, (if hasAnyValues then Subtext else OtherSymbol)
           | _ -> ()
-        if not objectTokens.IsEmpty then
+        if hasAnyValues then
+          if maybeTypeTag.IsSome then
+            yield " ", Subtext
           yield "{", Punctuation
           yield! objectTokens 
           yield "}", Punctuation 
       }
-      |> List.ofSeq
-  
+
     let literateTokeniseBinary conf prop binary =
       let x, y = match binary with Binary (x,y) -> x,y | _ -> failwithf "cannot tokenise %A with %s" binary (prop.ToString())
       let maxBytes = 15
@@ -313,7 +314,6 @@ module LiterateConsole =
         yield y, Subtext
         yield ")", Punctuation
       }
-      |> List.ofSeq
 
     let rec literateTokeniseField (conf : LiterateConsoleConf)
                                 (prop : Property)
@@ -323,52 +323,51 @@ module LiterateConsole =
       let fp = conf.formatProvider
       match value with
       | Value.Array _ as arr -> literateTokeniseArray conf prop arr recurseTokenise
-      | Value.String s -> [ s, StringSymbol ]
-      | Value.Bool b -> [ b.ToString().ToLowerInvariant(), KeywordSymbol ]
-      | Value.Float f -> [ f.ToString(prop.Format, fp), NumericSymbol ]
-      | Value.Int64 i -> [ i.ToString(prop.Format, fp), NumericSymbol ]
-      | Value.BigInt bi -> [ bi.ToString(prop.Format, fp), NumericSymbol ]
+      | Value.String s -> seq { yield s, StringSymbol }
+      | Value.Bool b -> seq { yield b.ToString().ToLowerInvariant(), KeywordSymbol }
+      | Value.Float f -> seq { yield f.ToString(prop.Format, fp), NumericSymbol }
+      | Value.Int64 i -> seq { yield i.ToString(prop.Format, fp), NumericSymbol }
+      | Value.BigInt bi -> seq { yield bi.ToString(prop.Format, fp), NumericSymbol }
       | Value.Binary (_, _) as binary -> literateTokeniseBinary conf prop binary
-      | Value.Fraction (x, y) -> [ "todo (fraction)", OtherSymbol ] // TODO:
+      | Value.Fraction (x, y) -> seq { yield "todo (fraction)", OtherSymbol } // TODO:
       | Value.Object _ as o -> literateTokeniseObject conf prop o recurseTokenise
 
     let literateTokenisePointValue (options : LiterateConsoleConf) (message : Message) = function
       | Event eventTemplate ->
         let textAndTokens = ResizeArray<string * LiterateToken>()
-        let themedParts =
-          Parser.parse(eventTemplate).Tokens
-          |> Seq.collect (function
-            | PropToken (_, prop) ->
-              match Map.tryFind (PointName.ofSingle prop.Name) message.fields with
-              | Some field ->
-                literateTokeniseField options prop field
-              | None ->
-                [ prop.ToString(), MissingTemplateField ]
-            | TextToken (_, text) ->
-              [ text, Text ])
-
-        List.ofSeq themedParts
+        Parser.parse(eventTemplate).Tokens
+        |> Seq.collect (function
+          | PropToken (_, prop) ->
+            match Map.tryFind (PointName.ofSingle prop.Name) message.fields with
+            | Some field ->
+              literateTokeniseField options prop field
+            | None ->
+              seq { yield prop.ToString(), MissingTemplateField }
+          | TextToken (_, text) ->
+            seq { yield text, Text })
 
       | Derived (value, units) ->
-        [ "Metric (derived) ", Subtext
-          "todo: value", NumericSymbol
-          " ", Subtext
-          Units.symbol units, Text
-          " (", Punctuation
-          message.name.ToString(), Text
-          ")", Punctuation ]
+        seq {
+          yield "Metric (derived) ", Subtext
+          yield "todo: value", NumericSymbol
+          yield " ", Subtext
+          yield Units.symbol units, Text
+          yield " (", Punctuation
+          yield message.name.ToString(), Text
+          yield ")", Punctuation }
       | Gauge (value, units) ->
-        [ "Metric (guage) ", Subtext
-          "todo: value", NumericSymbol
-          " ", Subtext
-          Units.symbol units, Text
-          " (", Punctuation
-          message.name.ToString(), Text
-          ")", Punctuation ]
+        seq {
+          yield "Metric (guage) ", Subtext
+          yield "todo: value", NumericSymbol
+          yield " ", Subtext
+          yield Units.symbol units, Text
+          yield " (", Punctuation
+          yield message.name.ToString(), Text
+          yield ")", Punctuation }
 
     /// Split a structured message up into theme-able parts (tokens), allowing the
     /// final output to display to a user with colours to enhance readability.
-    let literateDefaultTokeniser (options : LiterateConsoleConf) (message : Message) : (string * LiterateToken) list =
+    let literateDefaultTokeniser (options : LiterateConsoleConf) (message : Message) =
       let formatLocalTime (utcTicks : EpochNanoSeconds) =
         DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss", options.formatProvider),
         Subtext
@@ -393,7 +392,6 @@ module LiterateConsole =
         yield! messageTokens
         yield! exceptionTokens
       }
-      |> List.ofSeq
 
     module DefaultTheme =
       let textColours = { foreground=ConsoleColor.White; background=None }
@@ -421,9 +419,12 @@ module LiterateConsole =
         | Tokens.StringSymbol -> stringSymbolColours | Tokens.OtherSymbol -> otherSymbolColours
         | Tokens.NameSymbol -> nameSymbolColours | Tokens.MissingTemplateField -> missingTemplateFieldColours
 
-    let consoleWriteLineColourParts (parts : ColouredText list) =
+    let consoleWriteLineColourParts (parts : ColouredText seq) =
         let originalForegroundColour = Console.ForegroundColor
         let originalBackgroundColour = Console.BackgroundColor
+
+        // The console APIs are quite slow and clumsy. We avoid changing the foreground 
+        // and background colours whenever possible, which speeds things up a bit.
         let mutable currentForegroundColour = originalForegroundColour
         let mutable currentBackgroundColour = originalBackgroundColour
 
@@ -440,7 +441,7 @@ module LiterateConsole =
               Console.BackgroundColor <- originalBackgroundColour
               currentBackgroundColour <- originalBackgroundColour
           
-        parts |> List.iter (fun part ->
+        parts |> Seq.iter (fun part ->
           maybeResetBgColour part.colours.background
           if currentForegroundColour <> part.colours.foreground then
             Console.ForegroundColor <- part.colours.foreground
@@ -452,7 +453,7 @@ module LiterateConsole =
         maybeResetBgColour None
         Console.WriteLine()
 
-    let consoleWriteColourPartsAtomically sem (parts : ColouredText list) =
+    let consoleWriteColourPartsAtomically sem (parts : ColouredText seq) =
       lock sem <| fun _ -> consoleWriteLineColourParts parts
 
   /// Default console target configuration.
@@ -479,7 +480,7 @@ module LiterateConsole =
              (requests : RingBuffer<TargetMessage>)
              (shutdown : Ch<IVar<unit>>) =
 
-      let output (data : ColouredText list) : Job<unit> =
+      let output (data : ColouredText seq) : Job<unit> =
         Job.Scheduler.isolate <| fun _ ->
           lcConf.colourWriter Logary.Internals.Globals.consoleSemaphore data
         
@@ -491,11 +492,10 @@ module LiterateConsole =
           RingBuffer.take requests ^=> function
             | Log (logMsg, ack) ->
               job {
-                let tokens = lcConf.tokenise lcConf logMsg
-                let themedParts = tokens |> List.map (fun (text, token) ->
-                                                        let colours = lcConf.theme token
-                                                        { text=text; colours=colours })
-                do! output themedParts
+                do! lcConf.tokenise lcConf logMsg
+                  |> Seq.map (fun (text, token) ->
+                    { text=text; colours=lcConf.theme token })
+                  |> output
                 do! ack *<= ()
                 return! loop ()
               }
