@@ -205,13 +205,14 @@ module LiterateConsole =
     open Tokens
 
     let literateTokeniseException (options : LiterateConsoleConf) (typeName) (message) (stackTrace) =
-      let stackFrameLinePrefix = "   "
+      let windowsStackFrameLinePrefix = "   at "
+      let monoStackFrameLinePrefix = "  at "
       let typeMessageNlStackTrace = String.Concat (typeName, ": ", message, Environment.NewLine, stackTrace)
       let exnLines = new System.IO.StringReader(typeMessageNlStackTrace)
       seq {
         let mutable line = exnLines.ReadLine()
         while not (isNull line) do
-          if line.StartsWith(stackFrameLinePrefix) then
+          if line.StartsWith(windowsStackFrameLinePrefix) || line.StartsWith(monoStackFrameLinePrefix) then
             // subtext
             yield Environment.NewLine, Subtext
             yield line, Subtext
@@ -301,23 +302,31 @@ module LiterateConsole =
       }
 
     let literateTokeniseBinary conf prop binary =
-      let x, y = match binary with Binary (x,y) -> x,y | _ -> failwithf "cannot tokenise %A with %s" binary (prop.ToString())
+      let bytes, contentType = match binary with Binary (x, y) -> x, y | _ -> failwithf "cannot tokenise %A with %s" binary (prop.ToString())
       let maxBytes = 15
       seq {
-        yield (x |> Array.take(min x.Length maxBytes) |> Array.map (fun b -> b.ToString("X2")) |> String.Concat), StringSymbol
-        if x.Length > maxBytes then
+        yield (bytes |> Array.take(min bytes.Length maxBytes) |> Array.map (fun b -> b.ToString("X2")) |> String.Concat), StringSymbol
+        if bytes.Length > maxBytes then
           yield "... (", Punctuation
-          yield string x.Length, Subtext
+          yield string bytes.Length, Subtext
           yield " bytes", Subtext
           yield ")", Punctuation
         yield " (", Punctuation
-        yield y, Subtext
+        yield contentType, Subtext
         yield ")", Punctuation
       }
 
+    let literateTokeniseFraction (conf : LiterateConsoleConf) prop fraction =
+      let x, y = match fraction with Fraction (x, y) -> x, y | _ -> failwithf "cannot tokenise %A with %s" fraction (prop.ToString())
+      seq {
+        yield x.ToString(conf.formatProvider), NumericSymbol
+        yield "/", Punctuation
+        yield y.ToString(conf.formatProvider), NumericSymbol
+      }
+
     let rec literateTokeniseField (conf : LiterateConsoleConf)
-                                (prop : Property)
-                                (propValue : Field) =
+                                  (prop : Property)
+                                  (propValue : Field) =
       let recurseTokenise = fun c p v -> literateTokeniseField c p (Field (v, None))
       let value, units = match propValue with Field (v, u) -> v, u
       let fp = conf.formatProvider
@@ -328,8 +337,8 @@ module LiterateConsole =
       | Value.Float f -> seq { yield f.ToString(prop.Format, fp), NumericSymbol }
       | Value.Int64 i -> seq { yield i.ToString(prop.Format, fp), NumericSymbol }
       | Value.BigInt bi -> seq { yield bi.ToString(prop.Format, fp), NumericSymbol }
-      | Value.Binary (_, _) as binary -> literateTokeniseBinary conf prop binary
-      | Value.Fraction (x, y) -> seq { yield "todo (fraction)", OtherSymbol } // TODO:
+      | Value.Binary (_) as binary -> literateTokeniseBinary conf prop binary
+      | Value.Fraction (_) as fraction -> literateTokeniseFraction conf prop fraction
       | Value.Object _ as o -> literateTokeniseObject conf prop o recurseTokenise
 
     let literateTokenisePointValue (options : LiterateConsoleConf) (message : Message) = function
@@ -349,7 +358,7 @@ module LiterateConsole =
       | Derived (value, units) ->
         seq {
           yield "Metric (derived) ", Subtext
-          yield "todo: value", NumericSymbol
+          yield! literateTokeniseField options (Property.Empty) (Field (value, None))
           yield " ", Subtext
           yield Units.symbol units, Text
           yield " (", Punctuation
@@ -358,7 +367,7 @@ module LiterateConsole =
       | Gauge (value, units) ->
         seq {
           yield "Metric (guage) ", Subtext
-          yield "todo: value", NumericSymbol
+          yield! literateTokeniseField options (Property.Empty) (Field (value, None))
           yield " ", Subtext
           yield Units.symbol units, Text
           yield " (", Punctuation
@@ -492,10 +501,17 @@ module LiterateConsole =
           RingBuffer.take requests ^=> function
             | Log (logMsg, ack) ->
               job {
-                do! lcConf.tokenise lcConf logMsg
-                  |> Seq.map (fun (text, token) ->
-                    { text=text; colours=lcConf.theme token })
-                  |> output
+                try
+                  do! lcConf.tokenise lcConf logMsg
+                    |> Seq.map (fun (text, token) ->
+                      { text=text; colours=lcConf.theme token })
+                    |> output
+                with e ->
+                  do! output (seq {
+                    yield { text="Error in Logary console target rendering: "; colours=LiterateFormatting.DefaultTheme.levelErrorColours }
+                    yield { text=e.ToString(); colours=LiterateFormatting.DefaultTheme.textColours }
+                  })
+                  do! output (seq { yield { text=sprintf "%A" logMsg; colours=LiterateFormatting.DefaultTheme.subtextColours }})
                 do! ack *<= ()
                 return! loop ()
               }

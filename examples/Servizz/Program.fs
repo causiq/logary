@@ -12,12 +12,12 @@ let logger = Logging.getLoggerByName "Servizz.Program"
 
 type Speed = Fast | Slow | OtherSpeed of speed:int
 type LoginLogoutEvent =
-| UserLoggedIn of user : string * roles : string list
-| UserLoggedOut of user : string * speedAtTimeOfLeaving : Speed
+  | UserLoggedIn of user : string * roles : string list
+  | UserLoggedOut of user : string * speedAtTimeOfLeaving : Speed
 
 type CartItem = TicTacs | GlamourMagazine | Other of name:string * price: Decimal
 type CartEvent =
-| UserStartedCheckout of user : string * totalValue : decimal * items : CartItem list
+  | UserStartedCheckout of user : string * totalValue : decimal * items : CartItem list
 
 [<EntryPoint>]
 let main argv =
@@ -37,6 +37,9 @@ let main argv =
   let logger = logary.getLogger (PointName [| "Libryy" |])
   let librryLogger = LoggerAdapter.createGeneric logger
   
+  Message.gaugeWithUnit (PointName.ofSingle "Test") Units.Seconds (Value.Fraction (99L, 88L))
+  |> logger.logSimple
+
   let someEventWithBinaryData = Message.templateEvent<string, byte[]> (Debug, "Some binary ({Disposition}) is {Binary}")
   someEventWithBinaryData "too big" (System.Text.Encoding.ASCII.GetBytes("hey haf, too many bytes, have to truncate!")) |> logger.logSimple
   someEventWithBinaryData "small" (System.Text.Encoding.ASCII.GetBytes("hey haf!")) |> logger.logSimple

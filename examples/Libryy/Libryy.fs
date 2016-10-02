@@ -21,7 +21,6 @@ let work (logger : Logger) =
     >> Message.setFieldValue "user" "haf"
     >> Message.setSingleName "Libryy.Core.work"
     >> Message.addExn (getSampleException "Warnings can have exceptions too!")
-    >> Message.addExn (getSampleException "but wait, there's more!")
     >> Message.setTimestamp 1470047883029045000L)
   |> Async.RunSynchronously
 
@@ -42,7 +41,9 @@ let simpleWork (logger : Logger) =
 
 let generateAndLogExn (logger : Logger) =
   let ex = getSampleException "Uhoh!"
-  logger.logSimple (Message.event Error "An error with an attached exception" |> Message.addExn ex)
+  logger.logSimple (Message.event Error "An error with an attached exception"
+                    |> Message.addExn ex
+                    |> Message.addExn (exn "another"))
   99
 
 let staticWork () =
