@@ -28,7 +28,7 @@ namespace Logary.ElmahIO.CSharpExample
                     tags = new[] { "tag1", "tag2" }
                 });
 
-                var val = logger.TimePath("sample.config.computeAnswerToEverything", () =>
+                var val = logger.TimePath("computeAnswerToEverything", () =>
                 {
                     for (int i = 0; i < 100; i++)
                         System.Threading.Thread.Sleep(1);
