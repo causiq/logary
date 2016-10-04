@@ -1076,6 +1076,7 @@ module Message =
   open Hopac
   open Hopac.Infixes
   open NodaTime
+  open System.Threading.Tasks
   open System.Diagnostics
   open Logary.Internals
 
@@ -1141,12 +1142,15 @@ module Message =
   let setFieldValues (fields : (string * Field) seq) msg =
     fields |> Seq.fold (fun m (name, value) -> setFieldValue name value m) msg
 
+  [<CompiledName "SetFieldValuesArray">]
+  let setFieldValuesArray (fields : (string * Field)[]) msg =
+    fields |> Array.fold (fun m (name, value) -> setFieldValue name value m) msg
+
   [<CompiledName "SetFieldsFromMap">]
   let setFieldsFromMap (m : Map<string, obj>) msg =
     m
     |> Seq.map (fun (KeyValue (k, v)) -> k, Field (Value.ofObject v, None))
-    |> List.ofSeq
-    |> fun fields -> setFieldValues fields msg
+    |> flip setFieldValues msg
 
   [<CompiledName "SetFieldFromObject">]
   let setFieldFromObject name (data : obj) msg =
@@ -1157,8 +1161,7 @@ module Message =
   let setFieldsFromObject (data : obj) msg =
     Map.ofObject data
     |> Seq.map (fun (KeyValue (k, v)) -> k, Field (Value.ofObject v, None))
-    |> List.ofSeq
-    |> fun fields -> setFieldValues fields msg
+    |> flip setFieldValues msg
 
   /// Get a partial getter lens to a field
   [<CompiledName "TryGetField">]
@@ -1339,31 +1342,25 @@ module Message =
     match pnv.Value with
     | ScalarValue v ->
       pnv.Name, Field (Value.ofObject v, None)
-
     | _ ->
-      failwith "This should never happen. In Logary we extract all properties as Scalar"
+      failwith "In Logary we extract all properties as Scalar values. File a bug report with the parameter values that you called the function with."
+
+  let internal extractFields formatTemplate args =
+    let parsedTemplate = Parser.parse formatTemplate
+    captureNamesAndValuesAsScalars parsedTemplate args
+    |> Array.map convertToNameAndField
 
   /// Creates a new event with given level, format and arguments. Format may
   /// contain String.Format-esque format placeholders.
   [<CompiledName "EventFormat">]
-  let eventFormat (level, format, [<ParamArray>] args : obj[]) : Message =
-    let parsedTemplate =
-      Parser.parse format
-
-    let scalarNamesAndValues =
-      captureNamesAndValuesAsScalars parsedTemplate args
-
-    let fields =
-      scalarNamesAndValues
-      |> Seq.map convertToNameAndField
-      |> List.ofSeq
-
-    event level format |> setFieldValues fields
+  let eventFormat (level, formatTemplate, [<ParamArray>] args : obj[]) : Message =
+    let fields = extractFields formatTemplate args
+    event level formatTemplate |> setFieldValuesArray fields
 
   /// Converts a String.Format-style format string and an array of arguments into
   /// a message template and a set of fields.
   [<CompiledName "EventFormat">]
-  let templateFormat (format : string) ([<ParamArray>] args : obj[]) =
+  let templateFormat (format : string, [<ParamArray>] args : obj[]) =
     eventFormat (LogLevel.Debug, format, args)
 
   /// Run the function `f` and measure how long it takes; logging that
@@ -1416,6 +1413,18 @@ module Message =
 
       res, gaugeWithUnit pointName units value
     )
+
+  [<CompiledName "TimeTask">]
+  let timeTask pointName (fn : 'input -> Task<'res>) : 'input -> Task<'res * Message> =
+    fun input ->
+      let sw = Stopwatch.StartNew()
+      // http://stackoverflow.com/questions/21520869/proper-way-of-handling-exception-in-task-continuewith
+      (fn input).ContinueWith((fun (task : Task<'res>) ->
+        sw.Stop()
+        let value, units = sw.toGauge()
+        task.Result, // will rethrow if needed
+        gaugeWithUnit pointName units value
+      ), TaskContinuationOptions.ExecuteSynchronously) // stopping SW is quick
 
   ///////////////// PROPS ////////////////////
 

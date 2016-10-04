@@ -2,8 +2,10 @@
 
 open System
 open Hopac
+open System.Threading
 open System.Threading.Tasks
 open System.Runtime.CompilerServices
+open System.Runtime.InteropServices
 
 // This file is partially from
 // https://github.com/fsprojects/FSharpx.Extras/blob/master/src/FSharpx.Extras/CSharpCompat.fs
@@ -112,6 +114,11 @@ type Funcs =
   [<Extension>]
   static member ToFunc (g: Action<_,_,_, _, _, _>) =
     Func<_,_,_,_, _, _, _>(fun a b c d e f -> g.Invoke(a, b, c, d, e, f))
+
+  /// Convert a F# function to a CLR Func
+  [<Extension>]
+  static member ToFunc (f : unit -> _) =
+    Func<_> f
 
   /// Convert a F# function to a CLR Func
   [<Extension>]
@@ -252,13 +259,13 @@ type Funcs =
     
   /// Extension method on a func that times the executing of the function.
   [<Extension>]
-  static member Time (a: Action<'input>, [<ParamArray>] pointName: string array) : Func<'input, Message> =
+  static member Time (a: Action<'input>, [<ParamArray>] pointName: string[]) : Func<'input, Message> =
     let timef = Message.time (PointName pointName) (FSharpFunc.OfAction a)
     Funcs.ToFunc (timef >> snd)
 
   /// Extension method on a func that times the executing of the function.
   [<Extension>]
-  static member Time (a: Action<'a, 'b>, [<ParamArray>] pointName: string array) : Func<'a, 'b, Message> =
+  static member Time (a: Action<'a, 'b>, [<ParamArray>] pointName: string[]) : Func<'a, 'b, Message> =
     let timef =
       FSharpFunc.OfAction a
       >> Message.time (PointName pointName)
@@ -267,7 +274,7 @@ type Funcs =
     
   /// Extension method on a func that times the executing of the function.
   [<Extension>]
-  static member Time (a: Action<'a, 'b, 'c>, [<ParamArray>] pointName: string array) : Func<'a, 'b, 'c, Message> =
+  static member Time (a: Action<'a, 'b, 'c>, [<ParamArray>] pointName: string[]) : Func<'a, 'b, 'c, Message> =
     let timef =
       FSharpFunc.OfAction a
       >> uncurry
@@ -278,19 +285,19 @@ type Funcs =
 
   /// Extension method on a func that times the executing of the function.
   [<Extension>]
-  static member Time (f: Func<'input,'output>, [<ParamArray>] pointName: string array) : Func<'input, 'output * Message> =
+  static member Time (f: Func<'input,'output>, [<ParamArray>] pointName: string[]) : Func<'input, 'output * Message> =
     let timef = Message.time (PointName pointName) (Funcs.ToFSharpFunc f)
     Funcs.ToFunc timef
 
   /// Extension method on a func that times the executing of the function.
   [<Extension>]
-  static member Time (f: Func<'input, _, 'output>, [<ParamArray>] pointName: string array) : Func<'input, _, 'output * Message> =
+  static member Time (f: Func<'input, _, 'output>, [<ParamArray>] pointName: string[]) : Func<'input, _, 'output * Message> =
     let timef = Funcs.ToFSharpFunc f >> Message.time (PointName pointName)
     Funcs.ToFunc<_, _, _> timef
 
   /// Extension method on a func that times the executing of the function.
   [<Extension>]
-  static member Time (f: Func<'input, _, _, 'output>, [<ParamArray>] pointName: string array) : Func<'input, _, _, 'output * Message> =
+  static member Time (f: Func<'input, _, _, 'output>, [<ParamArray>] pointName: string[]) : Func<'input, _, _, 'output * Message> =
     let timef =
       Funcs.ToFSharpFunc f
       >> uncurry
@@ -329,7 +336,6 @@ type FSharpOption =
     | _ ->
       Some v
 
-  [<Extension>]
   static member Some a =
     Option.Some a
 
@@ -473,7 +479,7 @@ type FSharpList =
   static member Cons (l, e) =
     e::l
 
-  static member Create([<ParamArray>] values: 'T1 array) =
+  static member Create([<ParamArray>] values: 'T1[]) =
     Seq.toList values
 
   [<Extension>]
@@ -482,7 +488,7 @@ type FSharpList =
 
 [<Extension>]
 type FSharpSet =
-  static member Create([<ParamArray>] values: 'T1 array) =
+  static member Create([<ParamArray>] values: 'T1[]) =
     set values
 
   [<Extension>]
@@ -497,3 +503,253 @@ type FSharpMap =
   [<Extension>]
   static member ToFSharpMap values =
     Map.ofSeq values
+
+module private MiscHelpers =
+  let private disposable =
+    { new IDisposable with
+        member x.Dispose() = () }
+
+  let inline subscribe (ct : CancellationToken option) (f : unit -> unit) =
+    match ct with
+    | None ->
+      disposable
+    | Some ct ->
+      upcast ct.Register (Action f)
+
+  let inline chooseLogFun logger backpressure timeoutMillis =
+    let backpressure = defaultArg backpressure true
+    let timeoutMillis = defaultArg timeoutMillis 5000u
+    if backpressure then
+      Logger.log logger
+    else
+      Logger.logWithTimeout logger timeoutMillis
+
+
+module Alt =
+
+  let toTask (ct : CancellationToken option) (xA : Alt<'res>) : Task<'res> =
+    // attach to parent because placing in buffer should be quick in the normal case
+    let tcs = TaskCompletionSource<'res>(TaskCreationOptions.AttachedToParent) // alloc TCS
+    let nack = IVar () // alloc
+    let sub = MiscHelpers.subscribe ct (fun () -> start (IVar.fill nack ())) // only alloc IVar if ct <> None
+    start (
+      Alt.tryFinallyFun (
+        Alt.choose [
+          Alt.tryIn xA
+                    (fun res -> Job.thunk (fun () -> tcs.SetResult res))
+                    (fun ex -> Job.thunk (fun () -> tcs.SetException ex))
+          Alt.afterFun tcs.SetCanceled nack
+        ]
+      ) sub.Dispose
+    )
+    // alloc on access?
+    tcs.Task
+
+  let internal toTasks bufferCt promiseCt (xAP : Alt<Promise<unit>>) : Task<Task> =
+    xAP
+    |> Alt.afterFun (fun prom -> toTask promiseCt prom :> Task)
+    |> toTask bufferCt
+
+[<Extension>]
+type LoggerExtensions =
+
+  // corresponds to: log, logWithTimeout
+
+  /// Log a message, but don't await all targets to flush. With back-pressure by default.
+  /// Backpressure implies there's no timing out on placing the message in the buffer.
+  /// The timeout-milliseconds parameter is only used if backpressure is false.
+  /// If not using backpressure, the returned task yields after either 5 seconds or
+  /// when the message is accepted to all targets' ring buffers.
+  [<Extension>]
+  static member Log (logger, message : Message,
+                     [<Optional; DefaultParameterValue(true)>] ?backpressure : bool,
+                     [<Optional; DefaultParameterValue(5000u)>] ?timeoutMillis : uint32,
+                     [<Optional; DefaultParameterValue(null)>] ?bufferCt : CancellationToken)
+                    : Task =
+    let logFn = MiscHelpers.chooseLogFun logger backpressure timeoutMillis
+    upcast Alt.toTask bufferCt (logFn message)
+
+  // corresponds to: log, logWithTimeout
+
+  /// Log an event, but don't await all targets to flush. With back-pressure by default.
+  /// Backpressure implies there's no timing out on placing the message in the buffer.
+  /// The timeout-milliseconds parameter is only used if backpressure is false.
+  /// If not using backpressure, the returned task yields after either 5 seconds or
+  /// when the message is accepted to all targets' ring buffers.
+  [<Extension>]
+  static member LogEvent(logger : Logger,
+                         level : LogLevel,
+                         formatTemplate : string,
+                         [<ParamArray>] args : obj[],
+                         [<Optional; DefaultParameterValue(null)>] ?transform : Func<Message, Message>,
+                         [<Optional; DefaultParameterValue(true)>] ?backpressure : bool,
+                         [<Optional; DefaultParameterValue(5000u)>] ?timeoutMillis : uint32,
+                         [<Optional; DefaultParameterValue(null)>] ?bufferCt : CancellationToken)
+                        : Task =
+    let logFn = MiscHelpers.chooseLogFun logger backpressure timeoutMillis
+    let transform = defaultArg (transform |> Option.map FSharpFunc.OfFunc) id
+    let message = Message.eventFormat(level, formatTemplate, args) |> transform
+    upcast Alt.toTask bufferCt (logFn message)
+
+  /// Log a gauge, but don't await all targets to flush. With back-pressure by default.
+  /// Backpressure implies there's no timing out on placing the message in the buffer.
+  /// The timeout-milliseconds parameter is only used if backpressure is false.
+  /// If not using backpressure, the returned task yields after either 5 seconds or
+  /// when the message is accepted to all targets' ring buffers.
+  static member LogGauge(logger : Logger,
+                         level : LogLevel,
+                         value : Value,
+                         units : Units,
+                         formatTemplate : string,
+                         [<ParamArray>] args : obj[],
+                         [<Optional; DefaultParameterValue(null)>] ?transform : Func<Message, Message>,
+                         [<Optional; DefaultParameterValue(true)>] ?backpressure : bool,
+                         [<Optional; DefaultParameterValue(5000u)>] ?timeoutMillis : uint32,
+                         [<Optional; DefaultParameterValue(null)>] ?bufferCt : CancellationToken)
+                        : Task =
+    let logFn = MiscHelpers.chooseLogFun logger backpressure timeoutMillis
+    let transform = defaultArg (transform |> Option.map FSharpFunc.OfFunc) id
+    let fields = Message.extractFields formatTemplate args
+    let message =
+      Message.gaugeWithUnit logger.name units value
+      |> Message.setFieldValuesArray fields
+      |> Message.setField "template" formatTemplate // overwrites any field named "template"
+    upcast Alt.toTask bufferCt (logFn message)
+
+  // corresponds to: logSimple
+
+  /// Log a message, but don't await all targets to flush. Without back-pressure (5 s timeout instead).
+  /// The call yields directly.
+  [<Extension>]
+  static member Log (logger, message) : unit =
+    Logger.logSimple logger message
+
+  /// Log a message, which returns an inner Task. The outer Task denotes having the
+  /// Message placed in all Targets' buffers. The inner Task denotes having
+  /// the message properly flushed to all targets' underlying "storage". Targets
+  /// whose rules do not match the message will not be awaited. The cancellation token
+  /// can cancel the outer Task, but once it's in the buffers, the Log Message cannot
+  /// be retracted by cancelling; however if you await the inner task (the promise) then
+  /// the `promiseCt` allows you to cancel that await.
+  [<Extension>]
+  static member LogWithAck (logger, message,
+                            [<Optional; DefaultParameterValue(null)>] ?bufferCt,
+                            [<Optional; DefaultParameterValue(null)>] ?promiseCt)
+                           : Task<Task> =
+    Alt.toTasks bufferCt promiseCt (Logger.logWithAck logger message)
+
+  // TODO: logVerbose
+  // TODO: logDebug
+  // TODO: logVerboseWithAck
+  // TODO: logDebugWithAck
+
+  // TODO: time
+  // TODO: timeX
+  // TODO: timeAsyncWithAck, timeAsyncSimple
+  // TODO: timeJobWithAck, timeJobSimple
+  // TODO: timeAltWithAck, timeAltSimple
+
+  /// Run the function `func` and measure how long it takes; logging that
+  /// measurement as a Gauge in the unit Seconds. As an exception to the rule,
+  /// it is allowed to pass `nameEnding` as null to this function. This
+  /// function returns the full schabang; i.e. it will let you wait for
+  /// Ack if you want. This adapter version for C# returns Task, and as such
+  /// it's a hot task that always will try to log. If you use this function
+  /// you should at least await the outer Task that provides backpressure.
+  ///
+  /// The function will yield when you code is complete, but the task may
+  /// not be completed by then.
+  ///
+  /// This function does not execute the callback.
+  [<Extension>]
+  static member TimeWithAck (logger,
+                             func : Func<'input, 'output>,
+                             [<Optional; DefaultParameterValue(null)>] ?nameEnding,
+                             [<Optional; DefaultParameterValue(null)>] ?transform : Func<Message, Message>,
+                             [<Optional; DefaultParameterValue(null)>] ?bufferCt,
+                             [<Optional; DefaultParameterValue(null)>] ?promiseCt)
+                            : Func<'input, 'output * Task<Task>> =
+    let nameEnding = defaultArg nameEnding null
+    let func = FSharpFunc.OfFunc func
+    let transform = transform |> Option.map FSharpFunc.OfFunc |> flip defaultArg id
+    let runnable =
+      Logger.timeWithAckT logger nameEnding transform func
+      >> fun (res, alt) -> res, Alt.toTasks bufferCt promiseCt alt
+    Funcs.ToFunc runnable
+
+  // - Back-pressure (if you await the task)
+  static member TimeWithAck (logger : Logger,
+                             action : Action,
+                             [<Optional; DefaultParameterValue(null)>] ?nameEnding,
+                             [<Optional; DefaultParameterValue(null)>] ?transform : Func<Message, Message>,
+                             [<Optional; DefaultParameterValue(null)>] ?bufferCt,
+                             [<Optional; DefaultParameterValue(null)>] ?promiseCt)
+                            : Func<Task<Task>> =
+    let nameEnding = defaultArg nameEnding null
+    let action = FSharpFunc.OfAction action
+    let transform = transform |> Option.map FSharpFunc.OfFunc |> flip defaultArg id
+    let runnable =
+      Logger.timeWithAckT logger nameEnding transform action
+      >> fun (_, alt) -> Alt.toTasks bufferCt promiseCt alt
+
+    Funcs.ToFunc<_> runnable
+
+  // corresponds to: timeTaskWithAckT
+
+  [<Extension>]
+  static member TimeWithAck (logger,
+                             func : Func<'input, Task<'output>>,
+                             [<Optional; DefaultParameterValue(null)>] ?nameEnding,
+                             [<Optional; DefaultParameterValue(null)>] ?transform : Func<Message, Message>,
+                             [<Optional; DefaultParameterValue(null)>] ?bufferCt,
+                             [<Optional; DefaultParameterValue(null)>] ?promiseCt)
+                            : Func<'input, Task<'output * Task<Task>>> =
+    let nameEnding = defaultArg nameEnding null
+    let func = FSharpFunc.OfFunc func
+    let transform = transform |> Option.map FSharpFunc.OfFunc |> flip defaultArg id
+    let runnable input =
+      (Logger.timeTaskWithAckT logger nameEnding transform func input).ContinueWith (fun (task : Task<_>) ->
+        let res, alt = task.Result
+        res, Alt.toTasks bufferCt promiseCt alt
+      )
+    Funcs.ToFunc runnable
+
+  // Corresponds to: timeSimple, timeSimpleX
+
+  /// Run the function `func` and measure how long its returned Task takes; logging that
+  /// measurement as a Gauge in the unit Scaled(Seconds, 10^9). Finally transform the
+  /// message using the `transform` function.
+  ///
+  /// Logs, but doesn't await all targets to flush. Without back-pressure (5 s timeout instead).
+  /// The call you make to the function yields directly (after your code is done executing of course).
+  [<Extension>]
+  static member Time (logger,
+                      func : Func<'input, 'output>,
+                      [<Optional; DefaultParameterValue(null)>] ?nameEnding,
+                      [<Optional; DefaultParameterValue(null)>] ?transform : Func<Message, Message>,
+                      [<Optional; DefaultParameterValue(null)>] ?bufferCt,
+                      [<Optional; DefaultParameterValue(null)>] ?promiseCt)
+                     : Func<'input, 'output> =
+    let nameEnding = defaultArg nameEnding null
+    let func = FSharpFunc.OfFunc func
+    let transform = transform |> Option.map FSharpFunc.OfFunc |> flip defaultArg id
+    let runnable = Logger.timeSimpleT logger nameEnding transform func
+    Funcs.ToFunc runnable
+
+  // Corresponds to: timeTaskSimple
+
+  /// Logs, but doesn't await all targets to flush. Without back-pressure (5 s timeout instead).
+  /// The call you make to the function yields directly (after your code is done executing of course).
+  [<Extension>]
+  static member Time (logger,
+                      func : Func<'input, Task<'output>>,
+                      [<Optional; DefaultParameterValue(null)>] ?nameEnding,
+                      [<Optional; DefaultParameterValue(null)>] ?transform : Func<Message, Message>,
+                      [<Optional; DefaultParameterValue(null)>] ?bufferCt,
+                      [<Optional; DefaultParameterValue(null)>] ?promiseCt)
+                     : Func<'input, Task<'output>> =
+    let nameEnding = defaultArg nameEnding null
+    let func = FSharpFunc.OfFunc func
+    let transform = transform |> Option.map FSharpFunc.OfFunc |> flip defaultArg id
+    let runnable = Logger.timeTaskSimpleT logger nameEnding transform func
+    Funcs.ToFunc runnable

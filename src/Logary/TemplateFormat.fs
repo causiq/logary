@@ -1,5 +1,5 @@
 ﻿[<AutoOpen>]
-module TemplateFormat
+module Logary.TemplateFormat
 
 open System
 open Logary
@@ -42,11 +42,11 @@ module internal LogaryCapturing =
     |> Seq.map (convertToNameAndField)
     |> List.ofSeq
 
-  let logyarDefaultDestructurer : Destructurer =
+  let logaryDefaultDestructurer : Destructurer =
     Capturing.createCustomDestructurer (None) (Some Capturing.destructureFSharpTypes)
 
   let captureField (property : Utils.FsMessageTemplates.Property) value =
-    logyarDefaultDestructurer (DestructureRequest (logyarDefaultDestructurer, value, 10, 0, property.Destr))
+    logaryDefaultDestructurer (DestructureRequest (logaryDefaultDestructurer, value, 10, 0, property.Destr))
     |> convertTemplatePropertyToField
     |> fun f -> Field (f, None)
 
@@ -55,7 +55,7 @@ type Message with
   static member templateEvent<'T> (level : LogLevel, format : string) : ('T -> Message) =
     let template = Parser.parse format
     if isNull template.Named || template.Named.Length <> 1 then
-      failwithf "template '%s' must have exactly 1 named property" format
+      failwithf "Template '%s' must have exactly 1 named property" format
     let field = template.Named.[0]
     fun (v : 'T) ->
       Message.event level format
@@ -64,7 +64,7 @@ type Message with
   static member templateEvent<'T1, 'T2> (level : LogLevel, format : string) : ('T1 -> 'T2 -> Message) =
     let template = Parser.parse format
     if isNull template.Named || template.Named.Length <> 2 then
-      failwithf "template '%s' must have exactly 2 named properties" format
+      failwithf "Template '%s' must have exactly 2 named properties" format
     let field1 = template.Named.[0]
     let field2 = template.Named.[1]
     fun (v1 : 'T1) (v2 : 'T2) ->
@@ -75,7 +75,7 @@ type Message with
   static member templateEvent<'T1, 'T2, 'T3> (level : LogLevel, format : string) : ('T1 -> 'T2 -> 'T3 -> Message) =
     let template = Parser.parse format
     if isNull template.Named || template.Named.Length <> 3 then
-      failwithf "template '%s' must have exactly 3 named properties" format
+      failwithf "Template '%s' must have exactly 3 named properties" format
     let field1 = template.Named.[0]
     let field2 = template.Named.[1]
     let field3 = template.Named.[2]
@@ -88,7 +88,7 @@ type Message with
   static member templateEvent<'T1, 'T2, 'T3, 'T4> (level : LogLevel, format : string) : ('T1 -> 'T2 -> 'T3 -> 'T4 -> Message) =
     let template = Parser.parse format
     if isNull template.Named || template.Named.Length <> 4 then
-      failwithf "template '%s' must have exactly 4 named properties" format
+      failwithf "Template '%s' must have exactly 4 named properties" format
     let field1 = template.Named.[0]
     let field2 = template.Named.[1]
     let field3 = template.Named.[2]

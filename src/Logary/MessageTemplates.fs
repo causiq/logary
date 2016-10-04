@@ -73,26 +73,28 @@ type Template(formatString:string, tokens: Token[], isNamed:bool, properties:Pro
     member internal this.HasAnyProperties = properties.Length > 0
     override this.ToString() = sprintf "T (tokens = %A)" tokens
 
-type ScalarKeyValuePair = TemplatePropertyValue * TemplatePropertyValue
-and PropertyNameAndValue = { Name:string; Value:TemplatePropertyValue }
+type ScalarKeyValuePair =
+  TemplatePropertyValue * TemplatePropertyValue
+and PropertyNameAndValue =
+  { Name:string; Value:TemplatePropertyValue }
 and TemplatePropertyValue =
-| ScalarValue of obj
-| SequenceValue of TemplatePropertyValue list
-| StructureValue of typeTag:string * values:PropertyNameAndValue list
-| DictionaryValue of data: ScalarKeyValuePair list
-    static member Empty = Unchecked.defaultof<TemplatePropertyValue>
+  | ScalarValue of obj
+  | SequenceValue of TemplatePropertyValue list
+  | StructureValue of typeTag:string * values:PropertyNameAndValue list
+  | DictionaryValue of data: ScalarKeyValuePair list
+      static member Empty = Unchecked.defaultof<TemplatePropertyValue>
 
 [<AutoOpen>]
 module Log =
-    /// Describes a function for logging warning messages.
-    type SelfLogger = (string * obj[]) -> unit
+  /// Describes a function for logging warning messages.
+  type SelfLogger = (string * obj[]) -> unit
 
-    /// A logger which ignores any warning messages.
-    let inline nullLogger (_: string, _: obj[]) = ()
+  /// A logger which ignores any warning messages.
+  let inline nullLogger (_: string, _: obj[]) = ()
 
 module Defaults =
-    let maxDepth = 10
-    let scalarNull = ScalarValue null
+  let maxDepth = 10
+  let scalarNull = ScalarValue null
 
 type Destructurer = DestructureRequest -> TemplatePropertyValue
 and

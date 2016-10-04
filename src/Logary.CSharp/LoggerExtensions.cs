@@ -45,7 +45,7 @@ namespace Logary
             if (timestamp != null) msg = msg.SetTimestamp(timestamp.Value);
             if (exn != null) msg = msg.AddException (exn);
 
-            var inLogary = logger.LogWithTimeout(msg).ToTask();
+            var inLogary = logger.LogWithTimeout(msg);
             inLogary.Wait(); // ignore Promise<unit>
         }
 
@@ -77,7 +77,7 @@ namespace Logary
 
             var message = MessageModule.Event(level, template);
             var messageNext = setterTransformer(message);
-            var inLogary = logger.LogWithTimeout(messageNext).ToTask();
+            var inLogary = logger.LogWithTimeout(messageNext);
             inLogary.Wait(); // ignore Promise<unit>
         }
 
@@ -90,7 +90,7 @@ namespace Logary
             if (logger == null) throw new ArgumentNullException("logger");
             if (f == null) throw new ArgumentNullException("f");
 
-            var res = logger.Time(f.ToFSharpFunc()).Invoke(null);
+            var res = logger.Time(f).Invoke(null);
             res.Item2.ToTask().Wait();
             return res.Item1;
         }
@@ -106,20 +106,6 @@ namespace Logary
                 action();
                 return 0;
             });
-        }
-
-        /// <summary>
-        /// Use to time the time it takes to execute function <c>f</c>. The subPath can be your function name, for
-        /// example.
-        /// </summary>
-        public static T TimePath<T>(this Logger logger, string subPath, Func<T> f, LogLevel level = null)
-        {
-            if (logger == null) throw new ArgumentNullException("logger");
-            if (subPath == null) throw new ArgumentNullException("subPath");
-            if (f == null) throw new ArgumentNullException("f");
-            var res = logger.Time(subPath, f.ToFSharpFunc()).Invoke(null);
-            CSharp.ToTask(res.Item2).Wait();
-            return res.Item1;
         }
 
         /// <summary>
