@@ -34,9 +34,8 @@ let createInternalLogger level targets =
 /// initialising empty metadata and a target.
 [<CompiledName "WithInternalLogger">]
 let withInternalLogger lgr (conf : LogaryConf) =
-  shutdownLogger conf.runtimeInfo.logger
-  |> Job.map (fun _ ->
-    { conf with runtimeInfo = { conf.runtimeInfo with logger = lgr } })
+  start (shutdownLogger conf.runtimeInfo.logger)
+  { conf with runtimeInfo = { conf.runtimeInfo with logger = lgr } }
 
 /// Configure internal logging from a targets (these targets will get
 /// everything, without the metrics and/or log lines going through Rules).
@@ -47,15 +46,21 @@ let withInternalTargets level tconfs (conf : LogaryConf) =
       clock       = !Date.clock
       logger      = NullLogger() }
 
-  job {
-    let! targets =
-      tconfs
-      |> List.map (Target.init internalRuntime)
+  let logger =
+    tconfs
+    |> List.map (Target.init internalRuntime)
+    |> Job.conCollect
+    |> Job.bind (fun targets ->
+      targets
+      |> Seq.map (fun ti -> Job.start (ti.server (fun _ -> Job.result ()) None))
       |> Job.conCollect
+      |> Job.map (fun _ -> targets))
+    |> Job.map (fun targets ->
+      createInternalLogger level targets
+    )
+    |> PromisedLogger.create (PointName [| "Logary"; "Internal" |])
 
-    targets |> Seq.iter (fun ti -> ti.server (fun _ -> Job.result ()) None |> start)
-    return! withInternalLogger (createInternalLogger level targets) conf
-  }
+  withInternalLogger logger conf
 
 /// Set the internal target for logary
 [<CompiledName "WithInternalTarget">]
@@ -233,8 +238,8 @@ let configure serviceName targets metrics rules (internalLevel, internalTarget) 
   |> withRules (List.ofSeq rules)
   |> withMetrics (List.ofSeq metrics)
   |> withInternalTarget internalLevel internalTarget
-  >>- validate
-  >>= runLogary
+  |> validate
+  |> runLogary
   >>- asLogManager
 
 /// Configure Logary completely with the given service name and a function that
