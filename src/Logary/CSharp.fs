@@ -594,6 +594,19 @@ type LoggerExtensions =
       |> transform
 
     upcast Alt.toTask CancellationToken.None (logFn message)
+    
+  /// Log an event, but don't await all targets to flush. With back-pressure.
+  /// Backpressure implies there's no timing out on placing the message in the buffer.
+  [<Extension>]
+  static member LogEventFormat(logger : Logger,
+                               level : LogLevel,
+                               formatTemplate : string,
+                               [<ParamArray>] args : obj[])
+                              : Task =
+    let fields = Message.extractFields formatTemplate args
+    let message = Message.event level formatTemplate |> Message.setFieldValuesArray fields
+    let call = Logger.log logger message |> Alt.afterFun (fun _ -> true)
+    upcast Alt.toTask CancellationToken.None call
 
   /// Log a gauge, but don't await all targets to flush. With back-pressure by default.
   /// Backpressure implies there's no timing out on placing the message in the buffer.
@@ -619,7 +632,7 @@ type LoggerExtensions =
       |> Message.setFieldsFromObject fields
       |> Message.setField "template" formatTemplate // overwrites any field named "template"
 
-    upcast Alt.toTask CancellationToken.None (logFn message)
+    Alt.toTask CancellationToken.None (logFn message)
 
   // corresponds to: logSimple
 
