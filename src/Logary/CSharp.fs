@@ -516,7 +516,7 @@ module private MiscHelpers =
     | ct ->
       upcast ct.Register (Action f)
 
-  let inline chooseLogFun logger backpressure timeoutMillis =
+  let chooseLogFun logger backpressure timeoutMillis =
     if backpressure then
       Logger.log logger >> Alt.afterFun (fun _ -> true)
     else
@@ -525,6 +525,7 @@ module private MiscHelpers =
 module Alt =
 
   let toTask (ct : CancellationToken) (xA : Alt<'res>) : Task<'res> =
+    printfn "toTask!"
     // attach to parent because placing in buffer should be quick in the normal case
     let tcs = TaskCompletionSource<'res>(TaskCreationOptions.AttachedToParent) // alloc TCS
     let nack = IVar () // alloc
@@ -533,9 +534,9 @@ module Alt =
       Alt.tryFinallyFun (
         Alt.choose [
           Alt.tryIn xA
-                    (fun res -> Job.thunk (fun () -> tcs.SetResult res))
-                    (fun ex -> Job.thunk (fun () -> tcs.SetException ex))
-          Alt.afterFun tcs.SetCanceled nack
+                    (fun res -> Job.thunk (fun () -> printfn "task res!"; tcs.SetResult res))
+                    (fun ex -> Job.thunk (fun () -> printfn "task exn!"; tcs.SetException ex))
+          nack |> Alt.afterFun tcs.SetCanceled
         ]
       ) sub.Dispose
     )
@@ -563,6 +564,8 @@ type LoggerExtensions =
                      [<Optional; DefaultParameterValue(true)>] backpressure : bool,
                      [<Optional; DefaultParameterValue(5000u)>] timeoutMillis : uint32)
                     : Task =
+    // https://github.com/Microsoft/visualfsharp/issues/96
+    let timeoutMillis = if timeoutMillis = 0u then 5000u else timeoutMillis
     let logFn = MiscHelpers.chooseLogFun logger backpressure timeoutMillis
     upcast Alt.toTask CancellationToken.None (logFn message)
 
@@ -583,6 +586,8 @@ type LoggerExtensions =
                          [<Optional; DefaultParameterValue(true)>] backpressure : bool,
                          [<Optional; DefaultParameterValue(5000u)>] timeoutMillis : uint32)
                         : Task =
+    // https://github.com/Microsoft/visualfsharp/issues/96
+    let timeoutMillis = if timeoutMillis = 0u then 5000u else timeoutMillis
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
     let fields = if isNull fields then obj() else fields
     let logFn = MiscHelpers.chooseLogFun logger backpressure timeoutMillis
@@ -623,6 +628,8 @@ type LoggerExtensions =
                          [<Optional; DefaultParameterValue(true)>] backpressure : bool,
                          [<Optional; DefaultParameterValue(5000u)>] timeoutMillis : uint32)
                         : Task<bool> =
+    // https://github.com/Microsoft/visualfsharp/issues/96
+    let timeoutMillis = if timeoutMillis = 0u then 5000u else timeoutMillis
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
     let fields = if isNull fields then obj() else fields
     let logFn = MiscHelpers.chooseLogFun logger backpressure timeoutMillis

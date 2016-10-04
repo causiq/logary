@@ -15,6 +15,7 @@ open Logary
 open Logary.Internals
 open Logary.Configuration
 open Logary.Target
+open Logary.Targets
 open Logary.Target.FactoryApi
 
 type internal ConfBuilderT<'T when 'T :> SpecificTargetConf> =
@@ -46,6 +47,11 @@ with
 and ConfBuilder(conf) =
   member internal x.BuildLogary () =
     conf |> Config.validate |> runLogary >>- asLogManager
+
+  member x.InternalLoggingLevel(level : LogLevel) : ConfBuilder =
+    conf
+    |> Config.withInternalTarget level (Console.create Console.empty "internalConsole")
+    |> ConfBuilder
 
   /// Call this method to add middleware to Logary. Middleware is useful for interrogating
   /// the context that logging is performed in. It can for example ensure all messages

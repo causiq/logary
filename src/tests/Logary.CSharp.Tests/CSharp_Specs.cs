@@ -27,7 +27,8 @@ namespace Logary.Specs
         manager = LogaryFactory.New(
           "Logary Specs",
           with =>
-          with.Target<TextWriter.Builder>(
+          with
+              .Target<TextWriter.Builder>(
             "sample string writer",
             t =>
             t.Target.WriteTo(writer, writer)
@@ -46,7 +47,8 @@ namespace Logary.Specs
         var logger = manager.GetLogger("Logary.Specs.When_configuring_with_CSharp_API");
         logger.LogEvent(LogLevel.Warn, "the situation is dire, says {@foo}",
             new { foo = "oh-noes" }, exception,
-            msg => msg.SetTimestamp(timestamp));
+            msg => msg.SetTimestamp(timestamp))
+            .Wait();
 
         manager.FlushPending(Duration.FromSeconds(8L)).Wait();
         subject = writer.ToString();
@@ -102,7 +104,7 @@ namespace Logary.Specs
             .SetTimestamp(timestamp)
             .AddException(exception)
             .SetContextFromObject(new {contextdata = "the Contextdata"})
-        );
+        ).Wait();
 
       manager.FlushPending(Duration.FromSeconds(8L)).Wait();
       subject = writer.ToString();

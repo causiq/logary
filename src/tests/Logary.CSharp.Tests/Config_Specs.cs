@@ -162,7 +162,7 @@ namespace Logary.Specs
             {
                 manager = LogaryTestFactory.GetManager(out output);
                 var logger = GetLogger();
-                logger.LogEvent(LogLevel.Info, "da 1st line", new { fields = new[] { "testing" } });
+                logger.LogEvent(LogLevel.Info, "da 1st line", new { fields = new[] { "testing" } }).Wait();
 
                 manager.FlushPending(Duration.FromSeconds(20L)).Wait();
 
@@ -176,7 +176,7 @@ namespace Logary.Specs
             {
                 manager = LogaryTestFactory.GetManager(out output);
                 var logger = GetLogger();
-                logger.LogEvent(LogLevel.Debug, "2nd here we go", new { fields = new[] { "2nd testing" } });
+                logger.LogEvent(LogLevel.Debug, "2nd here we go", new { fields = new[] { "2nd testing" } }).Wait();
                 manager.FlushPending(Duration.FromSeconds(20L)).Wait();
                 subject = output.ToString();
             };

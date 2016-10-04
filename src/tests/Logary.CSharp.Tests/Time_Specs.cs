@@ -20,7 +20,10 @@ namespace Logary.Specs
       writer = new StringWriter(new StringBuilder());
       manager = LogaryFactory.New(
         "Logary Specs",
-        with => with.Target<TextWriter.Builder>("sample string writer", t => t.Target.WriteTo(writer, writer))).Result;
+        with =>
+          with.InternalLoggingLevel(LogLevel.Verbose)
+              .Target<TextWriter.Builder>("sample string writer",
+                  t => t.Target.WriteTo(writer, writer))).Result;
     };
 
     Cleanup cleanup = () =>
@@ -32,7 +35,7 @@ namespace Logary.Specs
     Because reason = () =>
       {
         var logger = manager.GetLogger("Timing Sleep(100)");
-        logger.Time(() => System.Threading.Thread.Sleep(100));
+        logger.Time(() => System.Threading.Thread.Sleep(100))();
         manager.FlushPending(Duration.FromSeconds(8L)).Wait();
         subject = writer.ToString();
       };
