@@ -183,7 +183,7 @@ module NormalUsage =
   open Hopac.Infixes
 
   let act (logger : Logger) timing randomness =
-    Message.templateFormat "{userName} logged in" [| "haf" |]
+    Message.templateFormat("{userName} logged in", [| "haf" |])
     |> Logger.logSimple logger
 
     Message.eventFormat (Info, "{userName} logged in", [| "adam" |])
@@ -248,7 +248,6 @@ let main argv =
       withInternalTargets Info [
         Console.create Console.empty "console"
       ]
-      >> run
     )
     |> run
 

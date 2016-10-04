@@ -587,7 +587,6 @@ let main argv =
       >> withInternalTargets Info [
         Console.create Console.empty "console"
       ]
-      >> run
     )
     |> run
 

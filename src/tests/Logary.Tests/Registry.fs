@@ -66,7 +66,7 @@ let registryMid =
           msg |> Message.setContext "messageId" "theMessageId" |> next)
         |> validate
         |> withInternalTarget LogLevel.Verbose (Console.create Console.empty "internal")
-        >>= runLogary
+        |> runLogary
         |> run
 
       let logger = (pnp "a.b.c.d") |> Registry.getLogger logary.registry |> run

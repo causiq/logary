@@ -40,7 +40,7 @@ let main argv =
   let logger =
     logary.getLogger (PointName [| "Logary"; "Samples"; "main" |])
 
-  Message.templateFormat "{userName} logged in" [| "haf" |]
+  Message.templateFormat("{userName} logged in", [| "haf" |])
   |> Logger.logSimple logger
 
   Message.eventFormat (Info, "{userName} logged in", [| "adam" |])

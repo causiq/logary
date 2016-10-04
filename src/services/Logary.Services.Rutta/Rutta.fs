@@ -103,7 +103,6 @@ module Shipper =
         >> withInternalTargets Info [
           Console.create Console.empty "internal"
         ]
-        >> run
       )
       |> run
 
