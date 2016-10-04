@@ -144,7 +144,7 @@ let tests =
       let format = "This {0} contains {1} words."
       let args : obj[] = [|"sentence"; 4|]
       (because "converting a String.Format into a message template" <| fun () ->
-        extractFormatFields (Message.templateFormat format args))
+        extractFormatFields (Message.templateFormat(format, args)))
       |> should equal ("This {0} contains {1} words.",
                        Set [ "0", Field (String "sentence", None)
                              "1", Field (Int64 4L, None) ])
@@ -154,7 +154,7 @@ let tests =
       let format = "This {gramaticalStructure} contains {wordCount} {0}."
       let args : obj[] = [|"sentence"; 4; "words"|]
       (because "fields are matched left-to-right when any fields are named" <| fun () ->
-        extractFormatFields (Message.templateFormat format args))
+        extractFormatFields (Message.templateFormat(format, args)))
       |> should equal ("This {gramaticalStructure} contains {wordCount} {0}.",
                        Set [ "gramaticalStructure", Field (String "sentence", None)
                              "wordCount", Field (Int64 4L, None)
@@ -165,7 +165,7 @@ let tests =
       let format = "Positionally - two {2} . {2} . zero {0} . {0}"
       let args : obj[] = [|0;1;2;3|] 
       (because "fields are matched positionally when all are numbered" <| fun () ->
-        extractFormatFields (Message.templateFormat format args))
+        extractFormatFields (Message.templateFormat(format, args)))
       |> should equal ("Positionally - two {2} . {2} . zero {0} . {0}",
                        Set [ ("0", Field (Int64 0L, None))
                              ("2", Field (Int64 2L, None)) ])
@@ -175,7 +175,7 @@ let tests =
       let format = "This {gramaticalStructure} contains {wordCount} words."
       let args : obj[] = [|"sentence"; 4|]
       (because "fields are matched left-to-right in message template" <| fun () ->
-        extractFormatFields (Message.templateFormat format args))
+        extractFormatFields (Message.templateFormat(format, args)))
       |> should equal ("This {gramaticalStructure} contains {wordCount} words.",
                        Set [ "gramaticalStructure", Field (String "sentence", None)
                              "wordCount", Field (Int64 4L, None) ])
@@ -185,7 +185,7 @@ let tests =
       let format = "This {gramaticalStructure} contains {wordCount} words."
       let args : obj[] = [|"sentence"|]
       (because "fields are matched left-to-right in message template" <| fun () ->
-        extractFormatFields (Message.templateFormat format args))
+        extractFormatFields (Message.templateFormat(format, args)))
       |> should equal ("This {gramaticalStructure} contains {wordCount} words.",
                        Set [ "gramaticalStructure", Field (String "sentence", None) ])
       |> thatsIt
@@ -194,7 +194,7 @@ let tests =
       let format = "This {gramaticalStructure} contains {wordCount} words."
       let args : obj[] = [||]
       (because "fields are matched left-to-right in message template" <| fun () ->
-        extractFormatFields (Message.templateFormat format args))
+        extractFormatFields (Message.templateFormat(format, args)))
       |> should equal ("This {gramaticalStructure} contains {wordCount} words.",
                        Set [ ])
       |> thatsIt

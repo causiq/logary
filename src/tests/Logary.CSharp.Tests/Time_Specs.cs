@@ -29,7 +29,7 @@ namespace Logary.Specs
       writer.Dispose();
     };
 
-    private Because reason = () =>
+    Because reason = () =>
       {
         var logger = manager.GetLogger("Timing Sleep(100)");
         logger.Time(() => System.Threading.Thread.Sleep(100));

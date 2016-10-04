@@ -60,15 +60,15 @@ namespace Logary.Specs.Examples
                 tags = new [] { "tag1", "tag2" }
             });
 
-            var val = logger.TimePath("sample.config.compute_answer_to_everything", () =>
+            var val = logger.Time(() =>
                 {
                     for (int i = 0; i < 100; i++)
                         System.Threading.Thread.Sleep(1);
 
                     return 32;
-                });
+                }, nameEnding: "compute_answer_to_everything");
 
-            logger.LogEventFormat(LogLevel.Warn, "{0} is the answer to the universe and everything", val);
+            logger.LogEventFormat(LogLevel.Warn, "{theAnswer} is the answer to the universe and everything", val);
 
             logger.Time(() => logger.LogEvent(LogLevel.Debug, "I wonder how long this takes", new {
                 tags = new[] { "introspection", "navel-gazing" }

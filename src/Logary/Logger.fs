@@ -97,10 +97,12 @@ module Logger =
 
   /// Log a message, but don't await all targets to flush. Also, if it takes more
   /// than 5 seconds to add the log message to the buffer; simply drop the message.
-  let logWithTimeout (logger : Logger) (millis : uint32) msg : Alt<unit> =
+  /// Returns true if the message was successfully placed in the buffers, or
+  /// false otherwise.
+  let logWithTimeout (logger : Logger) (millis : uint32) msg : Alt<bool> =
     Alt.choose [
-      log logger msg
-      simpleTimeout (int millis) msg
+      log logger msg ^->. true
+      simpleTimeout (int millis) msg ^->. false
     ]
 
   /// Log a message, but don't synchronously wait for the message to be placed
@@ -111,7 +113,7 @@ module Logger =
   /// test your app to ensure that your targets can send at a rate high enough
   /// without dropping messages.
   let logSimple (logger : Logger) msg : unit =
-    start (logWithTimeout logger 5000u msg)
+    start (logWithTimeout logger 5000u msg ^->. ())
 
   /// Log a message, which returns a promise. The first Alt denotes having the
   /// Message placed in all Targets' buffers. The inner Promise denotes having
@@ -170,7 +172,7 @@ module Logger =
                   (nameEnding : string)
                   (f : 'input -> 'res)
                   : 'input -> 'res * Alt<Promise<unit>> =
-    timeWithAckT logger nameEnding f id
+    timeWithAckT logger nameEnding id f
 
   let time (logger : Logger)
            (nameEnding : string)

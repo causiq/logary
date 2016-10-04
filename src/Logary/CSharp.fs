@@ -509,25 +509,22 @@ module private MiscHelpers =
     { new IDisposable with
         member x.Dispose() = () }
 
-  let inline subscribe (ct : CancellationToken option) (f : unit -> unit) =
+  let inline subscribe (ct : CancellationToken) (f : unit -> unit) =
     match ct with
-    | None ->
+    | _ when ct = CancellationToken.None ->
       disposable
-    | Some ct ->
+    | ct ->
       upcast ct.Register (Action f)
 
   let inline chooseLogFun logger backpressure timeoutMillis =
-    let backpressure = defaultArg backpressure true
-    let timeoutMillis = defaultArg timeoutMillis 5000u
     if backpressure then
-      Logger.log logger
+      Logger.log logger >> Alt.afterFun (fun _ -> true)
     else
       Logger.logWithTimeout logger timeoutMillis
 
-
 module Alt =
 
-  let toTask (ct : CancellationToken option) (xA : Alt<'res>) : Task<'res> =
+  let toTask (ct : CancellationToken) (xA : Alt<'res>) : Task<'res> =
     // attach to parent because placing in buffer should be quick in the normal case
     let tcs = TaskCompletionSource<'res>(TaskCreationOptions.AttachedToParent) // alloc TCS
     let nack = IVar () // alloc
@@ -561,13 +558,13 @@ type LoggerExtensions =
   /// If not using backpressure, the returned task yields after either 5 seconds or
   /// when the message is accepted to all targets' ring buffers.
   [<Extension>]
-  static member Log (logger, message : Message,
-                     [<Optional; DefaultParameterValue(true)>] ?backpressure : bool,
-                     [<Optional; DefaultParameterValue(5000u)>] ?timeoutMillis : uint32,
-                     [<Optional; DefaultParameterValue(null)>] ?bufferCt : CancellationToken)
+  static member Log (logger : Logger,
+                     message : Message,
+                     [<Optional; DefaultParameterValue(true)>] backpressure : bool,
+                     [<Optional; DefaultParameterValue(5000u)>] timeoutMillis : uint32)
                     : Task =
     let logFn = MiscHelpers.chooseLogFun logger backpressure timeoutMillis
-    upcast Alt.toTask bufferCt (logFn message)
+    upcast Alt.toTask CancellationToken.None (logFn message)
 
   // corresponds to: log, logWithTimeout
 
@@ -580,16 +577,23 @@ type LoggerExtensions =
   static member LogEvent(logger : Logger,
                          level : LogLevel,
                          formatTemplate : string,
-                         [<ParamArray>] args : obj[],
-                         [<Optional; DefaultParameterValue(null)>] ?transform : Func<Message, Message>,
-                         [<Optional; DefaultParameterValue(true)>] ?backpressure : bool,
-                         [<Optional; DefaultParameterValue(5000u)>] ?timeoutMillis : uint32,
-                         [<Optional; DefaultParameterValue(null)>] ?bufferCt : CancellationToken)
+                         [<Optional; DefaultParameterValue(null)>] fields : obj,
+                         [<Optional; DefaultParameterValue(null)>] exn : Exception,
+                         [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>,
+                         [<Optional; DefaultParameterValue(true)>] backpressure : bool,
+                         [<Optional; DefaultParameterValue(5000u)>] timeoutMillis : uint32)
                         : Task =
+    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
+    let fields = if isNull fields then obj() else fields
     let logFn = MiscHelpers.chooseLogFun logger backpressure timeoutMillis
-    let transform = defaultArg (transform |> Option.map FSharpFunc.OfFunc) id
-    let message = Message.eventFormat(level, formatTemplate, args) |> transform
-    upcast Alt.toTask bufferCt (logFn message)
+
+    let message =
+      Message.event level formatTemplate
+      |> Message.setFieldsFromObject fields
+      |> if isNull exn then id else Message.addExn exn
+      |> transform
+
+    upcast Alt.toTask CancellationToken.None (logFn message)
 
   /// Log a gauge, but don't await all targets to flush. With back-pressure by default.
   /// Backpressure implies there's no timing out on placing the message in the buffer.
@@ -601,27 +605,28 @@ type LoggerExtensions =
                          value : Value,
                          units : Units,
                          formatTemplate : string,
-                         [<ParamArray>] args : obj[],
-                         [<Optional; DefaultParameterValue(null)>] ?transform : Func<Message, Message>,
-                         [<Optional; DefaultParameterValue(true)>] ?backpressure : bool,
-                         [<Optional; DefaultParameterValue(5000u)>] ?timeoutMillis : uint32,
-                         [<Optional; DefaultParameterValue(null)>] ?bufferCt : CancellationToken)
-                        : Task =
+                         [<Optional; DefaultParameterValue(null)>] fields : obj,
+                         [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>,
+                         [<Optional; DefaultParameterValue(true)>] backpressure : bool,
+                         [<Optional; DefaultParameterValue(5000u)>] timeoutMillis : uint32)
+                        : Task<bool> =
+    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
+    let fields = if isNull fields then obj() else fields
     let logFn = MiscHelpers.chooseLogFun logger backpressure timeoutMillis
-    let transform = defaultArg (transform |> Option.map FSharpFunc.OfFunc) id
-    let fields = Message.extractFields formatTemplate args
+
     let message =
       Message.gaugeWithUnit logger.name units value
-      |> Message.setFieldValuesArray fields
+      |> Message.setFieldsFromObject fields
       |> Message.setField "template" formatTemplate // overwrites any field named "template"
-    upcast Alt.toTask bufferCt (logFn message)
+
+    upcast Alt.toTask CancellationToken.None (logFn message)
 
   // corresponds to: logSimple
 
   /// Log a message, but don't await all targets to flush. Without back-pressure (5 s timeout instead).
   /// The call yields directly.
   [<Extension>]
-  static member Log (logger, message) : unit =
+  static member LogSimple (logger, message) : unit =
     Logger.logSimple logger message
 
   /// Log a message, which returns an inner Task. The outer Task denotes having the
@@ -632,10 +637,7 @@ type LoggerExtensions =
   /// be retracted by cancelling; however if you await the inner task (the promise) then
   /// the `promiseCt` allows you to cancel that await.
   [<Extension>]
-  static member LogWithAck (logger, message,
-                            [<Optional; DefaultParameterValue(null)>] ?bufferCt,
-                            [<Optional; DefaultParameterValue(null)>] ?promiseCt)
-                           : Task<Task> =
+  static member LogWithAck (logger, message, bufferCt, promiseCt) : Task<Task> =
     Alt.toTasks bufferCt promiseCt (Logger.logWithAck logger message)
 
   // TODO: logVerbose
@@ -664,14 +666,13 @@ type LoggerExtensions =
   [<Extension>]
   static member TimeWithAck (logger,
                              func : Func<'input, 'output>,
-                             [<Optional; DefaultParameterValue(null)>] ?nameEnding,
-                             [<Optional; DefaultParameterValue(null)>] ?transform : Func<Message, Message>,
-                             [<Optional; DefaultParameterValue(null)>] ?bufferCt,
-                             [<Optional; DefaultParameterValue(null)>] ?promiseCt)
+                             bufferCt,
+                             promiseCt,
+                             [<Optional; DefaultParameterValue(null)>] nameEnding,
+                             [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>)
                             : Func<'input, 'output * Task<Task>> =
-    let nameEnding = defaultArg nameEnding null
     let func = FSharpFunc.OfFunc func
-    let transform = transform |> Option.map FSharpFunc.OfFunc |> flip defaultArg id
+    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
     let runnable =
       Logger.timeWithAckT logger nameEnding transform func
       >> fun (res, alt) -> res, Alt.toTasks bufferCt promiseCt alt
@@ -680,14 +681,13 @@ type LoggerExtensions =
   // - Back-pressure (if you await the task)
   static member TimeWithAck (logger : Logger,
                              action : Action,
-                             [<Optional; DefaultParameterValue(null)>] ?nameEnding,
-                             [<Optional; DefaultParameterValue(null)>] ?transform : Func<Message, Message>,
-                             [<Optional; DefaultParameterValue(null)>] ?bufferCt,
-                             [<Optional; DefaultParameterValue(null)>] ?promiseCt)
+                             bufferCt,
+                             promiseCt,
+                             [<Optional; DefaultParameterValue(null)>] nameEnding,
+                             [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>)
                             : Func<Task<Task>> =
-    let nameEnding = defaultArg nameEnding null
     let action = FSharpFunc.OfAction action
-    let transform = transform |> Option.map FSharpFunc.OfFunc |> flip defaultArg id
+    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
     let runnable =
       Logger.timeWithAckT logger nameEnding transform action
       >> fun (_, alt) -> Alt.toTasks bufferCt promiseCt alt
@@ -699,14 +699,13 @@ type LoggerExtensions =
   [<Extension>]
   static member TimeWithAck (logger,
                              func : Func<'input, Task<'output>>,
-                             [<Optional; DefaultParameterValue(null)>] ?nameEnding,
-                             [<Optional; DefaultParameterValue(null)>] ?transform : Func<Message, Message>,
-                             [<Optional; DefaultParameterValue(null)>] ?bufferCt,
-                             [<Optional; DefaultParameterValue(null)>] ?promiseCt)
+                             bufferCt,
+                             promiseCt,
+                             [<Optional; DefaultParameterValue(null)>] nameEnding,
+                             [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>)
                             : Func<'input, Task<'output * Task<Task>>> =
-    let nameEnding = defaultArg nameEnding null
     let func = FSharpFunc.OfFunc func
-    let transform = transform |> Option.map FSharpFunc.OfFunc |> flip defaultArg id
+    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
     let runnable input =
       (Logger.timeTaskWithAckT logger nameEnding transform func input).ContinueWith (fun (task : Task<_>) ->
         let res, alt = task.Result
@@ -716,40 +715,74 @@ type LoggerExtensions =
 
   // Corresponds to: timeSimple, timeSimpleX
 
-  /// Run the function `func` and measure how long its returned Task takes; logging that
+  /// Run the function `action` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Scaled(Seconds, 10^9). Finally transform the
-  /// message using the `transform` function.
+  /// message using the `transform` function, if given.
   ///
   /// Logs, but doesn't await all targets to flush. Without back-pressure (5 s timeout instead).
   /// The call you make to the function yields directly (after your code is done executing of course).
   [<Extension>]
   static member Time (logger,
-                      func : Func<'input, 'output>,
-                      [<Optional; DefaultParameterValue(null)>] ?nameEnding,
-                      [<Optional; DefaultParameterValue(null)>] ?transform : Func<Message, Message>,
-                      [<Optional; DefaultParameterValue(null)>] ?bufferCt,
-                      [<Optional; DefaultParameterValue(null)>] ?promiseCt)
-                     : Func<'input, 'output> =
-    let nameEnding = defaultArg nameEnding null
-    let func = FSharpFunc.OfFunc func
-    let transform = transform |> Option.map FSharpFunc.OfFunc |> flip defaultArg id
-    let runnable = Logger.timeSimpleT logger nameEnding transform func
-    Funcs.ToFunc runnable
+                      action : Action,
+                      [<Optional; DefaultParameterValue(null)>] nameEnding,
+                      [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>)
+                     : Action =
+    let action = FSharpFunc.OfAction action
+    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
+    let runnable = Logger.timeSimpleT logger nameEnding transform action
+    Action runnable
 
-  // Corresponds to: timeTaskSimple
-
+    
+  /// Run the function `func` and measure how long it takes; logging that
+  /// measurement as a Gauge in the unit Scaled(Seconds, 10^9). Finally transform the
+  /// message using the `transform` function, if given.
+  ///
   /// Logs, but doesn't await all targets to flush. Without back-pressure (5 s timeout instead).
   /// The call you make to the function yields directly (after your code is done executing of course).
   [<Extension>]
   static member Time (logger,
-                      func : Func<'input, Task<'output>>,
-                      [<Optional; DefaultParameterValue(null)>] ?nameEnding,
-                      [<Optional; DefaultParameterValue(null)>] ?transform : Func<Message, Message>,
-                      [<Optional; DefaultParameterValue(null)>] ?bufferCt,
-                      [<Optional; DefaultParameterValue(null)>] ?promiseCt)
-                     : Func<'input, Task<'output>> =
-    let nameEnding = defaultArg nameEnding null
+                      func : Func<'res>,
+                      [<Optional; DefaultParameterValue(null)>] nameEnding,
+                      [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>)
+                     : Func<'res> =
     let func = FSharpFunc.OfFunc func
-    let transform = transform |> Option.map FSharpFunc.OfFunc |> flip defaultArg id
+    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
+    let runnable = Logger.timeSimpleT logger nameEnding transform func
+    Funcs.ToFunc<'res> runnable
+
+  /// Run the function `func` and measure how long it takes; logging that
+  /// measurement as a Gauge in the unit Scaled(Seconds, 10^9). Finally transform the
+  /// message using the `transform` function, if given.
+  ///
+  /// Logs, but doesn't await all targets to flush. Without back-pressure (5 s timeout instead).
+  /// The call you make to the function yields directly (after your code is done executing of course).
+  [<Extension>]
+  static member Time (logger,
+                      func : Func<'input, 'res>,
+                      [<Optional; DefaultParameterValue(null)>] nameEnding,
+                      [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>)
+                     : Func<'input, 'res> =
+    let func = FSharpFunc.OfFunc func
+    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
+    let runnable = Logger.timeSimpleT logger nameEnding transform func
+    Funcs.ToFunc<'input, 'res> runnable
+
+  // Corresponds to: timeTaskSimple
+  
+  /// Run the function `func` and measure how long its returned Task takes; logging that
+  /// measurement as a Gauge in the unit Scaled(Seconds, 10^9). Finally transform the
+  /// message using the `transform` function, if given.
+  ///
+  /// Logs, but doesn't await all targets to flush. Without back-pressure (5 s timeout instead).
+  /// The call you make to the function yields directly (after your code is done executing of course).
+  /// The call you make to the function yields directly (after your code is done executing of course).
+  [<Extension>]
+  static member Time (logger,
+                      func : Func<'input, Task<'output>>,
+                      [<Optional; DefaultParameterValue(null)>] nameEnding,
+                      [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>)
+                     : Func<'input, Task<'output>> =
+    let func = FSharpFunc.OfFunc func
+    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
     let runnable = Logger.timeTaskSimpleT logger nameEnding transform func
     Funcs.ToFunc runnable

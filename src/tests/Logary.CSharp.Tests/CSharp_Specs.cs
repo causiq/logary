@@ -44,8 +44,10 @@ namespace Logary.Specs
     Because reason = () =>
       {
         var logger = manager.GetLogger("Logary.Specs.When_configuring_with_CSharp_API");
-        logger.LogEvent(LogLevel.Warn, "the situation is dire, says {@foo}", new { foo = "oh-noes" }, timestamp, exception);
-        
+        logger.LogEvent(LogLevel.Warn, "the situation is dire, says {@foo}",
+            new { foo = "oh-noes" }, exception,
+            msg => msg.SetTimestamp(timestamp));
+
         manager.FlushPending(Duration.FromSeconds(8L)).Wait();
         subject = writer.ToString();
       };
@@ -94,11 +96,12 @@ namespace Logary.Specs
       logger.LogEvent(
         LogLevel.Warn,
         "the situation is dire",
-        msg => msg
-                 .SetFieldsFromObject(new { foo = "oh-noes" })
-                 .SetTimestamp(timestamp)
-                 .AddException(exception)
-                 .SetContextFromObject(new {contextdata = "the Contextdata"})
+        transform:
+          msg => msg
+            .SetFieldsFromObject(new { foo = "oh-noes" })
+            .SetTimestamp(timestamp)
+            .AddException(exception)
+            .SetContextFromObject(new {contextdata = "the Contextdata"})
         );
 
       manager.FlushPending(Duration.FromSeconds(8L)).Wait();
