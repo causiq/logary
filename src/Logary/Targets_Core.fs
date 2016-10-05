@@ -71,7 +71,6 @@ module TextWriter =
 
           RingBuffer.take requests ^=> function
             | Log (logMsg, ack) ->
-              printfn "Got log"
               job {
                 let writer = if logMsg.level < twConf.isErrorAt then twConf.output else twConf.error
                 do! writeLine writer (twConf.formatter.format logMsg)
