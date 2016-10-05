@@ -130,14 +130,19 @@ let lineProtocol =
                    @"""measurement\ with\ quotes"",tag\ key\ with\ spaces=tag\,value\,with""commas"" field_key\\\\=""string field value, only \"" need be quoted"" 1435362189575692182"
                    "should equal"
    
-    testCase "Simple event template gets logged as tag" <| fun _ ->
+    testCase "Simple event template gets logged as field" <| fun _ ->
       let msg =
-        Message.eventInfo "Template"      
-        |> Message.setName (PointName.ofSingle "Meassurement")
+        Message.eventInfo "Hej {name}"
+        |> Message.setName (PointName.ofSingle "Corp.Svc.Host.Sample")
+        |> Message.setField "name" "haf"
+        |> Message.setContextValue "service" (String "Corp Svc")
+        |> Message.setContextValue "service_version" (String "v2.0.2-e43562")
+        |> Message.setContextValue "host" (String "www-002.example.com")
+        |> Message.setContextValue "dc" (String "ams3")
         |> Message.setNanoEpoch 1435362189575692182L
 
       stringEqual (Serialisation.serialiseMessage msg) 
-                  @"Meassurement,Event=Template value=1i 1435362189575692182"
+                  @"event_info,dc=ams3,host=www-002.example.com,service=Corp\ Svc,service_version=v2.0.2-e43562 pointName=""Corp.Svc.Host.Sample"",name=""haf"",event=""Hej {name}"",value=1i 1435362189575692182"
                   "should equal"
 
     testCase "Simple event fields gets logged as fields" <| fun _ ->
@@ -145,11 +150,11 @@ let lineProtocol =
         Message.eventInfo "Template"
         |> Message.setField "Field1" "value1"
         |> Message.setField "Field2" 2L
-        |> Message.setName (PointName.ofSingle "Meassurement")
+        |> Message.setName (PointName.ofSingle "my_measurement")
         |> Message.setNanoEpoch 1435362189575692182L
 
       stringEqual (Serialisation.serialiseMessage msg) 
-                  @"Meassurement,Event=Template Field1=""value1"",Field2=2i,value=1i 1435362189575692182"
+                  @"my_measurement,event=Template Field1=""value1"",Field2=2i,value=1i 1435362189575692182"
                   "should equal"
 
     testCase "Simple event complex field gets logged as fields" <| fun _ ->
@@ -162,6 +167,6 @@ let lineProtocol =
         |> Message.setNanoEpoch 1435362189575692182L
 
       stringEqual (Serialisation.serialiseMessage msg) 
-                  @"Measurement,Event=Template foo=""bar"",number=1i,value=1i 1435362189575692182"
+                  @"Measurement,event=Template foo=""bar"",number=1i,value=1i 1435362189575692182"
                   "should equal"
   ]
