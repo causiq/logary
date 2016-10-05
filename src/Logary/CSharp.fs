@@ -525,7 +525,6 @@ module private MiscHelpers =
 module Alt =
 
   let toTask (ct : CancellationToken) (xA : Alt<'res>) : Task<'res> =
-    printfn "toTask!"
     // attach to parent because placing in buffer should be quick in the normal case
     let tcs = TaskCompletionSource<'res>(TaskCreationOptions.AttachedToParent) // alloc TCS
     let nack = IVar () // alloc
@@ -534,8 +533,8 @@ module Alt =
       Alt.tryFinallyFun (
         Alt.choose [
           Alt.tryIn xA
-                    (fun res -> Job.thunk (fun () -> printfn "task res!"; tcs.SetResult res))
-                    (fun ex -> Job.thunk (fun () -> printfn "task exn!"; tcs.SetException ex))
+                    (fun res -> Job.thunk (fun () -> tcs.SetResult res))
+                    (fun ex -> Job.thunk (fun () -> tcs.SetException ex))
           nack |> Alt.afterFun tcs.SetCanceled
         ]
       ) sub.Dispose
@@ -553,7 +552,7 @@ type LoggerExtensions =
 
   // corresponds to: log, logWithTimeout
 
-  /// Log a message, but don't await all targets to flush. With back-pressure by default.
+  /// Log a message, but don't await all targets to flush. With no back-pressure by default.
   /// Backpressure implies there's no timing out on placing the message in the buffer.
   /// The timeout-milliseconds parameter is only used if backpressure is false.
   /// If not using backpressure, the returned task yields after either 5 seconds or
@@ -561,7 +560,7 @@ type LoggerExtensions =
   [<Extension>]
   static member Log (logger : Logger,
                      message : Message,
-                     [<Optional; DefaultParameterValue(true)>] backpressure : bool,
+                     [<Optional; DefaultParameterValue(false)>] backpressure : bool, // #96
                      [<Optional; DefaultParameterValue(5000u)>] timeoutMillis : uint32)
                     : Task =
     // https://github.com/Microsoft/visualfsharp/issues/96
@@ -571,7 +570,7 @@ type LoggerExtensions =
 
   // corresponds to: log, logWithTimeout
 
-  /// Log an event, but don't await all targets to flush. With back-pressure by default.
+  /// Log an event, but don't await all targets to flush. With no back-pressure by default.
   /// Backpressure implies there's no timing out on placing the message in the buffer.
   /// The timeout-milliseconds parameter is only used if backpressure is false.
   /// If not using backpressure, the returned task yields after either 5 seconds or
@@ -583,7 +582,7 @@ type LoggerExtensions =
                          [<Optional; DefaultParameterValue(null)>] fields : obj,
                          [<Optional; DefaultParameterValue(null)>] exn : Exception,
                          [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>,
-                         [<Optional; DefaultParameterValue(true)>] backpressure : bool,
+                         [<Optional; DefaultParameterValue(false)>] backpressure : bool, // #96
                          [<Optional; DefaultParameterValue(5000u)>] timeoutMillis : uint32)
                         : Task =
     // https://github.com/Microsoft/visualfsharp/issues/96
@@ -600,7 +599,7 @@ type LoggerExtensions =
 
     upcast Alt.toTask CancellationToken.None (logFn message)
     
-  /// Log an event, but don't await all targets to flush. With back-pressure.
+  /// Log an event, but don't await all targets to flush. With back-pressure by default.
   /// Backpressure implies there's no timing out on placing the message in the buffer.
   [<Extension>]
   static member LogEventFormat(logger : Logger,
@@ -613,7 +612,7 @@ type LoggerExtensions =
     let call = Logger.log logger message |> Alt.afterFun (fun _ -> true)
     upcast Alt.toTask CancellationToken.None call
 
-  /// Log a gauge, but don't await all targets to flush. With back-pressure by default.
+  /// Log a gauge, but don't await all targets to flush. With no back-pressure by default.
   /// Backpressure implies there's no timing out on placing the message in the buffer.
   /// The timeout-milliseconds parameter is only used if backpressure is false.
   /// If not using backpressure, the returned task yields after either 5 seconds or
@@ -625,7 +624,7 @@ type LoggerExtensions =
                          formatTemplate : string,
                          [<Optional; DefaultParameterValue(null)>] fields : obj,
                          [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>,
-                         [<Optional; DefaultParameterValue(true)>] backpressure : bool,
+                         [<Optional; DefaultParameterValue(false)>] backpressure : bool, // #96
                          [<Optional; DefaultParameterValue(5000u)>] timeoutMillis : uint32)
                         : Task<bool> =
     // https://github.com/Microsoft/visualfsharp/issues/96
@@ -713,6 +712,8 @@ type LoggerExtensions =
       >> fun (_, alt) -> Alt.toTasks bufferCt promiseCt alt
 
     Funcs.ToFunc<_> runnable
+
+  // TODO: TimeWithAck func:Func<T>
 
   // corresponds to: timeTaskWithAckT
 

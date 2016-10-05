@@ -99,5 +99,30 @@ namespace Logary
         {
             return MessageModule.SetContextValues(values, message);
         }
+
+        /// <summary>
+        /// Sets the message name/path.
+        /// </summary>
+        public static Message SetName(this Message message, PointName name)
+        {
+            return MessageModule.SetName(name, message);
+        }
+
+        /// <summary>
+        /// Sets the message name/path.
+        /// </summary>
+        public static Message SetName(this Message message, string name)
+        {
+            return MessageModule.SetName(name, message);
+        }
+
+        /// <summary>
+        /// Appends the nameEnding to the existing message name. If you've logged the
+        /// message from a logger, the existing name is likely the name of your logger.
+        /// </summary>
+        public static Message SetNameEnding(this Message message, string nameEnding)
+        {
+            return MessageModule.SetNameEnding(nameEnding, message);
+        }
     }
 }
