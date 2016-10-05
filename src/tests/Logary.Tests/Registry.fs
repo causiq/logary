@@ -36,8 +36,11 @@ let registry =
       Fac.withLogary <| fun logary out err ->
         let logger = (pnp "a.b.c.d") |> Registry.getLogger logary.registry |> run
         (because "logging something, then shutting down" <| fun () ->
-          Message.eventInfo "hi there" |> Logger.log logger |> run
+          // log and wait for Message to be flushed
+          Message.eventInfo "hi there" |> Logger.logWithAck logger |> run |> run
           logary |> Config.shutdownSimple |> run |> ignore
+          // this will place the info message in the buffers, but since the target is not
+          // draining its buffer/queue it won't be logged
           Message.eventInfo "after shutdown" |> Logger.log logger |> run
           out.ToString())
         |> should contain "hi there"
