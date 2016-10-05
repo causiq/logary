@@ -535,7 +535,7 @@ module Alt =
           Alt.tryIn xA
                     (fun res -> Job.thunk (fun () -> tcs.SetResult res))
                     (fun ex -> Job.thunk (fun () -> tcs.SetException ex))
-          nack |> Alt.afterFun tcs.SetCanceled
+          nack |> Alt.afterFun tcs.SetCanceled // |> Alt.afterFun (fun () -> printfn "Cancelled")
         ]
       ) sub.Dispose
     )
@@ -670,6 +670,22 @@ type LoggerExtensions =
   // TODO: timeJobWithAck, timeJobSimple
   // TODO: timeAltWithAck, timeAltSimple
 
+  // - Back-pressure (if you await the task)
+  [<Extension>]
+  static member TimeWithAck (logger : Logger,
+                             action : Action,
+                             bufferCt,
+                             promiseCt,
+                             [<Optional; DefaultParameterValue(null)>] nameEnding,
+                             [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>)
+                            : Func<Task<Task>> =
+    let action = FSharpFunc.OfAction action
+    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
+    let runnable =
+      Logger.timeWithAckT logger nameEnding transform action
+      >> fun (_, alt) -> Alt.toTasks bufferCt promiseCt alt
+    Funcs.ToFunc<_> runnable
+
   /// Run the function `func` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Seconds. As an exception to the rule,
   /// it is allowed to pass `nameEnding` as null to this function. This
@@ -696,35 +712,44 @@ type LoggerExtensions =
       Logger.timeWithAckT logger nameEnding transform func
       >> fun (res, alt) -> res, Alt.toTasks bufferCt promiseCt alt
     Funcs.ToFunc runnable
-
-  // - Back-pressure (if you await the task)
-  static member TimeWithAck (logger : Logger,
-                             action : Action,
+    
+  /// Run the function `func` and measure how long it takes; logging that
+  /// measurement as a Gauge in the unit Seconds. As an exception to the rule,
+  /// it is allowed to pass `nameEnding` as null to this function. This
+  /// function returns the full schabang; i.e. it will let you wait for
+  /// Ack if you want. This adapter version for C# returns Task, and as such
+  /// it's a hot task that always will try to log. If you use this function
+  /// you should at least await the outer Task that provides backpressure.
+  ///
+  /// The function will yield when you code is complete, but the task may
+  /// not be completed by then.
+  ///
+  /// This function does not execute the callback.
+  [<Extension>]
+  static member TimeWithAck (logger,
+                             func : Func<'output>,
                              bufferCt,
                              promiseCt,
                              [<Optional; DefaultParameterValue(null)>] nameEnding,
                              [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>)
-                            : Func<Task<Task>> =
-    let action = FSharpFunc.OfAction action
+                            : Func<'output * Task<Task>> =
+    let func = FSharpFunc.OfFunc func
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
     let runnable =
-      Logger.timeWithAckT logger nameEnding transform action
-      >> fun (_, alt) -> Alt.toTasks bufferCt promiseCt alt
-
+      Logger.timeWithAckT logger nameEnding transform func
+      >> fun (res, alt) -> res, Alt.toTasks bufferCt promiseCt alt
     Funcs.ToFunc<_> runnable
-
-  // TODO: TimeWithAck func:Func<T>
 
   // corresponds to: timeTaskWithAckT
 
   [<Extension>]
-  static member TimeWithAck (logger,
-                             func : Func<'input, Task<'output>>,
-                             bufferCt,
-                             promiseCt,
-                             [<Optional; DefaultParameterValue(null)>] nameEnding,
-                             [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>)
-                            : Func<'input, Task<'output * Task<Task>>> =
+  static member TimeTaskWithAck (logger,
+                                 func : Func<'input, Task<'output>>,
+                                 bufferCt,
+                                 promiseCt,
+                                 [<Optional; DefaultParameterValue(null)>] nameEnding,
+                                 [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>)
+                                : Func<'input, Task<'output * Task<Task>>> =
     let func = FSharpFunc.OfFunc func
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
     let runnable input =
