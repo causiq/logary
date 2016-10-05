@@ -12,13 +12,15 @@ module internal Logging =
 
   let send (targets : _ list) msg : Alt<Promise<unit>> =
     let latch = Latch targets.Length
-    (targets
-     |> List.traverseAltA (fun target ->
-      let ack = IVar ()
-      (Log (msg, ack) |> RingBuffer.put target.requests)
-      ^=>. Latch.decrement latch
-    ))
-    ^->. memo (Latch.await latch)
+
+    let traverse =
+      targets |> List.traverseAltA (fun target ->
+        let ack = IVar ()
+        Log (msg, ack) |> RingBuffer.put target.requests |> Alt.afterJob (fun () ->
+          ack ^=>. Latch.decrement latch
+        ))
+
+    traverse ^->. memo (Latch.await latch)
 
   let instaPromise =
     Alt.always (Promise (())) // new promise with unit value
@@ -26,7 +28,6 @@ module internal Logging =
   let logWithAck message : _ list -> Alt<Promise<unit>> = function
     | []      ->
       instaPromise
-
     | targets ->
       message |> send targets
 
