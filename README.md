@@ -839,6 +839,10 @@ Facade.
    – the unit tests for the adapter, which are also good documentation on how to
    use it.
 
+## InfluxDb Target
+
+ - Events will be logged "{pointName},event={template} value=1"
+
 ## RabbitMQ Target
 
 I've written a full RabbitMQ target that includes publisher confirms and durable
