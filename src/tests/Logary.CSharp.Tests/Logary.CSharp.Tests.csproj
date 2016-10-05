@@ -35,7 +35,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyVersionInfo.cs" />
-    <Compile Include="Time_Specs.cs" />
+    <Compile Include="TimeWithAck_Specs.cs" />
     <Compile Include="Config_Specs.cs" />
     <Compile Include="CSharp_Specs.cs" />
     <Compile Include="Examples\SampleLogaryConfiguration.cs" />
