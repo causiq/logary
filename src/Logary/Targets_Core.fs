@@ -71,6 +71,7 @@ module TextWriter =
 
           RingBuffer.take requests ^=> function
             | Log (logMsg, ack) ->
+              printfn "Got log"
               job {
                 let writer = if logMsg.level < twConf.isErrorAt then twConf.output else twConf.error
                 do! writeLine writer (twConf.formatter.format logMsg)
@@ -116,29 +117,20 @@ module Console =
   open Logary.Formatting
   open Logary.Target
 
-  /// Colours in hex
-  type ConsoleColours =
-    { foregroundColor : int
-      backgroundColor : int }
-
   /// Console configuration structure.
   type ConsoleConf =
-    { formatter : StringFormatter
-      colorMap  : (ConsoleColours -> LogLevel -> ConsoleColours) option }
+    { formatter : StringFormatter }
 
     [<CompiledName "Create">]
     static member create formatter =
-      { formatter = formatter
-        colorMap  = None }
+      { formatter = formatter }
 
   /// Default console target configuration.
   let empty =
-    { formatter = StringFormatter.levelDatetimeMessagePath
-      colorMap  = None (* fun col line -> 0x000000 black *) }
+    { formatter = StringFormatter.levelDatetimeMessagePath }
 
   [<CompiledName "Create">]
   let create conf name =
-    // TODO: coloured console output
     TextWriter.create
       { formatter = conf.formatter
         output    = System.Console.Out
@@ -154,10 +146,6 @@ module Console =
     /// Specify the formatting style to use when logging to the console
     member x.WithFormatter( sf : StringFormatter ) =
       ! (callParent <| Builder({ conf with formatter = sf }, callParent))
-
-    /// TODO: implement!
-    member x.Colourise() =
-      ! (callParent <| Builder(conf, callParent))
 
     new(callParent : FactoryApi.ParentCallback<_>) =
       Builder(empty, callParent)
@@ -429,58 +417,57 @@ module LiterateConsole =
         | Tokens.NameSymbol -> nameSymbolColours | Tokens.MissingTemplateField -> missingTemplateFieldColours
 
     let consoleWriteLineColourParts (parts : ColouredText seq) =
-        let originalForegroundColour = Console.ForegroundColor
-        let originalBackgroundColour = Console.BackgroundColor
+      let originalForegroundColour = Console.ForegroundColor
+      let originalBackgroundColour = Console.BackgroundColor
 
-        // The console APIs are quite slow and clumsy. We avoid changing the foreground
-        // and background colours whenever possible, which speeds things up a bit.
-        let mutable currentForegroundColour = originalForegroundColour
-        let mutable currentBackgroundColour = originalBackgroundColour
+      // The console APIs are quite slow and clumsy. We avoid changing the foreground
+      // and background colours whenever possible, which speeds things up a bit.
+      let mutable currentForegroundColour = originalForegroundColour
+      let mutable currentBackgroundColour = originalBackgroundColour
 
-        let inline maybeResetBgColour (backgroundColour : ConsoleColor option) =
-          match backgroundColour with
-          | Some bgc ->
-            if bgc <> currentBackgroundColour then
-              Console.BackgroundColor <- bgc
-              currentBackgroundColour <- bgc
-          | None -> // "we don't have a specific colour, so leave (or reset to) the original/default"
-            match currentBackgroundColour with
-            | c when c = originalBackgroundColour -> ()
-            | otherwise ->
-              // calling reset here helps with different default background colours
-              Console.ResetColor()
-              currentForegroundColour <- Console.ForegroundColor
-              currentBackgroundColour <- originalBackgroundColour
+      let inline maybeResetBgColour (backgroundColour : ConsoleColor option) =
+        match backgroundColour with
+        | Some bgc ->
+          if bgc <> currentBackgroundColour then
+            Console.BackgroundColor <- bgc
+            currentBackgroundColour <- bgc
+        | None -> // "we don't have a specific colour, so leave (or reset to) the original/default"
+          match currentBackgroundColour with
+          | c when c = originalBackgroundColour -> ()
+          | otherwise ->
+            // calling reset here helps with different default background colours
+            Console.ResetColor()
+            currentForegroundColour <- Console.ForegroundColor
+            currentBackgroundColour <- originalBackgroundColour
 
-        parts |> Seq.iter (fun part ->
-          maybeResetBgColour part.colours.background
-          if currentForegroundColour <> part.colours.foreground then
-            Console.ForegroundColor <- part.colours.foreground
-            currentForegroundColour <- part.colours.foreground
-          Console.Write(part.text)
-        )
-        if currentForegroundColour <> originalForegroundColour then
-          Console.ForegroundColor <- originalForegroundColour
-        maybeResetBgColour None
-        Console.WriteLine()
+      parts |> Seq.iter (fun part ->
+        maybeResetBgColour part.colours.background
+        if currentForegroundColour <> part.colours.foreground then
+          Console.ForegroundColor <- part.colours.foreground
+          currentForegroundColour <- part.colours.foreground
+        Console.Write(part.text)
+      )
+      if currentForegroundColour <> originalForegroundColour then
+        Console.ForegroundColor <- originalForegroundColour
+      maybeResetBgColour None
+      Console.WriteLine()
 
     let consoleWriteColourPartsAtomically sem (parts : ColouredText seq) =
       lock sem <| fun _ -> consoleWriteLineColourParts parts
 
   /// Default console target configuration.
   let empty =
-    { formatProvider = Globalization.CultureInfo.CurrentCulture
+    { formatProvider  = Globalization.CultureInfo.CurrentCulture
       getLogLevelText = function
-              | Debug ->    "DBG"
-              | Error ->    "ERR"
-              | Fatal ->    "FTL"
-              | Info ->     "INF"
-              | Verbose ->  "VRB"
-              | Warn ->     "WRN"
+        | Verbose ->  "VRB"
+        | Debug ->    "DBG"
+        | Info ->     "INF"
+        | Warn ->     "WRN"
+        | Error ->    "ERR"
+        | Fatal ->    "FTL"
       tokenise = LiterateFormatting.literateDefaultTokeniser
       theme = LiterateFormatting.DefaultTheme.theme
       colourWriter = LiterateFormatting.consoleWriteColourPartsAtomically }
-
 
   module internal Impl =
     open Hopac
@@ -531,6 +518,24 @@ module LiterateConsole =
   let create conf name =
     TargetUtils.stdNamedTarget (Impl.loop conf) name
 
+  /// Use with LogaryFactory.New( s => s.Target<LiterateConsole.Builder>() )
+  type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+    let update (conf' : LiterateConsoleConf) : Builder =
+      Builder(conf', callParent)
+
+    /// Specify the formatting provider to use when formatting values to string
+    member x.WithFormatProvider(fp : IFormatProvider) =
+      update { conf with formatProvider = fp }
+
+    /// Lets you specify how log levels are written out.
+    member x.WithLevelFormatter(toStringFun : Func<LogLevel, string>) =
+      update { conf with getLogLevelText = toStringFun.Invoke }
+
+    new(callParent : FactoryApi.ParentCallback<_>) =
+      Builder(empty, callParent)
+
+    interface Logary.Target.FactoryApi.SpecificTargetConf with
+      member x.Build name = create conf name
 // boolean IsLogging() method, correct by excluded middle
 #nowarn "25"
 
