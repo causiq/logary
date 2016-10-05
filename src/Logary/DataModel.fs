@@ -1123,87 +1123,87 @@ module Message =
 
   /// Get a partial setter lens to a field
   [<CompiledName "SetField">]
-  let inline setField name value =
-    Lens.setPartial (Lenses.field_ name) (Field.init value)
+  let inline setField name value message =
+    Lens.setPartial (Lenses.field_ name) (Field.init value) message
 
   /// Get a partial setter lens to a field with an unit
   [<CompiledName "SetFieldUnit">]
-  let inline setFieldUnit name value units =
-    Lens.setPartial (Lenses.field_ name) (Field.initWithUnit value units)
+  let inline setFieldUnit name value units message =
+    Lens.setPartial (Lenses.field_ name) (Field.initWithUnit value units) message
 
   /// You can also choose to construct a Field yourself, using the object model
   /// that Logary has for its data. That way you don't have to rely on having
   /// static ToValue methods on your data objects.
   [<CompiledName "SetFieldValue">]
-  let setFieldValue (name : string) (field : Field) msg =
-    Lens.setPartial (Lenses.field_ name) field msg
+  let setFieldValue (name : string) (field : Field) message =
+    Lens.setPartial (Lenses.field_ name) field message
 
   [<CompiledName "SetFieldValues">]
-  let setFieldValues (fields : (string * Field) seq) msg =
-    fields |> Seq.fold (fun m (name, value) -> setFieldValue name value m) msg
+  let setFieldValues (fields : (string * Field) seq) message =
+    fields |> Seq.fold (fun m (name, value) -> setFieldValue name value m) message
 
   [<CompiledName "SetFieldValuesArray">]
-  let setFieldValuesArray (fields : (string * Field)[]) msg =
-    fields |> Array.fold (fun m (name, value) -> setFieldValue name value m) msg
+  let setFieldValuesArray (fields : (string * Field)[]) message =
+    fields |> Array.fold (fun m (name, value) -> setFieldValue name value m) message
 
   [<CompiledName "SetFieldsFromMap">]
-  let setFieldsFromMap (m : Map<string, obj>) msg =
+  let setFieldsFromMap (m : Map<string, obj>) message =
     m
     |> Seq.map (fun (KeyValue (k, v)) -> k, Field (Value.ofObject v, None))
-    |> flip setFieldValues msg
+    |> flip setFieldValues message
 
   [<CompiledName "SetFieldFromObject">]
-  let setFieldFromObject name (data : obj) msg =
-    setFieldValue name (Field (Value.ofObject data, None)) msg
+  let setFieldFromObject name (data : obj) message =
+    setFieldValue name (Field (Value.ofObject data, None)) message
 
   /// Reflects over the object and sets the appropriate fields.
   [<CompiledName "SetFieldsFromObject">]
-  let setFieldsFromObject (data : obj) msg =
+  let setFieldsFromObject (data : obj) message =
     Map.ofObject data
     |> Seq.map (fun (KeyValue (k, v)) -> k, Field (Value.ofObject v, None))
-    |> flip setFieldValues msg
+    |> flip setFieldValues message
 
   /// Get a partial getter lens to a field
   [<CompiledName "TryGetField">]
-  let tryGetField name =
-    Lens.getPartial (Lenses.field_ name)
+  let tryGetField name message =
+    Lens.getPartial (Lenses.field_ name) message
 
   ///////////////// CONTEXT ////////////////////
 
   /// Sets a context value by trying to find the ToValue method on the type
   /// passed.
   [<CompiledName "SetContext">]
-  let inline setContext name value msg =
-    Lens.setPartial (Lenses.contextValue_ name) (Value.serialize value) msg
+  let inline setContext name value message =
+    Lens.setPartial (Lenses.contextValue_ name) (Value.serialize value) message
 
   /// Sets a context value.
   [<CompiledName "SetContextValue">]
-  let setContextValue name value msg =
-    Lens.setPartial (Lenses.contextValue_ name) value msg
+  let setContextValue name value message =
+    Lens.setPartial (Lenses.contextValue_ name) value message
 
   [<CompiledName "SetContextValues">]
-  let setContextValues (values : (string * Value) seq) msg =
-    values |> Seq.fold (fun m (name, value) -> setContextValue name value m) msg
+  let setContextValues (values : (string * Value) seq) message =
+    values |> Seq.fold (fun m (name, value) -> setContextValue name value m) message
 
   [<CompiledName "SetContextFromMap">]
-  let setContextFromMap (m : Map<string, obj>) msg =
+  let setContextFromMap (m : Map<string, obj>) message =
     m
     |> Seq.map (fun (KeyValue (k, v)) -> k, Value.ofObject v)
     |> List.ofSeq
-    |> fun fields -> setContextValues fields msg
+    |> fun fields -> setContextValues fields message
 
   /// Uses reflection to set all
   [<CompiledName "SetContextFromObject">]
-  let setContextFromObject (data : obj) msg =
+  let setContextFromObject (data : obj) message =
     Map.ofObject data
     |> Seq.map (fun (KeyValue (k, v)) -> k, Value.ofObject v)
     |> List.ofSeq
-    |> fun values -> setContextValues values msg
+    |> fun values -> setContextValues values message
 
   /// Tries to get a context value
   [<CompiledName "TryGetContext">]
-  let inline tryGetContext name msg =
-    Lens.getPartial (Lenses.contextValue_ name) msg
+  let inline tryGetContext name message =
+    Lens.getPartial (Lenses.contextValue_ name) message
 
   ///////////////// CTORS ////////////////////
 

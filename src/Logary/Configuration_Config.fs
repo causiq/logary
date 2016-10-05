@@ -187,9 +187,14 @@ let shutdown (flushDur : Duration) (shutdownDur : Duration) (inst : LogaryInstan
     >> Logger.log inst.runtimeInfo.logger
 
   job {
-    do! Message.eventDebug "Shutting down Logary" |> log
+    do! Message.eventDebug "Shutting down Logary." |> log
     let! res = Advanced.flushAndShutdown flushDur shutdownDur inst.registry
-    do! Message.eventVerbose "Shutting down Logary completed or timed out" |> log
+    if res.successful then
+      do! Message.eventVerbose "Shutting down Logary was successful." |> log
+    else
+      do! Message.eventVerbose "Shutting down Logary failed within alloted time, with {acks}."
+          |> Message.setFieldFromObject "acks" res.stopped
+          |> log
     Logging.shutdownFlyweights ()
     do! shutdownLogger inst.runtimeInfo.logger
     return res

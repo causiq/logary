@@ -4,16 +4,14 @@
 // ReSharper disable UnusedMember.Global
 
 using System.Threading;
+using System.Text;
+using System.IO;
+using Logary.Configuration;
+using Machine.Specifications;
+using TextWriter = Logary.Targets.TextWriter;
 
 namespace Logary.Specs
 {
-  using System.Text;
-  using System.IO;
-
-  using Configuration;
-  using Machine.Specifications;
-  using TextWriter = Targets.TextWriter;
-
   public class When_using_TimeWithAck
   {
     Establish context = () =>
@@ -55,6 +53,9 @@ namespace Logary.Specs
       func2.Item2
         .Result // wait for buffer
         .Wait(); // wait for promise
+
+      using (logger.TimeScope("TimeScope"))
+        Thread.Sleep(0);
 
       subject = writer.ToString();
     };

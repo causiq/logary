@@ -1,12 +1,6 @@
 using System;
-using System.Data.SQLite;
 using System.Text.RegularExpressions;
-using FluentMigrator.Runner.Announcers;
-using FluentMigrator.Runner.Generators.SQLite;
-using FluentMigrator.Runner.Processors.SQLite;
-using Logary;
 using Logary.Configuration;
-//using Logary.DB.Migrations;
 using Logary.Targets;
 using Console = System.Console;
 
@@ -30,6 +24,7 @@ namespace Logary.Specs.Examples
                         conf => conf.Target.ConnectTo("127.0.0.1", 2131)
                     )
                     .Target<Debugger.Builder>("debugger")
+                    .Target<LiterateConsole.Builder>("literate")
                     .Target<Logstash.Builder>(
                         "ls",
                         conf => conf.Target
@@ -59,6 +54,9 @@ namespace Logary.Specs.Examples
             logger.LogEvent(LogLevel.Verbose, "immegawd immegawd immegawd!!", new {
                 tags = new [] { "tag1", "tag2" }
             });
+
+            using (logger.TimeScope("TimeScope"))
+                ;
 
             var val = logger.Time(() =>
                 {

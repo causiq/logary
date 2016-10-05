@@ -310,6 +310,20 @@ module Logger =
         logSimple logger (transform message)
         res)
 
+  let timeScopeT (logger : Logger)
+                 (nameEnding : string)
+                 (transform : Message -> Message)
+                 : IDisposable =
+    let name = logger.name |> PointName.setEnding nameEnding
+    let sw = Stopwatch.StartNew()
+    { new IDisposable with
+        member x.Dispose () =
+          sw.Stop()
+          let value, units = sw.toGauge()
+          let message = Message.gaugeWithUnit name units value
+          logSimple logger message
+    }
+
 /// A logger that does absolutely nothing, useful for feeding into the target
 /// that is actually *the* internal logger target, to avoid recursive calls to
 /// itself.
