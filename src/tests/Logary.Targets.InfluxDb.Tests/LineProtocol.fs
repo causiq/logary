@@ -147,14 +147,14 @@ let lineProtocol =
 
     testCase "Simple event fields gets logged as fields" <| fun _ ->
       let msg =
-        Message.eventInfo "Template"
+        Message.eventInfo "A template with {Field1} interpolated"
         |> Message.setField "Field1" "value1"
         |> Message.setField "Field2" 2L
         |> Message.setName (PointName.ofSingle "my_measurement")
         |> Message.setNanoEpoch 1435362189575692182L
 
       stringEqual (Serialisation.serialiseMessage msg) 
-                  @"my_measurement,event=Template Field1=""value1"",Field2=2i,value=1i 1435362189575692182"
+                  @"event_info pointName=""my_measurement"",Field1=""value1"",Field2=2i,event=""A template with {Field1} interpolated"",value=1i 1435362189575692182"
                   "should equal"
 
     testCase "Simple event complex field gets logged as fields" <| fun _ ->
@@ -167,6 +167,6 @@ let lineProtocol =
         |> Message.setNanoEpoch 1435362189575692182L
 
       stringEqual (Serialisation.serialiseMessage msg) 
-                  @"Measurement,event=Template foo=""bar"",number=1i,value=1i 1435362189575692182"
+                  @"event_info pointName=""Measurement"",foo=""bar"",number=1i,event=""Template"",value=1i 1435362189575692182"
                   "should equal"
   ]
