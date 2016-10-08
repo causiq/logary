@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.24720.0
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{CB6B0EE7-19B3-4253-A1DA-B195C64C0AE6}"
 	ProjectSection(SolutionItems) = preProject
@@ -26,103 +26,103 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "core", "core", "{EA09AD42-B
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "integration-tests", "integration-tests", "{4755795D-4488-4013-81FC-9FD5D442B211}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Riemann", "targets\Logary.Targets.Riemann\Logary.Targets.Riemann.fsproj", "{CC87925C-E4F2-4386-A322-8BC088DE7B33}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Riemann", "targets\Logary.Targets.Riemann\Logary.Targets.Riemann.fsproj", "{CC87925C-E4F2-4386-A322-8BC088DE7B33}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.DB.Migrations", "targets\Logary.Targets.DB.Migrations\Logary.Targets.DB.Migrations.fsproj", "{FFE1B4AC-742A-45C2-9F04-08FFD01A7796}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.DB.Migrations", "targets\Logary.Targets.DB.Migrations\Logary.Targets.DB.Migrations.fsproj", "{FFE1B4AC-742A-45C2-9F04-08FFD01A7796}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.DB", "targets\Logary.Targets.DB\Logary.Targets.DB.fsproj", "{A9D14445-2559-4DF7-B1D4-61F0F190EE54}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.DB", "targets\Logary.Targets.DB\Logary.Targets.DB.fsproj", "{A9D14445-2559-4DF7-B1D4-61F0F190EE54}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.DB.Tests", "tests\Logary.Targets.DB.Tests\Logary.Targets.DB.Tests.fsproj", "{69A84CB4-793D-46B4-87EF-E59FED669124}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.DB.Tests", "tests\Logary.Targets.DB.Tests\Logary.Targets.DB.Tests.fsproj", "{69A84CB4-793D-46B4-87EF-E59FED669124}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Riemann.Tests", "tests\Logary.Targets.Riemann.Tests\Logary.Targets.Riemann.Tests.fsproj", "{204FE42E-89FB-4FA4-9CE0-9FA4B387BC63}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Riemann.Tests", "tests\Logary.Targets.Riemann.Tests\Logary.Targets.Riemann.Tests.fsproj", "{204FE42E-89FB-4FA4-9CE0-9FA4B387BC63}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Mailgun", "targets\Logary.Targets.Mailgun\Logary.Targets.Mailgun.fsproj", "{1F23C428-A95F-4977-BE77-3D626116CCB8}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Mailgun", "targets\Logary.Targets.Mailgun\Logary.Targets.Mailgun.fsproj", "{1F23C428-A95F-4977-BE77-3D626116CCB8}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Heka", "targets\Logary.Targets.Heka\Logary.Targets.Heka.fsproj", "{BC4A5F70-0785-40D6-9EBE-4BB0E47A9EEC}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Heka", "targets\Logary.Targets.Heka\Logary.Targets.Heka.fsproj", "{BC4A5F70-0785-40D6-9EBE-4BB0E47A9EEC}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Heka.Tests", "tests\Logary.Targets.Heka.Tests\Logary.Targets.Heka.Tests.fsproj", "{EDE8A833-C15D-47FE-BFF2-0A24FAA22728}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Heka.Tests", "tests\Logary.Targets.Heka.Tests\Logary.Targets.Heka.Tests.fsproj", "{EDE8A833-C15D-47FE-BFF2-0A24FAA22728}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.Suave.Tests", "tests\Logary.Adapters.Suave.Tests\Logary.Adapters.Suave.Tests.fsproj", "{7D72B30B-F720-4BE9-A97A-13E3CF5C11A2}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Suave.Tests", "tests\Logary.Adapters.Suave.Tests\Logary.Adapters.Suave.Tests.fsproj", "{7D72B30B-F720-4BE9-A97A-13E3CF5C11A2}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.Suave", "adapters\Logary.Adapters.Suave\Logary.Adapters.Suave.fsproj", "{5255B5AD-9DA9-495C-8B6D-740BB6DC164B}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Suave", "adapters\Logary.Adapters.Suave\Logary.Adapters.Suave.fsproj", "{5255B5AD-9DA9-495C-8B6D-740BB6DC164B}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.Topshelf", "adapters\Logary.Adapters.Topshelf\Logary.Adapters.Topshelf.fsproj", "{887CF8ED-4EEE-499B-B8D3-59EDA8A64BBF}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Topshelf", "adapters\Logary.Adapters.Topshelf\Logary.Adapters.Topshelf.fsproj", "{887CF8ED-4EEE-499B-B8D3-59EDA8A64BBF}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.log4net", "adapters\Logary.Adapters.log4net\Logary.Adapters.log4net.fsproj", "{0F5BEF2F-4F6B-4E4A-A0BB-0255F177C71D}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.log4net", "adapters\Logary.Adapters.log4net\Logary.Adapters.log4net.fsproj", "{0F5BEF2F-4F6B-4E4A-A0BB-0255F177C71D}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.log4net.Tests", "tests\Logary.Adapters.log4net.Tests\Logary.Adapters.log4net.Tests.fsproj", "{08C004AB-734D-457E-9CFD-B37ED6883502}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.log4net.Tests", "tests\Logary.Adapters.log4net.Tests\Logary.Adapters.log4net.Tests.fsproj", "{08C004AB-734D-457E-9CFD-B37ED6883502}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.CommonLogging", "adapters\Logary.Adapters.CommonLogging\Logary.Adapters.CommonLogging.fsproj", "{BACE7A04-036B-4A37-A2A9-968F79CD673A}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.CommonLogging", "adapters\Logary.Adapters.CommonLogging\Logary.Adapters.CommonLogging.fsproj", "{BACE7A04-036B-4A37-A2A9-968F79CD673A}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.EventStore", "adapters\Logary.Adapters.EventStore\Logary.Adapters.EventStore.fsproj", "{56014DF9-C99C-4D7F-939F-30A80D20296B}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.EventStore", "adapters\Logary.Adapters.EventStore\Logary.Adapters.EventStore.fsproj", "{56014DF9-C99C-4D7F-939F-30A80D20296B}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Services.SuaveReporter", "services\Logary.Services.SuaveReporter\Logary.Services.SuaveReporter.fsproj", "{C76BBED8-93D4-4073-924C-3E5564EEA1DB}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Services.SuaveReporter", "services\Logary.Services.SuaveReporter\Logary.Services.SuaveReporter.fsproj", "{C76BBED8-93D4-4073-924C-3E5564EEA1DB}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.ConsoleApp", "..\examples\Logary.ConsoleApp\Logary.ConsoleApp.fsproj", "{178B23D3-F676-43C3-880D-9E0BEFBAF019}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.ConsoleApp", "..\examples\Logary.ConsoleApp\Logary.ConsoleApp.fsproj", "{178B23D3-F676-43C3-880D-9E0BEFBAF019}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logary.CSharp", "Logary.CSharp\Logary.CSharp.csproj", "{26FD79BD-2329-41B6-A86D-8F3992437CBE}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Tests", "tests\Logary.Tests\Logary.Tests.fsproj", "{886DFAE8-C01A-43E2-A275-7F1E41CA0342}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Tests", "tests\Logary.Tests\Logary.Tests.fsproj", "{886DFAE8-C01A-43E2-A275-7F1E41CA0342}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary", "Logary\Logary.fsproj", "{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary", "Logary\Logary.fsproj", "{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.IntegrationTests", "tests\Logary.IntegrationTests\Logary.IntegrationTests.fsproj", "{647FB507-A552-4537-AA2C-E2274A3245EB}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.IntegrationTests", "tests\Logary.IntegrationTests\Logary.IntegrationTests.fsproj", "{647FB507-A552-4537-AA2C-E2274A3245EB}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Logstash", "targets\Logary.Targets.Logstash\Logary.Targets.Logstash.fsproj", "{F9AAC195-D3F7-4160-A829-5F9775791AD5}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Logstash", "targets\Logary.Targets.Logstash\Logary.Targets.Logstash.fsproj", "{F9AAC195-D3F7-4160-A829-5F9775791AD5}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Mailgun.Tests", "tests\Logary.Targets.Mailgun.Tests\Logary.Targets.Mailgun.Tests.fsproj", "{E3C8C506-1B69-4EBC-89AE-24D686AA274C}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Mailgun.Tests", "tests\Logary.Targets.Mailgun.Tests\Logary.Targets.Mailgun.Tests.fsproj", "{E3C8C506-1B69-4EBC-89AE-24D686AA274C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logary.CSharp.Tests", "tests\Logary.CSharp.Tests\Logary.CSharp.Tests.csproj", "{A85B6894-33A4-4645-848D-D4D4D413A0C5}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.Facade", "adapters\Logary.Adapters.Facade\Logary.Adapters.Facade.fsproj", "{15226ED2-C66B-4AA2-B15D-ACFF8A45454A}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Facade", "adapters\Logary.Adapters.Facade\Logary.Adapters.Facade.fsproj", "{15226ED2-C66B-4AA2-B15D-ACFF8A45454A}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Facade", "Logary.Facade\Logary.Facade.fsproj", "{FDA71626-E557-4D33-842F-2C4611768538}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Facade", "Logary.Facade\Logary.Facade.fsproj", "{FDA71626-E557-4D33-842F-2C4611768538}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.FsSql", "adapters\Logary.Adapters.FsSql\Logary.Adapters.FsSql.fsproj", "{6E3A10AE-BB8D-471B-B0EA-8B3879A5B6F9}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.FsSql", "adapters\Logary.Adapters.FsSql\Logary.Adapters.FsSql.fsproj", "{6E3A10AE-BB8D-471B-B0EA-8B3879A5B6F9}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "metrics", "metrics", "{B3FA7806-592C-4F81-BBCE-7AB1180CD7CD}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Metrics.WinPerfCounters", "metrics\Logary.Metrics.WinPerfCounters\Logary.Metrics.WinPerfCounters.fsproj", "{DD5137FC-22E5-47DA-88F1-3D3F1E7E8381}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Metrics.WinPerfCounters", "metrics\Logary.Metrics.WinPerfCounters\Logary.Metrics.WinPerfCounters.fsproj", "{DD5137FC-22E5-47DA-88F1-3D3F1E7E8381}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.InfluxDb", "targets\Logary.Targets.InfluxDb\Logary.Targets.InfluxDb.fsproj", "{4ACE8A29-6D75-4956-B45C-22C82EAFCFD5}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.InfluxDb", "targets\Logary.Targets.InfluxDb\Logary.Targets.InfluxDb.fsproj", "{4ACE8A29-6D75-4956-B45C-22C82EAFCFD5}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.InfluxDb.Tests", "tests\Logary.Targets.InfluxDb.Tests\Logary.Targets.InfluxDb.Tests.fsproj", "{647D929B-4ACE-4099-A25F-D7FF06588F88}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.InfluxDb.Tests", "tests\Logary.Targets.InfluxDb.Tests\Logary.Targets.InfluxDb.Tests.fsproj", "{647D929B-4ACE-4099-A25F-D7FF06588F88}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Services.Rutta", "services\Logary.Services.Rutta\Logary.Services.Rutta.fsproj", "{E88982FD-E257-41BA-A343-B56976CCB3A1}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Services.Rutta", "services\Logary.Services.Rutta\Logary.Services.Rutta.fsproj", "{E88982FD-E257-41BA-A343-B56976CCB3A1}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Shipper", "targets\Logary.Targets.Shipper\Logary.Targets.Shipper.fsproj", "{7DB39E8E-DA06-4E4B-A3E2-1A0FACEC941C}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Shipper", "targets\Logary.Targets.Shipper\Logary.Targets.Shipper.fsproj", "{7DB39E8E-DA06-4E4B-A3E2-1A0FACEC941C}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Services.Rutta.Tests", "tests\Logary.Services.Rutta.Tests\Logary.Services.Rutta.Tests.fsproj", "{698814F7-8E47-4272-9228-B498F949B1A2}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Services.Rutta.Tests", "tests\Logary.Services.Rutta.Tests\Logary.Services.Rutta.Tests.fsproj", "{698814F7-8E47-4272-9228-B498F949B1A2}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Logstash.Tests", "tests\Logary.Targets.Logstash.Tests\Logary.Targets.Logstash.Tests.fsproj", "{D30C57E7-BA12-4E95-BCF2-8BE5B0EF9D56}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Logstash.Tests", "tests\Logary.Targets.Logstash.Tests\Logary.Targets.Logstash.Tests.fsproj", "{D30C57E7-BA12-4E95-BCF2-8BE5B0EF9D56}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Services.SQLServerHealth", "services\Logary.Services.SQLServerHealth\Logary.Services.SQLServerHealth.fsproj", "{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Services.SQLServerHealth", "services\Logary.Services.SQLServerHealth\Logary.Services.SQLServerHealth.fsproj", "{1DC3B89B-5586-4FD9-A40B-550AEC87AFE5}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Services.SQLServerHealth.Tests", "tests\Logary.Services.SQLServerHealth.Tests\Logary.Services.SQLServerHealth.Tests.fsproj", "{8E4E562E-ACDE-4325-8B12-7C0B240E9176}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Services.SQLServerHealth.Tests", "tests\Logary.Services.SQLServerHealth.Tests\Logary.Services.SQLServerHealth.Tests.fsproj", "{8E4E562E-ACDE-4325-8B12-7C0B240E9176}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.MetricsWriter", "..\examples\Logary.MetricsWriter\Logary.MetricsWriter.fsproj", "{1724A791-AC1F-4F79-9E1D-AB8F125B85BF}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.MetricsWriter", "..\examples\Logary.MetricsWriter\Logary.MetricsWriter.fsproj", "{1724A791-AC1F-4F79-9E1D-AB8F125B85BF}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Facade.Tests", "tests\Logary.Facade.Tests\Logary.Facade.Tests.fsproj", "{643498E7-F0DC-4665-9EA9-FB3EBF0F6A88}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Facade.Tests", "tests\Logary.Facade.Tests\Logary.Facade.Tests.fsproj", "{643498E7-F0DC-4665-9EA9-FB3EBF0F6A88}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Adapters.Facade.Tests", "tests\Logary.Adapters.Facade.Tests\Logary.Adapters.Facade.Tests.fsproj", "{2B2FCE14-8E8D-407A-81FD-D648B0A1AA74}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Facade.Tests", "tests\Logary.Adapters.Facade.Tests\Logary.Adapters.Facade.Tests.fsproj", "{2B2FCE14-8E8D-407A-81FD-D648B0A1AA74}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Servizz", "..\examples\Servizz\Servizz.fsproj", "{AF0A49FA-0DD6-4BEB-B271-4B179C9B76DC}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Servizz", "..\examples\Servizz\Servizz.fsproj", "{AF0A49FA-0DD6-4BEB-B271-4B179C9B76DC}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Libryy", "..\examples\Libryy\Libryy.fsproj", "{A64CF176-66D8-459F-BF45-AF5B5C3098A2}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Libryy", "..\examples\Libryy\Libryy.fsproj", "{A64CF176-66D8-459F-BF45-AF5B5C3098A2}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Zipkin", "targets\Logary.Targets.Zipkin\Logary.Targets.Zipkin.fsproj", "{8E4B79CA-FDB1-4CCE-ACAB-24958023027A}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Zipkin", "targets\Logary.Targets.Zipkin\Logary.Targets.Zipkin.fsproj", "{8E4B79CA-FDB1-4CCE-ACAB-24958023027A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logary.Zipkin", "targets\Logary.Zipkin\Logary.Zipkin.csproj", "{AAAB7F2B-73BD-4AA7-BEF9-B4AF8F422309}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Zipkin.Tests", "tests\Logary.Zipkin.Tests\Logary.Zipkin.Tests.fsproj", "{0315A342-21D1-43E5-B678-D96C4E523093}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Zipkin.Tests", "tests\Logary.Zipkin.Tests\Logary.Zipkin.Tests.fsproj", "{0315A342-21D1-43E5-B678-D96C4E523093}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.ElasticSearch", "targets\Logary.Targets.ElasticSearch\Logary.Targets.ElasticSearch.fsproj", "{64A5B3B2-0F73-44B5-A178-C66A9DB830D6}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.ElasticSearch", "targets\Logary.Targets.ElasticSearch\Logary.Targets.ElasticSearch.fsproj", "{64A5B3B2-0F73-44B5-A178-C66A9DB830D6}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.ElasticSearch.Tests", "tests\Logary.Targets.ElasticSearch.Tests\Logary.Targets.ElasticSearch.Tests.fsproj", "{2A4CB8E9-C123-4E07-A814-CF6B74FFC87D}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.ElasticSearch.Tests", "tests\Logary.Targets.ElasticSearch.Tests\Logary.Targets.ElasticSearch.Tests.fsproj", "{2A4CB8E9-C123-4E07-A814-CF6B74FFC87D}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.RabbitMQ", "targets\Logary.Targets.RabbitMQ\Logary.Targets.RabbitMQ.fsproj", "{FE1BC08F-A41A-41CC-9F03-996EA9B3B477}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.RabbitMQ", "targets\Logary.Targets.RabbitMQ\Logary.Targets.RabbitMQ.fsproj", "{FE1BC08F-A41A-41CC-9F03-996EA9B3B477}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.ElmahIO", "targets\Logary.Targets.ElmahIO\Logary.Targets.ElmahIO.fsproj", "{BEE0293D-C090-48A4-867D-5B40F4C8D35F}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.ElmahIO", "targets\Logary.Targets.ElmahIO\Logary.Targets.ElmahIO.fsproj", "{BEE0293D-C090-48A4-867D-5B40F4C8D35F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logary.CSharpExample", "..\examples\Logary.CSharpExample\Logary.CSharpExample.csproj", "{1C1A1003-40E3-4C79-A24B-0FC8667E6D28}"
 EndProject
@@ -210,8 +210,8 @@ Global
 		{26FD79BD-2329-41B6-A86D-8F3992437CBE}.Debug|Any CPU.Build.0 = Release|Any CPU
 		{26FD79BD-2329-41B6-A86D-8F3992437CBE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{26FD79BD-2329-41B6-A86D-8F3992437CBE}.Release|Any CPU.Build.0 = Release|Any CPU
-		{886DFAE8-C01A-43E2-A275-7F1E41CA0342}.Debug|Any CPU.ActiveCfg = Release|Any CPU
-		{886DFAE8-C01A-43E2-A275-7F1E41CA0342}.Debug|Any CPU.Build.0 = Release|Any CPU
+		{886DFAE8-C01A-43E2-A275-7F1E41CA0342}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{886DFAE8-C01A-43E2-A275-7F1E41CA0342}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{886DFAE8-C01A-43E2-A275-7F1E41CA0342}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{886DFAE8-C01A-43E2-A275-7F1E41CA0342}.Release|Any CPU.Build.0 = Release|Any CPU
 		{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
