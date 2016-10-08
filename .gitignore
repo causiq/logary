@@ -22,4 +22,4 @@ paket-files/
 build.cmd
 build.fsx
 build.sh
-.vs/ 
+.vs/
