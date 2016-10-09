@@ -189,11 +189,16 @@ module LiterateConsole =
   /// Console configuration structure
   type LiterateConsoleConf =
     { formatProvider    : IFormatProvider
-      /// Converts a log level into a display string.
+      /// Converts a log level into a display string. By default: VRB, DBG, INF, WRN, ERR, FTL
       getLogLevelText   : LogLevel -> string
+      /// Formats the ticks since the Unix epoch of (ISO) January 1st 1970, midnight, UTC (aka.
+      /// Message.timestamp) into a string. By default "HH:mm:ss".
+      formatLocalTime   : IFormatProvider -> EpochNanoSeconds -> string * Tokens.LiterateToken
       /// Converts a message into the appropriate tokens which can later be themed with colours.
       tokenise          : LiterateConsoleConf -> Message -> (string * Tokens.LiterateToken) seq
-      /// Converts a token into the appropriate Foreground*Background colours.
+      /// Converts a token into the appropriate Foreground*Background colours. The default theme
+      /// tries to emphasise the message template field values based on data type, make it easy to
+      /// scan the output and find the most relevant information.
       theme             : Tokens.LiterateToken -> ConsoleColours
       /// Takes an object (console semaphore) and a list of string*colour pairs and writes them
       /// to the console with the appropriate colours.
@@ -377,10 +382,6 @@ module LiterateConsole =
     /// Split a structured message up into theme-able parts (tokens), allowing the
     /// final output to display to a user with colours to enhance readability.
     let literateDefaultTokeniser (options : LiterateConsoleConf) (message : Message) =
-      let formatLocalTime (utcTicks : EpochNanoSeconds) =
-        DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss", options.formatProvider),
-        Subtext
-
       let messageTokens = message.value |> literateTokenisePointValue options message
       let exceptionTokens = literateTokeniseMessageExceptions options message
 
@@ -394,7 +395,7 @@ module LiterateConsole =
 
       seq {
         yield "[", Punctuation
-        yield formatLocalTime message.timestamp
+        yield options.formatLocalTime options.formatProvider message.timestamp
         yield " ", Subtext
         yield options.getLogLevelText message.level, getLogLevelToken message.level
         yield "] ", Punctuation
@@ -470,6 +471,9 @@ module LiterateConsole =
   /// Default console target configuration.
   let empty =
     { formatProvider = Globalization.CultureInfo.CurrentCulture
+      formatLocalTime = fun provider utcTicks ->
+                          DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss", provider),
+                          Tokens.Subtext
       getLogLevelText = function
               | Debug ->    "DBG"
               | Error ->    "ERR"

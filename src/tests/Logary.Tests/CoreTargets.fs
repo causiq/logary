@@ -14,7 +14,7 @@ let textWriterConf =
 module LiterateTesting =
   open System
   open LiterateConsole
-  module TestTheme =
+  module Theme =
       let textColours =     { foreground=ConsoleColor.White; background=None }
       let subtextColours =  { foreground=ConsoleColor.Gray; background=None }
       let punctuationColours = { foreground=ConsoleColor.DarkGray; background=None }
@@ -45,6 +45,10 @@ module LiterateTesting =
 
   let frenchFormatProvider = System.Globalization.CultureInfo("fr-FR") :> IFormatProvider
 
+  let formatLocalTime provider (utcTicks : EpochNanoSeconds) =
+    DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss", provider),
+    Tokens.Subtext
+
   /// creates a LiterateConsoleConf for testing purposes, and also returns a function that,
   /// when invoked, returns the coloured text parts written to the target.
   let createInspectableWrittenPartsConf () =
@@ -53,7 +57,8 @@ module LiterateTesting =
     { LiterateConsole.empty with
         formatProvider = frenchFormatProvider
         getLogLevelText = singleLetterLogLevelText
-        theme = TestTheme.theme
+        formatLocalTime = formatLocalTime
+        theme = Theme.theme
         colourWriter = (fun sem parts -> writtenParts.AddRange(parts)) },
     fun () -> writtenParts |> List.ofSeq
 
@@ -69,22 +74,24 @@ let tests =
     testList "literate console" [
       testCase "printing Hello World" <| fun _ ->
         let conf, getWrittenParts = LiterateTesting.createInspectableWrittenPartsConf()
+        let messageUtcTicks : EpochNanoSeconds = 0L
+        let expectedTimeText = fst (LiterateTesting.formatLocalTime conf.formatProvider messageUtcTicks)
         let target = LiterateConsole.create conf "testLC"
         let instance = target |> Target.init emptyRuntime |> run
         instance.server (fun _ -> Job.result ()) None
         |> start
         
         (because "logging with info level and then finalising the target" <| fun () ->
-          Message.eventInfo "Hello World!" |> Message.setTicksEpoch 0L |> Target.logAndWait instance
+          Message.eventInfo "Hello World!" |> Message.setTicksEpoch messageUtcTicks |> Target.logAndWait instance
           Target.finalise instance
           getWrittenParts()
         )
-        |> should equal [ {text = "[";                    colours = LiterateTesting.TestTheme.punctuationColours }
-                          {text = "10:00:00";             colours = LiterateTesting.TestTheme.subtextColours }
-                          {text = " ";                    colours = LiterateTesting.TestTheme.subtextColours }
-                          {text = LiterateTesting.levelI; colours = LiterateTesting.TestTheme.levelInfoColours }
-                          {text = "] ";                   colours = LiterateTesting.TestTheme.punctuationColours }
-                          {text = "Hello World!";         colours = LiterateTesting.TestTheme.textColours } ]
+        |> should equal [ {text = "[";                    colours = LiterateTesting.Theme.punctuationColours }
+                          {text = expectedTimeText;       colours = LiterateTesting.Theme.subtextColours }
+                          {text = " ";                    colours = LiterateTesting.Theme.subtextColours }
+                          {text = LiterateTesting.levelI; colours = LiterateTesting.Theme.levelInfoColours }
+                          {text = "] ";                   colours = LiterateTesting.Theme.punctuationColours }
+                          {text = "Hello World!";         colours = LiterateTesting.Theme.textColours } ]
         |> thatsIt
     ]
 
