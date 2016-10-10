@@ -634,7 +634,7 @@ type Units =
     | Moles -> "mol"
     | Candelas -> "cd"
     | Other other -> other
-    | Scaled(units, scale) -> sprintf "%s / %f" (Units.symbol units) scale
+    | Scaled (units, scale) -> sprintf "%s / %f" (Units.symbol units) scale
     | Mul (a, b) -> String.Concat [ "("; Units.symbol a; "*"; Units.symbol b; ")" ]
     | Pow (a, b) -> String.Concat [ Units.symbol a; "^("; Units.symbol b; ")" ]
     | Div (a, b) -> String.Concat [ "("; Units.symbol a; "/"; Units.symbol b; ")" ]
@@ -1062,7 +1062,7 @@ module StopwatchEx =
     [<Extension; CompiledName "ToGauge">]
     member sw.toGauge() : (Value * Units) =
       Int64 (sw.ElapsedTicks * Constants.NanosPerTick),
-      Scaled(Seconds, float Constants.NanosPerSecond)
+      Scaled (Seconds, float Constants.NanosPerSecond)
 
     [<Extension; CompiledName "Time">]
     static member time (fn : unit -> 'res) : 'res * (Value * Units) =
