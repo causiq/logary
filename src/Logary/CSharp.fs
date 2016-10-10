@@ -617,6 +617,7 @@ type LoggerExtensions =
   /// The timeout-milliseconds parameter is only used if backpressure is false.
   /// If not using backpressure, the returned task yields after either 5 seconds or
   /// when the message is accepted to all targets' ring buffers.
+  [<Extension>]
   static member LogGauge(logger : Logger,
                          level : LogLevel,
                          value : Value,
