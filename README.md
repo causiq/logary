@@ -1522,11 +1522,10 @@ Thread/Semaphore/Monitor primitives on top of the ThreadPool.
 
 ### How do I use Hopac from C#?
 
-You don't – if you're interested in using the semantics of the `Alt`-ernatives
-returned from `log` and `logWithAck` – then you can convert them to Task with
-[`AsTask()`](https://github.com/logary/logary/blob/4987c421849464d23b61ea4b64f8e48a6df21f12/src/Logary.CSharp/MiscExtensions.cs#L57)
+You're better off following the examples in C# and using the Task-wrapped
+public APIs than going spelunking into the dire straits of Hopac and F#.
 
-Remember to pull in `Logary.CSharp` to make this happen. You'll also have to
+Just pull in `Logary.CSharp` to make this happen. You'll also have to
 open the `Logary` namespace.
 
 ### What's `logVerboseWithAck`, `logWithAck` and how does it differ from `logSimple`?
@@ -1569,6 +1568,24 @@ It's up to each target to deal with Acks in its own way, but a 'best-practices'
 Ack implementation can be seen in the RabbitMQ target.  It's a best-practices
 Ack implementation because RabbitMQ supports publisher confirms (that serve as
 Acks), asynchronous publish and also durable messaging.
+
+#### How do Promises work with C#?
+
+The C# signature of the above functions is as follows:
+
+```fsharp
+type Message =
+  [<Extension>]
+  static member LogWithAck (logger, message, bufferCt, promiseCt) : Task<Task> =
+    Alt.toTasks bufferCt promiseCt (Logger.logWithAck logger message)
+```
+
+and can be used like so:
+
+```csharp
+var message = MessageModule.Event(LogLevel.Warn, "Here be dragons!");
+logger.LogWithAck(message).Result.Wait();
+```
 
 ## License
 

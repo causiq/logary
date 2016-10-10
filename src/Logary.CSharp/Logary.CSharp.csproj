@@ -39,6 +39,7 @@
     <Compile Include="PointValueExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="LogManagerExtensions.cs" />
+    <Compile Include="LoggerExtensions.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

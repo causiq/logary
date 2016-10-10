@@ -4,6 +4,27 @@ using Logary;
 using Logary.Configuration;
 using Logary.Targets;
 
+/*
+ * 
+    
+//   .Target<Logary.Targets.RabbitMQ.Builder>(
+//       "rabbitmq",
+//       conf => conf.Target.EnableTls("./cert/path.pfx", "TopSecret12345").Done()
+//   )
+// currently Windows only:
+/*
+    .Target<DB.Builder>("db",
+        conf => conf.Target
+            .ConnectionFactory(() => new SQLiteConnection())
+            .DefaultSchema()
+            .MigrateUp(
+                conn => new SqliteProcessor(conn,
+                    new SqliteGenerator(),
+                    new ConsoleAnnouncer(),
+                    new MigrationOptions(false, "", 60),
+                                            new SqliteDbFactory())))
+*/
+
 namespace Logary.CSharpExample
 {
     public static class Program
@@ -11,7 +32,10 @@ namespace Logary.CSharpExample
         public static int Main(string[] args)
         {
             using (var logary = LogaryFactory.New("Logary.CSharpExample",
-                with => with.Target<TextWriter.Builder>(
+                with => with
+                    //.WithInternalLevel(LogLevel.Verbose)
+                    //.Metrics(m => m.WithAllCounters())
+                    .Target<TextWriter.Builder>(
                     "console1",
                     conf =>
                     conf.Target.WriteTo(System.Console.Out, System.Console.Error)
@@ -38,25 +62,8 @@ namespace Logary.CSharpExample
                             .Type("logs") // index-name
                             .Done()
                     )
-                    .Target<InfluxDb.Builder>("influx")
-                    //.Metrics(m => m.WithAllCounters())
-                //   .Target<Logary.Targets.RabbitMQ.Builder>(
-                //       "rabbitmq",
-                //       conf => conf.Target.EnableTls("./cert/path.pfx", "TopSecret12345").Done()
-                //   )
-                // currently Windows only:
-                /*
-                    .Target<DB.Builder>("db",
-                        conf => conf.Target
-                            .ConnectionFactory(() => new SQLiteConnection())
-                            .DefaultSchema()
-                            .MigrateUp(
-                                conn => new SqliteProcessor(conn,
-                                    new SqliteGenerator(),
-                                    new ConsoleAnnouncer(),
-                                    new MigrationOptions(false, "", 60),
-                                                            new SqliteDbFactory())))
-                */
+                    .Target<InfluxDb.Builder>("influx",
+                                              conf => conf.Target.DB("http://influxdb.service:8086").Done())
                 ).Result)
             {
                 var logger = logary.GetLogger("Logary.CSharpExample");
@@ -73,13 +80,16 @@ namespace Logary.CSharpExample
                     tags = new[] { "tag1", "tag2" }
                 });
 
-                var val = logger.TimePath("sample.config.computeAnswerToEverything", () =>
+                var message = MessageModule.Event(LogLevel.Warn, "Here be dragons!");
+                logger.LogWithAck(message).Result.Wait();
+
+                var val = logger.Time(() =>
                     {
                         for (int i = 0; i < 100; i++)
                             System.Threading.Thread.Sleep(1);
 
                         return 32;
-                    });
+                }, "sample.config.computeAnswerToEverything")();
 
                 logger.LogEventFormat(LogLevel.Warn, "{0} is the answer to the universe and everything", val);
 
