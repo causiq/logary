@@ -1,5 +1,6 @@
 using System;
 using System.Text.RegularExpressions;
+using System.Threading;
 using Logary.Configuration;
 using Logary.Targets;
 using Console = System.Console;
@@ -56,15 +57,15 @@ namespace Logary.Specs.Examples
             });
 
             using (logger.TimeScope("TimeScope"))
-                ;
+                Thread.Sleep(0);
 
             var val = logger.Time(() =>
                 {
                     for (int i = 0; i < 100; i++)
-                        System.Threading.Thread.Sleep(1);
+                        Thread.Sleep(1);
 
                     return 32;
-                }, nameEnding: "compute_answer_to_everything");
+                }, "compute_answer_to_everything");
 
             logger.LogEventFormat(LogLevel.Warn, "{theAnswer} is the answer to the universe and everything", val);
 
