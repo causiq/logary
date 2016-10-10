@@ -766,6 +766,8 @@ type LoggerExtensions =
 
   // Corresponds to: timeSimple, timeSimpleX
 
+  /// NOTE: You need to execute the returned action. Logary.CSharp.MessageExtensions.TimeScope.
+  ///
   /// Run the function `action` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Scaled(Seconds, 10^9). Finally transform the
   /// message using the `transform` function, if given.
@@ -783,7 +785,8 @@ type LoggerExtensions =
     let runnable = Logger.timeSimpleT logger nameEnding transform action
     Action runnable
 
-    
+  /// NOTE: You need to execute the returned function. Logary.CSharp.MessageExtensions.TimeScope.
+  ///
   /// Run the function `func` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Scaled(Seconds, 10^9). Finally transform the
   /// message using the `transform` function, if given.
@@ -801,6 +804,8 @@ type LoggerExtensions =
     let runnable = Logger.timeSimpleT logger nameEnding transform func
     Funcs.ToFunc<'res> runnable
 
+  /// NOTE: You need to execute the returned function. Logary.CSharp.MessageExtensions.TimeScope.
+  ///
   /// Run the function `func` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Scaled(Seconds, 10^9). Finally transform the
   /// message using the `transform` function, if given.
@@ -820,6 +825,8 @@ type LoggerExtensions =
 
   // Corresponds to: timeTaskSimple
   
+  /// NOTE: You need to execute the returned function. Also see Logary.CSharp.MessageExtensions.TimeScope.
+  ///
   /// Run the function `func` and measure how long its returned Task takes; logging that
   /// measurement as a Gauge in the unit Scaled(Seconds, 10^9). Finally transform the
   /// message using the `transform` function, if given.

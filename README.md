@@ -841,7 +841,18 @@ Facade.
 
 ## InfluxDb Target
 
- - Events will be logged "{pointName},event={template} value=1"
+ - Events will be logged to InfluxDb like such:
+   `"{pointName},event={template},ctx1=ctxval1,ctx2=ctxval2 field1=fieldval1,field2=fieldval2 value=1i 14566666xxxx"`
+ - In other words, fields will be influx values and context fields will be influx tags.
+ - The timestamp of the Message will be at the end as the timestamp of the sent line
+ - Events will be logged in these influx measure names, so that you could e.g. put "event_fatal" as
+   an annotation in Grafana:
+   * event_verbose
+   * event_debug
+   * event_info
+   * event_warn
+   * event_error
+   * event_fatal
 
 ## RabbitMQ Target
 
