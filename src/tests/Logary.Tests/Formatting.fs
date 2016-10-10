@@ -9,6 +9,7 @@ open Logary
 open Logary.Formatting
 
 open Logary.Tests.TestDSL
+open ExpectoPatronum
 
 let private sampleMessage : Message =
   { name      = PointName.ofList ["a"; "b"; "c"; "d"]
@@ -198,5 +199,87 @@ let tests =
       |> should equal ("This {gramaticalStructure} contains {wordCount} words.",
                        Set [ ])
       |> thatsIt
+
+    testCase "templateEvent<_> reconises the '$' symbol and will call 'ToString()' on the captured value" <| fun _ ->
+      let stringifyLogEvent = Message.templateEvent<Version>(Info, "Found version {$Version}")
+      (because "" <| fun () -> extractFormatFields (stringifyLogEvent (Version(1,2,3,4))))
+      |> should equal ( "Found version {$Version}", Set [ "Version", Field (String "1.2.3.4", None) ] )
+      |> thatsIt
+
+    testCase "templateEvent<_> reconises the '@' symbol and will extract the properties of the captured value" <| fun _ ->
+      let structureLogEvent = Message.templateEvent<Version>(Info, "Found version {@Version}")
+      let expectedCapturedFields =
+        Map [ "Build",          Int64 3L
+              "Major",          Int64 1L
+              "MajorRevision",  Int64 0L
+              "Minor",          Int64 2L
+              "MinorRevision",  Int64 4L
+              "Revision",       Int64 4L
+              "_typeTag",       String "Version"]
+      (because "" <| fun () -> extractFormatFields (structureLogEvent (Version(1,2,3,4))))
+      |> should equal (
+          "Found version {@Version}",
+            Set [ "Version", Field (Object expectedCapturedFields, None) ])
+      |> thatsIt
+
+    testCase "templateEvent<_> works with one to four type params" <| fun _ ->
+      let logEventGuid      = Message.templateEvent<Guid>            (Info, "This special {Guid} is logged")
+      let logEventStringInt = Message.templateEvent<string, int>     (Warn, "This {gramaticalStructure} contains {wordCount} words.")
+      let logEventIntIntInt = Message.templateEvent<int, int, int>   (Error, "There a 3 numbers: {one} {two} {three}")
+      let logEventExns      = Message.templateEvent<exn,exn,exn,exn> (Fatal, "There a 4 exns: {one} {two} {three} {four}")
+
+      // Because enx.ToString() will be called
+      let exnField msg = Field (String ("System.Exception: " + msg), None)
+
+      (because "templateEvent<_> functions generate a message with field values captured and named correctly" <| fun () ->
+        extractFormatFields (logEventGuid Guid.Empty)
+        , extractFormatFields (logEventStringInt "sentence" 30)
+        , extractFormatFields (logEventIntIntInt 1 2 3)
+        , extractFormatFields (logEventExns (exn "1") (exn "2") (exn "3") (exn "4")))
+      |> should equal (
+          ("This special {Guid} is logged",
+              Set [ "Guid", Field (String ("00000000-0000-0000-0000-000000000000"), None) ]),
+          ("This {gramaticalStructure} contains {wordCount} words.",
+              Set [ "gramaticalStructure", Field (String "sentence", None)
+                    "wordCount", Field (Int64 30L, None) ]),
+          ("There a 3 numbers: {one} {two} {three}",
+              Set [ "one", Field (Int64 1L, None)
+                    "two", Field (Int64 2L, None)
+                    "three", Field (Int64 3L, None) ]),
+          ("There a 4 exns: {one} {two} {three} {four}",
+              Set [ "one",    exnField "1"
+                    "two",    exnField "2"
+                    "three",  exnField "3"
+                    "four",   exnField "4" ])
+      ) |> thatsIt
+
+    testCase "templateEvent<_> throws when there are positionally matched fields" <| fun _ ->
+      Expect.throws (fun () -> Message.templateEvent<int> (Info, "No named fields {0}") |> ignore)
+      Expect.throws (fun () -> Message.templateEvent<int, int> (Info, "No named fields {0} {1}") |> ignore)
+      Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "No named fields {0} {1} {2}") |> ignore)
+      Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "No named fields {0} {1} {2} {3}") |> ignore)
+
+    testCase "templateEvent<_> requires exactly the same number of type args and properties in the template" <| fun _ ->
+      Expect.throws (fun () -> Message.templateEvent<int> (Info, "Too many {Field1} {Field2}") |> ignore)
+      Expect.throws (fun () -> Message.templateEvent<int> (Info, "Too many {Field1} {Field2} {Field3}") |> ignore)
+      Expect.throws (fun () -> Message.templateEvent<int> (Info, "Too few") |> ignore)
+
+      Expect.throws (fun () -> Message.templateEvent<int, int> (Info, "Too many {Field1} {Field2} {Field3}") |> ignore)
+      Expect.throws (fun () -> Message.templateEvent<int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4}") |> ignore)
+      Expect.throws (fun () -> Message.templateEvent<int, int> (Info, "Too few") |> ignore)
+      Expect.throws (fun () -> Message.templateEvent<int, int> (Info, "Too few {Field1}") |> ignore)
+
+      Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4}") |> ignore)
+      Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4} {Field5}") |> ignore)
+      Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "Too few") |> ignore)
+      Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "Too few {Field1}") |> ignore)
+      Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "Too few {Field1} {Field2}") |> ignore)
+
+      Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4} {Field5}") |> ignore)
+      Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4} {Field5} {Field6}") |> ignore)
+      Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too few") |> ignore)
+      Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too few {Field1}") |> ignore)
+      Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too few {Field1} {Field2}") |> ignore)
+      Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too few {Field1} {Field2} {Field3}") |> ignore)
 
     ]
