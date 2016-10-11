@@ -1,6 +1,7 @@
-﻿namespace Logary
+namespace Logary
 
 open Hopac
+open NodaTime
 open System
 open System.Runtime.CompilerServices
 
@@ -51,6 +52,16 @@ type Logger =
   /// are being logged.
   abstract level : LogLevel
 
+/// A disposable interface to use with `use` constructs and to create child-
+/// contexts. Since it inherits Logger, you can pass this scope down into child
+/// function calls. This interface should dovetail with how Zipkin/Dapper
+/// manages parent/child spans.
+type LoggerScope =
+  inherit IDisposable
+  inherit Logger
+  /// Gets the currently elapsed duration of this time scope scope.
+  abstract elapsed : Duration
+
 /// The Logger module provides functions for expressing how a Message should be
 /// logged.
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix); Extension>]
@@ -61,7 +72,6 @@ module Logger =
   open System.Threading.Tasks
   open System.Diagnostics
   open Logary
-  open NodaTime
 
   /////////////////////
   // Logging methods //
@@ -309,15 +319,40 @@ module Logger =
   let timeScopeT (logger : Logger)
                  (nameEnding : string)
                  (transform : Message -> Message)
-                 : IDisposable =
+                 : LoggerScope =
     let name = logger.name |> PointName.setEnding nameEnding
     let sw = Stopwatch.StartNew()
-    { new IDisposable with
+    { new LoggerScope with
         member x.Dispose () =
           sw.Stop()
           let value, units = sw.toGauge()
           let message = Message.gaugeWithUnit name units value
           logSimple logger message
+
+        member x.elapsed =
+          Duration.FromTimeSpan sw.Elapsed
+
+        member x.logVerboseWithAck messageFactory =
+          // TODO: consider message naming
+          logger.logVerboseWithAck messageFactory
+
+        member x.logDebugWithAck messageFactory =
+          // TODO: consider message naming
+          logger.logDebugWithAck messageFactory
+
+        member x.logWithAck message =
+          // TODO: consider message naming
+          logger.logWithAck message
+
+        member x.logSimple message =
+          // TODO: consider message naming
+          logger.logSimple message
+
+        member x.level =
+          logger.level
+
+        member x.name =
+          name
     }
 
 /// A logger that does absolutely nothing, useful for feeding into the target
