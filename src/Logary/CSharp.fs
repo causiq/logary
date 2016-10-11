@@ -516,7 +516,7 @@ module private MiscHelpers =
     | ct ->
       upcast ct.Register (Action f)
 
-  let chooseLogFun logger backpressure flush timeoutMillis =
+  let inline chooseLogFun logger backpressure flush timeoutMillis =
     if flush then
       Logger.logWithAck logger
       >> Alt.afterJob id // Alt<Promise<unit>> -> Promise<unit>
@@ -556,7 +556,7 @@ type LoggerExtensions =
 
   // corresponds to: log, logWithTimeout
 
-  /// Log a message, but don't await all targets to flush. With no back-pressure by default.
+  /// Log a message, but don't await all targets to flush. With NO back-pressure by default.
   /// Backpressure implies the caller will wait until its message is in the buffer.
   /// The timeout-milliseconds parameter is only used if backpressure is false.
   /// If not using backpressure, the returned task yields after either 5 seconds or
@@ -576,7 +576,7 @@ type LoggerExtensions =
 
   // corresponds to: log, logWithTimeout, logWithAck
 
-  /// Log an event, but don't await all targets to flush. With no back-pressure by default.
+  /// Log an event, but don't await all targets to flush. With NO back-pressure by default.
   /// Backpressure implies the caller will wait until its message is in the buffer.
   /// The timeout-milliseconds parameter is only used if backpressure is false.
   /// If not using backpressure, the returned task yields after either 5 seconds or

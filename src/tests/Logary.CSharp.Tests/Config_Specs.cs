@@ -26,12 +26,18 @@ namespace Logary.CSharp.Tests
         static LogManager manager;
         static Logger logger;
 
-        It can_log_verbose = () => logger.LogEvent(LogLevel.Verbose, "Hello world").Wait();
-        It can_log_debug = () => logger.LogEvent(LogLevel.Debug, "Hello world").Wait();
-        It can_log_info = () => logger.LogEvent(LogLevel.Info, "Hello world").Wait();
-        It can_log_warn = () => logger.LogEvent(LogLevel.Warn, "Hello world").Wait();
-        It can_log_error = () => logger.LogEvent(LogLevel.Error, "Hello world").Wait();
-        It can_log_fatal = () => logger.LogEvent(LogLevel.Fatal, "Hello world").Wait();
+        It can_log_verbose = () => logger.LogEvent(LogLevel.Verbose, "Hello world", backpressure:true).Wait();
+        It can_log_debug = () => logger.LogEvent(LogLevel.Debug, "Hello world", backpressure: true).Wait();
+        It can_log_info = () => logger.LogEvent(LogLevel.Info, "Hello world", backpressure: true).Wait();
+        It can_log_warn = () => logger.LogEvent(LogLevel.Warn, "Hello world", backpressure: true).Wait();
+        It can_log_error = () => logger.LogEvent(LogLevel.Error, "Hello world", backpressure: true).Wait();
+        It can_log_fatal = () => logger.LogEvent(LogLevel.Fatal, "Hello world", backpressure: true).Wait();
+        It can_log_verbose2 = () => logger.LogEvent(LogLevel.Verbose, "Hello world 2", flush: true).Wait();
+        It can_log_debug2 = () => logger.LogEvent(LogLevel.Debug, "Hello world 2", flush: true).Wait();
+        It can_log_info2 = () => logger.LogEvent(LogLevel.Info, "Hello world 2", flush: true).Wait();
+        It can_log_warn2 = () => logger.LogEvent(LogLevel.Warn, "Hello world 2", flush: true).Wait();
+        It can_log_error2 = () => logger.LogEvent(LogLevel.Error, "Hello world 2", flush: true).Wait();
+        It can_log_fatal2 = () => logger.LogEvent(LogLevel.Fatal, "Hello world 2", flush: true).Wait();
     }
 
     [Pure, Ignore("Does not work on Mono")]
@@ -40,8 +46,10 @@ namespace Logary.CSharp.Tests
         static PointName subject = Logging.GetCurrentLoggerName();
         static string nlogName = GetCurrentClassLogger();
 
-        It should_have_name_of_class_and_namespace = () => subject.ShouldEqual(PointNameModule.Parse("Logary.CSharp.Tests.When_getting_current_logger_name"));
-        It should_have_the_same_name_as_the_NLog_algorithm = () => nlogName.ShouldEqual(PointNameModule.Format(subject));
+        It should_have_name_of_class_and_namespace =
+            () => subject.ShouldEqual(PointNameModule.Parse("Logary.CSharp.Tests.When_getting_current_logger_name"));
+        It should_have_the_same_name_as_the_NLog_algorithm =
+            () => nlogName.ShouldEqual(PointNameModule.Format(subject));
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static string GetCurrentClassLogger()
@@ -74,10 +82,7 @@ namespace Logary.CSharp.Tests
             () => manager = LogaryTestFactory.GetManager(out output);
 
         Because logging_line_and_flushing = () =>
-            {
-                subject.LogEvent(LogLevel.Info, "logged line").Wait();
-                manager.FlushPending(Duration.FromSeconds(20L)).Wait();
-            };
+            subject.LogEvent(LogLevel.Info, "logged line", flush: true).Wait();
 
         It should_write_messages_to_text_writer =
             () => output.ToString().ShouldContain("logged line");
@@ -97,8 +102,8 @@ namespace Logary.CSharp.Tests
             {
                 manager.Dispose();
 
-                thrownException = Catch.Exception(() => subject.LogEvent(LogLevel.Info, "logged line").Wait());
-                flushThrown = Catch.Exception(() => manager.FlushPending(Duration.FromSeconds(20L)).Wait());
+                thrownException = Catch.Exception(() => subject.LogEvent(LogLevel.Info, "logged line", backpressure: true).Wait());
+                flushThrown = Catch.Exception(() => manager.FlushPending(Duration.FromSeconds(8L)).Wait());
             };
 
         //Cleanup afterwards = () => manager.Dispose();
@@ -120,7 +125,12 @@ namespace Logary.CSharp.Tests
             {
                 manager = LogaryTestFactory.GetManager(out output);
                 var logger = GetLogger();
-                logger.LogEvent(LogLevel.Info, "da 1st line", new { tags = new[] { "testing" } }).Wait();
+                logger.LogEvent(
+                        LogLevel.Info,
+                        "da 1st line",
+                        new {tags = new[] {"testing"}},
+                        backpressure: true)
+                    .Wait();
 
                 manager.FlushPending(Duration.FromSeconds(20L)).Wait();
 
@@ -136,8 +146,8 @@ namespace Logary.CSharp.Tests
                 var logger = GetLogger();
                 logger.LogEvent(
                     LogLevel.Debug, "2nd here we go",
-                    new { fields = new[] { "2nd testing" } }).Wait();
-                manager.FlushPending(Duration.FromSeconds(20L)).Wait();
+                    new {fields = new[] {"2nd testing"}},
+                    flush: true).Wait();
                 subject = output.ToString();
             };
 

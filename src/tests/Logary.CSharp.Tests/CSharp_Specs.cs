@@ -43,10 +43,10 @@ namespace Logary.CSharp.Tests
                 var logger = manager.GetLogger("Logary.CSharp.Tests.When_configuring_with_CSharp_API");
                 logger.LogEvent(LogLevel.Warn, "the situation is dire, says {@foo}",
                         new {foo = "oh-noes"}, exception,
-                        msg => msg.SetTimestamp(timestamp))
+                        msg => msg.SetTimestamp(timestamp),
+                        true,
+                        true)
                     .Wait();
-
-                manager.FlushPending(Duration.FromSeconds(8L)).Wait();
                 subject = writer.ToString();
             };
 
@@ -100,7 +100,8 @@ namespace Logary.CSharp.Tests
                         .SetFieldsFromObject(new {foo = "oh-noes"})
                         .SetTimestamp(timestamp)
                         .AddException(exception)
-                        .SetContextFromObject(new {contextdata = "the Contextdata"})
+                        .SetContextFromObject(new {contextdata = "the Contextdata"}),
+                    backpressure:true
                 ).Wait();
 
                 manager.FlushPending(Duration.FromSeconds(8L)).Wait();
@@ -140,10 +141,10 @@ namespace Logary.CSharp.Tests
 
         Because reason = () =>
             {
-                manager.GetLogger("Logary.CSharp.Tests.When_configuring_filter_with_API")
-                    .LogEvent(LogLevel.Warn, "the situation is dire", new {error = "oh-noes"})
+                manager
+                    .GetLogger("Logary.CSharp.Tests.When_configuring_filter_with_API")
+                    .LogEvent(LogLevel.Warn, "the situation is dire", new {error = "oh-noes"}, flush:true)
                     .Wait();
-                manager.FlushPending(Duration.FromSeconds(8L)).Wait();
                 subject = writer.ToString();
             };
 

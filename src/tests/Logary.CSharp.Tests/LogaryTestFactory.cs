@@ -28,8 +28,9 @@ namespace Logary.CSharp.Tests
                         new Microsoft.FSharp.Core.FSharpOption<Formatting.StringFormatter>(Formatting.StringFormatterModule.levelDatetimeMessagePathNl),
                         new Microsoft.FSharp.Core.FSharpOption<object>(new object())),
                     "tw");
+
             var twRule =
-                RuleModule.Create(new Regex(@"^Logary\.CSharp\.Specs"), "tw", LogLevel.Verbose,
+                RuleModule.Create(new Regex(@"^Logary\.CSharp\.Tests"), "tw", LogLevel.Verbose,
                     message => true);
 
             var internalTarg = Console.Create(Console.empty, "console");
@@ -39,7 +40,8 @@ namespace Logary.CSharp.Tests
                     new[] { twTarg },
                     new Metric.MetricConf[0],
                     new[] { twRule },
-                    LogLevel.Warn, internalTarg)
+                    LogLevel.Warn,
+                    internalTarg)
                 .ToTask()
                 .Result;
         }
