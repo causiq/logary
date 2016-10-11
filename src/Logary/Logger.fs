@@ -125,25 +125,21 @@ module Logger =
 
   /// Write a debug log line, given from the fLine callback, if the logger
   /// accepts line with Verbose level.
-  [<CompiledName "LogVerbose"; Extension>]
   let logVerbose (logger : Logger) msgFactory : Alt<unit> =
     ifLevel logger Verbose (Alt.always ()) <| fun _ ->
       logger.logVerboseWithAck (msgFactory >> ensureName logger)
       |> Alt.afterFun ignore
 
-  [<CompiledName "LogVerboseWithAck"; Extension>]
   let logVerboseWithAck (logger : Logger) fMsg =
     logger.logVerboseWithAck (fMsg >> ensureName logger)
 
   /// Write a debug log line, given from the fLine callback, if the logger
   /// accepts line with Debug level.
-  [<CompiledName "LogDebug"; Extension>]
   let logDebug (logger : Logger) fMessage =
     ifLevel logger Debug (Alt.always ()) <| fun _ ->
       logger.logDebugWithAck (fMessage >> ensureName logger)
       |> Alt.afterFun ignore
 
-  [<CompiledName "LogDebugWithAck"; Extension>]
   let logDebugWithAck (logger : Logger) fMsg =
     logger.logDebugWithAck (fMsg >> ensureName logger)
 

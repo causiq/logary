@@ -516,8 +516,12 @@ module private MiscHelpers =
     | ct ->
       upcast ct.Register (Action f)
 
-  let chooseLogFun logger backpressure timeoutMillis =
-    if backpressure then
+  let chooseLogFun logger backpressure flush timeoutMillis =
+    if flush then
+      Logger.logWithAck logger
+      >> Alt.afterJob id // Alt<Promise<unit>> -> Promise<unit>
+      >> Alt.afterFun (fun () -> true) // Promise<unit> -> bool
+    elif backpressure then
       Logger.log logger >> Alt.afterFun (fun _ -> true)
     else
       Logger.logWithTimeout logger timeoutMillis
@@ -553,43 +557,47 @@ type LoggerExtensions =
   // corresponds to: log, logWithTimeout
 
   /// Log a message, but don't await all targets to flush. With no back-pressure by default.
-  /// Backpressure implies there's no timing out on placing the message in the buffer.
+  /// Backpressure implies the caller will wait until its message is in the buffer.
   /// The timeout-milliseconds parameter is only used if backpressure is false.
   /// If not using backpressure, the returned task yields after either 5 seconds or
   /// when the message is accepted to all targets' ring buffers.
+  /// Flush implies backpressure.
   [<Extension>]
   static member Log (logger : Logger,
                      message : Message,
                      [<Optional; DefaultParameterValue(false)>] backpressure : bool, // #96
+                     [<Optional; DefaultParameterValue(false)>] flush : bool, // #96
                      [<Optional; DefaultParameterValue(5000u)>] timeoutMillis : uint32)
                     : Task =
     // https://github.com/Microsoft/visualfsharp/issues/96
     let timeoutMillis = if timeoutMillis = 0u then 5000u else timeoutMillis
-    let logFn = MiscHelpers.chooseLogFun logger backpressure timeoutMillis
+    let logFn = MiscHelpers.chooseLogFun logger backpressure flush timeoutMillis
     upcast Alt.toTask CancellationToken.None (logFn message)
 
-  // corresponds to: log, logWithTimeout
+  // corresponds to: log, logWithTimeout, logWithAck
 
   /// Log an event, but don't await all targets to flush. With no back-pressure by default.
-  /// Backpressure implies there's no timing out on placing the message in the buffer.
+  /// Backpressure implies the caller will wait until its message is in the buffer.
   /// The timeout-milliseconds parameter is only used if backpressure is false.
   /// If not using backpressure, the returned task yields after either 5 seconds or
   /// when the message is accepted to all targets' ring buffers.
+  /// Flush implies backpressure.
   [<Extension>]
   static member LogEvent(logger : Logger,
                          level : LogLevel,
                          formatTemplate : string,
-                         [<Optional; DefaultParameterValue(null)>] fields : obj,
+                         [<Optional; DefaultParameterValue(null)>] fieldsObj : obj,
                          [<Optional; DefaultParameterValue(null)>] exn : Exception,
                          [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>,
                          [<Optional; DefaultParameterValue(false)>] backpressure : bool, // #96
+                         [<Optional; DefaultParameterValue(false)>] flush : bool, // #96
                          [<Optional; DefaultParameterValue(5000u)>] timeoutMillis : uint32)
                         : Task =
     // https://github.com/Microsoft/visualfsharp/issues/96
     let timeoutMillis = if timeoutMillis = 0u then 5000u else timeoutMillis
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
-    let fields = if isNull fields then obj() else fields
-    let logFn = MiscHelpers.chooseLogFun logger backpressure timeoutMillis
+    let fields = if isNull fieldsObj then obj() else fieldsObj
+    let logFn = MiscHelpers.chooseLogFun logger backpressure flush timeoutMillis
 
     let message =
       Message.event level formatTemplate
@@ -600,7 +608,7 @@ type LoggerExtensions =
     upcast Alt.toTask CancellationToken.None (logFn message)
     
   /// Log an event, but don't await all targets to flush. With back-pressure by default.
-  /// Backpressure implies there's no timing out on placing the message in the buffer.
+  /// Backpressure implies the caller will wait until its message is in the buffer.
   [<Extension>]
   static member LogEventFormat(logger : Logger,
                                level : LogLevel,
@@ -612,11 +620,12 @@ type LoggerExtensions =
     let call = Logger.log logger message |> Alt.afterFun (fun _ -> true)
     upcast Alt.toTask CancellationToken.None call
 
-  /// Log a gauge, but don't await all targets to flush. With no back-pressure by default.
-  /// Backpressure implies there's no timing out on placing the message in the buffer.
+  /// Log a gauge, but don't await all targets to flush. With NO back-pressure by default.
+  /// Backpressure implies the caller will wait until its message is in the buffer.
   /// The timeout-milliseconds parameter is only used if backpressure is false.
   /// If not using backpressure, the returned task yields after either 5 seconds or
   /// when the message is accepted to all targets' ring buffers.
+  /// Flush implies backpressure.
   [<Extension>]
   static member LogGauge(logger : Logger,
                          level : LogLevel,
@@ -626,13 +635,14 @@ type LoggerExtensions =
                          [<Optional; DefaultParameterValue(null)>] fields : obj,
                          [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>,
                          [<Optional; DefaultParameterValue(false)>] backpressure : bool, // #96
+                         [<Optional; DefaultParameterValue(false)>] flush : bool, // #96
                          [<Optional; DefaultParameterValue(5000u)>] timeoutMillis : uint32)
                         : Task<bool> =
     // https://github.com/Microsoft/visualfsharp/issues/96
     let timeoutMillis = if timeoutMillis = 0u then 5000u else timeoutMillis
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
     let fields = if isNull fields then obj() else fields
-    let logFn = MiscHelpers.chooseLogFun logger backpressure timeoutMillis
+    let logFn = MiscHelpers.chooseLogFun logger backpressure flush timeoutMillis
 
     let message =
       Message.gaugeWithUnit logger.name units value
@@ -665,13 +675,40 @@ type LoggerExtensions =
   static member LogWithAck (logger, message, bufferCt, promiseCt) : Task<Task> =
     Alt.toTasks bufferCt promiseCt (Logger.logWithAck logger message)
 
-  // TODO: logVerbose
-  // TODO: logDebug
-  // TODO: logVerboseWithAck
-  // TODO: logDebugWithAck
+  [<Extension>]
+  static member LogVerbose (logger,
+                            messageFactory : Func<LogLevel, Message>,
+                            bufferCt)
+                           : Task =
+    let factory = Funcs.ToFSharpFunc messageFactory
+    upcast Alt.toTask bufferCt (Logger.logVerbose logger factory)
 
-  // TODO: time
-  // TODO: timeX
+  [<Extension>]
+  static member LogVerboseWithAck (logger,
+                                   messageFactory : Func<LogLevel, Message>,
+                                   bufferCt,
+                                   promiseCt)
+                                  : Task<Task> =
+    let factory = Funcs.ToFSharpFunc messageFactory
+    Alt.toTasks bufferCt promiseCt (Logger.logVerboseWithAck logger factory)
+
+  [<Extension>]
+  static member LogDebug (logger,
+                          messageFactory : Func<LogLevel, Message>,
+                          bufferCt)
+                         : Task =
+    let factory = Funcs.ToFSharpFunc messageFactory
+    upcast Alt.toTask bufferCt (Logger.logDebug logger factory)
+
+  [<Extension>]
+  static member LogDebugWithAck (logger,
+                                 messageFactory : Func<LogLevel, Message>,
+                                 bufferCt,
+                                 promiseCt)
+                                : Task<Task> =
+    let factory = Funcs.ToFSharpFunc messageFactory
+    Alt.toTasks bufferCt promiseCt (Logger.logDebugWithAck logger factory)
+
   // TODO: timeAsyncWithAck, timeAsyncSimple
   // TODO: timeJobWithAck, timeJobSimple
   // TODO: timeAltWithAck, timeAltSimple
@@ -691,33 +728,6 @@ type LoggerExtensions =
       Logger.timeWithAckT logger nameEnding transform action
       >> fun (_, alt) -> Alt.toTasks bufferCt promiseCt alt
     Funcs.ToFunc<_> runnable
-
-  /// Run the function `func` and measure how long it takes; logging that
-  /// measurement as a Gauge in the unit Seconds. As an exception to the rule,
-  /// it is allowed to pass `nameEnding` as null to this function. This
-  /// function returns the full schabang; i.e. it will let you wait for
-  /// Ack if you want. This adapter version for C# returns Task, and as such
-  /// it's a hot task that always will try to log. If you use this function
-  /// you should at least await the outer Task that provides backpressure.
-  ///
-  /// The function will yield when you code is complete, but the task may
-  /// not be completed by then.
-  ///
-  /// This function does not execute the callback.
-  [<Extension>]
-  static member TimeWithAck (logger,
-                             func : Func<'input, 'output>,
-                             bufferCt,
-                             promiseCt,
-                             [<Optional; DefaultParameterValue(null)>] nameEnding,
-                             [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>)
-                            : Func<'input, 'output * Task<Task>> =
-    let func = FSharpFunc.OfFunc func
-    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
-    let runnable =
-      Logger.timeWithAckT logger nameEnding transform func
-      >> fun (res, alt) -> res, Alt.toTasks bufferCt promiseCt alt
-    Funcs.ToFunc runnable
     
   /// Run the function `func` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Seconds. As an exception to the rule,
@@ -746,6 +756,33 @@ type LoggerExtensions =
       >> fun (res, alt) -> res, Alt.toTasks bufferCt promiseCt alt
     Funcs.ToFunc<_> runnable
 
+  /// Run the function `func` and measure how long it takes; logging that
+  /// measurement as a Gauge in the unit Seconds. As an exception to the rule,
+  /// it is allowed to pass `nameEnding` as null to this function. This
+  /// function returns the full schabang; i.e. it will let you wait for
+  /// Ack if you want. This adapter version for C# returns Task, and as such
+  /// it's a hot task that always will try to log. If you use this function
+  /// you should at least await the outer Task that provides backpressure.
+  ///
+  /// The function will yield when you code is complete, but the task may
+  /// not be completed by then.
+  ///
+  /// This function does not execute the callback.
+  [<Extension>]
+  static member TimeWithAck (logger,
+                             func : Func<'input, 'output>,
+                             bufferCt,
+                             promiseCt,
+                             [<Optional; DefaultParameterValue(null)>] nameEnding,
+                             [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>)
+                            : Func<'input, 'output * Task<Task>> =
+    let func = FSharpFunc.OfFunc func
+    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
+    let runnable =
+      Logger.timeWithAckT logger nameEnding transform func
+      >> fun (res, alt) -> res, Alt.toTasks bufferCt promiseCt alt
+    Funcs.ToFunc runnable
+
   // corresponds to: timeTaskWithAckT
 
   [<Extension>]
@@ -764,6 +801,10 @@ type LoggerExtensions =
         res, Alt.toTasks bufferCt promiseCt alt
       )
     Funcs.ToFunc runnable
+
+  
+  // TODO: time (single input, buffer written, ignore flush)
+  // TODO: timeX (like above)
 
   // Corresponds to: timeSimple, timeSimpleX
 

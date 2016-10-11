@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Logary;
 using Logary.Configuration;
 using Logary.Targets;
@@ -29,6 +30,56 @@ namespace Logary.CSharpExample
 {
     public static class Program
     {
+        public static async Task SampleUsage(Logger logger)
+        {
+            // await placing the Hello World event in the buffer
+            await logger.LogEvent(LogLevel.Debug, "Hello world. Important? {important}", new
+            {
+                important = "yes"
+            }, backpressure: true);
+
+            // await logging the fatal event and getting an ack back from each of the configured
+            // targets
+            await logger.LogEvent(LogLevel.Fatal, "Fatal application error on finaliser thread.", flush: true);
+
+            await logger.LogEvent(LogLevel.Verbose, "We need to log this with backpressure.", new
+            {
+                tags = new[] { "tag1", "tag2" }
+            }, backpressure: true);
+
+            // alternatively, you can use the ack-explicit functions together with the
+            // data object model that's MessageModule.
+            var message = MessageModule.Event(LogLevel.Warn, "Here be dragons!");
+            var ack = await logger.LogWithAck(message);
+            await ack;
+
+            var val = logger.Time(() =>
+                    {
+                        for (int i = 0; i < 100; i++)
+                            System.Threading.Thread.Sleep(1);
+
+                        return 32;
+                    }, "sample.config.computeAnswerToEverything")
+                ();
+
+            await logger.LogEventFormat(LogLevel.Warn,
+                "{horses} is the answer to the universe and everything",
+                val);
+
+            await logger.Time(
+                    () => logger.LogEvent(LogLevel.Debug, "I wonder how long this takes"))
+                ();
+
+            try
+            {
+                throw new ApplicationException("thing went haywire");
+            }
+            catch (Exception e)
+            {
+                await logger.LogEventFormat(LogLevel.Fatal, "Unhandled {exception}!", e);
+            }
+        }
+
         public static int Main(string[] args)
         {
             using (var logary = LogaryFactory.New("Logary.CSharpExample",
@@ -67,42 +118,7 @@ namespace Logary.CSharpExample
                 ).Result)
             {
                 var logger = logary.GetLogger("Logary.CSharpExample");
-
-                logger.LogEvent(LogLevel.Debug, "Hello world. Important? {important}", new
-                {
-                    important = "yes"
-                });
-
-                logger.LogEvent(LogLevel.Fatal, "Fatal application error on finaliser thread");
-
-                logger.LogEvent(LogLevel.Verbose, "immegawd immegawd immegawd!!", new
-                {
-                    tags = new[] { "tag1", "tag2" }
-                });
-
-                var message = MessageModule.Event(LogLevel.Warn, "Here be dragons!");
-                logger.LogWithAck(message).Result.Wait();
-
-                var val = logger.Time(() =>
-                    {
-                        for (int i = 0; i < 100; i++)
-                            System.Threading.Thread.Sleep(1);
-
-                        return 32;
-                }, "sample.config.computeAnswerToEverything")();
-
-                logger.LogEventFormat(LogLevel.Warn, "{0} is the answer to the universe and everything", val);
-
-                logger.Time(() => logger.LogEvent(LogLevel.Debug, "I wonder how long this takes"));
-
-                try
-                {
-                    throw new ApplicationException("thing went haywire");
-                }
-                catch (Exception e)
-                {
-                    logger.LogEventFormat(LogLevel.Fatal, "Unhandled {exception}!", e);
-                }
+                SampleUsage(logger).Wait();
             }
             return 0;
         }

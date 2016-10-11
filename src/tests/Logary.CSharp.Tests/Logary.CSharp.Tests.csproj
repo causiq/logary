@@ -35,6 +35,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyVersionInfo.cs" />
+    <Compile Include="LogaryTestFactory.cs" />
+    <Compile Include="TimeScope_Specs.cs" />
     <Compile Include="TimeWithAck_Specs.cs" />
     <Compile Include="Config_Specs.cs" />
     <Compile Include="CSharp_Specs.cs" />
