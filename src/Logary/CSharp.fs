@@ -607,7 +607,7 @@ type LoggerExtensions =
 
     upcast Alt.toTask CancellationToken.None (logFn message)
     
-  /// Log an event, but don't await all targets to flush. With back-pressure by default.
+  /// Log an event, but don't await all targets to flush. WITH back-pressure by default.
   /// Backpressure implies the caller will wait until its message is in the buffer.
   [<Extension>]
   static member LogEventFormat(logger : Logger,

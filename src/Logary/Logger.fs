@@ -1,4 +1,4 @@
-namespace Logary
+﻿namespace Logary
 
 open Hopac
 open NodaTime
@@ -133,25 +133,31 @@ module Logger =
   let logWithAck (logger : Logger) msg : Alt<Promise<unit>> =
     logger.logWithAck (ensureName logger msg)
 
-  /// Write a debug log line, given from the fLine callback, if the logger
-  /// accepts line with Verbose level.
-  let logVerbose (logger : Logger) msgFactory : Alt<unit> =
+  /// Write a Verbose message, given from the `messageFactory` callback,
+  /// if the logger accepts a Message with Verbose level. WITH backpressure.
+  let logVerbose (logger : Logger) messageFactory : Alt<unit> =
     ifLevel logger Verbose (Alt.always ()) <| fun _ ->
-      logger.logVerboseWithAck (msgFactory >> ensureName logger)
+      logger.logVerboseWithAck (messageFactory >> ensureName logger)
       |> Alt.afterFun ignore
-
+      
+  /// Write a Verbose message, given from the `messageFactory` callback,
+  /// if the logger accepts a Message with Verbose level. WITH backpressure
+  /// AND flush in the inner Promise{unit}.
   let logVerboseWithAck (logger : Logger) fMsg =
     logger.logVerboseWithAck (fMsg >> ensureName logger)
 
   /// Write a debug log line, given from the fLine callback, if the logger
-  /// accepts line with Debug level.
-  let logDebug (logger : Logger) fMessage =
+  /// accepts line with Debug level. WITH backpressure.
+  let logDebug (logger : Logger) messageFactory =
     ifLevel logger Debug (Alt.always ()) <| fun _ ->
-      logger.logDebugWithAck (fMessage >> ensureName logger)
+      logger.logDebugWithAck (messageFactory >> ensureName logger)
       |> Alt.afterFun ignore
-
-  let logDebugWithAck (logger : Logger) fMsg =
-    logger.logDebugWithAck (fMsg >> ensureName logger)
+      
+  /// Write a Debug message, given from the `messageFactory` callback,
+  /// if the logger accepts a Message with Debug level. WITH backpressure
+  /// AND flush in the inner Promise{unit}.
+  let logDebugWithAck (logger : Logger) messageFactory =
+    logger.logDebugWithAck (messageFactory >> ensureName logger)
 
   /// Run the function `f` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Seconds. As an exception to the rule,
