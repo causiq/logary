@@ -84,7 +84,8 @@ type CategoryType = PerformanceCounterCategoryType
 type WinPerfCounter =
   { category : string
     counter  : string
-    instance : string option }
+    instance : string option
+    unit     : Units option }
 
   member x.findCategory () =
     Category.create x.category
@@ -93,7 +94,15 @@ type WinPerfCounter =
   static member create(category, counter, instance : string option) =
     { category = category
       counter  = counter
-      instance = instance }
+      instance = instance
+      unit     = None }
+
+  /// Creates a new WinPerfCounter from the passed strings.
+  static member create(category, counter, instance, units) =
+    { category = category
+      counter  = counter
+      instance = instance
+      unit     = units }
 
 module PointName =
   open Logary
@@ -120,6 +129,8 @@ module WinPerfCounter =
 
     [<Literal>]
     let Default = "Default"
+
+    let All = [| _Total; _Global_; Default |]
 
   /// Gets a list of performance counters for the given instance and category.
   let list (pcc : Category) (instance : string option) : WinPerfCounter [] =
@@ -179,8 +190,12 @@ module WinPerfCounter =
     |> toWindowsCounter
 
   /// Sets a specific instance on the WinPerfCounter.
-  let setInstance (instance : string option ) (counter : WinPerfCounter) =
+  let setInstance (instance : string option) (counter : WinPerfCounter) =
     { counter with instance = instance }
+
+  /// Sets a specific unit on the WinPerfCounter.
+  let setUnit (units : Units) (counter : WinPerfCounter) =
+    { counter with unit = Some units }
 
   module Helpers =
 

@@ -14,7 +14,7 @@ module ``_NET CLR Networking 4_0_0_0`` =
   [<Literal>]
   let CategoryName = ".NET CLR Networking 4.0.0.0"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Bytes Received: -
   let ``Bytes Received`` instance =
     WinPerfCounter.create(CategoryName, "Bytes Received", instance)
@@ -79,7 +79,16 @@ module ``APP_POOL_WAS`` =
   [<Literal>]
   let CategoryName = "APP_POOL_WAS"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Current Application Pool State: The current status of the application pool (1 - Uninitialized, 2 - Initialized, 3 - Running, 4 - Disabling, 5 - Disabled, 6 - Shutdown Pending, 7 - Delete Pending).
   let ``Current Application Pool State`` instance =
     WinPerfCounter.create(CategoryName, "Current Application Pool State", instance)
@@ -144,7 +153,7 @@ module ``ASP_NET`` =
   [<Literal>]
   let CategoryName = "ASP.NET"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Application Restarts: Number of times the application has been restarted during the web server's lifetime.
   let ``Application Restarts`` =
     WinPerfCounter.create(CategoryName, "Application Restarts", None)
@@ -237,7 +246,16 @@ module ``ASP_NET Applications`` =
   [<Literal>]
   let CategoryName = "ASP.NET Applications"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// % Managed Processor Time (estimated): Estimated percentage of elapsed time that the processor spends executing managed application code.  This counter only tracks processor time of managed threads in the application.  It does not include additional processor time spent executing on non-managed threads.  Note that this counter is only updated with new data every five seconds.
   let ``% Managed Processor Time (estimated)`` instance =
     WinPerfCounter.create(CategoryName, "% Managed Processor Time (estimated)", instance)
@@ -614,7 +632,16 @@ module ``ASP_NET Apps v2_0_50727`` =
   [<Literal>]
   let CategoryName = "ASP.NET Apps v2.0.50727"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Anonymous Requests: Number of requests utilizing anonymous authentication.
   let ``Anonymous Requests`` instance =
     WinPerfCounter.create(CategoryName, "Anonymous Requests", instance)
@@ -955,7 +982,16 @@ module ``ASP_NET Apps v4_0_30319`` =
   [<Literal>]
   let CategoryName = "ASP.NET Apps v4.0.30319"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// % Managed Processor Time (estimated): Estimated percentage of elapsed time that the processor spends executing managed application code.  This counter only tracks processor time of managed threads in the application.  It does not include additional processor time spent executing on non-managed threads.  Note that this counter is only updated with new data every five seconds.
   let ``% Managed Processor Time (estimated)`` instance =
     WinPerfCounter.create(CategoryName, "% Managed Processor Time (estimated)", instance)
@@ -1332,7 +1368,7 @@ module ``ASP_NET State Service`` =
   [<Literal>]
   let CategoryName = "ASP.NET State Service"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// State Server Sessions Abandoned: The number of sessions that have been explicitly abandoned.
   let ``State Server Sessions Abandoned`` =
     WinPerfCounter.create(CategoryName, "State Server Sessions Abandoned", None)
@@ -1361,7 +1397,7 @@ module ``ASP_NET v2_0_50727`` =
   [<Literal>]
   let CategoryName = "ASP.NET v2.0.50727"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Application Restarts: Number of times the application has been restarted during the web server's lifetime.
   let ``Application Restarts`` =
     WinPerfCounter.create(CategoryName, "Application Restarts", None)
@@ -1450,7 +1486,7 @@ module ``ASP_NET v4_0_30319`` =
   [<Literal>]
   let CategoryName = "ASP.NET v4.0.30319"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Application Restarts: Number of times the application has been restarted during the web server's lifetime.
   let ``Application Restarts`` =
     WinPerfCounter.create(CategoryName, "Application Restarts", None)
@@ -1543,7 +1579,7 @@ module ``Authorization Manager Applications`` =
   [<Literal>]
   let CategoryName = "Authorization Manager Applications"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Number of Scopes loaded in memory: -
   let ``Number of Scopes loaded in memory`` instance =
     WinPerfCounter.create(CategoryName, "Number of Scopes loaded in memory", instance)
@@ -1564,7 +1600,16 @@ module ``BitLocker`` =
   [<Literal>]
   let CategoryName = "BitLocker"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Max Read Split Size: Maximum read buffer split size in bytes during last interval
   let ``Max Read Split Size`` instance =
     WinPerfCounter.create(CategoryName, "Max Read Split Size", instance)
@@ -1609,7 +1654,7 @@ module ``BranchCache`` =
   [<Literal>]
   let CategoryName = "BranchCache"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// BITS: Bytes from cache: Total number of bytes received from the local cache or peers.
   let ``BITS: Bytes from cache`` =
     WinPerfCounter.create(CategoryName, "BITS: Bytes from cache", None)
@@ -1714,7 +1759,7 @@ module ``Browser`` =
   [<Literal>]
   let CategoryName = "Browser"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Announcements Domain/sec: Announcements Domain/sec is the rate at which a domain has announced itself to the network.
   let ``Announcements Domain/sec`` =
     WinPerfCounter.create(CategoryName, "Announcements Domain/sec", None)
@@ -1807,7 +1852,7 @@ module ``Cache`` =
   [<Literal>]
   let CategoryName = "Cache"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Async Copy Reads/sec: Async Copy Reads/sec is the frequency of reads from pages of the file system cache that involve a memory copy of the data from the cache to the application's buffer.  The application will regain control immediately even if the disk must be accessed to retrieve the page.
   let ``Async Copy Reads/sec`` =
     WinPerfCounter.create(CategoryName, "Async Copy Reads/sec", None)
@@ -1936,7 +1981,7 @@ module ``Classification Engine: Content Analysis Session`` =
   [<Literal>]
   let CategoryName = "Classification Engine: Content Analysis Session"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Average Time to Classify All Rules: -
   let ``Average Time to Classify All Rules`` instance =
     WinPerfCounter.create(CategoryName, "Average Time to Classify All Rules", instance)
@@ -1961,7 +2006,7 @@ module ``Classification Engine: Rule Package Cache`` =
   [<Literal>]
   let CategoryName = "Classification Engine: Rule Package Cache"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Average Time to Load Rules: -
   let ``Average Time to Load Rules`` instance =
     WinPerfCounter.create(CategoryName, "Average Time to Load Rules", instance)
@@ -2006,7 +2051,7 @@ module ``Client Side Caching`` =
   [<Literal>]
   let CategoryName = "Client Side Caching"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Application Bytes Read From Cache: Transparently cached bytes read by applications from the Client Side Cache
   let ``Application Bytes Read From Cache`` =
     WinPerfCounter.create(CategoryName, "Application Bytes Read From Cache", None)
@@ -2071,7 +2116,16 @@ module ``DNS64 Global`` =
   [<Literal>]
   let CategoryName = "DNS64 Global"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// AAAA - Synthesized records: Number of synthesized AAAA records.
   let ``AAAA - Synthesized records`` instance =
     WinPerfCounter.create(CategoryName, "AAAA - Synthesized records", instance)
@@ -2108,7 +2162,7 @@ module ``Delivery Optimization Swarm`` =
   [<Literal>]
   let CategoryName = "Delivery Optimization Swarm"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// CDN download rate in the swarm: -
   let ``CDN download rate in the swarm`` instance =
     WinPerfCounter.create(CategoryName, "CDN download rate in the swarm", instance)
@@ -2141,7 +2195,7 @@ module ``Distributed Routing Table`` =
   [<Literal>]
   let CategoryName = "Distributed Routing Table"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Ack Messages Received/second: -
   let ``Ack Messages Received/second`` instance =
     WinPerfCounter.create(CategoryName, "Ack Messages Received/second", instance)
@@ -2258,7 +2312,7 @@ module ``Distributed Transaction Coordinator`` =
   [<Literal>]
   let CategoryName = "Distributed Transaction Coordinator"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Aborted Transactions: Number of aborted transactions
   let ``Aborted Transactions`` =
     WinPerfCounter.create(CategoryName, "Aborted Transactions", None)
@@ -2323,7 +2377,7 @@ module ``Energy Meter`` =
   [<Literal>]
   let CategoryName = "Energy Meter"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Energy: -
   let ``Energy`` instance =
     WinPerfCounter.create(CategoryName, "Energy", instance)
@@ -2348,7 +2402,7 @@ module ``Event Tracing for Windows`` =
   [<Literal>]
   let CategoryName = "Event Tracing for Windows"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Total Memory Usage --- Non-Paged Pool: Current size of non-paged memory allocated for the buffers associated with all active sessions (in bytes).
   let ``Total Memory Usage --- Non-Paged Pool`` =
     WinPerfCounter.create(CategoryName, "Total Memory Usage --- Non-Paged Pool", None)
@@ -2385,7 +2439,16 @@ module ``Event Tracing for Windows Session`` =
   [<Literal>]
   let CategoryName = "Event Tracing for Windows Session"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Buffer Memory Usage -- Non-Paged Pool: Current size of non-paged memory allocated for the buffers associated with this session (in bytes).
   let ``Buffer Memory Usage -- Non-Paged Pool`` instance =
     WinPerfCounter.create(CategoryName, "Buffer Memory Usage -- Non-Paged Pool", instance)
@@ -2418,7 +2481,7 @@ module ``Fax Service`` =
   [<Literal>]
   let CategoryName = "Fax Service"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Bytes received: Number of bytes received.
   let ``Bytes received`` =
     WinPerfCounter.create(CategoryName, "Bytes received", None)
@@ -2491,7 +2554,16 @@ module ``FileSystem Disk Activity`` =
   [<Literal>]
   let CategoryName = "FileSystem Disk Activity"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// FileSystem Bytes Read: Total Bytes Read by the FileSystem from disk drive
   let ``FileSystem Bytes Read`` instance =
     WinPerfCounter.create(CategoryName, "FileSystem Bytes Read", instance)
@@ -2512,7 +2584,7 @@ module ``Generic IKEv1_ AuthIP_ and IKEv2`` =
   [<Literal>]
   let CategoryName = "Generic IKEv1, AuthIP, and IKEv2"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// AuthIP Main Mode Negotiation Time: AuthIP Main Mode Negotiation Time is the number of milliseconds taken for the last Authenticated IP main mode security association negotiated.
   let ``AuthIP Main Mode Negotiation Time`` =
     WinPerfCounter.create(CategoryName, "AuthIP Main Mode Negotiation Time", None)
@@ -2577,7 +2649,7 @@ module ``Hyper-V Configuration`` =
   [<Literal>]
   let CategoryName = "Hyper-V Configuration"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Cache update average milliseconds: -
   let ``Cache update average milliseconds`` instance =
     WinPerfCounter.create(CategoryName, "Cache update average milliseconds", instance)
@@ -2718,7 +2790,16 @@ module ``Hyper-V Dynamic Memory Balancer`` =
   [<Literal>]
   let CategoryName = "Hyper-V Dynamic Memory Balancer"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Available Memory: This counter represents the amount of memory left on the node.
   let ``Available Memory`` instance =
     WinPerfCounter.create(CategoryName, "Available Memory", instance)
@@ -2739,7 +2820,7 @@ module ``Hyper-V Dynamic Memory Integration Service`` =
   [<Literal>]
   let CategoryName = "Hyper-V Dynamic Memory Integration Service"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Maximum Memory, Mbytes: 
   let ``Maximum Memory, Mbytes`` =
     WinPerfCounter.create(CategoryName, "Maximum Memory, Mbytes", None)
@@ -2757,7 +2838,7 @@ module ``Hyper-V Dynamic Memory VM`` =
   [<Literal>]
   let CategoryName = "Hyper-V Dynamic Memory VM"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Average Pressure: -
   let ``Average Pressure`` instance =
     WinPerfCounter.create(CategoryName, "Average Pressure", instance)
@@ -2798,7 +2879,7 @@ module ``Hyper-V Hypervisor`` =
   [<Literal>]
   let CategoryName = "Hyper-V Hypervisor"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Logical Processors: The number of logical processors present in the system.
   let ``Logical Processors`` =
     WinPerfCounter.create(CategoryName, "Logical Processors", None)
@@ -2839,7 +2920,16 @@ module ``Hyper-V Hypervisor Logical Processor`` =
   [<Literal>]
   let CategoryName = "Hyper-V Hypervisor Logical Processor"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// % C1 Time: % C1 Time is the percentage of time the processor spends in the C1 low-power idle state. % C1 Time is a subset of the total processor idle time.
   let ``% C1 Time`` instance =
     WinPerfCounter.create(CategoryName, "% C1 Time", instance)
@@ -2944,7 +3034,7 @@ module ``Hyper-V Hypervisor Partition`` =
   [<Literal>]
   let CategoryName = "Hyper-V Hypervisor Partition"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// 1G GPA pages: -
   let ``1G GPA pages`` instance =
     WinPerfCounter.create(CategoryName, "1G GPA pages", instance)
@@ -3045,7 +3135,16 @@ module ``Hyper-V Hypervisor Root Partition`` =
   [<Literal>]
   let CategoryName = "Hyper-V Hypervisor Root Partition"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// 1G GPA pages: The number of 1G pages present in the GPA space of the partition.
   let ``1G GPA pages`` instance =
     WinPerfCounter.create(CategoryName, "1G GPA pages", instance)
@@ -3146,7 +3245,16 @@ module ``Hyper-V Hypervisor Root Virtual Processor`` =
   [<Literal>]
   let CategoryName = "Hyper-V Hypervisor Root Virtual Processor"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// % Guest Run Time: The percentage of time spent by the virtual processor in guest code.
   let ``% Guest Run Time`` instance =
     WinPerfCounter.create(CategoryName, "% Guest Run Time", instance)
@@ -3747,7 +3855,7 @@ module ``Hyper-V Hypervisor Virtual Processor`` =
   [<Literal>]
   let CategoryName = "Hyper-V Hypervisor Virtual Processor"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// % Guest Run Time: -
   let ``% Guest Run Time`` instance =
     WinPerfCounter.create(CategoryName, "% Guest Run Time", instance)
@@ -4348,7 +4456,7 @@ module ``Hyper-V Legacy Network Adapter`` =
   [<Literal>]
   let CategoryName = "Hyper-V Legacy Network Adapter"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Bytes Dropped: -
   let ``Bytes Dropped`` instance =
     WinPerfCounter.create(CategoryName, "Bytes Dropped", instance)
@@ -4385,7 +4493,7 @@ module ``Hyper-V Replica VM`` =
   [<Literal>]
   let CategoryName = "Hyper-V Replica VM"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Average Replication Latency: -
   let ``Average Replication Latency`` instance =
     WinPerfCounter.create(CategoryName, "Average Replication Latency", instance)
@@ -4435,7 +4543,7 @@ module ``Hyper-V VM Live Migration`` =
   [<Literal>]
   let CategoryName = "Hyper-V VM Live Migration"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Compressor: Bytes to be Compressed: -
   let ``Compressor: Bytes to be Compressed`` instance =
     WinPerfCounter.create(CategoryName, "Compressor: Bytes to be Compressed", instance)
@@ -4580,7 +4688,7 @@ module ``Hyper-V VM Remoting`` =
   [<Literal>]
   let CategoryName = "Hyper-V VM Remoting"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Connected Clients: -
   let ``Connected Clients`` instance =
     WinPerfCounter.create(CategoryName, "Connected Clients", instance)
@@ -4601,7 +4709,7 @@ module ``Hyper-V VM Save_ Snapshot_ and Restore`` =
   [<Literal>]
   let CategoryName = "Hyper-V VM Save, Snapshot, and Restore"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Operation Time: -
   let ``Operation Time`` instance =
     WinPerfCounter.create(CategoryName, "Operation Time", instance)
@@ -4639,7 +4747,16 @@ module ``Hyper-V VM Vid Numa Node`` =
   [<Literal>]
   let CategoryName = "Hyper-V VM Vid Numa Node"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// PageCount: The number of physical pages detected on this NUMA node.
   let ``PageCount`` instance =
     WinPerfCounter.create(CategoryName, "PageCount", instance)
@@ -4660,7 +4777,7 @@ module ``Hyper-V VM Vid Partition`` =
   [<Literal>]
   let CategoryName = "Hyper-V VM Vid Partition"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Physical Pages Allocated: -
   let ``Physical Pages Allocated`` instance =
     WinPerfCounter.create(CategoryName, "Physical Pages Allocated", instance)
@@ -4685,7 +4802,7 @@ module ``Hyper-V VM Virtual Device Pipe IO`` =
   [<Literal>]
   let CategoryName = "Hyper-V VM Virtual Device Pipe IO"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Receive Message Quota Exceeded: -
   let ``Receive Message Quota Exceeded`` instance =
     WinPerfCounter.create(CategoryName, "Receive Message Quota Exceeded", instance)
@@ -4719,7 +4836,7 @@ module ``Hyper-V Virtual IDE Controller (Emulated)`` =
   [<Literal>]
   let CategoryName = "Hyper-V Virtual IDE Controller (Emulated)"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Read Bytes/sec: -
   let ``Read Bytes/sec`` instance =
     WinPerfCounter.create(CategoryName, "Read Bytes/sec", instance)
@@ -4748,7 +4865,7 @@ module ``Hyper-V Virtual Machine Bus`` =
   [<Literal>]
   let CategoryName = "Hyper-V Virtual Machine Bus"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Interrupts Received/sec: This counter represents the rate of interrupts received.
   let ``Interrupts Received/sec`` =
     WinPerfCounter.create(CategoryName, "Interrupts Received/sec", None)
@@ -4773,7 +4890,7 @@ module ``Hyper-V Virtual Machine Bus Pipes`` =
   [<Literal>]
   let CategoryName = "Hyper-V Virtual Machine Bus Pipes"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Bytes Read/sec: -
   let ``Bytes Read/sec`` instance =
     WinPerfCounter.create(CategoryName, "Bytes Read/sec", instance)
@@ -4802,7 +4919,7 @@ module ``Hyper-V Virtual Machine Bus Provider Pipes`` =
   [<Literal>]
   let CategoryName = "Hyper-V Virtual Machine Bus Provider Pipes"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Bytes Read/sec: -
   let ``Bytes Read/sec`` instance =
     WinPerfCounter.create(CategoryName, "Bytes Read/sec", instance)
@@ -4831,7 +4948,7 @@ module ``Hyper-V Virtual Machine Health Summary`` =
   [<Literal>]
   let CategoryName = "Hyper-V Virtual Machine Health Summary"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Health Critical: This counter represents the number of virtual machines with critical health.
   let ``Health Critical`` =
     WinPerfCounter.create(CategoryName, "Health Critical", None)
@@ -4852,7 +4969,7 @@ module ``Hyper-V Virtual Network Adapter`` =
   [<Literal>]
   let CategoryName = "Hyper-V Virtual Network Adapter"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Broadcast Packets Received/sec: -
   let ``Broadcast Packets Received/sec`` instance =
     WinPerfCounter.create(CategoryName, "Broadcast Packets Received/sec", instance)
@@ -4937,7 +5054,7 @@ module ``Hyper-V Virtual Network Adapter VRSS`` =
   [<Literal>]
   let CategoryName = "Hyper-V Virtual Network Adapter VRSS"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// ReceivePacketPerSecond: -
   let ``ReceivePacketPerSecond`` instance =
     WinPerfCounter.create(CategoryName, "ReceivePacketPerSecond", instance)
@@ -4966,7 +5083,7 @@ module ``Hyper-V Virtual Storage Device`` =
   [<Literal>]
   let CategoryName = "Hyper-V Virtual Storage Device"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Byte Quota Replenishment Rate: -
   let ``Byte Quota Replenishment Rate`` instance =
     WinPerfCounter.create(CategoryName, "Byte Quota Replenishment Rate", instance)
@@ -5055,7 +5172,7 @@ module ``Hyper-V Virtual Switch`` =
   [<Literal>]
   let CategoryName = "Hyper-V Virtual Switch"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Broadcast Packets Received/sec: -
   let ``Broadcast Packets Received/sec`` instance =
     WinPerfCounter.create(CategoryName, "Broadcast Packets Received/sec", instance)
@@ -5164,7 +5281,7 @@ module ``Hyper-V Virtual Switch Port`` =
   [<Literal>]
   let CategoryName = "Hyper-V Virtual Switch Port"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Broadcast Packets Received/sec: -
   let ``Broadcast Packets Received/sec`` instance =
     WinPerfCounter.create(CategoryName, "Broadcast Packets Received/sec", instance)
@@ -5253,7 +5370,16 @@ module ``Hyper-V Virtual Switch Processor`` =
   [<Literal>]
   let CategoryName = "Hyper-V Virtual Switch Processor"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Number of Transmit Completes/sec: This counter represents the number of transmit completes per second targeting on the virtual switch processor.
   let ``Number of Transmit Completes/sec`` instance =
     WinPerfCounter.create(CategoryName, "Number of Transmit Completes/sec", instance)
@@ -5282,7 +5408,7 @@ module ``Hyper-V Worker Virtual Processor`` =
   [<Literal>]
   let CategoryName = "Hyper-V Worker Virtual Processor"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Intercept Delay Time (ms): -
   let ``Intercept Delay Time (ms)`` instance =
     WinPerfCounter.create(CategoryName, "Intercept Delay Time (ms)", instance)
@@ -5303,7 +5429,7 @@ module ``ICMP`` =
   [<Literal>]
   let CategoryName = "ICMP"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Messages Outbound Errors: Messages Outbound Errors is the number of ICMP messages that were not send due to problems within ICMP, such as lack of buffers.  This value does not include errors discovered outside the ICMP layer, such as those recording the failure of IP to route the resultant datagram.  In some implementations, none of the error types are included in the value of this counter.
   let ``Messages Outbound Errors`` =
     WinPerfCounter.create(CategoryName, "Messages Outbound Errors", None)
@@ -5424,7 +5550,7 @@ module ``ICMPv6`` =
   [<Literal>]
   let CategoryName = "ICMPv6"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Messages Outbound Errors: Messages Outbound Errors is the number of ICMP messages that were not send due to problems within ICMP, such as lack of buffers.  This value does not include errors discovered outside the ICMP layer, such as those recording the failure of IP to route the resultant datagram.  In some implementations, none of the error types are included in the value of this counter.
   let ``Messages Outbound Errors`` =
     WinPerfCounter.create(CategoryName, "Messages Outbound Errors", None)
@@ -5569,7 +5695,16 @@ module ``IPHTTPS Global`` =
   [<Literal>]
   let CategoryName = "IPHTTPS Global"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Drops - Neighbor resolution timeouts: Total packets dropped waiting for neighbor resolution.
   let ``Drops - Neighbor resolution timeouts`` instance =
     WinPerfCounter.create(CategoryName, "Drops - Neighbor resolution timeouts", instance)
@@ -5622,7 +5757,7 @@ module ``IPHTTPS Session`` =
   [<Literal>]
   let CategoryName = "IPHTTPS Session"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Bytes received on this session: -
   let ``Bytes received on this session`` instance =
     WinPerfCounter.create(CategoryName, "Bytes received on this session", instance)
@@ -5663,7 +5798,7 @@ module ``IPsec AuthIP IPv4`` =
   [<Literal>]
   let CategoryName = "IPsec AuthIP IPv4"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active Extended Mode SAs: Active Extended Mode SAs is the number of currently active extended mode security associations.
   let ``Active Extended Mode SAs`` =
     WinPerfCounter.create(CategoryName, "Active Extended Mode SAs", None)
@@ -5792,7 +5927,7 @@ module ``IPsec AuthIP IPv6`` =
   [<Literal>]
   let CategoryName = "IPsec AuthIP IPv6"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active Extended Mode SAs: Active Extended Mode SAs is the number of currently active extended mode security associations.
   let ``Active Extended Mode SAs`` =
     WinPerfCounter.create(CategoryName, "Active Extended Mode SAs", None)
@@ -5921,7 +6056,7 @@ module ``IPsec Connections`` =
   [<Literal>]
   let CategoryName = "IPsec Connections"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Max number of connections since boot: Max number of connections since boot
   let ``Max number of connections since boot`` =
     WinPerfCounter.create(CategoryName, "Max number of connections since boot", None)
@@ -5958,7 +6093,7 @@ module ``IPsec Driver`` =
   [<Literal>]
   let CategoryName = "IPsec Driver"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active Security Associations: Active Security Associations is the number of active quick mode security associations.
   let ``Active Security Associations`` =
     WinPerfCounter.create(CategoryName, "Active Security Associations", None)
@@ -6095,7 +6230,7 @@ module ``IPsec IKEv1 IPv4`` =
   [<Literal>]
   let CategoryName = "IPsec IKEv1 IPv4"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active Main Mode SAs: Active Main Mode SAs is the number of currently active main mode security associations.
   let ``Active Main Mode SAs`` =
     WinPerfCounter.create(CategoryName, "Active Main Mode SAs", None)
@@ -6180,7 +6315,7 @@ module ``IPsec IKEv1 IPv6`` =
   [<Literal>]
   let CategoryName = "IPsec IKEv1 IPv6"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active Main Mode SAs: Active Main Mode SAs is the number of currently active main mode security associations.
   let ``Active Main Mode SAs`` =
     WinPerfCounter.create(CategoryName, "Active Main Mode SAs", None)
@@ -6265,7 +6400,7 @@ module ``IPsec IKEv2 IPv4`` =
   [<Literal>]
   let CategoryName = "IPsec IKEv2 IPv4"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active Main Mode SAs: Active Main Mode SAs is the number of currently active main mode security associations.
   let ``Active Main Mode SAs`` =
     WinPerfCounter.create(CategoryName, "Active Main Mode SAs", None)
@@ -6350,7 +6485,7 @@ module ``IPsec IKEv2 IPv6`` =
   [<Literal>]
   let CategoryName = "IPsec IKEv2 IPv6"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active Main Mode SAs: Active Main Mode SAs is the number of currently active main mode security associations.
   let ``Active Main Mode SAs`` =
     WinPerfCounter.create(CategoryName, "Active Main Mode SAs", None)
@@ -6435,7 +6570,7 @@ module ``IPv4`` =
   [<Literal>]
   let CategoryName = "IPv4"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Datagrams Forwarded/sec: Datagrams Forwarded/sec is the rate, in incidents per second, at which attemps were made to find routes to forward input datagrams their final destination, because the local server was not the final IP destination. In servers that do not act as IP Gateways, this rate includes only packets that were source-routed via this entity, where the source-route option processing was successful.
   let ``Datagrams Forwarded/sec`` =
     WinPerfCounter.create(CategoryName, "Datagrams Forwarded/sec", None)
@@ -6516,7 +6651,7 @@ module ``IPv6`` =
   [<Literal>]
   let CategoryName = "IPv6"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Datagrams Forwarded/sec: Datagrams Forwarded/sec is the rate, in incidents per second, at which attemps were made to find routes to forward input datagrams their final destination, because the local server was not the final IP destination. In servers that do not act as IP Gateways, this rate includes only packets that were source-routed via this entity, where the source-route option processing was successful.
   let ``Datagrams Forwarded/sec`` =
     WinPerfCounter.create(CategoryName, "Datagrams Forwarded/sec", None)
@@ -6597,7 +6732,7 @@ module ``Job Object`` =
   [<Literal>]
   let CategoryName = "Job Object"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Current % Kernel Mode Time: -
   let ``Current % Kernel Mode Time`` instance =
     WinPerfCounter.create(CategoryName, "Current % Kernel Mode Time", instance)
@@ -6662,7 +6797,7 @@ module ``Job Object Details`` =
   [<Literal>]
   let CategoryName = "Job Object Details"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// % Privileged Time: -
   let ``% Privileged Time`` instance =
     WinPerfCounter.create(CategoryName, "% Privileged Time", instance)
@@ -6783,7 +6918,16 @@ module ``LogicalDisk`` =
   [<Literal>]
   let CategoryName = "LogicalDisk"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// % Disk Read Time: % Disk Read Time is the percentage of elapsed time that the selected disk drive was busy servicing read requests.
   let ``% Disk Read Time`` instance =
     WinPerfCounter.create(CategoryName, "% Disk Read Time", instance)
@@ -6888,7 +7032,7 @@ module ``MSAS12:Cache`` =
   [<Literal>]
   let CategoryName = "MSAS12:Cache"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Current KB: Current memory used by the aggregation cache, in KB.
   let ``Current KB`` =
     WinPerfCounter.create(CategoryName, "Current KB", None)
@@ -6965,7 +7109,7 @@ module ``MSAS12:Connection`` =
   [<Literal>]
   let CategoryName = "MSAS12:Connection"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Current connections: Current number of client connections established.
   let ``Current connections`` =
     WinPerfCounter.create(CategoryName, "Current connections", None)
@@ -7010,7 +7154,7 @@ module ``MSAS12:Data Mining Model Processing`` =
   [<Literal>]
   let CategoryName = "MSAS12:Data Mining Model Processing"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Cases/sec: Rate of processing cases.
   let ``Cases/sec`` =
     WinPerfCounter.create(CategoryName, "Cases/sec", None)
@@ -7031,7 +7175,7 @@ module ``MSAS12:Data Mining Prediction`` =
   [<Literal>]
   let CategoryName = "MSAS12:Data Mining Prediction"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Concurrent DM queries: Current number of Data Mining queries being actively worked on.
   let ``Concurrent DM queries`` =
     WinPerfCounter.create(CategoryName, "Concurrent DM queries", None)
@@ -7072,7 +7216,7 @@ module ``MSAS12:Locks`` =
   [<Literal>]
   let CategoryName = "MSAS12:Locks"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Current latch waits: Current number of threads waiting for a latch.  These are latch requests that could not be given immediate grants and are in a wait state.
   let ``Current latch waits`` =
     WinPerfCounter.create(CategoryName, "Current latch waits", None)
@@ -7125,7 +7269,7 @@ module ``MSAS12:MDX`` =
   [<Literal>]
   let CategoryName = "MSAS12:MDX"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Current number of cached evaluation nodes: Current (approximate) number of cached evaluation nodes built by MDX execution plans
   let ``Current number of cached evaluation nodes`` =
     WinPerfCounter.create(CategoryName, "Current number of cached evaluation nodes", None)
@@ -7242,7 +7386,7 @@ module ``MSAS12:Memory`` =
   [<Literal>]
   let CategoryName = "MSAS12:Memory"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// AggCacheKB: Current memory allocated to aggregation cache, in KB.
   let ``AggCacheKB`` =
     WinPerfCounter.create(CategoryName, "AggCacheKB", None)
@@ -7539,7 +7683,7 @@ module ``MSAS12:Proactive Caching`` =
   [<Literal>]
   let CategoryName = "MSAS12:Proactive Caching"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Notifications/sec: Rate of notifications from relational database.
   let ``Notifications/sec`` =
     WinPerfCounter.create(CategoryName, "Notifications/sec", None)
@@ -7568,7 +7712,7 @@ module ``MSAS12:Proc Aggregations`` =
   [<Literal>]
   let CategoryName = "MSAS12:Proc Aggregations"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Current partitions: Current number of partitions being processed.
   let ``Current partitions`` =
     WinPerfCounter.create(CategoryName, "Current partitions", None)
@@ -7613,7 +7757,7 @@ module ``MSAS12:Proc Indexes`` =
   [<Literal>]
   let CategoryName = "MSAS12:Proc Indexes"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Current partitions: Current number of partitions being processed.
   let ``Current partitions`` =
     WinPerfCounter.create(CategoryName, "Current partitions", None)
@@ -7642,7 +7786,7 @@ module ``MSAS12:Processing`` =
   [<Literal>]
   let CategoryName = "MSAS12:Processing"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Rows converted/sec: Rate of rows converted during processing.
   let ``Rows converted/sec`` =
     WinPerfCounter.create(CategoryName, "Rows converted/sec", None)
@@ -7679,7 +7823,7 @@ module ``MSAS12:Storage Engine Query`` =
   [<Literal>]
   let CategoryName = "MSAS12:Storage Engine Query"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Aggregation hits/sec: Rate of aggregation hits.
   let ``Aggregation hits/sec`` =
     WinPerfCounter.create(CategoryName, "Aggregation hits/sec", None)
@@ -7840,7 +7984,7 @@ module ``MSAS12:Threads`` =
   [<Literal>]
   let CategoryName = "MSAS12:Threads"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Long parsing busy threads: Number of busy threads in the long parsing thread pool.
   let ``Long parsing busy threads`` =
     WinPerfCounter.create(CategoryName, "Long parsing busy threads", None)
@@ -7933,7 +8077,7 @@ module ``MSDTC Bridge 3_0_0_0`` =
   [<Literal>]
   let CategoryName = "MSDTC Bridge 3.0.0.0"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Average participant commit response time: Average time in milliseconds for the WS-AT service to receive a Commit message response from a participant.
   let ``Average participant commit response time`` =
     WinPerfCounter.create(CategoryName, "Average participant commit response time", None)
@@ -7990,7 +8134,7 @@ module ``MSDTC Bridge 4_0_0_0`` =
   [<Literal>]
   let CategoryName = "MSDTC Bridge 4.0.0.0"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Average participant commit response time: Average time in milliseconds for the WS-AT service to receive a Commit message response from a participant.
   let ``Average participant commit response time`` =
     WinPerfCounter.create(CategoryName, "Average participant commit response time", None)
@@ -8047,7 +8191,7 @@ module ``MSMQ Incoming Multicast Session`` =
   [<Literal>]
   let CategoryName = "MSMQ Incoming Multicast Session"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Incoming Multicast Bytes: -
   let ``Incoming Multicast Bytes`` instance =
     WinPerfCounter.create(CategoryName, "Incoming Multicast Bytes", instance)
@@ -8076,7 +8220,7 @@ module ``MSMQ Outgoing HTTP Session`` =
   [<Literal>]
   let CategoryName = "MSMQ Outgoing HTTP Session"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Outgoing HTTP Bytes: -
   let ``Outgoing HTTP Bytes`` instance =
     WinPerfCounter.create(CategoryName, "Outgoing HTTP Bytes", instance)
@@ -8105,7 +8249,7 @@ module ``MSMQ Outgoing Multicast Session`` =
   [<Literal>]
   let CategoryName = "MSMQ Outgoing Multicast Session"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Outgoing Multicast Bytes: -
   let ``Outgoing Multicast Bytes`` instance =
     WinPerfCounter.create(CategoryName, "Outgoing Multicast Bytes", instance)
@@ -8134,7 +8278,16 @@ module ``MSMQ Queue`` =
   [<Literal>]
   let CategoryName = "MSMQ Queue"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Bytes in Journal Queue: The total number of bytes in all Message Queuing messages that currently reside in the selected journal. For the Computer Queues instance, this counter represents the computer journal.
   let ``Bytes in Journal Queue`` instance =
     WinPerfCounter.create(CategoryName, "Bytes in Journal Queue", instance)
@@ -8163,7 +8316,7 @@ module ``MSMQ Service`` =
   [<Literal>]
   let CategoryName = "MSMQ Service"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// IP Sessions: The number of open IP sessions involving the selected computer.
   let ``IP Sessions`` =
     WinPerfCounter.create(CategoryName, "IP Sessions", None)
@@ -8220,7 +8373,7 @@ module ``MSMQ Session`` =
   [<Literal>]
   let CategoryName = "MSMQ Session"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Incoming Bytes: -
   let ``Incoming Bytes`` instance =
     WinPerfCounter.create(CategoryName, "Incoming Bytes", instance)
@@ -8265,7 +8418,7 @@ module ``MSRS 2014 Web Service`` =
   [<Literal>]
   let CategoryName = "MSRS 2014 Web Service"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active Sessions: -
   let ``Active Sessions`` instance =
     WinPerfCounter.create(CategoryName, "Active Sessions", instance)
@@ -8366,7 +8519,7 @@ module ``MSRS 2014 Web Service SharePoint Mode`` =
   [<Literal>]
   let CategoryName = "MSRS 2014 Web Service SharePoint Mode"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active Sessions: -
   let ``Active Sessions`` instance =
     WinPerfCounter.create(CategoryName, "Active Sessions", instance)
@@ -8467,7 +8620,16 @@ module ``MSRS 2014 Windows Service`` =
   [<Literal>]
   let CategoryName = "MSRS 2014 Windows Service"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Active Sessions: Number of active sessions.
   let ``Active Sessions`` instance =
     WinPerfCounter.create(CategoryName, "Active Sessions", instance)
@@ -8604,7 +8766,7 @@ module ``MSRS 2014 Windows Service SharePoint Mode`` =
   [<Literal>]
   let CategoryName = "MSRS 2014 Windows Service SharePoint Mode"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active Sessions: -
   let ``Active Sessions`` instance =
     WinPerfCounter.create(CategoryName, "Active Sessions", instance)
@@ -8773,7 +8935,7 @@ module ``Memory`` =
   [<Literal>]
   let CategoryName = "Memory"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// % Committed Bytes In Use: % Committed Bytes In Use is the ratio of Memory\\Committed Bytes to the Memory\\Commit Limit. Committed memory is the physical memory in use for which space has been reserved in the paging file should it need to be written to disk. The commit limit is determined by the size of the paging file.  If the paging file is enlarged, the commit limit increases, and the ratio is reduced). This counter displays the current percentage value only; it is not an average.
   let ``% Committed Bytes In Use`` =
     WinPerfCounter.create(CategoryName, "% Committed Bytes In Use", None)
@@ -8930,7 +9092,7 @@ module ``Microsoft Winsock BSP`` =
   [<Literal>]
   let CategoryName = "Microsoft Winsock BSP"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Dropped Datagrams: Dropped Datagrams due to receive buffer limit on any datagram socket
   let ``Dropped Datagrams`` =
     WinPerfCounter.create(CategoryName, "Dropped Datagrams", None)
@@ -8959,7 +9121,16 @@ module ``NBT Connection`` =
   [<Literal>]
   let CategoryName = "NBT Connection"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Bytes Received/sec: Bytes Received/sec is the rate at which bytes are received by the local computer over an NBT connection to some remote computer.  All the bytes received by the local computer over the particular NBT connection are counted.
   let ``Bytes Received/sec`` instance =
     WinPerfCounter.create(CategoryName, "Bytes Received/sec", instance)
@@ -8984,7 +9155,16 @@ module ``NUMA Node Memory`` =
   [<Literal>]
   let CategoryName = "NUMA Node Memory"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Available MBytes: Approximate amount of physical memory available for allocation for a NUMA node, in megabytes. Computed as the sum of memory on the zeroed, free, and standby lists for a NUMA node. This counter is available only on 64-bit systems.
   let ``Available MBytes`` instance =
     WinPerfCounter.create(CategoryName, "Available MBytes", instance)
@@ -9013,7 +9193,16 @@ module ``NVIDIA GPU`` =
   [<Literal>]
   let CategoryName = "NVIDIA GPU"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// % Bus Usage: Bus Usage in percents
   let ``% Bus Usage`` instance =
     WinPerfCounter.create(CategoryName, "% Bus Usage", instance)
@@ -9102,7 +9291,16 @@ module ``Netlogon`` =
   [<Literal>]
   let CategoryName = "Netlogon"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Average Semaphore Hold Time: The average amount of time the semaphore is held over the last sample.
   let ``Average Semaphore Hold Time`` instance =
     WinPerfCounter.create(CategoryName, "Average Semaphore Hold Time", instance)
@@ -9135,7 +9333,16 @@ module ``Network Adapter`` =
   [<Literal>]
   let CategoryName = "Network Adapter"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Bytes Received/sec: Bytes Received/sec is the rate at which bytes are received over each network adapter, including framing characters. Network Interface\Bytes Received/sec is a subset of Network Interface\Bytes Total/sec.
   let ``Bytes Received/sec`` instance =
     WinPerfCounter.create(CategoryName, "Bytes Received/sec", instance)
@@ -9236,7 +9443,16 @@ module ``Network Interface`` =
   [<Literal>]
   let CategoryName = "Network Interface"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Bytes Received/sec: Bytes Received/sec is the rate at which bytes are received over each network adapter, including framing characters. Network Interface\Bytes Received/sec is a subset of Network Interface\Bytes Total/sec.
   let ``Bytes Received/sec`` instance =
     WinPerfCounter.create(CategoryName, "Bytes Received/sec", instance)
@@ -9337,7 +9553,7 @@ module ``Network QoS Policy`` =
   [<Literal>]
   let CategoryName = "Network QoS Policy"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Bytes transmitted: -
   let ``Bytes transmitted`` instance =
     WinPerfCounter.create(CategoryName, "Bytes transmitted", instance)
@@ -9374,7 +9590,16 @@ module ``Network Virtualization`` =
   [<Literal>]
   let CategoryName = "Network Virtualization"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Broadcast packets received: Number of broadcast packets received.
   let ``Broadcast packets received`` instance =
     WinPerfCounter.create(CategoryName, "Broadcast packets received", instance)
@@ -9467,7 +9692,7 @@ module ``Objects`` =
   [<Literal>]
   let CategoryName = "Objects"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Events: Events is the number of events in the computer at the time of data collection. This is an instantaneous count, not an average over the time interval.  An event is used when two or more threads try to synchronize execution.
   let ``Events`` =
     WinPerfCounter.create(CategoryName, "Events", None)
@@ -9504,7 +9729,7 @@ module ``Offline Files`` =
   [<Literal>]
   let CategoryName = "Offline Files"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Bytes Received: Bytes synchronized from server to client
   let ``Bytes Received`` =
     WinPerfCounter.create(CategoryName, "Bytes Received", None)
@@ -9533,7 +9758,7 @@ module ``Pacer Flow`` =
   [<Literal>]
   let CategoryName = "Pacer Flow"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Average packets in netcard: -
   let ``Average packets in netcard`` instance =
     WinPerfCounter.create(CategoryName, "Average packets in netcard", instance)
@@ -9626,7 +9851,16 @@ module ``Pacer Pipe`` =
   [<Literal>]
   let CategoryName = "Pacer Pipe"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Average packets in netcard: The average number of packets in the network card over the last sampling period.
   let ``Average packets in netcard`` instance =
     WinPerfCounter.create(CategoryName, "Average packets in netcard", instance)
@@ -9707,7 +9941,7 @@ module ``PacketDirect EC Utilization`` =
   [<Literal>]
   let CategoryName = "PacketDirect EC Utilization"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// % Busy Wait Iterations: -
   let ``% Busy Wait Iterations`` instance =
     WinPerfCounter.create(CategoryName, "% Busy Wait Iterations", instance)
@@ -9764,7 +9998,7 @@ module ``PacketDirect Queue Depth`` =
   [<Literal>]
   let CategoryName = "PacketDirect Queue Depth"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// % Average Queue Utilization: -
   let ``% Average Queue Utilization`` instance =
     WinPerfCounter.create(CategoryName, "% Average Queue Utilization", instance)
@@ -9785,7 +10019,7 @@ module ``PacketDirect Receive Counters`` =
   [<Literal>]
   let CategoryName = "PacketDirect Receive Counters"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Bytes Received: -
   let ``Bytes Received`` instance =
     WinPerfCounter.create(CategoryName, "Bytes Received", instance)
@@ -9822,7 +10056,7 @@ module ``PacketDirect Receive Filters`` =
   [<Literal>]
   let CategoryName = "PacketDirect Receive Filters"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Bytes Matched: -
   let ``Bytes Matched`` instance =
     WinPerfCounter.create(CategoryName, "Bytes Matched", instance)
@@ -9851,7 +10085,7 @@ module ``PacketDirect Transmit Counters`` =
   [<Literal>]
   let CategoryName = "PacketDirect Transmit Counters"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Bytes Transmitted: -
   let ``Bytes Transmitted`` instance =
     WinPerfCounter.create(CategoryName, "Bytes Transmitted", instance)
@@ -9880,7 +10114,16 @@ module ``Paging File`` =
   [<Literal>]
   let CategoryName = "Paging File"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// % Usage: The amount of the Page File instance in use in percent.  See also Process\\Page File Bytes.
   let ``% Usage`` instance =
     WinPerfCounter.create(CategoryName, "% Usage", instance)
@@ -9901,7 +10144,7 @@ module ``Peer Name Resolution Protocol`` =
   [<Literal>]
   let CategoryName = "Peer Name Resolution Protocol"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Ack received per second: -
   let ``Ack received per second`` instance =
     WinPerfCounter.create(CategoryName, "Ack received per second", instance)
@@ -10018,7 +10261,16 @@ module ``Per Processor Network Activity Cycles`` =
   [<Literal>]
   let CategoryName = "Per Processor Network Activity Cycles"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Build Scatter Gather Cycles/sec: Build Scatter Gather Cycles/sec is the average rate, in cycles per second, at which NDIS processed building Scatter Gather DMA lists for an interface.
   let ``Build Scatter Gather Cycles/sec`` instance =
     WinPerfCounter.create(CategoryName, "Build Scatter Gather Cycles/sec", instance)
@@ -10083,7 +10335,16 @@ module ``Per Processor Network Interface Card Activity`` =
   [<Literal>]
   let CategoryName = "Per Processor Network Interface Card Activity"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Build Scatter Gather List Calls/sec: Build Scatter Gather List Calls/sec is the average rate, in incidents per second, at which NDIS received a request from an interface to build a scatter gather DMA list.
   let ``Build Scatter Gather List Calls/sec`` instance =
     WinPerfCounter.create(CategoryName, "Build Scatter Gather List Calls/sec", instance)
@@ -10180,7 +10441,16 @@ module ``Physical Network Interface Card Activity`` =
   [<Literal>]
   let CategoryName = "Physical Network Interface Card Activity"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// % Time Suspended (Instantaneous): % Time Suspended (Instantaneous) measures the amount of time that the network interface card is in a low-power suspended state.  The percentage is calculated over the duration of the sample interval.
   let ``% Time Suspended (Instantaneous)`` instance =
     WinPerfCounter.create(CategoryName, "% Time Suspended (Instantaneous)", instance)
@@ -10209,7 +10479,16 @@ module ``PhysicalDisk`` =
   [<Literal>]
   let CategoryName = "PhysicalDisk"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// % Disk Read Time: % Disk Read Time is the percentage of elapsed time that the selected disk drive was busy servicing read requests.
   let ``% Disk Read Time`` instance =
     WinPerfCounter.create(CategoryName, "% Disk Read Time", instance)
@@ -10306,7 +10585,7 @@ module ``Power Meter`` =
   [<Literal>]
   let CategoryName = "Power Meter"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Power: -
   let ``Power`` instance =
     WinPerfCounter.create(CategoryName, "Power", instance)
@@ -10327,7 +10606,7 @@ module ``PowerShell Workflow`` =
   [<Literal>]
   let CategoryName = "PowerShell Workflow"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// # of failed workflow jobs: -
   let ``# of failed workflow jobs`` instance =
     WinPerfCounter.create(CategoryName, "# of failed workflow jobs", instance)
@@ -10456,7 +10735,16 @@ module ``Print Queue`` =
   [<Literal>]
   let CategoryName = "Print Queue"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Add Network Printer Calls: Total number of calls from other print servers to add shared network printers to this server since last restart.
   let ``Add Network Printer Calls`` instance =
     WinPerfCounter.create(CategoryName, "Add Network Printer Calls", instance)
@@ -10521,7 +10809,16 @@ module ``Process`` =
   [<Literal>]
   let CategoryName = "Process"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// % Privileged Time: % Privileged Time is the percentage of elapsed time that the process threads spent executing code in privileged mode. When a Windows system service is called, the service will often run in privileged mode to gain access to system-private data. Such data is protected from access by threads executing in user mode. Calls to the system can be explicit or implicit, such as page faults or interrupts. Unlike some early operating systems, Windows uses process boundaries for subsystem protection in addition to the traditional protection of user and privileged modes. Some work done by Windows on behalf of the application might appear in other subsystem processes in addition to the privileged time in the process.
   let ``% Privileged Time`` instance =
     WinPerfCounter.create(CategoryName, "% Privileged Time", instance)
@@ -10646,7 +10943,16 @@ module ``Processor`` =
   [<Literal>]
   let CategoryName = "Processor"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// % C1 Time: % C1 Time is the percentage of time the processor spends in the C1 low-power idle state. % C1 Time is a subset of the total processor idle time. C1 low-power idle state enables the processor to maintain its entire context and quickly return to the running state. Not all systems support the % C1 state.
   let ``% C1 Time`` instance =
     WinPerfCounter.create(CategoryName, "% C1 Time", instance)
@@ -10719,7 +11025,16 @@ module ``Processor Information`` =
   [<Literal>]
   let CategoryName = "Processor Information"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// % C1 Time: % C1 Time is the percentage of time the processor spends in the C1 low-power idle state. % C1 Time is a subset of the total processor idle time. C1 low-power idle state enables the processor to maintain its entire context and quickly return to the running state. Not all systems support the % C1 state.
   let ``% C1 Time`` instance =
     WinPerfCounter.create(CategoryName, "% C1 Time", instance)
@@ -10844,7 +11159,7 @@ module ``RAS`` =
   [<Literal>]
   let CategoryName = "RAS"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Bytes Received By Disconnected Clients: Total number of bytes received by all the disconnected clients since service start
   let ``Bytes Received By Disconnected Clients`` =
     WinPerfCounter.create(CategoryName, "Bytes Received By Disconnected Clients", None)
@@ -10877,7 +11192,7 @@ module ``RAS Port`` =
   [<Literal>]
   let CategoryName = "RAS Port"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Alignment Errors: -
   let ``Alignment Errors`` instance =
     WinPerfCounter.create(CategoryName, "Alignment Errors", instance)
@@ -10958,7 +11273,7 @@ module ``RAS Total`` =
   [<Literal>]
   let CategoryName = "RAS Total"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Alignment Errors: The total number of Alignment Errors for this connection.  Alignment Errors occur when a byte received is different from the byte expected.
   let ``Alignment Errors`` =
     WinPerfCounter.create(CategoryName, "Alignment Errors", None)
@@ -11043,7 +11358,7 @@ module ``ReadyBoost Cache`` =
   [<Literal>]
   let CategoryName = "ReadyBoost Cache"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Bytes cached: The total (uncompressed) amount of data currently stored in ReadyBoost caches.
   let ``Bytes cached`` =
     WinPerfCounter.create(CategoryName, "Bytes cached", None)
@@ -11096,7 +11411,7 @@ module ``Redirector`` =
   [<Literal>]
   let CategoryName = "Redirector"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Bytes Received/sec: Bytes Received/sec is the rate of bytes coming in to the Redirector from the network.  It includes all application data as well as network protocol information (such as packet headers).
   let ``Bytes Received/sec`` =
     WinPerfCounter.create(CategoryName, "Bytes Received/sec", None)
@@ -11257,7 +11572,7 @@ module ``RemoteFX Graphics`` =
   [<Literal>]
   let CategoryName = "RemoteFX Graphics"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Average Encoding Time: -
   let ``Average Encoding Time`` instance =
     WinPerfCounter.create(CategoryName, "Average Encoding Time", instance)
@@ -11306,7 +11621,7 @@ module ``RemoteFX Network`` =
   [<Literal>]
   let CategoryName = "RemoteFX Network"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Base TCP RTT: -
   let ``Base TCP RTT`` instance =
     WinPerfCounter.create(CategoryName, "Base TCP RTT", instance)
@@ -11411,7 +11726,16 @@ module ``RemoteFX Root GPU Management`` =
   [<Literal>]
   let CategoryName = "RemoteFX Root GPU Management"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Resources: VMs running RemoteFX: Count of virtual machines that have the RemoteFX 3D adapter installed.
   let ``Resources: VMs running RemoteFX`` instance =
     WinPerfCounter.create(CategoryName, "Resources: VMs running RemoteFX", instance)
@@ -11436,7 +11760,7 @@ module ``RemoteFX Software`` =
   [<Literal>]
   let CategoryName = "RemoteFX Software"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Capture Rate for monitor 1: -
   let ``Capture Rate for monitor 1`` instance =
     WinPerfCounter.create(CategoryName, "Capture Rate for monitor 1", instance)
@@ -11537,7 +11861,7 @@ module ``RemoteFX Synth3D VSC VM Device`` =
   [<Literal>]
   let CategoryName = "RemoteFX Synth3D VSC VM Device"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Number of RDVGM restarted notifications: Number of RDVGM restarted notifications
   let ``Number of RDVGM restarted notifications`` =
     WinPerfCounter.create(CategoryName, "Number of RDVGM restarted notifications", None)
@@ -11574,7 +11898,7 @@ module ``RemoteFX Synth3D VSC VM Transport Channel`` =
   [<Literal>]
   let CategoryName = "RemoteFX Synth3D VSC VM Transport Channel"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Number of data available event was reset: -
   let ``Number of data available event was reset`` instance =
     WinPerfCounter.create(CategoryName, "Number of data available event was reset", instance)
@@ -11635,7 +11959,7 @@ module ``RemoteFX Synth3D VSP`` =
   [<Literal>]
   let CategoryName = "RemoteFX Synth3D VSP"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Number of created VM devices: Number of created VM devices
   let ``Number of created VM devices`` =
     WinPerfCounter.create(CategoryName, "Number of created VM devices", None)
@@ -11653,7 +11977,7 @@ module ``RemoteFX Synth3D VSP VM Device`` =
   [<Literal>]
   let CategoryName = "RemoteFX Synth3D VSP VM Device"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Number of RDVGM restarted notifications: -
   let ``Number of RDVGM restarted notifications`` instance =
     WinPerfCounter.create(CategoryName, "Number of RDVGM restarted notifications", instance)
@@ -11690,7 +12014,7 @@ module ``RemoteFX Synth3D VSP VM Transport Channel`` =
   [<Literal>]
   let CategoryName = "RemoteFX Synth3D VSP VM Transport Channel"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Number of data available event was reset: -
   let ``Number of data available event was reset`` instance =
     WinPerfCounter.create(CategoryName, "Number of data available event was reset", instance)
@@ -11751,7 +12075,7 @@ module ``ReportServer:Service`` =
   [<Literal>]
   let CategoryName = "ReportServer:Service"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active Connections: Number of connections active against server.
   let ``Active Connections`` =
     WinPerfCounter.create(CategoryName, "Active Connections", None)
@@ -11848,7 +12172,16 @@ module ``SMB Client Shares`` =
   [<Literal>]
   let CategoryName = "SMB Client Shares"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Avg. Bytes/Read: The average number of bytes per read request.
   let ``Avg. Bytes/Read`` instance =
     WinPerfCounter.create(CategoryName, "Avg. Bytes/Read", instance)
@@ -11933,7 +12266,7 @@ module ``SMB Server`` =
   [<Literal>]
   let CategoryName = "SMB Server"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Read Bytes/sec: Read Bytes/sec is the rate at which data is being read to satisfy SMB read requests.
   let ``Read Bytes/sec`` =
     WinPerfCounter.create(CategoryName, "Read Bytes/sec", None)
@@ -11964,119 +12297,119 @@ module ``SMB Server`` =
 
 /// SMB Server Sessions: This counter set displays information about SMB server sessions using SMB protocol version 2 or higher
 ///
-/// This performance counter does not have non-instance based counters
+/// This performance counter does not have instance based counters
 module ``SMB Server Sessions`` =
 
   [<Literal>]
   let CategoryName = "SMB Server Sessions"
 
-  let PCC = Category.create CategoryName
-  /// % Persistent Handles: The percentage of total opens for which clients requested persistency.
+  let PerfCat = Category.create CategoryName
+  /// % Persistent Handles: -
   let ``% Persistent Handles`` instance =
     WinPerfCounter.create(CategoryName, "% Persistent Handles", instance)
-  /// % Resilient Handles: The percentage of total opens for which clients requested resiliency.
+  /// % Resilient Handles: -
   let ``% Resilient Handles`` instance =
     WinPerfCounter.create(CategoryName, "% Resilient Handles", instance)
-  /// Avg. Bytes/Read: The average number of bytes per read request.
+  /// Avg. Bytes/Read: -
   let ``Avg. Bytes/Read`` instance =
     WinPerfCounter.create(CategoryName, "Avg. Bytes/Read", instance)
-  /// Avg. Bytes/Write: The average number of bytes per write request.
+  /// Avg. Bytes/Write: -
   let ``Avg. Bytes/Write`` instance =
     WinPerfCounter.create(CategoryName, "Avg. Bytes/Write", instance)
-  /// Avg. Data Bytes/Request: The average number of bytes per read or write request.
+  /// Avg. Data Bytes/Request: -
   let ``Avg. Data Bytes/Request`` instance =
     WinPerfCounter.create(CategoryName, "Avg. Data Bytes/Request", instance)
-  /// Avg. Data Queue Length: The average number of read and write requests that were queued in this session.
+  /// Avg. Data Queue Length: -
   let ``Avg. Data Queue Length`` instance =
     WinPerfCounter.create(CategoryName, "Avg. Data Queue Length", instance)
-  /// Avg. Read Queue Length: The average number of read requests that were queued in this session.
+  /// Avg. Read Queue Length: -
   let ``Avg. Read Queue Length`` instance =
     WinPerfCounter.create(CategoryName, "Avg. Read Queue Length", instance)
-  /// Avg. Write Queue Length: The average number of write requests that were queued in this session.
+  /// Avg. Write Queue Length: -
   let ``Avg. Write Queue Length`` instance =
     WinPerfCounter.create(CategoryName, "Avg. Write Queue Length", instance)
-  /// Avg. sec/Data Request: The average number of seconds that elapse between the time at which a read or write request to this session is received and the time at which the SMB File Server processes the request.
+  /// Avg. sec/Data Request: -
   let ``Avg. sec/Data Request`` instance =
     WinPerfCounter.create(CategoryName, "Avg. sec/Data Request", instance)
-  /// Avg. sec/Read: The average number of seconds that elapse between the time at which a read request in this session is received and the time at which the SMB File Server sends the corresponding response.
+  /// Avg. sec/Read: -
   let ``Avg. sec/Read`` instance =
     WinPerfCounter.create(CategoryName, "Avg. sec/Read", instance)
-  /// Avg. sec/Request: The average number of seconds that elapse between the time at which the SMB File Server receives a request in this session and the time at which the SMB File Server sends the corresponding response.
+  /// Avg. sec/Request: -
   let ``Avg. sec/Request`` instance =
     WinPerfCounter.create(CategoryName, "Avg. sec/Request", instance)
-  /// Avg. sec/Write: The average number of seconds that elapse between the time at which a write request in this session is received and the time at which the SMB File Server sends the corresponding response.
+  /// Avg. sec/Write: -
   let ``Avg. sec/Write`` instance =
     WinPerfCounter.create(CategoryName, "Avg. sec/Write", instance)
-  /// Current Data Queue Length: The current number of read or write requests outstanding in this session.
+  /// Current Data Queue Length: -
   let ``Current Data Queue Length`` instance =
     WinPerfCounter.create(CategoryName, "Current Data Queue Length", instance)
-  /// Current Durable Open File Count: The number of durable file handles that are currently open in this session
+  /// Current Durable Open File Count: -
   let ``Current Durable Open File Count`` instance =
     WinPerfCounter.create(CategoryName, "Current Durable Open File Count", instance)
-  /// Current Open File Count: The number of file handles that are currently open in this session
+  /// Current Open File Count: -
   let ``Current Open File Count`` instance =
     WinPerfCounter.create(CategoryName, "Current Open File Count", instance)
-  /// Current Pending Requests: The number of requests in this session that are waiting to be processed by the SMB File Server.
+  /// Current Pending Requests: -
   let ``Current Pending Requests`` instance =
     WinPerfCounter.create(CategoryName, "Current Pending Requests", instance)
-  /// Data Bytes/sec: The rate, in seconds, at which data is being written or read in this session.
+  /// Data Bytes/sec: -
   let ``Data Bytes/sec`` instance =
     WinPerfCounter.create(CategoryName, "Data Bytes/sec", instance)
-  /// Data Requests/sec: The rate, in seconds, at which read or write requests are received in this session.
+  /// Data Requests/sec: -
   let ``Data Requests/sec`` instance =
     WinPerfCounter.create(CategoryName, "Data Requests/sec", instance)
-  /// Files Opened/sec: The rate, in seconds, at which files are being opened in this session.
+  /// Files Opened/sec: -
   let ``Files Opened/sec`` instance =
     WinPerfCounter.create(CategoryName, "Files Opened/sec", instance)
-  /// Metadata Requests/sec: The rate, in seconds, at which metadata requests are being sent in this session.
+  /// Metadata Requests/sec: -
   let ``Metadata Requests/sec`` instance =
     WinPerfCounter.create(CategoryName, "Metadata Requests/sec", instance)
-  /// Read Bytes/sec: The rate, in seconds, at which data is being read in this session.
+  /// Read Bytes/sec: -
   let ``Read Bytes/sec`` instance =
     WinPerfCounter.create(CategoryName, "Read Bytes/sec", instance)
-  /// Read Requests/sec: Read requests processed/sec in this session.
+  /// Read Requests/sec: -
   let ``Read Requests/sec`` instance =
     WinPerfCounter.create(CategoryName, "Read Requests/sec", instance)
-  /// Received Bytes/sec: The rate at which bytes are being received for requests in this session. This value includes application data as well as SMB protocol data (such as packet headers).
+  /// Received Bytes/sec: -
   let ``Received Bytes/sec`` instance =
     WinPerfCounter.create(CategoryName, "Received Bytes/sec", instance)
-  /// Requests/sec: The rate at which requests are being received in this session
+  /// Requests/sec: -
   let ``Requests/sec`` instance =
     WinPerfCounter.create(CategoryName, "Requests/sec", instance)
-  /// Sent Bytes/sec: The rate, in seconds, at which bytes are being sent from the SMB File Server in this session to the client. This value includes both data bytes and protocol bytes.
+  /// Sent Bytes/sec: -
   let ``Sent Bytes/sec`` instance =
     WinPerfCounter.create(CategoryName, "Sent Bytes/sec", instance)
-  /// Total Durable Handle Reopen Count: The number of durable opens in this session that have been recovered after a temporary network disconnect since the SMB File Server started.
+  /// Total Durable Handle Reopen Count: -
   let ``Total Durable Handle Reopen Count`` instance =
     WinPerfCounter.create(CategoryName, "Total Durable Handle Reopen Count", instance)
-  /// Total Failed Durable Handle Reopen Count: The number of durable opens in this session that could not be recovered after a temporary network disconnect since the SMB File Server Started.
+  /// Total Failed Durable Handle Reopen Count: -
   let ``Total Failed Durable Handle Reopen Count`` instance =
     WinPerfCounter.create(CategoryName, "Total Failed Durable Handle Reopen Count", instance)
-  /// Total Failed Persistent Handle Reopen Count: The number of persistent opens in this session that could not be recovered after a temporary network disconnect since the SMB File Server Started.
+  /// Total Failed Persistent Handle Reopen Count: -
   let ``Total Failed Persistent Handle Reopen Count`` instance =
     WinPerfCounter.create(CategoryName, "Total Failed Persistent Handle Reopen Count", instance)
-  /// Total Failed Resilient Handle Reopen Count: The number of resilient opens in this session that could not be recovered after a temporary network disconnect since the SMB File Server Started.
+  /// Total Failed Resilient Handle Reopen Count: -
   let ``Total Failed Resilient Handle Reopen Count`` instance =
     WinPerfCounter.create(CategoryName, "Total Failed Resilient Handle Reopen Count", instance)
-  /// Total File Open Count: The number of files that have been opened by the SMB File Server on behalf of its clients in this session since the server started.
+  /// Total File Open Count: -
   let ``Total File Open Count`` instance =
     WinPerfCounter.create(CategoryName, "Total File Open Count", instance)
-  /// Total Persistent Handle Reopen Count: The number of persistent opens in this session that have been recovered after a temporary network disconnect since the SMB File Server started.
+  /// Total Persistent Handle Reopen Count: -
   let ``Total Persistent Handle Reopen Count`` instance =
     WinPerfCounter.create(CategoryName, "Total Persistent Handle Reopen Count", instance)
-  /// Total Resilient Handle Reopen Count: The number of resilient opens in this session that have been recovered after a temporary network disconnect since the SMB File Server started.
+  /// Total Resilient Handle Reopen Count: -
   let ``Total Resilient Handle Reopen Count`` instance =
     WinPerfCounter.create(CategoryName, "Total Resilient Handle Reopen Count", instance)
-  /// Transferred Bytes/sec: The sum of Sent Bytes/sec and Received Bytes/sec for this session.
+  /// Transferred Bytes/sec: -
   let ``Transferred Bytes/sec`` instance =
     WinPerfCounter.create(CategoryName, "Transferred Bytes/sec", instance)
-  /// Tree Connect Count: The number of tree connects in this session
+  /// Tree Connect Count: -
   let ``Tree Connect Count`` instance =
     WinPerfCounter.create(CategoryName, "Tree Connect Count", instance)
-  /// Write Bytes/sec: The rate, in seconds, at which data is being written in this session.
+  /// Write Bytes/sec: -
   let ``Write Bytes/sec`` instance =
     WinPerfCounter.create(CategoryName, "Write Bytes/sec", instance)
-  /// Write Requests/sec: Write requests processed/sec in this session.
+  /// Write Requests/sec: -
   let ``Write Requests/sec`` instance =
     WinPerfCounter.create(CategoryName, "Write Requests/sec", instance)
 
@@ -12127,7 +12460,16 @@ module ``SMB Server Shares`` =
   [<Literal>]
   let CategoryName = "SMB Server Shares"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// % Persistent Handles: The percentage of total handles for which clients requested persistency.
   let ``% Persistent Handles`` instance =
     WinPerfCounter.create(CategoryName, "% Persistent Handles", instance)
@@ -12284,7 +12626,7 @@ module ``SMSvcHost 3_0_0_0`` =
   [<Literal>]
   let CategoryName = "SMSvcHost 3.0.0.0"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Connections Accepted over net.pipe: The total number of named pipe connections accepted over net.pipe.
   let ``Connections Accepted over net.pipe`` =
     WinPerfCounter.create(CategoryName, "Connections Accepted over net.pipe", None)
@@ -12353,7 +12695,7 @@ module ``SMSvcHost 4_0_0_0`` =
   [<Literal>]
   let CategoryName = "SMSvcHost 4.0.0.0"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Connections Accepted over net.pipe: The total number of named pipe connections accepted over net.pipe.
   let ``Connections Accepted over net.pipe`` =
     WinPerfCounter.create(CategoryName, "Connections Accepted over net.pipe", None)
@@ -12422,7 +12764,7 @@ module ``SQLAgent:Alerts`` =
   [<Literal>]
   let CategoryName = "SQLAgent:Alerts"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Activated alerts: The number of Alerts that have activated since the last SQL Server restart.
   let ``Activated alerts`` =
     WinPerfCounter.create(CategoryName, "Activated alerts", None)
@@ -12443,7 +12785,7 @@ module ``SQLAgent:JobSteps`` =
   [<Literal>]
   let CategoryName = "SQLAgent:JobSteps"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active steps: -
   let ``Active steps`` instance =
     WinPerfCounter.create(CategoryName, "Active steps", instance)
@@ -12468,7 +12810,7 @@ module ``SQLAgent:Jobs`` =
   [<Literal>]
   let CategoryName = "SQLAgent:Jobs"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active jobs: -
   let ``Active jobs`` instance =
     WinPerfCounter.create(CategoryName, "Active jobs", instance)
@@ -12509,7 +12851,7 @@ module ``SQLAgent:Statistics`` =
   [<Literal>]
   let CategoryName = "SQLAgent:Statistics"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// SQL Server restarted: The number of times the SQL Server has been successfully restarted by SQL Server Agent, since the last SQL Server Agent restart.
   let ``SQL Server restarted`` =
     WinPerfCounter.create(CategoryName, "SQL Server restarted", None)
@@ -12527,7 +12869,7 @@ module ``SQLAgent:SystemJobs`` =
   [<Literal>]
   let CategoryName = "SQLAgent:SystemJobs"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active system jobs: -
   let ``Active system jobs`` instance =
     WinPerfCounter.create(CategoryName, "Active system jobs", instance)
@@ -12560,7 +12902,7 @@ module ``SQLServer:Access Methods`` =
   [<Literal>]
   let CategoryName = "SQLServer:Access Methods"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// AU cleanup batches/sec: The number of batches that completed successfully per second by the background task that cleans up deferred dropped allocation units.
   let ``AU cleanup batches/sec`` =
     WinPerfCounter.create(CategoryName, "AU cleanup batches/sec", None)
@@ -12749,7 +13091,7 @@ module ``SQLServer:Availability Replica`` =
   [<Literal>]
   let CategoryName = "SQLServer:Availability Replica"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Bytes Received from Replica/sec: -
   let ``Bytes Received from Replica/sec`` instance =
     WinPerfCounter.create(CategoryName, "Bytes Received from Replica/sec", instance)
@@ -12798,7 +13140,7 @@ module ``SQLServer:Backup Device`` =
   [<Literal>]
   let CategoryName = "SQLServer:Backup Device"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Device Throughput Bytes/sec: -
   let ``Device Throughput Bytes/sec`` instance =
     WinPerfCounter.create(CategoryName, "Device Throughput Bytes/sec", instance)
@@ -12816,7 +13158,7 @@ module ``SQLServer:Batch Resp Statistics`` =
   [<Literal>]
   let CategoryName = "SQLServer:Batch Resp Statistics"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Batches >=000000ms & <000001ms: -
   let ``Batches >=000000ms & <000001ms`` instance =
     WinPerfCounter.create(CategoryName, "Batches >=000000ms & <000001ms", instance)
@@ -12897,7 +13239,7 @@ module ``SQLServer:Broker Activation`` =
   [<Literal>]
   let CategoryName = "SQLServer:Broker Activation"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Stored Procedures Invoked/sec: -
   let ``Stored Procedures Invoked/sec`` instance =
     WinPerfCounter.create(CategoryName, "Stored Procedures Invoked/sec", instance)
@@ -12934,7 +13276,7 @@ module ``SQLServer:Broker Statistics`` =
   [<Literal>]
   let CategoryName = "SQLServer:Broker Statistics"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Activation Errors Total: The number of times an activation stored procedure exited with an error.
   let ``Activation Errors Total`` =
     WinPerfCounter.create(CategoryName, "Activation Errors Total", None)
@@ -13095,7 +13437,7 @@ module ``SQLServer:Broker TO Statistics`` =
   [<Literal>]
   let CategoryName = "SQLServer:Broker TO Statistics"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Avg. Length of Batched Writes: Average Number of Transmission Objects saved in a batch.
   let ``Avg. Length of Batched Writes`` =
     WinPerfCounter.create(CategoryName, "Avg. Length of Batched Writes", None)
@@ -13144,7 +13486,7 @@ module ``SQLServer:Broker_DBM Transport`` =
   [<Literal>]
   let CategoryName = "SQLServer:Broker/DBM Transport"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Current Bytes for Recv I/O: The number of bytes associated with current transport receive I/O operations that haven't completed.
   let ``Current Bytes for Recv I/O`` =
     WinPerfCounter.create(CategoryName, "Current Bytes for Recv I/O", None)
@@ -13293,7 +13635,7 @@ module ``SQLServer:Buffer Manager`` =
   [<Literal>]
   let CategoryName = "SQLServer:Buffer Manager"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Background writer pages/sec: Number of pages flushed to enforce the recovery interval settings.
   let ``Background writer pages/sec`` =
     WinPerfCounter.create(CategoryName, "Background writer pages/sec", None)
@@ -13398,7 +13740,7 @@ module ``SQLServer:Buffer Node`` =
   [<Literal>]
   let CategoryName = "SQLServer:Buffer Node"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Database pages: -
   let ``Database pages`` instance =
     WinPerfCounter.create(CategoryName, "Database pages", instance)
@@ -13427,7 +13769,7 @@ module ``SQLServer:CLR`` =
   [<Literal>]
   let CategoryName = "SQLServer:CLR"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// CLR Execution: Total Execution time in CLR ( microseconds ).
   let ``CLR Execution`` =
     WinPerfCounter.create(CategoryName, "CLR Execution", None)
@@ -13445,7 +13787,7 @@ module ``SQLServer:Catalog Metadata`` =
   [<Literal>]
   let CategoryName = "SQLServer:Catalog Metadata"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Cache Entries Count: -
   let ``Cache Entries Count`` instance =
     WinPerfCounter.create(CategoryName, "Cache Entries Count", instance)
@@ -13474,7 +13816,7 @@ module ``SQLServer:Cursor Manager Total`` =
   [<Literal>]
   let CategoryName = "SQLServer:Cursor Manager Total"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Async population count: Number of cursors being populated asynchronously.
   let ``Async population count`` =
     WinPerfCounter.create(CategoryName, "Async population count", None)
@@ -13499,7 +13841,7 @@ module ``SQLServer:Cursor Manager by Type`` =
   [<Literal>]
   let CategoryName = "SQLServer:Cursor Manager by Type"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active cursors: -
   let ``Active cursors`` instance =
     WinPerfCounter.create(CategoryName, "Active cursors", instance)
@@ -13548,7 +13890,7 @@ module ``SQLServer:Database Mirroring`` =
   [<Literal>]
   let CategoryName = "SQLServer:Database Mirroring"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Bytes Received/sec: -
   let ``Bytes Received/sec`` instance =
     WinPerfCounter.create(CategoryName, "Bytes Received/sec", instance)
@@ -13645,7 +13987,7 @@ module ``SQLServer:Database Replica`` =
   [<Literal>]
   let CategoryName = "SQLServer:Database Replica"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// File Bytes Received/sec: -
   let ``File Bytes Received/sec`` instance =
     WinPerfCounter.create(CategoryName, "File Bytes Received/sec", instance)
@@ -13702,7 +14044,7 @@ module ``SQLServer:Databases`` =
   [<Literal>]
   let CategoryName = "SQLServer:Databases"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active Transactions: -
   let ``Active Transactions`` instance =
     WinPerfCounter.create(CategoryName, "Active Transactions", instance)
@@ -13843,7 +14185,7 @@ module ``SQLServer:Deprecated Features`` =
   [<Literal>]
   let CategoryName = "SQLServer:Deprecated Features"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Usage: -
   let ``Usage`` instance =
     WinPerfCounter.create(CategoryName, "Usage", instance)
@@ -13861,7 +14203,7 @@ module ``SQLServer:Exec Statistics`` =
   [<Literal>]
   let CategoryName = "SQLServer:Exec Statistics"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// DTC calls: -
   let ``DTC calls`` instance =
     WinPerfCounter.create(CategoryName, "DTC calls", instance)
@@ -13890,7 +14232,7 @@ module ``SQLServer:FileTable`` =
   [<Literal>]
   let CategoryName = "SQLServer:FileTable"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Avg time FileTable enumeration: Average time (in milliseconds) taken for a FileTable enumeration request.
   let ``Avg time FileTable enumeration`` =
     WinPerfCounter.create(CategoryName, "Avg time FileTable enumeration", None)
@@ -14019,7 +14361,7 @@ module ``SQLServer:General Statistics`` =
   [<Literal>]
   let CategoryName = "SQLServer:General Statistics"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active Temp Tables: Number of temporary tables/table variables in use
   let ``Active Temp Tables`` =
     WinPerfCounter.create(CategoryName, "Active Temp Tables", None)
@@ -14128,7 +14470,7 @@ module ``SQLServer:HTTP Storage`` =
   [<Literal>]
   let CategoryName = "SQLServer:HTTP Storage"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Avg. Bytes/Read: -
   let ``Avg. Bytes/Read`` instance =
     WinPerfCounter.create(CategoryName, "Avg. Bytes/Read", instance)
@@ -14221,7 +14563,7 @@ module ``SQLServer:Latches`` =
   [<Literal>]
   let CategoryName = "SQLServer:Latches"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Average Latch Wait Time (ms): Average latch wait time (milliseconds) for latch requests that had to wait.
   let ``Average Latch Wait Time (ms)`` =
     WinPerfCounter.create(CategoryName, "Average Latch Wait Time (ms)", None)
@@ -14262,7 +14604,7 @@ module ``SQLServer:Locks`` =
   [<Literal>]
   let CategoryName = "SQLServer:Locks"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Average Wait Time (ms): -
   let ``Average Wait Time (ms)`` instance =
     WinPerfCounter.create(CategoryName, "Average Wait Time (ms)", instance)
@@ -14307,7 +14649,7 @@ module ``SQLServer:Memory Broker Clerks`` =
   [<Literal>]
   let CategoryName = "SQLServer:Memory Broker Clerks"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Internal benefit: -
   let ``Internal benefit`` instance =
     WinPerfCounter.create(CategoryName, "Internal benefit", instance)
@@ -14344,7 +14686,7 @@ module ``SQLServer:Memory Manager`` =
   [<Literal>]
   let CategoryName = "SQLServer:Memory Manager"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Connection Memory (KB): Total amount of dynamic memory the server is using for maintaining connections
   let ``Connection Memory (KB)`` =
     WinPerfCounter.create(CategoryName, "Connection Memory (KB)", None)
@@ -14437,7 +14779,7 @@ module ``SQLServer:Memory Node`` =
   [<Literal>]
   let CategoryName = "SQLServer:Memory Node"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Database Node Memory (KB): -
   let ``Database Node Memory (KB)`` instance =
     WinPerfCounter.create(CategoryName, "Database Node Memory (KB)", instance)
@@ -14474,7 +14816,7 @@ module ``SQLServer:Plan Cache`` =
   [<Literal>]
   let CategoryName = "SQLServer:Plan Cache"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Cache Hit Ratio: -
   let ``Cache Hit Ratio`` instance =
     WinPerfCounter.create(CategoryName, "Cache Hit Ratio", instance)
@@ -14507,7 +14849,7 @@ module ``SQLServer:Replication Agents`` =
   [<Literal>]
   let CategoryName = "SQLServer:Replication Agents"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Running: -
   let ``Running`` instance =
     WinPerfCounter.create(CategoryName, "Running", instance)
@@ -14525,7 +14867,7 @@ module ``SQLServer:Replication Dist_`` =
   [<Literal>]
   let CategoryName = "SQLServer:Replication Dist."
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Dist:Delivered Cmds/sec: -
   let ``Dist:Delivered Cmds/sec`` instance =
     WinPerfCounter.create(CategoryName, "Dist:Delivered Cmds/sec", instance)
@@ -14550,7 +14892,7 @@ module ``SQLServer:Replication Logreader`` =
   [<Literal>]
   let CategoryName = "SQLServer:Replication Logreader"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Logreader:Delivered Cmds/sec: -
   let ``Logreader:Delivered Cmds/sec`` instance =
     WinPerfCounter.create(CategoryName, "Logreader:Delivered Cmds/sec", instance)
@@ -14575,7 +14917,7 @@ module ``SQLServer:Replication Merge`` =
   [<Literal>]
   let CategoryName = "SQLServer:Replication Merge"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Conflicts/sec: -
   let ``Conflicts/sec`` instance =
     WinPerfCounter.create(CategoryName, "Conflicts/sec", instance)
@@ -14600,7 +14942,7 @@ module ``SQLServer:Replication Snapshot`` =
   [<Literal>]
   let CategoryName = "SQLServer:Replication Snapshot"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Snapshot:Delivered Cmds/sec: -
   let ``Snapshot:Delivered Cmds/sec`` instance =
     WinPerfCounter.create(CategoryName, "Snapshot:Delivered Cmds/sec", instance)
@@ -14621,7 +14963,7 @@ module ``SQLServer:Resource Pool Stats`` =
   [<Literal>]
   let CategoryName = "SQLServer:Resource Pool Stats"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active memory grant amount (KB): -
   let ``Active memory grant amount (KB)`` instance =
     WinPerfCounter.create(CategoryName, "Active memory grant amount (KB)", instance)
@@ -14734,7 +15076,7 @@ module ``SQLServer:SQL Errors`` =
   [<Literal>]
   let CategoryName = "SQLServer:SQL Errors"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Errors/sec: -
   let ``Errors/sec`` instance =
     WinPerfCounter.create(CategoryName, "Errors/sec", instance)
@@ -14752,7 +15094,7 @@ module ``SQLServer:SQL Statistics`` =
   [<Literal>]
   let CategoryName = "SQLServer:SQL Statistics"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Auto-Param Attempts/sec: Number of auto-parameterization attempts.
   let ``Auto-Param Attempts/sec`` =
     WinPerfCounter.create(CategoryName, "Auto-Param Attempts/sec", None)
@@ -14809,7 +15151,7 @@ module ``SQLServer:SSIS Service 12_0`` =
   [<Literal>]
   let CategoryName = "SQLServer:SSIS Service 12.0"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// SSIS Package Instances: The number of package instances currently running.
   let ``SSIS Package Instances`` =
     WinPerfCounter.create(CategoryName, "SSIS Package Instances", None)
@@ -14827,7 +15169,7 @@ module ``SQLServer:Transactions`` =
   [<Literal>]
   let CategoryName = "SQLServer:Transactions"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Free Space in tempdb (KB): The free space in tempdb in KB.
   let ``Free Space in tempdb (KB)`` =
     WinPerfCounter.create(CategoryName, "Free Space in tempdb (KB)", None)
@@ -14896,7 +15238,7 @@ module ``SQLServer:User Settable`` =
   [<Literal>]
   let CategoryName = "SQLServer:User Settable"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Query: -
   let ``Query`` instance =
     WinPerfCounter.create(CategoryName, "Query", instance)
@@ -14914,7 +15256,7 @@ module ``SQLServer:Wait Statistics`` =
   [<Literal>]
   let CategoryName = "SQLServer:Wait Statistics"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Lock waits: -
   let ``Lock waits`` instance =
     WinPerfCounter.create(CategoryName, "Lock waits", instance)
@@ -14975,7 +15317,7 @@ module ``SQLServer:Workload Group Stats`` =
   [<Literal>]
   let CategoryName = "SQLServer:Workload Group Stats"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active parallel threads: -
   let ``Active parallel threads`` instance =
     WinPerfCounter.create(CategoryName, "Active parallel threads", instance)
@@ -15036,7 +15378,16 @@ module ``Search Indexer`` =
   [<Literal>]
   let CategoryName = "Search Indexer"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Active Connections: Active Connections
   let ``Active Connections`` instance =
     WinPerfCounter.create(CategoryName, "Active Connections", instance)
@@ -15301,7 +15652,7 @@ module ``ServiceModelEndpoint 3_0_0_0`` =
   [<Literal>]
   let CategoryName = "ServiceModelEndpoint 3.0.0.0"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Calls: -
   let ``Calls`` instance =
     WinPerfCounter.create(CategoryName, "Calls", instance)
@@ -15390,7 +15741,7 @@ module ``ServiceModelEndpoint 4_0_0_0`` =
   [<Literal>]
   let CategoryName = "ServiceModelEndpoint 4.0.0.0"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Calls: -
   let ``Calls`` instance =
     WinPerfCounter.create(CategoryName, "Calls", instance)
@@ -15475,7 +15826,7 @@ module ``ServiceModelOperation 3_0_0_0`` =
   [<Literal>]
   let CategoryName = "ServiceModelOperation 3.0.0.0"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Call Failed Per Second: -
   let ``Call Failed Per Second`` instance =
     WinPerfCounter.create(CategoryName, "Call Failed Per Second", instance)
@@ -15548,7 +15899,7 @@ module ``ServiceModelOperation 4_0_0_0`` =
   [<Literal>]
   let CategoryName = "ServiceModelOperation 4.0.0.0"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Call Failed Per Second: -
   let ``Call Failed Per Second`` instance =
     WinPerfCounter.create(CategoryName, "Call Failed Per Second", instance)
@@ -15617,7 +15968,7 @@ module ``ServiceModelService 3_0_0_0`` =
   [<Literal>]
   let CategoryName = "ServiceModelService 3.0.0.0"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Calls: -
   let ``Calls`` instance =
     WinPerfCounter.create(CategoryName, "Calls", instance)
@@ -15762,7 +16113,16 @@ module ``ServiceModelService 4_0_0_0`` =
   [<Literal>]
   let CategoryName = "ServiceModelService 4.0.0.0"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Calls: The number of calls to this service. http://go.microsoft.com/fwlink/?LinkId=222530
   let ``Calls`` instance =
     WinPerfCounter.create(CategoryName, "Calls", instance)
@@ -15915,7 +16275,7 @@ module ``Storage Spaces Tier`` =
   [<Literal>]
   let CategoryName = "Storage Spaces Tier"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Avg. Tier Bytes/Read: -
   let ``Avg. Tier Bytes/Read`` instance =
     WinPerfCounter.create(CategoryName, "Avg. Tier Bytes/Read", instance)
@@ -15992,7 +16352,7 @@ module ``Storage Spaces Write Cache`` =
   [<Literal>]
   let CategoryName = "Storage Spaces Write Cache"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Avg. Cache Bytes/Evict: -
   let ``Avg. Cache Bytes/Evict`` instance =
     WinPerfCounter.create(CategoryName, "Avg. Cache Bytes/Evict", instance)
@@ -16125,7 +16485,16 @@ module ``Synchronization`` =
   [<Literal>]
   let CategoryName = "Synchronization"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Exec. Resource Acquires AcqExclLite/sec: Frequency of first exclusive acquires from ExAcquireResourceExclusiveLite.
   let ``Exec. Resource Acquires AcqExclLite/sec`` instance =
     WinPerfCounter.create(CategoryName, "Exec. Resource Acquires AcqExclLite/sec", instance)
@@ -16306,7 +16675,16 @@ module ``SynchronizationNuma`` =
   [<Literal>]
   let CategoryName = "SynchronizationNuma"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Exec. Resource Acquires AcqExclLite/sec: Frequency of first exclusive acquires from ExAcquireResourceExclusiveLite.
   let ``Exec. Resource Acquires AcqExclLite/sec`` instance =
     WinPerfCounter.create(CategoryName, "Exec. Resource Acquires AcqExclLite/sec", instance)
@@ -16487,7 +16865,7 @@ module ``System`` =
   [<Literal>]
   let CategoryName = "System"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// % Registry Quota In Use: % Registry Quota In Use is the percentage of the Total Registry Quota Allowed that is currently being used by the system.  This counter displays the current percentage value only; it is not an average.
   let ``% Registry Quota In Use`` =
     WinPerfCounter.create(CategoryName, "% Registry Quota In Use", None)
@@ -16568,7 +16946,7 @@ module ``TCPIP Performance Diagnostics`` =
   [<Literal>]
   let CategoryName = "TCPIP Performance Diagnostics"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Denied connect or send requests in low-power mode: Total number of TCP connect or TCP/UDP/RAW send requests denied by the TCPIP stack because the outbound network interface was in low-power mode
   let ``Denied connect or send requests in low-power mode`` =
     WinPerfCounter.create(CategoryName, "Denied connect or send requests in low-power mode", None)
@@ -16665,7 +17043,7 @@ module ``TCPv4`` =
   [<Literal>]
   let CategoryName = "TCPv4"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Connection Failures: Connection Failures is the number of times TCP connections have made a direct transition to the CLOSED state from the SYN-SENT state or the SYN-RCVD state, plus the number of times TCP connections have made a direct transition to the LISTEN state from the SYN-RCVD state.
   let ``Connection Failures`` =
     WinPerfCounter.create(CategoryName, "Connection Failures", None)
@@ -16714,7 +17092,7 @@ module ``TCPv6`` =
   [<Literal>]
   let CategoryName = "TCPv6"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Connection Failures: Connection Failures is the number of times TCP connections have made a direct transition to the CLOSED state from the SYN-SENT state or the SYN-RCVD state, plus the number of times TCP connections have made a direct transition to the LISTEN state from the SYN-RCVD state.
   let ``Connection Failures`` =
     WinPerfCounter.create(CategoryName, "Connection Failures", None)
@@ -16763,7 +17141,7 @@ module ``Telephony`` =
   [<Literal>]
   let CategoryName = "Telephony"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active Lines: The number of telephone lines serviced by this computer that are currently active.
   let ``Active Lines`` =
     WinPerfCounter.create(CategoryName, "Active Lines", None)
@@ -16812,7 +17190,16 @@ module ``Teredo Client`` =
   [<Literal>]
   let CategoryName = "Teredo Client"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// In - Teredo Bubble: Total bubble packets received by the Teredo client.
   let ``In - Teredo Bubble`` instance =
     WinPerfCounter.create(CategoryName, "In - Teredo Bubble", instance)
@@ -16869,7 +17256,16 @@ module ``Teredo Relay`` =
   [<Literal>]
   let CategoryName = "Teredo Relay"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// In - Teredo Relay Error Packets: Destination Error: Total error packets( destination error) received by the Teredo relay.
   let ``In - Teredo Relay Error Packets: Destination Error`` instance =
     WinPerfCounter.create(CategoryName, "In - Teredo Relay Error Packets: Destination Error", instance)
@@ -16970,7 +17366,16 @@ module ``Teredo Server`` =
   [<Literal>]
   let CategoryName = "Teredo Server"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// In - Teredo Server Error Packets: Authentication Error: Total error packets( authentication error) received by the Teredo server.
   let ``In - Teredo Server Error Packets: Authentication Error`` instance =
     WinPerfCounter.create(CategoryName, "In - Teredo Server Error Packets: Authentication Error", instance)
@@ -17039,7 +17444,7 @@ module ``Terminal Services`` =
   [<Literal>]
   let CategoryName = "Terminal Services"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active Sessions: Number of active Terminal Services sessions
   let ``Active Sessions`` =
     WinPerfCounter.create(CategoryName, "Active Sessions", None)
@@ -17064,7 +17469,16 @@ module ``Terminal Services Session`` =
   [<Literal>]
   let CategoryName = "Terminal Services Session"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// % Privileged Time: % Privileged Time is the percentage of elapsed time that the process threads spent executing code in privileged mode. When a Windows system service is called, the service will often run in privileged mode to gain access to system-private data. Such data is protected from access by threads executing in user mode. Calls to the system can be explicit or implicit, such as page faults or interrupts. Unlike some early operating systems, Windows uses process boundaries for subsystem protection in addition to the traditional protection of user and privileged modes. Some work done by Windows on behalf of the application might appear in other subsystem processes in addition to the privileged time in the process.
   let ``% Privileged Time`` instance =
     WinPerfCounter.create(CategoryName, "% Privileged Time", instance)
@@ -17137,7 +17551,16 @@ module ``Thermal Zone Information`` =
   [<Literal>]
   let CategoryName = "Thermal Zone Information"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// % Passive Limit: % Passive Limit is the current limit this thermal zone is placing on the devices it controls. A limit of 100% indicates the devices are unconstrained. A limit of 0% indicates the devices are fully constrained.
   let ``% Passive Limit`` instance =
     WinPerfCounter.create(CategoryName, "% Passive Limit", instance)
@@ -17162,7 +17585,16 @@ module ``Thread`` =
   [<Literal>]
   let CategoryName = "Thread"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// % Privileged Time: % Privileged Time is the percentage of elapsed time that the process threads spent executing code in privileged mode.  When a Windows system service in called, the service will often run in privileged mode to gain access to system-private data. Such data is protected from access by threads executing in user mode. Calls to the system can be explicit or implicit, such as page faults or interrupts. Unlike some early operating systems, Windows uses process boundaries for subsystem protection in addition to the traditional protection of user and privileged modes. Some work done by Windows on behalf of the application might appear in other subsystem processes in addition to the privileged time in the process.
   let ``% Privileged Time`` instance =
     WinPerfCounter.create(CategoryName, "% Privileged Time", instance)
@@ -17223,7 +17655,7 @@ module ``UDPv4`` =
   [<Literal>]
   let CategoryName = "UDPv4"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Datagrams No Port/sec: Datagrams No Port/sec is the rate of received UDP datagrams for which there was no application at the destination port.
   let ``Datagrams No Port/sec`` =
     WinPerfCounter.create(CategoryName, "Datagrams No Port/sec", None)
@@ -17256,7 +17688,7 @@ module ``UDPv6`` =
   [<Literal>]
   let CategoryName = "UDPv6"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Datagrams No Port/sec: Datagrams No Port/sec is the rate of received UDP datagrams for which there was no application at the destination port.
   let ``Datagrams No Port/sec`` =
     WinPerfCounter.create(CategoryName, "Datagrams No Port/sec", None)
@@ -17289,7 +17721,16 @@ module ``USB`` =
   [<Literal>]
   let CategoryName = "USB"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// % Total Bandwidth Used for Interrupt: Displays the percentage of BW reserved for interrupt transfers
   let ``% Total Bandwidth Used for Interrupt`` instance =
     WinPerfCounter.create(CategoryName, "% Total Bandwidth Used for Interrupt", instance)
@@ -17370,7 +17811,7 @@ module ``W3SVC_W3WP`` =
   [<Literal>]
   let CategoryName = "W3SVC_W3WP"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// % 401 HTTP Response Sent: -
   let ``% 401 HTTP Response Sent`` instance =
     WinPerfCounter.create(CategoryName, "% 401 HTTP Response Sent", instance)
@@ -17583,7 +18024,7 @@ module ``WAS_W3WP`` =
   [<Literal>]
   let CategoryName = "WAS_W3WP"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active Listener Channels: -
   let ``Active Listener Channels`` instance =
     WinPerfCounter.create(CategoryName, "Active Listener Channels", instance)
@@ -17628,7 +18069,7 @@ module ``WF (System_Workflow) 4_0_0_0`` =
   [<Literal>]
   let CategoryName = "WF (System.Workflow) 4.0.0.0"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Workflows Aborted: -
   let ``Workflows Aborted`` instance =
     WinPerfCounter.create(CategoryName, "Workflows Aborted", instance)
@@ -17725,7 +18166,7 @@ module ``WFP`` =
   [<Literal>]
   let CategoryName = "WFP"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Provider Count: Provider Count is the number of providers registered with the Windows Filtering Platform.
   let ``Provider Count`` =
     WinPerfCounter.create(CategoryName, "Provider Count", None)
@@ -17743,7 +18184,7 @@ module ``WFPv4`` =
   [<Literal>]
   let CategoryName = "WFPv4"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active Inbound Connections: Active Inbound Connections is the number of current inbound connections allowed by the Windows Filtering Platform.
   let ``Active Inbound Connections`` =
     WinPerfCounter.create(CategoryName, "Active Inbound Connections", None)
@@ -17808,7 +18249,7 @@ module ``WFPv6`` =
   [<Literal>]
   let CategoryName = "WFPv6"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active Inbound Connections: Active Inbound Connections is the number of current inbound connections allowed by the Windows Filtering Platform.
   let ``Active Inbound Connections`` =
     WinPerfCounter.create(CategoryName, "Active Inbound Connections", None)
@@ -17873,7 +18314,16 @@ module ``WSMan Quota Statistics`` =
   [<Literal>]
   let CategoryName = "WSMan Quota Statistics"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Active Operations: Displays the current number of active operations for all users.
   let ``Active Operations`` instance =
     WinPerfCounter.create(CategoryName, "Active Operations", instance)
@@ -17914,7 +18364,16 @@ module ``Web Service`` =
   [<Literal>]
   let CategoryName = "Web Service"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Anonymous Users/sec: The rate users are making anonymous connections to the Web service.
   let ``Anonymous Users/sec`` instance =
     WinPerfCounter.create(CategoryName, "Anonymous Users/sec", instance)
@@ -18271,7 +18730,7 @@ module ``Web Service Cache`` =
   [<Literal>]
   let CategoryName = "Web Service Cache"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Active Flushed Entries: Active Flushed Entries are file handles cached in user-mode that will be closed when all current transfers complete.
   let ``Active Flushed Entries`` =
     WinPerfCounter.create(CategoryName, "Active Flushed Entries", None)
@@ -18448,7 +18907,7 @@ module ``WinNAT`` =
   [<Literal>]
   let CategoryName = "WinNAT"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Current Session Count: Total number of current sessions
   let ``Current Session Count`` =
     WinPerfCounter.create(CategoryName, "Current Session Count", None)
@@ -18517,7 +18976,7 @@ module ``WinNAT ICMP`` =
   [<Literal>]
   let CategoryName = "WinNAT ICMP"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// NumExtToIntTranslations: Total number of ICMP packets translated from external to internal.
   let ``NumExtToIntTranslations`` =
     WinPerfCounter.create(CategoryName, "NumExtToIntTranslations", None)
@@ -18554,7 +19013,7 @@ module ``WinNAT Instance`` =
   [<Literal>]
   let CategoryName = "WinNAT Instance"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// TCP Ports Available: -
   let ``TCP Ports Available`` instance =
     WinPerfCounter.create(CategoryName, "TCP Ports Available", instance)
@@ -18583,7 +19042,7 @@ module ``WinNAT SLB`` =
   [<Literal>]
   let CategoryName = "WinNAT SLB"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// DroppedPackets: -
   let ``DroppedPackets`` instance =
     WinPerfCounter.create(CategoryName, "DroppedPackets", instance)
@@ -18620,7 +19079,7 @@ module ``WinNAT TCP`` =
   [<Literal>]
   let CategoryName = "WinNAT TCP"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// NumExtToIntTranslations: Total number of TCP packets translated from external to internal.
   let ``NumExtToIntTranslations`` =
     WinPerfCounter.create(CategoryName, "NumExtToIntTranslations", None)
@@ -18657,7 +19116,7 @@ module ``WinNAT UDP`` =
   [<Literal>]
   let CategoryName = "WinNAT UDP"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// NumExtToIntTranslations: Total number of UDP packets translated from external to internal.
   let ``NumExtToIntTranslations`` =
     WinPerfCounter.create(CategoryName, "NumExtToIntTranslations", None)
@@ -18694,7 +19153,7 @@ module ``Windows Media Player Metadata`` =
   [<Literal>]
   let CategoryName = "Windows Media Player Metadata"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// AFTS Execution Time (ms): -
   let ``AFTS Execution Time (ms)`` instance =
     WinPerfCounter.create(CategoryName, "AFTS Execution Time (ms)", instance)
@@ -18775,7 +19234,7 @@ module ``Windows Workflow Foundation`` =
   [<Literal>]
   let CategoryName = "Windows Workflow Foundation"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Workflows Aborted: -
   let ``Workflows Aborted`` instance =
     WinPerfCounter.create(CategoryName, "Workflows Aborted", instance)
@@ -18872,7 +19331,7 @@ module ``WorkflowServiceHost 4_0_0_0`` =
   [<Literal>]
   let CategoryName = "WorkflowServiceHost 4.0.0.0"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Average Workflow Load Time: -
   let ``Average Workflow Load Time`` instance =
     WinPerfCounter.create(CategoryName, "Average Workflow Load Time", instance)
@@ -18969,7 +19428,7 @@ module ``XHCI CommonBuffer`` =
   [<Literal>]
   let CategoryName = "XHCI CommonBuffer"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// AllocationCount: -
   let ``AllocationCount`` instance =
     WinPerfCounter.create(CategoryName, "AllocationCount", instance)
@@ -18998,7 +19457,7 @@ module ``XHCI Interrupter`` =
   [<Literal>]
   let CategoryName = "XHCI Interrupter"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// DPCs/sec: -
   let ``DPCs/sec`` instance =
     WinPerfCounter.create(CategoryName, "DPCs/sec", instance)
@@ -19031,7 +19490,7 @@ module ``XHCI TransferRing`` =
   [<Literal>]
   let CategoryName = "XHCI TransferRing"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
   /// Bytes/Sec: -
   let ``Bytes/Sec`` instance =
     WinPerfCounter.create(CategoryName, "Bytes/Sec", instance)
@@ -19072,7 +19531,16 @@ module ``XTP Cursors`` =
   [<Literal>]
   let CategoryName = "XTP Cursors"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Cursor deletes/sec: The number of cursor deletes (on average), per second.
   let ``Cursor deletes/sec`` instance =
     WinPerfCounter.create(CategoryName, "Cursor deletes/sec", instance)
@@ -19133,7 +19601,16 @@ module ``XTP Garbage Collection`` =
   [<Literal>]
   let CategoryName = "XTP Garbage Collection"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Dusty corner scan retries/sec (GC-issued): The number of scan retries due to write conflicts during dusty corner sweeps issued by the garbage collector (on average), per second. This is a very low-level counter, not intended for customer use.
   let ``Dusty corner scan retries/sec (GC-issued)`` instance =
     WinPerfCounter.create(CategoryName, "Dusty corner scan retries/sec (GC-issued)", instance)
@@ -19198,7 +19675,16 @@ module ``XTP Phantom Processor`` =
   [<Literal>]
   let CategoryName = "XTP Phantom Processor"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Dusty corner scan retries/sec (Phantom-issued): The number of scan retries due to write conflicts during dusty corner sweeps issued by the phantom processor (on average), per second. This is a very low-level counter, not intended for customer use.
   let ``Dusty corner scan retries/sec (Phantom-issued)`` instance =
     WinPerfCounter.create(CategoryName, "Dusty corner scan retries/sec (Phantom-issued)", instance)
@@ -19235,7 +19721,16 @@ module ``XTP Storage`` =
   [<Literal>]
   let CategoryName = "XTP Storage"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Checkpoints Closed: Count of checkpoints closed done by online agent
   let ``Checkpoints Closed`` instance =
     WinPerfCounter.create(CategoryName, "Checkpoints Closed", instance)
@@ -19280,7 +19775,16 @@ module ``XTP Transaction Log`` =
   [<Literal>]
   let CategoryName = "XTP Transaction Log"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Log bytes written/sec: The number of bytes written to the SQL Server transaction log by the XTP engine (on average), per second.
   let ``Log bytes written/sec`` instance =
     WinPerfCounter.create(CategoryName, "Log bytes written/sec", instance)
@@ -19301,7 +19805,16 @@ module ``XTP Transactions`` =
   [<Literal>]
   let CategoryName = "XTP Transactions"
 
-  let PCC = Category.create CategoryName
+  let PerfCat = Category.create CategoryName
+
+  /// Returns an array of the instances available on this node/machine.
+  let instances () =
+    PerfCat
+    |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
+    |> Array.filter (function
+      | Some inst -> not (Array.contains inst KnownInstances.All)
+      | None -> false)
+
   /// Cascading aborts/sec: The number of transactions that rolled back to due a commit dependency rollback (on average), per second.
   let ``Cascading aborts/sec`` instance =
     WinPerfCounter.create(CategoryName, "Cascading aborts/sec", instance)

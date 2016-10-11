@@ -609,6 +609,7 @@ type Units =
   | Kelvins
   | Moles
   | Candelas
+  | Percent
   | Other of unit:string
   // E.g. to denote nano-seconds since epoch;
   // 1474139353507070000 would be Scaled(Seconds, 10.**9.) since year 1970

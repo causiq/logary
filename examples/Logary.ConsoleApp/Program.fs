@@ -34,39 +34,36 @@ module internal Sample =
       | _ ->
         state
 
-    let toValue (counter : PerfCounter, pc : PC) =
-      let value = WinPerfCounter.nextValue pc
-      Float value
-      |> Message.derivedWithUnit pn Units.Scalar
+    let toValue (counter : WinPerfCounter, pc : PerformanceCounter) =
+      Float (float (pc.NextValue ()))
+      |> Message.derivedWithUnit pn (counter.unit |> Option.fold (fun s t -> t) Units.Scalar)
       |> Message.setName (PointName.ofPerfCounter counter)
 
     let ticker state =
-      state, state |> List.map toValue
+      state, state |> Array.map toValue |> List.ofArray
 
     Metric.create reducer counters ticker
-
-  let cpuTime pn : Job<Metric> =
-    metricFrom WinPerfCounters.Common.cpuTime pn
 
   // Sample metrics from two M6000 graphics cards
   let m6000s pn : Job<Metric> =
     let gpu counter instance =
       { category = "GPU"
         counter  = counter
-        instance = Instance instance }
+        instance = Some instance
+        unit     = None }
 
     let counters =
-      [ for inst in [ "08:00"; "84:00" ] do
-          let inst' = sprintf "quadro m6000(%s)" inst
-          yield gpu "GPU Fan Speed (%)" inst'
-          yield gpu "GPU Time (%)" inst'
-          yield gpu "GPU Memory Usage (%)" inst'
-          yield gpu "GPU Memory Used (MB)" inst'
-          yield gpu "GPU Power Usage (Watts)" inst'
-          yield gpu "GPU SM Clock (MHz)" inst'
-          yield gpu "GPU Temperature (degrees C)" inst'
-      ]
-      |> WinPerfCounters.Common.ofPerfCounters
+      [| for inst in [ "08:00"; "84:00" ] do
+           let inst' = sprintf "quadro m6000(%s)" inst
+           yield gpu "GPU Fan Speed (%)" inst'
+           yield gpu "GPU Time (%)" inst'
+           yield gpu "GPU Memory Usage (%)" inst'
+           yield gpu "GPU Memory Used (MB)" inst'
+           yield gpu "GPU Power Usage (Watts)" inst'
+           yield gpu "GPU SM Clock (MHz)" inst'
+           yield gpu "GPU Temperature (degrees C)" inst'
+      |]
+      |> WinPerfCounters.ofPerfCounters
 
     metricFrom counters pn
 
@@ -223,22 +220,26 @@ let main argv =
   use logary =
     withLogaryManager "Logary.ConsoleApp" (
       withTargets [
-        Console.create Console.empty "console"
+        LiterateConsole.create LiterateConsole.empty "console"
         Console.create Console.empty "fatal"
         //RabbitMQ.create rmqConf "rabbitmq"
-        //InfluxDb.create (InfluxDb.InfluxDbConf.create(Uri "http://192.168.99.100:8086/write", "logary", batchSize = 500us))
-        //                "influxdb"
+        InfluxDb.create (InfluxDb.InfluxDbConf.create(Uri "http://192.168.99.100:8086/write", "logary", batchSize = 500us))
+                        "influxdb"
       ] >>
       withMetrics [
         MetricConf.create (Duration.FromSeconds 10L) "Logary.ConsoleApp.sampleTiming" (Timing.metric timing)
         MetricConf.create (Duration.FromMilliseconds 500L) "Logary.ConsoleApp.randomWalk" (fun _ -> upcast randomness)
         //WinPerfCounters.create (WinPerfCounters.Common.cpuTimeConf) "cpuTime" (Duration.FromMilliseconds 500L)
-        //MetricConf.create (Duration.FromMilliseconds 5000L) "cpu" Sample.cpuTime
+        MetricConf.create (Duration.FromMilliseconds 5000L) "app" WinPerfCounters.appMetrics
+        MetricConf.create (Duration.FromMilliseconds 5000L) "system" WinPerfCounters.systemMetrics
         //MetricConf.create (Duration.FromMilliseconds 500L) "gpu" Sample.m6000s
       ] >>
       withRules [
         Rule.createForTarget "console"
         |> Rule.setHieraString "sampleTiming$"
+        
+        Rule.createForTarget "console" |> Rule.setHieraString "app|system"
+        Rule.createForTarget "influxdb" |> Rule.setHieraString "app|system"
 
         Rule.createForTarget "fatal"
         |> Rule.setLevel Fatal
@@ -247,7 +248,11 @@ let main argv =
       ] >>
       withInternalTargets Info [
         Console.create Console.empty "console"
-      ]
+      ] >>
+      withMiddleware (fun next msg ->
+        msg
+        |> Message.setContextValue "host" (String (System.Net.Dns.GetHostName()))
+        |> next)
     )
     |> run
 
