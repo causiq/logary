@@ -3,6 +3,7 @@
 open System
 open Logary
 open Logary.HealthCheck
+open Logary.Metrics
 open Logary.Metrics.WinPerfCounter
 open Hopac
 
@@ -14,7 +15,7 @@ open Hopac
 /// in a Measure before returning. Suggested is to use `HealthChecks.setDesc`
 /// to give the measure a nice description with detailed data.
 let toHealthCheckNamed name wpc measureTransform =
-  match toPC wpc with
+  match toWindowsCounter wpc with
   | Some counter ->
     { new HealthCheck with
         member x.name = name
@@ -35,16 +36,13 @@ let toHealthCheckNamed name wpc measureTransform =
   | None ->
     createDead name
 
-let toHealthCheck wpc =
+let toHealthCheck (wpc : WinPerfCounter) =
   let name =
     [| yield wpc.category;
        yield wpc.counter
        match wpc.instance with
-       | NotApplicable ->
-         ()
-
-       | Instance i ->
-         yield i
+       | None -> ()
+       | Some i -> yield i
     |]
 
   toHealthCheckNamed (PointName name) wpc

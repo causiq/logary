@@ -12,41 +12,32 @@ module Common =
 
   let ofPerfCounters counters =
     counters
-    |> List.map (fun counter -> counter, toPC counter)
-    |> List.filter (snd >> Option.isSome)
-    |> List.map (fun (counter, pc) -> counter, Option.get pc)
-
+    |> Array.map (fun counter -> counter, toWindowsCounter counter)
+    |> Array.filter (snd >> Option.isSome)
+    |> Array.map (fun (counter, pc) -> counter, Option.get pc)
 
   let system =
-    [ System.``Context Switches/sec``
-      System.``Processor Queue Length`` ]
-    |> ofPerfCounters
-
-  let dotnet instance =
-    [ ``_NET CLR Memory``.``Gen 0 Promoted Bytes/Sec`` instance
-      ``_NET CLR Memory``.``Gen 1 Promoted Bytes/Sec`` instance
-      ``_NET CLR Memory``.``# Bytes in all Heaps`` instance
-      ``_NET CLR Exceptions``.``# of Exceps Thrown / sec`` instance
-    ]
+    [| System.``Context Switches/sec``
+       System.``Processor Queue Length`` |]
     |> ofPerfCounters
 
   let cpuTime =
-    [ Processor.``% Processor Time``
-      Processor.``% User Time``
-      Processor.``% Interrupt Time``
-      Processor.``% Privileged Time``
-      Processor.``Interrupts/sec``
-      Processor.``% Idle Time`` 
-    ]
-    |> List.map (fun f -> f (Instance KnownInstances._Total))
+    [| Processor.``% Processor Time``
+       Processor.``% User Time``
+       Processor.``% Interrupt Time``
+       Processor.``% Privileged Time``
+       Processor.``Interrupts/sec``
+       Processor.``% Idle Time`` 
+    |]
+    |> Array.map (fun f -> f (Some KnownInstances._Total))
     |> ofPerfCounters
 
   let proc instance =
-    [ Process.``% Processor Time`` instance
-      Process.``% User Time`` instance
-      Process.``% Privileged Time`` instance
-      Process.``Virtual Bytes`` instance
-    ]
+    [| Process.``% Processor Time`` instance
+       Process.``% User Time`` instance
+       Process.``% Privileged Time`` instance
+       Process.``Virtual Bytes`` instance
+    |]
     |> ofPerfCounters
 
   /// Useful ASP.Net counters, from
@@ -59,34 +50,37 @@ module Common =
   ///
   /// Use WinPerfCounter.pidInstance () to get the current process' instance.
   let recommended instance =
-    cpuTime
-    @ proc instance
-    @ dotnet instance
+    Array.concat [
+      cpuTime
+      proc instance
+    ]
 
   let recommendedProc () =
-    let procInstance = pidInstance ()
-    cpuTime
-    @ proc procInstance
-    @ dotnet procInstance
+    let procInstance = Helpers.pidInstance ()
+    Array.concat [
+      cpuTime
+      proc procInstance
+    ]
 
   let byCategory pcc =
-    WinPerfCounter.getPCC pcc
+    Category.create pcc
     // gets all the instances for this performance counter category
-    |> Option.map (fun pcc -> pcc, getInstances pcc)
+    |> Option.map (fun pcc -> pcc, Category.instances pcc)
     // transform the list of instances into a list
     |> Option.map (fun (pcc, instances) ->
       instances
       // find all counters for these instances (instance = actual GPU instance)
-      |> List.collect (getCounters pcc)
+      |> Array.collect (WinPerfCounter.list pcc)
       // get the Diagnostics perf counters for them
       |> ofPerfCounters)
     
 /// A list of "common" performance metrics.
 open WinPerfCounter
 
-let private ofCounters counters =
+let private ofCounters (counters : (WinPerfCounter * PerformanceCounter) []) =
   let reducer state msg = state
-  let ticker (state : (PerfCounter * PC) list) = state, state |> List.map PerfCounter.toValue
+  let ticker (state : (WinPerfCounter * PerformanceCounter) []) =
+    state, state |> Seq.map Helpers.toValue |> List.ofSeq
   Metric.create reducer counters ticker
 
 /// The "GPU" category is installed by the nVIDIA drivers
@@ -97,7 +91,6 @@ let gpuMetrics _ : Job<Metric> =
   match tryGPUMetric () with
   | None ->
     failwith "No GPUs configured (or drivers thereof) on this machine"
-
   | Some metric ->
     metric
 
