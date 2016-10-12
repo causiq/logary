@@ -491,18 +491,17 @@ module internal Formatting =
     matchedFields, System.String.Concat(themedParts |> List.map fst)
 
   let literateExceptionColouriser (options : LiterateOptions) (ex : exn) =
-    let stackFrameLinePrefix = "   "
+    let stackFrameLinePrefix = "   at" // 3 spaces
+    let monoStackFrameLinePrefix = "  at" // 2 spaces
     use exnLines = new System.IO.StringReader(ex.ToString())
     let rec go lines =
       match exnLines.ReadLine() with
       | null ->
         List.rev lines // finished reading
       | line ->
-        if line.StartsWith(stackFrameLinePrefix) then
+        if line.StartsWith(stackFrameLinePrefix) || line.StartsWith(monoStackFrameLinePrefix) then
           // subtext
           go ((line, Subtext) :: (Environment.NewLine, Text) :: lines)
-        else if String.IsNullOrWhiteSpace line then
-          go lines
         else
           // regular text
           go ((line, Text) :: (Environment.NewLine, Text) :: lines)
