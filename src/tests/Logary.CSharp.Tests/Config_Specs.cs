@@ -106,7 +106,7 @@ namespace Logary.CSharp.Tests
                 flushThrown = Catch.Exception(() => manager.FlushPending(Duration.FromSeconds(8L)).Wait());
             };
 
-        //Cleanup afterwards = () => manager.Dispose();
+        Cleanup afterwards = () => manager.DisposeAsync().ToTask().Wait();
 
         It should_not_throw_when_writing_to_Logger_instance = () => thrownException.ShouldBeNull();
         It should_not_throw_when_calling_FlushPending = () => flushThrown.ShouldBeNull();
