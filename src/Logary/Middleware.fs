@@ -4,18 +4,19 @@ open System.Net
 open Logary
 open Logary.Utils.Aether
 
+/// The type-signature for middleware; next:(Message -> Message) -> Message -> Message.
 type Mid =
   (Message -> Message) -> Message -> Message
 
 let identity : Mid =
   fun next msg -> next msg
 
-let hostname : Mid =
+let host : Mid =
   let hn = Value.String (Dns.GetHostName())
 
   fun next msg ->
     msg
-    |> Message.setContextValue "hostname" hn
+    |> Message.setContextValue "host" hn
     |> next
 
 let service (name : string) : Mid =
@@ -26,27 +27,9 @@ let service (name : string) : Mid =
     |> Message.setContextValue "service" value
     |> next
 
-type State<'s> =
-  private { x : 's }
-
-module StateModule =
-
-  let dispatch state msg =
-    msg
-
 let compose : Mid list -> Message -> Message = function
   | [] ->
     id
 
   | middlewares ->
     List.foldBack (fun f composed -> f composed) middlewares id
-
-module Common =
-
-  let addHostName next msg =
-    let hostname = System.Net.Dns.GetHostName()
-    let newMessage = 
-      msg 
-      |> Logary.Message.setContext "hostname" hostname        
-
-    newMessage |> next

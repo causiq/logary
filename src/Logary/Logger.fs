@@ -59,8 +59,14 @@ type Logger =
 type LoggerScope =
   inherit IDisposable
   inherit Logger
+
+type TimeScope =
+  inherit LoggerScope
+
   /// Gets the currently elapsed duration of this time scope scope.
   abstract elapsed : Duration
+
+  //abstract bisect : (LogLevel -> Message) -> Alt<Promise<unit>>
 
 /// The Logger module provides functions for expressing how a Message should be
 /// logged.
@@ -325,10 +331,10 @@ module Logger =
   let timeScopeT (logger : Logger)
                  (nameEnding : string)
                  (transform : Message -> Message)
-                 : LoggerScope =
+                 : TimeScope =
     let name = logger.name |> PointName.setEnding nameEnding
     let sw = Stopwatch.StartNew()
-    { new LoggerScope with
+    { new TimeScope with
         member x.Dispose () =
           sw.Stop()
           let value, units = sw.toGauge()

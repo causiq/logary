@@ -56,9 +56,21 @@ and ConfBuilder(conf) =
   /// Call this method to add middleware to Logary. Middleware is useful for interrogating
   /// the context that logging is performed in. It can for example ensure all messages
   /// have a context field 'service' that specifies what service the code is running in.
+  ///
+  /// Please see Logary.Middleware for common middleware to use.
   member x.Use(middleware : Func<Func<Message, Message>, Func<Message, Message>>) : ConfBuilder =
     conf
     |> Config.withMiddleware (fun next msg -> middleware.Invoke(new Func<_,_>(next)).Invoke msg)
+    |> ConfBuilder
+    
+  /// Call this method to add middleware to Logary. Middleware is useful for interrogating
+  /// the context that logging is performed in. It can for example ensure all messages
+  /// have a context field 'service' that specifies what service the code is running in.
+  ///
+  /// Please see Logary.Middleware for common middleware to use.
+  member x.Use(middleware : Middleware.Mid) : ConfBuilder =
+    conf
+    |> Config.withMiddleware middleware
     |> ConfBuilder
 
   /// Configure a target of the type with a name specified by the parameter name.

@@ -87,7 +87,7 @@ module Shipper =
           //Console.create (Console.empty) (PointName.ofSingle "console")
           create shipperConf "rutta-shipper"
         ]
-        >> withMiddleware Middleware.Common.addHostName
+        >> withMiddleware Middleware.host
         >> withMetrics [
           createMetric "systemMetrics" WinPerfCounters.systemMetrics
         ]
