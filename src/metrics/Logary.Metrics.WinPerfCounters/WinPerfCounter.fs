@@ -157,9 +157,25 @@ type WinPerfCounterInstance =
 
 module PointName =
   open Logary
+  open System.Text
+
+  let private replacements =
+    Map [
+      '.', '-'
+    ]
+
+  let private cleanAtomic (str : string) =
+    let sb = StringBuilder()
+    for c in str do
+      for KeyValue (from, too) in replacements do
+        if c = from then
+          sb.Append too |> ignore
+        else
+          sb.Append c |> ignore
+    sb.ToString()
 
   let ofPerfCounter (counter : WinPerfCounter) =
-    PointName [| counter.category; counter.counter |]
+    PointName [| cleanAtomic counter.category; cleanAtomic counter.counter |]
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module WinPerfCounter =
