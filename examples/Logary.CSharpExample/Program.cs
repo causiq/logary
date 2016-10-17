@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using NodaTime;
 using Logary;
 using Logary.Configuration;
+using Logary.Metrics;
 using Logary.Targets;
 
 /*
@@ -83,38 +85,39 @@ namespace Logary.CSharpExample
         public static int Main(string[] args)
         {
             using (var logary = LogaryFactory.New("Logary.CSharpExample",
-                with => with
-                    //.WithInternalLevel(LogLevel.Verbose)
-                    //.Metrics(m => m.WithAllCounters())
-                    .Target<TextWriter.Builder>(
-                    "console1",
-                    conf =>
-                    conf.Target.WriteTo(System.Console.Out, System.Console.Error)
-                        .MinLevel(LogLevel.Verbose)
-                        .AcceptIf(line => true)
-                        .SourceMatching(new Regex(".*"))
-                    )
-                    .Target<Graphite.Builder>(
-                        "graphite",
-                        conf => conf.Target.ConnectTo("127.0.0.1", 2131)
-                    )
-                    .Target<Debugger.Builder>("debugger")
-                    .Target<Logstash.Builder>(
-                        "logstash",
-                        conf => conf.Target
-                            .PublishTo("logstash.service")
-                            .LogMetrics()
-                            .Done()
-                    )
-                    .Target<ElasticSearch.Builder>(
-                        "es",
-                        conf => conf.Target
-                            .PublishTo("elasticsearch.service")
-                            .Type("logs") // index-name
-                            .Done()
-                    )
-                    .Target<InfluxDb.Builder>("influx",
-                                              conf => conf.Target.DB("http://influxdb.service:8086").Done())
+                with => with.InternalLoggingLevel(LogLevel.Debug)
+                        .Metrics(m =>
+                            m.AddMetric(Duration.FromSeconds(3L), "appMetrics", WinPerfCounters.appMetrics)
+                             .AddMetric(Duration.FromSeconds(3L), "systemMetrics", WinPerfCounters.systemMetrics))
+                        .Target<TextWriter.Builder>(
+                        "console1",
+                        conf =>
+                        conf.Target.WriteTo(System.Console.Out, System.Console.Error)
+                                .MinLevel(LogLevel.Verbose)
+                                .AcceptIf(line => true)
+                                .SourceMatching(new Regex(".*"))
+                            )
+                            .Target<Graphite.Builder>(
+                                "graphite",
+                                conf => conf.Target.ConnectTo("127.0.0.1", 2131)
+                            )
+                            .Target<Debugger.Builder>("debugger")
+                            .Target<Logstash.Builder>(
+                                "logstash",
+                                conf => conf.Target
+                                    .PublishTo("logstash.service")
+                                    .LogMetrics()
+                                    .Done()
+                            )
+                            .Target<ElasticSearch.Builder>(
+                                "es",
+                                conf => conf.Target
+                                    .PublishTo("elasticsearch.service")
+                                    .Type("logs") // index-name
+                                    .Done()
+                            )
+                            .Target<InfluxDb.Builder>("influx",
+                                                      conf => conf.Target.DB("http://influxdb.service:8086").Done())
                 ).Result)
             {
                 var logger = logary.GetLogger("Logary.CSharpExample");

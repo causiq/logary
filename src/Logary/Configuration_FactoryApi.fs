@@ -11,7 +11,9 @@ open System.Threading.Tasks
 open System.Runtime.CompilerServices
 open Hopac
 open Hopac.Infixes
+open NodaTime
 open Logary
+open Logary.Metric
 open Logary.Internals
 open Logary.Configuration
 open Logary.Target
@@ -41,6 +43,16 @@ with
       :> TargetConfBuild<'T>
 
     member x.Target = x.tcSpecific.Value
+
+and internal MetricsConfBuilder(conf) =
+  member x.conf = conf
+
+  interface MetricsConfBuild with
+    member x.AddMetric (pollEvery : Duration, name: string, metricFactory : Func<PointName, Job<Metric>>) =
+      conf
+      |> Config.withMetric (MetricConf.create pollEvery name (Funcs.ToFSharpFunc metricFactory))
+      |> MetricsConfBuilder
+      :> MetricsConfBuild
 
 /// The "main" fluent-config-api type with extension method for configuring
 /// Logary rules as well as configuring specific targets.
@@ -73,6 +85,14 @@ and ConfBuilder(conf) =
     |> Config.withMiddleware middleware
     |> ConfBuilder
 
+  member x.Metrics(configurator : Func<MetricsConfBuild, MetricsConfBuild>) =
+    let builder = MetricsConfBuilder conf
+
+    let built = configurator.Invoke builder
+    
+    built :?> MetricsConfBuilder
+    |> fun builder -> ConfBuilder builder.conf
+
   /// Configure a target of the type with a name specified by the parameter name.
   /// The callback, which is the second parameter, lets you configure the target.
   member x.Target<'T when 'T :> SpecificTargetConf>(name : string, f : Func<TargetConfBuild<'T>, TargetConfBuild<'T>>) : ConfBuilder =
@@ -104,10 +124,6 @@ and ConfBuilder(conf) =
     |> withRule targetConf.tr
     |> withTarget (targetConf.tcSpecific.Value.Build name)
     |> ConfBuilder
-
-  member x.Metrics(configurator : Func<MetricsConfBuild, MetricsConfBuild>) =
-    // TODO: implement API for configuring metrics
-    conf |> ConfBuilder
 
 /// Extensions to make it easier to construct Logary
 [<Extension; AutoOpen>]

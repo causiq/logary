@@ -6,6 +6,7 @@ module Logary.Target
 
 open Hopac
 open Hopac.Infixes
+open NodaTime
 open Logary
 open Logary.Internals
 
@@ -195,7 +196,8 @@ module FactoryApi =
     abstract AcceptIf : Func<Message, bool> -> TargetConfBuild<'T>
 
   type MetricsConfBuild =
-    abstract member Foo : unit -> MetricsConfBuild
+    // TODO: nest one more level here...
+    abstract member AddMetric : Duration * string * Func<PointName, Job<Logary.Metric.Metric>> -> MetricsConfBuild
 
   /// All SpecificTargetConf implementors should take this as their single argument
   /// ctor, to go back into the parent context

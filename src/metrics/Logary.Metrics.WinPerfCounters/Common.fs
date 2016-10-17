@@ -178,8 +178,8 @@ let networkInterface pn =
   | Some metric ->
     metric
 
-let appMetrics _ : Job<Metric> =
+let appMetrics (_ : PointName) : Job<Metric> =
   ofCounters (appCounters ())
 
-let systemMetrics _ : Job<Metric> =
+let systemMetrics (_ : PointName) : Job<Metric> =
   ofCounters (systemCounters ())
