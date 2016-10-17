@@ -10,18 +10,14 @@ open Logary.Metrics.AllWinPerfCounters
 
 let ofPerfCounters counters =
   counters
-  |> Array.map (fun counter -> counter, toWindowsCounter counter)
-  |> Array.filter (snd >> Option.isSome)
-  |> Array.map (fun (counter, pc) -> counter, Option.get pc)
+  |> Array.map toWindowsCounter
+  |> Array.filter Option.isSome
+  |> Array.map Option.get
 
 let private forInstances instancesFactory unitsAndCounters =
-  let instances = instancesFactory ()
-  unitsAndCounters |> Array.collect (fun (units, create) ->
-    instances |> Array.choose (function
-      | None ->
-        None
-      | instance ->
-        Some (units, create instance)))
+  let instances : string [] = instancesFactory ()
+  unitsAndCounters |> Array.map (fun (units : Units, create : string [] -> WinPerfCounter) -> 
+    units, create instances)
 
 let private forInstance instanceFactory unitsAndCounters =
   forInstances (fun () -> [| instanceFactory () |]) unitsAndCounters
@@ -37,7 +33,7 @@ let systemCounters () =
        Percent,               Processor.``% Privileged Time``
        Div (Scalar, Seconds), Processor.``Interrupts/sec``
        Percent,               Processor.``% Idle Time`` 
-    |] |> Array.map (fun (units, f) -> units, f (Some KnownInstances._Total))
+    |] |> Array.map (fun (units, f) -> units, f [ KnownInstances._Total ])
 
     [| Bytes,                 Memory.``Available Bytes``
        Div (Scalar, Seconds), Memory.``Page Faults/sec``
@@ -85,7 +81,6 @@ let systemCounters () =
   |> ofPerfCounters
 
 let appCounters () =
-  let instance = Helpers.pidInstance ()
   let clrMem counter inst = WinPerfCounter.create(".NET CLR Memory", counter, inst)
   let clrExn counter inst = WinPerfCounter.create(".NET CLR Exceptions", counter, inst)
   let clrLocks counter inst = WinPerfCounter.create(".NET CLR LocksAndThreads", counter, inst)
@@ -122,7 +117,7 @@ let appCounters () =
        Div (Scalar, Seconds), "Queue Length / sec"
     |] |> Array.map (fun (units, counter) -> units, clrLocks counter)
   ]
-  |> forInstance Helpers.pidInstance
+  |> forInstance (Helpers.pidInstance >> Option.get)
   |> Array.map (fun (units, wpc) -> wpc |> WinPerfCounter.setUnit units)
   |> ofPerfCounters
 
@@ -131,17 +126,12 @@ let byCategory pcc =
   // gets all the instances for this performance counter category
   |> Option.map (fun pcc -> pcc, Category.instances pcc)
   // transform the list of instances into a list
-  |> Option.map (fun (pcc, instances) ->
-    instances
-    // find all counters for these instances (instance = actual GPU instance)
-    |> Array.collect (WinPerfCounter.list pcc)
-    // get the Diagnostics perf counters for them
-    |> ofPerfCounters)
-    
-let private ofCounters (counters : (WinPerfCounter * PerformanceCounter) []) =
+  |> Option.map (fun (pcc, instances) -> WinPerfCounter.list pcc instances)
+
+let ofCounters (counters : WinPerfCounterInstance []) =
   let reducer state msg = state
-  let ticker (state : (WinPerfCounter * PerformanceCounter) []) =
-    state, state |> Seq.map Helpers.toValue |> List.ofSeq
+  let ticker (state : WinPerfCounterInstance []) =
+    state, state |> Array.map Helpers.toValue
   Metric.create reducer counters ticker
 
 /// The "GPU" category is installed by the nVIDIA drivers

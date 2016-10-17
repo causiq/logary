@@ -37,7 +37,7 @@ let validate (conf : MetricConf) =
 
 let create (reduce : 'state -> Value * Units -> 'state)
            initial
-           (handleTick : 'state -> 'state * Message list)
+           (handleTick : 'state -> 'state * Message [])
            : Job<Metric> =
 
   let self =
@@ -58,7 +58,7 @@ let create (reduce : 'state -> Value * Units -> 'state)
         // first publish the previous messages
         msgs |> List.fold publish emptyResult
         // now publish the new ones
-        |> Job.bind (fun _ -> msgs' |> List.fold publish emptyResult)
+        |> Job.bind (fun _ -> msgs' |> Array.fold publish emptyResult)
         |> Job.map (fun _ -> state', [])
 
       self.updateCh ^-> (reduce state >> fun s -> s, msgs)

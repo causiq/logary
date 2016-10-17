@@ -43,7 +43,7 @@ module Category =
   /// Gets all available instance names for the given list of performance counter
   /// categories
   let instances (category : Category) : _ [] =
-    category.GetInstanceNames() |> Array.map Some
+    category.GetInstanceNames()
 
   /// Checks whether the instance exists in the category
   let instanceExists (category : string) (instance : string) =
@@ -82,38 +82,84 @@ type CategoryType = PerformanceCounterCategoryType
 ///
 /// Updated every 400 ms by Windows.
 type WinPerfCounter =
-  { category : string
-    counter  : string
-    instance : string option
-    unit     : Units option }
+  { category  : string
+    counter   : string
+    instances : Set<string>
+    unit      : Units option }
+
+  member x.baseName =
+    PointName [| x.category; x.counter |]
 
   member x.findCategory () =
     Category.create x.category
 
   /// Creates a new WinPerfCounter from the passed strings.
-  static member create(category, counter, instance : string option) =
-    { category = category
-      counter  = counter
-      instance = instance
-      unit     = None }
+  static member create(category, counter, instances : string seq) =
+    { category  = category
+      counter   = counter
+      instances = Set.ofSeq instances
+      unit      = None }
 
   /// Creates a new WinPerfCounter from the passed strings.
-  static member create(category, counter, instance, units) =
-    { category = category
-      counter  = counter
-      instance = instance
-      unit     = units }
+  static member create(category, counter, instances, units) =
+    { category  = category
+      counter   = counter
+      instances = instances
+      unit      = units }
+
+type WinPerfCounterInstance =
+  { category  : Category
+    counter   : PerformanceCounter
+    instances : string []
+    unit      : Units
+    baseName  : PointName }
+
+  /// This W P C is 'singleton' and doesn't have neither a 'global single instance' nor 'instances'.
+  member x.isNotInstanceBased =
+    Array.isEmpty x.instances && x.counter.CounterName <> ""
+
+  member x.isSingleInstance =
+    x.counter.CounterName = ""
+
+  member x.isMultiInstance =
+    not (Array.isEmpty x.instances)
+
+  /// Only call when instances are one or zero in count.
+  member x.nextValue () =
+    if x.instances = [||] then
+      x.baseName,
+      float (x.counter.NextValue())
+    elif Array.length x.instances = 1 then
+      x.baseName |> PointName.setEnding x.instances.[0],
+      float (x.counter.NextValue())
+    else
+      failwithf "Cannot get single value for %O with there are %i instances available"
+                x.baseName x.instances.Length
+
+  /// Get the instance-value, value -pairs for this Windows Performance Counter instance.
+  /// The PointNames will only contain the instance names, not the base name.
+  member x.nextValues () =
+    x.instances
+    |> Array.map (fun instance ->
+      x.counter.InstanceName <- instance
+      let sample = x.counter.NextSample()
+      printfn "%A" sample
+      instance,
+      Float (float (x.counter.NextValue()))
+    )
+
+  static member create(category, counter, instances : string seq, units) =
+    { category  = category
+      counter   = counter
+      instances = Array.ofSeq instances
+      unit      = defaultArg units Scalar
+      baseName  = PointName [| category.CategoryName; counter.CounterName |] }
 
 module PointName =
   open Logary
 
   let ofPerfCounter (counter : WinPerfCounter) =
-    PointName <|
-      match counter.instance with
-      | None ->
-        [| counter.category; counter.counter |]
-      | Some inst ->
-        [| counter.category; counter.counter; inst |]
+    PointName [| counter.category; counter.counter |]
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module WinPerfCounter =
@@ -133,20 +179,46 @@ module WinPerfCounter =
     let All = [| _Total; _Global_; Default |]
 
   /// Gets a list of performance counters for the given instance and category.
-  let list (pcc : Category) (instance : string option) : WinPerfCounter [] =
+  let list (pcc : Category) (instances : string seq) : WinPerfCounterInstance [] =
     try
-      match instance with
-      | None ->
-        try pcc.GetCounters ()
+      match Array.ofSeq instances with
+      | [||] ->
+        try
+          pcc.GetCounters ()
+          |> Array.map (fun c -> WinPerfCounterInstance.create(pcc, c, Set.empty, None))
         // I haven't found a way to check this properly; not all categories return
         // errors like this:
         // System.ArgumentException: Counter is not single instance, an instance name needs to be specified.
         with :? ArgumentException ->
           Array.empty
 
-      | Some instance -> pcc.GetCounters instance
-      |> Array.map (fun pc ->
-        WinPerfCounter.create (pcc.CategoryName, pc.CounterName, instance))
+      | instances ->
+        let i2cf m inst =
+          match m |> Map.tryFind inst with
+          | None   -> m |> Map.add inst (pcc.GetCounters inst)
+          | Some _ -> m
+
+        // (instance to counters) map
+        let i2c = instances |> Array.fold i2cf Map.empty
+
+        // (inst -> counter list) map to (counter -> instance list) map
+        let c2if m inst ctrs : Map<string, PerformanceCounter * string list> =
+
+          let c2ifInner (m : Map<string, PerformanceCounter * string list>) (counter : PerformanceCounter) =
+            match m |> Map.tryFind counter.CounterName with
+            | None ->
+              m |> Map.add counter.CounterName (counter, [ inst ])
+            | Some (counter, xinstances) ->
+              m |> Map. add counter.CounterName (counter, (inst :: xinstances))
+
+          ctrs |> Array.fold c2ifInner m
+
+        let c2i = i2c |> Map.fold c2if Map.empty
+
+        c2i
+        |> Seq.map (fun (KeyValue (_, (counter, instances))) ->
+          WinPerfCounterInstance.create(pcc, counter, instances, None))
+        |> Array.ofSeq
 
     with
     | :? InvalidOperationException ->
@@ -156,27 +228,37 @@ module WinPerfCounter =
       Array.empty
 
   /// Create a new performance counter given a WinPerfCounter.
-  let toWindowsCounter (counter : WinPerfCounter) : PerformanceCounter option =
+  let toWindowsCounter (counter : WinPerfCounter) : WinPerfCounterInstance option =
     if Category.exists counter.category counter.counter then
-      match counter.instance with
-      | Some inst when true -> // this is bugged on mono: instanceExists cat inst ->
-        let pc = new PerformanceCounter(counter.category, counter.counter, inst, true)
-        Some pc
+      let category = Category.createForce counter.category
+
+      match counter.instances with
+      | instances when not (Set.isEmpty instances) ->
+        WinPerfCounterInstance.create (
+          category,
+          new PerformanceCounter(counter.category, counter.counter, "__CHANGE_ON_QUERY__", (* read only *) true),
+          instances,
+          counter.unit)
+        |> Some
 
       | _ ->
-        let category = counter.findCategory() |> Option.get
         match category.CategoryType with
         | CategoryType.MultiInstance ->
           // this perf counter category is multi-instance, and yet no instance has
-          // been given, which most likely means the call-site of toPC didn't find
-          // any instances in thie PCC. It's possible that in the future this PCC
+          // been given, which most likely means the call-site of toWindowsCounter didn't find
+          // any instances in thie PCC. It's possible that in the future this Category
           // contains an instance, but until then, we can't create a perf counter
           // from it.
           None
 
         | CategoryType.Unknown
         | CategoryType.SingleInstance ->
-          new PerformanceCounter(counter.category, counter.counter, "", true) |> Some
+          WinPerfCounterInstance.create (
+            category,
+            new PerformanceCounter(counter.category, counter.counter, "", (* read only *) true),
+            [],
+            counter.unit)
+        |> Some
 
         | typ ->
           failwithf "unknown type %A" typ
@@ -189,26 +271,24 @@ module WinPerfCounter =
     WinPerfCounter.create(category, counter, instance)
     |> toWindowsCounter
 
-  /// Sets a specific instance on the WinPerfCounter.
-  let setInstance (instance : string option) (counter : WinPerfCounter) =
-    { counter with instance = instance }
-
   /// Sets a specific unit on the WinPerfCounter.
   let setUnit (units : Units) (counter : WinPerfCounter) =
     { counter with unit = Some units }
 
   module Helpers =
 
-    let toValue ((perfCounter, pc) : WinPerfCounter * PerformanceCounter) =
-      Float (float (pc.NextValue()))
-      |> Message.derivedWithUnit (PointName.ofPerfCounter perfCounter) Units.Scalar
-
+    let toValue (pc : WinPerfCounterInstance) =
+      let message = Message.gaugeWithUnit pc.baseName pc.unit (Int64 1L)
+      pc.nextValues()
+      |> Array.fold (fun m (pn, vl) ->
+          let field = Field (vl, Some pc.unit)
+          m |> Message.setFieldValue pn field)
+        message
 
     let getAllCounters () =
       Category.list ()
       |> Array.map (fun category -> category, Category.instances category)
-      |> Array.map (fun (category, instances) ->
-        category, (instances |> Array.map (fun instance -> instance, list category instance)))
+      |> Array.map (fun (category, instances) -> category, list category instances)
 
     /// Try to find the instance performance counter for the pid, or return
     /// None if the process e.g. does no longer run and can therefore not
@@ -217,9 +297,9 @@ module WinPerfCounter =
       Category.createForce "Process"
       |> Category.instances
       |> Array.map (fun instance ->
-        match toWindowsCounter3 "Process" "ID Process" instance with
-        | Some pcProcId when int (pcProcId.NextValue()) = pid ->
-          pcProcId.InstanceName
+        match toWindowsCounter3 "Process" "ID Process" [ instance ] with
+        | Some pcProcId when int (snd (pcProcId.nextValue())) = pid ->
+          pcProcId.instances.[0]
         | _ ->
           "")
       |> Array.tryFind (fun s -> s.Length > 0)
@@ -236,8 +316,10 @@ module WinPerfCounter =
 
     /// Sets the Performance Counter to only check metrics that are sliced to be for
     /// the current process.
-    let setCurrentProcess (counter : WinPerfCounter) : WinPerfCounter =
-      { counter with instance = pidToInstance (pid ()) }
+    let scopeToProcess (counter : WinPerfCounter) : WinPerfCounter option =
+      let pid = pid ()
+      pidToInstance pid
+      |> Option.map (fun inst -> { counter with instances = set [ inst ] })
 
     // NOTE: Windows has a bug where the pid/instance index changes during runtime
     // if you have more than a single process with the same name and at least one

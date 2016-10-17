@@ -89,11 +89,7 @@ module Shipper =
         ]
         >> withMiddleware Middleware.Common.addHostName
         >> withMetrics [
-          createMetric "cpuTime" WinPerfCounters.cpuTime
-          createMetric "gpuMetrics" WinPerfCounters.gpuMetrics
-          //createMetric "nvidiaMetrics" WinPerfCounters.nvidiaMetrics
-          createMetric "cpuInformation" WinPerfCounters.cpuInformation
-          createMetric "networkInterface" WinPerfCounters.networkInterface
+          createMetric "systemMetrics" WinPerfCounters.systemMetrics
         ]
         >> withRules [
           //Rule.createForTarget (PointName.ofSingle "noop")

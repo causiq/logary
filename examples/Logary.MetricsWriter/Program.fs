@@ -46,7 +46,7 @@ module Sample =
 
       let msg = Message.gauge pn (Float value)
 
-      (rnd, value), [ msg ]
+      (rnd, value), [| msg |]
 
     let state =
       let rnd = Random()

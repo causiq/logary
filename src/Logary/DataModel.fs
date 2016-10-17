@@ -610,7 +610,9 @@ type Units =
   | Moles
   | Candelas
   | Percent
-  | Other of unit:string
+  | Watts
+  | Hertz
+  | Other of units:string
   // E.g. to denote nano-seconds since epoch;
   // 1474139353507070000 would be Scaled(Seconds, 10.**9.) since year 1970
   // so to get back to seconds, you'd divide the value by 10.**9.
@@ -618,11 +620,16 @@ type Units =
   // Gauge(5000000, Scaled(Seconds, 10.**9.)) (ns) OR:
   // Gauge(50000, Scaled(Seconds, 10**7.)) (ticks):
   | Scaled of units:Units * scale:float
+  | Offset of units:Units * offset:float
   | Mul of Units * Units
   | Pow of Units * Units
   | Div of Units * Units
   | Root of Units
   | Log10 of Units // Log of base:float * BaseUnit
+
+  /// E.g. 5 degrees celsius is (5 + 273.15) K
+  static member Celsius =
+    Offset (Kelvins, +273.15)
 
   static member symbol = function
     | Bits -> "b"
@@ -634,8 +641,15 @@ type Units =
     | Kelvins -> "K"
     | Moles -> "mol"
     | Candelas -> "cd"
+    | Percent -> "%"
+    | Watts -> "W"
+    | Hertz -> "Hz"
     | Other other -> other
     | Scaled (units, scale) -> sprintf "%s / %f" (Units.symbol units) scale
+    | Offset (units, offset) ->
+      sprintf "%s %s %f" (Units.symbol units)
+                         (if offset < 0. then "-" else "+")
+                         offset
     | Mul (a, b) -> String.Concat [ "("; Units.symbol a; "*"; Units.symbol b; ")" ]
     | Pow (a, b) -> String.Concat [ Units.symbol a; "^("; Units.symbol b; ")" ]
     | Div (a, b) -> String.Concat [ "("; Units.symbol a; "/"; Units.symbol b; ")" ]
@@ -652,13 +666,19 @@ type Units =
     | Amperes
     | Kelvins
     | Moles
-    | Candelas ->
+    | Candelas
+    | Percent
+    | Watts
+    | Hertz ->
       Json.Lens.setPartial Json.String_ (u |> Units.symbol)
     | Other other ->
       Json.write "other" other
     | Scaled (units, scale) ->
       Json.write "units" units
       *> Json.write "scale" scale
+    | Offset (units, offset) ->
+      Json.write "units" units
+      *> Json.write "offset" offset
     | Mul (a, b) ->
       Json.write "multipleA" a
       *> Json.write "multipleB" b
@@ -687,6 +707,9 @@ type Units =
         | "K" -> Kelvins |> JsonResult.Value, json
         | "mol" -> Moles |> JsonResult.Value, json
         | "cd" -> Candelas |> JsonResult.Value, json
+        | "%" -> Percent |> JsonResult.Value, json
+        | "W" -> Watts |> JsonResult.Value, json
+        | "Hz" -> Hertz |> JsonResult.Value, json
         | unknown ->
           let msg = sprintf "Unknown unit type represented as string '%s'" unknown
           JsonResult.Error msg, json
@@ -695,8 +718,10 @@ type Units =
         match o with
         | Val "other" other ->
           Other (Json.deserialize other) |> JsonResult.Value, json
-        | Val "units" units & Val "scale" scale ->
+        | Val "scale" scale & Val "units" units ->
           Scaled (Json.deserialize units, Json.deserialize scale) |> JsonResult.Value, json
+        | Val "offset" offset & Val "units" units ->
+          Offset (Json.deserialize units, Json.deserialize offset) |> JsonResult.Value, json
         | Val "multipleA" a & Val "multipleB" b ->
           Mul(Json.deserialize a, Json.deserialize b) |> JsonResult.Value, json
         | Val "base" b & Val "exponent" e ->

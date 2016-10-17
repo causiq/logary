@@ -25,7 +25,7 @@ let private untilPred maxWait fPred =
 let pingSvdSe () =
   let mkError ex =
     Message.gauge (PointName.ofList ["app";"resource";"ping-svd"]) (Float 0.0)
-    |> setDesc "ping completed with error"
+    |> setDesc "Ping completed with error."
     |> Message.addExn ex
     |> Message.setLevel LogLevel.Error
     |> HealthCheckResult.ofMessage

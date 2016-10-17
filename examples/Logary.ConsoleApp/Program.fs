@@ -29,43 +29,29 @@ module internal Sample =
     return Metric.tapMessages ewma
   }
 
-  let metricFrom counters pn : Job<Metric> =
-    let reducer state = function
-      | _ ->
-        state
-
-    let toValue (counter : WinPerfCounter, pc : PerformanceCounter) =
-      Float (float (pc.NextValue ()))
-      |> Message.derivedWithUnit pn (counter.unit |> Option.fold (fun s t -> t) Units.Scalar)
-      |> Message.setName (PointName.ofPerfCounter counter)
-
-    let ticker state =
-      state, state |> Array.map toValue |> List.ofArray
-
-    Metric.create reducer counters ticker
-
   // Sample metrics from two M6000 graphics cards
-  let m6000s pn : Job<Metric> =
-    let gpu counter instance =
-      { category = "GPU"
-        counter  = counter
-        instance = Some instance
-        unit     = None }
+  let m6000s _ : Job<Metric> =
+    let instances =
+      [ "08:00"; "84:00" ] |> List.map (sprintf "quadro m6000(%s)")
+
+    let gpu counter units =
+      { category  = "GPU"
+        counter   = counter
+        instances = Set.ofList instances
+        unit      = Some units }
 
     let counters =
-      [| for inst in [ "08:00"; "84:00" ] do
-           let inst' = sprintf "quadro m6000(%s)" inst
-           yield gpu "GPU Fan Speed (%)" inst'
-           yield gpu "GPU Time (%)" inst'
-           yield gpu "GPU Memory Usage (%)" inst'
-           yield gpu "GPU Memory Used (MB)" inst'
-           yield gpu "GPU Power Usage (Watts)" inst'
-           yield gpu "GPU SM Clock (MHz)" inst'
-           yield gpu "GPU Temperature (degrees C)" inst'
+      [| yield gpu "GPU Fan Speed (%)" Percent
+         yield gpu "GPU Time (%)" Percent
+         yield gpu "GPU Memory Usage (%)" Percent
+         yield gpu "GPU Memory Used (MB)" (Scaled (Bytes, 1e-6))
+         yield gpu "GPU Power Usage (Watts)" Watts
+         yield gpu "GPU SM Clock (MHz)" (Scaled (Hertz, 1e-6))
+         yield gpu "GPU Temperature (degrees C)" (Offset (Kelvins, 1e-6))
       |]
       |> WinPerfCounters.ofPerfCounters
 
-    metricFrom counters pn
+    WinPerfCounters.ofCounters counters
 
 open System.Threading
 
@@ -124,7 +110,7 @@ module RandomWalk =
 
       let msg = Message.gaugeWithUnit pn Seconds (Float value)
 
-      (rnd, value), [ msg ]
+      (rnd, value), [| msg |]
 
     let state =
       let rnd = Random()
@@ -165,11 +151,11 @@ module Timing =
 
     let tick state =
       let snap = Snapshot.create (Array.ofList state)
-      [], [ snap |> Snapshot.size |> int64 |> Int64 |> Message.gauge countName 
-            snap |> Snapshot.median |> int64 |> Int64 |> Message.gauge medianName
-            snap |> Snapshot.min |> Int64 |> Message.gauge minName
-            snap |> Snapshot.max |> Int64 |> Message.gauge maxName
-            snap |> Snapshot.percentile95th |> int64 |> Int64|> Message.gauge upper95 ]
+      [], [| snap |> Snapshot.size |> int64 |> Int64 |> Message.gauge countName
+             snap |> Snapshot.median |> int64 |> Int64 |> Message.gauge medianName
+             snap |> Snapshot.min |> Int64 |> Message.gauge minName
+             snap |> Snapshot.max |> Int64 |> Message.gauge maxName
+             snap |> Snapshot.percentile95th |> int64 |> Int64|> Message.gauge upper95 |]
 
     job {
       let! metric = Metric.create reduce [] tick

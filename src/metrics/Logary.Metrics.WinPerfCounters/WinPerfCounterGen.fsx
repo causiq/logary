@@ -16,18 +16,19 @@ let munge name =
 
 let gen () =
 
-  let genComment (pcc : Category) (perfCounter : WinPerfCounter) =
+  let genComment (pcc : Category) (perfCounter : WinPerfCounterInstance) =
     sprintf
         "/// %s: %s
 ///
 /// %s"
       pcc.CategoryName
       pcc.CategoryHelp
-      (match perfCounter.instance with
-      | None -> "This performance counter does not have instance based counters"
-      | _    -> "This performance counter does not have non-instance based counters")
+      (if Array.isEmpty perfCounter.instances then
+        "This performance counter does not have instance based counters"
+       else
+        "This performance counter does not have non-instance based counters")
 
-  let genModuleHeader (perfCounter : WinPerfCounter) =
+  let genModuleHeader (perfCounter : WinPerfCounterInstance) =
     let preHeader () =
       sprintf """module ``%s`` =
 
@@ -35,66 +36,63 @@ let gen () =
   let CategoryName = "%s"
 
   let PerfCat = Category.create CategoryName"""
-        (munge perfCounter.category)
-        perfCounter.category
+        (munge perfCounter.category.CategoryName)
+        perfCounter.category.CategoryName
       
-
-    match perfCounter.instance with
-    | None ->
+    if Array.isEmpty perfCounter.instances then
       preHeader ()
-    | Some _ ->
+    else
       sprintf """%s
 
   /// Returns an array of the instances available on this node/machine.
   let instances () =
     PerfCat
     |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
-    |> Array.filter (function
-      | Some inst -> not (Array.contains inst KnownInstances.All)
-      | None -> false)
+    |> Array.filter (fun inst -> not (Array.contains inst KnownInstances.All))
 """
         (preHeader ())
 
-  let genCounter (pc : WinPerfCounter) =
-    match WinPerfCounter.toWindowsCounter pc with
-    | Some osPC when pc.instance = None ->
+  let genCounter (pc : WinPerfCounterInstance) =
+    let cn = pc.counter.CounterName
+    let help = pc.counter.CounterHelp.Trim()
+    match pc with
+    | _ when pc.isNotInstanceBased ->
       sprintf """  /// %s: %s
   let ``%s`` =
     %s"""
-        pc.counter (osPC.CounterHelp.Trim()) pc.counter
-        (sprintf """WinPerfCounter.create(CategoryName, "%s", None)""" pc.counter)
-    | mOsPc ->
-      let help =
-        match mOsPc with
-        | None -> "-"
-        | Some osPC -> osPC.CounterHelp.Trim()
-
+        cn help cn
+        (sprintf """WinPerfCounter.create(CategoryName, "%s", [])""" cn)
+    | _ ->
       sprintf """  /// %s: %s
-  let ``%s`` instance =
+  let ``%s`` instances =
     %s"""
-        pc.counter help pc.counter
-        (sprintf """WinPerfCounter.create(CategoryName, "%s", instance)""" pc.counter)
+        cn help cn
+        (sprintf """WinPerfCounter.create(CategoryName, "%s", instances)""" cn)
 
-  let genCounters (counters : WinPerfCounter list) =
+  let genCounters (counters : WinPerfCounterInstance seq) =
     counters
-    |> List.map genCounter
-    |> List.filter (not << String.IsNullOrWhiteSpace)
+    |> Seq.map genCounter
+    |> Seq.filter (not << String.IsNullOrWhiteSpace)
     |> fun ctrs -> String.Join("\n", ctrs)
 
-  let genListing (counters : WinPerfCounter list) =
+  let genListing (counters : WinPerfCounterInstance seq) =
+    let counters = List.ofSeq counters
     match counters with
     | [] -> """  let allCounters = [||]"""
     | hc :: rest ->
+      let fsharpName hc =
+        "``" + hc.counter.CounterName + "``" + (if hc.isMultiInstance then " instances" else "")
       sprintf """
-  let allCounters =
-    [| ``%s``
+  let allCounters%s =
+    [| %s
 %s
     |]"""
-        hc.counter
+        (if hc.isMultiInstance then " instances" else "")
+        (fsharpName hc)
         (rest
-          |> List.map (fun { counter = c } -> "``" + c + "``")
+          |> List.map fsharpName
           |> List.map (fun s -> "       " + s)
-          |> fun ss -> String.Join("\n", ss))
+          |> String.concat "\n")
 
   let genFileHeader () =
     """/// Copyright Henrik Feldt 2016. Part of the Logary source code.
@@ -110,15 +108,13 @@ open Logary.Metrics.WinPerfCounter"""
   |> Array.map (fun pcc -> pcc, Category.instances pcc)
   |> Array.sortBy (fun (pcc, _) -> pcc.CategoryName)
   |> Array.map (function
-    | pcc, [||]      -> pcc, WinPerfCounter.list pcc None
-    | pcc, instances -> pcc, WinPerfCounter.list pcc (Array.head instances))
+    | pcc, instances -> pcc, WinPerfCounter.list pcc instances)
   |> Array.map (fun (pcc, counters) ->
-    pcc, counters |> Array.sortBy (fun x -> x.counter))
+    pcc, counters |> Array.sortBy (fun x -> x.counter.CounterName))
   |> Array.map (function
     | pcc, [||]     -> ""
     | pcc, counters ->
       let c = Array.head counters
-      let counters = counters |> Seq.distinct |> List.ofSeq
       genComment pcc c + "\n"
       + (genModuleHeader c) + "\n"
       + (genCounters counters) + "\n"
@@ -146,9 +142,7 @@ module ``SynchronizationNuma Example`` =
   let instances () =
     PerfCat
     |> Option.fold (fun s pcc -> Category.instances pcc) Array.empty
-    |> Array.filter (function
-      | Some inst -> not (Array.contains inst KnownInstances.All)
-      | None -> false)
+    |> Array.filter (fun inst -> not (Array.contains inst KnownInstances.All))
 
   let ``Exec. Resource no-Waits AcqShrdWaitForExcl/sec`` instance =
     toWindowsCounter3 CategoryName "Exec. Resource no-Waits AcqShrdWaitForExcl/sec" instance
@@ -181,7 +175,7 @@ module ``System Example`` =
   let PerfCat = Category.create CategoryName
 
   let ``File Read Operations/sec`` =
-    WinPerfCounter.create(CategoryName, "File Read Operations/sec", None)
+    WinPerfCounter.create(CategoryName, "File Read Operations/sec", [])
 
   // etc
 

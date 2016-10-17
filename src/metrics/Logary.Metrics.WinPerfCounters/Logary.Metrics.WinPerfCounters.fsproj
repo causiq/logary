@@ -41,7 +41,7 @@
     <Compile Include="WinPerfCounter.fs" />
     <Compile Include="WinPerfCounters.fs" />
     <Compile Include="Common.fs" />
-    <Compile Include="HealthCheck_WinPerfCounters.fs" />
+    <Compile Include="HealthChecks.fs" />
     <None Include="WinPerfCounterGen.fsx" />
   </ItemGroup>
   <ItemGroup>
