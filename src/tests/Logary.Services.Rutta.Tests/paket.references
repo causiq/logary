@@ -6,5 +6,6 @@ Argu
 fszmq
 Suave
 File:YoLo.fs
+File:Assert.fs
 FsPickler
 Fuchu
