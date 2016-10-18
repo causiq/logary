@@ -347,18 +347,19 @@ module LiterateConsole =
           | TextToken (_, text) ->
             seq { yield text, Text })
 
-      | Derived (value, units) ->
+      | Gauge (value, units) ->
         seq {
-          yield "Metric (derived) ", Subtext
+          yield "Metric (guage) ", Subtext
           yield! literateTokeniseField options (Property.Empty) (Field (value, None))
           yield " ", Subtext
           yield Units.symbol units, Text
           yield " (", Punctuation
           yield message.name.ToString(), Text
           yield ")", Punctuation }
-      | Gauge (value, units) ->
+
+      | Derived (value, units) ->
         seq {
-          yield "Metric (guage) ", Subtext
+          yield "Metric (derived) ", Subtext
           yield! literateTokeniseField options (Property.Empty) (Field (value, None))
           yield " ", Subtext
           yield Units.symbol units, Text
@@ -496,7 +497,7 @@ module LiterateConsole =
                 try
                   do! lcConf.tokenise lcConf logMsg
                     |> Seq.map (fun (text, token) ->
-                      { text=text; colours=lcConf.theme token })
+                      { text = text; colours = lcConf.theme token })
                     |> output
                 with e ->
                   do! output (seq {
@@ -539,6 +540,7 @@ module LiterateConsole =
 
     interface Logary.Target.FactoryApi.SpecificTargetConf with
       member x.Build name = create conf name
+
 // boolean IsLogging() method, correct by excluded middle
 #nowarn "25"
 

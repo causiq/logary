@@ -5,6 +5,8 @@ open Logary
 open Logary.Targets
 open Logary.Tests.Targets
 open Hopac
+open NodaTime
+open ExpectoPatronum
 open TestDSL
 open Fac
 
@@ -55,12 +57,30 @@ module LiterateTesting =
     let writtenParts = ResizeArray<LiterateConsole.ColouredText>()
     // replace everything except for tokenize
     { LiterateConsole.empty with
-        formatProvider = frenchFormatProvider
+        formatProvider  = frenchFormatProvider
         getLogLevelText = singleLetterLogLevelText
         formatLocalTime = formatLocalTime
-        theme = Theme.theme
-        colourWriter = (fun sem parts -> writtenParts.AddRange(parts)) },
+        theme           = Theme.theme
+        colourWriter    = fun sem parts -> writtenParts.AddRange(parts) },
     fun () -> writtenParts |> List.ofSeq
+
+let timeMessage (duration : Duration) level =
+  snd (Message.time (PointName [| "A"; "B"; "C"; "Check" |]) (fun () -> 32) ())
+  |> Message.setGauge (duration.toGauge ())
+        
+let nanos xs =
+  Duration.FromTicks (xs * Constants.NanosPerTick)
+
+let helloWorldMsg =
+  Message.eventX "Hello World!"
+  >> Message.setTicksEpoch (0L : EpochNanoSeconds)
+
+let levels expectedTimeText : LiterateConsole.ColouredText list =
+  [ { text = "[";                    colours = LiterateTesting.Theme.punctuationColours }
+    { text = expectedTimeText;       colours = LiterateTesting.Theme.subtextColours }
+    { text = " ";                    colours = LiterateTesting.Theme.subtextColours }
+    { text = LiterateTesting.levelI; colours = LiterateTesting.Theme.levelInfoColours }
+    { text = "] ";                   colours = LiterateTesting.Theme.punctuationColours } ]
 
 [<Tests>]
 let tests =
@@ -72,27 +92,61 @@ let tests =
     Targets.integrationTests "literate console" (LiterateConsole.create LiterateConsole.empty)
 
     testList "literate console" [
-      testCase "printing Hello World" <| fun _ ->
-        let conf, getWrittenParts = LiterateTesting.createInspectableWrittenPartsConf()
-        let messageUtcTicks : EpochNanoSeconds = 0L
-        let expectedTimeText = fst (LiterateTesting.formatLocalTime conf.formatProvider messageUtcTicks)
-        let target = LiterateConsole.create conf "testLC"
-        let instance = target |> Target.init emptyRuntime |> run
-        instance.server (fun _ -> Job.result ()) None
-        |> start
-        
-        (because "logging with info level and then finalising the target" <| fun () ->
-          Message.eventInfo "Hello World!" |> Message.setTicksEpoch messageUtcTicks |> Target.logAndWait instance
-          Target.finalise instance
-          getWrittenParts()
-        )
-        |> should equal [ {text = "[";                    colours = LiterateTesting.Theme.punctuationColours }
-                          {text = expectedTimeText;       colours = LiterateTesting.Theme.subtextColours }
-                          {text = " ";                    colours = LiterateTesting.Theme.subtextColours }
-                          {text = LiterateTesting.levelI; colours = LiterateTesting.Theme.levelInfoColours }
-                          {text = "] ";                   colours = LiterateTesting.Theme.punctuationColours }
-                          {text = "Hello World!";         colours = LiterateTesting.Theme.textColours } ]
-        |> thatsIt
+      let testLiterateCase testMsg messageFactory cb =
+        let conf, getWrittenParts = LiterateTesting.createInspectableWrittenPartsConf ()
+        let message = messageFactory Info
+
+        testCase testMsg <| fun () ->
+          // in context
+          let instance =
+            LiterateConsole.create conf "testLC"
+            |> Target.init emptyRuntime
+            |> run
+
+          start (instance.server (fun _ -> Job.result ()) None)
+
+          // because
+          message |> Target.logAndWait instance
+
+          let written, expectedTimeText =
+            getWrittenParts (),
+            fst (LiterateTesting.formatLocalTime conf.formatProvider message.timestamp)
+
+          // then
+          try cb expectedTimeText written
+          finally Target.finalise instance
+
+      yield testLiterateCase "printing 'Hello World!'" helloWorldMsg <| fun expectedTimeText parts ->
+        Expect.equal parts
+                     [ yield! levels expectedTimeText
+                       yield {text = "Hello World!"; colours = LiterateTesting.Theme.textColours } ]
+                    "logging with info level and then finalising the target"
+
+      // [06:15:02 DBG] Metric (guage) 60029379 s / 1000000000.000000 (A.B.C.Check)
+
+      yield testLiterateCase "Time in ms" (timeMessage (nanos 60029379L)) <| fun expectedTimeText parts ->
+        // [06:15:02 DBG] A.B.C.Check took 60.029379 ms
+        Expect.equal parts
+                     [ yield! levels expectedTimeText
+                       yield { text = "A.B.C.Check"; colours = LiterateTesting.Theme.nameSymbolColours }
+                       yield { text = " took "; colours = LiterateTesting.Theme.subtextColours }
+                       yield { text = "133.379"; colours = LiterateTesting.Theme.numericSymbolColours }
+                       yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+                       yield { text = "μs"; colours = LiterateTesting.Theme.textColours }
+                       yield { text = " to execute."; colours = LiterateTesting.Theme.subtextColours } ]
+                    "logging with info level and then finalising the target"
+
+      yield testLiterateCase "Time in μs" (timeMessage (nanos 133379L)) <| fun expectedTimeText parts ->
+        // [06:15:02 DBG] A.B.C.Perform took 133.379 μs
+        Expect.equal parts
+                     [ yield! levels expectedTimeText
+                       yield { text = "A.B.C.Check"; colours = LiterateTesting.Theme.nameSymbolColours }
+                       yield { text = " took "; colours = LiterateTesting.Theme.subtextColours }
+                       yield { text = "133.379"; colours = LiterateTesting.Theme.numericSymbolColours }
+                       yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+                       yield { text = "μs"; colours = LiterateTesting.Theme.textColours }
+                       yield { text = " to execute."; colours = LiterateTesting.Theme.subtextColours } ]
+                    "logging with info level and then finalising the target"
     ]
 
     testList "text writer" [
@@ -128,7 +182,7 @@ let tests =
         |> should contain "the Name"
         |> thatsIt
 
-      testCase "``error levels should be to error text writer``" <| fun _ ->
+      testCase "error levels should be to error text writer" <| fun _ ->
         let out, err = Fac.textWriter (), Fac.textWriter ()
         let target = TextWriter.create (TextWriter.TextWriterConf.create(out, err)) "error writing"
         let subject = target |> Target.init emptyRuntime |> run

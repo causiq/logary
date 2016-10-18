@@ -1077,6 +1077,16 @@ module SystemDateEx =
       (x.Ticks - DateTimeOffset(1970, 1, 1, 0, 0, 0, TimeSpan.Zero).Ticks)
       * Constants.NanosPerTick
 
+[<AutoOpen; Extension>]
+module DurationEx =
+  open NodaTime
+
+  type Duration with
+    [<Extension; CompiledName "ToGauge">]
+    member dur.toGauge () =
+      Int64 (dur.Ticks * Constants.NanosPerTick),
+      Scaled (Seconds, float Constants.NanosPerSecond)
+
 /// Extensions to facilitate reading Diagnostics.Stopwatch as a value that
 /// suits Logary
 [<AutoOpen; Extension>]
@@ -1504,13 +1514,21 @@ module Message =
 
   /// Update the message with the current timestamp.
   [<CompiledName "UpdateTimestamp">]
-  let updateTimestamp msg =
-    { msg with timestamp = Date.timestamp () }
+  let updateTimestamp message =
+    { message with timestamp = Date.timestamp () }
 
   /// Replaces the value of the message with a new Event with the supplied format
   [<CompiledName "SetEvent">]
-  let setEvent format msg =
-    { msg with value = Event format}
+  let setEvent format message =
+    { message with value = Event format }
+
+  [<CompiledName "SetGauge">]
+  let setGauge (value, units) message =
+    { message with value = Gauge (value, units) }
+
+  [<CompiledName "SetDerived">]
+  let setDerived (value, units) message =
+    { message with value = Derived (value, units) }
 
   /// Adds a new exception to the "errors" field in the message.
   /// AggregateExceptions are automatically expanded.
