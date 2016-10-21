@@ -61,7 +61,7 @@ namespace Logary
         /// <summary>
         /// Set the Message's timestamp.
         /// </summary>
-        public static Message SetTimestamp(this Message msg, DateTimeOffset timestamp)
+        public static Message SetTimestamp(this Message msg, System.DateTimeOffset timestamp)
         {
             return SetTimestamp(msg, Instant.FromDateTimeOffset(timestamp));
         }

@@ -1060,22 +1060,27 @@ type Message =
 [<AutoOpen; Extension>]
 module SystemDateEx =
 
-  type DateTime with
-    /// Gets the EpochNanoSeconds from the DateTime at UTC.
-    [<Extension>]
-    member x.timestamp : EpochNanoSeconds =
-      if not (x.Kind = DateTimeKind.Utc) then
-        invalidArg "x" (sprintf "Expected '%O' to be in UTC format" x)
-      else
-        (x.Ticks - DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).Ticks)
-        * Constants.NanosPerTick
-
   type DateTimeOffset with
     /// Gets the EpochNanoSeconds from the DateTimeOffset.
     [<Extension>]
     member x.timestamp : EpochNanoSeconds =
       (x.Ticks - DateTimeOffset(1970, 1, 1, 0, 0, 0, TimeSpan.Zero).Ticks)
       * Constants.NanosPerTick
+
+/// Helper functions for transforming DateTimeOffset to timestamps in unix epoch.
+module DateTimeOffset =
+
+  let private ticksAt1970 =
+    DateTimeOffset(1970, 1, 1, 0, 0, 0, TimeSpan.Zero).Ticks
+
+  /// Get the DateTimeOffset ticks from EpochNanoSeconds
+  let ticksUTC (epoch : EpochNanoSeconds) : int64 =
+    epoch / Constants.NanosPerTick
+    + ticksAt1970
+
+  /// Get the DateTimeOffset from EpochNanoSeconds
+  let ofEpoch (epoch : EpochNanoSeconds) : DateTimeOffset =
+    DateTimeOffset(ticksUTC epoch, TimeSpan.Zero)
 
 [<AutoOpen; Extension>]
 module DurationEx =

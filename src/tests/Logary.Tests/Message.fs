@@ -216,4 +216,10 @@ let tests =
 
     testPropertyWithConfig config "Serialization of message can round trip" <| fun (message : Message) ->
       message = roundTrip message
+
+    testProperty "DateTimeOffset" <| fun (ts : DateTimeOffset) ->
+      let ticks = ts.timestamp |> DateTimeOffset.ticksUTC
+      let recreated = DateTimeOffset(ticks, TimeSpan.Zero).Ticks
+      Expect.equal recreated (ts.Ticks) "should equal after conversion"
+
   ]

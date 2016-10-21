@@ -47,8 +47,9 @@ module LiterateTesting =
 
   let frenchFormatProvider = System.Globalization.CultureInfo("fr-FR") :> IFormatProvider
 
-  let formatLocalTime provider (utcTicks : EpochNanoSeconds) =
-    DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss", provider),
+  let formatLocalTime provider (ens : EpochNanoSeconds) =
+    let dto = DateTimeOffset.ofEpoch ens
+    dto.LocalDateTime.ToString("HH:mm:ss", provider),
     Tokens.Subtext
 
   /// creates a LiterateConsoleConf for testing purposes, and also returns a function that,
