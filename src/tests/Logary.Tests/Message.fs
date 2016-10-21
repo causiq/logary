@@ -177,8 +177,7 @@ let tests =
         }
       Assert.Equal("roundtrip", m, roundTrip m)
 
-    testCase "{DateTime, DateTimeOffset}.timestamp" <| fun () ->
-      DateTime.UtcNow.timestamp |> ignore
+    testCase "DateTimeOffset.timestamp" <| fun () ->
       DateTimeOffset.UtcNow.timestamp |> ignore
 
     testCase "Message.time can be called" <| fun () ->

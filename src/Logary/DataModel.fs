@@ -777,39 +777,51 @@ module Units =
     | Array values -> String.Concat ["["; values |> List.map formatValue |> String.concat ", "; "]"]
     | Object m -> "Object"
 
-  let scaleSeconds = int64 >> ((*) 1000000000000L) >> function
-    | value when value < 1000L -> 1L
-    | value when value < 1000000L -> 1000L
-    | value when value < 1000000000L -> 1000000L
-    | value when value < 1000000000000L -> 1000000000L
-    | value when value < 60L * 1000000000000L -> 1000000000000L
-    | value when value < 3600L * 1000000000000L -> 3600L * 1000000000000L
-    | value -> 86400L * 1000000000000L
+  let scaleSeconds : float -> int64 = int64 >> ((*) 1000000000000L) >> function
+    | value when value < 1000L -> 1L // ns
+    | value when value < 1000000L -> 1000L // µs
+    | value when value < 1000000000L -> 1000000L // ms
+    | value when value < 1000000000000L -> 1000000000L // s
+    | value when value < 60L * 1000000000000L -> 1000000000000L // min
+    | value when value < 3600L * 1000000000000L -> 3600L * 1000000000000L // h
+    | value -> 86400L * 1000000000000L // days
 
-  // TODO: re-enable scaling
-  (*
   // grafana/public/app/kbn.js:374@g20d5d0e
-  let doScale (fFactor : decimal -> int64) (scaledUnits : string list) =
-    fun (decimals : uint16) (scaledDecimals : uint16) (value : decimal) ->
-      (value : decimal), "KiB"
+  let doScale (calcFactor : float -> int64) (scaledUnits : string list) =
+    fun (decimals : uint16) (scaledDecimals : uint16) (value : float) ->
+      value, "KiB"
 
-  let scale units : uint16 -> uint16 -> decimal -> float*string =
-    match units with
-    | Bits -> (fun _ -> 1000L), ["b"; "Kib"; "Mib"; "Gib"; "Tib"; "Pib"; "Eib"; "Zib"; "Yib"]
-    | Bytes -> (fun _ -> 1024L), ["B"; "KiB"; "MiB"; "GiB"; "TiB"; "PiB"; "EiB"; "ZiB"; "YiB"]
-    | Seconds -> scaleSeconds, ["ns"; "µs"; "ms"; "s"; "min"; "h"; "days"]
-    ||> doScale
-   *)
+  // Given a Unit, returns the scaling function and the list of units available.
+  let scale units : uint16 -> uint16 -> float -> float*string =
+    let scaleThousands _ = 1000L
+    let scale2to10 _ = 1024L
+    let calcFactory, scaledUnits =
+      match units with
+      | Bits ->
+        scaleThousands,
+        ["b"; "Kib"; "Mib"; "Gib"; "Tib"; "Pib"; "Eib"; "Zib"; "Yib"]
+      | Bytes -> 
+        scale2to10,
+        ["B"; "KiB"; "MiB"; "GiB"; "TiB"; "PiB"; "EiB"; "ZiB"; "YiB"]
+      | Seconds ->
+        scaleSeconds,
+        ["ns"; "µs"; "ms"; "s"; "min"; "h"; "days"]
+      | x ->
+        failwithf "TODO: unit %A" x
+    doScale calcFactory scaledUnits
+
+  let scaleFull units (value : float) : float * string =
+    let scaler = scale units
+    let decimals = log value
+    scaler (uint16 decimals) (* todo *) 0us value
 
   let formatWithUnit orient un value =
     let fval = formatValue value
     match Units.symbol un with
     | "" ->
       fval
-
     | funit when orient = Prefix ->
       String.Concat [ funit; " "; fval ]
-
     | funit ->
       String.Concat [ fval; " "; funit ]
 

@@ -347,6 +347,21 @@ module LiterateConsole =
           | TextToken (_, text) ->
             seq { yield text, Text })
 
+      | Gauge (Int64 nanos, Scaled (Seconds, scale))
+        when scale = float Constants.NanosPerSecond ->
+
+        let prop = Property.Empty
+        let no, unitStr = Units.scaleFull Seconds (float nanos / float scale)
+        seq {
+          yield " (", Punctuation
+          yield message.name.ToString(), Text
+          yield ")", Punctuation 
+          yield " took ", Text
+          yield no.ToString(prop.Format, options.formatProvider), NumericSymbol
+          yield " ", Text
+          yield unitStr, Text
+        }
+
       | Gauge (value, units) ->
         seq {
           yield "Metric (guage) ", Subtext

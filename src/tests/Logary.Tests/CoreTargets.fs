@@ -68,7 +68,8 @@ module LiterateTesting =
 let timeMessage (duration : Duration) level =
   snd (Message.time (PointName [| "A"; "B"; "C"; "Check" |]) (fun () -> 32) ())
   |> Message.setGauge (duration.toGauge ())
-        
+  |> Message.setLevel level
+
 let nanos xs =
   Duration.FromTicks (xs * Constants.NanosPerTick)
 
@@ -131,7 +132,7 @@ let tests =
                      [ yield! levels expectedTimeText
                        yield { text = "A.B.C.Check"; colours = LiterateTesting.Theme.nameSymbolColours }
                        yield { text = " took "; colours = LiterateTesting.Theme.subtextColours }
-                       yield { text = "133.379"; colours = LiterateTesting.Theme.numericSymbolColours }
+                       yield { text = "60,029"; colours = LiterateTesting.Theme.numericSymbolColours }
                        yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
                        yield { text = "μs"; colours = LiterateTesting.Theme.textColours }
                        yield { text = " to execute."; colours = LiterateTesting.Theme.subtextColours } ]
@@ -143,7 +144,7 @@ let tests =
                      [ yield! levels expectedTimeText
                        yield { text = "A.B.C.Check"; colours = LiterateTesting.Theme.nameSymbolColours }
                        yield { text = " took "; colours = LiterateTesting.Theme.subtextColours }
-                       yield { text = "133.379"; colours = LiterateTesting.Theme.numericSymbolColours }
+                       yield { text = "133,379"; colours = LiterateTesting.Theme.numericSymbolColours }
                        yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
                        yield { text = "μs"; colours = LiterateTesting.Theme.textColours }
                        yield { text = " to execute."; colours = LiterateTesting.Theme.subtextColours } ]
