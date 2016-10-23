@@ -351,13 +351,13 @@ module LiterateConsole =
         when scale = float Constants.NanosPerSecond ->
 
         let prop = Property.Empty
-        let no, unitStr = Units.scaleFull Seconds (float nanos / float scale)
+        let number, unitStr = (float nanos / float scale) |> Units.scale Seconds 
         seq {
           yield " (", Punctuation
           yield message.name.ToString(), Text
           yield ")", Punctuation 
           yield " took ", Text
-          yield no.ToString(prop.Format, options.formatProvider), NumericSymbol
+          yield number.ToString(prop.Format, options.formatProvider), NumericSymbol
           yield " ", Text
           yield unitStr, Text
         }

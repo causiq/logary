@@ -68,7 +68,7 @@ let registryMid =
         |> withMiddleware (fun next msg ->
           msg |> Message.setContext "messageId" "theMessageId" |> next)
         |> validate
-        |> withInternalTarget LogLevel.Verbose (Console.create Console.empty "internal")
+        |> withInternalTarget LogLevel.Fatal (Console.create Console.empty "internal")
         |> runLogary
         |> run
 

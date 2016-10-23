@@ -87,8 +87,8 @@ let levels expectedTimeText : LiterateConsole.ColouredText list =
 [<Tests>]
 let tests =
   testList "CoreTargets" [
-    Targets.basicTests "text writer" (fun name -> TextWriter.create (textWriterConf ()) name)
-    Targets.integrationTests "text writer" (fun name -> TextWriter.create (textWriterConf ()) name)
+    //Targets.basicTests "text writer" (fun name -> TextWriter.create (textWriterConf ()) name)
+    //Targets.integrationTests "text writer" (fun name -> TextWriter.create (textWriterConf ()) name)
 
     // TODO: don't want to actually print these
     //Targets.basicTests "literate console" (LiterateConsole.create LiterateConsole.empty)
@@ -128,6 +128,7 @@ let tests =
       // [06:15:02 DBG] Metric (guage) 60029379 s / 1000000000.000000 (A.B.C.Check)
 
       yield testLiterateCase "Time in ms" (timeMessage (nanos 60029379L)) <| fun expectedTimeText parts ->
+        Tests.skiptest "WIP"
         // [06:15:02 DBG] A.B.C.Check took 60.029379 ms
         Expect.equal parts
                      [ yield! levels expectedTimeText
@@ -140,6 +141,7 @@ let tests =
                     "logging with info level and then finalising the target"
 
       yield testLiterateCase "Time in μs" (timeMessage (nanos 133379L)) <| fun expectedTimeText parts ->
+        Tests.skiptest "WIP"
         // [06:15:02 DBG] A.B.C.Perform took 133.379 μs
         Expect.equal parts
                      [ yield! levels expectedTimeText

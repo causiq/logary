@@ -47,6 +47,4 @@ let withLogary f =
     |> runLogary
     |> run
 
-  //try 
   f logary out err
-  //finally finaliseLogary logary

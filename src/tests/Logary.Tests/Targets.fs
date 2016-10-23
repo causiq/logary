@@ -77,7 +77,7 @@ module Target =
 ///  - can create instance thereof
 ///  - can start and stop
 ///  - can receive a few different sorts of messages
-let basicTests targetName (configFactory : string -> Target.TargetConf) =
+let basicTests targetName configFactory =
   testList (sprintf "basic tests for %s" targetName) [
     testCase "creating instance" <| fun _ ->
       let target =
