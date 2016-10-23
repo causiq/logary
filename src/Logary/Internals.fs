@@ -274,22 +274,3 @@ type Acks =
   | Ack
   /// It didn't go well.
   | Nack of NackDescription
-
-module internal CSharp =
-  open System
-  open Hopac
-  open System.Threading.Tasks
-
-  [<CompiledName "ToTask">]
-  let internal toTask<'a> (jj : Job<'a>) : Task<'a> =
-    let tcs = new TaskCompletionSource<'a>()
-    jj |> Job.map (tcs.SetResult >> ignore) |> start
-    tcs.Task
-
-  [<CompiledName "ToFSharpFunc">]
-  let toFSharpFunc (f : Func<_>) : unit -> _ =
-    f.Invoke
-
-  [<CompiledName "ToFSharpFunc">]
-  let toFSharpFunc1 (f : Func<_, _>) : _ -> _ =
-    fun x -> f.Invoke x

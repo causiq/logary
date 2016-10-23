@@ -46,7 +46,7 @@ module Sample =
 
       let msg = Message.gauge pn (Float value)
 
-      (rnd, value), [ msg ]
+      (rnd, value), [| msg |]
 
     let state =
       let rnd = Random()
@@ -81,7 +81,6 @@ let main argv =
       >> withInternalTargets Info [
         Console.create Console.empty "console"
       ]
-      >> run
     )
     |> run
 

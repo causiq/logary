@@ -10,15 +10,18 @@ open Logary.Target
 
 module internal Logging =
 
-  let send (targets : _ list) msg : Alt<Promise<unit>> =
+  let send (targets : TargetInstance list) msg : Alt<Promise<unit>> =
     let latch = Latch targets.Length
-    (targets
-     |> List.traverseAltA (fun target ->
-      let ack = IVar ()
-      (Log (msg, ack) |> RingBuffer.put target.requests)
-      ^=>. Latch.decrement latch
-    ))
-    ^->. memo (Latch.await latch)
+    let targets = targets |> List.map (fun target -> target, IVar ())
+    let traverse =
+      targets
+      |> List.traverseAltA (fun (target, ack) ->
+        Alt.prepareJob <| fun () ->
+        Job.start (ack ^=>. Latch.decrement latch) >>-.
+        RingBuffer.put target.requests (Log (msg, ack)))
+      |> Alt.afterFun (fun _ -> ())
+
+    traverse ^->. memo (Latch.await latch)
 
   let instaPromise =
     Alt.always (Promise (())) // new promise with unit value
@@ -26,7 +29,6 @@ module internal Logging =
   let logWithAck message : _ list -> Alt<Promise<unit>> = function
     | []      ->
       instaPromise
-
     | targets ->
       message |> send targets
 

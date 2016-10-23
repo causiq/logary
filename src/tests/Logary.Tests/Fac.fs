@@ -11,7 +11,7 @@ open Logary.Targets.TextWriter
 open Logary.Configuration
 open Logary.Target
 open TestDSL
-open Fuchu
+open Expecto
 open Hopac
 open Hopac.Infixes
 

@@ -13,6 +13,14 @@ Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.InfluxDb", "
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.RabbitMQ", "..\src\targets\Logary.Targets.RabbitMQ\Logary.Targets.RabbitMQ.fsproj", "{FE1BC08F-A41A-41CC-9F03-996EA9B3B477}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logary.CSharpExample", "Logary.CSharpExample\Logary.CSharpExample.csproj", "{1C1A1003-40E3-4C79-A24B-0FC8667E6D28}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logary.CSharp", "..\src\Logary.CSharp\Logary.CSharp.csproj", "{26FD79BD-2329-41B6-A86D-8F3992437CBE}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Logstash", "..\src\targets\Logary.Targets.Logstash\Logary.Targets.Logstash.fsproj", "{F9AAC195-D3F7-4160-A829-5F9775791AD5}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.ElasticSearch", "..\src\targets\Logary.Targets.ElasticSearch\Logary.Targets.ElasticSearch.fsproj", "{64A5B3B2-0F73-44B5-A178-C66A9DB830D6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,11 +47,30 @@ Global
 		{FE1BC08F-A41A-41CC-9F03-996EA9B3B477}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FE1BC08F-A41A-41CC-9F03-996EA9B3B477}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FE1BC08F-A41A-41CC-9F03-996EA9B3B477}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1C1A1003-40E3-4C79-A24B-0FC8667E6D28}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1C1A1003-40E3-4C79-A24B-0FC8667E6D28}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1C1A1003-40E3-4C79-A24B-0FC8667E6D28}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1C1A1003-40E3-4C79-A24B-0FC8667E6D28}.Release|Any CPU.Build.0 = Release|Any CPU
+		{26FD79BD-2329-41B6-A86D-8F3992437CBE}.Debug|Any CPU.ActiveCfg = Release|Any CPU
+		{26FD79BD-2329-41B6-A86D-8F3992437CBE}.Debug|Any CPU.Build.0 = Release|Any CPU
+		{26FD79BD-2329-41B6-A86D-8F3992437CBE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{26FD79BD-2329-41B6-A86D-8F3992437CBE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F9AAC195-D3F7-4160-A829-5F9775791AD5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F9AAC195-D3F7-4160-A829-5F9775791AD5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F9AAC195-D3F7-4160-A829-5F9775791AD5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F9AAC195-D3F7-4160-A829-5F9775791AD5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{64A5B3B2-0F73-44B5-A178-C66A9DB830D6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{64A5B3B2-0F73-44B5-A178-C66A9DB830D6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{64A5B3B2-0F73-44B5-A178-C66A9DB830D6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{64A5B3B2-0F73-44B5-A178-C66A9DB830D6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{F7E5B6E8-5D55-4974-9CA7-4C94D810631F} = {EDE0E409-6CEB-446E-AB65-DCD7B07A4F45}
 		{DD5137FC-22E5-47DA-88F1-3D3F1E7E8381} = {EDE0E409-6CEB-446E-AB65-DCD7B07A4F45}
 		{4ACE8A29-6D75-4956-B45C-22C82EAFCFD5} = {EDE0E409-6CEB-446E-AB65-DCD7B07A4F45}
 		{FE1BC08F-A41A-41CC-9F03-996EA9B3B477} = {EDE0E409-6CEB-446E-AB65-DCD7B07A4F45}
+		{26FD79BD-2329-41B6-A86D-8F3992437CBE} = {EDE0E409-6CEB-446E-AB65-DCD7B07A4F45}
+		{F9AAC195-D3F7-4160-A829-5F9775791AD5} = {EDE0E409-6CEB-446E-AB65-DCD7B07A4F45}
+		{64A5B3B2-0F73-44B5-A178-C66A9DB830D6} = {EDE0E409-6CEB-446E-AB65-DCD7B07A4F45}
 	EndGlobalSection
 EndGlobal

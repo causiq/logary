@@ -1,14 +1,13 @@
 module Logary.Tests.Message
 
-open Fuchu
-open Fuchu.FuchuFsCheck
+open Expecto
+open Expecto.ExpectoFsCheck
 open FsCheck
 open Hopac
 open System
 open NodaTime
 open Logary.Utils.Chiron
 open Logary
-open ExpectoPatronum
 
 let inline roundTrip (m : 'a) : 'a =
   m |> Json.serialize |> Json.format |> Json.parse |> Json.deserialize
@@ -119,7 +118,7 @@ let tests =
   testList "serialization" [
     testCase "can round trip fields" <| fun () ->
       let f = Field (Logary.String "hello", None)
-      Assert.Equal("field round trip", f, roundTrip f)
+      Expect.equal (roundTrip f) f "Field round trip."
 
     testPropertyWithConfig config "can round trip all fields" <| fun (f : Field) ->
       f = roundTrip f
@@ -145,7 +144,7 @@ let tests =
 
     testCase "can deserialize exampleJson" <| fun () ->
       let (m : Message) = exampleJson |> Json.parse |> Json.deserialize
-      Assert.Equal("example json", typeof<Message>, m.GetType())
+      Expect.equal (m.GetType()) typeof<Message> "Example JSON."
 
     testCase "can round trip a specific message 1" <| fun () ->
       let m = {
@@ -158,7 +157,7 @@ let tests =
           level     = Debug
           timestamp = 0L
         }
-      Assert.Equal("roundtrip", m, roundTrip m)
+      Expect.equal (roundTrip m) m "roundtrip"
 
     testCase "Can round trip a specific message 2" <| fun () ->
       let m = {
@@ -175,10 +174,9 @@ let tests =
           level     = Debug
           timestamp = 0L
         }
-      Assert.Equal("roundtrip", m, roundTrip m)
+      Expect.equal (roundTrip m) m "Roundtripping."
 
-    testCase "{DateTime, DateTimeOffset}.timestamp" <| fun () ->
-      DateTime.UtcNow.timestamp |> ignore
+    testCase "DateTimeOffset.timestamp" <| fun () ->
       DateTimeOffset.UtcNow.timestamp |> ignore
 
     testCase "Message.time can be called" <| fun () ->
@@ -216,4 +214,10 @@ let tests =
 
     testPropertyWithConfig config "Serialization of message can round trip" <| fun (message : Message) ->
       message = roundTrip message
+
+    testProperty "DateTimeOffset" <| fun (ts : DateTimeOffset) ->
+      let ticks = ts.timestamp |> DateTimeOffset.ticksUTC
+      let recreated = DateTimeOffset(ticks, TimeSpan.Zero).Ticks
+      Expect.equal recreated (ts.Ticks) "should equal after conversion"
+
   ]

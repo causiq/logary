@@ -1,6 +1,3 @@
-﻿group Examples
-Logary
-Logary.CSharp
-Logary.Targets.DB
-Logary.Targets.ElasticSearch
-Logary.Targets.Logstash
+﻿Hopac
+FParsec
+NodaTime

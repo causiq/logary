@@ -29,46 +29,29 @@ module internal Sample =
     return Metric.tapMessages ewma
   }
 
-  let metricFrom counters pn : Job<Metric> =
-    let reducer state = function
-      | _ ->
-        state
-
-    let toValue (counter : PerfCounter, pc : PC) =
-      let value = WinPerfCounter.nextValue pc
-      Float value
-      |> Message.derivedWithUnit pn Units.Scalar
-      |> Message.setName (PointName.ofPerfCounter counter)
-
-    let ticker state =
-      state, state |> List.map toValue
-
-    Metric.create reducer counters ticker
-
-  let cpuTime pn : Job<Metric> =
-    metricFrom WinPerfCounters.Common.cpuTime pn
-
   // Sample metrics from two M6000 graphics cards
-  let m6000s pn : Job<Metric> =
-    let gpu counter instance =
-      { category = "GPU"
-        counter  = counter
-        instance = Instance instance }
+  let m6000s _ : Job<Metric> =
+    let instances =
+      [ "08:00"; "84:00" ] |> List.map (sprintf "quadro m6000(%s)")
+
+    let gpu counter units =
+      { category  = "GPU"
+        counter   = counter
+        instances = Set.ofList instances
+        unit      = Some units }
 
     let counters =
-      [ for inst in [ "08:00"; "84:00" ] do
-          let inst' = sprintf "quadro m6000(%s)" inst
-          yield gpu "GPU Fan Speed (%)" inst'
-          yield gpu "GPU Time (%)" inst'
-          yield gpu "GPU Memory Usage (%)" inst'
-          yield gpu "GPU Memory Used (MB)" inst'
-          yield gpu "GPU Power Usage (Watts)" inst'
-          yield gpu "GPU SM Clock (MHz)" inst'
-          yield gpu "GPU Temperature (degrees C)" inst'
-      ]
-      |> WinPerfCounters.Common.ofPerfCounters
+      [| yield gpu "GPU Fan Speed (%)" Percent
+         yield gpu "GPU Time (%)" Percent
+         yield gpu "GPU Memory Usage (%)" Percent
+         yield gpu "GPU Memory Used (MB)" (Scaled (Bytes, 1e-6))
+         yield gpu "GPU Power Usage (Watts)" Watts
+         yield gpu "GPU SM Clock (MHz)" (Scaled (Hertz, 1e-6))
+         yield gpu "GPU Temperature (degrees C)" (Offset (Kelvins, 1e-6))
+      |]
+      |> WinPerfCounters.ofPerfCounters
 
-    metricFrom counters pn
+    WinPerfCounters.ofCounters counters
 
 open System.Threading
 
@@ -127,7 +110,7 @@ module RandomWalk =
 
       let msg = Message.gaugeWithUnit pn Seconds (Float value)
 
-      (rnd, value), [ msg ]
+      (rnd, value), [| msg |]
 
     let state =
       let rnd = Random()
@@ -168,11 +151,11 @@ module Timing =
 
     let tick state =
       let snap = Snapshot.create (Array.ofList state)
-      [], [ snap |> Snapshot.size |> int64 |> Int64 |> Message.gauge countName 
-            snap |> Snapshot.median |> int64 |> Int64 |> Message.gauge medianName
-            snap |> Snapshot.min |> Int64 |> Message.gauge minName
-            snap |> Snapshot.max |> Int64 |> Message.gauge maxName
-            snap |> Snapshot.percentile95th |> int64 |> Int64|> Message.gauge upper95 ]
+      [], [| snap |> Snapshot.size |> int64 |> Int64 |> Message.gauge countName
+             snap |> Snapshot.median |> int64 |> Int64 |> Message.gauge medianName
+             snap |> Snapshot.min |> Int64 |> Message.gauge minName
+             snap |> Snapshot.max |> Int64 |> Message.gauge maxName
+             snap |> Snapshot.percentile95th |> int64 |> Int64|> Message.gauge upper95 |]
 
     job {
       let! metric = Metric.create reduce [] tick
@@ -183,7 +166,7 @@ module NormalUsage =
   open Hopac.Infixes
 
   let act (logger : Logger) timing randomness =
-    Message.templateFormat "{userName} logged in" [| "haf" |]
+    Message.templateFormat("{userName} logged in", [| "haf" |])
     |> Logger.logSimple logger
 
     Message.eventFormat (Info, "{userName} logged in", [| "adam" |])
@@ -223,22 +206,26 @@ let main argv =
   use logary =
     withLogaryManager "Logary.ConsoleApp" (
       withTargets [
-        Console.create Console.empty "console"
+        LiterateConsole.create LiterateConsole.empty "console"
         Console.create Console.empty "fatal"
         //RabbitMQ.create rmqConf "rabbitmq"
-        //InfluxDb.create (InfluxDb.InfluxDbConf.create(Uri "http://192.168.99.100:8086/write", "logary", batchSize = 500us))
-        //                "influxdb"
+        InfluxDb.create (InfluxDb.InfluxDbConf.create(Uri "http://192.168.99.100:8086/write", "logary", batchSize = 500us))
+                        "influxdb"
       ] >>
       withMetrics [
         MetricConf.create (Duration.FromSeconds 10L) "Logary.ConsoleApp.sampleTiming" (Timing.metric timing)
         MetricConf.create (Duration.FromMilliseconds 500L) "Logary.ConsoleApp.randomWalk" (fun _ -> upcast randomness)
         //WinPerfCounters.create (WinPerfCounters.Common.cpuTimeConf) "cpuTime" (Duration.FromMilliseconds 500L)
-        //MetricConf.create (Duration.FromMilliseconds 5000L) "cpu" Sample.cpuTime
+        MetricConf.create (Duration.FromMilliseconds 5000L) "app" WinPerfCounters.appMetrics
+        MetricConf.create (Duration.FromMilliseconds 5000L) "system" WinPerfCounters.systemMetrics
         //MetricConf.create (Duration.FromMilliseconds 500L) "gpu" Sample.m6000s
       ] >>
       withRules [
         Rule.createForTarget "console"
         |> Rule.setHieraString "sampleTiming$"
+        
+        Rule.createForTarget "console" |> Rule.setHieraString "app|system"
+        Rule.createForTarget "influxdb" |> Rule.setHieraString "app|system"
 
         Rule.createForTarget "fatal"
         |> Rule.setLevel Fatal
@@ -247,8 +234,11 @@ let main argv =
       ] >>
       withInternalTargets Info [
         Console.create Console.empty "console"
-      ]
-      >> run
+      ] >>
+      withMiddleware (fun next msg ->
+        msg
+        |> Message.setContextValue "host" (String (System.Net.Dns.GetHostName()))
+        |> next)
     )
     |> run
 

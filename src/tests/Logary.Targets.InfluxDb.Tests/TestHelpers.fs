@@ -1,6 +1,6 @@
 ﻿module TestHelpers
 
-open Fuchu
+open Expecto
 
 let stringEqual (actual : 'a) (expected : 'a) (msg : string) =
   if expected = actual then ()

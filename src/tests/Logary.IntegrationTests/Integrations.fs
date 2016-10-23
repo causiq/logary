@@ -3,7 +3,7 @@
 open System
 open System.Net
 open NodaTime
-open Fuchu
+open Expecto
 open Hopac
 open Logary
 open Logary.Targets

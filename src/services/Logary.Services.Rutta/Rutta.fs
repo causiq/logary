@@ -87,13 +87,9 @@ module Shipper =
           //Console.create (Console.empty) (PointName.ofSingle "console")
           create shipperConf "rutta-shipper"
         ]
-        >> withMiddleware Middleware.Common.addHostName
+        >> withMiddleware Middleware.host
         >> withMetrics [
-          createMetric "cpuTime" WinPerfCounters.cpuTime
-          createMetric "gpuMetrics" WinPerfCounters.gpuMetrics
-          //createMetric "nvidiaMetrics" WinPerfCounters.nvidiaMetrics
-          createMetric "cpuInformation" WinPerfCounters.cpuInformation
-          createMetric "networkInterface" WinPerfCounters.networkInterface
+          createMetric "systemMetrics" WinPerfCounters.systemMetrics
         ]
         >> withRules [
           //Rule.createForTarget (PointName.ofSingle "noop")
@@ -103,7 +99,6 @@ module Shipper =
         >> withInternalTargets Info [
           Console.create Console.empty "internal"
         ]
-        >> run
       )
       |> run
 

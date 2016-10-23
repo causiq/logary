@@ -2,14 +2,13 @@
 
 open System
 
-open Fuchu
+open Expecto
 open NodaTime
 
 open Logary
 open Logary.Formatting
 
 open Logary.Tests.TestDSL
-open ExpectoPatronum
 
 let private sampleMessage : Message =
   { name      = PointName.ofList ["a"; "b"; "c"; "d"]
@@ -145,7 +144,7 @@ let tests =
       let format = "This {0} contains {1} words."
       let args : obj[] = [|"sentence"; 4|]
       (because "converting a String.Format into a message template" <| fun () ->
-        extractFormatFields (Message.templateFormat format args))
+        extractFormatFields (Message.templateFormat(format, args)))
       |> should equal ("This {0} contains {1} words.",
                        Set [ "0", Field (String "sentence", None)
                              "1", Field (Int64 4L, None) ])
@@ -155,7 +154,7 @@ let tests =
       let format = "This {gramaticalStructure} contains {wordCount} {0}."
       let args : obj[] = [|"sentence"; 4; "words"|]
       (because "fields are matched left-to-right when any fields are named" <| fun () ->
-        extractFormatFields (Message.templateFormat format args))
+        extractFormatFields (Message.templateFormat(format, args)))
       |> should equal ("This {gramaticalStructure} contains {wordCount} {0}.",
                        Set [ "gramaticalStructure", Field (String "sentence", None)
                              "wordCount", Field (Int64 4L, None)
@@ -166,7 +165,7 @@ let tests =
       let format = "Positionally - two {2} . {2} . zero {0} . {0}"
       let args : obj[] = [|0;1;2;3|] 
       (because "fields are matched positionally when all are numbered" <| fun () ->
-        extractFormatFields (Message.templateFormat format args))
+        extractFormatFields (Message.templateFormat(format, args)))
       |> should equal ("Positionally - two {2} . {2} . zero {0} . {0}",
                        Set [ ("0", Field (Int64 0L, None))
                              ("2", Field (Int64 2L, None)) ])
@@ -176,7 +175,7 @@ let tests =
       let format = "This {gramaticalStructure} contains {wordCount} words."
       let args : obj[] = [|"sentence"; 4|]
       (because "fields are matched left-to-right in message template" <| fun () ->
-        extractFormatFields (Message.templateFormat format args))
+        extractFormatFields (Message.templateFormat(format, args)))
       |> should equal ("This {gramaticalStructure} contains {wordCount} words.",
                        Set [ "gramaticalStructure", Field (String "sentence", None)
                              "wordCount", Field (Int64 4L, None) ])
@@ -186,7 +185,7 @@ let tests =
       let format = "This {gramaticalStructure} contains {wordCount} words."
       let args : obj[] = [|"sentence"|]
       (because "fields are matched left-to-right in message template" <| fun () ->
-        extractFormatFields (Message.templateFormat format args))
+        extractFormatFields (Message.templateFormat(format, args)))
       |> should equal ("This {gramaticalStructure} contains {wordCount} words.",
                        Set [ "gramaticalStructure", Field (String "sentence", None) ])
       |> thatsIt
@@ -195,7 +194,7 @@ let tests =
       let format = "This {gramaticalStructure} contains {wordCount} words."
       let args : obj[] = [||]
       (because "fields are matched left-to-right in message template" <| fun () ->
-        extractFormatFields (Message.templateFormat format args))
+        extractFormatFields (Message.templateFormat(format, args)))
       |> should equal ("This {gramaticalStructure} contains {wordCount} words.",
                        Set [ ])
       |> thatsIt
@@ -255,31 +254,53 @@ let tests =
 
     testCase "templateEvent<_> throws when there are positionally matched fields" <| fun _ ->
       Expect.throws (fun () -> Message.templateEvent<int> (Info, "No named fields {0}") |> ignore)
+                    "No named fields passed 1 gen par"
       Expect.throws (fun () -> Message.templateEvent<int, int> (Info, "No named fields {0} {1}") |> ignore)
+                    "No named fields passed 2 gen pars"
       Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "No named fields {0} {1} {2}") |> ignore)
+                    "No named fields passed 3 gen pars"
       Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "No named fields {0} {1} {2} {3}") |> ignore)
+                    "No named fields passed 4 gen pars"
 
     testCase "templateEvent<_> requires exactly the same number of type args and properties in the template" <| fun _ ->
       Expect.throws (fun () -> Message.templateEvent<int> (Info, "Too many {Field1} {Field2}") |> ignore)
+                    "Missing one type arg"
       Expect.throws (fun () -> Message.templateEvent<int> (Info, "Too many {Field1} {Field2} {Field3}") |> ignore)
+                    "Missing two type args"
       Expect.throws (fun () -> Message.templateEvent<int> (Info, "Too few") |> ignore)
+                    "One type arg too many"
 
       Expect.throws (fun () -> Message.templateEvent<int, int> (Info, "Too many {Field1} {Field2} {Field3}") |> ignore)
+                    "Missing one type arg"
       Expect.throws (fun () -> Message.templateEvent<int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4}") |> ignore)
+                    "Missing two type args"
       Expect.throws (fun () -> Message.templateEvent<int, int> (Info, "Too few") |> ignore)
+                    "Two type args too many"
       Expect.throws (fun () -> Message.templateEvent<int, int> (Info, "Too few {Field1}") |> ignore)
+                    "One type args too many"
 
       Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4}") |> ignore)
+                    "One type args too few"
       Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4} {Field5}") |> ignore)
+                    "Two type args too few"
       Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "Too few") |> ignore)
+                    "Three type args too many"
       Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "Too few {Field1}") |> ignore)
+                    "Two type args too many"
       Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "Too few {Field1} {Field2}") |> ignore)
+                    "One type arg too many"
 
       Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4} {Field5}") |> ignore)
+                    "Missing one type arg"
       Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4} {Field5} {Field6}") |> ignore)
+                    "Missing two type args"
       Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too few") |> ignore)
+                    "Four type args too many"
       Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too few {Field1}") |> ignore)
+                    "Three type args too many"
       Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too few {Field1} {Field2}") |> ignore)
+                    "Two type args too many"
       Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too few {Field1} {Field2} {Field3}") |> ignore)
+                    "One type arg too many"
 
     ]

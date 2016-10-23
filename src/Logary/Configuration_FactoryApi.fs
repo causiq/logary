@@ -11,10 +11,13 @@ open System.Threading.Tasks
 open System.Runtime.CompilerServices
 open Hopac
 open Hopac.Infixes
+open NodaTime
 open Logary
+open Logary.Metric
 open Logary.Internals
 open Logary.Configuration
 open Logary.Target
+open Logary.Targets
 open Logary.Target.FactoryApi
 
 type internal ConfBuilderT<'T when 'T :> SpecificTargetConf> =
@@ -41,19 +44,54 @@ with
 
     member x.Target = x.tcSpecific.Value
 
+and internal MetricsConfBuilder(conf) =
+  member x.conf = conf
+
+  interface MetricsConfBuild with
+    member x.AddMetric (pollEvery : Duration, name: string, metricFactory : Func<PointName, Job<Metric>>) =
+      conf
+      |> Config.withMetric (MetricConf.create pollEvery name (Funcs.ToFSharpFunc metricFactory))
+      |> MetricsConfBuilder
+      :> MetricsConfBuild
+
 /// The "main" fluent-config-api type with extension method for configuring
 /// Logary rules as well as configuring specific targets.
 and ConfBuilder(conf) =
   member internal x.BuildLogary () =
     conf |> Config.validate |> runLogary >>- asLogManager
 
+  member x.InternalLoggingLevel(level : LogLevel) : ConfBuilder =
+    conf
+    |> Config.withInternalTarget level (Console.create Console.empty "internalConsole")
+    |> ConfBuilder
+
   /// Call this method to add middleware to Logary. Middleware is useful for interrogating
   /// the context that logging is performed in. It can for example ensure all messages
   /// have a context field 'service' that specifies what service the code is running in.
+  ///
+  /// Please see Logary.Middleware for common middleware to use.
   member x.Use(middleware : Func<Func<Message, Message>, Func<Message, Message>>) : ConfBuilder =
     conf
     |> Config.withMiddleware (fun next msg -> middleware.Invoke(new Func<_,_>(next)).Invoke msg)
     |> ConfBuilder
+    
+  /// Call this method to add middleware to Logary. Middleware is useful for interrogating
+  /// the context that logging is performed in. It can for example ensure all messages
+  /// have a context field 'service' that specifies what service the code is running in.
+  ///
+  /// Please see Logary.Middleware for common middleware to use.
+  member x.Use(middleware : Middleware.Mid) : ConfBuilder =
+    conf
+    |> Config.withMiddleware middleware
+    |> ConfBuilder
+
+  member x.Metrics(configurator : Func<MetricsConfBuild, MetricsConfBuild>) =
+    let builder = MetricsConfBuilder conf
+
+    let built = configurator.Invoke builder
+    
+    built :?> MetricsConfBuilder
+    |> fun builder -> ConfBuilder builder.conf
 
   /// Configure a target of the type with a name specified by the parameter name.
   /// The callback, which is the second parameter, lets you configure the target.

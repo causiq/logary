@@ -1,6 +1,6 @@
 ﻿module Datapoints
 
-open Fuchu
+open Expecto
 
 type Assert =
   static member Contains(msg : string, xExpected : 'a, xs : 'a seq) =
@@ -19,7 +19,7 @@ let datapoints =
 
   testList "getting all datapoints" [
     testCase "for drive c" <| fun _ ->
-      Assert.Equal(
+      Expect.equal(
         "should eq set",
         [ "drive_io_stall_read.c"
           "drive_io_stall_write.c"

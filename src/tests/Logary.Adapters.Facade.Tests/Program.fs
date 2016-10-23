@@ -1,6 +1,6 @@
 ﻿module Program
 
-open Fuchu
+open Expecto
 open ExpectoPatronum
 open Logary
 open Logary.Internals

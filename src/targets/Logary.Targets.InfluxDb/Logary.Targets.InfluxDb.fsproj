@@ -18,6 +18,7 @@
     <ConsolePause>false</ConsolePause>
     <PlatformTarget>
     </PlatformTarget>
+    <DocumentationFile>bin\Debug\Logary.Targets.InfluxDb.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugSymbols>false</DebugSymbols>
@@ -31,6 +32,7 @@
     <PlatformTarget>
     </PlatformTarget>
     <NoWarn>2003</NoWarn>
+    <DocumentationFile>bin\Release\Logary.Targets.InfluxDb.xml</DocumentationFile>
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>

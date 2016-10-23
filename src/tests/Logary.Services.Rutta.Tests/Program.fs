@@ -1,6 +1,6 @@
 ﻿module Logary.Services.Rutta.Tests.Program
 
-open Fuchu
+open Expecto
 
 [<EntryPoint>]
 let main argv = 

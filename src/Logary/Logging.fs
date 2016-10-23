@@ -21,11 +21,14 @@ open Logary.Internals
 /// Gets the current name, as defined by the class-name + namespace that the logger is in.
 [<CompiledName "GetCurrentLoggerName"; MethodImpl(MethodImplOptions.NoInlining); Pure>]
 let getCurrentLoggerName () =
-  let toSkip = 2
   let getName (meth : MethodBase, dt : Type) =
+    if isNull meth then nullArg "meth"
+    if isNull dt then nullArg "dt"
     match dt with
     | null -> PointName.ofSingle meth.Name
-    | _ -> PointName.parse dt.FullName
+    | _    -> PointName.parse dt.FullName
+
+  let toSkip = 2
   let sf, m = let sf' = StackFrame(toSkip, false) in sf', sf'.GetMethod()
   let cont (dt : Type) = not <| (dt = null) && dt.Module.Name.Equals("mscorlib.dll", StringComparison.OrdinalIgnoreCase)
   let frame_still_unrolling_or_is_in_dotnet_core = cont << snd

@@ -609,7 +609,10 @@ type Units =
   | Kelvins
   | Moles
   | Candelas
-  | Other of unit:string
+  | Percent
+  | Watts
+  | Hertz
+  | Other of units:string
   // E.g. to denote nano-seconds since epoch;
   // 1474139353507070000 would be Scaled(Seconds, 10.**9.) since year 1970
   // so to get back to seconds, you'd divide the value by 10.**9.
@@ -617,11 +620,16 @@ type Units =
   // Gauge(5000000, Scaled(Seconds, 10.**9.)) (ns) OR:
   // Gauge(50000, Scaled(Seconds, 10**7.)) (ticks):
   | Scaled of units:Units * scale:float
+  | Offset of units:Units * offset:float
   | Mul of Units * Units
   | Pow of Units * Units
   | Div of Units * Units
   | Root of Units
   | Log10 of Units // Log of base:float * BaseUnit
+
+  /// E.g. 5 degrees celsius is (5 + 273.15) K
+  static member Celsius =
+    Offset (Kelvins, +273.15)
 
   static member symbol = function
     | Bits -> "b"
@@ -633,8 +641,15 @@ type Units =
     | Kelvins -> "K"
     | Moles -> "mol"
     | Candelas -> "cd"
+    | Percent -> "%"
+    | Watts -> "W"
+    | Hertz -> "Hz"
     | Other other -> other
-    | Scaled(units, scale) -> sprintf "%s / %f" (Units.symbol units) scale
+    | Scaled (units, scale) -> sprintf "%s / %f" (Units.symbol units) scale
+    | Offset (units, offset) ->
+      sprintf "%s %s %f" (Units.symbol units)
+                         (if offset < 0. then "-" else "+")
+                         offset
     | Mul (a, b) -> String.Concat [ "("; Units.symbol a; "*"; Units.symbol b; ")" ]
     | Pow (a, b) -> String.Concat [ Units.symbol a; "^("; Units.symbol b; ")" ]
     | Div (a, b) -> String.Concat [ "("; Units.symbol a; "/"; Units.symbol b; ")" ]
@@ -651,13 +666,19 @@ type Units =
     | Amperes
     | Kelvins
     | Moles
-    | Candelas ->
+    | Candelas
+    | Percent
+    | Watts
+    | Hertz ->
       Json.Lens.setPartial Json.String_ (u |> Units.symbol)
     | Other other ->
       Json.write "other" other
     | Scaled (units, scale) ->
       Json.write "units" units
       *> Json.write "scale" scale
+    | Offset (units, offset) ->
+      Json.write "units" units
+      *> Json.write "offset" offset
     | Mul (a, b) ->
       Json.write "multipleA" a
       *> Json.write "multipleB" b
@@ -686,6 +707,9 @@ type Units =
         | "K" -> Kelvins |> JsonResult.Value, json
         | "mol" -> Moles |> JsonResult.Value, json
         | "cd" -> Candelas |> JsonResult.Value, json
+        | "%" -> Percent |> JsonResult.Value, json
+        | "W" -> Watts |> JsonResult.Value, json
+        | "Hz" -> Hertz |> JsonResult.Value, json
         | unknown ->
           let msg = sprintf "Unknown unit type represented as string '%s'" unknown
           JsonResult.Error msg, json
@@ -694,8 +718,10 @@ type Units =
         match o with
         | Val "other" other ->
           Other (Json.deserialize other) |> JsonResult.Value, json
-        | Val "units" units & Val "scale" scale ->
+        | Val "scale" scale & Val "units" units ->
           Scaled (Json.deserialize units, Json.deserialize scale) |> JsonResult.Value, json
+        | Val "offset" offset & Val "units" units ->
+          Offset (Json.deserialize units, Json.deserialize offset) |> JsonResult.Value, json
         | Val "multipleA" a & Val "multipleB" b ->
           Mul(Json.deserialize a, Json.deserialize b) |> JsonResult.Value, json
         | Val "base" b & Val "exponent" e ->
@@ -751,39 +777,51 @@ module Units =
     | Array values -> String.Concat ["["; values |> List.map formatValue |> String.concat ", "; "]"]
     | Object m -> "Object"
 
-  let scaleSeconds = int64 >> ((*) 1000000000000L) >> function
-    | value when value < 1000L -> 1L
-    | value when value < 1000000L -> 1000L
-    | value when value < 1000000000L -> 1000000L
-    | value when value < 1000000000000L -> 1000000000L
-    | value when value < 60L * 1000000000000L -> 1000000000000L
-    | value when value < 3600L * 1000000000000L -> 3600L * 1000000000000L
-    | value -> 86400L * 1000000000000L
+  let scaleSeconds : float -> int64 = int64 >> ((*) 1000000000000L) >> function
+    | value when value < 1000L -> 1L // ns
+    | value when value < 1000000L -> 1000L // µs
+    | value when value < 1000000000L -> 1000000L // ms
+    | value when value < 1000000000000L -> 1000000000L // s
+    | value when value < 60L * 1000000000000L -> 1000000000000L // min
+    | value when value < 3600L * 1000000000000L -> 3600L * 1000000000000L // h
+    | value -> 86400L * 1000000000000L // days
 
-  // TODO: re-enable scaling
-  (*
   // grafana/public/app/kbn.js:374@g20d5d0e
-  let doScale (fFactor : decimal -> int64) (scaledUnits : string list) =
-    fun (decimals : uint16) (scaledDecimals : uint16) (value : decimal) ->
-      (value : decimal), "KiB"
+  let doScale (calcFactor : float -> int64) (scaledUnits : string list) =
+    fun (decimals : uint16) (scaledDecimals : uint16) (value : float) ->
+      value, "KiB"
 
-  let scale units : uint16 -> uint16 -> decimal -> float*string =
-    match units with
-    | Bits -> (fun _ -> 1000L), ["b"; "Kib"; "Mib"; "Gib"; "Tib"; "Pib"; "Eib"; "Zib"; "Yib"]
-    | Bytes -> (fun _ -> 1024L), ["B"; "KiB"; "MiB"; "GiB"; "TiB"; "PiB"; "EiB"; "ZiB"; "YiB"]
-    | Seconds -> scaleSeconds, ["ns"; "µs"; "ms"; "s"; "min"; "h"; "days"]
-    ||> doScale
-   *)
+  // Given a Unit, returns the scaling function and the list of units available.
+  let scale units : uint16 -> uint16 -> float -> float*string =
+    let scaleThousands _ = 1000L
+    let scale2to10 _ = 1024L
+    let calcFactory, scaledUnits =
+      match units with
+      | Bits ->
+        scaleThousands,
+        ["b"; "Kib"; "Mib"; "Gib"; "Tib"; "Pib"; "Eib"; "Zib"; "Yib"]
+      | Bytes -> 
+        scale2to10,
+        ["B"; "KiB"; "MiB"; "GiB"; "TiB"; "PiB"; "EiB"; "ZiB"; "YiB"]
+      | Seconds ->
+        scaleSeconds,
+        ["ns"; "µs"; "ms"; "s"; "min"; "h"; "days"]
+      | x ->
+        failwithf "TODO: unit %A" x
+    doScale calcFactory scaledUnits
+
+  let scaleFull units (value : float) : float * string =
+    let scaler = scale units
+    let decimals = log value
+    scaler (uint16 decimals) (* todo *) 0us value
 
   let formatWithUnit orient un value =
     let fval = formatValue value
     match Units.symbol un with
     | "" ->
       fval
-
     | funit when orient = Prefix ->
       String.Concat [ funit; " "; fval ]
-
     | funit ->
       String.Concat [ fval; " "; funit ]
 
@@ -1034,22 +1072,37 @@ type Message =
 [<AutoOpen; Extension>]
 module SystemDateEx =
 
-  type DateTime with
-    /// Gets the EpochNanoSeconds from the DateTime at UTC.
-    [<Extension>]
-    member x.timestamp : EpochNanoSeconds =
-      if not (x.Kind = DateTimeKind.Utc) then
-        invalidArg "x" (sprintf "Expected '%O' to be in UTC format" x)
-      else
-        (x.Ticks - DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).Ticks)
-        * Constants.NanosPerTick
-
   type DateTimeOffset with
     /// Gets the EpochNanoSeconds from the DateTimeOffset.
     [<Extension>]
     member x.timestamp : EpochNanoSeconds =
       (x.Ticks - DateTimeOffset(1970, 1, 1, 0, 0, 0, TimeSpan.Zero).Ticks)
       * Constants.NanosPerTick
+
+/// Helper functions for transforming DateTimeOffset to timestamps in unix epoch.
+module DateTimeOffset =
+
+  let private ticksAt1970 =
+    DateTimeOffset(1970, 1, 1, 0, 0, 0, TimeSpan.Zero).Ticks
+
+  /// Get the DateTimeOffset ticks from EpochNanoSeconds
+  let ticksUTC (epoch : EpochNanoSeconds) : int64 =
+    epoch / Constants.NanosPerTick
+    + ticksAt1970
+
+  /// Get the DateTimeOffset from EpochNanoSeconds
+  let ofEpoch (epoch : EpochNanoSeconds) : DateTimeOffset =
+    DateTimeOffset(ticksUTC epoch, TimeSpan.Zero)
+
+[<AutoOpen; Extension>]
+module DurationEx =
+  open NodaTime
+
+  type Duration with
+    [<Extension; CompiledName "ToGauge">]
+    member dur.toGauge () =
+      Int64 (dur.Ticks * Constants.NanosPerTick),
+      Scaled (Seconds, float Constants.NanosPerSecond)
 
 /// Extensions to facilitate reading Diagnostics.Stopwatch as a value that
 /// suits Logary
@@ -1062,7 +1115,7 @@ module StopwatchEx =
     [<Extension; CompiledName "ToGauge">]
     member sw.toGauge() : (Value * Units) =
       Int64 (sw.ElapsedTicks * Constants.NanosPerTick),
-      Scaled(Seconds, float Constants.NanosPerSecond)
+      Scaled (Seconds, float Constants.NanosPerSecond)
 
     [<Extension; CompiledName "Time">]
     static member time (fn : unit -> 'res) : 'res * (Value * Units) =
@@ -1076,6 +1129,7 @@ module Message =
   open Hopac
   open Hopac.Infixes
   open NodaTime
+  open System.Threading.Tasks
   open System.Diagnostics
   open Logary.Internals
 
@@ -1122,85 +1176,87 @@ module Message =
 
   /// Get a partial setter lens to a field
   [<CompiledName "SetField">]
-  let inline setField name value =
-    Lens.setPartial (Lenses.field_ name) (Field.init value)
+  let inline setField name value message =
+    Lens.setPartial (Lenses.field_ name) (Field.init value) message
 
   /// Get a partial setter lens to a field with an unit
   [<CompiledName "SetFieldUnit">]
-  let inline setFieldUnit name value units =
-    Lens.setPartial (Lenses.field_ name) (Field.initWithUnit value units)
+  let inline setFieldUnit name value units message =
+    Lens.setPartial (Lenses.field_ name) (Field.initWithUnit value units) message
 
   /// You can also choose to construct a Field yourself, using the object model
   /// that Logary has for its data. That way you don't have to rely on having
   /// static ToValue methods on your data objects.
   [<CompiledName "SetFieldValue">]
-  let setFieldValue (name : string) (field : Field) msg =
-    Lens.setPartial (Lenses.field_ name) field msg
+  let setFieldValue (name : string) (field : Field) message =
+    Lens.setPartial (Lenses.field_ name) field message
 
   [<CompiledName "SetFieldValues">]
-  let setFieldValues (fields : (string * Field) seq) msg =
-    fields |> Seq.fold (fun m (name, value) -> setFieldValue name value m) msg
+  let setFieldValues (fields : (string * Field) seq) message =
+    fields |> Seq.fold (fun m (name, value) -> setFieldValue name value m) message
+
+  [<CompiledName "SetFieldValuesArray">]
+  let setFieldValuesArray (fields : (string * Field)[]) message =
+    fields |> Array.fold (fun m (name, value) -> setFieldValue name value m) message
 
   [<CompiledName "SetFieldsFromMap">]
-  let setFieldsFromMap (m : Map<string, obj>) msg =
+  let setFieldsFromMap (m : Map<string, obj>) message =
     m
     |> Seq.map (fun (KeyValue (k, v)) -> k, Field (Value.ofObject v, None))
-    |> List.ofSeq
-    |> fun fields -> setFieldValues fields msg
+    |> flip setFieldValues message
 
   [<CompiledName "SetFieldFromObject">]
-  let setFieldFromObject name (data : obj) msg =
-    setFieldValue name (Field (Value.ofObject data, None)) msg
+  let setFieldFromObject name (data : obj) message =
+    setFieldValue name (Field (Value.ofObject data, None)) message
 
   /// Reflects over the object and sets the appropriate fields.
   [<CompiledName "SetFieldsFromObject">]
-  let setFieldsFromObject (data : obj) msg =
+  let setFieldsFromObject (data : obj) message =
     Map.ofObject data
     |> Seq.map (fun (KeyValue (k, v)) -> k, Field (Value.ofObject v, None))
-    |> List.ofSeq
-    |> fun fields -> setFieldValues fields msg
+    |> flip setFieldValues message
 
   /// Get a partial getter lens to a field
   [<CompiledName "TryGetField">]
-  let tryGetField name =
-    Lens.getPartial (Lenses.field_ name)
+  let tryGetField name message =
+    Lens.getPartial (Lenses.field_ name) message
 
   ///////////////// CONTEXT ////////////////////
 
   /// Sets a context value by trying to find the ToValue method on the type
   /// passed.
   [<CompiledName "SetContext">]
-  let inline setContext name value msg =
-    Lens.setPartial (Lenses.contextValue_ name) (Value.serialize value) msg
+  let inline setContext name value message =
+    Lens.setPartial (Lenses.contextValue_ name) (Value.serialize value) message
 
   /// Sets a context value.
   [<CompiledName "SetContextValue">]
-  let setContextValue name value msg =
-    Lens.setPartial (Lenses.contextValue_ name) value msg
+  let setContextValue name value message =
+    Lens.setPartial (Lenses.contextValue_ name) value message
 
   [<CompiledName "SetContextValues">]
-  let setContextValues (values : (string * Value) seq) msg =
-    values |> Seq.fold (fun m (name, value) -> setContextValue name value m) msg
+  let setContextValues (values : (string * Value) seq) message =
+    values |> Seq.fold (fun m (name, value) -> setContextValue name value m) message
 
   [<CompiledName "SetContextFromMap">]
-  let setContextFromMap (m : Map<string, obj>) msg =
+  let setContextFromMap (m : Map<string, obj>) message =
     m
     |> Seq.map (fun (KeyValue (k, v)) -> k, Value.ofObject v)
     |> List.ofSeq
-    |> fun fields -> setContextValues fields msg
+    |> fun fields -> setContextValues fields message
 
   /// Uses reflection to set all
   [<CompiledName "SetContextFromObject">]
-  let setContextFromObject (data : obj) msg =
+  let setContextFromObject (data : obj) message =
     Map.ofObject data
     |> Seq.map (fun (KeyValue (k, v)) -> k, Value.ofObject v)
     |> List.ofSeq
-    |> fun values -> setContextValues values msg
+    |> fun values -> setContextValues values message
 
   /// Tries to get a context value
   [<CompiledName "TryGetContext">]
-  let inline tryGetContext name msg =
-    Lens.getPartial (Lenses.contextValue_ name) msg
+  let inline tryGetContext name message =
+    Lens.getPartial (Lenses.contextValue_ name) message
 
   ///////////////// CTORS ////////////////////
 
@@ -1339,31 +1395,25 @@ module Message =
     match pnv.Value with
     | ScalarValue v ->
       pnv.Name, Field (Value.ofObject v, None)
-
     | _ ->
-      failwith "This should never happen. In Logary we extract all properties as Scalar"
+      failwith "In Logary we extract all properties as Scalar values. File a bug report with the parameter values that you called the function with."
+
+  let internal extractFields formatTemplate args =
+    let parsedTemplate = Parser.parse formatTemplate
+    captureNamesAndValuesAsScalars parsedTemplate args
+    |> Array.map convertToNameAndField
 
   /// Creates a new event with given level, format and arguments. Format may
   /// contain String.Format-esque format placeholders.
   [<CompiledName "EventFormat">]
-  let eventFormat (level, format, [<ParamArray>] args : obj[]) : Message =
-    let parsedTemplate =
-      Parser.parse format
-
-    let scalarNamesAndValues =
-      captureNamesAndValuesAsScalars parsedTemplate args
-
-    let fields =
-      scalarNamesAndValues
-      |> Seq.map convertToNameAndField
-      |> List.ofSeq
-
-    event level format |> setFieldValues fields
+  let eventFormat (level, formatTemplate, [<ParamArray>] args : obj[]) : Message =
+    let fields = extractFields formatTemplate args
+    event level formatTemplate |> setFieldValuesArray fields
 
   /// Converts a String.Format-style format string and an array of arguments into
   /// a message template and a set of fields.
   [<CompiledName "EventFormat">]
-  let templateFormat (format : string) ([<ParamArray>] args : obj[]) =
+  let templateFormat (format : string, [<ParamArray>] args : obj[]) =
     eventFormat (LogLevel.Debug, format, args)
 
   /// Run the function `f` and measure how long it takes; logging that
@@ -1417,6 +1467,18 @@ module Message =
       res, gaugeWithUnit pointName units value
     )
 
+  [<CompiledName "TimeTask">]
+  let timeTask pointName (fn : 'input -> Task<'res>) : 'input -> Task<'res * Message> =
+    fun input ->
+      let sw = Stopwatch.StartNew()
+      // http://stackoverflow.com/questions/21520869/proper-way-of-handling-exception-in-task-continuewith
+      (fn input).ContinueWith((fun (task : Task<'res>) ->
+        sw.Stop()
+        let value, units = sw.toGauge()
+        task.Result, // will rethrow if needed
+        gaugeWithUnit pointName units value
+      ), TaskContinuationOptions.ExecuteSynchronously) // stopping SW is quick
+
   ///////////////// PROPS ////////////////////
 
   /// Sets the name of the message to a PointName
@@ -1451,6 +1513,10 @@ module Message =
   let setNanoEpoch (ts : EpochNanoSeconds) msg =
     { msg with timestamp = ts }
 
+  [<CompiledName "SetTimestamp">]
+  let setTimestamp (instant : Instant) msg =
+    { msg with timestamp = instant.Ticks * Constants.NanosPerTick }
+
   /// Sets the number of ticks since epoch. There are 10 ticks per micro-second,
   /// so a tick is a 1/10th microsecond, so it's 100 nanoseconds long.
   [<CompiledName "SetTicksEpoch">]
@@ -1465,13 +1531,21 @@ module Message =
 
   /// Update the message with the current timestamp.
   [<CompiledName "UpdateTimestamp">]
-  let updateTimestamp msg =
-    { msg with timestamp = Date.timestamp () }
+  let updateTimestamp message =
+    { message with timestamp = Date.timestamp () }
 
   /// Replaces the value of the message with a new Event with the supplied format
   [<CompiledName "SetEvent">]
-  let setEvent format msg =
-    { msg with value = Event format}
+  let setEvent format message =
+    { message with value = Event format }
+
+  [<CompiledName "SetGauge">]
+  let setGauge (value, units) message =
+    { message with value = Gauge (value, units) }
+
+  [<CompiledName "SetDerived">]
+  let setDerived (value, units) message =
+    { message with value = Derived (value, units) }
 
   /// Adds a new exception to the "errors" field in the message.
   /// AggregateExceptions are automatically expanded.

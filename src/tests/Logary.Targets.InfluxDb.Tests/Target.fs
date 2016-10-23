@@ -8,7 +8,7 @@ open Logary.Targets.InfluxDb
 open System
 open System.Text
 open System.Threading
-open Fuchu
+open Expecto
 open Suave
 open Suave.Operators
 open Hopac
@@ -89,7 +89,7 @@ let writesOverHttp =
                      (Serialisation.serialiseMessage msg)
                      "should eq"
 
-        Assert.equal (req.queryParam "db") (Choice1Of2 "tests") "should write to tests db"
+        Expect.equal (req.queryParam "db") (Choice1Of2 "tests") "should write to tests db"
 
       finally
         finaliseTarget target
@@ -125,7 +125,7 @@ let writesOverHttp =
                      (Serialisation.serialiseMessage msg2 + "\n" + Serialisation.serialiseMessage msg3 )
                      "should eq"
 
-        Assert.equal (req.queryParam "db") (Choice1Of2 "tests") "should write to tests db"
+        Expect.equal (req.queryParam "db") (Choice1Of2 "tests") "should write to tests db"
 
       finally
         finaliseTarget target
@@ -150,7 +150,7 @@ let writesOverHttp =
 
         let messageIsAcked = Promise.Now.isFulfilled ackPromise
 
-        Assert.isTrue messageIsAcked "message should be acked"
+        Expect.isTrue messageIsAcked "message should be acked"
 
       finally
         finaliseTarget target

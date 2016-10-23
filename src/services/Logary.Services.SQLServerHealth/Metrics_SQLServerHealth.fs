@@ -311,7 +311,7 @@ module internal Impl =
       :: acc) []
 
   let ticker state =
-    state, getValues state
+    state, Array.ofList (getValues state)
 
 /// Create the new SQLServer Health metric
 let create conf pn =

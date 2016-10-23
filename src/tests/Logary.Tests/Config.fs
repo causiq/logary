@@ -1,7 +1,7 @@
 ﻿module Logary.Tests.Config
 
 open System
-open Fuchu
+open Expecto
 open TestDSL
 open Fac
 
@@ -11,14 +11,6 @@ open Logary
 open Logary.Configuration
 open Logary.Configuration.Uri
 open Logary.Targets
-
-module Assert = ExpectoPatronum.Expect
-
-type Assert =
-  static member Contains(msg : string, xExpected : 'a, xs : 'a seq) =
-    match Seq.tryFind ((=) xExpected) xs with
-    | None -> Tests.failtestf "%s -- expected %A to contain %A" msg xs xExpected
-    | Some _ -> ()
 
 [<Tests>]
 let ``invalid configs`` =
@@ -38,33 +30,32 @@ let ``invalid configs`` =
       throws
         (withRule r1 >> withTarget t1)
         (fun ex ->
-          Assert.Contains("should contain orphan rule", r1, ex.InvalidRules)
-          Assert.Contains("should contain orphan target", t1, ex.InvalidTargets))
+          Expect.contains ex.InvalidRules r1 "should contain orphan rule"
+          Expect.contains ex.InvalidTargets t1 "should contain orphan target")
 
     testCase "missing target" <| fun _ ->
       throws (withRule r1) (fun ex ->
-          Assert.Contains("should contain orphan rule", r1, ex.InvalidRules)
-          Assert.StringContains("string should contain name of rule", "r1", sprintf "%O" ex))
+        Expect.contains ex.InvalidRules r1
+                        "should contain orphan rule"
+        Expect.stringContains (sprintf "%O" ex) "r1"
+                              "Exception string should contain name of rule")
 
     testCase "missing rule" <| fun _ ->
       throws (withTarget t1) (fun ex ->
-          Assert.Contains("should contain orphan target", t1, ex.InvalidTargets)
-          Assert.StringContains("string should contain name of target", "t1", sprintf "%O" ex))
+        Expect.contains ex.InvalidTargets t1 "should contain orphan target"
+        Expect.stringContains (sprintf "%O" ex) "t1" "string should contain name of target")
     ]
     
 type Consistency =
   | Yolo
   | Quorum
 
-  /// Use this pattern for parsing DUs
   static member tryParse (s : string) =
     match s with
     | "Yolo" ->
       Choice.create (box Yolo)
-
     | "Quorum" ->
       Choice.create (box Quorum)
-
     | ugh ->
       Choice.createSnd (sprintf "%s wasn't a case in the DU named Consistency" ugh)
 
@@ -74,8 +65,7 @@ type ArbConfig =
     endpoint    : Uri
     username    : string option
     password    : string option
-    consistency : Consistency
-  }
+    consistency : Consistency }
 
   static member empty =
     { db = ""
@@ -118,13 +108,15 @@ let uriParser =
 
       yield testCase "can box for fun and profit" <| fun _ ->
         for input, typ, expected in data do
-          Assert.equal (Uri.convertTo typ input) expected (sprintf "should convert to %s" typ.Name)
+          Expect.equal (Uri.convertTo typ input)
+                       expected
+                       (sprintf "Should convert to %s" typ.Name)
     ]
 
     testList "configs" [
       testCase "parsing uri to target config" <| fun _ ->
         let actualConfig = parseConfig<ArbConfig> ArbConfig.empty subject
-        Assert.equal actualConfig expectedConfig "should be correctly interpreted"
+        Expect.equal actualConfig expectedConfig "should be correctly interpreted"
 
       testCase "can override with qs" <| fun _ ->
         let extraExtra = "&username=anotherUser&password=testing"
@@ -134,6 +126,6 @@ let uriParser =
               endpoint = Uri ("http://host:8086/write?db=databaseName&batchSize=123" + extraExtra)
               username = Some "anotherUser"
               password = Some "testing" }
-        Assert.equal actualConfig expectedConfig "qs overrides username-password next to domain"
+        Expect.equal actualConfig expectedConfig "qs overrides username-password next to domain"
     ]
   ]

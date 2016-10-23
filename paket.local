@@ -1,0 +1,3 @@
+// using local expecto libs to improve logging and test output
+nuget Expecto -> source /Users/h/dev/haf/expecto/build/pkg version 1.0.10
+nuget Expecto.FsCheck -> source /Users/h/dev/haf/expecto/build/pkg version 1.0.10

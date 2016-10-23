@@ -116,29 +116,20 @@ module Console =
   open Logary.Formatting
   open Logary.Target
 
-  /// Colours in hex
-  type ConsoleColours =
-    { foregroundColor : int
-      backgroundColor : int }
-
   /// Console configuration structure.
   type ConsoleConf =
-    { formatter : StringFormatter
-      colorMap  : (ConsoleColours -> LogLevel -> ConsoleColours) option }
+    { formatter : StringFormatter }
 
     [<CompiledName "Create">]
     static member create formatter =
-      { formatter = formatter
-        colorMap  = None }
+      { formatter = formatter }
 
   /// Default console target configuration.
   let empty =
-    { formatter = StringFormatter.levelDatetimeMessagePath
-      colorMap  = None (* fun col line -> 0x000000 black *) }
+    { formatter = StringFormatter.levelDatetimeMessagePath }
 
   [<CompiledName "Create">]
   let create conf name =
-    // TODO: coloured console output
     TextWriter.create
       { formatter = conf.formatter
         output    = System.Console.Out
@@ -154,10 +145,6 @@ module Console =
     /// Specify the formatting style to use when logging to the console
     member x.WithFormatter( sf : StringFormatter ) =
       ! (callParent <| Builder({ conf with formatter = sf }, callParent))
-
-    /// TODO: implement!
-    member x.Colourise() =
-      ! (callParent <| Builder(conf, callParent))
 
     new(callParent : FactoryApi.ParentCallback<_>) =
       Builder(empty, callParent)
@@ -360,18 +347,34 @@ module LiterateConsole =
           | TextToken (_, text) ->
             seq { yield text, Text })
 
-      | Derived (value, units) ->
+      | Gauge (Int64 nanos, Scaled (Seconds, scale))
+        when scale = float Constants.NanosPerSecond ->
+
+        let prop = Property.Empty
+        let no, unitStr = Units.scaleFull Seconds (float nanos / float scale)
         seq {
-          yield "Metric (derived) ", Subtext
+          yield " (", Punctuation
+          yield message.name.ToString(), Text
+          yield ")", Punctuation 
+          yield " took ", Text
+          yield no.ToString(prop.Format, options.formatProvider), NumericSymbol
+          yield " ", Text
+          yield unitStr, Text
+        }
+
+      | Gauge (value, units) ->
+        seq {
+          yield "Metric (guage) ", Subtext
           yield! literateTokeniseField options (Property.Empty) (Field (value, None))
           yield " ", Subtext
           yield Units.symbol units, Text
           yield " (", Punctuation
           yield message.name.ToString(), Text
           yield ")", Punctuation }
-      | Gauge (value, units) ->
+
+      | Derived (value, units) ->
         seq {
-          yield "Metric (guage) ", Subtext
+          yield "Metric (derived) ", Subtext
           yield! literateTokeniseField options (Property.Empty) (Field (value, None))
           yield " ", Subtext
           yield Units.symbol units, Text
@@ -470,21 +473,20 @@ module LiterateConsole =
 
   /// Default console target configuration.
   let empty =
-    { formatProvider = Globalization.CultureInfo.CurrentCulture
+    { formatProvider  = Globalization.CultureInfo.CurrentCulture
       formatLocalTime = fun provider utcTicks ->
                           DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss", provider),
                           Tokens.Subtext
       getLogLevelText = function
-              | Debug ->    "DBG"
-              | Error ->    "ERR"
-              | Fatal ->    "FTL"
-              | Info ->     "INF"
-              | Verbose ->  "VRB"
-              | Warn ->     "WRN"
+        | Verbose ->  "VRB"
+        | Debug ->    "DBG"
+        | Info ->     "INF"
+        | Warn ->     "WRN"
+        | Error ->    "ERR"
+        | Fatal ->    "FTL"
       tokenise = LiterateFormatting.literateDefaultTokeniser
       theme = LiterateFormatting.DefaultTheme.theme
       colourWriter = LiterateFormatting.consoleWriteColourPartsAtomically }
-
 
   module internal Impl =
     open Hopac
@@ -510,7 +512,7 @@ module LiterateConsole =
                 try
                   do! lcConf.tokenise lcConf logMsg
                     |> Seq.map (fun (text, token) ->
-                      { text=text; colours=lcConf.theme token })
+                      { text = text; colours = lcConf.theme token })
                     |> output
                 with e ->
                   do! output (seq {
@@ -534,6 +536,25 @@ module LiterateConsole =
   [<CompiledName "Create">]
   let create conf name =
     TargetUtils.stdNamedTarget (Impl.loop conf) name
+
+  /// Use with LogaryFactory.New( s => s.Target<LiterateConsole.Builder>() )
+  type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+    let update (conf' : LiterateConsoleConf) : Builder =
+      Builder(conf', callParent)
+
+    /// Specify the formatting provider to use when formatting values to string
+    member x.WithFormatProvider(fp : IFormatProvider) =
+      update { conf with formatProvider = fp }
+
+    /// Lets you specify how log levels are written out.
+    member x.WithLevelFormatter(toStringFun : Func<LogLevel, string>) =
+      update { conf with getLogLevelText = toStringFun.Invoke }
+
+    new(callParent : FactoryApi.ParentCallback<_>) =
+      Builder(empty, callParent)
+
+    interface Logary.Target.FactoryApi.SpecificTargetConf with
+      member x.Build name = create conf name
 
 // boolean IsLogging() method, correct by excluded middle
 #nowarn "25"

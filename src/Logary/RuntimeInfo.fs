@@ -10,9 +10,8 @@ type RuntimeInfo =
     /// is the basis for a lot of the sorting and health checking that Riemann
     /// does.
     serviceName : string
-
+    /// The clock used internally inside Logary to get the current time.
     clock       : IClock
-
     /// An internal logger for logary to use
     logger      : Logger }
 

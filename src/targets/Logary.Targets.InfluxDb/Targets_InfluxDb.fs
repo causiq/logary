@@ -45,10 +45,9 @@ module Serialisation =
            |> String.concat ","
       "," + joined
 
-  let printValues = function
+  let printFields = function
     | [] ->
       "value=0"
-
     | xs ->
       // TO CONSIDER: assumes values are escaped
       xs |> List.map (fun (x, y) -> sprintf "%s=%s" (escapeString x) y)
@@ -154,7 +153,9 @@ module Serialisation =
 
       | Event templ ->
         let kvs, values = simpleValue false context' [] (Value.Int64 1L)
-        ("Event", serialiseStringTag templ) :: kvs, values
+        kvs,
+        // events' templates vary a lot, so don't index them
+        ("event", serialiseStringValue templ) :: values
 
     let fieldValues (fields : Map<PointName, Field>)  =
       Map.toSeq fields
@@ -163,17 +164,32 @@ module Serialisation =
       |> Value.Object
       |> getValues "value" false [] []
 
-    let fieldkvs, fieldvalues = fieldValues message.fields
+    let measurementName (m : Message) =
+      match m.value with
+      | Event _ ->
+        // events should result in measurements like "event_info" or "event_fatal"
+        // because that's how they're queried
+        escapeString (sprintf "event_%O" m.level)
+      | _ ->
+        // whilst measurements should result in measurement names equivalent to thei
+        // point names
+        serialisePointName m.name
 
-    let kvs, values = outer message.context message.value
+    let extraFields pointName = function
+      // pass the point name of the event as an extra field
+      | Event _ ->
+        [ "pointName", serialiseStringValue (PointName.format pointName) ]
+      | _ ->
+        []
 
-    let kvs = List.concat [fieldkvs; kvs]
-    let values = List.concat [fieldvalues; values]
+    let fieldTags, fieldFields = fieldValues message.fields
+    let contextTags, contextFields = outer message.context message.value
+    let extraFields = extraFields message.name message.value
 
     sprintf "%O%s %s %i"
-            (serialisePointName message.name)
-            (printTags kvs)
-            (printValues values)
+            (measurementName message)
+            (printTags (List.concat [fieldTags; contextTags]))
+            (printFields (List.concat [extraFields; fieldFields; contextFields]))
             message.timestamp
 
 type Consistency =
@@ -262,22 +278,25 @@ module internal Impl =
         RingBuffer.takeBatch (uint32 conf.batchSize) requests ^=> fun reqs ->
           let messageTexts = Seq.map extractMessage reqs
           let body = messageTexts |> String.concat "\n"
+          let req =
+            Request.create Post endpoint
+            |> Request.keepAlive true
+            |> Request.body (BodyString body)
+            |> tryAddAuth conf
 
           job {
-            let req =
-              Request.create Post endpoint
-              |> Request.keepAlive true
-              |> Request.body (BodyString body)
-              |> tryAddAuth conf
+            let! _ = ri.logger.logVerboseWithAck (Message.eventX "Sending {body}" >> Message.setField "body" body)
             use! resp = getResponse req
             let! body = Response.readBodyAsString resp
             if resp.statusCode > 299 then
-              do! Logger.log ri.logger (
-                    Message.event Error "problem receiving response"
-                    |> Message.setField "statusCode" resp.statusCode
-                    |> Message.setField "body" body)
+              let! errorFlush =
+                Logger.logWithAck ri.logger (
+                  Message.event Error "Bad response {statusCode} with {body}"
+                  |> Message.setField "statusCode" resp.statusCode
+                  |> Message.setField "body" body)
+              do! errorFlush
               // will cause the target to restart through the supervisor
-              failwithf "got response code %i" resp.statusCode
+              failwithf "Bad response statusCode=%i" resp.statusCode
             else
               do! Seq.iterJobIgnore reqestAckJobCreator reqs
               return! loop ()

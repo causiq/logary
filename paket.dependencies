@@ -9,7 +9,7 @@ nuget Common.Logging
 nuget Common.Logging.Core
 nuget EventStore.Client
 nuget FsPickler
-nuget Hopac
+nuget Hopac 0.3.22
 nuget Mailgun.Api
 nuget elmah.corelibrary
 nuget elmah.io.core
@@ -18,8 +18,8 @@ nuget FluentMigrator
 nuget FluentMigrator.Runner
 nuget FsCheck
 nuget FsSql
-nuget Fuchu
-nuget Fuchu.FsCheck
+nuget Expecto
+nuget Expecto.FsCheck
 nuget log4net
 nuget Machine.Specifications
 nuget Machine.Specifications.Should
@@ -41,7 +41,6 @@ nuget elmah.io.client
 github xyncro/chiron:e0f4c122b21cb02d47ae3f4f83924b2dcb8dea9e src/Chiron/Chiron.fs
 github xyncro/aether:5b5c05db2414562e9f3f679d42284638e63b9f3a src/Aether/Aether.fs
 github haf/YoLo YoLo.fs
-github haf/expecto-patronum ExpectoPatronum/Assert.fs
 github logary/RingBuffer RingBuffer.fs
 github logary/logary src/Logary.Facade/Facade.fs
 

@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using Machine.Specifications;
+﻿using Machine.Specifications;
+using Microsoft.FSharp.Collections;
 using NodaTime;
 
 // ReSharper disable InconsistentNaming
@@ -7,7 +7,7 @@ using NodaTime;
 // ReSharper disable FieldCanBeMadeReadOnly.Local
 // ReSharper disable UnusedMember.Global
 
-namespace Logary.Specs
+namespace Logary.CSharp.Tests
 {
     public class When_changing_properties_on_Message
     {
@@ -17,12 +17,12 @@ namespace Logary.Specs
         Establish context = () =>
             {
                 subject = new Message(
-                    PointName.NewPointName(new[] { "a", "b", "c" }),
+                    PointName.NewPointName(new[] {"a", "b", "c"}),
                     PointValue.NewEvent("initial message"),
-                    Microsoft.FSharp.Collections.MapModule.Empty<PointName, Field>(),
-                    Microsoft.FSharp.Collections.MapModule.Empty<string, Value>(),
+                    MapModule.Empty<PointName, Field>(),
+                    MapModule.Empty<string, Value>(),
                     LogLevel.Warn,
-                    SystemClock.Instance.Now.Ticks * 100L);
+                    SystemClock.Instance.Now.Ticks*100L);
                 subject.SetEvent("Hello World").value.TryGetEvent(out template).ShouldBeTrue();
             };
 

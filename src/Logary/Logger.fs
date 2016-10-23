@@ -1,6 +1,7 @@
 ﻿namespace Logary
 
 open Hopac
+open NodaTime
 open System
 open System.Runtime.CompilerServices
 
@@ -51,6 +52,22 @@ type Logger =
   /// are being logged.
   abstract level : LogLevel
 
+/// A disposable interface to use with `use` constructs and to create child-
+/// contexts. Since it inherits Logger, you can pass this scope down into child
+/// function calls. This interface should dovetail with how Zipkin/Dapper
+/// manages parent/child spans.
+type LoggerScope =
+  inherit IDisposable
+  inherit Logger
+
+type TimeScope =
+  inherit LoggerScope
+
+  /// Gets the currently elapsed duration of this time scope scope.
+  abstract elapsed : Duration
+
+  //abstract bisect : (LogLevel -> Message) -> Alt<Promise<unit>>
+
 /// The Logger module provides functions for expressing how a Message should be
 /// logged.
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix); Extension>]
@@ -58,9 +75,9 @@ module Logger =
   open Hopac
   open Hopac.Infixes
   open System
+  open System.Threading.Tasks
   open System.Diagnostics
   open Logary
-  open NodaTime
 
   /////////////////////
   // Logging methods //
@@ -79,26 +96,30 @@ module Logger =
     else
       otherwise
 
+  // NOTE all extension methods are in CSharp.fs, so they've been removed from this file
+  // to avoid polluting the API unecessarily.
+
   /// Log a message, but don't await all targets to flush.
-  [<CompiledName "Log"; Extension>]
   let log (logger : Logger) msg : Alt<unit> =
     let msg = ensureName logger msg
     logger.logWithAck msg
     |> Alt.afterFun ignore
 
-  let private simpleTimeout msg =
-    timeOutMillis 5000
+  let private simpleTimeout millis msg =
+    timeOutMillis millis
     |> Alt.afterFun (fun msg ->
       Console.Error.WriteLine("Logary message timed out. This means that you have an underperforming Logary target. {0}Logary Message: {1}",
                               Environment.NewLine, msg))
 
   /// Log a message, but don't await all targets to flush. Also, if it takes more
   /// than 5 seconds to add the log message to the buffer; simply drop the message.
-  [<CompiledName "LogWithTimeout"; Extension>]
-  let logWithTimeout (logger : Logger) msg : Alt<unit> =
+  /// Returns true if the message was successfully placed in the buffers, or
+  /// false otherwise.
+  let logWithTimeout (logger : Logger) (millis : uint32) msg : Alt<bool> =
+    //printfn "logWithTimeout %i! %A" millis msg.value
     Alt.choose [
-      log logger msg
-      simpleTimeout msg
+      log logger msg ^->. true
+      simpleTimeout (int millis) msg ^->. false
     ]
 
   /// Log a message, but don't synchronously wait for the message to be placed
@@ -108,41 +129,41 @@ module Logger =
   /// If you have dropped messages, they will be logged to STDERR. You should load-
   /// test your app to ensure that your targets can send at a rate high enough
   /// without dropping messages.
-  [<CompiledName "LogSimple"; Extension>]
   let logSimple (logger : Logger) msg : unit =
-    start (logWithTimeout logger msg)
+    start (logWithTimeout logger 5000u msg ^->. ())
 
   /// Log a message, which returns a promise. The first Alt denotes having the
   /// Message placed in all Targets' buffers. The inner Promise denotes having
-  /// the message properly flushed to all target's underlying targets. Targets
+  /// the message properly flushed to all targets' underlying "storage". Targets
   /// whose rules do not match the message will not be awaited.
-  [<CompiledName "LogWithAck"; Extension>]
   let logWithAck (logger : Logger) msg : Alt<Promise<unit>> =
     logger.logWithAck (ensureName logger msg)
 
-  /// Write a debug log line, given from the fLine callback, if the logger
-  /// accepts line with Verbose level.
-  [<CompiledName "LogVerbose"; Extension>]
-  let logVerbose (logger : Logger) msgFactory : Alt<unit> =
+  /// Write a Verbose message, given from the `messageFactory` callback,
+  /// if the logger accepts a Message with Verbose level. WITH backpressure.
+  let logVerbose (logger : Logger) messageFactory : Alt<unit> =
     ifLevel logger Verbose (Alt.always ()) <| fun _ ->
-      logger.logVerboseWithAck (msgFactory >> ensureName logger)
+      logger.logVerboseWithAck (messageFactory >> ensureName logger)
       |> Alt.afterFun ignore
-
-  [<CompiledName "LogVerboseWithAck"; Extension>]
+      
+  /// Write a Verbose message, given from the `messageFactory` callback,
+  /// if the logger accepts a Message with Verbose level. WITH backpressure
+  /// AND flush in the inner Promise{unit}.
   let logVerboseWithAck (logger : Logger) fMsg =
     logger.logVerboseWithAck (fMsg >> ensureName logger)
 
   /// Write a debug log line, given from the fLine callback, if the logger
-  /// accepts line with Debug level.
-  [<CompiledName "LogDebug"; Extension>]
-  let logDebug (logger : Logger) fMessage =
+  /// accepts line with Debug level. WITH backpressure.
+  let logDebug (logger : Logger) messageFactory =
     ifLevel logger Debug (Alt.always ()) <| fun _ ->
-      logger.logDebugWithAck (fMessage >> ensureName logger)
+      logger.logDebugWithAck (messageFactory >> ensureName logger)
       |> Alt.afterFun ignore
-
-  [<CompiledName "LogDebugWithAck"; Extension>]
-  let logDebugWithAck (logger : Logger) fMsg =
-    logger.logDebugWithAck (fMsg >> ensureName logger)
+      
+  /// Write a Debug message, given from the `messageFactory` callback,
+  /// if the logger accepts a Message with Debug level. WITH backpressure
+  /// AND flush in the inner Promise{unit}.
+  let logDebugWithAck (logger : Logger) messageFactory =
+    logger.logDebugWithAck (messageFactory >> ensureName logger)
 
   /// Run the function `f` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Seconds. As an exception to the rule,
@@ -150,54 +171,70 @@ module Logger =
   /// function returns the full schabang; i.e. it will let you wait for
   /// acks if you want. If you do not start/commit to the Alt, the
   /// logging of the gauge will never happen.
-  [<CompiledName "TimeWithAck"; Extension>]
+  let timeWithAckT (logger : Logger)
+                   (nameEnding : string)
+                   (transform : Message -> Message)
+                   (f : 'input -> 'res)
+                   : 'input -> 'res * Alt<Promise<unit>> =
+    let name = logger.name |> PointName.setEnding nameEnding
+    fun input ->
+      let res, message = Message.time name f input
+      res, logWithAck logger (transform message)
+
+  /// Run the function `f` and measure how long it takes; logging that
+  /// measurement as a Gauge in the unit Seconds. As an exception to the rule,
+  /// it is allowed to pass `nameEnding` as null to this function. This
+  /// function returns the full schabang; i.e. it will let you wait for
+  /// acks if you want. If you do not start/commit to the Alt, the
+  /// logging of the gauge will never happen.
   let timeWithAck (logger : Logger)
                   (nameEnding : string)
                   (f : 'input -> 'res)
                   : 'input -> 'res * Alt<Promise<unit>> =
-    let name = logger.name |> PointName.setEnding nameEnding
-    fun input ->
-      let res, message = Message.time name f input
-      res, logWithAck logger message
+    timeWithAckT logger nameEnding id f
 
-  [<CompiledName "Time"; Extension>]
   let time (logger : Logger)
            (nameEnding : string)
            (f : 'input -> 'res)
            : 'input -> 'res * Alt<unit> =
-
     let name = logger.name |> PointName.setEnding nameEnding
     fun input ->
       let res, message = Message.time name f input
       res, log logger message
 
-  [<CompiledName "Time"; Extension>]
   let timeX (logger : Logger)
             (f : 'input -> 'res)
             : 'input -> 'res * Alt<unit> =
     time logger null f
 
   /// Run the function `f` and measure how long it takes; logging that
-  /// measurement as a Gauge in the unit Scaled(Seconds, 10^9).
-  [<CompiledName "TimeSimple"; Extension>]
-  let timeSimple (logger : Logger)
-                 (nameEnding : string)
-                 (f : 'input -> 'res)
-                 : 'input -> 'res =
-
+  /// measurement as a Gauge in the unit Scaled(Seconds, 10^9). Finally
+  /// transform the message using the `transform` function.
+  let timeSimpleT (logger : Logger)
+                  (nameEnding : string)
+                  (transform : Message -> Message)
+                  (f : 'input -> 'res)
+                  : 'input -> 'res =
     let name = logger.name |> PointName.setEnding nameEnding
     fun input ->
       let res, message = Message.time name f input
-      logSimple logger message
+      logSimple logger (transform message)
       res
 
   /// Run the function `f` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Scaled(Seconds, 10^9).
-  [<CompiledName "TimeSimple"; Extension>]
+  let timeSimple (logger : Logger)
+                 (nameEnding : string)
+                 (f : 'input -> 'res)
+                 : 'input -> 'res =
+    timeSimpleT logger nameEnding id f
+
+  /// Run the function `f` and measure how long it takes; logging that
+  /// measurement as a Gauge in the unit Scaled(Seconds, 10^9).
   let timeSimpleX (logger : Logger)
                   (f : 'input -> 'res)
                   : 'input -> 'res =
-    timeSimple logger null f
+    timeSimpleT logger null id f
 
   [<CompiledName "TimeWithAck"; Extension>]
   let timeAsyncWithAck (logger : Logger)
@@ -261,6 +298,74 @@ module Logger =
       Message.timeAlt name f input ^-> fun (res, message) ->
       logSimple logger message
       res
+
+  // corresponds to CSharp.TimeWithAck
+  let timeTaskWithAckT (logger : Logger)
+                       (nameEnding : string)
+                       (transform : Message -> Message)
+                       (f : 'input -> Task<'res>)
+                       : 'input -> Task<'res * Alt<Promise<unit>>> =
+    let name = logger.name |> PointName.setEnding nameEnding
+    fun input ->
+      (Message.timeTask name f input).ContinueWith(fun (task : Task<'res * Message>) ->
+        let res, message = task.Result
+        res, logWithAck logger (transform message))
+
+  // corresponds to CSharp.TimeWithAck
+  let timeTaskWithAck logger nameEnding (f : 'input -> Task<'res>) =
+    timeTaskWithAckT logger nameEnding id f
+
+  // corresponds to CSharp.TimeSimple
+  let timeTaskSimpleT (logger : Logger)
+                      (nameEnding : string)
+                      (transform : Message -> Message)
+                      (f : 'input -> Task<'res>)
+                      : 'input -> Task<'res> =
+    let name = logger.name |> PointName.setEnding nameEnding
+    fun input ->
+      (Message.timeTask name f input).ContinueWith(fun (task : Task<'res * Message>) ->
+        let res, message = task.Result
+        logSimple logger (transform message)
+        res)
+
+  let timeScopeT (logger : Logger)
+                 (nameEnding : string)
+                 (transform : Message -> Message)
+                 : TimeScope =
+    let name = logger.name |> PointName.setEnding nameEnding
+    let sw = Stopwatch.StartNew()
+    { new TimeScope with
+        member x.Dispose () =
+          sw.Stop()
+          let value, units = sw.toGauge()
+          let message = Message.gaugeWithUnit name units value
+          logSimple logger message
+
+        member x.elapsed =
+          Duration.FromTimeSpan sw.Elapsed
+
+        member x.logVerboseWithAck messageFactory =
+          // TODO: consider message naming
+          logger.logVerboseWithAck messageFactory
+
+        member x.logDebugWithAck messageFactory =
+          // TODO: consider message naming
+          logger.logDebugWithAck messageFactory
+
+        member x.logWithAck message =
+          // TODO: consider message naming
+          logger.logWithAck message
+
+        member x.logSimple message =
+          // TODO: consider message naming
+          logger.logSimple message
+
+        member x.level =
+          logger.level
+
+        member x.name =
+          name
+    }
 
 /// A logger that does absolutely nothing, useful for feeding into the target
 /// that is actually *the* internal logger target, to avoid recursive calls to

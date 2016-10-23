@@ -587,7 +587,6 @@ let main argv =
       >> withInternalTargets Info [
         Console.create Console.empty "console"
       ]
-      >> run
     )
     |> run
 
@@ -839,6 +838,21 @@ Facade.
  - [Facade Adapter unit tests](https://github.com/logary/logary/blob/master/src/tests/Logary.Adapters.Facade.Tests/Program.fs)
    – the unit tests for the adapter, which are also good documentation on how to
    use it.
+
+## InfluxDb Target
+
+ - Events will be logged to InfluxDb like such:
+   `"{pointName},event={template},ctx1=ctxval1,ctx2=ctxval2 field1=fieldval1,field2=fieldval2 value=1i 14566666xxxx"`
+ - In other words, fields will be influx values and context fields will be influx tags.
+ - The timestamp of the Message will be at the end as the timestamp of the sent line
+ - Events will be logged in these influx measure names, so that you could e.g. put "event_fatal" as
+   an annotation in Grafana:
+   * event_verbose
+   * event_debug
+   * event_info
+   * event_warn
+   * event_error
+   * event_fatal
 
 ## RabbitMQ Target
 
@@ -1508,11 +1522,10 @@ Thread/Semaphore/Monitor primitives on top of the ThreadPool.
 
 ### How do I use Hopac from C#?
 
-You don't – if you're interested in using the semantics of the `Alt`-ernatives
-returned from `log` and `logWithAck` – then you can convert them to Task with
-[`AsTask()`](https://github.com/logary/logary/blob/4987c421849464d23b61ea4b64f8e48a6df21f12/src/Logary.CSharp/MiscExtensions.cs#L57)
+You're better off following the examples in C# and using the Task-wrapped
+public APIs than going spelunking into the dire straits of Hopac and F#.
 
-Remember to pull in `Logary.CSharp` to make this happen. You'll also have to
+Just pull in `Logary.CSharp` to make this happen. You'll also have to
 open the `Logary` namespace.
 
 ### What's `logVerboseWithAck`, `logWithAck` and how does it differ from `logSimple`?
@@ -1555,6 +1568,31 @@ It's up to each target to deal with Acks in its own way, but a 'best-practices'
 Ack implementation can be seen in the RabbitMQ target.  It's a best-practices
 Ack implementation because RabbitMQ supports publisher confirms (that serve as
 Acks), asynchronous publish and also durable messaging.
+
+#### How do Promises work with C#?
+
+The C# signature of the above functions is as follows:
+
+```fsharp
+type Message =
+  [<Extension>]
+  static member LogWithAck (logger, message, bufferCt, promiseCt) : Task<Task> =
+    Alt.toTasks bufferCt promiseCt (Logger.logWithAck logger message)
+```
+
+and can be used like so:
+
+```csharp
+var message = MessageModule.Event(LogLevel.Warn, "Here be dragons!");
+logger.LogWithAck(message)
+  // dotting Result blocks on the placing of the Message in Logary's buffers
+  .Result
+  // calling Wait on the inner task blocks on all configured targets
+  // flushing
+  .Wait();
+```
+
+
 
 ## License
 

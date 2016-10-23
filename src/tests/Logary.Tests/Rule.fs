@@ -1,6 +1,6 @@
 ﻿module Logary.Tests.Rule
 
-open Fuchu
+open Expecto
 open Hopac
 open Hopac.Infixes
 open TestDSL
@@ -12,16 +12,14 @@ open Logary
 open Logary.Configuration
 open Logary.Targets
 
-module Assert = ExpectoPatronum.Expect
 
 [<Tests>]
 let tests =
   testList "Rule" [
-
     yield testCase "retrieving rule for name" <| fun _ ->
       let rules = [] : Rule list
       let found = rules |> Rule.matching (pnp "a.b.c")
-      Assert.Equal("empty", found, [])
+      Expect.equal found [] "Shouldn't find anything."
 
     yield testCase "retrieving existing rule for name" <| fun _ ->
       let found = [ Fac.emptyRule ] |> Rule.matching (PointName.ofSingle "a")
@@ -32,12 +30,12 @@ let tests =
     yield testCase "retrieving rule that doesn't match fails" <| fun _ ->
       let funnyRules = [ { Fac.emptyRule with hiera = Regex("^$") } ]
       let found = funnyRules |> Rule.matching (PointName.ofSingle "a")
-      Assert.Equal("empty", found, [])
+      Expect.equal found [] "Shouldn't match anything"
 
     yield testCase "retrieving two matching rules" <| fun _ ->
-      let rules = [ Fac.emptyRule ; { Fac.emptyRule with hiera = Regex(@"^a\.b") }]
-      let found = rules |> Rule.matching (pnp "a.b.c")
-      Assert.Equal("eq rules", found, rules)
+      let expected = [ Fac.emptyRule ; { Fac.emptyRule with hiera = Regex(@"^a\.b") }]
+      let found = expected |> Rule.matching (pnp "a.b.c")
+      Expect.equal found expected "Should equal rules"
 
     yield testCase "retrieving two matching rules one non-matching" <| fun _ ->
       let rules =
@@ -47,7 +45,8 @@ let tests =
       rules
       |> Rule.matching (pnp "a.b.c")
       |> List.zip [ Fac.emptyRule; { Fac.emptyRule with hiera =  Regex(@"^a\.b") } ]
-      |> List.iter (fun (found, expected) -> Assert.Equal("found eq expected", found, expected))
+      |> List.iter (fun (found, expected) ->
+        Expect.equal found expected "found eq expected")
 
     yield testCase "misconfiguring logary rule/target throws" <| fun _ ->
       let out = Fac.textWriter ()
@@ -82,16 +81,16 @@ let tests =
       // when getting targets
 
       let no1 = pnp "path.1" |> get
-      Assert.Equal("path1 should be Info", Info, no1.level)
+      Expect.equal no1.level Info "path1 should be Info"
 
       let no1 = pnp "path.1.extra" |> get
-      Assert.Equal("path.1.extra should be Verbose", Verbose, no1.level) // this one goes downwards
+      Expect.equal no1.level Verbose "path.1.extra should be Verbose" // this one goes downwards
 
       let no2 = pnp "path.2" |> get
-      Assert.Equal("path.2 should be Warn", Warn, no2.level)
+      Expect.equal no2.level Warn "path.2 should be Warn"
 
       let no2 = pnp "path.2.extra" |> get
-      Assert.Equal("path.2.extra should be warn", Warn, no2.level) // this one goes upwards
+      Expect.equal no2.level Warn "path.2.extra should be warn" // this one goes upwards
 
     yield testCase "middleware" <| fun _ ->
       Tests.skiptest "TODO"
@@ -113,8 +112,8 @@ let tests =
       finally
         finaliseLogary logary
 
-      Assert.Equal("LogResult", "there", out.ToString())
-      Assert.isTrue (out.ToString().Contains(System.Net.Dns.GetHostName())) "Should contain hostname"
+      Expect.equal (out.ToString()) "there" "LogResult"
+      Expect.isTrue (out.ToString().Contains(System.Net.Dns.GetHostName())) "Should contain hostname"
 
     yield testCase "multiplexing accept filters from given rules" <| fun _ ->
       // given

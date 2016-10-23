@@ -58,8 +58,12 @@ module HealthCheck =
   /// uses its 'data' Map to read.
   type MessageWrapper(m : Message) =
     interface ResultData with
-      member x.message     = m
-      member x.description = defaultArg (tryGetDesc m) ""
+      member x.message =
+        m
+
+      member x.description =
+        defaultArg (tryGetDesc m) ""
+
     override x.ToString() =
       sprintf "HealthCheck(name=%s, value=%A, level=%A)"
         (PointName.format m.name) m.value m.level
@@ -67,12 +71,12 @@ module HealthCheck =
   module HealthCheckResult =
     /// Transform the measure to a HealthCheck.ResultData.
     let ofMessage (m : _) =
-      MessageWrapper m :> ResultData
+      MessageWrapper(m) :> ResultData
       |> HasValue
 
   module Message =
     let toHealthCheckResult (m : _) =
-      MessageWrapper m :> ResultData
+      MessageWrapper(m) :> ResultData
       |> HasValue
 
   type HealthCheckMessage =

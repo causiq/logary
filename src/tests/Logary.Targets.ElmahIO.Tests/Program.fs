@@ -1,7 +1,7 @@
 ﻿module Program
 
 open System
-open Fuchu
+open Expecto
 open Hopac
 open ExpectoPatronum
 open Logary

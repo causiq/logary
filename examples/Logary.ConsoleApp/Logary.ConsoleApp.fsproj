@@ -46,6 +46,11 @@
       <Name>Logary.Metrics.WinPerfCounters</Name>
       <Project>{dd5137fc-22e5-47da-88f1-3d3f1e7e8381}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\..\src\targets\Logary.Targets.InfluxDb\Logary.Targets.InfluxDb.fsproj">
+      <Name>Logary.Targets.InfluxDb</Name>
+      <Project>{4ace8a29-6d75-4956-b45c-22c82eafcfd5}</Project>
+      <Private>True</Private>
+    </ProjectReference>
     <ProjectReference Include="..\..\src\targets\Logary.Targets.RabbitMQ\Logary.Targets.RabbitMQ.fsproj">
       <Project>{FE1BC08F-A41A-41CC-9F03-996EA9B3B477}</Project>
       <Name>Logary.Targets.RabbitMQ</Name>

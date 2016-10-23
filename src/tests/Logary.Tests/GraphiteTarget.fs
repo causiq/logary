@@ -1,7 +1,7 @@
 ﻿module Logary.Tests.GraphiteTarget
 
 open NodaTime
-open Fuchu
+open Expecto
 open System.Text.RegularExpressions
 open Hopac
 open Fac
@@ -19,9 +19,13 @@ let tests =
       Tests.skiptest "until custom tcp"
       let conf = Graphite.GraphiteConf.create("localhost")
       let graphite = Graphite.create conf "graphite-target"
-      let instance = graphite.initer { serviceName = "tests"; clock = SystemClock.Instance; logger = NullLogger() } |> run
+      let instance =
+        graphite.initer { serviceName = "tests"; clock = SystemClock.Instance; logger = NullLogger() }
+        |> run
+
       //start instance.server
-      Assert.Equal("instance name should match", instance.name, (PointName.ofSingle "graphite-target"))
+      Expect.equal instance.name (PointName.ofSingle "graphite-target")
+                   "instance name should match"
 
       (because "shutting down the target" <| fun () ->
         Target.finalise instance
@@ -33,5 +37,5 @@ let tests =
       let testPath = PointName.ofList ["This is a metric path"; "path$Section%2.5"; "GET /post/1.2/"; "Multiple . spaces"]
       let sanitised = Graphite.Impl.sanitisePath testPath
       let expected = PointName.ofList ["This_is_a_metric_path"; "path$Section%2_5"; "GET_-post-1_2-"; "Multiple___spaces"]
-      Assert.Equal("sanitised equals", sanitised, expected)
+      Expect.equal sanitised expected "sanitised equals"
     ]

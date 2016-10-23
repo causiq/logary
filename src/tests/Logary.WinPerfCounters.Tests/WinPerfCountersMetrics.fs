@@ -1,6 +1,6 @@
 ﻿module Logary.Tests.WinPerfCountersMetrics
 
-open Fuchu
+open Expecto
 open Swensen.Unquote
 
 open TestDSL

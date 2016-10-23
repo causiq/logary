@@ -1,6 +1,6 @@
 ﻿module Logary.Tests.DB
 
-open Fuchu
+open Expecto
 open System
 open System.Data
 open System.Data.SQLite
@@ -145,7 +145,7 @@ let targetTests =
 
       // pre-conditions
       let count = Sql.execScalar mgr countSql [] |> Option.get
-      Assert.Equal("count should be zero", 0L, count)
+      Expect.equal("count should be zero", 0L, count)
 
       // given
       let target = start (fun () -> db)
@@ -166,21 +166,21 @@ let targetTests =
       // then
       try
         let count = Sql.execScalar mgr countSql [] |> Option.get
-        Assert.Equal("count should be two log lines", 2L, count)
+        Expect.equal("count should be two log lines", 2L, count)
 
         let records = Sql.execReader mgr "SELECT * FROM Events" [] |> Sql.map Sql.asMap
 
         for r in records do
           let read k : 'a = read r k
-          Assert.Equal("should have host name from computer DNS", Dns.GetHostName(), read "Host")
-          Assert.Equal("should have path from", "a.b.c", read "Path")
-          Assert.Equal("should have info level", int64 (Info.toInt ()), read "Level")
+          Expect.equal("should have host name from computer DNS", Dns.GetHostName(), read "Host")
+          Expect.equal("should have path from", "a.b.c", read "Path")
+          Expect.equal("should have info level", int64 (Info.toInt ()), read "Level")
 
           if read "Message" = "goodbye world" then
-            Assert.Equal("should have comma-separated tags", "tests,things", read "Tags")
-            Assert.StringContains("should have exception substring",
+            Expect.equal("should have comma-separated tags", "tests,things", read "Tags")
+            Expect.StringContains("should have exception substring",
                                   "ApplicationException", read "Exception")
-            Assert.StringContains("should have exception substring",
+            Expect.StringContains("should have exception substring",
                                   "hoho", read "Exception")
       finally
         stop target
@@ -198,7 +198,7 @@ let targetTests =
 
       // pre-conditions
       let count = Sql.execScalar mgr countSql [] |> Option.get
-      Assert.Equal("count should be zero", 0L, count)
+      Expect.equal("count should be zero", 0L, count)
 
       // given
       let target = start (fun () -> db)
@@ -209,17 +209,17 @@ let targetTests =
       // then
       try
         let count = Sql.execScalar mgr countSql [] |> Option.get
-        Assert.Equal("count should be two metrics", 2L, count)
+        Expect.equal("count should be two metrics", 2L, count)
 
         let records = Sql.execReader mgr "SELECT * FROM Metrics" [] |> Sql.map Sql.asMap
 
         for r in records do
           let read k : 'a = read r k
-          Assert.Equal("should have host name from computer DNS", Dns.GetHostName(), read "Host")
-          Assert.StringContains("should have path from from metric", ".app.signin", read "Path")
-          Assert.Equal("should have info level", int64 (Info.toInt()), read "Level")
-//          Assert.Equal("should have counter type", DB.typeAsInt16 MetricType.Counter |> int64, read "Type")
-          Assert.Equal("value is 3 or 6", true, read "Value" = 3.M || read "Value" = 6.M)
+          Expect.equal("should have host name from computer DNS", Dns.GetHostName(), read "Host")
+          Expect.StringContains("should have path from from metric", ".app.signin", read "Path")
+          Expect.equal("should have info level", int64 (Info.toInt()), read "Level")
+//          Expect.equal("should have counter type", DB.typeAsInt16 MetricType.Counter |> int64, read "Type")
+          Expect.equal("value is 3 or 6", true, read "Value" = 3.M || read "Value" = 6.M)
       finally
         stop target
     ]

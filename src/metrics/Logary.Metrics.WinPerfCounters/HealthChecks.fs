@@ -3,6 +3,7 @@
 open System
 open Logary
 open Logary.HealthCheck
+open Logary.Metrics
 open Logary.Metrics.WinPerfCounter
 open Hopac
 
@@ -13,41 +14,30 @@ open Hopac
 /// `measureTransform` function that allows the caller to customize the value
 /// in a Measure before returning. Suggested is to use `HealthChecks.setDesc`
 /// to give the measure a nice description with detailed data.
-let toHealthCheckNamed name wpc measureTransform =
-  match toPC wpc with
-  | Some counter ->
+let toHealthCheckNamed healthCheckName wpc measureTransform =
+  match toWindowsCounter wpc with
+  | Some wpci ->
     { new HealthCheck with
-        member x.name = name
+        member x.name =
+          healthCheckName
+
         member x.getValue () =
           try
-            counter.NextValue()
-            |> float
-            |> measureTransform
-            |> Message.setName name
+            wpci.nextValues()
+            |> measureTransform wpc.baseName
             |> HealthCheckResult.ofMessage
             |> Job.result
           with
             e -> Job.result NoValue
 
         member x.DisposeAsync () =
-          counter.Dispose()
+          wpci.counter.Dispose()
           Job.result () }
   | None ->
-    createDead name
+    createDead healthCheckName
 
-let toHealthCheck wpc =
-  let name =
-    [| yield wpc.category;
-       yield wpc.counter
-       match wpc.instance with
-       | NotApplicable ->
-         ()
-
-       | Instance i ->
-         yield i
-    |]
-
-  toHealthCheckNamed (PointName name) wpc
+let toHealthCheck (wpc : WinPerfCounter) =
+  toHealthCheckNamed wpc.baseName wpc
 
 /// Takes a list of IDisposable things (performance counters, perhaps?) and
 /// wraps the call to Dispose() of the inner health check with calls to

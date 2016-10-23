@@ -1,6 +1,8 @@
 ﻿module Logary.Tests.Supervisor
 
-open Fuchu
+open System.IO
+open System.Text
+open Expecto
 open Logary
 open Logary.Targets
 open Logary.Targets.TextWriter
@@ -9,10 +11,10 @@ open Logary.Supervisor
 open Hopac
 open Hopac.Infixes
 open NodaTime
-open ExpectoPatronum
 
 let textWriterConf =
-  TextWriterConf.create(System.Console.Out, System.Console.Error)
+  let sw = new StringWriter(new StringBuilder())
+  TextWriterConf.create(sw, sw)
 
 let internalLogger = NullLogger()
 
@@ -25,7 +27,7 @@ let supervisorTests =
         Target.confTarget "supervised" (TextWriter.create textWriterConf)
       let instance =
         target.initer Fac.emptyRuntime |> run
-      let (minionInfo : MinionInfo) =
+      let minionInfo : MinionInfo =
         { name     = instance.name
           policy   = Supervisor.Delayed (Duration.FromSeconds 1L)
           job      = instance.server
@@ -33,7 +35,7 @@ let supervisorTests =
 
       sup.register *<- minionInfo |> run
 
-      Message.eventVerbose "a supervised message"
+      Message.eventVerbose "A supervised message"
       |> Target.logAndWait instance
       sup.shutdown *<-=>- id |> run
 

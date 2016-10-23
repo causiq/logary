@@ -8,7 +8,7 @@ open log4net.Layout
 open log4net.Repository.Hierarchy
 open log4net.Appender
 open NodaTime
-open Fuchu
+open Expecto
 open Hopac
 open Hopac.Infixes
 open Logary
@@ -40,7 +40,7 @@ let withLogary f =
 
 let finaliseLogary = Config.shutdownSimple >> fun a ->
   let state = run a
-  Assert.Equal("finalise should always work", true, state.successful)
+  Expect.equal("finalise should always work", true, state.successful)
 
 let finaliseTarget t = Target.shutdown t |> fun a ->
   let acks = a ^-> TimeoutResult.Success <|> timeOutMillis 1000 ^->. TimedOut
@@ -79,8 +79,8 @@ let integration =
           finaliseLogary logary
           out.ToString(), err.ToString()
 
-      Assert.Equal("should be empty", "", out.ToString())
-      Assert.StringContains("should have 'oh noes' in it", "oh noes", err.ToString())
+      Expect.equal("should be empty", "", out.ToString())
+      Expect.StringContains("should have 'oh noes' in it", "oh noes", err.ToString())
     ]
 
 [<Tests>]
@@ -88,7 +88,7 @@ let mappings =
   testList "mapping properties' dictionary" [
     testCase "can map empty" <| fun _ ->
       let res = Map.empty |> LogaryHelpers.addProperties (new Util.PropertiesDictionary())
-      Assert.Equal("should be empty map", Map.empty, res)
+      Expect.equal("should be empty map", Map.empty, res)
 
     testCase "can map primitives" <| fun _ ->
       let subject = new Util.PropertiesDictionary()
@@ -98,10 +98,10 @@ let mappings =
       subject.["fourth"] <- Nullable<_>(123)
 
       let res = Map.empty |> LogaryHelpers.addProperties subject
-      Assert.Equal("has first", 1, unbox res.["first"])
-      Assert.Equal("has second", 1us, unbox res.["second"])
-      Assert.Equal("has third", 1L, unbox res.["third"])
-      Assert.Equal("has fourth", Nullable<_>(123), unbox res.["fourth"])
+      Expect.equal("has first", 1, unbox res.["first"])
+      Expect.equal("has second", 1us, unbox res.["second"])
+      Expect.equal("has third", 1L, unbox res.["third"])
+      Expect.equal("has fourth", Nullable<_>(123), unbox res.["fourth"])
     ]
 
 ////////

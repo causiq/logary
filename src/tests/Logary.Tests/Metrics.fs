@@ -1,7 +1,6 @@
 ﻿module Logary.Tests.Metrics
 
-open Fuchu
-open ExpectoPatronum
+open Expecto
 open NodaTime
 open Hopac
 open Logary
@@ -119,7 +118,8 @@ let reservoirs =
       let snap = Uniform.snapshot state
       Expect.equal (Snapshot.size snap) 100 "snapshot has as many"
       for v in snap.values do
-        Expect.isTrue (0L <= v && v <= 999L) (sprintf "'%d' should be in [0, 999]" v)
+        Expect.isTrue (0L <= v && v <= 999L)
+                      (sprintf "'%d' should be in [0, 999]" v)
 
     testCase "sliding: small" <| fun _ ->
       let state =

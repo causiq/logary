@@ -41,7 +41,7 @@
     </Compile>
     <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="Parsing.fs" />
-    <Compile Include="MessageEnrichment.fs" />
+    <Compile Include="Middleware.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <Content Include="App.config" />
@@ -65,6 +65,17 @@
       <ItemGroup>
         <Reference Include="Argu">
           <HintPath>..\..\..\packages\Argu\lib\net40\Argu.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2')">
+      <ItemGroup>
+        <Reference Include="Expecto">
+          <HintPath>..\..\..\packages\Expecto\lib\net40\Expecto.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
@@ -104,17 +115,6 @@
       <ItemGroup>
         <Reference Include="fszmq">
           <HintPath>..\..\..\packages\fszmq\lib\net40\fszmq.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2')">
-      <ItemGroup>
-        <Reference Include="Fuchu">
-          <HintPath>..\..\..\packages\Fuchu\lib\Fuchu.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
