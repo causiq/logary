@@ -71,7 +71,7 @@ let timeMessage (duration : Duration) level =
   |> Message.setLevel level
 
 let nanos xs =
-  Duration.FromTicks (xs * Constants.NanosPerTick)
+  Duration.FromTicks (xs / Constants.NanosPerTick)
 
 let helloWorldMsg =
   Message.eventX "Hello World!"
@@ -128,30 +128,30 @@ let tests =
       // [06:15:02 DBG] Metric (guage) 60029379 s / 1000000000.000000 (A.B.C.Check)
 
       yield testLiterateCase "Time in ms" (timeMessage (nanos 60029379L)) <| fun expectedTimeText parts ->
-        Tests.skiptest "WIP"
-        // [06:15:02 DBG] A.B.C.Check took 60.029379 ms
-        Expect.equal parts
-                     [ yield! levels expectedTimeText
-                       yield { text = "A.B.C.Check"; colours = LiterateTesting.Theme.nameSymbolColours }
-                       yield { text = " took "; colours = LiterateTesting.Theme.subtextColours }
-                       yield { text = "60,029"; colours = LiterateTesting.Theme.numericSymbolColours }
-                       yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
-                       yield { text = "μs"; colours = LiterateTesting.Theme.textColours }
-                       yield { text = " to execute."; colours = LiterateTesting.Theme.subtextColours } ]
-                    "logging with info level and then finalising the target"
+        // [06:15:02 DBG] A.B.C.Check took 60.02 ms
+        Expect.sequenceEqual
+          parts
+          [ yield! levels expectedTimeText
+            yield { text = "A.B.C.Check"; colours = LiterateTesting.Theme.nameSymbolColours }
+            yield { text = " took "; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = "60,03"; colours = LiterateTesting.Theme.numericSymbolColours }
+            yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = "ms"; colours = LiterateTesting.Theme.textColours }
+            yield { text = " to execute."; colours = LiterateTesting.Theme.subtextColours } ]
+          "Should print [06:15:02 DBG] A.B.C.Check took 60,02 ms"
 
       yield testLiterateCase "Time in μs" (timeMessage (nanos 133379L)) <| fun expectedTimeText parts ->
-        Tests.skiptest "WIP"
-        // [06:15:02 DBG] A.B.C.Perform took 133.379 μs
-        Expect.equal parts
-                     [ yield! levels expectedTimeText
-                       yield { text = "A.B.C.Check"; colours = LiterateTesting.Theme.nameSymbolColours }
-                       yield { text = " took "; colours = LiterateTesting.Theme.subtextColours }
-                       yield { text = "133,379"; colours = LiterateTesting.Theme.numericSymbolColours }
-                       yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
-                       yield { text = "μs"; colours = LiterateTesting.Theme.textColours }
-                       yield { text = " to execute."; colours = LiterateTesting.Theme.subtextColours } ]
-                    "logging with info level and then finalising the target"
+        // [06:15:02 DBG] A.B.C.Perform took 133.37 μs
+        Expect.sequenceEqual
+          parts
+          [ yield! levels expectedTimeText
+            yield { text = "A.B.C.Check"; colours = LiterateTesting.Theme.nameSymbolColours }
+            yield { text = " took "; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = "133,38"; colours = LiterateTesting.Theme.numericSymbolColours }
+            yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = "μs"; colours = LiterateTesting.Theme.textColours }
+            yield { text = " to execute."; colours = LiterateTesting.Theme.subtextColours } ]
+          "Should print [06:15:02 DBG] A.B.C.Perform took 133,38 μs"
     ]
 
     testList "text writer prints" [

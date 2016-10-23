@@ -350,16 +350,14 @@ module LiterateConsole =
       | Gauge (Int64 nanos, Scaled (Seconds, scale))
         when scale = float Constants.NanosPerSecond ->
 
-        let prop = Property.Empty
         let number, unitStr = (float nanos / float scale) |> Units.scale Seconds 
         seq {
-          yield " (", Punctuation
-          yield message.name.ToString(), Text
-          yield ")", Punctuation 
-          yield " took ", Text
-          yield number.ToString(prop.Format, options.formatProvider), NumericSymbol
-          yield " ", Text
+          yield message.name.ToString(), NameSymbol
+          yield " took ", Subtext
+          yield number.ToString("N2", options.formatProvider), NumericSymbol
+          yield " ", Subtext
           yield unitStr, Text
+          yield " to execute.", Subtext
         }
 
       | Gauge (value, units) ->
