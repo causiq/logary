@@ -1,10 +1,9 @@
 ﻿module Logary.Tests.Targets
 
 open System
-open Fuchu
+open Expecto
 open Hopac
 open Logary
-open ExpectoPatronum
 
 let env k (parser : string -> 't) : Choice<'t, string> =
   match Environment.GetEnvironmentVariable k with
@@ -70,7 +69,6 @@ module Target =
     |> function
     | Internals.TimedOut ->
       Tests.failtestf "finalising target timed out: %A" target
-
     | Internals.Success _ ->
       ()
 
@@ -115,8 +113,7 @@ let basicTests targetName (configFactory : string -> Target.TargetConf) =
         |> Target.init Fac.emptyRuntime
         |> run
 
-      instance.server (fun _ -> Job.result ()) None
-      |> queue
+      instance.server (fun _ -> Job.result ()) None |> queue
 
       try
         exnMsg |> Target.logAndWait instance

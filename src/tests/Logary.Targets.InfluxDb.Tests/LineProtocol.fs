@@ -1,5 +1,5 @@
 ﻿module Logary.Targets.InfluxDb.Tests.LineProtocol
-open Fuchu
+open Expecto
 open System
 open System.IO
 open Hopac

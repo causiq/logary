@@ -2,8 +2,7 @@ FSharp.Core
 NodaTime
 Hopac
 FsCheck
-Fuchu
-Fuchu.FsCheck
-File:Assert.fs
+Expecto
+Expecto.FsCheck
 Suave
 Http.fs

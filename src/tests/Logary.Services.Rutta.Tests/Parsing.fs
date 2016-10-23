@@ -1,6 +1,6 @@
 ﻿module Logary.Services.Rutta.Tests.Parsing
 
-open Fuchu
+open Expecto
 open Logary.Services.Rutta
 open Logary.Services.Rutta.Program
 

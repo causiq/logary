@@ -1,6 +1,6 @@
 module Logary.Targets.RabbitMQ.Tests
 
-open Fuchu
+open Expecto
 
 [<EntryPoint>]
 let main argv =

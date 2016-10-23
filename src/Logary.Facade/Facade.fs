@@ -754,6 +754,10 @@ module Global =
   let initialise cfg =
     config := cfg
 
+  let initialiseIfDefault cfg =
+    if Object.ReferenceEquals(!config, DefaultConfig) then
+      initialise cfg
+
 /// "Shortcut" for creating targets; useful at the top-level configuration point of
 /// your library.
 module Targets =

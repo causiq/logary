@@ -1,5 +1,4 @@
 FSharp.Core
 NodaTime
 Hopac
-Fuchu
-File:Assert.fs
+Expecto

@@ -1,6 +1,6 @@
 ﻿module Integration
 
-open Fuchu
+open Expecto
 open System
 open System.Data
 open System.Data.SqlClient
@@ -27,5 +27,5 @@ let integration =
         |> List.map IOInfo.readLatency
         |> List.sort
 
-      Assert.Equal("should not be empty", calculated.Length = 0, false)
+      Expect.equal("should not be empty", calculated.Length = 0, false)
     ]

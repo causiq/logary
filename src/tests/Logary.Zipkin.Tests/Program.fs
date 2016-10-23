@@ -1,6 +1,6 @@
 ﻿module Logary.Zipkin.Tests
 
-open Fuchu
+open Expecto
 open System
 open System.Net
 open ExpectoPatronum

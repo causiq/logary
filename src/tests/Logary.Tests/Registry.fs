@@ -3,7 +3,7 @@ module Logary.Tests.Registry
 open System
 open System.IO
 open System.Text.RegularExpressions
-open Fuchu
+open Expecto
 open Hopac
 open Hopac.Infixes
 open TestDSL
@@ -79,30 +79,30 @@ let registryMid =
       logary |> Fac.finaliseLogary
 
       
-      Assert.StringContains("should have context 'service' key",
-                            "\"service\":\"my service\"",
-                            err.ToString())
+      Expect.stringContains (err.ToString())
+                            "\"service\":\"my service\""
+                            "should have context 'service' key"
       
-      Assert.StringContains("should have context 'hostname' key",
-                            "\"hostname\":\"localhost\"",
-                            err.ToString())
+      Expect.stringContains (err.ToString())
+                            "\"hostname\":\"localhost\""
+                            "should have context 'hostname' key"
 
-      Assert.StringContains("should have context 'messageId' key",
-                            "\"messageId\":\"theMessageId\"",
-                            err.ToString())
+      Expect.stringContains (err.ToString())
+                            "\"messageId\":\"theMessageId\""
+                            "should have context 'messageId' key"
 
     yield testCase "logger uses middleware supplied when getting logger" <| fun _ ->
       
       let middleware next msg =
         msg |> Message.setContext "getLogger" "inserted" |> next 
 
-      Fac.withLogary <| fun logary out err ->                      
+      Fac.withLogary <| fun logary out err ->
         let logger = (pnp "a.b.c.d") |> Registry.getLoggerWithMiddleware middleware logary.registry |> run
         Message.eventError "User clicked wrong button" |> Logger.log logger |> run
         logary |> Fac.finaliseLogary
 
       
-        Assert.StringContains("should have context 'getLogger' key",
-                              "\"getLogger\":\"inserted\"",
-                              err.ToString())
+        Expect.stringContains (err.ToString())
+                              "\"getLogger\":\"inserted\""
+                              "should have context 'getLogger' key"
   ]

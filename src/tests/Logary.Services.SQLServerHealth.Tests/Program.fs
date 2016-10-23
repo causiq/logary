@@ -1,6 +1,6 @@
 ﻿module Logary.Tests.SQLServerHealth
 
-open Fuchu
+open Expecto
 
 [<EntryPoint>]
 let main args =

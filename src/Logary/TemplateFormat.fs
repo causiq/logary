@@ -55,7 +55,7 @@ type Message with
   static member templateEvent<'T> (level : LogLevel, format : string) : ('T -> Message) =
     let template = Parser.parse format
     if isNull template.Named || template.Named.Length <> 1 then
-      failwithf "Template '%s' must have exactly 1 named property" format
+      raise (System.ArgumentException (sprintf "Template '%s' must have exactly 1 named property" format))
     let field = template.Named.[0]
     fun (v : 'T) ->
       Message.event level format

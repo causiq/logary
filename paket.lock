@@ -31,12 +31,6 @@ NUGET
       FSharp.Core (>= 3.1.2.1)
     fszmq (12.2.1)
       FSharp.Core
-    Fuchu (1.0.3)
-      FSharp.Core (>= 3.1.2.1)
-    Fuchu.FsCheck (1.0.3)
-      FsCheck (>= 2.2.4)
-      FSharp.Core (>= 3.1.2.5)
-      Fuchu (>= 1.0.3)
     Hopac (0.3.22)
       FSharp.Core (>= 3.1.2.5)
     Http.fs (4.1)
@@ -61,6 +55,14 @@ NUGET
     Topshelf.FSharp (3.0)
       Topshelf (>= 4.0.2)
     Unquote (3.1.2)
+  remote: /Users/h/dev/haf/expecto/build/pkg
+    Expecto (1.0.4)
+      Argu (>= 3.2)
+      FSharp.Core (>= 3.1.2.5)
+    Expecto.FsCheck (1.0.4)
+      Expecto (>= 1.0.4)
+      FsCheck (>= 2.6.2)
+      FSharp.Core (>= 3.1.2.5)
 GITHUB
   remote: xyncro/chiron
     src/Chiron/Chiron.fs (e0f4c122b21cb02d47ae3f4f83924b2dcb8dea9e)
@@ -68,13 +70,11 @@ GITHUB
     src/Aether/Aether.fs (5b5c05db2414562e9f3f679d42284638e63b9f3a)
   remote: haf/YoLo
     YoLo.fs (11023b9fcd2c1d28a7a0c0de5609647e3e1b03ce)
-  remote: haf/expecto-patronum
-    ExpectoPatronum/Assert.fs (576e0332c96af83373631c1a9f506b16050cf653)
   remote: logary/RingBuffer
     RingBuffer.fs (4557d607737e748b54eb6de3ec5e5cd02247b2a5)
       Hopac
   remote: logary/logary
-    src/Logary.Facade/Facade.fs (ac87204d9555ce8e44d44248065b3ca9796bc9b3)
+    src/Logary.Facade/Facade.fs (a131dce06cd491e75db74b7c2467d84814d81200)
 GROUP Examples
 REDIRECTS: ON
 FRAMEWORK: >= NET45

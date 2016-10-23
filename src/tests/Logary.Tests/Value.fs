@@ -3,10 +3,9 @@
 open System
 open System.Collections.Generic
 open NodaTime
-open Fuchu
+open Expecto
 open Logary
 open FsCheck
-open ExpectoPatronum
 
 type NormalPerson =
   { name : string option }
@@ -87,11 +86,9 @@ let valueTests =
       Value.ofObject a |> ignore
 
     testCase "convert normal person" <| fun _ ->
-      Tests.skiptest "while debugging"
       Value.ofObject { NormalPerson.name = Some "haf" } |> ignore
 
     testCase "convert a girl with no name" <| fun _ ->
-      Tests.skiptest "while debugging"
       Value.ofObject { NormalPerson.name = None } |> ignore
 
     testCase "convert atypical person" <| fun _ ->

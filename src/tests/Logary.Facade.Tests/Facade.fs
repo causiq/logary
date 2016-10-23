@@ -1,7 +1,7 @@
 ﻿module Logary.Facade.Tests
 
 open System
-open Fuchu
+open Expecto
 open Logary.Facade
 open Logary.Facade.Literals
 open Logary.Facade.Literate
@@ -152,11 +152,11 @@ let tests =
           " who now has total $", Text
           "[cartTotal] ",         Subtext
           cartTotal.ToString(),   NumericSymbol ]
-      Assert.literateMessagePartsEqual (template, fields, expectedMessageParts, options)
+      Expect.literateMessagePartsEqual (template, fields, expectedMessageParts, options)
 
     testCase "literate can tokenise an empty message template" <| fun _ ->
       let emptyFields = Map.empty<string,obj>
-      Assert.literateMessagePartsEqual ("", emptyFields, [])
+      Expect.literateMessagePartsEqual ("", emptyFields, [])
 
     testCase "literate tokenises missing fields with the `MissingTemplateField` token" <| fun _ ->
       let template = "Added {item} to cart {cartId:X} for {loginUserId} who now has total ${cartTotal}"
@@ -175,7 +175,7 @@ let tests =
           "{loginUserId}",        MissingTemplateField
           " who now has total $", Text
           cartTotal.ToString(),   NumericSymbol ]
-      Assert.literateMessagePartsEqual (template, fields, expectedMessageParts)
+      Expect.literateMessagePartsEqual (template, fields, expectedMessageParts)
 
     testCase "literate default tokeniser uses the options `getLogLevelText()` correctly" <| fun _ ->
       let customGetLogLevelText = function Verbose->"A"|Debug->"B"|Info->"C"|Warn->"D"|Error->"E"|Fatal->"F"
@@ -215,7 +215,7 @@ let tests =
             ", you have a balance of ",                     Text
             amount.ToString("C2", options.formatProvider),  NumericSymbol ]
 
-        Assert.literateMessagePartsEqual (template, fields, expectedMessageParts, options)
+        Expect.literateMessagePartsEqual (template, fields, expectedMessageParts, options)
       )
 
     testCase "literate default tokeniser can yield exception tokens from the 'errors' and 'exn' fields, even with an empty template" <| fun _ ->
@@ -233,7 +233,7 @@ let tests =
           nl, Text
           "System.Exception: errors field 2", Text
         ]
-      Assert.literateMessagePartsEqual (template, fields, expectedMessageParts)
+      Expect.literateMessagePartsEqual (template, fields, expectedMessageParts)
 
     testCase "literate tokenises without field names correctly" <| fun _ ->
       let template = "Added {item} to cart {cartId} for {loginUserId} who now has total ${cartTotal}"
@@ -252,7 +252,7 @@ let tests =
           loginUserId,            StringSymbol
           " who now has total $", Text
           cartTotal.ToString(),   NumericSymbol ]
-      Assert.literateMessagePartsEqual (template, fields, expectedMessageParts, options)
+      Expect.literateMessagePartsEqual (template, fields, expectedMessageParts, options)
 
     testCase "format template with invalid property correctly" <| fun _ ->
       // spaces are not valid in property names, so the 'property' is treated as text

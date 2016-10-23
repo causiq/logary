@@ -5,7 +5,7 @@ open global.Suave.Logging
 open System.Threading
 open Logary
 open Hopac
-open Fuchu
+open Expecto
 
 let testLoggers (minLevel : LogLevel) (lineLevel : Logging.LogLevel) (message : Message ref) =
   let stub = { new Logger with
@@ -53,17 +53,17 @@ let tests =
     testCase "logs nothing on Debug level" <| fun _ ->
       let msg : Message ref = ref (Message.event Info "empty" |> Message.setName (PointName.parse "a.b.c"))
       testLoggers Info Logging.LogLevel.Debug msg
-      Assert.Equal("should have 'empty' message", "empty", (!msg).message)
+      Expect.equal("should have 'empty' message", "empty", (!msg).message)
 
     testCase "logs same on Info level" <| fun _ ->
       let msg : Message ref = ref (Message.event Info "empty" |> Message.setName (PointName.parse "a.b.c"))
       testLoggers Debug Logging.LogLevel.Info msg
       while (!msg).message = "empty" do Thread.Sleep 500
-      Assert.Equal("should have 'test' message", "test", (!msg).message)
+      Expect.equal("should have 'test' message", "test", (!msg).message)
 
     testCase "logs same on Error level" <| fun _ ->
       let msg : Message ref = ref (Message.event Info "empty" |> Message.setName (PointName.parse "a.b.c"))
       testLoggers Info Logging.LogLevel.Error msg
       while (!msg).message = "empty" do Thread.Sleep 500
-      Assert.Equal("should have 'test' message", "test", (!msg).message)
+      Expect.equal("should have 'test' message", "test", (!msg).message)
     ]

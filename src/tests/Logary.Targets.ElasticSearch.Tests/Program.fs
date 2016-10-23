@@ -2,7 +2,7 @@
 
 open System
 open NodaTime
-open Fuchu
+open Expecto
 open Hopac
 open Hopac.Infixes
 open Logary.Utils.Chiron
@@ -74,5 +74,5 @@ let target =
           "context", Json.Object ([ "service", Json.String "tests" ] |> Map.ofList)
          ] |> Map.ofList |> Json.Object
 
-      Assert.equal subject expected "should serialise to proper message"
+      Expect.equal subject expected "should serialise to proper message"
     ]

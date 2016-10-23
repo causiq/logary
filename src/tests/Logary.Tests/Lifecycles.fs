@@ -1,7 +1,7 @@
 ﻿module Logary.Tests.Lifecycles
 
 open NodaTime
-open Fuchu
+open Expecto
 open Logary.Configuration
 open Logary
 open Logary.Targets

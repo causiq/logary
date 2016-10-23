@@ -1,6 +1,6 @@
 ﻿module Logary.Targets.Mailgun.Tests.Program
 
-open Fuchu
+open Expecto
 open NodaTime
 open System
 open System.Net.Mail

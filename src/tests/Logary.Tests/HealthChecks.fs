@@ -1,6 +1,6 @@
 ﻿module Logary.Tests.HealthChecks
 
-open Fuchu
+open Expecto
 open System.Text.RegularExpressions
 open Hopac
 open Fac
@@ -9,8 +9,6 @@ open Logary.HealthCheck
 open Logary.Tests.TestDSL
 
 open System.Net.NetworkInformation
-
-module Assert = ExpectoPatronum.Expect
 
 let private untilPred maxWait fPred =
   let spy msg = let doubleSpy = printfn "%s: %A" msg in Seq.map doubleSpy
@@ -51,9 +49,9 @@ let pingSvdSe () =
 let tests =
   testList "health checks" [
     testCase "real ping" <| fun _ ->
-      Fuchu.Tests.skiptest "does network IO"
+      Tests.skiptest "does network IO"
       let h = fromFn (PointName.ofSingle "ping haf.se") pingSvdSe
       let gotUnhealthy = untilPred 10000 <| fun i ->
         match h.getValue () |> run with HasValue _ -> true | _ -> false
-      Assert.isFalse gotUnhealthy "is not unhealthy"
+      Expect.isFalse gotUnhealthy "is not unhealthy"
     ]

@@ -1,45 +1,45 @@
 ﻿module Logary.Tests.CoreTargets
 
-open Fuchu
+open Expecto
 open Logary
 open Logary.Targets
 open Logary.Tests.Targets
 open Hopac
 open NodaTime
-open ExpectoPatronum
 open TestDSL
 open Fac
 
-let textWriterConf =
-  TextWriter.TextWriterConf.create(System.Console.Out, System.Console.Error)
+let textWriterConf () =
+  let stdout, stderr = Fac.textWriter (), Fac.textWriter ()
+  TextWriter.TextWriterConf.create(stdout, stderr)
 
 module LiterateTesting =
   open System
   open LiterateConsole
   module Theme =
-      let textColours =     { foreground=ConsoleColor.White; background=None }
-      let subtextColours =  { foreground=ConsoleColor.Gray; background=None }
-      let punctuationColours = { foreground=ConsoleColor.DarkGray; background=None }
-      let levelVerboseColours = { foreground=ConsoleColor.Gray; background=None }
-      let levelDebugColours = { foreground=ConsoleColor.Gray; background=None }
-      let levelInfoColours = { foreground=ConsoleColor.White; background=None }
-      let levelWarningColours = { foreground=ConsoleColor.Yellow; background=None }
-      let levelErrorColours = { foreground=ConsoleColor.White; background=Some ConsoleColor.Red }
-      let levelFatalColours = { foreground=ConsoleColor.White; background=Some ConsoleColor.Red }
-      let keywordSymbolColours = { foreground=ConsoleColor.Blue; background=None }
-      let numericSymbolColours = { foreground=ConsoleColor.Magenta; background=None }
-      let stringSymbolColours = { foreground=ConsoleColor.Cyan; background=None }
-      let otherSymbolColours = { foreground=ConsoleColor.Green; background=None }
-      let nameSymbolColours = { foreground=ConsoleColor.Gray; background=None }
-      let missingTemplateFieldColours = { foreground=ConsoleColor.Red; background=None }
-      let theme = function
-        | Tokens.Text -> textColours | Tokens.Subtext -> subtextColours | Tokens.Punctuation -> punctuationColours
-        | Tokens.LevelVerbose -> levelVerboseColours | Tokens.LevelDebug -> levelDebugColours
-        | Tokens.LevelInfo -> levelInfoColours | Tokens.LevelWarning -> levelWarningColours
-        | Tokens.LevelError -> levelErrorColours | Tokens.LevelFatal -> levelFatalColours
-        | Tokens.KeywordSymbol -> keywordSymbolColours | Tokens.NumericSymbol -> numericSymbolColours
-        | Tokens.StringSymbol -> stringSymbolColours | Tokens.OtherSymbol -> otherSymbolColours
-        | Tokens.NameSymbol -> nameSymbolColours | Tokens.MissingTemplateField -> missingTemplateFieldColours
+    let textColours = { foreground=ConsoleColor.White; background=None }
+    let subtextColours = { foreground=ConsoleColor.Gray; background=None }
+    let punctuationColours = { foreground=ConsoleColor.DarkGray; background=None }
+    let levelVerboseColours = { foreground=ConsoleColor.Gray; background=None }
+    let levelDebugColours = { foreground=ConsoleColor.Gray; background=None }
+    let levelInfoColours = { foreground=ConsoleColor.White; background=None }
+    let levelWarningColours = { foreground=ConsoleColor.Yellow; background=None }
+    let levelErrorColours = { foreground=ConsoleColor.White; background=Some ConsoleColor.Red }
+    let levelFatalColours = { foreground=ConsoleColor.White; background=Some ConsoleColor.Red }
+    let keywordSymbolColours = { foreground=ConsoleColor.Blue; background=None }
+    let numericSymbolColours = { foreground=ConsoleColor.Magenta; background=None }
+    let stringSymbolColours = { foreground=ConsoleColor.Cyan; background=None }
+    let otherSymbolColours = { foreground=ConsoleColor.Green; background=None }
+    let nameSymbolColours = { foreground=ConsoleColor.Gray; background=None }
+    let missingTemplateFieldColours = { foreground=ConsoleColor.Red; background=None }
+    let theme = function
+      | Tokens.Text -> textColours | Tokens.Subtext -> subtextColours | Tokens.Punctuation -> punctuationColours
+      | Tokens.LevelVerbose -> levelVerboseColours | Tokens.LevelDebug -> levelDebugColours
+      | Tokens.LevelInfo -> levelInfoColours | Tokens.LevelWarning -> levelWarningColours
+      | Tokens.LevelError -> levelErrorColours | Tokens.LevelFatal -> levelFatalColours
+      | Tokens.KeywordSymbol -> keywordSymbolColours | Tokens.NumericSymbol -> numericSymbolColours
+      | Tokens.StringSymbol -> stringSymbolColours | Tokens.OtherSymbol -> otherSymbolColours
+      | Tokens.NameSymbol -> nameSymbolColours | Tokens.MissingTemplateField -> missingTemplateFieldColours
 
   let levelD, levelE, levelF, levelI, levelV, levelW = "D", "E", "F", "I", "V", "W"
   let singleLetterLogLevelText = function
@@ -87,11 +87,12 @@ let levels expectedTimeText : LiterateConsole.ColouredText list =
 [<Tests>]
 let tests =
   testList "CoreTargets" [
-    Targets.basicTests "text writer" (TextWriter.create textWriterConf)
-    Targets.integrationTests "text writer" (TextWriter.create textWriterConf)
+    Targets.basicTests "text writer" (fun name -> TextWriter.create (textWriterConf ()) name)
+    Targets.integrationTests "text writer" (fun name -> TextWriter.create (textWriterConf ()) name)
 
-    Targets.basicTests "literate console" (LiterateConsole.create LiterateConsole.empty)
-    Targets.integrationTests "literate console" (LiterateConsole.create LiterateConsole.empty)
+    // TODO: don't want to actually print these
+    //Targets.basicTests "literate console" (LiterateConsole.create LiterateConsole.empty)
+    //Targets.integrationTests "literate console" (LiterateConsole.create LiterateConsole.empty)
 
     testList "literate console" [
       let testLiterateCase testMsg messageFactory cb =
@@ -122,7 +123,7 @@ let tests =
         Expect.equal parts
                      [ yield! levels expectedTimeText
                        yield {text = "Hello World!"; colours = LiterateTesting.Theme.textColours } ]
-                    "logging with info level and then finalising the target"
+                     "logging with info level and then finalising the target"
 
       // [06:15:02 DBG] Metric (guage) 60029379 s / 1000000000.000000 (A.B.C.Check)
 
@@ -151,8 +152,8 @@ let tests =
                     "logging with info level and then finalising the target"
     ]
 
-    testList "text writer" [
-      testCase "printing Hello World" <| fun _ ->
+    testList "text writer prints" [
+      testCase "message" <| fun _ ->
         let stdout = Fac.textWriter ()
         let target = TextWriter.create (TextWriter.TextWriterConf.create(stdout, stdout)) "writing console target"
         let instance = target |> Target.init emptyRuntime |> run
@@ -166,7 +167,7 @@ let tests =
         |> should contain "Hello World!"
         |> thatsIt
 
-      testCase "initialising TextWriter target" <| fun _ ->
+      testCase "fields" <| fun _ ->
         let stdout = Fac.textWriter ()
         let target = TextWriter.create (TextWriter.TextWriterConf.create(stdout, stdout)) "writing console target"
         let instance = target |> Target.init emptyRuntime |> run
@@ -175,16 +176,16 @@ let tests =
 
         let x = dict ["foo", "bar"]
         (because "logging with fields then finalising the target" <| fun () ->
-          Message.event Info "Hello World!" |> Message.setFieldFromObject "the Name" x |> Target.logAndWait instance
+          Message.event Info "textwriter-test-init" |> Message.setFieldFromObject "the Name" x |> Target.logAndWait instance
           Target.finalise instance
           stdout.ToString())
-        |> should contain "Hello World!"
+        |> should contain "textwriter-test-init"
         |> should contain "foo"
         |> should contain "bar"
         |> should contain "the Name"
         |> thatsIt
 
-      testCase "error levels should be to error text writer" <| fun _ ->
+      testCase "to correct stream" <| fun _ ->
         let out, err = Fac.textWriter (), Fac.textWriter ()
         let target = TextWriter.create (TextWriter.TextWriterConf.create(out, err)) "error writing"
         let subject = target |> Target.init emptyRuntime |> run

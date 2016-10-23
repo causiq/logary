@@ -3,7 +3,7 @@
 open System
 open System.Collections.Generic
 open System.IO
-open Fuchu
+open Expecto
 open ProtoBuf
 open Logary.Targets.Riemann
 open Logary.Riemann.Messages
@@ -14,7 +14,7 @@ let roundtrip<'a when 'a : equality> (x : 'a) =
   ms.Seek(0L, SeekOrigin.Begin) |> ignore
   let res = Serializer.Deserialize<'a> ms
   sprintf "deserialised output of %s should equal input" (typeof<'a>.Name) |> ignore
-  Assert.Equal("should equal after roundtrip", res, x)
+  Expect.equal("should equal after roundtrip", res, x)
 
 let list (items : 'a list) =
   let l = List<'a>()

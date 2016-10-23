@@ -2,14 +2,13 @@
 
 open System
 
-open Fuchu
+open Expecto
 open NodaTime
 
 open Logary
 open Logary.Formatting
 
 open Logary.Tests.TestDSL
-open ExpectoPatronum
 
 let private sampleMessage : Message =
   { name      = PointName.ofList ["a"; "b"; "c"; "d"]
@@ -255,31 +254,53 @@ let tests =
 
     testCase "templateEvent<_> throws when there are positionally matched fields" <| fun _ ->
       Expect.throws (fun () -> Message.templateEvent<int> (Info, "No named fields {0}") |> ignore)
+                    "No named fields passed 1 gen par"
       Expect.throws (fun () -> Message.templateEvent<int, int> (Info, "No named fields {0} {1}") |> ignore)
+                    "No named fields passed 2 gen pars"
       Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "No named fields {0} {1} {2}") |> ignore)
+                    "No named fields passed 3 gen pars"
       Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "No named fields {0} {1} {2} {3}") |> ignore)
+                    "No named fields passed 4 gen pars"
 
     testCase "templateEvent<_> requires exactly the same number of type args and properties in the template" <| fun _ ->
       Expect.throws (fun () -> Message.templateEvent<int> (Info, "Too many {Field1} {Field2}") |> ignore)
+                    "Missing one type arg"
       Expect.throws (fun () -> Message.templateEvent<int> (Info, "Too many {Field1} {Field2} {Field3}") |> ignore)
+                    "Missing two type args"
       Expect.throws (fun () -> Message.templateEvent<int> (Info, "Too few") |> ignore)
+                    "One type arg too many"
 
       Expect.throws (fun () -> Message.templateEvent<int, int> (Info, "Too many {Field1} {Field2} {Field3}") |> ignore)
+                    "Missing one type arg"
       Expect.throws (fun () -> Message.templateEvent<int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4}") |> ignore)
+                    "Missing two type args"
       Expect.throws (fun () -> Message.templateEvent<int, int> (Info, "Too few") |> ignore)
+                    "Two type args too many"
       Expect.throws (fun () -> Message.templateEvent<int, int> (Info, "Too few {Field1}") |> ignore)
+                    "One type args too many"
 
       Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4}") |> ignore)
+                    "One type args too few"
       Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4} {Field5}") |> ignore)
+                    "Two type args too few"
       Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "Too few") |> ignore)
+                    "Three type args too many"
       Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "Too few {Field1}") |> ignore)
+                    "Two type args too many"
       Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "Too few {Field1} {Field2}") |> ignore)
+                    "One type arg too many"
 
       Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4} {Field5}") |> ignore)
+                    "Missing one type arg"
       Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4} {Field5} {Field6}") |> ignore)
+                    "Missing two type args"
       Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too few") |> ignore)
+                    "Four type args too many"
       Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too few {Field1}") |> ignore)
+                    "Three type args too many"
       Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too few {Field1} {Field2}") |> ignore)
+                    "Two type args too many"
       Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too few {Field1} {Field2} {Field3}") |> ignore)
+                    "One type arg too many"
 
     ]

@@ -1,7 +1,7 @@
 ﻿module Program
 
 open ExpectoPatronum
-open Fuchu
+open Expecto
 open Logary
 open Logary.Metrics
 

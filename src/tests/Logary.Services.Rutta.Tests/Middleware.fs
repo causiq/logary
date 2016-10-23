@@ -1,7 +1,7 @@
 ﻿module Logary.Services.Rutta.Tests.Middleware
 
 open ExpectoPatronum
-open Fuchu
+open Expecto
 open Logary
 open Logary.Services.Rutta
 open Logary.Services.Rutta.Program

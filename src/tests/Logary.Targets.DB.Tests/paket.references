@@ -5,4 +5,4 @@ FluentMigrator
 FluentMigrator.Runner
 FsSql
 System.Data.SQLite.Core
-Fuchu
+Expecto
