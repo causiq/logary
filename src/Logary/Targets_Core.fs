@@ -351,10 +351,11 @@ module LiterateConsole =
         when scale = float Constants.NanosPerSecond ->
 
         let number, unitStr = (float nanos / float scale) |> Units.scale Seconds 
+        let format = if nanos < 1000L then "N0" else "N2"
         seq {
           yield message.name.ToString(), NameSymbol
           yield " took ", Subtext
-          yield number.ToString("N2", options.formatProvider), NumericSymbol
+          yield number.ToString(format, options.formatProvider), NumericSymbol
           yield " ", Subtext
           yield unitStr, Text
           yield " to execute.", Subtext

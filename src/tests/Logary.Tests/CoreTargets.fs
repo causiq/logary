@@ -65,9 +65,10 @@ module LiterateTesting =
         colourWriter    = fun sem parts -> writtenParts.AddRange(parts) },
     fun () -> writtenParts |> List.ofSeq
 
-let timeMessage (duration : Duration) level =
+let timeMessage (nanos : int64) level =
+  let value, units = Int64 nanos, Scaled (Seconds, float Constants.NanosPerSecond)
   snd (Message.time (PointName [| "A"; "B"; "C"; "Check" |]) (fun () -> 32) ())
-  |> Message.setGauge (duration.toGauge ())
+  |> Message.setGauge (value, units)
   |> Message.setLevel level
 
 let nanos xs =
@@ -125,10 +126,7 @@ let tests =
                        yield {text = "Hello World!"; colours = LiterateTesting.Theme.textColours } ]
                      "logging with info level and then finalising the target"
 
-      // [06:15:02 DBG] Metric (guage) 60029379 s / 1000000000.000000 (A.B.C.Check)
-
-      yield testLiterateCase "Time in ms" (timeMessage (nanos 60029379L)) <| fun expectedTimeText parts ->
-        // [06:15:02 DBG] A.B.C.Check took 60.02 ms
+      yield testLiterateCase "Time in ms" (timeMessage 60029379L) <| fun expectedTimeText parts ->
         Expect.sequenceEqual
           parts
           [ yield! levels expectedTimeText
@@ -140,8 +138,7 @@ let tests =
             yield { text = " to execute."; colours = LiterateTesting.Theme.subtextColours } ]
           "Should print [06:15:02 DBG] A.B.C.Check took 60,02 ms"
 
-      yield testLiterateCase "Time in μs" (timeMessage (nanos 133379L)) <| fun expectedTimeText parts ->
-        // [06:15:02 DBG] A.B.C.Perform took 133.37 μs
+      yield testLiterateCase "Time in μs" (timeMessage 133379L) <| fun expectedTimeText parts ->
         Expect.sequenceEqual
           parts
           [ yield! levels expectedTimeText
@@ -149,9 +146,21 @@ let tests =
             yield { text = " took "; colours = LiterateTesting.Theme.subtextColours }
             yield { text = "133,38"; colours = LiterateTesting.Theme.numericSymbolColours }
             yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
-            yield { text = "μs"; colours = LiterateTesting.Theme.textColours }
+            yield { text = "µs"; colours = LiterateTesting.Theme.textColours }
             yield { text = " to execute."; colours = LiterateTesting.Theme.subtextColours } ]
           "Should print [06:15:02 DBG] A.B.C.Perform took 133,38 μs"
+
+      yield testLiterateCase "Time in ns" (timeMessage 139L) <| fun expectedTimeText parts ->
+        Expect.sequenceEqual
+          parts
+          [ yield! levels expectedTimeText
+            yield { text = "A.B.C.Check"; colours = LiterateTesting.Theme.nameSymbolColours }
+            yield { text = " took "; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = "139"; colours = LiterateTesting.Theme.numericSymbolColours }
+            yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = "ns"; colours = LiterateTesting.Theme.textColours }
+            yield { text = " to execute."; colours = LiterateTesting.Theme.subtextColours } ]
+          "Should print [06:15:02 DBG] A.B.C.Perform took 139 μs, because nanoseconds is as accurate as it gets"
     ]
 
     testList "text writer prints" [
