@@ -779,26 +779,26 @@ module Units =
 
   let scaleSeconds : float -> float * string =
     ((*) (float Constants.NanosPerSecond)) >> int64 >> function
-    | value when value < Constants.NanosPerSecond / 10000000L ->
+    | value when value < Constants.NanosPerSecond / 1000000L ->
       float Constants.NanosPerSecond, "ns"
-
     | value when value < Constants.NanosPerSecond / 1000L ->
       float (Constants.NanosPerSecond / 1000L), "µs"
-
     | value when value < Constants.NanosPerSecond ->
       float (Constants.NanosPerSecond / 1000000L), "ms"
-
     | value when value < 60L * Constants.NanosPerSecond ->
       1., "s"
-
     | value when value < 3600L * Constants.NanosPerSecond ->
       1. / 60., "min"
-
     | value when value < 86400L * Constants.NanosPerSecond ->
       1. / 3600., "h"
-
     | value ->
       1. / 86400., "days"
+
+  let scaleBits : float -> float * string =
+    let prefix = [| ""; "k"; "M"; "G"; "T"; "P" |]
+    fun value ->
+      let index = min (int (log10 value) / 3) (prefix.Length - 1)
+      1. / 10.**(float index * float 3), sprintf "%sbit" prefix.[index]
 
   // grafana/public/app/kbn.js:374@g20d5d0e
   let calculate (calcFactor : float -> float * string) =
@@ -808,12 +808,15 @@ module Units =
 
   // Given a Unit, returns the scaling function and the list of units available.
   let scale units value : float * string =
-    let scaleThousands _ = 1000., "TODO"
     let scale2to10 _ = 1024., "TODO"
     match units with
-    | Bits ->    scaleThousands value
-    | Bytes ->   scale2to10 value
-    | Seconds -> calculate scaleSeconds value
+    | Bits ->
+      calculate scaleBits value
+    | Bytes ->
+      calculate scaleBits value
+    | Seconds ->
+      calculate scaleSeconds value
+
     | x -> failwithf "TODO: unit %A" x
         //["ns"; "µs"; "ms"; "s"; "min"; "h"; "days"]
         //["B"; "KiB"; "MiB"; "GiB"; "TiB"; "PiB"; "EiB"; "ZiB"; "YiB"]
