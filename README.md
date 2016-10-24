@@ -40,7 +40,6 @@ Install-Package Logary
 ```
 
 ## Table of Contents
-
   * [Logary v4](#logary-v4)
     * [Why?](#why)
     * [Install it](#install-it)
@@ -68,6 +67,7 @@ Install-Package Logary
       * [Passing more information](#passing-more-information)
       * [A note on the FSI](#a-note-on-the-fsi)
       * [More reading](#more-reading)
+    * [InfluxDb Target](#influxdb-target)
     * [RabbitMQ Target](#rabbitmq-target)
       * [Usage](#usage)
     * [EventStore adapter](#eventstore-adapter)
@@ -77,6 +77,7 @@ Install-Package Logary
       * [From NLog\.RabbitMQ, log4net\.RabbitMQ?](#from-nlograbbitmq-log4netrabbitmq)
     * [Comparison to NLog and log4net](#comparison-to-nlog-and-log4net)
     * [Comparison to Codahale metrics &amp; Metrics\.NET](#comparison-to-codahale-metrics--metricsnet)
+    * [Comparison with Serilog](#comparison-with-serilog)
     * [Rutta](#rutta)
       * [The Shipper – from environment to Proxy or Router](#the-shipper--from-environment-to-proxy-or-router)
         * [Pushing Shippers](#pushing-shippers)
@@ -113,6 +114,7 @@ Install-Package Logary
       * [How do I use Hopac from C\#?](#how-do-i-use-hopac-from-c)
       * [What's logVerboseWithAck, logWithAck and how does it differ from logSimple?](#whats-logverbosewithack-logwithack-and-how-does-it-differ-from-logsimple)
         * [logWithAck – so what's up with Promise?](#logwithack--so-whats-up-with-promise)
+        * [How do Promises work with C\#?](#how-do-promises-work-with-c)
     * [License](#license)
 
 ## Hello World (C#)
@@ -1055,6 +1057,55 @@ Metrics like the above are taken from different sources:
 The aim of Logary is to connect values from call-sites, to configurable
 derivations, such as percentiles(, potentially again to derivations), and
 finally to targets which can then store them.
+
+## Comparison with Serilog
+
+ - Both support structured logging
+ - Both run on .Net
+ - Logary is based on Hopac, a concurrent ML derivative, whilst Serilog is
+   primarily single-threaded
+ - Logary was built from running high-throughput distributed systems 24/7 in
+   production and has learnt its lessons
+ - Logary can be run in multi-instance mode without using any global shared
+   state (aka. statics)
+ - Serilog's Enrichers = Logary's middleware
+ - Serilog's Sink = Logary's Target
+ - Targets in Logary can be async, Sinks cannot
+ - Logary supports flushing all targets (`LogManager.Flush`)
+ - Logary supports flushing a single target (`Target.flush`)
+ - Logary supports backpressure (F#: `Alt<_>` , C#: `Task`) returned from
+   `logWithAck`.
+ - Logary further supports backpressure by waiting for all targets to flush a
+   particular message (e.g. you should always block on Fatal messages to finish
+   logging) through `Alt<Promise<unit>>`/`Task<Task` in C# (same method as
+   above).
+ - Logary's C# API doesn't support misconfiguring Logary, because it's been
+   built with chaining types together (going beyond the `return this` pattern).
+ - Logary supports Metrics – Gauges, Derived values, Histograms, Reservoirs
+ - Logary supports Health checks out of the box
+ - Logary has built-in support for Windows Performance Counters metrics shipping
+   through `Logary.Metrics.WinPerfCounters`.
+ - Logary provides a Facade for your libraries to depend on, to avoid dependency
+   hell forcing you to upgrade all your libraries whenever Logary changes (which
+   it does often, in order to improve!) – a single `Facade.{fs,cs}`-file that
+   you version control yourself.
+ - Logary supports Targets that batch, out of the box
+ - Logary supports Targets that fail by restarting them
+ - Logary supports Targets' last will – use to handle poison Messages
+ - Logary is written in F#, Serilog in C#
+ - Logary has a C# API `Logary.CSharp`. Serilog doesn't have a F# API
+ - Logary supports adding structured data to metrics
+ - Logary's InfluxDb target supports fields and can batch multiple Windows
+   Performance Counters or metrics into a single Measurement
+ - Logary has a JS-counterpart, *logary-js* which lets you log into
+   `Logary.Services.SuaveReporter` on the server; events and metrics.
+ - Logary has paid support available if you need it.
+ - Logary supports the side-kick pattern, where you outsource your shipping of
+   logs from your main process to a co-process through Rutta's Shipper and
+   Router.
+ - Logary has `TimeScope` and the ability to instrument your code for sending
+   timing information.
+ - Logary has preliminary support for Zipkin.
 
 ## Rutta
 
