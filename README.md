@@ -1077,7 +1077,7 @@ finally to targets which can then store them.
    `logWithAck`.
  - Logary further supports backpressure by waiting for all targets to flush a
    particular message (e.g. you should always block on Fatal messages to finish
-   logging) through `Alt<Promise<unit>>`/`Task<Task` in C# (same method as
+   logging) through `Alt<Promise<unit>>`/`Task<Task>` in C# (same method as
    above).
  - Logary's C# API doesn't support misconfiguring Logary, because it's been
    built with chaining types together (going beyond the `return this` pattern).
