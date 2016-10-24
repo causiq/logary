@@ -1106,6 +1106,8 @@ finally to targets which can then store them.
  - Logary has `TimeScope` and the ability to instrument your code for sending
    timing information.
  - Logary has preliminary support for Zipkin.
+ - Both are awesome and @nblumhardt is an awesome dude. Use whichever you feel
+   most comfortable with!
 
 ## Rutta
 
