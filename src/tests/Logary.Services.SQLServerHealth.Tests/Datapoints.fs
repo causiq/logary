@@ -19,9 +19,9 @@ let datapoints =
 
   testList "getting all datapoints" [
     testCase "for drive c" <| fun _ ->
-      Expect.equal(
-        "should eq set",
-        [ "drive_io_stall_read.c"
+      Expect.sequenceEqual
+        dps
+        (["drive_io_stall_read.c"
           "drive_io_stall_write.c"
           "drive_io_stall.c"
           "drive_num_of_reads.c"
@@ -33,10 +33,9 @@ let datapoints =
           "drive_latency.c"
           "drive_bytes_per_read.c"
           "drive_bytes_per_write.c"
-          "drive_bytes_per_transfer.c"
-        ]
+          "drive_bytes_per_transfer.c" ]
         |> List.map (sprintf "Logary.Metrics.SQLServerHealth.%s")
         |> List.map PointName.parse
-        |> Set.ofList,
-        dps)
+        |> Set.ofList)
+        "should eq set"
     ]

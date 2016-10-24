@@ -3,7 +3,6 @@
 open Expecto
 open System
 open System.Net
-open ExpectoPatronum
 open Logary.Zipkin.Thrift
 open Logary.Zipkin
 
@@ -51,4 +50,4 @@ let tests =
 
 [<EntryPoint>]
 let main args =
-  Tests.defaultMainThisAssembly args
+  Tests.runTestsInAssembly defaultConfig args

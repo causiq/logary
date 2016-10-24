@@ -40,7 +40,7 @@ let withLogary f =
 
 let finaliseLogary = Config.shutdownSimple >> fun a ->
   let state = run a
-  Expect.equal("finalise should always work", true, state.successful)
+  Expect.equal state.successful true "Finalise should always work" 
 
 let finaliseTarget t = Target.shutdown t |> fun a ->
   let acks = a ^-> TimeoutResult.Success <|> timeOutMillis 1000 ^->. TimedOut
@@ -79,8 +79,8 @@ let integration =
           finaliseLogary logary
           out.ToString(), err.ToString()
 
-      Expect.equal("should be empty", "", out.ToString())
-      Expect.StringContains("should have 'oh noes' in it", "oh noes", err.ToString())
+      Expect.equal (out.ToString()) "" "should be empty"
+      Expect.stringContains (err.ToString()) "oh noes" "should have 'oh noes' in it"
     ]
 
 [<Tests>]
@@ -88,7 +88,7 @@ let mappings =
   testList "mapping properties' dictionary" [
     testCase "can map empty" <| fun _ ->
       let res = Map.empty |> LogaryHelpers.addProperties (new Util.PropertiesDictionary())
-      Expect.equal("should be empty map", Map.empty, res)
+      Expect.equal res Map.empty "Should be empty map"
 
     testCase "can map primitives" <| fun _ ->
       let subject = new Util.PropertiesDictionary()
@@ -98,14 +98,15 @@ let mappings =
       subject.["fourth"] <- Nullable<_>(123)
 
       let res = Map.empty |> LogaryHelpers.addProperties subject
-      Expect.equal("has first", 1, unbox res.["first"])
-      Expect.equal("has second", 1us, unbox res.["second"])
-      Expect.equal("has third", 1L, unbox res.["third"])
-      Expect.equal("has fourth", Nullable<_>(123), unbox res.["fourth"])
+      Expect.equal (unbox res.["first"]) 1 "has first"
+      Expect.equal (unbox res.["second"]) 1us "has second"
+
+      Expect.equal (unbox res.["third"]) 1L "has third"
+      Expect.equal (unbox res.["fourth"]) (Nullable<_>(123)) "has fourth"
     ]
 
 ////////
 
 [<EntryPoint>]
 let main argv =
-  defaultMainThisAssembly argv
+  Tests.runTestsInAssembly defaultConfig argv

@@ -1,6 +1,5 @@
 ﻿module Logary.Services.Rutta.Tests.Middleware
 
-open ExpectoPatronum
 open Expecto
 open Logary
 open Logary.Services.Rutta

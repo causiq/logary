@@ -3,7 +3,6 @@
 open System
 open Expecto
 open Hopac
-open ExpectoPatronum
 open Logary
 open Logary.Targets
 open Logary.Tests.Targets
@@ -39,4 +38,4 @@ let tests =
 
 [<EntryPoint>]
 let main argv =
-  Tests.defaultMainThisAssembly argv
+  Tests.runTestsInAssembly defaultConfig argv

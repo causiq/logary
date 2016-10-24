@@ -37,7 +37,7 @@ let encoders =
            0x10; 0x80; 0xc4; 0x8c; 0x94; 0x91; 0xa9; 0xe8; 0xd4; 0x13; 0x1a;
            0x4; 0x54; 0x45; 0x53; 0x54
         |] |> Array.map byte
-      Expect.equal("should contain same data", expected, encode emptyConf msg)
+      Expect.equal (encode emptyConf msg) expected "Should contain same data"
 
     testCase "encode message stream signed" <| fun _ ->
       let conf, msg = givenSigned "test" null
@@ -59,7 +59,7 @@ let encoders =
            0x10; 0x80; 0xc4; 0x8c; 0x94; 0x91; 0xa9; 0xe8; 0xd4; 0x13; 0x1a;
            0x4; 0x54; 0x45; 0x53; 0x54
         |] |> Array.map byte
-      Expect.equal("header should contain extra data", expected, encode conf msg)
+      Expect.equal (encode conf msg) expected "Header should contain extra data"
 
     testCase "too large header" <| fun _ ->
       let conf, msg = givenSigned (String.replicate (int Constants.MaxHeaderSize) "x") null
@@ -71,8 +71,8 @@ let encoders =
       | Choice2Of2 (MessageTooLarge err) ->
         Tests.failtest "unexpected return value"
       | Choice2Of2 (HeaderTooLarge err) ->
-        Expect.equal("error msg", "Message header too big, requires 280 (MAX_HEADER_SIZE = 255)",
-                     err)
+        Expect.equal err "Message header too big, requires 280 (MAX_HEADER_SIZE = 255)"
+                     "error msg"
 
     testCase "too large message" <| fun _ ->
       let msg = Message(``type`` = "TEST", timestamp = 1416840893000000000L,
@@ -81,12 +81,12 @@ let encoders =
       match Encoder.encode emptyConf ms msg with
       | Choice1Of2 promise ->
         run promise
-        Tests.failtest "should have returned failure due to large header"
+        Tests.failtest "Should have returned failure due to large header"
       | Choice2Of2 (HeaderTooLarge err) ->
         Tests.failtest "unexpected return value"
       | Choice2Of2 (MessageTooLarge err) ->
-        Expect.equal("error msg", "Message too big, requires 65556 (MAX_MESSAGE_SIZE = 65536)",
-                     err)
+        Expect.equal err "Message too big, requires 65556 (MAX_MESSAGE_SIZE = 65536)"
+                     "Should have error message."
   ]
 
 [<Tests>]
@@ -97,13 +97,15 @@ let transformToMessage =
         { Message.event Info "hello world" with
             name      = PointName.ofList [ "Logibit"; "Web"; "Sample"; "Run" ]
             timestamp = 1234567L }
-      Expect.equal("should eq msg",
-        Message(payload   = "hello world",
+      Expect.equal
+        (ll |> Message.ofMessage)
+        (Message(payload   = "hello world",
                 severity  = Nullable 6,
                 logger    = "Logibit.Web.Sample.Run",
-                timestamp = 1234567L),
-        ll |> Message.ofMessage)
+                timestamp = 1234567L))
+        "Should eq msg"
   ]
 
 [<EntryPoint>]
-let main argv = Tests.defaultMainThisAssembly argv
+let main argv =
+  Tests.runTestsInAssembly defaultConfig argv

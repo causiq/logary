@@ -13,8 +13,8 @@ let roundtrip<'a when 'a : equality> (x : 'a) =
   Serializer.Serialize<'a>(ms, x)
   ms.Seek(0L, SeekOrigin.Begin) |> ignore
   let res = Serializer.Deserialize<'a> ms
-  sprintf "deserialised output of %s should equal input" (typeof<'a>.Name) |> ignore
-  Expect.equal("should equal after roundtrip", res, x)
+  sprintf "Deserialised output of %s should equal input" (typeof<'a>.Name) |> ignore
+  Expect.equal x res "should equal after roundtrip"
 
 let list (items : 'a list) =
   let l = List<'a>()

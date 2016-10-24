@@ -16,8 +16,6 @@ open Hopac.Extensions
 open Hopac.Infixes
 open TestHelpers
 
-module Assert = ExpectoPatronum.Expect
-
 let emptyRuntime =
   { serviceName = "tests"
     clock       = SystemClock.Instance

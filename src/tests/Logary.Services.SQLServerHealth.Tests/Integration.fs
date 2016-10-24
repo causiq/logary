@@ -27,5 +27,5 @@ let integration =
         |> List.map IOInfo.readLatency
         |> List.sort
 
-      Expect.equal("should not be empty", calculated.Length = 0, false)
+      Expect.isFalse (calculated.Length = 0) "should not be empty"
     ]

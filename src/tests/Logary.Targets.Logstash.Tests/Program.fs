@@ -11,8 +11,6 @@ open Logary.Target
 open Logary.Targets
 open Logary.Internals
 
-module Assert = ExpectoPatronum.Expect
-
 let emptyRuntime =
   { serviceName = "tests"
     clock       = SystemClock.Instance

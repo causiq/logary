@@ -1,6 +1,5 @@
 ﻿module Program
 
-open ExpectoPatronum
 open Expecto
 open Logary
 open Logary.Metrics
@@ -32,4 +31,5 @@ let tests =
   ]
 
 [<EntryPoint>]
-let main argv = Tests.defaultMainThisAssembly argv
+let main argv =
+  Tests.runTestsInAssembly defaultConfig argv

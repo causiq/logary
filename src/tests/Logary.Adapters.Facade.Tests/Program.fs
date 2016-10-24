@@ -1,7 +1,6 @@
 ﻿module Program
 
 open Expecto
-open ExpectoPatronum
 open Logary
 open Logary.Internals
 open Logary.Adapters.Facade
@@ -123,4 +122,4 @@ let tests =
 
 [<EntryPoint>]
 let main argv = 
-  Tests.defaultMainThisAssembly argv
+  Tests.runTestsInAssembly defaultConfig argv

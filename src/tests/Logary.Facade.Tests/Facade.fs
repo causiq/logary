@@ -5,7 +5,6 @@ open Expecto
 open Logary.Facade
 open Logary.Facade.Literals
 open Logary.Facade.Literate
-open ExpectoPatronum
 
 type internal TemplateToken =
   | TextToken of string
@@ -24,7 +23,7 @@ let internal parseTemplateTokens template =
   FsMtParser.parseParts template foundText foundProp
   tokens |> List.ofSeq
 
-type Assert with
+type Expect =
   static member literateMessagePartsEqual (template, fields, expectedMessageParts, ?options, ?logLevel, ?tokeniser) =
     let options = defaultArg options (LiterateOptions.create())
     let tokeniser = defaultArg tokeniser Formatting.literateDefaultTokeniser

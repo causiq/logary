@@ -816,8 +816,8 @@ module Units =
       calculate scaleBits value
     | Seconds ->
       calculate scaleSeconds value
-
-    | x -> failwithf "TODO: unit %A" x
+    | x ->
+      calculate scale2to10 value
         //["ns"; "µs"; "ms"; "s"; "min"; "h"; "days"]
         //["B"; "KiB"; "MiB"; "GiB"; "TiB"; "PiB"; "EiB"; "ZiB"; "YiB"]
 

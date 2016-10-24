@@ -145,7 +145,7 @@ let targetTests =
 
       // pre-conditions
       let count = Sql.execScalar mgr countSql [] |> Option.get
-      Expect.equal("count should be zero", 0L, count)
+      Expect.equal count 0L "count should be zero"
 
       // given
       let target = start (fun () -> db)
@@ -154,7 +154,7 @@ let targetTests =
       |> Target.log target
       |> Job.Ignore
       |> run
-      Message.event Info "goodbye world" 
+      Message.event Info "goodbye world"
       |> Message.setName (PointName.parse "a.b.c")
       |> Message.addExn (raised_exn "hoho")
       |> Target.log target
@@ -166,22 +166,23 @@ let targetTests =
       // then
       try
         let count = Sql.execScalar mgr countSql [] |> Option.get
-        Expect.equal("count should be two log lines", 2L, count)
+        Expect.equal count 2L "Count should be two log lines"
 
         let records = Sql.execReader mgr "SELECT * FROM Events" [] |> Sql.map Sql.asMap
 
         for r in records do
           let read k : 'a = read r k
-          Expect.equal("should have host name from computer DNS", Dns.GetHostName(), read "Host")
-          Expect.equal("should have path from", "a.b.c", read "Path")
-          Expect.equal("should have info level", int64 (Info.toInt ()), read "Level")
+          Expect.equal (read "Host") (Dns.GetHostName()) "should have host name from computer DNS"
+          Expect.equal (read "Path") "a.b.c" "Should have path"
+          Expect.equal (read "Level") (int64 (Info.toInt ()))  "Should have Info level"
 
           if read "Message" = "goodbye world" then
-            Expect.equal("should have comma-separated tags", "tests,things", read "Tags")
-            Expect.StringContains("should have exception substring",
-                                  "ApplicationException", read "Exception")
-            Expect.StringContains("should have exception substring",
-                                  "hoho", read "Exception")
+            Expect.equal (read "Tags") "tests,things"
+                         "should have comma-separated tags"
+            Expect.stringContains (read "Exception") "ApplicationException"
+                                  "should have exception substring"
+            Expect.stringContains (read "Exception") "hoho"
+                                  "should have exception substring"
       finally
         stop target
 
@@ -198,7 +199,7 @@ let targetTests =
 
       // pre-conditions
       let count = Sql.execScalar mgr countSql [] |> Option.get
-      Expect.equal("count should be zero", 0L, count)
+      Expect.equal count 0L "count should be zero"
 
       // given
       let target = start (fun () -> db)
@@ -209,17 +210,17 @@ let targetTests =
       // then
       try
         let count = Sql.execScalar mgr countSql [] |> Option.get
-        Expect.equal("count should be two metrics", 2L, count)
+        Expect.equal count 2L "Count should be two metrics"
 
         let records = Sql.execReader mgr "SELECT * FROM Metrics" [] |> Sql.map Sql.asMap
 
         for r in records do
           let read k : 'a = read r k
-          Expect.equal("should have host name from computer DNS", Dns.GetHostName(), read "Host")
-          Expect.StringContains("should have path from from metric", ".app.signin", read "Path")
-          Expect.equal("should have info level", int64 (Info.toInt()), read "Level")
+          Expect.equal (read "Host") (Dns.GetHostName()) "should have host name from computer DNS"
+          Expect.stringContains (read "Path") ".app.signin" "should have path from from metric"
+          Expect.equal (read "Level") (int64 (Info.toInt())) "should have info level"
 //          Expect.equal("should have counter type", DB.typeAsInt16 MetricType.Counter |> int64, read "Type")
-          Expect.equal("value is 3 or 6", true, read "Value" = 3.M || read "Value" = 6.M)
+          Expect.equal (read "Value" = 3.M || read "Value" = 6.M) true "value is 3 or 6"
       finally
         stop target
     ]
@@ -247,4 +248,5 @@ let migrationTests =
     ]
 
 [<EntryPoint>]
-let main args = defaultMainThisAssembly args
+let main args =
+  runTestsInAssembly defaultConfig args
