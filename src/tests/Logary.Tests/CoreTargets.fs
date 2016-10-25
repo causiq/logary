@@ -97,6 +97,12 @@ let tests =
     //Targets.basicTests "literate console" (LiterateConsole.create LiterateConsole.empty)
     //Targets.integrationTests "literate console" (LiterateConsole.create LiterateConsole.empty)
 
+    testCase "convert DateTimeOffset with timespan delta" <| fun _ ->
+      let a = DateTimeOffset(2016, 07, 02, 12, 33, 56, TimeSpan.FromHours(2.0))
+      let ts = a.timestamp
+      let b = ts |> DateTimeOffset.ofEpoch
+      Expect.equal a.Ticks b.Ticks "Should be convertible to timestamp and back, including accounting for TimeSpans"
+
     testCase "formatLocalTime" <| fun _ ->
       let actual, _ =
         let fp : IFormatProvider = upcast CultureInfo "sv-SE"
@@ -104,7 +110,7 @@ let tests =
           fp
           (DateTimeOffset(2016, 10, 25, 11, 17, 41, TimeSpan(2,0,0)).timestamp)
       let expected = "13:17:41"
-      Expect.equal actual expected "Should print the time properly"
+      Expect.equal actual expected "Should print the time without time zone"
 
     testList "literate console" [
       let testLiterateCase testMsg messageFactory cb =
