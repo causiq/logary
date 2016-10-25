@@ -473,8 +473,8 @@ module LiterateConsole =
   /// Default console target configuration.
   let empty =
     { formatProvider  = Globalization.CultureInfo.CurrentCulture
-      formatLocalTime = fun provider utcTicks ->
-                          DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss", provider),
+      formatLocalTime = fun provider epochNanoSeconds ->
+                          (DateTimeOffset.ofEpoch epochNanoSeconds).LocalDateTime.ToString("HH:mm:ss", provider),
                           Tokens.Subtext
       getLogLevelText = function
         | Verbose ->  "VRB"
