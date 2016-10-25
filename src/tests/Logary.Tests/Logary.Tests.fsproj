@@ -21,6 +21,7 @@
     <WarningLevel>3</WarningLevel>
     <Externalconsole>true</Externalconsole>
     <NoWarn>2003</NoWarn>
+    <StartArguments>--sequenced</StartArguments>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>

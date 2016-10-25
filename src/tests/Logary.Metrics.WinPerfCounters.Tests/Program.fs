@@ -1,8 +1,12 @@
 ﻿module Program
 
 open Expecto
+open System
 open Logary
 open Logary.Metrics
+
+let onMono () =
+  Type.GetType "Mono.Runtime" <> null
 
 [<Tests>]
 let tests =
@@ -27,7 +31,14 @@ let tests =
                      "Should have replaced dots with dashes"
     ]
 
+    testCase "can get pid instance" <| fun _ ->
+      if onMono () then Tests.skiptest "Helpers.getPidinstance fails on mono"
+      WinPerfCounter.Helpers.pidInstance () |> ignore
 
+    testCase "getting value from perf counter" <| fun _ ->
+      if onMono () then Tests.skiptest "Helpers.getPidinstance fails on mono"
+      let apps = WinPerfCounters.appCounters ()
+      apps.[0].nextValues () |> ignore
   ]
 
 [<EntryPoint>]
