@@ -1062,15 +1062,15 @@ finally to targets which can then store them.
 
  - Both support structured logging
  - Both run on .Net
- - Logary is based on Hopac, a concurrent ML derivative, whilst Serilog is
-   primarily single-threaded
+ - Logary is based on cooperative multithreading whilst Serilog is mostly lock-free concurrent
  - Logary was built from running high-throughput distributed systems 24/7 in
    production and has learnt its lessons
  - Logary can be run in multi-instance mode without using any global shared
-   state (aka. statics)
+   state (aka. statics), which is similar to Serilog
  - Serilog's Enrichers = Logary's middleware
  - Serilog's Sink = Logary's Target
- - Targets in Logary can be async, Sinks cannot
+ - Targets in Logary tend to use IO completion ports/async-as-"green threads", AFAIK
+   Sinks are primarily running and calling out using synchronous/blocking APIs
  - Logary supports flushing all targets (`LogManager.Flush`)
  - Logary supports flushing a single target (`Target.flush`)
  - Logary supports backpressure (F#: `Alt<_>` , C#: `Task`) returned from
