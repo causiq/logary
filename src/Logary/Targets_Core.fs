@@ -478,12 +478,12 @@ module LiterateConsole =
         ts.LocalDateTime.ToString("HH:mm:ss", provider),
         Tokens.Subtext
       getLogLevelText = function
-        | Verbose ->  "VRB"
-        | Debug ->    "DBG"
-        | Info ->     "INF"
-        | Warn ->     "WRN"
-        | Error ->    "ERR"
-        | Fatal ->    "FTL"
+        | Verbose -> "VRB"
+        | Debug ->   "DBG"
+        | Info ->    "INF"
+        | Warn ->    "WRN"
+        | Error ->   "ERR"
+        | Fatal ->   "FTL"
       tokenise = LiterateFormatting.literateDefaultTokeniser
       theme = LiterateFormatting.DefaultTheme.theme
       colourWriter = LiterateFormatting.consoleWriteColourPartsAtomically }
