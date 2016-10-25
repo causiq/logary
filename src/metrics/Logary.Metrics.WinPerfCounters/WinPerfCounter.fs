@@ -130,6 +130,7 @@ type WinPerfCounterInstance =
       x.baseName,
       float (x.counter.NextValue())
     elif Array.length x.instances = 1 then
+      x.counter.InstanceName <- x.instances.[0] // side-effect!
       x.baseName |> PointName.setEnding x.instances.[0],
       float (x.counter.NextValue())
     else
@@ -142,8 +143,6 @@ type WinPerfCounterInstance =
     x.instances
     |> Array.map (fun instance ->
       x.counter.InstanceName <- instance
-      let sample = x.counter.NextSample()
-      printfn "%A" sample
       instance,
       Float (float (x.counter.NextValue()))
     )

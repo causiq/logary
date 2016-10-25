@@ -27,6 +27,9 @@ let tests =
                      "Should have replaced dots with dashes"
     ]
 
+    testCase "getting value from perf counter" <| fun _ ->
+      let apps = WinPerfCounters.appCounters ()
+      apps.[0].nextValues () |> ignore
 
   ]
 
