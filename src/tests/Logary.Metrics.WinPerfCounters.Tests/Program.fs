@@ -27,10 +27,12 @@ let tests =
                      "Should have replaced dots with dashes"
     ]
 
+    testCase "can get pid instance" <| fun _ ->
+      WinPerfCounter.Helpers.pidInstance () |> ignore
+
     testCase "getting value from perf counter" <| fun _ ->
       let apps = WinPerfCounters.appCounters ()
       apps.[0].nextValues () |> ignore
-
   ]
 
 [<EntryPoint>]
