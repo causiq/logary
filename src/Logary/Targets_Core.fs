@@ -474,8 +474,9 @@ module LiterateConsole =
   let empty =
     { formatProvider  = Globalization.CultureInfo.CurrentCulture
       formatLocalTime = fun provider epochNanoSeconds ->
-                          (DateTimeOffset.ofEpoch epochNanoSeconds).LocalDateTime.ToString("HH:mm:ss", provider),
-                          Tokens.Subtext
+        let ts = DateTimeOffset.ofEpoch epochNanoSeconds
+        ts.LocalDateTime.ToString("HH:mm:ss", provider),
+        Tokens.Subtext
       getLogLevelText = function
         | Verbose ->  "VRB"
         | Debug ->    "DBG"

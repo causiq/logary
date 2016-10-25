@@ -1,5 +1,7 @@
 ﻿module Logary.Tests.CoreTargets
 
+open System
+open System.Globalization
 open Expecto
 open Logary
 open Logary.Targets
@@ -88,12 +90,21 @@ let levels expectedTimeText : LiterateConsole.ColouredText list =
 [<Tests>]
 let tests =
   testList "CoreTargets" [
-    //Targets.basicTests "text writer" (fun name -> TextWriter.create (textWriterConf ()) name)
-    //Targets.integrationTests "text writer" (fun name -> TextWriter.create (textWriterConf ()) name)
+    Targets.basicTests "text writer" (fun name -> TextWriter.create (textWriterConf ()) name)
+    Targets.integrationTests "text writer" (fun name -> TextWriter.create (textWriterConf ()) name)
 
     // TODO: don't want to actually print these
     //Targets.basicTests "literate console" (LiterateConsole.create LiterateConsole.empty)
     //Targets.integrationTests "literate console" (LiterateConsole.create LiterateConsole.empty)
+
+    testCase "formatLocalTime" <| fun _ ->
+      let actual, _ =
+        let fp : IFormatProvider = upcast CultureInfo "sv-SE"
+        LiterateConsole.empty.formatLocalTime
+          fp
+          (DateTimeOffset(2016, 10, 25, 11, 17, 41, TimeSpan(2,0,0)).timestamp)
+      let expected = "13:17:41"
+      Expect.equal actual expected "Should print the time properly"
 
     testList "literate console" [
       let testLiterateCase testMsg messageFactory cb =
