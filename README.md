@@ -1064,13 +1064,13 @@ finally to targets which can then store them.
  - Both run on .Net
  - Logary is based on cooperative multithreading whilst Serilog is mostly lock-free concurrent
  - Logary was built from running high-throughput distributed systems 24/7 in
-   production and has learnt its lessons
+   production and has learnt its lessons similar to Serilog.
  - Logary can be run in multi-instance mode without using any global shared
    state (aka. statics), which is similar to Serilog
  - Serilog's Enrichers = Logary's middleware
  - Serilog's Sink = Logary's Target
  - Targets in Logary tend to use IO completion ports/async-as-"green threads", AFAIK
-   Sinks are primarily running and calling out using synchronous/blocking APIs
+   Sinks are running and calling out using synchronous/blocking APIs to a larger extent
  - Logary supports flushing all targets (`LogManager.Flush`)
  - Logary supports flushing a single target (`Target.flush`)
  - Logary supports backpressure (F#: `Alt<_>` , C#: `Task`) returned from
@@ -1080,7 +1080,8 @@ finally to targets which can then store them.
    logging) through `Alt<Promise<unit>>`/`Task<Task>` in C# (same method as
    above).
  - Logary's C# API doesn't support misconfiguring Logary, because it's been
-   built with chaining types together (going beyond the `return this` pattern).
+   built with chaining types together (going beyond the `return this` pattern) –
+   similar to Serilog but with a more callback-oriented API.
  - Logary supports Metrics – Gauges, Derived values, Histograms, Reservoirs
  - Logary supports Health checks out of the box
  - Logary has built-in support for Windows Performance Counters metrics shipping
@@ -1089,7 +1090,8 @@ finally to targets which can then store them.
    hell forcing you to upgrade all your libraries whenever Logary changes (which
    it does often, in order to improve!) – a single `Facade.{fs,cs}`-file that
    you version control yourself.
- - Logary supports Targets that batch, out of the box
+ - Logary supports Targets that batch, out of the box, similar to Serilog. The
+   Target is responsible for choosing how many `Messages` it can send at once.
  - Logary supports Targets that fail by restarting them
  - Logary supports Targets' last will – use to handle poison Messages
  - Logary is written in F#, Serilog in C#
