@@ -1,0 +1,5 @@
+FSharp.Core
+Hopac
+NodaTime
+Serilog
+Serilog.Sinks.Seq

@@ -141,6 +141,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Serilog", "t
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Serilog.Tests", "tests\Logary.Targets.Serilog.Tests\Logary.Targets.Serilog.Tests.fsproj", "{1E91E166-A5C6-49FB-A5B1-A22303818021}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "LogaryToSerilog", "..\examples\LogaryToSerilog\LogaryToSerilog.fsproj", "{3EE8CBF2-96C1-49F4-8FC9-B9269F0ABC1A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -367,6 +369,10 @@ Global
 		{1E91E166-A5C6-49FB-A5B1-A22303818021}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1E91E166-A5C6-49FB-A5B1-A22303818021}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1E91E166-A5C6-49FB-A5B1-A22303818021}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3EE8CBF2-96C1-49F4-8FC9-B9269F0ABC1A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3EE8CBF2-96C1-49F4-8FC9-B9269F0ABC1A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3EE8CBF2-96C1-49F4-8FC9-B9269F0ABC1A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3EE8CBF2-96C1-49F4-8FC9-B9269F0ABC1A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -427,5 +433,6 @@ Global
 		{66F98172-3595-432D-925C-1DBEFD99A060} = {B3FA7806-592C-4F81-BBCE-7AB1180CD7CD}
 		{882B0551-CC33-4870-83E7-06467AEDDC91} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{1E91E166-A5C6-49FB-A5B1-A22303818021} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
+		{3EE8CBF2-96C1-49F4-8FC9-B9269F0ABC1A} = {60FC06B0-58BB-4D96-96FE-FD92EA4BAA5E}
 	EndGlobalSection
 EndGlobal
