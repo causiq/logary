@@ -11,10 +11,14 @@ open Logary.Internals
 open Logary.Configuration
 
 type SerilogConf =
-  { logger : Serilog.ILogger }
-
-let empty =
-  { logger = Unchecked.defaultof<Serilog.ILogger> }
+  { logger : Serilog.ILogger
+    /// Converts a logary level into the corresponding serilog level.
+    levelToSerilog: LogLevel -> Serilog.Events.LogEventLevel
+    /// Converts a logary PointName into a serilog log event properties.
+    nameToSerilog: (PointName -> Serilog.Events.LogEventProperty seq) option
+    /// Converts a logary Message into serilog log event properties.
+    /// By default, this will 
+    messageToSerilog: (SerilogConf -> Message -> Serilog.Events.LogEventProperty seq) }
 
 module internal Impl =
   
@@ -69,14 +73,32 @@ module internal Impl =
       Serilog.Events.SequenceValue (items |> List.map logaryValueToSerilogProperty)
       :> Serilog.Events.LogEventPropertyValue
 
-  let toSerilogProperties (logaryMessage : Message) : Serilog.Events.LogEventProperty seq =
-    logaryMessage.fields
-    |> Map.toList
-    |> List.map (fun (pn, Field (v, u)) ->
-      Serilog.Events.LogEventProperty(pn.ToString(), logaryValueToSerilogProperty v))
-    |> List.toSeq
+  let logaryPointNameToSerilog (pointName : PointName) = seq {
+    yield Serilog.Events.LogEventProperty(
+      "SourceLoggerName", Serilog.Events.ScalarValue(pointName.ToString())) }
 
-  let logaryToSerilog (logaryMessage : Logary.Message) =
+  let defaultMessageToSerilogProperties (conf : SerilogConf) (logaryMessage : Message) =
+    let newSerilogProperty name value =
+      Serilog.Events.LogEventProperty(name, logaryValueToSerilogProperty value)
+
+    seq {
+      if conf.nameToSerilog.IsSome then
+        yield! conf.nameToSerilog.Value logaryMessage.name
+      
+      if not logaryMessage.fields.IsEmpty then
+        yield!
+          logaryMessage.fields
+          |> Map.toSeq
+          |> Seq.map (fun (pn, Field (v, u)) -> newSerilogProperty (string pn) v)
+
+      if not logaryMessage.context.IsEmpty then
+        yield!
+          logaryMessage.context
+          |> Map.toSeq
+          |> Seq.map (fun (k, v) -> newSerilogProperty k v)
+    }
+
+  let logaryToSerilog (conf : SerilogConf) (logaryMessage : Logary.Message) =
     let template = match logaryMessage.value with
                    | Event template -> template
                    | _ -> failwith "logaryToSerilog only supports PointValue.Event"
@@ -86,7 +108,7 @@ module internal Impl =
       level = toSerilogLevel logaryMessage.level,
       ``exception`` = extractFirstExceptionOrNull logaryMessage,
       messageTemplate = Serilog.Parsing.MessageTemplateParser().Parse template,
-      properties = toSerilogProperties logaryMessage)
+      properties = conf.messageToSerilog conf logaryMessage)
 
   type State = { logger : Serilog.ILogger }
 
@@ -108,7 +130,7 @@ module internal Impl =
         RingBuffer.take requests ^=> function
           | Log (msg, ack)  ->
             job {
-              let serilogEvent = logaryToSerilog msg
+              let serilogEvent = logaryToSerilog conf msg
               do! Job.Scheduler.isolate (fun _ ->
                 state.logger.Write serilogEvent)
               do! ack *<= ()
@@ -124,6 +146,15 @@ module internal Impl =
 
     let state = { State.logger = conf.logger }
     loop state
+
+type SerilogConf with
+  static member create (serilogLogger) =
+    { logger = serilogLogger
+      nameToSerilog = Some Impl.logaryPointNameToSerilog
+      levelToSerilog = Impl.toSerilogLevel
+      messageToSerilog = Impl.defaultMessageToSerilogProperties }
+
+let empty = SerilogConf.create null
 
 /// Create a new Shipper target
 let create conf = TargetUtils.stdNamedTarget (Impl.serve conf)

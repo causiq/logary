@@ -57,6 +57,13 @@ let main argv =
   userSystemEvent (UserLoggedOut ("haf", Slow)) |> logger.logSimple
   userSystemEvent (UserLoggedOut ("mavnn", (OtherSpeed 10))) |> logger.logSimple
 
+  let userLoggedInEvent = Message.templateEvent<string, string list>(
+                            Info, "User {UserName} logged in with {Roles}")
+  userLoggedInEvent "adam" [ "admin"; "powerUser" ] |> logger.logSimple
+  userLoggedInEvent "haf" [ "authenticatedUser"; "powerUser" ] |> logger.logSimple
+  userLoggedInEvent "mavnn" [ "general" ] |> logger.logSimple
+  userLoggedInEvent "nblumhardt" [ "general" ] |> logger.logSimple
+
   let cartEvent = Message.templateEvent<CartEvent>(Info, "Cart event {@Event}")
   cartEvent (UserStartedCheckout("adam", 123.45M, [ TicTacs; Other("Book", 99.99M) ])) |> logger.logSimple
   cartEvent (UserStartedCheckout("haf", 999.99M, [ GlamourMagazine; Other("Haircut", 99.99M) ])) |> logger.logSimple
