@@ -111,13 +111,16 @@ module TargetUtils =
       }
     }
 
+  /// Creates a new target instance that is capable of handling callback upon
+  /// previous crash, with the saved state (that it itself needs to pass into)
+  /// Logary before rethrowing its exception.
   let willAwareNamedTarget loop name : TargetConf =
     let name' = PointName.parse name
     { name = name'
-      initer = fun metadata -> job {
+      initer = fun runtimeInfo -> job {
         let! requests = RingBuffer.create 500u
         let shutdown = Ch ()
-        return { server   = loop metadata requests shutdown
+        return { server   = loop runtimeInfo requests shutdown
                  requests = requests
                  shutdown = shutdown
                  name     = name' }
