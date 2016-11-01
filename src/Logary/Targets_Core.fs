@@ -57,7 +57,7 @@ module TextWriter =
             lock sem <| fun _ ->
               tw.WriteLine str
         | None ->
-          Job.awaitUnitTask (tw.WriteLineAsync str)
+          Job.fromUnitTask (fun _ -> tw.WriteLineAsync str)
 
       let rec loop () : Job<unit> =
         Alt.choose [
@@ -76,7 +76,7 @@ module TextWriter =
                 do! writeLine writer (twConf.formatter.format logMsg)
 
                 if twConf.flush then
-                  do! Job.awaitUnitTask (writer.FlushAsync())
+                  do! Job.fromUnitTask (fun _ -> writer.FlushAsync())
 
                 do! ack *<= ()
                 return! loop ()
@@ -84,8 +84,8 @@ module TextWriter =
 
             | Flush (ack, nack) ->
               job {
-                do! Job.awaitUnitTask (twConf.output.FlushAsync())
-                do! Job.awaitUnitTask (twConf.error.FlushAsync())
+                do! Job.fromUnitTask (fun _ -> twConf.output.FlushAsync())
+                do! Job.fromUnitTask (fun _ -> twConf.error.FlushAsync())
                 do! Ch.give ack () <|> nack
                 return! loop ()
               }
