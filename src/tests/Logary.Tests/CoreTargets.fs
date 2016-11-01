@@ -3,6 +3,9 @@
 open System
 open System.Text.RegularExpressions
 open System.Globalization
+open System.IO
+open System.Text
+open System.Threading
 open Expecto
 open Logary
 open Logary.Targets
@@ -230,4 +233,193 @@ let tests =
         |> should contain "Fatal line"
         |> thatsIt
       ]
+  ]
+
+type FolderPath = string
+type FileName = string
+type RotationPolicy = unit -> Instant
+type DeletionPolicyResult =
+  /// The file should be deleted right away.
+  | DeleteFile
+  /// The file should be kept for now.
+  | KeepFile
+type DeletionPolicy = DirectoryInfo * FileInfo -> DeletionPolicyResult
+
+module File =
+
+  open Hopac
+  open Hopac.Infixes
+  open Logary
+  open Logary.Target
+  open Logary.Internals
+
+  /// The file target configuration record. This is used to customise the behaviour
+  /// of the file target.
+  type FileConf =
+      /// Whether to buffer the string writer in this process' memory. Defaults to false,
+      /// so that the textwriter that writes to the underlying file stream is continuously
+      /// flushed.
+    { buffer : bool
+      /// Whether to force the operating system's page cache to flush to persistent
+      /// storage for each log message. By default this is false, but sending a
+      /// Flush message to the target forces the page cache to be flushed to disk
+      /// (and of course will also force-flush the in-process buffer if needed).
+      flushToDisk : bool
+      /// The rotation policy decides when it's time to rotate the file log.
+      rotation : RotationPolicy
+      /// The deletion policy decides when a given file should be deleted.
+      deletion : DeletionPolicy
+    }
+
+  let empty = { isYes = true }
+
+  // When creating a new target this module gives the barebones
+  // for the approach you may need to take.
+  module internal Impl =
+
+    // This is a placeholder for specific state that your target requires
+    type State = { state : bool }
+
+    // This is the main entry point of the target. It returns a Job<unit>
+    // and as such doesn't have side effects until the Job is started.
+    let loop (conf : FileConf) // the conf is specific to your target
+             (ri : RuntimeInfo) // this one,
+             (requests : RingBuffer<_>) // this one, and,
+             (shutdown : Ch<_>) = // this one should always be taken in this order
+
+      let rec loop (state : State) : Job<unit> =
+        // Alt.choose will pick the channel/alternative that first gives a value
+        Alt.choose [
+          // When you get the shutdown value, you need to dispose of your resources
+          // off of Hopac's execution context (see Scheduler.isolate below) and
+          // then send a unit to the ack channel, to tell the requester that
+          // you're done disposing.
+          shutdown ^=> fun ack ->
+            // do! Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
+            ack *<= () :> Job<_>
+
+          // The ring buffer will fill up with messages that you can then consume below.
+          // There's a specific ring buffer for each target.
+          RingBuffer.take requests ^=> function
+            // The Log discriminated union case contains a message which can have
+            // either an Event or a Gauge `value` property.
+            | Log (message, ack) ->
+              job {
+                // Do something with the `message` value specific to the target
+                // you are creating.
+
+                // This is a simple acknowledgement using unit as the signal
+                do! ack *<= ()
+                return! loop { state = not state.state }
+              }
+
+            // Since the RingBuffer is fair, when you receive the flush message, all
+            // you have to do is ensure the previous Messages were successfully written
+            // and then ack. Alternatively the caller can decide it's not worth the wait
+            // and signal the nack, in which case you may try to abort the flush or
+            // simply continue the flush in the background.
+            | Flush (ackCh, nack) ->
+              job {
+                // Put your flush logic here...
+
+                // then perform the ack
+                do! Ch.give ackCh () <|> nack
+
+                // then continue processing messages
+                return! loop { state = not state.state }
+              }
+        // The target is always 'responsive', so we may commit to the alternative
+        // by upcasting it to a job and returning that.
+        ] :> Job<_>
+
+      // start the inner loop by the exit of the outer loop function
+      loop { state = false }
+
+  /// Create a new YOUR TARGET NAME HERE target
+  [<CompiledName "Create">]
+  let create conf name = TargetUtils.stdNamedTarget (Impl.loop conf) name
+
+
+[<Tests>]
+let files =
+  let env = Environment.GetEnvironmentVariable
+  let rnd = new ThreadLocal<Random>(fun () -> Random ())
+  let sha1 =
+    UTF8.bytes
+    >> Bytes.hash Security.Cryptography.SHA1.Create
+    >> Bytes.toHex
+  let rndName () =
+    let buf = Array.zeroCreate<byte> 16
+    rnd.Value.NextBytes buf
+    Bytes.toHex buf
+
+  let testCase testName (fn : FolderPath -> FileName -> Job<_>) =
+    let tempPath =
+      let tmp, temp = env "TMP", env "TEMP"
+      if not (isNull tmp) then tmp
+      elif not (isNull temp) then temp
+      else failwith "No 'TMP' or 'TEMP' in environment."
+
+    let subFolder = sha1 testName
+    let folderPath = Path.Combine(tempPath, subFolder)
+    let fileName = rndName ()
+    let filePath = Path.Combine(folderPath, fileName)
+
+    testCase testName <| fun _ ->
+      if not (Directory.Exists folderPath) then
+        Directory.CreateDirectory(folderPath) |> ignore
+
+      try
+        fn folderPath fileName |> run
+      finally
+        Directory.Delete(folderPath, true)
+
+  testList "files" [
+    testList "rotate policies" [
+      testCase "file size" <| fun _ _ ->
+        Tests.skiptest "\
+          The rotation policies decide when a given file is due to be rotated,\n\
+          i.e. closed, renamed to a 'historical name' and then re-opened."
+
+      testCase "file age" <| fun _ _ ->
+        Tests.skiptest "\
+          This rotation should rotate the file when the current file has\n\
+          reached a certain age."
+
+      testCase "custom callback policy unit -> Instant" <| fun _ _ ->
+        Tests.skiptest "\
+          This retention policy should be continuously called by the Logary\n\
+          scheduler which is then told when the rotation should happen. This also\n\
+          covers the case when developers want to rotate on starting the system."
     ]
+
+    testList "deletion policies" [
+      testCase "file count in directory" <| fun _ _ ->
+        Tests.skiptest "\
+          The deletion policies should work by counting the number of files\n\
+          that match the given pattern, and delete older files that count above\n\
+          a specified threshold, excluding the current file."
+
+      testCase "directory total size" <| fun _ _ ->
+        Tests.skiptest "\
+          This deletion policy should count the total size of the directory and\n\
+          if it's above a certain threshold, start deleting files until that threshold\n\
+          is reached, excluding the current file."
+
+      testCase "file age" <| fun _ _ ->
+        Tests.skiptest "\
+          This deletion policy should kick in to delete files that are above a\n\
+          specified age, excluding the current file."
+    ]
+
+    testList "file target" [
+      yield! Targets.basicTests "file" (fun name -> File.create (textWriterConf ()) name)
+      yield! Targets.integrationTests "file" (fun name -> File.create (textWriterConf ()) name)
+
+      yield testCase "can create" <| fun folderPath fileName ->
+        File.create (FileConf.create folderPath fileName)
+    ]
+
+    testList "rolling file target" [
+    ]
+  ]

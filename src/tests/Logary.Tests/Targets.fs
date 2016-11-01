@@ -78,7 +78,7 @@ module Target =
 ///  - can start and stop
 ///  - can receive a few different sorts of messages
 let basicTests targetName configFactory =
-  testList (sprintf "basic tests for %s" targetName) [
+  testList (sprintf "basic tests for target '%s'" targetName) [
     testCase "creating instance" <| fun _ ->
       let target =
         Target.confTarget "basic1" configFactory
@@ -122,4 +122,4 @@ let basicTests targetName configFactory =
   ]
 
 let integrationTests targetName (configFactory : string -> Target.TargetConf) =
-  testList (sprintf "integration tests for %s" targetName) []
+  testList (sprintf "integration tests for target '%s'" targetName) []
