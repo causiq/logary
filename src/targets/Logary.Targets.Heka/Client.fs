@@ -74,12 +74,12 @@ module Encoder =
             do s.WriteByte (byte (hdrMs.Length))
             //do! Async.Sleep 200
             //printfn "write header"
-            do! Job.awaitUnitTask (fromZero hdrMs (fun ms -> ms.CopyToAsync s))
+            do! Job.fromUnitTask (fun _ -> fromZero hdrMs (fun ms -> ms.CopyToAsync s))
             //do! Async.Sleep 200
             //printfn "write unit separator"
             do s.WriteByte Constants.UnitSeparator
             //do! Async.Sleep 200
             //printfn "write unit message"
-            do! Job.awaitUnitTask (fromZero msgMs (fun ms -> ms.CopyToAsync s))
+            do! Job.fromUnitTask (fun _ -> fromZero msgMs (fun ms -> ms.CopyToAsync s))
           with e -> printfn "BAM!! %A" e
         })

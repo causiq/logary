@@ -198,7 +198,7 @@ module internal Impl =
               |> Seq.toArray
 
             job {
-              do! Job.awaitUnitTask (collector.CollectAsync spans)
+              do! Job.fromUnitTask (fun _ -> collector.CollectAsync spans)
               do! Ch.give ack () <|> nack
               return! loop { state with activeSpans = Map.empty }
             }
