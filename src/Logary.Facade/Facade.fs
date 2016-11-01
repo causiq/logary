@@ -740,6 +740,14 @@ module Global =
   let timestamp () : EpochNanoSeconds =
     (fst !config).timestamp ()
 
+  /// Returns the synchronisation object to use when printing to the console.
+  let internal semaphore () =
+    (fst !config).consoleSemaphore
+
+  /// Run the passed function under the console semaphore lock.
+  let internal lockSem fn =
+    lock (semaphore ()) fn
+
   /// Call from the initialisation of your library. Initialises the
   /// Logary.Facade globally/per process.
   let initialise cfg =
