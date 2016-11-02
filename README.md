@@ -40,6 +40,7 @@ Install-Package Logary
 ```
 
 ## Table of Contents
+
   * [Logary v4](#logary-v4)
     * [Why?](#why)
     * [Install it](#install-it)
@@ -70,6 +71,13 @@ Install-Package Logary
     * [InfluxDb Target](#influxdb-target)
     * [RabbitMQ Target](#rabbitmq-target)
       * [Usage](#usage)
+    * [File target](#file-target)
+      * [Configuration](#configuration)
+      * [Policies](#policies)
+      * [Performance](#performance)
+      * [Handling of errors](#handling-of-errors)
+      * [Invariants](#invariants)
+      * [Overview of buffers](#overview-of-buffers)
     * [EventStore adapter](#eventstore-adapter)
     * [FsSQL adapter](#fssql-adapter)
     * [Suave adapter](#suave-adapter)
@@ -116,6 +124,7 @@ Install-Package Logary
         * [logWithAck – so what's up with Promise?](#logwithack--so-whats-up-with-promise)
         * [How do Promises work with C\#?](#how-do-promises-work-with-c)
     * [License](#license)
+
 
 ## Hello World (C#)
 
