@@ -251,6 +251,7 @@ module FileSystem =
   /// parent folders that the file is housed in.
   type FilePath = string
 
+  /// A file-system abstraction
   type FileSystem =
     abstract getFile : FilePath -> FileInfo
     abstract getFolder : FolderPath -> DirectoryInfo
@@ -380,7 +381,7 @@ module File =
     /// Lets your (for your service; single-purpose) logging folder grow to
     /// 2 GiB or letting your log files remain in the folder for two weeks
     /// tops.
-    let rotate200MiB_deleteTwoGigsOrTwoWeeks =
+    let ``rotate 200 MiB, delete if folder >2 GiB or file age >2 weeks`` =
       let rotate, delete =
         [ FileSize (MiB 200UL) ],
         [ folderSize (GiB 2UL)
@@ -390,16 +391,16 @@ module File =
     /// Rotates your log files when each file has reached 200 MiB.
     /// Lets your (for your service; single-purpose) logging folder grow to
     /// 2 GiB.
-    let rotate200MiB_deleteTwoGigs =
+    let ``rotate 200 MiB, delete if folder >3 GiB`` =
       let rotate, delete =
         [ FileSize (MiB 200UL) ],
-        [ folderSize (GiB 2UL) ]
+        [ folderSize (GiB 3UL) ]
       Rotation.Rotate (rotate, delete)
 
     /// Rotates your log files when each file has reached 200 MiB.
     /// Never deletes your log files. Remember to put other sorts of monitoring
     /// in place, e.g. by using Logary's health checks.
-    let rotate200MiB_neverDelete =
+    let ``rotate 200 MiB, never delete`` =
       let rotate, delete =
         [ FileSize (MiB 200UL) ],
         []
@@ -417,12 +418,24 @@ module File =
       /// Whether to buffer the string writer in this process' memory. Defaults to false,
       /// so that the textwriter that writes to the underlying file stream is continuously
       /// flushed.
-    { buffer : bool
+    { inProcBuffer : bool
       /// Whether to force the operating system's page cache to flush to persistent
       /// storage for each log message. By default this is false, but sending a
       /// Flush message to the target forces the page cache to be flushed to disk
       /// (and of course will also force-flush the in-process buffer if needed).
+      /// If you specify the `writeThrough` flag (which is true by default)
+      /// then you can have this flag as false.
+      ///
+      /// This flag corresponds to `Flush(true)`.
       flushToDisk : bool
+      /// Whether the `FileStream` is opened with the flags FILE_FLAG_WRITE_THROUGH
+      /// and FILE_FLAG_NO_BUFFERING. Defaults to true, to let this target model a
+      /// transaction log. See https://support.microsoft.com/en-us/kb/99794 for more
+      /// details. Turning this flag off gives a 21x throughput boost on SSD and
+      /// a 140x throughput boost on spinning disk on Windows -
+      /// ref https://ayende.com/blog/174785/fast-transaction-log-windows. Linux
+      /// gets a 10x performance boost on SSD without this flag.
+      writeThrough : bool
       /// Use the `Rotation` discriminated union to specify the policy for
       /// when to rotate the file. If you rotate the files, you can optionally
       /// choose to let this target delete files, too, by supplying a list of
@@ -433,10 +446,11 @@ module File =
 
   /// The empty/default configuration for the Logary file target.
   let empty =
-    { buffer      = true
-      flushToDisk = false
-      policies    = Policies.rotate200MiB_deleteTwoGigsOrTwoWeeks
-      fileSystem  = FileSystem.DotNetFileSystem() }
+    { buffer       = true
+      flushToDisk  = false
+      writeThrough = true
+      policies     = Policies.``rotate 200 MiB, delete if folder >3 GiB``
+      fileSystem   = FileSystem.DotNetFileSystem() }
 
   module internal Impl =
     type State = { state : bool }
@@ -549,15 +563,19 @@ let files =
           specified age, excluding the current file."
     ]
 
-    testList "file target" [
-      Targets.basicTests "file" (fun name -> File.create File.empty name)
-      Targets.integrationTests "file" (fun name -> File.create File.empty name)
-
-      testCase "can create" <| fun folderPath fileName ->
-        //File.create (FileConf.create folderPath fileName)
-        ()
+    testList "naming policies" [
+      testCase "serviceName – from RuntimeInfo" <| fun _ _ -> Job.result ()
+      testCase "year - yyyy" <| fun _ _ -> Job.result ()
+      testCase "month – MM" <| fun _ _ -> Job.result ()
+      testCase "day - dd" <| fun _ _ -> Job.result ()
+      testCase "numeric - NN" <| fun _ _ -> Job.result ()
+      testCase "no-numeric given – force numeric on rotate" <| fun _ _ -> Job.result ()
     ]
 
-    testList "rolling file target" [
-    ]
+    Targets.basicTests "file" (fun name -> File.create File.empty name)
+    Targets.integrationTests "file" (fun name -> File.create File.empty name)
+
+    testCase "can create" <| fun folderPath fileName ->
+      //File.create (FileConf.create folderPath fileName)
+      Job.result ()
   ]
