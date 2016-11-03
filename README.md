@@ -921,24 +921,22 @@ target start-up in the current service's security context. Should the calls to
 create the folder fail, the target is never started, but will restart
 continuously like any ther Logary target.
 
-### Policies
+### Policies & specifications
 
 You can specify a number of **deletion** and **rotation** policies when
 configuring the file target. The deletion policies dictate when the oldest logs
 should be deleted, whilst the rotation policies dictates when the files should
 be rotated (thereby the previous file archived).
 
-Furthermore, you can specify a **naming** policy that dictates how the files
-should be named on disk.
+Furthermore, you can specify a **naming** specification that dictates how the
+files sould be named on disk.
 
  - Deletion of files happen directly when at least one deletion policy has
    triggered.
  - Rotation of files happen directly when at least one rotation policy has
    triggered.
- - Naming policies that are insufficient to cover the needs of the rotation and
-   deletion policies will be automatically amended to include sequence numbers.
-   A Logary-internal warning about this will be logged (see the section about
-   internal loggers).
+ - Naming specifications should automatically be amended with sequence number,
+   should that be required.
 
 ### Performance
 
@@ -951,7 +949,7 @@ mode, should have equivalent performance. This means we should have similar
 performance on Linux and Windows.
 
 The formatters used for the `File` target should be writing to `TextWriter`
-instances to avoid.
+instances to avoid creating extra string copies in memory.
 
 ### Handling of errors
 
@@ -969,7 +967,8 @@ can also be nicely put to use for local console apps that need to log to disk.
 ### Invariants
 
  - The `File` target is modelled as a transaction log and trades speed against
-   safety that the contents have been written to disk.
+   safety that the contents have been written to disk, but does not do the
+   bookkeeping required to use `FILE_FLAG_NO_BUFFER`.
  - `Fatal` level events are automatically flushed/fsync-ed.
  - Only a single writer to a file is allowed at any given time. This
    invariant exists because atomic flushes to files are only possible on Linux
@@ -979,11 +978,6 @@ can also be nicely put to use for local console apps that need to log to disk.
    callbacks into Job/Alt structures, we try to write as much data as possible
    on every call into the operating system. This means that Messages to be
    logged can be ACKed in batches rather than individually.
-
-More reading:
-
- - https://support.microsoft.com/en-us/kb/99794
- - https://ayende.com/blog/174785/fast-transaction-log-windows
 
 ### Overview of buffers
 
@@ -1019,6 +1013,26 @@ More reading:
     target is only ACKed when they are durably on disk. Defaults to true.
 
 Note that disposing Logary, e.g. during application exit flushes all buffers.
+
+### Notes on `FILE_FLAG_NO_BUFFERING`
+
+I've been considering supporting
+[NO\_BUFFERING](https://msdn.microsoft.com/en-us/library/windows/desktop/cc644950(v=vs.85).aspx)
+but this would require callers to possibly wait for the 4096 bytes buffer to
+fill up before ACKing messages. However, for low-throughput logging, where each
+log line may be around, say, 240 bytes of text, having the `NO_BUFFERING` flag
+set may end up losing us more than it gains us.
+
+#### References
+
+ - https://support.microsoft.com/en-us/kb/99794
+ - https://stackoverflow.com/questions/317801/win32-write-to-file-without-buffering
+ - https://winntfs.com/2012/11/29/windows-write-caching-part-2-an-overview-for-application-developers/
+ - https://msdn.microsoft.com/en-us/library/windows/desktop/cc644950(v=vs.85).aspx
+ - https://msdn.microsoft.com/en-us/library/windows/desktop/aa363772(v=vs.85).aspx
+ - https://stackoverflow.com/questions/8692635/how-do-disable-disk-cache-in-c-sharp-invoke-win32-createfile-api-with-file-flag
+ - https://stackoverflow.com/questions/122362/how-to-empty-flush-windows-read-disk-cache-in-c
+ - https://ayende.com/blog/174785/fast-transaction-log-windows
 
 ## EventStore adapter
 

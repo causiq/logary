@@ -264,6 +264,11 @@ module FileSystem =
       member x.getFile path = FileInfo path
       member x.getFolder path = DirectoryInfo path
 
+  module Path =
+    let combine (segments : string seq) =
+      IO.Path.Combine(segments |> Array.ofSeq)
+
+
 /// This is the File target of Logary. It can be both a rolling file and a
 /// "normal", non-rolling file target, depending on the deletion and rotation
 /// policies supplied.
@@ -381,7 +386,7 @@ module File =
     /// Lets your (for your service; single-purpose) logging folder grow to
     /// 2 GiB or letting your log files remain in the folder for two weeks
     /// tops.
-    let ``rotate 200 MiB, delete if folder >2 GiB or file age >2 weeks`` =
+    let ``rotate >200 MiB, delete if folder >2 GiB or file age >2 weeks`` =
       let rotate, delete =
         [ FileSize (MiB 200UL) ],
         [ folderSize (GiB 2UL)
@@ -391,7 +396,7 @@ module File =
     /// Rotates your log files when each file has reached 200 MiB.
     /// Lets your (for your service; single-purpose) logging folder grow to
     /// 2 GiB.
-    let ``rotate 200 MiB, delete if folder >3 GiB`` =
+    let ``rotate >200 MiB, delete if folder >3 GiB`` =
       let rotate, delete =
         [ FileSize (MiB 200UL) ],
         [ folderSize (GiB 3UL) ]
@@ -400,7 +405,7 @@ module File =
     /// Rotates your log files when each file has reached 200 MiB.
     /// Never deletes your log files. Remember to put other sorts of monitoring
     /// in place, e.g. by using Logary's health checks.
-    let ``rotate 200 MiB, never delete`` =
+    let ``rotate >200 MiB, never delete`` =
       let rotate, delete =
         [ FileSize (MiB 200UL) ],
         []
@@ -411,6 +416,23 @@ module File =
   open Logary
   open Logary.Target
   open Logary.Internals
+
+  /// The naming specification gives the File target instructions on how to
+  /// name files when they are created and rotated.
+  type Naming =
+    Naming of specification:string
+
+    with
+      member x.format (ri : RuntimeInfo) =
+        let (Naming spec) = x
+        let now = ri.clock.Now.ToDateTimeOffset()
+        let known =
+          Map [ "service", ri.serviceName
+                "date", now.ToString("yyyy-MM-dd")
+                "datetime", now.ToString("yyyy-MM-ddThh:mm:ssZ") ]
+        "TODO"
+
+
 
   /// The file target configuration record. This is used to customise the behaviour
   /// of the file target.
@@ -441,19 +463,83 @@ module File =
       /// choose to let this target delete files, too, by supplying a list of
       /// deletion policies.
       policies : Rotation
+
+      /// Where to save the logs.
+      logFolder : FileSystem.FolderPath
+
+      /// What encoding to use for writing the text to the file.
+      encoding  : Encoding
+
+      /// The naming specification gives the File target instructions on how to
+      /// name files when they are created and rotated.
+      naming : Naming
+
       /// The file system abstraction to write to.
       fileSystem : FileSystem.FileSystem }
 
   /// The empty/default configuration for the Logary file target.
   let empty =
-    { buffer       = true
+    { inProcBuffer = false
       flushToDisk  = false
       writeThrough = true
-      policies     = Policies.``rotate 200 MiB, delete if folder >3 GiB``
+      policies     = Policies.``rotate >200 MiB, delete if folder >3 GiB``
+      logFolder    = Environment.CurrentDirectory
+      encoding     = Encoding.UTF8
+      naming       = Naming "{service}-{date}.log"
       fileSystem   = FileSystem.DotNetFileSystem() }
 
   module internal Impl =
-    type State = { state : bool }
+    open System.IO
+    open System.Text
+    open FileSystem
+
+    type CountingStream(inner : Stream, written : int64 ref) =
+      inherit Stream()
+
+      /// Updates the passed bytes refrence
+      member x.updateBytesRef () =
+        written := inner.Position
+
+      override x.Write(buffer, offset, length) =
+        written := !written + int64 length
+        inner.Write(buffer, offset, length)
+
+      override x.WriteAsync(buffer, offset, length, cancellationToken) =
+        written := !written + int64 length
+        inner.WriteAsync(buffer, offset, length, cancellationToken)
+
+      override x.BeginWrite(buffer, offset, count, callback, state) =
+        written := !written + int64 count
+        inner.BeginWrite(buffer, offset, count, callback, state)
+
+      override x.EndWrite(state) =
+        inner.EndWrite(state)
+
+    type State =
+      { underlying : FileStream
+        writer     : TextWriter
+        written    : int64 ref }
+
+    let applyRotation counter (fs : Stream) (policies : RotationPolicy list) : Stream =
+      let rec iter state = function
+        | [] -> state
+        | Scheduled _ :: rest -> iter state rest
+        | FileSize size :: rest ->
+          let stream = new CountingStream(state, counter)
+          stream.updateBytesRef()
+          stream :> Stream
+        | FileAge age :: rest -> iter state rest
+      iter fs policies
+
+    /// Takes the counter reference cell, and if there exists a rotation policy
+    /// dependent on the 
+    let applyStreamPolicies counter fs : Rotation -> Stream = function
+      | Rotation.SingleFile ->
+        fs
+      | Rotation.Rotate ([] as rotation, _) ->
+        fs
+      | Rotation.Rotate (rotations, _) ->
+        applyRotation counter fs rotations
 
     let loop (conf : FileConf)
              (ri : RuntimeInfo)
@@ -462,7 +548,33 @@ module File =
              (saveWill : obj -> Job<unit>)
              (lastWill : obj option) =
 
-      let rec loop (state : State) : Job<unit> =
+      let rec init () : Job<unit> =
+        let folder = conf.logFolder
+        let fileName = conf.naming.format ri
+        let path = Path.combine [folder; fileName]
+
+        let fs =
+          new FileStream(
+            path,
+            FileMode.Append,
+            FileAccess.Write,
+            FileShare.Read,
+            0x1000,
+            useAsync = true) // IO overlapped
+
+        let counter = ref 0L
+
+        let writer =
+          new StreamWriter(
+            applyStreamPolicies counter fs conf.policies,
+            conf.encoding)
+
+        { underlying = fs
+          writer     = writer
+          written    = counter }
+        |> rotating
+      
+      and running (state : State) : Job<unit> =
         Alt.choose [
           shutdown ^=> fun ack ->
             // do! Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
@@ -472,17 +584,19 @@ module File =
             | Log (message, ack) ->
               job {
                 do! ack *<= ()
-                return! loop { state = not state.state }
+                return! running state
               }
             | Flush (ackCh, nack) ->
               job {
                 do! Ch.give ackCh () <|> nack
-                return! loop { state = not state.state }
+                return! running state
               }
         ] :> Job<_>
 
-      // start the inner loop by the exit of the outer loop function
-      loop { state = false }
+      and rotating (state : State) : Job<unit> =
+        
+
+      init ()
 
   /// Create a new File target through this.
   [<CompiledName "Create">]
@@ -564,12 +678,10 @@ let files =
     ]
 
     testList "naming policies" [
-      testCase "serviceName – from RuntimeInfo" <| fun _ _ -> Job.result ()
-      testCase "year - yyyy" <| fun _ _ -> Job.result ()
-      testCase "month – MM" <| fun _ _ -> Job.result ()
-      testCase "day - dd" <| fun _ _ -> Job.result ()
-      testCase "numeric - NN" <| fun _ _ -> Job.result ()
-      testCase "no-numeric given – force numeric on rotate" <| fun _ _ -> Job.result ()
+      testCase "service – from RuntimeInfo" <| fun _ _ -> Job.result ()
+      testCase "year-month-day - date" <| fun _ _ -> Job.result ()
+      testCase "year-month-dayThour-minutes-seconds – datetime" <| fun _ _ -> Job.result ()
+      testCase "sequence number 007 - sequence" <| fun _ _ -> Job.result ()
     ]
 
     Targets.basicTests "file" (fun name -> File.create File.empty name)
