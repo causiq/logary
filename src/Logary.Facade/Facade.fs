@@ -692,7 +692,7 @@ module Global =
   /// This is the global semaphore for colourising the console output. Ensure
   /// that the same semaphore is used across libraries by using the Logary
   /// Facade Adapter in the final composing app/service.
-  let internal consoleSemaphore = obj ()
+  let private consoleSemaphore = obj ()
 
   /// The global default configuration, which logs to Console at Info level.
   let DefaultConfig =
@@ -740,6 +740,14 @@ module Global =
   let timestamp () : EpochNanoSeconds =
     (fst !config).timestamp ()
 
+  /// Returns the synchronisation object to use when printing to the console.
+  let internal semaphore () =
+    (fst !config).consoleSemaphore
+
+  /// Run the passed function under the console semaphore lock.
+  let internal lockSem fn =
+    lock (semaphore ()) fn
+
   /// Call from the initialisation of your library. Initialises the
   /// Logary.Facade globally/per process.
   let initialise cfg =
@@ -758,10 +766,10 @@ module Targets =
   /// in your IDE if you specify a level below Info.
   let create level =
     if level >= LogLevel.Info then
-      LiterateConsoleTarget(level, consoleSemaphore = Global.consoleSemaphore) :> Logger
+      LiterateConsoleTarget(level, consoleSemaphore = Global.semaphore()) :> Logger
     else
       CombiningTarget(
-        [ LiterateConsoleTarget(level, consoleSemaphore = Global.consoleSemaphore)
+        [ LiterateConsoleTarget(level, consoleSemaphore = Global.semaphore())
           OutputWindowTarget(level) ])
       :> Logger
 
