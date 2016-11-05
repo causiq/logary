@@ -475,7 +475,12 @@ module File =
       naming : Naming
 
       /// The file system abstraction to write to.
-      fileSystem : FileSystem.FileSystem }
+      fileSystem : FileSystem.FileSystem
+
+      formatter : Message -> TextWriter -> unit
+
+      /// How many log messages to write in one go.
+      batchSize : uint32 }
 
   /// The empty/default configuration for the Logary file target.
   let empty =
@@ -486,13 +491,18 @@ module File =
       logFolder    = Environment.CurrentDirectory
       encoding     = Encoding.UTF8
       naming       = Naming "{service}-{date}.log"
-      fileSystem   = FileSystem.DotNetFileSystem() }
+      fileSystem   = FileSystem.DotNetFileSystem()
+      formatter    = fun m tw ->
+        let str = Formatting.StringFormatter.levelDatetimeMessagePathNl.format m
+        tw.WriteLine str
+      batchSize    = 100u }
 
   module internal Impl =
     open System.IO
     open System.Text
     open FileSystem
 
+    [<Sealed>]
     type CountingStream(inner : Stream, written : int64 ref) =
       inherit Stream()
 
@@ -515,10 +525,29 @@ module File =
       override x.EndWrite(state) =
         inner.EndWrite(state)
 
+      // others:
+      override x.CanRead = inner.CanRead
+      override x.CanWrite = inner.CanWrite
+      override x.CanSeek = inner.CanSeek
+      override x.Length = inner.Length
+      override x.Position
+        with get() = inner.Position
+        and set value = inner.Position <- value
+      override x.Flush() = inner.Flush()
+      override x.Seek (offset, origin) = inner.Seek (offset, origin)
+      override x.SetLength value = inner.SetLength value
+      override x.Read(buffer, offset, count) = inner.Read(buffer, offset, count)
+
     type State =
       { underlying : FileStream
         writer     : TextWriter
         written    : int64 ref }
+
+      interface IDisposable with
+        member x.Dispose() =
+          x.writer.Dispose()
+          // underlying is closed when writer is disposed
+          x.written := 0L
 
     let applyRotation counter (fs : Stream) (policies : RotationPolicy list) : Stream =
       let rec iter state = function
@@ -541,6 +570,30 @@ module File =
       | Rotation.Rotate (rotations, _) ->
         applyRotation counter fs rotations
 
+    let openFile ri conf =
+      let folder = conf.logFolder
+      let fileName = conf.naming.format ri
+      let path = Path.combine [folder; fileName]
+
+      let fs =
+        new FileStream(
+          path,
+          FileMode.Append,
+          FileAccess.Write,
+          FileShare.Read,
+          0x1000,
+          FileOptions.Asynchronous // IO overlapped
+          ||| (if conf.writeThrough then FileOptions.WriteThrough else enum<FileOptions>(0)))
+
+      let counter = ref 0L
+
+      let writer =
+        new StreamWriter(
+          applyStreamPolicies counter fs conf.policies,
+          conf.encoding)
+
+      fs, writer, counter
+
     let loop (conf : FileConf)
              (ri : RuntimeInfo)
              (requests : RingBuffer<_>)
@@ -549,52 +602,61 @@ module File =
              (lastWill : obj option) =
 
       let rec init () : Job<unit> =
-        let folder = conf.logFolder
-        let fileName = conf.naming.format ri
-        let path = Path.combine [folder; fileName]
-
-        let fs =
-          new FileStream(
-            path,
-            FileMode.Append,
-            FileAccess.Write,
-            FileShare.Read,
-            0x1000,
-            useAsync = true) // IO overlapped
-
-        let counter = ref 0L
-
-        let writer =
-          new StreamWriter(
-            applyStreamPolicies counter fs conf.policies,
-            conf.encoding)
-
+        let fs, writer, counter = openFile ri conf
         { underlying = fs
           writer     = writer
           written    = counter }
         |> rotating
-      
+
+      // in this state we verify the state of the file
+      and checking (state : State) =
+        running state
+
+      // this this state we just write as many log messages as possible
       and running (state : State) : Job<unit> =
         Alt.choose [
           shutdown ^=> fun ack ->
-            // do! Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
-            ack *<= () :> Job<_>
+            Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose()) >>=.
+            ack *<= ()
 
-          RingBuffer.take requests ^=> function
-            | Log (message, ack) ->
-              job {
-                do! ack *<= ()
-                return! running state
-              }
-            | Flush (ackCh, nack) ->
-              job {
-                do! Ch.give ackCh () <|> nack
-                return! running state
-              }
+          RingBuffer.takeBatch conf.batchSize requests ^=> fun reqs ->
+            let flushWriter = // invariant: only schedule after writing messages
+              memo <|
+                if not conf.inProcBuffer then
+                  Job.fromUnitTask state.writer.FlushAsync
+                else
+                  Job.result ()
+
+            let flushPageCache = // invariant: only call after all messages written
+              memo <|
+                if conf.flushToDisk then
+                  Message.event Debug "Flushing to disk" |> Logger.log ri.logger >>=.
+                  Job.Scheduler.isolate (fun _ -> state.underlying.Flush true)
+                else
+                  Job.result ()
+
+            let acks = ResizeArray<_>()
+            let ack ack = flushWriter >>=. flushPageCache >>=. IVar.fill ack ()
+            let ackAll () = acks |> Seq.map ack |> Job.conIgnore
+
+            let flushes = ResizeArray<_>()
+            let flush (ack, nack) = flushPageCache >>=. (Ch.give ack () <|> nack)
+            let flushAll () = flushes |> Seq.map flush |> Job.conIgnore
+
+            for m in reqs do
+              match m with
+              | Log (message, ack) ->
+                conf.formatter message state.writer
+                acks.Add ack
+              | Flush (ackCh, nack) ->
+                flushes.Add (ackCh, nack)
+
+            ackAll () >>= flushAll >>=. checking state
+
         ] :> Job<_>
 
       and rotating (state : State) : Job<unit> =
-        
+        running state
 
       init ()
 
