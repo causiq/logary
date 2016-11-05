@@ -675,6 +675,8 @@ module File =
              (saveWill : obj -> Job<unit>)
              (lastWill : obj option) =
 
+      let rotateCh = Ch ()
+
       // For type checking purposes, shadows parameters.
       let saveWill (msgs : TargetMessage[], recoverCount : uint16) =
         saveWill (box (msgs, recoverCount))
@@ -703,6 +705,9 @@ module File =
             Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose()) >>=.
             ack *<= ()
 
+          // TODO: handle scheduled rotation
+          rotateCh ^=> fun () -> rotating state
+
           RingBuffer.takeBatch (uint32 conf.batchSize) requests ^=> fun reqs ->
             writeRequestsSafe ri.logger conf state reqs >>= function
               | Choice1Of2 () ->
@@ -723,7 +728,7 @@ module File =
         running state
 
       // In this state we do a single rotation.
-      and rotating (state : State) : Job<unit> =
+      and rotating (state : State) =
         // TODO: implement rotation logic
         running state
 
