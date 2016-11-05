@@ -477,7 +477,10 @@ module File =
       /// The file system abstraction to write to.
       fileSystem : FileSystem.FileSystem
 
-      formatter : Message -> TextWriter -> unit
+      /// The formatter is responsible for writing to the textwriter in an async manner,
+      /// however, the returned Alts do not have mean that any flush has been done.
+      /// The returned value is hot, i.e. it's begun executing.
+      formatter : Message -> TextWriter -> Promise<unit>
 
       /// How many log messages to write in one go.
       batchSize : uint32 }
@@ -495,6 +498,7 @@ module File =
       formatter    = fun m tw ->
         let str = Formatting.StringFormatter.levelDatetimeMessagePathNl.format m
         tw.WriteLine str
+        Alt.always ()
       batchSize    = 100u }
 
   module internal Impl =
@@ -606,20 +610,33 @@ module File =
         { underlying = fs
           writer     = writer
           written    = counter }
-        |> rotating
+        |> checking
 
-      // in this state we verify the state of the file
-      and checking (state : State) =
-        running state
-
-      // this this state we just write as many log messages as possible
+      // in this state we try to write as many log messages as possible
       and running (state : State) : Job<unit> =
         Alt.choose [
           shutdown ^=> fun ack ->
+            Message.event Info "Shutting down file target" |> Logger.log ri.logger >>=.
             Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose()) >>=.
             ack *<= ()
 
           RingBuffer.takeBatch conf.batchSize requests ^=> fun reqs ->
+            let acks = ResizeArray<_>()
+            let ack (completed, ack) = completed >>=. IVar.fill ack ()
+            let ackAll () = acks |> Seq.map ack |> Job.conIgnore
+
+            let flushes = ResizeArray<_>() // updated by the loop
+            let flush (ack, nack) = Ch.give ack () <|> nack
+            let flushAll () = flushes |> Seq.map flush |> Job.conIgnore
+
+            for m in reqs do
+              match m with
+              | Log (message, ack) ->
+                // perform the write and save the ack for later
+                acks.Add (conf.formatter message state.writer, ack)
+              | Flush (ackCh, nack) ->
+                flushes.Add (ackCh, nack)
+
             let flushWriter = // invariant: only schedule after writing messages
               memo <|
                 if not conf.inProcBuffer then
@@ -635,33 +652,25 @@ module File =
                 else
                   Job.result ()
 
-            let acks = ResizeArray<_>()
-            let ack ack = flushWriter >>=. flushPageCache >>=. IVar.fill ack ()
-            let ackAll () = acks |> Seq.map ack |> Job.conIgnore
-
-            let flushes = ResizeArray<_>() // updated by the loop
-            let flush (ack, nack)=
-              // nack ahead of flush completion possible, but flush op itself cannot be reverted
-              nack <|> Alt.prepare ( // as an alternative...
-                flushPageCache >>=. // always flush
-                Job.result (Ch.give ack ()) // then try to give () on channel
-              )
-            let flushAll () = flushes |> Seq.map flush |> Job.conIgnore
-
-            // write
-            for m in reqs do
-              match m with
-              | Log (message, ack) ->
-                conf.formatter message state.writer
-                acks.Add ack
-              | Flush (ackCh, nack) ->
-                flushes.Add (ackCh, nack)
-
-            // then ack, considering if we should flush, then check rotation
-            ackAll () >>= flushAll >>=. checking state
+            // after the batch, consider flushing the writer
+            flushWriter >>=.
+            // then consider flushing the page cache
+            flushPageCache >>=.
+            // finally, start acking; clients not wanting to wait for the above
+            // can handle their own concurrency outside of the target
+            ackAll () >>=.
+            // deal with all the flush requests
+            flushAll () >>=.
+            // consider log rotation
+            checking state
 
         ] :> Job<_>
 
+      // in this state we verify the state of the file
+      and checking (state : State) =
+        running state
+
+      // in this state we do a single rotation
       and rotating (state : State) : Job<unit> =
         running state
 
