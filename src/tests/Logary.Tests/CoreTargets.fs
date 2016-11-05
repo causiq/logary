@@ -719,10 +719,12 @@ module File =
 
       // In this state we verify the state of the file.
       and checking (state : State) =
+        // TODO: implement checking logic
         running state
 
       // In this state we do a single rotation.
       and rotating (state : State) : Job<unit> =
+        // TODO: implement rotation logic
         running state
 
       and recovering (state : State) (lastBatch : TargetMessage[]) = function
