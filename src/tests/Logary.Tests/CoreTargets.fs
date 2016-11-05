@@ -631,7 +631,7 @@ module File =
             for m in reqs do
               match m with
               | Log (message, ack) ->
-                // perform the write and save the ack for later
+                // write and save the ack for later
                 acks.Add (conf.formatter message state.writer, ack)
               | Flush (ackCh, nack) ->
                 flushes.Add (ackCh, nack)
