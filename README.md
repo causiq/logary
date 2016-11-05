@@ -978,6 +978,16 @@ can also be nicely put to use for local console apps that need to log to disk.
    callbacks into Job/Alt structures, we try to write as much data as possible
    on every call into the operating system. This means that Messages to be
    logged can be ACKed in batches rather than individually.
+ - If your disk collapses while writing log messages (which happens once in a
+   while and happens frequently when you have thousands of servers), the target
+   should save its last will and then retry a configurable number of times after
+   waiting an exponentially growing duration between each try. It does this by
+   crashing and letting the supervisor handle the failure. Afterh exhausing the
+   tries, the batch of log messages is discarded.
+ - If there are IO errors on writing the log messages to disk, there's no
+   guarantee that there won't be duplicate log lines written; however, they're
+   normally timestamped, so downstream log ingestion systems can do
+   de-duplication. This is from the batched nature of the File target.
 
 ### Overview of buffers
 
