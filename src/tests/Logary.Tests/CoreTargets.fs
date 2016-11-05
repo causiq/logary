@@ -644,7 +644,7 @@ module File =
                 else
                   Job.result ()
 
-            let flushPageCache = // invariant: only call after all messages written
+            let flushPageCache = // invariant: only schedule after all messages written
               memo <|
                 if conf.flushToDisk then
                   Message.event Debug "Flushing to disk" |> Logger.log ri.logger >>=.
