@@ -552,6 +552,11 @@ module File =
         writer     : TextWriter
         written    : int64 ref }
 
+      static member create (underlying, writer, written) =
+        { underlying = underlying
+          writer = writer
+          written = written }
+
       interface IDisposable with
         member x.Dispose() =
           x.writer.Dispose()
@@ -667,33 +672,30 @@ module File =
              (ri : RuntimeInfo)
              (requests : RingBuffer<_>)
              (shutdown : Ch<_>)
-             // TargetMessage[] * uint16 -> Job<unit>
              (saveWill : obj -> Job<unit>)
-             // TargetMessage[] * uint16
              (lastWill : obj option) =
 
+      // For type checking purposes, shadows parameters.
       let saveWill (msgs : TargetMessage[], recoverCount : uint16) =
         saveWill (box (msgs, recoverCount))
 
+      // For type checking purposes.
       let lastWill =
         lastWill |> Option.map (fun x ->
           let (msgs : TargetMessage[], recoverCount : uint16) = unbox x
           msgs, recoverCount)
 
+      // In this state the File target opens its file stream and checks if it
+      // progress to the recovering state.
       let rec init lastWill =
-        let state =
-          let fs, writer, counter = openFile ri conf
-          { underlying = fs
-            writer     = writer
-            written    = counter }
-
+        let state = State.create (openFile ri conf)
         match lastWill with
         | Some (msgs, recoverCount) ->
           (msgs, recoverCount) ||> recovering state
         | None ->
           checking state
 
-      // in this state we try to write as many log messages as possible
+      // In this state we try to write as many log messages as possible.
       and running (state : State) : Job<unit> =
         Alt.choose [
           shutdown ^=> fun ack ->
@@ -715,16 +717,16 @@ module File =
                 >>=. Job.raises err
         ] :> Job<_>
 
-      // in this state we verify the state of the file
+      // In this state we verify the state of the file.
       and checking (state : State) =
         running state
 
-      // in this state we do a single rotation
+      // In this state we do a single rotation.
       and rotating (state : State) : Job<unit> =
         running state
 
       and recovering (state : State) (lastBatch : TargetMessage[]) = function
-        // called with 1, 2, 3 – 1 is first time around
+        // Called with 1, 2, 3 – 1 is first time around.
         | recoverCount when recoverCount <= conf.attempts ->
           writeRequestsSafe ri.logger conf state lastBatch >>= function
             | Choice1Of2 () ->
@@ -768,7 +770,7 @@ let files =
 
   let testCase testName (fn : FolderPath -> FileName -> Job<_>) =
     let tempPath =
-      // TMPDIR is on OS X
+      // TMPDIR is on OS X and Linux
       [ "TMP"; "TEMP"; "TMPDIR" ]
       |> List.map env
       |> List.filter (isNull >> not)
