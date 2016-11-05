@@ -621,14 +621,13 @@ module File =
             ack *<= ()
 
           RingBuffer.takeBatch conf.batchSize requests ^=> fun reqs ->
-            let acks = ResizeArray<_>()
             let ack (completed, ack) = completed >>=. IVar.fill ack ()
-            let ackAll () = acks |> Seq.map ack |> Job.conIgnore
-
-            let flushes = ResizeArray<_>() // updated by the loop
+            let ackAll acks = acks |> Seq.map ack |> Job.conIgnore
             let flush (ack, nack) = Ch.give ack () <|> nack
-            let flushAll () = flushes |> Seq.map flush |> Job.conIgnore
+            let flushAll flushes = flushes |> Seq.map flush |> Job.conIgnore
 
+            let acks = ResizeArray<_>() // updated by the loop
+            let flushes = ResizeArray<_>() // updated by the loop
             for m in reqs do
               match m with
               | Log (message, ack) ->
@@ -658,9 +657,9 @@ module File =
             flushPageCache >>=.
             // finally, start acking; clients not wanting to wait for the above
             // can handle their own concurrency outside of the target
-            ackAll () >>=.
+            ackAll acks >>=.
             // deal with all the flush requests
-            flushAll () >>=.
+            flushAll flushes >>=.
             // consider log rotation
             checking state
 
