@@ -639,10 +639,16 @@ module File =
             let ack ack = flushWriter >>=. flushPageCache >>=. IVar.fill ack ()
             let ackAll () = acks |> Seq.map ack |> Job.conIgnore
 
-            let flushes = ResizeArray<_>()
-            let flush (ack, nack) = flushPageCache >>=. (Ch.give ack () <|> nack)
+            let flushes = ResizeArray<_>() // updated by the loop
+            let flush (ack, nack)=
+              // nack ahead of flush completion possible, but flush op itself cannot be reverted
+              nack <|> Alt.prepare ( // as an alternative...
+                flushPageCache >>=. // always flush
+                Job.result (Ch.give ack ()) // then try to give () on channel
+              )
             let flushAll () = flushes |> Seq.map flush |> Job.conIgnore
 
+            // write
             for m in reqs do
               match m with
               | Log (message, ack) ->
@@ -651,6 +657,7 @@ module File =
               | Flush (ackCh, nack) ->
                 flushes.Add (ackCh, nack)
 
+            // then ack, considering if we should flush, then check rotation
             ackAll () >>= flushAll >>=. checking state
 
         ] :> Job<_>
