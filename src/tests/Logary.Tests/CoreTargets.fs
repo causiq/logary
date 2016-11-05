@@ -479,11 +479,15 @@ module File =
 
       /// The formatter is responsible for writing to the textwriter in an async manner,
       /// however, the returned Alts do not have mean that any flush has been done.
-      /// The returned value is hot, i.e. it's begun executing.
+      /// The returned value is hot, i.e. it's begun executing. Must never throw
+      /// exceptions; instead place the exceptions in the returned promise.
       formatter : Message -> TextWriter -> Promise<unit>
 
       /// How many log messages to write in one go.
-      batchSize : uint32 }
+      batchSize : uint16
+
+      /// How many times to try to recover a failed batch messages.
+      attempts  : uint16 }
 
   /// The empty/default configuration for the Logary file target.
   let empty =
@@ -498,8 +502,9 @@ module File =
       formatter    = fun m tw ->
         let str = Formatting.StringFormatter.levelDatetimeMessagePathNl.format m
         tw.WriteLine str
-        Alt.always ()
-      batchSize    = 100u }
+        Promise (())
+      batchSize    = 100us
+      attempts     = 3us }
 
   module internal Impl =
     open System.IO
@@ -598,71 +603,116 @@ module File =
 
       fs, writer, counter
 
+    let writeRequests ilogger conf state (reqs : TargetMessage[]) =
+      // `completed` can throw
+      let ack (completed, ack) = completed >>=. IVar.fill ack ()
+      let ackAll acks = acks |> Seq.map ack |> Job.conIgnore
+      let flush (ack, nack) = Ch.give ack () <|> nack
+      let flushAll flushes = flushes |> Seq.map flush |> Job.conIgnore
+
+      let acks = ResizeArray<_>() // Updated by the loop.
+      let flushes = ResizeArray<_>() // Updated by the loop.
+      let mutable forceFlush = false // Updated by the loop.
+
+      for m in reqs do
+        match m with
+        | Log (message, ack) ->
+          // Write and save the ack for later.
+          acks.Add (conf.formatter message state.writer, ack)
+          // Invariant: always flush fatal messages.
+          if message.level = Fatal then forceFlush <- true
+        | Flush (ackCh, nack) ->
+          Message.event Debug "Scheduling disk flush." |> Logger.logSimple ilogger
+          flushes.Add (ackCh, nack)
+          // Invariant: calling Flush forces a flush to disk.
+          forceFlush <- true
+
+      let flushWriter = // Invariant: only schedule after writing messages.
+        memo <|
+          // Unless forceFlush is included in the check, there can be state in
+          // the TextWriter that is not written to disk.
+          if not conf.inProcBuffer || forceFlush then
+            Job.fromUnitTask state.writer.FlushAsync
+          else
+            Job.result ()
+
+      let flushPageCache = // Invariant: only schedule after all messages written
+        memo <|
+          if conf.flushToDisk || forceFlush then
+            Message.event Debug "Flushing to disk." |> Logger.log ilogger >>=.
+            Job.Scheduler.isolate (fun _ -> state.underlying.Flush true)
+          else
+            Job.result ()
+
+      // after the batch, consider flushing the writer
+      flushWriter >>=.
+      // then consider flushing the page cache
+      flushPageCache >>=.
+      // finally, start acking; clients not wanting to wait for the above
+      // can handle their own concurrency outside of the target
+      ackAll acks >>=.
+      // deal with all the flush requests
+      flushAll flushes
+
+    let writeRequestsSafe ilogger conf state reqs =
+      Job.tryIn (writeRequests ilogger conf state reqs)
+                (Choice1Of2 >> Job.result)
+                (function
+                | :? IOException as e ->
+                  Job.result (Choice2Of2 e)
+                | other ->
+                  Job.raises other)
+
     let loop (conf : FileConf)
              (ri : RuntimeInfo)
              (requests : RingBuffer<_>)
              (shutdown : Ch<_>)
+             // TargetMessage[] * uint16 -> Job<unit>
              (saveWill : obj -> Job<unit>)
+             // TargetMessage[] * uint16
              (lastWill : obj option) =
 
-      let rec init () : Job<unit> =
-        let fs, writer, counter = openFile ri conf
-        { underlying = fs
-          writer     = writer
-          written    = counter }
-        |> checking
+      let saveWill (msgs : TargetMessage[], recoverCount : uint16) =
+        saveWill (box (msgs, recoverCount))
+
+      let lastWill =
+        lastWill |> Option.map (fun x ->
+          let (msgs : TargetMessage[], recoverCount : uint16) = unbox x
+          msgs, recoverCount)
+
+      let rec init lastWill =
+        let state =
+          let fs, writer, counter = openFile ri conf
+          { underlying = fs
+            writer     = writer
+            written    = counter }
+
+        match lastWill with
+        | Some (msgs, recoverCount) ->
+          (msgs, recoverCount) ||> recovering state
+        | None ->
+          checking state
 
       // in this state we try to write as many log messages as possible
       and running (state : State) : Job<unit> =
         Alt.choose [
           shutdown ^=> fun ack ->
-            Message.event Info "Shutting down file target" |> Logger.log ri.logger >>=.
+            Message.event Info "Shutting down file target." |> Logger.log ri.logger >>=.
             Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose()) >>=.
             ack *<= ()
 
-          RingBuffer.takeBatch conf.batchSize requests ^=> fun reqs ->
-            let ack (completed, ack) = completed >>=. IVar.fill ack ()
-            let ackAll acks = acks |> Seq.map ack |> Job.conIgnore
-            let flush (ack, nack) = Ch.give ack () <|> nack
-            let flushAll flushes = flushes |> Seq.map flush |> Job.conIgnore
-
-            let acks = ResizeArray<_>() // updated by the loop
-            let flushes = ResizeArray<_>() // updated by the loop
-            for m in reqs do
-              match m with
-              | Log (message, ack) ->
-                // write and save the ack for later
-                acks.Add (conf.formatter message state.writer, ack)
-              | Flush (ackCh, nack) ->
-                flushes.Add (ackCh, nack)
-
-            let flushWriter = // invariant: only schedule after writing messages
-              memo <|
-                if not conf.inProcBuffer then
-                  Job.fromUnitTask state.writer.FlushAsync
-                else
-                  Job.result ()
-
-            let flushPageCache = // invariant: only schedule after all messages written
-              memo <|
-                if conf.flushToDisk then
-                  Message.event Debug "Flushing to disk" |> Logger.log ri.logger >>=.
-                  Job.Scheduler.isolate (fun _ -> state.underlying.Flush true)
-                else
-                  Job.result ()
-
-            // after the batch, consider flushing the writer
-            flushWriter >>=.
-            // then consider flushing the page cache
-            flushPageCache >>=.
-            // finally, start acking; clients not wanting to wait for the above
-            // can handle their own concurrency outside of the target
-            ackAll acks >>=.
-            // deal with all the flush requests
-            flushAll flushes >>=.
-            // consider log rotation
-            checking state
-
+          RingBuffer.takeBatch (uint32 conf.batchSize) requests ^=> fun reqs ->
+            writeRequestsSafe ri.logger conf state reqs >>= function
+              | Choice1Of2 () ->
+                checking state
+              | Choice2Of2 err ->
+                Message.event Error "IO Exception while writing to file. Batch size is {batchSize}."
+                |> Message.setField "batchSize" conf.batchSize
+                |> Message.addExn err
+                |> Logger.logWithAck ri.logger
+                >>= id
+                >>=. saveWill (reqs, 1us)
+                >>=. Job.raises err
         ] :> Job<_>
 
       // in this state we verify the state of the file
@@ -673,7 +723,28 @@ module File =
       and rotating (state : State) : Job<unit> =
         running state
 
-      init ()
+      and recovering (state : State) (lastBatch : TargetMessage[]) = function
+        // called with 1, 2, 3 – 1 is first time around
+        | recoverCount when recoverCount <= conf.attempts ->
+          writeRequestsSafe ri.logger conf state lastBatch >>= function
+            | Choice1Of2 () ->
+              checking state
+            | Choice2Of2 ex ->
+              Message.event Error "Attempt {attempts} failed, trying again shortly."
+              |> Message.setField "attempts" recoverCount
+              |> Logger.logWithAck ri.logger
+              >>= id
+              >>=. saveWill (lastBatch, recoverCount + 1us)
+              >>=. Job.raises ex
+
+        | recoverCount ->
+          Message.event Fatal "Could not recover in {attempts} attempts."
+          |> Message.setField "attempts" recoverCount
+          |> Logger.logWithAck ri.logger
+          >>= id
+          >>=. Job.raises (Exception "File recovery failed, crashing out.")
+
+      init lastWill
 
   /// Create a new File target through this.
   [<CompiledName "Create">]
