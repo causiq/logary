@@ -922,6 +922,7 @@ module File =
         [| yield! Path.GetInvalidFileNameChars()
            yield '{'
            yield '}' |]
+
       let error =
         invalids
         |> Array.map string
@@ -937,17 +938,20 @@ module File =
     let combined : Parser<Token list, unit> =
       spaces >>. tokens .>> eof
 
-    let format spec (known : Map<_, _>) =
+    let parse spec =
       match run combined spec with
       | Success (results, _, _) ->
-        let sb = StringBuilder()
-        let app (sb : StringBuilder) (value : string) = sb.Append value
-        let folder sb = function
-          | Placeholder ph -> app sb known.[ph]
-          | Lit sep -> app sb sep
-        results |> List.fold folder sb |> sprintf "%O"
+        Choice1Of2 results
       | Failure (error, _, _) ->
-        failwith error
+        Choice2Of2 error
+
+    let format (known : Map<_, _>) (tokens : Token list) =
+      let sb = StringBuilder()
+      let app (sb : StringBuilder) (value : string) = sb.Append value
+      let folder sb = function
+        | Placeholder ph -> app sb known.[ph]
+        | Lit sep -> app sb sep
+      tokens |> List.fold folder sb |> sprintf "%O"
 
   /// The naming specification gives the File target instructions on how to
   /// name files when they are created and rotated.
@@ -959,12 +963,16 @@ module File =
       member x.format (ri : RuntimeInfo) =
         let (Naming (spec, ext)) = x
         let now = ri.clock.Now.ToDateTimeOffset()
-        Map [ "service", ri.serviceName
-              "date", now.ToString("yyyy-MM-dd")
-              "datetime", now.ToString("yyyy-MM-ddTHH-mm-ssZ")
-              "host", ri.host
-            ]
-        |> P.format spec
+        let known =
+          Map [ "service", ri.serviceName
+                "date", now.ToString("yyyy-MM-dd")
+                "datetime", now.ToString("yyyy-MM-ddTHH-mm-ssZ")
+                "host", ri.host
+              ]
+
+        match P.parse spec with
+        | Choice1Of2 tokens -> P.format known tokens
+        | Choice2Of2 error -> failwith error
         |> flip (sprintf "%s.%s") ext
 
       member x.regex =
