@@ -276,7 +276,7 @@ let files =
     let conf = FileConf.create folder (Naming (file, "log"))
     File.create conf testName
 
-  let testCase testName (fn : FolderPath -> FileName -> Job<_>) =
+  let testCaseF testName (fn : FolderPath -> FileName -> Job<_>) =
     let folderPath, fileName = rndFolderFile testName
     testCase testName <| fun _ ->
       ensureFolder folderPath
@@ -297,17 +297,17 @@ let files =
 
   testList "files" [
     testList "rotate policies" [
-      testCase "file size" <| fun _ _ ->
+      testCaseF "file size" <| fun _ _ ->
         Tests.skiptest "\
           The rotation policies decide when a given file is due to be rotated,\n\
           i.e. closed, renamed to a 'historical name' and then re-opened."
 
-      testCase "file age" <| fun _ _ ->
+      testCaseF "file age" <| fun _ _ ->
         Tests.skiptest "\
           This rotation should rotate the file when the current file has\n\
           reached a certain age."
 
-      testCase "custom callback policy unit -> Instant" <| fun _ _ ->
+      testCaseF "custom callback policy unit -> Instant" <| fun _ _ ->
         Tests.skiptest "\
           This retention policy should be continuously called by the Logary\n\
           scheduler which is then told when the rotation should happen. This also\n\
@@ -315,48 +315,56 @@ let files =
     ]
 
     testList "deletion policies" [
-      testCase "file count in folder" <| fun _ _ ->
+      testCaseF "file count in folder" <| fun _ _ ->
         Tests.skiptest "\
           The deletion policies should work by counting the number of files\n\
           that match the given pattern, and delete older files that count above\n\
           a specified threshold, excluding the current file."
 
-      testCase "folder total size" <| fun _ _ ->
+      testCaseF "folder total size" <| fun _ _ ->
         Tests.skiptest "\
           This deletion policy should count the total size of the folder and\n\
           if it's above a certain threshold, start deleting files until that threshold\n\
           is reached, excluding the current file."
 
-      testCase "file age" <| fun _ _ ->
+      testCaseF "file age" <| fun _ _ ->
         Tests.skiptest "\
           This deletion policy should kick in to delete files that are above a\n\
           specified age, excluding the current file."
     ]
 
     testList "naming policies" [
-      testCase "service – from RuntimeInfo" <| fun _ _ ->
+      testCase "service – from RuntimeInfo" <| fun _ ->
         let subject = Naming ("{service}", "log")
         let actual = subject.format runtime2016_10_11T13_14_15
         Expect.equal actual "my service.log" "Should format service"
-        Job.result ()
 
-      testCase "year-month-day - date" <| fun _ _ ->
+      testCase "year-month-day - date" <| fun _ ->
         let subject = Naming ("{date}", "log")
         let actual = subject.format runtime2016_10_11T13_14_15
         Expect.equal actual "2016-10-11.log" "Should format date"
-        Job.result ()
 
-      testCase "year-month-dayThour-minutes-seconds – datetime" <| fun _ _ ->
+      testCase "year-month-dayThour-minutes-seconds – datetime" <| fun _ ->
         let subject = Naming ("{datetime}", "log")
         let actual = subject.format runtime2016_10_11T13_14_15
         Expect.equal actual "2016-10-11T13-14-15Z.log" "Should format datetime"
-        Job.result ()
 
-      testCase "host" <| fun _ _ ->
+      testCase "host" <| fun _ ->
         let subject = Naming ("{host}", "log")
         let actual = subject.format runtime2016_10_11T13_14_15
         Expect.equal actual "myHost.log" "Should format host name"
-        Job.result ()
+
+      testCase "combo host and service and datetime (no sep)" <| fun _ ->
+        let subject = Naming ("{host}{service}{datetime}", "log")
+        let actual = subject.format runtime2016_10_11T13_14_15
+        Expect.equal actual "myHostmy service2016-10-11T13-14-15Z.log"
+                     "Should format composite file name"
+
+      testCase "combo host and service and datetime" <| fun _ ->
+        let subject = Naming ("{host}-{service}-{datetime}", "log")
+        let actual = subject.format runtime2016_10_11T13_14_15
+        Expect.equal actual "myHost-my service-2016-10-11T13-14-15Z.log"
+                     "Should format composite file name"
     ]
 
     Targets.basicTests "file" createInRandom

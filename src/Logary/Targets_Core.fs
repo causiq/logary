@@ -907,14 +907,21 @@ module File =
     // conflicts with Hopac.Hopac.run, Logary.Internals.TimeoutResult
     open FParsec
 
-    let naming : Parser<string, unit> =
-      between (pstring "{") (pstring "}")
-              (manyChars letter)
+    let variable : Parser<string, unit> =
+      between (pstring "{" <?> "Variables must start with '{'.")
+              (pstring "}" <?> "Variables must end with '}'.")
+              (manyChars letter <?> "Only letters are supported as variables.")
+
+    let variables : Parser<string list, unit> =
+      many1 variable
 
     let format spec (known : Map<_, _>) =
-      match run naming spec with
-      | Success (result, _, _) ->
-        known.[result]
+      match run variables spec with
+      | Success (results, _, _) ->
+        let sb = StringBuilder()
+        let app (sb : StringBuilder) (str : string) = sb.Append str
+        let folder sb var = app sb known.[var]
+        results |> List.fold folder sb |> sprintf "%O"
       | Failure (error, _, _) ->
         failwith error
 
