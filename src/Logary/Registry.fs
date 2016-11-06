@@ -305,7 +305,7 @@ module Advanced =
       and running state : Job<_> = job {
         let! msg = Ch.take inbox
         match msg with
-        | GetLogger (name, extraMiddleware, chan) ->
+        | GetLogger (name, extraMiddleware, replCh) ->
           let middleware =
             match extraMiddleware with
             | None -> conf.middleware
@@ -320,7 +320,7 @@ module Advanced =
             |> fromTargets name conf.runtimeInfo.logger
             |> applyMiddleware (composedMiddleware)
 
-          do! IVar.fill chan logger
+          do! IVar.fill replCh logger
           return! running state
 
         | FlushPending(ackCh, nack) ->
