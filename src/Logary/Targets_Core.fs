@@ -920,14 +920,20 @@ module File =
     let lit : Parser<Token, unit> =
       let invalids =
         [| yield! Path.GetInvalidFileNameChars()
-           yield '{'
-           yield '}' |]
+           yield! "{}\n\r\b\a:;\\\"'".ToCharArray() |]
 
       let error =
         invalids
-        |> Array.map string
-        |> String.Concat
-        |> sprintf "Literal fillers in the name may not contain any of these characters: %s"
+        |> Array.map (function
+          | '\n' -> "\\n"
+          | '\t' -> "\\t"
+          | '\r' -> "\\r"
+          | '\b' -> "\\b"
+          | '\a' -> "\\a"
+          | c when Char.IsControl c -> sprintf "%x" (int c)
+          | c -> "'" + string c + "'")
+        |> String.concat ", "
+        |> sprintf "Literal fillers in the name may not contain any of these characters (%s)"
 
       many1Satisfy (fun c -> not (Array.contains c invalids)) |>> Lit
       <?> error

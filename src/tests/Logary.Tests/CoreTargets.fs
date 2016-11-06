@@ -365,6 +365,22 @@ let files =
         let actual = subject.format runtime2016_10_11T13_14_15
         Expect.equal actual "myHost-my service-2016-10-11T13-14-15Z.log"
                      "Should format composite file name"
+
+      testList "invalids" [
+        for invalid in [ "{host}-}{service}-{datetime}"
+                         "apa:"
+                         ""
+                         "\\"
+                         "/"
+                         ";"] do
+          yield testCase "combo host and service and datetime" <| fun _ ->
+            let naming = Naming (invalid, "log")
+            // comment in to see error messages in output
+            //naming.format runtime2016_10_11T13_14_15 |> ignore
+            Expect.throws (fun () ->
+              naming.format runtime2016_10_11T13_14_15 |> ignore)
+              "Should throw due to bad input"
+      ]
     ]
 
     Targets.basicTests "file" createInRandom
