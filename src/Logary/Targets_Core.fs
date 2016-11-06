@@ -903,6 +903,21 @@ module File =
         []
       Rotation.Rotate (rotate, delete)
 
+  module private P =
+    // conflicts with Hopac.Hopac.run, Logary.Internals.TimeoutResult
+    open FParsec
+
+    let naming : Parser<string, unit> =
+      between (pstring "{") (pstring "}")
+              (manyChars letter)
+
+    let format spec (known : Map<_, _>) =
+      match run naming spec with
+      | Success (result, _, _) ->
+        known.[result]
+      | Failure (error, _, _) ->
+        failwith error
+
   /// The naming specification gives the File target instructions on how to
   /// name files when they are created and rotated.
   type Naming =
@@ -913,11 +928,11 @@ module File =
       member x.format (ri : RuntimeInfo) =
         let (Naming (spec, ext)) = x
         let now = ri.clock.Now.ToDateTimeOffset()
-        let known =
-          Map [ "service", ri.serviceName
-                "date", now.ToString("yyyy-MM-dd")
-                "datetime", now.ToString("yyyy-MM-ddThh:mm:ssZ") ]
-        "TODO"
+        Map [ "service", ri.serviceName
+              "date", now.ToString("yyyy-MM-dd")
+              "datetime", now.ToString("yyyy-MM-ddTHH-mm-ssZ") ]
+        |> P.format spec
+        |> flip (sprintf "%s.%s") ext
 
       member x.regex =
         Regex("^TODO$")

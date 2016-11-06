@@ -348,7 +348,7 @@ let files =
       testCase "year-month-dayThour-minutes-seconds – datetime" <| fun _ _ ->
         let subject = Naming ("{datetime}", "log")
         let actual = subject.format runtime2016_10_11T13_14_15
-        Expect.equal actual "2016-10-11T13-14-15.log" "Should format datetime"
+        Expect.equal actual "2016-10-11T13-14-15Z.log" "Should format datetime"
         Job.result ()
 
       testCase "host" <| fun _ _ ->
