@@ -236,6 +236,7 @@ let tests =
   ]
 
 open FileSystem
+open File
 
 [<Tests>]
 let files =
@@ -249,8 +250,7 @@ let files =
     let buf = Array.zeroCreate<byte> 16
     rnd.Value.NextBytes buf
     Bytes.toHex buf
-
-  let testCase testName (fn : FolderPath -> FileName -> Job<_>) =
+  let rndFolderFile testName =
     let tempPath =
       // TMPDIR is on OS X and Linux
       [ "TMP"; "TEMP"; "TMPDIR" ]
@@ -260,8 +260,11 @@ let files =
     let subFolder = sha1 testName
     let folderPath = Path.Combine(tempPath, subFolder)
     let fileName = rndName ()
-    let filePath = Path.Combine(folderPath, fileName)
+    //let filePath = Path.Combine(folderPath, fileName)
+    folderPath, fileName
 
+  let testCase testName (fn : FolderPath -> FileName -> Job<_>) =
+    let folderPath, fileName = rndFolderFile testName
     testCase testName <| fun _ ->
       if not (Directory.Exists folderPath) then
         Directory.CreateDirectory(folderPath) |> ignore
@@ -316,10 +319,14 @@ let files =
       testCase "sequence number 007 - sequence" <| fun _ _ -> Job.result ()
     ]
 
-    Targets.basicTests "file" (fun name -> File.create File.empty name)
-    Targets.integrationTests "file" (fun name -> File.create File.empty name)
+    Targets.basicTests "file" (fun name ->
+      let folder, file = rndFolderFile "basic tests for File target"
+      let conf = FileConf.create folder (Naming (file, "log"))
+      File.create conf name)
+    //Targets.integrationTests "file" (fun name -> File.create File.empty name)
 
     testCase "can create" <| fun folderPath fileName ->
-      //File.create (FileConf.create folderPath fileName)
+      // let factory = File.create (FileConf.create folderPath fileName)
+      // let target = Target.confTarget targetConf
       Job.result ()
   ]

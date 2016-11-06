@@ -922,6 +922,53 @@ module File =
       member x.regex =
         Regex("^TODO$")
 
+  /// Module for deleting old log files.
+  module internal Janitor =
+    open System.IO
+
+    let globFiles (fs : FileSystem) (Naming (spec, ext) as naming) =
+      fs.glob naming.regex
+      |> Seq.map (fun fi ->
+        let dir = Path.GetDirectoryName fi.FullName
+        DirectoryInfo dir, fi)
+
+    let iter (globber : unit -> seq<DirectoryInfo * FileInfo>) deleter policies () =
+      seq {
+        for dir, file in globber () do
+          for policy in policies do
+            match policy (dir, file) with
+            | KeepFile -> ()
+            | DeleteFile ->
+              yield (file.FullName : FilePath) }
+      |> Seq.iter deleter
+
+    type T =
+      | NullJanitor
+      | LiveJanitor of stop:IVar<unit>
+
+    let create (fs : FileSystem) (naming : Naming) : Rotation -> Job<T> = function
+      | Rotation.SingleFile
+      | Rotation.Rotate (_, []) ->
+        Job.result NullJanitor
+      | Rotation.Rotate (_, deletions) ->
+        let stopIV = IVar ()
+        let glob () = globFiles fs naming
+        let tickCh = Ch ()
+        let reschedule () = timeOutMillis 5000 ^=> Ch.send tickCh
+        let loop = Job.delay <| fun () ->
+          Alt.choose [
+            stopIV :> Alt<unit>
+            (tickCh ^-> iter glob fs.deleteFile deletions) ^=> reschedule
+          ]
+        Job.foreverServer loop >>-. LiveJanitor stopIV
+
+    let stop (t:T) : Job<unit> =
+      match t with
+      | NullJanitor ->
+        Job.result()
+      | LiveJanitor stopIV ->
+        IVar.fill stopIV ()
+
   /// The file target configuration record. This is used to customise the behaviour
   /// of the file target. You should have a look at the README for more details
   /// on how the File target is built – its intended behaviour is rather well
@@ -989,51 +1036,12 @@ module File =
       batchSize    = 100us
       attempts     = 3us }
 
-  module internal Janitor =
-    open System.IO
-
-    let globFiles (fs : FileSystem) (Naming (spec, ext) as naming) =
-      fs.glob naming.regex
-      |> Seq.map (fun fi ->
-        let dir = Path.GetDirectoryName fi.FullName
-        DirectoryInfo dir, fi)
-
-    let iter (globber : unit -> seq<DirectoryInfo * FileInfo>) deleter policies () =
-      seq {
-        for dir, file in globber () do
-          for policy in policies do
-            match policy (dir, file) with
-            | KeepFile -> ()
-            | DeleteFile ->
-              yield (file.FullName : FilePath) }
-      |> Seq.iter deleter
-
-    type T =
-      | NullJanitor
-      | LiveJanitor of stop:IVar<unit>
-
-    let create (fs : FileSystem) (naming : Naming) : Rotation -> Job<T> = function
-      | Rotation.SingleFile
-      | Rotation.Rotate (_, []) ->
-        Job.result NullJanitor
-      | Rotation.Rotate (_, deletions) ->
-        let stopIV = IVar ()
-        let glob () = globFiles fs naming
-        let tickCh = Ch ()
-        let reschedule () = timeOutMillis 5000 ^=> Ch.send tickCh
-        let loop = Job.delay <| fun () ->
-          Alt.choose [
-            stopIV :> Alt<unit>
-            (tickCh ^-> iter glob fs.deleteFile deletions) ^=> reschedule
-          ]
-        Job.foreverServer loop >>-. LiveJanitor stopIV
-
-    let stop (t:T) : Job<unit> =
-      match t with
-      | NullJanitor ->
-        Job.result()
-      | LiveJanitor stopIV ->
-        IVar.fill stopIV ()
+  [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+  module FileConf =
+    let create (folderPath : FolderPath) (naming : Naming) =
+      { empty with
+          fileSystem = DotNetFileSystem folderPath
+          naming = naming }
 
   module internal Impl =
     type State =
