@@ -262,13 +262,14 @@ let files =
     let fileName = rndName ()
     //let filePath = Path.Combine(folderPath, fileName)
     folderPath, fileName
+  let ensureFolder folderPath =
+    if not (Directory.Exists folderPath) then
+      Directory.CreateDirectory(folderPath) |> ignore
 
   let testCase testName (fn : FolderPath -> FileName -> Job<_>) =
     let folderPath, fileName = rndFolderFile testName
     testCase testName <| fun _ ->
-      if not (Directory.Exists folderPath) then
-        Directory.CreateDirectory(folderPath) |> ignore
-
+      ensureFolder folderPath
       try
         fn folderPath fileName |> run
       finally
@@ -320,7 +321,8 @@ let files =
     ]
 
     Targets.basicTests "file" (fun name ->
-      let folder, file = rndFolderFile "basic tests for File target"
+      let folder, file = rndFolderFile (sprintf "file - %s" name)
+      ensureFolder folder
       let conf = FileConf.create folder (Naming (file, "log"))
       File.create conf name)
     //Targets.integrationTests "file" (fun name -> File.create File.empty name)

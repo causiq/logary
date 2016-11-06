@@ -1040,6 +1040,7 @@ module File =
   module FileConf =
     let create (folderPath : FolderPath) (naming : Naming) =
       { empty with
+          logFolder = folderPath
           fileSystem = DotNetFileSystem folderPath
           naming = naming }
 
