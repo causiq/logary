@@ -56,8 +56,7 @@ module Target =
     |> run 
     |> run
 
-  /// Finalise the target and assert it was finalised within 1000 milliseconds
-  let finalise (target : Target.TargetInstance) =
+  let finaliseJob (target : Target.TargetInstance) =
     Alt.choose [
       Target.shutdown target
         |> Alt.afterFun Internals.Success
@@ -65,6 +64,10 @@ module Target =
       timeOutMillis 1000
         |> Alt.afterFun (fun _ -> Internals.TimedOut)
     ]
+
+  /// Finalise the target and assert it was finalised within 1000 milliseconds
+  let finalise (target : Target.TargetInstance) =
+    finaliseJob target
     |> run
     |> function
     | Internals.TimedOut ->
