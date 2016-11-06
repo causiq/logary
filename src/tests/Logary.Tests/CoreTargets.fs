@@ -289,7 +289,8 @@ let files =
     RuntimeInfo.create (
       "my service",
       { new IClock with
-          member x.Now = now })
+          member x.Now = now },
+      "myHost")
 
   let runtime2016_10_11T13_14_15 =
     runtime (Instant.FromUtc (2016, 10, 11, 13, 14, 15))
@@ -352,7 +353,9 @@ let files =
         Job.result ()
 
       testCase "host" <| fun _ _ ->
-        Tests.skiptest "Host not yet implemented"
+        let subject = Naming ("{host}", "log")
+        let actual = subject.format runtime2016_10_11T13_14_15
+        Expect.equal actual "myHost.log" "Should format host name"
         Job.result ()
     ]
 

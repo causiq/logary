@@ -3,6 +3,7 @@
 open System.IO
 open System.Text.RegularExpressions
 open System.Text
+open System.Net
 open NodaTime
 open Logary
 open Logary.Internals
@@ -19,6 +20,7 @@ let emptyTarget = Noop.create {isYes = true} "empty target"
 let emptyRule = Rule.createForTarget "empty target"
 let emptyRuntime =
   { serviceName = "tests"
+    host        = Dns.GetHostName ()
     clock       = SystemClock.Instance
     logger      = NullLogger() }
 

@@ -930,7 +930,9 @@ module File =
         let now = ri.clock.Now.ToDateTimeOffset()
         Map [ "service", ri.serviceName
               "date", now.ToString("yyyy-MM-dd")
-              "datetime", now.ToString("yyyy-MM-ddTHH-mm-ssZ") ]
+              "datetime", now.ToString("yyyy-MM-ddTHH-mm-ssZ")
+              "host", ri.host
+            ]
         |> P.format spec
         |> flip (sprintf "%s.%s") ext
 

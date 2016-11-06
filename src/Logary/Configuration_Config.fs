@@ -42,9 +42,7 @@ let withInternalLogger lgr (conf : LogaryConf) =
 [<CompiledName "WithInternalTargets">]
 let withInternalTargets level tconfs (conf : LogaryConf) =
   let internalRuntime =
-    { serviceName = conf.runtimeInfo.serviceName
-      clock       = !Date.clock
-      logger      = NullLogger() }
+    RuntimeInfo.create (conf.runtimeInfo.serviceName, !Date.clock)
 
   let logger =
     tconfs
@@ -77,9 +75,7 @@ let confLogary serviceName =
   { rules       = []
     targets     = Map.empty
     metrics     = Map.empty
-    runtimeInfo = { serviceName = serviceName
-                    clock       = !Date.clock
-                    logger      = NullLogger() }
+    runtimeInfo = RuntimeInfo.create (serviceName, !Date.clock)
     middleware  = [] }
 
 /// Add a new target to the configuration. You also need to supple a rule for
