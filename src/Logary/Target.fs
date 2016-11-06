@@ -41,7 +41,6 @@ type TargetConf =
     match other with
     | :? TargetConf as other ->
       x.name = other.name
-
     | _ ->
       false
 
@@ -64,10 +63,10 @@ type TargetConf =
 let confTarget name (factory : string -> TargetConf) =
   factory name
 
-/// Initialises the target with metadata and a target configuration, yielding a
+/// Initialises the target with a runtime and a target configuration, yielding a
 /// TargetInstance in return which contains the running target.
-let init metadata (conf : TargetConf) : Job<TargetInstance> =
-  conf.initer metadata
+let init runtime (conf : TargetConf) : Job<TargetInstance> =
+  conf.initer runtime
 
 /// Send the target a message, returning the same instance as was passed in when
 /// the Message was acked.
