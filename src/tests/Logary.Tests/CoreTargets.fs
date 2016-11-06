@@ -10,6 +10,7 @@ open Expecto
 open Logary
 open Logary.Internals
 open Logary.Targets
+open Logary.Message
 open Logary.Tests.Targets
 open Hopac
 open NodaTime
@@ -238,6 +239,9 @@ let tests =
 
 open FileSystem
 open File
+open Expecto.Logging
+
+let log = Log.create "Logary.Targets.Tests.CoreTargets"
 
 [<Tests>]
 let files =
@@ -385,4 +389,30 @@ let files =
 
     Targets.basicTests "file" createInRandom
     Targets.integrationTests "file" createInRandom
+
+    testCaseF "log ten thousand messages" <| fun folder file ->
+      let fileConf = FileConf.create folder (Naming (file, "log"))
+      let targetConf = Target.confTarget "basic2" (File.create fileConf)
+
+      job {
+        let! instance = targetConf |> Target.init Fac.emptyRuntime
+        do! Job.start (instance.server (fun _ -> Job.result ()) None)
+
+        let acks = ResizeArray<_>(10000)
+        for i in 1 .. 10000 do
+          let! ack =
+            event Logary.LogLevel.Info "Event {number}"
+            |> setField "number" i
+            |> Target.log instance
+          acks.Add ack
+        // wait for them all!
+        do! Job.conIgnore acks
+
+        let! res = Target.finaliseJob instance
+        match res with
+        | Internals.TimedOut ->
+          Tests.failtest "Stopping file target timed out"
+        | _ ->
+          ()
+      }
   ]
