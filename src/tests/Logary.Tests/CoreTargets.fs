@@ -8,6 +8,7 @@ open System.Text
 open System.Threading
 open Expecto
 open Logary
+open Logary.Internals
 open Logary.Targets
 open Logary.Tests.Targets
 open Hopac
@@ -242,14 +243,17 @@ open File
 let files =
   let env = Environment.GetEnvironmentVariable
   let rnd = new ThreadLocal<Random>(fun () -> Random ())
+
   let sha1 =
     UTF8.bytes
     >> Bytes.hash Security.Cryptography.SHA1.Create
     >> Bytes.toHex
+
   let rndName () =
     let buf = Array.zeroCreate<byte> 16
     rnd.Value.NextBytes buf
     Bytes.toHex buf
+
   let rndFolderFile testName =
     let tempPath =
       // TMPDIR is on OS X and Linux
@@ -260,11 +264,12 @@ let files =
     let subFolder = sha1 testName
     let folderPath = Path.Combine(tempPath, subFolder)
     let fileName = rndName ()
-    //let filePath = Path.Combine(folderPath, fileName)
     folderPath, fileName
+
   let ensureFolder folderPath =
     if not (Directory.Exists folderPath) then
       Directory.CreateDirectory(folderPath) |> ignore
+
   let createInRandom testName =
     let folder, file = rndFolderFile (sprintf "file - %s" testName)
     ensureFolder folder
@@ -279,6 +284,15 @@ let files =
         fn folderPath fileName |> run
       finally
         Directory.Delete(folderPath, true)
+
+  let runtime now =
+    RuntimeInfo.create (
+      "my service",
+      { new IClock with
+          member x.Now = now })
+
+  let runtime2016_10_11T13_14_15 =
+    runtime (Instant.FromUtc (2016, 10, 11, 13, 14, 15))
 
   testList "files" [
     testList "rotate policies" [
@@ -319,17 +333,29 @@ let files =
     ]
 
     testList "naming policies" [
-      testCase "service – from RuntimeInfo" <| fun _ _ -> Job.result ()
-      testCase "year-month-day - date" <| fun _ _ -> Job.result ()
-      testCase "year-month-dayThour-minutes-seconds – datetime" <| fun _ _ -> Job.result ()
-      testCase "sequence number 007 - sequence" <| fun _ _ -> Job.result ()
+      testCase "service – from RuntimeInfo" <| fun _ _ ->
+        let subject = Naming ("{service}", "log")
+        let actual = subject.format runtime2016_10_11T13_14_15
+        Expect.equal actual "my service.log" "Should format service"
+        Job.result ()
+
+      testCase "year-month-day - date" <| fun _ _ ->
+        let subject = Naming ("{date}", "log")
+        let actual = subject.format runtime2016_10_11T13_14_15
+        Expect.equal actual "2016-10-11.log" "Should format date"
+        Job.result ()
+
+      testCase "year-month-dayThour-minutes-seconds – datetime" <| fun _ _ ->
+        let subject = Naming ("{datetime}", "log")
+        let actual = subject.format runtime2016_10_11T13_14_15
+        Expect.equal actual "2016-10-11T13-14-15.log" "Should format datetime"
+        Job.result ()
+
+      testCase "host" <| fun _ _ ->
+        Tests.skiptest "Host not yet implemented"
+        Job.result ()
     ]
 
     Targets.basicTests "file" createInRandom
     Targets.integrationTests "file" createInRandom
-
-    testCase "can create" <| fun folderPath fileName ->
-      // let factory = File.create (FileConf.create folderPath fileName)
-      // let target = Target.confTarget targetConf
-      Job.result ()
   ]
