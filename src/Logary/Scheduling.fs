@@ -72,16 +72,19 @@ let create () =
 /// Schedules a message to be sent to the receiver after the initialDelay.
 /// If delayBetween is specified then the message is sent reoccuringly at the
 /// delay between interval.
-let schedule scheduler (receiver : 'a -> Job<unit>) (msg : 'a) initialDelay (delayBetween: _ option) =
+let schedule (receiver : 'a -> Job<unit>)
+             (msg : 'a)
+             initialDelay
+             (delayBetween: _ option)
+             scheduler =
   let cts = Cancellation.create ()
 
   let message =
     match delayBetween with
     | Some x ->
       Schedule (unbox >> receiver, msg, initialDelay, x, cts)
-
     | None ->
       ScheduleOnce (unbox >> receiver, unbox msg, initialDelay, cts)
 
-  Ch.send scheduler message |> Job.map (fun _ -> cts)
-
+  Ch.send scheduler message >>-.
+  cts

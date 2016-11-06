@@ -289,8 +289,9 @@ module Advanced =
               do! Message.eventVerbosef "Will poll %O every %O" name mconf.tickInterval |> log
 
               let! tickCts =
-                Scheduling.schedule sched Metric.tick instance mconf.tickInterval
+                Scheduling.schedule Metric.tick instance mconf.tickInterval
                                     (Some mconf.tickInterval)
+                                    sched
               do! Message.eventVerbosef "Getting logger for metric %O" name |> log
               let logger = name |> getTargets conf |> fromTargets name conf.runtimeInfo.logger
               Metric.tapMessages instance |> Stream.consumeJob (Logger.log logger)

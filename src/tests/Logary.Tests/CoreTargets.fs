@@ -236,6 +236,7 @@ let tests =
   ]
 
 module FileSystem =
+  open System.Text.RegularExpressions
 
   /// A folder path is a fully qualified path to a directory/folder; it's
   /// should not be interpreted as a file and it should not just contain
@@ -251,22 +252,93 @@ module FileSystem =
   /// parent folders that the file is housed in.
   type FilePath = string
 
+  /// A regex that can be used to glob for files.
+  type FileNameRegex = Regex
+
   /// A file-system abstraction
   type FileSystem =
     abstract getFile : FilePath -> FileInfo
     abstract getFolder : FolderPath -> DirectoryInfo
-
-  /// This file system implementation contains the necessary code to use the
-  /// .Net System.IO abstractions.
-  [<Sealed>]
-  type DotNetFileSystem() =
-    interface FileSystem with
-      member x.getFile path = FileInfo path
-      member x.getFolder path = DirectoryInfo path
+    abstract glob : (*file name*)FileNameRegex -> FileInfo seq
+    abstract deleteFile : FilePath -> unit
+    /// Chroot the file system to a given folder to avoid accidental deletions
+    /// or modifications outside the folder of interest.
+    abstract chroot : FolderPath -> FileSystem
 
   module Path =
     let combine (segments : string seq) =
       IO.Path.Combine(segments |> Array.ofSeq)
+
+  /// This file system implementation contains the necessary code to use the
+  /// .Net System.IO abstractions.
+  [<Sealed>]
+  type DotNetFileSystem(root : FolderPath) =
+    let ensureRooted (path : string) =
+      if not (path.StartsWith root) then
+        invalidOp (sprintf "Path '%s' is not within root '%s'" path root)
+    let combEns (path : string) =
+      let combined = Path.combine [ root; path ]
+      ensureRooted combined
+      combined
+    let getFolder (path : FolderPath) =
+      let combined = combEns path
+      DirectoryInfo combined
+
+    interface FileSystem with
+      member x.getFile path =
+        let combined = combEns path
+        FileInfo combined
+      member x.getFolder path =
+        getFolder path
+      member x.glob fnr =
+        let info = getFolder root
+        info.GetFiles()
+        |> Array.filter (fun file -> fnr.IsMatch file.Name)
+        |> Seq.ofArray
+      member x.deleteFile filePath =
+        ensureRooted filePath
+        File.Delete filePath
+      member x.chroot subPath =
+        let combined = getFolder subPath
+        DotNetFileSystem combined.FullName :> FileSystem
+
+module StreamUtils =
+
+  [<Sealed>]
+  type CountingStream(inner : Stream, written : int64 ref) =
+    inherit Stream()
+
+    /// Updates the passed bytes refrence
+    member x.updateBytesRef () =
+      written := inner.Position
+
+    override x.Write(buffer, offset, length) =
+      written := !written + int64 length
+      inner.Write(buffer, offset, length)
+
+    override x.WriteAsync(buffer, offset, length, cancellationToken) =
+      written := !written + int64 length
+      inner.WriteAsync(buffer, offset, length, cancellationToken)
+
+    override x.BeginWrite(buffer, offset, count, callback, state) =
+      written := !written + int64 count
+      inner.BeginWrite(buffer, offset, count, callback, state)
+
+    override x.EndWrite(state) =
+      inner.EndWrite(state)
+
+    // others:
+    override x.CanRead = inner.CanRead
+    override x.CanWrite = inner.CanWrite
+    override x.CanSeek = inner.CanSeek
+    override x.Length = inner.Length
+    override x.Position
+      with get() = inner.Position
+      and set value = inner.Position <- value
+    override x.Flush() = inner.Flush()
+    override x.Seek (offset, origin) = inner.Seek (offset, origin)
+    override x.SetLength value = inner.SetLength value
+    override x.Read(buffer, offset, count) = inner.Read(buffer, offset, count)
 
 
 /// This is the File target of Logary. It can be both a rolling file and a
@@ -413,6 +485,7 @@ module File =
 
   open Hopac
   open Hopac.Infixes
+  open StreamUtils
   open Logary
   open Logary.Target
   open Logary.Internals
@@ -420,11 +493,12 @@ module File =
   /// The naming specification gives the File target instructions on how to
   /// name files when they are created and rotated.
   type Naming =
-    Naming of specification:string
+    /// "{date}", "log" => "2016-10-15.log"
+    Naming of spec:string * ext:string
 
     with
       member x.format (ri : RuntimeInfo) =
-        let (Naming spec) = x
+        let (Naming (spec, ext)) = x
         let now = ri.clock.Now.ToDateTimeOffset()
         let known =
           Map [ "service", ri.serviceName
@@ -432,10 +506,13 @@ module File =
                 "datetime", now.ToString("yyyy-MM-ddThh:mm:ssZ") ]
         "TODO"
 
-
+      member x.regex =
+        Regex("^TODO$")
 
   /// The file target configuration record. This is used to customise the behaviour
-  /// of the file target.
+  /// of the file target. You should have a look at the README for more details
+  /// on how the File target is built – its intended behaviour is rather well
+  /// specified.
   type FileConf =
       /// Whether to buffer the string writer in this process' memory. Defaults to false,
       /// so that the textwriter that writes to the underlying file stream is continuously
@@ -463,29 +540,22 @@ module File =
       /// choose to let this target delete files, too, by supplying a list of
       /// deletion policies.
       policies : Rotation
-
       /// Where to save the logs.
       logFolder : FileSystem.FolderPath
-
       /// What encoding to use for writing the text to the file.
       encoding  : Encoding
-
       /// The naming specification gives the File target instructions on how to
       /// name files when they are created and rotated.
       naming : Naming
-
       /// The file system abstraction to write to.
       fileSystem : FileSystem.FileSystem
-
       /// The formatter is responsible for writing to the textwriter in an async manner,
       /// however, the returned Alts do not have mean that any flush has been done.
       /// The returned value is hot, i.e. it's begun executing. Must never throw
       /// exceptions; instead place the exceptions in the returned promise.
       formatter : Message -> TextWriter -> Promise<unit>
-
       /// How many log messages to write in one go.
       batchSize : uint16
-
       /// How many times to try to recover a failed batch messages.
       attempts  : uint16 }
 
@@ -497,8 +567,8 @@ module File =
       policies     = Policies.``rotate >200 MiB, delete if folder >3 GiB``
       logFolder    = Environment.CurrentDirectory
       encoding     = Encoding.UTF8
-      naming       = Naming "{service}-{date}.log"
-      fileSystem   = FileSystem.DotNetFileSystem()
+      naming       = Naming ("{service}-{date}", "log")
+      fileSystem   = FileSystem.DotNetFileSystem("/var/lib/logs")
       formatter    = fun m tw ->
         let str = Formatting.StringFormatter.levelDatetimeMessagePathNl.format m
         tw.WriteLine str
@@ -506,62 +576,79 @@ module File =
       batchSize    = 100us
       attempts     = 3us }
 
-  module internal Impl =
+  module internal Janitor =
     open System.IO
-    open System.Text
     open FileSystem
 
-    [<Sealed>]
-    type CountingStream(inner : Stream, written : int64 ref) =
-      inherit Stream()
+    let globFiles (fs : FileSystem) (Naming (spec, ext) as naming) =
+      fs.glob naming.regex
+      |> Seq.map (fun fi ->
+        let dir = Path.GetDirectoryName fi.FullName
+        DirectoryInfo dir, fi)
 
-      /// Updates the passed bytes refrence
-      member x.updateBytesRef () =
-        written := inner.Position
+    let deleteFile (fs : FileSystem) (file : FilePath) =
+      fs.deleteFile file
 
-      override x.Write(buffer, offset, length) =
-        written := !written + int64 length
-        inner.Write(buffer, offset, length)
+    let iter (globber : unit -> seq<DirectoryInfo * FileInfo>) deleter policies () =
+      seq {
+        for dir, file in globber () do
+          for policy in policies do
+            match policy (dir, file) with
+            | KeepFile -> ()
+            | DeleteFile ->
+              yield (file.FullName : FilePath) }
+      |> Seq.iter deleter
 
-      override x.WriteAsync(buffer, offset, length, cancellationToken) =
-        written := !written + int64 length
-        inner.WriteAsync(buffer, offset, length, cancellationToken)
+    type T =
+      | NullJanitor
+      | LiveJanitor of stop:IVar<unit>
 
-      override x.BeginWrite(buffer, offset, count, callback, state) =
-        written := !written + int64 count
-        inner.BeginWrite(buffer, offset, count, callback, state)
+    let create (fs : FileSystem) (naming : Naming) : Rotation -> Job<T> = function
+      | Rotation.SingleFile
+      | Rotation.Rotate (_, []) ->
+        Job.result NullJanitor
+      | Rotation.Rotate (_, deletions) ->
+        let stopIV = IVar ()
+        let glob () = globFiles fs naming
+        let delete file = fs.deleteFile file
+        let tickCh = Ch ()
+        let reschedule () = timeOutMillis 5000 ^=> Ch.send tickCh
+        let loop = Job.delay <| fun () ->
+          Alt.choose [
+            stopIV :> Alt<unit>
+            (tickCh ^-> iter glob delete deletions) ^=> reschedule
+          ]
+        Job.foreverServer loop >>-. LiveJanitor stopIV
 
-      override x.EndWrite(state) =
-        inner.EndWrite(state)
+    let stop (t:T) : Job<unit> =
+      match t with
+      | NullJanitor ->
+        Job.result()
+      | LiveJanitor stopIV ->
+        IVar.fill stopIV ()
 
-      // others:
-      override x.CanRead = inner.CanRead
-      override x.CanWrite = inner.CanWrite
-      override x.CanSeek = inner.CanSeek
-      override x.Length = inner.Length
-      override x.Position
-        with get() = inner.Position
-        and set value = inner.Position <- value
-      override x.Flush() = inner.Flush()
-      override x.Seek (offset, origin) = inner.Seek (offset, origin)
-      override x.SetLength value = inner.SetLength value
-      override x.Read(buffer, offset, count) = inner.Read(buffer, offset, count)
+  module internal Impl =
+    open System.Text
+    open FileSystem
 
     type State =
       { underlying : FileStream
         writer     : TextWriter
-        written    : int64 ref }
+        written    : int64 ref
+        janitor    : Janitor.T }
 
-      static member create (underlying, writer, written) =
+      static member create (underlying, writer, written) janitor =
         { underlying = underlying
           writer = writer
-          written = written }
+          written = written
+          janitor = janitor }
 
-      interface IDisposable with
-        member x.Dispose() =
-          x.writer.Dispose()
-          // underlying is closed when writer is disposed
+      interface IAsyncDisposable with
+        member x.DisposeAsync() =
           x.written := 0L
+          // x.underlying is closed when x.writer is disposed
+          Job.Scheduler.isolate x.writer.Dispose >>=.
+          Janitor.stop x.janitor
 
     let applyRotation counter (fs : Stream) (policies : RotationPolicy list) : Stream =
       let rec iter state = function
@@ -592,10 +679,10 @@ module File =
       let fs =
         new FileStream(
           path,
-          FileMode.Append,
-          FileAccess.Write,
-          FileShare.Read,
-          0x1000,
+          FileMode.Append, // only append; seeks error
+          FileAccess.Write, // request write access
+          FileShare.Read, // allow concurrent readers (tail -f)
+          0x1000, // default buffer size
           FileOptions.Asynchronous // IO overlapped
           ||| (if conf.writeThrough then FileOptions.WriteThrough else enum<FileOptions>(0)))
 
@@ -607,6 +694,10 @@ module File =
           conf.encoding)
 
       fs, writer, counter
+
+    let shouldRotate state =
+      // TODO: implement checking logic
+      false
 
     let writeRequests ilogger conf state (reqs : TargetMessage[]) =
       // `completed` can throw
@@ -690,19 +781,22 @@ module File =
       // In this state the File target opens its file stream and checks if it
       // progress to the recovering state.
       let rec init lastWill =
-        let state = State.create (openFile ri conf)
-        match lastWill with
-        | Some (msgs, recoverCount) ->
-          (msgs, recoverCount) ||> recovering state
-        | None ->
-          checking state
+        let fs = conf.fileSystem.chroot conf.logFolder
+        Janitor.create fs conf.naming conf.policies >>-
+        State.create (openFile ri conf) >>=
+        fun state ->
+          match lastWill with
+          | Some (msgs, recoverCount) ->
+            (msgs, recoverCount) ||> recovering state
+          | None ->
+            checking state
 
       // In this state we try to write as many log messages as possible.
       and running (state : State) : Job<unit> =
         Alt.choose [
           shutdown ^=> fun ack ->
             Message.event Info "Shutting down file target." |> Logger.log ri.logger >>=.
-            Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose()) >>=.
+            (state :> IAsyncDisposable).DisposeAsync() >>=.
             ack *<= ()
 
           // TODO: handle scheduled rotation
@@ -724,13 +818,13 @@ module File =
 
       // In this state we verify the state of the file.
       and checking (state : State) =
-        // TODO: implement checking logic
-        running state
+        if shouldRotate state then rotating state
+        else running state
 
       // In this state we do a single rotation.
       and rotating (state : State) =
         // TODO: implement rotation logic
-        running state
+        checking state
 
       and recovering (state : State) (lastBatch : TargetMessage[]) = function
         // Called with 1, 2, 3 – 1 is first time around.
