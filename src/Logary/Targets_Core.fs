@@ -903,24 +903,48 @@ module File =
         []
       Rotation.Rotate (rotate, delete)
 
-  module private P =
+  module internal P =
     // conflicts with Hopac.Hopac.run, Logary.Internals.TimeoutResult
     open FParsec
 
-    let variable : Parser<string, unit> =
-      between (pstring "{" <?> "Variables must start with '{'.")
-              (pstring "}" <?> "Variables must end with '}'.")
-              (manyChars letter <?> "Only letters are supported as variables.")
+    type Token =
+      | Placeholder of name:string
+      | Lit of str:string
 
-    let variables : Parser<string list, unit> =
-      many1 variable
+    let ph : Parser<Token, unit> =
+      between (pstring "{" <?> "Placeholders must start with '{'")
+              (pstring "}" <?> "Placeholders must end with '}'")
+              (manyChars letter |>> Placeholder
+               <?> "Only letters are supported as placeholders")
+
+    let lit : Parser<Token, unit> =
+      let invalids =
+        [| yield! Path.GetInvalidFileNameChars()
+           yield '{'
+           yield '}' |]
+      let error =
+        invalids
+        |> Array.map string
+        |> String.Concat
+        |> sprintf "Literal fillers in the name may not contain any of these characters: %s"
+
+      many1Satisfy (fun c -> not (Array.contains c invalids)) |>> Lit
+      <?> error
+
+    let tokens : Parser<Token list, unit> =
+      many1 (ph <|> lit)
+
+    let combined : Parser<Token list, unit> =
+      spaces >>. tokens .>> eof
 
     let format spec (known : Map<_, _>) =
-      match run variables spec with
+      match run combined spec with
       | Success (results, _, _) ->
         let sb = StringBuilder()
-        let app (sb : StringBuilder) (str : string) = sb.Append str
-        let folder sb var = app sb known.[var]
+        let app (sb : StringBuilder) (value : string) = sb.Append value
+        let folder sb = function
+          | Placeholder ph -> app sb known.[ph]
+          | Lit sep -> app sb sep
         results |> List.fold folder sb |> sprintf "%O"
       | Failure (error, _, _) ->
         failwith error
