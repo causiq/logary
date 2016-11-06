@@ -265,6 +265,11 @@ let files =
   let ensureFolder folderPath =
     if not (Directory.Exists folderPath) then
       Directory.CreateDirectory(folderPath) |> ignore
+  let createInRandom testName =
+    let folder, file = rndFolderFile (sprintf "file - %s" testName)
+    ensureFolder folder
+    let conf = FileConf.create folder (Naming (file, "log"))
+    File.create conf testName
 
   let testCase testName (fn : FolderPath -> FileName -> Job<_>) =
     let folderPath, fileName = rndFolderFile testName
@@ -320,12 +325,8 @@ let files =
       testCase "sequence number 007 - sequence" <| fun _ _ -> Job.result ()
     ]
 
-    Targets.basicTests "file" (fun name ->
-      let folder, file = rndFolderFile (sprintf "file - %s" name)
-      ensureFolder folder
-      let conf = FileConf.create folder (Naming (file, "log"))
-      File.create conf name)
-    //Targets.integrationTests "file" (fun name -> File.create File.empty name)
+    Targets.basicTests "file" createInRandom
+    Targets.integrationTests "file" createInRandom
 
     testCase "can create" <| fun folderPath fileName ->
       // let factory = File.create (FileConf.create folderPath fileName)
