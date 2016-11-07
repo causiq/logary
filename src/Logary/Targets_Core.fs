@@ -658,6 +658,10 @@ module FileSystem =
   /// parent folders that the file is housed in.
   type FilePath = string
 
+  /// How large the size is as judged from the file target (when a file is append)
+  /// mode its metadata may not reflect the accurate size.
+  type FileSize = int64
+
   /// A regex that can be used to glob for files.
   type FileNameRegex = Regex
 
@@ -767,27 +771,26 @@ module File =
   open FileSystem
 
   /// Bytes
-  let B (n : uint64) = n
+  let B (n : int64) = n
   /// Kilobytes
-  let KiB n = n * 1024UL * 1024UL
+  let KiB n = n * 1024L * 1024L
   /// Megabytes
-  let MiB n = n * 1024UL * 1024UL * 1024UL
+  let MiB n = n * 1024L * 1024L * 1024L
   /// Gigabytes
-  let GiB n = n * 1024UL * 1024UL * 1024UL * 1024UL
+  let GiB n = n * 1024L * 1024L * 1024L * 1024L
 
   /// These are the available rotation policies
   type RotationPolicy =
-    /// The scheduled rotation policy is called initially at start and then at
-    /// every Instant, after the rotation has been made. In the callback, the
-    /// programmer can choose to read the file attributes. Reading the files'
-    /// attributes (such as last-modified) may have side-effects on Windows,
-    /// such as flushing the page cache to disk and thereby fsyncing, so if you
-    /// end up scheduling flushes often (less than every second or so), then
-    /// consider to let your callback remember that last lookup of the file's
-    /// attribute(s).
-    | Scheduled of scheduler:(FileInfo -> Instant)
+    /// The callback rotation policy is called whenever the check to rotate is
+    /// made. In the callback, the programmer can choose to read the file
+    /// attributes. Reading the files' attributes (such as last-modified) may
+    /// have side-effects on Windows, such as flushing the page cache to disk
+    /// and thereby fsyncing, so if you end up scheduling flushes often (less
+    /// than every second or so), then consider to let your callback remember
+    /// that last lookup of the file's attribute(s).
+    | Callback of (FileInfo * FileSize -> bool)
     /// Rotate every given file size.
-    | FileSize of maxSize:uint64
+    | FileSize of maxSize:int64
     | FileAge of age:Duration
 
   /// This module contains some rotation policies you may like to use by
@@ -805,15 +808,15 @@ module File =
     /// This module contains rotation policies that specify that files should
     /// be rotated every nth byte (e.g. every 100 MiB).
     module BySize =
-      let everyMegabyte = FileSize (MiB 1UL)
+      let everyMegabyte = FileSize (MiB 1L)
       let everyNthMegabyte n = FileSize (MiB n)
-      let everyHundredMegabytes = everyNthMegabyte 100UL
-      let everyGigabyte = FileSize (GiB 1UL)
+      let everyHundredMegabytes = everyNthMegabyte 100L
+      let everyGigabyte = FileSize (GiB 1L)
 
     /// Implements a custom rotation policy signified by the passed callback
     /// function.
-    let custom scheduler =
-      Scheduled scheduler
+    let callback cb =
+      Callback cb
 
   /// This is the result output of the deletion policy. Use these cases
   /// to decide the fate of the log file.
@@ -834,7 +837,7 @@ module File =
   module DeletionPolicies =
     /// This deletion policy specifies that there are to be max n number of
     /// files present in the folder.
-    let maxNoOfFiles (n : uint16) : DeletionPolicy =
+    let maxNoOfFiles (n : int16) : DeletionPolicy =
       fun (dirInfo, fileInfo) ->
         // TODO: implement
         KeepFile
@@ -850,7 +853,7 @@ module File =
     /// given bytes-large threshold. Be aware that you should not use this
     /// policy alone when there are other services with the same policy (alone)
     /// logging to the same folder.
-    let folderSize (bytesSize : uint64) : DeletionPolicy =
+    let folderSize (bytesSize : int64) : DeletionPolicy =
       fun (dirInfo, fileInfo) ->
         // TODO: implement
         KeepFile
@@ -880,8 +883,8 @@ module File =
     /// tops.
     let ``rotate >200 MiB, delete if folder >2 GiB or file age >2 weeks`` =
       let rotate, delete =
-        [ FileSize (MiB 200UL) ],
-        [ folderSize (GiB 2UL)
+        [ FileSize (MiB 200L) ],
+        [ folderSize (GiB 2L)
           olderThan (Duration.FromHours (14L * 24L)) ]
       Rotation.Rotate (rotate, delete)
 
@@ -890,8 +893,8 @@ module File =
     /// 2 GiB.
     let ``rotate >200 MiB, delete if folder >3 GiB`` =
       let rotate, delete =
-        [ FileSize (MiB 200UL) ],
-        [ folderSize (GiB 3UL) ]
+        [ FileSize (MiB 200L) ],
+        [ folderSize (GiB 3L) ]
       Rotation.Rotate (rotate, delete)
 
     /// Rotates your log files when each file has reached 200 MiB.
@@ -899,7 +902,7 @@ module File =
     /// in place, e.g. by using Logary's health checks.
     let ``rotate >200 MiB, never delete`` =
       let rotate, delete =
-        [ FileSize (MiB 200UL) ],
+        [ FileSize (MiB 200L) ],
         []
       Rotation.Rotate (rotate, delete)
 
@@ -1130,15 +1133,18 @@ module File =
   module internal Impl =
     type State =
       { underlying : FileStream
+        /// The FileInfo as it were when the file was opened.
+        fileInfo   : FileInfo
         writer     : TextWriter
         written    : int64 ref
         janitor    : Janitor.T }
 
-      static member create (underlying, writer, written) janitor =
+      static member create (underlying, fi, writer, written) janitor =
         { underlying = underlying
-          writer = writer
-          written = written
-          janitor = janitor }
+          fileInfo   = fi
+          writer     = writer
+          written    = written
+          janitor    = janitor }
 
       interface IAsyncDisposable with
         member x.DisposeAsync() =
@@ -1150,7 +1156,7 @@ module File =
     let applyRotation counter (fs : Stream) (policies : RotationPolicy list) : Stream =
       let rec iter state = function
         | [] -> state
-        | Scheduled _ :: rest -> iter state rest
+        | Callback _ :: rest -> iter state rest
         | FileSize size :: rest ->
           let stream = new CountingStream(state, counter)
           stream.updateBytesRef()
@@ -1172,6 +1178,8 @@ module File =
       let folder = conf.logFolder
       let fileName = conf.naming.format ri
       let path = Path.combine [folder; fileName]
+      let fi = FileInfo path
+      fi.Refresh() |> ignore
 
       let fs =
         new FileStream(
@@ -1190,11 +1198,28 @@ module File =
           applyStreamPolicies counter fs conf.policies,
           conf.encoding)
 
-      fs, writer, counter
+      fs, fi, writer, counter
 
-    let shouldRotate state =
-      // TODO: implement checking logic
-      false
+    let shouldRotate (clock : IClock) (conf : FileConf) (state : State) =
+      let size = !state.written
+      let rec apply state = function
+        | [] ->
+          false
+        | Callback cb :: rest ->
+          if cb (state.fileInfo, size) then true else apply state rest
+        | FileSize maxSize :: rest ->
+          if maxSize <= size then true else apply state rest
+        | FileAge maxAge :: rest ->
+          let created = Instant.FromDateTimeUtc(state.fileInfo.CreationTime.ToUniversalTime())
+          let age = created - clock.Now
+          if maxAge <= age then true else apply state rest
+
+      match conf.policies with
+      | Rotation.SingleFile
+      | Rotation.Rotate ([], _) ->
+        false
+      | Rotation.Rotate (policies, _) ->
+        policies |> apply state
 
     /// Writes all passed requests to disk, handles acks and flushes.
     let writeRequests ilogger conf state (reqs : TargetMessage[]) =
@@ -1316,7 +1341,7 @@ module File =
 
       // In this state we verify the state of the file.
       and checking (state : State) =
-        if shouldRotate state then rotating state
+        if shouldRotate ri.clock conf state then rotating state
         else running state
 
       // In this state we do a single rotation.
