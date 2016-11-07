@@ -4,6 +4,7 @@ language: csharp
 mono:
   - 4.2.3
   - 4.4.2
+  - 4.6.2
   - weekly
   - latest
 
@@ -22,3 +23,7 @@ matrix:
    - mono: latest
    - mono: weekly
    - mono: 4.4.2
+
+env:
+  global:
+    - TMPDIR=/tmp
