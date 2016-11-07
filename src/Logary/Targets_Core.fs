@@ -991,14 +991,14 @@ module File =
         | Choice2Of2 error -> failwith error
         |> flip (sprintf "%s.%s") ext
 
-      member x.regex =
+      member x.regex (ri : RuntimeInfo) =
         let (Naming (spec, ext)) = x
         let known =
           Map [
-            "service", @"[a-zA-Z0-9\s]+"
+            "service", Regex.Escape ri.serviceName
             "date", @"\d{4}-\d{2}-\d{2}"
             "datetime", @"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z"
-            "host", @"[a-zA-Z0-9\s]+"
+            "host", Regex.Escape ri.host
           ]
         match P.parse spec with
         | Choice1Of2 tokens ->
@@ -1012,8 +1012,8 @@ module File =
   module internal Janitor =
     open System.IO
 
-    let globFiles (fs : FileSystem) (Naming (spec, ext) as naming) =
-      fs.glob naming.regex
+    let globFiles (ri : RuntimeInfo) (fs : FileSystem) (Naming (spec, ext) as naming) =
+      fs.glob (naming.regex ri)
       |> Seq.map (fun fi ->
         let dir = Path.GetDirectoryName fi.FullName
         DirectoryInfo dir, fi)
@@ -1032,13 +1032,13 @@ module File =
       | NullJanitor
       | LiveJanitor of stop:IVar<unit>
 
-    let create (fs : FileSystem) (naming : Naming) : Rotation -> Job<T> = function
+    let create (ri : RuntimeInfo) (fs : FileSystem) (naming : Naming) : Rotation -> Job<T> = function
       | Rotation.SingleFile
       | Rotation.Rotate (_, []) ->
         Job.result NullJanitor
       | Rotation.Rotate (_, deletions) ->
         let stopIV = IVar ()
-        let glob () = globFiles fs naming
+        let glob () = globFiles ri fs naming
         let tickCh = Ch ()
         let reschedule () = timeOutMillis 5000 ^=> Ch.send tickCh
         let loop = Job.delay <| fun () ->
@@ -1156,7 +1156,7 @@ module File =
     let applyRotation counter (fs : Stream) (policies : RotationPolicy list) : Stream =
       let rec iter state = function
         | [] -> state
-        | Callback _ :: rest -> iter state rest
+        | Callback _ :: rest -> iter state rest // TODO: also needs counter
         | FileSize size :: rest ->
           let stream = new CountingStream(state, counter)
           stream.updateBytesRef()
@@ -1239,7 +1239,9 @@ module File =
           // Write and save the ack for later.
           acks.Add (conf.formatter message state.writer, ack)
           // Invariant: always flush fatal messages.
-          if message.level = Fatal then forceFlush <- true
+          if message.level = Fatal then
+            Message.event Debug "Got fatal message; scheduling disk flush." |> Logger.logSimple ilogger
+            forceFlush <- true
         | Flush (ackCh, nack) ->
           Message.event Debug "Scheduling disk flush." |> Logger.logSimple ilogger
           flushes.Add (ackCh, nack)
@@ -1305,7 +1307,7 @@ module File =
       // progress to the recovering state.
       let rec init lastWill =
         let fs = conf.fileSystem.chroot conf.logFolder
-        Janitor.create fs conf.naming conf.policies >>-
+        Janitor.create ri fs conf.naming conf.policies >>-
         State.create (openFile ri conf) >>=
         fun state ->
           match lastWill with
