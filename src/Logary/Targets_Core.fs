@@ -669,6 +669,9 @@ module FileSystem =
   type FileSystem =
     /// Gets a file in the current directory
     abstract getFile : FilePath -> FileInfo
+    /// Moves a file to another location, within the current (chrooted)
+    /// directory.
+    abstract moveFile : FileName -> FileName -> unit
     /// Gets a sub-folder
     abstract getFolder : FolderPath -> DirectoryInfo
     /// Finds all files in the current folder (that the file system is chrooted
@@ -703,6 +706,10 @@ module FileSystem =
       member x.getFile path =
         let combined = combEns path
         FileInfo combined
+      member x.moveFile fileName nextFileName =
+        let source = combEns fileName
+        let target = combEns nextFileName
+        File.Move(source, target)
       member x.getFolder path =
         getFolder path
       member x.glob fnr =
@@ -976,30 +983,38 @@ module File =
     Naming of spec:string * ext:string
 
     with
-      member x.format (ri : RuntimeInfo) =
+      /// Gives back a file-name without extention and an extension from the
+      /// given RuntimeInfo.
+      member x.format (ri : RuntimeInfo) : string * string =
         let (Naming (spec, ext)) = x
         let now = ri.clock.Now.ToDateTimeOffset()
         let known =
-          Map [ "service", ri.serviceName
-                "date", now.ToString("yyyy-MM-dd")
-                "datetime", now.ToString("yyyy-MM-ddTHH-mm-ssZ")
-                "host", ri.host
-              ]
-
+          [ "service", ri.serviceName
+            "date", now.ToString("yyyy-MM-dd")
+            "datetime", now.ToString("yyyy-MM-ddTHH-mm-ssZ")
+            "host", ri.host
+          ] |> Map
         match P.parse spec with
-        | Choice1Of2 tokens -> P.format known tokens
-        | Choice2Of2 error -> failwith error
-        |> flip (sprintf "%s.%s") ext
+        | Choice1Of2 tokens ->
+          P.format known tokens, ext
+        | Choice2Of2 error ->
+          failwith error
 
+      /// Gives back a file-name WITH extention given RuntimeInfo.
+      member x.formatS (ri : RuntimeInfo) : string =
+        x.format ri ||> sprintf "%s.%s"
+
+      /// Gives back a regex that matches what this Naming spec will name files
+      /// at any point in time (i.e. it will match any date/datetime file name)
+      /// for the Naming spec.
       member x.regex (ri : RuntimeInfo) =
         let (Naming (spec, ext)) = x
         let known =
-          Map [
-            "service", Regex.Escape ri.serviceName
+          [ "service", Regex.Escape ri.serviceName
             "date", @"\d{4}-\d{2}-\d{2}"
             "datetime", @"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z"
             "host", Regex.Escape ri.host
-          ]
+          ] |> Map
         match P.parse spec with
         | Choice1Of2 tokens ->
           P.formatRegex known tokens
@@ -1176,7 +1191,7 @@ module File =
 
     let openFile ri conf =
       let folder = conf.logFolder
-      let fileName = conf.naming.format ri
+      let fileName = conf.naming.formatS ri
       let path = Path.combine [folder; fileName]
       let fi = FileInfo path
       fi.Refresh() |> ignore
@@ -1348,8 +1363,35 @@ module File =
 
       // In this state we do a single rotation.
       and rotating (state : State) =
-        // TODO: implement rotation logic
-        checking state
+        Job.fromUnitTask state.writer.FlushAsync >>-
+        (fun () ->
+          let fnNoExt = Path.GetFileNameWithoutExtension
+          let parse n =
+            match Int32.TryParse n with
+            | false, _ -> None
+            | true, value -> Some value
+          let currName = fnNoExt state.fileInfo.Name
+          let nextName, nextExt = conf.naming.format ri
+          let targetName =
+            if nextName <> currName then
+              sprintf "%s.%s" nextName nextExt
+            else
+              conf.fileSystem.glob (conf.naming.regex ri)
+              |> Seq.map (fun fi -> fnNoExt fi.Name)
+              |> Seq.filter (String.contains currName)
+              |> Seq.map (fun name ->
+                match Regex.``match`` @"\d{3}$" name with
+                | None -> None
+                | Some g -> parse g.[0].Value)
+              |> Seq.filter Option.isSome
+              |> Seq.map Option.get
+              |> Seq.sortDescending
+              |> Seq.tryPick Some
+              |> Option.fold (fun s t -> t + 1) 0
+              |> sprintf "%s-%03i" currName
+          conf.fileSystem.moveFile state.fileInfo.Name targetName) >>=.
+        (state :> IAsyncDisposable).DisposeAsync() >>=.
+        init None
 
       and recovering (state : State) (lastBatch : TargetMessage[]) = function
         // Called with 1, 2, 3 – 1 is first time around.

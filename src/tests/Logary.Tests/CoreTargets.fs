@@ -340,35 +340,35 @@ let files =
     testList "naming policies" [
       testCase "service – from RuntimeInfo" <| fun _ ->
         let subject = Naming ("{service}", "log")
-        let actual = subject.format runtime2016_10_11T13_14_15
+        let actual = subject.formatS runtime2016_10_11T13_14_15
         Expect.equal actual "my service.log" "Should format service"
         let regex = subject.regex runtime2016_10_11T13_14_15
         Expect.isTrue (regex.IsMatch actual) "Should match its own output"
 
       testCase "year-month-day - date" <| fun _ ->
         let subject = Naming ("{date}", "log")
-        let actual = subject.format runtime2016_10_11T13_14_15
+        let actual = subject.formatS runtime2016_10_11T13_14_15
         Expect.equal actual "2016-10-11.log" "Should format date"
         let regex = subject.regex runtime2016_10_11T13_14_15
         Expect.isTrue (regex.IsMatch actual) "Should match its own output"
 
       testCase "year-month-dayThour-minutes-seconds – datetime" <| fun _ ->
         let subject = Naming ("{datetime}", "log")
-        let actual = subject.format runtime2016_10_11T13_14_15
+        let actual = subject.formatS runtime2016_10_11T13_14_15
         Expect.equal actual "2016-10-11T13-14-15Z.log" "Should format datetime"
         let regex = subject.regex runtime2016_10_11T13_14_15
         Expect.isTrue (regex.IsMatch actual) "Should match its own output"
 
       testCase "host" <| fun _ ->
         let subject = Naming ("{host}", "log")
-        let actual = subject.format runtime2016_10_11T13_14_15
+        let actual = subject.formatS runtime2016_10_11T13_14_15
         Expect.equal actual "myHost.log" "Should format host name"
         let regex = subject.regex runtime2016_10_11T13_14_15
         Expect.isTrue (regex.IsMatch actual) "Should match its own output"
 
       testCase "combo host and service and datetime (no sep)" <| fun _ ->
         let subject = Naming ("{host}{service}{datetime}", "log")
-        let actual = subject.format runtime2016_10_11T13_14_15
+        let actual = subject.formatS runtime2016_10_11T13_14_15
         Expect.equal actual "myHostmy service2016-10-11T13-14-15Z.log"
                      "Should format composite file name"
         let regex = subject.regex runtime2016_10_11T13_14_15
@@ -377,7 +377,7 @@ let files =
       testCase "combo host and service and datetime" <| fun _ ->
         // ^[a-zA-Z0-9\s]+-[a-zA-Z0-9\s]+-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z\.log$
         let subject = Naming ("{host}-{service}-{datetime}", "log")
-        let actual = subject.format runtime2016_10_11T13_14_15
+        let actual = subject.formatS runtime2016_10_11T13_14_15
         Expect.equal actual "myHost-my service-2016-10-11T13-14-15Z.log"
                      "Should format composite file name"
         let regex = subject.regex runtime2016_10_11T13_14_15
