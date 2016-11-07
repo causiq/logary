@@ -12,9 +12,7 @@ open Logary.Targets
 open Logary.Internals
 
 let emptyRuntime =
-  { serviceName = "tests"
-    clock       = SystemClock.Instance
-    logger      = NullLogger() }
+  RuntimeInfo.create "tests"
 
 let flush = Target.flush >> Job.Ignore >> run
 

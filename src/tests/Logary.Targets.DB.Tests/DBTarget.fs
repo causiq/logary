@@ -14,9 +14,7 @@ open Logary.Internals
 open Logary.Targets
 
 let runtime =
-  { serviceName = "tests"
-    clock       = SystemClock.Instance
-    logger      = NullLogger() }
+  RuntimeInfo.create "tests"
 
 /// this one is a per-process db
 [<Literal>]

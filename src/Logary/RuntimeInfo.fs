@@ -2,6 +2,7 @@ namespace Logary.Internals
 
 open System.Net
 open Logary
+open Logary.Internals
 open NodaTime
 
 /// A type giving more information about the service that this logary instance
@@ -29,3 +30,6 @@ type RuntimeInfo =
       host        = defaultArg host (Dns.GetHostName())
       clock       = clock
       logger      = NullLogger() }
+
+  static member create (serviceName) =
+    RuntimeInfo.create (serviceName, SystemClock.Instance)
