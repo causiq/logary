@@ -24,7 +24,7 @@ let literal () =
   LiterateConsole.create LiterateConsole.empty "literate"
   |> Target.init emptyRuntime
   >>= (fun ti -> Job.start (ti.server (fun _ -> Job.result ()) None) >>-. ti)
-  >>- (Seq.singleton >> InternalLogger.create LogLevel.Debug)
+  >>- (Seq.singleton >> InternalLogger.create LogLevel.Info)
   |> run
 
 let textWriter () =

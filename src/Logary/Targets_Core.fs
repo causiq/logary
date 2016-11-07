@@ -951,13 +951,20 @@ module File =
       | Failure (error, _, _) ->
         Choice2Of2 error
 
+    let private foldStr fph flit =
+      fun tokens ->
+        let sb = StringBuilder()
+        let app (sb : StringBuilder) (value : string) = sb.Append value
+        let folder sb = function
+          | Placeholder ph -> app sb (fph ph)
+          | Lit lit -> app sb (flit lit)
+        tokens |> List.fold folder sb |> sprintf "%O"
+
     let format (known : Map<_, _>) (tokens : Token list) =
-      let sb = StringBuilder()
-      let app (sb : StringBuilder) (value : string) = sb.Append value
-      let folder sb = function
-        | Placeholder ph -> app sb known.[ph]
-        | Lit sep -> app sb sep
-      tokens |> List.fold folder sb |> sprintf "%O"
+      foldStr (flip Map.find known) id tokens
+
+    let formatRegex (known : Map<_, _>) (tokens : Token list) =
+      foldStr (flip Map.find known) Regex.Escape tokens
 
   /// The naming specification gives the File target instructions on how to
   /// name files when they are created and rotated.
@@ -982,7 +989,21 @@ module File =
         |> flip (sprintf "%s.%s") ext
 
       member x.regex =
-        Regex("^TODO$")
+        let (Naming (spec, ext)) = x
+        let known =
+          Map [
+            "service", @"[a-zA-Z0-9\s]+"
+            "date", @"\d{4}-\d{2}-\d{2}"
+            "datetime", @"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z"
+            "host", @"[a-zA-Z0-9\s]+"
+          ]
+        match P.parse spec with
+        | Choice1Of2 tokens ->
+          P.formatRegex known tokens
+          |> fun specRegex -> sprintf @"^%s\.%s$" specRegex (Regex.Escape ext)
+          |> Regex
+        | Choice2Of2 error ->
+          failwith error
 
   /// Module for deleting old log files.
   module internal Janitor =
