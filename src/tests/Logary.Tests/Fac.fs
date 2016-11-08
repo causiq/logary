@@ -16,16 +16,17 @@ open TestDSL
 open Hopac
 open Hopac.Infixes
 
+let emptyRuntime = RuntimeInfo.create "tests"
+let literal = lazy (
+    LiterateConsole.create LiterateConsole.empty "literate"
+    |> Target.init emptyRuntime
+    >>= (fun ti -> Job.start (ti.server (fun _ -> Job.result ()) None) >>-. ti)
+    >>- (Seq.singleton >> InternalLogger.create LogLevel.Debug)
+    |> run
+  )
+
 let emptyTarget = Noop.create {isYes = true} "empty target"
 let emptyRule = Rule.createForTarget "empty target"
-let emptyRuntime = RuntimeInfo.create "tests"
-
-let literal () =
-  LiterateConsole.create LiterateConsole.empty "literate"
-  |> Target.init emptyRuntime
-  >>= (fun ti -> Job.start (ti.server (fun _ -> Job.result ()) None) >>-. ti)
-  >>- (Seq.singleton >> InternalLogger.create LogLevel.Info)
-  |> run
 
 let textWriter () =
   let sb = new StringBuilder()

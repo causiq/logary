@@ -274,6 +274,19 @@ let files =
     if not (Directory.Exists folderPath) then
       Directory.CreateDirectory(folderPath) |> ignore
 
+  let aFewTimes throw fn =
+    let rec inner count acc =
+      try
+        fn ()
+      with e ->
+        Thread.Sleep 150
+        if count <= 10 then
+          inner (count + 1) (e :: acc)
+        else
+          if throw then failwithf "Function %O failed with %A" fn (e :: acc)
+          else ()
+    inner 1 []
+
   let createInRandom testName =
     let folder, file = rndFolderFile (sprintf "file - %s" testName)
     ensureFolder folder
@@ -287,7 +300,7 @@ let files =
       try
         fn folderPath fileName |> run
       finally
-        Directory.Delete(folderPath, true)
+        aFewTimes false <| fun _ -> Directory.Delete(folderPath, true)
 
   let runtime now =
     RuntimeInfo.create (
@@ -407,11 +420,11 @@ let files =
     Targets.integrationTests "file" createInRandom
 
     testCaseF "log ten thousand messages" <| fun folder file ->
-      let fileConf = FileConf.create folder (Naming (file, "log"))
+      let fileConf = FileConf.create folder (Naming ("10K", "log"))
       let targetConf = Target.confTarget "basic2" (File.create fileConf)
 
       job {
-        let! instance = targetConf |> Target.init Fac.emptyRuntime
+        let! instance = targetConf |> Target.init { Fac.emptyRuntime with logger = Fac.literal.Value }
         do! Job.start (instance.server (fun _ -> Job.result ()) None)
 
         let acks = ResizeArray<_>(10000)

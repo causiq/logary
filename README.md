@@ -1044,6 +1044,87 @@ set may end up losing us more than it gains us.
  - https://stackoverflow.com/questions/122362/how-to-empty-flush-windows-read-disk-cache-in-c
  - https://ayende.com/blog/174785/fast-transaction-log-windows
 
+#### Example runs
+
+These runs illustrate the above points in a more direct manner. In all of these
+cases we're writing 10K events to disk.
+
+##### inProcBuffer = false, flushToDisk = true, caller awaits all acks at the end
+
+This is the safest option and takes 1.3 seconds to log, format and write
+10K messages.
+
+```
+I 2016-11-08T11:04:00.6125063+00:00: Event 1 [Logary.Samples.main]
+  number => 1
+...
+[12:04:02 DBG] Flushing to disk.
+...
+I 2016-11-08T11:04:02.0201345+00:00: Event 9402 [Logary.Samples.main]
+  number => 9402
+[12:04:02 DBG] Flushing to disk.
+I 2016-11-08T11:04:02.0201345+00:00: Event 9403 [Logary.Samples.main]
+  number => 9403
+I 2016-11-08T11:04:02.0201345+00:00: Event 9404 [Logary.Samples.main]
+  number => 9404
+...
+I 2016-11-08T11:04:02.0891350+00:00: Event 10000 [Logary.Samples.main]
+  number => 10000
+[12:04:02 DBG] Flushing to disk.
+...
+```
+
+The interleaved flushes shows the batching functionality of the File target in
+action.
+
+##### inProcBuffer = false, flushToDisk = true, caller awaits all ack after each
+
+This example represents the worst-case usage of the safest configuration.
+
+```
+I 2016-11-08T11:14:42.9071732+00:00: Event 1 [Logary.Samples.main]
+  number => 1
+[12:14:42 DBG] Flushing to disk.
+I 2016-11-08T11:14:42.9711735+00:00: Event 2 [Logary.Samples.main]
+  number => 2
+[12:14:42 DBG] Flushing to disk.
+I 2016-11-08T11:14:42.9781719+00:00: Event 3 [Logary.Samples.main]
+  number => 3
+[12:14:42 DBG] Flushing to disk.
+I 2016-11-08T11:14:42.9861770+00:00: Event 4 [Logary.Samples.main]
+  number => 4
+[12:14:42 DBG] Flushing to disk.
+...
+I 2016-11-08T11:15:04.7635448+00:00: Event 10000 [Logary.Samples.main]
+  number => 10000
+[12:15:04 DBG] Flushing to disk.
+
+With this configuration, the File target would still batch other threads' Messages
+but since this example has a single thread producer, there's only a single Message
+available for the target every loop.
+
+
+##### inProcBuffer = true, flushToDisk = false, writeThrough=false caller awaits all acks at the end
+
+This is the least safe and most speedy option. Useful when you're shipping logs
+away from the node and configure those shippers in a safer manner. In this case,
+.Net and the operating system and the device drivers decide when to flush.
+
+On exit/dispose of Logary, all targets are always flushed.
+
+```
+[12:32:05 INF] Event 1
+...
+[12:32:06 INF] Event 10000
+
+[12:32:48 DBG] Shutting down Logary.
+...
+[12:32:48 DBG] Flushing to disk.
+```
+
+In this example, the actual time taken is dominated by the time to generate the 
+messages.
+
 ## EventStore adapter
 
 Use to extract logs from [GetEventStore.com][eventstore-site].

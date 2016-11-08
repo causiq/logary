@@ -682,6 +682,8 @@ module FileSystem =
     /// Chroot the file system to a given folder to avoid accidental deletions
     /// or modifications outside the folder of interest.
     abstract chroot : FolderPath -> FileSystem
+    /// Ensures that the currently rooted path exists (mkdir -p)
+    abstract ensureCurrent : unit -> DirectoryInfo
 
   module Path =
     let combine (segments : string seq) =
@@ -723,6 +725,8 @@ module FileSystem =
       member x.chroot subPath =
         let combined = getFolder subPath
         DotNetFileSystem combined.FullName :> FileSystem
+      member x.ensureCurrent () =
+        Directory.CreateDirectory root
 
   [<Sealed>]
   type CountingStream(inner : Stream, written : int64 ref) =
@@ -811,6 +815,7 @@ module File =
       let hourly = FileAge (Duration.FromHours 1L)
       let daily = FileAge (Duration.FromHours 24L)
       let weekly = FileAge (Duration.FromHours (7L * 24L))
+      let ofDuration dur = FileAge dur
 
     /// This module contains rotation policies that specify that files should
     /// be rotated every nth byte (e.g. every 100 MiB).
@@ -1063,7 +1068,7 @@ module File =
           ]
         Job.foreverServer loop >>-. LiveJanitor stopIV
 
-    let stop (t:T) : Job<unit> =
+    let shutdown (t:T) : Job<unit> =
       match t with
       | NullJanitor ->
         Job.result()
@@ -1080,7 +1085,7 @@ module File =
       /// flushed.
     { inProcBuffer : bool
       /// Whether to force the operating system's page cache to flush to persistent
-      /// storage for each log message. By default this is false, but sending a
+      /// storage for each log batch. By default this is false, but sending a
       /// Flush message to the target forces the page cache to be flushed to disk
       /// (and of course will also force-flush the in-process buffer if needed).
       /// If you specify the `writeThrough` flag (which is true by default)
@@ -1132,13 +1137,14 @@ module File =
       fileSystem   = DotNetFileSystem("/var/lib/logs")
       formatter    = fun m tw ->
         let str = Formatting.StringFormatter.levelDatetimeMessagePathNl.format m
-        tw.WriteLine str
+        tw.Write str
         Promise (())
       batchSize    = 100us
       attempts     = 3us }
 
   [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
   module FileConf =
+    /// Creates a new file config from the given folder path with the naming standard.
     let create (folderPath : FolderPath) (naming : Naming) =
       { empty with
           logFolder = folderPath
@@ -1161,13 +1167,6 @@ module File =
           written    = written
           janitor    = janitor }
 
-      interface IAsyncDisposable with
-        member x.DisposeAsync() =
-          x.written := 0L
-          // x.underlying is closed when x.writer is disposed
-          Job.Scheduler.isolate x.writer.Dispose >>=.
-          Janitor.stop x.janitor
-
     let applyRotation counter (fs : Stream) (policies : RotationPolicy list) : Stream =
       let rec iter state = function
         | [] -> state
@@ -1189,16 +1188,13 @@ module File =
       | Rotation.Rotate (rotations, _) ->
         applyRotation counter fs rotations
 
-    let openFile ri conf =
-      let folder = conf.logFolder
+    let openFile ri (fs : FileSystem) conf =
       let fileName = conf.naming.formatS ri
-      let path = Path.combine [folder; fileName]
-      let fi = FileInfo path
-      fi.Refresh() |> ignore
+      let fi = fs.getFile fileName
 
       let fs =
         new FileStream(
-          path,
+          fi.FullName,
           FileMode.Append, // only append; seeks error
           FileAccess.Write, // request write access
           FileShare.Read, // allow concurrent readers (tail -f)
@@ -1217,6 +1213,7 @@ module File =
 
     let shouldRotate (clock : IClock) (conf : FileConf) (state : State) =
       let size = !state.written
+
       let rec apply state = function
         | [] ->
           false
@@ -1235,6 +1232,20 @@ module File =
         false
       | Rotation.Rotate (policies, _) ->
         policies |> apply state
+
+    let flushWriter (state : State) : Job<unit> =
+      Job.fromUnitTask state.writer.FlushAsync
+
+    let flushToDisk (state : State) : Job<unit> =
+      Job.Scheduler.isolate (fun _ -> state.underlying.Flush true)
+
+    let flushAndCloseFile (state : State) : Job<unit> =
+      flushWriter state >>=. flushToDisk state >>- fun () ->
+      state.writer.Dispose()
+
+    let shutdownState (state : State) : Job<unit> =
+      flushAndCloseFile state >>=.
+      Janitor.shutdown state.janitor
 
     /// Writes all passed requests to disk, handles acks and flushes.
     let writeRequests ilogger conf state (reqs : TargetMessage[]) =
@@ -1268,15 +1279,14 @@ module File =
           // Unless forceFlush is included in the check, there can be state in
           // the TextWriter that is not written to disk.
           if not conf.inProcBuffer || forceFlush then
-            Job.fromUnitTask state.writer.FlushAsync
+            flushWriter state
           else
             Job.result ()
 
       let flushPageCache = // Invariant: only schedule after all messages written
         memo <|
           if conf.flushToDisk || forceFlush then
-            Message.event Debug "Flushing to disk." |> Logger.log ilogger >>=.
-            Job.Scheduler.isolate (fun _ -> state.underlying.Flush true)
+            flushToDisk state >>=. (Message.event Debug "Flushed to disk." |> Logger.log ilogger)
           else
             Job.result ()
 
@@ -1318,12 +1328,16 @@ module File =
           let (msgs : TargetMessage[], recoverCount : uint16) = unbox x
           msgs, recoverCount)
 
+      let shutdownState =
+        Logger.timeJobSimple ri.logger "shutdownState" shutdownState
+
       // In this state the File target opens its file stream and checks if it
       // progress to the recovering state.
       let rec init lastWill =
         let fs = conf.fileSystem.chroot conf.logFolder
+        fs.ensureCurrent () |> ignore
         Janitor.create ri fs conf.naming conf.policies >>-
-        State.create (openFile ri conf) >>=
+        State.create (openFile ri fs conf) >>=
         fun state ->
           match lastWill with
           | Some (msgs, recoverCount) ->
@@ -1335,8 +1349,8 @@ module File =
       and running (state : State) : Job<unit> =
         Alt.choose [
           shutdown ^=> fun ack ->
-            Message.event Info "Shutting down file target." |> Logger.log ri.logger >>=.
-            (state :> IAsyncDisposable).DisposeAsync() >>=.
+            Message.event Debug "Shutting down file target (starting shutdownState)" |> Logger.log ri.logger >>=.
+            shutdownState state >>=.
             ack *<= ()
 
           // TODO: handle scheduled rotation
@@ -1363,7 +1377,7 @@ module File =
 
       // In this state we do a single rotation.
       and rotating (state : State) =
-        Job.fromUnitTask state.writer.FlushAsync >>-
+        shutdownState state >>-
         (fun () ->
           let fnNoExt = Path.GetFileNameWithoutExtension
           let parse n =
@@ -1390,7 +1404,6 @@ module File =
               |> Option.fold (fun s t -> t + 1) 0
               |> sprintf "%s-%03i" currName
           conf.fileSystem.moveFile state.fileInfo.Name targetName) >>=.
-        (state :> IAsyncDisposable).DisposeAsync() >>=.
         init None
 
       and recovering (state : State) (lastBatch : TargetMessage[]) = function
