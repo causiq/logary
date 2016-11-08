@@ -428,14 +428,16 @@ let files =
         do! Job.start (instance.server (fun _ -> Job.result ()) None)
 
         let acks = ResizeArray<_>(10000)
+        Message.event Debug "Starting writing messages into Logary." |> logger.logSimple
         for i in 1 .. 10000 do
           let! ack =
             event Logary.LogLevel.Info "Event {number}"
             |> setField "number" i
             |> Target.log instance
           acks.Add ack
-        // wait for them all!
+        Message.event Debug "Waiting for ACKs" |> logger.logSimple
         do! Job.conIgnore acks
+        Message.event Debug "All messages ACK-ed" |> logger.logSimple
 
         let! res = Target.finaliseJob instance
         match res with
