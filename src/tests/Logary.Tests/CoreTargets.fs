@@ -420,6 +420,7 @@ let files =
     Targets.integrationTests "file" createInRandom
 
     testCaseF "log ten thousand messages" <| fun folder file ->
+      Tests.skiptest "Locks up, see https://github.com/haf/expecto/issues/2"
       let fileConf = FileConf.create folder (Naming ("10K", "log"))
       let targetConf = Target.confTarget "basic2" (File.create fileConf)
 
