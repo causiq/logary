@@ -16,7 +16,7 @@ install:
   - bundle
 
 script:
-  - bundle exec rake
+  - bundle exec rake DEBUG=true
 
 matrix:
   allow_failures:

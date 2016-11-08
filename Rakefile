@@ -129,7 +129,7 @@ task :tests_unit do
     keep_if { |exe| !exe.include?('Mailgun') || (ENV['MAILGUN_API_KEY'] && exe.include?('Mailgun')) }.
     keep_if { |exe| !exe.include?('ElmahIO') || (ENV['ELMAH_IO_LOG_ID'] && exe.include?('ElmahIO')) }.
     each do |exe|
-    system exe, %w|--sequenced|, clr_command: true
+    system exe, %W|--sequenced #{ENV['DEBUG'] ? "--debug" : ""}|, clr_command: true
   end
 end
 
