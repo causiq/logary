@@ -16,10 +16,7 @@ open Hopac.Extensions
 open Hopac.Infixes
 open TestHelpers
 
-let emptyRuntime =
-  { serviceName = "tests"
-    clock       = SystemClock.Instance
-    logger      = NullLogger() }
+let emptyRuntime = RuntimeInfo.create "tests"
 
 let flush = Target.flush >> Job.Ignore >> run
 

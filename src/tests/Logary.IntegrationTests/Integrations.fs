@@ -28,10 +28,7 @@ let parseIP str =
     | Choice2Of2 e  -> raise (Exception (str, e))
   | true, ip -> ip
 
-let ri =
-  { serviceName = "tests"
-    clock       = SystemClock.Instance
-    logger      = NullLogger() }
+let ri = RuntimeInfo.create "integrations"
 
 [<Tests>]
 let integration =

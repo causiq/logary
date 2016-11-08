@@ -3,9 +3,14 @@
 open System
 open System.Text.RegularExpressions
 open System.Globalization
+open System.IO
+open System.Text
+open System.Threading
 open Expecto
 open Logary
+open Logary.Internals
 open Logary.Targets
+open Logary.Message
 open Logary.Tests.Targets
 open Hopac
 open NodaTime
@@ -230,4 +235,200 @@ let tests =
         |> should contain "Fatal line"
         |> thatsIt
       ]
+  ]
+
+open FileSystem
+open File
+open Expecto.Logging
+
+let logger = Log.create "Logary.Targets.Tests.CoreTargets"
+
+[<Tests>]
+let files =
+  let env = Environment.GetEnvironmentVariable
+  let rnd = new ThreadLocal<Random>(fun () -> Random ())
+
+  let sha1 =
+    UTF8.bytes
+    >> Bytes.hash Security.Cryptography.SHA1.Create
+    >> Bytes.toHex
+
+  let rndName () =
+    let buf = Array.zeroCreate<byte> 16
+    rnd.Value.NextBytes buf
+    Bytes.toHex buf
+
+  let rndFolderFile testName =
+    let tempPath =
+      // TMPDIR is on OS X and Linux
+      [ "TMP"; "TEMP"; "TMPDIR" ]
+      |> List.map env
+      |> List.filter (isNull >> not)
+      |> List.head
+    let subFolder = sha1 testName
+    let folderPath = Path.Combine(tempPath, subFolder)
+    let fileName = rndName ()
+    folderPath, fileName
+
+  let ensureFolder folderPath =
+    if not (Directory.Exists folderPath) then
+      Directory.CreateDirectory(folderPath) |> ignore
+
+  let createInRandom testName =
+    let folder, file = rndFolderFile (sprintf "file - %s" testName)
+    ensureFolder folder
+    let conf = FileConf.create folder (Naming (file, "log"))
+    File.create conf testName
+
+  let testCaseF testName (fn : FolderPath -> FileName -> Job<_>) =
+    let folderPath, fileName = rndFolderFile testName
+    testCase testName <| fun _ ->
+      ensureFolder folderPath
+      try
+        fn folderPath fileName |> run
+      finally
+        Directory.Delete(folderPath, true)
+
+  let runtime now =
+    RuntimeInfo.create (
+      "my service",
+      { new IClock with
+          member x.Now = now },
+      "myHost")
+
+  let runtime2016_10_11T13_14_15 =
+    runtime (Instant.FromUtc (2016, 10, 11, 13, 14, 15))
+
+  testList "files" [
+    testList "rotate policies" [
+      testCaseF "file size" <| fun _ _ ->
+        Tests.skiptest "\
+          The rotation policies decide when a given file is due to be rotated,\n\
+          i.e. closed, renamed to a 'historical name' and then re-opened."
+
+      testCaseF "file age" <| fun _ _ ->
+        Tests.skiptest "\
+          This rotation should rotate the file when the current file has\n\
+          reached a certain age."
+
+      testCaseF "custom callback policy unit -> Instant" <| fun _ _ ->
+        Tests.skiptest "\
+          This retention policy should be continuously called by the Logary\n\
+          scheduler which is then told when the rotation should happen. This also\n\
+          covers the case when developers want to rotate on starting the system."
     ]
+
+    testList "deletion policies" [
+      testCaseF "file count in folder" <| fun _ _ ->
+        Tests.skiptest "\
+          The deletion policies should work by counting the number of files\n\
+          that match the given pattern, and delete older files that count above\n\
+          a specified threshold, excluding the current file."
+
+      testCaseF "folder total size" <| fun _ _ ->
+        Tests.skiptest "\
+          This deletion policy should count the total size of the folder and\n\
+          if it's above a certain threshold, start deleting files until that threshold\n\
+          is reached, excluding the current file."
+
+      testCaseF "file age" <| fun _ _ ->
+        Tests.skiptest "\
+          This deletion policy should kick in to delete files that are above a\n\
+          specified age, excluding the current file."
+    ]
+
+    testList "naming policies" [
+      testCase "service – from RuntimeInfo" <| fun _ ->
+        let subject = Naming ("{service}", "log")
+        let actual = subject.formatS runtime2016_10_11T13_14_15
+        Expect.equal actual "my service.log" "Should format service"
+        let regex = subject.regex runtime2016_10_11T13_14_15
+        Expect.isTrue (regex.IsMatch actual) "Should match its own output"
+
+      testCase "year-month-day - date" <| fun _ ->
+        let subject = Naming ("{date}", "log")
+        let actual = subject.formatS runtime2016_10_11T13_14_15
+        Expect.equal actual "2016-10-11.log" "Should format date"
+        let regex = subject.regex runtime2016_10_11T13_14_15
+        Expect.isTrue (regex.IsMatch actual) "Should match its own output"
+
+      testCase "year-month-dayThour-minutes-seconds – datetime" <| fun _ ->
+        let subject = Naming ("{datetime}", "log")
+        let actual = subject.formatS runtime2016_10_11T13_14_15
+        Expect.equal actual "2016-10-11T13-14-15Z.log" "Should format datetime"
+        let regex = subject.regex runtime2016_10_11T13_14_15
+        Expect.isTrue (regex.IsMatch actual) "Should match its own output"
+
+      testCase "host" <| fun _ ->
+        let subject = Naming ("{host}", "log")
+        let actual = subject.formatS runtime2016_10_11T13_14_15
+        Expect.equal actual "myHost.log" "Should format host name"
+        let regex = subject.regex runtime2016_10_11T13_14_15
+        Expect.isTrue (regex.IsMatch actual) "Should match its own output"
+
+      testCase "combo host and service and datetime (no sep)" <| fun _ ->
+        let subject = Naming ("{host}{service}{datetime}", "log")
+        let actual = subject.formatS runtime2016_10_11T13_14_15
+        Expect.equal actual "myHostmy service2016-10-11T13-14-15Z.log"
+                     "Should format composite file name"
+        let regex = subject.regex runtime2016_10_11T13_14_15
+        Expect.isTrue (regex.IsMatch actual) "Should match its own output"
+
+      testCase "combo host and service and datetime" <| fun _ ->
+        // ^[a-zA-Z0-9\s]+-[a-zA-Z0-9\s]+-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z\.log$
+        let subject = Naming ("{host}-{service}-{datetime}", "log")
+        let actual = subject.formatS runtime2016_10_11T13_14_15
+        Expect.equal actual "myHost-my service-2016-10-11T13-14-15Z.log"
+                     "Should format composite file name"
+        let regex = subject.regex runtime2016_10_11T13_14_15
+        Expect.isTrue (regex.IsMatch actual)
+                      (sprintf "Should match its own output '%s' with regex /%O/"
+                               actual
+                               regex)
+
+      testList "invalids" [
+        for invalid in [ "{host}-}{service}-{datetime}"
+                         "apa:"
+                         ""
+                         "\\"
+                         "/"
+                         ";"] do
+          yield testCase "combo host and service and datetime" <| fun _ ->
+            let naming = Naming (invalid, "log")
+            // comment in to see error messages in output
+            //naming.format runtime2016_10_11T13_14_15 |> ignore
+            Expect.throws (fun () ->
+              naming.format runtime2016_10_11T13_14_15 |> ignore)
+              "Should throw due to bad input"
+      ]
+    ]
+
+    Targets.basicTests "file" createInRandom
+    Targets.integrationTests "file" createInRandom
+
+    testCaseF "log ten thousand messages" <| fun folder file ->
+      let fileConf = FileConf.create folder (Naming (file, "log"))
+      let targetConf = Target.confTarget "basic2" (File.create fileConf)
+
+      job {
+        let! instance = targetConf |> Target.init Fac.emptyRuntime
+        do! Job.start (instance.server (fun _ -> Job.result ()) None)
+
+        let acks = ResizeArray<_>(10000)
+        for i in 1 .. 10000 do
+          let! ack =
+            event Logary.LogLevel.Info "Event {number}"
+            |> setField "number" i
+            |> Target.log instance
+          acks.Add ack
+        // wait for them all!
+        do! Job.conIgnore acks
+
+        let! res = Target.finaliseJob instance
+        match res with
+        | Internals.TimedOut ->
+          Tests.failtest "Stopping file target timed out"
+        | _ ->
+          ()
+      }
+  ]

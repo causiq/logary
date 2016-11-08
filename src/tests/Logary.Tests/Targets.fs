@@ -56,8 +56,7 @@ module Target =
     |> run 
     |> run
 
-  /// Finalise the target and assert it was finalised within 1000 milliseconds
-  let finalise (target : Target.TargetInstance) =
+  let finaliseJob (target : Target.TargetInstance) =
     Alt.choose [
       Target.shutdown target
         |> Alt.afterFun Internals.Success
@@ -65,6 +64,10 @@ module Target =
       timeOutMillis 1000
         |> Alt.afterFun (fun _ -> Internals.TimedOut)
     ]
+
+  /// Finalise the target and assert it was finalised within 1000 milliseconds
+  let finalise (target : Target.TargetInstance) =
+    finaliseJob target
     |> run
     |> function
     | Internals.TimedOut ->
@@ -78,7 +81,7 @@ module Target =
 ///  - can start and stop
 ///  - can receive a few different sorts of messages
 let basicTests targetName configFactory =
-  testList (sprintf "basic tests for %s" targetName) [
+  testList (sprintf "basic tests for target '%s'" targetName) [
     testCase "creating instance" <| fun _ ->
       let target =
         Target.confTarget "basic1" configFactory
@@ -122,4 +125,4 @@ let basicTests targetName configFactory =
   ]
 
 let integrationTests targetName (configFactory : string -> Target.TargetConf) =
-  testList (sprintf "integration tests for %s" targetName) []
+  testList (sprintf "integration tests for target '%s'" targetName) []

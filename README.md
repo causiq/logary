@@ -40,6 +40,7 @@ Install-Package Logary
 ```
 
 ## Table of Contents
+
   * [Logary v4](#logary-v4)
     * [Why?](#why)
     * [Install it](#install-it)
@@ -70,6 +71,13 @@ Install-Package Logary
     * [InfluxDb Target](#influxdb-target)
     * [RabbitMQ Target](#rabbitmq-target)
       * [Usage](#usage)
+    * [File target](#file-target)
+      * [Configuration](#configuration)
+      * [Policies](#policies)
+      * [Performance](#performance)
+      * [Handling of errors](#handling-of-errors)
+      * [Invariants](#invariants)
+      * [Overview of buffers](#overview-of-buffers)
     * [EventStore adapter](#eventstore-adapter)
     * [FsSQL adapter](#fssql-adapter)
     * [Suave adapter](#suave-adapter)
@@ -116,6 +124,7 @@ Install-Package Logary
         * [logWithAck – so what's up with Promise?](#logwithack--so-whats-up-with-promise)
         * [How do Promises work with C\#?](#how-do-promises-work-with-c)
     * [License](#license)
+
 
 ## Hello World (C#)
 
@@ -895,6 +904,145 @@ And the Rule for it:
 ```fsharp
 Rule.createForTarget "rabbitmq"
 ```
+
+## File target
+
+Logary's file target is primarily geared towards systems that are running on
+single machines as it prints a human-readable format, rather than a machine-
+readable one.
+
+### Configuration
+
+The default configuration of the file target rotates log files greater than 200
+MiB and deletes log files when the configured folder size is larger than 3 GiB.
+
+Folders that don't exist when the target starts are automatically created on
+target start-up in the current service's security context. Should the calls to
+create the folder fail, the target is never started, but will restart
+continuously like any ther Logary target.
+
+### Policies & specifications
+
+You can specify a number of **deletion** and **rotation** policies when
+configuring the file target. The deletion policies dictate when the oldest logs
+should be deleted, whilst the rotation policies dictates when the files should
+be rotated (thereby the previous file archived).
+
+Furthermore, you can specify a **naming** specification that dictates how the
+files sould be named on disk.
+
+ - Deletion of files happen directly when at least one deletion policy has
+   triggered.
+ - Rotation of files happen directly when at least one rotation policy has
+   triggered.
+ - Naming specifications should automatically be amended with sequence number,
+   should that be required.
+
+### Performance
+
+The `File` target is a performance-optimised target. Logging always happens on
+a separate thread from the caller, so we try to reach a balance between
+throughput and latency on ACKs.
+
+On Windows, overlapped IO is *not* used, because the files are opened in Append
+mode, should have equivalent performance. This means we should have similar
+performance on Linux and Windows.
+
+The formatters used for the `File` target should be writing to `TextWriter`
+instances to avoid creating extra string copies in memory.
+
+### Handling of errors
+
+The file target is thought as a last-chance target, because by default, logs
+should be shipped from your nodes/machines to a central logging service. It
+can also be nicely put to use for local console apps that need to log to disk.
+
+ - Non-target-fatal `IOException`s, for example when NTFS ACKs file deletes but
+   still keeps the file listable and available for some duration afterwards are
+   retried on a case-by-case basis. Internal Warn-level messages are logged.
+ - Fatal `IOException`s – more other cases; directory not found, file not found,
+   etc. are not retried. The target should crash and restart. Its current batch
+   is then retried forever, while logging internal Fatal-level exceptions.
+
+### Invariants
+
+ - The `File` target is modelled as a transaction log and trades speed against
+   safety that the contents have been written to disk, but does not do the
+   bookkeeping required to use `FILE_FLAG_NO_BUFFER`.
+ - `Fatal` level events are automatically flushed/fsync-ed.
+ - Only a single writer to a file is allowed at any given time. This
+   invariant exists because atomic flushes to files are only possible on Linux
+   up to the page size used in the page cache.
+ - Only asynchronous IO is done, i.e. the Logary worker thread is not blocked
+   by calls into the operating system. Because of the overhead of translating
+   callbacks into Job/Alt structures, we try to write as much data as possible
+   on every call into the operating system. This means that Messages to be
+   logged can be ACKed in batches rather than individually.
+ - If your disk collapses while writing log messages (which happens once in a
+   while and happens frequently when you have thousands of servers), the target
+   should save its last will and then retry a configurable number of times after
+   waiting an exponentially growing duration between each try. It does this by
+   crashing and letting the supervisor handle the failure. Afterh exhausing the
+   tries, the batch of log messages is discarded.
+ - If there are IO errors on writing the log messages to disk, there's no
+   guarantee that there won't be duplicate log lines written; however, they're
+   normally timestamped, so downstream log ingestion systems can do
+   de-duplication. This is from the batched nature of the File target.
+
+### Overview of buffers
+
+ 1. You write a `Message` from your call-site, this message is synchronised
+    upon between the sending thread and the receiving thread using Hopac.
+
+   i. If you use one of the `logWithAck` functions, placing the message in the
+      `RingBuffer` can be awaited (or `NACK`ed)
+
+   ii. If you use the `logSimple` function, the synchronisation is hoisted onto
+      the concurrency scheduler's pending queue and raced with a timeout to be
+      discarded if the logging subsystem is overwhelmed.
+
+ 2. Once the `Message` is in the `RingBuffer` of the `File` target, it's either
+    removed by itself, or as part of a batch, to be serialised to string.
+
+ 3. The serialisation function reads through the values of the message and
+    uses the formatter function to write those values into a `TextWriter`. The
+    `TextWriter` is normally a `StreamWriter` writing to a `FileStream`. This
+    means no extra strings need be created through concatenation.
+
+ 4. Depending on the `inProcBuffer` configuration flag, the `TextWriter` either
+    supports buffering, which buffers the string inside the CLR process, or
+    writes directly to the underlying *file handle*, which transitions the
+    data to the kernel's ioctl subsystem. By default we don't buffer here.
+
+ 5. Depending on the `flushToDisk` configuration flag, the `FileStream` is or
+    is not called with `Flush(true)`, which forces a disk synchronisation. By
+    default we let the page cache buffer these writes, to trade safety against
+    throughput. This is similar to how most other targets work.
+
+    Depending on the `writeThrough` flag; `Message`s written with the `File`
+    target is only ACKed when they are durably on disk. Defaults to true.
+
+Note that disposing Logary, e.g. during application exit flushes all buffers.
+
+### Notes on `FILE_FLAG_NO_BUFFERING`
+
+I've been considering supporting
+[NO\_BUFFERING](https://msdn.microsoft.com/en-us/library/windows/desktop/cc644950(v=vs.85).aspx)
+but this would require callers to possibly wait for the 4096 bytes buffer to
+fill up before ACKing messages. However, for low-throughput logging, where each
+log line may be around, say, 240 bytes of text, having the `NO_BUFFERING` flag
+set may end up losing us more than it gains us.
+
+#### References
+
+ - https://support.microsoft.com/en-us/kb/99794
+ - https://stackoverflow.com/questions/317801/win32-write-to-file-without-buffering
+ - https://winntfs.com/2012/11/29/windows-write-caching-part-2-an-overview-for-application-developers/
+ - https://msdn.microsoft.com/en-us/library/windows/desktop/cc644950(v=vs.85).aspx
+ - https://msdn.microsoft.com/en-us/library/windows/desktop/aa363772(v=vs.85).aspx
+ - https://stackoverflow.com/questions/8692635/how-do-disable-disk-cache-in-c-sharp-invoke-win32-createfile-api-with-file-flag
+ - https://stackoverflow.com/questions/122362/how-to-empty-flush-windows-read-disk-cache-in-c
+ - https://ayende.com/blog/174785/fast-transaction-log-windows
 
 ## EventStore adapter
 

@@ -11,10 +11,7 @@ open Logary
 open Logary.Internals
 open Logary.Targets.Mailgun
 
-let emptyRuntime =
-  { serviceName = "tests"
-    clock       = SystemClock.Instance
-    logger      = NullLogger() }
+let emptyRuntime = RuntimeInfo.create "tests"
 
 let flush = Target.flush >> Job.Ignore >> run
 

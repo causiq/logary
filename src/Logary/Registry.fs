@@ -289,8 +289,9 @@ module Advanced =
               do! Message.eventVerbosef "Will poll %O every %O" name mconf.tickInterval |> log
 
               let! tickCts =
-                Scheduling.schedule sched Metric.tick instance mconf.tickInterval
+                Scheduling.schedule Metric.tick instance mconf.tickInterval
                                     (Some mconf.tickInterval)
+                                    sched
               do! Message.eventVerbosef "Getting logger for metric %O" name |> log
               let logger = name |> getTargets conf |> fromTargets name conf.runtimeInfo.logger
               Metric.tapMessages instance |> Stream.consumeJob (Logger.log logger)
@@ -304,7 +305,7 @@ module Advanced =
       and running state : Job<_> = job {
         let! msg = Ch.take inbox
         match msg with
-        | GetLogger (name, extraMiddleware, chan) ->
+        | GetLogger (name, extraMiddleware, replCh) ->
           let middleware =
             match extraMiddleware with
             | None -> conf.middleware
@@ -319,7 +320,7 @@ module Advanced =
             |> fromTargets name conf.runtimeInfo.logger
             |> applyMiddleware (composedMiddleware)
 
-          do! IVar.fill chan logger
+          do! IVar.fill replCh logger
           return! running state
 
         | FlushPending(ackCh, nack) ->

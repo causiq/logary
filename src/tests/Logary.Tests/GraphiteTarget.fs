@@ -20,7 +20,7 @@ let tests =
       let conf = Graphite.GraphiteConf.create("localhost")
       let graphite = Graphite.create conf "graphite-target"
       let instance =
-        graphite.initer { serviceName = "tests"; clock = SystemClock.Instance; logger = NullLogger() }
+        graphite.initer Fac.emptyRuntime
         |> run
 
       //start instance.server

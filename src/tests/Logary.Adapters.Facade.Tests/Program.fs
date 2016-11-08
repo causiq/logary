@@ -34,7 +34,7 @@ let stubLogger (minLevel : LogLevel)
 let stubLogManager (message : Message ref) =
   { new LogManager with
       member x.runtimeInfo =
-        RuntimeInfo.create ("Facade Tests", SystemClock.Instance)
+        RuntimeInfo.create "Facade Tests"
 
       member x.getLoggerAsync name =
         Job.result (stubLogger Verbose message name)

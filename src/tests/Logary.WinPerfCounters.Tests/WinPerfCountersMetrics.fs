@@ -2,11 +2,8 @@
 
 open Expecto
 open Swensen.Unquote
-
 open TestDSL
-
 open NodaTime
-
 open Logary
 open Logary.Internals
 open Logary.Metrics.WinPerfCounters
