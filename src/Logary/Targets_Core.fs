@@ -1484,5 +1484,8 @@ module File =
     new(callParent : FactoryApi.ParentCallback<_>) =
       Builder(empty, callParent)
 
+    member x.Done() =
+      ! (callParent x)
+
     interface Logary.Target.FactoryApi.SpecificTargetConf with
       member x.Build name = create conf name

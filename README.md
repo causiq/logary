@@ -921,6 +921,23 @@ target start-up in the current service's security context. Should the calls to
 create the folder fail, the target is never started, but will restart
 continuously like any ther Logary target.
 
+```fsharp
+let fileConf =
+  { File.FileConf.create logDir (Naming ("{service}-{host}-{datetime}", "log")) }
+
+// ... withTargets [
+  File.create fileConf "file"
+// ] ...
+```
+
+Or in C#:
+
+```csharp
+.Target<File.Builder>(
+    "file",
+    file => file.Target.Naming("{service}-{host}-{datetime}", "log").Done())
+```
+
 ### Policies & specifications
 
 You can specify a number of **deletion** and **rotation** policies when
