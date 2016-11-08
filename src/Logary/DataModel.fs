@@ -231,6 +231,7 @@ module Value =
     | :? Guid as g             -> String (string g)
     | :? DateTime as dt        -> String (dt.ToUniversalTime().ToString("o"))
     | :? DateTimeOffset as dto -> String (dto.ToString("o"))
+    | :? TimeSpan as ts        -> String (ts.ToString())
     | :? exn as e              -> Object (exceptionToStringValueMap ofObject e)
 
     // Collections
