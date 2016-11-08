@@ -1433,3 +1433,56 @@ module File =
   [<CompiledName "Create">]
   let create conf name =
     TargetUtils.willAwareNamedTarget (Impl.loop conf) name
+    
+  /// Use with LogaryFactory.New(s => s.Target<File.Builder>())
+  type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+    let update (conf' : FileConf) : Builder =
+      Builder(conf', callParent)
+
+    // NOTE: this code is particular to the default configuration values of empty
+
+    member x.BufferInProc() =
+      update { conf with inProcBuffer = true }
+
+    member x.FlushToDisk() =
+      update { conf with flushToDisk = true }
+
+    member x.NoWriteThrough() =
+      update { conf with writeThrough = false }
+
+    member x.Rotate_Gt300GiB_DeleteIfFolder_Gt2GiB_Or_FileAge_Gt2Wks() =
+      update { conf with policies = Policies.``rotate >200 MiB, delete if folder >2 GiB or file age >2 weeks`` }
+
+    member x.Rotate_Gt300GiB_DeleteIfFolder_Gt3GiB() =
+      update { conf with policies = Policies.``rotate >200 MiB, delete if folder >3 GiB`` }
+      
+    member x.Rotate_Gt200MiB_Delete_Never() =
+      update { conf with policies = Policies.``rotate >200 MiB, never delete`` }
+
+    member x.LogFolder folderPath =
+      update { conf with logFolder = folderPath }
+
+    member x.Encoding enc =
+      update { conf with encoding = enc }
+
+    member x.Naming (spec, ext) =
+      update { conf with naming = Naming (spec, ext) }
+
+    member x.FileSystem fs =
+      update { conf with fileSystem = fs }
+
+    member x.Formatter (f : Func<Message, TextWriter, System.Threading.Tasks.Task>) =
+      { conf with
+          formatter = fun m tw -> memo (Job.fromUnitTask (fun () -> f.Invoke(m, tw))) }
+
+    member x.BatchSize size =
+      { conf with batchSize = size }
+
+    member x.Attempts maxAttempts =
+      { conf with attempts = maxAttempts }
+
+    new(callParent : FactoryApi.ParentCallback<_>) =
+      Builder(empty, callParent)
+
+    interface Logary.Target.FactoryApi.SpecificTargetConf with
+      member x.Build name = create conf name
