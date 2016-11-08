@@ -423,8 +423,10 @@ let files =
       let fileConf = FileConf.create folder (Naming ("10K", "log"))
       let targetConf = Target.confTarget "basic2" (File.create fileConf)
 
+      Message.event Debug "Creating test case job" |> logger.logSimple
       job {
         let! instance = targetConf |> Target.init { Fac.emptyRuntime with logger = Fac.literal.Value }
+        Message.event Debug "Starting target server." |> logger.logSimple
         do! Job.start (instance.server (fun _ -> Job.result ()) None)
 
         let acks = ResizeArray<_>(10000)
