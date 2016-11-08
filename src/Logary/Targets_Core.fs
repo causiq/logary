@@ -1222,7 +1222,7 @@ module File =
         | FileSize maxSize :: rest ->
           if maxSize <= size then true else apply state rest
         | FileAge maxAge :: rest ->
-          let created = Instant.FromDateTimeUtc(state.fileInfo.CreationTime.ToUniversalTime())
+          let created = Instant.FromDateTimeUtc(state.fileInfo.CreationTimeUtc)
           let age = created - clock.Now
           if maxAge <= age then true else apply state rest
 
