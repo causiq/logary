@@ -129,7 +129,7 @@ licenseUrl https://www.apache.org/licenses/LICENSE-2.0.html
 projectUrl https://github.com/logary/logary
 iconUrl https://raw.githubusercontent.com/logary/logary-assets/master/graphics/LogaryLogoSquare32x32.png
 files
-  #{p.proj_path_base}/bin/#{Configuration}/#{p.id}.* ==\> lib/net461
+  #{p.proj_path_base}/#{p.output_dll Configuration} ==\> lib/net461
 releaseNotes
   #{n.metadata.release_notes.each_line.reject{|x| x.strip == ""}.join}
 dependencies
