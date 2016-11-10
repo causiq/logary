@@ -83,6 +83,9 @@ Install-Package Logary
         * [Example runs](#example-runs)
           * [inProcBuffer = false, flushToDisk = true, caller awaits all acks at the end](#inprocbuffer--false-flushtodisk--true-caller-awaits-all-acks-at-the-end)
           * [inProcBuffer = false, flushToDisk = true, caller awaits all ack after each](#inprocbuffer--false-flushtodisk--true-caller-awaits-all-ack-after-each)
+          * [inProcBuffer = true, flushToDisk = false, writeThrough=false caller awaits all acks at the end](#inprocbuffer--true-flushtodisk--false-writethroughfalse-caller-awaits-all-acks-at-the-end)
+      * [Work to be done](#work-to-be-done)
+    * [EventStore adapter](#eventstore-adapter)
     * [FsSQL adapter](#fssql-adapter)
     * [Suave adapter](#suave-adapter)
     * [Topshelf adapter](#topshelf-adapter)
@@ -128,6 +131,7 @@ Install-Package Logary
         * [logWithAck – so what's up with Promise?](#logwithack--so-whats-up-with-promise)
         * [How do Promises work with C\#?](#how-do-promises-work-with-c)
     * [License](#license)
+
 
 ## Hello World (C#)
 
