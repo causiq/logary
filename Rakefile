@@ -108,7 +108,7 @@ task :build => [:versioning, :assembly_info, :restore, :paket_replace, :build_qu
 directory 'build/pkg'
 
 task :nugets_quick => [:versioning, 'build/pkg'] do
-  projects = FileList['src/**/*.fsproj'].exclude(/Example|Tests|Spec|Rutta|Health|Logary[.]Facade|sample|packages/)
+  projects = FileList['src/**/*.fsproj'].exclude(/Example|Tests|Spec|Rutta|Health|Logary[.]Facade|sample|packages/i)
   knowns = Set.new(projects.map { |f| Albacore::Project.new f }.map { |p| p.id })
   authors = "Henrik Feldt, Logibit AB"
   projects.each do |f|
