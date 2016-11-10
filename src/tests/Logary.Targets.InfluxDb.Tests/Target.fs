@@ -52,9 +52,8 @@ let writesOverHttp =
     let cts = new CancellationTokenSource()
     let state = new State(cts)
     let cfg =
-      { defaultConfig with bindings = [ HttpBinding.mkSimple HTTP "127.0.0.1" 9011 ]
-                           cancellationToken = cts.Token
-                           logger = Suave.Logging.Loggers.saneDefaultsFor Suave.Logging.LogLevel.Fatal }
+      { defaultConfig with bindings = [ HttpBinding.createSimple HTTP "127.0.0.1" 9011 ]
+                           cancellationToken = cts.Token }
     let listening, srv =
       startWebServerAsync cfg (request (fun r ctx -> async {
         do! Job.toAsync (Ch.give state.req r)

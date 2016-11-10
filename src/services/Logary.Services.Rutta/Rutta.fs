@@ -44,7 +44,7 @@ module Health =
 
     let config =
       { defaultConfig with
-          bindings = [ HttpBinding.mkSimple HTTP ip port ]
+          bindings = [ HttpBinding.createSimple HTTP ip port ]
           cancellationToken = cts.Token }
 
     let ready, handle = startWebServerAsync config app
