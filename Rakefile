@@ -107,7 +107,7 @@ directory 'build/pkg'
 nugets_pack :nugets_quick => :versioning do |p|
   p.configuration = Configuration
   p.files         = FileList['src/**/*.{csproj,fsproj,nuspec}'].
-    exclude(/Example|Tests|Spec|Health|Logary[.]Facade|sample|packages/)
+    exclude(/Example|Tests|Spec|Rutta|Health|Logary[.]Facade|sample|packages/)
   p.out           = 'build/pkg'
   p.exe           = 'tools/NuGet.exe'
   p.with_metadata do |m|
