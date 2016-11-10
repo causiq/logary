@@ -27,7 +27,7 @@ nuget Machine.Specifications.Runner.Console
 nuget NodaTime
 nuget protobuf-net
 nuget RabbitMQ.Client ~> 3
-nuget Suave
+nuget Suave prerelease
 nuget System.Data.SQLite.Core
 nuget Argu
 nuget Unquote

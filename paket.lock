@@ -18,14 +18,14 @@ NUGET
       elmah.corelibrary (>= 1.2.2)
       elmah.io.client (>= 2.0.29)
     EventStore.Client (3.9.2)
-    Expecto (1.1)
+    Expecto (1.1.2)
       Argu (>= 3.2)
       FSharp.Core (>= 3.1.2.5)
-    Expecto.FsCheck (1.1)
-      Expecto (>= 1.1)
+    Expecto.FsCheck (1.1.2)
+      Expecto (>= 1.1.2)
       FsCheck (>= 2.6.2)
       FSharp.Core (>= 3.1.2.5)
-    FAKE (4.43)
+    FAKE (4.45.1)
     FluentMigrator (1.6.2)
     FluentMigrator.Runner (1.6.2)
       FluentMigrator (>= 1.6.2)
@@ -55,8 +55,8 @@ NUGET
     NodaTime (1.3.2)
     protobuf-net (2.1)
     RabbitMQ.Client (3.6.5)
-    Suave (1.1.3)
-      FSharp.Core (>= 3.1.2.5)
+    Suave (2.0.0-rc1)
+      FSharp.Core (>= 4.0.0.1)
     System.Data.SQLite.Core (1.0.103)
     Topshelf (4.0.3)
     Topshelf.FSharp (3.0)
@@ -73,7 +73,7 @@ GITHUB
     RingBuffer.fs (4557d607737e748b54eb6de3ec5e5cd02247b2a5)
       Hopac
   remote: logary/logary
-    src/Logary.Facade/Facade.fs (89b51091038edf74951cfce10ae022d41177bd3f)
+    src/Logary.Facade/Facade.fs (33bfa306ec4b0cc797eac278e6963d333f5dce2d)
 GROUP Examples
 REDIRECTS: ON
 FRAMEWORK: >= NET45

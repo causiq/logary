@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Name>Logary.Tests</Name>
@@ -36,6 +36,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\..\..\paket-files\haf\YoLo\YoLo.fs">
+      <Paket>True</Paket>
+      <Link>paket-files/YoLo.fs</Link>
+    </Compile>
     <ProjectReference Include="../../Logary/Logary.fsproj">
       <Name>Logary</Name>
       <Project>{f7e5b6e8-5d55-4974-9ca7-4c94d810631f}</Project>
@@ -46,10 +50,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="../../../paket-files/haf/YoLo/YoLo.fs">
-      <Link>paket-files/YoLo.fs</Link>
-      <Paket>true</Paket>
-    </Compile>
     <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="TestDSL.fs" />
     <Compile Include="Fac.fs" />

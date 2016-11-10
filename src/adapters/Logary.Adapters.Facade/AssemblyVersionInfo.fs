@@ -8,6 +8,6 @@ open System.Runtime.InteropServices
 [<assembly: AssemblyCopyright("(c) 2016 by Henrik Feldt")>]
 [<assembly: AssemblyVersion("4.0.200.0")>]
 [<assembly: AssemblyFileVersion("4.0.200.0")>]
-[<assembly: AssemblyInformationalVersion("4.0.200.33bfa3")>]
+[<assembly: AssemblyInformationalVersion("4.0.200.dc1120")>]
 [<assembly: AssemblyTitle("Logary.Adapters.Facade")>]
 ()
