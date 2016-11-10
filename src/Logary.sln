@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.25420.1
@@ -42,10 +42,6 @@ EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Heka", "targets\Logary.Targets.Heka\Logary.Targets.Heka.fsproj", "{BC4A5F70-0785-40D6-9EBE-4BB0E47A9EEC}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Heka.Tests", "tests\Logary.Targets.Heka.Tests\Logary.Targets.Heka.Tests.fsproj", "{EDE8A833-C15D-47FE-BFF2-0A24FAA22728}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Suave.Tests", "tests\Logary.Adapters.Suave.Tests\Logary.Adapters.Suave.Tests.fsproj", "{7D72B30B-F720-4BE9-A97A-13E3CF5C11A2}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Suave", "adapters\Logary.Adapters.Suave\Logary.Adapters.Suave.fsproj", "{5255B5AD-9DA9-495C-8B6D-740BB6DC164B}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Topshelf", "adapters\Logary.Adapters.Topshelf\Logary.Adapters.Topshelf.fsproj", "{887CF8ED-4EEE-499B-B8D3-59EDA8A64BBF}"
 EndProject
@@ -173,14 +169,6 @@ Global
 		{EDE8A833-C15D-47FE-BFF2-0A24FAA22728}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EDE8A833-C15D-47FE-BFF2-0A24FAA22728}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EDE8A833-C15D-47FE-BFF2-0A24FAA22728}.Release|Any CPU.Build.0 = Release|Any CPU
-		{7D72B30B-F720-4BE9-A97A-13E3CF5C11A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7D72B30B-F720-4BE9-A97A-13E3CF5C11A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7D72B30B-F720-4BE9-A97A-13E3CF5C11A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7D72B30B-F720-4BE9-A97A-13E3CF5C11A2}.Release|Any CPU.Build.0 = Release|Any CPU
-		{5255B5AD-9DA9-495C-8B6D-740BB6DC164B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{5255B5AD-9DA9-495C-8B6D-740BB6DC164B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{5255B5AD-9DA9-495C-8B6D-740BB6DC164B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{5255B5AD-9DA9-495C-8B6D-740BB6DC164B}.Release|Any CPU.Build.0 = Release|Any CPU
 		{887CF8ED-4EEE-499B-B8D3-59EDA8A64BBF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{887CF8ED-4EEE-499B-B8D3-59EDA8A64BBF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{887CF8ED-4EEE-499B-B8D3-59EDA8A64BBF}.Release|Any CPU.ActiveCfg = Release|Any CPU
