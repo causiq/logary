@@ -905,7 +905,7 @@ And the Rule for it:
 Rule.createForTarget "rabbitmq"
 ```
 
-## File target
+## File target (alpha level)
 
 Logary's file target is primarily geared towards systems that are running on
 single machines as it prints a human-readable format, rather than a machine-
@@ -1122,8 +1122,14 @@ On exit/dispose of Logary, all targets are always flushed.
 [12:32:48 DBG] Flushing to disk.
 ```
 
-In this example, the actual time taken is dominated by the time to generate the 
+In this example, the actual time taken is dominated by the time to generate the
 messages.
+
+### Work to be done
+
+ - Unit test rotation code
+ - Then enable rotation
+ - Harden against exceptions during writes – mock FileSystem
 
 ## EventStore adapter
 
@@ -1145,14 +1151,7 @@ let adapter = FsSqlAdapter logger
 
 ## Suave adapter
 
-Use to extract logs from [Suave.io][suave-site].
-
-```fsharp
-let logger = Logging.getLoggerByName "Suave"
-let adapter = SuaveAdapter logger
-let config = { defaultConfig with logger = adapter }
-startWebServer config (Successful.OK "Hi there")
-```
+Suave from v2.0-rc1 uses the Facade. See the "Using logary in a library" to easily and in an automated manner extract logs and metrics from Suave.
 
 ## Topshelf adapter
 
