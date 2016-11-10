@@ -2,8 +2,11 @@
 require 'bundler/setup'
 require 'pathname'
 require 'albacore'
+require 'albacore/task_types/nugets_pack'
 require 'albacore/tasks/versionizer'
 require 'albacore/tasks/release'
+require './tools/paket_pack'
+include ::Albacore::NugetsPack
 
 Configuration = ENV['CONFIGURATION'] || 'Release'
 LogaryStrongName = (ENV['LOGARY_STRONG_NAME'] && true) || false
@@ -104,20 +107,42 @@ task :build => [:versioning, :assembly_info, :restore, :paket_replace, :build_qu
 
 directory 'build/pkg'
 
-nugets_pack :nugets_quick => :versioning do |p|
-  p.configuration = Configuration
-  p.files         = FileList['src/**/*.{csproj,fsproj,nuspec}'].
-    exclude(/Example|Tests|Spec|Rutta|Health|Logary[.]Facade|sample|packages/)
-  p.out           = 'build/pkg'
-  p.exe           = 'tools/NuGet.exe'
-  p.with_metadata do |m|
-    m.description = 'Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net.'
-    m.authors     = 'Henrik Feldt, Logibit AB'
-    m.copyright   = 'Henrik Feldt, Logibit AB'
-    m.version     = ENV['NUGET_VERSION']
-    m.tags        = 'logging f# log logs metrics metrics.net measure gauge semantic structured'
-    m.license_url = 'https://www.apache.org/licenses/LICENSE-2.0.html'
-    m.icon_url    = 'https://raw.githubusercontent.com/logary/logary-assets/master/graphics/LogaryLogoSquare32x32.png'
+task :nugets_quick => [:versioning, 'build/pkg'] do
+  projects = FileList['src/**/*.fsproj'].exclude(/Example|Tests|Spec|Rutta|Health|Logary[.]Facade|sample|packages/)
+  knowns = Set.new(projects.map { |f| Albacore::Project.new f }.map { |p| p.id })
+  authors = "Henrik Feldt, Logibit AB"
+  projects.each do |f|
+    p = Albacore::Project.new f
+    n = create_nuspec p, knowns
+    d = get_dependencies n
+    m = %{type file
+id #{p.id}
+version #{ENV['NUGET_VERSION']}
+title #{p.id}
+authors #{authors}
+owners #{authors}
+tags logging f# log logs metrics metrics.net measure gauge semantic structured
+description Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net.
+language en-GB
+copyright #{authors}
+licenseUrl https://www.apache.org/licenses/LICENSE-2.0.html
+projectUrl https://github.com/logary/logary
+iconUrl https://raw.githubusercontent.com/logary/logary-assets/master/graphics/LogaryLogoSquare32x32.png
+files
+  #{p.proj_path_base}/bin/#{Configuration}/#{p.id}.* ==\> lib/net461
+releaseNotes
+  #{n.metadata.release_notes.each_line.reject{|x| x.strip == ""}.join}
+dependencies
+  #{d}
+}
+    begin
+      File.open("paket.template", "w") do |template|
+        template.write m
+      end
+      system "tools/paket.exe", %w|pack output build/pkg|, clr_command: true
+    ensure
+      File.delete "paket.template"
+    end
   end
 end
 
