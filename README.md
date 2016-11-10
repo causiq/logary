@@ -71,14 +71,18 @@ Install-Package Logary
     * [InfluxDb Target](#influxdb-target)
     * [RabbitMQ Target](#rabbitmq-target)
       * [Usage](#usage)
-    * [File target](#file-target)
+    * [File target (alpha level)](#file-target-alpha-level)
       * [Configuration](#configuration)
-      * [Policies](#policies)
+      * [Policies &amp; specifications](#policies--specifications)
       * [Performance](#performance)
       * [Handling of errors](#handling-of-errors)
       * [Invariants](#invariants)
       * [Overview of buffers](#overview-of-buffers)
-    * [EventStore adapter](#eventstore-adapter)
+      * [Notes on FILE\_FLAG\_NO\_BUFFERING](#notes-on-file_flag_no_buffering)
+        * [References](#references)
+        * [Example runs](#example-runs)
+          * [inProcBuffer = false, flushToDisk = true, caller awaits all acks at the end](#inprocbuffer--false-flushtodisk--true-caller-awaits-all-acks-at-the-end)
+          * [inProcBuffer = false, flushToDisk = true, caller awaits all ack after each](#inprocbuffer--false-flushtodisk--true-caller-awaits-all-ack-after-each)
     * [FsSQL adapter](#fssql-adapter)
     * [Suave adapter](#suave-adapter)
     * [Topshelf adapter](#topshelf-adapter)
@@ -124,7 +128,6 @@ Install-Package Logary
         * [logWithAck – so what's up with Promise?](#logwithack--so-whats-up-with-promise)
         * [How do Promises work with C\#?](#how-do-promises-work-with-c)
     * [License](#license)
-
 
 ## Hello World (C#)
 
@@ -1098,6 +1101,7 @@ I 2016-11-08T11:14:42.9861770+00:00: Event 4 [Logary.Samples.main]
 I 2016-11-08T11:15:04.7635448+00:00: Event 10000 [Logary.Samples.main]
   number => 10000
 [12:15:04 DBG] Flushing to disk.
+```
 
 With this configuration, the File target would still batch other threads' Messages
 but since this example has a single thread producer, there's only a single Message
