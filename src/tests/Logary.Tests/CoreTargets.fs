@@ -420,18 +420,18 @@ let files =
     Targets.integrationTests "file" createInRandom
 
     testCaseF "log ten thousand messages" <| fun folder file ->
-      Tests.skiptest "Locks up, see https://github.com/haf/expecto/issues/2"
+      //Tests.skiptest "Locks up, see https://github.com/haf/expecto/issues/2"
       let fileConf = FileConf.create folder (Naming ("10K", "log"))
       let targetConf = Target.confTarget "basic2" (File.create fileConf)
 
-      Message.event Debug "Creating test case job" |> logger.logSimple
+      Message.event Debug "Creating test case job." |> logger.logSimple
       job {
         let! instance = targetConf |> Target.init { Fac.emptyRuntime with logger = Fac.literal.Value }
-        Message.event Debug "Starting target server." |> logger.logSimple
         do! Job.start (instance.server (fun _ -> Job.result ()) None)
+        Message.event Debug "Starting target server." |> logger.logSimple
 
         let acks = ResizeArray<_>(10000)
-        Message.event Debug "Starting writing messages into Logary." |> logger.logSimple
+        Message.event Debug (sprintf "Starting writing messages into Logary at %s." folder) |> logger.logSimple
         for i in 1 .. 10000 do
           let! ack =
             event Logary.LogLevel.Info "Event {number}"

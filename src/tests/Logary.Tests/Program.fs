@@ -1,4 +1,4 @@
-﻿module Logary.Tests.Program
+module Logary.Tests.Program
 
 open System.Globalization
 open System.Threading
@@ -16,3 +16,4 @@ let main args =
   Thread.CurrentThread.CurrentCulture   <- enUS
   Thread.CurrentThread.CurrentUICulture <- enUS
   Tests.runTestsInAssembly defaultConfig args
+  //Tests.run defaultConfig.printer CoreTargets.files
