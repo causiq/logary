@@ -1,5 +1,7 @@
-﻿namespace Logary
+﻿namespace Logary.CSharp
 
+open Logary
+open Logary.Message
 open System
 open Hopac
 open System.Threading
@@ -256,7 +258,7 @@ type Funcs =
   [<Extension>]
   static member AndThen (f: Func<_,_>, g: Func<_,_>) =
     Func<_,_>(fun x -> g.Invoke(f.Invoke(x)))
-    
+
   /// Extension method on a func that times the executing of the function.
   [<Extension>]
   static member Time (a: Action<'input>, [<ParamArray>] pointName: string[]) : Func<'input, Message> =
@@ -271,7 +273,7 @@ type Funcs =
       >> Message.time (PointName pointName)
       >> fun resf -> resf >> snd
     Funcs.ToFunc<_, _, _> timef
-    
+
   /// Extension method on a func that times the executing of the function.
   [<Extension>]
   static member Time (a: Action<'a, 'b, 'c>, [<ParamArray>] pointName: string[]) : Func<'a, 'b, 'c, Message> =
@@ -516,15 +518,15 @@ module private MiscHelpers =
     | ct ->
       upcast ct.Register (Action f)
 
-  let inline chooseLogFun logger backpressure flush timeoutMillis =
+  let inline chooseLogFun logger logLevel backpressure flush timeoutMillis =
     if flush then
-      Logger.logWithAck logger
+      Logger.logWithAck logger logLevel
       >> Alt.afterJob id // Alt<Promise<unit>> -> Promise<unit>
       >> Alt.afterFun (fun () -> true) // Promise<unit> -> bool
     elif backpressure then
-      Logger.log logger >> Alt.afterFun (fun _ -> true)
+      Logger.log logger logLevel >> Alt.afterFun (fun _ -> true)
     else
-      Logger.logWithTimeout logger timeoutMillis
+      Logger.logWithTimeout logger timeoutMillis logLevel
 
 module Alt =
 
@@ -562,17 +564,21 @@ type LoggerExtensions =
   /// If not using backpressure, the returned task yields after either 5 seconds or
   /// when the message is accepted to all targets' ring buffers.
   /// Flush implies backpressure.
+  ///
+  /// Remember to use the transform function to add an event template.
   [<Extension>]
   static member Log (logger : Logger,
-                     message : Message,
+                     logLevel : LogLevel,
+                     transform : Func<Message, Message>,
                      [<Optional; DefaultParameterValue(false)>] backpressure : bool, // #96
                      [<Optional; DefaultParameterValue(false)>] flush : bool, // #96
                      [<Optional; DefaultParameterValue(5000u)>] timeoutMillis : uint32)
                     : Task =
     // https://github.com/Microsoft/visualfsharp/issues/96
     let timeoutMillis = if timeoutMillis = 0u then 5000u else timeoutMillis
-    let logFn = MiscHelpers.chooseLogFun logger backpressure flush timeoutMillis
-    upcast Alt.toTask CancellationToken.None (logFn message)
+    let logFn = MiscHelpers.chooseLogFun logger logLevel backpressure flush timeoutMillis
+    let transform = Funcs.ToFSharpFunc transform
+    upcast Alt.toTask CancellationToken.None (eventX "EVENT" >> transform |> logFn)
 
   // corresponds to: log, logWithTimeout, logWithAck
 
@@ -597,16 +603,16 @@ type LoggerExtensions =
     let timeoutMillis = if timeoutMillis = 0u then 5000u else timeoutMillis
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
     let fields = if isNull fieldsObj then obj() else fieldsObj
-    let logFn = MiscHelpers.chooseLogFun logger backpressure flush timeoutMillis
+    let logFn = MiscHelpers.chooseLogFun logger level backpressure flush timeoutMillis
 
-    let message =
-      Message.event level formatTemplate
-      |> Message.setFieldsFromObject fields
-      |> if isNull exn then id else Message.addExn exn
-      |> transform
+    let messageFactory =
+      eventX formatTemplate
+      >> setFieldsFromObject fields
+      >> if isNull exn then id else Message.addExn exn
+      >> transform
 
-    upcast Alt.toTask CancellationToken.None (logFn message)
-    
+    upcast Alt.toTask CancellationToken.None (logFn messageFactory)
+
   /// Log an event, but don't await all targets to flush. WITH back-pressure by default.
   /// Backpressure implies the caller will wait until its message is in the buffer.
   [<Extension>]
@@ -615,9 +621,9 @@ type LoggerExtensions =
                                formatTemplate : string,
                                [<ParamArray>] args : obj[])
                               : Task =
-    let fields = Message.extractFields formatTemplate args
-    let message = Message.event level formatTemplate |> Message.setFieldValuesArray fields
-    let call = Logger.log logger message |> Alt.afterFun (fun _ -> true)
+    let fields = extractFields formatTemplate args
+    let messageFactory = eventX formatTemplate >> setFieldValuesArray fields
+    let call = Logger.log logger level messageFactory |> Alt.afterFun (fun _ -> true)
     upcast Alt.toTask CancellationToken.None call
 
   /// Log a gauge, but don't await all targets to flush. With NO back-pressure by default.
@@ -628,7 +634,6 @@ type LoggerExtensions =
   /// Flush implies backpressure.
   [<Extension>]
   static member LogGauge(logger : Logger,
-                         level : LogLevel,
                          value : Value,
                          units : Units,
                          formatTemplate : string,
@@ -642,14 +647,15 @@ type LoggerExtensions =
     let timeoutMillis = if timeoutMillis = 0u then 5000u else timeoutMillis
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
     let fields = if isNull fields then obj() else fields
-    let logFn = MiscHelpers.chooseLogFun logger backpressure flush timeoutMillis
 
     let message =
       Message.gaugeWithUnit logger.name units value
       |> Message.setFieldsFromObject fields
       |> Message.setField "template" formatTemplate // overwrites any field named "template"
 
-    Alt.toTask CancellationToken.None (logFn message)
+    let logFn = MiscHelpers.chooseLogFun logger message.level backpressure flush timeoutMillis
+
+    Alt.toTask CancellationToken.None (logFn (fun _ -> message))
 
   // corresponds to: logSimple
 
@@ -672,42 +678,11 @@ type LoggerExtensions =
   /// be retracted by cancelling; however if you await the inner task (the promise) then
   /// the `promiseCt` allows you to cancel that await.
   [<Extension>]
-  static member LogWithAck (logger, message, bufferCt, promiseCt) : Task<Task> =
-    Alt.toTasks bufferCt promiseCt (Logger.logWithAck logger message)
-
-  [<Extension>]
-  static member LogVerbose (logger,
-                            messageFactory : Func<LogLevel, Message>,
-                            bufferCt)
-                           : Task =
-    let factory = Funcs.ToFSharpFunc messageFactory
-    upcast Alt.toTask bufferCt (Logger.logVerbose logger factory)
-
-  [<Extension>]
-  static member LogVerboseWithAck (logger,
-                                   messageFactory : Func<LogLevel, Message>,
-                                   bufferCt,
-                                   promiseCt)
-                                  : Task<Task> =
-    let factory = Funcs.ToFSharpFunc messageFactory
-    Alt.toTasks bufferCt promiseCt (Logger.logVerboseWithAck logger factory)
-
-  [<Extension>]
-  static member LogDebug (logger,
-                          messageFactory : Func<LogLevel, Message>,
-                          bufferCt)
-                         : Task =
-    let factory = Funcs.ToFSharpFunc messageFactory
-    upcast Alt.toTask bufferCt (Logger.logDebug logger factory)
-
-  [<Extension>]
-  static member LogDebugWithAck (logger,
-                                 messageFactory : Func<LogLevel, Message>,
-                                 bufferCt,
-                                 promiseCt)
-                                : Task<Task> =
-    let factory = Funcs.ToFSharpFunc messageFactory
-    Alt.toTasks bufferCt promiseCt (Logger.logDebugWithAck logger factory)
+  static member LogWithAck (logger, level, transform : Func<Message, Message>, bufferCt, promiseCt) : Task<Task> =
+    let messageFactory =
+      eventX "EVENT"
+      >> Funcs.ToFSharpFunc transform
+    Alt.toTasks bufferCt promiseCt (Logger.logWithAck logger level messageFactory)
 
   // TODO: timeAsyncWithAck, timeAsyncSimple
   // TODO: timeJobWithAck, timeJobSimple

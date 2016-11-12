@@ -777,6 +777,7 @@ module File =
   open Hopac
   open Hopac.Infixes
   open Logary
+  open Logary.Message
   open Logary.Target
   open Logary.Internals
   open FileSystem
@@ -1248,7 +1249,7 @@ module File =
       Janitor.shutdown state.janitor
 
     /// Writes all passed requests to disk, handles acks and flushes.
-    let writeRequests ilogger conf state (reqs : TargetMessage[]) =
+    let writeRequests (ilogger : Logger) conf state (reqs : TargetMessage[]) =
       // `completed` can throw
       let ack (completed, ack) = completed >>=. IVar.fill ack ()
       let ackAll acks = acks |> Seq.map ack |> Job.conIgnore
@@ -1266,10 +1267,10 @@ module File =
           acks.Add (conf.formatter message state.writer, ack)
           // Invariant: always flush fatal messages.
           if message.level = Fatal then
-            Message.event Debug "Got fatal message; scheduling disk flush." |> Logger.logSimple ilogger
+            ilogger.debug (eventX "Got fatal message; scheduling disk flush.") |> start
             forceFlush <- true
         | Flush (ackCh, nack) ->
-          Message.event Debug "Scheduling disk flush." |> Logger.logSimple ilogger
+          ilogger.debug (eventX "Scheduling disk flush.") |> start
           flushes.Add (ackCh, nack)
           // Invariant: calling Flush forces a flush to disk.
           forceFlush <- true
@@ -1286,7 +1287,8 @@ module File =
       let flushPageCache = // Invariant: only schedule after all messages written
         memo <|
           if conf.flushToDisk || forceFlush then
-            flushToDisk state >>=. (Message.event Debug "Flushed to disk." |> Logger.log ilogger)
+            flushToDisk state >>=.
+            ilogger.debug (eventX "Flushed to disk.")
           else
             Job.result ()
 
@@ -1349,7 +1351,7 @@ module File =
       and running (state : State) : Job<unit> =
         Alt.choose [
           shutdown ^=> fun ack ->
-            Message.event Debug "Shutting down file target (starting shutdownState)" |> Logger.log ri.logger >>=.
+            ri.logger.debug (eventX "Shutting down file target (starting shutdownState)") >>=.
             shutdownState state >>=.
             ack *<= ()
 
@@ -1361,10 +1363,10 @@ module File =
               | Choice1Of2 () ->
                 checking state
               | Choice2Of2 err ->
-                Message.event Error "IO Exception while writing to file. Batch size is {batchSize}."
-                |> Message.setField "batchSize" conf.batchSize
-                |> Message.addExn err
-                |> Logger.logWithAck ri.logger
+                ri.logger.logWithAck Error (
+                  eventX "IO Exception while writing to file. Batch size is {batchSize}."
+                  >> setField "batchSize" conf.batchSize
+                  >> addExn err)
                 >>= id
                 >>=. saveWill (reqs, 1us)
                 >>=. Job.raises err
@@ -1413,17 +1415,17 @@ module File =
             | Choice1Of2 () ->
               checking state
             | Choice2Of2 ex ->
-              Message.event Error "Attempt {attempts} failed, trying again shortly."
-              |> Message.setField "attempts" recoverCount
-              |> Logger.logWithAck ri.logger
+              ri.logger.logWithAck Error (
+                eventX "Attempt {attempts} failed, trying again shortly."
+                >> Message.setField "attempts" recoverCount)
               >>= id
               >>=. saveWill (lastBatch, recoverCount + 1us)
               >>=. Job.raises ex
 
         | recoverCount ->
-          Message.event Fatal "Could not recover in {attempts} attempts."
-          |> Message.setField "attempts" recoverCount
-          |> Logger.logWithAck ri.logger
+          ri.logger.logWithAck Fatal (
+            eventX "Could not recover in {attempts} attempts."
+            >> Message.setField "attempts" recoverCount)
           >>= id
           >>=. Job.raises (Exception "File recovery failed, crashing out.")
 

@@ -12,6 +12,8 @@ NUGET
     Common.Logging (3.3.1)
       Common.Logging.Core (>= 3.3.1)
     Common.Logging.Core (3.3.1)
+    DVar (0.1)
+      FSharp.Core (>= 4.0.0.1)
     elmah.corelibrary (1.2.2)
     elmah.io.client (2.0.29)
     elmah.io.core (2.0.29)
@@ -73,7 +75,7 @@ GITHUB
     RingBuffer.fs (4557d607737e748b54eb6de3ec5e5cd02247b2a5)
       Hopac
   remote: logary/logary
-    src/Logary.Facade/Facade.fs (33bfa306ec4b0cc797eac278e6963d333f5dce2d)
+    src/Logary.Facade/Facade.fs (8a5f623a707b7c1958df4b07ebbd3cc67e9bfc7e)
 GROUP Examples
 REDIRECTS: ON
 FRAMEWORK: >= NET45

@@ -853,6 +853,9 @@ with
   static member ToJson (PointName xs) : Json<unit> =
     Json.Lens.setPartial Json.Array_ (xs |> Array.map Json.String |> List.ofArray)
 
+  static member ToValue (PointName xs) : Value<unit> =
+    Value.setLensPartial Value.Array_ (xs |> Array.map Value.String |> List.ofArray)
+
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module PointName =
 

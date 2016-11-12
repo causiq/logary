@@ -1,5 +1,3 @@
-/// For information on what F# StringFormat<'T> takes as arguments see
-/// http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
 namespace Logary.Internals
 
 open System
@@ -46,24 +44,23 @@ module internal Logging =
       member x.level: LogLevel =
         x.level
 
-      member x.logVerboseWithAck msgFactory =
-        if Verbose >= x.level then
-          let logger : Logger = upcast x
-          logger.logWithAck (msgFactory Verbose) // delegate down
+      member x.log logLevel messageFactory =
+        if logLevel >= x.level then
+          let me : Logger = upcast x
+          me.logWithAck logLevel messageFactory // delegate down
+          |> Job.Ignore
+          |> start
+        else
+          ()
+
+      member x.logWithAck logLevel messageFactory : Alt<Promise<unit>> =
+        if logLevel >= x.level then
+          let message = messageFactory logLevel
+          x.targets
+          |> List.choose (fun (accept, t) -> if accept message then Some t else None)
+          |> logWithAck message
         else
           instaPromise
-
-      member x.logDebugWithAck msgFactory =
-        if Debug >= x.level then
-          let logger : Logger = upcast x
-          logger.logWithAck (msgFactory Debug) // delegate down
-        else
-          instaPromise
-
-      member x.logWithAck message : Alt<Promise<unit>> =
-        x.targets
-        |> List.choose (fun (accept, t) -> if accept message then Some t else None)
-        |> logWithAck message
 
       member x.logSimple message : unit =
         x.targets
@@ -85,23 +82,19 @@ type InternalLogger =
       x.trgs |> Seq.map Target.shutdown |> Job.conIgnore
 
   interface Logger with
-    member x.logVerboseWithAck msgFactory =
-      if Verbose >= x.lvl then
-        let logger : Logger = upcast x
-        logger.logWithAck (msgFactory Verbose) // delegate down
+    member x.log logLevel messageFactory =
+      if logLevel >= x.lvl then
+        let me : Logger = upcast x
+        me.logWithAck logLevel messageFactory // delegate down
+        |> Job.Ignore
+        |> start
       else
-        Logging.instaPromise
+        ()
 
-    member x.logDebugWithAck msgFactory =
-      if Debug >= x.lvl then
-        let logger : Logger = upcast x
-        logger.logWithAck (msgFactory Debug) // delegate down
-      else
-        Logging.instaPromise
-
-    member x.logWithAck message =
-      if message.level >= x.lvl then
-        x.trgs |> Logging.logWithAck message
+    member x.logWithAck logLevel messageFactory =
+      if logLevel >= x.lvl then
+        let message = messageFactory logLevel
+        Logging.logWithAck message x.trgs
       else
         Logging.instaPromise
 
