@@ -32,6 +32,13 @@ module internal Logging =
     | targets ->
       message |> send targets
 
+  let inline ensureName (logger : Logger) (msg : Message) =
+    match msg.name with
+    | PointName [||] ->
+      Message.setName logger.name msg
+    | _  ->
+      msg
+
   type LoggerInstance =
     { name    : PointName
       targets : (MessageFilter * TargetInstance) list
@@ -56,7 +63,7 @@ module internal Logging =
 
       member x.logWithAck logLevel messageFactory : Alt<Promise<unit>> =
         if logLevel >= x.level then
-          let message = messageFactory logLevel
+          let message = messageFactory logLevel |> ensureName x
           x.targets
           |> List.choose (fun (accept, t) -> if accept message then Some t else None)
           |> logWithAck message

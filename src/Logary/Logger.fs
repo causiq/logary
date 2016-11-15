@@ -64,13 +64,6 @@ module Logger =
   // Logging methods //
   /////////////////////
 
-  let private ensureName (logger : Logger) (msg : Message) =
-    match msg.name with
-    | PointName [||] ->
-      Message.setName logger.name msg
-    | _  ->
-      msg
-
   let private ifLevel (logger : Logger) level otherwise f =
     if logger.level <= level then
       f ()
@@ -82,7 +75,7 @@ module Logger =
 
   /// Log a message, but don't await all targets to flush.
   let log (logger : Logger) logLevel messageFactory : Alt<unit> =
-    logger.log logLevel (messageFactory >> ensureName logger)
+    logger.log logLevel messageFactory
 
   let private simpleTimeout millis loggerName =
     timeOutMillis millis
@@ -116,7 +109,7 @@ module Logger =
   /// the message properly flushed to all targets' underlying "storage". Targets
   /// whose rules do not match the message will not be awaited.
   let logWithAck (logger : Logger) logLevel messageFactory : Alt<Promise<unit>> =
-    logger.logWithAck logLevel (messageFactory >> ensureName logger)
+    logger.logWithAck logLevel messageFactory
 
   /// Run the function `f` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Seconds. As an exception to the rule,
@@ -300,11 +293,9 @@ module Logger =
           Duration.FromTimeSpan sw.Elapsed
 
         member x.logWithAck logLevel messageFactory =
-          // TODO: consider message naming
           logger.logWithAck logLevel messageFactory
 
         member x.log logLevel messageFactory =
-          // TODO: consider message naming
           logger.log logLevel messageFactory
 
         member x.level =

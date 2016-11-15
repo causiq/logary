@@ -124,36 +124,34 @@ let tests =
         [ { Fac.emptyRule with messageFilter = (fun msg -> msg.name = PointName.ofSingle "1") ; target = "tw" }
           { Fac.emptyRule with messageFilter = (fun msg -> msg.name = PointName.ofSingle "2") ; target = "tw" } ]
 
-      let targets =
-        [ Target.confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.create(out, out)) ]
+      let target =
+        Target.confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.create(out, out))
 
-      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary |> run
+      let logary = confLogary "tests" |> withRules rules |> withTarget target |> validate |> runLogary |> run
       try
-        job {
-          // when
-          let get = Registry.getLogger logary.registry
-          let! no1 = PointName.ofSingle "1" |> get
-          let! no2 = PointName.ofSingle "2" |> get
-          let! no3 = PointName.ofSingle "3" |> get
+        // when
+        let get = PointName.parse >> Registry.getLogger logary.registry
+        let no1 = "1" |> get |> run
+        let no2 = "2" |> get |> run
+        let no3 = "3" |> get |> run
 
-          // 1 and 2 should go through, not 3
-          do! no1.debug (eventX "first")
-          do! no2.debug (eventX "second")
-          do! no3.debug (eventX "third")
+        // 1 and 2 should go through, not 3
+        no1.debug (eventX "first") |> run
+        no2.debug (eventX "second") |> run
+        no3.debug (eventX "third") |> run
 
-          // wait for logging to complete; then
-          let! _ = Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000
+        // wait for logging to complete; then
+        let _ = (Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000) |> run
 
-          (because "it was logged to all three, but rule should stop third" <| fun () ->
-            out.ToString())
-          |> should contain "first"
-          |> should contain "second"
-          |> shouldNot contain "third"
-          |> should' (fulfil <| fun str -> "only single line 'first'", Regex.Matches(str, "first").Count = 1)
-          |> should' (fulfil <| fun str -> "only single line 'second'", Regex.Matches(str, "second").Count = 1)
-          |> should' (fulfil <| fun str -> "zero matches for 'third'", Regex.Matches(str, "third").Count = 0)
-          |> thatsIt
-        } |> run
+        (because "it was logged to all three, but rule should stop third" <| fun () ->
+          out.ToString())
+        |> should contain "first"
+        |> should contain "second"
+        |> shouldNot contain "third"
+        |> should' (fulfil <| fun str -> "only single line 'first'", Regex.Matches(str, "first").Count = 1)
+        |> should' (fulfil <| fun str -> "only single line 'second'", Regex.Matches(str, "second").Count = 1)
+        |> should' (fulfil <| fun str -> "zero matches for 'third'", Regex.Matches(str, "third").Count = 0)
+        |> thatsIt
       finally
         finaliseLogary logary
 
