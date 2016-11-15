@@ -1,4 +1,4 @@
-﻿module Logary.Tests.CoreTargets
+module Logary.Tests.CoreTargets
 
 open System
 open System.Text.RegularExpressions
@@ -427,8 +427,8 @@ let files =
       Message.event Debug "Creating test case job." |> logger.logSimple
       job {
         let! instance = targetConf |> Target.init { Fac.emptyRuntime with logger = Fac.literal.Value }
-        do! Job.start (instance.server (fun _ -> Job.result ()) None)
         Message.event Debug "Starting target server." |> logger.logSimple
+        do! Job.start (instance.server (fun _ -> Job.result ()) None)
 
         let acks = ResizeArray<_>(10000)
         Message.event Debug (sprintf "Starting writing messages into Logary at %s." folder) |> logger.logSimple
