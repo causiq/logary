@@ -15,5 +15,5 @@ let main args =
   Expecto.Logging.Global.initialise { Expecto.Logging.Global.DefaultConfig with getLogger = fun _ -> adapter }
   Thread.CurrentThread.CurrentCulture   <- enUS
   Thread.CurrentThread.CurrentUICulture <- enUS
-  //Tests.runTestsInAssembly defaultConfig args
-  Tests.run defaultConfig.printer Rule.tests
+  Tests.runTestsInAssembly defaultConfig args
+  //Tests.run defaultConfig.printer Rule.tests
