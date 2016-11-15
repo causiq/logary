@@ -632,6 +632,7 @@ type LoggerExtensions =
   /// If not using backpressure, the returned task yields after either 5 seconds or
   /// when the message is accepted to all targets' ring buffers.
   /// Flush implies backpressure.
+  /// Returns true of the log was accepted to Logary.
   [<Extension>]
   static member LogGauge(logger : Logger,
                          value : Value,
