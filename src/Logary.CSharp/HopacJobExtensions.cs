@@ -1,7 +1,5 @@
 ﻿using System.Threading.Tasks;
 using Hopac;
-using Logary.Internals;
-using Logary.CSharp;
 
 namespace Logary
 {
@@ -17,7 +15,7 @@ namespace Logary
         /// </summary>
         public static Task<T> ToTask<T>(this Job<T> job)
         {
-            return CSharp.ToTask(job);
+            return CSharp.CSharp.ToTask(job);
         }
     }
 }
