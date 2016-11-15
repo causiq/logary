@@ -9,7 +9,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>fe1bc08f-a41a-41cc-9f03-996ea9b3b477</ProjectGuid>
     <OutputType>Library</OutputType>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.3.1.0</TargetFSharpCoreVersion>
     <DocumentationFile>bin\$(Configuration)\Logary.Targets.RabbitMQ.xml</DocumentationFile>
   </PropertyGroup>

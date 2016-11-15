@@ -8,7 +8,7 @@
     <OutputType>Library</OutputType>
     <RootNamespace>Logary.Adapters.log4net</RootNamespace>
     <AssemblyName>Logary.Adapters.log4net</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
