@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -12,24 +12,20 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug</OutputPath>
+    <OutputPath>bin/Debug</OutputPath>
     <DefineConstants>DEBUG</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <ConsolePause>false</ConsolePause>
-    <PlatformTarget>
-    </PlatformTarget>
+    <DocumentationFile>bin/Debug/Logary.Adapters.FsSql.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugSymbols>false</DebugSymbols>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release</OutputPath>
-    <DefineConstants>
-    </DefineConstants>
+    <OutputPath>bin/Release</OutputPath>
     <ErrorReport>prompt</ErrorReport>
     <ConsolePause>false</ConsolePause>
     <GenerateTailCalls>true</GenerateTailCalls>
-    <PlatformTarget>
-    </PlatformTarget>
+    <DocumentationFile>bin/Release/Logary.Adapters.FsSql.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>

@@ -1,11 +1,11 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{64a5b3b2-0f73-44b5-a178-c66a9db830d6}</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>Logary.Targets.Logstash</RootNamespace>
+    <RootNamespace>Logary.Targets.ElasticSearch</RootNamespace>
     <AssemblyName>Logary.Targets.ElasticSearch</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
   </PropertyGroup>
@@ -16,8 +16,7 @@
     <DefineConstants>DEBUG</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <ConsolePause>false</ConsolePause>
-    <PlatformTarget>
-    </PlatformTarget>
+    <DocumentationFile>bin\Debug\Logary.Targets.ElasticSearch.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugSymbols>false</DebugSymbols>
@@ -26,10 +25,7 @@
     <ErrorReport>prompt</ErrorReport>
     <ConsolePause>false</ConsolePause>
     <GenerateTailCalls>true</GenerateTailCalls>
-    <PlatformTarget>
-    </PlatformTarget>
-    <DefineConstants>
-    </DefineConstants>
+    <DocumentationFile>bin\Release\Logary.Targets.ElasticSearch.xml</DocumentationFile>
     <NoWarn>2003</NoWarn>
   </PropertyGroup>
   <PropertyGroup>

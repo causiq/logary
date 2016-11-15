@@ -130,7 +130,7 @@ projectUrl https://github.com/logary/logary
 iconUrl https://raw.githubusercontent.com/logary/logary-assets/master/graphics/LogaryLogoSquare32x32.png
 files
   #{p.proj_path_base}/#{p.output_dll Configuration} ==\> lib/net452
-  #{p.proj_path_base}/#{p.output_xml Configuration} ==\> lib/net452
+  #{p.proj_path_base}/#{p.output_dll(Configuration).to_s.sub('.dll', '.xml')} ==\> lib/net452
 releaseNotes
   #{n.metadata.release_notes.each_line.reject{|x| x.strip == ""}.join}
 dependencies

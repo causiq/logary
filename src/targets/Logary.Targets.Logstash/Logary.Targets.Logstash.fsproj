@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -16,8 +16,7 @@
     <DefineConstants>DEBUG</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <ConsolePause>false</ConsolePause>
-    <PlatformTarget>
-    </PlatformTarget>
+    <DocumentationFile>bin\Debug\Logary.Targets.Logstash.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugSymbols>false</DebugSymbols>
@@ -26,10 +25,7 @@
     <ErrorReport>prompt</ErrorReport>
     <ConsolePause>false</ConsolePause>
     <GenerateTailCalls>true</GenerateTailCalls>
-    <PlatformTarget>
-    </PlatformTarget>
-    <DefineConstants>
-    </DefineConstants>
+    <DocumentationFile>bin\Release\Logary.Targets.Logstash.xml</DocumentationFile>
     <NoWarn>2003</NoWarn>
   </PropertyGroup>
   <PropertyGroup>

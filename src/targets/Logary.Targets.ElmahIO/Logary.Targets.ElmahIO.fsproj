@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Name>Logary.Targets.Elmah.Io</Name>
@@ -20,6 +20,7 @@
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
+    <DocumentationFile>bin\Debug\Logary.Targets.ElmahIO.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>PdbOnly</DebugType>
@@ -28,6 +29,7 @@
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
+    <DocumentationFile>bin\Release\Logary.Targets.ElmahIO.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\..\..\paket-files\haf\YoLo\YoLo.fs">
