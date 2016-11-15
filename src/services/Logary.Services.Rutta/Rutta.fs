@@ -168,10 +168,9 @@ module Router =
     | datas ->
       let message = Logary.Targets.Shipper.Serialisation.deserialise datas
 
-      message
-      |> Logger.logWithAck logger
+      Logger.logWithAck logger message.level (fun _ -> message)
       |> run
-      |> queue
+      |> start
 
       recvLoop receiver logger
 

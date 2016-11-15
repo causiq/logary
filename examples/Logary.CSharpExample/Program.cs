@@ -2,8 +2,8 @@
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using NodaTime;
-using Logary;
 using Logary.Configuration;
+using Logary.CSharp;
 using Logary.Metrics;
 using Logary.Targets;
 
@@ -116,6 +116,10 @@ namespace Logary.CSharpExample
                                     .Type("logs") // index-name
                                     .Done()
                             )
+                            //.Target<File.Builder>(
+                            //    "file",
+                            //    conf => conf
+                            //)
                             .Target<InfluxDb.Builder>("influx",
                                                       conf => conf.Target.DB("http://influxdb.service:8086").Done())
                 ).Result)

@@ -12,18 +12,13 @@ let stubLogger (minLevel : LogLevel)
                name =
 
   { new Logger with
-      member x.logVerboseWithAck msgFactory =
-        x.logWithAck (msgFactory Verbose)
+      member x.log level msgFactory =
+        x.logWithAck level msgFactory
+        |> Alt.afterFun (fun _ -> ())
 
-      member x.logDebugWithAck msgFactory =
-        x.logWithAck (msgFactory Debug)
-
-      member x.logWithAck msg =
-        message := msg
+      member x.logWithAck level messageFactory =
+        message := messageFactory level
         Alt.always (Promise (()))
-
-      member x.logSimple msg =
-        message := msg
 
       member x.level =
         minLevel
