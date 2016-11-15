@@ -1,4 +1,4 @@
-﻿module Logary.Tests.CoreTargets
+module Logary.Tests.CoreTargets
 
 open System
 open System.Text.RegularExpressions
@@ -420,15 +420,15 @@ let files =
     Targets.integrationTests "file" createInRandom
 
     testCaseF "log ten thousand messages" <| fun folder file ->
-      //Tests.skiptest "Locks up, see https://github.com/haf/expecto/issues/2"
+      Tests.skiptest "Locks up, see https://github.com/haf/expecto/issues/2"
       let fileConf = FileConf.create folder (Naming ("10K", "log"))
       let targetConf = Target.confTarget "basic2" (File.create fileConf)
 
       Message.event Debug "Creating test case job." |> logger.logSimple
       job {
         let! instance = targetConf |> Target.init { Fac.emptyRuntime with logger = Fac.literal.Value }
-        do! Job.start (instance.server (fun _ -> Job.result ()) None)
         Message.event Debug "Starting target server." |> logger.logSimple
+        do! Job.start (instance.server (fun _ -> Job.result ()) None)
 
         let acks = ResizeArray<_>(10000)
         Message.event Debug (sprintf "Starting writing messages into Logary at %s." folder) |> logger.logSimple

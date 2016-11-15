@@ -103,22 +103,16 @@ module LoggerAdapter =
     // Codomains of these three functions are equal to codomains of Facade's
     // functions:
 
-    let logWithAck (level : LogLevel) (msgFactory : LogLevel -> Message) : Async<unit> =
-      if logger.level <= level then
-        // a placeholder for the Promise ack from Logary proper
-        let prom = IVar ()
+    let logWithAck (level : LogLevel) (messageFactory : LogLevel -> Message) : Async<unit> =
+      // a placeholder for the Promise ack from Logary proper
+      let prom = IVar ()
 
-        // kick off the logging no matter what
-        let message = msgFactory level
-        start (Logger.logWithAck logger message ^=> IVar.fill prom)
+      // kick off the logging no matter what
+      start (Logger.logWithAck logger level messageFactory ^=> IVar.fill prom)
 
-        // take the promise from within the IVar and make it an Async (which is
-        // "hot" in that starting it will return "immediately" and be idempotent)
-        (prom ^=> id) |> Job.toAsync
-
-      else
-        // Since the level was too low for the logger, don't send to Logary
-        async.Return ()
+      // take the promise from within the IVar and make it an Async (which is
+      // "hot" in that starting it will return "immediately" and be idempotent)
+      (prom ^=> id) |> Job.toAsync
 
     let log level msgFactory : unit =
       // start immediate because in the normal case we can put the Message

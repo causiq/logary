@@ -64,8 +64,14 @@ let confTarget name (factory : string -> TargetConf) =
   factory name
 
 /// Initialises the target with a runtime and a target configuration, yielding a
-/// TargetInstance in return which contains the running target.
+/// TargetInstance in return which contains the running target. This function
+/// also configured the name of the internal logger.
 let init runtime (conf : TargetConf) : Job<TargetInstance> =
+  let runtime =
+    let (PointName path) = conf.name
+    let pn = PointName [| yield "Logary"; yield! path |]
+    { runtime with logger = runtime.logger |> Logger.apply (Message.setName pn) }
+
   conf.initer runtime
 
 /// Send the target a message, returning the same instance as was passed in when

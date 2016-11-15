@@ -13,6 +13,7 @@ open Hopac
 open Hopac.Infixes
 open NodaTime
 open Logary
+open Logary.CSharp
 open Logary.Metric
 open Logary.Internals
 open Logary.Configuration

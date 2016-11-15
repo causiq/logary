@@ -20,11 +20,7 @@ open NodaTime
 open Logary.Targets.File
 
 let fileConf =
-  { File.FileConf.create logDir (Naming ("{service}-{datetime}-haf", "log")) with
-      inProcBuffer = true
-      flushToDisk = false
-      writeThrough = false
-      policies =  Rotation.Rotate ([ FileAge (Duration.FromSeconds 1L) ], []) }
+  { File.FileConf.create logDir (Naming ("{service}-{host}-{datetime}", "log")) }
 
 let logary =
   withLogaryManager "Program-fsx" (

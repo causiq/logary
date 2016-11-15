@@ -10,7 +10,7 @@
     <RootNamespace>Logary</RootNamespace>
     <AssemblyName>Logary.CSharp</AssemblyName>
     <Name>Logary.CSharp</Name>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">

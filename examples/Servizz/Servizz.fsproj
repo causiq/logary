@@ -6,7 +6,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Servizz</RootNamespace>
     <AssemblyName>Servizz</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

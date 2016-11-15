@@ -16,4 +16,4 @@ let main args =
   Thread.CurrentThread.CurrentCulture   <- enUS
   Thread.CurrentThread.CurrentUICulture <- enUS
   Tests.runTestsInAssembly defaultConfig args
-  //Tests.run defaultConfig.printer CoreTargets.files
+  //Tests.run defaultConfig.printer Rule.tests

@@ -108,7 +108,7 @@ task :build => [:versioning, :assembly_info, :restore, :paket_replace, :build_qu
 directory 'build/pkg'
 
 task :nugets_quick => [:versioning, 'build/pkg'] do
-  projects = FileList['src/**/*.fsproj'].exclude(/Example|Tests|Spec|Rutta|Health|Logary[.]Facade|sample|packages/i)
+  projects = FileList['src/**/*.{csproj,fsproj}'].exclude(/Example|Tests|Spec|Rutta|Health|Logary[.]Facade|sample|packages/i)
   knowns = Set.new(projects.map { |f| Albacore::Project.new f }.map { |p| p.id })
   authors = "Henrik Feldt, Logibit AB"
   projects.each do |f|
@@ -129,7 +129,7 @@ licenseUrl https://www.apache.org/licenses/LICENSE-2.0.html
 projectUrl https://github.com/logary/logary
 iconUrl https://raw.githubusercontent.com/logary/logary-assets/master/graphics/LogaryLogoSquare32x32.png
 files
-  #{p.proj_path_base}/#{p.output_dll Configuration} ==\> lib/net461
+  #{p.proj_path_base}/#{p.output_dll Configuration} ==\> lib/net452
 releaseNotes
   #{n.metadata.release_notes.each_line.reject{|x| x.strip == ""}.join}
 dependencies

@@ -4,6 +4,8 @@ open System
 open Hopac
 open Hopac.Infixes
 open NodaTime
+open Logary
+open Logary.Message
 
 type Policy =
   | Restart
@@ -11,18 +13,14 @@ type Policy =
   | Delayed of Duration
 
 type MinionInfo =
-  {
-    name     : PointName
+  { name     : PointName
     policy   : Policy
     job      : (obj -> Job<unit>) -> obj option -> Job<unit>
-    shutdown : Ch<IVar<unit>>
-  }
+    shutdown : Ch<IVar<unit>> }
 
 type private MinionState =
-  {
-    info : MinionInfo
-    state : obj option
-  }
+  { info : MinionInfo
+    state : obj option }
 
 type private JobId =
   | JobId of int
@@ -35,12 +33,10 @@ type private Reason =
   | Complete
 
 type private SupervisorState =
-  {
-    ident     : int
+  { ident     : int
     minions   : Map<JobId, MinionState>
     processes : Map<JobId, Alt<JobId * Reason>>
-    delayed   : Map<PointName, Alt<PointName * (SupervisorState -> Job<SupervisorState>)>>
-  }
+    delayed   : Map<PointName, Alt<PointName * (SupervisorState -> Job<SupervisorState>)>> }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module private SupervisorState =
@@ -86,27 +82,25 @@ module private SupervisorState =
     |> Seq.tryFind (fun (jobId, minionState) -> minionState.info.name = name)
 
 type Instance =
-  {
-    shutdown   : Ch<IVar<unit>>
+  { shutdown   : Ch<IVar<unit>>
     register   : Ch<MinionInfo>
-    unregister : Ch<PointName>
-  }
+    unregister : Ch<PointName> }
 
-let create logger =
+let create (logger : Logger) =
   let shutdownCh   = Ch()
   let registerCh   = Ch()
   let unregisterCh = Ch()
   let lastWillCh   = Ch()
 
   let startMinion minionInfo will state =
-    Message.eventVerbose "Starting minion"
-    |> Message.setField "name" (PointName.format minionInfo.name)
-    |> Logger.log logger
+    logger.verbose (
+      eventX "Starting minion"
+      >> setField "name" (PointName.format minionInfo.name))
     >>=.
       if SupervisorState.jobNames state |> List.contains minionInfo.name then
-        Message.eventVerbose "New minion not started; already supervised"
-        |> Message.setField "name" (PointName.format minionInfo.name)
-        |> Logger.log logger
+        logger.verbose (
+          eventX "New minion not started; already supervised"
+          >> setField "name" (PointName.format minionInfo.name))
         >>-. state
       else
         let jobId = JobId state.ident
@@ -118,16 +112,16 @@ let create logger =
           Job.tryIn work (fun () -> Job.result Complete) (fun e -> Job.result (Failure e))
           >>= (fun r -> reason *<= r)
         guarded |> start
-        Message.eventVerbose "Minion started"
-        |> Message.setField "name" (PointName.format minionInfo.name)
-        |> Message.setField "jobId" (jobId.ToString())
-        |> Logger.log logger
+        logger.verbose (
+          eventX "Minion '{name}' started as job id {jobId}."
+          >> setField "name" (PointName.format minionInfo.name)
+          >> setField "jobId" (jobId.ToString()))
         >>-. SupervisorState.addMinion jobId minionState reason will state
 
   let unregisterMinion name state =
-    Message.eventVerbose "Unregistering started"
-    |> Message.setField "name" (PointName.format name)
-    |> Logger.log logger
+    logger.verbose (
+      eventX "Unregistering of minion '{name}' started."
+      >> setField "name" (PointName.format name))
     >>=.
       match SupervisorState.jobState state name with
       | Some (jobId, minionState) ->
@@ -135,22 +129,22 @@ let create logger =
         >>-. SupervisorState.removeMinion jobId state
         >>-. SupervisorState.removeDelayed name state
       | None ->
-        Message.eventWarn "Received request to unregister unknown job"
-        |> Message.setField "name" (PointName.format name)
-        |> Logger.log logger
+        logger.warn (
+          eventX "Received request to unregister unknown minion named '{name}'."
+          >> setField "name" (PointName.format name))
         >>-. state
 
   let handlePolicy jobId minionState state =
     match minionState.info.policy with
     | Terminate ->
-      Message.eventDebug "Failure policy: Terminate. Removing from supervision."
-      |> Message.setField "name" (PointName.format minionState.info.name)
-      |> Logger.log logger
+      logger.debug (
+        eventX "Failure policy: Terminate. Removing from supervision."
+        >> setField "name" (PointName.format minionState.info.name))
       >>-. SupervisorState.removeMinion jobId state
     | Restart ->
-      Message.eventDebug "Failure policy: Restart. Restarting."
-      |> Message.setField "name" (PointName.format minionState.info.name)
-      |> Logger.log logger
+      logger.debug (
+        eventX "Failure policy: Restart. Restarting."
+        >> Message.setField "name" (PointName.format minionState.info.name))
       >>-. SupervisorState.removeMinion jobId state
       >>= startMinion minionState.info minionState.state
     | Delayed delay ->
@@ -158,10 +152,10 @@ let create logger =
         timeOut <| delay.ToTimeSpan()
         >>-. (minionState.info.name, startMinion minionState.info minionState.state)
         |> memo
-      Message.eventDebug "Failure policy: Delayed. Restarting after delay."
-      |> Message.setField "name" (PointName.format minionState.info.name)
-      |> Message.setField "delay" (delay.ToString())
-      |> Logger.log logger
+      logger.debug (
+        eventX "Failure policy: Delayed. Restarting after delay."
+        >> setField "name" (PointName.format minionState.info.name)
+        >> setField "delay" (delay.ToString()))
       >>-. (state
             |> SupervisorState.removeMinion jobId
             |> SupervisorState.addDelayed minionState.info.name (Promise.read promise))
@@ -170,20 +164,16 @@ let create logger =
     let minionState = Map.find jobId state.minions
     match reason with
     | Complete ->
-      Message.eventDebug "Minion exited without exception, removing from supervision"
-      |> Message.setField "name" (PointName.format minionState.info.name)
-      |> Logger.log logger
+      logger.debug (
+        eventX "Minion exited without exception, removing from supervision"
+        >> setField "name" (PointName.format minionState.info.name))
       >>-. SupervisorState.removeMinion jobId state
     | Failure e ->
-      Message.eventError "Minion failed"
-      |> Message.addExn e
-      |> Logger.log logger
+      logger.error (eventX "Minion failed" >> Message.addExn e)
       >>=. handlePolicy jobId minionState state
 
   let replaceLastWill state (jobId, will) =
-    Message.eventVerbose "New will received"
-    |> Message.setField "jobId" (jobId.ToString())
-    |> Logger.log logger
+    logger.verbose (eventX "New will received" >> setField "jobId" (jobId.ToString()))
     >>-. SupervisorState.updateWill jobId will state
 
   let rec loop state =
@@ -195,18 +185,14 @@ let create logger =
             minionState.info.shutdown *<-=>- id
           let shutdownAll =
             Job.seqIgnore (state.minions |> Map.toSeq |> Seq.map (snd >> shutdownMinion))
-            >>=. Logger.log logger (Message.eventDebug "All minions shutdown")
+            >>=. logger.debug (eventX "All minions shutdown")
             |> memo
-          Message.eventVerbose "Shutting down minions!"
-          |> Logger.log logger
+          logger.verbose (eventX "Shutting down minions!")
           >>=.
             Alt.choose [
               shutdownAll |> Promise.read
               timeOutMillis 2000
-              |> Alt.afterJob
-                  (fun () ->
-                     Message.eventError "Not all supervised minions shutdown cleanly"
-                     |> Logger.log logger)
+              |> Alt.afterJob (fun () -> logger.error (eventX "Not all supervised minions shutdown cleanly"))
             ] >>=. ack *<= ()
 
       // anything else will create a new state and then recurse into the loop
@@ -246,8 +232,6 @@ let create logger =
   loop { ident = 0; minions = Map.empty; processes = Map.empty; delayed = Map.empty }
   |> start
 
-  {
-    shutdown   = shutdownCh
+  { shutdown   = shutdownCh
     register   = registerCh
-    unregister = unregisterCh
-  }
+    unregister = unregisterCh }

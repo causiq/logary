@@ -8,7 +8,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Logary.Adapters.log4net.Tests</RootNamespace>
     <AssemblyName>Logary.Adapters.log4net.Tests</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

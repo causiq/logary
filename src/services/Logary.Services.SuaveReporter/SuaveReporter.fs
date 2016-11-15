@@ -57,7 +57,7 @@ let api (logger : Logger) (verbatimPath : string option) : WebPart =
     POST >=> Binding.bindReq
               (readJson ())
               (fun msg ->
-                Logger.log logger msg |> queue
+                Logger.logSimple logger msg
                 CREATED (jsonMsg "Created"))
               BAD_REQUEST
   ]

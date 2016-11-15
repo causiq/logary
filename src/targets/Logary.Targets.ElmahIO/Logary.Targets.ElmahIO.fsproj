@@ -9,7 +9,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>bee0293d-c090-48a4-867d-5b40f4c8d35f</ProjectGuid>
     <OutputType>Library</OutputType>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.3.1.0</TargetFSharpCoreVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">

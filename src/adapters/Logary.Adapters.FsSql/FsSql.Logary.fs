@@ -30,16 +30,15 @@ type FsSqlAdapter(logger : Logger) =
   interface FsSql.Logging.Logger with
     member x.Verbose lineFactory =
       ignore >> lineFactory >> FsSqlLogLine.toLogary
-      |> Logger.logVerbose logger
+      |> Logger.log logger Verbose
       |> start
 
     member x.Debug lineFactory =
       ignore >> lineFactory >> FsSqlLogLine.toLogary
-      |> Logger.logDebug logger
+      |> Logger.log logger Debug
       |> start
 
-    member x.Log line =
-      line
+    member x.Log message =
+      message
       |> FsSqlLogLine.toLogary
-      |> Logger.log logger
-      |> start
+      |> logger.logSimple

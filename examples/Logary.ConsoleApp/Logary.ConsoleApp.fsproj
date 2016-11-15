@@ -7,7 +7,7 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>178b23d3-f676-43c3-880d-9e0befbaf019</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">

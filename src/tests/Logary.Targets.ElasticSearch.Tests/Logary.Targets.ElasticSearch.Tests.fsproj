@@ -7,7 +7,7 @@
     <OutputType>Library</OutputType>
     <RootNamespace>Logary.Targets.Logstash.Tests</RootNamespace>
     <AssemblyName>Logary.Targets.Logstash.Tests</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

@@ -4,6 +4,7 @@ module Logary.Registry
 open Hopac
 open Hopac.Infixes
 open NodaTime
+open Logary.Message
 open Logary.Internals
 open Logary.Internals.Scheduling
 
@@ -28,12 +29,15 @@ module internal Logging =
   /// until then throws away all log lines.
   type Flyweight(name) =
     let state = IVar ()
+    let instaPromise = Alt.always (Promise (()))
+    let insta = Alt.always ()
 
-    let logger (f : Logger -> Alt<_>) def =
+    let logger (f : Logger -> _) defaul =
       if IVar.Now.isFull state then
-        IVar.Now.get state |> (snd >> f)
+        let _, logger = IVar.Now.get state
+        f logger
       else
-        Alt.always def
+        defaul
 
     interface Named with
       member x.name = name
@@ -44,19 +48,11 @@ module internal Logging =
         state *<= (lm, logger)
 
     interface Logger with
-      member x.logVerboseWithAck fMessage =
-        logger (flip Logger.logVerboseWithAck fMessage) (Promise (())) // new promise with unit value
+      member x.logWithAck logLevel messageFactory =
+        logger (fun logger -> logger.logWithAck logLevel messageFactory) instaPromise
 
-      member x.logDebugWithAck fMessage =
-        logger (flip Logger.logDebugWithAck fMessage) (Promise (())) // new promise with unit value
-
-      member x.logWithAck message =
-        logger (flip Logger.logWithAck message) (Promise (())) // new promise with unit value
-
-      member x.logSimple message =
-        logger (flip Logger.logWithAck message) (Promise (())) // new promise with unit value
-        |> Job.Ignore
-        |> start
+      member x.log logLevel messageFactory =
+        logger (fun logger -> logger.log logLevel messageFactory) insta
 
       member x.level =
         Verbose
@@ -165,46 +161,6 @@ module Advanced =
   }
 
   module private Impl =
-
-    type MiddlewareFacadeLogger(middleware : Message -> Alt<Promise<unit>>, name, level) as x =
-      let ifLevel level otherwise f =
-        let xLogger = x :> Logger
-        if xLogger.level <= level then
-          f ()
-        else
-          otherwise
-
-      interface Named with
-        member x.name = name
-
-      interface Logger with
-        member x.logVerboseWithAck msgFactory =
-          ifLevel Verbose (Alt.always (Promise (()))) <| fun _ ->
-            let msg = msgFactory Verbose
-            middleware msg
-
-        member x.logDebugWithAck msgFactory =
-          ifLevel Debug (Alt.always (Promise (()))) <| fun _ ->
-            let msg = msgFactory Verbose
-            middleware msg
-
-        member x.logWithAck message =
-          middleware message
-
-        member x.logSimple message =
-          middleware message
-          |> Job.Ignore
-          |> start
-
-        member x.level =
-          level
-
-    let applyMiddleware (middleware : Message -> Message) logger =
-      let target msg =
-        middleware msg |> Logger.logWithAck logger
-
-      MiddlewareFacadeLogger(target, logger.name, logger.level) :> Logger
-
     /// Create a new Logger from the targets passed, with a given name.
     let fromTargets name ilogger (targets : (MessageFilter * TargetInstance * LogLevel) list) =
       let minLevel =
@@ -244,19 +200,19 @@ module Advanced =
     let rec registry conf sup sched (inbox : Ch<RegistryMessage>) : Job<_> =
       let targets = conf.targets |> Seq.map (fun kv -> kv.Value |> snd |> Option.get)
       let regPath = PointName [| "Logary"; "Registry"; "registry" |]
-      let log = Message.setName regPath >> Logger.log conf.runtimeInfo.logger
+      let logger = conf.runtimeInfo.logger |> Logger.apply (Message.setName regPath)
 
       /// In the shutdown state, the registry doesn't respond to messages, but rather tries to
       /// flush and shut down all targets, doing internal logging as it goes.
       let shutdown state (ackCh : Ch<unit>) (nack : Promise<unit>) = job {
-        do! Message.eventInfo "Shutting down polling of the metrics" |> log
+        do! logger.info (eventX "Shutting down polling of the metrics")
         do! state.schedules |> List.traverseJobA (snd >> Cancellation.cancel) |> Job.Ignore
 
-        do! Message.eventInfo "Cancelling schedules" |> log
+        do! logger.info (eventX "Cancelling schedules")
         for (_, x) in state.schedules do
           do! Cancellation.cancel x
 
-        do! Message.eventInfo "Shutting down targets" |> log
+        do! logger.info (eventX "Shutting down targets")
         let! allShutdown =
           targets
           |> Seq.pjmap (fun t -> Target.shutdown t  ^->. Success Ack
@@ -268,15 +224,15 @@ module Advanced =
           |> bisectSuccesses
 
         if List.isEmpty failed then
-          do! Message.eventVerbose "Shutdown Ack" |> log
+          do! logger.verbose (eventX "Shutdown Ack")
         else
           let msg = sprintf "Failed target shutdowns:%s%s" nl (toTextList failed)
-          do! Message.eventErrorf "Shutdown Nack%s%s" nl msg
-              |> Message.setField "failed" (Value.ofObject failed)
-              |> log
+          do! logger.error (eventX "Shutdown Nack with {message}"
+                            >> setField "message" msg
+                            >> setField "failed" (Value.ofObject failed))
 
         do! Ch.give ackCh () <|> nack
-        return! Message.eventVerbose "Shutting down immediately" |> log
+        return! logger.verbose (eventX "Shutting down immediately")
       }
 
       let rec init state = job {
@@ -286,15 +242,20 @@ module Advanced =
           |> List.traverseJobA (function
             | KeyValue (name, mconf) -> job {
               let! instance = mconf.initialise name
-              do! Message.eventVerbosef "Will poll %O every %O" name mconf.tickInterval |> log
+              do! logger.verbose (eventX "Will poll {name} every {interval}"
+                                  >> setField "name" name
+                                  >> setFieldFromObject "interval" mconf.tickInterval)
 
               let! tickCts =
                 Scheduling.schedule Metric.tick instance mconf.tickInterval
                                     (Some mconf.tickInterval)
                                     sched
-              do! Message.eventVerbosef "Getting logger for metric %O" name |> log
+              do! logger.verbose (eventX "Getting logger for metric {name}" >> setField "name" name)
               let logger = name |> getTargets conf |> fromTargets name conf.runtimeInfo.logger
-              Metric.tapMessages instance |> Stream.consumeJob (Logger.log logger)
+              Metric.tapMessages instance |> Stream.consumeJob (fun msg ->
+                logger.logWithAck msg.level (fun _ -> msg)
+                |> Job.Ignore
+              )
               return name, tickCts
             })
 
@@ -311,20 +272,23 @@ module Advanced =
             | None -> conf.middleware
             | Some mid -> mid :: conf.middleware
 
-          do! Message.eventVerbosef "Composing %i middlewares" (List.length middleware) |> log
+          do! logger.verbose (
+                eventX "Composing {length} middlewares"
+                >> setField "length" (List.length middleware))
+
           let composedMiddleware = Middleware.compose middleware
 
           let logger =
             name
             |> getTargets conf
             |> fromTargets name conf.runtimeInfo.logger
-            |> applyMiddleware (composedMiddleware)
+            |> Logger.apply composedMiddleware
 
           do! IVar.fill replCh logger
           return! running state
 
         | FlushPending(ackCh, nack) ->
-          do! Message.eventDebug "Starting to flush" |> log
+          do! logger.debug (eventX "Starting to flush")
 
           let! allFlushed =
             targets
@@ -337,12 +301,10 @@ module Advanced =
             |> bisectSuccesses
 
           if List.isEmpty notFlushed then
-            do! Message.eventVerbose "Completed flush" |> log
+            do! logger.verbose (eventX "Completed flush")
           else
             let msg = sprintf "Failed target flushes:%s%s" nl (toTextList notFlushed)
-            do! Message.eventErrorf "Flush failed with {nack}"
-                |> Message.setField "nack" msg
-                |> log
+            do! logger.error (eventX "Flush failed with {nack}." >> setField "nack" msg)
 
           do! Ch.give ackCh () <|> nack
 
@@ -367,39 +329,40 @@ module Advanced =
   /// It is not until runRegistry is called, that each target gets its service
   /// metadata, so it's no need to pass the metadata to the target before this.
   let create (conf : LogaryConf) =
-    let log =
-      Message.setName (PointName [| "Logary"; "Registry"; "create" |])
-      >> Logger.log conf.runtimeInfo.logger
+    let logger =
+      let pn = PointName.parse "Logary.Registry.create"
+      conf.runtimeInfo.logger |> Logger.apply (setName pn)
 
-    let sup = Supervisor.create conf.runtimeInfo.logger
-
-    let targets =
-      conf.targets
-      |> Map.map (fun _ (tconf, _) ->
-        tconf,
-        // TODO: consider this blocking call?
-        Some (Target.init conf.runtimeInfo tconf |> run))
-
-    let confNext = { conf with targets = targets }
-
-    let listen =
-      targets
-      |> Seq.map (fun kv -> kv.Value |> snd |> Option.get)
-      |> Seq.map (fun ti ->
-        let (minionInfo : Supervisor.MinionInfo) =
-          { name     = ti.name
-            policy   = Supervisor.Delayed (Duration.FromSeconds 1L)
-            job      = ti.server
-            shutdown = ti.shutdown }
-        sup.register *<+ minionInfo)
-      |> Job.conIgnore
-
+    let init = Target.init conf.runtimeInfo
+    let supervisor = Supervisor.create conf.runtimeInfo.logger
     let sched = Scheduling.create ()
-    let reg = Impl.create confNext sup sched
 
-    listen |> Job.map (fun _ ->
-    { supervisor  = sup
-      registry    = reg
-      scheduler   = sched
-      runtimeInfo = confNext.runtimeInfo
-      middleware  = confNext.middleware })
+    /// Registers the target instance with the supervisor.
+    let register (sup : Supervisor.Instance) (inst : TargetInstance) =
+      sup.register *<-
+        { name     = inst.name
+          policy   = Supervisor.Delayed (Duration.FromSeconds 1L)
+          job      = inst.server
+          shutdown = inst.shutdown }
+
+    /// Builds the new Logary instance
+    let build conf =
+      { supervisor  = supervisor
+        registry    = Impl.create conf supervisor sched
+        scheduler   = sched
+        runtimeInfo = conf.runtimeInfo
+        middleware  = conf.middleware }
+
+    conf.targets
+    // init all targets
+    |> Map.map (fun name (tconf, _) -> init tconf >>- (fun inst -> tconf, inst))
+    // register all targets with the supervisor
+    |> Seq.map (fun (KeyValue (pn, jb)) ->
+      jb |> Job.bind (fun (tconf, inst) ->
+      register supervisor inst >>-.
+      (pn, (tconf, Some inst)))
+    )
+    |> Job.conCollect
+    |> Job.map Map.ofSeq
+    |> Job.map (fun targets -> { conf with targets = targets })
+    |> Job.map build

@@ -8,6 +8,7 @@ open Hopac
 open Hopac.Infixes
 open TestDSL
 open Logary
+open Logary.Message
 open Logary.Targets
 open Logary.Configuration
 open Logary.Tests
@@ -22,8 +23,8 @@ let registry =
         let logger = pnp "a.b.c.d" |> Registry.getLogger logary.registry |> run
         let logger' = pnp "a.b.c.d" |> (logary |> asLogManager).getLogger
         (because "logging normally" <| fun () ->
-          Message.eventInfo "Hello world" |> Logger.log logger |> run
-          Message.eventFatal "Goodbye cruel world" |> Logger.log logger' |> run
+          logger.log Info (eventX "Hello world") |> run
+          logger'.log Fatal (eventX "Goodbye cruel world") |> run
           logary |> Fac.finaliseLogary
           out.ToString(), err.ToString())
         |> theTuple
@@ -37,11 +38,11 @@ let registry =
         let logger = (pnp "a.b.c.d") |> Registry.getLogger logary.registry |> run
         (because "logging something, then shutting down" <| fun () ->
           // log and wait for Message to be flushed
-          Message.eventInfo "hi there" |> Logger.logWithAck logger |> run |> run
+          logger.logWithAck Info (eventX "hi there") |> run |> run
           logary |> Config.shutdownSimple |> run |> ignore
           // this will place the info message in the buffers, but since the target is not
           // draining its buffer/queue it won't be logged
-          Message.eventInfo "after shutdown" |> Logger.log logger |> run
+          logger.info (eventX "after shutdown") |> run
           out.ToString())
         |> should contain "hi there"
         |> shouldNot contain "after shutdown"
@@ -74,7 +75,7 @@ let registryMid =
 
       let logger = (pnp "a.b.c.d") |> Registry.getLogger logary.registry |> run
 
-      Message.eventError "User clicked wrong button" |> Logger.log logger |> run
+      logger.error (eventX "User clicked wrong button") |> run
 
       logary |> Fac.finaliseLogary
 
@@ -98,10 +99,9 @@ let registryMid =
 
       Fac.withLogary <| fun logary out err ->
         let logger = (pnp "a.b.c.d") |> Registry.getLoggerWithMiddleware middleware logary.registry |> run
-        Message.eventError "User clicked wrong button" |> Logger.log logger |> run
+        logger.error (eventX "User clicked wrong button") |> run
         logary |> Fac.finaliseLogary
 
-      
         Expect.stringContains (err.ToString())
                               "\"getLogger\":\"inserted\""
                               "should have context 'getLogger' key"
