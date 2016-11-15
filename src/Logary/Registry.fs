@@ -29,8 +29,8 @@ module internal Logging =
   /// until then throws away all log lines.
   type Flyweight(name) =
     let state = IVar ()
-    let always = Alt.always ()
-    let alwaysp = Alt.always (Promise (()))
+    let instaPromise = Alt.always (Promise (()))
+    let insta = Alt.always ()
 
     let logger (f : Logger -> _) defaul =
       if IVar.Now.isFull state then
@@ -49,13 +49,10 @@ module internal Logging =
 
     interface Logger with
       member x.logWithAck logLevel messageFactory =
-        logger (fun logger -> logger.logWithAck logLevel messageFactory) alwaysp
+        logger (fun logger -> logger.logWithAck logLevel messageFactory) instaPromise
 
       member x.log logLevel messageFactory =
-        logger (fun logger -> logger.log logLevel messageFactory) ()
-
-      member x.logSimple message =
-        logger (fun logger -> logger.logSimple message) ()
+        logger (fun logger -> logger.log logLevel messageFactory) insta
 
       member x.level =
         Verbose

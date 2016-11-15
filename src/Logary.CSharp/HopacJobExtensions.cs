@@ -1,6 +1,7 @@
 ﻿using System.Threading.Tasks;
 using Hopac;
 using Logary.Internals;
+using Logary.CSharp;
 
 namespace Logary
 {

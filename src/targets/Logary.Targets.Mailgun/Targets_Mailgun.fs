@@ -4,6 +4,7 @@ open Hopac
 open Hopac.Infixes
 open Logary
 open Logary.Target
+open Logary.Message
 open Logary.Internals
 open Mailgun.Api
 open System.Net.Mail
@@ -55,11 +56,12 @@ module internal Impl =
 
         RingBuffer.take requests ^=> function
           | Log (logMsg, ack) ->
+            if logMsg.level < conf.minLevel then loop () else
+            let body  = conf.templater logMsg
+            let opts  = conf.getOpts (conf.domain, logMsg)
+            let msg   = conf.msgFactory conf (body, opts, logMsg)
+
             job {
-              if logMsg.level < conf.minLevel then return! loop ()
-              let body  = conf.templater logMsg
-              let opts  = conf.getOpts (conf.domain, logMsg)
-              let msg   = conf.msgFactory conf (body, opts, logMsg)
               let! resp = Messages.send conf.mailgun opts msg
               match resp with
               | Result response ->
@@ -67,9 +69,9 @@ module internal Impl =
                 ()
 
               | x ->
-                do! Message.eventError "unknown response from Mailgun"
-                    |> Message.setFieldFromObject "response" x
-                    |> Logger.log ri.logger
+                do! ri.logger.error (
+                      eventX "Unknown response from Mailgun received."
+                      >> setFieldFromObject "response" x)
 
               do! ack *<= ()
               return! loop ()
@@ -85,11 +87,11 @@ module internal Impl =
       ] :> Job<_>
 
     if conf.``to`` = [] then
-      upcast (Message.eventError "no `to` configured in Mailgun target" |>  Logger.log ri.logger)
+      upcast (ri.logger.error (eventX "No `to` was configured in Mailgun target"))
     elif conf.from.Host = "example.com" then
-      upcast (Message.eventError "you cannot send e-mail to example.com in Mailgun target" |> Logger.log ri.logger)
+      upcast (ri.logger.error (eventX "You cannot send e-mail to example.com in Mailgun target"))
     elif conf.domain = "example.com" then
-      upcast (Message.eventError "you cannot send e-mail from example.com in Mailgun target" |> Logger.log  ri.logger)
+      upcast (ri.logger.error (eventX "You cannot send e-mail from example.com in Mailgun target"))
     else
       loop ()
 

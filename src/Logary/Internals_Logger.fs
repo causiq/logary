@@ -23,6 +23,8 @@ module internal Logging =
 
   let instaPromise =
     Alt.always (Promise (())) // new promise with unit value
+  let insta =
+    Alt.always ()
 
   let logWithAck message : _ list -> Alt<Promise<unit>> = function
     | []      ->
@@ -41,17 +43,16 @@ module internal Logging =
       member x.name = x.name
 
     interface Logger with
-      member x.level: LogLevel =
+      member x.level : LogLevel =
         x.level
 
       member x.log logLevel messageFactory =
         if logLevel >= x.level then
           let me : Logger = upcast x
           me.logWithAck logLevel messageFactory // delegate down
-          |> Job.Ignore
-          |> start
+          |> Alt.afterFun (fun _ -> ())
         else
-          ()
+          insta
 
       member x.logWithAck logLevel messageFactory : Alt<Promise<unit>> =
         if logLevel >= x.level then
@@ -61,13 +62,6 @@ module internal Logging =
           |> logWithAck message
         else
           instaPromise
-
-      member x.logSimple message : unit =
-        x.targets
-        |> List.choose (fun (accept, t) -> if accept message then Some t else None)
-        |> logWithAck message
-        |> Job.Ignore
-        |> start
 
 /// This logger is special: in the above case the Registry takes the responsibility
 /// of shutting down all targets, but this is a stand-alone logger that is used
@@ -79,17 +73,18 @@ type InternalLogger =
 
   interface IAsyncDisposable with
     member x.DisposeAsync() =
-      x.trgs |> Seq.map Target.shutdown |> Job.conIgnore
+      x.trgs
+      |> Seq.map Target.shutdown
+      |> Job.conIgnore
 
   interface Logger with
     member x.log logLevel messageFactory =
       if logLevel >= x.lvl then
         let me : Logger = upcast x
         me.logWithAck logLevel messageFactory // delegate down
-        |> Job.Ignore
-        |> start
+        |> Alt.afterFun (fun _ -> ())
       else
-        ()
+        Logging.insta
 
     member x.logWithAck logLevel messageFactory =
       if logLevel >= x.lvl then
@@ -97,10 +92,6 @@ type InternalLogger =
         Logging.logWithAck message x.trgs
       else
         Logging.instaPromise
-
-    member x.logSimple message =
-      if message.level >= x.lvl then
-        x.trgs |> Logging.logWithAck message |> Job.Ignore |> start
 
     member x.level =
       x.lvl

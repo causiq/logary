@@ -7,6 +7,7 @@ open Hopac
 open Hopac.Infixes
 open FsSql
 open Logary.Internals
+open Logary.Message
 open Logary.Target
 open Logary.Utils.Chiron
 open Logary
@@ -82,32 +83,23 @@ module internal Impl =
     | _ ->
       c
 
-  let execInsert log (insert : Sql.ConnectionManager -> _) connMgr =
+  let execInsert (logger : Logger) (insert : Sql.ConnectionManager -> _) connMgr =
     match insert connMgr with
-    | Tx.Commit _ ->
-      ()
-
-    | Tx.Rollback _ ->
-      Message.event Error "Insert was rolled back"
-      |> log
-      |> start
-
-    | Tx.Failed ex ->
-      Message.event Error "Insert failed"
-      |> log
-      |> start
+    | Tx.Commit _ -> ()
+    | Tx.Rollback _ -> logger.error (eventX "Insert was rolled back") |> start
+    | Tx.Failed ex -> logger.error (eventX "Insert failed" >> addExn ex) |> start
 
   let loop (conf : DBConf)
            (svc: RuntimeInfo)
            (requests : RingBuffer<_>)
            (shutdown : Ch<_>) =
 
-    let log =
-      Message.setName (PointName [| "Logary"; "DB"; "loop" |])
-      >> Logger.log svc.logger
+    let logger =
+      let pn = PointName [| "Logary"; "DB"; "loop" |]
+      svc.logger |> Logger.apply (setName pn)
 
     let rec init () =
-      log (Message.event Debug "DB target is opening connection")
+      logger.debug (eventX "DB target is opening connection.")
       |> Job.bind (fun _ ->
         let c = ensureOpen (conf.connectionFactory ())
         running { connection = c
@@ -138,7 +130,7 @@ module internal Impl =
               | Derived (value, units) ->
                 insertGaugeTx conf.schema message value
 
-            Job.Scheduler.isolate (fun _ -> execInsert log insert state.connMgr)
+            Job.Scheduler.isolate (fun _ -> execInsert logger insert state.connMgr)
             >>=. running state
 
           | Flush (ackCh, nack) ->

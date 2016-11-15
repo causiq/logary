@@ -5,6 +5,7 @@ open Hopac.Infixes
 open Hopac.Extensions
 open HttpFs.Client
 open Logary
+open Logary.Message
 open Logary.Target
 open Logary.Internals
 open System
@@ -285,15 +286,15 @@ module internal Impl =
             |> tryAddAuth conf
 
           job {
-            let! _ = ri.logger.logVerboseWithAck (Message.eventX "Sending {body}" >> Message.setField "body" body)
+            do! ri.logger.verbose (eventX "Sending {body}" >> Message.setField "body" body)
             use! resp = getResponse req
             let! body = Response.readBodyAsString resp
             if resp.statusCode > 299 then
               let! errorFlush =
-                Logger.logWithAck ri.logger (
-                  Message.event Error "Bad response {statusCode} with {body}"
-                  |> Message.setField "statusCode" resp.statusCode
-                  |> Message.setField "body" body)
+                ri.logger.logWithAck Error (
+                  eventX  "Bad response {statusCode} with {body}"
+                  >> setField "statusCode" resp.statusCode
+                  >> setField "body" body)
               do! errorFlush
               // will cause the target to restart through the supervisor
               failwithf "Bad response statusCode=%i" resp.statusCode

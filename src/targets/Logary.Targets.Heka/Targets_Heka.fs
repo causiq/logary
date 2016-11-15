@@ -9,6 +9,7 @@ open Logary.Utils.Chiron
 open Hopac
 open Hopac.Infixes
 open Logary
+open Logary.Message
 open Logary.Heka
 open Logary.Heka.Client
 open Logary.Heka.Messages
@@ -134,9 +135,9 @@ module internal Impl =
 
   let logFailure (ri : RuntimeInfo) = function
     | HeaderTooLarge err ->
-      Message.eventWarn err |> Logger.log ri.logger
+      ri.logger.warn (eventX err)
     | MessageTooLarge err ->
-      Message.eventWarn err |> Logger.log ri.logger
+      ri.logger.warn (eventX err)
 
   type State =
     { client   : TcpClient
@@ -153,11 +154,9 @@ module internal Impl =
            (requests : RingBuffer<TargetMessage>)
            (shutdown : Ch<IVar<unit>>) =
 
-    let debug = Message.eventDebug >> Logger.log ri.logger
-
     let rec initialise () : Job<unit> =
       job {
-        do! debug "initialising heka target"
+        do! ri.logger.debug (eventX "Initialising heka target.")
 
         let ep, useTLS = conf.endpoint
         let client = new TcpClient()
@@ -173,7 +172,7 @@ module internal Impl =
           else
             client.GetStream() :> Stream
 
-        do! debug "initialise: tcp stream open"
+        do! ri.logger.debug (eventX "initialise: tcp stream open")
 
         let hostname = Dns.GetHostName()
         return! running { client = client; stream = stream; hostname = hostname }
@@ -191,15 +190,13 @@ module internal Impl =
 
         match msg |> Encoder.encode conf state.stream with
         | Choice1Of2 run ->
-          do! debug "running: writing to heka"
+          do! ri.logger.debug (eventX "Writing to heka" >> setNameEnding "running")
           try
             do! run
-            do! debug "running: wrote to heka"
+            do! ri.logger.debug (eventX "Wrote to heka" >> setNameEnding "running")
 
           with e ->
-            do! Message.eventError "error writing to heka"
-                |> Message.addExn e
-                |> Logger.log ri.logger
+            do! ri.logger.error (eventX "error writing to heka" >> addExn e)
 
         | Choice2Of2 err ->
           do! logFailure ri err
@@ -209,7 +206,7 @@ module internal Impl =
         shutdown ^=> fun ack ->
           let dispose x = (x :> IDisposable).Dispose()
           job {
-            do Try.safe "heka target disposing tcp stream, then client" ri.logger
+            do Try.safe "Heka target disposing tcp stream, then client." ri.logger
                         (state :> IDisposable).Dispose
                         ()
             do! ack *<= ()
@@ -217,7 +214,7 @@ module internal Impl =
 
         RingBuffer.take requests ^=> function
           | Log (logMsg, ack) ->
-            debug "running: received message"
+            ri.logger.debug (eventX "running: received message")
             >>=. write (Message.ofMessage logMsg)
             >>=. running state
 

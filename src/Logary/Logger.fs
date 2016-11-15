@@ -27,54 +27,11 @@ type Logger =
   /// Evaluates the callback if the log level is enabled. Will not block,
   /// besides doing the computation inside the callback. You should not do
   /// blocking operations in the callback.
-  abstract log : LogLevel -> (LogLevel -> Message) -> unit
-
-  /// Like logWithAck, but doesn't wait for the log line to finish being
-  /// persisted. This should be fine as long as your app is up 'for a while'
-  /// after calling this, or if you flush the registry before shutting down
-  /// your app (mostly; there will be a small interval before the job start
-  /// during which Logary will not have the value in its data structures).
-  ///
-  /// If you don't know which of the functions on Logger to use, you may
-  /// use this one and it "will just work".
-  ///
-  /// (Using this function means that you always commit to sending the log
-  /// message; this means that if any of your targets' incoming message buffers
-  /// are full, this call will hang forever)
-  abstract logSimple : Message -> unit
+  abstract log : LogLevel -> (LogLevel -> Message) -> Alt<unit>
 
   /// Gets the currently set log level, aka. the granularity with which things
   /// are being logged.
   abstract level : LogLevel
-
-/// Syntactic sugar on top of Logger for use of curried factory function
-/// functions.
-[<AutoOpen>]
-module LoggerEx =
-  type Logger with
-    member x.verbose (msgFactory : LogLevel -> Message) : Alt<unit> =
-      x.logWithAck Verbose msgFactory
-      |> Alt.afterFun ignore
-
-    member x.debug (msgFactory : LogLevel -> Message) : Alt<unit> =
-      x.logWithAck Debug msgFactory
-      |> Alt.afterFun ignore
-
-    member x.info msgFactory : Alt<unit> =
-      x.logWithAck Info msgFactory
-      |> Alt.afterFun ignore
-
-    member x.warn msgFactory : Alt<unit> =
-      x.logWithAck Warn msgFactory
-      |> Alt.afterFun ignore
-
-    member x.error msgFactory : Alt<unit> =
-      x.logWithAck Error msgFactory
-      |> Alt.afterFun ignore
-
-    member x.fatal msgFactory : Alt<unit> =
-      x.logWithAck Fatal msgFactory
-      |> Alt.afterFun ignore
 
 /// A disposable interface to use with `use` constructs and to create child-
 /// contexts. Since it inherits Logger, you can pass this scope down into child
@@ -125,8 +82,7 @@ module Logger =
 
   /// Log a message, but don't await all targets to flush.
   let log (logger : Logger) logLevel messageFactory : Alt<unit> =
-    logger.logWithAck logLevel (messageFactory >> ensureName logger)
-    |> Alt.afterFun ignore
+    logger.log logLevel (messageFactory >> ensureName logger)
 
   let private simpleTimeout millis loggerName =
     timeOutMillis millis
@@ -351,10 +307,6 @@ module Logger =
           // TODO: consider message naming
           logger.log logLevel messageFactory
 
-        member x.logSimple message =
-          // TODO: consider message naming
-          logger.logSimple message
-
         member x.level =
           logger.level
 
@@ -368,10 +320,34 @@ module Logger =
         logger.log logLevel (messageFactory >> middleware)
       member x.logWithAck logLevel messageFactory =
         logger.logWithAck logLevel (messageFactory >> middleware)
-      member x.logSimple message =
-        logger.logSimple (middleware message)
       member x.level = logger.level
       member x.name = logger.name }
+
+/// Syntactic sugar on top of Logger for use of curried factory function
+/// functions.
+[<AutoOpen>]
+module LoggerEx =
+  type Logger with
+    member x.verbose (msgFactory : LogLevel -> Message) : Alt<unit> =
+      x.log Verbose msgFactory
+
+    member x.debug (msgFactory : LogLevel -> Message) : Alt<unit> =
+      x.log Debug msgFactory
+
+    member x.info msgFactory : Alt<unit> =
+      x.log Info msgFactory
+
+    member x.warn msgFactory : Alt<unit> =
+      x.log Warn msgFactory
+
+    member x.error msgFactory : Alt<unit> =
+      x.log Error msgFactory
+
+    member x.fatal msgFactory : Alt<unit> =
+      x.log Fatal msgFactory
+
+    member x.logSimple message : unit =
+      Logger.logSimple x message
 
 /// A logger that does absolutely nothing, useful for feeding into the target
 /// that is actually *the* internal logger target, to avoid recursive calls to
@@ -379,9 +355,10 @@ module Logger =
 type NullLogger() =
   let instaPromise =
     Alt.always (Promise (())) // new promise with unit value
+  let insta =
+    Alt.always ()
   interface Logger with
     member x.logWithAck logLevel messageFactory = instaPromise
-    member x.log logLevel messageFactory = ()
-    member x.logSimple message = ()
+    member x.log logLevel messageFactory = insta
     member x.level = Fatal
     member x.name = PointName.ofList [ "Logary"; "NullLogger" ]

@@ -74,14 +74,7 @@ type PromisedLogger(name, requestedLogger : Job<Logger>) =
     member x.log logLevel messageFactory =
       Promise.read promised
       |> Alt.afterJob (fun logger -> logger.logWithAck logLevel messageFactory)
-      |> Job.Ignore
-      |> start
-
-    member x.logSimple message =
-      Promise.read promised
-      |> Alt.afterJob (fun logger -> logger.logWithAck message.level (fun _ -> message))
-      |> Job.Ignore
-      |> start
+      |> Alt.afterFun (fun _ -> ())
 
     member x.level =
       Verbose

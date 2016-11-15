@@ -8,21 +8,18 @@ open System.Globalization
 open System.Diagnostics
 open EventStore.ClientAPI
 open Logary
+open Logary.Message
 open Hopac
 
 module internal Impl =
 
   let invariantCulture = CultureInfo.InvariantCulture
 
-  let log (logger : Logger) =
-    Message.setName logger.name
-    >> Logger.log logger
-
   let handleInternalException logger (format : string) args (stackTrace : StackTrace) =
-    Message.eventFormat (Warn, format, args)
-    |> Message.setFieldFromObject "stackFrames" (stackTrace.GetFrames())
-    |> Logger.log logger
-    |> start
+    Logger.logSimple logger (
+      eventFormat (Warn, format, args)
+      |> setFieldFromObject "stackFrames" (stackTrace.GetFrames())
+    )
 
   let fmt (internalLogger : Logger) formatProvider format (args : obj []) =
     let rec fmt' failed =
@@ -42,12 +39,10 @@ module internal Impl =
 
     fmt' false
 
-  let write'' logger formatProvider format level (ex : exn option) args =
-    fmt logger formatProvider format args
-    |> Message.event level
-    |> (ex |> Option.fold (fun s t -> Message.addExn t) id)
-    |> Logger.log logger
-    |> start
+  let write'' (logger : Logger) formatProvider format level (ex : exn option) args =
+    logger.logSimple (
+      Message.event level (fmt logger formatProvider format args)
+      |> (ex |> Option.fold (fun s -> addExn) id))
 
 open Impl
 

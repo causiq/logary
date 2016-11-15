@@ -684,6 +684,16 @@ type LoggerExtensions =
       >> Funcs.ToFSharpFunc transform
     Alt.toTasks bufferCt promiseCt (Logger.logWithAck logger level messageFactory)
 
+  /// Log a message, which returns an inner Task. The outer Task denotes having the
+  /// Message placed in all Targets' buffers. The inner Task denotes having
+  /// the message properly flushed to all targets' underlying "storage". Targets
+  /// whose rules do not match the message will not be awaited.
+  [<Extension>]
+  static member LogWithAck (logger, message : Message) : Task<Task> =
+    let bufferCt = Unchecked.defaultof<CancellationToken>
+    let promiseCt = Unchecked.defaultof<CancellationToken>
+    Alt.toTasks bufferCt promiseCt (Logger.logWithAck logger message.level (fun _ -> message))
+
   // TODO: timeAsyncWithAck, timeAsyncSimple
   // TODO: timeJobWithAck, timeJobSimple
   // TODO: timeAltWithAck, timeAltSimple

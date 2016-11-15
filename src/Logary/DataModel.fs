@@ -1135,6 +1135,7 @@ module StopwatchEx =
       sw.Stop()
       res, sw.toGauge()
 
+/// Open this module to log in a more succinct way.
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Message =
   open Hopac
