@@ -293,7 +293,10 @@ module WinPerfCounter =
   module Helpers =
 
     let toValue (pc : WinPerfCounterInstance) =
-      let message = Message.gaugeWithUnit pc.baseName pc.unit (Int64 1L)
+      let message =
+        { Message.gaugeWithUnit pc.baseName pc.unit (Int64 1L) with
+            context = Map [ KnownLiterals.TagsContextName, Array [ String KnownLiterals.SuppressPointValue ] ] }
+
       pc.nextValues()
       |> Array.fold (fun m (pn, vl) ->
           let field = Field (vl, Some pc.unit)
