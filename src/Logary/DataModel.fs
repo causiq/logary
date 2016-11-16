@@ -1144,12 +1144,7 @@ module Message =
   open System.Threading.Tasks
   open System.Diagnostics
   open Logary.Internals
-
-  [<Literal>]
-  let ErrorsFieldName = "errors"
-
-  [<Literal>]
-  let ServiceFieldName = "service"
+  open Logary.KnownLiterals
 
   module Lenses =
 
@@ -1175,14 +1170,36 @@ module Message =
     let contextValue_ name : PLens<Message, Value> =
       context_ >-?> key_ name
 
-    /// Lens to the context field 'service'
-    let service_ : PLens<Message, string> =
-      contextValue_ ServiceFieldName >??> Value.String_
-
     /// Lens you can use to get the list of errors in this message.
     /// Also see Logary errors: https://gist.github.com/haf/1a5152b77ec64bf10fe8583a081dbbbf
     let errors_ : PLens<Message, Value list> =
       field_ ErrorsFieldName >?-> Field.value_ >??> Value.Array_
+
+    /// Lens to the context field 'service'
+    let service_ : PLens<Message, string> =
+      contextValue_ ServiceContextName >??> Value.String_
+
+    let tags_ : Lens<Message, Set<string>> =
+      let array : Lens<Message, Value list> =
+        let tagsL = context_ >-?> key_ TagsContextName
+        let tagsLA = tagsL >??> Value.Array_
+        (fun x -> Lens.getPartialOrElse tagsLA [] x),
+        (fun v x ->
+          if x.context |> Map.containsKey TagsContextName then
+            x |> Lens.setPartial tagsLA v
+          else
+            { x with context = x.context |> Map.add TagsContextName (Array []) }
+            |> Lens.setPartial tagsLA v)
+
+      let strings : Lens<Value list, Set<string>> =
+        let read =
+          List.choose (function String s -> Some s | _ -> None)
+          >> Set.ofList
+        let write xs existing =
+          xs |> Set.map String |> List.ofSeq |> List.append existing
+        read, write
+
+      array >--> strings
 
   ///////////////// FIELDS ////////////////////
 
@@ -1232,6 +1249,21 @@ module Message =
   [<CompiledName "TryGetField">]
   let tryGetField name message =
     Lens.getPartial (Lenses.field_ name) message
+
+  /// Tag the message
+  [<CompiledName "Tag">]
+  let tag (tag : string) (message : Message) =
+    let tags =
+      Lens.get Lenses.tags_ message
+      |> Set.add tag
+
+    Lens.set Lenses.tags_ tags message
+
+  /// Check if the Message has a tag
+  [<CompiledName "HasTag">]
+  let hasTag (tag : string) (message : Message) =
+    Lens.get Lenses.tags_ message
+    |> Set.contains tag
 
   ///////////////// CONTEXT ////////////////////
 

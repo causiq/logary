@@ -120,6 +120,12 @@ let tests =
       let f = Field (Logary.String "hello", None)
       Expect.equal (roundTrip f) f "Field round trip."
 
+    testCase "can tag" <| fun () ->
+      let subject = 
+        Message.event Debug "A debug message"
+        |> Message.tag "web"
+      Expect.isTrue (Message.hasTag "web" subject) "Should be tagged with 'web'."
+
     testPropertyWithConfig config "can round trip all fields" <| fun (f : Field) ->
       f = roundTrip f
 
