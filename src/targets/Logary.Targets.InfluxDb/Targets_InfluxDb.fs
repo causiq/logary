@@ -38,7 +38,6 @@ module Serialisation =
   let printTags = function
     | [] ->
       ""
-
     | xs ->
       // TO CONSIDER: assumes values are escaped
       let joined =
@@ -137,20 +136,38 @@ module Serialisation =
 
     let simpleValue = getValues "value"
 
-    let outer context =
+    let removeSuppressTag suppress =
+      if suppress then
+        Map.map (fun k v ->
+          match k with
+          | KnownLiterals.TagsContextName ->
+            match v with
+            | Array tags ->
+              Value.Array (tags |> List.filter ((<>) (Value.String KnownLiterals.SuppressPointValue)))
+            | _ ->
+              v
+          | _ -> v)
+      else id
+
+    let contextValues suppress context : PointValue -> _ * _ =
       let context' =
-        context |> mapExtract (extractSimple "value" true)
+        context
+        |> removeSuppressTag suppress
+        |> mapExtract (extractSimple "value" true)
 
       function
       | Gauge (value, Scalar)
       | Derived (value, Scalar) ->
-        simpleValue false context' [] value
+        let contextTags, contextFields = simpleValue false context' [] value
+        if suppress then contextTags, [] else contextTags, contextFields
 
       | Gauge (value, units)
       | Derived (value, units) ->
-        let kvs, values = simpleValue false context' [] value
-        ("unit", serialiseStringTag <| Units.symbol units) :: kvs,
-        values
+        simpleValue false context' [] value |> fun (tags, fields) ->
+        let contextTags, contextFields =
+          ("unit", serialiseStringTag (Units.symbol units)) :: tags,
+          fields
+        if suppress then contextTags, [] else contextTags, contextFields
 
       | Event templ ->
         let kvs, values = simpleValue false context' [] (Value.Int64 1L)
@@ -183,8 +200,9 @@ module Serialisation =
       | _ ->
         []
 
+    let suppress = message |> Message.hasTag KnownLiterals.SuppressPointValue
     let fieldTags, fieldFields = fieldValues message.fields
-    let contextTags, contextFields = outer message.context message.value
+    let contextTags, contextFields = contextValues suppress message.context message.value
     let extraFields = extraFields message.name message.value
 
     sprintf "%O%s %s %i"
@@ -305,7 +323,7 @@ module internal Impl =
       ] :> Job<_>
     loop ()
 
-/// Create a new InfluxDb target
+/// Create a new InfluxDb target.
 let create conf =
   TargetUtils.stdNamedTarget (Impl.loop conf)
 

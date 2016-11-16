@@ -67,6 +67,7 @@
     <Compile Include="MessageTemplates.fs" />
     <Compile Include="Constants.fs" />
     <Compile Include="Internals.fs" />
+    <Compile Include="KnownLiterals.fs" />
     <Compile Include="DataModel.fs" />
     <Compile Include="TemplateFormat.fs" />
     <Compile Include="Named.fs" />
