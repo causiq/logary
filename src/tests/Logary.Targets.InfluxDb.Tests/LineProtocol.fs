@@ -137,6 +137,7 @@ let lineProtocol =
         let n = PointName.parse
         let pn = PointName [| "Processor"; "% Utilisation" |]
         Message.gaugeWithUnit pn Percent (Int64 1L)
+        |> Message.setContext "host" "my-host-001"
         |> Message.setFieldValue "Core 1" (Field (Float 0.03, Some Percent))
         |> Message.setFieldValue "Core 2" (Field (Float 0.06, Some Percent))
         |> Message.setFieldValue "Core 3" (Field (Float 0.139, Some Percent))
@@ -145,7 +146,7 @@ let lineProtocol =
       yield testCase "when the fields are the values" <| fun _ ->
         let actual = Serialisation.serialiseMessage msg
         let expected =
-          @"Processor.%\ Utilisation,unit=% Core\ 1=0.03,Core\ 2=0.06,Core\ 3=0.139,value=1i 1435362189575692182"
+          @"Processor.%\ Utilisation,unit=%,host=my-host-001 Core\ 1=0.03,Core\ 2=0.06,Core\ 3=0.139,value=1i 1435362189575692182"
         Expect.equal actual expected "Should have both the fields as values, and the default value"
 
       yield testCase "with suppress point value" <| fun _ ->
@@ -154,7 +155,7 @@ let lineProtocol =
           |> Message.tag KnownLiterals.SuppressPointValue
           |> Serialisation.serialiseMessage
         let expected =
-          @"Processor.%\ Utilisation,unit=% Core\ 1=0.03,Core\ 2=0.06,Core\ 3=0.139 1435362189575692182"
+          @"Processor.%\ Utilisation,unit=%,host=my-host-001 Core\ 1=0.03,Core\ 2=0.06,Core\ 3=0.139 1435362189575692182"
         Expect.equal actual expected "Should have both the fields as values, and the default value"
     ]
 
