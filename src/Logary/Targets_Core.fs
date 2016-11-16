@@ -363,12 +363,12 @@ module LiterateConsole =
 
       | Gauge (value, units) ->
         seq {
-          yield "Metric (guage) ", Subtext
+          yield "Metric (gauge) ", Subtext
           yield! literateTokeniseField options (Property.Empty) (Field (value, None))
           yield " ", Subtext
           yield Units.symbol units, Text
           yield " (", Punctuation
-          yield message.name.ToString(), Text
+          yield message.name.ToString(), NameSymbol
           yield ")", Punctuation }
 
       | Derived (value, units) ->
@@ -378,7 +378,7 @@ module LiterateConsole =
           yield " ", Subtext
           yield Units.symbol units, Text
           yield " (", Punctuation
-          yield message.name.ToString(), Text
+          yield message.name.ToString(), NameSymbol
           yield ")", Punctuation }
 
     /// Split a structured message up into theme-able parts (tokens), allowing the

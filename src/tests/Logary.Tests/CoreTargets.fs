@@ -79,6 +79,11 @@ let timeMessage (nanos : int64) level =
   |> Message.setGauge (value, units)
   |> Message.setLevel level
 
+let gaugeMessage (value : float) level =
+  Float value
+  |> Message.gaugeWithUnit (PointName [| "Revolver" |]) (Div (Seconds, Units.Other "revolution"))
+  |> Message.setLevel level
+
 let nanos xs =
   Duration.FromTicks (xs / Constants.NanosPerTick)
 
@@ -159,7 +164,7 @@ let tests =
             yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
             yield { text = "ms"; colours = LiterateTesting.Theme.textColours }
             yield { text = " to execute."; colours = LiterateTesting.Theme.subtextColours } ]
-          "Should print [06:15:02 DBG] A.B.C.Check took 60,02 ms"
+          "Should print [06:15:02 INF] A.B.C.Check took 60,02 ms"
 
       yield testLiterateCase "Time in μs" (timeMessage 133379L) <| fun expectedTimeText parts ->
         Expect.sequenceEqual
@@ -171,7 +176,7 @@ let tests =
             yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
             yield { text = "µs"; colours = LiterateTesting.Theme.textColours }
             yield { text = " to execute."; colours = LiterateTesting.Theme.subtextColours } ]
-          "Should print [06:15:02 DBG] A.B.C.Perform took 133,38 μs"
+          "Should print [06:15:02 INF] A.B.C.Perform took 133,38 μs"
 
       yield testLiterateCase "Time in ns" (timeMessage 139L) <| fun expectedTimeText parts ->
         Expect.sequenceEqual
@@ -183,7 +188,20 @@ let tests =
             yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
             yield { text = "ns"; colours = LiterateTesting.Theme.textColours }
             yield { text = " to execute."; colours = LiterateTesting.Theme.subtextColours } ]
-          "Should print [06:15:02 DBG] A.B.C.Perform took 139 μs, because nanoseconds is as accurate as it gets"
+          "Should print [06:15:02 INF] A.B.C.Perform took 139 μs, because nanoseconds is as accurate as it gets"
+
+      yield testLiterateCase "A count per second gauge" (gaugeMessage 1.4562) <| fun expectedTimeText parts ->
+        Expect.sequenceEqual
+          parts
+          [ yield! levels expectedTimeText
+            yield { text = "Metric (gauge) "; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = "1,4562"; colours = LiterateTesting.Theme.numericSymbolColours }
+            yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = "s/revolution"; colours = LiterateTesting.Theme.textColours }
+            yield { text = " ("; colours = LiterateTesting.Theme.punctuationColours }
+            yield { text = "Revolver"; colours = LiterateTesting.Theme.nameSymbolColours }
+            yield { text = ")"; colours = LiterateTesting.Theme.punctuationColours } ]
+          "Should print [06:15:02 INF] Metric (gauge) 1,4562 s/revolution (Revolver)"
     ]
 
     testList "text writer prints" [
@@ -420,7 +438,7 @@ let files =
     Targets.integrationTests "file" createInRandom
 
     testCaseF "log ten thousand messages" <| fun folder file ->
-      Tests.skiptest "Locks up, see https://github.com/haf/expecto/issues/2"
+      Tests.skiptest "Locks up, see https://github.com/haf/expecto/issues/2 but probably due to the Janitor loop"
       let fileConf = FileConf.create folder (Naming ("10K", "log"))
       let targetConf = Target.confTarget "basic2" (File.create fileConf)
 

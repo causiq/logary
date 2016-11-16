@@ -654,7 +654,7 @@ type Units =
                          offset
     | Mul (a, b) -> String.Concat [ "("; Units.symbol a; "*"; Units.symbol b; ")" ]
     | Pow (a, b) -> String.Concat [ Units.symbol a; "^("; Units.symbol b; ")" ]
-    | Div (a, b) -> String.Concat [ "("; Units.symbol a; "/"; Units.symbol b; ")" ]
+    | Div (a, b) -> String.Concat [ Units.symbol a; "/"; Units.symbol b ]
     | Root a -> String.Concat [ "sqrt("; Units.symbol a; ")" ]
     | Log10 a -> String.Concat [ "log10("; Units.symbol a; ")" ]
 
