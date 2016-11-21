@@ -109,7 +109,7 @@ let tests =
                      "Should not present a unit for Scalars"
 
       testCase "Percent are always scalled x100 and presented with a % symbol" <| fun _ ->
-        Expect.equal (Units.scale Percent 0.1346) (12.46, "%")
+        Expect.equal (Units.scale Percent 0.1246) (12.46, "%")
                      "Percents are scaled properly"
 
       testCase "'Scaled' unit with a 1. scale is not actually scaled" <| fun _ ->
@@ -119,17 +119,18 @@ let tests =
 
       testCase "'Scaled' unit by 1/10" <| fun _ ->
         let actual = Units.scale (Scaled (Percent, 0.1)) 0.123
+        // if 12.3% is had been scaled by 0.1, then the true value is this:
         let expected = 123., "%"
-        Expect.equal actual expected "Should handle 10x scale"
+        Expect.equal actual expected "Should handle 0.1x scale"
 
       testList "SI thousands-units multiples" [
         yield!
           [ 1., 1., ""
             10., 10., ""
             100., 100., ""
-            1000., 1., "K"
-            1024., 1.024, "K"
-            2345., 2.345, "K"
+            1000., 1., "k"
+            1024., 1.024, "k"
+            2345., 2.345, "k"
             1000000., 1., "M"
             1234000333., 1.234000333, "G"
             1234000333444., 1.234000333444, "T"
@@ -138,7 +139,7 @@ let tests =
             1234000333444555666777., 1.234000333444555666777, "Z"
           ]
           |> List.collect (fun (value, expected, prefix) ->
-          [ Seconds; Metres; Amperes; Kelvins; Moles; Candelas; Watts; Hertz ] |> List.map (fun units ->
+          [ Metres; Amperes; Kelvins; Moles; Candelas; Watts; Hertz ] |> List.map (fun units ->
           testCase (sprintf "scaling %f %A" value units) (fun _ -> 
             let actual = Units.scale units value
             let expected = expected, sprintf "%s%s" prefix (Units.symbol units)

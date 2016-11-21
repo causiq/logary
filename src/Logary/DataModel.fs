@@ -634,7 +634,7 @@ type Units =
     Offset (Kelvins, +273.15)
 
   static member symbol = function
-    | Bits -> "b"
+    | Bits -> "bit"
     | Bytes -> "B"
     | Seconds -> "s"
     | Metres -> "m"
@@ -700,7 +700,7 @@ type Units =
       match json with
       | Json.String s ->
         match s with
-        | "b" -> Bits |> JsonResult.Value, json
+        | "bit" -> Bits |> JsonResult.Value, json
         | "B" -> Bytes |> JsonResult.Value, json
         | "s" -> Seconds |> JsonResult.Value, json
         | "m" -> Metres |> JsonResult.Value, json
@@ -779,6 +779,13 @@ module Units =
     | Array values -> String.Concat ["["; values |> List.map formatValue |> String.concat ", "; "]"]
     | Object m -> "Object"
 
+  // https://en.wikipedia.org/wiki/International_System_of_Units#Prefixes
+  let multiplePrefixes =
+    [| ""; "k"; "M"; "G"; "T"; "P" |]
+
+  let fractionsPrefixes : string[] =
+    [||]
+
   let scaleSeconds : float -> float * string =
     ((*) (float Constants.NanosPerSecond)) >> int64 >> function
     | value when value < Constants.NanosPerSecond / 1000000L ->
@@ -796,27 +803,33 @@ module Units =
     | value ->
       1. / 86400., "days"
 
-  let scaleBits : float -> float * string =
-    let prefix = [| ""; "k"; "M"; "G"; "T"; "P" |]
-    fun value ->
-      let index = min (int (log10 value) / 3) (prefix.Length - 1)
-      1. / 10.**(float index * float 3), sprintf "%sbit" prefix.[index]
+  let scaleBits (value : float) : float * string =
+    let index = min (int (log10 value) / 3) (multiplePrefixes.Length - 1)
+    1. / 10.**(float index * 3.),
+    sprintf "%s%s" multiplePrefixes.[index] (Units.symbol Bits)
 
-  // grafana/public/app/kbn.js:374@g20d5d0e
+  let scaleBytes (value : float) : float * string =
+    let log2 x = log x / log 2.
+    let prefixes = [| ""; "Ki"; "Mi"; "Gi"; "Ti"; "Pi" |] // note the capital K and the 'i'
+    let index = int (log2 value) / 10
+    1. / 2.**(float index * 10.),
+    sprintf "%s%s" prefixes.[index] (Units.symbol Bytes)
+
   /// Takes a function that returns a *factor* (not the value multiplied)
   /// by the factor!
   let calculate (calcFactor : float -> float * string) =
     fun (value : float) ->
       let factor, unitStr = calcFactor value
-      //printfn "FACTOR=%f" factor
       value * factor, unitStr
 
   // Given a Unit, returns the scaling function and the list of units available.
   let rec scale units value : float * string =
     let noopScale v = 1., Units.symbol units
     match units with
-    | Bits -> calculate scaleBits value
-    | Bytes
+    | Bits ->
+      calculate scaleBits value
+    | Bytes ->
+      calculate scaleBytes value
     | Metres
     | Scalar
     | Amperes
