@@ -319,19 +319,45 @@ module LiterateConsole =
     let rec literateTokeniseField (conf : LiterateConsoleConf)
                                   (prop : Property)
                                   (propValue : Field) =
-      let recurseTokenise = fun c p v -> literateTokeniseField c p (Field (v, None))
-      let value, units = match propValue with Field (v, u) -> v, u
       let fp = conf.formatProvider
-      match value with
-      | Value.Array _ as arr -> literateTokeniseArray conf prop arr recurseTokenise
-      | Value.String s -> seq { yield s, StringSymbol }
-      | Value.Bool b -> seq { yield b.ToString().ToLowerInvariant(), KeywordSymbol }
-      | Value.Float f -> seq { yield f.ToString(prop.Format, fp), NumericSymbol }
-      | Value.Int64 i -> seq { yield i.ToString(prop.Format, fp), NumericSymbol }
-      | Value.BigInt bi -> seq { yield bi.ToString(prop.Format, fp), NumericSymbol }
-      | Value.Binary (_) as binary -> literateTokeniseBinary conf prop binary
-      | Value.Fraction (_) as fraction -> literateTokeniseFraction conf prop fraction
-      | Value.Object _ as o -> literateTokeniseObject conf prop o recurseTokenise
+      let recurseTokenise = fun c p v -> literateTokeniseField c p (Field (v, None))
+
+      let (Field (value, units)) = propValue
+      match units, value with
+      | Some units, Value.Float f ->
+        let f, unitsStr = Units.scale units f
+        seq {
+          yield f.ToString("N2", fp), NumericSymbol
+          yield " ", Subtext
+          yield unitsStr, Text
+        }
+      | None, Value.Float f ->
+        seq { yield f.ToString(prop.Format, fp), NumericSymbol }
+
+      | Some units, Value.Int64 i ->
+        seq {
+          let f, unitsStr = Units.scale units (float i)
+          yield f.ToString(prop.Format, fp), NumericSymbol
+          yield " ", Subtext
+          yield unitsStr, Text
+        }
+      | None, Value.Int64 i ->
+        seq { yield i.ToString(prop.Format, fp), NumericSymbol }
+
+      | _, Value.String s ->
+        seq { yield s, StringSymbol }
+      | _, Value.Bool b ->
+        seq { yield b.ToString().ToLowerInvariant(), KeywordSymbol }
+      | _, Value.BigInt bi ->
+        seq { yield bi.ToString(prop.Format, fp), NumericSymbol }
+      | _, (Value.Binary (_) as binary) ->
+        literateTokeniseBinary conf prop binary
+      | _, (Value.Fraction (_) as fraction) ->
+        literateTokeniseFraction conf prop fraction
+      | _, (Value.Array _ as arr) ->
+        literateTokeniseArray conf prop arr recurseTokenise
+      | _, (Value.Object _ as o) ->
+        literateTokeniseObject conf prop o recurseTokenise
 
     let literateTokenisePointValue (options : LiterateConsoleConf) (message : Message) = function
       | Event eventTemplate ->
@@ -350,7 +376,7 @@ module LiterateConsole =
       | Gauge (Int64 nanos, Scaled (Seconds, scale))
         when scale = float Constants.NanosPerSecond ->
 
-        let number, unitStr = (float nanos / float scale) |> Units.scale Seconds 
+        let number, unitStr = (float nanos / float scale) |> Units.scale Seconds
         let format = if nanos < 1000L then "N0" else "N2"
         seq {
           yield message.name.ToString(), NameSymbol
@@ -361,25 +387,44 @@ module LiterateConsole =
           yield " to execute.", Subtext
         }
 
+      | Gauge (value, units)
+        when message |> Message.hasTag KnownLiterals.SuppressPointValue ->
+        seq {
+          yield message.name.ToString(), NameSymbol
+          yield " (M)", Subtext
+          yield ":", Punctuation
+          yield " ", Subtext
+          let mutable first = true
+          for KeyValue (name, Field (value, fieldUnits)) in message.fields do
+            let field =
+              let fu = fieldUnits |> Option.orDefault units
+              Field (value, Some fu)
+            if not first then yield " | ", Punctuation
+            else first <- false
+            yield PointName.format name, NameSymbol
+            yield "=", Punctuation
+            yield! literateTokeniseField options Property.Empty field
+        }
+
       | Gauge (value, units) ->
         seq {
-          yield "Metric (gauge) ", Subtext
+          yield message.name.ToString(), NameSymbol
+          yield " (M)", Subtext
+          yield ":", Punctuation
+          yield " ", Subtext
           yield! literateTokeniseField options (Property.Empty) (Field (value, None))
           yield " ", Subtext
-          yield Units.symbol units, Text
-          yield " (", Punctuation
-          yield message.name.ToString(), NameSymbol
-          yield ")", Punctuation }
+          yield Units.symbol units, Text }
 
       | Derived (value, units) ->
         seq {
-          yield "Metric (derived) ", Subtext
+          yield message.name.ToString(), NameSymbol
+          yield " (MD)", Subtext
+          yield ":", Punctuation
+          yield " ", Subtext
           yield! literateTokeniseField options (Property.Empty) (Field (value, None))
           yield " ", Subtext
-          yield Units.symbol units, Text
-          yield " (", Punctuation
-          yield message.name.ToString(), NameSymbol
-          yield ")", Punctuation }
+          yield Units.symbol units, Text }
 
     /// Split a structured message up into theme-able parts (tokens), allowing the
     /// final output to display to a user with colours to enhance readability.

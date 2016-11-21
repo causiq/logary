@@ -803,25 +803,45 @@ module Units =
       1. / 10.**(float index * float 3), sprintf "%sbit" prefix.[index]
 
   // grafana/public/app/kbn.js:374@g20d5d0e
+  /// Takes a function that returns a *factor* (not the value multiplied)
+  /// by the factor!
   let calculate (calcFactor : float -> float * string) =
     fun (value : float) ->
       let factor, unitStr = calcFactor value
+      printfn "FACTOR=%f" factor
       value * factor, unitStr
 
   // Given a Unit, returns the scaling function and the list of units available.
-  let scale units value : float * string =
-    let scale2to10 _ = 1024., "TODO"
+  let rec scale units value : float * string =
+    let noopScale v = v, Units.symbol units
     match units with
-    | Bits ->
-      calculate scaleBits value
-    | Bytes ->
-      calculate scaleBits value
+    | Bits -> calculate scaleBits value
+    | Bytes
+    | Metres
+    | Scalar
+    | Amperes
+    | Kelvins
+    | Moles
+    | Candelas
+    | Watts
+    | Hertz
+    | Offset _
+    | Mul (_, _)
+    | Pow (_, _)
+    | Div (_, _)
+    | Root _
+    | Log10 _
+    | Other _ ->
+      calculate noopScale value
+    | Percent _ ->
+      printfn "PERCENT SCALING value=%f" value
+      let res = calculate (fun v -> 100., Units.symbol Percent) value
+      printfn "RES=%A" res
+      res
     | Seconds ->
       calculate scaleSeconds value
-    | x ->
-      calculate scale2to10 value
-        //["ns"; "µs"; "ms"; "s"; "min"; "h"; "days"]
-        //["B"; "KiB"; "MiB"; "GiB"; "TiB"; "PiB"; "EiB"; "ZiB"; "YiB"]
+    | Scaled (iu, scalef) ->
+      scale iu (value / scalef)
 
   let formatWithUnit orient un value =
     let fval = formatValue value

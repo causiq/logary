@@ -7,6 +7,7 @@ open System.IO
 open System.Text
 open System.Threading
 open Expecto
+open Expecto.Logging
 open Logary
 open Logary.Internals
 open Logary.Targets
@@ -16,6 +17,8 @@ open Hopac
 open NodaTime
 open TestDSL
 open Fac
+
+let logger = Expecto.Logging.Log.create "Logary.Tests.CoreTargets"
 
 let textWriterConf () =
   let stdout, stderr = Fac.textWriter (), Fac.textWriter ()
@@ -82,6 +85,15 @@ let timeMessage (nanos : int64) level =
 let gaugeMessage (value : float) level =
   Float value
   |> Message.gaugeWithUnit (PointName [| "Revolver" |]) (Div (Seconds, Units.Other "revolution"))
+  |> Message.setLevel level
+
+let multiGaugeMessage level =
+  Int64 1L
+  |> Message.gaugeWithUnit (PointName [| "Processor"; "% Idle" |]) Percent
+  |> Message.setField "Core 1" (Float 0.001)
+  |> Message.setField "Core 2" (Float 0.99)
+  |> Message.setField "Core 3" (Float 0.473223755)
+  |> Message.tag KnownLiterals.SuppressPointValue
   |> Message.setLevel level
 
 let nanos xs =
@@ -190,18 +202,46 @@ let tests =
             yield { text = " to execute."; colours = LiterateTesting.Theme.subtextColours } ]
           "Should print [06:15:02 INF] A.B.C.Perform took 139 μs, because nanoseconds is as accurate as it gets"
 
-      yield testLiterateCase "A count per second gauge" (gaugeMessage 1.4562) <| fun expectedTimeText parts ->
+      yield testLiterateCase "Single measurement per second gauge" (gaugeMessage 1.4562) <| fun expectedTimeText parts ->
         Expect.sequenceEqual
           parts
           [ yield! levels expectedTimeText
-            yield { text = "Metric (gauge) "; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = "Revolver"; colours = LiterateTesting.Theme.nameSymbolColours }
+            yield { text = " (M)"; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = ":"; colours = LiterateTesting.Theme.punctuationColours }
+            yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
             yield { text = "1,4562"; colours = LiterateTesting.Theme.numericSymbolColours }
             yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
-            yield { text = "s/revolution"; colours = LiterateTesting.Theme.textColours }
-            yield { text = " ("; colours = LiterateTesting.Theme.punctuationColours }
-            yield { text = "Revolver"; colours = LiterateTesting.Theme.nameSymbolColours }
-            yield { text = ")"; colours = LiterateTesting.Theme.punctuationColours } ]
-          "Should print [06:15:02 INF] Metric (gauge) 1,4562 s/revolution (Revolver)"
+            yield { text = "s/revolution"; colours = LiterateTesting.Theme.textColours } ]
+          "Should print [06:15:02 INF] Revolver: 1,4562 s/revolution"
+
+      yield testLiterateCase "Multiple measurements per second gauge" multiGaugeMessage <| fun expectedTimeText parts ->
+        printfn "Parts: %s" (parts |> List.map (fun ct -> ct.text) |> String.Concat)
+        Expect.sequenceEqual
+          parts
+          [ yield! levels expectedTimeText
+            yield { text = "Processor.% Idle"; colours = LiterateTesting.Theme.nameSymbolColours }
+            yield { text = " (M)"; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = ":"; colours = LiterateTesting.Theme.punctuationColours }
+            yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = "Core 1"; colours = LiterateTesting.Theme.nameSymbolColours }
+            yield { text = "="; colours = LiterateTesting.Theme.punctuationColours }
+            yield { text = "0,10"; colours = LiterateTesting.Theme.numericSymbolColours }
+            yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = "%"; colours = LiterateTesting.Theme.textColours }
+            yield { text = " | "; colours = LiterateTesting.Theme.punctuationColours }
+            yield { text = "Core 2"; colours = LiterateTesting.Theme.nameSymbolColours }
+            yield { text = "="; colours = LiterateTesting.Theme.punctuationColours }
+            yield { text = "99,00"; colours = LiterateTesting.Theme.numericSymbolColours }
+            yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = "%"; colours = LiterateTesting.Theme.textColours }
+            yield { text = " | "; colours = LiterateTesting.Theme.punctuationColours }
+            yield { text = "Core 3"; colours = LiterateTesting.Theme.nameSymbolColours }
+            yield { text = "="; colours = LiterateTesting.Theme.punctuationColours }
+            yield { text = "47,32"; colours = LiterateTesting.Theme.numericSymbolColours }
+            yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = "%"; colours = LiterateTesting.Theme.textColours } ]
+          "Should print [06:15:02 INF] Processor.% Idle (M): Core 1=0,10 % | Core 2=99,00 % | Core 3=47,32 %"
     ]
 
     testList "text writer prints" [
@@ -259,7 +299,6 @@ open FileSystem
 open File
 open Expecto.Logging
 
-let logger = Log.create "Logary.Targets.Tests.CoreTargets"
 
 [<Tests>]
 let files =
@@ -434,8 +473,9 @@ let files =
       ]
     ]
 
-    Targets.basicTests "file" createInRandom
-    Targets.integrationTests "file" createInRandom
+    // Commented out while file target is in dev
+    //Targets.basicTests "file" createInRandom
+    //Targets.integrationTests "file" createInRandom
 
     testCaseF "log ten thousand messages" <| fun folder file ->
       Tests.skiptest "Locks up, see https://github.com/haf/expecto/issues/2 but probably due to the Janitor loop"
