@@ -94,6 +94,8 @@ let multiGaugeMessage level =
   |> Message.setField "Core 2" (Float 0.99)
   |> Message.setField "Core 3" (Float 0.473223755)
   |> Message.tag KnownLiterals.SuppressPointValue
+  |> Message.setContext "host" "db-001"
+  |> Message.setContext "service" "api-web"
   |> Message.setLevel level
 
 let nanos xs =

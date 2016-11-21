@@ -77,5 +77,27 @@ let tests =
           Expect.floatEqual value 2000. None "Should be scaled to 2 000 Pbit"
           Expect.equal units "Pbit" "Should be scaled to 2 000 Pbit"
       ]
+
+      testList "bytes" [
+        testCase "1 byte" <| fun _ ->
+          Expect.equal (Units.scale Bytes 1.) (1., "B") "Should scale 1<->1 bytes"
+
+        testCase "10 bytes" <| fun _ ->
+          Expect.equal (Units.scale Bytes 10.) (10., "B") "Should not scale"
+
+        testCase "1024 bytes" <| fun _ ->
+          Expect.equal (Units.scale Bytes 1024.) (1., "KiB") "Should scale to KiB"
+
+        testCase "(2^10)^2 bytes" <| fun _ ->
+          Expect.equal (Units.scale Bytes (1024. * 1024.)) (1., "MiB") "Should scale to MiB"
+
+        testCase "(2^10)^3 bytes" <| fun _ ->
+          Expect.equal (Units.scale Bytes (1024. * 1024. * 1024.)) (1., "GiB")
+                       "Should scale to GiB"
+
+        testCase "(2^10)^4 bytes" <| fun _ ->
+          Expect.equal (Units.scale Bytes (1024. * 1024. * 1024. * 1024.)) (1., "TiB")
+                       "Should scale to TiB"
+      ]
     ]
   ]

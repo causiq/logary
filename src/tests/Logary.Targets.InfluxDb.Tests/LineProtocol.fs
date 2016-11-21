@@ -138,7 +138,7 @@ let lineProtocol =
         let pn = PointName [| "Processor"; "% Utilisation" |]
         Message.gaugeWithUnit pn Percent (Int64 1L)
         |> Message.setContext "host" "my-host-001"
-        |> Message.setFieldValue "Core 1" (Field (Float 0.03, Some Percent))
+        |> Message.setFieldValue "Core 1" (Field (Float 0.03, None))
         |> Message.setFieldValue "Core 2" (Field (Float 0.06, Some Percent))
         |> Message.setFieldValue "Core 3" (Field (Float 0.139, Some Percent))
         |> Message.setNanoEpoch 1435362189575692182L

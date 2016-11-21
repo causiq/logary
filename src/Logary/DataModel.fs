@@ -808,12 +808,12 @@ module Units =
   let calculate (calcFactor : float -> float * string) =
     fun (value : float) ->
       let factor, unitStr = calcFactor value
-      printfn "FACTOR=%f" factor
+      //printfn "FACTOR=%f" factor
       value * factor, unitStr
 
   // Given a Unit, returns the scaling function and the list of units available.
   let rec scale units value : float * string =
-    let noopScale v = v, Units.symbol units
+    let noopScale v = 1., Units.symbol units
     match units with
     | Bits -> calculate scaleBits value
     | Bytes
@@ -834,9 +834,9 @@ module Units =
     | Other _ ->
       calculate noopScale value
     | Percent _ ->
-      printfn "PERCENT SCALING value=%f" value
+      //printfn "PERCENT SCALING value=%f" value
       let res = calculate (fun v -> 100., Units.symbol Percent) value
-      printfn "RES=%A" res
+      //printfn "RES=%A" res
       res
     | Seconds ->
       calculate scaleSeconds value
