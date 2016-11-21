@@ -781,7 +781,7 @@ module Units =
 
   // https://en.wikipedia.org/wiki/International_System_of_Units#Prefixes
   let multiplePrefixes =
-    [| ""; "k"; "M"; "G"; "T"; "P" |]
+    [| ""; "k"; "M"; "G"; "T"; "P"; "E"; "Z" |]
 
   let fractionsPrefixes : string[] =
     [||]
@@ -803,10 +803,10 @@ module Units =
     | value ->
       1. / 86400., "days"
 
-  let scaleBits (value : float) : float * string =
+  let scaleBy10 units (value : float) : float * string =
     let index = min (int (log10 value) / 3) (multiplePrefixes.Length - 1)
     1. / 10.**(float index * 3.),
-    sprintf "%s%s" multiplePrefixes.[index] (Units.symbol Bits)
+    sprintf "%s%s" multiplePrefixes.[index] (Units.symbol units)
 
   let scaleBytes (value : float) : float * string =
     let log2 x = log x / log 2.
@@ -826,10 +826,9 @@ module Units =
   let rec scale units value : float * string =
     let noopScale v = 1., Units.symbol units
     match units with
-    | Bits ->
-      calculate scaleBits value
     | Bytes ->
       calculate scaleBytes value
+    | Bits
     | Metres
     | Scalar
     | Amperes
@@ -837,7 +836,8 @@ module Units =
     | Moles
     | Candelas
     | Watts
-    | Hertz
+    | Hertz ->
+      calculate (scaleBy10 units) value
     | Offset _
     | Mul (_, _)
     | Pow (_, _)

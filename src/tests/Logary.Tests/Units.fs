@@ -74,8 +74,8 @@ let tests =
 
         testCase "2 000 000 000 000 000 000 bit" <| fun _ ->
           let value, units = Units.scale Bits 2000000000000000000.
-          Expect.floatEqual value 2000. None "Should be scaled to 2 000 Pbit"
-          Expect.equal units "Pbit" "Should be scaled to 2 000 Pbit"
+          Expect.floatEqual value 2. None "Should be scaled to 2. Ebit"
+          Expect.equal units "Ebit" "Should be scaled to 2. Ebit"
       ]
 
       testList "bytes" [
@@ -101,7 +101,7 @@ let tests =
       ]
 
       testCase "scalars are not scaled" <| fun _ ->
-        Expect.equal (Units.scale Scalar 12345678.) (12345678., "")
+        Expect.equal (Units.scale Scalar 12345678.) (12.345678, "M")
                      "Should not present a unit for Scalars"
 
       testCase "others are not scaled" <| fun _ ->
@@ -138,12 +138,13 @@ let tests =
             1234000333444555666., 1.234000333444555666, "E"
             1234000333444555666777., 1.234000333444555666777, "Z"
           ]
-          |> List.collect (fun (value, expected, prefix) ->
+          |> List.collect (fun (value, expectedf, prefix) ->
           [ Metres; Amperes; Kelvins; Moles; Candelas; Watts; Hertz ] |> List.map (fun units ->
           testCase (sprintf "scaling %f %A" value units) (fun _ -> 
-            let actual = Units.scale units value
-            let expected = expected, sprintf "%s%s" prefix (Units.symbol units)
-            Expect.equal actual expected "Should properly format the value"
+            let actualf, actualu = Units.scale units value
+            let expectedu = sprintf "%s%s" prefix (Units.symbol units)
+            Expect.equal actualu expectedu "Should properly format the unit"
+            Expect.floatEqual actualf expectedf None "Should properly scale the value to the unit"
           )))
       ]
 
