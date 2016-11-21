@@ -112,6 +112,16 @@ let tests =
         Expect.equal (Units.scale Percent 0.1346) (12.46, "%")
                      "Percents are scaled properly"
 
+      testCase "'Scaled' unit with a 1. scale is not actually scaled" <| fun _ ->
+        let actual = Units.scale (Scaled (Percent, 1.)) 0.123
+        let expected = 12.3, "%"
+        Expect.equal actual expected "Should handle non-scaled Scaled"
+
+      testCase "'Scaled' unit by 1/10" <| fun _ ->
+        let actual = Units.scale (Scaled (Percent, 0.1)) 0.123
+        let expected = 123., "%"
+        Expect.equal actual expected "Should handle 10x scale"
+
       testList "SI thousands-units multiples" [
         yield!
           [ 1., 1., ""
