@@ -148,5 +148,33 @@ let tests =
           )))
       ]
 
+      testList "SI thousands-units fractions" [
+        yield!
+          [ 1., 1., ""
+            .1, 10., ""
+            .01, 100., ""
+            .001, 1., "k"
+            0.001024., 1.024, "k"
+
+            2345., 2.345, "k"
+            1000000., 1., "M"
+            1234000333., 1.234000333, "G"
+            1234000333444., 1.234000333444, "T"
+            1234000333444555., 1.234000333444555, "P"
+            1234000333444555666., 1.234000333444555666, "E"
+            1234000333444555666777., 1.234000333444555666777, "Z"
+          ]
+          |> List.collect (fun (value, expectedf, prefix) ->
+          [ Metres; Amperes; Kelvins; Moles; Candelas; Watts; Hertz ] |> List.map (fun units ->
+          testCase (sprintf "scaling %f %A" value units) (fun _ -> 
+            Tests.skiptest "WIP"
+            let actualf, actualu = Units.scale units value
+            let expectedu = sprintf "%s%s" prefix (Units.symbol units)
+            Expect.equal actualu expectedu "Should properly format the unit"
+            Expect.floatEqual actualf expectedf None "Should properly scale the value to the unit"
+          )))
+      ]
+
+
     ]
   ]
