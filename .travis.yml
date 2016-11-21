@@ -2,7 +2,6 @@
 language: csharp
 
 mono:
-  - 4.2.3
   - 4.4.2
   - 4.6.1
   - weekly
