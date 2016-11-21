@@ -148,6 +148,13 @@ let tests =
       |> Value.ofObject
       |> ignore
 
+    testCase "can add tags" <| fun _ ->
+      let subject =
+        Message.event Debug "Hi"
+        |> Message.tag "a"
+        |> Message.tag "b"
+      Expect.equal subject.context.["tags"] (Array [ String "a"; String "b" ]) "Should have tags"
+
     testCase "can deserialize exampleJson" <| fun () ->
       let (m : Message) = exampleJson |> Json.parse |> Json.deserialize
       Expect.equal (m.GetType()) typeof<Message> "Example JSON."
