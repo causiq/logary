@@ -99,5 +99,42 @@ let tests =
           Expect.equal (Units.scale Bytes (1024. * 1024. * 1024. * 1024.)) (1., "TiB")
                        "Should scale to TiB"
       ]
+
+      testCase "scalars are not scaled" <| fun _ ->
+        Expect.equal (Units.scale Scalar 12345678.) (12345678., "")
+                     "Should not present a unit for Scalars"
+
+      testCase "others are not scaled" <| fun _ ->
+        Expect.equal (Units.scale (Other "reqs") 12345678.) (12345678., "reqs")
+                     "Should not present a unit for Scalars"
+
+      testCase "Percent are always scalled x100 and presented with a % symbol" <| fun _ ->
+        Expect.equal (Units.scale Percent 0.1346) (12.46, "%")
+                     "Percents are scaled properly"
+
+      testList "SI thousands-units multiples" [
+        yield!
+          [ 1., 1., ""
+            10., 10., ""
+            100., 100., ""
+            1000., 1., "K"
+            1024., 1.024, "K"
+            2345., 2.345, "K"
+            1000000., 1., "M"
+            1234000333., 1.234000333, "G"
+            1234000333444., 1.234000333444, "T"
+            1234000333444555., 1.234000333444555, "P"
+            1234000333444555666., 1.234000333444555666, "E"
+            1234000333444555666777., 1.234000333444555666777, "Z"
+          ]
+          |> List.collect (fun (value, expected, prefix) ->
+          [ Seconds; Metres; Amperes; Kelvins; Moles; Candelas; Watts; Hertz ] |> List.map (fun units ->
+          testCase (sprintf "scaling %f %A" value units) (fun _ -> 
+            let actual = Units.scale units value
+            let expected = expected, sprintf "%s%s" prefix (Units.symbol units)
+            Expect.equal actual expected "Should properly format the value"
+          )))
+      ]
+
     ]
   ]
