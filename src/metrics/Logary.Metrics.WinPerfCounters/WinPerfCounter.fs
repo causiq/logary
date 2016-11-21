@@ -313,13 +313,16 @@ module WinPerfCounter =
     /// be found.
     let pidToInstance pid : string option =
       Category.createForce "Process"
+      // will get a list of *all* instances running on this machine
       |> Category.instances
       |> Array.map (fun instance ->
-        match toWindowsCounter3 "Process" "ID Process" [ instance ] with
-        | Some pcProcId when int (snd (pcProcId.nextValue())) = pid ->
-          pcProcId.instances.[0]
-        | _ ->
-          "")
+        try
+          match toWindowsCounter3 "Process" "ID Process" [ instance ] with
+          | Some pcProcId when int (snd (pcProcId.nextValue())) = pid ->
+            pcProcId.instances.[0]
+          | _ ->
+            ""
+        with _ -> "")
       |> Array.tryFind (fun s -> s.Length > 0)
       |> Option.fold (fun _ t -> Some t) None
 
