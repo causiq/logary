@@ -189,6 +189,17 @@ module Advanced =
       for x in s do sb.AppendLine(sprintf " * %A" x) |> ignore
       sb.ToString()
 
+    let getLogger conf name middleware =
+      name
+      |> getTargets conf
+      |> fromTargets name conf.runtimeInfo.logger
+      |> Logger.apply middleware
+
+    let compose (logger : Logger) middleware =
+      logger.verbose (eventX "Composing {length} middlewares"
+                      >> setField "length" (List.length middleware))
+      >>-. Middleware.compose middleware
+
     /// The state for the Registry
     type RegistryState =
       { /// the supervisor, not of the registry actor, but of the targets and probes and health checks.
@@ -251,7 +262,10 @@ module Advanced =
                                     (Some mconf.tickInterval)
                                     sched
               do! logger.verbose (eventX "Getting logger for metric {name}" >> setField "name" name)
-              let logger = name |> getTargets conf |> fromTargets name conf.runtimeInfo.logger
+
+              let! middleware = compose logger conf.middleware
+              let logger = getLogger conf name middleware
+
               Metric.tapMessages instance |> Stream.consumeJob (fun msg ->
                 logger.logWithAck msg.level (fun _ -> msg)
                 |> Job.Ignore
@@ -267,22 +281,9 @@ module Advanced =
         let! msg = Ch.take inbox
         match msg with
         | GetLogger (name, extraMiddleware, replCh) ->
-          let middleware =
-            match extraMiddleware with
-            | None -> conf.middleware
-            | Some mid -> mid :: conf.middleware
-
-          do! logger.verbose (
-                eventX "Composing {length} middlewares"
-                >> setField "length" (List.length middleware))
-
-          let composedMiddleware = Middleware.compose middleware
-
-          let logger =
-            name
-            |> getTargets conf
-            |> fromTargets name conf.runtimeInfo.logger
-            |> Logger.apply composedMiddleware
+          let middleware = extraMiddleware |> Option.fold (fun s t -> t :: s) conf.middleware
+          let! middleware = compose logger middleware
+          let logger = getLogger conf name middleware
 
           do! IVar.fill replCh logger
           return! running state

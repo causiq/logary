@@ -181,5 +181,19 @@ let networkInterface pn =
 let appMetrics (_ : PointName) : Job<Metric> =
   ofCounters (appCounters ())
 
+[<CompiledName "AppMetric">]
+let appMetric category counter instances : (PointName -> Job<Metric>) =
+  fun (_ : PointName) ->
+    printfn "Creating app metric %s %s" category counter
+    WinPerfCounter.create(category, counter, instances)
+    |> Array.singleton
+    |> ofPerfCounters
+    |> ofCounters
+
+[<CompiledName "AppMetricF">]
+let appMetricF category counter instances : System.Func<PointName, Job<Metric>> =
+  let fn = appMetric category counter instances
+  System.Func<_, _>(fn)
+
 let systemMetrics (_ : PointName) : Job<Metric> =
   ofCounters (systemCounters ())

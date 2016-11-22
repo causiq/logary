@@ -31,11 +31,11 @@ namespace Logary.CSharp.Tests
                 manager = LogaryFactory.New(
                     "Logary.CSharp.Tests",
                     with =>
-                        with.Target<TextWriter.Builder>("sample string writer",
-                            t =>
-                                t.Target.WriteTo(writer, writer)
-                                    .MinLevel(LogLevel.Verbose)
-                                    .SourceMatching(new Regex(".*")))).Result;
+                        with.Use(Middleware.ProcessName)
+                            .Target<TextWriter.Builder>("sample string writer",
+                            t => t.Target.WriteTo(writer, writer)
+                                  .MinLevel(LogLevel.Verbose)
+                                  .SourceMatching(new Regex(".*")))).Result;
             };
 
         Because reason = () =>
@@ -51,10 +51,10 @@ namespace Logary.CSharp.Tests
             };
 
         It output_should_contain_exception = () => subject.ShouldContain(exception.Message);
-
         It output_should_contain_message = () => subject.ShouldContain("the situation is dire");
         It output_should_contain_the_field = () => subject.ShouldContain("oh-noes");
         It output_should_contain_timestamp = () => subject.ShouldContain(timestamp.Ticks.ToString());
+        It output_should_contain_processName_key = () => subject.ShouldContain("processName");
 
         Cleanup cleanup = () =>
             {
