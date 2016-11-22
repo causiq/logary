@@ -278,6 +278,7 @@ module WinPerfCounter =
         | typ ->
           failwithf "unknown type %A" typ
     else
+      printfn "category %s and counter %s do not exist" counter.category counter.counter
       None
 
   /// Curried variant of `mkPc` that takes a category, counter and optional
