@@ -634,7 +634,7 @@ type Units =
     Offset (Kelvins, +273.15)
 
   static member symbol = function
-    | Bits -> "b"
+    | Bits -> "bit"
     | Bytes -> "B"
     | Seconds -> "s"
     | Metres -> "m"
@@ -700,7 +700,7 @@ type Units =
       match json with
       | Json.String s ->
         match s with
-        | "b" -> Bits |> JsonResult.Value, json
+        | "bit" -> Bits |> JsonResult.Value, json
         | "B" -> Bytes |> JsonResult.Value, json
         | "s" -> Seconds |> JsonResult.Value, json
         | "m" -> Metres |> JsonResult.Value, json
@@ -779,6 +779,13 @@ module Units =
     | Array values -> String.Concat ["["; values |> List.map formatValue |> String.concat ", "; "]"]
     | Object m -> "Object"
 
+  // https://en.wikipedia.org/wiki/International_System_of_Units#Prefixes
+  let multiplePrefixes =
+    [| ""; "k"; "M"; "G"; "T"; "P"; "E"; "Z" |]
+
+  let fractionsPrefixes : string[] =
+    [||]
+
   let scaleSeconds : float -> float * string =
     ((*) (float Constants.NanosPerSecond)) >> int64 >> function
     | value when value < Constants.NanosPerSecond / 1000000L ->
@@ -796,27 +803,32 @@ module Units =
     | value ->
       1. / 86400., "days"
 
-  let scaleBits : float -> float * string =
-    let prefix = [| ""; "k"; "M"; "G"; "T"; "P" |]
-    fun value ->
-      let index = min (int (log10 value) / 3) (prefix.Length - 1)
-      1. / 10.**(float index * float 3), sprintf "%sbit" prefix.[index]
+  let scaleBy10 units (value : float) : float * string =
+    let index = min (int (log10 value) / 3) (multiplePrefixes.Length - 1)
+    1. / 10.**(float index * 3.),
+    sprintf "%s%s" multiplePrefixes.[index] (Units.symbol units)
 
-  // grafana/public/app/kbn.js:374@g20d5d0e
+  let scaleBytes (value : float) : float * string =
+    let log2 x = log x / log 2.
+    let prefixes = [| ""; "Ki"; "Mi"; "Gi"; "Ti"; "Pi" |] // note the capital K and the 'i'
+    let index = int (log2 value) / 10
+    1. / 2.**(float index * 10.),
+    sprintf "%s%s" prefixes.[index] (Units.symbol Bytes)
+
   /// Takes a function that returns a *factor* (not the value multiplied)
   /// by the factor!
   let calculate (calcFactor : float -> float * string) =
     fun (value : float) ->
       let factor, unitStr = calcFactor value
-      printfn "FACTOR=%f" factor
       value * factor, unitStr
 
   // Given a Unit, returns the scaling function and the list of units available.
   let rec scale units value : float * string =
-    let noopScale v = v, Units.symbol units
+    let noopScale v = 1., Units.symbol units
     match units with
-    | Bits -> calculate scaleBits value
-    | Bytes
+    | Bytes ->
+      calculate scaleBytes value
+    | Bits
     | Metres
     | Scalar
     | Amperes
@@ -824,7 +836,8 @@ module Units =
     | Moles
     | Candelas
     | Watts
-    | Hertz
+    | Hertz ->
+      calculate (scaleBy10 units) value
     | Offset _
     | Mul (_, _)
     | Pow (_, _)
@@ -834,9 +847,9 @@ module Units =
     | Other _ ->
       calculate noopScale value
     | Percent _ ->
-      printfn "PERCENT SCALING value=%f" value
+      //printfn "PERCENT SCALING value=%f" value
       let res = calculate (fun v -> 100., Units.symbol Percent) value
-      printfn "RES=%A" res
+      //printfn "RES=%A" res
       res
     | Seconds ->
       calculate scaleSeconds value
@@ -1199,28 +1212,6 @@ module Message =
     let service_ : PLens<Message, string> =
       contextValue_ ServiceContextName >??> Value.String_
 
-    let tags_ : Lens<Message, Set<string>> =
-      let array : Lens<Message, Value list> =
-        let tagsL = context_ >-?> key_ TagsContextName
-        let tagsLA = tagsL >??> Value.Array_
-        (fun x -> Lens.getPartialOrElse tagsLA [] x),
-        (fun v x ->
-          if x.context |> Map.containsKey TagsContextName then
-            x |> Lens.setPartial tagsLA v
-          else
-            { x with context = x.context |> Map.add TagsContextName (Array []) }
-            |> Lens.setPartial tagsLA v)
-
-      let strings : Lens<Value list, Set<string>> =
-        let read =
-          List.choose (function String s -> Some s | _ -> None)
-          >> Set.ofList
-        let write xs existing =
-          xs |> Set.map String |> List.ofSeq |> List.append existing
-        read, write
-
-      array >--> strings
-
   ///////////////// FIELDS ////////////////////
 
   /// Get a partial setter lens to a field
@@ -1273,17 +1264,24 @@ module Message =
   /// Tag the message
   [<CompiledName "Tag">]
   let tag (tag : string) (message : Message) =
-    let tags =
-      Lens.get Lenses.tags_ message
-      |> Set.add tag
-
-    Lens.set Lenses.tags_ tags message
+    let key = KnownLiterals.TagsContextName
+    match message.context |> Map.tryFind key with
+    | Some (Array tags) when List.contains (String tag) tags ->
+      message
+    | Some (Array tags) ->
+      let tags' = Array (String tag :: tags)
+      { message with context = message.context |> Map.add key tags' }
+    | Some _ ->
+      message
+    | None ->
+      { message with context = message.context |> Map.add key (Array [ String tag ] ) }
 
   /// Check if the Message has a tag
   [<CompiledName "HasTag">]
   let hasTag (tag : string) (message : Message) =
-    Lens.get Lenses.tags_ message
-    |> Set.contains tag
+    match message.context |> Map.tryFind KnownLiterals.TagsContextName with
+    | Some (Array tags) when List.contains (String tag) tags -> true
+    | _ -> false
 
   ///////////////// CONTEXT ////////////////////
 
