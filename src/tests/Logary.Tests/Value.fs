@@ -10,10 +10,15 @@ open FsCheck
 type NormalPerson =
   { name : string option }
 
+type Shark =
+  | Mako
+  | Bull
+  | GreatWhite
+
 type StateOfMind =
   | Flummoxed
   | Sharp
-  | Shark
+  | Shark of Shark
 
 type AtypicalPerson =
   { name : string
@@ -85,6 +90,11 @@ let valueTests =
     testProperty "converting arbitrary list" <| fun (a : list<KeyValuePair<string, obj>>) ->
       Value.ofObject a |> ignore
 
+    testCase "convert DU with field" <| fun _ ->
+      Expect.equal (Value.ofObject <| Shark Mako)
+                   (Object (Map ["Shark", String "Mako"]))
+                   "Unions should display their fields in the value"
+
     testCase "convert normal person" <| fun _ ->
       Value.ofObject { NormalPerson.name = Some "haf" } |> ignore
 
@@ -92,10 +102,10 @@ let valueTests =
       Value.ofObject { NormalPerson.name = None } |> ignore
 
     testCase "convert atypical person" <| fun _ ->
-      Value.ofObject { name = "haf"; mind = Shark } |> ignore
+      Value.ofObject { name = "haf"; mind = Shark Mako } |> ignore
 
     testCase "convert atypical person with no name" <| fun _ ->
-      Value.ofObject { name = null; mind = Shark } |> ignore
+      Value.ofObject { name = null; mind = Shark Bull } |> ignore
 
     testCase "convert an empty but strange person" <| fun _ ->
       Value.ofObject StrangePerson.empty |> ignore

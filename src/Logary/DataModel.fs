@@ -266,8 +266,14 @@ module Value =
       |> Array
 
     | du when FSharpType.IsUnion (du.GetType()) ->
-      let uci, _ = FSharpValue.GetUnionFields(du, du.GetType())
-      String uci.Name
+      let uci, fields = FSharpValue.GetUnionFields(du, du.GetType())
+      match fields with
+      | [||] ->
+        String uci.Name
+      | [|field|] ->
+        Object <| Map [uci.Name, ofObject field]
+      | fields ->
+        Object <| Map [uci.Name, ofObject fields]
 
     // POCOs
     | a when a <> null ->
