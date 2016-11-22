@@ -151,10 +151,10 @@ let tests =
       testList "SI thousands-units fractions" [
         yield!
           [ 1., 1., ""
-            .1, 10., ""
-            .01, 100., ""
-            .001, 1., "k"
-            0.001024., 1.024, "k"
+            0.1, 10., ""
+            0.01, 100., ""
+            0.001, 1., "k"
+            0.001024, 1.024, "k"
 
             2345., 2.345, "k"
             1000000., 1., "M"
@@ -174,7 +174,5 @@ let tests =
             Expect.floatEqual actualf expectedf None "Should properly scale the value to the unit"
           )))
       ]
-
-
     ]
   ]

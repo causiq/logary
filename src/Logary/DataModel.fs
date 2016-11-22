@@ -1212,28 +1212,6 @@ module Message =
     let service_ : PLens<Message, string> =
       contextValue_ ServiceContextName >??> Value.String_
 
-    let tags_ : Lens<Message, Set<string>> =
-      let array : Lens<Message, Value list> =
-        let tagsL = context_ >-?> key_ TagsContextName
-        let tagsLA = tagsL >??> Value.Array_
-        (fun x -> Lens.getPartialOrElse tagsLA [] x),
-        (fun v x ->
-          if x.context |> Map.containsKey TagsContextName then
-            x |> Lens.setPartial tagsLA v
-          else
-            { x with context = x.context |> Map.add TagsContextName (Array []) }
-            |> Lens.setPartial tagsLA v)
-
-      let strings : Lens<Value list, Set<string>> =
-        let read =
-          List.choose (function String s -> Some s | _ -> None)
-          >> Set.ofList
-        let write xs existing =
-          xs |> Set.map String |> List.ofSeq |> List.append existing
-        read, write
-
-      array >--> strings
-
   ///////////////// FIELDS ////////////////////
 
   /// Get a partial setter lens to a field
@@ -1286,17 +1264,24 @@ module Message =
   /// Tag the message
   [<CompiledName "Tag">]
   let tag (tag : string) (message : Message) =
-    let tags =
-      Lens.get Lenses.tags_ message
-      |> Set.add tag
-
-    Lens.set Lenses.tags_ tags message
+    let key = KnownLiterals.TagsContextName
+    match message.context |> Map.tryFind key with
+    | Some (Array tags) when List.contains (String tag) tags ->
+      message
+    | Some (Array tags) ->
+      let tags' = Array (String tag :: tags)
+      { message with context = message.context |> Map.add key tags' }
+    | Some _ ->
+      message
+    | None ->
+      { message with context = message.context |> Map.add key (Array [ String tag ] ) }
 
   /// Check if the Message has a tag
   [<CompiledName "HasTag">]
   let hasTag (tag : string) (message : Message) =
-    Lens.get Lenses.tags_ message
-    |> Set.contains tag
+    match message.context |> Map.tryFind KnownLiterals.TagsContextName with
+    | Some (Array tags) when List.contains (String tag) tags -> true
+    | _ -> false
 
   ///////////////// CONTEXT ////////////////////
 

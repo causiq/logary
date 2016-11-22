@@ -151,8 +151,8 @@ let tests =
     testCase "can add tags" <| fun _ ->
       let subject =
         Message.event Debug "Hi"
-        |> Message.tag "a"
         |> Message.tag "b"
+        |> Message.tag "a"
       Expect.equal subject.context.["tags"] (Array [ String "a"; String "b" ]) "Should have tags"
 
     testCase "can deserialize exampleJson" <| fun () ->
