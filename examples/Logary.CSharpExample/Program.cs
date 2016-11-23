@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using NodaTime;
 using Logary.Configuration;
 using Logary.CSharp;
 using Logary.Metrics;
 using Logary.Targets;
+using Uri = System.Uri;
 
 /*
  * 
@@ -84,49 +86,59 @@ namespace Logary.CSharpExample
 
         public static int Main(string[] args)
         {
+            var mre = new ManualResetEventSlim(false);
+            System.Console.CancelKeyPress += (sender, arg) => mre.Set();
+
             using (var logary = LogaryFactory.New("Logary.CSharpExample",
-                with => with.InternalLoggingLevel(LogLevel.Debug)
-                        .Metrics(m =>
-                            m.AddMetric(Duration.FromSeconds(3L), "appMetrics", WinPerfCounters.appMetrics)
-                             .AddMetric(Duration.FromSeconds(3L), "systemMetrics", WinPerfCounters.systemMetrics))
-                        .Target<TextWriter.Builder>(
-                        "console1",
-                        conf =>
-                        conf.Target.WriteTo(System.Console.Out, System.Console.Error)
-                                .MinLevel(LogLevel.Verbose)
-                                .AcceptIf(line => true)
-                                .SourceMatching(new Regex(".*"))
-                            )
-                            .Target<Graphite.Builder>(
-                                "graphite",
-                                conf => conf.Target.ConnectTo("127.0.0.1", 2131)
-                            )
-                            .Target<Debugger.Builder>("debugger")
-                            .Target<Logstash.Builder>(
-                                "logstash",
-                                conf => conf.Target
-                                    .PublishTo("logstash.service")
-                                    .LogMetrics()
-                                    .Done()
-                            )
-                            .Target<ElasticSearch.Builder>(
-                                "es",
-                                conf => conf.Target
-                                    .PublishTo("elasticsearch.service")
-                                    .Type("logs") // index-name
-                                    .Done()
-                            )
-                            //.Target<File.Builder>(
-                            //    "file",
-                            //    conf => conf
-                            //)
-                            .Target<InfluxDb.Builder>("influx",
-                                                      conf => conf.Target.DB("http://influxdb.service:8086").Done())
+                with => with
+                .InternalLoggingLevel(LogLevel.Verbose)
+                .Metrics(m => m.AddMetric(
+                    Duration.FromSeconds(3L), "appMetrics",
+                        WinPerfCounters.AppMetricF("Processor", "% Interrupt Time", new[] { "0" })))
+                .Target<InfluxDb.Builder>(
+                    "influx",
+                    conf => conf.Target.WriteEndpoint(new Uri("http://localhost:8086"))
+                            .DB("Logary.CSharpExample").Done())
+                .Target<TextWriter.Builder>(
+                    "console1",
+                    conf => conf.Target.WriteTo(System.Console.Out, System.Console.Error)
+                            .MinLevel(LogLevel.Verbose)
+                            .AcceptIf(line => true)
+                            .SourceMatching(new Regex(".*"))
+                        )
+                .Use(Middleware.Host)
+                .Use(Middleware.Service("Logary.CSharpExample"))
+                .Use(Middleware.ProcessName)
+                //.Target<Graphite.Builder>(
+                //    "graphite",
+                //    conf => conf.Target.ConnectTo("127.0.0.1", 2131)
+                //)
+                //.Target<Debugger.Builder>("debugger")
+                //.Target<Logstash.Builder>(
+                //    "logstash",
+                //    conf => conf.Target
+                //        .PublishTo("logstash.service")
+                //        .LogMetrics()
+                //        .Done()
+                //)
+                //.Target<ElasticSearch.Builder>(
+                //    "es",
+                //    conf => conf.Target
+                //        .PublishTo("elasticsearch.service")
+                //        .Type("logs") // index-name
+                //        .Done()
+                //)
+                //.Target<File.Builder>(
+                //    "file",
+                //    conf => conf
+                //)
                 ).Result)
             {
-                var logger = logary.GetLogger("Logary.CSharpExample");
-                SampleUsage(logger).Wait();
+                //var logger = logary.GetLogger("main");
+                //SampleUsage(logger).Wait();
+                mre.Wait();
             }
+
             return 0;
         }
     }
