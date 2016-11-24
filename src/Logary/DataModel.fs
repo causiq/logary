@@ -232,6 +232,7 @@ module Value =
     | :? DateTime as dt        -> String (dt.ToUniversalTime().ToString("o"))
     | :? DateTimeOffset as dto -> String (dto.ToString("o"))
     | :? TimeSpan as ts        -> String (ts.ToString())
+    | :? System.Uri as u       -> String (u.ToString())
     | :? NodaTime.Duration as d-> String (d.ToString())
     | :? exn as e              -> Object (exceptionToStringValueMap ofObject e)
 
