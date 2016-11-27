@@ -109,7 +109,7 @@ let tests =
 
       let logger = Registry.getLogger logary.registry (PointName.ofSingle "hi") |> run
       try
-        logger.debug (eventX "there") |> run
+        logger.debugBP (eventX "there") |> run
       finally
         finaliseLogary logary
 
@@ -136,9 +136,9 @@ let tests =
         let no3 = "3" |> get |> run
 
         // 1 and 2 should go through, not 3
-        no1.debug (eventX "first") |> run
-        no2.debug (eventX "second") |> run
-        no3.debug (eventX "third") |> run
+        no1.debugBP (eventX "first") |> run
+        no2.debugBP (eventX "second") |> run
+        no3.debugBP (eventX "third") |> run
 
         // wait for logging to complete; then
         let _ = (Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000) |> run
@@ -182,10 +182,10 @@ let tests =
           let! lgrA = get (PointName.ofSingle "a")
           let! lgrB = get (PointName.ofSingle "b")
 
-          do! lgrA.debug (eventX "first")
-          do! lgrA.info (eventX "second")
-          do! lgrB.debug (eventX "third")
-          do! lgrB.verbose (eventX "fourth")
+          do! lgrA.debugBP (eventX "first")
+          do! lgrA.infoBP (eventX "second")
+          do! lgrB.debugBP (eventX "third")
+          do! lgrB.verboseBP (eventX "fourth")
           let! _ = Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000
 
           because "lgrA matches two rules, lgrB matches only one" (fun _ -> out.ToString())
@@ -219,7 +219,7 @@ let tests =
           let get = Registry.getLogger logary.registry
           let! lgrA = get (PointName.ofSingle "a")
 
-          do! lgrA.debug (eventX "first")
+          do! lgrA.debugBP (eventX "first")
           let! _ = Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000
 
           (because "it was logged but filter is always returning false" <| fun () ->
@@ -249,7 +249,7 @@ let tests =
           |> should equal LogLevel.Debug
           |> thatsIt
 
-          do! logr.debug (eventX "my message comes here")
+          do! logr.debugBP (eventX "my message comes here")
           let! _ = Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000
           (because "it was logged but accept is always returning false" <| fun () ->
             out.ToString())
@@ -281,9 +281,9 @@ let tests =
       try
         job {
           let! shouldLog = Registry.getLogger logary.registry (pnp "a.b.c")
-          do! shouldLog.debug (eventX "this message should go through")
+          do! shouldLog.debugBP (eventX "this message should go through")
           let! shouldDrop = Registry.getLogger logary.registry (pnp "a.x.y")
-          do! shouldDrop.debug (eventX "this message should be dropped")
+          do! shouldDrop.debugBP (eventX "this message should be dropped")
           let! _ = Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000
 
           (because "we only accept path a.b.c, other never" <| fun () ->

@@ -42,7 +42,7 @@ let registry =
           logary |> Config.shutdownSimple |> run |> ignore
           // this will place the info message in the buffers, but since the target is not
           // draining its buffer/queue it won't be logged
-          logger.info (eventX "after shutdown") |> run
+          logger.infoBP (eventX "after shutdown") |> run
           out.ToString())
         |> should contain "hi there"
         |> shouldNot contain "after shutdown"
@@ -75,7 +75,7 @@ let registryMid =
 
       let logger = (pnp "a.b.c.d") |> Registry.getLogger logary.registry |> run
 
-      logger.error (eventX "User clicked wrong button") |> run
+      logger.errorBP (eventX "User clicked wrong button") |> run
 
       logary |> Fac.finaliseLogary
 
@@ -99,7 +99,7 @@ let registryMid =
 
       Fac.withLogary <| fun logary out err ->
         let logger = (pnp "a.b.c.d") |> Registry.getLoggerWithMiddleware middleware logary.registry |> run
-        logger.error (eventX "User clicked wrong button") |> run
+        logger.errorBP (eventX "User clicked wrong button") |> run
         logary |> Fac.finaliseLogary
 
         Expect.stringContains (err.ToString())

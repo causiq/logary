@@ -1312,10 +1312,10 @@ module File =
           acks.Add (conf.formatter message state.writer, ack)
           // Invariant: always flush fatal messages.
           if message.level = Fatal then
-            ilogger.debug (eventX "Got fatal message; scheduling disk flush.") |> start
+            ilogger.debug (eventX "Got fatal message; scheduling disk flush.")
             forceFlush <- true
         | Flush (ackCh, nack) ->
-          ilogger.debug (eventX "Scheduling disk flush.") |> start
+          ilogger.debug (eventX "Scheduling disk flush.")
           flushes.Add (ackCh, nack)
           // Invariant: calling Flush forces a flush to disk.
           forceFlush <- true
@@ -1333,7 +1333,7 @@ module File =
         memo <|
           if conf.flushToDisk || forceFlush then
             flushToDisk state >>=.
-            ilogger.debug (eventX "Flushed to disk.")
+            ilogger.debugBP (eventX "Flushed to disk.")
           else
             Job.result ()
 
@@ -1396,7 +1396,7 @@ module File =
       and running (state : State) : Job<unit> =
         Alt.choose [
           shutdown ^=> fun ack ->
-            ri.logger.debug (eventX "Shutting down file target (starting shutdownState)") >>=.
+            ri.logger.debugBP (eventX "Shutting down file target (starting shutdownState)") >>=.
             shutdownState state >>=.
             ack *<= ()
 

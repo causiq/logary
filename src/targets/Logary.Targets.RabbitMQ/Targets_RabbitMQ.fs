@@ -253,7 +253,7 @@ module internal Impl =
         // Right now we'll just remove the message from the list of inflight messages
         // Some googling should be needed for the exact semantics – but most likely it's
         // failing because you have no consumers configured.
-        ilogger.info (
+        ilogger.infoBP (
           eventX "Got {nack}."
           >> setField "deliveryTag" nack.DeliveryTag
           >> setField "multiple" nack.Multiple)

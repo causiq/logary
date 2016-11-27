@@ -171,7 +171,7 @@ let validate ({ targets     = targets
 /// Start logary with a given configuration
 [<CompiledName "RunLogary"; Extension>]
 let runLogary (conf : LogaryConf) =
-  conf.runtimeInfo.logger.debug (eventX "Running Logary.")
+  conf.runtimeInfo.logger.debugBP (eventX "Running Logary.")
   >>=. Registry.Advanced.create conf
   >>= fun registry -> Logging.startFlyweights registry |> Job.map (fun _ -> registry)
 
@@ -184,12 +184,12 @@ let shutdown (flushDur : Duration) (shutdownDur : Duration) (inst : LogaryInstan
     inst.runtimeInfo.logger |> Logger.apply (setName pn)
 
   job {
-    do! logger.debug (eventX "Shutting down Logary.")
+    do! logger.debugBP (eventX "Shutting down Logary.")
     let! res = Advanced.flushAndShutdown flushDur shutdownDur inst.registry
     if res.successful then
-      do! logger.verbose (eventX "Shutting down Logary was successful.")
+      do! logger.verboseBP (eventX "Shutting down Logary was successful.")
     else
-      do! logger.verbose (
+      do! logger.verboseBP (
             eventX "Shutting down Logary failed within alloted time, with {acks}."
             >> setFieldFromObject "acks" res.stopped)
     Logging.shutdownFlyweights ()

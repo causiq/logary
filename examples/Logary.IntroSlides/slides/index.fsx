@@ -55,7 +55,7 @@ nuget Logary
 #r "Hopac.dll"
 #r "Hopac.Core.dll"
 #r "Logary.dll"
-#r "Logary.WinPerfCounters.dll"
+#r "Logary.Metrics.WinPerfCounters.dll"
 open Hopac
 open Logary
 open Logary.Targets
@@ -79,9 +79,9 @@ let logary =
 
 *)
 open Message
-event Info "Hello {world}!"
-|> setField "world" "Earth"
-|> logger.logSimple
+logger.info (
+  eventX "Hello {world}!"
+  >> setField "world" "Earth") |> start
 (**
 
 ---

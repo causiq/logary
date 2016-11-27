@@ -69,7 +69,7 @@ module internal Impl =
                 ()
 
               | x ->
-                do! ri.logger.error (
+                do! ri.logger.errorBP (
                       eventX "Unknown response from Mailgun received."
                       >> setFieldFromObject "response" x)
 
@@ -87,11 +87,11 @@ module internal Impl =
       ] :> Job<_>
 
     if conf.``to`` = [] then
-      upcast (ri.logger.error (eventX "No `to` was configured in Mailgun target"))
+      upcast (ri.logger.errorBP (eventX "No `to` was configured in Mailgun target"))
     elif conf.from.Host = "example.com" then
-      upcast (ri.logger.error (eventX "You cannot send e-mail to example.com in Mailgun target"))
+      upcast (ri.logger.errorBP (eventX "You cannot send e-mail to example.com in Mailgun target"))
     elif conf.domain = "example.com" then
-      upcast (ri.logger.error (eventX "You cannot send e-mail from example.com in Mailgun target"))
+      upcast (ri.logger.errorBP (eventX "You cannot send e-mail from example.com in Mailgun target"))
     else
       loop ()
 

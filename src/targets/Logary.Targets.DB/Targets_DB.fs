@@ -86,8 +86,8 @@ module internal Impl =
   let execInsert (logger : Logger) (insert : Sql.ConnectionManager -> _) connMgr =
     match insert connMgr with
     | Tx.Commit _ -> ()
-    | Tx.Rollback _ -> logger.error (eventX "Insert was rolled back") |> start
-    | Tx.Failed ex -> logger.error (eventX "Insert failed" >> addExn ex) |> start
+    | Tx.Rollback _ -> logger.error (eventX "Insert was rolled back")
+    | Tx.Failed ex -> logger.error (eventX "Insert failed" >> addExn ex)
 
   let loop (conf : DBConf)
            (svc: RuntimeInfo)
@@ -99,7 +99,7 @@ module internal Impl =
       svc.logger |> Logger.apply (setName pn)
 
     let rec init () =
-      logger.debug (eventX "DB target is opening connection.")
+      logger.debugBP (eventX "DB target is opening connection.")
       |> Job.bind (fun _ ->
         let c = ensureOpen (conf.connectionFactory ())
         running { connection = c
