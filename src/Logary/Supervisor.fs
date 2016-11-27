@@ -93,12 +93,12 @@ let create (logger : Logger) =
   let lastWillCh   = Ch()
 
   let startMinion minionInfo will state =
-    logger.verboseBP (
+    logger.verboseWithBP (
       eventX "Starting minion"
       >> setField "name" (PointName.format minionInfo.name))
     >>=.
       if SupervisorState.jobNames state |> List.contains minionInfo.name then
-        logger.verboseBP (
+        logger.verboseWithBP (
           eventX "New minion not started; already supervised"
           >> setField "name" (PointName.format minionInfo.name))
         >>-. state
@@ -112,14 +112,14 @@ let create (logger : Logger) =
           Job.tryIn work (fun () -> Job.result Complete) (fun e -> Job.result (Failure e))
           >>= (fun r -> reason *<= r)
         guarded |> start
-        logger.verboseBP (
+        logger.verboseWithBP (
           eventX "Minion '{name}' started as job id {jobId}."
           >> setField "name" (PointName.format minionInfo.name)
           >> setField "jobId" (jobId.ToString()))
         >>-. SupervisorState.addMinion jobId minionState reason will state
 
   let unregisterMinion name state =
-    logger.verboseBP (
+    logger.verboseWithBP (
       eventX "Unregistering of minion '{name}' started."
       >> setField "name" (PointName.format name))
     >>=.
@@ -129,7 +129,7 @@ let create (logger : Logger) =
         >>-. SupervisorState.removeMinion jobId state
         >>-. SupervisorState.removeDelayed name state
       | None ->
-        logger.warnBP (
+        logger.warnWithBP (
           eventX "Received request to unregister unknown minion named '{name}'."
           >> setField "name" (PointName.format name))
         >>-. state
@@ -137,12 +137,12 @@ let create (logger : Logger) =
   let handlePolicy jobId minionState state =
     match minionState.info.policy with
     | Terminate ->
-      logger.debugBP (
+      logger.debugWithBP (
         eventX "Failure policy: Terminate. Removing from supervision."
         >> setField "name" (PointName.format minionState.info.name))
       >>-. SupervisorState.removeMinion jobId state
     | Restart ->
-      logger.debugBP (
+      logger.debugWithBP (
         eventX "Failure policy: Restart. Restarting."
         >> Message.setField "name" (PointName.format minionState.info.name))
       >>-. SupervisorState.removeMinion jobId state
@@ -152,7 +152,7 @@ let create (logger : Logger) =
         timeOut <| delay.ToTimeSpan()
         >>-. (minionState.info.name, startMinion minionState.info minionState.state)
         |> memo
-      logger.debugBP (
+      logger.debugWithBP (
         eventX "Failure policy: Delayed. Restarting after delay."
         >> setField "name" (PointName.format minionState.info.name)
         >> setField "delay" (delay.ToString()))
@@ -164,16 +164,16 @@ let create (logger : Logger) =
     let minionState = Map.find jobId state.minions
     match reason with
     | Complete ->
-      logger.debugBP (
+      logger.debugWithBP (
         eventX "Minion exited without exception, removing from supervision"
         >> setField "name" (PointName.format minionState.info.name))
       >>-. SupervisorState.removeMinion jobId state
     | Failure e ->
-      logger.errorBP (eventX "Minion failed" >> Message.addExn e)
+      logger.errorWithBP (eventX "Minion failed" >> Message.addExn e)
       >>=. handlePolicy jobId minionState state
 
   let replaceLastWill state (jobId, will) =
-    logger.verboseBP (eventX "New will received" >> setField "jobId" (jobId.ToString()))
+    logger.verboseWithBP (eventX "New will received" >> setField "jobId" (jobId.ToString()))
     >>-. SupervisorState.updateWill jobId will state
 
   let rec loop state =
@@ -185,14 +185,14 @@ let create (logger : Logger) =
             minionState.info.shutdown *<-=>- id
           let shutdownAll =
             Job.seqIgnore (state.minions |> Map.toSeq |> Seq.map (snd >> shutdownMinion))
-            >>=. logger.debugBP (eventX "All minions shutdown")
+            >>=. logger.debugWithBP (eventX "All minions shutdown")
             |> memo
-          logger.verboseBP (eventX "Shutting down minions!")
+          logger.verboseWithBP (eventX "Shutting down minions!")
           >>=.
             Alt.choose [
               shutdownAll |> Promise.read
               timeOutMillis 2000
-              |> Alt.afterJob (fun () -> logger.errorBP (eventX "Not all supervised minions shutdown cleanly"))
+              |> Alt.afterJob (fun () -> logger.errorWithBP (eventX "Not all supervised minions shutdown cleanly"))
             ] >>=. ack *<= ()
 
       // anything else will create a new state and then recurse into the loop

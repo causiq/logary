@@ -196,7 +196,7 @@ module Advanced =
       |> Logger.apply middleware
 
     let compose (logger : Logger) middleware =
-      logger.verboseBP (
+      logger.verboseWithBP (
         eventX "Composing {length} middlewares"
         >> setField "length" (List.length middleware))
       >>-. Middleware.compose middleware
@@ -217,14 +217,14 @@ module Advanced =
       /// In the shutdown state, the registry doesn't respond to messages, but rather tries to
       /// flush and shut down all targets, doing internal logging as it goes.
       let shutdown state (ackCh : Ch<unit>) (nack : Promise<unit>) = job {
-        do! logger.infoBP (eventX "Shutting down polling of the metrics")
+        do! logger.infoWithBP (eventX "Shutting down polling of the metrics")
         do! state.schedules |> List.traverseJobA (snd >> Cancellation.cancel) |> Job.Ignore
 
-        do! logger.infoBP (eventX "Cancelling schedules")
+        do! logger.infoWithBP (eventX "Cancelling schedules")
         for (_, x) in state.schedules do
           do! Cancellation.cancel x
 
-        do! logger.infoBP (eventX "Shutting down targets")
+        do! logger.infoWithBP (eventX "Shutting down targets")
         let! allShutdown =
           targets
           |> Seq.pjmap (fun t -> Target.shutdown t  ^->. Success Ack
@@ -236,15 +236,15 @@ module Advanced =
           |> bisectSuccesses
 
         if List.isEmpty failed then
-          do! logger.verboseBP (eventX "Shutdown Ack")
+          do! logger.verboseWithBP (eventX "Shutdown Ack")
         else
           let msg = sprintf "Failed target shutdowns:%s%s" nl (toTextList failed)
-          do! logger.errorBP (eventX "Shutdown Nack with {message}"
+          do! logger.errorWithBP (eventX "Shutdown Nack with {message}"
                                >> setField "message" msg
                                >> setField "failed" (Value.ofObject failed))
 
         do! Ch.give ackCh () <|> nack
-        return! logger.verboseBP (eventX "Shutting down immediately")
+        return! logger.verboseWithBP (eventX "Shutting down immediately")
       }
 
       let rec init state = job {
@@ -254,7 +254,7 @@ module Advanced =
           |> List.traverseJobA (function
             | KeyValue (name, mconf) -> job {
               let! instance = mconf.initialise name
-              do! logger.verboseBP (eventX "Will poll {name} every {interval}"
+              do! logger.verboseWithBP (eventX "Will poll {name} every {interval}"
                                      >> setField "name" name
                                      >> setFieldFromObject "interval" mconf.tickInterval)
 
@@ -262,7 +262,7 @@ module Advanced =
                 Scheduling.schedule Metric.tick instance mconf.tickInterval
                                     (Some mconf.tickInterval)
                                     sched
-              do! logger.verboseBP (eventX "Getting logger for metric {name}" >> setField "name" name)
+              do! logger.verboseWithBP (eventX "Getting logger for metric {name}" >> setField "name" name)
 
               let! middleware = compose logger conf.middleware
               let logger = getLogger conf name middleware
@@ -290,7 +290,7 @@ module Advanced =
           return! running state
 
         | FlushPending(ackCh, nack) ->
-          do! logger.debugBP (eventX "Starting to flush")
+          do! logger.debugWithBP (eventX "Starting to flush")
 
           let! allFlushed =
             targets
@@ -303,10 +303,10 @@ module Advanced =
             |> bisectSuccesses
 
           if List.isEmpty notFlushed then
-            do! logger.verboseBP (eventX "Completed flush")
+            do! logger.verboseWithBP (eventX "Completed flush")
           else
             let msg = sprintf "Failed target flushes:%s%s" nl (toTextList notFlushed)
-            do! logger.errorBP (eventX "Flush failed with {nack}." >> setField "nack" msg)
+            do! logger.errorWithBP (eventX "Flush failed with {nack}." >> setField "nack" msg)
 
           do! Ch.give ackCh () <|> nack
 

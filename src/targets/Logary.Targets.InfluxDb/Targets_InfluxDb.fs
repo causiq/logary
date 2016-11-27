@@ -304,7 +304,7 @@ module internal Impl =
             |> tryAddAuth conf
 
           job {
-            do! ri.logger.verboseBP (eventX "Sending {body}" >> Message.setField "body" body)
+            do! ri.logger.verboseWithBP (eventX "Sending {body}" >> Message.setField "body" body)
             use! resp = getResponse req
             let! body = Response.readBodyAsString resp
             if resp.statusCode > 299 then

@@ -323,48 +323,73 @@ module Logger =
 module LoggerEx =
   open Hopac.Infixes
 
+  let private lwa (x : Logger) lvl f =
+    let ack = IVar ()
+    start (x.logWithAck lvl f
+           |> Alt.afterJob id
+           |> Alt.afterJob (IVar.fill ack))
+    ack :> Promise<_>
+
   type Logger with
     member x.verbose (messageFactory : LogLevel -> Message) : unit =
       start (Logger.logWithTimeout x Logger.defaultTimeout Verbose messageFactory ^->. ())
 
     /// Log with backpressure
-    member x.verboseBP (messageFactory : LogLevel -> Message) : Alt<unit> =
+    member x.verboseWithBP (messageFactory : LogLevel -> Message) : Alt<unit> =
       x.log Verbose messageFactory
+
+    member x.verboseWithAck (messageFactory : LogLevel -> Message) : Promise<unit> =
+      lwa x Verbose messageFactory
 
     member x.debug (messageFactory : LogLevel -> Message) : unit =
       start (Logger.logWithTimeout x Logger.defaultTimeout Debug messageFactory ^->. ())
 
     /// Log with backpressure
-    member x.debugBP (messageFactory : LogLevel -> Message) : Alt<unit> =
+    member x.debugWithBP (messageFactory : LogLevel -> Message) : Alt<unit> =
       x.log Debug messageFactory
+
+    member x.debugWithAck (messageFactory : LogLevel -> Message) : Promise<unit> =
+      lwa x Debug messageFactory
 
     member x.info messageFactory : unit =
       start (Logger.logWithTimeout x Logger.defaultTimeout Info messageFactory ^->. ())
 
     /// Log with backpressure
-    member x.infoBP messageFactory : Alt<unit> =
+    member x.infoWithBP messageFactory : Alt<unit> =
       x.log Info messageFactory
+
+    member x.infoWithAck (messageFactory : LogLevel -> Message) : Promise<unit> =
+      lwa x Info messageFactory
 
     member x.warn messageFactory : unit =
       start (Logger.logWithTimeout x Logger.defaultTimeout Warn messageFactory ^->. ())
 
     /// Log with backpressure
-    member x.warnBP messageFactory : Alt<unit> =
+    member x.warnWithBP messageFactory : Alt<unit> =
       x.log Warn messageFactory
+
+    member x.warnWithAck (messageFactory : LogLevel -> Message) : Promise<unit> =
+      lwa x Warn messageFactory
 
     member x.error messageFactory : unit =
       start (Logger.logWithTimeout x Logger.defaultTimeout Error messageFactory ^->. ())
 
     /// Log with backpressure
-    member x.errorBP messageFactory : Alt<unit> =
+    member x.errorWithBP messageFactory : Alt<unit> =
       x.log Error messageFactory
+
+    member x.errorWithAck (messageFactory : LogLevel -> Message) : Promise<unit> =
+      lwa x Error messageFactory
 
     member x.fatal messageFactory : unit =
       start (Logger.logWithTimeout x Logger.defaultTimeout Fatal messageFactory ^->. ())
 
     /// Log with backpressure
-    member x.fatalBP messageFactory : Alt<unit> =
+    member x.fatalWithBP messageFactory : Alt<unit> =
       x.log Fatal messageFactory
+
+    member x.fatalWithAck (messageFactory : LogLevel -> Message) : Promise<unit> =
+      lwa x Fatal messageFactory
 
     member x.logSimple message : unit =
       Logger.logSimple x message

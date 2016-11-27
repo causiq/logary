@@ -1333,7 +1333,7 @@ module File =
         memo <|
           if conf.flushToDisk || forceFlush then
             flushToDisk state >>=.
-            ilogger.debugBP (eventX "Flushed to disk.")
+            ilogger.debugWithBP (eventX "Flushed to disk.")
           else
             Job.result ()
 
@@ -1396,7 +1396,7 @@ module File =
       and running (state : State) : Job<unit> =
         Alt.choose [
           shutdown ^=> fun ack ->
-            ri.logger.debugBP (eventX "Shutting down file target (starting shutdownState)") >>=.
+            ri.logger.debugWithBP (eventX "Shutting down file target (starting shutdownState)") >>=.
             shutdownState state >>=.
             ack *<= ()
 

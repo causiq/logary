@@ -99,7 +99,7 @@ module internal Impl =
       svc.logger |> Logger.apply (setName pn)
 
     let rec init () =
-      logger.debugBP (eventX "DB target is opening connection.")
+      logger.debugWithBP (eventX "DB target is opening connection.")
       |> Job.bind (fun _ ->
         let c = ensureOpen (conf.connectionFactory ())
         running { connection = c

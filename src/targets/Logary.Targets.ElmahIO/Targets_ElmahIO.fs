@@ -157,7 +157,7 @@ module internal Impl =
             }
 
           | Log (message, ack) ->
-            ri.logger.verboseBP (eventX "Logging of metrics not supported")
+            ri.logger.verboseWithBP (eventX "Logging of metrics not supported")
             >>=. (ack *<= ())
             >>=. loop state
             

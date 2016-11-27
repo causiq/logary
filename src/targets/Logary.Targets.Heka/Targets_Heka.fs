@@ -135,9 +135,9 @@ module internal Impl =
 
   let logFailure (ri : RuntimeInfo) = function
     | HeaderTooLarge err ->
-      ri.logger.warnBP (eventX err)
+      ri.logger.warnWithBP (eventX err)
     | MessageTooLarge err ->
-      ri.logger.warnBP (eventX err)
+      ri.logger.warnWithBP (eventX err)
 
   type State =
     { client   : TcpClient
@@ -156,7 +156,7 @@ module internal Impl =
 
     let rec initialise () : Job<unit> =
       job {
-        do! ri.logger.debugBP (eventX "Initialising heka target.")
+        do! ri.logger.debugWithBP (eventX "Initialising heka target.")
 
         let ep, useTLS = conf.endpoint
         let client = new TcpClient()
@@ -172,7 +172,7 @@ module internal Impl =
           else
             client.GetStream() :> Stream
 
-        do! ri.logger.debugBP (eventX "initialise: tcp stream open")
+        do! ri.logger.debugWithBP (eventX "initialise: tcp stream open")
 
         let hostname = Dns.GetHostName()
         return! running { client = client; stream = stream; hostname = hostname }
@@ -190,13 +190,13 @@ module internal Impl =
 
         match msg |> Encoder.encode conf state.stream with
         | Choice1Of2 run ->
-          do! ri.logger.debugBP (eventX "Writing to heka" >> setNameEnding "running")
+          do! ri.logger.debugWithBP (eventX "Writing to heka" >> setNameEnding "running")
           try
             do! run
-            do! ri.logger.debugBP (eventX "Wrote to heka" >> setNameEnding "running")
+            do! ri.logger.debugWithBP (eventX "Wrote to heka" >> setNameEnding "running")
 
           with e ->
-            do! ri.logger.errorBP (eventX "error writing to heka" >> addExn e)
+            do! ri.logger.errorWithBP (eventX "error writing to heka" >> addExn e)
 
         | Choice2Of2 err ->
           do! logFailure ri err
@@ -214,7 +214,7 @@ module internal Impl =
 
         RingBuffer.take requests ^=> function
           | Log (logMsg, ack) ->
-            ri.logger.debugBP (eventX "running: received message")
+            ri.logger.debugWithBP (eventX "running: received message")
             >>=. write (Message.ofMessage logMsg)
             >>=. running state
 
