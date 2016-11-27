@@ -148,26 +148,39 @@ let tests =
           )))
       ]
 
+      testCase "scaleBy10 Seconds 0.0001" <| fun _ ->
+        let actualf, actualu = Units.scaleBy10 Seconds 0.0001
+        let expectedf, expectedu = 1e6, "μs"
+        Expect.floatEqual actualf expectedf None "Should scale 0.0001 properly"
+        Expect.equal actualu expectedu "Should scale 0.0001's unit properly"
+
+      testCase "scaleBy10 Seconds 0.00011" <| fun _ ->
+        let actualf, actualu = Units.scaleBy10 Seconds 0.00011
+        let expectedf, expectedu = 1e6, "μs"
+        Expect.floatEqual actualf expectedf None "Should scale 0.00011 properly"
+        Expect.equal actualu expectedu "Should scale 0.00011's unit properly"
+
       testList "SI thousands-units fractions" [
         yield!
           [ 1., 1., ""
-            0.1, 10., ""
-            0.01, 100., ""
-            0.001, 1., "k"
-            0.001024, 1.024, "k"
-
-            2345., 2.345, "k"
-            1000000., 1., "M"
-            1234000333., 1.234000333, "G"
-            1234000333444., 1.234000333444, "T"
-            1234000333444555., 1.234000333444555, "P"
-            1234000333444555666., 1.234000333444555666, "E"
-            1234000333444555666777., 1.234000333444555666777, "Z"
+            0., 0., ""
+            0.1, 100., "m"
+            0.01, 10., "m"
+            0.002, 2., "m"
+            0.001, 1., "m"
+            0.001024, 1.024, "m"
+            0.0009, 900., "μ"
+            0.000222, 222., "μ"
+            0.000000033, 33., "n"
+            0.000000000404, 404., "p"
+            2.345e-15, 2.345, "f"
+            34.221e-18, 34.221, "a"
+            821.14e-21, 821.14, "z"
+            3.1e-24, 3.1, "y"
           ]
           |> List.collect (fun (value, expectedf, prefix) ->
           [ Metres; Amperes; Kelvins; Moles; Candelas; Watts; Hertz ] |> List.map (fun units ->
-          testCase (sprintf "scaling %f %A" value units) (fun _ -> 
-            Tests.skiptest "WIP"
+          testCase (sprintf "scaling %A %A" value units) (fun _ ->
             let actualf, actualu = Units.scale units value
             let expectedu = sprintf "%s%s" prefix (Units.symbol units)
             Expect.equal actualu expectedu "Should properly format the unit"
