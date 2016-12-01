@@ -5,7 +5,7 @@ open NodaTime
 open System
 open System.Runtime.CompilerServices
 
-/// See the docs on Logger.log for a description on how Ack works in conjunction
+/// See the docs on the funtions for descriptions on how Ack works in conjunction
 /// with the promise.
 type Logger =
   inherit Named
@@ -99,11 +99,15 @@ module Logger =
 
   /// Log a message, but don't synchronously wait for the message to be placed
   /// inside Logary's buffers. Instead the message will be added to Logary's
-  /// buffers asynchronously with a timeout of 5 seconds, and will then be
-  /// dropped. We avoid the unbounded buffer problem by dropping the message.
+  /// buffers asynchronously with a timeout of 5 second, and will then be dropped.
+  ///
+  /// This is the way we avoid the unbounded buffer problem.
+  ///
   /// If you have dropped messages, they will be logged to STDERR. You should load-
   /// test your app to ensure that your targets can send at a rate high enough
   /// without dropping messages.
+  ///
+  /// It's recommended to have alerting on STDERR.
   let logSimple (logger : Logger) msg : unit =
     start (logWithTimeout logger defaultTimeout msg.level (fun _ -> msg) ^->. ())
 
