@@ -55,7 +55,7 @@ nuget Logary
 #r "Hopac.dll"
 #r "Hopac.Core.dll"
 #r "Logary.dll"
-#r "Logary.WinPerfCounters.dll"
+#r "Logary.Metrics.WinPerfCounters.dll"
 open Hopac
 open Logary
 open Logary.Targets
@@ -66,10 +66,10 @@ open Logary.Configuration
 let logger = Logging.getLoggerByName "Sample"
 
 let logary =
-  withLogaryManager "Logary.Examples.ConsoleApp" (
-    withTargets [ Console.create (Console.empty) "console" ] >>
-    withRules [ Rule.createForTarget "console" ])
-  |> Hopac.run
+  withLogaryManager "intro" (
+    withTargets [ LiterateConsole.create (LiterateConsole.empty) "console" ]
+    >> withRules [ Rule.createForTarget "console" ])
+  |> run
 
 (**
 
@@ -79,9 +79,7 @@ let logary =
 
 *)
 open Message
-event Info "Hello {world}!"
-|> setField "world" "Earth"
-|> logger.logSimple
+logger.info (eventX "Hello {world}!" >> setField "world" "Earth")
 (**
 
 ---
@@ -166,41 +164,8 @@ Supports polling.
 open Logary.Metric
 open Logary.Metrics
 open Logary.Metrics.WinPerfCounter
-
-let metricFrom counters pn : Job<Metric> =
-  let reducer state = function
-    | _ ->
-      state
-
-  let toValue (counter : PerfCounter, pc : PC) =
-    let value = WinPerfCounter.nextValue pc
-    Float value
-    |> Message.derivedWithUnit pn Units.Scalar
-    |> Message.setName (PointName.ofPerfCounter counter)
-
-  let ticker state =
-    state, state |> List.map toValue
-
-  Metric.create reducer counters ticker
 (**
 </div>
-*)
-let m6000s pn : Job<Metric> = // server Quadro gphx
-  let gpu counter instance =
-    { category = "GPU"; counter = counter; instance = Instance instance }
-  let counters =
-    [ for inst in [ "08:00"; "84:00" ] do
-        let name = sprintf "quadro m6000(%s)" inst
-        yield gpu "GPU Fan Speed (%)" name
-        yield gpu "GPU Time (%)" name
-        yield gpu "GPU Memory Usage (%)" name
-        yield gpu "GPU Memory Used (MB)" name
-        yield gpu "GPU Power Usage (Watts)" name
-        yield gpu "GPU SM Clock (MHz)" name
-        yield gpu "GPU Temperature (degrees C)" name
-    ] |> WinPerfCounters.Common.ofPerfCounters
-  metricFrom counters pn
-(**
 
 ---
 
@@ -217,7 +182,7 @@ let create pn : Job<Metric> =
       if abs v < 0.03 then rnd.NextDouble() - 0.5
       elif v + prevValue < -1. || v + prevValue > 1. then -v + prevValue
       else v + prevValue
-    (rnd, value), [ Message.gaugeWithUnit pn Seconds (Float value) ]
+    (rnd, value), [| Message.gaugeWithUnit pn Seconds (Float value) |]
   let state = let rnd = Random() in rnd, rnd.NextDouble()
   Metric.create reducer state ticker
 (**

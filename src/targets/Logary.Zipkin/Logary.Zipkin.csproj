@@ -19,7 +19,7 @@
     <WarningLevel>4</WarningLevel>
     <ConsolePause>false</ConsolePause>
     <DocumentationFile>bin\Debug\Logary.Zipkin.xml</DocumentationFile>
-    <NoWarn>1591</NoWarn>
+    <NoWarn>1591;1587</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <Optimize>true</Optimize>
@@ -27,7 +27,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <ConsolePause>false</ConsolePause>
-    <NoWarn>1591</NoWarn>
+    <NoWarn>1591;1587</NoWarn>
     <DocumentationFile>bin\Release\Logary.Zipkin.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>

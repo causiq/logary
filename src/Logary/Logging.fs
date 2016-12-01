@@ -91,7 +91,6 @@ let getLoggerByPointName name =
   | Some inst ->
     inst.runtimeInfo.logger.verbose (
       eventX "Getting logger by name {name}" >> setField "name" (name.ToString()))
-    |> start
 
     name
     |> Registry.getLogger inst.registry

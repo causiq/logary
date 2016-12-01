@@ -162,14 +162,15 @@ using (var logary = LogaryFactory.New(loggerId,
 
 ```fsharp
 open System
-open NodaTime
-open Hopac
-open Logary
-open Logary.Configuration
-open Logary.Targets
-open Logary.Metric
-open Logary.Metrics
-open System.Threading
+open NodaTime // conf
+open Hopac // conf
+open Logary // normal usage
+open Logary.Message // normal usage
+open Logary.Configuration // conf
+open Logary.Targets // conf
+open Logary.Metric // conf
+open Logary.Metrics // conf
+open System.Threading // control flow
 
 [<EntryPoint>]
 let main argv =
@@ -183,7 +184,7 @@ let main argv =
     withLogaryManager "Logary.Examples.ConsoleApp" (
       // output to the console
       withTargets [
-        Console.create (Console.empty) "console"
+        LiterateConsole.create (LiterateConsole.empty) "console"
       ] >>
       // continuously log CPU stats
       withMetrics [
@@ -202,9 +203,9 @@ let main argv =
     logary.getLogger (PointName [| "Logary"; "Samples"; "main" |])
 
   // log something
-  Message.event Info "User logged in"
-  |> Message.setField "userName" "haf"
-  |> Logger.logSimple logger
+  logger.info (
+    eventX "User with {userName} loggedIn"
+    >> setField "userName" "haf")
 
   // wait for sigint
   mre.Wait()

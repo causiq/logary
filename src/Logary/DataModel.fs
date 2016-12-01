@@ -232,6 +232,7 @@ module Value =
     | :? DateTime as dt        -> String (dt.ToUniversalTime().ToString("o"))
     | :? DateTimeOffset as dto -> String (dto.ToString("o"))
     | :? TimeSpan as ts        -> String (ts.ToString())
+    | :? System.Uri as u       -> String (u.ToString())
     | :? NodaTime.Duration as d-> String (d.ToString())
     | :? exn as e              -> Object (exceptionToStringValueMap ofObject e)
 
@@ -785,13 +786,6 @@ module Units =
     | Array values -> String.Concat ["["; values |> List.map formatValue |> String.concat ", "; "]"]
     | Object m -> "Object"
 
-  // https://en.wikipedia.org/wiki/International_System_of_Units#Prefixes
-  let multiplePrefixes =
-    [| ""; "k"; "M"; "G"; "T"; "P"; "E"; "Z" |]
-
-  let fractionsPrefixes : string[] =
-    [||]
-
   let scaleSeconds : float -> float * string =
     ((*) (float Constants.NanosPerSecond)) >> int64 >> function
     | value when value < Constants.NanosPerSecond / 1000000L ->
@@ -809,10 +803,31 @@ module Units =
     | value ->
       1. / 86400., "days"
 
+  // https://en.wikipedia.org/wiki/International_System_of_Units#Prefixes
+  let multiplePrefixes =
+    [| ""; "k"; "M"; "G"; "T"; "P"; "E"; "Z" |]
+
+  let fractionsPrefixes : string[] =
+    [| "m"; "μ"; "n"; "p"; "f"; "a"; "z"; "y" |]
+
   let scaleBy10 units (value : float) : float * string =
-    let index = min (int (log10 value) / 3) (multiplePrefixes.Length - 1)
-    1. / 10.**(float index * 3.),
-    sprintf "%s%s" multiplePrefixes.[index] (Units.symbol units)
+    let symbol = Units.symbol units
+    if value = 0. || value = infinity || value = -infinity then 1., symbol else
+    let fraction = value > -1. && value < 1.
+    let prefixes = if fraction then fractionsPrefixes else multiplePrefixes
+    let index =
+      // at boundaries, like 0.001 s we want index to be (abs(-3) - 1) / 3
+      // done with integer division
+      let ioffset = if fraction then -1. else 0.
+      let tenPower = ceil (abs (log10 value)) // 3 from abs (log10 (1e-3)) // ceil is for handling e.g. log10 0.00099 = -3.004364805 
+      let index = int (tenPower + ioffset) / 3 // each index in steps of a thousand
+      let maxIndex = prefixes.Length - 1
+      //printfn "(index) ioffset=%f, tenPower=%f, index=%i, maxIndex=%i" ioffset tenPower index maxIndex
+      min index maxIndex
+    let scaled = if fraction then 10.**(float (index + 1) * 3.) else 1. / 10.**(float index * 3.)
+    //printfn "to scale with factor=%f, symbol=%s, index=%i" scaled symbol index
+    scaled,
+    sprintf "%s%s" prefixes.[index] symbol
 
   let scaleBytes (value : float) : float * string =
     let log2 x = log x / log 2.
@@ -843,6 +858,7 @@ module Units =
     | Candelas
     | Watts
     | Hertz ->
+      //printfn "scaling value=%f, units=%A" value units
       calculate (scaleBy10 units) value
     | Offset _
     | Mul (_, _)
@@ -853,10 +869,7 @@ module Units =
     | Other _ ->
       calculate noopScale value
     | Percent _ ->
-      //printfn "PERCENT SCALING value=%f" value
-      let res = calculate (fun v -> 100., Units.symbol Percent) value
-      //printfn "RES=%A" res
-      res
+      calculate (fun v -> 100., Units.symbol Percent) value
     | Seconds ->
       calculate scaleSeconds value
     | Scaled (iu, scalef) ->

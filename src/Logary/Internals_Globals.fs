@@ -51,7 +51,7 @@ module Try =
     | Choice1Of2 () ->
       Job.result ()
     | Choice2Of2 e ->
-      logger.error (eventX label >> addExn e) :> Job<_>
+      logger.errorWithBP (eventX label >> addExn e) :> Job<_>
     ))
 
   let safe label logger (f : unit -> _) =
