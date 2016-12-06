@@ -260,6 +260,7 @@ let empty =
     batchSize   = 100us }
 
 module internal Impl =
+  open System.Text
 
   let reqestAckJobCreator request =
     match request with
@@ -301,12 +302,14 @@ module internal Impl =
           ack *<= () :> Job<_>
 
         RingBuffer.takeBatch (uint32 conf.batchSize) requests ^=> fun reqs ->
-          let messageTexts = Seq.map extractMessage reqs
-          let body = messageTexts |> String.concat "\n"
+          let body =
+            reqs
+            |> Seq.map extractMessage
+            |> String.concat "\n"
           let req =
             Request.create Post endpoint
             |> Request.keepAlive true
-            |> Request.body (BodyString body)
+            |> Request.bodyString body
             |> tryAddAuth conf
 
           job {
