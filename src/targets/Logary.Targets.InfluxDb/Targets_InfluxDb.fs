@@ -289,6 +289,12 @@ module internal Impl =
       |> Option.bind (fun u -> conf.password |> Option.map (fun p -> u, p))
       |> Option.fold (fun _ (u, p) -> Request.basicAuthentication u p) id
 
+    let g (req : Request) = job {
+      use! resp = getResponse req
+      let! body = Response.readBodyAsString resp
+      return body, resp.statusCode
+    }
+
     let rec loop () : Job<unit> =
       Alt.choose [
         shutdown ^=> fun ack ->
@@ -305,17 +311,16 @@ module internal Impl =
 
           job {
             do! ri.logger.verboseWithBP (eventX "Sending {body}" >> Message.setField "body" body)
-            use! resp = getResponse req
-            let! body = Response.readBodyAsString resp
-            if resp.statusCode > 299 then
+            let! body, statusCode = g req
+            if statusCode > 299 then
               let! errorFlush =
                 ri.logger.logWithAck Error (
                   eventX  "Bad response {statusCode} with {body}"
-                  >> setField "statusCode" resp.statusCode
+                  >> setField "statusCode" statusCode
                   >> setField "body" body)
               do! errorFlush
               // will cause the target to restart through the supervisor
-              failwithf "Bad response statusCode=%i" resp.statusCode
+              failwithf "Bad response statusCode=%i" statusCode
             else
               do! Seq.iterJobIgnore reqestAckJobCreator reqs
               return! loop ()
