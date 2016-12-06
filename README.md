@@ -64,6 +64,7 @@ Install-Package Logary
     * [Console logging](#console-logging)
     * [Using logary in a library](#using-logary-in-a-library)
       * [The Logary Facade Adapter](#the-logary-facade-adapter)
+    * [Using in a C\# library](#using-in-a-c-library)
       * [How do the error and log methods differ?](#how-do-the-error-and-log-methods-differ)
       * [Passing more information](#passing-more-information)
       * [A note on the FSI](#a-note-on-the-fsi)
@@ -131,7 +132,6 @@ Install-Package Logary
         * [logWithAck – so what's up with Promise?](#logwithack--so-whats-up-with-promise)
         * [How do Promises work with C\#?](#how-do-promises-work-with-c)
     * [License](#license)
-
 
 ## Hello World (C#)
 
@@ -797,6 +797,24 @@ By default, the Facade has a global console logger that logs at `Info` level.
 
 The reason for this is that people normally expect output to come in the
 'just installed' case, without hunting for `\*.Logging.Global.initialise` first.
+
+## Using in a C# library
+
+In your lib:
+
+```
+github logary/logary src/Logary.CSharp.Facade/Facade.cs
+```
+
+In your composition root:
+
+```
+source https://www.nuget.org/api/v2
+nuget Logary
+nuget Logary.Adapters.Facade
+```
+
+Have a look at `examples/Cibryy` for an example of usage of the C# facade.
 
 ### How do the `error` and `log` methods differ?
 
