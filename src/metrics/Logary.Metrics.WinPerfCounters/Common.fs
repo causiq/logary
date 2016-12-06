@@ -74,6 +74,8 @@ let systemCounters () =
   |> Array.map (fun (units, wpc) -> wpc |> WinPerfCounter.setUnit units)
   |> ofPerfCounters
 
+/// https://www.codeproject.com/articles/42721/best-practices-no-detecting-net-application-memo
+/// https://stackoverflow.com/questions/13473761/perfmon-counters-to-check-memory-leak
 let appCounters () =
   let clrMem counter inst = WinPerfCounter.create(".NET CLR Memory", counter, inst)
   let clrExn counter inst = WinPerfCounter.create(".NET CLR Exceptions", counter, inst)
