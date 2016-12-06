@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Logary;
+using Logary.CSharp;
 using Logary.Configuration;
 
 namespace Logary.ElmahIO.CSharpExample
