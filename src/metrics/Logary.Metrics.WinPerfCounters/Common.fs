@@ -33,7 +33,7 @@ let systemCounters () =
        Percent,               Processor.``% Privileged Time``
        Div (Scalar, Seconds), Processor.``Interrupts/sec``
        Percent,               Processor.``% Idle Time`` 
-    |] |> Array.map (fun (units, f) -> units, f [ KnownInstances._Total ])
+    |] |> Array.map (fun (units, f) -> units, f (Processor.instances()))
 
     [| Bytes,                 Memory.``Available Bytes``
        Div (Scalar, Seconds), Memory.``Page Faults/sec``
@@ -97,6 +97,7 @@ let appCounters () =
        Div (Bytes, Seconds),  "Allocated Bytes/sec"
        Percent,               "% Time in GC"
        Scalar,                "# of Pinned Objects"
+       Bytes,                 "# Bytes in all Heaps"
     |] |> Array.map (fun (units, counter) -> units, clrMem counter)
 
     [| Div (Scalar, Seconds), "# of Exceps Thrown / Sec"
@@ -105,8 +106,8 @@ let appCounters () =
        Div (Scalar, Seconds), "Throw to Catch Depth / Sec"
     |] |> Array.map (fun (units, counter) -> units, clrExn counter)
 
-    [| Scalar,                "# of current logical Threads"
-       Scalar,                "# of current physical Threads"
+    [| Other "threads",       "# of current logical Threads"
+       Other "threads",       "# of current physical Threads"
        Div (Scalar, Seconds), "Contention Rate / Sec"
        Div (Scalar, Seconds), "Queue Length / sec"
     |] |> Array.map (fun (units, counter) -> units, clrLocks counter)
