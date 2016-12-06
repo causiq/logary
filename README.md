@@ -679,8 +679,8 @@ The above guide serves to explain how you use Logary in a service or
 application, but what if you have a library and don't want to take a dependency
 on a specific logging framework, or logging abstraction/indirection library?
 
-For this use-case, Logary provides F# facades that you can easily reference using Paket.
-I've created a [sample
+For this use-case, Logary provides F# facades that you can easily reference
+using Paket.  I've created a [sample
 library](https://github.com/logary/logary/tree/master/examples/Libryy) for you
 to have a look at. Note how `paket.references` specifies `Facade.fs` as a file
 dependency. The corresponding `paket.dependencies` contains the entry below.
@@ -845,6 +845,15 @@ However, the beauty is that when you're in the interactive, you can just let
 the library handle logging through the default Facade targets; i.e. you don't
 have to initialise Logary proper to use and read logs in the console, from the
 Facade.
+
+### What about API stability?
+
+The F# facade has gone through two versions; have a look at how versioning is
+managed by browsing the unit tests. The Facade aims to be 100% stable, even
+across major versions of Logary. The adaptation is done in
+`Logary.Adapters.Facade`, which can afford to take some amount of complexity to
+keep the Facade itself clean. It's also here you should look if you want to
+optimise the translation of Facade types into Logary types.
 
 ### More reading
 
