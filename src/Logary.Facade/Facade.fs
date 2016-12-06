@@ -349,6 +349,10 @@ module Literate =
 /// fields/runtime data.
 module Literals =
 
+  /// What version of the Facade is this. This is a major version that allows the Facade
+  /// adapter to choose how it handles the API.
+  let FacadeVersion = 2u
+
   [<Literal>]
   let FieldExnKey = "exn"
 
@@ -878,6 +882,13 @@ module Message =
   /// Sets the name/path of the log message.
   let setName (name : string[]) (x : Message) =
     { x with name = name }
+
+  /// Sets the final portion o fthe name of the Message.
+  let setNameEnding (ending : string) (x : Message) =
+    if String.IsNullOrWhiteSpace ending then x else
+    let segs = ResizeArray<_>(x.name)
+    segs.Add ending
+    { x with name = segs.ToArray() }
 
   /// Sets the name as a single string; if this string contains dots, the string
   /// will be split on these dots.

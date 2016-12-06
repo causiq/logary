@@ -44,6 +44,7 @@ github xyncro/aether:5b5c05db2414562e9f3f679d42284638e63b9f3a src/Aether/Aether.
 github haf/YoLo YoLo.fs
 github logary/RingBuffer RingBuffer.fs
 github logary/logary src/Logary.Facade/Facade.fs
+github logary/logary src/Logary.CSharp.Facade/Facade.cs
 
 group Examples
     redirects: on

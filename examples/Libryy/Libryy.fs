@@ -27,11 +27,11 @@ let work (logger : Logger) =
   42
 
 let workNonAsync (logger : Logger) =
-  logger.log Warn (
-    Message.eventX "Hey {user}!"
-    >> Message.setFieldValue "user" "haf"
-    >> Message.setSingleName "Libryy.Core.work"
-    >> Message.setTimestamp 1470047883029045000L)
+  logger.logSimple (
+    Message.event Warn "Hey {user}!"
+    |> Message.setFieldValue "user" "haf"
+    |> Message.setSingleName "Libryy.Core.work"
+    |> Message.setTimestamp 1470047883029045000L)
 
   45
 

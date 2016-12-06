@@ -29,7 +29,7 @@ namespace Logary.Facade
         /// <summary>The log message is a warning; e.g. there was an unhandled exception or
         /// an even occurred which was unexpected. Sometimes human corrective action
         /// is needed.</summary>
-        Warning,
+        Warn,
 
         /// <summary>The log message is at an error level, meaning an unhandled exception
         /// occurred at a location where it is deemed important to keeping the service
@@ -183,14 +183,13 @@ namespace Logary.Facade
             this.Timestamp = msg.Timestamp;
 
         }
-        public LogMessage(LogMessage msg, long timestamp)
+        public LogMessage(LogMessage msg, long epochNanoSeconds)
         {
             this.Name = msg.Name;
             this.Level = msg.Level;
             this.Value = msg.Value;
             this.Fields = msg.Fields;
-            this.Timestamp = timestamp;
-
+            this.Timestamp = epochNanoSeconds;
         }
     }
 
@@ -211,7 +210,7 @@ namespace Logary.Facade
         /// You need to start the (cold) async value for the logging to happen.
         ///
         /// You should not do blocking/heavy operations in the callback.
-        Task LogWithAck(LogLevel level, Func<LogMessage, LogMessage> trans);
+        Task LogWithAck(LogLevel level, Func<LogMessage, LogMessage> trans, CancellationToken cancellationToken = default(CancellationToken));
 
         /// Logs with the specified log level with backpressure via the logging
         /// library's buffers.
@@ -225,24 +224,16 @@ namespace Logary.Facade
         /// You need to start the (cold) async value for the logging to happen.
         ///
         /// You should not do blocking/heavy operations in the callback.
-        Task Log(LogLevel level, Func<LogMessage, LogMessage> trans);
+        Task Log(LogLevel level, Func<LogMessage, LogMessage> trans, CancellationToken cancellationToken = default(CancellationToken));
     }
 
     public static class ILoggerExtensions
     {
-        /// <summary>Logs the message without awaiting the logging infrastructure's ack of
-        /// having successfully written the log message. What the ack means from a
-        /// durability standpoint depends on the logging infrastructure you're using
-        /// behind this facade.</summary>
-        public static void Log(this ILogger me, LogMessage payload)
-        {
-            throw new NotImplementedException();
-        }
         public static void Verbose(this ILogger me, Func<LogMessage, LogMessage> messageFactory)
         {
             throw new NotImplementedException();
         }
-        public static Task VerboseWithBP(this ILogger me, Func<LogMessage, LogMessage> messageFactory)
+        public static Task VerboseWithBP(this ILogger me, Func<LogMessage, LogMessage> messageFactory, CancellationToken cancellationToken = default(CancellationToken))
         {
             throw new NotImplementedException();
         }
@@ -250,7 +241,7 @@ namespace Logary.Facade
         {
             throw new NotImplementedException();
         }
-        public static Task DebugWithBP(this ILogger me, Func<LogMessage, LogMessage> messageFactory)
+        public static Task DebugWithBP(this ILogger me, Func<LogMessage, LogMessage> messageFactory, CancellationToken cancellationToken = default(CancellationToken))
         {
             throw new NotImplementedException();
         }
@@ -258,7 +249,7 @@ namespace Logary.Facade
         {
             throw new NotImplementedException();
         }
-        public static Task InfoWithBP(this ILogger me, Func<LogMessage, LogMessage> messageFactory)
+        public static Task InfoWithBP(this ILogger me, Func<LogMessage, LogMessage> messageFactory, CancellationToken cancellationToken = default(CancellationToken))
         {
             throw new NotImplementedException();
         }
@@ -266,7 +257,7 @@ namespace Logary.Facade
         {
             throw new NotImplementedException();
         }
-        public static Task WarnWithBP(this ILogger me, Func<LogMessage, LogMessage> messageFactory)
+        public static Task WarnWithBP(this ILogger me, Func<LogMessage, LogMessage> messageFactory, CancellationToken cancellationToken = default(CancellationToken))
         {
             throw new NotImplementedException();
         }
@@ -274,7 +265,7 @@ namespace Logary.Facade
         {
             throw new NotImplementedException();
         }
-        public static Task ErrorWithBP(this ILogger me, Func<LogMessage, LogMessage> messageFactory)
+        public static Task ErrorWithBP(this ILogger me, Func<LogMessage, LogMessage> messageFactory, CancellationToken cancellationToken = default(CancellationToken))
         {
             throw new NotImplementedException();
         }
@@ -282,7 +273,16 @@ namespace Logary.Facade
         {
             throw new NotImplementedException();
         }
-        public static Task FatalWithBP(this ILogger me, Func<LogMessage, LogMessage> messageFactory)
+        public static Task FatalWithBP(this ILogger me, Func<LogMessage, LogMessage> messageFactory, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>Logs the message without awaiting the logging infrastructure's ack of
+        /// having successfully written the log message. What the ack means from a
+        /// durability standpoint depends on the logging infrastructure you're using
+        /// behind this facade.</summary>
+        public static void Log(this ILogger me, Func<LogMessage, LogMessage> payload)
         {
             throw new NotImplementedException();
         }
@@ -340,6 +340,9 @@ namespace Logary.Facade
 
     public static class Literals
     {
+        /// <summary>What version of the Facade is this. This is a major version that allows the Facade
+        /// adapter to choose how it handles the API.</summary>
+        internal static uint FacadeVersion = 2u;
         public static string FieldExnKey = "exn";
         public static string Tags = "tags";
     }
@@ -353,16 +356,12 @@ namespace Logary.Facade
 
         public string[] Name => _name;
 
-        public void Log(LogMessage payload)
-        {
-        }
-
-        public Task LogWithAck(LogLevel level, Func<LogMessage, LogMessage> trans)
+        public Task LogWithAck(LogLevel level, Func<LogMessage, LogMessage> trans, CancellationToken cancellationToken = default(CancellationToken))
         {
             return _done;
         }
 
-        public Task Log(LogLevel level, Func<LogMessage, LogMessage> trans)
+        public Task Log(LogLevel level, Func<LogMessage, LogMessage> trans, CancellationToken cancellationToken = default(CancellationToken))
         {
             return _done;
         }
@@ -454,14 +453,14 @@ namespace Logary.Facade
 
             string[] ILogger.Name => _name;
 
-            Task ILogger.LogWithAck(LogLevel level, Func<LogMessage, LogMessage> trans)
+            Task ILogger.LogWithAck(LogLevel level, Func<LogMessage, LogMessage> trans, CancellationToken cancellationToken)
             {
-                return WithLogger(logger => logger.LogWithAck(level, x => trans(EnsureName(x))));
+                return WithLogger(logger => logger.LogWithAck(level, x => trans(EnsureName(x)), cancellationToken));
             }
 
-            Task ILogger.Log(LogLevel level, Func<LogMessage, LogMessage> trans)
+            Task ILogger.Log(LogLevel level, Func<LogMessage, LogMessage> trans, CancellationToken cancellationToken)
             {
-                return WithLogger(logger => logger.Log(level, x => trans(EnsureName(x))));
+                return WithLogger(logger => logger.Log(level, x => trans(EnsureName(x)), cancellationToken));
             }
         }
 
@@ -598,7 +597,12 @@ namespace Logary.Facade
     {
         public static LogMessage SetName(this LogMessage msg, string[] name)
         {
-            return new LogMessage(msg, name: name);
+            return new LogMessage(msg, name);
+        }
+
+        public static LogMessage SetName(this LogMessage msg, string singleName)
+        {
+            return new LogMessage(msg, singleName.Split(new [] { '.'}, StringSplitOptions.RemoveEmptyEntries));
         }
 
         public static LogMessage SetNameEnding(this LogMessage msg, string caller)
@@ -610,7 +614,7 @@ namespace Logary.Facade
 
         public static LogMessage SetGuage(this LogMessage msg, long value, string unit)
         {
-            return new LogMessage(msg, value: PointValue.FromGauge(value, unit));
+            return new LogMessage(msg, PointValue.FromGauge(value, unit));
         }
 
         /// <summary>
@@ -618,7 +622,7 @@ namespace Logary.Facade
         /// </summary>
         public static LogMessage SetEvent(this LogMessage msg, string format)
         {
-            return new LogMessage(msg, value: PointValue.FromEvent(format));
+            return new LogMessage(msg, PointValue.FromEvent(format));
         }
 
         /// <summary>
@@ -626,7 +630,7 @@ namespace Logary.Facade
         /// </summary>
         public static LogMessage AddException(this LogMessage msg, Exception ex)
         {
-            return new LogMessage(msg, fields: msg.Fields.Add(Literals.FieldExnKey, ex));
+            return new LogMessage(msg, msg.Fields.Add(Literals.FieldExnKey, ex));
         }
 
         /// <summary>
@@ -651,7 +655,7 @@ namespace Logary.Facade
         /// </summary>
         public static LogMessage SetLevel(this LogMessage msg, LogLevel level)
         {
-            return new LogMessage(msg, level: level);
+            return new LogMessage(msg, level);
         }
 
         /// <summary>
@@ -681,6 +685,11 @@ namespace Logary.Facade
         public static LogMessage SetField(this LogMessage msg, string key, object value)
         {
             return new LogMessage(msg, msg.Fields.Add(key, value));
+        }
+
+        public static LogMessage SetTimestamp(this LogMessage msg, long epochNanoSeconds)
+        {
+            return new LogMessage(msg, epochNanoSeconds);
         }
 
         /// <summary>
@@ -777,11 +786,11 @@ namespace Logary.Facade
     public class StopwatchTimeScope
         : ITimeScope
     {
-        private readonly ILogger _logger;
-        private readonly string _caller;
+        readonly ILogger _logger;
+        readonly string _caller;
         readonly object _msgPayload;
-        private readonly Func<LogMessage, LogMessage> _trans;
-        private readonly Stopwatch _sw;
+        readonly Func<LogMessage, LogMessage> _trans;
+        readonly Stopwatch _sw;
 
         public StopwatchTimeScope(ILogger logger, string caller, Func<LogMessage, LogMessage> trans = null, object msgPayload = null)
         {
@@ -796,8 +805,7 @@ namespace Logary.Facade
 
         public void Dispose()
         {
-            _logger.Log(LogLevel.Info,
-                s =>
+            _logger.Info(s =>
                 {
                     var msg = s.SetGuage(_sw.ElapsedTicks * 100L, Units.Seconds_Ns).SetNameEnding(_caller);
                     msg = _msgPayload == null ? msg : msg.SetFieldsFromObject(_msgPayload);
