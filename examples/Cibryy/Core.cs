@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Cibryy.Logging;
 
 namespace Cibryy
@@ -47,21 +48,27 @@ namespace Cibryy
                 LogLevel.Warn,
                 msg => msg.SetEvent("Hey {user}!")
                     .SetField("user", "haf")
-                    .SetNameEnding("Work"))
+                    .SetNameEnding("Work")
+                    .SetTimestamp(1470047883029045000L))
                 .Wait();
             return 42;
         }
 
-        public static int WorkNonAsync(ILogger logger)
+        public static int WorkBackpressure(ILogger logger)
         {
-            logger.Log(msg =>
+            logger.Log(LogLevel.Warn, msg =>
                 msg.SetEvent("Hey {user}!")
-                    .SetLevel(LogLevel.Warn)
                     .SetField("user", "haf")
-                    .SetName("Cibryy.Core.WorkNonAsync")
-                    .SetTimestamp(1470047883029045000L));
+                    .SetName("Cibryy.Core.WorkBackpressure")
+                    .SetTimestamp(1470047883029045000L))
+              .Wait();
 
             return 45;
+        }
+        public static int ErrorWithBP(ILogger logger)
+        {
+            logger.ErrorWithBP(msg => msg.SetEvent("Too simplistic")).Wait();
+            return 43;
         }
 
         public static void SimpleWork(ILogger logger)
@@ -80,10 +87,10 @@ namespace Cibryy
             return 59;
         }
 
-        public static int StaticWork()
+        public static Task<int> StaticWork()
         {
-            _logger.Debug(msg => msg.SetEvent("A debug log"));
-            return 49;
+            return _logger.DebugWithBP(msg => msg.SetEvent("A debug log"))
+                .ContinueWith(_ => 49);
         }
     }
 }

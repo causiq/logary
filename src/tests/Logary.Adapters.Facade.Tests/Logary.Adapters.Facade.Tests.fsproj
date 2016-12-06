@@ -67,6 +67,10 @@
       <Project>{A64CF176-66D8-459F-BF45-AF5B5C3098A2}</Project>
       <Name>Libryy</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\..\examples\Cibryy\Cibryy.csproj">
+      <Project>{3C5509C3-4A96-4F42-B1AD-0860E189BD80}</Project>
+      <Name>Cibryy</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(FSharpTargetsPath)" />
   <Choose>

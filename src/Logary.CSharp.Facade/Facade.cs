@@ -15,30 +15,30 @@ namespace Logary.Facade
     public enum LogLevel
     {
         /// <summary>The log message is not that important; can be used for intricate debugging.</summary>
-        Verbose,
+        Verbose = 1,
 
         /// <summary>The log message is at a default level, debug level. Useful for shipping to
         /// infrastructure that further processes it, but not so useful for human
         /// inspection in its raw format, except during development.</summary>
-        Debug,
+        Debug = 2,
 
         /// <summary>The log message is informational; e.g. the service started, stopped or
         /// some important business event occurred.</summary>
-        Info,
+        Info = 3,
 
         /// <summary>The log message is a warning; e.g. there was an unhandled exception or
         /// an even occurred which was unexpected. Sometimes human corrective action
         /// is needed.</summary>
-        Warn,
+        Warn = 4,
 
         /// <summary>The log message is at an error level, meaning an unhandled exception
         /// occurred at a location where it is deemed important to keeping the service
         /// running. A human should take corrective action.</summary>
-        Error,
+        Error = 5,
 
         /// <summary>The log message denotes a fatal error which cannot be recovered from. The
         /// service should be shut down. Human corrective action is needed.</summary>
-        Fatal
+        Fatal = 6
     }
 
     /// Represents a logged value; either a Gauge or an Event.
@@ -78,6 +78,8 @@ namespace Logary.Facade
             if (unit == null) throw new ArgumentNullException(nameof(unit));
             return new Gauge(@value, unit);
         }
+
+        public static PointValue Empty { get; } = PointValue.FromEvent("Empty");
     }
 
     static class DateTimeExtensions
@@ -342,13 +344,12 @@ namespace Logary.Facade
     {
         /// <summary>What version of the Facade is this. This is a major version that allows the Facade
         /// adapter to choose how it handles the API.</summary>
-        internal static uint FacadeVersion = 2u;
+        public static uint FacadeVersion { get; } = 2u;
 
         /// What language this Facade has. This controls things like naming standards.
-        internal static string FacadeLanguage = "C#";
-
-        public static string FieldExnKey = "exn";
-        public static string Tags = "tags";
+        public static string FacadeLanguage { get; } = "C#";
+        public static string FieldExnKey { get; } = "exn";
+        public static string Tags { get; } = "tags";
     }
 
     public class NullLogger
