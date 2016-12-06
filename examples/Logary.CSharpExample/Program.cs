@@ -90,9 +90,9 @@ namespace Logary.CSharpExample
                             m.AddMetric(Duration.FromSeconds(3L), "appMetrics", WinPerfCounters.appMetrics)
                              .AddMetric(Duration.FromSeconds(3L), "systemMetrics", WinPerfCounters.systemMetrics))
                         .Target<TextWriter.Builder>(
-                        "console1",
-                        conf =>
-                        conf.Target.WriteTo(System.Console.Out, System.Console.Error)
+                          "console1",
+                          conf =>
+                            conf.Target.WriteTo(System.Console.Out, System.Console.Error)
                                 .MinLevel(LogLevel.Verbose)
                                 .AcceptIf(line => true)
                                 .SourceMatching(new Regex(".*"))
