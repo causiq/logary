@@ -343,6 +343,10 @@ namespace Logary.Facade
         /// <summary>What version of the Facade is this. This is a major version that allows the Facade
         /// adapter to choose how it handles the API.</summary>
         internal static uint FacadeVersion = 2u;
+
+        /// What language this Facade has. This controls things like naming standards.
+        internal static string FacadeLanguage = "C#";
+
         public static string FieldExnKey = "exn";
         public static string Tags = "tags";
     }

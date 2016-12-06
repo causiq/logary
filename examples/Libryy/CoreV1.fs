@@ -1,9 +1,11 @@
-﻿module Libryy.Core
+﻿module Libryy.CoreV1
 
 // Note: this library has no reference to Logary proper
-open Libryy.Logging
+// Note: this file tests the previous version
 
-let coreLogger = Log.create "Libryy.Core"
+open Libryy.LoggingV1
+
+let coreLogger = Log.create "Libryy.CoreV1"
 
 let getSampleException messagePrefix =
   let m4 () = failwithf "%s (a sample exception)" messagePrefix
@@ -26,13 +28,12 @@ let work (logger : Logger) =
 
   42
 
-let workBackpressure (logger : Logger) =
+let workNonAsync (logger : Logger) =
   logger.log Warn (
     Message.eventX "Hey {user}!"
     >> Message.setFieldValue "user" "haf"
     >> Message.setSingleName "Libryy.Core.work"
     >> Message.setTimestamp 1470047883029045000L)
-  |> Async.RunSynchronously
 
   45
 

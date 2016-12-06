@@ -1,3 +1,4 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -36,22 +37,24 @@
   <PropertyGroup Condition="'$(VisualStudioVersion)' == '10.0' OR '$(VisualStudioVersion)' == '11.0'">
     <FSharpTargetsPath>$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets</FSharpTargetsPath>
   </PropertyGroup>
+  <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <Compile Include="..\..\paket-files\logary\logary\src\Logary.Facade\Facade.fs">
       <Paket>True</Paket>
       <Link>paket-files/Facade.fs</Link>
     </Compile>
+    <Content Include="app.config" />
+    <Compile Include="AssemblyVersionInfo.fs" />
+    <Compile Include="Libryy.fs" />
+    <None Include="paket.references" />
+    <Compile Include="FacadeV1.fs" />
+    <Compile Include="CoreV1.fs" />
+  </ItemGroup>
+  <ItemGroup>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
-    <Content Include="app.config" />
   </ItemGroup>
-  <ItemGroup>
-    <Compile Include="AssemblyVersionInfo.fs" />
-    <Compile Include="Libryy.fs" />
-    <None Include="paket.references" />
-  </ItemGroup>
-  <Import Project="$(FSharpTargetsPath)" />
 </Project>
