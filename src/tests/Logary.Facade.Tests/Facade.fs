@@ -46,7 +46,7 @@ type Expect =
 let tests =
   let msg = Message.event Info "hi {name}"
   // don't print to console
-  Global.initialise { Global.DefaultConfig with getLogger = fun _ -> Targets.create Fatal }
+  Global.initialise { Global.defaultConfig with getLogger = Targets.create Fatal }
 
   testList "generic" [
     testProperty "DateTime" <| fun (dt : DateTime) ->
@@ -88,16 +88,15 @@ let tests =
       Expect.equal msg.level Warn "Should have Warn level now"
 
     testCase "LiterateConsoleTarget logSimple" <| fun _ ->
-      let logger = LiterateConsoleTarget(Warn) :> Logger
+      let logger = LiterateConsoleTarget([| "Facade"; "Tests" |], Warn) :> Logger
       Message.event Info "Aliens descended" |> logger.logSimple
 
     testProperty "Loggers.create" <| fun level ->
       Targets.create level |> ignore
 
-    testProperty "Targets.create and logSimple" <| fun level ->
-      Tests.skiptest "verbose test"
-      let logger = Targets.create level
-      Message.event Verbose "Hi {name}" |> logger.logSimple
+    testCase "Targets.create and logSimple" <| fun () ->
+      let logger = [| "Facade"; "Tests" |] |> Targets.create Error
+      Message.event Verbose "Hi {name}" |> Message.setField "name" "haf" |> logger.logSimple
 
     testCase "extract invalid property tokens as text" <| fun _ ->
       let template = "Hi {ho:##.###}, we're { something going on } special"

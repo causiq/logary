@@ -24,8 +24,8 @@ let private forInstance instanceFactory unitsAndCounters =
 
 let systemCounters () =
   Array.concat [
-    [| Div (Scalar, Seconds), System.``Context Switches/sec``
-       Scalar,                System.``Processor Queue Length`` |]
+    [| Div (Other "ctxsw", Seconds), System.``Context Switches/sec``
+       Other "threads",       System.``Processor Queue Length`` |]
 
     [| Percent,               Processor.``% Processor Time``
        Percent,               Processor.``% User Time``
@@ -47,12 +47,12 @@ let systemCounters () =
     |]
 
     // https://blogs.technet.microsoft.com/askcore/2012/03/16/windows-performance-monitor-disk-counters-explained/
-    [| Div (Seconds, Scalar), LogicalDisk.``Avg. Disk sec/Read``
-       Div (Seconds, Scalar), LogicalDisk.``Avg. Disk sec/Write``
+    [| Div (Seconds, Other "read"), LogicalDisk.``Avg. Disk sec/Read``
+       Div (Seconds, Other "write"), LogicalDisk.``Avg. Disk sec/Write``
        Scalar,                LogicalDisk.``Avg. Disk Read Queue Length``
        Scalar,                LogicalDisk.``Avg. Disk Write Queue Length``
-       Div (Scalar, Seconds), LogicalDisk.``Disk Reads/sec``
-       Div (Scalar, Seconds), LogicalDisk.``Disk Writes/sec``
+       Div (Other "reads", Seconds), LogicalDisk.``Disk Reads/sec``
+       Div (Other "reads", Seconds), LogicalDisk.``Disk Writes/sec``
        Div (Bytes, Seconds),  LogicalDisk.``Disk Read Bytes/sec``
        Div (Bytes, Seconds),  LogicalDisk.``Disk Write Bytes/sec``
        Bytes,                 LogicalDisk.``Free Megabytes``
@@ -70,12 +70,6 @@ let systemCounters () =
        Div (Bytes, Seconds),  PhysicalDisk.``Disk Write Bytes/sec``
        Percent,               PhysicalDisk.``% Idle Time``
     |] |> forInstances PhysicalDisk.instances
-
-    [| Scalar,                Objects.Processes
-       Scalar,                Objects.Mutexes
-       Scalar,                Objects.Threads
-       Scalar,                Objects.Semaphores
-    |]
   ]
   |> Array.map (fun (units, wpc) -> wpc |> WinPerfCounter.setUnit units)
   |> ofPerfCounters

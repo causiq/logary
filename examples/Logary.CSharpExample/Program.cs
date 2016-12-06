@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using NodaTime;
 using Logary.Configuration;
 using Logary.CSharp;
 using Logary.Metrics;
 using Logary.Targets;
+using Uri = System.Uri;
 
 /*
  * 
@@ -84,6 +86,9 @@ namespace Logary.CSharpExample
 
         public static int Main(string[] args)
         {
+            var mre = new ManualResetEventSlim(false);
+            System.Console.CancelKeyPress += (sender, arg) => mre.Set();
+
             using (var logary = LogaryFactory.New("Logary.CSharpExample",
                 with => with.InternalLoggingLevel(LogLevel.Debug)
                         .Metrics(m =>
@@ -124,9 +129,11 @@ namespace Logary.CSharpExample
                                                       conf => conf.Target.DB("http://influxdb.service:8086").Done())
                 ).Result)
             {
-                var logger = logary.GetLogger("Logary.CSharpExample");
-                SampleUsage(logger).Wait();
+                //var logger = logary.GetLogger("main");
+                //SampleUsage(logger).Wait();
+                mre.Wait();
             }
+
             return 0;
         }
     }
