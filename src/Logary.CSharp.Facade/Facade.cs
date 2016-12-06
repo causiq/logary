@@ -229,64 +229,98 @@ namespace Logary.Facade
         Task Log(LogLevel level, Func<LogMessage, LogMessage> trans, CancellationToken cancellationToken = default(CancellationToken));
     }
 
+#pragma warning disable 4014
     public static class ILoggerExtensions
     {
+        static async Task LogWithTimeout(this ILogger me, LogLevel level, Func<LogMessage, LogMessage> messageFactory, CancellationToken cancellationToken)
+        {
+            var task = me.Log(level, messageFactory, cancellationToken);
+
+            var timeoutCancellationTokenSource = new CancellationTokenSource();
+            var completedTask =
+                await Task.WhenAny(
+                    task,
+                    Task.Delay(5000, timeoutCancellationTokenSource.Token));
+
+            if (completedTask == task)
+            {
+                timeoutCancellationTokenSource.Cancel();
+                await task; // propagate exceptions
+            }
+            else
+            {
+                Console.Error.WriteLine(
+                    "Logary (c# facade) message timed out. This means that you have an underperforming target. (Reevaluated) message name '{0}'.");
+            }
+        }
+
         public static void Verbose(this ILogger me, Func<LogMessage, LogMessage> messageFactory)
         {
-            throw new NotImplementedException();
+            me.LogWithTimeout(LogLevel.Verbose, messageFactory, CancellationToken.None);
         }
+
         public static Task VerboseWithBP(this ILogger me, Func<LogMessage, LogMessage> messageFactory, CancellationToken cancellationToken = default(CancellationToken))
         {
-            throw new NotImplementedException();
+            return me.Log(LogLevel.Verbose, messageFactory, cancellationToken);
         }
+
         public static void Debug(this ILogger me, Func<LogMessage, LogMessage> messageFactory)
         {
-            throw new NotImplementedException();
+            me.LogWithTimeout(LogLevel.Debug, messageFactory, CancellationToken.None);
         }
+
         public static Task DebugWithBP(this ILogger me, Func<LogMessage, LogMessage> messageFactory, CancellationToken cancellationToken = default(CancellationToken))
         {
-            throw new NotImplementedException();
+            return me.Log(LogLevel.Debug, messageFactory, cancellationToken);
         }
+
         public static void Info(this ILogger me, Func<LogMessage, LogMessage> messageFactory)
         {
-            throw new NotImplementedException();
+            me.LogWithTimeout(LogLevel.Info, messageFactory, CancellationToken.None);
         }
+
         public static Task InfoWithBP(this ILogger me, Func<LogMessage, LogMessage> messageFactory, CancellationToken cancellationToken = default(CancellationToken))
         {
-            throw new NotImplementedException();
+            return me.Log(LogLevel.Info, messageFactory, cancellationToken);
         }
+
         public static void Warn(this ILogger me, Func<LogMessage, LogMessage> messageFactory)
         {
-            throw new NotImplementedException();
+            me.LogWithTimeout(LogLevel.Warn, messageFactory, CancellationToken.None);
         }
+
         public static Task WarnWithBP(this ILogger me, Func<LogMessage, LogMessage> messageFactory, CancellationToken cancellationToken = default(CancellationToken))
         {
-            throw new NotImplementedException();
+            return me.Log(LogLevel.Warn, messageFactory, cancellationToken);
         }
+
         public static void Error(this ILogger me, Func<LogMessage, LogMessage> messageFactory)
         {
-            throw new NotImplementedException();
+            me.LogWithTimeout(LogLevel.Error, messageFactory, CancellationToken.None);
         }
+
         public static Task ErrorWithBP(this ILogger me, Func<LogMessage, LogMessage> messageFactory, CancellationToken cancellationToken = default(CancellationToken))
         {
-            throw new NotImplementedException();
+            return me.Log(LogLevel.Error, messageFactory, cancellationToken);
         }
+
         public static void Fatal(this ILogger me, Func<LogMessage, LogMessage> messageFactory)
         {
-            throw new NotImplementedException();
+            me.LogWithTimeout(LogLevel.Fatal, messageFactory, CancellationToken.None);
         }
+
         public static Task FatalWithBP(this ILogger me, Func<LogMessage, LogMessage> messageFactory, CancellationToken cancellationToken = default(CancellationToken))
         {
-            throw new NotImplementedException();
+            return me.Log(LogLevel.Fatal, messageFactory, cancellationToken);
         }
 
         /// <summary>Logs the message without awaiting the logging infrastructure's ack of
         /// having successfully written the log message. What the ack means from a
         /// durability standpoint depends on the logging infrastructure you're using
         /// behind this facade.</summary>
-        public static void Log(this ILogger me, Func<LogMessage, LogMessage> payload)
+        public static void Log(this ILogger me, Func<LogMessage, LogMessage> messageFactory)
         {
-            throw new NotImplementedException();
+            me.LogWithTimeout(LogLevel.Debug, messageFactory, CancellationToken.None);
         }
 
         public static ITimeScope TimeScope(this ILogger me, string caller, object msgPayload = null)
@@ -321,6 +355,7 @@ namespace Logary.Facade
             };
         }
     }
+#pragma warning restore 4014
 
     public interface ILoggingConfig
     {
