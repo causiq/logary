@@ -40,7 +40,6 @@ Install-Package Logary
 ```
 
 ## Table of Contents
-
   * [Logary v4](#logary-v4)
     * [Why?](#why)
     * [Install it](#install-it)
@@ -64,11 +63,12 @@ Install-Package Logary
     * [Console logging](#console-logging)
     * [Using logary in a library](#using-logary-in-a-library)
       * [The Logary Facade Adapter](#the-logary-facade-adapter)
-    * [Using in a C\# library](#using-in-a-c-library)
       * [How do the error and log methods differ?](#how-do-the-error-and-log-methods-differ)
       * [Passing more information](#passing-more-information)
       * [A note on the FSI](#a-note-on-the-fsi)
       * [More reading](#more-reading)
+    * [Using in a C\# library](#using-in-a-c-library)
+      * [More reading](#more-reading-1)
     * [InfluxDb Target](#influxdb-target)
     * [RabbitMQ Target](#rabbitmq-target)
       * [Usage](#usage)
@@ -798,24 +798,6 @@ By default, the Facade has a global console logger that logs at `Info` level.
 The reason for this is that people normally expect output to come in the
 'just installed' case, without hunting for `\*.Logging.Global.initialise` first.
 
-## Using in a C# library
-
-In your lib:
-
-```
-github logary/logary src/Logary.CSharp.Facade/Facade.cs
-```
-
-In your composition root:
-
-```
-source https://www.nuget.org/api/v2
-nuget Logary
-nuget Logary.Adapters.Facade
-```
-
-Have a look at `examples/Cibryy` for an example of usage of the C# facade.
-
 ### How do the `error` and `log` methods differ?
 
 If you look inside `Facade.fs` you'll find that `LoggerEx` has `error`, `info`,
@@ -876,20 +858,44 @@ Facade.
    – the unit tests for the adapter, which are also good documentation on how to
    use it.
 
+## Using in a C# library
+
+In your lib:
+
+```
+github logary/logary src/Logary.CSharp.Facade/Facade.cs
+```
+
+In your composition root:
+
+```
+source https://www.nuget.org/api/v2
+nuget Logary
+nuget Logary.Adapters.Facade
+```
+
+Have a look at `examples/Cibryy` for an example of usage of the C# facade.
+
+### More reading
+
+ - [Facade.cs](https://github.com/logary/logary/blob/master/src/Logary.CSharp.Facade/Facade.fs)
+   – the actual file that gets imported into your library.
+
+
 ## InfluxDb Target
 
  - Events will be logged to InfluxDb like such:
    `"{pointName},event={template},ctx1=ctxval1,ctx2=ctxval2 field1=fieldval1,field2=fieldval2 value=1i 14566666xxxx"`
  - In other words, fields will be influx values and context fields will be influx tags.
  - The timestamp of the Message will be at the end as the timestamp of the sent line
- - Events will be logged in these influx measure names, so that you could e.g. put "event_fatal" as
+ - Events will be logged in these influx measure names, so that you could e.g. put `"event_fatal"` as
    an annotation in Grafana:
-   * event_verbose
-   * event_debug
-   * event_info
-   * event_warn
-   * event_error
-   * event_fatal
+   * `event_verbose`
+   * `event_debug`
+   * `event_info`
+   * `event_warn`
+   * `event_error`
+   * `event_fatal`
 
 ## RabbitMQ Target
 
