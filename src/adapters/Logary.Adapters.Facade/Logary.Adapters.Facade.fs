@@ -14,6 +14,31 @@ open Logary.Internals
 /// Utilities for creating a single 'MyLib.Logging.Logger' in the target type
 /// space.
 module LoggerAdapter =
+
+  let private versionFrom_ (loggerType : Type) =
+    let typ = sprintf "%s.Literals, %s" loggerType.Namespace loggerType.Assembly.FullName
+    let literals = Type.GetType typ
+    let field = literals.GetProperty("FacadeVersion", BindingFlags.Static ||| BindingFlags.Public)
+    //printfn "=> versionFrom_, field: %A" field
+    if isNull field then 1u
+    else field.GetValue(null, null) :?> uint32
+
+  let private versionFrom =
+    Cache.memoize versionFrom_
+
+  type internal ApiVersion =
+    /// This API version did not have an explicit version field.
+    | V1
+    /// NS.Literals.FacadeVersion
+    | V2
+
+    static member ofType (loggerType : Type) =
+      match versionFrom loggerType with
+      | 2u ->
+        V2
+      | _ ->
+        V1
+
   let private findMethod : Type * string -> MethodInfo =
     Cache.memoize (fun (typ, meth) -> typ.GetMethod meth)
 
@@ -97,7 +122,7 @@ module LoggerAdapter =
   /// into logary. Provide the namespace you put the facade in and the assembly
   /// which it should be loaded from, and this adapter will use (memoized) reflection
   /// to properly bind to the facade.
-  type private I(logger : Logger) =
+  type private I(logger : Logger, version : ApiVersion) =
     let (PointName defaultName) = logger.name
 
     // Codomains of these three functions are equal to codomains of Facade's
@@ -114,10 +139,13 @@ module LoggerAdapter =
       // "hot" in that starting it will return "immediately" and be idempotent)
       (prom ^=> id) |> Job.toAsync
 
-    let log level msgFactory : unit =
+    let logV1 level messageFactory : unit =
       // start immediate because in the normal case we can put the Message
       // in the RingBuffer without any extra time taken
-      logWithAck level msgFactory |> Async.StartImmediate
+      logWithAck level messageFactory |> Async.StartImmediate
+
+    let logV2 level messageFactory : Async<unit> =
+      logger.log level messageFactory |> Alt.toAsync
 
     let logSimple (msg : Message) : unit =
       logger.logSimple msg
@@ -134,12 +162,20 @@ module LoggerAdapter =
 
     interface IInterceptor with
       member x.Intercept invocation =
+        //rawPrint invocation
         match invocation, defaultName with
-        | Log (level, msgFactory) ->
-          invocation.ReturnValue <- log level msgFactory
+        | Log (level, messageFactory) when version = V1 ->
+          let ret = logV1 level messageFactory
+          //printfn "Ret (V1): %A" ret
+          invocation.ReturnValue <- ret
+        
+        | Log (level, messageFactory) ->
+          let ret = logV2 level messageFactory
+          //printfn "Ret (V2): %A" ret
+          invocation.ReturnValue <- ret
 
-        | LogWithAck (level, msgFactory) ->
-          invocation.ReturnValue <- logWithAck level msgFactory
+        | LogWithAck (level, messageFactory) ->
+          invocation.ReturnValue <- logWithAck level messageFactory
 
         | LogSimple message ->
           invocation.ReturnValue <- logSimple message
@@ -149,7 +185,7 @@ module LoggerAdapter =
   let create (typ : Type) logger : obj =
     if typ = null then invalidArg "typ" "is null"
     let generator = new ProxyGenerator()
-    let facade = I logger :> IInterceptor
+    let facade = I (logger, ApiVersion.ofType typ) :> IInterceptor
     generator.CreateInterfaceProxyWithoutTarget(typ, facade)
 
   /// Create a target assembly's logger from the given type-string, which

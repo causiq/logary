@@ -36,8 +36,8 @@ let workBackpressure (logger : Logger) =
 
   45
 
-let simpleWork (logger : Logger) =
-  logger.logSimple (Message.event Error "Too simplistic")
+let errorWithBP (logger : Logger) =
+  logger.errorWithBP (Message.eventX "Too simplistic") |> Async.RunSynchronously
   43
 
 let generateAndLogExn (logger : Logger) =
@@ -48,5 +48,7 @@ let generateAndLogExn (logger : Logger) =
   99
 
 let staticWork () =
-  coreLogger.logSimple (Message.event Debug "A debug log")
-  49
+  async {
+    do! coreLogger.debugWithBP (Message.eventX "A debug log")
+    return 49
+  }

@@ -142,9 +142,9 @@ let tests =
           Expect.equal 45 res "Should get result back"
           assertWorkMessage (!msg)
 
-        yield testCase "end to end with adapter, logSimple method" <| fun _ ->
+        yield testCase "end to end with adapter, errorWithBP method" <| fun _ ->
           let libryyLogger, msg = createLoggerSubject ()
-          let res = Libryy.Core.simpleWork libryyLogger
+          let res = Libryy.Core.errorWithBP libryyLogger
           Expect.equal 43 res "Should get result back"
           Expect.equal (!msg).level Error "Should have logged at Error level"
           Expect.equal (!msg).value (Event "Too simplistic") "Should have logged event template"
@@ -162,7 +162,7 @@ let tests =
         yield testCase "initialise with LogManager" <| fun _ ->
           let logManager, msg = createLogManagerSubject ()
           LogaryFacadeAdapter.initialise<Libryy.Logging.Logger> logManager
-          let res = Libryy.Core.staticWork ()
+          let res = Libryy.Core.staticWork () |> Async.RunSynchronously
           Expect.equal res 49 "Should return 49"
           Expect.equal (!msg).level Debug "Should have logged at Debug level"
           Expect.equal (!msg).value (Event "A debug log") "Should have logged event template"

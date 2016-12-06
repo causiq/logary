@@ -47,7 +47,7 @@
     <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="Libryy.fs" />
     <None Include="paket.references" />
-    <Compile Include="FacadeV1.fs" />
+    <Compile Include="LoggingV1.fs" />
     <Compile Include="CoreV1.fs" />
   </ItemGroup>
   <ItemGroup>
