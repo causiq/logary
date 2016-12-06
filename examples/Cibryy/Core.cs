@@ -1,5 +1,5 @@
-﻿using System;
-using Logary.Facade;
+using System;
+using Cibryy.Logging;
 
 namespace Cibryy
 {
