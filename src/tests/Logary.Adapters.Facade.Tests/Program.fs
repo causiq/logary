@@ -62,6 +62,16 @@ let tests =
     Expect.equal msg.timestamp 1470047883029045000L "Should have correct timestamp"
 
   testList "facades" [
+    testList "shared" [
+      testProperty "convert string to unit" <| fun (x : Units) ->
+        if x = Other "" then true else
+        match LoggerAdapterShared.unitOfString (Units.symbol x) with
+        | Other _ ->
+          true
+        | res ->
+          res = x
+    ]
+
     testList "v1" [
       testList "logger" [
         let createLoggerSubject () =
