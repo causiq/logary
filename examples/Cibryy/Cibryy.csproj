@@ -40,6 +40,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\..\paket-files\logary\logary\src\Logary.CSharp.Facade\Facade.cs">
+      <Paket>True</Paket>
+      <Link>paket-files/Facade.cs</Link>
+    </Compile>
     <Compile Include="Core.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

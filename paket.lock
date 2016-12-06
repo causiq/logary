@@ -70,12 +70,13 @@ GITHUB
   remote: xyncro/aether
     src/Aether/Aether.fs (5b5c05db2414562e9f3f679d42284638e63b9f3a)
   remote: haf/YoLo
-    YoLo.fs (11023b9fcd2c1d28a7a0c0de5609647e3e1b03ce)
+    YoLo.fs (76e16a4c9338c2f04cb067add0e3a33b42a0f396)
   remote: logary/RingBuffer
     RingBuffer.fs (4557d607737e748b54eb6de3ec5e5cd02247b2a5)
       Hopac
   remote: logary/logary
-    src/Logary.Facade/Facade.fs (8a5f623a707b7c1958df4b07ebbd3cc67e9bfc7e)
+    src/Logary.CSharp.Facade/Facade.cs (8db4bbd275c080575b42c025a0c420902a90958c)
+    src/Logary.Facade/Facade.fs (8db4bbd275c080575b42c025a0c420902a90958c)
 GROUP Examples
 REDIRECTS: ON
 FRAMEWORK: >= NET45
