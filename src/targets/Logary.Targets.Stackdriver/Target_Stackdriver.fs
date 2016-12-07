@@ -10,16 +10,23 @@ open Google.Logging.V2
 open Google.Api
 
 /// A structure that enforces certain labeling invariants around monitored resources
+/// TODO: add more resource types.
+/// SEE: https://cloud.google.com/logging/docs/api/v2/resource-list#service-names
+/// SEE: https://cloud.google.com/logging/docs/migration-v2#monitored-resources
 type ResourceType = 
   /// Compute resources have a zone and an instance id
-  | Compute of zone: string * instance : string
+  | ComputeInstance of zone: string * instance : string
+  /// Containers have cluster/pod/namespace/instance data
+  | Container of clusterName : string * namespaceId : string * instanceId : string * podId : string * containerName : string * zone : string
 
 type StackdriverConf = {
-  /// The name of the Stackdriver log to write
-  logName : string
+  /// Google Cloud Project Id
+  projectId : string
+  /// Name of the log to which to write
+  logId : string
   /// The resource we are monitoring
   resource : ResourceType
-  // any additional labels to be added to the messages
+  // Any additional user labels to be added to the messages
   labels : Map<string,string>
 }
 
@@ -30,15 +37,43 @@ let empty : StackdriverConf = failwith "boom"
 module internal Impl =
 
   type State = {
+    logName : string
     logger : LoggingServiceV2Client
     resource : MonitoredResource
     labels : System.Collections.Generic.IDictionary<string,string>
   }
 
-  let write messsage = failwith "boom"
-  let createState conf = failwith "boomState"
+  let labels project resource =
+    match resource with
+    | ComputeInstance(zone, instance) -> [ "project_id", project
+                                           "zone", zone
+                                           "instanceId", instance ]|> dict
+    | Container(cluster, ns, instance, pod, container, zone) -> [ "project_id", project
+                                                                  "cluster_name", cluster
+                                                                  "namespace_id", ns
+                                                                  "instance_id", instance
+                                                                  "pod_id", pod
+                                                                  "container_name", container
+                                                                  "zone", zone ] |> dict
 
-  let dispose conf runtimeInfo state ackVar = 
+  let resource t labels = 
+    let r =  MonitoredResource()
+    r.Type <- t
+    r
+  
+  let makeResource project = function
+  | ComputeInstance(zone, instance) -> resource "gce_instance" (labels project)
+  | Container(cluster, ns, instance, pod, container, zone) -> resource "container" (labels project) 
+  
+  let write messsage = failwith "boom"
+  
+  let createState (conf : StackdriverConf) = 
+    { logger = LoggingServiceV2Client.Create()
+      resource = makeResource conf.projectId conf.resource
+      labels = conf.labels |> Map.toSeq |> dict
+      logName = sprintf "projects/%s/logs/%s" conf.projectId conf.logId }
+
+  let dispose runtimeInfo state ackVar = 
     // do! Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
     ackVar *<= () :> Job<_>
 
@@ -56,7 +91,7 @@ module internal Impl =
         // off of Hopac's execution context (see Scheduler.isolate below) and
         // then send a unit to the ack channel, to tell the requester that
         // you're done disposing.
-        shutdown ^=> dispose conf ri state
+        shutdown ^=> dispose ri state
 
         // The ring buffer will fill up with messages that you can then consume below.
         // There's a specific ring buffer for each target.
@@ -65,11 +100,9 @@ module internal Impl =
           // either an Event or a Gauge `value` property.
           | Log (message, ack) ->
             job {
-              // Do something with the `message` value specific to the target
-              // you are creating.
+              
               let entry = write message
-              // This is a simple acknowledgement using unit as the signal
-              do! Job.Scheduler.isolate (fun _ -> state.logger.WriteLogEntries(conf.logName, state.resource, state.labels, [|entry|]) |> ignore)
+              do! Job.Scheduler.isolate (fun _ -> state.logger.WriteLogEntries(state.logName, state.resource, state.labels, [|entry|]) |> ignore)
               do! ack *<= ()
               return! loop state
             }
@@ -82,7 +115,7 @@ module internal Impl =
           | Flush (ackCh, nack) ->
             job {
               // Put your flush logic here...
-
+              
               // then perform the ack
               do! Ch.give ackCh () <|> nack
 
