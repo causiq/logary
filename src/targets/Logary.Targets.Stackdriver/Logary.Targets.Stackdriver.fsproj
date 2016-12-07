@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <AssemblyName>Logary.Targets.Stackdriver</AssemblyName>
@@ -31,16 +31,16 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Target_Stackdriver.fs" />
-    <None Include="App.config" />
-    <None Include="paket.references" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\..\Logary\Logary.fsproj">
       <Name>Logary</Name>
       <Project>{f7e5b6e8-5d55-4974-9ca7-4c94d810631f}</Project>
       <Private>True</Private>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Target_Stackdriver.fs" />
+    <None Include="App.config" />
+    <None Include="paket.references" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">

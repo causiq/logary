@@ -1,6 +1,7 @@
 ﻿module Program
 
 open System
+open System.Collections.Generic
 open Expecto
 open Hopac
 open Hopac.Infixes
@@ -8,6 +9,7 @@ open Logary.Utils.Chiron
 open Logary
 open Logary.Target
 open Logary.Targets
+open Logary.Targets.Stackdriver
 open Logary.Internals
 open Google.Logging.V2
 open Logary.Message
@@ -26,17 +28,15 @@ let env k =
 let logName = env "STACKDRIVER_LOG"
 let project = env "STACKDRIVER_PROJECT"
 let targConf =
-  let labels = System.Collections.Generic.Dictionary<_,_>()
+  let labels = Dictionary<_,_>()
   labels.["test"] <- "foo"
-  Stackdriver.StackdriverConf.create(project, logName, Stackdriver.ResourceType.createComputeInstance("us-central1-b", "abcdefg"), labels, 1u)
+  StackdriverConf.create(project, logName, ResourceType.createComputeInstance("us-central1-b", "abcdefg"), labels, 1u)
 
 let raisedExn msg =
   let e = ref None : exn option ref
   try raise <| ApplicationException(msg)
   with ex -> e := Some ex
   (!e).Value
-
-let now = Message.setUTCTicks System.DateTime.UtcNow.Ticks
 
 [<Tests>]
 let target =
@@ -51,7 +51,7 @@ let target =
         |> Message.setField "tags" [ "integration" ]
         |> Message.setContext "service" "tests"
         |> Message.addExn e2
-        |> Stackdriver.write
+        |> Stackdriver.Impl.write
 
       Expect.equal subject.Severity LogSeverity.Warning "severity should be warning"
       Expect.equal (subject.JsonPayload.Fields.["context"]) (Google.Protobuf.WellKnownTypes.Value.ForStruct(Struct.Parser.ParseJson("""{ "service" : "tests" }"""))) "should have correct context"
@@ -68,10 +68,7 @@ let target =
 
       let afterCount = getCount()
       Expect.isGreaterThan afterCount initCount "there should be more messages after a write"
-
-      
   ]
-    
 
 [<EntryPoint>]
 let main argv =
