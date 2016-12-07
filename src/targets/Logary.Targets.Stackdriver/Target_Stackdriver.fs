@@ -26,8 +26,10 @@ type StackdriverConf = {
   logId : string
   /// The resource we are monitoring
   resource : ResourceType
-  // Any additional user labels to be added to the messages
+  /// Any additional user labels to be added to the messages
   labels : Map<string,string>
+  /// how many messages to wait for before sending
+  batchSize : uint32
 }
 
 let empty : StackdriverConf = failwith "boom" 
@@ -43,7 +45,7 @@ module internal Impl =
     labels : System.Collections.Generic.IDictionary<string,string>
   }
 
-  let labels project resource =
+  let mkLabels project resource =
     match resource with
     | ComputeInstance(zone, instance) -> [ "project_id", project
                                            "zone", zone
@@ -56,31 +58,51 @@ module internal Impl =
                                                                   "container_name", container
                                                                   "zone", zone ] |> dict
 
-  let resource t labels = 
-    let r =  MonitoredResource()
-    r.Type <- t
+  let mkResource t labels = 
+    let r =  MonitoredResource(Type = t)
+    r.Labels.Add(labels)
     r
   
-  let makeResource project = function
-  | ComputeInstance(zone, instance) -> resource "gce_instance" (labels project)
-  | Container(cluster, ns, instance, pod, container, zone) -> resource "container" (labels project) 
+  let mkMonitoredResource project resourceType =
+    let labels = mkLabels project resourceType
+    match resourceType with 
+    | ComputeInstance(zone, instance) -> mkResource "gce_instance" labels
+    | Container(cluster, ns, instance, pod, container, zone) -> mkResource "container" labels 
   
-  let write messsage = failwith "boom"
+  let write (messsage : Message) : LogEntry = 
+    let entry = LogEntry()
+    entry
+
+  let writeRequests (conf : StackdriverConf) (state : State) (reqs : TargetMessage[]) =
+      let messages = ResizeArray<_>() // Updated by the loop.
+      let acks = ResizeArray<_>() // updated by the loop
+      
+      for m in reqs do
+        match m with
+        | Log (message, ack) ->
+          // Write and save the ack for later.
+          acks.Add ack
+          messages.Add <| write message
+        | Flush (ackCh, nack) -> ()
+
+      let writer = Job.Scheduler.isolate <| fun _ -> state.logger.WriteLogEntries(state.logName, state.resource, state.labels, messages)   
+      let handler = Job.tryIn writer Job.result (Job.raises)
+      handler >>= fun res -> Job.conIgnore acks 
   
   let createState (conf : StackdriverConf) = 
     { logger = LoggingServiceV2Client.Create()
-      resource = makeResource conf.projectId conf.resource
+      resource = mkMonitoredResource conf.projectId conf.resource
       labels = conf.labels |> Map.toSeq |> dict
       logName = sprintf "projects/%s/logs/%s" conf.projectId conf.logId }
 
-  let dispose runtimeInfo state ackVar = 
+  let dispose runtime state ackVar = 
     // do! Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
     ackVar *<= () :> Job<_>
 
   // This is the main entry point of the target. It returns a Job<unit>
   // and as such doesn't have side effects until the Job is started.
   let loop (conf : StackdriverConf) // the conf is specific to your target
-           (ri : RuntimeInfo) // this one,
+           (runtime : RuntimeInfo) // this one,
            (requests : RingBuffer<_>) // this one, and,
            (shutdown : Ch<_>) = // this one should always be taken in this order
 
@@ -91,39 +113,11 @@ module internal Impl =
         // off of Hopac's execution context (see Scheduler.isolate below) and
         // then send a unit to the ack channel, to tell the requester that
         // you're done disposing.
-        shutdown ^=> dispose ri state
+        shutdown ^=> dispose runtime state
 
         // The ring buffer will fill up with messages that you can then consume below.
         // There's a specific ring buffer for each target.
-        RingBuffer.take requests ^=> function
-          // The Log discriminated union case contains a message which can have
-          // either an Event or a Gauge `value` property.
-          | Log (message, ack) ->
-            job {
-              
-              let entry = write message
-              do! Job.Scheduler.isolate (fun _ -> state.logger.WriteLogEntries(state.logName, state.resource, state.labels, [|entry|]) |> ignore)
-              do! ack *<= ()
-              return! loop state
-            }
-
-          // Since the RingBuffer is fair, when you receive the flush message, all
-          // you have to do is ensure the previous Messages were successfully written
-          // and then ack. Alternatively the caller can decide it's not worth the wait
-          // and signal the nack, in which case you may try to abort the flush or
-          // simply continue the flush in the background.
-          | Flush (ackCh, nack) ->
-            job {
-              // Put your flush logic here...
-              
-              // then perform the ack
-              do! Ch.give ackCh () <|> nack
-
-              // then continue processing messages
-              return! loop state
-            }
-      // The target is always 'responsive', so we may commit to the alternative
-      // by upcasting it to a job and returning that.
+        RingBuffer.takeBatch conf.batchSize requests ^=> (fun requests -> writeRequests conf state requests >>= fun res -> loop state)
       ] :> Job<_>
     
     let state = createState conf
