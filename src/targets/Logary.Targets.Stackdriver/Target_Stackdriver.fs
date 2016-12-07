@@ -21,8 +21,11 @@ type ResourceType =
   | ComputeInstance of zone: string * instance : string
   /// Containers have cluster/pod/namespace/instance data
   | Container of clusterName : string * namespaceId : string * instanceId : string * podId : string * containerName : string * zone : string
+  /// AppEngine services are isolated units segregated by application module id and the version of the application
+  | AppEngine of moduleId : string * versionId : string
   static member createComputeInstance(zone, instance) = ComputeInstance(zone, instance)
   static member createContainer(cluster, ns, instance, pod, container, zone) = Container(cluster, ns, instance, pod, container, zone)
+  static member createAppEngine(moduleId, version) = AppEngine(moduleId, version)
 
 type StackdriverConf = 
   {
@@ -77,19 +80,27 @@ module internal Impl =
     match resource with
     // check out https://cloud.google.com/logging/docs/api/v2/resource-list for the list of resources
     // as well as required keys for each one
-    | ComputeInstance(zone, instance) -> [ "project_id", project
-                                           "zone", zone
-                                           "instanceId", instance ]|> dict
-    | Container(cluster, ns, instance, pod, container, zone) -> [ "project_id", project
-                                                                  "cluster_name", cluster
-                                                                  "namespace_id", ns
-                                                                  "instance_id", instance
-                                                                  "pod_id", pod
-                                                                  "container_name", container
-                                                                  "zone", zone ] |> dict
+    | ComputeInstance(zone, instance) -> 
+        [ "project_id", project
+          "zone", zone
+          "instanceId", instance ]|> dict
+    | Container(cluster, ns, instance, pod, container, zone) -> 
+        [ "project_id", project
+          "cluster_name", cluster
+          "namespace_id", ns
+          "instance_id", instance
+          "pod_id", pod
+          "container_name", container
+          "zone", zone ] |> dict
+    | AppEngine(moduleId, versionId) -> 
+        ["project_id", project
+         "module_id", moduleId
+         "version_id", versionId ] |> dict
+  
   let resourceName = function
   | ComputeInstance _ -> "gce_instance"
   | Container _ -> "container"
+  | AppEngine _ -> "gae_app"
   
   let mkMonitoredResource project resourceType =
     let r = MonitoredResource(Type = resourceName resourceType)
