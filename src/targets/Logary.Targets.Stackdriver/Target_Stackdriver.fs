@@ -151,9 +151,29 @@ let create conf name = TargetUtils.stdNamedTarget (Impl.loop conf) name
 
 type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
 
-  // place your own configuration methods here
-
-  // your own configuration methods end here
+  /// Assign the projectId for this logger
+  member x.ForProject(project) = 
+    !(callParent <| Builder({ conf with projectId = project }, callParent))
+  
+  /// Name the feed that this logger will log to
+  member x.Named(logName) = 
+    !(callParent <| Builder({ conf with logId = logName }, callParent))
+  
+  /// Assign a Monitored Resource to this logger
+  member x.ForResource(resource) =
+    !(callParent <| Builder({ conf with resource = resource }, callParent))
+  
+  member x.WithLabel(key, value) = 
+    conf.labels.Add(key, value)
+    !(callParent <| Builder(conf, callParent))
+  
+  member x.WithLabels(labels : IDictionary<_,_>) = 
+    for kvp in labels do
+      conf.labels.Add(kvp.Key, kvp.Value)
+    !(callParent <| Builder(conf, callParent))
+  
+  member x.BatchesOf(size) = 
+    !(callParent <| Builder({ conf with maxBatchSize = size }, callParent))
 
   // c'tor, always include this one in your code
   new(callParent : FactoryApi.ParentCallback<_>) =
