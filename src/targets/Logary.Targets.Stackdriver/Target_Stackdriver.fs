@@ -8,6 +8,9 @@ open Logary.Target
 open Logary.Internals
 open Google.Logging.V2
 open Google.Api
+open Google.Logging.Type
+open Logary.Utils.Chiron
+open Logary.Utils.Chiron.Builder
 
 /// A structure that enforces certain labeling invariants around monitored resources
 /// TODO: add more resource types.
@@ -18,35 +21,62 @@ type ResourceType =
   | ComputeInstance of zone: string * instance : string
   /// Containers have cluster/pod/namespace/instance data
   | Container of clusterName : string * namespaceId : string * instanceId : string * podId : string * containerName : string * zone : string
+  static member createComputeInstance(zone, instance) = ComputeInstance(zone, instance)
+  static member createContainer(cluster, ns, instance, pod, container, zone) = Container(cluster, ns, instance, pod, container, zone)
 
-type StackdriverConf = {
-  /// Google Cloud Project Id
-  projectId : string
-  /// Name of the log to which to write
-  logId : string
-  /// The resource we are monitoring
-  resource : ResourceType
-  /// Any additional user labels to be added to the messages
-  labels : Map<string,string>
-  /// how many messages to wait for before sending
-  batchSize : uint32
-}
+type StackdriverConf = 
+  {
+    /// Google Cloud Project Id
+    projectId : string
+    /// Name of the log to which to write
+    logId : string
+    /// The resource we are monitoring
+    resource : ResourceType
+    /// Any additional user labels to be added to the messages
+    labels : System.Collections.Generic.IDictionary<string,string>
+    /// how many messages to wait for before sending
+    batchSize : uint32
+  }
+  static member create (projectId, logId, resource, ?labels, ?batchSize) = 
+                  { projectId = projectId
+                    logId = logId
+                    resource = resource
+                    labels = defaultArg labels (System.Collections.Generic.Dictionary<_,_>() :> System.Collections.Generic.IDictionary<_,_>)
+                    batchSize = defaultArg batchSize 10u }
 
-let empty : StackdriverConf = failwith "boom" 
+let empty : StackdriverConf = StackdriverConf.create("", "", Unchecked.defaultof<ResourceType>) 
 
-// When creating a new target this module gives the barebones
-// for the approach you may need to take.
+let toSeverity = function
+    | LogLevel.Debug -> LogSeverity.Debug
+    | LogLevel.Error -> LogSeverity.Error
+    | LogLevel.Fatal -> LogSeverity.Critical
+    | LogLevel.Info -> LogSeverity.Info
+    | LogLevel.Warn -> LogSeverity.Warning
+    | LogLevel.Verbose -> LogSeverity.Debug
+
+// exposed to allow for easier testing
+let write (m : Message) : LogEntry =
+  let values = 
+    match Json.serialize m with
+    | Object values -> values
+    | otherwise -> failwithf "Expected Message to format to Object .., but was %A" otherwise
+  
+  let overrides = Map.add "name" (String <| string m.name) values
+  let json = Google.Protobuf.WellKnownTypes.Struct.Parser.ParseJson (Json.format <| Object overrides)
+  LogEntry(Severity = toSeverity m.level, JsonPayload = json)
+
 module internal Impl =
 
   type State = {
     logName : string
     logger : LoggingServiceV2Client
     resource : MonitoredResource
-    labels : System.Collections.Generic.IDictionary<string,string>
   }
 
   let mkLabels project resource =
     match resource with
+    // check out https://cloud.google.com/logging/docs/api/v2/resource-list for the list of resources
+    // as well as required keys for each one
     | ComputeInstance(zone, instance) -> [ "project_id", project
                                            "zone", zone
                                            "instanceId", instance ]|> dict
@@ -57,21 +87,14 @@ module internal Impl =
                                                                   "pod_id", pod
                                                                   "container_name", container
                                                                   "zone", zone ] |> dict
-
-  let mkResource t labels = 
-    let r =  MonitoredResource(Type = t)
-    r.Labels.Add(labels)
-    r
+  let resourceName = function
+  | ComputeInstance _ -> "gce_instance"
+  | Container _ -> "container"
   
   let mkMonitoredResource project resourceType =
-    let labels = mkLabels project resourceType
-    match resourceType with 
-    | ComputeInstance(zone, instance) -> mkResource "gce_instance" labels
-    | Container(cluster, ns, instance, pod, container, zone) -> mkResource "container" labels 
-  
-  let write (messsage : Message) : LogEntry = 
-    let entry = LogEntry()
-    entry
+    let r = MonitoredResource(Type = resourceName resourceType)
+    r.Labels.Add(mkLabels project resourceType)
+    r
 
   let writeRequests (conf : StackdriverConf) (state : State) (reqs : TargetMessage[]) =
       let messages = ResizeArray<_>() // Updated by the loop.
@@ -85,14 +108,13 @@ module internal Impl =
           messages.Add <| write message
         | Flush (ackCh, nack) -> ()
 
-      let writer = Job.Scheduler.isolate <| fun _ -> state.logger.WriteLogEntries(state.logName, state.resource, state.labels, messages)   
+      let writer = Job.Scheduler.isolate <| fun _ -> state.logger.WriteLogEntries(state.logName, state.resource, conf.labels, messages)   
       let handler = Job.tryIn writer Job.result (Job.raises)
       handler >>= fun res -> Job.conIgnore acks 
   
   let createState (conf : StackdriverConf) = 
     { logger = LoggingServiceV2Client.Create()
       resource = mkMonitoredResource conf.projectId conf.resource
-      labels = conf.labels |> Map.toSeq |> dict
       logName = sprintf "projects/%s/logs/%s" conf.projectId conf.logId }
 
   let dispose runtime state ackVar = 
