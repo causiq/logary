@@ -99,11 +99,11 @@ module internal Impl =
   
   let resourceName = function
   | ComputeInstance _ -> 
-      "gce_instance"
+    "gce_instance"
   | Container _ -> 
-      "container"
+    "container"
   | AppEngine _ -> 
-      "gae_app"
+    "gae_app"
   
   let createMonitoredResource project resourceType =
     let r = MonitoredResource(Type = resourceName resourceType)
