@@ -16,9 +16,13 @@
     <DebugType>Full</DebugType>
     <Optimize>false</Optimize>
     <DefineConstants>DEBUG</DefineConstants>
+    <!-- have to duplicate the output path here because albacore doesn't resolve the path above -->
+    <OutputPath>bin\Debug</OutputPath>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <Optimize>true</Optimize>
+    <!-- have to duplicate the output path here because albacore doesn't resolve the path above -->
+    <OutputPath>bin\Release</OutputPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(VisualStudioVersion)' == '10.0' OR '$(VisualStudioVersion)' == '11.0'">
     <FSharpTargetsPath>$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets</FSharpTargetsPath>
