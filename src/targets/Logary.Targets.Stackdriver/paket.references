@@ -1,3 +1,4 @@
 FSharp.Core
 Hopac
-Google.Logging.V2
+Google.Cloud.Logging.V2
+Google.Api.Gax.Rest

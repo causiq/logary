@@ -2,14 +2,15 @@
 /// Documentation for Stackdriver Logging itself can be found here: https://cloud.google.com/logging/docs/ 
 module Logary.Targets.Stackdriver
 
+open Google.Api
+open Google.Api.Gax.Grpc
+open Google.Cloud.Logging.Type
+open Google.Cloud.Logging.V2
 open Hopac
 open Hopac.Infixes
 open Logary
-open Logary.Target
 open Logary.Internals
-open Google.Logging.V2
-open Google.Api
-open Google.Logging.Type
+open Logary.Target
 open Logary.Utils.Chiron
 open Logary.Utils.Chiron.Builder
 open System.Collections.Generic
@@ -75,7 +76,10 @@ module internal Impl =
 
   type State = { logName : string
                  logger : LoggingServiceV2Client
-                 resource : MonitoredResource }
+                 resource : MonitoredResource
+                 cancellation : System.Threading.CancellationTokenSource
+                 /// used as a wrapper around the above cancellation token
+                 callSettings : CallSettings }
 
   let createLabels project = function
     // check out https://cloud.google.com/logging/docs/api/v2/resource-list for the list of resources
@@ -111,25 +115,33 @@ module internal Impl =
     r
 
   let writeRequests (conf : StackdriverConf) (state : State) (reqs : TargetMessage[]) =
-    let messages = ResizeArray<_>() // Updated by the loop.
-    let acks = ResizeArray<_>() // updated by the loop
+    let request = WriteLogEntriesRequest()
+    request.LogName <- state.logName
+    request.Labels.Add(conf.labels)
+    request.Resource <- state.resource
     
+    let acks = ResizeArray<_>() // updated by the loop
     for m in reqs do
       match m with
       | Log (message, ack) ->
         // Write and save the ack for later.
         acks.Add ack
-        messages.Add <| write message
+        request.Entries.Add(write message)
       | Flush (ackCh, nack) -> ()
-
-    let writer = Job.Scheduler.isolate <| fun _ -> state.logger.WriteLogEntries(state.logName, state.resource, conf.labels, messages)   
-    let handler = Job.tryIn writer Job.result (Job.raises)
-    handler >>= fun res -> Job.conIgnore acks 
+    
+    job {
+      let! response = state.logger.WriteLogEntriesAsync(request, state.callSettings)
+      // execute all the acks without waiting for responses
+      return! Job.conIgnore acks
+    } 
   
-  let createState (conf : StackdriverConf) = 
+  let createState (conf : StackdriverConf) =
+    let source = new System.Threading.CancellationTokenSource()
     { logger = LoggingServiceV2Client.Create()
       resource = createMonitoredResource conf.projectId conf.resource
-      logName = sprintf "projects/%s/logs/%s" conf.projectId (System.Net.WebUtility.UrlEncode conf.logId) }
+      logName = sprintf "projects/%s/logs/%s" conf.projectId (System.Net.WebUtility.UrlEncode conf.logId)
+      cancellation = source
+      callSettings = CallSettings.FromCancellationToken(source.Token) }
 
   let loop (conf : StackdriverConf)
            (runtime : RuntimeInfo) // this one,
@@ -139,7 +151,9 @@ module internal Impl =
     let rec loop (state : State) : Job<unit> =
       Alt.choose [
         // either shutdown, or
-        shutdown ^=> fun ack -> ack *<= () :> Job<_>
+        shutdown ^=> fun ack -> 
+          state.cancellation.Cancel()
+          ack *<= () :> Job<_>
         // there's a batch of messages to handle
         RingBuffer.takeBatch conf.maxBatchSize requests ^=> (fun requests -> writeRequests conf state requests >>= fun res -> loop state)
       ] :> Job<_>

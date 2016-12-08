@@ -2,4 +2,6 @@ FSharp.Core
 Hopac
 Expecto
 NodaTime
-Google.Logging.V2
+Google.Cloud.Logging.V2
+Google.Api.Gax.Rest
+Google.Api.Gax

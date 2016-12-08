@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <AssemblyName>Logary.Targets.Stackdriver</AssemblyName>
@@ -103,6 +103,28 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2')">
       <ItemGroup>
+        <Reference Include="Google.Api.Gax.Grpc">
+          <HintPath>..\..\..\packages\Google.Api.Gax.Grpc\lib\net45\Google.Api.Gax.Grpc.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2')">
+      <ItemGroup>
+        <Reference Include="Google.Api.Gax.Rest">
+          <HintPath>..\..\..\packages\Google.Api.Gax.Rest\lib\net45\Google.Api.Gax.Rest.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2')">
+      <ItemGroup>
         <Reference Include="Google.Apis.PlatformServices">
           <HintPath>..\..\..\packages\Google.Apis\lib\net45\Google.Apis.PlatformServices.dll</HintPath>
           <Private>True</Private>
@@ -146,8 +168,8 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2')">
       <ItemGroup>
-        <Reference Include="Google.Logging.Type">
-          <HintPath>..\..\..\packages\Google.Logging.Type\lib\net45\Google.Logging.Type.dll</HintPath>
+        <Reference Include="Google.Cloud.Logging.Type">
+          <HintPath>..\..\..\packages\Google.Cloud.Logging.Type\lib\net45\Google.Cloud.Logging.Type.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
@@ -157,8 +179,8 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2')">
       <ItemGroup>
-        <Reference Include="Google.Logging.V2">
-          <HintPath>..\..\..\packages\Google.Logging.V2\lib\net45\Google.Logging.V2.dll</HintPath>
+        <Reference Include="Google.Cloud.Logging.V2">
+          <HintPath>..\..\..\packages\Google.Cloud.Logging.V2\lib\net45\Google.Cloud.Logging.V2.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
