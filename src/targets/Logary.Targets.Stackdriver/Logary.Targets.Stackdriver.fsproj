@@ -41,6 +41,7 @@
     <Compile Include="Target_Stackdriver.fs" />
     <None Include="App.config" />
     <None Include="paket.references" />
+    <Compile Include="AssemblyVersionInfo.fs" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">

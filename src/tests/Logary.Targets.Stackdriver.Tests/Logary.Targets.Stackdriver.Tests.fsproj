@@ -40,10 +40,10 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <Content Include="app.config" />
+    <Compile Include="AssemblyVersionInfo.fs" />
+    <Compile Include="Program.fs" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '11.0'">
