@@ -1,5 +1,5 @@
 REDIRECTS: ON
-FRAMEWORK: NET45, NET452
+FRAMEWORK: NET45, NET452, NET461
 NUGET
   remote: https://www.nuget.org/api/v2
     Aether (8.1.2)
@@ -27,7 +27,7 @@ NUGET
       Expecto (>= 1.1.2)
       FsCheck (>= 2.6.2)
       FSharp.Core (>= 3.1.2.5)
-    FAKE (4.46)
+    FAKE (4.46.1)
     FluentMigrator (1.6.2)
     FluentMigrator.Runner (1.6.2)
       FluentMigrator (>= 1.6.2)
@@ -75,8 +75,8 @@ GITHUB
     RingBuffer.fs (4557d607737e748b54eb6de3ec5e5cd02247b2a5)
       Hopac
   remote: logary/logary
-    src/Logary.CSharp.Facade/Facade.cs (5d15199fc23719b1c86a77914ee46601b2bd2909)
-    src/Logary.Facade/Facade.fs (5d15199fc23719b1c86a77914ee46601b2bd2909)
+    src/Logary.CSharp.Facade/Facade.cs (6357d34b3df3d46b4ed21a56332f3b620d4405d4)
+    src/Logary.Facade/Facade.fs (6357d34b3df3d46b4ed21a56332f3b620d4405d4)
 GROUP Examples
 REDIRECTS: ON
 FRAMEWORK: >= NET45

@@ -1,5 +1,5 @@
 redirects: on
-framework: net45, net452
+framework: net45, net452, net461
 source https://www.nuget.org/api/v2
 source https://www.myget.org/F/haf/api/v3/index.json
 
