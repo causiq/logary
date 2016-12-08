@@ -98,9 +98,12 @@ module internal Impl =
          "version_id", versionId ] |> dict
   
   let resourceName = function
-  | ComputeInstance _ -> "gce_instance"
-  | Container _ -> "container"
-  | AppEngine _ -> "gae_app"
+  | ComputeInstance _ -> 
+      "gce_instance"
+  | Container _ -> 
+      "container"
+  | AppEngine _ -> 
+      "gae_app"
   
   let createMonitoredResource project resourceType =
     let r = MonitoredResource(Type = resourceName resourceType)
@@ -126,8 +129,7 @@ module internal Impl =
   let createState (conf : StackdriverConf) = 
     { logger = LoggingServiceV2Client.Create()
       resource = createMonitoredResource conf.projectId conf.resource
-      // TODO: url-encode the logId portion of this string
-      logName = sprintf "projects/%s/logs/%s" conf.projectId conf.logId }
+      logName = sprintf "projects/%s/logs/%s" conf.projectId (System.Net.WebUtility.UrlEncode conf.logId) }
 
   let loop (conf : StackdriverConf)
            (runtime : RuntimeInfo) // this one,
