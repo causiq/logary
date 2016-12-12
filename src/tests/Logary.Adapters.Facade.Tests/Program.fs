@@ -64,12 +64,13 @@ let tests =
   testList "facades" [
     testList "shared" [
       testProperty "convert string to unit" <| fun (x : Units) ->
-        if x = Other "" then true else
-        match LoggerAdapterShared.unitOfString (Units.symbol x) with
-        | Other _ ->
-          true
-        | res ->
-          res = x
+        match x with
+        | Other _ -> true
+        | x -> match LoggerAdapterShared.unitOfString (Units.symbol x) with
+               | Other _ ->
+                 true
+               | res ->
+                 res = x
     ]
 
     testList "v1" [
