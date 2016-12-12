@@ -86,6 +86,7 @@ Install-Package Logary
           * [inProcBuffer = false, flushToDisk = true, caller awaits all ack after each](#inprocbuffer--false-flushtodisk--true-caller-awaits-all-ack-after-each)
           * [inProcBuffer = true, flushToDisk = false, writeThrough=false caller awaits all acks at the end](#inprocbuffer--true-flushtodisk--false-writethroughfalse-caller-awaits-all-acks-at-the-end)
       * [Work to be done](#work-to-be-done)
+    * [Stackdriver target (alpha level)](#stackdriver-target-alpha-level)
     * [EventStore adapter](#eventstore-adapter)
     * [FsSQL adapter](#fssql-adapter)
     * [Suave adapter](#suave-adapter)
@@ -1189,6 +1190,51 @@ messages.
  - Unit test rotation code
  - Then enable rotation
  - Harden against exceptions during writes – mock FileSystem
+
+## Stackdriver target (alpha level)
+
+Logary also includes a logging target for [Google Cloud Stackdriver](https://cloud.google.com/stackdriver/).  
+
+### Configuration
+
+The target can be configured like so:
+
+```fsharp
+open Logary.Targets.Stackdriver
+
+let projectId = "your gcloud project id"
+// either a custom name, or you can use one of the well-known stream names that you can retrieve from [the lists](https://cloud.google.com/logging/docs/view/logs_index)
+// this name doesn't have to be url-encoded as per the spec, the target will do that for you
+// the specified log should exist before use
+let logname = "the stream you want to log to"
+// create your monitored resource:
+let resource = ComputeInstance("my zone", "my instanceId")
+// or container:
+// let resource = Container("my cluster", "my namespace", "my instanceID", "my pod", "my name", "my zone")
+// or appengine:
+// let resource = AppEngine("my moduleId", "my version")
+
+let conf = StackdriverConf.create(projectId, logname, resource)
+```
+
+Then, within `withTargets`:
+
+```fsharp
+Stackdriver.create conf "target-name"
+```
+
+Finally, within `withRules`:
+
+```fsharp
+Rule.createForTarget "target-name"
+```
+
+### Further work
+
+* batching
+* flushing
+  * the underlying library doesn't provide a flush mechanism yet
+
 
 ## EventStore adapter
 
