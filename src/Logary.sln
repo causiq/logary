@@ -134,6 +134,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cibryy", "..\examples\Cibry
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logary.CSharp.Facade", "Logary.CSharp.Facade\Logary.CSharp.Facade.csproj", "{11535E76-9262-4A5C-8863-1BA688C78473}"
 EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Stackdriver.Tests", "tests\Logary.Targets.Stackdriver.Tests\Logary.Targets.Stackdriver.Tests.fsproj", "{588510C5-5263-43E7-979B-B7B322F740EF}"
+EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Stackdriver", "targets\Logary.Targets.Stackdriver\Logary.Targets.Stackdriver.fsproj", "{BA02296C-41A5-449D-A724-68CEA527E0E2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -352,6 +356,14 @@ Global
 		{11535E76-9262-4A5C-8863-1BA688C78473}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{11535E76-9262-4A5C-8863-1BA688C78473}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{11535E76-9262-4A5C-8863-1BA688C78473}.Release|Any CPU.Build.0 = Release|Any CPU
+		{588510C5-5263-43E7-979B-B7B322F740EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{588510C5-5263-43E7-979B-B7B322F740EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{588510C5-5263-43E7-979B-B7B322F740EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{588510C5-5263-43E7-979B-B7B322F740EF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BA02296C-41A5-449D-A724-68CEA527E0E2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BA02296C-41A5-449D-A724-68CEA527E0E2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BA02296C-41A5-449D-A724-68CEA527E0E2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BA02296C-41A5-449D-A724-68CEA527E0E2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -410,5 +422,7 @@ Global
 		{66F98172-3595-432D-925C-1DBEFD99A060} = {B3FA7806-592C-4F81-BBCE-7AB1180CD7CD}
 		{3C5509C3-4A96-4F42-B1AD-0860E189BD80} = {60FC06B0-58BB-4D96-96FE-FD92EA4BAA5E}
 		{11535E76-9262-4A5C-8863-1BA688C78473} = {EA09AD42-B4E2-4B0D-8960-E87277F46F04}
+		{588510C5-5263-43E7-979B-B7B322F740EF} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
+		{BA02296C-41A5-449D-A724-68CEA527E0E2} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 	EndGlobalSection
 EndGlobal

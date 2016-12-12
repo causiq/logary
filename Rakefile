@@ -156,6 +156,7 @@ task :tests_unit do
     reject { |exe| exe.include? '.DB' }.
     keep_if { |exe| !exe.include?('Mailgun') || (ENV['MAILGUN_API_KEY'] && exe.include?('Mailgun')) }.
     keep_if { |exe| !exe.include?('ElmahIO') || (ENV['ELMAH_IO_LOG_ID'] && exe.include?('ElmahIO')) }.
+    keep_if { |exe| !exe.include?('Stackdriver') || (ENV["STACKDRIVER_PROJECT"] && ENV["STACKDRIVER_LOG"] && exe.include?('Stackdriver')) }.
     each do |exe|
     system exe, %W|--sequenced #{ENV['DEBUG'] ? "--debug" : ""}|, clr_command: true
   end
