@@ -2,6 +2,7 @@
 
 open System.Collections.Generic
 open Expecto
+open Hopac
 open Logary.Internals
 
 [<Tests>]
@@ -57,3 +58,70 @@ let maps =
       let input = raw :> seq<string * string>
       Map.ofObject (box input) |> ignore
     ]
+
+
+[<Tests>]
+let useStatementInLoops =
+  let createCounter (increment : unit -> unit) =
+    { new System.IDisposable with
+        member x.Dispose () =
+          increment () }
+
+  let puree loops =
+    let disposeCount = ref 0u
+    let counter = createCounter (fun () -> disposeCount := !disposeCount + 1u)
+    let rec inner (i : uint32) =
+      if i = 0u then !disposeCount
+      else
+        use d = counter
+        inner (i - 1u)
+    inner loops
+
+  let jobs loops =
+    let disposeCount = ref 0u
+    let counter = createCounter (fun () -> disposeCount := !disposeCount + 1u)
+    let rec inner (i : uint32) : Job<uint32> =
+      job {
+        if i = 0u then return !disposeCount
+        else
+          use! x = Job.result counter
+          return! inner (i - 1u)
+      }
+    inner loops
+
+  let extracted loops =
+    let g (x : Job<_>) =
+      job {
+        use! y = x
+        return ()
+      }
+    let disposeCount = ref 0u
+    let counter = createCounter (fun () -> disposeCount := !disposeCount + 1u)
+    let rec inner (i : uint32) : Job<uint32> =
+      job {
+        if i = 0u then return !disposeCount
+        else
+          let! x = g (Job.result counter)
+          return! inner (i - 1u)
+      }
+    inner loops
+
+  testList "disposing with tail recursion" [
+    // https://stackoverflow.com/questions/13491768/tail-recursion-and-exceptions-in-f
+    // https://github.com/logary/logary/issues/216
+
+    testCase "testing disposing with pure function" <| fun _ ->
+      let loops = 10000u
+      let disposed = puree loops
+      Expect.equal disposed 0u "Showcases bad behaviour when the use-statement precludes tail-recursion"
+
+    testCase "testing disposing with job function" <| fun _ ->
+      let loops = 10000u
+      let disposed = jobs loops |> run
+      Expect.equal disposed 0u "Showcases bad behaviour when the use-statement precludes tail-recursion"
+
+    testCase "testing disposing with job function extracted" <| fun _ ->
+      let loops = 10000u
+      let disposed = extracted loops |> run
+      Expect.equal disposed loops "Should dispose the same number of times as there are loops"
+  ]

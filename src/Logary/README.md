@@ -13,6 +13,7 @@ A smart, performant logging system for .Net and mono applications and services.
  - NLog integration logging
  - nimrod integration logging (mostly just a log format)
  - MailGun integration, sending e-mails with log data
+ - Stackdriver integration logging
 
 ### Health checks
 

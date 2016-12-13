@@ -1,13 +1,13 @@
 ﻿module Logary.Targets.InfluxDb.Tests.TargetTests
 
 open NodaTime
+open System
+open System.Text
+open System.Threading
 open Logary
 open Logary.Configuration
 open Logary.Internals
 open Logary.Targets.InfluxDb
-open System
-open System.Text
-open System.Threading
 open Expecto
 open Suave
 open Suave.Operators
@@ -16,10 +16,7 @@ open Hopac.Extensions
 open Hopac.Infixes
 open TestHelpers
 
-let emptyRuntime =
-  { serviceName = "tests"
-    clock       = SystemClock.Instance
-    logger      = NullLogger() }
+let emptyRuntime = RuntimeInfo.create "tests"
 
 let flush = Target.flush >> Job.Ignore >> run
 
@@ -55,9 +52,8 @@ let writesOverHttp =
     let cts = new CancellationTokenSource()
     let state = new State(cts)
     let cfg =
-      { defaultConfig with bindings = [ HttpBinding.mkSimple HTTP "127.0.0.1" 9011 ]
-                           cancellationToken = cts.Token
-                           logger = Suave.Logging.Loggers.saneDefaultsFor Suave.Logging.LogLevel.Fatal }
+      { defaultConfig with bindings = [ HttpBinding.createSimple HTTP "127.0.0.1" 9011 ]
+                           cancellationToken = cts.Token }
     let listening, srv =
       startWebServerAsync cfg (request (fun r ctx -> async {
         do! Job.toAsync (Ch.give state.req r)
@@ -69,7 +65,16 @@ let writesOverHttp =
 
   testList "writes over HTTP" [
     testCase "write to Suave" <| fun _ ->
-      let msg = Message.gauge (PointName.parse "Processor.% User Time._Total") (Float 0.3463)
+      let msg =
+        Message.gaugeWithUnit (PointName.parse "Processor.% User Time") Percent (Int64 1L)
+        |> Message.setField "inst1" (Float 0.3463)
+        |> Message.setField "inst2" (Float 0.223)
+        |> Message.setContext "service" "svc-2"
+        |> Message.tag KnownLiterals.SuppressPointValue
+        |> Message.tag "my-tag"
+        |> Message.tag "ext"
+      //printfn "tags: %A" msg.context.["tags"]
+
       use state = withServer ()
 
       let target = start ()
@@ -77,15 +82,17 @@ let writesOverHttp =
         msg
         |> Target.log target
         |> run  
-        |> ignore            
+        |> ignore
 
         let req =
           Ch.take state.req
           |> run
 
+        let expected = Serialisation.serialiseMessage msg
         stringEqual (req.rawForm |> Encoding.UTF8.GetString)
-                     (Serialisation.serialiseMessage msg)
-                     "should eq"
+                    expected
+                    "should eq"
+        //printfn "expected: %s" expected
 
         Expect.equal (req.queryParam "db") (Choice1Of2 "tests") "should write to tests db"
 

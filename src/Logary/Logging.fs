@@ -15,6 +15,7 @@ open Hopac
 open Hopac.Infixes
 open NodaTime
 open Logary
+open Logary.Message
 open Logary.Registry.Logging
 open Logary.Internals
 
@@ -66,23 +67,14 @@ type PromisedLogger(name, requestedLogger : Job<Logger>) =
     member x.name = name
 
   interface Logger with
-    member x.logVerboseWithAck fMessage =
+    member x.logWithAck logLevel messageFactory =
       Promise.read promised
-      |> Alt.afterJob (fun logger -> logger.logVerboseWithAck fMessage)
+      |> Alt.afterJob (fun logger -> logger.logWithAck logLevel messageFactory)
 
-    member x.logDebugWithAck fMessage =
+    member x.log logLevel messageFactory =
       Promise.read promised
-      |> Alt.afterJob (fun logger -> logger.logDebugWithAck fMessage)
-
-    member x.logWithAck message =
-      Promise.read promised
-      |> Alt.afterJob (fun logger -> logger.logWithAck message)
-
-    member x.logSimple message =
-      Promise.read promised
-      |> Alt.afterJob (fun logger -> logger.logWithAck message)
-      |> Job.Ignore
-      |> start
+      |> Alt.afterJob (fun logger -> logger.logWithAck logLevel messageFactory)
+      |> Alt.afterFun (fun _ -> ())
 
     member x.level =
       Verbose
@@ -97,9 +89,11 @@ let getLoggerByPointName name =
     logger :> Logger
 
   | Some inst ->
-    Logger.logVerbose inst.runtimeInfo.logger (fun _ ->
-      Message.eventVerbosef "Getting logger by name '%O'" name)
-    >>=. (name |> Registry.getLogger inst.registry)
+    inst.runtimeInfo.logger.verbose (
+      eventX "Getting logger by name {name}" >> setField "name" (name.ToString()))
+
+    name
+    |> Registry.getLogger inst.registry
     |> PromisedLogger.create name
 
 /// Gets a logger by a given name.

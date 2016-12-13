@@ -1,15 +1,15 @@
-﻿//-----------------------------------------------------------------------
-// <copyright file="BinaryAnnotation.cs" company="Bazinga Technologies Inc.">
-//     Copyright (C) 2016 Bazinga Technologies Inc.
-// </copyright>
-//-----------------------------------------------------------------------
-
-using System;
+﻿using System;
 using System.Net;
 using System.Text;
 
 namespace Logary.Zipkin
 {
+    //-----------------------------------------------------------------------
+    // <copyright file="BinaryAnnotation.cs" company="Bazinga Technologies Inc.">
+    //     Copyright (C) 2016 Bazinga Technologies Inc.
+    // </copyright>
+    //-----------------------------------------------------------------------
+
     /// <summary>
     /// Special annotation without time component. They can carry extra 
     /// information i.e. when calling an HTTP service &rArr; URI of the call.

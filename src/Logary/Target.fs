@@ -41,7 +41,6 @@ type TargetConf =
     match other with
     | :? TargetConf as other ->
       x.name = other.name
-
     | _ ->
       false
 
@@ -64,10 +63,16 @@ type TargetConf =
 let confTarget name (factory : string -> TargetConf) =
   factory name
 
-/// Initialises the target with metadata and a target configuration, yielding a
-/// TargetInstance in return which contains the running target.
-let init metadata (conf : TargetConf) : Job<TargetInstance> =
-  conf.initer metadata
+/// Initialises the target with a runtime and a target configuration, yielding a
+/// TargetInstance in return which contains the running target. This function
+/// also configured the name of the internal logger.
+let init runtime (conf : TargetConf) : Job<TargetInstance> =
+  let runtime =
+    let (PointName path) = conf.name
+    let pn = PointName [| yield "Logary"; yield! path |]
+    { runtime with logger = runtime.logger |> Logger.apply (Message.setName pn) }
+
+  conf.initer runtime
 
 /// Send the target a message, returning the same instance as was passed in when
 /// the Message was acked.
@@ -111,13 +116,16 @@ module TargetUtils =
       }
     }
 
+  /// Creates a new target instance that is capable of handling callback upon
+  /// previous crash, with the saved state (that it itself needs to pass into)
+  /// Logary before rethrowing its exception.
   let willAwareNamedTarget loop name : TargetConf =
     let name' = PointName.parse name
     { name = name'
-      initer = fun metadata -> job {
+      initer = fun runtimeInfo -> job {
         let! requests = RingBuffer.create 500u
         let shutdown = Ch ()
-        return { server   = loop metadata requests shutdown
+        return { server   = loop runtimeInfo requests shutdown
                  requests = requests
                  shutdown = shutdown
                  name     = name' }

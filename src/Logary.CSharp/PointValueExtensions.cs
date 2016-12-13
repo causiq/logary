@@ -33,7 +33,7 @@ namespace Logary
         /// Tries the get derived value from the PointValue DU.
         /// </summary>
         /// <returns>The get derived.</returns>
-        /// <param name="pval">The value to extrace.</param>
+        /// <param name="pval">The value to extract.</param>
         public static Tuple<Value, Units> TryGetDerived(this PointValue pval)
         {
             Tuple<Value, Units> val;

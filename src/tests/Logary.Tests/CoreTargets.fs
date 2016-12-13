@@ -1,16 +1,24 @@
-﻿module Logary.Tests.CoreTargets
+module Logary.Tests.CoreTargets
 
 open System
 open System.Text.RegularExpressions
 open System.Globalization
+open System.IO
+open System.Text
+open System.Threading
 open Expecto
+open Expecto.Logging
 open Logary
+open Logary.Internals
 open Logary.Targets
+open Logary.Message
 open Logary.Tests.Targets
 open Hopac
 open NodaTime
 open TestDSL
 open Fac
+
+let logger = Expecto.Logging.Log.create "Logary.Tests.CoreTargets"
 
 let textWriterConf () =
   let stdout, stderr = Fac.textWriter (), Fac.textWriter ()
@@ -72,6 +80,22 @@ let timeMessage (nanos : int64) level =
   let value, units = Int64 nanos, Scaled (Seconds, float Constants.NanosPerSecond)
   snd (Message.time (PointName [| "A"; "B"; "C"; "Check" |]) (fun () -> 32) ())
   |> Message.setGauge (value, units)
+  |> Message.setLevel level
+
+let gaugeMessage (value : float) level =
+  Float value
+  |> Message.gaugeWithUnit (PointName [| "Revolver" |]) (Div (Seconds, Units.Other "revolution"))
+  |> Message.setLevel level
+
+let multiGaugeMessage level =
+  Int64 1L
+  |> Message.gaugeWithUnit (PointName [| "Processor"; "% Idle" |]) Percent
+  |> Message.setField "Core 1" (Float 0.001)
+  |> Message.setField "Core 2" (Float 0.99)
+  |> Message.setField "Core 3" (Float 0.473223755)
+  |> Message.tag KnownLiterals.SuppressPointValue
+  |> Message.setContext "host" "db-001"
+  |> Message.setContext "service" "api-web"
   |> Message.setLevel level
 
 let nanos xs =
@@ -154,7 +178,7 @@ let tests =
             yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
             yield { text = "ms"; colours = LiterateTesting.Theme.textColours }
             yield { text = " to execute."; colours = LiterateTesting.Theme.subtextColours } ]
-          "Should print [06:15:02 DBG] A.B.C.Check took 60,02 ms"
+          "Should print [06:15:02 INF] A.B.C.Check took 60,02 ms"
 
       yield testLiterateCase "Time in μs" (timeMessage 133379L) <| fun expectedTimeText parts ->
         Expect.sequenceEqual
@@ -166,7 +190,7 @@ let tests =
             yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
             yield { text = "µs"; colours = LiterateTesting.Theme.textColours }
             yield { text = " to execute."; colours = LiterateTesting.Theme.subtextColours } ]
-          "Should print [06:15:02 DBG] A.B.C.Perform took 133,38 μs"
+          "Should print [06:15:02 INF] A.B.C.Perform took 133,38 μs"
 
       yield testLiterateCase "Time in ns" (timeMessage 139L) <| fun expectedTimeText parts ->
         Expect.sequenceEqual
@@ -178,7 +202,48 @@ let tests =
             yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
             yield { text = "ns"; colours = LiterateTesting.Theme.textColours }
             yield { text = " to execute."; colours = LiterateTesting.Theme.subtextColours } ]
-          "Should print [06:15:02 DBG] A.B.C.Perform took 139 μs, because nanoseconds is as accurate as it gets"
+          "Should print [06:15:02 INF] A.B.C.Perform took 139 μs, because nanoseconds is as accurate as it gets"
+
+      yield testLiterateCase "Single measurement per second gauge" (gaugeMessage 1.4562) <| fun expectedTimeText parts ->
+        Expect.sequenceEqual
+          parts
+          [ yield! levels expectedTimeText
+            yield { text = "Revolver"; colours = LiterateTesting.Theme.nameSymbolColours }
+            yield { text = " (M)"; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = ":"; colours = LiterateTesting.Theme.punctuationColours }
+            yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = "1,4562"; colours = LiterateTesting.Theme.numericSymbolColours }
+            yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = "s/revolution"; colours = LiterateTesting.Theme.textColours } ]
+          "Should print [06:15:02 INF] Revolver: 1,4562 s/revolution"
+
+      yield testLiterateCase "Multiple measurements per second gauge" multiGaugeMessage <| fun expectedTimeText parts ->
+        printfn "Parts: %s" (parts |> List.map (fun ct -> ct.text) |> String.Concat)
+        Expect.sequenceEqual
+          parts
+          [ yield! levels expectedTimeText
+            yield { text = "Processor.% Idle"; colours = LiterateTesting.Theme.nameSymbolColours }
+            yield { text = " (M)"; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = ":"; colours = LiterateTesting.Theme.punctuationColours }
+            yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = "Core 1"; colours = LiterateTesting.Theme.nameSymbolColours }
+            yield { text = "="; colours = LiterateTesting.Theme.punctuationColours }
+            yield { text = "0,10"; colours = LiterateTesting.Theme.numericSymbolColours }
+            yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = "%"; colours = LiterateTesting.Theme.textColours }
+            yield { text = " | "; colours = LiterateTesting.Theme.punctuationColours }
+            yield { text = "Core 2"; colours = LiterateTesting.Theme.nameSymbolColours }
+            yield { text = "="; colours = LiterateTesting.Theme.punctuationColours }
+            yield { text = "99,00"; colours = LiterateTesting.Theme.numericSymbolColours }
+            yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = "%"; colours = LiterateTesting.Theme.textColours }
+            yield { text = " | "; colours = LiterateTesting.Theme.punctuationColours }
+            yield { text = "Core 3"; colours = LiterateTesting.Theme.nameSymbolColours }
+            yield { text = "="; colours = LiterateTesting.Theme.punctuationColours }
+            yield { text = "47,32"; colours = LiterateTesting.Theme.numericSymbolColours }
+            yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+            yield { text = "%"; colours = LiterateTesting.Theme.textColours } ]
+          "Should print [06:15:02 INF] Processor.% Idle (M): Core 1=0,10 % | Core 2=99,00 % | Core 3=47,32 %"
     ]
 
     testList "text writer prints" [
@@ -230,4 +295,218 @@ let tests =
         |> should contain "Fatal line"
         |> thatsIt
       ]
+  ]
+
+open FileSystem
+open File
+open Expecto.Logging
+
+
+[<Tests>]
+let files =
+  let env = Environment.GetEnvironmentVariable
+  let rnd = new ThreadLocal<Random>(fun () -> Random ())
+
+  let sha1 =
+    UTF8.bytes
+    >> Bytes.hash Security.Cryptography.SHA1.Create
+    >> Bytes.toHex
+
+  let rndName () =
+    let buf = Array.zeroCreate<byte> 16
+    rnd.Value.NextBytes buf
+    Bytes.toHex buf
+
+  let rndFolderFile testName =
+    let tempPath =
+      // TMPDIR is on OS X and Linux
+      [ "TMP"; "TEMP"; "TMPDIR" ]
+      |> List.map env
+      |> List.filter (isNull >> not)
+      |> List.head
+    let subFolder = sha1 testName
+    let folderPath = Path.Combine(tempPath, subFolder)
+    let fileName = rndName ()
+    folderPath, fileName
+
+  let ensureFolder folderPath =
+    if not (Directory.Exists folderPath) then
+      Directory.CreateDirectory(folderPath) |> ignore
+
+  let aFewTimes throw fn =
+    let rec inner count acc =
+      try
+        fn ()
+      with e ->
+        Thread.Sleep 150
+        if count <= 10 then
+          inner (count + 1) (e :: acc)
+        else
+          if throw then failwithf "Function %O failed with %A" fn (e :: acc)
+          else ()
+    inner 1 []
+
+  let createInRandom testName =
+    let folder, file = rndFolderFile (sprintf "file - %s" testName)
+    ensureFolder folder
+    let conf = FileConf.create folder (Naming (file, "log"))
+    File.create conf testName
+
+  let testCaseF testName (fn : FolderPath -> FileName -> Job<_>) =
+    let folderPath, fileName = rndFolderFile testName
+    testCase testName <| fun _ ->
+      ensureFolder folderPath
+      try
+        fn folderPath fileName |> run
+      finally
+        aFewTimes false <| fun _ -> Directory.Delete(folderPath, true)
+
+  let runtime now =
+    RuntimeInfo.create (
+      "my service",
+      { new IClock with
+          member x.Now = now },
+      "myHost")
+
+  let runtime2016_10_11T13_14_15 =
+    runtime (Instant.FromUtc (2016, 10, 11, 13, 14, 15))
+
+  testList "files" [
+    testList "rotate policies" [
+      testCaseF "file size" <| fun _ _ ->
+        Tests.skiptest "\
+          The rotation policies decide when a given file is due to be rotated,\n\
+          i.e. closed, renamed to a 'historical name' and then re-opened."
+
+      testCaseF "file age" <| fun _ _ ->
+        Tests.skiptest "\
+          This rotation should rotate the file when the current file has\n\
+          reached a certain age."
+
+      testCaseF "custom callback policy unit -> Instant" <| fun _ _ ->
+        Tests.skiptest "\
+          This retention policy should be continuously called by the Logary\n\
+          scheduler which is then told when the rotation should happen. This also\n\
+          covers the case when developers want to rotate on starting the system."
     ]
+
+    testList "deletion policies" [
+      testCaseF "file count in folder" <| fun _ _ ->
+        Tests.skiptest "\
+          The deletion policies should work by counting the number of files\n\
+          that match the given pattern, and delete older files that count above\n\
+          a specified threshold, excluding the current file."
+
+      testCaseF "folder total size" <| fun _ _ ->
+        Tests.skiptest "\
+          This deletion policy should count the total size of the folder and\n\
+          if it's above a certain threshold, start deleting files until that threshold\n\
+          is reached, excluding the current file."
+
+      testCaseF "file age" <| fun _ _ ->
+        Tests.skiptest "\
+          This deletion policy should kick in to delete files that are above a\n\
+          specified age, excluding the current file."
+    ]
+
+    testList "naming policies" [
+      testCase "service – from RuntimeInfo" <| fun _ ->
+        let subject = Naming ("{service}", "log")
+        let actual = subject.formatS runtime2016_10_11T13_14_15
+        Expect.equal actual "my service.log" "Should format service"
+        let regex = subject.regex runtime2016_10_11T13_14_15
+        Expect.isTrue (regex.IsMatch actual) "Should match its own output"
+
+      testCase "year-month-day - date" <| fun _ ->
+        let subject = Naming ("{date}", "log")
+        let actual = subject.formatS runtime2016_10_11T13_14_15
+        Expect.equal actual "2016-10-11.log" "Should format date"
+        let regex = subject.regex runtime2016_10_11T13_14_15
+        Expect.isTrue (regex.IsMatch actual) "Should match its own output"
+
+      testCase "year-month-dayThour-minutes-seconds – datetime" <| fun _ ->
+        let subject = Naming ("{datetime}", "log")
+        let actual = subject.formatS runtime2016_10_11T13_14_15
+        Expect.equal actual "2016-10-11T13-14-15Z.log" "Should format datetime"
+        let regex = subject.regex runtime2016_10_11T13_14_15
+        Expect.isTrue (regex.IsMatch actual) "Should match its own output"
+
+      testCase "host" <| fun _ ->
+        let subject = Naming ("{host}", "log")
+        let actual = subject.formatS runtime2016_10_11T13_14_15
+        Expect.equal actual "myHost.log" "Should format host name"
+        let regex = subject.regex runtime2016_10_11T13_14_15
+        Expect.isTrue (regex.IsMatch actual) "Should match its own output"
+
+      testCase "combo host and service and datetime (no sep)" <| fun _ ->
+        let subject = Naming ("{host}{service}{datetime}", "log")
+        let actual = subject.formatS runtime2016_10_11T13_14_15
+        Expect.equal actual "myHostmy service2016-10-11T13-14-15Z.log"
+                     "Should format composite file name"
+        let regex = subject.regex runtime2016_10_11T13_14_15
+        Expect.isTrue (regex.IsMatch actual) "Should match its own output"
+
+      testCase "combo host and service and datetime" <| fun _ ->
+        // ^[a-zA-Z0-9\s]+-[a-zA-Z0-9\s]+-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z\.log$
+        let subject = Naming ("{host}-{service}-{datetime}", "log")
+        let actual = subject.formatS runtime2016_10_11T13_14_15
+        Expect.equal actual "myHost-my service-2016-10-11T13-14-15Z.log"
+                     "Should format composite file name"
+        let regex = subject.regex runtime2016_10_11T13_14_15
+        Expect.isTrue (regex.IsMatch actual)
+                      (sprintf "Should match its own output '%s' with regex /%O/"
+                               actual
+                               regex)
+
+      testList "invalids" [
+        for invalid in [ "{host}-}{service}-{datetime}"
+                         "apa:"
+                         ""
+                         "\\"
+                         "/"
+                         ";"] do
+          yield testCase "combo host and service and datetime" <| fun _ ->
+            let naming = Naming (invalid, "log")
+            // comment in to see error messages in output
+            //naming.format runtime2016_10_11T13_14_15 |> ignore
+            Expect.throws (fun () ->
+              naming.format runtime2016_10_11T13_14_15 |> ignore)
+              "Should throw due to bad input"
+      ]
+    ]
+
+    // Commented out while file target is in dev
+    //Targets.basicTests "file" createInRandom
+    //Targets.integrationTests "file" createInRandom
+
+    testCaseF "log ten thousand messages" <| fun folder file ->
+      Tests.skiptest "Locks up, see https://github.com/haf/expecto/issues/2 but probably due to the Janitor loop"
+      let fileConf = FileConf.create folder (Naming ("10K", "log"))
+      let targetConf = Target.confTarget "basic2" (File.create fileConf)
+
+      Message.event Debug "Creating test case job." |> logger.logSimple
+      job {
+        let! instance = targetConf |> Target.init { Fac.emptyRuntime with logger = Fac.literal.Value }
+        Message.event Debug "Starting target server." |> logger.logSimple
+        do! Job.start (instance.server (fun _ -> Job.result ()) None)
+
+        let acks = ResizeArray<_>(10000)
+        Message.event Debug (sprintf "Starting writing messages into Logary at %s." folder) |> logger.logSimple
+        for i in 1 .. 10000 do
+          let! ack =
+            event Logary.LogLevel.Info "Event {number}"
+            |> setField "number" i
+            |> Target.log instance
+          acks.Add ack
+        Message.event Debug "Waiting for ACKs" |> logger.logSimple
+        do! Job.conIgnore acks
+        Message.event Debug "All messages ACK-ed" |> logger.logSimple
+
+        let! res = Target.finaliseJob instance
+        match res with
+        | Internals.TimedOut ->
+          Tests.failtest "Stopping file target timed out"
+        | _ ->
+          ()
+      }
+  ]

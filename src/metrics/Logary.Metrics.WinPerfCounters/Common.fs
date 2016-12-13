@@ -16,7 +16,7 @@ let ofPerfCounters counters =
 
 let private forInstances instancesFactory unitsAndCounters =
   let instances : string [] = instancesFactory ()
-  unitsAndCounters |> Array.map (fun (units : Units, create : string [] -> WinPerfCounter) -> 
+  unitsAndCounters |> Array.map (fun (units : Units, create : string [] -> WinPerfCounter) ->
     units, create instances)
 
 let private forInstance instanceFactory unitsAndCounters =
@@ -24,8 +24,8 @@ let private forInstance instanceFactory unitsAndCounters =
 
 let systemCounters () =
   Array.concat [
-    [| Div (Scalar, Seconds), System.``Context Switches/sec``
-       Scalar,                System.``Processor Queue Length`` |]
+    [| Div (Other "ctxsw", Seconds), System.``Context Switches/sec``
+       Other "threads",       System.``Processor Queue Length`` |]
 
     [| Percent,               Processor.``% Processor Time``
        Percent,               Processor.``% User Time``
@@ -33,7 +33,7 @@ let systemCounters () =
        Percent,               Processor.``% Privileged Time``
        Div (Scalar, Seconds), Processor.``Interrupts/sec``
        Percent,               Processor.``% Idle Time`` 
-    |] |> Array.map (fun (units, f) -> units, f [ KnownInstances._Total ])
+    |] |> Array.map (fun (units, f) -> units, f (Processor.instances()))
 
     [| Bytes,                 Memory.``Available Bytes``
        Div (Scalar, Seconds), Memory.``Page Faults/sec``
@@ -47,12 +47,12 @@ let systemCounters () =
     |]
 
     // https://blogs.technet.microsoft.com/askcore/2012/03/16/windows-performance-monitor-disk-counters-explained/
-    [| Div (Seconds, Scalar), LogicalDisk.``Avg. Disk sec/Read``
-       Div (Seconds, Scalar), LogicalDisk.``Avg. Disk sec/Write``
+    [| Div (Seconds, Other "read"), LogicalDisk.``Avg. Disk sec/Read``
+       Div (Seconds, Other "write"), LogicalDisk.``Avg. Disk sec/Write``
        Scalar,                LogicalDisk.``Avg. Disk Read Queue Length``
        Scalar,                LogicalDisk.``Avg. Disk Write Queue Length``
-       Div (Scalar, Seconds), LogicalDisk.``Disk Reads/sec``
-       Div (Scalar, Seconds), LogicalDisk.``Disk Writes/sec``
+       Div (Other "reads", Seconds), LogicalDisk.``Disk Reads/sec``
+       Div (Other "reads", Seconds), LogicalDisk.``Disk Writes/sec``
        Div (Bytes, Seconds),  LogicalDisk.``Disk Read Bytes/sec``
        Div (Bytes, Seconds),  LogicalDisk.``Disk Write Bytes/sec``
        Bytes,                 LogicalDisk.``Free Megabytes``
@@ -70,16 +70,12 @@ let systemCounters () =
        Div (Bytes, Seconds),  PhysicalDisk.``Disk Write Bytes/sec``
        Percent,               PhysicalDisk.``% Idle Time``
     |] |> forInstances PhysicalDisk.instances
-
-    [| Scalar,                Objects.Processes
-       Scalar,                Objects.Mutexes
-       Scalar,                Objects.Threads
-       Scalar,                Objects.Semaphores
-    |]
   ]
   |> Array.map (fun (units, wpc) -> wpc |> WinPerfCounter.setUnit units)
   |> ofPerfCounters
 
+/// https://www.codeproject.com/articles/42721/best-practices-no-detecting-net-application-memo
+/// https://stackoverflow.com/questions/13473761/perfmon-counters-to-check-memory-leak
 let appCounters () =
   let clrMem counter inst = WinPerfCounter.create(".NET CLR Memory", counter, inst)
   let clrExn counter inst = WinPerfCounter.create(".NET CLR Exceptions", counter, inst)
@@ -103,6 +99,7 @@ let appCounters () =
        Div (Bytes, Seconds),  "Allocated Bytes/sec"
        Percent,               "% Time in GC"
        Scalar,                "# of Pinned Objects"
+       Bytes,                 "# Bytes in all Heaps"
     |] |> Array.map (fun (units, counter) -> units, clrMem counter)
 
     [| Div (Scalar, Seconds), "# of Exceps Thrown / Sec"
@@ -111,8 +108,8 @@ let appCounters () =
        Div (Scalar, Seconds), "Throw to Catch Depth / Sec"
     |] |> Array.map (fun (units, counter) -> units, clrExn counter)
 
-    [| Scalar,                "# of current logical Threads"
-       Scalar,                "# of current physical Threads"
+    [| Other "threads",       "# of current logical Threads"
+       Other "threads",       "# of current physical Threads"
        Div (Scalar, Seconds), "Contention Rate / Sec"
        Div (Scalar, Seconds), "Queue Length / sec"
     |] |> Array.map (fun (units, counter) -> units, clrLocks counter)
@@ -180,6 +177,20 @@ let networkInterface pn =
 
 let appMetrics (_ : PointName) : Job<Metric> =
   ofCounters (appCounters ())
+
+[<CompiledName "AppMetric">]
+let appMetric category counter instances : (PointName -> Job<Metric>) =
+  fun (_ : PointName) ->
+    printfn "Creating app metric %s %s" category counter
+    WinPerfCounter.create(category, counter, instances)
+    |> Array.singleton
+    |> ofPerfCounters
+    |> ofCounters
+
+[<CompiledName "AppMetricF">]
+let appMetricF category counter instances : System.Func<PointName, Job<Metric>> =
+  let fn = appMetric category counter instances
+  System.Func<_, _>(fn)
 
 let systemMetrics (_ : PointName) : Job<Metric> =
   ofCounters (systemCounters ())

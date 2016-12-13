@@ -5,6 +5,7 @@ open NodaTime
 open Hopac
 open Hopac.Infixes
 open Logary
+open Logary.Message
 open Logary.Target
 open Logary.Internals
 open Elmah.Io.Client
@@ -156,9 +157,7 @@ module internal Impl =
             }
 
           | Log (message, ack) ->
-            Logger.logVerbose ri.logger (
-              Message.eventX "Logging of metrics not supported"
-            )
+            ri.logger.verboseWithBP (eventX "Logging of metrics not supported")
             >>=. (ack *<= ())
             >>=. loop state
             

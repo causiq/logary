@@ -9,6 +9,7 @@ open System
 open System.Text.RegularExpressions
 open NodaTime
 open Logary
+open Logary.Message
 open Logary.Configuration
 open Logary.Targets
 
@@ -108,7 +109,7 @@ let tests =
 
       let logger = Registry.getLogger logary.registry (PointName.ofSingle "hi") |> run
       try
-        Logger.log logger (Message.eventDebug "there") |> run
+        logger.debugWithBP (eventX "there") |> run
       finally
         finaliseLogary logary
 
@@ -123,36 +124,34 @@ let tests =
         [ { Fac.emptyRule with messageFilter = (fun msg -> msg.name = PointName.ofSingle "1") ; target = "tw" }
           { Fac.emptyRule with messageFilter = (fun msg -> msg.name = PointName.ofSingle "2") ; target = "tw" } ]
 
-      let targets =
-        [ Target.confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.create(out, out)) ]
+      let target =
+        Target.confTarget "tw" (TextWriter.create <| TextWriter.TextWriterConf.create(out, out))
 
-      let logary = confLogary "tests" |> withRules rules |> withTargets targets |> validate |> runLogary |> run
+      let logary = confLogary "tests" |> withRules rules |> withTarget target |> validate |> runLogary |> run
       try
-        job {
-          // when
-          let get = Registry.getLogger logary.registry
-          let! no1 = PointName.ofSingle "1" |> get
-          let! no2 = PointName.ofSingle "2" |> get
-          let! no3 = PointName.ofSingle "3" |> get
+        // when
+        let get = PointName.parse >> Registry.getLogger logary.registry
+        let no1 = "1" |> get |> run
+        let no2 = "2" |> get |> run
+        let no3 = "3" |> get |> run
 
-          // 1 and 2 should go through, not 3
-          do! Message.eventDebug "first"  |> Logger.log no1
-          do! Message.eventDebug "second" |> Logger.log no2
-          do! Message.eventDebug "third"  |> Logger.log no3
+        // 1 and 2 should go through, not 3
+        no1.debugWithBP (eventX "first") |> run
+        no2.debugWithBP (eventX "second") |> run
+        no3.debugWithBP (eventX "third") |> run
 
-          // wait for logging to complete; then
-          let! _ = Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000
+        // wait for logging to complete; then
+        let _ = (Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000) |> run
 
-          (because "it was logged to all three, but rule should stop third" <| fun () ->
-            out.ToString())
-          |> should contain "first"
-          |> should contain "second"
-          |> shouldNot contain "third"
-          |> should' (fulfil <| fun str -> "only single line 'first'", Regex.Matches(str, "first").Count = 1)
-          |> should' (fulfil <| fun str -> "only single line 'second'", Regex.Matches(str, "second").Count = 1)
-          |> should' (fulfil <| fun str -> "zero matches for 'third'", Regex.Matches(str, "third").Count = 0)
-          |> thatsIt
-        } |> run
+        (because "it was logged to all three, but rule should stop third" <| fun () ->
+          out.ToString())
+        |> should contain "first"
+        |> should contain "second"
+        |> shouldNot contain "third"
+        |> should' (fulfil <| fun str -> "only single line 'first'", Regex.Matches(str, "first").Count = 1)
+        |> should' (fulfil <| fun str -> "only single line 'second'", Regex.Matches(str, "second").Count = 1)
+        |> should' (fulfil <| fun str -> "zero matches for 'third'", Regex.Matches(str, "third").Count = 0)
+        |> thatsIt
       finally
         finaliseLogary logary
 
@@ -183,10 +182,10 @@ let tests =
           let! lgrA = get (PointName.ofSingle "a")
           let! lgrB = get (PointName.ofSingle "b")
 
-          do! Message.eventDebug "first"    |> Logger.log lgrA
-          do! Message.eventInfo "second"    |> Logger.log lgrA
-          do! Message.eventDebug "third"    |> Logger.log lgrB
-          do! Message.eventVerbose "fourth" |> Logger.log lgrB
+          do! lgrA.debugWithBP (eventX "first")
+          do! lgrA.infoWithBP (eventX "second")
+          do! lgrB.debugWithBP (eventX "third")
+          do! lgrB.verboseWithBP (eventX "fourth")
           let! _ = Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000
 
           because "lgrA matches two rules, lgrB matches only one" (fun _ -> out.ToString())
@@ -220,7 +219,7 @@ let tests =
           let get = Registry.getLogger logary.registry
           let! lgrA = get (PointName.ofSingle "a")
 
-          do! Message.eventDebug "first" |> Logger.log lgrA
+          do! lgrA.debugWithBP (eventX "first")
           let! _ = Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000
 
           (because "it was logged but filter is always returning false" <| fun () ->
@@ -250,7 +249,7 @@ let tests =
           |> should equal LogLevel.Debug
           |> thatsIt
 
-          do! Message.eventDebug "my message comes here" |> Logger.log logr
+          do! logr.debugWithBP (eventX "my message comes here")
           let! _ = Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000
           (because "it was logged but accept is always returning false" <| fun () ->
             out.ToString())
@@ -282,9 +281,9 @@ let tests =
       try
         job {
           let! shouldLog = Registry.getLogger logary.registry (pnp "a.b.c")
-          do! Message.eventDebug "this message should go through" |> Logger.log shouldLog
+          do! shouldLog.debugWithBP (eventX "this message should go through")
           let! shouldDrop = Registry.getLogger logary.registry (pnp "a.x.y")
-          do! Message.eventDebug "this message should be dropped" |> Logger.log shouldDrop
+          do! shouldDrop.debugWithBP (eventX "this message should be dropped")
           let! _ = Registry.Advanced.flushPending logary.registry <|> timeOutMillis 20000
 
           (because "we only accept path a.b.c, other never" <| fun () ->

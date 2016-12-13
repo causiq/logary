@@ -44,7 +44,7 @@ module Health =
 
     let config =
       { defaultConfig with
-          bindings = [ HttpBinding.mkSimple HTTP ip port ]
+          bindings = [ HttpBinding.createSimple HTTP ip port ]
           cancellationToken = cts.Token }
 
     let ready, handle = startWebServerAsync config app
@@ -168,10 +168,9 @@ module Router =
     | datas ->
       let message = Logary.Targets.Shipper.Serialisation.deserialise datas
 
-      message
-      |> Logger.logWithAck logger
+      Logger.logWithAck logger message.level (fun _ -> message)
       |> run
-      |> queue
+      |> start
 
       recvLoop receiver logger
 

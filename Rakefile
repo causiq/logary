@@ -1,8 +1,12 @@
+#encoding: utf-8
 require 'bundler/setup'
 require 'pathname'
 require 'albacore'
+require 'albacore/task_types/nugets_pack'
 require 'albacore/tasks/versionizer'
 require 'albacore/tasks/release'
+require './tools/paket_pack'
+include ::Albacore::NugetsPack
 
 Configuration = ENV['CONFIGURATION'] || 'Release'
 LogaryStrongName = (ENV['LOGARY_STRONG_NAME'] && true) || false
@@ -50,6 +54,7 @@ task :paket_replace do
   sh %{ruby -pi.bak -e "gsub(/module.* YoLo/, 'module internal Logary.YoLo')" paket-files/haf/YoLo/YoLo.fs}
   sh %{ruby -pi.bak -e "gsub(/module Hopac/, 'namespace Logary.Internals')" paket-files/logary/RingBuffer/RingBuffer.fs}
   sh %{ruby -pi.bak -e "gsub(/namespace Logary.Facade/, 'namespace Libryy.Logging')" paket-files/logary/logary/src/Logary.Facade/Facade.fs}
+  sh %{ruby -pi.bak -e "gsub(/namespace Logary.Facade/, 'namespace Cibryy.Logging')" paket-files/logary/logary/src/Logary.CSharp.Facade/Facade.cs}
 end
 
 build :clean_sln do |b|
@@ -103,20 +108,43 @@ task :build => [:versioning, :assembly_info, :restore, :paket_replace, :build_qu
 
 directory 'build/pkg'
 
-nugets_pack :nugets_quick => :versioning do |p|
-  p.configuration = Configuration
-  p.files         = FileList['src/**/*.{csproj,fsproj,nuspec}'].
-    exclude(/Example|Tests|Spec|Health|Logary[.]Facade|sample|packages/)
-  p.out           = 'build/pkg'
-  p.exe           = 'tools/NuGet.exe'
-  p.with_metadata do |m|
-    m.description = 'Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net.'
-    m.authors     = 'Henrik Feldt, Logibit AB'
-    m.copyright   = 'Henrik Feldt, Logibit AB'
-    m.version     = ENV['NUGET_VERSION']
-    m.tags        = 'logging f# log logs metrics metrics.net measure gauge semantic structured'
-    m.license_url = 'https://www.apache.org/licenses/LICENSE-2.0.html'
-    m.icon_url    = 'https://raw.githubusercontent.com/logary/logary-assets/master/graphics/LogaryLogoSquare32x32.png'
+task :nugets_quick => [:versioning, 'build/pkg'] do
+  projects = FileList['src/**/*.{csproj,fsproj}'].exclude(/Example|Tests|Spec|Rutta|Health|Logary[.]Facade|Logary[.]CSharp[.]Facade|sample|packages/i)
+  knowns = Set.new(projects.map { |f| Albacore::Project.new f }.map { |p| p.id })
+  authors = "Henrik Feldt, Logibit AB"
+  projects.each do |f|
+    p = Albacore::Project.new f
+    n = create_nuspec p, knowns
+    d = get_dependencies n
+    m = %{type file
+id #{p.id}
+version #{ENV['NUGET_VERSION']}
+title #{p.id}
+authors #{authors}
+owners #{authors}
+tags logging f# log logs metrics metrics.net measure gauge semantic structured
+description Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net.
+language en-GB
+copyright #{authors}
+licenseUrl https://www.apache.org/licenses/LICENSE-2.0.html
+projectUrl https://github.com/logary/logary
+iconUrl https://raw.githubusercontent.com/logary/logary-assets/master/graphics/LogaryLogoSquare32x32.png
+files
+  #{p.proj_path_base}/#{p.output_dll Configuration} ==\> lib/net452
+  #{p.proj_path_base}/#{p.output_dll(Configuration).to_s.sub('.dll', '.xml')} ==\> lib/net452
+releaseNotes
+  #{n.metadata.release_notes.each_line.reject{|x| x.strip == ""}.join}
+dependencies
+  #{d}
+}
+    begin
+      File.open("paket.template", "w") do |template|
+        template.write m
+      end
+      system "tools/paket.exe", %w|pack output build/pkg|, clr_command: true
+    ensure
+      File.delete "paket.template"
+    end
   end
 end
 
@@ -128,8 +156,9 @@ task :tests_unit do
     reject { |exe| exe.include? '.DB' }.
     keep_if { |exe| !exe.include?('Mailgun') || (ENV['MAILGUN_API_KEY'] && exe.include?('Mailgun')) }.
     keep_if { |exe| !exe.include?('ElmahIO') || (ENV['ELMAH_IO_LOG_ID'] && exe.include?('ElmahIO')) }.
+    keep_if { |exe| !exe.include?('Stackdriver') || (ENV["STACKDRIVER_PROJECT"] && ENV["STACKDRIVER_LOG"] && exe.include?('Stackdriver')) }.
     each do |exe|
-    system exe, %w|--sequenced|, clr_command: true
+    system exe, %W|--sequenced #{ENV['DEBUG'] ? "--debug" : ""}|, clr_command: true
   end
 end
 

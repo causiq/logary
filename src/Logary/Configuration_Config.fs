@@ -9,6 +9,7 @@ open Hopac.Infixes
 open NodaTime
 open Logary
 open Logary.Logging
+open Logary.Message
 open Logary.Internals
 open Logary.Target
 open Logary.Metric
@@ -42,9 +43,7 @@ let withInternalLogger lgr (conf : LogaryConf) =
 [<CompiledName "WithInternalTargets">]
 let withInternalTargets level tconfs (conf : LogaryConf) =
   let internalRuntime =
-    { serviceName = conf.runtimeInfo.serviceName
-      clock       = !Date.clock
-      logger      = NullLogger() }
+    RuntimeInfo.create conf.runtimeInfo.serviceName
 
   let logger =
     tconfs
@@ -77,9 +76,7 @@ let confLogary serviceName =
   { rules       = []
     targets     = Map.empty
     metrics     = Map.empty
-    runtimeInfo = { serviceName = serviceName
-                    clock       = !Date.clock
-                    logger      = NullLogger() }
+    runtimeInfo = RuntimeInfo.create serviceName
     middleware  = [] }
 
 /// Add a new target to the configuration. You also need to supple a rule for
@@ -174,27 +171,27 @@ let validate ({ targets     = targets
 /// Start logary with a given configuration
 [<CompiledName "RunLogary"; Extension>]
 let runLogary (conf : LogaryConf) =
-  Message.eventDebug "Running Logary"
-  |> Logger.log conf.runtimeInfo.logger
+  conf.runtimeInfo.logger.debugWithBP (eventX "Running Logary.")
   >>=. Registry.Advanced.create conf
   >>= fun registry -> Logging.startFlyweights registry |> Job.map (fun _ -> registry)
 
 /// Shutdown logary, waiting maximum flushDur + shutdownDur.
 [<CompiledName "ShutdownLogary">]
 let shutdown (flushDur : Duration) (shutdownDur : Duration) (inst : LogaryInstance) : Job<_> =
-  let log =
-    Message.setName (PointName [| "Logary"; "Configuration"; "Config"; "shutdown" |])
-    >> Logger.log inst.runtimeInfo.logger
+
+  let logger =
+    let pn = PointName [| "Logary"; "Configuration"; "Config"; "shutdown" |]
+    inst.runtimeInfo.logger |> Logger.apply (setName pn)
 
   job {
-    do! Message.eventDebug "Shutting down Logary." |> log
+    do! logger.debugWithBP (eventX "Shutting down Logary.")
     let! res = Advanced.flushAndShutdown flushDur shutdownDur inst.registry
     if res.successful then
-      do! Message.eventVerbose "Shutting down Logary was successful." |> log
+      do! logger.verboseWithBP (eventX "Shutting down Logary was successful.")
     else
-      do! Message.eventVerbose "Shutting down Logary failed within alloted time, with {acks}."
-          |> Message.setFieldFromObject "acks" res.stopped
-          |> log
+      do! logger.verboseWithBP (
+            eventX "Shutting down Logary failed within alloted time, with {acks}."
+            >> setFieldFromObject "acks" res.stopped)
     Logging.shutdownFlyweights ()
     do! shutdownLogger inst.runtimeInfo.logger
     return res

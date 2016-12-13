@@ -5,6 +5,7 @@ open Hopac.Infixes
 open Hopac.Extensions
 open HttpFs.Client
 open Logary
+open Logary.Message
 open Logary.Target
 open Logary.Internals
 open System
@@ -37,7 +38,6 @@ module Serialisation =
   let printTags = function
     | [] ->
       ""
-
     | xs ->
       // TO CONSIDER: assumes values are escaped
       let joined =
@@ -136,20 +136,38 @@ module Serialisation =
 
     let simpleValue = getValues "value"
 
-    let outer context =
+    let removeSuppressTag suppress =
+      if suppress then
+        Map.map (fun k v ->
+          match k with
+          | KnownLiterals.TagsContextName ->
+            match v with
+            | Array tags ->
+              Value.Array (tags |> List.filter ((<>) (Value.String KnownLiterals.SuppressPointValue)))
+            | _ ->
+              v
+          | _ -> v)
+      else id
+
+    let contextValues suppress context : PointValue -> _ * _ =
       let context' =
-        context |> mapExtract (extractSimple "value" true)
+        context
+        |> removeSuppressTag suppress
+        |> mapExtract (extractSimple "value" true)
 
       function
       | Gauge (value, Scalar)
       | Derived (value, Scalar) ->
-        simpleValue false context' [] value
+        let contextTags, contextFields = simpleValue false context' [] value
+        if suppress then contextTags, [] else contextTags, contextFields
 
       | Gauge (value, units)
       | Derived (value, units) ->
-        let kvs, values = simpleValue false context' [] value
-        ("unit", serialiseStringTag <| Units.symbol units) :: kvs,
-        values
+        simpleValue false context' [] value |> fun (tags, fields) ->
+        let contextTags, contextFields =
+          ("unit", serialiseStringTag (Units.symbol units)) :: tags,
+          fields
+        if suppress then contextTags, [] else contextTags, contextFields
 
       | Event templ ->
         let kvs, values = simpleValue false context' [] (Value.Int64 1L)
@@ -182,8 +200,9 @@ module Serialisation =
       | _ ->
         []
 
+    let suppress = message |> Message.hasTag KnownLiterals.SuppressPointValue
     let fieldTags, fieldFields = fieldValues message.fields
-    let contextTags, contextFields = outer message.context message.value
+    let contextTags, contextFields = contextValues suppress message.context message.value
     let extraFields = extraFields message.name message.value
 
     sprintf "%O%s %s %i"
@@ -241,6 +260,7 @@ let empty =
     batchSize   = 100us }
 
 module internal Impl =
+  open System.Text
 
   let reqestAckJobCreator request =
     match request with
@@ -270,33 +290,40 @@ module internal Impl =
       |> Option.bind (fun u -> conf.password |> Option.map (fun p -> u, p))
       |> Option.fold (fun _ (u, p) -> Request.basicAuthentication u p) id
 
+    let g (req : Request) = job {
+      use! resp = getResponse req
+      let! body = Response.readBodyAsString resp
+      return body, resp.statusCode
+    }
+
     let rec loop () : Job<unit> =
       Alt.choose [
         shutdown ^=> fun ack ->
           ack *<= () :> Job<_>
 
         RingBuffer.takeBatch (uint32 conf.batchSize) requests ^=> fun reqs ->
-          let messageTexts = Seq.map extractMessage reqs
-          let body = messageTexts |> String.concat "\n"
+          let body =
+            reqs
+            |> Seq.map extractMessage
+            |> String.concat "\n"
           let req =
             Request.create Post endpoint
             |> Request.keepAlive true
-            |> Request.body (BodyString body)
+            |> Request.bodyString body
             |> tryAddAuth conf
 
           job {
-            let! _ = ri.logger.logVerboseWithAck (Message.eventX "Sending {body}" >> Message.setField "body" body)
-            use! resp = getResponse req
-            let! body = Response.readBodyAsString resp
-            if resp.statusCode > 299 then
+            do! ri.logger.verboseWithBP (eventX "Sending {body}" >> Message.setField "body" body)
+            let! body, statusCode = g req
+            if statusCode > 299 then
               let! errorFlush =
-                Logger.logWithAck ri.logger (
-                  Message.event Error "Bad response {statusCode} with {body}"
-                  |> Message.setField "statusCode" resp.statusCode
-                  |> Message.setField "body" body)
+                ri.logger.logWithAck Error (
+                  eventX  "Bad response {statusCode} with {body}"
+                  >> setField "statusCode" statusCode
+                  >> setField "body" body)
               do! errorFlush
               // will cause the target to restart through the supervisor
-              failwithf "Bad response statusCode=%i" resp.statusCode
+              failwithf "Bad response statusCode=%i" statusCode
             else
               do! Seq.iterJobIgnore reqestAckJobCreator reqs
               return! loop ()
@@ -304,7 +331,7 @@ module internal Impl =
       ] :> Job<_>
     loop ()
 
-/// Create a new InfluxDb target
+/// Create a new InfluxDb target.
 let create conf =
   TargetUtils.stdNamedTarget (Impl.loop conf)
 

@@ -1,6 +1,7 @@
 ﻿namespace FsSql
 
 open Hopac
+open Hopac.Infixes
 open Logary
 
 /// Some mapping functions for FsSql LogLevels
@@ -30,16 +31,15 @@ type FsSqlAdapter(logger : Logger) =
   interface FsSql.Logging.Logger with
     member x.Verbose lineFactory =
       ignore >> lineFactory >> FsSqlLogLine.toLogary
-      |> Logger.logVerbose logger
-      |> start
+      |> Logger.logWithTimeout logger Logger.defaultTimeout Verbose
+      |> fun x -> start (x ^->. ())
 
     member x.Debug lineFactory =
       ignore >> lineFactory >> FsSqlLogLine.toLogary
-      |> Logger.logDebug logger
-      |> start
+      |> Logger.logWithTimeout logger Logger.defaultTimeout Debug
+      |> fun x -> start (x ^->. ())
 
-    member x.Log line =
-      line
+    member x.Log message =
+      message
       |> FsSqlLogLine.toLogary
-      |> Logger.log logger
-      |> start
+      |> logger.logSimple

@@ -13,6 +13,7 @@ open Hopac
 open Hopac.Infixes
 open NodaTime
 open Logary
+open Logary.CSharp
 open Logary.Metric
 open Logary.Internals
 open Logary.Configuration
@@ -70,7 +71,7 @@ and ConfBuilder(conf) =
   /// have a context field 'service' that specifies what service the code is running in.
   ///
   /// Please see Logary.Middleware for common middleware to use.
-  member x.Use(middleware : Func<Func<Message, Message>, Func<Message, Message>>) : ConfBuilder =
+  member x.UseFunc(middleware : Func<Func<Message, Message>, Func<Message, Message>>) : ConfBuilder =
     conf
     |> Config.withMiddleware (fun next msg -> middleware.Invoke(new Func<_,_>(next)).Invoke msg)
     |> ConfBuilder
@@ -83,6 +84,13 @@ and ConfBuilder(conf) =
   member x.Use(middleware : Middleware.Mid) : ConfBuilder =
     conf
     |> Config.withMiddleware middleware
+    |> ConfBuilder
+
+  /// Depending on what the compiler decides; we may be passed a MethodGroup that
+  /// can be converted to this signature:
+  member x.Use(middleware : Func<Message -> Message, Message, Message>) =
+    conf
+    |> Config.withMiddleware (fun next msg -> middleware.Invoke(next, msg))
     |> ConfBuilder
 
   member x.Metrics(configurator : Func<MetricsConfBuild, MetricsConfBuild>) =

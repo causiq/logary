@@ -278,6 +278,7 @@ module WinPerfCounter =
         | typ ->
           failwithf "unknown type %A" typ
     else
+      printfn "category %s and counter %s do not exist" counter.category counter.counter
       None
 
   /// Curried variant of `mkPc` that takes a category, counter and optional
@@ -293,7 +294,10 @@ module WinPerfCounter =
   module Helpers =
 
     let toValue (pc : WinPerfCounterInstance) =
-      let message = Message.gaugeWithUnit pc.baseName pc.unit (Int64 1L)
+      let message =
+        { Message.gaugeWithUnit pc.baseName pc.unit (Int64 1L) with
+            context = Map [ KnownLiterals.TagsContextName, Array [ String KnownLiterals.SuppressPointValue ] ] }
+
       pc.nextValues()
       |> Array.fold (fun m (pn, vl) ->
           let field = Field (vl, Some pc.unit)
@@ -310,13 +314,16 @@ module WinPerfCounter =
     /// be found.
     let pidToInstance pid : string option =
       Category.createForce "Process"
+      // will get a list of *all* instances running on this machine
       |> Category.instances
       |> Array.map (fun instance ->
-        match toWindowsCounter3 "Process" "ID Process" [ instance ] with
-        | Some pcProcId when int (snd (pcProcId.nextValue())) = pid ->
-          pcProcId.instances.[0]
-        | _ ->
-          "")
+        try
+          match toWindowsCounter3 "Process" "ID Process" [ instance ] with
+          | Some pcProcId when int (snd (pcProcId.nextValue())) = pid ->
+            pcProcId.instances.[0]
+          | _ ->
+            ""
+        with _ -> "")
       |> Array.tryFind (fun s -> s.Length > 0)
       |> Option.fold (fun _ t -> Some t) None
 

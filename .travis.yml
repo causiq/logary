@@ -2,8 +2,8 @@
 language: csharp
 
 mono:
-  - 4.2.3
   - 4.4.2
+  - 4.6.1
   - weekly
   - latest
 
@@ -15,10 +15,14 @@ install:
   - bundle
 
 script:
-  - bundle exec rake
+  - bundle exec rake DEBUG=true
 
 matrix:
   allow_failures:
    - mono: latest
    - mono: weekly
    - mono: 4.4.2
+
+env:
+  global:
+    - TMPDIR=/tmp

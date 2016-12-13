@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using NodaTime;
-using Logary;
 using Logary.Configuration;
+using Logary.CSharp;
 using Logary.Metrics;
 using Logary.Targets;
+using Uri = System.Uri;
 
 /*
  * 
@@ -84,15 +86,18 @@ namespace Logary.CSharpExample
 
         public static int Main(string[] args)
         {
+            var mre = new ManualResetEventSlim(false);
+            System.Console.CancelKeyPress += (sender, arg) => mre.Set();
+
             using (var logary = LogaryFactory.New("Logary.CSharpExample",
                 with => with.InternalLoggingLevel(LogLevel.Debug)
                         .Metrics(m =>
                             m.AddMetric(Duration.FromSeconds(3L), "appMetrics", WinPerfCounters.appMetrics)
                              .AddMetric(Duration.FromSeconds(3L), "systemMetrics", WinPerfCounters.systemMetrics))
                         .Target<TextWriter.Builder>(
-                        "console1",
-                        conf =>
-                        conf.Target.WriteTo(System.Console.Out, System.Console.Error)
+                          "console1",
+                          conf =>
+                            conf.Target.WriteTo(System.Console.Out, System.Console.Error)
                                 .MinLevel(LogLevel.Verbose)
                                 .AcceptIf(line => true)
                                 .SourceMatching(new Regex(".*"))
@@ -116,13 +121,19 @@ namespace Logary.CSharpExample
                                     .Type("logs") // index-name
                                     .Done()
                             )
+                            //.Target<File.Builder>(
+                            //    "file",
+                            //    conf => conf
+                            //)
                             .Target<InfluxDb.Builder>("influx",
                                                       conf => conf.Target.DB("http://influxdb.service:8086").Done())
                 ).Result)
             {
-                var logger = logary.GetLogger("Logary.CSharpExample");
-                SampleUsage(logger).Wait();
+                //var logger = logary.GetLogger("main");
+                //SampleUsage(logger).Wait();
+                mre.Wait();
             }
+
             return 0;
         }
     }

@@ -5,6 +5,7 @@ open NodaTime
 open Hopac
 open Hopac.Infixes
 open Logary
+open Logary.Message
 open Logary.Target
 open Logary.Internals
 open RabbitMQ.Client
@@ -218,7 +219,7 @@ module internal Impl =
   let body (conf : RabbitMQConf) (message : Message) =
     Json.serialize message |> Json.format |> UTF8.bytes |> compress conf.compression
 
-  let selectConfirm ilogger state (kont : State -> Job<unit>) : Alt<_> =
+  let selectConfirm (ilogger : Logger) state (kont : State -> Job<unit>) : Alt<_> =
 
     let clearInflights (m, acked) msgId =
       match m |> Map.pop msgId with
@@ -252,10 +253,10 @@ module internal Impl =
         // Right now we'll just remove the message from the list of inflight messages
         // Some googling should be needed for the exact semantics – but most likely it's
         // failing because you have no consumers configured.
-        Message.event Info "Got {nack}"
-        |> Message.setField "deliveryTag" nack.DeliveryTag
-        |> Message.setField "multiple" nack.Multiple
-        |> Logger.log ilogger
+        ilogger.infoWithBP (
+          eventX "Got {nack}."
+          >> setField "deliveryTag" nack.DeliveryTag
+          >> setField "multiple" nack.Multiple)
         |> Job.bind (fun _ -> job {
           if nack.Multiple then
             let! inflight' = ackMany state nack.DeliveryTag

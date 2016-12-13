@@ -28,6 +28,11 @@ let middleware =
       let msg = Middleware.identity id (Message.event Info "User logged in" |> now)
       Expect.equal msg (Message.eventInfo "User logged in" |> now) "identity"
 
+    yield testCase "host" <| fun _ ->
+      let msg = Message.event Debug "Hi!"
+      let msg' = Middleware.host id msg
+      Expect.isSome (msg'.context.TryFind "host") "Should have a host name"
+
     yield testCase "compose ordering" <| fun _ ->
       let calls = ref []
       let m1 next msg = calls := !calls @ ["m1"] ; next msg
@@ -64,5 +69,13 @@ let middleware =
              ] }
 
       Expect.equal (composed' msg) expected "adds to context like it should"
+
+    yield testCase "compose three" <| fun _ ->
+      let mids = [ Middleware.host; Middleware.service "abc"; Middleware.processName ]
+      let composed = Middleware.compose mids
+      let msg' = composed (Message.event Debug "Ran")
+      Expect.isSome (msg'.context.TryFind "host") "has host"
+      Expect.isSome (msg'.context.TryFind "processName") "has processName"
+      Expect.isSome (msg'.context.TryFind "service") "has service"
 
   ]

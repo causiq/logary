@@ -231,6 +231,9 @@ module Value =
     | :? Guid as g             -> String (string g)
     | :? DateTime as dt        -> String (dt.ToUniversalTime().ToString("o"))
     | :? DateTimeOffset as dto -> String (dto.ToString("o"))
+    | :? TimeSpan as ts        -> String (ts.ToString())
+    | :? System.Uri as u       -> String (u.ToString())
+    | :? NodaTime.Duration as d-> String (d.ToString())
     | :? exn as e              -> Object (exceptionToStringValueMap ofObject e)
 
     // Collections
@@ -264,8 +267,14 @@ module Value =
       |> Array
 
     | du when FSharpType.IsUnion (du.GetType()) ->
-      let uci, _ = FSharpValue.GetUnionFields(du, du.GetType())
-      String uci.Name
+      let uci, fields = FSharpValue.GetUnionFields(du, du.GetType())
+      match fields with
+      | [||] ->
+        String uci.Name
+      | [|field|] ->
+        Object <| Map [uci.Name, ofObject field]
+      | fields ->
+        Object <| Map [uci.Name, ofObject fields]
 
     // POCOs
     | a when a <> null ->
@@ -632,7 +641,7 @@ type Units =
     Offset (Kelvins, +273.15)
 
   static member symbol = function
-    | Bits -> "b"
+    | Bits -> "bit"
     | Bytes -> "B"
     | Seconds -> "s"
     | Metres -> "m"
@@ -652,7 +661,7 @@ type Units =
                          offset
     | Mul (a, b) -> String.Concat [ "("; Units.symbol a; "*"; Units.symbol b; ")" ]
     | Pow (a, b) -> String.Concat [ Units.symbol a; "^("; Units.symbol b; ")" ]
-    | Div (a, b) -> String.Concat [ "("; Units.symbol a; "/"; Units.symbol b; ")" ]
+    | Div (a, b) -> String.Concat [ Units.symbol a; "/"; Units.symbol b ]
     | Root a -> String.Concat [ "sqrt("; Units.symbol a; ")" ]
     | Log10 a -> String.Concat [ "log10("; Units.symbol a; ")" ]
 
@@ -698,7 +707,7 @@ type Units =
       match json with
       | Json.String s ->
         match s with
-        | "b" -> Bits |> JsonResult.Value, json
+        | "bit" -> Bits |> JsonResult.Value, json
         | "B" -> Bytes |> JsonResult.Value, json
         | "s" -> Seconds |> JsonResult.Value, json
         | "m" -> Metres |> JsonResult.Value, json
@@ -794,32 +803,77 @@ module Units =
     | value ->
       1. / 86400., "days"
 
-  let scaleBits : float -> float * string =
-    let prefix = [| ""; "k"; "M"; "G"; "T"; "P" |]
-    fun value ->
-      let index = min (int (log10 value) / 3) (prefix.Length - 1)
-      1. / 10.**(float index * float 3), sprintf "%sbit" prefix.[index]
+  // https://en.wikipedia.org/wiki/International_System_of_Units#Prefixes
+  let multiplePrefixes =
+    [| ""; "k"; "M"; "G"; "T"; "P"; "E"; "Z" |]
 
-  // grafana/public/app/kbn.js:374@g20d5d0e
+  let fractionsPrefixes : string[] =
+    [| "m"; "μ"; "n"; "p"; "f"; "a"; "z"; "y" |]
+
+  let scaleBy10 units (value : float) : float * string =
+    let symbol = Units.symbol units
+    if value = 0. || value = infinity || value = -infinity then 1., symbol else
+    let fraction = value > -1. && value < 1.
+    let prefixes = if fraction then fractionsPrefixes else multiplePrefixes
+    let index =
+      // at boundaries, like 0.001 s we want index to be (abs(-3) - 1) / 3
+      // done with integer division
+      let ioffset = if fraction then -1. else 0.
+      let tenPower = ceil (abs (log10 value)) // 3 from abs (log10 (1e-3)) // ceil is for handling e.g. log10 0.00099 = -3.004364805 
+      let index = int (tenPower + ioffset) / 3 // each index in steps of a thousand
+      let maxIndex = prefixes.Length - 1
+      //printfn "(index) ioffset=%f, tenPower=%f, index=%i, maxIndex=%i" ioffset tenPower index maxIndex
+      min index maxIndex
+    let scaled = if fraction then 10.**(float (index + 1) * 3.) else 1. / 10.**(float index * 3.)
+    //printfn "to scale with factor=%f, symbol=%s, index=%i" scaled symbol index
+    scaled,
+    sprintf "%s%s" prefixes.[index] symbol
+
+  let scaleBytes (value : float) : float * string =
+    let log2 x = log x / log 2.
+    let prefixes = [| ""; "Ki"; "Mi"; "Gi"; "Ti"; "Pi" |] // note the capital K and the 'i'
+    let index = int (log2 value) / 10
+    1. / 2.**(float index * 10.),
+    sprintf "%s%s" prefixes.[index] (Units.symbol Bytes)
+
+  /// Takes a function that returns a *factor* (not the value multiplied)
+  /// by the factor!
   let calculate (calcFactor : float -> float * string) =
     fun (value : float) ->
       let factor, unitStr = calcFactor value
       value * factor, unitStr
 
   // Given a Unit, returns the scaling function and the list of units available.
-  let scale units value : float * string =
-    let scale2to10 _ = 1024., "TODO"
+  let rec scale units value : float * string =
+    let noopScale v = 1., Units.symbol units
     match units with
-    | Bits ->
-      calculate scaleBits value
     | Bytes ->
-      calculate scaleBits value
+      calculate scaleBytes value
+    | Bits
+    | Metres
+    | Scalar
+    | Amperes
+    | Kelvins
+    | Moles
+    | Candelas
+    | Watts
+    | Hertz ->
+      //printfn "scaling value=%f, units=%A" value units
+      calculate (scaleBy10 units) value
+    | Offset _
+    | Mul (_, _)
+    | Pow (_, _)
+    | Div (_, _)
+    | Root _
+    | Log10 _
+    | Other _ ->
+      calculate noopScale value
+    | Percent _ ->
+      calculate (fun v -> 100., Units.symbol Percent) value
     | Seconds ->
       calculate scaleSeconds value
-    | x ->
-      calculate scale2to10 value
-        //["ns"; "µs"; "ms"; "s"; "min"; "h"; "days"]
-        //["B"; "KiB"; "MiB"; "GiB"; "TiB"; "PiB"; "EiB"; "ZiB"; "YiB"]
+    | Scaled (iu, scalef) ->
+      scale iu (value / scalef)
 
   let formatWithUnit orient un value =
     let fval = formatValue value
@@ -850,6 +904,9 @@ with
 
   static member ToJson (PointName xs) : Json<unit> =
     Json.Lens.setPartial Json.Array_ (xs |> Array.map Json.String |> List.ofArray)
+
+  static member ToValue (PointName xs) : Value<unit> =
+    Value.setLensPartial Value.Array_ (xs |> Array.map Value.String |> List.ofArray)
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module PointName =
@@ -1130,6 +1187,7 @@ module StopwatchEx =
       sw.Stop()
       res, sw.toGauge()
 
+/// Open this module to log in a more succinct way.
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Message =
   open Hopac
@@ -1138,12 +1196,7 @@ module Message =
   open System.Threading.Tasks
   open System.Diagnostics
   open Logary.Internals
-
-  [<Literal>]
-  let ErrorsFieldName = "errors"
-
-  [<Literal>]
-  let ServiceFieldName = "service"
+  open Logary.KnownLiterals
 
   module Lenses =
 
@@ -1169,14 +1222,14 @@ module Message =
     let contextValue_ name : PLens<Message, Value> =
       context_ >-?> key_ name
 
-    /// Lens to the context field 'service'
-    let service_ : PLens<Message, string> =
-      contextValue_ ServiceFieldName >??> Value.String_
-
     /// Lens you can use to get the list of errors in this message.
     /// Also see Logary errors: https://gist.github.com/haf/1a5152b77ec64bf10fe8583a081dbbbf
     let errors_ : PLens<Message, Value list> =
       field_ ErrorsFieldName >?-> Field.value_ >??> Value.Array_
+
+    /// Lens to the context field 'service'
+    let service_ : PLens<Message, string> =
+      contextValue_ ServiceContextName >??> Value.String_
 
   ///////////////// FIELDS ////////////////////
 
@@ -1226,6 +1279,28 @@ module Message =
   [<CompiledName "TryGetField">]
   let tryGetField name message =
     Lens.getPartial (Lenses.field_ name) message
+
+  /// Tag the message
+  [<CompiledName "Tag">]
+  let tag (tag : string) (message : Message) =
+    let key = KnownLiterals.TagsContextName
+    match message.context |> Map.tryFind key with
+    | Some (Array tags) when List.contains (String tag) tags ->
+      message
+    | Some (Array tags) ->
+      let tags' = Array (String tag :: tags)
+      { message with context = message.context |> Map.add key tags' }
+    | Some _ ->
+      message
+    | None ->
+      { message with context = message.context |> Map.add key (Array [ String tag ] ) }
+
+  /// Check if the Message has a tag
+  [<CompiledName "HasTag">]
+  let hasTag (tag : string) (message : Message) =
+    match message.context |> Map.tryFind KnownLiterals.TagsContextName with
+    | Some (Array tags) when List.contains (String tag) tags -> true
+    | _ -> false
 
   ///////////////// CONTEXT ////////////////////
 

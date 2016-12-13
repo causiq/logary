@@ -74,8 +74,118 @@ let tests =
 
         testCase "2 000 000 000 000 000 000 bit" <| fun _ ->
           let value, units = Units.scale Bits 2000000000000000000.
-          Expect.floatEqual value 2000. None "Should be scaled to 2 000 Pbit"
-          Expect.equal units "Pbit" "Should be scaled to 2 000 Pbit"
+          Expect.floatEqual value 2. None "Should be scaled to 2. Ebit"
+          Expect.equal units "Ebit" "Should be scaled to 2. Ebit"
+      ]
+
+      testList "bytes" [
+        testCase "1 byte" <| fun _ ->
+          Expect.equal (Units.scale Bytes 1.) (1., "B") "Should scale 1<->1 bytes"
+
+        testCase "10 bytes" <| fun _ ->
+          Expect.equal (Units.scale Bytes 10.) (10., "B") "Should not scale"
+
+        testCase "1024 bytes" <| fun _ ->
+          Expect.equal (Units.scale Bytes 1024.) (1., "KiB") "Should scale to KiB"
+
+        testCase "(2^10)^2 bytes" <| fun _ ->
+          Expect.equal (Units.scale Bytes (1024. * 1024.)) (1., "MiB") "Should scale to MiB"
+
+        testCase "(2^10)^3 bytes" <| fun _ ->
+          Expect.equal (Units.scale Bytes (1024. * 1024. * 1024.)) (1., "GiB")
+                       "Should scale to GiB"
+
+        testCase "(2^10)^4 bytes" <| fun _ ->
+          Expect.equal (Units.scale Bytes (1024. * 1024. * 1024. * 1024.)) (1., "TiB")
+                       "Should scale to TiB"
+      ]
+
+      testCase "scalars are not scaled" <| fun _ ->
+        Expect.equal (Units.scale Scalar 12345678.) (12.345678, "M")
+                     "Should not present a unit for Scalars"
+
+      testCase "others are not scaled" <| fun _ ->
+        Expect.equal (Units.scale (Other "reqs") 12345678.) (12345678., "reqs")
+                     "Should not present a unit for Scalars"
+
+      testCase "Percent are always scalled x100 and presented with a % symbol" <| fun _ ->
+        Expect.equal (Units.scale Percent 0.1246) (12.46, "%")
+                     "Percents are scaled properly"
+
+      testCase "'Scaled' unit with a 1. scale is not actually scaled" <| fun _ ->
+        let actual = Units.scale (Scaled (Percent, 1.)) 0.123
+        let expected = 12.3, "%"
+        Expect.equal actual expected "Should handle non-scaled Scaled"
+
+      testCase "'Scaled' unit by 1/10" <| fun _ ->
+        let actual = Units.scale (Scaled (Percent, 0.1)) 0.123
+        // if 12.3% is had been scaled by 0.1, then the true value is this:
+        let expected = 123., "%"
+        Expect.equal actual expected "Should handle 0.1x scale"
+
+      testList "SI thousands-units multiples" [
+        yield!
+          [ 1., 1., ""
+            10., 10., ""
+            100., 100., ""
+            1000., 1., "k"
+            1024., 1.024, "k"
+            2345., 2.345, "k"
+            1000000., 1., "M"
+            1234000333., 1.234000333, "G"
+            1234000333444., 1.234000333444, "T"
+            1234000333444555., 1.234000333444555, "P"
+            1234000333444555666., 1.234000333444555666, "E"
+            1234000333444555666777., 1.234000333444555666777, "Z"
+          ]
+          |> List.collect (fun (value, expectedf, prefix) ->
+          [ Metres; Amperes; Kelvins; Moles; Candelas; Watts; Hertz ] |> List.map (fun units ->
+          testCase (sprintf "scaling %f %A" value units) (fun _ -> 
+            let actualf, actualu = Units.scale units value
+            let expectedu = sprintf "%s%s" prefix (Units.symbol units)
+            Expect.equal actualu expectedu "Should properly format the unit"
+            Expect.floatEqual actualf expectedf None "Should properly scale the value to the unit"
+          )))
+      ]
+
+      testCase "scaleBy10 Seconds 0.0001" <| fun _ ->
+        let actualf, actualu = Units.scaleBy10 Seconds 0.0001
+        let expectedf, expectedu = 1e6, "μs"
+        Expect.floatEqual actualf expectedf None "Should scale 0.0001 properly"
+        Expect.equal actualu expectedu "Should scale 0.0001's unit properly"
+
+      testCase "scaleBy10 Seconds 0.00011" <| fun _ ->
+        let actualf, actualu = Units.scaleBy10 Seconds 0.00011
+        let expectedf, expectedu = 1e6, "μs"
+        Expect.floatEqual actualf expectedf None "Should scale 0.00011 properly"
+        Expect.equal actualu expectedu "Should scale 0.00011's unit properly"
+
+      testList "SI thousands-units fractions" [
+        yield!
+          [ 1., 1., ""
+            0., 0., ""
+            0.1, 100., "m"
+            0.01, 10., "m"
+            0.002, 2., "m"
+            0.001, 1., "m"
+            0.001024, 1.024, "m"
+            0.0009, 900., "μ"
+            0.000222, 222., "μ"
+            0.000000033, 33., "n"
+            0.000000000404, 404., "p"
+            2.345e-15, 2.345, "f"
+            34.221e-18, 34.221, "a"
+            821.14e-21, 821.14, "z"
+            3.1e-24, 3.1, "y"
+          ]
+          |> List.collect (fun (value, expectedf, prefix) ->
+          [ Metres; Amperes; Kelvins; Moles; Candelas; Watts; Hertz ] |> List.map (fun units ->
+          testCase (sprintf "scaling %A %A" value units) (fun _ ->
+            let actualf, actualu = Units.scale units value
+            let expectedu = sprintf "%s%s" prefix (Units.symbol units)
+            Expect.equal actualu expectedu "Should properly format the unit"
+            Expect.floatEqual actualf expectedf None "Should properly scale the value to the unit"
+          )))
       ]
     ]
   ]

@@ -67,9 +67,26 @@ Install-Package Logary
       * [Passing more information](#passing-more-information)
       * [A note on the FSI](#a-note-on-the-fsi)
       * [More reading](#more-reading)
+    * [Using in a C\# library](#using-in-a-c-library)
+      * [More reading](#more-reading-1)
     * [InfluxDb Target](#influxdb-target)
     * [RabbitMQ Target](#rabbitmq-target)
       * [Usage](#usage)
+    * [File target (alpha level)](#file-target-alpha-level)
+      * [Configuration](#configuration)
+      * [Policies &amp; specifications](#policies--specifications)
+      * [Performance](#performance)
+      * [Handling of errors](#handling-of-errors)
+      * [Invariants](#invariants)
+      * [Overview of buffers](#overview-of-buffers)
+      * [Notes on FILE\_FLAG\_NO\_BUFFERING](#notes-on-file_flag_no_buffering)
+        * [References](#references)
+        * [Example runs](#example-runs)
+          * [inProcBuffer = false, flushToDisk = true, caller awaits all acks at the end](#inprocbuffer--false-flushtodisk--true-caller-awaits-all-acks-at-the-end)
+          * [inProcBuffer = false, flushToDisk = true, caller awaits all ack after each](#inprocbuffer--false-flushtodisk--true-caller-awaits-all-ack-after-each)
+          * [inProcBuffer = true, flushToDisk = false, writeThrough=false caller awaits all acks at the end](#inprocbuffer--true-flushtodisk--false-writethroughfalse-caller-awaits-all-acks-at-the-end)
+      * [Work to be done](#work-to-be-done)
+    * [Stackdriver target (alpha level)](#stackdriver-target-alpha-level)
     * [EventStore adapter](#eventstore-adapter)
     * [FsSQL adapter](#fssql-adapter)
     * [Suave adapter](#suave-adapter)
@@ -146,14 +163,15 @@ using (var logary = LogaryFactory.New(loggerId,
 
 ```fsharp
 open System
-open NodaTime
-open Hopac
-open Logary
-open Logary.Configuration
-open Logary.Targets
-open Logary.Metric
-open Logary.Metrics
-open System.Threading
+open NodaTime // conf
+open Hopac // conf
+open Logary // normal usage
+open Logary.Message // normal usage
+open Logary.Configuration // conf
+open Logary.Targets // conf
+open Logary.Metric // conf
+open Logary.Metrics // conf
+open System.Threading // control flow
 
 [<EntryPoint>]
 let main argv =
@@ -167,7 +185,7 @@ let main argv =
     withLogaryManager "Logary.Examples.ConsoleApp" (
       // output to the console
       withTargets [
-        Console.create (Console.empty) "console"
+        LiterateConsole.create (LiterateConsole.empty) "console"
       ] >>
       // continuously log CPU stats
       withMetrics [
@@ -186,9 +204,9 @@ let main argv =
     logary.getLogger (PointName [| "Logary"; "Samples"; "main" |])
 
   // log something
-  Message.event Info "User logged in"
-  |> Message.setField "userName" "haf"
-  |> Logger.logSimple logger
+  logger.info (
+    eventX "User with {userName} loggedIn"
+    >> setField "userName" "haf")
 
   // wait for sigint
   mre.Wait()
@@ -662,8 +680,8 @@ The above guide serves to explain how you use Logary in a service or
 application, but what if you have a library and don't want to take a dependency
 on a specific logging framework, or logging abstraction/indirection library?
 
-For this use-case, Logary provides F# facades that you can easily reference using Paket.
-I've created a [sample
+For this use-case, Logary provides F# facades that you can easily reference
+using Paket.  I've created a [sample
 library](https://github.com/logary/logary/tree/master/examples/Libryy) for you
 to have a look at. Note how `paket.references` specifies `Facade.fs` as a file
 dependency. The corresponding `paket.dependencies` contains the entry below.
@@ -829,6 +847,15 @@ the library handle logging through the default Facade targets; i.e. you don't
 have to initialise Logary proper to use and read logs in the console, from the
 Facade.
 
+### What about API stability?
+
+The F# facade has gone through two versions; have a look at how versioning is
+managed by browsing the unit tests. The Facade aims to be 100% stable, even
+across major versions of Logary. The adaptation is done in
+`Logary.Adapters.Facade`, which can afford to take some amount of complexity to
+keep the Facade itself clean. It's also here you should look if you want to
+optimise the translation of Facade types into Logary types.
+
 ### More reading
 
  - [Facade.fs](https://github.com/logary/logary/blob/master/src/Logary.Facade/Facade.fs)
@@ -841,20 +868,44 @@ Facade.
    – the unit tests for the adapter, which are also good documentation on how to
    use it.
 
+## Using in a C# library
+
+In your lib:
+
+```
+github logary/logary src/Logary.CSharp.Facade/Facade.cs
+```
+
+In your composition root:
+
+```
+source https://www.nuget.org/api/v2
+nuget Logary
+nuget Logary.Adapters.Facade
+```
+
+Have a look at `examples/Cibryy` for an example of usage of the C# facade.
+
+### More reading
+
+ - [Facade.cs](https://github.com/logary/logary/blob/master/src/Logary.CSharp.Facade/Facade.fs)
+   – the actual file that gets imported into your library.
+
+
 ## InfluxDb Target
 
  - Events will be logged to InfluxDb like such:
    `"{pointName},event={template},ctx1=ctxval1,ctx2=ctxval2 field1=fieldval1,field2=fieldval2 value=1i 14566666xxxx"`
  - In other words, fields will be influx values and context fields will be influx tags.
  - The timestamp of the Message will be at the end as the timestamp of the sent line
- - Events will be logged in these influx measure names, so that you could e.g. put "event_fatal" as
+ - Events will be logged in these influx measure names, so that you could e.g. put `"event_fatal"` as
    an annotation in Grafana:
-   * event_verbose
-   * event_debug
-   * event_info
-   * event_warn
-   * event_error
-   * event_fatal
+   * `event_verbose`
+   * `event_debug`
+   * `event_info`
+   * `event_warn`
+   * `event_error`
+   * `event_fatal`
 
 ## RabbitMQ Target
 
@@ -896,6 +947,295 @@ And the Rule for it:
 Rule.createForTarget "rabbitmq"
 ```
 
+## File target (alpha level)
+
+Logary's file target is primarily geared towards systems that are running on
+single machines as it prints a human-readable format, rather than a machine-
+readable one.
+
+### Configuration
+
+The default configuration of the file target rotates log files greater than 200
+MiB and deletes log files when the configured folder size is larger than 3 GiB.
+
+Folders that don't exist when the target starts are automatically created on
+target start-up in the current service's security context. Should the calls to
+create the folder fail, the target is never started, but will restart
+continuously like any ther Logary target.
+
+```fsharp
+let fileConf =
+  { File.FileConf.create logDir (Naming ("{service}-{host}-{datetime}", "log")) }
+
+// ... withTargets [
+  File.create fileConf "file"
+// ] ...
+```
+
+Or in C#:
+
+```csharp
+.Target<File.Builder>(
+    "file",
+    file => file.Target.Naming("{service}-{host}-{datetime}", "log").Done())
+```
+
+### Policies & specifications
+
+You can specify a number of **deletion** and **rotation** policies when
+configuring the file target. The deletion policies dictate when the oldest logs
+should be deleted, whilst the rotation policies dictates when the files should
+be rotated (thereby the previous file archived).
+
+Furthermore, you can specify a **naming** specification that dictates how the
+files sould be named on disk.
+
+ - Deletion of files happen directly when at least one deletion policy has
+   triggered.
+ - Rotation of files happen directly when at least one rotation policy has
+   triggered.
+ - Naming specifications should automatically be amended with sequence number,
+   should that be required.
+
+### Performance
+
+The `File` target is a performance-optimised target. Logging always happens on
+a separate thread from the caller, so we try to reach a balance between
+throughput and latency on ACKs.
+
+On Windows, overlapped IO is *not* used, because the files are opened in Append
+mode, should have equivalent performance. This means we should have similar
+performance on Linux and Windows.
+
+The formatters used for the `File` target should be writing to `TextWriter`
+instances to avoid creating extra string copies in memory.
+
+### Handling of errors
+
+The file target is thought as a last-chance target, because by default, logs
+should be shipped from your nodes/machines to a central logging service. It
+can also be nicely put to use for local console apps that need to log to disk.
+
+ - Non-target-fatal `IOException`s, for example when NTFS ACKs file deletes but
+   still keeps the file listable and available for some duration afterwards are
+   retried on a case-by-case basis. Internal Warn-level messages are logged.
+ - Fatal `IOException`s – more other cases; directory not found, file not found,
+   etc. are not retried. The target should crash and restart. Its current batch
+   is then retried forever, while logging internal Fatal-level exceptions.
+
+### Invariants
+
+ - The `File` target is modelled as a transaction log and trades speed against
+   safety that the contents have been written to disk, but does not do the
+   bookkeeping required to use `FILE_FLAG_NO_BUFFER`.
+ - `Fatal` level events are automatically flushed/fsync-ed.
+ - Only a single writer to a file is allowed at any given time. This
+   invariant exists because atomic flushes to files are only possible on Linux
+   up to the page size used in the page cache.
+ - Only asynchronous IO is done, i.e. the Logary worker thread is not blocked
+   by calls into the operating system. Because of the overhead of translating
+   callbacks into Job/Alt structures, we try to write as much data as possible
+   on every call into the operating system. This means that Messages to be
+   logged can be ACKed in batches rather than individually.
+ - If your disk collapses while writing log messages (which happens once in a
+   while and happens frequently when you have thousands of servers), the target
+   should save its last will and then retry a configurable number of times after
+   waiting an exponentially growing duration between each try. It does this by
+   crashing and letting the supervisor handle the failure. Afterh exhausing the
+   tries, the batch of log messages is discarded.
+ - If there are IO errors on writing the log messages to disk, there's no
+   guarantee that there won't be duplicate log lines written; however, they're
+   normally timestamped, so downstream log ingestion systems can do
+   de-duplication. This is from the batched nature of the File target.
+
+### Overview of buffers
+
+ 1. You write a `Message` from your call-site, this message is synchronised
+    upon between the sending thread and the receiving thread using Hopac.
+
+   i. If you use one of the `logWithAck` functions, placing the message in the
+      `RingBuffer` can be awaited (or `NACK`ed)
+
+   ii. If you use the `logSimple` function, the synchronisation is hoisted onto
+      the concurrency scheduler's pending queue and raced with a timeout to be
+      discarded if the logging subsystem is overwhelmed.
+
+ 2. Once the `Message` is in the `RingBuffer` of the `File` target, it's either
+    removed by itself, or as part of a batch, to be serialised to string.
+
+ 3. The serialisation function reads through the values of the message and
+    uses the formatter function to write those values into a `TextWriter`. The
+    `TextWriter` is normally a `StreamWriter` writing to a `FileStream`. This
+    means no extra strings need be created through concatenation.
+
+ 4. Depending on the `inProcBuffer` configuration flag, the `TextWriter` either
+    supports buffering, which buffers the string inside the CLR process, or
+    writes directly to the underlying *file handle*, which transitions the
+    data to the kernel's ioctl subsystem. By default we don't buffer here.
+
+ 5. Depending on the `flushToDisk` configuration flag, the `FileStream` is or
+    is not called with `Flush(true)`, which forces a disk synchronisation. By
+    default we let the page cache buffer these writes, to trade safety against
+    throughput. This is similar to how most other targets work.
+
+    Depending on the `writeThrough` flag; `Message`s written with the `File`
+    target is only ACKed when they are durably on disk. Defaults to true.
+
+Note that disposing Logary, e.g. during application exit flushes all buffers.
+
+### Notes on `FILE_FLAG_NO_BUFFERING`
+
+I've been considering supporting
+[NO\_BUFFERING](https://msdn.microsoft.com/en-us/library/windows/desktop/cc644950(v=vs.85).aspx)
+but this would require callers to possibly wait for the 4096 bytes buffer to
+fill up before ACKing messages. However, for low-throughput logging, where each
+log line may be around, say, 240 bytes of text, having the `NO_BUFFERING` flag
+set may end up losing us more than it gains us.
+
+#### References
+
+ - https://support.microsoft.com/en-us/kb/99794
+ - https://stackoverflow.com/questions/317801/win32-write-to-file-without-buffering
+ - https://winntfs.com/2012/11/29/windows-write-caching-part-2-an-overview-for-application-developers/
+ - https://msdn.microsoft.com/en-us/library/windows/desktop/cc644950(v=vs.85).aspx
+ - https://msdn.microsoft.com/en-us/library/windows/desktop/aa363772(v=vs.85).aspx
+ - https://stackoverflow.com/questions/8692635/how-do-disable-disk-cache-in-c-sharp-invoke-win32-createfile-api-with-file-flag
+ - https://stackoverflow.com/questions/122362/how-to-empty-flush-windows-read-disk-cache-in-c
+ - https://ayende.com/blog/174785/fast-transaction-log-windows
+
+#### Example runs
+
+These runs illustrate the above points in a more direct manner. In all of these
+cases we're writing 10K events to disk.
+
+##### inProcBuffer = false, flushToDisk = true, caller awaits all acks at the end
+
+This is the safest option and takes 1.3 seconds to log, format and write
+10K messages.
+
+```
+I 2016-11-08T11:04:00.6125063+00:00: Event 1 [Logary.Samples.main]
+  number => 1
+...
+[12:04:02 DBG] Flushing to disk.
+...
+I 2016-11-08T11:04:02.0201345+00:00: Event 9402 [Logary.Samples.main]
+  number => 9402
+[12:04:02 DBG] Flushing to disk.
+I 2016-11-08T11:04:02.0201345+00:00: Event 9403 [Logary.Samples.main]
+  number => 9403
+I 2016-11-08T11:04:02.0201345+00:00: Event 9404 [Logary.Samples.main]
+  number => 9404
+...
+I 2016-11-08T11:04:02.0891350+00:00: Event 10000 [Logary.Samples.main]
+  number => 10000
+[12:04:02 DBG] Flushing to disk.
+...
+```
+
+The interleaved flushes shows the batching functionality of the File target in
+action.
+
+##### inProcBuffer = false, flushToDisk = true, caller awaits all ack after each
+
+This example represents the worst-case usage of the safest configuration.
+
+```
+I 2016-11-08T11:14:42.9071732+00:00: Event 1 [Logary.Samples.main]
+  number => 1
+[12:14:42 DBG] Flushing to disk.
+I 2016-11-08T11:14:42.9711735+00:00: Event 2 [Logary.Samples.main]
+  number => 2
+[12:14:42 DBG] Flushing to disk.
+I 2016-11-08T11:14:42.9781719+00:00: Event 3 [Logary.Samples.main]
+  number => 3
+[12:14:42 DBG] Flushing to disk.
+I 2016-11-08T11:14:42.9861770+00:00: Event 4 [Logary.Samples.main]
+  number => 4
+[12:14:42 DBG] Flushing to disk.
+...
+I 2016-11-08T11:15:04.7635448+00:00: Event 10000 [Logary.Samples.main]
+  number => 10000
+[12:15:04 DBG] Flushing to disk.
+```
+
+With this configuration, the File target would still batch other threads' Messages
+but since this example has a single thread producer, there's only a single Message
+available for the target every loop.
+
+
+##### inProcBuffer = true, flushToDisk = false, writeThrough=false caller awaits all acks at the end
+
+This is the least safe and most speedy option. Useful when you're shipping logs
+away from the node and configure those shippers in a safer manner. In this case,
+.Net and the operating system and the device drivers decide when to flush.
+
+On exit/dispose of Logary, all targets are always flushed.
+
+```
+[12:32:05 INF] Event 1
+...
+[12:32:06 INF] Event 10000
+
+[12:32:48 DBG] Shutting down Logary.
+...
+[12:32:48 DBG] Flushing to disk.
+```
+
+In this example, the actual time taken is dominated by the time to generate the
+messages.
+
+### Work to be done
+
+ - Unit test rotation code
+ - Then enable rotation
+ - Harden against exceptions during writes – mock FileSystem
+
+## Stackdriver target (alpha level)
+
+Logary also includes a logging target for [Google Cloud Stackdriver](https://cloud.google.com/stackdriver/).  
+
+### Configuration
+
+The target can be configured like so:
+
+```fsharp
+open Logary.Targets.Stackdriver
+
+let projectId = "your gcloud project id"
+// either a custom name, or you can use one of the well-known stream names that you can retrieve from [the lists](https://cloud.google.com/logging/docs/view/logs_index)
+// this name doesn't have to be url-encoded as per the spec, the target will do that for you
+// the specified log should exist before use
+let logname = "the stream you want to log to"
+// create your monitored resource:
+let resource = ComputeInstance("my zone", "my instanceId")
+// or container:
+// let resource = Container("my cluster", "my namespace", "my instanceID", "my pod", "my name", "my zone")
+// or appengine:
+// let resource = AppEngine("my moduleId", "my version")
+
+let conf = StackdriverConf.create(projectId, logname, resource)
+```
+
+Then, within `withTargets`:
+
+```fsharp
+Stackdriver.create conf "target-name"
+```
+
+Finally, within `withRules`:
+
+```fsharp
+Rule.createForTarget "target-name"
+```
+
+### Further work
+
+* batching
+* flushing
+  * the underlying library doesn't provide a flush mechanism yet
+
+
 ## EventStore adapter
 
 Use to extract logs from [GetEventStore.com][eventstore-site].
@@ -916,14 +1256,7 @@ let adapter = FsSqlAdapter logger
 
 ## Suave adapter
 
-Use to extract logs from [Suave.io][suave-site].
-
-```fsharp
-let logger = Logging.getLoggerByName "Suave"
-let adapter = SuaveAdapter logger
-let config = { defaultConfig with logger = adapter }
-startWebServer config (Successful.OK "Hi there")
-```
+Suave from v2.0-rc1 uses the Facade. See the "Using logary in a library" to easily and in an automated manner extract logs and metrics from Suave.
 
 ## Topshelf adapter
 

@@ -31,7 +31,7 @@ namespace Logary.Zipkin.Thrift
         /// <summary>
         /// IPv4 host address packed into 4 bytes.
         /// 
-        /// Ex for the ip 1.2.3.4, it would be (1 << 24) | (2 << 16) | (3 << 8) | 4
+        /// Ex for the ip 1.2.3.4, it would be (1 &lt;&lt; 24) | (2 &lt;&lt; 16) | (3 &lt;&lt; 8) | 4
         /// </summary>
         public int Ipv4
         {

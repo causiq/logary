@@ -7,7 +7,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Logary.CSharpExample</RootNamespace>
     <AssemblyName>Logary.CSharpExample</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -36,6 +36,10 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\src\metrics\Logary.Metrics.WinPerfCounters\Logary.Metrics.WinPerfCounters.fsproj">
+      <Project>{dd5137fc-22e5-47da-88f1-3d3f1e7e8381}</Project>
+      <Name>Logary.Metrics.WinPerfCounters</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\src\targets\Logary.Targets.RabbitMQ\Logary.Targets.RabbitMQ.fsproj">
       <Project>{FE1BC08F-A41A-41CC-9F03-996EA9B3B477}</Project>
       <Name>Logary.Targets.RabbitMQ</Name>
@@ -47,10 +51,6 @@
     <ProjectReference Include="..\..\src\Logary.CSharp\Logary.CSharp.csproj">
       <Project>{26FD79BD-2329-41B6-A86D-8F3992437CBE}</Project>
       <Name>Logary.CSharp</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\src\metrics\Logary.Metrics.WinPerfCounters\Logary.Metrics.WinPerfCounters.fsproj">
-      <Project>{DD5137FC-22E5-47DA-88F1-3D3F1E7E8381}</Project>
-      <Name>Logary.Metrics.WinPerfCounters</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\src\targets\Logary.Targets.InfluxDb\Logary.Targets.InfluxDb.fsproj">
       <Project>{4ACE8A29-6D75-4956-B45C-22C82EAFCFD5}</Project>
@@ -70,7 +70,7 @@
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.6.1')">
       <ItemGroup>
         <Reference Include="FParsec">
           <HintPath>..\..\packages\FParsec\lib\net40-client\FParsec.dll</HintPath>
@@ -86,7 +86,7 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.6.1')">
       <ItemGroup>
         <Reference Include="FSharp.Core">
           <HintPath>..\..\packages\FSharp.Core\lib\net40\FSharp.Core.dll</HintPath>
@@ -97,7 +97,7 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.6.1')">
       <ItemGroup>
         <Reference Include="Hopac.Core">
           <HintPath>..\..\packages\Hopac\lib\net45\Hopac.Core.dll</HintPath>
@@ -118,7 +118,7 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.6.1')">
       <ItemGroup>
         <Reference Include="NodaTime">
           <HintPath>..\..\packages\NodaTime\lib\net35-Client\NodaTime.dll</HintPath>
