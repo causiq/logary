@@ -134,7 +134,7 @@ let ofCounters (counters : WinPerfCounterInstance []) =
 /// The "GPU" category is installed by the nVIDIA drivers
 let tryGPUMetric _ : Job<Metric> option =
   byCategory "GPU" |> Option.map ofCounters
-  
+
 let gpuMetrics _ : Job<Metric> =
   match tryGPUMetric () with
   | None ->
