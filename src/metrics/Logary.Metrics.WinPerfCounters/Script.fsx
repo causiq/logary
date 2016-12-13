@@ -10,6 +10,20 @@ open Logary.Metric
 open Logary.Metrics
 open Logary.Metrics.WinPerfCounters
 
+type MetricSource =
+  { queryCh : Ch<IVar<Message>>
+    shutdownCh : Ch<IVar<unit>>
+    server : Internals.RuntimeInfo -> (obj -> Job<unit>) -> obj option -> Job<unit>
+  }
+
+module MetricSource =
+
+  let create (queryCh : Ch<_>) (shutdownCh : Ch<_>) server =
+    { queryCh = queryCh
+      shutdownCh = shutdownCh
+      server = server
+    }
+
 [<RequireQualifiedAccess>]
 type Scope =
   /// Automatically tracks this perf counter for this process
@@ -31,7 +45,7 @@ type CreateResult =
   | CategoryDoesNotExist
   | CounterDoesNotExist
   | NoInstancesFound
-  | Success of WPC
+  | Success of MetricSource
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module WPC =
@@ -146,9 +160,9 @@ module WPC =
       |]
 
     let loop (conf : LoopConf)
-             (ri : RuntimeInfo)
              (queryCh : Ch<_>) // will re-query directly after replying with a value
              (shutdownCh : Ch<IVar<unit>>)
+             (ri : RuntimeInfo)
              (lastWill : obj -> Job<unit>)
              (will : obj option)
              : Job<unit> =
@@ -257,9 +271,20 @@ module WPC =
   // Create
 
   let forProcess (category, counter, units) : CreateResult =
-    let shutdownCh = Ch ()
-    let requestCh = Ch ()
-    CategoryDoesNotExist
+    match Category.create category with
+    | None -> CategoryDoesNotExist
+    | Some category ->
+      // Assume CounterExists does not throw an exception
+      if not (category.CounterExists counter) then CounterDoesNotExist else
+      let queryCh, shutdownCh = Ch (), Ch ()
+      let server =
+        Impl.loop { category = category
+                    counter  = counter
+                    scope    = Scope.Process
+                    units    = units }
+                  queryCh shutdownCh
+      let source = MetricSource.create queryCh shutdownCh server
+      Success source
 
   let forSet (category, counter, units) queryInstances : CreateResult =
     CategoryDoesNotExist
@@ -267,7 +292,7 @@ module WPC =
   let forAll (category, counter, units) : CreateResult =
     CategoryDoesNotExist
 
-  let totalFor (category, counter) : CreateResult =
+  let totalFor (category, counter, units) : CreateResult =
     CategoryDoesNotExist
 
   // Convert
