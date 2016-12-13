@@ -23,7 +23,8 @@ type Scope =
 
 type WPC =
   private {
-    values : Stream<Message>
+    queryCh : Ch<IVar<Message>>
+    shutdownCh : Ch<IVar<unit>>
   }
 
 type CreateResult =
@@ -238,14 +239,20 @@ module WPC =
 
       and respond (message : Message) =
         Alt.choose [
-          queryCh ^=> fun respCh ->
-            (respCh *<- message) ^=> init
+          queryCh ^=> fun slot ->
+            IVar.fill slot message >>= init
 
           shutdownCh ^=> fun ack ->
             ack *<= ()
         ] :> Job<_>
 
       init ()
+
+    let query (wpc : WPC) : Alt<Message> =
+      wpc.queryCh *<-=>- id
+
+    let shutdown (wpc : WPC) : Alt<unit> =
+      wpc.shutdownCh *<-=>- id
 
   // Create
 
