@@ -235,6 +235,7 @@ module LoggerAdapter =
 
   /// Create a target assembly's logger from the given type, which delegates to
   /// the passed Logary proper Logger.
+  [<CompiledName("Create")>]
   let create (typ : Type) logger : obj =
     if typ = null then invalidArg "typ" "is null"
     let generator = new ProxyGenerator()
@@ -243,6 +244,7 @@ module LoggerAdapter =
 
   /// Create a target assembly's logger from the given type-string, which
   /// delegates to the passed Logary proper logger.
+  [<CompiledName("Create")>]
   let createString (typ : string) logger : obj =
     create (Type.GetType typ) logger
 
@@ -250,6 +252,7 @@ module LoggerAdapter =
   /// which delegates to the passed Logary-proper's logger. This is the function
   /// you'll normally use if you use this module. Otherwise, please see
   /// LogaryFacadeAdapter.
+  [<CompiledName("Create")>]
   let createGeneric<'logger when 'logger : not struct> logger : 'logger =
     create typeof<'logger> logger :?> 'logger
 
@@ -265,7 +268,7 @@ module LoggerCSharpAdapter =
     | otherwise ->
       otherwise
 
-  let toPointValue (o : obj) : PointValue =
+  let internal toPointValue (o : obj) : PointValue =
     let typ = o.GetType()
     //printfn "Converting object=%A to PointValue" o
     if typ.Name = "Event" then
@@ -280,13 +283,12 @@ module LoggerCSharpAdapter =
     else
       failwithf "Unknown point value type name '%s'" typ.Name
 
-
-  let toLogLevel (o : obj) : LogLevel =
+  let internal toLogLevel (o : obj) : LogLevel =
     LogLevel.ofInt (unbox (Convert.ChangeType (o, typeof<int>)))
 
   /// Convert the object instance to a Logary.DataModel.Message. Is used from the
   /// other code in this module.
-  let toMessage fallbackName (o : obj) : Message =
+  let internal toMessage fallbackName (o : obj) : Message =
     let typ = o.GetType()
     let readProperty name = (findProperty (typ, name)).GetValue o
 
@@ -359,6 +361,7 @@ module LoggerCSharpAdapter =
         | meth ->
           failwithf "Method '%s' should not exist on Logary.CSharp.Facade.ILogger" meth
 
+  [<CompiledName "Create">]
   let create (typ : Type) logger : obj =
     if typ = null then invalidArg "typ" "is null"
     let generator = new ProxyGenerator()
@@ -367,6 +370,7 @@ module LoggerCSharpAdapter =
 
   /// Create a target assembly's logger from the given type-string, which
   /// delegates to the passed Logary proper logger.
+  [<CompiledName "Create">]
   let createString (typ : string) logger : obj =
     create (Type.GetType typ) logger
 
@@ -374,6 +378,7 @@ module LoggerCSharpAdapter =
   /// which delegates to the passed Logary-proper's logger. This is the function
   /// you'll normally use if you use this module. Otherwise, please see
   /// LogaryFacadeAdapter.
+  [<CompiledName "Create">]
   let createGeneric<'logger when 'logger : not struct> logger : 'logger =
     create typeof<'logger> logger :?> 'logger
 
@@ -409,6 +414,7 @@ module LogaryFacadeAdapter =
   /// You should probably gaze at `initialise` rather than this function. This
   /// function creates a configuration matching the `configType`; and it also
   /// needs the `loggerType` of the target assembly for orientation.
+  [<CompiledName "CreateFSharpConfig">]
   let createConfig configType loggerType (logManager : LogManager) =
     let values : obj array =
       FSharpType.GetRecordFields(configType)
@@ -441,6 +447,7 @@ module LogaryFacadeAdapter =
 
     FSharpValue.MakeRecord(configType, values)
 
+  [<CompiledName "CreateCSharpConfig">]
   let createCSharpConfig configType loggerType logManager =
     let generator = new ProxyGenerator()
     let target = LoggerConfigImpl(loggerType, logManager) :> IInterceptor
@@ -449,6 +456,7 @@ module LogaryFacadeAdapter =
   /// Initialises the global state in the target assembly, but calling
   /// YourAssembly.Logging.Global.initialise with a configuration value which
   /// is pointing to Logary.
+  [<CompiledName "Initialise">]
   let initialise<'logger> (logManager : LogManager) : unit =
     let loggerType = typeof<'logger>
     match typeof<'logger> with
