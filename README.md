@@ -876,6 +876,10 @@ In your lib:
 github logary/logary src/Logary.CSharp.Facade/Facade.cs
 ```
 
+This file will be updated when you do 'paket restore', so if you make changes
+to this file, remember to put them back in (e.g. via `git checkout --`) when
+you're done with the `restore` or `update`.
+
 In your composition root:
 
 ```
@@ -890,6 +894,7 @@ Have a look at `examples/Cibryy` for an example of usage of the C# facade.
 
  - [Facade.cs](https://github.com/logary/logary/blob/master/src/Logary.CSharp.Facade/Facade.fs)
    – the actual file that gets imported into your library.
+ - [The Logary Facade Adapter](#the-logary-facade-adapter)
 
 
 ## InfluxDb Target

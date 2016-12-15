@@ -64,6 +64,14 @@
       <Project>{64A5B3B2-0F73-44B5-A178-C66A9DB830D6}</Project>
       <Name>Logary.Targets.ElasticSearch</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\src\adapters\Logary.Adapters.Facade\Logary.Adapters.Facade.fsproj">
+      <Project>{15226ed2-c66b-4aa2-b15d-acff8a45454a}</Project>
+      <Name>Logary.Adapters.Facade</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\examples\Cibryy\Cibryy.csproj">
+      <Project>{3C5509C3-4A96-4F42-B1AD-0860E189BD80}</Project>
+      <Name>Cibryy</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="paket.references" />
