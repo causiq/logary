@@ -1519,8 +1519,8 @@ module File =
       update { conf with fileSystem = fs }
 
     member x.Formatter (f : Func<Message, TextWriter, System.Threading.Tasks.Task>) =
-      { conf with
-          formatter = fun m tw -> memo (Job.fromUnitTask (fun () -> f.Invoke(m, tw))) }
+      update { conf with
+                formatter = fun m tw -> memo (Job.fromUnitTask (fun () -> f.Invoke(m, tw))) }
 
     member x.BatchSize size =
       { conf with batchSize = size }
