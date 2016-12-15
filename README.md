@@ -681,7 +681,7 @@ application, but what if you have a library and don't want to take a dependency
 on a specific logging framework, or logging abstraction/indirection library?
 
 For this use-case, Logary provides F# facades that you can easily reference
-using Paket.  I've created a [sample
+using Paket. I've created a [sample
 library](https://github.com/logary/logary/tree/master/examples/Libryy) for you
 to have a look at. Note how `paket.references` specifies `Facade.fs` as a file
 dependency. The corresponding `paket.dependencies` contains the entry below.
@@ -689,6 +689,10 @@ dependency. The corresponding `paket.dependencies` contains the entry below.
 ```
 github logary/logary src/Logary.Facade/Facade.fs
 ```
+
+If you don't want to add a github reference, you can also choose to copy-n-paste
+the file into your project. As long as you don't change the public API surface
+area, you'll be fine (i.e. don't make breaking changes).
 
 In my Rakefile I have a small replacement script that sets the library's
 namespace inside the referenced `Facade.fs` file.
