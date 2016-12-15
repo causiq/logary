@@ -1265,7 +1265,8 @@ let adapter = FsSqlAdapter logger
 
 ## Suave adapter
 
-Suave from v2.0-rc1 uses the Facade. See the "Using logary in a library" to easily and in an automated manner extract logs and metrics from Suave.
+Suave from v2.0-rc1 uses the Facade. See the "Using logary in a library" to
+easily and in an automated manner extract logs and metrics from Suave.
 
 ## Topshelf adapter
 

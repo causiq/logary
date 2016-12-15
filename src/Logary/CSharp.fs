@@ -552,7 +552,7 @@ module Alt =
     xAP
     |> Alt.afterFun (fun prom -> toTask promiseCt prom :> Task)
     |> toTask bufferCt
-
+ 
 [<Extension>]
 type LoggerExtensions =
 

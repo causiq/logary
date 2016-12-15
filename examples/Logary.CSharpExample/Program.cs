@@ -83,9 +83,6 @@ namespace Logary.CSharpExample
             return LogaryFactory.New("Logary.CSharpExample",
                 with => with
                         .InternalLoggingLevel(LogLevel.Debug)
-                        .Metrics(m =>
-                            m.AddMetric(Duration.FromSeconds(3L), "appMetrics", WinPerfCounters.appMetrics)
-                        .AddMetric(Duration.FromSeconds(3L), "systemMetrics", WinPerfCounters.systemMetrics))
                         .Target<LiterateConsole.Builder>("console1"));
         }
 
@@ -140,6 +137,16 @@ namespace Logary.CSharpExample
             }
         }
 
+        public static void SampleCibryyUsage(Cibryy.Logging.ILogger logger)
+        {
+           Cibryy.Core.Work(logger);
+           Cibryy.Core.WorkBackpressure(logger);
+           Cibryy.Core.ErrorWithBP(logger);
+           Cibryy.Core.SimpleWork(logger);
+           Cibryy.Core.GenerateAndLogExn(logger);
+           Cibryy.Core.StaticWork();
+        }
+
         public static int Main(string[] args)
         {
             var mre = new ManualResetEventSlim(false);
@@ -147,10 +154,11 @@ namespace Logary.CSharpExample
 
             using (var logary = StartLiterate().Result)
             {
-                LogaryFacadeAdapter.initialise<Cibryy.Logging.ILogger>(logary);
-
+                LogaryFacadeAdapter.Initialise<Cibryy.Logging.ILogger>(logary);
                 var logger = logary.GetLogger("main");
-                SampleUsage(logger).Wait();
+                SampleCibryyUsage(LoggerCSharpAdapter.Create<Cibryy.Logging.ILogger>(logger));
+
+                //SampleUsage(logger).Wait();
                 mre.Wait();
             }
 
