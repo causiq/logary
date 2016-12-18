@@ -269,8 +269,7 @@ module WPC =
       wpc.shutdownCh *<-=>- id
 
   // Create
-
-  let forProcess (category, counter, units) : CreateResult =
+  let private create (category, counter, units) scope =
     match Category.create category with
     | None -> CategoryDoesNotExist
     | Some category ->
@@ -280,20 +279,23 @@ module WPC =
       let server =
         Impl.loop { category = category
                     counter  = counter
-                    scope    = Scope.Process
+                    scope    = scope
                     units    = units }
                   queryCh shutdownCh
       let source = MetricSource.create queryCh shutdownCh server
       Success source
 
+  let forProcess (category, counter, units) : CreateResult =
+    create (category, counter, units) Scope.Process
+
   let forSet (category, counter, units) queryInstances : CreateResult =
-    CategoryDoesNotExist
+    create (category, counter, units) (Scope.Set queryInstances)
 
   let forAll (category, counter, units) : CreateResult =
-    CategoryDoesNotExist
+    create (category, counter, units) Scope.All
 
   let totalFor (category, counter, units) : CreateResult =
-    CategoryDoesNotExist
+    create (category, counter, units) Scope.Total
 
   // Convert
 
