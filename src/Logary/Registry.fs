@@ -332,11 +332,11 @@ module Advanced =
   /// metadata, so it's no need to pass the metadata to the target before this.
   let create (conf : LogaryConf) =
     let logger =
-      let pn = PointName.parse "Logary.Registry.create"
+      let pn = PointName.parse "Logary.Registry"
       conf.runtimeInfo.logger |> Logger.apply (setName pn)
 
     let init = Target.init conf.runtimeInfo
-    let supervisor = Supervisor.create conf.runtimeInfo.logger
+    let supervisor = Supervisor.create logger
     let sched = Scheduling.create ()
 
     /// Registers the target instance with the supervisor.
