@@ -29,7 +29,12 @@ type LogaryConf =
     runtimeInfo : RuntimeInfo
 
     /// Extra middleware
-    middleware  : Mid list }
+    middleware  : Mid list
+
+    /// A function, that, given a stream of all events in the system, is allowed
+    /// to process them and can send new `Message` values to the channel.
+    /// Should return an Alt so that it can be cancelled.
+    unfold      : Stream<Message> -> Ch<Message> -> Alt<unit> }
 
   static member rules_ =
     (fun x -> x.rules),
@@ -50,3 +55,7 @@ type LogaryConf =
   static member middleware_ =
     (fun x -> x.middleware),
     fun v (x : LogaryConf) -> { x with middleware = v }
+
+  static member unfold_ =
+    (fun x -> x.unfold),
+    fun v (x : LogaryConf) -> { x with unfold = v }

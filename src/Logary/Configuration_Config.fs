@@ -77,7 +77,8 @@ let confLogary serviceName =
     targets     = Map.empty
     metrics     = Map.empty
     runtimeInfo = RuntimeInfo.create serviceName
-    middleware  = [] }
+    middleware  = []
+    unfold      = fun _ _ -> Alt.always () }
 
 /// Add a new target to the configuration. You also need to supple a rule for
 /// the target.
@@ -115,6 +116,12 @@ let withMetrics ms conf =
   ms
   |> Seq.map Metric.validate
   |> Seq.fold (fun s t -> s |> withMetric t) conf
+
+/// Configure Logary's CEP engine with a function that can be used to produce
+/// new events in response to other events.
+[<CompiledName "Unfold">]
+let unfold fn conf =
+  { conf with unfold = fn }
 
 /// Middleware registered first will run first. So
 ///
