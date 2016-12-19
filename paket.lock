@@ -13,8 +13,6 @@ NUGET
     Common.Logging (3.3.1)
       Common.Logging.Core (>= 3.3.1)
     Common.Logging.Core (3.3.1)
-    DVar (0.2)
-      FSharp.Core (>= 4.0.0.1)
     elmah.corelibrary (1.2.2)
     elmah.io.client (2.0.29)
     elmah.io.core (2.0.29)
