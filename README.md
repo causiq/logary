@@ -860,6 +860,16 @@ across major versions of Logary. The adaptation is done in
 keep the Facade itself clean. It's also here you should look if you want to
 optimise the translation of Facade types into Logary types.
 
+### <q>The compiler complains "The type 'Logger' is not compatible with the type
+'Logging.Logger'"</q>
+
+You're trying to assign some other Logger interface implementation to the
+target. The line `LoggerAdapter.createGeneric<'loggerType> logger` from above is
+what you can use to create a logger of the correct type.
+
+It will generate a new instance of the library's logger type, as long as that
+logger type correctly implements the Facade.fs interface.
+
 ### More reading
 
  - [Facade.fs](https://github.com/logary/logary/blob/master/src/Logary.Facade/Facade.fs)
@@ -1202,7 +1212,8 @@ messages.
 
 ## Stackdriver target (alpha level)
 
-Logary also includes a logging target for [Google Cloud Stackdriver](https://cloud.google.com/stackdriver/).  
+Logary also includes a logging target for [Google Cloud
+Stackdriver](https://cloud.google.com/stackdriver/).
 
 ### Configuration
 
