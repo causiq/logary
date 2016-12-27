@@ -6,7 +6,7 @@ open FsCheck
 open Hopac
 open System
 open NodaTime
-open Logary.Utils.Chiron
+open Logary.Serialisation.Chiron
 open Logary
 
 let inline roundTrip (m : 'a) : 'a =

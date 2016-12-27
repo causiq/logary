@@ -5,7 +5,7 @@ open System.IO
 open System.Net
 open System.Net.Sockets
 open System.Net.Security
-open Logary.Utils.Chiron
+open Logary.Serialisation.Chiron
 open Hopac
 open Hopac.Infixes
 open Logary

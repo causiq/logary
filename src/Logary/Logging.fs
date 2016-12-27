@@ -1,6 +1,5 @@
-/// Use this to get a logger for your class/type/path
-/// that you want to send metrics for or send log lines from. For information
-/// on what F# StringFormat<'T> takes as arguments see http://msdn.microsoft.com/en-us/library/vstudio/ee370560.aspx
+/// Use this to get a logger for your class/type/path that you want to send
+/// metrics for or send logs from.
 module Logary.Logging
 
 // see https://github.com/Hopac/Hopac/commit/5a60797462deff83135fa0ee02403671045774ff#commitcomment-18537866
@@ -16,8 +15,6 @@ open Hopac.Infixes
 open NodaTime
 open Logary
 open Logary.Message
-open Logary.Registry.Logging
-open Logary.Internals
 
 /// Gets the current name, as defined by the class-name + namespace that the logger is in.
 [<CompiledName "GetCurrentLoggerName"; MethodImpl(MethodImplOptions.NoInlining); Pure>]
@@ -42,59 +39,11 @@ let getCurrentLoggerName () =
   |> Seq.last
   |> getName
 
-/// The promised logger is constructed through a the asynchronous call to
-/// getLogger (i.e. the call to the Registry's getLogger channel). Every
-/// call will return a job that is started on the global scheduler, which
-/// assumes that the promise will be returned at some point in the (close)
-/// future. If this assumption does not hold, we'll get an issue where all
-/// of the log-method calls will put work on the global Hopac scheduler,
-/// which in turn causes the 'unbounded queue' problem. However, it's
-/// safe to assume that the promise will be completed shortly after the c'tor
-/// of this type is called.
-type PromisedLogger(name, requestedLogger : Job<Logger>) =
-  let promised = memo requestedLogger
-
-  /// Create a new `Logger` with the given name and `Job<Logger>` – nice to
-  /// use for creating loggers that need to be immediately available.
-  static member create (PointName contents as name) logger =
-    if logger = null then nullArg "logger"
-    if contents = null then nullArg "name"
-    PromisedLogger(name, logger) :> Logger
-
-  // interface implementations;
-
-  interface Named with
-    member x.name = name
-
-  interface Logger with
-    member x.logWithAck logLevel messageFactory =
-      Promise.read promised
-      |> Alt.afterJob (fun logger -> logger.logWithAck logLevel messageFactory)
-
-    member x.log logLevel messageFactory =
-      Promise.read promised
-      |> Alt.afterJob (fun logger -> logger.logWithAck logLevel messageFactory)
-      |> Alt.afterFun (fun _ -> ())
-
-    member x.level =
-      Verbose
-
+/// Gets a logger by a given point name.
 [<CompiledName "GetLoggerByPointName">]
 let getLoggerByPointName name =
   if box name = null then nullArg "name"
-  match !Globals.singleton with
-  | None ->
-    let logger = Flyweight name :> FlyweightLogger
-    Globals.addFlyweight logger
-    logger :> Logger
-
-  | Some inst ->
-    inst.runtimeInfo.logger.verbose (
-      eventX "Getting logger by name {name}" >> setField "name" (name.ToString()))
-
-    name
-    |> Registry.getLogger inst.registry
-    |> PromisedLogger.create name
+  Globals.getStaticLogger name :> Logger
 
 /// Gets a logger by a given name.
 [<CompiledName "GetLoggerByName">]

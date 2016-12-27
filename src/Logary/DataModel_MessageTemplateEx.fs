@@ -1,19 +1,19 @@
-﻿[<AutoOpen>]
-module Logary.TemplateFormat
+﻿/// Extension methods for `Message` for capturing values semantically.
+[<AutoOpen>]
+module Logary.MessageTemplateEx
 
 open System
 open Logary
-open Utils.FsMessageTemplates
+open Logary.Internals.FsMessageTemplates
 
 module internal LogaryCapturing =
-  open Logary.Utils.FsMessageTemplates
 
   let rec convertTemplatePropertyToField (tpv : TemplatePropertyValue) : Value =
     match tpv with
     | ScalarValue v ->
       // TODO: consider types like Guid, DateTime, DateTimeOffset. Are they prematurely stringified in Value.ofObject?
       // Does that prevent us from using the message template format string later in the pipeline?
-      Value.ofObject v
+      Value.create v
 
     | DictionaryValue kvpList ->
       let stringObjMap =
@@ -37,7 +37,7 @@ module internal LogaryCapturing =
   let rec convertToNameAndField (pnv : PropertyNameAndValue) : string * Field =
     pnv.Name, Field ((convertTemplatePropertyToField pnv.Value), None)
 
-  let capture (template : Utils.FsMessageTemplates.Template) ([<ParamArray>] args : obj[]) =
+  let capture (template : Internals.FsMessageTemplates.Template) ([<ParamArray>] args : obj[]) =
     Capturing.captureProperties template args
     |> Seq.map (convertToNameAndField)
     |> List.ofSeq
@@ -45,7 +45,7 @@ module internal LogaryCapturing =
   let logaryDefaultDestructurer : Destructurer =
     Capturing.createCustomDestructurer (None) (Some Capturing.destructureFSharpTypes)
 
-  let captureField (property : Utils.FsMessageTemplates.Property) value =
+  let captureField (property : Internals.FsMessageTemplates.Property) value =
     logaryDefaultDestructurer (DestructureRequest (logaryDefaultDestructurer, value, 10, 0, property.Destr))
     |> convertTemplatePropertyToField
     |> fun f -> Field (f, None)

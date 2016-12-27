@@ -1,370 +1,654 @@
 /// The registry is the composition root of Logary
-module Logary.Registry
+namespace Logary
 
 open Hopac
 open Hopac.Infixes
 open NodaTime
+open System
+open System.IO
 open Logary.Message
+open Logary.Supervisor
+open Logary.Target
 open Logary.Internals
-open Logary.Internals.Scheduling
 
-/// Given the registry actor, and a name for the logger, get the logger from the registry.
-let getLogger (registry : RegistryInstance) name : Job<Logger> =
-  registry.reqCh *<+=>- fun resCh -> GetLogger (name, None, resCh)
-  :> Job<_>
+/// A StringFormatter is the thing that takes a message and returns it as a
+/// string that can be printed, sent or otherwise dealt with in a manner that
+/// suits the target.
+type MessageFormatter =
+  abstract format : Message -> TextWriter -> unit
 
-let getLoggerWithMiddleware (middleware : Middleware.Mid) registry name : Job<Logger> =
-  registry.reqCh *<+=>- fun resCh -> GetLogger (name, Some middleware, resCh)
-  :> Job<_>
+type ServiceState =
+  | Initialising
+  | Running
+  | Paused
+  | ShuttingDown
+  | Shutdown
+  | Faulted of unhandled:exn
 
-/// handling flyweights
-module internal Logging =
-  open Hopac.Infixes
-  open System
-  open Logary.Target
-  open Logary.Internals
-  open Logary.Internals.Date
+/// A service is an abstract interface that encapsulates a service
+/// implementation.
+type internal Service<'t> =
+  abstract name : string
+  abstract instance : 't
 
-  /// Flyweight logger impl - reconfigures to work when it is configured, and
-  /// until then throws away all log lines.
-  type Flyweight(name) =
-    let state = IVar ()
-    let instaPromise = Alt.always (Promise (()))
-    let insta = Alt.always ()
+type InitialisingService<'t> =
+  inherit Service<'t>
 
-    let logger (f : Logger -> _) defaul =
-      if IVar.Now.isFull state then
-        let _, logger = IVar.Now.get state
-        f logger
-      else
-        defaul
+and RunningService<'t> =
+  inherit Service<'t>
 
-    interface Named with
-      member x.name = name
+and PausedService<'t> =
+  inherit Service<'t>
 
-    interface FlyweightLogger with
-      member x.configured lm =
-        getLogger lm.registry name >>= fun logger ->
-        state *<= (lm, logger)
+and ShutdownService =
+  /// Gets the list of service states and the duration that the service was in
+  /// each of them.
+  abstract transitions : (ServiceState * Duration) list
+
+module Service =
+
+  type T =
+    private {
+      name : PointName
+      startIV : IVar<unit>
+      pauseCh : Ch<IVar<unit> * Promise<unit>>
+      resumeCh : Ch<IVar<unit> * Promise<unit>>
+      shutdownCh : Ch<IVar<unit>>
+      getStateCh : Ch<IVar<ServiceState>>
+      serverLoop : Promise<Choice<unit, exn>>
+      ilogger : Logger
+    }
+  with
+    override x.ToString() =
+      sprintf "Service(name=%O)" x.name
+
+  let start (t : InitialisingService<T>) : Job<RunningService<T>> =
+    t.instance.startIV *<= () >>-. 
+    { new RunningService<T> with
+        member x.name = t.name
+        member x.instance = t.instance }
+
+  let pause (t : RunningService<T>) : Alt<PausedService<T>> =
+    Unchecked.defaultof<Alt<PausedService<T>>>
+
+  let resume (t : PausedService<T>) : Alt<RunningService<T>> =
+    Unchecked.defaultof<Alt<RunningService<T>>>
+
+  let shutdown (t : #Service<T>) : Alt<ShutdownService> =
+    Unchecked.defaultof<Alt<ShutdownService>>
+
+  let getState (t : #Service<T>) : Job<ServiceState> =
+    let hasExited =
+      t.instance.serverLoop ^->
+      (Choice.bimap (fun () -> Shutdown) Faulted >> Choice.get)
+
+    t.instance.getStateCh *<+=>- id <|> hasExited
+    :> Job<_>
+
+  /// Create a new service from a supervised job. It's up to the caller to
+  /// decide what sort of policy the supervised job should have.
+
+  let create (internalLogger : Logger) name pauseCh resumeCh shutdownCh (server : SupervisedJob<unit>) : Job<InitialisingService<T>> =
+    let ilogger = internalLogger |> Logger.apply (setSimpleName (sprintf "Logary.Service(%s)" name))
+    let pn = PointName.ofSingle name
+    let t =
+      { name = pn
+        startIV = IVar ()
+        pauseCh = pauseCh
+        resumeCh = resumeCh
+        shutdownCh = shutdownCh
+        getStateCh = Ch ()
+        serverLoop = memo server
+        ilogger = ilogger }
+
+    Job.start (t.startIV >>-. t.serverLoop >>-. ()) >>-.
+    { new InitialisingService<T> with
+        member x.instance = t
+        member x.name = name
+    }
+
+/// The promised logger is constructed through a the asynchronous call to
+/// getLogger (i.e. the call to the Registry's getLogger channel). Every
+/// call will return a job that is started on the global scheduler, which
+/// assumes that the promise will be returned at some point in the (close)
+/// future. If this assumption does not hold, we'll get an issue where all
+/// of the log-method calls will put work on the global Hopac scheduler,
+/// which in turn causes the 'unbounded queue' problem. However, it's
+/// safe to assume that the promise will be completed shortly after the c'tor
+/// of this type is called.
+type internal PromisedLogger(name, requestedLogger : Job<Logger>) =
+  let promised = memo requestedLogger
+
+  /// Create a new `Logger` with the given name and `Job<Logger>` – nice to
+  /// use for creating loggers that need to be immediately available.
+  static member create (PointName contents as name) logger =
+    if logger = null then nullArg "logger"
+    if contents = null then nullArg "name"
+    PromisedLogger(name, logger) :> Logger
+
+  interface Logger with
+    member x.name = name
+
+    member x.logWithAck logLevel messageFactory =
+      Promise.read promised
+      |> Alt.afterJob (fun logger -> logger.logWithAck logLevel messageFactory)
+
+    member x.log logLevel messageFactory =
+      Promise.read promised
+      |> Alt.afterJob (fun logger -> logger.logWithAck logLevel messageFactory)
+      |> Alt.afterFun (fun _ -> ())
+
+    member x.level =
+      Verbose
+
+/// An internal interface; all globals in Logary are hidden and are managed by
+/// the Registry and Config API.
+type internal LoggingConfig =
+  /// Gets a logger by name.
+  abstract getLogger : PointName -> Logger
+  /// Gets a logger by name and applies the passed middleware to it. You can
+  /// also use `Logger.apply` on existing loggers to create new ones.
+  abstract getLoggerWithMiddleware : PointName -> Middleware -> Logger
+  /// Gets the current timestamp.
+  abstract getTimestamp : unit -> EpochNanoSeconds
+  /// Gets the console semaphore. When the process is running with an attached
+  /// tty, this function is useful for getting the semaphore to synchronise
+  /// around. You must take this if you e.g. make a change to the colourisation
+  /// of the console output.
+  abstract getConsoleSemaphore : unit -> obj
+
+/// This module keeps track of the LoggingConfig reference.
+module internal Globals =
+
+  type T =
+    { getLogger               : PointName -> Logger
+      getLoggerWithMiddleware : PointName -> Middleware -> Logger
+      getTimestamp            : unit -> EpochNanoSeconds
+      getConsoleSemaphore     : unit -> obj }
+    with
+      static member create getLogger getLoggerWM getTs getCS =
+        { getLogger = getLogger
+          getLoggerWithMiddleware = getLoggerWM
+          getTimestamp = getTs
+          getConsoleSemaphore = getCS }
+
+      interface LoggingConfig with
+        member x.getLogger pn = x.getLogger pn
+        member x.getLoggerWithMiddleware pn mid = x.getLoggerWithMiddleware pn mid
+        member x.getTimestamp () = x.getTimestamp ()
+        member x.getConsoleSemaphore () = x.getConsoleSemaphore ()
+
+  /// Null object pattern; will only return loggers that don't log.
+  let defaultConfig =
+    let c = SystemClock.Instance
+    let s = obj ()
+    let nl = NullLogger() :> Logger
+    { getLogger = fun pn -> nl
+      getLoggerWithMiddleware = fun pn mid -> nl
+      getTimestamp = fun () -> c.Now.Ticks * Constants.NanosPerTick
+      getConsoleSemaphore = fun () -> s }
+
+  /// This is the "Global Variable" containing the last configured Logary
+  /// instance. If you configure more than one logary instance this will be
+  /// replaced.
+  let private config =
+    ref (defaultConfig, (* logical clock *) 1u)
+
+  /// The flyweight references the current configuration. If you want
+  /// multiple per-process logging setups, then don't use the static methods,
+  /// but instead pass a Logger instance around, setting the name field of the
+  /// Message value you pass into the logger.
+  type Flyweight(name : PointName, level) =
+    // The object's private fields are initialised to the current config's
+    // logger.
+    let updating = obj()
+    let mutable fwClock : uint32 = snd !config
+    let mutable logger : Logger = (fst !config).getLogger name
+
+    /// A function that tries to run the action with the current logger, and
+    /// which reconfigures if the configuration is updated.
+    let withLogger action =
+      if snd !config <> fwClock then // if we are outdated
+        lock updating <| fun _ ->
+          let cfg, cfgClock = !config // reread the config's clock after taking lock
+          if cfgClock <> fwClock then // recheck after taking lock to avoid races
+            logger <- cfg.getLogger name // get the current logger
+            fwClock <- fwClock + 1u // update instance's clock
+
+      // finally execute the action with the logger
+      action logger
+
+    let ensureName (m : Message) =
+      if m.name.isEmpty then { m with name = name } else m
 
     interface Logger with
-      member x.logWithAck logLevel messageFactory =
-        logger (fun logger -> logger.logWithAck logLevel messageFactory) instaPromise
+      member x.name = name
 
-      member x.log logLevel messageFactory =
-        logger (fun logger -> logger.log logLevel messageFactory) insta
+      member x.log level msgFactory =
+        withLogger (fun logger -> logger.log level (msgFactory >> ensureName))
+
+      member x.logWithAck level msgFactory =
+        withLogger (fun logger -> logger.logWithAck level (msgFactory >> ensureName))
 
       member x.level =
-        Verbose
+        level
+  // end of Flyweight
 
-  /// Singleton configuration entry point: call from the runLogary code.
-  let startFlyweights inst : Job<unit> =
-    // Iterate through all flywieghts and set the current LogManager for them
-    Globals.withFlyweights <| fun flyweights ->
-      flyweights
-      |> List.traverseJobA (fun f -> f.configured inst)
-      >>- fun (_ : unit list) ->
-        Globals.singleton := Some inst
-        Globals.clearFlywieghts ()
+  // TODO: consider renaming to 'create' and returning a RunningService?
 
-  /// Singleton configuration exit point: call from shutdownLogary code
-  let shutdownFlyweights () =
-    Globals.singleton := None
-    Globals.clearFlywieghts ()
+  /// Call to initialise Logary with a new Logary instance.
+  let initialise cfg =
+    config := (cfg, snd !config + 1u)
 
-module Advanced =
-  open System
-  open Logging
-  open Logary
-  open Logary.Configuration
-  open Logary.Rule
-  open Logary.Target
-  open Logary.HealthCheck
-  open Logary.Internals
+  let getStaticLogger (name : PointName) =
+    Flyweight(name, Verbose)
 
-  /// Given a configuration and name to find all targets for, looks up all targets
-  /// from the configuration matching the passed name and create a composite
-  /// acceptor/filter (any matching acceptor).
-  let getTargets conf (name : PointName) =
-    let rules (rules, _, _) = rules
+  /// Gets the current timestamp.
+  let timestamp () : EpochNanoSeconds =
+    (fst !config).getTimestamp ()
 
-    let createFilter minLvl rules =
-      let filters = Seq.map (fun (r: Rule) -> r.messageFilter) rules
-      fun (msg : Message) ->
-        msg.level >= minLvl
-        && filters |> Seq.any (fun filter -> filter msg)
+  /// Returns the synchronisation object to use when printing to the console.
+  let semaphore () =
+    (fst !config).getConsoleSemaphore()
 
-    conf.rules
-    // first, filter by name
-    |> matching name
+  /// Run the passed function under the console semaphore lock.
+  let lockSem fn =
+    lock (semaphore ()) fn
 
-    // map the target conf and target instance
-    |> List.map (fun r ->
-        let t, ti = Map.find r.targetName conf.targets
-        r, t, (Option.get ti))
+  let create (t : T) (internalLogger : Logger) =
+    let ilogger = internalLogger |> Logger.apply (setSimpleName "Logary.Globals")
+    let pauseCh, resumeCh, shutdownCh = Ch (), Ch (), Ch ()
 
-    // rules applying to the same target are grouped
-    |> Seq.groupBy (fun (r, t, ti) -> t.name)
+    let rec init () =
+      let prev = !config
+      initialise t
+      running t (fst prev)
 
-    // combine acceptors with Seq.any/combineAccept
-    |> Seq.map (fun (_, ts) ->
-        let _, t, ti = Seq.head ts
-        let rs       = Seq.map rules ts
-        let minLvl   = rs |> Seq.map (fun r -> r.level) |> Seq.min
-        // find the min matching level from all rules for this target
-        createFilter minLvl rs,
-        t, ti,
-        minLvl)
+    and running myself prev =
+      Alt.choose [
+        pauseCh ^=> fun (ack, nack) ->
+          ilogger.debug (eventX "Pausing")
+          initialise prev
+          ack *<= () >>=. running myself prev
 
-    // targets should be distinctly returned (deduplicated, so that doubly matching
-    // rules don't duply log)
-    |> Seq.distinctBy (fun (_, t, _, _) ->
-        t.name)
+        resumeCh ^=> fun (ack, nack) ->
+          ilogger.debug (eventX "Resuming")
+          initialise myself
+          ack *<= () >>=. running myself prev
 
-    // project only the messageFilter and the target instance
-    |> Seq.map (fun (messageFilter, _, ti, level) ->
-        messageFilter, ti, level)
+        shutdownCh ^=> fun ack ->
+          ilogger.debug (eventX "Shutting down")
+          initialise prev
+          ack *<= ()
+      ]
 
-    // back to a list
-    |> List.ofSeq
+    let loop = Job.supervise Policy.terminate (init ())
+    Service.create internalLogger "globals" pauseCh resumeCh shutdownCh loop
 
-  /// Flush all pending log lines for all targets. Returns a Nack/Ack structure describing
-  /// how that went. E.g. if there's a target is has a backlog, it might not be able to
-  /// flush all its pending entries within the allotted timeout (200 ms at the time of writing)
-  /// but will then instead return Nack/failed RPC.
-  let flushPending (registry : RegistryInstance) : Alt<unit> =
-    registry.reqCh *<+->- fun flushCh nack -> FlushPending (flushCh, nack)
+  (* // cc: @oskarkarlsson ;)
+  let scoped (globals : Service<Service.T>) (logger : Logger) =
+    globals |> Service.pause >>-.
+    { new IAsynDisposable with
+        member x.AsyncDispose() =
+          globals |> Service.resume
+    }
+  *)
 
-  /// Shutdown the registry. This will first flush all pending entries for all targets inside the
-  /// registry, and then proceed to sending ShutdownTarget to all of them. If this doesn't
-  /// complete within the allotted timeout, (200 ms for flush, 200 ms for shutdown), it will
-  /// return Nack to the caller (of shutdown).
-  let shutdown (registry : RegistryInstance) : Alt<unit> =
-    registry.reqCh *<+->- fun shutdownCh nack -> ShutdownLogary (shutdownCh, nack)
 
-  // TODO: use Alt<..> instead:
+/// The low-water-mark for stream processing nodes (operators)
+type LWM = EpochNanoSeconds
 
-  /// Flush all registry targets, then shut it down -- the registry internals
-  /// take care of timeouts, not these methods
-  let flushAndShutdown (durFlush : Duration) (durShutdown : Duration) (registry : RegistryInstance) = job {
-    let! fs =
-      flushPending registry ^->. Ack <|>
-      timeOut (durFlush.ToTimeSpan ()) ^->. Nack "Flush timed out"
-    let! ss =
-      shutdown registry ^->. Ack <|>
-      timeOut (durShutdown.ToTimeSpan ()) ^->. Nack "Shutdown timed out"
+module Engine =
 
-    // TODO: granular Ack handling for each target
-    return { flushed = fs
-             stopped = ss
-             timedOut = Seq.any (function Nack _ -> true | _ -> false) [ fs; ss ] }
-  }
+  type T =
+    private {
+      heyday : bool
+    }
 
-  module private Impl =
-    /// Create a new Logger from the targets passed, with a given name.
-    let fromTargets name ilogger (targets : (MessageFilter * TargetInstance * LogLevel) list) =
-      let minLevel =
-        match targets |> List.map (fun (_, _, level) -> level) with
-        | [] -> Fatal
-        | levels -> List.min levels
-      { name    = name
-        targets = targets |> List.map (fun (mf, ti, _) -> mf, ti)
-        level   = minLevel
-        ilogger = ilogger }
-      :> Logger
+  let create processing : Job<T> =
+    Job.result { heyday = true }
 
-    let wasSuccessful = function
-      | Success Ack      -> 0
-      | TimedOut         -> 1
-      | Success (Nack _) -> 1
+(* TODO:
 
-    let bisectSuccesses = // see wasSuccessful f-n above
-      fun groups -> groups |> Seq.filter (fun (k, _) -> k = 0) |> Seq.map snd |> (fun s -> if Seq.isEmpty s then [] else Seq.exactlyOne s |> Seq.toList),
-                    groups |> Seq.filter (fun (k, _) -> k = 1) |> Seq.map snd |> (fun s -> if Seq.isEmpty s then [] else Seq.exactlyOne s |> Seq.toList)
+ - Extract a stream of all messages
+ - Run these as services:
+   * Target
+   * Engine
+   * Metric
+   * HealthCheck
+   * Globals
+*)
 
-    let nl = System.Environment.NewLine
+/// A function, that, given a stream of all events in the system, is allowed
+/// to process them and can send new `Message` values to the channel.
+/// Should return an Alt so that it can be cancelled. Hoisted into a metric
+/// in the end.
+type Processing = Processing of (Stream<Message> -> Ch<Message> -> Alt<unit>)
 
-    let toTextList s =
-      let sb = new Text.StringBuilder()
-      for x in s do sb.AppendLine(sprintf " * %A" x) |> ignore
-      sb.ToString()
+/// A type giving more information about the service that this logary instance
+/// is running on.
+type RuntimeInfo =
+  /// Name of the service. Will show up as 'service' in e.g. Logstash/Kibana and
+  /// is the basis for a lot of the sorting and health checking that Riemann
+  /// does.
+  abstract serviceName : string
+  /// The host name of the machine that is running Logary. This is almost
+  /// always required to coordinate logs in a distributed system and is
+  /// also useful when reading logs from multiple machines at the same time.
+  abstract host : string
+  /// Gets the current timestamp
+  abstract getTimestamp : unit -> EpochNanoSeconds
+  /// Gets the console semaphore
+  abstract getConsoleSemaphore : unit -> obj
+  /// An internal logger for Logary's runtime, its {targets,metrics,...} to use.
+  abstract logger : Logger
 
-    let getLogger conf name middleware =
-      name
-      |> getTargets conf
-      |> fromTargets name conf.runtimeInfo.logger
-      |> Logger.apply middleware
+module RuntimeInfo =
+  /// Create a new RuntimeInfo record from the passed parameters.
+  ///
+  /// This function gives you the ability to pass a custom clock to use within
+  /// logary, as well as a host name that the logary source has.
+  let create (serviceName : string) (host : string) (clock : NodaTime.IClock) =
+    failwith "ensure using Globals"
+    { new RuntimeInfo with
+        member x.serviceName = serviceName
+        member x.host = host
+        member x.getTimestamp () = clock.Now.Ticks * Constants.NanosPerTick
+        member x.getConsoleSemaphore () = obj ()
+        member x.logger = NullLogger () :> _ }
 
-    let compose (logger : Logger) middleware =
-      logger.verboseWithBP (
-        eventX "Composing {length} middlewares"
-        >> setField "length" (List.length middleware))
-      >>-. Middleware.compose middleware
+/// Values that a node can take as input.
+[<RequireQualifiedAccess>]
+type NodeInput =
+  | M of Message
+  /// A low-water-mark signal that can be repeatedly committed to. (TBD: back
+  /// with a MVar?)
+  ///
+  /// invariant: all Messages after a LWM have >= timestamp.
+  | LWM of LWM
 
-    /// The state for the Registry
-    type RegistryState =
-      { /// the supervisor, not of the registry actor, but of the targets and probes and health checks.
-        supervisor  : Supervisor.Instance
-        schedules   : (PointName * Cancellation) list }
+/// A node in a stream processing engine
+type Node =
+  /// An alternative that can be repeatedly committed to in order to receive
+  /// messages in the node.
+  abstract inputs : Alt<NodeInput>
+  /// Gives you a way to perform internal logging and communicate with Logary.
+  abstract runtimeInfo : RuntimeInfo
 
-    /// The registry function that works as a supervisor and runtime state holder
-    /// for Logary.
-    let rec registry conf sup sched (inbox : Ch<RegistryMessage>) : Job<_> =
-      let targets = conf.targets |> Seq.map (fun kv -> kv.Value |> snd |> Option.get)
-      let regPath = PointName [| "Logary"; "Registry"; "registry" |]
-      let logger = conf.runtimeInfo.logger |> Logger.apply (Message.setName regPath)
+/// Logary's way to talk with Metrics.
+type MetricAPI =
+  inherit Node
+  /// The metric can produce values through this function call.
+  abstract produce : Message -> Alt<unit> // Stream.Src<Message>
+  /// A channel that the metric needs to select on and then ACK once the target
+  /// has fully shut down. 
+  abstract shutdownCh : Ch<IVar<unit>>
 
-      /// In the shutdown state, the registry doesn't respond to messages, but rather tries to
-      /// flush and shut down all targets, doing internal logging as it goes.
-      let shutdown state (ackCh : Ch<unit>) (nack : Promise<unit>) = job {
-        do! logger.infoWithBP (eventX "Shutting down polling of the metrics")
-        do! state.schedules |> List.traverseJobA (snd >> Cancellation.cancel) |> Job.Ignore
+// TODO: a way of composing these metrics via operators to filter them
 
-        do! logger.infoWithBP (eventX "Cancelling schedules")
-        for (_, x) in state.schedules do
-          do! Cancellation.cancel x
+type MetricConf =
+  { name       : string
+    bufferSize : uint32
+    policy     : Policy
+    server     : RuntimeInfo * MetricAPI -> Job<unit> }
 
-        do! logger.infoWithBP (eventX "Shutting down targets")
-        let! allShutdown =
-          targets
-          |> Seq.pjmap (fun t -> Target.shutdown t  ^->. Success Ack
-                                 <|> timeOutMillis 200 ^->. TimedOut)
+  override x.ToString() =
+    sprintf "MetricConf(name = %s)" x.name
 
-        let stopped, failed =
-          allShutdown
-          |> Seq.groupBy wasSuccessful
-          |> bisectSuccesses
+module Metric =
 
-        if List.isEmpty failed then
-          do! logger.verboseWithBP (eventX "Shutdown Ack")
-        else
-          let msg = sprintf "Failed target shutdowns:%s%s" nl (toTextList failed)
-          do! logger.errorWithBP (eventX "Shutdown Nack with {message}"
-                               >> setField "message" msg
-                               >> setField "failed" (Value.ofObject failed))
+  type T =
+    private {
+      shutdownCh : Ch<IVar<unit>>
+      pauseCh : Ch<unit>
+      resumeCh : Ch<unit>
+      // etc...
+    }
 
-        do! Ch.give ackCh () <|> nack
-        return! logger.verboseWithBP (eventX "Shutting down immediately")
+  let create () : Job<T> =
+    Job.result 
+      { shudownCh = Ch ()
+        pauseCh = Ch ()
+        resumeCh = Ch ()
       }
 
-      let rec init state = job {
-        let! ctss =
-          conf.metrics
-          |> Seq.toList
-          |> List.traverseJobA (function
-            | KeyValue (name, mconf) -> job {
-              let! instance = mconf.initialise name
-              do! logger.verboseWithBP (eventX "Will poll {name} every {interval}"
-                                     >> setField "name" name
-                                     >> setFieldFromObject "interval" mconf.tickInterval)
+type Check =
+  | Healthy of contents:string
+  | Warning of contents:string
+  | Critical of contents:string
 
-              let! tickCts =
-                Scheduling.schedule Metric.tick instance mconf.tickInterval
-                                    (Some mconf.tickInterval)
-                                    sched
-              do! logger.verboseWithBP (eventX "Getting logger for metric {name}" >> setField "name" name)
+type HealthCheckAPI =
+  inherit Node
+  /// Health checks should call this to produce their output as often as they
+  /// like.
+  abstract produce : Check -> Alt<unit>
 
-              let! middleware = compose logger conf.middleware
-              let logger = getLogger conf name middleware
+/// When you validate the configuration, you get one of these.
+///
+/// This is the logary configuration structure having a memory of all
+/// configured targets, metrics, healthchecks, middlewares, etc.
+type LogaryConf =
+  /// A list of rules that guide what targets are invoked for a given
+  /// message.
+  abstract rules : Rule[]
+  /// A map of the targets by name.
+  abstract targets : Map<string, TargetConf>
+  /// A map of metrics by name.
+  abstract metrics : Map<string, MetricConf>
+  /// A map of health checks by name.
+  abstract healthChecks : Map<string, HealthCheckConf>
+  /// Service metadata - what name etc.
+  abstract runtimeInfo : RuntimeInfo
+  /// Extra middleware added to every resolved logger.
+  abstract middleware : Middleware[]
+  /// Optional stream transformer.
+  abstract processing : Processing option
 
-              Metric.tapMessages instance |> Stream.consumeJob (fun msg ->
-                logger.logWithAck msg.level (fun _ -> msg)
-                |> Job.Ignore
-              )
-              return name, tickCts
-            })
+/// A data-structure that gives information about the outcome of a flush
+/// operation on the Registry. This data structure is only relevant if the
+/// flush operation had an associated timeout.
+type FlushInfo = FlushInfo of acks:string list * timeouts:string list
 
-        return! running { state with schedules = ctss }
-        }
+/// A data-structure that gives information about the outcome of a shutdown
+/// operation on the Registry. This data structure is only relevant if the
+/// shutdown operation had an associated timeout.
+type ShutdownInfo = ShutdownInfo of acks:string list * timeouts:string list
 
-      /// In the running state, the registry takes queries for loggers, gauges, etc...
-      and running state : Job<_> = job {
-        let! msg = Ch.take inbox
-        match msg with
-        | GetLogger (name, extraMiddleware, replCh) ->
-          let middleware = extraMiddleware |> Option.fold (fun s t -> t :: s) conf.middleware
-          let! middleware = compose logger middleware
-          let logger = getLogger conf name middleware
+/// LogManager is the public interface to Logary and takes care of getting
+/// loggers from names. It is also responsible for running Dispose at the
+/// end of the application in order to run the target shutdown logic. That said,
+/// the body of the software should be crash only, so even if you don't call dispose
+/// terminating the application, it should continue working.
+///
+/// This is also a synchronous wrapper around the asynchronous actors that make
+/// up logary
+type LogManager =
+  inherit IAsyncDisposable
 
-          do! IVar.fill replCh logger
-          return! running state
+  /// Gets the service name that is used to filter and process the logs further
+  /// downstream. This property is configured at initialisation of Logary.
+  abstract runtimeInfo : RuntimeInfo
 
-        | FlushPending(ackCh, nack) ->
-          do! logger.debugWithBP (eventX "Starting to flush")
+  /// Get a logger denoted by the name passed as the parameter. This name can either be
+  /// a specific name that you keep for a sub-component of your application or
+  /// the name of the class. Also have a look at Logging.GetCurrentLogger().
+  abstract getLoggerAsync : PointName -> Job<Logger>
 
-          let! allFlushed =
-            targets
-            |> Seq.pjmap (fun t -> Target.flush t    ^->. Success Ack <|>
-                                   timeOutMillis 200 ^->. TimedOut)
+  /// Get a logger denoted by the name passed as the parameter. This name can either be
+  /// a specific name that you keep for a sub-component of your application or
+  /// the name of the class. Also have a look at Logging.GetCurrentLogger().
+  abstract getLogger : PointName -> Logger
 
-          let flushed, notFlushed =
-            allFlushed
-            |> Seq.groupBy wasSuccessful
-            |> bisectSuccesses
+  /// Awaits that all targets finish responding to a flush message
+  /// so that we can be certain they have processed all previous messages.
+  /// This function is useful together with unit tests for the targets.
+  abstract flushPending : Duration -> Alt<unit>
 
-          if List.isEmpty notFlushed then
-            do! logger.verboseWithBP (eventX "Completed flush")
-          else
-            let msg = sprintf "Failed target flushes:%s%s" nl (toTextList notFlushed)
-            do! logger.errorWithBP (eventX "Flush failed with {nack}." >> setField "nack" msg)
-
-          do! Ch.give ackCh () <|> nack
-
-          return! running state
-
-        | ShutdownLogary(ackCh, nack) ->
-          return! shutdown state ackCh nack }
-
-      init { supervisor = sup; schedules = [] }
-
-    let create (conf : LogaryConf) (sup : Supervisor.Instance)
-               (sched : Ch<ScheduleMsg>)
-               : RegistryInstance =
-      let regCh = Ch ()
-      start (registry conf sup sched regCh)
-      { reqCh = regCh }
-
-  /// Start a new registry with the given configuration. Will also launch/start
-  /// all targets that are to run inside the registry. Returns a newly
-  /// configured LogaryInstance.
+  /// Shuts Logary down after flushing, given a timeout duration to wait before
+  /// counting the target as timed out in responding. The duration is applied
+  /// to each actor's communication. Does an ordered shutdown.
   ///
-  /// It is not until runRegistry is called, that each target gets its service
-  /// metadata, so it's no need to pass the metadata to the target before this.
-  let create (conf : LogaryConf) =
-    let logger =
-      let pn = PointName.parse "Logary.Registry"
-      conf.runtimeInfo.logger |> Logger.apply (setName pn)
+  /// First duration: flush duration
+  /// Second duration: shutdown duration
+  /// Returns the shutdown book keeping info
+  abstract shutdown : flush:Duration -> shutdown:Duration -> Job<FlushInfo * ShutdownInfo>
 
-    let init = Target.init conf.runtimeInfo
-    let supervisor = Supervisor.create logger
-    let sched = Scheduling.create ()
+/// This is the main state container in Logary.
+module Registry =
 
-    /// Registers the target instance with the supervisor.
-    let register (sup : Supervisor.Instance) (inst : TargetInstance) =
-      sup.register *<-
-        { name     = inst.name
-          policy   = Supervisor.Delayed (Duration.FromSeconds 1L)
-          job      = inst.server
-          shutdown = inst.shutdown }
+  module internal Impl =
+    open System
+    open Logging
+    open Logary
+    open Logary.Configuration
+    open Logary.Rule
+    open Logary.Target
+    open Logary.HealthCheck
+    open Logary.Internals
 
-    /// Builds the new Logary instance
-    let build conf =
-      { supervisor  = supervisor
-        registry    = Impl.create conf supervisor sched
-        scheduler   = sched
-        runtimeInfo = conf.runtimeInfo
-        middleware  = conf.middleware }
+    /// Given a configuration and name to find all targets for, looks up all targets
+    /// from the configuration matching the passed name and create a composite
+    /// acceptor/filter (any matching acceptor).
+    let getTargets conf (name : PointName) =
+      let rules (rules, _, _) = rules
 
-    conf.targets
-    // init all targets
-    |> Map.map (fun name (tconf, _) -> init tconf >>- (fun inst -> tconf, inst))
-    // register all targets with the supervisor
-    |> Seq.map (fun (KeyValue (pn, jb)) ->
-      jb |> Job.bind (fun (tconf, inst) ->
-      register supervisor inst >>-.
-      (pn, (tconf, Some inst)))
-    )
-    |> Job.conCollect
-    |> Job.map Map.ofSeq
-    |> Job.map (fun targets -> { conf with targets = targets })
-    |> Job.map build
+      let createFilter minLvl rules =
+        let filters = Seq.map (fun (r: Rule) -> r.messageFilter) rules
+        fun (msg : Message) ->
+          msg.level >= minLvl
+          && filters |> Seq.any (fun filter -> filter msg)
+
+      conf.rules
+      // first, filter by name
+      |> matching name
+
+      // map the target conf and target instance
+      |> List.map (fun r ->
+          let t, ti = Map.find r.targetName conf.targets
+          r, t, (Option.get ti))
+
+      // rules applying to the same target are grouped
+      |> Seq.groupBy (fun (r, t, ti) -> t.name)
+
+      // combine acceptors with Seq.any/combineAccept
+      |> Seq.map (fun (_, ts) ->
+          let _, t, ti = Seq.head ts
+          let rs       = Seq.map rules ts
+          let minLvl   = rs |> Seq.map (fun r -> r.level) |> Seq.min
+          // find the min matching level from all rules for this target
+          createFilter minLvl rs,
+          t, ti,
+          minLvl)
+
+      // targets should be distinctly returned (deduplicated, so that doubly matching
+      // rules don't duply log)
+      |> Seq.distinctBy (fun (_, t, _, _) ->
+          t.name)
+
+      // project only the messageFilter and the target instance
+      |> Seq.map (fun (messageFilter, _, ti, level) ->
+          messageFilter, ti, level)
+
+      // back to a list
+      |> List.ofSeq
+
+    let running (running : ResizeArray<RunningService<Service.T>>) =
+      Alt.always ()
+
+  /// The holder for the channels of communicating with the registry.
+  type T =
+    private {
+      /// Get a logger for the given point name (the path of the logger). This
+      /// operation should not fail, so there's no nack promise passed.
+      getLoggerCh : Ch<PointName * Middleware option * IVar<Logger>>
+
+      /// Flush all pending messages from the registry to await shutdown and
+      /// ack on the `ackCh` when done. If the client nacks the request, the
+      /// `nack` promise is filled with a unit value. Optional duration of how
+      /// long the flush 'waits' for targets before returning a FlushInfo.
+      flushCh : Ch<Ch<FlushInfo> * Promise<unit> * Duration option>
+
+      /// Shutdown the registry in full.
+      shutdownCh : Ch<Ch<ShutdownInfo> * Promise<unit> * Duration option>
+    }
+
+  /// Gets a logger from the registry, by name. This will always return a
+  /// `Logger` value.
+  let getLogger (t : T) name : Job<Logger> =
+    t.getLoggerCh *<+=>- fun resCh -> name, None, resCh
+    :> Job<_>
+
+  /// Gets a logger from the registry, by name. This will always return a
+  /// job with a `Logger` value.
+  let getLoggerT (t : T) name : Logger =
+    getLogger t name |> PromisedLogger.create name
+
+  /// Gets a logger from the registry, by name, with attached middleware. This
+  /// will always return a job with a `Logger` value.
+  let getLoggerWithMiddleware (t : T) (name : PointName) (middleware : Middleware) : Job<Logger> =
+    t.getLoggerCh *<+=>- fun resCh -> name, Some middleware, resCh
+    :> Job<_>
+
+  /// Gets a logger from the registry, by name, with attached middleware. This
+  /// will always return a `Logger` value.
+  let getLoggerWithMiddlewareT (t : T) name middleware : Logger =
+    getLoggerWithMiddleware t name middleware |> PromisedLogger.create name
+
+  /// Flush all pending messages for all targets. Flushes with no timeout; if
+  /// this Alternative yields, all targets were flushed.
+  let flush (t : T) : Alt<unit> =
+    t.flushCh *<+->- fun flushCh nack -> flushCh, nack, None
+    |> Alt.afterFun (fun _ -> ())
+
+  /// Flush all pending messages for all targets. This Alternative always
+  /// yields after waiting for the specified `timeout`; then giving back the
+  /// `FlushInfo` data-structure that recorded what targets were successfully
+  /// flushed and which ones timed out.
+  let flushWithTimeout (t : T) (timeout : Duration) : Alt<FlushInfo> =
+    t.flushCh *<+->- fun flushCh nack -> flushCh, nack, Some timeout
+
+  /// Shutdown the registry and flush all targets before shutting it down. This
+  /// function does not specify a timeout, neither for the flush nor for the
+  /// shutting down of targets, and so it does not return a `ShutdownInfo`
+  /// data-structure.
+  let shutdown (t : T) : Alt<unit> =
+    t.shutdownCh *<+->- fun shutdownCh nack -> shutdownCh, nack, None
+    |> Alt.afterFun (fun _ -> ())
+
+  /// Shutdown the registry and flush all targets before shutting it down. This
+  /// function specifies both a timeout for the flushing of targets and the
+  /// shutting down of the registry. The Alternative yields after a maximum of
+  /// `shutdownTimeout` + `flushTimeout`, with information about the shutdown.
+  let shutdownWithTimeouts (t : T) (flushTimeout : Duration) (shutdownTimeout : Duration) : Alt<FlushInfo * ShutdownInfo> =
+    flushWithTimeout t flushTimeout ^=> fun flushInfo ->
+    t.shutdownCh *<+->- fun shutdownCh nack -> shutdownCh, nack, Some shutdownTimeout
+    |> Alt.afterFun (fun shutdownInfo -> flushInfo, shutdownInfo)
+
+  let create (conf : LogaryConf) : Job<T> =
+    let t =
+      { getLoggerCh = Ch ()
+        flushCh     = Ch ()
+        shutdownCh  = Ch () }
+    let config = { Globals.defaultConfig with getLogger = getLoggerT t
+                                              getLoggerWithMiddleware = getLoggerWithMiddlewareT t }
+    let globals = Globals.create config conf.runtimeInfo.logger
+    let logger = conf.runtimeInfo.logger |> Logger.apply (setSimpleName "Logary.Registry")
+    let targets = conf.targets |> Map.map (Target.create)
+    let metrics = conf.metrics |> Map.map (Metric.create)
+    let hcs = conf.healthChecks |> Map.map (HealthCheck.create conf.runtimeInfo.logger)
+    let engine = Engine.create conf.processing
+    let services =
+      let label label = Seq.map (fun (KeyValue (k, v)) -> sprintf "Logary.Services.%s(%s)" label k, v)
+      Map [
+        yield! targets |> Target.toService conf.runtimeInfo.logger |> label "Target"
+        yield! metrics |> Metric.toService conf.runtimeInfo.logger |> label "Metric"
+        yield! hcs |> HealthCheck.toService conf.runtimeInfo.logger |> label "HealthCheck"
+        yield "Logary.Services.Engine", Engine.toService conf.runtimeInfo.logger engine
+        yield "Logary.Services.Globals", globals
+      ]
+
+    let initialise =
+      let running = services |> Seq.map (snd >> Service.start) |> Job.conCollect
+      running >>= Impl.running
+
+    Job.start initialise >>-. t

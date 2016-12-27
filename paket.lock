@@ -4,7 +4,7 @@ NUGET
   remote: https://www.nuget.org/api/v2
     Aether (8.1.2)
     ApacheThrift (0.9.3)
-    Argu (3.5)
+    Argu (3.6.1)
     Autofac (4.2.1)
     Castle.Core (3.3.3)
     Chiron (6.2.1)
@@ -18,15 +18,15 @@ NUGET
     elmah.io.core (2.0.29)
       elmah.corelibrary (>= 1.2.2)
       elmah.io.client (>= 2.0.29)
-    EventStore.Client (3.9.3)
-    Expecto (2.1)
+    EventStore.Client (3.9.2)
+    Expecto (2.1.1)
       Argu (>= 3.2)
       FSharp.Core (>= 3.1.2.5)
-    Expecto.FsCheck (2.1)
-      Expecto (>= 2.1)
+    Expecto.FsCheck (2.1.1)
+      Expecto (>= 2.1.1)
       FsCheck (>= 2.6.2)
       FSharp.Core (>= 3.1.2.5)
-    FAKE (4.47)
+    FAKE (4.47.1)
     FluentMigrator (1.6.2)
     FluentMigrator.Runner (1.6.2)
       FluentMigrator (>= 1.6.2)
@@ -117,17 +117,19 @@ NUGET
     Zlib.Portable.Signed (1.11)
 GITHUB
   remote: xyncro/chiron
-    src/Chiron/Chiron.fs (e0f4c122b21cb02d47ae3f4f83924b2dcb8dea9e)
+    src/Chiron/Chiron.fs (e32f8b47f34e796b663ddf1d3994950752dc5d6b)
   remote: xyncro/aether
-    src/Aether/Aether.fs (5b5c05db2414562e9f3f679d42284638e63b9f3a)
+    src/Aether/Aether.fs (2e7b07104c47a02d5e92ff5eda0bc950ef57ae2e)
+  remote: eiriktsarpalis/TypeShape
+    src/TypeShape/TypeShape.fs (59e0226d2ba30e013c1969c7a476485724b15718)
   remote: haf/YoLo
     YoLo.fs (76e16a4c9338c2f04cb067add0e3a33b42a0f396)
   remote: logary/RingBuffer
     RingBuffer.fs (4557d607737e748b54eb6de3ec5e5cd02247b2a5)
       Hopac
   remote: logary/logary
-    src/Logary.CSharp.Facade/Facade.cs (e990c6435c7ed483c0b9b860ef0d7a7a824034e7)
-    src/Logary.Facade/Facade.fs (e990c6435c7ed483c0b9b860ef0d7a7a824034e7)
+    src/Logary.CSharp.Facade/Facade.cs (66b76e5e4c552e61c356fb3d935d714778b872bb)
+    src/Logary.Facade/Facade.fs (66b76e5e4c552e61c356fb3d935d714778b872bb)
 GROUP Examples
 REDIRECTS: ON
 FRAMEWORK: >= NET45

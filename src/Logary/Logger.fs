@@ -8,7 +8,9 @@ open System.Runtime.CompilerServices
 /// See the docs on the funtions for descriptions on how Ack works in conjunction
 /// with the promise.
 type Logger =
-  inherit Named
+  /// The PointName for this `Logger`: corresponds to the `name` field for the
+  /// `Messages` produced from this instance.
+  abstract name : PointName
 
   /// Write a message to the Logger. The returned value represents the commit
   /// point that Logary has acquired the message. The alternative is always

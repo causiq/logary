@@ -2,10 +2,10 @@
 
 open System.Text
 open Logary
-open Logary.Utils.Aether
-open Logary.Utils.Aether.Operators
-open Logary.Utils.Chiron
-open Logary.Utils.Chiron.Operators
+open Logary.Internals.Aether
+open Logary.Internals.Aether.Operators
+open Logary.Serialisation.Chiron
+open Logary.Serialisation.Chiron.Operators
 
 module Impl =
   open NodaTime

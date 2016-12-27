@@ -11,8 +11,8 @@ open Hopac.Infixes
 open Logary
 open Logary.Internals
 open Logary.Target
-open Logary.Utils.Chiron
-open Logary.Utils.Chiron.Builder
+open Logary.Serialisation.Chiron
+open Logary.Serialisation.Chiron.Builder
 open System.Collections.Generic
 open System.Runtime.CompilerServices
 

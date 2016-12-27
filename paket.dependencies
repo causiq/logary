@@ -8,7 +8,7 @@ nuget FSharp.Core ~> 4 redirects: force
 nuget Castle.Core
 nuget Common.Logging
 nuget Common.Logging.Core
-nuget EventStore.Client
+nuget EventStore.Client 3.9.2
 nuget FsPickler
 nuget Hopac
 nuget Mailgun.Api
@@ -41,8 +41,9 @@ nuget elmah.io.client
 nuget Google.Cloud.Logging.V2 prerelease
 nuget Google.Api.Gax.Rest prerelease
 
-github xyncro/chiron:e0f4c122b21cb02d47ae3f4f83924b2dcb8dea9e src/Chiron/Chiron.fs
-github xyncro/aether:5b5c05db2414562e9f3f679d42284638e63b9f3a src/Aether/Aether.fs
+github xyncro/chiron:e32f8b47f34e796b663ddf1d3994950752dc5d6b src/Chiron/Chiron.fs
+github xyncro/aether:2e7b07104c47a02d5e92ff5eda0bc950ef57ae2e src/Aether/Aether.fs
+github eiriktsarpalis/TypeShape:1.2 src/TypeShape/TypeShape.fs
 github haf/YoLo YoLo.fs
 github logary/RingBuffer RingBuffer.fs
 github logary/logary src/Logary.Facade/Facade.fs

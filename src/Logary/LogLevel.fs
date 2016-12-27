@@ -3,8 +3,8 @@ namespace Logary
 open System
 open System.ComponentModel
 open NodaTime
-open Logary.Utils.Chiron
-open Logary.Utils.Chiron.Operators
+open Logary.Serialisation.Chiron
+open Logary.Serialisation.Chiron.Operators
 
 /// The log levels specify the severity of the message.
 [<CustomEquality; CustomComparison>]
@@ -52,12 +52,6 @@ with
     | "error"   -> Error
     | "fatal"   -> Fatal
     | _         -> Info
-
-  static member FromJson (_ : LogLevel) =
-    LogLevel.ofString <!> Json.Lens.getPartial Json.String_
-
-  static member ToJson (l : LogLevel) : Json<unit> =
-    Json.Lens.setPartial Json.String_ (l.ToString())
 
   /// Turn the LogLevel into an integer
   [<EditorBrowsable(EditorBrowsableState.Never)>]

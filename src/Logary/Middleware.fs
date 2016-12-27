@@ -1,55 +1,58 @@
-﻿module Logary.Middleware
+﻿namespace Logary
 
 open System.Diagnostics
 open System.Net
 open Logary
-open Logary.Utils.Aether
+open Logary.Internals.Aether
 
-/// The type-signature for middleware; next:(Message -> Message) -> Message -> Message.
-type Mid =
+/// The type-signature for middleware; next:(Message -> Message) -> message:Message -> Message.
+type Middleware =
   (Message -> Message) -> Message -> Message
 
-/// This is the identity middleware.
-[<CompiledName "Identity">]
-let identity : Mid =
-  fun next msg -> next msg
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Middleware =
 
-/// Sets the host name as a context value
-[<CompiledName "Host">]
-let host : Mid =
-  let value = String (Dns.GetHostName())
-  fun next msg ->
-    Message.setContextValue "host" value msg
-    |> next
+  /// This is the identity middleware.
+  [<CompiledName "Identity">]
+  let identity : Middleware =
+    fun next msg -> next msg
 
-/// Sets the service name as a context value
-[<CompiledName "Service">]
-let service (name : string) : Mid =
-  let value = String name
-  fun next msg ->
-    Message.setContextValue "service" value msg
-    |> next
+  /// Sets the host name as a context value
+  [<CompiledName "Host">]
+  let host : Middleware =
+    let value = String (Dns.GetHostName())
+    fun next msg ->
+      Message.setContextValue "host" value msg
+      |> next
 
-let private pn = Process.GetCurrentProcess()
+  /// Sets the service name as a context value
+  [<CompiledName "Service">]
+  let service (name : string) : Middleware =
+    let value = String name
+    fun next msg ->
+      Message.setContextValue "service" value msg
+      |> next
 
-/// Sets the current process' name as a context value
-[<CompiledName "ProcessName">]
-let processName : Mid =
-  fun next msg ->
-    Message.setContext "processName" pn.ProcessName msg
-    |> next
+  let private pn = Process.GetCurrentProcess()
 
-/// Sets the current process' id as a context value
-[<CompiledName "ProcessId">]
-let processId : Mid =
-  fun next msg ->
-    Message.setContext "processId" pn.Id msg
-    |> next
+  /// Sets the current process' name as a context value
+  [<CompiledName "ProcessName">]
+  let processName : Middleware =
+    fun next msg ->
+      Message.setContext "processName" pn.ProcessName msg
+      |> next
 
-/// Compose the list of middlewares together into a single Message->Message function.
-[<CompiledName "Compose">]
-let compose : Mid list -> Message -> Message = function
-  | [] ->
-    id
-  | middlewares -> 
-    List.foldBack (fun f composed -> f composed) middlewares id
+  /// Sets the current process' id as a context value
+  [<CompiledName "ProcessId">]
+  let processId : Middleware =
+    fun next msg ->
+      Message.setContext "processId" pn.Id msg
+      |> next
+
+  /// Compose the list of middlewares together into a single Message->Message function.
+  [<CompiledName "Compose">]
+  let compose : Middleware list -> Message -> Message = function
+    | [] ->
+      id
+    | middlewares -> 
+      List.foldBack (fun f composed -> f composed) middlewares id

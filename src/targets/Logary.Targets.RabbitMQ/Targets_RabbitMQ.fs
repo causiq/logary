@@ -111,7 +111,7 @@ let empty =
 
 module internal Impl =
   open Logary.YoLo
-  open Logary.Utils.Chiron
+  open Logary.Serialisation.Chiron
 
   module Counter =
     open System

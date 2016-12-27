@@ -9,8 +9,8 @@ open System.Text
 open Microsoft.FSharp.Reflection
 open NodaTime
 open Logary
-open Logary.Utils
-open Logary.Utils.FsMessageTemplates
+open Logary.Internals
+open Logary.Internals.FsMessageTemplates
 
 module MessageParts =
 
@@ -133,7 +133,7 @@ module MessageParts =
       |> Object
       |> formatValue nl 1
     s.Append(nl)
-     .Append("  Context:")
+     .Append("  context:")
      .Append(cs) |> ignore
     s.ToString()
 
@@ -142,11 +142,6 @@ module MessageParts =
     Instant.FromTicksSinceUnixEpoch(ticks)
       .ToDateTimeOffset()
       .ToString("o", CultureInfo.InvariantCulture)
-
-/// A StringFormatter is the thing that takes a message and returns it as a string
-/// that can be printed, sent or otherwise dealt with in a manner that suits the target.
-type StringFormatter =
-  abstract format : Message -> string
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module StringFormatter =

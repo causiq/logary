@@ -2,45 +2,45 @@
 
 open Logary
 open NodaTime
+open System
 open System.Threading
 open System.Runtime.CompilerServices
 open Hopac
-open Hopac.Extensions.Seq
+open Hopac.Infixes
 
 module internal Seq =
-
-  let all f s = Seq.fold (fun acc t -> acc && f t) true s
   let any f s = Seq.fold (fun acc t -> acc || f t) false s
-  let pjmap = Con.mapJob
   let last xs = Seq.reduce (fun _ x -> x) xs
 
-type Timeout =
-  | Infinite
-  | Timeout of Duration
+module internal Promise =
+  let instaPromise =
+    Alt.always (Promise (())) // new promise with unit value
 
-type TimeoutResult<'a> =
-  | TimedOut
-  | Success of 'a
+module internal Choice =
+  let bimap f1 f2 = function
+    | Choice1Of2 x1 -> Choice1Of2 (f1 x1)
+    | Choice2Of2 x2 -> Choice2Of2 (f2 x2)
+
+  let get = function
+    | Choice1Of2 x1 -> x1
+    | Choice2Of2 x2 -> x2
 
 module internal Job =
-
-  open Hopac
-  open Hopac.Infixes
-
-  /// Returns a new job with a timeout.
-  /// If the job finishes before the timeout, it will return a Success.
-  /// If the job takes longer than the timeout to execute, it will return a TimedOut.
-  let withTimeout timeout j =
+  /// Runs the passed job with a timeout.
+  ///
+  /// If the job finishes before the timeout, it will return a Choice1Of2.
+  /// If the job takes longer than the timeout to execute, it will return a
+  /// `Choice2Of2 ()`.
+  let withTimeout (timeout : Duration option) (j : Job<'a>) : Job<Choice<'a, unit>> =
     match timeout with
-    | Infinite ->
-      Job.map Success j
-
-    | Timeout ts -> job {
-      let! isDone = Promise.start j
-      return!
-        timeOut (ts.ToTimeSpan()) ^->. TimedOut
-        <|> Promise.read isDone ^-> Success
-    }
+    | None -> Job.map Choice.create j
+    | Some ts ->
+      job {
+        let! completed = Promise.start j
+        return!
+          timeOut (ts.ToTimeSpan()) ^->. (Choice.createSnd ())
+          <|> Promise.read completed ^-> Choice.create
+      }
 
   let apply fJob xJob =
     fJob <*> xJob >>- fun (fN, x) -> fN x
@@ -53,8 +53,6 @@ module internal Alt =
     one ^-> fun (fA, x) -> fA x
 
 module internal List =
-  open Hopac.Infixes
-
   /// Map a Job producing function over a list to get a new Job using
   /// applicative style (parallel). ('a -> Job<'b>) -> 'a list -> Job<'b list>
   let rec traverseJobA (f : 'a -> Job<'b>) (list : 'a list) : Job<'b list> =
@@ -80,8 +78,6 @@ module internal Comparison =
     | x -> x
 
 module internal Rnd =
-  open System
-
   /// buffer for random values
   let private buf = Array.zeroCreate sizeof<int64>
   let private BitsPerLong = 63
@@ -110,22 +106,7 @@ module internal Rnd =
       first <- false
     value
 
-module Date =
-  open NodaTime
-
-  // TO CONSIDER: Make IClock configurable
-  let internal clock = ref SystemClock.Instance
-
-  /// Returns the number of nanoseconds since epoch
-  let timestamp () : int64 =
-    (!clock).Now.Ticks * Constants.NanosPerTick
-
-  /// Gets the current instant from the global clock
-  let instant () : Instant =
-    (!clock).Now
-
 module Cache =
-  open System
   open System.Collections.Concurrent
 
   let memoize<'input, 'output> (f : 'input -> 'output) : ('input -> 'output) =
@@ -133,7 +114,6 @@ module Cache =
     fun x -> cache.GetOrAdd(x, f)
 
 module Map =
-  open System
   open System.Collections
   open System.Collections.Generic
   open System.Globalization
@@ -255,22 +235,3 @@ module Map =
               box (sprintf "Property accessor %s on %s threw an exception: %O" pi.Name pi.ReflectedType.FullName ex)
           pi.Name, value)
         |> Map.ofArray
-
-[<AutoOpen>]
-module internal Set =
-  let (|EmptySet|_|) = function
-    | (s : _ Set) when s.Count = 0 -> Some EmptySet
-    | _ -> None
-
-// TODO: consider moving NackDescription and Acks to Logary ns instead of Internals
-
-/// A description of why no Ack was received like was expected.
-type NackDescription = string
-
-/// A discriminated union specifying Ack | Nack; a method for
-/// specifying the success of an asynchronous call.
-type Acks =
-  /// It went well.
-  | Ack
-  /// It didn't go well.
-  | Nack of NackDescription

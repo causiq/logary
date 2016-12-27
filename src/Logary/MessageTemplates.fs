@@ -1,4 +1,4 @@
-﻿module internal Logary.Utils.FsMessageTemplates
+﻿module internal Logary.Internals.FsMessageTemplates
 
 // From https://github.com/messagetemplates/messagetemplates-fsharp
 // https://github.com/messagetemplates/messagetemplates-fsharp/blob/78a7c2ade80cccd6ebdffacf03393bdd68f622b8/src/FsMessageTemplates/MessageTemplates.fs

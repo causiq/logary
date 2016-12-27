@@ -21,11 +21,6 @@ module internal Logging =
 
     traverse ^->. memo (Latch.await latch)
 
-  let instaPromise =
-    Alt.always (Promise (())) // new promise with unit value
-  let insta =
-    Alt.always ()
-
   let logWithAck message : _ list -> Alt<Promise<unit>> = function
     | []      ->
       instaPromise
@@ -42,14 +37,11 @@ module internal Logging =
   type LoggerInstance =
     { name    : PointName
       targets : (MessageFilter * TargetInstance) list
-      level   : LogLevel
-      /// Internal logger
-      ilogger : Logger }
-
-    interface Named with
-      member x.name = x.name
+      level   : LogLevel }
 
     interface Logger with
+      member x.name = x.name
+
       member x.level : LogLevel =
         x.level
 
@@ -59,7 +51,7 @@ module internal Logging =
           me.logWithAck logLevel messageFactory // delegate down
           |> Alt.afterFun (fun _ -> ())
         else
-          insta
+          Alt.always()
 
       member x.logWithAck logLevel messageFactory : Alt<Promise<unit>> =
         if logLevel >= x.level then
@@ -68,7 +60,7 @@ module internal Logging =
           |> List.choose (fun (accept, t) -> if accept message then Some t else None)
           |> logWithAck message
         else
-          instaPromise
+          Promise.instaPromise
 
 /// This logger is special: in the above case the Registry takes the responsibility
 /// of shutting down all targets, but this is a stand-alone logger that is used
@@ -104,7 +96,7 @@ type InternalLogger =
       x.lvl
 
     member x.name =
-      PointName.ofList ["Logary"; "Internals"; "InternalLogger" ]
+      PointName.ofList ["Logary" ]
 
   static member create level (targets : #seq<_>) =
     { lvl = level; trgs = List.ofSeq targets }

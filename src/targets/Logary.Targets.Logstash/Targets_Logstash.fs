@@ -20,7 +20,7 @@ open Logary
 open Logary.Formatting
 open Logary.Target
 open Logary.Internals
-open Logary.Utils.Chiron
+open Logary.Serialisation.Chiron
 
 /// This is the default address this Target publishes messages to.
 [<Literal>]

@@ -1,86 +1,64 @@
-﻿module Logary.Metric
+﻿namespace Logary
 
-open System
-open NodaTime
 open Hopac
 open Hopac.Infixes
-open Logary
+open Logary.Supervisor
 open Logary.Internals
-open Logary.Utils.Aether
 
-// inspiration: https://github.com/Feuerlabs/exometer/blob/master/doc/exometer_probe.md
+module TickedMetric =
+  // inspiration: https://github.com/Feuerlabs/exometer/blob/master/doc/exometer_probe.md
 
-type Metric =
-  private { updateCh : Ch<Value * Units>
-            tickCh   : Ch<unit>
-            outputs  : Stream.Src<Message> }
+  type T =
+    private { updateCh : Ch<Value * Units>
+              tickCh   : Ch<unit>
+              outputs  : Stream.Src<Message> }
 
-type MetricConf =
-  { tickInterval : Duration
-    name         : PointName
-    initialise   : PointName -> Job<Metric> }
+  let create (reduce : 'state -> Value * Units -> 'state)
+            initial
+            (handleTick : 'state -> 'state * Message [])
+            : Job<T> =
 
-  static member create (tickInterval : Duration) (name : string) creator =
-    { tickInterval = tickInterval
-      name         = PointName.parse name
-      initialise   = creator }
+    let self =
+      { updateCh = Ch ()
+        tickCh   = Ch ()
+        outputs  = Stream.Src.create () }
 
-  interface Named with
-    member x.name = x.name
+    let publish acc m =
+      acc |> Job.bind (fun _ -> Stream.Src.value self.outputs m)
 
-/// Validate the metric configuration.
-let validate (conf : MetricConf) =
-  if conf.name = PointName.empty then
-    failwith "empty metric name given"
+    let emptyResult =
+      Job.result ()
 
-  conf
+    let server = Job.iterateServer (initial, []) <| fun (state : 'state, msgs) ->
+      Alt.choose [
+        self.tickCh ^=> fun _ ->
+          let state', msgs' = handleTick state
+          // first publish the previous messages
+          msgs |> List.fold publish emptyResult
+          // now publish the new ones
+          |> Job.bind (fun _ -> msgs' |> Array.fold publish emptyResult)
+          |> Job.map (fun _ -> state', [])
 
-let create (reduce : 'state -> Value * Units -> 'state)
-           initial
-           (handleTick : 'state -> 'state * Message [])
-           : Job<Metric> =
+        self.updateCh ^-> (reduce state >> fun s -> s, msgs)
+      ]
 
-  let self =
-    { updateCh = Ch ()
-      tickCh   = Ch ()
-      outputs  = Stream.Src.create () }
+    server >>-. self
 
-  let publish acc m =
-    acc |> Job.bind (fun _ -> Stream.Src.value self.outputs m)
+  /// Internally tell the metric time has passed
+  let tick m = Ch.send m.tickCh ()
 
-  let emptyResult =
-    Job.result ()
+  /// Update the metric with a value and its unit
+  let update (value, units) m = m.updateCh *<- (value, units)
 
-  let server = Job.iterateServer (initial, []) <| fun (state : 'state, msgs) ->
-    Alt.choose [
-      self.tickCh ^=> fun _ ->
-        let state', msgs' = handleTick state
-        // first publish the previous messages
-        msgs |> List.fold publish emptyResult
-        // now publish the new ones
-        |> Job.bind (fun _ -> msgs' |> Array.fold publish emptyResult)
-        |> Job.map (fun _ -> state', [])
+  /// Pipe the 'other' stream of Value*Unit pairs into this metric
+  let consume other m = Stream.iterJob (fun x -> m.updateCh *<- x) other |> Job.start
 
-      self.updateCh ^-> (reduce state >> fun s -> s, msgs)
-    ]
+  /// Stream the values of this metric
+  let tap m =
+    Stream.Src.tap m.outputs |> Stream.mapFun (Optic.get Message.Optic.value_ >> function
+      | Gauge (v, u) -> v, u
+      | Derived (v, u) -> v, u
+      | Event e -> Int64 1L, Units.Scalar)
 
-  server >>-. self
-
-/// Internally tell the metric time has passed
-let tick m = Ch.send m.tickCh ()
-
-/// Update the metric with a value and its unit
-let update (value, units) m = m.updateCh *<- (value, units)
-
-/// Pipe the 'other' stream of Value*Unit pairs into this metric
-let consume other m = Stream.iterJob (fun x -> m.updateCh *<- x) other |> Job.start
-
-/// Stream the values of this metric
-let tap m =
-  Stream.Src.tap m.outputs |> Stream.mapFun (Lens.get Message.Lenses.value_ >> function
-    | Gauge (v, u) -> v, u
-    | Derived (v, u) -> v, u
-    | Event e -> Int64 1L, Units.Scalar)
-
-/// Stream the Messages of this metric
-let tapMessages m = Stream.Src.tap m.outputs
+  /// Stream the Messages of this metric
+  let tapMessages m = Stream.Src.tap m.outputs

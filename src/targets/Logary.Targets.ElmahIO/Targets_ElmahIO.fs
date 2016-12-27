@@ -22,8 +22,8 @@ let empty = { logId = Guid.Empty }
 
 module internal Impl =
   open Logary.Message.Lenses
-  open Logary.Utils.Aether
-  open Logary.Utils.Aether.Operators
+  open Logary.Internals.Aether
+  open Logary.Internals.Aether.Operators
 
   module Severity =
 

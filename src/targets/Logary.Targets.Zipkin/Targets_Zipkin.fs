@@ -79,8 +79,8 @@ module internal Impl =
     let trace = TraceHeader(traceId, spanId, Option.toNullable parentId)
     Span(trace, IPEndPoint(host, int port), PointName.format message.name)
 
-  open Logary.Utils.Chiron.Mapping
-  open Logary.Utils.Chiron.Formatting
+  open Logary.Serialisation.Chiron.Mapping
+  open Logary.Serialisation.Chiron.Formatting
 
   let val2str = function
     | String s ->

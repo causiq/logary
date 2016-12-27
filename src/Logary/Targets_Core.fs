@@ -25,18 +25,15 @@ module TextWriter =
       flush      : bool
       /// the log level that is considered 'important' enough to write to the
       /// error text writer
-      isErrorAt  : LogLevel
-      /// The semaphore to use when printing to the text writer.
-      semaphore  : obj option }
+      isErrorAt  : LogLevel }
 
     [<CompiledName "Create">]
-    static member create(output, error, ?formatter : StringFormatter, ?semaphore : obj) =
+    static member create(output, error, ?formatter : StringFormatter) =
       { formatter = defaultArg formatter JsonFormatter.Default
         output    = output
         error     = error
         flush     = false
-        isErrorAt = LogLevel.Error
-        semaphore = semaphore }
+        isErrorAt = LogLevel.Error }
 
   module internal Impl =
 
@@ -48,16 +45,13 @@ module TextWriter =
       // Note: writing lines does not matching the behaviour wanted from the
       // coloured console target.
       let writeLine (tw : TextWriter) (str : string) : Job<unit> =
-        match twConf.semaphore with
-        | Some sem ->
-          // this should be the default for the console unless explicitly disabled;
-          // the combination of locks and async isn't very good, so we'll use the
-          // synchronous function to do the write if we have a semaphore
-          Job.Scheduler.isolate <| fun _ ->
-            lock sem <| fun _ ->
-              tw.WriteLine str
-        | None ->
-          Job.fromUnitTask (fun _ -> tw.WriteLineAsync str)
+        // this should be the default for the console unless explicitly disabled;
+        // the combination of locks and async isn't very good, so we'll use the
+        // synchronous function to do the write if we have a semaphore
+        Job.Scheduler.isolate <| fun _ ->
+          let sem = ri.getConsoleSemaphore()
+          lock sem <| fun _ ->
+            tw.WriteLine str
 
       let rec loop () : Job<unit> =
         Alt.choose [
@@ -135,8 +129,7 @@ module Console =
         output    = System.Console.Out
         error     = System.Console.Error
         flush     = false
-        isErrorAt = Error
-        semaphore = Some Globals.consoleSemaphore }
+        isErrorAt = Error }
       name
 
   /// Use with LogaryFactory.New( s => s.Target<Console.Builder>() )
@@ -193,7 +186,7 @@ module LiterateConsole =
 
   module internal LiterateFormatting =
     open System.Text
-    open Logary.Utils.FsMessageTemplates
+    open Logary.Internals.FsMessageTemplates
     open Tokens
 
     let literateTokeniseException (options : LiterateConsoleConf) (typeName) (message) (stackTrace) =
@@ -544,7 +537,7 @@ module LiterateConsole =
 
       let output (data : ColouredText seq) : Job<unit> =
         Job.Scheduler.isolate <| fun _ ->
-          lcConf.colourWriter Logary.Internals.Globals.consoleSemaphore data
+          lcConf.colourWriter (ri.getConsoleSemaphore ()) data
 
       let rec loop () : Job<unit> =
         Alt.choose [
@@ -571,7 +564,7 @@ module LiterateConsole =
 
             | Flush (ack, nack) ->
               job {
-                do! Ch.give ack () <|> nack
+                do! IVar.fill ack () <|> nack
                 return! loop ()
               }
         ] :> Job<_>
@@ -653,9 +646,9 @@ module Debugger =
             | Log _ ->
               loop ()
 
-            | Flush (ackCh, nack) ->
+            | Flush (ackIV, nack) ->
               job {
-                do! Ch.give ackCh () <|> nack
+                do! IVar.fill ackIV () <|> nack
                 return! loop ()
               }
 
@@ -1161,11 +1154,8 @@ module File =
       naming : Naming
       /// The file system abstraction to write to.
       fileSystem : FileSystem
-      /// The formatter is responsible for writing to the textwriter in an async manner,
-      /// however, the returned Alts do not have mean that any flush has been done.
-      /// The returned value is hot, i.e. it's begun executing. Must never throw
-      /// exceptions; instead place the exceptions in the returned promise.
-      formatter : Message -> TextWriter -> Promise<unit>
+      /// The formatter is responsible for writing to the textwriter.
+      formatter : Message -> TextWriter -> unit
       /// How many log messages to write in one go.
       batchSize : uint16
       /// How many times to try to recover a failed batch messages.

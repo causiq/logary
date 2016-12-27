@@ -9,7 +9,7 @@ open FsSql
 open Logary.Internals
 open Logary.Message
 open Logary.Target
-open Logary.Utils.Chiron
+open Logary.Serialisation.Chiron
 open Logary
 
 type DBConf =

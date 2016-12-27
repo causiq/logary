@@ -1,4 +1,4 @@
-﻿namespace Logary.Metrics
+﻿namespace Logary.Transformers
 
 open System
 open Logary
