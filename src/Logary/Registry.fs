@@ -6,10 +6,68 @@ open Hopac.Infixes
 open NodaTime
 open System
 open System.IO
-open Logary.Message
 open Logary.Supervisor
 open Logary.Target
 open Logary.Internals
+
+/// See the docs on the funtions for descriptions on how Ack works in conjunction
+/// with the promise.
+type Logger =
+  /// The PointName for this `Logger`: corresponds to the `name` field for the
+  /// `Messages` produced from this instance.
+  abstract name : PointName
+
+  /// Write a message to the Logger. The returned value represents the commit
+  /// point that Logary has acquired the message. The alternative is always
+  /// selectable (through `Alt.always ()` if the logger filtered out the message
+  /// due to a Rule).
+  ///
+  /// If the Message was not filtered through a Rule, but got sent onwards, the
+  /// promise is there to denote the ack that all targets have successfully
+  /// flushed the message. If you do not commit to the Alt then it will not be
+  /// logged.
+  ///
+  /// If you choose to not await the Promise/Ack it makes no difference, since
+  /// it will be garbage collected in the end, whether it's awaited or not.
+  abstract logWithAck : LogLevel -> (LogLevel -> Message) -> Alt<Promise<unit>>
+
+  /// Logs with the specified log level with backpressure via Logary's
+  /// buffers.
+  ///
+  /// Calls to this function will block the caller only while executing the
+  /// callback (if the level is active).
+  ///
+  /// The returned async value will yield when the message has been added to
+  /// the buffers of Logary.
+  ///
+  /// You need to start the (cold) Alt value for the logging to happen.
+  ///
+  /// You should not do blocking/heavy operations in the callback.
+  abstract log : LogLevel -> (LogLevel -> Message) -> Alt<unit>
+
+  /// Gets the currently set log level, aka. the granularity with which things
+  /// are being logged.
+  abstract level : LogLevel
+  //abstract bisect : (LogLevel -> Message) -> Alt<Promise<unit>>
+
+
+/// A disposable interface to use with `use` constructs and to create child-
+/// contexts. Since it inherits Logger, you can pass this scope down into child
+/// function calls. This interface should dovetail with how Zipkin/Dapper
+/// manages parent/child spans.
+type LoggerScope =
+  inherit IDisposable
+  inherit Logger
+
+type TimeScope =
+  inherit LoggerScope
+
+  /// Gets the currently elapsed duration of this time scope scope.
+  abstract elapsed : Duration
+
+/// The type-signature for middleware; next:(Message -> Message) -> message:Message -> Message.
+type Middleware =
+  (Message -> Message) -> Message -> Message
 
 /// A StringFormatter is the thing that takes a message and returns it as a
 /// string that can be printed, sent or otherwise dealt with in a manner that
@@ -141,119 +199,8 @@ type internal PromisedLogger(name, requestedLogger : Job<Logger>) =
     member x.level =
       Verbose
 
-/// An internal interface; all globals in Logary are hidden and are managed by
-/// the Registry and Config API.
-type internal LoggingConfig =
-  /// Gets a logger by name.
-  abstract getLogger : PointName -> Logger
-  /// Gets a logger by name and applies the passed middleware to it. You can
-  /// also use `Logger.apply` on existing loggers to create new ones.
-  abstract getLoggerWithMiddleware : PointName -> Middleware -> Logger
-  /// Gets the current timestamp.
-  abstract getTimestamp : unit -> EpochNanoSeconds
-  /// Gets the console semaphore. When the process is running with an attached
-  /// tty, this function is useful for getting the semaphore to synchronise
-  /// around. You must take this if you e.g. make a change to the colourisation
-  /// of the console output.
-  abstract getConsoleSemaphore : unit -> obj
-
-/// This module keeps track of the LoggingConfig reference.
-module internal Globals =
-
-  type T =
-    { getLogger               : PointName -> Logger
-      getLoggerWithMiddleware : PointName -> Middleware -> Logger
-      getTimestamp            : unit -> EpochNanoSeconds
-      getConsoleSemaphore     : unit -> obj }
-    with
-      static member create getLogger getLoggerWM getTs getCS =
-        { getLogger = getLogger
-          getLoggerWithMiddleware = getLoggerWM
-          getTimestamp = getTs
-          getConsoleSemaphore = getCS }
-
-      interface LoggingConfig with
-        member x.getLogger pn = x.getLogger pn
-        member x.getLoggerWithMiddleware pn mid = x.getLoggerWithMiddleware pn mid
-        member x.getTimestamp () = x.getTimestamp ()
-        member x.getConsoleSemaphore () = x.getConsoleSemaphore ()
-
-  /// Null object pattern; will only return loggers that don't log.
-  let defaultConfig =
-    let c = SystemClock.Instance
-    let s = obj ()
-    let nl = NullLogger() :> Logger
-    { getLogger = fun pn -> nl
-      getLoggerWithMiddleware = fun pn mid -> nl
-      getTimestamp = fun () -> c.Now.Ticks * Constants.NanosPerTick
-      getConsoleSemaphore = fun () -> s }
-
-  /// This is the "Global Variable" containing the last configured Logary
-  /// instance. If you configure more than one logary instance this will be
-  /// replaced.
-  let private config =
-    ref (defaultConfig, (* logical clock *) 1u)
-
-  /// The flyweight references the current configuration. If you want
-  /// multiple per-process logging setups, then don't use the static methods,
-  /// but instead pass a Logger instance around, setting the name field of the
-  /// Message value you pass into the logger.
-  type Flyweight(name : PointName, level) =
-    // The object's private fields are initialised to the current config's
-    // logger.
-    let updating = obj()
-    let mutable fwClock : uint32 = snd !config
-    let mutable logger : Logger = (fst !config).getLogger name
-
-    /// A function that tries to run the action with the current logger, and
-    /// which reconfigures if the configuration is updated.
-    let withLogger action =
-      if snd !config <> fwClock then // if we are outdated
-        lock updating <| fun _ ->
-          let cfg, cfgClock = !config // reread the config's clock after taking lock
-          if cfgClock <> fwClock then // recheck after taking lock to avoid races
-            logger <- cfg.getLogger name // get the current logger
-            fwClock <- fwClock + 1u // update instance's clock
-
-      // finally execute the action with the logger
-      action logger
-
-    let ensureName (m : Message) =
-      if m.name.isEmpty then { m with name = name } else m
-
-    interface Logger with
-      member x.name = name
-
-      member x.log level msgFactory =
-        withLogger (fun logger -> logger.log level (msgFactory >> ensureName))
-
-      member x.logWithAck level msgFactory =
-        withLogger (fun logger -> logger.logWithAck level (msgFactory >> ensureName))
-
-      member x.level =
-        level
-  // end of Flyweight
-
-  // TODO: consider renaming to 'create' and returning a RunningService?
-
-  /// Call to initialise Logary with a new Logary instance.
-  let initialise cfg =
-    config := (cfg, snd !config + 1u)
-
-  let getStaticLogger (name : PointName) =
-    Flyweight(name, Verbose)
-
-  /// Gets the current timestamp.
-  let timestamp () : EpochNanoSeconds =
-    (fst !config).getTimestamp ()
-
-  /// Returns the synchronisation object to use when printing to the console.
-  let semaphore () =
-    (fst !config).getConsoleSemaphore()
-
-  /// Run the passed function under the console semaphore lock.
-  let lockSem fn =
-    lock (semaphore ()) fn
+module internal GlobalsService =
+  open Globals
 
   let create (t : T) (internalLogger : Logger) =
     let ilogger = internalLogger |> Logger.apply (setSimpleName "Logary.Globals")

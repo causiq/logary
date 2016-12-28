@@ -75,16 +75,24 @@
     <Compile Include="Constants.fs" />
     <Compile Include="Internals/Internals.fs" />
     <Compile Include="DataModel.fs" />
-    <Compile Include="DataModel_MessageTemplateEx.fs" />
+    <Compile Include="ValueModule.fs" />
+    <Compile Include="UnitsModule.fs" />
+    <Compile Include="FieldModule.fs" />
     <Compile Include="Internals/Scheduling.fs" />
     <Compile Include="Middleware.fs" />
-    <Compile Include="Logger.fs" />
     <Compile Include="Supervisor.fs" />
     <Compile Include="Metric.fs" />
     <Compile Include="Rule.fs" />
     <Compile Include="Target.fs" />
-    <Compile Include="Internals/InternalLogger.fs" />
+    <Compile Include="Globals.fs" />
+    <Compile Include="MessageModule.fs" />
+    <Compile Include="MiddlewareModule.fs" />
+    <Compile Include="LoggerModule.fs" />
+    <Compile Include="NodaTime.Duration.fs" />
+    <Compile Include="System.Dates.fs" />
+    <Compile Include="System.Stopwatch.fs" />
     <Compile Include="Registry.fs" />
+    <Compile Include="Internals/InternalLogger.fs" />
     <Compile Include="Logging.fs" />
     <Compile Include="Transformers.fs" />
     <!-- The below are target implementations and config -->

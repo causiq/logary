@@ -4,10 +4,16 @@ open Logary.Internals
 open Hopac
 open Hopac.Infixes
 
+[<AutoOpen>]
+module internal Prelude =
+  let always x _ = x
+  let inline (^) f x = f x
+
 type Will<'a> = Will of MVar<'a option>
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Will =
+
   let create () : Will<'a> =
     Will (MVar None)
   let createFull initial : Will<'a> =

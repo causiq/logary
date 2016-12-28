@@ -4,6 +4,7 @@ open Hopac
 open Hopac.Infixes
 open Logary.Supervisor
 open Logary.Internals
+open Logary.Internals.Aether
 
 module TickedMetric =
   // inspiration: https://github.com/Feuerlabs/exometer/blob/master/doc/exometer_probe.md
@@ -55,7 +56,8 @@ module TickedMetric =
 
   /// Stream the values of this metric
   let tap m =
-    Stream.Src.tap m.outputs |> Stream.mapFun (Optic.get Message.Optic.value_ >> function
+    let value_ m = m.value
+    Stream.Src.tap m.outputs |> Stream.mapFun (value_ >> function
       | Gauge (v, u) -> v, u
       | Derived (v, u) -> v, u
       | Event e -> Int64 1L, Units.Scalar)
