@@ -43,7 +43,7 @@ open Adaptation
 /// instance of Logary to use for requesting loggers.
 [<Target("Logary")>] 
 type LogaryTarget(logary : LogManager) =
-  inherit TargetWithLayout()
+  inherit Target()
 
   let memoize = memoizeFactory (ConcurrentDictionary<_, _>())
 
@@ -67,10 +67,12 @@ type LogaryTarget(logary : LogManager) =
   override x.Write (evt : NLog.LogEventInfo) =
     let name = PointName.parse evt.LoggerName
     let logger = getLogger name
-    let rendering = x.Layout.Render evt
     let ex = if isNull evt.Exception then None else Some evt.Exception
     let level = mapLogLevel evt.Level
     let msg = Message.eventFormat (level, evt.Message, evt.Parameters)
+    // noteworthy: logger.Log(LEI.Create(..., "hi")), will have Message={0} which will be templated
+    // on printing (useless way to do it IMO).
+    //printfn "messsage=%s" evt.Message
     { msg with name = name }
     |> setFieldsFromObject evt.Properties
     |> (ex |> Option.fold (fun s -> addExn) id)

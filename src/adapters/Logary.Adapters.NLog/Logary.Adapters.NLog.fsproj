@@ -40,7 +40,7 @@
   <ItemGroup>
     <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="NLog.Logary.fs" />
+    <Compile Include="NLog.Targets.Logary.fs" />
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>
