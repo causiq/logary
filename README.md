@@ -1330,6 +1330,9 @@ called `Logary.CSharp`.
 If you [browse elmah.io's blog](http://blog.elmah.io/support-for-logary/) you'll
 find another example of using Logary from C#.
 
+You can add the `Logary.Adapters.NLog` adapter to your NLog config to start
+shipping events from your existing code-base while you're migrating.
+
 ## Comparison to NLog and log4net
 
 Why Logary instead of one of the classic logging frameworks?
