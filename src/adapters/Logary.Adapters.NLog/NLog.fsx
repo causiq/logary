@@ -69,7 +69,7 @@ let exceptiony() =
 
 let evt =
   LogEventInfo.Create(LogLevel.Info, "NLog.Example.Custom", System.Globalization.CultureInfo.InvariantCulture,
-                      "Hello world!")
+                      "This is an unhandled exception")
 
 evt.Properties.Add("user", "haf")
 evt.Properties.Add("service", "web-alpha")

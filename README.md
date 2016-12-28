@@ -1330,8 +1330,106 @@ called `Logary.CSharp`.
 If you [browse elmah.io's blog](http://blog.elmah.io/support-for-logary/) you'll
 find another example of using Logary from C#.
 
+### Logary.Adapters.NLog
+
 You can add the `Logary.Adapters.NLog` adapter to your NLog config to start
-shipping events from your existing code-base while you're migrating.
+shipping events from your existing code-base while you're migrating:
+
+```fsharp
+////////////// SAMPLE LOGARY CONFIGURATION //////////
+#I "bin/Debug"
+#r "NodaTime.dll"
+#r "Hopac.Core.dll"
+#r "Hopac.dll"
+#r "FParsec.dll"
+#r "Logary.dll"
+open Hopac
+open Logary
+open Logary.Configuration
+open Logary.Targets
+
+
+let logary =
+  withLogaryManager "Logary.ConsoleApp" (
+    withTargets [
+      LiterateConsole.create LiterateConsole.empty "literate"
+
+      // This target prints more info to the console than the literate one
+      // Console.create (Console.empty) "console"
+    ] >>
+    withRules [
+      Rule.createForTarget "literate"
+      //Rule.createForTarget "console"
+  ])
+  |> Hopac.run
+
+////////////// SAMPLE NLOG CONFIGURATION //////////
+
+#r "NLog.dll"
+#load "NLog.Targets.Logary.fs"
+open NLog
+open NLog.Targets
+open NLog.Config
+open NLog.Common
+let config = LoggingConfiguration()
+InternalLogger.LogToConsole <- true
+InternalLogger.IncludeTimestamp <- true
+let logaryT = new LogaryTarget(logary)
+//logaryT.Logary <- logary
+config.AddTarget("logary", logaryT)
+let rule = LoggingRule("*", NLog.LogLevel.Debug, logaryT)
+config.LoggingRules.Add rule
+LogManager.Configuration <- config
+
+
+
+
+
+// You'll get a logger in your app
+let logger = LogManager.GetLogger("NLog.Example")
+
+//////////// SAMPLE USAGE: ///////////////
+logger.Info("Hello world")
+
+// NLog's targets doesn't like this, but you can do it with the Logary target. Note that
+// Logary doesn't evaluate any NLog layouts, but has its own template format.
+logger.Info("Hello {user}! This is {0}.", "haf", "Mr M")
+
+// you can also log data
+let exceptiony() =
+  let inner1() =
+    failwith "Uh"
+  let inner2() =
+    inner1()
+  let inner3() =
+    inner2()
+  try inner3() with e -> e
+
+let evt =
+  LogEventInfo.Create(LogLevel.Info, "NLog.Example.Custom", System.Globalization.CultureInfo.InvariantCulture,
+                      "This is an unhandled exception")
+
+evt.Properties.Add("user", "haf")
+evt.Properties.Add("service", "web-alpha")
+evt.Exception <- exceptiony()
+
+logger.Log evt
+
+LogManager.Shutdown()
+logary.DisposeAsync() |> run
+```
+
+Will print something like:
+
+```
+[11:20:14 INF] Hello world
+[11:20:14 INF] Hello haf! This is Mr M.
+[11:20:14 INF] Hello world!
+System.Exception: Uh
+  at FSI_0005.exceptiony () [0x00002] in <b5f7baf519d8404da7be7661e34a4e4a>:0
+```
+
+This is very useful for legacy software that's still using NLog.
 
 ## Comparison to NLog and log4net
 
