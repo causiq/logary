@@ -2,14 +2,14 @@ namespace Logary
 
 open Logary.Internals.Aether
 
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>] // remove when field moved outside
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Field =
 
-  let inline initWithUnit value units =
-    failwith "TODO"
+  let initWithUnit (value : 'a) (units : Units) =
+    failwith "TODO: TypeShape"
 
-  let inline init (value : ^a) =
-    failwith "TODO"
+  let init (value : 'a) =
+    failwith "TODO: TypeShape"
 
   module Optic =
 

@@ -1,66 +1,102 @@
-﻿namespace Logary
+namespace Logary
 
 open Hopac
-open Hopac.Infixes
-open Logary.Supervisor
 open Logary.Internals
-open Logary.Internals.Aether
 
-module TickedMetric =
-  // inspiration: https://github.com/Feuerlabs/exometer/blob/master/doc/exometer_probe.md
+/// A function, that, given a stream of all events in the system, is allowed
+/// to process them and can send new `Message` values to the channel.
+/// Should return an Alt so that it can be cancelled. Hoisted into a metric
+/// in the end.
+type Processing = Processing of (Stream<Message> -> Ch<Message> -> Alt<unit>)
+
+/// The low-water-mark for stream processing nodes (operators)
+type LWM = EpochNanoSeconds
+
+/// Values that a node can take as input.
+[<RequireQualifiedAccess>]
+type NodeInput =
+  | M of Message
+  /// A low-water-mark signal that can be repeatedly committed to. (TBD: back
+  /// with a MVar?)
+  ///
+  /// invariant: all Messages after a LWM have >= timestamp.
+  | LWM of LWM
+
+/// A node in a stream processing engine
+type Node =
+  /// An alternative that can be repeatedly committed to in order to receive
+  /// messages in the node.
+  abstract inputs : Alt<NodeInput>
+  /// Gives you a way to perform internal logging and communicate with Logary.
+  abstract runtimeInfo : RuntimeInfo
+
+/// Logary's way to talk with Metrics.
+type MetricAPI =
+  inherit Node
+  /// The metric can produce values through this function call.
+  abstract produce : Message -> Alt<unit> // Stream.Src<Message>
+  /// A channel that the metric needs to select on and then ACK once the target
+  /// has fully shut down. 
+  abstract shutdownCh : Ch<IVar<unit>>
+
+// TODO: a way of composing these metrics via operators to filter them
+
+type MetricConf =
+  { name       : string
+    bufferSize : uint32
+    policy     : Policy
+    server     : RuntimeInfo * MetricAPI -> Job<unit> }
+
+  override x.ToString() =
+    sprintf "MetricConf(%s)" x.name
+
+module Metric =
 
   type T =
-    private { updateCh : Ch<Value * Units>
-              tickCh   : Ch<unit>
-              outputs  : Stream.Src<Message> }
+    private {
+      shutdownCh : Ch<IVar<unit>>
+      pauseCh : Ch<unit>
+      resumeCh : Ch<unit>
+      // etc...
+    }
 
-  let create (reduce : 'state -> Value * Units -> 'state)
-            initial
-            (handleTick : 'state -> 'state * Message [])
-            : Job<T> =
+  let create (ri : RuntimeInfo) (conf : MetricConf) : Job<T> =
+    { shutdownCh = Ch ()
+      pauseCh = Ch ()
+      resumeCh = Ch ()
+    }
+    |> Job.result
 
-    let self =
-      { updateCh = Ch ()
-        tickCh   = Ch ()
-        outputs  = Stream.Src.create () }
+type Check =
+  | Healthy of contents:string
+  | Warning of contents:string
+  | Critical of contents:string
 
-    let publish acc m =
-      acc |> Job.bind (fun _ -> Stream.Src.value self.outputs m)
+type HealthCheckAPI =
+  inherit Node
+  /// Health checks should call this to produce their output as often as they
+  /// like.
+  abstract produce : Check -> Alt<unit>
 
-    let emptyResult =
-      Job.result ()
+type HealthCheckConf =
+  { name       : string
+    bufferSize : uint32
+    policy     : Policy
+    server     : RuntimeInfo * HealthCheckAPI -> SupervisedJob<unit> }
 
-    let server = Job.iterateServer (initial, []) <| fun (state : 'state, msgs) ->
-      Alt.choose [
-        self.tickCh ^=> fun _ ->
-          let state', msgs' = handleTick state
-          // first publish the previous messages
-          msgs |> List.fold publish emptyResult
-          // now publish the new ones
-          |> Job.bind (fun _ -> msgs' |> Array.fold publish emptyResult)
-          |> Job.map (fun _ -> state', [])
+module HealthCheck =
 
-        self.updateCh ^-> (reduce state >> fun s -> s, msgs)
-      ]
+  type T =
+    private {
+      shutdownCh : Ch<IVar<unit>>
+      pauseCh : Ch<unit>
+      resumeCh : Ch<unit>
+      // etc...
+    }
 
-    server >>-. self
-
-  /// Internally tell the metric time has passed
-  let tick m = Ch.send m.tickCh ()
-
-  /// Update the metric with a value and its unit
-  let update (value, units) m = m.updateCh *<- (value, units)
-
-  /// Pipe the 'other' stream of Value*Unit pairs into this metric
-  let consume other m = Stream.iterJob (fun x -> m.updateCh *<- x) other |> Job.start
-
-  /// Stream the values of this metric
-  let tap m =
-    let value_ m = m.value
-    Stream.Src.tap m.outputs |> Stream.mapFun (value_ >> function
-      | Gauge (v, u) -> v, u
-      | Derived (v, u) -> v, u
-      | Event e -> Int64 1L, Units.Scalar)
-
-  /// Stream the Messages of this metric
-  let tapMessages m = Stream.Src.tap m.outputs
+  let create (ri : RuntimeInfo) (conf : HealthCheckConf) : Job<T> =
+    { shutdownCh = Ch ()
+      pauseCh = Ch ()
+      resumeCh = Ch ()
+    }
+    |> Job.result

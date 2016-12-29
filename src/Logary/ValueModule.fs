@@ -1,7 +1,11 @@
 namespace Logary
 
 open System
+open Microsoft.FSharp.Reflection // TODO: move to type-shape
+open System.Collections.Generic // TODO: move to type-shape
 open Logary.Internals.Aether
+open Logary
+open Logary.Internals // TODO: move to type-shape, for Map.ofObject
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Value =

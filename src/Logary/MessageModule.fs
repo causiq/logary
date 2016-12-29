@@ -2,11 +2,13 @@ namespace Logary
 
 open Hopac
 open NodaTime
+open System
 open System.Threading.Tasks
 open System.Diagnostics
 open Logary.Internals
 open Logary.Internals.Aether
 open Logary.Internals.Aether.Operators
+open Logary
 
 /// Open this module to log in a more succinct way.
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -442,7 +444,7 @@ module Message =
   /// Update the message with the current timestamp.
   [<CompiledName "UpdateTimestamp">]
   let updateTimestamp message =
-    { message with timestamp = Date.timestamp () }
+    { message with timestamp = Globals.timestamp () }
 
   /// Replaces the value of the message with a new Event with the supplied format
   [<CompiledName "SetEvent">]
@@ -464,13 +466,13 @@ module Message =
     let flattenedExns =
       match e with
       | :? AggregateException as ae ->
-        ae.InnerExceptions |> Seq.map toValue |> Seq.toList
+        ae.InnerExceptions |> Seq.map Value.create |> Seq.toList
       | _ ->
-        toValue e :: []
+        Value.create e :: []
 
     let exnsNext =
-      let exns = Optic.get Optic.errors_ [] msg
-      exns @ flattenedExns
+      Optic.get Optic.errors_ msg
+      |> Option.fold (fun fnes exns -> exns @ fnes) flattenedExns
 
     // If there's no "errors" field, add it
     let msg =

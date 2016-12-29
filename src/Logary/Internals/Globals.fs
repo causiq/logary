@@ -1,5 +1,6 @@
-namespace Logary
+namespace Logary.Internals
 
+open Logary
 
 /// An internal interface; all globals in Logary are hidden and are managed by
 /// the Registry and Config API.
@@ -52,7 +53,7 @@ module internal Globals =
   /// This is the "Global Variable" containing the last configured Logary
   /// instance. If you configure more than one logary instance this will be
   /// replaced.
-  let private config =
+  let internal config =
     ref (defaultConfig, (* logical clock *) 1u)
 
   /// The flyweight references the current configuration. If you want

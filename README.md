@@ -1624,15 +1624,98 @@ Clone it like above. Ensure you can build it. Open `Logary.sln`.  Make a change,
 send a PR towards master. To balance the app.config files, try `mono
 tools/paket.exe install --redirects --clean-redirects --createnewbindingfiles`
 
+### File guidelines – module vs static method
+
+Declare your interfaces in a `MyIf.fs` and its module in `MyIfModule.fs` with a
+`[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]`.
+
+Place these files as high as possible. Place the module as close to and below
+the non-module file as possible.
+
+If it's plausible that one would like to use point-free programming with your
+functions, place them in a module. (E.g. Message versus MessageModule)
+
+Factory methods go on the types for value
+types. For stateful objects they go on the module, named `create` which may or
+may not return a `Job<_>` of some public state type with a private/internal
+constructor. (E.g. PointName versus Engine)
+
+### File guidelines – plural vs singular
+
+All implementations go in a plural namespace. E.g. `Logary.Metrics.Ticked` has:
+
+ - `Logary` – core namespace
+ - `Metrics` – namespace for all metrics implementations
+ - `Ticked` – a module and/or type that implements Logary-based ticking/
+   scheduling.
+
+Another example: `Logary.Target`, which is a module that implements logic about
+the life-cycle of target instances. It's used to start/stop/pause and shutdown
+targets. It's singular.
+
+### Namespace guidelines – `Logary.Internals` or not
+
+Things that end-users of the library are not likely to configure should go in
+`Logary.Internals`. Examples include `Logary.Internals.Globals` and
+`Logary.Internals.RuntimeInfo` (which is configured with the config API
+instead).
+
+### RuntimeInfo and internal logging
+
+The `RuntimeInfo` and internal `Logger` should be propagated to the modules and
+objects that you build your solution out of. This guideline is mostly about the
+registry's implementation and its interaction with config and services.
+
+### When to write a new function?
+
+Generally, keep your functions to a single responsibility and compose functions
+instead of extending existing functions. Composition happens through currying
+and partial application of 'state' or 'always-this-value' values. For state it
+can both go through the Services abstraction (start/pause/stop/etc) or by
+closing over the state with a function.
+
+If you find that your functions are getting larger than 3 lines of code, you
+should probably extract part of the function. By 'default' it's better to be 1%
+less performant but 5% more readable, after this list of priorities:
+
+ 1. Correct
+ 2. Readable/SRP
+ 3. Fast/efficient/performant
+
+### How to open namespaces?
+
+Prefer to open a namespace over fully qualifying a type.
+
+Prefer to open fully qualified over partial.
+
+```fsharp
+open Logary.Internals
+open Logary.Internals.Supervisor
+```
+
+Instead of
+
+```fsharp
+open Logary.Internals
+open Supervisor
+```
+
+### To start the job or not?
+
+A module function like `MyModule.create : Conf -> Job<T>` should **not** start
+the server loop. Instead, just return a *cold* job (that can be started
+multiple time) and let the composition "root", such as the `Registry`, perform
+the composition and lifetime handling.
+
 ### Writing a new target
 
 Are you thinking of creating a new Target for Logary? It's a good idea if you
 can't find the right Target for your use case. It can also be useful if you have
 an internal metrics or log message engine in your company you wish to ship to.
 
- 1. Create a new .net 4.5 class library in F#, under `target` and add that to Logary.sln.
- 1. Copy the code from Logary's `Target_Noop.fs`, which contains the basic structure.
-    There are more docs in this file, to a file named `Target_MyTarget.fs` in
+ 1. Create a new .net 4.5.1 class library in F#, under `target` and add that to Logary.sln.
+ 1. Copy the code from Logary's `Targets/Noop.fs`, which contains the basic structure.
+    There are more docs in this file, to a file named `MyTarget.fs` in
     your new project.
  1. Add a nuget reference (or project reference if you're intending to send a
     PR) to `Logary`

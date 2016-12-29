@@ -14,6 +14,7 @@ open Hopac
 open Hopac.Infixes
 open NodaTime
 open Logary
+open Logary.Internals
 open Logary.Message
 
 /// Gets the current name, as defined by the class-name + namespace that the logger is in.
@@ -42,7 +43,7 @@ let getCurrentLoggerName () =
 /// Gets a logger by a given point name.
 [<CompiledName "GetLoggerByPointName">]
 let getLoggerByPointName name =
-  if box name = null then nullArg "name"
+  if isNull (box name) then nullArg "name"
   Globals.getStaticLogger name :> Logger
 
 /// Gets a logger by a given name.

@@ -1,5 +1,7 @@
 namespace Logary
 
+open System
+
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Units =
 

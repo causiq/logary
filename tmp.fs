@@ -1,4 +1,60 @@
 
+module internal Logging =
+
+  let send (targets : TargetInstance list) msg : Alt<Promise<unit>> =
+    let latch = Latch targets.Length
+    let targets = targets |> List.map (fun target -> target, IVar ())
+    let traverse =
+      targets
+      |> List.traverseAltA (fun (target, ack) ->
+        Alt.prepareJob <| fun () ->
+        Job.start (ack ^=>. Latch.decrement latch) >>-.
+        RingBuffer.put target.requests (Log (msg, ack)))
+      |> Alt.afterFun (fun _ -> ())
+
+    traverse ^->. memo (Latch.await latch)
+
+  let logWithAck message : _ list -> Alt<Promise<unit>> = function
+    | []      ->
+      instaPromise
+    | targets ->
+      message |> send targets
+
+  let inline ensureName (logger : Logger) (msg : Message) =
+    match msg.name with
+    | PointName [||] ->
+      Message.setName logger.name msg
+    | _  ->
+      msg
+
+  type LoggerInstance =
+    { name    : PointName
+      targets : (MessageFilter * TargetInstance) list
+      level   : LogLevel }
+
+    interface Logger with
+      member x.name = x.name
+
+      member x.level : LogLevel =
+        x.level
+
+      member x.log logLevel messageFactory =
+        if logLevel >= x.level then
+          let me : Logger = upcast x
+          me.logWithAck logLevel messageFactory // delegate down
+          |> Alt.afterFun (fun _ -> ())
+        else
+          Alt.always()
+
+      member x.logWithAck logLevel messageFactory : Alt<Promise<unit>> =
+        if logLevel >= x.level then
+          let message = messageFactory logLevel |> ensureName x
+          x.targets
+          |> List.choose (fun (accept, t) -> if accept message then Some t else None)
+          |> logWithAck message
+        else
+          Promise.instaPromise
+
   module Advanced =
     // TODO: use Alt<..> instead:
 
@@ -224,3 +280,90 @@
     |> Job.map Map.ofSeq
     |> Job.map (fun targets -> { conf with targets = targets })
     |> Job.map build
+
+
+  module internal Impl =
+    open System
+    open Logary
+    open Logary.Rule
+    open Logary.Target
+    open Logary.Internals
+
+    /// Given a configuration and name to find all targets for, looks up all targets
+    /// from the configuration matching the passed name and create a composite
+    /// acceptor/filter (any matching acceptor).
+    let getTargets conf (name : PointName) =
+      let rules (rules, _, _) = rules
+
+      let createFilter minLvl rules =
+        let filters = Seq.map (fun (r: Rule) -> r.messageFilter) rules
+        fun (msg : Message) ->
+          msg.level >= minLvl
+          && filters |> Seq.any (fun filter -> filter msg)
+
+      conf.rules
+      // first, filter by name
+      |> matching name
+
+      // map the target conf and target instance
+      |> List.map (fun r ->
+          let t, ti = Map.find r.targetName conf.targets
+          r, t, (Option.get ti))
+
+      // rules applying to the same target are grouped
+      |> Seq.groupBy (fun (r, t, ti) -> t.name)
+
+      // combine acceptors with Seq.any/combineAccept
+      |> Seq.map (fun (_, ts) ->
+          let _, t, ti = Seq.head ts
+          let rs       = Seq.map rules ts
+          let minLvl   = rs |> Seq.map (fun r -> r.level) |> Seq.min
+          // find the min matching level from all rules for this target
+          createFilter minLvl rs,
+          t, ti,
+          minLvl)
+
+      // targets should be distinctly returned (deduplicated, so that doubly matching
+      // rules don't duply log)
+      |> Seq.distinctBy (fun (_, t, _, _) ->
+          t.name)
+
+      // project only the messageFilter and the target instance
+      |> Seq.map (fun (messageFilter, _, ti, level) ->
+          messageFilter, ti, level)
+
+      // back to a list
+      |> List.ofSeq
+
+    let running (running : ResizeArray<RunningService<Service.T>>) =
+      Alt.always ()
+
+
+    let services =
+      let label label =
+        Seq.map (fun (KeyValue (k, v)) -> sprintf "Logary.Services.%s(%s)" label k, v)
+      Map [
+        yield!
+          targets
+          |> label "Target"
+          |> Seq.map (fun (name, x) ->
+            Target.toService conf.runtimeInfo.logger name x)
+        yield!
+          metrics
+          |> Seq.map (fun (KeyValue (name, x)) -> Metric.toService conf.runtimeInfo.logger name x)
+          |> label "Metric"
+        yield!
+          hcs
+          |> Seq.map (fun (KeyValue (name, x)) -> HealthCheck.toService conf.runtimeInfo.logger name x)
+          |> label "HealthCheck"
+        yield "Logary.Services.Engine", Engine.toService conf.runtimeInfo.logger engine
+        yield "Logary.Services.Globals", globals
+      ]
+
+    // TODO: choose over all services' failure
+    let initialise =
+      let running =
+        services
+        |> Seq.map (fun (KeyValue (name, svc)) -> Service.start svc)
+        |> Job.conCollect
+      running >>= Impl.running

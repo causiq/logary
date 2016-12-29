@@ -1,0 +1,20 @@
+namespace Logary.Internals
+
+open Hopac
+open Logary
+
+/// A logger that does absolutely nothing, useful for feeding into the target
+/// that is actually *the* internal logger target, to avoid recursive calls to
+/// itself.
+type NullLogger() =
+  interface Logger with
+    member x.logWithAck logLevel messageFactory = Promise.instaPromise
+    member x.log logLevel messageFactory = Alt.always ()
+    member x.level = Fatal
+    member x.name = PointName.ofList [ "Logary"; "NullLogger" ]
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module NullLogger =
+
+  let instance =
+    NullLogger () :> Logger

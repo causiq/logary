@@ -1,6 +1,7 @@
 namespace Logary
 
 open System.Net
+open System.Diagnostics
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Middleware =

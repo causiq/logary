@@ -1,5 +1,7 @@
 namespace Logary
 
+open System.Runtime.CompilerServices
+
 /// Extensions to facilitate reading Diagnostics.Stopwatch as a value that
 /// suits Logary
 [<AutoOpen; Extension>]

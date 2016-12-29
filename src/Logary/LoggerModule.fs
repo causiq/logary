@@ -351,17 +351,3 @@ module LoggerEx =
 
     member x.logSimple message : unit =
       Logger.logSimple x message
-
-/// A logger that does absolutely nothing, useful for feeding into the target
-/// that is actually *the* internal logger target, to avoid recursive calls to
-/// itself.
-type NullLogger() =
-  let instaPromise =
-    Alt.always (Promise (())) // new promise with unit value
-  let insta =
-    Alt.always ()
-  interface Logger with
-    member x.logWithAck logLevel messageFactory = instaPromise
-    member x.log logLevel messageFactory = insta
-    member x.level = Fatal
-    member x.name = PointName.ofList [ "Logary"; "NullLogger" ]

@@ -1,18 +1,10 @@
 namespace Logary
 
+open Hopac
 open System
-open System.Reflection
 open System.Runtime.CompilerServices
 open System.Runtime.InteropServices
-open System.Collections.Generic
-open Microsoft.FSharp.Reflection
 open Logary
-open Logary.Serialisation.Chiron
-open Logary.Serialisation.Chiron.Operators
-open Logary.Internals
-open Logary.Internals.Aether
-open Logary.Internals.Aether.Operators
-open Logary.Internals.TypeShape
 
 /// A content-type annotation for a byte-array.
 type ContentType = string
@@ -214,3 +206,58 @@ type Message =
     /// 0001-01-01.
     member x.timestampTicks : int64 =
       x.timestamp / Constants.NanosPerTick
+
+/// See the docs on the funtions for descriptions on how Ack works in conjunction
+/// with the promise.
+type Logger =
+  /// The PointName for this `Logger`: corresponds to the `name` field for the
+  /// `Messages` produced from this instance.
+  abstract name : PointName
+
+  /// Write a message to the Logger. The returned value represents the commit
+  /// point that Logary has acquired the message. The alternative is always
+  /// selectable (through `Alt.always ()` if the logger filtered out the message
+  /// due to a Rule).
+  ///
+  /// If the Message was not filtered through a Rule, but got sent onwards, the
+  /// promise is there to denote the ack that all targets have successfully
+  /// flushed the message. If you do not commit to the Alt then it will not be
+  /// logged.
+  ///
+  /// If you choose to not await the Promise/Ack it makes no difference, since
+  /// it will be garbage collected in the end, whether it's awaited or not.
+  abstract logWithAck : LogLevel -> (LogLevel -> Message) -> Alt<Promise<unit>>
+
+  /// Logs with the specified log level with backpressure via Logary's
+  /// buffers.
+  ///
+  /// Calls to this function will block the caller only while executing the
+  /// callback (if the level is active).
+  ///
+  /// The returned async value will yield when the message has been added to
+  /// the buffers of Logary.
+  ///
+  /// You need to start the (cold) Alt value for the logging to happen.
+  ///
+  /// You should not do blocking/heavy operations in the callback.
+  abstract log : LogLevel -> (LogLevel -> Message) -> Alt<unit>
+
+  /// Gets the currently set log level, aka. the granularity with which things
+  /// are being logged.
+  abstract level : LogLevel
+  //abstract bisect : (LogLevel -> Message) -> Alt<Promise<unit>>
+
+
+/// A disposable interface to use with `use` constructs and to create child-
+/// contexts. Since it inherits Logger, you can pass this scope down into child
+/// function calls. This interface should dovetail with how Zipkin/Dapper
+/// manages parent/child spans.
+type LoggerScope =
+  inherit IDisposable
+  inherit Logger
+
+type TimeScope =
+  inherit LoggerScope
+
+  /// Gets the currently elapsed duration of this time scope scope.
+  abstract elapsed : NodaTime.Duration

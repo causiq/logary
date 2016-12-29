@@ -4,23 +4,25 @@ namespace Logary
 
 #nowarn "1104"
 
+open System
 open Hopac
 open Hopac.Infixes
 open NodaTime
 open Logary
 open Logary.Message
 open Logary.Internals
-open Logary.Supervisor
 
 /// The protocol for a targets runtime path (not the shutdown).
 type TargetMessage =
   /// Log and send something that can be acked with the message.
   | Log of message:Message * ack:IVar<unit>
   /// Flush messages! Also, reply when you're done flushing your queue.
-  | Flush of ackCh:IVar<unit> * nack:Promise<unit>
+  | Flush of ack:IVar<unit> * nack:Promise<unit>
 
-/// Logary's way to talk with Targets. Targets are responsible for selecting
-/// over these channels in order to handle shutdown and messages.
+/// Logary's way to talk with Targets as seen from the Targets.
+///
+/// Targets are responsible for selecting over these channels in order to handle
+/// shutdown and messages.
 type TargetAPI =
   /// Gives you a way to perform internal logging and communicate with Logary.
   abstract runtimeInfo : RuntimeInfo
@@ -33,8 +35,7 @@ type TargetAPI =
 
 /// A target configuration is the 'reference' to the to-be-run target while it
 /// is being configured, and before Logary fully starts up.
-[<CustomEquality; CustomComparison>]
-type TargetConf =
+type TargetConf = // formerly TargetUtils
   { name       : string
     rules      : Rule list
     bufferSize : uint32
@@ -43,153 +44,107 @@ type TargetConf =
     server     : RuntimeInfo * TargetAPI -> Job<unit> }
 
   override x.ToString() =
-    sprintf "TargetConf(name = %s)" x.name
+    sprintf "TargetConf(%s)" x.name
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module TargetConf =
+
+  let create policy bufferSize server name : TargetConf =
+    let will = Will.create ()
+    { name = name
+      rules = Rule.empty :: []
+      bufferSize = bufferSize
+      policy = policy
+      server = server will }
+
+  let createSimple server name : TargetConf =
+    let policy =
+      Policy.exponentialBackoff (* init [ms] *) 100u
+                                (* mult *) 2u
+                                (* max dur [ms] *) 5000u
+                                (* retry indefinitely *) UInt32.MaxValue
+
+    { name = name
+      rules = Rule.empty :: []
+      bufferSize = 500u
+      policy = policy
+      server = server }
 
 module Target =
 
-  /// A target instance is a spawned actor instance together with the name of this
-  /// target instance.
-  type T<'will> =
+  /// A target instance is a target loop job that can be re-executed on failure,
+  /// and a normal path of communication; the `requests` `RingBuffer` as well as
+  /// and out-of-band-method of shutting down the target; the `shutdownCh`.
+  type T =
     private {
-      server   : SupervisedJob<unit>
-      requests : RingBuffer<TargetMessage>
-      shutdown : Ch<IVar<unit>>
-      will     : Will<'will>
+      server     : Job<unit>
+      requests   : RingBuffer<TargetMessage>
+      shutdownCh : Ch<IVar<unit>>
     }
 
   /// Send the target a message, returning the same instance as was passed in when
   /// the Message was acked.
-  let log (i : T<'will>) (msg : Message) : Alt<Promise<unit>> =
+  let log (x : T) (msg : Message) : Alt<Promise<unit>> =
     let ack = IVar ()
     Log (msg, ack)
-    |> RingBuffer.put i.requests
-    |> Alt.afterFun (fun _ -> ack :> Promise<unit>)
+    |> RingBuffer.put x.requests
+    |> Alt.afterFun (fun () -> ack :> Promise<unit>)
+
+  /// Logs the `Message` to all the targets.
+  let logAll (xs : T seq) (msg : Message) : Alt<Promise<unit>> =
+    // NOTE: it would probably be better to create a nack that cancels
+    // all outstanding requests to log (but lets others through)
+    let targets = List.ofSeq xs 
+    let latch = Latch targets.Length
+
+    let traverse =
+      targets
+      |> List.map (fun target -> target, IVar ())
+      |> List.traverseAltA (fun (target, ack) ->
+        Alt.prepareJob <| fun () ->
+        Job.start (ack ^=>. Latch.decrement latch) >>-.
+        RingBuffer.put target.requests (Log (msg, ack)))
+      |> Alt.afterFun (fun _ -> ())
+
+    traverse ^->. memo (Latch.await latch)
 
   /// Send a flush RPC to the target and return the async with the ACKs. This will
   /// create an Alt that is composed of a job that blocks on placing the Message
   /// in the queue first, and *then* is selective on the ack/nack once the target
   /// has picked up the TargetMessage.
-  let flush (t : T<_>) =
+  let flush (x : T) =
     Alt.withNackJob <| fun nack ->
-    let ackCh = IVar ()
-    Flush (ackCh, nack)
-    |> RingBuffer.put t.requests
-    |> Alt.afterFun (fun _ -> ackCh)
+    let ack = IVar ()
+    RingBuffer.put x.requests (Flush (ack, nack)) >>-.
+    ack
 
   /// Shutdown the target. The commit point is that the target accepts the
   /// shutdown signal and the promise returned is that shutdown has finished.
-  let shutdown i : Alt<Promise<_>> =
-    let p = IVar ()
-    i.shutdown *<- p ^->. (p :> Promise<_>)
+  let shutdown x : Alt<Promise<_>> =
+    let ack = IVar ()
+    Ch.give x.shutdownCh ack ^->. upcast ack
 
-  let create internalLogger name (conf : TargetConf) : T<'will> =
-    let ilogger =
-      internalLogger |> Logger.apply (setSimpleName (sprintf "Logary.Target(%s)" name))
-    { server = 
-      requests = RingBuffer.create conf.bufferSize
-      shutdown = Ch ()
-      will     = Will.create () }
+  let create (ri : RuntimeInfo) (conf : TargetConf) : Job<T> =
+    let ri =
+      let setName = setSimpleName (sprintf "Logary.Target(%s)" conf.name)
+      let setId = setContext "targetId" (Guid.NewGuid())
+      let logger = ri.logger |> Logger.apply (setName >> setId)
+      ri |> RuntimeInfo.setLogger logger
 
-/// Module with utilities for Targets to use for formatting LogLines.
-/// Currently only wraps a target loop function with a name and spawns a new actor from it.
-module TargetUtils =
+    let shutdownCh = Ch ()
+    RingBuffer.create conf.bufferSize >>- fun requests ->
 
-  /// Create a new standard named target, with no particular namespace,
-  /// given a job function and a name for the target.
-  let stdNamedTarget (loop : RuntimeInfo -> RingBuffer<_> -> Ch<IVar<unit>> -> Job<unit>) name : TargetConf =
-    let name' = PointName.parse name
-    { name = name'
-      initer = fun metadata -> job {
-        let! requests = RingBuffer.create 500u
-        let shutdown = Ch ()
-        return { server   = fun _ _ -> loop metadata requests shutdown
-                 requests = requests
-                 shutdown = shutdown
-                 name     = name' }
+    let api =
+      { new TargetAPI with
+          member x.runtimeInfo = ri
+          member x.requests = requests
+          member x.shutdownCh = shutdownCh
       }
-    }
 
-  /// Creates a new target instance that is capable of handling callback upon
-  /// previous crash, with the saved state (that it itself needs to pass into)
-  /// Logary before rethrowing its exception.
-  let willAwareNamedTarget loop name : TargetConf =
-    let name' = PointName.parse name
-    { name = name'
-      initer = fun runtimeInfo -> job {
-        let! requests = RingBuffer.create 500u
-        let shutdown = Ch ()
-        return { server   = loop runtimeInfo requests shutdown
-                 requests = requests
-                 shutdown = shutdown
-                 name     = name' }
-      }
-    }
+    { server     = conf.server (ri, api)
+      requests   = requests
+      shutdownCh = shutdownCh }
 
-/// A module that contains the required interfaces to do an "object oriented" DSL
-/// per target
-module FactoryApi =
-
-  open System
-  open System.Reflection
-  open System.ComponentModel
-  open System.Text.RegularExpressions
-
-  /// This is useful to implement if you want add-on assemblies to be able to
-  /// extend your builder. Then you just implement an interface that also
-  /// inherits this interface and makes your extensions to the target configuration
-  /// be extension methods in the extending assembly, calling this method to
-  /// read the conf, and then returning the modified configuration to the
-  /// builder by other means (e.g. by calling a method on the 'intermediate')
-  /// interface (that is in the core target builder configuration). Since the
-  /// builder knows its callback, it can implement this 'intermediate' interface
-  /// with a method taking the new configuration (that was read from and mutated
-  /// from here).
-  type ConfigReader<'a> =
-    /// an accessor for the internal state; don't use unless you know what you're
-    /// doing! Used by the migrations to get the current configuration. Allows you
-    /// to modify or use the configuration.
-    abstract ReadConf : unit -> 'a
-
-  /// This interface is used to construct a target specific configuration
-  /// from the builder.
-  [<NoEquality; NoComparison>]
-  type SpecificTargetConf =
-    /// Build the target configuration from a name (and previously called
-    /// methods on the instance behind the interface).
-    abstract Build : string -> TargetConf
-
-  /// You cannot supply your own implementation of this interface; its aim is
-  /// not to provide Liskov substitution, but rather to guide you to use the
-  /// API properly/easily.
-  [<NoEquality; NoComparison>]
-  type TargetConfBuild<'T when 'T :> SpecificTargetConf> =
-
-    /// Target-specific configuration, varies by T
-    abstract Target : 'T
-
-    /// The minimum level that the target logs with. Inclusive, so it
-    /// will configure the rule for the target to log just above this.
-    abstract MinLevel : LogLevel -> TargetConfBuild<'T>
-
-    /// Only log with the target if the source path matches the regex.
-    /// You can use (new Regex(".*")) to allow any, or simply avoid calling
-    /// this method.
-    abstract SourceMatching : Regex -> TargetConfBuild<'T>
-
-    /// <summary>
-    /// Only accept log lines that match the acceptor.
-    /// </summary>
-    /// <param name="acceptor">
-    /// The function to call for every log line, to verify
-    /// whether to let it through
-    /// </param>
-    abstract AcceptIf : Func<Message, bool> -> TargetConfBuild<'T>
-
-  type MetricsConfBuild =
-    // TODO: nest one more level here...
-    abstract member AddMetric : Duration * string * Func<PointName, Job<Logary.Metric.Metric>> -> MetricsConfBuild
-
-  /// All SpecificTargetConf implementors should take this as their single argument
-  /// ctor, to go back into the parent context
-  type ParentCallback<'T when 'T :> SpecificTargetConf> =
-    SpecificTargetConf -> TargetConfBuild<'T> ref
+  //let toService (ilogger : Logger) (x : T) : string -> Job<InitialisingService<_>> =
+  //  fun name ->
+  //    Service.createSimple ilogger name x.shutdownCh x.server

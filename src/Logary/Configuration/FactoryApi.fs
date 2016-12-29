@@ -19,7 +19,6 @@ open Logary.Internals
 open Logary.Configuration
 open Logary.Target
 open Logary.Targets
-open Logary.Target.FactoryApi
 
 type internal ConfBuilderT<'T when 'T :> SpecificTargetConf> =
   { parent      : ConfBuilder        // logary that is being configured
@@ -138,7 +137,6 @@ and ConfBuilder(conf) =
 module FactoryApiExtensions =
   open System
   open Logary
-  open Logary.Target.FactoryApi
   open Logary.Configuration
 
   /// <summary>

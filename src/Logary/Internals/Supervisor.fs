@@ -1,6 +1,7 @@
-﻿module Logary.Supervisor
+﻿module Logary.Internals
 
-open Logary.Internals
+open Logary
+open Logary.Message
 open Hopac
 open Hopac.Infixes
 
@@ -83,32 +84,79 @@ module Policy =
 type SupervisedJob<'a> = Job<Choice<'a,exn>>
 
 module Job =
-  let rec handleFailureWith p act (xJ : #Job<'x>) (ex : exn) : SupervisedJob<'x> =
+  let rec handleFailureWith (logger : Logger) p act (xJ : #Job<'x>) (ex : exn) : SupervisedJob<'x> =
     match act with
     | Restart ->
-      supervise p xJ
+      logger.infoWithBP (eventX "Exception from supervised job, restarting now.") >>=.
+      supervise logger p xJ
     | RestartDelayed t ->
-      timeOutMillis (int t) >>= fun () -> supervise p xJ
+      logger.infoWithBP (
+        eventX "Exception from supervised job, restarting in {delay}."
+        >> setField "delay" t) >>=.
+      timeOutMillis (int t) >>= fun () -> supervise logger p xJ
     | Terminate -> 
-      Choice2Of2 ex |> Job.result
+      logger.infoWithBP (eventX "Exception from supervised job, terminating.") >>=.
+      Job.result (Choice2Of2 ex)
     | Escalate ->
+      logger.infoWithBP (eventX "Exception from supervised job, escalating.") >>=.
       Job.raises ex
 
-  and makeHandler (p : Policy) : #Job<'x> -> exn -> SupervisedJob<'x> =
+  and makeHandler (logger : Logger) (p : Policy) : #Job<'x> -> exn -> SupervisedJob<'x> =
     match p with
     | Always act ->
-      handleFailureWith p act
+      handleFailureWith logger p act
     | DetermineWith e2act ->
       fun xJ ex ->
-        handleFailureWith p (e2act ex) xJ ex
+        handleFailureWith logger p (e2act ex) xJ ex
     | DetermineWithJob e2actJ ->
       fun xJ ex ->
-        e2actJ ex >>= fun act -> handleFailureWith p act xJ ex
+        e2actJ ex >>= fun act -> handleFailureWith logger p act xJ ex
 
-  and supervise (p : Policy) (xJ : #Job<'x>) : SupervisedJob<'x> =
-    let handle = makeHandler p
-    Job.tryIn xJ (Choice1Of2 >> Job.result) (handle xJ)
+  and supervise (logger : Logger) (p : Policy) : #Job<'x> -> SupervisedJob<'x> =
+    let handle = makeHandler logger p
+    fun xJ -> Job.tryIn xJ (Choice1Of2 >> Job.result) (handle xJ)
 
-  let superviseWithWill p w2xJ =
+  let superviseWithWill logger p w2xJ =
     let wl = Will.create ()
-    supervise p (w2xJ wl)
+    supervise logger p (w2xJ wl)
+
+// Assume:
+
+// In Supervisor
+// Policy -> #Job<'x> -> SupervisedJob<'x>
+// Policy -> (Will<'a> -> #Job<'x>) -> SupervisedJob<'x>
+// 
+
+// In TargetConf (module)
+// TargetConf.create : (Will<'w> -> (RuntimeInfo * TargetAPI -> Job<unit>))
+//                  -> TargetConf
+
+// In TTarget
+// TTarget.empty : Target internal state + Will<'a>
+// TTarget.create : Target internal config -> 
+//                  Target internal state + Will<'a> ->
+//                  (RuntimeInfo * TargetAPI -> Job<unit>)
+// ## call: TTarget -> TargetConf + Will -> :TargetConf
+
+
+// In Target
+// 
+// Target.create: RuntimeInfo (from Registry)
+//             -> name
+//             -> TargetConf
+//             -> Target.T
+
+// In Registry
+// create -> LogaryConf -> RuntimeInfo -> Target.T
+// ## call: Target.create : RuntimeInfo -> Target.T
+// ## call: Target.T -> Supervisor.superviseWithWill -> SupervisedJob<unit>
+// ## call: Target.toService : Target.T * SupervisedJob<unit>
+//                          -> Service<Target.T>
+
+// In Config
+// Logary config -> internal logger + Policy + name + rules + bufferSize = TargetConf
+//               -> Registry
+//               -> RuntimeInfo * TargetAPI
+
+// App code -> RuntimeInfo + TTarget.create + TTarget.empty
+//          -> Target.

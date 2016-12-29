@@ -4,100 +4,79 @@ open System
 open Hopac
 open Hopac.Infixes
 open Logary
-open Logary.Target
+open Logary.Internals
 
-module internal Logging =
-
-  let send (targets : TargetInstance list) msg : Alt<Promise<unit>> =
-    let latch = Latch targets.Length
-    let targets = targets |> List.map (fun target -> target, IVar ())
-    let traverse =
-      targets
-      |> List.traverseAltA (fun (target, ack) ->
-        Alt.prepareJob <| fun () ->
-        Job.start (ack ^=>. Latch.decrement latch) >>-.
-        RingBuffer.put target.requests (Log (msg, ack)))
-      |> Alt.afterFun (fun _ -> ())
-
-    traverse ^->. memo (Latch.await latch)
-
-  let logWithAck message : _ list -> Alt<Promise<unit>> = function
-    | []      ->
-      instaPromise
-    | targets ->
-      message |> send targets
-
-  let inline ensureName (logger : Logger) (msg : Message) =
-    match msg.name with
-    | PointName [||] ->
-      Message.setName logger.name msg
-    | _  ->
-      msg
-
-  type LoggerInstance =
-    { name    : PointName
-      targets : (MessageFilter * TargetInstance) list
-      level   : LogLevel }
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module InternalLogger =
+  /// This logger is special: in the above case the Registry takes the responsibility
+  /// of shutting down all targets, but this is a stand-alone logger that is used
+  /// to log everything in Logary with, so it needs to capable of handling its
+  /// own disposal. It must not throw under any circumstances.
+  type T =
+    private {
+      rule : Rule
+      addCh : Ch<TargetConf>
+      shutdownCh : Ch<unit>
+      messageCh : Ch<Message * Promise<unit> * Ch<Promise<unit>>>
+    }
 
     interface Logger with
-      member x.name = x.name
-
-      member x.level : LogLevel =
-        x.level
+      member x.logWithAck logLevel messageFactory =
+        if logLevel >= x.rule.level then
+          let message = messageFactory logLevel
+          x.messageCh *<+->- fun replCh nack -> message, nack, replCh
+        else
+          Promise.instaPromise 
 
       member x.log logLevel messageFactory =
-        if logLevel >= x.level then
+        if logLevel >= x.rule.level then
           let me : Logger = upcast x
           me.logWithAck logLevel messageFactory // delegate down
           |> Alt.afterFun (fun _ -> ())
         else
-          Alt.always()
+          Alt.always ()
 
-      member x.logWithAck logLevel messageFactory : Alt<Promise<unit>> =
-        if logLevel >= x.level then
-          let message = messageFactory logLevel |> ensureName x
-          x.targets
-          |> List.choose (fun (accept, t) -> if accept message then Some t else None)
-          |> logWithAck message
-        else
-          Promise.instaPromise
+      member x.level =
+        x.rule.level
 
-/// This logger is special: in the above case the Registry takes the responsibility
-/// of shutting down all targets, but this is a stand-alone logger that is used
-/// to log everything in Logary with, so it needs to capable of handling its
-/// own disposal. It must not throw under any circumstances.
-type InternalLogger =
-  { lvl  : LogLevel
-    trgs : Target.TargetInstance list }
+      member x.name =
+        PointName [| "Logary" |]
 
-  interface IAsyncDisposable with
-    member x.DisposeAsync() =
-      x.trgs
-      |> Seq.map Target.shutdown
-      |> Job.conIgnore
+  let create ri rule ts =
+    let addCh, messageCh, shutdownCh = Ch (), Ch (), Ch ()
 
-  interface Logger with
-    member x.log logLevel messageFactory =
-      if logLevel >= x.lvl then
-        let me : Logger = upcast x
-        me.logWithAck logLevel messageFactory // delegate down
-        |> Alt.afterFun (fun _ -> ())
-      else
-        Logging.insta
+    let rec server targets =
+      Alt.choose [
+        addCh ^=> fun targetConf ->
+          Target.create ri targetConf >>= fun t ->
+          server (t :: targets)
 
-    member x.logWithAck logLevel messageFactory =
-      if logLevel >= x.lvl then
-        let message = messageFactory logLevel
-        Logging.logWithAck message x.trgs
-      else
-        Logging.instaPromise
+        messageCh ^=> fun (message, nack, replCh) ->
+          Alt.choose [
+            Target.logAll targets message ^=> fun ack ->
+              replCh *<- ack ^=> fun () ->
+              server targets
 
-    member x.level =
-      x.lvl
+            nack ^=> fun () -> server targets
+          ]
 
-    member x.name =
-      PointName.ofList ["Logary" ]
+        shutdownCh ^=> fun () ->
+          targets
+          |> Seq.map Target.shutdown
+          |> Job.conCollect // await buffer
+          |> Job.bind Job.conCollect // await ack
+          |> Job.Ignore
+      ]
 
-  static member create level (targets : #seq<_>) =
-    { lvl = level; trgs = List.ofSeq targets }
-    :> Logger
+    server [] >>-.
+    { addCh = addCh
+      messageCh = messageCh
+      shutdownCh = shutdownCh
+      rule = rule }
+
+  let add (conf : TargetConf) (x : T) : Job<unit> =
+    Ch.give x.addCh conf
+    :> Job<_>
+
+  let shutdown (x : T) : Alt<unit> =
+    Ch.give x.shutdownCh ()

@@ -67,6 +67,7 @@
       <Paket>True</Paket>
       <Link>paket-files/RingBuffer.fs</Link>
     </Compile>
+    <!-- Below: values -->
     <Compile Include="HashMap.fsi" />
     <Compile Include="HashMap.fs" />
     <Compile Include="HashMapModule.fs" />
@@ -79,32 +80,47 @@
     <Compile Include="UnitsModule.fs" />
     <Compile Include="FieldModule.fs" />
     <Compile Include="Internals/Scheduling.fs" />
+    <Compile Include="Internals/NullLogger.fs" />
     <Compile Include="Middleware.fs" />
-    <Compile Include="Supervisor.fs" />
-    <Compile Include="Metric.fs" />
-    <Compile Include="Rule.fs" />
-    <Compile Include="Target.fs" />
-    <Compile Include="Globals.fs" />
+    <Compile Include="Internals/Globals.fs" />
+    <Compile Include="System.Stopwatch.fs" />
     <Compile Include="MessageModule.fs" />
     <Compile Include="MiddlewareModule.fs" />
     <Compile Include="LoggerModule.fs" />
     <Compile Include="NodaTime.Duration.fs" />
     <Compile Include="System.Dates.fs" />
-    <Compile Include="System.Stopwatch.fs" />
-    <Compile Include="Registry.fs" />
+
+    <!-- Below: runtime -->
+    <Compile Include="Internals/Supervisor.fs" />
+    <Compile Include="Internals/Service.fs" />
+    <Compile Include="Rule.fs" />
+    <Compile Include="Internals/RuntimeInfo.fs" />
+    <Compile Include="Internals/RuntimeInfoModule.fs" />
+    <Compile Include="Target.fs" />
     <Compile Include="Internals/InternalLogger.fs" />
+    <Compile Include="Metric.fs" />
     <Compile Include="Logging.fs" />
+    <Compile Include="Registry.fs" />
     <Compile Include="Transformers.fs" />
-    <!-- The below are target implementations and config -->
+
+    <!-- Below: formatting, serialisation -->
     <Compile Include="Formatting.fs" />
-    <Compile Include="Serialisation.fs" />
-    <Compile Include="Targets_Core.fs" />
-    <Compile Include="Targets_Noop.fs" />
-    <Compile Include="Targets_Graphite.fs" />
+    <!--<Compile Include="Serialisation.fs" />-->
+
+    <!-- Below: targets, metrics, healthchecks -->
+    <Compile Include="Targets/Core.fs" />
+    <Compile Include="Targets/Noop.fs" />
+    <Compile Include="Targets/Graphite.fs" />
+    <Compile Include="Metrics/Ticked.fs" />
+
+    <!-- Below: config -->
     <Compile Include="CSharp.fs" />
-    <Compile Include="Configuration.fs" />
-    <Compile Include="Configuration_FactoryApi.fs" />
-    <Compile Include="Configuration_Uri.fs" />
+    <Compile Include="Configuration/Target.fs" />
+    <Compile Include="Configuration/Metric.fs" />
+    <Compile Include="Configuration/HealthCheck.fs" />
+    <Compile Include="Configuration/Config.fs" />
+    <Compile Include="Configuration/FactoryApi.fs" />
+    <Compile Include="Configuration/Uri.fs" />
     <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="AssemblyInfo.fs" />
     <None Include="paket.references" />

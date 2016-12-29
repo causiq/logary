@@ -1,7 +1,8 @@
 ﻿/// The `Config` module handles interaction with the Registry by building the
 /// required configuration for Logary.
-namespace Logary
+namespace Logary.Configuration
 
+open System
 open System.Runtime.CompilerServices
 open Hopac
 open Hopac.Infixes
@@ -15,31 +16,8 @@ open Logary.Metric
 open Logary.Registry
 open Logary.Targets
 
-type ValidationError = string
-
-/// Thrown from `validate` if the configuration is wrong.
-[<DebuggerDisplay("{ToString()}")>]
-type ValidationException(rErr : ValidationError, invalidRules : Rule Set,
-                         tErr : ValidationError, invalidTargets : TargetConf Set) =
-  inherit Exception()
-  let message =
-    let join xs = xs |> Set.map (sprintf "%O") |> String.concat ", "
-    let present = function | "" -> "" | err -> sprintf " - %s" err
-    sprintf "Validation of the logary instantiation failed:\n\
-             InvalidRules: [%s]%s\n\
-             InvalidTargets: [%s]%s"
-      (join invalidRules) (present rErr)
-      (join invalidTargets) (present tErr)
-  /// Gets the invalid rules that failed validation by means of having no
-  /// targets configured for their 'target' properties.
-  member x.InvalidRules   = invalidRules
-  /// Gets the invalid tagets that failed validation by not having any rules
-  /// that points to them.
-  member x.InvalidTargets = invalidTargets
-  override x.Message = message
-  override x.ToString() = message
-
-module Configuration =
+[<AutoOpen>]
+module Config =
   type T =
     private {
       rules        : Rule list
@@ -81,6 +59,7 @@ module Configuration =
       RuntimeInfo.create conf.runtimeInfo.serviceName
 
     let logger =
+      // TODO: let InternalLogger handle this
       tconfs
       |> List.map (Target.init internalRuntime)
       |> Job.conCollect
