@@ -1,4 +1,4 @@
-module Logary.Internals
+namespace Logary.Internals
 
 open Hopac
 open Logary

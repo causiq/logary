@@ -19,7 +19,7 @@ type internal LoggingConfig =
   abstract getConsoleSemaphore : unit -> obj
 
 /// This module keeps track of the LoggingConfig reference.
-module internal Globals =
+module internal Global =
   open NodaTime
 
   type T =
@@ -106,13 +106,13 @@ module internal Globals =
     Flyweight(name, Verbose)
 
   /// Gets the current timestamp.
-  let timestamp () : EpochNanoSeconds =
+  let getTimestamp () : EpochNanoSeconds =
     (fst !config).getTimestamp ()
 
   /// Returns the synchronisation object to use when printing to the console.
-  let semaphore () =
+  let getConsoleSemaphore () =
     (fst !config).getConsoleSemaphore()
 
   /// Run the passed function under the console semaphore lock.
   let lockSem fn =
-    lock (semaphore ()) fn
+    lock (getConsoleSemaphore ()) fn

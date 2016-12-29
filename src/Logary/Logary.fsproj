@@ -82,7 +82,7 @@
     <Compile Include="Internals/Scheduling.fs" />
     <Compile Include="Internals/NullLogger.fs" />
     <Compile Include="Middleware.fs" />
-    <Compile Include="Internals/Globals.fs" />
+    <Compile Include="Internals/Global.fs" />
     <Compile Include="System.Stopwatch.fs" />
     <Compile Include="MessageModule.fs" />
     <Compile Include="MiddlewareModule.fs" />

@@ -35,8 +35,8 @@ module RuntimeInfo =
   let create (service : string) (host : string) =
     { service = service
       host = host
-      getTimestamp = Globals.timestamp
-      getConsoleSemaphore = Globals.semaphore
+      getTimestamp = Global.getTimestamp
+      getConsoleSemaphore = Global.getConsoleSemaphore
       logger = NullLogger.instance }
     :> RuntimeInfo
 

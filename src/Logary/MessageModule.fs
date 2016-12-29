@@ -179,7 +179,7 @@ module Message =
       fields    = Map.empty
       context   = Map.empty
       level     = level
-      timestamp = Globals.timestamp() }
+      timestamp = Global.getTimestamp () }
 
   /// Creates a new event message template with level. Compared to `event`,
   /// this function has its parameters' order flipped.
@@ -195,7 +195,7 @@ module Message =
       fields    = Map.empty
       context   = Map.empty
       level     = LogLevel.Debug
-      timestamp = Globals.timestamp() }
+      timestamp = Global.getTimestamp () }
 
   /// Creates a new gauge message with data point name and scalar value
   [<CompiledName "Gauge">]
@@ -205,7 +205,7 @@ module Message =
       fields    = Map.empty
       context   = Map.empty
       level     = LogLevel.Debug
-      timestamp = Globals.timestamp() }
+      timestamp = Global.getTimestamp () }
 
   [<CompiledName "Derived">]
   let derivedWithUnit dp units value =
@@ -214,7 +214,7 @@ module Message =
       fields    = Map.empty
       context   = Map.empty
       level     = LogLevel.Debug
-      timestamp = Globals.timestamp() }
+      timestamp = Global.getTimestamp () }
 
   [<CompiledName "Derived">]
   let derived dp value =
@@ -223,7 +223,7 @@ module Message =
       fields    = Map.empty
       context   = Map.empty
       level     = LogLevel.Debug
-      timestamp = Globals.timestamp() }
+      timestamp = Global.getTimestamp () }
 
   /// Create a verbose event message
   [<CompiledName "EventVerbose">]
@@ -444,7 +444,7 @@ module Message =
   /// Update the message with the current timestamp.
   [<CompiledName "UpdateTimestamp">]
   let updateTimestamp message =
-    { message with timestamp = Globals.timestamp () }
+    { message with timestamp = Global.getTimestamp () }
 
   /// Replaces the value of the message with a new Event with the supplied format
   [<CompiledName "SetEvent">]

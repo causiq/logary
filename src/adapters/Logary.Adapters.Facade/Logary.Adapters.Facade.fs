@@ -324,7 +324,8 @@ module LoggerCSharpAdapter =
         |> fun t -> t.GetValue(null, null)
 
       fun (name : string[]) (level : obj) ->
-        let args = [| box name; level; emptyValue; box emptyDic; box (Date.timestamp()) |]
+        let ts =  Logary.Internals.Global.getTimestamp ()
+        let args = [| box name; level; emptyValue; box emptyDic; box ts |]
         //printfn "====> %s(%A)" logMessageT.Name args
         Activator.CreateInstance(logMessageT, args)
 
@@ -404,12 +405,12 @@ module LogaryFacadeAdapter =
         | GetLogger name ->
           invocation.ReturnValue <-
             PointName name
-            |> logManager.getLogger
+            |> logManager.getLoggerT
             |> LoggerCSharpAdapter.create loggerType
         | GetTimestamp ->
-          invocation.ReturnValue <- Date.timestamp()
+          invocation.ReturnValue <- Logary.Internals.Global.getTimestamp ()
         | ConsoleSemaphore ->
-          invocation.ReturnValue <- Logary.Internals.Globals.consoleSemaphore
+          invocation.ReturnValue <- Logary.Internals.Global.getConsoleSemaphore ()
 
   /// You should probably gaze at `initialise` rather than this function. This
   /// function creates a configuration matching the `configType`; and it also
@@ -428,16 +429,16 @@ module LogaryFacadeAdapter =
             field.PropertyType,
             (unbox >> fun name ->
               PointName name
-              |> logManager.getLogger
+              |> logManager.getLoggerT
               |> LoggerAdapter.create loggerType))
 
         | "timestamp" ->
           FSharpValue.MakeFunction(
             field.PropertyType,
-            fun _ -> Date.timestamp () |> box)
+            fun _ -> Logary.Internals.Global.getTimestamp () |> box)
 
         | "consoleSemaphore" ->
-          Logary.Internals.Globals.consoleSemaphore
+          Logary.Internals.Global.getConsoleSemaphore ()
 
           // If you want to try this file in the interactive...
           //obj()

@@ -44,7 +44,7 @@ let getCurrentLoggerName () =
 [<CompiledName "GetLoggerByPointName">]
 let getLoggerByPointName name =
   if isNull (box name) then nullArg "name"
-  Globals.getStaticLogger name :> Logger
+  Global.getStaticLogger name :> Logger
 
 /// Gets a logger by a given name.
 [<CompiledName "GetLoggerByName">]

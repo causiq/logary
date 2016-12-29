@@ -10,8 +10,8 @@ open Logary.Message
 open Logary.Target
 open Logary.Internals
 
-module internal GlobalsService =
-  open Globals
+module internal GlobalService =
+  open Global
 
   let create (t : T) (ilogger : Logger) =
     let logger = ilogger |> Logger.apply (setSimpleName "Logary.Globals")
@@ -202,10 +202,10 @@ module Registry =
   module internal Impl =
     let createGlobals (conf : LogaryConf) (x : T) =
       let config =
-        { Globals.defaultConfig with
+        { Global.defaultConfig with
             getLogger = getLoggerT x
             getLoggerWithMiddleware = getLoggerWithMiddlewareT x }
-      GlobalsService.create config conf.runtimeInfo.logger
+      GlobalService.create config conf.runtimeInfo.logger
 
     let rec server (x : T) =
       Alt.choose [
@@ -249,6 +249,6 @@ module LogManagerEx =
     /// Get a logger denoted by the name passed as the parameter. This name can either be
     /// a specific name that you keep for a sub-component of your application or
     /// the name of the class. Also have a look at Logging.GetCurrentLogger().
-    member __.getLoggerT (x : LogManager) name : Logger =
+    member x.getLoggerT name : Logger =
       x.getLogger name
       |> PromisedLogger.create name
