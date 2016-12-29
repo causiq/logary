@@ -77,12 +77,13 @@ type HealthCheckAPI =
   /// Health checks should call this to produce their output as often as they
   /// like.
   abstract produce : Check -> Alt<unit>
+  abstract shutdownCh : Ch<IVar<unit>>
 
 type HealthCheckConf =
   { name       : string
     bufferSize : uint32
     policy     : Policy
-    server     : RuntimeInfo * HealthCheckAPI -> SupervisedJob<unit> }
+    server     : RuntimeInfo * HealthCheckAPI -> Job<unit> }
 
 module HealthCheck =
 

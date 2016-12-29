@@ -476,10 +476,9 @@ module Message =
 
     // If there's no "errors" field, add it
     let msg =
-      match Lens.getPartial Optic.errors_ msg with
+      match Optic.get Optic.errors_ msg with
       | Some x ->
         msg
-
       | None ->
         setFieldValue KnownLiterals.ErrorsFieldName (Field (Array [], None)) msg
 

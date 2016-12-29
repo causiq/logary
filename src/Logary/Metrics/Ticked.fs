@@ -4,7 +4,6 @@ open Hopac
 open Hopac.Infixes
 open Logary
 open Logary.Internals
-open Logary.Internals.Supervisor
 open Logary.Internals.Aether
 
 module Ticked =

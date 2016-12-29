@@ -8,7 +8,7 @@ type RuntimeInfo =
   /// Name of the service. Will show up as 'service' in e.g. Logstash/Kibana and
   /// is the basis for a lot of the sorting and health checking that Riemann
   /// does.
-  abstract serviceName : string
+  abstract service : string
   /// The host name of the machine that is running Logary. This is almost
   /// always required to coordinate logs in a distributed system and is
   /// also useful when reading logs from multiple machines at the same time.

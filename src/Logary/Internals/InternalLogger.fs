@@ -42,7 +42,7 @@ module InternalLogger =
       member x.name =
         PointName [| "Logary" |]
 
-  let create ri rule ts =
+  let create ri rule =
     let addCh, messageCh, shutdownCh = Ch (), Ch (), Ch ()
 
     let rec server targets =

@@ -186,7 +186,7 @@ module internal Impl =
         msg.env_version <- "4.0.7"
         msg.``type``    <- MessageType
         msg.addField (Field("service", Nullable ValueType.STRING, null,
-                            [ ri.serviceName ]))
+                            [ ri.service ]))
 
         match msg |> Encoder.encode conf state.stream with
         | Choice1Of2 run ->

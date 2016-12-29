@@ -1,9 +1,9 @@
 namespace Logary.Serialisation
 
 open System
+open Logary
 open Logary.Serialisation.Chiron
 open Logary.Serialisation.Chiron.Operators
-open Logary
 
 module internal Json =
 

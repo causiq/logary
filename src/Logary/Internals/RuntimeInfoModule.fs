@@ -9,13 +9,13 @@ module RuntimeInfo =
   type T =
     internal { 
       host : string
-      serviceName : string
+      service : string
       getTimestamp : unit -> EpochNanoSeconds
       getConsoleSemaphore : unit -> obj
       logger : Logger
     }
     interface RuntimeInfo with
-      member x.serviceName = x.serviceName
+      member x.service = x.service
       member x.host = x.host
       member x.getTimestamp () = x.getTimestamp ()
       member x.getConsoleSemaphore () = x.getConsoleSemaphore ()
@@ -23,7 +23,7 @@ module RuntimeInfo =
 
     static member create (other : RuntimeInfo) =
       { host = other.host
-        serviceName = other.serviceName
+        service = other.service
         getTimestamp = other.getTimestamp
         getConsoleSemaphore = other.getConsoleSemaphore
         logger = other.logger }
@@ -32,8 +32,8 @@ module RuntimeInfo =
   ///
   /// This function gives you the ability to pass a custom clock to use within
   /// logary, as well as a host name that the logary source has.
-  let create (serviceName : string) (host : string) (clock : NodaTime.IClock) =
-    { serviceName = serviceName
+  let create (service : string) (host : string) =
+    { service = service
       host = host
       getTimestamp = Globals.timestamp
       getConsoleSemaphore = Globals.semaphore
@@ -42,9 +42,9 @@ module RuntimeInfo =
 
   let setServiceName sn : RuntimeInfo -> RuntimeInfo = function
     | :? T as t ->
-      { t with serviceName = sn } :> _
+      { t with service = sn } :> _
     | other ->
-      { T.create other with serviceName = sn } :> _
+      { T.create other with service = sn } :> _
 
   let setHost host : RuntimeInfo -> RuntimeInfo = function
     | :? T as t ->
@@ -64,7 +64,8 @@ module RuntimeInfo =
     | other ->
       { T.create other with getConsoleSemaphore = fn } :> _
 
-  let setLogger logger : RuntimeInfo -> RuntimeInfo = function
+  let setLogger logger : RuntimeInfo -> RuntimeInfo =
+    function
     | :? T as t ->
       { t with logger = logger } :> _
     | other ->

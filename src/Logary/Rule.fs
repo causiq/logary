@@ -70,8 +70,6 @@ module Rule =
 
   let private allHiera = Regex(".*", RegexOptions.Compiled)
 
-  /// An empty rule; don't forget to give it a proper name or the configuration
-  /// won't work, e.g. using the `createForTarget` method.
   let empty =
     { hiera         = allHiera
       messageFilter = fun _ -> true

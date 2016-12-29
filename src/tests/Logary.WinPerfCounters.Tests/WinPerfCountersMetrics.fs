@@ -9,7 +9,7 @@ open Logary.Internals
 open Logary.Metrics.WinPerfCounters
 
 let run = Async.RunSynchronously
-let nullInfo = { serviceName = "tests"; logger = NullLogger() }
+let nullInfo = { service = "tests"; logger = NullLogger() }
 
 let withMetric label f =
   let mc = create Common.cpuTimeConf "cpuTime" (Duration.FromMilliseconds 200L)

@@ -13,10 +13,19 @@ module Middleware =
 
   /// Sets the host name as a context value
   [<CompiledName "Host">]
-  let host : Middleware =
+  let host host : Middleware =
+    let value = String host
+    fun next msg ->
+      Message.setContextValue KnownLiterals.HostContextName value msg
+      |> next
+
+
+  /// Sets the host name as a context value
+  [<CompiledName "DnsHost">]
+  let dnsHost : Middleware =
     let value = String (Dns.GetHostName())
     fun next msg ->
-      Message.setContextValue "host" value msg
+      Message.setContextValue KnownLiterals.HostContextName value msg
       |> next
 
   /// Sets the service name as a context value
@@ -24,7 +33,7 @@ module Middleware =
   let service (name : string) : Middleware =
     let value = String name
     fun next msg ->
-      Message.setContextValue "service" value msg
+      Message.setContextValue KnownLiterals.ServiceContextName value msg
       |> next
 
   let private pn = Process.GetCurrentProcess()
@@ -41,6 +50,13 @@ module Middleware =
   let processId : Middleware =
     fun next msg ->
       Message.setContext "processId" pn.Id msg
+      |> next
+
+  /// Always sets this context value.
+  [<CompiledName "Context">]
+  let context name value =
+    fun next msg ->
+      Message.setContext name value msg
       |> next
 
   /// Compose the list of middlewares together into a single Message->Message function.

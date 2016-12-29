@@ -1,16 +1,29 @@
-﻿/// A module for converting Messages to text/strings.
-module Logary.Formatting
+﻿namespace Logary
 
 open System
 open System.Globalization
 open System.Collections
 open System.Collections.Generic
 open System.Text
+open System.IO
 open Microsoft.FSharp.Reflection
 open NodaTime
 open Logary
 open Logary.Internals
 open Logary.Internals.FsMessageTemplates
+
+/// A thing that efficiently writes a message to a TextWriter.
+type MessageWriter =
+  abstract write : TextWriter -> Message -> unit
+
+[<AutoOpen>]
+module MessageWriterEx =
+  type MessageWriter with
+    [<Obsolete "Try to write directly to a System.IO.TextWriter instead">]
+    member x.format (m : Message) =
+      use sw = new StringWriter(StringBuilder())
+      x.write sw m
+      sw.ToString()
 
 module MessageParts =
 
@@ -25,7 +38,6 @@ module MessageParts =
     |> Seq.map (function
       | TextToken (_, t) ->
         t
-
       | PropToken (_, p) ->
         match Map.tryFind (PointName.ofSingle p.Name) args with
         | Some (Field (value, units)) -> 
@@ -35,7 +47,7 @@ module MessageParts =
             | None ->
               Units.formatValue value
         | None -> p.ToString()
-        )
+      )
     |> Seq.iter (append sb)
     sb.ToString()
 
@@ -144,12 +156,12 @@ module MessageParts =
       .ToString("o", CultureInfo.InvariantCulture)
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module StringFormatter =
+module MessageWriter =
   open MessageParts
 
-  let internal expanded nl ending : StringFormatter =
-    { new StringFormatter with
-        member x.format m =
+  let internal expanded nl ending : MessageWriter =
+    { new MessageWriter with
+        member x.write tw m =
           let level = string (caseNameOf m.level).[0]
           // https://noda-time.googlecode.com/hg/docs/api/html/M_NodaTime_OffsetDateTime_ToString.htm
           let time = formatTimestamp m.timestampTicks
@@ -158,32 +170,36 @@ module StringFormatter =
           let fields = (if Map.isEmpty m.fields then "" else formatFields nl m.fields)
           let context = (if Map.isEmpty m.context then "" else formatContext nl m.context)
           sprintf "%s %s: %s [%s]%s%s%s" level time body name fields context ending
+          |> tw.Write
     }
 
   /// Verbatim simply outputs the message and no other information
   /// and doesn't append a newline to the string.
   // TODO: serialize properly
   let verbatim =
-    { new StringFormatter with
-        member x.format m =
+    { new MessageWriter with
+        member x.write tw m =
           match m.value with
           | Event format ->
             formatTemplate format m.fields
+            |> tw.Write
 
           | Gauge (value, unit)
           | Derived (value, unit) ->
             value.ToString()
+            |> tw.Write
     }
 
   /// VerbatimNewline simply outputs the message and no other information
   /// and does append a newline to the string.
   let verbatimNewLine =
-    { new StringFormatter with
-        member x.format m =
-          sprintf "%s%s" (verbatim.format m) (Environment.NewLine)
+    { new MessageWriter with
+        member x.write tw m =
+          verbatim.write tw m
+          tw.WriteLine()
     }
 
-  /// <see cref="StringFormatter.LevelDatetimePathMessageNl" />
+  /// <see cref="MessageWriter.LevelDatetimePathMessageNewLine" />
   let levelDatetimeMessagePath =
     expanded Environment.NewLine ""
 
@@ -193,18 +209,5 @@ module StringFormatter =
   /// then the path in square brackets: [Path.Here], the message and a newline.
   /// Exceptions are called ToString() on and prints each line of the stack trace
   /// newline separated.
-  let levelDatetimeMessagePathNl =
+  let levelDatetimeMessagePathNewLine =
     expanded Environment.NewLine Environment.NewLine
-
-open NodaTime.TimeZones
-
-/// A JsonFormatter takes a message and converts it into a JSON string.
-module JsonFormatter =
-  open Chiron
-
-  /// Creates a new JSON formatter.
-  let Default =
-    { new StringFormatter with
-        member x.format msg =
-          Json.format (Json.serialize msg)
-    }

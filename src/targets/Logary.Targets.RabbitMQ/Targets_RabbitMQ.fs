@@ -286,7 +286,7 @@ module internal Impl =
            (shutdown : Ch<_>) =
 
     let rec connect () : Job<unit> =
-      let conn = createConnection ri.serviceName conf
+      let conn = createConnection ri.service conf
       let model, acks, nacks = createModel conn
       active { connection = conn
                model      = model

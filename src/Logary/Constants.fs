@@ -6,9 +6,11 @@ module KnownLiterals =
   [<Literal>]
   let ErrorsFieldName = "errors"
 
-  /// The 
   [<Literal>]
   let ServiceContextName = "service"
+
+  [<Literal>]
+  let HostContextName = "host"
 
   /// The tags context field
   [<Literal>]

@@ -10,26 +10,25 @@ module TextWriter =
   open Hopac.Infixes
   open Logary
   open Logary.Internals
-  open Logary.Target
-  open Logary.Formatting
+  open Logary.Configuration.Target
 
   /// Configuration for a text writer
   type TextWriterConf =
-    { /// A string formatter to specify how to write the Message
-      formatter  : StringFormatter
+    { /// A message writer to specify how to write the Message.
+      writer    : MessageWriter
       /// the non-error text writer to output to
-      output     : TextWriter
+      output    : TextWriter
       /// the error text writer to output to
-      error      : TextWriter
+      error     : TextWriter
       /// whether to flush text writer after each line
-      flush      : bool
+      flush     : bool
       /// the log level that is considered 'important' enough to write to the
       /// error text writer
-      isErrorAt  : LogLevel }
+      isErrorAt : LogLevel }
 
     [<CompiledName "Create">]
-    static member create(output, error, ?formatter : StringFormatter) =
-      { formatter = defaultArg formatter JsonFormatter.Default
+    static member create(output, error, ?formatter : MessageWriter) =
+      { writer    = defaultArg formatter MessageWriter.levelDatetimeMessagePathNewLine
         output    = output
         error     = error
         flush     = false
@@ -37,25 +36,11 @@ module TextWriter =
 
   module internal Impl =
 
-    let loop (twConf : TextWriterConf)
-             (ri : RuntimeInfo)
-             (requests : RingBuffer<TargetMessage>)
-             (shutdown : Ch<IVar<unit>>) =
-
-      // Note: writing lines does not matching the behaviour wanted from the
-      // coloured console target.
-      let writeLine (tw : TextWriter) (str : string) : Job<unit> =
-        // this should be the default for the console unless explicitly disabled;
-        // the combination of locks and async isn't very good, so we'll use the
-        // synchronous function to do the write if we have a semaphore
-        Job.Scheduler.isolate <| fun _ ->
-          let sem = ri.getConsoleSemaphore()
-          lock sem <| fun _ ->
-            tw.WriteLine str
+    let loop (twConf : TextWriterConf) (ri : RuntimeInfo, api : TargetAPI) =
 
       let rec loop () : Job<unit> =
         Alt.choose [
-          shutdown ^=> fun ack ->
+          api.shutdownCh ^=> fun ack ->
             twConf.output.Dispose()
 
             if not (obj.ReferenceEquals(twConf.output, twConf.error)) then
@@ -63,11 +48,13 @@ module TextWriter =
 
             ack *<= () :> Job<_>
 
-          RingBuffer.take requests ^=> function
-            | Log (logMsg, ack) ->
+          RingBuffer.take api.requests ^=> function
+            | Log (message, ack) ->
               job {
-                let writer = if logMsg.level < twConf.isErrorAt then twConf.output else twConf.error
-                do! writeLine writer (twConf.formatter.format logMsg)
+                let writer = if message.level < twConf.isErrorAt then twConf.output else twConf.error
+                do! Job.Scheduler.isolate <| fun _ ->
+                  lock (ri.getConsoleSemaphore()) <| fun _ ->
+                    twConf.writer.write writer message
 
                 if twConf.flush then
                   do! Job.fromUnitTask (fun _ -> writer.FlushAsync())
@@ -80,7 +67,7 @@ module TextWriter =
               job {
                 do! Job.fromUnitTask (fun _ -> twConf.output.FlushAsync())
                 do! Job.fromUnitTask (fun _ -> twConf.error.FlushAsync())
-                do! Ch.give ack () <|> nack
+                do! IVar.fill ack ()
                 return! loop ()
               }
         ] :> Job<_>
@@ -89,17 +76,17 @@ module TextWriter =
 
   [<CompiledName "Create">]
   let create (conf : TextWriterConf) name =
-    TargetUtils.stdNamedTarget (Impl.loop conf) name
+    TargetConf.createSimple (Impl.loop conf) name
 
   /// Use with LogaryFactory.New( s => s.Target<TextWriter.Builder>() )
-  type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+  type Builder(conf, callParent : ParentCallback<Builder>) =
     member x.WriteTo(out : #TextWriter, err : #TextWriter) =
       ! (callParent <| Builder({ conf with output = out; error = err }, callParent))
 
-    new(callParent : FactoryApi.ParentCallback<_>) =
+    new(callParent : ParentCallback<_>) =
       Builder(TextWriterConf.create(System.Console.Out, System.Console.Error), callParent)
 
-    interface Logary.Target.FactoryApi.SpecificTargetConf with
+    interface SpecificTargetConf with
       member x.Build name = create conf name
 
 /// The console Target for Logary
@@ -107,25 +94,24 @@ module Console =
   open System.Runtime.CompilerServices
   open Logary
   open Logary.Internals
-  open Logary.Formatting
-  open Logary.Target
+  open Logary.Configuration.Target
 
   /// Console configuration structure.
   type ConsoleConf =
-    { formatter : StringFormatter }
+    { writer : MessageWriter }
 
     [<CompiledName "Create">]
-    static member create formatter =
-      { formatter = formatter }
+    static member create writer =
+      { writer = writer }
 
   /// Default console target configuration.
   let empty =
-    { formatter = StringFormatter.levelDatetimeMessagePath }
+    ConsoleConf.create MessageWriter.levelDatetimeMessagePath
 
   [<CompiledName "Create">]
   let create conf name =
     TextWriter.create
-      { formatter = conf.formatter
+      { writer    = conf.writer
         output    = System.Console.Out
         error     = System.Console.Error
         flush     = false
@@ -133,25 +119,25 @@ module Console =
       name
 
   /// Use with LogaryFactory.New( s => s.Target<Console.Builder>() )
-  type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+  type Builder(conf, callParent : ParentCallback<Builder>) =
 
     /// Specify the formatting style to use when logging to the console
-    member x.WithFormatter( sf : StringFormatter ) =
-      ! (callParent <| Builder({ conf with formatter = sf }, callParent))
+    member x.WithFormatter( sf : MessageWriter ) =
+      ! (callParent <| Builder({ conf with writer = sf }, callParent))
 
-    new(callParent : FactoryApi.ParentCallback<_>) =
+    new(callParent : ParentCallback<_>) =
       Builder(empty, callParent)
 
-    interface Logary.Target.FactoryApi.SpecificTargetConf with
+    interface SpecificTargetConf with
       member x.Build name = create conf name
 
 module LiterateConsole =
   open System
   open System.Globalization
   open Logary
-  open Logary.Formatting
-  open Logary.Target
   open Logary.Internals
+  open Logary.Internals.Aether
+  open Logary.Configuration.Target
   open Hopac
 
   module Tokens =
@@ -211,7 +197,9 @@ module LiterateConsole =
 
     /// Get the exceptions out from the Message (errors_)
     let literateTokeniseMessageExceptions (context : LiterateConsoleConf) message =
-      let exns = Utils.Aether.Lens.getPartialOrElse Message.Lenses.errors_ [] message
+      let exns =
+        Optic.get Message.Optic.errors_ message
+        |> Option.orDefault []
       let getStringFromMapOrFail exnObjMap fieldName =
         match exnObjMap |> Map.find fieldName with
         | String m -> m
@@ -530,21 +518,14 @@ module LiterateConsole =
     open Hopac
     open Hopac.Infixes
 
-    let loop (lcConf : LiterateConsoleConf)
-             (ri : RuntimeInfo)
-             (requests : RingBuffer<TargetMessage>)
-             (shutdown : Ch<IVar<unit>>) =
-
+    let loop (lcConf : LiterateConsoleConf) (ri : RuntimeInfo, api : TargetAPI) =
       let output (data : ColouredText seq) : Job<unit> =
         Job.Scheduler.isolate <| fun _ ->
           lcConf.colourWriter (ri.getConsoleSemaphore ()) data
 
       let rec loop () : Job<unit> =
         Alt.choose [
-          shutdown ^=> fun ack ->
-            ack *<= () :> Job<_>
-
-          RingBuffer.take requests ^=> function
+          RingBuffer.take api.requests ^=> function
             | Log (logMsg, ack) ->
               job {
                 try
@@ -564,19 +545,23 @@ module LiterateConsole =
 
             | Flush (ack, nack) ->
               job {
-                do! IVar.fill ack () <|> nack
+                do! IVar.fill ack ()
                 return! loop ()
               }
+
+          api.shutdownCh ^=> fun ack ->
+            ack *<= ()
+
         ] :> Job<_>
 
       loop()
 
   [<CompiledName "Create">]
   let create conf name =
-    TargetUtils.stdNamedTarget (Impl.loop conf) name
+    TargetConf.createSimple (Impl.loop conf) name
 
   /// Use with LogaryFactory.New( s => s.Target<LiterateConsole.Builder>() )
-  type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+  type Builder(conf, callParent : ParentCallback<Builder>) =
     let update (conf' : LiterateConsoleConf) : Builder =
       Builder(conf', callParent)
 
@@ -588,10 +573,10 @@ module LiterateConsole =
     member x.WithLevelFormatter(toStringFun : Func<LogLevel, string>) =
       update { conf with getLogLevelText = toStringFun.Invoke }
 
-    new(callParent : FactoryApi.ParentCallback<_>) =
+    new(callParent : ParentCallback<_>) =
       Builder(empty, callParent)
 
-    interface Logary.Target.FactoryApi.SpecificTargetConf with
+    interface SpecificTargetConf with
       member x.Build name = create conf name
 
 // boolean IsLogging() method, correct by excluded middle
@@ -606,39 +591,32 @@ module Debugger =
   open Logary
   open Logary.Internals
   open Logary.Target
-  open Logary.Formatting
+  open Logary.Configuration.Target
 
   type DebuggerConf =
-    { formatter : StringFormatter }
+    { writer : MessageWriter }
 
-    /// Create a new Debugger configuration with a given formatter (which
+    /// Create a new Debugger configuration with a given writer (which
     /// formats how the Messages and Gauges/Derived-s are printed)
     [<CompiledName "Create">]
-    static member create(?formatter) =
-      { formatter = defaultArg formatter (StringFormatter.levelDatetimeMessagePathNl) }
+    static member create (?writer) =
+      { writer = defaultArg writer (MessageWriter.levelDatetimeMessagePathNewLine) }
 
   /// Default debugger configuration
-  let empty =
-    { formatter = StringFormatter.levelDatetimeMessagePathNl }
+  let empty = DebuggerConf.create ()
 
   module private Impl =
 
-    let loop conf metadata
-             (requests : RingBuffer<_>)
-             (shutdown : Ch<_>) =
-      let formatter = conf.formatter
+    let loop conf (ri : RuntimeInfo, api : TargetAPI) =
       let offLevel = 6
 
       let rec loop () : Job<unit> =
         Alt.choose [
-          shutdown ^=> fun ack ->
-            ack *<= () :> Job<_>
-
-          RingBuffer.take requests ^=> function
+          RingBuffer.take api.requests ^=> function
             | Log (message, ack) when Debugger.IsLogging() ->
               job {
                 let path = PointName.format message.name
-                Debugger.Log(offLevel, path, formatter.format message)
+                Debugger.Log(offLevel, path, conf.writer.format message)
                 do! ack *<= ()
                 return! loop ()
               }
@@ -648,9 +626,12 @@ module Debugger =
 
             | Flush (ackIV, nack) ->
               job {
-                do! IVar.fill ackIV () <|> nack
+                do! IVar.fill ackIV ()
                 return! loop ()
               }
+
+          api.shutdownCh ^=> fun ack ->
+            ack *<= ()
 
         ] :> Job<_>
 
@@ -658,19 +639,19 @@ module Debugger =
 
   [<CompiledName "Create">]
   let create conf name =
-    TargetUtils.stdNamedTarget (Impl.loop conf) name
+    TargetConf.createSimple (Impl.loop conf) name
 
   /// Use with LogaryFactory.New( s => s.Target<Debugger.Builder>() )
-  type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+  type Builder(conf, callParent : ParentCallback<Builder>) =
 
     /// Specify the formatting style to use when logging to the debugger
-    member x.WithFormatter( sf : StringFormatter ) =
-      ! (callParent <| Builder({ conf with formatter = sf }, callParent))
+    member x.WithFormatter( sf : MessageWriter ) =
+      ! (callParent <| Builder({ conf with writer = sf }, callParent))
 
-    new(callParent : FactoryApi.ParentCallback<_>) =
+    new(callParent : ParentCallback<_>) =
       Builder(empty, callParent)
 
-    interface Logary.Target.FactoryApi.SpecificTargetConf with
+    interface SpecificTargetConf with
       member x.Build name = create conf name
 
 
@@ -816,8 +797,8 @@ module File =
   open Hopac.Infixes
   open Logary
   open Logary.Message
-  open Logary.Target
   open Logary.Internals
+  open Logary.Configuration.Target
   open FileSystem
 
   /// Bytes
@@ -1031,9 +1012,9 @@ module File =
       /// given RuntimeInfo.
       member x.format (ri : RuntimeInfo) : string * string =
         let (Naming (spec, ext)) = x
-        let now = ri.clock.Now.ToDateTimeOffset()
+        let now = ri.getTimestamp ()
         let known =
-          [ "service", ri.serviceName
+          [ "service", ri.service
             "date", now.ToString("yyyy-MM-dd")
             "datetime", now.ToString("yyyy-MM-ddTHH-mm-ssZ")
             "host", ri.host
@@ -1054,7 +1035,7 @@ module File =
       member x.regex (ri : RuntimeInfo) =
         let (Naming (spec, ext)) = x
         let known =
-          [ "service", Regex.Escape ri.serviceName
+          [ "service", Regex.Escape ri.service
             "date", @"\d{4}-\d{2}-\d{2}"
             "datetime", @"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z"
             "host", Regex.Escape ri.host
@@ -1154,8 +1135,8 @@ module File =
       naming : Naming
       /// The file system abstraction to write to.
       fileSystem : FileSystem
-      /// The formatter is responsible for writing to the textwriter.
-      formatter : Message -> TextWriter -> unit
+      /// The writer is responsible for writing to the TextWriter.
+      writer : MessageWriter
       /// How many log messages to write in one go.
       batchSize : uint16
       /// How many times to try to recover a failed batch messages.
@@ -1171,10 +1152,7 @@ module File =
       encoding     = Encoding.UTF8
       naming       = Naming ("{service}-{date}", "log")
       fileSystem   = DotNetFileSystem("/var/lib/logs")
-      formatter    = fun m tw ->
-        let str = Formatting.StringFormatter.levelDatetimeMessagePathNl.format m
-        tw.Write str
-        Promise (())
+      writer       = MessageWriter.levelDatetimeMessagePathNewLine
       batchSize    = 100us
       attempts     = 3us }
 
@@ -1247,7 +1225,9 @@ module File =
 
       fs, fi, writer, counter
 
-    let shouldRotate (clock : IClock) (conf : FileConf) (state : State) =
+    let shouldRotate (now : unit -> EpochNanoSeconds)
+                     (conf : FileConf) (state : State) =
+      let now = now >> Instant.ofEpoch
       let size = !state.written
 
       let rec apply state = function
@@ -1259,7 +1239,7 @@ module File =
           if maxSize <= size then true else apply state rest
         | FileAge maxAge :: rest ->
           let created = Instant.FromDateTimeUtc(state.fileInfo.CreationTimeUtc)
-          let age = created - clock.Now
+          let age = created - now ()
           if maxAge <= age then true else apply state rest
 
       match conf.policies with
@@ -1284,11 +1264,11 @@ module File =
       Janitor.shutdown state.janitor
 
     /// Writes all passed requests to disk, handles acks and flushes.
-    let writeRequests (ilogger : Logger) conf state (reqs : TargetMessage[]) =
+    let writeRequests (ilogger : Logger) (conf : FileConf) (state : State) (reqs : TargetMessage[]) =
       // `completed` can throw
       let ack (completed, ack) = completed >>=. IVar.fill ack ()
       let ackAll acks = acks |> Seq.map ack |> Job.conIgnore
-      let flush (ack, nack) = Ch.give ack () <|> nack
+      let flush (ack, nack) = IVar.fill ack () (* TODO: handle NACKing *)
       let flushAll flushes = flushes |> Seq.map flush |> Job.conIgnore
 
       let acks = ResizeArray<_>() // Updated by the loop.
@@ -1299,14 +1279,17 @@ module File =
         match m with
         | Log (message, ack) ->
           // Write and save the ack for later.
-          acks.Add (conf.formatter message state.writer, ack)
+          // TODO: consider that the TextWriter may block the thread here
+          conf.writer.write state.writer message
+          // TODO: consider whether to use the async API or not here
+          acks.Add (Promise.instaPromise, ack)
           // Invariant: always flush fatal messages.
           if message.level = Fatal then
             ilogger.debug (eventX "Got fatal message; scheduling disk flush.")
             forceFlush <- true
-        | Flush (ackCh, nack) ->
+        | Flush (ack, nack) ->
           ilogger.debug (eventX "Scheduling disk flush.")
-          flushes.Add (ackCh, nack)
+          flushes.Add (ack, nack)
           // Invariant: calling Flush forces a flush to disk.
           forceFlush <- true
 
@@ -1346,24 +1329,8 @@ module File =
                 | other ->
                   Job.raises other)
 
-    let loop (conf : FileConf)
-             (ri : RuntimeInfo)
-             (requests : RingBuffer<_>)
-             (shutdown : Ch<_>)
-             (saveWill : obj -> Job<unit>)
-             (lastWill : obj option) =
-
+    let loop (conf : FileConf) (ri : RuntimeInfo, api : TargetAPI) (will : Will<TargetMessage[] * uint16>) =
       let rotateCh = Ch ()
-
-      // For type checking purposes, shadows parameters.
-      let saveWill (msgs : TargetMessage[], recoverCount : uint16) =
-        saveWill (box (msgs, recoverCount))
-
-      // For type checking purposes.
-      let lastWill =
-        lastWill |> Option.map (fun x ->
-          let (msgs : TargetMessage[], recoverCount : uint16) = unbox x
-          msgs, recoverCount)
 
       let shutdownState =
         Logger.timeJobSimple ri.logger "shutdownState" shutdownState
@@ -1376,7 +1343,7 @@ module File =
         Janitor.create ri fs conf.naming conf.policies >>-
         State.create (openFile ri fs conf) >>=
         fun state ->
-          match lastWill with
+          Will.latest will ^=> function
           | Some (msgs, recoverCount) ->
             (msgs, recoverCount) ||> recovering state
           | None ->
@@ -1409,7 +1376,7 @@ module File =
 
       // In this state we verify the state of the file.
       and checking (state : State) =
-        if shouldRotate ri.clock conf state then rotating state
+        if shouldRotate ri.getTimestamp conf state then rotating state
         else running state
 
       // In this state we do a single rotation.
@@ -1469,10 +1436,10 @@ module File =
   /// Create a new File target through this.
   [<CompiledName "Create">]
   let create conf name =
-    TargetUtils.willAwareNamedTarget (Impl.loop conf) name
+    TargetConf.create (Impl.loop conf) name
     
   /// Use with LogaryFactory.New(s => s.Target<File.Builder>())
-  type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+  type Builder(conf, callParent : ParentCallback<Builder>) =
     let update (conf' : FileConf) : Builder =
       Builder(conf', callParent)
 
@@ -1508,9 +1475,9 @@ module File =
     member x.FileSystem fs =
       update { conf with fileSystem = fs }
 
-    member x.Formatter (f : Func<Message, TextWriter, System.Threading.Tasks.Task>) =
+    member x.Formatter (action : Action<TextWriter, Message>) =
       update { conf with
-                formatter = fun m tw -> memo (Job.fromUnitTask (fun () -> f.Invoke(m, tw))) }
+                writer = fun tw m -> action.Invoke (tw, m) }
 
     member x.BatchSize size =
       { conf with batchSize = size }
@@ -1518,11 +1485,11 @@ module File =
     member x.Attempts maxAttempts =
       { conf with attempts = maxAttempts }
 
-    new(callParent : FactoryApi.ParentCallback<_>) =
+    new(callParent : ParentCallback<_>) =
       Builder(empty, callParent)
 
     member x.Done() =
       ! (callParent x)
 
-    interface Logary.Target.FactoryApi.SpecificTargetConf with
+    interface SpecificTargetConf with
       member x.Build name = create conf name

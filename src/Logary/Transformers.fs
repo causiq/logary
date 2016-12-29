@@ -2,30 +2,27 @@
 
 open System
 open Logary
-open Logary.Metric
+open Logary.Metrics
 open NodaTime
 open Hopac
 
 module Counters =
 
-  let counter pn : Job<Metric> =
+  let counter pn : Job<Ticked.T> =
     let reducer state = function
       | Int64 i, _ when state = Int64.MaxValue && i > 0L ->
         state
-
       | Int64 i, _ when state = Int64.MinValue && i < 0L ->
         state
-
       | Int64 i, _ ->
         state + i
-
       | _ ->
         state
 
     let ticker state =
       0L, [| Message.gaugeWithUnit pn Units.Scalar (Int64 state) |]
 
-    Metric.create reducer 0L ticker
+    Ticked.create reducer 0L ticker
 
 module Reservoirs =
 
@@ -156,6 +153,9 @@ module Reservoirs =
   /// period (a period is a duration between events), but can get
   /// `update`s at any point between the ticks.
   module ExpWeightedMovAvg =
+    let private minutes (dur : Duration) =
+      float dur.Ticks / float NodaConstants.TicksPerMinute
+
     open NodaTime
 
     /// The period in between ticks; it's a duration of time between two data
@@ -171,7 +171,7 @@ module Reservoirs =
     /// - `duration` is how long is between each tick
     /// - `mins` is the number of minutes the EWMA should be calculated over
     let xMinuteAlpha duration mins =
-      1. - exp (- Duration.minutes duration / mins)
+      1. - exp (- minutes duration / mins)
 
     /// alpha coefficient for the `SamplePeriod` tick period, with one minute
     /// EWMA
@@ -258,4 +258,4 @@ module Reservoirs =
         Message.derivedWithUnit pn Units.Scalar (Float value)
       state, [| msg |]
 
-    create reducer ExpWeightedMovAvg.fiveMinutesEWMA ticker
+    Ticked.create reducer ExpWeightedMovAvg.fiveMinutesEWMA ticker

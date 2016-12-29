@@ -88,6 +88,7 @@
     <Compile Include="MiddlewareModule.fs" />
     <Compile Include="LoggerModule.fs" />
     <Compile Include="NodaTime.Duration.fs" />
+    <Compile Include="NodaTime.Instant.fs" />
     <Compile Include="System.Dates.fs" />
 
     <!-- Below: runtime -->
@@ -96,28 +97,34 @@
     <Compile Include="Rule.fs" />
     <Compile Include="Internals/RuntimeInfo.fs" />
     <Compile Include="Internals/RuntimeInfoModule.fs" />
+    <Compile Include="Internals/Targets.fs" />
+    <Compile Include="Internals/Metrics.fs" />
+    <Compile Include="Internals/HealthChecks.fs" />
     <Compile Include="Target.fs" />
-    <Compile Include="Internals/InternalLogger.fs" />
     <Compile Include="Metric.fs" />
+    <!-- TODO: Move HC from Metric.fs -->
+    <Compile Include="HealthCheck.fs" />
+    <Compile Include="Internals/InternalLogger.fs" />
     <Compile Include="Logging.fs" />
     <Compile Include="Registry.fs" />
-    <Compile Include="Transformers.fs" />
 
     <!-- Below: formatting, serialisation -->
     <Compile Include="Formatting.fs" />
     <!--<Compile Include="Serialisation.fs" />-->
 
     <!-- Below: targets, metrics, healthchecks -->
+    <Compile Include="Configuration/Factory.fs" />
+    <Compile Include="Configuration/Factory.Target.fs" />
+    <Compile Include="Configuration/Factory.Metric.fs" />
+    <Compile Include="Configuration/Factory.HealthCheck.fs" />
     <Compile Include="Targets/Core.fs" />
     <Compile Include="Targets/Noop.fs" />
     <Compile Include="Targets/Graphite.fs" />
     <Compile Include="Metrics/Ticked.fs" />
+    <Compile Include="Transformers.fs" />
 
     <!-- Below: config -->
     <Compile Include="CSharp.fs" />
-    <Compile Include="Configuration/Target.fs" />
-    <Compile Include="Configuration/Metric.fs" />
-    <Compile Include="Configuration/HealthCheck.fs" />
     <Compile Include="Configuration/Config.fs" />
     <Compile Include="Configuration/FactoryApi.fs" />
     <Compile Include="Configuration/Uri.fs" />

@@ -24,7 +24,7 @@ type internal PromisedLogger(name, requestedLogger : Job<Logger>) =
 
   /// Create a new `Logger` with the given name and `Job<Logger>` – nice to
   /// use for creating loggers that need to be immediately available.
-  static member create (PointName contents as name) logger =
+  static member create (PointName contents as name) (logger : Job<Logger>) =
     if logger = null then nullArg "logger"
     if contents = null then nullArg "name"
     PromisedLogger(name, logger) :> Logger
@@ -47,8 +47,8 @@ type internal PromisedLogger(name, requestedLogger : Job<Logger>) =
 module internal GlobalsService =
   open Globals
 
-  let create (t : T) (internalLogger : Logger) =
-    let ilogger = internalLogger |> Logger.apply (setSimpleName "Logary.Globals")
+  let create (t : T) (ilogger : Logger) =
+    let logger = ilogger |> Logger.apply (setSimpleName "Logary.Globals")
     let pauseCh, resumeCh, shutdownCh = Ch (), Ch (), Ch ()
 
     let rec init () =
@@ -59,23 +59,23 @@ module internal GlobalsService =
     and running myself prev =
       Alt.choose [
         pauseCh ^=> fun (ack, nack) ->
-          ilogger.debug (eventX "Pausing")
+          logger.debug (eventX "Pausing.")
           initialise prev
           ack *<= () >>=. running myself prev
 
         resumeCh ^=> fun (ack, nack) ->
-          ilogger.debug (eventX "Resuming")
+          logger.debug (eventX "Resuming.")
           initialise myself
           ack *<= () >>=. running myself prev
 
         shutdownCh ^=> fun ack ->
-          ilogger.debug (eventX "Shutting down")
+          logger.debug (eventX "Shutting down.")
           initialise prev
           ack *<= ()
       ]
 
-    let loop = Job.supervise Policy.terminate (init ())
-    Service.create internalLogger "globals" pauseCh resumeCh shutdownCh loop
+    let loop = Job.supervise logger Policy.terminate (init ())
+    Service.create logger "globals" pauseCh resumeCh shutdownCh loop
 
   (* // cc: @oskarkarlsson ;)
   let scoped (globals : Service<Service.T>) (logger : Logger) =
@@ -97,25 +97,11 @@ module Engine =
   let create processing : Job<T> =
     Job.result { heyday = true }
 
-(* TODO:
-
- - Extract a stream of all messages
- - Run these as services:
-   * Target
-   * Engine
-   * Metric
-   * HealthCheck
-   * Globals
-*)
-
 /// When you validate the configuration, you get one of these.
 ///
 /// This is the logary configuration structure having a memory of all
 /// configured targets, metrics, healthchecks, middlewares, etc.
 type LogaryConf =
-  /// A list of rules that guide what targets are invoked for a given
-  /// message.
-  abstract rules : Rule[]
   /// A map of the targets by name.
   abstract targets : Map<string, TargetConf>
   /// A map of metrics by name.
@@ -127,7 +113,7 @@ type LogaryConf =
   /// Extra middleware added to every resolved logger.
   abstract middleware : Middleware[]
   /// Optional stream transformer.
-  abstract processing : Processing option
+  abstract processing : Processing
 
 /// A data-structure that gives information about the outcome of a flush
 /// operation on the Registry. This data structure is only relevant if the
@@ -148,8 +134,6 @@ type ShutdownInfo = ShutdownInfo of acks:string list * timeouts:string list
 /// This is also a synchronous wrapper around the asynchronous actors that make
 /// up logary
 type LogManager =
-  inherit IAsyncDisposable
-
   /// Gets the service name that is used to filter and process the logs further
   /// downstream. This property is configured at initialisation of Logary.
   abstract runtimeInfo : RuntimeInfo
@@ -157,17 +141,12 @@ type LogManager =
   /// Get a logger denoted by the name passed as the parameter. This name can either be
   /// a specific name that you keep for a sub-component of your application or
   /// the name of the class. Also have a look at Logging.GetCurrentLogger().
-  abstract getLoggerAsync : PointName -> Job<Logger>
-
-  /// Get a logger denoted by the name passed as the parameter. This name can either be
-  /// a specific name that you keep for a sub-component of your application or
-  /// the name of the class. Also have a look at Logging.GetCurrentLogger().
-  abstract getLogger : PointName -> Logger
+  abstract getLogger : PointName -> Job<Logger>
 
   /// Awaits that all targets finish responding to a flush message
   /// so that we can be certain they have processed all previous messages.
   /// This function is useful together with unit tests for the targets.
-  abstract flushPending : Duration -> Alt<unit>
+  abstract flushPending : Duration -> Alt<FlushInfo>
 
   /// Shuts Logary down after flushing, given a timeout duration to wait before
   /// counting the target as timed out in responding. The duration is applied
@@ -176,13 +155,15 @@ type LogManager =
   /// First duration: flush duration
   /// Second duration: shutdown duration
   /// Returns the shutdown book keeping info
-  abstract shutdown : flush:Duration -> shutdown:Duration -> Job<FlushInfo * ShutdownInfo>
+  abstract shutdown : flush:Duration -> shutdown:Duration -> Alt<FlushInfo * ShutdownInfo>
 
 /// This is the main state container in Logary.
 module Registry =
   /// The holder for the channels of communicating with the registry.
   type T =
     private {
+      runtimeInfo : RuntimeInfo
+
       /// Get a logger for the given point name (the path of the logger). This
       /// operation should not fail, so there's no nack promise passed.
       getLoggerCh : Ch<PointName * Middleware option * IVar<Logger>>
@@ -249,34 +230,59 @@ module Registry =
     t.shutdownCh *<+->- fun shutdownCh nack -> shutdownCh, nack, Some shutdownTimeout
     |> Alt.afterFun (fun shutdownInfo -> flushInfo, shutdownInfo)
 
+  let runtimeInfo (t : T) : RuntimeInfo =
+    t.runtimeInfo
+
   module internal Impl =
-    let configFrom (x : T) =
-      { Globals.defaultConfig with
-          getLogger = getLoggerT x
-          getLoggerWithMiddleware = getLoggerWithMiddlewareT x }
+    let createGlobals (conf : LogaryConf) (x : T) =
+      let config =
+        { Globals.defaultConfig with
+            getLogger = getLoggerT x
+            getLoggerWithMiddleware = getLoggerWithMiddlewareT x }
+      GlobalsService.create config conf.runtimeInfo.logger
+
+    let rec server (x : T) =
+      Alt.choose [
+        x.getLoggerCh ^=> fun (name, mid, repl) ->
+          server x
+
+        x.flushCh ^=> fun (ackCh, nack, timeout) ->
+          server x
+
+        x.shutdownCh ^=> fun (ackCh, nack, timeout) ->
+          server x
+      ]
 
   let create (conf : LogaryConf) : Job<T> =
     let logger = conf.runtimeInfo.logger |> Logger.apply (setSimpleName "Logary.Registry")
-    let x = { getLoggerCh = Ch (); flushCh = Ch (); shutdownCh = Ch () }
-    let config = Impl.configFrom x
-
-    let globals = GlobalsService.create config conf.runtimeInfo.logger
+    let x = { runtimeInfo = conf.runtimeInfo; getLoggerCh = Ch (); flushCh = Ch (); shutdownCh = Ch () }
+    let globals = Impl.createGlobals conf x
     let targets = conf.targets |> Map.map (fun _ -> Target.create conf.runtimeInfo)
     let metrics = conf.metrics |> Map.map (fun _ -> Metric.create conf.runtimeInfo)
     let hcs = conf.healthChecks |> Map.map (fun _ -> HealthCheck.create conf.runtimeInfo)
     let engine = Engine.create conf.processing
-
-    let rec initialise x =
-      Alt.choose [
-        x.getLoggerCh ^=> fun (name, mid, repl) ->
-          initialise x
-
-        x.flushCh ^=> fun replCh ->
-          initialise x
-
-        x.shutdownCh ^=> fun (ack, nack, timeout) ->
-          initialise x
-      ]
-
-    Job.supervise logger (Policy.restartDelayed 500u) (initialise x) >>-.
+    Job.supervise logger (Policy.restartDelayed 500u) (Impl.server x) >>-.
     x
+
+  let toLogManager (t : T) : LogManager =
+    { new LogManager with
+        member x.getLogger name =
+          getLogger t name
+        member x.runtimeInfo =
+          t.runtimeInfo
+        member x.flushPending dur =
+          flushWithTimeout t dur
+        member x.shutdown flushTO shutdownTO =
+          shutdownWithTimeouts t flushTO shutdownTO
+    }
+
+[<AutoOpen>]
+module LogManagerEx =
+
+  type LogManager with
+    /// Get a logger denoted by the name passed as the parameter. This name can either be
+    /// a specific name that you keep for a sub-component of your application or
+    /// the name of the class. Also have a look at Logging.GetCurrentLogger().
+    member __.getLoggerT (x : LogManager) name : Logger =
+      x.getLogger name
+      |> PromisedLogger.create name

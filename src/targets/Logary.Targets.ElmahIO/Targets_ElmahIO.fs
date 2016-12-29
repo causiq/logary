@@ -134,7 +134,7 @@ module internal Impl =
             let elmahMessage =
               Elmah.Io.Client.Message(template,
                 Id = (match tryGet message "messageId" with None -> null | Some x -> x),
-                Application = ri.serviceName,
+                Application = ri.service,
                 Detail = format message,
                 Source = PointName.format message.name,
                 StatusCode = Option.toNullable (tryGetInt message "statusCode"),

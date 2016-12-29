@@ -13,12 +13,7 @@ open Hopac
 open Hopac.Infixes
 open NodaTime
 open Logary
-open Logary.CSharp
-open Logary.Metric
-open Logary.Internals
 open Logary.Configuration
-open Logary.Target
-open Logary.Targets
 
 type internal ConfBuilderT<'T when 'T :> SpecificTargetConf> =
   { parent      : ConfBuilder        // logary that is being configured
@@ -156,9 +151,9 @@ type LogaryFactory =
   /// Configure a new Logary instance. This will also give real targets to the flyweight
   /// targets that have been declared statically in your code. If you call this
   /// you get a log manager that you can later dispose, to shutdown all targets.
-  static member New(serviceName : string, configurator : Func<ConfBuilder, ConfBuilder>) : Task<LogManager> =
-    if serviceName = null then nullArg "serviceName"
+  static member New(service : string, host : string, configurator : Func<ConfBuilder, ConfBuilder>) : Task<LogManager> =
+    if service = null then nullArg "service"
     if configurator = null then nullArg "configurator"
-    let config = Config.confLogary serviceName
+    let config = Config.create service host
     let cb = configurator.Invoke (ConfBuilder config)
     cb.BuildLogary () |> CSharp.toTask
