@@ -105,6 +105,7 @@
     <!-- TODO: Move HC from Metric.fs -->
     <Compile Include="HealthCheck.fs" />
     <Compile Include="Internals/InternalLogger.fs" />
+    <Compile Include="Internals/PromisedLogger.fs" />
     <Compile Include="Logging.fs" />
     <Compile Include="Registry.fs" />
 
