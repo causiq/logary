@@ -37,17 +37,23 @@ module TargetConf =
       server = server will }
 
   let createSimple server name : TargetConf =
-    let policy =
-      Policy.exponentialBackoff (* init [ms] *) 100u
-                                (* mult *) 2u
-                                (* max dur [ms] *) 5000u
-                                (* retry indefinitely *) UInt32.MaxValue
-
     { name = name
       rules = Rule.empty :: []
       bufferSize = 500u
-      policy = policy
+      policy = Policy.exponentialBackoffSix
       server = server }
+
+  let bufferSize size conf =
+    { conf with bufferSize = size }
+
+  let setRule r conf =
+    { conf with rules = r :: [] }
+
+  let addRule r conf =
+    { conf with rules = r :: conf.rules }
+
+  let policy policy conf =
+    { conf with policy = policy }
 
 module Target =
 

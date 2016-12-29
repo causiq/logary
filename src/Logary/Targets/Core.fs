@@ -579,8 +579,8 @@ module LiterateConsole =
     interface SpecificTargetConf with
       member x.Build name = create conf name
 
-// boolean IsLogging() method, correct by excluded middle
-#nowarn "25"
+// Ignore deprecations (Debug doesn't have a Stream-ish to write to)
+#nowarn "44"
 
 /// The Debugger target is useful when running in Xamarin Studio or VS.
 module Debugger =
@@ -1329,7 +1329,8 @@ module File =
                 | other ->
                   Job.raises other)
 
-    let loop (conf : FileConf) (ri : RuntimeInfo, api : TargetAPI) (will : Will<TargetMessage[] * uint16>) =
+    let loop (conf : FileConf) (will : Will<TargetMessage[] * uint16>)
+             (ri : RuntimeInfo, api : TargetAPI)  =
       let rotateCh = Ch ()
 
       let shutdownState =
@@ -1337,7 +1338,7 @@ module File =
 
       // In this state the File target opens its file stream and checks if it
       // progress to the recovering state.
-      let rec init lastWill =
+      let rec init () =
         let fs = conf.fileSystem.chroot conf.logFolder
         fs.ensureCurrent () |> ignore
         Janitor.create ri fs conf.naming conf.policies >>-
@@ -1352,7 +1353,7 @@ module File =
       // In this state we try to write as many log messages as possible.
       and running (state : State) : Job<unit> =
         Alt.choose [
-          shutdown ^=> fun ack ->
+          api.shutdownCh ^=> fun ack ->
             ri.logger.debugWithBP (eventX "Shutting down file target (starting shutdownState)") >>=.
             shutdownState state >>=.
             ack *<= ()
@@ -1360,7 +1361,7 @@ module File =
           // TODO: handle scheduled rotation
           rotateCh ^=> fun () -> rotating state
 
-          RingBuffer.takeBatch (uint32 conf.batchSize) requests ^=> fun reqs ->
+          RingBuffer.takeBatch (uint32 conf.batchSize) api.requests ^=> fun reqs ->
             writeRequestsSafe ri.logger conf state reqs >>= function
               | Choice1Of2 () ->
                 checking state
@@ -1370,7 +1371,7 @@ module File =
                   >> setField "batchSize" conf.batchSize
                   >> addExn err)
                 >>= id
-                >>=. saveWill (reqs, 1us)
+                >>=. Will.update will (reqs, 1us)
                 >>=. Job.raises err
         ] :> Job<_>
 
@@ -1408,7 +1409,7 @@ module File =
               |> Option.fold (fun s t -> t + 1) 0
               |> sprintf "%s-%03i" currName
           conf.fileSystem.moveFile state.fileInfo.Name targetName) >>=.
-        init None
+        init ()
 
       and recovering (state : State) (lastBatch : TargetMessage[]) = function
         // Called with 1, 2, 3 – 1 is first time around.
@@ -1421,7 +1422,7 @@ module File =
                 eventX "Attempt {attempts} failed, trying again shortly."
                 >> Message.setField "attempts" recoverCount)
               >>= id
-              >>=. saveWill (lastBatch, recoverCount + 1us)
+              >>=. Will.update will (lastBatch, recoverCount + 1us)
               >>=. Job.raises ex
 
         | recoverCount ->
@@ -1431,13 +1432,13 @@ module File =
           >>= id
           >>=. Job.raises (Exception "File recovery failed, crashing out.")
 
-      init lastWill
+      init ()
 
   /// Create a new File target through this.
   [<CompiledName "Create">]
   let create conf name =
-    TargetConf.create (Impl.loop conf) name
-    
+    TargetConf.create Policy.exponentialBackoffSix 500u (Impl.loop conf) name
+
   /// Use with LogaryFactory.New(s => s.Target<File.Builder>())
   type Builder(conf, callParent : ParentCallback<Builder>) =
     let update (conf' : FileConf) : Builder =
@@ -1475,9 +1476,15 @@ module File =
     member x.FileSystem fs =
       update { conf with fileSystem = fs }
 
-    member x.Formatter (action : Action<TextWriter, Message>) =
-      update { conf with
-                writer = fun tw m -> action.Invoke (tw, m) }
+    member x.Writer writer =
+      update { conf with writer = writer }
+
+    member x.WriterFunction (fn : Action<TextWriter, Message>) =
+      let writer =
+        { new MessageWriter with
+            member x.write w m =
+              fn.Invoke (w, m) }
+      update { conf with writer = writer }
 
     member x.BatchSize size =
       { conf with batchSize = size }

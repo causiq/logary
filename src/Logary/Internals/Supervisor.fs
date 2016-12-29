@@ -1,4 +1,4 @@
-﻿module Logary.Internals
+﻿namespace Logary.Internals
 
 open Logary
 open Logary.Message
@@ -80,6 +80,14 @@ module Policy =
           Terminate
         else
           doRestart r
+
+  /// An exponential backoff strategy that sleeps: 100ms, 200ms, 400ms, 800ms,
+  /// 1600ms, 3200ms and then maxes out at 6400ms.
+  let exponentialBackoffSix =
+    exponentialBackoff (* init [ms] *) 100u
+                       (* mult *) 2u
+                       (* max dur [ms] *) 6400u
+                       (* retry indefinitely *) System.UInt32.MaxValue
 
 type SupervisedJob<'a> = Job<Choice<'a,exn>>
 

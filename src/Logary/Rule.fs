@@ -12,16 +12,16 @@ type MessageFilter = Message -> bool
 [<CustomEquality; CustomComparison>]
 type Rule =
   { /// This is the regular expression that the 'path' must match to be loggable
-    hiera         : Regex
+    path     : Regex
     /// This is the level at which the target will accept log lines. It's inclusive, so
     /// anything below won't be accepted.
-    level         : LogLevel
+    minLevel : LogLevel
     /// This is the accept filter that is before the message is passed to the logger
     /// instance.
-    messageFilter : MessageFilter }
+    acceptIf : MessageFilter }
 
   override x.GetHashCode () =
-    hash (x.hiera.ToString(), x.level)
+    hash (x.path.ToString(), x.minLevel)
 
   override x.Equals other =
     match other with
@@ -31,20 +31,19 @@ type Rule =
 
   interface System.IEquatable<Rule> with
     member x.Equals r =
-      r.hiera.ToString() = x.hiera.ToString()
-      && r.level = x.level
+      r.path.ToString() = x.path.ToString()
+      && r.minLevel = x.minLevel
 
   interface System.IComparable with
     member x.CompareTo yobj =
       match yobj with
       | :? Rule as y ->
-        compare (x.hiera.ToString()) (y.hiera.ToString())
-        |> thenCompare x.level y.level
+        compare (x.path.ToString()) (y.path.ToString())
+        |> thenCompare x.minLevel y.minLevel
       | _ -> invalidArg "yobj" "cannot compare values of different types"
 
   override x.ToString() =
-    sprintf "Rule(hiera=%O, level=%O)"
-      x.hiera x.level
+    sprintf "Rule(path=%O, minLevel=%O)" x.path x.minLevel 
 
 /// Module for dealing with rules. Rules take care of filtering too verbose
 /// log lines and measures before they are sent to the targets.
@@ -55,59 +54,70 @@ type Rule =
 /// will win, and all Debug-level messages will be filtered from the stream.
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Rule =
-
-  // filters:
-  /// A filter that accepts any input given
-  let allowFilter _ = true
-
-  /// Find all rules matching the name, from the list of rules passed.
-  let matching (name : PointName) (rules : Rule list) =
-    rules |> List.filter (fun r -> r.hiera.IsMatch (PointName.format name))
-
-  /////////////////////
-  // Creating rules: //
-  /////////////////////
-
-  let private allHiera = Regex(".*", RegexOptions.Compiled)
+  let private allPaths = Regex(".*", RegexOptions.Compiled)
 
   let empty =
-    { hiera         = allHiera
-      messageFilter = fun _ -> true
-      level         = Verbose }
+    { path     = allPaths
+      acceptIf = fun _ -> true
+      minLevel    = Verbose }
 
   /// Sets the hiera regex field.
   [<CompiledName "SetHiera">]
-  let setHiera (regex : Regex) (r : Rule) =
-    { r with hiera = regex }
+  let setPath (regex : Regex) (r : Rule) =
+    { r with path = regex }
 
   /// Sets the hiera regex field from a string.
   [<CompiledName "SetHiera">]
-  let setHieraString (regex : string) (r : Rule) =
-    { r with hiera = Regex(regex) }
+  let setPathString (regex : string) (r : Rule) =
+    { r with path = Regex(regex) }
 
   /// Sets the rule's message filter. Remember that if you want to apply multiple
   /// message filters, you need to create a new Rule, or you'll overwrite the
   /// existing message filter.
   [<CompiledName "SetMessageFilter">]
-  let setMessageFilter (mf : _ -> _) (r : Rule) =
-    { r with messageFilter = mf }
+  let setAcceptIf (filter : _ -> _) (r : Rule) =
+    { r with acceptIf = filter }
 
   [<CompiledName "SetLevel">]
-  let setLevel (l : LogLevel) (r : Rule) =
-    { r with level = l }
+  let setMinLevel (minLevel : LogLevel) (r : Rule) =
+    { r with minLevel = minLevel }
 
   /// Create a new rule with the given hiera, target, accept function and min level
   /// acceptable.
   [<CompiledName "Create">]
   let create hiera messageFilter level =
-    { hiera         = hiera
-      messageFilter = messageFilter
-      level         = level }
+    { path     = hiera
+      acceptIf = messageFilter
+      minLevel = level }
 
   /// Create a new rule with the given hiera, target, accept function and min level
   /// acceptable.
   [<CompiledName "Create">]
   let createFunc hiera level (messageFilter : Func<_, _>) =
-    { hiera         = hiera
-      messageFilter = fun m -> messageFilter.Invoke m
-      level         = level }
+    { path     = hiera
+      acceptIf = fun m -> messageFilter.Invoke m
+      minLevel = level }
+
+  // Only used for internal logging so far; maximally permissive for any matching
+  // hiera.
+  // TODO: consider what this will do for rules of different hierarchies...
+  let compile rs =
+    let rs = Array.ofSeq rs
+
+    let regex =
+      rs
+      |> Seq.map (fun r -> r.path)
+      |> Seq.map string
+      |> String.concat "|"
+      |> fun r -> sprintf "(%s)" r
+
+    let rec filter i (rs : _ []) message =
+      if i = -1 then false else
+      let r = rs.[i]
+      if r.acceptIf message then true
+      else filter (i - 1) rs message
+
+    { path = Regex(regex, RegexOptions.Compiled)
+      acceptIf = if rs.Length = 0 then fun _ -> true else filter (rs.Length) rs
+      minLevel = rs |> Seq.map (fun r -> r.minLevel) |> Seq.fold min Fatal
+    }

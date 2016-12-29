@@ -2,14 +2,17 @@
 /// required configuration for Logary.
 namespace Logary.Configuration
 
+open Hopac
+open Hopac.Infixes
 open Logary
 open Logary.Internals
+open Logary.Targets
 
 /// Specifies the internal logging level for Logary.
 [<RequireQualifiedAccess>]
 type ILogger =
-  | Console
-  | LiterateConsole
+  | Console of minLevel:LogLevel
+  | LiterateConsole of minLevel:LogLevel
   | Target of config:TargetConf
 
 module Config =
@@ -40,7 +43,7 @@ module Config =
       getTimestamp = Globals.defaultConfig.getTimestamp
       getSem       = Globals.defaultConfig.getConsoleSemaphore
       middleware   = mids
-      ilogger      = ILogger.Console
+      ilogger      = ILogger.Console Warn
       setGlobals   = true
       processing   = Processing (fun _ _ -> Alt.always ()) }
 
@@ -94,13 +97,21 @@ module Config =
         getConsoleSemaphore = lconf.getSem
         logger = NullLogger.instance }
 
-    let itarget =
+    let rule, itarget =
       match lconf.ilogger with
-      | ILogger.Console -> Console.create Console.empty "internal"
-      | ILogger.LiterateConsole -> LiterateConsole.create LiterateConsole.empty "internal"
-      | ILogger.Target conf -> conf
+      | ILogger.Console minLevel ->
+        Rule.setMinLevel minLevel Rule.empty,
+        Console.create Console.empty "internal"
 
-    InternalLogger.create ri Rule.empty >>= fun ilogger ->
+      | ILogger.LiterateConsole minLevel ->
+        Rule.setMinLevel minLevel Rule.empty,
+        LiterateConsole.create LiterateConsole.empty "internal"
+
+      | ILogger.Target conf ->
+        Rule.compile conf.rules,
+        conf
+
+    InternalLogger.create ri rule >>= fun ilogger ->
     InternalLogger.add itarget ilogger >>= fun () ->
 
     let middleware = Array.ofList lconf.middleware

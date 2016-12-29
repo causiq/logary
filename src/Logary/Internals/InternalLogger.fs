@@ -22,14 +22,14 @@ module InternalLogger =
 
     interface Logger with
       member x.logWithAck logLevel messageFactory =
-        if logLevel >= x.rule.level then
+        if logLevel >= x.rule.minLevel then
           let message = messageFactory logLevel
           x.messageCh *<+->- fun replCh nack -> message, nack, replCh
         else
           Promise.instaPromise 
 
       member x.log logLevel messageFactory =
-        if logLevel >= x.rule.level then
+        if logLevel >= x.rule.minLevel then
           let me : Logger = upcast x
           me.logWithAck logLevel messageFactory // delegate down
           |> Alt.afterFun (fun _ -> ())
@@ -37,7 +37,7 @@ module InternalLogger =
           Alt.always ()
 
       member x.level =
-        x.rule.level
+        x.rule.minLevel
 
       member x.name =
         PointName [| "Logary" |]

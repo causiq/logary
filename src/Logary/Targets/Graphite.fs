@@ -11,7 +11,7 @@ open System.Net.Sockets
 open System.Text.RegularExpressions
 open Logary
 open Logary.Internals
-open Logary.Target
+open Logary.Configuration.Target
 
 /// Put this tag on your message (message must be a parseable value)
 /// if you want graphite to find it, or use the Metrics API of Logary.
@@ -64,81 +64,69 @@ module Impl =
     | Gauge (v, _)
     | Derived (v, _) ->
       v
-
     | Event template ->
       Int64 0L
 
   /// All graphite messages are of the following form.
   /// metric_path value timestamp\n
-  let createMsg (path : String) value (timestamp : Instant) =
+  let createMsg (path : String) (timestamp : Instant) (value : string) =
     let line = String.Format("{0} {1} {2}\n", path, value, timestamp.Ticks / NodaConstants.TicksPerSecond)
     UTF8.bytes line
 
   let doWrite state buffer =
-    job {
-      let stream =
-        match state.sendRecvStream with
-        | None   -> state.client.GetStream()
-        | Some s -> s
+    let stream =
+      match state.sendRecvStream with
+      | None   -> state.client.GetStream()
+      | Some s -> s
 
-      do! stream.AsyncWrite buffer
-      return { state with sendRecvStream = Some stream }
-    }
+    Job.fromAsync (stream.AsyncWrite buffer) >>-.
+    { state with sendRecvStream = Some stream }
 
-  let loop (conf : GraphiteConf) (svc : RuntimeInfo) (requests : RingBuffer<_>)
-           (shutdown : Ch<_>) =
+  let loop (conf : GraphiteConf) (svc : RuntimeInfo, api : TargetAPI) =
+
     let rec running state : Job<unit> =
       Alt.choose [
-        shutdown ^=> fun ack ->
+        RingBuffer.take api.requests ^=> function
+          | Log (message, ack) ->
+            let pointName = sanitisePath message.name |> PointName.format
+            let data =
+              createMsg pointName (Instant message.timestampTicks) <|
+                match message.value with
+                | Event template -> template
+                | Gauge _ | Derived _ -> formatMeasure message.value
+
+            doWrite state data >>= fun state' ->
+            IVar.fill ack () >>= fun () ->
+            running state'
+
+          | Flush (ack, nack) ->
+            IVar.fill ack () >>= fun _ -> running state
+
+        api.shutdownCh ^=> fun ack ->
           state.sendRecvStream |> tryDispose
           try (state.client :> IDisposable).Dispose() with _ -> ()
-          ack *<= () :> Job<_>
+          ack *<= ()
 
-        RingBuffer.take requests ^=> function
-          | Log (logMsg, ack) ->
-            match logMsg.value with
-            | Event template ->
-              job {
-                let path = PointName.format logMsg.name
-                let instant = Instant logMsg.timestampTicks
-                let graphiteMsg = createMsg path template instant
-                let! state' = graphiteMsg |> doWrite state
-                do! ack *<= ()
-                return! running state'
-              }
-
-            | Gauge _
-            | Derived _ ->
-              job {
-                let path = sanitisePath logMsg.name
-                let instant = Instant logMsg.timestampTicks
-                let pointName = PointName.format path
-                let bs = createMsg pointName (formatMeasure logMsg.value) instant
-                let! state' = bs |> doWrite state
-                return! running state'
-              }
-          | Flush (ackCh, nack) ->
-            job {
-              do! Ch.give ackCh () <|> nack
-              return! running state
-            }
       ] :> Job<_>
 
-    running { client = new TcpClient(conf.hostname, int conf.port); sendRecvStream = None }
+    { client = new TcpClient(conf.hostname, int conf.port)
+      sendRecvStream = None }
+    |> running 
 
 /// Create a new graphite target configuration.
 [<CompiledName "Create">]
-let create conf name = TargetUtils.stdNamedTarget (Impl.loop conf) name
+let create conf name =
+  TargetConf.createSimple (Impl.loop conf) name
 
 /// Use with LogaryFactory.New( s => s.Target< HERE >() )
-type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+type Builder(conf, callParent : ParentCallback<Builder>) =
 
   /// Specify where to connect
   member x.ConnectTo(hostname, port) =
     ! (callParent <| Builder(GraphiteConf.create(hostname, port), callParent))
 
-  new(callParent : FactoryApi.ParentCallback<_>) =
+  new(callParent : ParentCallback<_>) =
     Builder(GraphiteConf.create(""), callParent)
 
-  interface Logary.Target.FactoryApi.SpecificTargetConf with
+  interface SpecificTargetConf with
     member x.Build name = create conf name

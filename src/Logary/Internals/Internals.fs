@@ -25,26 +25,6 @@ module internal Choice =
     | Choice1Of2 x1 -> x1
     | Choice2Of2 x2 -> x2
 
-module internal Job =
-  /// Runs the passed job with a timeout.
-  ///
-  /// If the job finishes before the timeout, it will return a Choice1Of2.
-  /// If the job takes longer than the timeout to execute, it will return a
-  /// `Choice2Of2 ()`.
-  let withTimeout (timeout : Duration option) (j : Job<'a>) : Job<Choice<'a, unit>> =
-    match timeout with
-    | None -> Job.map Choice.create j
-    | Some ts ->
-      job {
-        let! completed = Promise.start j
-        return!
-          timeOut (ts.ToTimeSpan()) ^->. (Choice.createSnd ())
-          <|> Promise.read completed ^-> Choice.create
-      }
-
-  let apply fJob xJob =
-    fJob <*> xJob >>- fun (fN, x) -> fN x
-
 module internal Alt =
   open Hopac.Infixes
 
@@ -53,6 +33,10 @@ module internal Alt =
     one ^-> fun (fA, x) -> fA x
 
 module internal List =
+
+  module Job =
+    let apply fJob xJob = fJob <*> xJob >>- fun (fN, x) -> fN x
+
   /// Map a Job producing function over a list to get a new Job using
   /// applicative style (parallel). ('a -> Job<'b>) -> 'a list -> Job<'b list>
   let rec traverseJobA (f : 'a -> Job<'b>) (list : 'a list) : Job<'b list> =

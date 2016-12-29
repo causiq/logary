@@ -21,14 +21,6 @@ type L =
   /// Helps the C# compiler with Func type inference.
   static member F (f: Func<_,_,_>) = f
 
-/// Functions callable by Logary.CSharp.
-module internal CSharp =
-  [<CompiledName "ToTask">]
-  let internal toTask<'a> (jj : Job<'a>) : Task<'a> =
-    let tcs = new TaskCompletionSource<'a>()
-    jj |> Job.map (tcs.SetResult >> ignore) |> start
-    tcs.Task
-
 /// <summary>
 /// Conversion functions from Action/Func to FSharpFunc
 /// We need these because FuncConvert often makes C# type inference fail.
@@ -527,6 +519,15 @@ module private MiscHelpers =
       Logger.log logger logLevel >> Alt.afterFun (fun _ -> true)
     else
       Logger.logWithTimeout logger timeoutMillis logLevel
+
+/// Functions callable by Logary.CSharp.
+[<Extension>]
+type Job =
+  [<Extension>]
+  static member ToTask<'a> (xJ : Job<'a>) : Task<'a> =
+    let tcs = new TaskCompletionSource<'a>()
+    xJ |> Job.map (tcs.SetResult >> ignore) |> start
+    tcs.Task
 
 module Alt =
 

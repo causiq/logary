@@ -112,8 +112,9 @@
     <Compile Include="Formatting.fs" />
     <!--<Compile Include="Serialisation.fs" />-->
 
-    <!-- Below: targets, metrics, healthchecks -->
-    <Compile Include="Configuration/Factory.fs" />
+    <!-- Below: implementations, factory api -->
+    <Compile Include="CSharp.fs" />
+    <Compile Include="Configuration/Factory.Rule.fs" />
     <Compile Include="Configuration/Factory.Target.fs" />
     <Compile Include="Configuration/Factory.Metric.fs" />
     <Compile Include="Configuration/Factory.HealthCheck.fs" />
@@ -124,9 +125,8 @@
     <Compile Include="Transformers.fs" />
 
     <!-- Below: config -->
-    <Compile Include="CSharp.fs" />
     <Compile Include="Configuration/Config.fs" />
-    <Compile Include="Configuration/FactoryApi.fs" />
+    <Compile Include="Configuration/Factory.fs" />
     <Compile Include="Configuration/Uri.fs" />
     <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="AssemblyInfo.fs" />
