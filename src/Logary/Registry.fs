@@ -52,7 +52,6 @@ module internal GlobalService =
     }
   *)
 
-
 module Engine =
 
   type T =
@@ -62,6 +61,12 @@ module Engine =
 
   let create processing : Job<T> =
     Job.result { heyday = true }
+
+  let log (logLevel : LogLevel) (messageFactory : LogLevel -> Message) : Alt<unit> =
+    Alt.always ()
+
+  let logWithAck (logLevel : LogLevel) (messageFactory : LogLevel -> Message) : Alt<Promise<unit>> =
+    Promise.instaPromise
 
 /// When you validate the configuration, you get one of these.
 ///
@@ -130,6 +135,8 @@ module Registry =
     private {
       runtimeInfo : RuntimeInfo
 
+      engine      : Engine.T
+
       /// Get a logger for the given point name (the path of the logger). This
       /// operation should not fail, so there's no nack promise passed.
       getLoggerCh : Ch<PointName * Middleware option * IVar<Logger>>
@@ -140,8 +147,9 @@ module Registry =
       /// long the flush 'waits' for targets before returning a FlushInfo.
       flushCh : Ch<Ch<FlushInfo> * Promise<unit> * Duration option>
 
-      /// Shutdown the registry in full.
-      shutdownCh : Ch<Ch<ShutdownInfo> * Promise<unit> * Duration option>
+      /// Shutdown the registry in full. This operation cannot be cancelled and
+      /// so the caller is promised a ShutdownInfo.
+      shutdownCh : Ch<IVar<ShutdownInfo> * Duration option>
     }
 
   /// Gets a logger from the registry, by name. This will always return a
@@ -183,9 +191,8 @@ module Registry =
   /// function does not specify a timeout, neither for the flush nor for the
   /// shutting down of targets, and so it does not return a `ShutdownInfo`
   /// data-structure.
-  let shutdown (t : T) : Alt<unit> =
-    t.shutdownCh *<+->- fun shutdownCh nack -> shutdownCh, nack, None
-    |> Alt.afterFun (fun _ -> ())
+  let shutdown (t : T) : Alt<ShutdownInfo> =
+    t.shutdownCh *<-=>- fun shutdownCh -> shutdownCh, None
 
   /// Shutdown the registry and flush all targets before shutting it down. This
   /// function specifies both a timeout for the flushing of targets and the
@@ -193,13 +200,27 @@ module Registry =
   /// `shutdownTimeout` + `flushTimeout`, with information about the shutdown.
   let shutdownWithTimeouts (t : T) (flushTimeout : Duration) (shutdownTimeout : Duration) : Alt<FlushInfo * ShutdownInfo> =
     flushWithTimeout t flushTimeout ^=> fun flushInfo ->
-    t.shutdownCh *<+->- fun shutdownCh nack -> shutdownCh, nack, Some shutdownTimeout
+    t.shutdownCh *<-=>- fun shutdownCh -> shutdownCh, Some shutdownTimeout
     |> Alt.afterFun (fun shutdownInfo -> flushInfo, shutdownInfo)
 
   let runtimeInfo (t : T) : RuntimeInfo =
     t.runtimeInfo
 
   module internal Impl =
+
+    let createLogger engine name mid =
+      let logger =
+        { new Logger with
+            member x.name = name
+            member x.level = Verbose // TOOD: ship back from engine?
+            member x.log level messageFactory =
+              Engine.log level messageFactory
+            member x.logWithAck level messageFactory =
+              Engine.logWithAck level messageFactory
+        }
+
+      Logger.apply mid logger
+
     let createGlobals (conf : LogaryConf) (x : T) =
       let config =
         { Global.defaultConfig with
@@ -207,28 +228,70 @@ module Registry =
             getLoggerWithMiddleware = getLoggerWithMiddlewareT x }
       GlobalService.create config conf.runtimeInfo.logger
 
-    let rec server (x : T) =
-      Alt.choose [
-        x.getLoggerCh ^=> fun (name, mid, repl) ->
-          server x
+    let spawn kind (ri : RuntimeInfo) mapping factory =
+      let folder (KeyValue (name, conf)) =
+        let mname = PointName [| "Logary"; sprintf "%s(%s)" kind name |]
+        let logger = ri.logger |> Logger.apply (setName mname)
+        let ri = ri |> RuntimeInfo.setLogger logger
+        factory ri conf
 
-        x.flushCh ^=> fun (ackCh, nack, timeout) ->
-          server x
+      mapping
+      |> List.ofSeq
+      |> List.traverseJobA folder
 
-        x.shutdownCh ^=> fun (ackCh, nack, timeout) ->
-          server x
-      ]
+  open Impl
+
+  // Middleware at:
+  //  - LogaryConf (goes on all loggers) (composes here)
+  //  - TargetConf (goes on specific target) (composes in engine)
+  //  - individual loggers (composes at call-site, or in #create methods of services)
 
   let create (conf : LogaryConf) : Job<T> =
-    let logger = conf.runtimeInfo.logger |> Logger.apply (setSimpleName "Logary.Registry")
-    let x = { runtimeInfo = conf.runtimeInfo; getLoggerCh = Ch (); flushCh = Ch (); shutdownCh = Ch () }
-    let globals = Impl.createGlobals conf x
-    let targets = conf.targets |> Map.map (fun _ -> Target.create conf.runtimeInfo)
-    let metrics = conf.metrics |> Map.map (fun _ -> Metric.create conf.runtimeInfo)
-    let hcs = conf.healthChecks |> Map.map (fun _ -> HealthCheck.create conf.runtimeInfo)
-    let engine = Engine.create conf.processing
-    Job.supervise logger (Policy.restartDelayed 500u) (Impl.server x) >>-.
-    x
+    let ri, rname, rmid =
+      conf.runtimeInfo,
+      PointName [| "Logary"; "Registry" |],
+      List.ofArray conf.middleware
+    let rlogger = conf.runtimeInfo.logger |> Logger.apply (setName rname)
+    spawn "Target" ri conf.targets Target.create >>= fun (targets : Target.T list) ->
+    spawn "Metric" ri conf.metrics Metric.create >>= fun (metrics : Metric.T list) ->
+    spawn "HealthCheck" ri conf.healthChecks HealthCheck.create >>= fun (hcs : HealthCheck.T list) ->
+    Engine.create conf.processing >>= fun engine ->
+
+    let getLoggerCh, flushCh, shutdownCh = Ch (), Ch (), Ch ()
+
+    let rec initialise () =
+      running ()
+
+    and running () =
+      Alt.choose [
+        getLoggerCh ^=> fun (name, lmid, repl) ->
+          let cmid = Middleware.compose (lmid |> Option.fold (fun s t -> t :: s) rmid)
+          repl *<= createLogger engine name cmid >>= running
+
+        flushCh ^=> fun (ackCh, nack, timeout) ->
+          // let flush ... FlushInfo
+          // let nack ... FlushInfo
+          // let timeout = timeout ... FlushInfo
+          // (Alt.choosy [| flush; timeout; nack |] ^=> running
+          running ()
+
+        shutdownCh ^=> fun (res, timeout) ->
+          running ()
+      ]
+
+    and faulted () =
+      initialise ()
+
+    let state =
+      { runtimeInfo = ri
+        engine = engine
+        getLoggerCh = getLoggerCh
+        flushCh = flushCh
+        shutdownCh = shutdownCh }
+
+    let globals = createGlobals conf state
+    Job.supervise rlogger (Policy.restartDelayed 500u) (initialise ()) >>-.
+    state
 
   let toLogManager (t : T) : LogManager =
     { new LogManager with

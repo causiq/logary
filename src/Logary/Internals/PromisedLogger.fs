@@ -22,7 +22,7 @@ type internal PromisedLogger(name, requestedLogger : Job<Logger>) =
     if contents = null then nullArg "name"
     PromisedLogger(name, logger) :> Logger
 
-  interface Logger with
+  interface Logger with // promised logger
     member x.name = name
 
     member x.logWithAck logLevel messageFactory =

@@ -20,6 +20,7 @@ type TargetConf = // formerly TargetUtils
     bufferSize : uint32
     /// Supervision policy
     policy     : Policy
+    middleware : Middleware list
     server     : RuntimeInfo * TargetAPI -> Job<unit> }
 
   override x.ToString() =
@@ -30,18 +31,20 @@ module TargetConf =
 
   let create policy bufferSize server name : TargetConf =
     let will = Will.create ()
-    { name = name
-      rules = Rule.empty :: []
+    { name       = name
+      rules      = Rule.empty :: []
       bufferSize = bufferSize
-      policy = policy
-      server = server will }
+      policy     = policy
+      middleware = []
+      server     = server will }
 
   let createSimple server name : TargetConf =
-    { name = name
-      rules = Rule.empty :: []
+    { name       = name
+      rules      = Rule.empty :: []
       bufferSize = 500u
-      policy = Policy.exponentialBackoffSix
-      server = server }
+      policy     = Policy.exponentialBackoffSix
+      middleware = []
+      server     = server }
 
   let bufferSize size conf =
     { conf with bufferSize = size }
@@ -54,6 +57,9 @@ module TargetConf =
 
   let policy policy conf =
     { conf with policy = policy }
+
+  let middleware mid conf =
+    { conf with middleware = mid :: conf.middleware }
 
 module Target =
 

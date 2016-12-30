@@ -11,7 +11,7 @@ let stubLogger (minLevel : LogLevel)
                (message : Message ref)
                name =
 
-  { new Logger with
+  { new Logger with // stub/tests
       member x.log level msgFactory =
         x.logWithAck level msgFactory
         |> Alt.afterFun (fun _ -> ())

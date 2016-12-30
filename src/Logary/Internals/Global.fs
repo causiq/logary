@@ -83,7 +83,7 @@ module internal Global =
     let ensureName (m : Message) =
       if m.name.isEmpty then { m with name = name } else m
 
-    interface Logger with
+    interface Logger with // flyweight
       member x.name = name
 
       member x.log level msgFactory =

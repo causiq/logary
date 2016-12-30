@@ -267,7 +267,7 @@ module Logger =
     }
 
   let apply (middleware : Message -> Message) (logger : Logger) : Logger =
-    { new Logger with
+    { new Logger with // Logger.apply delegator
       member x.log logLevel messageFactory =
         logger.log logLevel (messageFactory >> middleware)
       member x.logWithAck logLevel messageFactory =

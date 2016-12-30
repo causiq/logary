@@ -20,7 +20,7 @@ module InternalLogger =
       messageCh : Ch<Message * Promise<unit> * Ch<Promise<unit>>>
     }
 
-    interface Logger with
+    interface Logger with // internal logger
       member x.logWithAck logLevel messageFactory =
         if logLevel >= x.rule.minLevel then
           let message = messageFactory logLevel

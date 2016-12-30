@@ -174,7 +174,8 @@ module internal Impl =
       ] :> Job<_>
 
     let state =
-      { logger = new Logger(conf.logId) }
+      { logger = new Logger(conf.logId) // Elmah.IO specific
+      }
 
     state.logger.OnMessageFail.Add (Ch.send internalError >> start)
 

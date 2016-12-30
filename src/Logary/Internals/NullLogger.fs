@@ -7,7 +7,7 @@ open Logary
 /// that is actually *the* internal logger target, to avoid recursive calls to
 /// itself.
 type NullLogger() =
-  interface Logger with
+  interface Logger with // null logger
     member x.logWithAck logLevel messageFactory = Promise.instaPromise
     member x.log logLevel messageFactory = Alt.always ()
     member x.level = Fatal
