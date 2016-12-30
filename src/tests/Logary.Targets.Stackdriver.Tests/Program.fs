@@ -66,7 +66,7 @@ let target =
             |> fun inst -> inst.server (fun _ -> Job.result ()) None |> start; inst
       
       for i in 0..20 do
-        Target.log target (event LogLevel.Info "thing happened" |> setField "blah" 12345 |> setContext "zone" "foobar" |> addExn (raisedExn "boohoo")) |> run |> run
+        Target.log target (event LogLevel.Info "thing happened at {blah}" |> setField "blah" 12345 |> setContext "zone" "foobar" |> addExn (raisedExn "boohoo")) |> run |> run
       
       target |> flush
   ]

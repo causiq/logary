@@ -60,6 +60,7 @@ let empty : StackdriverConf = StackdriverConf.create("", "", Unchecked.defaultof
 module internal Impl =
   // constant computed once here
   let messageKey = PointName [|"message"|]
+  let unformattedMessageKey = PointName [| "template" |]
 
   let toSeverity = function
   | LogLevel.Debug -> LogSeverity.Debug
@@ -95,17 +96,25 @@ module internal Impl =
     // labels are used in stackdriver for classification, so lets put context there.
     // they expect only simple values really in the labels, so it's ok to just stringify them
     let labels = m.context |> Map.map (fun k v -> Value.toString v) |> Map.toSeq |> dict
-
-    let message = 
-      // TODO: render the template with field values
+    let fieldOfString s = Field(Value.String s, None)
+    let formatted, raw = 
       match m.value with
-      | Event template -> template
-      | _ -> ""
+      | Event template -> 
+        Some <| fieldOfString (Logary.Formatting.MessageParts.formatTemplate template m.fields)
+        , Some <| fieldOfString template
+      | _ -> None, None
+    
+    let addMessageFields m =
+      match formatted, raw with
+      | Some s, Some v -> m |> Map.add messageKey s |> Map.add unformattedMessageKey v
+      | Some s, None -> m |> Map.add messageKey s
+      | None, Some v -> m |> Map.add messageKey v
+      | None, None -> m
 
     // really only need to include fields and the formatted message template, because context went to labels
     let payloadFields = 
-      m.fields 
-      |> Map.add messageKey (Field.init message)
+      m.fields
+      |> addMessageFields
       |> Map.toSeq
       |> Seq.fold addToStruct (WellKnownTypes.Struct())
 
