@@ -185,10 +185,8 @@ module internal Impl =
         
         RingBuffer.take requests ^=> function
             | Log (message, ack) -> job {
-                    let request = WriteLogEntriesRequest()
-                    request.LogName <- state.logName
+                    let request = WriteLogEntriesRequest(LogName = state.logName, Resource = state.resource)
                     request.Labels.Add(conf.labels)
-                    request.Resource <- state.resource
                     request.Entries.Add(write message)
                     do! Job.Scheduler.isolate (fun () -> state.logger.WriteLogEntries(request, state.callSettings) |> ignore)
                     do! ack *<= ()
