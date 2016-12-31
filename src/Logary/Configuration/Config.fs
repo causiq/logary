@@ -77,7 +77,7 @@ module Config =
   let consoleSemaphore getConsoleSemaphore lconf =
     { lconf with getSem = getConsoleSemaphore }
 
-  let middleware mid lconf =
+  let middleware mid (lconf : T) =
     { lconf with middleware = mid :: lconf.middleware }
 
   let ilogger ilogger lconf =

@@ -40,8 +40,12 @@ module internal GlobalService =
           ack *<= ()
       ]
 
+    let shutdown : Alt<Promise<unit>> =
+      shutdownCh *<-=>= fun repl -> repl
+      |> Alt.afterFun (fun iv -> iv :> _)
+
     let loop = Job.supervise logger Policy.terminate (init ())
-    Service.create logger "globals" pauseCh resumeCh shutdownCh loop
+    Service.create logger "globals" pauseCh resumeCh shutdown loop
 
   (* // cc: @oskarkarlsson ;)
   let scoped (globals : Service<Service.T>) (logger : Logger) =
@@ -229,15 +233,33 @@ module Registry =
       GlobalService.create config conf.runtimeInfo.logger
 
     let spawn kind (ri : RuntimeInfo) mapping factory =
-      let folder (KeyValue (name, conf)) =
+      let creator (KeyValue (name, conf)) =
         let mname = PointName [| "Logary"; sprintf "%s(%s)" kind name |]
         let logger = ri.logger |> Logger.apply (setName mname)
         let ri = ri |> RuntimeInfo.setLogger logger
+        (*conf :> Service, *)
         factory ri conf
 
       mapping
       |> List.ofSeq
-      |> List.traverseJobA folder
+      |> List.traverseJobA creator
+      //|> List.traverseJobA supervise
+
+    let pollServices (services : Service<Service.T> list) : Alt<(Service<Service.T> * exn) list> =
+      let faulted = IVar ()
+
+      let request =
+        services
+        |> List.traverseJobA (fun s -> Service.getState s >>- fun state -> s, state)
+        |> Job.map (List.choose (function
+            | service, Faulted e -> Some (service, e)
+            | _ -> None))
+        |> Job.bind (function
+            | [] -> Job.result ()
+            | res -> faulted *<= res)
+        |> Job.start
+
+      Alt.prepareJob (fun () -> request >>-. faulted)
 
   open Impl
 
@@ -260,27 +282,37 @@ module Registry =
     let getLoggerCh, flushCh, shutdownCh = Ch (), Ch (), Ch ()
 
     let rec initialise () =
-      running ()
+      // let targetSvc (name, target) =
+      //   Service.createSimple ri.logger name (Target.shutdown target)
+      // targets |> List.map (fun (name, target) -> >>= fun targets ->
+      // supervise metrics >>= fun metrics ->
+      // supervise hcs >>= fun hcs ->
+      // running (targets, metrics, hcs)
+      running []
 
-    and running () =
+    and running (services : Service<Service.T> list) =
       Alt.choose [
+        pollServices services ^=> fun _ ->
+          faulted ()
+
         getLoggerCh ^=> fun (name, lmid, repl) ->
           let cmid = Middleware.compose (lmid |> Option.fold (fun s t -> t :: s) rmid)
-          repl *<= createLogger engine name cmid >>= running
+          repl *<= createLogger engine name cmid >>=. running services
 
         flushCh ^=> fun (ackCh, nack, timeout) ->
-          // let flush ... FlushInfo
+          // let flush = Engine.flush ... ... FlushInfo
           // let nack ... FlushInfo
           // let timeout = timeout ... FlushInfo
           // (Alt.choosy [| flush; timeout; nack |] ^=> running
-          running ()
+          running services
 
         shutdownCh ^=> fun (res, timeout) ->
-          running ()
+          // TODO: handle shutting down metrics, hcs and targets
+          rlogger.infoWithAck (eventX "Shutting down")
       ]
 
     and faulted () =
-      initialise ()
+      Alt.always ()
 
     let state =
       { runtimeInfo = ri
