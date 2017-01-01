@@ -198,7 +198,7 @@ let main argv =
     withLogaryManager "Logary.Examples.ConsoleApp" (
       // output to the console
       withTargets [
-        Console.create (Console.empty) "console"
+        LiterateConsole.create (LiterateConsole.empty) "console"
       ] >>
       // continuously log CPU stats
       withMetrics [
@@ -217,7 +217,9 @@ let main argv =
     logary.getLogger (PointName [| "Logary"; "Samples"; "main" |])
 
   // log something
-  logger.logSimple <| Logary.Message.eventInfo("Hello, world!")
+  logger.info (
+    eventX "User with {userName} loggedIn"
+    >> setField "userName" "haf")
 
   // wait for sigint
   mre.Wait()
