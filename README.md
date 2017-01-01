@@ -173,6 +173,19 @@ open Logary.Metric // conf
 open Logary.Metrics // conf
 open System.Threading // control flow
 
+let randomMetric (pn : PointName) : Job<Metric> =
+  let reducer state = function
+  | _ -> state
+
+  let ticker pn (rnd : Random, prevValue) =
+    let value = rnd.NextDouble()
+    let msg = Message.gauge pn (Float value)
+    (rnd, value), [ msg ]
+
+  let state = Random(), 0.0
+
+  Metric.create reducer state (ticker pn)
+
 [<EntryPoint>]
 let main argv =
   // the 'right' way to wait for SIGINT
@@ -185,11 +198,11 @@ let main argv =
     withLogaryManager "Logary.Examples.ConsoleApp" (
       // output to the console
       withTargets [
-        LiterateConsole.create (LiterateConsole.empty) "console"
+        Console.create (Console.empty) "console"
       ] >>
       // continuously log CPU stats
       withMetrics [
-        MetricConf.create (Duration.FromMilliseconds 500L) "cpu" Sample.cpuTime
+        MetricConf.create (Duration.FromMilliseconds 500L) "random" randomMetric
       ] >>
       // "link" or "enable" the loggers to send everything to the configured target
       withRules [
@@ -204,9 +217,7 @@ let main argv =
     logary.getLogger (PointName [| "Logary"; "Samples"; "main" |])
 
   // log something
-  logger.info (
-    eventX "User with {userName} loggedIn"
-    >> setField "userName" "haf")
+  logger.logSimple <| Logary.Message.eventInfo("Hello, world!")
 
   // wait for sigint
   mre.Wait()
