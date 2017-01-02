@@ -41,13 +41,13 @@ module Message =
       (fun v (x : Message) -> { x with timestamp = v })
 
     let field_ name : Prism<Message, Field> =
-      fields_ >-> Map.key_ name
+      fields_ >-> HashMap.key_ name
 
     let fieldString_ name : Prism<Message, Field> =
-      fields_ >-> Map.key_ (PointName.ofSingle name)
+      fields_ >-> HashMap.key_ (PointName.ofSingle name)
 
     let contextValue_ name : Prism<Message, _> =
-      context_ >-> Map.key_ name
+      context_ >-> HashMap.key_ name
 
     /// Lens you can use to get the list of errors in this message.
     /// Also see Logary errors: https://gist.github.com/haf/1a5152b77ec64bf10fe8583a081dbbbf
@@ -114,21 +114,21 @@ module Message =
   [<CompiledName "Tag">]
   let tag (tag : string) (message : Message) =
     let key = KnownLiterals.TagsContextName
-    match message.context |> Map.tryFind key with
+    match message.context |> HashMap.tryFind key with
     | Some (Array tags) when List.contains (String tag) tags ->
       message
     | Some (Array tags) ->
       let tags' = Array (String tag :: tags)
-      { message with context = message.context |> Map.add key tags' }
+      { message with context = message.context |> HashMap.set key tags' }
     | Some _ ->
       message
     | None ->
-      { message with context = message.context |> Map.add key (Array [ String tag ] ) }
+      { message with context = message.context |> HashMap.set key (Array [ String tag ] ) }
 
   /// Check if the Message has a tag
   [<CompiledName "HasTag">]
   let hasTag (tag : string) (message : Message) =
-    match message.context |> Map.tryFind KnownLiterals.TagsContextName with
+    match message.context |> HashMap.tryFind KnownLiterals.TagsContextName with
     | Some (Array tags) when List.contains (String tag) tags -> true
     | _ -> false
 
@@ -176,8 +176,8 @@ module Message =
   let event level template =
     { name      = PointName.empty
       value     = Event template
-      fields    = Map.empty
-      context   = Map.empty
+      fields    = HashMap.empty
+      context   = HashMap.empty
       level     = level
       timestamp = Global.getTimestamp () }
 
@@ -192,8 +192,8 @@ module Message =
   let gaugeWithUnit dp units value =
     { name      = dp
       value     = Gauge (value, units)
-      fields    = Map.empty
-      context   = Map.empty
+      fields    = HashMap.empty
+      context   = HashMap.empty
       level     = LogLevel.Debug
       timestamp = Global.getTimestamp () }
 
@@ -202,8 +202,8 @@ module Message =
   let gauge dp value =
     { name      = dp
       value     = Gauge (value, Units.Scalar)
-      fields    = Map.empty
-      context   = Map.empty
+      fields    = HashMap.empty
+      context   = HashMap.empty
       level     = LogLevel.Debug
       timestamp = Global.getTimestamp () }
 
@@ -211,8 +211,8 @@ module Message =
   let derivedWithUnit dp units value =
     { name      = dp
       value     = Derived (value, units)
-      fields    = Map.empty
-      context   = Map.empty
+      fields    = HashMap.empty
+      context   = HashMap.empty
       level     = LogLevel.Debug
       timestamp = Global.getTimestamp () }
 
@@ -220,8 +220,8 @@ module Message =
   let derived dp value =
     { name      = dp
       value     = Derived (value, Units.Scalar)
-      fields    = Map.empty
-      context   = Map.empty
+      fields    = HashMap.empty
+      context   = HashMap.empty
       level     = LogLevel.Debug
       timestamp = Global.getTimestamp () }
 

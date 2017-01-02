@@ -128,8 +128,8 @@ module MessageParts =
     }
 
   /// Formats the data in a nice fashion for printing to e.g. the Debugger or Console.
-  let formatFields (nl : string) (fields : Map<PointName, Field>) =
-    Map.toSeq fields
+  let formatFields (nl : string) (fields : HashMap<PointName, Field>) =
+    HashMap.toSeq fields.Visit
     |> Seq.map (fun (key, (Field (value, _))) -> PointName.format key, value)
     |> Map.ofSeq
     |> Object
@@ -167,8 +167,8 @@ module MessageWriter =
           let time = formatTimestamp m.timestampTicks
           let body = formatValueShallow m
           let name = m.name.ToString()
-          let fields = (if Map.isEmpty m.fields then "" else formatFields nl m.fields)
-          let context = (if Map.isEmpty m.context then "" else formatContext nl m.context)
+          let fields = (if HashMap.isEmpty m.fields then "" else formatFields nl m.fields)
+          let context = (if HashMap.isEmpty m.context then "" else formatContext nl m.context)
           sprintf "%s %s: %s [%s]%s%s%s" level time body name fields context ending
           |> tw.Write
     }

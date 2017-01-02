@@ -90,6 +90,24 @@ module internal Rnd =
       first <- false
     value
 
+[<RequireQualifiedAccess>]
+module HashMap =
+  open Logary.Internals.Aether
+
+  /// Prism to a value associated with a key in a map.
+  let key_ (k: 'k) : Prism<HashMap<'k,'v>,'v> =
+    HashMap.tryFind k,
+    (fun v x ->
+      if HashMap.containsKey k x then HashMap.set k v x else x)
+
+  /// Lens to a value option associated with a key in a map.
+  let value_ (k: 'k) : Lens<HashMap<'k,'v>, 'v option> =
+    HashMap.tryFind k,
+    (fun v x ->
+      match v with
+      | Some v -> HashMap.set k v x
+      | _ -> HashMap.unset k x)
+
 module Cache =
   open System.Collections.Concurrent
 

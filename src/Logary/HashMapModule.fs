@@ -37,8 +37,14 @@ module HashMap =
   let inline set (key : 'K) (value : 'V) (m : HashMap<'K, 'V>) : HashMap<'K, 'V> =
     m.Set key value
 
+  /// Alias for `set`
+  let inline add key value m = set key value m
+
   let inline unset (key : 'K) (m : HashMap<'K, 'V>) : HashMap<'K, 'V> =
     m.Unset key
+
+  /// Alias for `unset`
+  let inline remove key m = unset key m
 
   let inline visit (visitor : 'K -> 'V -> bool) (m : HashMap<'K, 'V>) : bool =
     m.Visit visitor

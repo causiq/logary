@@ -191,11 +191,11 @@ type Message =
     /// Event. (A discriminated union type)
     value     : PointValue
     /// The semantic-logging data.
-    fields    : Map<PointName, Field>
+    fields    : HashMap<PointName, Field>
     /// Where in the code? Who did the operation? What tenant did the principal
     /// who did it belong to? Put things your normally do 'GROUP BY' on in this
     /// Map.
-    context   : Map<string, Value>
+    context   : HashMap<string, Value>
     /// How important? See the docs on the LogLevel type for details.
     level     : LogLevel
     /// When? nanoseconds since UNIX epoch.
