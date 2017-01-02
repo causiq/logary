@@ -66,7 +66,7 @@ let integration =
 
     testCase "logging to log4net logs to logary" <| fun _ ->
 
-      let logaryAppender = LogaryAppender()
+      let logaryAppender = LogaryLog4NetAppender()
       let patternLayout = new PatternLayout(ConversionPattern = "%m")
       logaryAppender.Layout <- patternLayout
 
