@@ -1,13 +1,10 @@
 ﻿module Logary.Tests.Formatting
 
-open System
-
 open Expecto
+open System
 open NodaTime
-
 open Logary
 open Logary.Formatting
-
 open Logary.Tests.TestDSL
 
 let private sampleMessage : Message =

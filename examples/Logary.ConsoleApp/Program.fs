@@ -29,30 +29,6 @@ module internal Sample =
     return Metric.tapMessages ewma
   }
 
-  // Sample metrics from two M6000 graphics cards
-  let m6000s _ : Job<Metric> =
-    let instances =
-      [ "08:00"; "84:00" ] |> List.map (sprintf "quadro m6000(%s)")
-
-    let gpu counter units =
-      { category  = "GPU"
-        counter   = counter
-        instances = Set.ofList instances
-        unit      = Some units }
-
-    let counters =
-      [| yield gpu "GPU Fan Speed (%)" Percent
-         yield gpu "GPU Time (%)" Percent
-         yield gpu "GPU Memory Usage (%)" Percent
-         yield gpu "GPU Memory Used (MB)" (Scaled (Bytes, 1e-6))
-         yield gpu "GPU Power Usage (Watts)" Watts
-         yield gpu "GPU SM Clock (MHz)" (Scaled (Hertz, 1e-6))
-         yield gpu "GPU Temperature (degrees C)" (Offset (Kelvins, 1e-6))
-      |]
-      |> WinPerfCounters.ofPerfCounters
-
-    WinPerfCounters.ofCounters counters
-
 open System.Threading
 
 module ParallelJob =
