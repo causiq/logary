@@ -60,6 +60,19 @@ let tests =
     |> List.head
 
   testList "registry" [
+    yield testSequenced (
+      testCaseAsync "single getLoggerByPointName" ((fun () ->
+        withRegistry "A.B.C" 123456L <| fun (logary, out) ->
+          job {
+            let abc = Logging.getLoggerByName "A.B.C"
+            let de = Logging.getLoggerByName "D.E"
+            do! abc.debugWithAck (eventX "Hi there")
+            do! de.debugWithAck (eventX "Goodbye")
+            Expect.equal (out.ToString()) "A.B.C|Hi there\nD.E|Goodbye"
+                         "Should have correct output"
+          })())
+    )
+
     for i in 0 .. 10000 do
       let (NonEmptyString name, testId : int64) = testId ()
 
@@ -82,8 +95,8 @@ let tests =
           let pname = PointName.ofSingle (sprintf "%s.%i" name testId)
           let msg = sprintf "Should have correct name: %O" pname
           let logged = sprintf "From %s.%i" name testId
-          let logger = Logging.getLoggerByPointName pname
           job {
+            let logger = Logging.getLoggerByPointName pname
             Expect.equal logger.name pname msg
             do! logger.infoWithAck (eventX logged)
             do! Registry.Advanced.flushPending logary.registry
