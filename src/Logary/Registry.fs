@@ -209,7 +209,7 @@ module Advanced =
 
     /// The registry function that works as a supervisor and runtime state holder
     /// for Logary.
-    let rec registry conf sup sched (inbox : Ch<RegistryMessage>) : Job<_> =
+    let rec registry conf (sup : Supervisor.Instance) sched (inbox : Ch<RegistryMessage>) : Job<_> =
       let targets = conf.targets |> Seq.map (fun kv -> kv.Value |> snd |> Option.get)
       let regPath = PointName [| "Logary"; "Registry"; "registry" |]
       let logger = conf.runtimeInfo.logger |> Logger.apply (Message.setName regPath)
@@ -236,13 +236,16 @@ module Advanced =
           |> bisectSuccesses
 
         if List.isEmpty failed then
-          do! logger.verboseWithBP (eventX "Shutdown Ack")
+          do! logger.verboseWithBP (eventX "All targets shut down successfully")
         else
           let msg = sprintf "Failed target shutdowns:%s%s" nl (toTextList failed)
           do! logger.errorWithBP (eventX "Shutdown Nack with {message}"
                                >> setField "message" msg
                                >> setField "failed" (Value.ofObject failed))
 
+        let ack = IVar ()
+        do! Ch.give sup.shutdown ack
+        do! ack
         do! Ch.give ackCh () <|> nack
         return! logger.verboseWithBP (eventX "Shutting down immediately")
       }

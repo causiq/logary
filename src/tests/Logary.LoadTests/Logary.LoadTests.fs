@@ -39,12 +39,18 @@ let withRegistry name testId contFn =
   confLogary (sprintf "logary for %s.%i" name testId)
   |> withRule (Rule.createForTarget name)
   |> withTarget target
+  |> withInternalTarget Verbose (
+    Console.create Console.empty "cons"
+  )
   |> Config.validate
   |> runLogary
   |> Job.bind (fun logary ->
     let dispose = Config.shutdownSimple logary |> Job.Ignore
     Job.tryFinallyJobDelay (fun _ -> contFn (logary, out)) dispose
   )
+
+let withRegistryAsync name testId contFn =
+  withRegistry name testId contFn
   |> Job.toAsync
 
 [<Tests>]
@@ -65,7 +71,7 @@ let tests =
     yield testSequenced (
       testList "globals globals" [
         testCaseAsync "async single flyweight - single registry" ((fun () ->
-          withRegistry "A.B.C and D.E" 123456L <| fun (logary, out) ->
+          withRegistryAsync "A.B.C and D.E" 123456L <| fun (logary, out) ->
             job {
               let abc = Logging.getLoggerByName "A.B.C"
               let de = Logging.getLoggerByName "D.E"
@@ -77,9 +83,9 @@ let tests =
 
         testCaseAsync "async single flyweight - static getLoggerByName - multi registry" ((fun () ->
           let interfere = withRegistry "interference" 654321L <| fun (logary, out) -> Job.result ()
-
           let abc = Logging.getLoggerByName "A.B.C"
           let de = Logging.getLoggerByName "D.E"
+
           let first = withRegistry "A.B.C and D.E" 123456L <| fun (logary, out) ->
             job {
               do! abc.debugWithAck (eventX "Hi there")
@@ -89,12 +95,14 @@ let tests =
             }
 
           interfere
-          |> Async.map (fun _ ->
+          |> Job.map (fun _ ->
+            printfn "Before starting new..."
             // interfere should be shutdown at this point
             abc.debugWithAck (eventX "Before") |> start
             Expect.isNone (!Internals.Globals.singleton) "Should have no value"
           )
-          |> Async.bind (fun _ -> first)
+          |> Job.bind (fun _ -> first)
+          |> Job.toAsync
           )())
       ]
     )
@@ -103,7 +111,7 @@ let tests =
       let (NonEmptyString name, testId : int64) = testId ()
 
       yield testCaseAsync (sprintf "async many ready - instance getLogger - (%s.%i)" name testId) ((fun () ->
-        withRegistry name testId <| fun (logary, out) ->
+        withRegistryAsync name testId <| fun (logary, out) ->
           let pname = PointName.ofSingle (sprintf "%s.%i" name testId)
           let msg = sprintf "Should have correct name: %O" pname
           let logged = sprintf "From %s.%i" name testId
@@ -117,7 +125,7 @@ let tests =
       ) ())
 
       yield testCaseAsync (sprintf "async many ready - static getLoggerByName - (%s.%i)" name testId) ((fun () ->
-        withRegistry name testId <| fun (logary, out) ->
+        withRegistryAsync name testId <| fun (logary, out) ->
           let pname = PointName.ofSingle (sprintf "%s.%i" name testId)
           let msg = sprintf "Should have correct name: %O" pname
           let logged = sprintf "From %s.%i" name testId
