@@ -60,23 +60,49 @@ let tests =
     |> List.head
 
   testList "registry" [
+
+    // yield memoized
     yield testSequenced (
-      testCaseAsync "single getLoggerByPointName" ((fun () ->
-        withRegistry "A.B.C" 123456L <| fun (logary, out) ->
-          job {
-            let abc = Logging.getLoggerByName "A.B.C"
-            let de = Logging.getLoggerByName "D.E"
-            do! abc.debugWithAck (eventX "Hi there")
-            do! de.debugWithAck (eventX "Goodbye")
-            Expect.equal (out.ToString()) "A.B.C|Hi there\nD.E|Goodbye"
-                         "Should have correct output"
+      testList "globals globals" [
+        testCaseAsync "async single flyweight - single registry" ((fun () ->
+          withRegistry "A.B.C and D.E" 123456L <| fun (logary, out) ->
+            job {
+              let abc = Logging.getLoggerByName "A.B.C"
+              let de = Logging.getLoggerByName "D.E"
+              do! abc.debugWithAck (eventX "Hi there")
+              do! de.debugWithAck (eventX "Goodbye")
+              Expect.equal (out.ToString()) "A.B.C|Hi there\nD.E|Goodbye\n"
+                           "Should have correct output"
           })())
+
+        testCaseAsync "async single flyweight - static getLoggerByName - multi registry" ((fun () ->
+          let interfere = withRegistry "interference" 654321L <| fun (logary, out) -> Job.result ()
+
+          let abc = Logging.getLoggerByName "A.B.C"
+          let de = Logging.getLoggerByName "D.E"
+          let first = withRegistry "A.B.C and D.E" 123456L <| fun (logary, out) ->
+            job {
+              do! abc.debugWithAck (eventX "Hi there")
+              do! de.debugWithAck (eventX "Goodbye")
+              Expect.equal (out.ToString()) "A.B.C|Before\nA.B.C|Hi there\nD.E|Goodbye\n"
+                          "Should have correct output"
+            }
+
+          interfere
+          |> Async.map (fun _ ->
+            // interfere should be shutdown at this point
+            abc.debugWithAck (eventX "Before") |> start
+            Expect.isNone (!Internals.Globals.singleton) "Should have no value"
+          )
+          |> Async.bind (fun _ -> first)
+          )())
+      ]
     )
 
     for i in 0 .. 10000 do
       let (NonEmptyString name, testId : int64) = testId ()
 
-      yield testCaseAsync (sprintf "getLogger with name (%s.%i)" name testId) ((fun () ->
+      yield testCaseAsync (sprintf "async many ready - instance getLogger - (%s.%i)" name testId) ((fun () ->
         withRegistry name testId <| fun (logary, out) ->
           let pname = PointName.ofSingle (sprintf "%s.%i" name testId)
           let msg = sprintf "Should have correct name: %O" pname
@@ -90,7 +116,7 @@ let tests =
           }
       ) ())
 
-      yield testCaseAsync (sprintf "Logger.getLoggerByName (%s.%i)" name testId) ((fun () ->
+      yield testCaseAsync (sprintf "async many ready - static getLoggerByName - (%s.%i)" name testId) ((fun () ->
         withRegistry name testId <| fun (logary, out) ->
           let pname = PointName.ofSingle (sprintf "%s.%i" name testId)
           let msg = sprintf "Should have correct name: %O" pname
