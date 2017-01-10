@@ -276,6 +276,13 @@ let tests =
       })
     ]
 
+    testList "Middleware" [
+      testCase "signature" <| fun () ->
+        let f (mid : (Message -> Message) -> Message -> Message) =
+          ()
+        f (Middleware.host "local")
+    ]
+
   ]
 
 [<EntryPoint>]
