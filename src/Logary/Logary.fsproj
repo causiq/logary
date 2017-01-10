@@ -90,7 +90,6 @@
     <Compile Include="NodaTime.Duration.fs" />
     <Compile Include="NodaTime.Instant.fs" />
     <Compile Include="System.Dates.fs" />
-
     <!-- Below: runtime -->
     <Compile Include="Internals/Supervisor.fs" />
     <Compile Include="Internals/Service.fs" />
@@ -108,11 +107,9 @@
     <Compile Include="Internals/PromisedLogger.fs" />
     <Compile Include="Logging.fs" />
     <Compile Include="Registry.fs" />
-
     <!-- Below: formatting, serialisation -->
     <Compile Include="Formatting.fs" />
     <!--<Compile Include="Serialisation.fs" />-->
-
     <!-- Below: implementations, factory api -->
     <Compile Include="CSharp.fs" />
     <Compile Include="Configuration/Factory.Rule.fs" />
@@ -124,7 +121,6 @@
     <Compile Include="Targets/Graphite.fs" />
     <Compile Include="Metrics/Ticked.fs" />
     <Compile Include="Transformers.fs" />
-
     <!-- Below: config -->
     <Compile Include="Configuration/Config.fs" />
     <Compile Include="Configuration/Factory.fs" />
@@ -171,6 +167,11 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.6.1')">
       <ItemGroup>
+        <Reference Include="Hopac">
+          <HintPath>..\..\packages\Hopac\lib\net45\Hopac.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
         <Reference Include="Hopac.Core">
           <HintPath>..\..\packages\Hopac\lib\net45\Hopac.Core.dll</HintPath>
           <Private>True</Private>
@@ -178,11 +179,6 @@
         </Reference>
         <Reference Include="Hopac.Platform">
           <HintPath>..\..\packages\Hopac\lib\net45\Hopac.Platform.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="Hopac">
-          <HintPath>..\..\packages\Hopac\lib\net45\Hopac.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>

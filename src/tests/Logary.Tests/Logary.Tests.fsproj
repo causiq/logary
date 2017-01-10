@@ -51,27 +51,7 @@
       <Link>paket-files/YoLo.fs</Link>
     </Compile>
     <Compile Include="AssemblyVersionInfo.fs" />
-    <Compile Include="TestDSL.fs" />
-    <Compile Include="Fac.fs" />
-    <Compile Include="LogLevel.fs" />
-    <Compile Include="Formatting.fs" />
-    <Compile Include="Config.fs" />
-    <Compile Include="Rule.fs" />
-    <Compile Include="Lifecycles.fs" />
-    <Compile Include="Metrics.fs" />
-    <Compile Include="Targets.fs" />
-    <Compile Include="CoreTargets.fs" />
-    <Compile Include="GraphiteTarget.fs" />
-    <Compile Include="HealthChecks.fs" />
-    <Compile Include="Registry.fs" />
-    <Compile Include="Internals.fs" />
-    <Compile Include="Units.fs" />
-    <Compile Include="Value.fs" />
-    <Compile Include="Message.fs" />
-    <Compile Include="Middleware.fs" />
-    <Compile Include="Supervisor.fs" />
     <Compile Include="Program.fs" />
-    <None Include="Program.fsx" />
     <None Include="paket.references" />
     <None Include="App.config" />
   </ItemGroup>
@@ -148,6 +128,11 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.6.1')">
       <ItemGroup>
+        <Reference Include="Hopac">
+          <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
         <Reference Include="Hopac.Core">
           <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.Core.dll</HintPath>
           <Private>True</Private>
@@ -158,8 +143,29 @@
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
-        <Reference Include="Hopac">
-          <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.dll</HintPath>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.6.1')">
+      <ItemGroup>
+        <Reference Include="Mono.Cecil">
+          <HintPath>..\..\..\packages\Mono.Cecil\lib\net45\Mono.Cecil.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+        <Reference Include="Mono.Cecil.Mdb">
+          <HintPath>..\..\..\packages\Mono.Cecil\lib\net45\Mono.Cecil.Mdb.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+        <Reference Include="Mono.Cecil.Pdb">
+          <HintPath>..\..\..\packages\Mono.Cecil\lib\net45\Mono.Cecil.Pdb.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+        <Reference Include="Mono.Cecil.Rocks">
+          <HintPath>..\..\..\packages\Mono.Cecil\lib\net45\Mono.Cecil.Rocks.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>

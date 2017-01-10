@@ -18,9 +18,9 @@ type ILogger =
 module Config =
   type T =
     private {
-      targets      : Map<string, TargetConf>
-      metrics      : Map<string, MetricConf>
-      healthChecks : Map<string, HealthCheckConf>
+      targets      : HashMap<string, TargetConf>
+      metrics      : HashMap<string, MetricConf>
+      healthChecks : HashMap<string, HealthCheckConf>
       host         : string
       service      : string
       getTimestamp : unit -> EpochNanoSeconds
@@ -35,9 +35,9 @@ module Config =
     let mids =
       [ Middleware.host host
         Middleware.service service ]
-    { targets      = Map.empty
-      metrics      = Map.empty
-      healthChecks = Map.empty
+    { targets      = HashMap.empty
+      metrics      = HashMap.empty
+      healthChecks = HashMap.empty
       host         = host
       service      = service
       getTimestamp = Global.getTimestamp
@@ -48,19 +48,19 @@ module Config =
       processing   = Processing (fun _ _ -> Alt.always ()) }
 
   let target name tconf lconf =
-    { lconf with targets = lconf.targets |> Map.add name tconf }
+    { lconf with targets = lconf.targets |> HashMap.add name tconf }
 
   let targets tconfs lconf =
     tconfs |> Seq.fold (fun lconf (name, tconf) -> lconf |> target name tconf) lconf
 
   let metric name mconf lconf =
-    { lconf with metrics = lconf.metrics |> Map.add name mconf }
+    { lconf with metrics = lconf.metrics |> HashMap.add name mconf }
 
   let metrics mconfs lconf =
     mconfs |> Seq.fold (fun lconf (name, mconf) -> lconf |> metric name mconf) lconf
 
   let healthCheck name hcc lconf =
-    { lconf with healthChecks = lconf.healthChecks |> Map.add name hcc }
+    { lconf with healthChecks = lconf.healthChecks |> HashMap.add name hcc }
 
   let healthChecks hccs lconf =
     hccs |> Seq.fold (fun lconf (name, hcc) -> lconf |> healthCheck name hcc) lconf

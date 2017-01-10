@@ -146,7 +146,7 @@ module Map =
     let tryMap f xs =
       Seq.map f xs |> Seq.filter Option.isSome |> Seq.map Option.get
 
-    let foldPut s (k, v) = s |> Map.put k v
+    let foldPut s (k, v) = s |> HashMap.add k v
 
     let kvLike x =
       let typ = x.GetType()
@@ -185,7 +185,7 @@ module Map =
 
     function
     | null ->
-      Map.empty
+      HashMap.empty
 
     | :? System.Collections.IDictionary as dict
       when dict.GetType().IsGenericType ->
@@ -196,13 +196,13 @@ module Map =
            | :? DictionaryEntry as entry ->
              yield toS entry.Key, entry.Value
            | _ -> () }
-      values |> Seq.fold foldPut Map.empty
+      values |> Seq.fold foldPut HashMap.empty
 
     | :? System.Collections.IDictionary as dict ->
       dict
       |> Seq.cast<System.Collections.DictionaryEntry>
       |> Seq.map (fun de -> toS de.Key, de.Value)
-      |> Seq.fold foldPut Map.empty
+      |> Seq.fold foldPut HashMap.empty
 
     | :? IEnumerable as data ->
       seq {
@@ -210,7 +210,7 @@ module Map =
         while e.MoveNext() do
           yield e.Current }
       |> tryMap readInner
-      |> Seq.fold (fun s (k, v) -> s |> Map.put k v) Map.empty
+      |> Seq.fold (fun s (k, v) -> s |> HashMap.add k v) HashMap.empty
 
     | _ as data ->
       let props =
@@ -225,7 +225,7 @@ module Map =
       match props with
       | null
       | _ when props.Length = 0 ->
-        Map.empty
+        HashMap.empty
 
       | _ ->
         props
@@ -236,4 +236,4 @@ module Map =
             with ex ->
               box (sprintf "Property accessor %s on %s threw an exception: %O" pi.Name pi.ReflectedType.FullName ex)
           pi.Name, value)
-        |> Map.ofArray
+        |> HashMap.ofArray

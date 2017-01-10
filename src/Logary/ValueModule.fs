@@ -179,7 +179,8 @@ module Value =
     | a when a <> null ->
       a
       |> Map.ofObject
-      |> Map.map (fun _ v -> create v)
+      |> Seq.map (fun (KeyValue (k, v)) -> k, create v)
+      |> Map.ofSeq
       |> Object
 
     | otherwise ->

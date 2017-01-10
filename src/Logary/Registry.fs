@@ -78,11 +78,11 @@ module Engine =
 /// configured targets, metrics, healthchecks, middlewares, etc.
 type LogaryConf =
   /// A map of the targets by name.
-  abstract targets : Map<string, TargetConf>
+  abstract targets : HashMap<string, TargetConf>
   /// A map of metrics by name.
-  abstract metrics : Map<string, MetricConf>
+  abstract metrics : HashMap<string, MetricConf>
   /// A map of health checks by name.
-  abstract healthChecks : Map<string, HealthCheckConf>
+  abstract healthChecks : HashMap<string, HealthCheckConf>
   /// Service metadata - what name etc.
   abstract runtimeInfo : RuntimeInfo
   /// Extra middleware added to every resolved logger.

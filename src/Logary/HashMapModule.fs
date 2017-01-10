@@ -64,3 +64,11 @@ module HashMap =
     visit (fun k v -> incr l; true) m |> ignore
     !l
 
+  let inline ofArray (xs : ('k * 'v) []) : HashMap<'k, 'v> =
+    xs |> Array.fold (fun map (k, v) -> map |> add k v) empty
+
+  let inline ofSeq (xs : ('k * 'v) seq) : HashMap<'k, 'v> =
+    xs |> Seq.fold (fun map (k, v) -> map |> add k v) empty
+
+  let inline ofList (xs : ('k * 'v) list) : HashMap<'k, 'v> =
+    xs |> List.fold (fun map (k, v) -> map |> add k v) empty
