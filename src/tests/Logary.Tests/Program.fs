@@ -235,6 +235,45 @@ let tests =
             )
         )
       )
+
+      testCase "scaleBy10" <| fun () ->
+        Tests.skiptest "Bring in from master"
+
+      testCase "scaleBytes" <| fun () ->
+        Tests.skiptest "Bring in from master"
+
+      testCase "calculate" <| fun () ->
+        Tests.skiptest "Bring in from master"
+
+      testCase "scale" <| fun () ->
+        Tests.skiptest "Bring in from master"
+
+      testCase "formatWithUnit" <| fun () ->
+        Tests.skiptest "Bring in from master"
+    ]
+
+    // TO CONSIDER: bring back Scheduling when needed
+
+    testList "NullLogger" [
+      testCase "should be named 'Logary.NullLogger'" <| fun () ->
+        let sut = NullLogger.instance
+        Expect.equal sut.name (PointName.parse "Logary.NullLogger")
+                     "Is called Logary.NullLogger"
+
+      testCase "only logs 'Fatal'" <| fun () ->
+        let sut = NullLogger.instance
+        Expect.equal sut.level Fatal "Logs at Fatal level"
+
+      testCaseAsync "logWithAck returns" (async {
+        let sut = NullLogger.instance
+        let! p = Alt.toAsync (sut.logWithAck Fatal (eventX "hi"))
+        do! Alt.toAsync (p :> Alt<_>)
+      })
+
+      testCaseAsync "log returns" (async {
+        let sut = NullLogger.instance
+        do! Alt.toAsync (sut.log Fatal (eventX "hi"))
+      })
     ]
 
   ]
