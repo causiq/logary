@@ -346,7 +346,7 @@ module LiterateConsole =
         Parser.parse(eventTemplate).Tokens
         |> Seq.collect (function
           | PropToken (_, prop) ->
-            match Map.tryFind (PointName.ofSingle prop.Name) message.fields with
+            match HashMap.tryFind (PointName.ofSingle prop.Name) message.fields with
             | Some field ->
               literateTokeniseField options prop field
             | None ->

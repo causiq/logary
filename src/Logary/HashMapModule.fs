@@ -45,6 +45,9 @@ module HashMap =
   let inline unset (key : 'K) (m : HashMap<'K, 'V>) : HashMap<'K, 'V> =
     m.Unset key
 
+  /// Alias for `unset`
+  let inline remove key m = unset key m
+
   let inline visit (visitor : 'K -> 'V -> bool) (m : HashMap<'K, 'V>) : bool =
     m.Visit visitor
 

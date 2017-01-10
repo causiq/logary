@@ -27,7 +27,7 @@ module MessageWriterEx =
 
 module MessageParts =
 
-  let formatTemplate (template : string) (args : Map<PointName, Field>) =
+  let formatTemplate (template : string) (args : HashMap<PointName, Field>) =
     let template = Parser.parse template
     let sb       = StringBuilder()
 
@@ -39,7 +39,7 @@ module MessageParts =
       | TextToken (_, t) ->
         t
       | PropToken (_, p) ->
-        match Map.tryFind (PointName.ofSingle p.Name) args with
+        match HashMap.tryFind (PointName.ofSingle p.Name) args with
         | Some (Field (value, units)) -> 
             match units with
             | Some units ->
@@ -129,18 +129,19 @@ module MessageParts =
 
   /// Formats the data in a nice fashion for printing to e.g. the Debugger or Console.
   let formatFields (nl : string) (fields : HashMap<PointName, Field>) =
-    HashMap.toSeq fields.Visit
-    |> Seq.map (fun (key, (Field (value, _))) -> PointName.format key, value)
+    fields
+    |> HashMap.toSeq
+    |> Seq.map (fun (KeyValue (key, (Field (value, _)))) -> PointName.format key, value)
     |> Map.ofSeq
     |> Object
     |> formatValue nl 0
 
   /// Formats the data in a nice fashion for printing to e.g. the Debugger or Console.
-  let formatContext (nl : string) (context : Map<string, Value>) =
+  let formatContext (nl : string) (context : HashMap<string, Value>) =
     let s = StringBuilder()
     let cs =
-      Map.toSeq context
-      |> Seq.map (fun (key, value) -> key, value)
+      HashMap.toSeq context
+      |> Seq.map (fun (KeyValue (key, value)) -> key, value)
       |> Map.ofSeq
       |> Object
       |> formatValue nl 1
