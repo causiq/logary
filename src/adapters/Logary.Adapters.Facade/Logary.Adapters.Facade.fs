@@ -146,13 +146,14 @@ module LoggerAdapter =
     let typ = o.GetType()
     let readProperty name = (findProperty (typ, name)).GetValue o
 
+    let fields = readProperty "fields" :?> Map<string, obj>
     { name      = PointName (readProperty "name" :?> string [] |> defaultName fallbackName)
       value     = readProperty "value" |> toPointValue
-      fields    = Map.empty
-      context   = Map.empty
+      fields    = HashMap.empty
+      context   = HashMap.empty
       timestamp = readProperty "timestamp" :?> EpochNanoSeconds
       level     = readProperty "level" |> toLogLevel }
-    |> Message.setFieldsFromMap (readProperty "fields" :?> Map<string, obj>)
+    |> Message.setFieldsFromMap fields
 
   /// Convert the object instance to a message factory method. Is used from the
   /// other code in this module.
@@ -294,8 +295,8 @@ module LoggerCSharpAdapter =
 
     { name      = PointName (readProperty "Name" :?> string [] |> defaultName fallbackName)
       value     = readProperty "Value" |> toPointValue
-      fields    = Map.empty
-      context   = Map.empty
+      fields    = HashMap.empty
+      context   = HashMap.empty
       timestamp = readProperty "Timestamp" :?> EpochNanoSeconds
       level     = readProperty "Level" |> toLogLevel }
     |> fun msg ->

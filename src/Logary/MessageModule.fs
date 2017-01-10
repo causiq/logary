@@ -94,6 +94,12 @@ module Message =
     |> Seq.map (fun (KeyValue (k, v)) -> k, Field (Value.create v, None))
     |> flip setFieldValues message
 
+  [<CompiledName "SetFieldsFromMap">]
+  let setFieldsFromHashMap (m : HashMap<string, obj>) message =
+    m
+    |> Seq.map (fun (KeyValue (k, v)) -> k, Field (Value.create v, None))
+    |> flip setFieldValues message
+
   [<CompiledName "SetFieldFromObject">]
   let setFieldFromObject name (data : obj) message =
     setFieldValue name (Field (Value.create data, None)) message
