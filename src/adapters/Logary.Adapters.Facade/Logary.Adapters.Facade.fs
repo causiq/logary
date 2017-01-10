@@ -302,9 +302,7 @@ module LoggerCSharpAdapter =
     |> fun msg ->
       let folder msg (KeyValue (key, value)) =
         msg |> Message.setFieldFromObject key value
-      readProperty "Fields"
-      :?> System.Collections.Generic.IDictionary<string, obj>
-      |> Seq.fold folder msg
+      readProperty "Fields" :?> HashMap<_, _> |> Seq.fold folder msg
 
   module internal LogMessage =
     let create (loggerType : Type) : string[] -> obj -> obj =

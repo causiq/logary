@@ -5,10 +5,10 @@ open Logary.Internals.Aether
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Field =
 
-  let initWithUnit (value : 'a) (units : Units) =
+  let createUnit (value : 'a) (units : Units) =
     failwith "TODO: TypeShape"
 
-  let init (value : 'a) =
+  let create (value : 'a) =
     failwith "TODO: TypeShape"
 
   module Optic =

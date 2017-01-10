@@ -66,38 +66,38 @@ module Message =
   /// Get a partial setter lens to a field
   [<CompiledName "SetField">]
   let inline setField name value message =
-    Optic.set (Optic.fieldString_ name) (Field.init value) message
+    Optic.set (Optic.fieldString_ name) (Field.create value) message
 
   /// Get a partial setter lens to a field with an unit
   [<CompiledName "SetFieldUnit">]
   let inline setFieldUnit name value units message =
-    Optic.set (Optic.fieldString_ name) (Field.initWithUnit value units) message
+    Optic.set (Optic.fieldString_ name) (Field.createUnit value units) message
 
   /// You can also choose to construct a Field yourself, using the object model
   /// that Logary has for its data. That way you don't have to rely on having
   /// static ToValue methods on your data objects.
   [<CompiledName "SetFieldValue">]
-  let setFieldValue (name : string) (field : Field) message =
-    Optic.set (Optic.fieldString_ name) field message
+  let setFieldValue (name : PointName) (field : Field) message =
+    Optic.set (Optic.field_ name) field message
 
   [<CompiledName "SetFieldValues">]
-  let setFieldValues (fields : (string * Field) seq) message =
+  let setFieldValues (fields : (PointName * Field) seq) message =
     fields |> Seq.fold (fun m (name, value) -> setFieldValue name value m) message
 
   [<CompiledName "SetFieldValuesArray">]
-  let setFieldValuesArray (fields : (string * Field)[]) message =
+  let setFieldValuesArray (fields : (PointName * Field)[]) message =
     fields |> Array.fold (fun m (name, value) -> setFieldValue name value m) message
 
   [<CompiledName "SetFieldsFromMap">]
   let setFieldsFromMap (m : Map<string, obj>) message =
     m
-    |> Seq.map (fun (KeyValue (k, v)) -> k, Field (Value.create v, None))
+    |> Seq.map (fun (KeyValue (k, v)) -> PointName.ofSingle k, Field (Value.create v, None))
     |> flip setFieldValues message
 
   [<CompiledName "SetFieldsFromMap">]
   let setFieldsFromHashMap (m : HashMap<string, obj>) message =
     m
-    |> Seq.map (fun (KeyValue (k, v)) -> k, Field (Value.create v, None))
+    |> Seq.map (fun (KeyValue (k, v)) -> PointName.ofSingle k, Field (Value.create v, None))
     |> flip setFieldValues message
 
   [<CompiledName "SetFieldFromObject">]
@@ -108,7 +108,7 @@ module Message =
   [<CompiledName "SetFieldsFromObject">]
   let setFieldsFromObject (data : obj) message =
     Map.ofObject data
-    |> Seq.map (fun (KeyValue (k, v)) -> k, Field (Value.create v, None))
+    |> Seq.map (fun (KeyValue (k, v)) -> PointName.ofSingle k, Field (Value.create v, None))
     |> flip setFieldValues message
 
   /// Get a partial getter lens to a field
@@ -195,7 +195,7 @@ module Message =
 
   /// Creates a new gauge message with data point name, unit and value
   [<CompiledName "Gauge">]
-  let gaugeWithUnit dp units value =
+  let gaugeWithUnit dp value units =
     { name      = dp
       value     = Gauge (value, units)
       fields    = HashMap.empty
@@ -214,7 +214,7 @@ module Message =
       timestamp = Global.getTimestamp () }
 
   [<CompiledName "Derived">]
-  let derivedWithUnit dp units value =
+  let derivedWithUnit dp value units =
     { name      = dp
       value     = Derived (value, units)
       fields    = HashMap.empty
@@ -308,10 +308,10 @@ module Message =
   let internal captureNamesAndValuesAsScalars (t: Template) (args: obj[]) =
     Capturing.capturePropertiesWith ignore destructureAllAsScalar 1 t args
 
-  let internal convertToNameAndField (pnv : PropertyNameAndValue) : string * Field =
+  let internal convertToNameAndField (pnv : PropertyNameAndValue) : PointName * Field =
     match pnv.Value with
     | ScalarValue v ->
-      pnv.Name, Field (Value.create v, None)
+      PointName.ofSingle pnv.Name, Field (Value.create v, None)
     | _ ->
       failwith "In Logary we extract all properties as Scalar values. File a bug report with the parameter values that you called the function with."
 
@@ -342,9 +342,7 @@ module Message =
       let res = f input
       sw.Stop()
 
-      let value, units = sw.toGauge()
-      let message = gaugeWithUnit pointName units value
-
+      let message = sw.toGauge() ||> gaugeWithUnit pointName
       res, message
 
   [<CompiledName "TimeAsync">]
@@ -355,8 +353,8 @@ module Message =
         let! res = fn input
         sw.Stop()
 
-        let value, units = sw.toGauge()
-        return res, gaugeWithUnit pointName units value
+        let message = sw.toGauge() ||> gaugeWithUnit pointName
+        return res, message
       }
 
 
@@ -366,10 +364,10 @@ module Message =
       job {
         let sw = Stopwatch.StartNew()
         let! res = fn input
-        let value, units =
-          sw.Stop()
-          sw.toGauge()
-        return res, gaugeWithUnit pointName units value
+        sw.Stop()
+
+        let message = sw.toGauge() ||> gaugeWithUnit pointName
+        return res, message
       }
 
   [<CompiledName "TimeAlt">]
@@ -380,9 +378,8 @@ module Message =
       fn input |> Alt.afterFun (fun res ->
       sw.Stop()
 
-      let value, units = sw.toGauge()
-
-      res, gaugeWithUnit pointName units value
+      let message = sw.toGauge() ||> gaugeWithUnit pointName
+      res, message
     ))
 
   [<CompiledName "TimeTask">]
@@ -392,9 +389,8 @@ module Message =
       // http://stackoverflow.com/questions/21520869/proper-way-of-handling-exception-in-task-continuewith
       (fn input).ContinueWith((fun (task : Task<'res>) ->
         sw.Stop()
-        let value, units = sw.toGauge()
         task.Result, // will rethrow if needed
-        gaugeWithUnit pointName units value
+        sw.toGauge() ||> gaugeWithUnit pointName
       ), TaskContinuationOptions.ExecuteSynchronously) // stopping SW is quick
 
   ///////////////// PROPS ////////////////////
@@ -486,7 +482,8 @@ module Message =
       | Some x ->
         msg
       | None ->
-        setFieldValue KnownLiterals.ErrorsFieldName (Field (Array [], None)) msg
+        let name = KnownLiterals.ErrorsFieldName
+        setFieldValue (PointName.ofSingle name) (Field (Array [], None)) msg
 
     Optic.set Optic.errors_ exnsNext msg
 
@@ -548,7 +545,7 @@ module MessageEx =
       let field = template.Named.[0]
       fun (v : 'T) ->
         Message.event level format
-        |> Message.setFieldValue field.Name (LogaryCapturing.captureField field v)
+        |> Message.setFieldValue (PointName.ofSingle field.Name) (LogaryCapturing.captureField field v)
 
     static member templateEvent<'T1, 'T2> (level : LogLevel, format : string) : ('T1 -> 'T2 -> Message) =
       let template = Parser.parse format
@@ -557,9 +554,10 @@ module MessageEx =
       let field1 = template.Named.[0]
       let field2 = template.Named.[1]
       fun (v1 : 'T1) (v2 : 'T2) ->
+        let p = PointName.ofSingle
         Message.event level format
-        |> Message.setFieldValue field1.Name (LogaryCapturing.captureField field1 v1)
-        |> Message.setFieldValue field2.Name (LogaryCapturing.captureField field2 v2)
+        |> Message.setFieldValue (p field1.Name) (LogaryCapturing.captureField field1 v1)
+        |> Message.setFieldValue (p field2.Name) (LogaryCapturing.captureField field2 v2)
 
     static member templateEvent<'T1, 'T2, 'T3> (level : LogLevel, format : string) : ('T1 -> 'T2 -> 'T3 -> Message) =
       let template = Parser.parse format
@@ -569,10 +567,11 @@ module MessageEx =
       let field2 = template.Named.[1]
       let field3 = template.Named.[2]
       fun (v1 : 'T1) (v2 : 'T2) (v3 : 'T3) ->
+        let p = PointName.ofSingle
         Message.event level format
-        |> Message.setFieldValue field1.Name (LogaryCapturing.captureField field1 v1)
-        |> Message.setFieldValue field2.Name (LogaryCapturing.captureField field2 v2)
-        |> Message.setFieldValue field3.Name (LogaryCapturing.captureField field3 v3)
+        |> Message.setFieldValue (p field1.Name) (LogaryCapturing.captureField field1 v1)
+        |> Message.setFieldValue (p field2.Name) (LogaryCapturing.captureField field2 v2)
+        |> Message.setFieldValue (p field3.Name) (LogaryCapturing.captureField field3 v3)
 
     static member templateEvent<'T1, 'T2, 'T3, 'T4> (level : LogLevel, format : string) : ('T1 -> 'T2 -> 'T3 -> 'T4 -> Message) =
       let template = Parser.parse format
@@ -583,8 +582,9 @@ module MessageEx =
       let field3 = template.Named.[2]
       let field4 = template.Named.[3]
       fun (v1 : 'T1) (v2 : 'T2) (v3 : 'T3) (v4 : 'T4) ->
+        let p = PointName.ofSingle
         Message.event level format
-        |> Message.setFieldValue field1.Name (LogaryCapturing.captureField field1 v1)
-        |> Message.setFieldValue field2.Name (LogaryCapturing.captureField field2 v2)
-        |> Message.setFieldValue field3.Name (LogaryCapturing.captureField field3 v3)
-        |> Message.setFieldValue field4.Name (LogaryCapturing.captureField field4 v4)
+        |> Message.setFieldValue (p field1.Name) (LogaryCapturing.captureField field1 v1)
+        |> Message.setFieldValue (p field2.Name) (LogaryCapturing.captureField field2 v2)
+        |> Message.setFieldValue (p field3.Name) (LogaryCapturing.captureField field3 v3)
+        |> Message.setFieldValue (p field4.Name) (LogaryCapturing.captureField field4 v4)

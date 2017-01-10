@@ -10,7 +10,7 @@ module SystemDateEx =
 
   type DateTimeOffset with
     /// Gets the EpochNanoSeconds from the DateTimeOffset.
-    [<Extension>]
+    [<CompiledName("Timestamp"); Extension>]
     member x.timestamp : EpochNanoSeconds =
       (x.Ticks - DateTimeOffset(1970, 1, 1, 0, 0, 0, TimeSpan.Zero).Ticks)
       * Constants.NanosPerTick

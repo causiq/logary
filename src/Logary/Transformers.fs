@@ -20,7 +20,7 @@ module Counters =
         state
 
     let ticker state =
-      0L, [| Message.gaugeWithUnit pn Units.Scalar (Int64 state) |]
+      0L, [| Message.gaugeWithUnit pn (Int64 state) Units.Scalar |]
 
     Ticked.create reducer 0L ticker
 
@@ -255,7 +255,7 @@ module Reservoirs =
         state |> ExpWeightedMovAvg.rate (Duration.FromSeconds 1L)
 
       let msg =
-        Message.derivedWithUnit pn Units.Scalar (Float value)
+        Message.derivedWithUnit pn (Float value) Units.Scalar
       state, [| msg |]
 
     Ticked.create reducer ExpWeightedMovAvg.fiveMinutesEWMA ticker

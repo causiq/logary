@@ -1,6 +1,7 @@
 namespace Logary
 
 open Hopac
+open NodaTime
 open System
 open System.Runtime.CompilerServices
 open System.Runtime.InteropServices
@@ -245,8 +246,6 @@ type Logger =
   /// Gets the currently set log level, aka. the granularity with which things
   /// are being logged.
   abstract level : LogLevel
-  //abstract bisect : (LogLevel -> Message) -> Alt<Promise<unit>>
-
 
 /// A disposable interface to use with `use` constructs and to create child-
 /// contexts. Since it inherits Logger, you can pass this scope down into child
@@ -256,8 +255,16 @@ type LoggerScope =
   inherit IDisposable
   inherit Logger
 
+/// Should be created from a Time(LogLevel, callerName) call.
 type TimeScope =
   inherit LoggerScope
-
   /// Gets the currently elapsed duration of this time scope scope.
-  abstract elapsed : NodaTime.Duration
+  abstract elapsed : Duration
+
+  /// Call to sub-divide the TimeScope into two spans with the previous span
+  /// labelled as the passed string.
+  abstract bisect : string -> unit
+
+  /// Call to stop the timer; decide in the passed function what level the
+  /// resulting Gauge should have.
+  abstract stop : (Duration -> LogLevel) -> Alt<Promise<unit>>

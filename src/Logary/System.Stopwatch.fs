@@ -12,8 +12,7 @@ module StopwatchEx =
     /// Convert the current value of the Stopwatch to a gauge's value and unit.
     [<Extension; CompiledName "ToGauge">]
     member sw.toGauge() : (Value * Units) =
-      Int64 (sw.ElapsedTicks * Constants.NanosPerTick),
-      Scaled (Seconds, float Constants.NanosPerSecond)
+      Ticks.toGauge sw.ElapsedTicks
 
     [<Extension; CompiledName "Time">]
     static member time (fn : unit -> 'res) : 'res * (Value * Units) =

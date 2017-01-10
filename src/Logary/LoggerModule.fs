@@ -241,23 +241,66 @@ module Logger =
                  (nameEnding : string)
                  (transform : Message -> Message)
                  : TimeScope =
+
     let name = logger.name |> PointName.setEnding nameEnding
+    let bisections : (int64 * string) list ref = ref []
+
     let sw = Stopwatch.StartNew()
+    let sndMap f (a, b) = a, f b
+
+    let addSpan (m, i) (span : int64 (* ticks *), label : string) =
+      let name, value =
+        PointName [| "span"; string i |],
+        Field (Ticks.toGauge span |> sndMap Some)
+
+      let values =
+        [ name, value
+          PointName.setEnding "label" name, Field (String label, None) ]
+
+      Message.setFieldValues values m,
+      i + 1L
+
+    let addSpans m =
+      if !bisections = [] then m else
+      !bisections |> List.fold addSpan (m, 0L) |> fst
+
+    let stop (sw : Stopwatch) (decider : Duration -> LogLevel) =
+      sw.Stop()
+      let level = Duration.FromTicks sw.ElapsedTicks |> decider
+      sw.toGauge()
+      ||> Message.gaugeWithUnit name
+      |> Message.setLevel level
+      |> addSpans
+
+    let bisect (sw : Stopwatch) : string -> unit =
+      fun label ->
+        lock bisections <| fun () ->
+          match !bisections with
+          | [] ->
+            bisections := (sw.ElapsedTicks, label) :: []
+          | (latest, _) :: _ as bs ->
+            bisections := (sw.ElapsedTicks - latest, label) :: bs
+
     { new TimeScope with
         member x.Dispose () =
-          sw.Stop()
-          let value, units = sw.toGauge()
-          let message = Message.gaugeWithUnit name units value
+          let message = stop sw (fun _ -> Debug)
           logSimple logger message
 
         member x.elapsed =
           Duration.FromTimeSpan sw.Elapsed
 
+        member x.bisect label =
+          bisect sw label
+
+        member x.stop decider =
+          let m = stop sw decider
+          logger.logWithAck m.level (fun _ -> transform m)
+
         member x.logWithAck logLevel messageFactory =
-          logger.logWithAck logLevel messageFactory
+          logger.logWithAck logLevel (messageFactory >> transform)
 
         member x.log logLevel messageFactory =
-          logger.log logLevel messageFactory
+          logger.log logLevel (messageFactory >> transform)
 
         member x.level =
           logger.level

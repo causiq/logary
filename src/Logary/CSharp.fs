@@ -651,7 +651,7 @@ type LoggerExtensions =
     let fields = if isNull fields then obj() else fields
 
     let message =
-      Message.gaugeWithUnit logger.name units value
+      Message.gaugeWithUnit logger.name value units
       |> Message.setFieldsFromObject fields
       |> Message.setField "template" formatTemplate // overwrites any field named "template"
 
