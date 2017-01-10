@@ -504,7 +504,7 @@ module internal LogaryCapturing =
         |> List.map (fun (k, v) ->
           let keyValue = match k with | ScalarValue v -> v.ToString() | _ -> failwith "only scalar value keys are supported"
           keyValue, (convertTemplatePropertyToField v))
-        |> Map.ofList
+        |> HashMap.ofList
       Value.Object stringObjMap
 
     | SequenceValue tpvList ->
@@ -515,7 +515,7 @@ module internal LogaryCapturing =
         pnvList
         |> List.map (fun pnv -> pnv.Name, convertTemplatePropertyToField pnv.Value)
         |> List.append [ "_typeTag", Value.String typeTag ]
-        |> Map.ofList)
+        |> HashMap.ofList)
 
   let rec convertToNameAndField (pnv : PropertyNameAndValue) : string * Field =
     pnv.Name, Field ((convertTemplatePropertyToField pnv.Value), None)

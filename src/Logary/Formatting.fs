@@ -90,8 +90,8 @@ module MessageParts =
       |> fun sb -> sb.ToString ()
     | Object m ->
       m
-      |> Map.toSeq
-      |> Seq.fold (fun (sb: StringBuilder) (key, value) ->
+      |> HashMap.toSeq
+      |> Seq.fold (fun (sb: StringBuilder) (KeyValue (key, value)) ->
           sb
           |> app nl
           |> app indent
@@ -132,7 +132,7 @@ module MessageParts =
     fields
     |> HashMap.toSeq
     |> Seq.map (fun (KeyValue (key, (Field (value, _)))) -> PointName.format key, value)
-    |> Map.ofSeq
+    |> HashMap.ofSeq
     |> Object
     |> formatValue nl 0
 
@@ -142,7 +142,7 @@ module MessageParts =
     let cs =
       HashMap.toSeq context
       |> Seq.map (fun (KeyValue (key, value)) -> key, value)
-      |> Map.ofSeq
+      |> HashMap.ofSeq
       |> Object
       |> formatValue nl 1
     s.Append(nl)

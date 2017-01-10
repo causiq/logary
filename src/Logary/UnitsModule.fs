@@ -8,6 +8,7 @@ module Units =
   type UnitOrientation =
     | Prefix
     | Suffix
+
   let rec formatValue = function
     | String s -> s
     | Bool true -> "true"
@@ -15,9 +16,15 @@ module Units =
     | Float f -> f.ToString()
     | Int64 i -> i.ToString()
     | BigInt bi -> bi.ToString()
-    | Binary (b, ct) -> System.BitConverter.ToString b |> fun s -> s.Replace("-", "")
+    | Binary (b, ct) ->
+      BitConverter.ToString(b).Replace("-", "")
+      |> fun h -> sprintf "hex:%s;content-type:%s" h ct
     | Fraction (n, d) -> sprintf "%d/%d" n d
-    | Array values -> String.Concat ["["; values |> List.map formatValue |> String.concat ", "; "]"]
+    | Array values ->
+      values
+      |> List.map formatValue
+      |> String.concat ", "
+      |> sprintf "[ %s ]"
     | Object m -> "Object"
 
   let scaleSeconds : float -> float * string =

@@ -160,10 +160,10 @@ let tests =
     ]
 
     testList "Logger" [
-      testCase "interface" <| fun () ->
+      testCase "public interface" <| fun () ->
         let logger =
           { new Logger with
-              member x.name = PointName.ofSingle "B"
+              member x.name : PointName = PointName.ofSingle "B"
               member x.logWithAck (level : LogLevel) (factory : LogLevel -> Message) : Alt<Promise<unit>> =
                 Promise.instaPromise
               member x.log (level : LogLevel) (factory : LogLevel -> Message) : Alt<unit> =
@@ -174,26 +174,69 @@ let tests =
         Expect.equal logger.level Debug "Should have Debug level"
     ]
 
-    testList "TimeScope" [
-      testCase "interface" <| fun () ->
-        let ts =
-          { new TimeScope with
-              member x.name = PointName.ofSingle "B"
-              member x.logWithAck (level : LogLevel) (factory : LogLevel -> Message) : Alt<Promise<unit>> =
-                Promise.instaPromise
-              member x.log (level : LogLevel) (factory : LogLevel -> Message) : Alt<unit> =
-                Alt.always ()
-              member x.level : LogLevel =
-                Debug
-              member x.Dispose () = ()
-              member x.elapsed = Duration.Zero
-              member x.bisect (label : string) : unit =
-                ()
-              member x.stop (decider : Duration -> LogLevel) : Alt<Promise<unit>> =
-                Promise.instaPromise
-          }
-        ignore ts
+    testList "LoggerScope" [
+      testCase "public interface :> Logger" <| fun () ->
+        let hasLogger = typeof<Logger>.IsAssignableFrom(typeof<LoggerScope>)
+        Expect.isTrue hasLogger "Should implement Logger"
+
+      testCase "public interface :> IDisposable" <| fun () ->
+        let hasIDisposable = typeof<IDisposable>.IsAssignableFrom(typeof<LoggerScope>)
+        Expect.isTrue hasIDisposable "Should implement IDisposable"
     ]
+
+    testList "TimeScope" [
+      testCase "public interface" <| fun () ->
+        { new TimeScope with
+            member x.name : PointName = PointName.ofSingle "B"
+            member x.logWithAck (level : LogLevel) (factory : LogLevel -> Message) : Alt<Promise<unit>> =
+              Promise.instaPromise
+            member x.log (level : LogLevel) (factory : LogLevel -> Message) : Alt<unit> =
+              Alt.always ()
+            member x.level : LogLevel =
+              Debug
+            member x.Dispose () = ()
+            member x.elapsed = Duration.Zero
+            member x.bisect (label : string) : unit =
+              ()
+            member x.stop (decider : Duration -> LogLevel) : Alt<Promise<unit>> =
+              Promise.instaPromise
+        }
+        |> ignore
+    ]
+
+    testList "ValueModule" [
+      testCase "exceptionToStringValueMap" <| fun () ->
+        Tests.skiptest "Use TypeShape"
+
+      testCase "create : 'a -> Value" <| fun () ->
+        Tests.skiptest "Use TypeShape"
+    ]
+
+    testList "UnitsModule" [
+      testList "formatValue" (
+        [ String "A", "A"
+          Bool true, "true"
+          Bool false, "false"
+          Float 62., "62"
+          Int64 84598L, "84598"
+          BigInt 1024I, "1024"
+          Binary ([| 254uy |], "application/octet-stream"),
+          "hex:FE;content-type:application/octet-stream"
+          Fraction (2L, 5L), "2/5"
+          Array [ String "B"; String "C" ], "[ B, C ]"
+
+          // TO CONSIDER – Value.Object
+          Object HashMap.empty, "Object"
+        ]
+        |> List.map (fun (value, expected) ->
+            testCase "String \"a\"" (fun () ->
+              let actual = Units.formatValue value
+              Expect.equal actual expected "Should have correct result"
+            )
+        )
+      )
+    ]
+
   ]
 
 [<EntryPoint>]

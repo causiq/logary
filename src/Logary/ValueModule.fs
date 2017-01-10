@@ -79,7 +79,8 @@ module Value =
     let Object_ =
       Prism.ofEpimorphism Object__
 
-  let rec internal exceptionToStringValueMap (valueOfObject : obj->Value) (e : exn) =
+  // TODO: inline, 'a -> Value
+  let rec internal exceptionToStringValueMap (valueOfObject : obj -> Value) (e : exn) =
     let fields =
       [ yield "type", String (e.GetType ()).FullName
         yield "message", String e.Message
@@ -96,7 +97,7 @@ module Value =
         if e.Data <> null && e.Data.Count > 0 then
           yield "data", valueOfObject e.Data ]
 
-    Map.ofSeq <|
+    HashMap.ofList <|
       if e.InnerException <> null then
         ("inner", Object <| exceptionToStringValueMap valueOfObject e.InnerException) :: fields
       else
@@ -154,7 +155,7 @@ module Value =
         | otherwise ->
           None)
 
-      |> Map.ofSeq
+      |> HashMap.ofSeq
       |> Object
 
     //| :? Map<string, obj> as map -> Map.map (fun _ v -> fromObject v) map |> Object
@@ -171,16 +172,16 @@ module Value =
       | [||] ->
         String uci.Name
       | [|field|] ->
-        Object <| Map [uci.Name, create field]
+        Object <| HashMap.ofList [uci.Name, create field]
       | fields ->
-        Object <| Map [uci.Name, create fields]
+        Object <| HashMap.ofList [uci.Name, create fields]
 
     // POCOs
     | a when a <> null ->
       a
       |> Map.ofObject
       |> Seq.map (fun (KeyValue (k, v)) -> k, create v)
-      |> Map.ofSeq
+      |> HashMap.ofSeq
       |> Object
 
     | otherwise ->

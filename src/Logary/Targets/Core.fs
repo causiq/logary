@@ -201,11 +201,12 @@ module LiterateConsole =
         Optic.get Message.Optic.errors_ message
         |> Option.orDefault []
       let getStringFromMapOrFail exnObjMap fieldName =
-        match exnObjMap |> Map.find fieldName with
-        | String m -> m
+        match exnObjMap |> HashMap.tryFind fieldName with
+        | Some (String m) -> m
         | _ -> failwithf "Couldn't find %s in %A" fieldName exnObjMap
+
       let getStringFromMapOrDefault defaultIfMissing exnObjMap fieldName =
-        match exnObjMap |> Map.tryFind fieldName with
+        match exnObjMap |> HashMap.tryFind fieldName with
         | Some (String m) -> m
         | _ -> defaultIfMissing
 
@@ -246,9 +247,10 @@ module LiterateConsole =
       let mutable isFirst = true
       let objectTokens =
         stringValueMap
-        |> Map.toSeq
+        // TO CONSIDER: Seq.rev is expensive compared to creating array = Map length, iterating over map
+        |> HashMap.toSeq 
         |> Seq.rev
-        |> Seq.map (fun (k, v) -> seq {
+        |> Seq.map (fun (KeyValue (k, v)) -> seq {
             if k <> "_typeTag" then
               if not isFirst then
                 yield ", ", Punctuation
@@ -259,13 +261,17 @@ module LiterateConsole =
           })
         |> Seq.concat
 
-      let maybeTypeTag = stringValueMap |> Map.tryFind ("_typeTag")
-      let hasAnyValues = stringValueMap |> Map.exists (fun k v -> k <> "_typeTag")
+      let maybeTypeTag = stringValueMap |> HashMap.tryFind ("_typeTag")
+      let hasAnyValues =
+        stringValueMap
+        |> HashMap.toSeq
+        |> Seq.exists (fun (KeyValue (k, v)) -> k <> "_typeTag")
+
       seq {
         match maybeTypeTag with
-          | Some (String tt) ->
-            yield tt, (if hasAnyValues then Subtext else OtherSymbol)
-          | _ -> ()
+        | Some (String tt) ->
+          yield tt, (if hasAnyValues then Subtext else OtherSymbol)
+        | _ -> ()
         if hasAnyValues then
           if maybeTypeTag.IsSome then
             yield " ", Subtext
@@ -275,7 +281,11 @@ module LiterateConsole =
       }
 
     let literateTokeniseBinary conf prop binary =
-      let bytes, contentType = match binary with Binary (x, y) -> x, y | _ -> failwithf "cannot tokenise %A with %s" binary (prop.ToString())
+      let bytes, contentType =
+        match binary with
+        | Binary (x, y) -> x, y
+        | _ -> failwithf "cannot tokenise %A with %s" binary (prop.ToString())
+
       let maxBytes = 15
       seq {
         yield (bytes |> Array.take(min bytes.Length maxBytes) |> Array.map (fun b -> b.ToString("X2")) |> String.Concat), StringSymbol
