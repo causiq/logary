@@ -18,6 +18,8 @@ namespace Logary
 
 module HashMap =
 
+  open System.Collections.Generic
+
   let inline containsKey (key : 'K) (m : HashMap<'K, 'V>) : bool =
     match m.TryFind key with
     | true, _ -> true
@@ -43,16 +45,16 @@ module HashMap =
   let inline unset (key : 'K) (m : HashMap<'K, 'V>) : HashMap<'K, 'V> =
     m.Unset key
 
-  /// Alias for `unset`
-  let inline remove key m = unset key m
-
   let inline visit (visitor : 'K -> 'V -> bool) (m : HashMap<'K, 'V>) : bool =
     m.Visit visitor
 
-  let inline toArray (m : HashMap<'K, 'V>) : ('K*'V) [] =
+  let inline toArray (m : HashMap<'K, 'V>) : KeyValuePair<'K, 'V> [] =
     let ra = ResizeArray<_> 16
-    visit (fun k v -> ra.Add (k, v); true) m |> ignore
+    visit (fun k v -> ra.Add (KeyValuePair (k, v)); true) m |> ignore
     ra.ToArray ()
+
+  let inline toSeq (m : HashMap<'K, 'V>) : seq<KeyValuePair<'K, 'V>> =
+    upcast m
 
   let inline length (m : HashMap<'K, 'V>) : int =
     let l = ref 0

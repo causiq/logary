@@ -20,16 +20,18 @@
 
 namespace Logary
 
-module Details = 
+module Details =
   open System
   [<Literal>]
   let TrieShift     = 4
   [<Literal>]
-  let TrieMaxShift  = 32
+  let TrieMaxShift  = 32  // # of bits in int
   [<Literal>]
-  let TrieMaxNodes  = 16  // 1 <<< downshift
+  let TrieMaxLevel  = 8   // TrieMaxShift / TrieShift
   [<Literal>]
-  let TrieMask      = 15u // maxNodes - 1
+  let TrieMaxNodes  = 16  // 1 <<< TrieShift
+  [<Literal>]
+  let TrieMask      = 15u // TrieMaxNodes - 1
 
   let inline localHash  h s = (h >>> s) &&& TrieMask
   let inline bit        h s = 1us <<< int (localHash h s)
@@ -77,22 +79,31 @@ module Details =
 
 open Details
 
-type [<AbstractClass>] HashMap<'K, 'V when 'K :> System.IEquatable<'K>>() =
+open System.Collections.Generic
+
+type [<AbstractClass>] HashMap<'K, 'V when 'K :> System.IEquatable<'K>>() as self =
   static let emptyNode = EmptyNode<'K, 'V> () :> HashMap<'K, 'V>
 
+  let createEnumerator () = new HashMapEnumerator<_, _> (self)
+
+  interface IEnumerable<KeyValuePair<'K,'V>> with
+    override x.GetEnumerator () = createEnumerator () :> IEnumerator<KeyValuePair<'K, 'V>>
+    override x.GetEnumerator () = createEnumerator () :> System.Collections.IEnumerator
+
 #if PHM_TEST_BUILD
-  abstract DoCheckInvariant : uint32  -> int  -> bool
+  abstract DoCheckInvariant : uint32 -> int -> int -> bool
 #endif
   abstract DoIsEmpty        : unit    -> bool
   abstract DoVisit          : OptimizedClosures.FSharpFunc<'K, 'V, bool> -> bool
   abstract DoSet            : uint32  -> int  -> KeyValueNode<'K, 'V> -> HashMap<'K, 'V>
   abstract DoTryFind        : uint32*int*'K*byref<'V> -> bool
   abstract DoUnset          : uint32  -> int  -> 'K -> HashMap<'K, 'V>
+  abstract DoGetChild       : int*byref<HashMap<'K, 'V>> -> bool
 
   default  x.DoIsEmpty ()   = false
 
 #if PHM_TEST_BUILD
-  member x.CheckInvariant () = x.DoCheckInvariant 0u 0
+  member x.CheckInvariant () = x.DoCheckInvariant 0u 0 0
 #endif
   member x.IsEmpty    = x.DoIsEmpty ()
   member x.Visit   r  = x.DoVisit (OptimizedClosures.FSharpFunc<_, _, _>.Adapt r)
@@ -123,13 +134,14 @@ and [<Sealed>] internal EmptyNode<'K, 'V when 'K :> System.IEquatable<'K>>() =
   inherit HashMap<'K, 'V>()
 
 #if PHM_TEST_BUILD
-  override x.DoCheckInvariant h s = true
+  override x.DoCheckInvariant h s d = d < TrieMaxLevel
 #endif
   override x.DoVisit    r             = true
   override x.DoIsEmpty  ()            = true
   override x.DoSet      h s kv        = upcast kv
   override x.DoTryFind  (h, s, k, rv) = false
   override x.DoUnset    h s k         = HashMap<'K, 'V>.Empty
+  override x.DoGetChild (i, phm)      = false
 
 and [<Sealed>] KeyValueNode<'K, 'V when 'K :> System.IEquatable<'K>>(hash : uint32, key : 'K, value : 'V) =
   inherit HashMap<'K, 'V>()
@@ -139,15 +151,16 @@ and [<Sealed>] KeyValueNode<'K, 'V when 'K :> System.IEquatable<'K>>(hash : uint
   member x.Value  = value
 
 #if PHM_TEST_BUILD
-  override x.DoCheckInvariant h s =
-    checkHash hash h s
+  override x.DoCheckInvariant h s d =
+    d < TrieMaxLevel
+    &&  checkHash hash h s
     && hash = hashOf key
 #endif
   override x.DoVisit    r           = r.Invoke (key, value)
   override x.DoSet      h s kv      =
     let k = kv.Key
     if h = hash && equals k key then
-      upcast KeyValueNode (h, k, kv.Value)
+      upcast kv
     elif h = hash then
       upcast HashCollisionNodeN (h, [| x; kv |])
     else
@@ -163,15 +176,18 @@ and [<Sealed>] KeyValueNode<'K, 'V when 'K :> System.IEquatable<'K>>(hash : uint
       HashMap<'K, 'V>.Empty
     else
       upcast x
+  override x.DoGetChild (i, phm)    =
+    false
 
 and [<Sealed>] internal BitmapNode1<'K, 'V when 'K :> System.IEquatable<'K>>(bitmap : uint16, node : HashMap<'K, 'V>) =
   inherit HashMap<'K, 'V>()
 
 #if PHM_TEST_BUILD
-  override x.DoCheckInvariant h s =
+  override x.DoCheckInvariant h s d =
     let localIdx = popCount (bitmap - 1us)
-    popCount bitmap |> int = 1
-    && node.DoCheckInvariant (h ||| (localIdx <<< s)) (s + TrieShift)
+    d < TrieMaxLevel
+    && popCount bitmap |> int = 1
+    && node.DoCheckInvariant (h ||| (localIdx <<< s)) (s + TrieShift) (d + 1)
 #endif
   override x.DoVisit    r           = node.DoVisit r
   override x.DoSet      h s kv      =
@@ -200,19 +216,26 @@ and [<Sealed>] internal BitmapNode1<'K, 'V when 'K :> System.IEquatable<'K>>(bit
         HashMap<'K, 'V>.Empty
     else
       upcast x
+  override x.DoGetChild (i, phm)    =
+    if i = 0 then
+      phm <- node
+      true
+    else
+      false
+
 
 and [<Sealed>] internal BitmapNodeN<'K, 'V when 'K :> System.IEquatable<'K>>(bitmap : uint16, nodes : HashMap<'K, 'V> []) =
   inherit HashMap<'K, 'V>()
 
 #if PHM_TEST_BUILD
-  let rec doCheckInvariantNodes (hash : uint32) shift b localHash i =
+  let rec doCheckInvariantNodes (hash : uint32) shift b localHash i d =
     if b <> 0us && i < nodes.Length then
       let n = nodes.[i]
       if (b &&& 1us) = 0us then
-        doCheckInvariantNodes hash shift (b >>> 1) (localHash + 1u) i
+        doCheckInvariantNodes hash shift (b >>> 1) (localHash + 1u) i d
       else
-        n.DoCheckInvariant (hash ||| (localHash <<< shift)) (shift + TrieShift)
-        && doCheckInvariantNodes hash shift (b >>> 1) (localHash + 1u) (i + 1)
+        n.DoCheckInvariant (hash ||| (localHash <<< shift)) (shift + TrieShift) (d + 1)
+        && doCheckInvariantNodes hash shift (b >>> 1) (localHash + 1u) (i + 1) d
     else
       b = 0us
 #endif
@@ -226,10 +249,11 @@ and [<Sealed>] internal BitmapNodeN<'K, 'V when 'K :> System.IEquatable<'K>>(bit
       true
 
 #if PHM_TEST_BUILD
-  override x.DoCheckInvariant h s =
-    popCount bitmap |> int = nodes.Length
+  override x.DoCheckInvariant h s d =
+    d < TrieMaxLevel
+    && popCount bitmap |> int = nodes.Length
 //          && ns.Length > 1
-    && doCheckInvariantNodes h s bitmap 0u 0
+    && doCheckInvariantNodes h s bitmap 0u 0 d
 #endif
   override x.DoVisit    r           = doVisit r 0
   override x.DoSet      h s kv      =
@@ -267,21 +291,28 @@ and [<Sealed>] internal BitmapNodeN<'K, 'V when 'K :> System.IEquatable<'K>>(bit
           let nns = copyArrayRemoveHole localIdx nodes
           upcast BitmapNodeN (bitmap &&& ~~~bit, nns)
         elif nodes.Length > 1 then
+          // TODO: Should be able to eliminate this level if child node is KeyValueNode
           upcast BitmapNode1 (bitmap &&& ~~~bit, nodes.[1 - localIdx])
         else
           HashMap<'K, 'V>.Empty
     else
       upcast x
+  override x.DoGetChild (i, phm)    =
+    if i < nodes.Length then
+      phm <- nodes.[i]
+      true
+    else
+      false
 
 and [<Sealed>] internal BitmapNode16<'K, 'V when 'K :> System.IEquatable<'K>>(nodes : HashMap<'K, 'V> []) =
   inherit HashMap<'K, 'V>()
 
 #if PHM_TEST_BUILD
-  let rec doCheckInvariantNodes (hash : uint32) shift localHash i =
+  let rec doCheckInvariantNodes (hash : uint32) shift localHash i d =
     if i < nodes.Length then
       let n = nodes.[i]
-      n.DoCheckInvariant (hash ||| (localHash <<< shift)) (shift + TrieShift)
-      && doCheckInvariantNodes hash shift (localHash + 1u) (i + 1)
+      n.DoCheckInvariant (hash ||| (localHash <<< shift)) (shift + TrieShift) (d + 1)
+      && doCheckInvariantNodes hash shift (localHash + 1u) (i + 1) d
     else
       true
 #endif
@@ -295,9 +326,10 @@ and [<Sealed>] internal BitmapNode16<'K, 'V when 'K :> System.IEquatable<'K>>(no
       true
 
 #if PHM_TEST_BUILD
-  override x.DoCheckInvariant h s =
+  override x.DoCheckInvariant h s d =
 //          && ns.Length > 1
-    doCheckInvariantNodes h s 0u 0
+    d < TrieMaxLevel
+    && doCheckInvariantNodes h s 0u 0 d
 #endif
   override x.DoVisit    r           = doVisit r 0
   override x.DoSet      h s kv      =
@@ -320,17 +352,23 @@ and [<Sealed>] internal BitmapNode16<'K, 'V when 'K :> System.IEquatable<'K>>(no
     else
       let nns = copyArrayRemoveHole localIdx nodes
       upcast BitmapNodeN (~~~bit, nns)
+  override x.DoGetChild (i, phm)    =
+    if i < nodes.Length then
+      phm <- nodes.[i]
+      true
+    else
+      false
 
 and [<Sealed>] internal HashCollisionNodeN<'K, 'V when 'K :> System.IEquatable<'K>>(hash : uint32, keyValues : KeyValueNode<'K, 'V> []) =
   inherit HashMap<'K, 'V>()
 
 #if PHM_TEST_BUILD
-  let rec doCheckInvariant h s i =
+  let rec doCheckInvariant h s i d =
     if i < keyValues.Length then
       let kv = keyValues.[i]
       hash = hashOf kv.Key
-      && kv.DoCheckInvariant h s
-      && doCheckInvariant h s (i + 1)
+      && kv.DoCheckInvariant h s (d + 1)
+      && doCheckInvariant h s (i + 1) d
     else
       true
 #endif
@@ -364,10 +402,11 @@ and [<Sealed>] internal HashCollisionNodeN<'K, 'V when 'K :> System.IEquatable<'
       -1
 
 #if PHM_TEST_BUILD
-  override x.DoCheckInvariant h s =
-    checkHash hash h s
+  override x.DoCheckInvariant h s d =
+    d < TrieMaxLevel
+    && checkHash hash h s
     && keyValues.Length > 1
-    && doCheckInvariant h s 0
+    && doCheckInvariant h s 0 d
 #endif
   override x.DoVisit    r           = doVisit r 0
   override x.DoSet      h s kv      =
@@ -402,4 +441,90 @@ and [<Sealed>] internal HashCollisionNodeN<'K, 'V when 'K :> System.IEquatable<'
         upcast x
     else
       upcast x
+  override x.DoGetChild (i, phm)    =
+    if i < keyValues.Length then
+      phm <- keyValues.[i]
+      true
+    else
+      false
 
+and HashMapEnumeratorState =
+  | Iterating
+  | Initial
+  | Done
+  | Disposed
+
+and HashMapEnumerator<'K, 'V when 'K :> System.IEquatable<'K>> (root : HashMap<'K, 'V>) =
+  // There are more elegant ways to implement an enumerator but we would like an enumerator that is rather efficient
+
+  let head              = BitmapNode1 (0us, root) // head is a fake node to simplify code a bit
+  let mutable state     = Initial
+  let mutable level     = 0
+  let mutable keyValue  = Unchecked.defaultof<_>
+  let nodes             = Array.zeroCreate (TrieMaxLevel + 1)
+  let indices           = Array.zeroCreate (TrieMaxLevel + 1)
+
+  let raiseDisposed ()  = raise (System.ObjectDisposedException ("Enumeration is disposed"))
+
+  let reset s   =
+    if state = Disposed && s <> Disposed then raiseDisposed ()
+    state       <- s
+    level       <- 0
+    keyValue    <- Unchecked.defaultof<_>
+    for i in 0..TrieMaxLevel do
+      nodes.[i]   <- Unchecked.defaultof<_>
+      indices.[i] <- 0
+
+  let current ()  =
+    match state with
+    | Iterating -> keyValue
+    | Initial   -> invalidOp "Enumeration hasn't started. Call MoveNext."
+    | Done      -> invalidOp "Enumeration has reached its end."
+    | Disposed  -> raiseDisposed ()
+
+  let rec moveNextLoop () =
+    if level >= 0 then
+      let node        = nodes.[level] : HashMap<'K, 'V>
+      let index       = indices.[level] + 1
+      let mutable phm = Unchecked.defaultof<_>
+      if node.DoGetChild (index, &phm) then
+        indices.[level] <- index
+        match box phm with
+        | :? KeyValueNode<'K, 'V> as kv ->
+          keyValue <- KeyValuePair<'K, 'V> (kv.Key, kv.Value)
+          true
+        | _ ->
+          level           <- level + 1
+          nodes.[level]   <- phm
+          indices.[level] <- -1
+          moveNextLoop ()
+      else
+        level <- level - 1
+        moveNextLoop ()
+    else
+      reset Done
+      false
+
+  let moveNext () =
+    match state with
+    | Iterating ->
+      moveNextLoop ()
+    | Initial   ->
+      state       <- Iterating
+      level       <- 0
+      nodes.[0]   <- upcast head
+      indices.[0] <- -1
+      moveNextLoop ()
+    | Done      ->
+      false
+    | Disposed  ->
+      raiseDisposed ()
+
+  interface IEnumerator<KeyValuePair<'K, 'V>> with
+    member __.Current   = current ()
+  interface System.Collections.IEnumerator with
+    member __.Current     = current () |> box
+    member __.MoveNext()  = moveNext ()
+    member __.Reset()     = reset Initial
+  interface System.IDisposable with
+    member __.Dispose()   = reset Disposed

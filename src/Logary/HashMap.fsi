@@ -21,6 +21,7 @@
 namespace Logary
 
 open System.Runtime.InteropServices
+open System.Collections.Generic
 
 type [<AbstractClass>] HashMap<'K, 'V when 'K :> System.IEquatable<'K>> =
   class
@@ -35,8 +36,10 @@ type [<AbstractClass>] HashMap<'K, 'V when 'K :> System.IEquatable<'K>> =
     member TryFind        : k : 'K*[<Out>] rv : byref<'V> -> bool
     member Unset          : k : 'K -> HashMap<'K, 'V>
 
+    interface IEnumerable<KeyValuePair<'K,'V>>
+
 #if PHM_TEST_BUILD
-    abstract internal DoCheckInvariant : uint32  -> int  -> bool
+    abstract internal DoCheckInvariant : uint32 -> int -> int -> bool
 #endif
     // TODO: Why aren't these tagged as internal in the generated assembly
     abstract internal DoIsEmpty        : unit    -> bool
@@ -44,6 +47,7 @@ type [<AbstractClass>] HashMap<'K, 'V when 'K :> System.IEquatable<'K>> =
     abstract internal DoSet            : uint32  -> int  -> KeyValueNode<'K, 'V> -> HashMap<'K, 'V>
     abstract internal DoTryFind        : uint32*int*'K*byref<'V> -> bool
     abstract internal DoUnset          : uint32  -> int  -> 'K -> HashMap<'K, 'V>
+    abstract internal DoGetChild       : int*byref<HashMap<'K, 'V>> -> bool
   end
 and [<Sealed>] internal KeyValueNode<'K, 'V when 'K :> System.IEquatable<'K>> =
   class
