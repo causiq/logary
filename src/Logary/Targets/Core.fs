@@ -248,7 +248,7 @@ module LiterateConsole =
       let objectTokens =
         stringValueMap
         // TO CONSIDER: Seq.rev is expensive compared to creating array = Map length, iterating over map
-        |> HashMap.toSeq 
+        |> HashMap.toSeqPair
         |> Seq.rev
         |> Seq.map (fun (KeyValue (k, v)) -> seq {
             if k <> "_typeTag" then
@@ -264,7 +264,7 @@ module LiterateConsole =
       let maybeTypeTag = stringValueMap |> HashMap.tryFind ("_typeTag")
       let hasAnyValues =
         stringValueMap
-        |> HashMap.toSeq
+        |> HashMap.toSeqPair
         |> Seq.exists (fun (KeyValue (k, v)) -> k <> "_typeTag")
 
       seq {

@@ -90,7 +90,7 @@ module MessageParts =
       |> fun sb -> sb.ToString ()
     | Object m ->
       m
-      |> HashMap.toSeq
+      |> HashMap.toSeqPair
       |> Seq.fold (fun (sb: StringBuilder) (KeyValue (key, value)) ->
           sb
           |> app nl
@@ -130,7 +130,7 @@ module MessageParts =
   /// Formats the data in a nice fashion for printing to e.g. the Debugger or Console.
   let formatFields (nl : string) (fields : HashMap<PointName, Field>) =
     fields
-    |> HashMap.toSeq
+    |> HashMap.toSeqPair
     |> Seq.map (fun (KeyValue (key, (Field (value, _)))) -> PointName.format key, value)
     |> HashMap.ofSeq
     |> Object
@@ -140,7 +140,7 @@ module MessageParts =
   let formatContext (nl : string) (context : HashMap<string, Value>) =
     let s = StringBuilder()
     let cs =
-      HashMap.toSeq context
+      HashMap.toSeqPair context
       |> Seq.map (fun (KeyValue (key, value)) -> key, value)
       |> HashMap.ofSeq
       |> Object

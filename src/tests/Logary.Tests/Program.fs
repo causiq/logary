@@ -19,6 +19,27 @@ type Obj() =
   member x.PropB =
     raise (Exception ("Oh noes, no referential transparency here"))
 
+type Arbs =
+  static member HashMap() =
+    let nonNullKey = fun (KeyValue (k, _)) -> not (isNull (box k))
+    let filter list = List.filter nonNullKey list
+    Arb.Default.FsList()
+    |> Arb.convert (filter >> HashMap.ofListPair) HashMap.toListPair
+
+  static member Float() =
+    Arb.Default.Float()
+    |> Arb.filter (fun f -> not <| Double.IsNaN(f) &&      // Not required to repro
+                            not <| Double.IsInfinity(f))   // Not requreid to repro 
+
+  //static member Value() =
+  //  Arb.Default.Derive()
+  //  |> Arb.filter (function | Float f -> not (Double.IsNaN f) | _ -> true)
+
+let fsCheckConfig =
+  { Config.Default with
+      Arbitrary = [ typeof<Arbs> ]
+  }
+
 [<Tests>]
 let tests =
   testList "logary" [
@@ -281,6 +302,15 @@ let tests =
         let f (mid : (Message -> Message) -> Message -> Message) =
           ()
         f (Middleware.host "local")
+
+      (*
+        Skip: can't make FsCheck behave...
+      testPropertyWithConfig fsCheckConfig "identity" <| fun (m : Message) ->
+        let rm = ref (event Fatal "nope")
+        let save m = rm := m; m
+        let out = Middleware.identity save m
+        Expect.equal out m "Identity property"
+        Expect.equal (!rm) m "Middlware was called"*)
     ]
 
   ]
