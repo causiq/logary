@@ -138,6 +138,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Stackdriver.
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Stackdriver", "targets\Logary.Targets.Stackdriver\Logary.Targets.Stackdriver.fsproj", "{BA02296C-41A5-449D-A724-68CEA527E0E2}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.log4net", "adapters\Logary.Adapters.log4net\Logary.Adapters.log4net.fsproj", "{9FE02488-25BB-4756-B377-60DBF47F51F2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -364,6 +366,10 @@ Global
 		{BA02296C-41A5-449D-A724-68CEA527E0E2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BA02296C-41A5-449D-A724-68CEA527E0E2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BA02296C-41A5-449D-A724-68CEA527E0E2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9FE02488-25BB-4756-B377-60DBF47F51F2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9FE02488-25BB-4756-B377-60DBF47F51F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9FE02488-25BB-4756-B377-60DBF47F51F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9FE02488-25BB-4756-B377-60DBF47F51F2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -424,5 +430,6 @@ Global
 		{11535E76-9262-4A5C-8863-1BA688C78473} = {EA09AD42-B4E2-4B0D-8960-E87277F46F04}
 		{588510C5-5263-43E7-979B-B7B322F740EF} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{BA02296C-41A5-449D-A724-68CEA527E0E2} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
+		{9FE02488-25BB-4756-B377-60DBF47F51F2} = {56BB77A4-DF59-49EC-92E6-C9CA2C2E9FDE}
 	EndGlobalSection
 EndGlobal
