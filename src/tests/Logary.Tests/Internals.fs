@@ -110,6 +110,7 @@ let useStatementInLoops =
     // https://stackoverflow.com/questions/13491768/tail-recursion-and-exceptions-in-f
     // https://github.com/logary/logary/issues/216
 
+#if !DEBUG // NOTE: tail recursion is disabled in DEBUG builds, and these would crash with a stack overflow 
     testCase "testing disposing with pure function" <| fun _ ->
       let loops = 10000u
       let disposed = puree loops
@@ -124,4 +125,5 @@ let useStatementInLoops =
       let loops = 10000u
       let disposed = extracted loops |> run
       Expect.equal disposed loops "Should dispose the same number of times as there are loops"
+#endif
   ]
