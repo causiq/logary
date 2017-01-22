@@ -5,6 +5,7 @@ open Expecto
 open Logary.Facade
 open Logary.Facade.Literals
 open Logary.Facade.Literate
+open Logary.Facade.LiterateExtensions
 
 type internal TemplateToken =
   | TextToken of string
@@ -26,7 +27,7 @@ let internal parseTemplateTokens template =
 type Expect =
   static member literateMessagePartsEqual (template, fields, expectedMessageParts, ?options, ?logLevel, ?tokeniser) =
     let options = defaultArg options (LiterateOptions.create())
-    let tokeniser = defaultArg tokeniser Formatting.literateDefaultTokeniser
+    let tokeniser = defaultArg tokeniser (fun o m -> options.tokeniseMessage o m |> List.ofSeq)
     let logLevel = defaultArg logLevel Info
     let now = Global.timestamp ()
     let nowDto = DateTimeOffset(DateTimeOffset.ticksUTC now, TimeSpan.Zero)
@@ -190,7 +191,7 @@ let tests =
         Error,    LevelError,     "E"
         Fatal,    LevelFatal,     "F" ]
       |> List.iter (fun (logLevel, expectedLevelToken, expectedText) ->
-        let tokens = Formatting.literateDefaultTokeniser options (msg logLevel)
+        let tokens = LiterateFormatting.tokeniseMessage options (msg logLevel) |> List.ofSeq
         Expect.equal tokens [ "[",            Punctuation
                               nowTimeString,  Subtext
                               " ",            Subtext
