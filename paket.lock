@@ -20,7 +20,7 @@ NUGET
       elmah.corelibrary (>= 1.2.2)
       elmah.io.client (>= 2.0.29)
     EventStore.Client (3.9.4)
-    Expecto (3.0)
+    Expecto (3.2)
       Argu (>= 3.2)
       FSharp.Core (>= 3.1.2.5)
       Mono.Cecil (>= 0.9.6.4)
@@ -116,8 +116,8 @@ GITHUB
     RingBuffer.fs (4557d607737e748b54eb6de3ec5e5cd02247b2a5)
       Hopac
   remote: logary/logary
-    src/Logary.CSharp.Facade/Facade.cs (397b5ee7733a36cb23c8887617470e427bbf1bb2)
-    src/Logary.Facade/Facade.fs (397b5ee7733a36cb23c8887617470e427bbf1bb2)
+    src/Logary.CSharp.Facade/Facade.cs (8fe3fce3f7d2602f2a4dc27419edfbce09c28a82)
+    src/Logary.Facade/Facade.fs (8fe3fce3f7d2602f2a4dc27419edfbce09c28a82)
 GROUP Examples
 REDIRECTS: ON
 FRAMEWORK: >= NET45
