@@ -592,9 +592,9 @@ type LoggerExtensions =
   static member LogEvent(logger : Logger,
                          level : LogLevel,
                          formatTemplate : string,
-                         [<Optional; DefaultParameterValue(null)>] fieldsObj : obj,
-                         [<Optional; DefaultParameterValue(null)>] exn : Exception,
-                         [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>,
+                         [<Optional; DefaultParameterValue(null:obj)>] fieldsObj : obj,
+                         [<Optional; DefaultParameterValue(null:obj)>] exn : Exception,
+                         [<Optional; DefaultParameterValue(null:obj)>] transform : Func<Message, Message>,
                          [<Optional; DefaultParameterValue(false)>] backpressure : bool, // #96
                          [<Optional; DefaultParameterValue(false)>] flush : bool, // #96
                          [<Optional; DefaultParameterValue(5000u)>] timeoutMillis : uint32)
@@ -638,8 +638,8 @@ type LoggerExtensions =
                          value : Value,
                          units : Units,
                          formatTemplate : string,
-                         [<Optional; DefaultParameterValue(null)>] fields : obj,
-                         [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>,
+                         [<Optional; DefaultParameterValue(null:obj)>] fields : obj,
+                         [<Optional; DefaultParameterValue(null:obj)>] transform : Func<Message, Message>,
                          [<Optional; DefaultParameterValue(false)>] backpressure : bool, // #96
                          [<Optional; DefaultParameterValue(false)>] flush : bool, // #96
                          [<Optional; DefaultParameterValue(5000u)>] timeoutMillis : uint32)
@@ -705,8 +705,8 @@ type LoggerExtensions =
                              action : Action,
                              bufferCt,
                              promiseCt,
-                             [<Optional; DefaultParameterValue(null)>] nameEnding,
-                             [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>)
+                             [<Optional; DefaultParameterValue(null:obj)>] nameEnding,
+                             [<Optional; DefaultParameterValue(null:obj)>] transform : Func<Message, Message>)
                             : Func<Task<Task>> =
     let action = FSharpFunc.OfAction action
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
@@ -732,8 +732,8 @@ type LoggerExtensions =
                              func : Func<'output>,
                              bufferCt,
                              promiseCt,
-                             [<Optional; DefaultParameterValue(null)>] nameEnding,
-                             [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>)
+                             [<Optional; DefaultParameterValue(null:obj)>] nameEnding,
+                             [<Optional; DefaultParameterValue(null:obj)>] transform : Func<Message, Message>)
                             : Func<'output * Task<Task>> =
     let func = FSharpFunc.OfFunc func
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
@@ -759,8 +759,8 @@ type LoggerExtensions =
                              func : Func<'input, 'output>,
                              bufferCt,
                              promiseCt,
-                             [<Optional; DefaultParameterValue(null)>] nameEnding,
-                             [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>)
+                             [<Optional; DefaultParameterValue(null:obj)>] nameEnding,
+                             [<Optional; DefaultParameterValue(null:obj)>] transform : Func<Message, Message>)
                             : Func<'input, 'output * Task<Task>> =
     let func = FSharpFunc.OfFunc func
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
@@ -776,8 +776,8 @@ type LoggerExtensions =
                                  func : Func<'input, Task<'output>>,
                                  bufferCt,
                                  promiseCt,
-                                 [<Optional; DefaultParameterValue(null)>] nameEnding,
-                                 [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>)
+                                 [<Optional; DefaultParameterValue(null:obj)>] nameEnding,
+                                 [<Optional; DefaultParameterValue(null:obj)>] transform : Func<Message, Message>)
                                 : Func<'input, Task<'output * Task<Task>>> =
     let func = FSharpFunc.OfFunc func
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
@@ -805,8 +805,8 @@ type LoggerExtensions =
   [<Extension>]
   static member Time (logger,
                       action : Action,
-                      [<Optional; DefaultParameterValue(null)>] nameEnding,
-                      [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>)
+                      [<Optional; DefaultParameterValue(null:obj)>] nameEnding,
+                      [<Optional; DefaultParameterValue(null:obj)>] transform : Func<Message, Message>)
                      : Action =
     let action = FSharpFunc.OfAction action
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
@@ -824,8 +824,8 @@ type LoggerExtensions =
   [<Extension>]
   static member Time (logger,
                       func : Func<'res>,
-                      [<Optional; DefaultParameterValue(null)>] nameEnding,
-                      [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>)
+                      [<Optional; DefaultParameterValue(null:obj)>] nameEnding,
+                      [<Optional; DefaultParameterValue(null:obj)>] transform : Func<Message, Message>)
                      : Func<'res> =
     let func = FSharpFunc.OfFunc func
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
@@ -843,8 +843,8 @@ type LoggerExtensions =
   [<Extension>]
   static member Time (logger,
                       func : Func<'input, 'res>,
-                      [<Optional; DefaultParameterValue(null)>] nameEnding,
-                      [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>)
+                      [<Optional; DefaultParameterValue(null:obj)>] nameEnding,
+                      [<Optional; DefaultParameterValue(null:obj)>] transform : Func<Message, Message>)
                      : Func<'input, 'res> =
     let func = FSharpFunc.OfFunc func
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
@@ -865,8 +865,8 @@ type LoggerExtensions =
   [<Extension>]
   static member Time (logger,
                       func : Func<'input, Task<'output>>,
-                      [<Optional; DefaultParameterValue(null)>] nameEnding : string,
-                      [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>)
+                      [<Optional; DefaultParameterValue(null:obj)>] nameEnding : string,
+                      [<Optional; DefaultParameterValue(null:obj)>] transform : Func<Message, Message>)
                      : Func<'input, Task<'output>> =
     let func = FSharpFunc.OfFunc func
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
@@ -877,8 +877,8 @@ type LoggerExtensions =
   /// the duration its lifetime.
   [<Extension>]
   static member TimeScope (logger,
-                           [<Optional; DefaultParameterValue(null)>] nameEnding : string,
-                           [<Optional; DefaultParameterValue(null)>] transform : Func<Message, Message>)
+                           [<Optional; DefaultParameterValue(null:obj)>] nameEnding : string,
+                           [<Optional; DefaultParameterValue(null:obj)>] transform : Func<Message, Message>)
                           : TimeScope =
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
     Logger.timeScopeT logger nameEnding transform
