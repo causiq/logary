@@ -27,18 +27,25 @@ type Arbs =
     |> Arb.convert (filter >> HashMap.ofListPair) HashMap.toListPair
 
   static member Value() =
+    let contentTypes = Gen.elements [ "application/image+jpeg"; "application/octet-stream" ]
     let strings = Arb.generate<NonEmptyString> |> Gen.map (fun (NonEmptyString s) -> String s)
     let floats = Arb.generate<NormalFloat> |> Gen.map (fun (NormalFloat f) -> Float f)
     let bools = Gen.elements [ Bool true; Bool false ]
     let int64s = Arb.from<int64> |> Arb.convert Int64 (function Int64 ii -> ii | _ -> failwith "Not an Int64")
     let bigints = Arb.from<bigint> |> Arb.convert BigInt (function BigInt bi -> bi | _ -> failwith "Not a BigInt")
+    let binaries = gen {
+      let! bs = Gen.arrayOf (Arb.Default.Byte().Generator)
+      let! ct = contentTypes
+      return Binary (bs, ct)
+    }
 
     let generator =
       Gen.frequency [
         6, strings
         6, floats
         6, int64s.Generator
-        6, bigints.Generator
+        2, bigints.Generator
+        2, binaries
         1, bools
       ]
     let shrinker = function
@@ -48,6 +55,8 @@ type Arbs =
       | BigInt _ as bi -> bigints.Shrinker bi
       | otherwise -> Seq.empty
     Arb.fromGenShrink (generator, shrinker)
+
+
 
 let fsCheckConfig =
   { Config.Default with
@@ -135,37 +144,37 @@ let tests =
         KnownLiterals.SuppressPointValue, "suppress-point-value"
       ]
       |> List.map (fun (actual, expected) ->
-          testCase "ensuring constant '%s'" <| fun () ->
+          testCase (sprintf "ensuring constant '%s'" expected)<| fun () ->
             Expect.equal actual expected "KnownLiteral should not change"
       )
     )
 
     testList "Constants (floats)" [
       testList "floats" (
-        [ Constants.SecondsPerTick, 0.0000001
-          Constants.MillisPerTick, 0.0001
-          Constants.MicrosPerTick, 0.1
+        [ Constants.SecondsPerTick, 0.0000001, "SecondsPerTick"
+          Constants.MillisPerTick, 0.0001, "MillisPerTick"
+          Constants.MicrosPerTick, 0.1, "MicrosPerTick"
         ]
-        |> List.map (fun (actual, expected) ->
-            testCase "ensuring constant '%s'" <| fun () ->
+        |> List.map (fun (actual, expected, name) ->
+            testCase (sprintf "ensuring constant '%s'" name) <| fun () ->
               Expect.equal actual expected "Constant should not change"
         )
       )
 
       testList "int64s" (
-        [ Constants.NanosPerTick, 100L
-          Constants.NanosPerMicro, 1000L
-          Constants.NanosPerMilli, 1000000L
-          Constants.NanosPerSecond, 1000000000L
-          Constants.NanosPerMinute, 60000000000L
-          Constants.TicksPerMinute, 600000000L
-          Constants.TicksPerSecond, 10000000L
-          Constants.TicksPerMilli, 10000L
-          Constants.TicksPerMicro, 10L
+        [ Constants.NanosPerTick, 100L, "NanosPerTick"
+          Constants.NanosPerMicro, 1000L, "NanosPerMicro"
+          Constants.NanosPerMilli, 1000000L, "NanosPerMilli"
+          Constants.NanosPerSecond, 1000000000L, "NanosPerSecond"
+          Constants.NanosPerMinute, 60000000000L, "NanosPerMinute"
+          Constants.TicksPerMinute, 600000000L, "TicksPerMinute"
+          Constants.TicksPerSecond, 10000000L, "TicksPerSecond"
+          Constants.TicksPerMilli, 10000L, "TicksPerMilli"
+          Constants.TicksPerMicro, 10L, "TicksPerMicro"
         ]
-        |> List.map (fun (actual, expected) ->
-            testCase "ensuring constant '%s'" <| fun () ->
-              Expect.equal actual expected "Constant should not change"
+        |> List.map (fun (actual, expected, name) ->
+        testCase (sprintf "ensuring constant '%s'" name) <| fun () ->
+          Expect.equal actual expected "Constant should not change"
         )
       )
     ]
