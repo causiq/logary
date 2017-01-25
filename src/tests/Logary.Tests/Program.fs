@@ -410,6 +410,14 @@ let tests =
       testCase "setEnding with dots – no parse" <| fun () ->
         let pn = PointName.ofSingle "A" |> PointName.setEnding "B.C"
         Expect.equal pn (PointName [| "A"; "B.C" |]) "Should be equal"
+
+      testPropertyWithConfig fsCheckConfig "isEmpty is callable for all" <| fun (pn : PointName) ->
+        pn.isEmpty |> ignore
+        true
+
+      testPropertyWithConfig fsCheckConfig "ToString is callable for all" <| fun (pn : PointName) ->
+        pn.ToString() |> ignore
+        true
     ]
 
     testList "Message" [
