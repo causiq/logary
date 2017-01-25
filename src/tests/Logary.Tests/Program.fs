@@ -38,7 +38,6 @@ type Arbs =
       let! ct = contentTypes
       return Binary (bs, ct)
     }
-
     let generator =
       Gen.frequency [
         6, strings
@@ -55,8 +54,6 @@ type Arbs =
       | BigInt _ as bi -> bigints.Shrinker bi
       | otherwise -> Seq.empty
     Arb.fromGenShrink (generator, shrinker)
-
-
 
 let fsCheckConfig =
   { Config.Default with
@@ -97,20 +94,6 @@ let tests =
         Expect.isNotInfinity f "Should be a real number"
         Expect.isNotPositiveInfinity f "Should be a real number"
         Expect.isNotNegativeInfinity f "Should be a real number"
-        true
-
-      testPropertyWithConfig fsCheckConfig "Value" <| fun (value : Value) ->
-        match value with
-        | Float f ->
-          Expect.isNotNaN f "Should be a number"
-          Expect.isNotInfinity f "Should be a real number"
-          Expect.isNotPositiveInfinity f "Should be a real number"
-          Expect.isNotNegativeInfinity f "Should be a real number"
-        | String s ->
-          Expect.isNotNull s "Should not be null"
-          Expect.isNotEmpty s "Should not be empty"
-        | _ -> ()
-
         true
     ]
 
@@ -210,9 +193,25 @@ let tests =
     testList "Value" [
       testCase "String" <| fun () ->
         String "abc" |> ignore
+
+      testPropertyWithConfig fsCheckConfig "Value" <| fun (value : Value) ->
+        match value with
+        | Float f ->
+          Expect.isNotNaN f "Should be a number"
+          Expect.isNotInfinity f "Should be a real number"
+          Expect.isNotPositiveInfinity f "Should be a real number"
+          Expect.isNotNegativeInfinity f "Should be a real number"
+        | String s ->
+          Expect.isNotNull s "Should not be null"
+          Expect.isNotEmpty s "Should not be empty"
+        | _ -> ()
+        true
     ]
 
     testList "Units" [
+      testPropertyWithConfig fsCheckConfig "Units" <| fun (u : Units) ->
+        true
+
       testList "scaling" [
         testList "s" [
           testCase "0.0000001 s" <| fun _ ->
