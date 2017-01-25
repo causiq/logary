@@ -420,6 +420,11 @@ let tests =
         true
     ]
 
+    testList "PointValue" [
+      testPropertyWithConfig fsCheckConfig "generate point values" <| fun (value : PointValue) ->
+        not (isNull (box value))
+    ]
+
     testList "Message" [
       testCase "event : LogLevel -> string -> Message" <| fun _ ->
         let m = event Info "Hello world"

@@ -137,7 +137,7 @@ module PointName =
 
   [<CompiledName "SetEnding">]
   let setEnding (nameEnding : string) (PointName segments as original) =
-    if nameEnding = null then original else
+    if isNull nameEnding then original else
     PointName (Array.append segments [| nameEnding |])
 
 type PointValue =
