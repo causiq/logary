@@ -471,6 +471,9 @@ let tests =
         Expect.isTrue (subject |> HashMap.containsKey "a") "Should have 'a' key"
         Expect.isFalse (subject |> HashMap.containsKey "b") "Should have 'b' key"
 
+      testPropertyWithConfig fsCheckConfig "generate" <| fun (value : HashMap<string, int>) ->
+        ignore value
+        true
     ]
 
     testList "Message" [
