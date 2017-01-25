@@ -446,7 +446,10 @@ let tests =
           | true, tuplGv ->
             tuplGv.Item1 = value && tuplGv.Item2 = units
         | _ ->
-          true
+          match pv.TryGetGauge() with
+          | false, _ -> true
+          | true, x ->
+            Tests.failtest "Expected TryGetGauge to return 'false'"
     ]
 
     testList "Message" [
