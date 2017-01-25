@@ -26,23 +26,85 @@ type Arbs =
     Arb.Default.FsList()
     |> Arb.convert (filter >> HashMap.ofListPair) HashMap.toListPair
 
-  static member Float() =
-    Arb.Default.Float()
-    |> Arb.filter (fun f -> not <| Double.IsNaN(f) &&      // Not required to repro
-                            not <| Double.IsInfinity(f))   // Not requreid to repro 
+  static member Value() =
+    let strings = Arb.generate<NonEmptyString> |> Gen.map (fun (NonEmptyString s) -> String s)
+    let floats = Arb.generate<NormalFloat> |> Gen.map (fun (NormalFloat f) -> Float f)
+    let bools = Gen.elements [ Bool true; Bool false ]
+    let int64s = Arb.from<int64> |> Arb.convert Int64 (function Int64 ii -> ii | _ -> failwith "Not an Int64")
+    let bigints = Arb.from<bigint> |> Arb.convert BigInt (function BigInt bi -> bi | _ -> failwith "Not a BigInt")
 
-  //static member Value() =
-  //  Arb.Default.Derive()
-  //  |> Arb.filter (function | Float f -> not (Double.IsNaN f) | _ -> true)
+    let generator =
+      Gen.frequency [
+        6, strings
+        6, floats
+        6, int64s.Generator
+        6, bigints.Generator
+        1, bools
+      ]
+    let shrinker = function
+      | String s -> Arb.shrink s |> Seq.map String
+      | Float f -> Arb.shrink f |> Seq.map Float
+      | Int64 _ as ii -> int64s.Shrinker ii
+      | BigInt _ as bi -> bigints.Shrinker bi
+      | otherwise -> Seq.empty
+    Arb.fromGenShrink (generator, shrinker)
 
 let fsCheckConfig =
   { Config.Default with
       Arbitrary = [ typeof<Arbs> ]
   }
 
+module Expect =
+  /// Expect the passed float to be a number.
+  let isNotNaN f format =
+    if Double.IsNaN f then Tests.failtestf "%s. Float was the NaN (not a number) value." format
+
+  /// Expect the passed float not to be positive infinity.
+  let isNotPositiveInfinity actual format =
+    if Double.IsPositiveInfinity actual then Tests.failtestf "%s. Float was positive infinity." format
+
+  /// Expect the passed float not to be negative infinity.
+  let isNotNegativeInfinity actual format =
+    if Double.IsNegativeInfinity actual then Tests.failtestf "%s. Float was negative infinity." format
+
+  /// Expect the passed float not to be infinity.
+  let isNotInfinity actual format =
+    isNotNegativeInfinity actual format
+    isNotPositiveInfinity actual format
+    // passed via excluded middle
+
+  /// Expect the passed string not to be empty.
+  let isNotEmpty (actual : string) format =
+    Expect.isNotNull actual format
+    if actual.Length = 0 then Tests.failtestf "%s. Should not be empty." format
+
+
 [<Tests>]
 let tests =
   testList "logary" [
+    testList "FsCheck" [
+      testPropertyWithConfig fsCheckConfig "NormalFloat" <| fun (NormalFloat f) ->
+        Expect.isNotNaN f "Should be a number"
+        Expect.isNotInfinity f "Should be a real number"
+        Expect.isNotPositiveInfinity f "Should be a real number"
+        Expect.isNotNegativeInfinity f "Should be a real number"
+        true
+
+      testPropertyWithConfig fsCheckConfig "Value" <| fun (value : Value) ->
+        match value with
+        | Float f ->
+          Expect.isNotNaN f "Should be a number"
+          Expect.isNotInfinity f "Should be a real number"
+          Expect.isNotPositiveInfinity f "Should be a real number"
+          Expect.isNotNegativeInfinity f "Should be a real number"
+        | String s ->
+          Expect.isNotNull s "Should not be null"
+          Expect.isNotEmpty s "Should not be empty"
+        | _ -> ()
+
+        true
+    ]
+
     testList "HashMap" [
       testCase "empty and add element" <| fun () ->
         HashMap.empty |> HashMap.add 2 4 |> ignore
@@ -482,15 +544,12 @@ let tests =
         let f (mid : (Message -> Message) -> Message -> Message) =
           ()
         f (Middleware.host "local")
-
-      (*
-        Skip: can't make FsCheck behave...
-      testPropertyWithConfig fsCheckConfig "identity" <| fun (m : Message) ->
-        let rm = ref (event Fatal "nope")
-        let save m = rm := m; m
-        let out = Middleware.identity save m
-        Expect.equal out m "Identity property"
-        Expect.equal (!rm) m "Middlware was called"*)
+      //testPropertyWithConfig fsCheckConfig "identity" <| fun (m : Message) ->
+      //  let rm = ref (event Fatal "nope")
+      //  let save m = rm := m; m
+      //  let out = Middleware.identity save m
+      //  Expect.equal out m "Identity property"
+      //  Expect.equal (!rm) m "Middlware was called"
     ]
 
   ]
