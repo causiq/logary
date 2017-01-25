@@ -210,7 +210,7 @@ let tests =
 
           testCase "2 000 000 000 000 000 000 bit" <| fun _ ->
             let value, units = Units.scale Bits 2000000000000000000.
-            Expect.floatEqual value 2. None "Should be scaled to 2. Ebit"
+            Expect.floatClose Accuracy.medium value 2. "Should be scaled to 2. Ebit"
             Expect.equal units "Ebit" "Should be scaled to 2. Ebit"
         ]
 
@@ -280,20 +280,20 @@ let tests =
               let actualf, actualu = Units.scale units value
               let expectedu = sprintf "%s%s" prefix (Units.symbol units)
               Expect.equal actualu expectedu "Should properly format the unit"
-              Expect.floatEqual actualf expectedf None "Should properly scale the value to the unit"
+              Expect.floatClose Accuracy.veryHigh actualf expectedf "Should properly scale the value to the unit"
             )))
         ]
 
         testCase "scaleBy10 Seconds 0.0001" <| fun _ ->
           let actualf, actualu = Units.scaleBy10 Seconds 0.0001
           let expectedf, expectedu = 1e6, "μs"
-          Expect.floatEqual actualf expectedf None "Should scale 0.0001 properly"
+          Expect.floatClose Accuracy.veryHigh actualf expectedf "Should scale 0.0001 properly"
           Expect.equal actualu expectedu "Should scale 0.0001's unit properly"
 
         testCase "scaleBy10 Seconds 0.00011" <| fun _ ->
           let actualf, actualu = Units.scaleBy10 Seconds 0.00011
           let expectedf, expectedu = 1e6, "μs"
-          Expect.floatEqual actualf expectedf None "Should scale 0.00011 properly"
+          Expect.floatClose Accuracy.veryHigh actualf expectedf "Should scale 0.00011 properly"
           Expect.equal actualu expectedu "Should scale 0.00011's unit properly"
 
         testList "SI thousands-units fractions" [
@@ -320,7 +320,7 @@ let tests =
               let actualf, actualu = Units.scale units value
               let expectedu = sprintf "%s%s" prefix (Units.symbol units)
               Expect.equal actualu expectedu "Should properly format the unit"
-              Expect.floatEqual actualf expectedf None "Should properly scale the value to the unit"
+              Expect.floatClose Accuracy.veryHigh actualf expectedf "Should properly scale the value to the unit"
             )))
         ]
       ]
