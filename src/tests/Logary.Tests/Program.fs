@@ -450,6 +450,9 @@ let tests =
           | false, _ -> true
           | true, x ->
             Tests.failtest "Expected TryGetGauge to return 'false'"
+
+      testCase "TryGetDerived" <| fun () -> Tests.skiptest "TBD"
+      testCase "TryGetEvent" <| fun () -> Tests.skiptest "TBD"
     ]
 
     testList "Message" [
