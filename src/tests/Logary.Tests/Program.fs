@@ -55,6 +55,14 @@ type Arbs =
       | otherwise -> Seq.empty
     Arb.fromGenShrink (generator, shrinker)
 
+  static member Units() =
+    Arb.Default.Derive()
+    |> Arb.filter (function
+      | Offset (x, f) ->
+           not <| Double.IsInfinity f
+        && not <| Double.IsNaN f
+      | _ -> true)
+
 let fsCheckConfig =
   { Config.Default with
       Arbitrary = [ typeof<Arbs> ]
@@ -210,7 +218,13 @@ let tests =
 
     testList "Units" [
       testPropertyWithConfig fsCheckConfig "Units" <| fun (u : Units) ->
-        true
+        match u with
+        | Offset (_, f) ->
+          Expect.isNotNaN f "Should be a number"
+          Expect.isNotInfinity f "Should not be infinity"
+          true
+        | _ ->
+          true
 
       testList "scaling" [
         testList "s" [
@@ -423,6 +437,16 @@ let tests =
     testList "PointValue" [
       testPropertyWithConfig fsCheckConfig "generate point values" <| fun (value : PointValue) ->
         not (isNull (box value))
+
+      testPropertyWithConfig fsCheckConfig "TryGetGauge" <| fun (pv : PointValue) ->
+        match pv with
+        | Gauge (value, units) ->
+          match pv.TryGetGauge() with
+          | false, _ -> Tests.failtest "Should return true"
+          | true, tuplGv ->
+            tuplGv.Item1 = value && tuplGv.Item2 = units
+        | _ ->
+          true
     ]
 
     testList "Message" [
