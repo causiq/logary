@@ -455,6 +455,24 @@ let tests =
       testCase "TryGetEvent" <| fun () -> Tests.skiptest "TBD"
     ]
 
+    testList "HashMap" [
+      testCase "add" <| fun _ ->
+        HashMap.empty |> HashMap.add "a" 24 |> ignore
+
+      testCase "add + remove" <| fun _ ->
+        let subject = HashMap.empty |> HashMap.add "a" 24 |> HashMap.remove "a"
+        Expect.isFalse (subject |> HashMap.containsKey "a") "Should not contain 'a'"
+
+      testCase "add x2" <| fun _ ->
+        let subject = HashMap.empty |> HashMap.add "a" 2 |> HashMap.add "b" 3
+        Expect.isTrue (subject |> HashMap.containsKey "a") "Should have 'a' key"
+        Expect.isTrue (subject |> HashMap.containsKey "b") "Should have 'b' key"
+        let subject = subject |> HashMap.remove "b"
+        Expect.isTrue (subject |> HashMap.containsKey "a") "Should have 'a' key"
+        Expect.isFalse (subject |> HashMap.containsKey "b") "Should have 'b' key"
+
+    ]
+
     testList "Message" [
       testCase "event : LogLevel -> string -> Message" <| fun _ ->
         let m = event Info "Hello world"
