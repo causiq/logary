@@ -919,7 +919,7 @@ Have a look at `examples/Cibryy` for an example of usage of the C# facade.
 
 ### More reading
 
- - [Facade.cs](https://github.com/logary/logary/blob/master/src/Logary.CSharp.Facade/Facade.fs)
+ - [Facade.cs](https://github.com/logary/logary/blob/master/src/Logary.CSharp.Facade/Facade.cs)
    – the actual file that gets imported into your library.
  - [The Logary Facade Adapter](#the-logary-facade-adapter)
 
