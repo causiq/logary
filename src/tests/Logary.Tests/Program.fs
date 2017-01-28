@@ -499,6 +499,8 @@ let tests =
         let m = eventX "Hello world" Info |> setFieldsFromObject (Obj())
         let field = m.fields |> HashMap.tryFind (PointName.ofSingle "PropA") |> Option.get
         Expect.equal field (Field (Int64 45L, None)) "Should have PropA"
+
+      // TODO: add testCase for all functions in the Message module
     ]
 
     testList "Logger" [
@@ -623,12 +625,13 @@ let tests =
         let f (mid : (Message -> Message) -> Message -> Message) =
           ()
         f (Middleware.host "local")
-      //testPropertyWithConfig fsCheckConfig "identity" <| fun (m : Message) ->
-      //  let rm = ref (event Fatal "nope")
-      //  let save m = rm := m; m
-      //  let out = Middleware.identity save m
-      //  Expect.equal out m "Identity property"
-      //  Expect.equal (!rm) m "Middlware was called"
+
+      testPropertyWithConfig fsCheckConfig "identity" <| fun (m : Message) ->
+        let rm = ref (event Fatal "nope")
+        let save m = rm := m; m
+        let out = Middleware.identity save m
+        Expect.equal out m "Identity property"
+        Expect.equal (!rm) m "Middlware was called"
     ]
 
   ]

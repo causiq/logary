@@ -103,10 +103,6 @@ with
   override x.ToString() =
     let (PointName hiera) = x in String.concat "." hiera
 
-  static member hierarchy_ =
-    (fun (PointName h) -> h),
-    fun v x -> PointName v
-
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module PointName =
 
