@@ -226,6 +226,13 @@ let tests =
         | _ ->
           true
 
+      testPropertyWithConfig fsCheckConfig "symbol can be called" <| fun (u : Units) ->
+        try
+          Units.symbol u |> ignore
+          true
+        with e ->
+          Tests.failtestf "Should not throw, but did: %O" e
+
       testList "scaling" [
         testList "s" [
           testCase "0.0000001 s" <| fun _ ->
