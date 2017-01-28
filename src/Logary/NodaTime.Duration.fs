@@ -1,10 +1,10 @@
 namespace Logary
 
+open NodaTime
 open System.Runtime.CompilerServices
 
 [<AutoOpen; Extension>]
 module DurationEx =
-  open NodaTime
 
   type Duration with
     [<Extension; CompiledName "ToGauge">]

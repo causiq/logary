@@ -20,6 +20,10 @@ type Obj() =
     raise (Exception ("Oh noes, no referential transparency here"))
 
 type Arbs =
+  static member Duration() =
+    Arb.Default.TimeSpan()
+    |> Arb.convert (Duration.FromTimeSpan) (fun d -> d.ToTimeSpan())
+
   static member HashMap() =
     let nonNullKey = fun (KeyValue (k, _)) -> not (isNull (box k))
     let filter list = List.filter nonNullKey list
@@ -632,6 +636,36 @@ let tests =
         let out = Middleware.identity save m
         Expect.equal out m "Identity property"
         Expect.equal (!rm) m "Middlware was called"
+
+      testCase "host" <| fun () ->
+        Tests.skiptest "TODO: test host function"
+
+      testCase "dnsHost" <| fun () ->
+        Tests.skiptest "TODO: test dnsName function"
+
+      testCase "service name" <| fun () ->
+        Tests.skiptest "TODO: test service name function"
+
+      testCase "process name" <| fun () ->
+        Tests.skiptest "TODO: test process name function"
+
+      testCase "compose" <| fun () ->
+        Tests.skiptest "TODO: test compose function"
+
+      testCase "context" <| fun () ->
+        Tests.skiptest "TODO: test context function"
+    ]
+
+    testList "NodaTime.Duration" [
+      testPropertyWithConfig fsCheckConfig "toGauge()" <| fun (d : Duration) ->
+        ignore (d.toGauge())
+        true
+    ]
+
+    testList "NodaTime.Instant" [
+      testPropertyWithConfig fsCheckConfig "toGuage()" <| fun (epoch : int64) ->
+        Instant.ofEpoch epoch |> ignore
+        true
     ]
 
   ]
