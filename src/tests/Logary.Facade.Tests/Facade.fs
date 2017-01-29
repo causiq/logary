@@ -8,8 +8,17 @@ open Logary.Facade.Literate
 open Logary.Facade.LiterateExtensions
 
 
-
 type Expect =
+  static member literateWrittenColourPartsEqual (options, message, expectedColourParts) =
+    let writtenParts = ResizeArray<string * ConsoleColor>()
+    let outputWriter (sem : obj) (colouredBits : (string * ConsoleColor) seq) = writtenParts.AddRange colouredBits
+    let target = LiterateConsoleTarget([||], Info, options=options, outputWriter=outputWriter) :> Logger
+    let applyTheme (text : string, token) = text, options.theme token
+    target.logWithAck Info (fun _ -> message) |> Async.RunSynchronously
+    Expect.equal (expectedColourParts |> Seq.map applyTheme |> Seq.toList)
+                 (writtenParts |> Seq.toList)
+                  "The parts must match"
+
   static member literateMessagePartsEqual (template, fields, expectedMessageParts, ?options, ?logLevel, ?tokeniser) =
     let options = defaultArg options (LiterateOptions.create())
     let tokeniser = defaultArg tokeniser (fun o m -> options.tokenise.message o m |> List.ofSeq)
@@ -237,6 +246,34 @@ let tests =
           " who now has total $", Text
           cartTotal.ToString(),   NumericSymbol ]
       Expect.literateMessagePartsEqual (template, fields, expectedMessageParts, options)
+    
+    testCase "customising the Literate output template is possible" <| fun _ ->
+      let template = "Hello from the {where}"
+      let whereText = "other side"
+      let fields = Map [ "where", box whereText ]
+
+      let myCustomOutputTemplate (options : LiterateOptions) (message : Message) =
+        seq {
+          yield "<arbitrary prefix> ", Text
+          yield! options.tokenise.pointValue options message.fields message.value
+          yield! options.tokenise.messageExceptions options message
+          yield "arbitrary suffix>", Text
+        }
+
+      let defaultOptions = LiterateOptions.create()
+      let customisedOptions = { defaultOptions with
+                                  tokenise = { defaultOptions.tokenise with
+                                                message = myCustomOutputTemplate } }
+
+      let expectedParts =
+        [ "<arbitrary prefix> ",  Text
+          "Hello from the ",      Text
+          "other side",           StringSymbol
+          "arbitrary suffix>",    Text
+          Environment.NewLine,    Text ] // the LiterateConsoleTarget appends a newline after each message
+
+      let message = { Message.event Info template with fields = fields }
+      Expect.literateWrittenColourPartsEqual (customisedOptions, message, expectedParts)
 
     testCase "format template with invalid property correctly" <| fun _ ->
       // spaces are not valid in property names, so the 'property' is treated as text
