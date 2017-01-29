@@ -7,27 +7,12 @@ open Logary.Facade.Literals
 open Logary.Facade.Literate
 open Logary.Facade.LiterateExtensions
 
-type internal TemplateToken =
-  | TextToken of string
-  | PropToken of name:string * format:string
-  with
-    override x.ToString() =
-      match x with
-      | TextToken s -> "TEXT("+s+")"
-      | PropToken (n,f) -> "PROP("+n+":"+f+")"
 
-let internal parseTemplateTokens template =
-  let tokens = ResizeArray<TemplateToken>()
-  let foundText t = tokens.Add (TextToken(t))
-  let foundProp (p: FsMtParser.Property) =
-    tokens.Add (PropToken(p.name, p.format))
-  FsMtParser.parseParts template foundText foundProp
-  tokens |> List.ofSeq
 
 type Expect =
   static member literateMessagePartsEqual (template, fields, expectedMessageParts, ?options, ?logLevel, ?tokeniser) =
     let options = defaultArg options (LiterateOptions.create())
-    let tokeniser = defaultArg tokeniser (fun o m -> options.tokeniseMessage o m |> List.ofSeq)
+    let tokeniser = defaultArg tokeniser (fun o m -> options.tokenise.message o m |> List.ofSeq)
     let logLevel = defaultArg logLevel Info
     let now = Global.timestamp ()
     let nowDto = DateTimeOffset(DateTimeOffset.ticksUTC now, TimeSpan.Zero)
@@ -102,32 +87,32 @@ let tests =
     testCase "extract invalid property tokens as text" <| fun _ ->
       let template = "Hi {ho:##.###}, we're { something going on } special"
       let fields = Map [ "ho", box "hola"; "something going on", box "very" ]
-      let tokens = parseTemplateTokens template
-      Expect.equal tokens.Length 5 "Extracts 4 texts parts and 1 property part"
+      let tokens = EventTemplateParser.parse template |> Seq.toList
+      Expect.equal (tokens |> Seq.length) 5 "Extracts 4 texts parts and 1 property part"
       Expect.equal tokens
-                   [ TextToken ("Hi ")
-                     PropToken ("ho", "##.###")
-                     TextToken (", we're ") // <- a quirk of the parser
-                     TextToken ("{ something going on }")
-                     TextToken (" special") ]
+                   [ EventTemplateParser.TextToken ("Hi ")
+                     EventTemplateParser.PropToken ("ho", "##.###")
+                     EventTemplateParser.TextToken (", we're ") // <- a quirk of the parser
+                     EventTemplateParser.TextToken ("{ something going on }")
+                     EventTemplateParser.TextToken (" special") ]
                    "Should extract correct name and format parts"
 
     testCase "handles evil property strings correctly" <| fun _ ->
       let template = "{a}{b}{  c}{d  } {e} fghij {k}} {l} m {{}}"
       // validity:     +  +  --    --   +         +    +     --
       let expectedPropertyNames = ["a"; "b"; "e"; "k"; "l"]
-      let subject = parseTemplateTokens template
-      Expect.equal (subject |> List.choose (function PropToken (n,f) -> Some n | _ -> None))
+      let subject = EventTemplateParser.parse template |> Seq.toList
+      Expect.equal (subject |> List.choose (function EventTemplateParser.PropToken (n,f) -> Some n | _ -> None))
                    expectedPropertyNames
                    "Should extract relevant names"
 
     testCase "treats `{{` and `}}` as escaped braces, resulting in a single brace in the output" <| fun _ ->
       let template = "hello {{@nonPropWithFormat:##}} {{you}} {are} a {{NonPropNoFormat}}"
-      let tokens = parseTemplateTokens template
+      let tokens = EventTemplateParser.parse template |> Seq.toList
       Expect.equal tokens
-                    [ TextToken("hello {@nonPropWithFormat:##} {you} ")
-                      PropToken("are", null)
-                      TextToken(" a {NonPropNoFormat}") ]
+                    [ EventTemplateParser.TextToken("hello {@nonPropWithFormat:##} {you} ")
+                      EventTemplateParser.PropToken("are", null)
+                      EventTemplateParser.TextToken(" a {NonPropNoFormat}") ]
 
                    "double open or close braces are escaped"
     testCase "literate tokenises with field names correctly" <| fun _ ->

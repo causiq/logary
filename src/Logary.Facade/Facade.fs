@@ -1,4 +1,4 @@
-/// The logging namespace, which contains the logging abstraction for this
+﻿/// The logging namespace, which contains the logging abstraction for this
 /// library. See https://github.com/logary/logary for details. This module is
 /// completely stand-alone in that it has no external references and its adapter
 /// in Logary has been well tested.
@@ -309,10 +309,24 @@ module Literate =
   /// A tuple of text and it's associated LiterateToken that describes what kind of text it is.
   type LiteratePart = string * LiterateToken
 
+  type LiterateTokenisation =
+    { /// Generates a sequence of LiteratePart values representing how the log event 
+      /// then be themed and rendered to the console. The default implementation calls the other
+      /// functions defined here (e.g. `pointValue` and `messageExceptions`). Replace this method
+      /// to completely control how the entire log message is rendered, optionally using the other
+      /// provided methods here to ease that process.
+      message           : LiterateOptions -> Message -> LiteratePart seq
+      /// Called by the default `message` tokeniser to convert a `PointValue` into it's parts.
+      pointValue        : LiterateOptions -> Map<string, obj> -> PointValue -> LiteratePart seq
+      /// Takes the exceptions from the log message and uses `exn` to tokenise each exception.
+      messageExceptions : LiterateOptions -> Message -> LiteratePart seq
+      /// Used by `messageExceptions` to converts each exception into a sequence of LiteratePart values.
+      /// The simplest implementation would be to generate `seq { yeild ex.ToString(), LiterateToken.Text }`
+      exn               : LiterateOptions -> exn -> LiteratePart seq
+    }
   /// The options which are used to control the rendering of log messages.
-  type LiterateOptions =
-    {
-      /// Allows using a specific format provider to render culture-sensitive
+  and LiterateOptions =
+    { /// Allows using a specific format provider to render culture-sensitive
       /// template property values. By default, this is CultureInfo.CurrentCulture
       /// because *literate* is meant to be read by humans at the console.
       formatProvider          : IFormatProvider
@@ -321,12 +335,8 @@ module Literate =
       /// Allows providing custom text to be rendered for each log level.
       /// By default
       getLogLevelText         : LogLevel -> string
-      /// Given the options, template message (e.g. "Hello {who}"), and a Map of property names to
-      /// values, this function generates a sequence of string*LiterateToken values which can
-      /// then be rendered to the console.
-      tokeniseMessage         : LiterateOptions -> Message -> LiteratePart seq
-      /// Used by tokenise to convert a PointValue into it's parts.
-      tokenisePointValue      : LiterateOptions -> Map<string, obj> -> PointValue -> LiteratePart seq
+      /// Controles how the various parts of the events are transformed into LiteratePart (string * LiterateToken).
+      tokenise                : LiterateTokenisation
       /// TODO: remove this feature?
       printTemplateFieldNames : bool 
     }
@@ -501,6 +511,22 @@ module internal FsMtParser =
         go (ParserBits.findPropOrText start template foundTextF foundPropF)
     go 0
 
+module EventTemplateParser =
+  type TemplateToken =
+    | TextToken of string
+    | PropToken of name:string * format:string
+    with
+      override x.ToString() =
+        match x with TextToken s -> "TEXT("+s+")" | PropToken (n,f) -> "PROP("+n+":"+f+")"
+
+  /// Provides a way to parse the `Event template`
+  let parse template =
+    let tokens = ResizeArray<TemplateToken>()
+    let foundText t = tokens.Add (TextToken t)
+    let foundProp (p: FsMtParser.Property) = tokens.Add (PropToken (p.name, p.format))
+    FsMtParser.parseParts template foundText foundProp
+    tokens :> seq<TemplateToken>
+
 /// Internal module for formatting text for printing to the console.
 module internal LiterateFormatting =
   open System.Text
@@ -547,7 +573,7 @@ module internal LiterateFormatting =
   let tokenisePointValue (options : LiterateOptions) (fields : Map<string, obj>) (pv : PointValue) =
     tokenisePointValueTrackingMatched options fields pv |> snd
 
-  let literateExceptionColouriser (options : LiterateOptions) (ex : exn) =
+  let literateTokeniseException (options : LiterateOptions) (ex : exn) =
     let stackFrameLinePrefix = "   at" // 3 spaces
     let monoStackFrameLinePrefix = "  at" // 2 spaces
     use exnLines = new System.IO.StringReader(ex.ToString())
@@ -562,27 +588,27 @@ module internal LiterateFormatting =
         else
           // regular text
           go ((line, Text) :: (Environment.NewLine, Text) :: lines)
-    go []
+    go [] :> seq<LiteratePart>
 
-  let literateColouriseExceptions (context : LiterateOptions) message =
+  let literateTokeniseExceptions (options : LiterateOptions) message =
     let exnExceptionParts =
       match message.fields.TryFind FieldExnKey with
       | Some (:? Exception as ex) ->
-        literateExceptionColouriser context ex
+        options.tokenise.exn options ex
       | _ ->
-        [] // there is no spoon
+        Seq.empty
     let errorsExceptionParts =
       match message.fields.TryFind FieldErrorsKey with
       | Some (:? List<obj> as exnListAsObjList) ->
-        exnListAsObjList |> List.collect (function
+        exnListAsObjList |> Seq.collect (function
           | :? exn as ex ->
-            literateExceptionColouriser context ex
+            options.tokenise.exn options ex 
           | _ ->
-            [])
+            Seq.empty)
       | _ ->
-        []
+        Seq.empty
 
-    exnExceptionParts @ errorsExceptionParts
+    errorsExceptionParts |> Seq.append exnExceptionParts
 
   /// Split a structured message up into theme-able parts (tokens), allowing the
   /// final output to display to a user with colours to enhance readability.
@@ -592,9 +618,9 @@ module internal LiterateFormatting =
       Subtext
 
     let themedMessageParts =
-      message.value |> options.tokenisePointValue options message.fields
+      message.value |> options.tokenise.pointValue options message.fields
 
-    let themedExceptionParts = literateColouriseExceptions options message
+    let themedExceptionParts = options.tokenise.messageExceptions options message
 
     let getLogLevelToken = function
       | Verbose -> LevelVerbose
@@ -613,7 +639,6 @@ module internal LiterateFormatting =
       yield! themedMessageParts
       yield! themedExceptionParts
     }
-
 
   let literateDefaultColourWriter sem (parts : (string * ConsoleColor) seq) =
     lock sem <| fun _ ->
@@ -638,8 +663,10 @@ module LiterateExtensions =
       // format provider of 'Current' is appropriate here. The reader expects
       // to see the dates, numbers, currency, etc formatted in the local culture
       { formatProvider = defaultArg formatProvider Globalization.CultureInfo.CurrentCulture
-        tokenisePointValue = LiterateFormatting.tokenisePointValue
-        tokeniseMessage = LiterateFormatting.tokeniseMessage
+        tokenise = { pointValue = LiterateFormatting.tokenisePointValue
+                     message = LiterateFormatting.tokeniseMessage
+                     exn = LiterateFormatting.literateTokeniseException
+                     messageExceptions = LiterateFormatting.literateTokeniseExceptions }
         getLogLevelText = function
                 | Debug ->    "DBG"
                 | Error ->    "ERR"
@@ -738,7 +765,7 @@ type LiterateConsoleTarget(name, minLevel, ?options, ?outputWriter, ?consoleSema
 
   let colouriseThenNewLine message =
     seq {
-      yield! options.tokeniseMessage options message
+      yield! options.tokenise.message options message
       yield Environment.NewLine, Literate.Text
     }
     |> Seq.map (fun (s, t) -> s, options.theme(t))
