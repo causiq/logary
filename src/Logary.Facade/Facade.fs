@@ -515,6 +515,25 @@ module internal FsMtParser =
         go (ParserBits.findPropOrText start template foundTextF foundPropF)
     go 0
 
+module internal EventTemplateParser =
+  type TemplateToken =
+    | TextToken of string
+    | PropToken of name : string * format : string
+  with
+    override x.ToString() =
+      match x with
+      | TextToken s -> "TEXT(" + s + ")"
+      | PropToken (n, f) ->
+        let formatPartOrEmpty = if (String.IsNullOrEmpty f) then "" else ":" + f
+        "PROP(" + n + formatPartOrEmpty + ")"
+
+  let parseTemplate template =
+    let tokens = ResizeArray<TemplateToken>()
+    let foundText (text: string) = tokens.Add (TextToken text)
+    let foundProp (prop: FsMtParser.Property) = tokens.Add (PropToken (prop.name, prop.format))
+    FsMtParser.parseParts template foundText foundProp
+    tokens :> seq<TemplateToken>
+
 /// Internal module for formatting text for printing to the console.
 module internal Formatting =
   open System.Text
@@ -600,6 +619,14 @@ module internal Formatting =
 
     exnExceptionParts @ errorsExceptionParts
 
+  let getLogLevelToken = function
+    | Verbose -> LevelVerbose
+    | Debug -> LevelDebug
+    | Info -> LevelInfo
+    | Warn -> LevelWarning
+    | Error -> LevelError
+    | Fatal -> LevelFatal
+
   /// Split a structured message up into theme-able parts (tokens), allowing the
   /// final output to display to a user with colours to enhance readability.
   let literateDefaultTokeniser (options : LiterateOptions) (message : Message) : (string * LiterateToken) list =
@@ -611,14 +638,6 @@ module internal Formatting =
       message.value |> literateFormatValue options message.fields |> snd
 
     let themedExceptionParts = literateColouriseExceptions options message
-
-    let getLogLevelToken = function
-      | Verbose -> LevelVerbose
-      | Debug -> LevelDebug
-      | Info -> LevelInfo
-      | Warn -> LevelWarning
-      | Error -> LevelError
-      | Fatal -> LevelFatal
 
     [ "[", Punctuation
       formatLocalTime message.utcTicks
@@ -683,6 +702,55 @@ module internal Formatting =
     formatName message.name +
     formatExn message.fields +
     formatFields matchedFields message.fields
+
+/// Assists with implementing a custom tokeniser for the `LiterateConsoleTarget`.
+module LiterateFormatting =
+  open Literate
+  open EventTemplateParser
+
+  type TokenisedPart = string * LiterateToken
+  type LiterateTokeniser = LiterateOptions -> Message -> TokenisedPart list
+
+  /// Creates a `LiterateTokeniser` function which can be provided to the `LiterateConsoleTarget`
+  /// constructor in order to render. The default template would be:
+  /// `[{timestampLocal:HH:mm:ss} {level}] {message}{newline}{exceptions}`.
+  /// Example of different output templates:
+  ///
+  /// `[{level}] {timestamp:u}: {message}
+  let tokeniserForOutputTemplate template : LiterateTokeniser =
+    let tokens = parseTemplate template
+    fun o m ->
+      seq {
+        for token in tokens do
+          match token with
+          | TextToken text -> yield text, LiterateToken.Punctuation
+          | PropToken (n, f) ->
+            match n with
+            | "timestamp" ->
+              let localDateTimeOffset = DateTimeOffset(m.utcTicks, TimeSpan.Zero).ToLocalTime()
+              let formattedTimestamp = localDateTimeOffset.ToString(f, o.formatProvider)
+              yield formattedTimestamp, Subtext
+            | "timestampUtc" ->
+              let utcDateTimeOffset = DateTimeOffset(m.utcTicks, TimeSpan.Zero)
+              let formattedTimestamp = utcDateTimeOffset.ToString(f, o.formatProvider)
+              yield formattedTimestamp, Subtext
+            | "level" -> yield o.getLogLevelText m.level, Formatting.getLogLevelToken m.level
+            | "source" -> yield (String.concat "." m.name), Subtext
+            | "newline" -> yield Environment.NewLine, Text
+            | "tab" -> yield "\t", Text
+            | "message" ->
+              let matchedFields, messageParts = Formatting.literateFormatValue o m.fields m.value
+              yield! messageParts
+            | "exceptions" -> yield! Formatting.literateColouriseExceptions o m
+            | _ ->
+              yield "{", Punctuation
+              yield n, MissingTemplateField
+              if not (String.IsNullOrEmpty f) then
+                yield ":", Punctuation
+                yield f, Subtext
+              yield "}", Punctuation
+      }
+      |> Seq.toList
 
 /// Logs a line in a format that is great for human consumption,
 /// using console colours to enhance readability.

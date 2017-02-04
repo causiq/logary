@@ -5,24 +5,14 @@ open Expecto
 open Logary.Facade
 open Logary.Facade.Literals
 open Logary.Facade.Literate
+open Logary.Facade.LiterateFormatting
+open Logary.Facade.EventTemplateParser
 
-type internal TemplateToken =
-  | TextToken of string
-  | PropToken of name:string * format:string
-  with
-    override x.ToString() =
-      match x with
-      | TextToken s -> "TEXT("+s+")"
-      | PropToken (n,f) -> "PROP("+n+":"+f+")"
+type ColouredText = string * ConsoleColor
 
 let internal parseTemplateTokens template =
-  let tokens = ResizeArray<TemplateToken>()
-  let foundText t = tokens.Add (TextToken(t))
-  let foundProp (p: FsMtParser.Property) =
-    tokens.Add (PropToken(p.name, p.format))
-  FsMtParser.parseParts template foundText foundProp
-  tokens |> List.ofSeq
-
+  EventTemplateParser.parseTemplate template
+  |> Seq.toList
 type Expect =
   static member literateMessagePartsEqual (template, fields, expectedMessageParts, ?options, ?logLevel, ?tokeniser) =
     let options = defaultArg options (LiterateOptions.create())
@@ -41,6 +31,23 @@ type Expect =
                             @ expectedMessageParts
 
     Expect.equal actualTokens expectedTokens "literate tokenised parts must be correct"
+
+  static member literateCustomTokenisedPartsEqual (message, customTokeniser, expectedTokens) =
+    let options = LiterateOptions.create()
+    let writtenParts = ResizeArray<ColouredText>()
+    let writtenPartsOutputWriter _ (bits : ColouredText list) = writtenParts.AddRange bits
+    let target = LiterateConsoleTarget(name = [|"Facade";"Tests"|],
+                                        minLevel = Verbose,
+                                        options = options,
+                                        literateTokeniser = customTokeniser,
+                                        outputWriter = writtenPartsOutputWriter) :> Logger
+
+    target.logWithAck Verbose (fun _ -> message) |> Async.RunSynchronously
+    
+    let actualParts = writtenParts |> List.ofSeq
+    let expectedParts = expectedTokens |> List.map (fun (s, t) -> s, options.theme t)
+
+    Expect.sequenceEqual actualParts expectedParts "literate custom tokenised parts must be correct"
 
 [<Tests>]
 let tests =
@@ -251,6 +258,37 @@ let tests =
           " who now has total $", Text
           cartTotal.ToString(),   NumericSymbol ]
       Expect.literateMessagePartsEqual (template, fields, expectedMessageParts, options)
+
+    testList "literate customisations" [
+      testCase "replacing the default tokeniser is possible" <| fun _ ->
+
+        let customTokeniser =
+          LiterateFormatting.tokeniserForOutputTemplate
+            "[{timestamp:HH:mm:ss} {level}] {message} [{source}]{exceptions}"
+
+        let message = Message.event Debug "Hello from {where}"
+                      |> Message.setSingleName "World.UK.Adele"
+                      |> Message.setField "where" "The Other Side"
+        
+        let expectedTimestamp = DateTimeOffset(message.utcTicks, TimeSpan.Zero)
+                                  .ToLocalTime()
+                                  .ToString("HH:mm:ss", System.Globalization.CultureInfo.CurrentCulture)
+
+        let expectedTokens =
+          [ "[",                  Punctuation
+            expectedTimestamp,    Subtext
+            " ",                  Punctuation
+            "DBG",                LevelDebug
+            "] ",                  Punctuation
+            "Hello from ",        Text
+            "The Other Side",     StringSymbol
+            " [",                 Punctuation
+            "World.UK.Adele",     Subtext
+            "]",                  Punctuation
+            Environment.NewLine,  Text ]
+
+        Expect.literateCustomTokenisedPartsEqual (message, customTokeniser, expectedTokens)
+    ]
 
     testCase "format template with invalid property correctly" <| fun _ ->
       // spaces are not valid in property names, so the 'property' is treated as text
