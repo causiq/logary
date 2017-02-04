@@ -33,7 +33,7 @@ type Expect =
     let logLevel = defaultArg logLevel Info
     let now = Global.timestamp ()
     let nowDto = DateTimeOffset(DateTimeOffset.ticksUTC now, TimeSpan.Zero)
-    let msg = Message.event logLevel template |> fun m -> { m with fields = fields; timestamp = now }
+    let msg = { Message.event logLevel template with fields = fields; timestamp = now }
     let nowTimeString = nowDto.LocalDateTime.ToString("HH:mm:ss", options.formatProvider)
     let actualTokens = tokeniser options msg
     let expectedTokens = [  "[",                              Punctuation
@@ -50,10 +50,10 @@ type Expect =
     let writtenParts = ResizeArray<ColouredText>()
     let writtenPartsOutputWriter _ (bits : ColouredText list) = writtenParts.AddRange bits
     let target = LiterateConsoleTarget(name = [|"Facade";"Tests"|],
-                                        minLevel = Verbose,
-                                        options = options,
-                                        literateTokeniser = customTokeniser,
-                                        outputWriter = writtenPartsOutputWriter) :> Logger
+                                       minLevel = Verbose,
+                                       options = options,
+                                       literateTokeniser = customTokeniser,
+                                       outputWriter = writtenPartsOutputWriter) :> Logger
 
     target.logWithAck Verbose (fun _ -> message) |> Async.RunSynchronously
     
@@ -147,8 +147,8 @@ let tests =
                     [ TextToken("hello {@nonPropWithFormat:##} {you} ")
                       PropToken("are", null)
                       TextToken(" a {NonPropNoFormat}") ]
-
                    "double open or close braces are escaped"
+
     testCase "literate tokenises with field names correctly" <| fun _ ->
       let template = "Added {item} to cart {cartId} for {loginUserId} who now has total ${cartTotal}"
       let itemName, cartId, loginUserId, cartTotal = "TicTacs", Guid.NewGuid(), "AdamC", 123.45M
@@ -277,7 +277,7 @@ let tests =
 
         let customTokeniser =
           LiterateFormatting.tokeniserForOutputTemplate
-            "[{timestamp:HH:mm:ss} {level}] {message} [{source}]{exceptions}"
+                                "[{timestamp:HH:mm:ss} {level}] {message} [{source}]{exceptions}"
 
         let message = Message.event Debug "Hello from {where}"
                       |> Message.setSingleName "World.UK.Adele"
@@ -292,7 +292,7 @@ let tests =
             expectedTimestamp,    Subtext
             " ",                  Punctuation
             "DBG",                LevelDebug
-            "] ",                  Punctuation
+            "] ",                 Punctuation
             "Hello from ",        Text
             "The Other Side",     StringSymbol
             " [",                 Punctuation

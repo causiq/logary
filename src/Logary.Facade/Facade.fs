@@ -697,6 +697,40 @@ module LiterateFormatting =
     let foundProp (prop: FsMtParser.Property) = tokens.Add (PropToken (prop.name, prop.format))
     FsMtParser.parseParts template foundText foundProp
     tokens :> seq<TemplateToken>
+  
+  [<AutoOpen>]
+  module internal OutputTemplateTokenisers =
+
+    let tokeniseTimestamp format (options : LiterateOptions) (message : Message) = 
+      let localDateTimeOffset = DateTimeOffset(message.utcTicks, TimeSpan.Zero).ToLocalTime()
+      let formattedTimestamp = localDateTimeOffset.ToString(format, options.formatProvider)
+      seq { yield formattedTimestamp, Subtext }
+
+    let tokeniseTimestampUtc format (options : LiterateOptions) (message : Message) = 
+      let utcDateTimeOffset = DateTimeOffset(message.utcTicks, TimeSpan.Zero)
+      let formattedTimestamp = utcDateTimeOffset.ToString(format, options.formatProvider)
+      seq { yield formattedTimestamp, Subtext }
+
+    let tokeniseMissingField name format =
+      seq {
+        yield "{", Punctuation
+        yield name, MissingTemplateField
+        if not (String.IsNullOrEmpty format) then
+          yield ":", Punctuation
+          yield format, Subtext
+        yield "}", Punctuation }
+
+    let tokeniseLogLevel (options : LiterateOptions) (message : Message) =
+      seq { yield options.getLogLevelText message.level, Formatting.getLogLevelToken message.level }
+
+    let tokeniseSource (options : LiterateOptions) (message : Message) =
+      seq { yield (String.concat "." message.name), Subtext }
+
+    let tokeniseNewline (options : LiterateOptions) (message : Message) =
+      seq { yield Environment.NewLine, Text }
+
+    let tokeniseTab (options : LiterateOptions) (message : Message) =
+      seq { yield "\t", Text }
 
   /// Creates a `LiterateTokeniser` function which can be passed to the `LiterateConsoleTarget`
   /// constructor in order to customise how each log message is rendered. The default template
@@ -711,31 +745,17 @@ module LiterateFormatting =
         for token in tokens do
           match token with
           | TextToken text -> yield text, LiterateToken.Punctuation
-          | PropToken (n, f) ->
-            match n with
-            | "timestamp" ->
-              let localDateTimeOffset = DateTimeOffset(message.utcTicks, TimeSpan.Zero).ToLocalTime()
-              let formattedTimestamp = localDateTimeOffset.ToString(f, options.formatProvider)
-              yield formattedTimestamp, Subtext
-            | "timestampUtc" ->
-              let utcDateTimeOffset = DateTimeOffset(message.utcTicks, TimeSpan.Zero)
-              let formattedTimestamp = utcDateTimeOffset.ToString(f, options.formatProvider)
-              yield formattedTimestamp, Subtext
-            | "level" -> yield options.getLogLevelText message.level, Formatting.getLogLevelToken message.level
-            | "source" -> yield (String.concat "." message.name), Subtext
-            | "newline" -> yield Environment.NewLine, Text
-            | "tab" -> yield "\t", Text
-            | "message" ->
-              let matchedFields, messageParts = Formatting.literateFormatValue options message.fields message.value
-              yield! messageParts
-            | "exceptions" -> yield! Formatting.literateColouriseExceptions options message
-            | _ ->
-              yield "{", Punctuation
-              yield n, MissingTemplateField
-              if not (String.IsNullOrEmpty f) then
-                yield ":", Punctuation
-                yield f, Subtext
-              yield "}", Punctuation
+          | PropToken (name, format) ->
+            match name with
+            | "timestamp" ->    yield! tokeniseTimestamp format options message
+            | "timestampUtc" -> yield! tokeniseTimestampUtc format options message
+            | "level" ->        yield! tokeniseLogLevel options message
+            | "source" ->       yield! tokeniseSource options message
+            | "newline" ->      yield! tokeniseNewline options message
+            | "tab" ->          yield! tokeniseTab options message
+            | "message" ->      yield! Formatting.literateFormatValue options message.fields message.value |> snd
+            | "exceptions" ->   yield! Formatting.literateColouriseExceptions options message
+            | _ ->              yield! tokeniseMissingField name format
       }
       |> Seq.toList
 
