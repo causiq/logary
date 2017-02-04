@@ -6,13 +6,26 @@ open Logary.Facade
 open Logary.Facade.Literals
 open Logary.Facade.Literate
 open Logary.Facade.LiterateFormatting
-open Logary.Facade.EventTemplateParser
+
+type internal TemplateToken =
+  | TextToken of string
+  | PropToken of name:string * format:string
+  with
+    override x.ToString() =
+      match x with
+      | TextToken s -> "TEXT("+s+")"
+      | PropToken (n,f) -> "PROP("+n+":"+f+")"
+
+let internal parseTemplateTokens template =
+  let tokens = ResizeArray<TemplateToken>()
+  let foundText t = tokens.Add (TextToken(t))
+  let foundProp (p: FsMtParser.Property) =
+    tokens.Add (PropToken(p.name, p.format))
+  FsMtParser.parseParts template foundText foundProp
+  tokens |> List.ofSeq
 
 type ColouredText = string * ConsoleColor
 
-let internal parseTemplateTokens template =
-  EventTemplateParser.parseTemplate template
-  |> Seq.toList
 type Expect =
   static member literateMessagePartsEqual (template, fields, expectedMessageParts, ?options, ?logLevel, ?tokeniser) =
     let options = defaultArg options (LiterateOptions.create())

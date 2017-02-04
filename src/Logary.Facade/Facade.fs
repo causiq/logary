@@ -515,25 +515,6 @@ module internal FsMtParser =
         go (ParserBits.findPropOrText start template foundTextF foundPropF)
     go 0
 
-module internal EventTemplateParser =
-  type TemplateToken =
-    | TextToken of string
-    | PropToken of name : string * format : string
-  with
-    override x.ToString() =
-      match x with
-      | TextToken s -> "TEXT(" + s + ")"
-      | PropToken (n, f) ->
-        let formatPartOrEmpty = if (String.IsNullOrEmpty f) then "" else ":" + f
-        "PROP(" + n + formatPartOrEmpty + ")"
-
-  let parseTemplate template =
-    let tokens = ResizeArray<TemplateToken>()
-    let foundText (text: string) = tokens.Add (TextToken text)
-    let foundProp (prop: FsMtParser.Property) = tokens.Add (PropToken (prop.name, prop.format))
-    FsMtParser.parseParts template foundText foundProp
-    tokens :> seq<TemplateToken>
-
 /// Internal module for formatting text for printing to the console.
 module internal Formatting =
   open System.Text
@@ -703,23 +684,29 @@ module internal Formatting =
     formatExn message.fields +
     formatFields matchedFields message.fields
 
-/// Assists with implementing a custom tokeniser for the `LiterateConsoleTarget`.
+/// Assists with controlling the output of the `LiterateConsoleTarget`.
 module LiterateFormatting =
   open Literate
-  open EventTemplateParser
-
   type TokenisedPart = string * LiterateToken
   type LiterateTokeniser = LiterateOptions -> Message -> TokenisedPart list
 
-  /// Creates a `LiterateTokeniser` function which can be provided to the `LiterateConsoleTarget`
-  /// constructor in order to render. The default template would be:
-  /// `[{timestampLocal:HH:mm:ss} {level}] {message}{newline}{exceptions}`.
-  /// Example of different output templates:
-  ///
-  /// `[{level}] {timestamp:u}: {message}
+  type internal TemplateToken = TextToken of text:string | PropToken of name : string * format : string
+  let internal parseTemplate template =
+    let tokens = ResizeArray<TemplateToken>()
+    let foundText (text: string) = tokens.Add (TextToken text)
+    let foundProp (prop: FsMtParser.Property) = tokens.Add (PropToken (prop.name, prop.format))
+    FsMtParser.parseParts template foundText foundProp
+    tokens :> seq<TemplateToken>
+
+  /// Creates a `LiterateTokeniser` function which can be passed to the `LiterateConsoleTarget`
+  /// constructor in order to customise how each log message is rendered. The default template
+  /// would be: `[{timestampLocal:HH:mm:ss} {level}] {message}{newline}{exceptions}`.
+  /// Available template fields are: `timestamp`, `timestampUtc`, `level`, `source`,
+  /// `newline`, `tab`, `message`, `exceptions`. Any misspelled or otheriwese invalid property
+  /// names will be treated as `LiterateToken.MissingTemplateField`. 
   let tokeniserForOutputTemplate template : LiterateTokeniser =
     let tokens = parseTemplate template
-    fun o m ->
+    fun options message ->
       seq {
         for token in tokens do
           match token with
@@ -727,21 +714,21 @@ module LiterateFormatting =
           | PropToken (n, f) ->
             match n with
             | "timestamp" ->
-              let localDateTimeOffset = DateTimeOffset(m.utcTicks, TimeSpan.Zero).ToLocalTime()
-              let formattedTimestamp = localDateTimeOffset.ToString(f, o.formatProvider)
+              let localDateTimeOffset = DateTimeOffset(message.utcTicks, TimeSpan.Zero).ToLocalTime()
+              let formattedTimestamp = localDateTimeOffset.ToString(f, options.formatProvider)
               yield formattedTimestamp, Subtext
             | "timestampUtc" ->
-              let utcDateTimeOffset = DateTimeOffset(m.utcTicks, TimeSpan.Zero)
-              let formattedTimestamp = utcDateTimeOffset.ToString(f, o.formatProvider)
+              let utcDateTimeOffset = DateTimeOffset(message.utcTicks, TimeSpan.Zero)
+              let formattedTimestamp = utcDateTimeOffset.ToString(f, options.formatProvider)
               yield formattedTimestamp, Subtext
-            | "level" -> yield o.getLogLevelText m.level, Formatting.getLogLevelToken m.level
-            | "source" -> yield (String.concat "." m.name), Subtext
+            | "level" -> yield options.getLogLevelText message.level, Formatting.getLogLevelToken message.level
+            | "source" -> yield (String.concat "." message.name), Subtext
             | "newline" -> yield Environment.NewLine, Text
             | "tab" -> yield "\t", Text
             | "message" ->
-              let matchedFields, messageParts = Formatting.literateFormatValue o m.fields m.value
+              let matchedFields, messageParts = Formatting.literateFormatValue options message.fields message.value
               yield! messageParts
-            | "exceptions" -> yield! Formatting.literateColouriseExceptions o m
+            | "exceptions" -> yield! Formatting.literateColouriseExceptions options message
             | _ ->
               yield "{", Punctuation
               yield n, MissingTemplateField
