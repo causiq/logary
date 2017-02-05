@@ -1,4 +1,4 @@
-/// The logging namespace, which contains the logging abstraction for this
+﻿/// The logging namespace, which contains the logging abstraction for this
 /// library. See https://github.com/logary/logary for details. This module is
 /// completely stand-alone in that it has no external references and its adapter
 /// in Logary has been well tested.
@@ -685,7 +685,7 @@ module internal Formatting =
     formatFields matchedFields message.fields
 
 /// Assists with controlling the output of the `LiterateConsoleTarget`.
-module LiterateFormatting =
+module internal LiterateFormatting =
   open Literate
   type TokenisedPart = string * LiterateToken
   type LiterateTokeniser = LiterateOptions -> Message -> TokenisedPart list
@@ -699,7 +699,7 @@ module LiterateFormatting =
     tokens :> seq<TemplateToken>
   
   [<AutoOpen>]
-  module internal OutputTemplateTokenisers =
+  module OutputTemplateTokenisers =
 
     let tokeniseTimestamp format (options : LiterateOptions) (message : Message) = 
       let localDateTimeOffset = DateTimeOffset(message.utcTicks, TimeSpan.Zero).ToLocalTime()
@@ -772,6 +772,15 @@ type LiterateConsoleTarget(name, minLevel, ?options, ?literateTokeniser, ?output
     (tokenise options message) @ [Environment.NewLine, Literate.Text]
     |> List.map (fun (s, t) ->
       s, options.theme(t))
+
+  /// Creates the target with a custom output template. The default `outputTemplate`
+  /// is `[{timestampLocal:HH:mm:ss} {level}] {message}{exceptions}`.
+  /// Available template fields are: `timestamp`, `timestampUtc`, `level`, `source`,
+  /// `newline`, `tab`, `message`, `exceptions`. Any misspelled or otheriwese invalid property
+  /// names will be treated as `LiterateToken.MissingTemplateField`.
+  new (name, minLevel, outputTemplate, ?options, ?outputWriter, ?consoleSemaphore) =
+    let tokeniser = LiterateFormatting.tokeniserForOutputTemplate outputTemplate
+    LiterateConsoleTarget(name, minLevel, ?options=options, literateTokeniser=tokeniser, ?outputWriter=outputWriter, ?consoleSemaphore=consoleSemaphore)
 
   interface Logger with
     member x.name = name
