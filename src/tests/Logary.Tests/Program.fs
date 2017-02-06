@@ -60,11 +60,13 @@ type Arbs =
     Arb.fromGenShrink (generator, shrinker)
 
   static member Units() =
+    let isNormal f = 
+         not <| Double.IsInfinity f
+      && not <| Double.IsNaN f
     Arb.Default.Derive()
     |> Arb.filter (function
-      | Offset (x, f) ->
-           not <| Double.IsInfinity f
-        && not <| Double.IsNaN f
+      | Offset (x, f) -> isNormal f
+      | Scaled (x, f) -> isNormal f
       | _ -> true)
 
 let fsCheckConfig =
@@ -668,6 +670,39 @@ let tests =
         true
     ]
 
+    testList "Engine" [
+      testList "lifetime" [
+        testCase "create" <| fun () ->
+          Tests.skiptest "TODO"
+
+        testCase "pause" <| fun () ->
+          Tests.skiptest "TODO"
+
+        testCase "resume" <| fun () ->
+          Tests.skiptest "TODO"
+
+        testCase "shutdown" <| fun () ->
+          Tests.skiptest "TODO"
+      ]
+
+      testCase "identity routes to sink" <| fun () ->
+        Tests.skiptest "TODO"
+
+      testCase "metric-created messages to sink" <| fun () ->
+        Tests.skiptest "TODO"
+
+      testCase "metric-created messages to metrics" <| fun () ->
+        Tests.skiptest "TODO"
+
+      testCase "metric-derived messages to sink (m->m->s)" <| fun () ->
+        Tests.skiptest "TODO"
+    ]
+
+    testList "Registry" [
+      testCase "from Config" <| fun () ->
+        Tests.skiptest "Finish Config tests first"
+        ()
+    ]
   ]
 
 [<EntryPoint>]
