@@ -52,7 +52,7 @@ let target =
       let e1 = raisedExn "darn"
       let e2 = raisedExn "actual exn"
 
-      let subject = 
+      let subject =
         Message.eventWarn "Testing started"
         |> Message.setName (PointName.ofArray [| "a"; "b"; "c" |])
         |> Message.setField "data-key" "data-value"

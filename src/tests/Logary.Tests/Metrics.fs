@@ -43,35 +43,37 @@ let snapshot =
 
   testList "calculating snapshot values" [
     testCase "small quantiles are first value" <| fun _ ->
-      Expect.floatEqual (Snapshot.quantile sample 0.) 1. None
-                        "should be the one"
+      Expect.floatClose
+        Accuracy.veryHigh (Snapshot.quantile sample 0.) 1.
+        "should be the one"
 
     testCase "big quantiles are last values" <| fun _ ->
-      Expect.floatEqual (Snapshot.quantile sample 1.) 5. None
-                        "should be the five"
+      Expect.floatClose
+        Accuracy.veryHigh (Snapshot.quantile sample 1.) 5.
+        "should be the five"
 
     testCase "median" <| fun _ ->
-      Expect.floatEqual (Snapshot.median sample) 3. None
+      Expect.floatClose Accuracy.veryHigh (Snapshot.median sample) 3.
                         "should have median"
 
     testCase "75th percentile" <| fun _ ->
-      Expect.floatEqual (Snapshot.percentile75th sample) 4.5 None
+      Expect.floatClose Accuracy.veryHigh (Snapshot.percentile75th sample) 4.5
                         "should have 75th percentile"
 
     testCase "95th percentile" <| fun _ ->
-      Expect.floatEqual (Snapshot.percentile95th sample) 5. None
+      Expect.floatClose Accuracy.veryHigh (Snapshot.percentile95th sample) 5.
                         "should have 95th percentile"
 
     testCase "98th percentile" <| fun _ ->
-      Expect.floatEqual (Snapshot.percentile98th sample) 5. None
+      Expect.floatClose Accuracy.veryHigh (Snapshot.percentile98th sample) 5.
                         "should have 98th percentile"
 
     testCase "99th percentile" <| fun _ ->
-      Expect.floatEqual (Snapshot.percentile99th sample) 5. None 
+      Expect.floatClose Accuracy.veryHigh (Snapshot.percentile99th sample) 5.
                         "should have 99th percentile"
 
     testCase "999th percentile" <| fun _ ->
-      Expect.floatEqual (Snapshot.percentile999th sample) 5. None 
+      Expect.floatClose Accuracy.veryHigh (Snapshot.percentile999th sample) 5.
                         "should have 999th percentile"
 
     testCase "has values" <| fun _ ->
@@ -91,7 +93,7 @@ let snapshot =
       Expect.equal (Snapshot.mean sample) 3. "has a mean value"
 
     testCase "has stdDev" <| fun _ ->
-      Expect.floatEqual (Snapshot.stdDev sample) 1.5811 (Some 0.0001) "has stdDev"
+      Expect.floatClose Accuracy.low (Snapshot.stdDev sample) 1.5811 "has stdDev"
 
     testCase "empty: min" <| fun _ ->
       Expect.equal (Snapshot.min empty) 0L "zero"
@@ -100,10 +102,10 @@ let snapshot =
       Expect.equal (Snapshot.max empty) 0L "zero"
 
     testCase "empty: mean" <| fun _ ->
-      Expect.floatEqual (Snapshot.mean empty) 0. None "zero"
+      Expect.floatClose Accuracy.veryHigh (Snapshot.mean empty) 0. "zero"
 
     testCase "empty: std dev" <| fun _ ->
-      Expect.floatEqual (Snapshot.mean empty) 0. None "zero"
+      Expect.floatClose Accuracy.veryHigh (Snapshot.mean empty) 0. "zero"
     ]
 
 [<Tests>]
@@ -165,7 +167,7 @@ let reservoirs =
         testCase explaination <| fun _ ->
           List.zip expectations actual
           |> List.iteri (fun index (expected, actual) ->
-            Expect.floatEqual actual expected (Some 0.00000001)
+            Expect.floatClose Accuracy.medium actual expected
                               (sprintf "Index %d, should calculate correct EWMA" index))
 
       yield testEWMA "1 min"
