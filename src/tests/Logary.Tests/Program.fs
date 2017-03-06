@@ -4,6 +4,7 @@ open System
 open System.Globalization
 open System.Threading
 open Hopac
+open Hopac.Infixes
 open NodaTime
 open Expecto
 open Expecto.ExpectoFsCheck
@@ -670,33 +671,7 @@ let tests =
         true
     ]
 
-    testList "Engine" [
-      testList "lifetime" [
-        testCase "create" <| fun () ->
-          Tests.skiptest "TODO"
-
-        testCase "pause" <| fun () ->
-          Tests.skiptest "TODO"
-
-        testCase "resume" <| fun () ->
-          Tests.skiptest "TODO"
-
-        testCase "shutdown" <| fun () ->
-          Tests.skiptest "TODO"
-      ]
-
-      testCase "identity routes to sink" <| fun () ->
-        Tests.skiptest "TODO"
-
-      testCase "metric-created messages to sink" <| fun () ->
-        Tests.skiptest "TODO"
-
-      testCase "metric-created messages to metrics" <| fun () ->
-        Tests.skiptest "TODO"
-
-      testCase "metric-derived messages to sink (m->m->s)" <| fun () ->
-        Tests.skiptest "TODO"
-    ]
+    testList "Engine" Engine.tests
 
     testList "Registry" [
       testCase "from Config" <| fun () ->

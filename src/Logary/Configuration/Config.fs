@@ -45,7 +45,7 @@ module Config =
       middleware   = mids
       ilogger      = ILogger.Console Warn
       setGlobals   = true
-      processing   = Processing (fun _ _ -> Alt.always ()) }
+      processing   = Processing.empty }
 
   let target name tconf lconf =
     { lconf with targets = lconf.targets |> HashMap.add name tconf }

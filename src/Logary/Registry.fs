@@ -60,16 +60,48 @@ module Engine =
 
   type T =
     private {
-      heyday : bool
+      subscriptions : HashMap<string, Message -> Job<unit>>
+      inputCh : Ch<LogLevel * (LogLevel -> Message)>
     }
 
-  let create processing : Job<T> =
-    Job.result { heyday = true }
+  let create (Processing processing) : Job<T> =
+    let inputCh, emitCh, shutdownCh = Ch (), Ch (), Ch ()
+    let callback = Ch ()
+    let rec loop () =
+      Alt.choose [
+        inputCh ^=> fun (level, messageFactory) ->
+          processing (messageFactory level |> NodeInput.Message) emitCh
 
-  let log (logLevel : LogLevel) (messageFactory : LogLevel -> Message) : Alt<unit> =
+        emitCh ^=> fun message ->
+          inputCh *<- (message.level, fun _ -> message)
+
+        upcast shutdownCh
+      ]
+
+    Job.start (loop ())
+    >>-. { subscriptions = HashMap.empty
+           inputCh = inputCh
+         }
+
+  let subscribe key (sink : Message -> Job<unit>) : Job<unit> =
+    Job.result ()
+
+  let unsubscribe key (sink : Message -> Job<unit>) : Job<unit> =
+    Job.result ()
+
+  let pause (engine : T) : Alt<unit> =
     Alt.always ()
 
-  let logWithAck (logLevel : LogLevel) (messageFactory : LogLevel -> Message) : Alt<Promise<unit>> =
+  let resume (engine : T) : Alt<unit> =
+    Alt.always ()
+
+  let shutdown (engine : T) =
+    Alt.always ()
+
+  let log (engine : T) (logLevel : LogLevel) (messageFactory : LogLevel -> Message) : Alt<unit> =
+    Alt.always ()
+
+  let logWithAck (engine : T) (logLevel : LogLevel) (messageFactory : LogLevel -> Message) : Alt<Promise<unit>> =
     Promise.instaPromise
 
 /// When you validate the configuration, you get one of these.
@@ -218,9 +250,9 @@ module Registry =
             member x.name = name
             member x.level = Verbose // TOOD: ship back from engine?
             member x.log level messageFactory =
-              Engine.log level messageFactory
+              Engine.log engine level messageFactory
             member x.logWithAck level messageFactory =
-              Engine.logWithAck level messageFactory
+              Engine.logWithAck engine level messageFactory
         }
 
       Logger.apply mid logger

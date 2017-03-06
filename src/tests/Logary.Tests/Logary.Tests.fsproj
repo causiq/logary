@@ -51,6 +51,7 @@
       <Link>paket-files/YoLo.fs</Link>
     </Compile>
     <Compile Include="AssemblyVersionInfo.fs" />
+    <Compile Include="Engine.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <None Include="App.config" />
