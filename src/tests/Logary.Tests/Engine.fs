@@ -36,10 +36,19 @@ let tests =
       |> ignore
 
     testCase "play" <| fun () ->
-      ((streams
-        (where (and (service #"^riak")
-                    (state "critical"))
-              (email "delacroix@vonbraun.com"))))
+      let processing =
+        Events.stream
+        |> Events.subscribers [
+          Events.filterBy (service "riak")
+          |> Events.sink "email" ["henrik@haf.se"]
+
+          Events.filterBy (service "spns")
+          |> Events.sink "elasticsearch"
+        ]
+        |> Events.toProcessing
+
+      Engine.create processing |> ignore
+
 
     testList "lifetime" [
       testCaseAsync "create and shutdown" (job {
