@@ -29,16 +29,14 @@ let DefaultPublishTo =
 
 type LogstashMode = PUSHPULL | PUBSUB
 
-type LogstashConf =
-  { publishTo  : string
-    logMetrics : bool
-    mode       : LogstashMode }
+let internal applyOverrides : (values:Map<string, Json>) -> Map<string, Json> =
+  let overrides =
+    [ "@version", String "1"
+      "@timestamp", String (MessageParts.formatTimestamp message.timestampTicks)
+      "name", String (PointName.format message.name)
+    ]
 
-  /// Create a new Logstash target config.
-  static member create(?publishTo, ?logMetrics, ?mode) =
-    { publishTo  = defaultArg publishTo DefaultPublishTo
-      logMetrics = defaultArg logMetrics false
-      mode       = defaultArg mode PUSHPULL }
+  overrides |> List.fold (fun data (k, v) -> data |> Map.add k v) props
 
 let serialise : Message -> Json =
   fun message ->
@@ -46,20 +44,44 @@ let serialise : Message -> Json =
       match Json.serialize message with
       | Object values ->
         values
-
       | otherwise ->
         failwithf "Expected Message to format to Object .., but was %A" otherwise
+    applyOverrides values |> Object
 
-    let overrides =
-      [ "@version", String "1"
-        "@timestamp", String (MessageParts.formatTimestamp message.timestampTicks)
-        "name", String (PointName.format message.name)
+let serialiseEventFlat : Message -> Json =
+  fun message ->
+    let props =
+      let event =
+        match message.value with
+        | Event template ->
+          template
+        | _ ->
+          ""
+      Map [
+        "context", Json.serialise message.context
+        "level", Json.serialise message.level
+        "name", Json.serialise message.name
+        "timestamp", Json.serialise message.timestamp
+        "event", Json.String event
       ]
+      |> Json.serialise
 
-    let final =
-      overrides |> List.fold (fun data (k, v) -> data |> Map.put k v) props
+    applyOverrides props |> Object
 
-    (Object final)
+// LogstashConf.create(serialiser = serialiseEventFlat)
+
+type LogstashConf =
+  { publishTo  : string
+    logMetrics : bool
+    serialiser : Message -> Json
+    mode       : LogstashMode }
+
+  /// Create a new Logstash target config.
+  static member create(?publishTo, ?logMetrics, ?mode, ?serialiser) =
+    { publishTo  = defaultArg publishTo DefaultPublishTo
+      logMetrics = defaultArg logMetrics false
+      mode       = defaultArg mode PUSHPULL
+      serialiser = defaultArg serialiser serialise }
 
 module internal Impl =
 
@@ -107,7 +129,7 @@ module internal Impl =
             job {
               // https://gist.github.com/jordansissel/2996677
               let bytes =
-                Json.format (serialise message)
+                Json.format (conf.serialiser message)
                 |> UTF8.bytes
 
               do! Job.Scheduler.isolate (fun _ -> state.sender <~| (UTF8.bytes (message.name.ToString())) <<|  bytes)
