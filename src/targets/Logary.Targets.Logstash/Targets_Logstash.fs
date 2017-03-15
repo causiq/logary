@@ -29,14 +29,14 @@ let DefaultPublishTo =
 
 type LogstashMode = PUSHPULL | PUBSUB
 
-let internal applyOverrides : (values:Map<string, Json>) -> Map<string, Json> =
+let internal applyOverrides (values:Map<string, Json>): Map<string, Json> =
   let overrides =
     [ "@version", String "1"
       "@timestamp", String (MessageParts.formatTimestamp message.timestampTicks)
       "name", String (PointName.format message.name)
     ]
 
-  overrides |> List.fold (fun data (k, v) -> data |> Map.add k v) props
+  overrides |> List.fold (fun data (k, v) -> data |> Map.add k v) values
 
 let serialise : Message -> Json =
   fun message ->
