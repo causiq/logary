@@ -627,6 +627,11 @@ module internal Formatting =
       "] ", Punctuation ]
     @ themedMessageParts
     @ themedExceptionParts
+    @ [ " ", Subtext
+        "<", Punctuation
+        String.concat "." message.name, Punctuation
+        ">", Punctuation
+      ]
 
   let literateDefaultColourWriter sem (parts : (string * ConsoleColor) list) =
     lock sem <| fun _ ->
