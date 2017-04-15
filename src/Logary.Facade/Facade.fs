@@ -626,12 +626,12 @@ module internal Formatting =
       yield options.getLogLevelText message.level, getLogLevelToken message.level
       yield "] ", Punctuation
       yield! themedMessageParts
-      yield! themedExceptionParts
       if not (isNull message.name) && message.name.Length > 0 then
         yield " ", Subtext
         yield "<", Punctuation
         yield String.concat "." message.name, Subtext
         yield ">", Punctuation
+      yield! themedExceptionParts
     ]
 
   let literateDefaultColourWriter sem (parts : (string * ConsoleColor) list) =
