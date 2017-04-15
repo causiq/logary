@@ -39,7 +39,8 @@ type Expect =
   static member literateMessagePartsEqual (template, fields, expectedMessageParts, ?options) =
     let options = defaultArg options (LiterateOptions.create())
     let logLevel, logLevelToken = Info, LevelInfo
-    let message = { Message.event logLevel template with fields = fields }
+    let message = { Message.event logLevel template with fields = fields
+                                                         name = [|"X"; "Y"|] }
 
     // Insteading of writing out to the console, write to an in-memory list so we can capture the values
     let writtenParts = ResizeArray<ColouredText>()
@@ -58,12 +59,16 @@ type Expect =
                             options.getLogLevelText logLevel,                 logLevelToken
                             "] ",                                             Punctuation ]
                             @ expectedMessageParts
-                            @ [ Environment.NewLine, Text ]
+                            @ [ " ",                                          Subtext
+                                "<",                                          Punctuation
+                                "X.Y",                                        Subtext
+                                ">",                                          Punctuation
+                                Environment.NewLine,                          Text ]
 
     let actualParts = writtenParts |> List.ofSeq
     let expectedParts = expectedTokens |> List.map (fun (s, t) -> s, options.theme t)
     Expect.sequenceEqual actualParts expectedParts "literate tokenised parts must be correct"
-
+    
   static member literateCustomTokenisedPartsEqual (message, customTokeniser, expectedTokens) =
     let options = LiterateOptions.create()
     let writtenParts = ResizeArray<ColouredText>()
@@ -71,7 +76,7 @@ type Expect =
     let target = LiterateConsoleTarget(name = [|"Facade";"Tests"|],
                                        minLevel = Verbose,
                                        options = options,
-                                       literateTokeniser = customTokeniser,
+                                       ?literateTokeniser = customTokeniser,
                                        outputWriter = writtenPartsOutputWriter) :> Logger
 
     target.logWithAck Verbose (fun _ -> message) |> Async.RunSynchronously
@@ -215,12 +220,12 @@ let tests =
       Expect.literateMessagePartsEqual (template, fields, expectedMessageParts)
 
     testCase "literate default tokeniser uses the options `getLogLevelText()` correctly" <| fun _ ->
-      let customGetLogLevelText = function Verbose->"A"|Debug->"B"|Info->"C"|Warn->"D"|Error->"E"|Fatal->"F"
+      let customGetLogLevelText = function Verbose->"A"| Debug->"B"| Info->"C"| Warn->"D"| Error->"E"| Fatal->"F"
       let options = { LiterateOptions.createInvariant() with
                         getLogLevelText = customGetLogLevelText }
       let now = Global.timestamp ()
       let nowDto = DateTimeOffset(DateTimeOffset.ticksUTC now, TimeSpan.Zero)
-      let msg level = Message.event level "" |> fun m -> { m with timestamp = now }
+      let msg level = Message.event level "" |> fun m -> { m with timestamp = now; name = [|"A";"B"|] }
       let nowTimeString = nowDto.LocalDateTime.ToString("HH:mm:ss")
       [ Verbose,  LevelVerbose,   "A"
         Debug,    LevelDebug,     "B"
@@ -234,7 +239,11 @@ let tests =
                               nowTimeString,  Subtext
                               " ",            Subtext
                               expectedText,   expectedLevelToken
-                              "] ",           Punctuation ]
+                              "] ",           Punctuation
+                              " ",            Subtext
+                              "<",            Punctuation
+                              "A.B",          Subtext
+                              ">",            Punctuation ]
                       (sprintf "expect log level %A to render as token %A with text %s" logLevel expectedLevelToken expectedText)
       )
 
@@ -291,6 +300,23 @@ let tests =
           cartTotal.ToString(),   NumericSymbol ]
       Expect.literateMessagePartsEqual (template, fields, expectedMessageParts, options)
 
+    testCase "when the message has no name (source), the default rendering will not output the name parts" <| fun _ ->
+      let message = Message.event Debug "Hello from {where}"
+                    |> Message.setSingleName ""
+                    |> Message.setField "where" "The Other Side"
+      let expectedTimestamp = message.timestamp.ToLiterateTimeString (LiterateOptions.create())
+      let expectedTokens =
+        [ "[",                  Punctuation
+          expectedTimestamp,    Subtext
+          " ",                  Subtext
+          "DBG",                LevelDebug
+          "] ",                 Punctuation
+          "Hello from ",        Text
+          "The Other Side",     StringSymbol
+          Environment.NewLine,  Text ]
+
+      Expect.literateCustomTokenisedPartsEqual (message, None, expectedTokens)
+
     testCase "replacing the default tokeniser is possible" <| fun _ ->
       let customTokeniser = tokeniserForOutputTemplate "[{timestamp:HH:mm:ss} {level}] {message} [{source}]{exceptions}"
       let message = Message.event Debug "Hello from {where}"
@@ -310,7 +336,7 @@ let tests =
           "]",                  Punctuation
           Environment.NewLine,  Text ]
 
-      Expect.literateCustomTokenisedPartsEqual (message, customTokeniser, expectedTokens)
+      Expect.literateCustomTokenisedPartsEqual (message, Some customTokeniser, expectedTokens)
 
     testList "literate custom output template fields render correctly" [
       let nl = Environment.NewLine
