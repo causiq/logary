@@ -615,23 +615,24 @@ module internal Formatting =
       DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss", options.formatProvider),
       Subtext
 
-    let themedMessageParts =
-      message.value |> literateFormatValue options message.fields |> snd
+    let _, themedMessageParts =
+      message.value |> literateFormatValue options message.fields
 
     let themedExceptionParts = literateColouriseExceptions options message
 
-    [ "[", Punctuation
-      formatLocalTime message.utcTicks
-      " ", Subtext
-      options.getLogLevelText message.level, getLogLevelToken message.level
-      "] ", Punctuation ]
-    @ themedMessageParts
-    @ themedExceptionParts
-    @ [ " ", Subtext
-        "<", Punctuation
-        String.concat "." message.name, Punctuation
-        ">", Punctuation
-      ]
+    [ yield "[", Punctuation
+      yield formatLocalTime message.utcTicks
+      yield " ", Subtext
+      yield options.getLogLevelText message.level, getLogLevelToken message.level
+      yield "] ", Punctuation
+      yield! themedMessageParts
+      if not (isNull message.name) && message.name.Length > 0 then
+        yield " ", Subtext
+        yield "<", Punctuation
+        yield String.concat "." message.name, Subtext
+        yield ">", Punctuation
+      yield! themedExceptionParts
+    ]
 
   let literateDefaultColourWriter sem (parts : (string * ConsoleColor) list) =
     lock sem <| fun _ ->
