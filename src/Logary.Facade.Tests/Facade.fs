@@ -439,10 +439,14 @@ let tests =
       let level = Info
       let source = "Abc.Def.Ghi"
       let options = LiterateOptions.create()
-      let msgTemplate = "Hello {who}"
-      let whoValue = "world"
+      let templatePropName1, templatePropValue1 = "who", "world"
+      let nonTemplatePropName1, nonTemplatePropValue1 = "ntprop1", Guid.NewGuid()
+      let nonTemplatePropName2, nonTemplatePropValue2 = "ntprop2", Guid.NewGuid()
+      let msgTemplate = "Hello {" + templatePropName1 + "}"
       let msg = Message.event level msgTemplate
-                |> Message.setField "who" whoValue
+                |> Message.setField templatePropName1 templatePropValue1
+                |> Message.setField nonTemplatePropName1 nonTemplatePropValue1
+                |> Message.setField nonTemplatePropName2 nonTemplatePropValue2
                 |> Message.setSingleName source
                 |> Message.addExn (exn "ex1")
                 |> Message.addExn (exn "ex2")
@@ -455,6 +459,12 @@ let tests =
           "{newline}",                        nl
           "{tab}",                            "\t"
           "{message}",                        "Hello world"
+          "{newLineIfNext}{properties}",      nl + " - " + nonTemplatePropName1 + ": " + (string nonTemplatePropValue1) +
+                                              nl + " - " + nonTemplatePropName2 + ": " + (string nonTemplatePropValue2)
+          "{newLineIfNext} {properties}",     "  - " + nonTemplatePropName1 + ": " + (string nonTemplatePropValue1) +
+                                              nl + " - " + nonTemplatePropName2 + ": " + (string nonTemplatePropValue2)
+          "{properties}",                     " - " + nonTemplatePropName1 + ": " + (string nonTemplatePropValue1) +
+                                              nl + " - " + nonTemplatePropName2 + ": " + (string nonTemplatePropValue2)
           "{exceptions}",                     nl + "System.Exception: ex2" + nl + "System.Exception: ex1"
           "",                                 "" ]
 

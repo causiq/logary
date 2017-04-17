@@ -8,7 +8,6 @@
 namespace Logary.Facade
 
 open System
-open System.Runtime.CompilerServices
 
 /// The log level denotes how 'important' the gauge or event message is.
 [<CustomEquality; CustomComparison>]
@@ -75,7 +74,7 @@ type LogLevel =
     | 4 -> Warn
     | 5 -> Error
     | 6 -> Fatal
-    | _ as i -> failwithf "LogLevel matching integer %i is not available" i) i
+    | i -> failwithf "LogLevel matching integer %i is not available" i) i
 
   interface IComparable<LogLevel> with
     member x.CompareTo other =
@@ -527,6 +526,14 @@ module internal Formatting =
   open Literals
   open Literate
 
+  /// Chooses the LiterateToken based on the value Type
+  let getTokenTypeForValue (value: obj) =
+    match value with
+    | :? bool -> KeywordSymbol
+    | :? int16 | :? int32 | :? int64 | :? decimal | :? float | :? double -> NumericSymbol
+    | :? string | :? char -> StringSymbol
+    | _ -> OtherSymbol
+
   let literateFormatValue (options: LiterateOptions) (fields: Map<string, obj>) = function
     | Event template ->
       let themedParts = ResizeArray<string * LiterateToken>()
@@ -538,21 +545,11 @@ module internal Formatting =
           // render using string.Format, so the formatting is applied
           let stringFormatTemplate = prop.AppendPropertyString(StringBuilder(), "0").ToString()
           let fieldAsText = String.Format (options.formatProvider, stringFormatTemplate, [| propValue |])
-          // find the right theme colour based on data type
-          let valueColour =
-            match propValue with
-            | :? bool ->
-              KeywordSymbol
-            | :? int16 | :? int32 | :? int64 | :? decimal | :? float | :? double ->
-              NumericSymbol
-            | :? string | :? char ->
-              StringSymbol
-            | _ ->
-              OtherSymbol
+          let valueTokenType = getTokenTypeForValue propValue
           if options.printTemplateFieldNames then
             themedParts.Add ("["+prop.name+"] ", Subtext)
           matchedFields.Add prop.name
-          themedParts.Add (fieldAsText, valueColour)
+          themedParts.Add (fieldAsText, valueTokenType)
 
         | None ->
           themedParts.Add (prop.ToString(), MissingTemplateField)
@@ -640,7 +637,7 @@ module internal Formatting =
       yield! themedExceptionParts
     ]
 
-  let literateDefaultColourWriter sem (parts : (string * ConsoleColor) list) =
+  let literateDefaultColourWriter sem (parts: (string * ConsoleColor) list) =
     lock sem <| fun _ ->
       let originalColour = Console.ForegroundColor
       let mutable currentColour = originalColour
@@ -712,8 +709,29 @@ module internal LiterateFormatting =
 
   [<AutoOpen>]
   module OutputTemplateTokenisers =
+    open System.Collections.Generic
 
-    let tokeniseTimestamp format (options: LiterateOptions) (message: Message) =
+    let exceptionFieldNames = set [ Literals.FieldExnKey; Literals.FieldErrorsKey ]
+    let tokeniseExtraField (options: LiterateOptions) (message: Message) (field: KeyValuePair<string, obj>) =
+      seq {
+        yield " - ", Punctuation
+        yield field.Key, LiterateToken.NameSymbol
+        yield ": ", Punctuation
+        yield System.String.Format(options.formatProvider, "{0}", field.Value), Formatting.getTokenTypeForValue field.Value
+      }
+
+    let tokeniseExtraFields (options: LiterateOptions) (message: Message) (templateFieldNames: Set<string>) =
+      let fieldsToExclude = Set.union templateFieldNames exceptionFieldNames
+      let extraFields = message.fields |> Map.filter (fun key _ -> not (fieldsToExclude.Contains key))
+      let mutable isFirst = true
+      seq {
+        for field in extraFields do
+          if isFirst then isFirst <- false
+          else yield Environment.NewLine, Text
+          yield! tokeniseExtraField options message field
+      }
+    
+    let tokeniseTimestamp format (options: LiterateOptions) (message: Message) = 
       let localDateTimeOffset = DateTimeOffset(message.utcTicks, TimeSpan.Zero).ToLocalTime()
       let formattedTimestamp = localDateTimeOffset.ToString(format, options.formatProvider)
       seq { yield formattedTimestamp, Subtext }
@@ -744,30 +762,64 @@ module internal LiterateFormatting =
     let tokeniseTab (options: LiterateOptions) (message: Message) =
       seq { yield "\t", Text }
 
-  /// Creates a `LiterateTokeniser` function which can be passed to the `LiterateConsoleTarget`
-  /// constructor in order to customise how each log message is rendered. The default template
-  /// would be: `[{timestampLocal:HH:mm:ss} {level}] {message}{newline}{exceptions}`.
+  /// Creates a `LiterateTokeniser` function which can be used by the `LiterateConsoleTarget`
+  /// to customise how each log message is rendered. The default output template
+  /// would be: `[{timestamp:HH:mm:ss} {level}] {message}{newline}{exceptions}`.
   /// Available template fields are: `timestamp`, `timestampUtc`, `level`, `source`,
-  /// `newline`, `tab`, `message`, `exceptions`. Any misspelled or otheriwese invalid property
-  /// names will be treated as `LiterateToken.MissingTemplateField`.
+  /// `newline`, `tab`, `message`, `properties`, `exceptions`. A special field named
+  /// `newLineIfNext` will output a new line if the next field in the template will render
+  /// anything (i.e. non-empty). Any misspelled or different property names will become a
+  /// `LiterateToken.MissingTemplateField`.
   let tokeniserForOutputTemplate template: LiterateTokeniser =
-    let tokens = parseTemplate template
+    let tokens = parseTemplate template :?> ResizeArray<TemplateToken>
+
     fun options message ->
+      // render the message template first so we have the template-matched fields available
+      let fieldsInMessageTemplate, messageParts =
+        Formatting.literateFormatValue options message.fields message.value
+      
+      let tokeniseOutputTemplateField fieldName format = seq {
+        match fieldName with
+        | "timestamp" ->            yield! tokeniseTimestamp format options message
+        | "timestampUtc" ->         yield! tokeniseTimestampUtc format options message
+        | "level" ->                yield! tokeniseLogLevel options message
+        | "source" ->               yield! tokeniseSource options message
+        | "newline" ->              yield! tokeniseNewline options message
+        | "tab" ->                  yield! tokeniseTab options message
+        | "message" ->              yield! messageParts
+        | "properties" ->           yield! tokeniseExtraFields options message fieldsInMessageTemplate
+        | "exceptions" ->           yield! Formatting.literateColouriseExceptions options message
+        | _ ->                      yield! tokeniseMissingField fieldName format
+      }
+
       seq {
-        for token in tokens do
+        let lastTokenIndex = tokens.Count - 1
+        let mutable nextPartsArray: TokenisedPart[] = null
+        for index in [0..lastTokenIndex] do
+          let token = tokens.[index]
           match token with
           | TextToken text -> yield text, LiterateToken.Punctuation
           | PropToken (name, format) ->
-            match name with
-            | "timestamp" ->    yield! tokeniseTimestamp format options message
-            | "timestampUtc" -> yield! tokeniseTimestampUtc format options message
-            | "level" ->        yield! tokeniseLogLevel options message
-            | "source" ->       yield! tokeniseSource options message
-            | "newline" ->      yield! tokeniseNewline options message
-            | "tab" ->          yield! tokeniseTab options message
-            | "message" ->      yield! Formatting.literateFormatValue options message.fields message.value |> snd
-            | "exceptions" ->   yield! Formatting.literateColouriseExceptions options message
-            | _ ->              yield! tokeniseMissingField name format
+            if index <> lastTokenIndex && name = "newLineIfNext" then
+              match tokens.[index + 1] with
+              | PropToken (nextName, nextFormat) ->
+                // Tokenise the next property now, to determine if it's 'empty'. To avoid doing
+                // unnecessary work, we save these tokens ('nextPartsArray') so it can be
+                // 'yield'ed on the next iteration.
+                nextPartsArray <- tokeniseOutputTemplateField nextName nextFormat |> Seq.toArray
+                if nextPartsArray.Length > 0 then
+                  yield! tokeniseNewline options message
+              | _ ->
+                // It's questionable what to do here. It was an invalid output template,
+                // because the {newLineIfNext} should only appear immediately prior to some other
+                // valid output field. We could `failwith "invalid output template"`?
+                ()
+            else
+              if not (isNull nextPartsArray) then
+                yield! nextPartsArray
+                nextPartsArray <- null
+              else
+                yield! tokeniseOutputTemplateField name format
       }
       |> Seq.toList
 
@@ -780,16 +832,21 @@ type LiterateConsoleTarget(name, minLevel, ?options, ?literateTokeniser, ?output
   let tokenise     = defaultArg literateTokeniser Formatting.literateDefaultTokeniser
   let colourWriter = defaultArg outputWriter Formatting.literateDefaultColourWriter sem
 
-  let colouriseThenNewLine message =
-    (tokenise options message) @ [Environment.NewLine, Literate.Text]
-    |> List.map (fun (s, t) ->
-      s, options.theme(t))
+  /// Converts the message to tokens, then colourises them using the theme.
+  let writeColourisedThenNewLine message =
+    [ yield! tokenise options message
+      yield Environment.NewLine, Literate.Text ]
+    |> List.map (fun (s, t) -> s, options.theme(t))
+    |> colourWriter
 
-  /// Creates the target with a custom output template. The default `outputTemplate`
-  /// is `[{timestampLocal:HH:mm:ss} {level}] {message}{exceptions}`.
+  /// Creates the target with a custom output template.
+  /// For example, the default output template would be:
+  /// `[{timestamp:HH:mm:ss} {level}] {message} <{source}>{newLineIfNext}{exceptions}`.
   /// Available template fields are: `timestamp`, `timestampUtc`, `level`, `source`,
-  /// `newline`, `tab`, `message`, `exceptions`. Any misspelled or otheriwese invalid property
-  /// names will be treated as `LiterateToken.MissingTemplateField`.
+  /// `newline`, `tab`, `message`, `properties`, `exceptions`.
+  /// A special field named `newLineIfNext` will output a new line if the next field renders
+  /// anything (i.e. non-empty). Any other property names will become a
+  /// `LiterateToken.MissingTemplateField`.
   new (name, minLevel, outputTemplate, ?options, ?outputWriter, ?consoleSemaphore) =
     let tokeniser = LiterateFormatting.tokeniserForOutputTemplate outputTemplate
     LiterateConsoleTarget(name, minLevel, ?options=options, literateTokeniser=tokeniser, ?outputWriter=outputWriter, ?consoleSemaphore=consoleSemaphore)
@@ -798,12 +855,12 @@ type LiterateConsoleTarget(name, minLevel, ?options, ?literateTokeniser, ?output
     member x.name = name
     member x.logWithAck level msgFactory =
       if level >= minLevel then
-        async { do colourWriter (colouriseThenNewLine (msgFactory level)) }
+        async { do writeColourisedThenNewLine (msgFactory level) }
       else
         async.Return ()
     member x.log level msgFactory =
       if level >= minLevel then
-        async { do colourWriter (colouriseThenNewLine (msgFactory level)) }
+        async { do writeColourisedThenNewLine (msgFactory level) }
       else
         async.Return ()
 
