@@ -300,6 +300,14 @@ type LoggingConfig =
     /// adapter to replace this semaphore with a global semaphore.
     consoleSemaphore: obj }
 
+[<AutoOpen>]
+module internal Helpers = 
+  /// replaces the built-in `isNull` function so we can still use it when < FSharp.Core 4.0
+  let inline isNull o =
+    match o with
+    | null -> true
+    | _ -> false
+
 module Literate =
   /// The output tokens, which can be potentially coloured.
   type LiterateToken =
@@ -381,11 +389,6 @@ module internal FsMtParser =
     override x.ToString() = x.AppendPropertyString(StringBuilder()).ToString()
 
   module internal ParserBits =
-
-    let inline isNull o =
-      match o with
-      | null -> true
-      | _ -> false
 
     let inline isLetterOrDigit c = System.Char.IsLetterOrDigit c
     let inline isValidInPropName c = c = '_' || System.Char.IsLetterOrDigit c
