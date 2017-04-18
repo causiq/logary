@@ -87,6 +87,7 @@ Install-Package Logary
           * [inProcBuffer = true, flushToDisk = false, writeThrough=false caller awaits all acks at the end](#inprocbuffer--true-flushtodisk--false-writethroughfalse-caller-awaits-all-acks-at-the-end)
       * [Work to be done](#work-to-be-done)
     * [Stackdriver target (alpha level)](#stackdriver-target-alpha-level)
+    * [Microsoft Azure Application Insights target](#microsoft-azure-application-insights-target)
     * [EventStore adapter](#eventstore-adapter)
     * [FsSQL adapter](#fssql-adapter)
     * [Suave adapter](#suave-adapter)
@@ -1227,6 +1228,12 @@ messages.
 
 Logary also includes a logging target for [Google Cloud
 Stackdriver](https://cloud.google.com/stackdriver/).
+
+## Microsoft Azure Application Insights target
+
+Target for [Microsoft Azure AppInsights](https://docs.microsoft.com/en-us/azure/application-insights/)
+logs the events as TRACE-messages. You need to set the API-key first. Then when you go to Azure Portal
+Application Insights and `Overview -> Search` you should be able to find the targets from there.
 
 ### Configuration
 
