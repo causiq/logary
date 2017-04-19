@@ -1,6 +1,4 @@
-﻿#I "./../../../src/targets/Logary.Targets.AppInsights/bin/Debug"
-#I "./../../../packages/"
-#I "./../../../src/Logary/bin/Debug/"
+﻿#I "./../../../packages"
 
 #r "Hopac/lib/net45/Hopac.Core.dll"
 #r "Hopac/lib/net45/Hopac.dll"
@@ -9,7 +7,8 @@
 #r "Microsoft.ApplicationInsights.PerfCounterCollector/lib/net45/Microsoft.AI.PerfCounterCollector.dll"
 #r "Microsoft.ApplicationInsights.WindowsServer/lib/net45/Microsoft.AI.WindowsServer.dll"
 #r "Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel/lib/net45/Microsoft.AI.ServerTelemetryChannel.dll"
-#r "Logary.dll"
+
+#r "./../../../src/Logary/bin/Debug/Logary.dll"
 
 #load "Targets_AppInsights.fs"
 open System
@@ -32,9 +31,10 @@ let logger =
         ]
     ) |> run
 
+let curLogger = Logary.Logging.getLoggerByName("testAppInsights")
 Message.eventInfo ("Hello World!")
 |> Message.setField "user" "Henrik"
-|> logSimple (Logary.Logging.getLoggerByName("testAppInsights"))
+|> logSimple curLogger
 
 // (Wait 5 minutes to Azure to display the new data...)
 // Login your Azure Portal (https://portal.azure.com/). 

@@ -94,8 +94,16 @@ module internal Impl =
                      Timestamp = DateTimeOffset(DateTime(1970,01,01).AddTicks(message.timestampTicks))
                 )
               
+              itm.Properties.Add("PointName", message.name.ToString())
+
               message.fields |> Map.iter(fun k field ->
-                itm.Properties.Add(k.ToString(), (fieldValue field))
+                if not(itm.Properties.ContainsKey(k.ToString())) then
+                    itm.Properties.Add(k.ToString(), (fieldValue field))
+              )
+
+              message.context |> Map.iter(fun k v ->
+                if not(itm.Properties.ContainsKey(k.ToString())) then
+                    itm.Properties.Add(k, (serializeToString v))
               )
               
               state.telemetryClient.TrackTrace itm
