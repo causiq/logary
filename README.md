@@ -251,6 +251,7 @@ outputs, *targets*. Further, its *services* run as their own processes or in
    * <span title="The sharpest clojurian knife in the drawer for acting on metrics">Riemann</span>
      – ships *Events* (as a 1-valued gauage) and *Metrics* into [Riemann](http://riemann.io/).
    * Shipper – ships *Messages* (*Events*/*Metrics*) to the `Router` or `Proxy` (see `Rutta` above)
+   * AppInsights - ships *Messages* (*Events*/*Metrics*) as trace items to Microsoft Azure Application Insights
  - **Logary.Adapters** (from *X* into Logary):
    * <span title="Make yourself dependent on not just one, but two logging frameworks">CommonLogging</span>
      – *moar abstract* logs into Logary.
