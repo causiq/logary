@@ -58,7 +58,7 @@ type Expect =
   /// Asserts that the rendered output (`ColouredText`) matches the expected tokens (`TokenisedPart`) using
   /// the provided `LiterateOptions` (and theme)
   static member literateWrittenColouredTextEquals (writtenColouredTextParts : ColouredText seq,
-                                                   expectedTokens : TokenisedPart list,
+                                                   expectedTokens : LiterateTokenisation.TokenisedPart list,
                                                    ?options : LiterateOptions) =
 
     let options = defaultArg options (LiterateOptions.create())
@@ -269,7 +269,7 @@ let tests =
         Error,    LevelError,     "E"
         Fatal,    LevelFatal,     "F" ]
       |> List.iter (fun (logLevel, expectedLevelToken, expectedText) ->
-        let tokens = Formatting.literateDefaultTokeniser options (msg logLevel)
+        let tokens = LiterateTokenisation.tokeniseMessage options (msg logLevel)
         Expect.equal tokens [ "[",            Punctuation
                               nowTimeString,  Subtext
                               " ",            Subtext

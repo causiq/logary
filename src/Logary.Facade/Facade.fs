@@ -520,23 +520,40 @@ module internal FsMtParser =
         go (ParserBits.findPropOrText start template foundTextF foundPropF)
     go 0
 
-/// Internal module for formatting text for printing to the console.
-module internal Formatting =
+module internal MessageTemplates =
+  type internal TemplateToken = TextToken of text:string | PropToken of name : string * format : string
+  let internal parseTemplate template =
+    let tokens = ResizeArray<TemplateToken>()
+    let foundText (text: string) = tokens.Add (TextToken text)
+    let foundProp (prop: FsMtParser.Property) = tokens.Add (PropToken (prop.name, prop.format))
+    FsMtParser.parseParts template foundText foundProp
+    tokens
+
+/// Internal module for converting message parts into theme-able tokens.
+module internal LiterateTokenisation =
   open System.Text
   open Literals
   open Literate
 
-  /// Chooses the LiterateToken based on the value Type
+  /// A piece of text with an associated `LiterateToken`.
+  type TokenisedPart = string * LiterateToken
+
+  /// Converts some part(s) of a `Message` into text with an associated `LiterateToken`.
+  type LiterateTokeniser = LiterateOptions -> Message -> TokenisedPart list
+
+  /// Chooses the appropriate `LiterateToken` based on the value `Type`.
   let getTokenTypeForValue (value: obj) =
     match value with
     | :? bool -> KeywordSymbol
     | :? int16 | :? int32 | :? int64 | :? decimal | :? float | :? double -> NumericSymbol
     | :? string | :? char -> StringSymbol
     | _ -> OtherSymbol
-
-  let literateFormatValue (options: LiterateOptions) (fields: Map<string, obj>) = function
+  
+  /// Converts a `PointValue` into a sequence literate tokens. The returned `Set<string>` contains
+  /// the names of the properties that were found in the `Event` template.
+  let tokenisePointValue (options: LiterateOptions) (fields: Map<string, obj>) = function
     | Event template ->
-      let themedParts = ResizeArray<string * LiterateToken>()
+      let themedParts = ResizeArray<TokenisedPart>()
       let matchedFields = ResizeArray<string>()
       let foundText (text: string) = themedParts.Add (text, Text)
       let foundProp (prop: FsMtParser.Property) =
@@ -555,22 +572,18 @@ module internal Formatting =
           themedParts.Add (prop.ToString(), MissingTemplateField)
 
       FsMtParser.parseParts template foundText foundProp
-      Set.ofSeq matchedFields, List.ofSeq themedParts
+      Set.ofSeq matchedFields, (themedParts :> TokenisedPart seq)
 
     | Gauge (value, units) ->
-      Set.empty, [ sprintf "%f" value, NumericSymbol
-                   sprintf "%s" units, KeywordSymbol ]
+      Set.empty, ([| sprintf "%f" value, NumericSymbol
+                     sprintf "%s" units, KeywordSymbol |] :> TokenisedPart seq)
 
-  let formatValue (fields: Map<string, obj>) (pv: PointValue) =
-    let matchedFields, themedParts =
-      literateFormatValue (LiterateOptions.createInvariant()) fields pv
-    matchedFields, System.String.Concat(themedParts |> List.map fst)
-
-  let literateExceptionColouriser (options: LiterateOptions) (ex: exn) =
+  /// Converts a single exception into a sequence of literate tokens.
+  let tokeniseExn (options: LiterateOptions) (ex: exn) =
     let stackFrameLinePrefix = "   at" // 3 spaces
     let monoStackFrameLinePrefix = "  at" // 2 spaces
     use exnLines = new System.IO.StringReader(ex.ToString())
-    let rec go lines =
+    let rec go (lines: TokenisedPart list) =
       match exnLines.ReadLine() with
       | null ->
         List.rev lines // finished reading
@@ -582,12 +595,13 @@ module internal Formatting =
           // regular text
           go ((line, Text) :: (Environment.NewLine, Text) :: lines)
     go []
-
-  let literateColouriseExceptions (context: LiterateOptions) message =
+  
+  /// Converts all exceptions in a `Message` into a sequence of literate tokens.
+  let tokeniseMessageExns (context: LiterateOptions) message =
     let exnExceptionParts =
       match message.fields.TryFind FieldExnKey with
       | Some (:? Exception as ex) ->
-        literateExceptionColouriser context ex
+        tokeniseExn context ex
       | _ ->
         [] // there is no spoon
     let errorsExceptionParts =
@@ -595,7 +609,7 @@ module internal Formatting =
       | Some (:? List<obj> as exnListAsObjList) ->
         exnListAsObjList |> List.collect (function
           | :? exn as ex ->
-            literateExceptionColouriser context ex
+            tokeniseExn context ex
           | _ ->
             [])
       | _ ->
@@ -603,7 +617,7 @@ module internal Formatting =
 
     exnExceptionParts @ errorsExceptionParts
 
-  let getLogLevelToken = function
+  let tokeniseLogLevel = function
     | Verbose -> LevelVerbose
     | Debug -> LevelDebug
     | Info -> LevelInfo
@@ -611,22 +625,21 @@ module internal Formatting =
     | Error -> LevelError
     | Fatal -> LevelFatal
 
-  /// Split a structured message up into theme-able parts (tokens), allowing the
-  /// final output to display to a user with colours to enhance readability.
-  let literateDefaultTokeniser (options: LiterateOptions) (message: Message): (string * LiterateToken) list =
+  /// Converts a `Message` into sequence of literate tokens.
+  let tokeniseMessage (options: LiterateOptions) (message: Message): TokenisedPart list =
     let formatLocalTime (utcTicks: int64) =
       DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss", options.formatProvider),
       Subtext
 
     let _, themedMessageParts =
-      message.value |> literateFormatValue options message.fields
+      message.value |> tokenisePointValue options message.fields
 
-    let themedExceptionParts = literateColouriseExceptions options message
+    let themedExceptionParts = tokeniseMessageExns options message
 
     [ yield "[", Punctuation
       yield formatLocalTime message.utcTicks
       yield " ", Subtext
-      yield options.getLogLevelText message.level, getLogLevelToken message.level
+      yield options.getLogLevelText message.level, tokeniseLogLevel message.level
       yield "] ", Punctuation
       yield! themedMessageParts
       if not (isNull message.name) && message.name.Length > 0 then
@@ -637,18 +650,17 @@ module internal Formatting =
       yield! themedExceptionParts
     ]
 
-  let literateDefaultColourWriter sem (parts: (string * ConsoleColor) list) =
-    lock sem <| fun _ ->
-      let originalColour = Console.ForegroundColor
-      let mutable currentColour = originalColour
-      parts |> List.iter (fun (text, colour) ->
-        if currentColour <> colour then
-          Console.ForegroundColor <- colour
-          currentColour <- colour
-        Console.Write(text)
-      )
-      if currentColour <> originalColour then
-        Console.ForegroundColor <- originalColour
+/// Internal module for formatting text for printing to the console.
+module internal Formatting =
+  open Literals
+  open Literate
+  open LiterateTokenisation
+  open System.Text
+
+  let formatValue (fields: Map<string, obj>) (pv: PointValue) =
+    let matchedFields, themedParts =
+      tokenisePointValue (LiterateOptions.createInvariant()) fields pv
+    matchedFields, System.String.Concat(themedParts |> Seq.map fst)
 
   /// let the ISO8601 love flow
   let defaultFormatter (message: Message) =
@@ -696,16 +708,24 @@ module internal Formatting =
 /// Assists with controlling the output of the `LiterateConsoleTarget`.
 module internal LiterateFormatting =
   open Literate
-  type TokenisedPart = string * LiterateToken
-  type LiterateTokeniser = LiterateOptions -> Message -> TokenisedPart list
+  open LiterateTokenisation
+  open MessageTemplates
 
-  type internal TemplateToken = TextToken of text:string | PropToken of name: string * format: string
-  let internal parseTemplate template =
-    let tokens = ResizeArray<TemplateToken>()
-    let foundText (text: string) = tokens.Add (TextToken text)
-    let foundProp (prop: FsMtParser.Property) = tokens.Add (PropToken (prop.name, prop.format))
-    FsMtParser.parseParts template foundText foundProp
-    tokens :> seq<TemplateToken>
+  type ColouredTextPart = string * ConsoleColor
+
+  /// Writes string*ConsoleColor parts atomically (in a `lock`)
+  let atomicallyWriteColouredTextToConsole sem (parts: ColouredTextPart list) =
+    lock sem <| fun _ ->
+      let originalColour = Console.ForegroundColor
+      let mutable currentColour = originalColour
+      parts |> List.iter (fun (text, colour) ->
+        if currentColour <> colour then
+          Console.ForegroundColor <- colour
+          currentColour <- colour
+        Console.Write(text)
+      )
+      if currentColour <> originalColour then
+        Console.ForegroundColor <- originalColour
 
   [<AutoOpen>]
   module OutputTemplateTokenisers =
@@ -715,9 +735,9 @@ module internal LiterateFormatting =
     let tokeniseExtraField (options: LiterateOptions) (message: Message) (field: KeyValuePair<string, obj>) =
       seq {
         yield " - ", Punctuation
-        yield field.Key, LiterateToken.NameSymbol
+        yield field.Key, NameSymbol
         yield ": ", Punctuation
-        yield System.String.Format(options.formatProvider, "{0}", field.Value), Formatting.getTokenTypeForValue field.Value
+        yield System.String.Format(options.formatProvider, "{0}", field.Value), getTokenTypeForValue field.Value
       }
 
     let tokeniseExtraFields (options: LiterateOptions) (message: Message) (templateFieldNames: Set<string>) =
@@ -751,7 +771,7 @@ module internal LiterateFormatting =
         yield "}", Punctuation }
 
     let tokeniseLogLevel (options: LiterateOptions) (message: Message) =
-      seq { yield options.getLogLevelText message.level, Formatting.getLogLevelToken message.level }
+      seq { yield options.getLogLevelText message.level, tokeniseLogLevel message.level }
 
     let tokeniseSource (options: LiterateOptions) (message: Message) =
       seq { yield (String.concat "." message.name), Subtext }
@@ -771,12 +791,12 @@ module internal LiterateFormatting =
   /// anything (i.e. non-empty). Any misspelled or different property names will become a
   /// `LiterateToken.MissingTemplateField`.
   let tokeniserForOutputTemplate template: LiterateTokeniser =
-    let tokens = parseTemplate template :?> ResizeArray<TemplateToken>
+    let tokens = parseTemplate template
 
     fun options message ->
       // render the message template first so we have the template-matched fields available
       let fieldsInMessageTemplate, messageParts =
-        Formatting.literateFormatValue options message.fields message.value
+        tokenisePointValue options message.fields message.value
       
       let tokeniseOutputTemplateField fieldName format = seq {
         match fieldName with
@@ -788,7 +808,7 @@ module internal LiterateFormatting =
         | "tab" ->                  yield! tokeniseTab options message
         | "message" ->              yield! messageParts
         | "properties" ->           yield! tokeniseExtraFields options message fieldsInMessageTemplate
-        | "exceptions" ->           yield! Formatting.literateColouriseExceptions options message
+        | "exceptions" ->           yield! tokeniseMessageExns options message
         | _ ->                      yield! tokeniseMissingField fieldName format
       }
 
@@ -829,10 +849,10 @@ module internal LiterateFormatting =
 type LiterateConsoleTarget(name, minLevel, ?options, ?literateTokeniser, ?outputWriter, ?consoleSemaphore) =
   let sem          = defaultArg consoleSemaphore (obj())
   let options      = defaultArg options (Literate.LiterateOptions.create())
-  let tokenise     = defaultArg literateTokeniser Formatting.literateDefaultTokeniser
-  let colourWriter = defaultArg outputWriter Formatting.literateDefaultColourWriter sem
+  let tokenise     = defaultArg literateTokeniser LiterateTokenisation.tokeniseMessage
+  let colourWriter = defaultArg outputWriter LiterateFormatting.atomicallyWriteColouredTextToConsole sem
 
-  /// Converts the message to tokens, then colourises them using the theme.
+  /// Converts the message to tokens, apply the theme, then output them using the `colourWriter`.
   let writeColourisedThenNewLine message =
     [ yield! tokenise options message
       yield Environment.NewLine, Literate.Text ]
