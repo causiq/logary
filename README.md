@@ -1233,8 +1233,10 @@ Stackdriver](https://cloud.google.com/stackdriver/).
 ## Microsoft Azure Application Insights target
 
 Target for [Microsoft Azure AppInsights](https://docs.microsoft.com/en-us/azure/application-insights/)
-logs the events as TRACE-messages. You need to set the API-key first. Then when you go to Azure Portal
+logs the events as TRACE-messages (or Events/Metrics with a different MappingConfiguration). 
+You need to set the API-key first. Then when you go to Azure Portal
 Application Insights and `Overview -> Search` you should be able to find the targets from there.
+Metrics goes to `Metrics Explorer -> Add Chart -> Custom`. [More info...](https://docs.microsoft.com/azure/application-insights/app-insights-create-new-resource)
 
 ### Configuration
 
