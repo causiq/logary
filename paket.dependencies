@@ -26,7 +26,8 @@ nuget NLog
 nuget Machine.Specifications
 nuget Machine.Specifications.Should
 nuget Machine.Specifications.Runner.Console
-nuget Microsoft.ApplicationInsights.WindowsServer
+nuget Microsoft.ApplicationInsights
+nuget Microsoft.ApplicationInsights.DependencyCollector
 nuget NodaTime
 nuget protobuf-net
 nuget RabbitMQ.Client ~> 3

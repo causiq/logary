@@ -1,3 +1,4 @@
 FSharp.Core
 Hopac
-Microsoft.ApplicationInsights.WindowsServer
+Microsoft.ApplicationInsights
+Microsoft.ApplicationInsights.DependencyCollector

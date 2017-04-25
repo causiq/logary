@@ -10,44 +10,90 @@ open Logary.Target
 open Logary.Internals
 
 open Microsoft.ApplicationInsights
+open Microsoft.ApplicationInsights.Channel
 open Microsoft.ApplicationInsights.DataContracts
 open Microsoft.ApplicationInsights.DependencyCollector
 open Microsoft.ApplicationInsights.Extensibility
 open Microsoft.ApplicationInsights.Extensibility.Implementation
 
+type GaugeMap =
+/// Traces goes to: Overview -> Search -> Trace
+| GaugeToTrace
+/// Metrics goes to: Metrics Explorer -> Add Chart -> Custom
+| GaugeToMetrics
+/// Events goes to: Overview -> Search -> Event
+| GaugeToEvent
+
+type DerivedMap =
+/// Traces goes to: Overview -> Search -> Trace
+| DerivedToTrace
+/// Metrics goes to: Metrics Explorer -> Add Chart -> Custom
+| DerivedToMetrics
+/// Events goes to: Overview -> Search -> Event
+| DerivedToEvent
+
+type EventMap =
+/// Traces goes to: Overview -> Search -> Trace
+| EventToTrace
+/// Events goes to: Overview -> Search -> Event
+| EventToEvent
+
+type TelemetryMapping =
+  {
+    GaugeMapping: GaugeMap
+    DerivedMapping: DerivedMap
+    EventMapping: EventMap
+  }
+
 /// Microsoft Application Insights configuration
 type AppInsightConf =
-  { /// The Application Insights key. Get it from Azure Portal -> App Insights -> Properties -> INSTRUMENTATION KEY
-    AppInsightsKey : string
+  { /// The Application Insights key. Get it from Azure Portal -> App Insights -> Properties -> INSTRUMENTATION KEY  https://docs.microsoft.com/azure/application-insights/app-insights-create-new-resource
+    InstrumentationKey : string
     /// Whether to use Developer Mode with AI - will send more frequent messages at cost of higher CPU etc.
     DeveloperMode : bool
     /// Track external dependencies e.g. SQL, HTTP etc. etc.
     TrackDependencies : bool
+    /// Map Logary types to Application Insight classes. Default: allToTrace, setting messages as Trace messages
+    MappingConfiguration : TelemetryMapping
   }
 
-let empty = { AppInsightsKey = ""; DeveloperMode = false; TrackDependencies = false }
+let allToTrace = {GaugeMapping = GaugeToTrace; DerivedMapping = DerivedToTrace; EventMapping = EventToTrace; }
+let empty = { InstrumentationKey = ""; DeveloperMode = false; TrackDependencies = false; MappingConfiguration = allToTrace }
 
 // When creating a new target this module gives the barebones
 // for the approach you may need to take.
 module internal Impl =
-
-  let rec serializeToString = function
-    | String x -> x
-    | Bool x -> x.ToString()
-    | Float x -> x.ToString()
-    | Int64 x -> x.ToString()
-    | BigInt x -> x.ToString()
-    | Binary (b,c) -> new String(System.Text.Encoding.UTF32.GetChars(b))
-    | Fraction (a,b) -> a.ToString() + b.ToString()
-    | Object vals -> String.Join(",", vals |> Map.map (fun k v -> k + ": " + (serializeToString v) ))
-    | Array vals -> "[" + String.Join(",", vals |> List.toArray |>Array.map serializeToString) + "]"
+  open System.Reflection
 
   let fieldValue f = 
       let (Logary.Field (v, un)) = f
-      (serializeToString v) + (match un with None -> "" | Some x -> " " + x.ToString())
+      match un with
+      | None -> Units.formatValue v
+      | Some u -> Units.formatWithUnit Units.UnitOrientation.Prefix u v
+  
+  let scaleUnit = function
+      | v, Scaled(u,s) -> (Value.toDouble v)/s, (Units.symbol u)
+      | v, u -> Value.toDouble v, Units.symbol u
 
   // This is a placeholder for specific state that your target requires
   type State = { telemetryClient : TelemetryClient }
+
+  let sdkVersion = 
+      typeof<State>.GetType().Assembly.GetCustomAttributes<AssemblyInformationalVersionAttribute>()
+      |> Seq.head |> fun x -> "logary: " + x.InformationalVersion
+  
+  let makeMetric (point,valu,uni) =
+      let va, un = scaleUnit(valu,uni)
+      let tel = MetricTelemetry(PointName.format point, va)
+      tel.Properties.Add("Unit", un)
+      tel
+  
+  let makeEvent (point,valu,uni) =
+      let va, un = scaleUnit(valu,uni)
+      let tel = EventTelemetry(PointName.format point)
+      tel.Metrics.Add("item", va)
+      tel.Properties.Add("Unit", un)
+      tel
 
   // This is the main entry point of the target. It returns a Job<unit>
   // and as such doesn't have side effects until the Job is started.
@@ -77,36 +123,63 @@ module internal Impl =
               // Do something with the `message` value specific to the target
               // you are creating.
 
-              let itm = 
-                TraceTelemetry(
-                    (match message.value with
-                     | Gauge (v,u)
-                     | Derived (v,u) -> serializeToString v + " " + u.ToString()
-                     | Event template -> template),
-                    (match message.level with
-                     | LogLevel.Fatal -> SeverityLevel.Critical
-                     | LogLevel.Error -> SeverityLevel.Error
-                     | LogLevel.Warn -> SeverityLevel.Warning
-                     | LogLevel.Info -> SeverityLevel.Information
-                     | LogLevel.Debug -> SeverityLevel.Verbose
-                     | LogLevel.Verbose -> SeverityLevel.Verbose),
-                     Sequence = message.timestamp.ToString(),
-                     Timestamp = DateTimeOffset(DateTime(1970,01,01).AddTicks(message.timestampTicks))
+              let tel = 
+                  match message.value with
+                  | Gauge (valu,uni) when conf.MappingConfiguration.GaugeMapping = GaugeToMetrics ->
+                      makeMetric(message.name,valu,uni) :> ITelemetry
+                  | Gauge (valu,uni) when conf.MappingConfiguration.GaugeMapping = GaugeToEvent ->
+                      makeEvent(message.name,valu,uni) :> ITelemetry
+                  | Derived (valu,uni) when conf.MappingConfiguration.DerivedMapping = DerivedToMetrics ->
+                      makeMetric(message.name,valu,uni) :> ITelemetry
+                  | Derived (valu,uni) when conf.MappingConfiguration.DerivedMapping = DerivedToEvent ->
+                      makeEvent(message.name,valu,uni) :> ITelemetry
+                  | Event template when conf.MappingConfiguration.EventMapping = EventToEvent ->
+                      EventTelemetry(template) :> ITelemetry
+                  | msgName -> 
+                      let loglevel = 
+                          match message.level with
+                          | LogLevel.Fatal -> SeverityLevel.Critical
+                          | LogLevel.Error -> SeverityLevel.Error
+                          | LogLevel.Warn -> SeverityLevel.Warning
+                          | LogLevel.Info -> SeverityLevel.Information
+                          | LogLevel.Debug -> SeverityLevel.Verbose
+                          | LogLevel.Verbose -> SeverityLevel.Verbose
+
+                      TraceTelemetry(
+                          (match msgName with
+                            | Gauge (v,u)
+                            | Derived (v,u) -> 
+                                let va, un = scaleUnit(v,u)
+                                sprintf "%f %s" va un
+                            | Event template -> template),
+                            loglevel
+                      ) :> ITelemetry
+
+              tel.Sequence <- message.timestamp.ToString()
+              tel.Timestamp <- DateTimeOffset(DateTime(1970,01,01).AddTicks(message.timestampTicks))
+              tel.Context.GetInternalContext().SdkVersion <- sdkVersion
+              
+              match tel with
+              | :? ISupportProperties as itm ->
+                itm.Properties.Add("PointName", PointName.format message.name)
+
+                message.fields |> Map.iter(fun k field ->
+                  let key = PointName.format k
+                  if not(itm.Properties.ContainsKey key) then
+                      itm.Properties.Add(key.ToString(), (fieldValue field))
                 )
-              
-              itm.Properties.Add("PointName", message.name.ToString())
 
-              message.fields |> Map.iter(fun k field ->
-                if not(itm.Properties.ContainsKey(k.ToString())) then
-                    itm.Properties.Add(k.ToString(), (fieldValue field))
-              )
-
-              message.context |> Map.iter(fun k v ->
-                if not(itm.Properties.ContainsKey(k.ToString())) then
-                    itm.Properties.Add(k, (serializeToString v))
-              )
+                message.context |> Map.iter(fun k v ->
+                  if not(itm.Properties.ContainsKey k) then
+                      itm.Properties.Add(k, (Units.formatValue v))
+                )
+              | _ -> ()
               
-              state.telemetryClient.TrackTrace itm
+              match tel with
+              | :? TraceTelemetry as itm -> state.telemetryClient.TrackTrace itm
+              | :? EventTelemetry as itm -> state.telemetryClient.TrackEvent itm
+              | :? MetricTelemetry as itm -> state.telemetryClient.TrackMetric itm
+              | x -> failwithf "Unknown telemetry item: %O" x
 
               // This is a simple acknowledgement using unit as the signal
               do! ack *<= ()
@@ -133,10 +206,10 @@ module internal Impl =
       // by upcasting it to a job and returning that.
       ] :> Job<_>
 
-    if String.IsNullOrWhiteSpace conf.AppInsightsKey then
-        failwith "Azure Instrumentation key not set: AppInsightsKey. Get it from Azure Portal -> App Insights -> Properties -> INSTRUMENTATION KEY"
+    if String.IsNullOrWhiteSpace conf.InstrumentationKey then
+        failwith "Azure Instrumentation key not set: InstrumentationKey. Get it from Azure Portal -> App Insights -> Properties -> INSTRUMENTATION KEY  https://docs.microsoft.com/azure/application-insights/app-insights-create-new-resource"
     else
-    TelemetryConfiguration.Active.InstrumentationKey <- conf.AppInsightsKey
+    TelemetryConfiguration.Active.InstrumentationKey <- conf.InstrumentationKey
     TelemetryConfiguration.Active.TelemetryChannel.DeveloperMode <- Nullable conf.DeveloperMode
     if conf.TrackDependencies then
         let dependencyTracking = new DependencyTrackingTelemetryModule()
@@ -160,9 +233,13 @@ type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
 
   // place your own configuration methods here
 
-  /// The Application Insights key. Get it from Azure Portal -> App Insights -> Properties -> INSTRUMENTATION KEY
-  member x.SetAppInsightsKey(key : string) =
-    ! (callParent <| Builder({ conf with AppInsightsKey = key }, callParent))
+  /// The Application Insights key. Get it from Azure Portal -> App Insights -> Properties -> INSTRUMENTATION KEY  https://docs.microsoft.com/azure/application-insights/app-insights-create-new-resource
+  member x.SetInstrumentationKey(key : string) =
+    ! (callParent <| Builder({ conf with InstrumentationKey = key }, callParent))
+
+  /// Map Logary types to Application Insight classes. Default: allToTrace, setting messages as Trace messages
+  member x.SetMappingConfiguration(telemetryMapping : TelemetryMapping) =
+    ! (callParent <| Builder({ conf with MappingConfiguration = telemetryMapping }, callParent))
 
   /// Whether to use Developer Mode with AI - will send more frequent messages at cost of higher CPU etc.
   member x.SetDeveloperMode(developmentMode : bool) =
