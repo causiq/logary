@@ -4,9 +4,6 @@
 #r "Hopac/lib/net45/Hopac.dll"
 #r "Microsoft.ApplicationInsights/lib/net45/Microsoft.ApplicationInsights.dll"
 #r "Microsoft.ApplicationInsights.DependencyCollector/lib/net45/Microsoft.AI.DependencyCollector.dll"
-#r "Microsoft.ApplicationInsights.PerfCounterCollector/lib/net45/Microsoft.AI.PerfCounterCollector.dll"
-#r "Microsoft.ApplicationInsights.WindowsServer/lib/net45/Microsoft.AI.WindowsServer.dll"
-#r "Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel/lib/net45/Microsoft.AI.ServerTelemetryChannel.dll"
 
 #r "./../../../src/Logary/bin/Debug/Logary.dll"
 
@@ -22,9 +19,11 @@ let logger =
     withLogaryManager "testAppInsights" (
         withTargets [
             Logary.Targets.AppInsights.create(
-                { AppInsightsKey = ""; // Enter your instrumentation key here. Get it from Azure Portal -> App Insights -> Properties -> INSTRUMENTATION KEY
-                    DeveloperMode = false; 
-                    TrackDependencies = false }
+                { InstrumentationKey = ""; // Enter your instrumentation key here. Get it from Azure Portal -> App Insights -> Properties -> INSTRUMENTATION KEY,  https://docs.microsoft.com/azure/application-insights/app-insights-create-new-resource
+                  DeveloperMode = false; 
+                  TrackDependencies = false;
+                  MappingConfiguration = allToTrace}
+                  //MappingConfiguration = {GaugeMapping = GaugeToMetrics; DerivedMapping = DerivedToMetrics; EventMapping = EventToEvent; }}
             ) "ApplicationInsights"
         ] >> withRules [
             Rule.createForTarget "ApplicationInsights" |> Rule.setLevel LogLevel.Verbose
@@ -41,3 +40,10 @@ Message.eventInfo ("Hello World!")
 // Go to your Application Insights.
 // Click Overview -> Search.
 // Your events should be visible under TRACE -category.
+
+
+// Example with GaugeToMetrics mapping, using commented MappingConfiguration:
+// let myFunc x = System.Threading.Thread.Sleep 3000; x+1
+// let withPerfLog = Logger.time curLogger "MyTest" 
+// let res, perf = withPerfLog myFunc 3
+
