@@ -7,12 +7,12 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>7bb17e1a-6318-449d-8193-5ffaa7dc9c49</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>Logary.Targets.AppInsights</RootNamespace>
-    <AssemblyName>Logary.Targets.AppInsights</AssemblyName>
+    <RootNamespace>Logary.Targets.ApplicationInsights</RootNamespace>
+    <AssemblyName>Logary.Targets.ApplicationInsights</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.3.1.0</TargetFSharpCoreVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <Name>Logary.Targets.AppInsights</Name>
+    <Name>Logary.Targets.ApplicationInsights</Name>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -23,7 +23,7 @@
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>bin\Debug\Logary.Targets.AppInsights.xml</DocumentationFile>
+    <DocumentationFile>bin\Debug\Logary.Targets.ApplicationInsights.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -32,7 +32,7 @@
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>bin\Release\Logary.Targets.AppInsights.xml</DocumentationFile>
+    <DocumentationFile>bin\Release\Logary.Targets.ApplicationInsights.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />

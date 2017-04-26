@@ -1,5 +1,5 @@
 ﻿// Logary target for Application Insights
-module Logary.Targets.AppInsights
+module Logary.Targets.ApplicationInsights
 
 open System
 open Hopac

@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio 15
+VisualStudioVersion = 15.0.26403.7
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{CB6B0EE7-19B3-4253-A1DA-B195C64C0AE6}"
 	ProjectSection(SolutionItems) = preProject
@@ -140,7 +140,7 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Stackdriver"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.log4net", "adapters\Logary.Adapters.log4net\Logary.Adapters.log4net.fsproj", "{9FE02488-25BB-4756-B377-60DBF47F51F2}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.AppInsights", "targets\Logary.Targets.AppInsights\Logary.Targets.AppInsights.fsproj", "{7BB17E1A-6318-449D-8193-5FFAA7DC9C49}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.ApplicationInsights", "targets\Logary.Targets.ApplicationInsights\Logary.Targets.ApplicationInsights.fsproj", "{7BB17E1A-6318-449D-8193-5FFAA7DC9C49}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

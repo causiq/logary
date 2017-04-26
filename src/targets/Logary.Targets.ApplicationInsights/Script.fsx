@@ -11,14 +11,14 @@
 open System
 open Hopac
 open Logary
-open Logary.Targets.AppInsights
+open Logary.Targets.ApplicationInsights
 open Logary.Configuration
 open Logary.Logger
 
 let logger = 
     withLogaryManager "testAppInsights" (
         withTargets [
-            Logary.Targets.AppInsights.create(
+            Logary.Targets.ApplicationInsights.create(
                 { InstrumentationKey = ""; // Enter your instrumentation key here. Get it from Azure Portal -> App Insights -> Properties -> INSTRUMENTATION KEY,  https://docs.microsoft.com/azure/application-insights/app-insights-create-new-resource
                   DeveloperMode = false; 
                   TrackDependencies = false;
@@ -46,4 +46,3 @@ Message.eventInfo ("Hello World!")
 // let myFunc x = System.Threading.Thread.Sleep 3000; x+1
 // let withPerfLog = Logger.time curLogger "MyTest" 
 // let res, perf = withPerfLog myFunc 3
-
