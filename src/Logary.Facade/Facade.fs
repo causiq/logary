@@ -792,12 +792,14 @@ type LiterateConsoleTarget(name, minLevel, ?options, ?literateTokeniser, ?output
     member x.name = name
     member x.logWithAck level msgFactory =
       if level >= minLevel then
-        colourWriter (colouriseThenNewLine (msgFactory level))
-      async.Return ()
+        async { do colourWriter (colouriseThenNewLine (msgFactory level)) }
+      else
+        async.Return ()
     member x.log level msgFactory =
       if level >= minLevel then
-        colourWriter (colouriseThenNewLine (msgFactory level))
-      async.Return ()
+        async { do colourWriter (colouriseThenNewLine (msgFactory level)) }
+      else
+        async.Return ()
 
 type TextWriterTarget(name, minLevel, writer : System.IO.TextWriter, ?formatter) =
   let formatter = defaultArg formatter Formatting.defaultFormatter
@@ -806,12 +808,16 @@ type TextWriterTarget(name, minLevel, writer : System.IO.TextWriter, ?formatter)
   interface Logger with
     member x.name = name
     member x.log level messageFactory =
-      if level >= minLevel then log (messageFactory level)
-      async.Return ()
+      if level >= minLevel then
+        async { do log (messageFactory level) }
+      else
+        async.Return ()
 
     member x.logWithAck level messageFactory =
-      if level >= minLevel then log (messageFactory level)
-      async.Return ()
+      if level >= minLevel then
+        async { log (messageFactory level) }
+      else
+        async.Return ()
 
 type OutputWindowTarget(name, minLevel, ?formatter) =
   let formatter = defaultArg formatter Formatting.defaultFormatter
@@ -820,12 +826,16 @@ type OutputWindowTarget(name, minLevel, ?formatter) =
   interface Logger with
     member x.name = name
     member x.log level messageFactory =
-      if level >= minLevel then log (messageFactory level)
-      async.Return ()
+      if level >= minLevel then
+        async { do log (messageFactory level) }
+      else
+        async.Return ()
 
     member x.logWithAck level messageFactory =
-      if level >= minLevel then log (messageFactory level)
-      async.Return ()
+      if level >= minLevel then
+        async { do log (messageFactory level) }
+      else
+        async.Return ()
 
 /// A logger to use for combining a number of other loggers
 type CombiningTarget(name, otherLoggers : Logger list) =
