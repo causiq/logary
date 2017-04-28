@@ -57,7 +57,7 @@ let serialise : Message -> Json =
       ]
 
     let final =
-      overrides |> List.fold (fun data (k, v) -> data |> Map.put k v) props
+      overrides |> List.fold (fun data (k, v) -> data |> Map.add k v) props
 
     (Object final)
 
