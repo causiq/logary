@@ -328,7 +328,7 @@ module Literate =
                 | Text -> ConsoleColor.White
                 | Subtext -> ConsoleColor.Gray
                 | Punctuation -> ConsoleColor.DarkGray
-                | LevelVerbose -> ConsoleColor.Gray
+                | LevelVerbose -> ConsoleColor.DarkGray
                 | LevelDebug -> ConsoleColor.Gray
                 | LevelInfo -> ConsoleColor.White
                 | LevelWarning -> ConsoleColor.Yellow
