@@ -1,8 +1,71 @@
-﻿// Learn more about F# at http://fsharp.org. See the 'F# Tutorial' project
-// for more guidance on F# programming.
+﻿#I "./../../../packages"
+#I "bin/Debug"
 
-#load "Library1.fs"
+#r "NodaTime.dll"
+#r "Hopac.dll"
+#r "Hopac.Core.dll"
+#r "Logary.dll"
+#r "AliyunLogSDK.dll"
+#r "LZ4Sharp.dll"
+#r "Google.ProtocolBuffers.dll"
+#r "Google.ProtocolBuffers.Serialization.dll"
+#r "Logary.Targets.AliYun.dll"
+
+
+open System
+open Hopac
+open Logary
 open Logary.Targets.AliYun
+open Logary.Configuration
+open Logary.Logger
 
-// Define your library scripting code here
+printfn "begin"
 
+let logger = 
+    withLogaryManager "testAliYun" (
+        withTargets [
+            Logary.Targets.AliYun.create(
+                { AccessKeyId = "LTAI7sFLFks3bw1N";
+                  AccessKey = "p0AttceU3PStM8ZUza5NBLRiusDCVC"; 
+                  Endpoint = "http://cn-hangzhou.log.aliyuncs.com";
+                }
+            ) "AliYunLog"
+        ] 
+        >> withRules [
+            Rule.createForTarget "AliYunLog" |> Rule.setLevel LogLevel.Verbose
+        ]
+    ) |> run
+
+let msg = 
+  Message.eventInfo ("Hello World!")
+  |> Message.setField "testFrom" "logary"
+  |> Message.setField "target" "aliyun-target"
+  |> Message.setField "use-ali-sdk" "true"
+
+let curLogger = Logary.Logging.getCurrentLogger()
+let jiajunLogger = logger.getLogger (PointName [| "Logary"; "Aliyun"; "JiaJun"; "TestInScript" |])
+
+msg |> logSimple curLogger
+msg |> logSimple curLogger
+msg |> logSimple curLogger
+msg |> logSimple curLogger
+msg |> logSimple curLogger
+msg |> logSimple curLogger
+msg |> logSimple curLogger
+msg |> logSimple curLogger
+msg |> logSimple curLogger
+msg |> logSimple curLogger
+msg |> logSimple curLogger
+msg |> logSimple curLogger
+msg |> logSimple curLogger
+msg |> logSimple curLogger
+msg |> logSimple curLogger
+msg |> jiajunLogger.logSimple
+
+
+
+// Login your AliYun sls console (https://sls.console.aliyun.com/). 
+// Go to your logstore
+// Your events should be visible under logstore search
+
+printfn "done"

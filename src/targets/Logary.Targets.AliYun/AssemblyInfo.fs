@@ -1,4 +1,4 @@
-﻿namespace Logary.Targets.AliYun.AssemblyInfo
+﻿namespace Logary.Targets.AliYunAssemblyInfo
 
 open System.Reflection
 open System.Runtime.CompilerServices
