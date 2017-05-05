@@ -6,8 +6,6 @@ open Logary.Target
 open Logary.Internals
 open Logary.Message
 
-
-
 type AliYunConf = 
   {
     AccessKeyId             : string
@@ -49,26 +47,50 @@ module internal Impl =
       Ch.give ackCh () <|> nack :> Job<_>
 
 
-  let timeOffSet timestampTicks =
-    DateTimeOffset(DateTime(1970,01,01).AddTicks(timestampTicks))
-
-  let transToAliLogItem hostName request =
+  let transToAliLogItem hostName logtime request =
     let log = LogItem()
-    // time must set , can be anytime
-    log.Time <- uint32 (SystemClock.Instance.Now.Ticks / NodaConstants.TicksPerSecond)
+    log.Time <- logtime // time must set , can be anytime
     log.PushBack("Host",hostName)
     match request with
     | Log(msg,ack) ->
-        log.PushBack("TimeOffSet",(timeOffSet msg.timestampTicks).ToString())
-        log.PushBack("Level",msg.level.ToString())
-        log.PushBack("LoggerName",msg.name.ToString())
-        // log.PushBack("LoggerName",msg.value)
-        // log.PushBack("LoggerName",msg.fields)
-        // log.PushBack("LoggerName",msg.context)
+        log.PushBack("TimeOffSet",string (DateTimeOffset.ofEpoch msg.timestamp))
+        log.PushBack("Level",string msg.level)
+        log.PushBack("LoggerName",string msg.name)
+
+        match msg.value with
+        | Event t ->
+          let subject = Formatting.MessageParts.formatTemplate t msg.fields
+          log.PushBack("Msg",subject)
+        | Gauge (v, u)
+        | Derived (v, u) ->
+          let gaugeNumber = Value.toDouble v
+          let subject = Units.formatWithUnit Units.UnitOrientation.Suffix u v
+          log.PushBack("Msg",subject)
+          // for making number compare search
+          log.PushBack("GaugeNumber",string gaugeNumber)
+
+        // 针对 value 可能要看 gauge ，除了 msg 以外还需要设置一个可以 过滤的数值选项。
+        // 参考 appinsighlt -》 fieldValue / scaleUnit
+        msg.context |> Map.iter (fun k v ->
+          let k = "_ctx-" + k
+          let str = Formatting.MessageParts.formatValue Environment.NewLine 0 v
+          log.PushBack(k, str)
+        )
+
+        msg.fields |> Map.iter (fun k (Field (v, units)) ->
+          let k = "_field-" + PointName.format k
+          let str = Formatting.MessageParts.formatValue Environment.NewLine 0 v
+          match units with
+          | Some units ->
+            log.PushBack(k, str + Units.symbol units)
+          | _ -> 
+            log.PushBack(k, str)
+        )
+        
 
     | Flush (ack,nack) ->
-        log.PushBack("TimeOffSet",DateTimeOffset.Now.ToString())
-        log.PushBack("Level",LogLevel.Info.ToString())
+        log.PushBack("TimeOffSet",string DateTimeOffset.Now)
+        log.PushBack("Level",string LogLevel.Info)
         log.PushBack("LoggerName","Logary.AliYun.FlushLog")
         log.PushBack("Msg","application flush log")
 
@@ -86,10 +108,11 @@ module internal Impl =
     let sendLog (logClient:Aliyun.Api.LOG.LogClient) reqs extra =
       let (host, serviceName, project, logstore) = extra
       let putLogRequest = PutLogsRequest(project,logstore)
+      
+      let logSendTime = uint32 (SystemClock.Instance.Now.Ticks / NodaConstants.TicksPerSecond)
+      putLogRequest.Topic <- serviceName // use serviceName as log topic for quick group/search
+      putLogRequest.LogItems <- ResizeArray<_> (Array.map (transToAliLogItem host logSendTime) reqs)
 
-      // use serviceName as log topic for quick group/search
-      putLogRequest.Topic <- serviceName
-      putLogRequest.LogItems <- ResizeArray<_> (Array.map (transToAliLogItem host) reqs)
       let res = logClient.PutLogs putLogRequest
       let resHeader = res.GetAllHeaders() |> Seq.map (|KeyValue|) |> Map.ofSeq
       logger.verboseWithBP (eventX "res {header}" >> Message.setField "header" resHeader) 
