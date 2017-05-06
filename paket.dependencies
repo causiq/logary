@@ -1,4 +1,4 @@
-redirects: on
+﻿redirects: on
 framework: net45, net452, net461
 source https://www.nuget.org/api/v2
 source https://www.myget.org/F/haf/api/v3/index.json
@@ -43,6 +43,7 @@ nuget ApacheThrift
 nuget elmah.io.client
 nuget Google.Cloud.Logging.V2 prerelease
 nuget Google.Api.Gax.Rest prerelease
+nuget aliyun-log-csharp-sdk
 
 github xyncro/chiron:e0f4c122b21cb02d47ae3f4f83924b2dcb8dea9e src/Chiron/Chiron.fs
 github xyncro/aether:5b5c05db2414562e9f3f679d42284638e63b9f3a src/Aether/Aether.fs

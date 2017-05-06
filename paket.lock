@@ -118,7 +118,7 @@ GITHUB
   remote: haf/YoLo
     YoLo.fs (76e16a4c9338c2f04cb067add0e3a33b42a0f396)
   remote: logary/RingBuffer
-    RingBuffer.fs (4557d607737e748b54eb6de3ec5e5cd02247b2a5)
+    RingBuffer.fs (0fa46d2ed3d92679517c942240a1dc674767e69e)
       Hopac
   remote: logary/logary
     src/Logary.CSharp.Facade/Facade.cs (8fe3fce3f7d2602f2a4dc27419edfbce09c28a82)
