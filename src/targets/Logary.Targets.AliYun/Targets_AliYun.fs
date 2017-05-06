@@ -46,6 +46,8 @@ module internal Impl =
     | Flush (ackCh, nack) ->
       Ch.give ackCh () <|> nack :> Job<_>
 
+  let ofEpochLocal epoch = 
+    (DateTimeOffset.ofEpoch epoch).ToLocalTime()
 
   let transToAliLogItem hostName logtime request =
     let log = LogItem()
@@ -53,7 +55,7 @@ module internal Impl =
     log.PushBack("Host",hostName)
     match request with
     | Log(msg,ack) ->
-        log.PushBack("TimeOffSet",string (DateTimeOffset.ofEpoch msg.timestamp))
+        log.PushBack("TimeOffSet",string (ofEpochLocal msg.timestamp))
         log.PushBack("Level",string msg.level)
         log.PushBack("LoggerName",string msg.name)
 
@@ -110,7 +112,7 @@ module internal Impl =
       let putLogRequest = PutLogsRequest(project,logstore)
       
       let logSendTime = uint32 (SystemClock.Instance.Now.Ticks / NodaConstants.TicksPerSecond)
-      putLogRequest.Topic <- serviceName // use serviceName as log topic for quick group/search
+      putLogRequest.Topic <- serviceName // use serviceName as log topic for quick(index default) group/search
       putLogRequest.LogItems <- ResizeArray<_> (Array.map (transToAliLogItem host logSendTime) reqs)
 
       let res = logClient.PutLogs putLogRequest
@@ -122,6 +124,7 @@ module internal Impl =
 
     let rec running state =
       Alt.choose [
+        // maybe because 200ms timeout when shutdown/flush target, so we should not send log to client, just dispose resource and ack ?
         shutdown ^=> fun ack -> 
           let msg = Message.eventInfo "application shut down logging"
           sendLog state.logClient [|Log(msg , ack)|] extraInfo
