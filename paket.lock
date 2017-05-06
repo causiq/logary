@@ -3,6 +3,8 @@ FRAMEWORK: NET45, NET452, NET461
 NUGET
   remote: https://www.nuget.org/api/v2
     Aether (8.1.2)
+    aliyun-log-csharp-sdk (0.6)
+      Newtonsoft.Json (>= 10.0.2)
     ApacheThrift (0.9.3)
     Argu (3.7)
     Castle.Core (3.3.3)
@@ -96,7 +98,7 @@ NUGET
       Microsoft.ApplicationInsights (2.3)
       Microsoft.ApplicationInsights.Agent.Intercept (>= 2.0.7)
     Mono.Cecil (0.9.6.4)
-    Newtonsoft.Json (9.0.1)
+    Newtonsoft.Json (10.0.2)
     NLog (4.4.1)
     NodaTime (1.3.2)
     protobuf-net (2.1)
@@ -116,13 +118,14 @@ GITHUB
   remote: xyncro/aether
     src/Aether/Aether.fs (5b5c05db2414562e9f3f679d42284638e63b9f3a)
   remote: haf/YoLo
-    YoLo.fs (76e16a4c9338c2f04cb067add0e3a33b42a0f396)
+    YoLo.fs (2ae49ac885e2f42812edbaa2dbc8d0e872653cab)
   remote: logary/RingBuffer
-    RingBuffer.fs (4557d607737e748b54eb6de3ec5e5cd02247b2a5)
+    RingBuffer.fs (0fa46d2ed3d92679517c942240a1dc674767e69e)
+      Expecto
       Hopac
   remote: logary/logary
-    src/Logary.CSharp.Facade/Facade.cs (8fe3fce3f7d2602f2a4dc27419edfbce09c28a82)
-    src/Logary.Facade/Facade.fs (8fe3fce3f7d2602f2a4dc27419edfbce09c28a82)
+    src/Logary.CSharp.Facade/Facade.cs (bcfc545d6b12d49830ac1efea06d11aa333cfcf6)
+    src/Logary.Facade/Facade.fs (bcfc545d6b12d49830ac1efea06d11aa333cfcf6)
 GROUP Examples
 REDIRECTS: ON
 FRAMEWORK: >= NET45
