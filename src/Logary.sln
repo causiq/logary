@@ -142,6 +142,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.log4net", "
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.ApplicationInsights", "targets\Logary.Targets.ApplicationInsights\Logary.Targets.ApplicationInsights.fsproj", "{7BB17E1A-6318-449D-8193-5FFAA7DC9C49}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.AliYun", "targets\Logary.Targets.AliYun\Logary.Targets.AliYun.fsproj", "{478D2597-9521-4BD2-A6DE-4DFCDF2F87E0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -376,6 +378,10 @@ Global
 		{7BB17E1A-6318-449D-8193-5FFAA7DC9C49}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7BB17E1A-6318-449D-8193-5FFAA7DC9C49}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7BB17E1A-6318-449D-8193-5FFAA7DC9C49}.Release|Any CPU.Build.0 = Release|Any CPU
+		{478D2597-9521-4BD2-A6DE-4DFCDF2F87E0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{478D2597-9521-4BD2-A6DE-4DFCDF2F87E0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{478D2597-9521-4BD2-A6DE-4DFCDF2F87E0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{478D2597-9521-4BD2-A6DE-4DFCDF2F87E0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -438,5 +444,6 @@ Global
 		{BA02296C-41A5-449D-A724-68CEA527E0E2} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{9FE02488-25BB-4756-B377-60DBF47F51F2} = {56BB77A4-DF59-49EC-92E6-C9CA2C2E9FDE}
 		{7BB17E1A-6318-449D-8193-5FFAA7DC9C49} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
+		{478D2597-9521-4BD2-A6DE-4DFCDF2F87E0} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 	EndGlobalSection
 EndGlobal
