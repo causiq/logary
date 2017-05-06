@@ -145,8 +145,8 @@ let create conf name =
 
 
 type IThirdStep = 
-  abstract SetConnectTimeOut : int -> FactoryApi.TargetConfBuild<Builder>
-  abstract SetReadWriteTimeOut : int -> FactoryApi.TargetConfBuild<Builder>
+  abstract SetConnectTimeOut : int -> IThirdStep
+  abstract SetReadWriteTimeOut : int -> IThirdStep
   abstract Done : unit -> FactoryApi.TargetConfBuild<Builder>
 and ISecondStep =
   abstract ConfLogLocation : string * string -> IThirdStep
@@ -166,10 +166,10 @@ and Builder(conf : AliYunConf, callParent : FactoryApi.ParentCallback<_>) =
 
   interface IThirdStep with
     member x.SetConnectTimeOut(timoutMS) =
-      ! (callParent <| Builder({conf with ClientConnectTimeout = timoutMS}, callParent))
+      Builder({conf with ClientConnectTimeout = timoutMS}, callParent) :> IThirdStep
 
     member x.SetReadWriteTimeOut(timoutMS) =
-      ! (callParent <| Builder({conf with ClientReadWriteTimeout = timoutMS}, callParent))
+      Builder({conf with ClientReadWriteTimeout = timoutMS}, callParent) :> IThirdStep
     
     member x.Done () =
       ! (callParent x)
