@@ -164,7 +164,7 @@ module Map =
     let tryMap f xs =
       Seq.map f xs |> Seq.filter Option.isSome |> Seq.map Option.get
 
-    let foldPut s (k, v) = s |> Map.put k v
+    let foldPut s (k, v) = s |> Map.add k v
 
     let kvLike x =
       let typ = x.GetType()
@@ -228,7 +228,7 @@ module Map =
         while e.MoveNext() do
           yield e.Current }
       |> tryMap readInner
-      |> Seq.fold (fun s (k, v) -> s |> Map.put k v) Map.empty
+      |> Seq.fold (fun s (k, v) -> s |> Map.add k v) Map.empty
 
     | _ as data ->
       let props =
