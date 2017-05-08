@@ -145,13 +145,13 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.6.1')">
       <ItemGroup>
-        <Reference Include="Google.Apis.PlatformServices">
-          <HintPath>..\..\..\packages\Google.Apis\lib\net45\Google.Apis.PlatformServices.dll</HintPath>
+        <Reference Include="Google.Apis">
+          <HintPath>..\..\..\packages\Google.Apis\lib\net45\Google.Apis.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
-        <Reference Include="Google.Apis">
-          <HintPath>..\..\..\packages\Google.Apis\lib\net45\Google.Apis.dll</HintPath>
+        <Reference Include="Google.Apis.PlatformServices">
+          <HintPath>..\..\..\packages\Google.Apis\lib\net45\Google.Apis.PlatformServices.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
@@ -161,13 +161,13 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.6.1')">
       <ItemGroup>
-        <Reference Include="Google.Apis.Auth.PlatformServices">
-          <HintPath>..\..\..\packages\Google.Apis.Auth\lib\net45\Google.Apis.Auth.PlatformServices.dll</HintPath>
+        <Reference Include="Google.Apis.Auth">
+          <HintPath>..\..\..\packages\Google.Apis.Auth\lib\net45\Google.Apis.Auth.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
-        <Reference Include="Google.Apis.Auth">
-          <HintPath>..\..\..\packages\Google.Apis.Auth\lib\net45\Google.Apis.Auth.dll</HintPath>
+        <Reference Include="Google.Apis.Auth.PlatformServices">
+          <HintPath>..\..\..\packages\Google.Apis.Auth\lib\net45\Google.Apis.Auth.PlatformServices.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
@@ -243,6 +243,11 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.6.1')">
       <ItemGroup>
+        <Reference Include="Hopac">
+          <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
         <Reference Include="Hopac.Core">
           <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.Core.dll</HintPath>
           <Private>True</Private>
@@ -250,11 +255,6 @@
         </Reference>
         <Reference Include="Hopac.Platform">
           <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.Platform.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="Hopac">
-          <HintPath>..\..\..\packages\Hopac\lib\net45\Hopac.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
@@ -275,6 +275,11 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.6.1')">
       <ItemGroup>
+        <Reference Include="Mono.Cecil">
+          <HintPath>..\..\..\packages\Mono.Cecil\lib\net45\Mono.Cecil.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
         <Reference Include="Mono.Cecil.Mdb">
           <HintPath>..\..\..\packages\Mono.Cecil\lib\net45\Mono.Cecil.Mdb.dll</HintPath>
           <Private>True</Private>
@@ -287,11 +292,6 @@
         </Reference>
         <Reference Include="Mono.Cecil.Rocks">
           <HintPath>..\..\..\packages\Mono.Cecil\lib\net45\Mono.Cecil.Rocks.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="Mono.Cecil">
-          <HintPath>..\..\..\packages\Mono.Cecil\lib\net45\Mono.Cecil.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
@@ -312,12 +312,12 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.6.1')">
       <ItemGroup>
+        <Reference Include="System.Xml">
+          <Paket>True</Paket>
+        </Reference>
         <Reference Include="NodaTime">
           <HintPath>..\..\..\packages\NodaTime\lib\net35-Client\NodaTime.dll</HintPath>
           <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="System.Xml">
           <Paket>True</Paket>
         </Reference>
       </ItemGroup>

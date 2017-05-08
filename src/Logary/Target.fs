@@ -1,4 +1,4 @@
-/// A module defining the types relevant for targets to implement
+﻿/// A module defining the types relevant for targets to implement
 /// and methods to interact with those targets.
 module Logary.Target
 
@@ -107,7 +107,7 @@ module TargetUtils =
     let name' = PointName.parse name
     { name = name'
       initer = fun metadata -> job {
-        let! requests = RingBuffer.create 500u
+        let! requests = RingBuffer.create 512us
         let shutdown = Ch ()
         return { server   = fun _ _ -> loop metadata requests shutdown
                  requests = requests
@@ -123,7 +123,7 @@ module TargetUtils =
     let name' = PointName.parse name
     { name = name'
       initer = fun runtimeInfo -> job {
-        let! requests = RingBuffer.create 500u
+        let! requests = RingBuffer.create 512us
         let shutdown = Ch ()
         return { server   = loop runtimeInfo requests shutdown
                  requests = requests

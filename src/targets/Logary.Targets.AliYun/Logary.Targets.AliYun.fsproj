@@ -1,88 +1,90 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
+    <Name>Logary.Targets.AliYun</Name>
+    <AssemblyName>Logary.Targets.AliYun</AssemblyName>
+    <RootNamespace>Logary.Targets.AliYun</RootNamespace>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{D30C57E7-BA12-4E95-BCF2-8BE5B0EF9D56}</ProjectGuid>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>478d2597-9521-4bd2-a6de-4dfcdf2f87e0</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>Logary.Targets.Logstash.Tests</RootNamespace>
-    <AssemblyName>Logary.Targets.Logstash.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
+    <DebugType>Full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug</OutputPath>
-    <DefineConstants>DEBUG</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <ConsolePause>false</ConsolePause>
-    <PlatformTarget>
-    </PlatformTarget>
-    <Externalconsole>true</Externalconsole>
+    <Tailcalls>false</Tailcalls>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <WarningLevel>3</WarningLevel>
+    <DocumentationFile>bin\Debug\Logary.Targets.AliYun.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugSymbols>false</DebugSymbols>
+    <DebugType>PdbOnly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release</OutputPath>
-    <ErrorReport>prompt</ErrorReport>
-    <ConsolePause>false</ConsolePause>
-    <GenerateTailCalls>true</GenerateTailCalls>
-    <PlatformTarget>
-    </PlatformTarget>
-    <DefineConstants>
-    </DefineConstants>
+    <Tailcalls>true</Tailcalls>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <WarningLevel>3</WarningLevel>
+    <DocumentationFile>bin\Release\Logary.Targets.AliYun.xml</DocumentationFile>
   </PropertyGroup>
-  <PropertyGroup>
-    <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
-  </PropertyGroup>
-  <Choose>
-    <When Condition="'$(VisualStudioVersion)' == '11.0'">
-      <PropertyGroup Condition="Exists('$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets')">
-        <FSharpTargetsPath>$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets</FSharpTargetsPath>
-      </PropertyGroup>
-    </When>
-    <Otherwise>
-      <PropertyGroup Condition="Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets')">
-        <FSharpTargetsPath>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets</FSharpTargetsPath>
-      </PropertyGroup>
-    </Otherwise>
-  </Choose>
-  <Import Project="$(FSharpTargetsPath)" Condition="Exists('$(FSharpTargetsPath)')" />
-  <ItemGroup>
-    <Content Include="app.config" />
-    <Compile Include="Program.fs" />
-    <None Include="paket.references" />
-  </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
-    <ProjectReference Include="..\..\targets\Logary.Targets.Logstash\Logary.Targets.Logstash.fsproj">
-      <Project>{F9AAC195-D3F7-4160-A829-5F9775791AD5}</Project>
-      <Name>Logary.Targets.Logstash</Name>
-    </ProjectReference>
+    <Content Include="app.config" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\Logary\Logary.fsproj">
-      <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
       <Name>Logary</Name>
+      <Project>{f7e5b6e8-5d55-4974-9ca7-4c94d810631f}</Project>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Targets_AliYun.fs" />
+    <None Include="Script.fsx" />
+    <None Include="paket.references" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <Choose>
+    <When Condition="'$(VisualStudioVersion)' == '11.0'">
+      <PropertyGroup Condition=" '$(FSharpTargetsPath)' == '' AND Exists('$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets') ">
+        <FSharpTargetsPath>$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets</FSharpTargetsPath>
+      </PropertyGroup>
+    </When>
+    <Otherwise>
+      <PropertyGroup Condition=" '$(FSharpTargetsPath)' == '' AND Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets') ">
+        <FSharpTargetsPath>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets</FSharpTargetsPath>
+      </PropertyGroup>
+    </Otherwise>
+  </Choose>
+  <Import Project="$(FSharpTargetsPath)" />
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.6.1')">
       <ItemGroup>
-        <Reference Include="Argu">
-          <HintPath>..\..\..\packages\Argu\lib\net40\Argu.dll</HintPath>
+        <Reference Include="AliyunLogSDK">
+          <HintPath>..\..\..\packages\aliyun-log-csharp-sdk\lib\net40\AliyunLogSDK.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.6.1')">
-      <ItemGroup>
-        <Reference Include="Expecto">
-          <HintPath>..\..\..\packages\Expecto\lib\net40\Expecto.dll</HintPath>
+        <Reference Include="Google.ProtocolBuffers">
+          <HintPath>..\..\..\packages\aliyun-log-csharp-sdk\lib\net40\Google.ProtocolBuffers.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+        <Reference Include="Google.ProtocolBuffers.Serialization">
+          <HintPath>..\..\..\packages\aliyun-log-csharp-sdk\lib\net40\Google.ProtocolBuffers.Serialization.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+        <Reference Include="LZ4Sharp">
+          <HintPath>..\..\..\packages\aliyun-log-csharp-sdk\lib\net40\LZ4Sharp.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
@@ -124,23 +126,8 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.6.1')">
       <ItemGroup>
-        <Reference Include="Mono.Cecil">
-          <HintPath>..\..\..\packages\Mono.Cecil\lib\net45\Mono.Cecil.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="Mono.Cecil.Mdb">
-          <HintPath>..\..\..\packages\Mono.Cecil\lib\net45\Mono.Cecil.Mdb.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="Mono.Cecil.Pdb">
-          <HintPath>..\..\..\packages\Mono.Cecil\lib\net45\Mono.Cecil.Pdb.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="Mono.Cecil.Rocks">
-          <HintPath>..\..\..\packages\Mono.Cecil\lib\net45\Mono.Cecil.Rocks.dll</HintPath>
+        <Reference Include="Newtonsoft.Json">
+          <HintPath>..\..\..\packages\Newtonsoft.Json\lib\net45\Newtonsoft.Json.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>

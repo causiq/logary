@@ -1,4 +1,4 @@
-/// A Logary target for Logstash that logs to its ZeroMQ input. See
+﻿/// A Logary target for Logstash that logs to its ZeroMQ input. See
 /// https://www.elastic.co/guide/en/logstash/current/plugins-inputs-zeromq.html
 /// for information about how to configure it.
 module Logary.Targets.Logstash
@@ -57,7 +57,7 @@ let serialise : Message -> Json =
       ]
 
     let final =
-      overrides |> List.fold (fun data (k, v) -> data |> Map.put k v) props
+      overrides |> List.fold (fun data (k, v) -> data |> Map.add k v) props
 
     (Object final)
 

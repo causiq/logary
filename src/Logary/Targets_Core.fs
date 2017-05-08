@@ -1,4 +1,4 @@
-namespace Logary.Targets
+﻿namespace Logary.Targets
 
 /// A module implementing a text writer target. Useful for writing to the
 /// console output, or writing to a custom text writer.
@@ -1403,7 +1403,7 @@ module File =
           // TODO: handle scheduled rotation
           rotateCh ^=> fun () -> rotating state
 
-          RingBuffer.takeBatch (uint32 conf.batchSize) requests ^=> fun reqs ->
+          RingBuffer.takeBatch (conf.batchSize) requests ^=> fun reqs ->
             writeRequestsSafe ri.logger conf state reqs >>= function
               | Choice1Of2 () ->
                 checking state
