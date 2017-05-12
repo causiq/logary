@@ -176,9 +176,8 @@ and ConfBuilder(conf, internalLoggingLevel) =
     let targetConf = f.Invoke(!contRef) :?> ConfBuilderT<'T>
 
     let tr = 
-      match targetConf.useForInternalLog with
-      | true -> {targetConf.tr with hiera = Regex(specificHieraForSetInternalLog)}
-      | _ -> targetConf.tr
+      if targetConf.useForInternalLog then {targetConf.tr with hiera = Regex(specificHieraForSetInternalLog)}
+      else targetConf.tr
 
     conf
     |> withRule tr
