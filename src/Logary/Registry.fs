@@ -104,27 +104,19 @@ module Advanced =
         r, t, (Option.get ti))
 
     // rules applying to the same target are grouped
+    // (deduplicated, so that doubly matching rules don't duply log)
     |> Seq.groupBy (fun (r, t, ti) -> t.name)
 
     // combine acceptors with Seq.any/combineAccept
+    // and project only the messageFilter and the target instance and minLvl
     |> Seq.map (fun (_, ts) ->
         let _, t, ti = Seq.head ts
         let rs       = Seq.map rules ts
         let minLvl   = rs |> Seq.map (fun r -> r.level) |> Seq.min
         // find the min matching level from all rules for this target
         createFilter minLvl rs,
-        t, ti,
+        ti,
         minLvl)
-
-    // targets should be distinctly returned (deduplicated, so that doubly matching
-    // rules don't duply log)
-    |> Seq.distinctBy (fun (_, t, _, _) ->
-        t.name)
-
-    // project only the messageFilter and the target instance
-    |> Seq.map (fun (messageFilter, _, ti, level) ->
-        messageFilter, ti, level)
-
     // back to a list
     |> List.ofSeq
 
