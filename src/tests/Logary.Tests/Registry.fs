@@ -1,4 +1,4 @@
-﻿module Logary.Tests.Registry
+module Logary.Tests.Registry
 
 open System
 open System.IO
@@ -32,33 +32,6 @@ let registry =
             first |> should contain "Hello world" |> thatsIt
             second |> should contain "Goodbye cruel world" |> thatsIt)
         |> thatsIt
-
-    
-    yield testCase "doubly matching rules or mutil targets with same name should not log deduplicated" <| fun _ ->
-      let out, err =
-        Fac.textWriter(), Fac.textWriter()
-      let tw =
-        TextWriter.TextWriterConf.create(out, err, Formatting.JsonFormatter.Default)
-      
-      let rule = Rule.createForTarget "tw"
-      let logary =
-        confLogary "my service"
-        |> withRules [rule;rule;rule; Rule.setLevel LogLevel.Fatal rule ]
-        |> withTarget (Target.confTarget "tw" (TextWriter.create tw))
-        |> validate
-        |> withInternalTarget LogLevel.Fatal (Console.create Console.empty "internal")
-        |> runLogary
-        |> run
-
-      let logger = (pnp "a.b.c.d") |> Registry.getLogger logary.registry |> run
-
-      logger.errorWithBP (eventX "should not deduplicated") |> run
-
-      logary |> Fac.finaliseLogary
-      Expect.equal (Regex.Matches(err.ToString(),"should not deduplicated")).Count 1 "msg occur number"
-      
-
-
 
     yield testCase "after shutting down no logging happens" <| fun _ ->
       Fac.withLogary <| fun logary out err ->
