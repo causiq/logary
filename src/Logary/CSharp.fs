@@ -8,6 +8,8 @@ open System.Threading
 open System.Threading.Tasks
 open System.Runtime.CompilerServices
 open System.Runtime.InteropServices
+open Logary.Utils.FsMessageTemplates
+
 
 // This file is partially from
 // https://github.com/fsprojects/FSharpx.Extras/blob/master/src/FSharpx.Extras/CSharpCompat.fs
@@ -613,6 +615,9 @@ type LoggerExtensions =
 
     upcast Alt.toTask CancellationToken.None (logFn messageFactory)
 
+
+
+
   /// Log an event, but don't await all targets to flush. WITH back-pressure by default.
   /// Backpressure implies the caller will wait until its message is in the buffer.
   [<Extension>]
@@ -622,6 +627,14 @@ type LoggerExtensions =
                                [<ParamArray>] args : obj[])
                               : Task =
     let fields = extractFields formatTemplate args
+
+    // use for generate msg use default messagetemplates
+    let formatedMsg = Formatting.format (Parser.parse formatTemplate) args
+    let fields = Array.append [|("testestestestestestes", Field(Value.String(formatedMsg),None))|]  fields
+
+    // can we just replace the `formatTemplate` with `formatedMsg` , maybe lose origin template, bad idea.
+    // can we keep both template and formatedMsg , through a specific context item ?
+
     let messageFactory = eventX formatTemplate >> setFieldValuesArray fields
     let call = Logger.log logger level messageFactory |> Alt.afterFun (fun _ -> true)
     upcast Alt.toTask CancellationToken.None call
