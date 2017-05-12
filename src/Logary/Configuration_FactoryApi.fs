@@ -20,11 +20,15 @@ open Logary.Configuration
 open Logary.Target
 open Logary.Targets
 open Logary.Target.FactoryApi
+open System.Text.RegularExpressions
+
 
 type internal ConfBuilderT<'T when 'T :> SpecificTargetConf> =
-  { parent      : ConfBuilder        // logary that is being configured
-    tr          : Rule               // for this specific target
-    tcSpecific  : 'T option }
+  { parent            : ConfBuilder        // logary that is being configured
+    tr                : Rule               // for this specific target
+    tcSpecific        : 'T option
+    useForInternalLog : bool               // make internallog target config flexible
+  }
 with
   member internal x.SetTcSpecific tcs =
     { x with tcSpecific = Some tcs }
@@ -37,6 +41,10 @@ with
 
     member x.SourceMatching regex =
       { x with tr = { x.tr with Rule.hiera = regex } }
+      :> TargetConfBuild<'T>
+
+    member x.UseForInternalLog () =
+      { x with useForInternalLog = true }
       :> TargetConfBuild<'T>
 
     member x.AcceptIf acceptor =
@@ -57,14 +65,51 @@ and internal MetricsConfBuilder(conf) =
 
 /// The "main" fluent-config-api type with extension method for configuring
 /// Logary rules as well as configuring specific targets.
-and ConfBuilder(conf) =
-  member internal x.BuildLogary () =
-    conf |> Config.validate |> runLogary >>- asLogManager
+and ConfBuilder(conf, internalLoggingLevel) =
 
+  let specificHieraForSetInternalLog = "^specificHieraForSetInternalLog$"
+
+  let confBuilder conf =
+    ConfBuilder (conf,internalLoggingLevel)
+  
+  let configInternalTargets conf =
+    // find all targets set for internal log through a specific rule,
+    // and remove these (specific rule/target) from logary conf, so normal logging is not affected. 
+    // if there isn't any, use console as default
+
+    let (normalRules, forInternalRules) =
+      conf.rules 
+      |> List.partition (fun r -> 
+            match r with
+            | r when r.hiera.ToString() = specificHieraForSetInternalLog -> false
+            | _ -> true)
+            
+    let (normalTargets, internalTargets) = 
+      conf.targets
+      |> Map.partition (fun k v -> 
+          forInternalRules 
+          |> List.exists (fun r -> r.target = k.ToString())
+          |> not)
+
+    let internalTargets = 
+      internalTargets 
+      |> Map.toList
+      |> List.map (fun (_,tci) -> fst tci) 
+      |> function 
+        | [] -> [Console.create Console.empty "internalConsole"]
+        | tcs -> tcs
+
+    { conf with rules = normalRules ; targets = normalTargets }
+    |> Config.withInternalTargets internalLoggingLevel internalTargets
+
+
+  member internal x.BuildLogary () =
+    conf |> configInternalTargets |> Config.validate |> runLogary >>- asLogManager
+
+ 
   member x.InternalLoggingLevel(level : LogLevel) : ConfBuilder =
-    conf
-    |> Config.withInternalTarget level (Console.create Console.empty "internalConsole")
-    |> ConfBuilder
+    ConfBuilder (conf,level)
+
 
   /// Call this method to add middleware to Logary. Middleware is useful for interrogating
   /// the context that logging is performed in. It can for example ensure all messages
@@ -74,7 +119,7 @@ and ConfBuilder(conf) =
   member x.UseFunc(middleware : Func<Func<Message, Message>, Func<Message, Message>>) : ConfBuilder =
     conf
     |> Config.withMiddleware (fun next msg -> middleware.Invoke(new Func<_,_>(next)).Invoke msg)
-    |> ConfBuilder
+    |> confBuilder
     
   /// Call this method to add middleware to Logary. Middleware is useful for interrogating
   /// the context that logging is performed in. It can for example ensure all messages
@@ -84,14 +129,14 @@ and ConfBuilder(conf) =
   member x.Use(middleware : Middleware.Mid) : ConfBuilder =
     conf
     |> Config.withMiddleware middleware
-    |> ConfBuilder
+    |> confBuilder
 
   /// Depending on what the compiler decides; we may be passed a MethodGroup that
   /// can be converted to this signature:
   member x.Use(middleware : Func<Message -> Message, Message, Message>) =
     conf
     |> Config.withMiddleware (fun next msg -> middleware.Invoke(next, msg))
-    |> ConfBuilder
+    |> confBuilder
 
   member x.Metrics(configurator : Func<MetricsConfBuild, MetricsConfBuild>) =
     let builder = MetricsConfBuilder conf
@@ -99,7 +144,8 @@ and ConfBuilder(conf) =
     let built = configurator.Invoke builder
     
     built :?> MetricsConfBuilder
-    |> fun builder -> ConfBuilder builder.conf
+    |> fun builder -> confBuilder builder.conf
+
 
   /// Configure a target of the type with a name specified by the parameter name.
   /// The callback, which is the second parameter, lets you configure the target.
@@ -107,9 +153,10 @@ and ConfBuilder(conf) =
     let builderType = typeof<'T>
 
     let container : ConfBuilderT<'T> =
-      { parent     = x
-        tr         = Rule.createForTarget name
-        tcSpecific = None }
+      { parent              = x
+        tr                  = Rule.createForTarget name
+        tcSpecific          = None
+        useForInternalLog   = false }
 
     let contRef = ref (container :> TargetConfBuild<_>)
 
@@ -128,10 +175,15 @@ and ConfBuilder(conf) =
     // referentially transparent
     let targetConf = f.Invoke(!contRef) :?> ConfBuilderT<'T>
 
+    let tr = 
+      match targetConf.useForInternalLog with
+      | true -> {targetConf.tr with hiera = Regex(specificHieraForSetInternalLog)}
+      | _ -> targetConf.tr
+
     conf
-    |> withRule targetConf.tr
+    |> withRule tr
     |> withTarget (targetConf.tcSpecific.Value.Build name)
-    |> ConfBuilder
+    |> confBuilder
 
 /// Extensions to make it easier to construct Logary
 [<Extension; AutoOpen>]
@@ -162,5 +214,5 @@ type LogaryFactory =
     if serviceName = null then nullArg "serviceName"
     if configurator = null then nullArg "configurator"
     let config = Config.confLogary serviceName
-    let cb = configurator.Invoke (ConfBuilder config)
+    let cb = configurator.Invoke (ConfBuilder (config,LogLevel.Fatal) )
     cb.BuildLogary () |> CSharp.toTask

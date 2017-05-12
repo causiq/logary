@@ -194,6 +194,8 @@ module FactoryApi =
     /// this method.
     abstract SourceMatching : Regex -> TargetConfBuild<'T>
 
+    abstract UseForInternalLog : unit -> TargetConfBuild<'T>
+
     /// <summary>
     /// Only accept log lines that match the acceptor.
     /// </summary>
