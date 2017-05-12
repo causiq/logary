@@ -213,5 +213,5 @@ type LogaryFactory =
     if serviceName = null then nullArg "serviceName"
     if configurator = null then nullArg "configurator"
     let config = Config.confLogary serviceName
-    let cb = configurator.Invoke (ConfBuilder (config,LogLevel.Fatal) )
+    let cb = configurator.Invoke (ConfBuilder (config, LogLevel.Error) )
     cb.BuildLogary () |> CSharp.toTask
