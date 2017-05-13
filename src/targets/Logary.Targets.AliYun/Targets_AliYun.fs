@@ -65,7 +65,7 @@ module internal Impl =
           let subject = Formatting.MessageParts.formatTemplate t msg.fields
           log.PushBack("Msg",subject)
           // add origin template for identify in source code if needed
-          log.PushBack("template",t)
+          log.PushBack("Template",t)
         | Gauge (v, u)
         | Derived (v, u) ->
           let gaugeNumber = Value.toDouble v
