@@ -51,7 +51,8 @@ module internal Impl =
 
   let transToAliLogItem hostName logtime request =
     let log = LogItem()
-    log.Time <- logtime // time must set , can be anytime
+    // time must set , can be anytime
+    log.Time <- logtime 
     log.PushBack("Host",hostName)
     match request with
     | Log(msg,ack) ->
@@ -63,6 +64,8 @@ module internal Impl =
         | Event t ->
           let subject = Formatting.MessageParts.formatTemplate t msg.fields
           log.PushBack("Msg",subject)
+          // add origin template for identify in source code if needed
+          log.PushBack("template",t)
         | Gauge (v, u)
         | Derived (v, u) ->
           let gaugeNumber = Value.toDouble v
@@ -71,8 +74,6 @@ module internal Impl =
           // for making number compare search
           log.PushBack("GaugeNumber",string gaugeNumber)
 
-        // 针对 value 可能要看 gauge ，除了 msg 以外还需要设置一个可以 过滤的数值选项。
-        // 参考 appinsighlt -》 fieldValue / scaleUnit
         msg.context |> Map.iter (fun k v ->
           let k = "_ctx-" + k
           let str = Formatting.MessageParts.formatValue Environment.NewLine 0 v
