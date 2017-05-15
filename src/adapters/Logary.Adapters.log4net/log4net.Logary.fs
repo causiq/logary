@@ -72,17 +72,19 @@ type LogaryLog4NetAppender() =
                  Logging.getLoggerByName
 
   let formatCodeInfo (codeLocation:LocationInfo) =
-    let sb = Text.StringBuilder();
+    if (isNull codeLocation) || (isNull codeLocation.StackFrames)  then String.Empty
+    else
+      let sb = Text.StringBuilder();
 
-    codeLocation.StackFrames
-    |> Array.iteri (fun index frame ->
-         if index = 0 then
-            sb.AppendLine(frame.FullInfo) |> ignore
-         else
-           sb.AppendFormat("\tfrom {0}{1}",frame.FullInfo,Environment.NewLine) |> ignore
-    )
+      codeLocation.StackFrames
+      |> Array.iteri (fun index frame ->
+          if index = 0 then
+              sb.AppendLine(frame.FullInfo) |> ignore
+          else
+            sb.AppendFormat("\tfrom {0}{1}",frame.FullInfo,Environment.NewLine) |> ignore
+      )
 
-    sb.ToString()
+      sb.ToString()
 
   override x.Append (evt : LoggingEvent) =
     let msg = base.RenderLoggingEvent(evt)
