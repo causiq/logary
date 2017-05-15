@@ -41,6 +41,8 @@ nuget Topshelf.FSharp
 nuget fszmq
 nuget ApacheThrift
 nuget elmah.io.client
+nuget Serilog
+nuget Serilog.Sinks.Seq
 nuget Google.Cloud.Logging.V2 prerelease
 nuget Google.Api.Gax.Rest prerelease
 nuget aliyun-log-csharp-sdk
