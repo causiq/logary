@@ -87,7 +87,7 @@ Install-Package Logary
           * [inProcBuffer = true, flushToDisk = false, writeThrough=false caller awaits all acks at the end](#inprocbuffer--true-flushtodisk--false-writethroughfalse-caller-awaits-all-acks-at-the-end)
       * [Work to be done](#work-to-be-done)
     * [Stackdriver target (alpha level)](#stackdriver-target-alpha-level)
-    * [AliYun Log Service target](#aliYun-log-service-target)
+    * [AliYun Log Service target](#aliyun-log-service-target)
     * [Microsoft Azure Application Insights target](#microsoft-azure-application-insights-target)
     * [EventStore adapter](#eventstore-adapter)
     * [FsSQL adapter](#fssql-adapter)
