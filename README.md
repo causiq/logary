@@ -87,6 +87,7 @@ Install-Package Logary
           * [inProcBuffer = true, flushToDisk = false, writeThrough=false caller awaits all acks at the end](#inprocbuffer--true-flushtodisk--false-writethroughfalse-caller-awaits-all-acks-at-the-end)
       * [Work to be done](#work-to-be-done)
     * [Stackdriver target (alpha level)](#stackdriver-target-alpha-level)
+    * [AliYun Log Service target](#aliYun-log-service-target)
     * [Microsoft Azure Application Insights target](#microsoft-azure-application-insights-target)
     * [EventStore adapter](#eventstore-adapter)
     * [FsSQL adapter](#fssql-adapter)
@@ -1229,6 +1230,38 @@ messages.
 
 Logary also includes a logging target for [Google Cloud
 Stackdriver](https://cloud.google.com/stackdriver/).
+
+## AliYun Log Service target
+
+### Usage
+
+```csharp
+LogaryFactory.New("demoService",
+                    conf => conf
+                            .InternalLoggingLevel(LogLevel.Verbose)                        
+                            .Target<Debugger.Builder>("internal.debugger", tb => tb.UseForInternalLog())
+                            .Target<Logary.Targets.Console.Builder>("internal.console", tb => tb.UseForInternalLog())
+                            .Target<LiterateConsole.Builder>("console1")                            
+                            .Target<AliYun.Builder>("AliYunLog", tb => {
+                                 tb.MinLevel(LogLevel.Verbose)
+                                 .Target
+                                 .ConfClient("key",
+                                             "keyid",
+                                             "endpoint")
+                                 .ConfLogLocation("project", "logstore")
+                                 .SetConnectTimeOut(1000)
+                                 .SetReadWriteTimeOut(5000)
+                                 .Done();
+                            })
+                    );
+
+```
+
+### What does it look like?
+
+![search log from application](https://cloud.githubusercontent.com/assets/3074328/25772238/652f3018-3299-11e7-8364-81f49636a675.png)
+
+![show chat from application](https://cloud.githubusercontent.com/assets/3074328/25772236/5b8f40d4-3299-11e7-8c01-d49ac2f0757f.png)
 
 ## Microsoft Azure Application Insights target
 

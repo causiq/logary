@@ -628,14 +628,10 @@ type LoggerExtensions =
                               : Task =
     let fields = extractFields formatTemplate args
 
-    // use for generate msg use default messagetemplates
+    // generate msg use default messagetemplates
     let formatedMsg = Formatting.format (Parser.parse formatTemplate) args
-    let fields = Array.append [|("testestestestestestes", Field(Value.String(formatedMsg),None))|]  fields
 
-    // can we just replace the `formatTemplate` with `formatedMsg` , maybe lose origin template, bad idea.
-    // can we keep both template and formatedMsg , through a specific context item ?
-
-    let messageFactory = eventX formatTemplate >> setFieldValuesArray fields
+    let messageFactory = eventX formatedMsg >> setFieldValuesArray fields
     let call = Logger.log logger level messageFactory |> Alt.afterFun (fun _ -> true)
     upcast Alt.toTask CancellationToken.None call
 
