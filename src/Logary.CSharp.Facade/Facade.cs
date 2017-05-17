@@ -471,15 +471,16 @@ namespace Logary.Facade
 
             T WithLogger<T>(Func<ILogger, T> callback)
             {
-                var local = _config;
-                var fwCurr = _fwClock;
-
-                if (fwCurr != local.Item2)
+                if (_fwClock != _config.Item2)
                 {
                     lock (_updating)
                     {
-                        _logger = local.Item1.GetLogger(_name);
-                        _fwClock += 1u;
+                        var local = _config;
+                        if(_fwClock != local.Item2)
+                        {
+                            _logger = local.Item1.GetLogger(_name);
+                            _fwClock = local.Item2;
+                        }
                     }
                 }
 
