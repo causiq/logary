@@ -75,7 +75,7 @@ module internal Global =
           let cfg, cfgClock = !config // reread the config's clock after taking lock
           if cfgClock <> fwClock then // recheck after taking lock to avoid races
             logger <- cfg.getLogger name // get the current logger
-            fwClock <- fwClock + 1u // update instance's clock
+            fwClock <- cfgClock // update instance's clock
 
       // finally execute the action with the logger
       action logger
