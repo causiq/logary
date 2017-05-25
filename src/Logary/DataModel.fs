@@ -175,7 +175,7 @@ type PointValue with
       false
 
 type Field =
-  Field of Value * Units option // move outside this module
+  Field of Value * Units option
 
 /// This is record that is logged. It's capable of representing both metrics
 /// (gauges) and events.
