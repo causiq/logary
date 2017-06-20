@@ -604,6 +604,7 @@ module LiterateConsole =
 // boolean IsLogging() method, correct by excluded middle
 #nowarn "25"
 
+#if !NETSTANDARD1_5
 /// The Debugger target is useful when running in Xamarin Studio or VS.
 module Debugger =
   open System.Diagnostics
@@ -642,6 +643,8 @@ module Debugger =
             ack *<= () :> Job<_>
 
           RingBuffer.take requests ^=> function
+            //TODO: Debugger.IsLogging support https://docs.microsoft.com/en-us/dotnet/core/api/system.diagnostics.debugger
+         
             | Log (message, ack) when Debugger.IsLogging() ->
               job {
                 let path = PointName.format message.name
@@ -680,7 +683,7 @@ module Debugger =
     interface Logary.Target.FactoryApi.SpecificTargetConf with
       member x.Build name = create conf name
 
-
+#endif
 
 /// The file system module makes the File module testable by allowing the tests
 /// to implement a custom implementation of the file system.
@@ -788,13 +791,16 @@ module FileSystem =
     override x.WriteAsync(buffer, offset, length, cancellationToken) =
       written := !written + int64 length
       inner.WriteAsync(buffer, offset, length, cancellationToken)
-
+    //TODO: Begin/EndWrite seems to have been removed https://docs.microsoft.com/en-us/dotnet/core/api/system.io.stream
+    #if !NETSTANDARD1_5
     override x.BeginWrite(buffer, offset, count, callback, state) =
       written := !written + int64 count
       inner.BeginWrite(buffer, offset, count, callback, state)
-
+   
     override x.EndWrite(state) =
       inner.EndWrite(state)
+    #endif
+    // others:
 
     // others:
     override x.CanRead = inner.CanRead
@@ -858,9 +864,9 @@ module File =
     module ByAge =
       let everyMinute = FileAge (Duration.FromMinutes 1L)
       let every10minutes = FileAge (Duration.FromMinutes 10L)
-      let hourly = FileAge (Duration.FromHours 1L)
-      let daily = FileAge (Duration.FromHours 24L)
-      let weekly = FileAge (Duration.FromHours (7L * 24L))
+      let hourly = FileAge (Duration.FromHours 1)
+      let daily = FileAge (Duration.FromHours 24)
+      let weekly = FileAge (Duration.FromHours (7 * 24))
       let ofDuration dur = FileAge dur
 
     /// This module contains rotation policies that specify that files should
@@ -943,7 +949,7 @@ module File =
       let rotate, delete =
         [ FileSize (MiB 200L) ],
         [ folderSize (GiB 2L)
-          olderThan (Duration.FromHours (14L * 24L)) ]
+          olderThan (Duration.FromHours (14 * 24)) ]
       Rotation.Rotate (rotate, delete)
 
     /// Rotates your log files when each file has reached 200 MiB.
@@ -1038,7 +1044,7 @@ module File =
       /// given RuntimeInfo.
       member x.format (ri : RuntimeInfo) : string * string =
         let (Naming (spec, ext)) = x
-        let now = ri.clock.Now.ToDateTimeOffset()
+        let now = ri.clock.GetCurrentInstant().ToDateTimeOffset()
         let known =
           [ "service", ri.serviceName
             "date", now.ToString("yyyy-MM-dd")
@@ -1177,7 +1183,8 @@ module File =
       flushToDisk  = false
       writeThrough = true
       policies     = Policies.``rotate >200 MiB, delete if folder >3 GiB``
-      logFolder    = Environment.CurrentDirectory
+      //https://github.com/dotnet/corefx/issues/5089
+      logFolder    = Directory.GetCurrentDirectory() 
       encoding     = Encoding.UTF8
       naming       = Naming ("{service}-{date}", "log")
       fileSystem   = DotNetFileSystem("/var/lib/logs")
@@ -1269,7 +1276,7 @@ module File =
           if maxSize <= size then true else apply state rest
         | FileAge maxAge :: rest ->
           let created = Instant.FromDateTimeUtc(state.fileInfo.CreationTimeUtc)
-          let age = created - clock.Now
+          let age = created - clock.GetCurrentInstant()
           if maxAge <= age then true else apply state rest
 
       match conf.policies with

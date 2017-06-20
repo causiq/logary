@@ -203,7 +203,7 @@ module Reservoirs =
         rate      = 0.
         uncounted = 0L
         alpha     = alpha
-        interval  = float duration.Ticks }
+        interval  = float duration.TotalTicks }
 
     /// duration: SamplePeriod
     let oneMinuteEWMA =
@@ -237,7 +237,7 @@ module Reservoirs =
     let rate (inUnit : Duration) state =
       // TODO: consider using nanoseconds like timestamp on Message.
       // we know rate is in samples per tick
-      state.rate * float inUnit.Ticks
+      state.rate * float inUnit.TotalTicks
 
   let ewma (PointName pns) =
     let pn =

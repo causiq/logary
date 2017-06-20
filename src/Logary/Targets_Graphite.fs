@@ -71,7 +71,7 @@ module Impl =
   /// All graphite messages are of the following form.
   /// metric_path value timestamp\n
   let createMsg (path : String) value (timestamp : Instant) =
-    let line = String.Format("{0} {1} {2}\n", path, value, timestamp.Ticks / NodaConstants.TicksPerSecond)
+    let line = String.Format("{0} {1} {2}\n", path, value, (timestamp.ToUnixTimeTicks()) / NodaConstants.TicksPerSecond)
     UTF8.bytes line
 
   let doWrite state buffer =
@@ -100,7 +100,7 @@ module Impl =
             | Event template ->
               job {
                 let path = PointName.format logMsg.name
-                let instant = Instant logMsg.timestampTicks
+                let instant = Instant.FromUnixTimeTicks logMsg.timestampTicks
                 let graphiteMsg = createMsg path template instant
                 let! state' = graphiteMsg |> doWrite state
                 do! ack *<= ()
@@ -111,7 +111,7 @@ module Impl =
             | Derived _ ->
               job {
                 let path = sanitisePath logMsg.name
-                let instant = Instant logMsg.timestampTicks
+                let instant = Instant.FromUnixTimeTicks logMsg.timestampTicks
                 let pointName = PointName.format path
                 let bs = createMsg pointName (formatMeasure logMsg.value) instant
                 let! state' = bs |> doWrite state
@@ -124,7 +124,17 @@ module Impl =
             }
       ] :> Job<_>
 
-    running { client = new TcpClient(conf.hostname, int conf.port); sendRecvStream = None }
+    running { 
+      #if NETSTANDARD1_5
+      client = 
+        let tcpClient = new TcpClient()
+        tcpClient.ConnectAsync(conf.hostname, int conf.port).Wait()
+        tcpClient
+      #else
+      client = new TcpClient(conf.hostname, int conf.port)
+      #endif
+      sendRecvStream = None 
+    }
 
 /// Create a new graphite target configuration.
 [<CompiledName "Create">]

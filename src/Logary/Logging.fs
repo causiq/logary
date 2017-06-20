@@ -19,6 +19,10 @@ open Logary.Message
 open Logary.Registry.Logging
 open Logary.Internals
 
+
+// Stackframe wait to netstandard 2.0
+
+#if !NETSTANDARD1_5 
 /// Gets the current name, as defined by the class-name + namespace that the logger is in.
 [<CompiledName "GetCurrentLoggerName"; MethodImpl(MethodImplOptions.NoInlining); Pure>]
 let getCurrentLoggerName () =
@@ -42,6 +46,7 @@ let getCurrentLoggerName () =
   |> Seq.last
   |> getName
 
+#endif
 /// The promised logger is constructed through a the asynchronous call to
 /// getLogger (i.e. the call to the Registry's getLogger channel). Every
 /// call will return a job that is started on the global scheduler, which
@@ -101,8 +106,10 @@ let getLoggerByPointName name =
 let getLoggerByName name =
   getLoggerByPointName (PointName.parse name)
 
+#if !NETSTANDARD1_5
 /// Gets the current logger from the context that this method was called
 /// in.
 [<CompiledName "GetCurrentLogger"; MethodImpl(MethodImplOptions.NoInlining)>]
 let getCurrentLogger () =
   getLoggerByPointName (getCurrentLoggerName ())
+#endif

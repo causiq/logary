@@ -188,8 +188,10 @@ module Value =
     let fields =
       [ yield "type", String (e.GetType ()).FullName
         yield "message", String e.Message
+        #if !NETSTANDARD1_5
         if e.TargetSite <> null then
           yield "targetSite", String (e.TargetSite.ToString ())
+        #endif
         if e.StackTrace <> null then
           yield "stackTrace", String e.StackTrace
         if e.Source <> null then
@@ -749,21 +751,21 @@ type Units =
 module Duration =
   open NodaTime
   let hours (dur : Duration) =
-    float dur.Ticks / float NodaConstants.TicksPerHour
+    float dur.TotalTicks / float NodaConstants.TicksPerHour
 
   let minutes (dur : Duration) =
-    float dur.Ticks / float NodaConstants.TicksPerMinute
+    float dur.TotalTicks / float NodaConstants.TicksPerMinute
 
   let seconds (dur : Duration) =
-    float dur.Ticks / float NodaConstants.TicksPerSecond
+    float dur.TotalTicks / float NodaConstants.TicksPerSecond
 
   let milliseconds (dur : Duration) =
-    float dur.Ticks / float NodaConstants.TicksPerMillisecond
+    float dur.TotalTicks / float NodaConstants.TicksPerMillisecond
 
   let microseconds =
     ((*) 1000.) << milliseconds
   let ticks (dur : Duration) =
-    float dur.Ticks
+    float dur.TotalTicks
   let nanoseconds =
     ((*) 1000.) << microseconds
 
@@ -1164,7 +1166,7 @@ module DurationEx =
   type Duration with
     [<Extension; CompiledName "ToGauge">]
     member dur.toGauge () =
-      Int64 (dur.Ticks * Constants.NanosPerTick),
+      Int64 (int64(dur.TotalTicks * float(Constants.NanosPerTick))),
       Scaled (Seconds, float Constants.NanosPerSecond)
 
 /// Extensions to facilitate reading Diagnostics.Stopwatch as a value that
@@ -1596,7 +1598,7 @@ module Message =
 
   [<CompiledName "SetTimestamp">]
   let setTimestamp (instant : Instant) msg =
-    { msg with timestamp = instant.Ticks * Constants.NanosPerTick }
+    { msg with timestamp = instant.ToUnixTimeTicks() * Constants.NanosPerTick }
 
   /// Sets the number of ticks since epoch. There are 10 ticks per micro-second,
   /// so a tick is a 1/10th microsecond, so it's 100 nanoseconds long.
