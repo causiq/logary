@@ -100,13 +100,21 @@ NUGET
     Mono.Cecil (0.9.6.4)
     Newtonsoft.Json (10.0.2)
     NLog (4.4.1)
-    NodaTime (1.3.2)
+    NodaTime (2.0.3)
     protobuf-net (2.1)
     RabbitMQ.Client (3.6.6)
     Suave (2.0)
       FSharp.Core (>= 4.0.0.1)
+    System.Data.Common (4.3)
     System.Data.SQLite.Core (1.0.104)
+    System.Diagnostics.Contracts (4.3)
+    System.Diagnostics.Debug (4.3)
+    System.Diagnostics.Process (4.3)
+    System.Diagnostics.StackTrace (4.3)
+    System.Globalization.Extensions (4.3)
     System.Interactive.Async (3.1.1)
+    System.Net.NameResolution (4.3)
+    System.Reflection.TypeExtensions (4.3)
     Topshelf (4.0.3)
     Topshelf.FSharp (3.0)
       Topshelf (>= 4.0.2)
@@ -124,8 +132,8 @@ GITHUB
       Expecto
       Hopac
   remote: logary/logary
-    src/Logary.CSharp.Facade/Facade.cs (2bcd958a2143a124da406a9e756aae9282e701a6)
-    src/Logary.Facade/Facade.fs (2bcd958a2143a124da406a9e756aae9282e701a6)
+    src/Logary.CSharp.Facade/Facade.cs (f1d5a7bd317381f014d50ed693e507505b207616)
+    src/Logary.Facade/Facade.fs (f1d5a7bd317381f014d50ed693e507505b207616)
 GROUP Examples
 REDIRECTS: ON
 FRAMEWORK: >= NET45
