@@ -112,7 +112,7 @@ module internal Impl =
       let (host, serviceName, project, logstore) = extra
       let putLogRequest = PutLogsRequest(project,logstore)
       
-      let logSendTime = uint32 (SystemClock.Instance.Now.Ticks / NodaConstants.TicksPerSecond)
+      let logSendTime = uint32 (SystemClock.Instance.GetCurrentInstant().ToUnixTimeTicks() / NodaConstants.TicksPerSecond)
       putLogRequest.Topic <- serviceName // use serviceName as log topic for quick(index default) group/search
       putLogRequest.LogItems <- ResizeArray<_> (Array.map (transToAliLogItem host logSendTime) reqs)
 
