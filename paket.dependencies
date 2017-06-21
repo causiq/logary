@@ -1,4 +1,4 @@
-﻿redirects: on
+redirects: on
 framework: net45, net452, net461
 source https://www.nuget.org/api/v2
 source https://www.myget.org/F/haf/api/v3/index.json
@@ -6,8 +6,8 @@ source https://www.myget.org/F/haf/api/v3/index.json
 nuget DVar
 nuget FSharp.Core ~> 4 redirects: force
 nuget Castle.Core
-nuget Common.Logging
-nuget Common.Logging.Core
+nuget Common.Logging 3.4.0-Beta2 Beta
+nuget Common.Logging.Core 3.4.0-Beta2 Beta
 nuget EventStore.Client
 nuget FsPickler
 nuget Hopac 0.3.22

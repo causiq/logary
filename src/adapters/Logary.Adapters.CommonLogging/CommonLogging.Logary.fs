@@ -23,6 +23,19 @@ type internal Adapter(logger : Logger) =
   let gc = stubVariablesContext ()
   let tc = stubVariablesContext ()
 
+  let stubDisposable () =
+    { new IDisposable with
+        member x.Dispose () = ()}
+  let stubNestedVariableContext () =
+    let stack = new Stack<string>()
+    { new INestedVariablesContext with
+          member x.Push(s) = stack.Push(s); stubDisposable ()
+          member x.Pop() = stack.Pop()
+          member x.Clear() = stack.Clear()
+          member x.HasItems = stack.Count > 0
+          }
+  let nvc = stubNestedVariableContext ()
+
   let objToLine : obj -> Message = function
     | :? string as s ->
       Message.event Debug s
@@ -155,6 +168,7 @@ type internal Adapter(logger : Logger) =
 
     member x.GlobalVariablesContext = gc
     member x.ThreadVariablesContext = tc
+    member x.NestedThreadVariablesContext = nvc
 
 type LogaryAdapter(lm : LogManager) =
   interface ILoggerFactoryAdapter with
