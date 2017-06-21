@@ -12,7 +12,7 @@ let private sampleMessage : Message =
     value     = Event "this is bad"
     fields    = Map.empty
     context   = Map.empty
-    timestamp = Instant.FromSecondsSinceUnixEpoch(3L).PlusTicks(1234567L).Ticks * 100L
+    timestamp = Instant.FromUnixTimeSeconds(3L).PlusTicks(1234567L).ToUnixTimeTicks() * 100L
     level     = LogLevel.Error }
 
 let extractFormatFields msg =

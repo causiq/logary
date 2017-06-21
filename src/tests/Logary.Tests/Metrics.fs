@@ -14,14 +14,14 @@ let builtInMetrics =
 
   testList "built-ins" [
     testList "simplest counter" [
-      let counter = Counters.counter (PointName.ofSingle "logins") |> run
-
-      yield testCase "initial" <| fun _ ->
+      yield testCase "initial" <| fun _ ->  
+        let counter = Counters.counter (PointName.ofSingle "logins") |> run
         let stream = Metric.tap counter
         Metric.tick counter |> run
         Expect.equal (stream |> take 1L) [Int64 0L, Units.Scalar] "zero at start"
 
       yield testCase "counting to three" <| fun _ ->
+        let counter = Counters.counter (PointName.ofSingle "logins") |> run
         let stream = Metric.tap counter
         counter |> Metric.update (Int64 1L, Units.Scalar) |> run
         Metric.tick counter |> run
@@ -144,7 +144,7 @@ let reservoirs =
       testCase "store duplicate ticks" <| fun _ ->
         let testClock =
           { new IClock with
-              member x.Now = Instant(20L) }
+              member x.GetCurrentInstant () = Instant.FromUnixTimeTicks(20L) }
         // TODO: might port sliding time window reservoir
         ()
       ]
