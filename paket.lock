@@ -7,7 +7,7 @@ NUGET
       Newtonsoft.Json (>= 10.0.2)
     ApacheThrift (0.9.3)
     Argu (3.7)
-    Castle.Core (3.3.3)
+    Castle.Core (4.1)
     Chiron (6.2.1)
       Aether (>= 8.0.2 < 9.0)
       FParsec (>= 1.0 < 2.0)
