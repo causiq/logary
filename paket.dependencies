@@ -22,7 +22,7 @@ nuget FsSql
 nuget Expecto
 nuget Expecto.FsCheck
 nuget log4net
-nuget NLog
+nuget Nlog 5.0.0-beta08 beta
 nuget Machine.Specifications
 nuget Machine.Specifications.Should
 nuget Machine.Specifications.Runner.Console

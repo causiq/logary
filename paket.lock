@@ -99,7 +99,7 @@ NUGET
       Microsoft.ApplicationInsights.Agent.Intercept (>= 2.0.7)
     Mono.Cecil (0.10.0-beta6)
     Newtonsoft.Json (10.0.2)
-    NLog (4.4.1)
+    NLog (5.0.0-beta08)
     NodaTime (2.0.3)
     protobuf-net (2.1)
     RabbitMQ.Client (3.6.6)
