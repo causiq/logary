@@ -53,16 +53,6 @@ github logary/logary src/Logary.Facade/Facade.fs
 github logary/logary src/Logary.CSharp.Facade/Facade.cs
 
 
-
-nuget System.Diagnostics.Contracts framework: >=netstandard13
-nuget System.Diagnostics.Debug framework: >=netstandard13
-nuget System.Diagnostics.StackTrace framework: >=netstandard13
-nuget System.Globalization.Extensions framework: >=netstandard13
-nuget System.Net.NameResolution framework: >=netstandard13
-nuget System.Reflection.TypeExtensions framework: >=netstandard13
-nuget System.Data.Common framework: >=netstandard13
-nuget System.Diagnostics.Process framework: >=netstandard13
-
 group Examples
     redirects: on
     framework: >= net45
@@ -74,3 +64,14 @@ group Examples
     nuget Logary.Targets.DB
     nuget Logary.Targets.Logstash
     nuget Logary.Targets.Elmah.Io
+
+    group netcore
+    source https://www.nuget.org/api/v2
+    nuget System.Diagnostics.Contracts framework: >=netstandard13
+    nuget System.Diagnostics.Debug framework: >=netstandard13
+    nuget System.Diagnostics.StackTrace framework: >=netstandard13
+    nuget System.Globalization.Extensions framework: >=netstandard13
+    nuget System.Net.NameResolution framework: >=netstandard13
+    nuget System.Reflection.TypeExtensions framework: >=netstandard13
+    nuget System.Data.Common framework: >=netstandard13
+    nuget System.Diagnostics.Process framework: >=netstandard13

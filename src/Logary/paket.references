@@ -6,11 +6,3 @@ File:Aether.fs
 File:Chiron.fs
 File:YoLo.fs
 File:RingBuffer.fs
-System.Diagnostics.Contracts framework: >=netstandard13
-System.Diagnostics.Debug framework: >=netstandard13
-System.Diagnostics.StackTrace framework: >=netstandard13
-System.Globalization.Extensions framework: >=netstandard13
-System.Net.NameResolution framework: >=netstandard13
-System.Reflection.TypeExtensions framework: >=netstandard13
-System.Data.Common framework: >=netstandard13
-System.Diagnostics.Process framework: >=netstandard13

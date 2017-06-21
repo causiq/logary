@@ -2,7 +2,6 @@
   <PropertyGroup>
     <TargetFrameworks>netstandard1.6;net452</TargetFrameworks>
     <PackageTargetFallback>portable-net45+win8+wp8+wpa81;dnxcore50</PackageTargetFallback>
-    <DefineConstants>$(DefineConstants);DNXCORE50;NETSTANDARD1_5</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\..\paket-files\xyncro\aether\src\Aether\Aether.fs">
@@ -61,8 +60,20 @@
   <ItemGroup Condition="'$(TargetFramework)'=='net452'">
     <PackageReference Include="FSharp.Core" Version="4.0.0.*" />
   </ItemGroup>
+  
+  <PropertyGroup Condition="'$(TargetFramework)'=='netstandard1.6'">
+     <DefineConstants>$(DefineConstants);DNXCORE50;NETSTANDARD1_5</DefineConstants>
+  </PropertyGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='netstandard1.6'">
     <PackageReference Include="FSharp.Core" Version="4.1.*" />
+     <PackageReference Include="System.Diagnostics.Contracts" Version="4.3.0" />
+     <PackageReference Include="System.Diagnostics.Debug" Version="4.3.0"  />
+     <PackageReference Include="System.Diagnostics.StackTrace" Version="4.3.0" />
+     <PackageReference Include="System.Globalization.Extensions" Version="4.3.0" />
+     <PackageReference Include="System.Net.NameResolution" Version="4.3.0" />
+     <PackageReference Include="System.Reflection.TypeExtensions" Version="4.3.0" />
+     <PackageReference Include="System.Data.Common" Version="4.3.0" />
+     <PackageReference Include="System.Diagnostics.Process" Version="4.3.0" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FSharp.NET.Sdk" Version="1.0.*" PrivateAssets="All" />
