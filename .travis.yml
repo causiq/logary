@@ -1,6 +1,6 @@
 ---
 language: csharp
-
+dist: trusty
 dotnet: 1.0.1
 mono:
   - 4.6.1
