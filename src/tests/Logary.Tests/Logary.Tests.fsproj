@@ -46,5 +46,5 @@
     <ProjectReference Include="../../adapters/Logary.Adapters.Facade/Logary.Adapters.Facade.fsproj" />
   </ItemGroup>
   <Import Project="..\..\..\tools\Paket.Restore.targets" />
-  <Import Project="..\..\..\.paket\Paket.Restore.targets" />
+  
 </Project>
