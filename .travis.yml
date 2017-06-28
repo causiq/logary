@@ -16,7 +16,7 @@ install:
   - bundle
 
 script:
-  - echo $FrameworkPathOverride
+  - export FrameworkPathOverride='$(dirname $(which mono))/../lib/mono/4.5/'
   - bundle exec rake DEBUG=true
 
 matrix:
@@ -28,4 +28,3 @@ matrix:
 env:
   global:
     - TMPDIR=/tmp
-    - FrameworkPathOverride='$(dirname $(which mono))/../lib/mono/4.5/'
