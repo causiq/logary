@@ -16,8 +16,6 @@ Albacore::Tasks::Versionizer.new :versioning
 
 include ::Albacore::NugetsPack
 
-suave_description = 'Suave is a simple web development F# library providing a lightweight web server and a set of combinators to manipulate route flow and task composition.'
-
 Configuration = ENV['CONFIGURATION'] || 'Release'
 Platform = ENV['MSBUILD_PLATFORM'] || 'Any CPU'
 
@@ -48,12 +46,12 @@ task :restore => [:restore_paket, :paket_restore, :paket_files]
 dotnet_exe_path = "dotnet"
 
 desc 'Clean the CoreCLR dirs'
-task :dotnetclean => :restore do
+task :dotnetclean do
   system dotnet_exe_path, %W|clean src/Logary.NetCore.sln -v n|
 end
 
 desc 'Restore the CoreCLR binaries'
-task :dotnetrestore => :dotnetclean do
+task :dotnetrestore => :restore do
   system dotnet_exe_path, %W|restore src/Logary.NetCore.sln -v n|
 end
 
