@@ -65,7 +65,7 @@ group Examples
     nuget Logary.Targets.Logstash
     nuget Logary.Targets.Elmah.Io
 
-    group netcore
+group netcore
     source https://www.nuget.org/api/v2
     nuget System.Diagnostics.Contracts framework: >=netstandard13
     nuget System.Diagnostics.Debug framework: >=netstandard13
