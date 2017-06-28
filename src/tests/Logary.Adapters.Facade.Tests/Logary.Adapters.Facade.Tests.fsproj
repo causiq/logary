@@ -8,7 +8,7 @@
       <Paket>True</Paket>
       <Link>paket-files/YoLo.fs</Link>
     </Compile>
-    <Compile Include="AssemblyVersionInfo.fs" />
+   
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <Content Include="app.config" />

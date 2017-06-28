@@ -8,7 +8,7 @@
     <Compile Include="Messages.fs" />
     <Compile Include="Client.fs" />
     <Compile Include="Targets_Riemann.fs" />
-    <Compile Include="AssemblyVersionInfo.fs" />
+   
     <Compile Include="AssemblyInfo.fs" />
     <None Include="app.config" />
     <None Include="Riemann.proto" />

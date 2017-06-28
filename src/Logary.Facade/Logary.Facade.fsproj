@@ -4,7 +4,7 @@
     <PackageTargetFallback>portable-net45+win8+wp8+wpa81;dnxcore50</PackageTargetFallback>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="AssemblyVersionInfo.fs" />
+   
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Facade.fs" />
   </ItemGroup>

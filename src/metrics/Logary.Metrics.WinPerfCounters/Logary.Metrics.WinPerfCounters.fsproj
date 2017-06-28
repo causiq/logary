@@ -7,7 +7,7 @@
   <ItemGroup>
     <Content Include="app.config" />
     <None Include="paket.references" />
-    <Compile Include="AssemblyVersionInfo.fs" />
+   
     <Compile Include="WinPerfCounter.fs" />
     <Compile Include="WinPerfCounters.fs" />
     <Compile Include="Common.fs" />

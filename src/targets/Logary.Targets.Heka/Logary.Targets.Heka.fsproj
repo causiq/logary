@@ -5,7 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Content Include="app.config" />
-    <Compile Include="AssemblyVersionInfo.fs" />
+   
     <Compile Include="..\Logary.Targets.Riemann\ProtoBufUtils.fs">
       <Link>ProtoBufUtils.fs</Link>
     </Compile>

@@ -9,7 +9,7 @@
       <Link>paket-files/Facade.fs</Link>
     </Compile>
     <Content Include="app.config" />
-    <Compile Include="AssemblyVersionInfo.fs" />
+   
     <Compile Include="Libryy.fs" />
     <None Include="paket.references" />
     <Compile Include="LoggingV1.fs" />

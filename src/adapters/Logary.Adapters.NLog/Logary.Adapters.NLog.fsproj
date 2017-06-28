@@ -6,7 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Content Include="app.config" />
-    <Compile Include="AssemblyVersionInfo.fs" />
+   
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="NLog.Targets.Logary.fs" />
     <None Include="paket.references" />

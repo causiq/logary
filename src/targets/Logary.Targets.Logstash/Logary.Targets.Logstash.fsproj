@@ -11,7 +11,7 @@
     </Compile>
     <Compile Include="Targets_Logstash.fs" />
     <None Include="paket.references" />
-    <Compile Include="AssemblyVersionInfo.fs" />
+   
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='net452'">
     <PackageReference Include="FSharp.Core" Version="4.0.0.*" />

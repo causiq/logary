@@ -4,7 +4,7 @@
     <OutputType>Exe</OutputType>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="AssemblyVersionInfo.fs" />
+   
     <Compile Include="DBTarget.fs" />
     <None Include="Script.fsx" />
     <None Include="paket.references" />

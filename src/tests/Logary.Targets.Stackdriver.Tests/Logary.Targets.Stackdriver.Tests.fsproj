@@ -6,7 +6,7 @@
   <ItemGroup>
     <None Include="paket.references" />
     <Content Include="app.config" />
-    <Compile Include="AssemblyVersionInfo.fs" />
+   
     <Compile Include="Program.fs" />
   </ItemGroup>  
   <PropertyGroup Condition="'$(TargetFramework)'=='netstandard1.6'">

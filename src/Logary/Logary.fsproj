@@ -21,7 +21,7 @@
       <Link>paket-files/RingBuffer.fs</Link>
     </Compile>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="AssemblyVersionInfo.fs" />
+   
     <Compile Include="LogLevel.fs" />
     <Compile Include="MessageTemplates.fs" />
     <Compile Include="Constants.fs" />

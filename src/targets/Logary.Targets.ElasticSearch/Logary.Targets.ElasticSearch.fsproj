@@ -5,7 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Targets_ElasticSearch.fs" />
-    <Compile Include="AssemblyVersionInfo.fs" />
+   
     <None Include="paket.references" />
     <None Include="app.config" />
   </ItemGroup>

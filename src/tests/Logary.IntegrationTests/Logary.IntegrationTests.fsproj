@@ -6,7 +6,7 @@
   <ItemGroup>
 
     <Compile Include="Integrations.fs" />
-    <Compile Include="AssemblyVersionInfo.fs" />
+   
     <Compile Include="Script.fsx" />
     <None Include="paket.references" />
     <None Include="app.config" />

@@ -9,7 +9,7 @@
     <Compile Include="Migrations.fs" />
     <Compile Include="Configuration_CSharp_Migrations.fs" />
     <Compile Include="Configuration_Migrations.fs" />
-    <Compile Include="AssemblyVersionInfo.fs" />
+   
     <Compile Include="AssemblyInfo.fs" />
     <None Include="paket.references" />
     <None Include="app.config" />

@@ -9,7 +9,7 @@
       <Link>paket-files/YoLo.fs</Link>
     </Compile>
     <Compile Include="Targets_InfluxDb.fs" />
-    <Compile Include="AssemblyVersionInfo.fs" />
+   
     <None Include="paket.references" />
     <None Include="app.config" />
   </ItemGroup>

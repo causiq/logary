@@ -7,7 +7,7 @@
     <Compile Include="Targets_Shipper.fs" />
     <None Include="paket.references" />
     <Content Include="App.config" />
-    <Compile Include="AssemblyVersionInfo.fs" />
+   
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='net452'">
     <PackageReference Include="FSharp.Core" Version="4.0.0.*" />

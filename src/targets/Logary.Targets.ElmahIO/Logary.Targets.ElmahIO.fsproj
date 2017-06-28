@@ -10,7 +10,7 @@
     </Compile>
     <Compile Include="Targets_ElmahIO.fs" />
     <None Include="Sample.fsx" />
-    <Compile Include="AssemblyVersionInfo.fs" />
+   
     <Compile Include="AssemblyInfo.fs" />
     <None Include="paket.references" />
     <None Include="app.config" />

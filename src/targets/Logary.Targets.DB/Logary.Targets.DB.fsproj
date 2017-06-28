@@ -5,7 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Targets_DB.fs" />
-    <Compile Include="AssemblyVersionInfo.fs" />
+   
     <Compile Include="AssemblyInfo.fs" />
     <None Include="paket.references" />
     <None Include="app.config" />

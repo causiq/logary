@@ -45,7 +45,7 @@
     <Content Include="app.config" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AssemblyVersionInfo.fs" />
+   
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>

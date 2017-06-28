@@ -5,7 +5,7 @@
     <DefineConstants>$(DefineConstants);DNXCORE50;NETSTANDARD1_5</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="AssemblyVersionInfo.fs" />
+   
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="CommonLogging.Logary.fs" />
     <None Include="paket.references" />

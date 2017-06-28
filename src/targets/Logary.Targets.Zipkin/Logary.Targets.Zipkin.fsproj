@@ -6,7 +6,7 @@
   <ItemGroup>
     <Compile Include="Api.fs" />
     <Compile Include="Targets_Zipkin.fs" />
-    <Compile Include="AssemblyVersionInfo.fs" />
+   
     <None Include="app.config" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='net452'">
