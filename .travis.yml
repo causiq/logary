@@ -1,6 +1,7 @@
 ---
 language: csharp
 
+dotnet: 1.0.1
 mono:
   - 4.6.1
   - 4.8.1
