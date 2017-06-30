@@ -45,6 +45,17 @@ task :restore => [:restore_paket, :paket_restore, :paket_files]
 
 dotnet_exe_path = "dotnet"
 
+build :clean_sln do |b|
+  b.target = 'Clean'
+  b.sln = 'src/v4.sln'
+  b.prop 'Configuration', Configuration
+end
+
+desc 'clean'
+task :clean => [:clean_sln] do
+  FileUtils.rm_rf 'build'
+end
+
 desc 'Clean the CoreCLR dirs'
 task :dotnetclean do
   system dotnet_exe_path, %W|clean src/Logary.NetCore.sln -v n|
@@ -56,22 +67,60 @@ task :dotnetrestore => :restore do
 end
 
 desc 'Builds the CoreCLR binaries'
-task :dotnetbuild => :dotnetrestore do
-  system dotnet_exe_path, %W|build src/Logary.NetCore.sln -v n|
+task :build => :dotnetrestore do
+  system dotnet_exe_path, %W|build src/Logary.NetCore.sln -c #{Configuration} -v n|
 end
+
+
+task :tests_unit do
+  Dir.glob("src/tests/**/bin/#{Configuration}/net462/*.Tests.exe").
+    reject { |exe| exe.include? '.DB' }.
+    keep_if { |exe| !exe.include?('Mailgun') || (ENV['MAILGUN_API_KEY'] && exe.include?('Mailgun')) }.
+    keep_if { |exe| !exe.include?('ElmahIO') || (ENV['ELMAH_IO_LOG_ID'] && exe.include?('ElmahIO')) }.
+    keep_if { |exe| !exe.include?('Stackdriver') || (ENV["STACKDRIVER_PROJECT"] && ENV["STACKDRIVER_LOG"] && exe.include?('Stackdriver')) }.
+    each do |exe|
+    system exe, %W|--sequenced #{ENV['DEBUG'] ? "--debug" : ""}|, clr_command: true
+  end
+end
+
+test_runner :tests_spec do |tests|
+  tests.files = FileList['src/tests/Logary.CSharp.Tests/bin/Release/net462/*.Tests.dll']
+  tests.exe = 'packages\Machine.Specifications.Runner.Console\tools\mspec-clr4.exe'
+  #tests.add_parameter ''
+  #tests.native_exe # when you don't want to use 'mono' as the native executable on non-windows systems
+end
+
+desc 'run unit tests'
+task :tests => [:build, :tests_unit, :tests_spec]
 
 directory 'build/pkg'
 package_dist_path = File.expand_path "build/pkg"
 
 desc 'Packs the binaries'
-task :dotnetpack => [:dotnetbuild, :versioning, 'build/pkg'] do
+task :dotnetpack => [:build, :versioning, 'build/pkg'] do
   projects = FileList['src/**/*.{csproj,fsproj}'].exclude(/Example|Services|Tests|Spec|Rutta|Health|Logary[.]Facade|Logary[.]CSharp[.]Facade|sample|packages/i)
   projects.each do |proj|
-    system dotnet_exe_path, %W|pack #{proj} -o #{package_dist_path} /p:PackageVersion=#{ENV['NUGET_VERSION']} -v n|
+    system dotnet_exe_path, %W|pack #{proj} -c #{Configuration} --no-build -o #{package_dist_path} /p:PackageVersion=#{ENV['NUGET_VERSION']} -v n|
   end
 end
 
-task :default => [:dotnetpack]
+task :nugets_push do
+  Dir.glob 'build/pkg/*.nupkg' do |path|
+    begin
+      system 'tools/NuGet.exe',
+             %W|push #{path} #{ENV['NUGET_KEY']} -source https://api.nuget.org/v3/index.json|,
+             clr_command: true
+    rescue => e
+      error e
+    end
+  end
+end
+
+task :nugets => ['build/pkg', :versioning, :build, :dotnetpack]
+
+task :default => [:tests, :nugets]
+
+
 # desc 'create assembly infos'
 # asmver_files :assembly_info => :versioning do |a|
 #   a.files = FileList['**/*proj'] # optional, will find all projects recursively by default
@@ -97,25 +146,7 @@ task :default => [:dotnetpack]
 #   end
 # end
 
-# task :paket_replace do
-#   sh %{ruby -pi.bak -e "gsub(/module Aether/, 'module Logary.Utils.Aether')" paket-files/xyncro/aether/src/Aether/Aether.fs}
-#   sh %{ruby -pi.bak -e "gsub(/module Chiron/, 'module Logary.Utils.Chiron')" paket-files/xyncro/chiron/src/Chiron/Chiron.fs}
-#   sh %{ruby -pi.bak -e "gsub(/module.* YoLo/, 'module internal Logary.YoLo')" paket-files/haf/YoLo/YoLo.fs}
-#   sh %{ruby -pi.bak -e "gsub(/module Hopac/, 'namespace Logary.Internals')" paket-files/logary/RingBuffer/RingBuffer.fs}
-#   sh %{ruby -pi.bak -e "gsub(/namespace Logary.Facade/, 'namespace Libryy.Logging')" paket-files/logary/logary/src/Logary.Facade/Facade.fs}
-#   sh %{ruby -pi.bak -e "gsub(/namespace Logary.Facade/, 'namespace Cibryy.Logging')" paket-files/logary/logary/src/Logary.CSharp.Facade/Facade.cs}
-# end
 
-# build :clean_sln do |b|
-#   b.target = 'Clean'
-#   b.sln = 'src/v4.sln'
-#   b.prop 'Configuration', Configuration
-# end
-
-# desc 'clean'
-# task :clean => [:clean_sln] do
-#   FileUtils.rm_rf 'build'
-# end
 
 # def maybe_sign conf
 #   pfx, pass, sign = [
@@ -145,17 +176,7 @@ task :default => [:dotnetpack]
 #   end
 # end
 
-# desc 'Perform quick build'
-# build :build_quick do |b|
-#   b.prop 'Configuration', Configuration
-#   b.sln = 'src/Logary.sln'
-#   maybe_sign b
-# end
 
-# desc 'Perform full build'
-# task :build => [:versioning, :assembly_info, :restore, :paket_replace, :build_quick]
-
-# directory 'build/pkg'
 
 # task :nugets_quick => [:versioning, 'build/pkg'] do
 #   projects = FileList['src/**/*.{csproj,fsproj}'].exclude(/Example|Tests|Spec|Rutta|Health|Logary[.]Facade|Logary[.]CSharp[.]Facade|sample|packages/i)
@@ -200,82 +221,44 @@ task :default => [:dotnetpack]
 # desc 'package nugets - finds all projects and package them'
 # task :nugets => ['build/pkg', :versioning, :build, :nugets_quick]
 
-# task :tests_unit do
-#   Dir.glob("src/tests/**/bin/#{Configuration}/*.Tests.exe").
-#     reject { |exe| exe.include? '.DB' }.
-#     keep_if { |exe| !exe.include?('Mailgun') || (ENV['MAILGUN_API_KEY'] && exe.include?('Mailgun')) }.
-#     keep_if { |exe| !exe.include?('ElmahIO') || (ENV['ELMAH_IO_LOG_ID'] && exe.include?('ElmahIO')) }.
-#     keep_if { |exe| !exe.include?('Stackdriver') || (ENV["STACKDRIVER_PROJECT"] && ENV["STACKDRIVER_LOG"] && exe.include?('Stackdriver')) }.
-#     each do |exe|
-#     system exe, %W|--sequenced #{ENV['DEBUG'] ? "--debug" : ""}|, clr_command: true
-#   end
-# end
 
-# desc 'run integration tests'
-# task :tests_integration do
-#   system "src/tests/Logary.IntegrationTests/bin/#{Configuration}/Logary.IntegrationTests.exe", clr_command: true
-# end
+desc 'run integration tests'
+task :tests_integration do
+  system "src/tests/Logary.IntegrationTests/bin/#{Configuration}/Logary.IntegrationTests.exe", clr_command: true
+end
 
-# Albacore::Tasks::Release.new :release,
-#                              pkg_dir: 'build/pkg',
-#                              depend_on: :nugets,
-#                              nuget_exe: 'tools/NuGet.exe',
-#                              api_key: ENV['NUGET_KEY']
-# desc 'push all packages in build/pkg'
-# task :nugets_push do
-#   Dir.glob 'build/pkg/*.nupkg' do |path|
-#     begin
-#       system 'tools/NuGet.exe',
-#              %W|push #{path} #{ENV['NUGET_KEY']} -source https://api.nuget.org/v3/index.json|,
-#              clr_command: true
-#     rescue => e
-#       error e
-#     end
-#   end
-# end
 
-# test_runner :tests_spec do |tests|
-#   tests.files = FileList['src/tests/Logary.CSharp.Tests/bin/Release/*.Tests.dll']
-#   tests.exe = 'packages\Machine.Specifications.Runner.Console\tools\mspec-clr4.exe'
-#   #tests.add_parameter ''
-#   #tests.native_exe # when you don't want to use 'mono' as the native executable on non-windows systems
-# end
 
-# desc 'run unit tests'
-# task :tests => [:build, :tests_unit, :tests_spec]
+namespace :docs do
+  task :pre_reqs do
+    { 'FAKE'              => '2.17.9',
+      'FSharp.Formatting' => '2.4.10' }.
+      each do |name, version|
+      system 'tools/NuGet.exe', %W|
+        install #{name} -OutputDirectory tools -Version #{version} -ExcludeVersion
+      |, clr_command: true
+    end
+  end
 
-# task :default => [:tests, :nugets]
+  directory 'build/api'
+  directory 'docs/files'
+  directory 'docs/content'
 
-# namespace :docs do
-#   task :pre_reqs do
-#     { 'FAKE'              => '2.17.9',
-#       'FSharp.Formatting' => '2.4.10' }.
-#       each do |name, version|
-#       system 'tools/NuGet.exe', %W|
-#         install #{name} -OutputDirectory tools -Version #{version} -ExcludeVersion
-#       |, clr_command: true
-#     end
-#   end
+  desc 'build docs'
+  task :build => [:pre_reqs, 'docs/files', 'docs/content', 'build/api'] do
+    system 'tools/FAKE/tools/Fake.exe', 'tools/docs.fsx', clr_command: true
+  end
 
-#   directory 'build/api'
-#   directory 'docs/files'
-#   directory 'docs/content'
-
-#   desc 'build docs'
-#   task :build => [:pre_reqs, 'docs/files', 'docs/content', 'build/api'] do
-#     system 'tools/FAKE/tools/Fake.exe', 'tools/docs.fsx', clr_command: true
-#   end
-
-#   # unused!! for reference only
-#   task :build2 => :pre_reqs do
-#     system 'tools/FSharp.Formatting.CommandTool/tools/fsformatting.exe', %w|
-#      metadataFormat --generate
-#                     --sourceRepo https://github.com/logary/logary
-#                     --sourceFolder /src/Logary
-#                     --dllFiles src/Logary/bin/Release/Logary.dll
-#                     --outDir docs/output-api
-#                     --layoutRoots docs/layouts
-#                     --libDirs src/Logary/bin/Release
-#     |, clr_command: true
-#   end
-# end
+  # unused!! for reference only
+  task :build2 => :pre_reqs do
+    system 'tools/FSharp.Formatting.CommandTool/tools/fsformatting.exe', %w|
+     metadataFormat --generate
+                    --sourceRepo https://github.com/logary/logary
+                    --sourceFolder /src/Logary
+                    --dllFiles src/Logary/bin/Release/Logary.dll
+                    --outDir docs/output-api
+                    --layoutRoots docs/layouts
+                    --libDirs src/Logary/bin/Release
+    |, clr_command: true
+  end
+end
