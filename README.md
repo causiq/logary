@@ -1231,46 +1231,6 @@ messages.
 Logary also includes a logging target for [Google Cloud
 Stackdriver](https://cloud.google.com/stackdriver/).
 
-## AliYun Log Service target
-
-### Usage
-
-```csharp
-LogaryFactory.New("demoService",
-                    conf => conf
-                            .InternalLoggingLevel(LogLevel.Verbose)                        
-                            .Target<Debugger.Builder>("internal.debugger", tb => tb.UseForInternalLog())
-                            .Target<Logary.Targets.Console.Builder>("internal.console", tb => tb.UseForInternalLog())
-                            .Target<LiterateConsole.Builder>("console1")                            
-                            .Target<AliYun.Builder>("AliYunLog", tb => {
-                                 tb.MinLevel(LogLevel.Verbose)
-                                 .Target
-                                 .ConfClient("key",
-                                             "keyid",
-                                             "endpoint")
-                                 .ConfLogLocation("project", "logstore")
-                                 .SetConnectTimeOut(1000)
-                                 .SetReadWriteTimeOut(5000)
-                                 .Done();
-                            })
-                    );
-
-```
-
-### What does it look like?
-
-![search log from application](https://cloud.githubusercontent.com/assets/3074328/25772238/652f3018-3299-11e7-8364-81f49636a675.png)
-
-![show chat from application](https://cloud.githubusercontent.com/assets/3074328/25772236/5b8f40d4-3299-11e7-8c01-d49ac2f0757f.png)
-
-## Microsoft Azure Application Insights target
-
-Target for [Microsoft Azure AppInsights](https://docs.microsoft.com/en-us/azure/application-insights/)
-logs the events as TRACE-messages (or Events/Metrics with a different MappingConfiguration). 
-You need to set the API-key first. Then when you go to Azure Portal
-Application Insights and `Overview -> Search` you should be able to find the targets from there.
-Metrics goes to `Metrics Explorer -> Add Chart -> Custom`. [More info...](https://docs.microsoft.com/azure/application-insights/app-insights-create-new-resource)
-
 ### Configuration
 
 The target can be configured like so:
@@ -1310,6 +1270,47 @@ Rule.createForTarget "target-name"
 * batching
 * flushing
   * the underlying library doesn't provide a flush mechanism yet
+
+
+## AliYun Log Service target
+
+### Usage
+
+```csharp
+LogaryFactory.New("demoService",
+                    conf => conf
+                            .InternalLoggingLevel(LogLevel.Verbose)                        
+                            .Target<Debugger.Builder>("internal.debugger", tb => tb.UseForInternalLog())
+                            .Target<Logary.Targets.Console.Builder>("internal.console", tb => tb.UseForInternalLog())
+                            .Target<LiterateConsole.Builder>("console1")                            
+                            .Target<AliYun.Builder>("AliYunLog", tb => {
+                                 tb.MinLevel(LogLevel.Verbose)
+                                 .Target
+                                 .ConfClient("key",
+                                             "keyid",
+                                             "endpoint")
+                                 .ConfLogLocation("project", "logstore")
+                                 .SetConnectTimeOut(1000)
+                                 .SetReadWriteTimeOut(5000)
+                                 .Done();
+                            })
+                    );
+
+```
+
+### What does it look like?
+
+![search log from application](https://cloud.githubusercontent.com/assets/3074328/25772238/652f3018-3299-11e7-8364-81f49636a675.png)
+
+![show chat from application](https://cloud.githubusercontent.com/assets/3074328/25772236/5b8f40d4-3299-11e7-8c01-d49ac2f0757f.png)
+
+## Microsoft Azure Application Insights target
+
+Target for [Microsoft Azure AppInsights](https://docs.microsoft.com/en-us/azure/application-insights/)
+logs the events as TRACE-messages (or Events/Metrics with a different MappingConfiguration). 
+You need to set the API-key first. Then when you go to Azure Portal
+Application Insights and `Overview -> Search` you should be able to find the targets from there.
+Metrics goes to `Metrics Explorer -> Add Chart -> Custom`. [More info...](https://docs.microsoft.com/azure/application-insights/app-insights-create-new-resource)
 
 
 ## EventStore adapter
