@@ -25,7 +25,7 @@ namespace Logary.CSharp.Tests
         Establish context = () =>
             {
                 writer = new StringWriter(new StringBuilder());
-                timestamp = Instant.FromSecondsSinceUnixEpoch(987654);
+                timestamp = Instant.FromUnixTimeSeconds(987654);
                 exception = new ApplicationException("Nice exception");
 
                 manager = LogaryFactory.New(
@@ -53,7 +53,7 @@ namespace Logary.CSharp.Tests
         It output_should_contain_exception = () => subject.ShouldContain(exception.Message);
         It output_should_contain_message = () => subject.ShouldContain("the situation is dire");
         It output_should_contain_the_field = () => subject.ShouldContain("oh-noes");
-        It output_should_contain_timestamp = () => subject.ShouldContain(timestamp.Ticks.ToString());
+        It output_should_contain_timestamp = () => subject.ShouldContain(timestamp.ToUnixTimeTicks().ToString());
         It output_should_contain_processName_key = () => subject.ShouldContain("processName");
 
         Cleanup cleanup = () =>
@@ -74,7 +74,7 @@ namespace Logary.CSharp.Tests
         Establish context = () =>
             {
                 writer = new StringWriter(new StringBuilder());
-                timestamp = Instant.FromSecondsSinceUnixEpoch(987654);
+                timestamp = Instant.FromUnixTimeTicks(987654);
                 exception = new ApplicationException("Nice exception");
 
                 manager = LogaryFactory.New(
@@ -113,7 +113,7 @@ namespace Logary.CSharp.Tests
 
         It output_should_contain_message = () => subject.ShouldContain("the situation is dire");
         It output_should_contain_the_field = () => subject.ShouldContain("oh-noes");
-        It output_should_contain_timestamp = () => subject.ShouldContain(timestamp.Ticks.ToString());
+        It output_should_contain_timestamp = () => subject.ShouldContain(timestamp.ToUnixTimeTicks().ToString());
 
         Cleanup cleanup = () =>
             {

@@ -55,7 +55,7 @@ namespace Logary
         /// </summary>
         public static Message SetTimestamp(this Message msg, Instant timestamp)
         {
-            return MessageModule.SetTicksEpoch(timestamp.Ticks, msg);
+            return MessageModule.SetTicksEpoch(timestamp.ToUnixTimeTicks(), msg);
         }
 
         /// <summary>
@@ -73,7 +73,7 @@ namespace Logary
         /// <param name="msg">Message.</param>
         public static Instant GetTimestamp(this Message msg)
         {
-            return Instant.FromTicksSinceUnixEpoch(msg.timestampTicks);
+            return Instant.FromUnixTimeTicks(msg.timestampTicks);
         }
 
         /// <summary>

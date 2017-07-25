@@ -118,11 +118,11 @@ module Date =
 
   /// Returns the number of nanoseconds since epoch
   let timestamp () : int64 =
-    (!clock).Now.Ticks * Constants.NanosPerTick
+    (!clock).GetCurrentInstant().ToUnixTimeTicks() * Constants.NanosPerTick
 
   /// Gets the current instant from the global clock
   let instant () : Instant =
-    (!clock).Now
+    (!clock).GetCurrentInstant()
 
 module Cache =
   open System
@@ -206,7 +206,11 @@ module Map =
       Map.empty
 
     | :? System.Collections.IDictionary as dict
+      #if NETSTANDARD1_5
+      when dict.GetType().GetTypeInfo().IsGenericType ->
+      #else
       when dict.GetType().IsGenericType ->
+      #endif
       let values = seq {
          let e = dict.GetEnumerator()
          while e.MoveNext() do
@@ -252,7 +256,12 @@ module Map =
           let value =
             try pi.GetValue(data, null)
             with ex ->
+              #if NETSTANDARD1_5
+              //TODO: figure out replacement for ReflectedType for CoreCLR
+              box (sprintf "Property accessor %s threw an exception: %O" pi.Name  ex)
+              #else
               box (sprintf "Property accessor %s on %s threw an exception: %O" pi.Name pi.ReflectedType.FullName ex)
+              #endif
           pi.Name, value)
         |> Map.ofArray
 

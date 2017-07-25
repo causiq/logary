@@ -11,8 +11,8 @@ open Logary.Adapters.Facade
 [<EntryPoint>]
 let main args =
   let enUS = CultureInfo "en-US"
-  let adapter = LoggerAdapter.createGeneric<Expecto.Logging.Logger> Fac.literal.Value
-  Expecto.Logging.Global.initialise { Expecto.Logging.Global.defaultConfig with getLogger = fun _ -> adapter }
+  // let adapter = LoggerAdapter.createGeneric<Expecto.Logging.Logger> Fac.literal.Value
+  // Expecto.Logging.Global.initialise { Expecto.Logging.Global.defaultConfig with getLogger = fun _ -> adapter }
   Thread.CurrentThread.CurrentCulture   <- enUS
   Thread.CurrentThread.CurrentUICulture <- enUS
   Tests.runTestsInAssembly defaultConfig args

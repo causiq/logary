@@ -365,7 +365,7 @@ let files =
     RuntimeInfo.create (
       "my service",
       { new IClock with
-          member x.Now = now },
+          member x.GetCurrentInstant() = now },
       "myHost")
 
   let runtime2016_10_11T13_14_15 =

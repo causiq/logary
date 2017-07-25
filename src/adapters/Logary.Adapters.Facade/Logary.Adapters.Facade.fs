@@ -31,7 +31,14 @@ module Reflection =
   let findModule =
     let findModule_ : Type * string -> Type =
       fun (loggerType, moduleName) ->
-        let typ = sprintf "%s.%s, %s" loggerType.Namespace moduleName loggerType.Assembly.FullName
+        let typ = 
+          sprintf "%s.%s, %s" loggerType.Namespace moduleName 
+
+            #if NETSTANDARD1_5
+            loggerType.AssemblyQualifiedName
+            #else
+            loggerType.Assembly.FullName
+            #endif
         Type.GetType typ
     Cache.memoize findModule_
 
@@ -82,7 +89,12 @@ module Reflection =
     for arg in invocation.Arguments do
       let argType = arg.GetType()
       printfn " - %A\n   : %s" arg (argType.FullName)
-      printfn "   :> %s" argType.BaseType.FullName
+      printfn "   :> %s" 
+        #if NETSTANDARD1_5
+        (argType.GetTypeInfo().BaseType.FullName)
+        #else
+        argType.BaseType.FullName
+        #endif
     printfn "Method.Name: %s" invocation.Method.Name
     printfn "----------"
 

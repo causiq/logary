@@ -1,6 +1,7 @@
 ---
 language: csharp
-
+dist: trusty
+dotnet: 1.0.1
 mono:
   - 4.6.1
   - 4.8.1
@@ -15,6 +16,7 @@ install:
   - bundle
 
 script:
+  - export FrameworkPathOverride=$(dirname $(which mono))/../lib/mono/4.5/
   - bundle exec rake DEBUG=true
 
 matrix:

@@ -139,7 +139,7 @@ module MessageParts =
 
   /// Format a timestamp in nanoseconds since epoch into a ISO8601 string
   let formatTimestamp (ticks : int64) =
-    Instant.FromTicksSinceUnixEpoch(ticks)
+    (Instant.FromUnixTimeTicks ticks)
       .ToDateTimeOffset()
       .ToString("o", CultureInfo.InvariantCulture)
 

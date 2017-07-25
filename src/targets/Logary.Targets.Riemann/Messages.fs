@@ -198,7 +198,7 @@ type Event =
   val mutable metric_f : float32 Nullable
 
   new () =
-    { time          = Nullable (SystemClock.Instance.Now.Ticks / NodaConstants.TicksPerSecond)
+    { time          = Nullable (SystemClock.Instance.GetCurrentInstant().ToUnixTimeTicks() / NodaConstants.TicksPerSecond)
       state         = ""
       service       = ""
       host          = ""

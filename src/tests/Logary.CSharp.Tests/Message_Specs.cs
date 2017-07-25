@@ -22,7 +22,7 @@ namespace Logary.CSharp.Tests
                     MapModule.Empty<PointName, Field>(),
                     MapModule.Empty<string, Value>(),
                     LogLevel.Warn,
-                    SystemClock.Instance.Now.Ticks*100L);
+                    SystemClock.Instance.GetCurrentInstant().ToUnixTimeTicks()*100L);
                 subject.SetEvent("Hello World").value.TryGetEvent(out template).ShouldBeTrue();
             };
 
@@ -31,8 +31,8 @@ namespace Logary.CSharp.Tests
 
         It should_allow_changing_ts =
             () => subject
-                .SetTimestamp(Instant.FromTicksSinceUnixEpoch(4567))
+                .SetTimestamp(Instant.FromUnixTimeTicks(4567))
                 .GetTimestamp()
-                .ShouldEqual(Instant.FromTicksSinceUnixEpoch(4567));
+                .ShouldEqual(Instant.FromUnixTimeTicks(4567));
     }
 }
