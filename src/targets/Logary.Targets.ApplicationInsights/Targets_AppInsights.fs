@@ -68,7 +68,7 @@ module internal Impl =
   let fieldValue f = 
       let (Logary.Field (v, un)) = f
       match un with
-      | None -> Units.formatValue v
+      | None -> Formatting.MessageParts.formatValue Environment.NewLine 0 v
       | Some u -> Units.formatWithUnit Units.UnitOrientation.Prefix u v
   
   let scaleUnit = function
