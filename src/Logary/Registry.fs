@@ -62,29 +62,52 @@ module Engine =
     private {
       subscriptions : HashMap<string, Message -> Job<unit>>
       inputCh : Ch<LogLevel * (LogLevel -> Message)>
+      shutdownCh : Ch<unit>
+      subscriberCh : Ch<string * (Message->Job<unit>)> 
     }
 
   let create (Processing processing) : Job<T> =
-    let inputCh, emitCh, shutdownCh = Ch (), Ch (), Ch ()
-    let callback = Ch ()
-    let rec loop () =
+    let inputCh, emitCh, shutdownCh, subscriberCh = Ch (), Ch (), Ch (), Ch ()
+
+    let engine = { subscriptions = HashMap.empty
+                   inputCh = inputCh
+                   shutdownCh = shutdownCh
+                   subscriberCh = subscriberCh
+                 }
+
+    let rec loop (subsribers:HashMap<string, Message -> Job<unit>>) =
       Alt.choose [
-        inputCh ^=> fun (level, messageFactory) ->
-          processing (messageFactory level |> NodeInput.Message) emitCh
+        inputCh ^=> fun (level, messageFactory) -> 
+          processing (messageFactory level) emitCh
+          ^=>. loop subsribers
 
         emitCh ^=> fun message ->
-          inputCh *<- (message.level, fun _ -> message)
+          // send to targets
+          let targetName = Message.tryGetContext "target" message
+          match targetName with 
+          | Some (String targetName) ->
+              let subscriber = HashMap.tryFind targetName subsribers 
+              match subscriber with
+              | None -> loop subsribers
+              | Some subscriber -> 
+                  Alt.prepareJob (fun () -> ((subscriber message) >>-. loop subsribers))
+          | _ -> loop subsribers
+          
+
+        subscriberCh ^=> fun (key, sink) ->
+           subsribers
+           |> HashMap.add key sink 
+           |> loop
 
         upcast shutdownCh
       ]
 
-    Job.start (loop ())
-    >>-. { subscriptions = HashMap.empty
-           inputCh = inputCh
-         }
+    Job.start (loop engine.subscriptions)
+    >>-. engine
 
-  let subscribe key (sink : Message -> Job<unit>) : Job<unit> =
-    Job.result ()
+  let subscribe (engine : T) (key:string) (sink : Message -> Job<unit>) : Job<unit> =
+    engine.subscriberCh *<- (key, sink)
+    :> Job<unit>
 
   let unsubscribe key (sink : Message -> Job<unit>) : Job<unit> =
     Job.result ()
@@ -96,13 +119,15 @@ module Engine =
     Alt.always ()
 
   let shutdown (engine : T) =
-    Alt.always ()
+    engine.shutdownCh *<- ()
 
   let log (engine : T) (logLevel : LogLevel) (messageFactory : LogLevel -> Message) : Alt<unit> =
     Alt.always ()
 
   let logWithAck (engine : T) (logLevel : LogLevel) (messageFactory : LogLevel -> Message) : Alt<Promise<unit>> =
-    Promise.instaPromise
+      engine.inputCh *<- (logLevel, messageFactory) 
+      ^->. Promise (()) 
+
 
 /// When you validate the configuration, you get one of these.
 ///
@@ -279,7 +304,7 @@ module Registry =
 
     let pollServices (services : Service<Service.T> list) : Alt<(Service<Service.T> * exn) list> =
       let faulted = IVar ()
-
+      
       let request =
         services
         |> List.traverseJobA (fun s -> Service.getState s >>- fun state -> s, state)

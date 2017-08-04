@@ -75,8 +75,7 @@ module Service =
       Alt.choose [
         pauseCh ^=>. pause
         resumeCh ^=>. resume
-        getStateCh ^=> fun replCh ->
-        mserver ^=> check
+        getStateCh ^=> fun replCh -> mserver ^=> check
       ]
     and check = function
       | Choice1Of2 () ->
