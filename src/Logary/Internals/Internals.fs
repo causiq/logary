@@ -98,7 +98,7 @@ module HashMap =
   let key_ (k: 'k) : Prism<HashMap<'k,'v>,'v> =
     HashMap.tryFind k,
     (fun v x ->
-      if HashMap.containsKey k x then HashMap.set k v x else x)
+      if HashMap.containsKey k x then x else HashMap.set k v x )
 
   /// Lens to a value option associated with a key in a map.
   let value_ (k: 'k) : Lens<HashMap<'k,'v>, 'v option> =

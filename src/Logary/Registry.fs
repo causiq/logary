@@ -93,11 +93,10 @@ module Engine =
                   Alt.prepareJob (fun () -> ((subscriber message) >>-. loop subsribers))
           | _ -> loop subsribers
           
-
         subscriberCh ^=> fun (key, sink) ->
-           subsribers
-           |> HashMap.add key sink 
-           |> loop
+          subsribers
+          |> HashMap.add key sink 
+          |> loop
 
         upcast shutdownCh
       ]
@@ -125,8 +124,8 @@ module Engine =
     Alt.always ()
 
   let logWithAck (engine : T) (logLevel : LogLevel) (messageFactory : LogLevel -> Message) : Alt<Promise<unit>> =
-      engine.inputCh *<- (logLevel, messageFactory) 
-      ^->. Promise (()) 
+    engine.inputCh *<- (logLevel, messageFactory) 
+    ^->. Promise (()) 
 
 
 /// When you validate the configuration, you get one of these.

@@ -1,9 +1,13 @@
 namespace Logary
 
+open System
+open System.Text
+open System.IO
 open Logary
 open Logary.Internals
 open Hopac
 open Hopac.Infixes
+
 
 
 type Source<'s> =
@@ -31,7 +35,7 @@ module Flow =
             source.onNext item
       })
 
-  let inline start<'T> =
+  let start<'T> =
      Flow (fun cont -> 
       { new Source<'T> with
           member x.onNext item =
@@ -68,19 +72,19 @@ module Events =
     {subscriptions = pipes}
 
   let service svc flow = 
-    flow |> Flow.filter (fun msg -> msg.context |> HashMap.tryFind KnownLiterals.ServiceContextName = Some (String svc))
+    flow |> Flow.filter (fun msg ->
+      msg.context |> HashMap.tryFind KnownLiterals.ServiceContextName = Some (Logary.String svc))
 
   let tag tag flow = flow |> Flow.filter (Message.hasTag tag)
 
   let sink (targetName:string) flow = 
     flow |> Flow.map (fun msg -> Message.setContext "target" targetName msg)
 
-
-  /// 把 stream 转化为对 msg 的处理，应该是遍历订阅的各种处理流程，进行处理
   let toProcessing (stream:T) = 
     (fun (msg:Message) (emitCh:Ch<Message>) -> 
       (stream.subscriptions
       |> List.traverseAltA (fun flow -> 
+          // if cont type is 't -> unit ,
           // this will not compile, case we need Alt<unit> , 
           // should we change Source and Cont type in async style ? 
           // e.g.  type Cont<'t> = 't -> Alt<unit>  
