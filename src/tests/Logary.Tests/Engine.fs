@@ -30,15 +30,13 @@ open Hopac.Infixes
 
 //   inner None
 
-let throttled msg publish =
-  Alt.always ()
 
 let tests =
   [
-    // testCase "empty flow" <| fun () ->
-    //   Flow.singleton 43
-    //   |> Flow.map (fun (i : int) -> i + 1)
-    //   |> ignore
+    testCase "empty flow" <| fun () ->
+      Flow.singleton 43
+      |> Flow.map (fun (i : int) -> i + 1)
+      |> ignore
 
     testCaseAsync "play" (job {
       let pipes =
@@ -80,19 +78,19 @@ let tests =
       do! Engine.shutdown engine
     } |> Job.toAsync)
 
-    // testList "lifetime" [
-    //   testCaseAsync "create and shutdown" (job {
-    //     let! engine = Engine.create (Processing throttled)
-    //     do! Engine.shutdown engine
-    //   } |> Job.toAsync)
+    testList "lifetime" [
+      testCaseAsync "create and shutdown" (job {
+        let! engine = Engine.create (List.empty)
+        do! Engine.shutdown engine
+      } |> Job.toAsync)
 
-    //   testCaseAsync "pause and resume" (job {
-    //     let! engine = Engine.create (Processing throttled)
-    //     do! Engine.pause engine
-    //     do! Engine.resume engine
-    //     do! Engine.shutdown engine
-    //   } |> Job.toAsync)
-    // ]
+      testCaseAsync "pause and resume" (job {
+        let! engine = Engine.create (List.empty)
+        do! Engine.pause engine
+        do! Engine.resume engine
+        do! Engine.shutdown engine
+      } |> Job.toAsync)
+    ]
 
     // testList "processing" [
     //   testCaseAsync "no ticks, no processing" (job {

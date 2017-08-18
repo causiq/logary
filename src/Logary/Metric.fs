@@ -192,13 +192,13 @@ module Flow =
 
   let where pred = filter pred
 
-  // target
-  let target name (flow: Flow<'R>) =
-    Flow (fun ctx ->
-      flow.runBulk { complete = (fun () -> ())
-                     cont = f
-                     cts = null } 
-    )
+  // // target
+  // let target name (flow: Flow<'R>) =
+  //   Flow (fun ctx ->
+  //     flow.runBulk { complete = (fun () -> ())
+  //                    cont = f
+  //                    cts = null } 
+  //   )
 
 /// A node in a stream processing engine
 type NodeAPI =
