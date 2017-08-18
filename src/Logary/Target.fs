@@ -29,7 +29,6 @@ type TargetConf = // formerly TargetUtils
   interface Service with
     member x.name = x.name
 
-
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module TargetConf =
 

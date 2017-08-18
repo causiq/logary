@@ -99,7 +99,6 @@ module Service =
             shutdown = shutdown
             getStateCh = getStateCh
             ilogger    = ilogger }
-
         member x.name = name
     }
 

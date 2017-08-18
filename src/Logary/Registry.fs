@@ -312,7 +312,6 @@ module Registry =
 
     let pollServices (services : Service<Service.T> list) : Alt<(Service<Service.T> * exn) list> =
       let faulted = IVar ()
-      
       let request =
         services
         |> List.traverseJobA (fun s -> Service.getState s >>- fun state -> s, state)
