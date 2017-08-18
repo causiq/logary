@@ -67,7 +67,7 @@ type Flow<'t> =
   member inline internal x.runBulk ctx = (x.run ctx).bulk()
 
 [<RequireQualifiedAccessAttribute>]
-module Floww =
+module Flow =
 
   let inline internal Flow f = { run = f }
 

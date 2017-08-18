@@ -8,89 +8,64 @@ open Logary.Internals
 open Hopac
 open Hopac.Infixes
 
-
-
-type Source<'s> =
-  abstract onNext:  's -> Alt<unit>
-  
-type Cont<'t> = 't -> Alt<unit>
-
-type Flow<'s,'t> =
-  internal { run: Cont<'t> -> Source<'s> }
-
-
 [<RequireQualifiedAccessAttribute>]
-module Flow =
+module Pipe =
 
-  let inline internal Flow f = { run = f }
+  let inline start () =
+    fun cont -> cont >> Some
 
-  module Internals = 
-    // Public permanent entrypoint to implement inlined versions of map, filter, choose etc.
-    // 'f' is called with one argument before iteration.
-    let mapCont f flow =
-      Flow (fun cont ->
-       { new Source<'T> with
-          member x.onNext item =
-            let source = flow.run ( f cont )
-            source.onNext item
-      })
+  let inline map (f:'a -> 'b) pipe =
+    fun cont -> f >> cont |> pipe
 
-  let start<'T> =
-     Flow (fun cont -> 
-      { new Source<'T> with
-          member x.onNext item =
-            cont item
-      })
-
-  // Used to indicate that we don't want a closure to be curried
-  let inline internal nocurry() = Unchecked.defaultof<unit>
-
-  let inline map (f:'T -> 'R) (flow:Flow<_,'T>) : Flow<_,'R> =
-    flow |> Internals.mapCont (fun cont -> nocurry(); f >> cont)
-
-  let inline filter (predicate:'T -> bool) (flow:Flow<_,'T>) : Flow<_,'T> =
-    flow |> Internals.mapCont (fun cont -> nocurry(); fun prev -> if predicate prev then cont prev else Alt.always ())
-
+  let inline filter (predicate:'a -> bool) pipe =
+    fun cont -> pipe id >> Option.bind (fun prev -> if predicate prev then Some (cont prev) else None)
 
 [<RequireQualifiedAccessAttribute>]
 module Events = 
 
   type T =
     private {
-      subscriptions : Flow<Message,Message> list
+      pipes : (Message -> Message option) list
       // inputCh : Ch<LogLevel * (LogLevel -> Message)>
     }
 
   let stream = {
-    subscriptions = List.empty;
+    pipes = List.empty;
   }
 
-  let flow = Flow.start<Message>
-
   let subscribers pipes stream =
-    let pipes = List.concat [pipes; stream.subscriptions;]
-    {subscriptions = pipes}
+    {pipes = List.concat [pipes; stream.pipes;]}
 
-  let service svc flow = 
-    flow |> Flow.filter (fun msg ->
+  let service svc pipe = 
+    pipe |> Pipe.filter (fun msg ->
       msg.context |> HashMap.tryFind KnownLiterals.ServiceContextName = Some (Logary.String svc))
 
-  let tag tag flow = flow |> Flow.filter (Message.hasTag tag)
+  let tag tag pipe = pipe |> Pipe.filter (Message.hasTag tag)
 
-  let sink (targetName:string) flow = 
-    flow |> Flow.map (fun msg -> Message.setContext "target" targetName msg)
+  let sink (targetName:string) pipe = 
+    pipe (fun msg -> Message.setContext "target" targetName msg)
 
-  let toProcessing (stream:T) = 
-    (fun (msg:Message) (emitCh:Ch<Message>) -> 
-      (stream.subscriptions
-      |> List.traverseAltA (fun flow -> 
-          // if cont type is 't -> unit ,
-          // this will not compile, case we need Alt<unit> , 
-          // should we change Source and Cont type in async style ? 
-          // e.g.  type Cont<'t> = 't -> Alt<unit>  
-           let source = flow.run (fun msg -> Ch.give emitCh msg)
-           source.onNext msg
-        )
-      )
-      ^-> ignore)
-      |> Processing
+  let toPipes stream =
+    stream.pipes
+
+  // let toProcessing (stream:T) = 
+  //   (fun (msg:Message) (subsribers:HashMap<string, Message -> Job<unit>>) -> 
+  //     (stream.subscriptions
+  //     |> List.traverseJobA (fun source -> 
+  //         let processedMsg = source msg
+  //         match processedMsg with 
+  //         | None -> Job.result ()
+  //         | Some msg ->
+  //           let targetName = Message.tryGetContext "target" msg
+  //           match targetName with 
+  //           | Some (String targetName) ->
+  //             let subscriber = HashMap.tryFind targetName subsribers 
+  //             match subscriber with
+  //             | Some subscriber -> subscriber msg
+  //             | _ -> Job.result ()
+  //           | _ -> Job.result ()
+  //       )
+  //     )
+  //     >>- ignore
+  //     )
+  //   |> Processing

@@ -61,15 +61,34 @@ module Engine =
   type T =
     private {
       subscriptions : HashMap<string, Message -> Job<unit>>
-      inputCh : Ch<LogLevel * (LogLevel -> Message)>
+      inputCh : Ch<LogLevel * (LogLevel -> Message) * IVar<unit>>
       shutdownCh : Ch<unit>
       subscriberCh : Ch<string * (Message->Job<unit>)> 
     }
 
-  let create (Processing processing) : Job<T> =
-    let inputCh, emitCh, shutdownCh, subscriberCh = Ch (), Ch (), Ch (), Ch ()
+  let processing msg subscribers pipes =
+     (pipes
+      |> List.traverseJobA (fun source -> 
+          let processedMsg = source msg
+          match processedMsg with 
+          | None -> Job.result ()
+          | Some msg ->
+            let targetName = Message.tryGetContext "target" msg
+            match targetName with 
+            | Some (String targetName) ->
+              let subscriber = HashMap.tryFind targetName subscribers 
+              match subscriber with
+              | Some subscriber -> subscriber msg
+              | _ -> Job.result ()
+            | _ -> Job.result ()
+        )
+      )
 
-    let engine = { subscriptions = HashMap.empty
+  let create pipes : Job<T> =
+    let inputCh, shutdownCh, subscriberCh = Ch (), Ch (), Ch ()
+
+    let engine = { 
+                   subscriptions = HashMap.empty
                    inputCh = inputCh
                    shutdownCh = shutdownCh
                    subscriberCh = subscriberCh
@@ -77,22 +96,11 @@ module Engine =
 
     let rec loop (subsribers:HashMap<string, Message -> Job<unit>>) =
       Alt.choose [
-        inputCh ^=> fun (level, messageFactory) -> 
-          processing (messageFactory level) emitCh
-          ^=>. loop subsribers
+        inputCh ^=> fun (level, messageFactory, reply) -> 
+          processing (messageFactory level) subsribers pipes
+          >>= fun _ -> reply *<= () 
+          >>=. loop subsribers
 
-        emitCh ^=> fun message ->
-          // send to targets
-          let targetName = Message.tryGetContext "target" message
-          match targetName with 
-          | Some (String targetName) ->
-              let subscriber = HashMap.tryFind targetName subsribers 
-              match subscriber with
-              | None -> loop subsribers
-              | Some subscriber -> 
-                  Alt.prepareJob (fun () -> ((subscriber message) >>-. loop subsribers))
-          | _ -> loop subsribers
-          
         subscriberCh ^=> fun (key, sink) ->
           subsribers
           |> HashMap.add key sink 
@@ -100,7 +108,7 @@ module Engine =
 
         upcast shutdownCh
       ]
-
+      
     Job.start (loop engine.subscriptions)
     >>-. engine
 
@@ -120,12 +128,13 @@ module Engine =
   let shutdown (engine : T) =
     engine.shutdownCh *<- ()
 
-  let log (engine : T) (logLevel : LogLevel) (messageFactory : LogLevel -> Message) : Alt<unit> =
-    Alt.always ()
-
   let logWithAck (engine : T) (logLevel : LogLevel) (messageFactory : LogLevel -> Message) : Alt<Promise<unit>> =
-    engine.inputCh *<- (logLevel, messageFactory) 
-    ^->. Promise (()) 
+    let reply = IVar ()
+    engine.inputCh *<- (logLevel, messageFactory, reply)
+    ^->. upcast reply
+
+  let log (engine : T) (logLevel : LogLevel) (messageFactory : LogLevel -> Message) : Alt<unit> =
+    logWithAck engine logLevel messageFactory ^-> ignore
 
 
 /// When you validate the configuration, you get one of these.
@@ -333,7 +342,7 @@ module Registry =
     spawn "Target" ri conf.targets Target.create >>= fun (targets : Target.T list) ->
     spawn "Metric" ri conf.metrics Metric.create >>= fun (metrics : Metric.T list) ->
     spawn "HealthCheck" ri conf.healthChecks HealthCheck.create >>= fun (hcs : HealthCheck.T list) ->
-    Engine.create conf.processing >>= fun engine ->
+    Engine.create List.empty >>= fun engine ->
 
     let getLoggerCh, flushCh, shutdownCh = Ch (), Ch (), Ch ()
 
