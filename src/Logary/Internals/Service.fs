@@ -15,9 +15,13 @@ type ServiceState =
   | Shutdown
   | Faulted of unhandled:exn // the supervised job faulted
 
+type Service =
+  abstract name : string
+
 /// A service is an abstract interface that encapsulates a service
 /// implementation.
 type Service<'i> =
+  inherit Service
   abstract instance : 'i
 
 and ShutdownService =
@@ -25,6 +29,7 @@ and ShutdownService =
   /// each of them.
   abstract transitions : (ServiceState * Duration) list
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Service =
 
   type T =
@@ -94,6 +99,8 @@ module Service =
             shutdown = shutdown
             getStateCh = getStateCh
             ilogger    = ilogger }
+
+        member x.name = name
     }
 
   let createSimple ilogger name shutdownCh server =

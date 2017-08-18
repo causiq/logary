@@ -2,7 +2,6 @@ namespace Logary
 
 open Hopac
 open Logary.Internals
-open Hopac.Stream
 
 /// The low-water-mark for stream processing nodes (operators)
 type LowWaterMark = EpochNanoSeconds
@@ -23,7 +22,7 @@ type NodeInput =
 /// Should return an Alt so that it can be cancelled. Hoisted into a metric
 /// in the end.
 type Processing =
-  Processing of ((* all things *) Message -> (* publish *) Ch<Message> -> Alt<unit>)
+  Processing of ((* all things *) Alt<NodeInput> -> (* publish *) Ch<Message> -> Alt<unit>)
 with
   static member empty =
     Processing (fun _ _ -> Alt.always ())
@@ -109,7 +108,6 @@ module Flow =
                     complete ()
                     true
                 member x.dispose() = ()} })
-                
 
   /// <summary>Wraps array as a flow.</summary>
   /// <param name="source">The input array.</param>
@@ -195,13 +193,12 @@ module Flow =
   let where pred = filter pred
 
   // target
-  // let target name (flow: Flow<'R>) =
-  //   Flow (fun ctx ->
-  //     flow.runBulk { complete = (fun () -> ())
-  //                    cont = f
-  //                    cts = null } 
-  //   )
-
+  let target name (flow: Flow<'R>) =
+    Flow (fun ctx ->
+      flow.runBulk { complete = (fun () -> ())
+                     cont = f
+                     cts = null } 
+    )
 
 /// A node in a stream processing engine
 type NodeAPI =
