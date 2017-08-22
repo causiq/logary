@@ -42,11 +42,11 @@ let tests =
       let pipes =
         Events.stream
         |> Events.subscribers [
-          Pipe.start ()
+          Pipe.start
           |> Events.service "svc1"
           |> Events.sink "console"
 
-          Pipe.start ()
+          Pipe.start
           |> Events.service "svc2"
           |> Events.sink "test"
         ]
