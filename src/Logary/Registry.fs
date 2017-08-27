@@ -140,20 +140,16 @@ module Engine =
 /// When you validate the configuration, you get one of these.
 ///
 /// This is the logary configuration structure having a memory of all
-/// configured targets, metrics, healthchecks, middlewares, etc.
+/// configured targets, middlewares, etc.
 type LogaryConf =
   /// A map of the targets by name.
   abstract targets : HashMap<string, TargetConf>
-  /// A map of metrics by name.
-  abstract metrics : HashMap<string, MetricConf>
-  /// A map of health checks by name.
-  abstract healthChecks : HashMap<string, HealthCheckConf>
   /// Service metadata - what name etc.
   abstract runtimeInfo : RuntimeInfo
   /// Extra middleware added to every resolved logger.
   abstract middleware : Middleware[]
   /// Optional stream transformer.
-  abstract processing : Processing
+  // abstract processing : Processing
 
 /// A data-structure that gives information about the outcome of a flush
 /// operation on the Registry. This data structure is only relevant if the
@@ -297,33 +293,14 @@ module Registry =
             getLoggerWithMiddleware = getLoggerWithMiddlewareT x }
       GlobalService.create config conf.runtimeInfo.logger
 
-    let spawn kind (ri : RuntimeInfo) mapping factory =
-      let creator (KeyValue (name, conf)) =
-        let mname = PointName [| "Logary"; sprintf "%s(%s)" kind name |]
-        let logger = ri.logger |> Logger.apply (setName mname)
-        let ri = ri |> RuntimeInfo.setLogger logger
-        (*conf :> Service, *)
-        factory ri conf
-
-      mapping
+    let spawnTarget (ri : RuntimeInfo) targets =
+      targets
       |> List.ofSeq
-      |> List.traverseJobA creator
-      //|> List.traverseJobA supervise
+      |> List.traverseJobA (fun (KeyValue (_,conf)) -> 
+           Target.create ri conf >>= fun instance ->
+           let (minionName,supervisedJob) = Target.toMinions instance conf.policy
+           supervisedJob >>-. (minionName,instance))
 
-    let pollServices (services : Service<Service.T> list) : Alt<(Service<Service.T> * exn) list> =
-      let faulted = IVar ()
-      let request =
-        services
-        |> List.traverseJobA (fun s -> Service.getState s >>- fun state -> s, state)
-        |> Job.map (List.choose (function
-            | service, Faulted e -> Some (service, e)
-            | _ -> None))
-        |> Job.bind (function
-            | [] -> Job.result ()
-            | res -> faulted *<= res)
-        |> Job.start
-
-      Alt.prepareJob (fun () -> request >>-. faulted)
 
   open Impl
 
@@ -337,10 +314,11 @@ module Registry =
       conf.runtimeInfo,
       PointName [| "Logary"; "Registry" |],
       List.ofArray conf.middleware
-    let rlogger = conf.runtimeInfo.logger |> Logger.apply (setName rname)
-    spawn "Target" ri conf.targets Target.create >>= fun (targets : Target.T list) ->
-    spawn "Metric" ri conf.metrics Metric.create >>= fun (metrics : Metric.T list) ->
-    spawn "HealthCheck" ri conf.healthChecks HealthCheck.create >>= fun (hcs : HealthCheck.T list) ->
+    let rlogger = ri.logger |> Logger.apply (setName rname)
+    spawnTarget ri conf.targets >>= fun targets ->
+    
+    // 这里需要把 targets 的 job 注册到 engine 中去
+    
     Engine.create List.empty >>= fun engine ->
 
     let getLoggerCh, flushCh, shutdownCh = Ch (), Ch (), Ch ()
@@ -352,13 +330,12 @@ module Registry =
       // supervise metrics >>= fun metrics ->
       // supervise hcs >>= fun hcs ->
       // running (targets, metrics, hcs)
+
+      // 考虑如何实现 schedule job for metric or healthchecker
       running []
 
     and running (services : Service<Service.T> list) =
       Alt.choose [
-        pollServices services ^=> fun _ ->
-          faulted ()
-
         getLoggerCh ^=> fun (name, lmid, repl) ->
           let cmid = Middleware.compose (lmid |> Option.fold (fun s t -> t :: s) rmid)
           repl *<= createLogger engine name cmid >>=. running services
@@ -367,7 +344,10 @@ module Registry =
           // let flush = Engine.flush ... ... FlushInfo
           // let nack ... FlushInfo
           // let timeout = timeout ... FlushInfo
-          // (Alt.choosy [| flush; timeout; nack |] ^=> running
+          
+          // Target.flush and timeout and renturn flushinfo
+          //(Alt.choosy [| flush; timeout; nack |] ^=>. running services
+          
           running services
 
         shutdownCh ^=> fun (res, timeout) ->
@@ -375,8 +355,6 @@ module Registry =
           rlogger.infoWithAck (eventX "Shutting down")
       ]
 
-    and faulted () =
-      Alt.always ()
 
     let state =
       { runtimeInfo = ri

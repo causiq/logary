@@ -19,15 +19,13 @@ module Config =
   type T =
     private {
       targets      : HashMap<string, TargetConf>
-      metrics      : HashMap<string, MetricConf>
-      healthChecks : HashMap<string, HealthCheckConf>
       host         : string
       service      : string
       getTimestamp : unit -> EpochNanoSeconds
       getSem       : unit -> obj
       ilogger      : ILogger
       middleware   : Middleware list
-      processing   : Processing
+      // processing   : Processing
       setGlobals   : bool
     }
 
@@ -36,8 +34,6 @@ module Config =
       [ Middleware.host host
         Middleware.service service ]
     { targets      = HashMap.empty
-      metrics      = HashMap.empty
-      healthChecks = HashMap.empty
       host         = host
       service      = service
       getTimestamp = Global.getTimestamp
@@ -45,25 +41,14 @@ module Config =
       middleware   = mids
       ilogger      = ILogger.Console Warn
       setGlobals   = true
-      processing   = Processing.empty }
+      //processing   = Processing.empty 
+    }
 
   let target name tconf lconf =
     { lconf with targets = lconf.targets |> HashMap.add name tconf }
 
   let targets tconfs lconf =
     tconfs |> Seq.fold (fun lconf (name, tconf) -> lconf |> target name tconf) lconf
-
-  let metric name mconf lconf =
-    { lconf with metrics = lconf.metrics |> HashMap.add name mconf }
-
-  let metrics mconfs lconf =
-    mconfs |> Seq.fold (fun lconf (name, mconf) -> lconf |> metric name mconf) lconf
-
-  let healthCheck name hcc lconf =
-    { lconf with healthChecks = lconf.healthChecks |> HashMap.add name hcc }
-
-  let healthChecks hccs lconf =
-    hccs |> Seq.fold (fun lconf (name, hcc) -> lconf |> healthCheck name hcc) lconf
 
   let host host lconf =
     { lconf with host = host }
@@ -83,8 +68,8 @@ module Config =
   let ilogger ilogger lconf =
     { lconf with ilogger = ilogger }
 
-  let processing processor lconf =
-    { lconf with processing = processor }
+  // let processing processor lconf =
+  //   { lconf with processing = processor }
 
   let disableGlobals lconf =
     { lconf with setGlobals = false }
@@ -120,11 +105,9 @@ module Config =
     let conf =
       { new LogaryConf with
           member x.targets = lconf.targets
-          member x.metrics = lconf.metrics
-          member x.healthChecks = lconf.healthChecks
           member x.runtimeInfo = upcast ri
           member x.middleware = middleware
-          member x.processing = lconf.processing
+          // member x.processing = lconf.processing
       }
     Registry.create conf
 

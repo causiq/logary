@@ -8,10 +8,70 @@ open Logary.Internals
 open Hopac
 open Hopac.Infixes
 
+type Cancellation = internal { cancelled: IVar<unit> }
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Cancellation =
+  let create () =
+    { cancelled = IVar () }
+
+  let isCancelled cancellation =
+    IVar.read cancellation.cancelled
+
+  let cancel cancellation = 
+    IVar.tryFill cancellation.cancelled ()
+
+module Ticker = 
+
+  /// 提供一个 支持 shutdown 的 alt 以供使用
+  [<AbstractClass>]
+  type Ticker<'state,'t,'r> (initialState:'state) =
+    let tickCh = Ch<unit> ()
+
+    abstract member Folder     : 'state -> 't -> 'state
+    abstract member HandleTick : 'state -> 'state * 'r
+
+    member this.InitialState = initialState
+    member this.Ticked = tickCh :> Alt<_>
+    member this.Tick () = tickCh *<- ()
+
+    member this.TickEvery timespan =
+      let cancellation = Cancellation.create ()
+      let rec loop () =
+        Alt.choose [
+          timeOut timespan ^=> fun _ ->
+            this.Tick () ^=> fun _ ->
+            loop ()
+
+          Cancellation.isCancelled cancellation
+        ]
+
+      loop () 
+      |> Job.start 
+      >>-. cancellation
+
+  type Counter = 
+    inherit Ticker<int64,Value*Units,Message []>
+
+    override this.Folder state item =
+      match item with 
+      | Int64 i, _ when state = Int64.MaxValue && i > 0L ->
+        state
+      | Int64 i, _ when state = Int64.MinValue && i < 0L ->
+        state
+      | Int64 i, _ ->
+        state + i
+      | _ ->
+        state
+
+    override this.HandleTick state = 
+      0L, [| Message.gaugeWithUnit (PointName.ofSingle "Todo") (Int64 state) Units.Scalar |]
 
 
 [<RequireQualifiedAccessAttribute>]
-module Pipe =
+module internal Pipe =
+
+  open Ticker
 
   let start = fun cont -> cont >> Some
 
@@ -36,48 +96,29 @@ module Pipe =
       else 
         None)
 
-  /// when some item comes in, it goes to folder, generate state
-  /// when somewhere outside send tick to tickCh , handleTick generate new state and pipe result for continuation
-  /// some timeout pipe may implement by this 
-  /// this fun will make pipe *async* through an background iter job 
-  let inline ticked (folder: 'state -> 't -> 'state ) 
-           initial 
-           (handleTick:'state -> 'state * 'cr)
-           (tickCh : Ch<_>)
-           pipe =
-
+  /// when some item comes in, it goes to ticker.folder, generate state
+  /// when somewhere outside tick through ticker , ticker.handleTick generate new state and pipe result for continuation
+  /// this fun will make pipe *async* through an background loop job 
+  let inline tick (ticker:Ticker<'state,_,_>) pipe =
     fun cont -> 
       let updateMb = Mailbox ()
       
-      Job.iterateServer initial <| fun (state : 'state) ->
-          Alt.choose [
-            tickCh ^-> fun _ ->
-              let state', res = handleTick state
-              cont res
-              state'
+      let rec loop state =
+        Alt.choose [
+          ticker.Ticked ^=> fun _ ->
+            let state', res = ticker.HandleTick state
+            cont res
+            loop state'
 
-            updateMb ^-> (folder state)
-          ]
-      |> Hopac.start
+          updateMb ^=> (ticker.Folder state >> loop)
+        ]
+      loop ticker.InitialState |> Hopac.start
 
       id |> pipe >> Option.bind (fun prev -> updateMb *<<+ prev |> Hopac.start |> Some)
           
-  /// implement counter  ???
-  let inline counter pn tickCh pipe =
-    let reducer state = function
-      | Int64 i, _ when state = Int64.MaxValue && i > 0L ->
-        state
-      | Int64 i, _ when state = Int64.MinValue && i < 0L ->
-        state
-      | Int64 i, _ ->
-        state + i
-      | _ ->
-        state
-
-    let ticker state =
-      0L, [| Message.gaugeWithUnit pn (Int64 state) Units.Scalar |]
-
-    ticked reducer 0L ticker tickCh pipe
+  /// give another name ?
+  let inline counter counter pipe =
+    tick counter pipe
 
   /// use ArraySegment instead ?
   let inline slidingWindow size pipe =
@@ -117,25 +158,3 @@ module Events =
 
   let toPipes stream =
     stream.pipes
-
-  // let toProcessing (stream:T) = 
-  //   (fun (msg:Message) (subsribers:HashMap<string, Message -> Job<unit>>) -> 
-  //     (stream.subscriptions
-  //     |> List.traverseJobA (fun source -> 
-  //         let processedMsg = source msg
-  //         match processedMsg with 
-  //         | None -> Job.result ()
-  //         | Some msg ->
-  //           let targetName = Message.tryGetContext "target" msg
-  //           match targetName with 
-  //           | Some (String targetName) ->
-  //             let subscriber = HashMap.tryFind targetName subsribers 
-  //             match subscriber with
-  //             | Some subscriber -> subscriber msg
-  //             | _ -> Job.result ()
-  //           | _ -> Job.result ()
-  //       )
-  //     )
-  //     >>- ignore
-  //     )
-  //   |> Processing

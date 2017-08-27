@@ -116,12 +116,4 @@ let tests =
     testCase "identity routes to sink" <| fun () ->
       Tests.skiptest "TODO"
 
-    testCase "metric-created messages to sink" <| fun () ->
-      Tests.skiptest "TODO"
-
-    testCase "metric-created messages to metrics" <| fun () ->
-      Tests.skiptest "TODO"
-
-    testCase "metric-derived messages to sink (m->m->s)" <| fun () ->
-      Tests.skiptest "TODO"
   ]

@@ -71,9 +71,9 @@ module Target =
   /// and out-of-band-method of shutting down the target; the `shutdownCh`.
   type T =
     private {
+      name       : PointName
       server     : Job<unit>
-      requests   : RingBuffer<TargetMessage>
-      shutdownCh : Ch<IVar<unit>>
+      api        : TargetAPI
     }
 
   /// Send the target a message, returning the same instance as was passed in when
@@ -81,7 +81,7 @@ module Target =
   let log (x : T) (msg : Message) : Alt<Promise<unit>> =
     let ack = IVar ()
     Log (msg, ack)
-    |> RingBuffer.put x.requests
+    |> RingBuffer.put x.api.requests
     |> Alt.afterFun (fun () -> ack :> Promise<unit>)
 
   /// Logs the `Message` to all the targets.
@@ -97,7 +97,7 @@ module Target =
       |> List.traverseAltA (fun (target, ack) ->
         Alt.prepareJob <| fun () ->
         Job.start (ack ^=>. Latch.decrement latch) >>-.
-        RingBuffer.put target.requests (Log (msg, ack)))
+        RingBuffer.put target.api.requests (Log (msg, ack)))
       |> Alt.afterFun (fun _ -> ())
 
     traverse ^->. memo (Latch.await latch)
@@ -109,18 +109,19 @@ module Target =
   let flush (x : T) =
     Alt.withNackJob <| fun nack ->
     let ack = IVar ()
-    RingBuffer.put x.requests (Flush (ack, nack)) >>-.
+    RingBuffer.put x.api.requests (Flush (ack, nack)) >>-.
     ack
 
   /// Shutdown the target. The commit point is that the target accepts the
   /// shutdown signal and the promise returned is that shutdown has finished.
   let shutdown x : Alt<Promise<_>> =
     let ack = IVar ()
-    Ch.give x.shutdownCh ack ^->. upcast ack
+    Ch.give x.api.shutdownCh ack ^->. upcast ack
 
   let create (ri : RuntimeInfo) (conf : TargetConf) : Job<T> =
+    let specificName = PointName [| "Logary"; sprintf "Target(%s)" conf.name |]
     let ri =
-      let setName = setSimpleName (sprintf "Logary.Target(%s)" conf.name)
+      let setName = setName specificName
       let setId = setContext "targetId" (Guid.NewGuid())
       let logger = ri.logger |> Logger.apply (setName >> setId)
       ri |> RuntimeInfo.setLogger logger
@@ -135,9 +136,12 @@ module Target =
           member x.shutdownCh = shutdownCh
       }
 
-    { server     = conf.server (ri, api)
-      requests   = requests
-      shutdownCh = shutdownCh }
+    { name        = specificName
+      server      = conf.server (ri, api)
+      api   = api }
+
+  let toMinions (x : T) policy =
+    x.name, Job.supervise x.api.runtimeInfo.logger policy x.server
 
   //let toService (ilogger : Logger) (x : T) : string -> Job<InitialisingService<_>> =
   //  fun name ->

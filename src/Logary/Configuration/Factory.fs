@@ -39,24 +39,6 @@ with
 
     member x.Target = Option.get x.specific
 
-and internal ConfBuilderMetric<'T when 'T :> Metric.SpecificMetricConf> =
-  { parent   : ConfBuilder
-    rules    : Rule list
-    specific : 'T option }
-with
-
-  member internal x.setSpecific conf =
-    { x with specific = Some conf }
-
-  interface Metric.MetricConfBuild<'T> with
-    member x.Metric = Option.get x.specific
-    member x.AddMetric (pollEvery : Duration, name: string, metricFactory : Func<PointName, Job<Metric.T>>) =
-      failwith "TODO!!"
-      //conf
-      //|> Config.withMetric (MetricConf.create pollEvery name (Funcs.ToFSharpFunc metricFactory))
-      //|> ConfBuilderMetric
-      //:> MetricConfBuild<'T>
-
 /// The "main" fluent-config-api type with extension method for configuring
 /// Logary rules as well as configuring specific targets.
 and ConfBuilder(conf) =
@@ -93,17 +75,6 @@ and ConfBuilder(conf) =
     conf
     |> Config.middleware (fun next msg -> middleware.Invoke(next, msg))
     |> ConfBuilder
-
-  member x.Metric<'m when 'm :> Metric.SpecificMetricConf>
-           (name : string,
-            configurator : Func<Metric.MetricConfBuild<'m>, Metric.MetricConfBuild<'m>>) =
-    //let builder = MetricsConfBuilder conf
-
-    //let built = configurator.Invoke builder
-
-    //built :?> MetricsConfBuilder
-    //|> fun builder -> ConfBuilder builder.conf
-    failwith "TODO!!"
 
   /// Configure a target of the type with a name specified by the parameter name.
   /// The callback, which is the second parameter, lets you configure the target.
