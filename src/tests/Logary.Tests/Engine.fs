@@ -75,14 +75,12 @@ let tests =
 
     testList "lifetime" [
       testCaseAsync "create and shutdown" (job {
-        let! engine = Engine.create (List.empty)
+        let! engine = Engine.create (Pipe.start)
         do! Engine.shutdown engine
       } |> Job.toAsync)
 
       testCaseAsync "pause and resume" (job {
-        let! engine = Engine.create (List.empty)
-        do! Engine.pause engine
-        do! Engine.resume engine
+        let! engine = Engine.create (Pipe.start)
         do! Engine.shutdown engine
       } |> Job.toAsync)
     ]

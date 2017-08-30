@@ -75,6 +75,7 @@ module Engine =
             let subscriber = HashMap.tryFind targetName subscribers 
             match subscriber with
             | Some subscriber -> subscriber msg
+            | _ -> Job.result ()
           | _ -> Job.result ())
     
     onNext msg
