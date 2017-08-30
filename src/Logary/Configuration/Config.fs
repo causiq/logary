@@ -25,7 +25,7 @@ module Config =
       getSem       : unit -> obj
       ilogger      : ILogger
       middleware   : Middleware list
-      // processing   : Processing
+      processing   : Processing
       setGlobals   : bool
     }
 
@@ -41,7 +41,7 @@ module Config =
       middleware   = mids
       ilogger      = ILogger.Console Warn
       setGlobals   = true
-      //processing   = Processing.empty 
+      processing   = Pipe.start 
     }
 
   let target name tconf lconf =
@@ -68,8 +68,8 @@ module Config =
   let ilogger ilogger lconf =
     { lconf with ilogger = ilogger }
 
-  // let processing processor lconf =
-  //   { lconf with processing = processor }
+  let processing processor lconf =
+    { lconf with processing = processor }
 
   let disableGlobals lconf =
     { lconf with setGlobals = false }
@@ -107,7 +107,7 @@ module Config =
           member x.targets = lconf.targets
           member x.runtimeInfo = upcast ri
           member x.middleware = middleware
-          // member x.processing = lconf.processing
+          member x.processing = lconf.processing
       }
     Registry.create conf
 

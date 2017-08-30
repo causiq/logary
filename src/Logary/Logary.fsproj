@@ -101,6 +101,7 @@
     <Compile Include="Internals/InternalLogger.fs" />
     <Compile Include="Internals/PromisedLogger.fs" />
     <Compile Include="Logging.fs" />
+    <Compile Include="Events.fs" />
     <Compile Include="Registry.fs" />
     <!-- Below: formatting, serialisation -->
     <Compile Include="Formatting.fs" />
@@ -114,7 +115,6 @@
     <Compile Include="Targets/Graphite.fs" />
     <Compile Include="Metrics/Ticked.fs" />
     <Compile Include="Transformers.fs" />
-    <Compile Include="Events.fs" />
     <!-- Below: config -->
     <Compile Include="Configuration/Config.fs" />
     <Compile Include="Configuration/Factory.fs" />

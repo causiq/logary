@@ -21,123 +21,163 @@ module Cancellation =
   let cancel cancellation = 
     IVar.tryFill cancellation.cancelled ()
 
-module Ticker = 
 
-  /// 提供一个 支持 shutdown 的 alt 以供使用
-  [<AbstractClass>]
-  type Ticker<'state,'t,'r> (initialState:'state) =
-    let tickCh = Ch<unit> ()
+[<AbstractClass>]
+type Ticker<'state,'t,'r> (initialState:'state) =
+  let tickCh = Ch<unit> ()
 
-    abstract member Folder     : 'state -> 't -> 'state
-    abstract member HandleTick : 'state -> 'state * 'r
+  abstract member Folder     : 'state -> 't -> 'state
+  abstract member HandleTick : 'state -> 'state * 'r
 
-    member this.InitialState = initialState
-    member this.Ticked = tickCh :> Alt<_>
-    member this.Tick () = tickCh *<- ()
+  member this.InitialState = initialState
+  member this.Ticked = tickCh :> Alt<_>
+  member this.Tick () = tickCh *<- ()
 
-    member this.TickEvery timespan =
-      let cancellation = Cancellation.create ()
-      let rec loop () =
-        Alt.choose [
-          timeOut timespan ^=> fun _ ->
-            this.Tick () ^=> fun _ ->
-            loop ()
+  member this.TickEvery timespan =
+    let cancellation = Cancellation.create ()
+    let rec loop () =
+      Alt.choose [
+        timeOut timespan ^=> fun _ ->
+          this.Tick () ^=> fun _ ->
+          loop ()
 
-          Cancellation.isCancelled cancellation
-        ]
+        Cancellation.isCancelled cancellation
+      ]
 
-      loop () 
-      |> Job.start 
-      >>-. cancellation
+    loop () 
+    |> Job.start 
+    >>-. cancellation
 
-  type Counter = 
-    inherit Ticker<int64,Value*Units,Message []>
+type BufferTicker<'t> () =
+  inherit Ticker<ResizeArray<'t>,'t,ResizeArray<'t>>(ResizeArray())
+    override this.Folder state item = 
+      state.Add(item)
+      state
 
-    override this.Folder state item =
-      match item with 
-      | Int64 i, _ when state = Int64.MaxValue && i > 0L ->
-        state
-      | Int64 i, _ when state = Int64.MinValue && i < 0L ->
-        state
-      | Int64 i, _ ->
-        state + i
-      | _ ->
-        state
+    override this.HandleTick state =
+      ResizeArray(),state
 
-    override this.HandleTick state = 
-      0L, [| Message.gaugeWithUnit (PointName.ofSingle "Todo") (Int64 state) Units.Scalar |]
+type Pipe<'c,'r,'s> = 
+  internal {
+    run : ('c -> Job<'r>) -> ('s -> Alt<unit>)
+    tickTimerJobs : Job<Cancellation> list
+  }
 
 
 [<RequireQualifiedAccessAttribute>]
 module internal Pipe =
 
-  open Ticker
+  let start =
+    let run = fun cont -> 
+      let sourceCh = Ch ()
 
-  let start = fun cont -> cont >> Some
+      let rec loop () =
+        Alt.choose [
+          sourceCh ^=> fun (source,reply) ->
+            cont source
+            >>=. reply *<= () 
+            >>=. loop ()
+        ]
 
-  let inline mapCont f flow = 
-    fun cont -> id |> flow >> Option.bind (fun prev -> f prev cont)
+      loop () |> Hopac.start
+
+      fun source ->
+        sourceCh *<+=>- (fun reply -> (source,reply)) 
+
+    {
+      run = run
+      tickTimerJobs = List.empty
+    }
+
+  let run cont pipe =
+    Job.conCollect pipe.tickTimerJobs 
+    >>- fun ctss ->
+    let onNext = pipe.run cont
+    (onNext, ctss)
+
+  let withTickJob tickJob pipe =
+    { pipe with tickTimerJobs = tickJob :: pipe.tickTimerJobs }
+
+  let chain f pipe =
+    {
+      run = f >> pipe.run
+      tickTimerJobs = pipe.tickTimerJobs
+    } 
 
   let inline map (f:'a -> 'b) pipe =
-    pipe |> mapCont (fun prev cont -> prev |> f |> cont |> Some)
+    pipe 
+    |> chain (fun cont -> f >> cont) 
 
   let inline filter (predicate:'a -> bool) pipe =
-    pipe |> mapCont (fun prev cont -> if predicate prev then Some (cont prev) else None)
+    pipe 
+    |> chain (fun cont -> fun prev -> if predicate prev then cont prev else Job.result ())
 
-  /// can be implement by tiked , then can support timespan
-  let inline buffer n pipe =
-    let results = new ResizeArray<_> ()
-    pipe |> mapCont (fun prev cont -> 
-      results.Add prev
-      if results.Count >= n then
-        let res = (List.ofSeq results)
-        results.Clear ()
-        Some (cont res)
-      else 
-        None)
 
   /// when some item comes in, it goes to ticker.folder, generate state
   /// when somewhere outside tick through ticker , ticker.handleTick generate new state and pipe result for continuation
   /// this fun will make pipe *async* through an background loop job 
   let inline tick (ticker:Ticker<'state,_,_>) pipe =
-    fun cont -> 
-      let updateMb = Mailbox ()
-      
-      let rec loop state =
-        Alt.choose [
-          ticker.Ticked ^=> fun _ ->
-            let state', res = ticker.HandleTick state
-            cont res
-            loop state'
+    pipe
+    |> chain (fun cont -> 
+         let updateMb = Mailbox ()
+         
+         let rec loop state =
+           Alt.choose [
+             ticker.Ticked ^=> fun _ ->
+               let state', res = ticker.HandleTick state
+               cont res
+               >>=. loop state'
+   
+             updateMb ^=> (ticker.Folder state >> loop)
+           ]
+           
+         loop ticker.InitialState |> Hopac.start
+   
+         fun prev -> updateMb *<<+ prev)
 
-          updateMb ^=> (ticker.Folder state >> loop)
-        ]
-      loop ticker.InitialState |> Hopac.start
 
-      id |> pipe >> Option.bind (fun prev -> updateMb *<<+ prev |> Hopac.start |> Some)
+  let inline buffer n pipe =
+    pipe
+    |> chain (fun cont ->
+         let results = new ResizeArray<_> ()
+         fun prev -> 
+           results.Add prev
+           if results.Count >= n then
+             let res = (List.ofSeq results)
+             results.Clear ()
+             cont res
+           else 
+             Job.result ())
+
+
+  let inline bufferTime timespan pipe =
+    let ticker = BufferTicker ()
+    pipe
+    |> withTickJob (ticker.TickEvery timespan)
+    |> tick ticker
+
           
-  /// give another name ?
-  let inline counter counter pipe =
-    tick counter pipe
-
-  /// use ArraySegment instead ?
+  /// maybe use ArraySegment instead
   let inline slidingWindow size pipe =
-    let window = Array.zeroCreate size
-    let slidingLen = size - 1
-    let mutable count = 0u
-    pipe |> mapCont (fun prev cont -> 
-      Array.blit window 1 window 0 slidingLen
-      window.[slidingLen] <- prev
-      cont window |> Some)
+    pipe
+    |> chain (fun cont ->
+         let window = Array.zeroCreate size
+         let slidingLen = size - 1
+         let mutable count = 0u
+         fun prev -> 
+           Array.blit window 1 window 0 slidingLen
+           window.[slidingLen] <- prev
+           cont window)
   
+
+type Processing = Pipe<Message,unit,Message>
 
 [<RequireQualifiedAccessAttribute>]
 module Events = 
 
   type T =
     private {
-      pipes : (Message -> Message option) list
-      // inputCh : Ch<LogLevel * (LogLevel -> Message)>
+      pipes : Processing list
     }
 
   let stream = {
@@ -154,7 +194,20 @@ module Events =
   let tag tag pipe = pipe |> Pipe.filter (Message.hasTag tag)
 
   let sink (targetName:string) pipe = 
-    pipe (fun msg -> Message.setContext "target" targetName msg)
+    pipe |> Pipe.map (Message.setContext "target" targetName)
 
-  let toPipes stream =
-    stream.pipes
+  let toProcessing stream =
+    let pipes = stream.pipes
+    let allTickTimerJobs = List.collect (fun pipe -> pipe.tickTimerJobs) pipes
+
+    let run = fun cont -> 
+      let allOnNextFuns = List.map (fun pipe -> pipe.run cont) pipes
+      fun prev -> 
+        Hopac.Extensions.Seq.Con.iterJobIgnore (fun onNext -> onNext prev) allOnNextFuns
+        |> memo 
+        :> Alt<_>
+
+    {
+      run = run
+      tickTimerJobs = allTickTimerJobs
+    }

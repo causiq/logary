@@ -33,13 +33,8 @@ open Hopac.Infixes
 
 let tests =
   [
-    testCase "empty flow" <| fun () ->
-      Flow.singleton 43
-      |> Flow.map (fun (i : int) -> i + 1)
-      |> ignore
-
     testCaseAsync "play" (job {
-      let pipes =
+      let processing =
         Events.stream
         |> Events.subscribers [
           Pipe.start
@@ -50,9 +45,9 @@ let tests =
           |> Events.service "svc2"
           |> Events.sink "test"
         ]
-        |> Events.toPipes
+        |> Events.toProcessing
 
-      let! engine = Engine.create pipes
+      let! engine = Engine.create processing
 
       // given
       let mref = IVar ()

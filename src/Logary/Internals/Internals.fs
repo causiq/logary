@@ -39,7 +39,7 @@ module internal List =
 
   /// Map a Job producing function over a list to get a new Job using
   /// applicative style (parallel). ('a -> Job<'b>) -> 'a list -> Job<'b list>
-  let rec traverseJobA (f : 'a -> Job<'b>) (list : 'a list) : Job<'b list> =
+  let rec traverseJobA (f : 'a -> #Job<'b>) (list : 'a list) : Job<'b list> =
     let cons head tail = head :: tail
     let initState = Job.result []
     let folder head tail =
