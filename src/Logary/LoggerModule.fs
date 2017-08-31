@@ -21,12 +21,6 @@ module Logger =
   // Logging methods //
   /////////////////////
 
-  let private ifLevel (logger : Logger) level otherwise f =
-    if logger.level <= level then
-      f ()
-    else
-      otherwise
-
   // NOTE all extension methods are in CSharp.fs, so they've been removed from this file
   // to avoid polluting the API unecessarily.
 
@@ -302,9 +296,6 @@ module Logger =
         member x.log logLevel messageFactory =
           logger.log logLevel (messageFactory >> transform)
 
-        member x.level =
-          logger.level
-
         member x.name =
           name
     }
@@ -315,7 +306,6 @@ module Logger =
         logger.log logLevel (messageFactory >> middleware)
       member x.logWithAck logLevel messageFactory =
         logger.logWithAck logLevel (messageFactory >> middleware)
-      member x.level = logger.level
       member x.name = logger.name }
 
 /// Syntactic sugar on top of Logger for use of curried factory function

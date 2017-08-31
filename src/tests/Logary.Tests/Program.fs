@@ -510,20 +510,6 @@ let tests =
       // TODO: add testCase for all functions in the Message module
     ]
 
-    testList "Logger" [
-      testCase "public interface" <| fun () ->
-        let logger =
-          { new Logger with
-              member x.name : PointName = PointName.ofSingle "B"
-              member x.logWithAck (level : LogLevel) (factory : LogLevel -> Message) : Alt<Promise<unit>> =
-                Promise.instaPromise
-              member x.log (level : LogLevel) (factory : LogLevel -> Message) : Alt<unit> =
-                Alt.always ()
-              member x.level : LogLevel =
-                Debug
-          }
-        Expect.equal logger.level Debug "Should have Debug level"
-    ]
 
     testList "LoggerScope" [
       testCase "public interface :> Logger" <| fun () ->
@@ -543,8 +529,6 @@ let tests =
               Promise.instaPromise
             member x.log (level : LogLevel) (factory : LogLevel -> Message) : Alt<unit> =
               Alt.always ()
-            member x.level : LogLevel =
-              Debug
             member x.Dispose () = ()
             member x.elapsed = Duration.Zero
             member x.bisect (label : string) : unit =
@@ -610,10 +594,6 @@ let tests =
         let sut = NullLogger.instance
         Expect.equal sut.name (PointName.parse "Logary.NullLogger")
                      "Is called Logary.NullLogger"
-
-      testCase "only logs 'Fatal'" <| fun () ->
-        let sut = NullLogger.instance
-        Expect.equal sut.level Fatal "Logs at Fatal level"
 
       testCaseAsync "logWithAck returns" (async {
         let sut = NullLogger.instance

@@ -70,19 +70,27 @@ module Target =
   /// and a normal path of communication; the `requests` `RingBuffer` as well as
   /// and out-of-band-method of shutting down the target; the `shutdownCh`.
   type T =
-    private {
+    internal {
       name       : PointName
       server     : Job<unit>
       api        : TargetAPI
+      middleware : Middleware list
+      rules      : Rule list
     }
+
+  let needSendToTarget (target : T) msg =
+    Rule.canPass msg target.rules
+    
 
   /// Send the target a message, returning the same instance as was passed in when
   /// the Message was acked.
   let log (x : T) (msg : Message) : Alt<Promise<unit>> =
-    let ack = IVar ()
-    Log (msg, ack)
-    |> RingBuffer.put x.api.requests
-    |> Alt.afterFun (fun () -> ack :> Promise<unit>)
+    if Rule.canPass msg x.rules then 
+      let ack = IVar ()
+      Log (msg, ack)
+      |> RingBuffer.put x.api.requests
+      |> Alt.afterFun (fun () -> ack :> Promise<unit>)
+    else Promise.instaPromise
 
   /// Logs the `Message` to all the targets.
   let logAll (xs : T seq) (msg : Message) : Alt<Promise<unit>> =
@@ -93,12 +101,14 @@ module Target =
 
     let traverse =
       targets
-      |> List.map (fun target -> target, IVar ())
-      |> List.traverseAltA (fun (target, ack) ->
-        Alt.prepareJob <| fun () ->
-        Job.start (ack ^=>. Latch.decrement latch) >>-.
-        RingBuffer.put target.api.requests (Log (msg, ack)))
-      |> Alt.afterFun (fun _ -> ())
+      |> List.traverseAltA (fun target ->
+         if Rule.canPass msg target.rules then 
+           Alt.prepareJob <| fun () ->
+             let ack = IVar ()
+             Job.start (ack ^=>. Latch.decrement latch) >>-.
+             RingBuffer.put target.api.requests (Log (msg, ack))
+         else Alt.always ())
+      |> Alt.afterFun ignore
 
     traverse ^->. memo (Latch.await latch)
 
@@ -137,12 +147,7 @@ module Target =
       }
 
     { name        = specificName
+      middleware  = conf.middleware
+      rules       = conf.rules
       server      = conf.server (ri, api)
-      api   = api }
-
-  let toMinions (x : T) policy =
-    x.name, Job.supervise x.api.runtimeInfo.logger policy x.server
-
-  //let toService (ilogger : Logger) (x : T) : string -> Job<InitialisingService<_>> =
-  //  fun name ->
-  //    Service.createSimple ilogger name x.shutdownCh x.server
+      api         = api }

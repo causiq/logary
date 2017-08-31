@@ -60,7 +60,7 @@ module internal Global =
   /// multiple per-process logging setups, then don't use the static methods,
   /// but instead pass a Logger instance around, setting the name field of the
   /// Message value you pass into the logger.
-  type Flyweight(name : PointName, level) =
+  type Flyweight(name : PointName) =
     // The object's private fields are initialised to the current config's
     // logger.
     let updating = obj()
@@ -92,8 +92,6 @@ module internal Global =
       member x.logWithAck level msgFactory =
         withLogger (fun logger -> logger.logWithAck level (msgFactory >> ensureName))
 
-      member x.level =
-        level
   // end of Flyweight
 
   // TODO: consider renaming to 'create' and returning a RunningService?
@@ -103,7 +101,7 @@ module internal Global =
     config := (cfg, snd !config + 1u)
 
   let getStaticLogger (name : PointName) =
-    Flyweight(name, Verbose)
+    Flyweight(name)
 
   /// Gets the current timestamp.
   let getTimestamp () : EpochNanoSeconds =

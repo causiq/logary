@@ -134,7 +134,6 @@ module Engine =
     let logger =
       { new Logger with
           member x.name = name
-          member x.level = Verbose // TOOD: ship back from engine?
           member x.log level messageFactory =
             log engine level messageFactory
           member x.logWithAck level messageFactory =
@@ -279,8 +278,8 @@ module Registry =
       |> List.ofSeq
       |> List.traverseJobA (fun (KeyValue (_,conf)) -> 
            Target.create ri conf >>= fun instance ->
-           let (minionName,supervisedJob) = Target.toMinions instance conf.policy
-           supervisedJob >>-. (minionName,instance,conf.middleware))
+           Job.supervise instance.api.runtimeInfo.logger conf.policy instance.server
+           >>-. instance)
 
 
     let inline generateProcessResult name processAlt (timeout:Duration option) = 
@@ -292,8 +291,8 @@ module Registry =
           processAlt ^->. (name,true)
 
     let shutdown targets (timeout:Duration option) : Job<ShutdownInfo> =
-      let shutdownTarget (name,target,_) =
-        generateProcessResult name (Target.shutdown target ^=> id) timeout
+      let shutdownTarget target =
+        generateProcessResult target.name (Target.shutdown target ^=> id) timeout
 
       targets |> Seq.Con.mapJob shutdownTarget
       >>- fun shutdownInfos ->
@@ -307,8 +306,8 @@ module Registry =
       
 
     let flushPending targets (timeout:Duration option) : Job<FlushInfo> =
-      let flushTarget (name,target,_) =
-        generateProcessResult name (Target.flush target) timeout
+      let flushTarget target =
+        generateProcessResult target.name (Target.flush target) timeout
 
       targets |> Seq.Con.mapJob flushTarget
       >>- fun flushInfos ->
@@ -364,9 +363,9 @@ module Registry =
 
     createGlobals conf.runtimeInfo.logger state
     >>= fun globals ->
-      targets |> Seq.Con.iterJob (fun (name,target,mids) -> 
-        let logJob = fun msg -> msg |> Middleware.compose mids |> Target.log target >>= id
-        Engine.subscribe engine (PointName.format name) logJob)
+      targets |> Seq.Con.iterJob (fun target -> 
+        let logJob = fun msg -> msg |> Middleware.compose target.middleware |> Target.log target >>= id
+        Engine.subscribe engine (PointName.format target.name) logJob)
     >>=. Job.supervise rlogger (Policy.restartDelayed 500u) (running ()) 
     >>-. state
 

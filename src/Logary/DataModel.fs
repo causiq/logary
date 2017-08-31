@@ -239,9 +239,6 @@ type Logger =
   /// You should not do blocking/heavy operations in the callback.
   abstract log : LogLevel -> (LogLevel -> Message) -> Alt<unit>
 
-  /// Gets the currently set log level, aka. the granularity with which things
-  /// are being logged.
-  abstract level : LogLevel
 
 /// A disposable interface to use with `use` constructs and to create child-
 /// contexts. Since it inherits Logger, you can pass this scope down into child

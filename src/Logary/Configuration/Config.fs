@@ -4,6 +4,7 @@ namespace Logary.Configuration
 
 open Hopac
 open Hopac.Infixes
+open Hopac.Extensions
 open Logary
 open Logary.Internals
 open Logary.Targets
@@ -13,7 +14,7 @@ open Logary.Targets
 type ILogger =
   | Console of minLevel:LogLevel
   | LiterateConsole of minLevel:LogLevel
-  | Target of config:TargetConf
+  | Targets of config:TargetConf list
 
 module Config =
   type T =
@@ -82,23 +83,25 @@ module Config =
         getConsoleSemaphore = lconf.getSem
         logger = NullLogger.instance }
 
-    let rule, itarget =
+    let itargets =
       match lconf.ilogger with
       | ILogger.Console minLevel ->
-        Rule.setMinLevel minLevel Rule.empty,
-        Console.create Console.empty "internal"
+        let target = Console.create Console.empty "internal"
+        let rule = Rule.empty |> Rule.setMinLevel minLevel
+        [TargetConf.setRule rule target]
 
       | ILogger.LiterateConsole minLevel ->
-        Rule.setMinLevel minLevel Rule.empty,
-        LiterateConsole.create LiterateConsole.empty "internal"
+        let target = LiterateConsole.create LiterateConsole.empty "internal"
+        let rule = Rule.empty |> Rule.setMinLevel minLevel
+        [TargetConf.setRule rule target]
 
-      | ILogger.Target conf ->
-        Rule.compile conf.rules,
+      | ILogger.Targets conf ->
         conf
 
-    InternalLogger.create ri rule >>= fun ilogger ->
-    InternalLogger.add itarget ilogger >>= fun () ->
-
+    InternalLogger.create ri >>= fun ilogger ->
+    itargets 
+    |> Seq.Con.iterJob (fun itarget -> InternalLogger.add itarget ilogger)
+    >>= fun () ->
     let middleware = Array.ofList lconf.middleware
     let ri = { ri with logger = ilogger }
 

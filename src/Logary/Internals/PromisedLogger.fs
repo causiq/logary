@@ -33,6 +33,3 @@ type internal PromisedLogger(name, requestedLogger : Job<Logger>) =
       Promise.read promised
       |> Alt.afterJob (fun logger -> logger.logWithAck logLevel messageFactory)
       |> Alt.afterFun (fun _ -> ())
-
-    member x.level =
-      Verbose

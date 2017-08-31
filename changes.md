@@ -14,6 +14,10 @@
     
     metric can be implemented by engine's process expression builder, what we need to do is schedule jobs for tick, in the corresponding time(like old metricConf.tickInterval) or manually tick. Metric's data sources can have two types, one is similar to WPC, generate data in real-time when ticked .the other is generate through the normal log message.
 
+- support multi targets on internallogger and apply rules when send msg to target
+- remove loglevel on Logger interface
+
+  message has the log level info, targets have the rules info, before putting msg to target, apply rules on message to decide if really send to target.
 
 - todo 
 
@@ -21,3 +25,4 @@
   - ExpWeightedMovAvg -> events ticker
   - more unit test
   - targets rule to event processing
+  
