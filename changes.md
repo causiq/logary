@@ -17,6 +17,7 @@
 
 - todo 
 
-  - test e.g.
-  - transforms -> use event expression builder 
-  - middleware in difference level
+  - complete the todo parts
+  - ExpWeightedMovAvg -> events ticker
+  - more unit test
+  - targets rule to event processing

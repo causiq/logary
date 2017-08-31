@@ -404,7 +404,7 @@ module LogaryFacadeAdapter =
         | GetLogger name ->
           invocation.ReturnValue <-
             PointName name
-            |> logManager.getLoggerT
+            |> logManager.getLogger
             |> LoggerCSharpAdapter.create loggerType
         | GetTimestamp ->
           invocation.ReturnValue <- Logary.Internals.Global.getTimestamp ()
@@ -428,7 +428,7 @@ module LogaryFacadeAdapter =
             field.PropertyType,
             (unbox >> fun name ->
               PointName name
-              |> logManager.getLoggerT
+              |> logManager.getLogger
               |> LoggerAdapter.create loggerType))
 
         | "timestamp" ->

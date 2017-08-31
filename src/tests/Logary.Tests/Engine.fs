@@ -47,7 +47,7 @@ let tests =
         ]
         |> Events.toProcessing
 
-      let! engine = Engine.create processing
+      let! engine = Engine.create processing List.empty
 
       // given
       let mref = IVar ()
@@ -75,12 +75,12 @@ let tests =
 
     testList "lifetime" [
       testCaseAsync "create and shutdown" (job {
-        let! engine = Engine.create (Pipe.start)
+        let! engine = Engine.create (Pipe.start) List.empty
         do! Engine.shutdown engine
       } |> Job.toAsync)
 
       testCaseAsync "pause and resume" (job {
-        let! engine = Engine.create (Pipe.start)
+        let! engine = Engine.create (Pipe.start) List.empty
         do! Engine.shutdown engine
       } |> Job.toAsync)
     ]
