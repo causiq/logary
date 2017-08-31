@@ -62,7 +62,7 @@ module Engine =
   type T =
     private {
       subscriptions : HashMap<string, Message -> Job<unit>>
-      inputCh       : Ch<LogLevel * (LogLevel -> Message) * IVar<unit>>
+      inputCh       : Ch<Message * IVar<unit>>
       shutdownCh    : Ch<IVar<unit>>
       subscriberCh  : Ch<string * (Message->Job<unit>)> 
       middleware    : Middleware list
@@ -93,8 +93,8 @@ module Engine =
 
     let rec loop ctss (subsribers:HashMap<string, Message -> Job<unit>>) =
       Alt.choose [
-        inputCh ^=> fun (level, messageFactory, reply) -> 
-          processing (messageFactory level) subsribers pipe
+        inputCh ^=> fun (msg, reply) -> 
+          processing msg subsribers pipe
           ^=> fun _ -> reply *<= () 
           >>=. loop ctss subsribers
 
@@ -121,8 +121,9 @@ module Engine =
     engine.shutdownCh *<-=>- id
 
   let logWithAck (engine : T) (logLevel : LogLevel) (messageFactory : LogLevel -> Message) : Alt<Promise<unit>> =
+    let msg = messageFactory logLevel
     let reply = IVar ()
-    engine.inputCh *<- (logLevel, messageFactory, reply)
+    engine.inputCh *<- (msg, reply)
     ^->. upcast reply
 
   let log (engine : T) (logLevel : LogLevel) (messageFactory : LogLevel -> Message) : Alt<unit> =
