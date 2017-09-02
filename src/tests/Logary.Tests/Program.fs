@@ -651,7 +651,7 @@ let tests =
         true
     ]
 
-    testList "Engine" Engine.tests
+    ftestList "Engine" Engine.tests
 
     testList "Registry" [
       testCase "from Config" <| fun () ->

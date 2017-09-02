@@ -65,7 +65,7 @@ type Pipe<'c,'r,'s> =
 
 
 [<RequireQualifiedAccessAttribute>]
-module internal Pipe =
+module Pipe =
 
   let start =
     let run = fun cont -> 
@@ -156,7 +156,7 @@ module internal Pipe =
     |> withTickJob (ticker.TickEvery timespan)
     |> tick ticker
 
-          
+
   /// maybe use ArraySegment instead
   let inline slidingWindow size pipe =
     pipe
@@ -192,6 +192,17 @@ module Events =
       msg.context |> HashMap.tryFind KnownLiterals.ServiceContextName = Some (Logary.String svc))
 
   let tag tag pipe = pipe |> Pipe.filter (Message.hasTag tag)
+
+  let counter timespan pipe =
+    pipe 
+    |> Pipe.bufferTime timespan 
+    |> Pipe.map (fun msgs -> 
+      let sumResult = msgs |> Seq.sumBy (fun (msg : Message) -> 
+        match msg.value with
+        | Gauge (Int64 i, _) 
+        | Derived (Int64 i, _) -> i
+        | _ -> 1L)
+      Message.event Info (sprintf "counter result is %i within %s" sumResult (timespan.ToString ())))
 
   let sink (targetName:string) pipe = 
     pipe |> Pipe.map (Message.setContext "target" targetName)

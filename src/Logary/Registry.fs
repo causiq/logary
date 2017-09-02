@@ -68,19 +68,6 @@ module Engine =
       middleware    : Middleware list
     }
 
-  let processing msg subscribers pipe =
-    let onNext = pipe.run <| (fun msg ->
-          let targetName = Message.tryGetContext "target" msg
-          match targetName with 
-          | Some (String targetName) ->
-            let subscriber = HashMap.tryFind targetName subscribers 
-            match subscriber with
-            | Some subscriber -> subscriber msg
-            | _ -> Job.result ()
-          | _ -> Job.result ())
-    
-    onNext msg
-
   let create (pipe:Processing) mids : Job<T> =
     let inputCh, shutdownCh, subscriberCh = Ch (), Ch (), Ch ()
     let engine = { 
@@ -90,6 +77,19 @@ module Engine =
                    subscriberCh = subscriberCh
                    middleware = mids
                  }
+
+    let processing msg subscribers pipe =
+      let onNext = pipe.run <| (fun msg ->
+            let targetName = Message.tryGetContext "target" msg
+            match targetName with 
+            | Some (String targetName) ->
+              let subscriber = HashMap.tryFind targetName subscribers 
+              match subscriber with
+              | Some subscriber -> subscriber msg
+              | _ -> Job.result ()
+            | _ -> Job.result ())
+      
+      onNext msg
 
     let rec loop ctss (subsribers:HashMap<string, Message -> Job<unit>>) =
       Alt.choose [
@@ -120,28 +120,24 @@ module Engine =
   let shutdown (engine : T) =
     engine.shutdownCh *<-=>- id
 
-  let logWithAck (engine : T) (logLevel : LogLevel) (messageFactory : LogLevel -> Message) : Alt<Promise<unit>> =
-    let msg = messageFactory logLevel
+  let logWithAck (engine : T) (logLevel : LogLevel) (messageFactory : LogLevel -> Message) mid : Alt<Promise<unit>> =
+    let cmid = Middleware.compose (mid |> Option.fold (fun s t -> t :: s) engine.middleware)
+    let msg = messageFactory logLevel |> cmid
     let reply = IVar ()
     engine.inputCh *<- (msg, reply)
     ^->. upcast reply
 
-  let log (engine : T) (logLevel : LogLevel) (messageFactory : LogLevel -> Message) : Alt<unit> =
-    logWithAck engine logLevel messageFactory ^-> ignore
-
+  let log (engine : T) (logLevel : LogLevel) (messageFactory : LogLevel -> Message) mid : Alt<unit> =
+    logWithAck engine logLevel messageFactory mid ^-> ignore
   
   let createLogger engine name mid  =
-    let logger =
       { new Logger with
           member x.name = name
           member x.log level messageFactory =
-            log engine level messageFactory
+            log engine level messageFactory mid
           member x.logWithAck level messageFactory =
-            logWithAck engine level messageFactory
+            logWithAck engine level messageFactory mid
       }
-    
-    let cmid = Middleware.compose (mid |> Option.fold (fun s t -> t :: s) engine.middleware)
-    Logger.apply cmid logger
 
 /// When you validate the configuration, you get one of these.
 ///
@@ -322,9 +318,9 @@ module Registry =
   open Impl
 
   // Middleware at:
-  //  - LogaryConf (goes on all loggers) (composes here)
-  //  - TargetConf (goes on specific target) (composes in engine)
-  //  - individual loggers (composes at call-site, or in #create methods of services)
+  //  - LogaryConf (goes on all loggers) (through engine,and compose at call-site)
+  //  - TargetConf (goes on specific target) (composes in engine when sending msg to target)
+  //  - individual loggers (through engine,and compose at call-site)
 
   let create (conf : LogaryConf) : Job<T> =
     let ri, rname, rmid =
@@ -362,8 +358,7 @@ module Registry =
         shutdownCh = shutdownCh }
 
     createGlobals conf.runtimeInfo.logger state
-    >>= fun globals ->
-      targets |> Seq.Con.iterJob (fun target -> 
+    >>= fun globals -> targets |> Seq.Con.iterJob (fun target -> 
         let logJob = fun msg -> msg |> Middleware.compose target.middleware |> Target.log target >>= id
         Engine.subscribe engine (PointName.format target.name) logJob)
     >>=. Job.supervise rlogger (Policy.restartDelayed 500u) (running ()) 
