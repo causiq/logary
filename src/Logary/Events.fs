@@ -50,12 +50,13 @@ type Ticker<'state,'t,'r> (initialState:'state) =
     >>-. cancellation
 
 type BufferTicker<'t> () =
-  inherit Ticker<List<'t>,'t,List<'t>>(List.empty)
+  inherit Ticker<ResizeArray<'t>,'t,ResizeArray<'t>>(ResizeArray())
     override this.Folder state item = 
-      [yield! state; yield item]
+      state.Add item
+      state
 
     override this.HandleTick state =
-      List.empty, state
+      ResizeArray(),state
 
 type Pipe<'c,'r,'s> = 
   internal {
