@@ -20,7 +20,9 @@ let mockTarget name =
     Alt.choose [
       Mailbox.take mailbox ^=> fun newMsg -> loop [yield! msgs; yield newMsg]
 
-      getMsgReq ^=> fun reply -> reply *<= msgs >>=. loop msgs
+      getMsgReq ^=> fun reply ->
+        //printfn "%A" msgs
+        reply *<= msgs >>=. loop msgs
     ]
 
   let sendMsg = Mailbox.send mailbox
@@ -38,7 +40,7 @@ let simpleProcessing targetName =
       Pipe.start |> Events.sink targetName
     ]
     |> Events.toProcessing
-
+open NodaTime
 let tests =
   [
     testCaseAsync "play" (job {
@@ -82,25 +84,23 @@ let tests =
       
     } |> Job.toAsync)
 
-    ptestList "processing builder" [
+    testList "processing builder" [
           
       testCaseAsync "message routing" (job {
-        
         // context
         let processing = 
           Events.stream 
           |> Events.subscribers [
-            Pipe.start |> Events.service "svc1" |> Events.counter (TimeSpan.FromSeconds 3.) |> Events.sink "1"
+            Pipe.start |> Events.service "svc1" |> Events.counter (TimeSpan.FromMilliseconds 500.) |> Events.sink "1"
 
-            Pipe.start |> Events.tag "gotoTarget2" 
-            |> Pipe.map (fun msg -> { msg with value = Event "all msg with tag gotoTarget2 should map to same value"} ) 
+            Pipe.start |> Events.tag "gotoTarget2" |> Pipe.map (fun msg -> { msg with value = Event ":)"} ) 
             |> Events.sink "2"
 
-            Pipe.start |> Pipe.filter ( fun msg -> msg.level = Fatal) |> Events.sink "3"
+            Pipe.start |> Events.miniLevel Warn |> Events.sink "3"
 
-            Pipe.start |> Pipe.bufferTime (TimeSpan.FromSeconds 1.) 
-            |> Pipe.map (fun msgs -> Message.event Info (sprintf "there are %i msgs/sec" (Seq.length msgs)))
-            |> Events.sink "4"
+            // Pipe.start |> Pipe.bufferTime (TimeSpan.FromSeconds 1.) 
+            // |> Pipe.map (fun msgs -> Message.event Info (sprintf "there are %i msgs/sec" (Seq.length msgs)))
+            // |> Events.sink "4"
           ]
           |> Events.toProcessing
 
@@ -112,15 +112,60 @@ let tests =
         
 
         // when 
-        // generate log msg
-        failtest "tobe done"
-
+        let rec generateLog count =
+          printfn "%A" System.DateTime.Now
+          if count >= 50 then Alt.always ()
+          else
+            timeOutMillis 100 ^=> fun _ ->
+              let msgFac = 
+                eventX "100 error msgs with svc" 
+                >> Message.setGauge(Int64 2L,Scalar) 
+                >> Message.setContext KnownLiterals.ServiceContextName "svc1"
+              (Engine.logWithAck engine Error msgFac None ^=> id) ^=>. generateLog (count + 1)
+        
+        do! generateLog 0
+        // do! [1..20] |> Seq.Con.iterJob (fun index -> Engine.logWithAck engine Info (eventX "20 info msgs with tag" >> Message.tag "gotoTarget2") None ^=> id)
+        // do! [1..30] |> Seq.Con.iterJob (fun index -> Engine.logWithAck engine Warn (eventX "30 warn msgs") None ^=> id)
+        printfn "after generate log"
 
         // then
         let! msgsFromEachTarget = targets |> Seq.Con.mapJob (fun t -> t.getMsgs ())
         let (msgs1,msg2,msg3,msg4) = (msgsFromEachTarget.[0],msgsFromEachTarget.[1],msgsFromEachTarget.[2],msgsFromEachTarget.[3])
 
+        // target 1
+        let isCounted = msgs1 |> List.forall (fun msg -> 
+          match msg.value with 
+          | Event tpl -> 
+          printfn "%s" tpl
+          String.contains "counter result is 20" tpl 
+          | _ -> false)
+        let length = msgs1 |> List.length
 
+        Expect.equal 10 length "target 1 should have 10 msgs"
+        Expect.isTrue isCounted "each counted msg should have 20 counter nums"
+
+        // target 2
+        let hasTagAndSameEvent = msg2 |> List.forall (fun msg -> Message.hasTag "gotoTarget2" msg && msg.value = Event ":)")
+        Expect.isTrue hasTagAndSameEvent "all msgs should have tag gotoTarget2 and same event"
+
+        // target 3
+        let isAboveWarn = msg3 |> List.forall (fun msg -> msg.level >= Warn)
+        let length = msg3 |> List.length
+        
+        Expect.isTrue isAboveWarn "all msgs's logging level from target 3 need above Warn"
+        Expect.equal 40 length "target 3 should have 40 msgs"
+
+
+        // target 4
+        let allMapped = msg4 |> List.forall (fun msg -> 
+          match msg.value with 
+          | Event tpl -> String.contains "msgs/sec" tpl 
+          | _ -> false)
+
+        let length = msg4 |> List.length
+
+        Expect.isTrue allMapped "all msgs from target 4 needs contains msgs/sec"
+        Expect.equal 60 length "target 4 should have 60 msgs"
 
         // finally
         do! Engine.shutdown engine
@@ -188,7 +233,7 @@ let tests =
       } |> Job.toAsync)
 
 
-      testCaseAsync "shutdown and cancel tick jobs" (job {
+      ptestCaseAsync "shutdown and cancel tick jobs" (job {
         failtest "tobe done"
         let targetName = "a"
         let processing = simpleProcessing targetName

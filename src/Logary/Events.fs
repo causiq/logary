@@ -7,6 +7,7 @@ open Logary
 open Logary.Internals
 open Hopac
 open Hopac.Infixes
+open NodaTime
 
 type Cancellation = internal { cancelled: IVar<unit> }
 
@@ -49,13 +50,12 @@ type Ticker<'state,'t,'r> (initialState:'state) =
     >>-. cancellation
 
 type BufferTicker<'t> () =
-  inherit Ticker<ResizeArray<'t>,'t,ResizeArray<'t>>(ResizeArray())
+  inherit Ticker<List<'t>,'t,List<'t>>(List.empty)
     override this.Folder state item = 
-      state.Add(item)
-      state
+      [yield! state; yield item]
 
     override this.HandleTick state =
-      ResizeArray(),state
+      List.empty, state
 
 type Pipe<'c,'r,'s> = 
   internal {
@@ -203,6 +203,9 @@ module Events =
         | Derived (Int64 i, _) -> i
         | _ -> 1L)
       Message.event Info (sprintf "counter result is %i within %s" sumResult (timespan.ToString ())))
+
+  let miniLevel level pipe =
+    pipe |> Pipe.filter (fun msg -> msg.level >= level)
 
   let sink (targetName:string) pipe = 
     pipe |> Pipe.map (Message.setContext "target" targetName)

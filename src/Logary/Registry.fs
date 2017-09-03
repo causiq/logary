@@ -57,90 +57,6 @@ module internal GlobalService =
     }
   *)
 
-module Engine =
-
-  type T =
-    private {
-      subscriptions : HashMap<string, Message -> Job<unit>>
-      inputCh       : Ch<Message * IVar<unit>>
-      shutdownCh    : Ch<IVar<unit>>
-      subscriberCh  : Ch<string * (Message->Job<unit>)> 
-      middleware    : Middleware list
-    }
-
-  let create (pipe:Processing) mids : Job<T> =
-    let inputCh, shutdownCh, subscriberCh = Ch (), Ch (), Ch ()
-    let engine = { 
-                   subscriptions = HashMap.empty
-                   inputCh = inputCh
-                   shutdownCh = shutdownCh
-                   subscriberCh = subscriberCh
-                   middleware = mids
-                 }
-
-    let processing msg subscribers pipe =
-      let onNext = pipe.run <| (fun msg ->
-            let targetName = Message.tryGetContext "target" msg
-            match targetName with 
-            | Some (String targetName) ->
-              let subscriber = HashMap.tryFind targetName subscribers 
-              match subscriber with
-              | Some subscriber -> subscriber msg
-              | _ -> Job.result ()
-            | _ -> Job.result ())
-      
-      onNext msg
-
-    let rec loop ctss (subsribers:HashMap<string, Message -> Job<unit>>) =
-      Alt.choose [
-        inputCh ^=> fun (msg, reply) -> 
-          processing msg subsribers pipe
-          ^=> fun _ -> reply *<= () 
-          >>=. loop ctss subsribers
-
-        subscriberCh ^=> fun (key, sink) ->
-          subsribers
-          |> HashMap.add key sink 
-          |> loop ctss
-
-        shutdownCh ^=> fun reply ->
-          ctss 
-          |> Seq.Con.iterJob Cancellation.cancel
-          >>=. reply *<= ()
-      ]
-
-    Seq.Con.mapJob id pipe.tickTimerJobs
-    >>= fun ctss -> Job.start (loop ctss engine.subscriptions)
-    >>-. engine
-
-  let subscribe (engine : T) (key:string) (sink : Message -> Job<unit>) : Job<unit> =
-    engine.subscriberCh *<- (key, sink)
-    :> Job<unit>
-
-  let shutdown (engine : T) =
-    engine.shutdownCh *<-=>- id
-
-  let logWithAck (engine : T) (logLevel : LogLevel) (messageFactory : LogLevel -> Message) mid : Alt<Promise<unit>> =
-    let cmid = Middleware.compose (mid |> Option.fold (fun s t -> t :: s) engine.middleware)
-    let msg = messageFactory logLevel |> cmid
-    let reply = IVar ()
-    engine.inputCh *<- (msg, reply)
-    ^->. upcast reply
-
-  let log (engine : T) (logLevel : LogLevel) (messageFactory : LogLevel -> Message) mid : Alt<unit> =
-    logWithAck engine logLevel messageFactory mid ^-> ignore
-  
-  let createLogger engine name mid  =
-      { new Logger with
-          member x.name = name
-          member x.log level messageFactory =
-            log engine level messageFactory mid
-          member x.logWithAck level messageFactory =
-            logWithAck engine level messageFactory mid
-      }
-
-/// When you validate the configuration, you get one of these.
-///
 /// This is the logary configuration structure having a memory of all
 /// configured targets, middlewares, etc.
 type LogaryConf =
@@ -201,8 +117,7 @@ module Registry =
   type T =
     private {
       runtimeInfo : RuntimeInfo
-
-      engine      : Engine.T
+      msgProcessing : Message -> Middleware option -> Alt<unit>
 
       /// Flush all pending messages from the registry to await shutdown and
       /// ack on the `ackCh` when done. If the client nacks the request, the
@@ -214,17 +129,6 @@ module Registry =
       /// so the caller is promised a ShutdownInfo.
       shutdownCh : Ch<IVar<ShutdownInfo> * Duration option>
     }
-
-  /// Gets a logger from the registry, by name. This will always return a
-  /// `Logger` value.
-  let getLogger (t : T) name : Logger =
-    Engine.createLogger t.engine name None
-
-
-  /// Gets a logger from the registry, by name, with attached middleware. This
-  /// will always return a `Logger` value.
-  let getLoggerWithMiddleware (t : T) name middleware : Logger =
-    Engine.createLogger t.engine name (Some middleware)
 
   /// Flush all pending messages for all targets. Flushes with no timeout; if
   /// this Alternative yields, all targets were flushed.
@@ -262,11 +166,24 @@ module Registry =
 
   module internal Impl =
 
-    let createGlobals ilogger (x : T) =
+
+    let logWithAck (t : T) (logLevel : LogLevel) (messageFactory : LogLevel -> Message) mid : Alt<Promise<unit>> =
+      t.msgProcessing (messageFactory logLevel) mid ^->. Promise (())
+
+    let getLogger (t : T) name mid =
+        { new Logger with
+            member x.name = name
+            member x.log level messageFactory =
+              logWithAck t level messageFactory mid ^-> ignore
+            member x.logWithAck level messageFactory =
+              logWithAck t level messageFactory mid
+        }
+
+    let createGlobals ilogger (t : T) =
       let config =
         { Global.defaultConfig with
-            getLogger = fun name -> Engine.createLogger x.engine name None
-            getLoggerWithMiddleware = fun name mid -> Engine.createLogger x.engine name (Some mid) }
+            getLogger = fun name -> getLogger t name None
+            getLoggerWithMiddleware = fun name mid -> getLogger t name (Some mid) }
       GlobalService.create config ilogger
 
     let spawnTarget (ri : RuntimeInfo) targets =
@@ -276,7 +193,6 @@ module Registry =
            Target.create ri conf >>= fun instance ->
            Job.supervise instance.api.runtimeInfo.logger conf.policy instance.server
            >>-. instance)
-
 
     let inline generateProcessResult name processAlt (timeout:Duration option) = 
       match timeout with
@@ -330,11 +246,27 @@ module Registry =
     let rlogger = ri.logger |> Logger.apply (setName rname)
    
     spawnTarget ri conf.targets >>= fun targets ->
-    Engine.create conf.processing rmid >>= fun engine ->
+    let targetsMap = targets |> List.map (fun t -> PointName.format t.name, t) |> HashMap.ofList 
+    // pipe.run should only be invoke once, because state in pipes is captured when pipe.run
+    let sendMsg = conf.processing.run <| (fun msg ->
+      let targetName = Message.tryGetContext "target" msg
+      match targetName with 
+      | Some (String targetName) ->
+        let target = HashMap.tryFind targetName targetsMap 
+        match target with
+        | Some target -> 
+          msg |> Middleware.compose target.middleware |> Target.log target >>= id
+        | _ -> Job.result ()
+      | _ -> Job.result ())
 
-    let getLoggerCh, flushCh, shutdownCh = Ch (), Ch (), Ch ()
+    let msgProcessing msg mid = 
+      let cmid = Middleware.compose (mid |> Option.fold (fun s t -> t :: s) rmid)
+      msg |> cmid |> sendMsg
 
-    let rec running () =
+
+    let flushCh, shutdownCh = Ch (), Ch ()
+
+    let rec running ctss =
       Alt.choose [
         flushCh ^=> fun (ackCh, nack, timeout) ->
           rlogger.infoWithAck (eventX "Start Flush")
@@ -342,32 +274,30 @@ module Registry =
             memo (flushPending targets timeout >>= fun flushInfo -> (ackCh *<- flushInfo))
             <|> 
             nack
-          ^=> running 
+          ^=>. running ctss
 
         shutdownCh ^=> fun (res, timeout) ->
           rlogger.infoWithAck (eventX "Shutting down")
-          ^=>. Engine.shutdown engine 
-          ^=>. shutdown targets timeout
+          ^=>. Seq.Con.iterJob Cancellation.cancel ctss
+          >>=. shutdown targets timeout
           >>= fun shutdownInfo -> res *<= shutdownInfo
       ]
 
     let state =
       { runtimeInfo = ri
-        engine = engine
+        msgProcessing = msgProcessing
         flushCh = flushCh
         shutdownCh = shutdownCh }
 
     createGlobals conf.runtimeInfo.logger state
-    >>= fun globals -> targets |> Seq.Con.iterJob (fun target -> 
-        let logJob = fun msg -> msg |> Middleware.compose target.middleware |> Target.log target >>= id
-        Engine.subscribe engine (PointName.format target.name) logJob)
-    >>=. Job.supervise rlogger (Policy.restartDelayed 500u) (running ()) 
+    >>=. Seq.Con.mapJob id conf.processing.tickTimerJobs
+    >>= fun ctss -> Job.supervise rlogger (Policy.restartDelayed 500u) (running ctss) 
     >>-. state
 
   let toLogManager (t : T) : LogManager =
     { new LogManager with
         member x.getLogger name =
-          getLogger t name
+          getLogger t name None
         member x.runtimeInfo =
           t.runtimeInfo
         member x.flushPending dur =
