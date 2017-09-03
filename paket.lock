@@ -1,5 +1,5 @@
 REDIRECTS: ON
-FRAMEWORK: NET45, NET452, NET461
+RESTRICTION: || (== net45) (== net452) (== net461)
 NUGET
   remote: https://www.nuget.org/api/v2
     Aether (8.1.2)
@@ -105,7 +105,7 @@ NUGET
     NodaTime (1.3.2)
     protobuf-net (2.1)
     RabbitMQ.Client (3.6.6)
-    Suave (2.0)
+    Suave (2.2.1)
       FSharp.Core (>= 4.0.0.1)
     System.Data.SQLite.Core (1.0.104)
     System.Diagnostics.DiagnosticSource (4.4)
@@ -127,11 +127,11 @@ GITHUB
       Expecto
       Hopac
   remote: logary/logary
-    src/Logary.CSharp.Facade/Facade.cs (2bcd958a2143a124da406a9e756aae9282e701a6)
-    src/Logary.Facade/Facade.fs (2bcd958a2143a124da406a9e756aae9282e701a6)
+    src/Logary.CSharp.Facade/Facade.cs (2ae946d28a11fb5ed3bc9e4066c1ff8a6d40fc94)
+    src/Logary.Facade/Facade.fs (2ae946d28a11fb5ed3bc9e4066c1ff8a6d40fc94)
 GROUP Examples
 REDIRECTS: ON
-FRAMEWORK: >= NET45
+RESTRICTION: >= net45
 NUGET
   remote: https://www.nuget.org/api/v2
     elmah.io.client (2.0.29)
