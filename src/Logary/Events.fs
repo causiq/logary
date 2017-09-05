@@ -9,6 +9,66 @@ open Hopac
 open Hopac.Infixes
 open NodaTime
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Snapshot =
+  open System
+  // TODO: when I need to read values multiple times:
+  // memoized snapshot to avoid recalculation of values after reading
+
+  type Snapshot =
+    { values : int64 [] }
+
+  let create unsorted =
+    Array.sortInPlace unsorted
+    { values = unsorted }
+
+  let size s = s.values.Length
+
+  let quantile s q =
+    if q < 0. || q > 1. then
+      invalidArg "q" "quantile is not in [0., 1.]"
+    if size s = 0 then
+      0.
+    else
+      let pos = q * float (size s + 1)
+      match pos with
+      | _ when pos < 1. ->
+        float s.values.[0]
+      | _ when pos >= float (size s) ->
+        float s.values.[size s - 1]
+      | _ ->
+        let lower = s.values.[int pos - 1]
+        let upper = s.values.[int pos]
+        float lower + (pos - floor pos) * float (upper - lower)
+
+  let median s = quantile s 0.5
+  let percentile75th s = quantile s 0.75
+  let percentile95th s = quantile s 0.95
+  let percentile98th s = quantile s 0.98
+  let percentile99th s = quantile s 0.99
+  let percentile999th s = quantile s 0.999
+
+  let values s = s.values
+  let min s = if size s = 0 then 0L else Array.min s.values
+  let max s = if size s = 0 then 0L else Array.max s.values
+
+  let private meanAndSum s =
+    if size s = 0 then 0., 0. else
+    let mutable sum = 0.
+    for x in s.values do
+      sum <- sum + float x
+    let mean = float sum / float s.values.Length
+    mean, sum
+
+  let mean = fst << meanAndSum
+
+  let stdDev s =
+    let size = size s
+    if size = 0 then 0. else
+    let mean = mean s
+    let sum = s.values |> Array.map (fun d -> Math.Pow(float d - mean, 2.)) |> Array.sum
+    sqrt (sum / float (size - 1))
+
 type Cancellation = internal { cancelled: IVar<unit> }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -57,6 +117,72 @@ type BufferTicker<'t> () =
 
     override this.HandleTick state =
       ResizeArray(),state
+
+
+/// The an exponentially weighted moving average that gets ticks every
+/// period (a period is a duration between events), but can get
+/// `update`s at any point between the ticks.
+module ExpWeightedMovAvg =
+  open NodaTime
+
+  /// calculate the alpha coefficient from a number of minutes
+  ///
+  /// - `samplePeriod` is how long is between each tick
+  /// - `alphaPeriod` is the duration the EWMA should be calculated over
+  let alpha (samplePeriod : Duration) (alphaPeriod : Duration) =
+    1. - exp (- (float samplePeriod.Ticks / float alphaPeriod.Ticks))
+
+
+  type EWMAState =
+    { /// in samples per tick
+      rate               : float
+      uncounted          : int64
+      lastTickTimestamp  : EpochNanoSeconds option
+      alphaPeriod        : Duration}
+
+  /// Create a new EWMA state that you can do `update` and `tick` on.
+  ///
+  /// Alpha is dependent on the duration between sampling events ("how long
+  /// time is it between the data points") so they are given as a pair.
+  let create (alphaPeriod) =
+    { rate      = 0.
+      uncounted = 0L
+      lastTickTimestamp = None
+      alphaPeriod  = alphaPeriod }
+
+  let update state value =
+    { state with uncounted = state.uncounted + value }
+
+  let tick state =
+    let timestampNow = Global.getTimestamp ()
+    match state.lastTickTimestamp with 
+    | None -> { state with lastTickTimestamp = Some timestampNow
+                           uncounted = 0L }
+    | Some lastTickTimestamp -> 
+      let count = float state.uncounted
+      let interval = timestampNow - lastTickTimestamp
+      let samplePeriod = Duration.FromTicks (interval / Constants.NanosPerTick)
+      let instantRate = count / float interval
+      let currentRate = state.rate
+      let alpha = alpha samplePeriod state.alphaPeriod
+      let rate = currentRate + alpha * (instantRate - currentRate)
+      { state with uncounted = 0L
+                   rate      = rate }
+
+  let rateInUnit (inUnit : Duration) state =
+    state.rate * (float inUnit.Ticks / float Constants.NanosPerTick)
+
+
+type EWMATicker<'t> (rateUnit, alphaPeriod) =
+  inherit Ticker<ExpWeightedMovAvg.EWMAState,int64,float>(ExpWeightedMovAvg.create alphaPeriod)
+    override this.Folder ewma item = 
+      ExpWeightedMovAvg.update ewma item
+
+    override this.HandleTick ewma =
+      let ewma' = ExpWeightedMovAvg.tick ewma
+      let rate = ewma' |> ExpWeightedMovAvg.rateInUnit rateUnit
+      ewma', rate
+
 
 type Pipe<'c,'r,'s> = 
   internal {
@@ -197,13 +323,24 @@ module Events =
   let counter timespan pipe =
     pipe 
     |> Pipe.bufferTime timespan 
+    |> Pipe.map (Seq.sumBy (fun (msg : Message) -> 
+       match msg.value with
+       | Gauge (Int64 i, _) 
+       | Derived (Int64 i, _) -> i
+       | _ -> 1L))
+
+  let percentile quantile pipe =
+    pipe
     |> Pipe.map (fun msgs -> 
-      let sumResult = msgs |> Seq.sumBy (fun (msg : Message) -> 
-        match msg.value with
-        | Gauge (Int64 i, _) 
-        | Derived (Int64 i, _) -> i
-        | _ -> 1L)
-      Message.event Info (sprintf "counter result is %i within %s" sumResult (timespan.ToString ())))
+       msgs |> Seq.map (fun (msg : Message) ->
+       match msg.value with
+       | Gauge (Int64 i, _) 
+       | Derived (Int64 i, _) -> i
+       | _ -> 1L) 
+       |> Array.ofSeq
+       |> Snapshot.create
+       |> Snapshot.quantile
+       <| quantile)
 
   let miniLevel level pipe =
     pipe |> Pipe.filter (fun msg -> msg.level >= level)

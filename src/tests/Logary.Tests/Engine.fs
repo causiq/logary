@@ -71,7 +71,9 @@ let tests =
         let processing = 
           Events.stream 
           |> Events.subscribers [
-            Pipe.start |> Events.service "svc1" |> Events.counter (TimeSpan.FromMilliseconds 100.) |> Events.sink "1"
+            Pipe.start |> Events.service "svc1" |> Events.counter (TimeSpan.FromMilliseconds 100.) 
+            |> Pipe.map (fun counted -> Message.event Info (sprintf "counter result is %i within 100 ms" counted))
+            |> Events.sink "1"
 
             Pipe.start |> Events.tag "gotoTarget2" |> Pipe.map (fun msg -> { msg with value = Event ":)"} ) 
             |> Events.sink "2"
