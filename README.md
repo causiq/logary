@@ -182,7 +182,7 @@ let randomMetric (pn : PointName) : Job<Metric> =
   let ticker pn (rnd : Random, prevValue) =
     let value = rnd.NextDouble()
     let msg = Message.gauge pn (Float value)
-    (rnd, value), [ msg ]
+    (rnd, value), [| msg |]
 
   let state = Random(), 0.0
 
