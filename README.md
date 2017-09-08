@@ -1010,9 +1010,11 @@ let fileConf =
 Or in C#:
 
 ```csharp
+// set 'logDir' to specific path like Environment.CurrentDirectory if you are on windows
 .Target<File.Builder>(
     "file",
-    file => file.Target.Naming("{service}-{host}-{datetime}", "log").Done())
+    file => file.Target.FileSystem(new FileSystem.DotNetFileSystem(logDir)) 
+                       .Naming("{service}-{host}-{datetime}", "log").Done())
 ```
 
 ### Policies & specifications
