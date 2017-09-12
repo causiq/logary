@@ -61,12 +61,17 @@ let run pipe (targets:ResizeArray<MockTarget>) =
           | _ -> Job.result ()
         | _ -> Job.result ())
 
+open NodaTime
+open System.Net.NetworkInformation
 
 let tests =
   [
-    testList "processing builder" [
+    ptestList "processing builder" [
           
       testCaseAsync "message routing" (job {
+
+        let fiveMinutesEWMATicker = EWMATicker (Duration.FromSeconds 1L, Duration.FromMinutes 5L)
+        
         // context
         let processing = 
           Events.stream 
@@ -83,6 +88,17 @@ let tests =
             Pipe.start |> Pipe.bufferTime (TimeSpan.FromMilliseconds 200.) 
             |> Pipe.map (fun msgs -> Message.event Info (sprintf "there are %i msgs on every 200 milliseconds" (Seq.length msgs)))
             |> Events.sink "4"
+
+            Pipe.start |> Events.tag "metric request latency" 
+            |> Pipe.bufferTime (TimeSpan.FromSeconds 5.)
+            |> Events.percentile 0.99
+            |> Pipe.map (fun num -> Message.event Info (sprintf "99th percentile of request latency every rolling 5 second window is %A" num))
+
+            Pipe.start |> Events.tag "metric request latency" 
+            |> Pipe.map (fun msg -> msg.value |> function Gauge (Int64 v,_) -> v | _ -> 1L)
+            |> Pipe.withTickJob (fiveMinutesEWMATicker.TickEvery (TimeSpan.FromSeconds 10.))
+            |> Pipe.tick fiveMinutesEWMATicker
+            |> Pipe.map (fun rate -> Message.event Info (sprintf "fiveMinutesEWMA of request latency's rate(sample/sec) is %A" rate))
           ]
           |> Events.toProcessing
 
@@ -149,81 +165,75 @@ let tests =
       } |> Job.toAsync)
     ]
 
-    // testCaseAsync "engine middleware" (job {
-    //     let targetName = "a"
-    //     let processing = simpleProcessing targetName
-    //     let engineMids = [Middleware.host "host1"; Middleware.service "svc1"]
+    testCaseAsync "health checker ping" (job {
+      // context
+      let pingSvc (hostName : string) = 
+        use p = new Ping()
+        try
+          let reply = p.Send(hostName,1000)
+          if reply.Status <> IPStatus.Success then
+            Message.event Error (sprintf "ping %s failed, reply status is %s" hostName (reply.Status.ToString ()))
+          else
+            Message.event Info (sprintf "ping %s success" hostName)
+        with e ->
+          Message.event Fatal (sprintf "ping %s ,occur exception" hostName)
+          |> Message.addExn e
 
-    //     let! engine = Engine.create processing engineMids
-    //     let! target = mockTarget targetName
-    //     do! target.server ||> Engine.subscribe engine
+      let pingTicker address = { 
+        new Ticker<_,_,Message> (pingSvc) with
+          override this.Folder state item = 
+            state
 
-    //     // when
-    //     let tpl = "Hello World"
-    //     let msgFac = (eventX tpl)
-    //     let userCtxName = "loggerMid"
-    //     let loggerMid = Middleware.context userCtxName "from logger"
-    //     let! ack = Engine.logWithAck engine Info msgFac (Some loggerMid)
-    //     do! ack
+          override this.HandleTick state =
+            state, state address
+      }
 
-    //     // then 
-    //     let! msgs = target.getMsgs ()
-    //     let msg = List.exactlyOne msgs
-    //     Expect.isSome (Message.tryGetContext KnownLiterals.HostContextName msg) "should have host"
-    //     Expect.isSome (Message.tryGetContext KnownLiterals.ServiceContextName msg) "should have svs"
-    //     Expect.isSome (Message.tryGetContext userCtxName msg) "should have user ctx vale"
-    //     Expect.isNone (Message.tryGetContext "xxx" msg) "should have not undefined ctx vale"
+      let pingOk = pingTicker "github.com"
+      let pingFailed = pingTicker "fake.svc"
 
-    //     // finally
-    //     do! Engine.shutdown engine
-    // } |> Job.toAsync)
+      let processing = 
+        Events.stream 
+        |> Events.subscribers [
+          Pipe.start
+          |> Pipe.withTickJob (pingOk.TickEvery (TimeSpan.FromSeconds 1.)) // check health every 1 seconds
+          |> Pipe.tick pingOk 
+          |> Pipe.filter (fun msg -> msg.level >= Warn) 
+          |> Events.sink "TargetForUnhealthySvc"  // report unhealthy info into some target
 
-    // testList "lifetime" [
-    //   testCaseAsync "create and shutdown" (job {
-        
-    //     let targetName = "a"
-    //     let processing = simpleProcessing targetName
+          Pipe.start
+          |> Pipe.withTickJob (pingFailed.TickEvery (TimeSpan.FromSeconds 1.)) 
+          |> Pipe.tick pingFailed 
+          |> Pipe.filter (fun msg -> msg.level >= Warn) 
+          |> Events.sink "TargetForUnhealthySvc" 
+        ]
+        |> Events.toProcessing
+   
+      // given
+      let! targets = [mockTarget "TargetForUnhealthySvc"] |> Job.seqCollect
+      let! (ctss, sendMsg) = run processing targets
 
-    //     let! engine = Engine.create processing List.empty
-    //     let! target = mockTarget targetName
-    //     do! target.server ||> Engine.subscribe engine
+      do! timeOutMillis 5000
 
-    //     // when
-    //     let tpl = "Hello World"
-    //     let msgFac = (eventX tpl)
-    //     let! ack = Engine.logWithAck engine Info msgFac None
-    //     do! ack
-    //     let! ack = Engine.logWithAck engine Verbose msgFac None
-    //     do! ack
+      // then
+      let! msgsFromEachTarget = targets |> Seq.Con.mapJob (fun t -> t.getMsgs ())
+      let msgs = msgsFromEachTarget |> Seq.exactlyOne
 
-    //     // then 
-    //     let! msgs = target.getMsgs ()
-    //     let exist event = msgs |> List.exists (fun msg -> msg.level = event.level && msg.value = event.value)
-    //     Expect.isTrue (exist (eventX tpl Info)) "Should have info event when engine is running"
-    //     Expect.isTrue (exist (eventX tpl Verbose)) "Should have verbose event when engine is running"
+      let isGithubSvcDown = msgs |> List.exists (fun msg -> 
+        match msg.value with 
+          | Event tpl -> String.contains "github" tpl 
+          | _ -> false )
 
-    //     do! Engine.shutdown engine
-    //     Expect.equal 2 (List.length msgs) "Should have just 2 events after engine shutdown"
+      
+      let isFakeSvcDown = msgs |> List.exists (fun msg -> 
+        match msg.value with 
+          | Event tpl -> String.contains "fake.svc" tpl 
+          | _ -> false )
 
-    //   } |> Job.toAsync)
-
-
-    //   ptestCaseAsync "shutdown and cancel tick jobs" (job {
-    //     failtest "tobe done"
-    //     let targetName = "a"
-    //     let processing = simpleProcessing targetName
-
-    //     let! engine = Engine.create processing List.empty
-    //     let! target = mockTarget targetName
-    //     do! target.server ||> Engine.subscribe engine
-
-    //     // then 
-    //     let! msgs = target.getMsgs ()
-
-    //     do! Engine.shutdown engine
-    //     Expect.equal 0 (List.length msgs) "Tick Job Should Stop"
-
-    //   } |> Job.toAsync)
-    // ]
+      Expect.isFalse isGithubSvcDown "ping github"
+      Expect.isTrue isFakeSvcDown "ping fake.svc"
+      
+      // finally
+      do! Seq.Con.iterJob Cancellation.cancel ctss
+    } |> Job.toAsync)
 
   ]

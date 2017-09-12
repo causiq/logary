@@ -183,7 +183,11 @@ type EWMATicker<'t> (rateUnit, alphaPeriod) =
       let rate = ewma' |> ExpWeightedMovAvg.rateInUnit rateUnit
       ewma', rate
 
-
+/// 'c means continuation function input
+/// 'r means continuation function output
+/// 's means pipe source element
+/// when we have a pipe, we can pass a continuation to it,
+/// and then we can pipe source item to its builded processing
 type Pipe<'c,'r,'s> = 
   internal {
     run : ('c -> Job<'r>) -> ('s -> Alt<unit>)
@@ -295,6 +299,21 @@ module Pipe =
            Array.blit window 1 window 0 slidingLen
            window.[slidingLen] <- prev
            cont window)
+
+  /// use msg timestamp
+  // let inline slidingWindowTime timespan pipe =
+  //   pipe
+  //   |> chain (fun cont ->
+  //        let window = ResizeArray ()
+  //        let slidingLen = size - 1
+  //        let mutable count = 0u
+  //        fun prev -> 
+  //          window.Add prev
+
+  //          Array.blit window 1 window 0 slidingLen
+  //          window.[slidingLen] <- prev
+  //          cont window)
+  
   
 
 type Processing = Pipe<Message,unit,Message>
