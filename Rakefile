@@ -57,11 +57,16 @@ task :paket_replace do
   sh %{ruby -pi.bak -e "gsub(/module Hopac/, 'namespace Logary.Internals')" paket-files/logary/RingBuffer/RingBuffer.fs}
   sh %{ruby -pi.bak -e "gsub(/namespace Logary.Facade/, 'namespace Libryy.Logging')" paket-files/logary/logary/src/Logary.Facade/Facade.fs}
   sh %{ruby -pi.bak -e "gsub(/namespace Logary.Facade/, 'namespace Cibryy.Logging')" paket-files/logary/logary/src/Logary.CSharp.Facade/Facade.cs}
-  sh %{ruby -pi.bak -e "gsub(/module Chiron/, 'module Logary.Utils.Chiron')" paket-files/xyncro/chiron/src/Chiron/Chiron.fs}
 end
 
 task :copy_files do
+  unless File.directory?("./src/tests/Logary.Targets.DB.Tests/x86/")
+    FileUtils.mkdir_p("./src/tests/Logary.Targets.DB.Tests/x86/")
+  end
   FileUtils.cp_r Dir["./packages/SQLite.Interop/**/SQLite.Interop.dll"], "./src/tests/Logary.Targets.DB.Tests/x86/"
+  unless File.directory?("./src/tests/Logary.Targets.DB.Tests/x64/")
+    FileUtils.mkdir_p("./src/tests/Logary.Targets.DB.Tests/x64/")
+  end
   FileUtils.cp_r Dir["./packages/SQLite.Interop.dll/**/SQLite.Interop.dll"], "./src/tests/Logary.Targets.DB.Tests/x64/"
 end
 
@@ -204,7 +209,7 @@ end
 desc 'run unit tests'
 task :tests => [:build, :tests_unit, :tests_spec]
 
-task :default => [:tests, :nugets]
+task :default => [:restore, :paket_replace, :copy_files, :tests]
 
 namespace :docs do
   task :pre_reqs do
