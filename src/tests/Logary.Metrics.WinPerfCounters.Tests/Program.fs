@@ -35,10 +35,6 @@ let tests =
       if onMono () then Tests.skiptest "Helpers.getPidinstance fails on mono"
       WinPerfCounter.Helpers.pidInstance () |> ignore
 
-    testCase "getting value from perf counter" <| fun _ ->
-      if onMono () then Tests.skiptest "Helpers.getPidinstance fails on mono"
-      let apps = WinPerfCounters.appCounters ()
-      apps.[0].nextValues () |> ignore
   ]
 
 [<EntryPoint>]
