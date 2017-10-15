@@ -76,6 +76,7 @@
     <Compile Include="Constants.fs" />
     <Compile Include="Internals/Internals.fs" />
     <Compile Include="DataModel.fs" />
+    <Compile Include="DurationModule.fs" />
     <Compile Include="ValueModule.fs" />
     <Compile Include="UnitsModule.fs" />
     <Compile Include="FieldModule.fs" />
@@ -105,10 +106,9 @@
     <Compile Include="Registry.fs" />
     <!-- Below: formatting, serialisation -->
     <Compile Include="Formatting.fs" />
-    <!--<Compile Include="Serialisation.fs" />-->
+    <!-- <Compile Include="Serialisation.fs" /> -->
     <!-- Below: implementations, factory api -->
     <Compile Include="CSharp.fs" />
-    <Compile Include="Configuration/Factory.Rule.fs" />
     <Compile Include="Configuration/Factory.Target.fs" />
     <Compile Include="Targets/Core.fs" />
     <Compile Include="Targets/Noop.fs" />

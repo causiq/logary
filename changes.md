@@ -21,8 +21,20 @@
 
 - todo 
 
-  - complete the todo parts
-  - ExpWeightedMovAvg -> events ticker
   - more unit test
   - targets rule to event processing
+  - reorganize types in Events.fs 
+  - FieldModule.fs  -> create Value from default or user defined trans / ValueModule.fs
+  - chiron new version in Serialisation.fs
+  - maybe obsolete 
+    - PromisedLogger.fs
+
+      create logger is no longer async, just a function with registry instance
+
+    - service.fs 
+     
+      > because it has an abstraction Service around each service and that abstraction isn't crisp. I'm considering adding a behaviour tree which is a more natural polling mechanism with built-in compensatory logic.
+
+    - Metrics.Ticked.fs  ->  replace by Events.Ticker
+    - Transformers.fs -> replace by Events.xxx (should implement by events pipe style)
   

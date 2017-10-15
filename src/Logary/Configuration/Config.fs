@@ -113,6 +113,3 @@ module Config =
           member x.processing = lconf.processing
       }
     Registry.create conf
-
-  let toLogManager (registry : Registry.T) : LogManager =
-    Registry.toLogManager registry

@@ -6,10 +6,13 @@ open Logary.Internals.Aether
 module Field =
 
   let createUnit (value : 'a) (units : Units) =
-    failwith "TODO: TypeShape"
+    // failwith "TODO: TypeShape"
+    Field (Value.create value, Some units)
 
   let create (value : 'a) =
-    failwith "TODO: TypeShape"
+    // failwith "TODO: TypeShape"
+    Field (Value.create value, None)
+    
 
   module Optic =
 
