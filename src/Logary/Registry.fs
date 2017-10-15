@@ -11,52 +11,6 @@ open Logary.Target
 open Logary.Internals
 open Hopac.Extensions
 
-module internal GlobalService =
-  open Global
-
-  let create (t : T) (ilogger : Logger) =
-    let logger = ilogger |> Logger.apply (setSimpleName "Logary.Globals")
-    let pauseCh, resumeCh, shutdownCh = Ch (), Ch (), Ch ()
-
-    let rec init () =
-      let prev = !config
-      initialise t
-      running t (fst prev)
-
-    and running myself prev =
-      Alt.choose [
-        pauseCh ^=> fun (ack, nack) ->
-          logger.debug (eventX "Pausing.")
-          initialise prev
-          ack *<= () >>=. running myself prev
-
-        resumeCh ^=> fun (ack, nack) ->
-          logger.debug (eventX "Resuming.")
-          initialise myself
-          ack *<= () >>=. running myself prev
-
-        shutdownCh ^=> fun ack ->
-          logger.debug (eventX "Shutting down.")
-          initialise prev
-          ack *<= ()
-      ]
-
-    let shutdown : Alt<Promise<unit>> =
-      shutdownCh *<-=>= fun repl -> repl
-      |> Alt.afterFun (fun iv -> iv :> _)
-
-    let loop = Job.supervise logger Policy.terminate (init ())
-    Service.create logger "globals" pauseCh resumeCh shutdown loop
-
-  (* // cc: @oskarkarlsson ;)
-  let scoped (globals : Service<Service.T>) (logger : Logger) =
-    globals |> Service.pause >>-.
-    { new IAsynDisposable with
-        member x.AsyncDispose() =
-          globals |> Service.resume
-    }
-  *)
-
 /// This is the logary configuration structure having a memory of all
 /// configured targets, middlewares, etc.
 type LogaryConf =
@@ -161,8 +115,6 @@ module Registry =
     t.shutdownCh *<-=>- fun shutdownCh -> shutdownCh, Some shutdownTimeout
     |> Alt.afterFun (fun shutdownInfo -> flushInfo, shutdownInfo)
 
-  let runtimeInfo (t : T) : RuntimeInfo =
-    t.runtimeInfo
 
   module internal Impl =
 
@@ -179,12 +131,12 @@ module Registry =
               logWithAck t level messageFactory mid
         }
 
-    let createGlobals ilogger (t : T) =
+    let initialiseGlobals (t : T) =
       let config =
         { Global.defaultConfig with
             getLogger = fun name -> getLogger t name None
             getLoggerWithMiddleware = fun name mid -> getLogger t name (Some mid) }
-      GlobalService.create config ilogger
+      Global.initialise config
 
     let spawnTarget (ri : RuntimeInfo) targets =
       targets
@@ -288,11 +240,12 @@ module Registry =
         msgProcessing = msgProcessing
         flushCh = flushCh
         shutdownCh = shutdownCh }
-
-    createGlobals conf.runtimeInfo.logger state
-    >>=. Seq.Con.mapJob id conf.processing.tickTimerJobs
+    
+    Seq.Con.mapJob id conf.processing.tickTimerJobs
     >>= fun ctss -> Job.supervise rlogger (Policy.restartDelayed 500u) (running ctss) 
-    >>-. state
+    >>- fun _ -> 
+      initialiseGlobals state
+      state
 
   let toLogManager (t : T) : LogManager =
     { new LogManager with
