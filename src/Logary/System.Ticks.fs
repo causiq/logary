@@ -8,5 +8,4 @@ module Ticks =
   /// Convert the ticks value to a Gauge.
   [<CompiledName("ToGauge"); Extension>]
   let toGauge (ticks : int64) =
-    Int64 (ticks * Constants.NanosPerTick),
-    Scaled (Seconds, float Constants.NanosPerSecond)
+    Gauge ((ticks * Constants.NanosPerTick), Scaled (Seconds, float Constants.NanosPerSecond))

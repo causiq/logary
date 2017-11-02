@@ -79,7 +79,6 @@
     <Compile Include="DurationModule.fs" />
     <Compile Include="ValueModule.fs" />
     <Compile Include="UnitsModule.fs" />
-    <Compile Include="FieldModule.fs" />
     <Compile Include="Internals/NullLogger.fs" />
     <Compile Include="Middleware.fs" />
     <Compile Include="Internals/Global.fs" />

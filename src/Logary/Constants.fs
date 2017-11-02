@@ -3,24 +3,41 @@ namespace Logary
 /// Literals Logary uses for placing values in the Message structure.
 module KnownLiterals =
 
+  /// Avoid conflict with user defined context key
   [<Literal>]
-  let ErrorsFieldName = "errors"
+  let internal LogaryPrefix = "_logary."
+  
+  /// To recognize all fields for generate formatted msg
+  [<Literal>]
+  let FieldsPrefix = "_fields."
+
+    /// To recognize all fields for generate formatted msg
+  [<Literal>]
+  let GaugeTag = LogaryPrefix + "gauge"
+
+  /// for api compatibility
+  [<Literal>]
+  let DefaultGaugeType = "default-gauge"
+  
 
   [<Literal>]
-  let ServiceContextName = "service"
+  let ErrorsContextName = LogaryPrefix + "errors"
 
   [<Literal>]
-  let HostContextName = "host"
+  let ServiceContextName =  LogaryPrefix + "service"
+
+  [<Literal>]
+  let HostContextName =  LogaryPrefix + "host"
 
   /// The tags context field
   [<Literal>]
-  let TagsContextName = "tags"
+  let TagsContextName =  LogaryPrefix +  "tags"
 
   /// Used to tag gauges which are 'composite' at-the-same-instant measurements
   /// of something. This makes targets aware that they should not send the main
   /// PointValue
   [<Literal>]
-  let SuppressPointValue = "suppress-point-value"
+  let SuppressPointValue =  LogaryPrefix + "suppress-point-value"
 
 /// Time calculation constants
 module Constants =

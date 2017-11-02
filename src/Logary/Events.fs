@@ -334,32 +334,34 @@ module Events =
     {pipes = List.concat [pipes; stream.pipes;]}
 
   let service svc pipe = 
-    pipe |> Pipe.filter (fun msg ->
-      msg.context |> HashMap.tryFind KnownLiterals.ServiceContextName = Some (Logary.String svc))
+    pipe |> Pipe.filter (fun msg -> Message.tryGetContext KnownLiterals.ServiceContextName msg = Some svc)
 
   let tag tag pipe = pipe |> Pipe.filter (Message.hasTag tag)
 
   let counter timespan pipe =
-    pipe 
-    |> Pipe.bufferTime timespan 
-    |> Pipe.map (Seq.sumBy (fun (msg : Message) -> 
-       match msg.value with
-       | Gauge (Int64 i, _) 
-       | Derived (Int64 i, _) -> i
-       | _ -> 1L))
+    failwith "to repair"
+    // pipe 
+    // |> Pipe.bufferTime timespan 
+    // |> Pipe.map (Seq.sumBy (fun (msg : Message) -> 
+    //    match msg.value with
+    //    | Gauge (Int64 i, _) 
+    //    | Derived (Int64 i, _) -> i
+    //    | _ -> 1L))
 
   let percentile quantile pipe =
-    pipe
-    |> Pipe.map (fun msgs -> 
-       msgs |> Seq.map (fun (msg : Message) ->
-       match msg.value with
-       | Gauge (Int64 i, _) 
-       | Derived (Int64 i, _) -> i
-       | _ -> 1L) 
-       |> Array.ofSeq
-       |> Snapshot.create
-       |> Snapshot.quantile
-       <| quantile)
+    failwith "to repair"
+  
+    // pipe
+    // |> Pipe.map (fun msgs -> 
+    //    msgs |> Seq.map (fun (msg : Message) ->
+    //    match msg.value with
+    //    | Gauge (Int64 i, _) 
+    //    | Derived (Int64 i, _) -> i
+    //    | _ -> 1L) 
+    //    |> Array.ofSeq
+    //    |> Snapshot.create
+    //    |> Snapshot.quantile
+    //    <| quantile)
 
   let miniLevel level pipe =
     pipe |> Pipe.filter (fun msg -> msg.level >= level)

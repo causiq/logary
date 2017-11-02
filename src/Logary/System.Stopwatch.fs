@@ -11,11 +11,11 @@ module StopwatchEx =
   type Stopwatch with
     /// Convert the current value of the Stopwatch to a gauge's value and unit.
     [<Extension; CompiledName "ToGauge">]
-    member sw.toGauge() : (Value * Units) =
+    member sw.toGauge() =
       Ticks.toGauge sw.ElapsedTicks
 
     [<Extension; CompiledName "Time">]
-    static member time (fn : unit -> 'res) : 'res * (Value * Units) =
+    static member time (fn : unit -> 'res) =
       let sw = Stopwatch.StartNew()
       let res = fn ()
       sw.Stop()

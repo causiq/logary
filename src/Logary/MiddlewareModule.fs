@@ -14,26 +14,23 @@ module Middleware =
   /// Sets the host name as a context value
   [<CompiledName "Host">]
   let host host : Middleware =
-    let value = String host
     fun next msg ->
-      Message.setContextValue KnownLiterals.HostContextName value msg
+      Message.setContext KnownLiterals.HostContextName host msg
       |> next
 
 
   /// Sets the host name as a context value
   [<CompiledName "DnsHost">]
   let dnsHost : Middleware =
-    let value = String (Dns.GetHostName())
     fun next msg ->
-      Message.setContextValue KnownLiterals.HostContextName value msg
+      Message.setContext KnownLiterals.HostContextName (Dns.GetHostName()) msg
       |> next
 
   /// Sets the service name as a context value
   [<CompiledName "Service">]
   let service (name : string) : Middleware =
-    let value = String name
     fun next msg ->
-      Message.setContextValue KnownLiterals.ServiceContextName value msg
+      Message.setContext KnownLiterals.ServiceContextName name msg
       |> next
 
   let private pn = Process.GetCurrentProcess()

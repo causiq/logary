@@ -240,19 +240,17 @@ module Logger =
     let bisections : (int64 * string) list ref = ref []
 
     let sw = Stopwatch.StartNew()
-    let sndMap f (a, b) = a, f b
 
     let addSpan (m, i) (span : int64 (* ticks *), label : string) =
-      let name, value =
-        PointName [| "span"; string i |],
-        Field (Ticks.toGauge span |> sndMap Some)
+      let spanName = PointName [| PointName.format name ; "span"; string i |]
+      let spanLabelName = PointName.setEnding "label" spanName
+ 
+      let m' = 
+        m 
+        |> Message.addGauge (PointName.format spanName) (Ticks.toGauge span)
+        |> Message.setContext (PointName.format spanLabelName) label
 
-      let values =
-        [ name, value
-          PointName.setEnding "label" name, Field (String label, None) ]
-
-      Message.setFieldValues values m,
-      i + 1L
+      m', i + 1L
 
     let addSpans m =
       if !bisections = [] then m else
@@ -262,7 +260,7 @@ module Logger =
       sw.Stop()
       let level = Duration.FromTicks sw.ElapsedTicks |> decider
       sw.toGauge()
-      ||> Message.gaugeWithUnit name
+      |> Message.gaugeMessage (PointName.format name)
       |> Message.setLevel level
       |> addSpans
 
