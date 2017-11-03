@@ -2,14 +2,11 @@
 
 open System
 open System.Globalization
-open System.Collections
-open System.Collections.Generic
 open System.Text
 open System.IO
 open Microsoft.FSharp.Reflection
 open NodaTime
 open Logary
-open Logary.Internals
 open Logary.Internals.FsMessageTemplates
 
 /// A thing that efficiently writes a message to a TextWriter.
