@@ -4,7 +4,6 @@ open System
 open System.Globalization
 open System.Text
 open System.IO
-open System.Runtime.InteropServices
 open Microsoft.FSharp.Reflection
 open NodaTime
 open Logary
@@ -20,7 +19,7 @@ module MessageWriterEx =
   type MessageWriter with
     [<Obsolete "Try to write directly to a System.IO.TextWriter instead">]
     member x.format (m : Message) =
-      use sw = new StringWriter(StringBuilder())
+      use sw = StringWriter()
       x.write sw m
       sw.ToString()
 
