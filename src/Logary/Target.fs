@@ -26,8 +26,6 @@ type TargetConf = // formerly TargetUtils
   override x.ToString() =
     sprintf "TargetConf(%s)" x.name
 
-  interface Service with
-    member x.name = x.name
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module TargetConf =

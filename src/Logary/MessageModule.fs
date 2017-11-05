@@ -45,6 +45,8 @@ module Message =
       context_ >-> HashMap.value_ name >-> boxWithOption_
 
   
+  //#region CONTEXT AND FIELDS
+
   ///////////////// CONTEXT ////////////////////
 
   /// Sets a context value by trying to find the ToValue method on the type
@@ -79,7 +81,27 @@ module Message =
   let inline tryGetContext name message =
     Optic.get (Optic.contextValue_ name) message
 
-  
+  [<CompiledName "GetContextsByPrefix">]
+  let inline GetContextsByPrefix (prefix : string) message =
+    if String.IsNullOrEmpty prefix then
+      message.context |> HashMap.toSeq
+    else
+      let prefixLen = prefix.Length
+      message.context
+      |> Seq.choose (fun (KeyValue (k,v)) ->
+         if k.StartsWith prefix then
+           let withoutPrefix = k.Substring(prefixLen)
+           Some (withoutPrefix, v)
+         else None)
+
+  [<CompiledName "GetContextsOtherThanGaugeAndFields">]
+  let inline GetContextsOtherThanGaugeAndFields message =
+    message.context
+    |> Seq.choose (fun (KeyValue (k,v)) ->
+       if k.StartsWith KnownLiterals.FieldsPrefix 
+          || k.StartsWith KnownLiterals.GaugeTypePrefix then None
+       else Some (k,v))
+
   ///////////////// FIELDS ////////////////////
 
   /// Get a partial setter lens to a field
@@ -145,34 +167,34 @@ module Message =
 
   [<CompiledName "GetAllFields">]
   let getAllFields message =
-    let prefix = KnownLiterals.FieldsPrefix
-    let prefixLen = prefix.Length
-    message.context
-    |> Seq.choose (fun (KeyValue (k,v)) ->
-       if k.StartsWith prefix then 
-         let withNoPrefix = k.Substring(prefixLen)
-         Some (withNoPrefix, v)
-       else None)
+    GetContextsByPrefix KnownLiterals.FieldsPrefix message
+
+  [<CompiledName "GetAllGauges">]
+  let getAllGauges message =
+    message
+    |> GetContextsByPrefix KnownLiterals.GaugeTypePrefix
+    |> Seq.choose (function | (k, (:? Gauge as gauge)) -> Some (k, gauge) | _ -> None)
+
+  [<CompiledName "GetAllTags">]
+  let getAllTags message =
+    match tryGetContext KnownLiterals.TagsContextName message with
+    | Some (tags:Set<string>)-> tags
+    | _ -> Set.empty
 
   /// Tag the message
   [<CompiledName "Tag">]
   let tag (tag : string) (message : Message) =
-    let tagCtxName = KnownLiterals.TagsContextName
-    let tags =
-      match tryGetContext tagCtxName message with
-      | Some (tags:Set<string>)->
-        tags.Add tag
-      | _ ->
-        Set.singleton tag
-    setContext tagCtxName tags message
+    let tags = message |> getAllTags |> Set.add tag
+    setContext KnownLiterals.TagsContextName tags message
 
   /// Check if the Message has a tag
   [<CompiledName "HasTag">]
   let hasTag (tag : string) (message : Message) =
-    match tryGetContext KnownLiterals.TagsContextName message with
-    | Some (tags:Set<string>) when Set.contains tag tags -> true
-    | Some _ -> false
-    | _ -> false
+    message |> getAllTags |> Set.contains tag
+
+  //#endregion
+
+  //#region CTORS
 
   ///////////////// CTORS ////////////////////
 
@@ -180,7 +202,7 @@ module Message =
   [<CompiledName "Event">]
   let event level template =
     { name      = PointName.empty
-      value     = Event template
+      value     = Event (string template)
       context   = HashMap.empty
       level     = level
       timestamp = Global.getTimestamp () }
@@ -194,9 +216,14 @@ module Message =
   /// one message can take multi gauges
   [<CompiledName "AddGauge">]
   let addGauge gaugeType (gauge : Gauge) message =
+    let gaugeTypeName = KnownLiterals.GaugeTypePrefix + gaugeType 
     message
     |> tag KnownLiterals.GaugeTag
-    |> setContext gaugeType gauge
+    |> setContext gaugeTypeName gauge
+
+  [<CompiledName "HasGauge">]
+  let hasGauge message =
+    message |> hasTag KnownLiterals.GaugeTag
 
   /// Creates a new gauge message with gauge
   [<CompiledName "Gauge">]
@@ -389,6 +416,10 @@ module Message =
         sw.toGauge() |> gaugeMessage (PointName.format pointName)
       ), TaskContinuationOptions.ExecuteSynchronously) // stopping SW is quick
 
+  //#endregion
+
+  //#region PROPS
+
   ///////////////// PROPS ////////////////////
 
   /// Sets the name of the message to a PointName
@@ -447,7 +478,7 @@ module Message =
   /// Replaces the value of the message with a new Event with the supplied format
   [<CompiledName "SetEvent">]
   let setEvent format message =
-    { message with value = Event format }
+    { message with value = Event (string format) }
 
   [<Obsolete ("Use addGauge instand.")>]
   [<CompiledName "SetGauge">]
@@ -470,6 +501,8 @@ module Message =
       | _ -> [e]
 
     setContext errorCtxName errors msg
+
+  //#endregion
 
 [<AutoOpen>]
 module MessageEx =

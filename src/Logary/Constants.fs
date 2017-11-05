@@ -11,11 +11,15 @@ module KnownLiterals =
   [<Literal>]
   let FieldsPrefix = "_fields."
 
-    /// To recognize all fields for generate formatted msg
+  /// To check if some message has gauge value
   [<Literal>]
   let GaugeTag = LogaryPrefix + "gauge"
 
-  /// for api compatibility
+  /// To recognize all gauge fields for generate formatted msg
+  [<Literal>]
+  let GaugeTypePrefix = LogaryPrefix + "gauge."
+  
+  /// for api compatibility, when user don't provide gauge type
   [<Literal>]
   let DefaultGaugeType = "default-gauge"
   
