@@ -135,11 +135,18 @@ let tests =
     ]
 
     testList "KnownLiterals" (
-      [ KnownLiterals.ErrorsFieldName, "errors"
-        KnownLiterals.ServiceContextName, "service"
-        KnownLiterals.HostContextName, "host"
-        KnownLiterals.TagsContextName, "tags"
-        KnownLiterals.SuppressPointValue, "suppress-point-value"
+      [ 
+        KnownLiterals.LogaryPrefix, "_logary."
+        KnownLiterals.FieldsPrefix, "_fields."
+        KnownLiterals.GaugeTypePrefix, "_logary.gauge."
+        
+        KnownLiterals.ErrorsContextName, "_logary.errors"
+        KnownLiterals.ServiceContextName, "_logary.service"
+        KnownLiterals.HostContextName, "_logary.host"
+        KnownLiterals.TagsContextName, "_logary.tags"
+        KnownLiterals.GaugeTag, "_logary.gauge"
+
+        KnownLiterals.DefaultGaugeType, "default-gauge"
       ]
       |> List.map (fun (actual, expected) ->
           testCase (sprintf "ensuring constant '%s'" expected)<| fun () ->
@@ -449,24 +456,8 @@ let tests =
     ]
 
     testList "PointValue" [
-      testPropertyWithConfig fsCheckConfig "generate point values" <| fun (value : PointValue) ->
-        not (isNull (box value))
-
-      testPropertyWithConfig fsCheckConfig "TryGetGauge" <| fun (pv : PointValue) ->
-        match pv with
-        | Gauge (value, units) ->
-          match pv.TryGetGauge() with
-          | false, _ -> Tests.failtest "Should return true"
-          | true, tuplGv ->
-            tuplGv.Item1 = value && tuplGv.Item2 = units
-        | _ ->
-          match pv.TryGetGauge() with
-          | false, _ -> true
-          | true, x ->
-            Tests.failtest "Expected TryGetGauge to return 'false'"
-
-      testCase "TryGetDerived" <| fun () -> Tests.skiptest "TBD"
-      testCase "TryGetEvent" <| fun () -> Tests.skiptest "TBD"
+      testCase "empty" <| fun () ->
+        Expect.equal PointValue.empty (Event String.Empty) "Should be empty"
     ]
 
     testList "HashMap" [
@@ -501,11 +492,11 @@ let tests =
         Expect.equal m.level Info "Should have info level"
         Expect.equal m.value (Event "Hello world") "Should have template"
 
-      testCase "setFieldsFromObject : obj -> Message -> Message" <| fun () ->
-        Tests.skiptest "Awaiting usage of TypeShape"
-        let m = eventX "Hello world" Info |> setFieldsFromObject (Obj())
-        let field = m.fields |> HashMap.tryFind (PointName.ofSingle "PropA") |> Option.get
-        Expect.equal field (Field (Int64 45L, None)) "Should have PropA"
+      // testCase "setFieldsFromObject : obj -> Message -> Message" <| fun () ->
+      //   Tests.skiptest "Awaiting usage of TypeShape"
+      //   let m = eventX "Hello world" Info |> setFieldsFromObject (Obj())
+      //   let field = m.fields |> HashMap.tryFind (PointName.ofSingle "PropA") |> Option.get
+      //   Expect.equal field (Field (Int64 45L, None)) "Should have PropA"
 
       // TODO: add testCase for all functions in the Message module
     ]
@@ -651,7 +642,7 @@ let tests =
         true
     ]
 
-    ftestList "Engine" Engine.tests
+    testList "Engine" Engine.tests
 
     testList "Registry" [
       testCase "from Config" <| fun () ->

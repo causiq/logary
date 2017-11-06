@@ -243,6 +243,10 @@ module Pipe =
     pipe 
     |> chain (fun cont -> fun prev -> if predicate prev then cont prev else Job.result ())
 
+  let inline choose (chooser:'a -> 'b option) pipe =
+    pipe 
+    |> chain (fun cont -> fun prev -> match chooser prev with | Some mapped -> cont mapped | _ ->  Job.result ())
+
 
   /// when some item comes in, it goes to ticker.folder, generate state
   /// when somewhere outside tick through ticker , ticker.handleTick generate new state and pipe result for continuation
@@ -270,15 +274,15 @@ module Pipe =
   let inline buffer n pipe =
     pipe
     |> chain (fun cont ->
-         let results = new ResizeArray<_> ()
-         fun prev -> 
-           results.Add prev
-           if results.Count >= n then
-             let res = (List.ofSeq results)
-             results.Clear ()
-             cont res
-           else 
-             Job.result ())
+       let results = new ResizeArray<_> ()
+       fun prev -> 
+         results.Add prev
+         if results.Count >= n then
+           let res = (List.ofSeq results)
+           results.Clear ()
+           cont res
+         else 
+           Job.result ())
 
 
   let inline bufferTime timespan pipe =
@@ -292,13 +296,13 @@ module Pipe =
   let inline slidingWindow size pipe =
     pipe
     |> chain (fun cont ->
-         let window = Array.zeroCreate size
-         let slidingLen = size - 1
-         let mutable count = 0u
-         fun prev -> 
-           Array.blit window 1 window 0 slidingLen
-           window.[slidingLen] <- prev
-           cont window)
+       let window = Array.zeroCreate size
+       let slidingLen = size - 1
+       let mutable count = 0u
+       fun prev -> 
+         Array.blit window 1 window 0 slidingLen
+         window.[slidingLen] <- prev
+         cont window)
 
   /// use msg timestamp
   // let inline slidingWindowTime timespan pipe =

@@ -66,10 +66,6 @@
       <Name>Logary</Name>
       <Project>{f7e5b6e8-5d55-4974-9ca7-4c94d810631f}</Project>
     </ProjectReference>
-    <ProjectReference Include="../../adapters/Logary.Adapters.Facade/Logary.Adapters.Facade.fsproj">
-      <Name>Logary.Adapters.Facade.fsproj</Name>
-      <Project>{15226ed2-c66b-4aa2-b15d-acff8a45454a}</Project>
-    </ProjectReference>
   </ItemGroup>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.6.1')">

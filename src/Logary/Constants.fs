@@ -11,7 +11,7 @@ module KnownLiterals =
   [<Literal>]
   let FieldsPrefix = "_fields."
 
-  /// To check if some message has gauge value
+  /// To quick check if some message has a gauge value
   [<Literal>]
   let GaugeTag = LogaryPrefix + "gauge"
 
@@ -37,11 +37,6 @@ module KnownLiterals =
   [<Literal>]
   let TagsContextName =  LogaryPrefix +  "tags"
 
-  /// Used to tag gauges which are 'composite' at-the-same-instant measurements
-  /// of something. This makes targets aware that they should not send the main
-  /// PointValue
-  [<Literal>]
-  let SuppressPointValue =  LogaryPrefix + "suppress-point-value"
 
 /// Time calculation constants
 module Constants =

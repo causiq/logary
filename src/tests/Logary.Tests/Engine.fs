@@ -95,7 +95,8 @@ let tests =
             |> Pipe.map (fun num -> Message.event Info (sprintf "99th percentile of request latency every rolling 5 second window is %A" num))
 
             Pipe.start |> Events.tag "metric request latency" 
-            |> Pipe.map (fun msg -> msg.value |> function Gauge (Int64 v,_) -> v | _ -> 1L)
+            |> Pipe.choose (fun msg -> msg |> Message.tryGetGauge "some controller/action rpq")
+            |> Pipe.map (fun (Gauge (v, _)) -> Convert.ToInt64(v))
             |> Pipe.withTickJob (fiveMinutesEWMATicker.TickEvery (TimeSpan.FromSeconds 10.))
             |> Pipe.tick fiveMinutesEWMATicker
             |> Pipe.map (fun rate -> Message.event Info (sprintf "fiveMinutesEWMA of request latency's rate(sample/sec) is %A" rate))

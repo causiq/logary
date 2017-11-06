@@ -41,6 +41,7 @@ module Message =
       (function | Some x -> Some (unbox<'a> x) 
                 | None -> None), 
       box >> Some
+
     let contextValue_ name =
       context_ >-> HashMap.value_ name >-> boxWithOption_
 
@@ -49,8 +50,7 @@ module Message =
 
   ///////////////// CONTEXT ////////////////////
 
-  /// Sets a context value by trying to find the ToValue method on the type
-  /// passed.
+  /// Sets a context value if name exist, value will be override
   [<CompiledName "SetContext">]
   let setContext name value message =
     Optic.set (Optic.contextValue_ name) value message
@@ -224,6 +224,11 @@ module Message =
   [<CompiledName "HasGauge">]
   let hasGauge message =
     message |> hasTag KnownLiterals.GaugeTag
+
+  [<CompiledName "TryGetGauge">]
+  let tryGetGauge gaugeType message : Gauge option =
+    let gaugeTypeName = KnownLiterals.GaugeTypePrefix + gaugeType 
+    message |> tryGetContext gaugeTypeName
 
   /// Creates a new gauge message with gauge
   [<CompiledName "Gauge">]
