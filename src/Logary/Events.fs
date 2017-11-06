@@ -339,7 +339,7 @@ module Events =
   let tag tag pipe = pipe |> Pipe.filter (Message.hasTag tag)
 
   let counter timespan pipe =
-    failwith "to repair"
+    failwith "todo"
     // pipe 
     // |> Pipe.bufferTime timespan 
     // |> Pipe.map (Seq.sumBy (fun (msg : Message) -> 
@@ -349,7 +349,7 @@ module Events =
     //    | _ -> 1L))
 
   let percentile quantile pipe =
-    failwith "to repair"
+    failwith "todo"
   
     // pipe
     // |> Pipe.map (fun msgs -> 

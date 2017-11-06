@@ -83,7 +83,7 @@ module Target =
   /// Send the target a message, returning the same instance as was passed in when
   /// the Message was acked.
   let log (x : T) (msg : Message) : Alt<Promise<unit>> =
-    if Rule.canPass msg x.rules then 
+    if needSendToTarget x msg then 
       let ack = IVar ()
       Log (msg, ack)
       |> RingBuffer.put x.api.requests
@@ -100,7 +100,7 @@ module Target =
     let traverse =
       targets
       |> List.traverseAltA (fun target ->
-         if Rule.canPass msg target.rules then 
+         if needSendToTarget target msg then 
            Alt.prepareJob <| fun () ->
              let ack = IVar ()
              Job.start (ack ^=>. Latch.decrement latch) >>-.
