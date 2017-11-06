@@ -39,7 +39,7 @@ module internal List =
 
   /// Map a Job producing function over a list to get a new Job using
   /// applicative style (parallel). ('a -> Job<'b>) -> 'a list -> Job<'b list>
-  let rec traverseJobA (f : 'a -> Job<'b>) (list : 'a list) : Job<'b list> =
+  let rec traverseJobA (f : 'a -> #Job<'b>) (list : 'a list) : Job<'b list> =
     let cons head tail = head :: tail
     let initState = Job.result []
     let folder head tail =
@@ -98,7 +98,7 @@ module HashMap =
   let key_ (k: 'k) : Prism<HashMap<'k,'v>,'v> =
     HashMap.tryFind k,
     (fun v x ->
-      if HashMap.containsKey k x then HashMap.set k v x else x)
+      if HashMap.containsKey k x then x else HashMap.set k v x )
 
   /// Lens to a value option associated with a key in a map.
   let value_ (k: 'k) : Lens<HashMap<'k,'v>, 'v option> =

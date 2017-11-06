@@ -1816,7 +1816,7 @@ You can't rely on any one notification method for critical alerts. Get alert
 notifications via iOS & Android push, SMS, and phone calls; escalate
 automatically to team members if the alert is not acknowledged.
 
-The Logary target for OpsGenie ensures that you can bring in your HealthChecks,
+The Logary target for OpsGenie ensures that you can bring in your 
 Logging and Metrics into your daily operations.
 
 #### Features

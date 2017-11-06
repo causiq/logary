@@ -26,8 +26,6 @@ type TargetConf = // formerly TargetUtils
   override x.ToString() =
     sprintf "TargetConf(%s)" x.name
 
-  interface Service with
-    member x.name = x.name
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module TargetConf =
@@ -70,19 +68,27 @@ module Target =
   /// and a normal path of communication; the `requests` `RingBuffer` as well as
   /// and out-of-band-method of shutting down the target; the `shutdownCh`.
   type T =
-    private {
+    internal {
+      name       : PointName
       server     : Job<unit>
-      requests   : RingBuffer<TargetMessage>
-      shutdownCh : Ch<IVar<unit>>
+      api        : TargetAPI
+      middleware : Middleware list
+      rules      : Rule list
     }
+
+  let needSendToTarget (target : T) msg =
+    Rule.canPass msg target.rules
+    
 
   /// Send the target a message, returning the same instance as was passed in when
   /// the Message was acked.
   let log (x : T) (msg : Message) : Alt<Promise<unit>> =
-    let ack = IVar ()
-    Log (msg, ack)
-    |> RingBuffer.put x.requests
-    |> Alt.afterFun (fun () -> ack :> Promise<unit>)
+    if needSendToTarget x msg then 
+      let ack = IVar ()
+      Log (msg, ack)
+      |> RingBuffer.put x.api.requests
+      |> Alt.afterFun (fun () -> ack :> Promise<unit>)
+    else Promise.instaPromise
 
   /// Logs the `Message` to all the targets.
   let logAll (xs : T seq) (msg : Message) : Alt<Promise<unit>> =
@@ -93,12 +99,14 @@ module Target =
 
     let traverse =
       targets
-      |> List.map (fun target -> target, IVar ())
-      |> List.traverseAltA (fun (target, ack) ->
-        Alt.prepareJob <| fun () ->
-        Job.start (ack ^=>. Latch.decrement latch) >>-.
-        RingBuffer.put target.requests (Log (msg, ack)))
-      |> Alt.afterFun (fun _ -> ())
+      |> List.traverseAltA (fun target ->
+         if needSendToTarget target msg then 
+           Alt.prepareJob <| fun () ->
+             let ack = IVar ()
+             Job.start (ack ^=>. Latch.decrement latch) >>-.
+             RingBuffer.put target.api.requests (Log (msg, ack))
+         else Alt.always ())
+      |> Alt.afterFun ignore
 
     traverse ^->. memo (Latch.await latch)
 
@@ -109,18 +117,19 @@ module Target =
   let flush (x : T) =
     Alt.withNackJob <| fun nack ->
     let ack = IVar ()
-    RingBuffer.put x.requests (Flush (ack, nack)) >>-.
+    RingBuffer.put x.api.requests (Flush (ack, nack)) >>-.
     ack
 
   /// Shutdown the target. The commit point is that the target accepts the
   /// shutdown signal and the promise returned is that shutdown has finished.
   let shutdown x : Alt<Promise<_>> =
     let ack = IVar ()
-    Ch.give x.shutdownCh ack ^->. upcast ack
+    Ch.give x.api.shutdownCh ack ^->. upcast ack
 
   let create (ri : RuntimeInfo) (conf : TargetConf) : Job<T> =
+    let specificName = PointName [| "Logary"; sprintf "Target(%s)" conf.name |]
     let ri =
-      let setName = setSimpleName (sprintf "Logary.Target(%s)" conf.name)
+      let setName = setName specificName
       let setId = setContext "targetId" (Guid.NewGuid())
       let logger = ri.logger |> Logger.apply (setName >> setId)
       ri |> RuntimeInfo.setLogger logger
@@ -135,10 +144,8 @@ module Target =
           member x.shutdownCh = shutdownCh
       }
 
-    { server     = conf.server (ri, api)
-      requests   = requests
-      shutdownCh = shutdownCh }
-
-  //let toService (ilogger : Logger) (x : T) : string -> Job<InitialisingService<_>> =
-  //  fun name ->
-  //    Service.createSimple ilogger name x.shutdownCh x.server
+    { name        = specificName
+      middleware  = conf.middleware
+      rules       = conf.rules
+      server      = conf.server (ri, api)
+      api         = api }

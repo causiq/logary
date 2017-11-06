@@ -106,10 +106,9 @@ module Rule =
 
     let regex =
       rs
-      |> Seq.map (fun r -> r.path)
-      |> Seq.map string
+      |> Seq.map (fun r -> r.path.ToString())
       |> String.concat "|"
-      |> fun r -> sprintf "(%s)" r
+      |> sprintf "(%s)"
 
     let rec filter i (rs : _ []) message =
       if i = -1 then false else
@@ -121,3 +120,9 @@ module Rule =
       acceptIf = if rs.Length = 0 then fun _ -> true else filter (rs.Length) rs
       minLevel = rs |> Seq.map (fun r -> r.minLevel) |> Seq.fold min Fatal
     }
+
+  /// use strict strategy
+  let canPass (msg : Message) (rules : Rule list) =
+    rules 
+    |> List.filter (fun r ->  r.path.IsMatch (PointName.format msg.name))
+    |> List.forall (fun r -> msg.level >= r.minLevel && r.acceptIf msg)

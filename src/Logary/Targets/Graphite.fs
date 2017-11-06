@@ -60,13 +60,6 @@ module Impl =
     |> Array.map (fun x -> invalidPathCharacters.Replace(x, "_"))
     |> PointName.ofArray
 
-  let formatMeasure = Units.formatValue << function
-    | Gauge (v, _)
-    | Derived (v, _) ->
-      v
-    | Event template ->
-      Int64 0L
-
   /// All graphite messages are of the following form.
   /// metric_path value timestamp\n
   let createMsg (path : String) (timestamp : Instant) (value : string) =
@@ -89,13 +82,10 @@ module Impl =
         RingBuffer.take api.requests ^=> function
           | Log (message, ack) ->
             let pointName = sanitisePath message.name |> PointName.format
-            let data =
-              createMsg pointName (Instant message.timestampTicks) <|
-                match message.value with
-                | Event template -> template
-                | Gauge _ | Derived _ -> formatMeasure message.value
-
-            doWrite state data >>= fun state' ->
+            message 
+            |> MessageWriter.verbatim.format 
+            |> createMsg pointName (Instant message.timestampTicks) 
+            |> doWrite state >>= fun state' ->
             IVar.fill ack () >>= fun () ->
             running state'
 

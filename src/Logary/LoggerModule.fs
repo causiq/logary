@@ -21,12 +21,6 @@ module Logger =
   // Logging methods //
   /////////////////////
 
-  let private ifLevel (logger : Logger) level otherwise f =
-    if logger.level <= level then
-      f ()
-    else
-      otherwise
-
   // NOTE all extension methods are in CSharp.fs, so they've been removed from this file
   // to avoid polluting the API unecessarily.
 
@@ -246,19 +240,17 @@ module Logger =
     let bisections : (int64 * string) list ref = ref []
 
     let sw = Stopwatch.StartNew()
-    let sndMap f (a, b) = a, f b
 
     let addSpan (m, i) (span : int64 (* ticks *), label : string) =
-      let name, value =
-        PointName [| "span"; string i |],
-        Field (Ticks.toGauge span |> sndMap Some)
+      let spanName = PointName [| PointName.format name ; "span"; string i |]
+      let spanLabelName = PointName.setEnding "label" spanName
+ 
+      let m' = 
+        m 
+        |> Message.addGauge (PointName.format spanName) (Ticks.toGauge span)
+        |> Message.setContext (PointName.format spanLabelName) label
 
-      let values =
-        [ name, value
-          PointName.setEnding "label" name, Field (String label, None) ]
-
-      Message.setFieldValues values m,
-      i + 1L
+      m', i + 1L
 
     let addSpans m =
       if !bisections = [] then m else
@@ -268,7 +260,7 @@ module Logger =
       sw.Stop()
       let level = Duration.FromTicks sw.ElapsedTicks |> decider
       sw.toGauge()
-      ||> Message.gaugeWithUnit name
+      |> Message.gaugeMessage (PointName.format name)
       |> Message.setLevel level
       |> addSpans
 
@@ -302,9 +294,6 @@ module Logger =
         member x.log logLevel messageFactory =
           logger.log logLevel (messageFactory >> transform)
 
-        member x.level =
-          logger.level
-
         member x.name =
           name
     }
@@ -315,7 +304,6 @@ module Logger =
         logger.log logLevel (messageFactory >> middleware)
       member x.logWithAck logLevel messageFactory =
         logger.logWithAck logLevel (messageFactory >> middleware)
-      member x.level = logger.level
       member x.name = logger.name }
 
 /// Syntactic sugar on top of Logger for use of curried factory function

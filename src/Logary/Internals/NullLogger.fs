@@ -10,7 +10,6 @@ type NullLogger() =
   interface Logger with // null logger
     member x.logWithAck logLevel messageFactory = Promise.instaPromise
     member x.log logLevel messageFactory = Alt.always ()
-    member x.level = Fatal
     member x.name = PointName.ofList [ "Logary"; "NullLogger" ]
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

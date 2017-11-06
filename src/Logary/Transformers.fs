@@ -255,7 +255,7 @@ module Reservoirs =
         state |> ExpWeightedMovAvg.rate (Duration.FromSeconds 1L)
 
       let msg =
-        Message.derivedWithUnit pn (Float value) Units.Scalar
+        Message.derivedWithUnit (PointName.format pn) (Float value) Units.Scalar
       state, [| msg |]
 
     Ticked.create reducer ExpWeightedMovAvg.fiveMinutesEWMA ticker

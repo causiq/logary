@@ -137,62 +137,37 @@ module PointName =
     PointName (Array.append segments [| nameEnding |])
 
 type PointValue =
-  /// Value at point in time
-  | Gauge of Value * Units
-  /// Any sort of derived measure
-  | Derived of Value * Units
-  /// All simple-valued fields' values can be templated into the template string
-  /// when outputting the value in the target.
   | Event of template:string
 
-/// Extensions for C#
-type PointValue with
-  /// Tries to get the gauge value
-  member x.TryGetGauge([<Out>] gauge:byref<Tuple<Value, Units>>) =
-    match x with
-    | Gauge (value, units) ->
-      gauge <- new Tuple<Value, Units>(value, units)
-      true
-    | _ ->
-      false
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module PointValue =
+  let empty = Event String.Empty
 
-  /// Tries to get the derived value
-  member x.TryGetDerived([<Out>] derived:byref<Tuple<Value, Units>>) =
-    match x with
-    | Derived (value, units) ->
-      derived <- new Tuple<Value, Units>(value, units)
-      true
-    | _ ->
-      false
+type Gauge = 
+  Gauge of obj * Units
 
-  /// Tries to get the Event template value (log message)
-  member x.TryGetEvent([<Out>] template:byref<string>) =
-    match x with
-    | Event value ->
-      template <- value
-      true
-    | _ ->
-      false
-
+[<Obsolete ("Use (Message.setField : string -> 'a -> Message -> Message) directly, just for api compatibility")>]
 type Field =
-  Field of Value * Units option // move outside this module
+  Field of Value * Units option
+with
+  member x.ToGauge () =
+    match x with
+    | Field (v, Some (units)) -> Gauge (v,units)
+    | Field (v, _) -> Gauge (v, Scalar)
 
 /// This is record that is logged. It's capable of representing both metrics
 /// (gauges) and events.
 type Message =
   { /// The 'path' or 'name' of this data point. Do not confuse template in
-    /// (Event template) = message.value
+    /// Event (template) = message.value
     ///
     name      : PointName
-    /// The main value for this metric or event. Either a Gauge, a Derived or an
-    /// Event. (A discriminated union type)
+    /// Event (template)
     value     : PointValue
-    /// The semantic-logging data.
-    fields    : HashMap<PointName, Field>
     /// Where in the code? Who did the operation? What tenant did the principal
     /// who did it belong to? Put things your normally do 'GROUP BY' on in this
     /// Map.
-    context   : HashMap<string, Value>
+    context   : HashMap<string, obj>
     /// How important? See the docs on the LogLevel type for details.
     level     : LogLevel
     /// When? nanoseconds since UNIX epoch.
@@ -239,9 +214,6 @@ type Logger =
   /// You should not do blocking/heavy operations in the callback.
   abstract log : LogLevel -> (LogLevel -> Message) -> Alt<unit>
 
-  /// Gets the currently set log level, aka. the granularity with which things
-  /// are being logged.
-  abstract level : LogLevel
 
 /// A disposable interface to use with `use` constructs and to create child-
 /// contexts. Since it inherits Logger, you can pass this scope down into child

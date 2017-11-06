@@ -197,31 +197,32 @@ module LiterateConsole =
 
     /// Get the exceptions out from the Message (errors_)
     let literateTokeniseMessageExceptions (context : LiterateConsoleConf) message =
-      let exns =
-        Optic.get Message.Optic.errors_ message
-        |> Option.orDefault []
-      let getStringFromMapOrFail exnObjMap fieldName =
-        match exnObjMap |> HashMap.tryFind fieldName with
-        | Some (String m) -> m
-        | _ -> failwithf "Couldn't find %s in %A" fieldName exnObjMap
+      failwith "todo"
+      // let exns =
+      //   Optic.get Message.Optic.errors_ message
+      //   |> Option.orDefault []
+      // let getStringFromMapOrFail exnObjMap fieldName =
+      //   match exnObjMap |> HashMap.tryFind fieldName with
+      //   | Some (String m) -> m
+      //   | _ -> failwithf "Couldn't find %s in %A" fieldName exnObjMap
 
-      let getStringFromMapOrDefault defaultIfMissing exnObjMap fieldName =
-        match exnObjMap |> HashMap.tryFind fieldName with
-        | Some (String m) -> m
-        | _ -> defaultIfMissing
+      // let getStringFromMapOrDefault defaultIfMissing exnObjMap fieldName =
+      //   match exnObjMap |> HashMap.tryFind fieldName with
+      //   | Some (String m) -> m
+      //   | _ -> defaultIfMissing
 
-      match exns with
-      | [] -> Seq.empty
-      | values ->
-        values
-        |> List.choose (function | Object v -> Some v | _ -> None)
-        |> List.map (fun exnObjMap ->
-          let exnTypeName = getStringFromMapOrFail exnObjMap "type"
-          let message = getStringFromMapOrFail exnObjMap "message"
-          let stackTrace = getStringFromMapOrDefault "" exnObjMap "stackTrace"
-          literateTokeniseException context exnTypeName message stackTrace
-        )
-        |> Seq.concat
+      // match exns with
+      // | [] -> Seq.empty
+      // | values ->
+      //   values
+      //   |> List.choose (function | Object v -> Some v | _ -> None)
+      //   |> List.map (fun exnObjMap ->
+      //     let exnTypeName = getStringFromMapOrFail exnObjMap "type"
+      //     let message = getStringFromMapOrFail exnObjMap "message"
+      //     let stackTrace = getStringFromMapOrDefault "" exnObjMap "stackTrace"
+      //     literateTokeniseException context exnTypeName message stackTrace
+      //   )
+      //   |> Seq.concat
 
     let literateTokeniseArray conf prop arrValue recurse =
       let items = match arrValue with Array items -> items | _ -> failwithf "cannot tokenise %A with %s" arrValue (prop.ToString())
@@ -350,72 +351,75 @@ module LiterateConsole =
       | _, (Value.Object _ as o) ->
         literateTokeniseObject conf prop o recurseTokenise
 
-    let literateTokenisePointValue (options : LiterateConsoleConf) (message : Message) = function
-      | Event eventTemplate ->
-        let textAndTokens = ResizeArray<string * LiterateToken>()
-        Parser.parse(eventTemplate).Tokens
-        |> Seq.collect (function
-          | PropToken (_, prop) ->
-            match HashMap.tryFind (PointName.ofSingle prop.Name) message.fields with
-            | Some field ->
-              literateTokeniseField options prop field
-            | None ->
-              seq { yield prop.ToString(), MissingTemplateField }
-          | TextToken (_, text) ->
-            seq { yield text, Text })
+    let literateTokenisePointValue (options : LiterateConsoleConf) (message : Message) = 
+      failwith "todo"
+      
+      // function
+      // | Event eventTemplate ->
+      //   let textAndTokens = ResizeArray<string * LiterateToken>()
+      //   Parser.parse(eventTemplate).Tokens
+      //   |> Seq.collect (function
+      //     | PropToken (_, prop) ->
+      //       match HashMap.tryFind (PointName.ofSingle prop.Name) message.fields with
+      //       | Some field ->
+      //         literateTokeniseField options prop field
+      //       | None ->
+      //         seq { yield prop.ToString(), MissingTemplateField }
+      //     | TextToken (_, text) ->
+      //       seq { yield text, Text })
 
-      | Gauge (Int64 nanos, Scaled (Seconds, scale))
-        when scale = float Constants.NanosPerSecond ->
+      // | Gauge (Int64 nanos, Scaled (Seconds, scale))
+      //   when scale = float Constants.NanosPerSecond ->
 
-        let number, unitStr = (float nanos / float scale) |> Units.scale Seconds
-        let format = if nanos < 1000L then "N0" else "N2"
-        seq {
-          yield message.name.ToString(), NameSymbol
-          yield " took ", Subtext
-          yield number.ToString(format, options.formatProvider), NumericSymbol
-          yield " ", Subtext
-          yield unitStr, Text
-          yield " to execute.", Subtext
-        }
+      //   let number, unitStr = (float nanos / float scale) |> Units.scale Seconds
+      //   let format = if nanos < 1000L then "N0" else "N2"
+      //   seq {
+      //     yield message.name.ToString(), NameSymbol
+      //     yield " took ", Subtext
+      //     yield number.ToString(format, options.formatProvider), NumericSymbol
+      //     yield " ", Subtext
+      //     yield unitStr, Text
+      //     yield " to execute.", Subtext
+      //   }
 
-      | Gauge (value, units)
-        when message |> Message.hasTag KnownLiterals.SuppressPointValue ->
-        seq {
-          yield message.name.ToString(), NameSymbol
-          yield " (M)", Subtext
-          yield ":", Punctuation
-          yield " ", Subtext
-          let mutable first = true
-          for KeyValue (name, Field (value, fieldUnits)) in message.fields do
-            let field =
-              let fu = fieldUnits |> Option.orDefault units
-              Field (value, Some fu)
-            if not first then yield " | ", Punctuation
-            else first <- false
-            yield PointName.format name, NameSymbol
-            yield "=", Punctuation
-            yield! literateTokeniseField options Property.Empty field
-        }
+      // | Gauge (value, units)
+      //   when message |> Message.hasTag KnownLiterals.SuppressPointValue ->
+      //   seq {
+      //     yield message.name.ToString(), NameSymbol
+      //     yield " (M)", Subtext
+      //     yield ":", Punctuation
+      //     yield " ", Subtext
+      //     let mutable first = true
+      //     for KeyValue (name, Field (value, fieldUnits)) in message.fields do
+      //       let field =
+      //         let fu = fieldUnits |> Option.orDefault units
+      //         Field (value, Some fu)
+      //       if not first then yield " | ", Punctuation
+      //       else first <- false
+      //       yield PointName.format name, NameSymbol
+      //       yield "=", Punctuation
+      //       yield! literateTokeniseField options Property.Empty field
+      //   }
 
-      | Gauge (value, units) ->
-        seq {
-          yield message.name.ToString(), NameSymbol
-          yield " (M)", Subtext
-          yield ":", Punctuation
-          yield " ", Subtext
-          yield! literateTokeniseField options (Property.Empty) (Field (value, None))
-          yield " ", Subtext
-          yield Units.symbol units, Text }
+      // | Gauge (value, units) ->
+      //   seq {
+      //     yield message.name.ToString(), NameSymbol
+      //     yield " (M)", Subtext
+      //     yield ":", Punctuation
+      //     yield " ", Subtext
+      //     yield! literateTokeniseField options (Property.Empty) (Field (value, None))
+      //     yield " ", Subtext
+      //     yield Units.symbol units, Text }
 
-      | Derived (value, units) ->
-        seq {
-          yield message.name.ToString(), NameSymbol
-          yield " (MD)", Subtext
-          yield ":", Punctuation
-          yield " ", Subtext
-          yield! literateTokeniseField options (Property.Empty) (Field (value, None))
-          yield " ", Subtext
-          yield Units.symbol units, Text }
+      // | Derived (value, units) ->
+      //   seq {
+      //     yield message.name.ToString(), NameSymbol
+      //     yield " (MD)", Subtext
+      //     yield ":", Punctuation
+      //     yield " ", Subtext
+      //     yield! literateTokeniseField options (Property.Empty) (Field (value, None))
+      //     yield " ", Subtext
+      //     yield Units.symbol units, Text }
 
     /// Split a structured message up into theme-able parts (tokens), allowing the
     /// final output to display to a user with colours to enhance readability.

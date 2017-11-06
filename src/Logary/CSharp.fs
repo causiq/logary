@@ -622,9 +622,8 @@ type LoggerExtensions =
                                formatTemplate : string,
                                [<ParamArray>] args : obj[])
                               : Task =
-    let fields = extractFields formatTemplate args
-    let messageFactory = eventX formatTemplate >> setFieldValuesArray fields
-    let call = Logger.log logger level messageFactory |> Alt.afterFun (fun _ -> true)
+    let msgFac = fun _ -> Message.eventFormat (level, formatTemplate, args)
+    let call = Logger.log logger level msgFac |> Alt.afterFun (fun _ -> true)
     upcast Alt.toTask CancellationToken.None call
 
   /// Log a gauge, but don't await all targets to flush. With NO back-pressure by default.
@@ -651,7 +650,7 @@ type LoggerExtensions =
     let fields = if isNull fields then obj() else fields
 
     let message =
-      Message.gaugeWithUnit logger.name value units
+      Message.gaugeWithUnit (PointName.format logger.name) value units
       |> Message.setFieldsFromObject fields
       |> Message.setField "template" formatTemplate // overwrites any field named "template"
 

@@ -29,6 +29,7 @@ and ShutdownService =
   /// each of them.
   abstract transitions : (ServiceState * Duration) list
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Service =
 
   type T =
@@ -75,8 +76,7 @@ module Service =
       Alt.choose [
         pauseCh ^=>. pause
         resumeCh ^=>. resume
-        getStateCh ^=> fun replCh ->
-        mserver ^=> check
+        getStateCh ^=> fun replCh -> mserver ^=> check
       ]
     and check = function
       | Choice1Of2 () ->
@@ -113,3 +113,51 @@ module Service =
     noopAcker () >>= fun pauseCh ->
     noopAcker () >>= fun resumeCh ->
     create ilogger name pauseCh resumeCh shutdownCh server
+
+
+
+module internal GlobalService =
+  open Global
+
+  let create (t : T) (ilogger : Logger) =
+    let logger = ilogger |> Logger.apply (setSimpleName "Logary.Globals")
+    let pauseCh, resumeCh, shutdownCh = Ch (), Ch (), Ch ()
+
+    let rec init () =
+      let prev = !config
+      initialise t
+      running t (fst prev)
+
+    and running myself prev =
+      Alt.choose [
+        pauseCh ^=> fun (ack, nack) ->
+          logger.debug (eventX "Pausing.")
+          initialise prev
+          ack *<= () >>=. running myself prev
+
+        resumeCh ^=> fun (ack, nack) ->
+          logger.debug (eventX "Resuming.")
+          initialise myself
+          ack *<= () >>=. running myself prev
+
+        shutdownCh ^=> fun ack ->
+          logger.debug (eventX "Shutting down.")
+          initialise prev
+          ack *<= ()
+      ]
+
+    let shutdown : Alt<Promise<unit>> =
+      shutdownCh *<-=>= fun repl -> repl
+      |> Alt.afterFun (fun iv -> iv :> _)
+
+    let loop = Job.supervise logger Policy.terminate (init ())
+    Service.create logger "globals" pauseCh resumeCh shutdown loop
+
+  (* // cc: @oskarkarlsson ;)
+  let scoped (globals : Service<Service.T>) (logger : Logger) =
+    globals |> Service.pause >>-.
+    { new IAsynDisposable with
+        member x.AsyncDispose() =
+          globals |> Service.resume
+    }
+  *)

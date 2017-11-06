@@ -9,112 +9,13 @@ open System.IO
 open Logary.Message
 open Logary.Target
 open Logary.Internals
+open Hopac.Extensions
 
-module internal GlobalService =
-  open Global
-
-  let create (t : T) (ilogger : Logger) =
-    let logger = ilogger |> Logger.apply (setSimpleName "Logary.Globals")
-    let pauseCh, resumeCh, shutdownCh = Ch (), Ch (), Ch ()
-
-    let rec init () =
-      let prev = !config
-      initialise t
-      running t (fst prev)
-
-    and running myself prev =
-      Alt.choose [
-        pauseCh ^=> fun (ack, nack) ->
-          logger.debug (eventX "Pausing.")
-          initialise prev
-          ack *<= () >>=. running myself prev
-
-        resumeCh ^=> fun (ack, nack) ->
-          logger.debug (eventX "Resuming.")
-          initialise myself
-          ack *<= () >>=. running myself prev
-
-        shutdownCh ^=> fun ack ->
-          logger.debug (eventX "Shutting down.")
-          initialise prev
-          ack *<= ()
-      ]
-
-    let shutdown : Alt<Promise<unit>> =
-      shutdownCh *<-=>= fun repl -> repl
-      |> Alt.afterFun (fun iv -> iv :> _)
-
-    let loop = Job.supervise logger Policy.terminate (init ())
-    Service.create logger "globals" pauseCh resumeCh shutdown loop
-
-  (* // cc: @oskarkarlsson ;)
-  let scoped (globals : Service<Service.T>) (logger : Logger) =
-    globals |> Service.pause >>-.
-    { new IAsynDisposable with
-        member x.AsyncDispose() =
-          globals |> Service.resume
-    }
-  *)
-
-module Engine =
-
-  type T =
-    private {
-      subscriptions : HashMap<string, Message -> Job<unit>>
-      inputCh : Ch<LogLevel * (LogLevel -> Message)>
-    }
-
-  let create (Processing processing) : Job<T> =
-    let inputCh, emitCh, shutdownCh = Ch (), Ch (), Ch ()
-    let callback = Ch ()
-    let rec loop () =
-      Alt.choose [
-        inputCh ^=> fun (level, messageFactory) ->
-          processing (messageFactory level |> NodeInput.Message) emitCh
-
-        emitCh ^=> fun message ->
-          inputCh *<- (message.level, fun _ -> message)
-
-        upcast shutdownCh
-      ]
-
-    Job.start (loop ())
-    >>-. { subscriptions = HashMap.empty
-           inputCh = inputCh
-         }
-
-  let subscribe key (sink : Message -> Job<unit>) : Job<unit> =
-    Job.result ()
-
-  let unsubscribe key (sink : Message -> Job<unit>) : Job<unit> =
-    Job.result ()
-
-  let pause (engine : T) : Alt<unit> =
-    Alt.always ()
-
-  let resume (engine : T) : Alt<unit> =
-    Alt.always ()
-
-  let shutdown (engine : T) =
-    Alt.always ()
-
-  let log (engine : T) (logLevel : LogLevel) (messageFactory : LogLevel -> Message) : Alt<unit> =
-    Alt.always ()
-
-  let logWithAck (engine : T) (logLevel : LogLevel) (messageFactory : LogLevel -> Message) : Alt<Promise<unit>> =
-    Promise.instaPromise
-
-/// When you validate the configuration, you get one of these.
-///
 /// This is the logary configuration structure having a memory of all
-/// configured targets, metrics, healthchecks, middlewares, etc.
+/// configured targets, middlewares, etc.
 type LogaryConf =
   /// A map of the targets by name.
   abstract targets : HashMap<string, TargetConf>
-  /// A map of metrics by name.
-  abstract metrics : HashMap<string, MetricConf>
-  /// A map of health checks by name.
-  abstract healthChecks : HashMap<string, HealthCheckConf>
   /// Service metadata - what name etc.
   abstract runtimeInfo : RuntimeInfo
   /// Extra middleware added to every resolved logger.
@@ -148,7 +49,7 @@ type LogManager =
   /// Get a logger denoted by the name passed as the parameter. This name can either be
   /// a specific name that you keep for a sub-component of your application or
   /// the name of the class. Also have a look at Logging.GetCurrentLogger().
-  abstract getLogger : PointName -> Job<Logger>
+  abstract getLogger : PointName -> Logger
 
   /// Awaits that all targets finish responding to a flush message
   /// so that we can be certain they have processed all previous messages.
@@ -170,12 +71,7 @@ module Registry =
   type T =
     private {
       runtimeInfo : RuntimeInfo
-
-      engine      : Engine.T
-
-      /// Get a logger for the given point name (the path of the logger). This
-      /// operation should not fail, so there's no nack promise passed.
-      getLoggerCh : Ch<PointName * Middleware option * IVar<Logger>>
+      msgProcessing : Message -> Middleware option -> Alt<unit>
 
       /// Flush all pending messages from the registry to await shutdown and
       /// ack on the `ackCh` when done. If the client nacks the request, the
@@ -187,28 +83,6 @@ module Registry =
       /// so the caller is promised a ShutdownInfo.
       shutdownCh : Ch<IVar<ShutdownInfo> * Duration option>
     }
-
-  /// Gets a logger from the registry, by name. This will always return a
-  /// `Logger` value.
-  let getLogger (t : T) name : Job<Logger> =
-    t.getLoggerCh *<+=>- fun resCh -> name, None, resCh
-    :> Job<_>
-
-  /// Gets a logger from the registry, by name. This will always return a
-  /// job with a `Logger` value.
-  let getLoggerT (t : T) name : Logger =
-    getLogger t name |> PromisedLogger.create name
-
-  /// Gets a logger from the registry, by name, with attached middleware. This
-  /// will always return a job with a `Logger` value.
-  let getLoggerWithMiddleware (t : T) (name : PointName) (middleware : Middleware) : Job<Logger> =
-    t.getLoggerCh *<+=>- fun resCh -> name, Some middleware, resCh
-    :> Job<_>
-
-  /// Gets a logger from the registry, by name, with attached middleware. This
-  /// will always return a `Logger` value.
-  let getLoggerWithMiddlewareT (t : T) name middleware : Logger =
-    getLoggerWithMiddleware t name middleware |> PromisedLogger.create name
 
   /// Flush all pending messages for all targets. Flushes with no timeout; if
   /// this Alternative yields, all targets were flushed.
@@ -227,8 +101,10 @@ module Registry =
   /// function does not specify a timeout, neither for the flush nor for the
   /// shutting down of targets, and so it does not return a `ShutdownInfo`
   /// data-structure.
-  let shutdown (t : T) : Alt<ShutdownInfo> =
+  let shutdown (t : T) : Alt<unit> =
+    flush t ^=> fun _ ->
     t.shutdownCh *<-=>- fun shutdownCh -> shutdownCh, None
+    ^-> ignore
 
   /// Shutdown the registry and flush all targets before shutting it down. This
   /// function specifies both a timeout for the flushing of targets and the
@@ -239,128 +115,142 @@ module Registry =
     t.shutdownCh *<-=>- fun shutdownCh -> shutdownCh, Some shutdownTimeout
     |> Alt.afterFun (fun shutdownInfo -> flushInfo, shutdownInfo)
 
-  let runtimeInfo (t : T) : RuntimeInfo =
-    t.runtimeInfo
 
   module internal Impl =
 
-    let createLogger engine name mid =
-      let logger =
+
+    let logWithAck (t : T) (logLevel : LogLevel) (messageFactory : LogLevel -> Message) mid : Alt<Promise<unit>> =
+      t.msgProcessing (messageFactory logLevel) mid ^->. Promise (())
+
+    let getLogger (t : T) name mid =
         { new Logger with
             member x.name = name
-            member x.level = Verbose // TOOD: ship back from engine?
             member x.log level messageFactory =
-              Engine.log engine level messageFactory
+              logWithAck t level messageFactory mid ^-> ignore
             member x.logWithAck level messageFactory =
-              Engine.logWithAck engine level messageFactory
+              logWithAck t level messageFactory mid
         }
 
-      Logger.apply mid logger
-
-    let createGlobals (conf : LogaryConf) (x : T) =
+    let initialiseGlobals (t : T) =
       let config =
         { Global.defaultConfig with
-            getLogger = getLoggerT x
-            getLoggerWithMiddleware = getLoggerWithMiddlewareT x }
-      GlobalService.create config conf.runtimeInfo.logger
+            getLogger = fun name -> getLogger t name None
+            getLoggerWithMiddleware = fun name mid -> getLogger t name (Some mid) }
+      Global.initialise config
 
-    let spawn kind (ri : RuntimeInfo) mapping factory =
-      let creator (KeyValue (name, conf)) =
-        let mname = PointName [| "Logary"; sprintf "%s(%s)" kind name |]
-        let logger = ri.logger |> Logger.apply (setName mname)
-        let ri = ri |> RuntimeInfo.setLogger logger
-        (*conf :> Service, *)
-        factory ri conf
-
-      mapping
+    let spawnTarget (ri : RuntimeInfo) targets =
+      targets
       |> List.ofSeq
-      |> List.traverseJobA creator
-      //|> List.traverseJobA supervise
+      |> List.traverseJobA (fun (KeyValue (_,conf)) -> 
+           Target.create ri conf >>= fun instance ->
+           Job.supervise instance.api.runtimeInfo.logger conf.policy instance.server
+           >>-. instance)
 
-    let pollServices (services : Service<Service.T> list) : Alt<(Service<Service.T> * exn) list> =
-      let faulted = IVar ()
+    let inline generateProcessResult name processAlt (timeout:Duration option) = 
+      match timeout with
+        | None -> processAlt ^->. (name,true)
+        | Some duration -> 
+          timeOut (duration.ToTimeSpan ()) ^->. (name,false) 
+          <|>
+          processAlt ^->. (name,true)
 
-      let request =
-        services
-        |> List.traverseJobA (fun s -> Service.getState s >>- fun state -> s, state)
-        |> Job.map (List.choose (function
-            | service, Faulted e -> Some (service, e)
-            | _ -> None))
-        |> Job.bind (function
-            | [] -> Job.result ()
-            | res -> faulted *<= res)
-        |> Job.start
+    let shutdown targets (timeout:Duration option) : Job<ShutdownInfo> =
+      let shutdownTarget target =
+        generateProcessResult target.name (Target.shutdown target ^=> id) timeout
 
-      Alt.prepareJob (fun () -> request >>-. faulted)
+      targets |> Seq.Con.mapJob shutdownTarget
+      >>- fun shutdownInfos ->
+        shutdownInfos
+        |> List.ofSeq
+        |> List.partition snd
+        |> (fun (acks, timeouts) ->
+              let acks = List.map (fst >> PointName.format)  acks
+              let timeouts = List.map (fst >> PointName.format) timeouts
+              ShutdownInfo(acks,timeouts))
+      
+
+    let flushPending targets (timeout:Duration option) : Job<FlushInfo> =
+      let flushTarget target =
+        generateProcessResult target.name (Target.flush target) timeout
+
+      targets |> Seq.Con.mapJob flushTarget
+      >>- fun flushInfos ->
+        flushInfos
+        |> List.ofSeq
+        |> List.partition snd
+        |> (fun (acks, timeouts) ->
+              let acks = List.map (fst >> PointName.format)  acks
+              let timeouts = List.map (fst >> PointName.format) timeouts
+              FlushInfo(acks,timeouts))
 
   open Impl
 
   // Middleware at:
-  //  - LogaryConf (goes on all loggers) (composes here)
-  //  - TargetConf (goes on specific target) (composes in engine)
-  //  - individual loggers (composes at call-site, or in #create methods of services)
+  //  - LogaryConf (goes on all loggers) (through engine,and compose at call-site)
+  //  - TargetConf (goes on specific target) (composes in engine when sending msg to target)
+  //  - individual loggers (through engine,and compose at call-site)
 
   let create (conf : LogaryConf) : Job<T> =
     let ri, rname, rmid =
       conf.runtimeInfo,
       PointName [| "Logary"; "Registry" |],
       List.ofArray conf.middleware
-    let rlogger = conf.runtimeInfo.logger |> Logger.apply (setName rname)
-    spawn "Target" ri conf.targets Target.create >>= fun (targets : Target.T list) ->
-    spawn "Metric" ri conf.metrics Metric.create >>= fun (metrics : Metric.T list) ->
-    spawn "HealthCheck" ri conf.healthChecks HealthCheck.create >>= fun (hcs : HealthCheck.T list) ->
-    Engine.create conf.processing >>= fun engine ->
+    let rlogger = ri.logger |> Logger.apply (setName rname)
+   
+    spawnTarget ri conf.targets >>= fun targets ->
+    let targetsMap = targets |> List.map (fun t -> PointName.format t.name, t) |> HashMap.ofList 
+    // pipe.run should only be invoke once, because state in pipes is captured when pipe.run
+    let sendMsg = conf.processing.run <| (fun msg ->
+      let targetName = Message.tryGetContext "target" msg
+      match targetName with 
+      | Some (String targetName) ->
+        let target = HashMap.tryFind targetName targetsMap 
+        match target with
+        | Some target -> 
+          msg |> Middleware.compose target.middleware |> Target.log target >>= id
+        | _ -> Job.result ()
+      | _ -> Job.result ())
 
-    let getLoggerCh, flushCh, shutdownCh = Ch (), Ch (), Ch ()
+    let msgProcessing msg mid = 
+      let cmid = Middleware.compose (mid |> Option.fold (fun s t -> t :: s) rmid)
+      msg |> cmid |> sendMsg
 
-    let rec initialise () =
-      // let targetSvc (name, target) =
-      //   Service.createSimple ri.logger name (Target.shutdown target)
-      // targets |> List.map (fun (name, target) -> >>= fun targets ->
-      // supervise metrics >>= fun metrics ->
-      // supervise hcs >>= fun hcs ->
-      // running (targets, metrics, hcs)
-      running []
 
-    and running (services : Service<Service.T> list) =
+    let flushCh, shutdownCh = Ch (), Ch ()
+
+    let rec running ctss =
       Alt.choose [
-        pollServices services ^=> fun _ ->
-          faulted ()
-
-        getLoggerCh ^=> fun (name, lmid, repl) ->
-          let cmid = Middleware.compose (lmid |> Option.fold (fun s t -> t :: s) rmid)
-          repl *<= createLogger engine name cmid >>=. running services
-
         flushCh ^=> fun (ackCh, nack, timeout) ->
-          // let flush = Engine.flush ... ... FlushInfo
-          // let nack ... FlushInfo
-          // let timeout = timeout ... FlushInfo
-          // (Alt.choosy [| flush; timeout; nack |] ^=> running
-          running services
+          rlogger.infoWithAck (eventX "Start Flush")
+          ^=> fun _ ->
+            memo (flushPending targets timeout >>= fun flushInfo -> (ackCh *<- flushInfo))
+            <|> 
+            nack
+          ^=>. running ctss
 
         shutdownCh ^=> fun (res, timeout) ->
-          // TODO: handle shutting down metrics, hcs and targets
           rlogger.infoWithAck (eventX "Shutting down")
+          ^=>. Seq.Con.iterJob Cancellation.cancel ctss
+          >>=. shutdown targets timeout
+          >>= fun shutdownInfo -> res *<= shutdownInfo
       ]
-
-    and faulted () =
-      Alt.always ()
 
     let state =
       { runtimeInfo = ri
-        engine = engine
-        getLoggerCh = getLoggerCh
+        msgProcessing = msgProcessing
         flushCh = flushCh
         shutdownCh = shutdownCh }
-
-    let globals = createGlobals conf state
-    Job.supervise rlogger (Policy.restartDelayed 500u) (initialise ()) >>-.
-    state
+    
+    Seq.Con.mapJob id conf.processing.tickTimerJobs
+    >>= fun ctss -> Job.supervise rlogger (Policy.restartDelayed 500u) (running ctss) 
+    >>- fun _ -> 
+      initialiseGlobals state
+      state
 
   let toLogManager (t : T) : LogManager =
     { new LogManager with
         member x.getLogger name =
-          getLogger t name
+          getLogger t name None
         member x.runtimeInfo =
           t.runtimeInfo
         member x.flushPending dur =
@@ -368,14 +258,3 @@ module Registry =
         member x.shutdown flushTO shutdownTO =
           shutdownWithTimeouts t flushTO shutdownTO
     }
-
-[<AutoOpen>]
-module LogManagerEx =
-
-  type LogManager with
-    /// Get a logger denoted by the name passed as the parameter. This name can either be
-    /// a specific name that you keep for a sub-component of your application or
-    /// the name of the class. Also have a look at Logging.GetCurrentLogger().
-    member x.getLoggerT name : Logger =
-      x.getLogger name
-      |> PromisedLogger.create name

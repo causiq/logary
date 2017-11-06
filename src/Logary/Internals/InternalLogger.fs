@@ -14,7 +14,6 @@ module InternalLogger =
   /// own disposal. It must not throw under any circumstances.
   type T =
     private {
-      rule : Rule
       addCh : Ch<TargetConf>
       shutdownCh : Ch<unit>
       messageCh : Ch<Message * Promise<unit> * Ch<Promise<unit>>>
@@ -22,27 +21,18 @@ module InternalLogger =
 
     interface Logger with // internal logger
       member x.logWithAck logLevel messageFactory =
-        if logLevel >= x.rule.minLevel then
-          let message = messageFactory logLevel
-          x.messageCh *<+->- fun replCh nack -> message, nack, replCh
-        else
-          Promise.instaPromise 
+        let message = messageFactory logLevel
+        x.messageCh *<+->- fun replCh nack -> message, nack, replCh
 
       member x.log logLevel messageFactory =
-        if logLevel >= x.rule.minLevel then
-          let me : Logger = upcast x
-          me.logWithAck logLevel messageFactory // delegate down
-          |> Alt.afterFun (fun _ -> ())
-        else
-          Alt.always ()
-
-      member x.level =
-        x.rule.minLevel
+        let me : Logger = upcast x
+        me.logWithAck logLevel messageFactory // delegate down
+        |> Alt.afterFun (fun _ -> ())
 
       member x.name =
         PointName [| "Logary" |]
 
-  let create ri rule =
+  let create ri =
     let addCh, messageCh, shutdownCh = Ch (), Ch (), Ch ()
 
     let rec server targets =
@@ -71,8 +61,7 @@ module InternalLogger =
     server [] >>-.
     { addCh = addCh
       messageCh = messageCh
-      shutdownCh = shutdownCh
-      rule = rule }
+      shutdownCh = shutdownCh}
 
   let add (conf : TargetConf) (x : T) : Job<unit> =
     Ch.give x.addCh conf

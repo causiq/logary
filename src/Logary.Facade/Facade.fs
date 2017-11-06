@@ -783,7 +783,7 @@ module Global =
           let cfg, cfgClock = !config
           if cfgClock <> fwClock then
             logger <- cfg.getLogger name
-            fwClock <- fwClock + 1u
+            fwClock <- cfgClock
       action logger
 
     let ensureName (m : Message) =

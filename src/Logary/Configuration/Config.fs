@@ -4,6 +4,7 @@ namespace Logary.Configuration
 
 open Hopac
 open Hopac.Infixes
+open Hopac.Extensions
 open Logary
 open Logary.Internals
 open Logary.Targets
@@ -13,14 +14,12 @@ open Logary.Targets
 type ILogger =
   | Console of minLevel:LogLevel
   | LiterateConsole of minLevel:LogLevel
-  | Target of config:TargetConf
+  | Targets of config:TargetConf list
 
 module Config =
   type T =
     private {
       targets      : HashMap<string, TargetConf>
-      metrics      : HashMap<string, MetricConf>
-      healthChecks : HashMap<string, HealthCheckConf>
       host         : string
       service      : string
       getTimestamp : unit -> EpochNanoSeconds
@@ -36,8 +35,6 @@ module Config =
       [ Middleware.host host
         Middleware.service service ]
     { targets      = HashMap.empty
-      metrics      = HashMap.empty
-      healthChecks = HashMap.empty
       host         = host
       service      = service
       getTimestamp = Global.getTimestamp
@@ -45,25 +42,14 @@ module Config =
       middleware   = mids
       ilogger      = ILogger.Console Warn
       setGlobals   = true
-      processing   = Processing.empty }
+      processing   = Pipe.start 
+    }
 
   let target name tconf lconf =
     { lconf with targets = lconf.targets |> HashMap.add name tconf }
 
   let targets tconfs lconf =
     tconfs |> Seq.fold (fun lconf (name, tconf) -> lconf |> target name tconf) lconf
-
-  let metric name mconf lconf =
-    { lconf with metrics = lconf.metrics |> HashMap.add name mconf }
-
-  let metrics mconfs lconf =
-    mconfs |> Seq.fold (fun lconf (name, mconf) -> lconf |> metric name mconf) lconf
-
-  let healthCheck name hcc lconf =
-    { lconf with healthChecks = lconf.healthChecks |> HashMap.add name hcc }
-
-  let healthChecks hccs lconf =
-    hccs |> Seq.fold (fun lconf (name, hcc) -> lconf |> healthCheck name hcc) lconf
 
   let host host lconf =
     { lconf with host = host }
@@ -97,36 +83,33 @@ module Config =
         getConsoleSemaphore = lconf.getSem
         logger = NullLogger.instance }
 
-    let rule, itarget =
+    let itargets =
       match lconf.ilogger with
       | ILogger.Console minLevel ->
-        Rule.setMinLevel minLevel Rule.empty,
-        Console.create Console.empty "internal"
+        let target = Console.create Console.empty "internal"
+        let rule = Rule.empty |> Rule.setMinLevel minLevel
+        [TargetConf.setRule rule target]
 
       | ILogger.LiterateConsole minLevel ->
-        Rule.setMinLevel minLevel Rule.empty,
-        LiterateConsole.create LiterateConsole.empty "internal"
+        let target = LiterateConsole.create LiterateConsole.empty "internal"
+        let rule = Rule.empty |> Rule.setMinLevel minLevel
+        [TargetConf.setRule rule target]
 
-      | ILogger.Target conf ->
-        Rule.compile conf.rules,
+      | ILogger.Targets conf ->
         conf
 
-    InternalLogger.create ri rule >>= fun ilogger ->
-    InternalLogger.add itarget ilogger >>= fun () ->
-
+    InternalLogger.create ri >>= fun ilogger ->
+    itargets 
+    |> Seq.Con.iterJob (fun itarget -> InternalLogger.add itarget ilogger)
+    >>= fun () ->
     let middleware = Array.ofList lconf.middleware
     let ri = { ri with logger = ilogger }
 
     let conf =
       { new LogaryConf with
           member x.targets = lconf.targets
-          member x.metrics = lconf.metrics
-          member x.healthChecks = lconf.healthChecks
           member x.runtimeInfo = upcast ri
           member x.middleware = middleware
           member x.processing = lconf.processing
       }
     Registry.create conf
-
-  let toLogManager (registry : Registry.T) : LogManager =
-    Registry.toLogManager registry
