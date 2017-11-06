@@ -53,7 +53,7 @@ let run pipe (targets:ResizeArray<MockTarget>) =
     pipe.run <| (fun msg ->
         let targetName = Message.tryGetContext "target" msg
         match targetName with 
-        | Some (String targetName) ->
+        | Some (targetName) ->
           let target = HashMap.tryFind targetName targetsMap 
           match target with
           | Some target -> 
@@ -114,7 +114,7 @@ let tests =
           else
             timeOutMillis 10 ^=> fun _ ->
               (event Error "100 error msgs with svc" 
-              |> Message.setGauge(Int64 2L,Scalar) 
+              |> Message.setGauge(2L,Scalar) 
               |> Message.setContext KnownLiterals.ServiceContextName "svc1"
               |> sendMsg)
               ^=>. generateLog (count + 1)
@@ -221,15 +221,12 @@ let tests =
 
       let isGithubSvcDown = msgs |> List.exists (fun msg -> 
         match msg.value with 
-          | Event tpl -> String.contains "github" tpl 
-          | _ -> false )
+          | Event tpl -> String.contains "github" tpl)
 
       
       let isFakeSvcDown = msgs |> List.exists (fun msg -> 
         match msg.value with 
-          | Event tpl -> String.contains "fake.svc" tpl 
-          | _ -> false )
-
+          | Event tpl -> String.contains "fake.svc" tpl )
       Expect.isFalse isGithubSvcDown "ping github"
       Expect.isTrue isFakeSvcDown "ping fake.svc"
       

@@ -53,7 +53,8 @@ module Message =
   /// Sets a context value if name exist, value will be override
   [<CompiledName "SetContext">]
   let setContext name value message =
-    Optic.set (Optic.contextValue_ name) value message
+    if isNull name then message
+    else Optic.set (Optic.contextValue_ name) value message
 
   /// Sets a context value.
   [<Obsolete ("Use SetContext instand.")>]
@@ -79,7 +80,8 @@ module Message =
   /// Tries to get a context value
   [<CompiledName "TryGetContext">]
   let inline tryGetContext name message =
-    Optic.get (Optic.contextValue_ name) message
+    if isNull name then None
+    else Optic.get (Optic.contextValue_ name) message
 
   [<CompiledName "GetContextsByPrefix">]
   let inline GetContextsByPrefix (prefix : string) message =
@@ -502,10 +504,17 @@ module Message =
     let errorCtxName = KnownLiterals.ErrorsContextName
     let errors =
       match tryGetContext errorCtxName msg with
-      | Some (errors:list<Exception>) -> e :: errors
+      | Some (errors:list<exn>) -> e :: errors
       | _ -> [e]
 
     setContext errorCtxName errors msg
+
+  [<CompiledName "GetErrors">]
+  let getErrors msg : exn list =
+    match tryGetContext KnownLiterals.ErrorsContextName msg with
+    | Some (errors) -> errors
+    | _ -> List.empty
+
 
   //#endregion
 
