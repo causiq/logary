@@ -480,7 +480,7 @@ let tests =
         true
     ]
 
-    ftestList "Message" [
+    testList "Message" [
       testCase "event : LogLevel -> string -> Message" <| fun _ ->
         let m = event Info "Hello world"
         Expect.equal m.level Info "Should have info level"
@@ -598,7 +598,6 @@ let tests =
       })
 
     ]
-
 
     testList "LoggerScope" [
       testCase "public interface :> Logger" <| fun () ->
@@ -752,6 +751,7 @@ let tests =
 [<EntryPoint>]
 let main args =
   let enUS = CultureInfo "en-US"
+
   Thread.CurrentThread.CurrentCulture   <- enUS
   Thread.CurrentThread.CurrentUICulture <- enUS
   Tests.runTestsInAssembly defaultConfig args

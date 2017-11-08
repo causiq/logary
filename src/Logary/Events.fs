@@ -9,7 +9,6 @@ open Hopac
 open Hopac.Infixes
 open NodaTime
 
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Snapshot =
   open System
   // TODO: when I need to read values multiple times:
@@ -79,7 +78,7 @@ module Cancellation =
   let isCancelled cancellation =
     IVar.read cancellation.cancelled
 
-  let cancel cancellation = 
+  let cancel cancellation =
     IVar.tryFill cancellation.cancelled ()
 
 
@@ -105,13 +104,13 @@ type Ticker<'state,'t,'r> (initialState:'state) =
         Cancellation.isCancelled cancellation
       ]
 
-    loop () 
-    |> Job.start 
+    loop ()
+    |> Job.start
     >>-. cancellation
 
 type BufferTicker<'t> () =
   inherit Ticker<ResizeArray<'t>,'t,ResizeArray<'t>>(ResizeArray())
-    override this.Folder state item = 
+    override this.Folder state item =
       state.Add item
       state
 
@@ -155,10 +154,10 @@ module ExpWeightedMovAvg =
 
   let tick state =
     let timestampNow = Global.getTimestamp ()
-    match state.lastTickTimestamp with 
+    match state.lastTickTimestamp with
     | None -> { state with lastTickTimestamp = Some timestampNow
                            uncounted = 0L }
-    | Some lastTickTimestamp -> 
+    | Some lastTickTimestamp ->
       let count = float state.uncounted
       let interval = timestampNow - lastTickTimestamp
       let samplePeriod = Duration.FromTicks (interval / Constants.NanosPerTick)
@@ -175,7 +174,7 @@ module ExpWeightedMovAvg =
 
 type EWMATicker<'t> (rateUnit, alphaPeriod) =
   inherit Ticker<ExpWeightedMovAvg.EWMAState,int64,float>(ExpWeightedMovAvg.create alphaPeriod)
-    override this.Folder ewma item = 
+    override this.Folder ewma item =
       ExpWeightedMovAvg.update ewma item
 
     override this.HandleTick ewma =
@@ -183,123 +182,155 @@ type EWMATicker<'t> (rateUnit, alphaPeriod) =
       let rate = ewma' |> ExpWeightedMovAvg.rateInUnit rateUnit
       ewma', rate
 
-/// 'c means continuation function input
-/// 'r means continuation function output
-/// 's means pipe source element
-/// when we have a pipe, we can pass a continuation to it,
-/// and then we can pipe source item to its builded processing
-type Pipe<'c,'r,'s> = 
-  internal {
-    run : ('c -> Job<'r>) -> ('s -> Alt<unit>)
-    tickTimerJobs : Job<Cancellation> list
-  }
+type PipeResult<'a> =
+  internal
+  | HasResult of 'a
+  | NoResult
+with
+  member x.HasValue () =
+    match x with | HasResult _ -> true | _ -> false
+  member x.TryGet () =
+    match x with | HasResult x -> Some x | _ -> None
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+[<RequireQualifiedAccessAttribute>]
+module PipeResult =
+  let hasValue (x: PipeResult<_>) =
+    match x with | HasResult _ -> true | _ -> false
+
+  let tryGet (x: PipeResult<_>) =
+    match x with | HasResult x -> Some x | _ -> None
+
+  let orDefault d x =
+    match x with | HasResult x -> x | _ -> d
 
 
 [<RequireQualifiedAccessAttribute>]
 module Pipe =
 
-  let start =
-    let run = fun cont -> 
-      let sourceCh = Ch ()
+  /// 'contInput means continuation function input
+  /// 'contRes means continuation function output
+  /// 'sourceItem means pipe source element
+  /// when we have a pipe, we can pass a continuation to it,
+  /// and then we can pipe source item to its builded processing
+  type Pipe<'contInput,'contRes,'sourceItem> =
+    private {
+      build : cont<'contInput,'contRes> -> source<'sourceItem,'contRes>
+      tickTimerJobs : Job<Cancellation> list
+    }
+  and private cont<'a,'b> = 'a -> PipeResult<'b> // just for better type annotation
+  and private source<'a,'b> = 'a -> PipeResult<'b> // just for better type annotation
+  and Processing = Pipe<Message,Alt<Promise<unit>>,Message> // for logary target based processing
 
-      let rec loop () =
-        Alt.choose [
-          sourceCh ^=> fun (source,reply) ->
-            cont source
-            >>=. reply *<= () 
-            >>=. loop ()
-        ]
-
-      loop () |> Hopac.start
-
-      fun source ->
-        sourceCh *<+=>- (fun reply -> (source,reply)) 
-
-    {
-      run = run
+  // let start<'sourceItem,'sourceRes> () =
+  let start<'t,'r> =
+    { build = id<cont<'t,'r>>
       tickTimerJobs = List.empty
     }
 
+  /// when run cont for generate source, start all timer jobs in pipe at same time
   let run cont pipe =
-    Job.conCollect pipe.tickTimerJobs 
+    Job.conCollect pipe.tickTimerJobs
     >>- fun ctss ->
-    let onNext = pipe.run cont
+    let onNext = cont |> pipe.build
     (onNext, ctss)
 
+  /// add a job to current pipe
   let withTickJob tickJob pipe =
     { pipe with tickTimerJobs = tickJob :: pipe.tickTimerJobs }
 
   let chain f pipe =
-    {
-      run = f >> pipe.run
+    { build = f >> pipe.build
       tickTimerJobs = pipe.tickTimerJobs
-    } 
+    }
 
-  let inline map (f:'a -> 'b) pipe =
-    pipe 
-    |> chain (fun cont -> f >> cont) 
+  let composeForProcessingType (pipes: Processing list) =
+    let allTickTimerJobs = List.collect (fun pipe -> pipe.tickTimerJobs) pipes
+    let latch = Latch pipes.Length
 
-  let inline filter (predicate:'a -> bool) pipe =
-    pipe 
-    |> chain (fun cont -> fun prev -> if predicate prev then cont prev else Job.result ())
+    let build =
+      fun cont -> fun sourceItem ->
+        let composed =
+          pipes
+          |> List.map (fun pipe -> pipe.build cont)
+          |> List.traverseAltA (fun onNext -> onNext sourceItem |> PipeResult.orDefault (Promise.instaPromise))
+        composed
+        ^-> (Hopac.Job.conIgnore >> memo)
+        |> PipeResult.HasResult
 
-  let inline choose (chooser:'a -> 'b option) pipe =
-    pipe 
-    |> chain (fun cont -> fun prev -> match chooser prev with | Some mapped -> cont mapped | _ ->  Job.result ())
+    { build = build
+      tickTimerJobs = allTickTimerJobs
+    }
 
+  let map f pipe =
+    pipe |> chain (fun cont -> f >> cont)
+
+  let filter predicate pipe =
+    pipe |> chain (fun cont -> fun prev -> if predicate prev then cont prev else NoResult)
+
+  let choose chooser pipe =
+    pipe
+    |> chain (fun cont -> fun prev -> match chooser prev with | Some mapped -> cont mapped | _ ->  NoResult)
 
   /// when some item comes in, it goes to ticker.folder, generate state
-  /// when somewhere outside tick through ticker , ticker.handleTick generate new state and pipe result for continuation
-  /// this fun will make pipe *async* through an background loop job 
-  let inline tick (ticker:Ticker<'state,_,_>) pipe =
+  /// when somewhere outside tick through ticker , ticker.handleTick generate new state and pipe input for continuation
+  /// this fun will make pipe *async* through an background loop job
+  let tick (ticker:Ticker<'state,_,_>) (pipe: Pipe<_,#Job<_>,_>) =
     pipe
-    |> chain (fun cont -> 
-         let updateMb = Mailbox ()
-         
-         let rec loop state =
-           Alt.choose [
-             ticker.Ticked ^=> fun _ ->
-               let state', res = ticker.HandleTick state
-               cont res
-               >>=. loop state'
-   
-             updateMb ^=> (ticker.Folder state >> loop)
-           ]
-           
-         loop ticker.InitialState |> Hopac.start
-   
-         fun prev -> updateMb *<<+ prev)
+    |> chain (fun cont ->
+       let updateMb = Mailbox ()
 
+       let rec loop state =
+         Alt.choose [
+           ticker.Ticked ^=> fun _ ->
+             try
+               let state', item = ticker.HandleTick state
+               item |> cont
+               |> function | HasResult x -> x >>=. loop state'
+                           | _ -> upcast (loop state')
+             with
+             | e ->
+               upcast (loop state)
 
-  let inline buffer n pipe =
+           updateMb ^=> (ticker.Folder state >> loop)
+         ]
+
+       printfn "before loop start"
+
+       // think about how to handle exception when ticker fun (folder/handletick throw exception)
+       loop ticker.InitialState |> Hopac.server
+       printfn "after loop start"
+       fun prev ->
+         printfn "item send"
+         Mailbox.Now.send updateMb  prev
+         NoResult)
+
+  let buffer n pipe =
     pipe
     |> chain (fun cont ->
        let results = new ResizeArray<_> ()
-       fun prev -> 
+       fun prev ->
          results.Add prev
          if results.Count >= n then
            let res = (List.ofSeq results)
            results.Clear ()
            cont res
-         else 
-           Job.result ())
+         else
+           NoResult)
 
-
-  let inline bufferTime timespan pipe =
+  let bufferTime timespan pipe =
     let ticker = BufferTicker ()
     pipe
     |> withTickJob (ticker.TickEvery timespan)
     |> tick ticker
 
-
   /// maybe use ArraySegment instead
-  let inline slidingWindow size pipe =
+  let slidingWindow size pipe =
     pipe
     |> chain (fun cont ->
        let window = Array.zeroCreate size
        let slidingLen = size - 1
-       let mutable count = 0u
-       fun prev -> 
+       fun prev ->
          Array.blit window 1 window 0 slidingLen
          window.[slidingLen] <- prev
          cont window)
@@ -311,57 +342,55 @@ module Pipe =
   //        let window = ResizeArray ()
   //        let slidingLen = size - 1
   //        let mutable count = 0u
-  //        fun prev -> 
+  //        fun prev ->
   //          window.Add prev
 
   //          Array.blit window 1 window 0 slidingLen
   //          window.[slidingLen] <- prev
   //          cont window)
-  
-  
 
-type Processing = Pipe<Message,unit,Message>
+
 
 [<RequireQualifiedAccessAttribute>]
-module Events = 
-
+module Events =
   type T =
     private {
-      pipes : Processing list
+      pipes : Pipe.Processing list
     }
 
   let stream = {
     pipes = List.empty;
   }
 
+  let events<'r> = Pipe.start<Message,'r>
   let subscribers pipes stream =
     {pipes = List.concat [pipes; stream.pipes;]}
 
-  let service svc pipe = 
+  let service svc pipe =
     pipe |> Pipe.filter (fun msg -> Message.tryGetContext KnownLiterals.ServiceContextName msg = Some svc)
 
   let tag tag pipe = pipe |> Pipe.filter (Message.hasTag tag)
 
   let counter timespan pipe =
     failwith "todo"
-    // pipe 
-    // |> Pipe.bufferTime timespan 
-    // |> Pipe.map (Seq.sumBy (fun (msg : Message) -> 
+    // pipe
+    // |> Pipe.bufferTime timespan
+    // |> Pipe.map (Seq.sumBy (fun (msg : Message) ->
     //    match msg.value with
-    //    | Gauge (Int64 i, _) 
+    //    | Gauge (Int64 i, _)
     //    | Derived (Int64 i, _) -> i
     //    | _ -> 1L))
 
   let percentile quantile pipe =
     failwith "todo"
-  
+
     // pipe
-    // |> Pipe.map (fun msgs -> 
+    // |> Pipe.map (fun msgs ->
     //    msgs |> Seq.map (fun (msg : Message) ->
     //    match msg.value with
-    //    | Gauge (Int64 i, _) 
+    //    | Gauge (Int64 i, _)
     //    | Derived (Int64 i, _) -> i
-    //    | _ -> 1L) 
+    //    | _ -> 1L)
     //    |> Array.ofSeq
     //    |> Snapshot.create
     //    |> Snapshot.quantile
@@ -370,21 +399,8 @@ module Events =
   let miniLevel level pipe =
     pipe |> Pipe.filter (fun msg -> msg.level >= level)
 
-  let sink (targetName:string) pipe = 
+  let sink (targetName:string) pipe =
     pipe |> Pipe.map (Message.setContext "target" targetName)
 
   let toProcessing stream =
-    let pipes = stream.pipes
-    let allTickTimerJobs = List.collect (fun pipe -> pipe.tickTimerJobs) pipes
-
-    let run = fun cont -> 
-      let allOnNextFuns = List.map (fun pipe -> pipe.run cont) pipes
-      fun prev -> 
-        Hopac.Extensions.Seq.Con.iterJobIgnore (fun onNext -> onNext prev) allOnNextFuns
-        |> memo 
-        :> Alt<_>
-
-    {
-      run = run
-      tickTimerJobs = allTickTimerJobs
-    }
+    stream.pipes |> Pipe.composeForProcessingType

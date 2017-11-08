@@ -68,6 +68,7 @@ module Target =
   /// and a normal path of communication; the `requests` `RingBuffer` as well as
   /// and out-of-band-method of shutting down the target; the `shutdownCh`.
   type T =
+    // todo internal first , later see if can be private
     internal {
       name       : PointName
       server     : Job<unit>
@@ -78,19 +79,8 @@ module Target =
 
   let needSendToTarget (target : T) msg =
     Rule.canPass msg target.rules
-    
 
-  /// Send the target a message, returning the same instance as was passed in when
-  /// the Message was acked.
-  let log (x : T) (msg : Message) : Alt<Promise<unit>> =
-    if needSendToTarget x msg then 
-      let ack = IVar ()
-      Log (msg, ack)
-      |> RingBuffer.put x.api.requests
-      |> Alt.afterFun (fun () -> ack :> Promise<unit>)
-    else Promise.instaPromise
-
-  /// Logs the `Message` to all the targets.
+  /// Logs the `Message` to all the targets.Target Middleware compose at here
   let logAll (xs : T seq) (msg : Message) : Alt<Promise<unit>> =
     // NOTE: it would probably be better to create a nack that cancels
     // all outstanding requests to log (but lets others through)
@@ -101,6 +91,8 @@ module Target =
       targets
       |> List.traverseAltA (fun target ->
          if needSendToTarget target msg then 
+           // think about compose time, as later as possible
+           let msg = msg |> Middleware.compose target.middleware
            Alt.prepareJob <| fun () ->
              let ack = IVar ()
              Job.start (ack ^=>. Latch.decrement latch) >>-.
@@ -109,6 +101,17 @@ module Target =
       |> Alt.afterFun ignore
 
     traverse ^->. memo (Latch.await latch)
+
+  /// Send the target a message, returning the same instance as was passed in when
+  /// the Message was acked.
+  let log (x : T) (msg : Message) : Alt<Promise<unit>> =
+    logAll [x] msg
+    // if needSendToTarget x msg then 
+    //   let ack = IVar ()
+    //   Log (msg, ack)
+    //   |> RingBuffer.put x.api.requests
+    //   |> Alt.afterFun (fun () -> ack :> Promise<unit>)
+    // else Promise.instaPromise
 
   /// Send a flush RPC to the target and return the async with the ACKs. This will
   /// create an Alt that is composed of a job that blocks on placing the Message

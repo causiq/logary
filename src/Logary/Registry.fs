@@ -21,7 +21,7 @@ type LogaryConf =
   /// Extra middleware added to every resolved logger.
   abstract middleware : Middleware[]
   /// Optional stream transformer.
-  abstract processing : Processing
+  abstract processing : Pipe.Processing
 
 /// A data-structure that gives information about the outcome of a flush
 /// operation on the Registry. This data structure is only relevant if the
@@ -71,7 +71,7 @@ module Registry =
   type T =
     private {
       runtimeInfo : RuntimeInfo
-      msgProcessing : Message -> Middleware option -> Alt<unit>
+      msgProcessing : Message -> Middleware option -> Alt<Promise<unit>>
 
       /// Flush all pending messages from the registry to await shutdown and
       /// ack on the `ackCh` when done. If the client nacks the request, the
@@ -117,10 +117,8 @@ module Registry =
 
 
   module internal Impl =
-
-
     let logWithAck (t : T) (logLevel : LogLevel) (messageFactory : LogLevel -> Message) mid : Alt<Promise<unit>> =
-      t.msgProcessing (messageFactory logLevel) mid ^->. Promise (())
+      t.msgProcessing (messageFactory logLevel) mid
 
     let getLogger (t : T) name mid =
         { new Logger with
@@ -141,16 +139,16 @@ module Registry =
     let spawnTarget (ri : RuntimeInfo) targets =
       targets
       |> List.ofSeq
-      |> List.traverseJobA (fun (KeyValue (_,conf)) -> 
+      |> List.traverseJobA (fun (KeyValue (_,conf)) ->
            Target.create ri conf >>= fun instance ->
            Job.supervise instance.api.runtimeInfo.logger conf.policy instance.server
            >>-. instance)
 
-    let inline generateProcessResult name processAlt (timeout:Duration option) = 
+    let inline generateProcessResult name processAlt (timeout:Duration option) =
       match timeout with
         | None -> processAlt ^->. (name,true)
-        | Some duration -> 
-          timeOut (duration.ToTimeSpan ()) ^->. (name,false) 
+        | Some duration ->
+          timeOut (duration.ToTimeSpan ()) ^->. (name,false)
           <|>
           processAlt ^->. (name,true)
 
@@ -167,7 +165,7 @@ module Registry =
               let acks = List.map (fst >> PointName.format)  acks
               let timeouts = List.map (fst >> PointName.format) timeouts
               ShutdownInfo(acks,timeouts))
-      
+
 
     let flushPending targets (timeout:Duration option) : Job<FlushInfo> =
       let flushTarget target =
@@ -196,25 +194,14 @@ module Registry =
       PointName [| "Logary"; "Registry" |],
       List.ofArray conf.middleware
     let rlogger = ri.logger |> Logger.apply (setName rname)
-   
+
     spawnTarget ri conf.targets >>= fun targets ->
-    let targetsMap = targets |> List.map (fun t -> PointName.format t.name, t) |> HashMap.ofList 
-    // pipe.run should only be invoke once, because state in pipes is captured when pipe.run
-    let sendMsg = conf.processing.run <| (fun msg ->
-      let targetName = Message.tryGetContext "target" msg
-      match targetName with 
-      | Some (String targetName) ->
-        let target = HashMap.tryFind targetName targetsMap 
-        match target with
-        | Some target -> 
-          msg |> Middleware.compose target.middleware |> Target.log target >>= id
-        | _ -> Job.result ()
-      | _ -> Job.result ())
+    let targetsMap = targets |> List.map (fun t -> PointName.format t.name, t) |> HashMap.ofList
 
-    let msgProcessing msg mid = 
-      let cmid = Middleware.compose (mid |> Option.fold (fun s t -> t :: s) rmid)
-      msg |> cmid |> sendMsg
-
+    let wrapper sendMsg msg mid =
+      msg
+      |> Middleware.compose (mid |> Option.fold (fun s t -> t :: s) rmid)
+      |> sendMsg |> PipeResult.orDefault Promise.instaPromise
 
     let flushCh, shutdownCh = Ch (), Ch ()
 
@@ -224,7 +211,7 @@ module Registry =
           rlogger.infoWithAck (eventX "Start Flush")
           ^=> fun _ ->
             memo (flushPending targets timeout >>= fun flushInfo -> (ackCh *<- flushInfo))
-            <|> 
+            <|>
             nack
           ^=>. running ctss
 
@@ -235,17 +222,29 @@ module Registry =
           >>= fun shutdownInfo -> res *<= shutdownInfo
       ]
 
-    let state =
-      { runtimeInfo = ri
-        msgProcessing = msgProcessing
-        flushCh = flushCh
-        shutdownCh = shutdownCh }
-    
-    Seq.Con.mapJob id conf.processing.tickTimerJobs
-    >>= fun ctss -> Job.supervise rlogger (Policy.restartDelayed 500u) (running ctss) 
-    >>- fun _ -> 
-      initialiseGlobals state
-      state
+    // pipe.run should only be invoke once, because state in pipes is captured when pipe.run
+    let runningPipe =
+      conf.processing
+      |> Pipe.run (fun msg ->
+         let targetNames = Message.tryGetContext "target" msg
+         match targetNames with
+         | Some targetNames ->
+           let targets = targetNames |> List.choose (fun name -> HashMap.tryFind name targetsMap)
+           if targets.IsEmpty then NoResult
+           else msg |> Target.logAll targets |> HasResult
+         | _ -> NoResult)
+
+    runningPipe
+    >>= fun (sendMsg, ctss) ->
+        let state =
+          { runtimeInfo = ri
+            msgProcessing = wrapper sendMsg
+            flushCh = flushCh
+            shutdownCh = shutdownCh }
+        initialiseGlobals state
+
+        Job.supervise rlogger (Policy.restartDelayed 500u) (running ctss)
+        >>-. state
 
   let toLogManager (t : T) : LogManager =
     { new LogManager with

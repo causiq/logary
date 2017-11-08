@@ -30,18 +30,27 @@
 
     gauges are stored in contexts with gauge type. so message.value is template or raw message.
 
-- errors (exceptions) 
+- errors (exceptions)
 
-  is expressed by a context, not a field. user can define their own output template for decision whether or not to show them. 
+  is expressed by a context, not a field. user can define their own output template for decision whether or not to show them.
 
 - todo
 
   - more unit test
+    - [ ] message
+    - [ ] ewma & percentile
+    - [ ] formatting
+    - [ ] registry
+  - event format improvement mentioned by #257
   - reorganize types in Events.fs
   - chiron new version in Serialisation.fs  # no need use fspickler instead
-  - failwith "todo"
-  - Tests.skiptest "TBD"
+  - complete todo comments part in codebase
+
+    - failwith "todo"
+    - Tests.skiptest "TBD"
+
   - maybe obsolete
+
     - PromisedLogger.fs
 
       create logger is no longer async, just a function with registry instance
@@ -52,7 +61,11 @@
 
     - Metrics.Ticked.fs  ->  replace by Events.Ticker
     - Transformers.fs -> replace by Events.xxx (should implement by events pipe style)
-  - log api 因为 pipe 的异步原因导致 Alt<Promise> 失效了, 考虑重构， 提供一个 默认值 取代 unit 应该就好了。
-  - time xxx 的 logging api 考虑是否用 gaugetype 取代 logger name
-    
-    考虑一下 timeout 是否会打破 unbound buffer 的情况
+
+  - misc
+
+    log api 因为 pipe 的异步原因导致 Alt<Promise> 失效了, 考虑重构, 提供一个 默认值 取代 `Job<unit>` 应该就好了
+
+    考虑一下 logSimple timeout 是否会打破 unbound buffer 的情况
+
+    time xxx 的 logging api 考虑是否用 gaugetype 取代 logger name, 会破坏 api 的兼容性

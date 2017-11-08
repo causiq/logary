@@ -26,7 +26,7 @@ module Config =
       getSem       : unit -> obj
       ilogger      : ILogger
       middleware   : Middleware list
-      processing   : Processing
+      processing   : Pipe.Processing
       setGlobals   : bool
     }
 
