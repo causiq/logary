@@ -172,15 +172,11 @@ let tests =
       } |> Job.toAsync)
     ]
 
-    ftestCaseAsync "health checker ping" (job {
+    testCaseAsync "health checker ping" (job {
       // context
       let pingSvc (hostName : string) =
-        printfn "ping...."
         try
           use p = new Ping()
-          // very strange case ,when Ping.Send failed, things not working,
-          // exception cann't be captured. but throw exception manually can be handled
-          // failwith "strange case"
           let reply = p.Send(hostName,1000)
           if reply.Status <> IPStatus.Success then
             Message.event Error (sprintf "ping %s failed, reply status is %s" hostName (reply.Status.ToString ()))
@@ -223,6 +219,7 @@ let tests =
       // given
       let! targets = [mockTarget "TargetForUnhealthySvc"] |> Job.seqCollect
       let! (_, ctss) = run processing targets
+
       do! timeOutMillis 3000
 
       // then

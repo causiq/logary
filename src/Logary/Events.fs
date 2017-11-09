@@ -249,14 +249,15 @@ module Pipe =
     let latch = Latch pipes.Length
 
     let build =
-      fun cont -> fun sourceItem ->
-        let composed =
-          pipes
-          |> List.map (fun pipe -> pipe.build cont)
-          |> List.traverseAltA (fun onNext -> onNext sourceItem |> PipeResult.orDefault (Promise.instaPromise))
-        composed
-        ^-> (Hopac.Job.conIgnore >> memo)
-        |> PipeResult.HasResult
+      fun cont ->
+        let allBuildedSource = pipes |> List.map (fun pipe -> pipe.build cont)
+        fun sourceItem ->
+          let composed =
+            allBuildedSource
+            |> List.traverseAltA (fun onNext -> onNext sourceItem |> PipeResult.orDefault (Promise.instaPromise))
+          composed
+          ^-> (Hopac.Job.conIgnore >> memo)
+          |> PipeResult.HasResult
 
     { build = build
       tickTimerJobs = allTickTimerJobs
@@ -295,13 +296,10 @@ module Pipe =
            updateMb ^=> (ticker.Folder state >> loop)
          ]
 
-       printfn "before loop start"
-
        // think about how to handle exception when ticker fun (folder/handletick throw exception)
        loop ticker.InitialState |> Hopac.server
-       printfn "after loop start"
+
        fun prev ->
-         printfn "item send"
          Mailbox.Now.send updateMb  prev
          NoResult)
 
