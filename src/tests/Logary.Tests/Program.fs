@@ -61,7 +61,7 @@ type Arbs =
     Arb.fromGenShrink (generator, shrinker)
 
   static member Units() =
-    let isNormal f = 
+    let isNormal f =
          not <| Double.IsInfinity f
       && not <| Double.IsNaN f
     Arb.Default.Derive()
@@ -134,11 +134,11 @@ let tests =
     ]
 
     testList "KnownLiterals" (
-      [ 
+      [
         KnownLiterals.LogaryPrefix, "_logary."
         KnownLiterals.FieldsPrefix, "_fields."
         KnownLiterals.GaugeTypePrefix, "_logary.gauge."
-        
+
         KnownLiterals.ErrorsContextName, "_logary.errors"
         KnownLiterals.ServiceContextName, "_logary.service"
         KnownLiterals.HostContextName, "_logary.host"
@@ -380,7 +380,7 @@ let tests =
             ]
             |> List.collect (fun (value, expectedf, prefix) ->
             [ Metres; Amperes; Kelvins; Moles; Candelas; Watts; Hertz ] |> List.map (fun units ->
-            testCase (sprintf "scaling %f %A" value units) (fun _ -> 
+            testCase (sprintf "scaling %f %A" value units) (fun _ ->
               let actualf, actualu = Units.scale units value
               let expectedu = sprintf "%s%s" prefix (Units.symbol units)
               Expect.equal actualu expectedu "Should properly format the unit"
@@ -492,25 +492,25 @@ let tests =
         Expect.equal m.value (Event "Hello world") "Should have template"
 
       testProperty "tryGetContext after setContext" <| fun name ->
-        eventInfo "" |> setContext name name |> tryGetContext name 
-        |> function | v when isNull name -> Option.isNone v | v -> v = (Some name) 
+        eventInfo "" |> setContext name name |> tryGetContext name
+        |> function | v when isNull name -> Option.isNone v | v -> v = (Some name)
 
       testCase "setContext override value when name exist" <| fun _ ->
         let get = tryGetContext "key" >> Option.get
         let set v = setContext "key" v
-        let m1 = eventInfo "" |> set 1 
+        let m1 = eventInfo "" |> set 1
         Expect.equal (get m1) 1 "Should properly set context value"
-        let m2 = m1 |> set 2 
+        let m2 = m1 |> set 2
         Expect.equal (get m2) 2 "Should override"
 
       testProperty "setField should have field prefix" <| fun name ->
         let prefixName = KnownLiterals.FieldsPrefix + name
-        let fv = eventInfo "" |> setField name 1 |> tryGetContext prefixName 
+        let fv = eventInfo "" |> setField name 1 |> tryGetContext prefixName
         Expect.isSome fv "Value should be found"
         Expect.equal fv.Value 1 "Value should be found"
 
       testProperty "tryGetField" <| fun name ->
-        let msg = eventInfo "" 
+        let msg = eventInfo ""
         let value = msg |> tryGetField name
         Expect.isNone value "Should not be found"
         let value = msg |> setField name name |> tryGetField name
@@ -519,7 +519,7 @@ let tests =
       testCase "getAllFields" <| fun _ ->
         let names = Arb.generate<NonEmptyString> |> Gen.sample 0 5 |> List.distinct |> List.map (fun (NonEmptyString name) -> name)
         names
-        |> List.fold (fun m name -> 
+        |> List.fold (fun m name ->
            m |> setField name name) (eventInfo "")
         |> getAllFields |> Seq.length |> fun c ->
            Expect.equal c names.Length "Should get same length after set fields"
@@ -569,7 +569,7 @@ let tests =
         let timeFun = time (PointName.parse name) id
         let (res, msg) = timeFun 100
         Expect.equal res 100 "Should have result"
-        
+
         Expect.isTrue (hasGauge msg) "Should have guage"
         let g = tryGetGauge name msg
         Expect.isSome g "Should have guage"
@@ -579,7 +579,7 @@ let tests =
 
       testCaseAsync "time & timeJob" <| (async {
         let name = "some.gauge.at.location"
-        
+
         let test res msg =
           Expect.equal res 100 "Should have result"
           Expect.isTrue (hasGauge msg) "Should have guage"
@@ -741,7 +741,11 @@ let tests =
 
     testList "Engine" Engine.tests
 
-    testList "Registry" [
+    testList "Target.Core" Tests.Target.tests
+
+    testList "Formatting" Tests.Formatting.tests
+
+    ftestList "Registry" [
       testCase "from Config" <| fun () ->
         Tests.skiptest "Finish Config tests first"
         ()

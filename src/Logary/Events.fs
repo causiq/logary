@@ -275,7 +275,9 @@ module Pipe =
 
   /// when some item comes in, it goes to ticker.folder, generate state
   /// when somewhere outside tick through ticker , ticker.handleTick generate new state and pipe input for continuation
-  /// this fun will make pipe *async* through an background loop job
+  /// this fun will make pipe *async* through an background loop job, like some fire and forget style.
+  /// so when user at callsite put some source item in, it return NoResult immediately.
+  /// TODO : handle exception
   let tick (ticker:Ticker<'state,_,_>) (pipe: Pipe<_,#Job<_>,_>) =
     pipe
     |> chain (fun cont ->
@@ -298,6 +300,7 @@ module Pipe =
 
        // think about how to handle exception when ticker fun (folder/handletick throw exception)
        loop ticker.InitialState |> Hopac.server
+       //  Job.supervise internalLogger (Policy.restart) (loop ticker.InitialState)
 
        fun prev ->
          Mailbox.Now.send updateMb  prev

@@ -52,6 +52,8 @@
     </Compile>
     <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="Engine.fs" />
+    <Compile Include="Formatting.fs" />
+    <Compile Include="CoreTarget.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <None Include="App.config" />

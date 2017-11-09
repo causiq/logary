@@ -3,13 +3,12 @@ namespace Logary
 
 open Hopac
 open Hopac.Infixes
-open NodaTime
-open System
-open System.IO
+open Hopac.Extensions
 open Logary.Message
 open Logary.Target
 open Logary.Internals
-open Hopac.Extensions
+open NodaTime
+
 
 /// This is the logary configuration structure having a memory of all
 /// configured targets, middlewares, etc.
@@ -116,35 +115,33 @@ module Registry =
     |> Alt.afterFun (fun shutdownInfo -> flushInfo, shutdownInfo)
 
 
-  module internal Impl =
-    let logWithAck (t : T) (logLevel : LogLevel) (messageFactory : LogLevel -> Message) mid : Alt<Promise<unit>> =
-      t.msgProcessing (messageFactory logLevel) mid
-
-    let getLogger (t : T) name mid =
+  module private Impl =
+    let inline getLogger (t : T) name mid =
         { new Logger with
             member x.name = name
-            member x.log level messageFactory =
-              logWithAck t level messageFactory mid ^-> ignore
             member x.logWithAck level messageFactory =
-              logWithAck t level messageFactory mid
+              t.msgProcessing (messageFactory level) mid
+            member x.log level messageFactory =
+              x.logWithAck level messageFactory ^-> ignore
         }
 
-    let initialiseGlobals (t : T) =
+    let inline initialiseGlobals (t : T) =
       let config =
         { Global.defaultConfig with
             getLogger = fun name -> getLogger t name None
             getLoggerWithMiddleware = fun name mid -> getLogger t name (Some mid) }
       Global.initialise config
 
-    let spawnTarget (ri : RuntimeInfo) targets =
+    let inline spawnTarget (ri : RuntimeInfo) targets =
       targets
-      |> List.ofSeq
-      |> List.traverseJobA (fun (KeyValue (_,conf)) ->
+      |> HashMap.toList
+      |> List.traverseJobA (fun (_,conf) ->
            Target.create ri conf >>= fun instance ->
            Job.supervise instance.api.runtimeInfo.logger conf.policy instance.server
            >>-. instance)
 
     let inline generateProcessResult name processAlt (timeout:Duration option) =
+      let name = PointName.format name
       match timeout with
         | None -> processAlt ^->. (name,true)
         | Some duration ->
@@ -152,34 +149,28 @@ module Registry =
           <|>
           processAlt ^->. (name,true)
 
-    let shutdown targets (timeout:Duration option) : Job<ShutdownInfo> =
+    let inline partitionResults results =
+      results
+      |> List.ofSeq
+      |> List.partition snd
+      |> (fun (acks, timeouts) ->
+            let acks = List.map fst acks
+            let timeouts = List.map fst timeouts
+            (acks, timeouts))
+
+    let inline shutdown targets (timeout:Duration option) : Job<ShutdownInfo> =
       let shutdownTarget target =
         generateProcessResult target.name (Target.shutdown target ^=> id) timeout
 
       targets |> Seq.Con.mapJob shutdownTarget
-      >>- fun shutdownInfos ->
-        shutdownInfos
-        |> List.ofSeq
-        |> List.partition snd
-        |> (fun (acks, timeouts) ->
-              let acks = List.map (fst >> PointName.format)  acks
-              let timeouts = List.map (fst >> PointName.format) timeouts
-              ShutdownInfo(acks,timeouts))
+      >>- (partitionResults >> ShutdownInfo)
 
-
-    let flushPending targets (timeout:Duration option) : Job<FlushInfo> =
+    let inline flushPending targets (timeout:Duration option) : Job<FlushInfo> =
       let flushTarget target =
         generateProcessResult target.name (Target.flush target) timeout
 
       targets |> Seq.Con.mapJob flushTarget
-      >>- fun flushInfos ->
-        flushInfos
-        |> List.ofSeq
-        |> List.partition snd
-        |> (fun (acks, timeouts) ->
-              let acks = List.map (fst >> PointName.format)  acks
-              let timeouts = List.map (fst >> PointName.format) timeouts
-              FlushInfo(acks,timeouts))
+      >>- (partitionResults >> FlushInfo)
 
   open Impl
 
