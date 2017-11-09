@@ -83,7 +83,7 @@ module internal Impl =
 /// Create a new YOUR TARGET NAME HERE target
 [<CompiledName "Create">]
 let create conf name =
-  TargetConf.create Policy.exponentialBackoffSix 500u (Impl.loop conf) name
+  TargetConf.create Policy.exponentialBackoffSix 512u (Impl.loop conf) name
   // Also see TargetConf.createSimple for use w/o Policy/Will:
   //TargetConf.createSimple (Impl.loop conf) name
 

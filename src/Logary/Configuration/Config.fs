@@ -31,18 +31,15 @@ module Config =
     }
 
   let create service host =
-    let mids =
-      [ Middleware.host host
-        Middleware.service service ]
     { targets      = HashMap.empty
       host         = host
       service      = service
       getTimestamp = Global.getTimestamp
       getSem       = Global.getConsoleSemaphore
-      middleware   = mids
+      middleware   = List.empty
       ilogger      = ILogger.Console Warn
       setGlobals   = true
-      processing   = Pipe.start 
+      processing   = Pipe.start
     }
 
   let target name tconf lconf =
@@ -99,10 +96,13 @@ module Config =
         conf
 
     InternalLogger.create ri >>= fun ilogger ->
-    itargets 
+    itargets
     |> Seq.Con.iterJob (fun itarget -> InternalLogger.add itarget ilogger)
     >>= fun () ->
-    let middleware = Array.ofList lconf.middleware
+    let mids =
+      [ Middleware.host lconf.host
+        Middleware.service lconf.service ]
+    let middleware = Array.ofList (lconf.middleware @ mids)
     let ri = { ri with logger = ilogger }
 
     let conf =

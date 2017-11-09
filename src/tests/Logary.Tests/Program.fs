@@ -745,10 +745,42 @@ let tests =
 
     testList "Formatting" Tests.Formatting.tests
 
-    ftestList "Registry" [
-      testCase "from Config" <| fun () ->
-        Tests.skiptest "Finish Config tests first"
+    testList "Registry" [
+      ftestCaseAsync "from Config" <| (job {
+        let svc = "svc"
+        let host = "localhost"
+        let! registry = Config.create svc host |> Config.ilogger (ILogger.Console Verbose) |> Config.build
+        let logm = Registry.toLogManager registry
+        let ri = logm.runtimeInfo
+        Expect.equal ri.service svc "should have service"
+        Expect.equal ri.host host "should have host"
+
+        let timeout =  Duration.FromSeconds 3L
+        let! (finfo, sinfo) = logm.shutdown timeout timeout
+        printfn "%A %A" finfo sinfo
+      } |> Job.toAsync)
+
+      testCaseAsync "after shutting down no logging happens" <| (job {
+        let svc = "svc"
+        let host = "localhost"
+        let loggername = PointName.parse "logger.test"
+        let! registry = Config.create svc host |> Config.build
+        let logm = Registry.toLogManager registry
+        let logger = logm.getLogger loggername
+
         ()
+      } |> Job.toAsync)
+
+
+      testCaseAsync "registry and middleware" <| (job {
+        let svc = "svc"
+        let host = "localhost"
+        let! registry = Config.create svc host |> Config.build
+        let logm = Registry.toLogManager registry
+        ()
+
+
+      } |> Job.toAsync)
     ]
   ]
 

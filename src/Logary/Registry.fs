@@ -135,13 +135,10 @@ module Registry =
     let inline spawnTarget (ri : RuntimeInfo) targets =
       targets
       |> HashMap.toList
-      |> List.traverseJobA (fun (_,conf) ->
-           Target.create ri conf >>= fun instance ->
-           Job.supervise instance.api.runtimeInfo.logger conf.policy instance.server
-           >>-. instance)
+      |> List.traverseJobA (fun (_,conf) -> Target.create ri conf)
 
     let inline generateProcessResult name processAlt (timeout:Duration option) =
-      let name = PointName.format name
+      printfn "%A %A" name timeout
       match timeout with
         | None -> processAlt ^->. (name,true)
         | Some duration ->
@@ -158,19 +155,19 @@ module Registry =
             let timeouts = List.map fst timeouts
             (acks, timeouts))
 
-    let inline shutdown targets (timeout:Duration option) : Job<ShutdownInfo> =
-      let shutdownTarget target =
-        generateProcessResult target.name (Target.shutdown target ^=> id) timeout
+    let inline shutdown (targets: Target.T list) (timeout: Duration option) : Alt<ShutdownInfo> =
+      let shutdownTarget (target: Target.T) =
+        generateProcessResult target.Name (Target.shutdown target ^=> id) timeout
 
-      targets |> Seq.Con.mapJob shutdownTarget
-      >>- (partitionResults >> ShutdownInfo)
+      (targets |> List.traverseAltA shutdownTarget)
+      ^-> (partitionResults >> ShutdownInfo)
 
-    let inline flushPending targets (timeout:Duration option) : Job<FlushInfo> =
-      let flushTarget target =
-        generateProcessResult target.name (Target.flush target) timeout
+    let inline flushPending (targets: Target.T list) (timeout: Duration option) : Alt<FlushInfo> =
+      let flushTarget (target: Target.T) =
+        generateProcessResult target.Name (Target.flush target) timeout
 
-      targets |> Seq.Con.mapJob flushTarget
-      >>- (partitionResults >> FlushInfo)
+      (targets |> List.traverseAltA flushTarget)
+      ^-> (partitionResults >> FlushInfo)
 
   open Impl
 
@@ -187,7 +184,7 @@ module Registry =
     let rlogger = ri.logger |> Logger.apply (setName rname)
 
     spawnTarget ri conf.targets >>= fun targets ->
-    let targetsMap = targets |> List.map (fun t -> PointName.format t.name, t) |> HashMap.ofList
+    let targetsMap = targets |> List.map (fun t -> t.Name, t) |> HashMap.ofList
 
     let wrapper sendMsg msg mid =
       msg
@@ -201,7 +198,7 @@ module Registry =
         flushCh ^=> fun (ackCh, nack, timeout) ->
           rlogger.infoWithAck (eventX "Start Flush")
           ^=> fun _ ->
-            memo (flushPending targets timeout >>= fun flushInfo -> (ackCh *<- flushInfo))
+            flushPending targets timeout ^=> fun flushInfo -> (ackCh *<- flushInfo)
             <|>
             nack
           ^=>. running ctss
@@ -234,7 +231,8 @@ module Registry =
             shutdownCh = shutdownCh }
         initialiseGlobals state
 
-        Job.supervise rlogger (Policy.restartDelayed 500u) (running ctss)
+        Job.supervise rlogger (Policy.restartDelayed 512u) (running ctss)
+        |> Job.startIgnore
         >>-. state
 
   let toLogManager (t : T) : LogManager =

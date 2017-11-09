@@ -18,22 +18,32 @@ module InternalLogger =
       shutdownCh : Ch<unit>
       messageCh : Ch<Message * Promise<unit> * Ch<Promise<unit>>>
     }
+  with
+    member x.name = PointName [| "Logary" |]
 
     interface Logger with // internal logger
       member x.logWithAck logLevel messageFactory =
-        let message = messageFactory logLevel
+        let me : Logger = upcast x
+        let message =
+          match messageFactory logLevel with
+          | msg when msg.name.isEmpty -> { msg with name = x.name }
+          | msg -> msg
         x.messageCh *<+->- fun replCh nack -> message, nack, replCh
 
       member x.log logLevel messageFactory =
         let me : Logger = upcast x
         me.logWithAck logLevel messageFactory // delegate down
-        |> Alt.afterFun (fun _ -> ())
+        |> Alt.afterFun ignore
 
-      member x.name =
-        PointName [| "Logary" |]
+      member x.name = x.name
+
 
   let create ri =
     let addCh, messageCh, shutdownCh = Ch (), Ch (), Ch ()
+    let api =
+      { addCh = addCh
+        messageCh = messageCh
+        shutdownCh = shutdownCh}
 
     let rec server targets =
       Alt.choose [
@@ -42,6 +52,7 @@ module InternalLogger =
           server (t :: targets)
 
         messageCh ^=> fun (message, nack, replCh) ->
+
           Alt.choose [
             Target.logAll targets message ^=> fun ack ->
               replCh *<- ack ^=> fun () ->
@@ -58,10 +69,9 @@ module InternalLogger =
           |> Job.Ignore
       ]
 
-    server [] >>-.
-    { addCh = addCh
-      messageCh = messageCh
-      shutdownCh = shutdownCh}
+    Job.supervise ri.logger Policy.exponentialBackoffSix (server [])
+    |> Job.startIgnore
+    >>-. api
 
   let add (conf : TargetConf) (x : T) : Job<unit> =
     Ch.give x.addCh conf

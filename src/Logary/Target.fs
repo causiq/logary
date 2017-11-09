@@ -42,7 +42,7 @@ module TargetConf =
   let createSimple server name : TargetConf =
     { name       = name
       rules      = Rule.empty :: []
-      bufferSize = 500u
+      bufferSize = 512u
       policy     = Policy.exponentialBackoffSix
       middleware = []
       server     = server }
@@ -68,14 +68,15 @@ module Target =
   /// and a normal path of communication; the `requests` `RingBuffer` as well as
   /// and out-of-band-method of shutting down the target; the `shutdownCh`.
   type T =
-    // todo internal first , later see if can be private
-    internal {
-      name       : PointName
-      server     : Job<unit>
+    // TODO: internal first , later see if can be private
+    private {
+      name       : string
       api        : TargetAPI
       middleware : Middleware list
       rules      : Rule list
     }
+  with
+    member x.Name = x.name
 
   let needSendToTarget (target : T) msg =
     Rule.canPass msg target.rules
@@ -84,13 +85,13 @@ module Target =
   let logAll (xs : T seq) (msg : Message) : Alt<Promise<unit>> =
     // NOTE: it would probably be better to create a nack that cancels
     // all outstanding requests to log (but lets others through)
-    let targets = List.ofSeq xs 
+    let targets = List.ofSeq xs
     let latch = Latch targets.Length
 
     let traverse =
       targets
       |> List.traverseAltA (fun target ->
-         if needSendToTarget target msg then 
+         if needSendToTarget target msg then
            // think about compose time, as later as possible
            let msg = msg |> Middleware.compose target.middleware
            Alt.prepareJob <| fun () ->
@@ -106,7 +107,7 @@ module Target =
   /// the Message was acked.
   let log (x : T) (msg : Message) : Alt<Promise<unit>> =
     logAll [x] msg
-    // if needSendToTarget x msg then 
+    // if needSendToTarget x msg then
     //   let ack = IVar ()
     //   Log (msg, ack)
     //   |> RingBuffer.put x.api.requests
@@ -130,15 +131,15 @@ module Target =
     Ch.give x.api.shutdownCh ack ^->. upcast ack
 
   let create (ri : RuntimeInfo) (conf : TargetConf) : Job<T> =
-    let specificName = PointName [| "Logary"; sprintf "Target(%s)" conf.name |]
+    let specificName =  sprintf "Logary.Target(%s)" conf.name
     let ri =
-      let setName = setName specificName
+      let setName = setName (PointName.parse specificName)
       let setId = setContext "targetId" (Guid.NewGuid())
       let logger = ri.logger |> Logger.apply (setName >> setId)
       ri |> RuntimeInfo.setLogger logger
 
     let shutdownCh = Ch ()
-    RingBuffer.create conf.bufferSize >>- fun requests ->
+    RingBuffer.create conf.bufferSize >>= fun requests ->
 
     let api =
       { new TargetAPI with
@@ -146,9 +147,15 @@ module Target =
           member x.requests = requests
           member x.shutdownCh = shutdownCh
       }
+    let t =
+      { name        = specificName
+        middleware  = conf.middleware
+        rules       = conf.rules
+        api         = api }
 
-    { name        = specificName
-      middleware  = conf.middleware
-      rules       = conf.rules
-      server      = conf.server (ri, api)
-      api         = api }
+    let serverJob = conf.server (ri, api)
+    Job.supervise api.runtimeInfo.logger conf.policy serverJob
+    |> Job.startIgnore
+    >>-. t
+
+

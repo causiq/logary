@@ -104,8 +104,7 @@ type Ticker<'state,'t,'r> (initialState:'state) =
         Cancellation.isCancelled cancellation
       ]
 
-    loop ()
-    |> Job.start
+    loop () |> Job.start
     >>-. cancellation
 
 type BufferTicker<'t> () =

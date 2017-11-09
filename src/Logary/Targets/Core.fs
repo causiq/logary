@@ -41,6 +41,7 @@ module TextWriter =
       let rec loop () : Job<unit> =
         Alt.choose [
           api.shutdownCh ^=> fun ack ->
+
             twConf.output.Dispose()
 
             if not (obj.ReferenceEquals(twConf.output, twConf.error)) then
@@ -64,6 +65,7 @@ module TextWriter =
               }
 
             | Flush (ack, nack) ->
+
               job {
                 do! Job.fromUnitTask (fun _ -> twConf.output.FlushAsync())
                 do! Job.fromUnitTask (fun _ -> twConf.error.FlushAsync())
@@ -351,9 +353,9 @@ module LiterateConsole =
       | _, (Value.Object _ as o) ->
         literateTokeniseObject conf prop o recurseTokenise
 
-    let literateTokenisePointValue (options : LiterateConsoleConf) (message : Message) = 
+    let literateTokenisePointValue (options : LiterateConsoleConf) (message : Message) =
       failwith "todo"
-      
+
       // function
       // | Event eventTemplate ->
       //   let textAndTokens = ResizeArray<string * LiterateToken>()
@@ -1207,7 +1209,7 @@ module File =
       iter fs policies
 
     /// Takes the counter reference cell, and if there exists a rotation policy
-    /// dependent on the 
+    /// dependent on the
     let applyStreamPolicies counter fs : Rotation -> Stream = function
       | Rotation.SingleFile ->
         fs
@@ -1474,7 +1476,7 @@ module File =
 
     member x.Rotate_Gt300GiB_DeleteIfFolder_Gt3GiB() =
       update { conf with policies = Policies.``rotate >200 MiB, delete if folder >3 GiB`` }
-      
+
     member x.Rotate_Gt200MiB_Delete_Never() =
       update { conf with policies = Policies.``rotate >200 MiB, never delete`` }
 
