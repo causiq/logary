@@ -134,9 +134,13 @@ module internal MessageParts =
 
       values
       |> List.iter (fun nv ->
-         w.WriteLine (); w.Write indent; w.Write nv.Name; w.Write " => "; writePropValue w nv.Value (depth + 1);)
+         w.WriteLine ();
+         if writeTypeTag then w.Write "  "
+         w.Write indent; w.Write nv.Name; w.Write " => "; writePropValue w nv.Value (depth + 1);)
 
-      if writeTypeTag then w.WriteLine (); w.Write indent; w.Write "}";
+      if writeTypeTag then
+        // w.WriteLine (); w.Write indent;
+        w.Write "}";
 
     | DictionaryValue(kvList) ->
       kvList

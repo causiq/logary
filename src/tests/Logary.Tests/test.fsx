@@ -41,7 +41,7 @@ let foo = { id = 999; name = "foo"; created = DateTime.Now}
 let tp = ("first",2,foo)
 
 let msg = 
-  Message.eventInfo ("Hello World!  {user1} done!")
+  Message.eventInfo ("Hello World!  {user} done!")
   |> Message.setName (PointName.parse "logger.name.test")
   |> Message.setField "user" tp
   |> Message.setField "tpList" [tp;tp;]
