@@ -1,13 +1,15 @@
 namespace Logary.Internals
 
 open Logary
+open Logary.Internals
+open Hopac
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module RuntimeInfo =
 
   /// An implementation of the interface RuntimeInfo
   type T =
-    internal { 
+    internal {
       host : string
       service : string
       getTimestamp : unit -> EpochNanoSeconds

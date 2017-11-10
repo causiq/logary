@@ -37,6 +37,9 @@ module KnownLiterals =
   [<Literal>]
   let TagsContextName =  LogaryPrefix +  "tags"
 
+  [<Literal>]
+  let SinkTargetsContextName =  LogaryPrefix +  "sink.targets"
+
 
 /// Time calculation constants
 module Constants =

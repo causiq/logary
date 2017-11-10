@@ -42,11 +42,11 @@ module Config =
       processing   = Pipe.start
     }
 
-  let target name tconf lconf =
-    { lconf with targets = lconf.targets |> HashMap.add name tconf }
+  let target tconf lconf =
+    { lconf with targets = lconf.targets |> HashMap.add tconf.name tconf }
 
   let targets tconfs lconf =
-    tconfs |> Seq.fold (fun lconf (name, tconf) -> lconf |> target name tconf) lconf
+    tconfs |> Seq.fold (fun lconf tconf -> lconf |> target tconf) lconf
 
   let host host lconf =
     { lconf with host = host }

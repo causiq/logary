@@ -85,20 +85,17 @@ module Target =
   let logAll (xs : T seq) (msg : Message) : Alt<Promise<unit>> =
     // NOTE: it would probably be better to create a nack that cancels
     // all outstanding requests to log (but lets others through)
-    let targets = List.ofSeq xs
+    let targets = xs |> Seq.filter (fun t -> needSendToTarget t msg) |> List.ofSeq
     let latch = Latch targets.Length
-
     let traverse =
       targets
       |> List.traverseAltA (fun target ->
-         if needSendToTarget target msg then
-           // think about compose time, as later as possible
-           let msg = msg |> Middleware.compose target.middleware
-           Alt.prepareJob <| fun () ->
-             let ack = IVar ()
-             Job.start (ack ^=>. Latch.decrement latch) >>-.
-             RingBuffer.put target.api.requests (Log (msg, ack))
-         else Alt.always ())
+         // think about compose time, as later as possible
+         let msg = msg |> Middleware.compose target.middleware
+         Alt.prepareJob <| fun () ->
+           let ack = IVar ()
+           Job.start (ack ^=>. Latch.decrement latch) >>-.
+           RingBuffer.put target.api.requests (Log (msg, ack)))
       |> Alt.afterFun ignore
 
     traverse ^->. memo (Latch.await latch)
@@ -130,6 +127,7 @@ module Target =
     let ack = IVar ()
     Ch.give x.api.shutdownCh ack ^->. upcast ack
 
+
   let create (ri : RuntimeInfo) (conf : TargetConf) : Job<T> =
     let specificName =  sprintf "Logary.Target(%s)" conf.name
     let ri =
@@ -148,7 +146,7 @@ module Target =
           member x.shutdownCh = shutdownCh
       }
     let t =
-      { name        = specificName
+      { name        = conf.name
         middleware  = conf.middleware
         rules       = conf.rules
         api         = api }

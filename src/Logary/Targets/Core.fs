@@ -41,7 +41,6 @@ module TextWriter =
       let rec loop () : Job<unit> =
         Alt.choose [
           api.shutdownCh ^=> fun ack ->
-
             twConf.output.Dispose()
 
             if not (obj.ReferenceEquals(twConf.output, twConf.error)) then
@@ -108,7 +107,7 @@ module Console =
 
   /// Default console target configuration.
   let empty =
-    ConsoleConf.create MessageWriter.levelDatetimeMessagePath
+    ConsoleConf.create MessageWriter.levelDatetimeMessagePathNewLine
 
   [<CompiledName "Create">]
   let create conf name =

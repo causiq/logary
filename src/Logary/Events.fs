@@ -399,8 +399,8 @@ module Events =
   let miniLevel level pipe =
     pipe |> Pipe.filter (fun msg -> msg.level >= level)
 
-  let sink (targetName:string) pipe =
-    pipe |> Pipe.map (Message.setContext "target" targetName)
+  let sink (names : string list) pipe =
+    pipe |> Pipe.map (Message.addSinks names)
 
   let toProcessing stream =
     stream.pipes |> Pipe.composeForProcessingType

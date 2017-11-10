@@ -116,11 +116,16 @@ module Registry =
 
 
   module private Impl =
+    let inline ensureName name (m: Message) =
+      if m.name.isEmpty then { m with name = name } else m
+
+
     let inline getLogger (t : T) name mid =
         { new Logger with
             member x.name = name
             member x.logWithAck level messageFactory =
-              t.msgProcessing (messageFactory level) mid
+              let msg = level |> messageFactory |> ensureName name
+              t.msgProcessing msg mid
             member x.log level messageFactory =
               x.logWithAck level messageFactory ^-> ignore
         }
@@ -138,7 +143,6 @@ module Registry =
       |> List.traverseJobA (fun (_,conf) -> Target.create ri conf)
 
     let inline generateProcessResult name processAlt (timeout:Duration option) =
-      printfn "%A %A" name timeout
       match timeout with
         | None -> processAlt ^->. (name,true)
         | Some duration ->
@@ -162,12 +166,14 @@ module Registry =
       (targets |> List.traverseAltA shutdownTarget)
       ^-> (partitionResults >> ShutdownInfo)
 
-    let inline flushPending (targets: Target.T list) (timeout: Duration option) : Alt<FlushInfo> =
+    let inline flushPending (targets: Target.T list) (timeout: Duration option) : Job<FlushInfo> =
       let flushTarget (target: Target.T) =
         generateProcessResult target.Name (Target.flush target) timeout
 
-      (targets |> List.traverseAltA flushTarget)
-      ^-> (partitionResults >> FlushInfo)
+      // (targets |> List.traverseAltA flushTarget)
+      // ^-> (partitionResults >> FlushInfo)
+      (targets |>  Seq.Con.mapJob flushTarget)
+      >>- (partitionResults >> FlushInfo)
 
   open Impl
 
@@ -198,29 +204,29 @@ module Registry =
         flushCh ^=> fun (ackCh, nack, timeout) ->
           rlogger.infoWithAck (eventX "Start Flush")
           ^=> fun _ ->
-            flushPending targets timeout ^=> fun flushInfo -> (ackCh *<- flushInfo)
-            <|>
-            nack
-          ^=>. running ctss
+            Alt.choose [
+              // flushPending targets timeout ^=> fun flushInfo -> (ackCh *<- flushInfo)
+              memo (flushPending targets timeout >>= fun flushInfo -> (ackCh *<- flushInfo))
+
+              nack
+            ]
+          >>=. running ctss
 
         shutdownCh ^=> fun (res, timeout) ->
           rlogger.infoWithAck (eventX "Shutting down")
           ^=>. Seq.Con.iterJob Cancellation.cancel ctss
           >>=. shutdown targets timeout
-          >>= fun shutdownInfo -> res *<= shutdownInfo
+          >>= fun shutdownInfo ->
+              InternalLogger.shutdown ri.logger ^=>. res *<= shutdownInfo
       ]
 
     // pipe.run should only be invoke once, because state in pipes is captured when pipe.run
     let runningPipe =
       conf.processing
       |> Pipe.run (fun msg ->
-         let targetNames = Message.tryGetContext "target" msg
-         match targetNames with
-         | Some targetNames ->
-           let targets = targetNames |> List.choose (fun name -> HashMap.tryFind name targetsMap)
-           if targets.IsEmpty then NoResult
-           else msg |> Target.logAll targets |> HasResult
-         | _ -> NoResult)
+         let targets = msg |> Message.getAllSinks |> Set.toList |> List.choose (fun name -> HashMap.tryFind name targetsMap)
+         if targets.IsEmpty then NoResult
+         else msg |> Target.logAll targets |> HasResult)
 
     runningPipe
     >>= fun (sendMsg, ctss) ->

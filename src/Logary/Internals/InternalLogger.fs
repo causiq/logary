@@ -5,6 +5,7 @@ open Hopac
 open Hopac.Infixes
 open Logary
 open Logary.Internals
+open Hopac.Extensions
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module InternalLogger =
@@ -62,11 +63,7 @@ module InternalLogger =
           ]
 
         shutdownCh ^=> fun () ->
-          targets
-          |> Seq.map Target.shutdown
-          |> Job.conCollect // await buffer
-          |> Job.bind Job.conCollect // await ack
-          |> Job.Ignore
+          targets |> Seq.Con.iterJob (fun t -> Target.shutdown t ^=> id)
       ]
 
     Job.supervise ri.logger Policy.exponentialBackoffSix (server [])
@@ -77,5 +74,7 @@ module InternalLogger =
     Ch.give x.addCh conf
     :> Job<_>
 
-  let shutdown (x : T) : Alt<unit> =
-    Ch.give x.shutdownCh ()
+  let shutdown (x : Logger) =
+    match x with
+    | :? T as ilogger -> Ch.give ilogger.shutdownCh ()
+    | _ -> Alt.always ()

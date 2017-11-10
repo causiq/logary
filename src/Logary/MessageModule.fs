@@ -183,6 +183,17 @@ module Message =
     | Some (tags:Set<string>)-> tags
     | _ -> Set.empty
 
+  [<CompiledName "GetAllSinks">]
+  let getAllSinks message =
+    match tryGetContext KnownLiterals.SinkTargetsContextName message with
+    | Some (sinks:Set<string>)-> sinks
+    | _ -> Set.empty
+
+  [<CompiledName "GetAllSinks">]
+  let addSinks (sinks : string list) message =
+    let sinks = message |> getAllSinks |> Set.union (Set.ofList sinks)
+    setContext KnownLiterals.SinkTargetsContextName sinks message
+
   /// Tag the message
   [<CompiledName "Tag">]
   let tag (tag : string) (message : Message) =

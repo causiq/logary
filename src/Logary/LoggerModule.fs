@@ -39,7 +39,6 @@ module Logger =
   /// Returns true if the message was successfully placed in the buffers, or
   /// false otherwise.
   let logWithTimeout (logger : Logger) (millis : uint32) logLevel messageFactory : Alt<bool> =
-    //printfn "logWithTimeout %i! %A" millis msg.value
     Alt.choose [
       log logger logLevel messageFactory ^->. true
       simpleTimeout (int millis) logger.name ^->. false
