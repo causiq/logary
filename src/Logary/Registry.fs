@@ -161,19 +161,17 @@ module Registry =
             let timeouts = List.map fst timeouts
             (acks, timeouts))
 
-    let inline shutdown (targets: Target.T list) (timeout: Duration option) : Alt<ShutdownInfo> =
+    let inline shutdown (targets: Target.T list) (timeout: Duration option) : Job<ShutdownInfo> =
       let shutdownTarget (target: Target.T) =
         Target.shutdown target ^=> fun ack -> generateProcessResult target.Name ack timeout
 
-      (targets |> List.traverseAltA shutdownTarget)
-      ^-> (partitionResults >> ShutdownInfo)
+      (targets |> Seq.Con.mapJob shutdownTarget)
+      >>- (partitionResults >> ShutdownInfo)
 
     let inline flushPending (targets: Target.T list) (timeout: Duration option) : Job<FlushInfo> =
       let flushTarget (target: Target.T) =
         generateProcessResult target.Name (Target.flush target) timeout
 
-      // (targets |> List.traverseAltA flushTarget)
-      // ^-> (partitionResults >> FlushInfo)
       (targets |>  Seq.Con.mapJob flushTarget)
       >>- (partitionResults >> FlushInfo)
 
@@ -206,12 +204,9 @@ module Registry =
         flushCh ^=> fun (ackCh, nack, timeout) ->
           rlogger.infoWithAck (eventX "Start Flush")
           ^=> fun _ ->
-            Alt.choose [
-              // flushPending targets timeout ^=> fun flushInfo -> (ackCh *<- flushInfo)
-              memo (flushPending targets timeout >>= fun flushInfo -> (ackCh *<- flushInfo))
-
+              memo (flushPending targets timeout) ^=> fun flushInfo -> (ackCh *<- flushInfo)
+              <|>
               nack
-            ]
           >>=. running ctss
 
         shutdownCh ^=> fun (res, timeout) ->

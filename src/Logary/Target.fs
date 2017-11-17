@@ -85,20 +85,37 @@ module Target =
   let logAll (xs : T seq) (msg : Message) : Alt<Promise<unit>> =
     // NOTE: it would probably be better to create a nack that cancels
     // all outstanding requests to log (but lets others through)
-    let targets = xs |> Seq.filter (fun t -> needSendToTarget t msg) |> List.ofSeq
-    let latch = Latch targets.Length
-    let traverse =
-      targets
-      |> List.traverseAltA (fun target ->
-         // think about compose time, as later as possible
-         let msg = msg |> Middleware.compose target.middleware
-         Alt.prepareJob <| fun () ->
-           let ack = IVar ()
-           Job.start (ack ^=>. Latch.decrement latch) >>-.
-           RingBuffer.put target.api.requests (Log (msg, ack)))
-      |> Alt.afterFun ignore
+    // let targets = xs |> Seq.filter (fun t -> needSendToTarget t msg) |> List.ofSeq
+    // let latch = Latch targets.Length
+    // let traverse =
+    //   targets
+    //   |> List.traverseAltA (fun target ->
+    //      // TODO: think about compose time, as later as possible,
+    //      // could compose before put to api (will cause in another thread？)
+    //      let msg = msg |> Middleware.compose target.middleware
+    //      Alt.prepareJob <| fun () ->
+    //        let ack = IVar ()
+    //        Job.start (ack ^=>. Latch.decrement latch) >>-.
+    //        RingBuffer.put target.api.requests (Log (msg, ack)))
+    //   |> Alt.afterFun ignore
 
-    traverse ^->. memo (Latch.await latch)
+    // traverse ^->. memo (Latch.await latch)
+
+    let allFlushAcks = IVar ()
+
+    let flushConJob =
+      xs
+      |> Seq.filter (fun t -> needSendToTarget t msg)
+      |> Hopac.Extensions.Seq.Con.mapJob (fun target ->
+         let ack = IVar ()
+         let msg = msg |> Middleware.compose target.middleware
+         RingBuffer.put target.api.requests (Log (msg, ack)) ^->. ack)
+
+    let flushAlt = Alt.prepareJob <| fun _ ->
+      Job.start (flushConJob >>= fun acks -> IVar.fill allFlushAcks acks)
+      >>-. allFlushAcks
+
+    flushAlt ^-> fun acks -> Job.conIgnore acks |> memo
 
   /// Send the target a message, returning the same instance as was passed in when
   /// the Message was acked.

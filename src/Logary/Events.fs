@@ -104,6 +104,7 @@ type Ticker<'state,'t,'r> (initialState:'state) =
         Cancellation.isCancelled cancellation
       ]
 
+    // TODO: Job.supervise internalLogger (Policy.restart) (loop ()) |> Job.start
     loop () |> Job.start
     >>-. cancellation
 
