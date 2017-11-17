@@ -55,6 +55,7 @@
     <Compile Include="Engine.fs" />
     <Compile Include="Formatting.fs" />
     <Compile Include="CoreTarget.fs" />
+    <Compile Include="Registry.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <None Include="App.config" />

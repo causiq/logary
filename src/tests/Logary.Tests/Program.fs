@@ -4,17 +4,13 @@ open System
 open System.Globalization
 open System.Threading
 open Hopac
-open Hopac.Infixes
 open NodaTime
 open Expecto
-open Expecto.ExpectoFsCheck
 open Logary
 open Logary.Internals
 open Logary.Message
-open Logary.Targets
 open Logary.Configuration
 open FsCheck
-open System.IO
 
 type Obj() =
   member x.PropA =
@@ -741,65 +737,13 @@ let tests =
         true
     ]
 
-    testList "Engine" Engine.tests
+    ptestList "Engine" Engine.tests
 
     testList "Target.Core" Tests.Target.tests
 
     testList "Formatting" Tests.Formatting.tests
 
-    ftestList "Registry" [
-      testCaseAsync "from Config" <| (job {
-        let! registry = Config.create "svc" "localhost" |> Config.build
-        let logm = Registry.toLogManager registry
-        let ri = logm.runtimeInfo
-        Expect.equal ri.service "svc" "should have service"
-        Expect.equal ri.host "localhost" "should have host"
-
-        let timeout =  Duration.FromSeconds 3L
-        let! (finfo, sinfo) = logm.shutdown timeout timeout
-
-        let none = (List.empty<string>,List.empty<string>)
-        Expect.equal finfo (FlushInfo none) "shoule have no targets"
-        Expect.equal sinfo (ShutdownInfo none) "shoule have no targets"
-
-      } |> Job.toAsync)
-
-      testCaseAsync "after shutting down no logging happens" <| (job {
-        let! (r, logm, out, error) = Utils.buildLogManager ()
-        let loggername = PointName.parse "logger.test"
-
-        let ilg = logm.runtimeInfo.logger
-        let lg = logm.getLogger loggername
-
-        do! lg.infoWithAck (eventX "test info msg")
-        do! lg.errorWithAck (eventX "test error msg")
-
-        let outStr = out.ToString()
-        let errorStr = error.ToString()
-        Expect.stringContains outStr "info msg" "shoule"
-        Expect.stringContains errorStr "error msg" "shoule"
-        Expect.stringContains errorStr "svc" "shoule have svc ctx info"
-        Expect.stringContains errorStr "localhost" "shoule have host ctx info"
-
-        do! Registry.shutdown r
-
-        do! lg.errorWithBP (eventX "error after shutdown")
-
-        let errorOutput = error.ToString()
-        if errorOutput.Contains("after") then
-          Tests.failtestf "should not contains after, actual %s"
-
-      } |> Job.toAsync)
-
-
-      testCaseAsync "registry and middleware" <| (job {
-        let svc = "svc"
-        let host = "localhost"
-        let! (r, logm, out, error)  = Utils.buildLogManager ()
-
-        do! Registry.shutdown r
-      } |> Job.toAsync)
-    ]
+    testList "Registry" Tests.Registry.tests
   ]
 
 [<EntryPoint>]

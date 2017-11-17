@@ -50,6 +50,8 @@ type LogManager =
   /// the name of the class. Also have a look at Logging.GetCurrentLogger().
   abstract getLogger : PointName -> Logger
 
+  abstract getLoggerWithMiddleware : PointName -> Middleware -> Logger
+
   /// Awaits that all targets finish responding to a flush message
   /// so that we can be certain they have processed all previous messages.
   /// This function is useful together with unit tests for the targets.
@@ -161,7 +163,7 @@ module Registry =
 
     let inline shutdown (targets: Target.T list) (timeout: Duration option) : Alt<ShutdownInfo> =
       let shutdownTarget (target: Target.T) =
-        generateProcessResult target.Name (Target.shutdown target ^=> id) timeout
+        Target.shutdown target ^=> fun ack -> generateProcessResult target.Name ack timeout
 
       (targets |> List.traverseAltA shutdownTarget)
       ^-> (partitionResults >> ShutdownInfo)
@@ -245,6 +247,8 @@ module Registry =
     { new LogManager with
         member x.getLogger name =
           getLogger t name None
+        member x.getLoggerWithMiddleware name mid =
+          getLogger t name (Some mid)
         member x.runtimeInfo =
           t.runtimeInfo
         member x.flushPending dur =

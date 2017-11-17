@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "Logary"
+		},
+		{
+			"path": "tests/Logary.Tests"
+		}
+	],
+	"settings": {}
+}
