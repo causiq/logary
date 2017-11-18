@@ -741,7 +741,7 @@ let tests =
 
     testList "Target.Core" Tests.Target.tests
 
-    testList "Formatting" Tests.Formatting.tests
+    ftestList "Formatting" Tests.Formatting.tests
 
     testList "Registry" Tests.Registry.tests
   ]

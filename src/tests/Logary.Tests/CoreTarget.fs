@@ -1,4 +1,4 @@
-module Tests.Target
+module Logary.Tests.Target
 
 let tests = [
 

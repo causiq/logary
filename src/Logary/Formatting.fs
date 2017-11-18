@@ -8,6 +8,7 @@ open Microsoft.FSharp.Reflection
 open NodaTime
 open Logary
 open Logary.Internals.FsMessageTemplates
+open YoLo.Async
 
 
 /// A thing that efficiently writes a message to a TextWriter.
@@ -136,7 +137,7 @@ module internal MessageParts =
       |> List.iter (fun nv ->
          w.WriteLine ();
          if writeTypeTag then w.Write "  "
-         w.Write indent; w.Write nv.Name; w.Write " => "; writePropValue w nv.Value (depth + 1);)
+         w.Write indent; w.Write nv.Name; w.Write " => "; writePropValue w nv.Value (if writeTypeTag then depth + 2 else depth + 1);)
 
       if writeTypeTag then
         // w.WriteLine (); w.Write indent;
@@ -150,15 +151,15 @@ module internal MessageParts =
            w.WriteLine (); w.Write indent; writePropValue w entryKey (depth + 1); w.Write " => "; writePropValue w entryValue (depth + 1);
          | _ ->
            // default case will not go to here, unless user define their own DictionaryValue which its entryKey is not ScalarValue
-           w.WriteLine (); w.Write indent; w.Write "- key => "; writePropValue w entryKey (depth + 1);
-           w.WriteLine (); w.Write indent; w.Write "  value => "; writePropValue w entryValue (depth + 1);)
+           w.WriteLine (); w.Write indent; w.Write "- key => "; writePropValue w entryKey (depth + 2);
+           w.WriteLine (); w.Write indent; w.Write "  value => "; writePropValue w entryValue (depth + 2);)
     ()
 
   let formatContext (formatProvider: IFormatProvider) (nl: string) (destr: Destructurer) maxDepth message =
     let padding = new String (' ', 6)
 
-    let inline appendWithNl (sb: StringBuilder) (prefix: string) (value: string) (nl: string) =
-      if not <| String.IsNullOrEmpty value then sb.Append(prefix).Append(value).Append(nl) |> ignore
+    let inline appendWithNlPrefix (sb: StringBuilder) (prefix: string) (value: string) (nl: string) =
+      if not <| String.IsNullOrEmpty value then sb.Append(nl).Append(prefix).Append(value) |> ignore
 
     let inline processKvs sb (prefix: string) (nl: string) (kvs: seq<string * obj>) =
       use tw = getTextWriter formatProvider nl
@@ -167,7 +168,7 @@ module internal MessageParts =
          let destrValue = destr (DestructureRequest(destr, value, maxDepth, 1, hint=DestrHint.Destructure))
          tw.Write nl; tw.Write padding; tw.Write name; tw.Write " => "; writePropValue tw destrValue 1)
 
-      appendWithNl sb prefix (tw.ToString()) nl
+      appendWithNlPrefix sb prefix (tw.ToString()) nl
 
     let sb = StringBuilder ()
 
@@ -192,7 +193,7 @@ module internal MessageParts =
                let destrValue = destr (DestructureRequest(destr, fieldValue, maxDepth, 1, hint= prop.Destr))
                Formatting.writeToken buffer tw fieldToken destrValue)
 
-        appendWithNl sb "    fields:" (tw.ToString()) nl
+        appendWithNlPrefix sb "    fields:" (tw.ToString()) nl
       else ()
     else ()
 
@@ -204,7 +205,7 @@ module internal MessageParts =
 
     let wholeRes = sb.ToString ()
     if String.IsNullOrEmpty wholeRes then String.Empty
-    else String.Concat(nl,"  context:", nl, wholeRes, nl)
+    else String.Concat(nl,"  context:", wholeRes)
 
   let rec formatValueLeafs (ns : string list) (value : Value) =
     let rns = lazy (PointName.ofList (List.rev ns))
@@ -237,8 +238,43 @@ module internal MessageParts =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module MessageWriter =
   open MessageParts
+  open System.Reflection
 
-  let private defaultDestr = Capturing.createCustomDestructurer None (Some Capturing.builtInFSharpTypesDestructurer)
+  let internal destructureFSharpTypes (req: DestructureRequest) : TemplatePropertyValue =
+    let value = req.Value
+    match req.Value.GetType() with
+    | t when FSharpType.IsTuple t ->
+      let tupleValues =
+          value
+          |> FSharpValue.GetTupleFields
+          |> Seq.map req.TryAgainWithValue
+          |> Seq.toList
+      SequenceValue tupleValues
+    | t when t.IsConstructedGenericType && t.GetGenericTypeDefinition() = typedefof<List<_>> ->
+      let objEnumerable = value :?> System.Collections.IEnumerable |> Seq.cast<obj>
+      SequenceValue(objEnumerable |> Seq.map req.TryAgainWithValue |> Seq.toList)
+    | t when t.IsConstructedGenericType && t.GetGenericTypeDefinition() = typedefof<Map<_,_>> ->
+      let keyProp, valueProp = ref Unchecked.defaultof<PropertyInfo>, ref Unchecked.defaultof<PropertyInfo>
+      let getKey o = if isNull !keyProp  then keyProp := o.GetType().GetRuntimeProperty("Key")
+                     (!keyProp).GetValue(o)
+      let getValue o = if isNull !valueProp then valueProp := o.GetType().GetRuntimeProperty("Value")
+                       (!valueProp).GetValue(o)
+      let objEnumerable = value :?> System.Collections.IEnumerable |> Seq.cast<obj>
+      let skvps = objEnumerable
+                  |> Seq.map (fun o ->  req.TryAgainWithValue (getKey o),  req.TryAgainWithValue (getValue o))
+                  |> Seq.toList
+      DictionaryValue skvps
+    | t when FSharpType.IsUnion t ->
+      let case, fields = FSharpValue.GetUnionFields(value, t)
+      let properties =
+          (case.GetFields(), fields)
+          ||> Seq.map2 (fun propInfo value ->
+              { Name = propInfo.Name
+                Value = req.TryAgainWithValue value })
+          |> Seq.toList
+      StructureValue(case.Name, properties)
+    | _ -> TemplatePropertyValue.Empty
+  let private defaultDestr = Capturing.createCustomDestructurer None (Some destructureFSharpTypes)
 
   /// maxDepth can be avoided if cycle reference are handled properly
   let expanded destr maxDepth nl ending : MessageWriter =
