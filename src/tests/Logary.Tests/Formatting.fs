@@ -129,10 +129,10 @@ E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]
     others:
       a2 => 24
       a => "b"
-      things =>
+      things => 
         - 1
         - 2
-        -
+        - 
           "1" => "hello"
           "2" => 42
 """
@@ -148,25 +148,25 @@ E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]
 E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]
   context:
     others:
-      d =>
-        - key =>
-            -
+      d => 
+        - key => 
+            - 
               - 1
               - 2
-          value =>
+          value => 
             - "3"
             - "4"
-        - key =>
-            -
+        - key => 
+            - 
               - 1
               - 2
-            -
+            - 
               - 3
               - 4
-          value =>
+          value => 
             - "7"
             - "8"
-      a =>
+      a => 
         "b" => 1
       c => 2
 """
@@ -183,15 +183,15 @@ E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]
 E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]
   context:
     others:
-      _logary.errors =>
-        -
+      _logary.errors => 
+        - 
           Exception {
             Message => "Gremlings in the machinery"
-            Data =>
-            InnerException =>
+            Data => 
+            InnerException => 
               Exception {
                 Message => "inner exception"
-                Data =>
+                Data => 
                 InnerException => null
                 TargetSite => null
                 StackTrace => null
@@ -218,11 +218,11 @@ E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]
 E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]
   context:
     others:
-      _logary.errors =>
-        -
+      _logary.errors => 
+        - 
           Exception {
             Message => "Gremlings in the machinery"
-            Data =>
+            Data => 
             InnerException => null
             TargetSite => null
             StackTrace => null

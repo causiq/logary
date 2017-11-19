@@ -14,6 +14,28 @@ open NodaTime
 open Logary.Message
 
 printfn "before"
+
+let multiGaugeMessage level =
+  // below will use auto generate gauge msg through its gauges.
+  Message.gaugeMessage "Processor.% Idle.Core 1" (Gauge (0.001, Percent))
+  |> Message.addGauge "Processor.% Idle.Core 2" (Gauge (0.99, Percent))
+  |> Message.addGauge "Processor.% Idle.Core 3" (Gauge (0.473223755, Percent))
+  |> Message.setContext "host" "db-001"
+  |> Message.setContext "service" "api-web"
+  |> Message.setLevel level
+
+  // below will use "Processor.% Idle" as its template msg.
+  // Message.event level "Processor.% Idle"
+  // |> Message.addGauge "Core 1" (Gauge (0.001, Percent))
+  // |> Message.addGauge "Core 2" (Gauge (0.99, Percent))
+  // |> Message.addGauge "Core 3" (Gauge (0.473223755, Percent))
+  // |> Message.setContext "host" "db-001"
+  // |> Message.setContext "service" "api-web"
+
+let str = MessageWriter.levelDatetimeMessagePathNewLine.format (multiGaugeMessage Error)
+str
+
+
 let registry = 
   Config.create "svc" "localhost" 
   |> Config.ilogger (ILogger.Console Verbose) 

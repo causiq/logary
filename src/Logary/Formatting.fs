@@ -87,21 +87,23 @@ module internal MessageParts =
       tw.ToString ()
 
   let formatTemplate provider nl destr maxDepth message =
+    use tw = getTextWriter provider nl
     let (Event (formatTemplate)) = message.value
-    if String.IsNullOrEmpty formatTemplate then
-      if hasGauge message then
-        use tw = getTextWriter provider nl
-        message |> getAllGauges |> List.ofSeq |> generateFormattedTemplateByGauges tw
-      else
-        String.Empty
+    let generateGaugesInfo = message |> getAllGauges |> List.ofSeq |> generateFormattedTemplateByGauges tw
+
+    let inline appendGaugesInfo origin gaugeInfo =
+      if String.IsNullOrEmpty gaugeInfo then origin
+      else origin  + " " + gaugeInfo
+
+    if String.IsNullOrEmpty formatTemplate then generateGaugesInfo
     else
       let parsedTemplate = Parser.parse (formatTemplate)
       if parsedTemplate.HasAnyProperties then
-        use tw = getTextWriter provider nl
-        message |> getAllFields |> generateFormattedTemplateByFields tw parsedTemplate destr maxDepth
+        let byFields = message |> getAllFields |> generateFormattedTemplateByFields tw parsedTemplate destr maxDepth
+        appendGaugesInfo byFields generateGaugesInfo
       else
         // raw message with no fields needs format
-        formatTemplate
+        appendGaugesInfo formatTemplate generateGaugesInfo
 
   let rec writePropValue (w: TextWriter) (tpv: TemplatePropertyValue) depth =
     // context: use 2 indent, fields/gauges/other use 2 indent, depth start from 0, so 2+2+2 = 6

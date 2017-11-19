@@ -19,6 +19,7 @@ type Obj() =
     raise (Exception ("Oh noes, no referential transparency here"))
 
 type Arbs =
+
   static member Duration() =
     Arb.Default.TimeSpan()
     |> Arb.convert (Duration.FromTimeSpan) (fun d -> d.ToTimeSpan())
@@ -728,20 +729,22 @@ let tests =
     testList "NodaTime.Duration" [
       testPropertyWithConfig fsCheckConfig "toGauge()" <| fun (d : Duration) ->
         ignore (d.toGauge())
-        true
     ]
 
     testList "NodaTime.Instant" [
-      testPropertyWithConfig fsCheckConfig "toGuage()" <| fun (epoch : int64) ->
-        Instant.ofEpoch epoch |> ignore
-        true
+      testProperty "ofEpoch" <| fun _ ->
+        let nanoSeconds = Arb.from<int64> |> Arb.mapFilter ((*) 100L) ((>) 0L) 
+        Prop.forAll nanoSeconds (fun epochNanoS -> 
+          let instant = Instant.ofEpoch epochNanoS
+          let dto = instant.ToDateTimeOffset ()
+          epochNanoS = dto.timestamp)
     ]
 
     ptestList "Engine" Engine.tests
 
-    testList "Target.Core" Tests.Target.tests
+    testList "Target.Core" Tests.CoreTargets.tests
 
-    ftestList "Formatting" Tests.Formatting.tests
+    testList "Formatting" Tests.Formatting.tests
 
     testList "Registry" Tests.Registry.tests
   ]

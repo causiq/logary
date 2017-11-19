@@ -5,7 +5,6 @@ namespace Logary.Targets
 module TextWriter =
 
   open System.IO
-  open System.Runtime.CompilerServices
   open Hopac
   open Hopac.Infixes
   open Logary
@@ -92,9 +91,7 @@ module TextWriter =
 
 /// The console Target for Logary
 module Console =
-  open System.Runtime.CompilerServices
   open Logary
-  open Logary.Internals
   open Logary.Configuration.Target
 
   /// Console configuration structure.
@@ -134,10 +131,8 @@ module Console =
 
 module LiterateConsole =
   open System
-  open System.Globalization
   open Logary
   open Logary.Internals
-  open Logary.Internals.Aether
   open Logary.Configuration.Target
   open Hopac
 
@@ -176,11 +171,10 @@ module LiterateConsole =
     open Logary.Internals.FsMessageTemplates
     open Tokens
 
-    let literateTokeniseException (options : LiterateConsoleConf) (typeName) (message) (stackTrace) =
+    let literateTokeniseExcception (options : LiterateConsoleConf) exn =
       let windowsStackFrameLinePrefix = "   at "
       let monoStackFrameLinePrefix = "  at "
-      let typeMessageNlStackTrace = String.Concat (typeName, ": ", message, Environment.NewLine, stackTrace)
-      let exnLines = new System.IO.StringReader(typeMessageNlStackTrace)
+      let exnLines = new System.IO.StringReader(string exn)
       seq {
         let mutable line = exnLines.ReadLine()
         while not (isNull line) do
@@ -198,32 +192,9 @@ module LiterateConsole =
 
     /// Get the exceptions out from the Message (errors_)
     let literateTokeniseMessageExceptions (context : LiterateConsoleConf) message =
-      failwith "todo"
-      // let exns =
-      //   Optic.get Message.Optic.errors_ message
-      //   |> Option.orDefault []
-      // let getStringFromMapOrFail exnObjMap fieldName =
-      //   match exnObjMap |> HashMap.tryFind fieldName with
-      //   | Some (String m) -> m
-      //   | _ -> failwithf "Couldn't find %s in %A" fieldName exnObjMap
-
-      // let getStringFromMapOrDefault defaultIfMissing exnObjMap fieldName =
-      //   match exnObjMap |> HashMap.tryFind fieldName with
-      //   | Some (String m) -> m
-      //   | _ -> defaultIfMissing
-
-      // match exns with
-      // | [] -> Seq.empty
-      // | values ->
-      //   values
-      //   |> List.choose (function | Object v -> Some v | _ -> None)
-      //   |> List.map (fun exnObjMap ->
-      //     let exnTypeName = getStringFromMapOrFail exnObjMap "type"
-      //     let message = getStringFromMapOrFail exnObjMap "message"
-      //     let stackTrace = getStringFromMapOrDefault "" exnObjMap "stackTrace"
-      //     literateTokeniseException context exnTypeName message stackTrace
-      //   )
-      //   |> Seq.concat
+      message 
+      |> Message.getErrors
+      |> Seq.collect (literateTokeniseExcception context)
 
     let literateTokeniseArray conf prop arrValue recurse =
       let items = match arrValue with Array items -> items | _ -> failwithf "cannot tokenise %A with %s" arrValue (prop.ToString())
@@ -353,79 +324,57 @@ module LiterateConsole =
         literateTokeniseObject conf prop o recurseTokenise
 
     let literateTokenisePointValue (options : LiterateConsoleConf) (message : Message) =
-      failwith "todo"
+      let (Event eventTemplate) = message.value
+      
+      let fieldsResult =
+        Parser.parse(eventTemplate).Tokens
+        |> Seq.collect (function
+          | PropToken (_, prop) ->
+            match Message.tryGetField prop.Name message with
+            | Some field ->
+              literateTokeniseField options prop field
+            | None ->
+              seq { yield prop.ToString(), MissingTemplateField }
+          | TextToken (_, text) ->
+            seq { yield text, Text })
 
-      // function
-      // | Event eventTemplate ->
-      //   let textAndTokens = ResizeArray<string * LiterateToken>()
-      //   Parser.parse(eventTemplate).Tokens
-      //   |> Seq.collect (function
-      //     | PropToken (_, prop) ->
-      //       match HashMap.tryFind (PointName.ofSingle prop.Name) message.fields with
-      //       | Some field ->
-      //         literateTokeniseField options prop field
-      //       | None ->
-      //         seq { yield prop.ToString(), MissingTemplateField }
-      //     | TextToken (_, text) ->
-      //       seq { yield text, Text })
+      let gauges = Message.getAllGauges message
 
-      // | Gauge (Int64 nanos, Scaled (Seconds, scale))
-      //   when scale = float Constants.NanosPerSecond ->
-
-      //   let number, unitStr = (float nanos / float scale) |> Units.scale Seconds
-      //   let format = if nanos < 1000L then "N0" else "N2"
-      //   seq {
-      //     yield message.name.ToString(), NameSymbol
-      //     yield " took ", Subtext
-      //     yield number.ToString(format, options.formatProvider), NumericSymbol
-      //     yield " ", Subtext
-      //     yield unitStr, Text
-      //     yield " to execute.", Subtext
-      //   }
-
-      // | Gauge (value, units)
-      //   when message |> Message.hasTag KnownLiterals.SuppressPointValue ->
-      //   seq {
-      //     yield message.name.ToString(), NameSymbol
-      //     yield " (M)", Subtext
-      //     yield ":", Punctuation
-      //     yield " ", Subtext
-      //     let mutable first = true
-      //     for KeyValue (name, Field (value, fieldUnits)) in message.fields do
-      //       let field =
-      //         let fu = fieldUnits |> Option.orDefault units
-      //         Field (value, Some fu)
-      //       if not first then yield " | ", Punctuation
-      //       else first <- false
-      //       yield PointName.format name, NameSymbol
-      //       yield "=", Punctuation
-      //       yield! literateTokeniseField options Property.Empty field
-      //   }
-
-      // | Gauge (value, units) ->
-      //   seq {
-      //     yield message.name.ToString(), NameSymbol
-      //     yield " (M)", Subtext
-      //     yield ":", Punctuation
-      //     yield " ", Subtext
-      //     yield! literateTokeniseField options (Property.Empty) (Field (value, None))
-      //     yield " ", Subtext
-      //     yield Units.symbol units, Text }
-
-      // | Derived (value, units) ->
-      //   seq {
-      //     yield message.name.ToString(), NameSymbol
-      //     yield " (MD)", Subtext
-      //     yield ":", Punctuation
-      //     yield " ", Subtext
-      //     yield! literateTokeniseField options (Property.Empty) (Field (value, None))
-      //     yield " ", Subtext
-      //     yield Units.symbol units, Text }
+      let gaugesResult =
+        seq {
+           yield PointName.format message.name, NameSymbol
+           yield " (M)", Subtext
+           yield ":", Punctuation
+           yield " ", Subtext
+           let mutable first = true
+           for (gaugeType, gauge) in gauges do
+             if not first then yield " | ", Punctuation
+             else first <- false
+             match gauge with
+             | Gauge (nanos, Scaled (Seconds, scale))
+               when scale = float Constants.NanosPerSecond ->
+               let (success, nanos) = Double.TryParse(string nanos)
+               let number, unitStr = (nanos / scale) |> Units.scale Seconds
+               let format = if nanos < 1000. then "N0" else "N2"
+               yield gaugeType, NameSymbol
+               yield " took ", Subtext
+               yield number.ToString(format, options.formatProvider), NumericSymbol
+               yield " ", Subtext
+               yield unitStr, Text
+               yield " to execute.", Subtext
+               
+             | Gauge (value, units) ->
+               yield gaugeType, NameSymbol
+               yield "=", Punctuation
+               failwith "TODO change whold format"
+               yield! literateTokeniseField options Property.Empty (Field(Int64 1L,None))}
+      
+      Seq.concat [fieldsResult; gaugesResult]
 
     /// Split a structured message up into theme-able parts (tokens), allowing the
     /// final output to display to a user with colours to enhance readability.
     let literateDefaultTokeniser (options : LiterateConsoleConf) (message : Message) =
-      let messageTokens = message.value |> literateTokenisePointValue options message
+      let messageTokens = literateTokenisePointValue options message
       let exceptionTokens = literateTokeniseMessageExceptions options message
 
       let getLogLevelToken = function
@@ -669,8 +618,6 @@ module Debugger =
     interface SpecificTargetConf with
       member x.Build name = create conf name
 
-
-
 /// The file system module makes the File module testable by allowing the tests
 /// to implement a custom implementation of the file system.
 module FileSystem =
@@ -797,7 +744,6 @@ module FileSystem =
     override x.Seek (offset, origin) = inner.Seek (offset, origin)
     override x.SetLength value = inner.SetLength value
     override x.Read(buffer, offset, count) = inner.Read(buffer, offset, count)
-
 
 /// This is the File target of Logary. It can be both a rolling file and a
 /// "normal", non-rolling file target, depending on the deletion and rotation
@@ -1027,7 +973,8 @@ module File =
       /// given RuntimeInfo.
       member x.format (ri : RuntimeInfo) : string * string =
         let (Naming (spec, ext)) = x
-        let now = ri.getTimestamp ()
+        let now = (ri.getTimestamp () |> Instant.ofEpoch).ToDateTimeOffset()
+        
         let known =
           [ "service", ri.service
             "date", now.ToString("yyyy-MM-dd")
