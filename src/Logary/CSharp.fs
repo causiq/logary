@@ -635,7 +635,7 @@ type LoggerExtensions =
   /// Returns true of the log was accepted to Logary.
   [<Extension>]
   static member LogGauge(logger : Logger,
-                         value : Value,
+                         value : float,
                          units : Units,
                          formatTemplate : string,
                          [<Optional; DefaultParameterValue(null)>] fields : obj,

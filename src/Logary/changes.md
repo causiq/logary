@@ -29,6 +29,7 @@
   - no need SuppressPointValue
 
     gauges are stored in contexts with gauge type. so message.value is template or raw message.
+  - gauges change to (float * units), gauge is a special type of context, around with float (numeric)
 
 - errors (exceptions)
 

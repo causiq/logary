@@ -529,7 +529,7 @@ let tests =
 
       testCase "getAllGauges & hasGauge" <| fun _ ->
         let names = Arb.generate<NonEmptyString> |> Gen.sample 0 5 |> List.distinct |> List.map (fun (NonEmptyString name) -> name)
-        let msg = names |> List.fold (fun m name -> m |> addGauge name (Gauge (name, Units.Scalar))) (eventInfo "")
+        let msg = names |> List.fold (fun m name -> m |> addGauge name (Gauge (1., Units.Scalar))) (eventInfo "")
         let c = msg |> getAllGauges |> Seq.length
         Expect.equal c names.Length "Should get same length after add gauges"
         Expect.isTrue (hasGauge msg) "Should have gauge"

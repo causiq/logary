@@ -97,7 +97,7 @@ module Message =
          else None)
 
   [<CompiledName "GetContextsOtherThanGaugeAndFields">]
-  let inline GetContextsOtherThanGaugeAndFields message =
+  let inline getContextsOtherThanGaugeAndFields message =
     message.context
     |> Seq.choose (fun (KeyValue (k,v)) ->
        if k.StartsWith KnownLiterals.FieldsPrefix 
@@ -123,7 +123,7 @@ module Message =
   [<Obsolete ("Use setField instead.")>]
   [<CompiledName "SetFieldValue">]
   let setFieldValue (name : string) (field : Field) message =
-    setField name (field.ToGauge()) message
+    setField name field message
 
   [<Obsolete ("Use SetFieldsFromSeq instead.")>]
   [<CompiledName "SetFieldValues">]

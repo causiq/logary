@@ -14,25 +14,21 @@ open NodaTime
 open Logary.Message
 
 printfn "before"
-
-let multiGaugeMessage level =
-  // below will use auto generate gauge msg through its gauges.
-  Message.gaugeMessage "Processor.% Idle.Core 1" (Gauge (0.001, Percent))
-  |> Message.addGauge "Processor.% Idle.Core 2" (Gauge (0.99, Percent))
-  |> Message.addGauge "Processor.% Idle.Core 3" (Gauge (0.473223755, Percent))
+let ex = try let a = Message.templateEvent<int> (Info,"abc") in a 1; exn "" with | e -> e
+let msg =
+  Message.event Error "here is some exception: {@ex}"
+  |> Message.addGauge "Core 1" (Gauge (0.001, Percent))
+  |> Message.addGauge "Core 2" (Gauge (0.99, Percent))
+  |> Message.addGauge "Core 3" (Gauge (0.473223755, Percent))
   |> Message.setContext "host" "db-001"
   |> Message.setContext "service" "api-web"
-  |> Message.setLevel level
+  |> Message.setName (PointName.ofList ["a"; "b"; "c"; "d"])
+  |> Message.setField "ex" (ex)
+  |> Message.addExn (ex)
 
-  // below will use "Processor.% Idle" as its template msg.
-  // Message.event level "Processor.% Idle"
-  // |> Message.addGauge "Core 1" (Gauge (0.001, Percent))
-  // |> Message.addGauge "Core 2" (Gauge (0.99, Percent))
-  // |> Message.addGauge "Core 3" (Gauge (0.473223755, Percent))
-  // |> Message.setContext "host" "db-001"
-  // |> Message.setContext "service" "api-web"
+let msg1 = msg |> Message.setField "msg" msg |> Message.setContext "msg-ctx" msg
 
-let str = MessageWriter.levelDatetimeMessagePathNewLine.format (multiGaugeMessage Error)
+let str = MessageWriter.levelDatetimeMessagePathNewLine.format msg1
 str
 
 

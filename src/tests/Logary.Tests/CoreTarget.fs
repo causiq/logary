@@ -43,7 +43,7 @@ let exnMsg =
   |> withException Message.addExn
 
 let timeMessage (nanos : int64) level =
-  let value, units = Int64 nanos, Scaled (Seconds, float Constants.NanosPerSecond)
+  let value, units = float nanos, Scaled (Seconds, float Constants.NanosPerSecond)
   snd (Message.time (PointName [| "A"; "B"; "C"; "Check" |]) (fun () -> 32) ())
   |> Message.setGauge (value, units)
   |> Message.setLevel level

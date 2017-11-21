@@ -143,17 +143,11 @@ type PointValue =
 module PointValue =
   let empty = Event String.Empty
 
-type Gauge = 
-  Gauge of obj * Units
+type Gauge = Gauge of float * Units
 
 [<Obsolete ("Use (Message.setField : string -> 'a -> Message -> Message) directly, just for api compatibility")>]
 type Field =
   Field of Value * Units option
-with
-  member x.ToGauge () =
-    match x with
-    | Field (v, Some (units)) -> Gauge (v,units)
-    | Field (v, _) -> Gauge (v, Scalar)
 
 /// This is record that is logged. It's capable of representing both metrics
 /// (gauges) and events.
