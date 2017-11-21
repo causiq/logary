@@ -133,8 +133,8 @@ module internal LiterateFormatting =
 
     // use for formatting message context
     let rec tokenisePropValueIndent (provider : IFormatProvider) (tpv: TemplatePropertyValue) (nl: string) (depth: int) =
-      // context: use 2 indent, fields/gauges/other use 2 indent, depth start from 0, so 2+2+2 = 6
-      let indent = new String (' ', depth * 2 + 6)
+      // fields/gauges/other use 2 indent, depth start from 0, so 2+2 = 6
+      let indent = new String (' ', depth * 2 + 4)
       seq {
         match tpv with
         | ScalarValue sv -> yield tokeniseScalarValue provider sv null

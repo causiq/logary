@@ -26,7 +26,7 @@ let msg =
   |> Message.setField "ex" (ex)
   |> Message.addExn (ex)
 
-let msg1 = msg |> Message.setField "msg" msg |> Message.setContext "msg-ctx" msg
+let msg1 = msg |> Message.setField "msg" msg 
 
 let str = MessageWriter.levelDatetimeMessagePathNewLine.format msg1
 str
