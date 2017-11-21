@@ -26,21 +26,22 @@ let msg =
   |> Message.setField "ex" (ex)
   |> Message.addExn (ex)
 
-let msg1 = msg |> Message.setField "msg" msg 
+let msg = msg |> Message.setField "msg" msg 
 
-let str = MessageWriter.levelDatetimeMessagePathNewLine.format msg1
-str
+// let str = MessageWriter.levelDatetimeMessagePathNewLine.format msg
 
 
 let registry = 
   Config.create "svc" "localhost" 
-  |> Config.ilogger (ILogger.Console Verbose) 
+  |> Config.ilogger (ILogger.LiterateConsole Verbose) 
   |> Config.build
   |> run
 
 let logm = Registry.toLogManager registry
 
 let ilg = logm.runtimeInfo.logger
+
+Logger.logSimple ilg msg
 
 
 type User = 
@@ -58,6 +59,8 @@ let foo = { id = 999; name = "foo"; created = DateTime.Now}
 
 let tp = ("first",2,foo)
 
+
+
 let msg = 
   Message.eventInfo ("Hello World!  {user} done!")
   |> Message.setName (PointName.parse "logger.name.test")
@@ -69,7 +72,6 @@ let msg =
 
 
 Logger.logSimple ilg msg
-ilg.info (eventX "...")
 
 
 

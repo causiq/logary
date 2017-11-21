@@ -8,7 +8,7 @@ open NodaTime
 open Logary
 open Logary.Internals.FsMessageTemplates
 
-module internal LiterateFormatting =
+module LiterateFormatting =
 
   module Tokens =
     /// The output tokens, which can be potentially coloured.
@@ -142,7 +142,9 @@ module internal LiterateFormatting =
         | SequenceValue svs ->
           let isAllScalar = svs |> List.forall (function ScalarValue _ -> true | _ -> false)
           if isAllScalar then
-            let recurs provider tpv = tokeniseScalarValue provider tpv null |> Seq.singleton
+            let recurs provider = function 
+              | ScalarValue sv -> tokeniseScalarValue provider sv null |> Seq.singleton
+              | _ -> Seq.empty
             yield! tokeniseSequenceValueCompact provider svs recurs
           else
             let lastIndex = svs.Length - 1
@@ -178,10 +180,10 @@ module internal LiterateFormatting =
           for i = 0 to lastIndex do
             let (entryKey, entryValue) = kvList.[i]
             match entryKey with
-            | ScalarValue _ ->
+            | ScalarValue sv ->
               yield nl, Text
               yield indent, Text
-              yield tokeniseScalarValue provider entryKey null
+              yield tokeniseScalarValue provider sv null
               yield " => ", Punctuation
               yield! tokenisePropValueIndent provider entryValue nl (depth + 1)
             | _ ->
@@ -236,6 +238,26 @@ module internal LiterateFormatting =
         .ToDateTimeOffset()
         .ToString("o", CultureInfo.InvariantCulture)
 
+    let tokeniseExceptions (pvd: IFormatProvider) (nl: string) (exns: exn list) =
+      let windowsStackFrameLinePrefix = "   at "
+      let monoStackFrameLinePrefix = "  at "
+      exns
+      |> Seq.collect (fun exn ->
+         let exnLines = new StringReader(string exn)
+         seq {
+           let mutable line = exnLines.ReadLine()
+           while not (isNull line) do
+             if line.StartsWith(windowsStackFrameLinePrefix) || line.StartsWith(monoStackFrameLinePrefix) then
+               // subtext
+               yield nl, Subtext
+               yield line, Subtext
+             else
+               // regular text
+               yield nl, Text
+               yield line, Text
+             line <- exnLines.ReadLine()
+          })
+
     let tokeniseTemplateByGauges (pvd: IFormatProvider) (gauges : List<string * Gauge>) =
       if gauges.Length = 0 then Seq.empty
       else
@@ -247,13 +269,25 @@ module internal LiterateFormatting =
           for i=0 to lastIndex do
             let (gaugeType, Gauge (value, units)) = gauges.[i]
             let (scaledValue, unitsFormat) = Units.scale units value
-            let valueFormated = formatWithProvider pvd scaledValue null
-            yield gaugeType, Subtext
-            yield " : ", Punctuation
-            yield valueFormated, NumericSymbol
-            if not <| String.IsNullOrEmpty unitsFormat then
-              yield " ", Subtext
-              yield unitsFormat, Text
+
+            match units with
+            | Scaled (Seconds, scale) when scale = float Constants.NanosPerSecond ->
+              let format = if scaledValue < 1000. then "N0" else "N2"
+              yield gaugeType, NameSymbol
+              yield " took ", Subtext
+              yield scaledValue.ToString(format, pvd), NumericSymbol
+              if not <| String.IsNullOrEmpty unitsFormat then
+                yield " ", Subtext
+                yield unitsFormat, Text
+              yield " to execute.", Subtext
+            | _ ->
+              let valueFormated = formatWithProvider pvd scaledValue null
+              yield gaugeType, Subtext
+              yield " : ", Punctuation
+              yield valueFormated, NumericSymbol
+              if not <| String.IsNullOrEmpty unitsFormat then
+                yield " ", Subtext
+                yield unitsFormat, Text
             if i <> lastIndex then yield ", ", Punctuation
 
           yield "]", Punctuation
@@ -450,7 +484,7 @@ module MessageWriter =
     sb.ToString ()
 
 
-  let private defaultDestr =
+  let internal defaultDestr =
     Capturing.createCustomDestructurer
       (Some CustomFsMessageTemplates.destructureCustomScalar)
       (Some CustomFsMessageTemplates.destructureFSharpTypes)
