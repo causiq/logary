@@ -15,7 +15,7 @@ open Logary.Message
 
 printfn "before"
 let ex = try let a = Message.templateEvent<int> (Info,"abc") in a 1; exn "" with | e -> e
-let msg =
+let msg1 =
   Message.event Error "here is some exception: {@msg}"
   |> Message.addGauge "Core 1" (Gauge (0.001, Percent))
   |> Message.addGauge "Core 2" (Gauge (0.99, Percent))
@@ -26,7 +26,7 @@ let msg =
   |> Message.setField "ex" (ex)
   |> Message.addExn (ex)
 
-let msg = msg |> Message.setField "msg" msg 
+let msg = msg1 |> Message.setField "msg" msg1 
 
 // let str = MessageWriter.levelDatetimeMessagePathNewLine.format msg
 
@@ -41,6 +41,8 @@ let logm = Registry.toLogManager registry
 
 let ilg = logm.runtimeInfo.logger
 
+Logger.logSimple ilg (event Info "hi")
+Logger.logSimple ilg (event Info "hi just some test")
 Logger.logSimple ilg msg
 
 
@@ -56,12 +58,9 @@ with
       sprintf "id => %i, name => %s, created => %A" x.id x.name (x.created.ToShortDateString())
 
 let foo = { id = 999; name = "foo"; created = DateTime.Now}
-
 let tp = ("first",2,foo)
 
-
-
-let msg = 
+let msg2 = 
   Message.eventInfo ("Hello World!  {user} done!")
   |> Message.setName (PointName.parse "logger.name.test")
   |> Message.setField "user" tp
@@ -69,9 +68,7 @@ let msg =
   |> Message.setContext "tpList " [tp;tp;]
   |> Message.setContext "user" foo
 
-
-
-Logger.logSimple ilg msg
+Logger.logWithAck ilg Info (fun _ -> msg2) |> run |> run
 
 
 

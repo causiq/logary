@@ -131,6 +131,7 @@ let basicTests targetName confFac =
 module LiterateTesting =
   open System
   open LiterateConsole
+  open Logary.LiterateFormatting
   module Theme =
     let textColours = { foreground=ConsoleColor.White; background=None }
     let subtextColours = { foreground=ConsoleColor.Gray; background=None }
