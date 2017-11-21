@@ -135,6 +135,7 @@ module LiterateConsole =
   open Logary.Internals
   open Logary.Configuration.Target
   open Hopac
+  open LiterateFormatting.Tokens
 
   module Tokens =
     /// The output tokens, which can be potentially coloured.

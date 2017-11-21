@@ -16,7 +16,7 @@ open Logary.Message
 printfn "before"
 let ex = try let a = Message.templateEvent<int> (Info,"abc") in a 1; exn "" with | e -> e
 let msg =
-  Message.event Error "here is some exception: {@ex}"
+  Message.event Error "here is some exception: {@msg}"
   |> Message.addGauge "Core 1" (Gauge (0.001, Percent))
   |> Message.addGauge "Core 2" (Gauge (0.99, Percent))
   |> Message.addGauge "Core 3" (Gauge (0.473223755, Percent))

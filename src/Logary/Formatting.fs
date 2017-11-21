@@ -8,22 +8,18 @@ open NodaTime
 open Logary
 open Logary.Internals.FsMessageTemplates
 
-/// A thing that efficiently writes a message to a TextWriter.
-type MessageWriter =
-  abstract write : TextWriter -> Message -> unit
+module internal LiterateFormatting =
 
-[<AutoOpen>]
-module MessageWriterEx =
-  type MessageWriter with
-    [<Obsolete "Try to write directly to a System.IO.TextWriter instead">]
-    member x.format (m : Message) =
-      use sw = StringWriter()
-      x.write sw m
-      sw.ToString()
+  module Tokens =
+    /// The output tokens, which can be potentially coloured.
+    type LiterateToken =
+      | Text | Subtext
+      | Punctuation
+      | LevelVerbose | LevelDebug | LevelInfo | LevelWarning | LevelError | LevelFatal
+      | KeywordSymbol | NumericSymbol | StringSymbol | OtherSymbol | NameSymbol
+      | MissingTemplateField
 
-module internal CustomFsMessageTemplates =
-  open System.Reflection
-  open Microsoft.FSharp.Reflection
+  open Tokens
 
   let formatWithProvider (provider : IFormatProvider) (arg : obj) format =
     let customFormatter = provider.GetFormat(typeof<System.ICustomFormatter>) :?> System.ICustomFormatter
@@ -38,7 +34,7 @@ module internal CustomFsMessageTemplates =
   let escapeNewlineAndQuote (str : string) =
     if isNull str then String.Empty
     else
-      let (newline, newlineReplaced) = 
+      let (newline, newlineReplaced) =
         let origin = Environment.NewLine
         if origin = "\n" then (origin, @"\n")
         else (origin, @"\r\n")
@@ -46,126 +42,333 @@ module internal CustomFsMessageTemplates =
       let escape = str.Replace("\"","\\\"").Replace(newline,newlineReplaced)
       "\"" + escape + "\""
 
-  let writeScalarValue (w: TextWriter) (sv: obj) format =
-    match sv with
-    | null -> w.Write "null"
-    | :? string as s ->
-        if format = "l" then w.Write s
-        else w.Write (escapeNewlineAndQuote s)
-    | _ ->
-      // build in scalar write directly
-      // else escape newline and double quote
-      let formated = formatWithProvider w.FormatProvider sv format
-      if Destructure.scalarTypeHash.Contains(sv.GetType()) then w.Write formated
-      else w.Write (escapeNewlineAndQuote formated)
+  module internal FsMessageTemplates =
 
-  // use for formatting message template
-  let rec writePropValueCompact (w: TextWriter) (tpv: TemplatePropertyValue) (format: string) =
-    match tpv with
-    | ScalarValue sv ->
-      writeScalarValue w sv format
-    | SequenceValue svs ->
-      w.Write '['
-      let lastIndex = svs.Length - 1
-      svs 
-      |> List.iteri (fun i sv ->
-         writePropValueCompact w sv null
-         if i <> lastIndex then w.Write ", ")
-      w.Write ']'
-    | StructureValue(typeTag, values) ->
-      if not <| isNull typeTag then w.Write typeTag; w.Write ' '
-      w.Write "{ "
-      let lastIndex = values.Length - 1
-      for i = 0 to lastIndex do
-        let tp = values.[i]
-        w.Write tp.Name; w.Write ": "
-        writePropValueCompact w tp.Value null
-        w.Write (if i = lastIndex then " " else ", ")
-      w.Write "}"
-    | DictionaryValue(data) ->
-      w.Write '['
-      data 
-      |> List.iter (fun (entryKey, entryValue) ->
-         w.Write '('
-         writePropValueCompact w entryKey null
-         w.Write ": "
-         writePropValueCompact w entryValue null
-         w.Write ")")
-      w.Write ']'
+    let tokeniseScalarValue (provider : IFormatProvider) (sv: obj) (format: string) =
+      match sv with
+      | null -> "null", StringSymbol
+      | :? string as s ->
+          if format = "l" then s, Subtext
+          else (escapeNewlineAndQuote s), StringSymbol
+      | _ ->
+        // build in scalar write directly
+        // else escape newline and double quote
+        let formated = formatWithProvider provider sv format
+        if Destructure.scalarTypeHash.Contains(sv.GetType()) then
+          let token =
+            match sv with
+             | :? bool ->
+                KeywordSymbol
+              | :? int16 | :? int32 | :? int64 | :? decimal | :? float | :? double
+              | :? uint16 | :? uint32 | :? uint64 ->
+                NumericSymbol
+              | :? string | :? char ->
+                StringSymbol
+              | _ ->
+                OtherSymbol
+          (formated, token)
+          // yield formated
+        else (escapeNewlineAndQuote formated), StringSymbol
 
-  // use for formatting message context
-  let rec writePropValueIndent (w: TextWriter) (tpv: TemplatePropertyValue) depth =
-    // context: use 2 indent, fields/gauges/other use 2 indent, depth start from 0, so 2+2+2 = 6
-    let indent = new String (' ', depth * 2 + 6)
-    match tpv with
-    | ScalarValue sv -> writeScalarValue w sv null
+    let tokeniseSequenceValueCompact (provider : IFormatProvider) (svs: TemplatePropertyValue list) recurse =
+      let mutable isFirst = true
+      let valueTokens =
+        svs
+        |> List.map (fun sv -> seq {
+           if not isFirst then yield ", ", Punctuation
+           isFirst <- false
+           yield! recurse provider sv
+           })
+        |> Seq.concat
 
-    | SequenceValue svs ->
-      let isAllScalar = svs |> List.forall (function ScalarValue _ -> true | _ -> false)
-      if isAllScalar then
-        let lastIndex = svs.Length - 1
-        w.Write '['
-        svs |> List.iteri (fun i sv ->
-               writePropValueIndent w sv 0  // writeScalarValue will not use depth, so pass zero
-               if i <> lastIndex then w.Write ", ")
-        w.Write ']'
-      else
-        svs |> List.iter (fun sv ->
-               w.WriteLine (); w.Write indent; w.Write "- "; writePropValueIndent w sv (depth + 1);)
+      seq {
+        yield "[", Punctuation
+        yield! valueTokens
+        yield "]", Punctuation
+      }
 
-    | StructureValue(typeTag, values) ->
-      let writeTypeTag = not <| isNull typeTag
-      if writeTypeTag then w.WriteLine (); w.Write indent; w.Write typeTag; w.Write " {";
+    // use for formatting message template
+    let rec tokenisePropValueCompact (provider : IFormatProvider) (tpv: TemplatePropertyValue) (format: string) =
+      seq {
+        match tpv with
+        | ScalarValue sv ->
+          yield tokeniseScalarValue provider sv format
+        | SequenceValue svs ->
+          let recurs provider tpv = tokenisePropValueCompact provider tpv null
+          yield! tokeniseSequenceValueCompact provider svs recurs
+        | StructureValue(typeTag, values) ->
+          let hasAnyValues = not values.IsEmpty
+          if not <| isNull typeTag then
+            yield typeTag, (if hasAnyValues then Subtext else OtherSymbol)
 
-      values
-      |> List.iter (fun nv ->
-         w.WriteLine ();
-         if writeTypeTag then w.Write "  "
-         w.Write indent; w.Write nv.Name; w.Write " => "; writePropValueIndent w nv.Value (if writeTypeTag then depth + 2 else depth + 1);)
+          if hasAnyValues then
+            yield " ", Subtext
+            yield "{ ", Punctuation
 
-      if writeTypeTag then w.Write "}";
+            let lastIndex = values.Length - 1
+            for i = 0 to lastIndex do
+              let tp = values.[i]
+              yield tp.Name, Subtext
+              yield ": ", Punctuation
+              yield! tokenisePropValueCompact provider tp.Value null
+              yield (if i = lastIndex then (" ", Subtext) else (", ", Punctuation))
 
-    | DictionaryValue(kvList) ->
-      kvList
-      |> List.iter (fun (entryKey, entryValue) ->
-         match entryKey with
-         | ScalarValue _ ->
-           w.WriteLine (); w.Write indent; writePropValueIndent w entryKey (depth + 1); w.Write " => "; writePropValueIndent w entryValue (depth + 1);
-         | _ ->
-           // default case will not go to here, unless user define their own DictionaryValue which its entryKey is not ScalarValue
-           w.WriteLine (); w.Write indent; w.Write "- key => "; writePropValueIndent w entryKey (depth + 2);
-           w.WriteLine (); w.Write indent; w.Write "  value => "; writePropValueIndent w entryValue (depth + 2);)
+            yield "}", Punctuation
+        | DictionaryValue(data) ->
+          let valueTokens =
+            data
+            |> List.map (fun (entryKey, entryValue) -> seq {
+               yield "(", Punctuation
+               yield! tokenisePropValueCompact provider entryKey null
+               yield ": ", Punctuation
+               yield! tokenisePropValueCompact provider entryValue null
+               yield ")", Punctuation
+               })
+            |> Seq.concat
 
-  let writeToken (buffer: StringBuilder) (w: TextWriter) (token:Token) (value:TemplatePropertyValue) =
-    match token, value with
-    | Token.TextToken (_, raw), _ -> w.Write raw
-    | Token.PropToken (_, pt), pv ->
-      if Destructure.isEmptyKeepTrying pv then
-          let propertyTokenAsString = pt.AppendPropertyString(buffer, true, pt.Name).ToStringAndClear()
-          w.Write propertyTokenAsString
-      else
-          if pt.Align.IsEmpty then
-              writePropValueCompact w pv pt.Format
+          yield "[", Punctuation
+          yield! valueTokens
+          yield "]", Punctuation
+      }
+
+    // use for formatting message context
+    let rec tokenisePropValueIndent (provider : IFormatProvider) (tpv: TemplatePropertyValue) (nl: string) (depth: int) =
+      // context: use 2 indent, fields/gauges/other use 2 indent, depth start from 0, so 2+2+2 = 6
+      let indent = new String (' ', depth * 2 + 6)
+      seq {
+        match tpv with
+        | ScalarValue sv -> yield tokeniseScalarValue provider sv null
+
+        | SequenceValue svs ->
+          let isAllScalar = svs |> List.forall (function ScalarValue _ -> true | _ -> false)
+          if isAllScalar then
+            let recurs provider tpv = tokeniseScalarValue provider tpv null |> Seq.singleton
+            yield! tokeniseSequenceValueCompact provider svs recurs
           else
-              let alignWriter = new StringWriter(w.FormatProvider)
-              writePropValueCompact alignWriter pv pt.Format
-              let valueAsString = alignWriter.ToString()
-              if valueAsString.Length >= pt.Align.Width then
-                  w.Write valueAsString
-              else
-                  let pad = pt.Align.Width - valueAsString.Length
-                  if pt.Align.Direction = Direction.Right then w.Write (System.String(' ', pad))
-                  w.Write valueAsString
-                  if pt.Align.Direction = Direction.Left then w.Write (System.String(' ', pad))
+            let lastIndex = svs.Length - 1
+            for i = 0 to lastIndex do
+              let sv = svs.[i]
+              yield nl, Text
+              yield indent, Text
+              yield "- ", Punctuation
+              yield! tokenisePropValueIndent provider sv nl (depth + 1)
 
-  let formatCustom (t:Template) w getValueByName =
-    let buffer = StringBuilder()
-    for tok in t.Tokens do
-        match tok with
-        | Token.TextToken _ as tt -> writeToken buffer w tt TemplatePropertyValue.Empty
-        | Token.PropToken (_, pd) as tp ->
-            let value = getValueByName pd.Name
-            writeToken buffer w tp value
+        | StructureValue(typeTag, values) ->
+          let writeTypeTag = not <| isNull typeTag
+          if writeTypeTag then
+            yield nl, Text
+            yield indent, Text
+            yield typeTag, Subtext
+            yield " {", Punctuation
+
+          let lastIndex = values.Length - 1
+          for i = 0 to lastIndex do
+            let nv = values.[i]
+            yield nl, Text
+            if writeTypeTag then yield "  ", Text
+            yield indent, Text
+            yield nv.Name, Subtext
+            yield " => ", Punctuation
+            yield! tokenisePropValueIndent provider nv.Value nl (if writeTypeTag then depth + 2 else depth + 1)
+
+          if writeTypeTag then yield "}", Punctuation
+
+        | DictionaryValue(kvList) ->
+          let lastIndex = kvList.Length - 1
+          for i = 0 to lastIndex do
+            let (entryKey, entryValue) = kvList.[i]
+            match entryKey with
+            | ScalarValue _ ->
+              yield nl, Text
+              yield indent, Text
+              yield tokeniseScalarValue provider entryKey null
+              yield " => ", Punctuation
+              yield! tokenisePropValueIndent provider entryValue nl (depth + 1)
+            | _ ->
+              // default case will not go to here, unless user define their own DictionaryValue which its entryKey is not ScalarValue
+              yield nl, Text
+              yield indent, Text
+              yield "- key => ", Punctuation
+              yield! tokenisePropValueIndent provider entryKey nl (depth + 2)
+
+              yield nl, Text
+              yield indent, Text
+              yield "  value => ", Punctuation
+              yield! tokenisePropValueIndent provider entryValue nl (depth + 2)
+      }
+
+    let tokeniseProperty (provider: IFormatProvider) (pt: Property) (pv: TemplatePropertyValue) =
+      if Destructure.isEmptyKeepTrying pv then
+        (pt.ToString(), MissingTemplateField) |> Seq.singleton
+      else
+        match pv with
+        | ScalarValue sv ->
+          let tokenised = tokeniseScalarValue provider sv pt.Format
+
+          if pt.Align.IsEmpty then tokenised |> Seq.singleton
+          else
+            let (formated, token) = tokenised
+            let padded =
+              match pt.Align.Direction with
+              |  Direction.Right -> formated.PadRight(pt.Align.Width, ' ')
+              |  Direction.Left -> formated.PadLeft(pt.Align.Width, ' ')
+              | _ -> formated
+            (padded, token) |> Seq.singleton
+        | _ -> tokenisePropValueCompact provider pv null
+
+    let tokeniseTemplate (t:Template) provider getValueByName =
+      t.Tokens
+      |> Seq.collect (function
+         | Token.TextToken (_, raw) -> (raw, Text) |> Seq.singleton
+         | Token.PropToken (_, pd)  -> tokeniseProperty provider pd (getValueByName pd.Name))
+
+  module internal MessageParts =
+    open Microsoft.FSharp.Reflection
+
+    /// Returns the case name of the object with union type 'ty.
+    let caseNameOf (x:'a) =
+      match FSharpValue.GetUnionFields(x, typeof<'a>) with
+      | case, _ -> case.Name
+
+    /// Format a timestamp in nanoseconds since epoch into a ISO8601 string
+    let formatTimestamp (ticks : int64) =
+      Instant.FromTicksSinceUnixEpoch(ticks)
+        .ToDateTimeOffset()
+        .ToString("o", CultureInfo.InvariantCulture)
+
+    let tokeniseTemplateByGauges (pvd: IFormatProvider) (gauges : List<string * Gauge>) =
+      if gauges.Length = 0 then Seq.empty
+      else
+        seq {
+          yield "Gauges: ", Text
+          yield "[", Punctuation
+
+          let lastIndex = gauges.Length - 1
+          for i=0 to lastIndex do
+            let (gaugeType, Gauge (value, units)) = gauges.[i]
+            let (scaledValue, unitsFormat) = Units.scale units value
+            let valueFormated = formatWithProvider pvd scaledValue null
+            yield gaugeType, Subtext
+            yield " : ", Punctuation
+            yield valueFormated, NumericSymbol
+            if not <| String.IsNullOrEmpty unitsFormat then
+              yield " ", Subtext
+              yield unitsFormat, Text
+            if i <> lastIndex then yield ", ", Punctuation
+
+          yield "]", Punctuation
+        }
+
+    let tokeniseTemplateByFields (pvd: IFormatProvider) (template : Template)
+                                          (destr : Destructurer) (maxDepth : int)
+                                          (fields : seq<string * obj>) =
+      let fieldsMap = fields |> HashMap.ofSeq
+      let propertiesMap = template.Properties |> Seq.map (fun p -> (p.Name, p.Destr)) |> HashMap.ofSeq
+      let getValueByName name =
+        match (HashMap.tryFind name fieldsMap, HashMap.tryFind name propertiesMap) with
+        | Some (value), Some (destrHint) ->
+          destr (DestructureRequest(destr, value, maxDepth, 1, hint=destrHint))
+        | _ -> TemplatePropertyValue.Empty
+      FsMessageTemplates.tokeniseTemplate template pvd getValueByName
+
+    let tokeniseTemplateWithGauges pvd nl destr maxDepth message =
+      let tplByGauges =
+        message |> Message.getAllGauges |> List.ofSeq |> tokeniseTemplateByGauges pvd |> List.ofSeq
+
+      let (Event (formatTemplate)) = message.value
+
+      if String.IsNullOrEmpty formatTemplate then tplByGauges |> Seq.ofList
+      else
+        let parsedTemplate = Parser.parse (formatTemplate)
+        let tplByFields =
+          message |> Message.getAllFields |> tokeniseTemplateByFields pvd parsedTemplate destr maxDepth
+        if List.isEmpty tplByGauges then tplByFields
+        else seq { yield! tplByFields; yield " ", Text; yield! tplByGauges}
+
+    let tokeniseContext (pvd: IFormatProvider) (nl: string) (destr: Destructurer) maxDepth message =
+      let padding = new String (' ', 4)
+
+      let inline processKvs (pvd: IFormatProvider) (prefix: string) (nl: string) (kvs: seq<string * obj * DestrHint>) =
+        let valuesToken =
+          kvs
+          |> Seq.collect (fun (name, value, destrHint) -> seq {
+             yield nl, Text
+             yield padding, Text
+             yield name, Subtext
+             yield " => ", Punctuation
+             let destrValue = destr (DestructureRequest(destr, value, maxDepth, 1, hint= destrHint))
+             yield! FsMessageTemplates.tokenisePropValueIndent pvd destrValue nl 1
+             })
+          |> List.ofSeq
+
+        if not <| List.isEmpty valuesToken then
+          [
+            yield nl, Text
+            yield prefix, Text
+            yield! valuesToken
+          ]
+        else List.empty
+
+      // process fields
+      let (Event (formatTemplate)) = message.value
+      let fieldsPropInTemplate =
+        if not <| String.IsNullOrEmpty formatTemplate then
+          let parsedTemplate = Parser.parse (formatTemplate)
+          parsedTemplate.Properties |> Seq.map (fun prop -> prop.Name, prop) |> HashMap.ofSeq
+        else HashMap.empty
+
+      let fields =
+        message
+        |> Message.getAllFields
+        |> Seq.map (fun (name, value) ->
+           match HashMap.tryFind name fieldsPropInTemplate with
+           | None -> (name, value, DestrHint.Destructure)
+           | Some prop -> (name, value, prop.Destr))
+        |> processKvs pvd "  fields:" nl
+
+      // process gauge
+      let gauges =
+        message |> Message.getAllGauges
+        |> Seq.map (fun (k, gauge) -> (k, box gauge, DestrHint.Destructure))
+        |> processKvs pvd "  gauges:" nl
+
+      // process others
+      let others =
+        message |> Message.getContextsOtherThanGaugeAndFields
+        |> Seq.map (fun (k, v) -> (k, v, DestrHint.Destructure))
+        |> processKvs pvd "  others:" nl
+
+      [fields; gauges; others] |> Seq.concat
+
+    let rec formatValueLeafs (ns : string list) (value : Value) =
+      let rns = lazy (PointName.ofList (List.rev ns))
+      seq {
+        match value with
+        | String s ->
+          yield rns.Value, s
+        | Bool b ->
+          yield rns.Value, b.ToString()
+        | Float f ->
+          yield rns.Value, f.ToString()
+        | Int64 i ->
+          yield rns.Value, i.ToString ()
+        | BigInt b ->
+          yield rns.Value, b.ToString ()
+        | Binary (b, _) ->
+          yield rns.Value, BitConverter.ToString b |> fun s -> s.Replace("-", "")
+        | Fraction (n, d) ->
+          yield rns.Value, sprintf "%d/%d" n d
+        | Array list ->
+          for item in list do
+            yield! formatValueLeafs ns item
+        | Object m ->
+          for KeyValue (k, v) in m do
+            yield! formatValueLeafs (k :: ns) v
+      }
+
+module internal CustomFsMessageTemplates =
+  open System.Reflection
+  open Microsoft.FSharp.Reflection
 
   let destructureFSharpTypes (req: DestructureRequest) : TemplatePropertyValue =
     let value = req.Value
@@ -182,11 +385,11 @@ module internal CustomFsMessageTemplates =
       let objEnumerable = value :?> System.Collections.IEnumerable |> Seq.cast<obj>
       SequenceValue(objEnumerable |> Seq.map req.TryAgainWithValue |> Seq.toList)
 
-    | t when t.IsConstructedGenericType 
+    | t when t.IsConstructedGenericType
       && (t.GetGenericTypeDefinition() = typedefof<Map<_,_>>
-          || (t.BaseType.IsConstructedGenericType 
+          || (t.BaseType.IsConstructedGenericType
               && t.BaseType.GetGenericTypeDefinition() = typedefof<HashMap<string,_>>)) ->
-      
+
       let keyProp, valueProp = ref Unchecked.defaultof<PropertyInfo>, ref Unchecked.defaultof<PropertyInfo>
       let getKey o = if isNull !keyProp  then keyProp := o.GetType().GetRuntimeProperty("Key")
                      (!keyProp).GetValue(o)
@@ -203,14 +406,14 @@ module internal CustomFsMessageTemplates =
       let caseName = ScalarValue case.Name
       match fields with
       | [||] -> caseName
-      | [| oneField |] -> 
+      | [| oneField |] ->
         let oneValue = req.TryAgainWithValue oneField
         DictionaryValue [caseName, oneValue]
       | _ ->
         let fieldsValue = fields |> Array.map req.TryAgainWithValue |> Array.toList |> SequenceValue
         DictionaryValue [caseName, fieldsValue]
     | _ -> TemplatePropertyValue.Empty
-  
+
   let destructureCustomScalar (req: DestructureRequest) : TemplatePropertyValue =
     let origin = req.Value
     match origin with
@@ -221,166 +424,35 @@ module internal CustomFsMessageTemplates =
       else ScalarValue (sprintf "%f %s" scaledValue unitsFormat)
     | _ -> TemplatePropertyValue.Empty
 
-module internal MessageParts =
-  open Microsoft.FSharp.Reflection
-  
-  /// Returns the case name of the object with union type 'ty.
-  let caseNameOf (x:'a) =
-    match FSharpValue.GetUnionFields(x, typeof<'a>) with
-    | case, _ -> case.Name
+/// A thing that efficiently writes a message to a TextWriter.
+type MessageWriter =
+  abstract write : TextWriter -> Message -> unit
 
-  /// Format a timestamp in nanoseconds since epoch into a ISO8601 string
-  let formatTimestamp (ticks : int64) =
-    Instant.FromTicksSinceUnixEpoch(ticks)
-      .ToDateTimeOffset()
-      .ToString("o", CultureInfo.InvariantCulture)
-
-  let getTextWriter (provider : IFormatProvider) nl =
-    let tw = new StringWriter (provider)
-    tw.NewLine <- nl
-    tw
-
-  let generateFormattedTemplateByGauges (tw: TextWriter) (gauges : List<string * Gauge>) =
-    if gauges.Length = 0 then ()
-    else
-      tw.Write "Gauges: ["
-
-      let lastIndex = gauges.Length - 1
-      gauges
-      |> List.iteri (fun i (gaugeType, Gauge (value, units)) ->
-         let (scaledValue, unitsFormat) = Units.scale units value
-         let valueFormated = CustomFsMessageTemplates.formatWithProvider tw.FormatProvider scaledValue null
-         tw.Write gaugeType
-         tw.Write " : "
-         tw.Write valueFormated
-         if not <| String.IsNullOrEmpty unitsFormat then tw.Write (" " + unitsFormat)
-         if i <> lastIndex then tw.Write ", ")
-
-      tw.Write "]"
-
-  let generateFormattedTemplateByFields (tw: TextWriter) (template : Template)
-                                        (destr : Destructurer) maxDepth (fields : seq<string * obj>) =
-    if Seq.isEmpty fields then tw.Write template.FormatString
-    else
-      let fieldsMap = fields |> HashMap.ofSeq
-      let propertiesMap = template.Properties |> Seq.map (fun p -> (p.Name, p.Destr)) |> HashMap.ofSeq
-      let getValueByName name =
-        match (HashMap.tryFind name fieldsMap, HashMap.tryFind name propertiesMap) with
-        | Some (value), Some (destrHint) ->
-          destr (DestructureRequest(destr, value, maxDepth, 1, hint=destrHint))
-        | _ -> TemplatePropertyValue.Empty
-      CustomFsMessageTemplates.formatCustom template tw getValueByName
-
-  let formatTemplate provider nl destr maxDepth message =
-    use gaugeTw = getTextWriter provider nl
-    message |> Message.getAllGauges |> List.ofSeq |> generateFormattedTemplateByGauges gaugeTw
-    let generateGaugesInfo = gaugeTw.ToString ()
-
-    let inline appendGaugesInfo origin gaugeInfo =
-      if String.IsNullOrEmpty gaugeInfo then origin
-      else origin  + " " + gaugeInfo
-
-    let (Event (formatTemplate)) = message.value
-
-    if String.IsNullOrEmpty formatTemplate then generateGaugesInfo
-    else
-      let parsedTemplate = Parser.parse (formatTemplate)
-      if parsedTemplate.HasAnyProperties then
-        use templateTw = getTextWriter provider nl
-        message |> Message.getAllFields |> generateFormattedTemplateByFields templateTw parsedTemplate destr maxDepth
-        let tplByFields = templateTw.ToString()
-        appendGaugesInfo tplByFields generateGaugesInfo
-      else
-        // raw message with no fields needs format
-        appendGaugesInfo formatTemplate generateGaugesInfo
-
-  let formatContext (formatProvider: IFormatProvider) (nl: string) (destr: Destructurer) maxDepth message =
-    let padding = new String (' ', 6)
-
-    let inline appendWithNlPrefix (sb: StringBuilder) (prefix: string) (value: string) (nl: string) =
-      if not <| String.IsNullOrEmpty value then sb.Append(nl).Append(prefix).Append(value) |> ignore
-
-    let inline processKvs sb (prefix: string) (nl: string) (kvs: seq<string * obj>) =
-      use tw = getTextWriter formatProvider nl
-      kvs
-      |> Seq.iter (fun (name, value) ->
-         let destrValue = destr (DestructureRequest(destr, value, maxDepth, 1, hint=DestrHint.Destructure))
-         tw.Write nl; tw.Write padding; tw.Write name; tw.Write " => "; CustomFsMessageTemplates.writePropValueIndent tw destrValue 1)
-
-      appendWithNlPrefix sb prefix (tw.ToString()) nl
-
-    let sb = StringBuilder ()
-
-    // process fields
-    let (Event (formatTemplate)) = message.value
-    if not <| String.IsNullOrEmpty formatTemplate then
-      let parsedTemplate = Parser.parse (formatTemplate)
-      if parsedTemplate.HasAnyProperties then
-        use tw = getTextWriter formatProvider nl
-
-        let fieldsHap = message |> Message.getAllFields |> HashMap.ofSeq
-        parsedTemplate.Tokens
-        |> Seq.iter (fun token ->
-           match token with
-           | TextToken _ -> ()
-           | PropToken (_, prop) as fieldToken ->
-             match fieldsHap |> HashMap.tryFind prop.Name with
-             | None -> ()
-             | Some fieldValue ->
-               tw.Write nl; tw.Write padding; tw.Write prop.Name; tw.Write " => ";
-               let buffer = StringBuilder ()
-               let destrValue = destr (DestructureRequest(destr, fieldValue, maxDepth, 1, hint= prop.Destr))
-               CustomFsMessageTemplates.writeToken buffer tw fieldToken destrValue)
-
-        appendWithNlPrefix sb "    fields:" (tw.ToString()) nl
-      else ()
-    else ()
-
-    // process gauge
-    message |> Message.getAllGauges |> Seq.map (fun (k, gauge) -> (k, box gauge)) |> processKvs sb "    gauges:" nl
-
-    // process others
-    message |> Message.getContextsOtherThanGaugeAndFields |> processKvs sb "    others:" nl
-
-    let wholeRes = sb.ToString ()
-    if String.IsNullOrEmpty wholeRes then String.Empty
-    else String.Concat(nl,"  context:", wholeRes)
-
-  let rec formatValueLeafs (ns : string list) (value : Value) =
-    let rns = lazy (PointName.ofList (List.rev ns))
-    seq {
-      match value with
-      | String s ->
-        yield rns.Value, s
-      | Bool b ->
-        yield rns.Value, b.ToString()
-      | Float f ->
-        yield rns.Value, f.ToString()
-      | Int64 i ->
-        yield rns.Value, i.ToString ()
-      | BigInt b ->
-        yield rns.Value, b.ToString ()
-      | Binary (b, _) ->
-        yield rns.Value, BitConverter.ToString b |> fun s -> s.Replace("-", "")
-      | Fraction (n, d) ->
-        yield rns.Value, sprintf "%d/%d" n d
-      | Array list ->
-        for item in list do
-          yield! formatValueLeafs ns item
-      | Object m ->
-        for KeyValue (k, v) in m do
-          yield! formatValueLeafs (k :: ns) v
-    }
+[<AutoOpen>]
+module MessageWriterEx =
+  type MessageWriter with
+    [<Obsolete "Try to write directly to a System.IO.TextWriter instead">]
+    member x.format (m : Message) =
+      use sw = StringWriter()
+      x.write sw m
+      sw.ToString()
 
 /// simple message writer use messagetemplates
 /// json writer should use from other project that use fspickler.json
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module MessageWriter =
-  open MessageParts
+  open LiterateFormatting.MessageParts
+  open LiterateFormatting.Tokens
 
-  let private defaultDestr = 
-    Capturing.createCustomDestructurer 
-      (Some CustomFsMessageTemplates.destructureCustomScalar) 
+  let private appendToString (tokenised: seq<string * LiterateToken>) =
+    let sb = StringBuilder ()
+    tokenised |> Seq.map fst |> Seq.iter (sb.Append >> ignore)
+    sb.ToString ()
+
+
+  let private defaultDestr =
+    Capturing.createCustomDestructurer
+      (Some CustomFsMessageTemplates.destructureCustomScalar)
       (Some CustomFsMessageTemplates.destructureFSharpTypes)
 
   /// maxDepth can be avoided if cycle reference are handled properly
@@ -390,9 +462,9 @@ module MessageWriter =
           let level = string (caseNameOf m.level).[0]
           // https://noda-time.googlecode.com/hg/docs/api/html/M_NodaTime_OffsetDateTime_ToString.htm
           let time = formatTimestamp m.timestampTicks
-          let body = formatTemplate tw.FormatProvider nl destr maxDepth m
+          let body = tokeniseTemplateWithGauges tw.FormatProvider nl destr maxDepth m |> appendToString
           let name = m.name.ToString()
-          let context = formatContext tw.FormatProvider nl destr maxDepth m
+          let context = tokeniseContext tw.FormatProvider nl destr maxDepth m |> appendToString
           sprintf "%s %s: %s [%s]%s%s" level time body name context ending
           |> tw.Write
     }
@@ -402,8 +474,8 @@ module MessageWriter =
   let verbatim =
     { new MessageWriter with
         member x.write tw m =
-          formatTemplate tw.FormatProvider Environment.NewLine defaultDestr 10 m
-          |> tw.Write
+          tokeniseTemplateWithGauges tw.FormatProvider Environment.NewLine defaultDestr 10 m
+          |> Seq.map fst |> Seq.iter tw.Write
     }
 
   /// VerbatimNewline simply outputs the message and no other information
