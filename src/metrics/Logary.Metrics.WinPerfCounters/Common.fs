@@ -1,10 +1,7 @@
 ﻿module Logary.Metrics.WinPerfCounters
 
-open System.Diagnostics
 open Hopac
 open Logary
-open Logary.Metric
-open Logary.Internals
 open Logary.Metrics.WinPerfCounter
 open Logary.Metrics.AllWinPerfCounters
 
@@ -125,27 +122,36 @@ let byCategory pcc =
   // transform the list of instances into a list
   |> Option.map (fun (pcc, instances) -> WinPerfCounter.list pcc instances)
 
+
+type WPCTicker (counters : WinPerfCounterInstance []) =
+  inherit Ticker<WinPerfCounterInstance [], Message, Message []>(counters)
+    override this.Folder wpcs item =
+      // since wpc autogenerate datas, so item will not used for now
+      // but can be anything from up pipes, 
+      // like receive an message then use its info for generate new msg when handleTick
+      wpcs
+
+    override this.HandleTick wpcs =
+      wpcs, wpcs |> Array.map Helpers.toValue
+
 let ofCounters (counters : WinPerfCounterInstance []) =
-  let reducer state msg = state
-  let ticker (state : WinPerfCounterInstance []) =
-    state, state |> Array.map Helpers.toValue
-  Metric.create reducer counters ticker
+  WPCTicker (counters)
 
 /// The "GPU" category is installed by the nVIDIA drivers
-let tryGPUMetric _ : Job<Metric> option =
+let tryGPUMetric _ =
   byCategory "GPU" |> Option.map ofCounters
 
-let gpuMetrics _ : Job<Metric> =
+let gpuMetrics _ =
   match tryGPUMetric () with
   | None ->
     failwith "No GPUs configured (or drivers thereof) on this machine"
   | Some metric ->
     metric
 
-let tryNVidiaGPUMetric _ : Job<Metric> option =
+let tryNVidiaGPUMetric _  =
   byCategory "NVIDIA GPU" |> Option.map ofCounters
   
-let nvidiaMetrics pn : Job<Metric> =
+let nvidiaMetrics pn =
   match tryNVidiaGPUMetric () with
   | None ->
     failwith "No nVIDIA GPUs configured (or drivers thereof) on this machine"
@@ -153,10 +159,10 @@ let nvidiaMetrics pn : Job<Metric> =
   | Some metric ->
     metric
 
-let tryCpuInformation _ : Job<Metric> option =
+let tryCpuInformation _  =
   byCategory "Processor Information" |> Option.map ofCounters
 
-let cpuInformation _ : Job<Metric> =
+let cpuInformation _ =
   match tryCpuInformation () with
   | None ->
     failwith "The performance counter category 'Processor Information' wasn't available on this machine"
@@ -164,7 +170,7 @@ let cpuInformation _ : Job<Metric> =
   | Some metric ->
     metric
 
-let tryNetworkInterface _ : Job<Metric> option =
+let tryNetworkInterface _  =
   byCategory "Network Interface" |> Option.map ofCounters
 
 let networkInterface pn =
@@ -175,11 +181,11 @@ let networkInterface pn =
   | Some metric ->
     metric
 
-let appMetrics (_ : PointName) : Job<Metric> =
+let appMetrics (_ : PointName) =
   ofCounters (appCounters ())
 
 [<CompiledName "AppMetric">]
-let appMetric category counter instances : (PointName -> Job<Metric>) =
+let appMetric category counter instances=
   fun (_ : PointName) ->
     printfn "Creating app metric %s %s" category counter
     WinPerfCounter.create(category, counter, instances)
@@ -188,9 +194,9 @@ let appMetric category counter instances : (PointName -> Job<Metric>) =
     |> ofCounters
 
 [<CompiledName "AppMetricF">]
-let appMetricF category counter instances : System.Func<PointName, Job<Metric>> =
+let appMetricF category counter instances =
   let fn = appMetric category counter instances
   System.Func<_, _>(fn)
 
-let systemMetrics (_ : PointName) : Job<Metric> =
+let systemMetrics (_ : PointName) =
   ofCounters (systemCounters ())

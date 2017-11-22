@@ -144,7 +144,7 @@ type WinPerfCounterInstance =
     |> Array.map (fun instance ->
       x.counter.InstanceName <- instance
       instance,
-      Float (float (x.counter.NextValue()))
+      float (x.counter.NextValue())
     )
 
   static member create(category, counter, instances : string seq, units) =
@@ -294,15 +294,10 @@ module WinPerfCounter =
   module Helpers =
 
     let toValue (pc : WinPerfCounterInstance) =
-      let message =
-        { Message.gaugeWithUnit pc.baseName pc.unit (Int64 1L) with
-            context = Map [ KnownLiterals.TagsContextName, Array [ String KnownLiterals.SuppressPointValue ] ] }
-
+      let message = Message.eventDebug (pc.baseName.ToString())
       pc.nextValues()
-      |> Array.fold (fun m (pn, vl) ->
-          let field = Field (vl, Some pc.unit)
-          m |> Message.setFieldValue pn field)
-        message
+      |> Array.fold (fun m (gaugeType, vl) ->
+         m |> Message.addGauge gaugeType (Gauge (vl, pc.unit))) message
 
     let getAllCounters () =
       Category.list ()
