@@ -8,9 +8,65 @@ open Logary.KnownLiterals
 open Logary
 
 let private sampleMessage : Message =
-  Message.eventError "this is bad"
+  Message.eventFormat (Info, "this is bad, with {1} and {0} reverse.", [| "the first value"; "the second value"|])
   |> Message.setName (PointName.ofList ["a"; "b"; "c"; "d"])
   |> Message.setNanoEpoch 3123456700L
+
+type User = 
+  {
+    id      : int 
+    name    : string
+    created : DateTime
+  }
+with
+  interface IFormattable with
+    member x.ToString (format, provider) =
+      sprintf "my id is %i and my name is %s, created => %s" x.id x.name (x.created.ToShortDateString())
+
+type Obj() =
+  member x.PropA =
+    45
+  member x.PropB =
+    raise (Exception ("Oh noes, no referential transparency here"))
+with
+  interface IFormattable with
+    member x.ToString (format, provider) = "PropA is 45 and PropB raise exn"
+
+let date20171111 =  DateTime.Parse("2017-11-11")
+let foo = { id = 999; name = "whatever"; created = date20171111}
+
+
+let complexMessage : Message =
+  let ex = exn "exception with data in it"
+  ex.Data.Add ("data 1 in exn", 1)
+  ex.Data.Add ("data foo in exn", foo)
+  ex.Data.Add (foo, foo)
+
+  let tp = (1, "two", foo)
+  let object = Obj ()
+  let scalarArr = [| box 1;box 2;box 3; box "4";box "5";box 6.0; box date20171111 |]
+  let notScalarList = [box foo; box tp]
+  let scalarKeyValueMap = [ 1,"one" ; 2, "two"] |> HashMap.ofSeq
+  let scalarKeyMap = Map [ "some user", box foo ; "some obj", box object]
+  let notScalarMap = Map [([2,"2"],["3";"4"]); ([1,"a";2,"b"],["hello";"world"])]
+
+  Message.eventFormat (Info, 
+    "default foo is {foo} here is a default {objDefault} and stringify {$objStr} and destructure {@objDestr}", 
+    [| foo; object; object; object; |])
+  |> Message.setName  (PointName.ofList ["a"; "b"; "c"; "d"])
+  |> Message.setNanoEpoch 3123456700L
+  |> Message.setContext "UserInfo" foo
+  |> Message.setContext "Some Tuple With 1 two foo" tp
+  |> Message.setContext "scalar array" scalarArr
+  |> Message.setContext "no scalar list" notScalarList
+  |> Message.setContext "simple scalar key/value map" scalarKeyValueMap
+  |> Message.setContext "just scalar key map" scalarKeyMap
+  |> Message.setContext "no scalar key/value map" notScalarMap
+  |> Message.addGauge "svc1 request per second" (Gauge(1750., Units.Scalar))
+  |> Message.addGauge "Processor.% Idle.Core 1" (Gauge(0.75, Units.Percent))
+  |> Message.addGauge "methodA" (Gauge(25000000000., Units.Scaled (Seconds, float Constants.NanosPerSecond)))
+  |> Message.addExn ex
+  |> Message.addExn (exn "another exception")
 
 [<CustomEquality;CustomComparison>]
 type KV = KV of string * obj
@@ -43,6 +99,7 @@ with
       | _ ->
         failwithf "invalid comparison %A to %A" x other
 
+// set have order
 let shouldHaveFields msg fields tip =
   msg
   |> Message.getAllFields
@@ -73,8 +130,8 @@ let tests = [
 
   testCase "StringFormatter.VerbatimNewlineTemplated.WithFields" <| fun _ ->
     skiptest ("depend on will we continue support Field, if we don't, no need test." +
-             "if we do, we can custom destructure for Field/Value type in MessageWriterModuel," +
-             "then can preserve the origin representation")
+             "if we do, we can custom destructure for Field/Value type in LiterateFormatting.MessageParts," +
+             "like what gauges do, then can preserve the origin representation")
 
     // Message.eventFormat (Info, "what's {@direction}", [|Field (String "up", None)|] )
     // |> MessageWriter.verbatimNewLine.format
@@ -85,90 +142,11 @@ let tests = [
     sampleMessage
     |> MessageWriter.levelDatetimeMessagePathNewLine.format
     |> fun actual ->
-       Expect.equal actual (
-         sprintf "E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]%s"
-           Environment.NewLine) "formatting the message LevelDatetimePathMessageNl"
-
-  testCase "StringFormatter.LevelDatetimePathMessage no exception, data" <| fun _ ->
-    sampleMessage
-    |> Message.setContextValues [("a",box "b");("a2", box 24)]
-    |> MessageWriter.levelDatetimeMessagePath.format
-    |> fun actual ->
        let expect = """
-E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]
-  context:
-    others:
-      a2 => 24
-      a => "b"
-"""
-       Expect.equal actual (expect.Trim([|'\r';'\n'|])) "formatting the message LevelDatetimePathMessage"
-
-
-  testCase "StringFormatter.LevelDatetimePathMessageNl no exception, data" <| fun _ ->
-    sampleMessage
-    |> Message.setContextValues [("a",box "b");("a2", box 24)]
-    |> MessageWriter.levelDatetimeMessagePathNewLine.format
-    |> fun actual ->
-       let expect = """
-E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]
-  context:
-    others:
-      a2 => 24
-      a => "b"
-"""
-       Expect.equal actual (expect.TrimStart([|'\r';'\n'|])) "formatting the message LevelDatetimePathMessageNl"
-
-  testCase "StringFormatter.LevelDatetimePathMessageNl no exception, data, list with map in it" <| fun _ ->
-    sampleMessage
-    |> Message.setContextValues [("a", box "b"); ("a2", box 24); ("things", box [| box 1; box 2; box (Map ["1",box "hello";"2",box 42]) |])]
-    |> MessageWriter.levelDatetimeMessagePathNewLine.format
-    |> fun actual ->
-       let expect = """
-E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]
-  context:
-    others:
-      a2 => 24
-      a => "b"
-      things => 
-        - 1
-        - 2
-        - 
-          "1" => "hello"
-          "2" => 42
-"""
-       Expect.equal actual (expect.TrimStart([|'\r';'\n'|])) "formatting the message LevelDatetimePathMessageNl"
-
-  testCase "StringFormatter.LevelDatetimePathMessageNl no exception, nested data" <| fun _ ->
-    let foo = [1;2;3;4]
-    sampleMessage
-    |> Message.setContextValues [("a", box (Map ["b", 1])); ("c", box 2);("d",box (Map [[1,2],["3";"4"];[1,2;3,4],["7";"8"]]));]
-    |> MessageWriter.levelDatetimeMessagePathNewLine.format
-    |> fun actual ->
-       let expect = """
-E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]
-  context:
-    others:
-      d => 
-        - key => 
-            - 
-              - 1
-              - 2
-          value => 
-            - "3"
-            - "4"
-        - key => 
-            - 
-              - 1
-              - 2
-            - 
-              - 3
-              - 4
-          value => 
-            - "7"
-            - "8"
-      a => 
-        "b" => 1
-      c => 2
+I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "the first value" reverse. [a.b.c.d]
+  fields:
+    0 => "the first value"
+    1 => "the second value"
 """
        Expect.equal actual (expect.TrimStart([|'\r';'\n'|])) "formatting the message LevelDatetimePathMessageNl"
 
@@ -180,60 +158,142 @@ E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]
     |> MessageWriter.levelDatetimeMessagePathNewLine.format
     |> fun actual ->
        let expect = """
-E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]
-  context:
-    others:
-      _logary.errors => 
-        - 
-          Exception {
-            Message => "Gremlings in the machinery"
-            Data => 
-            InnerException => 
-              Exception {
-                Message => "inner exception"
-                Data => 
-                InnerException => null
-                TargetSite => null
-                StackTrace => null
-                HelpLink => null
-                Source => null
-                HResult => -2146233088}
-            TargetSite => null
-            StackTrace => null
-            HelpLink => null
-            Source => null
-            HResult => -2146233088}
+I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "the first value" reverse. [a.b.c.d]
+  fields:
+    0 => "the first value"
+    1 => "the second value"
+  others:
+    _logary.errors => 
+      - 
+        Exception {
+          Message => "Gremlings in the machinery"
+          Data => 
+          InnerException => 
+            Exception {
+              Message => "inner exception"
+              Data => 
+              InnerException => null
+              TargetSite => null
+              StackTrace => null
+              HelpLink => null
+              Source => null
+              HResult => -2146233088}
+          TargetSite => null
+          StackTrace => null
+          HelpLink => null
+          Source => null
+          HResult => -2146233088}
 """
        Expect.equal actual (expect.TrimStart([|'\r';'\n'|]))
          "formatting the message LevelDatetimePathMessageNl with exception attached"
 
-  testCase "StringFormatter.LevelDatetimePathMessageNl with exception, data" <| fun _ ->
-    let e = new Exception("Gremlings in the machinery")
-    sampleMessage
-    |> Message.addExn e
-    |> Message.setContextValues [("a", box "b"); ("a2", box 24);]
+  testCase "StringFormatter.LevelDatetimePathMessageNl complex data" <| fun _ ->
+    complexMessage
     |> MessageWriter.levelDatetimeMessagePathNewLine.format
     |> fun actual ->
        let expect = """
-E 1970-01-01T00:00:03.1234567+00:00: this is bad [a.b.c.d]
-  context:
-    others:
-      _logary.errors => 
+I 1970-01-01T00:00:03.1234567+00:00: default foo is "my id is 999 and my name is whatever, created => 11/11/2017" here is a default "PropA is 45 and PropB raise exn" and stringify "Logary.Tests.Formatting+Obj" and destructure Obj { PropA: 45, PropB: "The property accessor threw an exception:Exception" } Gauges: [Processor.% Idle.Core 1: 75 %, svc1 request per second: 1.75 k, methodA took 25.00 s to execute] [a.b.c.d]
+  fields:
+    objDefault => "PropA is 45 and PropB raise exn"
+    foo => "my id is 999 and my name is whatever, created => 11/11/2017"
+    objStr => "Logary.Tests.Formatting+Obj"
+    objDestr => 
+      Obj {
+        PropA => 45
+        PropB => "The property accessor threw an exception:Exception"}
+  gauges:
+    Processor.% Idle.Core 1 => "75.000000 %"
+    svc1 request per second => "1.750000 k"
+    methodA => "25.000000 s"
+  others:
+    UserInfo => 
+      User {
+        id => 999
+        name => "whatever"
+        created => 11/11/2017 12:00:00 AM}
+    simple scalar key/value map => 
+      1 => "one"
+      2 => "two"
+    no scalar key/value map => 
+      - key => 
+          - [1, "a"]
+          - [2, "b"]
+        value => ["hello", "world"]
+      - key => 
+          - [2, "2"]
+        value => ["3", "4"]
+    _logary.errors => 
+      - 
+        Exception {
+          Message => "another exception"
+          Data => 
+          InnerException => null
+          TargetSite => null
+          StackTrace => null
+          HelpLink => null
+          Source => null
+          HResult => -2146233088}
+      - 
+        Exception {
+          Message => "exception with data in it"
+          Data => 
+            "data 1 in exn" => 1
+            "data foo in exn" => 
+              User {
+                id => 999
+                name => "whatever"
+                created => 11/11/2017 12:00:00 AM}
+            - key => 
+                User {
+                  id => 999
+                  name => "whatever"
+                  created => 11/11/2017 12:00:00 AM}
+              value => 
+                User {
+                  id => 999
+                  name => "whatever"
+                  created => 11/11/2017 12:00:00 AM}
+          InnerException => null
+          TargetSite => null
+          StackTrace => null
+          HelpLink => null
+          Source => null
+          HResult => -2146233088}
+    Some Tuple With 1 two foo => 
+      - 1
+      - "two"
+      - 
+        User {
+          id => 999
+          name => "whatever"
+          created => 11/11/2017 12:00:00 AM}
+    just scalar key map => 
+      "some obj" => 
+        Obj {
+          PropA => 45
+          PropB => "The property accessor threw an exception:Exception"}
+      "some user" => 
+        User {
+          id => 999
+          name => "whatever"
+          created => 11/11/2017 12:00:00 AM}
+    no scalar list => 
+      - 
+        User {
+          id => 999
+          name => "whatever"
+          created => 11/11/2017 12:00:00 AM}
+      - 
+        - 1
+        - "two"
         - 
-          Exception {
-            Message => "Gremlings in the machinery"
-            Data => 
-            InnerException => null
-            TargetSite => null
-            StackTrace => null
-            HelpLink => null
-            Source => null
-            HResult => -2146233088}
-      a2 => 24
-      a => "b"
+          User {
+            id => 999
+            name => "whatever"
+            created => 11/11/2017 12:00:00 AM}
+    scalar array => [1, 2, 3, "4", "5", 6, 11/11/2017 12:00:00 AM]
 """
-       Expect.equal actual (expect.TrimStart([|'\r';'\n'|]))
-         "formatting the message LevelDatetimePathMessageNl with exception attached"
+       Expect.equal actual (expect.TrimStart([|'\r';'\n'|])) "formatting complex message LevelDatetimePathMessageNl"
 
   testCase "``JsonFormatter has no newline characters``" <| fun _ ->
     skiptest "use fspickler, maybe should support in another project inherit MessageWriter with fspickler as its dependency"

@@ -69,6 +69,13 @@ type Arbs =
       | Scaled (x, f) -> isNormal f
       | _ -> true)
 
+  static member Guage() =
+    let isNormal f =
+         not <| Double.IsInfinity f
+      && not <| Double.IsNaN f
+    Arb.Default.Derive()
+    |> Arb.filter (function | Gauge (f, units) -> isNormal f)
+
 let fsCheckConfig =
   { Config.Default with
       Arbitrary = [ typeof<Arbs> ]
@@ -142,7 +149,6 @@ let tests =
         KnownLiterals.ServiceContextName, "_logary.service"
         KnownLiterals.HostContextName, "_logary.host"
         KnownLiterals.TagsContextName, "_logary.tags"
-        KnownLiterals.GaugeTag, "_logary.gauge"
 
         KnownLiterals.DefaultGaugeType, "default-gauge"
       ]
@@ -527,12 +533,11 @@ let tests =
         let saved = gaugeMessage "gaugeTest" g |> tryGetGauge "gaugeTest"
         Expect.equal saved (Some g) "Should be same"
 
-      testCase "getAllGauges & hasGauge" <| fun _ ->
+      testCase "getAllGauges" <| fun _ ->
         let names = Arb.generate<NonEmptyString> |> Gen.sample 0 5 |> List.distinct |> List.map (fun (NonEmptyString name) -> name)
         let msg = names |> List.fold (fun m name -> m |> addGauge name (Gauge (1., Units.Scalar))) (eventInfo "")
         let c = msg |> getAllGauges |> Seq.length
         Expect.equal c names.Length "Should get same length after add gauges"
-        Expect.isTrue (hasGauge msg) "Should have gauge"
 
       testCase "getAllTags & hasTag" <| fun _ ->
         let tags = Arb.generate<NonEmptyString> |> Gen.sample 0 5 |> List.distinct |> List.map (fun (NonEmptyString name) -> name)
@@ -569,7 +574,6 @@ let tests =
         let (res, msg) = timeFun 100
         Expect.equal res 100 "Should have result"
 
-        Expect.isTrue (hasGauge msg) "Should have guage"
         let g = tryGetGauge name msg
         Expect.isSome g "Should have guage"
         match g with
@@ -581,7 +585,6 @@ let tests =
 
         let test res msg =
           Expect.equal res 100 "Should have result"
-          Expect.isTrue (hasGauge msg) "Should have guage"
           let g = tryGetGauge name msg
           Expect.isSome g "Should have guage"
           match g with

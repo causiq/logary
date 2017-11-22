@@ -272,18 +272,19 @@ module LiterateFormatting =
 
             match units with
             | Scaled (Seconds, scale) when scale = float Constants.NanosPerSecond ->
-              let format = if scaledValue < 1000. then "N0" else "N2"
+              let format = if value < 1000. then "N0" else "N2"
               yield gaugeType, NameSymbol
               yield " took ", Subtext
               yield scaledValue.ToString(format, pvd), NumericSymbol
               if not <| String.IsNullOrEmpty unitsFormat then
                 yield " ", Subtext
                 yield unitsFormat, Text
-              yield " to execute.", Subtext
+              yield " to execute", Subtext
             | _ ->
               let valueFormated = formatWithProvider pvd scaledValue null
               yield gaugeType, Subtext
-              yield " : ", Punctuation
+              yield ":", Punctuation
+              yield " ", Subtext
               yield valueFormated, NumericSymbol
               if not <| String.IsNullOrEmpty unitsFormat then
                 yield " ", Subtext
@@ -317,7 +318,7 @@ module LiterateFormatting =
         let tplByFields =
           message |> Message.getAllFields |> tokeniseTemplateByFields pvd parsedTemplate destr maxDepth
         if List.isEmpty tplByGauges then tplByFields
-        else seq { yield! tplByFields; yield " ", Text; yield! tplByGauges}
+        else seq { yield! tplByFields; yield " ", Subtext; yield! tplByGauges}
 
     let tokeniseContext (pvd: IFormatProvider) (nl: string) (destr: Destructurer) maxDepth message =
       let padding = new String (' ', 4)
@@ -404,6 +405,14 @@ module internal CustomFsMessageTemplates =
   open System.Reflection
   open Microsoft.FSharp.Reflection
 
+  let isDictionable (t: Type) =
+    t.GetInterfaces()
+    |> Seq.exists (fun iface -> 
+       if iface.IsGenericType && iface.GetGenericTypeDefinition() = typedefof<System.Collections.Generic.IEnumerable<_>> then
+         let elementType = iface.GetGenericArguments().[0]
+         elementType.IsGenericType && elementType.GetGenericTypeDefinition() = typedefof<System.Collections.Generic.KeyValuePair<_,_>>
+       else iface = typeof<System.Collections.IDictionary>)
+
   let destructureFSharpTypes (req: DestructureRequest) : TemplatePropertyValue =
     let value = req.Value
     match req.Value.GetType() with
@@ -415,14 +424,11 @@ module internal CustomFsMessageTemplates =
           |> Seq.toList
       SequenceValue tupleValues
 
-    | t when t.IsConstructedGenericType && t.GetGenericTypeDefinition() = typedefof<List<_>> ->
+    | t when t.IsConstructedGenericType && t.GetGenericTypeDefinition() = typedefof<FSharp.Collections.List<_>> ->
       let objEnumerable = value :?> System.Collections.IEnumerable |> Seq.cast<obj>
       SequenceValue(objEnumerable |> Seq.map req.TryAgainWithValue |> Seq.toList)
 
-    | t when t.IsConstructedGenericType
-      && (t.GetGenericTypeDefinition() = typedefof<Map<_,_>>
-          || (t.BaseType.IsConstructedGenericType
-              && t.BaseType.GetGenericTypeDefinition() = typedefof<HashMap<string,_>>)) ->
+    | t when isDictionable t ->
 
       let keyProp, valueProp = ref Unchecked.defaultof<PropertyInfo>, ref Unchecked.defaultof<PropertyInfo>
       let getKey o = if isNull !keyProp  then keyProp := o.GetType().GetRuntimeProperty("Key")

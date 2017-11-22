@@ -495,7 +495,7 @@ module Destructure =
             DictionaryValue skvps
         | e -> SequenceValue(e |> Seq.cast<obj> |> Seq.map r.TryAgainWithValue |> Seq.toList)
 
-    let inline scalarStringCatchAllDestr (r:DestructureRequest) = ScalarValue (r.Value.ToString())
+    let inline scalarStringCatchAllDestr (r:DestructureRequest) = ScalarValue (r.Value)
 
     let inline isPublicInstanceReadProp (p:PropertyInfo) =
         p.CanRead && p.GetMethod.IsPublic && not (p.GetMethod.IsStatic) &&

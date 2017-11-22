@@ -230,13 +230,8 @@ module Message =
   [<CompiledName "AddGauge">]
   let addGauge gaugeType (gauge : Gauge) message =
     let gaugeTypeName = KnownLiterals.GaugeTypePrefix + gaugeType 
-    message
-    |> tag KnownLiterals.GaugeTag
-    |> setContext gaugeTypeName gauge
+    message |> setContext gaugeTypeName gauge
 
-  [<CompiledName "HasGauge">]
-  let hasGauge message =
-    message |> hasTag KnownLiterals.GaugeTag
 
   [<CompiledName "TryGetGauge">]
   let tryGetGauge gaugeType message : Gauge option =
