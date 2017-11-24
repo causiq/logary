@@ -6,15 +6,28 @@
 namespace Logary.Configuration
 
 open System
-open System.Reflection
 open System.Threading.Tasks
 open System.Runtime.CompilerServices
 open Hopac
-open Hopac.Infixes
-open NodaTime
 open Logary
 open Logary.CSharp
 open Logary.Configuration
+
+/// This is useful to implement if you want add-on assemblies to be able to
+/// extend your builder. Then you just implement an interface that also
+/// inherits this interface and makes your extensions to the target configuration
+/// be extension methods in the extending assembly, calling this method to
+/// read the conf, and then returning the modified configuration to the
+/// builder by other means (e.g. by calling a method on the 'intermediate')
+/// interface (that is in the core target builder configuration). Since the
+/// builder knows its callback, it can implement this 'intermediate' interface
+/// with a method taking the new configuration (that was read from and mutated
+/// from here).
+type ConfigReader<'a> =
+  /// an accessor for the internal state; don't use unless you know what you're
+  /// doing! Used by the migrations to get the current configuration. Allows you
+  /// to modify or use the configuration.
+  abstract ReadConf : unit -> 'a
 
 type internal ConfBuilderTarget<'T when 'T :> Target.SpecificTargetConf> =
   { parent   : ConfBuilder        // logary that is being configured
@@ -107,11 +120,9 @@ and ConfBuilder(conf) =
     // referentially transparent
     let targetConf = configurator.Invoke(!contRef) :?> ConfBuilderTarget<'T>
 
-    //conf
-    //|> Config.rule targetConf.tr
-    //|> Config.target (targetConf.tcSpecific.Value.Build name)
-    //|> ConfBuilder
-    failwith "TODO!!"
+    conf
+    |> Config.target (targetConf.specific.Value.Build name)
+    |> ConfBuilder
 
 /// Extensions to make it easier to construct Logary
 [<Extension; AutoOpen>]

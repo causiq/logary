@@ -1,5 +1,5 @@
 REDIRECTS: ON
-FRAMEWORK: NET45, NET452, NET461
+RESTRICTION: || (== net45) (== net452) (== net461)
 NUGET
   remote: https://www.nuget.org/api/v2
     Aether (8.1.2)
@@ -36,6 +36,9 @@ NUGET
       FSharp.Core (>= 3.1.2.5)
     FSharp.Core (4.0.0.1) - redirects: force
     FsPickler (3.2)
+    FsPickler.Json (3.2)
+      FsPickler (3.2)
+      Newtonsoft.Json (>= 6.0.5)
     FsSql (2.1)
       FSharp.Core (>= 3.1.2.1)
     fszmq (12.2.1)
@@ -125,16 +128,17 @@ GITHUB
   remote: eiriktsarpalis/TypeShape
     src/TypeShape/TypeShape.fs (59e0226d2ba30e013c1969c7a476485724b15718)
   remote: haf/YoLo
-    YoLo.fs (76e16a4c9338c2f04cb067add0e3a33b42a0f396)
+    YoLo.fs (eb8f7b984c0c9f390d88a4f6dd211e45451c2156)
   remote: logary/RingBuffer
-    RingBuffer.fs (4557d607737e748b54eb6de3ec5e5cd02247b2a5)
+    RingBuffer.fs (0fa46d2ed3d92679517c942240a1dc674767e69e)
+      Expecto
       Hopac
   remote: logary/logary
-    src/Logary.CSharp.Facade/Facade.cs (ca0cb10dfdb443423e22bbad8eb8ec0f713a72cf)
-    src/Logary.Facade/Facade.fs (ca0cb10dfdb443423e22bbad8eb8ec0f713a72cf)
+    src/Logary.CSharp.Facade/Facade.cs (fee70647099053cf08db19879288a711643ccc0c)
+    src/Logary.Facade/Facade.fs (fee70647099053cf08db19879288a711643ccc0c)
 GROUP Examples
 REDIRECTS: ON
-FRAMEWORK: >= NET45
+RESTRICTION: >= net45
 NUGET
   remote: https://www.nuget.org/api/v2
     elmah.io.client (2.0.29)

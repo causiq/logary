@@ -7,7 +7,6 @@ namespace Logary
 open System
 open Hopac
 open Hopac.Infixes
-open NodaTime
 open Logary
 open Logary.Message
 open Logary.Internals
@@ -17,7 +16,7 @@ open Logary.Internals
 type TargetConf = // formerly TargetUtils
   { name       : string
     rules      : Rule list
-    bufferSize : uint32
+    bufferSize : uint16
     /// Supervision policy
     policy     : Policy
     middleware : Middleware list
