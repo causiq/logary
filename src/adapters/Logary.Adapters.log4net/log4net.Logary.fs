@@ -12,6 +12,7 @@ open Logary
 
 module internal Impl =
 
+  // maybe no need memoize, because the cost of creat a logger is small now
   let memoize<'TIn, 'TOut> pDur (f : 'TIn -> 'TOut) : ('TIn -> 'TOut) =
     let locker = obj()
     let indefinately = TimeSpan.MaxValue = pDur
@@ -61,6 +62,21 @@ module LogaryHelpers =
     |> Seq.map (fun de -> string de.Key, de.Value)
     |> Seq.fold (fun m (key, value) -> m |> Map.add key value) state
 
+  let formatCodeInfo (codeLocation:LocationInfo) =
+    if (isNull codeLocation) || (isNull codeLocation.StackFrames)  then String.Empty
+    else
+      let sb = Text.StringBuilder();
+
+      codeLocation.StackFrames
+      |> Array.iteri (fun index frame ->
+          if index = 0 then
+              sb.AppendLine(frame.FullInfo) |> ignore
+          else
+            sb.AppendFormat("\tfrom {0}{1}",frame.FullInfo,Environment.NewLine) |> ignore
+      )
+
+      sb.ToString()
+
 open LogaryHelpers
 
 type LogaryLog4NetAppender() =
@@ -74,10 +90,11 @@ type LogaryLog4NetAppender() =
   override x.Append (evt : LoggingEvent) =
     let msg = base.RenderLoggingEvent(evt)
     let ex = match evt.ExceptionObject with null -> None | e -> Some e
+    let codeLocation = formatCodeInfo evt.LocationInformation
     let data =
       [ "app_domain",       box evt.Domain
         "thread_principal", box evt.Identity
-        "code_location",    box evt.LocationInformation
+        "code_location",    box codeLocation
         "thread_name",      box evt.ThreadName
         "user",             box evt.UserName ]
       |> Map.ofList
@@ -85,7 +102,7 @@ type LogaryLog4NetAppender() =
     let data' = data |> LogaryHelpers.addProperties evt.Properties
 
     Message.event (LogaryHelpers.mapLogLevel evt.Level) msg
-    |> Message.setFieldsFromMap data'
+    |> Message.setContextFromMap data' // set to context, fields is used for rendering template
     |> Message.setName (PointName.parse evt.LoggerName)
     |> (ex |> Option.fold (fun s -> Message.addExn) id)
     |> Message.setUTCTicks (evt.TimeStamp.ToUniversalTime()).Ticks
