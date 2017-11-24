@@ -9,12 +9,11 @@ open NodaTime
 open Hopac
 open Logary
 open Logary.Configuration
-open Logary.Metric
 open Logary.Internals
 open Logary.Targets
 
 let runtime =
-  RuntimeInfo.create "tests"
+  RuntimeInfo.create "tests" "localhost"
 
 /// this one is a per-process db
 [<Literal>]
@@ -29,15 +28,13 @@ let private inMemConnStrEmpheral = "FullUri=file::memory:"
 module SQLiteDB =
 
   let private consoleAndDebugger =
-    let targets =
-      [ Console.create Console.empty "console"
-        Debugger.create Debugger.empty "debugger" ]
-      |> List.map (Target.init runtime)
-      |> Job.conCollect
-      |> run
-
-    targets |> Seq.iter (fun target -> target.server (fun _ -> Job.result ()) None |> start)
-    InternalLogger.create Info targets
+    let ilogger = InternalLogger.create runtime |> run
+    [ Console.create Console.empty "console"
+      Debugger.create Debugger.empty "debugger" ]
+    |> List.map (fun conf -> InternalLogger.add conf ilogger)
+    |> Job.conIgnore
+    |> run
+    ilogger :> Logger
 
   open System
   open Logary.DB.Migrations
@@ -116,7 +113,7 @@ let targetTests =
 
   let start connFac =
     let conf = DB.DBConf.create connFac
-    Target.init runtime (DB.create conf "db-target")
+    Target.create runtime (DB.create conf "db-target")
     |> run
 
   testList "db target" [
@@ -186,7 +183,7 @@ let targetTests =
 
     testCase "initialise and metric" <| fun _ ->
       let target = start (fun () -> SQLiteDB.openConn inMemConnStrEmpheral)
-      try Message.gauge (PointName.parse "app.signin") (Int64 3L) |> Target.log target |> Job.Ignore |> run
+      try Message.gauge "app.signin" 3. |> Target.log target |> Job.Ignore |> run
       finally stop target
 
     testCase "metric and read back returns result" <| fun _ ->
@@ -201,8 +198,8 @@ let targetTests =
 
       // given
       let target = start (fun () -> db)
-      Message.gauge (PointName.parse "web01.app.signin") (Int64 3L) |> Target.log target |> Job.Ignore |> run
-      Message.gauge (PointName.parse "web02.app.signin") (Int64 6L) |> Target.log target |> Job.Ignore |> run
+      Message.gauge "web01.app.signin" 3. |> Target.log target |> Job.Ignore |> run
+      Message.gauge "web02.app.signin" 6. |> Target.log target |> Job.Ignore |> run
       flush target
 
       // then
