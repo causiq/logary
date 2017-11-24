@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "metrics/Logary.Metrics.WinPerfCounters"
+		},
+		{
+			"path": "tests/Logary.Metrics.WinPerfCounters.Tests"
 		}
 	],
 	"settings": {}
