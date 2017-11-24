@@ -29,7 +29,7 @@ type internal Adapter(logger : Logger) =
 
     | o ->
       Message.event Info "Unknown Data from log4net"
-      |> Message.setFieldFromObject "data" o
+      |> Message.setContext "data" o
       |> Message.setName logger.name
 
   let log =
@@ -61,25 +61,29 @@ type internal Adapter(logger : Logger) =
                (cb : Action<FormatMessageHandler>)
                (ex : exn option)
                level =
-    if logger.level >= level then
-      cb.Invoke(
-        FormatMessageHandler(
-          fun format args ->
-            let res = fmt formatProvider format args
-            res
-            |> Message.event level
-            |> (ex |> Option.fold (fun s -> Message.addExn) id)
-            |> log
-            res))
+    cb.Invoke(
+      FormatMessageHandler(
+        fun format args ->
+          let res = fmt formatProvider format args
+          res
+          |> Message.event level
+          |> (ex |> Option.fold (fun s -> Message.addExn) id)
+          |> log
+          res))
 
   // fucking too big interface
   interface ILog with
-    member x.IsTraceEnabled = logger.level >= Verbose
-    member x.IsDebugEnabled = logger.level >= Debug
-    member x.IsInfoEnabled = logger.level >= Info
-    member x.IsWarnEnabled = logger.level >= Warn
-    member x.IsErrorEnabled = logger.level >= Error
-    member x.IsFatalEnabled = logger.level >= Fatal
+
+    // in logary, we use processing pipe to decide how to process a Log Message, no level limit on logger
+    // so that when we logging some msg (log), we don't need to decide which logger we should use, 
+    // we just create a generic one, or the one in its datapoint which depend on its class name.
+    // and the pipes will decide how to handle this msg (log), send to some targets , or just drop it.
+    member x.IsTraceEnabled = true
+    member x.IsDebugEnabled = true
+    member x.IsInfoEnabled =  true
+    member x.IsWarnEnabled =  true
+    member x.IsErrorEnabled = true
+    member x.IsFatalEnabled = true
 
     member x.Trace (message : obj) = write message Verbose
     member x.Trace (message : obj, ex) = write' message Verbose ex
