@@ -108,6 +108,14 @@ type Ticker<'state,'t,'r> (initialState:'state) =
     loop () |> Job.start
     >>-. cancellation
 
+module Ticker =
+  let create (initialState: 's) (folder: 's -> 't -> 's) (handleTick: 's -> 's * 'r) =
+    {
+      new Ticker<'s,'t,'r> (initialState) with
+        member this.Folder state item = folder state item
+        member this.HandleTick state = handleTick state
+    }
+
 type BufferTicker<'t> () =
   inherit Ticker<ResizeArray<'t>,'t,ResizeArray<'t>>(ResizeArray())
     override this.Folder state item =

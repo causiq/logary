@@ -5,12 +5,6 @@
 		},
 		{
 			"path": "tests/Logary.Tests"
-		},
-		{
-			"path": "metrics/Logary.Metrics.WinPerfCounters"
-		},
-		{
-			"path": "tests/Logary.Metrics.WinPerfCounters.Tests"
 		}
 	],
 	"settings": {}

@@ -19,6 +19,8 @@
 
   message has the log level info, targets have the rules info, before putting msg to target, apply rules on message to decide if really send to target.
 
+  in logary, we use processing pipe to decide how to process a Log Message, no level limit on logger. so that when we logging some msg (log), we don't need to decide which logger we should use, we just create a generic one, or the one in its datapoint which depend on its class name, and the pipes will decide how to handle this msg (log), send to some targets , or just drop it.
+
 - redefined Message
 
   The aim here is to normalise the Gauge/Derived/Message semantics into a single semantic of 'things computed from events from your app'.

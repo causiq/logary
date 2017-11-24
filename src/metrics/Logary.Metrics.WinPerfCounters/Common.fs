@@ -123,19 +123,8 @@ let byCategory pcc =
   |> Option.map (fun (pcc, instances) -> WinPerfCounter.list pcc instances)
 
 
-type WPCTicker (counters : WinPerfCounterInstance []) =
-  inherit Ticker<WinPerfCounterInstance [], Message, Message []>(counters)
-    override this.Folder wpcs item =
-      // since wpc autogenerate datas, so item will not used for now
-      // but can be anything from up pipes, 
-      // like receive an message then use its info for generate new msg when handleTick
-      wpcs
-
-    override this.HandleTick wpcs =
-      wpcs, wpcs |> Array.map Helpers.toValue
-
 let ofCounters (counters : WinPerfCounterInstance []) =
-  WPCTicker (counters)
+  Ticker.create counters (fun counters item -> counters) (fun counters -> counters, counters |> Array.map Helpers.toValue)
 
 /// The "GPU" category is installed by the nVIDIA drivers
 let tryGPUMetric _ =
