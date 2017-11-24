@@ -18,7 +18,7 @@ module internal Impl =
   let handleInternalException logger (format : string) args (stackTrace : StackTrace) =
     Logger.logSimple logger (
       eventFormat (Warn, format, args)
-      |> setFieldFromObject "stackFrames" (stackTrace.GetFrames())
+      |> setContext "stackFrames" (stackTrace.GetFrames())
     )
 
   let fmt (internalLogger : Logger) formatProvider format (args : obj []) =
