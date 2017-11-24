@@ -5,12 +5,15 @@ open System.Data
 open System.Net
 open Hopac
 open Hopac.Infixes
-open FsSql
 open Logary.Internals
+open Logary.Configuration
+open Logary.Configuration.Target
 open Logary.Message
-open Logary.Target
-open Logary.Serialisation.Chiron
 open Logary
+open FsSql.Logging.LogLine
+open MBrace.FsPickler.Json
+
+let jsonSerializer = FsPickler.CreateJsonSerializer(indent = false, omitHeader = true)
 
 type DBConf =
   { connectionFactory : unit -> IDbConnection
@@ -35,43 +38,41 @@ module internal Impl =
 
   let printSchema = function
     | Some (s : string) ->
-      sprintf "%s." s
+      Printf.sprintf "%s." s
 
     | None ->
       String.Empty
 
-  let remapFields fields =
-    fields
-    |> Seq.map (function KeyValue(key, value) -> PointName.format key, value)
-    |> Map.ofSeq
-
   let sharedParameters (m : Message) =
     [ P("@host", Dns.GetHostName())
       P("@name", m.name)
-      P("@fields", remapFields m.fields |> Json.serialize |> Json.format)
-      P("@context", m.context |> Json.serialize |> Json.format)
+      P("@fields", m |> Message.getAllFields |> jsonSerializer.PickleToString)
+      P("@context", m.context  |> jsonSerializer.PickleToString)
       P("@epoch", m.timestamp)
       P("@level", m.level.toInt ()) ]
 
-  let insertGauge schema (m : Message) (v : Value) connMgr =
+  let insertGauge schema (m : Message) (v : float) connMgr =
     Sql.execNonQuery connMgr
-      (sprintf "INSERT INTO %sGauges (Value, Host, Name, Fields, Context, EpochNanos, Level)
+      (Printf.sprintf "INSERT INTO %sGauges (Value, Host, Name, Fields, Context, EpochNanos, Level)
        VALUES (@value, @host, @name, @fields, @context, @epoch, @level)" (printSchema schema))
-      [ yield P("@value", Value.toDouble v)
+      [ yield P("@value", v)
         yield! sharedParameters m ]
-
-  let insertGaugeTx schema m v =
-    insertGauge schema m v |> txn
 
   let insertEvent schema (m : Message) (template : string) connMgr =
     Sql.execNonQuery connMgr
-      (sprintf "INSERT INTO %sEvents (Host, Message, Data, Path, EpochTicks, Level, Exception, Tags)
+      (Printf.sprintf "INSERT INTO %sEvents (Host, Message, Data, Path, EpochTicks, Level, Exception, Tags)
        VALUES (@host, @message, @data, @path, @epoch, @level, @exception, @tags)" (printSchema schema))
       [ yield P("@template", template)
         yield! sharedParameters m ]
 
-  let insertEventTx schema message template =
-    insertEvent schema message template |> txn
+  let insertMessage schema message connMgr =
+    let (Event template) = message.value
+    let tplCount = insertEvent schema message template connMgr 
+    let gaugesCount = 
+      message 
+      |> Message.getAllGauges
+      |> Seq.sumBy (fun (gaugeType, Gauge(value,units)) -> insertGauge schema message value connMgr)
+    tplCount + gaugesCount
 
   let ensureOpen (c : IDbConnection) =
     match c.State with
@@ -90,9 +91,7 @@ module internal Impl =
     | Tx.Failed ex -> logger.error (eventX "Insert failed" >> addExn ex)
 
   let loop (conf : DBConf)
-           (svc: RuntimeInfo)
-           (requests : RingBuffer<_>)
-           (shutdown : Ch<_>) =
+           (svc : RuntimeInfo, api : TargetAPI)  =
 
     let logger =
       let pn = PointName [| "Logary"; "DB"; "loop" |]
@@ -107,35 +106,28 @@ module internal Impl =
 
     and running state : Job<_> =
       Alt.choose [
-        shutdown ^=> fun ack ->
+        api.shutdownCh ^=> fun ack ->
           job {
             do! Job.Scheduler.isolate <| fun _ ->
-              Try.safe "DB target disposing connection"
-                       svc.logger
-                       (state :> IDisposable).Dispose
-                       ()
+              try
+                (state :> IDisposable).Dispose ()
+              with e ->
+                Message.eventError "DB target disposing connection"
+                |> Message.addExn e
+                |> Logger.logSimple svc.logger
             do! ack *<= ()
           }
 
-        RingBuffer.take requests ^=> function
+        RingBuffer.take api.requests ^=> function
           | Log (message, ack) ->
             let insert =
-              match message.value with
-              | Event template ->
-                insertEventTx conf.schema message template
-
-              | Gauge (value, units) ->
-                insertGaugeTx conf.schema message value
-
-              | Derived (value, units) ->
-                insertGaugeTx conf.schema message value
-
+              insertMessage conf.schema message |> txn
             Job.Scheduler.isolate (fun _ -> execInsert logger insert state.connMgr)
             >>=. running state
 
           | Flush (ackCh, nack) ->
             job {
-              do! Ch.give ackCh () <|> nack
+              do! IVar.fill ackCh () 
               return! running state
             }
 
@@ -144,7 +136,7 @@ module internal Impl =
     init ()
 
 /// Create a new SqlServer target configuration.
-let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
+let create conf = TargetConf.createSimple (Impl.loop conf)
 
 /// C# interop: Create a new SqlServer target configuration.
 [<CompiledName("Create")>]
@@ -153,8 +145,8 @@ let createSimple (conf, name) = create conf name
 /// In this step you have finished configuring all required things for the
 /// DB and can call Done() to complete the configuration.
 type ThirdStep =
-  inherit FactoryApi.ConfigReader<DBConf>
-  abstract Done : DBConf -> FactoryApi.TargetConfBuild<Builder>
+  inherit ConfigReader<DBConf>
+  abstract Done : DBConf -> TargetConfBuild<Builder>
 
 /// In this step you need to decide whether you want to use a schema for your
 /// metrics and/or log lines tables.
@@ -167,9 +159,9 @@ and SecondStep =
   abstract Schema : string -> ThirdStep
 
 /// Use with LogaryFactory.New( s => s.Target<Logary.Target.DB.Builder>() )
-and Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+and Builder(conf, callParent : ParentCallback<Builder>) =
 
-  new(callParent : FactoryApi.ParentCallback<_>) =
+  new(callParent : ParentCallback<_>) =
     let conf = DBConf.create (fun () -> failwith "inner build error")
     Builder(conf, callParent)
 
@@ -195,8 +187,8 @@ and Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
 
   // this builder is extended with Migrations to optionally ensure the schemas
   // are their latest versions at start
-  interface FactoryApi.ConfigReader<DBConf> with
+  interface ConfigReader<DBConf> with
     member x.ReadConf () = conf
 
-  interface FactoryApi.SpecificTargetConf with
+  interface SpecificTargetConf with
     member x.Build name = create conf name
