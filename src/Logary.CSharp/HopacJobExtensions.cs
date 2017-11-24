@@ -15,7 +15,7 @@ namespace Logary
         /// </summary>
         public static Task<T> ToTask<T>(this Job<T> job)
         {
-            return CSharp.CSharp.ToTask(job);
+            return Logary.CSharp.Job.ToTask(job);
         }
     }
 }

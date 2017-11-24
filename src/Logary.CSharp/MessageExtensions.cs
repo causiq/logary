@@ -37,9 +37,9 @@ namespace Logary
         /// <summary>
         /// Add the key-value pairs to the data
         /// </summary>
-        public static Message SetFieldsFromObject(this Message msg, IEnumerable<KeyValuePair<string, Field>> fields)
+        public static Message SetFieldsFromObject(this Message msg, IEnumerable<KeyValuePair<string, object>> fields)
         {
-             return MessageModule.SetFieldsFromObject(fields.Select(kv => Tuple.Create(PointNameModule.Parse(kv.Key), kv.Value)), msg);
+             return MessageModule.SetFieldsFromSeq(fields.Select(kv => Tuple.Create(kv.Key, kv.Value)), msg);
         }
 
         /// <summary>
@@ -53,7 +53,7 @@ namespace Logary
         /// <summary>
         /// Set the Message's timestamp.
         /// </summary>
-        public static Message SetTimestamp(this Message msg, Instant timestamp)
+        public static Message SetTimestamp(this Message msg, NodaTime.Instant timestamp)
         {
             return MessageModule.SetTicksEpoch(timestamp.Ticks, msg);
         }
@@ -63,7 +63,7 @@ namespace Logary
         /// </summary>
         public static Message SetTimestamp(this Message msg, System.DateTimeOffset timestamp)
         {
-            return SetTimestamp(msg, Instant.FromDateTimeOffset(timestamp));
+            return SetTimestamp(msg, NodaTime.Instant.FromDateTimeOffset(timestamp));
         }
 
         /// <summary>
@@ -71,9 +71,9 @@ namespace Logary
         /// </summary>
         /// <returns>The timestamp.</returns>
         /// <param name="msg">Message.</param>
-        public static Instant GetTimestamp(this Message msg)
+        public static NodaTime.Instant GetTimestamp(this Message msg)
         {
-            return Instant.FromTicksSinceUnixEpoch(msg.timestampTicks);
+            return NodaTime.Instant.FromTicksSinceUnixEpoch(msg.timestampTicks);
         }
 
         /// <summary>
@@ -95,7 +95,7 @@ namespace Logary
         /// <returns>The context values.</returns>
         /// <param name="message">Message to add the contxt values to.</param>
         /// <param name="values">Values to add.</param>
-        public static Message SetContextValues(this Message message, params Tuple<string, Value>[] values)
+        public static Message SetContextValues(this Message message, params Tuple<string, object>[] values)
         {
             return MessageModule.SetContextValues(values, message);
         }

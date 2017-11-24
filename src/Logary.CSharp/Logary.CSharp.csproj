@@ -36,7 +36,6 @@
     <Compile Include="AssemblyVersionInfo.cs" />
     <Compile Include="HopacJobExtensions.cs" />
     <Compile Include="MessageExtensions.cs" />
-    <Compile Include="PointValueExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="LogManagerExtensions.cs" />
     <Compile Include="LoggerExtensions.cs" />

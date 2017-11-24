@@ -26,7 +26,7 @@ namespace Logary
         /// During normal operation this call should be 'fairly' quick, but if the targets are blocked it may time
         /// some serious amount of time.
         /// </summary>
-        public static Task FlushPending(this LogManager logManager, Duration waitTime)
+        public static Task<FlushInfo> FlushPending(this LogManager logManager, Duration waitTime)
         {
             return logManager.flushPending(waitTime).ToTask();
         }
