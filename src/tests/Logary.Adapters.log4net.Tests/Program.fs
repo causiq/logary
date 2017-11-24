@@ -10,44 +10,41 @@ open log4net.Appender
 open NodaTime
 open Expecto
 open Hopac
-open Hopac.Infixes
 open Logary
-open Logary.Target
-open Logary.Internals
-open Logary.Targets.TextWriter
+open Logary.Targets
 open Logary.Configuration
 
-let textWriter () =
-  let sb = new StringBuilder()
-  new StringWriter(sb)
+let buildTextWriteTarget name =
+  let (out, error) = (new StringWriter (), new StringWriter ())
+  let twconf = TextWriter.TextWriterConf.create (out, error)
+  let twTargetConf = TextWriter.create twconf name
+  (out, error, twTargetConf)
 
-let withLogary f =
-  let out, err = textWriter (), textWriter ()
+let buildLogManager () = job {
+  let svc = "svc"
+  let host = "localhost"
+  let tname = "4test"
+  let (out, error, twTargetConf) = buildTextWriteTarget tname
+  // let iloggerConf = ILogger.Targets [ twTargetConf ]
+  let processing =
+    Events.stream
+    |> Events.subscribers [
+      Events.events |> Events.sink [tname]
+    ]
+    |> Events.toProcessing
 
-  let target = confTarget "cons" (create (TextWriterConf.create(out, err)))
 
-  let rule = Rule.createForTarget "cons"
-
-  let logary =
-    confLogary "tests"
-    |> withRule rule
-    |> withTarget target
-    |> Config.validate
-    |> runLogary
-    |> run
-
-  f logary out err
-
-let finaliseLogary = Config.shutdownSimple >> fun a ->
-  let state = run a
-  Expect.equal state.successful true "Finalise should always work" 
-
-let finaliseTarget t = Target.shutdown t |> fun a ->
-  let acks = a ^-> TimeoutResult.Success <|> timeOutMillis 1000 ^->. TimedOut
-             |> run
-  match acks with
-  | TimedOut -> Tests.failtestf "finalising target timed out: %A" t
-  | TimeoutResult.Success _ -> ()
+  let! registry =
+    Config.create svc host
+    // |> Config.ilogger iloggerConf
+    // |> Config.ilogger (ILogger.Console Verbose)
+    |> Config.target twTargetConf
+    |> Config.processing processing
+    // |> Config.disableGlobals
+    |> Config.build
+  let logm = Registry.toLogManager registry
+  return (registry, logm, out, error)
+}
 
 let newHierarchy fHierarchy =
   let tracer = new TraceAppender()
@@ -64,8 +61,7 @@ let integration =
     testCase "starting log4net" <| fun _ ->
       newHierarchy (fun _ -> ())
 
-    testCase "logging to log4net logs to logary" <| fun _ ->
-
+    testCaseAsync "logging to log4net logs to logary" <| (job {
       let logaryAppender = LogaryAppender()
       let patternLayout = new PatternLayout(ConversionPattern = "%m")
       logaryAppender.Layout <- patternLayout
@@ -73,14 +69,16 @@ let integration =
       let hiera = newHierarchy (fun hiera -> hiera.Root.AddAppender logaryAppender)
       let log4 = log4net.LogManager.GetLogger("Logary.Tests")
 
-      let out, err =
-        withLogary <| fun logary out err ->
-          log4.Fatal "oh noes"
-          finaliseLogary logary
-          out.ToString(), err.ToString()
+
+      let! (r, logm, out, error)  = buildLogManager ()
+      log4.Fatal "oh noes" 
+      // since log4net adapter use logSimple (fire and forget style), so we first wait for logary shutdown then check the output
+      do! Registry.shutdown r
 
       Expect.equal (out.ToString()) "" "should be empty"
-      Expect.stringContains (err.ToString()) "oh noes" "should have 'oh noes' in it"
+      Expect.stringContains (error.ToString()) "oh noes" "should have 'oh noes' in it"
+
+      } |> Job.toAsync)
     ]
 
 [<Tests>]
