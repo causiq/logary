@@ -1125,7 +1125,7 @@ module File =
           // TODO: handle scheduled rotation
           rotateCh ^=> fun () -> rotating state
 
-          RingBuffer.takeBatch (uint32 conf.batchSize) api.requests ^=> fun reqs ->
+          RingBuffer.takeBatch (conf.batchSize) api.requests ^=> fun reqs ->
             writeRequestsSafe ri.logger conf state reqs >>= function
               | Choice1Of2 () ->
                 checking state
@@ -1201,7 +1201,7 @@ module File =
   /// Create a new File target through this.
   [<CompiledName "Create">]
   let create conf name =
-    TargetConf.create Policy.exponentialBackoffSix 500u (Impl.loop conf) name
+    TargetConf.create Policy.exponentialBackoffSix 512us (Impl.loop conf) name
 
   /// Use with LogaryFactory.New(s => s.Target<File.Builder>())
   type Builder(conf, callParent : ParentCallback<Builder>) =
