@@ -74,7 +74,7 @@ type LogaryTarget(logary : LogManager) =
     // on printing (useless way to do it IMO).
     //printfn "messsage=%s" evt.Message
     { msg with name = name }
-    |> setFieldsFromObject evt.Properties
+    |> Message.setContext "LogEventInfo.Properties" evt.Properties
     |> (ex |> Option.fold (fun s -> addExn) id)
     |> setUTCTicks (evt.TimeStamp.ToUniversalTime()).Ticks
     |> Logger.logSimple logger
