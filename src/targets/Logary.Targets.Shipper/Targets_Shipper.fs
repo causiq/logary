@@ -12,6 +12,7 @@ open Logary.Internals
 open Logary.Configuration
 open fszmq
 open fszmq.Socket
+open Logary.Configuration
 
 module Serialisation =
   open System.IO
@@ -79,9 +80,7 @@ module internal Impl =
       sender = sender }
 
   let serve (conf : ShipperConf)
-            (ri : RuntimeInfo)
-            (requests : RingBuffer<_>)
-            (shutdown : Ch<_>) =
+            (ri : RuntimeInfo, api : TargetAPI) =
 
     let rec init = function
       | Unconfigured ->
@@ -97,12 +96,12 @@ module internal Impl =
 
     and loop (state : State) : Job<unit> =
       Alt.choose [
-        shutdown ^=> fun ack -> job {
+        api.shutdownCh ^=> fun ack -> job {
           do! Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
           return! ack *<= ()
         }
 
-        RingBuffer.take requests ^=> function
+        RingBuffer.take api.requests ^=> function
           | Log (msg, ack) ->
             job {              
               let bytes = Serialisation.serialise msg
@@ -113,7 +112,7 @@ module internal Impl =
 
           | Flush (ackCh, nack) ->
             job {
-              do! Ch.give ackCh () <|> nack
+              do! IVar.fill ackCh ()
               return! loop state
             }
       ] :> Job<_>
@@ -121,15 +120,15 @@ module internal Impl =
     init conf
 
 /// Create a new Shipper target
-let create conf = TargetUtils.stdNamedTarget (Impl.serve conf)
+let create conf = TargetConf.createSimple (Impl.serve conf)
 
 /// Use with LogaryFactory.New( s => s.Target<Noop.Builder>() )
-type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+type Builder(conf, callParent : Target.ParentCallback<Builder>) =
   member x.PublishTo(connectTo : string) =
     ! (callParent <| Builder(PublishTo connectTo, callParent))
 
-  new(callParent : FactoryApi.ParentCallback<_>) =
+  new(callParent : Target.ParentCallback<_>) =
     Builder(empty, callParent)
 
-  interface Logary.Target.FactoryApi.SpecificTargetConf with
+  interface Target.SpecificTargetConf with
     member x.Build name = create conf name
