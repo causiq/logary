@@ -18,6 +18,7 @@ open Logary.Serialisation.Chiron
 open Logary.Serialisation.Chiron.Builder
 open System.Collections.Generic
 open System.Runtime.CompilerServices
+open Logary.Configuration
 
 [<assembly:InternalsVisibleTo("Logary.Targets.Stackdriver.Tests")>]
 do()
@@ -172,18 +173,16 @@ module internal Impl =
       callSettings = CallSettings.FromCancellationToken(source.Token) }
 
   let loop (conf : StackdriverConf)
-           (runtime : RuntimeInfo) // this one,
-           (requests : RingBuffer<_>) // this one, and,
-           (shutdown : Ch<_>) = // this one should always be taken in this order
+           (runtime : RuntimeInfo, api : TargetAPI) =
 
     let rec loop (state : State) : Job<unit> =
       Alt.choose [
         // either shutdown, or
-        shutdown ^=> fun ack -> 
+        api.shutdownCh ^=> fun ack -> 
           state.cancellation.Cancel()
           ack *<= () :> Job<_>
         
-        RingBuffer.take requests ^=> function
+        RingBuffer.take api.requests ^=> function
             | Log (message, ack) -> job {
                     let request = WriteLogEntriesRequest(LogName = state.logName, Resource = state.resource)
                     request.Labels.Add(conf.labels)
@@ -193,7 +192,7 @@ module internal Impl =
                     return! loop state
                 }
             | Flush (ackCh, nack) -> job {
-                    do! Ch.give ackCh () <|> nack
+                    do! IVar.fill ackCh ()
                     return! loop state
                 }
                     
@@ -204,9 +203,9 @@ module internal Impl =
 
 /// Create a new StackDriver target
 [<CompiledName "Create">]
-let create conf name = TargetUtils.stdNamedTarget (Impl.loop conf) name
+let create conf name = TargetConf.createSimple (Impl.loop conf) name
 
-type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+type Builder(conf, callParent : Target.ParentCallback<Builder>) =
 
   /// Assign the projectId for this logger
   member x.ForProject(project) = 
@@ -233,8 +232,8 @@ type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
     !(callParent <| Builder({ conf with maxBatchSize = size }, callParent))
 
   // c'tor, always include this one in your code
-  new(callParent : FactoryApi.ParentCallback<_>) =
+  new(callParent : Target.ParentCallback<_>) =
     Builder(empty, callParent)
 
-  interface Logary.Target.FactoryApi.SpecificTargetConf with
+  interface Target.SpecificTargetConf with
     member x.Build name = create conf name

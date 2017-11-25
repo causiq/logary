@@ -42,7 +42,7 @@ let integration =
         Riemann.create
           (Riemann.RiemannConf.create(endpoint = IPEndPoint(localhost, 5555)))
           "riemann"
-        |> Target.init ri
+        |> Target.create ri
         |> run
 
       try

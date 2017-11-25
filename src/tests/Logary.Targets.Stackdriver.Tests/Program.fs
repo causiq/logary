@@ -19,7 +19,8 @@ open Logary.Serialisation.Chiron
 open System
 open System.Collections.Generic
 
-let emptyRuntime = RuntimeInfo.create "tests"
+let emptyRuntime = RuntimeInfo.create "tests" "localhost"
+
 
 let flush = Target.flush >> Job.Ignore >> run
 
@@ -61,7 +62,7 @@ let target =
     testCase "send" <| fun _ ->
       let conf = Stackdriver.create targConf "test"
       let target = 
-            Target.init emptyRuntime conf
+            Target.create emptyRuntime conf
             |> run
             |> fun inst -> inst.server (fun _ -> Job.result ()) None |> start; inst
       

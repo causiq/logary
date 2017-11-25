@@ -8,6 +8,7 @@ open Hopac.Infixes
 open Logary
 open Logary.Target
 open Logary.Internals
+open Logary.Configuration
 
 open Microsoft.ApplicationInsights
 open Microsoft.ApplicationInsights.Channel
@@ -98,7 +99,7 @@ module internal Impl =
   // This is the main entry point of the target. It returns a Job<unit>
   // and as such doesn't have side effects until the Job is started.
   let loop (conf : AppInsightConf) // the conf is specific to your target
-           (ri : RuntimeInfo) // this one,
+           (ri : RuntimeInfo, api : TargetAPI) // this one,
            (requests : RingBuffer<_>) // this one, and,
            (shutdown : Hopac.Ch<_>) = // this one should always be taken in this order
     
@@ -109,13 +110,13 @@ module internal Impl =
         // off of Hopac's execution context (see Scheduler.isolate below) and
         // then send a unit to the ack channel, to tell the requester that
         // you're done disposing.
-        shutdown ^=> fun ack ->
+        api.shutdownCh ^=> fun ack ->
           // do! Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
           ack *<= () :> Job<_>
 
         // The ring buffer will fill up with messages that you can then consume below.
         // There's a specific ring buffer for each target.
-        RingBuffer.take requests ^=> function
+        RingBuffer.take api.requests ^=> function
           // The Log discriminated union case contains a message which can have
           // either an Event or a Gauge `value` property.
           | Log (message, ack) ->
@@ -197,7 +198,7 @@ module internal Impl =
               state.telemetryClient.Flush()
 
               // then perform the ack
-              do! Ch.give ackCh () <|> nack
+              do! IVar.fill ackCh () 
 
               // then continue processing messages
               return! loop { telemetryClient = state.telemetryClient }
@@ -220,7 +221,7 @@ module internal Impl =
 
 /// Create a new YOUR TARGET NAME HERE target
 [<CompiledName "Create">]
-let create conf name = TargetUtils.stdNamedTarget (Impl.loop conf) name
+let create conf name = TargetConf.createSimple (Impl.loop conf) name
 
 // The Builder construct is a DSL for C#-people. It's nice for them to have
 // a DSL where you can't make mistakes. The general idea is that first 'new'
@@ -229,7 +230,7 @@ let create conf name = TargetUtils.stdNamedTarget (Impl.loop conf) name
 // code).
 
 /// Use with LogaryFactory.New( s => s.Target<YOUR TARGET NAME.Builder>() )
-type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+type Builder(conf, callParent : Target.ParentCallback<Builder>) =
 
   // place your own configuration methods here
 
@@ -251,11 +252,11 @@ type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
   // your own configuration methods end here
 
   // c'tor, always include this one in your code
-  new(callParent : FactoryApi.ParentCallback<_>) =
+  new(callParent : Target.ParentCallback<_>) =
     Builder(empty, callParent)
 
   // this is called in the end, after calling all your custom configuration
   // methods (above) which in turn take care of making the F# record that
   // is the configuration, "just so"
-  interface Logary.Target.FactoryApi.SpecificTargetConf with
+  interface Target.SpecificTargetConf with
     member x.Build name = create conf name

@@ -186,15 +186,15 @@ let create conf =
   if conf.logId = Guid.Empty then
     failwith "Cannot configure target with empty logId"
 
-  TargetUtils.stdNamedTarget (Impl.loop conf)
+  TargetConf.createSimple (Impl.loop conf)
 
 /// Use with LogaryFactory.New( s => s.Target<ElmahIO.Builder>().WithLogId("MY GUID HERE") )
-type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+type Builder(conf, callParent : Target.ParentCallback<Builder>) =
   member x.WithLogId(logId : Guid) =
     ! (callParent <| Builder({ conf with logId = logId }, callParent))
 
-  new(callParent : FactoryApi.ParentCallback<_>) =
+  new(callParent : Target.ParentCallback<_>) =
     Builder({ logId = Guid.Empty }, callParent)
 
-  interface Logary.Target.FactoryApi.SpecificTargetConf with
+  interface Target.SpecificTargetConf with
     member x.Build name = create conf name

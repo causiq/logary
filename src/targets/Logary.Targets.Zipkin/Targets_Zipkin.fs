@@ -13,7 +13,7 @@ open Hopac.Infixes
 open Logary
 open Logary.Internals
 open Logary.Target
-open Logary.Formatting
+open Logary.Configuration
 open Logary.Zipkin
 open Microsoft.FSharp.Reflection
 
@@ -166,25 +166,25 @@ module internal Impl =
       state
 
   let loop (config : ZipkinConf)
-           (ri : RuntimeInfo)
-           (requests : RingBuffer<TargetMessage>)
-           (shutdown : Ch<IVar<unit>>) =
+           (ri : RuntimeInfo, api : TargetAPI) =
 
     let rec loop state : Job<unit> =
       let collector = state.collector
       Alt.choose [
-        shutdown ^=> fun ack ->
+        api.shutdownCh ^=> fun ack ->
           job {
             do! Job.Scheduler.isolate <| fun _ ->
-              Try.safe "DB target disposing connection"
-                       ri.logger
-                       (state :> IDisposable).Dispose
-                       ()
+              try
+                (state :> IDisposable).Dispose ()
+              with e ->
+                Message.eventError "Zipkin target disposing connection"
+                |> Message.addExn e
+                |> Logger.logSimple ri.logger
 
             do! ack *<= () :> Job<_>
           }
 
-        RingBuffer.take requests ^=> function
+        RingBuffer.take api.requests ^=> function
           | Log(logMsg, ack) ->
             let nextState = annotateSpan state logMsg
             ack *<= () |> Job.bind (fun _ -> loop nextState)
@@ -199,7 +199,7 @@ module internal Impl =
 
             job {
               do! Job.fromUnitTask (fun _ -> collector.CollectAsync spans)
-              do! Ch.give ack () <|> nack
+              do! IVar.fill ack () 
               return! loop { state with activeSpans = Map.empty }
             }
 
@@ -209,16 +209,16 @@ module internal Impl =
            activeSpans = Map.empty }
 
 /// Create a new Zipkin target
-let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
+let create conf = TargetConf.createSimple (Impl.loop conf)
 
 /// Use with LogaryFactory.New( s => s.Target< HERE >() )
-type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) = 
+type Builder(conf, callParent : Target.ParentCallback<Builder>) = 
   member x.WithConfig(conf : ZipkinConf) =
     !(callParent <| Builder(conf, callParent))
 
-  new(callParent : FactoryApi.ParentCallback<_>) =
+  new(callParent : Target.ParentCallback<_>) =
     Builder(ZipkinConf.create (), callParent)
 
-  interface Logary.Target.FactoryApi.SpecificTargetConf with
+  interface Target.SpecificTargetConf with
     member x.Build name =
       create conf name

@@ -5,6 +5,8 @@ open Logary
 open Logary.Target
 open Logary.Internals
 open Logary.Message
+open Logary.Configuration
+open Logary
 
 type AliYunConf = 
   {
@@ -44,7 +46,7 @@ module internal Impl =
     | Log (msg, ack) ->
       ack *<= ()
     | Flush (ackCh, nack) ->
-      Ch.give ackCh () <|> nack :> Job<_>
+      ackCh *<= ()
 
   let ofEpochLocal epoch = 
     (DateTimeOffset.ofEpoch epoch).ToLocalTime()
@@ -59,38 +61,19 @@ module internal Impl =
         log.PushBack("TimeOffSet",string (ofEpochLocal msg.timestamp))
         log.PushBack("Level",string msg.level)
         log.PushBack("LoggerName",string msg.name)
+        let (Event msgTemplate) = msg.value
+        let subject =  MessageWriter.verbatim.format msg
+        log.PushBack("Msg",subject)
+        if subject <> msgTemplate then log.PushBack("MsgTemplate",msgTemplate)
+        msg |> Message.getAllGauges
+        |> Seq.iter (fun (gaugeType, Gauge(value, units)) -> 
+           let symbol = Units.symbol units
+           let gaugeType = sprintf "%s (%s)" gaugeType symbol
+           log.PushBack(gaugeType, value.ToString()))
 
-        match msg.value with
-        | Event t ->
-          let subject = Formatting.MessageParts.formatTemplate t msg.fields
-          log.PushBack("Msg",subject)
-          // add origin template for identify in source code if needed,and only add it when it is really a template
-          if subject <> t then log.PushBack("MsgTemplate",t)
-        | Gauge (v, u)
-        | Derived (v, u) ->
-          let gaugeNumber = Value.toDouble v
-          let subject = Units.formatWithUnit Units.UnitOrientation.Suffix u v
-          log.PushBack("Msg",subject)
-          // for making number compare search
-          log.PushBack("GaugeNumber",string gaugeNumber)
-
-        msg.context |> Map.iter (fun k v ->
-          let k = "_ctx-" + k
-          let str = Formatting.MessageParts.formatValue Environment.NewLine 0 v
-          log.PushBack(k, str)
-        )
-
-        msg.fields |> Map.iter (fun k (Field (v, units)) ->
-          let k = "_field-" + PointName.format k
-          let str = Formatting.MessageParts.formatValue Environment.NewLine 0 v
-          match units with
-          | Some units ->
-            log.PushBack(k, str + Units.symbol units)
-          | _ -> 
-            log.PushBack(k, str)
-        )
+        let context = MessageWriter.contextWriter.format msg
+        log.PushBack("_ctx-all", context)
         
-
     | Flush (ack,nack) ->
         log.PushBack("TimeOffSet",string DateTimeOffset.Now)
         log.PushBack("Level",string LogLevel.Info)
@@ -100,9 +83,7 @@ module internal Impl =
     log
 
   let loop (conf : AliYunConf)
-           (runtime : RuntimeInfo)
-           (requests : RingBuffer<_>)
-           (shutdown : Ch<_>) = 
+           (runtime : RuntimeInfo, api : TargetAPI) =
     
     let logger = 
       let pn = PointName [| "Logary"; "AliYun"; "loop" |]
@@ -112,7 +93,7 @@ module internal Impl =
       let (host, serviceName, project, logstore) = extra
       let putLogRequest = PutLogsRequest(project,logstore)
       
-      let logSendTime = uint32 (SystemClock.Instance.Now.Ticks / NodaConstants.TicksPerSecond)
+      let logSendTime = uint32 (SystemClock.Instance.GetCurrentInstant().ToUnixTimeSeconds())
       putLogRequest.Topic <- serviceName // use serviceName as log topic for quick(index default) group/search
       putLogRequest.LogItems <- ResizeArray<_> (Array.map (transToAliLogItem host logSendTime) reqs)
 
@@ -121,16 +102,16 @@ module internal Impl =
       logger.verboseWithBP (eventX "res {header}" >> Message.setField "header" resHeader) 
       >>=. Seq.iterJobIgnore reqestAckJobCreator reqs
     
-    let extraInfo = (runtime.host, runtime.serviceName, conf.Project, conf.Logstore)
+    let extraInfo = (runtime.host, runtime.service, conf.Project, conf.Logstore)
 
     let rec running state =
       Alt.choose [
         // maybe because 200ms timeout when shutdown/flush target, so we should not send log to client, just dispose resource and ack ?
-        shutdown ^=> fun ack -> 
+        api.shutdownCh ^=> fun ack -> 
           let msg = Message.eventInfo "application shut down logging"
           sendLog state.logClient [|Log(msg , ack)|] extraInfo
         
-        RingBuffer.takeAll requests ^=> fun logReqMsg ->
+        RingBuffer.takeAll api.requests ^=> fun logReqMsg ->
           sendLog state.logClient logReqMsg extraInfo
           >>=. running state
       ] :> Job<_>
@@ -142,18 +123,18 @@ module internal Impl =
 /// Create a new YOUR TARGET NAME HERE target
 [<CompiledName "Create">]
 let create conf name = 
-  TargetUtils.stdNamedTarget (Impl.loop conf) name
+  TargetConf.createSimple (Impl.loop conf) name
 
 
 type IThirdStep = 
   abstract SetConnectTimeOut : int -> IThirdStep
   abstract SetReadWriteTimeOut : int -> IThirdStep
-  abstract Done : unit -> FactoryApi.TargetConfBuild<Builder>
+  abstract Done : unit -> Target.TargetConfBuild<Builder>
 and ISecondStep =
   abstract ConfLogLocation : string * string -> IThirdStep
-and Builder(conf : AliYunConf, callParent : FactoryApi.ParentCallback<_>) = 
+and Builder(conf : AliYunConf, callParent : Target.ParentCallback<_>) = 
 
-  new(callParent : FactoryApi.ParentCallback<_>) =
+  new(callParent : Target.ParentCallback<_>) =
     Builder(empty, callParent)
 
   member x.ConfClient(key, keyId, endpoint) =
@@ -175,7 +156,7 @@ and Builder(conf : AliYunConf, callParent : FactoryApi.ParentCallback<_>) =
     member x.Done () =
       ! (callParent x)
 
-  interface FactoryApi.SpecificTargetConf with
+  interface Target.SpecificTargetConf with
       member this.Build(name: string): TargetConf = 
         if String.IsNullOrEmpty conf.AccessKey || String.IsNullOrEmpty conf.AccessKeyId || String.IsNullOrEmpty conf.Endpoint then
           failwith "accesskey keyId endpoint is needed"

@@ -158,7 +158,7 @@ and SecondStep =
   /// Use an explicit schema. You may not pass a null or empty string.
   abstract Schema : string -> ThirdStep
 
-/// Use with LogaryFactory.New( s => s.Target<Logary.Target.DB.Builder>() )
+/// Use with LogaryFactory.New( s => s.Target<DB.Builder>() )
 and Builder(conf, callParent : ParentCallback<Builder>) =
 
   new(callParent : ParentCallback<_>) =

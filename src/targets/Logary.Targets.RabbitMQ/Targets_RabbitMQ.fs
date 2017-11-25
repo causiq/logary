@@ -7,6 +7,7 @@ open Hopac.Infixes
 open Logary
 open Logary.Message
 open Logary.Target
+open Logary.Configuration
 open Logary.Internals
 open RabbitMQ.Client
 open RabbitMQ.Client.Framing
@@ -281,9 +282,7 @@ module internal Impl =
     ]
 
   let loop (conf : RabbitMQConf)
-           (ri : RuntimeInfo)
-           (requests : RingBuffer<_>)
-           (shutdown : Ch<_>) =
+           (ri : RuntimeInfo, api : TargetAPI) =
 
     let rec connect () : Job<unit> =
       let conn = createConnection ri.service conf
@@ -304,7 +303,7 @@ module internal Impl =
       Alt.choose [
         selectConfirm ri.logger state active
 
-        RingBuffer.take requests ^=> function
+        RingBuffer.take api.requests ^=> function
           | Log (message, ack) ->
             job {
               let topic = topic conf message
@@ -320,13 +319,15 @@ module internal Impl =
             flushing (ackCh, nack) state
 
         // shutdown closes the connection and channel but does not flush
-        shutdown ^=> fun ack ->
+        api.shutdownCh ^=> fun ack ->
           job {
             do! Job.Scheduler.isolate <| fun _ ->
-              Try.safe "RabbitMQ target disposing connection and model/channel"
-                       ri.logger
-                       (state :> IDisposable).Dispose
-                       ()
+              try
+                (state :> IDisposable).Dispose ()
+              with e ->
+                Message.eventError "RabbitMQ target disposing connection and model/channel"
+                |> Message.addExn e
+                |> Logger.logSimple ri.logger
             return! ack *<= ()
           }
       ] :> Job<_>
@@ -336,7 +337,7 @@ module internal Impl =
     and flushing (ackCh, nack) (state : State) =
       if Map.isEmpty state.inflight then
         job {
-          do! Ch.give ackCh () <|> nack
+          do! Ch.give ackCh () 
           return! active state
         }
       else
@@ -349,7 +350,7 @@ module internal Impl =
 
 /// Create a new RabbitMQ target.
 [<CompiledName "Create">]
-let create conf name = TargetUtils.stdNamedTarget (Impl.loop conf) name
+let create conf name = TargetConf.createSimple (Impl.loop conf) name
 
 // The Builder construct is a DSL for C#-people. It's nice for them to have
 // a DSL where you can't make mistakes. The general idea is that first 'new'
@@ -358,7 +359,7 @@ let create conf name = TargetUtils.stdNamedTarget (Impl.loop conf) name
 // code).
 
 /// Use with LogaryFactory.New( s => s.Target<RabbitMQ.Builder>() )
-type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+type Builder(conf, callParent : Target.ParentCallback<Builder>) =
   let update conf' =
     Builder(conf', callParent)
 
@@ -425,11 +426,11 @@ type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
     ! (callParent x)
 
   // c'tor, always include this one in your code
-  new(callParent : FactoryApi.ParentCallback<_>) =
+  new(callParent : Target.ParentCallback<_>) =
     Builder(empty, callParent)
 
   // this is called in the end, after calling all your custom configuration
   // methods (above) which in turn take care of making the F# record that
   // is the configuration, "just so"
-  interface Logary.Target.FactoryApi.SpecificTargetConf with
+  interface Target.SpecificTargetConf with
     member x.Build name = create conf name

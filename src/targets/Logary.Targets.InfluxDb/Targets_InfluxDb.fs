@@ -6,8 +6,8 @@ open Hopac.Extensions
 open HttpFs.Client
 open Logary
 open Logary.Message
-open Logary.Target
 open Logary.Internals
+open Logary.Configuration
 open System
 
 /// An implementation for the InfluxDb-specific string format.
@@ -267,7 +267,7 @@ module internal Impl =
     | Log (msg, ack) ->
       ack *<= ()
     | Flush (ackCh, nack) ->
-      Ch.give ackCh () <|> nack :> Job<_>
+      IVar.fill ackCh ()
 
   let extractMessage request = 
     match request with
@@ -276,9 +276,7 @@ module internal Impl =
     | _ ->
       ""
 
-  let loop (conf : InfluxDbConf) (ri : RuntimeInfo)
-           (requests : RingBuffer<_>)
-           (shutdown : Ch<_>) =
+  let loop (conf : InfluxDbConf) (ri : RuntimeInfo, api : TargetAPI) =
     let endpoint =
       let ub = UriBuilder(conf.endpoint)
       ub.Path <- "/write"
@@ -298,10 +296,10 @@ module internal Impl =
 
     let rec loop () : Job<unit> =
       Alt.choose [
-        shutdown ^=> fun ack ->
+        api.shutdownCh ^=> fun ack ->
           ack *<= () :> Job<_>
 
-        RingBuffer.takeBatch (conf.batchSize) requests ^=> fun reqs ->
+        RingBuffer.takeBatch (conf.batchSize) api.requests ^=> fun reqs ->
           let body =
             reqs
             |> Seq.map extractMessage
@@ -333,10 +331,10 @@ module internal Impl =
 
 /// Create a new InfluxDb target.
 let create conf =
-  TargetUtils.stdNamedTarget (Impl.loop conf)
+  TargetConf.createSimple (Impl.loop conf)
 
 /// Use with LogaryFactory.New( s => s.Target<InfluxDb.Builder>() )
-type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+type Builder(conf, callParent : Target.ParentCallback<Builder>) =
   let update (conf' : InfluxDbConf) : Builder =
     Builder(conf', callParent)
 
@@ -385,8 +383,8 @@ type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
   member x.Done() =
     ! (callParent x)
 
-  new(callParent : FactoryApi.ParentCallback<_>) =
+  new(callParent : Target.ParentCallback<_>) =
     Builder(empty, callParent)
 
-  interface Logary.Target.FactoryApi.SpecificTargetConf with
+  interface Target.SpecificTargetConf with
     member x.Build name = create conf name

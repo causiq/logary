@@ -14,7 +14,7 @@ open Hopac
 open Hopac.Infixes
 open Hopac.Extensions
 open Logary
-open Logary.Formatting
+open Logary.Configuration
 open Logary.Target
 open Logary.Internals
 open Logary.Serialisation.Chiron
@@ -50,7 +50,7 @@ let serialise : Message -> Json =
 
     let overrides =
       [ "@version", String "1"
-        "@timestamp", String (MessageParts.formatTimestamp message.timestampTicks)
+        "@timestamp", String (MessageWriter.formatTimestamp message.timestamp)
         "name", String (PointName.format message.name)
       ]
 
@@ -84,16 +84,14 @@ module internal Impl =
     |> Job.Ignore
 
   let loop (conf : ElasticSearchConf)
-           (ri : RuntimeInfo)
-           (requests : RingBuffer<_>)
-           (shutdown : Ch<_>) =
+           (ri : RuntimeInfo, api : TargetAPI) =
 
     let rec loop (_ : unit) : Job<unit> =
       Alt.choose [
-        shutdown ^=> fun ack -> job {
+        api.shutdownCh ^=> fun ack -> job {
           do! ack *<= ()
         }
-        RingBuffer.take requests ^=> function
+        RingBuffer.take api.requests ^=> function
           | Log (message, ack) ->
             job {
               do! sendToElasticSearch conf.publishTo conf._type conf.indexName message
@@ -103,17 +101,17 @@ module internal Impl =
 
           | Flush (ackCh, nack) ->
             job {
-              do! Ch.give ackCh () <|> nack
+              do! IVar.fill achCh ()
               return! loop ()
             }
       ] :> Job<_>
 
     loop ()
 
-let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
+let create conf = TargetConf.createSimple (Impl.loop conf)
 
 /// Use with LogaryFactory.New( s => s.Target<ElasticSearch.Builder>() )
-type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+type Builder(conf, callParent : Target.ParentCallback<Builder>) =
 
   /// Specifies the ElasticSearch url.
   member x.PublishTo(publishTo : string) =
@@ -126,9 +124,9 @@ type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
   member x.Done() =
     ! (callParent x)
 
-  new(callParent : FactoryApi.ParentCallback<_>) =
+  new(callParent : Target.ParentCallback<_>) =
     Builder(ElasticSearchConf.create DefaultPublishTo, callParent)
 
-  interface Logary.Target.FactoryApi.SpecificTargetConf with
+  interface Target.SpecificTargetConf with
     member x.Build name =
       create conf name

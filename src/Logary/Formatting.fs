@@ -525,6 +525,13 @@ module MessageWriter =
           tw.WriteLine()
     }
 
+  let contextWriter =
+    { new MessageWriter with
+        member x.write tw m =
+          tokeniseContext tw.FormatProvider Environment.NewLine defaultDestr 10 m
+          |> Seq.map fst |> Seq.iter tw.Write
+    }
+
   /// <see cref="MessageWriter.LevelDatetimePathMessageNewLine" />
   let levelDatetimeMessagePath =
     expanded defaultDestr 10 Environment.NewLine ""

@@ -20,7 +20,7 @@ let targConf =
   ElasticSearch.ElasticSearchConf.create()
 
 let start () =
-  Target.init emptyRuntime (ElasticSearch.create targConf "elasticsearch")
+  Target.create emptyRuntime (ElasticSearch.create targConf "elasticsearch")
   |> run
   |> fun inst -> inst.server (fun _ -> Job.result ()) None |> start; inst
 

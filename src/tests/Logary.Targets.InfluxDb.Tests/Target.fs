@@ -16,7 +16,8 @@ open Hopac.Extensions
 open Hopac.Infixes
 open TestHelpers
 
-let emptyRuntime = RuntimeInfo.create "tests"
+let emptyRuntime = RuntimeInfo.create "tests" "localhost"
+
 
 let flush = Target.flush >> Job.Ignore >> run
 
@@ -24,7 +25,7 @@ let start () =
   let targConf =
     InfluxDbConf.create(Uri "http://127.0.0.1:9011/write", "tests")
 
-  Target.init emptyRuntime (create targConf "influxdb")
+  Target.create emptyRuntime (create targConf "influxdb")
   |> run
   |> fun inst -> inst.server (fun _ -> Job.result ()) None |> start; inst
 
