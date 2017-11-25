@@ -8,7 +8,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Logary.Targets.Riemann.Tests</RootNamespace>
     <AssemblyName>Logary.Targets.Riemann.Tests</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
