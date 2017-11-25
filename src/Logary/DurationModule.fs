@@ -5,20 +5,20 @@ namespace Logary
 module Duration =
   open NodaTime
   let hours (dur : Duration) =
-    float dur.Ticks / float NodaConstants.TicksPerHour
+    dur.TotalTicks / float NodaConstants.TicksPerHour
 
   let minutes (dur : Duration) =
-    float dur.Ticks / float NodaConstants.TicksPerMinute
+    dur.TotalTicks / float NodaConstants.TicksPerMinute
 
   let seconds (dur : Duration) =
-    float dur.Ticks / float NodaConstants.TicksPerSecond
+    dur.TotalTicks / float NodaConstants.TicksPerSecond
 
   let milliseconds (dur : Duration) =
-    float dur.Ticks / float NodaConstants.TicksPerMillisecond
+    dur.TotalTicks / float NodaConstants.TicksPerMillisecond
 
   let microseconds =
     ((*) 1000.) << milliseconds
   let ticks (dur : Duration) =
-    float dur.Ticks
+    dur.TotalTicks
   let nanoseconds =
     ((*) 1000.) << microseconds

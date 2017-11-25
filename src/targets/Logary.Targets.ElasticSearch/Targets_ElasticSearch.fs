@@ -9,6 +9,7 @@ open System
 open System.Net
 open System.Net.Sockets
 open System.IO
+open System.Security.Cryptography
 open Hopac
 open Hopac.Infixes
 open Hopac.Extensions
@@ -27,12 +28,15 @@ type ElasticSearchConf =
   { /// Server URL, by default "http://localhost:9200"
     publishTo  : string
     /// ElasticSearch document "_type", by default "logs"
-    _type : string }
+    _type      : string
+    /// Prefix for log indexs, defaults to "logary"
+    indexName  : String}
 
   /// Create a new ElasticSearch target config.
-  static member create(?publishTo, ?_type) =
+  static member create(?publishTo, ?_type, ?indexName) =
     { publishTo  = defaultArg publishTo DefaultPublishTo
-      _type       = defaultArg _type "logs" }
+      _type      = defaultArg _type "logs"
+      indexName  = defaultArg indexName "logary" }
 
 let serialise : Message -> Json =
   fun message ->
@@ -59,26 +63,25 @@ module internal Impl =
 
   open HttpFs.Client
 
-  let generateId =
-    let chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWUXYZ0123456789"
-    let charsLen = chars.Length
-    let random = System.Random()
-    fun len -> 
-      let randomChars = [|for i in 0..len -> chars.[random.Next(charsLen)]|]
-      new System.String(randomChars)
- 
-  let sendToElasticSearch elasticUrl _type (message : Message) =
-    let _index  = "logary-" + DateTime.UtcNow.ToString("yyy-mm-dd")
-    let _id = generateId 20
-    let endpointUrl = elasticUrl + "/" + _index + "/" + _type + "/" + _id
+  let generateId (bytes : byte []) =
+    use sha1 = SHA1.Create ()
+    sha1.ComputeHash bytes
+    |> BitConverter.ToString
+    |> String.replace "-" ""
+
+  let sendToElasticSearch elasticUrl _type indexName (message : Message) =
+    let _index  = indexName + "-" + DateTime.UtcNow.ToString("yyy-MM-dd")
     let bytes =
       Json.format (serialise message)
       |> UTF8.bytes
-    let request = 
+    let _id = generateId bytes
+    let endpointUrl = elasticUrl + "/" + _index + "/" + _type + "/" + _id
+    let request =
       Request.createUrl Post endpointUrl
       |> Request.body (RequestBody.BodyRaw bytes)
 
     Request.responseAsString request
+    |> Job.Ignore
 
   let loop (conf : ElasticSearchConf)
            (ri : RuntimeInfo)
@@ -93,7 +96,7 @@ module internal Impl =
         RingBuffer.take requests ^=> function
           | Log (message, ack) ->
             job {
-              let! _ = sendToElasticSearch conf.publishTo conf._type message
+              do! sendToElasticSearch conf.publishTo conf._type conf.indexName message
               do! ack *<= ()
               return! loop ()
             }

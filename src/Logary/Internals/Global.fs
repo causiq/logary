@@ -47,7 +47,7 @@ module internal Global =
     let nl = NullLogger() :> Logger
     { getLogger = fun pn -> nl
       getLoggerWithMiddleware = fun pn mid -> nl
-      getTimestamp = fun () -> c.Now.Ticks * Constants.NanosPerTick
+      getTimestamp = fun () -> c.GetCurrentInstant().ToUnixTimeTicks() * Constants.NanosPerTick
       getConsoleSemaphore = fun () -> s }
 
   /// This is the "Global Variable" containing the last configured Logary

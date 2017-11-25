@@ -63,7 +63,7 @@ module Impl =
   /// All graphite messages are of the following form.
   /// metric_path value timestamp\n
   let createMsg (path : String) (timestamp : Instant) (value : string) =
-    let line = String.Format("{0} {1} {2}\n", path, value, timestamp.Ticks / NodaConstants.TicksPerSecond)
+    let line = String.Format("{0} {1} {2}\n", path, value, timestamp.ToUnixTimeTicks() / NodaConstants.TicksPerSecond)
     UTF8.bytes line
 
   let doWrite state buffer =
@@ -84,7 +84,7 @@ module Impl =
             let pointName = sanitisePath message.name |> PointName.format
             message 
             |> MessageWriter.verbatim.format 
-            |> createMsg pointName (Instant message.timestampTicks) 
+            |> createMsg pointName (Instant.FromUnixTimeTicks message.timestampTicks) 
             |> doWrite state >>= fun state' ->
             IVar.fill ack () >>= fun () ->
             running state'

@@ -5,6 +5,7 @@ open Expecto
 open Logary.Facade
 open Logary.Facade.Literals
 open Logary.Facade.Literate
+open Logary.Facade.LiterateFormatting
 
 type internal TemplateToken =
   | TextToken of string
@@ -23,24 +24,75 @@ let internal parseTemplateTokens template =
   FsMtParser.parseParts template foundText foundProp
   tokens |> List.ofSeq
 
-type Expect =
-  static member literateMessagePartsEqual (template, fields, expectedMessageParts, ?options, ?logLevel, ?tokeniser) =
-    let options = defaultArg options (LiterateOptions.create())
-    let tokeniser = defaultArg tokeniser Formatting.literateDefaultTokeniser
-    let logLevel = defaultArg logLevel Info
-    let now = Global.timestamp ()
-    let nowDto = DateTimeOffset(DateTimeOffset.ticksUTC now, TimeSpan.Zero)
-    let msg = Message.event logLevel template |> fun m -> { m with fields = fields; timestamp = now }
-    let nowTimeString = nowDto.LocalDateTime.ToString("HH:mm:ss", options.formatProvider)
-    let actualTokens = tokeniser options msg
-    let expectedTokens = [  "[",                              Punctuation
-                            nowTimeString,                    Subtext
-                            " ",                              Subtext
-                            options.getLogLevelText logLevel, LevelInfo
-                            "] ",                             Punctuation ]
-                            @ expectedMessageParts
+type ColouredText = string * ConsoleColor
 
-    Expect.equal actualTokens expectedTokens "literate tokenised parts must be correct"
+type DateTimeOffset with
+  member x.ToLiterateTime (?options : LiterateOptions) =
+    let options = defaultArg options (LiterateOptions.create())
+    x.ToLocalTime().ToString("HH:mm:ss", options.formatProvider)
+
+type System.Int64 with
+  member x.ToDateTimeOffsetUtc() = DateTimeOffset(DateTimeOffset.ticksUTC x, TimeSpan.Zero)
+  member x.ToLiterateTimeString (options : LiterateOptions) = x.ToDateTimeOffsetUtc().ToLiterateTime(options)
+
+type Expect =
+  static member literateMessagePartsEqual (template, fields, expectedMessageParts, ?options) =
+    let options = defaultArg options (LiterateOptions.create())
+    let logLevel, logLevelToken = Info, LevelInfo
+    let message = { Message.event logLevel template with fields = fields
+                                                         name = [|"X"; "Y"|] }
+
+    // Insteading of writing out to the console, write to an in-memory list so we can capture the values
+    let writtenParts = ResizeArray<ColouredText>()
+    let writtenPartsOutputWriter _ (bits : ColouredText list) = writtenParts.AddRange bits
+
+    let target = LiterateConsoleTarget(name = [|"Facade";"Tests";"literateMessagePartsEqual"|],
+                                       minLevel = Verbose,
+                                       options = options,
+                                       outputWriter = writtenPartsOutputWriter) :> Logger
+
+    target.logWithAck Verbose (fun _ -> message) |> Async.RunSynchronously
+
+    let expectedTokens =
+      [ yield "[",                                              Punctuation
+        yield message.timestamp.ToLiterateTimeString(options),  Subtext
+        yield " ",                                              Subtext
+        yield options.getLogLevelText logLevel,                 logLevelToken
+        yield "] ",                                             Punctuation
+        yield! expectedMessageParts
+        yield " ",                                              Subtext
+        yield "<",                                              Punctuation
+        yield "X.Y",                                            Subtext
+        yield ">",                                              Punctuation
+        yield Environment.NewLine,                              Text ]
+
+    let actualParts = writtenParts |> List.ofSeq
+    let expectedParts = expectedTokens |> List.map (fun (s, t) -> s, options.theme t)
+    Expect.sequenceEqual actualParts expectedParts "literate tokenised parts must be correct"
+    
+  static member literateCustomTokenisedPartsEqual (message, expectedTokens, ?customTokeniser, ?theme) =
+    let options = match theme with
+                  | Some theme -> { LiterateOptions.create() with theme = theme }
+                  | None -> LiterateOptions.create()
+    let writtenParts = ResizeArray<ColouredText>()
+    let writtenPartsOutputWriter _ (bits : ColouredText list) = writtenParts.AddRange bits
+    let target = LiterateConsoleTarget(name = [|"Facade";"Tests"|],
+                                       minLevel = Verbose,
+                                       options = options,
+                                       ?literateTokeniser = customTokeniser,
+                                       outputWriter = writtenPartsOutputWriter) :> Logger
+
+    target.logWithAck Verbose (fun _ -> message) |> Async.RunSynchronously
+
+    // First compare the output text without any colours. This gives a better test failure message.
+    let actualOutputString = String.Join("", writtenParts |> Seq.map fst)
+    let expectedOutputString = String.Join("", expectedTokens |> List.map fst)
+    Expect.equal actualOutputString expectedOutputString "literate tokenised rendered text must be correct"
+
+    // Compare the written text colours after applying the theme
+    let actualParts = writtenParts |> List.ofSeq
+    let expectedParts = expectedTokens |> List.map (fun (s, t) -> s, options.theme t)
+    Expect.sequenceEqual actualParts expectedParts "literate rendered text colours must be correct"
 
 [<Tests>]
 let tests =
@@ -127,8 +179,8 @@ let tests =
                     [ TextToken("hello {@nonPropWithFormat:##} {you} ")
                       PropToken("are", null)
                       TextToken(" a {NonPropNoFormat}") ]
-
                    "double open or close braces are escaped"
+
     testCase "literate tokenises with field names correctly" <| fun _ ->
       let template = "Added {item} to cart {cartId} for {loginUserId} who now has total ${cartTotal}"
       let itemName, cartId, loginUserId, cartTotal = "TicTacs", Guid.NewGuid(), "AdamC", 123.45M
@@ -176,12 +228,12 @@ let tests =
       Expect.literateMessagePartsEqual (template, fields, expectedMessageParts)
 
     testCase "literate default tokeniser uses the options `getLogLevelText()` correctly" <| fun _ ->
-      let customGetLogLevelText = function Verbose->"A"|Debug->"B"|Info->"C"|Warn->"D"|Error->"E"|Fatal->"F"
+      let customGetLogLevelText = function Verbose->"A"| Debug->"B"| Info->"C"| Warn->"D"| Error->"E"| Fatal->"F"
       let options = { LiterateOptions.createInvariant() with
                         getLogLevelText = customGetLogLevelText }
       let now = Global.timestamp ()
       let nowDto = DateTimeOffset(DateTimeOffset.ticksUTC now, TimeSpan.Zero)
-      let msg level = Message.event level "" |> fun m -> { m with timestamp = now }
+      let msg level = Message.event level "" |> fun m -> { m with timestamp = now; name = [|"A";"B"|] }
       let nowTimeString = nowDto.LocalDateTime.ToString("HH:mm:ss")
       [ Verbose,  LevelVerbose,   "A"
         Debug,    LevelDebug,     "B"
@@ -195,9 +247,30 @@ let tests =
                               nowTimeString,  Subtext
                               " ",            Subtext
                               expectedText,   expectedLevelToken
-                              "] ",           Punctuation ]
+                              "] ",           Punctuation
+                              " ",            Subtext
+                              "<",            Punctuation
+                              "A.B",          Subtext
+                              ">",            Punctuation ]
                       (sprintf "expect log level %A to render as token %A with text %s" logLevel expectedLevelToken expectedText)
       )
+    
+    testProperty "literate theme is applied correctly" <| fun (theme: LiterateToken -> ConsoleColor) ->
+      let fields = Map.ofList [ "where", box "The Other Side" ]
+      let message = { Message.event Warn "Hello from {where}" with fields = fields }
+      let expectedTimestamp = message.timestamp.ToLiterateTimeString (LiterateOptions.create())
+      let nl = Environment.NewLine
+      let expectedTokens =
+        [ "[",                      Punctuation
+          expectedTimestamp,        Subtext
+          " ",                      Subtext
+          "WRN",                    LevelWarning
+          "] ",                     Punctuation
+          "Hello from ",            Text
+          "The Other Side",         StringSymbol
+          Environment.NewLine,      Text ]
+
+      Expect.literateCustomTokenisedPartsEqual (message, expectedTokens, theme=theme)
 
     testPropertyWithConfig FsCheck.Config.QuickThrowOnFailure "literate default tokeniser uses the options `formatProvider` correctly" <| fun (amount: decimal, date: DateTimeOffset) ->
       [ "fr-FR"; "da-DK"; "de-DE"; "en-AU"; "en-US"; ]
@@ -217,21 +290,33 @@ let tests =
       )
 
     testCase "literate default tokeniser can yield exception tokens from the 'errors' and 'exn' fields, even with an empty template" <| fun _ ->
-      let template = ""
+      let template = "Hello from {where}"
       let exceptionForExnField = exn "exn field"
       let exceptionObjListForErrorsField = [ box (exn "errors field 1"); box (exn "errors field 2") ]
-      let fields = Map [ FieldExnKey,    box exceptionForExnField
+      let fields = Map [ "where",        box "The Other Side"
+                         FieldExnKey,    box exceptionForExnField
                          FieldErrorsKey, box exceptionObjListForErrorsField ]
+      let message = { Message.event Debug template with fields = fields }
+      let expectedTimestamp = message.timestamp.ToLiterateTimeString (LiterateOptions.create())
       let nl = Environment.NewLine
-      let expectedMessageParts =
-        [ nl, Text //<-- empty message will just start rendering exceptions on a new line
-          "System.Exception: exn field", Text //<-- The exception
-          nl, Text
+      let expectedTokens =
+        [ "[",                      Punctuation
+          expectedTimestamp,        Subtext
+          " ",                      Subtext
+          "DBG",                    LevelDebug
+          "] ",                     Punctuation
+          "Hello from ",            Text
+          "The Other Side",         StringSymbol
+          nl,                                 Text
+          "System.Exception: exn field",      Text
+          nl,                                 Text
           "System.Exception: errors field 1", Text
-          nl, Text
+          nl,                                 Text
           "System.Exception: errors field 2", Text
+          nl,                                 Text
         ]
-      Expect.literateMessagePartsEqual (template, fields, expectedMessageParts)
+
+      Expect.literateCustomTokenisedPartsEqual (message, expectedTokens)
 
     testCase "literate tokenises without field names correctly" <| fun _ ->
       let template = "Added {item} to cart {cartId} for {loginUserId} who now has total ${cartTotal}"
@@ -251,6 +336,109 @@ let tests =
           " who now has total $", Text
           cartTotal.ToString(),   NumericSymbol ]
       Expect.literateMessagePartsEqual (template, fields, expectedMessageParts, options)
+
+    testCase "literate default rendering will put the message name/source before the exception details" <| fun _ ->
+      let message = Message.event Debug "Hello from {where}"
+                    |> Message.setSingleName "World.UK.Adele"
+                    |> Message.setField "where" "The Other Side"
+                    |> Message.addExn (exn("e1"))
+                    |> Message.addExn (exn("e2"))
+
+      let expectedTimestamp = message.timestamp.ToLiterateTimeString (LiterateOptions.create())
+      let nl = Environment.NewLine
+      let expectedTokens =
+        [ "[",                  Punctuation
+          expectedTimestamp,    Subtext
+          " ",                  Subtext
+          "DBG",                LevelDebug
+          "] ",                 Punctuation
+          "Hello from ",        Text
+          "The Other Side",     StringSymbol
+          " ",                  Subtext
+          "<",                  Punctuation
+          "World.UK.Adele",     Subtext
+          ">",                  Punctuation
+
+          nl,                     Text
+          "System.Exception: e2", Text
+          nl,                     Text
+          "System.Exception: e1", Text
+          nl,                     Text
+        ]
+
+      Expect.literateCustomTokenisedPartsEqual (message, expectedTokens)
+
+    testCase "when the message has no name (source), the default rendering will not output the name parts" <| fun _ ->
+      let message = Message.event Debug "Hello from {where}"
+                    |> Message.setSingleName ""
+                    |> Message.setField "where" "The Other Side"
+      let expectedTimestamp = message.timestamp.ToLiterateTimeString (LiterateOptions.create())
+      let expectedTokens =
+        [ "[",                  Punctuation
+          expectedTimestamp,    Subtext
+          " ",                  Subtext
+          "DBG",                LevelDebug
+          "] ",                 Punctuation
+          "Hello from ",        Text
+          "The Other Side",     StringSymbol
+          Environment.NewLine,  Text ]
+
+      Expect.literateCustomTokenisedPartsEqual (message, expectedTokens)
+
+    testCase "replacing the default tokeniser is possible" <| fun _ ->
+      let customTokeniser = tokeniserForOutputTemplate "[{timestamp:HH:mm:ss} {level}] {message} [{source}]{exceptions}"
+      let message = Message.event Debug "Hello from {where}"
+                    |> Message.setSingleName "World.UK.Adele"
+                    |> Message.setField "where" "The Other Side"
+      let expectedTimestamp = message.timestamp.ToLiterateTimeString (LiterateOptions.create())
+      let expectedTokens =
+        [ "[",                  Punctuation
+          expectedTimestamp,    Subtext
+          " ",                  Punctuation
+          "DBG",                LevelDebug
+          "] ",                 Punctuation
+          "Hello from ",        Text
+          "The Other Side",     StringSymbol
+          " [",                 Punctuation
+          "World.UK.Adele",     Subtext
+          "]",                  Punctuation
+          Environment.NewLine,  Text ]
+
+      Expect.literateCustomTokenisedPartsEqual (message, expectedTokens, customTokeniser)
+
+    testList "literate custom output template fields render correctly" [
+      let nl = Environment.NewLine
+      let level = Info
+      let source = "Abc.Def.Ghi"
+      let options = LiterateOptions.create()
+      let msgTemplate = "Hello {who}"
+      let whoValue = "world"
+      let msg = Message.event level msgTemplate
+                |> Message.setField "who" whoValue
+                |> Message.setSingleName source
+                |> Message.addExn (exn "ex1")
+                |> Message.addExn (exn "ex2")
+      let msgDto = msg.timestamp.ToDateTimeOffsetUtc()
+      let outputTemplateAndExpected = 
+        [ "{timestamp:u}",                    msgDto.ToLocalTime().ToString("u")
+          "{timestampUtc:u}",                 msgDto.ToString("u")
+          "{level}",                          (options.getLogLevelText msg.level)
+          "{source}",                         source
+          "{newline}",                        nl
+          "{tab}",                            "\t"
+          "{message}",                        "Hello world"
+          "{exceptions}",                     nl + "System.Exception: ex2" + nl + "System.Exception: ex1"
+          "",                                 "" ]
+
+      for (outputTemplate, expected) in outputTemplateAndExpected do
+        yield testCase outputTemplate <| fun _ ->
+          let output = ResizeArray<ColouredText>()
+          let outputWriter (_:obj) (bits:ColouredText list) = output.AddRange bits
+          let target = LiterateConsoleTarget([|"Root"|], Verbose, outputTemplate, options, outputWriter) :> Logger
+          target.logWithAck level (fun _ -> msg) |> Async.RunSynchronously
+          let actualText = String.Join("", output |> Seq.map fst)
+          Expect.equal actualText (expected + nl) "output must be correct"
+    ]
 
     testCase "format template with invalid property correctly" <| fun _ ->
       // spaces are not valid in property names, so the 'property' is treated as text

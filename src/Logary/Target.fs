@@ -1,4 +1,4 @@
-/// A module defining the types relevant for targets to implement
+﻿/// A module defining the types relevant for targets to implement
 /// and methods to interact with those targets.
 namespace Logary
 

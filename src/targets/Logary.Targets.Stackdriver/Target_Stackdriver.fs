@@ -6,6 +6,9 @@ open Google.Api
 open Google.Api.Gax.Grpc
 open Google.Cloud.Logging.Type
 open Google.Cloud.Logging.V2
+open Google.Protobuf
+open Google.Protobuf.Collections
+open Google.Protobuf.WellKnownTypes
 open Hopac
 open Hopac.Infixes
 open Logary
@@ -55,7 +58,10 @@ type StackdriverConf =
 let empty : StackdriverConf = StackdriverConf.create("", "", Unchecked.defaultof<ResourceType>) 
 
 module internal Impl =
-  
+  // constant computed once here
+  let messageKey = PointName [|"message"|]
+  let unformattedMessageKey = PointName [| "template" |]
+
   let toSeverity = function
   | LogLevel.Debug -> LogSeverity.Debug
   | LogLevel.Error -> LogSeverity.Error
@@ -64,15 +70,58 @@ module internal Impl =
   | LogLevel.Warn -> LogSeverity.Warning
   | LogLevel.Verbose -> LogSeverity.Debug
 
+  let rec toProtobufValue = function
+    | Value.String s -> WellKnownTypes.Value.ForString(s)
+    | Value.Bool b -> WellKnownTypes.Value.ForBool(b)
+    | Value.Float f -> WellKnownTypes.Value.ForNumber(f)
+    | Value.Int64 i -> WellKnownTypes.Value.ForNumber(float i)
+    | Value.BigInt b -> WellKnownTypes.Value.ForNumber(float b)
+    | Value.Binary (bytes, contentType) -> 
+      // could not find a good way to convert these, will just send null value instead
+      WellKnownTypes.Value.ForNull()
+    | Value.Fraction (numerator,denominator) -> WellKnownTypes.Value.ForNumber(float(numerator/denominator))
+    | Value.Object values -> 
+      values |> Map.toSeq 
+      |> Seq.fold (fun (s : WellKnownTypes.Struct) (k,v) -> s.Fields.[k] <- toProtobufValue v; s) (WellKnownTypes.Struct()) 
+      |> WellKnownTypes.Value.ForStruct
+    | Value.Array values -> 
+      let valueArr = values |> List.map toProtobufValue |> List.toArray
+      WellKnownTypes.Value.ForList valueArr
+
+  and addToStruct (s : WellKnownTypes.Struct) (k : PointName, (Field(value,units))) : WellKnownTypes.Struct = 
+    s.Fields.[string k] <- toProtobufValue value
+    s
+
   let write (m : Message) : LogEntry =
-    let values = 
-      match Json.serialize m with
-      | Object values -> values
-      | otherwise -> failwithf "Expected Message to format to Object .., but was %A" otherwise
+    // labels are used in stackdriver for classification, so lets put context there.
+    // they expect only simple values really in the labels, so it's ok to just stringify them
+    let labels = m.context |> Map.map (fun k v -> Value.toString v) |> Map.toSeq |> dict
+    let fieldOfString s = Field(Value.String s, None)
+    let formatted, raw = 
+      match m.value with
+      | Event template -> 
+        Some <| fieldOfString (Logary.Formatting.MessageParts.formatTemplate template m.fields)
+        , Some <| fieldOfString template
+      | _ -> None, None
     
-    let overrides = Map.add "name" (String <| string m.name) values
-    let json = Google.Protobuf.WellKnownTypes.Struct.Parser.ParseJson (Json.format <| Object overrides)
-    LogEntry(Severity = toSeverity m.level, JsonPayload = json)
+    let addMessageFields m =
+      match formatted, raw with
+      | Some s, Some v -> m |> Map.add messageKey s |> Map.add unformattedMessageKey v
+      | Some s, None -> m |> Map.add messageKey s
+      | None, Some v -> m |> Map.add messageKey v
+      | None, None -> m
+
+    // really only need to include fields and the formatted message template, because context went to labels
+    let payloadFields = 
+      m.fields
+      |> addMessageFields
+      |> Map.toSeq
+      |> Seq.fold addToStruct (WellKnownTypes.Struct())
+
+    let entry = LogEntry(Severity = toSeverity m.level, JsonPayload = payloadFields)
+    entry.Labels.Add(labels)
+    entry
+
 
   type State = { logName : string
                  logger : LoggingServiceV2Client
@@ -87,7 +136,7 @@ module internal Impl =
     | ComputeInstance(zone, instance) -> 
         [ "project_id", project
           "zone", zone
-          "instanceId", instance ]|> dict
+          "instance_id", instance ]|> dict
     | Container(cluster, ns, instance, pod, container, zone) -> 
         [ "project_id", project
           "cluster_name", cluster
@@ -113,27 +162,6 @@ module internal Impl =
     let r = MonitoredResource(Type = resourceName resourceType)
     r.Labels.Add(createLabels project resourceType)
     r
-
-  let writeRequests (conf : StackdriverConf) (state : State) (reqs : TargetMessage[]) =
-    let request = WriteLogEntriesRequest()
-    request.LogName <- state.logName
-    request.Labels.Add(conf.labels)
-    request.Resource <- state.resource
-    
-    let acks = ResizeArray<_>() // updated by the loop
-    for m in reqs do
-      match m with
-      | Log (message, ack) ->
-        // Write and save the ack for later.
-        acks.Add ack
-        request.Entries.Add(write message)
-      | Flush (ackCh, nack) -> ()
-    
-    job {
-      let! response = state.logger.WriteLogEntriesAsync(request, state.callSettings)
-      // execute all the acks without waiting for responses
-      return! Job.conIgnore acks
-    } 
   
   let createState (conf : StackdriverConf) =
     let source = new System.Threading.CancellationTokenSource()
@@ -154,8 +182,21 @@ module internal Impl =
         shutdown ^=> fun ack -> 
           state.cancellation.Cancel()
           ack *<= () :> Job<_>
-        // there's a batch of messages to handle
-        RingBuffer.takeBatch conf.maxBatchSize requests ^=> (fun requests -> writeRequests conf state requests >>= fun res -> loop state)
+        
+        RingBuffer.take requests ^=> function
+            | Log (message, ack) -> job {
+                    let request = WriteLogEntriesRequest(LogName = state.logName, Resource = state.resource)
+                    request.Labels.Add(conf.labels)
+                    request.Entries.Add(write message)
+                    do! Job.Scheduler.isolate (fun () -> state.logger.WriteLogEntries(request, state.callSettings) |> ignore)
+                    do! ack *<= ()
+                    return! loop state
+                }
+            | Flush (ackCh, nack) -> job {
+                    do! Ch.give ackCh () <|> nack
+                    return! loop state
+                }
+                    
       ] :> Job<_>
     
     let state = createState conf

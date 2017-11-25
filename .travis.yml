@@ -2,13 +2,13 @@
 language: csharp
 
 mono:
-  - 4.4.2
   - 4.6.1
+  - 4.8.1
   - weekly
   - latest
 
 before_install:
-   - rvm install 2.2.3
+  - rvm install 2.2.3
 
 install:
   - gem install bundler

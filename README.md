@@ -1,5 +1,7 @@
 # Logary v4
 
+## Maintainers wanted – ping @haf to talk
+
 Follow Logary at twitter: [@logarylib](https://twitter.com/logarylib)
 
 Chat and support and get support:
@@ -87,6 +89,8 @@ Install-Package Logary
           * [inProcBuffer = true, flushToDisk = false, writeThrough=false caller awaits all acks at the end](#inprocbuffer--true-flushtodisk--false-writethroughfalse-caller-awaits-all-acks-at-the-end)
       * [Work to be done](#work-to-be-done)
     * [Stackdriver target (alpha level)](#stackdriver-target-alpha-level)
+    * [AliYun Log Service target](#aliYun-log-service-target)
+    * [Microsoft Azure Application Insights target](#microsoft-azure-application-insights-target)
     * [EventStore adapter](#eventstore-adapter)
     * [FsSQL adapter](#fssql-adapter)
     * [Suave adapter](#suave-adapter)
@@ -173,6 +177,19 @@ open Logary.Metric // conf
 open Logary.Metrics // conf
 open System.Threading // control flow
 
+let randomMetric (pn : PointName) : Job<Metric> =
+  let reducer state = function
+  | _ -> state
+
+  let ticker pn (rnd : Random, prevValue) =
+    let value = rnd.NextDouble()
+    let msg = Message.gauge pn (Float value)
+    (rnd, value), [| msg |]
+
+  let state = Random(), 0.0
+
+  Metric.create reducer state (ticker pn)
+
 [<EntryPoint>]
 let main argv =
   // the 'right' way to wait for SIGINT
@@ -189,7 +206,7 @@ let main argv =
       ] >>
       // continuously log CPU stats
       withMetrics [
-        MetricConf.create (Duration.FromMilliseconds 500L) "cpu" Sample.cpuTime
+        MetricConf.create (Duration.FromMilliseconds 500L) "random" randomMetric
       ] >>
       // "link" or "enable" the loggers to send everything to the configured target
       withRules [
@@ -237,6 +254,7 @@ outputs, *targets*. Further, its *services* run as their own processes or in
    * <span title="The sharpest clojurian knife in the drawer for acting on metrics">Riemann</span>
      – ships *Events* (as a 1-valued gauage) and *Metrics* into [Riemann](http://riemann.io/).
    * Shipper – ships *Messages* (*Events*/*Metrics*) to the `Router` or `Proxy` (see `Rutta` above)
+   * ApplicationInsights - ships *Messages* (*Events*/*Metrics*) as trace items to Microsoft Azure Application Insights
  - **Logary.Adapters** (from *X* into Logary):
    * <span title="Make yourself dependent on not just one, but two logging frameworks">CommonLogging</span>
      – *moar abstract* logs into Logary.
@@ -906,7 +924,7 @@ Have a look at `examples/Cibryy` for an example of usage of the C# facade.
 
 ### More reading
 
- - [Facade.cs](https://github.com/logary/logary/blob/master/src/Logary.CSharp.Facade/Facade.fs)
+ - [Facade.cs](https://github.com/logary/logary/blob/master/src/Logary.CSharp.Facade/Facade.cs)
    – the actual file that gets imported into your library.
  - [The Logary Facade Adapter](#the-logary-facade-adapter)
 
@@ -994,9 +1012,11 @@ let fileConf =
 Or in C#:
 
 ```csharp
+// set 'logDir' to specific path like Environment.CurrentDirectory if you are on windows
 .Target<File.Builder>(
     "file",
-    file => file.Target.Naming("{service}-{host}-{datetime}", "log").Done())
+    file => file.Target.FileSystem(new FileSystem.DotNetFileSystem(logDir)) 
+                       .Naming("{service}-{host}-{datetime}", "log").Done())
 ```
 
 ### Policies & specifications
@@ -1256,6 +1276,47 @@ Rule.createForTarget "target-name"
   * the underlying library doesn't provide a flush mechanism yet
 
 
+## AliYun Log Service target
+
+### Usage
+
+```csharp
+LogaryFactory.New("demoService",
+                    conf => conf
+                            .InternalLoggingLevel(LogLevel.Verbose)                        
+                            .Target<Debugger.Builder>("internal.debugger", tb => tb.UseForInternalLog())
+                            .Target<Logary.Targets.Console.Builder>("internal.console", tb => tb.UseForInternalLog())
+                            .Target<LiterateConsole.Builder>("console1")                            
+                            .Target<AliYun.Builder>("AliYunLog", tb => {
+                                 tb.MinLevel(LogLevel.Verbose)
+                                 .Target
+                                 .ConfClient("key",
+                                             "keyid",
+                                             "endpoint")
+                                 .ConfLogLocation("project", "logstore")
+                                 .SetConnectTimeOut(1000)
+                                 .SetReadWriteTimeOut(5000)
+                                 .Done();
+                            })
+                    );
+
+```
+
+### What does it look like?
+
+![search log from application](https://cloud.githubusercontent.com/assets/3074328/25772238/652f3018-3299-11e7-8364-81f49636a675.png)
+
+![show chat from application](https://cloud.githubusercontent.com/assets/3074328/25772236/5b8f40d4-3299-11e7-8c01-d49ac2f0757f.png)
+
+## Microsoft Azure Application Insights target
+
+Target for [Microsoft Azure AppInsights](https://docs.microsoft.com/en-us/azure/application-insights/)
+logs the events as TRACE-messages (or Events/Metrics with a different MappingConfiguration). 
+You need to set the API-key first. Then when you go to Azure Portal
+Application Insights and `Overview -> Search` you should be able to find the targets from there.
+Metrics goes to `Metrics Explorer -> Add Chart -> Custom`. [More info...](https://docs.microsoft.com/azure/application-insights/app-insights-create-new-resource)
+
+
 ## EventStore adapter
 
 Use to extract logs from [GetEventStore.com][eventstore-site].
@@ -1329,6 +1390,107 @@ called `Logary.CSharp`.
 
 If you [browse elmah.io's blog](http://blog.elmah.io/support-for-logary/) you'll
 find another example of using Logary from C#.
+
+### Logary.Adapters.NLog
+
+You can add the `Logary.Adapters.NLog` adapter to your NLog config to start
+shipping events from your existing code-base while you're migrating:
+
+```fsharp
+////////////// SAMPLE LOGARY CONFIGURATION //////////
+#I "bin/Debug"
+#r "NodaTime.dll"
+#r "Hopac.Core.dll"
+#r "Hopac.dll"
+#r "FParsec.dll"
+#r "Logary.dll"
+open Hopac
+open Logary
+open Logary.Configuration
+open Logary.Targets
+
+
+let logary =
+  withLogaryManager "Logary.ConsoleApp" (
+    withTargets [
+      LiterateConsole.create LiterateConsole.empty "literate"
+
+      // This target prints more info to the console than the literate one
+      // Console.create (Console.empty) "console"
+    ] >>
+    withRules [
+      Rule.createForTarget "literate"
+      //Rule.createForTarget "console"
+  ])
+  |> Hopac.run
+
+////////////// SAMPLE NLOG CONFIGURATION //////////
+
+#r "NLog.dll"
+#load "NLog.Targets.Logary.fs"
+open NLog
+open NLog.Targets
+open NLog.Config
+open NLog.Common
+let config = LoggingConfiguration()
+InternalLogger.LogToConsole <- true
+InternalLogger.IncludeTimestamp <- true
+let logaryT = new LogaryTarget(logary)
+//logaryT.Logary <- logary
+config.AddTarget("logary", logaryT)
+let rule = LoggingRule("*", NLog.LogLevel.Debug, logaryT)
+config.LoggingRules.Add rule
+LogManager.Configuration <- config
+
+
+
+
+
+// You'll get a logger in your app
+let logger = LogManager.GetLogger("NLog.Example")
+
+//////////// SAMPLE USAGE: ///////////////
+logger.Info("Hello world")
+
+// NLog's targets doesn't like this, but you can do it with the Logary target. Note that
+// Logary doesn't evaluate any NLog layouts, but has its own template format.
+logger.Info("Hello {user}! This is {0}.", "haf", "Mr M")
+
+// you can also log data
+let exceptiony() =
+  let inner1() =
+    failwith "Uh"
+  let inner2() =
+    inner1()
+  let inner3() =
+    inner2()
+  try inner3() with e -> e
+
+let evt =
+  LogEventInfo.Create(LogLevel.Info, "NLog.Example.Custom", System.Globalization.CultureInfo.InvariantCulture,
+                      "This is an unhandled exception")
+
+evt.Properties.Add("user", "haf")
+evt.Properties.Add("service", "web-alpha")
+evt.Exception <- exceptiony()
+
+logger.Log evt
+
+LogManager.Shutdown()
+logary.DisposeAsync() |> run
+```
+
+Will print something like:
+
+```
+[11:20:14 INF] Hello world
+[11:20:14 INF] Hello haf! This is Mr M.
+[11:20:14 INF] Hello world!
+System.Exception: Uh
+  at FSI_0005.exceptiony () [0x00002] in <b5f7baf519d8404da7be7661e34a4e4a>:0
+```
+
+This is very useful for legacy software that's still using NLog.
 
 ## Comparison to NLog and log4net
 

@@ -56,27 +56,19 @@ let target =
         |> Stackdriver.Impl.write
 
       Expect.equal subject.Severity LogSeverity.Warning "severity should be warning"
-      Expect.equal (subject.JsonPayload.Fields.["context"]) (Google.Protobuf.WellKnownTypes.Value.ForStruct(Struct.Parser.ParseJson("""{ "service" : "tests" }"""))) "should have correct context"
+      Expect.equal (subject.Labels.["service"]) "tests" "should have correct context"
       
     testCase "send" <| fun _ ->
-      
-      let creds = Grpc.Auth.GoogleGrpcCredentials.GetApplicationDefaultAsync().Result
-      let channel = Grpc.Core.Channel(LoggingServiceV2Client.DefaultEndpoint.Host, creds, [ChannelOption("grpc.initial_reconnect_backoff_ms", 100); ChannelOption(ChannelOptions.MaxConcurrentStreams, 20)])
-      let client = LoggingServiceV2Client.Create(channel)
-      
-      let getCount (client : LoggingServiceV2Client) =
-        let req = new ListLogEntriesRequest()
-        req.Filter <- sprintf """logName = \"projects/%s/logs/%s\"""  project logName
-        req.ProjectIds.Add(project)
-        let resp = client.ListLogEntries(req)
-        resp |> Seq.length
-      let initCount = getCount client 
       let conf = Stackdriver.create targConf "test"
-      let target = run <| init emptyRuntime conf
-      let logged = Target.log target (event LogLevel.Info "thing happened") |> run |> run
-
-      let afterCount = getCount client
-      Expect.isGreaterThan afterCount initCount "there should be more messages after a write"
+      let target = 
+            Target.init emptyRuntime conf
+            |> run
+            |> fun inst -> inst.server (fun _ -> Job.result ()) None |> start; inst
+      
+      for i in 0..20 do
+        Target.log target (event LogLevel.Info "thing happened at {blah}" |> setField "blah" 12345 |> setContext "zone" "foobar" |> addExn (raisedExn "boohoo")) |> run |> run
+      
+      target |> flush
   ]
 
 [<EntryPoint>]

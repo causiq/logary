@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio 15
+VisualStudioVersion = 15.0.26403.7
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{CB6B0EE7-19B3-4253-A1DA-B195C64C0AE6}"
 	ProjectSection(SolutionItems) = preProject
@@ -44,7 +44,7 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Heka.Tests",
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Topshelf", "adapters\Logary.Adapters.Topshelf\Logary.Adapters.Topshelf.fsproj", "{887CF8ED-4EEE-499B-B8D3-59EDA8A64BBF}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.log4net", "adapters\Logary.Adapters.log4net\Logary.Adapters.log4net.fsproj", "{0F5BEF2F-4F6B-4E4A-A0BB-0255F177C71D}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.NLog", "adapters\Logary.Adapters.NLog\Logary.Adapters.NLog.fsproj", "{0F5BEF2F-4F6B-4E4A-A0BB-0255F177C71D}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.log4net.Tests", "tests\Logary.Adapters.log4net.Tests\Logary.Adapters.log4net.Tests.fsproj", "{08C004AB-734D-457E-9CFD-B37ED6883502}"
 EndProject
@@ -134,9 +134,15 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cibryy", "..\examples\Cibry
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logary.CSharp.Facade", "Logary.CSharp.Facade\Logary.CSharp.Facade.csproj", "{11535E76-9262-4A5C-8863-1BA688C78473}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Stackdriver.Tests", "tests\Logary.Targets.Stackdriver.Tests\Logary.Targets.Stackdriver.Tests.fsproj", "{588510C5-5263-43E7-979B-B7B322F740EF}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Stackdriver.Tests", "tests\Logary.Targets.Stackdriver.Tests\Logary.Targets.Stackdriver.Tests.fsproj", "{588510C5-5263-43E7-979B-B7B322F740EF}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Stackdriver", "targets\Logary.Targets.Stackdriver\Logary.Targets.Stackdriver.fsproj", "{BA02296C-41A5-449D-A724-68CEA527E0E2}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Stackdriver", "targets\Logary.Targets.Stackdriver\Logary.Targets.Stackdriver.fsproj", "{BA02296C-41A5-449D-A724-68CEA527E0E2}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.log4net", "adapters\Logary.Adapters.log4net\Logary.Adapters.log4net.fsproj", "{9FE02488-25BB-4756-B377-60DBF47F51F2}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.ApplicationInsights", "targets\Logary.Targets.ApplicationInsights\Logary.Targets.ApplicationInsights.fsproj", "{7BB17E1A-6318-449D-8193-5FFAA7DC9C49}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.AliYun", "targets\Logary.Targets.AliYun\Logary.Targets.AliYun.fsproj", "{478D2597-9521-4BD2-A6DE-4DFCDF2F87E0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -364,6 +370,18 @@ Global
 		{BA02296C-41A5-449D-A724-68CEA527E0E2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BA02296C-41A5-449D-A724-68CEA527E0E2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BA02296C-41A5-449D-A724-68CEA527E0E2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9FE02488-25BB-4756-B377-60DBF47F51F2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9FE02488-25BB-4756-B377-60DBF47F51F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9FE02488-25BB-4756-B377-60DBF47F51F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9FE02488-25BB-4756-B377-60DBF47F51F2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7BB17E1A-6318-449D-8193-5FFAA7DC9C49}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7BB17E1A-6318-449D-8193-5FFAA7DC9C49}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7BB17E1A-6318-449D-8193-5FFAA7DC9C49}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7BB17E1A-6318-449D-8193-5FFAA7DC9C49}.Release|Any CPU.Build.0 = Release|Any CPU
+		{478D2597-9521-4BD2-A6DE-4DFCDF2F87E0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{478D2597-9521-4BD2-A6DE-4DFCDF2F87E0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{478D2597-9521-4BD2-A6DE-4DFCDF2F87E0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{478D2597-9521-4BD2-A6DE-4DFCDF2F87E0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -424,5 +442,8 @@ Global
 		{11535E76-9262-4A5C-8863-1BA688C78473} = {EA09AD42-B4E2-4B0D-8960-E87277F46F04}
 		{588510C5-5263-43E7-979B-B7B322F740EF} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{BA02296C-41A5-449D-A724-68CEA527E0E2} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
+		{9FE02488-25BB-4756-B377-60DBF47F51F2} = {56BB77A4-DF59-49EC-92E6-C9CA2C2E9FDE}
+		{7BB17E1A-6318-449D-8193-5FFAA7DC9C49} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
+		{478D2597-9521-4BD2-A6DE-4DFCDF2F87E0} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 	EndGlobalSection
 EndGlobal

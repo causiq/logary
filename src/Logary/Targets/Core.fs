@@ -1,4 +1,4 @@
-namespace Logary.Targets
+﻿namespace Logary.Targets
 
 open Logary.LiterateFormatting.MessageParts
 /// A module implementing a text writer target. Useful for writing to the
@@ -595,9 +595,9 @@ module File =
     module ByAge =
       let everyMinute = FileAge (Duration.FromMinutes 1L)
       let every10minutes = FileAge (Duration.FromMinutes 10L)
-      let hourly = FileAge (Duration.FromHours 1L)
-      let daily = FileAge (Duration.FromHours 24L)
-      let weekly = FileAge (Duration.FromHours (7L * 24L))
+      let hourly = FileAge (Duration.FromHours 1.)
+      let daily = FileAge (Duration.FromDays 1.)
+      let weekly = FileAge (Duration.FromDays 7.)
       let ofDuration dur = FileAge dur
 
     /// This module contains rotation policies that specify that files should
@@ -680,7 +680,7 @@ module File =
       let rotate, delete =
         [ FileSize (MiB 200L) ],
         [ folderSize (GiB 2L)
-          olderThan (Duration.FromHours (14L * 24L)) ]
+          olderThan (Duration.FromDays 14.) ]
       Rotation.Rotate (rotate, delete)
 
     /// Rotates your log files when each file has reached 200 MiB.

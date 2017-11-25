@@ -259,7 +259,7 @@ module Files =
 
   let runtime (now : Instant) =
     RuntimeInfo.create "my service" "myHost"
-    |> RuntimeInfo.setGetTimestamp (fun _ -> now.Ticks * Constants.NanosPerTick)
+    |> RuntimeInfo.setGetTimestamp (fun _ -> now.ToUnixTimeTicks() * Constants.NanosPerTick)
 
   let runtime2016_10_11T13_14_15 =
     runtime (Instant.FromUtc (2016, 10, 11, 13, 14, 15))

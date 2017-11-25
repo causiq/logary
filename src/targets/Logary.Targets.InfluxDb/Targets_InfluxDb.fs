@@ -301,7 +301,7 @@ module internal Impl =
         shutdown ^=> fun ack ->
           ack *<= () :> Job<_>
 
-        RingBuffer.takeBatch (uint32 conf.batchSize) requests ^=> fun reqs ->
+        RingBuffer.takeBatch (conf.batchSize) requests ^=> fun reqs ->
           let body =
             reqs
             |> Seq.map extractMessage

@@ -62,7 +62,7 @@ let integration =
       newHierarchy (fun _ -> ())
 
     testCaseAsync "logging to log4net logs to logary" <| (job {
-      let logaryAppender = LogaryAppender()
+      let logaryAppender = LogaryLog4NetAppender()
       let patternLayout = new PatternLayout(ConversionPattern = "%m")
       logaryAppender.Layout <- patternLayout
 

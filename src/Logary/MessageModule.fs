@@ -469,7 +469,7 @@ module Message =
 
   [<CompiledName "SetTimestamp">]
   let setTimestamp (instant : Instant) msg =
-    { msg with timestamp = instant.Ticks * Constants.NanosPerTick }
+    { msg with timestamp = instant.ToUnixTimeTicks() * Constants.NanosPerTick }
 
   /// Sets the number of ticks since epoch. There are 10 ticks per micro-second,
   /// so a tick is a 1/10th microsecond, so it's 100 nanoseconds long.

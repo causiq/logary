@@ -4,4 +4,4 @@ open NodaTime
 
 module Instant =
   let ofEpoch (e : EpochNanoSeconds) =
-    Instant.FromTicksSinceUnixEpoch(e / Constants.NanosPerTick)
+    NodaTime.Instant.FromUnixTimeTicks(e / Constants.NanosPerTick)
