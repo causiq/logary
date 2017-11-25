@@ -69,7 +69,7 @@ module internal Impl =
               | x ->
                 do! ri.logger.errorWithBP (
                       eventX "Unknown response from Mailgun received."
-                      >> setFieldFromObject "response" x)
+                      >> Message.setContext "response" x)
 
               do! ack *<= ()
               return! loop ()
