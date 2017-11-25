@@ -68,6 +68,7 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
+    <Reference Include="System.Xml" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj">
       <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
       <Name>Logary</Name>

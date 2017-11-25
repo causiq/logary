@@ -15,7 +15,7 @@ open Logary.Heka.Client
 open Logary.Heka.Messages
 open Logary.Target
 open Logary.Internals
-open Logary.Formatting
+open Logary.Configuration
 
 type HekaConfig = Logary.Heka.HekaConfig
 
@@ -28,103 +28,12 @@ type Logary.LogLevel with
     | Error   -> 3
     | Fatal   -> 2
 
-type Logary.Heka.Messages.Field with
-  static member ofField (name: string, (value, units)) =
-    let unitsS = defaultArg (Option.map (Units.symbol) units) ""
-
-    // TODO: This should be reformatted if possible to avoid ridiculous amounts of copypaste
-    match value with
-    | String s when s.Length > 0 ->
-      Some <| Messages.Field(name, Nullable ValueType.STRING, unitsS, [s])
-
-    | String _ ->
-      None
-
-    | Bool b ->
-      Some <| Messages.Field(name, Nullable ValueType.BOOL, unitsS, [b])
-
-    | Float f ->
-      Some <| Messages.Field(name, Nullable ValueType.DOUBLE, unitsS, [float f])
-
-    | Int64 i ->
-      Some <| Messages.Field(name, Nullable ValueType.INTEGER, unitsS, [i])
-
-    // TODO/CONSIDER: Heka doesn't support arbitrary precision integers, so we use a string instead.
-    | BigInt bi ->
-      Some <| Messages.Field(name, Nullable ValueType.STRING, unitsS, [bi.ToString ()])
-
-    | Binary (bytes, mime) when bytes.Length > 0 ->
-      Some <| Messages.Field(name, Nullable ValueType.BYTES, mime, [bytes])
-    // TODO/CONSIDER: We assume here that arrays are homogenous, even though object model permits heterogenous arrays.
-
-    | Binary (bytes, mime) ->
-      None
-
-    | Object m as o when not m.IsEmpty ->
-      Some <| Messages.Field(name, Nullable ValueType.STRING, "json",
-                             [Json.format (Json.serialize o)])
-
-    | Object _ ->
-      None
-
-    // TODO/CONSIDER: Fractions could also be serialized into an int array with
-    // a clarifying representation string
-    | Fraction _ as frac ->
-      Some <| Messages.Field(name, Nullable ValueType.STRING, "json",
-                             [Json.format <| Json.serialize frac])
-
-    | Array arr when arr.IsEmpty ->
-      None
-
-    | Array arr ->
-      // TODO: Figure out a way to implement arrays neatly without copy-paste
-      match arr.Head with
-      | String _ ->
-        Some <| Messages.Field(name, Nullable ValueType.STRING, unitsS,
-                               Seq.choose (fst Value.String__) arr)
-
-      | Int64 i ->
-        Some <| Messages.Field(name, Nullable ValueType.INTEGER, unitsS,
-                               Seq.choose (fst Value.Int64__) arr)
-
-      | BigInt _ ->
-        Some <| Messages.Field(name, Nullable ValueType.STRING, unitsS,
-                               Seq.choose (fst Value.BigInt__) arr
-                               |> Seq.map (string))
-      | Float _ ->
-        Some <| Messages.Field(name, Nullable ValueType.DOUBLE, unitsS,
-                               Seq.choose (fst Value.Float__) arr
-                               |> Seq.map (float))
-      | Bool _ ->
-        Some <| Messages.Field(name, Nullable ValueType.BOOL, unitsS,
-                               Seq.choose (fst Value.Bool__) arr)
-      | Binary _ ->
-        // TODO: Handle mime types some way
-        Some <| Messages.Field(name, Nullable ValueType.BYTES, unitsS,
-                               Seq.choose (fst Value.Binary__) arr
-                               |> Seq.map (fst))
-
-      | Array _ ->
-        failwith "TODO"
-
-      | Fraction _ ->
-        failwith "TODO"
-
-      | Object _ ->
-        failwith "TODO"
-
 type Logary.Heka.Messages.Message with
   static member ofMessage (msg : Logary.Message) =
     let hmsg = Message(logger = PointName.format msg.name)
     hmsg.severity <- Nullable (msg.level |> LogLevel.toSeverity)
     hmsg.timestamp <- msg.timestamp
-    match msg.value with
-    | Event _ ->
-      hmsg.payload <- Formatting.MessageParts.formatValueShallow msg
-
-    | _ ->
-      ()
-
+    hmsg.payload <- MessageWriter.verbatim.format msg
     hmsg
 
 /// The message type most often used in filters inside Heka (see e.g. the getting-
@@ -150,9 +59,7 @@ module internal Impl =
         x.stream.Dispose()
 
   let loop (conf : HekaConfig)
-           (ri : RuntimeInfo)
-           (requests : RingBuffer<TargetMessage>)
-           (shutdown : Ch<IVar<unit>>) =
+           (ri : RuntimeInfo, api : TargetAPI) : Job<unit> =
 
     let rec initialise () : Job<unit> =
       job {
@@ -183,7 +90,7 @@ module internal Impl =
         msg.uuid        <- Guid.NewGuid().ToByteArray()
         msg.hostname    <- state.hostname
         // TODO: ensure right Logary version is sent
-        msg.env_version <- "4.0.7"
+        msg.env_version <- "5.0.0"
         msg.``type``    <- MessageType
         msg.addField (Field("service", Nullable ValueType.STRING, null,
                             [ ri.service ]))
@@ -203,38 +110,37 @@ module internal Impl =
       }
 
       Alt.choose [
-        shutdown ^=> fun ack ->
-          let dispose x = (x :> IDisposable).Dispose()
+        api.shutdownCh ^=> fun ack ->
           job {
-            do Try.safe "Heka target disposing tcp stream, then client." ri.logger
-                        (state :> IDisposable).Dispose
-                        ()
+            do! Job.Scheduler.isolate <| fun _ ->
+              try
+                    (state :> IDisposable).Dispose ()
+              with e ->
+                Message.eventError "Heka target disposing tcp stream, then client."
+                |> Message.addExn e
+                |> Logger.logSimple ri.logger
+              
             do! ack *<= ()
           }
 
-        RingBuffer.take requests ^=> function
+        RingBuffer.take api.requests ^=> function
           | Log (logMsg, ack) ->
             ri.logger.debugWithBP (eventX "running: received message")
             >>=. write (Message.ofMessage logMsg)
             >>=. running state
 
           | Flush (ack, nack) ->
-            Alt.choose [
-              Ch.give ack ()
-              nack :> Alt<_>
-            ] ^=>. running state
-            :> Job<_>
+            ack *<= () >>=. running state
 
       ] :> Job<_>
 
     initialise ()
 
 /// Create a new Noop target
-let create conf =
-  TargetUtils.stdNamedTarget (Impl.loop conf)
+let create conf = TargetConf.createSimple (Impl.loop conf)
 
 /// Use with LogaryFactory.New( s => s.Target<Heka.Builder>() )
-type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+type Builder(conf, callParent : Target.ParentCallback<Builder>) =
   let signConf conf f = // abstract
     match conf.signingConfig with
     | None -> { conf with signingConfig = Some (f (MessageSigningConfig.Empty)) }
@@ -267,8 +173,8 @@ type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
   member x.Done() =
     ! (callParent x)
 
-  new(callParent : FactoryApi.ParentCallback<_>) =
+  new(callParent : Target.ParentCallback<_>) =
     Builder(HekaConfig.Empty, callParent)
 
-  interface Logary.Target.FactoryApi.SpecificTargetConf with
+  interface Target.SpecificTargetConf with
     member x.Build name = create conf name
