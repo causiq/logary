@@ -11,9 +11,10 @@ open Logary
 open Logary.Internals
 open Logary.Targets.Mailgun
 
-let emptyRuntime = RuntimeInfo.create "tests"
+let emptyRuntime = RuntimeInfo.create "tests" "localhost"
 
 let flush = Target.flush >> Job.Ignore >> run
+let stop = Target.shutdown >> Job.Ignore >> run
 
 let env k =
   match Environment.GetEnvironmentVariable k with
@@ -31,22 +32,14 @@ let start () =
                                       "haf.se",
                                       getOpts = getOpts)
 
-  Target.init emptyRuntime (create conf "mailgun")
+  Target.create emptyRuntime (create conf "mailgun")
   |> run
-  |> fun inst -> inst.server (fun _ -> Job.result ()) None |> start; inst
-
-let finaliseTarget = Target.shutdown >> fun a ->
-  a ^-> TimeoutResult.Success <|> timeOutMillis 1000 ^->. TimedOut
-  |> run
-  |> function
-  | TimedOut -> Tests.failtest "finalising target timeout"
-  | TimeoutResult.Success _ -> ()
 
 [<Tests>]
 let helloWorld =
   testList "giving it a spin" [
     testCase "initialise" <| fun _ ->
-      finaliseTarget (start ())
+      start () |> stop
 
     testCase "can send test e-mail" <| fun _ ->
       let target = start ()
@@ -57,7 +50,7 @@ let helloWorld =
         |> run
 
         target |> flush
-      finally finaliseTarget target
+      finally stop target
   ]
 
 [<EntryPoint>]

@@ -5,6 +5,7 @@ open Hopac.Infixes
 open Logary
 open Logary.Target
 open Logary.Message
+open Logary.Configuration
 open Logary.Internals
 open Mailgun.Api
 open System.Net.Mail
@@ -27,7 +28,7 @@ type MailgunLogaryConf =
 module internal Impl =
 
   let templater msg =
-    let formatter = Formatting.StringFormatter.levelDatetimeMessagePathNl
+    let formatter = MessageWriter.levelDatetimeMessagePathNewLine
     TextBody (formatter.format msg)
 
   let getOpts (domain, msg) = SendOpts.Create domain
@@ -39,22 +40,19 @@ module internal Impl =
       bcc         = conf.bcc
       inlineImgs  = []
       // CONSIDER: If the message is a measure, the subject line will be just the value with unit.
-      subject     = Formatting.MessageParts.formatValueShallow msg
+      subject     = MessageWriter.verbatim.format msg
       body        = body
       attachments = [] }
 
   let loop (conf : MailgunLogaryConf)
-           (ri : RuntimeInfo)
-           (requests : RingBuffer<TargetMessage>)
-           (shutdown : Ch<IVar<unit>>)
-           : Job<unit>=
+           (ri : RuntimeInfo, api : TargetAPI) : Job<unit> =
 
     let rec loop () : Job<unit> =
       Alt.choose [
-        shutdown ^=> fun ack ->
+        api.shutdownCh ^=> fun ack ->
           ack *<= ()
 
-        RingBuffer.take requests ^=> function
+        RingBuffer.take api.requests ^=> function
           | Log (logMsg, ack) ->
             if logMsg.level < conf.minLevel then loop () else
             let body  = conf.templater logMsg
@@ -78,15 +76,11 @@ module internal Impl =
             }
 
           | Flush (ack, nack) ->
-            Alt.choose [
-              Ch.give ack ()
-              nack :> Alt<_>
-            ] ^=> loop
-            :> Job<_>
+            ack *<= () >>= loop
 
-      ] :> Job<_>
+        ] :> Job<_>
 
-    if conf.``to`` = [] then
+    if List.isEmpty conf.``to`` then
       upcast (ri.logger.errorWithBP (eventX "No `to` was configured in Mailgun target"))
     elif conf.from.Host = "example.com" then
       upcast (ri.logger.errorWithBP (eventX "You cannot send e-mail to example.com in Mailgun target"))
@@ -128,10 +122,11 @@ type MailgunLogaryConf with
         getOpts  = defaultArg getOpts empty.getOpts }
 
 /// Create a new Mailgun target
-let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
+let create conf = TargetConf.createSimple (Impl.loop conf)
+
 
 /// Use with LogaryFactory.New( s => s.Target<Mailgun.Builder>() )
-type Builder(conf : MailgunLogaryConf, callParent : FactoryApi.ParentCallback<Builder>) =
+type Builder(conf : MailgunLogaryConf, callParent : Target.ParentCallback<Builder>) =
   member x.MailData(from : MailAddress, ``to`` : MailAddress list, domain : Domain) =
     Builder({ conf with from   = from
                         ``to`` = ``to``
@@ -140,8 +135,8 @@ type Builder(conf : MailgunLogaryConf, callParent : FactoryApi.ParentCallback<Bu
   member x.Mailgun(config : Configured) =
     ! (callParent <| Builder({ conf with mailgun = config }, callParent))
 
-  new(callParent : FactoryApi.ParentCallback<_>) =
+  new(callParent : Target.ParentCallback<_>) =
     Builder(empty, callParent)
 
-  interface Logary.Target.FactoryApi.SpecificTargetConf with
+  interface Target.SpecificTargetConf with
     member x.Build name = create conf name
