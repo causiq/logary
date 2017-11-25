@@ -225,19 +225,6 @@ module LiterateFormatting =
          | Token.PropToken (_, pd)  -> tokeniseProperty provider pd (getValueByName pd.Name))
 
   module internal MessageParts =
-    open Microsoft.FSharp.Reflection
-
-    /// Returns the case name of the object with union type 'ty.
-    let caseNameOf (x:'a) =
-      match FSharpValue.GetUnionFields(x, typeof<'a>) with
-      | case, _ -> case.Name
-
-    /// Format a timestamp in nanoseconds since epoch into a ISO8601 string
-    let formatTimestamp (ticks : int64) =
-      Instant.FromUnixTimeTicks(ticks)
-        .ToDateTimeOffset()
-        .ToString("o", CultureInfo.InvariantCulture)
-
     let tokeniseExceptions (pvd: IFormatProvider) (nl: string) (exns: exn list) =
       let windowsStackFrameLinePrefix = "   at "
       let monoStackFrameLinePrefix = "  at "
@@ -483,6 +470,17 @@ module MessageWriterEx =
 module MessageWriter =
   open LiterateFormatting.MessageParts
   open LiterateFormatting.Tokens
+  open Microsoft.FSharp.Reflection
+  
+
+    /// Returns the case name of the object with union type 'ty.
+  let private caseNameOf (x:'a) =
+    match FSharpValue.GetUnionFields(x, typeof<'a>) with
+    | case, _ -> case.Name
+
+  /// Format a timestamp in nanoseconds since epoch into a ISO8601 string
+  let formatTimestamp (timestamp : EpochNanoSeconds) =
+    Instant.ofEpoch(timestamp).ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture)
 
   let private appendToString (tokenised: seq<string * LiterateToken>) =
     let sb = StringBuilder ()
@@ -501,7 +499,7 @@ module MessageWriter =
         member x.write tw m =
           let level = string (caseNameOf m.level).[0]
           // https://noda-time.googlecode.com/hg/docs/api/html/M_NodaTime_OffsetDateTime_ToString.htm
-          let time = formatTimestamp m.timestampTicks
+          let time = formatTimestamp m.timestamp
           let body = tokeniseTemplateWithGauges tw.FormatProvider nl destr maxDepth m |> appendToString
           let name = m.name.ToString()
           let context = tokeniseContext tw.FormatProvider nl destr maxDepth m |> appendToString

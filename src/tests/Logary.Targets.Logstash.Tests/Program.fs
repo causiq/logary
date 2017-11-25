@@ -11,7 +11,7 @@ open Logary.Target
 open Logary.Targets
 open Logary.Internals
 
-let emptyRuntime = RuntimeInfo.create "tests"
+let emptyRuntime = RuntimeInfo.create "tests" "localhost"
 
 let flush = Target.flush >> Job.Ignore >> run
 
@@ -19,16 +19,10 @@ let targConf =
   Logstash.LogstashConf.create()
 
 let start () =
-  Target.init emptyRuntime (Logstash.create targConf "influxdb")
+  Target.create emptyRuntime (Logstash.create targConf "influxdb")
   |> run
-  |> fun inst -> inst.server (fun _ -> Job.result ()) None |> start; inst
 
-let finaliseTarget = Target.shutdown >> fun a ->
-  a ^-> TimeoutResult.Success <|> timeOutMillis 1000 ^->. TimedOut
-  |> run
-  |> function
-  | TimedOut -> Tests.failtest "finalising target timeout"
-  | TimeoutResult.Success _ -> ()
+let shutdown t = Target.shutdown t |> run |> run
 
 let raisedExn msg =
   let e = ref None : exn option ref
@@ -42,10 +36,9 @@ let now = Message.setUTCTicks System.DateTime.UtcNow.Ticks
 let target =
   testList "logstash" [
     testCase "start and stop" <| fun _ ->
-      let target = Logstash.create targConf "logstash-integration"
-      let subject = target |> init emptyRuntime |> run
+      let subject = start ()
       Message.eventWarn "integration test" |> Target.log subject |> run |> run
-      subject |> finaliseTarget
+      subject |> shutdown
 
     testCase "serialise" <| fun _ ->
       let e1 = raisedExn "darn"
@@ -62,12 +55,10 @@ let target =
         |> now
         |> Logstash.serialise
 
-      let expected =
-        [ "@timestamp", Json.String ""
-          "@version", Json.String "1"
-          "level", Json.String "warn"
-          "context", Json.Object ([ "service", Json.String "tests" ] |> Map.ofList)
-         ] |> Map.ofList |> Json.Object
-
+      let expected = """{}"""
       Expect.equal subject expected "should serialise to proper message"
     ]
+
+[<EntryPoint>]
+let main argv =
+  Tests.runTestsInAssembly defaultConfig argv

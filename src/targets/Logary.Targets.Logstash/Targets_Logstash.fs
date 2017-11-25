@@ -6,21 +6,43 @@ module Logary.Targets.Logstash
 #nowarn "1104"
 
 open Hopac
-open NodaTime
 open System
-open System.Net
-open System.Net.Sockets
-open System.IO
 open Hopac
 open Hopac.Infixes
-open Hopac.Extensions
 open fszmq
 open fszmq.Socket
 open Logary
-open Logary.Formatting
-open Logary.Target
 open Logary.Internals
-open Logary.Serialisation.Chiron
+open MBrace.FsPickler
+open MBrace.FsPickler.Json
+open MBrace.FsPickler.Combinators
+open Logary.Configuration
+
+// maybe just directly pickler msg to json string, no custom
+let messagePickler =
+    let writer (w : WriteState) (msg : Message) =
+       Pickler.auto<string>.Write w "name" (PointName.format msg.name)
+       Pickler.auto<string>.Write w "@version" "1"
+       Pickler.auto<string>.Write w "@timestamp" (MessageWriter.formatTimestamp msg.timestamp)
+       Pickler.auto<int64>.Write w "timestamp" (msg.timestamp)
+       Pickler.auto<string>.Write w "level" (msg.level.ToString())
+       let (Event tpl) = msg.value
+       Pickler.auto<string>.Write w "value" (tpl)
+       let contexts = msg.context |> HashMap.toSeq
+       Pickler.auto<seq<string * obj>>.Write w "context" (contexts)
+
+
+    let reader (r : ReadState) = failwith "oneway serializer"
+
+    Pickler.FromPrimitives(reader, writer)
+
+let registry = new CustomPicklerRegistry()
+registry.RegisterPickler messagePickler
+let custom = PicklerCache.FromCustomPicklerRegistry registry
+let jsonSerializer = FsPickler.CreateJsonSerializer(indent = false, omitHeader = true, picklerResolver = custom)
+
+let serialise = jsonSerializer.PickleToString
+
 
 /// This is the default address this Target publishes messages to.
 [<Literal>]
@@ -39,27 +61,6 @@ type LogstashConf =
     { publishTo  = defaultArg publishTo DefaultPublishTo
       logMetrics = defaultArg logMetrics false
       mode       = defaultArg mode PUSHPULL }
-
-let serialise : Message -> Json =
-  fun message ->
-    let props =
-      match Json.serialize message with
-      | Object values ->
-        values
-
-      | otherwise ->
-        failwithf "Expected Message to format to Object .., but was %A" otherwise
-
-    let overrides =
-      [ "@version", String "1"
-        "@timestamp", String (MessageParts.formatTimestamp message.timestampTicks)
-        "name", String (PointName.format message.name)
-      ]
-
-    let final =
-      overrides |> List.fold (fun data (k, v) -> data |> Map.add k v) props
-
-    (Object final)
 
 module internal Impl =
 
@@ -88,26 +89,25 @@ module internal Impl =
       sender = sender }
 
   let loop (conf : LogstashConf)
-           (ri : RuntimeInfo)
-           (requests : RingBuffer<_>)
-           (shutdown : Ch<_>) =
+           (ri : RuntimeInfo, api : TargetAPI) : Job<unit> =
 
     let rec init config =
       createState config.publishTo config.mode |> loop
 
     and loop (state : State) : Job<unit> =
       Alt.choose [
-        shutdown ^=> fun ack -> job {
+        api.shutdownCh ^=> fun ack -> job {
           do! Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
           do! ack *<= ()
         }
 
-        RingBuffer.take requests ^=> function
+        RingBuffer.take api.requests ^=> function
           | Log (message, ack) ->
             job {
               // https://gist.github.com/jordansissel/2996677
               let bytes =
-                Json.format (serialise message)
+                message
+                |> serialise 
                 |> UTF8.bytes
 
               do! Job.Scheduler.isolate (fun _ -> state.sender <~| (UTF8.bytes (message.name.ToString())) <<|  bytes)
@@ -118,17 +118,17 @@ module internal Impl =
 
           | Flush (ackCh, nack) ->
             job {
-              do! Ch.give ackCh () <|> nack
+              do! IVar.fill ackCh ()
               return! loop state
             }
       ] :> Job<_>
 
     init conf
 
-let create conf = TargetUtils.stdNamedTarget (Impl.loop conf)
+let create conf = TargetConf.createSimple (Impl.loop conf)
 
 /// Use with LogaryFactory.New( s => s.Target<Logstash.Builder>() )
-type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
+type Builder(conf, callParent : Target.ParentCallback<Builder>) =
 
   /// Specifies the publish endpoint that ZeroMQ connects to.
   member x.PublishTo(publishTo : string) =
@@ -140,9 +140,9 @@ type Builder(conf, callParent : FactoryApi.ParentCallback<Builder>) =
   member x.Done() =
     ! (callParent x)
 
-  new(callParent : FactoryApi.ParentCallback<_>) =
+  new(callParent : Target.ParentCallback<_>) =
     Builder(LogstashConf.create DefaultPublishTo, callParent)
 
-  interface Logary.Target.FactoryApi.SpecificTargetConf with
+  interface Target.SpecificTargetConf with
     member x.Build name =
       create conf name
