@@ -109,30 +109,26 @@ type WinPerfCounter =
 
 type WinPerfCounterInstance =
   { category  : Category
-    counter   : PerformanceCounter
-    instances : string []
+    instances : PerformanceCounter []
     unit      : Units
     baseName  : PointName }
 
   /// This W P C is 'singleton' and doesn't have neither a 'global single instance' nor 'instances'.
   member x.isNotInstanceBased =
-    Array.isEmpty x.instances && x.counter.CounterName <> ""
+    Array.isEmpty x.instances && x.isSingleInstance
 
   member x.isSingleInstance =
-    x.counter.CounterName = ""
+    x.category.CategoryType = CategoryType.SingleInstance
 
   member x.isMultiInstance =
-    not (Array.isEmpty x.instances)
+    x.category.CategoryType = CategoryType.MultiInstance
 
   /// Only call when instances are one or zero in count.
   member x.nextValue () =
-    if x.instances = [||] then
-      x.baseName,
-      float (x.counter.NextValue())
-    elif Array.length x.instances = 1 then
-      x.counter.InstanceName <- x.instances.[0] // side-effect!
-      x.baseName |> PointName.setEnding x.instances.[0],
-      float (x.counter.NextValue())
+    if Array.length x.instances = 1 then
+      let instance =  x.instances.[0]
+      instance.InstanceName,
+      float (instance.NextValue())
     else
       failwithf "Cannot get single value for %O with there are %i instances available"
                 x.baseName x.instances.Length
@@ -142,17 +138,14 @@ type WinPerfCounterInstance =
   member x.nextValues () =
     x.instances
     |> Array.map (fun instance ->
-      x.counter.InstanceName <- instance
-      instance,
-      float (x.counter.NextValue())
-    )
+      instance.InstanceName,
+      float (instance.NextValue()))
 
-  static member create(category, counter, instances : string seq, units) =
+  static member create(category, instances, units, counterName) =
     { category  = category
-      counter   = counter
       instances = Array.ofSeq instances
       unit      = defaultArg units Scalar
-      baseName  = PointName [| category.CategoryName; counter.CounterName |] }
+      baseName  = PointName [| category.CategoryName; counterName |] }
 
 module PointName =
   open Logary
@@ -200,7 +193,7 @@ module WinPerfCounter =
       | [||] ->
         try
           pcc.GetCounters ()
-          |> Array.map (fun c -> WinPerfCounterInstance.create(pcc, c, Set.empty, None))
+          |> Array.map (fun c -> WinPerfCounterInstance.create(pcc, [c], None,c.CounterName))
         // I haven't found a way to check this properly; not all categories return
         // errors like this:
         // System.ArgumentException: Counter is not single instance, an instance name needs to be specified.
@@ -208,32 +201,13 @@ module WinPerfCounter =
           Array.empty
 
       | instances ->
-        let i2cf m inst =
-          match m |> Map.tryFind inst with
-          | None   -> m |> Map.add inst (pcc.GetCounters inst)
-          | Some _ -> m
-
-        // (instance to counters) map
-        let i2c = instances |> Array.fold i2cf Map.empty
-
-        // (inst -> counter list) map to (counter -> instance list) map
-        let c2if m inst ctrs : Map<string, PerformanceCounter * string list> =
-
-          let c2ifInner (m : Map<string, PerformanceCounter * string list>) (counter : PerformanceCounter) =
-            match m |> Map.tryFind counter.CounterName with
-            | None ->
-              m |> Map.add counter.CounterName (counter, [ inst ])
-            | Some (counter, xinstances) ->
-              m |> Map. add counter.CounterName (counter, (inst :: xinstances))
-
-          ctrs |> Array.fold c2ifInner m
-
-        let c2i = i2c |> Map.fold c2if Map.empty
-
-        c2i
-        |> Seq.map (fun (KeyValue (_, (counter, instances))) ->
-          WinPerfCounterInstance.create(pcc, counter, instances, None))
-        |> Array.ofSeq
+        instances 
+        |> Seq.distinct 
+        |> Seq.collect pcc.GetCounters
+        |> Seq.groupBy (fun wpc -> wpc.CounterName)
+        |> Seq.map (fun (counterName, instanceCounters) -> 
+           WinPerfCounterInstance.create(pcc, instanceCounters, None, counterName))
+        |> Seq.toArray
 
     with
     | :? InvalidOperationException ->
@@ -249,11 +223,12 @@ module WinPerfCounter =
 
       match counter.instances with
       | instances when not (Set.isEmpty instances) ->
+        let wpcInstances = instances |> Seq.map (fun instanceName -> new PerformanceCounter(counter.category, counter.counter, instanceName, (* read only *) true))
         WinPerfCounterInstance.create (
           category,
-          new PerformanceCounter(counter.category, counter.counter, "__CHANGE_ON_QUERY__", (* read only *) true),
-          instances,
-          counter.unit)
+          wpcInstances,
+          counter.unit,
+          counter.counter)
         |> Some
 
       | _ ->
@@ -266,14 +241,13 @@ module WinPerfCounter =
           // from it.
           None
 
-        | CategoryType.Unknown
         | CategoryType.SingleInstance ->
           WinPerfCounterInstance.create (
             category,
-            new PerformanceCounter(counter.category, counter.counter, "", (* read only *) true),
-            [],
-            counter.unit)
-        |> Some
+            [new PerformanceCounter(counter.category, counter.counter, (* read only *) true)],
+            counter.unit,
+            counter.counter)
+          |> Some
 
         | typ ->
           failwithf "unknown type %A" typ
@@ -315,7 +289,7 @@ module WinPerfCounter =
         try
           match toWindowsCounter3 "Process" "ID Process" [ instance ] with
           | Some pcProcId when int (snd (pcProcId.nextValue())) = pid ->
-            pcProcId.instances.[0]
+            pcProcId.instances.[0].InstanceName
           | _ ->
             ""
         with _ -> "")

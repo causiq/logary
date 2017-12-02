@@ -176,7 +176,6 @@ let appMetrics (_ : PointName) =
 [<CompiledName "AppMetric">]
 let appMetric category counter instances=
   fun (_ : PointName) ->
-    printfn "Creating app metric %s %s" category counter
     WinPerfCounter.create(category, counter, instances)
     |> Array.singleton
     |> ofPerfCounters
