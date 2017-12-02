@@ -83,7 +83,7 @@ let tests =
           |> Events.subscribers [
              Events.events
              |> Events.service "svc1"
-             |> Events.counter (TimeSpan.FromMilliseconds 100.)
+             |> Pipe.counter (fun _ -> 1L) (TimeSpan.FromMilliseconds 100.)
              |> Pipe.map (fun counted -> Message.event Info (sprintf "counter result is %i within 100 ms" counted))
              |> Events.sink ["1"]
 
@@ -108,8 +108,7 @@ let tests =
             //  Events.events |> Events.tag "metric request latency"
             //  |> Pipe.choose (fun msg -> msg |> Message.tryGetGauge "some controller/action rpq")
             //  |> Pipe.map (fun (Gauge (v, _)) -> Convert.ToInt64(v))
-            //  |> Pipe.withTickJob (fiveMinutesEWMATicker.TickEvery (TimeSpan.FromSeconds 10.))
-            //  |> Pipe.tick fiveMinutesEWMATicker
+            //  |> Pipe.tickTimer fiveMinutesEWMATicker (TimeSpan.FromSeconds 10.)
             //  |> Pipe.map (fun rate -> Message.event Info (sprintf "fiveMinutesEWMA of request latency's rate(sample/sec) is %A" rate))
           ]
           |> Events.toProcessing

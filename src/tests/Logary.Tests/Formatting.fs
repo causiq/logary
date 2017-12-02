@@ -6,6 +6,7 @@ open Logary
 open Expecto
 open Logary.KnownLiterals
 open Logary
+open Logary.MessageWriter
 
 let private sampleMessage : Message =
   Message.eventFormat (Info, "this is bad, with {1} and {0} reverse.", [| "the first value"; "the second value"|])
@@ -108,6 +109,9 @@ let shouldHaveFields msg fields tip =
   |> fun actual ->
      Expect.equal actual (fields |> Set.ofList) tip
 
+// just for test convenient, since file end of line is LF.
+let levelDatetimeMessagePathNewLine =
+  expanded defaultDestr 10 "\n" "\n"
 
 let tests = [
   testCase "StringFormatter.Verbatim" <| fun _ ->
@@ -140,7 +144,7 @@ let tests = [
 
   testCase "StringFormatter.LevelDatetimePathMessageNl no exception" <| fun _ ->
     sampleMessage
-    |> MessageWriter.levelDatetimeMessagePathNewLine.format
+    |> levelDatetimeMessagePathNewLine.format
     |> fun actual ->
        let expect = """
 I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "the first value" reverse. [a.b.c.d]
@@ -148,14 +152,14 @@ I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "t
     0 => "the first value"
     1 => "the second value"
 """
-       Expect.equal actual (expect.TrimStart([|'\r';'\n'|])) "formatting the message LevelDatetimePathMessageNl"
+       Expect.equal actual (expect.TrimStart([|'\n'|])) "formatting the message LevelDatetimePathMessageNl"
 
   testCase "StringFormatter.LevelDatetimePathMessageNl with exception" <| fun _ ->
     let inner = new Exception("inner exception")
     let e = new Exception("Gremlings in the machinery", inner)
     sampleMessage
     |> Message.addExn e
-    |> MessageWriter.levelDatetimeMessagePathNewLine.format
+    |> levelDatetimeMessagePathNewLine.format
     |> fun actual ->
        let expect = """
 I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "the first value" reverse. [a.b.c.d]
@@ -184,12 +188,12 @@ I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "t
           Source => null
           HResult => -2146233088}
 """
-       Expect.equal actual (expect.TrimStart([|'\r';'\n'|]))
+       Expect.equal actual (expect.TrimStart([|'\n'|]))
          "formatting the message LevelDatetimePathMessageNl with exception attached"
 
   testCase "StringFormatter.LevelDatetimePathMessageNl complex data" <| fun _ ->
     complexMessage
-    |> MessageWriter.levelDatetimeMessagePathNewLine.format
+    |> levelDatetimeMessagePathNewLine.format
     |> fun actual ->
        let expect = """
 I 1970-01-01T00:00:03.1234567+00:00: default foo is "my id is 999 and my name is whatever, created => 11/11/2017" here is a default "PropA is 45 and PropB raise exn" and stringify "Logary.Tests.Formatting+Obj" and destructure Obj { PropA: 45, PropB: "The property accessor threw an exception:Exception" } Gauges: [Processor.% Idle.Core 1: 75 %, svc1 request per second: 1.75 k, methodA took 25.00 s to execute] [a.b.c.d]
@@ -202,9 +206,9 @@ I 1970-01-01T00:00:03.1234567+00:00: default foo is "my id is 999 and my name is
         PropA => 45
         PropB => "The property accessor threw an exception:Exception"}
   gauges:
-    Processor.% Idle.Core 1 => "75.000000 %"
-    svc1 request per second => "1.750000 k"
-    methodA => "25.000000 s"
+    Processor.% Idle.Core 1 => "75 %"
+    svc1 request per second => "1.75 k"
+    methodA => "25 s"
   others:
     UserInfo => 
       User {
@@ -293,7 +297,7 @@ I 1970-01-01T00:00:03.1234567+00:00: default foo is "my id is 999 and my name is
             created => 11/11/2017 12:00:00 AM}
     scalar array => [1, 2, 3, "4", "5", 6, 11/11/2017 12:00:00 AM]
 """
-       Expect.equal actual (expect.TrimStart([|'\r';'\n'|])) "formatting complex message LevelDatetimePathMessageNl"
+       Expect.equal actual (expect.TrimStart([|'\n'|])) "formatting complex message LevelDatetimePathMessageNl"
 
   testCase "``JsonFormatter has no newline characters``" <| fun _ ->
     skiptest "use fspickler, maybe should support in another project inherit MessageWriter with fspickler as its dependency"

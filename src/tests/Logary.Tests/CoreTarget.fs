@@ -478,7 +478,7 @@ let tests = [
           yield { text = "    "; colours = LiterateTesting.Theme.textColours }
           yield { text = "A.B.C.Check"; colours = LiterateTesting.Theme.subtextColours }
           yield { text = " => "; colours = LiterateTesting.Theme.punctuationColours }
-          yield { text = "\"133.379000 µs\""; colours = LiterateTesting.Theme.stringSymbolColours }
+          yield { text = "\"133.379 µs\""; colours = LiterateTesting.Theme.stringSymbolColours }
                  ]
         "Should print [06:15:02 INF] A.B.C.Perform took 133,38 μs"
 
@@ -501,7 +501,7 @@ let tests = [
           yield { text = "    "; colours = LiterateTesting.Theme.textColours }
           yield { text = "A.B.C.Check"; colours = LiterateTesting.Theme.subtextColours }
           yield { text = " => "; colours = LiterateTesting.Theme.punctuationColours }
-          yield { text = "\"139.000000 ns\""; colours = LiterateTesting.Theme.stringSymbolColours }
+          yield { text = "\"139 ns\""; colours = LiterateTesting.Theme.stringSymbolColours }
           ]
         "Should print [06:15:02 INF] A.B.C.Perform took 139 μs, because nanoseconds is as accurate as it gets"
 
@@ -524,7 +524,7 @@ let tests = [
           yield { text = "    "; colours = LiterateTesting.Theme.textColours }
           yield { text = "Revolver"; colours = LiterateTesting.Theme.subtextColours }
           yield { text = " => "; colours = LiterateTesting.Theme.punctuationColours }
-          yield { text = "\"1.456200 s/revolution\""; colours = LiterateTesting.Theme.stringSymbolColours }
+          yield { text = "\"1.4562 s/revolution\""; colours = LiterateTesting.Theme.stringSymbolColours }
                    ]
         "Should print [06:15:02 INF] Revolver: 1,4562 s/revolution"
 
@@ -564,17 +564,17 @@ let tests = [
           yield { text = "    "; colours = LiterateTesting.Theme.textColours }
           yield { text = "Core 1"; colours = LiterateTesting.Theme.subtextColours }
           yield { text = " => "; colours = LiterateTesting.Theme.punctuationColours }
-          yield { text = "\"0.100000 %\""; colours = LiterateTesting.Theme.stringSymbolColours }
+          yield { text = "\"0.1 %\""; colours = LiterateTesting.Theme.stringSymbolColours }
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
           yield { text = "    "; colours = LiterateTesting.Theme.textColours }
           yield { text = "Core 2"; colours = LiterateTesting.Theme.subtextColours }
           yield { text = " => "; colours = LiterateTesting.Theme.punctuationColours }
-          yield { text = "\"99.000000 %\""; colours = LiterateTesting.Theme.stringSymbolColours }
+          yield { text = "\"99 %\""; colours = LiterateTesting.Theme.stringSymbolColours }
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
           yield { text = "    "; colours = LiterateTesting.Theme.textColours }
           yield { text = "Core 3"; colours = LiterateTesting.Theme.subtextColours }
           yield { text = " => "; colours = LiterateTesting.Theme.punctuationColours }
-          yield { text = "\"47.322376 %\""; colours = LiterateTesting.Theme.stringSymbolColours }
+          yield { text = "\"47.3223755 %\""; colours = LiterateTesting.Theme.stringSymbolColours }
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
           yield { text = "  others:"; colours = LiterateTesting.Theme.textColours }
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
