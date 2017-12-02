@@ -1,39 +1,45 @@
-﻿module Logary.Tests.Metrics
+module Logary.Tests.Metrics
 
 open Expecto
 open NodaTime
 open Hopac
 open Logary
-open Logary.Metrics
-open Logary.Metrics.Reservoirs
+open Logary.EventsProcessing
+open Logary.EventsProcessing.Transformers
 
 [<Tests>]
-let builtInMetrics =
+let bufferCounter =
   let take n stream =
-    stream |> Stream.take n |> Stream.toSeq |> run |> Seq.toList
+    stream |> Stream.take n |> Stream.toSeq |> run |> Seq.toList |> List.map List.ofSeq
 
-  testList "built-ins" [
-    testList "simplest counter" [
-      let counter = Counters.counter (PointName.ofSingle "logins") |> run
+  let generateBufferTicker () =
+    let bufferTicker = BufferTicker ()
+    let expects =  Stream.Src.create ()
+    let (sendItem, _) = 
+      Pipe.start 
+      |> Pipe.tick bufferTicker 
+      |> Pipe.run (fun items -> Stream.Src.value expects items |> HasResult)
+      |> run
+    (sendItem, bufferTicker, Stream.Src.tap expects)
 
-      yield testCase "initial" <| fun _ ->
-        let stream = Metric.tap counter
-        Metric.tick counter |> run
-        Expect.equal (stream |> take 1L) [Int64 0L, Units.Scalar] "zero at start"
+  testList "simplest counter" [
+    let ticker = BufferTicker ()
 
-      yield testCase "counting to three" <| fun _ ->
-        let stream = Metric.tap counter
-        counter |> Metric.update (Int64 1L, Units.Scalar) |> run
-        Metric.tick counter |> run
-        counter |> Metric.update (Int64 1L, Units.Scalar) |> run
-        counter |> Metric.update (Int64 1L, Units.Scalar) |> run
-        Metric.tick counter |> run
-        let actual = stream |> take 2L
-        Expect.equal actual [
-            Int64 1L, Units.Scalar
-            Int64 2L, Units.Scalar
-          ] "one and then two after two single counts"
-    ]
+    yield testCase "initial" <| fun _ ->
+      let (sendItem, ticker, expects) = generateBufferTicker ()
+      ticker.Tick () |> run
+      let expect = expects |> take 1L
+      Expect.equal expect [[]] "emptry without sendItem"
+
+    yield testCase "counting to three" <| fun _ ->
+      let (sendItem, ticker, expects) = generateBufferTicker ()
+      sendItem 1 |> ignore
+      ticker.Tick () |> run
+      sendItem 1 |> ignore
+      sendItem 1 |> ignore
+      ticker.Tick () |> run
+      let expect = expects |> take 2L
+      Expect.equal expect [[1];[1;1;];] "one and then two after two single counts"
   ]
 
 [<Tests>]
@@ -108,6 +114,105 @@ let snapshot =
       Expect.floatClose Accuracy.veryHigh (Snapshot.mean empty) 0. "zero"
     ]
 
+let mockClock () = 
+  let mutable num = 0.
+  let firstInstant = Lazy(SystemClock.Instance.GetCurrentInstant)
+  { new IClock with
+      member x.GetCurrentInstant () =
+        let res = firstInstant.Value + Duration.FromSeconds(5. * num)
+        num <- num + 1.
+        res
+  }
+
+/// The an exponentially weighted moving average that gets ticks every
+/// period (a period is a duration between events), but can get
+/// `update`s at any point between the ticks.
+module ExpWeightedMovAvg =
+  open NodaTime
+
+  /// The period in between ticks; it's a duration of time between two data
+  /// points.
+  let private SamplePeriod = Duration.FromSeconds 5L
+
+  let private OneMinute = 1.
+  let private FiveMinutes = 5.
+  let private FifteenMinutes = 15.
+
+  /// calculate the alpha coefficient from a number of minutes
+  ///
+  /// - `duration` is how long is between each tick
+  /// - `mins` is the number of minutes the EWMA should be calculated over
+  let xMinuteAlpha duration mins =
+    1. - exp (- Duration.minutes duration / mins)
+
+  /// alpha coefficient for the `SamplePeriod` tick period, with one minute
+  /// EWMA
+  let M1Alpha = xMinuteAlpha SamplePeriod OneMinute, SamplePeriod
+
+  /// alpha coefficient for the `SamplePeriod` tick period, with five minutes
+  /// EWMA
+  let M5Alpha = xMinuteAlpha SamplePeriod FiveMinutes, SamplePeriod
+
+  /// alpha coefficient for the `SamplePeriod` tick period, with fifteen minutes
+  /// EWMA
+  let M15Alpha = xMinuteAlpha SamplePeriod FifteenMinutes, SamplePeriod
+
+  type EWMAState =
+    { inited    : bool
+      /// in samples per tick
+      rate      : float
+      uncounted : int64
+      alpha     : float
+      /// interval in ticks
+      interval  : float }
+
+  /// Create a new EWMA state that you can do `update` and `tick` on.
+  ///
+  /// Alpha is dependent on the duration between sampling events ("how long
+  /// time is it between the data points") so they are given as a pair.
+  let create (alpha, duration : Duration) =
+    { inited    = false
+      rate      = 0.
+      uncounted = 0L
+      alpha     = alpha
+      interval  = float duration.TotalTicks }
+
+  /// duration: SamplePeriod
+  let oneMinuteEWMA c =
+    create M1Alpha
+
+  /// duration: SamplePeriod
+  let fiveMinutesEWMA c =
+    create M5Alpha
+
+  /// duration: SamplePeriod
+  let fifteenMinuteEWMA c=
+    create M15Alpha
+
+  let update state value =
+    { state with uncounted = state.uncounted + value }
+
+  let private calcRate currentRate alpha instantRate =
+    currentRate + alpha * (instantRate - currentRate)
+
+  let tick state =
+    let count = float state.uncounted
+    let instantRate = count / state.interval
+    printfn "c %s ir %s lr %s alpha %s" (string count) (string instantRate) (string state.rate) (string state.alpha)
+    if state.inited then
+      { state with uncounted = 0L
+                   rate      = calcRate state.rate state.alpha instantRate }
+    else
+      { state with uncounted = 0L
+                   inited    = true
+                   rate      = instantRate }
+
+  let rateInUnit (inUnit : Duration) state =
+    // TODO: consider using nanoseconds like timestamp on Message.
+    // we know rate is in samples per tick
+    state.rate * float inUnit.TotalTicks
+
+
 [<Tests>]
 let reservoirs =
   testList "reservoirs" [
@@ -142,11 +247,7 @@ let reservoirs =
 
     testList "sliding time window" [
       testCase "store duplicate ticks" <| fun _ ->
-        let testClock =
-          { new IClock with
-              member x.Now = Instant(20L) }
-        // TODO: might port sliding time window reservoir
-        ()
+        skiptest "TODO: might port sliding time window reservoir"
       ]
 
     testList "exponentially weighted moving average" [
@@ -162,17 +263,19 @@ let reservoirs =
         let actual =
           [ for i in 1..expectations.Length - 1 do yield i ]
           |> List.scan (fun s t -> passMinute s) initState
-          |> List.map (ExpWeightedMovAvg.rate (Duration.FromSeconds 1L))
+          |> List.map (ExpWeightedMovAvg.rateInUnit (Duration.FromSeconds 1L))
 
         testCase explaination <| fun _ ->
           List.zip expectations actual
           |> List.iteri (fun index (expected, actual) ->
-            Expect.floatClose Accuracy.medium actual expected
+             printfn "expect: %s , actual: %s" (string expected) (string actual)
+             Expect.floatClose Accuracy.medium actual expected
                               (sprintf "Index %d, should calculate correct EWMA" index))
 
       yield testEWMA "1 min"
-        ExpWeightedMovAvg.oneMinuteEWMA
-        [ 0.6
+        (ExpWeightedMovAvg.oneMinuteEWMA (mockClock()))
+        [ //0.
+          0.6
           0.22072766
           0.08120117
           0.02987224
@@ -190,8 +293,9 @@ let reservoirs =
           0.00000018 ]
 
       yield testEWMA "5 min"
-        ExpWeightedMovAvg.fiveMinutesEWMA
-        [ 0.6
+        (ExpWeightedMovAvg.fiveMinutesEWMA (mockClock()))
+        [ //0.
+          0.6
           0.49123845
           0.40219203
           0.32928698
@@ -209,8 +313,9 @@ let reservoirs =
           0.02987224 ]
 
       yield testEWMA "15 min"
-        ExpWeightedMovAvg.fifteenMinuteEWMA
-        [ 0.6
+        (ExpWeightedMovAvg.fifteenMinuteEWMA (mockClock()))
+        [ //0.
+          0.6
           0.56130419
           0.52510399
           0.49123845

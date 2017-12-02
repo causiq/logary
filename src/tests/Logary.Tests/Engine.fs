@@ -8,6 +8,8 @@ open Hopac
 open Hopac.Infixes
 open Hopac.Extensions
 open Logary.Internals
+open Logary.EventsProcessing
+open Logary.EventsProcessing.Transformers
 
 type MockTarget =
   { server : string * (Message -> Alt<Promise<unit>>)
@@ -75,8 +77,6 @@ let tests =
 
       testCaseAsync "message routing" (job {
 
-        let fiveMinutesEWMATicker = EWMATicker (Duration.FromSeconds 1L, Duration.FromMinutes 5L)
-
         // context
         let processing =
           Events.stream
@@ -105,11 +105,6 @@ let tests =
             //  |> Events.percentile 0.99
             //  |> Pipe.map (fun num -> Message.event Info (sprintf "99th percentile of request latency every rolling 5 second window is %A" num))
 
-            //  Events.events |> Events.tag "metric request latency"
-            //  |> Pipe.choose (fun msg -> msg |> Message.tryGetGauge "some controller/action rpq")
-            //  |> Pipe.map (fun (Gauge (v, _)) -> Convert.ToInt64(v))
-            //  |> Pipe.tickTimer fiveMinutesEWMATicker (TimeSpan.FromSeconds 10.)
-            //  |> Pipe.map (fun rate -> Message.event Info (sprintf "fiveMinutesEWMA of request latency's rate(sample/sec) is %A" rate))
           ]
           |> Events.toProcessing
 

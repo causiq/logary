@@ -7,6 +7,7 @@ open Hopac.Extensions
 open Logary.Message
 open Logary.Target
 open Logary.Internals
+open Logary.EventsProcessing
 open NodaTime
 
 

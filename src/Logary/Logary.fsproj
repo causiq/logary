@@ -67,6 +67,7 @@
       <Paket>True</Paket>
       <Link>paket-files/RingBuffer.fs</Link>
     </Compile>
+
     <!-- Below: values -->
     <Compile Include="HashMap.fsi" />
     <Compile Include="HashMap.fs" />
@@ -82,38 +83,42 @@
     <Compile Include="Internals/NullLogger.fs" />
     <Compile Include="Middleware.fs" />
     <Compile Include="Internals/Global.fs" />
-    <Compile Include="System.Ticks.fs" />
-    <Compile Include="System.Stopwatch.fs" />
+    <Compile Include="Extensions/System.Ticks.fs" />
+    <Compile Include="Extensions/System.Stopwatch.fs" />
     <Compile Include="MessageModule.fs" />
     <Compile Include="MiddlewareModule.fs" />
     <Compile Include="LoggerModule.fs" />
-    <Compile Include="NodaTime.Duration.fs" />
-    <Compile Include="NodaTime.Instant.fs" />
-    <Compile Include="System.Dates.fs" />
+    <Compile Include="Extensions/NodaTime.Duration.fs" />
+    <Compile Include="Extensions/NodaTime.Instant.fs" />
+    <Compile Include="Extensions/System.Dates.fs" />
+
     <!-- Below: runtime -->
     <Compile Include="Internals/Supervisor.fs" />
-    <!-- <Compile Include="Internals/Service.fs" />  -->
     <Compile Include="Rule.fs" />
     <Compile Include="Internals/RuntimeInfo.fs" />
     <Compile Include="Internals/RuntimeInfoModule.fs" />
     <Compile Include="Internals/Targets.fs" />
     <Compile Include="Target.fs" />
     <Compile Include="Internals/InternalLogger.fs" />
-    <!-- <Compile Include="Internals/PromisedLogger.fs" /> -->
     <Compile Include="Logging.fs" />
-    <Compile Include="Events.fs" />
+
+    <!-- Below: events processing -->
+    <Compile Include="EventsProcessing/Transformers.fs" />
+    <Compile Include="EventsProcessing/Ticker.fs" />
+    <Compile Include="EventsProcessing/Pipe.fs" />
+    <Compile Include="EventsProcessing/Events.fs" />
+
+    <!-- Below: registry -->
     <Compile Include="Registry.fs" />
+
     <!-- Below: formatting, serialisation -->
     <Compile Include="Formatting.fs" />
-    <!-- <Compile Include="Serialisation.fs" /> -->
     <!-- Below: implementations, factory api -->
     <Compile Include="CSharp.fs" />
     <Compile Include="Configuration/Factory.Target.fs" />
     <Compile Include="Targets/Core.fs" />
     <Compile Include="Targets/Noop.fs" />
     <Compile Include="Targets/Graphite.fs" />
-    <!-- <Compile Include="Metrics/Ticked.fs" /> -->
-    <!-- <Compile Include="Transformers.fs" /> -->
     <!-- Below: config -->
     <Compile Include="Configuration/Config.fs" />
     <Compile Include="Configuration/Factory.fs" />

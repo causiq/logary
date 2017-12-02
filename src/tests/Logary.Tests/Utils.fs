@@ -4,6 +4,7 @@ open Hopac
 open Logary
 open Logary.Targets
 open Logary.Configuration
+open Logary.EventsProcessing
 open System.IO
 
 let buildTextWriteTarget name =

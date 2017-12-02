@@ -8,6 +8,8 @@ open Hopac.Extensions
 open Logary
 open Logary.Internals
 open Logary.Targets
+open Logary.EventsProcessing
+
 
 /// Specifies the internal logging level for Logary.
 [<RequireQualifiedAccess>]
