@@ -172,7 +172,6 @@ module ExpWeightedMovAvg =
       let instantRate = count / float interval
       let currentRate = state.rate
       let alpha = alpha samplePeriod state.alphaPeriod
-      printfn "instantR %s , alpha %s , crate %s, diff %s" (string instantRate) (string alpha) (string currentRate) (string (instantRate - currentRate))
       let rate = if currentRate = 0. then instantRate else currentRate + alpha * (instantRate - currentRate)
       { state with uncounted = 0L
                    rate      = rate }

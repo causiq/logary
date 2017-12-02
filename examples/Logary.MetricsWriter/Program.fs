@@ -4,35 +4,14 @@ open System
 open System.Threading
 open Hopac
 open Logary
-open Logary.Targets
-open Logary.Metric
-open Logary.Metrics
 open Logary.Configuration
 open NodaTime
-
-
-module DerivedSample =
-
-  /// This sample demonstrates how to create a derived metric from other simpler
-  /// ones. It generates an exponentially weighted moving average from
-  /// login gauges. The login gauges are sent one-by-one from the login code.
-  ///
-  /// By wrapping it up like this, you can drastically reduce the amount of code
-  /// a given service sends by pre-computing much of it.
-  ///
-  /// It's also a good sample of reservoir usage; a fancy name of saying that
-  /// it's an algorithm which works on more than one gauge at a time, to produce
-  /// a derived metric.
-  let loginLoad : Job<Stream<Message>> = job {
-    let! counter = Counters.counter (PointName.ofSingle "logins")
-    let! ewma = Reservoirs.ewma (PointName.ofSingle "loginsEWMA")
-    do! ewma |> Metric.consume (Metric.tap counter)
-    return Metric.tapMessages ewma
-  }
+open Logary.Targets
+open Logary.Metrics.WinPerfCounters
 
 module Sample =
 
-  let randomWalk pn : Job<Metric> =
+  let randomWalk pn =
     let reducer state = function
       | _ ->
         state
@@ -44,15 +23,15 @@ module Sample =
         elif v + prevValue < -1. || v + prevValue > 1. then -v + prevValue
         else v + prevValue
 
-      let msg = Message.gauge pn (Float value)
+      let msg = Message.gauge pn value
 
-      (rnd, value), [| msg |]
+      (rnd, value), msg
 
     let state =
       let rnd = Random()
       rnd, rnd.NextDouble()
 
-    Metric.create reducer state ticker
+    Ticker.create state reducer ticker
 
 [<EntryPoint>]
 let main argv =
@@ -61,28 +40,53 @@ let main argv =
   use mre = new ManualResetEventSlim(false)
   use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
 
-  let influxConf =
-    InfluxDb.create (InfluxDb.InfluxDbConf.create(Uri "http://192.168.99.100:8086/write", "logary", batchSize = 500us))
-                    "influxdb"
+  let tenSecondsEWMATicker = EWMATicker (Duration.FromSeconds 1L, Duration.FromSeconds 10L)
+  let randomWalk = Sample.randomWalk "randomWalk"
+  let walkPipe =  Events.events |> Pipe.tickTimer randomWalk (TimeSpan.FromMilliseconds 500.)
+  let systemMetrics = Events.events |> Pipe.tickTimer (systemMetrics (PointName.parse "sys")) (TimeSpan.FromSeconds 5.)
+  let processing = 
+    Events.stream
+    |> Events.subscribers [
 
-  use logary =
-    withLogaryManager "Logary.Examples.MetricsWriter" (
-      withTargets [
-        Console.create (Console.empty) "console"
-        influxConf
-      ]
-      >> withMetrics [
-        MetricConf.create (ms 500) "randomWalk" Sample.randomWalk
-      ]
-      >> withRules [
-        Rule.createForTarget "console"
-        Rule.createForTarget "influxdb"
-      ]
-      >> withInternalTargets Info [
-        Console.create Console.empty "console"
-      ]
-    )
+       walkPipe
+       |> Events.sink ["WalkFile";]
+
+       walkPipe
+       |> Pipe.choose (Message.tryGetGauge "randomWalk")
+       |> Pipe.counter (fun _ -> 1L) (TimeSpan.FromSeconds 2.)
+       |> Pipe.map (fun counted -> Message.eventFormat (Info, "There are {totalNumbers} randomWalk within 2s", [|counted|]))
+       |> Events.sink ["Console";]
+
+       walkPipe
+       |> Pipe.choose (Message.tryGetGauge "randomWalk")
+       |> Pipe.map (fun _ -> 1L) // think of randomWalk as an event, mapping to 1
+       |> Pipe.tickTimer tenSecondsEWMATicker (TimeSpan.FromSeconds 5.)
+       |> Pipe.map (fun rate -> Message.eventFormat (Info, "tenSecondsEWMA of randomWalk's rate is {rateInSec}", [|rate|]))
+       |> Events.sink ["Console";]
+
+       systemMetrics
+       |> Pipe.map Array.toSeq
+       |> Events.flattenToProcessing
+       |> Pipe.map (Message.addSinks ["LiterateConsole";])
+       |> Events.sink ["LiterateConsole"; "WPCMetricFile";]
+
+    ]
+    |> Events.toProcessing
+
+  let console = Console.create Console.empty "Console"
+  let literalConsole = LiterateConsole.create LiterateConsole.empty "LiterateConsole"
+  let randomWalkFileName = File.Naming ("{service}-RandomWalk-{date}", "log")
+  let wpcFileName = File.Naming ("{service}-wpc-{date}", "log")
+  let randomWalkTarget = File.create (File.FileConf.create Environment.CurrentDirectory randomWalkFileName) "WalkFile"
+  let wpcFileTarget = File.create (File.FileConf.create Environment.CurrentDirectory wpcFileName) "WPCMetricFile"
+  let logary =
+    Config.create "Logary.Examples.MetricsWriter" "localhost"
+    |> Config.targets [console; literalConsole; randomWalkTarget; wpcFileTarget;]
+    |> Config.ilogger (ILogger.Console Verbose)
+    |> Config.processing processing
+    |> Config.build
     |> run
+    |> Registry.toLogManager
 
   mre.Wait()
   0

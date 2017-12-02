@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2012
-VisualStudioVersion = 14.0.23107.0
+# Visual Studio 15
+VisualStudioVersion = 15.0.26403.7
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary", "Logary\Logary.fsproj", "{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}"
 EndProject

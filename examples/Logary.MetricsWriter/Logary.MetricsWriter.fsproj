@@ -66,22 +66,7 @@
       <Name>Logary.Metrics.WinPerfCounters</Name>
       <Project>{DD5137FC-22E5-47DA-88F1-3D3F1E7E8381}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\..\src\targets\Logary.Targets.InfluxDb\Logary.Targets.InfluxDb.fsproj">
-      <Project>{4ACE8A29-6D75-4956-B45C-22C82EAFCFD5}</Project>
-      <Name>Logary.Targets.InfluxDb</Name>
-    </ProjectReference>
   </ItemGroup>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.6.1')">
-      <ItemGroup>
-        <Reference Include="Argu">
-          <HintPath>..\..\packages\Argu\lib\net40\Argu.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.6.1')">
       <ItemGroup>
