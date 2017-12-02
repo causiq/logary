@@ -53,8 +53,9 @@ module Units =
 
   let scaleBy10 units (value : float) : float * string =
     let symbol = Units.symbol units
-    if value = 0. || value = infinity || value = -infinity then 1., symbol else
-    let fraction = value > -1. && value < 1.
+    let value = abs value
+    if value = 0. || value = infinity then 1., symbol else
+    let fraction = value < 1.
     let prefixes = if fraction then fractionsPrefixes else multiplePrefixes
     let index =
       // at boundaries, like 0.001 s we want index to be (abs(-3) - 1) / 3

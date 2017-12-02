@@ -20,7 +20,7 @@ type LogaryConf =
   /// Extra middleware added to every resolved logger.
   abstract middleware : Middleware[]
   /// Optional stream transformer.
-  abstract processing : Pipe.Processing
+  abstract processing : Events.Processing
 
 /// A data-structure that gives information about the outcome of a flush
 /// operation on the Registry. This data structure is only relevant if the

@@ -26,7 +26,7 @@ module Config =
       getSem       : unit -> obj
       ilogger      : ILogger
       middleware   : Middleware list
-      processing   : Pipe.Processing
+      processing   : Events.Processing
       setGlobals   : bool
     }
 
@@ -39,7 +39,7 @@ module Config =
       middleware   = List.empty
       ilogger      = ILogger.Console Warn
       setGlobals   = true
-      processing   = Pipe.start
+      processing   = Events.events
     }
 
   let target tconf lconf =

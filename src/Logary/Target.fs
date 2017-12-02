@@ -100,9 +100,9 @@ module Target =
 
     // traverse ^->. memo (Latch.await latch)
 
-    let allFlushAcks = IVar ()
+    let allAppendedAcks = IVar ()
 
-    let flushConJob =
+    let appendToBufferConJob =
       xs
       |> Seq.filter (fun t -> needSendToTarget t msg)
       |> Hopac.Extensions.Seq.Con.mapJob (fun target ->
@@ -110,11 +110,11 @@ module Target =
          let msg = msg |> Middleware.compose target.middleware
          RingBuffer.put target.api.requests (Log (msg, ack)) ^->. ack)
 
-    let flushAlt = Alt.prepareJob <| fun _ ->
-      Job.start (flushConJob >>= fun acks -> IVar.fill allFlushAcks acks)
-      >>-. allFlushAcks
+    let logToAllTargetAlt = Alt.prepareJob <| fun _ ->
+      Job.start (appendToBufferConJob >>= fun acks -> IVar.fill allAppendedAcks acks)
+      >>-. allAppendedAcks
 
-    flushAlt ^-> fun acks -> Job.conIgnore acks |> memo
+    logToAllTargetAlt ^-> fun acks -> Job.conIgnore acks |> memo
 
   /// Send the target a message, returning the same instance as was passed in when
   /// the Message was acked.

@@ -448,7 +448,7 @@ module internal CustomFsMessageTemplates =
       let (Gauge (value, units)) = gauge
       let (scaledValue, unitsFormat) = Units.scale units value
       if String.IsNullOrEmpty unitsFormat then ScalarValue scaledValue
-      else ScalarValue (sprintf "%f %s" scaledValue unitsFormat)
+      else ScalarValue (sprintf "%s %s" (string scaledValue) unitsFormat)
     | _ -> TemplatePropertyValue.Empty
 
 /// A thing that efficiently writes a message to a TextWriter.
