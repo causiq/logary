@@ -6,6 +6,8 @@ require 'albacore/task_types/nugets_pack'
 require 'albacore/tasks/versionizer'
 require 'albacore/tasks/release'
 require './tools/paket_pack'
+require 'fileutils'
+
 include ::Albacore::NugetsPack
 
 Configuration = ENV['CONFIGURATION'] || 'Release'
@@ -59,6 +61,18 @@ task :paket_replace do
   sh %{ruby -pi.bak -e "gsub(/namespace Logary.Facade/, 'namespace Cibryy.Logging')" paket-files/logary/logary/src/Logary.CSharp.Facade/Facade.cs}
 end
 
+task :copy_files do
+  unless File.directory?("./src/tests/Logary.Targets.DB.Tests/x86/")
+    FileUtils.mkdir_p("./src/tests/Logary.Targets.DB.Tests/x86/")
+  end
+  FileUtils.cp_r Dir["./packages/SQLite.Interop/**/SQLite.Interop.dll"], "./src/tests/Logary.Targets.DB.Tests/x86/"
+  unless File.directory?("./src/tests/Logary.Targets.DB.Tests/x64/")
+    FileUtils.mkdir_p("./src/tests/Logary.Targets.DB.Tests/x64/")
+  end
+  FileUtils.cp_r Dir["./packages/SQLite.Interop.dll/**/SQLite.Interop.dll"], "./src/tests/Logary.Targets.DB.Tests/x64/"
+end
+
+
 build :clean_sln do |b|
   b.target = 'Clean'
   b.sln = 'src/v4.sln'
@@ -106,7 +120,7 @@ build :build_quick do |b|
 end
 
 desc 'Perform full build'
-task :build => [:versioning, :assembly_info, :restore, :paket_replace, :build_quick]
+task :build => [:versioning, :assembly_info, :restore, :paket_replace, :copy_files, :build_quick]
 
 directory 'build/pkg'
 
@@ -197,7 +211,7 @@ end
 desc 'run unit tests'
 task :tests => [:build, :tests_unit, :tests_spec]
 
-task :default => [:tests, :nugets]
+task :default => [:restore, :paket_replace, :copy_files, :tests, :nugets]
 
 namespace :docs do
   task :pre_reqs do

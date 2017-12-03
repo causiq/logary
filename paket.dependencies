@@ -45,6 +45,8 @@ nuget Google.Cloud.Logging.V2 prerelease
 nuget Google.Api.Gax.Rest prerelease
 nuget FsPickler.Json
 nuget aliyun-log-csharp-sdk
+nuget SQLite.Interop.dll
+nuget SQLite.Interop
 
 github xyncro/chiron:e32f8b47f34e796b663ddf1d3994950752dc5d6b src/Chiron/Chiron.fs
 github xyncro/aether:2e7b07104c47a02d5e92ff5eda0bc950ef57ae2e src/Aether/Aether.fs
