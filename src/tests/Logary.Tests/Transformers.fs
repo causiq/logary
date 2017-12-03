@@ -124,95 +124,6 @@ let mockClock () =
         res
   }
 
-/// The an exponentially weighted moving average that gets ticks every
-/// period (a period is a duration between events), but can get
-/// `update`s at any point between the ticks.
-module ExpWeightedMovAvg =
-  open NodaTime
-
-  /// The period in between ticks; it's a duration of time between two data
-  /// points.
-  let private SamplePeriod = Duration.FromSeconds 5L
-
-  let private OneMinute = 1.
-  let private FiveMinutes = 5.
-  let private FifteenMinutes = 15.
-
-  /// calculate the alpha coefficient from a number of minutes
-  ///
-  /// - `duration` is how long is between each tick
-  /// - `mins` is the number of minutes the EWMA should be calculated over
-  let xMinuteAlpha duration mins =
-    1. - exp (- Duration.minutes duration / mins)
-
-  /// alpha coefficient for the `SamplePeriod` tick period, with one minute
-  /// EWMA
-  let M1Alpha = xMinuteAlpha SamplePeriod OneMinute, SamplePeriod
-
-  /// alpha coefficient for the `SamplePeriod` tick period, with five minutes
-  /// EWMA
-  let M5Alpha = xMinuteAlpha SamplePeriod FiveMinutes, SamplePeriod
-
-  /// alpha coefficient for the `SamplePeriod` tick period, with fifteen minutes
-  /// EWMA
-  let M15Alpha = xMinuteAlpha SamplePeriod FifteenMinutes, SamplePeriod
-
-  type EWMAState =
-    { inited    : bool
-      /// in samples per tick
-      rate      : float
-      uncounted : int64
-      alpha     : float
-      /// interval in ticks
-      interval  : float }
-
-  /// Create a new EWMA state that you can do `update` and `tick` on.
-  ///
-  /// Alpha is dependent on the duration between sampling events ("how long
-  /// time is it between the data points") so they are given as a pair.
-  let create (alpha, duration : Duration) =
-    { inited    = false
-      rate      = 0.
-      uncounted = 0L
-      alpha     = alpha
-      interval  = float duration.TotalTicks }
-
-  /// duration: SamplePeriod
-  let oneMinuteEWMA c =
-    create M1Alpha
-
-  /// duration: SamplePeriod
-  let fiveMinutesEWMA c =
-    create M5Alpha
-
-  /// duration: SamplePeriod
-  let fifteenMinuteEWMA c=
-    create M15Alpha
-
-  let update state value =
-    { state with uncounted = state.uncounted + value }
-
-  let private calcRate currentRate alpha instantRate =
-    currentRate + alpha * (instantRate - currentRate)
-
-  let tick state =
-    let count = float state.uncounted
-    let instantRate = count / state.interval
-    printfn "c %s ir %s lr %s alpha %s" (string count) (string instantRate) (string state.rate) (string state.alpha)
-    if state.inited then
-      { state with uncounted = 0L
-                   rate      = calcRate state.rate state.alpha instantRate }
-    else
-      { state with uncounted = 0L
-                   inited    = true
-                   rate      = instantRate }
-
-  let rateInUnit (inUnit : Duration) state =
-    // TODO: consider using nanoseconds like timestamp on Message.
-    // we know rate is in samples per tick
-    state.rate * float inUnit.TotalTicks
-
-
 [<Tests>]
 let reservoirs =
   testList "reservoirs" [
@@ -254,12 +165,11 @@ let reservoirs =
       let testEWMA explaination instance (expectations : _ list) =
 
         let flip f a b = f b a
-        let passMinute s = // 5 second sampling rate, see implementation module
+        let passMinute s = // 5 second sampling rate, see mockClock
           [ 1..12 ] |> List.fold (fun s' t -> ExpWeightedMovAvg.tick s') s
 
         let initState =
-          instance |> (flip ExpWeightedMovAvg.update) 3L |> ExpWeightedMovAvg.tick
-
+          instance |> (flip ExpWeightedMovAvg.update) 3L |> ExpWeightedMovAvg.tick |> ExpWeightedMovAvg.tick
         let actual =
           [ for i in 1..expectations.Length - 1 do yield i ]
           |> List.scan (fun s t -> passMinute s) initState
@@ -268,14 +178,12 @@ let reservoirs =
         testCase explaination <| fun _ ->
           List.zip expectations actual
           |> List.iteri (fun index (expected, actual) ->
-             printfn "expect: %s , actual: %s" (string expected) (string actual)
              Expect.floatClose Accuracy.medium actual expected
                               (sprintf "Index %d, should calculate correct EWMA" index))
 
       yield testEWMA "1 min"
         (ExpWeightedMovAvg.oneMinuteEWMA (mockClock()))
-        [ //0.
-          0.6
+        [ 0.6
           0.22072766
           0.08120117
           0.02987224
@@ -294,8 +202,7 @@ let reservoirs =
 
       yield testEWMA "5 min"
         (ExpWeightedMovAvg.fiveMinutesEWMA (mockClock()))
-        [ //0.
-          0.6
+        [ 0.6
           0.49123845
           0.40219203
           0.32928698
@@ -314,8 +221,7 @@ let reservoirs =
 
       yield testEWMA "15 min"
         (ExpWeightedMovAvg.fifteenMinuteEWMA (mockClock()))
-        [ //0.
-          0.6
+        [ 0.6
           0.56130419
           0.52510399
           0.49123845

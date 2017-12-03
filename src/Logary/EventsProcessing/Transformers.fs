@@ -170,8 +170,6 @@ module ExpWeightedMovAvg =
       let instantRate = if samplePeriod = Duration.Zero then 0. else count / samplePeriod.TotalNanoseconds
       let alpha = alpha samplePeriod state.alphaPeriod
       let rate = if lastRate = 0. then instantRate else lastRate + alpha * (instantRate - lastRate)
-      //printfn "count %s samplePeriod %A instantRate %s lastRate %s alpha %s rate %s" 
-      //  (string count) samplePeriod (string instantRate) (string lastRate) (string alpha) (string rate)
       { state with uncounted = 0L
                    rate      = rate
                    lastTickTime = Some instantNow}
