@@ -9,7 +9,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Logary.Metrics.WinPerfCounters.Tests</RootNamespace>
     <AssemblyName>Logary.Metrics.WinPerfCounters.Tests</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <Name>Logary.Metrics.WinPerfCounters.Tests</Name>
