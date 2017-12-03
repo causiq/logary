@@ -104,6 +104,11 @@ module LoggerAdapterShared =
     | "Hz" -> Hertz
     | other -> Other other
 
+  /// temporary solution
+  type OldPointValue =
+  | Event of string
+  | Gauge of float * Units
+
 /// Utilities for creating a single 'MyLib.Logging.Logger' in the target type
 /// space. The original logger adapter (also see the LoggerCSharpAdapter further
 /// below)
@@ -118,15 +123,15 @@ module LoggerAdapter =
 
   /// Convert the object instance to a PointValue. Is used from the
   /// other code in this module.
-  let toPointValue (o : obj) : PointValue =
+  let toPointValue (o : obj) : LoggerAdapterShared.OldPointValue =
     let typ = o.GetType()
     let info, values = FSharpValue.GetUnionFields(o, typ)
     match info.Name, values with
     | "Event", [| template |] ->
-      Event (template :?> string)
+      LoggerAdapterShared.OldPointValue.Event (template :?> string)
 
     | "Gauge", [| value; units |] ->
-      Gauge (Int64 (value :?> int64), Units.Scalar)
+      LoggerAdapterShared.OldPointValue.Gauge (float (value :?> int64), Units.Scalar)
 
     | caseName, values ->
       let valuesStr = values |> Array.map string |> String.concat ", "
@@ -145,15 +150,23 @@ module LoggerAdapter =
   let toMsg fallbackName (o : obj) : Message =
     let typ = o.GetType()
     let readProperty name = (findProperty (typ, name)).GetValue o
-
+    let oldPointValue = readProperty "value" |> toPointValue
+    let event = 
+      match oldPointValue with
+      | LoggerAdapterShared.OldPointValue.Event tpl -> Event tpl
+      | _ -> Event (String.Empty)
     let fields = readProperty "fields" :?> Map<string, obj>
     { name      = PointName (readProperty "name" :?> string [] |> defaultName fallbackName)
-      value     = readProperty "value" |> toPointValue
-      fields    = HashMap.empty
+      value     = event
       context   = HashMap.empty
       timestamp = readProperty "timestamp" :?> EpochNanoSeconds
       level     = readProperty "level" |> toLogLevel }
     |> Message.setFieldsFromMap fields
+    |> (fun msg -> 
+        match oldPointValue with
+        | LoggerAdapterShared.OldPointValue.Gauge (value, units) ->
+          msg |> Message.setGauge (value,units)
+        | _ -> msg)
 
   /// Convert the object instance to a message factory method. Is used from the
   /// other code in this module.
@@ -269,18 +282,18 @@ module LoggerCSharpAdapter =
     | otherwise ->
       otherwise
 
-  let internal toPointValue (o : obj) : PointValue =
+  let internal toPointValue (o : obj) : LoggerAdapterShared.OldPointValue =
     let typ = o.GetType()
     //printfn "Converting object=%A to PointValue" o
     if typ.Name = "Event" then
       let field = findField (typ, "Template")
-      Event (field.GetValue(o) :?> string)
+      LoggerAdapterShared.OldPointValue.Event (field.GetValue(o) :?> string)
     elif typ.Name = "Gauge" then
       let valueField = findField (typ, "Value")
       let valueValue = valueField.GetValue(o) :?> int64
       let unitField = findField (typ, "Unit")
       let unitValue = unitField.GetValue(o) :?> string
-      Gauge (Int64 valueValue, LoggerAdapterShared.unitOfString unitValue)
+      LoggerAdapterShared.OldPointValue.Gauge (float valueValue, LoggerAdapterShared.unitOfString unitValue)
     else
       failwithf "Unknown point value type name '%s'" typ.Name
 
@@ -292,17 +305,25 @@ module LoggerCSharpAdapter =
   let internal toMessage fallbackName (o : obj) : Message =
     let typ = o.GetType()
     let readProperty name = (findProperty (typ, name)).GetValue o
-
+    let oldPointValue = readProperty "Value" |> toPointValue
+    let event = 
+      match oldPointValue with
+      | LoggerAdapterShared.OldPointValue.Event tpl -> Event tpl
+      | _ -> Event (String.Empty)
     { name      = PointName (readProperty "Name" :?> string [] |> defaultName fallbackName)
-      value     = readProperty "Value" |> toPointValue
-      fields    = HashMap.empty
+      value     = event
       context   = HashMap.empty
       timestamp = readProperty "Timestamp" :?> EpochNanoSeconds
       level     = readProperty "Level" |> toLogLevel }
     |> fun msg ->
       let folder msg (KeyValue (key, value)) =
-        msg |> Message.setFieldFromObject key value
-      readProperty "Fields" :?> HashMap<_, _> |> Seq.fold folder msg
+        msg |> Message.setField key value
+      readProperty "Fields" :?> System.Collections.Generic.IDictionary<string, obj> |> Seq.fold folder msg
+    |> (fun msg ->
+        match oldPointValue with
+        | LoggerAdapterShared.OldPointValue.Gauge (value, units) ->
+          msg |> Message.setGauge (value,units)
+        | _ -> msg)
 
   module internal LogMessage =
     let create (loggerType : Type) : string[] -> obj -> obj =

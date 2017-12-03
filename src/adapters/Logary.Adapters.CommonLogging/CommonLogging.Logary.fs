@@ -160,6 +160,9 @@ type internal Adapter(logger : Logger) =
     member x.GlobalVariablesContext = gc
     member x.ThreadVariablesContext = tc
 
+    // TODO:
+    member x.NestedThreadVariablesContext = raise (NotImplementedException())
+
 type LogaryAdapter(lm : LogManager) =
   interface ILoggerFactoryAdapter with
     member x.GetLogger (typ : Type) =

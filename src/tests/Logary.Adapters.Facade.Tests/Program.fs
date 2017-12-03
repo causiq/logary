@@ -20,36 +20,25 @@ let stubLogger (minLevel : LogLevel)
         message := messageFactory level
         Alt.always (Promise (()))
 
-      member x.level =
-        minLevel
-
       member x.name =
         name }
 
 let stubLogManager (message : Message ref) =
   { new LogManager with
       member x.runtimeInfo =
-        RuntimeInfo.create "Facade Tests"
-
-      member x.getLoggerAsync name =
-        Job.result (stubLogger Verbose message name)
+        RuntimeInfo.create "Facade Tests" "localhost"
 
       member x.getLogger name =
         stubLogger Verbose message name
 
+      member x.getLoggerWithMiddleware name mid =
+        stubLogger Verbose message name
+
       member x.flushPending dur =
-        Alt.always ()
+        Alt.always (FlushInfo([],[]))
 
       member x.shutdown fDur sDur =
-        Job.result { flushed = Ack
-                     stopped = Ack
-                     timedOut = false }
-
-      member x.DisposeAsync () =
-        Job.result ()
-
-      member x.Dispose() =
-        x.DisposeAsync() |> run
+        Alt.always (FlushInfo([],[]),ShutdownInfo([],[]))
   }
 
 [<Tests>]
@@ -57,8 +46,8 @@ let tests =
   let assertWorkMessage (msg : Message) =
     Expect.equal msg.level Warn "Should have logged at Warn level"
     Expect.equal msg.value (Event "Hey {user}!") "Should have logged event template"
-    let field = msg.fields |> Map.find (PointName.ofSingle "user")
-    Expect.equal field (Field (String "haf", None)) "Should have logged user as String"
+    let userName = msg |> Message.tryGetField "user"
+    Expect.equal userName (Some "haf") "Should have logged user as String"
     Expect.equal msg.timestamp 1470047883029045000L "Should have correct timestamp"
 
   testList "facades" [

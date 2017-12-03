@@ -13,6 +13,7 @@ open Hopac
 open Logary
 open Logary.Targets
 open Logary.Configuration
+open Logary.EventsProcessing
 
 let buildTextWriteTarget name =
   let (out, error) = (new StringWriter (), new StringWriter ())

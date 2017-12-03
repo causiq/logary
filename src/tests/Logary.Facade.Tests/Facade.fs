@@ -272,7 +272,7 @@ let tests =
 
       Expect.literateCustomTokenisedPartsEqual (message, expectedTokens, theme=theme)
 
-    testPropertyWithConfig FsCheck.Config.QuickThrowOnFailure "literate default tokeniser uses the options `formatProvider` correctly" <| fun (amount: decimal, date: DateTimeOffset) ->
+    testPropertyWithConfig FsCheckConfig.defaultConfig "literate default tokeniser uses the options `formatProvider` correctly" <| fun (amount: decimal, date: DateTimeOffset) ->
       [ "fr-FR"; "da-DK"; "de-DE"; "en-AU"; "en-US"; ]
       |> List.iter (fun cultureName ->
         let options = { LiterateOptions.createInvariant() with
