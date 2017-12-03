@@ -71,13 +71,31 @@ type LogaryLog4NetAppender() =
     Impl.memoize (TimeSpan.FromMilliseconds 2000.)
                  Logging.getLoggerByName
 
+  let formatCodeInfo (codeLocation:LocationInfo) =
+    if (isNull codeLocation) || (isNull codeLocation.StackFrames)  then String.Empty
+    else
+      let sb = Text.StringBuilder();
+
+      codeLocation.StackFrames
+      |> Array.iteri (fun index frame ->
+          if index = 0 then
+              sb.AppendLine(frame.FullInfo) |> ignore
+          else
+            sb.AppendFormat("\tfrom {0}{1}",frame.FullInfo,Environment.NewLine) |> ignore
+      )
+
+      sb.ToString()
+
   override x.Append (evt : LoggingEvent) =
     let msg = base.RenderLoggingEvent(evt)
     let ex = match evt.ExceptionObject with null -> None | e -> Some e
+
+    let codeLocation = formatCodeInfo evt.LocationInformation
+
     let data =
       [ "app_domain",       box evt.Domain
         "thread_principal", box evt.Identity
-        "code_location",    box evt.LocationInformation
+        "code_location",    box codeLocation
         "thread_name",      box evt.ThreadName
         "user",             box evt.UserName ]
       |> Map.ofList
