@@ -171,8 +171,10 @@ module Map =
       function
       | :? KeyValuePair<string, obj> as kvp ->
         Some (kvp.Key, kvp.Value)
-      | :? Tuple<string, obj> as t ->
-        Some (t.Item1, t.Item2)
+      // | :? Tuple<string, obj> as t -> // in vs 15, https://github.com/Microsoft/visualfsharp/pull/3729
+      //   Some (t.Item1, t.Item2)
+      | :? (string * obj) as t ->
+        Some t
       | x when kvLike x ->
         let typ = x.GetType()
         let kp, vp  = prop ("Key", typ), prop ("Value", typ)

@@ -128,6 +128,8 @@ NUGET
     NodaTime (2.2.3)
     protobuf-net (2.3.2)
     RabbitMQ.Client (3.6.9)
+    SQLite.Interop (1.0)
+    SQLite.Interop.dll (1.0.103)
     Suave (2.2.1)
       FSharp.Core (>= 4.0.0.1)
     System.Collections.Immutable (1.4) - restriction: || (&& (== net45) (>= netstandard1.3)) (&& (== net452) (>= netstandard1.3)) (== net461)
@@ -179,14 +181,14 @@ GITHUB
   remote: eiriktsarpalis/TypeShape
     src/TypeShape/TypeShape.fs (59e0226d2ba30e013c1969c7a476485724b15718)
   remote: haf/YoLo
-    YoLo.fs (eb8f7b984c0c9f390d88a4f6dd211e45451c2156)
+    YoLo.fs (d9778b7c90e6e4335315d123c8201eefd6cb1239)
   remote: logary/RingBuffer
     RingBuffer.fs (0fa46d2ed3d92679517c942240a1dc674767e69e)
       Expecto
       Hopac
   remote: logary/logary
-    src/Logary.CSharp.Facade/Facade.cs (fee70647099053cf08db19879288a711643ccc0c)
-    src/Logary.Facade/Facade.fs (fee70647099053cf08db19879288a711643ccc0c)
+    src/Logary.CSharp.Facade/Facade.cs (5173cf2c3b1af1230e053777c56a6ce1327b0cc4)
+    src/Logary.Facade/Facade.fs (5173cf2c3b1af1230e053777c56a6ce1327b0cc4)
 GROUP Examples
 REDIRECTS: ON
 RESTRICTION: >= net45
