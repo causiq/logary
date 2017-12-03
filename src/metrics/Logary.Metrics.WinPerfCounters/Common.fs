@@ -124,7 +124,7 @@ let byCategory pcc =
 
 
 let ofCounters (counters : WinPerfCounterInstance []) =
-  Ticker.create counters (fun counters item -> counters) (fun counters -> counters, counters |> Array.map Helpers.toValue)
+  Logary.EventsProcessing.Ticker.create counters (fun counters item -> counters) (fun counters -> counters, counters |> Array.map Helpers.toValue)
 
 /// The "GPU" category is installed by the nVIDIA drivers
 let tryGPUMetric _ =

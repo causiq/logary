@@ -8,6 +8,7 @@ open Logary.Configuration
 open NodaTime
 open Logary.Targets
 open Logary.Metrics.WinPerfCounters
+open Logary.EventsProcessing
 
 module Sample =
 
@@ -39,8 +40,8 @@ let main argv =
   let pn name = PointName [| "Logary"; "Samples"; name |]
   use mre = new ManualResetEventSlim(false)
   use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
-
-  let tenSecondsEWMATicker = EWMATicker (Duration.FromSeconds 1L, Duration.FromSeconds 10L)
+  let clock = SystemClock.Instance
+  let tenSecondsEWMATicker = EWMATicker (Duration.FromSeconds 1L, Duration.FromSeconds 10L, clock)
   let randomWalk = Sample.randomWalk "randomWalk"
   let walkPipe =  Events.events |> Pipe.tickTimer randomWalk (TimeSpan.FromMilliseconds 500.)
   let systemMetrics = Events.events |> Pipe.tickTimer (systemMetrics (PointName.parse "sys")) (TimeSpan.FromSeconds 5.)
