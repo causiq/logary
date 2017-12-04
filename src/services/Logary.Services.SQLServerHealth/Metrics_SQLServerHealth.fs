@@ -3,11 +3,10 @@
 open System
 open System.IO
 open System.Data
-open Hopac
 open Logary
-open Logary.Internals
-open Logary.Metric
+open Logary.EventsProcessing
 open Logary.AsmUtils
+open NodaTime
 
 type DatabaseName = string
 
@@ -154,14 +153,19 @@ let empty =
     latencyTargets = []
     openConn       = fun () -> failwith "connection factory needs to be provided" }
 
+type State =
+  internal { 
+    connMgr     : Sql.ConnectionManager
+    lastIOs     : Database.IOInfo list * Instant
+    dps         : PointName list}
+
 module internal Impl =
-
-  open NodaTime
-  open Logary.Internals
   open Database
-
   let logger =
     Logging.getLoggerByName "Logary.Metrics.SQLServerHealth.Impl"
+
+  let timeNow =
+    SystemClock.Instance.GetCurrentInstant
 
   let dotToUnderscore (s : string) =
     s.Replace(".", "_")
@@ -169,34 +173,25 @@ module internal Impl =
   let removeColon (s : string) =
     s.Replace(":", "")
 
-  type State =
-    { connMgr     : Sql.ConnectionManager
-      lastIOs     : IOInfo list * Instant
-      deltaIOs    : IOInfo list * Duration
-      dps         : PointName list
-      sampleFresh : bool }
-
   type DPCalculator =
-    IOInfo -> PointName -> Message
+    IOInfo -> Gauge
 
   let datapoints =
-    let ofInt64 u v dp = Message.gaugeWithUnit dp u (Int64 v)
-    let ofInt64Simple v dp = Message.gaugeWithUnit dp Scalar (Int64 v)
-    let ofFloat u v dp = Message.gaugeWithUnit dp u (Float v)
-    let inline ofMs v = ofFloat Seconds (float v / 1000.)
+    let inline ofBytes v = Gauge (float v, Bytes)
+    let inline ofMs v = Gauge ((float v / 1000.), Seconds)
     [ "io_stall_read",        fun io -> ofMs io.ioStallReadMs
       "io_stall_write",       fun io -> ofMs io.ioStallWriteMs
       "io_stall",             fun io -> ofMs io.ioStall
-      "num_of_reads",         fun io -> ofInt64Simple io.numOfReads
-      "num_of_writes",        fun io -> ofInt64Simple io.numOfWrites
-      "num_of_bytes_read",    fun io -> ofInt64 Bytes io.numOfBytesRead 
-      "num_of_bytes_written", fun io -> ofInt64 Bytes io.numOfBytesRead
+      "num_of_reads",         fun io -> Gauge (float io.numOfReads, Scalar)
+      "num_of_writes",        fun io -> Gauge (float io.numOfWrites, Scalar)
+      "num_of_bytes_read",    fun io -> ofBytes io.numOfBytesRead 
+      "num_of_bytes_written", fun io -> ofBytes io.numOfBytesRead
       "read_latency",         IOInfo.readLatency >> ofMs
       "write_latency",        IOInfo.writeLatency >> ofMs
       "latency",              IOInfo.latency >> ofMs
-      "bytes_per_read",       IOInfo.bytesPerRead >> ofFloat Bytes
-      "bytes_per_write",      IOInfo.bytesPerWrite >> ofFloat Bytes
-      "bytes_per_transfer",   IOInfo.bytesPerTransfer >> ofFloat Bytes
+      "bytes_per_read",       IOInfo.bytesPerRead >> ofBytes
+      "bytes_per_write",      IOInfo.bytesPerWrite >> ofBytes
+      "bytes_per_transfer",   IOInfo.bytesPerTransfer >> ofBytes
     ]
     |> Map.ofList : Map<string, DPCalculator>
 
@@ -267,23 +262,14 @@ module internal Impl =
       |> List.concat
 
     { connMgr     = connMgr
-      lastIOs     = List.ofSeq measures, Date.instant ()
-      deltaIOs    = [], Duration.Epsilon
-      dps         = driveDps @ fileDps
-      sampleFresh = false }
+      lastIOs     = List.ofSeq measures, timeNow ()
+      dps         = driveDps @ fileDps}
 
   let reducer state values =
-    let lastIOMeasures, lastIOInstant = state.lastIOs
-    let now    = Date.instant ()
-    let curr   = ioInfo state.connMgr |> List.ofSeq
-    let dio    = (lastIOMeasures, curr) ||> List.map2 delta
-    let dioDur = now - lastIOInstant
-    { state with lastIOs     = curr, now
-                 deltaIOs    = dio, dioDur
-                 sampleFresh = true }
+    state
 
-  let getValues state =
-    state.dps |> List.fold (fun acc t ->
+  let getValues dps deltaIOs =
+    dps |> List.fold (fun msg t ->
       match t with
       | PointName [|_ns; "Metrics"; _; metricName; instance |] ->
         let calculator, summer =
@@ -304,15 +290,22 @@ module internal Impl =
 
         // TODO: summing ALL DPs for EVERY DP, instead of summing once and
         // reading from there
-        let deltas, _ = state.deltaIOs
-        calculator (IOInfo.sumBy deltas summer) t
+        let gauge = calculator (IOInfo.sumBy deltaIOs summer)
+        let gaugeType = PointName.format t
+        msg |> Message.addGauge gaugeType gauge
 
       | dp -> failwithf "unknown %A" dp
-      :: acc) []
+      ) (Message.event Debug String.Empty)
 
   let ticker state =
-    state, Array.ofList (getValues state)
+    let now    = timeNow ()
+    let lastIOMeasures, lastIOInstant = state.lastIOs
+    let curr   = ioInfo state.connMgr |> List.ofSeq
+    let dio    = (lastIOMeasures, curr) ||> List.map2 delta
+    // let dioDur = now - lastIOInstant
+    let state' = { state with lastIOs     = curr, now}
+    state', (getValues state.dps dio)
 
 /// Create the new SQLServer Health metric
-let create conf pn =
-  Metric.create Impl.reducer (Impl.init conf) Impl.ticker
+let create conf =
+  Ticker.create (Impl.init conf) Impl.reducer Impl.ticker

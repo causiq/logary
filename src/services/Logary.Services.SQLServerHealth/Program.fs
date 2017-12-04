@@ -6,14 +6,13 @@ open System.Data.SqlClient
 open System.Net
 open System.Threading
 open NodaTime
-open Hopac
 open Topshelf
 open Logary
-open Logary.Metric
-open Logary.Metrics
-open Logary.Metrics.SQLServerHealth
 open Logary.Targets
+open Logary.Metrics
 open Logary.Configuration
+open Logary.EventsProcessing
+open Logary.Metrics.SQLServerHealth
 open Argu
 
 exception RiemannServerNotFound of System.Net.Sockets.SocketException * string
@@ -92,23 +91,27 @@ let parse args =
   period, conf, IPEndPoint(riemann, port)
 
 let execute interval sqlConf riemann argv (exiting : ManualResetEventSlim) =
-  use logary =
-    let pn s = PointName.ofSingle s
-    let cons, rm, metricName = "console", "riemann", "SQLHealth"
+  let logary =
+    let cons, rm = "console", "riemann"
+    let hostName = Dns.GetHostName()
+    let sqlServerHealthTicker = SQLServerHealth.create sqlConf
+    let processing = 
+      Events.stream
+      |> Events.subscribers [
+           Events.events
+           |> Pipe.tickTimer sqlServerHealthTicker (TimeSpan.FromTicks(Duration.ticks interval |> int64))
+           |> Events.sink [cons; rm;]
+        ]
+      |> Events.toProcessing
 
-    withLogaryManager "Logary.Services.SQLServerHealth" (
-      withTargets [
+    Config.create "Logary.Services.SQLServerHealth" hostName
+    |> Config.targets [
         Console.create Console.empty cons
-        Riemann.create (Riemann.RiemannConf.create(endpoint = riemann))
-                       rm
-      ]
-      >> withRules [
-        Rule.createForTarget cons
-        Rule.createForTarget rm
-      ]
-      >> withMetrics [
-        MetricConf.create interval metricName (SQLServerHealth.create sqlConf)
-      ]) |> Hopac.Hopac.run
+        Riemann.create (Riemann.RiemannConf.create(endpoint = riemann)) rm
+       ]
+    |> Config.processing processing
+    |> Config.build 
+    |> Hopac.Hopac.run
 
   exiting.Wait()
   0
