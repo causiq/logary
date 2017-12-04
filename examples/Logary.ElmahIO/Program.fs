@@ -12,6 +12,7 @@ open NodaTime
 open Hopac
 open Logary
 open Logary.Configuration
+open Logary.EventsProcessing
 open Logary.Targets
 open Logary.Targets.ElmahIO
 open System.Threading
@@ -21,21 +22,27 @@ let main argv =
   use mre = new ManualResetEventSlim(false)
   use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
 
-  use logary =
+  let logary =
     let elmahioConf =
       { logId = Guid.Parse(Environment.GetEnvironmentVariable("ELMAH_IO_LOG_ID")) }
 
-    withLogaryManager "Logary.ElmahIO" (
-      withTargets [
+    let processing = 
+      Events.stream
+      |> Events.subscribers [
+         Events.events
+         |> Events.sink ["console";"elmah.io";]
+      ]
+      |> Events.toProcessing
+
+    Config.create "Logary.ElmahIO" "localhost"
+    |> Config.targets [
         Console.create Console.empty "console"
         ElmahIO.create elmahioConf "elmah.io"
-      ] >>
-      withRules [
-        Rule.createForTarget "console"
-        Rule.createForTarget "elmah.io"
-      ]
-    )
+      ] 
+    |> Config.processing processing
+    |> Config.build
     |> run
+    |> Registry.toLogManager
 
   let logger =
     logary.getLogger (PointName [| "Logary"; "Samples"; "main" |])

@@ -34,6 +34,22 @@ module Health =
   open Suave.Filters
   open Suave.Successful
 
+  module App =
+
+    open System.IO
+    open System.Reflection
+
+    /// Gets the calling assembly's informational version number as a string
+    let getVersion () =
+  #if DNXCORE50
+      (typeof<Random>.GetTypeInfo().Assembly)
+  #else
+      Assembly.GetCallingAssembly()
+  #endif
+              .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+              .InformationalVersion
+
+
   let app =
     GET >=> path "/health" >=> OK (sprintf "Logary Rutta %s" (App.getVersion ()))
 
@@ -61,7 +77,6 @@ module Shipper =
   open Hopac
   open Hopac.Infixes
   open Logary
-  open Logary.Metric
   open Logary.Metrics
   open Logary.Target
   open Logary.Targets
@@ -70,40 +85,40 @@ module Shipper =
   open fszmq
   open fszmq.Socket
   open Logary.Targets.Shipper
+  open Logary.EventsProcessing
 
   let private runLogary shipperConf =
-    // TODO: handle with configuration, selection of what data points to
-    // gather.
-    let createMetric name metric =
-      MetricConf.create (Duration.FromMilliseconds 400L) name metric
 
     use mre = new ManualResetEventSlim(false)
     use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
+    let hostName = System.Net.Dns.GetHostName()
 
-    use logary =
-      withLogaryManager "Rutta" (
-        withTargets [
+    let systemMetrics = Events.events |> Pipe.tickTimer (WinPerfCounters.systemMetrics (PointName.parse "sys")) (TimeSpan.FromMilliseconds 400.)
+
+    let processing = 
+      Events.stream
+      |> Events.subscribers [
+          systemMetrics
+          |> Pipe.map Array.toSeq
+          |> Events.flattenToProcessing
+          |> Events.sink ["rutta-shipper"]
+        ]
+      |> Events.toProcessing
+
+    let logary =
+      Config.create "Rutta" hostName
+      |> Config.targets [
           //Noop.create (Noop.empty) (PointName.ofSingle "noop")
           //Console.create (Console.empty) (PointName.ofSingle "console")
           create shipperConf "rutta-shipper"
         ]
-        >> withMiddleware Middleware.host
-        >> withMetrics [
-          createMetric "systemMetrics" WinPerfCounters.systemMetrics
-        ]
-        >> withRules [
-          //Rule.createForTarget (PointName.ofSingle "noop")
-          //Rule.createForTarget (PointName.ofSingle "console")
-          Rule.createForTarget "rutta-shipper"
-        ]
-        >> withInternalTargets Info [
-          Console.create Console.empty "internal"
-        ]
-      )
-      |> run
+      |> Config.processing processing
+      |> Config.ilogger (ILogger.Console Debug)
+      |> Config.build 
+      |> Hopac.Hopac.run
 
     mre.Wait()
-    Choice.create ()
+    Choice1Of2 ()
 
   let internal pushTo connectTo pars : Choice<unit, string> =
     printfn "%s" "spawning shipper in PUSH mode"
@@ -124,6 +139,8 @@ module Router =
   open fszmq
   open MBrace.FsPickler
   open MBrace.FsPickler.Combinators
+  open Logary.EventsProcessing
+  
 
   type State =
     { zmqCtx    : Context
@@ -134,7 +151,6 @@ module Router =
       member x.Dispose() =
         (x.zmqCtx :> IDisposable).Dispose()
         (x.receiver :> IDisposable).Dispose()
-        (x.forwarder :> IDisposable).Dispose()
 
   let private init binding targetUri createSocket mode : State =
     let context = new Context()
@@ -142,17 +158,26 @@ module Router =
     let config = Uri.parseConfig<InfluxDb.InfluxDbConf> InfluxDb.empty targetUri
     
     let forwarder =
-      withLogaryManager (sprintf "Logary Rutta[%s]" mode) (
-        withTargets [
-          //Console.create Console.empty (PointName.ofSingle "console")
-          InfluxDb.create config "influxdb"
-        ]
-        >> withRules [
-          Rule.createForTarget "influxdb"
-          //Rule.createForTarget (PointName.ofSingle "console")
-        ]
-      )
-      |> run
+      let hostName = System.Net.Dns.GetHostName()
+      let processing = 
+        Events.stream
+        |> Events.subscribers [
+            Events.events
+            |> Events.sink ["influxdb"]
+          ]
+        |> Events.toProcessing
+
+      Config.create (sprintf "Logary Rutta[%s]" mode) hostName
+      |> Config.targets [
+        //Console.create Console.empty (PointName.ofSingle "console")
+        InfluxDb.create config "influxdb"
+      ]
+      |> Config.processing processing
+      |> Config.ilogger (ILogger.Console Debug)
+      |> Config.build 
+      |> Hopac.Hopac.run
+      |> Registry.toLogManager
+
 
     let targetLogger = forwarder.getLogger (PointName.parse "Logary.Services.Rutta.Router")
 
@@ -179,7 +204,7 @@ module Router =
       printfn "spawning router in PULL mode from %s" binding
       use state = init binding target Context.pull "PULL" 
       Socket.bind state.receiver binding
-      Choice.create (recvLoop state.receiver state.logger)
+      Choice1Of2 (recvLoop state.receiver state.logger)
 
     | x ->
       Choice2Of2 (sprintf "unknown parameter(s) %A" x)
@@ -190,7 +215,7 @@ module Router =
       use state = init binding target Context.sub "SUB"
       Socket.subscribe state.receiver [""B]
       Socket.connect state.receiver binding
-      Choice.create (recvLoop state.receiver state.logger)
+      Choice1Of2 (recvLoop state.receiver state.logger)
 
     | x ->
       Choice2Of2 (sprintf "unknown parameter(s) %A" x)
@@ -214,7 +239,7 @@ module Proxy =
     bind writer xpubBind
 
     printfn "%s" "spawning proxy"
-    Choice.create (Proxying.proxy reader writer None)
+    Choice1Of2 (Proxying.proxy reader writer None)
 
 module Program =
 

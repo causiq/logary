@@ -24,17 +24,11 @@ let flush = Target.flush >> Job.Ignore >> run
 let start () =
   let targConf =
     InfluxDbConf.create(Uri "http://127.0.0.1:9011/write", "tests")
-
   Target.create emptyRuntime (create targConf "influxdb")
   |> run
-  |> fun inst -> inst.server (fun _ -> Job.result ()) None |> start; inst
 
-let finaliseTarget = Target.shutdown >> fun a ->
-  a ^-> TimeoutResult.Success <|> timeOutMillis 1000 ^->. TimedOut
-  |> run
-  |> function
-  | TimedOut -> Tests.failtest "finalising target timeout"
-  | TimeoutResult.Success _ -> ()
+let shutdown t = Target.shutdown t |> run |> run
+
 
 type State(cts : CancellationTokenSource) =
   let request = Ch ()
@@ -67,11 +61,10 @@ let writesOverHttp =
   testList "writes over HTTP" [
     testCase "write to Suave" <| fun _ ->
       let msg =
-        Message.gaugeWithUnit (PointName.parse "Processor.% User Time") Percent (Int64 1L)
+        Message.gaugeWithUnit "Processor.% User Time" 1. Percent
         |> Message.setField "inst1" (Float 0.3463)
         |> Message.setField "inst2" (Float 0.223)
         |> Message.setContext "service" "svc-2"
-        |> Message.tag KnownLiterals.SuppressPointValue
         |> Message.tag "my-tag"
         |> Message.tag "ext"
       //printfn "tags: %A" msg.context.["tags"]
@@ -98,13 +91,13 @@ let writesOverHttp =
         Expect.equal (req.queryParam "db") (Choice1Of2 "tests") "should write to tests db"
 
       finally
-        finaliseTarget target
+        shutdown target
         
          
     testCase "write to Suave in batch" <| fun _ ->
-      let msg = Message.gauge (PointName.parse "Number 1") (Float 0.3463)
-      let msg2 = Message.gauge (PointName.parse "Number 2") (Float 0.3463)
-      let msg3 = Message.gauge (PointName.parse "Number 3") (Float 0.3463)
+      let msg = Message.gauge "Number 1" 0.3463
+      let msg2 = Message.gauge  "Number 2"  0.3463
+      let msg3 = Message.gauge  "Number 3"  0.3463
 
       use state = withServer ()
       let target = start ()
@@ -134,10 +127,10 @@ let writesOverHttp =
         Expect.equal (req.queryParam "db") (Choice1Of2 "tests") "should write to tests db"
 
       finally
-        finaliseTarget target
+        shutdown target
 
     testCase "make sure target acks" <| fun _ ->
-      let msg = Message.gauge (PointName.parse "Number 1") (Float 0.3463)
+      let msg = Message.gauge "Number 1" 0.3463
 
       use state = withServer ()
       let target = start ()
@@ -159,5 +152,5 @@ let writesOverHttp =
         Expect.isTrue messageIsAcked "message should be acked"
 
       finally
-        finaliseTarget target
+        shutdown target
   ]

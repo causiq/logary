@@ -111,7 +111,6 @@ let empty =
     compression       = NoCompression }
 
 module internal Impl =
-  open Logary.YoLo
   open Logary.Serialisation.Chiron
 
   module Counter =
@@ -218,7 +217,8 @@ module internal Impl =
         ms.ToArray()
 
   let body (conf : RabbitMQConf) (message : Message) =
-    Json.serialize message |> Json.format |> UTF8.bytes |> compress conf.compression
+    failwith "TODO: needs to be discussed"
+    // Json.serialize message |> Json.format |> UTF8.bytes |> compress conf.compression
 
   let selectConfirm (ilogger : Logger) state (kont : State -> Job<unit>) : Alt<_> =
 
@@ -337,7 +337,7 @@ module internal Impl =
     and flushing (ackCh, nack) (state : State) =
       if Map.isEmpty state.inflight then
         job {
-          do! Ch.give ackCh () 
+          do! IVar.fill ackCh () 
           return! active state
         }
       else

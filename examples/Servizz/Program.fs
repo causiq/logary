@@ -7,6 +7,7 @@ open Logary.Configuration
 open Logary.Adapters.Facade
 open System
 open System.Threading
+open Logary.EventsProcessing
 
 let logger = Logging.getLoggerByName "Servizz.Program"
 
@@ -23,12 +24,21 @@ type CartEvent =
 let main argv =
   use mre = new ManualResetEventSlim(false)
   use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
+  let processing = 
+    Events.stream
+    |> Events.subscribers [
+       Events.events
+       |> Events.sink ["console";]
+    ]
+    |> Events.toProcessing
 
-  use logary =
-    withLogaryManager "Servizz.Program" (
-      withTargets [ LiterateConsole.create LiterateConsole.empty "console" ]
-      >> withRules [ Rule.createForTarget "console" ])
+  let logary =
+    Config.create "Servizz.Program" "localhost"
+    |> Config.targets [ LiterateConsole.create LiterateConsole.empty "console" ]
+    |> Config.processing processing
+    |> Config.build
     |> run
+    |> Registry.toLogManager
 
   // Initialise Libryy so it logs to Logary (proper)
   LogaryFacadeAdapter.initialise<Libryy.Logging.Logger> logary
@@ -37,7 +47,7 @@ let main argv =
   let logger = logary.getLogger (PointName [| "Libryy" |])
   let librryLogger = LoggerAdapter.createGeneric logger
   
-  Message.gaugeWithUnit (PointName.ofSingle "Test") Units.Seconds (Value.Fraction (99L, 88L))
+  Message.gaugeWithUnit "Test" (99./88.) Units.Seconds 
   |> logger.logSimple
 
   let someEventWithBinaryData = Message.templateEvent<string, byte[]> (Debug, "Some binary ({Disposition}) is {Binary}")

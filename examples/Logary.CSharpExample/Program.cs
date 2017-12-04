@@ -37,11 +37,11 @@ namespace Logary.CSharpExample
     {
         public static Task<LogManager> StartEverything()
         {
-            return LogaryFactory.New("Logary.CSharpExample",
-                with => with.InternalLoggingLevel(LogLevel.Debug)
-                        .Metrics(m =>
-                            m.AddMetric(Duration.FromSeconds(3L), "appMetrics", WinPerfCounters.appMetrics)
-                             .AddMetric(Duration.FromSeconds(3L), "systemMetrics", WinPerfCounters.systemMetrics))
+            return LogaryFactory.New("Logary.CSharpExample","localhost",
+                with => with.InternalLogger(ILogger.NewConsole(LogLevel.Debug))
+                        // .Metrics(m =>
+                        //     m.AddMetric(Duration.FromSeconds(3L), "appMetrics", WinPerfCounters.appMetrics)
+                        //      .AddMetric(Duration.FromSeconds(3L), "systemMetrics", WinPerfCounters.systemMetrics))
                         .Target<TextWriter.Builder>(
                           "console1",
                           conf =>
@@ -80,9 +80,8 @@ namespace Logary.CSharpExample
 
         public static Task<LogManager> StartLiterate()
         {
-            return LogaryFactory.New("Logary.CSharpExample",
-                with => with
-                        .InternalLoggingLevel(LogLevel.Debug)
+            return LogaryFactory.New("Logary.CSharpExample","localhost",
+                with => with.InternalLogger(ILogger.NewConsole(LogLevel.Debug))
                         .Target<LiterateConsole.Builder>("console1"));
         }
 
@@ -152,7 +151,7 @@ namespace Logary.CSharpExample
             var mre = new ManualResetEventSlim(false);
             System.Console.CancelKeyPress += (sender, arg) => mre.Set();
 
-            using (var logary = StartLiterate().Result)
+            var logary = StartLiterate().Result;
             {
                 LogaryFacadeAdapter.Initialise<Cibryy.Logging.ILogger>(logary);
                 var logger = logary.GetLogger("main");

@@ -2,11 +2,9 @@
 
 open System
 open Logary
-open Logary.Target
 open Logary.Internals
 open Logary.Message
 open Logary.Configuration
-open Logary
 
 type AliYunConf = 
   {

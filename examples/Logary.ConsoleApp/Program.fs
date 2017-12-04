@@ -16,18 +16,10 @@ open Hopac
 open Logary
 open Logary.Configuration
 open Logary.Targets
-open Logary.Metric
 open Logary.Metrics
-open Logary.Metrics.WinPerfCounter
+open Logary.EventsProcessing
+open Logary.EventsProcessing.Transformers
 
-module internal Sample =
-
-  let loginsPerSecond : Job<Stream<Message>> = job {
-    let! counter = Counters.counter (PointName.ofSingle "logins")
-    let! ewma = Reservoirs.ewma (PointName.ofSingle "logins")
-    do! ewma |> Metric.consume (Metric.tap counter)
-    return Metric.tapMessages ewma
-  }
 
 open System.Threading
 
@@ -72,7 +64,7 @@ module SerialFun =
 
 module RandomWalk =
 
-  let create pn : Job<Metric> =
+  let create pn =
     let reducer state = function
       | _ ->
         state
@@ -84,7 +76,7 @@ module RandomWalk =
         elif v + prevValue < -1. || v + prevValue > 1. then -v + prevValue
         else v + prevValue
 
-      let msg = Message.gaugeWithUnit pn Seconds (Float value)
+      let msg = Message.gaugeWithUnit pn value Seconds
 
       (rnd, value), [| msg |]
 
@@ -92,12 +84,11 @@ module RandomWalk =
       let rnd = Random()
       rnd, rnd.NextDouble()
 
-    Metric.create reducer state ticker
+    Ticker.create state reducer ticker
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Timing =
 
-  open Logary.Metrics.Reservoirs
   open Hopac.Infixes
 
   type Timing =

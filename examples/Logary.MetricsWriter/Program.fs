@@ -68,7 +68,6 @@ let main argv =
        systemMetrics
        |> Pipe.map Array.toSeq
        |> Events.flattenToProcessing
-       |> Pipe.map (Message.addSinks ["LiterateConsole";])
        |> Events.sink ["LiterateConsole"; "WPCMetricFile";]
 
     ]

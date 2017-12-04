@@ -16,6 +16,7 @@ open Microsoft.ApplicationInsights.DataContracts
 open Microsoft.ApplicationInsights.DependencyCollector
 open Microsoft.ApplicationInsights.Extensibility
 open Microsoft.ApplicationInsights.Extensibility.Implementation
+open Logary.HashMap
 
 type GaugeMap =
 /// Traces goes to: Overview -> Search -> Trace
@@ -66,16 +67,6 @@ let empty = { InstrumentationKey = ""; DeveloperMode = false; TrackDependencies 
 module internal Impl =
   open System.Reflection
 
-  let fieldValue f = 
-      let (Logary.Field (v, un)) = f
-      match un with
-      | None -> Formatting.MessageParts.formatValue Environment.NewLine 0 v
-      | Some u -> Units.formatWithUnit Units.UnitOrientation.Prefix u v
-  
-  let scaleUnit = function
-      | v, Scaled(u,s) -> (Value.toDouble v)/s, (Units.symbol u)
-      | v, u -> Value.toDouble v, Units.symbol u
-
   // This is a placeholder for specific state that your target requires
   type State = { telemetryClient : TelemetryClient }
 
@@ -83,25 +74,35 @@ module internal Impl =
       typeof<State>.GetType().Assembly.GetCustomAttributes<AssemblyInformationalVersionAttribute>()
       |> Seq.head |> fun x -> "logary: " + x.InformationalVersion
   
-  let makeMetric (point,valu,uni) =
-      let va, un = scaleUnit(valu,uni)
-      let tel = MetricTelemetry(PointName.format point, va)
-      tel.Properties.Add("Unit", un)
-      tel
+  let makeMetric (gaugeType,valu,uni) =
+    let (scaled, unit) = Units.scale uni valu
+    let tel = MetricTelemetry(gaugeType, scaled)
+    tel.Properties.Add("Unit", unit)
+    tel
   
-  let makeEvent (point,valu,uni) =
-      let va, un = scaleUnit(valu,uni)
-      let tel = EventTelemetry(PointName.format point)
-      tel.Metrics.Add("item", va)
-      tel.Properties.Add("Unit", un)
-      tel
+  let makeEvent (gaugeType,valu,uni) =
+    let (scaled, unit) = Units.scale uni valu
+    let tel = EventTelemetry(gaugeType)
+    tel.Metrics.Add("item", scaled)
+    tel.Properties.Add("Unit", unit)
+    tel
+
+  let makeTrace (msg , level) =
+    let loglevel = 
+      match level with
+      | LogLevel.Fatal -> SeverityLevel.Critical
+      | LogLevel.Error -> SeverityLevel.Error
+      | LogLevel.Warn -> SeverityLevel.Warning
+      | LogLevel.Info -> SeverityLevel.Information
+      | LogLevel.Debug -> SeverityLevel.Verbose
+      | LogLevel.Verbose -> SeverityLevel.Verbose
+    TraceTelemetry(msg,loglevel)
+
 
   // This is the main entry point of the target. It returns a Job<unit>
   // and as such doesn't have side effects until the Job is started.
   let loop (conf : AppInsightConf) // the conf is specific to your target
-           (ri : RuntimeInfo, api : TargetAPI) // this one,
-           (requests : RingBuffer<_>) // this one, and,
-           (shutdown : Hopac.Ch<_>) = // this one should always be taken in this order
+           (ri : RuntimeInfo, api : TargetAPI) =
     
     let rec loop (state : State) : Job<unit> =
       // Alt.choose will pick the channel/alternative that first gives a value
@@ -123,65 +124,49 @@ module internal Impl =
             job {
               // Do something with the `message` value specific to the target
               // you are creating.
-
-              let tel = 
-                  match message.value with
-                  | Gauge (valu,uni) when conf.MappingConfiguration.GaugeMapping = GaugeToMetrics ->
-                      makeMetric(message.name,valu,uni) :> ITelemetry
-                  | Gauge (valu,uni) when conf.MappingConfiguration.GaugeMapping = GaugeToEvent ->
-                      makeEvent(message.name,valu,uni) :> ITelemetry
-                  | Derived (valu,uni) when conf.MappingConfiguration.DerivedMapping = DerivedToMetrics ->
-                      makeMetric(message.name,valu,uni) :> ITelemetry
-                  | Derived (valu,uni) when conf.MappingConfiguration.DerivedMapping = DerivedToEvent ->
-                      makeEvent(message.name,valu,uni) :> ITelemetry
-                  | Event template when conf.MappingConfiguration.EventMapping = EventToEvent ->
-                      EventTelemetry(template) :> ITelemetry
-                  | msgName -> 
-                      let loglevel = 
-                          match message.level with
-                          | LogLevel.Fatal -> SeverityLevel.Critical
-                          | LogLevel.Error -> SeverityLevel.Error
-                          | LogLevel.Warn -> SeverityLevel.Warning
-                          | LogLevel.Info -> SeverityLevel.Information
-                          | LogLevel.Debug -> SeverityLevel.Verbose
-                          | LogLevel.Verbose -> SeverityLevel.Verbose
-
-                      TraceTelemetry(
-                          (match msgName with
-                            | Gauge (v,u)
-                            | Derived (v,u) -> 
-                                let va, un = scaleUnit(v,u)
-                                sprintf "%f %s" va un
-                            | Event template -> template),
-                            loglevel
-                      ) :> ITelemetry
-
-              tel.Sequence <- message.timestamp.ToString()
-              tel.Timestamp <- DateTimeOffset(DateTime(1970,01,01).AddTicks(message.timestampTicks))
-              tel.Context.GetInternalContext().SdkVersion <- sdkVersion
+              let (Event template) = message.value
               
-              match tel with
-              | :? ISupportProperties as itm ->
-                itm.Properties.Add("PointName", PointName.format message.name)
+              seq {
+                let tel = 
+                  match conf.MappingConfiguration.EventMapping with
+                  | EventToEvent -> EventTelemetry(template) :> ITelemetry
+                  | EventToTrace -> makeTrace(template,message.level) :> ITelemetry
+                
+                match tel with
+                | :? ISupportProperties as itm ->
+                  itm.Properties.Add("PointName", PointName.format message.name)
 
-                message.fields |> Map.iter(fun k field ->
-                  let key = PointName.format k
-                  if not(itm.Properties.ContainsKey key) then
-                      itm.Properties.Add(key.ToString(), (fieldValue field))
-                )
+                  failwith "TODO: needs to be discussed, how to handle context value obj"
+                  message.context |> HashMap.toSeq |> Seq.iter(fun (k, v)->
+                    if not(itm.Properties.ContainsKey k) then
+                        itm.Properties.Add(k, (string v)))
+                | _ -> ()
 
-                message.context |> Map.iter(fun k v ->
-                  if not(itm.Properties.ContainsKey k) then
-                      itm.Properties.Add(k, (Units.formatValue v))
-                )
-              | _ -> ()
+                  
+                yield tel
+
+                yield! message 
+                  |> Message.getAllGauges
+                  |> Seq.map (fun (gaugeType, Gauge(value, units)) ->
+                     match conf.MappingConfiguration.GaugeMapping with
+                     | GaugeToMetrics -> makeMetric(gaugeType, value, units) :> ITelemetry
+                     | GaugeToEvent -> makeEvent(gaugeType,value,units) :> ITelemetry
+                     | GaugeToTrace -> 
+                       let (scaled, unit) = Units.scale units value
+                       
+                       let info = sprintf "%s : %s %s" gaugeType (string scaled) (unit)
+                       makeTrace(info, message.level):> ITelemetry)
+              }
+              |> Seq.iter (fun tel ->
+                 tel.Sequence <- message.timestamp.ToString()
+                 tel.Timestamp <- DateTimeOffset(DateTime(1970,01,01).AddTicks(message.timestampTicks))
+                 tel.Context.GetInternalContext().SdkVersion <- sdkVersion
+                 match tel with
+                 | :? TraceTelemetry as itm -> state.telemetryClient.TrackTrace itm
+                 | :? EventTelemetry as itm -> state.telemetryClient.TrackEvent itm
+                 | :? MetricTelemetry as itm -> state.telemetryClient.TrackMetric itm
+                 | x -> failwithf "Unknown telemetry item: %O" x)
               
-              match tel with
-              | :? TraceTelemetry as itm -> state.telemetryClient.TrackTrace itm
-              | :? EventTelemetry as itm -> state.telemetryClient.TrackEvent itm
-              | :? MetricTelemetry as itm -> state.telemetryClient.TrackMetric itm
-              | x -> failwithf "Unknown telemetry item: %O" x
-
               // This is a simple acknowledgement using unit as the signal
               do! ack *<= ()
 

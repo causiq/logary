@@ -82,7 +82,7 @@ module internal Impl =
       WellKnownTypes.Value.ForNull()
     | Value.Fraction (numerator,denominator) -> WellKnownTypes.Value.ForNumber(float(numerator/denominator))
     | Value.Object values -> 
-      values |> Map.toSeq 
+      values |> HashMap.toSeq 
       |> Seq.fold (fun (s : WellKnownTypes.Struct) (k,v) -> s.Fields.[k] <- toProtobufValue v; s) (WellKnownTypes.Struct()) 
       |> WellKnownTypes.Value.ForStruct
     | Value.Array values -> 
@@ -94,34 +94,36 @@ module internal Impl =
     s
 
   let write (m : Message) : LogEntry =
-    // labels are used in stackdriver for classification, so lets put context there.
-    // they expect only simple values really in the labels, so it's ok to just stringify them
-    let labels = m.context |> Map.map (fun k v -> Value.toString v) |> Map.toSeq |> dict
-    let fieldOfString s = Field(Value.String s, None)
-    let formatted, raw = 
-      match m.value with
-      | Event template -> 
-        Some <| fieldOfString (Logary.Formatting.MessageParts.formatTemplate template m.fields)
-        , Some <| fieldOfString template
-      | _ -> None, None
+    failwith "TODO: needs to be discussed"
+
+    // // labels are used in stackdriver for classification, so lets put context there.
+    // // they expect only simple values really in the labels, so it's ok to just stringify them
+    // let labels = m.context |> Map.map (fun k v -> Value.toString v) |> Map.toSeq |> dict
+    // let fieldOfString s = Field(Value.String s, None)
+    // let formatted, raw = 
+    //   match m.value with
+    //   | Event template -> 
+    //     Some <| fieldOfString (Logary.Formatting.MessageParts.formatTemplate template m.fields)
+    //     , Some <| fieldOfString template
+    //   | _ -> None, None
     
-    let addMessageFields m =
-      match formatted, raw with
-      | Some s, Some v -> m |> Map.add messageKey s |> Map.add unformattedMessageKey v
-      | Some s, None -> m |> Map.add messageKey s
-      | None, Some v -> m |> Map.add messageKey v
-      | None, None -> m
+    // let addMessageFields m =
+    //   match formatted, raw with
+    //   | Some s, Some v -> m |> Map.add messageKey s |> Map.add unformattedMessageKey v
+    //   | Some s, None -> m |> Map.add messageKey s
+    //   | None, Some v -> m |> Map.add messageKey v
+    //   | None, None -> m
 
-    // really only need to include fields and the formatted message template, because context went to labels
-    let payloadFields = 
-      m.fields
-      |> addMessageFields
-      |> Map.toSeq
-      |> Seq.fold addToStruct (WellKnownTypes.Struct())
+    // // really only need to include fields and the formatted message template, because context went to labels
+    // let payloadFields = 
+    //   m.fields
+    //   |> addMessageFields
+    //   |> Map.toSeq
+    //   |> Seq.fold addToStruct (WellKnownTypes.Struct())
 
-    let entry = LogEntry(Severity = toSeverity m.level, JsonPayload = payloadFields)
-    entry.Labels.Add(labels)
-    entry
+    // let entry = LogEntry(Severity = toSeverity m.level, JsonPayload = payloadFields)
+    // entry.Labels.Add(labels)
+    // entry
 
 
   type State = { logName : string

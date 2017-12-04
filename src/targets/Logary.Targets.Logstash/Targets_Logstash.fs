@@ -28,8 +28,8 @@ let messagePickler =
        Pickler.auto<string>.Write w "level" (msg.level.ToString())
        let (Event tpl) = msg.value
        Pickler.auto<string>.Write w "value" (tpl)
-       let contexts = msg.context |> HashMap.toSeq
-       Pickler.auto<seq<string * obj>>.Write w "context" (contexts)
+       let contexts = msg.context |> HashMap.toList
+       Pickler.auto<list<string * obj>>.Write w "context" (contexts)
 
 
     let reader (r : ReadState) = failwith "oneway serializer"
@@ -41,7 +41,9 @@ registry.RegisterPickler messagePickler
 let custom = PicklerCache.FromCustomPicklerRegistry registry
 let jsonSerializer = FsPickler.CreateJsonSerializer(indent = false, omitHeader = true, picklerResolver = custom)
 
-let serialise = jsonSerializer.PickleToString
+let serialise =
+  failwith "TODO: needs to be discussed"
+  jsonSerializer.PickleToString
 
 
 /// This is the default address this Target publishes messages to.
@@ -108,9 +110,9 @@ module internal Impl =
               let bytes =
                 message
                 |> serialise 
-                |> UTF8.bytes
+                |> System.Text.Encoding.UTF8.GetBytes
 
-              do! Job.Scheduler.isolate (fun _ -> state.sender <~| (UTF8.bytes (message.name.ToString())) <<|  bytes)
+              do! Job.Scheduler.isolate (fun _ -> state.sender <~| (System.Text.Encoding.UTF8.GetBytes (message.name.ToString())) <<|  bytes)
 
               do! ack *<= ()
               return! loop state

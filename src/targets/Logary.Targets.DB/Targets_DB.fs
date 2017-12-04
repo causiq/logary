@@ -15,6 +15,10 @@ open MBrace.FsPickler.Json
 
 let jsonSerializer = FsPickler.CreateJsonSerializer(indent = false, omitHeader = true)
 
+let jsonFormat (data : obj) : string = 
+  failwith "TODO: needs to be discussed"
+  jsonSerializer.PickleToString data
+
 type DBConf =
   { connectionFactory : unit -> IDbConnection
     schema            : string option }
@@ -46,8 +50,8 @@ module internal Impl =
   let sharedParameters (m : Message) =
     [ P("@host", Dns.GetHostName())
       P("@name", m.name)
-      P("@fields", m |> Message.getAllFields |> jsonSerializer.PickleToString)
-      P("@context", m.context  |> jsonSerializer.PickleToString)
+      P("@fields", m |> Message.getAllFields |> jsonFormat)
+      P("@context", m.context  |> jsonFormat)
       P("@epoch", m.timestamp)
       P("@level", m.level.toInt ()) ]
 

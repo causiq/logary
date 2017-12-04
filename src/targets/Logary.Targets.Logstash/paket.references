@@ -2,5 +2,4 @@ FSharp.Core
 Hopac
 NodaTime
 fszmq
-File:YoLo.fs
 FsPickler.Json

@@ -54,162 +54,164 @@ module Serialisation =
          |> String.concat ","
 
   let serialiseMessage (message : Message) : string =
-    let mapExtract fExtractValue =
-      Map.map (fun k -> fExtractValue >> Option.orDefault "")
-      >> Seq.filter (fun (KeyValue (k, v)) -> v <> String.Empty)
-      >> Seq.map (fun (KeyValue (k, v)) -> k, v)
-      >> Seq.sortBy fst
-      >> List.ofSeq
+    failwith "TODO: needs to be discussed"
 
-    let rec getValues (valueKey : string)
-                      isTag
-                      (kvs : (string * string) list)
-                      (values : (string * string) list) =
-      function
-      | Float v ->
-        kvs, (valueKey, v.ToString(Culture.invariant)) :: values
+    // let mapExtract fExtractValue =
+    //   Map.map (fun k -> fExtractValue >> Option.orDefault "")
+    //   >> Seq.filter (fun (KeyValue (k, v)) -> v <> String.Empty)
+    //   >> Seq.map (fun (KeyValue (k, v)) -> k, v)
+    //   >> Seq.sortBy fst
+    //   >> List.ofSeq
 
-      | Int64 v ->
-        kvs, (valueKey, v.ToString(Culture.invariant) + "i") :: values
+    // let rec getValues (valueKey : string)
+    //                   isTag
+    //                   (kvs : (string * string) list)
+    //                   (values : (string * string) list) =
+    //   function
+    //   | Float v ->
+    //     kvs, (valueKey, v.ToString(Culture.invariant)) :: values
 
-      | String s ->
-        let fser = if isTag then serialiseStringTag else serialiseStringValue
-        kvs, (valueKey, fser s) :: values
+    //   | Int64 v ->
+    //     kvs, (valueKey, v.ToString(Culture.invariant) + "i") :: values
 
-      | Bool true ->
-        kvs, (valueKey, "true") :: values
+    //   | String s ->
+    //     let fser = if isTag then serialiseStringTag else serialiseStringValue
+    //     kvs, (valueKey, fser s) :: values
 
-      | Bool false ->
-        kvs, (valueKey, "false") :: values
+    //   | Bool true ->
+    //     kvs, (valueKey, "true") :: values
 
-      | BigInt v ->
-        if v > bigint Int64.MaxValue then
-          let str = Int64.MaxValue.ToString(Culture.invariant) + "i"
-          kvs, (valueKey, str) :: values
-        elif v < bigint Int64.MinValue then
-          let str = Int64.MinValue.ToString(Culture.invariant) + "i"
-          kvs, (valueKey, str) :: values
-        else
-          let str = v.ToString(Culture.invariant) + "i"
-          kvs, (valueKey, str) :: values
+    //   | Bool false ->
+    //     kvs, (valueKey, "false") :: values
 
-      | Binary (bs, ct) ->
-        ("value_ct", ct) :: kvs,
-        (valueKey, Convert.ToBase64String(bs)) :: values
+    //   | BigInt v ->
+    //     if v > bigint Int64.MaxValue then
+    //       let str = Int64.MaxValue.ToString(Culture.invariant) + "i"
+    //       kvs, (valueKey, str) :: values
+    //     elif v < bigint Int64.MinValue then
+    //       let str = Int64.MinValue.ToString(Culture.invariant) + "i"
+    //       kvs, (valueKey, str) :: values
+    //     else
+    //       let str = v.ToString(Culture.invariant) + "i"
+    //       kvs, (valueKey, str) :: values
 
-      | Fraction (n, d) ->
-        kvs,
-        (valueKey, (n / d).ToString(Culture.invariant)) :: values
+    //   | Binary (bs, ct) ->
+    //     ("value_ct", ct) :: kvs,
+    //     (valueKey, Convert.ToBase64String(bs)) :: values
 
-      | Object _ as o ->
-        complexValue valueKey kvs values o
+    //   | Fraction (n, d) ->
+    //     kvs,
+    //     (valueKey, (n / d).ToString(Culture.invariant)) :: values
 
-      | Array _ as a ->
-        complexValue valueKey kvs values a
+    //   | Object _ as o ->
+    //     complexValue valueKey kvs values o
 
-    and extractSimple valueKey isTag v =
-      match getValues valueKey isTag [] [] v with
-      | _, (_, str) :: _ -> Some str
-      | _ -> None
+    //   | Array _ as a ->
+    //     complexValue valueKey kvs values a
 
-    and complexValue valueKey kvs values = function
-      | Object mapKvs ->
-        let newValues = mapKvs |> mapExtract (extractSimple valueKey false)
-        kvs, newValues @ values
+    // and extractSimple valueKey isTag v =
+    //   match getValues valueKey isTag [] [] v with
+    //   | _, (_, str) :: _ -> Some str
+    //   | _ -> None
 
-      | Array arr ->
-        let rec array i acc = function
-          | [] ->
-            acc
+    // and complexValue valueKey kvs values = function
+    //   | Object mapKvs ->
+    //     let newValues = mapKvs |> mapExtract (extractSimple valueKey false)
+    //     kvs, newValues @ values
 
-          | h :: tail ->
-            match extractSimple valueKey false h with
-            | Some str ->
-              array (i + 1) ((sprintf "arr_%i" i, str) :: acc) tail
-            | None ->
-              array i acc tail
+    //   | Array arr ->
+    //     let rec array i acc = function
+    //       | [] ->
+    //         acc
 
-        kvs, array 0 [] arr
+    //       | h :: tail ->
+    //         match extractSimple valueKey false h with
+    //         | Some str ->
+    //           array (i + 1) ((sprintf "arr_%i" i, str) :: acc) tail
+    //         | None ->
+    //           array i acc tail
 
-      | x ->
-        failwithf "'%A' is not a complex value" x
+    //     kvs, array 0 [] arr
 
-    let simpleValue = getValues "value"
+    //   | x ->
+    //     failwithf "'%A' is not a complex value" x
 
-    let removeSuppressTag suppress =
-      if suppress then
-        Map.map (fun k v ->
-          match k with
-          | KnownLiterals.TagsContextName ->
-            match v with
-            | Array tags ->
-              Value.Array (tags |> List.filter ((<>) (Value.String KnownLiterals.SuppressPointValue)))
-            | _ ->
-              v
-          | _ -> v)
-      else id
+    // let simpleValue = getValues "value"
 
-    let contextValues suppress context : PointValue -> _ * _ =
-      let context' =
-        context
-        |> removeSuppressTag suppress
-        |> mapExtract (extractSimple "value" true)
+    // let removeSuppressTag suppress =
+    //   if suppress then
+    //     Map.map (fun k v ->
+    //       match k with
+    //       | KnownLiterals.TagsContextName ->
+    //         match v with
+    //         | Array tags ->
+    //           Value.Array (tags |> List.filter ((<>) (Value.String KnownLiterals.SuppressPointValue)))
+    //         | _ ->
+    //           v
+    //       | _ -> v)
+    //   else id
 
-      function
-      | Gauge (value, Scalar)
-      | Derived (value, Scalar) ->
-        let contextTags, contextFields = simpleValue false context' [] value
-        if suppress then contextTags, [] else contextTags, contextFields
+    // let contextValues suppress context : PointValue -> _ * _ =
+    //   let context' =
+    //     context
+    //     |> removeSuppressTag suppress
+    //     |> mapExtract (extractSimple "value" true)
 
-      | Gauge (value, units)
-      | Derived (value, units) ->
-        simpleValue false context' [] value |> fun (tags, fields) ->
-        let contextTags, contextFields =
-          ("unit", serialiseStringTag (Units.symbol units)) :: tags,
-          fields
-        if suppress then contextTags, [] else contextTags, contextFields
+    //   function
+    //   | Gauge (value, Scalar)
+    //   | Derived (value, Scalar) ->
+    //     let contextTags, contextFields = simpleValue false context' [] value
+    //     if suppress then contextTags, [] else contextTags, contextFields
 
-      | Event templ ->
-        let kvs, values = simpleValue false context' [] (Value.Int64 1L)
-        kvs,
-        // events' templates vary a lot, so don't index them
-        ("event", serialiseStringValue templ) :: values
+    //   | Gauge (value, units)
+    //   | Derived (value, units) ->
+    //     simpleValue false context' [] value |> fun (tags, fields) ->
+    //     let contextTags, contextFields =
+    //       ("unit", serialiseStringTag (Units.symbol units)) :: tags,
+    //       fields
+    //     if suppress then contextTags, [] else contextTags, contextFields
 
-    let fieldValues (fields : Map<PointName, Field>)  =
-      Map.toSeq fields
-      |> Seq.map (fun (key, (Field (value, _))) -> PointName.format key, value)
-      |> Map.ofSeq
-      |> Value.Object
-      |> getValues "value" false [] []
+    //   | Event templ ->
+    //     let kvs, values = simpleValue false context' [] (Value.Int64 1L)
+    //     kvs,
+    //     // events' templates vary a lot, so don't index them
+    //     ("event", serialiseStringValue templ) :: values
 
-    let measurementName (m : Message) =
-      match m.value with
-      | Event _ ->
-        // events should result in measurements like "event_info" or "event_fatal"
-        // because that's how they're queried
-        escapeString (sprintf "event_%O" m.level)
-      | _ ->
-        // whilst measurements should result in measurement names equivalent to thei
-        // point names
-        serialisePointName m.name
+    // let fieldValues (fields : Map<PointName, Field>)  =
+    //   Map.toSeq fields
+    //   |> Seq.map (fun (key, (Field (value, _))) -> PointName.format key, value)
+    //   |> Map.ofSeq
+    //   |> Value.Object
+    //   |> getValues "value" false [] []
 
-    let extraFields pointName = function
-      // pass the point name of the event as an extra field
-      | Event _ ->
-        [ "pointName", serialiseStringValue (PointName.format pointName) ]
-      | _ ->
-        []
+    // let measurementName (m : Message) =
+    //   match m.value with
+    //   | Event _ ->
+    //     // events should result in measurements like "event_info" or "event_fatal"
+    //     // because that's how they're queried
+    //     escapeString (sprintf "event_%O" m.level)
+    //   | _ ->
+    //     // whilst measurements should result in measurement names equivalent to thei
+    //     // point names
+    //     serialisePointName m.name
 
-    let suppress = message |> Message.hasTag KnownLiterals.SuppressPointValue
-    let fieldTags, fieldFields = fieldValues message.fields
-    let contextTags, contextFields = contextValues suppress message.context message.value
-    let extraFields = extraFields message.name message.value
+    // let extraFields pointName = function
+    //   // pass the point name of the event as an extra field
+    //   | Event _ ->
+    //     [ "pointName", serialiseStringValue (PointName.format pointName) ]
+    //   | _ ->
+    //     []
 
-    sprintf "%O%s %s %i"
-            (measurementName message)
-            (printTags (List.concat [fieldTags; contextTags]))
-            (printFields (List.concat [extraFields; fieldFields; contextFields]))
-            message.timestamp
+    // let suppress = message |> Message.hasTag KnownLiterals.SuppressPointValue
+    // let fieldTags, fieldFields = fieldValues message.fields
+    // let contextTags, contextFields = contextValues suppress message.context message.value
+    // let extraFields = extraFields message.name message.value
+
+    // sprintf "%O%s %s %i"
+    //         (measurementName message)
+    //         (printTags (List.concat [fieldTags; contextTags]))
+    //         (printFields (List.concat [extraFields; fieldFields; contextFields]))
+    //         message.timestamp
 
 type Consistency =
   /// the data must be written to disk by at least 1 valid node

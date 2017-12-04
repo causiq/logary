@@ -19,7 +19,7 @@ namespace Logary.CSharp.Tests
         static LogManager manager;
         static StringWriter writer;
         static string subject;
-        static Instant timestamp;
+        static NodaTime.Instant timestamp;
         static Exception exception;
 
         Establish context = () =>
@@ -68,7 +68,7 @@ namespace Logary.CSharp.Tests
         static LogManager manager;
         static StringWriter writer;
         static string subject;
-        static Instant timestamp;
+        static NodaTime.Instant timestamp;
         static Exception exception;
 
         Establish context = () =>

@@ -28,7 +28,7 @@ let parseIP str =
     | Choice2Of2 e  -> raise (Exception (str, e))
   | true, ip -> ip
 
-let ri = RuntimeInfo.create "integrations"
+let ri = RuntimeInfo.create "integrations" "localhost"
 
 [<Tests>]
 let integration =
@@ -46,7 +46,7 @@ let integration =
         |> run
 
       try
-        Message.gauge (PointName.parse "Logary.Tests.Integration") (Float 14.7)
+        Message.gauge "Logary.Tests.Integration" 14.7
         |> Target.log riemann
         |> Job.Ignore
         |> run

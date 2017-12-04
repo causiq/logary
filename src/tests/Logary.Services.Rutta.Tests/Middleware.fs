@@ -12,11 +12,10 @@ let messageEnrichment =
       let hostname = System.Net.Dns.GetHostName()
       
       let msg = Logary.Message.event LogLevel.Info "Info" 
-      let enrichedMsg = Middleware.host id msg
+      let enrichedMsg = Middleware.host hostname id msg
 
-      Expect.isTrue (enrichedMsg.context |> Map.containsKey "host") "Has 'host' key"
-      Expect.equal (Value.String hostname)
-                   (enrichedMsg.context |> Map.find "host")
+      Expect.equal (Some hostname)
+                   (enrichedMsg |> Message.tryGetContext KnownLiterals.HostContextName)
                    "Should contain the 'host' value and it should equal the Dns.GetHostName() value"
   ]
 

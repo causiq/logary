@@ -38,26 +38,30 @@ type ElasticSearchConf =
       _type      = defaultArg _type "logs"
       indexName  = defaultArg indexName "logary" }
 
-let serialise : Message -> Json =
-  fun message ->
-    let props =
-      match Json.serialize message with
-      | Object values ->
-        values
+let serialiseToJsonBytes : Message -> byte [] =
+  failwith "TODO: needs to be discussed"
 
-      | otherwise ->
-        failwithf "Expected Message to format to Object .., but was %A" otherwise
+  // fun message ->
+  //   let props =
+  //     match Json.serialize message with
+  //     | Object values ->
+  //       values
 
-    let overrides =
-      [ "@version", String "1"
-        "@timestamp", String (MessageWriter.formatTimestamp message.timestamp)
-        "name", String (PointName.format message.name)
-      ]
+  //     | otherwise ->
+  //       failwithf "Expected Message to format to Object .., but was %A" otherwise
 
-    let final =
-      overrides |> List.fold (fun data (k, v) -> data |> Map.put k v) props
+  //   let overrides =
+  //     [ "@version", String "1"
+  //       "@timestamp", String (MessageWriter.formatTimestamp message.timestamp)
+  //       "name", String (PointName.format message.name)
+  //     ]
 
-    (Object final)
+  //   let final =
+  //     overrides |> List.fold (fun data (k, v) -> data |> Map.put k v) props
+
+  //   (Object final)
+  //   |> Json.format
+  //   |> System.Text.Encoding.UTF8.GetBytes
 
 module internal Impl =
 
@@ -71,9 +75,7 @@ module internal Impl =
 
   let sendToElasticSearch elasticUrl _type indexName (message : Message) =
     let _index  = indexName + "-" + DateTime.UtcNow.ToString("yyy-MM-dd")
-    let bytes =
-      Json.format (serialise message)
-      |> UTF8.bytes
+    let bytes = serialiseToJsonBytes message
     let _id = generateId bytes
     let endpointUrl = elasticUrl + "/" + _index + "/" + _type + "/" + _id
     let request =
@@ -101,7 +103,7 @@ module internal Impl =
 
           | Flush (ackCh, nack) ->
             job {
-              do! IVar.fill achCh ()
+              do! IVar.fill ackCh ()
               return! loop ()
             }
       ] :> Job<_>

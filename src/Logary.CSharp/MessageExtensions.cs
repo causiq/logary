@@ -55,7 +55,7 @@ namespace Logary
         /// </summary>
         public static Message SetTimestamp(this Message msg, NodaTime.Instant timestamp)
         {
-            return MessageModule.SetTicksEpoch(timestamp.Ticks, msg);
+            return MessageModule.SetTicksEpoch(timestamp.ToUnixTimeTicks(), msg);
         }
 
         /// <summary>
@@ -73,7 +73,7 @@ namespace Logary
         /// <param name="msg">Message.</param>
         public static NodaTime.Instant GetTimestamp(this Message msg)
         {
-            return NodaTime.Instant.FromTicksSinceUnixEpoch(msg.timestampTicks);
+            return NodaTime.Instant.FromUnixTimeTicks(msg.timestampTicks);
         }
 
         /// <summary>

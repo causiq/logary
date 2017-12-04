@@ -16,7 +16,6 @@ open System
 open Hopac
 open Hopac.Infixes
 open Logary
-open Logary.Targets
 open Logary.Targets.AliYun
 open Logary.Configuration
 open Logary.Logger
@@ -33,44 +32,33 @@ let aliyunConf = { AccessKeyId = "";
                   Project = "";
                   Logstore = "";}
 
-let logger = 
-    withLogaryManager "testAliYun" (
-        withTargets [
-            Logary.Targets.AliYun.create(aliyunConf) "AliYunLog"
-        ] 
-        >> withRules [
-            Rule.createForTarget "AliYunLog" |> Rule.setLevel LogLevel.Verbose
-        ]
-        >> withInternalTargets Verbose [
-            Console.create Console.empty "console"
-        ]
-    ) |> run
+let logm = 
+    Config.create "testAliYun" "localhost"
+    |> Config.target (Logary.Targets.AliYun.create aliyunConf "AliYunLog")
+    |> Config.ilogger (ILogger.Console Verbose) 
+    |> Config.build
+    |> run
+    |> Registry.toLogManager
 
 let tuple = ("first",2,"Third")
 let msg = 
-  Message.eventInfo ("Hello World!")
-  |> Message.setField "testFrom" "logary"
+  Message.eventInfo ("Hello World! from {target}")
   |> Message.setField "target" "aliyun-target"
-  |> Message.setField "use-ali-sdk" "true"
-  |> Message.setContext "list string " ["some";"info";"from";"log"]
+  |> Message.setContext "tuples" tuple
+  |> fun msg -> Message.setContext "msg-itself" msg msg
 
 let curLogger = Logary.Logging.getCurrentLogger()
-let jiajunLogger = logger.getLogger (PointName [| "Logary"; "Aliyun"; "JiaJun"; "TestInScript" |])
+let jiajunLogger = logm.getLogger (PointName [| "Logary"; "Aliyun"; "JiaJun"; "TestInScript" |])
 
 msg |> logSimple curLogger
 msg |> Message.setLevel Error |> jiajunLogger.logSimple
 
 let timeWaiting = Duration.FromSeconds 5L
-Hopac.timeOutMillis 3000 
-^=> fun _ ->
-    logger.flushPending timeWaiting
-^=> fun _ ->
-    Hopac.timeOutMillis 5000 
-^=> fun _ ->
-    logger.shutdown timeWaiting timeWaiting
+
+Hopac.timeOutMillis 3000 ^=> fun _ -> logm.shutdown timeWaiting timeWaiting
 |> run
-|> fun state ->
-   printfn "------------------after shutdow => %s %A" Environment.NewLine state
+|> fun info ->
+   printfn "------------------after shutdow => %s %A %A" Environment.NewLine info
 
 // Login your AliYun sls console (https://sls.console.aliyun.com/). 
 // Go to your logstore
