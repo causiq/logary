@@ -37,15 +37,20 @@ open Suave.Successful
 open Suave.Operators
 open Suave.Utils
 
+let bind (f : 'a -> Choice<'b, 'c>) (v : Choice<'a, 'c>) =
+  match v with
+  | Choice1Of2 v -> f v
+  | Choice2Of2 c -> Choice2Of2 c
+
 let api (logger : Logger) (verbatimPath : string option) : WebPart =
   let verbatimPath = defaultArg verbatimPath "/i/logary"
   let getMsg = sprintf "You can post a JSON structure to: %s" verbatimPath
 
   let inline readJson () =
     Lens.get HttpRequest.rawForm_
-    >> UTF8.toString
+    >> System.Text.Encoding.UTF8.GetString
     >> Json.tryParse
-    >> Choice.bind Json.tryDeserialize
+    >> bind Json.tryDeserialize
 
   let jsonMsg msg =
     { message = msg; id = ThreadSafeRandom.nextUInt64 () }
@@ -56,8 +61,9 @@ let api (logger : Logger) (verbatimPath : string option) : WebPart =
     GET >=> OK (jsonMsg getMsg)
     POST >=> Binding.bindReq
               (readJson ())
-              (fun msg ->
-                Logger.logSimple logger msg
+              (fun (msg:string) ->
+                failwith "TODO: needs to be discussed"
+                // Logger.logSimple logger msg
                 CREATED (jsonMsg "Created"))
               BAD_REQUEST
   ]
