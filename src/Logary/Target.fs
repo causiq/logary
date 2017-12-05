@@ -67,7 +67,6 @@ module Target =
   /// and a normal path of communication; the `requests` `RingBuffer` as well as
   /// and out-of-band-method of shutting down the target; the `shutdownCh`.
   type T =
-    // TODO: internal first , later see if can be private
     private {
       name       : string
       api        : TargetAPI

@@ -160,7 +160,7 @@ type internal Adapter(logger : Logger) =
     member x.GlobalVariablesContext = gc
     member x.ThreadVariablesContext = tc
 
-    // TODO:
+    // failwith "TODO: needs to be discussed"` 
     member x.NestedThreadVariablesContext = raise (NotImplementedException())
 
 type LogaryAdapter(lm : LogManager) =
