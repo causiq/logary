@@ -29,7 +29,9 @@ namespace Logary.CSharp.Tests
         It should_contain_Running_op_message = () => template.ShouldContain("Running op");
         It should_contain_Inner_message = () => template.ShouldContain("Inner");
 
-        Cleanup afterwards = () => manager.DisposeAsync().ToTask().Wait();
+        Cleanup afterwards = () =>{
+        //  manager.DisposeAsync().ToTask().Wait();
+        };
 
         static Logger subject = Logging.GetCurrentLogger();
         static LogManager manager;

@@ -12,7 +12,7 @@ namespace Logary.CSharp.Tests.Examples
     {
         public async Task UsageExample()
         {
-            var x = await LogaryFactory.New("Logary.CSharp.Tests.Examples",
+            var x = await LogaryFactory.New("Logary.CSharp.Tests.Examples","localhost",
                 with => with.Target<TextWriter.Builder>(
                     "console1",
                     conf =>

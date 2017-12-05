@@ -19,11 +19,10 @@ namespace Logary.CSharp.Tests
                 subject = new Message(
                     PointName.NewPointName(new[] {"a", "b", "c"}),
                     PointValue.NewEvent("initial message"),
-                    MapModule.Empty<PointName, Field>(),
-                    MapModule.Empty<string, Value>(),
+                    HashMap.empty<string, object>(),
                     LogLevel.Warn,
-                    SystemClock.Instance.Now.Ticks*100L);
-                subject.SetEvent("Hello World").value.TryGetEvent(out template).ShouldBeTrue();
+                    SystemClock.Instance.GetCurrentInstant().ToUnixTimeTicks()*100L);
+                template = subject.SetEvent("Hello World").value.template;
             };
 
         It should_allow_changing_template =
@@ -31,8 +30,8 @@ namespace Logary.CSharp.Tests
 
         It should_allow_changing_ts =
             () => subject
-                .SetTimestamp(Instant.FromTicksSinceUnixEpoch(4567))
+                .SetTimestamp(NodaTime.Instant.FromUnixTimeTicks(4567))
                 .GetTimestamp()
-                .ShouldEqual(Instant.FromTicksSinceUnixEpoch(4567));
+                .ShouldEqual(NodaTime.Instant.FromUnixTimeTicks(4567));
     }
 }

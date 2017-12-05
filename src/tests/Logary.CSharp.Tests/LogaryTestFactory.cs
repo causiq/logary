@@ -25,25 +25,21 @@ namespace Logary.CSharp.Tests
             var twTarg =
                 TextWriter.Create(
                     TextWriter.TextWriterConf.Create(tw, tw,
-                        new Microsoft.FSharp.Core.FSharpOption<Formatting.StringFormatter>(Formatting.StringFormatterModule.levelDatetimeMessagePathNl),
-                        new Microsoft.FSharp.Core.FSharpOption<object>(new object())),
+                        new Microsoft.FSharp.Core.FSharpOption<MessageWriter>(MessageWriterModule.levelDatetimeMessagePathNewLine)),
                     "tw");
 
-            var twRule =
-                RuleModule.Create(new Regex(@"^Logary\.CSharp\.Tests"), "tw", LogLevel.Verbose,
-                    message => true);
+
+            // var twRule =
+            //     RuleModule.Create(new Regex(@"^Logary\.CSharp\.Tests"), "tw", LogLevel.Verbose,
+            //         message => true);
 
             var internalTarg = Console.Create(Console.empty, "console");
 
-            return Config.Configure(
-                    "Logary.CSharp.Tests C# low level API",
-                    new[] { twTarg },
-                    new Metric.MetricConf[0],
-                    new[] { twRule },
-                    LogLevel.Warn,
-                    internalTarg)
-                .ToTask()
-                .Result;
+            var config = Config.create("Logary.CSharp.Tests C# low level API","localhost");
+            config = Config.ilogger(ILogger.NewConsole(LogLevel.Warn),config);
+            config = Config.target(twTarg, config);
+            var registry = Config.build(config).ToTask().Result;
+            return Registry.toLogManager(registry);
         }
     }
 }

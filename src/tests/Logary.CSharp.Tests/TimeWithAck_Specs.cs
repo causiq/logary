@@ -22,9 +22,9 @@ namespace Logary.CSharp.Tests
             {
                 writer = new StringWriter(new StringBuilder());
                 manager = LogaryFactory.New(
-                    "Logary.CSharp.Tests",
+                    "Logary.CSharp.Tests","localhost",
                     with =>
-                        with.InternalLoggingLevel(LogLevel.Fatal)
+                        with.InternalLogger(ILogger.NewConsole(LogLevel.Fatal))
                             .Target<TextWriter.Builder>("sample string writer",
                                 t => t.Target.WriteTo(writer, writer))).Result;
             };
@@ -67,7 +67,7 @@ namespace Logary.CSharp.Tests
 
         Cleanup cleanup = () =>
             {
-                manager.Dispose();
+                // manager.Dispose();
                 writer.Dispose();
             };
     }
