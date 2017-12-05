@@ -19,9 +19,12 @@ open Logary.Targets
 open Logary.Metrics
 open Logary.EventsProcessing
 open Logary.EventsProcessing.Transformers
+open System.Text.RegularExpressions
 
 
 open System.Threading
+open Logary.Configuration.Config
+open Hopac.Proc
 
 module ParallelJob =
   open Hopac.Infixes
@@ -78,7 +81,7 @@ module RandomWalk =
 
       let msg = Message.gaugeWithUnit pn value Seconds
 
-      (rnd, value), [| msg |]
+      (rnd, value), msg
 
     let state =
       let rnd = Random()
@@ -102,48 +105,36 @@ module Timing =
 
   let reportAsync timing result = async.Bind(result, Job.toAsync << report timing)
 
-  let metric (timing : Timing) name =
-    let minName = name |> PointName.setEnding "min"
-    let maxName = name |> PointName.setEnding "max"
-    let medianName = name |> PointName.setEnding "median"
-    let countName = name |> PointName.setEnding "count"
-    let upper95 = name |> PointName.setEnding "upper_95"
+  let metric name =
+    let minName = name |> PointName.setEnding "min" |> PointName.format
+    let maxName = name |> PointName.setEnding "max" |> PointName.format
+    let medianName = name |> PointName.setEnding "median" |> PointName.format
+    let countName = name |> PointName.setEnding "count" |> PointName.format
+    let upper95 = name |> PointName.setEnding "upper_95" |> PointName.format
 
     let reduce state = function
-      | Float v, Seconds ->
-        int64 (v * float Constants.NanosPerSecond) :: state
-      | Int64 v, Scaled (Seconds, scale) as input when scale = float Constants.NanosPerSecond ->
-        v :: state
-      | _ -> state
+      | Gauge(v, Seconds) ->
+        (v * float Constants.NanosPerSecond) :: state
+      | Gauge(v, _) -> v :: state
 
     let tick state =
-      let snap = Snapshot.create (Array.ofList state)
-      [], [| snap |> Snapshot.size |> int64 |> Int64 |> Message.gauge countName
-             snap |> Snapshot.median |> int64 |> Int64 |> Message.gauge medianName
-             snap |> Snapshot.min |> Int64 |> Message.gauge minName
-             snap |> Snapshot.max |> Int64 |> Message.gauge maxName
-             snap |> Snapshot.percentile95th |> int64 |> Int64|> Message.gauge upper95 |]
+      let snap = Snapshot.create (state |> List.map int64 |> List.toArray)
+      [], [| snap |> Snapshot.size |> float |>  Message.gauge countName
+             snap |> Snapshot.median |> float |>  Message.gauge medianName
+             snap |> Snapshot.min |> float |> Message.gauge minName
+             snap |> Snapshot.max |> float |> Message.gauge maxName
+             snap |> Snapshot.percentile95th |> float |> Message.gauge upper95 |]
 
-    job {
-      let! metric = Metric.create reduce [] tick
-      do! metric |> Metric.consume (Stream.Src.tap timing.source)
-      return metric }
+    Ticker.create [] reduce tick
 
 module NormalUsage =
-  open Hopac.Infixes
 
-  let act (logger : Logger) timing randomness =
+  let act (logger : Logger) =
     Message.templateFormat("{userName} logged in", [| "haf" |])
     |> Logger.logSimple logger
 
     Message.eventFormat (Info, "{userName} logged in", [| "adam" |])
     |> Logger.logSimple logger
-
-    //Stopwatch.time (fun () -> SerialFun.run 42L)
-    //|> Timing.report timing
-    //|> run
-
-    queue (randomness >>- Metric.tap >>- Stream.consumeJob (Timing.update timing))
 
 
 [<EntryPoint>]
@@ -163,57 +154,66 @@ let main argv =
         compression = RabbitMQ.Compression.GZip
     }
 
-  /// This defines a timing stream source
-  let timing =
-    Timing.create ()
-
   let randomness =
-    memo (RandomWalk.create (PointName.parse "Logary.ConsoleApp.randomWalk"))
+    RandomWalk.create "Logary.ConsoleApp.randomWalk"
 
-  use logary =
-    withLogaryManager "Logary.ConsoleApp" (
-      withTargets [
+  let timing = 
+    Timing.metric (PointName.parse "Logary.ConsoleApp.sampleTiming")
+  
+  let randomWalkPipe =
+    Events.events
+    |> Pipe.tickTimer (randomness) (TimeSpan.FromMilliseconds 500.)
+
+  let processing =
+    Events.stream
+    |> Events.subscribers [
+         Events.events |> Events.miniLevel LogLevel.Fatal |> Events.sink ["fatal"]
+
+         Events.events
+         |> Pipe.tickTimer (WinPerfCounters.appMetrics (PointName.ofSingle "app")) (TimeSpan.FromMilliseconds 5000.)
+         |> Pipe.map Array.toSeq
+         |> Events.flattenToProcessing
+         |> Events.sink ["console"; "influxdb"]
+
+         Events.events
+         |> Pipe.tickTimer (WinPerfCounters.systemMetrics (PointName.ofSingle "system")) (TimeSpan.FromMilliseconds 5000.)
+         |> Pipe.map Array.toSeq
+         |> Events.flattenToProcessing
+         |> Events.sink ["console"; "influxdb"]
+
+         randomWalkPipe 
+         |> Events.sink ["console"; "influxdb"]
+
+         randomWalkPipe
+         |> Pipe.choose (Message.tryGetGauge "Logary.ConsoleApp.randomWalk")
+         |> Pipe.tickTimer timing (TimeSpan.FromSeconds 10.)
+         |> Pipe.map Array.toSeq
+         |> Events.flattenToProcessing
+         |> Events.sink ["console";]
+         
+       ]
+    |> Events.toProcessing
+
+  let logary =
+    Config.create "Logary.ConsoleApp" "localhost"
+    |> Config.targets [
         LiterateConsole.create LiterateConsole.empty "console"
         Console.create Console.empty "fatal"
         //RabbitMQ.create rmqConf "rabbitmq"
         InfluxDb.create (InfluxDb.InfluxDbConf.create(Uri "http://192.168.99.100:8086/write", "logary", batchSize = 500us))
                         "influxdb"
-      ] >>
-      withMetrics [
-        MetricConf.create (Duration.FromSeconds 10L) "Logary.ConsoleApp.sampleTiming" (Timing.metric timing)
-        MetricConf.create (Duration.FromMilliseconds 500L) "Logary.ConsoleApp.randomWalk" (fun _ -> upcast randomness)
-        //WinPerfCounters.create (WinPerfCounters.Common.cpuTimeConf) "cpuTime" (Duration.FromMilliseconds 500L)
-        MetricConf.create (Duration.FromMilliseconds 5000L) "app" WinPerfCounters.appMetrics
-        MetricConf.create (Duration.FromMilliseconds 5000L) "system" WinPerfCounters.systemMetrics
-        //MetricConf.create (Duration.FromMilliseconds 500L) "gpu" Sample.m6000s
-      ] >>
-      withRules [
-        Rule.createForTarget "console"
-        |> Rule.setHieraString "sampleTiming$"
-        
-        Rule.createForTarget "console" |> Rule.setHieraString "app|system"
-        Rule.createForTarget "influxdb" |> Rule.setHieraString "app|system"
-
-        Rule.createForTarget "fatal"
-        |> Rule.setLevel Fatal
-        //Rule.createForTarget "rabbitmq"
-        //Rule.createForTarget "influxdb"
-      ] >>
-      withInternalTargets Info [
-        Console.create Console.empty "console"
-      ] >>
-      withMiddleware (fun next msg ->
-        msg
-        |> Message.setContextValue "host" (String (System.Net.Dns.GetHostName()))
-        |> next)
-    )
+      ]
+    |> Config.ilogger (ILogger.Console Info)
+    |> Config.middleware Middleware.dnsHost
+    |> Config.processing processing
+    |> Config.build
     |> run
+    |> Registry.toLogManager
 
-  let logger =
-    logary.getLogger (PointName [| "Logary"; "Samples"; "main" |])
+  let logger = logary.getLogger (PointName [| "Logary"; "Samples"; "main" |])
 
 
-  NormalUsage.act logger timing randomness
+  NormalUsage.act logger
 
   mre.Wait()
   0
