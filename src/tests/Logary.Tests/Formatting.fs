@@ -45,15 +45,15 @@ let complexMessage : Message =
 
   let tp = (1, "two", foo)
   let object = Obj ()
-  let scalarArr = [| box 1;box 2;box 3; box "4";box "5";box 6.0; box date20171111 |]
-  let notScalarList = [box foo; box tp]
+  let (scalarArr : obj[]) = [| 1;  2; 3; "4"; "5"; 6.0; date20171111 |]
+  let (notScalarList : obj list) = [foo; tp] 
   let scalarKeyValueMap = [ 1,"one" ; 2, "two"] |> HashMap.ofSeq
   let scalarKeyMap = Map [ "some user", box foo ; "some obj", box object]
   let notScalarMap = Map [([2,"2"],["3";"4"]); ([1,"a";2,"b"],["hello";"world"])]
 
   Message.eventFormat (Info, 
     "default foo is {foo} here is a default {objDefault} and stringify {$objStr} and destructure {@objDestr}", 
-    [| foo; object; object; object; |])
+    foo, object, object, object)
   |> Message.setName  (PointName.ofList ["a"; "b"; "c"; "d"])
   |> Message.setNanoEpoch 3123456700L
   |> Message.setContext "UserInfo" foo

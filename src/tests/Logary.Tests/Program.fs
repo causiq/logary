@@ -373,7 +373,7 @@ let tests =
         Expect.equal field (Some 45) "Should have PropA"
 
       testCase "eventFormat" <| fun _ ->
-        let m = eventFormat (Info, "some {@data} created at {$time}", [|1;2;|])
+        let m = Message.eventFormat (Info, "some {@data} created at {$time}", 1,2)
         let dataf = m |> tryGetField "data"
         let timef = m |> tryGetField "time"
         Expect.equal dataf (Some 1) "Should have data field"

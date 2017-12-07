@@ -38,14 +38,14 @@ module Message =
       (fun v (x : Message) -> { x with timestamp = v })
 
     let boxWithOption_<'a> : Epimorphism<obj option,'a> =
-      (function | Some x -> Some (unbox<'a> x) 
-                | None -> None), 
+      (function | Some x -> Some (unbox<'a> x)
+                | None -> None),
       box >> Some
 
     let contextValue_ name =
       context_ >-> HashMap.value_ name >-> boxWithOption_
 
-  
+
   //#region CONTEXT AND FIELDS
 
   ///////////////// CONTEXT ////////////////////
@@ -100,7 +100,7 @@ module Message =
   let inline getContextsOtherThanGaugeAndFields message =
     message.context
     |> Seq.choose (fun (KeyValue (k,v)) ->
-       if k.StartsWith KnownLiterals.FieldsPrefix 
+       if k.StartsWith KnownLiterals.FieldsPrefix
           || k.StartsWith KnownLiterals.GaugeTypePrefix then None
        else Some (k,v))
 
@@ -229,13 +229,13 @@ module Message =
   /// one message can take multi gauges
   [<CompiledName "AddGauge">]
   let addGauge gaugeType (gauge : Gauge) message =
-    let gaugeTypeName = KnownLiterals.GaugeTypePrefix + gaugeType 
+    let gaugeTypeName = KnownLiterals.GaugeTypePrefix + gaugeType
     message |> setContext gaugeTypeName gauge
 
 
   [<CompiledName "TryGetGauge">]
   let tryGetGauge gaugeType message : Gauge option =
-    let gaugeTypeName = KnownLiterals.GaugeTypePrefix + gaugeType 
+    let gaugeTypeName = KnownLiterals.GaugeTypePrefix + gaugeType
     message |> tryGetContext gaugeTypeName
 
   /// Creates a new gauge message with gauge
@@ -348,26 +348,15 @@ module Message =
 
   [<CompiledName "SetFields">]
   let setFields (args : obj[]) message =
-    let (Event (formatTemplate)) = message.value 
+    let (Event (formatTemplate)) = message.value
     let parsedTemplate = Parser.parse formatTemplate
-    if parsedTemplate.HasAnyProperties then 
+    if parsedTemplate.HasAnyProperties then
       captureNamesAndValuesAsScalars parsedTemplate args
       |> Array.map convertToOrigin
       |> Array.fold (fun m (name, value) -> setField name value m) message
     else message
 
-  /// Creates a new event with given level, format and arguments. Format may
-  /// contain String.Format-esque format placeholders.
-  [<CompiledName "EventFormat">]
-  let eventFormat (level, formatTemplate, [<ParamArray>] args : obj[]) : Message =
-    event level formatTemplate
-    |> setFields args
-    
-  /// Converts a String.Format-style format string and an array of arguments into
-  /// a message template and a set of fields.
-  [<CompiledName "EventFormat">]
-  let templateFormat (format : string, [<ParamArray>] args : obj[]) =
-    eventFormat (LogLevel.Debug, format, args)
+
 
   /// Run the function `f` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Seconds.
@@ -529,6 +518,18 @@ module MessageEx =
 
   type Message with
 
+    /// Creates a new event with given level, format and arguments. Format may
+    /// contain String.Format-esque format placeholders.
+    [<CompiledName "EventFormat">]
+    static member eventFormat (level, formatTemplate, [<ParamArray>] args : obj[]) : Message =
+      Message.event level formatTemplate
+      |> Message.setFields args
+
+    /// Converts a String.Format-style format string and an array of arguments into
+    /// a message template and a set of fields.
+    [<CompiledName "EventFormat">]
+    static member templateFormat (format : string, [<ParamArray>] args : obj[]) =
+      Message.eventFormat (LogLevel.Debug, format, args)
     static member templateEvent<'T> (level : LogLevel, format : string) : ('T -> Message) =
       let template = Parser.parse format
       if isNull template.Named || template.Named.Length <> 1 then

@@ -2,17 +2,15 @@ REDIRECTS: ON
 RESTRICTION: || (== net45) (== net452) (== net461)
 NUGET
   remote: https://www.nuget.org/api/v2
-    Aether (8.2)
-      FSharp.Core (>= 4.1)
     aliyun-log-csharp-sdk (0.6)
       Newtonsoft.Json (>= 10.0.2)
     ApacheThrift (0.9.3)
     Argu (3.7)
     Autofac (4.6.2)
     Castle.Core (4.2.1)
-    Chiron (6.2.1)
-      Aether (>= 8.0.2 < 9.0)
-      FParsec (>= 1.0 < 2.0)
+    Chiron (7.0.0-alpha-170410)
+      FParsec (>= 1.0.2)
+      FSharp.Core (>= 4.1)
     Common.Logging (3.4.1)
       Common.Logging.Core (>= 3.4.1)
     Common.Logging.Core (3.4.1)
@@ -174,8 +172,6 @@ NUGET
       System.Reflection.TypeExtensions (>= 4.3)
     Unquote (4.0)
 GITHUB
-  remote: xyncro/chiron
-    src/Chiron/Chiron.fs (e32f8b47f34e796b663ddf1d3994950752dc5d6b)
   remote: xyncro/aether
     src/Aether/Aether.fs (2e7b07104c47a02d5e92ff5eda0bc950ef57ae2e)
   remote: eiriktsarpalis/TypeShape

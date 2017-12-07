@@ -4,7 +4,6 @@ open System
 open System.Globalization
 open System.Text
 open System.IO
-open NodaTime
 open Logary
 open Logary.Internals.FsMessageTemplates
 
@@ -498,7 +497,6 @@ module MessageWriter =
     { new MessageWriter with
         member x.write tw m =
           let level = string (caseNameOf m.level).[0]
-          // https://noda-time.googlecode.com/hg/docs/api/html/M_NodaTime_OffsetDateTime_ToString.htm
           let time = formatTimestamp m.timestamp
           let body = tokeniseTemplateWithGauges tw.FormatProvider nl destr maxDepth m |> appendToString
           let name = m.name.ToString()

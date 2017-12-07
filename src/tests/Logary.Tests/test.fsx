@@ -1,3 +1,5 @@
+open System.Diagnostics
+open System.Diagnostics
 #I "bin/Debug"
 #r "Logary.dll"
 #r "FsCheck.dll"
@@ -107,3 +109,84 @@ Logger.logWithAck ilg Info (fun _ -> msg) |> run |> run
 
 
 // Registry.shutdown registry |> run
+
+type X() =
+    member this.F([<ParamArray>] args: Object[]) =
+        for arg in args do
+            printfn "%A" arg
+
+
+let f ([<ParamArray>] args: Object[]) = ()
+
+
+
+open Microsoft.FSharp.Quotations
+open Microsoft.FSharp.Quotations.Patterns
+
+
+type A = A
+with
+  static member only<'t>(proj: 't -> obj[]) = ()
+  static member except<'t>(proj: 't -> obj[]) = ()
+
+type Projection =
+| Projection of string * How
+| NotSupport
+and How =
+| Only of string list list
+| Except of string list list
+
+let rec getNames expr =
+  match expr with
+  | Call (_, method, [Lambda( d, NewArray(_, props))]) -> Projection (d.Type.Name, generateNames method.Name props)
+  | _ -> NotSupport
+and generateNames methodName exprs =
+  exprs 
+  |> List.map (fun expr ->
+     match expr with
+     | Coerce (PropertyGet(Some(outterExpr), prop,_), _) -> generateOutter outterExpr [prop.Name]
+     | _ -> [])
+  |> fun projs ->
+     match methodName with
+     | "only" -> Only projs
+     | "except" -> Except projs
+     | _ -> Only []
+and generateOutter outterExpr innerProjs =
+  match outterExpr with
+  | PropertyGet (Some (expr),prop,_) ->
+    generateOutter expr (prop.Name :: innerProjs)
+  | _ -> innerProjs
+
+let exnProjection = 
+  <@@ A.only<Exception>(fun e -> 
+    [|
+     e.Message;
+     e.StackTrace;
+     e.Data;
+     e.InnerException.Message;
+     e.InnerException.StackTrace
+    |]) @@>
+
+let dateExceptCycleReference = <@@ A.except<DateTime>(fun date -> [| date.Date; |]) @@>
+
+getNames dateExceptCycleReference
+getNames exnProjection
+
+(*
+
+// output
+
+> getNames dateExceptCycleReference
+- ;;
+val it : Projection = Projection ("DateTime",Except [["Date"]])
+
+> getNames exnProjection
+- ;;
+val it : Projection =
+  Projection
+    ("Exception",
+     Only
+       [["Message"]; ["StackTrace"]; ["Data"]; ["InnerException"; "Message"];
+        ["InnerException"; "StackTrace"]])
+
+*)

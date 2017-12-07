@@ -3,8 +3,7 @@ namespace Logary
 open System
 open System.ComponentModel
 open NodaTime
-open Logary.Serialisation.Chiron
-open Logary.Serialisation.Chiron.Operators
+open Chiron
 
 /// The log levels specify the severity of the message.
 [<CustomEquality; CustomComparison>]
