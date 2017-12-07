@@ -1,6 +1,5 @@
 ﻿namespace Logary.Targets
 
-open Logary.LiterateFormatting.MessageParts
 /// A module implementing a text writer target. Useful for writing to the
 /// console output, or writing to a custom text writer.
 module TextWriter =
@@ -135,10 +134,8 @@ module LiterateConsole =
   open Logary
   open Logary.Internals
   open Logary.Configuration.Target
+  open Logary.Formatting.Literate
   open Hopac
-  open LiterateFormatting
-
-  module Tokens = LiterateFormatting.Tokens
 
   type ConsoleColours = { foreground : ConsoleColor; background : ConsoleColor option }
   type ColouredText = { text : string; colours : ConsoleColours }
@@ -164,6 +161,7 @@ module LiterateConsole =
   module internal LiterateFormatting =
     open System.Text
     open Logary.Internals.FsMessageTemplates
+    open Logary.Formatting.Literate.MessageParts
     open Tokens
 
     /// Split a structured message up into theme-able parts (tokens), allowing the

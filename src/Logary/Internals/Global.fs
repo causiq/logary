@@ -2,30 +2,20 @@ namespace Logary.Internals
 
 open Logary
 
-/// An internal interface; all globals in Logary are hidden and are managed by
-/// the Registry and Config API.
-type internal LoggingConfig =
-  /// Gets a logger by name.
-  abstract getLogger : PointName -> Logger
-  /// Gets a logger by name and applies the passed middleware to it. You can
-  /// also use `Logger.apply` on existing loggers to create new ones.
-  abstract getLoggerWithMiddleware : PointName -> Middleware -> Logger
-  /// Gets the current timestamp.
-  abstract getTimestamp : unit -> EpochNanoSeconds
-  /// Gets the console semaphore. When the process is running with an attached
-  /// tty, this function is useful for getting the semaphore to synchronise
-  /// around. You must take this if you e.g. make a change to the colourisation
-  /// of the console output.
-  abstract getConsoleSemaphore : unit -> obj
-
 /// This module keeps track of the LoggingConfig reference.
 module internal Global =
   open NodaTime
 
   type T =
     { getLogger               : PointName -> Logger
+      /// Gets a logger by name and applies the passed middleware to it. You can
+      /// also use `Logger.apply` on existing loggers to create new ones.
       getLoggerWithMiddleware : PointName -> Middleware -> Logger
       getTimestamp            : unit -> EpochNanoSeconds
+      /// Gets the console semaphore. When the process is running with an attached
+      /// tty, this function is useful for getting the semaphore to synchronise
+      /// around. You must take this if you e.g. make a change to the colourisation
+      /// of the console output.
       getConsoleSemaphore     : unit -> obj }
     with
       static member create getLogger getLoggerWM getTs getCS =
@@ -33,12 +23,6 @@ module internal Global =
           getLoggerWithMiddleware = getLoggerWM
           getTimestamp = getTs
           getConsoleSemaphore = getCS }
-
-      interface LoggingConfig with
-        member x.getLogger pn = x.getLogger pn
-        member x.getLoggerWithMiddleware pn mid = x.getLoggerWithMiddleware pn mid
-        member x.getTimestamp () = x.getTimestamp ()
-        member x.getConsoleSemaphore () = x.getConsoleSemaphore ()
 
   /// Null object pattern; will only return loggers that don't log.
   let defaultConfig =
@@ -92,9 +76,6 @@ module internal Global =
       member x.logWithAck level msgFactory =
         withLogger (fun logger -> logger.logWithAck level (msgFactory >> ensureName))
 
-  // end of Flyweight
-
-  // TODO: consider renaming to 'create' and returning a RunningService?
 
   /// Call to initialise Logary with a new Logary instance.
   let initialise cfg =
@@ -114,3 +95,6 @@ module internal Global =
   /// Run the passed function under the console semaphore lock.
   let lockSem fn =
     lock (getConsoleSemaphore ()) fn
+
+
+  let Des = 1

@@ -2,8 +2,6 @@ namespace Logary
 
 open System
 open System.ComponentModel
-open NodaTime
-open Chiron
 
 /// The log levels specify the severity of the message.
 [<CustomEquality; CustomComparison>]

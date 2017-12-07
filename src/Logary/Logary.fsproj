@@ -103,7 +103,9 @@
     <!-- Below: registry -->
     <Compile Include="Registry.fs" />
     <!-- Below: formatting, serialisation -->
-    <Compile Include="Formatting/Formatting.fs" />
+    <Compile Include="Formatting/JsonFormatting.fs" />
+    <Compile Include="Formatting/LiterateFormatting.fs" />
+    <Compile Include="Formatting/MessageWriter.fs" />
     <!-- Below: implementations, factory api -->
     <Compile Include="CSharp.fs" />
     <Compile Include="Configuration/Factory.Target.fs" />
