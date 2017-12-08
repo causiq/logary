@@ -74,7 +74,17 @@ module Config =
   let disableGlobals lconf =
     { lconf with setGlobals = false }
 
+  let private initFormatting () =
+    Global.Destructure.addDestructure<Gauge> <| fun req ->
+      let gauge = req.Value
+      let (Gauge (value, units)) = gauge
+      let (scaledValue, unitsFormat) = Units.scale units value
+      if String.IsNullOrEmpty unitsFormat then ScalarValue scaledValue
+      else ScalarValue (sprintf "%s %s" (string scaledValue) unitsFormat)
+
   let build (lconf : T) : Job<Registry.T> =
+    initFormatting ()
+
     let ri : RuntimeInfo.T =
       { service = lconf.service
         host = lconf.host
@@ -115,3 +125,5 @@ module Config =
           member x.processing = lconf.processing
       }
     Registry.create conf
+
+  

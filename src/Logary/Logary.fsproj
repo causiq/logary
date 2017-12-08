@@ -69,7 +69,7 @@
     <Compile Include="HashMap.fs" />
     <Compile Include="HashMapModule.fs" />
     <Compile Include="LogLevel.fs" />
-    <Compile Include="MessageTemplates.fs" />
+    <Compile Include="Formatting/MessageTemplates.fs" />
     <Compile Include="Constants.fs" />
     <Compile Include="Internals/Internals.fs" />
     <Compile Include="DataModel.fs" />

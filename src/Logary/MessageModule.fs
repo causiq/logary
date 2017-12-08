@@ -530,6 +530,7 @@ module MessageEx =
     [<CompiledName "EventFormat">]
     static member templateFormat (format : string, [<ParamArray>] args : obj[]) =
       Message.eventFormat (LogLevel.Debug, format, args)
+      
     static member templateEvent<'T> (level : LogLevel, format : string) : ('T -> Message) =
       let template = Parser.parse format
       if isNull template.Named || template.Named.Length <> 1 then
