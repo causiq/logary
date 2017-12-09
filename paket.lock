@@ -175,6 +175,8 @@ NUGET
       System.Reflection.TypeExtensions (>= 4.3)
     Unquote (4.0)
 GITHUB
+  remote: messagetemplates/messagetemplates-fsharp
+    src/FsMtParser/FsMtParserFull.fs (17bdfdcc237d7d725c23ebe0ef24c438c4ff7530)
   remote: xyncro/aether
     src/Aether/Aether.fs (2e7b07104c47a02d5e92ff5eda0bc950ef57ae2e)
   remote: eiriktsarpalis/TypeShape

@@ -67,7 +67,7 @@ module Literate =
 
   let tokeniseTemplateByFields (writeState: WriteState) (template : Template) (destr : Destructurer) (fields : seq<string * obj>) =
     let fieldsMap = fields |> HashMap.ofSeq
-    let tryGetPropertyValue (pt:Logary.FsMtParserFull.Property) =
+    let tryGetPropertyValue (pt:Logary.Internals.FsMtParserFull.Property) =
       match HashMap.tryFind pt.name fieldsMap with
       | Some (value) ->
         destr {value = value; hint = (DestrHint.fromCaptureHint pt.captureHint); idManager = writeState.idManager} |> Some

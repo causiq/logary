@@ -49,6 +49,7 @@ nuget SQLite.Interop.dll
 nuget SQLite.Interop
 nuget Chiron 7.0.0-alpha-170410
 
+github messagetemplates/messagetemplates-fsharp src/FsMtParser/FsMtParserFull.fs
 github xyncro/aether:2e7b07104c47a02d5e92ff5eda0bc950ef57ae2e src/Aether/Aether.fs
 github eiriktsarpalis/TypeShape src/TypeShape/TypeShape.fs
 github haf/YoLo YoLo.fs
