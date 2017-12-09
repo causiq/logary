@@ -3,9 +3,12 @@
 open System
 open System.IO
 open Logary
-open Logary.Internals.FsMessageTemplates
+open Logary.MessageTemplates
+open Logary.MessageTemplates.Destructure
+open Logary.MessageTemplates.Formatting
+open Logary.MessageTemplates.Formatting.Literate
 
-module internal MessageParts =
+module Literate =
   let tokeniseExceptions (pvd: IFormatProvider) (nl: string) (exns: exn list) =
     let windowsStackFrameLinePrefix = "   at "
     let monoStackFrameLinePrefix = "  at "
@@ -62,36 +65,33 @@ module internal MessageParts =
         yield "]", Punctuation
       }
 
-  let tokeniseTemplateByFields (pvd: IFormatProvider) (template : Template)
-                                        (destr : Destructurer) (maxDepth : int)
-                                        (fields : seq<string * obj>) =
+  let tokeniseTemplateByFields (writeState: WriteState) (template : Template) (destr : Destructurer) (fields : seq<string * obj>) =
     let fieldsMap = fields |> HashMap.ofSeq
-    let propertiesMap = template.Properties |> Seq.map (fun p -> (p.Name, p.Destr)) |> HashMap.ofSeq
-    let getValueByName name =
-      match (HashMap.tryFind name fieldsMap, HashMap.tryFind name propertiesMap) with
-      | Some (value), Some (destrHint) ->
-        destr (DestructureRequest(destr, value, maxDepth, 1, hint=destrHint))
-      | _ -> TemplatePropertyValue.Empty
-    FsMessageTemplates.tokeniseTemplate template pvd getValueByName
+    let tryGetPropertyValue (pt:Logary.FsMtParserFull.Property) =
+      match HashMap.tryFind pt.name fieldsMap with
+      | Some (value) ->
+        destr {value = value; hint = (DestrHint.fromCaptureHint pt.captureHint); idManager = writeState.idManager} |> Some
+      | _ -> None
+    tokeniseTemplate template writeState tryGetPropertyValue
 
-  let tokeniseTemplateWithGauges pvd nl destr maxDepth message =
+  let tokeniseTemplateWithGauges (writeState: WriteState) destr message =
     let tplByGauges =
-      message |> Message.getAllGauges |> List.ofSeq |> tokeniseTemplateByGauges pvd |> List.ofSeq
+      message |> Message.getAllGauges |> List.ofSeq |> tokeniseTemplateByGauges writeState.provider |> List.ofSeq
 
     let (Event (formatTemplate)) = message.value
 
     if String.IsNullOrEmpty formatTemplate then tplByGauges |> Seq.ofList
     else
-      let parsedTemplate = Parser.parse (formatTemplate)
+      let parsedTemplate = parseToTemplate (formatTemplate)
       let tplByFields =
-        message |> Message.getAllFields |> tokeniseTemplateByFields pvd parsedTemplate destr maxDepth
+        message |> Message.getAllFields |> tokeniseTemplateByFields writeState parsedTemplate destr
       if List.isEmpty tplByGauges then tplByFields
       else seq { yield! tplByFields; yield " ", Subtext; yield! tplByGauges}
 
-  let tokeniseContext (pvd: IFormatProvider) (nl: string) (destr: Destructurer) maxDepth message =
+  let tokeniseContext (writeState: WriteState) (nl: string) (destr: Destructurer) (message: Message) =
     let padding = new String (' ', 4)
 
-    let inline processKvs (pvd: IFormatProvider) (prefix: string) (nl: string) (kvs: seq<string * obj * DestrHint>) =
+    let inline processKvs (writeState: WriteState) (prefix: string) (nl: string) (kvs: seq<string * obj * DestrHint>) =
       let valuesToken =
         kvs
         |> Seq.collect (fun (name, value, destrHint) -> seq {
@@ -99,8 +99,8 @@ module internal MessageParts =
            yield padding, Text
            yield name, Subtext
            yield " => ", Punctuation
-           let destrValue = destr (DestructureRequest(destr, value, maxDepth, 1, hint= destrHint))
-           yield! FsMessageTemplates.tokenisePropValueIndent pvd destrValue nl 1
+           let tpv = destr { value = value; idManager = writeState.idManager ; hint= destrHint }
+           yield! tokenisePropValueIndent writeState tpv nl 1
            })
         |> List.ofSeq
 
@@ -116,30 +116,32 @@ module internal MessageParts =
     let (Event (formatTemplate)) = message.value
     let fieldsPropInTemplate =
       if not <| String.IsNullOrEmpty formatTemplate then
-        let parsedTemplate = Parser.parse (formatTemplate)
-        parsedTemplate.Properties |> Seq.map (fun prop -> prop.Name, prop) |> HashMap.ofSeq
+        let parsedTemplate = parseToTemplate (formatTemplate)
+        parsedTemplate.Properties |> Seq.map (fun prop -> prop.name, prop) |> HashMap.ofSeq
       else HashMap.empty
 
     let fields =
       message
       |> Message.getAllFields
       |> Seq.map (fun (name, value) ->
+         // since we can have multi property with one field object, 
+         // so maybe use Structure for all fields, or show fields depend on properties in template
          match HashMap.tryFind name fieldsPropInTemplate with
-         | None -> (name, value, DestrHint.Destructure)
-         | Some prop -> (name, value, prop.Destr))
-      |> processKvs pvd "  fields:" nl
+         | None -> (name, value, DestrHint.Structure)
+         | Some prop -> (name, value, DestrHint.fromCaptureHint prop.captureHint))
+      |> processKvs writeState "  fields:" nl
 
     // process gauge
     let gauges =
       message |> Message.getAllGauges
-      |> Seq.map (fun (k, gauge) -> (k, box gauge, DestrHint.Destructure))
-      |> processKvs pvd "  gauges:" nl
+      |> Seq.map (fun (k, gauge) -> (k, box gauge, DestrHint.Structure))
+      |> processKvs writeState "  gauges:" nl
 
     // process others
     let others =
       message |> Message.getContextsOtherThanGaugeAndFields
-      |> Seq.map (fun (k, v) -> (k, v, DestrHint.Destructure))
-      |> processKvs pvd "  others:" nl
+      |> Seq.map (fun (k, v) -> (k, v, DestrHint.Structure))
+      |> processKvs writeState "  others:" nl
 
     [fields; gauges; others] |> Seq.concat
 

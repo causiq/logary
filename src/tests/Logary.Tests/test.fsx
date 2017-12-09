@@ -204,4 +204,20 @@ type A () =
   member val Id = 1 with get
   member val Age = 1 with get,set
   member x.Name  with set s = ()
-  member x.Info  = ()
+  member x.Info  = 1
+  static member StaticInfo  = 1
+
+let t = typeof<A>
+open System.Reflection
+let b = BindingFlags.Public ||| BindingFlags.Instance
+t.GetProperties(b) |> Seq.map (fun p -> p.Name)
+
+let f num =
+  let a =
+    try
+      1/num
+    with
+    | e -> 
+      1
+  a
+

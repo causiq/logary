@@ -5,7 +5,6 @@ open System.Globalization
 open System.Text
 open System.IO
 open Logary
-open Logary.Internals.FsMessageTemplates
 
 /// A thing that efficiently writes a message to a TextWriter.
 type MessageWriter =
@@ -25,9 +24,12 @@ module MessageWriterEx =
 /// json writer should use from other project that use fspickler.json
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module MessageWriter =
-  open Logary.Formatting.Literate.MessageParts
-  open Logary.Formatting.Literate.Tokens
   open Microsoft.FSharp.Reflection
+  open Logary.Formatting.Literate
+  open MessageTemplates
+  open MessageTemplates.Formatting
+  open MessageTemplates.Formatting.Literate
+  open Logary.Internals
   
 
     /// Returns the case name of the object with union type 'ty.
@@ -39,23 +41,18 @@ module MessageWriter =
   let formatTimestamp (timestamp : EpochNanoSeconds) =
     Instant.ofEpoch(timestamp).ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture)
 
-  let private appendToString (tokenised: seq<string * LiterateToken>) =
-    let sb = StringBuilder ()
-    tokenised |> Seq.map fst |> Seq.iter (sb.Append >> ignore)
-    sb.ToString ()
-
-
-  let internal defaultDestr = logaryDestructure Global.Destructure.destructureFac
+  let internal defaultDestr = Destructure.generatePropValue Global.Destructure.destructureFac Global.Destructure.getProjection
 
   /// maxDepth can be avoided if cycle reference are handled properly
-  let expanded maxDepth nl ending : MessageWriter =
+  let expanded nl ending : MessageWriter =
     { new MessageWriter with
         member x.write tw m =
+          let writeState = { provider = tw.FormatProvider; idManager = RefIdManager ()}
           let level = string (caseNameOf m.level).[0]
           let time = formatTimestamp m.timestamp
-          let body = tokeniseTemplateWithGauges tw.FormatProvider nl defaultDestr maxDepth m |> appendToString
+          let body = tokeniseTemplateWithGauges writeState defaultDestr m |> collectAllToString
           let name = m.name.ToString()
-          let context = tokeniseContext tw.FormatProvider nl defaultDestr maxDepth m |> appendToString
+          let context = tokeniseContext writeState nl defaultDestr m |> collectAllToString
           sprintf "%s %s: %s [%s]%s%s" level time body name context ending
           |> tw.Write
     }
@@ -65,11 +62,12 @@ module MessageWriter =
   let verbatim =
     { new MessageWriter with
         member x.write tw m =
-          tokeniseTemplateWithGauges tw.FormatProvider Environment.NewLine defaultDestr 10 m
+          let writeState = { provider = tw.FormatProvider; idManager = RefIdManager ()}
+          tokeniseTemplateWithGauges writeState defaultDestr m
           |> Seq.map fst |> Seq.iter tw.Write
     }
 
-  /// VerbatimNewline simply outputs the message and no other information
+  /// VerbatimNewline simply outputs the omessage and no other information
   /// and does append a newline to the string.
   let verbatimNewLine =
     { new MessageWriter with
@@ -78,16 +76,9 @@ module MessageWriter =
           tw.WriteLine()
     }
 
-  let contextWriter =
-    { new MessageWriter with
-        member x.write tw m =
-          tokeniseContext tw.FormatProvider Environment.NewLine defaultDestr 10 m
-          |> Seq.map fst |> Seq.iter tw.Write
-    }
-
   /// <see cref="MessageWriter.LevelDatetimePathMessageNewLine" />
   let levelDatetimeMessagePath =
-    expanded 10 Environment.NewLine ""
+    expanded Environment.NewLine ""
 
   /// LevelDatetimePathMessageNl outputs the most information of the Message
   /// in text format, starting with the level as a single character,
@@ -96,4 +87,4 @@ module MessageWriter =
   /// Exceptions are called ToString() on and prints each line of the stack trace
   /// newline separated.
   let levelDatetimeMessagePathNewLine =
-    expanded 10 Environment.NewLine Environment.NewLine
+    expanded Environment.NewLine Environment.NewLine

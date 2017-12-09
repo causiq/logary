@@ -95,3 +95,53 @@ module internal Global =
   /// Run the passed function under the console semaphore lock.
   let lockSem fn =
     lock (getConsoleSemaphore ()) fn
+
+
+  module Destructure =
+
+    open System
+    open System.Collections.Concurrent
+    open Logary.MessageTemplates
+    open Logary.MessageTemplates.Destructure
+
+    let private projectionDic = new ConcurrentDictionary<Type, How>()
+
+    let configProjection projectionExpr =
+      match Projection.byExpr projectionExpr with
+      | NotSupport -> ()
+      | Projection (t, how) -> 
+        projectionDic.AddOrUpdate(t,how,fun _ _ -> how) |> ignore
+
+    let getProjection t =
+      match projectionDic.TryGetValue t with
+      | false , _ -> None
+      | true, projection -> Some projection
+
+    let private destructureDic = new ConcurrentDictionary<Type,Destructurer>()
+
+    let configDestructure<'t> (destr: Destructurer) =
+      let ty = typeof<'t>
+      destructureDic.[ty] <- destr
+
+    let internal destructureFac (req : DestructureRequest) =
+      if isNull req.value then None
+      else 
+        let runtimeType = req.value.GetType()
+        match destructureDic.TryGetValue runtimeType with
+        | true, destr -> destr req |> Some
+        | false , _ -> 
+          destructureDic.Keys 
+          |> Seq.tryFind (fun baseType -> baseType.IsAssignableFrom runtimeType)
+          |> Option.bind (fun key ->  
+             match destructureDic.TryGetValue key with
+             | true, destr -> destr req |> Some
+             | false , _ -> None)
+
+    let private configForInternal () =
+      configDestructure<Gauge> <| fun req ->
+        let (Gauge (value, units)) =  req.value :?> Gauge
+        let (scaledValue, unitsFormat) = Units.scale units value
+        if String.IsNullOrEmpty unitsFormat then ScalarValue scaledValue
+        else ScalarValue (sprintf "%s %s" (string scaledValue) unitsFormat)
+
+    do configForInternal ()

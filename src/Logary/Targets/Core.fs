@@ -135,10 +135,12 @@ module LiterateConsole =
   open Logary.Internals
   open Logary.Configuration.Target
   open Logary.Formatting.Literate
+  open Logary.MessageTemplates.Formatting.Literate
   open Hopac
 
   type ConsoleColours = { foreground : ConsoleColor; background : ConsoleColor option }
   type ColouredText = { text : string; colours : ConsoleColours }
+  type Tokens = Logary.MessageTemplates.Formatting.Literate.LiterateToken
 
   /// Console configuration structure
   type LiterateConsoleConf =
@@ -147,22 +149,20 @@ module LiterateConsole =
       getLogLevelText   : LogLevel -> string
       /// Formats the ticks since the Unix epoch of (ISO) January 1st 1970, midnight, UTC (aka.
       /// Message.timestamp) into a string. By default "HH:mm:ss".
-      formatLocalTime   : IFormatProvider -> EpochNanoSeconds -> string * Tokens.LiterateToken
+      formatLocalTime   : IFormatProvider -> EpochNanoSeconds -> string * LiterateToken
       /// Converts a message into the appropriate tokens which can later be themed with colours.
-      tokenise          : LiterateConsoleConf -> Message -> (string * Tokens.LiterateToken) seq
+      tokenise          : LiterateConsoleConf -> Message -> (string * LiterateToken) seq
       /// Converts a token into the appropriate Foreground*Background colours. The default theme
       /// tries to emphasise the message template field values based on data type, make it easy to
       /// scan the output and find the most relevant information.
-      theme             : Tokens.LiterateToken -> ConsoleColours
+      theme             : LiterateToken -> ConsoleColours
       /// Takes an object (console semaphore) and a list of string*colour pairs and writes them
       /// to the console with the appropriate colours.
       colourWriter      : obj -> ColouredText seq -> unit }
 
   module internal LiterateFormatting =
-    open System.Text
-    open Logary.Internals.FsMessageTemplates
-    open Logary.Formatting.Literate.MessageParts
-    open Tokens
+    open Logary.MessageTemplates
+    open Logary.MessageTemplates.Formatting
 
     /// Split a structured message up into theme-able parts (tokens), allowing the
     /// final output to display to a user with colours to enhance readability.
@@ -171,9 +171,10 @@ module LiterateConsole =
       let destr = MessageWriter.defaultDestr
       let maxDepth = 10
       let pvd = options.formatProvider
+      let writeState = { provider = pvd; idManager = RefIdManager ()}
 
-      let templateTokens = tokeniseTemplateWithGauges pvd nl destr maxDepth message
-      let contextTokens = tokeniseContext pvd nl destr maxDepth message
+      let templateTokens = tokeniseTemplateWithGauges writeState destr message
+      let contextTokens = tokeniseContext writeState nl destr message
       let exceptionTokens = tokeniseExceptions pvd nl (message |> Message.getErrors)
 
       let getLogLevelToken = function

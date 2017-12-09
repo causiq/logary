@@ -8,7 +8,7 @@ open System.Diagnostics
 open Logary.Internals
 open Logary.Internals.Aether
 open Logary.Internals.Aether.Operators
-open Logary.Internals.FsMessageTemplates
+open Logary.MessageTemplates
 open Logary
 
 /// Open this module to log in a more succinct way.
@@ -330,33 +330,16 @@ module Message =
   [<CompiledName "EventFatalFormat">]
   let eventFatalf fmt = Printf.kprintf (event Fatal) fmt
 
-  /// A destructuring strategy for FsMessageTemplates which simply treats
-  /// everything as a 'Scalar' object which can later be handled by Logary
-  /// as `Field (Value.create o, None)`
-  let internal destructureAllAsScalar : Destructurer =
-    fun request -> TemplatePropertyValue.ScalarValue request.Value
-
-  let internal captureNamesAndValuesAsScalars (t: Template) (args: obj[]) =
-    Capturing.capturePropertiesWith ignore destructureAllAsScalar 1 t args
-
-  let internal convertToOrigin (pnv : PropertyNameAndValue) : string * obj =
-    match pnv.Value with
-    | ScalarValue v ->
-      pnv.Name, v
-    | _ ->
-      failwith "In Logary we extract all properties as Scalar values. File a bug report with the parameter values that you called the function with."
-
   [<CompiledName "SetFields">]
   let setFields (args : obj[]) message =
     let (Event (formatTemplate)) = message.value
-    let parsedTemplate = Parser.parse formatTemplate
-    if parsedTemplate.HasAnyProperties then
-      captureNamesAndValuesAsScalars parsedTemplate args
-      |> Array.map convertToOrigin
-      |> Array.fold (fun m (name, value) -> setField name value m) message
-    else message
 
-
+    Capturing.capture (parseToTemplate formatTemplate) args
+    |> Array.fold (fun m (pt, value) -> 
+       match value with
+       | Some v -> setField pt.name v m
+       | None -> m
+       ) message
 
   /// Run the function `f` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Seconds.
@@ -532,49 +515,49 @@ module MessageEx =
       Message.eventFormat (LogLevel.Debug, format, args)
       
     static member templateEvent<'T> (level : LogLevel, format : string) : ('T -> Message) =
-      let template = Parser.parse format
-      if isNull template.Named || template.Named.Length <> 1 then
+      let template = parseToTemplate format
+      if  template.IsAllPositional || template.Properties.Length <> 1 then
         raise (System.ArgumentException (sprintf "Template '%s' must have exactly 1 named property" format))
-      let field = template.Named.[0]
+      let field = template.Properties.[0]
       fun (v : 'T) ->
         Message.event level format
-        |> Message.setField field.Name v
+        |> Message.setField field.name v
 
     static member templateEvent<'T1, 'T2> (level : LogLevel, format : string) : ('T1 -> 'T2 -> Message) =
-      let template = Parser.parse format
-      if isNull template.Named || template.Named.Length <> 2 then
+      let template = parseToTemplate format
+      if template.IsAllPositional || template.Properties.Length <> 2 then
         failwithf "Template '%s' must have exactly 2 named properties" format
-      let field1 = template.Named.[0]
-      let field2 = template.Named.[1]
+      let field1 = template.Properties.[0]
+      let field2 = template.Properties.[1]
       fun (v1 : 'T1) (v2 : 'T2) ->
         Message.event level format
-        |> Message.setField field1.Name v1
-        |> Message.setField field2.Name v2
+        |> Message.setField field1.name v1
+        |> Message.setField field2.name v2
 
     static member templateEvent<'T1, 'T2, 'T3> (level : LogLevel, format : string) : ('T1 -> 'T2 -> 'T3 -> Message) =
-      let template = Parser.parse format
-      if isNull template.Named || template.Named.Length <> 3 then
+      let template = parseToTemplate format
+      if template.IsAllPositional || template.Properties.Length <> 3 then
         failwithf "Template '%s' must have exactly 3 named properties" format
-      let field1 = template.Named.[0]
-      let field2 = template.Named.[1]
-      let field3 = template.Named.[2]
+      let field1 = template.Properties.[0]
+      let field2 = template.Properties.[1]
+      let field3 = template.Properties.[2]
       fun (v1 : 'T1) (v2 : 'T2) (v3 : 'T3) ->
         Message.event level format
-        |> Message.setField field1.Name v1
-        |> Message.setField field2.Name v2
-        |> Message.setField field3.Name v3
+        |> Message.setField field1.name v1
+        |> Message.setField field2.name v2
+        |> Message.setField field3.name v3
 
     static member templateEvent<'T1, 'T2, 'T3, 'T4> (level : LogLevel, format : string) : ('T1 -> 'T2 -> 'T3 -> 'T4 -> Message) =
-      let template = Parser.parse format
-      if isNull template.Named || template.Named.Length <> 4 then
+      let template = parseToTemplate format
+      if template.IsAllPositional || template.Properties.Length <> 4 then
         failwithf "Template '%s' must have exactly 4 named properties" format
-      let field1 = template.Named.[0]
-      let field2 = template.Named.[1]
-      let field3 = template.Named.[2]
-      let field4 = template.Named.[3]
+      let field1 = template.Properties.[0]
+      let field2 = template.Properties.[1]
+      let field3 = template.Properties.[2]
+      let field4 = template.Properties.[3]
       fun (v1 : 'T1) (v2 : 'T2) (v3 : 'T3) (v4 : 'T4) ->
         Message.event level format
-        |> Message.setField field1.Name v1
-        |> Message.setField field2.Name v2
-        |> Message.setField field3.Name v3
-        |> Message.setField field4.Name v4
+        |> Message.setField field1.name v1
+        |> Message.setField field2.name v2
+        |> Message.setField field3.name v3
+        |> Message.setField field4.name v4
