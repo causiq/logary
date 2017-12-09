@@ -127,3 +127,53 @@ module Config =
     Registry.create conf
 
   
+  module Destructure =
+
+    open System
+    open System.Collections.Concurrent
+    open Logary.Formatting.MessageTemplate
+
+    let private projectionDic = new ConcurrentDictionary<Type, How>()
+
+    let addTransform transExpr =
+      match generateProjection transExpr with
+      | NotSupport -> ()
+      | Projection (t, how) -> 
+        let create _ = how
+        let update _ old = how
+        projectionDic.AddOrUpdate(t,create,update) |> ignore
+
+    let getProjection t =
+      match projectionDic.TryGetValue t with
+      | false , _ -> None
+      | true, projection -> Some projection
+
+
+    type DestructureRequest<'t> (destructurer:Destructurer, value:'t, maxDepth:int, currentDepth:int, hint:DestrHint) =
+      inherit DestructureRequest(destructurer, value, maxDepth, currentDepth, hint)
+        member x.Value = value
+
+    type Destructurer<'t> = DestructureRequest<'t> -> TemplatePropertyValue
+
+    let private destructureDic = new ConcurrentDictionary<Type,Destructurer>()
+    let internal destructureFac (req : DestructureRequest) : TemplatePropertyValue option =
+      if isNull req.Value then None
+      else 
+        let runtimeType = req.Value.GetType()
+        match destructureDic.TryGetValue runtimeType with
+        | true, destr -> destr req |> Some
+        | false , _ -> 
+          destructureDic.Keys 
+          |> Seq.tryFind (fun baseType -> baseType.IsAssignableFrom runtimeType)
+          |> Option.bind (fun key ->  
+             match destructureDic.TryGetValue key with
+             | true, destr -> destr req |> Some
+             | false , _ -> None)
+        
+
+    // let addDestructure<'t> (destr: Destructurer<'t>) =
+    let addDestructure<'t> (destr: Destructurer) =
+      let ty = typeof<'t>
+      let create _  = destr 
+      let update _ old = destr
+      destructureDic.AddOrUpdate(ty,create,update) |> ignore

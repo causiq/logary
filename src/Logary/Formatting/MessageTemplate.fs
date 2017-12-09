@@ -312,17 +312,20 @@ module MessageTemplate =
 
   module Destructure =
 
-    open System
     open System.Collections.Generic
     open System.Runtime.Serialization
     open System.Reflection
     open Microsoft.FSharp.Reflection
+    open Microsoft.FSharp.Quotations.Patterns
+
     
     type RefIdManager () = 
       let showAsIdSet = new HashSet<int64> ()
       let idGen = new ObjectIDGenerator ()
 
-      member __.ShowAsRefId id = showAsIdSet.Add id
+      member __.ShowAsRefId id = 
+        do showAsIdSet.Add id |> ignore
+        RefId id
       member __.GetRefId data = idGen.GetId data
       member __.IsShowRefId id = showAsIdSet.Contains id
 
@@ -335,9 +338,68 @@ module MessageTemplate =
         destructurer : Destructurer
       }
     with
-      member __.TryAgainWithDefault (data) =
-        __.destructurer {__ with value = data; hint = CaptureHint.Default}
+      member __.TryAgain (data) =
+        __.destructurer {__ with value = data}
     and Destructurer = DestructureRequest -> TemplatePropertyValue
+    and DestructurerStrategy = DestructureRequest -> TemplatePropertyValue option
+
+    let only<'t> (proj: 't -> obj[]) = ()
+    let except<'t> (proj: 't -> obj[]) = ()
+
+    type Projection =
+    | Projection of Type * How
+    | NotSupport
+    with
+      (*
+        Projection
+          ("Exception",
+           Only
+             [["Message"]; ["StackTrace"]; ["Data"]; ["InnerException"]; ["InnerException"; "Message"];
+              ["InnerException"; "StackTrace"]]
+              )
+      *)
+      static member TopHierarchy (names: string list list) =
+        match names with
+        | [] -> Map.empty
+        | _ ->
+          names 
+          |> List.fold (fun hieraMap eachHiera ->
+             match eachHiera with
+             | [] -> hieraMap 
+             | [onlyOne] -> hieraMap |> Map.add onlyOne [] 
+             | head :: rests  -> 
+               match hieraMap |> Map.tryFind head with
+               | Some byKey -> 
+                 hieraMap |> Map.add head (rests :: byKey)
+               | _ -> hieraMap |> Map.add head [rests]
+               ) (Map.empty)
+    and How =
+    | Only of string list list
+    | Except of string list list
+    and ProjectionStrategy = Type -> How option
+
+    module Projection =
+    
+      let rec byExpr expr =
+        match expr with
+        | Call (_, method, [Lambda( d, NewArray(_, props))]) -> Projection (d.Type, generateHow method.Name props)
+        | _ -> NotSupport
+      and generateHow methodName exprs =
+        exprs 
+        |> List.map (fun expr ->
+           match expr with
+           | Coerce (PropertyGet(Some(outterExpr), prop,_), _) -> generateOutter outterExpr [prop.Name]
+           | _ -> [])
+        |> fun projs ->
+           match methodName with
+           | "only" -> Only projs
+           | "except" -> Except projs
+           | _ -> Only []
+      and generateOutter outterExpr innerProjs =
+        match outterExpr with
+        | PropertyGet (Some (expr),prop,_) ->
+          generateOutter expr (prop.Name :: innerProjs)
+        | _ -> innerProjs
 
     let scalarTypes =
         [ typeof<bool>;      typeof<char>;       typeof<byte>;              typeof<int16>
@@ -346,12 +408,13 @@ module MessageTemplate =
           typeof<string>;    typeof<DateTime>;   typeof<DateTimeOffset>;    typeof<TimeSpan>
           typeof<Guid>;      typeof<Uri>; ]
     
-    let scalarTypeHash = System.Collections.Generic.HashSet(scalarTypes)
+    let scalarTypeHash = HashSet(scalarTypes)
 
-    let inline private (|?) f g a =
-      match f a with
-      | Some _ as d -> d
-      | None -> g a
+    let inline private (|?) (f: DestructurerStrategy) (g: DestructurerStrategy) : DestructurerStrategy =
+      fun req ->
+        match f req with
+        | Some _ as d -> d
+        | None -> g req
     
     let someRefId = RefId >> Some
     let someScalar = ScalarValue >> Some
@@ -399,22 +462,23 @@ module MessageTemplate =
     let private isDictionable (t: Type) =
       t.GetInterfaces()
       |> Seq.exists (fun iface -> 
-         if iface.IsGenericType && iface.GetGenericTypeDefinition() = typedefof<System.Collections.Generic.IEnumerable<_>> then
+         if iface.IsGenericType && iface.GetGenericTypeDefinition() = typedefof<IEnumerable<_>> then
            let elementType = iface.GetGenericArguments().[0]
-           elementType.IsGenericType && elementType.GetGenericTypeDefinition() = typedefof<System.Collections.Generic.KeyValuePair<_,_>>
+           elementType.IsGenericType && elementType.GetGenericTypeDefinition() = typedefof<KeyValuePair<_,_>>
          else iface = typeof<System.Collections.IDictionary>)
 
     let inline tryContainerTypes req =
-      let value = req.value
-      let (refId, firstOccurence) = req.idManager.GetRefId value
-      if firstOccurence then someRefId refId
+      let instance = req.value
+      let refCount = req.idManager
+      let (refId, firstOccurence) = refCount.GetRefId instance
+      if not firstOccurence then refCount.ShowAsRefId refId |> Some
       else
-        match value.GetType() with
+        match instance.GetType() with
         | t when FSharpType.IsTuple t ->
           let tupleValues =
-              value
+              instance
               |> FSharpValue.GetTupleFields
-              |> Seq.map req.TryAgainWithDefault
+              |> Seq.map req.TryAgain
               |> Seq.toList
           someSequence (refId, tupleValues)
 
@@ -425,93 +489,142 @@ module MessageTemplate =
                          (!keyProp).GetValue(o)
           let getValue o = if isNull !valueProp then valueProp := o.GetType().GetRuntimeProperty("Value")
                            (!valueProp).GetValue(o)
-          let objEnumerable = value :?> System.Collections.IEnumerable |> Seq.cast<obj>
+          let objEnumerable = instance :?> System.Collections.IEnumerable |> Seq.cast<obj>
           let skvps = objEnumerable
-                      |> Seq.map (fun o ->  req.TryAgainWithDefault (getKey o),  req.TryAgainWithDefault (getValue o))
+                      |> Seq.map (fun o ->  req.TryAgain (getKey o),  req.TryAgain (getValue o))
                       |> Seq.toList
           someDictionary (refId, skvps)
 
         | t when FSharpType.IsUnion t ->
-          let case, fields = FSharpValue.GetUnionFields(value, t)
+          let case, fields = FSharpValue.GetUnionFields(instance, t)
           let caseName = ScalarValue case.Name
           match fields with
           | [||] -> Some caseName
           | [| oneField |] ->
-            let oneValue = req.TryAgainWithDefault oneField
+            let oneValue = req.TryAgain oneField
             someDictionary (refId, [caseName, oneValue])
           | _ ->
-            let fieldsValue = fields |> Array.map req.TryAgainWithDefault |> Array.toList
-            let (fieldsRefId, fieldsFirstOccurence) = req.idManager.GetRefId value
+            let fieldsValue = fields |> Array.map req.TryAgain |> Array.toList
+            let (fieldsRefId, fieldsFirstOccurence) = refCount.GetRefId instance
             let fieldsPropValue = 
-              if fieldsFirstOccurence then RefId refId
+              if not fieldsFirstOccurence then refCount.ShowAsRefId fieldsRefId
               else SequenceValue (fieldsRefId, fieldsValue)
             someDictionary (refId, [caseName, fieldsPropValue])
         | _ -> 
-          match value with
+          match instance with
           | :? System.Collections.IEnumerable as e -> 
-            let eles = e |> Seq.cast<obj> |> Seq.map req.TryAgainWithDefault |> Seq.toList
+            let eles = e |> Seq.cast<obj> |> Seq.map req.TryAgain |> Seq.toList
             someSequence (refId, eles)
           | _ -> None
 
     let inline tryDefault req =
       tryScalar |? tryContainerTypes <| req
 
+    let inline getCanReadProp (t: Type) name =
+      let lookup = BindingFlags.Public ||| BindingFlags.Instance
+      match t.GetProperty(name,lookup,null,null,Array.empty,null) with
+      | null -> None
+      | p when p.CanRead && (p.Name <> "Item" || p.GetIndexParameters().Length = 0) -> 
+        Some p
+      | _ -> None
+
+    let rec reflectionProperties (tryProjection : ProjectionStrategy) (req : DestructureRequest) =
+      let ty = req.value.GetType()
+      match tryProjection ty with
+      | None -> reflectionByProjection (Except (List.empty)) req // try reflection all
+      | Some how -> reflectionByProjection how req
+    and reflectionByProjection how req =
+  
+
+      let instance = req.value
+      let refCount = req.idManager
+      let (refId, firstOccurence) = refCount.GetRefId instance
+      if not firstOccurence then refCount.ShowAsRefId refId
+      else
+        let ty = instance.GetType()
+        let typeTag = ty.Name
+
+        let rzPubProps = ResizeArray<PropertyInfo>()
+        
+        match how with
+        | Except names -> failwith ""
+          // let top = Projection.TopHierarchy names
+
+        | Only names ->
+          let nvs =
+            names 
+            |> Projection.TopHierarchy
+            |> Map.toSeq
+            |> Seq.fold (fun nvs (name, childNames) ->
+               match getCanReadProp ty name with
+               | None -> nvs
+               | Some pInfo ->
+                 let nv =
+                   try
+                     let propValue = pInfo.GetValue(instance)
+                     let childHow = Only childNames
+                     let tpv = req.TryAgain propValue
+                     { Name = pInfo.Name; Value = tpv }
+                   with
+                   | ex -> 
+                     let tpv = ScalarValue ("The property accessor threw an exception:" + ex.Message)
+                     { Name = pInfo.Name; Value = tpv } 
+                  in 
+                  nv :: nvs
+              ) List.empty
+
+          StructureValue (refId, typeTag, nvs)
+
+    and destructurerChild childHow childReq =
+      match tryDefault childReq with
+        | Some tpv -> tpv
+        | _ -> reflectionByProjection childHow childReq
+        // for rtp in ty.GetProperty() do
+        //   if isPublicInstanceReadProp rtp then rzPubProps.Add rtp
+
+        // // Recursively destructure the child properties
+        // let rec loopDestrChildren i acc =
+        //   if i < 0 then acc
+        //   else
+        //     let pi = rzPubProps.[i]
+        //     try
+        //       let propValue = pi.GetValue(value)
+        //       let propTpv = { Name=pi.Name; Value=req.TryAgain propValue }
+        //       loopDestrChildren (i-1) (propTpv :: acc)
+        //     with
+        //     | :? TargetParameterCountException as ex ->
+        //         // r.Log("The property accessor {0} is a non-default indexer", [|pi|])
+        //         loopDestrChildren (i-1) (acc)
+        //     | :? TargetInvocationException as ex ->
+        //         // r.Log("The property accessor {0} threw exception {1}", [| pi; ex; |])
+        //         let propValue = "The property accessor threw an exception:" + ex.InnerException.GetType().Name
+        //         let propTpv = { Name=pi.Name; Value=req.TryAgain propValue }
+        //         loopDestrChildren (i-1) (propTpv :: acc)
+
+        // let childStructureValues = loopDestrChildren (rzPubProps.Count-1) []
+        // StructureValue (refId, typeTag, childStructureValues)
+
     // | :? Gauge as gauge, _ ->
     //   let (Gauge (value, units)) = gauge
     //   let (scaledValue, unitsFormat) = Units.scale units value
     //   if String.IsNullOrEmpty unitsFormat then ScalarValue scaledValue
     //   else ScalarValue (sprintf "%s %s" (string scaledValue) unitsFormat)
-
-    let rec logaryDestructure (desFac: DestructureRequest -> TemplatePropertyValue option) (req: DestructureRequest) : TemplatePropertyValue =
-      let tryNullOrFac = tryNull |? desFac
-      match tryNullOrFac req with
+    let generatePropValue (tryCustom: DestructurerStrategy) 
+                          (tryProjection: ProjectionStrategy)
+                          (req: DestructureRequest) 
+                          : TemplatePropertyValue =
+      let tryNullOrCustom = tryNull |? tryCustom
+      match tryNullOrCustom req with
       | Some tpv -> tpv
       | _ ->
         match req.hint with
         | CaptureHint.Stringify -> ScalarValue (string req.value)
-        | CaptureHint.Structure -> tryStructure req
+        | CaptureHint.Structure -> reflectionProperties tryProjection req 
         | _ ->
           match tryDefault req with
           | Some tpv -> tpv
           | _ -> ScalarValue (req.value)
-    and tryStructure (req : DestructureRequest) =
-      let value = req.value
-      let (refId, firstOccurence) = req.idManager.GetRefId value
-      if firstOccurence then RefId refId
-      else
-        let ty = value.GetType()
-        let typeTag = ty.Name
 
-        let rzPubProps = ResizeArray<PropertyInfo>()
-      
-        // for rtp in ty.GetProperty() do
-        //   if isPublicInstanceReadProp rtp then rzPubProps.Add rtp
-
-        // Recursively destructure the child properties
-        let rec loopDestrChildren i acc =
-          if i < 0 then acc
-          else
-            let pi = rzPubProps.[i]
-            try
-              let propValue = pi.GetValue(value)
-              let propTpv = { Name=pi.Name; Value=req.TryAgainWithDefault propValue }
-              loopDestrChildren (i-1) (propTpv :: acc)
-            with
-            | :? TargetParameterCountException as ex ->
-                // r.Log("The property accessor {0} is a non-default indexer", [|pi|])
-                loopDestrChildren (i-1) (acc)
-            | :? TargetInvocationException as ex ->
-                // r.Log("The property accessor {0} threw exception {1}", [| pi; ex; |])
-                let propValue = "The property accessor threw an exception:" + ex.InnerException.GetType().Name
-                let propTpv = { Name=pi.Name; Value=req.TryAgainWithDefault propValue }
-                loopDestrChildren (i-1) (propTpv :: acc)
-
-        let childStructureValues = loopDestrChildren (rzPubProps.Count-1) []
-        StructureValue (refId, typeTag, childStructureValues)
-
-      // let ty = r.Value.GetType()
-      // match Global.Destructure.getProjection ty with
-      // | None -> 
 
   module Capturing =
 
@@ -615,10 +728,10 @@ module MessageTemplate =
           | RefId id -> yield (string id), KeywordSymbol
           | ScalarValue sv ->
             yield tokeniseScalarValue provider sv format
-          | SequenceValue svs ->
+          | SequenceValue (refId, svs) ->
             let recurs provider tpv = tokenisePropValueCompact provider tpv null
             yield! tokeniseSequenceValueCompact provider svs recurs
-          | StructureValue(typeTag, values) ->
+          | StructureValue(refId, typeTag, values) ->
             let hasAnyValues = not values.IsEmpty
             if not <| isNull typeTag then
               yield typeTag, (if hasAnyValues then Subtext else OtherSymbol)
@@ -636,7 +749,7 @@ module MessageTemplate =
                 yield (if i = lastIndex then (" ", Subtext) else (", ", Punctuation))
 
               yield "}", Punctuation
-          | DictionaryValue(data) ->
+          | DictionaryValue(refId, data) ->
             let valueTokens =
               data
               |> List.map (fun (entryKey, entryValue) -> seq {
@@ -659,9 +772,10 @@ module MessageTemplate =
         let indent = new String (' ', depth * 2 + 4)
         seq {
           match tpv with
+          | RefId id -> yield (string id), KeywordSymbol
           | ScalarValue sv -> yield tokeniseScalarValue provider sv null
 
-          | SequenceValue svs ->
+          | SequenceValue (refId, svs) ->
             let isAllScalar = svs |> List.forall (function ScalarValue _ -> true | _ -> false)
             if isAllScalar then
               let recurs provider = function 
@@ -677,7 +791,7 @@ module MessageTemplate =
                 yield "- ", Punctuation
                 yield! tokenisePropValueIndent provider sv nl (depth + 1)
 
-          | StructureValue(typeTag, values) ->
+          | StructureValue(refId, typeTag, values) ->
             let writeTypeTag = not <| isNull typeTag
             if writeTypeTag then
               yield nl, Text
@@ -697,7 +811,7 @@ module MessageTemplate =
 
             if writeTypeTag then yield "}", Punctuation
 
-          | DictionaryValue(kvList) ->
+          | DictionaryValue(refId, kvList) ->
             let lastIndex = kvList.Length - 1
             for i = 0 to lastIndex do
               let (entryKey, entryValue) = kvList.[i]

@@ -1,5 +1,3 @@
-open System.Diagnostics
-open System.Diagnostics
 #I "bin/Debug"
 #r "Logary.dll"
 #r "FsCheck.dll"
@@ -16,6 +14,7 @@ open Hopac
 open Hopac.Infixes
 open NodaTime
 open Logary.Message
+open System.Diagnostics
 
 printfn "before"
 
@@ -123,11 +122,9 @@ let f ([<ParamArray>] args: Object[]) = ()
 open Microsoft.FSharp.Quotations
 open Microsoft.FSharp.Quotations.Patterns
 
-
-type A = A
-with
-  static member only<'t>(proj: 't -> obj[]) = ()
-  static member except<'t>(proj: 't -> obj[]) = ()
+module A =
+  let only<'t>(proj: 't -> obj[]) = ()
+  let except<'t>(proj: 't -> obj[]) = ()
 
 type Projection =
 | Projection of string * How
@@ -190,3 +187,21 @@ val it : Projection =
         ["InnerException"; "StackTrace"]])
 
 *)
+
+type A = A
+with 
+  member x.only<'t>(proj: 't -> obj[]) = x
+  member x.except<'t>(proj: 't -> obj[]) = x
+
+let a = A
+let c = <@@ 
+  a.except<DateTime>(fun date -> [| date.Date; |])
+   .except<Exception>(fun ex -> [|ex.Message; |])
+  @@>
+
+
+type A () =
+  member val Id = 1 with get
+  member val Age = 1 with get,set
+  member x.Name  with set s = ()
+  member x.Info  = ()
