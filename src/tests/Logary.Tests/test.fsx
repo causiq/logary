@@ -15,8 +15,22 @@ open Hopac.Infixes
 open NodaTime
 open Logary.Message
 open System.Diagnostics
+open Logary.MessageEx
+open Logary.MessageTemplates
+open Logary.MessageTemplates.Destructure
 
 printfn "before"
+let ver =  System.Version(1,2,3,4)
+let no = (fun _ -> None)
+generatePropValue no no {value= ver;hint=DestrHint.Structure;idManager=RefIdManager()}
+
+let formatTemplate = "this is {$0} and {0} and {@0}"
+let parsedTemplate = parseToTemplate (formatTemplate)
+parsedTemplate.Properties
+let m = Message.eventFormat(Info, formatTemplate,ver)
+let f = m |> Message.getAllFields
+f
+|> MessageWriter.verbatim.format
 
 let multiGaugeMessage =
   Message.event Info "Processor.% Idle"

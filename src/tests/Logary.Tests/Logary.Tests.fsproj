@@ -51,6 +51,7 @@
     <Compile Include="Utils.fs" />
     <Compile Include="Engine.fs" />
     <Compile Include="Formatting.fs" />
+    <Compile Include="FormattingFromFsMessageTemplates.fs" />
     <Compile Include="CoreTarget.fs" />
     <Compile Include="Registry.fs" />
     <Compile Include="Transformers.fs" />

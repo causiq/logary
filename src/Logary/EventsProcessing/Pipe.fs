@@ -108,6 +108,11 @@ module Pipe =
        //  Job.supervise internalLogger (Policy.restart) (loop ticker.InitialState)
 
        fun prev ->
+         // TODO: think about wait for ack, means blocking. may cause deadlock
+         // http://hopac.github.io/Hopac/Hopac.html#def:val%20Hopac.Hopac.run
+         // A call of run xJ is safe when the call is not made from within a Hopac worker thread 
+         // and the job xJ does not perform operations that might block or that might directly, 
+         // or indirectly, need to communicate with the thread from which run is being called.
          Mailbox.Now.send updateMb  prev
          NoResult)
 

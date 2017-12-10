@@ -33,10 +33,10 @@ let bufferCounter =
 
     yield testCase "counting to three" <| fun _ ->
       let (sendItem, ticker, expects) = generateBufferTicker ()
-      sendItem 1 |> ignore
+      sendItem 1 |> PipeResult.orDefault (Job.result ()) |> run
       ticker.Tick () |> run
-      sendItem 1 |> ignore
-      sendItem 1 |> ignore
+      sendItem 1  |> PipeResult.orDefault (Job.result ()) |> run
+      sendItem 1  |> PipeResult.orDefault (Job.result ()) |> run
       ticker.Tick () |> run
       let expect = expects |> take 2L
       Expect.equal expect [[1];[1;1;];] "one and then two after two single counts"

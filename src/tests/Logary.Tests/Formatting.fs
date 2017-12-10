@@ -7,9 +7,12 @@ open Expecto
 open Logary.KnownLiterals
 open Logary
 open Logary.MessageWriter
+open Logary.MessageTemplates.Destructure
+open Logary.MessageTemplates
+open System.Diagnostics
 
 let private sampleMessage : Message =
-  Message.eventFormat (Info, "this is bad, with {1} and {0} reverse.", [| "the first value"; "the second value"|])
+  Message.eventFormat (Info, "this is bad, with {1} and {0} reverse.", "the first value", "the second value")
   |> Message.setName (PointName.ofList ["a"; "b"; "c"; "d"])
   |> Message.setNanoEpoch 3123456700L
 
@@ -19,10 +22,6 @@ type User =
     name    : string
     created : DateTime
   }
-with
-  interface IFormattable with
-    member x.ToString (format, provider) =
-      sprintf "my id is %i and my name is %s, created => %s" x.id x.name (x.created.ToShortDateString())
 
 type Obj() =
   member x.PropA =
@@ -34,30 +33,29 @@ with
     member x.ToString (format, provider) = "PropA is 45 and PropB raise exn"
 
 let date20171111 =  DateTime.Parse("2017-11-11")
-let foo = { id = 999; name = "whatever"; created = date20171111}
+let foo () = { id = 999; name = "whatever"; created = date20171111}
 
 
 let complexMessage : Message =
   let ex = exn "exception with data in it"
   ex.Data.Add ("data 1 in exn", 1)
-  ex.Data.Add ("data foo in exn", foo)
-  ex.Data.Add (foo, foo)
+  ex.Data.Add ("data foo in exn", foo ())
+  ex.Data.Add (foo(), foo())
 
-  let tp = (1, "two", foo)
-  let object = Obj ()
+  let tp () = (1, "two", foo())
   let (scalarArr : obj[]) = [| 1;  2; 3; "4"; "5"; 6.0; date20171111 |]
-  let (notScalarList : obj list) = [foo; tp] 
+  let (notScalarList : obj list) = [foo (); tp ()] 
   let scalarKeyValueMap = [ 1,"one" ; 2, "two"] |> HashMap.ofSeq
-  let scalarKeyMap = Map [ "some user", box foo ; "some obj", box object]
+  let scalarKeyMap = Map [ "some user", box (foo ()) ; "some obj", box (Obj())]
   let notScalarMap = Map [([2,"2"],["3";"4"]); ([1,"a";2,"b"],["hello";"world"])]
 
   Message.eventFormat (Info, 
     "default foo is {foo} here is a default {objDefault} and stringify {$objStr} and destructure {@objDestr}", 
-    foo, object, object, object)
+    foo (), Obj(),  Obj(),  Obj())
   |> Message.setName  (PointName.ofList ["a"; "b"; "c"; "d"])
   |> Message.setNanoEpoch 3123456700L
-  |> Message.setContext "UserInfo" foo
-  |> Message.setContext "Some Tuple With 1 two foo" tp
+  |> Message.setContext "UserInfo" (foo ())
+  |> Message.setContext "Some Tuple With 1 two foo" (tp ())
   |> Message.setContext "scalar array" scalarArr
   |> Message.setContext "no scalar list" notScalarList
   |> Message.setContext "simple scalar key/value map" scalarKeyValueMap
@@ -111,9 +109,106 @@ let shouldHaveFields msg fields tip =
 
 // just for test convenient, since file end of line is LF.
 let levelDatetimeMessagePathNewLine =
-  expanded defaultDestr 10 "\n" "\n"
+  expanded "\n" "\n"
+
+type ProjectionTestOnly =
+  {
+    ex: exn
+    user: User
+  }
+
+type ProjectionTestExcept =
+  {
+    user: User
+  }
 
 let tests = [
+  testCase "cycle reference" <| fun _ ->
+    skiptest "."
+    let actual = Logary.MessageTemplates.Formatting.Format("stringify: {$0} default: {0} structure: {@0}",System.Threading.Thread.CurrentPrincipal)
+    Expect.equal actual "expected" "cycle reference should work"
+
+  testCase "projection only" <| fun _ ->
+    let only = <@@ Destructure.only<ProjectionTestOnly>(fun foo -> [|foo.user.created.Day;foo.ex.Message;foo.ex.StackTrace;foo.ex.Data.Count;foo.ex.InnerException.Message|]) @@>
+    Logary.Configuration.Config.configProjection only
+    
+    let inner = exn "inner exception"
+    let e = new Exception("top", inner)
+    e.Data.Add(1,2)
+    e.Data.Add(3,4)
+
+    sampleMessage
+    |> Message.setContext "only" {ex = e; user= (foo ())}
+    |> levelDatetimeMessagePathNewLine.format
+    |> fun actual ->
+       let expect = """
+I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "the first value" reverse. [a.b.c.d]
+  fields:
+    0 => "the first value"
+    1 => "the second value"
+  others:
+    only => 
+      ProjectionTestOnly {
+        user => 
+          User {
+            created => 
+              DateTime {
+                Day => 11}}
+        ex => 
+          Exception {
+            StackTrace => null
+            Message => "top"
+            InnerException => 
+              Exception {
+                Message => "inner exception"}
+            Data => 
+              ListDictionaryInternal {
+                Count => 2}}}
+"""
+       Expect.equal actual (expect.TrimStart([|'\n'|]))
+         "formatting the message LevelDatetimePathMessageNl with projection"
+
+
+  testCase "projection except" <| fun _ ->
+    let except = <@@  Destructure.except<ProjectionTestExcept>(fun t -> [|t.user.created.Date|]) @@>
+    let invalid = <@@ 1 + 1 @@>
+    Logary.Configuration.Config.configProjection except
+    Logary.Configuration.Config.configProjection invalid
+    
+    sampleMessage
+    |> Message.setContext "except" {user= (foo ())}
+    |> levelDatetimeMessagePathNewLine.format
+    |> fun actual ->
+       let expect = """
+I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "the first value" reverse. [a.b.c.d]
+  fields:
+    0 => "the first value"
+    1 => "the second value"
+  others:
+    except => 
+      ProjectionTestExcept {
+        user => 
+          User {
+            id => 999
+            name => "whatever"
+            created => 
+              DateTime {
+                Day => 11
+                DayOfWeek => "Saturday"
+                DayOfYear => 315
+                Hour => 0
+                Kind => "Unspecified"
+                Millisecond => 0
+                Minute => 0
+                Month => 11
+                Second => 0
+                Ticks => 636459552000000000
+                TimeOfDay => 00:00:00
+                Year => 2017}}}
+"""
+       Expect.equal actual (expect.TrimStart([|'\n'|]))
+         "formatting the message LevelDatetimePathMessageNl with projection"
+
   testCase "StringFormatter.Verbatim" <| fun _ ->
     Message.eventError "hello world"
     |> MessageWriter.verbatim.format
@@ -127,7 +222,7 @@ let tests = [
        Expect.equal actual (sprintf "hi there%s" Environment.NewLine) "formatting the message verbatim with newline"
 
   testCase "StringFormatter.VerbatimNewlineTemplated" <| fun _ ->
-    Message.eventFormat (Info, "what's {@direction}? {up:l}!", [|"up";"up";|] )
+    Message.eventFormat (Info, "what's {@direction}? {up:l}!", "up","up")
     |> MessageWriter.verbatimNewLine.format
     |> fun actual ->
        Expect.equal actual (sprintf "what's \"up\"? up!%s" Environment.NewLine) "formatting the message verbatim with newline, templated"
@@ -153,6 +248,7 @@ I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "t
     1 => "the second value"
 """
        Expect.equal actual (expect.TrimStart([|'\n'|])) "formatting the message LevelDatetimePathMessageNl"
+
 
   testCase "StringFormatter.LevelDatetimePathMessageNl with exception" <| fun _ ->
     let inner = new Exception("inner exception")
@@ -196,15 +292,15 @@ I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "t
     |> levelDatetimeMessagePathNewLine.format
     |> fun actual ->
        let expect = """
-I 1970-01-01T00:00:03.1234567+00:00: default foo is "my id is 999 and my name is whatever, created => 11/11/2017" here is a default "PropA is 45 and PropB raise exn" and stringify "Logary.Tests.Formatting+Obj" and destructure Obj { PropA: 45, PropB: "The property accessor threw an exception:Exception" } Gauges: [Processor.% Idle.Core 1: 75 %, svc1 request per second: 1.75 k, methodA took 25.00 s to execute] [a.b.c.d]
+I 1970-01-01T00:00:03.1234567+00:00: default foo is "{id = 999;\n name = \"whatever\";\n created = 11/11/2017 12:00:00 AM;}" here is a default "PropA is 45 and PropB raise exn" and stringify "Logary.Tests.Formatting+Obj" and destructure Obj { PropA: 45, PropB: "The property accessor threw an exception: Oh noes, no referential transparency here" } Gauges: [Processor.% Idle.Core 1: 75 %, svc1 request per second: 1.75 k, methodA took 25.00 s to execute] [a.b.c.d]
   fields:
     objDefault => "PropA is 45 and PropB raise exn"
-    foo => "my id is 999 and my name is whatever, created => 11/11/2017"
+    foo => "{id = 999;\n name = \"whatever\";\n created = 11/11/2017 12:00:00 AM;}"
     objStr => "Logary.Tests.Formatting+Obj"
     objDestr => 
       Obj {
         PropA => 45
-        PropB => "The property accessor threw an exception:Exception"}
+        PropB => "The property accessor threw an exception: Oh noes, no referential transparency here"}
   gauges:
     Processor.% Idle.Core 1 => "75 %"
     svc1 request per second => "1.75 k"
@@ -275,7 +371,7 @@ I 1970-01-01T00:00:03.1234567+00:00: default foo is "my id is 999 and my name is
       "some obj" => 
         Obj {
           PropA => 45
-          PropB => "The property accessor threw an exception:Exception"}
+          PropB => "The property accessor threw an exception: Oh noes, no referential transparency here"}
       "some user" => 
         User {
           id => 999

@@ -135,11 +135,6 @@ let tests =
         level <> Info
     ]
 
-    testList "MessageTemplates" [
-      testCase "all the tests" <| fun () ->
-        Tests.skiptest "All tests from https://github.com/messagetemplates/messagetemplates-fsharp/tree/master/test/FsMessageTemplates.Tests"
-    ]
-
     testList "KnownLiterals" (
       [
         KnownLiterals.LogaryPrefix, "_logary."
@@ -472,7 +467,7 @@ let tests =
           Object HashMap.empty, "Object"
         ]
         |> List.map (fun (value, expected) ->
-            testCase "String \"a\"" (fun () ->
+            testCase (string value) (fun () ->
               let actual = Units.formatValue value
               Expect.equal actual expected "Should have correct result"
             )

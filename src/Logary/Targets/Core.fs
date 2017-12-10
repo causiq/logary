@@ -173,7 +173,7 @@ module LiterateConsole =
       let pvd = options.formatProvider
       let writeState = { provider = pvd; idManager = RefIdManager ()}
 
-      let templateTokens = tokeniseTemplateWithGauges writeState destr message
+      let templateTokens = tokeniseTemplateWithGauges pvd destr message
       let contextTokens = tokeniseContext writeState nl destr message
       let exceptionTokens = tokeniseExceptions pvd nl (message |> Message.getErrors)
 

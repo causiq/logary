@@ -50,7 +50,7 @@ module MessageWriter =
           let writeState = { provider = tw.FormatProvider; idManager = RefIdManager ()}
           let level = string (caseNameOf m.level).[0]
           let time = formatTimestamp m.timestamp
-          let body = tokeniseTemplateWithGauges writeState defaultDestr m |> collectAllToString
+          let body = tokeniseTemplateWithGauges tw.FormatProvider defaultDestr m |> collectAllToString
           let name = m.name.ToString()
           let context = tokeniseContext writeState nl defaultDestr m |> collectAllToString
           sprintf "%s %s: %s [%s]%s%s" level time body name context ending
@@ -62,8 +62,7 @@ module MessageWriter =
   let verbatim =
     { new MessageWriter with
         member x.write tw m =
-          let writeState = { provider = tw.FormatProvider; idManager = RefIdManager ()}
-          tokeniseTemplateWithGauges writeState defaultDestr m
+          tokeniseTemplateWithGauges tw.FormatProvider defaultDestr m
           |> Seq.map fst |> Seq.iter tw.Write
     }
 

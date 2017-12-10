@@ -52,7 +52,7 @@ module Literate =
               yield unitsFormat, Text
             yield " to execute", Subtext
           | _ ->
-            let valueFormated = formatWithProvider pvd scaledValue null
+            let valueFormated = Utils.formatWithCustom pvd scaledValue null
             yield gaugeType, Subtext
             yield ":", Punctuation
             yield " ", Subtext
@@ -65,18 +65,18 @@ module Literate =
         yield "]", Punctuation
       }
 
-  let tokeniseTemplateByFields (writeState: WriteState) (template : Template) (destr : Destructurer) (fields : seq<string * obj>) =
+  let tokeniseTemplateByFields (pvd: IFormatProvider) (template : Template) (destr : Destructurer) (fields : seq<string * obj>) =
     let fieldsMap = fields |> HashMap.ofSeq
     let tryGetPropertyValue (pt:Logary.Internals.FsMtParserFull.Property) =
       match HashMap.tryFind pt.name fieldsMap with
       | Some (value) ->
-        destr {value = value; hint = (DestrHint.fromCaptureHint pt.captureHint); idManager = writeState.idManager} |> Some
+        destr {value = value; hint = (DestrHint.fromCaptureHint pt.captureHint); idManager = RefIdManager()} |> Some
       | _ -> None
-    tokeniseTemplate template writeState tryGetPropertyValue
+    tokeniseTemplate pvd template tryGetPropertyValue
 
-  let tokeniseTemplateWithGauges (writeState: WriteState) destr message =
+  let tokeniseTemplateWithGauges (pvd: IFormatProvider) destr message =
     let tplByGauges =
-      message |> Message.getAllGauges |> List.ofSeq |> tokeniseTemplateByGauges writeState.provider |> List.ofSeq
+      message |> Message.getAllGauges |> List.ofSeq |> tokeniseTemplateByGauges pvd |> List.ofSeq
 
     let (Event (formatTemplate)) = message.value
 
@@ -84,22 +84,22 @@ module Literate =
     else
       let parsedTemplate = parseToTemplate (formatTemplate)
       let tplByFields =
-        message |> Message.getAllFields |> tokeniseTemplateByFields writeState parsedTemplate destr
+        message |> Message.getAllFields |> tokeniseTemplateByFields pvd parsedTemplate destr
       if List.isEmpty tplByGauges then tplByFields
       else seq { yield! tplByFields; yield " ", Subtext; yield! tplByGauges}
 
   let tokeniseContext (writeState: WriteState) (nl: string) (destr: Destructurer) (message: Message) =
     let padding = new String (' ', 4)
-
-    let inline processKvs (writeState: WriteState) (prefix: string) (nl: string) (kvs: seq<string * obj * DestrHint>) =
+    let destrByStructure data = destr { value = data; idManager = writeState.idManager; hint= DestrHint.Structure }
+    let destrByCaptureHint data captureHint = destr { value = data; idManager = writeState.idManager; hint= (DestrHint.fromCaptureHint captureHint) }
+    let inline tokenisePropValues (writeState: WriteState) (prefix: string) (nl: string) (kvs: list<string * TemplatePropertyValue>) =
       let valuesToken =
         kvs
-        |> Seq.collect (fun (name, value, destrHint) -> seq {
+        |> Seq.collect (fun (name, tpv) -> seq {
            yield nl, Text
            yield padding, Text
            yield name, Subtext
            yield " => ", Punctuation
-           let tpv = destr { value = value; idManager = writeState.idManager ; hint= destrHint }
            yield! tokenisePropValueIndent writeState tpv nl 1
            })
         |> List.ofSeq
@@ -127,23 +127,28 @@ module Literate =
          // since we can have multi property with one field object, 
          // so maybe use Structure for all fields, or show fields depend on properties in template
          match HashMap.tryFind name fieldsPropInTemplate with
-         | None -> (name, value, DestrHint.Structure)
-         | Some prop -> (name, value, DestrHint.fromCaptureHint prop.captureHint))
-      |> processKvs writeState "  fields:" nl
+         | None -> (name, destrByStructure value)
+         | Some prop -> (name, destrByCaptureHint value prop.captureHint))
+      |> List.ofSeq
 
     // process gauge
     let gauges =
       message |> Message.getAllGauges
-      |> Seq.map (fun (k, gauge) -> (k, box gauge, DestrHint.Structure))
-      |> processKvs writeState "  gauges:" nl
+      |> Seq.map (fun (k, gauge) -> (k, destrByStructure gauge))
+      |> List.ofSeq
 
     // process others
     let others =
       message |> Message.getContextsOtherThanGaugeAndFields
-      |> Seq.map (fun (k, v) -> (k, v, DestrHint.Structure))
-      |> processKvs writeState "  others:" nl
+      |> Seq.map (fun (k, v) -> (k, destrByStructure v))
+      |> List.ofSeq
 
-    [fields; gauges; others] |> Seq.concat
+    // need generate all property values first, in order to get idManager to calculate whether or not to show its ref id
+    seq {
+      yield! fields |> tokenisePropValues writeState "  fields:" nl
+      yield! gauges |> tokenisePropValues writeState "  gauges:" nl
+      yield! others |> tokenisePropValues writeState "  others:" nl
+    }
 
   let rec formatValueLeafs (ns : string list) (value : Value) =
     let rns = lazy (PointName.ofList (List.rev ns))

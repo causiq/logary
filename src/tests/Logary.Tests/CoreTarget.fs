@@ -358,7 +358,7 @@ module Files =
                          "\\"
                          "/"
                          ";"] do
-          yield testCase "combo host and service and datetime" <| fun _ ->
+          yield testCase ("combo host and service and datetime: "+ invalid) <| fun _ ->
             let naming = Naming (invalid, "log")
             // comment in to see error messages in output
             //naming.format runtime2016_10_11T13_14_15 |> ignore

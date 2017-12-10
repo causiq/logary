@@ -12,7 +12,7 @@ module MessageTemplates =
   module DestrHint =
     let fromCaptureHint = function 
       | CaptureHint.Stringify -> DestrHint.Stringify 
-      | CaptureHint.Structure -> DestrHint.Stringify 
+      | CaptureHint.Structure -> DestrHint.Structure 
       | _ -> DestrHint.Default
 
   type Property with
@@ -53,10 +53,18 @@ module MessageTemplates =
     let showAsIdSet = new HashSet<int64> ()
     let idGen = new ObjectIDGenerator ()
 
-    member __.ShowAsRefId id =
-      do showAsIdSet.Add id |> ignore
-      RefId id
-    member __.GetRefId data = idGen.GetId data
+    member __.TryShowAsRefId (data : obj) =
+      if isNull data then None
+      else
+        match idGen.HasId data with
+        | refId, false -> 
+          do showAsIdSet.Add refId |> ignore
+          RefId refId |> Some
+        | _, true -> None
+
+    member __.Mark (data : obj) =
+      idGen.GetId data |> fst
+
     member __.IsShowRefId id = showAsIdSet.Contains id
 
   let parseToTemplate raw =
@@ -160,7 +168,6 @@ module MessageTemplates =
         | Some _ as d -> d
         | None -> g req
 
-    let someRefId = RefId >> Some
     let someScalar = ScalarValue >> Some
     let someSequence = SequenceValue >> Some
     let someStructure = StructureValue >> Some
@@ -211,13 +218,17 @@ module MessageTemplates =
            elementType.IsGenericType && elementType.GetGenericTypeDefinition() = typedefof<KeyValuePair<_,_>>
          else iface = typeof<System.Collections.IDictionary>)
 
+    let inline private isFSharpList (t: Type) =
+      t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Microsoft.FSharp.Collections.List<_>>
+
+
     let inline tryContainerTypes (destr: Destructurer) req =
       let destr o = destr {req with value = o}
       let instance = req.value
       let refCount = req.idManager
-      let (refId, firstOccurence) = refCount.GetRefId instance
-      if not firstOccurence then refCount.ShowAsRefId refId |> Some
-      else
+      match refCount.TryShowAsRefId instance with
+      | Some refId -> Some refId
+      | _ -> 
         match instance.GetType() with
         | t when FSharpType.IsTuple t ->
           let tupleValues =
@@ -225,40 +236,46 @@ module MessageTemplates =
               |> FSharpValue.GetTupleFields
               |> Seq.map destr
               |> Seq.toList
+          let refId = refCount.Mark instance
           someSequence (refId, tupleValues)
 
         | t when isDictionable t ->
-
           let keyProp, valueProp = ref Unchecked.defaultof<PropertyInfo>, ref Unchecked.defaultof<PropertyInfo>
-          let getKey o = if isNull !keyProp  then keyProp := o.GetType().GetRuntimeProperty("Key")
+          let getKey o = if isNull !keyProp  then do keyProp := o.GetType().GetRuntimeProperty("Key")
                          (!keyProp).GetValue(o)
-          let getValue o = if isNull !valueProp then valueProp := o.GetType().GetRuntimeProperty("Value")
+          let getValue o = if isNull !valueProp then do valueProp := o.GetType().GetRuntimeProperty("Value")
                            (!valueProp).GetValue(o)
           let objEnumerable = instance :?> System.Collections.IEnumerable |> Seq.cast<obj>
           let skvps = objEnumerable
                       |> Seq.map (fun o ->  destr (getKey o),  destr (getValue o))
                       |> Seq.toList
+          let refId = refCount.Mark req
           someDictionary (refId, skvps)
 
-        | t when FSharpType.IsUnion t ->
+        | t when FSharpType.IsUnion t && not <| isFSharpList t ->
           let case, fields = FSharpValue.GetUnionFields(instance, t)
           let caseName = ScalarValue case.Name
           match fields with
           | [||] -> Some caseName
           | [| oneField |] ->
             let oneValue = destr oneField
+            let refId = refCount.Mark req
             someDictionary (refId, [caseName, oneValue])
           | _ ->
             let fieldsValue = fields |> Array.map destr |> Array.toList
-            let (fieldsRefId, fieldsFirstOccurence) = refCount.GetRefId instance
             let fieldsPropValue =
-              if not fieldsFirstOccurence then refCount.ShowAsRefId fieldsRefId
-              else SequenceValue (fieldsRefId, fieldsValue)
+              match refCount.TryShowAsRefId fieldsValue with
+              | Some fieldsRefId -> fieldsRefId
+              | _ -> 
+                let fieldsRefId = refCount.Mark fieldsValue
+                SequenceValue (fieldsRefId, fieldsValue)
+            let refId = refCount.Mark req
             someDictionary (refId, [caseName, fieldsPropValue])
         | _ ->
           match instance with
           | :? System.Collections.IEnumerable as e ->
             let eles = e |> Seq.cast<obj> |> Seq.map destr |> Seq.toList
+            let refId = refCount.Mark req
             someSequence (refId, eles)
           | _ -> None
 
@@ -269,7 +286,11 @@ module MessageTemplates =
       | p when (not <| isNull p) 
                && p.CanRead 
                && (p.Name <> "Item" || p.GetIndexParameters().Length = 0) ->
-        let propValue = try p.GetValue(instance) with ex -> ("The property accessor threw an exception:" + ex.Message) |> box
+        let propValue = 
+          try p.GetValue(instance) 
+          with 
+          | :? TargetInvocationException as ex ->  ("The property accessor threw an exception: " + ex.InnerException.Message) |> box
+          | ex -> ("The property accessor threw an exception: " + ex.Message) |> box
         Some propValue
       | _ -> None
 
@@ -277,10 +298,12 @@ module MessageTemplates =
       t.GetProperty(name,lookupPropFlags,null,null,Array.empty,null) |> tryGetValueWithProp <| instance
 
     let rec reflectionProperties (tryProjection : ProjectionStrategy) (destr : Destructurer) (req : DestructureRequest) =
-      let ty = req.value.GetType()
-      match tryProjection ty with
-      | None -> reflectionByProjection destr (Except []) req // try reflection all
-      | Some how -> reflectionByProjection destr how req
+      if isNull req.value then ScalarValue null
+      else
+        let ty = req.value.GetType()
+        match tryProjection ty with
+        | None -> reflectionByProjection destr (Except []) req // try reflection all
+        | Some how -> reflectionByProjection destr how req
     and reflectionByProjection destr how req =
       let destrChild childHow childInstance=
         match childHow with
@@ -295,59 +318,58 @@ module MessageTemplates =
 
       let instance = req.value
       let refCount = req.idManager
-      let (refId, firstOccurence) = refCount.GetRefId instance
-      if not firstOccurence then refCount.ShowAsRefId refId
-      else
-        let ty = instance.GetType()
-        let typeTag = ty.Name
+      match refCount.TryShowAsRefId instance with
+      | Some refId -> refId
+      | _ -> 
+        if isNull instance then ScalarValue null
+        else
+          let ty = instance.GetType()
+          let typeTag = ty.Name
 
-        match how with
-        | Except names -> 
-          let topHieraMap = Projection.TopHierarchy names
-          let isInclude name =
-            // in except hieraMap and has no childNames
-            match topHieraMap |> Map.tryFind name with
-            | Some [] -> false
-            | _ -> true
-          let nvs =
-            ty.GetProperties(lookupPropFlags)
-            |> Array.filter (fun p -> not <| isNull p && (isInclude p.Name))
-            |> Array.fold (fun nvs p ->
-               let name = p.Name
-               match tryGetValueWithProp p instance with
-               | None -> nvs
-               | Some propValue ->
-                 let childHow =
-                   match topHieraMap |> Map.tryFind name with
-                   | Some childNames -> Except childNames
-                   | None -> Except []
-                 let tpv = destrChild childHow propValue
-                 { Name = name; Value = tpv } :: nvs
-               ) List.empty
-          
-          StructureValue (refId, typeTag, nvs)
+          match how with
+          | Except names -> 
+            let topHieraMap = Projection.TopHierarchy names
+            let isInclude name =
+              // in except hieraMap and has no childNames
+              match topHieraMap |> Map.tryFind name with
+              | Some [] -> false
+              | _ -> true
+            let nvs =
+              ty.GetProperties(lookupPropFlags)
+              |> Array.filter (fun p -> not <| isNull p && (isInclude p.Name))
+              |> Array.rev
+              |> Array.fold (fun nvs p ->
+                 let name = p.Name
+                 match tryGetValueWithProp p instance with
+                 | None -> nvs
+                 | Some propValue ->
+                   let childHow =
+                     match topHieraMap |> Map.tryFind name with
+                     | Some childNames -> Except childNames
+                     | None -> Except []
+                   let tpv = if isNull propValue then ScalarValue null else destrChild childHow propValue
+                   { Name = name; Value = tpv } :: nvs
+                 ) List.empty
+            let refId = refCount.Mark instance
+            StructureValue (refId, typeTag, nvs)
 
-        | Only names ->
-          let nvs =
-            names
-            |> Projection.TopHierarchy
-            |> Map.toList
-            |> List.fold (fun nvs (name, childNames) ->
-               match tryGetValueWithType ty name instance with
-               | None -> nvs
-               | Some propValue ->
-                 let childHow = Only childNames
-                 let tpv = destrChild childHow propValue
-                 { Name = name; Value = tpv } :: nvs
-               ) List.empty
+          | Only names ->
+            let nvs =
+              names
+              |> Projection.TopHierarchy
+              |> Map.toList
+              |> List.fold (fun nvs (name, childNames) ->
+                 match tryGetValueWithType ty name instance with
+                 | None -> nvs
+                 | Some propValue ->
+                   let childHow = Only childNames
+                   let tpv = if isNull propValue then ScalarValue null else destrChild childHow propValue
+                   { Name = name; Value = tpv } :: nvs
+                 ) List.empty
 
-          StructureValue (refId, typeTag, nvs)
+            let refId = refCount.Mark instance
+            StructureValue (refId, typeTag, nvs)
 
-    // | :? Gauge as gauge, _ ->
-    //   let (Gauge (value, units)) = gauge
-    //   let (scaledValue, unitsFormat) = Units.scale units value
-    //   if String.IsNullOrEmpty unitsFormat then ScalarValue scaledValue
-    //   else ScalarValue (sprintf "%s %s" (string scaledValue) unitsFormat)
     let generatePropValue (tryCustom: DestructurerStrategy)
                           (tryProjection: ProjectionStrategy)
                           (req: DestructureRequest)
@@ -356,7 +378,7 @@ module MessageTemplates =
       | Some tpv -> tpv
       | _ ->
         match req.hint with
-        | DestrHint.Stringify -> ScalarValue (string req.value)
+        | DestrHint.Stringify -> ScalarValue (req.value.ToString())
         | DestrHint.Structure ->
           let rec defaultOrReflection req =
             let tryDefault = tryNull |? tryCustom |? tryScalar |? (tryContainerTypes defaultOrReflection)
@@ -364,7 +386,7 @@ module MessageTemplates =
             | Some tpv -> tpv
             | _ -> reflectionProperties tryProjection defaultOrReflection req
           defaultOrReflection req
-        | _ ->
+        | DestrHint.Default ->
           let rec defaultOrScalar req =
             let tryDefault = tryNull |? tryCustom |? tryScalar |? (tryContainerTypes defaultOrScalar)
             match tryDefault req with
@@ -392,28 +414,25 @@ module MessageTemplates =
       let cap = if tpl.IsAllPositional then capturePositionals else captureNamed
       cap tpl.Properties args
 
-  module Formatting =
+  module Formatting = 
+    open Destructure
 
-    let formatWithProvider (provider : IFormatProvider) (arg : obj) format =
-      let customFormatter = provider.GetFormat(typeof<System.ICustomFormatter>) :?> System.ICustomFormatter
-      match customFormatter with
-      | cf when not (isNull cf) ->
-        (cf.Format(format, arg, provider))
-      | _ ->
-        match arg with
-        | :? System.IFormattable as f -> f.ToString(format, provider)
-        | _ -> arg.ToString()
+    module Utils =
+      let formatWithCustom (provider : IFormatProvider) (arg : obj) format =
+        let customFormatter = provider.GetFormat(typeof<System.ICustomFormatter>) :?> System.ICustomFormatter
+        match customFormatter with
+        | cf when not (isNull cf) ->
+          (cf.Format(format, arg, provider))
+        | _ ->
+          match arg with
+          | :? System.IFormattable as f -> f.ToString(format, provider)
+          | _ -> arg.ToString()
 
-    let escapeNewlineAndQuote (str : string) =
-      if isNull str then String.Empty
-      else
-        let (newline, newlineReplaced) =
-          let origin = Environment.NewLine
-          if origin = "\n" then (origin, @"\n")
-          else (origin, @"\r\n")
-
-        let escape = str.Replace("\"","\\\"").Replace(newline,newlineReplaced)
-        "\"" + escape + "\""
+      let escapeNewlineAndQuote (str : string) =
+        if isNull str then String.Empty
+        else
+          let escape = str.Replace("\"","\\\"").Replace("\r\n",@"\r\n").Replace("\n",@"\n")
+          "\"" + escape + "\""
 
     type WriteState =
       {
@@ -431,18 +450,18 @@ module MessageTemplates =
         | KeywordSymbol | NumericSymbol | StringSymbol | OtherSymbol | NameSymbol
         | MissingTemplateField
 
-      let tokeniseRefId refId = (string refId), KeywordSymbol
+      let tokeniseRefId refId = (sprintf "$%d " refId), KeywordSymbol
 
       let tokeniseScalarValue (provider : IFormatProvider) (sv: obj) (format: string) =
         match sv with
         | null -> "null", StringSymbol
         | :? string as s ->
             if format = "l" then s, Subtext
-            else (escapeNewlineAndQuote s), StringSymbol
+            else (Utils.escapeNewlineAndQuote s), StringSymbol
         | _ ->
           // build in scalar write directly
           // else escape newline and double quote
-          let formated = formatWithProvider provider sv format
+          let formated = Utils.formatWithCustom provider sv format
           if Destructure.scalarTypeHash.Contains(sv.GetType()) then
             let token =
               match sv with
@@ -457,7 +476,7 @@ module MessageTemplates =
                   OtherSymbol
             (formated, token)
             // yield formated
-          else (escapeNewlineAndQuote formated), StringSymbol
+          else (Utils.escapeNewlineAndQuote formated), StringSymbol
 
       let tokeniseSequenceValueCompact (svs: TemplatePropertyValue list) recurse =
         let mutable isFirst = true
@@ -480,51 +499,48 @@ module MessageTemplates =
       let rec tokenisePropValueCompact (writeState : WriteState) (tpv: TemplatePropertyValue) (format: string) =
         seq {
           match tpv with
-          | RefId id -> yield (string id), KeywordSymbol
+          | RefId id ->  yield tokeniseRefId id
           | ScalarValue sv ->
             yield tokeniseScalarValue writeState.provider sv format
           | SequenceValue (refId, svs) ->
             if writeState.idManager.IsShowRefId refId then yield tokeniseRefId refId
-            else
-              let recurs tpv = tokenisePropValueCompact writeState tpv null
-              yield! tokeniseSequenceValueCompact svs recurs
+            let recurs tpv = tokenisePropValueCompact writeState tpv null
+            yield! tokeniseSequenceValueCompact svs recurs
           | StructureValue(refId, typeTag, values) ->
             if writeState.idManager.IsShowRefId refId then yield tokeniseRefId refId
-            else
-              let hasAnyValues = not values.IsEmpty
-              if not <| isNull typeTag then
-                yield typeTag, (if hasAnyValues then Subtext else OtherSymbol)
+            let hasAnyValues = not values.IsEmpty
+            if not <| isNull typeTag then
+              yield typeTag, (if hasAnyValues then Subtext else OtherSymbol)
 
-              if hasAnyValues then
-                yield " ", Subtext
-                yield "{ ", Punctuation
+            if hasAnyValues then
+              yield " ", Subtext
+              yield "{ ", Punctuation
 
-                let lastIndex = values.Length - 1
-                for i = 0 to lastIndex do
-                  let tp = values.[i]
-                  yield tp.Name, Subtext
-                  yield ": ", Punctuation
-                  yield! tokenisePropValueCompact writeState tp.Value null
-                  yield (if i = lastIndex then (" ", Subtext) else (", ", Punctuation))
+              let lastIndex = values.Length - 1
+              for i = 0 to lastIndex do
+                let tp = values.[i]
+                yield tp.Name, Subtext
+                yield ": ", Punctuation
+                yield! tokenisePropValueCompact writeState tp.Value null
+                yield (if i = lastIndex then (" ", Subtext) else (", ", Punctuation))
 
-                yield "}", Punctuation
+              yield "}", Punctuation
           | DictionaryValue(refId, data) ->
             if writeState.idManager.IsShowRefId refId then yield tokeniseRefId refId
-            else
-              let valueTokens =
-                data
-                |> List.map (fun (entryKey, entryValue) -> seq {
-                   yield "(", Punctuation
-                   yield! tokenisePropValueCompact writeState entryKey null
-                   yield ": ", Punctuation
-                   yield! tokenisePropValueCompact writeState entryValue null
-                   yield ")", Punctuation
-                   })
-                |> Seq.concat
+            let valueTokens =
+              data
+              |> List.map (fun (entryKey, entryValue) -> seq {
+                 yield "(", Punctuation
+                 yield! tokenisePropValueCompact writeState entryKey null
+                 yield ": ", Punctuation
+                 yield! tokenisePropValueCompact writeState entryValue null
+                 yield ")", Punctuation
+                 })
+              |> Seq.concat
 
-              yield "[", Punctuation
-              yield! valueTokens
-              yield "]", Punctuation
+            if data.Length <> 1 then yield "[", Punctuation
+            yield! valueTokens
+            if data.Length <> 1 then yield "]", Punctuation
         }
 
       // use for formatting message context
@@ -537,68 +553,65 @@ module MessageTemplates =
           | ScalarValue sv -> yield tokeniseScalarValue writeState.provider sv null
           | SequenceValue (refId, svs) ->
             if writeState.idManager.IsShowRefId refId then yield tokeniseRefId refId
+            let isAllScalar = svs |> List.forall (function ScalarValue _ -> true | _ -> false)
+            if isAllScalar then
+              let recurs = function
+                | ScalarValue sv -> tokeniseScalarValue writeState.provider sv null |> Seq.singleton
+                | _ -> Seq.empty
+              yield! tokeniseSequenceValueCompact svs recurs
             else
-              let isAllScalar = svs |> List.forall (function ScalarValue _ -> true | _ -> false)
-              if isAllScalar then
-                let recurs = function
-                  | ScalarValue sv -> tokeniseScalarValue writeState.provider sv null |> Seq.singleton
-                  | _ -> Seq.empty
-                yield! tokeniseSequenceValueCompact svs recurs
-              else
-                let lastIndex = svs.Length - 1
-                for i = 0 to lastIndex do
-                  let sv = svs.[i]
-                  yield nl, Text
-                  yield indent, Text
-                  yield "- ", Punctuation
-                  yield! tokenisePropValueIndent writeState sv nl (depth + 1)
+              let lastIndex = svs.Length - 1
+              for i = 0 to lastIndex do
+                let sv = svs.[i]
+                yield nl, Text
+                yield indent, Text
+                yield "- ", Punctuation
+                yield! tokenisePropValueIndent writeState sv nl (depth + 1)
 
           | StructureValue(refId, typeTag, values) ->
             if writeState.idManager.IsShowRefId refId then yield tokeniseRefId refId
-            else
-              let writeTypeTag = not <| isNull typeTag
-              if writeTypeTag then
-                yield nl, Text
-                yield indent, Text
-                yield typeTag, Subtext
-                yield " {", Punctuation
+            let writeTypeTag = not <| isNull typeTag
+            if writeTypeTag then
+              yield nl, Text
+              yield indent, Text
+              yield typeTag, Subtext
+              yield " {", Punctuation
 
-              let lastIndex = values.Length - 1
-              for i = 0 to lastIndex do
-                let nv = values.[i]
-                yield nl, Text
-                if writeTypeTag then yield "  ", Text
-                yield indent, Text
-                yield nv.Name, Subtext
-                yield " => ", Punctuation
-                yield! tokenisePropValueIndent writeState nv.Value nl (if writeTypeTag then depth + 2 else depth + 1)
+            let lastIndex = values.Length - 1
+            for i = 0 to lastIndex do
+              let nv = values.[i]
+              yield nl, Text
+              if writeTypeTag then yield "  ", Text
+              yield indent, Text
+              yield nv.Name, Subtext
+              yield " => ", Punctuation
+              yield! tokenisePropValueIndent writeState nv.Value nl (if writeTypeTag then depth + 2 else depth + 1)
 
-              if writeTypeTag then yield "}", Punctuation
+            if writeTypeTag then yield "}", Punctuation
 
           | DictionaryValue(refId, kvList) ->
             if writeState.idManager.IsShowRefId refId then yield tokeniseRefId refId
-            else
-              let lastIndex = kvList.Length - 1
-              for i = 0 to lastIndex do
-                let (entryKey, entryValue) = kvList.[i]
-                match entryKey with
-                | ScalarValue sv ->
-                  yield nl, Text
-                  yield indent, Text
-                  yield tokeniseScalarValue writeState.provider sv null
-                  yield " => ", Punctuation
-                  yield! tokenisePropValueIndent writeState entryValue nl (depth + 1)
-                | _ ->
-                  // default case will not go to here, unless user define their own DictionaryValue which its entryKey is not ScalarValue
-                  yield nl, Text
-                  yield indent, Text
-                  yield "- key => ", Punctuation
-                  yield! tokenisePropValueIndent writeState entryKey nl (depth + 2)
+            let lastIndex = kvList.Length - 1
+            for i = 0 to lastIndex do
+              let (entryKey, entryValue) = kvList.[i]
+              match entryKey with
+              | ScalarValue sv ->
+                yield nl, Text
+                yield indent, Text
+                yield tokeniseScalarValue writeState.provider sv null
+                yield " => ", Punctuation
+                yield! tokenisePropValueIndent writeState entryValue nl (depth + 1)
+              | _ ->
+                // default case will not go to here, unless user define their own DictionaryValue which its entryKey is not ScalarValue
+                yield nl, Text
+                yield indent, Text
+                yield "- key => ", Punctuation
+                yield! tokenisePropValueIndent writeState entryKey nl (depth + 2)
 
-                  yield nl, Text
-                  yield indent, Text
-                  yield "  value => ", Punctuation
-                  yield! tokenisePropValueIndent writeState entryValue nl (depth + 2)
+                yield nl, Text
+                yield indent, Text
+                yield "  value => ", Punctuation
+                yield! tokenisePropValueIndent writeState entryValue nl (depth + 2)
         }
 
       let tokeniseProperty (writeState : WriteState) (pt: Property) (pv: TemplatePropertyValue) =
@@ -617,17 +630,40 @@ module MessageTemplates =
             (padded, token) |> Seq.singleton
         | _ -> tokenisePropValueCompact writeState pv null
 
-      let tokeniseTemplate (t : Template) (writeState : WriteState) tryGetPropertyValue =
+      let tokeniseTemplate (pvd: IFormatProvider) (t : Template) tryGetPropertyValue =
         t.tokens
         |> Seq.collect (function
            | TemplateToken.Text raw -> (raw, Text) |> Seq.singleton
            | TemplateToken.Property pt  ->
              match tryGetPropertyValue pt with
              | None -> (pt.ToString(), MissingTemplateField) |> Seq.singleton // not found value
-             | Some pv -> tokeniseProperty writeState pt pv
+             | Some pv -> 
+               let writeState = { provider = pvd; idManager = RefIdManager () }
+               tokeniseProperty writeState pt pv
           )
 
       let collectAllToString (tokenised: seq<string * LiterateToken>) =
         let sb = System.Text.StringBuilder ()
         tokenised |> Seq.map fst |> Seq.iter (sb.Append >> ignore)
         sb.ToString ()
+
+    let formatWithProvider pvd raw args =
+      let tpl = parseToTemplate raw
+      let no _ = None
+      let pvMaps = Capturing.capture tpl args |> Array.map (fun (p,v) -> p.name,v) |> Map.ofArray
+      let tryGetPropertyValue (pt:Property) =
+        match Map.tryFind pt.name pvMaps with
+        | Some (Some v) ->
+          let req = {value = v; hint = (DestrHint.fromCaptureHint pt.captureHint); idManager = RefIdManager()}
+          Destructure.generatePropValue no no req
+          |> Some
+        | _ -> None
+      Literate.tokeniseTemplate pvd tpl tryGetPropertyValue
+      |> Literate.collectAllToString
+
+    let format raw args =
+      formatWithProvider CultureInfo.CurrentCulture raw args
+
+  type Formatting =
+    static member Format (raw: string, [<ParamArray>] args: obj[]) =
+      Formatting.format raw args
