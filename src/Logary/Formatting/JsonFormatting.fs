@@ -94,7 +94,7 @@ module Json =
       if isNull m then 
         chironDefaultsType.GetMethod("ToJson",BindingFlags.Public|||BindingFlags.Static,null,CallingConventions.Any,[|dataType|],null) 
       else m
-    if not <| isNull mOrDefault then 
+    if not <| isNull mOrDefault && mOrDefault.ReturnType = typeof<Json> then 
       let json = mOrDefault.Invoke(null,[|data|])
       unbox json
     else
