@@ -38,13 +38,13 @@ let``a delegate is rendered as a string`` =
 [<Tests>]
 let``a class instance is rendered in simple notation`` =
     MtAssert.RenderedAs( "I sat at {@Chair}", [|Chair()|],
-        "I sat at Chair { Back: \"straight\", Legs: [1, 2, 3, 4] }")
+        """I sat at Chair { Legs: [1, 2, 3, 4], Back: "straight" }""")
 
 
 [<Tests>]
 let``a class instance is rendered in simple notation using format provider`` =
     MtAssert.RenderedAs( "I received {@Receipt}", [|Receipt()|],
-        "I received Receipt { Sum: 12,345, When: 20/05/2013 16:39:00 }",
+        "I received Receipt { When: 20/05/2013 16:39:00, Sum: 12,345 }",
         provider=CultureInfo("fr-FR"))
 
 type ChairRecord = { Back:string; Legs: int array }
@@ -53,7 +53,7 @@ type ChairRecord = { Back:string; Legs: int array }
 [<Tests>]
 let``an F# record object is rendered in simple notation with type`` =
     MtAssert.RenderedAs( "I sat at {@Chair}", [|{ Back="straight"; Legs=[|1;2;3;4|] }|],
-        "I sat at ChairRecord { Back: \"straight\", Legs: [1, 2, 3, 4] }")
+        """I sat at ChairRecord { Legs: [1, 2, 3, 4], Back: "straight" }""")
 
 type ReceiptRecord = { Sum: double; When: System.DateTime }
 
@@ -62,7 +62,7 @@ type ReceiptRecord = { Sum: double; When: System.DateTime }
 let``an F# record object is rendered in simple notation with type using format provider`` =
     MtAssert.RenderedAs( "I received {@Receipt}",
         [| { Sum=12.345; When=DateTime(2013, 5, 20, 16, 39, 0) } |],
-        "I received ReceiptRecord { Sum: 12,345, When: 20/05/2013 16:39:00 }",
+        "I received ReceiptRecord { When: 20/05/2013 16:39:00, Sum: 12,345 }",
         provider=(CultureInfo("fr-FR")))
 
 
@@ -191,7 +191,7 @@ let``an F# discriminated union object is formatted with provider correctly`` =
     let template = "I like {@item1} and {@item2}"
     let values : obj[] = [| ChairItem({ Back="straight"; Legs=[|1;2;3;4|] })
                             ReceiptItem({ Sum=12.345; When=DateTime(2013, 5, 20, 16, 39, 0) }) |]
-    let expected = """I like ("ChairItem": ChairRecord { Back: "straight", Legs: [1, 2, 3, 4] }) and ("ReceiptItem": ReceiptRecord { Sum: 12,345, When: 20/05/2013 16:39:00 })"""
+    let expected = """I like ("ChairItem": ChairRecord { Legs: [1, 2, 3, 4], Back: "straight" }) and ("ReceiptItem": ReceiptRecord { When: 20/05/2013 16:39:00, Sum: 12,345 })"""
     MtAssert.RenderedAs( template, values, expected, provider)
 
 
@@ -219,7 +219,7 @@ let``Rendered F# DU or Tuple fields on level3 are 'null' when depth is 2`` =
 
     // Render fields deeper than level 2 with 'null' values
     // In this case, only The Trunk.Item3 (Tree list) is after level 2
-    let expected = """I like ("Leaf": 12,345) and ("Leaf": 12,345) and ("Trunk": [12,345, 20/05/2013 16:39:00 +09:30, [("Leaf": 12,345), ("Leaf": 12,345)]]) and ("ChairItem": ChairRecord { Back: "slanted", Legs: [1, 2, 3, 4, 5] })""" 
+    let expected = """I like ("Leaf": 12,345) and ("Leaf": 12,345) and ("Trunk": [12,345, 20/05/2013 16:39:00 +09:30, [("Leaf": 12,345), ("Leaf": 12,345)]]) and ("ChairItem": ChairRecord { Legs: [1, 2, 3, 4, 5], Back: "slanted" })""" 
     
     MtAssert.RenderedAs( template, values, expected, provider, maxDepth=2)
     

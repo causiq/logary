@@ -39,6 +39,7 @@ module MessageTemplates =
   | Text of string
   | Property of Property
 
+  /// consider only cover cycle reference, not multi reference, cycle reference show null, then no need refId
   type TemplatePropertyValue =
     | RefId of int64
     | ScalarValue of obj
@@ -48,23 +49,18 @@ module MessageTemplates =
   and PropertyNameAndValue =
     { Name:string; Value:TemplatePropertyValue }
 
-
   type RefIdManager () =
     let showAsIdSet = new HashSet<int64> ()
     let idGen = new ObjectIDGenerator ()
 
     member __.TryShowAsRefId (data : obj) =
-      if isNull data then None
-      else
-        match idGen.HasId data with
-        | refId, false -> 
-          do showAsIdSet.Add refId |> ignore
-          RefId refId |> Some
-        | _, true -> None
+      match idGen.GetId data with
+      | refId, false -> 
+        do showAsIdSet.Add refId |> ignore
+        refId, RefId refId |> Some
+      | refId, true -> refId, None
 
-    member __.Mark (data : obj) =
-      idGen.GetId data |> fst
-
+    /// consider only cover cycle reference, not multi reference, cycle reference show null, then no need refId
     member __.IsShowRefId id = showAsIdSet.Contains id
 
   let parseToTemplate raw =
@@ -226,20 +222,23 @@ module MessageTemplates =
       let destr o = destr {req with value = o}
       let instance = req.value
       let refCount = req.idManager
-      match refCount.TryShowAsRefId instance with
-      | Some refId -> Some refId
-      | _ -> 
-        match instance.GetType() with
-        | t when FSharpType.IsTuple t ->
+  
+      match instance.GetType() with
+      | t when FSharpType.IsTuple t ->
+        match refCount.TryShowAsRefId instance with
+        | _, Some pv  -> Some pv
+        | refId, None -> 
           let tupleValues =
               instance
               |> FSharpValue.GetTupleFields
               |> Seq.map destr
               |> Seq.toList
-          let refId = refCount.Mark instance
           someSequence (refId, tupleValues)
 
-        | t when isDictionable t ->
+      | t when isDictionable t ->
+        match refCount.TryShowAsRefId instance with
+        | _, Some pv  -> Some pv
+        | refId, None -> 
           let keyProp, valueProp = ref Unchecked.defaultof<PropertyInfo>, ref Unchecked.defaultof<PropertyInfo>
           let getKey o = if isNull !keyProp  then do keyProp := o.GetType().GetRuntimeProperty("Key")
                          (!keyProp).GetValue(o)
@@ -249,35 +248,33 @@ module MessageTemplates =
           let skvps = objEnumerable
                       |> Seq.map (fun o ->  destr (getKey o),  destr (getValue o))
                       |> Seq.toList
-          let refId = refCount.Mark req
           someDictionary (refId, skvps)
 
-        | t when FSharpType.IsUnion t && not <| isFSharpList t ->
-          let case, fields = FSharpValue.GetUnionFields(instance, t)
-          let caseName = ScalarValue case.Name
-          match fields with
-          | [||] -> Some caseName
-          | [| oneField |] ->
-            let oneValue = destr oneField
-            let refId = refCount.Mark req
-            someDictionary (refId, [caseName, oneValue])
-          | _ ->
-            let fieldsValue = fields |> Array.map destr |> Array.toList
-            let fieldsPropValue =
-              match refCount.TryShowAsRefId fieldsValue with
-              | Some fieldsRefId -> fieldsRefId
-              | _ -> 
-                let fieldsRefId = refCount.Mark fieldsValue
-                SequenceValue (fieldsRefId, fieldsValue)
-            let refId = refCount.Mark req
-            someDictionary (refId, [caseName, fieldsPropValue])
+      | t when FSharpType.IsUnion t && not <| isFSharpList t ->
+   
+        let case, fields = FSharpValue.GetUnionFields(instance, t)
+        let caseName = ScalarValue case.Name
+        match fields with
+        | [||] -> Some caseName
+        | [| oneField |] ->
+          match refCount.TryShowAsRefId instance with
+          | _, Some pv  -> Some pv
+          | refId, None -> 
+            someDictionary (refId, [caseName, destr oneField])
         | _ ->
-          match instance with
-          | :? System.Collections.IEnumerable as e ->
+          match refCount.TryShowAsRefId instance with
+          | _, Some pv  -> Some pv
+          | refId, None -> 
+            someDictionary (refId, [caseName, destr fields])
+      | _ ->
+        match instance with
+        | :? System.Collections.IEnumerable as e ->
+          match refCount.TryShowAsRefId instance with
+          | _, Some pv  -> Some pv
+          | refId, None -> 
             let eles = e |> Seq.cast<obj> |> Seq.map destr |> Seq.toList
-            let refId = refCount.Mark req
             someSequence (refId, eles)
-          | _ -> None
+        | _ -> None
 
     let lookupPropFlags = BindingFlags.Public ||| BindingFlags.Instance
 
@@ -298,12 +295,10 @@ module MessageTemplates =
       t.GetProperty(name,lookupPropFlags,null,null,Array.empty,null) |> tryGetValueWithProp <| instance
 
     let rec reflectionProperties (tryProjection : ProjectionStrategy) (destr : Destructurer) (req : DestructureRequest) =
-      if isNull req.value then ScalarValue null
-      else
-        let ty = req.value.GetType()
-        match tryProjection ty with
-        | None -> reflectionByProjection destr (Except []) req // try reflection all
-        | Some how -> reflectionByProjection destr how req
+      let ty = req.value.GetType()
+      match tryProjection ty with
+      | None -> reflectionByProjection destr (Except []) req // try reflection all
+      | Some how -> reflectionByProjection destr how req
     and reflectionByProjection destr how req =
       let destrChild childHow childInstance=
         match childHow with
@@ -318,11 +313,11 @@ module MessageTemplates =
 
       let instance = req.value
       let refCount = req.idManager
-      match refCount.TryShowAsRefId instance with
-      | Some refId -> refId
-      | _ -> 
-        if isNull instance then ScalarValue null
-        else
+      
+      if not <| isNull instance then 
+        match refCount.TryShowAsRefId instance with
+        | _, Some pv  -> pv
+        | refId, None -> 
           let ty = instance.GetType()
           let typeTag = ty.Name
 
@@ -337,7 +332,7 @@ module MessageTemplates =
             let nvs =
               ty.GetProperties(lookupPropFlags)
               |> Array.filter (fun p -> not <| isNull p && (isInclude p.Name))
-              |> Array.rev
+              |> Array.sortBy (fun p -> p.Name)
               |> Array.fold (fun nvs p ->
                  let name = p.Name
                  match tryGetValueWithProp p instance with
@@ -350,7 +345,7 @@ module MessageTemplates =
                    let tpv = if isNull propValue then ScalarValue null else destrChild childHow propValue
                    { Name = name; Value = tpv } :: nvs
                  ) List.empty
-            let refId = refCount.Mark instance
+
             StructureValue (refId, typeTag, nvs)
 
           | Only names ->
@@ -367,8 +362,8 @@ module MessageTemplates =
                    { Name = name; Value = tpv } :: nvs
                  ) List.empty
 
-            let refId = refCount.Mark instance
             StructureValue (refId, typeTag, nvs)
+      else ScalarValue null
 
     let generatePropValue (tryCustom: DestructurerStrategy)
                           (tryProjection: ProjectionStrategy)

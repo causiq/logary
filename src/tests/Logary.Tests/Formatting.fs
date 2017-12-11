@@ -124,9 +124,8 @@ type ProjectionTestExcept =
 
 let tests = [
   testCase "cycle reference" <| fun _ ->
-    skiptest "."
     let actual = Logary.MessageTemplates.Formatting.Format("stringify: {$0} default: {0} structure: {@0}",System.Threading.Thread.CurrentPrincipal)
-    Expect.equal actual "expected" "cycle reference should work"
+    Expect.equal actual """stringify: "System.Security.Principal.GenericPrincipal" default: "System.Security.Principal.GenericPrincipal" structure: GenericPrincipal { Identity: GenericIdentity { RoleClaimType: "http://schemas.microsoft.com/ws/2008/06/identity/claims/role", NameClaimType: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name", Name: "", Label: null, IsAuthenticated: False, Claims: [Claim { ValueType: "http://www.w3.org/2001/XMLSchema#string", Value: "", Type: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name", Subject: $12 , Properties: [], OriginalIssuer: "LOCAL AUTHORITY", Issuer: "LOCAL AUTHORITY" }], BootstrapContext: null, AuthenticationType: "", Actor: null }, Identities: [$5 ], Claims: [Claim { ValueType: "http://www.w3.org/2001/XMLSchema#string", Value: "", Type: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name", Subject: GenericIdentity { RoleClaimType: "http://schemas.microsoft.com/ws/2008/06/identity/claims/role", NameClaimType: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name", Name: "", Label: null, IsAuthenticated: False, Claims: [$3 , Claim { ValueType: "http://www.w3.org/2001/XMLSchema#string", Value: "", Type: "http://schemas.microsoft.com/ws/2008/06/identity/claims/role", Subject: $5 , Properties: [], OriginalIssuer: "LOCAL AUTHORITY", Issuer: "LOCAL AUTHORITY" }], BootstrapContext: null, AuthenticationType: "", Actor: null }, Properties: [], OriginalIssuer: "LOCAL AUTHORITY", Issuer: "LOCAL AUTHORITY" }, Claim { ValueType: "http://www.w3.org/2001/XMLSchema#string", Value: "", Type: "http://schemas.microsoft.com/ws/2008/06/identity/claims/role", Subject: $5 , Properties: [], OriginalIssuer: "LOCAL AUTHORITY", Issuer: "LOCAL AUTHORITY" }] }""" "cycle reference should work"
 
   testCase "projection only" <| fun _ ->
     let only = <@@ Destructure.only<ProjectionTestOnly>(fun foo -> [|foo.user.created.Day;foo.ex.Message;foo.ex.StackTrace;foo.ex.Data.Count;foo.ex.InnerException.Message|]) @@>
@@ -189,22 +188,22 @@ I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "t
       ProjectionTestExcept {
         user => 
           User {
-            id => 999
             name => "whatever"
+            id => 999
             created => 
               DateTime {
-                Day => 11
-                DayOfWeek => "Saturday"
-                DayOfYear => 315
-                Hour => 0
-                Kind => "Unspecified"
-                Millisecond => 0
-                Minute => 0
-                Month => 11
-                Second => 0
-                Ticks => 636459552000000000
+                Year => 2017
                 TimeOfDay => 00:00:00
-                Year => 2017}}}
+                Ticks => 636459552000000000
+                Second => 0
+                Month => 11
+                Minute => 0
+                Millisecond => 0
+                Kind => "Unspecified"
+                Hour => 0
+                DayOfYear => 315
+                DayOfWeek => "Saturday"
+                Day => 11}}}
 """
        Expect.equal actual (expect.TrimStart([|'\n'|]))
          "formatting the message LevelDatetimePathMessageNl with projection"
@@ -266,23 +265,23 @@ I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "t
     _logary.errors => 
       - 
         Exception {
-          Message => "Gremlings in the machinery"
-          Data => 
-          InnerException => 
-            Exception {
-              Message => "inner exception"
-              Data => 
-              InnerException => null
-              TargetSite => null
-              StackTrace => null
-              HelpLink => null
-              Source => null
-              HResult => -2146233088}
           TargetSite => null
           StackTrace => null
-          HelpLink => null
           Source => null
-          HResult => -2146233088}
+          Message => "Gremlings in the machinery"
+          InnerException => 
+            Exception {
+              TargetSite => null
+              StackTrace => null
+              Source => null
+              Message => "inner exception"
+              InnerException => null
+              HelpLink => null
+              HResult => -2146233088
+              Data => }
+          HelpLink => null
+          HResult => -2146233088
+          Data => }
 """
        Expect.equal actual (expect.TrimStart([|'\n'|]))
          "formatting the message LevelDatetimePathMessageNl with exception attached"
@@ -292,15 +291,15 @@ I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "t
     |> levelDatetimeMessagePathNewLine.format
     |> fun actual ->
        let expect = """
-I 1970-01-01T00:00:03.1234567+00:00: default foo is "{id = 999;\n name = \"whatever\";\n created = 11/11/2017 12:00:00 AM;}" here is a default "PropA is 45 and PropB raise exn" and stringify "Logary.Tests.Formatting+Obj" and destructure Obj { PropA: 45, PropB: "The property accessor threw an exception: Oh noes, no referential transparency here" } Gauges: [Processor.% Idle.Core 1: 75 %, svc1 request per second: 1.75 k, methodA took 25.00 s to execute] [a.b.c.d]
+I 1970-01-01T00:00:03.1234567+00:00: default foo is "{id = 999;\n name = \"whatever\";\n created = 11/11/2017 12:00:00 AM;}" here is a default "PropA is 45 and PropB raise exn" and stringify "Logary.Tests.Formatting+Obj" and destructure Obj { PropB: "The property accessor threw an exception: Oh noes, no referential transparency here", PropA: 45 } Gauges: [Processor.% Idle.Core 1: 75 %, svc1 request per second: 1.75 k, methodA took 25.00 s to execute] [a.b.c.d]
   fields:
     objDefault => "PropA is 45 and PropB raise exn"
     foo => "{id = 999;\n name = \"whatever\";\n created = 11/11/2017 12:00:00 AM;}"
     objStr => "Logary.Tests.Formatting+Obj"
     objDestr => 
       Obj {
-        PropA => 45
-        PropB => "The property accessor threw an exception: Oh noes, no referential transparency here"}
+        PropB => "The property accessor threw an exception: Oh noes, no referential transparency here"
+        PropA => 45}
   gauges:
     Processor.% Idle.Core 1 => "75 %"
     svc1 request per second => "1.75 k"
@@ -308,8 +307,8 @@ I 1970-01-01T00:00:03.1234567+00:00: default foo is "{id = 999;\n name = \"whate
   others:
     UserInfo => 
       User {
-        id => 999
         name => "whatever"
+        id => 999
         created => 11/11/2017 12:00:00 AM}
     simple scalar key/value map => 
       1 => "one"
@@ -325,71 +324,71 @@ I 1970-01-01T00:00:03.1234567+00:00: default foo is "{id = 999;\n name = \"whate
     _logary.errors => 
       - 
         Exception {
-          Message => "another exception"
-          Data => 
-          InnerException => null
           TargetSite => null
           StackTrace => null
-          HelpLink => null
           Source => null
-          HResult => -2146233088}
+          Message => "another exception"
+          InnerException => null
+          HelpLink => null
+          HResult => -2146233088
+          Data => }
       - 
         Exception {
+          TargetSite => null
+          StackTrace => null
+          Source => null
           Message => "exception with data in it"
+          InnerException => null
+          HelpLink => null
+          HResult => -2146233088
           Data => 
             "data 1 in exn" => 1
             "data foo in exn" => 
               User {
-                id => 999
                 name => "whatever"
+                id => 999
                 created => 11/11/2017 12:00:00 AM}
             - key => 
                 User {
-                  id => 999
                   name => "whatever"
+                  id => 999
                   created => 11/11/2017 12:00:00 AM}
               value => 
                 User {
-                  id => 999
                   name => "whatever"
-                  created => 11/11/2017 12:00:00 AM}
-          InnerException => null
-          TargetSite => null
-          StackTrace => null
-          HelpLink => null
-          Source => null
-          HResult => -2146233088}
+                  id => 999
+                  created => 11/11/2017 12:00:00 AM}}
     Some Tuple With 1 two foo => 
       - 1
       - "two"
       - 
         User {
-          id => 999
           name => "whatever"
+          id => 999
           created => 11/11/2017 12:00:00 AM}
     just scalar key map => 
       "some obj" => 
         Obj {
-          PropA => 45
-          PropB => "The property accessor threw an exception: Oh noes, no referential transparency here"}
+          PropB => "The property accessor threw an exception: Oh noes, no referential transparency here"
+          PropA => 45}
       "some user" => 
         User {
-          id => 999
           name => "whatever"
+          id => 999
           created => 11/11/2017 12:00:00 AM}
     no scalar list => 
       - 
         User {
-          id => 999
           name => "whatever"
+          id => 999
           created => 11/11/2017 12:00:00 AM}
       - 
         - 1
         - "two"
         - 
           User {
-            id => 999
             name => "whatever"
+            id => 999
             created => 11/11/2017 12:00:00 AM}
     scalar array => [1, 2, 3, "4", "5", 6, 11/11/2017 12:00:00 AM]
 """
