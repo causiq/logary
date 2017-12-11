@@ -134,6 +134,10 @@ module Json =
         E.string (sprintf "%s %s" (vs.ToString()) us) |> Some
       | _ -> None
 
+
+  let encode (data : obj) =
+    data |> toJsonTypeShape JsonEncoder.tryLogaryEncoder 
+    
   let format (data : obj) =
     data |> toJsonTypeShape JsonEncoder.tryLogaryEncoder |> Json.format
 

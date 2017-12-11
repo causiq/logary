@@ -111,7 +111,6 @@ let empty =
     compression       = NoCompression }
 
 module internal Impl =
-  open Logary.Serialisation.Chiron
 
   module Counter =
     open System
@@ -217,8 +216,7 @@ module internal Impl =
         ms.ToArray()
 
   let body (conf : RabbitMQConf) (message : Message) =
-    failwith "TODO: needs to be discussed"
-    // Json.serialize message |> Json.format |> UTF8.bytes |> compress conf.compression
+    Logary.Formatting.Json.format message |> System.Text.Encoding.UTF8.GetBytes |> compress conf.compression
 
   let selectConfirm (ilogger : Logger) state (kont : State -> Job<unit>) : Alt<_> =
 

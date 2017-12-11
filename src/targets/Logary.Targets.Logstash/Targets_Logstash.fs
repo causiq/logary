@@ -13,37 +13,10 @@ open fszmq
 open fszmq.Socket
 open Logary
 open Logary.Internals
-open MBrace.FsPickler
-open MBrace.FsPickler.Json
-open MBrace.FsPickler.Combinators
 open Logary.Configuration
 
-// maybe just directly pickler msg to json string, no custom
-let messagePickler =
-    let writer (w : WriteState) (msg : Message) =
-       Pickler.auto<string>.Write w "name" (PointName.format msg.name)
-       Pickler.auto<string>.Write w "@version" "1"
-       Pickler.auto<string>.Write w "@timestamp" (MessageWriter.formatTimestamp msg.timestamp)
-       Pickler.auto<int64>.Write w "timestamp" (msg.timestamp)
-       Pickler.auto<string>.Write w "level" (msg.level.ToString())
-       let (Event tpl) = msg.value
-       Pickler.auto<string>.Write w "value" (tpl)
-       let contexts = msg.context |> HashMap.toList
-       Pickler.auto<list<string * obj>>.Write w "context" (contexts)
-
-
-    let reader (r : ReadState) = failwith "oneway serializer"
-
-    Pickler.FromPrimitives(reader, writer)
-
-let registry = new CustomPicklerRegistry()
-registry.RegisterPickler messagePickler
-let custom = PicklerCache.FromCustomPicklerRegistry registry
-let jsonSerializer = FsPickler.CreateJsonSerializer(indent = false, omitHeader = true, picklerResolver = custom)
-
 let serialise =
-  failwith "TODO: needs to be discussed"
-  jsonSerializer.PickleToString
+  Logary.Formatting.Json.format
 
 
 /// This is the default address this Target publishes messages to.

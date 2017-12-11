@@ -18,11 +18,11 @@ namespace Logary.CSharp.Tests
             {
                 subject = new Message(
                     PointName.NewPointName(new[] {"a", "b", "c"}),
-                    PointValue.NewEvent("initial message"),
+                    "initial message",
                     HashMap.empty<string, object>(),
                     LogLevel.Warn,
                     SystemClock.Instance.GetCurrentInstant().ToUnixTimeTicks()*100L);
-                template = subject.SetEvent("Hello World").value.template;
+                template = subject.SetEvent("Hello World").value;
             };
 
         It should_allow_changing_template =

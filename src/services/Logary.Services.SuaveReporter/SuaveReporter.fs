@@ -4,8 +4,6 @@ open System.Text
 open Logary
 open Logary.Internals.Aether
 open Logary.Internals.Aether.Operators
-open Logary.Serialisation.Chiron
-open Logary.Serialisation.Chiron.Operators
 
 module Impl =
   open NodaTime
@@ -17,15 +15,15 @@ module Impl =
     { message : string
       id      : uint64 }
 
-    static member ToJson (m : JsonMsg) : Json<unit> =
-      Json.write "message" m.message
-      *> Json.write "id" m.id
+  //   static member ToJson (m : JsonMsg) : Json<unit> =
+  //     Json.write "message" m.message
+  //     *> Json.write "id" m.id
 
-    static member FromJson (_ : JsonMsg) : Json<JsonMsg> =
-      (fun m id -> { message = m
-                     id      = id |> Option.fold (fun s t -> t) 0UL })
-      <!> Json.read "message"
-      <*> Json.tryRead "id"
+  //   static member FromJson (_ : JsonMsg) : Json<JsonMsg> =
+  //     (fun m id -> { message = m
+  //                    id      = id |> Option.fold (fun s t -> t) 0UL })
+  //     <!> Json.read "message"
+  //     <*> Json.tryRead "id"
 
 open Impl
 open Hopac
@@ -47,23 +45,24 @@ let api (logger : Logger) (verbatimPath : string option) : WebPart =
   let getMsg = sprintf "You can post a JSON structure to: %s" verbatimPath
 
   let inline readJson () =
-    Lens.get HttpRequest.rawForm_
-    >> System.Text.Encoding.UTF8.GetString
-    >> Json.tryParse
-    >> bind Json.tryDeserialize
+    failwith "TODO: needs to be discussed"
+    // Lens.get HttpRequest.rawForm_
+    // >> System.Text.Encoding.UTF8.GetString
+    // >> Json.tryParse
+    // >> bind Json.tryDeserialize
 
   let jsonMsg msg =
-    { message = msg; id = ThreadSafeRandom.nextUInt64 () }
-    |> Json.serialize
-    |> Json.format
+    // { message = msg; id = ThreadSafeRandom.nextUInt64 () }
+    // |> Json.serialize
+    // |> Json.format
+    msg
 
   path verbatimPath >=> choose [
     GET >=> OK (jsonMsg getMsg)
     POST >=> Binding.bindReq
               (readJson ())
-              (fun (msg:string) ->
-                failwith "TODO: needs to be discussed"
-                // Logger.logSimple logger msg
+              (fun (msg:Message) ->
+                Logger.logSimple logger msg
                 CREATED (jsonMsg "Created"))
               BAD_REQUEST
   ]

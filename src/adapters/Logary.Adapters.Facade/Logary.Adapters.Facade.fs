@@ -153,8 +153,8 @@ module LoggerAdapter =
     let oldPointValue = readProperty "value" |> toPointValue
     let event = 
       match oldPointValue with
-      | LoggerAdapterShared.OldPointValue.Event tpl -> Event tpl
-      | _ -> Event (String.Empty)
+      | LoggerAdapterShared.OldPointValue.Event tpl -> tpl
+      | _ -> String.Empty
     let fields = readProperty "fields" :?> Map<string, obj>
     { name      = PointName (readProperty "name" :?> string [] |> defaultName fallbackName)
       value     = event
@@ -308,8 +308,8 @@ module LoggerCSharpAdapter =
     let oldPointValue = readProperty "Value" |> toPointValue
     let event = 
       match oldPointValue with
-      | LoggerAdapterShared.OldPointValue.Event tpl -> Event tpl
-      | _ -> Event (String.Empty)
+      | LoggerAdapterShared.OldPointValue.Event tpl -> tpl
+      | _ -> String.Empty
     { name      = PointName (readProperty "Name" :?> string [] |> defaultName fallbackName)
       value     = event
       context   = HashMap.empty

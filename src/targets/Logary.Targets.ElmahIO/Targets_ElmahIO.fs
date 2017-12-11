@@ -21,20 +21,19 @@ type ElmahIOConf =
 
 let empty = { logId = Guid.Empty }
 
-// module internal Impl =
-  // open Logary.Message.Lenses
-  // open Logary.Internals.Aether
-  // open Logary.Internals.Aether.Operators
+module internal Impl =
+  open Logary.Internals.Aether
+  open Logary.Internals.Aether.Operators
 
-  // module Severity =
+  module Severity =
 
-  //   let ofLogLevel = function
-  //     | LogLevel.Verbose -> Severity.Verbose
-  //     | LogLevel.Debug -> Severity.Debug
-  //     | LogLevel.Info -> Severity.Information
-  //     | LogLevel.Warn -> Severity.Warning
-  //     | LogLevel.Error -> Severity.Error
-  //     | LogLevel.Fatal -> Severity.Fatal
+    let ofLogLevel = function
+      | LogLevel.Verbose -> Severity.Verbose
+      | LogLevel.Debug -> Severity.Debug
+      | LogLevel.Info -> Severity.Information
+      | LogLevel.Warn -> Severity.Warning
+      | LogLevel.Error -> Severity.Error
+      | LogLevel.Fatal -> Severity.Fatal
 
   // let getData (message : Logary.Message) =
   //   Seq.concat [
@@ -182,7 +181,7 @@ let empty = { logId = Guid.Empty }
 
 /// Create a new Elmah.IO target
 let create conf : string -> TargetConf =
-  failwith "TODO: needs to be discussed, and elmah client api changes"
+  failwith "TODO: elmah client api changes"
 
   // if conf.logId = Guid.Empty then
   //   failwith "Cannot configure target with empty logId"

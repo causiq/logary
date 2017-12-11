@@ -5,7 +5,6 @@ open NodaTime
 open Expecto
 open Hopac
 open Hopac.Infixes
-open Logary.Serialisation.Chiron
 open Logary
 open Logary.Target
 open Logary.Targets

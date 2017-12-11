@@ -124,7 +124,7 @@ module internal Impl =
             job {
               // Do something with the `message` value specific to the target
               // you are creating.
-              let (Event template) = message.value
+              let template = message.value
               
               seq {
                 let tel = 
@@ -135,8 +135,6 @@ module internal Impl =
                 match tel with
                 | :? ISupportProperties as itm ->
                   itm.Properties.Add("PointName", PointName.format message.name)
-
-                  failwith "TODO: needs to be discussed, how to handle context value obj"
                   message.context |> HashMap.toSeq |> Seq.iter(fun (k, v)->
                     if not(itm.Properties.ContainsKey k) then
                         itm.Properties.Add(k, (string v)))

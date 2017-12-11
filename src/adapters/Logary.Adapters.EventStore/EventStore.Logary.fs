@@ -15,9 +15,14 @@ module internal Impl =
 
   let invariantCulture = CultureInfo.InvariantCulture
 
-  let handleInternalException logger (format : string) args (stackTrace : StackTrace) =
+  type A =
+    static member F([<System.ParamArray>]  args: obj[]) = 
+      printfn "%A" args
+
+
+  let handleInternalException logger (format : string) (args: obj[]) (stackTrace : StackTrace) =
     Logger.logSimple logger (
-      eventFormat (Warn, format, args)
+      Message.eventFormat (Warn, format, args)
       |> setContext "stackFrames" (stackTrace.GetFrames())
     )
 

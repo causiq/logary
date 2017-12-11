@@ -51,9 +51,7 @@ module RiemannHelpers =
     let path =
       PointName [|
         yield! msgName
-        match message.value with
-        | Event template ->
-          yield template
+        yield message.value
       |]
       |> PointName.format
 

@@ -14,11 +14,10 @@ open Hopac.Infixes
 open Logary
 open Logary.Internals
 open Logary.Target
-open Logary.Serialisation.Chiron
-open Logary.Serialisation.Chiron.Builder
 open System.Collections.Generic
 open System.Runtime.CompilerServices
 open Logary.Configuration
+open System.Numerics
 
 [<assembly:InternalsVisibleTo("Logary.Targets.Stackdriver.Tests")>]
 do()
@@ -60,8 +59,8 @@ let empty : StackdriverConf = StackdriverConf.create("", "", Unchecked.defaultof
 
 module internal Impl =
   // constant computed once here
-  let messageKey = PointName [|"message"|]
-  let unformattedMessageKey = PointName [| "template" |]
+  let messageKey = "message"
+  let unformattedMessageKey = "template" 
 
   let toSeverity = function
   | LogLevel.Debug -> LogSeverity.Debug
@@ -71,59 +70,62 @@ module internal Impl =
   | LogLevel.Warn -> LogSeverity.Warning
   | LogLevel.Verbose -> LogSeverity.Debug
 
-  let rec toProtobufValue = function
-    | Value.String s -> WellKnownTypes.Value.ForString(s)
-    | Value.Bool b -> WellKnownTypes.Value.ForBool(b)
-    | Value.Float f -> WellKnownTypes.Value.ForNumber(f)
-    | Value.Int64 i -> WellKnownTypes.Value.ForNumber(float i)
-    | Value.BigInt b -> WellKnownTypes.Value.ForNumber(float b)
-    | Value.Binary (bytes, contentType) -> 
+  // consider use destr whole msg context as TemplatePropertyValue, then send to WellKnownTypes
+  let toProtobufValue (data:obj) = 
+    match data with
+    | :? string as s -> WellKnownTypes.Value.ForString(s)
+    | :? bool as b -> WellKnownTypes.Value.ForBool(b)
+    | :? float as f -> WellKnownTypes.Value.ForNumber(f)
+    | :? int64 as i -> WellKnownTypes.Value.ForNumber(float i)
+    | :? BigInteger as b -> WellKnownTypes.Value.ForNumber(float b)
+    | :? array<byte> as bytes -> 
       // could not find a good way to convert these, will just send null value instead
       WellKnownTypes.Value.ForNull()
-    | Value.Fraction (numerator,denominator) -> WellKnownTypes.Value.ForNumber(float(numerator/denominator))
-    | Value.Object values -> 
-      values |> HashMap.toSeq 
-      |> Seq.fold (fun (s : WellKnownTypes.Struct) (k,v) -> s.Fields.[k] <- toProtobufValue v; s) (WellKnownTypes.Struct()) 
-      |> WellKnownTypes.Value.ForStruct
-    | Value.Array values -> 
-      let valueArr = values |> List.map toProtobufValue |> List.toArray
-      WellKnownTypes.Value.ForList valueArr
+    | _ ->   WellKnownTypes.Value.ForString(string data)
+    // | Value.Object values -> 
+    //   values |> HashMap.toSeq 
+    //   |> Seq.fold (fun (s : WellKnownTypes.Struct) (k,v) -> s.Fields.[k] <- toProtobufValue v; s) (WellKnownTypes.Struct()) 
+    //   |> WellKnownTypes.Value.ForStruct
+    // | Value.Array values -> 
+    //   let valueArr = values |> List.map toProtobufValue |> List.toArray
+    //   WellKnownTypes.Value.ForList valueArr
 
-  and addToStruct (s : WellKnownTypes.Struct) (k : PointName, (Field(value,units))) : WellKnownTypes.Struct = 
-    s.Fields.[string k] <- toProtobufValue value
+  let addToStruct (s : WellKnownTypes.Struct) (k , value: obj) : WellKnownTypes.Struct = 
+    s.Fields.[k] <- toProtobufValue value
     s
 
   let write (m : Message) : LogEntry =
-    failwith "TODO: needs to be discussed"
+    // labels are used in stackdriver for classification, so lets put context there.
+    // they expect only simple values really in the labels, so it's ok to just stringify them
+    let labels = 
+      m 
+      |> Message.getContextsOtherThanGaugeAndFields
+      |> Seq.map (fun (k, v) -> (k,string v))
+      |> dict
 
-    // // labels are used in stackdriver for classification, so lets put context there.
-    // // they expect only simple values really in the labels, so it's ok to just stringify them
-    // let labels = m.context |> Map.map (fun k v -> Value.toString v) |> Map.toSeq |> dict
-    // let fieldOfString s = Field(Value.String s, None)
-    // let formatted, raw = 
-    //   match m.value with
-    //   | Event template -> 
-    //     Some <| fieldOfString (Logary.Formatting.MessageParts.formatTemplate template m.fields)
-    //     , Some <| fieldOfString template
-    //   | _ -> None, None
-    
-    // let addMessageFields m =
-    //   match formatted, raw with
-    //   | Some s, Some v -> m |> Map.add messageKey s |> Map.add unformattedMessageKey v
-    //   | Some s, None -> m |> Map.add messageKey s
-    //   | None, Some v -> m |> Map.add messageKey v
-    //   | None, None -> m
+    let formatted, raw = 
+      Logary.MessageWriter.verbatim.format m, m.value
 
-    // // really only need to include fields and the formatted message template, because context went to labels
-    // let payloadFields = 
-    //   m.fields
-    //   |> addMessageFields
-    //   |> Map.toSeq
-    //   |> Seq.fold addToStruct (WellKnownTypes.Struct())
 
-    // let entry = LogEntry(Severity = toSeverity m.level, JsonPayload = payloadFields)
-    // entry.Labels.Add(labels)
-    // entry
+    let addMessageFields m =
+      if formatted = raw then
+        m |> Map.add unformattedMessageKey (box raw) |> Map.add messageKey (box formatted)
+      else
+        m |> Map.add messageKey (box formatted)
+
+
+    // really only need to include fields and the formatted message template, because context went to labels
+    let payloadFields = 
+      m
+      |> Message.getAllFields
+      |> Map.ofSeq
+      |> addMessageFields
+      |> Map.toSeq
+      |> Seq.fold addToStruct (WellKnownTypes.Struct())
+
+    let entry = LogEntry(Severity = toSeverity m.level, JsonPayload = payloadFields)
+    entry.Labels.Add(labels)
+    entry
 
 
   type State = { logName : string

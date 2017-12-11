@@ -17,7 +17,7 @@ open Logary
 open Logary.Configuration
 open Logary.Target
 open Logary.Internals
-open Logary.Serialisation.Chiron
+open Chiron
 
 /// This is the default address this Target publishes messages to.
 [<Literal>]
@@ -38,30 +38,23 @@ type ElasticSearchConf =
       _type      = defaultArg _type "logs"
       indexName  = defaultArg indexName "logary" }
 
+let serialise : Message -> Json =
+  fun message ->
+  let msgJson = 
+    match Logary.Formatting.Json.encode message with
+    | Json.Object jsonObj -> 
+      jsonObj
+      |> Inference.Json.Encode.required "@version" 2
+      |> Inference.Json.Encode.required "@timestamp" (String (MessageWriter.formatTimestamp message.timestamp))
+      |> JsonObject.toJson
+    | otherwise ->  failwithf "Expected Message to format to Object .., but was %A" otherwise
+
+  msgJson
+
 let serialiseToJsonBytes : Message -> byte [] =
-  failwith "TODO: needs to be discussed"
-
-  // fun message ->
-  //   let props =
-  //     match Json.serialize message with
-  //     | Object values ->
-  //       values
-
-  //     | otherwise ->
-  //       failwithf "Expected Message to format to Object .., but was %A" otherwise
-
-  //   let overrides =
-  //     [ "@version", String "1"
-  //       "@timestamp", String (MessageWriter.formatTimestamp message.timestamp)
-  //       "name", String (PointName.format message.name)
-  //     ]
-
-  //   let final =
-  //     overrides |> List.fold (fun data (k, v) -> data |> Map.put k v) props
-
-  //   (Object final)
-  //   |> Json.format
-  //   |> System.Text.Encoding.UTF8.GetBytes
+  serialise
+  >> Json.format
+  >> System.Text.Encoding.UTF8.GetBytes
 
 module internal Impl =
 

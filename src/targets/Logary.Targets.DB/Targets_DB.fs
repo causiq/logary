@@ -11,13 +11,9 @@ open Logary.Configuration.Target
 open Logary.Message
 open Logary
 open FsSql.Logging.LogLine
-open MBrace.FsPickler.Json
-
-let jsonSerializer = FsPickler.CreateJsonSerializer(indent = false, omitHeader = true)
 
 let jsonFormat (data : obj) : string = 
-  failwith "TODO: needs to be discussed"
-  jsonSerializer.PickleToString data
+  Logary.Formatting.Json.format data
 
 type DBConf =
   { connectionFactory : unit -> IDbConnection
@@ -70,7 +66,7 @@ module internal Impl =
         yield! sharedParameters m ]
 
   let insertMessage schema message connMgr =
-    let (Event template) = message.value
+    let template = message.value
     let tplCount = insertEvent schema message template connMgr 
     let gaugesCount = 
       message 

@@ -5,6 +5,7 @@ open Logary
 open Logary.Internals
 open Logary.Message
 open Logary.Configuration
+open Logary.Formatting.Literate
 
 type AliYunConf = 
   {
@@ -59,16 +60,15 @@ module internal Impl =
         log.PushBack("TimeOffSet",string (ofEpochLocal msg.timestamp))
         log.PushBack("Level",string msg.level)
         log.PushBack("LoggerName",string msg.name)
-        let (Event msgTemplate) = msg.value
-        let subject =  MessageWriter.verbatim.format msg
-        log.PushBack("Msg",subject)
-        if subject <> msgTemplate then log.PushBack("MsgTemplate",msgTemplate)
+        let formated =  MessageWriter.verbatim.format msg
+        log.PushBack("Msg",formated)
+        if formated <> msg.value then log.PushBack("MsgTemplate",msg.value)
         msg |> Message.getAllGauges
         |> Seq.iter (fun (gaugeType, Gauge(value, units)) -> 
            let symbol = Units.symbol units
            let gaugeType = sprintf "%s (%s)" gaugeType symbol
            log.PushBack(gaugeType, value.ToString()))
-
+        
         let context = MessageWriter.contextWriter.format msg
         log.PushBack("_ctx-all", context)
         

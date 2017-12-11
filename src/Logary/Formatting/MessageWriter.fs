@@ -89,3 +89,10 @@ module MessageWriter =
     expanded Environment.NewLine Environment.NewLine
 
     
+  let contextWriter =
+    { new MessageWriter with
+        member x.write tw m =
+          let writeState = { provider = tw.FormatProvider; idManager = RefIdManager ()}
+          tokeniseContext writeState Environment.NewLine defaultDestr m
+          |> Seq.map fst |> Seq.iter tw.Write
+    }

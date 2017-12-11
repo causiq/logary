@@ -2,4 +2,3 @@ FSharp.Core
 NodaTime
 Hopac
 FsSql
-FsPickler.Json

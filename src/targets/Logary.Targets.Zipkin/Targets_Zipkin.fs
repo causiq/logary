@@ -63,106 +63,68 @@ module internal Impl =
     | other ->
       failwithf "Unexpected non-int64 value whilst trying to make a span out of Message.context: %A" other
 
-  // let makeSpan (message: Message) : Span = 
-  //   let traceId, spanId =
-  //     toUInt64 message.context.["traceId"],
-  //     toUInt64 message.context.["spanId"]
+  let makeSpan (message: Message) : Span = 
+    let traceId, spanId =
+      message |> Message.tryGetContext "traceId" |> Option.orDefault 0L |> uint64,
+      message |> Message.tryGetContext "spanId" |> Option.orDefault 0L |> uint64
 
-  //   let parentId =
-  //     Map.tryFind "parentId" message.context
-  //     |> Option.map toUInt64
+    let parentId =
+      message |> Message.tryGetContext "parentId"
 
-  //   let host = toInt64 message.context.["host"]
-  //   let port = toInt64 message.context.["port"]
+    let host = message |> Message.tryGetContext "host" |> Option.orDefault 0L
+    let port = message |> Message.tryGetContext "port" |> Option.orDefault 0L
 
-  //   let debug = false
-  //   let trace = TraceHeader(traceId, spanId, Option.toNullable parentId)
-  //   Span(trace, IPEndPoint(host, int port), PointName.format message.name)
+    let debug = false
+    let trace = TraceHeader(traceId, spanId, Option.toNullable parentId)
+    Span(trace, IPEndPoint(host, int port), PointName.format message.name)
 
-  // open Logary.Serialisation.Chiron.Mapping
-  // open Logary.Serialisation.Chiron.Formatting
+  let val2str = Logary.Formatting.Json.format
 
-  // let val2str = function
-  //   | String s ->
-  //     s
 
-  //   | Float f ->
-  //     f.ToString()
+  let val2bin (key:string, value: obj) =
+    match value with
+    | :? bool as b ->
+      Annotations.Binary(key, b)
 
-  //   | Int64 i64 ->
-  //     i64.ToString()
+    | :? array<byte> as bin ->
+      BinaryAnnotation(key, bin, AnnotationType.Bytes)
 
-  //   | BigInt big ->
-  //     big.ToString()
-
-  //   | Fraction (x, y) ->
-  //     x.ToString() + "/" + y.ToString()
-
-  //   | Object fields -> 
-  //     let json = Json.serialize fields
-  //     Json.format json
-
-  //   | Array vals -> 
-  //     let json = Json.serialize vals
-  //     Json.format json
-
-  //   | Bool b ->
-  //     if b then "true" else "false"
-
-  //   | Binary (bin, contentType) ->
-  //     sprintf "Content-Type:%s,base64:%s" contentType (Convert.ToBase64String bin)
-
-  // let val2ann orient timestampTicks = function 
-  //   | Gauge (v, u) ->
-  //     Annotation(Units.formatWithUnit orient u v, DateTime timestampTicks)
-
-  //   | Derived (v, u) ->
-  //     Annotation(Units.formatWithUnit orient u v, DateTime timestampTicks)
-
-  //   | Event t ->
-  //     Annotation(t, DateTime timestampTicks)
-
-  // let val2bin (name:PointName, value: obj) =
-  //   let key = PointName.format name
-  //   match value with
-  //   | :? bool as b ->
-  //     Annotations.Binary(key, b)
-
-  //   | :? array<byte> as bin ->
-  //     BinaryAnnotation(key, bin, AnnotationType.Bytes)
-
-  //   | other ->
-  //     Annotations.Binary(key, val2str other)
+    | other ->
+      Annotations.Binary(key, val2str other)
 
   let annotateSpan state (message : Message) = 
-    failwith "TODO: needs to be discussed"
+    match message |> Message.tryGetContext "spanId" with
+    | Some (spanId : uint64) ->
+      let span =
+        match Map.tryFind spanId state.activeSpans with
+        | None ->
+          // TODO: handle client open client close
+          // TODO: handle server open server close
+          makeSpan message
 
-    // match message |> Message.tryGetContext "spanId" with
-    // | Some (spanId : uint64) ->
-    //   let span =
-    //     match Map.tryFind spanId state.activeSpans with
-    //     | None ->
-    //       // TODO: handle client open client close
-    //       // TODO: handle server open server close
-    //       makeSpan message
+        | Some s ->
+          s
 
-    //     | Some s ->
-    //       s
+      let msgValue = Annotation(message.value,DateTime message.timestampTicks)
+      span.Record msgValue
 
-    //   let annotation =
-    //     val2ann Units.UnitOrientation.Suffix message.timestampTicks message.value
+      message
+      |> Message.getAllGauges
+      |> Seq.map (fun (gaugeType, Gauge (v,u)) ->
+         let vs = v.ToString()
+         let us = Units.symbol u
+         Annotation(gaugeType + ": " + vs + " " + us, DateTime message.timestampTicks))
+      |> Seq.iter span.Record
 
-    //   span.Record annotation
+      message
+      |> Message.getAllFields
+      |> Seq.map val2bin
+      |> Seq.iter span.Record
 
-    //   message.fields
-    //   |> Map.toSeq
-    //   |> Seq.map val2bin
-    //   |> Seq.iter span.Record
+      { state with activeSpans = Map.add spanId span state.activeSpans }
 
-    //   { state with activeSpans = Map.add spanId span state.activeSpans }
-
-    // | _ ->
-    //   state
+    | _ ->
+      state
 
   let loop (config : ZipkinConf)
            (ri : RuntimeInfo, api : TargetAPI) =

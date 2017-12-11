@@ -15,7 +15,6 @@ open Logary.Message
 open Logary.Target
 open Logary.Targets
 open Logary.Targets.Stackdriver
-open Logary.Serialisation.Chiron
 open System
 open System.Collections.Generic
 

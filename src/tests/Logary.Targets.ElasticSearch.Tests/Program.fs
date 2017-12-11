@@ -5,12 +5,11 @@ open NodaTime
 open Expecto
 open Hopac
 open Hopac.Infixes
-open Logary.Serialisation.Chiron
 open Logary
 open Logary.Target
 open Logary.Targets
 open Logary.Internals
-
+open Chiron
 let emptyRuntime =
   RuntimeInfo.create "tests" "localhost"
 
@@ -47,23 +46,16 @@ let target =
       let e2 = raisedExn "actual exn"
 
       let subject =
-        failwith "TODO: needs to be discussed"
-        // Message.eventWarn "Testing started"
-        // |> Message.setName (PointName.ofArray [| "a"; "b"; "c" |])
-        // |> Message.setField "data-key" "data-value"
-        // |> Message.setField "tags" [ "integration" ]
-        // |> Message.setField "e" e1
-        // |> Message.setContext "service" "tests"
-        // |> Message.addExn e2
-        // |> now
-        // |> ElasticSearch.serialise
+        Message.eventWarn "Testing started"
+        |> Message.setName (PointName.ofArray [| "a"; "b"; "c" |])
+        |> Message.setField "data-key" "data-value"
+        |> Message.setField "tags" [ "integration" ]
+        |> Message.setField "e" e1
+        |> Message.setContext "service" "tests"
+        |> Message.addExn e2
+        |> now
+        |> ElasticSearch.serialise
+        |> Json.format
 
-      let expected =
-        [ "@timestamp", Json.String ""
-          "@version", Json.String "1"
-          "level", Json.String "warn"
-          "context", Json.Object ([ "service", Json.String "tests" ] |> Map.ofList)
-         ] |> Map.ofList |> Json.Object
-
-      Expect.equal subject expected "should serialise to proper message"
+      Expect.equal subject "expected" "should serialise to proper message"
     ]
