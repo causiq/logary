@@ -10,6 +10,7 @@ open Logary.MessageWriter
 open Logary.MessageTemplates.Destructure
 open Logary.MessageTemplates
 open System.Diagnostics
+open Chiron
 
 let private sampleMessage : Message =
   Message.eventFormat (Info, "this is bad, with {1} and {0} reverse.", "the first value", "the second value")
@@ -123,9 +124,175 @@ type ProjectionTestExcept =
   }
 
 let tests = [
+
+  testCase "json formatting" <| fun _ ->
+    complexMessage
+    |> Logary.Formatting.Json.formatWith JsonFormattingOptions.Pretty (fun _ -> None)
+    |> fun actual ->
+       let expect = """
+{
+  "name": "a.b.c.d",
+  "value": "default foo is {foo} here is a default {objDefault} and stringify {$objStr} and destructure {@objDestr}",
+  "level": "info",
+  "timestamp": 3123456700,
+  "context": {
+    "Some Tuple With 1 two foo": [
+      1,
+      "two",
+      "{id = 999;\n name = \"whatever\";\n created = 11/11/2017 12:00:00 AM;}"
+    ],
+    "UserInfo": "{id = 999;\n name = \"whatever\";\n created = 11/11/2017 12:00:00 AM;}",
+    "_fields.foo": "{id = 999;\n name = \"whatever\";\n created = 11/11/2017 12:00:00 AM;}",
+    "_fields.objDefault": "PropA is 45 and PropB raise exn",
+    "_fields.objDestr": "PropA is 45 and PropB raise exn",
+    "_fields.objStr": "PropA is 45 and PropB raise exn",
+    "_logary.errors": [
+      "System.Exception: another exception",
+      "System.Exception: exception with data in it"
+    ],
+    "_logary.gauge.Processor.% Idle.Core 1": "75 %",
+    "_logary.gauge.methodA": "25 s",
+    "_logary.gauge.svc1 request per second": "1.75 k",
+    "just scalar key map": {
+      "some obj": "PropA is 45 and PropB raise exn",
+      "some user": "{id = 999;\n name = \"whatever\";\n created = 11/11/2017 12:00:00 AM;}"
+    },
+    "no scalar key/value map": [
+      {
+        "Key": [
+          [
+            1,
+            "a"
+          ],
+          [
+            2,
+            "b"
+          ]
+        ],
+        "Value": [
+          "hello",
+          "world"
+        ]
+      },
+      {
+        "Key": [
+          [
+            2,
+            "2"
+          ]
+        ],
+        "Value": [
+          "3",
+          "4"
+        ]
+      }
+    ],
+    "no scalar list": [
+      "{id = 999;\n name = \"whatever\";\n created = 11/11/2017 12:00:00 AM;}",
+      [
+        1,
+        "two",
+        "{id = 999;\n name = \"whatever\";\n created = 11/11/2017 12:00:00 AM;}"
+      ]
+    ],
+    "scalar array": [
+      1,
+      2,
+      3,
+      "4",
+      "5",
+      6,
+      "2017-11-10T16:00:00.0000000Z"
+    ],
+    "simple scalar key/value map": [
+      {
+        "Key": 1,
+        "Value": "one"
+      },
+      {
+        "Key": 2,
+        "Value": "two"
+      }
+    ]
+  }
+}
+"""
+       Expect.equal actual (expect.Trim([|'\n'|])) "cycle reference should work"
+
   testCase "cycle reference" <| fun _ ->
-    let actual = Logary.MessageTemplates.Formatting.Format("stringify: {$0} default: {0} structure: {@0}",System.Threading.Thread.CurrentPrincipal)
-    Expect.equal actual """stringify: "System.Security.Principal.GenericPrincipal" default: "System.Security.Principal.GenericPrincipal" structure: GenericPrincipal { Identity: GenericIdentity { RoleClaimType: "http://schemas.microsoft.com/ws/2008/06/identity/claims/role", NameClaimType: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name", Name: "", Label: null, IsAuthenticated: False, Claims: [Claim { ValueType: "http://www.w3.org/2001/XMLSchema#string", Value: "", Type: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name", Subject: $12 , Properties: [], OriginalIssuer: "LOCAL AUTHORITY", Issuer: "LOCAL AUTHORITY" }], BootstrapContext: null, AuthenticationType: "", Actor: null }, Identities: [$5 ], Claims: [Claim { ValueType: "http://www.w3.org/2001/XMLSchema#string", Value: "", Type: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name", Subject: GenericIdentity { RoleClaimType: "http://schemas.microsoft.com/ws/2008/06/identity/claims/role", NameClaimType: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name", Name: "", Label: null, IsAuthenticated: False, Claims: [$3 , Claim { ValueType: "http://www.w3.org/2001/XMLSchema#string", Value: "", Type: "http://schemas.microsoft.com/ws/2008/06/identity/claims/role", Subject: $5 , Properties: [], OriginalIssuer: "LOCAL AUTHORITY", Issuer: "LOCAL AUTHORITY" }], BootstrapContext: null, AuthenticationType: "", Actor: null }, Properties: [], OriginalIssuer: "LOCAL AUTHORITY", Issuer: "LOCAL AUTHORITY" }, Claim { ValueType: "http://www.w3.org/2001/XMLSchema#string", Value: "", Type: "http://schemas.microsoft.com/ws/2008/06/identity/claims/role", Subject: $5 , Properties: [], OriginalIssuer: "LOCAL AUTHORITY", Issuer: "LOCAL AUTHORITY" }] }""" "cycle reference should work"
+    Message.eventFormat(Info,"cycle reference")
+    |> Message.setNanoEpoch 3123456700L
+    |> Message.setContext "CurrentPrincipal" System.Threading.Thread.CurrentPrincipal
+    |> levelDatetimeMessagePathNewLine.format
+    |> fun actual ->
+       let expect = """
+I 1970-01-01T00:00:03.1234567+00:00: cycle reference []
+  others:
+    CurrentPrincipal => 
+      GenericPrincipal {
+        Identity => $12 
+          GenericIdentity {
+            RoleClaimType => "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+            NameClaimType => "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
+            Name => ""
+            Label => null
+            IsAuthenticated => False
+            Claims => 
+              - 
+                Claim {
+                  ValueType => "http://www.w3.org/2001/XMLSchema#string"
+                  Value => ""
+                  Type => "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
+                  Subject => $12 
+                  Properties => 
+                  OriginalIssuer => "LOCAL AUTHORITY"
+                  Issuer => "LOCAL AUTHORITY"}
+            BootstrapContext => null
+            AuthenticationType => ""
+            Actor => null}
+        Identities => 
+          - $5 
+        Claims => 
+          - $3 
+            Claim {
+              ValueType => "http://www.w3.org/2001/XMLSchema#string"
+              Value => ""
+              Type => "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
+              Subject => $5 
+                GenericIdentity {
+                  RoleClaimType => "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+                  NameClaimType => "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
+                  Name => ""
+                  Label => null
+                  IsAuthenticated => False
+                  Claims => 
+                    - $3 
+                    - 
+                      Claim {
+                        ValueType => "http://www.w3.org/2001/XMLSchema#string"
+                        Value => ""
+                        Type => "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+                        Subject => $5 
+                        Properties => 
+                        OriginalIssuer => "LOCAL AUTHORITY"
+                        Issuer => "LOCAL AUTHORITY"}
+                  BootstrapContext => null
+                  AuthenticationType => ""
+                  Actor => null}
+              Properties => 
+              OriginalIssuer => "LOCAL AUTHORITY"
+              Issuer => "LOCAL AUTHORITY"}
+          - 
+            Claim {
+              ValueType => "http://www.w3.org/2001/XMLSchema#string"
+              Value => ""
+              Type => "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+              Subject => $5 
+              Properties => 
+              OriginalIssuer => "LOCAL AUTHORITY"
+              Issuer => "LOCAL AUTHORITY"}}
+"""
+       Expect.equal actual (expect.TrimStart([|'\n'|])) "cycle reference should work"
 
   testCase "projection only" <| fun _ ->
     let only = <@@ Destructure.only<ProjectionTestOnly>(fun foo -> [|foo.user.created.Day;foo.ex.Message;foo.ex.StackTrace;foo.ex.Data.Count;foo.ex.InnerException.Message|]) @@>

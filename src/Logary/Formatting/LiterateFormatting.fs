@@ -78,7 +78,7 @@ module Literate =
     let tplByGauges =
       message |> Message.getAllGauges |> List.ofSeq |> tokeniseTemplateByGauges pvd |> List.ofSeq
 
-    let (Event (formatTemplate)) = message.value
+    let formatTemplate = message.value
 
     if String.IsNullOrEmpty formatTemplate then tplByGauges |> Seq.ofList
     else
@@ -113,7 +113,7 @@ module Literate =
       else List.empty
 
     // process fields
-    let (Event (formatTemplate)) = message.value
+    let formatTemplate = message.value
     let fieldsPropInTemplate =
       if not <| String.IsNullOrEmpty formatTemplate then
         let parsedTemplate = parseToTemplate (formatTemplate)

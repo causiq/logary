@@ -136,13 +136,6 @@ module PointName =
     if isNull nameEnding then original else
     PointName (Array.append segments [| nameEnding |])
 
-type PointValue =
-  | Event of template:string
-
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module PointValue =
-  let empty = Event String.Empty
-
 type Gauge = Gauge of float * Units
 
 [<Obsolete ("Use (Message.setField : string -> 'a -> Message -> Message) directly, just for api compatibility")>]
@@ -152,12 +145,10 @@ type Field =
 /// This is record that is logged. It's capable of representing both metrics
 /// (gauges) and events.
 type Message =
-  { /// The 'path' or 'name' of this data point. Do not confuse template in
-    /// Event (template) = message.value
-    ///
+  { /// The 'path' or 'name' of this data point. Do not confuse message template in message.value
     name      : PointName
     /// Event (template)
-    value     : PointValue
+    value     : string
     /// Where in the code? Who did the operation? What tenant did the principal
     /// who did it belong to? Put things your normally do 'GROUP BY' on in this
     /// Map.

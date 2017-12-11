@@ -87,3 +87,5 @@ module MessageWriter =
   /// newline separated.
   let levelDatetimeMessagePathNewLine =
     expanded Environment.NewLine Environment.NewLine
+
+    

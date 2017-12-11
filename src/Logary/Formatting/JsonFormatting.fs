@@ -1,12 +1,16 @@
 namespace Logary.Formatting
 
 open Chiron
-open System.Reflection
-open System.Collections
-open System.Collections.Generic
-open Logary.Internals.TypeShape
-
 module Json =
+
+  open Chiron
+  open System.Reflection
+  open System.Collections
+  open System.Collections.Generic
+  open Logary.Internals.TypeShape
+
+  module E = Chiron.Serialization.Json.Encode
+  module EI = Chiron.Inference.Json.Encode
 
   module internal Shape =
 
@@ -37,17 +41,23 @@ module Json =
       | _ ->
         let shape = TypeShape.FromValue data
         match data, shape with
-        | :? string as str , _ ->  Json.Encode.string str
-        | :? array<byte> as bytes , _ ->  Json.Encode.bytes bytes
+        | :? string as str , _ ->  E.string str
+        | :? array<byte> as bytes , _ ->  E.bytes bytes
         | _, Shape.KeyValuePair kv ->
           kv.Accept {
             new IKeyValuePairVisitor<Json> with
               member __.Visit<'k,'v> () =
-                let kv = data :?> KeyValuePair<'k,'v>
-                Json.Array [toJsonWithFac kv.Key; toJsonWithFac kv.Value]
+                if typeof<string> = typeof<'k> then
+                  let kv = data :?> KeyValuePair<string,'v>
+                  Map [kv.Key, kv.Value] |> E.mapWith toJsonWithFac
+                else
+                  let kv = data :?> KeyValuePair<'k,'v>
+                  Map [ "Key", box kv.Key; "Value", box kv.Value]
+                  |> E.mapWith toJsonWithFac
           }  
         | :? DictionaryEntry as de, _ ->
-          [de.Key; de.Value] |> Json.Encode.listWith toJsonWithFac
+          Map [ "Key", de.Key; "Value",  de.Value]
+          |> E.mapWith toJsonWithFac
         | _, Shape.Tuple s ->
           s.Accept {
             new ITupleVisitor<Json> with
@@ -76,7 +86,7 @@ module Json =
                 data :?> seq<KeyValuePair<string,'v>>
                 |> Seq.map (|KeyValue|)
                 |> Map.ofSeq
-                |> Json.Encode.mapWith toJsonWithFac
+                |> E.mapWith toJsonWithFac
           }    
         | :? IEnumerable as ie , _ ->
           let enumerator = ie.GetEnumerator ()
@@ -98,11 +108,39 @@ module Json =
       let json = mOrDefault.Invoke(null,[|data|])
       unbox json
     else
-      Json.Encode.string (string data)
+      E.string (string data)
 
-  let format (data : obj) = 
-    data |> toJsonTypeShape (fun _ -> None) |> Json.format
+  module internal JsonEncoder =
+    open Logary
 
-  let formatWith options encoderFac (data : obj) = 
-    data |> toJsonTypeShape encoderFac |> Json.formatWith options
+
+    let pointName (name: PointName) =
+      E.string (name.ToString())
+
+    let rec tryLogaryEncoder (data : obj) =
+      match data with
+      | :? Message as msg ->
+        JsonObject.empty
+        |> EI.required "name" (string msg.name)
+        |> EI.required "value" msg.value
+        |> EI.required "level" (string msg.level)
+        |> EI.required "timestamp" msg.timestamp
+        |> E.required (toJsonTypeShape tryLogaryEncoder) "context" msg.context
+        |> JsonObject.toJson
+        |> Some
+      | :? Gauge as gauge ->
+        let (Gauge(v, u)) = gauge
+        let (vs, us) = Units.scale u v
+        E.string (sprintf "%s %s" (vs.ToString()) us) |> Some
+      | _ -> None
+
+  let format (data : obj) =
+    data |> toJsonTypeShape JsonEncoder.tryLogaryEncoder |> Json.format
+
+  let formatWith options encoderFac (data : obj) =
+    let wrapper data =
+      match encoderFac data with
+      | None -> JsonEncoder.tryLogaryEncoder data
+      | someJson -> someJson
+    data |> toJsonTypeShape wrapper |> Json.formatWith options
     

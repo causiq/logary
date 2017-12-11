@@ -21,7 +21,7 @@ module Message =
       (fun (x : Message) -> x.name),
       fun v (x : Message) -> { x with name = v }
 
-    let value_ : Lens<Message, PointValue> =
+    let value_ : Lens<Message, string> =
       (fun (x : Message) -> x.value),
       fun v (x : Message) -> { x with value = v }
 
@@ -215,7 +215,7 @@ module Message =
   [<CompiledName "Event">]
   let event level template =
     { name      = PointName.empty
-      value     = Event (string template)
+      value     = string template
       context   = HashMap.empty
       level     = level
       timestamp = Global.getTimestamp () }
@@ -332,9 +332,7 @@ module Message =
 
   [<CompiledName "SetFields">]
   let setFields (args : obj[]) message =
-    let (Event (formatTemplate)) = message.value
-
-    Capturing.capture (parseToTemplate formatTemplate) args
+    Capturing.capture (parseToTemplate message.value) args
     |> Array.fold (fun m (pt, value) -> 
        match value with
        | Some v -> setField pt.name v m
@@ -463,7 +461,7 @@ module Message =
   /// Replaces the value of the message with a new Event with the supplied format
   [<CompiledName "SetEvent">]
   let setEvent format message =
-    { message with value = Event (string format) }
+    { message with value = string format }
 
   [<Obsolete ("Use addGauge instand.")>]
   [<CompiledName "SetGauge">]

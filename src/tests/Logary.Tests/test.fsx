@@ -20,6 +20,10 @@ open Logary.MessageTemplates
 open Logary.MessageTemplates.Destructure
 
 printfn "before"
+type PointValue =
+| Event of string
+
+let t = Event "123"
 let ver =  System.Version(1,2,3,4)
 let no = (fun _ -> None)
 generatePropValue no no {value= ver;hint=DestrHint.Structure;idManager=RefIdManager()}

@@ -272,11 +272,6 @@ let tests =
         true
     ]
 
-    testList "PointValue" [
-      testCase "empty" <| fun () ->
-        Expect.equal PointValue.empty (Event String.Empty) "Should be empty"
-    ]
-
     testList "HashMap" [
       testCase "add" <| fun _ ->
         HashMap.empty |> HashMap.add "a" 24 |> ignore
@@ -302,12 +297,12 @@ let tests =
       testCase "event : LogLevel -> string -> Message" <| fun _ ->
         let m = event Info "Hello world"
         Expect.equal m.level Info "Should have info level"
-        Expect.equal m.value (Event "Hello world") "Should have template"
+        Expect.equal m.value ("Hello world") "Should have template"
 
       testCase "eventX : string -> LogLevel -> Message" <| fun _ ->
         let m = eventX "Hello world" Info
         Expect.equal m.level Info "Should have info level"
-        Expect.equal m.value (Event "Hello world") "Should have template"
+        Expect.equal m.value ("Hello world") "Should have template"
 
       testProperty "tryGetContext after setContext" <| fun name ->
         eventInfo "" |> setContext name name |> tryGetContext name

@@ -39,7 +39,14 @@ module MessageTemplates =
   | Text of string
   | Property of Property
 
-  /// consider only cover cycle reference, not multi reference, cycle reference show null, then no need refId
+  /// refId in ref count depend on the order of the obj send to calculate, e.g:
+  /// A { userInfo : { some info }, users : [ userInfo] } , 
+  /// if send userInfo first then A { userInfo : $1 { some info} , users : [ $1 ]}
+  /// if send users first then A { userInfo : $1 , users : [ $1 { some info} ]}
+  /// things may get weird : check "cycle reference" test in Formatting.fs -> Logary.Test.fsproj
+  /// :( 
+  /// consider show all refId (this can make format verbose)
+  /// or no need refId in TemplatePropertyValue, when cycle reference show null
   type TemplatePropertyValue =
     | RefId of int64
     | ScalarValue of obj

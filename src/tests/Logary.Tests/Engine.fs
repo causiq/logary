@@ -89,7 +89,7 @@ let tests =
 
              Events.events
              |> Events.tag "gotoTarget2"
-             |> Pipe.map (fun msg -> { msg with value = Event ":)"} )
+             |> Pipe.map (fun msg -> { msg with value = ":)"} )
              |> Events.sink ["2"]
 
              Events.events |> Events.miniLevel Warn |> Events.sink ["3"]
@@ -133,7 +133,7 @@ let tests =
 
         // target 1
         let isCounted = msgs1 |> List.forall (fun msg ->
-          let (Event tpl) =  msg.value
+          let tpl =  msg.value
           String.contains "counter result is" tpl)
         let length = msgs1 |> List.length
         Expect.isTrue isCounted "each msg should have counter result"
@@ -141,7 +141,7 @@ let tests =
 
 
         // target 2
-        let hasTagAndSameEvent = msg2 |> List.forall (fun msg -> Message.hasTag "gotoTarget2" msg && msg.value = Event ":)")
+        let hasTagAndSameEvent = msg2 |> List.forall (fun msg -> Message.hasTag "gotoTarget2" msg && msg.value = ":)")
         Expect.isTrue hasTagAndSameEvent "all msgs should have tag gotoTarget2 and same event"
 
         // target 3
@@ -153,7 +153,7 @@ let tests =
 
 
         // target 4
-        let allMapped = msg4 |> List.forall (fun msg -> msg.value |> fun (Event tpl) -> String.contains "msgs on every 200 milliseconds" tpl)
+        let allMapped = msg4 |> List.forall (fun msg -> String.contains "msgs on every 200 milliseconds" msg.value)
 
         let length = msg4 |> List.length
 
@@ -220,8 +220,8 @@ let tests =
       let! msgsFromEachTarget = targets |> Seq.Con.mapJob (fun t -> t.getMsgs ())
       let msgs = msgsFromEachTarget |> Seq.exactlyOne
 
-      let isGithubSvcDown = msgs |> List.exists (fun msg -> msg.value |> fun (Event tpl) -> String.contains "github" tpl)
-      let isFakeSvcDown = msgs |> List.exists (fun msg -> msg.value |> fun (Event tpl) -> String.contains "fake.svc" tpl)
+      let isGithubSvcDown = msgs |> List.exists (fun msg -> String.contains "github" msg.value )
+      let isFakeSvcDown = msgs |> List.exists (fun msg -> String.contains "fake.svc" msg.value )
       Expect.isFalse isGithubSvcDown "ping github"
       Expect.isTrue isFakeSvcDown "ping fake.svc"
 
