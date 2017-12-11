@@ -44,7 +44,7 @@ module MessageWriter =
   let internal defaultDestr = Destructure.generatePropValue Global.Destructure.destructureFac Global.Destructure.getProjection
 
   /// maxDepth can be avoided if cycle reference are handled properly
-  let expanded nl ending : MessageWriter =
+  let expanded highlightError nl ending : MessageWriter =
     { new MessageWriter with
         member x.write tw m =
           let writeState = { provider = tw.FormatProvider; idManager = RefIdManager ()}
@@ -53,8 +53,11 @@ module MessageWriter =
           let body = tokeniseTemplateWithGauges tw.FormatProvider defaultDestr m |> collectAllToString
           let name = m.name.ToString()
           let context = tokeniseContext writeState nl defaultDestr m |> collectAllToString
-          sprintf "%s %s: %s [%s]%s%s" level time body name context ending
-          |> tw.Write
+
+          if highlightError then
+            let errors = tokeniseExceptions tw.FormatProvider nl m |> collectAllToString
+            sprintf "%s %s: %s [%s]%s%s%s" level time body name context errors ending |> tw.Write
+          else sprintf "%s %s: %s [%s]%s%s" level time body name context ending |> tw.Write
     }
 
   /// Verbatim simply outputs the message and no other information
@@ -77,7 +80,7 @@ module MessageWriter =
 
   /// <see cref="MessageWriter.LevelDatetimePathMessageNewLine" />
   let levelDatetimeMessagePath =
-    expanded Environment.NewLine ""
+    expanded false Environment.NewLine ""
 
   /// LevelDatetimePathMessageNl outputs the most information of the Message
   /// in text format, starting with the level as a single character,
@@ -86,8 +89,7 @@ module MessageWriter =
   /// Exceptions are called ToString() on and prints each line of the stack trace
   /// newline separated.
   let levelDatetimeMessagePathNewLine =
-    expanded Environment.NewLine Environment.NewLine
-
+    expanded false Environment.NewLine Environment.NewLine
     
   let contextWriter =
     { new MessageWriter with

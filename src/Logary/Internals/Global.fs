@@ -109,13 +109,20 @@ module internal Global =
     let configProjection projectionExpr =
       match Projection.byExpr projectionExpr with
       | NotSupport -> ()
-      | Projection (t, how) -> 
+      | Projection (t, how) ->
         projectionDic.AddOrUpdate(t,how,fun _ _ -> how) |> ignore
 
     let getProjection t =
       match projectionDic.TryGetValue t with
-      | false , _ -> None
       | true, projection -> Some projection
+      | false , _ ->
+        projectionDic.Keys
+        |> Seq.tryFind (fun baseType -> baseType.IsAssignableFrom t)
+        |> Option.bind (fun key ->
+           match projectionDic.TryGetValue key with
+           | true, projection ->Some projection
+           | false , _ -> None)
+
 
     let private destructureDic = new ConcurrentDictionary<Type,Destructurer>()
 
@@ -125,14 +132,14 @@ module internal Global =
 
     let internal destructureFac (req : DestructureRequest) =
       if isNull req.value then None
-      else 
+      else
         let runtimeType = req.value.GetType()
         match destructureDic.TryGetValue runtimeType with
         | true, destr -> destr req |> Some
-        | false , _ -> 
-          destructureDic.Keys 
+        | false , _ ->
+          destructureDic.Keys
           |> Seq.tryFind (fun baseType -> baseType.IsAssignableFrom runtimeType)
-          |> Option.bind (fun key ->  
+          |> Option.bind (fun key ->
              match destructureDic.TryGetValue key with
              | true, destr -> destr req |> Some
              | false , _ -> None)

@@ -110,7 +110,7 @@ let shouldHaveFields msg fields tip =
 
 // just for test convenient, since file end of line is LF.
 let levelDatetimeMessagePathNewLine =
-  expanded "\n" "\n"
+  expanded false "\n" "\n"
 
 type ProjectionTestOnly =
   {

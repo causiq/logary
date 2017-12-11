@@ -1,5 +1,6 @@
 ﻿namespace Logary.Targets
 
+
 /// A module implementing a text writer target. Useful for writing to the
 /// console output, or writing to a custom text writer.
 module TextWriter =
@@ -10,6 +11,10 @@ module TextWriter =
   open Logary
   open Logary.Internals
   open Logary.Configuration.Target
+
+  let defaultMessageFormat = MessageWriter.expanded false System.Environment.NewLine System.Environment.NewLine
+
+
 
   /// Configuration for a text writer
   type TextWriterConf =
@@ -27,7 +32,7 @@ module TextWriter =
 
     [<CompiledName "Create">]
     static member create(output, error, ?formatter : MessageWriter) =
-      { writer    = defaultArg formatter MessageWriter.levelDatetimeMessagePathNewLine
+      { writer    = defaultArg formatter defaultMessageFormat
         output    = output
         error     = error
         flush     = false
@@ -102,9 +107,11 @@ module Console =
     static member create writer =
       { writer = writer }
 
+  let defaultMessageFormat = MessageWriter.expanded false System.Environment.NewLine System.Environment.NewLine
+
   /// Default console target configuration.
   let empty =
-    ConsoleConf.create MessageWriter.levelDatetimeMessagePathNewLine
+    ConsoleConf.create defaultMessageFormat
 
   [<CompiledName "Create">]
   let create conf name =
@@ -175,7 +182,7 @@ module LiterateConsole =
 
       let templateTokens = tokeniseTemplateWithGauges pvd destr message
       let contextTokens = tokeniseContext writeState nl destr message
-      let exceptionTokens = tokeniseExceptions pvd nl (message |> Message.getErrors)
+      let exceptionTokens = tokeniseExceptions pvd nl message
 
       let getLogLevelToken = function
         | Verbose -> LevelVerbose
@@ -192,6 +199,12 @@ module LiterateConsole =
         yield options.getLogLevelText message.level, getLogLevelToken message.level
         yield "] ", Punctuation
         yield! templateTokens
+
+        yield " ", Subtext
+        yield "<", Punctuation
+        yield string message.name, Subtext
+        yield ">", Punctuation
+
         yield! contextTokens
         yield! exceptionTokens
       }
@@ -358,6 +371,9 @@ module Debugger =
   open Logary.Target
   open Logary.Configuration.Target
 
+
+  let defaultMessageFormat = MessageWriter.expanded false System.Environment.NewLine System.Environment.NewLine
+
   type DebuggerConf =
     { writer : MessageWriter }
 
@@ -365,7 +381,7 @@ module Debugger =
     /// formats how the Messages and Gauges/Derived-s are printed)
     [<CompiledName "Create">]
     static member create (?writer) =
-      { writer = defaultArg writer (MessageWriter.levelDatetimeMessagePathNewLine) }
+      { writer = defaultArg writer (defaultMessageFormat) }
 
   /// Default debugger configuration
   let empty = DebuggerConf.create ()
@@ -775,7 +791,7 @@ module File =
       member x.format (ri : RuntimeInfo) : string * string =
         let (Naming (spec, ext)) = x
         let now = (ri.getTimestamp () |> Instant.ofEpoch).ToDateTimeOffset()
-        
+
         let known =
           [ "service", ri.service
             "date", now.ToString("yyyy-MM-dd")
@@ -905,6 +921,8 @@ module File =
       /// How many times to try to recover a failed batch messages.
       attempts  : uint16 }
 
+  let defaultMessageFormat = MessageWriter.expanded false System.Environment.NewLine System.Environment.NewLine
+
   /// The empty/default configuration for the Logary file target.
   let empty =
     { inProcBuffer = false
@@ -915,7 +933,7 @@ module File =
       encoding     = Encoding.UTF8
       naming       = Naming ("{service}-{date}", "log")
       fileSystem   = DotNetFileSystem("/var/lib/logs")
-      writer       = MessageWriter.levelDatetimeMessagePathNewLine
+      writer       = defaultMessageFormat
       batchSize    = 100us
       attempts     = 3us }
 

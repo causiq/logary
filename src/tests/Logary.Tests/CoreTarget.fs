@@ -433,7 +433,12 @@ let tests = [
     yield testLiterateCase "printing 'Hello World!'" helloWorldMsg <| fun expectedTimeText parts ->
       Expect.equal parts
                    [ yield! levels expectedTimeText
-                     yield {text = "Hello World!"; colours = LiterateTesting.Theme.textColours } ]
+                     yield {text = "Hello World!"; colours = LiterateTesting.Theme.textColours }
+                     yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+                     yield { text = "<"; colours = LiterateTesting.Theme.punctuationColours }
+                     yield { text = ""; colours = LiterateTesting.Theme.subtextColours }
+                     yield { text = ">"; colours = LiterateTesting.Theme.punctuationColours }
+                      ]
                    "logging with info level and then finalising the target"
 
     yield testLiterateCase "Time in ms" (timeMessage 60029379L) <| fun expectedTimeText parts ->
@@ -449,6 +454,10 @@ let tests = [
           yield { text = "ms"; colours = LiterateTesting.Theme.textColours }
           yield { text = " to execute"; colours = LiterateTesting.Theme.subtextColours }
           yield { text = "]"; colours = LiterateTesting.Theme.punctuationColours }
+          yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+          yield { text = "<"; colours = LiterateTesting.Theme.punctuationColours }
+          yield { text = ""; colours = LiterateTesting.Theme.subtextColours }
+          yield { text = ">"; colours = LiterateTesting.Theme.punctuationColours }
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
           yield { text = "  gauges:"; colours = LiterateTesting.Theme.textColours }
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
@@ -472,6 +481,10 @@ let tests = [
           yield { text = "µs"; colours = LiterateTesting.Theme.textColours }
           yield { text = " to execute"; colours = LiterateTesting.Theme.subtextColours } 
           yield { text = "]"; colours = LiterateTesting.Theme.punctuationColours }
+          yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+          yield { text = "<"; colours = LiterateTesting.Theme.punctuationColours }
+          yield { text = ""; colours = LiterateTesting.Theme.subtextColours }
+          yield { text = ">"; colours = LiterateTesting.Theme.punctuationColours }
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
           yield { text = "  gauges:"; colours = LiterateTesting.Theme.textColours }
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
@@ -495,6 +508,10 @@ let tests = [
           yield { text = "ns"; colours = LiterateTesting.Theme.textColours }
           yield { text = " to execute"; colours = LiterateTesting.Theme.subtextColours } 
           yield { text = "]"; colours = LiterateTesting.Theme.punctuationColours }
+          yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+          yield { text = "<"; colours = LiterateTesting.Theme.punctuationColours }
+          yield { text = ""; colours = LiterateTesting.Theme.subtextColours }
+          yield { text = ">"; colours = LiterateTesting.Theme.punctuationColours }
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
           yield { text = "  gauges:"; colours = LiterateTesting.Theme.textColours }
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
@@ -518,6 +535,10 @@ let tests = [
           yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
           yield { text = "s/revolution"; colours = LiterateTesting.Theme.textColours } 
           yield { text = "]"; colours = LiterateTesting.Theme.punctuationColours }
+          yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+          yield { text = "<"; colours = LiterateTesting.Theme.punctuationColours }
+          yield { text = ""; colours = LiterateTesting.Theme.subtextColours }
+          yield { text = ">"; colours = LiterateTesting.Theme.punctuationColours }
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
           yield { text = "  gauges:"; colours = LiterateTesting.Theme.textColours }
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
@@ -558,6 +579,13 @@ let tests = [
           yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
           yield { text = "%"; colours = LiterateTesting.Theme.textColours } 
           yield { text = "]"; colours = LiterateTesting.Theme.punctuationColours }
+
+          yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+          yield { text = "<"; colours = LiterateTesting.Theme.punctuationColours }
+          yield { text = ""; colours = LiterateTesting.Theme.subtextColours }
+          yield { text = ">"; colours = LiterateTesting.Theme.punctuationColours }
+
+
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
           yield { text = "  gauges:"; colours = LiterateTesting.Theme.textColours }
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }

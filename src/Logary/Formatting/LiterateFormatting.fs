@@ -9,10 +9,11 @@ open Logary.MessageTemplates.Formatting
 open Logary.MessageTemplates.Formatting.Literate
 
 module Literate =
-  let tokeniseExceptions (pvd: IFormatProvider) (nl: string) (exns: exn list) =
+  let tokeniseExceptions (pvd: IFormatProvider) (nl: string) (m: Message) =
     let windowsStackFrameLinePrefix = "   at "
     let monoStackFrameLinePrefix = "  at "
-    exns
+    m
+    |> Message.getErrors
     |> Seq.collect (fun exn ->
        let exnLines = new StringReader(string exn)
        seq {
