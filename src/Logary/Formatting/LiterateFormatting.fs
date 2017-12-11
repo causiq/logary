@@ -149,30 +149,4 @@ module Literate =
       yield! gauges |> tokenisePropValues writeState "  gauges:" nl
       yield! others |> tokenisePropValues writeState "  others:" nl
     }
-
-  let rec formatValueLeafs (ns : string list) (value : Value) =
-    let rns = lazy (PointName.ofList (List.rev ns))
-    seq {
-      match value with
-      | String s ->
-        yield rns.Value, s
-      | Bool b ->
-        yield rns.Value, b.ToString()
-      | Float f ->
-        yield rns.Value, f.ToString()
-      | Int64 i ->
-        yield rns.Value, i.ToString ()
-      | BigInt b ->
-        yield rns.Value, b.ToString ()
-      | Binary (b, _) ->
-        yield rns.Value, BitConverter.ToString b |> fun s -> s.Replace("-", "")
-      | Fraction (n, d) ->
-        yield rns.Value, sprintf "%d/%d" n d
-      | Array list ->
-        for item in list do
-          yield! formatValueLeafs ns item
-      | Object m ->
-        for KeyValue (k, v) in m do
-          yield! formatValueLeafs (k :: ns) v
-    }
-
+    
