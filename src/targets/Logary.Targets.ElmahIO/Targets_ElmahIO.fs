@@ -10,6 +10,7 @@ open Logary.Target
 open Logary.Internals
 open Logary.Configuration
 open Elmah.Io.Client
+open System.Reflection
 
 /// Configuration for the Elmah.IO target, see
 /// https://github.com/elmahio/elmah.io and
@@ -17,9 +18,10 @@ open Elmah.Io.Client
 type ElmahIOConf =
   { /// You can get the log id from the https://elmah.io/dashboard/ page by clicking
     /// on the settings icon and then taking the logId from the tutorial.
-    logId : Guid }
+    logId : Guid 
+    apiKey: string}
 
-let empty = { logId = Guid.Empty }
+let empty = { logId = Guid.Empty ; apiKey = String.Empty}
 
 module internal Impl =
   open Logary.Internals.Aether
@@ -35,166 +37,122 @@ module internal Impl =
       | LogLevel.Error -> Severity.Error
       | LogLevel.Fatal -> Severity.Fatal
 
-  // let getData (message : Logary.Message) =
-  //   Seq.concat [
-  //     message.context
-  //     |> Seq.collect (fun (KeyValue (k, v)) ->
-  //       Formatting.MessageParts.formatValueLeafs [k] v
-  //     )
-  //     message.fields
-  //     |> Seq.collect (fun (KeyValue (k, (Field (value, units)))) ->
-  //       let root = PointName.format k
-  //       Formatting.MessageParts.formatValueLeafs [root] value
-  //     )
-  //   ]
-  //   |> Seq.map (fun (k, v) ->
-  //     Elmah.Io.Client.Item(
-  //       Key = PointName.format k,
-  //       Value = v
-  //     ))
-  //   |> fun xs -> Collections.Generic.List<_>(xs)
 
-  // let firstError_ =
-  //   errors_
-  //   >??> head_
+  let getVersion () =
+    let a = System.Reflection.Assembly.GetCallingAssembly()
+#if DNXCORE50
+    (typeof<Random>.GetTypeInfo().Assembly)
+#else
+    System.Reflection.Assembly.GetCallingAssembly()
+#endif
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            .InformationalVersion
 
-  // let firstErrorType_ =
-  //   firstError_
-  //   >??> Value.Object_
-  //   >??> key_ "type"
-  //   >??> Value.String_
 
-  // let getType (message : Logary.Message) =
-  //   match Lens.getPartial firstErrorType_ message with
-  //   | Some typ ->
-  //     typ
+  let getData (msg : Logary.Message) =
+    msg.context
+    |> HashMap.toSeq
+    |> Seq.map( fun (name, v) ->
+       let jsonStr = Logary.Formatting.Json.format v
+       Elmah.Io.Client.Models.Item(name, jsonStr))
+    |> fun xs -> Collections.Generic.List<_>(xs)
+    
+  let getType (msg : Logary.Message) =
+    match msg |> getErrors |>  List.tryLast with
+    | Some exn ->
+      exn.GetType().FullName
+    | None ->
+      PointName.format msg.name
 
-  //   | None ->
-  //     PointName.format message.name
+  let format =
+    Logary.MessageWriter.levelDatetimeMessagePath.format
 
-  // let tryGet (message : Logary.Message) (key : string) : string option =
-  //   Lens.getPartial (field_ key) message
-  //   |> Option.bind (function
-  //   | Field (value, units) ->
-  //     let (PointName parts) = PointName.parse key
-  //     let formatted =
-  //       Formatting.MessageParts.formatValueLeafs (List.ofArray parts) value
-  //     formatted
-  //     |> Seq.tryHead
-  //     |> Option.map snd)
+  type State =
+    { client : IElmahioAPI }
+    interface IDisposable with
+      member x.Dispose () = 
+        x.client.Dispose ()
 
-  // let tryGetInt (message : Logary.Message) (key : string) : int option = 
-  //   match Lens.getPartial (field_ key) message with
-  //   | Some (Field (value, units)) ->
-  //     match Int32.TryParse (Units.formatValue value) with
-  //     | false, _ ->
-  //       None
-  //     | true, value ->
-  //       Some value
-  //   | None ->
-  //     None
+  let loop (conf : ElmahIOConf)
+           (ri : RuntimeInfo, api: TargetAPI) =
 
-  // let (|Event|Other|) (m : Logary.Message) =
-  //   match m.value with
-  //   | Event template ->
-  //     Choice1Of2 template
-  //   | _ ->
-  //     Choice2Of2 ()
+    let internalError = Ch ()
 
-  // let sendMessage (logger : ILogger) (m : Elmah.Io.Client.Message) =
-  //   Job.fromBeginEnd (fun (cb, o) -> logger.BeginLog(m, cb, o)) logger.EndLog
+    let rec loop (state : State) : Job<unit> =
+      Alt.choose [
+        internalError ^=> fun (args : FailEventArgs) ->
+          let message, ex = args.Message, args.Error
+          Message.eventError message.Title
+          |> Message.setContext "internalErrorMessage" message
+          |> Message.addExn ex
+          |> Logger.logSimple ri.logger
+          loop state
 
-  // let format (message : Logary.Message) =
-  //   Formatting.StringFormatter.levelDatetimeMessagePath.format message
+        RingBuffer.take api.requests ^=> function
+          | Log (msg, ack) ->
+            let sendMsg () =
+              let elmahMsg = Elmah.Io.Client.Models.CreateMessage()
+              elmahMsg.Application <- ri.service
+              elmahMsg.Hostname <- ri.host
+              elmahMsg.Detail <- format msg
+              elmahMsg.DateTime <- Nullable(Instant.FromUnixTimeTicks(msg.timestampTicks).ToDateTimeUtc())
+              elmahMsg.Title <- Logary.MessageWriter.verbatim.format msg
+              elmahMsg.Severity <- msg.level |> Severity.ofLogLevel |> string
+              elmahMsg.Source <- PointName.format msg.name
+              elmahMsg.Type <- getType msg
+              // elmahMsg.Cookies <- ""
+              elmahMsg.Data <- getData msg
+              // elmahMsg.Form <- ""
+              // elmahMsg.Method <- ""
+              // elmahMsg.QueryString <- ""
+              // elmahMsg.ServerVariables <- ""
+              elmahMsg.StatusCode <- Option.toNullable (msg |> tryGetContext "statusCode")
+              elmahMsg.Url <- match tryGetContext "url" msg with None -> null | Some x -> x
+              elmahMsg.Version <- getVersion()
+              elmahMsg.User <- match (tryGetContext "user.name" msg) with | None -> null | Some x -> x
 
-  // type State =
-  //   { logger : ILogger }
-  //   interface IDisposable with
-  //     member x.Dispose () = ()
+              state.client.Messages.CreateAndNotifyAsync(conf.logId, elmahMsg) 
 
-  // let loop (conf : ElmahIOConf)
-  //          (ri : RuntimeInfo, api: TargetAPI) =
+            sendMsg
+            |> Job.fromTask
+            |> fun sendJob ->
+               sendJob 
+               >>= fun _ -> ack *<= ()
+               >>=. loop state
 
-  //   let internalError = Ch ()
+          | Flush (ackCh, nack) ->
+            job {
+              do! IVar.fill ackCh () 
+              return! loop state
+            }
 
-  //   let rec loop (state : State) : Job<unit> =
-  //     Alt.choose [
-  //       internalError ^=> fun (args : FailEventArgs) ->
-  //         let message, ex = args.Message, args.Error
-  //         Message.eventError message.Title
-  //         |> Message.setFieldFromObject "message" message
-  //         |> Message.addExn ex
-  //         |> Logger.logSimple ri.logger
-  //         loop state
+        api.shutdownCh ^=> fun ack ->
+          Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
+          >>=. ack *<= ()
+      ] :> Job<_>
 
-  //       RingBuffer.take api.requests ^=> function
-  //         | Log (Event template as message, ack) ->
-  //           let elmahMessage =
-  //             Elmah.Io.Client.Message(template,
-  //               Id = (match tryGet message "messageId" with None -> null | Some x -> x),
-  //               Application = ri.service,
-  //               Detail = format message,
-  //               Source = PointName.format message.name,
-  //               StatusCode = Option.toNullable (tryGetInt message "statusCode"),
-  //               DateTime = Instant.FromTicksSinceUnixEpoch(message.timestampTicks).ToDateTimeUtc(),
-  //               Type = getType message,
-  //               User = (match tryGet message "user.name" with None -> null | Some x -> x),
-  //               Severity = Nullable<_>(Severity.ofLogLevel message.level),
-  //               Url = (match tryGet message "url" with None -> null | Some x -> x),
-  //               //Method -> new property in master,
-  //               Version = Logary.YoLo.App.getVersion(),
-  //               //ServerVariables, // too sensitive to ship
-  //               //QueryString, // too sensitive to ship
-  //               //Form, // too sensitive to ship
-  //               Data = getData message
-  //             )
-  //           job {
-  //             let! txId = sendMessage state.logger elmahMessage
-  //             do! ack *<= ()
-  //             return! loop state
-  //           }
+    let state =
+      { client = ElmahioAPI.Create(conf.apiKey) // Elmah.IO specific
+      }
 
-  //         | Log (message, ack) ->
-  //           ri.logger.verboseWithBP (eventX "Logging of metrics not supported")
-  //           >>=. (ack *<= ())
-  //           >>=. loop state
-            
+    state.client.Messages.OnMessageFail.Add (Ch.send internalError >> start)
 
-  //         | Flush (ackCh, nack) ->
-  //           job {
-  //             do! IVar.fill ackCh () 
-  //             return! loop state
-  //           }
-
-  //       api.shutdownCh ^=> fun ack ->
-  //         Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
-  //         >>=. ack *<= ()
-  //     ] :> Job<_>
-
-  //   let state =
-  //     { logger = new Logger(conf.logId) // Elmah.IO specific
-  //     }
-
-  //   state.logger.OnMessageFail.Add (Ch.send internalError >> start)
-
-  //   loop state
+    loop state
 
 /// Create a new Elmah.IO target
 let create conf : string -> TargetConf =
-  failwith "TODO: elmah client api changes"
+  if conf.logId = Guid.Empty || String.IsNullOrEmpty(conf.apiKey) then
+    failwith "Cannot configure target with empty logId"
 
-  // if conf.logId = Guid.Empty then
-  //   failwith "Cannot configure target with empty logId"
-
-  // TargetConf.createSimple (Impl.loop conf)
+  TargetConf.createSimple (Impl.loop conf)
 
 /// Use with LogaryFactory.New( s => s.Target<ElmahIO.Builder>().WithLogId("MY GUID HERE") )
 type Builder(conf, callParent : Target.ParentCallback<Builder>) =
-  member x.WithLogId(logId : Guid) =
-    ! (callParent <| Builder({ conf with logId = logId }, callParent))
+  member x.WithLogIdAndApiKey(logId : Guid, apiKey : string) =
+    ! (callParent <| Builder({ conf with logId = logId ; apiKey = apiKey}, callParent))
 
   new(callParent : Target.ParentCallback<_>) =
-    Builder({ logId = Guid.Empty }, callParent)
+    Builder(empty, callParent)
 
   interface Target.SpecificTargetConf with
     member x.Build name = create conf name
