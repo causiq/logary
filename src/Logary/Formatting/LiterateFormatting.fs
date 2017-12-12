@@ -66,12 +66,12 @@ module Literate =
         yield "]", Punctuation
       }
 
-  let tokeniseTemplateByFields (pvd: IFormatProvider) (template : Template) (destr : Destructurer) (fields : seq<string * obj>) =
+  let tokeniseTemplateByFields (pvd: IFormatProvider) (template : Template) (resolver : DestructureResolver) (fields : seq<string * obj>) =
     let fieldsMap = fields |> HashMap.ofSeq
     let tryGetPropertyValue (pt:Logary.Internals.FsMtParserFull.Property) =
       match HashMap.tryFind pt.name fieldsMap with
       | Some (value) ->
-        destr {value = value; hint = (DestrHint.fromCaptureHint pt.captureHint); idManager = RefIdManager()} |> Some
+        DestructureRequest(value, pt.captureHint.ToDestrHint(), RefIdManager()) |> resolver |> Some
       | _ -> None
     tokeniseTemplate pvd template tryGetPropertyValue
 
@@ -83,16 +83,16 @@ module Literate =
 
     if String.IsNullOrEmpty formatTemplate then tplByGauges |> Seq.ofList
     else
-      let parsedTemplate = parseToTemplate (formatTemplate)
+      let parsedTemplate = parse (formatTemplate)
       let tplByFields =
         message |> Message.getAllFields |> tokeniseTemplateByFields pvd parsedTemplate destr
       if List.isEmpty tplByGauges then tplByFields
       else seq { yield! tplByFields; yield " ", Subtext; yield! tplByGauges}
 
-  let tokeniseContext (writeState: WriteState) (nl: string) (destr: Destructurer) (message: Message) =
+  let tokeniseContext (writeState: WriteState) (nl: string) (resolver : DestructureResolver) (message: Message) =
     let padding = new String (' ', 4)
-    let destrByStructure data = destr { value = data; idManager = writeState.idManager; hint= DestrHint.Structure }
-    let destrByCaptureHint data captureHint = destr { value = data; idManager = writeState.idManager; hint= (DestrHint.fromCaptureHint captureHint) }
+    let destrByStructure data = DestructureRequest(data, DestrHint.Structure, writeState.idManager) |> resolver
+    let destrByCaptureHint data (captureHint : Logary.Internals.FsMtParserFull.CaptureHint) = DestructureRequest(data, captureHint.ToDestrHint(), writeState.idManager) |> resolver
     let inline tokenisePropValues (writeState: WriteState) (prefix: string) (nl: string) (kvs: list<string * TemplatePropertyValue>) =
       let valuesToken =
         kvs
@@ -117,7 +117,7 @@ module Literate =
     let formatTemplate = message.value
     let fieldsPropInTemplate =
       if not <| String.IsNullOrEmpty formatTemplate then
-        let parsedTemplate = parseToTemplate (formatTemplate)
+        let parsedTemplate = parse (formatTemplate)
         parsedTemplate.Properties |> Seq.map (fun prop -> prop.name, prop) |> HashMap.ofSeq
       else HashMap.empty
 

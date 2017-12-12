@@ -561,14 +561,6 @@ I 1970-01-01T00:00:03.1234567+00:00: default foo is "{id = 999;\n name = \"whate
 """
        Expect.equal actual (expect.TrimStart([|'\n'|])) "formatting complex message LevelDatetimePathMessageNl"
 
-  testCase "``JsonFormatter has no newline characters``" <| fun _ ->
-    skiptest "use fspickler, maybe should support in another project inherit MessageWriter with fspickler as its dependency"
-    // (because "logging message with newline in it" <| fun () ->
-    //     { sampleMessage with value = Event "here\n  we\ngo!" } |> JsonFormatter.Default.format)
-    // |> should equal ("""{"context":{},"fields":{},"level":"error","name":["a","b","c","d"],""" +
-    //                  """"timestamp":3123456700,"value":{"event":"here\n  we\ngo!"}}""")
-    // |> thatsIt
-
   testCase "Formatting.templateFormat, simple case" <| fun _ ->
     let format = "This {0} contains {1} words."
     let args : obj[] = [|"sentence"; 4|]

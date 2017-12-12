@@ -9,20 +9,24 @@ module MessageTemplates =
   open Logary.Internals.FsMtParserFull
 
   type DestrHint = Default | Structure  | Stringify
-  module DestrHint =
-    let fromCaptureHint = function 
-      | CaptureHint.Stringify -> DestrHint.Stringify 
-      | CaptureHint.Structure -> DestrHint.Structure 
-      | _ -> DestrHint.Default
 
-  type Property with
-    member __.Pos =
-       match Int32.TryParse (__.name, NumberStyles.None, NumberFormatInfo.CurrentInfo) with
-         | true, value -> value
-         | false, _ -> Int32.MaxValue
-    member __.IsPositional () =
-      let pos = __.Pos
-      pos >= 0 && pos < Int32.MaxValue
+  [<AutoOpen>]
+  module FsMtParserFullExtensions =
+    type CaptureHint with
+      member __.ToDestrHint () =
+        match __ with
+        | CaptureHint.Stringify -> DestrHint.Stringify 
+        | CaptureHint.Structure -> DestrHint.Structure 
+        | _ -> DestrHint.Default
+
+    type Property with
+      member __.Pos =
+         match Int32.TryParse (__.name, NumberStyles.None, NumberFormatInfo.CurrentInfo) with
+           | true, value -> value
+           | false, _ -> Int32.MaxValue
+      member __.IsPositional () =
+        let pos = __.Pos
+        pos >= 0 && pos < Int32.MaxValue
 
   type Template =
     { raw : string
@@ -60,6 +64,8 @@ module MessageTemplates =
     let showAsIdSet = new HashSet<int64> ()
     let idGen = new ObjectIDGenerator ()
 
+    /// need invoke when data is complex template property value
+    /// since a complex data may destructure to sacalar value
     member __.TryShowAsRefId (data : obj) =
       match idGen.GetId data with
       | refId, false -> 
@@ -70,338 +76,23 @@ module MessageTemplates =
     /// consider only cover cycle reference, not multi reference, cycle reference show null, then no need refId
     member __.IsShowRefId id = showAsIdSet.Contains id
 
-  let parseToTemplate raw =
+  let parse raw =
     let tokens = ResizeArray<TemplateToken>()
     let foundText text = tokens.Add(TemplateToken.Text text)
     let foundProp prop = tokens.Add(TemplateToken.Property prop)
     parseParts raw foundText foundProp
+
     {
       raw = raw
       tokens = tokens.ToArray()
     }
 
-  module Destructure =
-
-    open System.Reflection
-    open Microsoft.FSharp.Reflection
-    open Microsoft.FSharp.Quotations.Patterns
-
-    [<NoEquality;NoComparison>]
-    type DestructureRequest =
-      {
-        value : obj
-        hint  : DestrHint
-        idManager : RefIdManager
-      }
-    and Destructurer = DestructureRequest -> TemplatePropertyValue
-    and DestructurerStrategy = DestructureRequest -> TemplatePropertyValue option
-
-    let only<'t> (proj: 't -> obj[]) = ()
-    let except<'t> (proj: 't -> obj[]) = ()
-
-    type Projection =
-    | Projection of Type * How
-    | NotSupport
-    with
-      (*
-        Projection
-          ("Exception",
-           Only
-             [["Message"]; ["StackTrace"]; ["Data"]; ["InnerException"]; ["InnerException"; "Message"];
-              ["InnerException"; "StackTrace"]]
-              )
-      *)
-      static member TopHierarchy (names: string list list) =
-        match names with
-        | [] -> Map.empty
-        | _ ->
-          names
-          |> List.fold (fun hieraMap eachHiera ->
-             match eachHiera with
-             | [] -> hieraMap
-             | [head] -> 
-               match hieraMap |> Map.tryFind head with
-               | None -> hieraMap |> Map.add head []
-               | _ -> hieraMap
-             | head :: rests  ->
-               match hieraMap |> Map.tryFind head with
-               | Some others -> hieraMap |> Map.add head (rests :: others)
-               | _ -> hieraMap |> Map.add head [rests]
-             ) (Map.empty)
-    and How =
-    | Only of string list list
-    | Except of string list list
-    and ProjectionStrategy = Type -> How option
-
-    module Projection =
-
-      let rec byExpr expr =
-        match expr with
-        | Call (_, method, [Lambda( d, NewArray(_, props))]) -> Projection (d.Type, generateHow method.Name props)
-        | _ -> NotSupport
-      and generateHow methodName exprs =
-        exprs
-        |> List.map (fun expr ->
-           match expr with
-           | Coerce (PropertyGet(Some(outterExpr), prop,_), _) -> generateOutter outterExpr [prop.Name]
-           | _ -> [])
-        |> fun projs ->
-           match methodName with
-           | "only" -> Only projs
-           | "except" -> Except projs
-           | _ -> Only []
-      and generateOutter outterExpr innerProjs =
-        match outterExpr with
-        | PropertyGet (Some (expr),prop,_) ->
-          generateOutter expr (prop.Name :: innerProjs)
-        | _ -> innerProjs
-
-    let scalarTypes =
-        [ typeof<bool>;      typeof<char>;       typeof<byte>;              typeof<int16>
-          typeof<uint16>;    typeof<int32>;      typeof<uint32>;            typeof<int64>
-          typeof<uint64>;    typeof<single>;     typeof<double>;            typeof<decimal>
-          typeof<string>;    typeof<DateTime>;   typeof<DateTimeOffset>;    typeof<TimeSpan>
-          typeof<Guid>;      typeof<Uri>; ]
-
-    let scalarTypeHash = HashSet(scalarTypes)
-
-    let inline private (|?) (f: DestructurerStrategy) (g: DestructurerStrategy) : DestructurerStrategy =
-      fun req ->
-        match f req with
-        | Some _ as d -> d
-        | None -> g req
-
-    let someScalar = ScalarValue >> Some
-    let someSequence = SequenceValue >> Some
-    let someStructure = StructureValue >> Some
-    let someDictionary = DictionaryValue >> Some
-
-    let inline tryNull req =
-      if isNull req.value then someScalar null
-      else None
-
-    let inline tryBuiltInTypes req =
-      if scalarTypeHash.Contains(req.value.GetType()) then
-        someScalar req.value
-      else None
-
-    let inline tryEnum req =
-      match req.value with
-      | :? Enum as e -> someScalar e
-      | _ -> None
-
-    let inline tryByteArrayMaxBytes maxBytes req =
-      match req.value with
-      | :? array<Byte> as bytes ->
-        if bytes.Length <= maxBytes then someScalar bytes
-        else
-          let inline toHexString (b:byte) = b.ToString("X2")
-          let start = bytes |> Seq.take maxBytes |> Seq.map toHexString |> String.Concat
-          let description = start + "... (" + string bytes.Length + " bytes)"
-          someScalar description
-      | _ -> None
-
-    let inline tryByteArray req = tryByteArrayMaxBytes 1024 req
-
-    let inline tryReflectionTypes req =
-        match req.value with
-        | :? Type as t -> someScalar t
-        | :? MemberInfo as m -> someScalar m
-        | _ -> None
-
-    let inline tryScalar req =
-      tryNull |? tryBuiltInTypes |? tryEnum |? tryByteArray |? tryReflectionTypes
-      <| req
-
-    let inline private isDictionable (t: Type) =
-      t.GetInterfaces()
-      |> Seq.exists (fun iface ->
-         if iface.IsGenericType && iface.GetGenericTypeDefinition() = typedefof<IEnumerable<_>> then
-           let elementType = iface.GetGenericArguments().[0]
-           elementType.IsGenericType && elementType.GetGenericTypeDefinition() = typedefof<KeyValuePair<_,_>>
-         else iface = typeof<System.Collections.IDictionary>)
-
-    let inline private isFSharpList (t: Type) =
-      t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Microsoft.FSharp.Collections.List<_>>
-
-
-    let inline tryContainerTypes (destr: Destructurer) req =
-      let destr o = destr {req with value = o}
-      let instance = req.value
-      let refCount = req.idManager
-  
-      match instance.GetType() with
-      | t when FSharpType.IsTuple t ->
-        match refCount.TryShowAsRefId instance with
-        | _, Some pv  -> Some pv
-        | refId, None -> 
-          let tupleValues =
-              instance
-              |> FSharpValue.GetTupleFields
-              |> Seq.map destr
-              |> Seq.toList
-          someSequence (refId, tupleValues)
-
-      | t when isDictionable t ->
-        match refCount.TryShowAsRefId instance with
-        | _, Some pv  -> Some pv
-        | refId, None -> 
-          let keyProp, valueProp = ref Unchecked.defaultof<PropertyInfo>, ref Unchecked.defaultof<PropertyInfo>
-          let getKey o = if isNull !keyProp  then do keyProp := o.GetType().GetRuntimeProperty("Key")
-                         (!keyProp).GetValue(o)
-          let getValue o = if isNull !valueProp then do valueProp := o.GetType().GetRuntimeProperty("Value")
-                           (!valueProp).GetValue(o)
-          let objEnumerable = instance :?> System.Collections.IEnumerable |> Seq.cast<obj>
-          let skvps = objEnumerable
-                      |> Seq.map (fun o ->  destr (getKey o),  destr (getValue o))
-                      |> Seq.toList
-          someDictionary (refId, skvps)
-
-      | t when FSharpType.IsUnion t && not <| isFSharpList t ->
-   
-        let case, fields = FSharpValue.GetUnionFields(instance, t)
-        let caseName = ScalarValue case.Name
-        match fields with
-        | [||] -> Some caseName
-        | [| oneField |] ->
-          match refCount.TryShowAsRefId instance with
-          | _, Some pv  -> Some pv
-          | refId, None -> 
-            someDictionary (refId, [caseName, destr oneField])
-        | _ ->
-          match refCount.TryShowAsRefId instance with
-          | _, Some pv  -> Some pv
-          | refId, None -> 
-            someDictionary (refId, [caseName, destr fields])
-      | _ ->
-        match instance with
-        | :? System.Collections.IEnumerable as e ->
-          match refCount.TryShowAsRefId instance with
-          | _, Some pv  -> Some pv
-          | refId, None -> 
-            let eles = e |> Seq.cast<obj> |> Seq.map destr |> Seq.toList
-            someSequence (refId, eles)
-        | _ -> None
-
-    let lookupPropFlags = BindingFlags.Public ||| BindingFlags.Instance
-
-    let inline private tryGetValueWithProp (propInfo: PropertyInfo) instance =
-      match propInfo with
-      | p when (not <| isNull p) 
-               && p.CanRead 
-               && (p.Name <> "Item" || p.GetIndexParameters().Length = 0) ->
-        let propValue = 
-          try p.GetValue(instance) 
-          with 
-          | :? TargetInvocationException as ex ->  ("The property accessor threw an exception: " + ex.InnerException.Message) |> box
-          | ex -> ("The property accessor threw an exception: " + ex.Message) |> box
-        Some propValue
-      | _ -> None
-
-    let inline private tryGetValueWithType (t: Type) name instance =
-      t.GetProperty(name,lookupPropFlags,null,null,Array.empty,null) |> tryGetValueWithProp <| instance
-
-    let rec reflectionProperties (tryProjection : ProjectionStrategy) (destr : Destructurer) (req : DestructureRequest) =
-      let ty = req.value.GetType()
-      match tryProjection ty with
-      | None -> reflectionByProjection destr (Except []) req // try reflection all
-      | Some how -> reflectionByProjection destr how req
-    and reflectionByProjection destr how req =
-      let destrChild childHow childInstance=
-        match childHow with
-        | Only ([])
-        | Except ([]) ->
-          // means no children names, so try with destr passed in
-          destr { req with value = childInstance }
-        | Only _
-        | Except _ ->
-          // use childHow ignore custom type projection
-          reflectionByProjection destr childHow { req with value = childInstance }
-
-      let instance = req.value
-      let refCount = req.idManager
-      
-      if not <| isNull instance then 
-        match refCount.TryShowAsRefId instance with
-        | _, Some pv  -> pv
-        | refId, None -> 
-          let ty = instance.GetType()
-          let typeTag = ty.Name
-
-          match how with
-          | Except names -> 
-            let topHieraMap = Projection.TopHierarchy names
-            let isInclude name =
-              // in except hieraMap and has no childNames
-              match topHieraMap |> Map.tryFind name with
-              | Some [] -> false
-              | _ -> true
-            let nvs =
-              ty.GetProperties(lookupPropFlags)
-              |> Array.filter (fun p -> not <| isNull p && (isInclude p.Name))
-              |> Array.sortBy (fun p -> p.Name)
-              |> Array.fold (fun nvs p ->
-                 let name = p.Name
-                 match tryGetValueWithProp p instance with
-                 | None -> nvs
-                 | Some propValue ->
-                   let childHow =
-                     match topHieraMap |> Map.tryFind name with
-                     | Some childNames -> Except childNames
-                     | None -> Except []
-                   let tpv = if isNull propValue then ScalarValue null else destrChild childHow propValue
-                   { Name = name; Value = tpv } :: nvs
-                 ) List.empty
-
-            StructureValue (refId, typeTag, nvs)
-
-          | Only names ->
-            let nvs =
-              names
-              |> Projection.TopHierarchy
-              |> Map.toList
-              |> List.fold (fun nvs (name, childNames) ->
-                 match tryGetValueWithType ty name instance with
-                 | None -> nvs
-                 | Some propValue ->
-                   let childHow = Only childNames
-                   let tpv = if isNull propValue then ScalarValue null else destrChild childHow propValue
-                   { Name = name; Value = tpv } :: nvs
-                 ) List.empty
-
-            StructureValue (refId, typeTag, nvs)
-      else ScalarValue null
-
-    let generatePropValue (tryCustom: DestructurerStrategy)
-                          (tryProjection: ProjectionStrategy)
-                          (req: DestructureRequest)
-                          : TemplatePropertyValue =
-      match tryNull req with
-      | Some tpv -> tpv
-      | _ ->
-        match req.hint with
-        | DestrHint.Stringify -> ScalarValue (req.value.ToString())
-        | DestrHint.Structure ->
-          let rec defaultOrReflection req =
-            let tryDefault = tryNull |? tryCustom |? tryScalar |? (tryContainerTypes defaultOrReflection)
-            match tryDefault req with
-            | Some tpv -> tpv
-            | _ -> reflectionProperties tryProjection defaultOrReflection req
-          defaultOrReflection req
-        | DestrHint.Default ->
-          let rec defaultOrScalar req =
-            let tryDefault = tryNull |? tryCustom |? tryScalar |? (tryContainerTypes defaultOrScalar)
-            match tryDefault req with
-            | Some tpv -> tpv
-            | _ -> ScalarValue (req.value)
-
-          defaultOrScalar req
-
+  [<AutoOpen>]
   module Capturing =
 
     let inline private capturePositionals (props:Property[]) (args:obj[]) =
       props
-      |> Array.mapi (fun i prop ->
+      |> Array.map (fun prop ->
          let pos = prop.Pos
          let arg = if pos < args.Length then Some args.[pos] else None
          (prop, arg))
@@ -416,8 +107,346 @@ module MessageTemplates =
       let cap = if tpl.IsAllPositional then capturePositionals else captureNamed
       cap tpl.Properties args
 
+  module Destructure =
+
+    open System.Reflection
+    open Microsoft.FSharp.Reflection
+    open Microsoft.FSharp.Quotations.Patterns
+
+    type DestructureRequest (value: obj, hint: DestrHint, idManager: RefIdManager) =
+      member __.Value = value
+      member __.Hint = hint
+      member __.IdManager = idManager
+      member __.WithNewValue (value: obj) =
+        DestructureRequest (value, __.Hint, __.IdManager)
+      member __.TryDownCast<'t> () =
+        match __.Value with
+        | :? 't as typedValue -> DestructureRequest<'t>(typedValue, __.Hint, __.IdManager) |> Some
+        | _ -> None
+
+    and DestructureResolver = DestructureRequest -> TemplatePropertyValue
+    and DestructureStrategy = DestructureRequest -> TemplatePropertyValue option
+    and DestructureRequest<'t> (value: 't, hint: DestrHint, idManager: RefIdManager) =
+      inherit DestructureRequest (value,hint,idManager)
+      member __.Value = value
+    and DestructureResolver<'t> = DestructureRequest<'t> -> TemplatePropertyValue
+    and CustomDestructureFactory = DestructureResolver -> DestructureResolver
+    and CustomDestructureFactory<'t> = DestructureResolver -> DestructureResolver<'t>
+    and ICustomDestructureRegistry =
+      abstract TryGetRegistration : Type -> CustomDestructureFactory option
+    
+    let emptyDestructureRegistry =
+      {
+        new ICustomDestructureRegistry with
+          member __.TryGetRegistration _ = None
+      }
+
+    /// maybe we can add more projection strategy: only(whenNotNull,proj)
+    let only<'t> (proj: 't -> obj[]) = ()
+    let except<'t> (proj: 't -> obj[]) = ()
+
+    module Projection =
+
+      type Projection =
+      | Projection of Type * How
+      | NotSupport
+      and How =
+      | Only of string list list
+      | Except of string list list
+      and ProjectionStrategy = Type -> How option
+
+      (*
+        Projection
+          ("Exception",
+           Only
+             [["Message"]; ["StackTrace"]; ["Data"]; ["InnerException"]; ["InnerException"; "Message"];
+              ["InnerException"; "StackTrace"]]
+              )
+      *)
+      let private topHierarchy (names: string list list) =
+          match names with
+          | [] -> Map.empty
+          | _ ->
+            names
+            |> List.fold (fun hieraMap eachHiera ->
+               match eachHiera with
+               | [] -> hieraMap
+               | [head] -> 
+                 match hieraMap |> Map.tryFind head with
+                 | None -> hieraMap |> Map.add head []
+                 | _ -> hieraMap
+               | head :: rests  ->
+                 match hieraMap |> Map.tryFind head with
+                 | Some others -> hieraMap |> Map.add head (rests :: others)
+                 | _ -> hieraMap |> Map.add head [rests]
+               ) (Map.empty)
+
+      let emptyProjectionStrategy _ = None
+
+      let toTopMap how =
+        match how with
+        | Only names ->
+          names |> topHierarchy |> Map.map (fun _ v -> Only v)
+        | Except names ->
+          names |> topHierarchy |> Map.map (fun _ v -> Except v)
+
+      let rec byExpr expr =
+        match expr with
+        | Call (_, method, [Lambda( d, NewArray(_, props))]) -> Projection (d.Type, generateHow method.Name props)
+        | _ -> NotSupport
+      and private generateHow methodName exprs =
+        exprs
+        |> List.map (fun expr ->
+           match expr with
+           | Coerce (PropertyGet(Some(outterExpr), prop,_), _) -> generateOutter outterExpr [prop.Name]
+           | _ -> [])
+        |> fun projs ->
+           match methodName with
+           | "only" -> Only projs
+           | "except" -> Except projs
+           | _ -> Only []
+      and private generateOutter outterExpr innerProjs =
+        match outterExpr with
+        | PropertyGet (Some (expr),prop,_) ->
+          generateOutter expr (prop.Name :: innerProjs)
+        | _ -> innerProjs
+
+    let scalarTypes =
+        [ typeof<bool>;      typeof<char>;       typeof<byte>;              typeof<int16>
+          typeof<uint16>;    typeof<int32>;      typeof<uint32>;            typeof<int64>
+          typeof<uint64>;    typeof<single>;     typeof<double>;            typeof<decimal>
+          typeof<string>;    typeof<DateTime>;   typeof<DateTimeOffset>;    typeof<TimeSpan>
+          typeof<Guid>;      typeof<Uri>; ]
+
+    let scalarTypeHash = HashSet(scalarTypes)
+
+    let inline private (|?) (f: DestructureStrategy) (g: DestructureStrategy) : DestructureStrategy =
+      fun req ->
+        match f req with
+        | Some _ as d -> d
+        | None -> g req
+
+    let someScalar = ScalarValue >> Some
+    let someSequence = SequenceValue >> Some
+    let someStructure = StructureValue >> Some
+    let someDictionary = DictionaryValue >> Some
+
+    let inline tryNull (req : DestructureRequest) =
+      if isNull req.Value then someScalar null
+      else None
+
+    let inline tryBuiltInTypes (req : DestructureRequest)  =
+      if scalarTypeHash.Contains(req.Value.GetType()) then
+        someScalar req.Value
+      else None
+
+    let inline tryEnum (req : DestructureRequest)  =
+      match req.Value with
+      | :? Enum as e -> someScalar e
+      | _ -> None
+
+    let inline tryByteArrayMaxBytes maxBytes (req : DestructureRequest)  =
+      match req.Value with
+      | :? array<Byte> as bytes ->
+        if bytes.Length <= maxBytes then someScalar bytes
+        else
+          let inline toHexString (b:byte) = b.ToString("X2")
+          let start = bytes |> Seq.take maxBytes |> Seq.map toHexString |> String.Concat
+          let description = start + "... (" + string bytes.Length + " bytes)"
+          someScalar description
+      | _ -> None
+
+    let inline tryByteArray (req : DestructureRequest)  = tryByteArrayMaxBytes 1024 req
+
+    let inline tryReflectionTypes (req : DestructureRequest)  =
+        match req.Value with
+        | :? Type as t -> someScalar t
+        | :? MemberInfo as m -> someScalar m
+        | _ -> None
+
+    let inline tryScalar (req : DestructureRequest)  =
+      tryNull |? tryBuiltInTypes |? tryEnum |? tryByteArray |? tryReflectionTypes
+      <| req
+
+    let inline private isDictionable (t: Type) =
+      t.GetInterfaces()
+      |> Seq.exists (fun iface ->
+         if iface.IsGenericType && iface.GetGenericTypeDefinition() = typedefof<IEnumerable<_>> then
+           let elementType = iface.GetGenericArguments().[0]
+           elementType.IsGenericType && elementType.GetGenericTypeDefinition() = typedefof<KeyValuePair<_,_>>
+         else iface = typeof<System.Collections.IDictionary>)
+
+    let inline private isFSharpList (t: Type) =
+      t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Microsoft.FSharp.Collections.List<_>>
+
+    let inline tryContainerTypes (resolver : DestructureResolver) (req : DestructureRequest) =
+      let resolverWithValue value = resolver <| req.WithNewValue(value)
+      let instance = req.Value
+      let refCount = req.IdManager
+  
+      match instance.GetType() with
+      | t when FSharpType.IsTuple t ->
+        match refCount.TryShowAsRefId instance with
+        | _, Some pv  -> Some pv
+        | refId, None -> 
+          let tupleValues =
+              instance
+              |> FSharpValue.GetTupleFields
+              |> Seq.map resolverWithValue
+              |> Seq.toList
+          someSequence (refId, tupleValues)
+
+      | t when isDictionable t ->
+        match refCount.TryShowAsRefId instance with
+        | _, Some pv  -> Some pv
+        | refId, None -> 
+          let keyProp, valueProp = ref Unchecked.defaultof<PropertyInfo>, ref Unchecked.defaultof<PropertyInfo>
+          let getKey o = if isNull !keyProp  then do keyProp := o.GetType().GetRuntimeProperty("Key")
+                         (!keyProp).GetValue(o)
+          let getValue o = if isNull !valueProp then do valueProp := o.GetType().GetRuntimeProperty("Value")
+                           (!valueProp).GetValue(o)
+          let objEnumerable = instance :?> System.Collections.IEnumerable |> Seq.cast<obj>
+          let skvps = objEnumerable
+                      |> Seq.map (fun o ->  resolverWithValue (getKey o),  resolverWithValue (getValue o))
+                      |> Seq.toList
+          someDictionary (refId, skvps)
+
+      | t when FSharpType.IsUnion t && not <| isFSharpList t ->
+   
+        let case, fields = FSharpValue.GetUnionFields(instance, t)
+        let caseName = ScalarValue case.Name
+        match fields with
+        | [||] -> Some caseName
+        | [| oneField |] ->
+          match refCount.TryShowAsRefId instance with
+          | _, Some pv  -> Some pv
+          | refId, None -> 
+            someDictionary (refId, [caseName, resolverWithValue oneField])
+        | _ ->
+          match refCount.TryShowAsRefId instance with
+          | _, Some pv  -> Some pv
+          | refId, None -> 
+            someDictionary (refId, [caseName, resolverWithValue fields])
+      | _ ->
+        match instance with
+        | :? System.Collections.IEnumerable as e ->
+          match refCount.TryShowAsRefId instance with
+          | _, Some pv  -> Some pv
+          | refId, None -> 
+            let eles = e |> Seq.cast<obj> |> Seq.map resolverWithValue |> Seq.toList
+            someSequence (refId, eles)
+        | _ -> None
+
+    let lookupPropFlags = BindingFlags.Public ||| BindingFlags.Instance
+
+    let inline private tryGetValueWithProp (propInfo : PropertyInfo) (instance : obj) =
+      match propInfo with
+      | p when (not <| isNull p) 
+               && p.CanRead 
+               && (p.Name <> "Item" || p.GetIndexParameters().Length = 0) ->
+        let propValue = 
+          try p.GetValue(instance) 
+          with 
+          | :? TargetInvocationException as ex ->  ("The property accessor threw an exception: " + ex.InnerException.Message) |> box
+          | ex -> ("The property accessor threw an exception: " + ex.Message) |> box
+        Some propValue
+      | _ -> None
+
+    let inline private tryGetValueWithType (t : Type) name (instance : obj) =
+      t.GetProperty(name,lookupPropFlags,null,null,Array.empty,null) |> tryGetValueWithProp <| instance
+
+    let rec reflectionProperties (tryProjection : Projection.ProjectionStrategy) (resolver : DestructureResolver) (req : DestructureRequest) =
+      let ty = req.Value.GetType()
+      match tryProjection ty with
+      | None -> reflectionByProjection resolver (Projection.Except []) req // try reflection all
+      | Some how -> reflectionByProjection resolver how req
+    and private reflectionByProjection (resolver : DestructureResolver) (how : Projection.How) (req : DestructureRequest) =
+      let resolverChild childHow childInstance=
+        match childHow with
+        | Projection.Only ([])
+        | Projection.Except ([]) ->
+          // means no children names, so try with destr passed in, this will use custom  type projection
+          resolver <| req.WithNewValue(childInstance)
+        | Projection.Only _
+        | Projection.Except _ ->
+          // use childHow ignore custom type projection
+          reflectionByProjection resolver childHow (req.WithNewValue(childInstance))
+
+      let instance = req.Value
+      let refCount = req.IdManager
+      
+      if not <| isNull instance then 
+        match refCount.TryShowAsRefId instance with
+        | _, Some pv  -> pv
+        | refId, None -> 
+          let ty = instance.GetType()
+          let typeTag = ty.Name
+
+          match how with
+          | Projection.Except _ -> 
+            let topHieraMap = Projection.toTopMap how
+            let isInclude name =
+              // in except hieraMap and has no childNames
+              match topHieraMap |> Map.tryFind name with
+              | Some (Projection.Except []) -> false
+              | _ -> true
+            let nvs =
+              ty.GetProperties(lookupPropFlags)
+              |> Array.filter (fun p -> not <| isNull p && (isInclude p.Name))
+              |> Array.sortBy (fun p -> p.Name)
+              |> Array.fold (fun nvs p ->
+                 let name = p.Name
+                 match tryGetValueWithProp p instance with
+                 | None -> nvs
+                 | Some propValue ->
+                   let childHow =
+                     match topHieraMap |> Map.tryFind name with
+                     | Some childHow -> childHow
+                     | None -> Projection.Except []
+                   let tpv = if isNull propValue then ScalarValue null else resolverChild childHow propValue
+                   { Name = name; Value = tpv } :: nvs
+                 ) List.empty
+
+            StructureValue (refId, typeTag, nvs)
+
+          | Projection.Only _ ->
+            let nvs =
+              how
+              |> Projection.toTopMap
+              |> Map.toList
+              |> List.fold (fun nvs (name, childHow) ->
+                 match tryGetValueWithType ty name instance with
+                 | None -> nvs
+                 | Some propValue ->
+                   let tpv = if isNull propValue then ScalarValue null else resolverChild childHow propValue
+                   { Name = name; Value = tpv } :: nvs
+                 ) List.empty
+
+            StructureValue (refId, typeTag, nvs)
+      else ScalarValue null
+
+    let rec destructure (registry : ICustomDestructureRegistry) (tryProjection : Projection.ProjectionStrategy) (req : DestructureRequest) : TemplatePropertyValue =
+      let resolver = destructure registry tryProjection
+      let tryCustom (req : DestructureRequest) = 
+        match registry.TryGetRegistration (req.Value.GetType()) with
+        | Some customFactory -> customFactory resolver req |> Some
+        | None -> None
+      let tryDefault = tryNull |? tryCustom |? tryScalar |? (tryContainerTypes resolver)
+      let catchByReflection (req : DestructureRequest) = reflectionProperties tryProjection resolver req
+      let catchByScalarOrigin (req : DestructureRequest) = ScalarValue req.Value
+
+      match tryNull req with
+      | Some tpv -> tpv
+      | _ ->
+        match req.Hint with
+        | DestrHint.Stringify -> ScalarValue (req.Value.ToString())
+        | DestrHint.Structure ->
+          req |> tryDefault |> Option.orDefault (catchByReflection req)
+        | DestrHint.Default ->
+          req |> tryDefault |> Option.orDefault (catchByScalarOrigin req)
+
+
   module Formatting = 
-    open Destructure
 
     module Utils =
       let formatWithCustom (provider : IFormatProvider) (arg : obj) format =
@@ -480,7 +509,7 @@ module MessageTemplates =
             // yield formated
           else (Utils.escapeNewlineAndQuote formated), StringSymbol
 
-      let tokeniseSequenceValueCompact (svs: TemplatePropertyValue list) recurse =
+      let tokeniseSequenceValueCompact (svs : TemplatePropertyValue list) (recurse : TemplatePropertyValue -> seq<string * LiterateToken>) =
         let mutable isFirst = true
         let valueTokens =
           svs
@@ -498,7 +527,7 @@ module MessageTemplates =
         }
 
       // use for formatting message template
-      let rec tokenisePropValueCompact (writeState : WriteState) (tpv: TemplatePropertyValue) (format: string) =
+      let rec tokenisePropValueCompact (writeState : WriteState) (tpv : TemplatePropertyValue) (format : string) =
         seq {
           match tpv with
           | RefId id ->  yield tokeniseRefId id
@@ -546,7 +575,7 @@ module MessageTemplates =
         }
 
       // use for formatting message context
-      let rec tokenisePropValueIndent (writeState : WriteState) (tpv: TemplatePropertyValue) (nl: string) (depth: int) =
+      let rec tokenisePropValueIndent (writeState : WriteState) (tpv : TemplatePropertyValue) (nl : string) (depth : int) =
         // fields/gauges/other use 2 indent, depth start from 0, so 2+2 = 6
         let indent = new String (' ', depth * 2 + 4)
         seq {
@@ -616,7 +645,7 @@ module MessageTemplates =
                 yield! tokenisePropValueIndent writeState entryValue nl (depth + 2)
         }
 
-      let tokeniseProperty (writeState : WriteState) (pt: Property) (pv: TemplatePropertyValue) =
+      let tokeniseProperty (writeState : WriteState) (pt : Property) (pv : TemplatePropertyValue) =
         match pv with
         | ScalarValue sv ->
           let tokenised = tokeniseScalarValue writeState.provider sv pt.format
@@ -650,14 +679,15 @@ module MessageTemplates =
         sb.ToString ()
 
     let formatWithProvider pvd raw args =
-      let tpl = parseToTemplate raw
+      let tpl = parse raw
       let no _ = None
       let pvMaps = Capturing.capture tpl args |> Array.map (fun (p,v) -> p.name,v) |> Map.ofArray
       let tryGetPropertyValue (pt:Property) =
         match Map.tryFind pt.name pvMaps with
         | Some (Some v) ->
-          let req = {value = v; hint = (DestrHint.fromCaptureHint pt.captureHint); idManager = RefIdManager()}
-          Destructure.generatePropValue no no req
+
+          Destructure.DestructureRequest(v, pt.captureHint.ToDestrHint(), RefIdManager())
+          |> Destructure.destructure Destructure.emptyDestructureRegistry Destructure.Projection.emptyProjectionStrategy
           |> Some
         | _ -> None
       Literate.tokeniseTemplate pvd tpl tryGetPropertyValue

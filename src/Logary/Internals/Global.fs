@@ -104,51 +104,58 @@ module internal Global =
     open Logary.MessageTemplates
     open Logary.MessageTemplates.Destructure
 
-    let private projectionDic = new ConcurrentDictionary<Type, How>()
+    let private customProjectionDic = new ConcurrentDictionary<Type, Projection.How>()
 
     let configProjection projectionExpr =
       match Projection.byExpr projectionExpr with
-      | NotSupport -> ()
-      | Projection (t, how) ->
-        projectionDic.AddOrUpdate(t,how,fun _ _ -> how) |> ignore
+      | Projection.Projection (t, how) ->
+        customProjectionDic.AddOrUpdate(t,how,fun _ _ -> how) |> ignore
+      | Projection.NotSupport -> ()
 
-    let getProjection t =
-      match projectionDic.TryGetValue t with
+    let tryGetCustomProjection t =
+      match customProjectionDic.TryGetValue t with
       | true, projection -> Some projection
       | false , _ ->
-        projectionDic.Keys
+        customProjectionDic.Keys
         |> Seq.tryFind (fun baseType -> baseType.IsAssignableFrom t)
         |> Option.bind (fun key ->
-           match projectionDic.TryGetValue key with
+           match customProjectionDic.TryGetValue key with
            | true, projection ->Some projection
            | false , _ -> None)
 
+    let private customDestructureDic = new ConcurrentDictionary<Type,CustomDestructureFactory>()
 
-    let private destructureDic = new ConcurrentDictionary<Type,Destructurer>()
-
-    let configDestructure<'t> (destr: Destructurer) =
+    let configDestructure<'t> (factory : CustomDestructureFactory<'t>) =
       let ty = typeof<'t>
-      destructureDic.[ty] <- destr
+      let untypedFactory resolver (untypedReq : DestructureRequest) =
+        match untypedReq.TryDownCast<'t> () with
+        | Some typedReq -> factory resolver typedReq
+        | _ -> ScalarValue (sprintf "failed down cast to %A , obj is : %s" typeof<'t> (string untypedReq.Value))
+      customDestructureDic.[ty] <- untypedFactory
 
-    let internal destructureFac (req : DestructureRequest) =
-      if isNull req.value then None
-      else
-        let runtimeType = req.value.GetType()
-        match destructureDic.TryGetValue runtimeType with
-        | true, destr -> destr req |> Some
-        | false , _ ->
-          destructureDic.Keys
-          |> Seq.tryFind (fun baseType -> baseType.IsAssignableFrom runtimeType)
-          |> Option.bind (fun key ->
-             match destructureDic.TryGetValue key with
-             | true, destr -> destr req |> Some
-             | false , _ -> None)
+    let internal customDestructureRegistry =
+      {
+        new ICustomDestructureRegistry with
+          member __.TryGetRegistration (runtimeType : Type) =
+            match customDestructureDic.TryGetValue runtimeType with
+            | true, factory -> factory |> Some
+            | false , _ ->
+              customDestructureDic.Keys
+              |> Seq.tryFind (fun baseType -> baseType.IsAssignableFrom runtimeType)
+              |> Option.bind (fun key ->
+                 match customDestructureDic.TryGetValue key with
+                 | true, factory -> factory |> Some
+                 | false , _ -> None)
+      }
 
     let private configForInternal () =
-      configDestructure<Gauge> <| fun req ->
-        let (Gauge (value, units)) =  req.value :?> Gauge
+      configDestructure<Gauge> <| fun _ req ->
+        let (Gauge (value, units)) =  req.Value
         let (scaledValue, unitsFormat) = Units.scale units value
         if String.IsNullOrEmpty unitsFormat then ScalarValue scaledValue
         else ScalarValue (sprintf "%s %s" (string scaledValue) unitsFormat)
+
+      configDestructure<Exception> <| fun resolver req ->
+        ScalarValue ""
 
     do configForInternal ()

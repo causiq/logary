@@ -121,7 +121,7 @@ module Config =
   let configProjection projectionExpr =
     Logary.Internals.Global.Destructure.configProjection projectionExpr
 
-  let configDestructure<'t> (destr: Destructurer) =
-    Logary.Internals.Global.Destructure.configDestructure<'t> destr
+  let configDestructure<'t> (factory: CustomDestructureFactory) =
+    Logary.Internals.Global.Destructure.configDestructure<'t> factory
   
 

@@ -332,7 +332,7 @@ module Message =
 
   [<CompiledName "SetFields">]
   let setFields (args : obj[]) message =
-    Capturing.capture (parseToTemplate message.value) args
+    capture (parse message.value) args
     |> Array.fold (fun m (pt, value) -> 
        match value with
        | Some v -> setField pt.name v m
@@ -513,7 +513,7 @@ module MessageEx =
       Message.eventFormat (LogLevel.Debug, format, args)
       
     static member templateEvent<'T> (level : LogLevel, format : string) : ('T -> Message) =
-      let template = parseToTemplate format
+      let template = parse format
       if  template.IsAllPositional || template.Properties.Length <> 1 then
         raise (System.ArgumentException (sprintf "Template '%s' must have exactly 1 named property" format))
       let field = template.Properties.[0]
@@ -522,7 +522,7 @@ module MessageEx =
         |> Message.setField field.name v
 
     static member templateEvent<'T1, 'T2> (level : LogLevel, format : string) : ('T1 -> 'T2 -> Message) =
-      let template = parseToTemplate format
+      let template = parse format
       if template.IsAllPositional || template.Properties.Length <> 2 then
         failwithf "Template '%s' must have exactly 2 named properties" format
       let field1 = template.Properties.[0]
@@ -533,7 +533,7 @@ module MessageEx =
         |> Message.setField field2.name v2
 
     static member templateEvent<'T1, 'T2, 'T3> (level : LogLevel, format : string) : ('T1 -> 'T2 -> 'T3 -> Message) =
-      let template = parseToTemplate format
+      let template = parse format
       if template.IsAllPositional || template.Properties.Length <> 3 then
         failwithf "Template '%s' must have exactly 3 named properties" format
       let field1 = template.Properties.[0]
@@ -546,7 +546,7 @@ module MessageEx =
         |> Message.setField field3.name v3
 
     static member templateEvent<'T1, 'T2, 'T3, 'T4> (level : LogLevel, format : string) : ('T1 -> 'T2 -> 'T3 -> 'T4 -> Message) =
-      let template = parseToTemplate format
+      let template = parse format
       if template.IsAllPositional || template.Properties.Length <> 4 then
         failwithf "Template '%s' must have exactly 4 named properties" format
       let field1 = template.Properties.[0]

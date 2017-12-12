@@ -41,7 +41,7 @@ module MessageWriter =
   let formatTimestamp (timestamp : EpochNanoSeconds) =
     Instant.ofEpoch(timestamp).ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture)
 
-  let internal defaultDestr = Destructure.generatePropValue Global.Destructure.destructureFac Global.Destructure.getProjection
+  let internal defaultDestr = Destructure.destructure Global.Destructure.customDestructureRegistry Global.Destructure.tryGetCustomProjection
 
   /// maxDepth can be avoided if cycle reference are handled properly
   let expanded highlightError nl ending : MessageWriter =
