@@ -137,7 +137,7 @@ let tests = [
 
   testCase "json formatting" <| fun _ ->
     complexMessage
-    |> Logary.Formatting.Json.formatWith JsonFormattingOptions.Pretty (fun _ -> None)
+    |> Logary.Formatting.Json.formatWith JsonFormattingOptions.Pretty
     |> fun actual ->
        let expect = """
 {

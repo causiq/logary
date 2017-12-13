@@ -10,6 +10,7 @@ open Logary.Internals
 open Logary.Targets
 open Logary.EventsProcessing
 open Logary.MessageTemplates.Destructure
+open Logary.Formatting.JsonHelper
 
 
 /// Specifies the internal logging level for Logary.
@@ -124,4 +125,5 @@ module Config =
   let configDestructure<'t> (factory: CustomDestructureFactory<'t>) =
     Logary.Internals.Global.Destructure.configDestructure<'t> factory
   
-
+  let configJsonEncoder<'t> (factory: CustomJsonEncoderFactory<'t>) =
+    Logary.Internals.Global.Json.configJsonEncoder<'t> factory

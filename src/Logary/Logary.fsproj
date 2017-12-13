@@ -72,8 +72,9 @@
     <Compile Include="HashMap.fsi" />
     <Compile Include="HashMap.fs" />
     <Compile Include="HashMapModule.fs" />
-    <Compile Include="LogLevel.fs" />
+    <Compile Include="Formatting/JsonHelper.fs" />
     <Compile Include="Formatting/MessageTemplates.fs" />
+    <Compile Include="LogLevel.fs" />
     <Compile Include="Constants.fs" />
     <Compile Include="Internals/Internals.fs" />
     <Compile Include="DataModel.fs" />
@@ -107,8 +108,8 @@
     <!-- Below: registry -->
     <Compile Include="Registry.fs" />
     <!-- Below: formatting, serialisation -->
-    <Compile Include="Formatting/JsonFormatting.fs" />
-    <Compile Include="Formatting/LiterateFormatting.fs" />
+    <Compile Include="Formatting/Json.fs" />
+    <Compile Include="Formatting/Literate.fs" />
     <Compile Include="Formatting/MessageWriter.fs" />
     <!-- Below: implementations, factory api -->
     <Compile Include="CSharp.fs" />

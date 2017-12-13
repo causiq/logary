@@ -96,6 +96,54 @@ module internal Global =
   let lockSem fn =
     lock (getConsoleSemaphore ()) fn
 
+  module Json =
+
+    open System
+    open System.Collections.Concurrent
+    open Chiron
+    open Logary.Formatting.JsonHelper
+
+    module E = Chiron.Serialization.Json.Encode
+    module EI = Chiron.Inference.Json.Encode
+    
+    let private customJsonEncoderDic = new ConcurrentDictionary<Type,CustomJsonEncoderFactory>()
+
+    let configJsonEncoder<'t> (factory : CustomJsonEncoderFactory<'t>) =
+      let ty = typeof<'t>
+      let untypedEncoder (resolver : JsonEncoder<obj>) (data : obj) =
+        match data with
+        | :? 't as typedData -> factory resolver typedData
+        | _ -> Json.String (sprintf "failed down cast to %A , obj is : %s" typeof<'t> (string data))
+
+      customJsonEncoderDic.[ty] <- untypedEncoder 
+    let internal customJsonEncoderRegistry = lazy (
+      configJsonEncoder<PointName>(fun _ name -> E.string (name.ToString()))
+      configJsonEncoder<Gauge>(fun _ (Gauge(v,u)) -> 
+        let (vs, us) = Units.scale u v
+        E.string (sprintf "%s %s" (vs.ToString()) us))
+
+      configJsonEncoder<Message>(fun resolver msg ->
+        JsonObject.empty
+        |> EI.required "name" (string msg.name)
+        |> EI.required "value" msg.value
+        |> EI.required "level" (string msg.level)
+        |> EI.required "timestamp" msg.timestamp
+        |> E.required resolver "context" msg.context
+        |> JsonObject.toJson)
+        
+      {
+        new ICustomJsonEncoderRegistry with
+          member __.TryGetRegistration (runtimeType : Type) =
+            match customJsonEncoderDic.TryGetValue runtimeType with
+            | true, factory -> factory |> Some
+            | false , _ ->
+              customJsonEncoderDic.Keys
+              |> Seq.tryFind (fun baseType -> baseType.IsAssignableFrom runtimeType)
+              |> Option.bind (fun key ->
+                 match customJsonEncoderDic.TryGetValue key with
+                 | true, factory -> factory |> Some
+                 | false , _ -> None)
+      })
 
   module Destructure =
 
@@ -112,16 +160,17 @@ module internal Global =
         customProjectionDic.AddOrUpdate(t,how,fun _ _ -> how) |> ignore
       | Projection.NotSupport -> ()
 
-    let tryGetCustomProjection t =
-      match customProjectionDic.TryGetValue t with
-      | true, projection -> Some projection
-      | false , _ ->
-        customProjectionDic.Keys
-        |> Seq.tryFind (fun baseType -> baseType.IsAssignableFrom t)
-        |> Option.bind (fun key ->
-           match customProjectionDic.TryGetValue key with
-           | true, projection ->Some projection
-           | false , _ -> None)
+    let internal tryGetCustomProjection : Projection.ProjectionStrategy  =
+      fun (t : Type) ->
+        match customProjectionDic.TryGetValue t with
+        | true, projection -> Some projection
+        | false , _ ->
+          customProjectionDic.Keys
+          |> Seq.tryFind (fun baseType -> baseType.IsAssignableFrom t)
+          |> Option.bind (fun key ->
+             match customProjectionDic.TryGetValue key with
+             | true, projection ->Some projection
+             | false , _ -> None)
 
     let private customDestructureDic = new ConcurrentDictionary<Type,CustomDestructureFactory>()
 
@@ -133,29 +182,15 @@ module internal Global =
         | _ -> ScalarValue (sprintf "failed down cast to %A , obj is : %s" typeof<'t> (string untypedReq.Value))
       customDestructureDic.[ty] <- untypedFactory
 
-    let internal customDestructureRegistry =
-      {
-        new ICustomDestructureRegistry with
-          member __.TryGetRegistration (runtimeType : Type) =
-            match customDestructureDic.TryGetValue runtimeType with
-            | true, factory -> factory |> Some
-            | false , _ ->
-              customDestructureDic.Keys
-              |> Seq.tryFind (fun baseType -> baseType.IsAssignableFrom runtimeType)
-              |> Option.bind (fun key ->
-                 match customDestructureDic.TryGetValue key with
-                 | true, factory -> factory |> Some
-                 | false , _ -> None)
-      }
+    let internal customDestructureRegistry = lazy (
 
-    let private configForInternal () =
-      configDestructure<Gauge> <| fun _ req ->
+      configDestructure<Gauge>(fun _ req ->
         let (Gauge (value, units)) =  req.Value
         let (scaledValue, unitsFormat) = Units.scale units value
         if String.IsNullOrEmpty unitsFormat then ScalarValue scaledValue
-        else ScalarValue (sprintf "%s %s" (string scaledValue) unitsFormat)
+        else ScalarValue (sprintf "%s %s" (string scaledValue) unitsFormat))
 
-      configDestructure<Exception> <| fun resolver req ->
+      configDestructure<Exception>(fun resolver req ->
         let ex = req.Value
         let refCount = req.IdManager
         match refCount.TryShowAsRefId req with
@@ -180,6 +215,22 @@ module internal Global =
               yield { Name = "InnerException"; Value = req.WithNewValue(ex.InnerException) |> resolver }
           ]
 
-          StructureValue (refId, typeTag, nvs)
+          StructureValue (refId, typeTag, nvs))
 
-    do configForInternal ()
+      {
+        new ICustomDestructureRegistry with
+          member __.TryGetRegistration (runtimeType : Type) =
+            match customDestructureDic.TryGetValue runtimeType with
+            | true, factory -> factory |> Some
+            | false , _ ->
+              customDestructureDic.Keys
+              |> Seq.tryFind (fun baseType -> baseType.IsAssignableFrom runtimeType)
+              |> Option.bind (fun key ->
+                 match customDestructureDic.TryGetValue key with
+                 | true, factory -> factory |> Some
+                 | false , _ -> None)
+      })
+
+  let jsonEncoderRegistry = Json.customJsonEncoderRegistry.Value
+  let destructureRegistry = Destructure.customDestructureRegistry.Value
+  let projectionStrategy = Destructure.tryGetCustomProjection

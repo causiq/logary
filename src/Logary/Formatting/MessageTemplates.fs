@@ -357,9 +357,9 @@ module MessageTemplates =
     let inline private tryGetValueWithType (t : Type) name (instance : obj) =
       t.GetProperty(name,lookupPropFlags,null,null,Array.empty,null) |> tryGetValueWithProp <| instance
 
-    let rec reflectionProperties (tryProjection : Projection.ProjectionStrategy) (resolver : DestructureResolver) (req : DestructureRequest) =
+    let rec reflectionProperties (tryGetProjection : Projection.ProjectionStrategy) (resolver : DestructureResolver) (req : DestructureRequest) =
       let ty = req.Value.GetType()
-      match tryProjection ty with
+      match tryGetProjection ty with
       | None -> reflectionByProjection resolver (Projection.Except []) req // try reflection all
       | Some how -> reflectionByProjection resolver how req
     and private reflectionByProjection (resolver : DestructureResolver) (how : Projection.How) (req : DestructureRequest) =
@@ -427,14 +427,14 @@ module MessageTemplates =
             StructureValue (refId, typeTag, nvs)
       else ScalarValue null
 
-    let rec destructure (registry : ICustomDestructureRegistry) (tryProjection : Projection.ProjectionStrategy) (req : DestructureRequest) : TemplatePropertyValue =
-      let resolver = destructure registry tryProjection
+    let rec destructure (registry : ICustomDestructureRegistry) (tryGetProjection : Projection.ProjectionStrategy) (req : DestructureRequest) : TemplatePropertyValue =
+      let resolver = destructure registry tryGetProjection
       let tryCustom (req : DestructureRequest) = 
         match registry.TryGetRegistration (req.Value.GetType()) with
         | Some customFactory -> customFactory resolver req |> Some
         | None -> None
       let tryDefault = tryNull |? tryCustom |? tryScalar |? (tryContainerTypes resolver)
-      let catchByReflection (req : DestructureRequest) = reflectionProperties tryProjection resolver req
+      let catchByReflection (req : DestructureRequest) = reflectionProperties tryGetProjection resolver req
       let catchByScalarOrigin (req : DestructureRequest) = ScalarValue req.Value
 
       match tryNull req with

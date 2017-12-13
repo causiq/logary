@@ -25,10 +25,10 @@ module MessageWriterEx =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module MessageWriter =
   open Microsoft.FSharp.Reflection
+  open Logary.MessageTemplates
+  open Logary.MessageTemplates.Formatting
+  open Logary.MessageTemplates.Formatting.Literate
   open Logary.Formatting.Literate
-  open MessageTemplates
-  open MessageTemplates.Formatting
-  open MessageTemplates.Formatting.Literate
   open Logary.Internals
   
 
@@ -41,7 +41,7 @@ module MessageWriter =
   let formatTimestamp (timestamp : EpochNanoSeconds) =
     Instant.ofEpoch(timestamp).ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture)
 
-  let internal defaultDestr = Destructure.destructure Global.Destructure.customDestructureRegistry Global.Destructure.tryGetCustomProjection
+  let internal defaultDestr = Destructure.destructure Global.destructureRegistry Global.projectionStrategy
 
   /// maxDepth can be avoided if cycle reference are handled properly
   let expanded highlightError nl ending : MessageWriter =
