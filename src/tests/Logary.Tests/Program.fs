@@ -722,7 +722,7 @@ let tests =
           epochNanoS = dto.timestamp)
     ]
 
-    ptestList "Engine" Engine.tests
+    testList "Engine" Engine.tests
 
     testList "Target.Core" Tests.CoreTargets.tests
 

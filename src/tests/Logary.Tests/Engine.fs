@@ -10,6 +10,10 @@ open Hopac.Extensions
 open Logary.Internals
 open Logary.EventsProcessing
 open Logary.EventsProcessing.Transformers
+open NodaTime
+open System.Net.NetworkInformation
+open Logary.HashMap
+open Hopac.TopLevel
 
 type MockTarget =
   { server : string * (Message -> Alt<Promise<unit>>)
@@ -24,7 +28,7 @@ let mockTarget name =
       Mailbox.take mailbox ^=> fun newMsg -> loop [yield! msgs; yield newMsg]
 
       getMsgReq ^=> fun reply ->
-        reply *<= msgs >>=. loop msgs
+        reply *<= msgs >>=. loop []
     ]
 
   let sendMsg x = Mailbox.Now.send mailbox x; Promise.instaPromise
@@ -52,15 +56,25 @@ let run pipe (targets:ResizeArray<MockTarget>) =
 
   pipe
   |> Pipe.run (fun msg ->
-     let targetName = Message.tryGetContext "target" msg
-     match targetName with
-     | Some (targetName) ->
-       let target = HashMap.tryFind targetName targetsMap
-       match target with
-       | Some target ->
-         target msg |> HasResult
-       | _ -> NoResult
-     | _ -> NoResult)
+     let allSendJobs =
+       msg 
+       |> Message.getAllSinks
+       |> Seq.choose (fun targetName ->
+          let target = HashMap.tryFind targetName targetsMap
+          match target with
+          | Some target ->
+            let sendJob = target msg ^=> id 
+            sendJob |> Some
+          | _ -> None)
+       |> Hopac.Extensions.Seq.Con.iterJob (id)
+
+     let allAppendedAcks = IVar ()
+
+     let logToAllTargetAlt = Alt.prepareJob <| fun _ ->
+        Job.start (allSendJobs >>= IVar.fill allAppendedAcks)
+        >>-. allAppendedAcks
+
+     logToAllTargetAlt ^->. Promise (()) |> HasResult)
   |> fun runningPipe ->
      runningPipe >>- fun (logMsg, ctss) ->
      let wrapper x =
@@ -68,14 +82,12 @@ let run pipe (targets:ResizeArray<MockTarget>) =
        res ^=> fun ack -> ack |> Job.Ignore
      (wrapper, ctss)
 
-open NodaTime
-open System.Net.NetworkInformation
 
 let tests =
   [
     testList "processing builder" [
 
-      testCaseAsync "message routing" (job {
+      ptestCaseAsync "message routing" (job {
 
         // context
         let processing =
@@ -228,5 +240,85 @@ let tests =
       // finally
       do! Seq.Con.iterJob Cancellation.cancel ctss
     } |> Job.toAsync)
+
+    testCaseAsync "buffer conditinal pipe" (job {
+
+      let dutiful (msg : Message, buffered : Message list) =
+        let dt =DateTime.Parse("10:10").ToUniversalTime()
+        let timeNow = Instant.FromDateTimeUtc(dt)
+        let tenMins = Duration.FromMinutes(10L)
+        let durationFromFirstBufferMsg =
+          match buffered |> List.tryHead with
+          | Some firstMsg -> 
+            timeNow - (firstMsg.timestamp |> Instant.ofEpoch)
+          | None -> Duration.MinValue
+        if msg.level >= Error then Pipe.BufferAction.Delivery
+        elif buffered.Length >= 4 || durationFromFirstBufferMsg > tenMins then Pipe.BufferAction.Reset
+        else Pipe.BufferAction.AddToBuffer
+
+      // context
+      let processing =
+        Events.stream
+        |> Events.subscribers [
+           Events.events
+           |> Pipe.bufferConditional dutiful
+           |> Pipe.map Seq.ofList
+           |> Events.flattenToProcessing
+           |> Pipe.map (fun msg -> 
+              let sinks = if msg.level >= Error then ["email"] else ["dashboard"]
+              msg |> Message.addSinks sinks)
+        ]
+        |> Events.toProcessing
+
+      // given
+      let! targets = [mockTarget "email"; mockTarget "dashboard";] |> Job.seqCollect
+      let! (sendMsg, ctss) = run processing targets
+
+      // when
+      let makeMsg level time = 
+        Message.event level (Guid.NewGuid().ToString("N"))
+        |> Message.setTimestamp (Instant.FromDateTimeUtc(DateTime.Parse(time).ToUniversalTime()))
+        |> sendMsg
+
+      do! makeMsg Info "10:01"
+      do! makeMsg Debug "10:02"
+      do! makeMsg Verbose "10:05"
+      do! makeMsg Info "10:05"
+      do! makeMsg Info "10:05"
+
+      let! msgsFromEachTarget = targets |> Seq.Con.mapJob (fun t -> t.getMsgs ())
+      let (msgFromEmail, msgFromDashboard) = (msgsFromEachTarget.[0],msgsFromEachTarget.[1])
+      Expect.isEmpty msgFromEmail "no error msg occur,so no msg"
+      Expect.isEmpty msgFromDashboard "no error msg occur,so no msg"
+
+      do! makeMsg Info "10:05"
+      do! makeMsg Warn "10:06"
+      do! makeMsg Warn "10:07"
+      do! makeMsg Error "10:08"
+      let! msgsFromEachTarget = targets |> Seq.Con.mapJob (fun t -> t.getMsgs ())
+      let (msgFromEmail, msgFromDashboard) = (msgsFromEachTarget.[0],msgsFromEachTarget.[1])
+      Expect.equal msgFromEmail.Length 1 "1 error msg send to email"
+      Expect.equal msgFromDashboard.Length 3 "3 other msg send to dashboard"
+   
+      do! makeMsg Fatal "10:09"
+      let! msgsFromEachTarget = targets |> Seq.Con.mapJob (fun t -> t.getMsgs ())
+      let (msgFromEmail, msgFromDashboard) = (msgsFromEachTarget.[0],msgsFromEachTarget.[1])
+      Expect.isEmpty msgFromDashboard "no bufferd msg"
+      Expect.equal msgFromEmail.Length 1 "1 error msg continue send to email"
+      
+      do! makeMsg Info "09:50"
+      do! makeMsg Info "09:55"
+      do! makeMsg Info "10:05"
+      do! makeMsg Info "10:06"
+      do! makeMsg Fatal "10:15"
+      let! msgsFromEachTarget = targets |> Seq.Con.mapJob (fun t -> t.getMsgs ())
+      let (msgFromEmail, msgFromDashboard) = (msgsFromEachTarget.[0],msgsFromEachTarget.[1])
+      Expect.equal msgFromEmail.Length 1 "1 Fatal msg send to email"
+      Expect.equal msgFromDashboard.Length 2 "2 other msg send to dashboard, fist two are discarded beacuse they are too old"
+
+      do! Seq.Con.iterJob Cancellation.cancel ctss
+
+    } |> Job.toAsync)
+
 
   ]

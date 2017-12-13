@@ -173,3 +173,24 @@ module Pipe =
     pipe
     |> map (mapping >> Snapshot.create >> (fun snapshot -> Snapshot.quantile snapshot quantile))
 
+
+  type BufferAction = | Reset | Delivery | AddToBuffer
+
+  let bufferConditional (deliveryDecider : _ * list<_> -> BufferAction) pipe =
+    pipe
+    |> chain (fun cont ->
+       let buffer = new ResizeArray<_> ()
+
+       fun prev ->
+         let buffered = (List.ofSeq buffer)
+         match deliveryDecider (prev, buffered) with
+         | Reset -> 
+           buffer.Clear ()
+           NoResult
+         | Delivery ->
+           buffer.Clear ()
+           (buffered @ [prev]) |> cont
+         | AddToBuffer ->
+           buffer.Add(prev)
+           NoResult
+       )

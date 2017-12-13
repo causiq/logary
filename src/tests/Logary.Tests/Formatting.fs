@@ -341,7 +341,15 @@ I 1970-01-01T00:00:03.1234567+00:00: cycle reference []
        Expect.equal actual (expect.TrimStart([|'\n'|])) "cycle reference should work"
 
   testCase "projection only" <| fun _ ->
-    let only = <@@ Destructure.only<ProjectionTestOnly>(fun foo -> [|foo.user.created.Day;foo.ex.Message;foo.ex.StackTrace;foo.ex.Data.Count;foo.ex.InnerException.Message|]) @@>
+    let only = <@@ Destructure.only<ProjectionTestOnly>(fun foo -> 
+      [|
+        foo.user.created.Day;
+        foo.ex.Message;
+        foo.ex.StackTrace;
+        foo.ex.Data.Count;
+        foo.ex.InnerException.Message
+        |]) @@>
+        
     Logary.Configuration.Config.configProjection only
     
     let inner = exn "inner exception"

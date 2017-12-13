@@ -4,11 +4,14 @@ open Logary
 open Logary.Internals
 open Hopac
 open Hopac.Infixes
-
+open NodaTime
 
 [<RequireQualifiedAccessAttribute>]
 module Events =
   type Processing = Pipe<Message,Alt<Promise<unit>>,Message> // for logary target based processing
+
+  type B = B
+
 
   type T =
     private {
@@ -32,6 +35,7 @@ module Events =
   let miniLevel level pipe =
     pipe |> Pipe.filter (fun msg -> msg.level >= level)
 
+
   let sink (names : string list) pipe =
     pipe |> Pipe.map (Message.addSinks names)
 
@@ -52,7 +56,6 @@ module Events =
 
           logAllAlt ^-> fun acks -> Job.conIgnore acks |> memo
           |> PipeResult.HasResult)
-
 
   let toProcessing stream =
     let pipes = stream.pipes
