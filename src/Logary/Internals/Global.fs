@@ -156,6 +156,30 @@ module internal Global =
         else ScalarValue (sprintf "%s %s" (string scaledValue) unitsFormat)
 
       configDestructure<Exception> <| fun resolver req ->
-        ScalarValue ""
+        let ex = req.Value
+        let refCount = req.IdManager
+        match refCount.TryShowAsRefId req with
+        | _, Some pv -> pv
+        | refId, None ->
+          let typeTag = ex.GetType().FullName
+          let nvs = [ 
+            yield { Name = "Message"; Value = ScalarValue ex.Message }
+            if not <| isNull ex.Data && ex.Data.Count > 0 then
+              yield { Name = "Data"; Value = req.WithNewValue(ex.Data) |> resolver }
+            if not <| isNull ex.StackTrace then
+              yield { Name = "StackTrace"; Value = ScalarValue (string ex.StackTrace) }
+            if not <| isNull ex.TargetSite then
+              yield { Name = "TargetSite"; Value = req.WithNewValue(ex.TargetSite) |> resolver }
+            if not <| isNull ex.Source then
+              yield { Name = "Source"; Value = ScalarValue (ex.Source) }
+            if not <| isNull ex.HelpLink then
+              yield { Name = "HelpLink"; Value = ScalarValue (ex.HelpLink) }
+            if ex.HResult <> 0 then
+              yield { Name = "HResult"; Value = ScalarValue ex.HResult }
+            if not <| isNull ex.InnerException then
+              yield { Name = "InnerException"; Value = req.WithNewValue(ex.InnerException) |> resolver }
+          ]
+
+          StructureValue (refId, typeTag, nvs)
 
     do configForInternal ()

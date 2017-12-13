@@ -343,12 +343,14 @@ module MessageTemplates =
       match propInfo with
       | p when (not <| isNull p) 
                && p.CanRead 
-               && (p.Name <> "Item" || p.GetIndexParameters().Length = 0) ->
+               && p.GetIndexParameters().Length = 0 ->
         let propValue = 
           try p.GetValue(instance) 
           with 
-          | :? TargetInvocationException as ex ->  ("The property accessor threw an exception: " + ex.InnerException.Message) |> box
-          | ex -> ("The property accessor threw an exception: " + ex.Message) |> box
+          | :? TargetInvocationException as ex ->  
+            (sprintf "The property (%s) accessor threw an (TargetInvocationException): %s" p.Name ex.InnerException.Message) |> box
+          | ex -> 
+            (sprintf "The property (%s) accessor threw an (%A) : %s" p.Name (ex.GetType())  ex.Message) |> box
         Some propValue
       | _ -> None
 
@@ -441,10 +443,13 @@ module MessageTemplates =
         match req.Hint with
         | DestrHint.Stringify -> ScalarValue (req.Value.ToString())
         | DestrHint.Structure ->
-          req |> tryDefault |> Option.orDefault (catchByReflection req)
+          match req |> tryDefault with
+          | Some tpv -> tpv
+          | None -> catchByReflection req
         | DestrHint.Default ->
-          req |> tryDefault |> Option.orDefault (catchByScalarOrigin req)
-
+          match req |> tryDefault with
+          | Some tpv -> tpv
+          | None -> catchByScalarOrigin req
 
   module Formatting = 
 

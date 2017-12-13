@@ -431,24 +431,13 @@ I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "t
   others:
     _logary.errors => 
       - 
-        Exception {
-          TargetSite => null
-          StackTrace => null
-          Source => null
+        System.Exception {
           Message => "Gremlings in the machinery"
-          InnerException => 
-            Exception {
-              TargetSite => null
-              StackTrace => null
-              Source => null
-              Message => "inner exception"
-              InnerException => null
-              HelpLink => null
-              HResult => -2146233088
-              Data => }
-          HelpLink => null
           HResult => -2146233088
-          Data => }
+          InnerException => 
+            System.Exception {
+              Message => "inner exception"
+              HResult => -2146233088}}
 """
        Expect.equal actual (expect.TrimStart([|'\n'|]))
          "formatting the message LevelDatetimePathMessageNl with exception attached"
@@ -458,14 +447,14 @@ I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "t
     |> levelDatetimeMessagePathNewLine.format
     |> fun actual ->
        let expect = """
-I 1970-01-01T00:00:03.1234567+00:00: default foo is "{id = 999;\n name = \"whatever\";\n created = 11/11/2017 12:00:00 AM;}" here is a default "PropA is 45 and PropB raise exn" and stringify "Logary.Tests.Formatting+Obj" and destructure Obj { PropB: "The property accessor threw an exception: Oh noes, no referential transparency here", PropA: 45 } Gauges: [Processor.% Idle.Core 1: 75 %, svc1 request per second: 1.75 k, methodA took 25.00 s to execute] [a.b.c.d]
+I 1970-01-01T00:00:03.1234567+00:00: default foo is "{id = 999;\n name = \"whatever\";\n created = 11/11/2017 12:00:00 AM;}" here is a default "PropA is 45 and PropB raise exn" and stringify "Logary.Tests.Formatting+Obj" and destructure Obj { PropB: "The property (PropB) accessor threw an (TargetInvocationException): Oh noes, no referential transparency here", PropA: 45 } Gauges: [Processor.% Idle.Core 1: 75 %, svc1 request per second: 1.75 k, methodA took 25.00 s to execute] [a.b.c.d]
   fields:
     objDefault => "PropA is 45 and PropB raise exn"
     foo => "{id = 999;\n name = \"whatever\";\n created = 11/11/2017 12:00:00 AM;}"
     objStr => "Logary.Tests.Formatting+Obj"
     objDestr => 
       Obj {
-        PropB => "The property accessor threw an exception: Oh noes, no referential transparency here"
+        PropB => "The property (PropB) accessor threw an (TargetInvocationException): Oh noes, no referential transparency here"
         PropA => 45}
   gauges:
     Processor.% Idle.Core 1 => "75 %"
@@ -490,24 +479,12 @@ I 1970-01-01T00:00:03.1234567+00:00: default foo is "{id = 999;\n name = \"whate
         value => ["3", "4"]
     _logary.errors => 
       - 
-        Exception {
-          TargetSite => null
-          StackTrace => null
-          Source => null
+        System.Exception {
           Message => "another exception"
-          InnerException => null
-          HelpLink => null
-          HResult => -2146233088
-          Data => }
+          HResult => -2146233088}
       - 
-        Exception {
-          TargetSite => null
-          StackTrace => null
-          Source => null
+        System.Exception {
           Message => "exception with data in it"
-          InnerException => null
-          HelpLink => null
-          HResult => -2146233088
           Data => 
             "data 1 in exn" => 1
             "data foo in exn" => 
@@ -524,7 +501,8 @@ I 1970-01-01T00:00:03.1234567+00:00: default foo is "{id = 999;\n name = \"whate
                 User {
                   name => "whatever"
                   id => 999
-                  created => 11/11/2017 12:00:00 AM}}
+                  created => 11/11/2017 12:00:00 AM}
+          HResult => -2146233088}
     Some Tuple With 1 two foo => 
       - 1
       - "two"
@@ -536,7 +514,7 @@ I 1970-01-01T00:00:03.1234567+00:00: default foo is "{id = 999;\n name = \"whate
     just scalar key map => 
       "some obj" => 
         Obj {
-          PropB => "The property accessor threw an exception: Oh noes, no referential transparency here"
+          PropB => "The property (PropB) accessor threw an (TargetInvocationException): Oh noes, no referential transparency here"
           PropA => 45}
       "some user" => 
         User {
