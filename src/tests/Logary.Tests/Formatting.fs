@@ -123,6 +123,16 @@ type ProjectionTestExcept =
     user: User
   }
 
+type CustomCycleReferenceRecord =
+  { mutable inner : CustomCycleReferenceRecord option
+    a : int
+    b : string }
+
+type CustomCycleReferenceType (id : int, name : string) =
+  member val Inner =  Unchecked.defaultof<CustomCycleReferenceType> with get,set
+  member __.Id = id
+  member __.Name = name
+
 let tests = [
 
   testCase "json formatting" <| fun _ ->
@@ -219,6 +229,7 @@ let tests = [
 """
        Expect.equal actual (expect.Trim([|'\n'|])) "cycle reference should work"
 
+
   testCase "cycle reference" <| fun _ ->
     Message.eventFormat(Info,"cycle reference")
     |> Message.setNanoEpoch 3123456700L
@@ -291,6 +302,41 @@ I 1970-01-01T00:00:03.1234567+00:00: cycle reference []
               Properties => 
               OriginalIssuer => "LOCAL AUTHORITY"
               Issuer => "LOCAL AUTHORITY"}}
+"""
+       Expect.equal actual (expect.TrimStart([|'\n'|])) "cycle reference should work"
+
+  testCase "user custom destructure resolver support cycle reference check" <| fun _ ->
+    Logary.Configuration.Config.configDestructure<CustomCycleReferenceRecord>(fun resolver req ->
+      let instance = req.Value
+      let refCount = req.IdManager
+      match refCount.TryShowAsRefId instance with
+      | _, Some pv -> pv
+      | refId, None ->
+        let typeTag = instance.GetType().Name
+        let nvs = [ 
+          yield { Name = "Id"; Value = ScalarValue instance.a }
+          yield { Name = "Name"; Value = ScalarValue instance.b }
+          yield { Name = "Inner"; Value = req.WithNewValue(instance.inner) |> resolver }
+        ]
+        StructureValue (refId, typeTag, nvs)
+      )
+
+    let data = {inner = None; a= 42; b = "bad structure"}
+    data.inner <- Some data
+    Message.eventFormat(Info,"cycle reference")
+    |> Message.setNanoEpoch 3123456700L
+    |> Message.setContext "SelfReferenceData" data
+    |> levelDatetimeMessagePathNewLine.format
+    |> fun actual ->
+       let expect = """
+I 1970-01-01T00:00:03.1234567+00:00: cycle reference []
+  others:
+    SelfReferenceData => $1 
+      CustomCycleReferenceRecord {
+        Id => 42
+        Name => "bad structure"
+        Inner => 
+          "Some" => $1 }
 """
        Expect.equal actual (expect.TrimStart([|'\n'|])) "cycle reference should work"
 
