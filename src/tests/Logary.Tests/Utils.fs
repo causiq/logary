@@ -27,7 +27,7 @@ let buildLogManager () = job {
     |> Events.toProcessing
 
 
-  let! registry =
+  let! logm =
     Config.create svc host
     // |> Config.ilogger iloggerConf
     // |> Config.ilogger (ILogger.Console Verbose)
@@ -35,6 +35,5 @@ let buildLogManager () = job {
     |> Config.processing processing
     // |> Config.disableGlobals
     |> Config.build
-  let logm = Registry.toLogManager registry
-  return (registry, logm, out, error)
+  return (logm, out, error)
 }

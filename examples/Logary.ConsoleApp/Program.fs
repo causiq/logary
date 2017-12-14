@@ -208,7 +208,6 @@ let main argv =
     |> Config.processing processing
     |> Config.build
     |> run
-    |> Registry.toLogManager
 
   let logger = logary.getLogger (PointName [| "Logary"; "Samples"; "main" |])
 

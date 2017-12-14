@@ -24,7 +24,8 @@ let main argv =
 
   let logary =
     let elmahioConf =
-      { logId = Guid.Parse(Environment.GetEnvironmentVariable("ELMAH_IO_LOG_ID")) }
+      { logId = Guid.Parse(Environment.GetEnvironmentVariable("ELMAH_IO_LOG_ID")) 
+        apiKey = "api key form elmah io"}
 
     let processing = 
       Events.stream
@@ -42,7 +43,6 @@ let main argv =
     |> Config.processing processing
     |> Config.build
     |> run
-    |> Registry.toLogManager
 
   let logger =
     logary.getLogger (PointName [| "Logary"; "Samples"; "main" |])

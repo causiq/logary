@@ -176,7 +176,6 @@ module Router =
       |> Config.ilogger (ILogger.Console Debug)
       |> Config.build 
       |> Hopac.Hopac.run
-      |> Registry.toLogManager
 
 
     let targetLogger = forwarder.getLogger (PointName.parse "Logary.Services.Rutta.Router")

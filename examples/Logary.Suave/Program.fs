@@ -28,7 +28,6 @@ let main argv =
     |> Config.processing processing
     |> Config.build
     |> Hopac.Hopac.run
-    |> Registry.toLogManager
 
   
   LogaryFacadeAdapter.initialise<Suave.Logging.Logger> logary

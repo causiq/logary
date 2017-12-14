@@ -122,7 +122,6 @@ module Registry =
     let inline ensureName name (m: Message) =
       if m.name.isEmpty then { m with name = name } else m
 
-
     let inline getLogger (t : T) name mid =
         { new Logger with
             member x.name = name
@@ -132,14 +131,7 @@ module Registry =
             member x.log level messageFactory =
               x.logWithAck level messageFactory ^-> ignore
         }
-
-    let inline initialiseGlobals (t : T) =
-      let config =
-        { Global.defaultConfig with
-            getLogger = fun name -> getLogger t name None
-            getLoggerWithMiddleware = fun name mid -> getLogger t name (Some mid) }
-      Global.initialise config
-
+        
     let inline spawnTarget (ri : RuntimeInfo) targets =
       targets
       |> HashMap.toList
@@ -233,7 +225,6 @@ module Registry =
             msgProcessing = wrapper sendMsg
             flushCh = flushCh
             shutdownCh = shutdownCh }
-        initialiseGlobals state
 
         Job.supervise rlogger (Policy.restartDelayed 512u) (running ctss)
         |> Job.startIgnore

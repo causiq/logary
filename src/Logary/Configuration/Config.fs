@@ -76,7 +76,15 @@ module Config =
   let disableGlobals lconf =
     { lconf with setGlobals = false }
 
-  let build (lconf : T) : Job<Registry.T> =
+
+  let inline private setToGlobals (logManager : LogManager) =
+    let config =
+      { Global.defaultConfig with
+          getLogger = logManager.getLogger
+          getLoggerWithMiddleware = logManager.getLoggerWithMiddleware }
+    Global.initialise config
+
+  let build (lconf : T) : Job<LogManager> =
     let ri : RuntimeInfo.T =
       { service = lconf.service
         host = lconf.host
@@ -117,8 +125,13 @@ module Config =
           member x.processing = lconf.processing
       }
     Registry.create conf
+    >>- fun registry ->
+        let logManager = Registry.toLogManager registry
+        if lconf.setGlobals then do setToGlobals logManager
+        logManager
 
 
+  /// maybe consider config below around registry,not globals
   let configProjection projectionExpr =
     Logary.Internals.Global.Destructure.configProjection projectionExpr
 

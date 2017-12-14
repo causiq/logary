@@ -38,7 +38,6 @@ let main argv =
     |> Config.processing processing
     |> Config.build
     |> run
-    |> Registry.toLogManager
 
   // Initialise Libryy so it logs to Logary (proper)
   LogaryFacadeAdapter.initialise<Libryy.Logging.Logger> logary

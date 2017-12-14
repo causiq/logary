@@ -153,5 +153,5 @@ type LogaryFactory =
     if configurator = null then nullArg "configurator"
     let config = Config.create service host
     let cb = configurator.Invoke (ConfBuilder config)
-    let xJ = Config.build cb.conf |> Job.map Registry.toLogManager
+    let xJ = Config.build cb.conf
     Job.ToTask xJ

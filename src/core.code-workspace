@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "tests/Logary.Tests"
+		},
+		{
+			"path": "tests/Logary.LoadTests"
 		}
 	],
 	"settings": {}

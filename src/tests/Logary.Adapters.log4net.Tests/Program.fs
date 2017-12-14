@@ -35,16 +35,15 @@ let buildLogManager () = job {
     |> Events.toProcessing
 
 
-  let! registry =
+  let! logm =
     Config.create svc host
     // |> Config.ilogger iloggerConf
     // |> Config.ilogger (ILogger.Console Verbose)
     |> Config.target twTargetConf
     |> Config.processing processing
-    // |> Config.disableGlobals
+    |> Config.disableGlobals
     |> Config.build
-  let logm = Registry.toLogManager registry
-  return (registry, logm, out, error)
+  return (logm, out, error)
 }
 
 let newHierarchy fHierarchy =
@@ -71,10 +70,11 @@ let integration =
       let log4 = log4net.LogManager.GetLogger("Logary.Tests")
 
 
-      let! (r, logm, out, error)  = buildLogManager ()
+      let! (logm, out, error)  = buildLogManager ()
       log4.Fatal "oh noes" 
       // since log4net adapter use logSimple (fire and forget style), so we first wait for logary shutdown then check the output
-      do! Registry.shutdown r
+      let ms200 = Duration.FromMilliseconds 200L
+      let! info = logm.shutdown ms200 ms200
 
       Expect.equal (out.ToString()) "" "should be empty"
       Expect.stringContains (error.ToString()) "oh noes" "should have 'oh noes' in it"

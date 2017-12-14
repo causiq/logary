@@ -26,31 +26,13 @@ Formatting.Format("[{level}] {timestampUtc:u} {message} [{source}]{exceptions}",
 
 
 
-let registry = 
+let logm = 
   Config.create "svc" "localhost" 
   |> Config.ilogger (ILogger.LiterateConsole Verbose) 
   |> Config.build
   |> run
 
-let logm = Registry.toLogManager registry
-
 let ilg = logm.runtimeInfo.logger
 
 Logger.logSimple ilg (event Info "hi")
 Logger.logSimple ilg (event Info "hi just some test")
-
-
-module A =
-  let only<'t> (proj: 't -> obj[]) = ()
-  let except<'t> (proj: 't -> obj[]) = ()
-type A =
-  static member Only ([<ParamArray>] props: obj[]) = props
-  static member Except ([<ParamArray>] props: obj[]) = props
-
-
-let a = <@@ A.only<Exception>(fun ex-> [|
-  ex.Message;
-  ex.StackTrace;
-  A.Except(ex.InnerException.StackTrace, ex.Data.Count);
-  A.Only(ex.InnerException.Data.Count);
-  |])  @@>

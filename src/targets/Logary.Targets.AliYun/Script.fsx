@@ -38,8 +38,6 @@ let logm =
     |> Config.ilogger (ILogger.Console Verbose) 
     |> Config.build
     |> run
-    |> Registry.toLogManager
-
 let tuple = ("first",2,"Third")
 let msg = 
   Message.eventInfo ("Hello World! from {target}")

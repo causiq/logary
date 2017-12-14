@@ -45,7 +45,7 @@ let stubLogManager (message : Message ref) =
 let tests =
   let assertWorkMessage (msg : Message) =
     Expect.equal msg.level Warn "Should have logged at Warn level"
-    Expect.equal msg.value (Event "Hey {user}!") "Should have logged event template"
+    Expect.equal msg.value ("Hey {user}!") "Should have logged event template"
     let userName = msg |> Message.tryGetField "user"
     Expect.equal userName (Some "haf") "Should have logged user as String"
     Expect.equal msg.timestamp 1470047883029045000L "Should have correct timestamp"
@@ -95,7 +95,7 @@ let tests =
           let res = Libryy.CoreV1.simpleWork libryyLogger
           Expect.equal 43 res "Should get result back"
           Expect.equal (!msg).level Error "Should have logged at Error level"
-          Expect.equal (!msg).value (Event "Too simplistic") "Should have logged event template"
+          Expect.equal (!msg).value ("Too simplistic") "Should have logged event template"
           Expect.notEqual (!msg).timestamp 0L "Should have non-zero timestamp"
           Expect.notEqual (!msg).name (PointName [||]) "Should have non-empty point name"
           Expect.equal (!msg).name (PointName [| "Libryy"; "Core" |])
@@ -113,7 +113,7 @@ let tests =
           let res = Libryy.CoreV1.staticWork ()
           Expect.equal res 49 "Should return 49"
           Expect.equal (!msg).level Debug "Should have logged at Debug level"
-          Expect.equal (!msg).value (Event "A debug log") "Should have logged event template"
+          Expect.equal (!msg).value ("A debug log") "Should have logged event template"
       ]
     ]
 
@@ -150,7 +150,7 @@ let tests =
           let res = Libryy.Core.errorWithBP libryyLogger
           Expect.equal 43 res "Should get result back"
           Expect.equal (!msg).level Error "Should have logged at Error level"
-          Expect.equal (!msg).value (Event "Too simplistic") "Should have logged event template"
+          Expect.equal (!msg).value ( "Too simplistic") "Should have logged event template"
           Expect.notEqual (!msg).timestamp 0L "Should have non-zero timestamp"
           Expect.notEqual (!msg).name (PointName [||]) "Should have non-empty point name"
           Expect.equal (!msg).name (PointName [| "Libryy"; "Core" |])
@@ -168,7 +168,7 @@ let tests =
           let res = Libryy.Core.staticWork () |> Async.RunSynchronously
           Expect.equal res 49 "Should return 49"
           Expect.equal (!msg).level Debug "Should have logged at Debug level"
-          Expect.equal (!msg).value (Event "A debug log") "Should have logged event template"
+          Expect.equal (!msg).value ( "A debug log") "Should have logged event template"
       ]
     ]
 
@@ -209,7 +209,7 @@ let tests =
           let res = Cibryy.Core.ErrorWithBP cibryyLogger
           Expect.equal 43 res "Should get result back"
           Expect.equal (!msg).level Error "Should have logged at Error level"
-          Expect.equal (!msg).value (Event "Too simplistic") "Should have logged event template"
+          Expect.equal (!msg).value ( "Too simplistic") "Should have logged event template"
           Expect.notEqual (!msg).timestamp 0L "Should have non-zero timestamp"
           Expect.notEqual (!msg).name (PointName [||]) "Should have non-empty point name"
           Expect.equal (!msg).name (PointName [| "Cibryy"; "Core" |])
@@ -239,7 +239,7 @@ let tests =
           let res = Cibryy.Core.StaticWork().Result
           Expect.equal res 49 "Should return 49"
           Expect.equal (!msg).level Debug "Should have logged at Debug level"
-          Expect.equal (!msg).value (Event "A debug log") "Should have logged event template"
+          Expect.equal (!msg).value ("A debug log") "Should have logged event template"
       ]
 
     ]

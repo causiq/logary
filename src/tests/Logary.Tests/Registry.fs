@@ -11,8 +11,7 @@ open Logary.Configuration
 
 let tests = [
   testCaseAsync "from Config" <| (job {
-    let! registry = Config.create "svc" "localhost" |> Config.build
-    let logm = Registry.toLogManager registry
+    let! logm = Config.create "svc" "localhost" |> Config.build
     let ri = logm.runtimeInfo
     Expect.equal ri.service "svc" "should have service"
     Expect.equal ri.host "localhost" "should have host"
@@ -26,7 +25,7 @@ let tests = [
   } |> Job.toAsync)
 
   testCaseAsync "after shutting down no logging happens" <| (job {
-    let! (r, logm, out, error) = Utils.buildLogManager ()
+    let! (logm, out, error) = Utils.buildLogManager ()
     let loggername = PointName.parse "logger.test"
 
     let ilg = logm.runtimeInfo.logger
@@ -40,7 +39,8 @@ let tests = [
     Expect.stringContains outStr "info msg" "shoule"
     Expect.stringContains errorStr "error msg" "shoule"
 
-    do! Registry.shutdown r
+    let timeout =  Duration.FromSeconds 3L
+    let! (finfo, sinfo) = logm.shutdown timeout timeout
 
     do! lg.errorWithBP (eventX "error after shutdown")
 
@@ -49,7 +49,7 @@ let tests = [
   } |> Job.toAsync)
 
   testCaseAsync "getlogger with middleware" <| (job {
-    let! (r, logm, out, error)  = Utils.buildLogManager ()
+    let! (logm, out, error)  = Utils.buildLogManager ()
     let loggername = PointName.parse "logger.test"
     let correlationId = Guid.NewGuid().ToString("N")
     let customMid = Middleware.context "correlationId" correlationId
@@ -66,7 +66,8 @@ let tests = [
     Expect.stringContains outStr correlationId "shoule have correlationId ctx info"
     Expect.stringContains errorStr correlationId "shoule have correlationId ctx info"
 
-    do! Registry.shutdown r
+    let timeout =  Duration.FromSeconds 3L
+    do! logm.shutdown timeout timeout |> Job.Ignore
   } |> Job.toAsync)
 
   testCaseAsync "flush/shutdown timeout" <| (job {
@@ -86,13 +87,13 @@ let tests = [
 
     let mockTarget = TargetConf.createSimple server "mockTarget"
 
-    let! registry =
+    let! logm =
         Config.create "svc" "host"
         |> Config.target mockTarget
         |> Config.build
 
     let ms100 =  Duration.FromMilliseconds 100L
-    let! (finfo, sinfo) = Registry.shutdownWithTimeouts registry ms100 ms100
+    let! (finfo, sinfo) = logm.shutdown ms100 ms100
     let (FlushInfo (fack, ftimeout)) = finfo
     let (ShutdownInfo (sack, stimeout)) = sinfo
     Expect.equal fack [] "should have no flush ack target"
@@ -107,7 +108,7 @@ let tests = [
         |> Config.build
 
     let ms300 =  Duration.FromMilliseconds 300L
-    let! (finfo, sinfo) = Registry.shutdownWithTimeouts registry ms300 ms300
+    let! (finfo, sinfo) = logm.shutdown ms300 ms300
     let (FlushInfo (fack, ftimeout)) = finfo
     let (ShutdownInfo (sack, stimeout)) = sinfo
     Expect.equal ftimeout [] "should have no flush timeout target"

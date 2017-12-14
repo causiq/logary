@@ -86,7 +86,6 @@ let main argv =
     |> Config.processing processing
     |> Config.build
     |> run
-    |> Registry.toLogManager
 
   mre.Wait()
   0
