@@ -10,18 +10,24 @@ open Logary.Message
 open Logary.Configuration
 
 let tests = [
-  testCaseAsync "from Config" <| (job {
+  testCaseAsync "from Config and Multi shutdown" <| (job {
     let! logm = Config.create "svc" "localhost" |> Config.build
     let ri = logm.runtimeInfo
     Expect.equal ri.service "svc" "should have service"
     Expect.equal ri.host "localhost" "should have host"
 
     let timeout =  Duration.FromSeconds 3L
-    let! (finfo, sinfo) = logm.shutdown timeout timeout
 
+    let! (finfo, sinfo) = logm.shutdown (timeout, timeout)
     let none = (List.empty<string>,List.empty<string>)
     Expect.equal finfo (FlushInfo none) "shoule have no targets"
     Expect.equal sinfo (ShutdownInfo none) "shoule have no targets"
+    do! logm.shutdown ()
+    do! logm.flushPending ()
+    do! logm.shutdown ()
+    let! (finfo) = logm.flushPending (timeout)
+    Expect.equal finfo (FlushInfo (["registry is closed"],[])) "shoule show registry is shutdown"
+
   } |> Job.toAsync)
 
   testCaseAsync "after shutting down no logging happens" <| (job {
@@ -40,7 +46,7 @@ let tests = [
     Expect.stringContains errorStr "error msg" "shoule"
 
     let timeout =  Duration.FromSeconds 3L
-    let! (finfo, sinfo) = logm.shutdown timeout timeout
+    let! (finfo, sinfo) = logm.shutdown(timeout, timeout)
 
     do! lg.errorWithBP (eventX "error after shutdown")
 
@@ -66,8 +72,7 @@ let tests = [
     Expect.stringContains outStr correlationId "shoule have correlationId ctx info"
     Expect.stringContains errorStr correlationId "shoule have correlationId ctx info"
 
-    let timeout =  Duration.FromSeconds 3L
-    do! logm.shutdown timeout timeout |> Job.Ignore
+    do! logm.shutdown ()
   } |> Job.toAsync)
 
   testCaseAsync "flush/shutdown timeout" <| (job {
@@ -93,7 +98,7 @@ let tests = [
         |> Config.build
 
     let ms100 =  Duration.FromMilliseconds 100L
-    let! (finfo, sinfo) = logm.shutdown ms100 ms100
+    let! (finfo, sinfo) = logm.shutdown (ms100, ms100)
     let (FlushInfo (fack, ftimeout)) = finfo
     let (ShutdownInfo (sack, stimeout)) = sinfo
     Expect.equal fack [] "should have no flush ack target"
@@ -108,7 +113,7 @@ let tests = [
         |> Config.build
 
     let ms300 =  Duration.FromMilliseconds 300L
-    let! (finfo, sinfo) = logm.shutdown ms300 ms300
+    let! (finfo, sinfo) = logm.shutdown (ms300, ms300)
     let (FlushInfo (fack, ftimeout)) = finfo
     let (ShutdownInfo (sack, stimeout)) = sinfo
     Expect.equal ftimeout [] "should have no flush timeout target"

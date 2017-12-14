@@ -73,8 +73,7 @@ let integration =
       let! (logm, out, error)  = buildLogManager ()
       log4.Fatal "oh noes" 
       // since log4net adapter use logSimple (fire and forget style), so we first wait for logary shutdown then check the output
-      let ms200 = Duration.FromMilliseconds 200L
-      let! info = logm.shutdown ms200 ms200
+      do! logm.shutdown ()
 
       Expect.equal (out.ToString()) "" "should be empty"
       Expect.stringContains (error.ToString()) "oh noes" "should have 'oh noes' in it"

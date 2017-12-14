@@ -57,6 +57,7 @@ type LogManager =
   /// so that we can be certain they have processed all previous messages.
   /// This function is useful together with unit tests for the targets.
   abstract flushPending : Duration -> Alt<FlushInfo>
+  abstract flushPending : unit -> Alt<unit>
 
   /// Shuts Logary down after flushing, given a timeout duration to wait before
   /// counting the target as timed out in responding. The duration is applied
@@ -65,7 +66,8 @@ type LogManager =
   /// First duration: flush duration
   /// Second duration: shutdown duration
   /// Returns the shutdown book keeping info
-  abstract shutdown : flush:Duration -> shutdown:Duration -> Alt<FlushInfo * ShutdownInfo>
+  abstract shutdown : flush:Duration * shutdown:Duration -> Alt<FlushInfo * ShutdownInfo>
+  abstract shutdown : unit -> Alt<unit>
 
 /// This is the main state container in Logary.
 module Registry =
@@ -74,6 +76,10 @@ module Registry =
     private {
       runtimeInfo : RuntimeInfo
       msgProcessing : Message -> Middleware option -> Alt<Promise<unit>>
+
+      /// to show whether or not registry is shutdown, used contorl message communication channel
+      /// avoid blocking endless case
+      isClosed : IVar<unit>
 
       /// Flush all pending messages from the registry to await shutdown and
       /// ack on the `ackCh` when done. If the client nacks the request, the
@@ -89,33 +95,42 @@ module Registry =
   /// Flush all pending messages for all targets. Flushes with no timeout; if
   /// this Alternative yields, all targets were flushed.
   let flush (t : T) : Alt<unit> =
-    t.flushCh *<+->- fun flushCh nack -> flushCh, nack, None
-    |> Alt.afterFun (fun _ -> ())
+    t.isClosed
+    <|>
+    ((t.flushCh *<+->- fun flushCh nack -> flushCh, nack, None) ^-> ignore)
+    
 
   /// Flush all pending messages for all targets. This Alternative always
   /// yields after waiting for the specified `timeout`; then giving back the
   /// `FlushInfo` data-structure that recorded what targets were successfully
   /// flushed and which ones timed out.
   let flushWithTimeout (t : T) (timeout : Duration) : Alt<FlushInfo> =
-    t.flushCh *<+->- fun flushCh nack -> flushCh, nack, Some timeout
+    (t.isClosed ^->. (FlushInfo(["registry is closed"],[])))
+    <|>
+    (t.flushCh *<+->- fun flushCh nack -> flushCh, nack, Some timeout)
+    
 
   /// Shutdown the registry and flush all targets before shutting it down. This
   /// function does not specify a timeout, neither for the flush nor for the
   /// shutting down of targets, and so it does not return a `ShutdownInfo`
   /// data-structure.
   let shutdown (t : T) : Alt<unit> =
-    flush t ^=> fun _ ->
-    t.shutdownCh *<-=>- fun shutdownCh -> shutdownCh, None
-    ^-> ignore
+    t.isClosed
+    <|>
+    ((t.flushCh *<+->- fun flushCh nack -> flushCh, nack, None) ^=> fun _ -> 
+      (t.shutdownCh *<+=>- fun shutdownCh -> shutdownCh, None) ^-> ignore)
+
 
   /// Shutdown the registry and flush all targets before shutting it down. This
   /// function specifies both a timeout for the flushing of targets and the
   /// shutting down of the registry. The Alternative yields after a maximum of
   /// `shutdownTimeout` + `flushTimeout`, with information about the shutdown.
   let shutdownWithTimeouts (t : T) (flushTimeout : Duration) (shutdownTimeout : Duration) : Alt<FlushInfo * ShutdownInfo> =
-    flushWithTimeout t flushTimeout ^=> fun flushInfo ->
-    t.shutdownCh *<-=>- fun shutdownCh -> shutdownCh, Some shutdownTimeout
-    |> Alt.afterFun (fun shutdownInfo -> flushInfo, shutdownInfo)
+    (t.isClosed ^->. (FlushInfo(["registry is closed"],[]), ShutdownInfo(["registry is closed"],[])))
+    <|>
+    ((t.flushCh *<+->- fun flushCh nack -> flushCh, nack, Some flushTimeout) ^=> (fun flushInfo -> 
+      (t.shutdownCh *<+=>- fun shutdownCh -> shutdownCh, Some shutdownTimeout) ^-> (fun shutdownInfo -> 
+        flushInfo, shutdownInfo)))
 
 
   module private Impl =
@@ -168,7 +183,6 @@ module Registry =
       (targets |>  Seq.Con.mapJob flushTarget)
       >>- (partitionResults >> FlushInfo)
 
-  open Impl
 
   // Middleware at:
   //  - LogaryConf (goes on all loggers) (through engine,and compose at call-site)
@@ -182,7 +196,7 @@ module Registry =
       List.ofArray conf.middleware
     let rlogger = ri.logger |> Logger.apply (setName rname)
 
-    spawnTarget ri conf.targets >>= fun targets ->
+    Impl.spawnTarget ri conf.targets >>= fun targets ->
     let targetsMap = targets |> List.map (fun t -> t.Name, t) |> HashMap.ofList
 
     let wrapper sendMsg msg mid =
@@ -190,14 +204,14 @@ module Registry =
       |> Middleware.compose (mid |> Option.fold (fun s t -> t :: s) rmid)
       |> sendMsg |> PipeResult.orDefault Promise.instaPromise
 
-    let flushCh, shutdownCh = Ch (), Ch ()
+    let flushCh, shutdownCh, isClosed = Ch (), Ch (), IVar ()
 
     let rec running ctss =
       Alt.choose [
         flushCh ^=> fun (ackCh, nack, timeout) ->
           rlogger.infoWithAck (eventX "Start Flush")
           ^=> fun _ ->
-              memo (flushPending targets timeout) ^=> fun flushInfo -> (ackCh *<- flushInfo)
+              memo (Impl.flushPending targets timeout) ^=> fun flushInfo -> (ackCh *<- flushInfo)
               <|>
               nack
           >>=. running ctss
@@ -205,9 +219,10 @@ module Registry =
         shutdownCh ^=> fun (res, timeout) ->
           rlogger.infoWithAck (eventX "Shutting down")
           ^=>. Seq.Con.iterJob Cancellation.cancel ctss
-          >>=. shutdown targets timeout
+          >>=. Impl.shutdown targets timeout
           >>= fun shutdownInfo ->
               InternalLogger.shutdown ri.logger ^=>. res *<= shutdownInfo
+          >>= IVar.fill isClosed
       ]
 
     // pipe.run should only be invoke once, because state in pipes is captured when pipe.run
@@ -223,6 +238,7 @@ module Registry =
         let state =
           { runtimeInfo = ri
             msgProcessing = wrapper sendMsg
+            isClosed = isClosed
             flushCh = flushCh
             shutdownCh = shutdownCh }
 
@@ -233,13 +249,15 @@ module Registry =
   let toLogManager (t : T) : LogManager =
     { new LogManager with
         member x.getLogger name =
-          getLogger t name None
+          Impl.getLogger t name None
         member x.getLoggerWithMiddleware name mid =
-          getLogger t name (Some mid)
+          Impl.getLogger t name (Some mid)
         member x.runtimeInfo =
           t.runtimeInfo
         member x.flushPending dur =
           flushWithTimeout t dur
-        member x.shutdown flushTO shutdownTO =
+        member x.flushPending () = flush t
+        member x.shutdown (flushTO, shutdownTO) =
           shutdownWithTimeouts t flushTO shutdownTO
+        member x.shutdown () = shutdown t
     }

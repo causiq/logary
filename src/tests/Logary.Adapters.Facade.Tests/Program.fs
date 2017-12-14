@@ -36,8 +36,10 @@ let stubLogManager (message : Message ref) =
 
       member x.flushPending dur =
         Alt.always (FlushInfo([],[]))
+      member x.shutdown () = Alt.always ()
+      member x.flushPending () = Alt.always ()
 
-      member x.shutdown fDur sDur =
+      member x.shutdown (fDur,sDur) =
         Alt.always (FlushInfo([],[]),ShutdownInfo([],[]))
   }
 
