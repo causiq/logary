@@ -33,7 +33,7 @@ let buildLogManager () = job {
     // |> Config.ilogger (ILogger.Console Verbose)
     |> Config.target twTargetConf
     |> Config.processing processing
-    // |> Config.disableGlobals
+    |> Config.disableGlobals
     |> Config.build
   return (logm, out, error)
 }

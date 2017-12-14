@@ -8,6 +8,7 @@ open Logary
 open Logary.Internals
 open Logary.Message
 open Logary.Configuration
+open Logary.EventsProcessing
 
 let tests = [
   testCaseAsync "from Config and Multi shutdown" <| (job {
@@ -75,15 +76,16 @@ let tests = [
     do! logm.shutdown ()
   } |> Job.toAsync)
 
-  testCaseAsync "flush/shutdown timeout" <| (job {
+  testCaseAsync "flush/shutdown timeout and logging after shutdown with no blocking" <| (job {
     let server (ri : RuntimeInfo, api : TargetAPI) =
       let rec loop () =
         Alt.choose [
           RingBuffer.take api.requests ^=> function
           | Flush (ack, nack) ->
             let flushWork = Hopac.timeOutMillis 200 ^=>. ack *<= ()
-            (flushWork <|> nack) ^=> loop
-          | _ -> Alt.always () ^=> loop
+            (flushWork <|> nack) >>= loop
+          | Log (msg, ack) ->
+            ack *<= () >>= loop
 
           api.shutdownCh ^=> fun ack -> Hopac.timeOutMillis 200 ^=>. ack *<= ()
         ] :> Job<_>
@@ -93,9 +95,9 @@ let tests = [
     let mockTarget = TargetConf.createSimple server "mockTarget"
 
     let! logm =
-        Config.create "svc" "host"
-        |> Config.target mockTarget
-        |> Config.build
+      Config.create "svc" "host"
+      |> Config.target mockTarget
+      |> Config.build 
 
     let ms100 =  Duration.FromMilliseconds 100L
     let! (finfo, sinfo) = logm.shutdown (ms100, ms100)
@@ -106,8 +108,8 @@ let tests = [
     
     Expect.equal sack [] "should have no shutdown ack target"
     Expect.contains stimeout "mockTarget" "should have shutdown timeout target"
-    
-    let! registry =
+  
+    let! logm =
         Config.create "svc" "host"
         |> Config.target mockTarget
         |> Config.build
@@ -121,5 +123,36 @@ let tests = [
     
     Expect.equal stimeout [] "should have no shutdown timeout target"
     Expect.contains sack "mockTarget" "should have shutdown ack target"
+
+
+
+    let mockTarget = 
+      TargetConf.createSimple server "mockTarget"
+      |> TargetConf.bufferSize 2us
+
+    let processing =
+      Events.stream
+      |> Events.subscribers [
+        Events.events |> Events.sink ["mockTarget"]
+      ]
+      |> Events.toProcessing
+      
+    let! logm =
+      Config.create "svc" "host"
+      |> Config.target mockTarget
+      |> Config.processing processing
+      |> Config.build 
+
+    let lg = logm.getLogger (PointName.parse "logger.test")
+    do! lg.infoWithBP (eventX "can be logger with no blocking")
+    do! lg.infoWithBP (eventX "can be logger with no blocking")
+    do! lg.infoWithBP (eventX "can be logger with no blocking")
+    do! logm.shutdown ()
+    do! lg.infoWithBP (eventX "can be logger with no blocking beacuse ring buffer")
+    do! lg.infoWithBP (eventX "can be logger with no blocking beacuse ring buffer")
+    do! lg.infoWithBP (eventX "can be logger with no blocking beacuse check registry closed")
+    do! lg.infoWithBP (eventX "can be logger with no blocking beacuse check registry closed")
+    do! lg.infoWithBP (eventX "can be logger with no blocking beacuse check registry closed")
+
   } |> Job.toAsync)
 ]
