@@ -140,9 +140,14 @@ module Registry =
     let inline getLogger (t : T) name mid =
         { new Logger with
             member x.name = name
+            /// support no blocking endless, when target/registry is shutdown
             member x.logWithAck level messageFactory =
-              let msg = level |> messageFactory |> ensureName name
-              t.msgProcessing msg mid
+              (t.isClosed ^->. Promise (()))
+              <|>
+              (Alt.prepareFun (fun _ -> 
+                let msg = level |> messageFactory |> ensureName name
+                t.msgProcessing msg mid))
+              
             member x.log level messageFactory =
               x.logWithAck level messageFactory ^-> ignore
         }
