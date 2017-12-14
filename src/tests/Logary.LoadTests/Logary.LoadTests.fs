@@ -15,7 +15,7 @@ open Logary.Internals
 open Logary.EventsProcessing
 open NodaTime
 
-let withRegistry name testId contFn =
+let withRegistry name testId disableGlobals contFn =
   let textWriter () =
     let sb = new StringBuilder()
     let sw = new StringWriter(sb)
@@ -42,15 +42,16 @@ let withRegistry name testId contFn =
   |> Config.target twTarget
   |> Config.ilogger (ILogger.LiterateConsole Error)
   |> Config.processing processing
+  |> fun config -> if disableGlobals then config |> Config.disableGlobals else config
   |> Config.build
   |> Job.bind (fun logm ->
      let timeout = Duration.FromSeconds(5L)
-     let dispose = logm.shutdown timeout timeout |> Job.Ignore
+     let dispose = logm.shutdown () :> Job<unit>
      Job.tryFinallyJobDelay (fun _ -> contFn (logm, out)) dispose
   )
 
-let withRegistryAsync name testId contFn =
-  withRegistry name testId contFn
+let withRegistryAsync name testId disableGlobals contFn =
+  withRegistry name testId disableGlobals contFn
   |> Job.toAsync
 
 [<Tests>]
@@ -71,7 +72,7 @@ let tests =
     yield testSequenced (
       testList "globals globals" [
         testCaseAsync "async single flyweight - single registry" ((fun () ->
-          withRegistryAsync "A.B.C and D.E" 123456L <| fun (logary, out) ->
+          withRegistryAsync "A.B.C and D.E" 123456L false <| fun (logary, out) ->
             job {
               let abc = Logging.getLoggerByName "A.B.C"
               let de = Logging.getLoggerByName "D.E"
@@ -82,11 +83,11 @@ let tests =
           })())
 
         testCaseAsync "async single flyweight - static getLoggerByName - multi registry" ((fun () ->
-          let interfere = withRegistry "interference" 654321L <| fun (logary, out) -> Job.result (out)
+          let interfere = withRegistry "interference" 654321L false <| fun (logary, out) -> Job.result (out)
           let abc = Logging.getLoggerByName "A.B.C"
           let de = Logging.getLoggerByName "D.E"
 
-          let first = withRegistry "A.B.C and D.E" 123456L <| fun (logary, out) ->
+          let first = withRegistry "A.B.C and D.E" 123456L false <| fun (logary, out) ->
             job {
               do! abc.debugWithAck (eventX "Hi there")
               do! de.debugWithAck (eventX "Goodbye")
@@ -96,12 +97,14 @@ let tests =
             }
 
           interfere
-          |> Job.map (fun out ->
+          |> Job.bind (fun out ->
             printfn "Before starting new..."
             // interfere should be shutdown at this point
-            abc.debugWithAck (eventX "Before") |> start
-            Expect.equal (out.ToString()) "" "should have no output, since logary has been shutdown"
-            // Expect.isNone (!Internals.Globals.singleton) "Should have no value"
+            abc.debugWithAck (eventX "Before")
+            |> Job.map (fun _ ->
+               Expect.equal (out.ToString()) "" "should have no output, since logary has been shutdown"
+              //  Expect.isNone (!Internals.Globals.singleton) "Should have no value"
+               )
           )
           |> Job.bind (fun _ -> first)
           |> Job.toAsync
@@ -109,11 +112,11 @@ let tests =
       ]
     )
 
-    for i in 0 .. 0 do
+    for i in 0 .. 10000 do
       let (NonEmptyString name, testId : int64) = testId ()
 
       yield testCaseAsync (sprintf "async many ready - instance getLogger - (%s.%i) - %s" name testId (System.Guid.NewGuid().ToString("N"))) ((fun () ->
-        withRegistryAsync name testId <| fun (logary, out) ->
+        withRegistryAsync name testId true <| fun (logary, out) ->
           let pname = PointName.ofSingle (sprintf "%s.%i" name testId)
           let msg = sprintf "Should have correct name: %O" pname
           let logged = sprintf "From %s.%i" name testId
@@ -127,16 +130,18 @@ let tests =
       ) ())
 
       yield testCaseAsync (sprintf "async many ready - static getLoggerByName - (%s.%i) - %s" name testId (System.Guid.NewGuid().ToString("N")) ) ((fun () ->
-        withRegistryAsync name testId <| fun (logary, out) ->
+        withRegistryAsync name testId true <| fun (logary, out) ->
           let pname = PointName.ofSingle (sprintf "%s.%i" name testId)
           let msg = sprintf "Should have correct name: %O" pname
           let logged = sprintf "From %s.%i" name testId
           job {
+            // static get logger means always use the latest registry ('logary instance')
+            // so, we can not guarantee the output are in each registry's target output.
             let logger = Logging.getLoggerByPointName pname
             Expect.equal logger.name pname msg
-            do! logger.infoWithAck (eventX logged)
-            let! finfo = logary.flushPending (Duration.FromMilliseconds 500L)
-            Expect.equal (out.ToString()) (sprintf "%O|%s\n" pname logged) "Should log right value"
+            // do! logger.infoWithAck (eventX logged)
+            // let! finfo = logary.flushPending (Duration.FromMilliseconds 500L)
+            // Expect.equal (out.ToString()) (sprintf "%O|%s\n" pname logged) "Should log right value"
           }
       ) ())
   ]
