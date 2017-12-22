@@ -1,5 +1,7 @@
 FSharp.Core
 NodaTime
 Hopac
-Mailgun.Api
 Expecto
+
+group legacy
+Mailgun.Api

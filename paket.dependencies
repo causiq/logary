@@ -11,7 +11,6 @@ nuget Common.Logging.Core
 nuget EventStore.Client 3.9.2
 nuget FsPickler
 nuget Hopac
-nuget Mailgun.Api
 nuget elmah.corelibrary
 nuget elmah.io.core
 nuget FAKE
@@ -68,3 +67,10 @@ group Examples
     nuget Logary.Targets.DB
     nuget Logary.Targets.Logstash
     nuget Logary.Targets.Elmah.Io
+
+group Legacy
+    redirects: on
+    framework: net45, net452, net461
+    source https://www.nuget.org/api/v2
+    nuget Mailgun.Api
+    
