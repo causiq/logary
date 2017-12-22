@@ -10,36 +10,41 @@ open Logary.EventsProcessing.Transformers
 [<Tests>]
 let bufferCounter =
   let take n stream =
-    stream |> Stream.take n |> Stream.toSeq |> run |> Seq.toList |> List.map List.ofSeq
+    stream |> Stream.take n |> Stream.toSeq
 
-  let generateBufferTicker () =
+  let generateBufferTicker () = job {
     let bufferTicker = BufferTicker ()
     let expects =  Stream.Src.create ()
-    let (sendItem, _) = 
+    let! (sendItem, _) = 
       Pipe.start 
       |> Pipe.tick bufferTicker 
       |> Pipe.run (fun items -> Stream.Src.value expects items |> HasResult)
-      |> run
-    (sendItem, bufferTicker, Stream.Src.tap expects)
+
+    return (sendItem, bufferTicker, Stream.Src.tap expects)
+  }
 
   testList "simplest counter" [
     let ticker = BufferTicker ()
 
-    yield testCase "initial" <| fun _ ->
-      let (sendItem, ticker, expects) = generateBufferTicker ()
-      ticker.Tick () |> run
-      let expect = expects |> take 1L
+    yield testCaseAsync "initial" <| (job {
+      let! (sendItem, ticker, expects) = generateBufferTicker ()
+      do! ticker.Tick () 
+      let! expect = expects |> take 1L
+      let expect = expect |> Seq.toList |> List.map List.ofSeq
       Expect.equal expect [[]] "emptry without sendItem"
+    } |> Job.toAsync)
 
-    yield testCase "counting to three" <| fun _ ->
-      let (sendItem, ticker, expects) = generateBufferTicker ()
-      sendItem 1 |> PipeResult.orDefault (Job.result ()) |> run
-      ticker.Tick () |> run
-      sendItem 1  |> PipeResult.orDefault (Job.result ()) |> run
-      sendItem 1  |> PipeResult.orDefault (Job.result ()) |> run
-      ticker.Tick () |> run
-      let expect = expects |> take 2L
+    yield testCaseAsync "counting to three" <| (job {
+      let! (sendItem, ticker, expects) = generateBufferTicker ()
+      do! sendItem 1 |> PipeResult.orDefault (Job.result ()) 
+      do! ticker.Tick () 
+      do! sendItem 1  |> PipeResult.orDefault (Job.result ())
+      do! sendItem 1  |> PipeResult.orDefault (Job.result ())
+      do! ticker.Tick ()
+      let! expect = expects |> take 2L
+      let expect = expect |> Seq.toList |> List.map List.ofSeq
       Expect.equal expect [[1];[1;1;];] "one and then two after two single counts"
+    } |> Job.toAsync )
   ]
 
 [<Tests>]
