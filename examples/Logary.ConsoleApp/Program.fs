@@ -165,34 +165,31 @@ let main argv =
     |> Pipe.tickTimer (randomness) (TimeSpan.FromMilliseconds 500.)
 
   let processing =
-    Events.stream
-    |> Events.subscribers [
-         Events.events |> Events.miniLevel LogLevel.Fatal |> Events.sink ["fatal"]
+    Events.compose [
+      Events.events |> Events.miniLevel LogLevel.Fatal |> Events.sink ["fatal"]
 
-         Events.events
-         |> Pipe.tickTimer (WinPerfCounters.appMetrics (PointName.ofSingle "app")) (TimeSpan.FromMilliseconds 5000.)
-         |> Pipe.map Array.toSeq
-         |> Events.flattenToProcessing
-         |> Events.sink ["console"; "influxdb"]
+      Events.events
+      |> Pipe.tickTimer (WinPerfCounters.appMetrics (PointName.ofSingle "app")) (TimeSpan.FromMilliseconds 5000.)
+      |> Pipe.map Array.toSeq
+      |> Events.flattenToProcessing
+      |> Events.sink ["console"; "influxdb"]
 
-         Events.events
-         |> Pipe.tickTimer (WinPerfCounters.systemMetrics (PointName.ofSingle "system")) (TimeSpan.FromMilliseconds 5000.)
-         |> Pipe.map Array.toSeq
-         |> Events.flattenToProcessing
-         |> Events.sink ["console"; "influxdb"]
+      Events.events
+      |> Pipe.tickTimer (WinPerfCounters.systemMetrics (PointName.ofSingle "system")) (TimeSpan.FromMilliseconds 5000.)
+      |> Pipe.map Array.toSeq
+      |> Events.flattenToProcessing
+      |> Events.sink ["console"; "influxdb"]
 
-         randomWalkPipe 
-         |> Events.sink ["console"; "influxdb"]
+      randomWalkPipe 
+      |> Events.sink ["console"; "influxdb"]
 
-         randomWalkPipe
-         |> Pipe.choose (Message.tryGetGauge "Logary.ConsoleApp.randomWalk")
-         |> Pipe.tickTimer timing (TimeSpan.FromSeconds 10.)
-         |> Pipe.map Array.toSeq
-         |> Events.flattenToProcessing
-         |> Events.sink ["console";]
-         
-       ]
-    |> Events.toProcessing
+      randomWalkPipe
+      |> Pipe.choose (Message.tryGetGauge "Logary.ConsoleApp.randomWalk")
+      |> Pipe.tickTimer timing (TimeSpan.FromSeconds 10.)
+      |> Pipe.map Array.toSeq
+      |> Events.flattenToProcessing
+      |> Events.sink ["console";]
+    ]
 
   let logary =
     Config.create "Logary.ConsoleApp" "localhost"

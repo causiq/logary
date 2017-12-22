@@ -30,7 +30,7 @@ module Config =
       getSem       : unit -> obj
       ilogger      : ILogger
       middleware   : Middleware list
-      processing   : Events.Processing
+      processing   : Events.Processing list
       setGlobals   : bool
     }
 
@@ -43,7 +43,7 @@ module Config =
       middleware   = List.empty
       ilogger      = ILogger.Console Warn
       setGlobals   = true
-      processing   = Events.events
+      processing   = List.empty
     }
 
   let target tconf lconf =
@@ -71,11 +71,10 @@ module Config =
     { lconf with ilogger = ilogger }
 
   let processing processor lconf =
-    { lconf with processing = processor }
+    { lconf with processing = processor :: lconf.processing }
 
   let disableGlobals lconf =
     { lconf with setGlobals = false }
-
 
   let inline private setToGlobals (logManager : LogManager) =
     let config =
@@ -116,13 +115,14 @@ module Config =
         Middleware.service lconf.service ]
     let middleware = Array.ofList (lconf.middleware @ mids)
     let ri = { ri with logger = ilogger }
+    let processing = Events.compose lconf.processing
 
     let conf =
       { new LogaryConf with
           member x.targets = lconf.targets
           member x.runtimeInfo = upcast ri
           member x.middleware = middleware
-          member x.processing = lconf.processing
+          member x.processing = processing
       }
     Registry.create conf
     >>- fun registry ->

@@ -29,7 +29,7 @@ let raisedExn msg =
   with ex -> e := Some ex
   (!e).Value
 
-let now = Message.setUTCTicks System.DateTime.UtcNow.Ticks
+let now = Message.setUTCTicks (DateTime(2017,11,11).Ticks)
 
 [<Tests>]
 let target =
@@ -54,7 +54,7 @@ let target =
         |> now
         |> Logstash.serialise
 
-      let expected = """{}"""
+      let expected = """{"name":"a.b.c","value":"Testing started","level":"warn","timestamp":1510358400000000000,"context":{"_fields.data-key":"data-value","_fields.e":"System.ApplicationException: darn\r\n   在 Program.raisedExn(String msg)","_fields.tags":["integration"],"_logary.errors":["System.ApplicationException: actual exn\r\n   在 Program.raisedExn(String msg)"],"service":"tests"}}"""
       Expect.equal subject expected "should serialise to proper message"
     ]
 

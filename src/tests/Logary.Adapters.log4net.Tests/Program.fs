@@ -27,21 +27,18 @@ let buildLogManager () = job {
   let tname = "4test"
   let (out, error, twTargetConf) = buildTextWriteTarget tname
   // let iloggerConf = ILogger.Targets [ twTargetConf ]
-  let processing =
-    Events.stream
-    |> Events.subscribers [
-      Events.events |> Events.sink [tname]
-    ]
-    |> Events.toProcessing
 
+  let console = Console.create Console.empty "Console"
+  let literalConsole = LiterateConsole.create LiterateConsole.empty "LiterateConsole"
+ 
 
   let! logm =
     Config.create svc host
     // |> Config.ilogger iloggerConf
-    // |> Config.ilogger (ILogger.Console Verbose)
-    |> Config.target twTargetConf
-    |> Config.processing processing
-    |> Config.disableGlobals
+    |> Config.ilogger (ILogger.Console Verbose)
+    |> Config.target literalConsole
+    |> Config.target (twTargetConf)
+    |> Config.processing (Events.events |> Events.sink [tname])
     |> Config.build
   return (logm, out, error)
 }
@@ -71,6 +68,13 @@ let integration =
 
 
       let! (logm, out, error)  = buildLogManager ()
+      log4.Fatal "oh noes" 
+      log4.Fatal "oh noes" 
+      log4.Fatal "oh noes" 
+      log4.Fatal "oh noes" 
+      log4.Fatal "oh noes" 
+      log4.Fatal "oh noes" 
+      log4.Fatal "oh noes" 
       log4.Fatal "oh noes" 
       // since log4net adapter use logSimple (fire and forget style), so we first wait for logary shutdown then check the output
       do! logm.shutdown ()

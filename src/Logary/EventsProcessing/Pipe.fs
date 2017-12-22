@@ -113,7 +113,7 @@ module Pipe =
          // A call of run xJ is safe when the call is not made from within a Hopac worker thread 
          // and the job xJ does not perform operations that might block or that might directly, 
          // or indirectly, need to communicate with the thread from which run is being called.
-         Mailbox.Now.send updateMb  prev
+         Mailbox.Now.send updateMb prev
          NoResult)
 
   let tickTimer (ticker: Ticker<_,_,_>) (timespan: TimeSpan) pipe =

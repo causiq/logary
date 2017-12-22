@@ -14,18 +14,11 @@ open Logary.Targets
 
 [<EntryPoint>]
 let main argv =
-  let processing = 
-    Events.stream 
-    |> Events.subscribers [
-         Events.events |> Events.sink ["console"]
-       ]
-    |> Events.toProcessing
-
   let logary = 
     Config.create "suave.example" "localhost"
     |> Config.ilogger (ILogger.LiterateConsole Verbose)
     |> Config.target (LiterateConsole.create LiterateConsole.empty "console")
-    |> Config.processing processing
+    |> Config.processing (Events.events |> Events.sink ["console"])
     |> Config.build
     |> Hopac.Hopac.run
 

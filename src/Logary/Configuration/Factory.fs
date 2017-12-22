@@ -12,6 +12,7 @@ open Hopac
 open Logary
 open Logary.CSharp
 open Logary.Configuration
+open Logary.EventsProcessing
 
 /// This is useful to implement if you want add-on assemblies to be able to
 /// extend your builder. Then you just implement an interface that also
@@ -87,6 +88,11 @@ and ConfBuilder(conf) =
   member x.Use(middleware : Func<Message -> Message, Message, Message>) =
     conf
     |> Config.middleware (fun next msg -> middleware.Invoke(next, msg))
+    |> ConfBuilder
+
+  member x.Processing(processor : Events.Processing) =
+    conf
+    |> Config.processing processor
     |> ConfBuilder
 
   /// Configure a target of the type with a name specified by the parameter name.

@@ -30,18 +30,11 @@ let withRegistry name testId disableGlobals contFn =
             sprintf "%O|%s" m.name m.value |> tw.WriteLine
     }
 
-  let twTarget =
-      TextWriter.create (TextWriter.TextWriterConf.create(out, out, formatter)) "tw"
-  let processing =
-    Events.stream 
-    |> Events.subscribers [
-         Events.events |> Events.sink ["tw"]
-       ]
-    |> Events.toProcessing
+  let twTarget = TextWriter.create (TextWriter.TextWriterConf.create(out, out, formatter)) "tw"
   Config.create (sprintf "logary for %s.%i" name testId) "localhost"
   |> Config.target twTarget
   |> Config.ilogger (ILogger.LiterateConsole Error)
-  |> Config.processing processing
+  |> Config.processing (Events.events |> Events.sink ["tw"])
   |> fun config -> if disableGlobals then config |> Config.disableGlobals else config
   |> Config.build
   |> Job.bind (fun logm ->

@@ -96,14 +96,12 @@ module Shipper =
     let systemMetrics = Events.events |> Pipe.tickTimer (WinPerfCounters.systemMetrics (PointName.parse "sys")) (TimeSpan.FromMilliseconds 400.)
 
     let processing = 
-      Events.stream
-      |> Events.subscribers [
+      Events.compose [
           systemMetrics
           |> Pipe.map Array.toSeq
           |> Events.flattenToProcessing
           |> Events.sink ["rutta-shipper"]
         ]
-      |> Events.toProcessing
 
     let logary =
       Config.create "Rutta" hostName
@@ -159,20 +157,13 @@ module Router =
     
     let forwarder =
       let hostName = System.Net.Dns.GetHostName()
-      let processing = 
-        Events.stream
-        |> Events.subscribers [
-            Events.events
-            |> Events.sink ["influxdb"]
-          ]
-        |> Events.toProcessing
 
       Config.create (sprintf "Logary Rutta[%s]" mode) hostName
       |> Config.targets [
         //Console.create Console.empty (PointName.ofSingle "console")
         InfluxDb.create config "influxdb"
       ]
-      |> Config.processing processing
+      |> Config.processing (Events.events |> Events.sink ["influxdb"])
       |> Config.ilogger (ILogger.Console Debug)
       |> Config.build 
       |> Hopac.Hopac.run

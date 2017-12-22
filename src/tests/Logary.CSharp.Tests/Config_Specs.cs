@@ -106,7 +106,7 @@ namespace Logary.CSharp.Tests
 
         Because logging_line_and_flushing = () =>
             {
-                // manager.Dispose();
+                manager.shutdown().ToTask().Wait();
 
                 thrownException = Catch.Exception(() => subject.LogEvent(LogLevel.Info, "logged line", backpressure: true).Wait());
                 flushThrown = Catch.Exception(() => manager.FlushPending(Duration.FromSeconds(8L)).Wait());

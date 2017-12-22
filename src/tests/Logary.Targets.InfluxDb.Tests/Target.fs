@@ -58,7 +58,8 @@ let writesOverHttp =
     listening |> Async.Ignore |> Async.RunSynchronously
     state
 
-  testList "writes over HTTP" [
+  // todo : need focus these test after porting influxdb
+  ptestList "writes over HTTP" [
     testCase "write to Suave" <| fun _ ->
       let msg =
         Message.gaugeWithUnit "Processor.% User Time" 1. Percent

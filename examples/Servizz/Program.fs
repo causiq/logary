@@ -24,18 +24,11 @@ type CartEvent =
 let main argv =
   use mre = new ManualResetEventSlim(false)
   use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
-  let processing = 
-    Events.stream
-    |> Events.subscribers [
-       Events.events
-       |> Events.sink ["console";]
-    ]
-    |> Events.toProcessing
 
   let logary =
     Config.create "Servizz.Program" "localhost"
     |> Config.targets [ LiterateConsole.create LiterateConsole.empty "console" ]
-    |> Config.processing processing
+    |> Config.processing (Events.events |> Events.sink ["console";])
     |> Config.build
     |> run
 

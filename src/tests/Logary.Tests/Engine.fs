@@ -40,13 +40,6 @@ let mockTarget name =
 
   loop [] |> Job.server >>-. target
 
-let simpleProcessing targetName =
-    Events.stream
-    |> Events.subscribers [
-      Events.events |> Events.sink [targetName]
-    ]
-    |> Events.toProcessing
-
 let run pipe (targets:ResizeArray<MockTarget>) =
   let targetsMap =
     targets
@@ -91,8 +84,7 @@ let tests =
 
         // context
         let processing =
-          Events.stream
-          |> Events.subscribers [
+          Events.compose [
              Events.events
              |> Events.service "svc1"
              |> Pipe.counter (fun _ -> 1L) (TimeSpan.FromMilliseconds 100.)
@@ -116,10 +108,7 @@ let tests =
             //  |> Pipe.bufferTime (TimeSpan.FromSeconds 5.)
             //  |> Events.percentile 0.99
             //  |> Pipe.map (fun num -> Message.event Info (sprintf "99th percentile of request latency every rolling 5 second window is %A" num))
-
           ]
-          |> Events.toProcessing
-
 
         // given
         let! targets = [mockTarget "1"; mockTarget "2"; mockTarget "3"; mockTarget "4"] |> Job.seqCollect
@@ -206,8 +195,7 @@ let tests =
       let pingOk = pingTicker "github.com"
 
       let processing =
-        Events.stream
-        |> Events.subscribers [
+        Events.compose [
            Events.events
            |> Pipe.withTickJob (pingOk.TickEvery (TimeSpan.FromSeconds 1.)) // check health every 1 seconds
            |> Pipe.tick pingOk
@@ -220,7 +208,6 @@ let tests =
            |> Pipe.filter (fun msg -> msg.level >= Warn)
            |> Events.sink ["TargetForUnhealthySvc"]
         ]
-        |> Events.toProcessing
 
       // given
       let! targets = [mockTarget "TargetForUnhealthySvc"] |> Job.seqCollect
@@ -258,8 +245,7 @@ let tests =
 
       // context
       let processing =
-        Events.stream
-        |> Events.subscribers [
+        Events.compose [
            Events.events
            |> Pipe.bufferConditional dutiful
            |> Pipe.map Seq.ofList
@@ -268,7 +254,6 @@ let tests =
               let sinks = if msg.level >= Error then ["email"] else ["dashboard"]
               msg |> Message.addSinks sinks)
         ]
-        |> Events.toProcessing
 
       // given
       let! targets = [mockTarget "email"; mockTarget "dashboard";] |> Job.seqCollect

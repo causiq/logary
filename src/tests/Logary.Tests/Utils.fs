@@ -19,20 +19,13 @@ let buildLogManager () = job {
   let tname = "4test"
   let (out, error, twTargetConf) = buildTextWriteTarget tname
   // let iloggerConf = ILogger.Targets [ twTargetConf ]
-  let processing =
-    Events.stream
-    |> Events.subscribers [
-      Events.events |> Events.sink [tname]
-    ]
-    |> Events.toProcessing
-
 
   let! logm =
     Config.create svc host
     // |> Config.ilogger iloggerConf
     // |> Config.ilogger (ILogger.Console Verbose)
     |> Config.target twTargetConf
-    |> Config.processing processing
+    |> Config.processing (Events.events |> Events.sink [tname])
     |> Config.disableGlobals
     |> Config.build
   return (logm, out, error)

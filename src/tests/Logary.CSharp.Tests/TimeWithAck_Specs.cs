@@ -18,16 +18,18 @@ namespace Logary.CSharp.Tests
         static StringWriter writer;
         static string subject;
 
-        Establish context = () =>
-            {
-                writer = new StringWriter(new StringBuilder());
-                manager = LogaryFactory.New(
-                    "Logary.CSharp.Tests","localhost",
-                    with =>
-                        with.InternalLogger(ILogger.NewConsole(LogLevel.Fatal))
-                            .Target<TextWriter.Builder>("sample string writer",
-                                t => t.Target.WriteTo(writer, writer))).Result;
-            };
+        // Establish context = () =>
+        //     {
+        //         writer = new StringWriter(new StringBuilder());
+        //         manager = LogaryFactory.New(
+        //             "Logary.CSharp.Tests","localhost",
+        //             with =>
+        //                 with.InternalLogger(ILogger.NewConsole(LogLevel.Fatal))
+        //                     .Target<TextWriter.Builder>("sample string writer",
+        //                         t => t.Target.WriteTo(writer, writer))).Result;
+        //     };
+        Establish context_setting_up_logging =
+            () => manager = LogaryTestFactory.GetManager(out writer);
 
         Because reason = () =>
             {

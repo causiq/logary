@@ -52,13 +52,13 @@ module Ticker =
     }
 
 type BufferTicker<'t> () =
-  inherit Ticker<ResizeArray<'t>,'t,ResizeArray<'t>>(ResizeArray())
+  inherit Ticker<ResizeArray<'t>,'t,list<'t>>(ResizeArray())
     override this.Folder state item =
       state.Add item
       state
 
     override this.HandleTick state =
-      ResizeArray(),state
+      ResizeArray(), state |> List.ofSeq
 
 type EWMATicker (rateUnit, alphaPeriod, iclock) =
   inherit Ticker<ExpWeightedMovAvg.EWMAState,int64,float>(ExpWeightedMovAvg.create alphaPeriod iclock)

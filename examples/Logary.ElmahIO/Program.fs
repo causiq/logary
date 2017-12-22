@@ -27,20 +27,12 @@ let main argv =
       { logId = Guid.Parse(Environment.GetEnvironmentVariable("ELMAH_IO_LOG_ID")) 
         apiKey = "api key form elmah io"}
 
-    let processing = 
-      Events.stream
-      |> Events.subscribers [
-         Events.events
-         |> Events.sink ["console";"elmah.io";]
-      ]
-      |> Events.toProcessing
-
     Config.create "Logary.ElmahIO" "localhost"
     |> Config.targets [
         Console.create Console.empty "console"
         ElmahIO.create elmahioConf "elmah.io"
       ] 
-    |> Config.processing processing
+    |> Config.processing (Events.events |> Events.sink ["console";"elmah.io";])
     |> Config.build
     |> run
 

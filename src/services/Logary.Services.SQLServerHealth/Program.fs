@@ -96,13 +96,11 @@ let execute interval sqlConf riemann argv (exiting : ManualResetEventSlim) =
     let hostName = Dns.GetHostName()
     let sqlServerHealthTicker = SQLServerHealth.create sqlConf
     let processing = 
-      Events.stream
-      |> Events.subscribers [
+      Events.compose [
            Events.events
            |> Pipe.tickTimer sqlServerHealthTicker (TimeSpan.FromTicks(Duration.ticks interval |> int64))
            |> Events.sink [cons; rm;]
         ]
-      |> Events.toProcessing
 
     Config.create "Logary.Services.SQLServerHealth" hostName
     |> Config.targets [

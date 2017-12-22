@@ -130,17 +130,10 @@ let tests = [
       TargetConf.createSimple server "mockTarget"
       |> TargetConf.bufferSize 2us
 
-    let processing =
-      Events.stream
-      |> Events.subscribers [
-        Events.events |> Events.sink ["mockTarget"]
-      ]
-      |> Events.toProcessing
-      
     let! logm =
       Config.create "svc" "host"
       |> Config.target mockTarget
-      |> Config.processing processing
+      |> Config.processing (Events.events |> Events.sink ["mockTarget"])
       |> Config.build 
 
     let lg = logm.getLogger (PointName.parse "logger.test")

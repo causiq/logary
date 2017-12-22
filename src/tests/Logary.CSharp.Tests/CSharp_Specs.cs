@@ -11,6 +11,9 @@ using Logary.Configuration;
 using Machine.Specifications;
 using NodaTime;
 using TextWriter = Logary.Targets.TextWriter;
+using System.Globalization;
+using Logary.EventsProcessing;
+using Hopac;
 
 namespace Logary.CSharp.Tests
 {
@@ -27,12 +30,16 @@ namespace Logary.CSharp.Tests
                 writer = new StringWriter(new StringBuilder());
                 timestamp = NodaTime.Instant.FromUnixTimeSeconds(987654);
                 exception = new ApplicationException("Nice exception");
+                var targetName = "sample string writer";
+                var sinks = FSharpList.Create(targetName);
+                var processor = Events.sink<Alt<Promise<Microsoft.FSharp.Core.Unit>>,Message>(sinks, Events.events<Alt<Promise<Microsoft.FSharp.Core.Unit>>>());
 
                 manager = LogaryFactory.New(
                     "Logary.CSharp.Tests","localhost",
                     with =>
                         with.Use(MiddlewareModule.ProcessName)
-                            .Target<TextWriter.Builder>("sample string writer",
+                            .Processing(processor)
+                            .Target<TextWriter.Builder>(targetName,
                             t => t.Target.WriteTo(writer, writer)
                                   .MinLevel(LogLevel.Verbose)
                                   .SourceMatching(new Regex(".*")))).Result;
@@ -53,7 +60,7 @@ namespace Logary.CSharp.Tests
         It output_should_contain_exception = () => subject.ShouldContain(exception.Message);
         It output_should_contain_message = () => subject.ShouldContain("the situation is dire");
         It output_should_contain_the_field = () => subject.ShouldContain("oh-noes");
-        It output_should_contain_timestamp = () => subject.ShouldContain(timestamp.ToUnixTimeTicks().ToString());
+        It output_should_contain_timestamp = () => subject.ShouldContain(timestamp.ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture));
         It output_should_contain_processName_key = () => subject.ShouldContain("processName");
 
         Cleanup cleanup = () =>
@@ -73,19 +80,9 @@ namespace Logary.CSharp.Tests
 
         Establish context = () =>
             {
-                writer = new StringWriter(new StringBuilder());
                 timestamp = NodaTime.Instant.FromUnixTimeSeconds(987654);
                 exception = new ApplicationException("Nice exception");
-
-                manager = LogaryFactory.New(
-                    "Logary.CSharp.Tests","localhost",
-                    with =>
-                        with.Target<TextWriter.Builder>(
-                            "sample string writer",
-                            t =>
-                                t.Target.WriteTo(writer, writer)
-                                    .MinLevel(LogLevel.Verbose)
-                                    .SourceMatching(new Regex(".*")))).Result;
+                manager = LogaryTestFactory.GetManager(out writer);
             };
 
         Because reason = () =>
@@ -113,7 +110,7 @@ namespace Logary.CSharp.Tests
 
         It output_should_contain_message = () => subject.ShouldContain("the situation is dire");
         It output_should_contain_the_field = () => subject.ShouldContain("oh-noes");
-        It output_should_contain_timestamp = () => subject.ShouldContain(timestamp.ToUnixTimeTicks().ToString());
+        It output_should_contain_timestamp = () => subject.ShouldContain(timestamp.ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture));
 
         Cleanup cleanup = () =>
             {

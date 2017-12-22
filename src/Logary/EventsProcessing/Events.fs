@@ -10,22 +10,7 @@ open NodaTime
 module Events =
   type Processing = Pipe<Message,Alt<Promise<unit>>,Message> // for logary target based processing
 
-  type B = B
-
-
-  type T =
-    private {
-      pipes : Processing list
-    }
-
-  let stream = {
-    pipes = List.empty;
-  }
-
   let events<'r> = Pipe.start<Message,'r>
-
-  let subscribers pipes stream =
-    {pipes = List.concat [pipes; stream.pipes;]}
 
   let service svc pipe =
     pipe |> Pipe.filter (fun msg -> Message.tryGetContext KnownLiterals.ServiceContextName msg = Some svc)
@@ -35,11 +20,10 @@ module Events =
   let miniLevel level pipe =
     pipe |> Pipe.filter (fun msg -> msg.level >= level)
 
-
   let sink (names : string list) pipe =
     pipe |> Pipe.map (Message.addSinks names)
 
-  let flattenToProcessing (pipe: Pipe<seq<Message>,Alt<Promise<unit>>,Message>) =
+  let flattenToProcessing (pipe: Pipe<seq<Message>,Alt<Promise<unit>>,Message>) : Processing =
     pipe
     |> Pipe.chain (fun logWithAck ->
        fun (msgs: seq<_>) ->
@@ -57,20 +41,26 @@ module Events =
           logAllAlt ^-> fun acks -> Job.conIgnore acks |> memo
           |> PipeResult.HasResult)
 
-  let toProcessing stream =
-    let pipes = stream.pipes
+  let compose pipes =
     let allTickTimerJobs = List.collect (fun pipe -> pipe.tickTimerJobs) pipes
-    // let latch = Latch pipes.Length
 
     let build =
       fun cont ->
         let allBuildedSource = pipes |> List.map (fun pipe -> pipe.build cont)
         fun sourceItem ->
-          let composed =
+
+          let alllogedAcks = IVar ()
+
+          let logAllConJob =
             allBuildedSource
-            |> List.traverseAltA (fun onNext -> onNext sourceItem |> PipeResult.orDefault (Promise.instaPromise))
-          composed
-          ^-> (Hopac.Job.conIgnore >> memo)
+            |> Hopac.Extensions.Seq.Con.mapJob (fun logWithAck -> 
+               logWithAck sourceItem |> PipeResult.orDefault (Promise.instaPromise))
+
+          let logAllAlt = Alt.prepareJob <| fun _ ->
+            Job.start (logAllConJob >>= fun acks -> IVar.fill alllogedAcks acks)
+            >>-. alllogedAcks
+
+          logAllAlt ^-> fun acks -> Job.conIgnore acks |> memo
           |> PipeResult.HasResult
 
     { build = build

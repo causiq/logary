@@ -46,9 +46,7 @@ let main argv =
   let walkPipe =  Events.events |> Pipe.tickTimer randomWalk (TimeSpan.FromMilliseconds 500.)
   let systemMetrics = Events.events |> Pipe.tickTimer (systemMetrics (PointName.parse "sys")) (TimeSpan.FromSeconds 10.)
   let processing = 
-    Events.stream
-    |> Events.subscribers [
-
+    Events.compose [
        walkPipe
        |> Events.sink ["WalkFile";]
 
@@ -71,7 +69,6 @@ let main argv =
        |> Events.sink ["LiterateConsole"; "WPCMetricFile";]
 
     ]
-    |> Events.toProcessing
 
   let console = Console.create Console.empty "Console"
   let literalConsole = LiterateConsole.create LiterateConsole.empty "LiterateConsole"

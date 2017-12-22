@@ -24,8 +24,6 @@ let bufferCounter =
   }
 
   testList "simplest counter" [
-    let ticker = BufferTicker ()
-
     yield testCaseAsync "initial" <| (job {
       let! (sendItem, ticker, expects) = generateBufferTicker ()
       do! ticker.Tick () 
@@ -40,9 +38,10 @@ let bufferCounter =
       do! ticker.Tick () 
       do! sendItem 1  |> PipeResult.orDefault (Job.result ())
       do! sendItem 1  |> PipeResult.orDefault (Job.result ())
+      do! timeOutMillis 100 // since senditem is async, so the order is not guarantee   // Mailbox.Now.send updateMb prev 
       do! ticker.Tick ()
       let! expect = expects |> take 2L
-      let expect = expect |> Seq.toList |> List.map List.ofSeq
+      let expect = expect |> Seq.toList
       Expect.equal expect [[1];[1;1;];] "one and then two after two single counts"
     } |> Job.toAsync )
   ]
