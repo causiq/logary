@@ -9,6 +9,8 @@ open Logary
 open Logary.Target
 open Logary.Targets
 open Logary.Internals
+open System.Globalization
+open System.Threading
 
 let emptyRuntime = RuntimeInfo.create "tests" "localhost"
 
@@ -53,11 +55,16 @@ let target =
         |> Message.addExn e2
         |> now
         |> Logstash.serialise
+        |> fun str -> str.Replace(@"\r\n", @"\n")  // test for different platform
 
-      let expected = """{"name":"a.b.c","value":"Testing started","level":"warn","timestamp":1510358400000000000,"context":{"_fields.data-key":"data-value","_fields.e":"System.ApplicationException: darn\r\n   在 Program.raisedExn(String msg)","_fields.tags":["integration"],"_logary.errors":["System.ApplicationException: actual exn\r\n   在 Program.raisedExn(String msg)"],"service":"tests"}}"""
-      Expect.equal subject expected "should serialise to proper message"
+      Expect.stringStarts subject """{"name":"a.b.c","value":"Testing started","level":"warn","timestamp":1510358400000000000,"context":{"_fields.data-key":"data-value","_fields.e":"System.ApplicationException: darn\n   at Program.raisedExn(String msg) in """ "should serialise to proper message"
+      Expect.stringContains subject "\"service\":\"tests\"" "should contains service context info"
+      Expect.stringContains subject "_logary.errors" "should contains errors"
     ]
 
 [<EntryPoint>]
 let main argv =
+  let enUS = CultureInfo "en-US"
+  Thread.CurrentThread.CurrentCulture   <- enUS
+  Thread.CurrentThread.CurrentUICulture <- enUS
   Tests.runTestsInAssembly defaultConfig argv

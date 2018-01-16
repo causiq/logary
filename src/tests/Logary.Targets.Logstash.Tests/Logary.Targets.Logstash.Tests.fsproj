@@ -1,6 +1,10 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <CurrentPlatform>x86</CurrentPlatform>
+    <CurrentPlatform Condition="'$(PROCESSOR_ARCHITECTURE)'=='AMD64' or '$(PROCESSOR_ARCHITEW6432)'=='AMD64'">x64</CurrentPlatform>
+  </PropertyGroup>
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -53,6 +57,14 @@
     <Content Include="app.config" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
+    <None Include="x86\libzmq.dll" Condition="$(CurrentPlatform) == 'x86'" >
+      <Link>%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="x64\libzmq.dll" Condition="$(CurrentPlatform) == 'x64'" >
+      <Link>%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
