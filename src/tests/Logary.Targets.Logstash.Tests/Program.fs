@@ -57,7 +57,7 @@ let target =
         |> Logstash.serialise
         |> fun str -> str.Replace(@"\r\n", @"\n")  // test for different platform
 
-      Expect.stringStarts subject """{"name":"a.b.c","value":"Testing started","level":"warn","timestamp":1510358400000000000,"context":{"_fields.data-key":"data-value","_fields.e":"System.ApplicationException: darn\n   at Program.raisedExn(String msg)""" "should serialise to proper message"
+      Expect.stringStarts subject """{"name":"a.b.c","value":"Testing started","level":"warn","timestamp":1510358400000000000,"context":{"_fields.data-key":"data-value","_fields.e":"System.ApplicationException: darn\n""" "should serialise to proper message"
       Expect.stringContains subject "\"service\":\"tests\"" "should contains service context info"
       Expect.stringContains subject "_logary.errors" "should contains errors"
     ]
