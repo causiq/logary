@@ -167,7 +167,8 @@ let tests =
       } |> Job.toAsync)
     ]
 
-    testCaseAsync "health checker ping" (job {
+    // just for making an health checker example, not very robust for test, so use ptest...
+    ptestCaseAsync "health checker ping" (job {
       // context
       let pingSvc (hostName : string) =
         try
