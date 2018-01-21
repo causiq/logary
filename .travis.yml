@@ -1,16 +1,41 @@
----
 language: csharp
+dist: trusty
+sudo: false
+dotnet: 2.0.3
 
-mono:
-  - 4.6.1
-  - 4.8.1
-  - weekly
-  - latest
+matrix:
+  fast_finish: true
+  
+  include:
+    - os: linux
+      mono: 5.4.1
+    - os: linux
+      mono: weekly
+    - os: linux
+      mono: latest
+    - os: osx
+      osx_image: xcode9.1
+      mono: 5.4.1
+    - os: osx
+      osx_image: xcode9.1
+      mono: latest
+
+  allow_failures:
+    - os: osx
+    - mono: weekly
+    - mono: latest
 
 addons:
   apt:
     packages:
-      - libzmq3-dev
+    - dotnet-sharedframework-microsoft.netcore.app-1.1.2
+    - libzmq3-dev
+
+env:
+  global:
+    - DOTNET_CLI_TELEMETRY_OPTOUT: 1
+    - DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+    - TMPDIR=/tmp
 
 before_install:
   - rvm install 2.2.3
@@ -21,13 +46,3 @@ install:
 
 script:
   - bundle exec rake DEBUG=true
-
-matrix:
-  allow_failures:
-   - mono: latest
-   - mono: weekly
-   - mono: 4.4.2
-
-env:
-  global:
-    - TMPDIR=/tmp
