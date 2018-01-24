@@ -4,7 +4,6 @@ open Logary
 open Logary.Internals
 open Hopac
 open Hopac.Infixes
-open NodaTime
 
 [<RequireQualifiedAccessAttribute>]
 module Events =
@@ -20,6 +19,7 @@ module Events =
   let miniLevel level pipe =
     pipe |> Pipe.filter (fun msg -> msg.level >= level)
 
+  /// if msg with no specific sinks, will send to all targets
   let sink (names : string list) pipe =
     pipe |> Pipe.map (Message.addSinks names)
 

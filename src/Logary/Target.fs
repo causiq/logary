@@ -52,6 +52,7 @@ module TargetConf =
   let setRule r conf =
     { conf with rules = r :: [] }
 
+  /// specific rule should comes last, be careful with the add order
   let addRule r conf =
     { conf with rules = r :: conf.rules }
 

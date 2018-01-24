@@ -1,4 +1,4 @@
-# Logary v4
+# Logary v5
 
 ## Maintainers wanted – ping @haf to talk
 
@@ -9,7 +9,7 @@ Chat and support and get support:
 
 ## Why?
 
-Logary is a high-performance, semantic logging, health and metrics library for
+Logary is a high-performance, semantic logging library which you can do health and metrics for
 .Net.
 
  - Full support for Semantic Logging

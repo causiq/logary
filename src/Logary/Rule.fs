@@ -5,10 +5,12 @@ open System.Text.RegularExpressions
 open Logary
 open Logary.Internals
 
-/// This is the accept filter that is before the message is passed to the logger
+/// This is the accept filter that is before the message is passed to the target
 type MessageFilter = Message -> bool
 
-/// A rule specifies what messages a target should accept.
+/// A rule specifies what messages a target should accept. 
+/// we do not encourage use rules heavily,only if when the target itself can decide which msg are acceptable.
+/// usually this decision is made by eventProcessing pipeline, can be done with code rather than the rules.
 [<CustomEquality; CustomComparison>]
 type Rule =
   { /// This is the regular expression that the 'path' must match to be loggable
@@ -16,8 +18,7 @@ type Rule =
     /// This is the level at which the target will accept log lines. It's inclusive, so
     /// anything below won't be accepted.
     minLevel : LogLevel
-    /// This is the accept filter that is before the message is passed to the logger
-    /// instance.
+    /// This is the accept filter that is before the message is passed to the target instance.
     acceptIf : MessageFilter }
 
   override x.GetHashCode () =
@@ -47,11 +48,6 @@ type Rule =
 
 /// Module for dealing with rules. Rules take care of filtering too verbose
 /// log lines and measures before they are sent to the targets.
-///
-/// Rules compose to the maximal filter. I.e. if you have one rule for your
-/// target that specifies all Message-s must be of Debug level, and then another
-/// filter that specifies they have to be of Info level, then the rule of Info
-/// will win, and all Debug-level messages will be filtered from the stream.
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Rule =
   let private allPaths = Regex(".*", RegexOptions.Compiled)
@@ -98,31 +94,10 @@ module Rule =
       acceptIf = fun m -> messageFilter.Invoke m
       minLevel = level }
 
-  // Only used for internal logging so far; maximally permissive for any matching
-  // hiera.
-  // TODO: consider what this will do for rules of different hierarchies...
-  let compile rs =
-    let rs = Array.ofSeq rs
-
-    let regex =
-      rs
-      |> Seq.map (fun r -> r.path.ToString())
-      |> String.concat "|"
-      |> sprintf "(%s)"
-
-    let rec filter i (rs : _ []) message =
-      if i = -1 then false else
-      let r = rs.[i]
-      if r.acceptIf message then true
-      else filter (i - 1) rs message
-
-    { path = Regex(regex, RegexOptions.Compiled)
-      acceptIf = if rs.Length = 0 then fun _ -> true else filter (rs.Length) rs
-      minLevel = rs |> Seq.map (fun r -> r.minLevel) |> Seq.fold min Fatal
-    }
-
-  /// use strict strategy
+  /// use the first matched rule
   let canPass (msg : Message) (rules : Rule list) =
-    rules 
-    |> List.filter (fun r ->  r.path.IsMatch (PointName.format msg.name))
-    |> List.forall (fun r -> msg.level >= r.minLevel && r.acceptIf msg)
+    rules
+    |> List.tryFind (fun r -> r.path.IsMatch (PointName.format msg.name))
+    |> function
+       | Some r -> msg.level >= r.minLevel && r.acceptIf msg
+       | None -> false

@@ -5,7 +5,6 @@ open Hopac
 open Hopac.Infixes
 open Hopac.Extensions
 open Logary.Message
-open Logary.Target
 open Logary.Internals
 open Logary.EventsProcessing
 open NodaTime
@@ -234,9 +233,12 @@ module Registry =
     let runningPipe =
       conf.processing
       |> Pipe.run (fun msg ->
-         let targets = msg |> Message.getAllSinks |> Set.toList |> List.choose (fun name -> HashMap.tryFind name targetsMap)
-         if targets.IsEmpty then NoResult
-         else msg |> Target.logAll targets |> HasResult)
+         let msgSinks =  msg |> Message.getAllSinks
+         let sinks =
+           if Set.isEmpty msgSinks then targets
+           else msgSinks |> Set.toList |> List.choose (fun name -> HashMap.tryFind name targetsMap)
+         if sinks.IsEmpty then NoResult
+         else msg |> Target.logAll sinks |> HasResult)
 
     runningPipe
     >>= fun (sendMsg, ctss) ->
