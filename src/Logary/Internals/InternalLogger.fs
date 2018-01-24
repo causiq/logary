@@ -20,23 +20,23 @@ module InternalLogger =
       messageCh : Ch<Message * Promise<unit> * Ch<Promise<unit>>>
     }
   with
-    member x.name = PointName [| "Logary" |]
+    member inline x.name = PointName [| "Logary" |]
 
     interface Logger with // internal logger
       member x.logWithAck logLevel messageFactory =
-        let me : Logger = upcast x
         let message =
           match messageFactory logLevel with
           | msg when msg.name.isEmpty -> { msg with name = x.name }
           | msg -> msg
         x.messageCh *<+->- fun replCh nack -> message, nack, replCh
 
-      member x.log logLevel messageFactory =
-        let me : Logger = upcast x
-        me.logWithAck logLevel messageFactory // delegate down
-        |> Alt.afterFun ignore
-
       member x.name = x.name
+
+      /// internal logger will pass all log msg to targets,  
+      /// so the min level on logger is Verbose
+      /// let the internal logger targets decide which will be accepted
+      /// so this property is generally useless
+      member x.level = LogLevel.Verbose
 
 
   let create ri =

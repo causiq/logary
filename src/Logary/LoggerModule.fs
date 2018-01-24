@@ -25,8 +25,10 @@ module Logger =
   // to avoid polluting the API unecessarily.
 
   /// Log a message, but don't await all targets to flush.
-  let log (logger : Logger) logLevel messageFactory : Alt<unit> =
-    logger.log logLevel messageFactory
+  let inline log (logger : Logger) logLevel messageFactory : Alt<unit> =
+    if logLevel >= logger.level then
+      logger.logWithAck logLevel messageFactory ^-> ignore
+    else Alt.always ()
 
   let private simpleTimeout millis loggerName =
     timeOutMillis millis
@@ -290,26 +292,24 @@ module Logger =
         member x.logWithAck logLevel messageFactory =
           logger.logWithAck logLevel (messageFactory >> transform)
 
-        member x.log logLevel messageFactory =
-          logger.log logLevel (messageFactory >> transform)
-
         member x.name =
           name
+
+        member x.level = logger.level
     }
 
   let apply (middleware : Message -> Message) (logger : Logger) : Logger =
     { new Logger with // Logger.apply delegator
-      member x.log logLevel messageFactory =
-        logger.log logLevel (messageFactory >> middleware)
       member x.logWithAck logLevel messageFactory =
         logger.logWithAck logLevel (messageFactory >> middleware)
-      member x.name = logger.name }
+      member x.name = logger.name
+      member x.level = logger.level
+    }
 
 /// Syntactic sugar on top of Logger for use of curried factory function
 /// functions.
 [<AutoOpen>]
 module LoggerEx =
-  open Hopac.Infixes
 
   let private lwa (x : Logger) lvl f =
     let ack = IVar ()
@@ -319,6 +319,9 @@ module LoggerEx =
     ack :> Promise<_>
 
   type Logger with
+    member inline x.log logLevel (messageFactory : LogLevel -> Message) :  Alt<unit> =
+      Logger.log x logLevel messageFactory
+
     member x.verbose (messageFactory : LogLevel -> Message) : unit =
       start (Logger.logWithTimeout x Logger.defaultTimeout Verbose messageFactory ^->. ())
 

@@ -69,9 +69,9 @@ module internal Global =
 
     interface Logger with // flyweight
       member x.name = name
-
-      member x.log level msgFactory =
-        withLogger (fun logger -> logger.log level (msgFactory >> ensureName))
+      
+      member x.level =
+        withLogger (fun logger -> logger.level)
 
       member x.logWithAck level msgFactory =
         withLogger (fun logger -> logger.logWithAck level (msgFactory >> ensureName))

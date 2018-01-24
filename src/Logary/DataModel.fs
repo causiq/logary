@@ -185,19 +185,9 @@ type Logger =
   /// it will be garbage collected in the end, whether it's awaited or not.
   abstract logWithAck : LogLevel -> (LogLevel -> Message) -> Alt<Promise<unit>>
 
-  /// Logs with the specified log level with backpressure via Logary's
-  /// buffers.
-  ///
-  /// Calls to this function will block the caller only while executing the
-  /// callback (if the level is active).
-  ///
-  /// The returned async value will yield when the message has been added to
-  /// the buffers of Logary.
-  ///
-  /// You need to start the (cold) Alt value for the logging to happen.
-  ///
-  /// You should not do blocking/heavy operations in the callback.
-  abstract log : LogLevel -> (LogLevel -> Message) -> Alt<unit>
+  /// Gets the currently set log level (minimal,inclusive), 
+  /// aka. the granularity with which things are being logged.
+  abstract level : LogLevel
 
 
 /// A disposable interface to use with `use` constructs and to create child-

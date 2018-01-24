@@ -13,7 +13,7 @@ open Logary.MessageTemplates.Destructure
 open Logary.Formatting.JsonHelper
 
 
-/// Specifies the internal logging level for Logary.
+/// Specifies the internal logger targets for Logary.
 [<RequireQualifiedAccess>]
 type ILogger =
   | Console of minLevel:LogLevel

@@ -425,8 +425,7 @@ let tests =
             member x.name : PointName = PointName.ofSingle "B"
             member x.logWithAck (level : LogLevel) (factory : LogLevel -> Message) : Alt<Promise<unit>> =
               Promise.instaPromise
-            member x.log (level : LogLevel) (factory : LogLevel -> Message) : Alt<unit> =
-              Alt.always ()
+            member x.level : LogLevel = LogLevel.Info
             member x.Dispose () = ()
             member x.elapsed = Duration.Zero
             member x.bisect (label : string) : unit =

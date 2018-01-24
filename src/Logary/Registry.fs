@@ -141,14 +141,15 @@ module Registry =
             member x.name = name
             /// support no blocking endless, when target/registry is shutdown
             member x.logWithAck level messageFactory =
-              (t.isClosed ^->. Promise (()))
-              <|>
-              (Alt.prepareFun (fun _ -> 
-                let msg = level |> messageFactory |> ensureName name
-                t.msgProcessing msg mid))
-              
-            member x.log level messageFactory =
-              x.logWithAck level messageFactory ^-> ignore
+              if level >= x.level then
+                (t.isClosed ^->. Promise (()))
+                <|>
+                (Alt.prepareFun (fun _ -> 
+                  let msg = level |> messageFactory |> ensureName name
+                  t.msgProcessing msg mid))
+              else Promise.instaPromise
+
+            member x.level = failwith "todo, get through registry"
         }
         
     let inline spawnTarget (ri : RuntimeInfo) targets =

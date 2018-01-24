@@ -20,6 +20,7 @@ Global
 		{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
