@@ -40,16 +40,11 @@ type TopshelfAdapter(logger : Logger) =
 
   interface LogWriter with
 
-
-    // in logary, we use processing pipe to decide how to process a Log Message, no level limit on logger
-    // so that when we logging some msg (log), we don't need to decide which logger we should use, 
-    // we just create a generic one, or the one in its datapoint which depend on its class name.
-    // and the pipes will decide how to handle this msg (log), send to some targets , or just drop it.
-    member x.IsDebugEnabled = true
-    member x.IsInfoEnabled = true
-    member x.IsWarnEnabled = true
-    member x.IsErrorEnabled = true
-    member x.IsFatalEnabled = true
+    member x.IsDebugEnabled = logger.level <= Debug
+    member x.IsInfoEnabled = logger.level <= Info
+    member x.IsWarnEnabled = logger.level <= Warn
+    member x.IsErrorEnabled = logger.level <= Error
+    member x.IsFatalEnabled = logger.level <= Fatal
 
     /////////////////// Log ///////////////
     member x.Log (level, o : obj) =

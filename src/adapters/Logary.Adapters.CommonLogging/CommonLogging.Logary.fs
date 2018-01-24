@@ -74,16 +74,12 @@ type internal Adapter(logger : Logger) =
   // fucking too big interface
   interface ILog with
 
-    // in logary, we use processing pipe to decide how to process a Log Message, no level limit on logger
-    // so that when we logging some msg (log), we don't need to decide which logger we should use, 
-    // we just create a generic one, or the one in its datapoint which depend on its class name.
-    // and the pipes will decide how to handle this msg (log), send to some targets , or just drop it.
-    member x.IsTraceEnabled = true
-    member x.IsDebugEnabled = true
-    member x.IsInfoEnabled =  true
-    member x.IsWarnEnabled =  true
-    member x.IsErrorEnabled = true
-    member x.IsFatalEnabled = true
+    member x.IsTraceEnabled = logger.level <= Verbose
+    member x.IsDebugEnabled = logger.level <= Debug
+    member x.IsInfoEnabled = logger.level <= Info
+    member x.IsWarnEnabled = logger.level <= Warn
+    member x.IsErrorEnabled = logger.level <= Error
+    member x.IsFatalEnabled = logger.level <= Fatal
 
     member x.Trace (message : obj) = write message Verbose
     member x.Trace (message : obj, ex) = write' message Verbose ex
