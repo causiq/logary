@@ -8,6 +8,7 @@ open Logary.Message
 open Logary.Internals
 open Logary.EventsProcessing
 open NodaTime
+open System.Text.RegularExpressions
 
 
 /// This is the logary configuration structure having a memory of all
@@ -21,6 +22,8 @@ type LogaryConf =
   abstract middleware : Middleware[]
   /// Optional stream transformer.
   abstract processing : Events.Processing
+  /// each logger's min level
+  abstract loggerLevels : (string * LogLevel) list
 
 /// A data-structure that gives information about the outcome of a flush
 /// operation on the Registry. This data structure is only relevant if the
@@ -68,6 +71,10 @@ type LogManager =
   abstract shutdown : flush:Duration * shutdown:Duration -> Alt<FlushInfo * ShutdownInfo>
   abstract shutdown : unit -> Alt<unit>
 
+  /// Dynamically controls logger min level, this will not affect the loggers which create
+  /// after this swith. only affect loggers create beafore.
+  abstract switchLoggerLevel : string * LogLevel -> unit
+
 /// This is the main state container in Logary.
 module Registry =
   /// The holder for the channels of communicating with the registry.
@@ -89,6 +96,12 @@ module Registry =
       /// Shutdown the registry in full. This operation cannot be cancelled and
       /// so the caller is promised a ShutdownInfo.
       shutdownCh : Ch<IVar<ShutdownInfo> * Duration option>
+
+      /// each logger's minLevel stores here, can be dynamically change
+      loggerLevelDic : System.Collections.Concurrent.ConcurrentDictionary<string,LogLevel>
+
+      /// default logger rules from logary conf, will be applied when create new logger
+      defaultLoggerLevelRules : (string * LogLevel) list
     }
 
   /// Flush all pending messages for all targets. Flushes with no timeout; if
@@ -97,7 +110,7 @@ module Registry =
     t.isClosed
     <|>
     ((t.flushCh *<+->- fun flushCh nack -> flushCh, nack, None) ^-> ignore)
-    
+
 
   /// Flush all pending messages for all targets. This Alternative always
   /// yields after waiting for the specified `timeout`; then giving back the
@@ -107,7 +120,7 @@ module Registry =
     (t.isClosed ^->. (FlushInfo(["registry is closed"],[])))
     <|>
     (t.flushCh *<+->- fun flushCh nack -> flushCh, nack, Some timeout)
-    
+
 
   /// Shutdown the registry and flush all targets before shutting it down. This
   /// function does not specify a timeout, neither for the flush nor for the
@@ -116,7 +129,7 @@ module Registry =
   let shutdown (t : T) : Alt<unit> =
     t.isClosed
     <|>
-    ((t.flushCh *<+->- fun flushCh nack -> flushCh, nack, None) ^=> fun _ -> 
+    ((t.flushCh *<+->- fun flushCh nack -> flushCh, nack, None) ^=> fun _ ->
       (t.shutdownCh *<+=>- fun shutdownCh -> shutdownCh, None) ^-> ignore)
 
 
@@ -127,8 +140,8 @@ module Registry =
   let shutdownWithTimeouts (t : T) (flushTimeout : Duration) (shutdownTimeout : Duration) : Alt<FlushInfo * ShutdownInfo> =
     (t.isClosed ^->. (FlushInfo(["registry is closed"],[]), ShutdownInfo(["registry is closed"],[])))
     <|>
-    ((t.flushCh *<+->- fun flushCh nack -> flushCh, nack, Some flushTimeout) ^=> (fun flushInfo -> 
-      (t.shutdownCh *<+=>- fun shutdownCh -> shutdownCh, Some shutdownTimeout) ^-> (fun shutdownInfo -> 
+    ((t.flushCh *<+->- fun flushCh nack -> flushCh, nack, Some flushTimeout) ^=> (fun flushInfo ->
+      (t.shutdownCh *<+=>- fun shutdownCh -> shutdownCh, Some shutdownTimeout) ^-> (fun shutdownInfo ->
         flushInfo, shutdownInfo)))
 
 
@@ -137,21 +150,40 @@ module Registry =
       if m.name.isEmpty then { m with name = name } else m
 
     let inline getLogger (t : T) name mid =
-        { new Logger with
-            member x.name = name
-            /// support no blocking endless, when target/registry is shutdown
-            member x.logWithAck level messageFactory =
-              if level >= x.level then
-                (t.isClosed ^->. Promise (()))
-                <|>
-                (Alt.prepareFun (fun _ -> 
-                  let msg = level |> messageFactory |> ensureName name
-                  t.msgProcessing msg mid))
-              else Promise.instaPromise
+      let nameStr = name.ToString ()
+      t.defaultLoggerLevelRules
+      |> List.tryFind (fun (path, _) -> path = nameStr || Regex.IsMatch(nameStr, path))
+      |> function
+         | Some (_, minLevel) -> t.loggerLevelDic.[nameStr] <- minLevel
+         | None -> t.loggerLevelDic.[nameStr] <- LogLevel.Info
 
-            member x.level = failwith "todo, get through registry"
-        }
-        
+      { new Logger with
+          member x.name = name
+
+          /// support no blocking endless, when target/registry is shutdown
+          member x.logWithAck level messageFactory =
+            if level >= x.level then
+              (t.isClosed ^->. Promise (()))
+              <|>
+              (Alt.prepareFun (fun _ ->
+                let msg = level |> messageFactory |> ensureName name
+                t.msgProcessing msg mid))
+            else Promise.instaPromise
+
+          member x.level =
+            match t.loggerLevelDic.TryGetValue nameStr with
+            | true, minLevel -> minLevel
+            | false, _  -> LogLevel.Info
+      }
+
+    /// maybe use msg passing style, if we need support affect loggers create after this switch.
+    let inline switchLoggerLevel (t : T) path minLevel =
+      let regPath = Regex (path, RegexOptions.Compiled)
+      let dic = t.loggerLevelDic
+      dic |> Seq.iter (fun (KeyValue (name, _)) ->
+        if name = path || regPath.IsMatch (name) then
+          do dic.[name] <- minLevel)
+
     let inline spawnTarget (ri : RuntimeInfo) targets =
       targets
       |> HashMap.toList
@@ -248,7 +280,9 @@ module Registry =
             msgProcessing = wrapper sendMsg
             isClosed = isClosed
             flushCh = flushCh
-            shutdownCh = shutdownCh }
+            shutdownCh = shutdownCh
+            loggerLevelDic = new System.Collections.Concurrent.ConcurrentDictionary<string,LogLevel> ()
+            defaultLoggerLevelRules = conf.loggerLevels }
 
         Job.supervise rlogger (Policy.restartDelayed 512u) (running ctss)
         |> Job.startIgnore
@@ -268,4 +302,7 @@ module Registry =
         member x.shutdown (flushTO, shutdownTO) =
           shutdownWithTimeouts t flushTO shutdownTO
         member x.shutdown () = shutdown t
+        member x.switchLoggerLevel (path, logLevel) =
+          Impl.switchLoggerLevel t path logLevel
+
     }

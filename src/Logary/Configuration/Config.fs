@@ -32,6 +32,7 @@ module Config =
       middleware   : Middleware list
       processing   : Events.Processing list
       setGlobals   : bool
+      loggerLevels  : (string * LogLevel) list
     }
 
   let create service host =
@@ -44,6 +45,7 @@ module Config =
       ilogger      = ILogger.Console Warn
       setGlobals   = true
       processing   = List.empty
+      loggerLevels = [(".*", LogLevel.Info)]
     }
 
   let target tconf lconf =
@@ -72,6 +74,13 @@ module Config =
 
   let processing processor lconf =
     { lconf with processing = processor :: lconf.processing }
+
+  /// config the min loglevel of logger which belong to this path,
+  /// path can be regex or specific logger name.
+  /// specific path should config last, be careful with the config order.
+  /// logger which is not set minlevel is Info by default.
+  let loggerMinLevel path minLevel lconf =
+    { lconf with loggerLevels = (path, minLevel) :: lconf.loggerLevels }
 
   let disableGlobals lconf =
     { lconf with setGlobals = false }
@@ -123,6 +132,7 @@ module Config =
           member x.runtimeInfo = upcast ri
           member x.middleware = middleware
           member x.processing = processing
+          member x.loggerLevels = lconf.loggerLevels
       }
     Registry.create conf
     >>- fun registry ->
