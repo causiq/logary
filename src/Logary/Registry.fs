@@ -71,8 +71,8 @@ type LogManager =
   abstract shutdown : flush:Duration * shutdown:Duration -> Alt<FlushInfo * ShutdownInfo>
   abstract shutdown : unit -> Alt<unit>
 
-  /// Dynamically controls logger min level, this will not affect the loggers which create
-  /// after this swith. only affect loggers create beafore.
+  /// Dynamically controls logger min level, 
+  /// this will only affect the loggers (its name, not its instance) which haven't been created beafore
   abstract switchLoggerLevel : string * LogLevel -> unit
 
 /// This is the main state container in Logary.
@@ -151,11 +151,14 @@ module Registry =
 
     let inline getLogger (t : T) name mid =
       let nameStr = name.ToString ()
-      t.defaultLoggerLevelRules
-      |> List.tryFind (fun (path, _) -> path = nameStr || Regex.IsMatch(nameStr, path))
-      |> function
-         | Some (_, minLevel) -> t.loggerLevelDic.[nameStr] <- minLevel
-         | None -> t.loggerLevelDic.[nameStr] <- LogLevel.Info
+      match t.loggerLevelDic.TryGetValue nameStr with
+      | true, _ -> do ()
+      | false, _  ->
+        t.defaultLoggerLevelRules
+        |> List.tryFind (fun (path, _) -> path = nameStr || Regex.IsMatch(nameStr, path))
+        |> function
+           | Some (_, minLevel) -> t.loggerLevelDic.[nameStr] <- minLevel
+           | None -> t.loggerLevelDic.[nameStr] <- LogLevel.Info
 
       { new Logger with
           member x.name = name
@@ -176,8 +179,8 @@ module Registry =
             | false, _  -> LogLevel.Info
       }
 
-    /// maybe use msg passing style, if we need support affect loggers create after this switch.
     let inline switchLoggerLevel (t : T) path minLevel =
+      // maybe use msg passing style, if we need support affect loggers create after this switch.
       let regPath = Regex (path, RegexOptions.Compiled)
       let dic = t.loggerLevelDic
       dic |> Seq.iter (fun (KeyValue (name, _)) ->
