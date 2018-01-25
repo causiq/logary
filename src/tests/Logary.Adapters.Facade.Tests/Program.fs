@@ -12,16 +12,12 @@ let stubLogger (minLevel : LogLevel)
                name =
 
   { new Logger with // stub/tests
-      member x.log level msgFactory =
-        x.logWithAck level msgFactory
-        |> Alt.afterFun (fun _ -> ())
-
       member x.logWithAck level messageFactory =
         message := messageFactory level
         Alt.always (Promise (()))
 
-      member x.name =
-        name }
+      member x.name =name
+      member x.level = minLevel }
 
 let stubLogManager (message : Message ref) =
   { new LogManager with
@@ -41,6 +37,7 @@ let stubLogManager (message : Message ref) =
 
       member x.shutdown (fDur,sDur) =
         Alt.always (FlushInfo([],[]),ShutdownInfo([],[]))
+      member x.switchLoggerLevel (path, minLevel) = ()
   }
 
 [<Tests>]
