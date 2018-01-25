@@ -10,8 +10,6 @@ module Logary.ConsoleApp.Program
 #endif
 
 open System
-open System.Diagnostics
-open NodaTime
 open Hopac
 open Logary
 open Logary.Configuration
@@ -19,51 +17,6 @@ open Logary.Targets
 open Logary.Metrics
 open Logary.EventsProcessing
 open Logary.EventsProcessing.Transformers
-open System.Text.RegularExpressions
-
-
-open System.Threading
-open Logary.Configuration.Config
-open Hopac.Proc
-
-module ParallelJob =
-  open Hopac.Infixes
-
-  let mutable numSpawns = 0L
-
-  let rec fib n = job {
-    if n < 2L then
-      return n
-    else
-      let! (x, y) = fib (n-2L) <*> fib (n-1L)
-      return x + y
-  }
-
-  let run n =
-    let timer = Stopwatch.StartNew ()
-    let r = run (fib n)
-    let d = timer.Elapsed
-    printfn "ParJob: %d - %fs (%f jobs/s)\n"
-     r d.TotalSeconds (float numSpawns / d.TotalSeconds)
-
-module SerialFun =
-
-  let mutable numSpawns = 0L
-  let rec fib n =
-    if n < 2L then
-      n
-    else
-      numSpawns <- numSpawns + 1L
-      fib (n-2L) + fib (n-1L)
-
-  let run n =
-    printfn "Running SerialFun"
-    numSpawns <- 0L
-    let timer = Stopwatch.StartNew ()
-    let r = fib n
-    let d = timer.Elapsed
-    printfn "SerFun: %d - %fs (%d recs)\n" r d.TotalSeconds numSpawns
-    ()
 
 module RandomWalk =
 
@@ -130,16 +83,16 @@ module Timing =
 module NormalUsage =
 
   let act (logger : Logger) =
-    Message.templateFormat("{userName} logged in", [| "haf" |])
+    Message.templateFormat("{userName} logged in", "haf")
     |> Logger.logSimple logger
 
-    Message.eventFormat (Info, "{userName} logged in", [| "adam" |])
+    Message.eventFormat (Info, "{userName} logged in", "adam")
     |> Logger.logSimple logger
 
 
 [<EntryPoint>]
 let main argv =
-  use mre = new ManualResetEventSlim(false)
+  use mre = new System.Threading.ManualResetEventSlim(false)
   use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
 
   // sample configuration of a RMQ target
@@ -196,7 +149,7 @@ let main argv =
     |> Config.targets [
         LiterateConsole.create LiterateConsole.empty "console"
         Console.create Console.empty "fatal"
-        //RabbitMQ.create rmqConf "rabbitmq"
+        RabbitMQ.create rmqConf "rabbitmq"
         InfluxDb.create (InfluxDb.InfluxDbConf.create(Uri "http://192.168.99.100:8086/write", "logary", batchSize = 500us))
                         "influxdb"
       ]
@@ -208,7 +161,7 @@ let main argv =
 
   let logger = logary.getLogger (PointName [| "Logary"; "Samples"; "main" |])
 
-
+  
   NormalUsage.act logger
 
   mre.Wait()

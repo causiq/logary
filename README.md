@@ -42,7 +42,7 @@ Install-Package Logary
 ```
 
 ## Table of Contents
-  * [Logary v4](#logary-v4)
+  * [Logary v5](#logary-v5)
     * [Why?](#why)
     * [Install it](#install-it)
     * [Table of Contents](#table-of-contents)
@@ -149,12 +149,11 @@ using Logary.Targets;
 
 // NuGet: Install-Package Logary
 string loggerId = "Logary.MyLogger";
-using (var logary = LogaryFactory.New(loggerId,
+using (var logary = LogaryFactory.New("svc", "host",
     // You could define multiple targets. For HelloWorld, we use only console:
-    with => with.Target<TextWriter.Builder>(
-        "myFirstTarget",
-        conf => conf.Target.WriteTo(System.Console.Out, System.Console.Error)
-      )).Result)
+    with => with.InternalLogger(ILogger.NewConsole(LogLevel.Error))
+                .Target<TextWriter.Builder>("myFirstTarget", 
+                   conf => conf.Target.WriteTo(System.Console.Out, System.Console.Error))).Result)
 {
     // Then let's log a message. For HelloWorld, we log a string:
     var logger = logary.getLogger(Logary.PointNameModule.Parse(loggerId));
@@ -166,66 +165,106 @@ using (var logary = LogaryFactory.New(loggerId,
 ## Hello World (F#)
 
 ```fsharp
+
+
 open System
-open NodaTime // conf
 open Hopac // conf
 open Logary // normal usage
-open Logary.Message // normal usage
 open Logary.Configuration // conf
 open Logary.Targets // conf
-open Logary.Metric // conf
 open Logary.Metrics // conf
-open System.Threading // control flow
+open Logary.EventsProcessing // conf
+open Logary.EventsProcessing.Transformers // conf
 
-let randomMetric (pn : PointName) : Job<Metric> =
-  let reducer state = function
-  | _ -> state
+module RandomWalk =
 
-  let ticker pn (rnd : Random, prevValue) =
-    let value = rnd.NextDouble()
-    let msg = Message.gauge pn (Float value)
-    (rnd, value), [| msg |]
+  let create pn =
+    let reducer state = function
+      | _ ->
+        state
 
-  let state = Random(), 0.0
+    let ticker (rnd : Random, prevValue) =
+      let value =
+        let v = (rnd.NextDouble() - 0.5) * 0.3
+        if abs v < 0.03 then rnd.NextDouble() - 0.5
+        elif v + prevValue < -1. || v + prevValue > 1. then -v + prevValue
+        else v + prevValue
 
-  Metric.create reducer state (ticker pn)
+      let msg = Message.gaugeWithUnit pn value Seconds
+
+      (rnd, value), msg
+
+    let state =
+      let rnd = Random()
+      rnd, rnd.NextDouble()
+
+    Ticker.create state reducer ticker
+
 
 [<EntryPoint>]
 let main argv =
-  // the 'right' way to wait for SIGINT
-  use mre = new ManualResetEventSlim(false)
+  use mre = new System.Threading.ManualResetEventSlim(false)
   use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
 
+  // sample configuration of a RMQ target
+  let rmqConf =
+    { RabbitMQ.empty with
+        appId = Some "Logary.ConsoleApp"
+        username = "appuser-12345"
+        password = "TopSecret1234"
+        tls = { RabbitMQ.TlsConf.certPath = "./certs/mycert.pfx"
+                RabbitMQ.TlsConf.certPassword = Some "AnotherSecret1243567" }
+              |> Some
+        compression = RabbitMQ.Compression.GZip
+    }
+
+  // ticker can be auto triggered or manually trigger
+  let randomness =
+    RandomWalk.create "Logary.ConsoleApp.randomWalk"
+
+  let randomWalkPipe =
+    Events.events
+    |> Pipe.tickTimer (randomness) (TimeSpan.FromMilliseconds 500.) // use a timer to auto trigger
+
+  let processing =
+    Events.compose [
+      // all log message with log level above fatal will go to fatal target
+      Events.events |> Events.miniLevel LogLevel.Fatal |> Events.sink ["fatal"]
+
+      // use windows perf counter to metric system info (cpu, disk, memory...) each 5 senonds, will go to console and influxdb
+      Events.events
+      |> Pipe.tickTimer (WinPerfCounters.systemMetrics (PointName.ofSingle "system")) (TimeSpan.FromMilliseconds 5000.)
+      |> Pipe.map Array.toSeq
+      |> Events.flattenToProcessing
+      |> Events.sink ["console"; "influxdb"]
+
+      randomWalkPipe 
+      |> Events.sink ["console"; "influxdb"]
+    ]
+
   // create a new Logary; save this instance somewhere "global" to your app/service
-  use logary =
-    // main factory-style API, returns IDisposable object
-    withLogaryManager "Logary.Examples.ConsoleApp" (
-      // output to the console
-      withTargets [
-        LiterateConsole.create (LiterateConsole.empty) "console"
-      ] >>
-      // continuously log CPU stats
-      withMetrics [
-        MetricConf.create (Duration.FromMilliseconds 500L) "random" randomMetric
-      ] >>
-      // "link" or "enable" the loggers to send everything to the configured target
-      withRules [
-        Rule.createForTarget "console"
+  let logary =
+    Config.create "Logary.ConsoleApp" "localhost"
+    |> Config.targets [
+        LiterateConsole.create LiterateConsole.empty "console"
+        Console.create Console.empty "fatal"
+        RabbitMQ.create rmqConf "rabbitmq"
+        InfluxDb.create (InfluxDb.InfluxDbConf.create(Uri "http://192.168.99.100:8086/write", "logary", batchSize = 500us))
+                        "influxdb"
       ]
-    )
-    // "compile" the Logary instance
+    |> Config.ilogger (ILogger.Console Info)
+    |> Config.middleware Middleware.dnsHost
+    |> Config.processing processing
+    |> Config.build
     |> run
 
-  // Get a new logger. Also see Logging.getLoggerByName for statically getting it
-  let logger =
-    logary.getLogger (PointName [| "Logary"; "Samples"; "main" |])
+  // Get a new logger. Also see Logging.getLoggerByName for statically getting
+  let logger = logary.getLogger (PointName [| "Logary"; "Samples"; "main" |])
 
   // log something
-  logger.info (
-    eventX "User with {userName} loggedIn"
-    >> setField "userName" "haf")
+  Message.eventFormat (Info, "{userName} logged in", "haf")
+  |> Logger.logSimple logger
 
-  // wait for sigint
   mre.Wait()
   0
 ```

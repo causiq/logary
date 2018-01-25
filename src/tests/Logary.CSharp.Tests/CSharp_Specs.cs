@@ -31,14 +31,11 @@ namespace Logary.CSharp.Tests
                 timestamp = NodaTime.Instant.FromUnixTimeSeconds(987654);
                 exception = new ApplicationException("Nice exception");
                 var targetName = "sample string writer";
-                var sinks = FSharpList.Create(targetName);
-                var processor = Events.sink<Alt<Promise<Microsoft.FSharp.Core.Unit>>,Message>(sinks, Events.events<Alt<Promise<Microsoft.FSharp.Core.Unit>>>());
 
                 manager = LogaryFactory.New(
                     "Logary.CSharp.Tests","localhost",
                     with =>
                         with.Use(MiddlewareModule.ProcessName)
-                            .Processing(processor)
                             .Target<TextWriter.Builder>(targetName,
                             t => t.Target.WriteTo(writer, writer)
                                   .MinLevel(LogLevel.Verbose)

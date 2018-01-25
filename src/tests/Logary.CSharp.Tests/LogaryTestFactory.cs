@@ -30,16 +30,9 @@ namespace Logary.CSharp.Tests
                         new Microsoft.FSharp.Core.FSharpOption<MessageWriter>(MessageWriterModule.levelDatetimeMessagePathNewLine)),
                     "tw");
 
-            // var twRule =
-            //     RuleModule.Create(new Regex(@"^Logary\.CSharp\.Tests"), "tw", LogLevel.Verbose,
-            //         message => true);
-            var sinks = FSharpList.Create("tw");
-            var processor = Events.sink<Alt<Promise<Microsoft.FSharp.Core.Unit>>,Message>(sinks, Events.events<Alt<Promise<Microsoft.FSharp.Core.Unit>>>());
-
             var config = Config.create("Logary.CSharp.Tests C# low level API","localhost");
             config = Config.ilogger(ILogger.NewConsole(LogLevel.Warn),config);
             config = Config.target(twTarg, config);
-            config = Config.processing(processor, config);
             var logary = Config.build(config).ToTask().Result;
             return logary;
         }

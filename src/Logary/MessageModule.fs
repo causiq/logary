@@ -510,7 +510,7 @@ module MessageEx =
     /// a message template and a set of fields.
     [<CompiledName "EventFormat">]
     static member templateFormat (format : string, [<ParamArray>] args : obj[]) =
-      Message.eventFormat (LogLevel.Debug, format, args)
+      Message.eventFormat (LogLevel.Info, format, args)
       
     static member templateEvent<'T> (level : LogLevel, format : string) : ('T -> Message) =
       let template = parse format
