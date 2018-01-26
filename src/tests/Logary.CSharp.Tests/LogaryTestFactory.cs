@@ -33,6 +33,7 @@ namespace Logary.CSharp.Tests
             var config = Config.create("Logary.CSharp.Tests C# low level API","localhost");
             config = Config.ilogger(ILogger.NewConsole(LogLevel.Warn),config);
             config = Config.target(twTarg, config);
+            config = Config.loggerMinLevel(".*", LogLevel.Verbose, config);
             var logary = Config.build(config).ToTask().Result;
             return logary;
         }

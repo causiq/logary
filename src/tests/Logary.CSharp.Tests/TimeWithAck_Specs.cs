@@ -25,6 +25,7 @@ namespace Logary.CSharp.Tests
                     "Logary.CSharp.Tests","localhost",
                     with =>
                         with.InternalLogger(ILogger.NewConsole(LogLevel.Fatal))
+                            .LoggerMinLevel(".*", LogLevel.Verbose)
                             .Target<TextWriter.Builder>("sample string writer",
                                 t => t.Target.WriteTo(writer, writer))).Result;
             };

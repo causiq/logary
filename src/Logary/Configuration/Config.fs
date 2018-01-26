@@ -30,7 +30,7 @@ module Config =
       getSem       : unit -> obj
       ilogger      : ILogger
       middleware   : Middleware list
-      processing   : Events.Processing list
+      processing   : Events.Processing
       setGlobals   : bool
       loggerLevels  : (string * LogLevel) list
     }
@@ -44,7 +44,7 @@ module Config =
       middleware   = List.empty
       ilogger      = ILogger.Console Warn
       setGlobals   = true
-      processing   = List.empty
+      processing   = Events.events
       loggerLevels = [(".*", LogLevel.Info)]
     }
 
@@ -73,7 +73,7 @@ module Config =
     { lconf with ilogger = ilogger }
 
   let processing processor lconf =
-    { lconf with processing = processor :: lconf.processing }
+    { lconf with processing = processor }
 
   /// config the min loglevel of logger which belong to this path,
   /// path can be regex or specific logger name.
@@ -124,14 +124,13 @@ module Config =
         Middleware.service lconf.service ]
     let middleware = Array.ofList (lconf.middleware @ mids)
     let ri = { ri with logger = ilogger }
-    let processing = Events.compose lconf.processing
 
     let conf =
       { new LogaryConf with
           member x.targets = lconf.targets
           member x.runtimeInfo = upcast ri
           member x.middleware = middleware
-          member x.processing = processing
+          member x.processing = lconf.processing
           member x.loggerLevels = lconf.loggerLevels
       }
     Registry.create conf

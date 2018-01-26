@@ -31,12 +31,9 @@ type ConfigReader<'a> =
   abstract ReadConf : unit -> 'a
 
 type internal ConfBuilderTarget<'T when 'T :> Target.SpecificTargetConf> =
-  { parent   : ConfBuilder        // logary that is being configured
-    tr       : Rule               // for this specific target
+  { tr       : Rule               // for this specific target
     specific : 'T option }
 with
-  member internal x.setSpecific specConf =
-    { x with specific = Some specConf }
 
   interface Target.TargetConfBuild<'T> with
     member x.MinLevel logLevel =
@@ -72,7 +69,7 @@ and ConfBuilder(conf) =
     conf
     |> Config.middleware (fun next msg -> middleware.Invoke(new Func<_,_>(next)).Invoke msg)
     |> ConfBuilder
-    
+
   /// Call this method to add middleware to Logary. Middleware is useful for interrogating
   /// the context that logging is performed in. It can for example ensure all messages
   /// have a context field 'service' that specifies what service the code is running in.
@@ -95,6 +92,11 @@ and ConfBuilder(conf) =
     |> Config.processing processor
     |> ConfBuilder
 
+  member x.LoggerMinLevel(path: string, minLevel: LogLevel) =
+    conf
+    |> Config.loggerMinLevel path minLevel
+    |> ConfBuilder
+
   /// Configure a target of the type with a name specified by the parameter name.
   /// The callback, which is the second parameter, lets you configure the target.
   member x.Target<'T when 'T :> Target.SpecificTargetConf>
@@ -105,8 +107,7 @@ and ConfBuilder(conf) =
     let builderType = typeof<'T>
 
     let container : ConfBuilderTarget<'T> =
-      { parent   = x
-        tr       = Rule.empty
+      { tr       = Rule.empty
         specific = None }
 
     let contRef = ref (container :> Target.TargetConfBuild<_>)
@@ -124,18 +125,18 @@ and ConfBuilder(conf) =
     // escape of the type system to get back to this mutually recursive
     // builder class: hence the comment that the interface TargetConfBuild<_> is not
     // referentially transparent
-    let targetConf = configurator.Invoke(!contRef) :?> ConfBuilderTarget<'T>
+    let buildResult = configurator.Invoke(!contRef) :?> ConfBuilderTarget<'T>
+    let targetConf =
+      buildResult.specific.Value.Build name
+      |> TargetConf.addRule buildResult.tr
 
     conf
-    |> Config.target (targetConf.specific.Value.Build name)
+    |> Config.target targetConf
     |> ConfBuilder
 
 /// Extensions to make it easier to construct Logary
 [<Extension; AutoOpen>]
 module FactoryApiExtensions =
-  open System
-  open Logary
-  open Logary.Configuration
 
   /// <summary>
   /// Configure the target with default settings.
