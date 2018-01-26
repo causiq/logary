@@ -958,7 +958,7 @@ a derived metric.
 
 ## Formatting
 
-TO BE DONE. 
+TO BE DONE. The sketchy cen be seen here in comments : https://github.com/logary/logary/issues/275
 
 ## LiterateConsole logging
 
