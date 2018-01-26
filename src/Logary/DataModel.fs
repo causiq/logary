@@ -3,8 +3,6 @@ namespace Logary
 open Hopac
 open NodaTime
 open System
-open System.Runtime.CompilerServices
-open System.Runtime.InteropServices
 open Logary
 
 /// A content-type annotation for a byte-array.
@@ -16,14 +14,7 @@ type ContentType = string
 /// this is how system clocks normally work.
 type EpochNanoSeconds = int64
 
-/// Logary's structured logging is centered around the `Value` type.
-///
-/// All objects logged into Logary are translated into a structure such as this
-/// one.
-///
-/// The trade-off between passing all the CLR type information along versus
-/// fitting it all into these cases is one of completeness versus convenience
-/// in writing targets and computing on the data.
+[<Obsolete ("use object instead, reserve for api compatibility")>]
 type Value =
   | String of string
   | Bool of bool
@@ -142,16 +133,15 @@ type Gauge = Gauge of float * Units
 type Field =
   Field of Value * Units option
 
-/// This is record that is logged. It's capable of representing both metrics
-/// (gauges) and events.
+/// This is record that is logged.
 type Message =
   { /// The 'path' or 'name' of this data point. Do not confuse message template in message.value
     name      : PointName
-    /// Event (template)
+    /// Event (template or raw message)
     value     : string
     /// Where in the code? Who did the operation? What tenant did the principal
-    /// who did it belong to? Put things your normally do 'GROUP BY' on in this
-    /// Map.
+    /// who did it belong to? ... context can be anything, you can decide how to deal with them in target
+    /// through its key.
     context   : HashMap<string, obj>
     /// How important? See the docs on the LogLevel type for details.
     level     : LogLevel

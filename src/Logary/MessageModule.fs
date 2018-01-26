@@ -238,7 +238,7 @@ module Message =
     let gaugeTypeName = KnownLiterals.GaugeTypePrefix + gaugeType
     message |> tryGetContext gaugeTypeName
 
-  /// Creates a new gauge message with gauge
+  /// Creates a new gauge message with gauge, will use LogLevel.Debug  
   [<CompiledName "Gauge">]
   let gaugeMessage gaugeType gauge =
     event LogLevel.Debug String.Empty

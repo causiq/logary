@@ -72,7 +72,7 @@ type LogManager =
   abstract shutdown : unit -> Alt<unit>
 
   /// Dynamically controls logger min level, 
-  /// this will only affect the loggers (its name, not its instance) which haven't been created beafore
+  /// this will only affect the loggers (its name, not its instance) which have been created beafore
   abstract switchLoggerLevel : string * LogLevel -> unit
 
 /// This is the main state container in Logary.

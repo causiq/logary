@@ -198,8 +198,7 @@ let tests =
       let processing =
         Events.compose [
            Events.events
-           |> Pipe.withTickJob (pingOk.TickEvery (TimeSpan.FromSeconds 1.)) // check health every 1 seconds
-           |> Pipe.tick pingOk
+           |> Pipe.tickTimer pingOk  (TimeSpan.FromSeconds 1.) // check health every 1 seconds
            |> Pipe.filter (fun msg -> msg.level >= Warn)
            |> Events.sink ["TargetForUnhealthySvc"]  // report unhealthy info into some target
 

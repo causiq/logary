@@ -50,7 +50,7 @@ Install-Package Logary
     * [Hello World (F\#)](#hello-world-f)
     * [Overview](#overview)
     * [Tutorial and Data Model](#tutorial-and-data-model)
-      * [PointName](#pointname)
+      * [name PointName](#name pointname)
       * [PointValue\.Event](#pointvalueevent)
       * [PointValue\.Gauge](#pointvaluegauge)
       * [PointValue\.Derived](#pointvaluederived)
@@ -325,76 +325,409 @@ outputs, *targets*. Further, its *services* run as their own processes or in
    * SuaveReporter – a well-maintained Suave WebPart that you run as a part of your Suave
      server, that enables you to use [logary-js](https://www.npmjs.com/package/logary-js).
 
-## Tutorial and Data Model
+## Tutorial and things around Message
 
-The core type is **`Message`**, which is the smallest unit you can log. It has
-three kinds of point values: `Event`, `Gauge` and `Derived`. An event is
-normally a single line of code and carries a template string. E.g. "User
-logged in" is an event's template string, and the `Message` would have a field
-"user" => "haf".
+The core type is **`Message`**, which is the smallest unit you can log.
+
+```fsharp
+/// This is record that is logged.
+type Message =
+  { /// The 'path' or 'name' of this data point. Do not confuse message template in message.value
+    name      : PointName
+    /// things you want to describe this message (can be template or raw message)
+    value     : string
+    /// Where in the code? Who did the operation? What tenant did the principal
+    /// who did it belong to? ... context can be anything, you can decide how to deal with them in target
+    /// through its key.
+    context   : HashMap<string, obj>
+    /// How important? See the docs on the LogLevel type for details.
+    level     : LogLevel
+    /// When? nanoseconds since UNIX epoch.
+    timestamp : EpochNanoSeconds }
+```
 
 ### PointName
 
-A point is a location where you send a metric or event from. Usually a module;
+A point is a location where you send a message from. Usually a module;
 in mature projects you also often have the name of the function that you log
-from as a part of the point name.
+from as a part of the point name. its default value is the logger's (which log this message) name.
 
-### PointValue.Event
+### Context
 
-What you expect: `"User logged in"` with a field `"userName"`, `"haf"`.
+context are generally classified into these categories: (you can try these code on test.fsx in Logary.Tests)
 
-### PointValue.Gauge
+#### Fields 
+   
+prefix with "_fields."
 
-An instantaneous value. Imagine the needle showing the speed your car is going
-or a digital display showing the same instantaneous metric value of your car's
-speed.
-
-An event is the most simple gauge of value 1.
-
-### PointValue.Derived
-
-A derived value from one or many gauges.
-
-### Rule & Hierarchical logging
-
-It means that you can have one `Rule`/`Logger` at level `Info` for namespace
-`MyCompany` and another `Rule` that matches loggers at `MyCompany.Submodule`
-which allows Messages of level `Debug` to go through.
-
-A normal use-case for this is when you want to debug a particular module, by
-increasing the verbosity of its output (decreasing its log level).
-
-Rules are 'optimistic' by default in that if at least one (or more) rules match a given `Message`,
-the most "open" will decide if it gets logged. So if you have two rules:
+Fields are the structured data when you use structure logging like (https://messagetemplates.org/), there are mainly two style to achive this.
 
 ```fsharp
-withRules [
-  Rule.createForTarget "console" Info
-  Rule.createForTarget "console" Debug
-]
+type SomeInfo() =
+  member x.PropA =
+    45
+  member x.PropB =
+    raise (Exception ("Oh noes, no referential transparency here"))
+with
+  interface IFormattable with
+    member x.ToString (format, provider) = "PropA is 45 and PropB raise exn"
+
+let oneObj = SomeInfo ()
+
+Message.eventFormat (Info, "Hey {userName}, here is a default {info} and stringify {$info} and destructure {@info}", "You", oneObj)
+|> Message.setSimpleName "somewhere.this.message.happened"
+|> MessageWriter.levelDatetimeMessagePath.format
+
+val it : string =
+  "I 2018-01-26T09:08:21.6590074+00:00: Hey "You", here is a default "PropA is 45 and PropB raise exn" and stringify "FSI_0002+SomeInfo" and destructure SomeInfo { PropB: "The property (PropB) accessor threw an (TargetInvocationException): Oh noes, no referential transparency here", PropA: 45 } [somewhere.this.message.happened]
+  fields:
+    info =>
+      SomeInfo {
+        PropB => "The property (PropB) accessor threw an (TargetInvocationException): Oh noes, no referential transparency here"
+        PropA => 45}
+    userName => "You""
+
+or user this style:
+
+Message.event Info "user write some info"
+|> Message.setField "userName" "You"
+|> Message.setField "data" oneObj
+|> Message.setSimpleName "somewhere.this.message.happened"
+|> MessageWriter.levelDatetimeMessagePath.format
+
+val it : string =
+  "I 2018-01-26T09:14:08.3286743+00:00: user write some info [somewhere.this.message.happened]
+  fields:
+    data =>
+      SomeInfo {
+        PropB => "The property (PropB) accessor threw an (TargetInvocationException): Oh noes, no referential transparency here"
+        PropA => 45}
+    userName => "You""
+
 ```
 
-Then the `Debug` level will "win" and show log output. More generally, a `Rule`
-looks like this:
+
+#### Gauges
+  
+prefix with "_logary.gauge." 
+
+which value is Gauge(float, units). An instantaneous value. Imagine the needle showing the speed your car is going or a digital display showing the same instantaneous metric value of your car's speed.
+
+you can add gauges with one message, or use gauge as the message. The difference between them is, if you use gauges as the message, the `value` in message are auto generate by gauges when formatting them :
 
 ```fsharp
-/// A rule specifies what messages a target should accept.
-[<CustomEquality; CustomComparison>]
-type Rule =
-  { /// This is the regular expression that the 'path' must match to be loggable
-    hiera         : Regex
-    /// This is the name of the target that this rule applies to.
-    target        : PointName
-    /// This is the level at which the target will accept log lines. It's inclusive, so
-    /// anything below won't be accepted.
-    level         : LogLevel
-    /// This is the accept filter that is before the message is passed to the logger
-    /// instance.
-    messageFilter : MessageFilter }
+Message.event Info "Processor.% Idle."
+|> Message.addGauge "Core 1" (Gauge(0.75, Units.Percent))
+|> Message.addGauge "Core 2" (Gauge(0.25, Units.Percent))
+|> Message.addGauge "Core 3" (Gauge(0.45, Units.Percent))
+|> Message.addGauge "Core 4" (Gauge(0.95, Units.Percent))
+|> Message.setSimpleName "somewhere.this.message.happened"
+|> MessageWriter.levelDatetimeMessagePathNewLine.format
+
+val it : string =
+  "I 2018-01-26T09:24:37.0347486+00:00: Processor.% Idle. Gauges: [Core 1: 75 %, Core 2: 25 %, Core 3: 45 %, Core 4: 95 %] [somewhere.this.message.happened]
+  gauges:
+    Core 1 => "75 %"
+    Core 2 => "25 %"
+    Core 3 => "45 %"
+    Core 4 => "95 %"
+"
+
+or like this :
+
+// will use LogLevel.Debug
+Message.event Info "i already do some metric."
+|> Message.addGauge "svc1 request per second" (Gauge(1750., Units.Scalar))
+|> Message.addGauge "Processor.% Idle.Core 1" (Gauge(0.75, Units.Percent))
+|> Message.addGauge "methodA" (Gauge(25000000000., Units.Scaled (Seconds, float Constants.NanosPerSecond)))
+|> Message.setSimpleName "somewhere.this.message.happened"
+|> MessageWriter.levelDatetimeMessagePathNewLine.format
+
+val it : string =
+  "D 2018-01-26T09:25:30.0398251+00:00: Gauges: [Processor.% Idle.Core 1: 75 %, svc1 request per second: 1.75 k, methodA took 25.00 s to execute] [somewhere.this.message.happened]
+  gauges:
+    Processor.% Idle.Core 1 => "75 %"
+    svc1 request per second => "1.75 k"
+    methodA => "25 s"
+"
+
 ```
 
-You can find the configuration in the module with the same name. The
-`Rule.empty` value is a null one that accepts all logs from anything.
+#### Exceptions
+
+prefix with "_logary.errors"
+
+which value is a list<exn>, when exception are catched, you can just add them to your message like this.
+
+```fsharp
+type User = 
+  {
+    id      : int 
+    name    : string
+    created : DateTime
+  }
+
+let date20171111 =  DateTime.Parse("2017-11-11")
+let foo () = { id = 999; name = "whatever"; created = date20171111}
+
+
+let ex = exn "exception with data in it"
+ex.Data.Add ("data 1 in exn", 1)
+ex.Data.Add ("data foo in exn", foo ())
+ex.Data.Add (foo(), foo())
+
+Message.event Error "ouch"
+|> Message.addExn ex
+|> Message.addExn (exn "another exception")
+|> Message.setSimpleName "somewhere.this.message.happened"
+|> MessageWriter.levelDatetimeMessagePathNewLine.format
+
+val it : string =
+  "E 2018-01-26T09:30:37.7648557+00:00: ouch [somewhere.this.message.happened]
+  others:
+    _logary.errors =>
+      -
+        System.Exception {
+          Message => "another exception"
+          HResult => -2146233088}
+      -
+        System.Exception {
+          Message => "exception with data in it"
+          Data =>
+            "data 1 in exn" => 1
+            "data foo in exn" =>
+              User {
+                name => "whatever"
+                id => 999
+                created => 11/11/2017 12:00:00 AM}
+            - key =>
+                User {
+                  name => "whatever"
+                  id => 999
+                  created => 11/11/2017 12:00:00 AM}
+              value =>
+                User {
+                  name => "whatever"
+                  id => 999
+                  created => 11/11/2017 12:00:00 AM}
+          HResult => -2146233088}
+"
+
+```
+  
+#### Tags
+
+prefix with "_logary.tags"
+
+which value is a set<string> , tags are help with identity one type message when you do some pipeline processing.
+
+```fsharp
+>
+- let pipeLine =
+-    Events.events
+-    |> Events.tag "queue"
+-    |> Pipe.map (fun msg -> {msg with value = "https://github.com/alexandrnikitin/MPMCQueue.NET"})
+-
+-
+-
+- let logm =
+-   Config.create "svc" "localhost"
+-   |> Config.target (Targets.Console.create Targets.Console.empty "my console target")
+-   |> Config.processing pipeLine
+-   |> Config.build
+-   |> run
+-
+- let lg = logm.getLogger (PointName.parse "give.some.example.here")
+-
+- Message.event Info "MPMCQueue"
+- |> Message.tag "queue"
+- |> Message.tag "high-performance"
+- |> Message.tag "lock-free"
+- |> Message.tag "multiple-consumers"
+- |> lg.logSimple
+-
+- ;;
+I 2018-01-26T09:51:06.0523375+00:00: https://github.com/alexandrnikitin/MPMCQueue.NET [give.some.example.here]
+  others:
+    _logary.host => "localhost"
+    _logary.service => "svc"
+    _logary.tags => ["high-performance", "lock-free", "multiple-consumers", "queue"]
+
+```
+  
+#### SinkTargetNames
+
+prefix with "_logary.sink.targets"
+
+They are generally are set by Events Processing, you can define which targets (sinks) your message will go. if not set, message will go to all targets and let the targets themself to decide whether or not to accept it.
+
+```fsharp
+
+let pipeLine =
+   Events.events
+   |> Events.tag "queue"
+   |> Pipe.map (fun msg -> {msg with value = "https://github.com/alexandrnikitin/MPMCQueue.NET"})
+   |> Events.sink ["nice console"]
+
+let logm = 
+  Config.create "svc" "localhost" 
+  |> Config.target (Targets.Console.create Targets.Console.empty "my console target") 
+  |> Config.target (Targets.LiterateConsole.create Targets.LiterateConsole.empty "nice console") 
+  |> Config.processing pipeLine
+  |> Config.build
+  |> run
+
+let lg = logm.getLogger (PointName.parse "give.some.example.here")
+
+Message.event Info "MPMCQueue"
+|> Message.tag "queue"
+|> Message.tag "high-performance"
+|> Message.tag "lock-free"
+|> Message.tag "multiple-consumers"
+|> lg.logSimple
+
+```
+
+<img src="https://user-images.githubusercontent.com/3074328/35434709-09e0dde2-02c3-11e8-8423-0113fe1feba1.png" style="max-width:100%;" width="500">
+
+this will only show on LiterateConsole, not normal Console.
+
+#### User defined
+
+things you don't want to show on the message value, but show on the backstore. e.g: some structured data not belong the message template or data you can use in the EventsProcessing Pipeline.
+
+
+```fsharp
+
+Message.eventFormat (Info, "{userId} create an shopping list at {createdTime}", "9999", DateTime.Now )
+|> Message.setContext "user name" ":)"
+|> Message.setContext "shopping list" ["cat";"cat food";"books";"drinks"]
+|> Message.setSimpleName "somewhere.this.message.happened"
+|> MessageWriter.levelDatetimeMessagePath.format
+
+val it : string =
+  "I 2018-01-26T10:11:54.5221326+00:00: "9999" create an shopping list at 1/26/2018 6:11:54 PM [somewhere.this.message.happened]
+  fields:
+    userId => "9999"
+    createdTime => 1/26/2018 6:11:54 PM
+  others:
+    user name => ":)"
+    shopping list => ["cat", "cat food", "books", "drinks"]"
+
+```
+
+
+### Rule & Hierarchical logging & Filter & Minimum level
+
+A logger have a minimum level which message's level below it is not processed when logging these message. Can give us Low overhead logging – evaluate your Message only if a level is switched on. Especially when you use logging api with message factory.
+
+A logger's minimum level are config through `Config.loggerMinLevel "a.b.*" LogLevel.Fatal` on logary conf (usually globally) use a specific name or some hierarchy path. And can be switch on fly `logm.switchLoggerLevel ("a.b.*", LogLevel.Info)`,this will only affect the loggers (its name, not its instance) which have been created beafore. e.g. the default level is Error on prod, use a pipe line detect an error message, switch to Info for 5 mins then change it back. can be use for auto collecting more useful info when things goes wrong.
+
+```fsharp
+
+let logm = 
+  Config.create "svc" "localhost" 
+  |> Config.target (Targets.LiterateConsole.create Targets.LiterateConsole.empty "nice console")
+  |> Config.loggerMinLevel "a.b.*" LogLevel.Fatal
+  |> Config.build
+  |> run
+
+let ab = logm.getLogger (PointName.parse "a.bxxxx")
+
+ab.info (Message.eventX "ab.info" >> (fun msg -> printfn "invoke %s" msg.value; msg)) // no invoke
+logm.switchLoggerLevel ("a.b.*", LogLevel.Info)
+ab.info (Message.eventX "ab.info" >> (fun msg -> printfn "invoke %s" msg.value; msg)) // hurry
+
+
+> ab.info (Message.eventX "ab.info" >> (fun msg -> printfn "invoke %s" msg.value; msg)) // no invoke
+- ;;
+val it : unit = ()
+
+> logm.switchLoggerLevel ("a.b.*", LogLevel.Info)
+- ;;
+val it : unit = ()
+
+> ab.info (Message.eventX "ab.info" >> (fun msg -> printfn "invoke %s" msg.value; msg)) // hurry
+- ;;
+invoke ab.info
+val it : unit = ()
+
+> [19:22:25 INF] ab.info <a.bxxxx>
+  others:
+    _logary.host => "localhost"
+    _logary.service => "svc"
+
+```
+
+
+A target can have multiple rules (minlevel, path, filter), **specific rule should comes last, be careful with the add order**, A rule specifies what messages a target should accept. we do not encourage use rules heavily,only if when the target itself can decide which msg are acceptable. usually this decision is made by EventsProcessing pipeline, can be done with code rather than the rules.
+
+Message log level are set when use logging api.
+
+```fsharp
+
+let someRuleOnTarget =
+  Rule.empty 
+  |> Rule.setMinLevel LogLevel.Error // this target will only get message about error level (inclusive)
+  |> Rule.setPath (System.Text.RegularExpressions.Regex("a.b.c.*")) // only accept message name under a.b.cxxxxx
+  |> Rule.setAcceptIf (fun msg -> msg |> Message.hasTag "emergency")
+
+let tconf = 
+  Targets.LiterateConsole.create Targets.LiterateConsole.empty "nice console"
+  |> TargetConf.addRule someRuleOnTarget
+let logm = 
+  Config.create "svc" "localhost" 
+  |> Config.target tconf
+  |> Config.loggerMinLevel "a.b.*" LogLevel.Fatal  // logger under a.bxxxx path only process Fatal message
+  |> Config.loggerMinLevel "a.b.c.*" LogLevel.Info // logger under a.b.cxxxx path can process message above Info
+  |> Config.build
+  |> run
+
+let abc = logm.getLogger (PointName.parse "a.b.cxxx")
+let ab = logm.getLogger (PointName.parse "a.bxxx")
+
+abc.verbose (Message.eventX "abc.Info" >> fun msg -> printfn "invoke %s" msg.value; msg) // no invoke
+abc.error (Message.eventX "abc.Error" >> fun msg -> printfn "invoke %s" msg.value; msg) // invoke, but will not go to target
+abc.error (Message.eventX "abc.Error with emergency tag" >> (fun msg -> printfn "invoke%s" msg.value; msg) >> Message.tag "emergency") // hurray
+
+ab.error (Message.eventX "ab.Error" >> (fun msg -> printfn "invoke %s" msg.value; msg) >> Message.tag "emergency") // no invoke
+ab.fatal (Message.eventX "ab.Fatal" >> (fun msg -> printfn "invoke %s" msg.value; msg) >> Message.tag "emergency") // hurray
+
+> abc.verbose (Message.eventX "abc.Info" >> fun msg -> printfn "invoke %s" msg.value; msg) // no invoke
+- ;;
+val it : unit = ()
+
+> abc.error (Message.eventX "abc.Error" >> fun msg -> printfn "invoke %s" msg.value; msg) // invoke, but will not go to target
+- ;;
+invoke abc.Error
+val it : unit = ()
+
+> abc.error (Message.eventX "abc.Error with emergency tag" >> (fun msg -> printfn "invoke%s" msg.value; msg) >> Message.tag "emergency") // hurray
+- ;;
+invokeabc.Error with emergency tag
+val it : unit = ()
+
+> [19:06:33 ERR] abc.Error with emergency tag <a.b.cxxx>
+  others:
+    _logary.host => "localhost"
+    _logary.service => "svc"
+    _logary.tags => ["emergency"]
+
+> ab.error (Message.eventX "ab.Error" >> (fun msg -> printfn "invoke %s" msg.value; msg) >> Message.tag "emergency") // no invoke
+- ;;
+val it : unit = ()
+
+> ab.fatal (Message.eventX "ab.Fatal" >> (fun msg -> printfn "invoke %s" msg.value; msg) >> Message.tag "emergency") // hurray
+- ;;
+invoke ab.Fatal
+[val19:07:45  FTLit]  ab.Fatal:  unit<a.bxxx>
+  others:
+    _logary.host => "localhost"
+    =_logary.service => "svc"
+    _logary.tags  => ["emergency"]
+
+
+```
 
 ### Log Level
 
@@ -426,37 +759,6 @@ or a service was started/restarted.
 metrics at this level.
 
 `Verbose` is the level when you want that little extra. Not normally enabled.
-
-### Field and Fields
-
-Message fields may be interpolated (injected) into the template string of an
-`Event`. The word "template" is used, because the template string should not
-vary between requests/users, but be a 'static' string, that can be hashed and
-used for grouping in your logging infrastructure.
-
-When reading legacy code, you'll often find code like:
-
-``` fsharp
-logger.LogInfo("User {0} logged in", user.name)
-```
-
-In Logary, it could look like this:
-
-``` fsharp
-Message.event Info "User logged in"
-|> Message.setField "user" user.name
-|> Message.setFieldFromObject "picture" user.bitmap
-|> Logger.logSimple logger
-```
-
-Note how the event's template string is a compile time constant, but a field
-representing the user's name is added to the message.
-
-By doing it this way, we can be sure that the structured log data remains
-structured.
-
-The second function `setFieldFromObject` is used when the compiler complains
-that `setField` finds no available overloads.
 
 ### Logging from modules
 
@@ -493,7 +795,7 @@ type Worker() =
   let logger =
     Logging.getLoggerByName "MyCompany.Sub.Worker"
 
-  let workAmount =
+  let workName =
     PointName [| "MyCompany"; "Sub"; "Worker"; "workDone" |]
 
   let getAnswers (amount : float) =
@@ -503,8 +805,7 @@ type Worker() =
   member x.Work (amount : float) =
     // Initially, log how much work is to be done
     // the only "supported" metric is a gauge (a value at an instant)
-    // and a derived metric (something you've computed from gauges)
-    Message.gauge workName (Float amount) |> Logger.logSimple logger
+    Message.gauge workName amount |> Logger.logSimple logger
 
     // do some work, logging how long it takes:
     let everything = Logger.time logger (fun () -> getAnswers amount)
@@ -527,20 +828,10 @@ whether the system is doing well or not, just from looking at the graphs.
 
 ### Logging fields & templating
 
-Logary supports templating through
-[FsMessageTemplates](https://github.com/messagetemplates/messagetemplates-fsharp).
-All you have to do is write your templates like:
-
-```fsharp
-Message.event "Hi {user}!"
-|> Message.setFieldValue "user" "haf"
-```
-
-This enables targets that support templating to output them 'filled out'.
+The templates syntax can be found here:  https://messagetemplates.org/#syntax 
 
 Message Templates are a superset of standard .NET format strings, so any format
-string acceptable to string.Format() will also be correctly processed by
-FsMessageTemplates.
+string acceptable to string.Format() will also be correctly processed by logary.
 
  * Property names are written between `{` and `}` braces
  * Braces can be escaped by doubling them, e.g. `{{` will be rendered as `{`
@@ -555,144 +846,107 @@ FsMessageTemplates.
    how the property is rendered; these format strings behave exactly as their
    counterparts within the `string.Format()` syntax
 
-### Ticked metrics and gauges – random walk
+### Metrics & EventsProcessing pipeline
 
-In the previous section you saw how to create a gauge at a point in your code,
-but sometimes you need a metric that runs continuously over time.
+Sometimes you need a metric that runs continuously over time. A `Ticker` can be seems
+as a metric, it can be auto triggered or by manually. A ticker can be chained 
+in an pipe line (EventsProcessing).
 
-This is possible because Logary contains code that can both tick your
-metric's computation function at a regular interval, and also has provisions
-for sending your metric other metrics, so that you can chain metrics
-together.
+We have some windows performance counter metrics that you can use.
 
-The `ticker` is where you return Messages (Gauge or Derived values) to
-keep track of how 'far along' you've reached, in order to avoid returning the same
-messages multiple times.
+But you sometimes want to chain metrics from events or gauges happening inside your own application.
 
-The `reducer` is what allows your metric to receive values from other metrics,
-or from your system-at-large – like the above showcased Gauge logging.
-
-Let's create a metric that just outputs a random walk. Start by opening the
-relevant namespaces and modules.
+This sample demonstrates how to chain metric from other simpler ones.
+And we generates an exponentially weighted moving average from randomWalk gauges. 
 
 ```fsharp
-open System // access to Random
-open Hopac // access to Job
-open Logary // access to the Logary Data Model
-open Logary.Metric // access the module functions for metrics
-```
+module Program
 
-Now you can start thinking about what the metric should do and implement the
-`ticker : 'state -> 'state * Message list`:
-
-```fsharp
-// we'll assume the state is the Random instance and previously outputted
-// value:
-let ticker (rnd : Random, prevValue) =
-
-  // calculate the next value based on some heuristic or algorithm
-  let value =
-    let v = (rnd.NextDouble() - 0.5) * 0.3
-    if abs v < 0.03 then rnd.NextDouble() - 0.5
-    elif v + prevValue < -1. || v + prevValue > 1. then -v + prevValue
-    else v + prevValue
-
-  // create a new Message/Gauge metric with this value
-  let msg = Message.gauge pn (Float value)
-
-  // return the new state as well as the Messages you want to feed into
-  // Logary
-  (rnd, value), [ msg ]
-```
-
-Remember that you also needed to supply a reducer. In this case, the random
-walk metric doesn't have any input from other metrics, so let's just return
-the same state as we get in:
-
-```fsharp
-let reducer state = function
-  | _ ->
-    state
-```
-
-We also need to create some initial state, so that our metric has someplace
-to start computing:
-
-```fsharp
-let state =
-  let rnd = Random()
-  rnd, rnd.NextDouble()
-```
-
-Let's write it all up into a Metric that the consuming programmer is
-free to name as she pleases:
-
-```fsharp
-let randomWalk (pn : PointName) : Job<Metric> =
-  Metric.create reducer state ticker
-```
-
-Finally, we'll tell Logary about our metric and extend our "Hello World" sample
-with shipping metrics into InfluxDb:
-
-```fsharp
-// open ... like above
+open System
 open System.Threading
+open Hopac
+open Logary
+open Logary.Configuration
+open NodaTime
+open Logary.Targets
+open Logary.Metrics.WinPerfCounters
+open Logary.EventsProcessing
+
+module Sample =
+
+  let randomWalk pn =
+    let reducer state = function
+      | _ ->
+        state
+
+    let ticker (rnd : Random, prevValue) =
+      let value =
+        let v = (rnd.NextDouble() - 0.5) * 0.3
+        if abs v < 0.03 then rnd.NextDouble() - 0.5
+        elif v + prevValue < -1. || v + prevValue > 1. then -v + prevValue
+        else v + prevValue
+
+      let msg = Message.gauge pn value
+
+      (rnd, value), msg
+
+    let state =
+      let rnd = Random()
+      rnd, rnd.NextDouble()
+
+    Ticker.create state reducer ticker
 
 [<EntryPoint>]
 let main argv =
+  let inline ms v = Duration.FromMilliseconds (int64 v)
+  let pn name = PointName [| "Logary"; "Samples"; name |]
   use mre = new ManualResetEventSlim(false)
   use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
+  let clock = SystemClock.Instance
+  let tenSecondsEWMATicker = EWMATicker (Duration.FromSeconds 1L, Duration.FromSeconds 10L, clock)
+  let randomWalk = Sample.randomWalk "randomWalk"
+  let walkPipe =  Events.events |> Pipe.tickTimer randomWalk (TimeSpan.FromMilliseconds 500.)
+  let systemMetrics = Events.events |> Pipe.tickTimer (systemMetrics (PointName.parse "sys")) (TimeSpan.FromSeconds 10.)
+  let processing = 
+    Events.compose [
+       walkPipe
+       |> Events.sink ["WalkFile";]
 
-  let influxConf =
-    InfluxDb.create (InfluxDb.InfluxDbConf.create(Uri "http://192.168.99.100:8086/write", "logary", batchSize = 500us))
-                    "influxdb"
+       walkPipe
+       |> Pipe.choose (Message.tryGetGauge "randomWalk")
+       |> Pipe.counter (fun _ -> 1L) (TimeSpan.FromSeconds 2.)
+       |> Pipe.map (fun counted -> Message.eventFormat (Info, "There are {totalNumbers} randomWalk within 2s", [|counted|]))
+       |> Events.sink ["Console";]
 
-  use logary =
-    withLogaryManager "Logary.Examples.MetricsWriter" (
-      withTargets [
-        Console.create (Console.empty) "console"
-        influxConf
-      ]
-      >> withMetrics [
-        MetricConf.create (Duration.FromMilliseconds 500L) "henrik" Sample.randomWalk
-      ]
-      >> withRules [
-        Rule.createForTarget "console"
-        Rule.createForTarget "influxdb"
-      ]
-      >> withInternalTargets Info [
-        Console.create Console.empty "console"
-      ]
-    )
+       walkPipe
+       |> Pipe.choose (Message.tryGetGauge "randomWalk")
+       |> Pipe.map (fun _ -> 1L) // think of randomWalk as an event, mapping to 1
+       |> Pipe.tickTimer tenSecondsEWMATicker (TimeSpan.FromSeconds 5.)
+       |> Pipe.map (fun rate -> Message.eventFormat (Info, "tenSecondsEWMA of randomWalk's rate is {rateInSec}", [|rate|]))
+       |> Events.sink ["Console";]
+
+       systemMetrics
+       |> Pipe.map Array.toSeq
+       |> Events.flattenToProcessing
+       |> Events.sink ["LiterateConsole"; "WPCMetricFile";]
+    ]
+
+  let console = Console.create Console.empty "Console"
+  let literalConsole = LiterateConsole.create LiterateConsole.empty "LiterateConsole"
+  let randomWalkFileName = File.Naming ("{service}-RandomWalk-{date}", "log")
+  let wpcFileName = File.Naming ("{service}-wpc-{date}", "log")
+  let randomWalkTarget = File.create (File.FileConf.create Environment.CurrentDirectory randomWalkFileName) "WalkFile"
+  let wpcFileTarget = File.create (File.FileConf.create Environment.CurrentDirectory wpcFileName) "WPCMetricFile"
+  let logary =
+    Config.create "Logary.Examples.MetricsWriter" "localhost"
+    |> Config.targets [console; literalConsole; randomWalkTarget; wpcFileTarget;]
+    |> Config.ilogger (ILogger.Console Verbose)
+    |> Config.processing processing
+    |> Config.build
     |> run
 
   mre.Wait()
   0
-```
-
-Now when run, your metric will feed a random walk into InfluxDb listening on `192.168.99.100`.
-
-### Derived metrics
-
-The above example was self-sufficient, but you sometimes want to create derived metrics
-from events or gauges happening inside your own application.
-
-This sample demonstrates how to create a derived metric from other simpler
-ones. It generates an exponentially weighted moving average from
-login gauges. The login gauges are sent one-by-one from the login code.
-
-```fsharp
-open Logary
-open Logary.Metrics
-open Hopac
-
-let loginLoad : Job<Stream<Message>> = job {
-  let! counter = Counters.counter (PointName.ofSingle "logins")
-  let! ewma = Reservoirs.ewma (PointName.ofSingle "loginsEWMA")
-  do! ewma |> Metric.consume (Metric.tap counter)
-  return Metric.tapMessages ewma
-}
 ```
 
 By wrapping it up like this, you can drastically reduce the amount of code
@@ -702,16 +956,11 @@ It's also a good sample of reservoir usage; a fancy name of saying that
 it's an algorithm that works on more than one gauge at a time, to produce
 a derived metric.
 
-**More documentation on derived metrics to follow!** (including how to register
-them in Logary).
+## Formatting
 
-Sample:
+TO BE DONE. 
 
- - https://github.com/logary/logary/blob/master/examples/Logary.ConsoleApp/Program.fs#L140
-
-[WIP](https://gist.github.com/haf/dc6b83aa153908efddc5f341b29fdbdc)
-
-## Console logging
+## LiterateConsole logging
 
 Console logging is only meant for human consumption; don't rely on it for
 logging in your actual services. As such, Logary is able to do improvements
@@ -737,9 +986,8 @@ The above guide serves to explain how you use Logary in a service or
 application, but what if you have a library and don't want to take a dependency
 on a specific logging framework, or logging abstraction/indirection library?
 
-For this use-case, Logary provides F# facades that you can easily reference
-using Paket. I've created a [sample
-library](https://github.com/logary/logary/tree/master/examples/Libryy) for you
+For this use-case, Logary provides F# facades that you can easily reference using Paket.
+I've created a [sample library](https://github.com/logary/logary/tree/master/examples/Libryy) for you
 to have a look at. Note how `paket.references` specifies `Facade.fs` as a file
 dependency. The corresponding `paket.dependencies` contains the entry below.
 
@@ -831,21 +1079,19 @@ library that it aims to ship/extract logs from.
 // opens ...
 open Logary.Adapters.Facade
 
-// let main ... =
+let logary =
+  Config.create "Servizz.Program" "localhost"
+  |> Config.targets [ LiterateConsole.create LiterateConsole.empty "console" ]
+  |> Config.processing (Events.events |> Events.sink ["console";])
+  |> Config.build
+  |> run
 
-  use logary =
-    withLogaryManager "Servizz.Program" (
-      withTargets [ Console.create Console.empty "console" ]
-      >> withRules [ Rule.createForTarget "console" ])
-    |> run
+// Initialise Libryy so it logs to Logary (proper)
+LogaryFacadeAdapter.initialise<Libryy.Logging.Logger> logary
 
-  // for the statics:
-  LogaryFacadeAdapter.initialise<Libryy.Logging.Logger> logary
-  // calls Librry.Logging.Global.initialise ( new logger inst )
-
-  // if you need a Logger instance:
-  let logger = logary.getLogger (PointName.ofSingle "Libryy")
-  let res = Libryy.Core.work (LoggerAdapter.createGeneric logger)
+// if you need a Logger instance:
+let logger = logary.getLogger (PointName [| "Libryy" |])
+let res = Libryy.Core.work (LoggerAdapter.createGeneric logger)
 ```
 
 Outputs:
@@ -1017,11 +1263,6 @@ Then inside `withTargets`:
 RabbitMQ.create rmqConf "rabbitmq"
 ```
 
-And the Rule for it:
-
-```fsharp
-Rule.createForTarget "rabbitmq"
-```
 
 ## File target (alpha level)
 
@@ -1302,12 +1543,6 @@ Then, within `withTargets`:
 Stackdriver.create conf "target-name"
 ```
 
-Finally, within `withRules`:
-
-```fsharp
-Rule.createForTarget "target-name"
-```
-
 ### Further work
 
 * batching
@@ -1436,33 +1671,6 @@ You can add the `Logary.Adapters.NLog` adapter to your NLog config to start
 shipping events from your existing code-base while you're migrating:
 
 ```fsharp
-////////////// SAMPLE LOGARY CONFIGURATION //////////
-#I "bin/Debug"
-#r "NodaTime.dll"
-#r "Hopac.Core.dll"
-#r "Hopac.dll"
-#r "FParsec.dll"
-#r "Logary.dll"
-open Hopac
-open Logary
-open Logary.Configuration
-open Logary.Targets
-
-
-let logary =
-  withLogaryManager "Logary.ConsoleApp" (
-    withTargets [
-      LiterateConsole.create LiterateConsole.empty "literate"
-
-      // This target prints more info to the console than the literate one
-      // Console.create (Console.empty) "console"
-    ] >>
-    withRules [
-      Rule.createForTarget "literate"
-      //Rule.createForTarget "console"
-  ])
-  |> Hopac.run
-
 ////////////// SAMPLE NLOG CONFIGURATION //////////
 
 #r "NLog.dll"
@@ -1474,15 +1682,12 @@ open NLog.Common
 let config = LoggingConfiguration()
 InternalLogger.LogToConsole <- true
 InternalLogger.IncludeTimestamp <- true
-let logaryT = new LogaryTarget(logary)
+let logaryT = new LogaryTarget(logary) // hook up
 //logaryT.Logary <- logary
 config.AddTarget("logary", logaryT)
 let rule = LoggingRule("*", NLog.LogLevel.Debug, logaryT)
 config.LoggingRules.Add rule
 LogManager.Configuration <- config
-
-
-
 
 
 // You'll get a logger in your app
@@ -2055,19 +2260,55 @@ Install-Package Logary.Targets.Elmah.Io
 Configure *elmah.io* just like you would any normal target.
 
 ```fsharp
+#if INTERACTIVE
+#I "bin/Release"
+#r "Hopac.Core.dll"
+#r "Hopac.dll"
+#r "NodaTime.dll"
+#r "Logary.dll"
+#r "Logary.Riemann.dll"
+#endif
+
+open System
+open NodaTime
+open Hopac
 open Logary
 open Logary.Configuration
+open Logary.EventsProcessing
 open Logary.Targets
 open Logary.Targets.ElmahIO
+open System.Threading
 
-withTargets [
-  // ...
-  ElmahIO.create { logId = "GUID_HERE" } "elmah.io"
-] >>
-withRules [
- // ...
- Rule.createForTarget "elmah.io"
-]
+[<EntryPoint>]
+let main argv =
+  use mre = new ManualResetEventSlim(false)
+  use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
+
+  let logary =
+    let elmahioConf =
+      { logId = Guid.Parse(Environment.GetEnvironmentVariable("ELMAH_IO_LOG_ID")) 
+        apiKey = "api key form elmah io"}
+
+    Config.create "Logary.ElmahIO" "localhost"
+    |> Config.targets [
+        Console.create Console.empty "console"
+        ElmahIO.create elmahioConf "elmah.io"
+      ] 
+    |> Config.processing (Events.events |> Events.sink ["console";"elmah.io";])
+    |> Config.build
+    |> run
+
+  let logger =
+    logary.getLogger (PointName [| "Logary"; "Samples"; "main" |])
+
+  Message.templateFormat("{userName} logged in", [| "haf" |])
+  |> Logger.logSimple logger
+
+  Message.eventFormat (Info, "{userName} logged in", [| "adam" |])
+  |> Logger.logSimple logger
+
+  mre.Wait()
+  0
 ```
 
 Or from C#:
@@ -2165,10 +2406,9 @@ Inspect the version specified in the [Logary package][nuget-logary] and ensure
 that you have that exact version installed. Hopac is currently pre-v1 so it is
 often doing breaking changes between versions.
 
-### Is v4.0.x a stable version?
+### Is v5.0.x a stable version?
 
-It's stable to run. The API is stable. We're still working the derived-metrics
-experience. We may introduce a few more ABI/API breakages before 4.0 RTM.
+It's stable to run. The API is alpha.
 
 ### Isn't v4.0.x supposed to be API-stable?
 
@@ -2181,9 +2421,8 @@ of making v4.0 RTM as stable and reliable as can be.
 
 For two reasons;
 
- 1. Aether and Chiron are vendored in `Logary.Utils.{Aether,Chiron}` and depend
-    on it – it makes it easy for Logary types to be JSON-serialisable.
- 1. We may use it to parse the message templates in the future
+ 1. we use Chiron for json formatting which depend on FParsec
+ 1. Aether is vendored in `Logary.Utils.Aether` and depend on it.
 
 We previously depended on Newtonsoft.Json, but that library is often depended on
 from other packages and we want Logary to be as free of dependencies as
