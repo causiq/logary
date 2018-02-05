@@ -14,7 +14,7 @@
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />
     <ProjectReference Include="..\..\metrics\Logary.Metrics.WinPerfCounters\Logary.Metrics.WinPerfCounters.fsproj" />
     <ProjectReference Include="..\..\targets\Logary.Targets.InfluxDb\Logary.Targets.InfluxDb.fsproj" />
-    <ProjectReference Include="..\..\targets\Logary.Targets.Shipper\Logary.Targets.Shipper.fsproj" />
+    <ProjectReference Include="..\Logary.Targets.Shipper\Logary.Targets.Shipper.fsproj" />
   </ItemGroup>
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />
 </Project>
