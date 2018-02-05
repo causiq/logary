@@ -11,7 +11,6 @@
     <None Include="paket.references" />
 
     <ProjectReference Include="..\..\src\Logary\Logary.fsproj" />
-    <ProjectReference Include="..\..\src\metrics\Logary.Metrics.WinPerfCounters\Logary.Metrics.WinPerfCounters.fsproj" />
     <ProjectReference Include="..\..\src\targets\Logary.Targets.InfluxDb\Logary.Targets.InfluxDb.fsproj" />
     <ProjectReference Include="..\..\src\targets\Logary.Targets.RabbitMQ\Logary.Targets.RabbitMQ.fsproj" />
   </ItemGroup>

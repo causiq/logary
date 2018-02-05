@@ -6,7 +6,6 @@ module Logary.ConsoleApp.Program
 #r "Hopac.dll"
 #r "NodaTime.dll"
 #r "Logary.dll"
-#r "Logary.Riemann.dll"
 #endif
 
 open System
@@ -14,7 +13,6 @@ open Hopac
 open Logary
 open Logary.Configuration
 open Logary.Targets
-open Logary.Metrics
 open Logary.EventsProcessing
 open Logary.EventsProcessing.Transformers
 
@@ -121,17 +119,17 @@ let main argv =
     Events.compose [
       Events.events |> Events.miniLevel LogLevel.Fatal |> Events.sink ["fatal"]
 
-      Events.events
-      |> Pipe.tickTimer (WinPerfCounters.appMetrics (PointName.ofSingle "app")) (TimeSpan.FromMilliseconds 5000.)
-      |> Pipe.map Array.toSeq
-      |> Events.flattenToProcessing
-      |> Events.sink ["console"; "influxdb"]
+      //Events.events
+      //|> Pipe.tickTimer (WinPerfCounters.appMetrics (PointName.ofSingle "app")) (TimeSpan.FromMilliseconds 5000.)
+      //|> Pipe.map Array.toSeq
+      //|> Events.flattenToProcessing
+      //|> Events.sink ["console"; "influxdb"]
 
-      Events.events
-      |> Pipe.tickTimer (WinPerfCounters.systemMetrics (PointName.ofSingle "system")) (TimeSpan.FromMilliseconds 5000.)
-      |> Pipe.map Array.toSeq
-      |> Events.flattenToProcessing
-      |> Events.sink ["console"; "influxdb"]
+      //Events.events
+      //|> Pipe.tickTimer (WinPerfCounters.systemMetrics (PointName.ofSingle "system")) (TimeSpan.FromMilliseconds 5000.)
+      //|> Pipe.map Array.toSeq
+      //|> Events.flattenToProcessing
+      //|> Events.sink ["console"; "influxdb"]
 
       randomWalkPipe 
       |> Events.sink ["console"; "influxdb"]

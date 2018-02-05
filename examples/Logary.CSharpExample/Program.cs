@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using NodaTime;
 using Logary.Configuration;
 using Logary.CSharp;
-using Logary.Metrics;
 using Logary.Targets;
 using Logary.Adapters.Facade;
 using Uri = System.Uri;
@@ -55,13 +54,6 @@ namespace Logary.CSharpExample
                                 conf => conf.Target.ConnectTo("127.0.0.1", 2131)
                             )
                             .Target<Debugger.Builder>("debugger")
-                            .Target<Logstash.Builder>(
-                                "logstash",
-                                conf => conf.Target
-                                    .PublishTo("logstash.service")
-                                    .LogMetrics()
-                                    .Done()
-                            )
                             .Target<ElasticSearch.Builder>(
                                 "es",
                                 conf => conf.Target

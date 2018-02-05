@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Targets_ElmahIO.fs" />
+    <Compile Include="AssemblyInternals.fs" />
     <None Include="Sample.fsx" />
     <None Include="paket.references" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />

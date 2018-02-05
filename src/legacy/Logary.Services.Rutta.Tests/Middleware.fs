@@ -18,4 +18,3 @@ let messageEnrichment =
                    (enrichedMsg |> Message.tryGetContext KnownLiterals.HostContextName)
                    "Should contain the 'host' value and it should equal the Dns.GetHostName() value"
   ]
-

@@ -11,6 +11,7 @@
     <Compile Include="AsmUtils.fs" />
     <Compile Include="SQLServerPLE.fs" />
     <Compile Include="Metrics_SQLServerHealth.fs" />
+    <Compile Include="AssemblyInternals.fs" />
     <Compile Include="Program.fs" />
     <EmbeddedResource Include="PageLifeExpectancyInfo.sql" />
     <EmbeddedResource Include="LogFileInfo.sql" />
