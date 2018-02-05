@@ -7,14 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="LogaryTestFactory.cs" />
-    <Compile Include="TimeScope_Specs.cs" />
-    <Compile Include="TimeWithAck_Specs.cs" />
-    <Compile Include="Config_Specs.cs" />
-    <Compile Include="CSharp_Specs.cs" />
-    <Compile Include="Examples\SampleLogaryConfiguration.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Message_Specs.cs" />
     <None Include="app.config" />
     <None Include="paket.references" />
     <ProjectReference Include="..\Logary.CSharp\Logary.CSharp.csproj" />

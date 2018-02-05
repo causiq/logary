@@ -7,11 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="HopacJobExtensions.cs" />
-    <Compile Include="MessageExtensions.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="LogManagerExtensions.cs" />
-    <Compile Include="LoggerExtensions.cs" />
     <None Include="paket.references" />
     <ProjectReference Include="..\Logary\Logary.fsproj" />
   </ItemGroup>
