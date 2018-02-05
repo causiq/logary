@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AssemblyName>rutta</AssemblyName>
@@ -6,8 +6,8 @@
     <OutputType>Exe</OutputType>
     <TargetFrameworks>net461;netcoreapp2.0</TargetFrameworks>
   </PropertyGroup>
-
   <ItemGroup>
+    <Compile Include="Topshelf.fs" />
     <Compile Include="Rutta.fs" />
     <None Include="paket.references" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />
@@ -15,6 +15,5 @@
     <ProjectReference Include="..\..\targets\Logary.Targets.InfluxDb\Logary.Targets.InfluxDb.fsproj" />
     <ProjectReference Include="..\..\targets\Logary.Targets.Shipper\Logary.Targets.Shipper.fsproj" />
   </ItemGroup>
-
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />
 </Project>

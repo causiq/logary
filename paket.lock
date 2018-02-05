@@ -3062,7 +3062,7 @@ NUGET
       System.Xml.ReaderWriter (>= 4.3) - restriction: || (&& (== net452) (>= netstandard1.3)) (&& (== net461) (< net46)) (== netcoreapp2.0) (== netstandard2.0)
       System.Xml.XDocument (>= 4.3) - restriction: || (&& (== net452) (>= netstandard1.3)) (&& (== net461) (< net46)) (== netcoreapp2.0) (== netstandard2.0)
       System.Xml.XPath (>= 4.3) - restriction: || (&& (== net452) (>= net46)) (&& (== net452) (>= netstandard1.3)) (== net461) (== netcoreapp2.0) (== netstandard2.0)
-    Topshelf (4.0.3)
+    Topshelf (4.1.0.117-develop)
     Topshelf.FSharp (3.0)
       Topshelf (>= 4.0.2)
     TweetinviAPI (2.1)

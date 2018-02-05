@@ -60,7 +60,7 @@ group Tests
     nuget SQLite.Interop.dll
     nuget Suave
     nuget System.Data.SQLite.Core
-    nuget Topshelf
+    nuget Topshelf ~> 4.1.0.117-develop
     nuget Topshelf.FSharp
     nuget TweetinviAPI
     nuget Unquote
