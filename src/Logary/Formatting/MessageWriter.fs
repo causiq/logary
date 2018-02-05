@@ -15,7 +15,7 @@ module MessageWriterEx =
   type MessageWriter with
     [<Obsolete "Try to write directly to a System.IO.TextWriter instead">]
     member x.format (m : Message) =
-      use sw = StringWriter()
+      use sw = new StringWriter()
       x.write sw m
       sw.ToString()
 
