@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Logary.Targets.DB.Tests</AssemblyName>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net461;netcoreapp2.0</TargetFrameworks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="DBTarget.fs" />
+    <None Include="Script.fsx" />
+    <None Include="paket.references" />
+    <None Include="x86\SQLite.Interop.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="x64\SQLite.Interop.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="app.config" />
+    <ProjectReference Include="..\..\Logary\Logary.fsproj" />
+    <ProjectReference Include="..\Logary.Targets.DB\Logary.Targets.DB.fsproj" />
+    <ProjectReference Include="..\Logary.Targets.DB.Migrations\Logary.Targets.DB.Migrations.fsproj" />
+  </ItemGroup>
+
+  <Import Project="..\..\..\.paket\Paket.Restore.targets" />
+</Project>

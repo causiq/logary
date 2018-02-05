@@ -1,5 +1,6 @@
+group Tests
+Hopac 
+NodaTime
 FSharp.Core
 Expecto
 Expecto.FsCheck
-Hopac 
-NodaTime

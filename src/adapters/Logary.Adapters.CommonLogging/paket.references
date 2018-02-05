@@ -1,5 +1,4 @@
+group Targets
 FSharp.Core
-NodaTime
-Hopac
 Common.Logging
 Common.Logging.Core

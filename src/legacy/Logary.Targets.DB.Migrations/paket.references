@@ -1,0 +1,6 @@
+group Targets
+FSharp.Core
+NodaTime
+Hopac
+FluentMigrator
+FluentMigrator.Runner

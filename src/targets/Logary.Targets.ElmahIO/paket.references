@@ -1,3 +1,4 @@
+group Targets
 FSharp.Core
 Hopac
 NodaTime

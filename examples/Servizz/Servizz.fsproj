@@ -1,113 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{AF0A49FA-0DD6-4BEB-B271-4B179C9B76DC}</ProjectGuid>
-    <OutputType>Exe</OutputType>
-    <RootNamespace>Servizz</RootNamespace>
     <AssemblyName>Servizz</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net461;netcoreapp2.0</TargetFrameworks>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug</OutputPath>
-    <DefineConstants>DEBUG</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <ExternalConsole>true</ExternalConsole>
-    <PlatformTarget>
-    </PlatformTarget>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release</OutputPath>
-    <DefineConstants>
-    </DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <ExternalConsole>true</ExternalConsole>
-    <GenerateTailCalls>true</GenerateTailCalls>
-    <PlatformTarget>
-    </PlatformTarget>
-  </PropertyGroup>
-  <PropertyGroup>
-    <FSharpTargetsPath>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets</FSharpTargetsPath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(VisualStudioVersion)' == '10.0' OR '$(VisualStudioVersion)' == '11.0'">
-    <FSharpTargetsPath>$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets</FSharpTargetsPath>
-  </PropertyGroup>
+
   <ItemGroup>
-    <Reference Include="mscorlib" />
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Numerics" />
-    <Content Include="app.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="Program.fs" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="paket.references" />
+    <ProjectReference Include="..\..\src\Logary\Logary.fsproj" />
+    <ProjectReference Include="..\Libryy\Libryy.fsproj" />
+    <ProjectReference Include="..\..\src\adapters\Logary.Adapters.Facade\Logary.Adapters.Facade.fsproj" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Libryy\Libryy.fsproj">
-      <Project>{A64CF176-66D8-459F-BF45-AF5B5C3098A2}</Project>
-      <Name>Libryy</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\src\Logary\Logary.fsproj">
-      <Project>{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}</Project>
-      <Name>Logary</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\src\adapters\Logary.Adapters.Facade\Logary.Adapters.Facade.fsproj">
-      <Project>{15226ED2-C66B-4AA2-B15D-ACFF8A45454A}</Project>
-      <Name>Logary.Adapters.Facade</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <Import Project="$(FSharpTargetsPath)" />
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.6.1')">
-      <ItemGroup>
-        <Reference Include="FSharp.Core">
-          <HintPath>..\..\packages\FSharp.Core\lib\net45\FSharp.Core.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.6.1')">
-      <ItemGroup>
-        <Reference Include="Hopac">
-          <HintPath>..\..\packages\Hopac\lib\net45\Hopac.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="Hopac.Core">
-          <HintPath>..\..\packages\Hopac\lib\net45\Hopac.Core.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="Hopac.Platform">
-          <HintPath>..\..\packages\Hopac\lib\net45\Hopac.Platform.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.6.1')">
-      <ItemGroup>
-        <Reference Include="NodaTime">
-          <HintPath>..\..\packages\NodaTime\lib\net45\NodaTime.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
+
+  <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

@@ -21,10 +21,10 @@ namespace Logary.CSharp.Tests
                 logger = manager.GetLogger("Logary.CSharp.Tests");
             };
 
-        Cleanup afterwards = () => 
-        {
-            // manager.Dispose();
-        };
+        Cleanup afterwards = () =>
+            {
+                // manager.Dispose();
+            };
 
         static LogManager manager;
         static Logger logger;

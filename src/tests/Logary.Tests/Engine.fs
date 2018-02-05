@@ -9,11 +9,8 @@ open Hopac.Infixes
 open Hopac.Extensions
 open Logary.Internals
 open Logary.EventsProcessing
-open Logary.EventsProcessing.Transformers
 open NodaTime
 open System.Net.NetworkInformation
-open Logary.HashMap
-open Hopac.TopLevel
 
 type MockTarget =
   { server : string * (Message -> Alt<Promise<unit>>)

@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Logary.Targets.DB</AssemblyName>
+    <!-- See https://github.com/mausch/FsSql/pull/38 -->
+    <TargetFrameworks>net461</TargetFrameworks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Targets_DB.fs" />
+    <None Include="paket.references" />
+    <None Include="app.config" />
+    <ProjectReference Include="..\..\Logary\Logary.fsproj" />
+  </ItemGroup>
+  <Import Project="..\..\..\.paket\Paket.Restore.targets" />
+</Project>

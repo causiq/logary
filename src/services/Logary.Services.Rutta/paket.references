@@ -1,8 +1,9 @@
+group Targets
 FSharp.Core
 NodaTime
 Hopac
 Topshelf.FSharp
-Argu
 fszmq
-Suave
 FsPickler
+Argu
+Suave

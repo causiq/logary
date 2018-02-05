@@ -1,23 +1,6 @@
-os: Visual Studio 2017
-version: 5.0.{build}
-
-init:
-- git config --global core.autocrlf input
-
-install:
-- set PATH=C:\Ruby22\bin;%PATH% # use Ruby 2.2.6
-- cmd: ruby --version
+image:
+  - Visual Studio 2015
+  - Visual Studio 2017
 
 build_script:
-- cmd: gem sources -r https://rubygems.org/
-- cmd: gem install bundler -f --no-ri --no-rdoc --source https://rubygems.org/
-- cmd: bundle install
-- cmd: bundle exec rake
-
-artifacts:
-- path: build\pkg\*.nupkg
-
-nuget:
-  project_feed: true
-
-test: off
+  - cmd: build.cmd

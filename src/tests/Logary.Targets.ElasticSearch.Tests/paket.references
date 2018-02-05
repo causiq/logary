@@ -1,5 +1,6 @@
+group Tests
 FSharp.Core
 NodaTime
 Hopac
-Expecto
 Chiron
+Expecto

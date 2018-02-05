@@ -1,4 +1,4 @@
+group Targets
 FSharp.Core
-RabbitMQ.Client
 Hopac
-NodaTime
+RabbitMQ.Client

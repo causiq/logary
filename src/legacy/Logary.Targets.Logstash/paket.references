@@ -1,0 +1,5 @@
+group Targets
+FSharp.Core
+Hopac
+NodaTime
+fszmq

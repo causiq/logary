@@ -1,6 +1,6 @@
-FSharp.Core
-NodaTime
+group Tests
 Hopac
 NodaTime
+FSharp.Core
 log4net
 Expecto

@@ -1,7 +1,9 @@
+File:YoLo.fs
+
+group Tests
 FSharp.Core
 NodaTime
 Hopac
 FsCheck
 Expecto
 Expecto.FsCheck
-File:YoLo.fs

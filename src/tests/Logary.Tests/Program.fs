@@ -1,5 +1,7 @@
 module Logary.Tests.Program
 
+#nowarn "44"
+
 open System
 open System.Globalization
 open System.Threading

@@ -1,7 +1,8 @@
-FSharp.Core
-Hopac
-Expecto
-NodaTime
+group Tests
 Google.Cloud.Logging.V2
 Google.Api.Gax.Rest
 Google.Api.Gax
+FSharp.Core
+Hopac
+NodaTime
+Expecto

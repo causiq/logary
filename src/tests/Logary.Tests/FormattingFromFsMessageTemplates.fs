@@ -117,8 +117,10 @@ let``the same positional parameter repeated many times with literal format is re
 
 [<Tests>]
 let``the same missing positional parameters render literally`` =
+  testList "positional parameters" [
     MtAssert.RenderedAs( "{1}{2}{3}{4}{5}{6}{7}{8}{9}", [|"a"|], "{1}{2}{3}{4}{5}{6}{7}{8}{9}")
     MtAssert.RenderedAs( "{1}{2}{3}{4}{5}{0}{6}{7}{8}{9}", [|"a"|], "{1}{2}{3}{4}{5}\"a\"{6}{7}{8}{9}")
+  ]
     
 
 [<Tests>]

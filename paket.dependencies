@@ -1,76 +1,132 @@
-﻿redirects: on
-framework: net45, net452, net461
-source https://www.nuget.org/api/v2
-source https://www.myget.org/F/haf/api/v3/index.json
+﻿source https://api.nuget.org/v3/index.json
+framework auto-detect
+redirects on
 
-nuget TweetinviAPI
-nuget FSharp.Core ~> 4 redirects: force
 nuget Castle.Core
-nuget Common.Logging
-nuget Common.Logging.Core
-nuget EventStore.Client 3.9.2
-nuget FsPickler
+nuget Chiron >= 7-beta
+nuget FParsec
+nuget FSharp.Core
 nuget Hopac
-nuget elmah.corelibrary
-nuget elmah.io.core
-nuget FAKE
-nuget FluentMigrator
-nuget FluentMigrator.Runner
-nuget FsCheck
-nuget FsSql
-nuget Expecto
-nuget Expecto.FsCheck
-nuget log4net
-nuget NLog
-nuget Machine.Specifications
-nuget Machine.Specifications.Should
-nuget Machine.Specifications.Runner.Console
-nuget Microsoft.ApplicationInsights
-nuget Microsoft.ApplicationInsights.DependencyCollector
 nuget NodaTime
-nuget protobuf-net
-nuget RabbitMQ.Client ~> 3
-nuget Suave prerelease
-nuget System.Data.SQLite.Core
-nuget Argu
-nuget Unquote
-nuget Http.fs
-nuget Topshelf
-nuget Topshelf.FSharp
-nuget fszmq
-nuget ApacheThrift
-nuget elmah.io.client
-nuget Google.Cloud.Logging.V2 prerelease
-nuget Google.Api.Gax.Rest prerelease
-nuget FsPickler.Json
-nuget aliyun-log-csharp-sdk
-nuget SQLite.Interop.dll
-nuget SQLite.Interop
-nuget Chiron 7.0.0-alpha-170410
 
-github messagetemplates/messagetemplates-fsharp src/FsMtParser/FsMtParserFull.fs
-github xyncro/aether:2e7b07104c47a02d5e92ff5eda0bc950ef57ae2e src/Aether/Aether.fs
 github eiriktsarpalis/TypeShape src/TypeShape/TypeShape.fs
 github haf/YoLo YoLo.fs
 github logary/RingBuffer RingBuffer.fs
-github logary/logary src/Logary.Facade/Facade.fs
 github logary/logary src/Logary.CSharp.Facade/Facade.cs
+github logary/logary src/Logary.Facade/Facade.fs
+github messagetemplates/messagetemplates-fsharp src/FsMtParser/FsMtParserFull.fs
+github xyncro/aether:2e7b07104c47a02d5e92ff5eda0bc950ef57ae2e src/Aether/Aether.fs
+
+group Build
+    source https://api.nuget.org/v3/index.json
+    framework auto-detect
+    nuget FAKE
+
+group Tests
+    source https://api.nuget.org/v3/index.json
+    framework auto-detect
+    redirects on
+
+    nuget ApacheThrift
+    nuget Argu
+    nuget Castle.Core
+    nuget Chiron >= 7-beta
+    nuget Common.Logging
+    nuget Common.Logging.Core
+    nuget EventStore.Client < 4
+    nuget Expecto
+    nuget Expecto.FsCheck
+    nuget FParsec
+    nuget FSharp.Core
+    nuget FluentMigrator
+    nuget FluentMigrator.Runner
+    nuget FsCheck
+    nuget FsPickler
+    nuget FsPickler.Json
+    nuget FsSql
+    nuget Google.Api.Gax.Rest
+    nuget Google.Cloud.Logging.V2
+    nuget Hopac
+    nuget Http.fs
+    nuget Machine.Specifications
+    nuget Machine.Specifications.Runner.Console
+    nuget Machine.Specifications.Should
+    nuget Microsoft.ApplicationInsights
+    nuget Microsoft.ApplicationInsights.DependencyCollector
+    nuget NLog ~> 4.5.0-rc04
+    nuget NodaTime
+    nuget RabbitMQ.Client
+    nuget SQLite.Interop
+    nuget SQLite.Interop.dll
+    nuget Suave
+    nuget System.Data.SQLite.Core
+    nuget Topshelf
+    nuget Topshelf.FSharp
+    nuget TweetinviAPI
+    nuget Unquote
+    nuget aliyun-log-csharp-sdk
+    nuget elmah.corelibrary
+    nuget elmah.io.client
+    nuget elmah.io.core
+    nuget fszmq
+    nuget log4net
+    nuget protobuf-net
+
+group Targets
+    source https://api.nuget.org/v3/index.json
+    framework auto-detect
+    redirects on
+
+    nuget ApacheThrift
+    nuget Argu
+    nuget Castle.Core
+    nuget Chiron >= 7-beta
+    nuget Common.Logging
+    nuget Common.Logging.Core
+    nuget EventStore.Client < 4
+    nuget FParsec
+    nuget FSharp.Core
+    nuget FluentMigrator
+    nuget FluentMigrator.Runner
+    nuget FsCheck
+    nuget FsPickler
+    nuget FsPickler.Json
+    nuget FsSql
+    nuget Google.Api.Gax.Rest
+    nuget Google.Cloud.Logging.V2
+    nuget Hopac
+    nuget Http.fs
+    nuget Microsoft.ApplicationInsights
+    nuget Microsoft.ApplicationInsights.DependencyCollector
+    nuget NLog
+    nuget NodaTime
+    nuget RabbitMQ.Client
+    nuget SQLite.Interop
+    nuget SQLite.Interop.dll
+    nuget Suave
+    nuget System.Data.SQLite.Core
+    nuget Topshelf
+    nuget Topshelf.FSharp
+    nuget TweetinviAPI
+    nuget Unquote
+    nuget aliyun-log-csharp-sdk
+    nuget elmah.corelibrary
+    nuget elmah.io.client
+    nuget elmah.io.core
+    nuget fszmq
+    nuget log4net
+    nuget protobuf-net
 
 group Examples
-    redirects: on
-    framework: >= net45
-    source https://www.nuget.org/api/v2
-    nuget Logary
-    nuget Logary.CSharp
-    nuget Logary.Targets.InfluxDb
-    nuget Logary.Targets.ElasticSearch
-    nuget Logary.Targets.DB
-    nuget Logary.Targets.Logstash
-    nuget Logary.Targets.Elmah.Io
+    source https://api.nuget.org/v3/index.json
+    framework auto-detect
+    redirects on
 
-group Legacy
-    redirects: on
-    framework: net45, net452, net461
-    source https://www.nuget.org/api/v2
-    nuget Mailgun.Api
-    
+    nuget Argu
+    nuget Castle.Core
+    nuget Chiron >= 7-beta
+    nuget FParsec
+    nuget FSharp.Core
+    nuget Hopac
+    nuget NodaTime
+    nuget RabbitMQ.Client

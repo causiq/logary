@@ -1,6 +1,6 @@
 # Auto detect text files and perform LF normalization
 *.fs     text eol=lf
 *.rb     text eol=lf
-*.csproj text merge=union eol=crlf
-*.fsproj text merge=union eol=crlf
+*.csproj text merge=union eol=lf
+*.fsproj text merge=union eol=lf
 *.sln    text merge=union eol=crlf

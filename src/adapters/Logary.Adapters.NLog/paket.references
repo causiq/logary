@@ -1,4 +1,3 @@
+group Targets
 FSharp.Core
-NodaTime
-Hopac
 NLog

@@ -1,4 +1,5 @@
+group Targets
 FSharp.Core
 Hopac
-aliyun-log-csharp-sdk
 NodaTime
+aliyun-log-csharp-sdk

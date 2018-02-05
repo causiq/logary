@@ -80,7 +80,7 @@ let tests = [
     let clearStream (s : System.IO.StringWriter) =
       let sb = s.GetStringBuilder ()
       let str = string sb
-      sb.Clear ()
+      sb.Clear () |> ignore
       str
     let! (logm, out, error)  = Utils.buildLogManager ()
     let loggername = PointName.parse "logger.test"

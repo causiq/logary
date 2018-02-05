@@ -1,7 +1,0 @@
-FSharp.Core
-NodaTime
-Hopac
-Expecto
-
-group legacy
-Mailgun.Api

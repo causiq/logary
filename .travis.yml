@@ -37,12 +37,5 @@ env:
     - DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
     - TMPDIR=/tmp
 
-before_install:
-  - rvm install 2.2.3
-
-install:
-  - gem install bundler
-  - bundle
-
 script:
-  - bundle exec rake DEBUG=true
+  - ./build.sh

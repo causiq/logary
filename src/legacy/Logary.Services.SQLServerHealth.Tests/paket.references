@@ -1,0 +1,6 @@
+group Tests
+FSharp.Core
+NodaTime
+Hopac
+FsSql
+Expecto

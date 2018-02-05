@@ -1,15 +1,12 @@
 module Logary.Tests.Formatting
 
+#nowarn "44"
+
 open System
-open NodaTime
 open Logary
 open Expecto
-open Logary.KnownLiterals
-open Logary
 open Logary.MessageWriter
-open Logary.MessageTemplates.Destructure
 open Logary.MessageTemplates
-open System.Diagnostics
 open Chiron
 
 let private sampleMessage : Message =

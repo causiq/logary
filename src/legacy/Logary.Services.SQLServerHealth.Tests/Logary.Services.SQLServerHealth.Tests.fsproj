@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Logary.Services.SQLServerHealth.Tests</AssemblyName>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net461</TargetFrameworks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Datapoints.fs" />
+    <Compile Include="Integration.fs" />
+    <Compile Include="AssemblyVersionInfo.fs" />
+    <Compile Include="Program.fs" />
+    <None Include="Script.fsx" />
+    <None Include="paket.references" />
+    <None Include="app.config" />
+    <ProjectReference Include="../Logary.Services.SQLServerHealth/Logary.Services.SQLServerHealth.fsproj" />
+    <ProjectReference Include="../../Logary/Logary.fsproj" />
+  </ItemGroup>
+
+  <Import Project="..\..\..\.paket\Paket.Restore.targets" />
+</Project>

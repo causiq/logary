@@ -1,4 +1,2 @@
+group Targets
 FSharp.Core
-Hopac
-Castle.Core
-NodaTime

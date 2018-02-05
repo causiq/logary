@@ -1,0 +1,8 @@
+group Targets
+FSharp.Core
+NodaTime
+Hopac
+FsSql
+Topshelf
+Topshelf.FSharp
+Argu
