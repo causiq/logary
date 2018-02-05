@@ -4,7 +4,8 @@
     <AssemblyName>rutta</AssemblyName>
     <RootNamespace>Logary.Services.Rutta</RootNamespace>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>net461;netcoreapp2.0</TargetFrameworks>
+    <!-- https://github.com/zeromq/fszmq/issues/145 -->
+    <TargetFrameworks>net461</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Topshelf.fs" />

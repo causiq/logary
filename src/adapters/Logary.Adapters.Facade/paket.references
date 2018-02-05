@@ -1,2 +1,3 @@
 group Targets
 FSharp.Core
+Castle.Core

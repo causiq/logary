@@ -97,7 +97,7 @@ group Targets
     nuget Http.fs
     nuget Microsoft.ApplicationInsights
     nuget Microsoft.ApplicationInsights.DependencyCollector
-    nuget NLog
+    nuget NLog ~> 4.5.0-rc04
     nuget NodaTime
     nuget RabbitMQ.Client
     nuget SQLite.Interop

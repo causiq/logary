@@ -1,10 +1,7 @@
 group Tests
 Hopac
 NodaTime
-System.Data.SQLite.Core
 FSharp.Core
-FluentMigrator
-FluentMigrator.Runner
 Machine.Specifications
 Machine.Specifications.Should
 Machine.Specifications.Runner.Console 

@@ -3,7 +3,8 @@
   <PropertyGroup>
     <AssemblyName>Logary.Services.Rutta.Tests</AssemblyName>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>net461;netcoreapp2.0</TargetFrameworks>
+    <!-- https://github.com/zeromq/fszmq/issues/145 -->
+    <TargetFrameworks>net461</TargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,7 +15,7 @@
     <None Include="paket.references" />
     <None Include="App.config" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />
-    <ProjectReference Include="..\..\services\Logary.Services.Rutta\Logary.Services.Rutta.fsproj" />
+    <ProjectReference Include="..\Logary.Services.Rutta\Logary.Services.Rutta.fsproj" />
   </ItemGroup>
 
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />

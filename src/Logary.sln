@@ -36,11 +36,11 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Services.SuaveReport
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.ConsoleApp", "..\examples\Logary.ConsoleApp\Logary.ConsoleApp.fsproj", "{178B23D3-F676-43C3-880D-9E0BEFBAF019}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Tests", "tests\Logary.Tests\Logary.Tests.fsproj", "{886DFAE8-C01A-43E2-A275-7F1E41CA0342}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Tests", "Logary.Tests\Logary.Tests.fsproj", "{886DFAE8-C01A-43E2-A275-7F1E41CA0342}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary", "Logary\Logary.fsproj", "{F7E5B6E8-5D55-4974-9CA7-4C94D810631F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logary.CSharp.Tests", "tests\Logary.CSharp.Tests\Logary.CSharp.Tests.csproj", "{A85B6894-33A4-4645-848D-D4D4D413A0C5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logary.CSharp.Tests", "Logary.CSharp.Tests\Logary.CSharp.Tests.csproj", "{A85B6894-33A4-4645-848D-D4D4D413A0C5}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Facade", "adapters\Logary.Adapters.Facade\Logary.Adapters.Facade.fsproj", "{15226ED2-C66B-4AA2-B15D-ACFF8A45454A}"
 EndProject
@@ -62,7 +62,7 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Services.Rutta.Tests
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.MetricsWriter", "..\examples\Logary.MetricsWriter\Logary.MetricsWriter.fsproj", "{1724A791-AC1F-4F79-9E1D-AB8F125B85BF}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Facade.Tests", "tests\Logary.Facade.Tests\Logary.Facade.Tests.fsproj", "{643498E7-F0DC-4665-9EA9-FB3EBF0F6A88}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Facade.Tests", "Logary.Facade.Tests\Logary.Facade.Tests.fsproj", "{643498E7-F0DC-4665-9EA9-FB3EBF0F6A88}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Facade.Tests", "tests\Logary.Adapters.Facade.Tests\Logary.Adapters.Facade.Tests.fsproj", "{2B2FCE14-8E8D-407A-81FD-D648B0A1AA74}"
 EndProject
