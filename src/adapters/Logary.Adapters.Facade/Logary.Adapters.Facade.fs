@@ -165,7 +165,7 @@ module LoggerAdapter =
     |> (fun msg -> 
         match oldPointValue with
         | LoggerAdapterShared.OldPointValue.Gauge (value, units) ->
-          msg |> Message.setGauge (value,units)
+          msg |> Message.addGauge KnownLiterals.DefaultGaugeType (Gauge (value,units))
         | _ -> msg)
 
   /// Convert the object instance to a message factory method. Is used from the
@@ -322,7 +322,7 @@ module LoggerCSharpAdapter =
     |> (fun msg ->
         match oldPointValue with
         | LoggerAdapterShared.OldPointValue.Gauge (value, units) ->
-          msg |> Message.setGauge (value,units)
+          msg |> Message.addGauge KnownLiterals.DefaultGaugeType (Gauge (value, units))
         | _ -> msg)
 
   module internal LogMessage =

@@ -1,14 +1,4 @@
-﻿using System;
-using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
-using NodaTime;
-using Logary.Configuration;
-using Logary.CSharp;
-using Logary.Targets;
-using Logary.Adapters.Facade;
-using Uri = System.Uri;
-
+﻿
 /*
  * 
     
@@ -32,6 +22,15 @@ using Uri = System.Uri;
 
 namespace Logary.CSharpExample
 {
+    using System;
+    using System.Text.RegularExpressions;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using Configuration;
+    using CSharp;
+    using Targets;
+    using Adapters.Facade;
+    
     public static class Program
     {
         public static Task<LogManager> StartEverything()
@@ -104,7 +103,7 @@ namespace Logary.CSharpExample
             var val = logger.Time(() =>
                     {
                         for (int i = 0; i < 100; i++)
-                            System.Threading.Thread.Sleep(1);
+                            Thread.Sleep(1);
 
                         return 32;
                     }, "sample.config.computeAnswerToEverything")

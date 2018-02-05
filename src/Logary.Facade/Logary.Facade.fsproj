@@ -6,6 +6,8 @@
     <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="AssemblyInternals.fs" />
     <Compile Include="Facade.fs" />
     <None Include="paket.references" />
   </ItemGroup>

@@ -12,8 +12,6 @@ using Machine.Specifications;
 using NodaTime;
 using TextWriter = Logary.Targets.TextWriter;
 using System.Globalization;
-using Logary.EventsProcessing;
-using Hopac;
 
 namespace Logary.CSharp.Tests
 {
