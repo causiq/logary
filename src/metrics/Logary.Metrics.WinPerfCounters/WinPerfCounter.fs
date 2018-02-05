@@ -23,7 +23,7 @@ module Category =
 
   /// Create a new performance counter category. It may not exist on the system
   /// that you are running the code on; hence the option-based return value
-  let create (name : string) : Category option =
+  let create (name: string): Category option =
     if Category.Exists name then
       Some (Category name)
     else
