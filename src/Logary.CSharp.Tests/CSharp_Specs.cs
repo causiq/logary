@@ -127,7 +127,7 @@ namespace Logary.CSharp.Tests
                         with => with.Target<TextWriter.Builder>(
                             "sample string writer",
                             t => t.Target.WriteTo(writer, writer)
-                                .AcceptIf(line => !line.name.ToString().Contains("When_configuring_filter_with_API"))))
+                                .AcceptIf(m => !m.name.ToString().Contains("When_configuring_filter_with_API"))))
                     .Result;
             };
 
