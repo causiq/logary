@@ -79,8 +79,13 @@ Target "Build" (fun _ ->
 )
 
 Target "RunTest" (fun _ ->
-  !! "src/tests/*"
-  |> Seq.iter (fun name -> DotNetCli.RunCommand id (name + "/bin/"+configuration+"/netcoreapp2.0/" + name + ".dll --summary"))
+  !! "src/tests/**/*.fsproj"
+  |> Seq.iter (fun file ->
+    let path = file.Substring(0, file.Length - ".fsproj".Length)
+    let name = System.IO.Path.GetFileName path
+    DotNetCli.RunCommand id (
+      sprintf "run %s/bin/%s/netcoreapp2.0/%s.dll --summary"
+        path configuration name))
 )
 
 let packParameters name =
