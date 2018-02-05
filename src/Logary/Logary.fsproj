@@ -2,7 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AssemblyName>Logary</AssemblyName>
-    <Version>5.0.0</Version>
+    <Version>5.0.0-alpha</Version>
     <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
     <NoWarn>44;2003</NoWarn>
   </PropertyGroup>
@@ -82,7 +82,7 @@
     <Compile Include="Configuration/Uri.fs" />
     <Compile Include="AssemblyInfo.fs" />
     <None Include="paket.references" />
-    <Content Include="app.config" />
+    <None Include="app.config" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

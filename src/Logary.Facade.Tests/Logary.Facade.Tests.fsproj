@@ -1,7 +1,8 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AssemblyName>Logary.Facade.Tests</AssemblyName>
+    <Version>5.0.0-alpha</Version>
     <OutputType>Exe</OutputType>
     <TargetFrameworks>net461;netcoreapp2.0</TargetFrameworks>
   </PropertyGroup>
@@ -14,7 +15,7 @@
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <None Include="App.config" />
-    <ProjectReference Include="..\..\Logary.Facade\Logary.Facade.fsproj" />
+    <ProjectReference Include="..\Logary.Facade\Logary.Facade.fsproj" />
   </ItemGroup>
-  <Import Project="..\..\..\.paket\Paket.Restore.targets" />
+  <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

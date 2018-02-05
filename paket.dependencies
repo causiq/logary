@@ -15,12 +15,12 @@ github logary/RingBuffer RingBuffer.fs
 github logary/logary src/Logary.CSharp.Facade/Facade.cs
 github logary/logary src/Logary.Facade/Facade.fs
 github messagetemplates/messagetemplates-fsharp src/FsMtParser/FsMtParserFull.fs
-github xyncro/aether:2e7b07104c47a02d5e92ff5eda0bc950ef57ae2e src/Aether/Aether.fs
 
 group Build
     source https://api.nuget.org/v3/index.json
     framework auto-detect
     nuget FAKE
+    github fsharp/FAKE modules/Octokit/Octokit.fsx
 
 group Tests
     source https://api.nuget.org/v3/index.json

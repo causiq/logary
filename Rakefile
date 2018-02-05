@@ -35,29 +35,9 @@ asmver_files :assembly_info => :versioning do |a|
                assembly_version: ENV['LONG_VERSION'],
                assembly_file_version: ENV['LONG_VERSION'],
                assembly_informational_version: ENV['BUILD_VERSION']
-
-  a.handle_config do |proj, conf|
-    conf.namespace = conf.namespace + "AsmVer"
-    if LogaryStrongName
-      path = Pathname.new(File.join(FileUtils.pwd, 'tools/logary.snk')).
-          relative_path_from(Pathname.new(File.join(FileUtils.pwd, 'src', proj.proj_path_base, '..'))).
-          to_s
-      conf.change_attributes do |attrs|
-        attrs[:assembly_key_file] = path unless proj.proj_filename.include? 'csproj' or proj.proj_filename.include? 'Services' or proj.proj_filename.include? 'Tests'
-      end
-    end
-    conf
-  end
 end
 
 task :paket_replace do
-  sh %{ruby -pi.bak -e "gsub(/module FsMtParserFull/, 'module Logary.Internals.FsMtParserFull')" paket-files/messagetemplates/messagetemplates-fsharp/src/FsMtParser/FsMtParserFull.fs}
-  sh %{ruby -pi.bak -e "gsub(/module Aether/, 'module Logary.Internals.Aether')" paket-files/xyncro/aether/src/Aether/Aether.fs}
-  sh %{ruby -pi.bak -e "gsub(/module TypeShape/, 'module Logary.Internals.TypeShape')" paket-files/eiriktsarpalis/TypeShape/src/TypeShape/TypeShape.fs}
-  sh %{ruby -pi.bak -e "gsub(/module.* YoLo/, 'module internal Logary.YoLo')" paket-files/haf/YoLo/YoLo.fs}
-  sh %{ruby -pi.bak -e "gsub(/module Hopac/, 'namespace Logary.Internals')" paket-files/logary/RingBuffer/RingBuffer.fs}
-  sh %{ruby -pi.bak -e "gsub(/namespace Logary.Facade/, 'namespace Libryy.Logging')" paket-files/logary/logary/src/Logary.Facade/Facade.fs}
-  sh %{ruby -pi.bak -e "gsub(/namespace Logary.Facade/, 'namespace Cibryy.Logging')" paket-files/logary/logary/src/Logary.CSharp.Facade/Facade.cs}
 end
 
 task :copy_files do

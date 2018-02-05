@@ -493,7 +493,15 @@ RESTRICTION: || (== net452) (== net461) (== netcoreapp2.0) (== netstandard2.0)
 NUGET
   remote: https://api.nuget.org/v3/index.json
     FAKE (4.64.4)
-
+    Microsoft.NETCore.Platforms (2.0.1) - restriction: || (&& (== net452) (>= monoandroid)) (&& (== net452) (>= monotouch)) (&& (== net452) (< net45)) (&& (== net452) (>= netcoreapp2.0)) (&& (== net452) (< netstandard1.0)) (&& (== net452) (< portable-net45+win8+wpa81)) (&& (== net452) (>= uap10.0)) (&& (== net452) (>= wpa81)) (&& (== net452) (>= xamarinios)) (&& (== net452) (>= xamarinmac)) (&& (== net452) (>= xamarintvos)) (&& (== net452) (>= xamarinwatchos)) (&& (== net461) (>= monoandroid)) (&& (== net461) (>= monotouch)) (&& (== net461) (< net45)) (&& (== net461) (>= netcoreapp2.0)) (&& (== net461) (< netstandard1.0)) (&& (== net461) (< netstandard1.3) (>= wpa81)) (&& (== net461) (< portable-net45+win8+wpa81)) (&& (== net461) (>= uap10.0)) (&& (== net461) (>= xamarinios)) (&& (== net461) (>= xamarinmac)) (&& (== net461) (>= xamarintvos)) (&& (== net461) (>= xamarinwatchos)) (== netcoreapp2.0) (== netstandard2.0)
+    NETStandard.Library (2.0.1) - restriction: || (&& (== net452) (< net45)) (&& (== net461) (< net45)) (== netcoreapp2.0) (== netstandard2.0)
+      Microsoft.NETCore.Platforms (>= 1.1)
+    Octokit (0.28)
+      NETStandard.Library (>= 1.6.1) - restriction: || (&& (== net452) (< net45)) (&& (== net461) (< net45)) (== netcoreapp2.0) (== netstandard2.0)
+GITHUB
+  remote: fsharp/FAKE
+    modules/Octokit/Octokit.fsx (c9d0757a8257dc1d1ac3d28b813bc0e1d89e521f)
+      Octokit (>= 0.20)
 GROUP Examples
 REDIRECTS: ON
 RESTRICTION: || (== net452) (== net461) (== netcoreapp2.0) (== netstandard2.0)

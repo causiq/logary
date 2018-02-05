@@ -1,52 +1,71 @@
 #r @"packages/build/FAKE/tools/FakeLib.dll"
-
 open System
 open Fake
 
 Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
-let configuration = environVarOrDefault "Configuration" "Release"
+let configuration = environVarOrDefault "CONFIGURATION" "Release"
 let release = IO.File.ReadAllLines "RELEASE_NOTES.md" |> ReleaseNotesHelper.parseReleaseNotes
-let description = "A simple, functional HTTP client library for F#"
-let tags = "http fsharp client functional"
-let authors = "Henrik Feldt"
-let owners = "Henrik Feldt"
-let projectUrl = "https://github.com/haf/Http.fs"
-let iconUrl = "https://raw.githubusercontent.com/haf/Http.fs/releases/v4.x/docs/files/img/logo.png"
-let licenceUrl = "https://github.com/haf/Http.fs/blob/master/Licence/License.md"
+let description = "Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net."
+let tags = "structured logging f# logs logging performance metrics semantic"
+let authors = "Henrik Feldt, Jun"
+let owners = "Henrik Feldt, Jun"
+let projectUrl = "https://github.com/logary/logary"
+let iconUrl = "https://raw.githubusercontent.com/logary/logary-assets/master/graphics/LogaryLogoSquare.png"
+let licenceUrl = "https://raw.githubusercontent.com/logary/logary/master/LICENSE.md"
 let copyright = sprintf "Copyright \169 %i" DateTime.Now.Year
 
 Target "Clean" (fun _ -> !!"./**/bin/" ++ "./**/obj/" |> CleanDirs)
 
 open AssemblyInfoFile
-Target "AssemblyInfo" (fun _ ->
 
-    [ "HttpFs"
-      "HttpFs.UnitTests"
-      "HttpFs.IntegrationTests"
+Target "AssemblyInfo" (fun _ ->
+  [ "Logary"
+    "Logary.Tests"
+    "Logary.Facade"
+    "Logary.Facade.Tests"
+  ]
+  |> Seq.iter (fun proj ->
+    [ Attribute.Title proj
+      Attribute.Product proj
+      Attribute.Copyright copyright
+      Attribute.Description description
+      Attribute.Version release.AssemblyVersion
+      Attribute.FileVersion release.AssemblyVersion
     ]
-    |> List.iter (fun product ->
-        [ Attribute.Title product
-          Attribute.Product product
-          Attribute.Copyright copyright
-          Attribute.Description description
-          Attribute.Version release.AssemblyVersion
-          Attribute.FileVersion release.AssemblyVersion
-        ] |> CreateFSharpAssemblyInfo (product+"/AssemblyInfo.fs")
-    )
+    |> CreateFSharpAssemblyInfo (sprintf "src/%s/AssemblyInfo.fs" proj)
+  )
 )
 
+let replace fromStr toStr path =
+  FileHelper.ReplaceInFiles [fromStr, toStr] [path]
+
 Target "PaketFiles" (fun _ ->
-    FileHelper.ReplaceInFiles ["namespace Logary.Facade","namespace HttpFs.Logging"]
-        ["paket-files/logary/logary/src/Logary.Facade/Facade.fs"]
+  replace "module FsMtParserFull" "module Logary.Internals.FsMtParserFull"
+          "paket-files/messagetemplates/messagetemplates-fsharp/src/FsMtParser/FsMtParserFull.fs"
+
+  replace "module TypeShape" "module Logary.Internals.TypeShape"
+          "paket-files/eiriktsarpalis/TypeShape/src/TypeShape/TypeShape.fs"
+
+  replace "module YoLo" "module internal Logary.YoLo"
+          "paket-files/haf/YoLo/YoLo.fs"
+
+  replace "module Hopac" "namespace Logary.Internals"
+          "paket-files/logary/RingBuffer/RingBuffer.fs"
+
+  replace "namespace Logary.Facade" "namespace Libryy.Logging"
+          "paket-files/logary/logary/src/Logary.Facade/Facade.fs"
+
+  replace "namespace Logary.Facade" "namespace Cibryy.Logging"
+          "paket-files/logary/logary/src/Logary.CSharp.Facade/Facade.cs"
 )
 
 Target "ProjectVersion" (fun _ ->
-    [
-        "HttpFs/HttpFs.fsproj"
-    ]
-    |> List.iter (fun file ->
-        XMLHelper.XmlPoke file "Project/PropertyGroup/Version/text()" release.NugetVersion)
+  !! "src/*/*.fsproj"
+  |> Seq.iter (fun file ->
+    printfn "Changing file %s" file
+    XMLHelper.XmlPoke file "Project/PropertyGroup/Version/text()" release.NugetVersion)
 )
+
 let build project framework =
     DotNetCli.Build (fun p ->
     { p with
@@ -56,48 +75,52 @@ let build project framework =
     })
 
 Target "BuildTest" (fun _ ->
-    build "HttpFs.UnitTests/HttpFs.UnitTests.fsproj" "netcoreapp2.0"
-    build "HttpFs.UnitTests/HttpFs.UnitTests.fsproj" "net461"
-    build "HttpFs.IntegrationTests/HttpFs.IntegrationTests.fsproj" "netcoreapp2.0"
-    build "HttpFs.IntegrationTests/HttpFs.IntegrationTests.fsproj" "net461"
+  !! "src/tests/**/*.fsproj"
+  |> Seq.iter (fun fsproj ->
+    build fsproj "netcoreapp2.0"
+    build fsproj "net461")
 )
 
 Target "RunTest" (fun _ ->
-    DotNetCli.RunCommand id ("HttpFs.UnitTests/bin/"+configuration+"/netcoreapp2.0/HttpFs.UnitTests.dll --summary --sequenced")
-    //Shell.Exec ("HttpFs.UnitTests/bin/"+configuration+"/net461/HttpFs.UnitTests.exe","--summary --sequenced")
-    //|> fun r -> if r<>0 then failwith "HttpFs.UnitTests.exe failed"
-
-    DotNetCli.RunCommand id ("HttpFs.IntegrationTests/bin/"+configuration+"/netcoreapp2.0/HttpFs.IntegrationTests.dll --summary --sequenced")
-    //Shell.Exec ("HttpFs.IntegrationTests/bin/"+configuration+"/net461/HttpFs.IntegrationTests.exe","--summary --sequenced")
-    //|> fun r -> if r<>0 then failwith "HttpFs.IntegrationTests.exe failed"
+  !! "src/tests/*"
+  |> Seq.iter (fun name -> DotNetCli.RunCommand id (name + "/bin/"+configuration+"/netcoreapp2.0/" + name + ".dll --summary"))
 )
+
+let packParameters name =
+  [ "--no-build"
+    "--no-restore"
+    sprintf "/p:Title=\"%s\"" name
+    "/p:PackageVersion=" + release.NugetVersion
+    sprintf "/p:Authors=\"%s\"" authors
+    sprintf "/p:Owners=\"%s\"" owners
+    "/p:PackageRequireLicenseAcceptance=false"
+    sprintf "/p:Description=\"%s\"" (description.Replace(",",""))
+    sprintf "/p:PackageReleaseNotes=\"%O\"" ((toLines release.Notes).Replace(",",""))
+    sprintf "/p:Copyright=\"%s\"" copyright
+    sprintf "/p:PackageTags=\"%s\"" tags
+    sprintf "/p:PackageProjectUrl=\"%s\"" projectUrl
+    sprintf "/p:PackageIconUrl=\"%s\"" iconUrl
+    sprintf "/p:PackageLicenseUrl=\"%s\"" licenceUrl
+  ]
+  |> String.concat " "
 
 Target "Pack" (fun _ ->
-    let packParameters name =
-        [
-            "--no-build"
-            "--no-restore"
-            sprintf "/p:Title=\"%s\"" name
-            "/p:PackageVersion=" + release.NugetVersion
-            sprintf "/p:Authors=\"%s\"" authors
-            sprintf "/p:Owners=\"%s\"" owners
-            "/p:PackageRequireLicenseAcceptance=false"
-            sprintf "/p:Description=\"%s\"" (description.Replace(",",""))
-            sprintf "/p:PackageReleaseNotes=\"%O\"" ((toLines release.Notes).Replace(",",""))
-            sprintf "/p:Copyright=\"%s\"" copyright
-            sprintf "/p:PackageTags=\"%s\"" tags
-            sprintf "/p:PackageProjectUrl=\"%s\"" projectUrl
-            sprintf "/p:PackageIconUrl=\"%s\"" iconUrl
-            sprintf "/p:PackageLicenseUrl=\"%s\"" licenceUrl
-        ] |> String.concat " "
-
-    DotNetCli.RunCommand id
-        ("pack HttpFs/HttpFs.fsproj -c "+configuration + " -o ../bin " + (packParameters "Http.fs"))
+  !! "src/targets/**/*.fsproj"
+  ++ "src/Logary/Logary.fsproj"
+  ++ "src/Logary.CSharp/Logary.CSharp.csproj"
+  |> Seq.iter (fun proj ->
+    DotNetCli.RunCommand id (
+      sprintf
+        "pack %s -c %s -o ../bin %s"
+        proj configuration (packParameters "Http.fs"))
+  )
 )
 
-Target "Push" (fun _ -> Paket.Push (fun p -> { p with WorkingDir = "bin" }))
+Target "Push" (fun _ ->
+  Paket.Push (fun p -> { p with WorkingDir = "bin" }))
 
 #load "paket-files/build/fsharp/FAKE/modules/Octokit/Octokit.fsx"
+
 Target "Release" (fun _ ->
     let gitOwner = "haf"
     let gitName = "expecto"

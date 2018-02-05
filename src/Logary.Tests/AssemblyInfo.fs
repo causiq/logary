@@ -2,8 +2,8 @@
 namespace System
 open System.Reflection
 
-[<assembly: AssemblyTitleAttribute("Logary.Facade")>]
-[<assembly: AssemblyProductAttribute("Logary.Facade")>]
+[<assembly: AssemblyTitleAttribute("Logary.Tests")>]
+[<assembly: AssemblyProductAttribute("Logary.Tests")>]
 [<assembly: AssemblyCopyrightAttribute("Copyright © 2018")>]
 [<assembly: AssemblyDescriptionAttribute("Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net.")>]
 [<assembly: AssemblyVersionAttribute("5.0.0")>]
@@ -11,8 +11,8 @@ open System.Reflection
 do ()
 
 module internal AssemblyVersionInformation =
-    let [<Literal>] AssemblyTitle = "Logary.Facade"
-    let [<Literal>] AssemblyProduct = "Logary.Facade"
+    let [<Literal>] AssemblyTitle = "Logary.Tests"
+    let [<Literal>] AssemblyProduct = "Logary.Tests"
     let [<Literal>] AssemblyCopyright = "Copyright © 2018"
     let [<Literal>] AssemblyDescription = "Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net."
     let [<Literal>] AssemblyVersion = "5.0.0"
