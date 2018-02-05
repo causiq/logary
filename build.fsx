@@ -66,19 +66,16 @@ Target "ProjectVersion" (fun _ ->
     XMLHelper.XmlPoke file "Project/PropertyGroup/Version/text()" release.NugetVersion)
 )
 
-let build project framework =
-    DotNetCli.Build (fun p ->
-    { p with
-        Configuration = configuration
-        Framework = framework
-        Project = project
-    })
+Target "Restore" (fun _ ->
+  DotNetCli.Restore (fun p -> { p with WorkingDir = "src" })
+)
 
-Target "BuildTest" (fun _ ->
-  !! "src/tests/**/*.fsproj"
-  |> Seq.iter (fun fsproj ->
-    build fsproj "netcoreapp2.0"
-    build fsproj "net461")
+Target "Build" (fun _ ->
+  DotNetCli.Build (fun p ->
+  { p with
+      Configuration = configuration
+      Project = "src/Logary.sln"
+  })
 )
 
 Target "RunTest" (fun _ ->
@@ -153,7 +150,8 @@ Target "All" ignore
 ==> "AssemblyInfo"
 ==> "PaketFiles"
 ==> "ProjectVersion"
-==> "BuildTest"
+==> "Restore"
+==> "Build"
 ==> "RunTest"
 ==> "Pack"
 ==> "All"
