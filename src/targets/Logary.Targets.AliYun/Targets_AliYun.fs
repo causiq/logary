@@ -1,5 +1,8 @@
 ﻿module Logary.Targets.AliYun
 
+// Ignore deprecations — if this target breaks it's removed from the code base
+#nowarn "44"
+
 open System
 open Logary
 open Logary.Internals

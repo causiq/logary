@@ -2,6 +2,8 @@
 /// Documentation for Stackdriver Logging itself can be found here: https://cloud.google.com/logging/docs/ 
 module Logary.Targets.Stackdriver
 
+#nowarn "44"
+
 open Google.Api
 open Google.Api.Gax.Grpc
 open Google.Cloud.Logging.Type
@@ -90,11 +92,11 @@ module internal Impl =
     //   let valueArr = values |> List.map toProtobufValue |> List.toArray
     //   WellKnownTypes.Value.ForList valueArr
 
-  let addToStruct (s : WellKnownTypes.Struct) (k , value: obj) : WellKnownTypes.Struct = 
+  let addToStruct (s: WellKnownTypes.Struct) (k, value: obj): WellKnownTypes.Struct = 
     s.Fields.[k] <- toProtobufValue value
     s
 
-  let write (m : Message) : LogEntry =
+  let write (m: Message): LogEntry =
     // labels are used in stackdriver for classification, so lets put context there.
     // they expect only simple values really in the labels, so it's ok to just stringify them
     let labels = 
@@ -104,8 +106,8 @@ module internal Impl =
       |> dict
 
     let formatted, raw = 
-      Logary.MessageWriter.verbatim.format m, m.value
-
+      Logary.MessageWriter.verbatim.format m,
+      m.value
 
     let addMessageFields m =
       if formatted = raw then

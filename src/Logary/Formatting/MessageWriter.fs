@@ -66,7 +66,8 @@ module MessageWriter =
     { new MessageWriter with
         member x.write tw m =
           tokeniseTemplateWithGauges tw.FormatProvider defaultDestr m
-          |> Seq.map fst |> Seq.iter tw.Write
+          |> Seq.map fst
+          |> Seq.iter tw.Write
     }
 
   /// VerbatimNewline simply outputs the omessage and no other information

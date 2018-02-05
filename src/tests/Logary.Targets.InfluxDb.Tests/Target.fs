@@ -63,8 +63,8 @@ let writesOverHttp =
     testCase "write to Suave" <| fun _ ->
       let msg =
         Message.gaugeWithUnit "Processor.% User Time" 1. Percent
-        |> Message.setField "inst1" (Float 0.3463)
-        |> Message.setField "inst2" (Float 0.223)
+        |> Message.setField "inst1" 0.3463
+        |> Message.setField "inst2" 0.223
         |> Message.setContext "service" "svc-2"
         |> Message.tag "my-tag"
         |> Message.tag "ext"
