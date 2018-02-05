@@ -61,7 +61,6 @@ group Tests
     nuget Suave
     nuget System.Data.SQLite.Core
     nuget Topshelf ~> 4.1.0.117-develop
-    nuget Topshelf.FSharp
     nuget TweetinviAPI
     nuget Unquote
     nuget aliyun-log-csharp-sdk
@@ -105,8 +104,7 @@ group Targets
     nuget SQLite.Interop.dll
     nuget Suave
     nuget System.Data.SQLite.Core
-    nuget Topshelf
-    nuget Topshelf.FSharp
+    nuget Topshelf ~> 4.1.0.117-develop
     nuget TweetinviAPI
     nuget Unquote
     nuget aliyun-log-csharp-sdk
