@@ -7,7 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="paket.references" />
-    <Content Include="app.config" />
     <Compile Include="Program.fs" />
     <ProjectReference Include="../../Logary/Logary.fsproj" />
     <ProjectReference Include="..\..\targets\Logary.Targets.Stackdriver\Logary.Targets.Stackdriver.fsproj" />

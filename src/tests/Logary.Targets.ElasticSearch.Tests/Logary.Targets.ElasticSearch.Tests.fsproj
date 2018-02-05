@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="app.config" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <ProjectReference Include="../../Logary/Logary.fsproj" />

@@ -21,7 +21,6 @@
     <EmbeddedResource Include="DriveLatencyInfo.sql" />
     <None Include="Test.sql" />
     <None Include="Scripts.fsx" />
-    <None Include="App.config" />
     <None Include="paket.references" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />
   </ItemGroup>

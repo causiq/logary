@@ -9,7 +9,6 @@
   <ItemGroup>
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
-    <None Include="App.config" />
     <ProjectReference Include="..\..\adapters\Logary.Adapters.Facade\Logary.Adapters.Facade.fsproj" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />
     <ProjectReference Include="..\..\..\examples\Libryy\Libryy.fsproj" />

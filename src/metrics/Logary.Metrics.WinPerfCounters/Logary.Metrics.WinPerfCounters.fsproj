@@ -10,7 +10,6 @@
     <NoWarn>44;2003</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="app.config" />
     <None Include="paket.references" />
     <Compile Include="WinPerfCounter.fs" />
     <Compile Include="WinPerfCounters.fs" />

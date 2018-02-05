@@ -15,7 +15,6 @@
     <Compile Include="Facade.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
-    <None Include="App.config" />
     <ProjectReference Include="..\Logary.Facade\Logary.Facade.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

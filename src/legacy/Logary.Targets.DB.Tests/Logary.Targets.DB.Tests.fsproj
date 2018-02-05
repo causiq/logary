@@ -11,7 +11,6 @@
     <Compile Include="DBTarget.fs" />
     <None Include="Script.fsx" />
     <None Include="paket.references" />
-    <None Include="app.config" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />
     <ProjectReference Include="..\Logary.Targets.DB\Logary.Targets.DB.fsproj" />
     <ProjectReference Include="..\Logary.Targets.DB.Migrations\Logary.Targets.DB.Migrations.fsproj" />

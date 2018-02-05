@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <Compile Include="Logary.LoadTests.fs" />
-    <None Include="App.config" />
     <None Include="paket.references" />
     <ProjectReference Include="../../Logary/Logary.fsproj" />
   </ItemGroup>

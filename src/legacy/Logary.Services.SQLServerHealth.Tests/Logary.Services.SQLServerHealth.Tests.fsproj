@@ -12,7 +12,6 @@
     <Compile Include="Program.fs" />
     <None Include="Script.fsx" />
     <None Include="paket.references" />
-    <None Include="app.config" />
     <ProjectReference Include="../Logary.Services.SQLServerHealth/Logary.Services.SQLServerHealth.fsproj" />
     <ProjectReference Include="../../Logary/Logary.fsproj" />
   </ItemGroup>

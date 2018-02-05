@@ -7,7 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.fs" />
-    <None Include="App.config" />
     <ProjectReference Include="../../Logary/Logary.fsproj" />
     <ProjectReference Include="../../targets/Logary.Targets.RabbitMQ/Logary.Targets.RabbitMQ.fsproj" />
   </ItemGroup>

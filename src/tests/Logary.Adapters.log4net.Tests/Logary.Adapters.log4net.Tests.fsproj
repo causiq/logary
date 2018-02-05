@@ -9,7 +9,6 @@
   <ItemGroup>
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
-    <Content Include="app.config" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />
     <ProjectReference Include="..\..\adapters\Logary.Adapters.log4net\Logary.Adapters.log4net.fsproj" />
   </ItemGroup>
