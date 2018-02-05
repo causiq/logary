@@ -7,6 +7,7 @@
     <OutputType>Exe</OutputType>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Topshelf.fs" />
     <Compile Include="AsmUtils.fs" />
     <Compile Include="SQLServerPLE.fs" />
     <Compile Include="Metrics_SQLServerHealth.fs" />

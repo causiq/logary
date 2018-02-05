@@ -2,7 +2,7 @@ group Tests
 FSharp.Core
 NodaTime
 Hopac
-Topshelf.FSharp
+Topshelf
 Argu
 fszmq
 Suave
