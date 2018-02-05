@@ -9,11 +9,13 @@
   <ItemGroup>
     <Content Include="app.config" />
     <None Include="paket.references" />
-    <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="WinPerfCounter.fs" />
     <Compile Include="WinPerfCounters.fs" />
     <Compile Include="Common.fs" />
     <None Include="WinPerfCounterGen.fsx" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Logary\Logary.fsproj" />
   </ItemGroup>
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />
 </Project>

@@ -120,7 +120,7 @@ let snapshot =
 
 let mockClock () = 
   let mutable num = 0.
-  let firstInstant = Lazy(SystemClock.Instance.GetCurrentInstant)
+  let firstInstant = lazy (SystemClock.Instance.GetCurrentInstant())
   { new IClock with
       member x.GetCurrentInstant () =
         let res = firstInstant.Value + Duration.FromSeconds(5. * num)

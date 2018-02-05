@@ -6,7 +6,6 @@
     <TargetFrameworks>net461;netcoreapp2.0</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="Program.fs" />
     <None Include="app.config" />
     <None Include="paket.references" />

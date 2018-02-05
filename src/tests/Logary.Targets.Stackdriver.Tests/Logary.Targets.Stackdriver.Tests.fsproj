@@ -5,15 +5,12 @@
     <OutputType>Exe</OutputType>
     <TargetFrameworks>net461;netcoreapp2.0</TargetFrameworks>
   </PropertyGroup>
-
   <ItemGroup>
     <None Include="paket.references" />
     <Content Include="app.config" />
-    <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="Program.fs" />
     <ProjectReference Include="../../Logary/Logary.fsproj" />
     <ProjectReference Include="..\..\targets\Logary.Targets.Stackdriver\Logary.Targets.Stackdriver.fsproj" />
   </ItemGroup>
-
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />
 </Project>

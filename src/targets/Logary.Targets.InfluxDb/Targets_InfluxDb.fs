@@ -262,6 +262,7 @@ let empty =
     batchSize   = 100us }
 
 module internal Impl =
+  open System.Net.Http
   open System.Text
 
   let reqestAckJobCreator request =
@@ -295,6 +296,8 @@ module internal Impl =
       let! body = Response.readBodyAsString resp
       return body, resp.statusCode
     }
+    
+    let client = new HttpClient()
 
     let rec loop () : Job<unit> =
       Alt.choose [
@@ -307,8 +310,7 @@ module internal Impl =
             |> Seq.map extractMessage
             |> String.concat "\n"
           let req =
-            Request.create Post endpoint
-            |> Request.keepAlive true
+            Request.createWithClient client Post endpoint
             |> Request.bodyString body
             |> tryAddAuth conf
 

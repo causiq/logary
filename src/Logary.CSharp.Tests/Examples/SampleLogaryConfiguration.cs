@@ -27,11 +27,11 @@ namespace Logary.CSharp.Tests.Examples
                     )
                     .Target<Debugger.Builder>("debugger")
                     .Target<LiterateConsole.Builder>("literate")
-                    .Target<Logstash.Builder>(
-                        "ls",
-                        conf => conf.Target
-                            .PublishTo("tcp://192.168.100.99:5001")
-                            .Done())
+                    //.Target<Logstash.Builder>(
+                    //    "ls",
+                    //    conf => conf.Target
+                    //        .PublishTo("tcp://192.168.100.99:5001")
+                    //        .Done())
                     //.Target<Logary.Targets.DB.Builder>("db",
                     //    conf => conf.Target
                     //       .ConnectionFactory(() => new SQLiteConnection())

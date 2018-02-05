@@ -17,7 +17,6 @@
     <Compile Include="Transformers.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
-    <None Include="App.config" />
     <ProjectReference Include="../Logary/Logary.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

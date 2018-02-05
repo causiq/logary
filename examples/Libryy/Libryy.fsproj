@@ -11,7 +11,6 @@
       <Link>paket-files/Facade.fs</Link>
     </Compile>
     <Content Include="app.config" />
-    <Compile Include="AssemblyVersionInfo.fs" />
     <Compile Include="Libryy.fs" />
     <Compile Include="LoggingV1.fs" />
     <Compile Include="CoreV1.fs" />
