@@ -5,6 +5,7 @@
     <Version>5.0.0-alpha</Version>
     <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
     <NoWarn>44;2003</NoWarn>
+    <DefineConstants>TYPESHAPE_EXPOSE</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\..\paket-files\messagetemplates\messagetemplates-fsharp\src\FsMtParser\FsMtParserFull.fs">

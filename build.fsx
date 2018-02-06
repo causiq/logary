@@ -46,6 +46,9 @@ Target "PaketFiles" (fun _ ->
   replace "module TypeShape" "module Logary.Internals.TypeShape"
           "paket-files/eiriktsarpalis/TypeShape/src/TypeShape/TypeShape.fs"
 
+  replace "module Aether" "module Logary.Internals.Aether"
+          "paket-files/xyncro/aether/src/Aether/Aether.fs"
+
   replace "module YoLo" "module internal Logary.YoLo"
           "paket-files/haf/YoLo/YoLo.fs"
 
