@@ -133,7 +133,8 @@ Target "Release" (fun _ ->
     let remote =
         Git.CommandHelper.getGitResult "" "remote -v"
         |> Seq.tryFind (fun s -> s.EndsWith "(push)" && s.Contains gitOwnerName)
-        |> function None -> ("ssh://github.com/"+gitOwnerName) | Some s -> s.Split().[0]
+        |> function None -> "git@github.com:logary/logary.git"
+                  | Some s -> s.Split().[0]
 
     Git.Staging.StageAll ""
     Git.Commit.Commit "" (sprintf "Bump version to %s" release.NugetVersion)
