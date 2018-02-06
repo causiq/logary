@@ -43,7 +43,7 @@ Target "PaketFiles" (fun _ ->
   replace "module FsMtParserFull" "module Logary.Internals.FsMtParserFull"
           "paket-files/messagetemplates/messagetemplates-fsharp/src/FsMtParser/FsMtParserFull.fs"
 
-  replace "module TypeShape" "module Logary.Internals.TypeShape"
+  replace "module TypeShape.Core.Core" "module Logary.Internals.TypeShape.Core"
           "paket-files/eiriktsarpalis/TypeShape/src/TypeShape/TypeShape.fs"
 
   replace "module Aether" "module Logary.Internals.Aether"
