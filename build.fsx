@@ -114,10 +114,12 @@ Target "Pack" (fun _ ->
   ++ "src/Logary/Logary.fsproj"
   ++ "src/Logary.CSharp/Logary.CSharp.csproj"
   |> Seq.iter (fun proj ->
+    let path = proj.Substring(0, proj.Length - ".fsproj".Length)
+    let name = System.IO.Path.GetFileName path
     DotNetCli.RunCommand id (
       sprintf
         "pack %s -c %s -o ../bin %s"
-        proj configuration (packParameters "Http.fs"))
+        proj configuration (packParameters name))
   )
 )
 
