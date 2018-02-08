@@ -21,7 +21,7 @@ matrix:
       mono: latest
 
   allow_failures:
-    - os: osx
+    #- os: osx
     - mono: weekly
     - mono: latest
 
