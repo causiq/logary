@@ -1,7 +1,5 @@
 # Logary v5
 
-## Maintainers wanted – ping @haf to talk
-
 Follow Logary at twitter: [@logarylib](https://twitter.com/logarylib)
 
 Chat and support and get support:
