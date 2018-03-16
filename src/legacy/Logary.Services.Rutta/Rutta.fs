@@ -10,9 +10,11 @@ type Args =
   | Pub_To of pubBindSocket:string
   | Router of pullBindSocket:string
   | Router_Sub of subConnectSocket:string
+  | Router_Stream of streamBindSocket:string
   | Router_Target of logaryTargetUri:string
   | Proxy of xsubConnectToSocket:string * xpubBindSocket:string
   | Health of ip:string * port:int
+  | No_Health
 with
   interface IArgParserTemplate with
     member s.Usage =
@@ -21,9 +23,11 @@ with
       | Pub_To _ -> "Runs Rutta in Shipper/PUB mode (send Messages from a node to proxy)"
       | Router _ -> "Runs Rutta in Router mode (PULL fan-in of Messages, forward to Target)."
       | Router_Sub _ -> "Runs Rutta in Router XSUB mode for PUB sockets to publish to."
+      | Router_Stream _ -> "Runs Rutta in TCP STREAM server mode, that allows zmq to be used as a TCP socket. Send newline-separated JSON to this bound socket. See http://api.zeromq.org/4-0:zmq-socket#toc19"
       | Router_Target _ -> "Implied by --router. Specifies where the Router target should forward its data"
       | Proxy (_,_) -> "Runs Rutta in Proxy mode (XSUB/fan-in of Messages, forward to SUB sockets via XPUB). The first is the XSUB socket (in), the second is the XPUB socket (out)."
       | Health _ -> "Give Rutta health binding information"
+      | No_Health _ -> "Don't bind a health endpoint on start."
 
 module Health =
   open Logary
@@ -82,7 +86,10 @@ module Shipper =
     use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
     let hostName = System.Net.Dns.GetHostName()
 
-    let systemMetrics = Events.events |> Pipe.tickTimer (WinPerfCounters.systemMetrics (PointName.parse "sys")) (TimeSpan.FromMilliseconds 400.)
+    let systemMetrics =
+      let sys = WinPerfCounters.systemMetrics (PointName.parse "sys")
+      Events.events
+      |> Pipe.tickTimer sys (TimeSpan.FromMilliseconds 400.)
 
     let processing =
       Events.compose [
@@ -118,7 +125,9 @@ module Shipper =
 module Router =
   open Hopac
   open System
+  open System.Text
   open System.IO
+  open Chiron
   open Logary
   open Logary.Configuration
   open Logary.Targets
@@ -128,39 +137,75 @@ module Router =
   open Logary.EventsProcessing
 
   module TargetConfig =
+    let modu name = sprintf "Logary.Targets.%s" name
     let asm name = sprintf "Logary.Targets.%s" name
     let conf name = sprintf "%sConf" name
-    let moduleNameConfigNameFor prefix =
-      let asm = asm "InfluxDb"
-      sprintf "%s, %s" asm asm,
-      sprintf "%s+%s, %s" asm (conf "InfluxDb") asm
+
+    let moduleNameConfigName modu asm conf =
+      sprintf "%s, %s" modu asm,
+      sprintf "%s+%s, %s" modu conf asm
+
+    let moduleNameConfigNameAsm name =
+      moduleNameConfigName (modu name) (asm name) (conf name)
+
+    type DynamicConfig =
+      { configType: Type
+        moduleName: string
+        moduleType: Type
+      }
+      /// Creates the default target configuration particular to the target.
+      member x.getDefault () =
+        if isNull x.moduleType then
+          failwithf "Module '%s' did not resolve. Do you have its DLL next to rutta.exe?" x.moduleName
+
+        let defaultEmpty = x.moduleType.GetProperty("empty")
+        if isNull defaultEmpty then
+          failwithf "Module '%s' did not have a default config value named 'empty'." x.moduleName
+
+        defaultEmpty.GetValue(null)
+
+      /// Creates the final Logary TargetConf value that logary uses to build the target.
+      member x.createTargetConf (conf: obj) (name: string): TargetConf =
+        if isNull x.moduleType then
+          failwithf "Module '%s' did not have 'empty' conf-value. This should be fixed in the target's code."
+                    x.moduleName
+
+        let createMethod = x.moduleType.GetMethod("Create")
+        if isNull createMethod then
+          failwithf "Module '%s' did not have 'create' \"(name: string) -> (conf: 'conf) -> TargetConf\" function. This should be fixed in the target's code (with [<CompiledName \"Create\">] on itself)."
+                    x.moduleName
+
+        printfn "Invoking create on '%O'" createMethod
+        createMethod.Invoke(null, [| conf; name |])
+        :?> TargetConf
+
+      static member create configType moduleName moduleType =
+        printfn "Create DynamicConfig with (configType=%A, moduleName=%A, moduleType=%A)" configType moduleName moduleType
+        { configType = configType
+          moduleName = moduleName
+          moduleType = moduleType }
 
     let schemeToConfAndDefault =
-      [ "influxdb",    moduleNameConfigNameFor "InfluxDb"
-        "stackdriver", moduleNameConfigNameFor "Stackdriver"
+      [ "influxdb",    moduleNameConfigNameAsm "InfluxDb"
+        "stackdriver", moduleNameConfigNameAsm "Stackdriver"
+        "console",     moduleNameConfigName (modu "LiterateConsole") "Logary" (conf "LiterateConsole")
       ]
       |> List.map (fun (scheme, (moduleName, configName)) ->
-        let confType = Type.GetType(configName)
-        let moduleType = Type.GetType(moduleName)
-        if isNull moduleType then failwithf "Module '%s' did not resolve. Do you have its DLL next to rutta.exe?" moduleName
-        let confDefault = moduleType.GetProperty("empty").GetValue(null)
-        if isNull moduleType then failwithf "Module '%s' did not have 'empty' conf-value. This should be fixed in the target's code." moduleName
-        let createMethod = moduleType.GetMethod("Create")
-        if isNull createMethod then failwithf "Module '%s' did not have 'create' \"(name: string) -> (conf: 'conf) -> TargetConf\" function. This should be fixed in the target's code (with [<CompiledName \"Create\">] on itself)." moduleName
-        let createTargetConf (conf: obj) (name: string): TargetConf =
-          printfn "Invoking create on '%O'" createMethod
-          createMethod.Invoke(null, [| conf; name |]) :?> TargetConf
-        scheme, (confType, confDefault, createTargetConf))
+        let confType = Type.GetType configName
+        let moduleType = Type.GetType moduleName
+        scheme, DynamicConfig.create confType moduleName moduleType)
       |> Map
 
     let create (targetUri: Uri): TargetConf =
-      let scheme = String.toLowerInvariant targetUri.Scheme
+      printfn "Creating a new target from URI: '%O'" targetUri
+      let scheme = targetUri.Scheme.ToLowerInvariant()
       match schemeToConfAndDefault |> Map.tryFind scheme with
       | None ->
         failwithf "Rutta has not get got support for '%s' targets" scheme
-      | Some (configType, configDefault, createTargetConf) ->
-        Uri.parseConfig configType configDefault targetUri
-        |> fun config -> createTargetConf config scheme
+      | Some dynamicConfig ->
+        let configDefault = dynamicConfig.getDefault ()
+        Uri.parseConfig dynamicConfig.configType configDefault targetUri
+        |> fun config -> dynamicConfig.createTargetConf config scheme
 
   type State =
     { zmqCtx: Context
@@ -227,6 +272,43 @@ module Router =
     | x ->
       Choice2Of2 (sprintf "Unknown parameter(s) %A" x)
 
+  let rec private streamRecvLoop receiver (logger: Logger) =
+    // https://gist.github.com/lancecarlson/fb0cfd0354005098d579
+    // https://gist.github.com/claws/7231548#file-czmq-stream-server-c-L21
+    let frame = Socket.recv receiver
+    // Aborted socket due to closing process:
+    if isNull frame then () else
+    let message = Socket.recv receiver
+    // http://api.zeromq.org/4-1:zmq-socket#toc19
+    // A connection was made
+    if message.Length = 0 then streamRecvLoop receiver logger else
+    // printfn "Data received: %A" message
+    use ms = new MemoryStream(message)
+    use sr = new StreamReader(ms, Encoding.UTF8)
+    while not sr.EndOfStream do
+      let line = sr.ReadLine()
+      match Json.parse line with
+      | JsonResult.JPass (Json.Object fields) ->
+        let level = JsonObject.tryFind "level" fields
+        logger.logWithAck
+        ()
+      | JsonResult.JPass _ ->
+        ()
+      | JsonResult.JFail _ ->
+        //printfn "Line: %s" line
+        ()
+      streamRecvLoop receiver logger
+
+  let streamBind binding = function
+    | Router_Target target :: _ ->
+      printfn "Spawning router in STREAM mode from %s" binding
+      use state = init binding [ Uri target ] Context.stream "STREAM"
+      Socket.bind state.receiver binding
+      Choice1Of2 (streamRecvLoop state.receiver state.logger)
+
+    | x ->
+      Choice2Of2 (sprintf "Unknown parameter(s) %A" x)
+
 module Proxy =
   open Logary
   open fszmq
@@ -285,6 +367,9 @@ module Program =
       | Router_Sub binding ->
         Choice1Of3 ("router xsub", Router.xsubBind binding, pars)
 
+      | Router_Stream binding ->
+        Choice1Of3 ("router stream", Router.streamBind binding, pars)
+
       | Proxy (xsubBind, xpubBind) ->
         Choice1Of3 ("proxy", Proxy.proxy xsubBind xpubBind, pars)
 
@@ -292,6 +377,9 @@ module Program =
         Choice2Of3 (par :: pars)
 
       | Health _ ->
+        Choice2Of3 pars
+
+      | No_Health _ ->
         Choice2Of3 pars
 
     | Choice3Of3 msg ->

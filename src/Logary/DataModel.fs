@@ -137,7 +137,7 @@ type Field =
 type Message =
   { /// The 'path' or 'name' of this data point. Do not confuse message template in message.value
     name      : PointName
-    /// Event (template or raw message)
+    /// Event (template or raw message) E.g. "{user} logged in"
     value     : string
     /// Where in the code? Who did the operation? What tenant did the principal
     /// who did it belong to? ... context can be anything, you can decide how to deal with them in target
@@ -175,7 +175,7 @@ type Logger =
   /// it will be garbage collected in the end, whether it's awaited or not.
   abstract logWithAck : LogLevel -> (LogLevel -> Message) -> Alt<Promise<unit>>
 
-  /// Gets the currently set log level (minimal,inclusive), 
+  /// Gets the currently set log level (minimal,inclusive),
   /// aka. the granularity with which things are being logged.
   abstract level : LogLevel
 

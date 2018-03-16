@@ -106,7 +106,8 @@ module internal JsonHelper =
         ]
         Json.Array jsonList
       | _ -> tryToJsonWithDefault data shape.Type
-  and private tryToJsonWithDefault (data : obj) dataType =
+
+  and private tryToJsonWithDefault (data: obj) dataType =
     // can do some dataType toJson methodinfo cache here
     let m = dataType.GetMethod("ToJson",BindingFlags.Public|||BindingFlags.Static,null,CallingConventions.Any,[|dataType|],null)
     // maybe chiron default can hard code use type test above, avoid reflection here
