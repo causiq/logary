@@ -240,7 +240,7 @@ type InfluxDbConf =
     consistency : Consistency
     /// sets the target retention policy for the write. If not present the default retention policy is used
     retention : string option
-    /// Sets how many measurements should be batched together if new measurements are produced faster than we can write them one by one. Default is 100. 
+    /// Sets how many measurements should be batched together if new measurements are produced faster than we can write them one by one. Default is 100.
     batchSize : uint16 }
 
   static member create(ep, db, ?user, ?password, ?consistency, ?retention, ?batchSize) =
@@ -272,9 +272,9 @@ module internal Impl =
     | Flush (ackCh, nack) ->
       IVar.fill ackCh ()
 
-  let extractMessage request = 
+  let extractMessage request =
     match request with
-    | Log (msg, ack) -> 
+    | Log (msg, ack) ->
       Serialisation.serialiseMessage msg
     | _ ->
       ""
@@ -296,7 +296,7 @@ module internal Impl =
       let! body = Response.readBodyAsString resp
       return body, resp.statusCode
     }
-    
+
     let client = new HttpClient()
 
     let rec loop () : Job<unit> =
@@ -334,12 +334,13 @@ module internal Impl =
     loop ()
 
 /// Create a new InfluxDb target.
-let create conf =
-  TargetConf.createSimple (Impl.loop conf)
+[<CompiledName "Create">]
+let create conf name =
+  TargetConf.createSimple (Impl.loop conf) name
 
 /// Use with LogaryFactory.New( s => s.Target<InfluxDb.Builder>() )
 type Builder(conf, callParent : Target.ParentCallback<Builder>) =
-  let update (conf' : InfluxDbConf) : Builder =
+  let update (conf': InfluxDbConf) : Builder =
     Builder(conf', callParent)
 
   /// if authentication is enabled, you must authenticate as a user with write permissions to the target database
@@ -371,7 +372,7 @@ type Builder(conf, callParent : Target.ParentCallback<Builder>) =
   member x.Retention policy =
     update { conf with retention = Some policy }
 
-  /// Sets how many measurements should be batched together if new measurements are produced faster than we can write them one by one. Default is 100. 
+  /// Sets how many measurements should be batched together if new measurements are produced faster than we can write them one by one. Default is 100.
   member x.BatchSize size =
     update { conf with batchSize = uint16 size }
 

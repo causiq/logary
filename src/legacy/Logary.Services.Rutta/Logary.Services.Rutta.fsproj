@@ -8,6 +8,7 @@
     <TargetFrameworks>net461</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Topshelf.fs" />
     <Compile Include="Rutta.fs" />
     <None Include="paket.references" />

@@ -14,13 +14,13 @@ open Logary.Internals
 /// A target configuration is the 'reference' to the to-be-run target while it
 /// is being configured, and before Logary fully starts up.
 type TargetConf = // formerly TargetUtils
-  { name       : string
-    rules      : Rule list
-    bufferSize : uint16
+  { name: string
+    rules: Rule list
+    bufferSize: uint16
     /// Supervision policy
-    policy     : Policy
-    middleware : Middleware list
-    server     : RuntimeInfo * TargetAPI -> Job<unit> }
+    policy: Policy
+    middleware: Middleware list
+    server: RuntimeInfo * TargetAPI -> Job<unit> }
 
   override x.ToString() =
     sprintf "TargetConf(%s)" x.name
@@ -29,7 +29,7 @@ type TargetConf = // formerly TargetUtils
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module TargetConf =
 
-  let create policy bufferSize server name : TargetConf =
+  let create policy bufferSize server name: TargetConf =
     let will = Will.create ()
     { name       = name
       rules      = Rule.empty :: []
@@ -38,7 +38,7 @@ module TargetConf =
       middleware = []
       server     = server will }
 
-  let createSimple server name : TargetConf =
+  let createSimple server name: TargetConf =
     { name       = name
       rules      = Rule.empty :: []
       bufferSize = 512us

@@ -23,7 +23,7 @@ with
       | Router_Sub _ -> "Runs Rutta in Router XSUB mode for PUB sockets to publish to."
       | Router_Target _ -> "Implied by --router. Specifies where the Router target should forward its data"
       | Proxy (_,_) -> "Runs Rutta in Proxy mode (XSUB/fan-in of Messages, forward to SUB sockets via XPUB). The first is the XSUB socket (in), the second is the XPUB socket (out)."
-      | Health _ -> "Give Rutta binding information"
+      | Health _ -> "Give Rutta health binding information"
 
 module Health =
   open Logary
@@ -39,19 +39,8 @@ module Health =
     open System.IO
     open System.Reflection
 
-    /// Gets the calling assembly's informational version number as a string
-    let getVersion () =
-  #if DNXCORE50
-      (typeof<Random>.GetTypeInfo().Assembly)
-  #else
-      Assembly.GetCallingAssembly()
-  #endif
-              .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-              .InformationalVersion
-
-
-  let app =
-    GET >=> path "/health" >=> OK (sprintf "Logary Rutta %s" (App.getVersion ()))
+    let app =
+      GET >=> path "/health" >=> OK (sprintf "Logary Rutta %s" AssemblyVersionInformation.AssemblyVersion)
 
   /// Start a Suave web server on the passed ip and port and return a disposable
   /// token to use to shut the server down.
@@ -63,7 +52,7 @@ module Health =
           bindings = [ HttpBinding.createSimple HTTP ip port ]
           cancellationToken = cts.Token }
 
-    let ready, handle = startWebServerAsync config app
+    let ready, handle = startWebServerAsync config App.app
     Async.Start handle
 
     { new IDisposable with member x.Dispose() = cts.Cancel () }
@@ -95,7 +84,7 @@ module Shipper =
 
     let systemMetrics = Events.events |> Pipe.tickTimer (WinPerfCounters.systemMetrics (PointName.parse "sys")) (TimeSpan.FromMilliseconds 400.)
 
-    let processing = 
+    let processing =
       Events.compose [
           systemMetrics
           |> Pipe.map Array.toSeq
@@ -112,22 +101,21 @@ module Shipper =
         ]
       |> Config.processing processing
       |> Config.ilogger (ILogger.Console Debug)
-      |> Config.build 
+      |> Config.build
       |> Hopac.Hopac.run
 
     mre.Wait()
     Choice1Of2 ()
 
-  let internal pushTo connectTo pars : Choice<unit, string> =
+  let internal pushTo connectTo pars: Choice<unit, string> =
     printfn "%s" "spawning shipper in PUSH mode"
     runLogary (PushTo connectTo)
 
-  let internal pubTo connectTo pars : Choice<unit, string> =
+  let internal pubTo connectTo pars: Choice<unit, string> =
     printfn "%s" "spawning shipper in PUB mode"
     runLogary (PublishTo connectTo)
 
 module Router =
-
   open Hopac
   open System
   open System.IO
@@ -138,36 +126,65 @@ module Router =
   open MBrace.FsPickler
   open MBrace.FsPickler.Combinators
   open Logary.EventsProcessing
-  
+
+  module TargetConfig =
+    let asm name = sprintf "Logary.Targets.%s" name
+    let conf name = sprintf "%sConf" name
+    let moduleNameConfigNameFor prefix =
+      let asm = asm "InfluxDb"
+      sprintf "%s, %s" asm asm,
+      sprintf "%s+%s, %s" asm (conf "InfluxDb") asm
+
+    let schemeToConfAndDefault =
+      [ "influxdb",    moduleNameConfigNameFor "InfluxDb"
+        "stackdriver", moduleNameConfigNameFor "Stackdriver"
+      ]
+      |> List.map (fun (scheme, (moduleName, configName)) ->
+        let confType = Type.GetType(configName)
+        let moduleType = Type.GetType(moduleName)
+        if isNull moduleType then failwithf "Module '%s' did not resolve. Do you have its DLL next to rutta.exe?" moduleName
+        let confDefault = moduleType.GetProperty("empty").GetValue(null)
+        if isNull moduleType then failwithf "Module '%s' did not have 'empty' conf-value. This should be fixed in the target's code." moduleName
+        let createMethod = moduleType.GetMethod("Create")
+        if isNull createMethod then failwithf "Module '%s' did not have 'create' \"(name: string) -> (conf: 'conf) -> TargetConf\" function. This should be fixed in the target's code (with [<CompiledName \"Create\">] on itself)." moduleName
+        let createTargetConf (conf: obj) (name: string): TargetConf =
+          printfn "Invoking create on '%O'" createMethod
+          createMethod.Invoke(null, [| conf; name |]) :?> TargetConf
+        scheme, (confType, confDefault, createTargetConf))
+      |> Map
+
+    let create (targetUri: Uri): TargetConf =
+      let scheme = String.toLowerInvariant targetUri.Scheme
+      match schemeToConfAndDefault |> Map.tryFind scheme with
+      | None ->
+        failwithf "Rutta has not get got support for '%s' targets" scheme
+      | Some (configType, configDefault, createTargetConf) ->
+        Uri.parseConfig configType configDefault targetUri
+        |> fun config -> createTargetConf config scheme
 
   type State =
-    { zmqCtx    : Context
-      receiver  : Socket
-      forwarder : LogManager
-      logger    : Logger }
+    { zmqCtx: Context
+      receiver: Socket
+      forwarder: LogManager
+      logger: Logger }
     interface IDisposable with
       member x.Dispose() =
         (x.zmqCtx :> IDisposable).Dispose()
         (x.receiver :> IDisposable).Dispose()
 
-  let private init binding targetUri createSocket mode : State =
+  let private init binding (targetUris: Uri list) createSocket mode: State =
     let context = new Context()
-    let receiver = createSocket context    
-    let config = Uri.parseConfig<InfluxDb.InfluxDbConf> InfluxDb.empty targetUri
-    
+    let receiver = createSocket context
+
     let forwarder =
       let hostName = System.Net.Dns.GetHostName()
 
       Config.create (sprintf "Logary Rutta[%s]" mode) hostName
-      |> Config.targets [
-        //Console.create Console.empty (PointName.ofSingle "console")
-        InfluxDb.create config "influxdb"
-      ]
+      |> Config.targets (targetUris |> List.map TargetConfig.create)
       |> Config.processing (Events.events |> Events.sink ["influxdb"])
       |> Config.ilogger (ILogger.Console Debug)
-      |> Config.build 
+      |> Config.build
       |> Hopac.Hopac.run
-
 
     let targetLogger = forwarder.getLogger (PointName.parse "Logary.Services.Rutta.Router")
 
@@ -191,24 +208,24 @@ module Router =
 
   let pullFrom binding = function
     | Router_Target target :: _ ->
-      printfn "spawning router in PULL mode from %s" binding
-      use state = init binding target Context.pull "PULL" 
+      printfn "Spawning router in PULL mode from %s" binding
+      use state = init binding [ Uri target ] Context.pull "PULL"
       Socket.bind state.receiver binding
       Choice1Of2 (recvLoop state.receiver state.logger)
 
     | x ->
-      Choice2Of2 (sprintf "unknown parameter(s) %A" x)
+      Choice2Of2 (sprintf "Unknown parameter(s) %A" x)
 
   let xsubBind binding = function
     | Router_Target target :: _ ->
-      printfn "spawning router in SUB mode from %s" binding
-      use state = init binding target Context.sub "SUB"
+      printfn "Spawning router in SUB mode from %s" binding
+      use state = init binding [ Uri target ] Context.sub "SUB"
       Socket.subscribe state.receiver [""B]
       Socket.connect state.receiver binding
       Choice1Of2 (recvLoop state.receiver state.logger)
 
     | x ->
-      Choice2Of2 (sprintf "unknown parameter(s) %A" x)
+      Choice2Of2 (sprintf "Unknown parameter(s) %A" x)
 
 module Proxy =
   open Logary
@@ -228,7 +245,7 @@ module Proxy =
     use writer = Context.xpub context
     bind writer xpubBind
 
-    printfn "%s" "spawning proxy"
+    printfn "%s" "Spawning proxy"
     Choice1Of2 (Proxying.proxy reader writer None)
 
 module Program =
@@ -236,8 +253,8 @@ module Program =
   open System
   open System.Threading
   open Topshelf
-  
-  let detailedParse : _ -> _ -> Choice<string * _ * _, _, string> = function
+
+  let detailedParse: _ -> _ -> Choice<string * _ * _, _, string> = function
     // we already have a mode set
     | Choice1Of3 (modeName, start, pars) as curr -> function
       | Router_Target _ as par ->

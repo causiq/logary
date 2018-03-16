@@ -58,7 +58,7 @@ module Uri =
       Some (fun (s : string) ->
         m.Invoke(null, [| s |]) |> unbox : Choice<obj, string>)
 
-  let convertTo typ (v : string) : obj =
+  let convertTo typ (v: string): obj =
     match conversion.TryGetValue typ with
     | false, _ ->
       match tryGetTryParse typ with
@@ -76,20 +76,19 @@ module Uri =
     | true, converter ->
       converter v
 
-  let parseConfig<'recordType> (emptyValue : 'recordType) uriString =
+  let parseConfig (recordType: Type) (emptyValue: obj) (uri: Uri) =
     let argVals =
-      let uri = Uri uriString
-
       let qVals =
         uri.Query
         |> String.trimc '?'
         |> String.split '&'
+        |> List.filter (String.IsNullOrWhiteSpace >> not)
         |> List.map (String.split '=' >> function
           | [ k; v] -> k, v
-          | other -> failwithf "unexpected %A" other)
+          | other -> failwithf "Unexpected %A" other)
         |> Map.ofList
 
-      FSharpType.GetRecordFields(typeof<'recordType>)
+      FSharpType.GetRecordFields recordType
       |> Array.map (fun p ->
         p.PropertyType, p.Name, p.GetValue emptyValue)
 
@@ -127,4 +126,14 @@ module Uri =
         | None ->
           defaultValue)
 
-    FSharpValue.MakeRecord(typeof<'recordType>, argVals) :?> 'recordType
+    FSharpValue.MakeRecord(recordType, argVals)
+
+  let parseConfigString recordType emptyValue uriString =
+    parseConfig recordType emptyValue (Uri uriString)
+
+  let parseConfigT<'recordType> (emptyValue: 'recordType) uri =
+    parseConfig typeof<'recordType> (box emptyValue) uri
+    :?> 'recordType
+
+  let parseConfigTString<'recordType> emptyValue uriString =
+    parseConfigT<'recordType> emptyValue (Uri uriString)

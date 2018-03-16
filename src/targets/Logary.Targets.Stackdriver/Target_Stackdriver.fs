@@ -58,7 +58,7 @@ type StackdriverConf =
       labels = defaultArg labels (Dictionary<_,_>() :> IDictionary<_,_>)
       maxBatchSize = defaultArg batchSize 10u }
 
-let empty : StackdriverConf = StackdriverConf.create("", "", Unchecked.defaultof<ResourceType>)
+let empty: StackdriverConf = StackdriverConf.create("", "", Unchecked.defaultof<ResourceType>)
 
 module internal Impl =
   // constant computed once here
@@ -76,15 +76,21 @@ module internal Impl =
   // consider use destr whole msg context as TemplatePropertyValue, then send to WellKnownTypes
   let toProtobufValue (data:obj) =
     match data with
-    | :? string as s -> WellKnownTypes.Value.ForString(s)
-    | :? bool as b -> WellKnownTypes.Value.ForBool(b)
-    | :? float as f -> WellKnownTypes.Value.ForNumber(f)
-    | :? int64 as i -> WellKnownTypes.Value.ForNumber(float i)
-    | :? BigInteger as b -> WellKnownTypes.Value.ForNumber(float b)
+    | :? string as s ->
+      WellKnownTypes.Value.ForString(s)
+    | :? bool as b ->
+      WellKnownTypes.Value.ForBool(b)
+    | :? float as f ->
+      WellKnownTypes.Value.ForNumber(f)
+    | :? int64 as i ->
+      WellKnownTypes.Value.ForNumber(float i)
+    | :? BigInteger as b ->
+      WellKnownTypes.Value.ForNumber(float b)
     | :? array<byte> as bytes ->
       // could not find a good way to convert these, will just send null value instead
       WellKnownTypes.Value.ForNull()
-    | _ ->   WellKnownTypes.Value.ForString(string data)
+    | _ ->
+      WellKnownTypes.Value.ForString(string data)
     // | Value.Object values ->
     //   values |> HashMap.toSeq
     //   |> Seq.fold (fun (s : WellKnownTypes.Struct) (k,v) -> s.Fields.[k] <- toProtobufValue v; s) (WellKnownTypes.Struct())
@@ -129,7 +135,6 @@ module internal Impl =
     entry.Labels.Add(labels)
     entry
 
-
   type State =
     { logName: string
       logger: LoggingServiceV2Client
@@ -142,21 +147,21 @@ module internal Impl =
     // check out https://cloud.google.com/logging/docs/api/v2/resource-list for the list of resources
     // as well as required keys for each one
     | ComputeInstance(zone, instance) ->
-        [ "project_id", project
-          "zone", zone
-          "instance_id", instance ] |> dict
+      [ "project_id", project
+        "zone", zone
+        "instance_id", instance ] |> dict
     | Container(cluster, ns, instance, pod, container, zone) ->
-        [ "project_id", project
-          "cluster_name", cluster
-          "namespace_id", ns
-          "instance_id", instance
-          "pod_id", pod
-          "container_name", container
-          "zone", zone ] |> dict
+      [ "project_id", project
+        "cluster_name", cluster
+        "namespace_id", ns
+        "instance_id", instance
+        "pod_id", pod
+        "container_name", container
+        "zone", zone ] |> dict
     | AppEngine(moduleId, versionId) ->
-        [ "project_id", project
-          "module_id", moduleId
-          "version_id", versionId ] |> dict
+      [ "project_id", project
+        "module_id", moduleId
+        "version_id", versionId ] |> dict
 
   let resourceName = function
     | ComputeInstance _ ->
@@ -179,10 +184,9 @@ module internal Impl =
       cancellation = source
       callSettings = CallSettings.FromCancellationToken(source.Token) }
 
-  let loop (conf : StackdriverConf)
-           (runtime : RuntimeInfo, api : TargetAPI) =
+  let loop (conf: StackdriverConf) (runtime: RuntimeInfo, api: TargetAPI) =
 
-    let rec loop (state : State) : Job<unit> =
+    let rec loop (state: State) : Job<unit> =
       Alt.choose [
         // either shutdown, or
         api.shutdownCh ^=> fun ack ->
@@ -190,18 +194,18 @@ module internal Impl =
           ack *<= () :> Job<_>
 
         RingBuffer.take api.requests ^=> function
-            | Log (message, ack) -> job {
-                let request = WriteLogEntriesRequest(LogName = state.logName, Resource = state.resource)
-                request.Labels.Add(conf.labels)
-                request.Entries.Add(write message)
-                do! Job.Scheduler.isolate (fun () -> state.logger.WriteLogEntries(request, state.callSettings) |> ignore)
-                do! ack *<= ()
-                return! loop state
-              }
-            | Flush (ackCh, nack) -> job {
-                do! IVar.fill ackCh ()
-                return! loop state
-              }
+          | Log (message, ack) -> job {
+              let request = WriteLogEntriesRequest(LogName = state.logName, Resource = state.resource)
+              request.Labels.Add(conf.labels)
+              request.Entries.Add(write message)
+              do! Job.Scheduler.isolate (fun () -> state.logger.WriteLogEntries(request, state.callSettings) |> ignore)
+              do! ack *<= ()
+              return! loop state
+            }
+          | Flush (ackCh, nack) -> job {
+              do! IVar.fill ackCh ()
+              return! loop state
+            }
 
       ] :> Job<_>
 
@@ -210,7 +214,8 @@ module internal Impl =
 
 /// Create a new StackDriver target
 [<CompiledName "Create">]
-let create conf name = TargetConf.createSimple (Impl.loop conf) name
+let create conf name =
+  TargetConf.createSimple (Impl.loop conf) name
 
 type Builder(conf, callParent : Target.ParentCallback<Builder>) =
 
