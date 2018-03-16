@@ -19,12 +19,13 @@ Target "Clean" (fun _ -> !!"./**/bin/" ++ "./**/obj/" |> CleanDirs)
 open AssemblyInfoFile
 
 Target "AssemblyInfo" (fun _ ->
-  [ "Logary"
-    "Logary.Tests"
-    "Logary.Facade"
-    "Logary.Facade.Tests"
+  [ "Logary", None
+    "Logary.Tests", None
+    "Logary.Facade", None
+    "Logary.Facade.Tests", None
+    "Logary.Services.Rutta", Some "legacy"
   ]
-  |> Seq.iter (fun proj ->
+  |> Seq.iter (fun (proj, subPath) ->
     [ Attribute.Title proj
       Attribute.Product proj
       Attribute.Copyright copyright
@@ -32,7 +33,10 @@ Target "AssemblyInfo" (fun _ ->
       Attribute.Version release.AssemblyVersion
       Attribute.FileVersion release.AssemblyVersion
     ]
-    |> CreateFSharpAssemblyInfo (sprintf "src/%s/AssemblyInfo.fs" proj)
+    |> CreateFSharpAssemblyInfo (
+      match subPath with
+      | None -> sprintf "src/%s/AssemblyInfo.fs" proj
+      | Some path -> sprintf "src/%s/%s/AssemblyInfo.fs" path proj)
   )
 )
 
@@ -73,6 +77,7 @@ Target "Restore" (fun _ ->
   DotNetCli.Restore (fun p -> { p with WorkingDir = "src" })
 )
 
+/// This also restores.
 Target "Build" (fun _ ->
   DotNetCli.Build (fun p ->
   { p with
@@ -161,7 +166,6 @@ Target "All" ignore
 ==> "AssemblyInfo"
 ==> "PaketFiles"
 ==> "ProjectVersion"
-==> "Restore"
 ==> "Build"
 //==> "RunTest" // until I remove the path base and make it relative
 ==> "Pack"
