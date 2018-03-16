@@ -13,8 +13,8 @@ module internal JsonHelper =
 
   type ICustomJsonEncoderRegistry =
     abstract TryGetRegistration : System.Type -> CustomJsonEncoderFactory option
-  and CustomJsonEncoderFactory = JsonEncoder<obj> -> JsonEncoder<obj> 
-  and CustomJsonEncoderFactory<'t> = JsonEncoder<obj> -> JsonEncoder<'t> 
+  and CustomJsonEncoderFactory = JsonEncoder<obj> -> JsonEncoder<obj>
+  and CustomJsonEncoderFactory<'t> = JsonEncoder<obj> -> JsonEncoder<'t>
 
   let emptyJsonEncoderRegistry =
     {
@@ -24,10 +24,10 @@ module internal JsonHelper =
 
   module internal Shape =
 
-    let (|KeyStringValuePairSeq|_|) (shape : TypeShape) =
-      match shape with 
+    let (|KeyStringValuePairSeq|_|) (shape: TypeShape) =
+      match shape with
       | Shape.Enumerable ie ->
-        match ie.Element with 
+        match ie.Element with
         | Shape.KeyValuePair kv when kv.Key.Type = typeof<string> -> Some kv
         | _ -> None
       | _ -> None
@@ -35,7 +35,7 @@ module internal JsonHelper =
   let private chironDefaultsType = typeof<Chiron.Inference.Internal.ChironDefaults>
 
   /// try some basic type test for make a better decision to transform to json type
-  /// since chiron use monad and static type resolver style, 
+  /// since chiron use monad and static type resolver style,
   /// implementation here avoid using reflection as much as possible.
   /// so record, union, poco... are not support by default.
   /// container type like list, array, dictionary... are support by testing IEnumerable
@@ -44,7 +44,7 @@ module internal JsonHelper =
   /// if user want to support union, record, poco... they can offer their own encoderFac.
   let rec internal toJsonTypeShape (registry : ICustomJsonEncoderRegistry) (data : obj) =
     let resolver : JsonEncoder<obj> = toJsonTypeShape registry
-    let (|CustomFactory|_|) (shape : TypeShape) = registry.TryGetRegistration shape.Type
+    let (|CustomFactory|_|) (shape: TypeShape) = registry.TryGetRegistration shape.Type
 
     if isNull data then Json.Null
     else
@@ -64,7 +64,7 @@ module internal JsonHelper =
                 let kv = data :?> KeyValuePair<'k,'v>
                 Map [ "Key", box kv.Key; "Value", box kv.Value]
                 |> E.mapWith resolver
-        }  
+        }
       | :? DictionaryEntry as de, _ ->
         Map [ "Key", de.Key; "Value",  de.Value]
         |> E.mapWith resolver
@@ -86,7 +86,7 @@ module internal JsonHelper =
       | _, Shape.FSharpOption s ->
         s.Accept {
           new IFSharpOptionVisitor<Json> with
-            member __.Visit<'t> () = 
+            member __.Visit<'t> () =
               Json.Encode.optionWith resolver (data :?> Option<'t>)
         }
       | _, Shape.KeyStringValuePairSeq kv ->
@@ -97,7 +97,7 @@ module internal JsonHelper =
               |> Seq.map (|KeyValue|)
               |> Map.ofSeq
               |> E.mapWith resolver
-        }    
+        }
       | :? IEnumerable as ie , _ ->
         let enumerator = ie.GetEnumerator ()
         let jsonList = [
@@ -108,13 +108,13 @@ module internal JsonHelper =
       | _ -> tryToJsonWithDefault data shape.Type
   and private tryToJsonWithDefault (data : obj) dataType =
     // can do some dataType toJson methodinfo cache here
-    let m = dataType.GetMethod("ToJson",BindingFlags.Public|||BindingFlags.Static,null,CallingConventions.Any,[|dataType|],null) 
+    let m = dataType.GetMethod("ToJson",BindingFlags.Public|||BindingFlags.Static,null,CallingConventions.Any,[|dataType|],null)
     // maybe chiron default can hard code use type test above, avoid reflection here
-    let mOrDefault = 
-      if isNull m then 
-        chironDefaultsType.GetMethod("ToJson",BindingFlags.Public|||BindingFlags.Static,null,CallingConventions.Any,[|dataType|],null) 
+    let mOrDefault =
+      if isNull m then
+        chironDefaultsType.GetMethod("ToJson",BindingFlags.Public|||BindingFlags.Static,null,CallingConventions.Any,[|dataType|],null)
       else m
-    if not <| isNull mOrDefault && mOrDefault.ReturnType = typeof<Json> then 
+    if not <| isNull mOrDefault && mOrDefault.ReturnType = typeof<Json> then
       let json = mOrDefault.Invoke(null,[|data|])
       unbox json
     else
