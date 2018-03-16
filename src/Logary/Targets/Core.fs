@@ -145,27 +145,27 @@ module LiterateConsole =
   open Logary.MessageTemplates.Formatting.Literate
   open Hopac
 
-  type ConsoleColours = { foreground : ConsoleColor; background : ConsoleColor option }
-  type ColouredText = { text : string; colours : ConsoleColours }
+  type ConsoleColours = { foreground: ConsoleColor; background: ConsoleColor option }
+  type ColouredText = { text: string; colours: ConsoleColours }
   type Tokens = Logary.MessageTemplates.Formatting.Literate.LiterateToken
 
   /// Console configuration structure
   type LiterateConsoleConf =
-    { formatProvider    : IFormatProvider
+    { formatProvider: IFormatProvider
       /// Converts a log level into a display string. By default: VRB, DBG, INF, WRN, ERR, FTL
-      getLogLevelText   : LogLevel -> string
+      getLogLevelText: LogLevel -> string
       /// Formats the ticks since the Unix epoch of (ISO) January 1st 1970, midnight, UTC (aka.
       /// Message.timestamp) into a string. By default "HH:mm:ss".
-      formatLocalTime   : IFormatProvider -> EpochNanoSeconds -> string * LiterateToken
+      formatLocalTime: IFormatProvider -> EpochNanoSeconds -> string * LiterateToken
       /// Converts a message into the appropriate tokens which can later be themed with colours.
-      tokenise          : LiterateConsoleConf -> Message -> (string * LiterateToken) seq
+      tokenise: LiterateConsoleConf -> Message -> (string * LiterateToken) seq
       /// Converts a token into the appropriate Foreground*Background colours. The default theme
       /// tries to emphasise the message template field values based on data type, make it easy to
       /// scan the output and find the most relevant information.
-      theme             : LiterateToken -> ConsoleColours
+      theme: LiterateToken -> ConsoleColours
       /// Takes an object (console semaphore) and a list of string*colour pairs and writes them
       /// to the console with the appropriate colours.
-      colourWriter      : obj -> ColouredText seq -> unit }
+      colourWriter: obj -> ColouredText seq -> unit }
 
   module internal LiterateFormatting =
     open Logary.MessageTemplates
@@ -235,7 +235,7 @@ module LiterateConsole =
         | Tokens.StringSymbol -> stringSymbolColours | Tokens.OtherSymbol -> otherSymbolColours
         | Tokens.NameSymbol -> nameSymbolColours | Tokens.MissingTemplateField -> missingTemplateFieldColours
 
-    let consoleWriteLineColourParts (parts : ColouredText seq) =
+    let consoleWriteLineColourParts (parts: ColouredText seq) =
         let originalForegroundColour = Console.ForegroundColor
         let originalBackgroundColour = Console.BackgroundColor
 
@@ -244,7 +244,7 @@ module LiterateConsole =
         let mutable currentForegroundColour = originalForegroundColour
         let mutable currentBackgroundColour = originalBackgroundColour
 
-        let inline maybeResetBgColour (backgroundColour : ConsoleColor option) =
+        let inline maybeResetBgColour (backgroundColour: ConsoleColor option) =
           match backgroundColour with
           | Some bgc ->
             if bgc <> currentBackgroundColour then
@@ -271,7 +271,7 @@ module LiterateConsole =
         maybeResetBgColour None
         Console.WriteLine()
 
-    let consoleWriteColourPartsAtomically sem (parts : ColouredText seq) =
+    let consoleWriteColourPartsAtomically sem (parts: ColouredText seq) =
       lock sem <| fun _ -> consoleWriteLineColourParts parts
 
   /// Default console target configuration.
@@ -296,8 +296,8 @@ module LiterateConsole =
     open Hopac
     open Hopac.Infixes
 
-    let loop (lcConf : LiterateConsoleConf) (ri : RuntimeInfo, api : TargetAPI) =
-      let output (data : ColouredText seq) : Job<unit> =
+    let loop (lcConf: LiterateConsoleConf) (ri: RuntimeInfo, api: TargetAPI) =
+      let output (data: ColouredText seq): Job<unit> =
         Job.Scheduler.isolate <| fun _ ->
           lcConf.colourWriter (ri.getConsoleSemaphore ()) data
 

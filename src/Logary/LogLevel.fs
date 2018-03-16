@@ -38,7 +38,6 @@ with
     | Fatal   -> "fatal"
 
   /// Converts the string passed to a Loglevel.
-  [<EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
   static member ofString str =
     if str = null then invalidArg "str" "may not be null"
     match String.toLowerInvariant str with
@@ -107,7 +106,7 @@ with
   interface IEquatable<LogLevel> with
     member x.Equals other =
       x.toInt() = other.toInt()
-  
+
   override x.Equals other =
     (x :> IComparable).CompareTo other = 0
 

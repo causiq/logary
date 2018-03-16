@@ -479,7 +479,7 @@ let tests = [
           yield { text = "133,38"; colours = LiterateTesting.Theme.numericSymbolColours }
           yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
           yield { text = "µs"; colours = LiterateTesting.Theme.textColours }
-          yield { text = " to execute"; colours = LiterateTesting.Theme.subtextColours } 
+          yield { text = " to execute"; colours = LiterateTesting.Theme.subtextColours }
           yield { text = "]"; colours = LiterateTesting.Theme.punctuationColours }
           yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
           yield { text = "<"; colours = LiterateTesting.Theme.punctuationColours }
@@ -506,7 +506,7 @@ let tests = [
           yield { text = "139"; colours = LiterateTesting.Theme.numericSymbolColours }
           yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
           yield { text = "ns"; colours = LiterateTesting.Theme.textColours }
-          yield { text = " to execute"; colours = LiterateTesting.Theme.subtextColours } 
+          yield { text = " to execute"; colours = LiterateTesting.Theme.subtextColours }
           yield { text = "]"; colours = LiterateTesting.Theme.punctuationColours }
           yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
           yield { text = "<"; colours = LiterateTesting.Theme.punctuationColours }
@@ -533,7 +533,7 @@ let tests = [
           yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
           yield { text = "1,4562"; colours = LiterateTesting.Theme.numericSymbolColours }
           yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
-          yield { text = "s/revolution"; colours = LiterateTesting.Theme.textColours } 
+          yield { text = "s/revolution"; colours = LiterateTesting.Theme.textColours }
           yield { text = "]"; colours = LiterateTesting.Theme.punctuationColours }
           yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
           yield { text = "<"; colours = LiterateTesting.Theme.punctuationColours }
@@ -550,7 +550,8 @@ let tests = [
         "Should print [06:15:02 INF] Revolver: 1,4562 s/revolution"
 
     yield testLiterateCase "Multiple measurements per second gauge" multiGaugeMessage <| fun expectedTimeText parts ->
-      // printfn "Parts: %s" (parts |> List.map (fun ct -> ct.text) |> String.Concat)
+      //LiterateConsole.empty.colourWriter (Global.getConsoleSemaphore ()) (upcast parts)
+      //printfn "Parts: %s" (parts |> List.map (fun ct -> ct.text) |> String.Concat)
       Expect.sequenceEqual
         parts
         [ yield! levels expectedTimeText
@@ -577,7 +578,7 @@ let tests = [
           yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
           yield { text = "47,3223755"; colours = LiterateTesting.Theme.numericSymbolColours }
           yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
-          yield { text = "%"; colours = LiterateTesting.Theme.textColours } 
+          yield { text = "%"; colours = LiterateTesting.Theme.textColours }
           yield { text = "]"; colours = LiterateTesting.Theme.punctuationColours }
 
           yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
@@ -607,15 +608,15 @@ let tests = [
           yield { text = "  others:"; colours = LiterateTesting.Theme.textColours }
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
           yield { text = "    "; colours = LiterateTesting.Theme.textColours }
-          yield { text = "service"; colours = LiterateTesting.Theme.subtextColours }
-          yield { text = " => "; colours = LiterateTesting.Theme.punctuationColours }
-          yield { text = "\"api-web\""; colours = LiterateTesting.Theme.stringSymbolColours }
-          yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
-          yield { text = "    "; colours = LiterateTesting.Theme.textColours }
           yield { text = "host"; colours = LiterateTesting.Theme.subtextColours }
           yield { text = " => "; colours = LiterateTesting.Theme.punctuationColours }
           yield { text = "\"db-001\""; colours = LiterateTesting.Theme.stringSymbolColours }
-                   ]
+          yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
+          yield { text = "    "; colours = LiterateTesting.Theme.textColours }
+          yield { text = "service"; colours = LiterateTesting.Theme.subtextColours }
+          yield { text = " => "; colours = LiterateTesting.Theme.punctuationColours }
+          yield { text = "\"api-web\""; colours = LiterateTesting.Theme.stringSymbolColours }
+        ]
         // "Should print [06:15:02 INF] Processor.% Idle (M): Core 1=0,10 % | Core 2=99,00 % | Core 3=47,32 %"
         "Should print [06:15:02 INF] Processor.% Idle Gauges: [Core 1: 0,10 %, Core 2: 99,00 %, Core 3: 47,32 %"
   ]

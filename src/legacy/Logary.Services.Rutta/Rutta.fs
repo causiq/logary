@@ -278,25 +278,19 @@ module Router =
     let frame = Socket.recv receiver
     // Aborted socket due to closing process:
     if isNull frame then () else
-    let message = Socket.recv receiver
+    let bs = Socket.recv receiver
     // http://api.zeromq.org/4-1:zmq-socket#toc19
     // A connection was made
-    if message.Length = 0 then streamRecvLoop receiver logger else
+    if bs.Length = 0 then streamRecvLoop receiver logger else
     // printfn "Data received: %A" message
-    use ms = new MemoryStream(message)
+    use ms = new MemoryStream(bs)
     use sr = new StreamReader(ms, Encoding.UTF8)
     while not sr.EndOfStream do
       let line = sr.ReadLine()
-      match Json.parse line with
-      | JsonResult.JPass (Json.Object fields) ->
-        let level = JsonObject.tryFind "level" fields
-        logger.logWithAck
-        ()
-      | JsonResult.JPass _ ->
-        ()
-      | JsonResult.JFail _ ->
-        //printfn "Line: %s" line
-        ()
+      let level, deserialiseMessage = Json.decode line
+      logger.logWithAck level deserialiseMessage
+      |> run
+      |> start
       streamRecvLoop receiver logger
 
   let streamBind binding = function

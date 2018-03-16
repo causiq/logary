@@ -84,7 +84,7 @@ module Message =
     else Optic.get (Optic.contextValue_ name) message
 
   [<CompiledName "GetContextsByPrefix">]
-  let inline GetContextsByPrefix (prefix : string) message =
+  let inline getContextsByPrefix (prefix: string) message =
     if String.IsNullOrEmpty prefix then
       message.context |> HashMap.toSeq
     else
@@ -169,13 +169,15 @@ module Message =
 
   [<CompiledName "GetAllFields">]
   let getAllFields message =
-    GetContextsByPrefix KnownLiterals.FieldsPrefix message
+    getContextsByPrefix KnownLiterals.FieldsPrefix message
 
   [<CompiledName "GetAllGauges">]
   let getAllGauges message =
     message
-    |> GetContextsByPrefix KnownLiterals.GaugeTypePrefix
-    |> Seq.choose (function | (k, (:? Gauge as gauge)) -> Some (k, gauge) | _ -> None)
+    |> getContextsByPrefix KnownLiterals.GaugeTypePrefix
+    |> Seq.choose (function
+      | k, (:? Gauge as gauge) -> Some (k, gauge)
+      | _ -> None)
 
   [<CompiledName "GetAllTags">]
   let getAllTags message =
@@ -186,7 +188,7 @@ module Message =
   [<CompiledName "GetAllSinks">]
   let getAllSinks message =
     match tryGetContext KnownLiterals.SinkTargetsContextName message with
-    | Some (sinks:Set<string>)-> sinks
+    | Some (sinks: Set<string>) -> sinks
     | _ -> Set.empty
 
   [<CompiledName "GetAllSinks">]
@@ -238,7 +240,7 @@ module Message =
     let gaugeTypeName = KnownLiterals.GaugeTypePrefix + gaugeType
     message |> tryGetContext gaugeTypeName
 
-  /// Creates a new gauge message with gauge, will use LogLevel.Debug  
+  /// Creates a new gauge message with gauge, will use LogLevel.Debug
   [<CompiledName "Gauge">]
   let gaugeMessage gaugeType gauge =
     event LogLevel.Debug String.Empty
@@ -333,7 +335,7 @@ module Message =
   [<CompiledName "SetFields">]
   let setFields (args : obj[]) message =
     capture (parse message.value) args
-    |> Array.fold (fun m (pt, value) -> 
+    |> Array.fold (fun m (pt, value) ->
        match value with
        | Some v -> setField pt.name v m
        | None -> m
@@ -511,7 +513,7 @@ module MessageEx =
     [<CompiledName "EventFormat">]
     static member templateFormat (format : string, [<ParamArray>] args : obj[]) =
       Message.eventFormat (LogLevel.Info, format, args)
-      
+
     static member templateEvent<'T> (level : LogLevel, format : string) : ('T -> Message) =
       let template = parse format
       if  template.IsAllPositional || template.Properties.Length <> 1 then

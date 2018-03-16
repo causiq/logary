@@ -7,6 +7,9 @@
     <NoWarn>44;2003</NoWarn>
     <DefineConstants>TYPESHAPE_EXPOSE</DefineConstants>
   </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DefineConstants>TYPESHAPE_EXPOSE;DEBUG</DefineConstants>
+  </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\..\paket-files\messagetemplates\messagetemplates-fsharp\src\FsMtParser\FsMtParserFull.fs">
       <Paket>True</Paket>
