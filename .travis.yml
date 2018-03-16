@@ -16,14 +16,14 @@ matrix:
     - os: linux
       mono: latest
     - os: osx
-      osx_image: xcode9.1
+      osx_image: xcode9.2
       mono: 5.10.0
     - os: osx
-      osx_image: xcode9.1
+      osx_image: xcode9.3beta
       mono: latest
 
   allow_failures:
-    #- os: osx
+    - os: linux
     - mono: weekly
     - mono: latest
 
