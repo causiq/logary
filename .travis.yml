@@ -10,12 +10,14 @@ matrix:
     - os: linux
       mono: 5.4.1
     - os: linux
+      mono: 5.10.0
+    - os: linux
       mono: weekly
     - os: linux
       mono: latest
     - os: osx
       osx_image: xcode9.1
-      mono: 5.4.1
+      mono: 5.10.0
     - os: osx
       osx_image: xcode9.1
       mono: latest
