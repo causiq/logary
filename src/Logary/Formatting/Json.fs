@@ -122,11 +122,11 @@ module internal JsonDecode =
   let private foldJsonObject (m: Message, remainder: JsonObject) = function
     | "name", json
     | "source", json
-    | "logger", json when m.name.isEmpty ->
+    | "logger", json ->
       name json |> JsonResult.map (fun name -> Message.setName name m, remainder)
 
     | "message", json
-    | "value", json when String.isEmpty m.value ->
+    | "value", json  ->
       value json |> JsonResult.map (fun value -> { m with value = value }, remainder)
 
     | "fields", json
@@ -149,7 +149,7 @@ module internal JsonDecode =
       JsonResult.pass (m, remainder |> JsonObject.add otherProp json)
 
   let decodeObject: Decoder<JsonObject, Message> =
-    let initial = Message.event Debug ""
+    let initial = Message.event Debug "-"
     fun jsonObj ->
       JsonObject.toPropertyList jsonObj
       |> JsonResult.foldBind foldJsonObject (initial, JsonObject.empty)
@@ -175,5 +175,5 @@ module Json =
   let format (data: obj) =
     formatWith JsonFormattingOptions.Compact data
 
-  let decode =
+  let decodeMessage =
     Json.Decode.jsonObjectWith JsonDecode.decodeObject

@@ -131,11 +131,13 @@ module Router =
   open Logary
   open Logary.Configuration
   open Logary.Targets
+  open Logary.EventsProcessing
+  open Logary.Formatting
   open fszmq
   open MBrace.FsPickler
   open MBrace.FsPickler.Combinators
-  open Logary.EventsProcessing
 
+  /// TODO: move this module to Logary.Configuration.Uri
   module TargetConfig =
     let modu name = sprintf "Logary.Targets.%s" name
     let asm name = sprintf "Logary.Targets.%s" name
@@ -287,11 +289,14 @@ module Router =
     use sr = new StreamReader(ms, Encoding.UTF8)
     while not sr.EndOfStream do
       let line = sr.ReadLine()
-      let level, deserialiseMessage = Json.decode line
-      logger.logWithAck level deserialiseMessage
-      |> run
-      |> start
-      streamRecvLoop receiver logger
+      match Json.parse line |> JsonResult.bind Json.decodeMessage with
+      | JPass message ->
+        printfn "JPass: %s => %A" line message
+      | JFail failure ->
+        printfn "JFail: %s => %A" line failure
+
+    printfn "Looping..."
+    streamRecvLoop receiver logger
 
   let streamBind binding = function
     | Router_Target target :: _ ->
