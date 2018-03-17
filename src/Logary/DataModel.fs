@@ -14,7 +14,7 @@ type ContentType = string
 /// this is how system clocks normally work.
 type EpochNanoSeconds = int64
 
-[<Obsolete ("use object instead, reserve for api compatibility")>]
+[<Obsolete ("Use .Net objects instead. This type is reserve for API backwards compatibility.")>]
 type Value =
   | String of string
   | Bool of bool
