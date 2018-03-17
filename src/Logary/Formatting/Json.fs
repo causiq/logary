@@ -3,29 +3,34 @@ namespace Logary.Formatting
 open Logary
 open Logary.Internals
 
+/// A module for decoding arbitrary JSON data into Message values.
 module internal JsonDecode =
   open Chiron
   open Chiron.Operators
   module D = Json.Decode
   open JsonTransformer
 
+  /// Module with extensions to Chiron
   module JsonResult =
     let inline orElse (a2bR: JsonFailure -> JsonResult<'a>) (aR: JsonResult<'a>): JsonResult<'a> =
       match aR with
       | JPass a -> JsonResult.pass a
       | JFail x -> a2bR x
 
-    let foldBind (folder: 'state -> 'item -> JsonResult<'state>) (state: 'state) (xsJ: seq<_>): JsonResult<_> =
+    let foldBind (folder: 'state -> 'item -> JsonResult<'state>) (state: 'state) (xsJ: seq<'item>): JsonResult<'state> =
       Seq.fold (fun aJ xJ -> aJ |> JsonResult.bind (fun a -> folder a xJ))
                (JsonResult.pass state)
                xsJ
 
+  /// Module with extensions to Chiron
   module Decoder =
     let inline orElse (f2s2aR: JsonFailure -> Decoder<'s,'a>) (s2aR: Decoder<'s,'a>): Decoder<'s,'a> =
       fun s ->
         s2aR s
         |> JsonResult.orElse (fun f -> f2s2aR f s)
 
+  /// Decodes Message's `name` **values** (not property-name-property-value pair)
+  /// from a `Json`.
   let name: Decoder<Json, PointName> =
     let ofArray =
       PointName.ofArray <!> D.arrayWith D.string
@@ -33,62 +38,64 @@ module internal JsonDecode =
       PointName.parse <!> D.string
     ofArray |> Decoder.orElse (fun _ -> ofString)
 
+  /// Decodes Message's value from a `Json`.
   let value: Decoder<Json, string> =
     Optics.get Optics.Json.String_
 
+  /// Decodes a JsonObject into a CLR HashMap<string, obj> value that can be
+  /// put into the context of the Message
+  let rec private decodeMap initialState: Decoder<JsonObject, HashMap<string, obj>> =
+    let foldIntoMap (acc: HashMap<string, obj>) (key, vJ) =
+      decodeValue vJ |> JsonResult.map (fun v -> acc |> HashMap.add key v)
+    JsonObject.toPropertyList
+    >> JsonResult.foldBind foldIntoMap initialState
+
+  /// Decodes (boxes) a single JSON value into a CLR value. Mutually recursive
+  /// with `decodeMap` since JSON values are recursive themselves.
+  and private decodeValue: Decoder<Json, obj> =
+    function
+    | Json.Object values ->
+      // consider tail-recursive alternative
+      decodeMap HashMap.empty values |> JsonResult.map box
+
+    | Json.String value ->
+      JsonResult.pass (box value)
+
+    | Json.Array values ->
+      let foldIntoarray (vs: obj list) (vJ: Json) =
+        decodeValue vJ |> JsonResult.map (fun v -> v :: vs)
+
+      values
+      |> JsonResult.foldBind foldIntoarray []
+      |> JsonResult.map box
+
+    | Json.Number _ as num ->
+      D.float num
+      |> JsonResult.map box
+
+    | Json.False ->
+      JsonResult.pass (box false)
+
+    | Json.True ->
+      JsonResult.pass (box true)
+
+    | Json.Null ->
+      JsonResult.pass (box None)
+
+  /// Decodes the Message's `context` from a `Json` value.
   let context: Decoder<Json, HashMap<string, obj>> =
-    let rec outer (): Decoder<Json, HashMap<string, obj>> =
-      function
-      | Object values ->
-        decodeKvps HashMap.empty values
-      | otherwise ->
-        let jsonType = JsonMemberType.ofJson otherwise
-        JsonResult.fail (SingleFailure (TypeMismatch (JsonMemberType.Object, jsonType)))
+    Optics.get Optics.Json.Object_
+    >> JsonResult.bind (decodeMap HashMap.empty)
 
-    and decodeKvps state: Decoder<JsonObject, _> =
-      fun jsonObj ->
-        JsonObject.toPropertyList jsonObj |> JsonResult.foldBind (fun (acc: HashMap<string, obj>) ->
-            function
-            | key, vJ ->
-              decodeValues vJ |> JsonResult.map (fun v ->
-              acc |> HashMap.add key v)
-            )
-            state
-
-    and decodeValues: Decoder<Json, obj> =
-      function
-      | Json.Object values ->
-        // consider tail-recursive alternative
-        decodeKvps HashMap.empty values |> JsonResult.map box
-
-      | Json.String value ->
-        JsonResult.pass (box value)
-
-      | Json.Array values ->
-        let folder (vs: obj list) (json: Json) =
-          decodeValues json |> JsonResult.map (fun v -> v :: vs)
-        values
-        |> JsonResult.foldBind folder []
-        |> JsonResult.map box
-
-      | Json.Number _ as num ->
-        D.float num
-        |> JsonResult.map box
-
-      | Json.False ->
-        JsonResult.pass (box false)
-
-      | Json.True ->
-        JsonResult.pass (box true)
-
-      | Json.Null ->
-        JsonResult.pass (box None)
-
-    outer ()
-
+  /// Decodes the Message's `level` from a `Json` value.
   let level: Decoder<Json, LogLevel> =
     LogLevel.ofString <!> Optics.get Optics.Json.String_
 
+  /// Decodes the Message timestamp from a `Json` value, assuming that it's a
+  /// number and that that number is the number of milliseconds since the Unix
+  /// Epoch. This is the most likely representation of the epoch when the
+  /// timestamp comes from JS.
+  ///
   /// JS/JSON native:
   /// $ 1351700038292387123
   /// => 1351700038292387000 // nanos are truncated
@@ -109,22 +116,46 @@ module internal JsonDecode =
   let timestamp: Decoder<Json, EpochNanoSeconds> =
     timestampOfMs |> Decoder.orElse (fun _ -> timestampOfDto)
 
-  let private create name value context level ts =
-    { name = name
-      value = value
-      context = context
-      level = level
-      timestamp = ts }
+  let private foldKVP mctx (KeyValue (k, v)) =
+    mctx |> HashMap.add k v
 
-  let decodeObject =
-     //|> JsonDecode.Decoder.orElse (fun _ -> D.requiredInline JsonDecode.value "message")
-     //|> JsonDecode.Decoder.orElse (fun _ -> D.requiredInline JsonDecode.value "template")
-         create
-     <!> D.requiredInline name "name" // "logger", "source"
-     <*> D.requiredInline value "value" // "message", "template"
-     <*> D.requiredInline context "context" // "fields", "values in object"
-     <*> D.requiredInline level "level" // "severity"
-     <*> D.requiredInline timestamp "timestamp" // "time", "instant"
+  let private foldJsonObject (m: Message, remainder: JsonObject) = function
+    | "name", json
+    | "source", json
+    | "logger", json when m.name.isEmpty ->
+      name json |> JsonResult.map (fun name -> Message.setName name m, remainder)
+
+    | "message", json
+    | "value", json when String.isEmpty m.value ->
+      value json |> JsonResult.map (fun value -> { m with value = value }, remainder)
+
+    | "fields", json
+    | "context", json ->
+      context json |> JsonResult.map (fun values ->
+        { m with context = values |> HashMap.toSeqPair |> Seq.fold foldKVP m.context },
+        remainder)
+
+    | "level", json
+    | "severity", json ->
+      level json |> JsonResult.map (fun level -> Message.setLevel level m, remainder)
+
+    | "timestamp", json
+    | "time", json
+    | "instant", json
+    | "@timestamp", json ->
+      timestamp json |> JsonResult.map (fun ts -> Message.setNanoEpoch ts m, remainder)
+
+    | otherProp, json ->
+      JsonResult.pass (m, remainder |> JsonObject.add otherProp json)
+
+  let decodeObject: Decoder<JsonObject, Message> =
+    let initial = Message.event Debug ""
+    fun jsonObj ->
+      JsonObject.toPropertyList jsonObj
+      |> JsonResult.foldBind foldJsonObject (initial, JsonObject.empty)
+      |> JsonResult.bind (fun (message, remainder) ->
+      decodeMap message.context remainder |> JsonResult.map (fun nextContext ->
+      { message with context = nextContext }))
 
 /// See JsonHelper.fs
 module Json =
