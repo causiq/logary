@@ -93,11 +93,11 @@ module Shipper =
 
     let processing =
       Events.compose [
-          systemMetrics
-          |> Pipe.map Array.toSeq
-          |> Events.flattenToProcessing
-          |> Events.sink ["rutta-shipper"]
-        ]
+        systemMetrics
+        |> Pipe.map Array.toSeq
+        |> Events.flattenToProcessing
+        |> Events.sink ["rutta-shipper"]
+      ]
 
     let logary =
       Config.create "Rutta" hostName
@@ -106,6 +106,7 @@ module Shipper =
           //Console.create (Console.empty) (PointName.ofSingle "console")
           create shipperConf "rutta-shipper"
         ]
+      |> Config.loggerLevels [ ".*", Verbose ]
       |> Config.processing processing
       |> Config.ilogger (ILogger.Console Debug)
       |> Config.build
@@ -129,6 +130,7 @@ module Router =
   open System.IO
   open Chiron
   open Logary
+  open Logary.Message
   open Logary.Configuration
   open Logary.Targets
   open Logary.EventsProcessing
@@ -225,10 +227,14 @@ module Router =
 
     let forwarder =
       let hostName = System.Net.Dns.GetHostName()
+      let targets = targetUris |> List.map TargetConfig.create
 
       Config.create (sprintf "Logary Rutta[%s]" mode) hostName
-      |> Config.targets (targetUris |> List.map TargetConfig.create)
-      |> Config.processing (Events.events |> Events.sink ["influxdb"])
+      |> Config.targets targets
+      |> Config.processing (
+          Events.events
+          |> Events.sink (targets |> List.map (fun t -> t.name)))
+      |> Config.loggerMinLevel ".*" Verbose
       |> Config.ilogger (ILogger.Console Debug)
       |> Config.build
       |> Hopac.Hopac.run
@@ -291,9 +297,9 @@ module Router =
       let line = sr.ReadLine()
       match Json.parse line |> JsonResult.bind Json.decodeMessage with
       | JPass message ->
-        printfn "JPass: %s => %A" line message
+        logger.logSimple message
       | JFail failure ->
-        printfn "JFail: %s => %A" line failure
+        logger.verbose (eventX "JFail: {line} => {failure}" >> setField "line" line >> setField "failure" failure)
 
     printfn "Looping..."
     streamRecvLoop receiver logger

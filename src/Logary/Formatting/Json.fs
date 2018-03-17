@@ -9,6 +9,7 @@ module internal JsonDecode =
   open Chiron.Operators
   module D = Json.Decode
   open JsonTransformer
+  open Logary
 
   /// Module with extensions to Chiron
   module JsonResult =
@@ -42,11 +43,17 @@ module internal JsonDecode =
   let value: Decoder<Json, string> =
     Optics.get Optics.Json.String_
 
+  let private addField prefix acc key v =
+    acc |> HashMap.add ((if prefix then KnownLiterals.FieldsPrefix else "") + key) v
+
+  let private addFieldKVP prefix acc (KeyValue (key, v)) =
+    addField prefix acc key v
+
   /// Decodes a JsonObject into a CLR HashMap<string, obj> value that can be
   /// put into the context of the Message
-  let rec private decodeMap initialState: Decoder<JsonObject, HashMap<string, obj>> =
+  let rec private decodeMap topLevel initialState: Decoder<JsonObject, HashMap<string, obj>> =
     let foldIntoMap (acc: HashMap<string, obj>) (key, vJ) =
-      decodeValue vJ |> JsonResult.map (fun v -> acc |> HashMap.add key v)
+      decodeValue vJ |> JsonResult.map (addField topLevel acc key)
     JsonObject.toPropertyList
     >> JsonResult.foldBind foldIntoMap initialState
 
@@ -56,7 +63,7 @@ module internal JsonDecode =
     function
     | Json.Object values ->
       // consider tail-recursive alternative
-      decodeMap HashMap.empty values |> JsonResult.map box
+      decodeMap false HashMap.empty values |> JsonResult.map box
 
     | Json.String value ->
       JsonResult.pass (box value)
@@ -82,10 +89,9 @@ module internal JsonDecode =
     | Json.Null ->
       JsonResult.pass (box None)
 
-  /// Decodes the Message's `context` from a `Json` value.
   let context: Decoder<Json, HashMap<string, obj>> =
     Optics.get Optics.Json.Object_
-    >> JsonResult.bind (decodeMap HashMap.empty)
+    >> JsonResult.bind (decodeMap true HashMap.empty)
 
   /// Decodes the Message's `level` from a `Json` value.
   let level: Decoder<Json, LogLevel> =
@@ -116,9 +122,6 @@ module internal JsonDecode =
   let timestamp: Decoder<Json, EpochNanoSeconds> =
     timestampOfMs |> Decoder.orElse (fun _ -> timestampOfDto)
 
-  let private foldKVP mctx (KeyValue (k, v)) =
-    mctx |> HashMap.add k v
-
   let private foldJsonObject (m: Message, remainder: JsonObject) = function
     | "name", json
     | "source", json
@@ -132,7 +135,7 @@ module internal JsonDecode =
     | "fields", json
     | "context", json ->
       context json |> JsonResult.map (fun values ->
-        { m with context = values |> HashMap.toSeqPair |> Seq.fold foldKVP m.context },
+        { m with context = values |> HashMap.toSeqPair |> Seq.fold (addFieldKVP false) m.context },
         remainder)
 
     | "level", json
@@ -154,7 +157,7 @@ module internal JsonDecode =
       JsonObject.toPropertyList jsonObj
       |> JsonResult.foldBind foldJsonObject (initial, JsonObject.empty)
       |> JsonResult.bind (fun (message, remainder) ->
-      decodeMap message.context remainder |> JsonResult.map (fun nextContext ->
+      decodeMap true message.context remainder |> JsonResult.map (fun nextContext ->
       { message with context = nextContext }))
 
 /// See JsonHelper.fs

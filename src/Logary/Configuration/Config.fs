@@ -32,7 +32,7 @@ module Config =
       middleware   : Middleware list
       processing   : Events.Processing
       setGlobals   : bool
-      loggerLevels  : (string * LogLevel) list
+      loggerLevels : (string * LogLevel) list
     }
 
   let create service host =
@@ -74,6 +74,9 @@ module Config =
 
   let processing processor lconf =
     { lconf with processing = processor }
+
+  let loggerLevels levels lconf =
+     { lconf with loggerLevels = levels }
 
   /// config the min loglevel of logger which belong to this path,
   /// path can be regex or specific logger name.
@@ -146,6 +149,6 @@ module Config =
 
   let configDestructure<'t> (factory: CustomDestructureFactory<'t>) =
     Logary.Internals.Global.Destructure.configDestructure<'t> factory
-  
+
   let configJsonEncoder<'t> (factory: CustomJsonEncoderFactory<'t>) =
     Logary.Internals.Global.Json.configJsonEncoder<'t> factory
