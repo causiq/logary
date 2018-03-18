@@ -27,9 +27,9 @@ let DefaultPublishTo =
 type LogstashMode = PUSHPULL | PUBSUB
 
 type LogstashConf =
-  { publishTo  : string
-    logMetrics : bool
-    mode       : LogstashMode }
+  { publishTo: string
+    logMetrics: bool
+    mode: LogstashMode }
 
   /// Create a new Logstash target config.
   static member create(?publishTo, ?logMetrics, ?mode) =
@@ -40,8 +40,8 @@ type LogstashConf =
 module internal Impl =
 
   type State =
-    { zmqCtx : Context
-      sender : Socket }
+    { zmqCtx: Context
+      sender: Socket }
     interface IDisposable with
       member x.Dispose() =
         (x.zmqCtx :> IDisposable).Dispose()
@@ -57,14 +57,14 @@ module internal Impl =
       Socket.bind sender publishTo
       sender
 
-  let createState publishTo mode : State =
+  let createState publishTo mode: State =
     let context = new Context()
     let sender = createSender context publishTo mode
     { zmqCtx = context
       sender = sender }
 
   let loop (conf: LogstashConf)
-           (ri: RuntimeInfo, api : TargetAPI): Job<unit> =
+           (ri: RuntimeInfo, api: TargetAPI): Job<unit> =
 
     let rec init config =
       createState config.publishTo config.mode |> loop
@@ -103,7 +103,7 @@ module internal Impl =
 let create conf = TargetConf.createSimple (Impl.loop conf)
 
 /// Use with LogaryFactory.New( s => s.Target<Logstash.Builder>() )
-type Builder(conf, callParent : Target.ParentCallback<Builder>) =
+type Builder(conf, callParent: Target.ParentCallback<Builder>) =
 
   /// Specifies the publish endpoint that ZeroMQ connects to.
   member x.PublishTo(publishTo: string) =

@@ -13,12 +13,12 @@ let logger = Log.create "Servizz.Program"
 
 type Speed = Fast | Slow | OtherSpeed of speed:int
 type LoginLogoutEvent =
-  | UserLoggedIn of user : string * roles : string list
-  | UserLoggedOut of user : string * speedAtTimeOfLeaving : Speed
+  | UserLoggedIn of user: string * roles: string list
+  | UserLoggedOut of user: string * speedAtTimeOfLeaving: Speed
 
 type CartItem = TicTacs | GlamourMagazine | Other of name:string * price: Decimal
 type CartEvent =
-  | UserStartedCheckout of user : string * totalValue : decimal * items : CartItem list
+  | UserStartedCheckout of user: string * totalValue: decimal * items: CartItem list
 
 [<EntryPoint>]
 let main argv =

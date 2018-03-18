@@ -13,7 +13,7 @@ open Logary.Configuration.Target // for the fluent config API
 /// DOCUMENT YOUR CONFIG
 type NoopConf =
     /// Most often we agree – document your fields
-  { isYes : bool }
+  { isYes: bool }
 
 let empty = { isYes = true }
 
@@ -22,13 +22,13 @@ let empty = { isYes = true }
 module internal Impl =
 
   // This is a placeholder for specific state that your target requires
-  type State = { state : bool }
+  type State = { state: bool }
 
   // This is the main entry point of the target. It returns a Job<unit>
   // and as such doesn't have side effects until the Job is started.
   let loop (conf: NoopConf) // the conf is specific to your target
            (will: Will<State>) // optional will
-           (ri: RuntimeInfo, api : TargetAPI) =
+           (ri: RuntimeInfo, api: TargetAPI) =
 
     let rec loop (state: State) =
       // Alt.choose will pick the channel/alternative that first gives a value
@@ -94,7 +94,7 @@ let create conf name =
 // code).
 
 /// Use with LogaryFactory.New( s => s.Target<YOUR TARGET NAME.Builder>() )
-type Builder(conf, callParent : ParentCallback<Builder>) =
+type Builder(conf, callParent: ParentCallback<Builder>) =
   let update (conf' : NoopConf): Builder = // helper function
     Builder(conf', callParent)
 

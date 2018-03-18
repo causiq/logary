@@ -21,7 +21,7 @@ open System.Reflection
 type ElmahIOConf =
   { /// You can get the log id from the https://elmah.io/dashboard/ page by clicking
     /// on the settings icon and then taking the logId from the tutorial.
-    logId : Guid
+    logId: Guid
     apiKey: string}
 
 let empty = { logId = Guid.Empty ; apiKey = String.Empty}
@@ -71,7 +71,7 @@ module internal Impl =
     Logary.MessageWriter.levelDatetimeMessagePath.format
 
   type State =
-    { client : IElmahioAPI }
+    { client: IElmahioAPI }
     interface IDisposable with
       member x.Dispose () =
         x.client.Dispose ()
@@ -138,15 +138,15 @@ module internal Impl =
     loop state
 
 /// Create a new Elmah.IO target
-let create conf : string -> TargetConf =
+let create conf: string -> TargetConf =
   if conf.logId = Guid.Empty || String.IsNullOrEmpty(conf.apiKey) then
     failwith "Cannot configure target with empty logId"
 
   TargetConf.createSimple (Impl.loop conf)
 
 /// Use with LogaryFactory.New( s => s.Target<ElmahIO.Builder>().WithLogId("MY GUID HERE") )
-type Builder(conf, callParent : Target.ParentCallback<Builder>) =
-  member x.WithLogIdAndApiKey(logId: Guid, apiKey : string) =
+type Builder(conf, callParent: Target.ParentCallback<Builder>) =
+  member x.WithLogIdAndApiKey(logId: Guid, apiKey: string) =
     ! (callParent <| Builder({ conf with logId = logId ; apiKey = apiKey}, callParent))
 
   new(callParent: Target.ParentCallback<_>) =

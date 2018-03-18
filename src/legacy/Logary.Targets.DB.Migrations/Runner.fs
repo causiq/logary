@@ -27,11 +27,11 @@ type MigrationOptions(preview, switches, timeout) =
 
 /// A class that allows you to run the migrations from code
 /// See: https://stackoverflow.com/questions/7574417/is-it-possible-to-use-fluent-migrator-in-application-start
-type Runner(fac      : MigrationProcessorFactory,
-            connStr  : string,
-            ?timeout : TimeSpan,
-            ?showSql : bool,
-            ?logger  : Logger) =
+type Runner(fac: MigrationProcessorFactory,
+            connStr: string,
+            ?timeout: TimeSpan,
+            ?showSql: bool,
+            ?logger: Logger) =
 
   let logger = defaultArg logger (Log.create<Runner>())
 
@@ -76,8 +76,8 @@ open System.Data
 
 /// used to avoid closing the SQLite connection in between migrations
 type ExistingConnectionProcessorFactory(conn: IDbConnection,
-                                        processorFac : IDbConnection -> IMigrationProcessor) =
+                                        processorFac: IDbConnection -> IMigrationProcessor) =
   inherit MigrationProcessorFactory()
 
-  override x.Create (connStr: string, accouncer : IAnnouncer, opts : IMigrationProcessorOptions) =
+  override x.Create (connStr: string, accouncer: IAnnouncer, opts: IMigrationProcessorOptions) =
     processorFac conn

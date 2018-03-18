@@ -152,16 +152,16 @@ module DateTimeOffset =
 type Message =
   { /// The 'path' or 'name' of this data point. Do not confuse template in
     /// (Event template) = message.value
-    name      : string[]
+    name: string[]
     /// The main value for this metric or event. Either a Gauge or an Event. (A
     /// discriminated union type)
-    value     : PointValue
+    value: PointValue
     /// The structured-logging data.
-    fields    : Map<string, obj>
+    fields: Map<string, obj>
     /// When? nanoseconds since UNIX epoch.
-    timestamp : EpochNanoSeconds
+    timestamp: EpochNanoSeconds
     /// How important? See the docs on the LogLevel type for details.
-    level     : LogLevel }
+    level: LogLevel }
 
   /// Gets the ticks for UTC since 0001-01-01 00:00:00 for this message. You
   /// can pass this value into a DateTimeOffset c'tor
@@ -179,7 +179,7 @@ type Message =
 /// method to choose the right one for your use-case.
 type Logger =
   /// Gets the name of the logger instance.
-  abstract member name : string[]
+  abstract member name: string[]
   /// Logs with the specified log level with backpressure via the logging
   /// library's buffers *and* ACK/flush to the underlying message targets.
   ///
@@ -192,7 +192,7 @@ type Logger =
   /// You need to start the (cold) async value for the logging to happen.
   ///
   /// You should not do blocking/heavy operations in the callback.
-  abstract member logWithAck : LogLevel -> (LogLevel -> Message) -> Async<unit>
+  abstract member logWithAck: LogLevel -> (LogLevel -> Message) -> Async<unit>
 
   /// Logs with the specified log level with backpressure via the logging
   /// library's buffers.
@@ -206,7 +206,7 @@ type Logger =
   /// You need to start the (cold) async value for the logging to happen.
   ///
   /// You should not do blocking/heavy operations in the callback.
-  abstract member log : LogLevel -> (LogLevel -> Message) -> Async<unit>
+  abstract member log: LogLevel -> (LogLevel -> Message) -> Async<unit>
 
 /// Syntactic sugar on top of Logger for F# libraries.
 [<AutoOpen>]
@@ -278,7 +278,7 @@ module LoggerEx =
     /// without dropping messages.
     ///
     /// It's recommended to have alerting on STDERR.
-    member x.logSimple message : unit =
+    member x.logSimple message: unit =
       logWithTimeout x message.level (fun _ -> message) |> Async.Start
 
     // TODO: timeXXX functions
@@ -286,16 +286,16 @@ module LoggerEx =
 type LoggingConfig =
   { /// The `timestamp` function should preferably be monotonic and not 'jumpy'
     /// or take much time to call.
-    timestamp        : unit -> int64
+    timestamp: unit -> int64
     /// The `getLogger` function returns a logger that directly can be logged to.
-    getLogger        : string[] -> Logger
+    getLogger: string[] -> Logger
     /// When composing apps from the outside-in (rather than having a unified
     /// framework with static/global config) with libraries (again, rather than
     /// a unified framework) like is best-practice, there's not necessarily a
     /// way to coordinate around the STDOUT and STDERR streams between
     /// different libraries running things on different threads. Use Logary's
     /// adapter to replace this semaphore with a global semaphore.
-    consoleSemaphore : obj }
+    consoleSemaphore: obj }
 
 module Literate =
   /// The output tokens, which can be potentially coloured.
@@ -307,10 +307,10 @@ module Literate =
     | MissingTemplateField
 
   type LiterateOptions =
-    { formatProvider          : IFormatProvider
-      theme                   : LiterateToken -> ConsoleColor
-      getLogLevelText         : LogLevel -> string
-      printTemplateFieldNames : bool }
+    { formatProvider: IFormatProvider
+      theme: LiterateToken -> ConsoleColor
+      getLogLevelText: LogLevel -> string
+      printTemplateFieldNames: bool }
 
     static member create ?formatProvider =
       // note: literate is meant for human consumption, and so the default
@@ -365,7 +365,7 @@ module Literals =
 module internal FsMtParser =
   open System.Text
 
-  type Property(name: string, format : string) =
+  type Property(name: string, format: string) =
     static let emptyInstance = Property("", null)
     static member empty = emptyInstance
     member x.name = name
@@ -390,7 +390,7 @@ module internal FsMtParser =
     let inline isValidCharInPropTag c = c = ':' || isValidInPropName c || isValidInFormat c
 
     [<Struct>]
-    type Range(startIndex: int, endIndex : int) =
+    type Range(startIndex: int, endIndex: int) =
       member inline x.start = startIndex
       member inline x.``end`` = endIndex
       member inline x.length = (endIndex - startIndex) + 1
@@ -696,7 +696,7 @@ module internal LiterateFormatting =
   type TokenisedPart = string * LiterateToken
   type LiterateTokeniser = LiterateOptions -> Message -> TokenisedPart list
 
-  type internal TemplateToken = TextToken of text:string | PropToken of name : string * format : string
+  type internal TemplateToken = TextToken of text:string | PropToken of name: string * format: string
   let internal parseTemplate template =
     let tokens = ResizeArray<TemplateToken>()
     let foundText (text: string) = tokens.Add (TextToken text)
@@ -744,7 +744,7 @@ module internal LiterateFormatting =
   /// Available template fields are: `timestamp`, `timestampUtc`, `level`, `source`,
   /// `newline`, `tab`, `message`, `exceptions`. Any misspelled or otheriwese invalid property
   /// names will be treated as `LiterateToken.MissingTemplateField`. 
-  let tokeniserForOutputTemplate template : LiterateTokeniser =
+  let tokeniserForOutputTemplate template: LiterateTokeniser =
     let tokens = parseTemplate template
     fun options message ->
       seq {
@@ -801,7 +801,7 @@ type LiterateConsoleTarget(name, minLevel, ?options, ?literateTokeniser, ?output
       else
         async.Return ()
 
-type TextWriterTarget(name, minLevel, writer : System.IO.TextWriter, ?formatter) =
+type TextWriterTarget(name, minLevel, writer: System.IO.TextWriter, ?formatter) =
   let formatter = defaultArg formatter Formatting.defaultFormatter
   let log msg = writer.WriteLine(formatter msg)
 
@@ -838,7 +838,7 @@ type OutputWindowTarget(name, minLevel, ?formatter) =
         async.Return ()
 
 /// A logger to use for combining a number of other loggers
-type CombiningTarget(name, otherLoggers : Logger list) =
+type CombiningTarget(name, otherLoggers: Logger list) =
   interface Logger with
     member x.name = name
     member x.logWithAck level messageFactory =
@@ -874,8 +874,8 @@ module Global =
   /// Message value you pass into the logger.
   type internal Flyweight(name: string[]) =
     let updating = obj()
-    let mutable fwClock : uint32 = snd !config
-    let mutable logger : Logger = (fst !config).getLogger name
+    let mutable fwClock: uint32 = snd !config
+    let mutable logger: Logger = (fst !config).getLogger name
 
     let withLogger action =
       if snd !config <> fwClock then
@@ -1028,7 +1028,7 @@ module Message =
         x.fields |> Map.add FieldErrorsKey (box [ box ex ])
 
       | Some errors ->
-        let arr : obj list = unbox errors
+        let arr: obj list = unbox errors
         x.fields |> Map.add FieldErrorsKey (box (box ex :: arr))
 
     { x with fields = fields' }

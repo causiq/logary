@@ -82,10 +82,10 @@ type CategoryType = PerformanceCounterCategoryType
 ///
 /// Updated every 400 ms by Windows.
 type WinPerfCounter =
-  { category  : string
-    counter   : string
-    instances : Set<string>
-    unit      : Units option }
+  { category: string
+    counter: string
+    instances: Set<string>
+    unit: Units option }
 
   member x.baseName =
     PointName [| x.category; x.counter |]
@@ -94,7 +94,7 @@ type WinPerfCounter =
     Category.create x.category
 
   /// Creates a new WinPerfCounter from the passed strings.
-  static member create(category, counter, instances : string seq) =
+  static member create(category, counter, instances: string seq) =
     { category  = category
       counter   = counter
       instances = Set.ofSeq instances
@@ -108,10 +108,10 @@ type WinPerfCounter =
       unit      = units }
 
 type WinPerfCounterInstance =
-  { category  : Category
-    instances : PerformanceCounter []
-    unit      : Units
-    baseName  : PointName }
+  { category: Category
+    instances: PerformanceCounter []
+    unit: Units
+    baseName: PointName }
 
   /// This W P C is 'singleton' and doesn't have neither a 'global single instance' nor 'instances'.
   member x.isNotInstanceBased =
@@ -281,7 +281,7 @@ module WinPerfCounter =
     /// Try to find the instance performance counter for the pid, or return
     /// None if the process e.g. does no longer run and can therefore not
     /// be found.
-    let pidToInstance pid : string option =
+    let pidToInstance pid: string option =
       Category.createForce "Process"
       // will get a list of *all* instances running on this machine
       |> Category.instances

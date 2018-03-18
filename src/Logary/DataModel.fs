@@ -129,7 +129,7 @@ module PointName =
 
 type Gauge = Gauge of float * Units
 
-[<Obsolete ("Use (Message.setField : string -> 'a -> Message -> Message) directly, just for api compatibility")>]
+[<Obsolete ("Use (Message.setField: string -> 'a -> Message -> Message) directly, just for api compatibility")>]
 type Field =
   Field of Value * Units option
 
@@ -151,7 +151,7 @@ type Message =
     /// Gets the timestamp as NodaTime ticks (100 ns per tick). If you're getting
     /// for DateTime and/or DateTimeOffset, remember that those start at
     /// 0001-01-01.
-    member x.timestampTicks : int64 =
+    member x.timestampTicks: int64 =
       x.timestamp / Constants.NanosPerTick
 
 /// See the docs on the funtions for descriptions on how Ack works in conjunction
@@ -159,7 +159,7 @@ type Message =
 type Logger =
   /// The PointName for this `Logger`: corresponds to the `name` field for the
   /// `Messages` produced from this instance.
-  abstract name : PointName
+  abstract name: PointName
 
   /// Write a message to the Logger. The returned value represents the commit
   /// point that Logary has acquired the message. The alternative is always
@@ -173,11 +173,11 @@ type Logger =
   ///
   /// If you choose to not await the Promise/Ack it makes no difference, since
   /// it will be garbage collected in the end, whether it's awaited or not.
-  abstract logWithAck : LogLevel -> (LogLevel -> Message) -> Alt<Promise<unit>>
+  abstract logWithAck: LogLevel -> (LogLevel -> Message) -> Alt<Promise<unit>>
 
   /// Gets the currently set log level (minimal,inclusive),
   /// aka. the granularity with which things are being logged.
-  abstract level : LogLevel
+  abstract level: LogLevel
 
 
 /// A disposable interface to use with `use` constructs and to create child-
@@ -192,11 +192,11 @@ type LoggerScope =
 type TimeScope =
   inherit LoggerScope
   /// Gets the currently elapsed duration of this time scope scope.
-  abstract elapsed : Duration
+  abstract elapsed: Duration
 
   /// Call to sub-divide the TimeScope into two spans with the previous span
   /// labelled as the passed string.
-  abstract bisect : string -> unit
+  abstract bisect: string -> unit
 
   /// Call to stop the timer; decide in the passed function what level the
   /// resulting Gauge should have.

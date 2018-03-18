@@ -15,35 +15,35 @@ let bufferCounter =
   let generateBufferTicker () = job {
     let bufferTicker = BufferTicker ()
     let expects =  Stream.Src.create ()
-    let! (sendItem, _) = 
-      Pipe.start 
-      |> Pipe.tick bufferTicker 
+    let! (sendItem, _) =
+      Pipe.start
+      |> Pipe.tick bufferTicker
       |> Pipe.run (fun items -> Stream.Src.value expects items |> HasResult)
 
     return (sendItem, bufferTicker, Stream.Src.tap expects)
   }
 
   testList "simplest counter" [
-    yield testCaseAsync "initial" <| (job {
+    yield testCaseJob "initial" (job {
       let! (sendItem, ticker, expects) = generateBufferTicker ()
-      do! ticker.Tick () 
+      do! ticker.Tick ()
       let! expect = expects |> take 1L
       let expect = expect |> Seq.toList |> List.map List.ofSeq
       Expect.equal expect [[]] "emptry without sendItem"
-    } |> Job.toAsync)
+    })
 
-    yield testCaseAsync "counting to three" <| (job {
+    yield testCaseJob "counting to three" (job {
       let! (sendItem, ticker, expects) = generateBufferTicker ()
-      do! sendItem 1 |> PipeResult.orDefault (Job.result ()) 
-      do! ticker.Tick () 
+      do! sendItem 1 |> PipeResult.orDefault (Job.result ())
+      do! ticker.Tick ()
       do! sendItem 1  |> PipeResult.orDefault (Job.result ())
       do! sendItem 1  |> PipeResult.orDefault (Job.result ())
-      do! timeOutMillis 100 // since senditem is async, so the order is not guarantee   // Mailbox.Now.send updateMb prev 
+      do! timeOutMillis 100 // since senditem is async, so the order is not guarantee   // Mailbox.Now.send updateMb prev
       do! ticker.Tick ()
       let! expect = expects |> take 2L
       let expect = expect |> Seq.toList
       Expect.equal expect [[1];[1;1;];] "one and then two after two single counts"
-    } |> Job.toAsync )
+    })
   ]
 
 [<Tests>]
@@ -118,7 +118,7 @@ let snapshot =
       Expect.floatClose Accuracy.veryHigh (Snapshot.mean empty) 0. "zero"
     ]
 
-let mockClock () = 
+let mockClock () =
   let mutable num = 0.
   let firstInstant = lazy (SystemClock.Instance.GetCurrentInstant())
   { new IClock with

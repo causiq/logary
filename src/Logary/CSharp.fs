@@ -598,7 +598,7 @@ type LoggerExtensions =
                          [<Optional; DefaultParameterValue(null:Func<Message,Message>)>] transform: Func<Message, Message>,
                          [<Optional; DefaultParameterValue(true)>] backpressure: bool,
                          [<Optional; DefaultParameterValue(true)>] flush: bool,
-                         [<Optional; DefaultParameterValue(5000u)>] timeoutMillis : uint32)
+                         [<Optional; DefaultParameterValue(5000u)>] timeoutMillis: uint32)
                         : Task =
     let timeoutMillis = if timeoutMillis = 0u then 5000u else timeoutMillis
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
@@ -620,9 +620,9 @@ type LoggerExtensions =
   /// Backpressure implies the caller will wait until its message is in the buffer.
   [<Extension>]
   static member LogEventFormat(logger: Logger,
-                               level : LogLevel,
-                               formatTemplate : string,
-                               [<ParamArray>] args : obj[])
+                               level: LogLevel,
+                               formatTemplate: string,
+                               [<ParamArray>] args: obj[])
                               : Task =
     let msgFac = fun _ -> Message.eventFormat (level, formatTemplate, args)
     let call = Logger.log logger level msgFac |> Alt.afterFun (fun _ -> true)
@@ -637,14 +637,14 @@ type LoggerExtensions =
   /// Returns true of the log was accepted to Logary.
   [<Extension>]
   static member LogGauge(logger: Logger,
-                         value : float,
-                         units : Units,
-                         formatTemplate : string,
-                         [<Optional; DefaultParameterValue(null:obj)>] fields : obj,
-                         [<Optional; DefaultParameterValue(null:Func<Message, Message>)>] transform : Func<Message, Message>,
+                         value: float,
+                         units: Units,
+                         formatTemplate: string,
+                         [<Optional; DefaultParameterValue(null:obj)>] fields: obj,
+                         [<Optional; DefaultParameterValue(null:Func<Message, Message>)>] transform: Func<Message, Message>,
                          [<Optional; DefaultParameterValue(true)>] backpressure: bool,
                          [<Optional; DefaultParameterValue(true)>] flush: bool,
-                         [<Optional; DefaultParameterValue(5000u)>] timeoutMillis : uint32)
+                         [<Optional; DefaultParameterValue(5000u)>] timeoutMillis: uint32)
                         : Task<bool> =
     let timeoutMillis = if timeoutMillis = 0u then 5000u else timeoutMillis
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
@@ -680,7 +680,7 @@ type LoggerExtensions =
   /// be retracted by cancelling; however if you await the inner task (the promise) then
   /// the `promiseCt` allows you to cancel that await.
   [<Extension>]
-  static member LogWithAck (logger, level, transform : Func<Message, Message>, bufferCt, promiseCt): Task<Task> =
+  static member LogWithAck (logger, level, transform: Func<Message, Message>, bufferCt, promiseCt): Task<Task> =
     let messageFactory =
       eventX "EVENT"
       >> Funcs.ToFSharpFunc transform
@@ -691,7 +691,7 @@ type LoggerExtensions =
   /// the message properly flushed to all targets' underlying "storage". Targets
   /// whose rules do not match the message will not be awaited.
   [<Extension>]
-  static member LogWithAck (logger, message : Message): Task<Task> =
+  static member LogWithAck (logger, message: Message): Task<Task> =
     let bufferCt = Unchecked.defaultof<CancellationToken>
     let promiseCt = Unchecked.defaultof<CancellationToken>
     Alt.toTasks bufferCt promiseCt (Logger.logWithAck logger message.level (fun _ -> message))
@@ -703,7 +703,7 @@ type LoggerExtensions =
   // - Back-pressure (if you await the task)
   [<Extension>]
   static member TimeWithAck (logger: Logger,
-                             action : Action,
+                             action: Action,
                              bufferCt,
                              promiseCt,
                              [<Optional; DefaultParameterValue(null:string)>] nameEnding,
@@ -805,7 +805,7 @@ type LoggerExtensions =
   /// The call you make to the function yields directly (after your code is done executing of course).
   [<Extension>]
   static member Time (logger,
-                      action : Action,
+                      action: Action,
                       [<Optional; DefaultParameterValue(null:string)>] nameEnding,
                       [<Optional; DefaultParameterValue(null:Func<Message, Message>)>] transform: Func<Message, Message>)
                      : Action =
@@ -824,7 +824,7 @@ type LoggerExtensions =
   /// The call you make to the function yields directly (after your code is done executing of course).
   [<Extension>]
   static member Time (logger,
-                      func : Func<'res>,
+                      func: Func<'res>,
                       [<Optional; DefaultParameterValue(null:string)>] nameEnding,
                       [<Optional; DefaultParameterValue(null:Func<Message, Message>)>] transform: Func<Message, Message>)
                      : Func<'res> =

@@ -50,13 +50,13 @@ type TelemetryMapping =
 /// Microsoft Application Insights configuration
 type AppInsightConf =
   { /// The Application Insights key. Get it from Azure Portal -> App Insights -> Properties -> INSTRUMENTATION KEY  https://docs.microsoft.com/azure/application-insights/app-insights-create-new-resource
-    InstrumentationKey : string
+    InstrumentationKey: string
     /// Whether to use Developer Mode with AI - will send more frequent messages at cost of higher CPU etc.
-    DeveloperMode : bool
+    DeveloperMode: bool
     /// Track external dependencies e.g. SQL, HTTP etc. etc.
-    TrackDependencies : bool
+    TrackDependencies: bool
     /// Map Logary types to Application Insight classes. Default: allToTrace, setting messages as Trace messages
-    MappingConfiguration : TelemetryMapping
+    MappingConfiguration: TelemetryMapping
   }
 
 let allToTrace = {GaugeMapping = GaugeToTrace; DerivedMapping = DerivedToTrace; EventMapping = EventToTrace; }
@@ -68,7 +68,7 @@ module internal Impl =
   open System.Reflection
 
   // This is a placeholder for specific state that your target requires
-  type State = { telemetryClient : TelemetryClient }
+  type State = { telemetryClient: TelemetryClient }
 
   let sdkVersion = 
       typeof<State>.GetType().Assembly.GetCustomAttributes<AssemblyInformationalVersionAttribute>()
@@ -102,7 +102,7 @@ module internal Impl =
   // This is the main entry point of the target. It returns a Job<unit>
   // and as such doesn't have side effects until the Job is started.
   let loop (conf: AppInsightConf) // the conf is specific to your target
-           (ri: RuntimeInfo, api : TargetAPI) =
+           (ri: RuntimeInfo, api: TargetAPI) =
     
     let rec loop (state: State): Job<unit> =
       // Alt.choose will pick the channel/alternative that first gives a value
@@ -213,7 +213,7 @@ let create conf name = TargetConf.createSimple (Impl.loop conf) name
 // code).
 
 /// Use with LogaryFactory.New( s => s.Target<YOUR TARGET NAME.Builder>() )
-type Builder(conf, callParent : Target.ParentCallback<Builder>) =
+type Builder(conf, callParent: Target.ParentCallback<Builder>) =
 
   // place your own configuration methods here
 

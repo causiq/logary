@@ -26,7 +26,7 @@ let main argv =
   LogaryFacadeAdapter.initialise<Suave.Logging.Logger> logary
 
   let logger = Suave.Logging.Log.create "logger.from.suave"
-  let myapp : WebPart =
+  let myapp: WebPart =
       choose [
           path "/" >=> GET >=> Successful.OK "Hello World!"
           path "/" >=> POST >=> Successful.OK "{\"hello\": \"world\"}"

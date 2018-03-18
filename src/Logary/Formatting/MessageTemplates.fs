@@ -29,8 +29,8 @@ module MessageTemplates =
         pos >= 0 && pos < Int32.MaxValue
 
   type Template =
-    { raw : string
-      tokens : TemplateToken []}
+    { raw: string
+      tokens: TemplateToken []}
   with
     member __.Properties =
       __.tokens
@@ -44,10 +44,10 @@ module MessageTemplates =
   | Property of Property
 
   /// refId in ref count depend on the order of the obj send to calculate, e.g:
-  /// A { userInfo : { some info }, users : [ userInfo] } ,
-  /// if send userInfo first then A { userInfo : $1 { some info} , users : [ $1 ]}
-  /// if send users first then A { userInfo : $1 , users : [ $1 { some info} ]}
-  /// things may get weird : check "cycle reference" test in Formatting.fs -> Logary.Test.fsproj
+  /// A { userInfo : { some info }, users: [ userInfo] } ,
+  /// if send userInfo first then A { userInfo : $1 { some info} , users: [ $1 ]}
+  /// if send users first then A { userInfo : $1 , users: [ $1 { some info} ]}
+  /// things may get weird: check "cycle reference" test in Formatting.fs -> Logary.Test.fsproj
   /// :(
   /// consider show all refId (this can make format verbose)
   /// or no need refId in TemplatePropertyValue, when cycle reference show null
@@ -134,7 +134,7 @@ module MessageTemplates =
     and CustomDestructureFactory = DestructureResolver -> DestructureResolver
     and CustomDestructureFactory<'t> = DestructureResolver -> DestructureResolver<'t>
     and ICustomDestructureRegistry =
-      abstract TryGetRegistration : Type -> CustomDestructureFactory option
+      abstract TryGetRegistration: Type -> CustomDestructureFactory option
 
     let emptyDestructureRegistry =
       {
@@ -473,8 +473,8 @@ module MessageTemplates =
 
     type WriteState =
       {
-        provider : IFormatProvider
-        idManager : RefIdManager
+        provider: IFormatProvider
+        idManager: RefIdManager
       }
 
     module Literate =

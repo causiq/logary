@@ -5289,7 +5289,7 @@ module ``Hyper-V Virtual Switch Port`` =
   /// Extensions Dropped Packets Outgoing/sec: This counter represents the total number of dropped packets per second by the switch extensions in the outgoing direction of the virtual switch port.
   let ``Extensions Dropped Packets Outgoing/sec`` =
     WinPerfCounter.create(CategoryName, "Extensions Dropped Packets Outgoing/sec", [])
-  /// IPsec SAs Offloaded : This counter represents the total number of IPsec Security Associations currently offloaded by the virtual switch port.
+  /// IPsec SAs Offloaded: This counter represents the total number of IPsec Security Associations currently offloaded by the virtual switch port.
   let ``IPsec SAs Offloaded `` =
     WinPerfCounter.create(CategoryName, "IPsec SAs Offloaded ", [])
   /// IPsec offload Bytes Receive/sec: This counter represents the total number of IPsec offload bytes received per second by the virtual switch port.
@@ -17325,7 +17325,7 @@ module ``Teredo Server`` =
   /// Out - Teredo Server: RA-Primary: Total Router Advertisements sent by the primary server.
   let ``Out - Teredo Server: RA-Primary`` instances =
     WinPerfCounter.create(CategoryName, "Out - Teredo Server: RA-Primary", instances)
-  /// Out - Teredo Server: RA-Secondary : Total Router Advertisements sent by the secondary server.
+  /// Out - Teredo Server: RA-Secondary: Total Router Advertisements sent by the secondary server.
   let ``Out - Teredo Server: RA-Secondary `` instances =
     WinPerfCounter.create(CategoryName, "Out - Teredo Server: RA-Secondary ", instances)
 

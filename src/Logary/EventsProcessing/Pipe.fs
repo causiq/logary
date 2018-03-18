@@ -35,8 +35,8 @@ module PipeResult =
 /// and then we can pipe source item to its builded processing
 type Pipe<'contInput,'contRes,'sourceItem> =
   internal {
-    build : cont<'contInput,'contRes> -> source<'sourceItem,'contRes>
-    tickTimerJobs : Job<Cancellation> list
+    build: cont<'contInput,'contRes> -> source<'sourceItem,'contRes>
+    tickTimerJobs: Job<Cancellation> list
   }
 and private cont<'a,'b> = 'a -> PipeResult<'b> // just for better type annotation
 and private source<'a,'b> = 'a -> PipeResult<'b> // just for better type annotation
@@ -80,7 +80,7 @@ module Pipe =
   /// when somewhere outside tick through ticker , ticker.handleTick generate new state and pipe input for continuation
   /// this fun will make pipe *async* through an background loop job, like some fire and forget style.
   /// so when user at callsite put some source item in, it return NoResult immediately.
-  /// TODO : handle exception
+  /// TODO: handle exception
   let tick (ticker:Ticker<_,_,_>) pipe =
     pipe
     |> chain (fun cont ->

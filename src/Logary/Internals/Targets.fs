@@ -17,10 +17,10 @@ type TargetMessage =
 /// shutdown and messages.
 type TargetAPI =
   /// Gives you a way to perform internal logging and communicate with Logary.
-  abstract runtimeInfo : RuntimeInfo
+  abstract runtimeInfo: RuntimeInfo
   /// A ring buffer that gives a Message to log and an ACK-IVar to signal after
   /// logging the message.
-  abstract requests : RingBuffer<TargetMessage>
+  abstract requests: RingBuffer<TargetMessage>
   /// A channel that the target needs to select on and then ACK once the target
   /// has fully shut down. 
-  abstract shutdownCh : Ch<IVar<unit>>
+  abstract shutdownCh: Ch<IVar<unit>>

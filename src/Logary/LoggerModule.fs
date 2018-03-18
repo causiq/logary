@@ -25,7 +25,7 @@ module Logger =
   // to avoid polluting the API unecessarily.
 
   /// Log a message, but don't await all targets to flush.
-  let inline log (logger: Logger) logLevel messageFactory : Alt<unit> =
+  let inline log (logger: Logger) logLevel messageFactory: Alt<unit> =
     if logLevel >= logger.level then
       logger.logWithAck logLevel messageFactory ^-> ignore
     else Alt.always ()
@@ -40,7 +40,7 @@ module Logger =
   /// than 5 seconds to add the log message to the buffer; simply drop the message.
   /// Returns true if the message was successfully placed in the buffers, or
   /// false otherwise.
-  let logWithTimeout (logger: Logger) (millis: uint32) logLevel messageFactory : Alt<bool> =
+  let logWithTimeout (logger: Logger) (millis: uint32) logLevel messageFactory: Alt<bool> =
     Alt.choose [
       log logger logLevel messageFactory ^->. true
       simpleTimeout (int millis) logger.name ^->. false
@@ -57,14 +57,14 @@ module Logger =
   /// without dropping messages.
   ///
   /// It's recommended to have alerting on STDERR.
-  let logSimple (logger: Logger) msg : unit =
+  let logSimple (logger: Logger) msg: unit =
     start (logWithTimeout logger defaultTimeout msg.level (fun _ -> msg) ^->. ())
 
   /// Log a message, which returns a promise. The first Alt denotes having the
   /// Message placed in all Targets' buffers. The inner Promise denotes having
   /// the message properly flushed to all targets' underlying "storage". Targets
   /// whose rules do not match the message will not be awaited.
-  let logWithAck (logger: Logger) logLevel messageFactory : Alt<Promise<unit>> =
+  let logWithAck (logger: Logger) logLevel messageFactory: Alt<Promise<unit>> =
     logger.logWithAck logLevel messageFactory
 
   /// Run the function `f` and measure how long it takes; logging that
@@ -242,7 +242,7 @@ module Logger =
 
     let sw = Stopwatch.StartNew()
 
-    let addSpan (m, i) (span: int64 (* ticks *), label : string) =
+    let addSpan (m, i) (span: int64 (* ticks *), label: string) =
       let spanName = PointName [| PointName.format name ; "span"; string i |]
       let spanLabelName = PointName.setEnding "label" spanName
  
@@ -342,45 +342,45 @@ module LoggerEx =
     member x.debugWithAck (messageFactory: LogLevel -> Message): Promise<unit> =
       lwa x Debug messageFactory
 
-    member x.info messageFactory : unit =
+    member x.info messageFactory: unit =
       start (Logger.logWithTimeout x Logger.defaultTimeout Info messageFactory ^->. ())
 
     /// Log with backpressure
-    member x.infoWithBP messageFactory : Alt<unit> =
+    member x.infoWithBP messageFactory: Alt<unit> =
       x.log Info messageFactory
 
     member x.infoWithAck (messageFactory: LogLevel -> Message): Promise<unit> =
       lwa x Info messageFactory
 
-    member x.warn messageFactory : unit =
+    member x.warn messageFactory: unit =
       start (Logger.logWithTimeout x Logger.defaultTimeout Warn messageFactory ^->. ())
 
     /// Log with backpressure
-    member x.warnWithBP messageFactory : Alt<unit> =
+    member x.warnWithBP messageFactory: Alt<unit> =
       x.log Warn messageFactory
 
     member x.warnWithAck (messageFactory: LogLevel -> Message): Promise<unit> =
       lwa x Warn messageFactory
 
-    member x.error messageFactory : unit =
+    member x.error messageFactory: unit =
       start (Logger.logWithTimeout x Logger.defaultTimeout Error messageFactory ^->. ())
 
     /// Log with backpressure
-    member x.errorWithBP messageFactory : Alt<unit> =
+    member x.errorWithBP messageFactory: Alt<unit> =
       x.log Error messageFactory
 
     member x.errorWithAck (messageFactory: LogLevel -> Message): Promise<unit> =
       lwa x Error messageFactory
 
-    member x.fatal messageFactory : unit =
+    member x.fatal messageFactory: unit =
       start (Logger.logWithTimeout x Logger.defaultTimeout Fatal messageFactory ^->. ())
 
     /// Log with backpressure
-    member x.fatalWithBP messageFactory : Alt<unit> =
+    member x.fatalWithBP messageFactory: Alt<unit> =
       x.log Fatal messageFactory
 
     member x.fatalWithAck (messageFactory: LogLevel -> Message): Promise<unit> =
       lwa x Fatal messageFactory
 
-    member x.logSimple message : unit =
+    member x.logSimple message: unit =
       Logger.logSimple x message

@@ -26,7 +26,7 @@ let start () =
 let shutdown t = Target.shutdown t |> run |> run
 
 let raisedExn msg =
-  let e = ref None : exn option ref
+  let e = ref None: exn option ref
   try raise <| ApplicationException(msg)
   with ex -> e := Some ex
   (!e).Value

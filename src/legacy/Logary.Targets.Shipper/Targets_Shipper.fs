@@ -20,7 +20,7 @@ module Serialisation =
   open MBrace.FsPickler.Combinators
 
   (*
-  let pValue : Pickler<Value> =
+  let pValue: Pickler<Value> =
     Pickler.auto
 
   let pUnits =
@@ -64,14 +64,14 @@ let empty =
 module internal Impl =
 
   type State =
-    { zmqCtx : Context
-      sender : Socket }
+    { zmqCtx: Context
+      sender: Socket }
     interface IDisposable with
       member x.Dispose() =
         (x.zmqCtx :> IDisposable).Dispose()
         (x.sender :> IDisposable).Dispose()
 
-  let createState connectTo createSocket mode : State =
+  let createState connectTo createSocket mode: State =
     let context = new Context()
     let sender = createSocket context
     Socket.connect sender connectTo
@@ -80,7 +80,7 @@ module internal Impl =
       sender = sender }
 
   let serve (conf: ShipperConf)
-            (ri: RuntimeInfo, api : TargetAPI) =
+            (ri: RuntimeInfo, api: TargetAPI) =
 
     let rec init = function
       | Unconfigured ->
@@ -123,7 +123,7 @@ module internal Impl =
 let create conf = TargetConf.createSimple (Impl.serve conf)
 
 /// Use with LogaryFactory.New( s => s.Target<Noop.Builder>() )
-type Builder(conf, callParent : Target.ParentCallback<Builder>) =
+type Builder(conf, callParent: Target.ParentCallback<Builder>) =
   member x.PublishTo(connectTo: string) =
     ! (callParent <| Builder(PublishTo connectTo, callParent))
 

@@ -15,13 +15,13 @@ open System.Text.RegularExpressions
 /// configured targets, middlewares, etc.
 type LogaryConf =
   /// A map of the targets by name.
-  abstract targets : HashMap<string, TargetConf>
+  abstract targets: HashMap<string, TargetConf>
   /// Service metadata - what name etc.
-  abstract runtimeInfo : RuntimeInfo
+  abstract runtimeInfo: RuntimeInfo
   /// Extra middleware added to every resolved logger.
-  abstract middleware : Middleware[]
+  abstract middleware: Middleware[]
   /// Optional stream transformer.
-  abstract processing : Events.Processing
+  abstract processing: Events.Processing
   /// each logger's min level
   abstract loggerLevels : (string * LogLevel) list
 
@@ -46,20 +46,20 @@ type ShutdownInfo = ShutdownInfo of acks:string list * timeouts:string list
 type LogManager =
   /// Gets the service name that is used to filter and process the logs further
   /// downstream. This property is configured at initialisation of Logary.
-  abstract runtimeInfo : RuntimeInfo
+  abstract runtimeInfo: RuntimeInfo
 
   /// Get a logger denoted by the name passed as the parameter. This name can either be
   /// a specific name that you keep for a sub-component of your application or
   /// the name of the class. Also have a look at Logging.GetCurrentLogger().
-  abstract getLogger : PointName -> Logger
+  abstract getLogger: PointName -> Logger
 
-  abstract getLoggerWithMiddleware : PointName -> Middleware -> Logger
+  abstract getLoggerWithMiddleware: PointName -> Middleware -> Logger
 
   /// Awaits that all targets finish responding to a flush message
   /// so that we can be certain they have processed all previous messages.
   /// This function is useful together with unit tests for the targets.
-  abstract flushPending : Duration -> Alt<FlushInfo>
-  abstract flushPending : unit -> Alt<unit>
+  abstract flushPending: Duration -> Alt<FlushInfo>
+  abstract flushPending: unit -> Alt<unit>
 
   /// Shuts Logary down after flushing, given a timeout duration to wait before
   /// counting the target as timed out in responding. The duration is applied
@@ -68,37 +68,37 @@ type LogManager =
   /// First duration: flush duration
   /// Second duration: shutdown duration
   /// Returns the shutdown book keeping info
-  abstract shutdown : flush:Duration * shutdown:Duration -> Alt<FlushInfo * ShutdownInfo>
-  abstract shutdown : unit -> Alt<unit>
+  abstract shutdown: flush:Duration * shutdown:Duration -> Alt<FlushInfo * ShutdownInfo>
+  abstract shutdown: unit -> Alt<unit>
 
   /// Dynamically controls logger min level, 
   /// this will only affect the loggers (its name, not its instance) which have been created beafore
-  abstract switchLoggerLevel : string * LogLevel -> unit
+  abstract switchLoggerLevel: string * LogLevel -> unit
 
 /// This is the main state container in Logary.
 module Registry =
   /// The holder for the channels of communicating with the registry.
   type T =
     private {
-      runtimeInfo : RuntimeInfo
-      msgProcessing : Message -> Middleware option -> Alt<Promise<unit>>
+      runtimeInfo: RuntimeInfo
+      msgProcessing: Message -> Middleware option -> Alt<Promise<unit>>
 
       /// to show whether or not registry is shutdown, used contorl message communication channel
       /// avoid blocking endless case
-      isClosed : IVar<unit>
+      isClosed: IVar<unit>
 
       /// Flush all pending messages from the registry to await shutdown and
       /// ack on the `ackCh` when done. If the client nacks the request, the
       /// `nack` promise is filled with a unit value. Optional duration of how
       /// long the flush 'waits' for targets before returning a FlushInfo.
-      flushCh : Ch<Ch<FlushInfo> * Promise<unit> * Duration option>
+      flushCh: Ch<Ch<FlushInfo> * Promise<unit> * Duration option>
 
       /// Shutdown the registry in full. This operation cannot be cancelled and
       /// so the caller is promised a ShutdownInfo.
-      shutdownCh : Ch<IVar<ShutdownInfo> * Duration option>
+      shutdownCh: Ch<IVar<ShutdownInfo> * Duration option>
 
       /// each logger's minLevel stores here, can be dynamically change
-      loggerLevelDic : System.Collections.Concurrent.ConcurrentDictionary<string,LogLevel>
+      loggerLevelDic: System.Collections.Concurrent.ConcurrentDictionary<string,LogLevel>
 
       /// default logger rules from logary conf, will be applied when create new logger
       defaultLoggerLevelRules : (string * LogLevel) list

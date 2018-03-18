@@ -43,7 +43,7 @@ type GaugesTable() =
   inherit AutoReversingMigration()
 
   override x.Up () =
-    let ctx : string = x.ApplicationContext :?> string
+    let ctx: string = x.ApplicationContext :?> string
     let indexForReading = ctx.Contains Runner.IndexForReading
 
     base.Create
@@ -75,7 +75,7 @@ type EventsTable() =
   inherit AutoReversingMigration()
 
   override x.Up () =
-    let ctx : string = x.ApplicationContext :?> string
+    let ctx: string = x.ApplicationContext :?> string
     let indexForReading = ctx.Contains Runner.IndexForReading
 
     base.Create

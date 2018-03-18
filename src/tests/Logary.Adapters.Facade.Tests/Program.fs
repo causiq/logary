@@ -23,6 +23,7 @@ let stubLogManager (message: Message ref) =
   { new LogManager with
       member x.runtimeInfo =
         RuntimeInfo.create "Facade Tests" "localhost"
+        :> _
 
       member x.getLogger name =
         stubLogger Verbose message name
@@ -244,5 +245,5 @@ let tests =
     ]
   ]
 [<EntryPoint>]
-let main argv = 
+let main argv =
   Tests.runTestsInAssembly defaultConfig argv

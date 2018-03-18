@@ -142,7 +142,7 @@ type Cust() =
 
 [<Tests>]
 let``get alignment structure values`` (): obj[] seq = seq {
-    let values : obj[] = [| 1234 |]
+    let values: obj[] = [| 1234 |]
     yield [| "C#"; values; "cus #{CustomerId,-10}, pleasure to see you";        "cus #1234      , pleasure to see you" |]
     yield [| "C#"; values; "cus #{CustomerId,-10}, pleasure to see you";        "cus #1234      , pleasure to see you" |]
     yield [| "C#"; values; "cus #{CustomerId,-10:000000}, pleasure to see you"; "cus #001234    , pleasure to see you" |]
@@ -157,7 +157,7 @@ let``get alignment structure values`` (): obj[] seq = seq {
     yield [| "F#"; values; "cus #{CustomerId,10:0,0}, pleasure to see you";     "cus #     1,234, pleasure to see you" |]
     yield [| "F#"; values; "cus #{CustomerId:0,0}, pleasure to see you";        "cus #1,234, pleasure to see you"      |]
     
-    let values : obj[] = [| Cust() |]
+    let values: obj[] = [| Cust() |]
     yield [| "C#"; values; "cus #{$cust:0,0}, pleasure to see you";             "cus #\"1234\", pleasure to see you"    |]
     yield [| "F#"; values; "cus #{$cust:0,0}, pleasure to see you";             "cus #\"1234\", pleasure to see you"    |]
     // formats/alignments don't propagate through to the 'destructured' inside values
@@ -191,8 +191,8 @@ type ItemsUnion = ChairItem of c:ChairRecord | ReceiptItem of r:ReceiptRecord
 let``an F# discriminated union object is formatted with provider correctly`` =
     let provider = CultureInfo("fr-FR")
     let template = "I like {@item1} and {@item2}"
-    let values : obj[] = [| ChairItem({ Back="straight"; Legs=[|1;2;3;4|] })
-                            ReceiptItem({ Sum=12.345; When=DateTime(2013, 5, 20, 16, 39, 0) }) |]
+    let values: obj[] = [| ChairItem({ Back="straight"; Legs=[|1;2;3;4|] })
+                           ReceiptItem({ Sum=12.345; When=DateTime(2013, 5, 20, 16, 39, 0) }) |]
     let expected = """I like ("ChairItem": ChairRecord { Legs: [1, 2, 3, 4], Back: "straight" }) and ("ReceiptItem": ReceiptRecord { When: 20/05/2013 16:39:00, Sum: 12,345 })"""
     MtAssert.RenderedAs( template, values, expected, provider)
 
@@ -201,9 +201,9 @@ let``an F# discriminated union object is formatted with provider correctly`` =
 let``Rendered F# DU or Tuple fields are 'null' when depth is 1`` =
     let provider = (CultureInfo("fr-FR"))
     let template = "I like {@item1} and {@item2} and {@item3}"
-    let values : obj[] = [| Leaf 12.345
-                            Leaf 12.345
-                            Trunk (12.345, DateTimeOffset(2013, 5, 20, 16, 39, 00, TimeSpan.FromHours 9.5), [Leaf 12.345; Leaf 12.345]) |]
+    let values: obj[] = [| Leaf 12.345
+                           Leaf 12.345
+                           Trunk (12.345, DateTimeOffset(2013, 5, 20, 16, 39, 00, TimeSpan.FromHours 9.5), [Leaf 12.345; Leaf 12.345]) |]
     // all fields should be rendered
     let expected = """I like ("Leaf": 12,345) and ("Leaf": 12,345) and ("Trunk": [12,345, 20/05/2013 16:39:00 +09:30, [("Leaf": 12,345), ("Leaf": 12,345)]])"""
     
@@ -214,10 +214,10 @@ let``Rendered F# DU or Tuple fields are 'null' when depth is 1`` =
 let``Rendered F# DU or Tuple fields on level3 are 'null' when depth is 2`` =
     let provider = (CultureInfo("fr-FR"))
     let template = "I like {@item1} and {@item2} and {@item3} and {@item4}"
-    let values : obj[] = [| Leaf 12.345
-                            Leaf 12.345
-                            Trunk (12.345, DateTimeOffset(2013, 5, 20, 16, 39, 00, TimeSpan.FromHours 9.5), [Leaf 12.345; Leaf 12.345])
-                            ChairItem { Back="slanted"; Legs=[|1;2;3;4;5|] } |]
+    let values: obj[] = [| Leaf 12.345
+                           Leaf 12.345
+                           Trunk (12.345, DateTimeOffset(2013, 5, 20, 16, 39, 00, TimeSpan.FromHours 9.5), [Leaf 12.345; Leaf 12.345])
+                           ChairItem { Back="slanted"; Legs=[|1;2;3;4;5|] } |]
 
     // Render fields deeper than level 2 with 'null' values
     // In this case, only The Trunk.Item3 (Tree list) is after level 2
@@ -233,10 +233,10 @@ let``Destructred F# objects captured with a custom destructurer render with form
 and {@item2}
 and {@item3}
 and {@item4}"
-    let values : obj[] = [| Leaf 12.345
-                            Leaf 12.345
-                            Trunk (12.345, DateTimeOffset(2013, 5, 20, 16, 39, 00, TimeSpan.FromHours 9.5), [Leaf 12.345; Leaf 12.345])
-                            Trunk (1.1, DateTimeOffset(2013, 5, 20, 16, 39, 00, TimeSpan.FromHours 9.5), [Seq [1.1;2.2;3.3]; Seq [4.4]])
+    let values: obj[] = [| Leaf 12.345
+                           Leaf 12.345
+                           Trunk (12.345, DateTimeOffset(2013, 5, 20, 16, 39, 00, TimeSpan.FromHours 9.5), [Leaf 12.345; Leaf 12.345])
+                           Trunk (1.1, DateTimeOffset(2013, 5, 20, 16, 39, 00, TimeSpan.FromHours 9.5), [Seq [1.1;2.2;3.3]; Seq [4.4]])
                          |]
     let expected = """I like ("Leaf": 12,345)
 and ("Leaf": 12,345)
@@ -254,7 +254,7 @@ type BernieSandersSizeFormatter (innerFormatProvider: IFormatProvider) =
       | t when t = typeof<ICustomFormatter> -> this :> obj
       | _ -> innerFormatProvider.GetFormat ty
   interface ICustomFormatter with
-    member this.Format (format: string, arg : obj, provider : IFormatProvider) =
+    member this.Format (format: string, arg: obj, provider: IFormatProvider) =
       match arg with
       | :? Size as s ->
         match s with Size.Large -> "YUUUGE" | _ -> sprintf "%A" s
@@ -268,6 +268,6 @@ type BernieSandersSizeFormatter (innerFormatProvider: IFormatProvider) =
 let``Applies custom formatter to enums`` =
     let provider = (BernieSandersSizeFormatter CultureInfo.InvariantCulture) :> IFormatProvider
     let template = "Size {large} {regular}"
-    let values : obj[] = [| Size.Large; Size.Regular |]
+    let values: obj[] = [| Size.Large; Size.Regular |]
     let expected = "Size \"YUUUGE\" \"Regular\""
     MtAssert.RenderedAs( template, values, expected, provider)

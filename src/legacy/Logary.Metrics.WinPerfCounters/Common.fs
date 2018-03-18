@@ -12,8 +12,8 @@ let ofPerfCounters counters =
   |> Array.map Option.get
 
 let private forInstances instancesFactory unitsAndCounters =
-  let instances : string [] = instancesFactory ()
-  unitsAndCounters |> Array.map (fun (units: Units, create : string [] -> WinPerfCounter) ->
+  let instances: string [] = instancesFactory ()
+  unitsAndCounters |> Array.map (fun (units: Units, create: string [] -> WinPerfCounter) ->
     units, create instances)
 
 let private forInstance instanceFactory unitsAndCounters =

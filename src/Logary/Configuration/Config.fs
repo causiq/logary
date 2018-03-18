@@ -23,15 +23,15 @@ type ILogger =
 module Config =
   type T =
     private {
-      targets      : HashMap<string, TargetConf>
-      host         : string
-      service      : string
-      getTimestamp : unit -> EpochNanoSeconds
-      getSem       : unit -> obj
-      ilogger      : ILogger
-      middleware   : Middleware list
-      processing   : Events.Processing
-      setGlobals   : bool
+      targets: HashMap<string, TargetConf>
+      host: string
+      service: string
+      getTimestamp: unit -> EpochNanoSeconds
+      getSem: unit -> obj
+      ilogger: ILogger
+      middleware: Middleware list
+      processing: Events.Processing
+      setGlobals: bool
       loggerLevels : (string * LogLevel) list
     }
 
@@ -95,38 +95,40 @@ module Config =
           getLoggerWithMiddleware = logManager.getLoggerWithMiddleware }
     Global.initialise config
 
+  let internal createInternalTargets = function
+    | ILogger.Console minLevel ->
+      let target = Console.create Console.empty "internal"
+      let rule = Rule.empty |> Rule.setMinLevel minLevel
+      [ TargetConf.setRule rule target ]
+
+    | ILogger.LiterateConsole minLevel ->
+      let target = LiterateConsole.create LiterateConsole.empty "internal"
+      let rule = Rule.empty |> Rule.setMinLevel minLevel
+      [ TargetConf.setRule rule target ]
+
+    | ILogger.Targets conf ->
+      conf
+
+  let internal createInternalLogger (ri: RuntimeInfo.T) (itargets: TargetConf list) =
+    job {
+      let! ilogger = InternalLogger.create ri
+      do! itargets |> Seq.Con.iterJob (fun itarget -> InternalLogger.add itarget ilogger)
+      return { ri with logger = ilogger }, ilogger
+    }
+
   let build (lconf: T): Job<LogManager> =
-    let ri : RuntimeInfo.T =
+    let ri: RuntimeInfo.T =
       { service = lconf.service
         host = lconf.host
         getTimestamp = lconf.getTimestamp
         getConsoleSemaphore = lconf.getSem
         logger = NullLogger.instance }
 
-    let itargets =
-      match lconf.ilogger with
-      | ILogger.Console minLevel ->
-        let target = Console.create Console.empty "internal"
-        let rule = Rule.empty |> Rule.setMinLevel minLevel
-        [TargetConf.setRule rule target]
-
-      | ILogger.LiterateConsole minLevel ->
-        let target = LiterateConsole.create LiterateConsole.empty "internal"
-        let rule = Rule.empty |> Rule.setMinLevel minLevel
-        [TargetConf.setRule rule target]
-
-      | ILogger.Targets conf ->
-        conf
-
-    InternalLogger.create ri >>= fun ilogger ->
-    itargets
-    |> Seq.Con.iterJob (fun itarget -> InternalLogger.add itarget ilogger)
-    >>= fun () ->
+    createInternalLogger ri (createInternalTargets lconf.ilogger) >>= fun (ri, ilogger) ->
     let mids =
       [ Middleware.host lconf.host
         Middleware.service lconf.service ]
     let middleware = Array.ofList (lconf.middleware @ mids)
-    let ri = { ri with logger = ilogger }
 
     let conf =
       { new LogaryConf with
@@ -136,11 +138,10 @@ module Config =
           member x.processing = lconf.processing
           member x.loggerLevels = lconf.loggerLevels
       }
-    Registry.create conf
-    >>- fun registry ->
-        let logManager = Registry.toLogManager registry
-        if lconf.setGlobals then do setToGlobals logManager
-        logManager
+    Registry.create conf >>- fun registry ->
+    let logManager = Registry.toLogManager registry
+    if lconf.setGlobals then do setToGlobals logManager
+    logManager
 
 
   /// maybe consider config below around registry,not globals

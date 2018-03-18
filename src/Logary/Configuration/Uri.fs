@@ -56,7 +56,7 @@ module Uri =
 
     | m ->
       Some (fun (s: string) ->
-        m.Invoke(null, [| s |]) |> unbox : Choice<obj, string>)
+        m.Invoke(null, [| s |]) |> unbox: Choice<obj, string>)
 
   let convertTo typ (v: string): obj =
     match conversion.TryGetValue typ with

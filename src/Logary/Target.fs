@@ -69,10 +69,10 @@ module Target =
   /// and out-of-band-method of shutting down the target; the `shutdownCh`.
   type T =
     private {
-      name       : string
-      api        : TargetAPI
-      middleware : Middleware list
-      rules      : Rule list
+      name: string
+      api: TargetAPI
+      middleware: Middleware list
+      rules: Rule list
     }
   with
     member x.Name = x.name
@@ -139,7 +139,7 @@ module Target =
 
   /// Shutdown the target. The commit point is that the target accepts the
   /// shutdown signal and the promise returned is that shutdown has finished.
-  let shutdown x : Alt<Promise<_>> =
+  let shutdown x: Alt<Promise<_>> =
     let ack = IVar ()
     Ch.give x.api.shutdownCh ack ^->. upcast ack
 

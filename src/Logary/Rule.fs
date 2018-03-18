@@ -14,12 +14,12 @@ type MessageFilter = Message -> bool
 [<CustomEquality; CustomComparison>]
 type Rule =
   { /// This is the regular expression that the 'path' must match to be loggable
-    path     : Regex
+    path: Regex
     /// This is the level at which the target will accept log lines. It's inclusive, so
     /// anything below won't be accepted.
-    minLevel : LogLevel
+    minLevel: LogLevel
     /// This is the accept filter that is before the message is passed to the target instance.
-    acceptIf : MessageFilter }
+    acceptIf: MessageFilter }
 
   override x.GetHashCode () =
     hash (x.path.ToString(), x.minLevel)

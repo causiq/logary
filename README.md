@@ -2522,11 +2522,9 @@ logger.LogWithAck(message)
   .Wait();
 ```
 
-
-
 ## License
 
-[Apache 2.0][apache]
+[Apache 2.0 w/ amendment: MSFT's web servers -> commercial license needed][apache]
 
  [apache]: https://www.apache.org/licenses/LICENSE-2.0.html
  [nuget-logary]: https://www.nuget.org/packages/Logary/

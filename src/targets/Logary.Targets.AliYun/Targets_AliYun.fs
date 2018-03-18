@@ -12,13 +12,13 @@ open Logary.Formatting.Literate
 
 type AliYunConf = 
   {
-    AccessKeyId             : string
-    AccessKey               : string
-    Endpoint                : string   
-    ClientConnectTimeout    : int  
-    ClientReadWriteTimeout  : int   
-    Project                 : string
-    Logstore                : string
+    AccessKeyId: string
+    AccessKey: string
+    Endpoint: string   
+    ClientConnectTimeout: int  
+    ClientReadWriteTimeout: int   
+    Project: string
+    Logstore: string
   }
   
 let empty = {
@@ -32,7 +32,7 @@ let empty = {
 }
 
 
-type State = { logClient : Aliyun.Api.LOG.LogClient }
+type State = { logClient: Aliyun.Api.LOG.LogClient }
 
 module internal Impl =
   open Hopac
@@ -84,7 +84,7 @@ module internal Impl =
     log
 
   let loop (conf: AliYunConf)
-           (runtime: RuntimeInfo, api : TargetAPI) =
+           (runtime: RuntimeInfo, api: TargetAPI) =
     
     let logger = 
       let pn = PointName [| "Logary"; "AliYun"; "loop" |]
@@ -128,12 +128,12 @@ let create conf name =
 
 
 type IThirdStep = 
-  abstract SetConnectTimeOut : int -> IThirdStep
-  abstract SetReadWriteTimeOut : int -> IThirdStep
-  abstract Done : unit -> Target.TargetConfBuild<Builder>
+  abstract SetConnectTimeOut: int -> IThirdStep
+  abstract SetReadWriteTimeOut: int -> IThirdStep
+  abstract Done: unit -> Target.TargetConfBuild<Builder>
 and ISecondStep =
-  abstract ConfLogLocation : string * string -> IThirdStep
-and Builder(conf: AliYunConf, callParent : Target.ParentCallback<_>) = 
+  abstract ConfLogLocation: string * string -> IThirdStep
+and Builder(conf: AliYunConf, callParent: Target.ParentCallback<_>) = 
 
   new(callParent: Target.ParentCallback<_>) =
     Builder(empty, callParent)

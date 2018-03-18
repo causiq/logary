@@ -422,7 +422,7 @@ module Program =
       eprintfn "%s" error
       20
 
-  let startWindows argv : int =
+  let startWindows argv: int =
     let exiting = new ManualResetEventSlim(false)
 
     let enqueue f =
@@ -442,7 +442,7 @@ module Program =
     |> with_stop (fun hc -> exiting.Set() ; stop hc)
     |> run
 
-  let startUnix argv : int =
+  let startUnix argv: int =
     let exiting = new ManualResetEventSlim(false)
     use sub = Console.CancelKeyPress.Subscribe(fun _ -> exiting.Set())
     execute argv exiting

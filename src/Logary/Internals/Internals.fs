@@ -47,7 +47,7 @@ module internal List =
 
     List.foldBack folder list initState
 
-  let rec traverseAltA (f: _ -> Alt<'b>) list : Alt<'b list> =
+  let rec traverseAltA (f: _ -> Alt<'b>) list: Alt<'b list> =
     let cons head tail = head :: tail
     let initState = Alt.always []
     let folder head tail =
@@ -129,12 +129,12 @@ module Map =
 
   // TODO: cache
   let private prop =
-    fun (name: string, typ : Type) ->
+    fun (name: string, typ: Type) ->
       typ.GetProperty name
 
   /// This is basically an assembly-internal function; depend on at
   /// your own misery.
-  let ofObject : obj -> _ =
+  let ofObject: obj -> _ =
     let toS o =
       match o with
       | null ->
@@ -167,7 +167,7 @@ module Map =
       | :? TargetException -> // bug in F# compiler
         None
 
-    let readInner : obj -> (string * obj) option =
+    let readInner: obj -> (string * obj) option =
       function
       | :? KeyValuePair<string, obj> as kvp ->
         Some (kvp.Key, kvp.Value)

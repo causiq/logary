@@ -27,7 +27,7 @@ let internal parseTemplateTokens template =
 type ColouredText = string * ConsoleColor
 
 type DateTimeOffset with
-  member x.ToLiterateTime (?options : LiterateOptions) =
+  member x.ToLiterateTime (?options: LiterateOptions) =
     let options = defaultArg options (LiterateOptions.create())
     x.ToLocalTime().ToString("HH:mm:ss", options.formatProvider)
 

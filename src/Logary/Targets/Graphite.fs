@@ -21,8 +21,8 @@ let TriggerTag = "plottable"
 /// Configuration for loggin to graphite.
 /// TODO: prefixing with hostname etc
 type GraphiteConf =
-  { hostname  : string
-    port      : uint16 }
+  { hostname: string
+    port: uint16 }
 
   [<CompiledName "Create">]
   static member create(hostname, ?port) =
@@ -33,8 +33,8 @@ type GraphiteConf =
 module Impl =
 
   type GraphiteState =
-    { client         : TcpClient
-      sendRecvStream : System.Net.Sockets.NetworkStream option }
+    { client: TcpClient
+      sendRecvStream: System.Net.Sockets.NetworkStream option }
 
   let tryDispose (item: 'a option) =
     if item.IsNone then
@@ -75,9 +75,9 @@ module Impl =
     Job.fromAsync (stream.AsyncWrite buffer) >>-.
     { state with sendRecvStream = Some stream }
 
-  let loop (conf: GraphiteConf) (svc: RuntimeInfo, api : TargetAPI) =
+  let loop (conf: GraphiteConf) (svc: RuntimeInfo, api: TargetAPI) =
 
-    let rec running state : Job<unit> =
+    let rec running state: Job<unit> =
       Alt.choose [
         RingBuffer.take api.requests ^=> function
           | Log (message, ack) ->
@@ -109,7 +109,7 @@ let create conf name =
   TargetConf.createSimple (Impl.loop conf) name
 
 /// Use with LogaryFactory.New( s => s.Target< HERE >() )
-type Builder(conf, callParent : ParentCallback<Builder>) =
+type Builder(conf, callParent: ParentCallback<Builder>) =
 
   /// Specify where to connect
   member x.ConnectTo(hostname, port) =

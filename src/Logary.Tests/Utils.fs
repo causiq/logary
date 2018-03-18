@@ -1,3 +1,4 @@
+[<AutoOpen>]
 module Logary.Tests.Utils
 
 open System
@@ -5,6 +6,17 @@ open System.IO
 open Hopac
 open NodaTime
 open Expecto
+open Expecto.Logging
+
+let internal logger = Log.create "Logary.Tests.Utils"
+
+let testCaseJob name xJ =
+  testCaseAsync name (Job.toAsync xJ)
+let ftestCaseJob name xJ =
+  ftestCaseAsync name (Job.toAsync xJ)
+let ptestCaseJob name xJ =
+  ptestCaseAsync name (Job.toAsync xJ)
+
 open Logary
 open Logary.Internals
 open Logary.Targets
@@ -32,7 +44,7 @@ let buildLogManager () = job {
     |> Config.processing (Events.events |> Events.sink [tname])
     |> Config.disableGlobals
     |> Config.build
-  return (logm, out, error)
+  return logm, out, error
 }
 
 let innermost () =
@@ -49,8 +61,8 @@ let withException f =
     f e
 
 type Tenant =
-  { tenantId : string
-    permissions : string }
+  { tenantId: string
+    permissions: string }
 
 let exnMsg =
   Message.event Error "Unhandled exception"
@@ -81,8 +93,11 @@ let multiGaugeMessage level =
   |> Message.setContext "host" "db-001"
   |> Message.setContext "service" "api-web"
 
-let emptyRuntime = RuntimeInfo.create "svc" "host"
-
+let emptyRuntime =
+  memo (
+    Config.createInternalTargets (ILogger.LiterateConsole Verbose)
+    |> Config.createInternalLogger (RuntimeInfo.create "logary-tests" "dev-machine")
+  )
 
 let nanos xs =
   Duration.FromTicks (xs / Constants.NanosPerTick)
@@ -108,15 +123,26 @@ let finaliseJob target =
 
 /// Finalise the target and assert it was finalised within 1000 milliseconds
 let finalise target =
-  finaliseJob target
-  |> Alt.afterFun (
-     function
-     | Internals.TimedOut ->
-       failtestf "finalising target timed out: %A" target
-     | Internals.Success _ -> ())
+  finaliseJob target |> Alt.afterFun (function
+    | Internals.TimedOut ->
+      failtestf "Finalising target timed out: %A" target
+    | Internals.Success _ ->
+      ())
 
-let logMsgWaitAndShutdown targetApi (logCallBack: (Message -> Alt<unit>) -> #Job<unit>) =
-  let logAndWait = Target.log targetApi >> Alt.afterJob id
-  let logJob = logCallBack logAndWait
-  let finaliseJob = finalise targetApi
-  Job.tryFinallyJob logJob finaliseJob
+let logMsgWaitAndShutdown targetApi (logCallBack: (Message -> Job<unit>) -> #Job<unit>) =
+  let logAndWait (message: Message) =
+    job {
+      do! logger.infoWithBP (Logging.Message.eventX "Sending message to target")
+      let! ack = Target.log targetApi message
+      do! logger.infoWithBP (Logging.Message.eventX "Waiting for target to ACK message")
+      do! ack
+      do! logger.infoWithBP (Logging.Message.eventX "Target ACKed message")
+    }
+  let finaliseJob =
+    job {
+      do! logger.infoWithBP (Logging.Message.eventX "Finalising target")
+      do! finalise targetApi
+      do! logger.infoWithBP (Logging.Message.eventX "Target finalised!")
+    }
+
+  Job.tryFinallyJob (logCallBack logAndWait) finaliseJob

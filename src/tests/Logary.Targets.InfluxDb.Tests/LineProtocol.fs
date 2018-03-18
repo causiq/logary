@@ -8,7 +8,7 @@
 // open Logary.Targets.InfluxDb
 // open TestHelpers
 
-// type myObj = {foo : string; number : int}
+// type myObj = {foo: string; number: int}
 
 // [<Tests>]
 // let lineProtocol =

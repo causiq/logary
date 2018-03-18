@@ -151,7 +151,7 @@ module Serialisation =
     //       | _ -> v)
     //   else id
 
-    // let contextValues suppress context : PointValue -> _ * _ =
+    // let contextValues suppress context: PointValue -> _ * _ =
     //   let context' =
     //     context
     //     |> removeSuppressTag suppress
@@ -229,19 +229,19 @@ type Consistency =
 
 type InfluxDbConf =
     /// the write endpoint to send the values to
-  { endpoint  : Uri
+  { endpoint: Uri
     /// REQUIRED - sets the target database for the write
-    db        : string
+    db: string
     /// if authentication is enabled, you must authenticate as a user with write permissions to the target database
-    username  : string option
+    username: string option
     /// if authentication is enabled, you must authenticate as a user with write permissions to the target database
-    password  : string option
+    password: string option
     /// set the number of nodes that must confirm the write. If the requirement is not met the return value will be partial write if some points in the batch fail, or write failure if all points in the batch fail.
-    consistency : Consistency
+    consistency: Consistency
     /// sets the target retention policy for the write. If not present the default retention policy is used
-    retention : string option
+    retention: string option
     /// Sets how many measurements should be batched together if new measurements are produced faster than we can write them one by one. Default is 100.
-    batchSize : uint16 }
+    batchSize: uint16 }
 
   static member create(ep, db, ?user, ?password, ?consistency, ?retention, ?batchSize) =
     { endpoint    = ep
@@ -279,7 +279,7 @@ module internal Impl =
     | _ ->
       ""
 
-  let loop (conf: InfluxDbConf) (ri: RuntimeInfo, api : TargetAPI) =
+  let loop (conf: InfluxDbConf) (ri: RuntimeInfo, api: TargetAPI) =
     let endpoint =
       let ub = UriBuilder(conf.endpoint)
       ub.Path <- "/write"
@@ -339,7 +339,7 @@ let create conf name =
   TargetConf.createSimple (Impl.loop conf) name
 
 /// Use with LogaryFactory.New( s => s.Target<InfluxDb.Builder>() )
-type Builder(conf, callParent : Target.ParentCallback<Builder>) =
+type Builder(conf, callParent: Target.ParentCallback<Builder>) =
   let update (conf': InfluxDbConf): Builder =
     Builder(conf', callParent)
 

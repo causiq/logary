@@ -1,4 +1,5 @@
 module Logary.Tests.Registry
+
 open System
 open Hopac
 open Hopac.Infixes
@@ -11,7 +12,7 @@ open Logary.Configuration
 open Logary.EventsProcessing
 
 let tests = [
-  testCaseAsync "from Config and Multi shutdown" <| (job {
+  testCaseJob "from Config and Multi shutdown" <| job {
     let! logm = Config.create "svc" "localhost" |> Config.build
     let ri = logm.runtimeInfo
     Expect.equal ri.service "svc" "should have service"
@@ -29,33 +30,34 @@ let tests = [
     let! (finfo) = logm.flushPending (timeout)
     Expect.equal finfo (FlushInfo (["registry is closed"],[])) "shoule show registry is shutdown"
 
-  } |> Job.toAsync)
+  }
 
-  testCaseAsync "after shutting down no logging happens" <| (job {
-    let! (logm, out, error) = Utils.buildLogManager ()
-    let loggername = PointName.parse "logger.test"
+  testCaseJob "after shutting down no logging happens" <|
+    job {
+      let! (logm, out, error) = Utils.buildLogManager ()
+      let loggername = PointName.parse "logger.test"
 
-    let ilg = logm.runtimeInfo.logger
-    let lg = logm.getLogger loggername
+      let ilg = logm.runtimeInfo.logger
+      let lg = logm.getLogger loggername
 
-    do! lg.infoWithAck (eventX "test info msg")
-    do! lg.errorWithAck (eventX "test error msg")
+      do! lg.infoWithAck (eventX "test info msg")
+      do! lg.errorWithAck (eventX "test error msg")
 
-    let outStr = out.ToString()
-    let errorStr = error.ToString()
-    Expect.stringContains outStr "info msg" "shoule"
-    Expect.stringContains errorStr "error msg" "shoule"
+      let outStr = out.ToString()
+      let errorStr = error.ToString()
+      Expect.stringContains outStr "info msg" "shoule"
+      Expect.stringContains errorStr "error msg" "shoule"
 
-    let timeout =  Duration.FromSeconds 3L
-    let! (finfo, sinfo) = logm.shutdown(timeout, timeout)
+      let timeout =  Duration.FromSeconds 3L
+      let! (finfo, sinfo) = logm.shutdown(timeout, timeout)
 
-    do! lg.errorWithBP (eventX "error after shutdown")
+      do! lg.errorWithBP (eventX "error after shutdown")
 
-    let errorOutput = error.ToString()
-    if errorOutput.Contains("after") then Tests.failtestf "should not contains after, actual %s" errorOutput
-  } |> Job.toAsync)
+      let errorOutput = error.ToString()
+      if errorOutput.Contains("after") then Tests.failtestf "should not contains after, actual %s" errorOutput
+    }
 
-  testCaseAsync "getlogger with middleware" <| (job {
+  testCaseJob "getlogger with middleware" <| job {
     let! (logm, out, error)  = Utils.buildLogManager ()
     let loggername = PointName.parse "logger.test"
     let correlationId = Guid.NewGuid().ToString("N")
@@ -74,9 +76,9 @@ let tests = [
     Expect.stringContains errorStr correlationId "shoule have correlationId ctx info"
 
     do! logm.shutdown ()
-  } |> Job.toAsync)
+  }
 
-  testCaseAsync "switch logger level" <| (job {
+  testCaseJob "switch logger level" (job {
     let clearStream (s: System.IO.StringWriter) =
       let sb = s.GetStringBuilder ()
       let str = string sb
@@ -130,10 +132,10 @@ let tests = [
     Expect.stringContains outStr "info" "shoule have info level msg"
 
     do! logm.shutdown ()
-  } |> Job.toAsync)
+  })
 
-  testCaseAsync "flush/shutdown timeout and logging after shutdown with no blocking" <| (job {
-    let server (ri: RuntimeInfo, api : TargetAPI) =
+  testCaseJob "flush/shutdown timeout and logging after shutdown with no blocking" (job {
+    let server (ri: RuntimeInfo, api: TargetAPI) =
       let rec loop () =
         Alt.choose [
           RingBuffer.take api.requests ^=> function
@@ -181,7 +183,6 @@ let tests = [
     Expect.contains sack "mockTarget" "should have shutdown ack target"
 
 
-
     let mockTarget =
       TargetConf.createSimple server "mockTarget"
       |> TargetConf.bufferSize 2us
@@ -203,5 +204,5 @@ let tests = [
     do! lg.infoWithBP (eventX "can be logger with no blocking beacuse check registry closed")
     do! lg.infoWithBP (eventX "can be logger with no blocking beacuse check registry closed")
 
-  } |> Job.toAsync)
+  })
 ]

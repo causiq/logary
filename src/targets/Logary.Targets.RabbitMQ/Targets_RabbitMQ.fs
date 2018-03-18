@@ -24,71 +24,71 @@ type Port = uint16
 
 type TlsConf =
   { /// The location of the TLS certiface
-    certPath : string
+    certPath: string
     /// The password to the TLS certificate (pfx formatted)
-    certPassword : string option }
+    certPassword: string option }
 
 /// This is the configuration for the RabbitMQ target
 type RabbitMQConf =
   { /// Sets the virtual host to send messages to.
     /// Defaults to '/'
-    vHost    : string
+    vHost: string
 
     /// Sets the username for the connection. Defaults to 'guest'
-    username : string
+    username: string
 
     /// Sets the password for the connection. Default to 'guest'.
-    password : string
+    password: string
 
     /// Sets the AMQP protocol (version) to use
     /// for communications with the RabbitMQ broker. The default 
     /// is the RabbitMQ.Client-library's default protocol.
     /// Default is the latest supported.
-    protocol : IProtocol
+    protocol: IProtocol
 
     /// Sets the host name of the broker to log to.
-    hostname : string 
+    hostname: string 
 
     ///	Sets the port to use for connections to the message broker 
     /// (this is the broker's listening port). The default is '5672'. 
-    port     : Port
+    port: Port
 
     ///	Sets the routing key (aka. topic) with which
     ///	to send messages. Defaults to {0}, which in the end is 'error' for log.Error("..."), and
     ///	so on. An example could be setting this property to 'ApplicationType.MyApp.Web.{0}'.
     ///	The default is '{0}'.
-    topic    : string
+    topic: string
 
     /// Sets the exchange to bind the logger output to. Default is 'logary'.
-    exchange : string
+    exchange: string
 
     /// Sets the exchange type to bind the logger output to. Default is 'topic'. Also see
     /// `ExchangeType`.
-    exchangeType : string
+    exchangeType: string
 
     /// Sets the setting specifying whether the exchange
     ///	is durable (persisted across restarts). Default is true.
-    durable : bool
+    durable: bool
 
     /// Sets the setting specifying whether the exchange should be declared or used passively.
     /// Defaults to false.
-    passive : bool
+    passive: bool
 
     /// Gets or sets the application id to specify when sending. Defaults to None,
     /// and then IBasicProperties.AppId will be the name of the logger instead.
-    appId : string option
+    appId: string option
 
     /// Optional TLS configuration
-    tls : TlsConf option
+    tls: TlsConf option
 
     /// Persistent or non-persistent. Default to Persistent (2).
-    deliveryMode : DeliveryMode
+    deliveryMode: DeliveryMode
 
     /// How long to wait for a connection before failing the initialisation
-    connectionTimeout : Duration
+    connectionTimeout: Duration
 
     /// Compression method to use. Defaults to None
-    compression : Compression
+    compression: Compression
   }
 
 /// Default RabbitMQ config
@@ -125,18 +125,18 @@ module internal Impl =
 
   /// State holder for the RabbitMQ target
   type State =
-    { connection : IConnection
+    { connection: IConnection
       // aka Channel
-      model      : IModel
+      model: IModel
       // https://www.rabbitmq.com/dotnet-api-guide.html#common-patterns – see section on publisher
       // confirms
       // Also https://www.rabbitmq.com/confirms.html
-      inflight   : Map<MessageId, IVar<unit> * Message>
+      inflight: Map<MessageId, IVar<unit> * Message>
       // https://www.rabbitmq.com/releases/rabbitmq-dotnet-client/v3.6.5/rabbitmq-dotnet-client-3.6.5-client-htmldoc/html/namespace-RabbitMQ.Client.Events.html
-      acks       : Stream<Events.BasicAckEventArgs>
-      nacks      : Stream<Events.BasicNackEventArgs>
+      acks: Stream<Events.BasicAckEventArgs>
+      nacks: Stream<Events.BasicNackEventArgs>
       /// Last uint64 value received on nack or ack channels
-      lastAck    : MessageId }
+      lastAck: MessageId }
 
     interface IDisposable with
       member x.Dispose () =
@@ -280,7 +280,7 @@ module internal Impl =
     ]
 
   let loop (conf: RabbitMQConf)
-           (ri: RuntimeInfo, api : TargetAPI) =
+           (ri: RuntimeInfo, api: TargetAPI) =
 
     let rec connect (): Job<unit> =
       let conn = createConnection ri.service conf
@@ -357,7 +357,7 @@ let create conf name = TargetConf.createSimple (Impl.loop conf) name
 // code).
 
 /// Use with LogaryFactory.New( s => s.Target<RabbitMQ.Builder>() )
-type Builder(conf, callParent : Target.ParentCallback<Builder>) =
+type Builder(conf, callParent: Target.ParentCallback<Builder>) =
   let update conf' =
     Builder(conf', callParent)
 
@@ -404,7 +404,7 @@ type Builder(conf, callParent : Target.ParentCallback<Builder>) =
     if app = null then invalidArg "app" "must not be null"
     update { conf with appId = Some app }
 
-  member x.EnableTls(path, nullablePass : string) =
+  member x.EnableTls(path, nullablePass: string) =
     let pass = if nullablePass = null then None else Some nullablePass
     update { conf with tls = Some { certPath = path; certPassword = pass }}
 

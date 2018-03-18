@@ -91,14 +91,14 @@ type [<AbstractClass>] HashMap<'K, 'V when 'K :> System.IEquatable<'K>>() as sel
     override x.GetEnumerator () = createEnumerator () :> System.Collections.IEnumerator
 
 #if PHM_TEST_BUILD
-  abstract DoCheckInvariant : uint32 -> int -> int -> bool
+  abstract DoCheckInvariant: uint32 -> int -> int -> bool
 #endif
-  abstract DoIsEmpty        : unit    -> bool
-  abstract DoVisit          : OptimizedClosures.FSharpFunc<'K, 'V, bool> -> bool
-  abstract DoSet            : uint32  -> int  -> KeyValueNode<'K, 'V> -> HashMap<'K, 'V>
-  abstract DoTryFind        : uint32*int*'K*byref<'V> -> bool
-  abstract DoUnset          : uint32  -> int  -> 'K -> HashMap<'K, 'V>
-  abstract DoGetChild       : int*byref<HashMap<'K, 'V>> -> bool
+  abstract DoIsEmpty: unit    -> bool
+  abstract DoVisit: OptimizedClosures.FSharpFunc<'K, 'V, bool> -> bool
+  abstract DoSet: uint32  -> int  -> KeyValueNode<'K, 'V> -> HashMap<'K, 'V>
+  abstract DoTryFind: uint32*int*'K*byref<'V> -> bool
+  abstract DoUnset: uint32  -> int  -> 'K -> HashMap<'K, 'V>
+  abstract DoGetChild: int*byref<HashMap<'K, 'V>> -> bool
 
   default  x.DoIsEmpty ()   = false
 
@@ -110,7 +110,7 @@ type [<AbstractClass>] HashMap<'K, 'V when 'K :> System.IEquatable<'K>>() as sel
   member x.Set     k v=
     let h = hashOf k
     x.DoSet h 0 (KeyValueNode (h, k, v))
-  member x.TryFind (k, rv : byref<'V>) =
+  member x.TryFind (k, rv: byref<'V>) =
     rv <- Unchecked.defaultof<'V>
     let h = hashOf k
     x.DoTryFind (h, 0, k, &rv)
@@ -120,7 +120,7 @@ type [<AbstractClass>] HashMap<'K, 'V when 'K :> System.IEquatable<'K>>() as sel
 
   static member internal Empty = emptyNode
 
-  static member internal FromTwoNodes shift h1 n1 h2 n2 : HashMap<_, _> =
+  static member internal FromTwoNodes shift h1 n1 h2 n2: HashMap<_, _> =
     let b1 = bit h1 shift
     let b2 = bit h2 shift
     if b1 < b2 then
@@ -179,7 +179,7 @@ and [<Sealed>] KeyValueNode<'K, 'V when 'K :> System.IEquatable<'K>>(hash: uint3
   override x.DoGetChild (i, phm)    =
     false
 
-and [<Sealed>] internal BitmapNode1<'K, 'V when 'K :> System.IEquatable<'K>>(bitmap: uint16, node : HashMap<'K, 'V>) =
+and [<Sealed>] internal BitmapNode1<'K, 'V when 'K :> System.IEquatable<'K>>(bitmap: uint16, node: HashMap<'K, 'V>) =
   inherit HashMap<'K, 'V>()
 
 #if PHM_TEST_BUILD
@@ -224,7 +224,7 @@ and [<Sealed>] internal BitmapNode1<'K, 'V when 'K :> System.IEquatable<'K>>(bit
       false
 
 
-and [<Sealed>] internal BitmapNodeN<'K, 'V when 'K :> System.IEquatable<'K>>(bitmap: uint16, nodes : HashMap<'K, 'V> []) =
+and [<Sealed>] internal BitmapNodeN<'K, 'V when 'K :> System.IEquatable<'K>>(bitmap: uint16, nodes: HashMap<'K, 'V> []) =
   inherit HashMap<'K, 'V>()
 
 #if PHM_TEST_BUILD
@@ -359,7 +359,7 @@ and [<Sealed>] internal BitmapNode16<'K, 'V when 'K :> System.IEquatable<'K>>(no
     else
       false
 
-and [<Sealed>] internal HashCollisionNodeN<'K, 'V when 'K :> System.IEquatable<'K>>(hash: uint32, keyValues : KeyValueNode<'K, 'V> []) =
+and [<Sealed>] internal HashCollisionNodeN<'K, 'V when 'K :> System.IEquatable<'K>>(hash: uint32, keyValues: KeyValueNode<'K, 'V> []) =
   inherit HashMap<'K, 'V>()
 
 #if PHM_TEST_BUILD

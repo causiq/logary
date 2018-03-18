@@ -15,9 +15,9 @@ module InternalLogger =
   /// own disposal. It must not throw under any circumstances.
   type T =
     private {
-      addCh : Ch<TargetConf>
-      shutdownCh : Ch<unit>
-      messageCh : Ch<Message * Promise<unit> * Ch<Promise<unit>>>
+      addCh: Ch<TargetConf>
+      shutdownCh: Ch<unit>
+      messageCh: Ch<Message * Promise<unit> * Ch<Promise<unit>>>
     }
   with
     member inline x.name = PointName [| "Logary" |]

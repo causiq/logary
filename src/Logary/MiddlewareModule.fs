@@ -8,12 +8,12 @@ module Middleware =
 
   /// This is the identity middleware.
   [<CompiledName "Identity">]
-  let identity : Middleware =
+  let identity: Middleware =
     fun next msg -> next msg
 
   /// Sets the host name as a context value
   [<CompiledName "Host">]
-  let host host : Middleware =
+  let host host: Middleware =
     fun next msg ->
       Message.setContext KnownLiterals.HostContextName host msg
       |> next
@@ -21,7 +21,7 @@ module Middleware =
 
   /// Sets the host name as a context value
   [<CompiledName "DnsHost">]
-  let dnsHost : Middleware =
+  let dnsHost: Middleware =
     fun next msg ->
       Message.setContext KnownLiterals.HostContextName (Dns.GetHostName()) msg
       |> next
@@ -37,14 +37,14 @@ module Middleware =
 
   /// Sets the current process' name as a context value
   [<CompiledName "ProcessName">]
-  let processName : Middleware =
+  let processName: Middleware =
     fun next msg ->
       Message.setContext "processName" pn.ProcessName msg
       |> next
 
   /// Sets the current process' id as a context value
   [<CompiledName "ProcessId">]
-  let processId : Middleware =
+  let processId: Middleware =
     fun next msg ->
       Message.setContext "processId" pn.Id msg
       |> next
@@ -58,7 +58,7 @@ module Middleware =
 
   /// Compose the list of middlewares together into a single Message->Message function.
   [<CompiledName "Compose">]
-  let compose : Middleware list -> Message -> Message = function
+  let compose: Middleware list -> Message -> Message = function
     | [] ->
       id
     | middlewares -> 

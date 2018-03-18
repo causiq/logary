@@ -69,7 +69,7 @@ module LiterateTesting =
         colourWriter    = fun sem parts -> writtenParts.AddRange(parts) },
     fun () -> writtenParts |> List.ofSeq
 
-let levels expectedTimeText : LiterateConsole.ColouredText list =
+let levels expectedTimeText: LiterateConsole.ColouredText list =
   [ { text = "[";                    colours = LiterateTesting.Theme.punctuationColours }
     { text = expectedTimeText;       colours = LiterateTesting.Theme.subtextColours }
     { text = " ";                    colours = LiterateTesting.Theme.subtextColours }
@@ -138,14 +138,13 @@ module Files =
 
   let testCaseF testName (fn: FolderPath -> FileName -> Job<_>) =
     let folderPath, fileName = rndFolderFile testName
-    testCaseAsync testName <| (job {
+    testCaseJob testName (job {
       ensureFolder folderPath
       try
         do! fn folderPath fileName
       finally
         aFewTimes false <| fun _ -> Directory.Delete(folderPath, true)
-    } |> Job.toAsync)
-
+    })
 
   let runtime (now: Instant) =
     RuntimeInfo.create "my service" "myHost"
@@ -262,24 +261,25 @@ module Files =
     // basicTests "file" createInRandom
 
     testCaseF "log ten thousand messages" <| fun folder file ->
-      Tests.skiptest "Locks up, see https://github.com/haf/expecto/issues/2 but probably due to the Janitor loop"
+      job {
+        Tests.skiptest "Locks up, see https://github.com/haf/expecto/issues/2 but probably due to the Janitor loop"
 
-      let fileConf = FileConf.create folder (Naming ("10K", "log"))
-      Target.create emptyRuntime  (File.create fileConf "basic2") >>= fun targetApi ->
-
-      logMsgWaitAndShutdown targetApi (fun logAndWait ->
-        let acks = ResizeArray<_>(10000)
-        for i in 1 .. 10000 do
-          let msg = Message.eventFormat (Info, "Event {number}", [| i |])
-          let ack = logAndWait msg
-          acks.Add ack
-        Job.conIgnore acks)
-
+        let! ri, _ = emptyRuntime
+        let fileConf = FileConf.create folder (Naming ("10K", "log"))
+        let! targetApi = Target.create ri  (File.create fileConf "basic2")
+        do! logMsgWaitAndShutdown targetApi (fun logAndWait ->
+          let acks = ResizeArray<_>(10000)
+          for i in 1 .. 10000 do
+            let msg = Message.eventFormat (Info, "Event {number}", [| i |])
+            let ack = logAndWait msg
+            acks.Add ack
+          Job.conIgnore acks)
+      }
   ]
 
 let tests = [
   TargetBaseline.basicTests "text writer" (fun name ->
-    let (_, _, twTargetConf) = Utils.buildTextWriteTarget name
+    let _, _, twTargetConf = Utils.buildTextWriteTarget name
     twTargetConf)
 
   // TODO: don't want to actually print these
@@ -293,7 +293,7 @@ let tests = [
 
   testCase "formatLocalTime" <| fun _ ->
     let actual, _ =
-      let fp : IFormatProvider = upcast CultureInfo "sv-SE"
+      let fp: IFormatProvider = upcast CultureInfo "sv-SE"
       LiterateConsole.empty.formatLocalTime
         fp (DateTimeOffset(2016, 10, 25, 11, 17, 41, TimeSpan(2,0,0)).timestamp)
     let expected = "13:17:41"
@@ -305,20 +305,19 @@ let tests = [
       let conf, getWrittenParts = LiterateTesting.createInspectableWrittenPartsConf ()
       let message = messageFactory Info
 
-      testCaseAsync testMsg <| (job {
+      testCaseJob testMsg (job {
         // in context
-        let! targetApi =
-          LiterateConsole.create conf "testLC"
-          |> Target.create emptyRuntime
+        let! ri, _ = emptyRuntime
+        let! targetApi = LiterateConsole.create conf "testLC" |> Target.create ri
 
         // because
         do! logMsgWaitAndShutdown targetApi (fun logAndWait ->
-          logAndWait message ^-> fun _ ->
+          logAndWait message >>- fun _ ->
           let written, expectedTimeText =
             getWrittenParts (),
             fst (LiterateTesting.formatLocalTime conf.formatProvider message.timestamp)
           cb expectedTimeText written)
-      } |> Job.toAsync)
+      })
 
     yield testLiterateCase "printing 'Hello World!'" helloWorldMsg <| fun expectedTimeText parts ->
       Expect.equal parts
@@ -512,42 +511,45 @@ let tests = [
   ]
 
   testList "text writer prints" [
-    testCaseAsync "message" <| (job {
-      let (out, error, conf) = Utils.buildTextWriteTarget "writing console target"
-      let! targetApi = Target.create emptyRuntime conf
+    testCaseJob "message" <| (job {
+      let out, error, conf = Utils.buildTextWriteTarget "writing console target"
+      let! ri, _ = emptyRuntime
+      let! targetApi = Target.create ri conf
 
       do! logMsgWaitAndShutdown targetApi (fun logAndWait ->
-        logAndWait (Message.eventInfo "Hello World!" ) ^-> fun _ ->
+        logAndWait (Message.eventInfo "Hello World!" ) >>- fun _ ->
         Expect.stringContains (string out) "Hello World!" "logging with info level and then finalising the target")
-    } |> Job.toAsync)
+    })
 
-    testCaseAsync "fields" <| (job {
-      let (out, error, conf) = Utils.buildTextWriteTarget "writing console target"
-      let! targetApi = Target.create emptyRuntime conf
+    testCaseJob "fields" <| (job {
+      let out, error, conf = Utils.buildTextWriteTarget "writing console target"
+      let! ri, _ = emptyRuntime
+      let! targetApi = Target.create ri conf
 
       do! logMsgWaitAndShutdown targetApi (fun logAndWait ->
         let x = dict ["foo", "bar"]
-        Message.event Info "textwriter-test-init"
-        |> Message.setContext "the Name" x
-        |> logAndWait
-        |> fun logJob -> logJob ^-> fun _ ->
-           Expect.stringContains (string out) "textwriter-test-init" "logging with fields then finalising the target"
-           Expect.stringContains (string out) "foo" "logging with fields then finalising the target"
-           Expect.stringContains (string out) "bar" "logging with fields then finalising the target"
-           Expect.stringContains (string out) "the Name" "logging with fields then finalising the target")
-    } |> Job.toAsync)
+        let message =
+          Message.event Info "textwriter-test-init"
+          |> Message.setContext "the Name" x
+        logAndWait message >>- fun _ ->
+        Expect.stringContains (string out) "textwriter-test-init" "logging with fields then finalising the target"
+        Expect.stringContains (string out) "foo" "logging with fields then finalising the target"
+        Expect.stringContains (string out) "bar" "logging with fields then finalising the target"
+        Expect.stringContains (string out) "the Name" "logging with fields then finalising the target")
+    })
 
-    testCaseAsync "to correct stream" <| (job {
-      let (out, error, conf) = Utils.buildTextWriteTarget "writing console target"
-      let! targetApi = Target.create emptyRuntime conf
+    testCaseJob "to correct stream" <| (job {
+      let out, error, conf = Utils.buildTextWriteTarget "writing console target"
+      let! ri, _ = emptyRuntime
+      let! targetApi = Target.create ri conf
 
       do! logMsgWaitAndShutdown targetApi (fun logAndWait ->
-        logAndWait (Message.eventError "Error line") ^=>.
-        logAndWait (Message.eventFatal "Fatal line") ^-> fun _ ->
+        logAndWait (Message.eventError "Error line") >>= fun _ ->
+        logAndWait (Message.eventFatal "Fatal line") >>- fun _ ->
         let errorStr = string error
         Expect.stringContains errorStr "Error line" "logging 'Error line' and 'Fatal line' to the target"
         Expect.stringContains errorStr "Fatal line" "logging 'Error line' and 'Fatal line' to the target")
-    } |> Job.toAsync)
+    })
   ]
 
   testList "files" Files.tests

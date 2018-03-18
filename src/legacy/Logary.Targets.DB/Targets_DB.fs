@@ -16,8 +16,8 @@ let jsonFormat (data: obj): string =
   Logary.Formatting.Json.format data
 
 type DBConf =
-  { connectionFactory : unit -> IDbConnection
-    schema            : string option }
+  { connectionFactory: unit -> IDbConnection
+    schema: string option }
 
   static member create openConn =
     { connectionFactory = openConn
@@ -26,8 +26,8 @@ type DBConf =
 module internal Impl =
 
   type DBInternalState =
-    { connection : IDbConnection
-      connMgr    : Sql.ConnectionManager }
+    { connection: IDbConnection
+      connMgr: Sql.ConnectionManager }
 
     interface IDisposable with
       member x.Dispose () =
@@ -91,7 +91,7 @@ module internal Impl =
     | Tx.Failed ex -> logger.error (eventX "Insert failed" >> addExn ex)
 
   let loop (conf: DBConf)
-           (svc: RuntimeInfo, api : TargetAPI)  =
+           (svc: RuntimeInfo, api: TargetAPI)  =
 
     let logger =
       let pn = PointName [| "Logary"; "DB"; "loop" |]
@@ -104,7 +104,7 @@ module internal Impl =
         running { connection = c
                   connMgr    = Sql.withConnection c })
 
-    and running state : Job<_> =
+    and running state: Job<_> =
       Alt.choose [
         api.shutdownCh ^=> fun ack ->
           job {
@@ -146,20 +146,20 @@ let createSimple (conf, name) = create conf name
 /// DB and can call Done() to complete the configuration.
 type ThirdStep =
   inherit ConfigReader<DBConf>
-  abstract Done : DBConf -> TargetConfBuild<Builder>
+  abstract Done: DBConf -> TargetConfBuild<Builder>
 
 /// In this step you need to decide whether you want to use a schema for your
 /// metrics and/or log lines tables.
 and SecondStep =
   /// Don't use an explicit schema. This is the default for SQLite. For SQL
   /// Server the default is 'dbo'.
-  abstract DefaultSchema : unit -> ThirdStep
+  abstract DefaultSchema: unit -> ThirdStep
 
   /// Use an explicit schema. You may not pass a null or empty string.
-  abstract Schema : string -> ThirdStep
+  abstract Schema: string -> ThirdStep
 
 /// Use with LogaryFactory.New( s => s.Target<DB.Builder>() )
-and Builder(conf, callParent : ParentCallback<Builder>) =
+and Builder(conf, callParent: ParentCallback<Builder>) =
 
   new(callParent: ParentCallback<_>) =
     let conf = DBConf.create (fun () -> failwith "inner build error")

@@ -14,6 +14,7 @@ open Google.Protobuf.WellKnownTypes
 open Hopac
 open Hopac.Infixes
 open Logary
+open Logary.Message
 open Logary.Internals
 open Logary.Target
 open System.Collections.Generic
@@ -150,6 +151,7 @@ module internal Impl =
       [ "project_id", project
         "zone", zone
         "instance_id", instance ] |> dict
+
     | Container(cluster, ns, instance, pod, container, zone) ->
       [ "project_id", project
         "cluster_name", cluster
@@ -185,23 +187,29 @@ module internal Impl =
       callSettings = CallSettings.FromCancellationToken(source.Token) }
 
   let loop (conf: StackdriverConf) (runtime: RuntimeInfo, api: TargetAPI) =
+    runtime.logger.info (eventX "Started Stackdriver target")
 
     let rec loop (state: State): Job<unit> =
+      runtime.logger.verbose (eventX "Stackdriver loop")
       Alt.choose [
         // either shutdown, or
         api.shutdownCh ^=> fun ack ->
+          runtime.logger.verbose (eventX "Shutting down Stackdriver target")
           state.cancellation.Cancel()
           ack *<= () :> Job<_>
 
         RingBuffer.take api.requests ^=> function
           | Log (message, ack) -> job {
+              runtime.logger.verbose (eventX "Logging message")
               let request = WriteLogEntriesRequest(LogName = state.logName, Resource = state.resource)
               request.Labels.Add(conf.labels)
               request.Entries.Add(write message)
               do! Job.Scheduler.isolate (fun () -> state.logger.WriteLogEntries(request, state.callSettings) |> ignore)
+              runtime.logger.verbose (eventX "Acking message")
               do! ack *<= ()
               return! loop state
             }
+
           | Flush (ackCh, nack) -> job {
               do! IVar.fill ackCh ()
               return! loop state
@@ -217,7 +225,7 @@ module internal Impl =
 let create conf name =
   TargetConf.createSimple (Impl.loop conf) name
 
-type Builder(conf, callParent : Target.ParentCallback<Builder>) =
+type Builder(conf, callParent: Target.ParentCallback<Builder>) =
 
   /// Assign the projectId for this logger
   member x.ForProject(project) =

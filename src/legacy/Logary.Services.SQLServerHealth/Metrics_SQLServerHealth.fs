@@ -50,17 +50,17 @@ module Database =
   open FsSql
 
   type IOInfo =
-    { ioStallReadMs     : int64
-      ioStallWriteMs    : int64
-      ioStall           : int64
-      numOfReads        : int64
-      numOfWrites       : int64
-      numOfBytesRead    : int64
-      numOfBytesWritten : int64
-      drive             : DriveName
-      dbName            : DatabaseName
-      filePath          : FullyQualifiedPath
-      fileType          : FileType }
+    { ioStallReadMs: int64
+      ioStallWriteMs: int64
+      ioStall: int64
+      numOfReads: int64
+      numOfWrites: int64
+      numOfBytesRead: int64
+      numOfBytesWritten: int64
+      drive: DriveName
+      dbName: DatabaseName
+      filePath: FullyQualifiedPath
+      fileType: FileType }
 
   let delta earlier later =
     if earlier.filePath <> later.filePath then invalidArg "later" "comparing different db files"
@@ -141,11 +141,11 @@ module IOInfo =
 
 type SQLServerHealthConf =
   { /// Getting the contents of an embedded resource file function.
-    contentsOf     : ResourceName -> string
+    contentsOf: ResourceName -> string
     /// A list of probe data sources
-    latencyTargets : LatencyProbeDataSources list
+    latencyTargets: LatencyProbeDataSources list
     /// Connection factory function
-    openConn       : unit -> IDbConnection }
+    openConn: unit -> IDbConnection }
 
 /// default config
 let empty =
@@ -155,9 +155,9 @@ let empty =
 
 type State =
   internal {
-    connMgr     : Sql.ConnectionManager
-    lastIOs     : Database.IOInfo list * Instant
-    dps         : PointName list}
+    connMgr: Sql.ConnectionManager
+    lastIOs: Database.IOInfo list * Instant
+    dps: PointName list}
 
 module internal Impl =
   open Database
@@ -192,7 +192,7 @@ module internal Impl =
       "bytes_per_write",      IOInfo.bytesPerWrite >> ofBytes
       "bytes_per_transfer",   IOInfo.bytesPerTransfer >> ofBytes
     ]
-    |> Map.ofList : Map<string, DPCalculator>
+    |> Map.ofList: Map<string, DPCalculator>
 
   let formatPrefixMetric prefix metric =
     sprintf "%s_%s" prefix metric
@@ -211,7 +211,7 @@ module internal Impl =
   /// ns: Logary.Metrics.SQLServerHealth
   /// prefix: drive | file (metric name prefix)
   /// instance: mydb.mdf
-  let dps prefix instance : PointName list =
+  let dps prefix instance: PointName list =
     datapoints
     |> Seq.map (fun kv -> kv.Key) |> Seq.toList
     |> List.map (fun metric -> formatFull prefix metric instance)

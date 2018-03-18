@@ -23,7 +23,7 @@ type internal Adapter(logger: Logger) =
   let gc = stubVariablesContext ()
   let tc = stubVariablesContext ()
 
-  let objToLine : obj -> Message = function
+  let objToLine: obj -> Message = function
     | :? string as s ->
       Message.event Debug s
 

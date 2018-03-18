@@ -17,7 +17,7 @@ module Will =
 
   let create (): Will<'a> =
     Will (MVar None)
-  let createFull initial : Will<'a> =
+  let createFull initial: Will<'a> =
     Will (MVar (Some initial))
   let update (Will aM) (a:'a): Alt<unit> =
     MVar.mutateFun (always (Some a)) aM
@@ -140,8 +140,8 @@ module Job =
 //                  -> TargetConf
 
 // In TTarget
-// TTarget.empty : Target internal state + Will<'a>
-// TTarget.create : Target internal config -> 
+// TTarget.empty: Target internal state + Will<'a>
+// TTarget.create: Target internal config -> 
 //                  Target internal state + Will<'a> ->
 //                  (RuntimeInfo * TargetAPI -> Job<unit>)
 // ## call: TTarget -> TargetConf + Will -> :TargetConf
@@ -156,9 +156,9 @@ module Job =
 
 // In Registry
 // create -> LogaryConf -> RuntimeInfo -> Target.T
-// ## call: Target.create : RuntimeInfo -> Target.T
+// ## call: Target.create: RuntimeInfo -> Target.T
 // ## call: Target.T -> Supervisor.superviseWithWill -> SupervisedJob<unit>
-// ## call: Target.toService : Target.T * SupervisedJob<unit>
+// ## call: Target.toService: Target.T * SupervisedJob<unit>
 //                          -> Service<Target.T>
 
 // In Config

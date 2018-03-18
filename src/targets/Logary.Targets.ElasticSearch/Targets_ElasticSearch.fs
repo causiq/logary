@@ -26,11 +26,11 @@ let DefaultPublishTo =
 
 type ElasticSearchConf =
   { /// Server URL, by default "http://localhost:9200"
-    publishTo  : string
+    publishTo: string
     /// ElasticSearch document "_type", by default "logs"
-    _type      : string
+    _type: string
     /// Prefix for log indexs, defaults to "logary"
-    indexName  : String}
+    indexName: String}
 
   /// Create a new ElasticSearch target config.
   static member create(?publishTo, ?_type, ?indexName) =
@@ -38,7 +38,7 @@ type ElasticSearchConf =
       _type      = defaultArg _type "logs"
       indexName  = defaultArg indexName "logary" }
 
-let serialise : Message -> Json =
+let serialise: Message -> Json =
   fun message ->
   let msgJson = 
     match Logary.Formatting.Json.encode message with
@@ -51,7 +51,7 @@ let serialise : Message -> Json =
 
   msgJson
 
-let serialiseToJsonBytes : Message -> byte [] =
+let serialiseToJsonBytes: Message -> byte [] =
   serialise
   >> Json.format
   >> System.Text.Encoding.UTF8.GetBytes
@@ -79,7 +79,7 @@ module internal Impl =
     |> Job.Ignore
 
   let loop (conf: ElasticSearchConf)
-           (ri: RuntimeInfo, api : TargetAPI) =
+           (ri: RuntimeInfo, api: TargetAPI) =
 
     let rec loop (_: unit): Job<unit> =
       Alt.choose [
@@ -106,7 +106,7 @@ module internal Impl =
 let create conf = TargetConf.createSimple (Impl.loop conf)
 
 /// Use with LogaryFactory.New( s => s.Target<ElasticSearch.Builder>() )
-type Builder(conf, callParent : Target.ParentCallback<Builder>) =
+type Builder(conf, callParent: Target.ParentCallback<Builder>) =
 
   /// Specifies the ElasticSearch url.
   member x.PublishTo(publishTo: string) =

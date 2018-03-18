@@ -117,9 +117,9 @@ type ProjectionTestExcept =
   { user: User }
 
 type CustomCycleReferenceRecord =
-  { mutable inner : CustomCycleReferenceRecord option
-    a : int
-    b : string }
+  { mutable inner: CustomCycleReferenceRecord option
+    a: int
+    b: string }
 
 type CustomCycleReferenceType (id: int, name: string) =
   member val Inner =  Unchecked.defaultof<CustomCycleReferenceType> with get,set
@@ -518,13 +518,13 @@ I 1970-01-01T00:00:03.1234567+00:00: default foo is "{id = 999;\n name = \"whate
 
   testCase "Formatting.templateFormat, simple case" <| fun _ ->
     let format = "This {0} contains {1} words."
-    let args : obj[] = [|"sentence"; 4|]
+    let args: obj[] = [|"sentence"; 4|]
     let msg = Message.templateFormat(format, args)
     shouldHaveFields msg [KV("0","sentence"); KV("1",4)] "converting a String.Format into a message template"
 
   testCase "Formatting.templateFormat, named and positional fields" <| fun _ ->
     let format = "This {gramaticalStructure} contains {wordCount} {0}."
-    let args : obj[] = [|"sentence"; 4; "words"|]
+    let args: obj[] = [|"sentence"; 4; "words"|]
 
     let msg = Message.templateFormat(format, args)
     shouldHaveFields msg [KV("gramaticalStructure","sentence"); KV("wordCount",4);KV("0","words")]
@@ -532,7 +532,7 @@ I 1970-01-01T00:00:03.1234567+00:00: default foo is "{id = 999;\n name = \"whate
 
   testCase "Formatting.templateFormat, positional fields" <| fun _ ->
     let format = "Positionally - two {2} . {2} . zero {0} . {0}"
-    let args : obj[] = [|0;1;2;3|]
+    let args: obj[] = [|0;1;2;3|]
 
     let msg = Message.templateFormat(format, args)
     shouldHaveFields msg [KV("0", 0); KV("2", 2);]
@@ -540,7 +540,7 @@ I 1970-01-01T00:00:03.1234567+00:00: default foo is "{id = 999;\n name = \"whate
 
   testCase "Formatting.templateFormat, named fields" <| fun _ ->
     let format = "This {gramaticalStructure} contains {wordCount} words."
-    let args : obj[] = [|"sentence"; 4|]
+    let args: obj[] = [|"sentence"; 4|]
 
     let msg = Message.templateFormat(format, args)
     shouldHaveFields msg [KV("gramaticalStructure","sentence"); KV("wordCount", 4);]
@@ -548,14 +548,14 @@ I 1970-01-01T00:00:03.1234567+00:00: default foo is "{id = 999;\n name = \"whate
 
   testCase "Formatting.templateFormat, named fields, missing last" <| fun _ ->
     let format = "This {gramaticalStructure} contains {wordCount} words."
-    let args : obj[] = [|"sentence"|]
+    let args: obj[] = [|"sentence"|]
 
     let msg = Message.templateFormat(format, args)
     shouldHaveFields msg [KV ("gramaticalStructure", "sentence")] "fields are matched left-to-right in message template"
 
   testCase "Formatting.templateFormat, named fields, all missing" <| fun _ ->
     let format = "This {gramaticalStructure} contains {wordCount} words."
-    let args : obj[] = [||]
+    let args: obj[] = [||]
 
     let msg = Message.templateFormat(format, args)
     shouldHaveFields msg [] "fields are matched left-to-right in message template"

@@ -28,10 +28,10 @@ type ConfigReader<'a> =
   /// an accessor for the internal state; don't use unless you know what you're
   /// doing! Used by the migrations to get the current configuration. Allows you
   /// to modify or use the configuration.
-  abstract ReadConf : unit -> 'a
+  abstract ReadConf: unit -> 'a
 
 type internal ConfBuilderTarget<'T when 'T :> Target.SpecificTargetConf> =
-  { tr       : Rule               // for this specific target
+  { tr: Rule               // for this specific target
     specific : 'T option }
 with
 
@@ -101,18 +101,18 @@ and ConfBuilder(conf) =
   /// The callback, which is the second parameter, lets you configure the target.
   member x.Target<'T when 'T :> Target.SpecificTargetConf>
            (name: string,
-            configurator : Func<Target.TargetConfBuild<'T>, Target.TargetConfBuild<'T>>)
+            configurator: Func<Target.TargetConfBuild<'T>, Target.TargetConfBuild<'T>>)
           : ConfBuilder =
 
     let builderType = typeof<'T>
 
-    let container : ConfBuilderTarget<'T> =
+    let container: ConfBuilderTarget<'T> =
       { tr       = Rule.empty
         specific = None }
 
     let contRef = ref (container :> Target.TargetConfBuild<_>)
 
-    let parentCc : Target.ParentCallback<_> =
+    let parentCc: Target.ParentCallback<_> =
       fun tcSpec ->
         let b = !contRef :?> ConfBuilderTarget<'T>
         contRef := { b with specific = Some (tcSpec :?> 'T) } :> Target.TargetConfBuild<_>
@@ -155,7 +155,7 @@ type LogaryFactory =
   /// Configure a new Logary instance. This will also give real targets to the flyweight
   /// targets that have been declared statically in your code. If you call this
   /// you get a log manager that you can later dispose, to shutdown all targets.
-  static member New(service: string, host : string, configurator : Func<ConfBuilder, ConfBuilder>): Task<LogManager> =
+  static member New(service: string, host: string, configurator: Func<ConfBuilder, ConfBuilder>): Task<LogManager> =
     if service = null then nullArg "service"
     if configurator = null then nullArg "configurator"
     let config = Config.create service host

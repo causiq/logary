@@ -12,6 +12,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{4FC4A3AC-C
 	ProjectSection(SolutionItems) = preProject
 		..\.editorconfig = ..\.editorconfig
 		..\README.md = ..\README.md
+		..\LICENSE.md = ..\LICENSE.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "targets", "targets", "{978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}"

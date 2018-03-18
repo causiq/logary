@@ -6,10 +6,10 @@ module Database =
   open FsSql
 
   type PLE =
-    { serverName         : string
-      objectName         : string
-      instanceName       : string
-      pageLifeExpectancy : int64 }
+    { serverName: string
+      objectName: string
+      instanceName: string
+      pageLifeExpectancy: int64 }
 
   /// PLE is a good measurement of memory pressure.
   /// Higher PLE is better. Watch the trend over time, not the absolute value.

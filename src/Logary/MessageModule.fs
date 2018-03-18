@@ -17,23 +17,23 @@ module Message =
 
   module Optic =
 
-    let name_ : Lens<Message, PointName> =
+    let name_: Lens<Message, PointName> =
       (fun (x: Message) -> x.name),
       fun v (x: Message) -> { x with name = v }
 
-    let value_ : Lens<Message, string> =
+    let value_: Lens<Message, string> =
       (fun (x: Message) -> x.value),
       fun v (x: Message) -> { x with value = v }
 
-    let context_ : Lens<Message, _> =
+    let context_: Lens<Message, _> =
       (fun (x: Message) -> x.context),
       (fun v (x: Message) -> { x with context = v })
 
-    let level_ : Lens<Message, LogLevel> =
+    let level_: Lens<Message, LogLevel> =
       (fun (x: Message) -> x.level),
       (fun v (x: Message) -> { x with level = v })
 
-    let timestamp_ : Lens<Message, EpochNanoSeconds> =
+    let timestamp_: Lens<Message, EpochNanoSeconds> =
       (fun (x: Message) -> x.timestamp),
       (fun v (x: Message) -> { x with timestamp = v })
 
@@ -236,7 +236,7 @@ module Message =
 
 
   [<CompiledName "TryGetGauge">]
-  let tryGetGauge gaugeType message : Gauge option =
+  let tryGetGauge gaugeType message: Gauge option =
     let gaugeTypeName = KnownLiterals.GaugeTypePrefix + gaugeType
     message |> tryGetContext gaugeTypeName
 
@@ -488,7 +488,7 @@ module Message =
     setContext errorCtxName errors msg
 
   [<CompiledName "GetErrors">]
-  let getErrors msg : exn list =
+  let getErrors msg: exn list =
     match tryGetContext KnownLiterals.ErrorsContextName msg with
     | Some (errors) -> errors
     | _ -> List.empty
@@ -504,17 +504,17 @@ module MessageEx =
     /// Creates a new event with given level, format and arguments. Format may
     /// contain String.Format-esque format placeholders.
     [<CompiledName "EventFormat">]
-    static member eventFormat (level, formatTemplate, [<ParamArray>] args : obj[]): Message =
+    static member eventFormat (level, formatTemplate, [<ParamArray>] args: obj[]): Message =
       Message.event level formatTemplate
       |> Message.setFields args
 
     /// Converts a String.Format-style format string and an array of arguments into
     /// a message template and a set of fields.
     [<CompiledName "EventFormat">]
-    static member templateFormat (format: string, [<ParamArray>] args : obj[]) =
+    static member templateFormat (format: string, [<ParamArray>] args: obj[]) =
       Message.eventFormat (LogLevel.Info, format, args)
 
-    static member templateEvent<'T> (level: LogLevel, format : string) : ('T -> Message) =
+    static member templateEvent<'T> (level: LogLevel, format: string) : ('T -> Message) =
       let template = parse format
       if  template.IsAllPositional || template.Properties.Length <> 1 then
         raise (System.ArgumentException (sprintf "Template '%s' must have exactly 1 named property" format))
@@ -523,7 +523,7 @@ module MessageEx =
         Message.event level format
         |> Message.setField field.name v
 
-    static member templateEvent<'T1, 'T2> (level: LogLevel, format : string) : ('T1 -> 'T2 -> Message) =
+    static member templateEvent<'T1, 'T2> (level: LogLevel, format: string) : ('T1 -> 'T2 -> Message) =
       let template = parse format
       if template.IsAllPositional || template.Properties.Length <> 2 then
         failwithf "Template '%s' must have exactly 2 named properties" format
@@ -534,7 +534,7 @@ module MessageEx =
         |> Message.setField field1.name v1
         |> Message.setField field2.name v2
 
-    static member templateEvent<'T1, 'T2, 'T3> (level: LogLevel, format : string) : ('T1 -> 'T2 -> 'T3 -> Message) =
+    static member templateEvent<'T1, 'T2, 'T3> (level: LogLevel, format: string) : ('T1 -> 'T2 -> 'T3 -> Message) =
       let template = parse format
       if template.IsAllPositional || template.Properties.Length <> 3 then
         failwithf "Template '%s' must have exactly 3 named properties" format
@@ -547,7 +547,7 @@ module MessageEx =
         |> Message.setField field2.name v2
         |> Message.setField field3.name v3
 
-    static member templateEvent<'T1, 'T2, 'T3, 'T4> (level: LogLevel, format : string) : ('T1 -> 'T2 -> 'T3 -> 'T4 -> Message) =
+    static member templateEvent<'T1, 'T2, 'T3, 'T4> (level: LogLevel, format: string) : ('T1 -> 'T2 -> 'T3 -> 'T4 -> Message) =
       let template = parse format
       if template.IsAllPositional || template.Properties.Length <> 4 then
         failwithf "Template '%s' must have exactly 4 named properties" format

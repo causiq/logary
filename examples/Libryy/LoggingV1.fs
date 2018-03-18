@@ -149,16 +149,16 @@ module DateTimeOffset =
 type Message =
   { /// The 'path' or 'name' of this data point. Do not confuse template in
     /// (Event template) = message.value
-    name      : string[]
+    name: string[]
     /// The main value for this metric or event. Either a Gauge or an Event. (A
     /// discriminated union type)
-    value     : PointValue
+    value: PointValue
     /// The semantic-logging data.
-    fields    : Map<string, obj>
+    fields: Map<string, obj>
     /// When? nanoseconds since UNIX epoch.
-    timestamp : EpochNanoSeconds
+    timestamp: EpochNanoSeconds
     /// How important? See the docs on the LogLevel type for details.
-    level     : LogLevel }
+    level: LogLevel }
 
   /// Gets the ticks for UTC since 0001-01-01 00:00:00 for this message. You
   /// can pass this value into a DateTimeOffset c'tor
@@ -179,18 +179,18 @@ type Logger =
   /// a durability standpoint depends on the logging infrastructure you're using
   /// behind this facade. Will not block, besides doing the computation inside
   /// the callback. You should not do blocking operations in the callback.
-  abstract member logWithAck : LogLevel -> (LogLevel -> Message) -> Async<unit>
+  abstract member logWithAck: LogLevel -> (LogLevel -> Message) -> Async<unit>
 
   /// Evaluates the callback if the log level is enabled. Will not block,
   /// besides doing the computation inside the callback. You should not do
   /// blocking operations in the callback.
-  abstract member log : LogLevel -> (LogLevel -> Message) -> unit
+  abstract member log: LogLevel -> (LogLevel -> Message) -> unit
 
   /// Logs the message without awaiting the logging infrastructure's ack of
   /// having successfully written the log message. What the ack means from a
   /// durability standpoint depends on the logging infrastructure you're using
   /// behind this facade.
-  abstract member logSimple : Message -> unit
+  abstract member logSimple: Message -> unit
 
 /// Syntactic sugar on top of Logger for F# libraries.
 [<AutoOpen>]
@@ -202,31 +202,31 @@ module internal LoggerEx =
     member x.debug (msgFactory: LogLevel -> Message): unit =
       x.log Debug msgFactory
 
-    member x.info msgFactory : unit =
+    member x.info msgFactory: unit =
       x.log Info msgFactory
 
-    member x.warn msgFactory : unit =
+    member x.warn msgFactory: unit =
       x.log Warn msgFactory
 
-    member x.error msgFactory : unit =
+    member x.error msgFactory: unit =
       x.log Error msgFactory
 
-    member x.fatal msgFactory : unit =
+    member x.fatal msgFactory: unit =
       x.log Fatal msgFactory
 
 type LoggingConfig =
   { /// The `timestamp` function should preferably be monotonic and not 'jumpy'
     /// or take much time to call.
-    timestamp        : unit -> int64
+    timestamp: unit -> int64
     /// The `getLogger` function returns a logger that directly can be logged to.
-    getLogger        : string[] -> Logger
+    getLogger: string[] -> Logger
     /// When composing apps from the outside-in (rather than having a unified
     /// framework with static/global config) with libraries (again, rather than
     /// a unified framework) like is best-practice, there's not necessarily a
     /// way to coordinate around the STDOUT and STDERR streams between
     /// different libraries running things on different threads. Use Logary's
     /// adapter to replace this semaphore with a global semaphore.
-    consoleSemaphore : obj }
+    consoleSemaphore: obj }
 
 module Literate =
   /// The output tokens, which can be potentially coloured.
@@ -238,10 +238,10 @@ module Literate =
     | MissingTemplateField
 
   type LiterateOptions =
-    { formatProvider          : IFormatProvider
-      theme                   : LiterateToken -> ConsoleColor
-      getLogLevelText         : LogLevel -> string
-      printTemplateFieldNames : bool }
+    { formatProvider: IFormatProvider
+      theme: LiterateToken -> ConsoleColor
+      getLogLevelText: LogLevel -> string
+      printTemplateFieldNames: bool }
 
     static member create ?formatProvider =
       // note: literate is meant for human consumption, and so the default
@@ -289,7 +289,7 @@ module Literals =
 module internal FsMtParser =
   open System.Text
 
-  type Property(name: string, format : string) =
+  type Property(name: string, format: string) =
     static let emptyInstance = Property("", null)
     static member empty = emptyInstance
     member x.name = name
@@ -314,7 +314,7 @@ module internal FsMtParser =
     let inline isValidCharInPropTag c = c = ':' || isValidInPropName c || isValidInFormat c
 
     [<Struct>]
-    type Range(startIndex: int, endIndex : int) =
+    type Range(startIndex: int, endIndex: int) =
       member inline x.start = startIndex
       member inline x.``end`` = endIndex
       member inline x.length = (endIndex - startIndex) + 1
@@ -634,7 +634,7 @@ type LiterateConsoleTarget(minLevel, ?options, ?literateTokeniser, ?outputWriter
       if msg.level >= minLevel then
         colourWriter (colouriseThenNewLine msg)
 
-type TextWriterTarget(minLevel, writer : System.IO.TextWriter, ?formatter) =
+type TextWriterTarget(minLevel, writer: System.IO.TextWriter, ?formatter) =
   let formatter = defaultArg formatter Formatting.defaultFormatter
   let log msg = writer.WriteLine(formatter msg)
 
@@ -706,8 +706,8 @@ module Global =
   /// Message value you pass into the logger.
   type internal Flyweight(name: string[]) =
     let updating = obj()
-    let mutable fwClock : uint32 = snd !config
-    let mutable logger : Logger = (fst !config).getLogger name
+    let mutable fwClock: uint32 = snd !config
+    let mutable logger: Logger = (fst !config).getLogger name
     let rec withLogger action =
       let cfg, cfgClock = !config // copy to local
       let fwCurr = fwClock // copy to local
@@ -853,7 +853,7 @@ module Message =
         x.fields |> Map.add FieldErrorsKey (box [ box ex ])
 
       | Some errors ->
-        let arr : obj list = unbox errors
+        let arr: obj list = unbox errors
         x.fields |> Map.add FieldErrorsKey (box (box ex :: arr))
 
     { x with fields = fields' }

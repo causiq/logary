@@ -25,7 +25,7 @@ type TopshelfAdapter(logger: Logger) =
   let setLevel (level: LoggingLevel) (l: Message) =
     { l with level = fromLoggingLevel level }
 
-  let objToLine : obj -> Message = function
+  let objToLine: obj -> Message = function
     | :? string as s ->
       Message.event Debug s
 
@@ -47,13 +47,13 @@ type TopshelfAdapter(logger: Logger) =
     member x.IsFatalEnabled = logger.level <= Fatal
 
     /////////////////// Log ///////////////
-    member x.Log (level, o : obj) =
+    member x.Log (level, o: obj) =
       o |> objToLine |> setLevel level |> log
 
-    member x.Log (level, o : obj, e : exn) =
+    member x.Log (level, o: obj, e: exn) =
       o |> objToLine |> setLevel level |> Message.addExn e |> log
 
-    member x.Log (level, fO : LogWriterOutputProvider) =
+    member x.Log (level, fO: LogWriterOutputProvider) =
       (fO.Invoke >> objToLine >> setLevel level) () |> log
 
     member x.LogFormat (level, formatProvider, format, args) =

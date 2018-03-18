@@ -6,7 +6,7 @@ module Snapshot =
   // memoized snapshot to avoid recalculation of values after reading
 
   type Snapshot =
-    { values : int64 [] }
+    { values: int64 [] }
 
   let create unsorted =
     Array.sortInPlace unsorted
@@ -69,8 +69,8 @@ module Uniform =
 
   /// Mutable uniform distribution
   type UniformState =
-    { count  : bigint
-      values : int64 [] }
+    { count: bigint
+      values: int64 [] }
 
   [<Pure>]
   let create size =
@@ -105,8 +105,8 @@ module SlidingWindow =
   let private DefaultSize = 1028
 
   type SlidingState =
-    { count  : bigint
-      values : int64 [] }
+    { count: bigint
+      values: int64 [] }
 
   let create size =
     { count  = 0I
@@ -139,11 +139,11 @@ module ExpWeightedMovAvg =
 
 
   type EWMAState =
-    { rate               : float /// samples per nanosecond
-      uncounted          : int64
-      lastTickTime       : Instant option
-      alphaPeriod        : Duration
-      iclock             : IClock}
+    { rate: float /// samples per nanosecond
+      uncounted: int64
+      lastTickTime: Instant option
+      alphaPeriod: Duration
+      iclock: IClock}
 
   /// Create a new EWMA state that you can do `update` and `tick` on.
   ///

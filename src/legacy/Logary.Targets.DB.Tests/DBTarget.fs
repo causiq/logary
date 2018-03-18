@@ -73,7 +73,7 @@ module SQLiteDB =
   /// used to avoid closing the SQLite connection in between migrations
   type NonClosingSQLiteProcessorFactory(conn: IDbConnection) =
     inherit MigrationProcessorFactory()
-    override x.Create (connStr: string, accouncer : IAnnouncer, opts : IMigrationProcessorOptions) =
+    override x.Create (connStr: string, accouncer: IAnnouncer, opts: IMigrationProcessorOptions) =
       new SQLiteProcessor(wrapConnNoClose conn,
                           new SQLiteGenerator(), accouncer, opts,
                           new SQLiteDbFactory())
@@ -94,7 +94,7 @@ module SQLiteDB =
   let connMgrShared = Sql.withNewConnection (fun () -> openConn inMemConnStrShared)
 
 let raised_exn msg =
-  let e = ref None : exn option ref
+  let e = ref None: exn option ref
   try raise <| ApplicationException(msg)
   with ex -> e := Some ex
   (!e).Value

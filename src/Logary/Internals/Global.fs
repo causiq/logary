@@ -48,8 +48,8 @@ module internal Global =
     // The object's private fields are initialised to the current config's
     // logger.
     let updating = obj()
-    let mutable fwClock : uint32 = snd !config
-    let mutable logger : Logger = (fst !config).getLogger name
+    let mutable fwClock: uint32 = snd !config
+    let mutable logger: Logger = (fst !config).getLogger name
 
     /// A function that tries to run the action with the current logger, and
     /// which reconfigures if the configuration is updated.
@@ -164,7 +164,7 @@ module internal Global =
         customProjectionDic.AddOrUpdate(t,how,fun _ _ -> how) |> ignore
       | Projection.NotSupport -> ()
 
-    let internal tryGetCustomProjection : Projection.ProjectionStrategy  =
+    let internal tryGetCustomProjection: Projection.ProjectionStrategy  =
       fun (t: Type) ->
         match customProjectionDic.TryGetValue t with
         | true, projection -> Some projection

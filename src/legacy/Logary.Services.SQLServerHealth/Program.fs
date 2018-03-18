@@ -40,7 +40,7 @@ with
       | Connection_String _ ->
         "The database to connect to"
 
-let openConn connStr : IDbConnection =
+let openConn connStr: IDbConnection =
   let c = new SqlConnection(connStr)
   c.Open()
   upcast c
@@ -97,7 +97,7 @@ let execute interval sqlConf riemann argv (exiting: ManualResetEventSlim) =
   exiting.Wait()
   0
 
-let startWindows period sqlConf riemann argv : int =
+let startWindows period sqlConf riemann argv: int =
   let exiting = new ManualResetEventSlim(false)
 
   let enqueue f =
@@ -117,7 +117,7 @@ let startWindows period sqlConf riemann argv : int =
   |> with_stop (fun hc -> exiting.Set() ; stop hc)
   |> run
 
-let startUnix period sqlConf riemann argv : int =
+let startUnix period sqlConf riemann argv: int =
   let exiting = new ManualResetEventSlim(false)
   use sub = Console.CancelKeyPress.Subscribe(fun _ -> exiting.Set())
   execute period sqlConf riemann argv exiting

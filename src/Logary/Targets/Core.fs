@@ -19,19 +19,19 @@ module TextWriter =
   /// Configuration for a text writer
   type TextWriterConf =
     { /// A message writer to specify how to write the Message.
-      writer    : MessageWriter
+      writer: MessageWriter
       /// the non-error text writer to output to
-      output    : TextWriter
+      output: TextWriter
       /// the error text writer to output to
-      error     : TextWriter
+      error: TextWriter
       /// whether to flush text writer after each line
-      flush     : bool
+      flush: bool
       /// the log level that is considered 'important' enough to write to the
       /// error text writer
-      isErrorAt : LogLevel }
+      isErrorAt: LogLevel }
 
     [<CompiledName "Create">]
-    static member create(output, error, ?formatter : MessageWriter) =
+    static member create(output, error, ?formatter: MessageWriter) =
       { writer    = defaultArg formatter defaultMessageFormat
         output    = output
         error     = error
@@ -40,7 +40,7 @@ module TextWriter =
 
   module internal Impl =
 
-    let loop (twConf: TextWriterConf) (ri: RuntimeInfo, api : TargetAPI) =
+    let loop (twConf: TextWriterConf) (ri: RuntimeInfo, api: TargetAPI) =
 
       let rec loop (): Job<unit> =
         Alt.choose [
@@ -84,7 +84,7 @@ module TextWriter =
     TargetConf.createSimple (Impl.loop conf) name
 
   /// Use with LogaryFactory.New( s => s.Target<TextWriter.Builder>() )
-  type Builder(conf, callParent : ParentCallback<Builder>) =
+  type Builder(conf, callParent: ParentCallback<Builder>) =
     member x.WriteTo(out : #TextWriter, err : #TextWriter) =
       ! (callParent <| Builder({ conf with output = out; error = err }, callParent))
 
@@ -101,7 +101,7 @@ module Console =
 
   /// Console configuration structure.
   type ConsoleConf =
-    { writer : MessageWriter }
+    { writer: MessageWriter }
 
     [<CompiledName "Create">]
     static member create writer =
@@ -124,10 +124,10 @@ module Console =
       name
 
   /// Use with LogaryFactory.New( s => s.Target<Console.Builder>() )
-  type Builder(conf, callParent : ParentCallback<Builder>) =
+  type Builder(conf, callParent: ParentCallback<Builder>) =
 
     /// Specify the formatting style to use when logging to the console
-    member x.WithFormatter( sf : MessageWriter ) =
+    member x.WithFormatter( sf: MessageWriter ) =
       ! (callParent <| Builder({ conf with writer = sf }, callParent))
 
     new(callParent: ParentCallback<_>) =
@@ -339,7 +339,7 @@ module LiterateConsole =
     TargetConf.createSimple (Impl.loop conf) name
 
   /// Use with LogaryFactory.New( s => s.Target<LiterateConsole.Builder>() )
-  type Builder(conf, callParent : ParentCallback<Builder>) =
+  type Builder(conf, callParent: ParentCallback<Builder>) =
     let update (conf' : LiterateConsoleConf): Builder =
       Builder(conf', callParent)
 
@@ -375,7 +375,7 @@ module Debugger =
   let defaultMessageFormat = MessageWriter.expanded false System.Environment.NewLine System.Environment.NewLine
 
   type DebuggerConf =
-    { writer : MessageWriter }
+    { writer: MessageWriter }
 
     /// Create a new Debugger configuration with a given writer (which
     /// formats how the Messages and Gauges/Derived-s are printed)
@@ -388,7 +388,7 @@ module Debugger =
 
   module private Impl =
 
-    let loop conf (ri: RuntimeInfo, api : TargetAPI) =
+    let loop conf (ri: RuntimeInfo, api: TargetAPI) =
       let offLevel = 6
 
       let rec loop (): Job<unit> =
@@ -423,10 +423,10 @@ module Debugger =
     TargetConf.createSimple (Impl.loop conf) name
 
   /// Use with LogaryFactory.New( s => s.Target<Debugger.Builder>() )
-  type Builder(conf, callParent : ParentCallback<Builder>) =
+  type Builder(conf, callParent: ParentCallback<Builder>) =
 
     /// Specify the formatting style to use when logging to the debugger
-    member x.WithFormatter( sf : MessageWriter ) =
+    member x.WithFormatter( sf: MessageWriter ) =
       ! (callParent <| Builder({ conf with writer = sf }, callParent))
 
     new(callParent: ParentCallback<_>) =
@@ -466,22 +466,22 @@ module FileSystem =
   /// A file-system abstraction
   type FileSystem =
     /// Gets a file in the current directory
-    abstract getFile : FilePath -> FileInfo
+    abstract getFile: FilePath -> FileInfo
     /// Moves a file to another location, within the current (chrooted)
     /// directory.
-    abstract moveFile : FileName -> FileName -> unit
+    abstract moveFile: FileName -> FileName -> unit
     /// Gets a sub-folder
-    abstract getFolder : FolderPath -> DirectoryInfo
+    abstract getFolder: FolderPath -> DirectoryInfo
     /// Finds all files in the current folder (that the file system is chrooted
     /// to).
     abstract glob : (*file name*)FileNameRegex -> FileInfo seq
     /// Deletes the file passed as a parameter.
-    abstract deleteFile : FilePath -> unit
+    abstract deleteFile: FilePath -> unit
     /// Chroot the file system to a given folder to avoid accidental deletions
     /// or modifications outside the folder of interest.
-    abstract chroot : FolderPath -> FileSystem
+    abstract chroot: FolderPath -> FileSystem
     /// Ensures that the currently rooted path exists (mkdir -p)
-    abstract ensureCurrent : unit -> DirectoryInfo
+    abstract ensureCurrent: unit -> DirectoryInfo
 
   module Path =
     let combine (segments: string seq) =
@@ -527,7 +527,7 @@ module FileSystem =
         Directory.CreateDirectory root
 
   [<Sealed>]
-  type CountingStream(inner: Stream, written : int64 ref) =
+  type CountingStream(inner: Stream, written: int64 ref) =
     inherit Stream()
 
     /// Updates the passed bytes refrence
@@ -724,13 +724,13 @@ module File =
       | Placeholder of name:string
       | Lit of str:string
 
-    let ph : Parser<Token, unit> =
+    let ph: Parser<Token, unit> =
       between (pstring "{" <?> "Placeholders must start with '{'")
               (pstring "}" <?> "Placeholders must end with '}'")
               (manyChars letter |>> Placeholder
                <?> "Only letters are supported as placeholders")
 
-    let lit : Parser<Token, unit> =
+    let lit: Parser<Token, unit> =
       let invalids =
         [| yield! Path.GetInvalidFileNameChars()
            yield! "{}\n\r\b\a:;\\\"'".ToCharArray() |]
@@ -751,10 +751,10 @@ module File =
       many1Satisfy (fun c -> not (Array.contains c invalids)) |>> Lit
       <?> error
 
-    let tokens : Parser<Token list, unit> =
+    let tokens: Parser<Token list, unit> =
       many1 (ph <|> lit)
 
-    let combined : Parser<Token list, unit> =
+    let combined: Parser<Token list, unit> =
       spaces >>. tokens .>> eof
 
     let parse spec =
@@ -844,7 +844,7 @@ module File =
             match policy (dir, file) with
             | KeepFile -> ()
             | DeleteFile ->
-              yield (file.FullName : FilePath) }
+              yield (file.FullName: FilePath) }
       |> Seq.iter deleter
 
     type T =
@@ -882,7 +882,7 @@ module File =
       /// Whether to buffer the string writer in this process' memory. Defaults to false,
       /// so that the textwriter that writes to the underlying file stream is continuously
       /// flushed.
-    { inProcBuffer : bool
+    { inProcBuffer: bool
       /// Whether to force the operating system's page cache to flush to persistent
       /// storage for each log batch. By default this is false, but sending a
       /// Flush message to the target forces the page cache to be flushed to disk
@@ -891,7 +891,7 @@ module File =
       /// then you can have this flag as false.
       ///
       /// This flag corresponds to `Flush(true)`.
-      flushToDisk : bool
+      flushToDisk: bool
       /// Whether the `FileStream` is opened with the flags FILE_FLAG_WRITE_THROUGH
       /// and FILE_FLAG_NO_BUFFERING. Defaults to true, to let this target model a
       /// transaction log. See https://support.microsoft.com/en-us/kb/99794 for more
@@ -899,27 +899,27 @@ module File =
       /// a 140x throughput boost on spinning disk on Windows -
       /// ref https://ayende.com/blog/174785/fast-transaction-log-windows. Linux
       /// gets a 10x performance boost on SSD without this flag.
-      writeThrough : bool
+      writeThrough: bool
       /// Use the `Rotation` discriminated union to specify the policy for
       /// when to rotate the file. If you rotate the files, you can optionally
       /// choose to let this target delete files, too, by supplying a list of
       /// deletion policies.
-      policies : Rotation
+      policies: Rotation
       /// Where to save the logs.
-      logFolder : FolderPath
+      logFolder: FolderPath
       /// What encoding to use for writing the text to the file.
-      encoding  : Encoding
+      encoding: Encoding
       /// The naming specification gives the File target instructions on how to
       /// name files when they are created and rotated.
-      naming : Naming
+      naming: Naming
       /// The file system abstraction to write to.
-      fileSystem : FileSystem
+      fileSystem: FileSystem
       /// The writer is responsible for writing to the TextWriter.
-      writer : MessageWriter
+      writer: MessageWriter
       /// How many log messages to write in one go.
-      batchSize : uint16
+      batchSize: uint16
       /// How many times to try to recover a failed batch messages.
-      attempts  : uint16 }
+      attempts: uint16 }
 
   let defaultMessageFormat = MessageWriter.expanded false System.Environment.NewLine System.Environment.NewLine
 
@@ -948,12 +948,12 @@ module File =
 
   module internal Impl =
     type State =
-      { underlying : FileStream
+      { underlying: FileStream
         /// The FileInfo as it were when the file was opened.
-        fileInfo   : FileInfo
-        writer     : TextWriter
-        written    : int64 ref
-        janitor    : Janitor.T }
+        fileInfo: FileInfo
+        writer: TextWriter
+        written: int64 ref
+        janitor: Janitor.T }
 
       static member create (underlying, fi, writer, written) janitor =
         { underlying = underlying
@@ -975,7 +975,7 @@ module File =
 
     /// Takes the counter reference cell, and if there exists a rotation policy
     /// dependent on the
-    let applyStreamPolicies counter fs : Rotation -> Stream = function
+    let applyStreamPolicies counter fs: Rotation -> Stream = function
       | Rotation.SingleFile ->
         fs
       | Rotation.Rotate ([] as rotation, _) ->
@@ -1111,7 +1111,7 @@ module File =
                   Job.raises other)
 
     let loop (conf: FileConf) (will: Will<TargetMessage[] * uint16>)
-             (ri: RuntimeInfo, api : TargetAPI)  =
+             (ri: RuntimeInfo, api: TargetAPI)  =
       let rotateCh = Ch ()
 
       let shutdownState =
@@ -1221,7 +1221,7 @@ module File =
     TargetConf.create Policy.exponentialBackoffSix 512us (Impl.loop conf) name
 
   /// Use with LogaryFactory.New(s => s.Target<File.Builder>())
-  type Builder(conf, callParent : ParentCallback<Builder>) =
+  type Builder(conf, callParent: ParentCallback<Builder>) =
     let update (conf' : FileConf): Builder =
       Builder(conf', callParent)
 

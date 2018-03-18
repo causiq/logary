@@ -45,7 +45,7 @@ module internal JsonHelper =
   /// so implement by typeshape reflection first, then migrate by test ITuple interface.
   /// if user want to support union, record, poco... they can offer their own encoderFac.
   let rec internal toJsonTypeShape (registry: ICustomJsonEncoderRegistry) (data: obj) =
-    let resolver : JsonEncoder<obj> = toJsonTypeShape registry
+    let resolver: JsonEncoder<obj> = toJsonTypeShape registry
     let (|CustomFactory|_|) (shape: TypeShape) = registry.TryGetRegistration shape.Type
 
     if isNull data then Json.Null

@@ -8,7 +8,7 @@ open Logary
 
 /// A thing that efficiently writes a message to a TextWriter.
 type MessageWriter =
-  abstract write : TextWriter -> Message -> unit
+  abstract write: TextWriter -> Message -> unit
 
 [<AutoOpen>]
 module MessageWriterEx =
@@ -44,7 +44,7 @@ module MessageWriter =
   let internal defaultDestr = Destructure.destructure Global.destructureRegistry Global.projectionStrategy
 
   /// maxDepth can be avoided if cycle reference are handled properly
-  let expanded highlightError nl ending : MessageWriter =
+  let expanded highlightError nl ending: MessageWriter =
     { new MessageWriter with
         member x.write tw m =
           let writeState = { provider = tw.FormatProvider; idManager = RefIdManager ()}

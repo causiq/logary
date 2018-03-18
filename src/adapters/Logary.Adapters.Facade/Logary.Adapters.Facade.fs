@@ -14,22 +14,22 @@ open Logary.Internals
 module Reflection =
 
   /// Gets the method on the type
-  let findMethod : Type * string -> MethodInfo =
+  let findMethod: Type * string -> MethodInfo =
     Cache.memoize (fun (typ, meth) -> typ.GetMethod meth)
 
   /// Gets the property on the type
-  let findProperty : Type * string -> PropertyInfo =
+  let findProperty: Type * string -> PropertyInfo =
     Cache.memoize (fun (typ, prop) -> typ.GetProperty prop)
 
-  let findStaticProperty : Type * string -> PropertyInfo =
+  let findStaticProperty: Type * string -> PropertyInfo =
     Cache.memoize (fun (typ, prop) -> typ.GetProperty(prop, BindingFlags.Static ||| BindingFlags.Public))
 
-  let findField : Type * string -> FieldInfo =
+  let findField: Type * string -> FieldInfo =
     Cache.memoize (fun (typ, field) -> typ.GetField field)
 
   /// Finds the module relative to the logger type
   let findModule =
-    let findModule_ : Type * string -> Type =
+    let findModule_: Type * string -> Type =
       fun (loggerType, moduleName) ->
         let typ = sprintf "%s.%s, %s" loggerType.Namespace moduleName loggerType.Assembly.FullName
         Type.GetType typ
@@ -42,7 +42,7 @@ module Reflection =
       if isNull field then defaultValue
       else field.GetValue(null, null) :?> 'a)
 
-  let versionFrom : Type -> uint32 =
+  let versionFrom: Type -> uint32 =
     Cache.memoize (fun loggerType -> readLiteral loggerType ("FacadeVersion", 1u))
 
   type ApiVersion =
@@ -201,7 +201,7 @@ module LoggerAdapter =
   /// into logary. Provide the namespace you put the facade in and the assembly
   /// which it should be loaded from, and this adapter will use (memoized) reflection
   /// to properly bind to the facade.
-  type private I(logger: Logger, version : ApiVersion) =
+  type private I(logger: Logger, version: ApiVersion) =
     let (PointName defaultName) = logger.name
 
     // Codomains of these three functions are equal to codomains of Facade's
@@ -218,12 +218,12 @@ module LoggerAdapter =
       // "hot" in that starting it will return "immediately" and be idempotent)
       (prom ^=> id) |> Job.toAsync
 
-    let logV1 level messageFactory : unit =
+    let logV1 level messageFactory: unit =
       // start immediate because in the normal case we can put the Message
       // in the RingBuffer without any extra time taken
       logWithAck level messageFactory |> Async.StartImmediate
 
-    let logV2 level messageFactory : Async<unit> =
+    let logV2 level messageFactory: Async<unit> =
       logger.log level messageFactory |> Alt.toAsync
 
     let logSimple (msg: Message): unit =
@@ -250,7 +250,7 @@ module LoggerAdapter =
   /// Create a target assembly's logger from the given type, which delegates to
   /// the passed Logary proper Logger.
   [<CompiledName("Create")>]
-  let create (typ: Type) logger : obj =
+  let create (typ: Type) logger: obj =
     if typ = null then invalidArg "typ" "is null"
     let generator = new ProxyGenerator()
     let facade = I (logger, ApiVersion.ofType typ) :> IInterceptor
@@ -259,7 +259,7 @@ module LoggerAdapter =
   /// Create a target assembly's logger from the given type-string, which
   /// delegates to the passed Logary proper logger.
   [<CompiledName("Create")>]
-  let createString (typ: string) logger : obj =
+  let createString (typ: string) logger: obj =
     create (Type.GetType typ) logger
 
   /// Creates a target assembly's logger from the passed generic logger type
@@ -267,7 +267,7 @@ module LoggerAdapter =
   /// you'll normally use if you use this module. Otherwise, please see
   /// LogaryFacadeAdapter.
   [<CompiledName("Create")>]
-  let createGeneric<'logger when 'logger : not struct> logger : 'logger =
+  let createGeneric<'logger when 'logger: not struct> logger : 'logger =
     create typeof<'logger> logger :?> 'logger
 
 module LoggerCSharpAdapter =
@@ -350,7 +350,7 @@ module LoggerCSharpAdapter =
         Activator.CreateInstance(logMessageT, args)
 
 
-  type private I (loggerType: Type, logger : Logger, version : ApiVersion) =
+  type private I (loggerType: Type, logger: Logger, version: ApiVersion) =
     let (PointName defaultName) = logger.name
     let createMessage = LogMessage.create loggerType
 
@@ -383,7 +383,7 @@ module LoggerCSharpAdapter =
           failwithf "Method '%s' should not exist on Logary.CSharp.Facade.ILogger" meth
 
   [<CompiledName "Create">]
-  let create (typ: Type) logger : obj =
+  let create (typ: Type) logger: obj =
     if typ = null then invalidArg "typ" "is null"
     let generator = new ProxyGenerator()
     let facade = I (typ, logger, ApiVersion.ofType typ) :> IInterceptor
@@ -392,7 +392,7 @@ module LoggerCSharpAdapter =
   /// Create a target assembly's logger from the given type-string, which
   /// delegates to the passed Logary proper logger.
   [<CompiledName "Create">]
-  let createString (typ: string) logger : obj =
+  let createString (typ: string) logger: obj =
     create (Type.GetType typ) logger
 
   /// Creates a target assembly's logger from the passed generic logger type
@@ -400,7 +400,7 @@ module LoggerCSharpAdapter =
   /// you'll normally use if you use this module. Otherwise, please see
   /// LogaryFacadeAdapter.
   [<CompiledName "Create">]
-  let createGeneric<'logger when 'logger : not struct> logger : 'logger =
+  let createGeneric<'logger when 'logger: not struct> logger : 'logger =
     create typeof<'logger> logger :?> 'logger
 
 /// An adapter for creating a `getLogger` function.
@@ -418,7 +418,7 @@ module LogaryFacadeAdapter =
     | otherwise ->
       failwithf "Unknown function called '%s'" otherwise
 
-  type internal LoggerConfigImpl(loggerType: Type, logManager : LogManager) =
+  type internal LoggerConfigImpl(loggerType: Type, logManager: LogManager) =
     interface IInterceptor with
       member x.Intercept invocation =
         match invocation with
@@ -437,7 +437,7 @@ module LogaryFacadeAdapter =
   /// needs the `loggerType` of the target assembly for orientation.
   [<CompiledName "CreateFSharpConfig">]
   let createConfig configType loggerType (logManager: LogManager) =
-    let values : obj array =
+    let values: obj array =
       FSharpType.GetRecordFields(configType)
       |> Array.map (fun field ->
         match field.Name with

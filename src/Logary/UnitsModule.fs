@@ -27,7 +27,7 @@ module Units =
       |> sprintf "[ %s ]"
     | Object m -> "Object"
 
-  let scaleSeconds : float -> float * string =
+  let scaleSeconds: float -> float * string =
     ((*) (float Constants.NanosPerSecond)) >> int64 >> function
     | value when value < Constants.NanosPerSecond / 1000000L ->
       float Constants.NanosPerSecond, "ns"
@@ -48,7 +48,7 @@ module Units =
   let multiplePrefixes =
     [| ""; "k"; "M"; "G"; "T"; "P"; "E"; "Z" |]
 
-  let fractionsPrefixes : string[] =
+  let fractionsPrefixes: string[] =
     [| "m"; "μ"; "n"; "p"; "f"; "a"; "z"; "y" |]
 
   let scaleBy10 units (value: float): float * string =
@@ -86,7 +86,7 @@ module Units =
       value * factor, unitStr
 
   // Given a Unit, returns the scaling function and the list of units available.
-  let rec scale units value : float * string =
+  let rec scale units value: float * string =
     let noopScale v = 1., Units.symbol units
     match units with
     | Bytes ->

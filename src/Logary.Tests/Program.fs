@@ -296,12 +296,12 @@ let tests =
     ]
 
     testList "Message" [
-      testCase "event : LogLevel -> string -> Message" <| fun _ ->
+      testCase "event: LogLevel -> string -> Message" <| fun _ ->
         let m = event Info "Hello world"
         Expect.equal m.level Info "Should have info level"
         Expect.equal m.value ("Hello world") "Should have template"
 
-      testCase "eventX : string -> LogLevel -> Message" <| fun _ ->
+      testCase "eventX: string -> LogLevel -> Message" <| fun _ ->
         let m = eventX "Hello world" Info
         Expect.equal m.level Info "Should have info level"
         Expect.equal m.value ("Hello world") "Should have template"
@@ -359,7 +359,7 @@ let tests =
         let msgHasAllTag = tags |> List.forall (fun tag -> hasTag tag msg )
         Expect.isTrue msgHasAllTag "Should have all tags"
 
-      testCase "setFieldsFromObject : obj -> Message -> Message" <| fun () ->
+      testCase "setFieldsFromObject: obj -> Message -> Message" <| fun () ->
         let m = eventX "Hello world" Info |> setFieldsFromObject (Obj())
         let field = m |> tryGetField "PropA"
         Expect.equal field (Some 45) "Should have PropA"
@@ -403,12 +403,11 @@ let tests =
 
         let timeFun = time (PointName.parse name) id
         let timeJobFun = timeJob (PointName.parse name) Job.result
-        let! (res1, msg1) = timeJobFun 100 |> Job.toAsync
-        let (res2, msg2) = timeFun 100
+        let! res1, msg1 = timeJobFun 100 |> Job.toAsync
+        let res2, msg2 = timeFun 100
         test res1 msg1
         test res2 msg2
       })
-
     ]
 
     testList "LoggerScope" [
@@ -424,10 +423,10 @@ let tests =
     testList "TimeScope" [
       testCase "public interface" <| fun () ->
         { new TimeScope with
-            member x.name : PointName = PointName.ofSingle "B"
+            member x.name: PointName = PointName.ofSingle "B"
             member x.logWithAck (level: LogLevel) (factory: LogLevel -> Message): Alt<Promise<unit>> =
               Promise.instaPromise
-            member x.level : LogLevel = LogLevel.Info
+            member x.level: LogLevel = LogLevel.Info
             member x.Dispose () = ()
             member x.elapsed = Duration.Zero
             member x.bisect (label: string): unit =
@@ -716,8 +715,8 @@ let tests =
 
     testList "NodaTime.Instant" [
       testProperty "ofEpoch" <| fun _ ->
-        let nanoSeconds = Arb.from<int64> |> Arb.mapFilter ((*) 100L) ((>) 0L) 
-        Prop.forAll nanoSeconds (fun epochNanoS -> 
+        let nanoSeconds = Arb.from<int64> |> Arb.mapFilter ((*) 100L) ((>) 0L)
+        Prop.forAll nanoSeconds (fun epochNanoS ->
           let instant = Instant.ofEpoch epochNanoS
           let dto = instant.ToDateTimeOffset ()
           epochNanoS = dto.timestamp)
