@@ -27,13 +27,13 @@ let internal parseTemplateTokens template =
 type ColouredText = string * ConsoleColor
 
 type DateTimeOffset with
-  member x.ToLiterateTime (?options : LiterateOptions) =
+  member x.ToLiterateTime (?options: LiterateOptions) =
     let options = defaultArg options (LiterateOptions.create())
     x.ToLocalTime().ToString("HH:mm:ss", options.formatProvider)
 
 type System.Int64 with
   member x.ToDateTimeOffsetUtc() = DateTimeOffset(DateTimeOffset.ticksUTC x, TimeSpan.Zero)
-  member x.ToLiterateTimeString (options : LiterateOptions) = x.ToDateTimeOffsetUtc().ToLiterateTime(options)
+  member x.ToLiterateTimeString (options: LiterateOptions) = x.ToDateTimeOffsetUtc().ToLiterateTime(options)
 
 [<AutoOpen>]
 type LiterateTesting =
@@ -43,7 +43,7 @@ type LiterateTesting =
 
     // Insteading of writing out to the console, write to an in-memory list so we can capture the values
     let writtenParts = ResizeArray<ColouredText>()
-    let writtenPartsOutputWriter _ (bits : ColouredText list) = writtenParts.AddRange bits
+    let writtenPartsOutputWriter _ (bits: ColouredText list) = writtenParts.AddRange bits
 
     let target = LiterateConsoleTarget(name = [||],
                                        minLevel = Verbose,
@@ -57,9 +57,9 @@ type LiterateTesting =
 type Expect =
   /// Asserts that the rendered output (`ColouredText`) matches the expected tokens (`TokenisedPart`) using
   /// the provided `LiterateOptions` (and theme)
-  static member literateWrittenColouredTextEquals (writtenColouredTextParts : ColouredText seq,
-                                                   expectedTokens : LiterateTokenisation.TokenisedPart list,
-                                                   ?options : LiterateOptions) =
+  static member literateWrittenColouredTextEquals (writtenColouredTextParts: ColouredText seq,
+                                                   expectedTokens: LiterateTokenisation.TokenisedPart list,
+                                                   ?options: LiterateOptions) =
 
     let options = defaultArg options (LiterateOptions.create())
 
@@ -101,7 +101,7 @@ type Expect =
                   | Some theme -> { LiterateOptions.create() with theme = theme }
                   | None -> LiterateOptions.create()
     let writtenParts = ResizeArray<ColouredText>()
-    let writtenPartsOutputWriter _ (bits : ColouredText list) = writtenParts.AddRange bits
+    let writtenPartsOutputWriter _ (bits: ColouredText list) = writtenParts.AddRange bits
     let target = LiterateConsoleTarget(name = [|"Facade";"Tests"|],
                                        minLevel = Verbose,
                                        options = options,
@@ -128,12 +128,12 @@ let tests =
   Global.initialise { Global.defaultConfig with getLogger = Targets.create Fatal }
 
   testList "generic" [
-    testProperty "DateTime" <| fun (dt : DateTime) ->
+    testProperty "DateTime" <| fun (dt: DateTime) ->
       let ticks = dt |> DateTime.timestamp |> DateTime.ticksUTC
       let recreated = DateTime(ticks, DateTimeKind.Utc).Ticks
       Expect.equal recreated (dt.Ticks) "should equal on ticks after conversion"
 
-    testProperty "DateTimeOffset" <| fun (ts : DateTimeOffset) ->
+    testProperty "DateTimeOffset" <| fun (ts: DateTimeOffset) ->
       let ticks = ts |> DateTimeOffset.timestamp |> DateTimeOffset.ticksUTC
       let recreated = DateTimeOffset(ticks, TimeSpan.Zero).Ticks
       Expect.equal recreated (ts.Ticks) "should equal after conversion"
@@ -282,7 +282,7 @@ let tests =
                       (sprintf "expect log level %A to render as token %A with text %s" logLevel expectedLevelToken expectedText)
       )
     
-    testProperty "literate theme is applied correctly" <| fun (theme : LiterateToken -> ConsoleColor) ->
+    testProperty "literate theme is applied correctly" <| fun (theme: LiterateToken -> ConsoleColor) ->
       let options = { LiterateOptions.create() with theme = theme }
       let fields = Map.ofList [ "where", box "The Other Side" ]
       let message = { Message.event Warn "Hello from {where}" with fields = fields }
