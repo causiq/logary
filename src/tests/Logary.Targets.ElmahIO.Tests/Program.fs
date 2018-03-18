@@ -35,7 +35,7 @@ let exnMsg =
 [<Tests>]
 let tests =
   testList "elmah.io tests" [
-    Logary.Tests.CoreTargets.basicTests "elmah.io" target
+    TargetBaseline.basicTests "elmah.io" target
 
     testList "getType" [
       testCase "of non-exception message" <| fun _ ->
@@ -49,7 +49,7 @@ let tests =
 
       testCase "formatting message captures exception details" <| fun _ ->
         let str = ElmahIO.Impl.format exnMsg
-        Expect.stringContains str "withException" "Should contain parts of StackTrace."
+        Expect.stringContains str "middleWay" "Should contain parts of StackTrace."
     ]
   ]
 

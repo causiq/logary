@@ -6,6 +6,7 @@ open System.Globalization
 open System.IO
 open System.Threading
 open Expecto
+open Expecto
 open Logary
 open Logary.Internals
 open Logary.Targets
@@ -13,119 +14,7 @@ open Hopac
 open Hopac.Infixes
 open NodaTime
 
-let innermost () =
-  raise (Exception "Bad things going on")
-
-let middleWay () =
-  1 + 3 |> ignore
-  innermost ()
-
-let withException f =
-  try
-    middleWay ()
-  with e ->
-    f e
-
-type Tenant =
-  { tenantId : string
-    permissions : string }
-
-let exnMsg =
-  Message.event Error "Unhandled exception"
-  |> Message.setSimpleName "A.B.C"
-  |> Message.setField "tenant" { tenantId = "12345"; permissions = "RWX" }
-  |> Message.setContextFromMap (Map
-    [ "user", box (Map
-        [ "name", box "haf"
-          "id", box "deadbeef234567"
-        ])
-    ])
-  |> withException Message.addExn
-
-let timeMessage (nanos : int64) level =
-  let value, units = float nanos, Scaled (Seconds, float Constants.NanosPerSecond)
-  Message.gaugeWithUnit "A.B.C.Check" value units
-  |> Message.setLevel level
-
-let gaugeMessage (value : float) level =
-  Message.gaugeWithUnit "Revolver" value (Div (Seconds, Units.Other "revolution"))
-  |> Message.setLevel level
-
-let multiGaugeMessage level =
-  Message.event level "Processor.% Idle"
-  |> Message.addGauge "Core 1" (Gauge (0.001, Percent))
-  |> Message.addGauge "Core 2" (Gauge (0.99, Percent))
-  |> Message.addGauge "Core 3" (Gauge (0.473223755, Percent))
-  |> Message.setContext "host" "db-001"
-  |> Message.setContext "service" "api-web"
-
-let emptyRuntime = RuntimeInfo.create "svc" "host"
-
-
-let nanos xs =
-  Duration.FromTicks (xs / Constants.NanosPerTick)
-
-let helloWorldMsg =
-  Message.eventX "Hello World!"
-  >> Message.setTicksEpoch (0L : EpochNanoSeconds)
-
-module Internals =
-  type TimeoutResult<'T> =
-  | Success of 'T
-  | TimedOut
-
-let finaliseJob target =
-  Alt.choose [
-    Target.shutdown target
-    |> Alt.afterJob id
-    |> Alt.afterFun Internals.Success
-
-    timeOutMillis 1000
-      |> Alt.afterFun (fun _ -> Internals.TimedOut)
-  ]
-
-/// Finalise the target and assert it was finalised within 1000 milliseconds
-let finalise target =
-  finaliseJob target
-  |> Alt.afterFun (
-     function
-     | Internals.TimedOut ->
-       Tests.failtestf "finalising target timed out: %A" target
-     | Internals.Success _ -> ())
-
-let logMsgWaitAndShutdown targetApi (logCallBack: (Message -> Alt<unit>) -> #Job<unit>) =
-  let logAndWait = Target.log targetApi >> Alt.afterJob id
-  let logJob = logCallBack logAndWait
-  let finaliseJob = finalise targetApi
-  Job.tryFinallyJob logJob finaliseJob
-
-
-/// Run basic tests against the target;
-///
-///  - can create instance thereof
-///  - can start and stop
-///  - can receive a few different sorts of messages
-let basicTests targetName confFac =
-  testList (sprintf "basic tests for target '%s'" targetName) [
-    testCaseAsync "creating instance" <| (job {
-      let conf = confFac targetName
-      let! targetApi = Target.create emptyRuntime conf
-      Expect.equal targetApi.Name targetName "Should be named"
-    } |> Job.toAsync)
-
-    testCaseAsync "start, log and stop" <| (job {
-      let conf = confFac targetName
-      let! targetApi = Target.create emptyRuntime conf
-      do! logMsgWaitAndShutdown targetApi (fun logAndWait -> Message.eventInfo "Hello World!" |> logAndWait )
-    } |> Job.toAsync)
-
-    testCaseAsync "log exception message" <| (job {
-      let conf = confFac targetName
-      let! targetApi = Target.create emptyRuntime conf
-      do! logMsgWaitAndShutdown targetApi (fun logAndWait -> exnMsg |> logAndWait)
-    } |> Job.toAsync)
-  ]
-
+let logger = Expecto.Logging.Log.create "CoreTargets"
 
 module LiterateTesting =
   open System
@@ -187,6 +76,7 @@ let levels expectedTimeText : LiterateConsole.ColouredText list =
     { text = LiterateTesting.levelI; colours = LiterateTesting.Theme.levelInfoColours }
     { text = "] ";                   colours = LiterateTesting.Theme.punctuationColours } ]
 
+open Logary.Tests.Utils
 
 module Files =
 
@@ -388,7 +278,7 @@ module Files =
   ]
 
 let tests = [
-  basicTests "text writer" (fun name ->
+  TargetBaseline.basicTests "text writer" (fun name ->
     let (_, _, twTargetConf) = Utils.buildTextWriteTarget name
     twTargetConf)
 

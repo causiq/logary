@@ -21,7 +21,7 @@ open System.Reflection
 type ElmahIOConf =
   { /// You can get the log id from the https://elmah.io/dashboard/ page by clicking
     /// on the settings icon and then taking the logId from the tutorial.
-    logId : Guid 
+    logId : Guid
     apiKey: string}
 
 let empty = { logId = Guid.Empty ; apiKey = String.Empty}
@@ -59,7 +59,7 @@ module internal Impl =
        let jsonStr = Logary.Formatting.Json.format v
        Elmah.Io.Client.Models.Item(name, jsonStr))
     |> fun xs -> Collections.Generic.List<_>(xs)
-    
+
   let getType (msg : Logary.Message) =
     match msg |> getErrors |>  List.tryLast with
     | Some exn ->
@@ -73,12 +73,10 @@ module internal Impl =
   type State =
     { client : IElmahioAPI }
     interface IDisposable with
-      member x.Dispose () = 
+      member x.Dispose () =
         x.client.Dispose ()
 
-  let loop (conf : ElmahIOConf)
-           (ri : RuntimeInfo, api: TargetAPI) =
-
+  let loop (conf: ElmahIOConf) (ri: RuntimeInfo, api: TargetAPI) =
     let internalError = Ch ()
 
     let rec loop (state : State) : Job<unit> =
@@ -114,18 +112,15 @@ module internal Impl =
               elmahMsg.Version <- getVersion()
               elmahMsg.User <- match (tryGetContext "user.name" msg) with | None -> null | Some x -> x
 
-              state.client.Messages.CreateAndNotifyAsync(conf.logId, elmahMsg) 
+              state.client.Messages.CreateAndNotifyAsync(conf.logId, elmahMsg)
 
-            sendMsg
-            |> Job.fromTask
-            |> fun sendJob ->
-               sendJob 
-               >>= fun _ -> ack *<= ()
-               >>=. loop state
+            Job.fromTask sendMsg
+            >>= fun _ -> ack *<= ()
+            >>=. loop state
 
           | Flush (ackCh, nack) ->
             job {
-              do! IVar.fill ackCh () 
+              do! IVar.fill ackCh ()
               return! loop state
             }
 

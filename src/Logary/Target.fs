@@ -143,7 +143,6 @@ module Target =
     let ack = IVar ()
     Ch.give x.api.shutdownCh ack ^->. upcast ack
 
-
   let create (ri : RuntimeInfo) (conf : TargetConf) : Job<T> =
     let specificName =  sprintf "Logary.Target(%s)" conf.name
     let ri =
