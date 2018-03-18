@@ -88,17 +88,12 @@ Target "Build" (fun _ ->
 )
 
 Target "Tests" (fun _ ->
-  !! "src/tests/**/*.fsproj"
-  |> Seq.iter (fun file ->
-    let projectName =
-      file.Substring(0, file.Length - ".fsproj".Length)
-      |> Path.GetFileName
-    let path =
-      Path.GetDirectoryName file
-    DotNetCli.RunCommand id (
-      sprintf "%s/bin/%s/netcoreapp2.0/%s.dll --summary"
-        path configuration projectName))
-)
+  let commandLine (file: string) =
+    let projectName = file.Substring(0, file.Length - ".fsproj".Length) |> Path.GetFileName
+    let path = Path.GetDirectoryName file
+    sprintf "run %s/bin/%s/netcoreapp2.0/%s.dll --summary" path configuration projectName
+  !! "src/tests/**/*.fsproj" |> Seq.iter (commandLine >> DotNetCli.RunCommand id)
+  !! "src/*.Tests/*.fsproj" |> Seq.iter (commandLine >> DotNetCli.RunCommand id))
 
 let packParameters name =
   [ "--no-build"
