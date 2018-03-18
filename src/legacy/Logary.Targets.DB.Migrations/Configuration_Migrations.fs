@@ -12,8 +12,8 @@ open Logary.DB.Migrations
 
 /// Migrate the given DB Conf up to the latest version of the Logary.DB target
 let migrateUp
-  (conf : DBConf)
-  (processorFac : IDbConnection -> IMigrationProcessor) =
+  (conf: DBConf)
+  (processorFac: IDbConnection -> IMigrationProcessor) =
 
   let conn = conf.connectionFactory ()
   let fac = ExistingConnectionProcessorFactory(conn, processorFac)

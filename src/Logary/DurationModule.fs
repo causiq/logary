@@ -18,7 +18,7 @@ module Duration =
 
   let microseconds =
     ((*) 1000.) << milliseconds
-  let ticks (dur : Duration) =
+  let ticks (dur: Duration) =
     dur.TotalTicks
   let nanoseconds =
     ((*) 1000.) << microseconds

@@ -26,11 +26,11 @@ module internal Impl =
 
   // This is the main entry point of the target. It returns a Job<unit>
   // and as such doesn't have side effects until the Job is started.
-  let loop (conf : NoopConf) // the conf is specific to your target
-           (will : Will<State>) // optional will
-           (ri : RuntimeInfo, api : TargetAPI) =
+  let loop (conf: NoopConf) // the conf is specific to your target
+           (will: Will<State>) // optional will
+           (ri: RuntimeInfo, api : TargetAPI) =
 
-    let rec loop (state : State) =
+    let rec loop (state: State) =
       // Alt.choose will pick the channel/alternative that first gives a value
       Alt.choose [
         // The ring buffer will fill up with messages that you can then consume below.
@@ -95,18 +95,18 @@ let create conf name =
 
 /// Use with LogaryFactory.New( s => s.Target<YOUR TARGET NAME.Builder>() )
 type Builder(conf, callParent : ParentCallback<Builder>) =
-  let update (conf' : NoopConf) : Builder = // helper function
+  let update (conf' : NoopConf): Builder = // helper function
     Builder(conf', callParent)
 
   // place your own configuration methods here
 
-  member x.IsYes(yes : bool) = // sample configuration method
+  member x.IsYes(yes: bool) = // sample configuration method
     update { conf with isYes = yes }
 
   // your own configuration methods end here
 
   // c'tor, always include this one in your code
-  new(callParent : ParentCallback<_>) =
+  new(callParent: ParentCallback<_>) =
     Builder({ isYes = false }, callParent)
 
   // this is called in the end, after calling all your custom configuration

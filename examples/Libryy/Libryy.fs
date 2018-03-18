@@ -15,7 +15,7 @@ let getSampleException messagePrefix =
   with
   | ex -> ex
 
-let work (logger : Logger) =
+let work (logger: Logger) =
   logger.logWithAck Warn (
     Message.eventX "Hey {user}!"
     >> Message.setFieldValue "user" "haf"
@@ -26,7 +26,7 @@ let work (logger : Logger) =
 
   42
 
-let workBackpressure (logger : Logger) =
+let workBackpressure (logger: Logger) =
   logger.log Warn (
     Message.eventX "Hey {user}!"
     >> Message.setFieldValue "user" "haf"
@@ -36,11 +36,11 @@ let workBackpressure (logger : Logger) =
 
   45
 
-let errorWithBP (logger : Logger) =
+let errorWithBP (logger: Logger) =
   logger.errorWithBP (Message.eventX "Too simplistic") |> Async.RunSynchronously
   43
 
-let generateAndLogExn (logger : Logger) =
+let generateAndLogExn (logger: Logger) =
   let ex = getSampleException "Uhoh!"
   logger.logSimple (Message.event Error "An error with an attached exception"
                     |> Message.addExn ex

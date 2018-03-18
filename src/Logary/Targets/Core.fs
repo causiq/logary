@@ -40,9 +40,9 @@ module TextWriter =
 
   module internal Impl =
 
-    let loop (twConf : TextWriterConf) (ri : RuntimeInfo, api : TargetAPI) =
+    let loop (twConf: TextWriterConf) (ri: RuntimeInfo, api : TargetAPI) =
 
-      let rec loop () : Job<unit> =
+      let rec loop (): Job<unit> =
         Alt.choose [
           api.shutdownCh ^=> fun ack ->
             twConf.output.Dispose()
@@ -80,7 +80,7 @@ module TextWriter =
       loop ()
 
   [<CompiledName "Create">]
-  let create (conf : TextWriterConf) name =
+  let create (conf: TextWriterConf) name =
     TargetConf.createSimple (Impl.loop conf) name
 
   /// Use with LogaryFactory.New( s => s.Target<TextWriter.Builder>() )
@@ -88,7 +88,7 @@ module TextWriter =
     member x.WriteTo(out : #TextWriter, err : #TextWriter) =
       ! (callParent <| Builder({ conf with output = out; error = err }, callParent))
 
-    new(callParent : ParentCallback<_>) =
+    new(callParent: ParentCallback<_>) =
       Builder(TextWriterConf.create(System.Console.Out, System.Console.Error), callParent)
 
     interface SpecificTargetConf with
@@ -130,7 +130,7 @@ module Console =
     member x.WithFormatter( sf : MessageWriter ) =
       ! (callParent <| Builder({ conf with writer = sf }, callParent))
 
-    new(callParent : ParentCallback<_>) =
+    new(callParent: ParentCallback<_>) =
       Builder(empty, callParent)
 
     interface SpecificTargetConf with
@@ -173,7 +173,7 @@ module LiterateConsole =
 
     /// Split a structured message up into theme-able parts (tokens), allowing the
     /// final output to display to a user with colours to enhance readability.
-    let literateDefaultTokeniser (options : LiterateConsoleConf) (message : Message) =
+    let literateDefaultTokeniser (options: LiterateConsoleConf) (message: Message) =
       let nl = Environment.NewLine
       let destr = MessageWriter.defaultDestr
       let maxDepth = 10
@@ -301,7 +301,7 @@ module LiterateConsole =
         Job.Scheduler.isolate <| fun _ ->
           lcConf.colourWriter (ri.getConsoleSemaphore ()) data
 
-      let rec loop () : Job<unit> =
+      let rec loop (): Job<unit> =
         Alt.choose [
           RingBuffer.take api.requests ^=> function
             | Log (logMsg, ack) ->
@@ -340,18 +340,18 @@ module LiterateConsole =
 
   /// Use with LogaryFactory.New( s => s.Target<LiterateConsole.Builder>() )
   type Builder(conf, callParent : ParentCallback<Builder>) =
-    let update (conf' : LiterateConsoleConf) : Builder =
+    let update (conf' : LiterateConsoleConf): Builder =
       Builder(conf', callParent)
 
     /// Specify the formatting provider to use when formatting values to string
-    member x.WithFormatProvider(fp : IFormatProvider) =
+    member x.WithFormatProvider(fp: IFormatProvider) =
       update { conf with formatProvider = fp }
 
     /// Lets you specify how log levels are written out.
-    member x.WithLevelFormatter(toStringFun : Func<LogLevel, string>) =
+    member x.WithLevelFormatter(toStringFun: Func<LogLevel, string>) =
       update { conf with getLogLevelText = toStringFun.Invoke }
 
-    new(callParent : ParentCallback<_>) =
+    new(callParent: ParentCallback<_>) =
       Builder(empty, callParent)
 
     interface SpecificTargetConf with
@@ -388,10 +388,10 @@ module Debugger =
 
   module private Impl =
 
-    let loop conf (ri : RuntimeInfo, api : TargetAPI) =
+    let loop conf (ri: RuntimeInfo, api : TargetAPI) =
       let offLevel = 6
 
-      let rec loop () : Job<unit> =
+      let rec loop (): Job<unit> =
         Alt.choose [
           RingBuffer.take api.requests ^=> function
             | Log (message, ack) when Debugger.IsLogging() ->
@@ -429,7 +429,7 @@ module Debugger =
     member x.WithFormatter( sf : MessageWriter ) =
       ! (callParent <| Builder({ conf with writer = sf }, callParent))
 
-    new(callParent : ParentCallback<_>) =
+    new(callParent: ParentCallback<_>) =
       Builder(empty, callParent)
 
     interface SpecificTargetConf with
@@ -484,21 +484,21 @@ module FileSystem =
     abstract ensureCurrent : unit -> DirectoryInfo
 
   module Path =
-    let combine (segments : string seq) =
+    let combine (segments: string seq) =
       Path.Combine(segments |> Array.ofSeq)
 
   /// This file system implementation contains the necessary code to use the
   /// .Net System.IO abstractions.
   [<Sealed>]
-  type DotNetFileSystem(root : FolderPath) =
-    let ensureRooted (path : string) =
+  type DotNetFileSystem(root: FolderPath) =
+    let ensureRooted (path: string) =
       if not (path.StartsWith root) then
         invalidOp (sprintf "Path '%s' is not within root '%s'" path root)
-    let combEns (path : string) =
+    let combEns (path: string) =
       let combined = Path.combine [ root; path ]
       ensureRooted combined
       combined
-    let getFolder (path : FolderPath) =
+    let getFolder (path: FolderPath) =
       let combined = combEns path
       DirectoryInfo combined
 
@@ -527,7 +527,7 @@ module FileSystem =
         Directory.CreateDirectory root
 
   [<Sealed>]
-  type CountingStream(inner : Stream, written : int64 ref) =
+  type CountingStream(inner: Stream, written : int64 ref) =
     inherit Stream()
 
     /// Updates the passed bytes refrence
@@ -580,7 +580,7 @@ module File =
   open FileSystem
 
   /// Bytes
-  let B (n : int64) = n
+  let B (n: int64) = n
   /// Kilobytes
   let KiB n = n * 1024L * 1024L
   /// Megabytes
@@ -647,14 +647,14 @@ module File =
   module DeletionPolicies =
     /// This deletion policy specifies that there are to be max n number of
     /// files present in the folder.
-    let maxNoOfFiles (n : int16) : DeletionPolicy =
+    let maxNoOfFiles (n: int16): DeletionPolicy =
       fun (dirInfo, fileInfo) ->
         // TODO: implement
         KeepFile
 
     /// Deletes all log files (but not the current non-rotated one) older than
     /// the given duration.
-    let olderThan (dur : Duration) : DeletionPolicy =
+    let olderThan (dur: Duration): DeletionPolicy =
       fun (dirInfo, fileInfo) ->
         // TODO: implement
         KeepFile
@@ -663,7 +663,7 @@ module File =
     /// given bytes-large threshold. Be aware that you should not use this
     /// policy alone when there are other services with the same policy (alone)
     /// logging to the same folder.
-    let folderSize (bytesSize : int64) : DeletionPolicy =
+    let folderSize (bytesSize: int64): DeletionPolicy =
       fun (dirInfo, fileInfo) ->
         // TODO: implement
         KeepFile
@@ -767,16 +767,16 @@ module File =
     let private foldStr fph flit =
       fun tokens ->
         let sb = StringBuilder()
-        let app (sb : StringBuilder) (value : string) = sb.Append value
+        let app (sb: StringBuilder) (value: string) = sb.Append value
         let folder sb = function
           | Placeholder ph -> app sb (fph ph)
           | Lit lit -> app sb (flit lit)
         tokens |> List.fold folder sb |> sprintf "%O"
 
-    let format (known : Map<_, _>) (tokens : Token list) =
+    let format (known: Map<_, _>) (tokens: Token list) =
       foldStr (flip Map.find known) id tokens
 
-    let formatRegex (known : Map<_, _>) (tokens : Token list) =
+    let formatRegex (known: Map<_, _>) (tokens: Token list) =
       foldStr (flip Map.find known) Regex.Escape tokens
 
   /// The naming specification gives the File target instructions on how to
@@ -788,7 +788,7 @@ module File =
     with
       /// Gives back a file-name without extention and an extension from the
       /// given RuntimeInfo.
-      member x.format (ri : RuntimeInfo) : string * string =
+      member x.format (ri: RuntimeInfo): string * string =
         let (Naming (spec, ext)) = x
         let now = (ri.getTimestamp () |> Instant.ofEpoch).ToDateTimeOffset()
 
@@ -805,13 +805,13 @@ module File =
           failwith error
 
       /// Gives back a file-name WITH extention given RuntimeInfo.
-      member x.formatS (ri : RuntimeInfo) : string =
+      member x.formatS (ri: RuntimeInfo): string =
         x.format ri ||> sprintf "%s.%s"
 
       /// Gives back a regex that matches what this Naming spec will name files
       /// at any point in time (i.e. it will match any date/datetime file name)
       /// for the Naming spec.
-      member x.regex (ri : RuntimeInfo) =
+      member x.regex (ri: RuntimeInfo) =
         let (Naming (spec, ext)) = x
         let known =
           [ "service", Regex.Escape ri.service
@@ -831,13 +831,13 @@ module File =
   module internal Janitor =
     open System.IO
 
-    let globFiles (ri : RuntimeInfo) (fs : FileSystem) (Naming (spec, ext) as naming) =
+    let globFiles (ri: RuntimeInfo) (fs: FileSystem) (Naming (spec, ext) as naming) =
       fs.glob (naming.regex ri)
       |> Seq.map (fun fi ->
         let dir = Path.GetDirectoryName fi.FullName
         DirectoryInfo dir, fi)
 
-    let iter (globber : unit -> seq<DirectoryInfo * FileInfo>) deleter policies () =
+    let iter (globber: unit -> seq<DirectoryInfo * FileInfo>) deleter policies () =
       seq {
         for dir, file in globber () do
           for policy in policies do
@@ -851,7 +851,7 @@ module File =
       | NullJanitor
       | LiveJanitor of stop:IVar<unit>
 
-    let create (ri : RuntimeInfo) (fs : FileSystem) (naming : Naming) : Rotation -> Job<T> = function
+    let create (ri: RuntimeInfo) (fs: FileSystem) (naming: Naming): Rotation -> Job<T> = function
       | Rotation.SingleFile
       | Rotation.Rotate (_, []) ->
         Job.result NullJanitor
@@ -867,7 +867,7 @@ module File =
           ]
         Job.foreverServer loop >>-. LiveJanitor stopIV
 
-    let shutdown (t:T) : Job<unit> =
+    let shutdown (t:T): Job<unit> =
       match t with
       | NullJanitor ->
         Job.result()
@@ -940,7 +940,7 @@ module File =
   [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
   module FileConf =
     /// Creates a new file config from the given folder path with the naming standard.
-    let create (folderPath : FolderPath) (naming : Naming) =
+    let create (folderPath: FolderPath) (naming: Naming) =
       { empty with
           logFolder = folderPath
           fileSystem = DotNetFileSystem folderPath
@@ -962,7 +962,7 @@ module File =
           written    = written
           janitor    = janitor }
 
-    let applyRotation counter (fs : Stream) (policies : RotationPolicy list) : Stream =
+    let applyRotation counter (fs: Stream) (policies: RotationPolicy list): Stream =
       let rec iter state = function
         | [] -> state
         | Callback _ :: rest -> iter state rest // TODO: also needs counter
@@ -983,7 +983,7 @@ module File =
       | Rotation.Rotate (rotations, _) ->
         applyRotation counter fs rotations
 
-    let openFile ri (fs : FileSystem) conf =
+    let openFile ri (fs: FileSystem) conf =
       let fileName = conf.naming.formatS ri
       let fi = fs.getFile fileName
 
@@ -1006,8 +1006,8 @@ module File =
 
       fs, fi, writer, counter
 
-    let shouldRotate (now : unit -> EpochNanoSeconds)
-                     (conf : FileConf) (state : State) =
+    let shouldRotate (now: unit -> EpochNanoSeconds)
+                     (conf: FileConf) (state: State) =
       let now = now >> Instant.ofEpoch
       let size = !state.written
 
@@ -1030,22 +1030,22 @@ module File =
       | Rotation.Rotate (policies, _) ->
         policies |> apply state
 
-    let flushWriter (state : State) : Job<unit> =
+    let flushWriter (state: State): Job<unit> =
       Job.fromUnitTask state.writer.FlushAsync
 
-    let flushToDisk (state : State) : Job<unit> =
+    let flushToDisk (state: State): Job<unit> =
       Job.Scheduler.isolate (fun _ -> state.underlying.Flush true)
 
-    let flushAndCloseFile (state : State) : Job<unit> =
+    let flushAndCloseFile (state: State): Job<unit> =
       flushWriter state >>=. flushToDisk state >>- fun () ->
       state.writer.Dispose()
 
-    let shutdownState (state : State) : Job<unit> =
+    let shutdownState (state: State): Job<unit> =
       flushAndCloseFile state >>=.
       Janitor.shutdown state.janitor
 
     /// Writes all passed requests to disk, handles acks and flushes.
-    let writeRequests (ilogger : Logger) (conf : FileConf) (state : State) (reqs : TargetMessage[]) =
+    let writeRequests (ilogger: Logger) (conf: FileConf) (state: State) (reqs: TargetMessage[]) =
       // `completed` can throw
       let ack (completed, ack) = completed >>=. IVar.fill ack ()
       let ackAll acks = acks |> Seq.map ack |> Job.conIgnore
@@ -1110,8 +1110,8 @@ module File =
                 | other ->
                   Job.raises other)
 
-    let loop (conf : FileConf) (will : Will<TargetMessage[] * uint16>)
-             (ri : RuntimeInfo, api : TargetAPI)  =
+    let loop (conf: FileConf) (will: Will<TargetMessage[] * uint16>)
+             (ri: RuntimeInfo, api : TargetAPI)  =
       let rotateCh = Ch ()
 
       let shutdownState =
@@ -1132,7 +1132,7 @@ module File =
             checking state
 
       // In this state we try to write as many log messages as possible.
-      and running (state : State) : Job<unit> =
+      and running (state: State): Job<unit> =
         Alt.choose [
           api.shutdownCh ^=> fun ack ->
             ri.logger.debugWithBP (eventX "Shutting down file target (starting shutdownState)") >>=.
@@ -1157,12 +1157,12 @@ module File =
         ] :> Job<_>
 
       // In this state we verify the state of the file.
-      and checking (state : State) =
+      and checking (state: State) =
         if shouldRotate ri.getTimestamp conf state then rotating state
         else running state
 
       // In this state we do a single rotation.
-      and rotating (state : State) =
+      and rotating (state: State) =
         shutdownState state >>-
         (fun () ->
           let fnNoExt = Path.GetFileNameWithoutExtension
@@ -1192,7 +1192,7 @@ module File =
           conf.fileSystem.moveFile state.fileInfo.Name targetName) >>=.
         init ()
 
-      and recovering (state : State) (lastBatch : TargetMessage[]) = function
+      and recovering (state: State) (lastBatch: TargetMessage[]) = function
         // Called with 1, 2, 3 – 1 is first time around.
         | recoverCount when recoverCount <= conf.attempts ->
           writeRequestsSafe ri.logger conf state lastBatch >>= function
@@ -1222,7 +1222,7 @@ module File =
 
   /// Use with LogaryFactory.New(s => s.Target<File.Builder>())
   type Builder(conf, callParent : ParentCallback<Builder>) =
-    let update (conf' : FileConf) : Builder =
+    let update (conf' : FileConf): Builder =
       Builder(conf', callParent)
 
     // NOTE: this code is particular to the default configuration values of empty
@@ -1260,7 +1260,7 @@ module File =
     member x.Writer writer =
       update { conf with writer = writer }
 
-    member x.WriterFunction (fn : Action<TextWriter, Message>) =
+    member x.WriterFunction (fn: Action<TextWriter, Message>) =
       let writer =
         { new MessageWriter with
             member x.write w m =
@@ -1273,7 +1273,7 @@ module File =
     member x.Attempts maxAttempts =
       { conf with attempts = maxAttempts }
 
-    new(callParent : ParentCallback<_>) =
+    new(callParent: ParentCallback<_>) =
       Builder(empty, callParent)
 
     member x.Done() =

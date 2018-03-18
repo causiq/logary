@@ -40,42 +40,42 @@ module Details =
     //  x86/x64 support popcnt but that isn't available in ILAsm
     //  TODO: This is designed for 32 bit integers but we only need to count in 16 bit integers
     //    Is there a faster way to count then?
-    let mutable v = uint32 (i : uint16)
+    let mutable v = uint32 (i: uint16)
     v <- v - ((v >>> 1) &&& 0x55555555u)
     v <- (v &&& 0x33333333u) + ((v >>> 2) &&& 0x33333333u)
     ((v + (v >>> 4) &&& 0xF0F0F0Fu) * 0x1010101u) >>> 24
   let inline localIdx bit b = popCount (b &&& (bit - 1us)) |> int
   let inline checkHash hash localHash shift = (hash &&& ((1u <<< shift) - 1u)) = localHash
 
-  let inline refEqual<'T when 'T: not struct> (l : 'T) (r : 'T) = Object.ReferenceEquals (l, r)
+  let inline refEqual<'T when 'T: not struct> (l: 'T) (r: 'T) = Object.ReferenceEquals (l, r)
 
-  let inline copyArray (vs : 'T []) : 'T [] =
+  let inline copyArray (vs: 'T []) : 'T [] =
     let nvs = Array.zeroCreate vs.Length
     System.Array.Copy (vs, nvs, vs.Length)
     nvs
 
-  let inline copyArrayMakeHoleLast (peg : 'T) (vs : 'T []) : 'T [] =
+  let inline copyArrayMakeHoleLast (peg: 'T) (vs: 'T []) : 'T [] =
     let nvs = Array.zeroCreate (vs.Length + 1)
     System.Array.Copy (vs, nvs, vs.Length)
     nvs.[vs.Length] <- peg
     nvs
 
-  let inline copyArrayMakeHole (at : int) (peg : 'T) (vs : 'T []) : 'T [] =
+  let inline copyArrayMakeHole (at: int) (peg: 'T) (vs: 'T []) : 'T [] =
     let nvs = Array.zeroCreate (vs.Length + 1)
     System.Array.Copy (vs, nvs, at)
     System.Array.Copy (vs, at, nvs, at + 1, vs.Length - at)
     nvs.[at] <- peg
     nvs
 
-  let inline copyArrayRemoveHole (at : int) (vs : 'T []) : 'T [] =
+  let inline copyArrayRemoveHole (at: int) (vs: 'T []) : 'T [] =
     let nvs = Array.zeroCreate (vs.Length - 1)
     System.Array.Copy (vs, nvs, at)
     System.Array.Copy (vs, at + 1, nvs, at, vs.Length - at - 1)
     nvs
 
   // TODO: boxing seems optimized away, verify
-  let inline hashOf<'T when 'T :> IEquatable<'T>> (v : 'T)           = (box v).GetHashCode () |> uint32
-  let inline equals<'T when 'T :> IEquatable<'T>> (l : 'T) (r : 'T)  = l.Equals r
+  let inline hashOf<'T when 'T :> IEquatable<'T>> (v: 'T)           = (box v).GetHashCode () |> uint32
+  let inline equals<'T when 'T :> IEquatable<'T>> (l: 'T) (r: 'T)  = l.Equals r
 
 open Details
 
@@ -143,7 +143,7 @@ and [<Sealed>] internal EmptyNode<'K, 'V when 'K :> System.IEquatable<'K>>() =
   override x.DoUnset    h s k         = HashMap<'K, 'V>.Empty
   override x.DoGetChild (i, phm)      = false
 
-and [<Sealed>] KeyValueNode<'K, 'V when 'K :> System.IEquatable<'K>>(hash : uint32, key : 'K, value : 'V) =
+and [<Sealed>] KeyValueNode<'K, 'V when 'K :> System.IEquatable<'K>>(hash: uint32, key : 'K, value : 'V) =
   inherit HashMap<'K, 'V>()
 
   member x.Hash   = hash
@@ -179,7 +179,7 @@ and [<Sealed>] KeyValueNode<'K, 'V when 'K :> System.IEquatable<'K>>(hash : uint
   override x.DoGetChild (i, phm)    =
     false
 
-and [<Sealed>] internal BitmapNode1<'K, 'V when 'K :> System.IEquatable<'K>>(bitmap : uint16, node : HashMap<'K, 'V>) =
+and [<Sealed>] internal BitmapNode1<'K, 'V when 'K :> System.IEquatable<'K>>(bitmap: uint16, node : HashMap<'K, 'V>) =
   inherit HashMap<'K, 'V>()
 
 #if PHM_TEST_BUILD
@@ -224,11 +224,11 @@ and [<Sealed>] internal BitmapNode1<'K, 'V when 'K :> System.IEquatable<'K>>(bit
       false
 
 
-and [<Sealed>] internal BitmapNodeN<'K, 'V when 'K :> System.IEquatable<'K>>(bitmap : uint16, nodes : HashMap<'K, 'V> []) =
+and [<Sealed>] internal BitmapNodeN<'K, 'V when 'K :> System.IEquatable<'K>>(bitmap: uint16, nodes : HashMap<'K, 'V> []) =
   inherit HashMap<'K, 'V>()
 
 #if PHM_TEST_BUILD
-  let rec doCheckInvariantNodes (hash : uint32) shift b localHash i d =
+  let rec doCheckInvariantNodes (hash: uint32) shift b localHash i d =
     if b <> 0us && i < nodes.Length then
       let n = nodes.[i]
       if (b &&& 1us) = 0us then
@@ -240,7 +240,7 @@ and [<Sealed>] internal BitmapNodeN<'K, 'V when 'K :> System.IEquatable<'K>>(bit
       b = 0us
 #endif
 
-  let rec doVisit (r : OptimizedClosures.FSharpFunc<_, _, _>) i =
+  let rec doVisit (r: OptimizedClosures.FSharpFunc<_, _, _>) i =
     if i < nodes.Length then
       let n = nodes.[i]
       n.DoVisit r
@@ -304,11 +304,11 @@ and [<Sealed>] internal BitmapNodeN<'K, 'V when 'K :> System.IEquatable<'K>>(bit
     else
       false
 
-and [<Sealed>] internal BitmapNode16<'K, 'V when 'K :> System.IEquatable<'K>>(nodes : HashMap<'K, 'V> []) =
+and [<Sealed>] internal BitmapNode16<'K, 'V when 'K :> System.IEquatable<'K>>(nodes: HashMap<'K, 'V> []) =
   inherit HashMap<'K, 'V>()
 
 #if PHM_TEST_BUILD
-  let rec doCheckInvariantNodes (hash : uint32) shift localHash i d =
+  let rec doCheckInvariantNodes (hash: uint32) shift localHash i d =
     if i < nodes.Length then
       let n = nodes.[i]
       n.DoCheckInvariant (hash ||| (localHash <<< shift)) (shift + TrieShift) (d + 1)
@@ -317,7 +317,7 @@ and [<Sealed>] internal BitmapNode16<'K, 'V when 'K :> System.IEquatable<'K>>(no
       true
 #endif
 
-  let rec doVisit (r : OptimizedClosures.FSharpFunc<_, _, _>) i =
+  let rec doVisit (r: OptimizedClosures.FSharpFunc<_, _, _>) i =
     if i < nodes.Length then
       let n = nodes.[i]
       n.DoVisit r
@@ -359,7 +359,7 @@ and [<Sealed>] internal BitmapNode16<'K, 'V when 'K :> System.IEquatable<'K>>(no
     else
       false
 
-and [<Sealed>] internal HashCollisionNodeN<'K, 'V when 'K :> System.IEquatable<'K>>(hash : uint32, keyValues : KeyValueNode<'K, 'V> []) =
+and [<Sealed>] internal HashCollisionNodeN<'K, 'V when 'K :> System.IEquatable<'K>>(hash: uint32, keyValues : KeyValueNode<'K, 'V> []) =
   inherit HashMap<'K, 'V>()
 
 #if PHM_TEST_BUILD
@@ -373,7 +373,7 @@ and [<Sealed>] internal HashCollisionNodeN<'K, 'V when 'K :> System.IEquatable<'
       true
 #endif
 
-  let rec doVisit (r : OptimizedClosures.FSharpFunc<_, _, _>) i =
+  let rec doVisit (r: OptimizedClosures.FSharpFunc<_, _, _>) i =
     if i < keyValues.Length then
       let kv = keyValues.[i]
       r.Invoke (kv.Key, kv.Value)
@@ -454,7 +454,7 @@ and HashMapEnumeratorState =
   | Done
   | Disposed
 
-and HashMapEnumerator<'K, 'V when 'K :> System.IEquatable<'K>> (root : HashMap<'K, 'V>) =
+and HashMapEnumerator<'K, 'V when 'K :> System.IEquatable<'K>> (root: HashMap<'K, 'V>) =
   // There are more elegant ways to implement an enumerator but we would like an enumerator that is rather efficient
 
   let head              = BitmapNode1 (0us, root) // head is a fake node to simplify code a bit

@@ -28,7 +28,7 @@ module Middleware =
 
   /// Sets the service name as a context value
   [<CompiledName "Service">]
-  let service (name : string) : Middleware =
+  let service (name: string): Middleware =
     fun next msg ->
       Message.setContext KnownLiterals.ServiceContextName name msg
       |> next

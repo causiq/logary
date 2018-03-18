@@ -18,24 +18,24 @@ module Message =
   module Optic =
 
     let name_ : Lens<Message, PointName> =
-      (fun (x : Message) -> x.name),
-      fun v (x : Message) -> { x with name = v }
+      (fun (x: Message) -> x.name),
+      fun v (x: Message) -> { x with name = v }
 
     let value_ : Lens<Message, string> =
-      (fun (x : Message) -> x.value),
-      fun v (x : Message) -> { x with value = v }
+      (fun (x: Message) -> x.value),
+      fun v (x: Message) -> { x with value = v }
 
     let context_ : Lens<Message, _> =
-      (fun (x : Message) -> x.context),
-      (fun v (x : Message) -> { x with context = v })
+      (fun (x: Message) -> x.context),
+      (fun v (x: Message) -> { x with context = v })
 
     let level_ : Lens<Message, LogLevel> =
-      (fun (x : Message) -> x.level),
-      (fun v (x : Message) -> { x with level = v })
+      (fun (x: Message) -> x.level),
+      (fun v (x: Message) -> { x with level = v })
 
     let timestamp_ : Lens<Message, EpochNanoSeconds> =
-      (fun (x : Message) -> x.timestamp),
-      (fun v (x : Message) -> { x with timestamp = v })
+      (fun (x: Message) -> x.timestamp),
+      (fun v (x: Message) -> { x with timestamp = v })
 
     let boxWithOption_<'a> : Epimorphism<obj option,'a> =
       (function | Some x -> Some (unbox<'a> x)
@@ -67,12 +67,12 @@ module Message =
     values |> Seq.fold (fun m (name, value) -> setContext name value m) message
 
   [<CompiledName "SetContextFromMap">]
-  let setContextFromMap (m : Map<string, obj>) message =
+  let setContextFromMap (m: Map<string, obj>) message =
     setContextValues (m |> Map.toSeq) message
 
   /// Uses reflection to set all
   [<CompiledName "SetContextFromObject">]
-  let setContextFromObject (data : obj) message =
+  let setContextFromObject (data: obj) message =
     Map.ofObject data
     |> HashMap.toSeq
     |> fun values -> setContextValues values message
@@ -122,7 +122,7 @@ module Message =
 
   [<Obsolete ("Use setField instead.")>]
   [<CompiledName "SetFieldValue">]
-  let setFieldValue (name : string) (field : Field) message =
+  let setFieldValue (name: string) (field: Field) message =
     setField name field message
 
   [<Obsolete ("Use SetFieldsFromSeq instead.")>]
@@ -141,23 +141,23 @@ module Message =
     |> Seq.fold (fun m (name, value) -> setField name value m) message
 
   [<CompiledName "SetFieldsFromMap">]
-  let setFieldsFromMap (m : Map<string, obj>) message =
+  let setFieldsFromMap (m: Map<string, obj>) message =
     m
     |> Map.fold (fun m k v -> setField k v m ) message
 
   [<CompiledName "SetFieldsFromMap">]
-  let setFieldsFromHashMap (m : HashMap<string, obj>) message =
+  let setFieldsFromHashMap (m: HashMap<string, obj>) message =
     m
     |> Seq.fold (fun m (KeyValue (k,v)) -> setField k v m ) message
 
   [<Obsolete ("Use setField instead.")>]
   [<CompiledName "SetFieldFromObject">]
-  let setFieldFromObject name (data : obj) message =
+  let setFieldFromObject name (data: obj) message =
     setField name data message
 
   /// Reflects over the object and sets the appropriate fields.
   [<CompiledName "SetFieldsFromObject">]
-  let setFieldsFromObject (data : obj) message =
+  let setFieldsFromObject (data: obj) message =
     Map.ofObject data
     |> flip setFieldsFromHashMap message
 
@@ -192,19 +192,19 @@ module Message =
     | _ -> Set.empty
 
   [<CompiledName "GetAllSinks">]
-  let addSinks (sinks : string list) message =
+  let addSinks (sinks: string list) message =
     let sinks = message |> getAllSinks |> Set.union (Set.ofList sinks)
     setContext KnownLiterals.SinkTargetsContextName sinks message
 
   /// Tag the message
   [<CompiledName "Tag">]
-  let tag (tag : string) (message : Message) =
+  let tag (tag: string) (message: Message) =
     let tags = message |> getAllTags |> Set.add tag
     setContext KnownLiterals.TagsContextName tags message
 
   /// Check if the Message has a tag
   [<CompiledName "HasTag">]
-  let hasTag (tag : string) (message : Message) =
+  let hasTag (tag: string) (message: Message) =
     message |> getAllTags |> Set.contains tag
 
   //#endregion
@@ -230,7 +230,7 @@ module Message =
 
   /// one message can take multi gauges
   [<CompiledName "AddGauge">]
-  let addGauge gaugeType (gauge : Gauge) message =
+  let addGauge gaugeType (gauge: Gauge) message =
     let gaugeTypeName = KnownLiterals.GaugeTypePrefix + gaugeType
     message |> setContext gaugeTypeName gauge
 
@@ -333,7 +333,7 @@ module Message =
   let eventFatalf fmt = Printf.kprintf (event Fatal) fmt
 
   [<CompiledName "SetFields">]
-  let setFields (args : obj[]) message =
+  let setFields (args: obj[]) message =
     capture (parse message.value) args
     |> Array.fold (fun m (pt, value) ->
        match value with
@@ -344,7 +344,7 @@ module Message =
   /// Run the function `f` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Seconds.
   [<CompiledName "Time">]
-  let time pointName (f : 'input -> 'res) : 'input -> 'res * Message =
+  let time pointName (f: 'input -> 'res) : 'input -> 'res * Message =
     fun input ->
       let sw = Stopwatch.StartNew()
       let res = f input
@@ -354,7 +354,7 @@ module Message =
       res, message
 
   [<CompiledName "TimeAsync">]
-  let timeAsync pointName (fn : 'input -> Async<'res>) : 'input -> Async<'res * Message> =
+  let timeAsync pointName (fn: 'input -> Async<'res>) : 'input -> Async<'res * Message> =
     fun input ->
       async {
         let sw = Stopwatch.StartNew()
@@ -367,7 +367,7 @@ module Message =
 
 
   [<CompiledName "TimeJob">]
-  let timeJob pointName (fn : 'input -> Job<'res>) : 'input -> Job<'res * Message> =
+  let timeJob pointName (fn: 'input -> Job<'res>) : 'input -> Job<'res * Message> =
     fun input ->
       job {
         let sw = Stopwatch.StartNew()
@@ -379,7 +379,7 @@ module Message =
       }
 
   [<CompiledName "TimeAlt">]
-  let timeAlt pointName (fn : 'input -> Alt<'res>) : 'input -> Alt<'res * Message> =
+  let timeAlt pointName (fn: 'input -> Alt<'res>) : 'input -> Alt<'res * Message> =
     fun input ->
     Alt.prepareFun (fun () ->
       let sw = Stopwatch.StartNew()
@@ -391,11 +391,11 @@ module Message =
     ))
 
   [<CompiledName "TimeTask">]
-  let timeTask pointName (fn : 'input -> Task<'res>) : 'input -> Task<'res * Message> =
+  let timeTask pointName (fn: 'input -> Task<'res>) : 'input -> Task<'res * Message> =
     fun input ->
       let sw = Stopwatch.StartNew()
       // http://stackoverflow.com/questions/21520869/proper-way-of-handling-exception-in-task-continuewith
-      (fn input).ContinueWith((fun (task : Task<'res>) ->
+      (fn input).ContinueWith((fun (task: Task<'res>) ->
         sw.Stop()
         task.Result, // will rethrow if needed
         sw.toGauge() |> gaugeMessage (PointName.format pointName)
@@ -409,12 +409,12 @@ module Message =
 
   /// Sets the name of the message to a PointName
   [<CompiledName "SetName">]
-  let setName name (msg : Message) =
+  let setName name (msg: Message) =
     { msg with name = name }
 
   /// Sets the name of the message from a string.
   [<CompiledName "SetName">]
-  let setSimpleName name (msg : Message) =
+  let setSimpleName name (msg: Message) =
     { msg with name = PointName.parse name }
 
   /// Sets the last bit of the Message name value to the given `nameEnding`.
@@ -422,7 +422,7 @@ module Message =
   /// want to make the Message say what function it was created from.
   /// Note: lastBitName MAY BE NULL!
   [<CompiledName "SetNameEnding">]
-  let setNameEnding (nameEnding : string) : Message -> Message = function
+  let setNameEnding (nameEnding: string): Message -> Message = function
     | { name = pn } as m
       when not (nameEnding = null)
         && not (String.isEmpty nameEnding) ->
@@ -436,23 +436,23 @@ module Message =
 
   /// Sets the number of nanoseconds since epoch.
   [<CompiledName "SetNanoEpoch">]
-  let setNanoEpoch (ts : EpochNanoSeconds) msg =
+  let setNanoEpoch (ts: EpochNanoSeconds) msg =
     { msg with timestamp = ts }
 
   [<CompiledName "SetTimestamp">]
-  let setTimestamp (instant : Instant) msg =
+  let setTimestamp (instant: Instant) msg =
     { msg with timestamp = instant.ToUnixTimeTicks() * Constants.NanosPerTick }
 
   /// Sets the number of ticks since epoch. There are 10 ticks per micro-second,
   /// so a tick is a 1/10th microsecond, so it's 100 nanoseconds long.
   [<CompiledName "SetTicksEpoch">]
-  let setTicksEpoch (ticks : int64) msg =
+  let setTicksEpoch (ticks: int64) msg =
     { msg with timestamp = ticks * Constants.NanosPerTick }
 
   /// Sets the number of ticks as specified by DateTime and DateTimeOffset,
   /// which starts at zero the 0001-01-01 00:00:00 instant.
   [<CompiledName "SetUTCTicks">]
-  let setUTCTicks (ticks : int64) msg =
+  let setUTCTicks (ticks: int64) msg =
     setTicksEpoch (ticks - DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).Ticks) msg
 
   /// Update the message with the current timestamp.
@@ -478,7 +478,7 @@ module Message =
   /// Adds a new exception to the "errors" field in the message.
   /// AggregateExceptions are automatically expanded.
   [<CompiledName "AddException">]
-  let addExn (e : exn) msg =
+  let addExn (e: exn) msg =
     let errorCtxName = KnownLiterals.ErrorsContextName
     let errors =
       match tryGetContext errorCtxName msg with
@@ -504,50 +504,50 @@ module MessageEx =
     /// Creates a new event with given level, format and arguments. Format may
     /// contain String.Format-esque format placeholders.
     [<CompiledName "EventFormat">]
-    static member eventFormat (level, formatTemplate, [<ParamArray>] args : obj[]) : Message =
+    static member eventFormat (level, formatTemplate, [<ParamArray>] args : obj[]): Message =
       Message.event level formatTemplate
       |> Message.setFields args
 
     /// Converts a String.Format-style format string and an array of arguments into
     /// a message template and a set of fields.
     [<CompiledName "EventFormat">]
-    static member templateFormat (format : string, [<ParamArray>] args : obj[]) =
+    static member templateFormat (format: string, [<ParamArray>] args : obj[]) =
       Message.eventFormat (LogLevel.Info, format, args)
 
-    static member templateEvent<'T> (level : LogLevel, format : string) : ('T -> Message) =
+    static member templateEvent<'T> (level: LogLevel, format : string) : ('T -> Message) =
       let template = parse format
       if  template.IsAllPositional || template.Properties.Length <> 1 then
         raise (System.ArgumentException (sprintf "Template '%s' must have exactly 1 named property" format))
       let field = template.Properties.[0]
-      fun (v : 'T) ->
+      fun (v: 'T) ->
         Message.event level format
         |> Message.setField field.name v
 
-    static member templateEvent<'T1, 'T2> (level : LogLevel, format : string) : ('T1 -> 'T2 -> Message) =
+    static member templateEvent<'T1, 'T2> (level: LogLevel, format : string) : ('T1 -> 'T2 -> Message) =
       let template = parse format
       if template.IsAllPositional || template.Properties.Length <> 2 then
         failwithf "Template '%s' must have exactly 2 named properties" format
       let field1 = template.Properties.[0]
       let field2 = template.Properties.[1]
-      fun (v1 : 'T1) (v2 : 'T2) ->
+      fun (v1: 'T1) (v2: 'T2) ->
         Message.event level format
         |> Message.setField field1.name v1
         |> Message.setField field2.name v2
 
-    static member templateEvent<'T1, 'T2, 'T3> (level : LogLevel, format : string) : ('T1 -> 'T2 -> 'T3 -> Message) =
+    static member templateEvent<'T1, 'T2, 'T3> (level: LogLevel, format : string) : ('T1 -> 'T2 -> 'T3 -> Message) =
       let template = parse format
       if template.IsAllPositional || template.Properties.Length <> 3 then
         failwithf "Template '%s' must have exactly 3 named properties" format
       let field1 = template.Properties.[0]
       let field2 = template.Properties.[1]
       let field3 = template.Properties.[2]
-      fun (v1 : 'T1) (v2 : 'T2) (v3 : 'T3) ->
+      fun (v1: 'T1) (v2: 'T2) (v3: 'T3) ->
         Message.event level format
         |> Message.setField field1.name v1
         |> Message.setField field2.name v2
         |> Message.setField field3.name v3
 
-    static member templateEvent<'T1, 'T2, 'T3, 'T4> (level : LogLevel, format : string) : ('T1 -> 'T2 -> 'T3 -> 'T4 -> Message) =
+    static member templateEvent<'T1, 'T2, 'T3, 'T4> (level: LogLevel, format : string) : ('T1 -> 'T2 -> 'T3 -> 'T4 -> Message) =
       let template = parse format
       if template.IsAllPositional || template.Properties.Length <> 4 then
         failwithf "Template '%s' must have exactly 4 named properties" format
@@ -555,7 +555,7 @@ module MessageEx =
       let field2 = template.Properties.[1]
       let field3 = template.Properties.[2]
       let field4 = template.Properties.[3]
-      fun (v1 : 'T1) (v2 : 'T2) (v3 : 'T3) (v4 : 'T4) ->
+      fun (v1: 'T1) (v2: 'T2) (v3: 'T3) (v4: 'T4) ->
         Message.event level format
         |> Message.setField field1.name v1
         |> Message.setField field2.name v2

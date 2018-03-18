@@ -7,5 +7,5 @@ open System.Runtime.InteropServices
 module Ticks =
   /// Convert the ticks value to a Gauge.
   [<CompiledName("ToGauge"); Extension>]
-  let toGauge (ticks : int64) =
+  let toGauge (ticks: int64) =
     Gauge ((float ticks * float Constants.NanosPerTick), Scaled (Seconds, float Constants.NanosPerSecond))

@@ -23,7 +23,7 @@ module RuntimeInfo =
       member x.getConsoleSemaphore () = x.getConsoleSemaphore ()
       member x.logger = x.logger
 
-    static member create (other : RuntimeInfo) =
+    static member create (other: RuntimeInfo) =
       { host = other.host
         service = other.service
         getTimestamp = other.getTimestamp
@@ -34,7 +34,7 @@ module RuntimeInfo =
   ///
   /// This function gives you the ability to pass a custom clock to use within
   /// logary, as well as a host name that the logary source has.
-  let create (service : string) (host : string) =
+  let create (service: string) (host: string) =
     { service = service
       host = host
       getTimestamp = Global.getTimestamp

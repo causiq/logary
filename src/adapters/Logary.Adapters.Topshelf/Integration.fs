@@ -9,7 +9,7 @@ module LogaryConfiguratorExtensions =
   open Logary
 
   [<Extension; CompiledName "UseLogary">]
-  let useLogary (_ : HostConfigurator) (logary : LogManager) =
+  let useLogary (_: HostConfigurator) (logary: LogManager) =
     let ilog = logary.getLogger (PointName [| "Topshelf" |])
 
     HostLogger.UseLogger

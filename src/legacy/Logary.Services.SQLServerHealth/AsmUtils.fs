@@ -5,7 +5,7 @@ open System.Reflection
 
 type ResourceName = string
 
-let readResource (name : ResourceName) =
+let readResource (name: ResourceName) =
   let assembly = Assembly.GetExecutingAssembly()
   let resource = assembly.GetManifestResourceStream name
   let sr = new StreamReader(resource)

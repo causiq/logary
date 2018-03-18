@@ -13,26 +13,26 @@ open System
 /// An implementation for the InfluxDb-specific string format.
 module Serialisation =
 
-  let serialiseTimestamp (ts : EpochNanoSeconds) =
+  let serialiseTimestamp (ts: EpochNanoSeconds) =
     ts.ToString(Culture.invariant)
 
-  let escapeString (s : string) =
+  let escapeString (s: string) =
     s
      .Replace(",", @"\,")
      .Replace(" ", "\ ")
      .Replace("=", "\=")
 
-  let escapeStringValue (s : string) =
+  let escapeStringValue (s: string) =
     s
      .Replace("\"", "\\\"")
 
-  let serialiseStringTag (s : string) =
+  let serialiseStringTag (s: string) =
     escapeString s
 
-  let serialiseStringValue (s : string) =
+  let serialiseStringValue (s: string) =
     "\"" + escapeStringValue s + "\""
 
-  let serialisePointName (pn : PointName) =
+  let serialisePointName (pn: PointName) =
     escapeString (pn.ToString())
 
   let printTags = function
@@ -53,7 +53,7 @@ module Serialisation =
       xs |> List.map (fun (x, y) -> sprintf "%s=%s" (escapeString x) y)
          |> String.concat ","
 
-  let serialiseMessage (message : Message) : string =
+  let serialiseMessage (message: Message): string =
     failwith "TODO: needs to be discussed"
 
     // let mapExtract fExtractValue =
@@ -63,7 +63,7 @@ module Serialisation =
     //   >> Seq.sortBy fst
     //   >> List.ofSeq
 
-    // let rec getValues (valueKey : string)
+    // let rec getValues (valueKey: string)
     //                   isTag
     //                   (kvs : (string * string) list)
     //                   (values : (string * string) list) =
@@ -177,14 +177,14 @@ module Serialisation =
     //     // events' templates vary a lot, so don't index them
     //     ("event", serialiseStringValue templ) :: values
 
-    // let fieldValues (fields : Map<PointName, Field>)  =
+    // let fieldValues (fields: Map<PointName, Field>)  =
     //   Map.toSeq fields
     //   |> Seq.map (fun (key, (Field (value, _))) -> PointName.format key, value)
     //   |> Map.ofSeq
     //   |> Value.Object
     //   |> getValues "value" false [] []
 
-    // let measurementName (m : Message) =
+    // let measurementName (m: Message) =
     //   match m.value with
     //   | Event _ ->
     //     // events should result in measurements like "event_info" or "event_fatal"
@@ -279,7 +279,7 @@ module internal Impl =
     | _ ->
       ""
 
-  let loop (conf : InfluxDbConf) (ri : RuntimeInfo, api : TargetAPI) =
+  let loop (conf: InfluxDbConf) (ri: RuntimeInfo, api : TargetAPI) =
     let endpoint =
       let ub = UriBuilder(conf.endpoint)
       ub.Path <- "/write"
@@ -291,7 +291,7 @@ module internal Impl =
       |> Option.bind (fun u -> conf.password |> Option.map (fun p -> u, p))
       |> Option.fold (fun _ (u, p) -> Request.basicAuthentication u p) id
 
-    let g (req : Request) = job {
+    let g (req: Request) = job {
       use! resp = getResponse req
       let! body = Response.readBodyAsString resp
       return body, resp.statusCode
@@ -299,7 +299,7 @@ module internal Impl =
 
     let client = new HttpClient()
 
-    let rec loop () : Job<unit> =
+    let rec loop (): Job<unit> =
       Alt.choose [
         api.shutdownCh ^=> fun ack ->
           ack *<= () :> Job<_>
@@ -340,7 +340,7 @@ let create conf name =
 
 /// Use with LogaryFactory.New( s => s.Target<InfluxDb.Builder>() )
 type Builder(conf, callParent : Target.ParentCallback<Builder>) =
-  let update (conf': InfluxDbConf) : Builder =
+  let update (conf': InfluxDbConf): Builder =
     Builder(conf', callParent)
 
   /// if authentication is enabled, you must authenticate as a user with write permissions to the target database
@@ -381,14 +381,14 @@ type Builder(conf, callParent : Target.ParentCallback<Builder>) =
     update { conf with db = db }
 
   /// the write endpoint to send the values to
-  member x.WriteEndpoint(writeEndpoint : Uri) =
+  member x.WriteEndpoint(writeEndpoint: Uri) =
     update { conf with endpoint = writeEndpoint }
 
   /// You've finished configuring the InfluxDb target.
   member x.Done() =
     ! (callParent x)
 
-  new(callParent : Target.ParentCallback<_>) =
+  new(callParent: Target.ParentCallback<_>) =
     Builder(empty, callParent)
 
   interface Target.SpecificTargetConf with

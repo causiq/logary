@@ -24,7 +24,7 @@ module RandomWalk =
       | _ ->
         state
 
-    let ticker (rnd : Random, prevValue) =
+    let ticker (rnd: Random, prevValue) =
       let value =
         let v = (rnd.NextDouble() - 0.5) * 0.3
         if abs v < 0.03 then rnd.NextDouble() - 0.5
@@ -81,7 +81,7 @@ module Timing =
 
 module NormalUsage =
 
-  let act (logger : Logger) =
+  let act (logger: Logger) =
     Message.templateFormat("{userName} logged in", "haf")
     |> Logger.logSimple logger
 

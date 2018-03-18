@@ -77,7 +77,7 @@ let tests = [
   } |> Job.toAsync)
 
   testCaseAsync "switch logger level" <| (job {
-    let clearStream (s : System.IO.StringWriter) =
+    let clearStream (s: System.IO.StringWriter) =
       let sb = s.GetStringBuilder ()
       let str = string sb
       sb.Clear () |> ignore
@@ -133,7 +133,7 @@ let tests = [
   } |> Job.toAsync)
 
   testCaseAsync "flush/shutdown timeout and logging after shutdown with no blocking" <| (job {
-    let server (ri : RuntimeInfo, api : TargetAPI) =
+    let server (ri: RuntimeInfo, api : TargetAPI) =
       let rec loop () =
         Alt.choose [
           RingBuffer.take api.requests ^=> function

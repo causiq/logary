@@ -16,7 +16,7 @@ module Literals =
 
 module SharedBetweenTables =
 
-  let messageStructure (x : Builders.Create.Table.ICreateTableWithColumnOrSchemaOrDescriptionSyntax) =
+  let messageStructure (x: Builders.Create.Table.ICreateTableWithColumnOrSchemaOrDescriptionSyntax) =
     x
       .WithColumn("Host").AsString(255).NotNullable()
         .WithColumnDescription("Hostname/DNS name of sender")

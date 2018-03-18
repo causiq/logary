@@ -51,7 +51,7 @@ module Units =
   let fractionsPrefixes : string[] =
     [| "m"; "μ"; "n"; "p"; "f"; "a"; "z"; "y" |]
 
-  let scaleBy10 units (value : float) : float * string =
+  let scaleBy10 units (value: float): float * string =
     let symbol = Units.symbol units
     let value = abs value
     if value = 0. || value = infinity then 1., symbol else
@@ -71,7 +71,7 @@ module Units =
     scaled,
     sprintf "%s%s" prefixes.[index] symbol
 
-  let scaleBytes (value : float) : float * string =
+  let scaleBytes (value: float): float * string =
     let log2 x = log x / log 2.
     let prefixes = [| ""; "Ki"; "Mi"; "Gi"; "Ti"; "Pi" |] // note the capital K and the 'i'
     let index = int (log2 value) / 10
@@ -80,8 +80,8 @@ module Units =
 
   /// Takes a function that returns a *factor* (not the value multiplied)
   /// by the factor!
-  let calculate (calcFactor : float -> float * string) =
-    fun (value : float) ->
+  let calculate (calcFactor: float -> float * string) =
+    fun (value: float) ->
       let factor, unitStr = calcFactor value
       value * factor, unitStr
 

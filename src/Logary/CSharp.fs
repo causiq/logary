@@ -112,72 +112,72 @@ type Funcs =
 
   /// Convert a F# function to a CLR Func
   [<Extension>]
-  static member ToFunc (f : unit -> _) =
+  static member ToFunc (f: unit -> _) =
     Func<_> f
 
   /// Convert a F# function to a CLR Func
   [<Extension>]
-  static member ToFunc (f : _ -> _) =
+  static member ToFunc (f: _ -> _) =
     Func<_, _> f
 
   /// Convert a F# function to a CLR Func
   [<Extension>]
-  static member ToFunc (f : _ -> _ -> _) =
+  static member ToFunc (f: _ -> _ -> _) =
     Func<_, _, _> f
 
   /// Convert a F# function to a CLR Func
   [<Extension>]
-  static member ToFunc (f : _ -> _ -> _ -> _) =
+  static member ToFunc (f: _ -> _ -> _ -> _) =
     Func<_, _, _, _> f
 
   /// Convert a F# function to a CLR Func
   [<Extension>]
-  static member ToFunc (f : _ -> _ -> _ -> _ -> _) =
+  static member ToFunc (f: _ -> _ -> _ -> _ -> _) =
     Func<_, _, _, _, _> f
 
   /// Convert a F# function to a CLR Func
   [<Extension>]
-  static member ToFunc (f : _ -> _ -> _ -> _ -> _ -> _) =
+  static member ToFunc (f: _ -> _ -> _ -> _ -> _ -> _) =
     Func<_, _, _, _, _, _> f
 
   /// Convert a F# function to a CLR Func
   [<Extension>]
-  static member ToFunc (f : _ -> _ -> _ -> _ -> _ -> _ -> _) =
+  static member ToFunc (f: _ -> _ -> _ -> _ -> _ -> _ -> _) =
     Func<_, _, _, _, _, _, _> f
 
   /// Convert a Func into an F# function
   [<Extension>]
-  static member ToFSharpFunc (f : Func<_>) : unit -> _ =
+  static member ToFSharpFunc (f: Func<_>): unit -> _ =
     f.Invoke
 
   /// Convert a Func into an F# function
   [<Extension>]
-  static member ToFSharpFunc (f : Func<_, _>) =
+  static member ToFSharpFunc (f: Func<_, _>) =
     fun x -> f.Invoke x
 
   /// Convert a Func into an F# function
   [<Extension>]
-  static member ToFSharpFunc (f : Func<_, _, _>) =
+  static member ToFSharpFunc (f: Func<_, _, _>) =
     fun x y -> f.Invoke(x, y)
 
   /// Convert a Func into an F# function
   [<Extension>]
-  static member ToFSharpFunc (f : Func<_, _, _, _>) =
+  static member ToFSharpFunc (f: Func<_, _, _, _>) =
     fun x y z -> f.Invoke(x, y, z)
 
   /// Convert a Func into an F# function
   [<Extension>]
-  static member ToFSharpFunc (f : Func<_, _, _, _, _>) =
+  static member ToFSharpFunc (f: Func<_, _, _, _, _>) =
     fun x y z a -> f.Invoke(x, y, z, a)
 
   /// Convert a Func into an F# function
   [<Extension>]
-  static member ToFSharpFunc (f : Func<_, _, _, _, _, _>) =
+  static member ToFSharpFunc (f: Func<_, _, _, _, _, _>) =
     fun x y z a b -> f.Invoke(x, y, z, a, b)
 
   /// Convert a Func into an F# function
   [<Extension>]
-  static member ToFSharpFunc (f : Func<_, _, _, _, _, _, _>) =
+  static member ToFSharpFunc (f: Func<_, _, _, _, _, _, _>) =
     fun x y z a b c -> f.Invoke(x, y, z, a, b, c)
 
   /// Converts an uncurried function to a curried function
@@ -254,13 +254,13 @@ type Funcs =
 
   /// Extension method on a func that times the executing of the function.
   [<Extension>]
-  static member Time (a: Action<'input>, [<ParamArray>] pointName: string[]) : Func<'input, Message> =
+  static member Time (a: Action<'input>, [<ParamArray>] pointName: string[]): Func<'input, Message> =
     let timef = Message.time (PointName pointName) (FSharpFunc.OfAction a)
     Funcs.ToFunc (timef >> snd)
 
   /// Extension method on a func that times the executing of the function.
   [<Extension>]
-  static member Time (a: Action<'a, 'b>, [<ParamArray>] pointName: string[]) : Func<'a, 'b, Message> =
+  static member Time (a: Action<'a, 'b>, [<ParamArray>] pointName: string[]): Func<'a, 'b, Message> =
     let timef =
       FSharpFunc.OfAction a
       >> Message.time (PointName pointName)
@@ -269,7 +269,7 @@ type Funcs =
 
   /// Extension method on a func that times the executing of the function.
   [<Extension>]
-  static member Time (a: Action<'a, 'b, 'c>, [<ParamArray>] pointName: string[]) : Func<'a, 'b, 'c, Message> =
+  static member Time (a: Action<'a, 'b, 'c>, [<ParamArray>] pointName: string[]): Func<'a, 'b, 'c, Message> =
     let timef =
       FSharpFunc.OfAction a
       >> uncurry
@@ -280,19 +280,19 @@ type Funcs =
 
   /// Extension method on a func that times the executing of the function.
   [<Extension>]
-  static member Time (f: Func<'input,'output>, [<ParamArray>] pointName: string[]) : Func<'input, 'output * Message> =
+  static member Time (f: Func<'input,'output>, [<ParamArray>] pointName: string[]): Func<'input, 'output * Message> =
     let timef = Message.time (PointName pointName) (Funcs.ToFSharpFunc f)
     Funcs.ToFunc timef
 
   /// Extension method on a func that times the executing of the function.
   [<Extension>]
-  static member Time (f: Func<'input, _, 'output>, [<ParamArray>] pointName: string[]) : Func<'input, _, 'output * Message> =
+  static member Time (f: Func<'input, _, 'output>, [<ParamArray>] pointName: string[]): Func<'input, _, 'output * Message> =
     let timef = Funcs.ToFSharpFunc f >> Message.time (PointName pointName)
     Funcs.ToFunc<_, _, _> timef
 
   /// Extension method on a func that times the executing of the function.
   [<Extension>]
-  static member Time (f: Func<'input, _, _, 'output>, [<ParamArray>] pointName: string[]) : Func<'input, _, _, 'output * Message> =
+  static member Time (f: Func<'input, _, _, 'output>, [<ParamArray>] pointName: string[]): Func<'input, _, _, 'output * Message> =
     let timef =
       Funcs.ToFSharpFunc f
       >> uncurry
@@ -504,7 +504,7 @@ module private MiscHelpers =
     { new IDisposable with
         member x.Dispose() = () }
 
-  let inline subscribe (ct : CancellationToken) (f : unit -> unit) =
+  let inline subscribe (ct: CancellationToken) (f: unit -> unit) =
     match ct with
     | _ when ct = CancellationToken.None ->
       disposable
@@ -619,7 +619,7 @@ type LoggerExtensions =
   /// Log an event, but don't await all targets to flush. WITH back-pressure by default.
   /// Backpressure implies the caller will wait until its message is in the buffer.
   [<Extension>]
-  static member LogEventFormat(logger : Logger,
+  static member LogEventFormat(logger: Logger,
                                level : LogLevel,
                                formatTemplate : string,
                                [<ParamArray>] args : obj[])
@@ -636,7 +636,7 @@ type LoggerExtensions =
   /// Flush implies backpressure.
   /// Returns true of the log was accepted to Logary.
   [<Extension>]
-  static member LogGauge(logger : Logger,
+  static member LogGauge(logger: Logger,
                          value : float,
                          units : Units,
                          formatTemplate : string,
@@ -669,7 +669,7 @@ type LoggerExtensions =
   /// test your app to ensure that your targets can send at a rate high enough
   /// without dropping messages.
   [<Extension>]
-  static member LogSimple (logger, message) : unit =
+  static member LogSimple (logger, message): unit =
     Logger.logSimple logger message
 
   /// Log a message, which returns an inner Task. The outer Task denotes having the
@@ -691,7 +691,7 @@ type LoggerExtensions =
   /// the message properly flushed to all targets' underlying "storage". Targets
   /// whose rules do not match the message will not be awaited.
   [<Extension>]
-  static member LogWithAck (logger, message : Message) : Task<Task> =
+  static member LogWithAck (logger, message : Message): Task<Task> =
     let bufferCt = Unchecked.defaultof<CancellationToken>
     let promiseCt = Unchecked.defaultof<CancellationToken>
     Alt.toTasks bufferCt promiseCt (Logger.logWithAck logger message.level (fun _ -> message))
@@ -702,7 +702,7 @@ type LoggerExtensions =
 
   // - Back-pressure (if you await the task)
   [<Extension>]
-  static member TimeWithAck (logger : Logger,
+  static member TimeWithAck (logger: Logger,
                              action : Action,
                              bufferCt,
                              promiseCt,

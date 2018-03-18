@@ -101,10 +101,10 @@ module internal Impl =
 
   // This is the main entry point of the target. It returns a Job<unit>
   // and as such doesn't have side effects until the Job is started.
-  let loop (conf : AppInsightConf) // the conf is specific to your target
-           (ri : RuntimeInfo, api : TargetAPI) =
+  let loop (conf: AppInsightConf) // the conf is specific to your target
+           (ri: RuntimeInfo, api : TargetAPI) =
     
-    let rec loop (state : State) : Job<unit> =
+    let rec loop (state: State): Job<unit> =
       // Alt.choose will pick the channel/alternative that first gives a value
       Alt.choose [
         // When you get the shutdown value, you need to dispose of your resources
@@ -218,24 +218,24 @@ type Builder(conf, callParent : Target.ParentCallback<Builder>) =
   // place your own configuration methods here
 
   /// The Application Insights key. Get it from Azure Portal -> App Insights -> Properties -> INSTRUMENTATION KEY  https://docs.microsoft.com/azure/application-insights/app-insights-create-new-resource
-  member x.SetInstrumentationKey(key : string) =
+  member x.SetInstrumentationKey(key: string) =
     ! (callParent <| Builder({ conf with InstrumentationKey = key }, callParent))
 
   /// Map Logary types to Application Insight classes. Default: allToTrace, setting messages as Trace messages
-  member x.SetMappingConfiguration(telemetryMapping : TelemetryMapping) =
+  member x.SetMappingConfiguration(telemetryMapping: TelemetryMapping) =
     ! (callParent <| Builder({ conf with MappingConfiguration = telemetryMapping }, callParent))
 
   /// Whether to use Developer Mode with AI - will send more frequent messages at cost of higher CPU etc.
-  member x.SetDeveloperMode(developmentMode : bool) =
+  member x.SetDeveloperMode(developmentMode: bool) =
     ! (callParent <| Builder({ conf with DeveloperMode = developmentMode }, callParent))
 
   /// Track external dependencies e.g. SQL, HTTP etc. etc.
-  member x.SetTrackDependencies(traceDeps : bool) =
+  member x.SetTrackDependencies(traceDeps: bool) =
     ! (callParent <| Builder({ conf with TrackDependencies = traceDeps }, callParent))
   // your own configuration methods end here
 
   // c'tor, always include this one in your code
-  new(callParent : Target.ParentCallback<_>) =
+  new(callParent: Target.ParentCallback<_>) =
     Builder(empty, callParent)
 
   // this is called in the end, after calling all your custom configuration

@@ -44,10 +44,10 @@ module Serialisation =
 
   let private binarySerializer = FsPickler.CreateBinarySerializer ()
 
-  let serialise (msg : Logary.Message) : byte [] =
+  let serialise (msg: Logary.Message): byte [] =
     binarySerializer.Pickle msg
 
-  let deserialise (datas : byte [] []) : Logary.Message =
+  let deserialise (datas: byte [] []): Logary.Message =
     use ms = new MemoryStream(datas |> Array.fold (fun s t -> s + t.Length) 0)
     for bs in datas do ms.Write(bs, 0, bs.Length)
     ms.Seek(0L, SeekOrigin.Begin) |> ignore
@@ -79,8 +79,8 @@ module internal Impl =
     { zmqCtx = context
       sender = sender }
 
-  let serve (conf : ShipperConf)
-            (ri : RuntimeInfo, api : TargetAPI) =
+  let serve (conf: ShipperConf)
+            (ri: RuntimeInfo, api : TargetAPI) =
 
     let rec init = function
       | Unconfigured ->
@@ -94,7 +94,7 @@ module internal Impl =
         createState connectTo Context.push "PUSH"
         |> loop
 
-    and loop (state : State) : Job<unit> =
+    and loop (state: State): Job<unit> =
       Alt.choose [
         api.shutdownCh ^=> fun ack -> job {
           do! Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
@@ -124,10 +124,10 @@ let create conf = TargetConf.createSimple (Impl.serve conf)
 
 /// Use with LogaryFactory.New( s => s.Target<Noop.Builder>() )
 type Builder(conf, callParent : Target.ParentCallback<Builder>) =
-  member x.PublishTo(connectTo : string) =
+  member x.PublishTo(connectTo: string) =
     ! (callParent <| Builder(PublishTo connectTo, callParent))
 
-  new(callParent : Target.ParentCallback<_>) =
+  new(callParent: Target.ParentCallback<_>) =
     Builder(empty, callParent)
 
   interface Target.SpecificTargetConf with

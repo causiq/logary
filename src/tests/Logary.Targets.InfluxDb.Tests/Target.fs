@@ -30,7 +30,7 @@ let start () =
 let shutdown t = Target.shutdown t |> run |> run
 
 
-type State(cts : CancellationTokenSource) =
+type State(cts: CancellationTokenSource) =
   let request = Ch ()
 
   member x.req = request

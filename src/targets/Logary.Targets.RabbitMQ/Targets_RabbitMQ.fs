@@ -143,7 +143,7 @@ module internal Impl =
         x.model.Close(200us, "Client shutting down")
         x.connection.Dispose()
 
-  let createConnection (clientName : string) (conf : RabbitMQConf) =
+  let createConnection (clientName: string) (conf: RabbitMQConf) =
     let tls =
       conf.tls |> Option.fold (fun s t ->
         let pass = t.certPassword |> Option.fold (fun s t -> t) null
@@ -169,7 +169,7 @@ module internal Impl =
     conn.AutoClose <- false // closed when disposed
     conn
 
-  let createModel (conn : IConnection) =
+  let createModel (conn: IConnection) =
     let model = conn.CreateModel()
     model.ConfirmSelect()
     let acks = Stream.Src.create ()
@@ -189,10 +189,10 @@ module internal Impl =
         m |> Map.remove k,
         Some x
 
-  let topic (conf : RabbitMQConf) (message : Message) =
+  let topic (conf: RabbitMQConf) (message: Message) =
     conf.topic.Replace("{0}", message.level.ToString())
 
-  let props (model : IModel) (conf : RabbitMQConf) (message : Message) =
+  let props (model: IModel) (conf: RabbitMQConf) (message: Message) =
     let props = model.CreateBasicProperties()
     props.AppId <- conf.appId |> Option.fold (fun s t -> t) (PointName.format message.name)
     props.ContentEncoding <- "utf8"
@@ -215,10 +215,10 @@ module internal Impl =
         gz.Write(bytes, 0, bytes.Length)
         ms.ToArray()
 
-  let body (conf : RabbitMQConf) (message : Message) =
+  let body (conf: RabbitMQConf) (message: Message) =
     Logary.Formatting.Json.format message |> System.Text.Encoding.UTF8.GetBytes |> compress conf.compression
 
-  let selectConfirm (ilogger : Logger) state (kont : State -> Job<unit>) : Alt<_> =
+  let selectConfirm (ilogger: Logger) state (kont: State -> Job<unit>): Alt<_> =
 
     let clearInflights (m, acked) msgId =
       match m |> Map.pop msgId with
@@ -279,10 +279,10 @@ module internal Impl =
         }
     ]
 
-  let loop (conf : RabbitMQConf)
-           (ri : RuntimeInfo, api : TargetAPI) =
+  let loop (conf: RabbitMQConf)
+           (ri: RuntimeInfo, api : TargetAPI) =
 
-    let rec connect () : Job<unit> =
+    let rec connect (): Job<unit> =
       let conn = createConnection ri.service conf
       let model, acks, nacks = createModel conn
       active { connection = conn
@@ -297,7 +297,7 @@ module internal Impl =
     // IO thread with its own queue, so the 'publish' operation doesn't mean anything
     // from a durability perspective; instead it is the publisher confirms that we've
     // enabled that matters (see `createModel`) – and the function `selectConfirm`
-    and active (state : State) : Job<unit> =
+    and active (state: State): Job<unit> =
       Alt.choose [
         selectConfirm ri.logger state active
 
@@ -332,7 +332,7 @@ module internal Impl =
 
     // in the `flushing` state, we'll just select on the confirm channel until
     // the inflight messages list is empty
-    and flushing (ackCh, nack) (state : State) =
+    and flushing (ackCh, nack) (state: State) =
       if Map.isEmpty state.inflight then
         job {
           do! IVar.fill ackCh () 
@@ -414,7 +414,7 @@ type Builder(conf, callParent : Target.ParentCallback<Builder>) =
   member x.NonPersistentDelivery () =
     update { conf with deliveryMode = DeliveryMode.NonPersistent }
 
-  member x.ConnectionTimeout (dur : Duration) =
+  member x.ConnectionTimeout (dur: Duration) =
     update { conf with connectionTimeout = dur }
 
   member x.CompressGZip () =
@@ -424,7 +424,7 @@ type Builder(conf, callParent : Target.ParentCallback<Builder>) =
     ! (callParent x)
 
   // c'tor, always include this one in your code
-  new(callParent : Target.ParentCallback<_>) =
+  new(callParent: Target.ParentCallback<_>) =
     Builder(empty, callParent)
 
   // this is called in the end, after calling all your custom configuration

@@ -167,7 +167,7 @@ let tests =
     // just for making an health checker example, not very robust for test, so use ptest...
     ptestCaseAsync "health checker ping" (job {
       // context
-      let pingSvc (hostName : string) =
+      let pingSvc (hostName: string) =
         try
           use p = new Ping()
           let reply = p.Send(hostName,1000)
@@ -227,7 +227,7 @@ let tests =
 
     testCaseAsync "buffer conditinal pipe" (job {
 
-      let dutiful (msg : Message, buffered : Message list) =
+      let dutiful (msg: Message, buffered : Message list) =
         let dt =DateTime.Parse("10:10").ToUniversalTime()
         let timeNow = Instant.FromDateTimeUtc(dt)
         let tenMins = Duration.FromMinutes(10L)

@@ -7,7 +7,7 @@ open Topshelf.Logging
 open Topshelf.HostConfigurators
 open Logary
 
-type TopshelfAdapter(logger : Logger) =
+type TopshelfAdapter(logger: Logger) =
 
   let fromSourceLevel = function
     | SourceLevels.Off
@@ -19,10 +19,10 @@ type TopshelfAdapter(logger : Logger) =
     | SourceLevels.Error       -> Fatal
     | _                        -> Verbose
 
-  let fromLoggingLevel (level : LoggingLevel) =
+  let fromLoggingLevel (level: LoggingLevel) =
     fromSourceLevel level.SourceLevel
 
-  let setLevel (level : LoggingLevel) (l : Message) =
+  let setLevel (level: LoggingLevel) (l: Message) =
     { l with level = fromLoggingLevel level }
 
   let objToLine : obj -> Message = function
@@ -65,13 +65,13 @@ type TopshelfAdapter(logger : Logger) =
       |> log
 
     /////////////////// DEBUG ///////////////
-    member x.Debug (o : obj) =
+    member x.Debug (o: obj) =
       o |> objToLine |> Message.setLevel Debug |> log
 
     member x.Debug (o, ex) =
       o |> objToLine |> Message.setLevel Debug |> Message.addExn ex |> log
 
-    member x.Debug (fO : LogWriterOutputProvider) =
+    member x.Debug (fO: LogWriterOutputProvider) =
       (fO.Invoke >> objToLine >> Message.setLevel Debug) () |> log
 
     member x.DebugFormat (formatProvider, format, args) =
@@ -83,13 +83,13 @@ type TopshelfAdapter(logger : Logger) =
       |> log
 
     /////////////////// INFO ///////////////
-    member x.Info (o : obj) =
+    member x.Info (o: obj) =
       o |> objToLine |> Message.setLevel Info |> log
 
     member x.Info (o, ex) =
       o |> objToLine |> Message.setLevel Info |> Message.addExn ex |> log
 
-    member x.Info (fO : LogWriterOutputProvider) =
+    member x.Info (fO: LogWriterOutputProvider) =
       (fO.Invoke >> objToLine >> Message.setLevel Info) () |> log
 
     member x.InfoFormat (formatProvider, format, args) =
@@ -101,13 +101,13 @@ type TopshelfAdapter(logger : Logger) =
       |> log
 
     /////////////////// WARN ///////////////
-    member x.Warn (o : obj) =
+    member x.Warn (o: obj) =
       o |> objToLine |> Message.setLevel Warn |> log
 
     member x.Warn (o, ex) =
       o |> objToLine |> Message.setLevel Warn |> Message.addExn ex |> log
 
-    member x.Warn (fO : LogWriterOutputProvider) =
+    member x.Warn (fO: LogWriterOutputProvider) =
       (fO.Invoke >> objToLine >> Message.setLevel Warn) () |> log
 
     member x.WarnFormat (formatProvider, format, args) =
@@ -119,13 +119,13 @@ type TopshelfAdapter(logger : Logger) =
       |> log
 
     /////////////////// ERROR ///////////////
-    member x.Error (o : obj) =
+    member x.Error (o: obj) =
       o |> objToLine |> Message.setLevel Error |> log
 
     member x.Error (o, ex) =
       o |> objToLine |> Message.setLevel Error |> Message.addExn ex |> log
 
-    member x.Error (fO : LogWriterOutputProvider) =
+    member x.Error (fO: LogWriterOutputProvider) =
       (fO.Invoke >> objToLine >> Message.setLevel Error) () |> log
 
     member x.ErrorFormat (formatProvider, format, args) =
@@ -137,13 +137,13 @@ type TopshelfAdapter(logger : Logger) =
       |> log
 
     /////////////////// FATAL ///////////////
-    member x.Fatal (o : obj) =
+    member x.Fatal (o: obj) =
       o |> objToLine |> Message.setLevel Fatal |> log
 
     member x.Fatal (o, ex) =
       o |> objToLine |> Message.setLevel Fatal |> Message.addExn ex |> log
 
-    member x.Fatal (fO : LogWriterOutputProvider) =
+    member x.Fatal (fO: LogWriterOutputProvider) =
       (fO.Invoke >> objToLine >> Message.setLevel Fatal) () |> log
 
     member x.FatalFormat (formatProvider, format, args) =
@@ -154,7 +154,7 @@ type TopshelfAdapter(logger : Logger) =
       Message.eventFormat (Error, format, args)
       |> log
 
-type LogaryWriterFactory(logary : LogManager) =
+type LogaryWriterFactory(logary: LogManager) =
   interface LogWriterFactory with
     member x.Get name =
       let llogger = logary.getLogger (PointName.parse name)
@@ -162,7 +162,7 @@ type LogaryWriterFactory(logary : LogManager) =
     member x.Shutdown () =
       ()
 
-type LogaryHostLoggerConfigurator(logary : LogManager) =
+type LogaryHostLoggerConfigurator(logary: LogManager) =
   interface HostLoggerConfigurator with
     member x.CreateLogWriterFactory() =
       LogaryWriterFactory(logary) :> LogWriterFactory
@@ -171,5 +171,5 @@ type LogaryHostLoggerConfigurator(logary : LogManager) =
 module ConfiguratorExtensions =
 
   [<Extension; CompiledName "UseLogary">]
-  let useLogary (hc : HostConfigurator) (logary : LogManager) =
+  let useLogary (hc: HostConfigurator) (logary: LogManager) =
     HostLogger.UseLogger(new LogaryHostLoggerConfigurator(logary))

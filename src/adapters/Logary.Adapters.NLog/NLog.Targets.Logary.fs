@@ -12,7 +12,7 @@ module internal Adaptation =
   open NLog
 
   /// Map the NLog.LogLevel to a Logary.LogLevel.
-  let mapLogLevel (level : NLog.LogLevel) =
+  let mapLogLevel (level: NLog.LogLevel) =
     if level.Equals(NLog.LogLevel.Debug) then
       Debug
     elif level.Equals(NLog.LogLevel.Trace) then
@@ -32,8 +32,8 @@ module internal Adaptation =
   /// also remove the references to the loggers, whilst Logary.Internals.Cache
   /// would have a static/global cache (more useful for type resolution that
   /// won't change across instances).
-  let memoizeFactory<'input, 'output> (cache : ConcurrentDictionary<'input, 'output>) =
-    fun (f : 'input -> 'output) ->
+  let memoizeFactory<'input, 'output> (cache: ConcurrentDictionary<'input, 'output>) =
+    fun (f: 'input -> 'output) ->
       fun x -> cache.GetOrAdd(x, f)
 
 open Adaptation
@@ -42,7 +42,7 @@ open Adaptation
 /// LogManager or a property `Logary` that can be set to give this target the
 /// instance of Logary to use for requesting loggers.
 [<Target("Logary")>] 
-type LogaryTarget(logary : LogManager) =
+type LogaryTarget(logary: LogManager) =
   inherit Target()
 
   let memoize = memoizeFactory (ConcurrentDictionary<_, _>())
@@ -64,7 +64,7 @@ type LogaryTarget(logary : LogManager) =
   member x.Logary with get() = instance
                    and set v = instance <- v
 
-  override x.Write (evt : NLog.LogEventInfo) =
+  override x.Write (evt: NLog.LogEventInfo) =
     let name = PointName.parse evt.LoggerName
     let logger = getLogger name
     let ex = if isNull evt.Exception then None else Some evt.Exception

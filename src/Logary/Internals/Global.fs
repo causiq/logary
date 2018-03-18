@@ -44,7 +44,7 @@ module internal Global =
   /// multiple per-process logging setups, then don't use the static methods,
   /// but instead pass a Logger instance around, setting the name field of the
   /// Message value you pass into the logger.
-  type Flyweight(name : PointName) =
+  type Flyweight(name: PointName) =
     // The object's private fields are initialised to the current config's
     // logger.
     let updating = obj()
@@ -64,7 +64,7 @@ module internal Global =
       // finally execute the action with the logger
       action logger
 
-    let ensureName (m : Message) =
+    let ensureName (m: Message) =
       if m.name.isEmpty then { m with name = name } else m
 
     interface Logger with // flyweight
@@ -81,11 +81,11 @@ module internal Global =
   let initialise cfg =
     config := (cfg, snd !config + 1u)
 
-  let getStaticLogger (name : PointName) =
+  let getStaticLogger (name: PointName) =
     Flyweight(name)
 
   /// Gets the current timestamp.
-  let getTimestamp () : EpochNanoSeconds =
+  let getTimestamp (): EpochNanoSeconds =
     (fst !config).getTimestamp ()
 
   /// Returns the synchronisation object to use when printing to the console.
@@ -180,7 +180,7 @@ module internal Global =
 
     let configDestructure<'t> (factory: CustomDestructureFactory<'t>) =
       let ty = typeof<'t>
-      let untypedFactory resolver (untypedReq : DestructureRequest) =
+      let untypedFactory resolver (untypedReq: DestructureRequest) =
         match untypedReq.TryDownCast<'t> () with
         | Some typedReq -> factory resolver typedReq
         | _ -> ScalarValue (sprintf "failed down cast to %A , obj is : %s" typeof<'t> (string untypedReq.Value))
@@ -223,7 +223,7 @@ module internal Global =
 
       {
         new ICustomDestructureRegistry with
-          member __.TryGetRegistration (runtimeType : Type) =
+          member __.TryGetRegistration (runtimeType: Type) =
             match customDestructureDic.TryGetValue runtimeType with
             | true, factory -> factory |> Some
             | false , _ ->

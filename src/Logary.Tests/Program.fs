@@ -104,7 +104,7 @@ module Expect =
     // passed via excluded middle
 
   /// Expect the passed string not to be empty.
-  let isNotEmpty (actual : string) format =
+  let isNotEmpty (actual: string) format =
     Expect.isNotNull actual format
     if actual.Length = 0 then Tests.failtestf "%s. Should not be empty." format
 
@@ -126,13 +126,13 @@ let tests =
     ]
 
     testList "LogLevel" [
-      testProperty "toInt" <| fun (level : LogLevel) ->
+      testProperty "toInt" <| fun (level: LogLevel) ->
         level.toInt() |> ignore
 
-      testProperty "=" <| fun (level : LogLevel) ->
+      testProperty "=" <| fun (level: LogLevel) ->
         level = level
 
-      testProperty "<>" <| fun (level : LogLevel) ->
+      testProperty "<>" <| fun (level: LogLevel) ->
         if level = Info then level = Info else
         level <> Info
     ]
@@ -218,7 +218,7 @@ let tests =
       testCase "String" <| fun () ->
         String "abc" |> ignore
 
-      testPropertyWithConfig fsCheckConfig "Value" <| fun (value : Value) ->
+      testPropertyWithConfig fsCheckConfig "Value" <| fun (value: Value) ->
         match value with
         | Float f ->
           Expect.isNotNaN f "Should be a number"
@@ -233,7 +233,7 @@ let tests =
     ]
 
     testList "Units" [
-      testPropertyWithConfig fsCheckConfig "Units" <| fun (u : Units) ->
+      testPropertyWithConfig fsCheckConfig "Units" <| fun (u: Units) ->
         match u with
         | Offset (_, f) ->
           Expect.isNotNaN f "Should be a number"
@@ -242,7 +242,7 @@ let tests =
         | _ ->
           true
 
-      testPropertyWithConfig fsCheckConfig "symbol can be called" <| fun (u : Units) ->
+      testPropertyWithConfig fsCheckConfig "symbol can be called" <| fun (u: Units) ->
         try
           Units.symbol u |> ignore
           true
@@ -265,11 +265,11 @@ let tests =
         let pn = PointName.ofSingle "A" |> PointName.setEnding "B.C"
         Expect.equal pn (PointName [| "A"; "B.C" |]) "Should be equal"
 
-      testPropertyWithConfig fsCheckConfig "isEmpty is callable for all" <| fun (pn : PointName) ->
+      testPropertyWithConfig fsCheckConfig "isEmpty is callable for all" <| fun (pn: PointName) ->
         pn.isEmpty |> ignore
         true
 
-      testPropertyWithConfig fsCheckConfig "ToString is callable for all" <| fun (pn : PointName) ->
+      testPropertyWithConfig fsCheckConfig "ToString is callable for all" <| fun (pn: PointName) ->
         pn.ToString() |> ignore
         true
     ]
@@ -290,7 +290,7 @@ let tests =
         Expect.isTrue (subject |> HashMap.containsKey "a") "Should have 'a' key"
         Expect.isFalse (subject |> HashMap.containsKey "b") "Should have 'b' key"
 
-      testPropertyWithConfig fsCheckConfig "generate" <| fun (value : HashMap<string, int>) ->
+      testPropertyWithConfig fsCheckConfig "generate" <| fun (value: HashMap<string, int>) ->
         ignore value
         true
     ]
@@ -425,14 +425,14 @@ let tests =
       testCase "public interface" <| fun () ->
         { new TimeScope with
             member x.name : PointName = PointName.ofSingle "B"
-            member x.logWithAck (level : LogLevel) (factory : LogLevel -> Message) : Alt<Promise<unit>> =
+            member x.logWithAck (level: LogLevel) (factory: LogLevel -> Message): Alt<Promise<unit>> =
               Promise.instaPromise
             member x.level : LogLevel = LogLevel.Info
             member x.Dispose () = ()
             member x.elapsed = Duration.Zero
-            member x.bisect (label : string) : unit =
+            member x.bisect (label: string): unit =
               ()
-            member x.stop (decider : Duration -> LogLevel) : Alt<Promise<unit>> =
+            member x.stop (decider: Duration -> LogLevel): Alt<Promise<unit>> =
               Promise.instaPromise
         }
         |> ignore
@@ -683,7 +683,7 @@ let tests =
           ()
         f (Middleware.host "local")
 
-      testPropertyWithConfig fsCheckConfig "identity" <| fun (m : Message) ->
+      testPropertyWithConfig fsCheckConfig "identity" <| fun (m: Message) ->
         let rm = ref (event Fatal "nope")
         let save m = rm := m; m
         let out = Middleware.identity save m
@@ -710,7 +710,7 @@ let tests =
     ]
 
     testList "NodaTime.Duration" [
-      testPropertyWithConfig fsCheckConfig "toGauge()" <| fun (d : Duration) ->
+      testPropertyWithConfig fsCheckConfig "toGauge()" <| fun (d: Duration) ->
         ignore (d.toGauge())
     ]
 

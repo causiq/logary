@@ -93,7 +93,7 @@ module internal Impl =
       WellKnownTypes.Value.ForString(string data)
     // | Value.Object values ->
     //   values |> HashMap.toSeq
-    //   |> Seq.fold (fun (s : WellKnownTypes.Struct) (k,v) -> s.Fields.[k] <- toProtobufValue v; s) (WellKnownTypes.Struct())
+    //   |> Seq.fold (fun (s: WellKnownTypes.Struct) (k,v) -> s.Fields.[k] <- toProtobufValue v; s) (WellKnownTypes.Struct())
     //   |> WellKnownTypes.Value.ForStruct
     // | Value.Array values ->
     //   let valueArr = values |> List.map toProtobufValue |> List.toArray
@@ -176,7 +176,7 @@ module internal Impl =
     r.Labels.Add(createLabels project resourceType)
     r
 
-  let createState (conf : StackdriverConf) =
+  let createState (conf: StackdriverConf) =
     let source = new System.Threading.CancellationTokenSource()
     { logger = LoggingServiceV2Client.Create()
       resource = createMonitoredResource conf.projectId conf.resource
@@ -186,7 +186,7 @@ module internal Impl =
 
   let loop (conf: StackdriverConf) (runtime: RuntimeInfo, api: TargetAPI) =
 
-    let rec loop (state: State) : Job<unit> =
+    let rec loop (state: State): Job<unit> =
       Alt.choose [
         // either shutdown, or
         api.shutdownCh ^=> fun ack ->
@@ -235,7 +235,7 @@ type Builder(conf, callParent : Target.ParentCallback<Builder>) =
     conf.labels.Add(key, value)
     !(callParent <| Builder(conf, callParent))
 
-  member x.WithLabels(labels : IDictionary<_,_>) =
+  member x.WithLabels(labels: IDictionary<_,_>) =
     for kvp in labels do
       conf.labels.Add(kvp.Key, kvp.Value)
     !(callParent <| Builder(conf, callParent))
@@ -244,7 +244,7 @@ type Builder(conf, callParent : Target.ParentCallback<Builder>) =
     !(callParent <| Builder({ conf with maxBatchSize = size }, callParent))
 
   // c'tor, always include this one in your code
-  new(callParent : Target.ParentCallback<_>) =
+  new(callParent: Target.ParentCallback<_>) =
     Builder(empty, callParent)
 
   interface Target.SpecificTargetConf with

@@ -390,7 +390,7 @@ module Program =
     | Choice3Of3 msg ->
       fun _ -> Choice3Of3 msg
 
-  let execute argv (exiting : ManualResetEventSlim) : int =
+  let execute argv (exiting: ManualResetEventSlim): int =
     let parser = ArgumentParser.Create<Args>()
     let parsed = parser.Parse argv
 

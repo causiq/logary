@@ -42,7 +42,7 @@ type LogLevel =
     | Fatal   -> "fatal"
 
   /// Converts the string passed to a Loglevel.
-  static member ofString (str : string) =
+  static member ofString (str: string) =
     if str = null then invalidArg "str" "may not be null"
     match str.ToLowerInvariant() with
     | "verbose" -> Verbose
@@ -125,12 +125,12 @@ type EpochNanoSeconds = int64
 module DateTime =
 
   /// Get the Logary timestamp off the DateTime.
-  let timestamp (dt : DateTime) : EpochNanoSeconds =
+  let timestamp (dt: DateTime): EpochNanoSeconds =
     (dt.Ticks - DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).Ticks)
     * 100L
 
   /// Get the DateTimeOffset ticks off from the EpochNanoSeconds.
-  let ticksUTC (epoch : EpochNanoSeconds) : int64 =
+  let ticksUTC (epoch: EpochNanoSeconds): int64 =
     epoch / 100L
     + DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).Ticks
 
@@ -138,12 +138,12 @@ module DateTime =
 module DateTimeOffset =
 
   /// Get the Logary timestamp off the DateTimeOffset.
-  let timestamp (dt : DateTimeOffset) : EpochNanoSeconds =
+  let timestamp (dt: DateTimeOffset): EpochNanoSeconds =
     (dt.Ticks - DateTimeOffset(1970, 1, 1, 0, 0, 0, TimeSpan.Zero).Ticks)
     * 100L
 
   /// Get the DateTimeOffset ticks from EpochNanoSeconds
-  let ticksUTC (epoch : EpochNanoSeconds) : int64 =
+  let ticksUTC (epoch: EpochNanoSeconds): int64 =
     epoch / 100L
     + DateTimeOffset(1970, 1, 1, 0, 0, 0, TimeSpan.Zero).Ticks
 
@@ -211,7 +211,7 @@ type Logger =
 /// Syntactic sugar on top of Logger for F# libraries.
 [<AutoOpen>]
 module LoggerEx =
-  let private logWithTimeout (logger : Logger) level messageFactory =
+  let private logWithTimeout (logger: Logger) level messageFactory =
     async {
       let! child = Async.StartChild (logger.log level messageFactory, 5000)
       try
@@ -224,46 +224,46 @@ module LoggerEx =
     }
 
   type Logger with
-    member x.verbose (messageFactory : LogLevel -> Message) : unit =
+    member x.verbose (messageFactory: LogLevel -> Message): unit =
       logWithTimeout x Verbose messageFactory |> Async.Start
 
     /// Log with backpressure
-    member x.verboseWithBP (messageFactory : LogLevel -> Message) : Async<unit> =
+    member x.verboseWithBP (messageFactory: LogLevel -> Message): Async<unit> =
       x.log Verbose messageFactory
       
-    member x.debug (messageFactory : LogLevel -> Message) : unit =
+    member x.debug (messageFactory: LogLevel -> Message): unit =
       logWithTimeout x Debug messageFactory |> Async.Start
 
     /// Log with backpressure
-    member x.debugWithBP (messageFactory : LogLevel -> Message) : Async<unit> =
+    member x.debugWithBP (messageFactory: LogLevel -> Message): Async<unit> =
       x.log Debug messageFactory
       
-    member x.info (messageFactory : LogLevel -> Message) : unit =
+    member x.info (messageFactory: LogLevel -> Message): unit =
       logWithTimeout x Info messageFactory |> Async.Start
 
     /// Log with backpressure
-    member x.infoWithBP (messageFactory : LogLevel -> Message) : Async<unit> =
+    member x.infoWithBP (messageFactory: LogLevel -> Message): Async<unit> =
       x.log Info messageFactory
       
-    member x.warn (messageFactory : LogLevel -> Message) : unit =
+    member x.warn (messageFactory: LogLevel -> Message): unit =
       logWithTimeout x Warn messageFactory |> Async.Start
 
     /// Log with backpressure
-    member x.warnWithBP (messageFactory : LogLevel -> Message) : Async<unit> =
+    member x.warnWithBP (messageFactory: LogLevel -> Message): Async<unit> =
       x.log Warn messageFactory
       
-    member x.error (messageFactory : LogLevel -> Message) : unit =
+    member x.error (messageFactory: LogLevel -> Message): unit =
       logWithTimeout x Error messageFactory |> Async.Start
 
     /// Log with backpressure
-    member x.errorWithBP (messageFactory : LogLevel -> Message) : Async<unit> =
+    member x.errorWithBP (messageFactory: LogLevel -> Message): Async<unit> =
       x.log Error messageFactory
       
-    member x.fatal (messageFactory : LogLevel -> Message) : unit =
+    member x.fatal (messageFactory: LogLevel -> Message): unit =
       logWithTimeout x Fatal messageFactory |> Async.Start
 
     /// Log with backpressure
-    member x.fatalWithBP (messageFactory : LogLevel -> Message) : Async<unit> =
+    member x.fatalWithBP (messageFactory: LogLevel -> Message): Async<unit> =
       x.log Fatal messageFactory
 
     /// Log a message, but don't synchronously wait for the message to be placed
@@ -365,12 +365,12 @@ module Literals =
 module internal FsMtParser =
   open System.Text
 
-  type Property(name : string, format : string) =
+  type Property(name: string, format : string) =
     static let emptyInstance = Property("", null)
     static member empty = emptyInstance
     member x.name = name
     member x.format = format
-    member internal x.AppendPropertyString(sb : StringBuilder, ?replacementName) =
+    member internal x.AppendPropertyString(sb: StringBuilder, ?replacementName) =
       sb.Append("{")
         .Append(defaultArg replacementName name)
         .Append(match x.format with null | "" -> "" | _ -> ":" + x.format)
@@ -390,35 +390,35 @@ module internal FsMtParser =
     let inline isValidCharInPropTag c = c = ':' || isValidInPropName c || isValidInFormat c
 
     [<Struct>]
-    type Range(startIndex : int, endIndex : int) =
+    type Range(startIndex: int, endIndex : int) =
       member inline x.start = startIndex
       member inline x.``end`` = endIndex
       member inline x.length = (endIndex - startIndex) + 1
-      member inline x.getSubstring (s : string) = s.Substring(startIndex, x.length)
+      member inline x.getSubstring (s: string) = s.Substring(startIndex, x.length)
       member inline x.isEmpty = startIndex = -1 && endIndex = -1
-      static member inline substring (s : string, startIndex, endIndex) = s.Substring(startIndex, (endIndex - startIndex) + 1)
+      static member inline substring (s: string, startIndex, endIndex) = s.Substring(startIndex, (endIndex - startIndex) + 1)
       static member inline empty = Range(-1, -1)
 
-    let inline tryGetFirstCharInRange predicate (s : string) (range : Range) =
+    let inline tryGetFirstCharInRange predicate (s: string) (range: Range) =
       let rec go i =
         if i > range.``end`` then -1
         else if not (predicate s.[i]) then go (i+1) else i
       go range.start
 
-    let inline tryGetFirstChar predicate (s : string) first =
+    let inline tryGetFirstChar predicate (s: string) first =
       tryGetFirstCharInRange predicate s (Range(first, s.Length - 1))
 
-    let inline hasAnyInRange predicate (s : string) (range : Range) =
+    let inline hasAnyInRange predicate (s: string) (range: Range) =
       match tryGetFirstChar (predicate) s range.start with
       | -1 ->
         false
       | i ->
         i <= range.``end``
 
-    let inline hasAny predicate (s : string) = hasAnyInRange predicate s (Range(0, s.Length - 1))
+    let inline hasAny predicate (s: string) = hasAnyInRange predicate s (Range(0, s.Length - 1))
     let inline indexOfInRange s range c = tryGetFirstCharInRange ((=) c) s range
 
-    let inline tryGetPropInRange (template : string) (within : Range) : Property =
+    let inline tryGetPropInRange (template: string) (within: Range): Property =
       // Attempts to validate and parse a property token within the specified range inside
       // the template string. If the property insides contains any invalid characters,
       // then the `Property.Empty' instance is returned (hence the name 'try')
@@ -437,13 +437,13 @@ module internal FsMtParser =
         let format = if formatRange.isEmpty then null else formatRange.getSubstring template
         Property(propertyName, format)
 
-    let findNextNonPropText (startAt : int) (template : string) (foundText : string->unit) : int =
+    let findNextNonPropText (startAt: int) (template: string) (foundText: string->unit): int =
       // Finds the next text token (starting from the 'startAt' index) and returns the next character
       // index within the template string. If the end of the template string is reached, or the start
       // of a property token is found (i.e. a single { character), then the 'consumed' text is passed
       // to the 'foundText' method, and index of the next character is returned.
       let mutable escapedBuilder = Unchecked.defaultof<StringBuilder> // don't create one until it's needed
-      let inline append (ch : char) = if not (isNull escapedBuilder) then escapedBuilder.Append(ch) |> ignore
+      let inline append (ch: char) = if not (isNull escapedBuilder) then escapedBuilder.Append(ch) |> ignore
       let inline createStringBuilderAndPopulate i =
         if isNull escapedBuilder then
           escapedBuilder <- StringBuilder() // found escaped open-brace, take the slow path
@@ -471,9 +471,9 @@ module internal FsMtParser =
           foundText (escapedBuilder.ToString())
       nextIndex
 
-    let findPropOrText (start : int) (template : string)
-                       (foundText : string -> unit)
-                       (foundProp : Property -> unit) : int =
+    let findPropOrText (start: int) (template: string)
+                       (foundText: string -> unit)
+                       (foundProp: Property -> unit): int =
       // Attempts to find the indices of the next property in the template
       // string (starting from the 'start' index). Once the start and end of
       // the property token is known, it will be further validated (by the
@@ -504,7 +504,7 @@ module internal FsMtParser =
   /// Parses template strings such as "Hello, {PropertyWithFormat:##.##}"
   /// and calls the 'foundTextF' or 'foundPropF' functions as the text or
   /// property tokens are encountered.
-  let parseParts (template : string) foundTextF foundPropF =
+  let parseParts (template: string) foundTextF foundPropF =
     let tlen = template.Length
     let rec go start =
       if start >= tlen then () else
@@ -521,7 +521,7 @@ module internal Formatting =
   open Literals
   open Literate
 
-  let literateFormatValue (options : LiterateOptions) (fields : Map<string, obj>) = function
+  let literateFormatValue (options: LiterateOptions) (fields: Map<string, obj>) = function
     | Event template ->
       let themedParts = ResizeArray<string * LiterateToken>()
       let matchedFields = ResizeArray<string>()
@@ -558,12 +558,12 @@ module internal Formatting =
       Set.empty, [ sprintf "%i" value, NumericSymbol
                    sprintf "%s" units, KeywordSymbol ]
 
-  let formatValue (fields : Map<string, obj>) (pv : PointValue) =
+  let formatValue (fields: Map<string, obj>) (pv: PointValue) =
     let matchedFields, themedParts =
       literateFormatValue (LiterateOptions.createInvariant()) fields pv
     matchedFields, System.String.Concat(themedParts |> List.map fst)
 
-  let literateExceptionColouriser (options : LiterateOptions) (ex : exn) =
+  let literateExceptionColouriser (options: LiterateOptions) (ex: exn) =
     let stackFrameLinePrefix = "   at" // 3 spaces
     let monoStackFrameLinePrefix = "  at" // 2 spaces
     use exnLines = new System.IO.StringReader(ex.ToString())
@@ -580,7 +580,7 @@ module internal Formatting =
           go ((line, Text) :: (Environment.NewLine, Text) :: lines)
     go []
 
-  let literateColouriseExceptions (context : LiterateOptions) message =
+  let literateColouriseExceptions (context: LiterateOptions) message =
     let exnExceptionParts =
       match message.fields.TryFind FieldExnKey with
       | Some (:? Exception as ex) ->
@@ -610,8 +610,8 @@ module internal Formatting =
 
   /// Split a structured message up into theme-able parts (tokens), allowing the
   /// final output to display to a user with colours to enhance readability.
-  let literateDefaultTokeniser (options : LiterateOptions) (message : Message) : (string * LiterateToken) list =
-    let formatLocalTime (utcTicks : int64) =
+  let literateDefaultTokeniser (options: LiterateOptions) (message: Message) : (string * LiterateToken) list =
+    let formatLocalTime (utcTicks: int64) =
       DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss", options.formatProvider),
       Subtext
 
@@ -648,27 +648,27 @@ module internal Formatting =
         Console.ForegroundColor <- originalColour
 
   /// let the ISO8601 love flow
-  let defaultFormatter (message : Message) =
-    let app (x : obj) (sb : StringBuilder) =
+  let defaultFormatter (message: Message) =
+    let app (x: obj) (sb: StringBuilder) =
       sb.Append x |> ignore
 
-    let formatLevel (level : LogLevel) =
+    let formatLevel (level: LogLevel) =
       "[" + Char.ToUpperInvariant(level.ToString().[0]).ToString() + "] "
 
-    let formatInstant (utcTicks : int64) =
+    let formatInstant (utcTicks: int64) =
       (DateTimeOffset(utcTicks, TimeSpan.Zero).ToString("o")) + ": "
 
-    let formatName (name : string[]) =
+    let formatName (name: string[]) =
       " [" + String.concat "." name + "]"
 
-    let formatExn (fields : Map<string, obj>) =
+    let formatExn (fields: Map<string, obj>) =
       match fields |> Map.tryFind FieldExnKey with
       | None ->
         String.Empty
       | Some ex ->
         " exn:\n" + ex.ToString()
 
-    let formatFields (ignored : Set<string>) (fields : Map<string, obj>) =
+    let formatFields (ignored: Set<string>) (fields: Map<string, obj>) =
       if not (Map.isEmpty fields) then
         fields
         |> Seq.filter (fun (KeyValue (k, _)) ->
@@ -707,12 +707,12 @@ module internal LiterateFormatting =
   [<AutoOpen>]
   module OutputTemplateTokenisers =
 
-    let tokeniseTimestamp format (options : LiterateOptions) (message : Message) = 
+    let tokeniseTimestamp format (options: LiterateOptions) (message: Message) = 
       let localDateTimeOffset = DateTimeOffset(message.utcTicks, TimeSpan.Zero).ToLocalTime()
       let formattedTimestamp = localDateTimeOffset.ToString(format, options.formatProvider)
       seq { yield formattedTimestamp, Subtext }
 
-    let tokeniseTimestampUtc format (options : LiterateOptions) (message : Message) = 
+    let tokeniseTimestampUtc format (options: LiterateOptions) (message: Message) = 
       let utcDateTimeOffset = DateTimeOffset(message.utcTicks, TimeSpan.Zero)
       let formattedTimestamp = utcDateTimeOffset.ToString(format, options.formatProvider)
       seq { yield formattedTimestamp, Subtext }
@@ -726,16 +726,16 @@ module internal LiterateFormatting =
           yield format, Subtext
         yield "}", Punctuation }
 
-    let tokeniseLogLevel (options : LiterateOptions) (message : Message) =
+    let tokeniseLogLevel (options: LiterateOptions) (message: Message) =
       seq { yield options.getLogLevelText message.level, Formatting.getLogLevelToken message.level }
 
-    let tokeniseSource (options : LiterateOptions) (message : Message) =
+    let tokeniseSource (options: LiterateOptions) (message: Message) =
       seq { yield (String.concat "." message.name), Subtext }
 
-    let tokeniseNewline (options : LiterateOptions) (message : Message) =
+    let tokeniseNewline (options: LiterateOptions) (message: Message) =
       seq { yield Environment.NewLine, Text }
 
-    let tokeniseTab (options : LiterateOptions) (message : Message) =
+    let tokeniseTab (options: LiterateOptions) (message: Message) =
       seq { yield "\t", Text }
 
   /// Creates a `LiterateTokeniser` function which can be passed to the `LiterateConsoleTarget`
@@ -872,7 +872,7 @@ module Global =
   /// multiple per-process logging setups, then don't use the static methods,
   /// but instead pass a Logger instance around, setting the name field of the
   /// Message value you pass into the logger.
-  type internal Flyweight(name : string[]) =
+  type internal Flyweight(name: string[]) =
     let updating = obj()
     let mutable fwClock : uint32 = snd !config
     let mutable logger : Logger = (fst !config).getLogger name
@@ -886,7 +886,7 @@ module Global =
             fwClock <- cfgClock
       action logger
 
-    let ensureName (m : Message) =
+    let ensureName (m: Message) =
       if Array.isEmpty m.name then { m with name = name } else m
 
     interface Logger with
@@ -897,11 +897,11 @@ module Global =
       member x.logWithAck level msgFactory =
         withLogger (fun logger -> logger.logWithAck level (msgFactory >> ensureName))
 
-  let internal getStaticLogger (name : string []) =
+  let internal getStaticLogger (name: string []) =
     Flyweight name
 
   /// Gets the current timestamp.
-  let timestamp () : EpochNanoSeconds =
+  let timestamp (): EpochNanoSeconds =
     (fst !config).timestamp ()
 
   /// Returns the synchronisation object to use when printing to the console.
@@ -944,13 +944,13 @@ module Log =
 
   /// Create a named logger. Full stop (.) acts as segment delimiter in the
   /// hierachy of namespaces and loggers.
-  let create (name : string) =
+  let create (name: string) =
     if name = null then invalidArg "name" "name is null"
     Global.getStaticLogger (name.Split([|'.'|], StringSplitOptions.RemoveEmptyEntries))
     :> Logger
 
   /// Create an hierarchically named logger
-  let createHiera (name : string[]) =
+  let createHiera (name: string[]) =
     if name = null then invalidArg "name" "name is null"
     if name.Length = 0 then invalidArg "name" "must have >0 segments"
     Global.getStaticLogger name
@@ -985,11 +985,11 @@ module Message =
       level     = Debug }
 
   /// Sets the name/path of the log message.
-  let setName (name : string[]) (x : Message) =
+  let setName (name: string[]) (x: Message) =
     { x with name = name }
 
   /// Sets the final portion o fthe name of the Message.
-  let setNameEnding (ending : string) (x : Message) =
+  let setNameEnding (ending: string) (x: Message) =
     if String.IsNullOrWhiteSpace ending then x else
     let segs = ResizeArray<_>(x.name)
     segs.Add ending
@@ -997,7 +997,7 @@ module Message =
 
   /// Sets the name as a single string; if this string contains dots, the string
   /// will be split on these dots.
-  let setSingleName (name : string) (x : Message) =
+  let setSingleName (name: string) (x: Message) =
     if name = null then invalidArg "name" "may not be null"
 
     let name' =
@@ -1006,22 +1006,22 @@ module Message =
     x |> setName name'
 
   /// Sets the value of the field on the log message.
-  let setField (key : string) (value : obj) (x : Message) =
+  let setField (key: string) (value: obj) (x: Message) =
     { x with fields = x.fields |> Map.add key value }
 
   /// Alias to `setField`
   let setFieldValue = setField
 
   /// Sets the timestamp on the log message.
-  let setTimestamp (ts : EpochNanoSeconds) (x : Message) =
+  let setTimestamp (ts: EpochNanoSeconds) (x: Message) =
     { x with timestamp = ts }
 
   /// Sets the level on the log message.
-  let setLevel (level : LogLevel) (x : Message) =
+  let setLevel (level: LogLevel) (x: Message) =
     { x with level = level }
 
   /// Adds an exception to the Message, to the 'errors' field, inside a list.
-  let addExn ex (x : Message) =
+  let addExn ex (x: Message) =
     let fields' =
       match Map.tryFind FieldErrorsKey x.fields with
       | None ->

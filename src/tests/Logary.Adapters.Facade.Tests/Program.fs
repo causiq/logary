@@ -7,8 +7,8 @@ open Logary.Adapters.Facade
 open Hopac
 open NodaTime
 
-let stubLogger (minLevel : LogLevel)
-               (message : Message ref)
+let stubLogger (minLevel: LogLevel)
+               (message: Message ref)
                name =
 
   { new Logger with // stub/tests
@@ -19,7 +19,7 @@ let stubLogger (minLevel : LogLevel)
       member x.name =name
       member x.level = minLevel }
 
-let stubLogManager (message : Message ref) =
+let stubLogManager (message: Message ref) =
   { new LogManager with
       member x.runtimeInfo =
         RuntimeInfo.create "Facade Tests" "localhost"
@@ -42,7 +42,7 @@ let stubLogManager (message : Message ref) =
 
 [<Tests>]
 let tests =
-  let assertWorkMessage (msg : Message) =
+  let assertWorkMessage (msg: Message) =
     Expect.equal msg.level Warn "Should have logged at Warn level"
     Expect.equal msg.value ("Hey {user}!") "Should have logged event template"
     let userName = msg |> Message.tryGetField "user"
@@ -51,7 +51,7 @@ let tests =
 
   testList "facades" [
     testList "shared" [
-      testProperty "convert string to unit" <| fun (x : Units) ->
+      testProperty "convert string to unit" <| fun (x: Units) ->
         match x with
         | Other _ -> true
         | x -> match LoggerAdapterShared.unitOfString (Units.symbol x) with

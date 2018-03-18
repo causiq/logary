@@ -22,10 +22,10 @@ module DateTimeOffset =
     DateTimeOffset(1970, 1, 1, 0, 0, 0, TimeSpan.Zero).Ticks
 
   /// Get the DateTimeOffset ticks from EpochNanoSeconds
-  let ticksUTC (epoch : EpochNanoSeconds) : int64 =
+  let ticksUTC (epoch: EpochNanoSeconds): int64 =
     epoch / Constants.NanosPerTick
     + ticksAt1970
 
   /// Get the DateTimeOffset from EpochNanoSeconds
-  let ofEpoch (epoch : EpochNanoSeconds) : DateTimeOffset =
+  let ofEpoch (epoch: EpochNanoSeconds): DateTimeOffset =
     DateTimeOffset(ticksUTC epoch, TimeSpan.Zero)

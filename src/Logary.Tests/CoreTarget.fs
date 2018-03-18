@@ -51,7 +51,7 @@ module LiterateTesting =
 
   let frenchFormatProvider = System.Globalization.CultureInfo("fr-FR") :> IFormatProvider
 
-  let formatLocalTime provider (ens : EpochNanoSeconds) =
+  let formatLocalTime provider (ens: EpochNanoSeconds) =
     let dto = DateTimeOffset.ofEpoch ens
     dto.LocalDateTime.ToString("HH:mm:ss", provider),
     Tokens.Subtext
@@ -136,7 +136,7 @@ module Files =
     let conf = FileConf.create folder (Naming (file, "log"))
     File.create conf testName
 
-  let testCaseF testName (fn : FolderPath -> FileName -> Job<_>) =
+  let testCaseF testName (fn: FolderPath -> FileName -> Job<_>) =
     let folderPath, fileName = rndFolderFile testName
     testCaseAsync testName <| (job {
       ensureFolder folderPath
@@ -147,7 +147,7 @@ module Files =
     } |> Job.toAsync)
 
 
-  let runtime (now : Instant) =
+  let runtime (now: Instant) =
     RuntimeInfo.create "my service" "myHost"
     |> RuntimeInfo.setGetTimestamp (fun _ -> now.ToUnixTimeTicks() * Constants.NanosPerTick)
 

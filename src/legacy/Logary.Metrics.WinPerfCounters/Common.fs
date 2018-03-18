@@ -123,7 +123,7 @@ let byCategory pcc =
   |> Option.map (fun (pcc, instances) -> WinPerfCounter.list pcc instances)
 
 
-let ofCounters (counters : WinPerfCounterInstance []) =
+let ofCounters (counters: WinPerfCounterInstance []) =
   Logary.EventsProcessing.Ticker.create counters (fun counters item -> counters) (fun counters -> counters, counters |> Array.map Helpers.toValue)
 
 /// The "GPU" category is installed by the nVIDIA drivers
@@ -170,12 +170,12 @@ let networkInterface pn =
   | Some metric ->
     metric
 
-let appMetrics (_ : PointName) =
+let appMetrics (_: PointName) =
   ofCounters (appCounters ())
 
 [<CompiledName "AppMetric">]
 let appMetric category counter instances=
-  fun (_ : PointName) ->
+  fun (_: PointName) ->
     WinPerfCounter.create(category, counter, instances)
     |> Array.singleton
     |> ofPerfCounters
@@ -186,5 +186,5 @@ let appMetricF category counter instances =
   let fn = appMetric category counter instances
   System.Func<_, _>(fn)
 
-let systemMetrics (_ : PointName) =
+let systemMetrics (_: PointName) =
   ofCounters (systemCounters ())

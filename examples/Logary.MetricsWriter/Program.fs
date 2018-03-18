@@ -17,7 +17,7 @@ module Sample =
       | _ ->
         state
 
-    let ticker (rnd : Random, prevValue) =
+    let ticker (rnd: Random, prevValue) =
       let value =
         let v = (rnd.NextDouble() - 0.5) * 0.3
         if abs v < 0.03 then rnd.NextDouble() - 0.5

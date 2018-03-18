@@ -100,18 +100,18 @@ module PointName =
   let empty = PointName Array.empty
 
   [<CompiledName "OfSingle">]
-  let ofSingle (segment : string) =
+  let ofSingle (segment: string) =
     PointName [| segment |]
 
   [<CompiledName "OfList">]
-  let ofList (hiera : string list) =
+  let ofList (hiera: string list) =
     PointName (Array.ofList hiera)
 
   /// Creates a point name of the array. As a performance optimisation, Logary
   /// assumes that you do not change the array contents afterwards, and will
   /// treat this value like an immutable value.
   [<CompiledName "OfArray">]
-  let ofArray (hiera : string[]) =
+  let ofArray (hiera: string[]) =
     PointName hiera
 
   [<CompiledName "Parse">]
@@ -119,11 +119,11 @@ module PointName =
     String.splita '.' s |> ofArray
 
   [<CompiledName "Format">]
-  let format (pn : PointName) =
+  let format (pn: PointName) =
     pn.ToString()
 
   [<CompiledName "SetEnding">]
-  let setEnding (nameEnding : string) (PointName segments as original) =
+  let setEnding (nameEnding: string) (PointName segments as original) =
     if isNull nameEnding then original else
     PointName (Array.append segments [| nameEnding |])
 

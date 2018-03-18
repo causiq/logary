@@ -36,7 +36,7 @@ module Impl =
     { client         : TcpClient
       sendRecvStream : System.Net.Sockets.NetworkStream option }
 
-  let tryDispose (item : 'a option) =
+  let tryDispose (item: 'a option) =
     if item.IsNone then
       ()
     else
@@ -62,7 +62,7 @@ module Impl =
 
   /// All graphite messages are of the following form.
   /// metric_path value timestamp\n
-  let createMsg (path : String) (timestamp : Instant) (value : string) =
+  let createMsg (path: String) (timestamp: Instant) (value: string) =
     let line = String.Format("{0} {1} {2}\n", path, value, timestamp.ToUnixTimeTicks() / NodaConstants.TicksPerSecond)
     UTF8.bytes line
 
@@ -75,7 +75,7 @@ module Impl =
     Job.fromAsync (stream.AsyncWrite buffer) >>-.
     { state with sendRecvStream = Some stream }
 
-  let loop (conf : GraphiteConf) (svc : RuntimeInfo, api : TargetAPI) =
+  let loop (conf: GraphiteConf) (svc: RuntimeInfo, api : TargetAPI) =
 
     let rec running state : Job<unit> =
       Alt.choose [
@@ -115,7 +115,7 @@ type Builder(conf, callParent : ParentCallback<Builder>) =
   member x.ConnectTo(hostname, port) =
     ! (callParent <| Builder(GraphiteConf.create(hostname, port), callParent))
 
-  new(callParent : ParentCallback<_>) =
+  new(callParent: ParentCallback<_>) =
     Builder(GraphiteConf.create(""), callParent)
 
   interface SpecificTargetConf with

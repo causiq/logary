@@ -15,7 +15,7 @@ module StopwatchEx =
       Ticks.toGauge sw.ElapsedTicks
 
     [<Extension; CompiledName "Time">]
-    static member time (fn : unit -> 'res) =
+    static member time (fn: unit -> 'res) =
       let sw = Stopwatch.StartNew()
       let res = fn ()
       sw.Stop()

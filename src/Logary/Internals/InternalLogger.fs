@@ -70,11 +70,11 @@ module InternalLogger =
     |> Job.startIgnore
     >>-. api
 
-  let add (conf : TargetConf) (x : T) : Job<unit> =
+  let add (conf: TargetConf) (x: T): Job<unit> =
     Ch.give x.addCh conf
     :> Job<_>
 
-  let shutdown (x : Logger) =
+  let shutdown (x: Logger) =
     match x with
     | :? T as ilogger -> Ch.give ilogger.shutdownCh ()
     | _ -> Alt.always ()

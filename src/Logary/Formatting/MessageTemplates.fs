@@ -67,7 +67,7 @@ module MessageTemplates =
 
     /// need invoke when data is complex template property value
     /// since a complex data may destructure to sacalar value
-    member __.TryShowAsRefId (data : obj) =
+    member __.TryShowAsRefId (data: obj) =
       match idGen.GetId data with
       | refId, false ->
         do showAsIdSet.Add refId |> ignore
@@ -221,7 +221,7 @@ module MessageTemplates =
 
     let scalarTypeHash = HashSet(scalarTypes)
 
-    let inline private (|?) (f: DestructureStrategy) (g: DestructureStrategy) : DestructureStrategy =
+    let inline private (|?) (f: DestructureStrategy) (g: DestructureStrategy): DestructureStrategy =
       fun req ->
         match f req with
         | Some _ as d -> d
@@ -232,21 +232,21 @@ module MessageTemplates =
     let someStructure = StructureValue >> Some
     let someDictionary = DictionaryValue >> Some
 
-    let inline tryNull (req : DestructureRequest) =
+    let inline tryNull (req: DestructureRequest) =
       if isNull req.Value then someScalar null
       else None
 
-    let inline tryBuiltInTypes (req : DestructureRequest)  =
+    let inline tryBuiltInTypes (req: DestructureRequest)  =
       if scalarTypeHash.Contains(req.Value.GetType()) then
         someScalar req.Value
       else None
 
-    let inline tryEnum (req : DestructureRequest)  =
+    let inline tryEnum (req: DestructureRequest)  =
       match req.Value with
       | :? Enum as e -> someScalar e
       | _ -> None
 
-    let inline tryByteArrayMaxBytes maxBytes (req : DestructureRequest)  =
+    let inline tryByteArrayMaxBytes maxBytes (req: DestructureRequest)  =
       match req.Value with
       | :? array<Byte> as bytes ->
         if bytes.Length <= maxBytes then someScalar bytes
@@ -257,15 +257,15 @@ module MessageTemplates =
           someScalar description
       | _ -> None
 
-    let inline tryByteArray (req : DestructureRequest)  = tryByteArrayMaxBytes 1024 req
+    let inline tryByteArray (req: DestructureRequest)  = tryByteArrayMaxBytes 1024 req
 
-    let inline tryReflectionTypes (req : DestructureRequest)  =
+    let inline tryReflectionTypes (req: DestructureRequest)  =
         match req.Value with
         | :? Type as t -> someScalar t
         | :? MemberInfo as m -> someScalar m
         | _ -> None
 
-    let inline tryScalar (req : DestructureRequest)  =
+    let inline tryScalar (req: DestructureRequest)  =
       tryNull |? tryBuiltInTypes |? tryEnum |? tryByteArray |? tryReflectionTypes
       <| req
 
@@ -280,7 +280,7 @@ module MessageTemplates =
     let inline private isFSharpList (t: Type) =
       t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Microsoft.FSharp.Collections.List<_>>
 
-    let inline tryContainerTypes (resolver : DestructureResolver) (req : DestructureRequest) =
+    let inline tryContainerTypes (resolver: DestructureResolver) (req: DestructureRequest) =
       let resolverWithValue value = resolver <| req.WithNewValue(value)
       let instance = req.Value
       let refCount = req.IdManager
@@ -340,7 +340,7 @@ module MessageTemplates =
 
     let lookupPropFlags = BindingFlags.Public ||| BindingFlags.Instance
 
-    let inline private tryGetValueWithProp (propInfo : PropertyInfo) (instance : obj) =
+    let inline private tryGetValueWithProp (propInfo: PropertyInfo) (instance: obj) =
       match propInfo with
       | p when (not <| isNull p)
                && p.CanRead
@@ -355,15 +355,15 @@ module MessageTemplates =
         Some propValue
       | _ -> None
 
-    let inline private tryGetValueWithType (t : Type) name (instance : obj) =
+    let inline private tryGetValueWithType (t: Type) name (instance: obj) =
       t.GetProperty(name,lookupPropFlags,null,null,Array.empty,null) |> tryGetValueWithProp <| instance
 
-    let rec reflectionProperties (tryGetProjection : Projection.ProjectionStrategy) (resolver : DestructureResolver) (req : DestructureRequest) =
+    let rec reflectionProperties (tryGetProjection: Projection.ProjectionStrategy) (resolver: DestructureResolver) (req: DestructureRequest) =
       let ty = req.Value.GetType()
       match tryGetProjection ty with
       | None -> reflectionByProjection resolver (Projection.Except []) req // try reflection all
       | Some how -> reflectionByProjection resolver how req
-    and private reflectionByProjection (resolver : DestructureResolver) (how : Projection.How) (req : DestructureRequest) =
+    and private reflectionByProjection (resolver: DestructureResolver) (how: Projection.How) (req: DestructureRequest) =
       let resolverChild childHow childInstance=
         match childHow with
         | Projection.Only ([])
@@ -428,15 +428,15 @@ module MessageTemplates =
             StructureValue (refId, typeTag, nvs)
       else ScalarValue null
 
-    let rec destructure (registry : ICustomDestructureRegistry) (tryGetProjection : Projection.ProjectionStrategy) (req : DestructureRequest) : TemplatePropertyValue =
+    let rec destructure (registry: ICustomDestructureRegistry) (tryGetProjection: Projection.ProjectionStrategy) (req: DestructureRequest): TemplatePropertyValue =
       let resolver = destructure registry tryGetProjection
-      let tryCustom (req : DestructureRequest) =
+      let tryCustom (req: DestructureRequest) =
         match registry.TryGetRegistration (req.Value.GetType()) with
         | Some customFactory -> customFactory resolver req |> Some
         | None -> None
       let tryDefault = tryNull |? tryCustom |? tryScalar |? (tryContainerTypes resolver)
-      let catchByReflection (req : DestructureRequest) = reflectionProperties tryGetProjection resolver req
-      let catchByScalarOrigin (req : DestructureRequest) = ScalarValue req.Value
+      let catchByReflection (req: DestructureRequest) = reflectionProperties tryGetProjection resolver req
+      let catchByScalarOrigin (req: DestructureRequest) = ScalarValue req.Value
 
       match tryNull req with
       | Some tpv -> tpv
@@ -455,7 +455,7 @@ module MessageTemplates =
   module Formatting =
 
     module Utils =
-      let formatWithCustom (provider : IFormatProvider) (arg : obj) format =
+      let formatWithCustom (provider: IFormatProvider) (arg: obj) format =
         let customFormatter = provider.GetFormat(typeof<System.ICustomFormatter>) :?> System.ICustomFormatter
         match customFormatter with
         | cf when not (isNull cf) ->
@@ -465,7 +465,7 @@ module MessageTemplates =
           | :? System.IFormattable as f -> f.ToString(format, provider)
           | _ -> arg.ToString()
 
-      let escapeNewlineAndQuote (str : string) =
+      let escapeNewlineAndQuote (str: string) =
         if isNull str then String.Empty
         else
           let escape = str.Replace("\"","\\\"").Replace("\r\n",@"\r\n").Replace("\n",@"\n")
@@ -489,7 +489,7 @@ module MessageTemplates =
 
       let tokeniseRefId refId = (sprintf "$%d " refId), KeywordSymbol
 
-      let tokeniseScalarValue (provider : IFormatProvider) (sv: obj) (format: string) =
+      let tokeniseScalarValue (provider: IFormatProvider) (sv: obj) (format: string) =
         match sv with
         | null -> "null", StringSymbol
         | :? string as s ->
@@ -515,7 +515,7 @@ module MessageTemplates =
             // yield formated
           else (Utils.escapeNewlineAndQuote formated), StringSymbol
 
-      let tokeniseSequenceValueCompact (svs : TemplatePropertyValue list) (recurse : TemplatePropertyValue -> seq<string * LiterateToken>) =
+      let tokeniseSequenceValueCompact (svs: TemplatePropertyValue list) (recurse: TemplatePropertyValue -> seq<string * LiterateToken>) =
         let mutable isFirst = true
         let valueTokens =
           svs
@@ -533,7 +533,7 @@ module MessageTemplates =
         }
 
       // use for formatting message template
-      let rec tokenisePropValueCompact (writeState : WriteState) (tpv : TemplatePropertyValue) (format : string) =
+      let rec tokenisePropValueCompact (writeState: WriteState) (tpv: TemplatePropertyValue) (format: string) =
         seq {
           match tpv with
           | RefId id ->  yield tokeniseRefId id
@@ -581,7 +581,7 @@ module MessageTemplates =
         }
 
       // use for formatting message context
-      let rec tokenisePropValueIndent (writeState : WriteState) (tpv : TemplatePropertyValue) (nl : string) (depth : int) =
+      let rec tokenisePropValueIndent (writeState: WriteState) (tpv: TemplatePropertyValue) (nl: string) (depth: int) =
         // fields/gauges/other use 2 indent, depth start from 0, so 2+2 = 6
         let indent = new String (' ', depth * 2 + 4)
         seq {
@@ -651,7 +651,7 @@ module MessageTemplates =
                 yield! tokenisePropValueIndent writeState entryValue nl (depth + 2)
         }
 
-      let tokeniseProperty (writeState : WriteState) (pt : Property) (pv : TemplatePropertyValue) =
+      let tokeniseProperty (writeState: WriteState) (pt: Property) (pv: TemplatePropertyValue) =
         match pv with
         | ScalarValue sv ->
           let tokenised = tokeniseScalarValue writeState.provider sv pt.format
@@ -667,7 +667,7 @@ module MessageTemplates =
             (padded, token) |> Seq.singleton
         | _ -> tokenisePropValueCompact writeState pv null
 
-      let tokeniseTemplate (pvd: IFormatProvider) (t : Template) tryGetPropertyValue =
+      let tokeniseTemplate (pvd: IFormatProvider) (t: Template) tryGetPropertyValue =
         t.tokens
         |> Seq.collect (function
            | TemplateToken.Text raw -> (raw, Text) |> Seq.singleton

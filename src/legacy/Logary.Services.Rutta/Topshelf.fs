@@ -23,7 +23,7 @@ module FSharpApi =
   let toAction1 f = new Action<_>(f)
   let toFunc f = new Func<_>(f)
 
-  let service_control (start : HostControl -> bool) (stop : HostControl -> bool) () =
+  let service_control (start: HostControl -> bool) (stop: HostControl -> bool) () =
     { new ServiceControl with
       member x.Start hc =
         start hc
@@ -144,13 +144,13 @@ module FSharpApi =
         let f sc = serviceRecovery.ServiceRecoveryConfigurations |> List.fold (fun s x -> x s) sc |> ignore
         add_host_configuration_step (fun c -> ServiceRecoveryConfiguratorExtensions.EnableServiceRecovery(c, f |> toAction1))
 
-    let restart (span : TimeSpan) = add_service_recovery_step (fun c -> c.RestartService(int span.TotalMinutes))
+    let restart (span: TimeSpan) = add_service_recovery_step (fun c -> c.RestartService(int span.TotalMinutes))
 
-    let restart_computer (span : TimeSpan) message  = add_service_recovery_step (fun c -> c.RestartComputer(int span.TotalMinutes, message))
+    let restart_computer (span: TimeSpan) message  = add_service_recovery_step (fun c -> c.RestartComputer(int span.TotalMinutes, message))
 
-    let run_program (span : TimeSpan) cmd = add_service_recovery_step (fun c -> c.RunProgram(int span.TotalMinutes, cmd))
+    let run_program (span: TimeSpan) cmd = add_service_recovery_step (fun c -> c.RunProgram(int span.TotalMinutes, cmd))
 
-    let set_reset_period (days : TimeSpan) = add_service_recovery_step (fun c -> c.SetResetPeriod(int days.TotalDays))
+    let set_reset_period (days: TimeSpan) = add_service_recovery_step (fun c -> c.SetResetPeriod(int days.TotalDays))
 
     let on_crash_only = add_service_recovery_step (fun c -> c.OnCrashOnly();c)
 
@@ -158,22 +158,22 @@ module FSharpApi =
   /// fluent configuration API.
   module Time =
     let directly = TimeSpan.FromMilliseconds 0.
-    let ms (i : int) = TimeSpan.FromMilliseconds(float i)
-    let s (i : int) = TimeSpan.FromSeconds (float i)
-    let min (i : int) = TimeSpan.FromMinutes (float i)
-    let h (i : int) = TimeSpan.FromHours (float i)
-    let d (i : int) = TimeSpan.FromDays (float i)
+    let ms (i: int) = TimeSpan.FromMilliseconds(float i)
+    let s (i: int) = TimeSpan.FromSeconds (float i)
+    let min (i: int) = TimeSpan.FromMinutes (float i)
+    let h (i: int) = TimeSpan.FromHours (float i)
+    let d (i: int) = TimeSpan.FromDays (float i)
 
   /// A module that wraps the calls to HostControl, not a part of the fluent
   /// configuration API.
   module HostControl =
     open System
 
-    let request_more_time (hc : HostControl) time =
+    let request_more_time (hc: HostControl) time =
       hc.RequestAdditionalTime time
 
-    let restart (hc : HostControl) =
+    let restart (hc: HostControl) =
       hc.Restart()
 
-    let stop (hc : HostControl) =
+    let stop (hc: HostControl) =
       hc.Stop()

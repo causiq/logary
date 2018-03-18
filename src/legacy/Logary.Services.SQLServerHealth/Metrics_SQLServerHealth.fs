@@ -32,7 +32,7 @@ type LatencyProbeDataSources =
   | Drive of DriveName
 
 module StringUtils =
-  let camelToSnake (str : string) =
+  let camelToSnake (str: string) =
     let rec r cs = function
       | curr when curr = str.Length ->
         new String(cs |> List.rev |> List.toArray)
@@ -128,7 +128,7 @@ module IOInfo =
     match data |> List.filter f with
     | []            -> failwithf "filter returned no results"
     | first :: rest ->
-      rest |> List.fold (fun (s : IOInfo) t ->
+      rest |> List.fold (fun (s: IOInfo) t ->
         { s with
             ioStallReadMs     = s.ioStallReadMs + t.ioStallReadMs
             ioStallWriteMs    = s.ioStallWriteMs + t.ioStallWriteMs
@@ -166,10 +166,10 @@ module internal Impl =
   let timeNow =
     SystemClock.Instance.GetCurrentInstant
 
-  let dotToUnderscore (s : string) =
+  let dotToUnderscore (s: string) =
     s.Replace(".", "_")
 
-  let removeColon (s : string) =
+  let removeColon (s: string) =
     s.Replace(":", "")
 
   type DPCalculator =

@@ -15,17 +15,17 @@ type Will<'a> = Will of MVar<'a option>
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Will =
 
-  let create () : Will<'a> =
+  let create (): Will<'a> =
     Will (MVar None)
   let createFull initial : Will<'a> =
     Will (MVar (Some initial))
-  let update (Will aM) (a:'a) : Alt<unit> =
+  let update (Will aM) (a:'a): Alt<unit> =
     MVar.mutateFun (always (Some a)) aM
-  let latest (Will aM) : Alt<'a option> =
+  let latest (Will aM): Alt<'a option> =
     MVar.read aM
-  let exchange (Will aM) (a:'a) : Alt<'a option> =
+  let exchange (Will aM) (a:'a): Alt<'a option> =
     MVar.modifyFun (fun a' -> Some a, a') aM
-  let revoke (Will aM) : Alt<unit> =
+  let revoke (Will aM): Alt<unit> =
     MVar.mutateFun (always None) aM
 
 type Policy =
@@ -46,7 +46,7 @@ module Policy =
   let terminate = Always Terminate
   let escalate = Always Escalate
 
-  let retry (maxRetries : uint32) =
+  let retry (maxRetries: uint32) =
     let cM = MVar 1u
     DetermineWithJob ^ fun _ ->
       MVar.modifyFun (fun r -> r + 1u, r) cM
@@ -56,7 +56,7 @@ module Policy =
         else
           Restart
 
-  let retryWithDelay (d : uint32) (maxRetries : uint32) =
+  let retryWithDelay (d: uint32) (maxRetries: uint32) =
     let cM = MVar 1u
     DetermineWithJob ^ fun _ ->
       MVar.modifyFun (fun r -> r + 1u, r) cM
@@ -66,7 +66,7 @@ module Policy =
         else
           RestartDelayed d
 
-  let exponentialBackoff (initD : uint32) (mult : uint32) (maxD : uint32) (maxRetries : uint32) =
+  let exponentialBackoff (initD: uint32) (mult: uint32) (maxD: uint32) (maxRetries: uint32) =
     let doRestart =
       match initD, mult, maxD with
       | 0u, _, _
@@ -92,7 +92,7 @@ module Policy =
 type SupervisedJob<'a> = Job<Choice<'a,exn>>
 
 module Job =
-  let rec handleFailureWith (logger : Logger) p act (xJ : #Job<'x>) (ex : exn) : SupervisedJob<'x> =
+  let rec handleFailureWith (logger: Logger) p act (xJ : #Job<'x>) (ex: exn): SupervisedJob<'x> =
     match act with
     | Restart ->
       logger.infoWithBP (eventX "Exception from supervised job, restarting now.") >>=.
@@ -109,7 +109,7 @@ module Job =
       logger.infoWithBP (eventX "Exception from supervised job, escalating.") >>=.
       Job.raises ex
 
-  and makeHandler (logger : Logger) (p : Policy) : #Job<'x> -> exn -> SupervisedJob<'x> =
+  and makeHandler (logger: Logger) (p: Policy) : #Job<'x> -> exn -> SupervisedJob<'x> =
     match p with
     | Always act ->
       handleFailureWith logger p act
@@ -120,7 +120,7 @@ module Job =
       fun xJ ex ->
         e2actJ ex >>= fun act -> handleFailureWith logger p act xJ ex
 
-  and supervise (logger : Logger) (p : Policy) : #Job<'x> -> SupervisedJob<'x> =
+  and supervise (logger: Logger) (p: Policy) : #Job<'x> -> SupervisedJob<'x> =
     let handle = makeHandler logger p
     fun xJ -> Job.tryIn xJ (Choice1Of2 >> Job.result) (handle xJ)
 

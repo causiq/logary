@@ -77,11 +77,11 @@ module Target =
   with
     member x.Name = x.name
 
-  let needSendToTarget (target : T) msg =
+  let needSendToTarget (target: T) msg =
     Rule.canPass msg target.rules
 
   /// Logs the `Message` to all the targets.Target Middleware compose at here
-  let logAll (xs : T seq) (msg : Message) : Alt<Promise<unit>> =
+  let logAll (xs: T seq) (msg: Message): Alt<Promise<unit>> =
     // NOTE: it would probably be better to create a nack that cancels
     // all outstanding requests to log (but lets others through)
     // let targets = xs |> Seq.filter (fun t -> needSendToTarget t msg) |> List.ofSeq
@@ -118,7 +118,7 @@ module Target =
 
   /// Send the target a message, returning the same instance as was passed in when
   /// the Message was acked.
-  let log (x : T) (msg : Message) : Alt<Promise<unit>> =
+  let log (x: T) (msg: Message): Alt<Promise<unit>> =
     logAll [x] msg
     // if needSendToTarget x msg then
     //   let ack = IVar ()
@@ -131,7 +131,7 @@ module Target =
   /// create an Alt that is composed of a job that blocks on placing the Message
   /// in the queue first, and *then* is selective on the ack/nack once the target
   /// has picked up the TargetMessage.
-  let flush (x : T) =
+  let flush (x: T) =
     Alt.withNackJob <| fun nack ->
     let ack = IVar ()
     RingBuffer.put x.api.requests (Flush (ack, nack)) >>-.
@@ -143,7 +143,7 @@ module Target =
     let ack = IVar ()
     Ch.give x.api.shutdownCh ack ^->. upcast ack
 
-  let create (ri : RuntimeInfo) (conf : TargetConf) : Job<T> =
+  let create (ri: RuntimeInfo) (conf: TargetConf): Job<T> =
     let specificName =  sprintf "Logary.Target(%s)" conf.name
     let ri =
       let setName = setName (PointName.parse specificName)

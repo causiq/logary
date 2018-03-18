@@ -75,9 +75,9 @@ type Runner(fac      : MigrationProcessorFactory,
 open System.Data
 
 /// used to avoid closing the SQLite connection in between migrations
-type ExistingConnectionProcessorFactory(conn : IDbConnection,
+type ExistingConnectionProcessorFactory(conn: IDbConnection,
                                         processorFac : IDbConnection -> IMigrationProcessor) =
   inherit MigrationProcessorFactory()
 
-  override x.Create (connStr : string, accouncer : IAnnouncer, opts : IMigrationProcessorOptions) =
+  override x.Create (connStr: string, accouncer : IAnnouncer, opts : IMigrationProcessorOptions) =
     processorFac conn

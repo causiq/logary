@@ -35,8 +35,8 @@ module Reflection =
         Type.GetType typ
     Cache.memoize findModule_
 
-  let readLiteral (loggerType : Type) =
-    Cache.memoize (fun (propertyName : string, defaultValue : 'a) ->
+  let readLiteral (loggerType: Type) =
+    Cache.memoize (fun (propertyName: string, defaultValue : 'a) ->
       let literals = findModule (loggerType, "Literals")
       let field = literals.GetProperty(propertyName, BindingFlags.Static ||| BindingFlags.Public)
       if isNull field then defaultValue
@@ -56,13 +56,13 @@ module Reflection =
       | V1 -> "V1"
       | V2 -> "V2"
 
-    static member ofType (loggerType : Type) =
+    static member ofType (loggerType: Type) =
       match versionFrom loggerType with
       | 2u ->
         V2
       | _ ->
         V1
-  let (|FSharp|CSharp|) (loggerType : Type) =
+  let (|FSharp|CSharp|) (loggerType: Type) =
     let version = ApiVersion.ofType loggerType
     let globals = findModule (loggerType, "Global")
     match readLiteral loggerType ("FacadeLanguage", "F#") with
@@ -75,7 +75,7 @@ module Reflection =
     | language ->
       failwithf "Unknown language '%s'" language
 
-  let rawPrint (invocation : IInvocation) =
+  let rawPrint (invocation: IInvocation) =
     printfn "Invocation"
     printfn "=========="
     printfn "Args: "
@@ -88,7 +88,7 @@ module Reflection =
 
 module LoggerAdapterShared =
 
-  let unitOfString (s : string) =
+  let unitOfString (s: string) =
     match s with
     | "bit" -> Bits
     | "B" -> Bytes
@@ -115,7 +115,7 @@ module LoggerAdapterShared =
 module LoggerAdapter =
   open Reflection
 
-  let private defaultName (fallback : string[]) = function
+  let private defaultName (fallback: string[]) = function
     | [||] ->
       fallback
     | otherwise ->
@@ -123,7 +123,7 @@ module LoggerAdapter =
 
   /// Convert the object instance to a PointValue. Is used from the
   /// other code in this module.
-  let toPointValue (o : obj) : LoggerAdapterShared.OldPointValue =
+  let toPointValue (o: obj): LoggerAdapterShared.OldPointValue =
     let typ = o.GetType()
     let info, values = FSharpValue.GetUnionFields(o, typ)
     match info.Name, values with
@@ -139,7 +139,7 @@ module LoggerAdapter =
 
   /// Convert the object instance to a LogLevel. Is used from the
   /// other code in this module.
-  let toLogLevel (o : obj) : LogLevel =
+  let toLogLevel (o: obj): LogLevel =
     let typ = o.GetType()
     let par = typ, "toInt"
     let toInt = findMethod (typ, "toInt")
@@ -147,7 +147,7 @@ module LoggerAdapter =
 
   /// Convert the object instance to a Logary.DataModel.Message. Is used from the
   /// other code in this module.
-  let toMsg fallbackName (o : obj) : Message =
+  let toMsg fallbackName (o: obj): Message =
     let typ = o.GetType()
     let readProperty name = (findProperty (typ, name)).GetValue o
     let oldPointValue = readProperty "value" |> toPointValue
@@ -170,13 +170,13 @@ module LoggerAdapter =
 
   /// Convert the object instance to a message factory method. Is used from the
   /// other code in this module.
-  let toMsgFactory fallbackName oLevel (o : obj) : LogLevel -> Message =
+  let toMsgFactory fallbackName oLevel (o: obj): LogLevel -> Message =
     let typ = o.GetType()
     let invokeMethod = findMethod (typ, "Invoke")
     fun level ->
       toMsg fallbackName (invokeMethod.Invoke(o, [| oLevel |]))
 
-  let internal (|Log|LogWithAck|LogSimple|) ((invocation, defaultName) : IInvocation * string[]) : Choice<_, _, _> =
+  let internal (|Log|LogWithAck|LogSimple|) ((invocation, defaultName): IInvocation * string[]): Choice<_, _, _> =
     match invocation.Method.Name with
     | "log" ->
       let oLevel = invocation.Arguments.[0]
@@ -201,13 +201,13 @@ module LoggerAdapter =
   /// into logary. Provide the namespace you put the facade in and the assembly
   /// which it should be loaded from, and this adapter will use (memoized) reflection
   /// to properly bind to the facade.
-  type private I(logger : Logger, version : ApiVersion) =
+  type private I(logger: Logger, version : ApiVersion) =
     let (PointName defaultName) = logger.name
 
     // Codomains of these three functions are equal to codomains of Facade's
     // functions:
 
-    let logWithAck (level : LogLevel) (messageFactory : LogLevel -> Message) : Async<unit> =
+    let logWithAck (level: LogLevel) (messageFactory: LogLevel -> Message): Async<unit> =
       // a placeholder for the Promise ack from Logary proper
       let prom = IVar ()
 
@@ -226,7 +226,7 @@ module LoggerAdapter =
     let logV2 level messageFactory : Async<unit> =
       logger.log level messageFactory |> Alt.toAsync
 
-    let logSimple (msg : Message) : unit =
+    let logSimple (msg: Message): unit =
       logger.logSimple msg
 
     interface IInterceptor with
@@ -250,7 +250,7 @@ module LoggerAdapter =
   /// Create a target assembly's logger from the given type, which delegates to
   /// the passed Logary proper Logger.
   [<CompiledName("Create")>]
-  let create (typ : Type) logger : obj =
+  let create (typ: Type) logger : obj =
     if typ = null then invalidArg "typ" "is null"
     let generator = new ProxyGenerator()
     let facade = I (logger, ApiVersion.ofType typ) :> IInterceptor
@@ -259,7 +259,7 @@ module LoggerAdapter =
   /// Create a target assembly's logger from the given type-string, which
   /// delegates to the passed Logary proper logger.
   [<CompiledName("Create")>]
-  let createString (typ : string) logger : obj =
+  let createString (typ: string) logger : obj =
     create (Type.GetType typ) logger
 
   /// Creates a target assembly's logger from the passed generic logger type
@@ -276,13 +276,13 @@ module LoggerCSharpAdapter =
   open Reflection
   open Logary.CSharp
 
-  let private defaultName (fallback : string[]) = function
+  let private defaultName (fallback: string[]) = function
     | [||] ->
       fallback
     | otherwise ->
       otherwise
 
-  let internal toPointValue (o : obj) : LoggerAdapterShared.OldPointValue =
+  let internal toPointValue (o: obj): LoggerAdapterShared.OldPointValue =
     let typ = o.GetType()
     //printfn "Converting object=%A to PointValue" o
     if typ.Name = "Event" then
@@ -297,12 +297,12 @@ module LoggerCSharpAdapter =
     else
       failwithf "Unknown point value type name '%s'" typ.Name
 
-  let internal toLogLevel (o : obj) : LogLevel =
+  let internal toLogLevel (o: obj): LogLevel =
     LogLevel.ofInt (unbox (Convert.ChangeType (o, typeof<int>)))
 
   /// Convert the object instance to a Logary.DataModel.Message. Is used from the
   /// other code in this module.
-  let internal toMessage fallbackName (o : obj) : Message =
+  let internal toMessage fallbackName (o: obj): Message =
     let typ = o.GetType()
     let readProperty name = (findProperty (typ, name)).GetValue o
     let oldPointValue = readProperty "Value" |> toPointValue
@@ -326,7 +326,7 @@ module LoggerCSharpAdapter =
         | _ -> msg)
 
   module internal LogMessage =
-    let create (loggerType : Type) : string[] -> obj -> obj =
+    let create (loggerType: Type): string[] -> obj -> obj =
       let logLevelT = findModule (loggerType, "LogLevel")
       let pointValueT = findModule (loggerType, "PointValue")
       let emptyDic =
@@ -343,18 +343,18 @@ module LoggerCSharpAdapter =
         findStaticProperty (emptyValueT, "Empty")
         |> fun t -> t.GetValue(null, null)
 
-      fun (name : string[]) (level : obj) ->
+      fun (name: string[]) (level: obj) ->
         let ts =  Logary.Internals.Global.getTimestamp ()
         let args = [| box name; level; emptyValue; box emptyDic; box ts |]
         //printfn "====> %s(%A)" logMessageT.Name args
         Activator.CreateInstance(logMessageT, args)
 
 
-  type private I (loggerType : Type, logger : Logger, version : ApiVersion) =
+  type private I (loggerType: Type, logger : Logger, version : ApiVersion) =
     let (PointName defaultName) = logger.name
     let createMessage = LogMessage.create loggerType
 
-    let toMessageFactory (oLevel : obj) (facadeFactory : obj) : LogLevel -> Message =
+    let toMessageFactory (oLevel: obj) (facadeFactory: obj): LogLevel -> Message =
       let typ = facadeFactory.GetType()
       let invokeMethod = findMethod (typ, "Invoke")
       fun level ->
@@ -383,7 +383,7 @@ module LoggerCSharpAdapter =
           failwithf "Method '%s' should not exist on Logary.CSharp.Facade.ILogger" meth
 
   [<CompiledName "Create">]
-  let create (typ : Type) logger : obj =
+  let create (typ: Type) logger : obj =
     if typ = null then invalidArg "typ" "is null"
     let generator = new ProxyGenerator()
     let facade = I (typ, logger, ApiVersion.ofType typ) :> IInterceptor
@@ -392,7 +392,7 @@ module LoggerCSharpAdapter =
   /// Create a target assembly's logger from the given type-string, which
   /// delegates to the passed Logary proper logger.
   [<CompiledName "Create">]
-  let createString (typ : string) logger : obj =
+  let createString (typ: string) logger : obj =
     create (Type.GetType typ) logger
 
   /// Creates a target assembly's logger from the passed generic logger type
@@ -407,7 +407,7 @@ module LoggerCSharpAdapter =
 module LogaryFacadeAdapter =
   open Reflection
 
-  let internal (|GetLogger|GetTimestamp|ConsoleSemaphore|) (i : IInvocation) =
+  let internal (|GetLogger|GetTimestamp|ConsoleSemaphore|) (i: IInvocation) =
     match i.Method.Name with
     | "GetTimestamp" ->
       GetTimestamp
@@ -418,7 +418,7 @@ module LogaryFacadeAdapter =
     | otherwise ->
       failwithf "Unknown function called '%s'" otherwise
 
-  type internal LoggerConfigImpl(loggerType : Type, logManager : LogManager) =
+  type internal LoggerConfigImpl(loggerType: Type, logManager : LogManager) =
     interface IInterceptor with
       member x.Intercept invocation =
         match invocation with
@@ -436,7 +436,7 @@ module LogaryFacadeAdapter =
   /// function creates a configuration matching the `configType`; and it also
   /// needs the `loggerType` of the target assembly for orientation.
   [<CompiledName "CreateFSharpConfig">]
-  let createConfig configType loggerType (logManager : LogManager) =
+  let createConfig configType loggerType (logManager: LogManager) =
     let values : obj array =
       FSharpType.GetRecordFields(configType)
       |> Array.map (fun field ->
@@ -478,7 +478,7 @@ module LogaryFacadeAdapter =
   /// YourAssembly.Logging.Global.initialise with a configuration value which
   /// is pointing to Logary.
   [<CompiledName "Initialise">]
-  let initialise<'logger> (logManager : LogManager) : unit =
+  let initialise<'logger> (logManager: LogManager): unit =
     let loggerType = typeof<'logger>
     match typeof<'logger> with
     | FSharp (version, globalType, configType) ->

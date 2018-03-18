@@ -3,7 +3,7 @@
 open Expecto
 
 type Assert =
-  static member Contains(msg : string, xExpected : 'a, xs : 'a seq) =
+  static member Contains(msg: string, xExpected : 'a, xs : 'a seq) =
     match Seq.tryFind ((=) xExpected) xs with
     | None -> Tests.failtestf "%s -- expected %A to contain %A" msg xs xExpected
     | Some _ -> ()

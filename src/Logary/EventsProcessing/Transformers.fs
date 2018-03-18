@@ -134,7 +134,7 @@ module ExpWeightedMovAvg =
   ///
   /// - `samplePeriod` is how long is between each tick
   /// - `alphaPeriod` is the duration the EWMA should be calculated over
-  let alpha (samplePeriod : Duration) (alphaPeriod : Duration) =
+  let alpha (samplePeriod: Duration) (alphaPeriod: Duration) =
     1. - exp (- (samplePeriod.TotalNanoseconds / alphaPeriod.TotalNanoseconds))
 
 
@@ -174,7 +174,7 @@ module ExpWeightedMovAvg =
                    rate      = rate
                    lastTickTime = Some instantNow}
 
-  let rateInUnit (inUnit : Duration) state =
+  let rateInUnit (inUnit: Duration) state =
     state.rate * inUnit.TotalNanoseconds
 
   /// duration: SamplePeriod

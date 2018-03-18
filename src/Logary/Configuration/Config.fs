@@ -66,7 +66,7 @@ module Config =
   let consoleSemaphore getConsoleSemaphore lconf =
     { lconf with getSem = getConsoleSemaphore }
 
-  let middleware mid (lconf : T) =
+  let middleware mid (lconf: T) =
     { lconf with middleware = mid :: lconf.middleware }
 
   let ilogger ilogger lconf =
@@ -88,14 +88,14 @@ module Config =
   let disableGlobals lconf =
     { lconf with setGlobals = false }
 
-  let inline private setToGlobals (logManager : LogManager) =
+  let inline private setToGlobals (logManager: LogManager) =
     let config =
       { Global.defaultConfig with
           getLogger = logManager.getLogger
           getLoggerWithMiddleware = logManager.getLoggerWithMiddleware }
     Global.initialise config
 
-  let build (lconf : T) : Job<LogManager> =
+  let build (lconf: T): Job<LogManager> =
     let ri : RuntimeInfo.T =
       { service = lconf.service
         host = lconf.host

@@ -52,7 +52,7 @@ module internal Impl =
             .InformationalVersion
 
 
-  let getData (msg : Logary.Message) =
+  let getData (msg: Logary.Message) =
     msg.context
     |> HashMap.toSeq
     |> Seq.map( fun (name, v) ->
@@ -60,7 +60,7 @@ module internal Impl =
        Elmah.Io.Client.Models.Item(name, jsonStr))
     |> fun xs -> Collections.Generic.List<_>(xs)
 
-  let getType (msg : Logary.Message) =
+  let getType (msg: Logary.Message) =
     match msg |> getErrors |>  List.tryLast with
     | Some exn ->
       exn.GetType().FullName
@@ -79,9 +79,9 @@ module internal Impl =
   let loop (conf: ElmahIOConf) (ri: RuntimeInfo, api: TargetAPI) =
     let internalError = Ch ()
 
-    let rec loop (state : State) : Job<unit> =
+    let rec loop (state: State): Job<unit> =
       Alt.choose [
-        internalError ^=> fun (args : FailEventArgs) ->
+        internalError ^=> fun (args: FailEventArgs) ->
           let message, ex = args.Message, args.Error
           Message.eventError message.Title
           |> Message.setContext "internalErrorMessage" message
@@ -146,10 +146,10 @@ let create conf : string -> TargetConf =
 
 /// Use with LogaryFactory.New( s => s.Target<ElmahIO.Builder>().WithLogId("MY GUID HERE") )
 type Builder(conf, callParent : Target.ParentCallback<Builder>) =
-  member x.WithLogIdAndApiKey(logId : Guid, apiKey : string) =
+  member x.WithLogIdAndApiKey(logId: Guid, apiKey : string) =
     ! (callParent <| Builder({ conf with logId = logId ; apiKey = apiKey}, callParent))
 
-  new(callParent : Target.ParentCallback<_>) =
+  new(callParent: Target.ParentCallback<_>) =
     Builder(empty, callParent)
 
   interface Target.SpecificTargetConf with

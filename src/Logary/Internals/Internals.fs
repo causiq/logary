@@ -28,7 +28,7 @@ module internal Choice =
 module internal Alt =
   open Hopac.Infixes
 
-  let apply (fAlt : Alt<'a -> 'b>) (xAlt : Alt<'a>) =
+  let apply (fAlt: Alt<'a -> 'b>) (xAlt: Alt<'a>) =
     let one = fAlt <+> xAlt
     one ^-> fun (fA, x) -> fA x
 
@@ -39,7 +39,7 @@ module internal List =
 
   /// Map a Job producing function over a list to get a new Job using
   /// applicative style (parallel). ('a -> Job<'b>) -> 'a list -> Job<'b list>
-  let rec traverseJobA (f : 'a -> #Job<'b>) (list : 'a list) : Job<'b list> =
+  let rec traverseJobA (f: 'a -> #Job<'b>) (list: 'a list): Job<'b list> =
     let cons head tail = head :: tail
     let initState = Job.result []
     let folder head tail =
@@ -47,7 +47,7 @@ module internal List =
 
     List.foldBack folder list initState
 
-  let rec traverseAltA (f : _ -> Alt<'b>) list : Alt<'b list> =
+  let rec traverseAltA (f: _ -> Alt<'b>) list : Alt<'b list> =
     let cons head tail = head :: tail
     let initState = Alt.always []
     let folder head tail =
@@ -57,7 +57,7 @@ module internal List =
 
 [<AutoOpen>]
 module internal Comparison =
-  let thenCompare (a : 'a) (b : 'a) = function
+  let thenCompare (a: 'a) (b: 'a) = function
     | 0 -> compare a b
     | x -> x
 
@@ -80,7 +80,7 @@ module internal Rnd =
     BitConverter.ToInt64 (buf, 0)
 
   /// get the next int64 within [0, max]
-  let nextInt64' (max : int64) =
+  let nextInt64' (max: int64) =
     let mutable bits = 0L
     let mutable value = 0L
     let mutable first = true
@@ -95,13 +95,13 @@ module HashMap =
   open Logary.Internals.Aether
 
   /// Prism to a value associated with a key in a map.
-  let key_ (k: 'k) : Prism<HashMap<'k,'v>,'v> =
+  let key_ (k: 'k): Prism<HashMap<'k,'v>,'v> =
     HashMap.tryFind k,
     (fun v x ->
       if HashMap.containsKey k x then x else HashMap.set k v x )
 
   /// Lens to a value option associated with a key in a map.
-  let value_ (k: 'k) : Lens<HashMap<'k,'v>, 'v option> =
+  let value_ (k: 'k): Lens<HashMap<'k,'v>, 'v option> =
     HashMap.tryFind k,
     (fun v x ->
       match v with
@@ -111,7 +111,7 @@ module HashMap =
 module Cache =
   open System.Collections.Concurrent
 
-  let memoize<'input, 'output> (f : 'input -> 'output) : ('input -> 'output) =
+  let memoize<'input, 'output> (f: 'input -> 'output) : ('input -> 'output) =
     let cache = ConcurrentDictionary<'input, 'output>()
     fun x -> cache.GetOrAdd(x, f)
 
@@ -124,12 +124,12 @@ module Map =
 
   // TODO: cache
   let private props =
-    (fun (typ : Type) ->
+    (fun (typ: Type) ->
       typ.GetProperties() |> Array.map (fun p -> p.Name) |> Set.ofSeq)
 
   // TODO: cache
   let private prop =
-    fun (name : string, typ : Type) ->
+    fun (name: string, typ : Type) ->
       typ.GetProperty name
 
   /// This is basically an assembly-internal function; depend on at
@@ -156,7 +156,7 @@ module Map =
       let typ = x.GetType()
       Set.contains "Item1" (props typ) && Set.contains "Item2" (props typ)
 
-    let read (kp : PropertyInfo) (vp : PropertyInfo) x =
+    let read (kp: PropertyInfo) (vp: PropertyInfo) x =
       if kp = null then raise (invalidArg "kp" "should not be null")
       if vp = null then raise (invalidArg "vp" "should not be null")
       try

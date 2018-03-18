@@ -63,13 +63,13 @@ module internal Impl =
     { zmqCtx = context
       sender = sender }
 
-  let loop (conf : LogstashConf)
-           (ri : RuntimeInfo, api : TargetAPI) : Job<unit> =
+  let loop (conf: LogstashConf)
+           (ri: RuntimeInfo, api : TargetAPI): Job<unit> =
 
     let rec init config =
       createState config.publishTo config.mode |> loop
 
-    and loop (state : State) : Job<unit> =
+    and loop (state: State): Job<unit> =
       Alt.choose [
         api.shutdownCh ^=> fun ack -> job {
           do! Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
@@ -106,7 +106,7 @@ let create conf = TargetConf.createSimple (Impl.loop conf)
 type Builder(conf, callParent : Target.ParentCallback<Builder>) =
 
   /// Specifies the publish endpoint that ZeroMQ connects to.
-  member x.PublishTo(publishTo : string) =
+  member x.PublishTo(publishTo: string) =
     Builder({ conf with publishTo = publishTo }, callParent)
 
   member x.LogMetrics() =
@@ -115,7 +115,7 @@ type Builder(conf, callParent : Target.ParentCallback<Builder>) =
   member x.Done() =
     ! (callParent x)
 
-  new(callParent : Target.ParentCallback<_>) =
+  new(callParent: Target.ParentCallback<_>) =
     Builder(LogstashConf.create DefaultPublishTo, callParent)
 
   interface Target.SpecificTargetConf with

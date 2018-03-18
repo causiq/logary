@@ -47,7 +47,7 @@ module SQLiteDB =
 
   /// wrap the connection in a non-closing delegator for connections that are
   /// managed externally
-  let wrapConnNoClose (inner : IDbConnection) =
+  let wrapConnNoClose (inner: IDbConnection) =
     { new IDbConnection with
         member x.BeginTransaction() =
           inner.BeginTransaction()
@@ -71,16 +71,16 @@ module SQLiteDB =
           with get() = inner.State }
 
   /// used to avoid closing the SQLite connection in between migrations
-  type NonClosingSQLiteProcessorFactory(conn : IDbConnection) =
+  type NonClosingSQLiteProcessorFactory(conn: IDbConnection) =
     inherit MigrationProcessorFactory()
-    override x.Create (connStr : string, accouncer : IAnnouncer, opts : IMigrationProcessorOptions) =
+    override x.Create (connStr: string, accouncer : IAnnouncer, opts : IMigrationProcessorOptions) =
       new SQLiteProcessor(wrapConnNoClose conn,
                           new SQLiteGenerator(), accouncer, opts,
                           new SQLiteDbFactory())
       :> IMigrationProcessor
 
   let private openConnInner connStr () =
-    let conn = new SQLiteConnection(connStr : string) :> IDbConnection
+    let conn = new SQLiteConnection(connStr: string) :> IDbConnection
     conn.Open()
     conn
 
@@ -99,7 +99,7 @@ let raised_exn msg =
   with ex -> e := Some ex
   (!e).Value
 
-let read (m : Map<string, obj>) k =
+let read (m: Map<string, obj>) k =
   try m.[k] :?> 'a
   with :? InvalidCastException as e ->
     Tests.failtestf "converting key %s to %s failed, was: %s."

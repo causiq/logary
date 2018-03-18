@@ -176,7 +176,7 @@ module Pipe =
 
   type BufferAction = | Reset | Delivery | AddToBuffer
 
-  let bufferConditional (deliveryDecider : _ * list<_> -> BufferAction) pipe =
+  let bufferConditional (deliveryDecider: _ * list<_> -> BufferAction) pipe =
     pipe
     |> chain (fun cont ->
        let buffer = new ResizeArray<_> ()

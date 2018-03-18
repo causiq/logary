@@ -106,7 +106,7 @@ module Registry =
 
   /// Flush all pending messages for all targets. Flushes with no timeout; if
   /// this Alternative yields, all targets were flushed.
-  let flush (t : T) : Alt<unit> =
+  let flush (t: T): Alt<unit> =
     t.isClosed
     <|>
     ((t.flushCh *<+->- fun flushCh nack -> flushCh, nack, None) ^-> ignore)
@@ -116,7 +116,7 @@ module Registry =
   /// yields after waiting for the specified `timeout`; then giving back the
   /// `FlushInfo` data-structure that recorded what targets were successfully
   /// flushed and which ones timed out.
-  let flushWithTimeout (t : T) (timeout : Duration) : Alt<FlushInfo> =
+  let flushWithTimeout (t: T) (timeout: Duration): Alt<FlushInfo> =
     (t.isClosed ^->. (FlushInfo(["registry is closed"],[])))
     <|>
     (t.flushCh *<+->- fun flushCh nack -> flushCh, nack, Some timeout)
@@ -126,7 +126,7 @@ module Registry =
   /// function does not specify a timeout, neither for the flush nor for the
   /// shutting down of targets, and so it does not return a `ShutdownInfo`
   /// data-structure.
-  let shutdown (t : T) : Alt<unit> =
+  let shutdown (t: T): Alt<unit> =
     t.isClosed
     <|>
     ((t.flushCh *<+->- fun flushCh nack -> flushCh, nack, None) ^=> fun _ ->
@@ -137,7 +137,7 @@ module Registry =
   /// function specifies both a timeout for the flushing of targets and the
   /// shutting down of the registry. The Alternative yields after a maximum of
   /// `shutdownTimeout` + `flushTimeout`, with information about the shutdown.
-  let shutdownWithTimeouts (t : T) (flushTimeout : Duration) (shutdownTimeout : Duration) : Alt<FlushInfo * ShutdownInfo> =
+  let shutdownWithTimeouts (t: T) (flushTimeout: Duration) (shutdownTimeout: Duration): Alt<FlushInfo * ShutdownInfo> =
     (t.isClosed ^->. (FlushInfo(["registry is closed"],[]), ShutdownInfo(["registry is closed"],[])))
     <|>
     ((t.flushCh *<+->- fun flushCh nack -> flushCh, nack, Some flushTimeout) ^=> (fun flushInfo ->
@@ -149,7 +149,7 @@ module Registry =
     let inline ensureName name (m: Message) =
       if m.name.isEmpty then { m with name = name } else m
 
-    let inline getLogger (t : T) name mid =
+    let inline getLogger (t: T) name mid =
       let nameStr = name.ToString ()
       match t.loggerLevelDic.TryGetValue nameStr with
       | true, _ -> do ()
@@ -179,7 +179,7 @@ module Registry =
             | false, _  -> LogLevel.Info
       }
 
-    let inline switchLoggerLevel (t : T) path minLevel =
+    let inline switchLoggerLevel (t: T) path minLevel =
       // maybe use msg passing style, if we need support affect loggers create after this switch.
       let regPath = Regex (path, RegexOptions.Compiled)
       let dic = t.loggerLevelDic
@@ -187,7 +187,7 @@ module Registry =
         if name = path || regPath.IsMatch (name) then
           do dic.[name] <- minLevel)
 
-    let inline spawnTarget (ri : RuntimeInfo) targets =
+    let inline spawnTarget (ri: RuntimeInfo) targets =
       targets
       |> HashMap.toList
       |> List.traverseJobA (fun (_,conf) -> Target.create ri conf)
@@ -209,14 +209,14 @@ module Registry =
             let timeouts = List.map fst timeouts
             (acks, timeouts))
 
-    let inline shutdown (targets: Target.T list) (timeout: Duration option) : Job<ShutdownInfo> =
+    let inline shutdown (targets: Target.T list) (timeout: Duration option): Job<ShutdownInfo> =
       let shutdownTarget (target: Target.T) =
         Target.shutdown target ^=> fun ack -> generateProcessResult target.Name ack timeout
 
       (targets |> Seq.Con.mapJob shutdownTarget)
       >>- (partitionResults >> ShutdownInfo)
 
-    let inline flushPending (targets: Target.T list) (timeout: Duration option) : Job<FlushInfo> =
+    let inline flushPending (targets: Target.T list) (timeout: Duration option): Job<FlushInfo> =
       let flushTarget (target: Target.T) =
         generateProcessResult target.Name (Target.flush target) timeout
 
@@ -229,7 +229,7 @@ module Registry =
   //  - TargetConf (goes on specific target) (composes in engine when sending msg to target)
   //  - individual loggers (through engine,and compose at call-site)
 
-  let create (conf : LogaryConf) : Job<T> =
+  let create (conf: LogaryConf): Job<T> =
     let ri, rname, rmid =
       conf.runtimeInfo,
       PointName [| "Logary"; "Registry" |],
@@ -291,7 +291,7 @@ module Registry =
         |> Job.startIgnore
         >>-. state
 
-  let toLogManager (t : T) : LogManager =
+  let toLogManager (t: T): LogManager =
     { new LogManager with
         member x.getLogger name =
           Impl.getLogger t name None

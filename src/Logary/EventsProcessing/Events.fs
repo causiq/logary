@@ -20,10 +20,10 @@ module Events =
     pipe |> Pipe.filter (fun msg -> msg.level >= level)
 
   /// if msg with no specific sinks, will send to all targets
-  let sink (names : string list) pipe =
+  let sink (names: string list) pipe =
     pipe |> Pipe.map (Message.addSinks names)
 
-  let flattenToProcessing (pipe: Pipe<seq<Message>,Alt<Promise<unit>>,Message>) : Processing =
+  let flattenToProcessing (pipe: Pipe<seq<Message>,Alt<Promise<unit>>,Message>): Processing =
     pipe
     |> Pipe.chain (fun logWithAck ->
        fun (msgs: seq<_>) ->

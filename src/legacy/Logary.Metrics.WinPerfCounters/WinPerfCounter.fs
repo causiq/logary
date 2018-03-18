@@ -29,7 +29,7 @@ module Category =
     else
       None
 
-  let createForce (name : string) : Category =
+  let createForce (name: string): Category =
     match create name with
     | None ->
       failwithf "Failed to create Category '%s'" name
@@ -37,16 +37,16 @@ module Category =
       category
 
   /// Gets all available performance counter categories
-  let list () : Category [] =
+  let list (): Category [] =
     Category.GetCategories()
 
   /// Gets all available instance names for the given list of performance counter
   /// categories
-  let instances (category : Category) : _ [] =
+  let instances (category: Category): _ [] =
     category.GetInstanceNames()
 
   /// Checks whether the instance exists in the category
-  let instanceExists (category : string) (instance : string) =
+  let instanceExists (category: string) (instance: string) =
     Category.InstanceExists(instance, category)
 
   /// Checks whether the counter in the category exists
@@ -156,7 +156,7 @@ module PointName =
       '.', '-'
     ]
 
-  let private cleanAtomic (str : string) =
+  let private cleanAtomic (str: string) =
     let sb = StringBuilder()
     for c in str do
       for KeyValue (from, too) in replacements do
@@ -166,7 +166,7 @@ module PointName =
           sb.Append c |> ignore
     sb.ToString()
 
-  let ofPerfCounter (counter : WinPerfCounter) =
+  let ofPerfCounter (counter: WinPerfCounter) =
     PointName [| cleanAtomic counter.category; cleanAtomic counter.counter |]
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -187,7 +187,7 @@ module WinPerfCounter =
     let All = [| _Total; _Global_; Default |]
 
   /// Gets a list of performance counters for the given instance and category.
-  let list (pcc : Category) (instances : string seq) : WinPerfCounterInstance [] =
+  let list (pcc: Category) (instances: string seq): WinPerfCounterInstance [] =
     try
       match Array.ofSeq instances with
       | [||] ->
@@ -217,7 +217,7 @@ module WinPerfCounter =
       Array.empty
 
   /// Create a new performance counter given a WinPerfCounter.
-  let toWindowsCounter (counter : WinPerfCounter) : WinPerfCounterInstance option =
+  let toWindowsCounter (counter: WinPerfCounter): WinPerfCounterInstance option =
     if Category.exists counter.category counter.counter then
       let category = Category.createForce counter.category
 
@@ -262,12 +262,12 @@ module WinPerfCounter =
     |> toWindowsCounter
 
   /// Sets a specific unit on the WinPerfCounter.
-  let setUnit (units : Units) (counter : WinPerfCounter) =
+  let setUnit (units: Units) (counter: WinPerfCounter) =
     { counter with unit = Some units }
 
   module Helpers =
 
-    let toValue (pc : WinPerfCounterInstance) =
+    let toValue (pc: WinPerfCounterInstance) =
       let message = Message.eventDebug (pc.baseName.ToString())
       pc.nextValues()
       |> Array.fold (fun m (gaugeType, vl) ->
@@ -297,7 +297,7 @@ module WinPerfCounter =
       |> Option.fold (fun _ t -> Some t) None
 
     /// Gets the current process' id
-    let pid () : int =
+    let pid (): int =
       Process.GetCurrentProcess().Id
 
     /// Gets the performance counter instance for the given category for the current
@@ -307,7 +307,7 @@ module WinPerfCounter =
 
     /// Sets the Performance Counter to only check metrics that are sliced to be for
     /// the current process.
-    let scopeToProcess (counter : WinPerfCounter) : WinPerfCounter option =
+    let scopeToProcess (counter: WinPerfCounter): WinPerfCounter option =
       let pid = pid ()
       pidToInstance pid
       |> Option.map (fun inst -> { counter with instances = set [ inst ] })

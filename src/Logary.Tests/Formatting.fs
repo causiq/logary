@@ -40,8 +40,8 @@ let complexMessage: Message =
   ex.Data.Add (foo(), foo())
 
   let tp () = (1, "two", foo())
-  let (scalarArr : obj[]) = [| 1;  2; 3; "4"; "5"; 6.0; |]
-  let (notScalarList : obj list) = [foo (); tp ()]
+  let (scalarArr: obj[]) = [| 1;  2; 3; "4"; "5"; 6.0; |]
+  let (notScalarList: obj list) = [foo (); tp ()]
   let scalarKeyValueMap = [ 1,"one" ; 2, "two"] |> HashMap.ofSeq
   let scalarKeyMap = Map [ "some user", box (foo ()) ; "some obj", box (Obj())]
   let notScalarMap = Map [([2,"2"],["3";"4"]); ([1,"a";2,"b"],["hello";"world"])]

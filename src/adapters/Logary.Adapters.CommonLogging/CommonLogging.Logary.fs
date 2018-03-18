@@ -8,7 +8,7 @@ open Common.Logging
 
 open Logary
 
-type internal Adapter(logger : Logger) =
+type internal Adapter(logger: Logger) =
 
   let stubVariablesContext () =
     let dic = new Dictionary<string, obj>()
@@ -42,10 +42,10 @@ type internal Adapter(logger : Logger) =
 
   let fmt formatProvider format args = String.Format(formatProvider, format, args)
 
-  let write (message : obj) level =
+  let write (message: obj) level =
     message |> objToLine |> llog level
 
-  let write' (message : obj) level ex =
+  let write' (message: obj) level ex =
     message
     |> objToLine
     |> Message.addExn ex
@@ -57,9 +57,9 @@ type internal Adapter(logger : Logger) =
     |> (ex |> Option.fold (fun s -> Message.addExn) id)
     |> log
 
-  let write''' (formatProvider : IFormatProvider)
-               (cb : Action<FormatMessageHandler>)
-               (ex : exn option)
+  let write''' (formatProvider: IFormatProvider)
+               (cb: Action<FormatMessageHandler>)
+               (ex: exn option)
                level =
     cb.Invoke(
       FormatMessageHandler(
@@ -81,8 +81,8 @@ type internal Adapter(logger : Logger) =
     member x.IsErrorEnabled = logger.level <= Error
     member x.IsFatalEnabled = logger.level <= Fatal
 
-    member x.Trace (message : obj) = write message Verbose
-    member x.Trace (message : obj, ex) = write' message Verbose ex
+    member x.Trace (message: obj) = write message Verbose
+    member x.Trace (message: obj, ex) = write' message Verbose ex
     member x.TraceFormat (format, args) = write'' invariantCulture format Verbose None args
     member x.TraceFormat (formatProvider, format, args) = write'' formatProvider format Verbose None args
     member x.TraceFormat (format, ex, args) = write'' invariantCulture format Verbose (Some ex) args
@@ -93,8 +93,8 @@ type internal Adapter(logger : Logger) =
     member x.Trace (formatProvider, cb) = write''' formatProvider cb None Verbose
     member x.Trace (formatProvider, cb, ex) = write''' formatProvider cb (Some ex) Verbose
 
-    member x.Debug (message : obj) = write message Debug
-    member x.Debug (message : obj, ex) = write' message Debug ex
+    member x.Debug (message: obj) = write message Debug
+    member x.Debug (message: obj, ex) = write' message Debug ex
     member x.DebugFormat (format, args) = write'' invariantCulture format Debug None args
     member x.DebugFormat (formatProvider, format, args) = write'' formatProvider format Debug None args
     member x.DebugFormat (format, ex, args) = write'' invariantCulture format Debug (Some ex) args
@@ -105,8 +105,8 @@ type internal Adapter(logger : Logger) =
     member x.Debug (formatProvider, cb) = write''' formatProvider cb None Debug
     member x.Debug (formatProvider, cb, ex) = write''' formatProvider cb (Some ex) Debug
 
-    member x.Info (message : obj) = write message Info
-    member x.Info (message : obj, ex) = write' message Info ex
+    member x.Info (message: obj) = write message Info
+    member x.Info (message: obj, ex) = write' message Info ex
     member x.InfoFormat (format, args) = write'' invariantCulture format Info None args
     member x.InfoFormat (formatProvider, format, args) = write'' formatProvider format Info None args
     member x.InfoFormat (format, ex, args) = write'' invariantCulture format Info (Some ex) args
@@ -117,8 +117,8 @@ type internal Adapter(logger : Logger) =
     member x.Info (formatProvider, cb) = write''' formatProvider cb None Info
     member x.Info (formatProvider, cb, ex) = write''' formatProvider cb (Some ex) Info
 
-    member x.Warn (message : obj) = write message Warn
-    member x.Warn (message : obj, ex) = write' message Warn ex
+    member x.Warn (message: obj) = write message Warn
+    member x.Warn (message: obj, ex) = write' message Warn ex
     member x.WarnFormat (format, args) = write'' invariantCulture format Warn None args
     member x.WarnFormat (formatProvider, format, args) = write'' formatProvider format Warn None args
     member x.WarnFormat (format, ex, args) = write'' invariantCulture format Warn (Some ex) args
@@ -129,8 +129,8 @@ type internal Adapter(logger : Logger) =
     member x.Warn (formatProvider, cb) = write''' formatProvider cb None Warn
     member x.Warn (formatProvider, cb, ex) = write''' formatProvider cb (Some ex) Warn
 
-    member x.Error (message : obj) = write message Error
-    member x.Error (message : obj, ex) = write' message Error ex
+    member x.Error (message: obj) = write message Error
+    member x.Error (message: obj, ex) = write' message Error ex
     member x.ErrorFormat (format, args) = write'' invariantCulture format Error None args
     member x.ErrorFormat (formatProvider, format, args) = write'' formatProvider format Error None args
     member x.ErrorFormat (format, ex, args) = write'' invariantCulture format Error (Some ex) args
@@ -141,8 +141,8 @@ type internal Adapter(logger : Logger) =
     member x.Error (formatProvider, cb) = write''' formatProvider cb None Error
     member x.Error (formatProvider, cb, ex) = write''' formatProvider cb (Some ex) Error
 
-    member x.Fatal (message : obj) = write message Fatal
-    member x.Fatal (message : obj, ex) = write' message Fatal ex
+    member x.Fatal (message: obj) = write message Fatal
+    member x.Fatal (message: obj, ex) = write' message Fatal ex
     member x.FatalFormat (format, args) = write'' invariantCulture format Fatal None args
     member x.FatalFormat (formatProvider, format, args) = write'' formatProvider format Fatal None args
     member x.FatalFormat (format, ex, args) = write'' invariantCulture format Fatal (Some ex) args
@@ -158,9 +158,9 @@ type internal Adapter(logger : Logger) =
 
     member x.NestedThreadVariablesContext = raise (NotImplementedException())
 
-type LogaryAdapter(lm : LogManager) =
+type LogaryAdapter(lm: LogManager) =
   interface ILoggerFactoryAdapter with
-    member x.GetLogger (typ : Type) =
+    member x.GetLogger (typ: Type) =
       Adapter(PointName.parse typ.FullName |> lm.getLogger) :> ILog
-    member x.GetLogger (name : string) =
+    member x.GetLogger (name: string) =
       Adapter(PointName.parse name |> lm.getLogger) :> ILog

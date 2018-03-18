@@ -20,13 +20,13 @@ module internal Impl =
       printfn "%A" args
 
 
-  let handleInternalException logger (format : string) (args: obj[]) (stackTrace : StackTrace) =
+  let handleInternalException logger (format: string) (args: obj[]) (stackTrace: StackTrace) =
     Logger.logSimple logger (
       Message.eventFormat (Warn, format, args)
       |> setContext "stackFrames" (stackTrace.GetFrames())
     )
 
-  let fmt (internalLogger : Logger) formatProvider format (args : obj []) =
+  let fmt (internalLogger: Logger) formatProvider format (args: obj []) =
     let rec fmt' failed =
       try
         if not failed && args.Length = 0 then format
@@ -44,7 +44,7 @@ module internal Impl =
 
     fmt' false
 
-  let write'' (logger : Logger) formatProvider format level (ex : exn option) args =
+  let write'' (logger: Logger) formatProvider format level (ex: exn option) args =
     logger.logSimple (
       Message.event level (fmt logger formatProvider format args)
       |> (ex |> Option.fold (fun s -> addExn) id))
@@ -61,7 +61,7 @@ open Impl
 /// ```
 ///
 /// Happy logging!
-type EventStoreAdapter(logger : Logger) =
+type EventStoreAdapter(logger: Logger) =
   let write'' = write'' logger
   interface ILogger with
     member x.Error (format, args) =

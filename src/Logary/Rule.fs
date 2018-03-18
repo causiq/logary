@@ -95,7 +95,7 @@ module Rule =
       minLevel = level }
 
   /// use the first matched rule
-  let canPass (msg : Message) (rules : Rule list) =
+  let canPass (msg: Message) (rules: Rule list) =
     rules
     |> List.tryFind (fun r -> r.path.IsMatch (PointName.format msg.name))
     |> function

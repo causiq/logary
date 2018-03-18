@@ -83,8 +83,8 @@ module internal Impl =
 
     log
 
-  let loop (conf : AliYunConf)
-           (runtime : RuntimeInfo, api : TargetAPI) =
+  let loop (conf: AliYunConf)
+           (runtime: RuntimeInfo, api : TargetAPI) =
     
     let logger = 
       let pn = PointName [| "Logary"; "AliYun"; "loop" |]
@@ -133,9 +133,9 @@ type IThirdStep =
   abstract Done : unit -> Target.TargetConfBuild<Builder>
 and ISecondStep =
   abstract ConfLogLocation : string * string -> IThirdStep
-and Builder(conf : AliYunConf, callParent : Target.ParentCallback<_>) = 
+and Builder(conf: AliYunConf, callParent : Target.ParentCallback<_>) = 
 
-  new(callParent : Target.ParentCallback<_>) =
+  new(callParent: Target.ParentCallback<_>) =
     Builder(empty, callParent)
 
   member x.ConfClient(key, keyId, endpoint) =

@@ -60,13 +60,13 @@ module internal Impl =
 
   open HttpFs.Client
 
-  let generateId (bytes : byte []) =
+  let generateId (bytes: byte []) =
     use sha1 = SHA1.Create ()
     sha1.ComputeHash bytes
     |> BitConverter.ToString
     |> String.replace "-" ""
 
-  let sendToElasticSearch elasticUrl _type indexName (message : Message) =
+  let sendToElasticSearch elasticUrl _type indexName (message: Message) =
     let _index  = indexName + "-" + DateTime.UtcNow.ToString("yyy-MM-dd")
     let bytes = serialiseToJsonBytes message
     let _id = generateId bytes
@@ -78,10 +78,10 @@ module internal Impl =
     Request.responseAsString request
     |> Job.Ignore
 
-  let loop (conf : ElasticSearchConf)
-           (ri : RuntimeInfo, api : TargetAPI) =
+  let loop (conf: ElasticSearchConf)
+           (ri: RuntimeInfo, api : TargetAPI) =
 
-    let rec loop (_ : unit) : Job<unit> =
+    let rec loop (_: unit): Job<unit> =
       Alt.choose [
         api.shutdownCh ^=> fun ack -> job {
           do! ack *<= ()
@@ -109,17 +109,17 @@ let create conf = TargetConf.createSimple (Impl.loop conf)
 type Builder(conf, callParent : Target.ParentCallback<Builder>) =
 
   /// Specifies the ElasticSearch url.
-  member x.PublishTo(publishTo : string) =
+  member x.PublishTo(publishTo: string) =
     Builder({ conf with publishTo = publishTo }, callParent)
 
   /// Change "_type" value, by default is "logs".
-  member x.Type(_type : string) =
+  member x.Type(_type: string) =
     Builder({ conf with _type = _type }, callParent)
 
   member x.Done() =
     ! (callParent x)
 
-  new(callParent : Target.ParentCallback<_>) =
+  new(callParent: Target.ParentCallback<_>) =
     Builder(ElasticSearchConf.create DefaultPublishTo, callParent)
 
   interface Target.SpecificTargetConf with

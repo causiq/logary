@@ -12,7 +12,7 @@ open Logary.Message
 open Logary
 open FsSql.Logging.LogLine
 
-let jsonFormat (data : obj) : string = 
+let jsonFormat (data: obj): string = 
   Logary.Formatting.Json.format data
 
 type DBConf =
@@ -37,13 +37,13 @@ module internal Impl =
   let txn = Tx.transactional
 
   let printSchema = function
-    | Some (s : string) ->
+    | Some (s: string) ->
       Printf.sprintf "%s." s
 
     | None ->
       String.Empty
 
-  let sharedParameters (m : Message) =
+  let sharedParameters (m: Message) =
     [ P("@host", Dns.GetHostName())
       P("@name", m.name)
       P("@fields", m |> Message.getAllFields |> jsonFormat)
@@ -51,14 +51,14 @@ module internal Impl =
       P("@epoch", m.timestamp)
       P("@level", m.level.toInt ()) ]
 
-  let insertGauge schema (m : Message) (v : float) connMgr =
+  let insertGauge schema (m: Message) (v: float) connMgr =
     Sql.execNonQuery connMgr
       (Printf.sprintf "INSERT INTO %sGauges (Value, Host, Name, Fields, Context, EpochNanos, Level)
        VALUES (@value, @host, @name, @fields, @context, @epoch, @level)" (printSchema schema))
       [ yield P("@value", v)
         yield! sharedParameters m ]
 
-  let insertEvent schema (m : Message) (template : string) connMgr =
+  let insertEvent schema (m: Message) (template: string) connMgr =
     Sql.execNonQuery connMgr
       (Printf.sprintf "INSERT INTO %sEvents (Host, Message, Data, Path, EpochTicks, Level, Exception, Tags)
        VALUES (@host, @message, @data, @path, @epoch, @level, @exception, @tags)" (printSchema schema))
@@ -74,7 +74,7 @@ module internal Impl =
       |> Seq.sumBy (fun (gaugeType, Gauge(value,units)) -> insertGauge schema message value connMgr)
     tplCount + gaugesCount
 
-  let ensureOpen (c : IDbConnection) =
+  let ensureOpen (c: IDbConnection) =
     match c.State with
     | ConnectionState.Broken
     | ConnectionState.Closed ->
@@ -84,14 +84,14 @@ module internal Impl =
     | _ ->
       c
 
-  let execInsert (logger : Logger) (insert : Sql.ConnectionManager -> _) connMgr =
+  let execInsert (logger: Logger) (insert: Sql.ConnectionManager -> _) connMgr =
     match insert connMgr with
     | Tx.Commit _ -> ()
     | Tx.Rollback _ -> logger.error (eventX "Insert was rolled back")
     | Tx.Failed ex -> logger.error (eventX "Insert failed" >> addExn ex)
 
-  let loop (conf : DBConf)
-           (svc : RuntimeInfo, api : TargetAPI)  =
+  let loop (conf: DBConf)
+           (svc: RuntimeInfo, api : TargetAPI)  =
 
     let logger =
       let pn = PointName [| "Logary"; "DB"; "loop" |]
@@ -161,12 +161,12 @@ and SecondStep =
 /// Use with LogaryFactory.New( s => s.Target<DB.Builder>() )
 and Builder(conf, callParent : ParentCallback<Builder>) =
 
-  new(callParent : ParentCallback<_>) =
+  new(callParent: ParentCallback<_>) =
     let conf = DBConf.create (fun () -> failwith "inner build error")
     Builder(conf, callParent)
 
   /// configure how to create connections to the database.
-  member x.ConnectionFactory(conn : Func<IDbConnection>) =
+  member x.ConnectionFactory(conn: Func<IDbConnection>) =
     Builder({ conf with connectionFactory = fun () -> conn.Invoke() }, callParent)
     :> SecondStep
 
@@ -182,7 +182,7 @@ and Builder(conf, callParent : ParentCallback<Builder>) =
       :> ThirdStep
 
   interface ThirdStep with
-    member x.Done (newConf : DBConf) =
+    member x.Done (newConf: DBConf) =
       ! (callParent x)
 
   // this builder is extended with Migrations to optionally ensure the schemas

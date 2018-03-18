@@ -166,7 +166,7 @@ let reservoirs =
       ]
 
     testList "exponentially weighted moving average" [
-      let testEWMA explaination instance (expectations : _ list) =
+      let testEWMA explaination instance (expectations: _ list) =
 
         let flip f a b = f b a
         let passMinute s = // 5 second sampling rate, see mockClock

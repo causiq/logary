@@ -10,7 +10,7 @@ type internal Helper() =
   static member getDefaultGeneric<'T> () =
     Unchecked.defaultof<'T>
 
-  static member getDefault (t : Type) : obj =
+  static member getDefault (t: Type): obj =
     typeof<Helper>
       .GetMethod("getDefaultGeneric", BindingFlags.NonPublic ||| BindingFlags.Static)
       .MakeGenericMethod(t)
@@ -49,13 +49,13 @@ module Uri =
     d
 
 
-  let private tryGetTryParse (typ : Type) =
+  let private tryGetTryParse (typ: Type) =
     match typ.GetMethod("tryParse", BindingFlags.Static ||| BindingFlags.Public) with
     | null ->
       None
 
     | m ->
-      Some (fun (s : string) ->
+      Some (fun (s: string) ->
         m.Invoke(null, [| s |]) |> unbox : Choice<obj, string>)
 
   let convertTo typ (v: string): obj =

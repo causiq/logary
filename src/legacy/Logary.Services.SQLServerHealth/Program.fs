@@ -45,7 +45,7 @@ let openConn connStr : IDbConnection =
   c.Open()
   upcast c
 
-let tryLookup (name : string) =
+let tryLookup (name: string) =
   try
     Choice1Of2 (Dns.GetHostEntry(name).AddressList.[0])
   with :? System.Net.Sockets.SocketException as e ->
@@ -74,7 +74,7 @@ let parse args =
 
   period, conf, IPEndPoint(IPAddress.Loopback, 9000)
 
-let execute interval sqlConf riemann argv (exiting : ManualResetEventSlim) =
+let execute interval sqlConf riemann argv (exiting: ManualResetEventSlim) =
   let logary =
     let cons, rm = "console", "riemann"
     let hostName = Dns.GetHostName()

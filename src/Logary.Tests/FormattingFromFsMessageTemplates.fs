@@ -141,7 +141,7 @@ type Cust() =
     override __.ToString() = "1234"
 
 [<Tests>]
-let``get alignment structure values`` () : obj[] seq = seq {
+let``get alignment structure values`` (): obj[] seq = seq {
     let values : obj[] = [| 1234 |]
     yield [| "C#"; values; "cus #{CustomerId,-10}, pleasure to see you";        "cus #1234      , pleasure to see you" |]
     yield [| "C#"; values; "cus #{CustomerId,-10}, pleasure to see you";        "cus #1234      , pleasure to see you" |]
@@ -247,14 +247,14 @@ and ("Trunk": [1,1, 20/05/2013 16:39:00 +09:30, [("Seq": [1,1, 2,2, 3,3]), ("Seq
 
 type Size = Regular = 1 | Large = 2
 
-type BernieSandersSizeFormatter (innerFormatProvider : IFormatProvider) =
+type BernieSandersSizeFormatter (innerFormatProvider: IFormatProvider) =
   interface IFormatProvider with
     member this.GetFormat ty =
       match ty with
       | t when t = typeof<ICustomFormatter> -> this :> obj
       | _ -> innerFormatProvider.GetFormat ty
   interface ICustomFormatter with
-    member this.Format (format : string, arg : obj, provider : IFormatProvider) =
+    member this.Format (format: string, arg : obj, provider : IFormatProvider) =
       match arg with
       | :? Size as s ->
         match s with Size.Large -> "YUUUGE" | _ -> sprintf "%A" s

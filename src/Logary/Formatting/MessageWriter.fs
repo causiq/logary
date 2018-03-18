@@ -14,7 +14,7 @@ type MessageWriter =
 module MessageWriterEx =
   type MessageWriter with
     [<Obsolete "Try to write directly to a System.IO.TextWriter instead">]
-    member x.format (m : Message) =
+    member x.format (m: Message) =
       use sw = new StringWriter()
       x.write sw m
       sw.ToString()
@@ -38,7 +38,7 @@ module MessageWriter =
     | case, _ -> case.Name
 
   /// Format a timestamp in nanoseconds since epoch into a ISO8601 string
-  let formatTimestamp (timestamp : EpochNanoSeconds) =
+  let formatTimestamp (timestamp: EpochNanoSeconds) =
     Instant.ofEpoch(timestamp).ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture)
 
   let internal defaultDestr = Destructure.destructure Global.destructureRegistry Global.projectionStrategy

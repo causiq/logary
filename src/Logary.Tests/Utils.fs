@@ -64,12 +64,12 @@ let exnMsg =
     ])
   |> withException Message.addExn
 
-let timeMessage (nanos : int64) level =
+let timeMessage (nanos: int64) level =
   let value, units = float nanos, Scaled (Seconds, float Constants.NanosPerSecond)
   Message.gaugeWithUnit "A.B.C.Check" value units
   |> Message.setLevel level
 
-let gaugeMessage (value : float) level =
+let gaugeMessage (value: float) level =
   Message.gaugeWithUnit "Revolver" value (Div (Seconds, Units.Other "revolution"))
   |> Message.setLevel level
 
@@ -89,7 +89,7 @@ let nanos xs =
 
 let helloWorldMsg =
   Message.eventX "Hello World!"
-  >> Message.setTicksEpoch (0L : EpochNanoSeconds)
+  >> Message.setTicksEpoch (0L: EpochNanoSeconds)
 
 module Internals =
   type TimeoutResult<'T> =

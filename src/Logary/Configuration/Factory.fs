@@ -55,7 +55,7 @@ with
 and ConfBuilder(conf) =
   member internal x.conf = conf
 
-  member x.InternalLogger (value : ILogger) : ConfBuilder =
+  member x.InternalLogger (value: ILogger): ConfBuilder =
     conf
     |> Config.ilogger value
     |> ConfBuilder
@@ -65,7 +65,7 @@ and ConfBuilder(conf) =
   /// have a context field 'service' that specifies what service the code is running in.
   ///
   /// Please see Logary.Middleware for common middleware to use.
-  member x.UseFunc(middleware : Func<Func<Message, Message>, Func<Message, Message>>) : ConfBuilder =
+  member x.UseFunc(middleware: Func<Func<Message, Message>, Func<Message, Message>>): ConfBuilder =
     conf
     |> Config.middleware (fun next msg -> middleware.Invoke(new Func<_,_>(next)).Invoke msg)
     |> ConfBuilder
@@ -75,19 +75,19 @@ and ConfBuilder(conf) =
   /// have a context field 'service' that specifies what service the code is running in.
   ///
   /// Please see Logary.Middleware for common middleware to use.
-  member x.Use(middleware : Middleware) : ConfBuilder =
+  member x.Use(middleware: Middleware): ConfBuilder =
     conf
     |> Config.middleware middleware
     |> ConfBuilder
 
   /// Depending on what the compiler decides; we may be passed a MethodGroup that
   /// can be converted to this signature:
-  member x.Use(middleware : Func<Message -> Message, Message, Message>) =
+  member x.Use(middleware: Func<Message -> Message, Message, Message>) =
     conf
     |> Config.middleware (fun next msg -> middleware.Invoke(next, msg))
     |> ConfBuilder
 
-  member x.Processing(processor : Events.Processing) =
+  member x.Processing(processor: Events.Processing) =
     conf
     |> Config.processing processor
     |> ConfBuilder
@@ -100,7 +100,7 @@ and ConfBuilder(conf) =
   /// Configure a target of the type with a name specified by the parameter name.
   /// The callback, which is the second parameter, lets you configure the target.
   member x.Target<'T when 'T :> Target.SpecificTargetConf>
-           (name : string,
+           (name: string,
             configurator : Func<Target.TargetConfBuild<'T>, Target.TargetConfBuild<'T>>)
           : ConfBuilder =
 
@@ -146,7 +146,7 @@ module FactoryApiExtensions =
   /// <param name="builder"></param>
   /// <returns>The same as input</returns>
   [<Extension; CompiledName "Target">]
-  let target<'T when 'T :> Target.SpecificTargetConf> (builder : ConfBuilder) (name : string) =
+  let target<'T when 'T :> Target.SpecificTargetConf> (builder: ConfBuilder) (name: string) =
     builder.Target<'T>(name, new Func<_, _>(id))
 
 /// The main entry point for object oriented languages to interface with Logary,
@@ -155,7 +155,7 @@ type LogaryFactory =
   /// Configure a new Logary instance. This will also give real targets to the flyweight
   /// targets that have been declared statically in your code. If you call this
   /// you get a log manager that you can later dispose, to shutdown all targets.
-  static member New(service : string, host : string, configurator : Func<ConfBuilder, ConfBuilder>) : Task<LogManager> =
+  static member New(service: string, host : string, configurator : Func<ConfBuilder, ConfBuilder>): Task<LogManager> =
     if service = null then nullArg "service"
     if configurator = null then nullArg "configurator"
     let config = Config.create service host
