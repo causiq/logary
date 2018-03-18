@@ -12,8 +12,10 @@ module internal JsonHelper =
   module EI = Chiron.Inference.Json.Encode
 
   type ICustomJsonEncoderRegistry =
-    abstract TryGetRegistration : System.Type -> CustomJsonEncoderFactory option
+    abstract TryGetRegistration: System.Type -> CustomJsonEncoderFactory option
+
   and CustomJsonEncoderFactory = JsonEncoder<obj> -> JsonEncoder<obj>
+
   and CustomJsonEncoderFactory<'t> = JsonEncoder<obj> -> JsonEncoder<'t>
 
   let emptyJsonEncoderRegistry =
@@ -42,7 +44,7 @@ module internal JsonHelper =
   /// tuple in dotnet core or framework 4.7.1 are support ITuple, https://docs.microsoft.com/zh-cn/dotnet/api/system.runtime.compilerservices.ituple?view=netframework-4.7.1
   /// so implement by typeshape reflection first, then migrate by test ITuple interface.
   /// if user want to support union, record, poco... they can offer their own encoderFac.
-  let rec internal toJsonTypeShape (registry : ICustomJsonEncoderRegistry) (data : obj) =
+  let rec internal toJsonTypeShape (registry: ICustomJsonEncoderRegistry) (data: obj) =
     let resolver : JsonEncoder<obj> = toJsonTypeShape registry
     let (|CustomFactory|_|) (shape: TypeShape) = registry.TryGetRegistration shape.Type
 
@@ -50,9 +52,12 @@ module internal JsonHelper =
     else
       let shape = TypeShape.FromValue data
       match data, shape with
-      | _, CustomFactory factory -> factory resolver data
-      | :? string as str , _ ->  E.string str
-      | :? array<byte> as bytes , _ ->  E.bytes bytes
+      | _, CustomFactory factory ->
+        factory resolver data
+      | :? string as str , _ ->
+        E.string str
+      | :? array<byte> as bytes , _ ->
+        E.bytes bytes
       | _, Shape.KeyValuePair kv ->
         kv.Accept {
           new IKeyValuePairVisitor<Json> with
@@ -105,8 +110,10 @@ module internal JsonHelper =
             yield resolver enumerator.Current
         ]
         Json.Array jsonList
-      | _ -> tryToJsonWithDefault data shape.Type
-  and private tryToJsonWithDefault (data : obj) dataType =
+      | _ ->
+        tryToJsonWithDefault data shape.Type
+
+  and private tryToJsonWithDefault (data: obj) dataType =
     // can do some dataType toJson methodinfo cache here
     let m = dataType.GetMethod("ToJson",BindingFlags.Public|||BindingFlags.Static,null,CallingConventions.Any,[|dataType|],null)
     // maybe chiron default can hard code use type test above, avoid reflection here

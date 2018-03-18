@@ -49,8 +49,10 @@ group Tests
     nuget Google.Cloud.Logging.V2
     nuget Hopac
     nuget Http.fs
+    nuget Microsoft.NET.Test.Sdk
     nuget Machine.Specifications
     nuget Machine.Specifications.Runner.Console
+    nuget Machine.Specifications.Runner.VisualStudio
     nuget Machine.Specifications.Should
     nuget Microsoft.ApplicationInsights
     nuget Microsoft.ApplicationInsights.DependencyCollector

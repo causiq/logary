@@ -14,7 +14,7 @@ type ContentType = string
 /// this is how system clocks normally work.
 type EpochNanoSeconds = int64
 
-[<Obsolete ("use object instead, reserve for api compatibility")>]
+[<Obsolete ("Use .Net objects instead. This type is reserve for API backwards compatibility.")>]
 type Value =
   | String of string
   | Bool of bool
@@ -136,17 +136,17 @@ type Field =
 /// This is record that is logged.
 type Message =
   { /// The 'path' or 'name' of this data point. Do not confuse message template in message.value
-    name      : PointName
-    /// Event (template or raw message)
-    value     : string
+    name: PointName
+    /// Event (template or raw message) E.g. "{user} logged in"
+    value: string
     /// Where in the code? Who did the operation? What tenant did the principal
     /// who did it belong to? ... context can be anything, you can decide how to deal with them in target
     /// through its key.
-    context   : HashMap<string, obj>
+    context: HashMap<string, obj>
     /// How important? See the docs on the LogLevel type for details.
-    level     : LogLevel
+    level: LogLevel
     /// When? nanoseconds since UNIX epoch.
-    timestamp : EpochNanoSeconds }
+    timestamp: EpochNanoSeconds }
 
     /// Gets the timestamp as NodaTime ticks (100 ns per tick). If you're getting
     /// for DateTime and/or DateTimeOffset, remember that those start at
@@ -175,7 +175,7 @@ type Logger =
   /// it will be garbage collected in the end, whether it's awaited or not.
   abstract logWithAck : LogLevel -> (LogLevel -> Message) -> Alt<Promise<unit>>
 
-  /// Gets the currently set log level (minimal,inclusive), 
+  /// Gets the currently set log level (minimal,inclusive),
   /// aka. the granularity with which things are being logged.
   abstract level : LogLevel
 

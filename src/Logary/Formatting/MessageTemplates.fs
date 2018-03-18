@@ -15,8 +15,8 @@ module MessageTemplates =
     type CaptureHint with
       member __.ToDestrHint () =
         match __ with
-        | CaptureHint.Stringify -> DestrHint.Stringify 
-        | CaptureHint.Structure -> DestrHint.Structure 
+        | CaptureHint.Stringify -> DestrHint.Stringify
+        | CaptureHint.Structure -> DestrHint.Structure
         | _ -> DestrHint.Default
 
     type Property with
@@ -44,11 +44,11 @@ module MessageTemplates =
   | Property of Property
 
   /// refId in ref count depend on the order of the obj send to calculate, e.g:
-  /// A { userInfo : { some info }, users : [ userInfo] } , 
+  /// A { userInfo : { some info }, users : [ userInfo] } ,
   /// if send userInfo first then A { userInfo : $1 { some info} , users : [ $1 ]}
   /// if send users first then A { userInfo : $1 , users : [ $1 { some info} ]}
   /// things may get weird : check "cycle reference" test in Formatting.fs -> Logary.Test.fsproj
-  /// :( 
+  /// :(
   /// consider show all refId (this can make format verbose)
   /// or no need refId in TemplatePropertyValue, when cycle reference show null
   type TemplatePropertyValue =
@@ -57,6 +57,7 @@ module MessageTemplates =
     | SequenceValue of refId:int64 * TemplatePropertyValue list
     | StructureValue of refId:int64 * typeTag:string * values:PropertyNameAndValue list
     | DictionaryValue of refId:int64 * data: (TemplatePropertyValue * TemplatePropertyValue) list
+    
   and PropertyNameAndValue =
     { Name:string; Value:TemplatePropertyValue }
 
@@ -68,7 +69,7 @@ module MessageTemplates =
     /// since a complex data may destructure to sacalar value
     member __.TryShowAsRefId (data : obj) =
       match idGen.GetId data with
-      | refId, false -> 
+      | refId, false ->
         do showAsIdSet.Add refId |> ignore
         refId, RefId refId |> Some
       | refId, true -> refId, None
@@ -134,7 +135,7 @@ module MessageTemplates =
     and CustomDestructureFactory<'t> = DestructureResolver -> DestructureResolver<'t>
     and ICustomDestructureRegistry =
       abstract TryGetRegistration : Type -> CustomDestructureFactory option
-    
+
     let emptyDestructureRegistry =
       {
         new ICustomDestructureRegistry with
@@ -171,7 +172,7 @@ module MessageTemplates =
             |> List.fold (fun hieraMap eachHiera ->
                match eachHiera with
                | [] -> hieraMap
-               | [head] -> 
+               | [head] ->
                  match hieraMap |> Map.tryFind head with
                  | None -> hieraMap |> Map.add head []
                  | _ -> hieraMap
@@ -283,12 +284,12 @@ module MessageTemplates =
       let resolverWithValue value = resolver <| req.WithNewValue(value)
       let instance = req.Value
       let refCount = req.IdManager
-  
+
       match instance.GetType() with
       | t when FSharpType.IsTuple t ->
         match refCount.TryShowAsRefId instance with
         | _, Some pv  -> Some pv
-        | refId, None -> 
+        | refId, None ->
           let tupleValues =
               instance
               |> FSharpValue.GetTupleFields
@@ -299,7 +300,7 @@ module MessageTemplates =
       | t when isDictionable t ->
         match refCount.TryShowAsRefId instance with
         | _, Some pv  -> Some pv
-        | refId, None -> 
+        | refId, None ->
           let keyProp, valueProp = ref Unchecked.defaultof<PropertyInfo>, ref Unchecked.defaultof<PropertyInfo>
           let getKey o = if isNull !keyProp  then do keyProp := o.GetType().GetRuntimeProperty("Key")
                          (!keyProp).GetValue(o)
@@ -312,7 +313,7 @@ module MessageTemplates =
           someDictionary (refId, skvps)
 
       | t when FSharpType.IsUnion t && not <| isFSharpList t ->
-   
+
         let case, fields = FSharpValue.GetUnionFields(instance, t)
         let caseName = ScalarValue case.Name
         match fields with
@@ -320,19 +321,19 @@ module MessageTemplates =
         | [| oneField |] ->
           match refCount.TryShowAsRefId instance with
           | _, Some pv  -> Some pv
-          | refId, None -> 
+          | refId, None ->
             someDictionary (refId, [caseName, resolverWithValue oneField])
         | _ ->
           match refCount.TryShowAsRefId instance with
           | _, Some pv  -> Some pv
-          | refId, None -> 
+          | refId, None ->
             someDictionary (refId, [caseName, resolverWithValue fields])
       | _ ->
         match instance with
         | :? System.Collections.IEnumerable as e ->
           match refCount.TryShowAsRefId instance with
           | _, Some pv  -> Some pv
-          | refId, None -> 
+          | refId, None ->
             let eles = e |> Seq.cast<obj> |> Seq.map resolverWithValue |> Seq.toList
             someSequence (refId, eles)
         | _ -> None
@@ -341,15 +342,15 @@ module MessageTemplates =
 
     let inline private tryGetValueWithProp (propInfo : PropertyInfo) (instance : obj) =
       match propInfo with
-      | p when (not <| isNull p) 
-               && p.CanRead 
+      | p when (not <| isNull p)
+               && p.CanRead
                && p.GetIndexParameters().Length = 0 ->
-        let propValue = 
-          try p.GetValue(instance) 
-          with 
-          | :? TargetInvocationException as ex ->  
+        let propValue =
+          try p.GetValue(instance)
+          with
+          | :? TargetInvocationException as ex ->
             (sprintf "The property (%s) accessor threw an (TargetInvocationException): %s" p.Name ex.InnerException.Message) |> box
-          | ex -> 
+          | ex ->
             (sprintf "The property (%s) accessor threw an (%A) : %s" p.Name (ex.GetType())  ex.Message) |> box
         Some propValue
       | _ -> None
@@ -376,16 +377,16 @@ module MessageTemplates =
 
       let instance = req.Value
       let refCount = req.IdManager
-      
-      if not <| isNull instance then 
+
+      if not <| isNull instance then
         match refCount.TryShowAsRefId instance with
         | _, Some pv  -> pv
-        | refId, None -> 
+        | refId, None ->
           let ty = instance.GetType()
           let typeTag = ty.Name
 
           match how with
-          | Projection.Except _ -> 
+          | Projection.Except _ ->
             let topHieraMap = Projection.toTopMap how
             let isInclude name =
               // in except hieraMap and has no childNames
@@ -429,7 +430,7 @@ module MessageTemplates =
 
     let rec destructure (registry : ICustomDestructureRegistry) (tryGetProjection : Projection.ProjectionStrategy) (req : DestructureRequest) : TemplatePropertyValue =
       let resolver = destructure registry tryGetProjection
-      let tryCustom (req : DestructureRequest) = 
+      let tryCustom (req : DestructureRequest) =
         match registry.TryGetRegistration (req.Value.GetType()) with
         | Some customFactory -> customFactory resolver req |> Some
         | None -> None
@@ -451,7 +452,7 @@ module MessageTemplates =
           | Some tpv -> tpv
           | None -> catchByScalarOrigin req
 
-  module Formatting = 
+  module Formatting =
 
     module Utils =
       let formatWithCustom (provider : IFormatProvider) (arg : obj) format =
@@ -673,7 +674,7 @@ module MessageTemplates =
            | TemplateToken.Property pt  ->
              match tryGetPropertyValue pt with
              | None -> (pt.ToString(), MissingTemplateField) |> Seq.singleton // not found value
-             | Some pv -> 
+             | Some pv ->
                let writeState = { provider = pvd; idManager = RefIdManager () }
                tokeniseProperty writeState pt pv
           )

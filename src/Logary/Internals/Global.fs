@@ -7,16 +7,16 @@ module internal Global =
   open NodaTime
 
   type T =
-    { getLogger               : PointName -> Logger
+    { getLogger: PointName -> Logger
       /// Gets a logger by name and applies the passed middleware to it. You can
       /// also use `Logger.apply` on existing loggers to create new ones.
-      getLoggerWithMiddleware : PointName -> Middleware -> Logger
-      getTimestamp            : unit -> EpochNanoSeconds
+      getLoggerWithMiddleware: PointName -> Middleware -> Logger
+      getTimestamp: unit -> EpochNanoSeconds
       /// Gets the console semaphore. When the process is running with an attached
       /// tty, this function is useful for getting the semaphore to synchronise
       /// around. You must take this if you e.g. make a change to the colourisation
       /// of the console output.
-      getConsoleSemaphore     : unit -> obj }
+      getConsoleSemaphore: unit -> obj }
     with
       static member create getLogger getLoggerWM getTs getCS =
         { getLogger = getLogger
@@ -69,7 +69,7 @@ module internal Global =
 
     interface Logger with // flyweight
       member x.name = name
-      
+
       member x.level =
         withLogger (fun logger -> logger.level)
 
@@ -105,20 +105,24 @@ module internal Global =
 
     module E = Chiron.Serialization.Json.Encode
     module EI = Chiron.Inference.Json.Encode
-    
+
     let private customJsonEncoderDic = new ConcurrentDictionary<Type,CustomJsonEncoderFactory>()
 
-    let configJsonEncoder<'t> (factory : CustomJsonEncoderFactory<'t>) =
+    let configJsonEncoder<'t> (factory: CustomJsonEncoderFactory<'t>) =
       let ty = typeof<'t>
-      let untypedEncoder (resolver : JsonEncoder<obj>) (data : obj) =
+      let untypedEncoder (resolver: JsonEncoder<obj>) (data: obj) =
         match data with
-        | :? 't as typedData -> factory resolver typedData
-        | _ -> Json.String (sprintf "failed down cast to %A , obj is : %s" typeof<'t> (string data))
+        | :? 't as typedData ->
+          factory resolver typedData
+        | _ ->
+          let message = sprintf "Could not down-cast value to '%s'. Value is: %O" typeof<'t>.FullName data
+          Json.String message
+      customJsonEncoderDic.[ty] <- untypedEncoder
 
-      customJsonEncoderDic.[ty] <- untypedEncoder 
     let internal customJsonEncoderRegistry = lazy (
       configJsonEncoder<PointName>(fun _ name -> E.string (name.ToString()))
-      configJsonEncoder<Gauge>(fun _ (Gauge(v,u)) -> 
+
+      configJsonEncoder<Gauge>(fun _ (Gauge (v, u)) ->
         let (vs, us) = Units.scale u v
         E.string (sprintf "%s %s" (vs.ToString()) us))
 
@@ -130,18 +134,18 @@ module internal Global =
         |> EI.required "timestamp" msg.timestamp
         |> E.required resolver "context" msg.context
         |> JsonObject.toJson)
-        
-      {
-        new ICustomJsonEncoderRegistry with
-          member __.TryGetRegistration (runtimeType : Type) =
+
+      { new ICustomJsonEncoderRegistry with
+          member __.TryGetRegistration (runtimeType: Type) =
             match customJsonEncoderDic.TryGetValue runtimeType with
-            | true, factory -> factory |> Some
+            | true, factory ->
+              Some factory
             | false , _ ->
               customJsonEncoderDic.Keys
               |> Seq.tryFind (fun baseType -> baseType.IsAssignableFrom runtimeType)
               |> Option.bind (fun key ->
                  match customJsonEncoderDic.TryGetValue key with
-                 | true, factory -> factory |> Some
+                 | true, factory -> Some factory
                  | false , _ -> None)
       })
 
@@ -161,7 +165,7 @@ module internal Global =
       | Projection.NotSupport -> ()
 
     let internal tryGetCustomProjection : Projection.ProjectionStrategy  =
-      fun (t : Type) ->
+      fun (t: Type) ->
         match customProjectionDic.TryGetValue t with
         | true, projection -> Some projection
         | false , _ ->
@@ -174,7 +178,7 @@ module internal Global =
 
     let private customDestructureDic = new ConcurrentDictionary<Type,CustomDestructureFactory>()
 
-    let configDestructure<'t> (factory : CustomDestructureFactory<'t>) =
+    let configDestructure<'t> (factory: CustomDestructureFactory<'t>) =
       let ty = typeof<'t>
       let untypedFactory resolver (untypedReq : DestructureRequest) =
         match untypedReq.TryDownCast<'t> () with
@@ -197,7 +201,7 @@ module internal Global =
         | _, Some pv -> pv
         | refId, None ->
           let typeTag = ex.GetType().FullName
-          let nvs = [ 
+          let nvs = [
             yield { Name = "Message"; Value = ScalarValue ex.Message }
             if not <| isNull ex.Data && ex.Data.Count > 0 then
               yield { Name = "Data"; Value = req.WithNewValue(ex.Data) |> resolver }

@@ -9,16 +9,15 @@ open Logary.MessageWriter
 open Logary.MessageTemplates
 open Chiron
 
-let private sampleMessage : Message =
+let private sampleMessage: Message =
   Message.eventFormat (Info, "this is bad, with {1} and {0} reverse.", "the first value", "the second value")
   |> Message.setName (PointName.ofList ["a"; "b"; "c"; "d"])
   |> Message.setNanoEpoch 3123456700L
 
-type User = 
-  {
-    id      : int 
-    name    : string
-    created : DateTime
+type User =
+  { id: int
+    name: string
+    created: DateTime
   }
 
 type Obj() =
@@ -34,7 +33,7 @@ let date20171111 =  DateTime.Parse("2017-11-11")
 let foo () = { id = 999; name = "whatever"; created = date20171111}
 
 
-let complexMessage : Message =
+let complexMessage: Message =
   let ex = exn "exception with data in it"
   ex.Data.Add ("data 1 in exn", 1)
   ex.Data.Add ("data foo in exn", foo ())
@@ -42,13 +41,13 @@ let complexMessage : Message =
 
   let tp () = (1, "two", foo())
   let (scalarArr : obj[]) = [| 1;  2; 3; "4"; "5"; 6.0; |]
-  let (notScalarList : obj list) = [foo (); tp ()] 
+  let (notScalarList : obj list) = [foo (); tp ()]
   let scalarKeyValueMap = [ 1,"one" ; 2, "two"] |> HashMap.ofSeq
   let scalarKeyMap = Map [ "some user", box (foo ()) ; "some obj", box (Obj())]
   let notScalarMap = Map [([2,"2"],["3";"4"]); ([1,"a";2,"b"],["hello";"world"])]
 
-  Message.eventFormat (Info, 
-    "default foo is {foo} here is a default {objDefault} and stringify {$objStr} and destructure {@objDestr}", 
+  Message.eventFormat (Info,
+    "default foo is {foo} here is a default {objDefault} and stringify {$objStr} and destructure {@objDestr}",
     foo (), Obj(),  Obj(),  Obj())
   |> Message.setName  (PointName.ofList ["a"; "b"; "c"; "d"])
   |> Message.setNanoEpoch 3123456700L
@@ -74,7 +73,8 @@ with
       let (KV (xk,xv)) = x
       let (KV (ok,ov)) = other
       xk = ok && xv = ov
-    | _ -> false
+    | _ ->
+      false
 
   override x.GetHashCode () = hash x
 
@@ -110,28 +110,23 @@ let levelDatetimeMessagePathNewLine =
   expanded false "\n" "\n"
 
 type ProjectionTestOnly =
-  {
-    ex: exn
-    user: User
-  }
+  { ex: exn
+    user: User }
 
 type ProjectionTestExcept =
-  {
-    user: User
-  }
+  { user: User }
 
 type CustomCycleReferenceRecord =
   { mutable inner : CustomCycleReferenceRecord option
     a : int
     b : string }
 
-type CustomCycleReferenceType (id : int, name : string) =
+type CustomCycleReferenceType (id: int, name: string) =
   member val Inner =  Unchecked.defaultof<CustomCycleReferenceType> with get,set
   member __.Id = id
   member __.Name = name
 
 let tests = [
-
   testCase "json formatting" <| fun _ ->
     complexMessage
     |> Logary.Formatting.Json.formatWith JsonFormattingOptions.Pretty
@@ -231,7 +226,7 @@ let tests = [
     |> Message.setNanoEpoch 3123456700L
     |> Message.setContext "CurrentPrincipal" System.Threading.Thread.CurrentPrincipal
     |> levelDatetimeMessagePathNewLine.format
-    |> ignore // cycle reference should be handled, otherwise will throw stackoverflow exception  
+    |> ignore // cycle reference should be handled, otherwise will throw stackoverflow exception
 
   testCase "user custom destructure resolver support cycle reference check" <| fun _ ->
     Logary.Configuration.Config.configDestructure<CustomCycleReferenceRecord>(fun resolver req ->
@@ -241,7 +236,7 @@ let tests = [
       | _, Some pv -> pv
       | refId, None ->
         let typeTag = instance.GetType().Name
-        let nvs = [ 
+        let nvs = [
           yield { Name = "Id"; Value = ScalarValue instance.a }
           yield { Name = "Name"; Value = ScalarValue instance.b }
           yield { Name = "Inner"; Value = req.WithNewValue(instance.inner) |> resolver }
@@ -259,17 +254,17 @@ let tests = [
        let expect = """
 I 1970-01-01T00:00:03.1234567+00:00: cycle reference []
   others:
-    SelfReferenceData => $1 
+    SelfReferenceData => $1
       CustomCycleReferenceRecord {
         Id => 42
         Name => "bad structure"
-        Inner => 
+        Inner =>
           "Some" => $1 }
 """
        Expect.equal actual (expect.TrimStart([|'\n'|])) "cycle reference should work"
 
   testCase "projection only" <| fun _ ->
-    let only = <@@ Destructure.only<ProjectionTestOnly>(fun foo -> 
+    let only = <@@ Destructure.only<ProjectionTestOnly>(fun foo ->
       [|
         foo.user.created.Day;
         foo.ex.Message;
@@ -277,9 +272,9 @@ I 1970-01-01T00:00:03.1234567+00:00: cycle reference []
         foo.ex.Data.Count;
         foo.ex.InnerException.Message
         |]) @@>
-        
+
     Logary.Configuration.Config.configProjection only
-    
+
     let inner = exn "inner exception"
     let e = new Exception("top", inner)
     e.Data.Add(1,2)
@@ -295,21 +290,21 @@ I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "t
     0 => "the first value"
     1 => "the second value"
   others:
-    only => 
+    only =>
       ProjectionTestOnly {
-        user => 
+        user =>
           User {
-            created => 
+            created =>
               DateTime {
                 Day => 11}}
-        ex => 
+        ex =>
           Exception {
             StackTrace => null
             Message => "top"
-            InnerException => 
+            InnerException =>
               Exception {
                 Message => "inner exception"}
-            Data => 
+            Data =>
               ListDictionaryInternal {
                 Count => 2}}}
 """
@@ -322,7 +317,7 @@ I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "t
     let invalid = <@@ 1 + 1 @@>
     Logary.Configuration.Config.configProjection except
     Logary.Configuration.Config.configProjection invalid
-    
+
     sampleMessage
     |> Message.setContext "except" {user= (foo ())}
     |> levelDatetimeMessagePathNewLine.format
@@ -333,13 +328,13 @@ I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "t
     0 => "the first value"
     1 => "the second value"
   others:
-    except => 
+    except =>
       ProjectionTestExcept {
-        user => 
+        user =>
           User {
             name => "whatever"
             id => 999
-            created => 
+            created =>
               DateTime {
                 Year => 2017
                 TimeOfDay => 00:00:00
@@ -411,12 +406,12 @@ I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "t
     0 => "the first value"
     1 => "the second value"
   others:
-    _logary.errors => 
-      - 
+    _logary.errors =>
+      -
         System.Exception {
           Message => "Gremlings in the machinery"
           HResult => -2146233088
-          InnerException => 
+          InnerException =>
             System.Exception {
               Message => "inner exception"
               HResult => -2146233088}}
@@ -434,7 +429,7 @@ I 1970-01-01T00:00:03.1234567+00:00: default foo is "{id = 999;\n name = \"whate
     objDefault => "PropA is 45 and PropB raise exn"
     foo => "{id = 999;\n name = \"whatever\";\n created = 11/11/2017 12:00:00 AM;}"
     objStr => "Logary.Tests.Formatting+Obj"
-    objDestr => 
+    objDestr =>
       Obj {
         PropB => "The property (PropB) accessor threw an (TargetInvocationException): Oh noes, no referential transparency here"
         PropA => 45}
@@ -443,76 +438,76 @@ I 1970-01-01T00:00:03.1234567+00:00: default foo is "{id = 999;\n name = \"whate
     svc1 request per second => "1.75 k"
     methodA => "25 s"
   others:
-    UserInfo => 
+    UserInfo =>
       User {
         name => "whatever"
         id => 999
         created => 11/11/2017 12:00:00 AM}
-    simple scalar key/value map => 
+    simple scalar key/value map =>
       1 => "one"
       2 => "two"
-    no scalar key/value map => 
-      - key => 
+    no scalar key/value map =>
+      - key =>
           - [1, "a"]
           - [2, "b"]
         value => ["hello", "world"]
-      - key => 
+      - key =>
           - [2, "2"]
         value => ["3", "4"]
-    _logary.errors => 
-      - 
+    _logary.errors =>
+      -
         System.Exception {
           Message => "another exception"
           HResult => -2146233088}
-      - 
+      -
         System.Exception {
           Message => "exception with data in it"
-          Data => 
+          Data =>
             "data 1 in exn" => 1
-            "data foo in exn" => 
+            "data foo in exn" =>
               User {
                 name => "whatever"
                 id => 999
                 created => 11/11/2017 12:00:00 AM}
-            - key => 
+            - key =>
                 User {
                   name => "whatever"
                   id => 999
                   created => 11/11/2017 12:00:00 AM}
-              value => 
+              value =>
                 User {
                   name => "whatever"
                   id => 999
                   created => 11/11/2017 12:00:00 AM}
           HResult => -2146233088}
-    Some Tuple With 1 two foo => 
+    Some Tuple With 1 two foo =>
       - 1
       - "two"
-      - 
+      -
         User {
           name => "whatever"
           id => 999
           created => 11/11/2017 12:00:00 AM}
-    just scalar key map => 
-      "some obj" => 
+    just scalar key map =>
+      "some obj" =>
         Obj {
           PropB => "The property (PropB) accessor threw an (TargetInvocationException): Oh noes, no referential transparency here"
           PropA => 45}
-      "some user" => 
+      "some user" =>
         User {
           name => "whatever"
           id => 999
           created => 11/11/2017 12:00:00 AM}
-    no scalar list => 
-      - 
+    no scalar list =>
+      -
         User {
           name => "whatever"
           id => 999
           created => 11/11/2017 12:00:00 AM}
-      - 
+      -
         - 1
         - "two"
-        - 
+        -
           User {
             name => "whatever"
             id => 999
