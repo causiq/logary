@@ -4,7 +4,6 @@
     <AssemblyName>Libryy</AssemblyName>
     <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
   </PropertyGroup>
-
   <ItemGroup>
     <Compile Include="..\..\paket-files\logary\logary\src\Logary.Facade\Facade.fs">
       <Paket>True</Paket>
@@ -17,6 +16,5 @@
     <None Include="paket.references" />
     <ProjectReference Include="..\..\src\Logary\Logary.fsproj" />
   </ItemGroup>
-
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

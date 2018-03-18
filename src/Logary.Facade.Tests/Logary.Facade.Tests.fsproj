@@ -5,6 +5,7 @@
     <Version>5.0.0-alpha</Version>
     <OutputType>Exe</OutputType>
     <TargetFrameworks>net461;netcoreapp2.0</TargetFrameworks>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\..\paket-files\haf\YoLo\YoLo.fs">

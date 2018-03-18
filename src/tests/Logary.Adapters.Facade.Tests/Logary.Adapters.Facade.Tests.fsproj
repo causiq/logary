@@ -5,7 +5,6 @@
     <OutputType>Exe</OutputType>
     <TargetFrameworks>net461;netcoreapp2.0</TargetFrameworks>
   </PropertyGroup>
-
   <ItemGroup>
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
@@ -14,6 +13,5 @@
     <ProjectReference Include="..\..\..\examples\Libryy\Libryy.fsproj" />
     <ProjectReference Include="..\..\..\examples\Cibryy\Cibryy.csproj" />
   </ItemGroup>
-
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />
 </Project>

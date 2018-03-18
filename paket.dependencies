@@ -1,5 +1,5 @@
 ﻿source https://api.nuget.org/v3/index.json
-framework auto-detect
+framework net461, netcoreapp2.0, netstandard2.0
 redirects on
 
 nuget Castle.Core
@@ -19,13 +19,13 @@ github xyncro/aether src/Aether/Aether.fs
 
 group Build
     source https://api.nuget.org/v3/index.json
-    framework auto-detect
+    framework net461, netcoreapp2.0, netstandard2.0
     nuget FAKE
     github fsharp/FAKE modules/Octokit/Octokit.fsx
 
 group Tests
     source https://api.nuget.org/v3/index.json
-    framework auto-detect
+    framework net461, netcoreapp2.0, netstandard2.0
     redirects on
 
     nuget ApacheThrift
@@ -76,7 +76,7 @@ group Tests
 
 group Targets
     source https://api.nuget.org/v3/index.json
-    framework auto-detect
+    framework net461, netcoreapp2.0, netstandard2.0
     redirects on
 
     nuget ApacheThrift
@@ -121,7 +121,7 @@ group Targets
 
 group Examples
     source https://api.nuget.org/v3/index.json
-    framework auto-detect
+    framework net461, netcoreapp2.0, netstandard2.0
     redirects on
 
     nuget Argu
