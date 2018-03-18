@@ -17,8 +17,9 @@ open Hopac
 open Hopac.Extensions
 open Hopac.Infixes
 
-let start () =
-  let targConf = InfluxDbConf.create(Uri "http://127.0.0.1:9011/write", "tests")
+let start (port: int) =
+  let uri = Uri (sprintf "http://127.0.0.1:%i/write" port)
+  let targConf = InfluxDbConf.create(uri, "tests")
   emptyRuntime >>= (fun (ri, ilogger) ->
   Target.create ri (create targConf "influxdb"))
 
@@ -28,34 +29,41 @@ let shutdown t =
     do! ack
   }
 
-type State(cts: CancellationTokenSource) =
+type State(cts: CancellationTokenSource, port: int) =
   let request = Ch ()
   member x.req = request
+  member x.port = port
   interface IDisposable with
     member x.Dispose () =
       cts.Cancel()
       cts.Dispose()
 
+let mutable port = 9011
+
 let withServer () =
   let cts = new CancellationTokenSource()
-  let state = new State(cts)
+  let state = new State(cts, Interlocked.Increment(&port))
   let cfg =
-    { defaultConfig with bindings = [ HttpBinding.createSimple HTTP "127.0.0.1" 9011 ]
-                         cancellationToken = cts.Token }
+    let binding = HttpBinding.createSimple HTTP "127.0.0.1" state.port
+    { defaultConfig with
+        bindings = [ binding ]
+        cancellationToken = cts.Token }
+
   let listening, srv =
     startWebServerAsync cfg (request (fun r ctx -> async {
       do! Job.toAsync (Ch.give state.req r)
       return! Successful.NO_CONTENT ctx
     }))
+
   Async.Start(srv, cts.Token)
   Job.fromAsync (Async.Ignore listening) >>-.
   state
 
 let testCaseTarget name fn =
   testCaseJob name (job {
-    use! server = withServer ()
-    let! target = start ()
-    do! Job.tryFinallyJob (fn server target) (shutdown target)
+    use! state = withServer ()
+    let! target = start state.port
+    do! Job.tryFinallyJob (fn state target) (shutdown target)
   })
 
 [<Tests>]
