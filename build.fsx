@@ -91,7 +91,7 @@ Target "Tests" (fun _ ->
   let commandLine (file: string) =
     let projectName = file.Substring(0, file.Length - ".fsproj".Length) |> Path.GetFileName
     let path = Path.GetDirectoryName file
-    sprintf "run %s/bin/%s/netcoreapp2.0/%s.dll --summary" path configuration projectName
+    sprintf "%s/bin/%s/netcoreapp2.0/%s.dll --summary" path configuration projectName
   !! "src/tests/**/*.fsproj" |> Seq.iter (commandLine >> DotNetCli.RunCommand id)
   !! "src/*.Tests/*.fsproj" |> Seq.iter (commandLine >> DotNetCli.RunCommand id))
 
