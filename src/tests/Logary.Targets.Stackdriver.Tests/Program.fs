@@ -41,11 +41,12 @@ let raisedExn msg =
 
 let stackdriver =
   lazy (
-    let logName = env "logary-tests" "STACKDRIVER_LOG"
     let project = env "tradera-lab" "STACKDRIVER_PROJECT"
-    let labels = Dictionary<_,_>()
-    StackdriverConf.create(project, logName, ResourceType.createComputeInstance("us-central1-b", "ci-server"), labels, 1u)
+    let logName = env "logary-tests" "STACKDRIVER_LOG"
+    StackdriverConf.create(project, logName, Global)
   )
+
+open Stackdriver.Impl
 
 [<Tests>]
 let target =
@@ -56,14 +57,13 @@ let target =
     testCase "serialise" <| fun () ->
       let e1 = raisedExn "darn"
       let e2 = raisedExn "actual exn"
-
       let subject =
         Message.eventWarn "Testing started"
         |> Message.setField "data-key" "data-value"
         |> Message.setField "tags" [ "integration" ]
         |> Message.setContext "service" "tests"
         |> Message.addExn e2
-        |> Stackdriver.Impl.write
+        |> fun m -> m.toLogEntry()
 
       Expect.equal subject.Severity LogSeverity.Warning "severity should be warning"
       Expect.equal (subject.Labels.["service"]) "tests" "should have correct context"

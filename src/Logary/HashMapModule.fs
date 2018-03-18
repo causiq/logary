@@ -52,6 +52,11 @@ module HashMap =
   let inline visit (visitor: 'K -> 'V -> bool) (m: HashMap<'K, 'V>): bool =
     m.Visit visitor
 
+  let inline length (m: HashMap<'K, 'V>): int =
+    let l = ref 0
+    visit (fun k v -> incr l; true) m |> ignore
+    !l
+
   let inline toArray (m: HashMap<'K, 'V>): KeyValuePair<'K, 'V> [] =
     let ra = ResizeArray<_> 16
     visit (fun k v -> ra.Add (KeyValuePair (k, v)); true) m |> ignore
@@ -66,13 +71,13 @@ module HashMap =
   let inline toListPair (m: HashMap<'K, 'V>): KeyValuePair<'K, 'V> list =
     toSeqPair m |> List.ofSeq
 
-  let inline toList (m: HashMap<'K, 'V>) : ('K * 'V) list =
+  let inline toList (m: HashMap<'K, 'V>): ('K * 'V) list =
     toListPair m |> List.map (fun (KeyValue (k, v)) -> k, v)
 
-  let inline length (m: HashMap<'K, 'V>): int =
-    let l = ref 0
-    visit (fun k v -> incr l; true) m |> ignore
-    !l
+  let inline toDictionary (m: HashMap<'K, 'V>): Dictionary<'K, 'V> =
+    let d = Dictionary<'K, 'V>(length m)
+    toSeqPair m |> Seq.iter (fun kvp -> d.Add(kvp.Key, kvp.Value))
+    d
 
   let inline ofArrayPair (xs: KeyValuePair<'k, 'v> []): HashMap<'k, 'v> =
     xs |> Array.fold (fun map (KeyValue (k, v)) -> map |> add k v) empty

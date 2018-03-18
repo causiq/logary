@@ -128,7 +128,7 @@ type StackdriverConf =
     /// Resource currently being monitored
     resource: ResourceType
     /// Additional user labels to be added to the messages
-    labels: IDictionary<string,string>
+    labels: HashMap<string,string>
     /// Maximum messages to send as a batch.
     maxBatchSize: uint16 }
 
@@ -136,7 +136,7 @@ type StackdriverConf =
     { projectId = projectId
       logId = defaultArg logId "apps"
       resource = defaultArg resource Global
-      labels = defaultArg labels (Dictionary<_,_>() :> IDictionary<_,_>)
+      labels = defaultArg labels HashMap.empty
       maxBatchSize = defaultArg batchSize 50us }
 
 let empty: StackdriverConf =
@@ -148,7 +148,7 @@ module internal Impl =
   let unformattedMessageKey = "value"
 
   type LogLevel with
-    member x.toSeverity (): LogSeverity =
+    member x.toSeverity(): LogSeverity =
       match x with
       | LogLevel.Debug -> LogSeverity.Debug
       | LogLevel.Error -> LogSeverity.Error
@@ -158,7 +158,8 @@ module internal Impl =
       | LogLevel.Verbose -> LogSeverity.Debug
 
   // consider use destr whole msg context as TemplatePropertyValue, then send to WellKnownTypes
-  let toProtobufValue (data:obj) =
+  let toProtobufValue (data: obj) =
+    // TODO: convert to TypeShape
     match data with
     | :? string as s ->
       WellKnownTypes.Value.ForString(s)
@@ -218,17 +219,27 @@ module internal Impl =
     { logName: string
       logger: LoggingServiceV2Client
       resource: MonitoredResource
+      labels: IDictionary<string, string>
       cancellation: System.Threading.CancellationTokenSource
       /// used as a wrapper around the above cancellation token
       callSettings: CallSettings }
 
-  let createState (conf: StackdriverConf) =
-    let source = new System.Threading.CancellationTokenSource()
-    { logger = LoggingServiceV2Client.Create()
-      resource = conf.resource.toMonitoredResource conf.projectId
-      logName = sprintf "projects/%s/logs/%s" conf.projectId (System.Net.WebUtility.UrlEncode conf.logId)
-      cancellation = source
-      callSettings = CallSettings.FromCancellationToken(source.Token) }
+    static member create (conf: StackdriverConf) =
+      let source = new System.Threading.CancellationTokenSource()
+      { logger = LoggingServiceV2Client.Create()
+        resource = conf.resource.toMonitoredResource conf.projectId
+        labels = conf.labels |> HashMap.toDictionary
+        logName = sprintf "projects/%s/logs/%s" conf.projectId (System.Net.WebUtility.UrlEncode conf.logId)
+        cancellation = source
+        callSettings = CallSettings.FromCancellationToken(source.Token) }
+
+  let writeBatch (state: State) (entries: LogEntry list): Job<unit> =
+    Job.Scheduler.isolate (fun () ->
+      let request = WriteLogEntriesRequest(LogName = state.logName, Resource = state.resource)
+      request.Entries.AddRange entries
+      request.Labels.Add state.labels
+      state.logger.WriteLogEntries(request, state.callSettings)
+      |> ignore)
 
   let loop (conf: StackdriverConf) (runtime: RuntimeInfo, api: TargetAPI) =
     runtime.logger.info (eventX "Started Stackdriver target")
@@ -242,10 +253,8 @@ module internal Impl =
           ack *<= () :> Job<_>
 
         RingBuffer.takeBatch conf.maxBatchSize api.requests ^=> fun messages ->
-          let request = WriteLogEntriesRequest(LogName = state.logName, Resource = state.resource)
-          request.Labels.Add(conf.labels)
-
           let entries, acks, flushes =
+            // Make a single pass over the array, accumulating the entries, acks and flushes.
             messages |> Array.fold (fun (entries, acks, flushes) -> function
               | Log (message, ack) ->
                 message.toLogEntry() :: entries,
@@ -257,14 +266,9 @@ module internal Impl =
                 ackCh *<= () :: flushes)
               ([], [], [])
 
-          request.Entries.AddRange entries
-
           job {
-            do! Job.Scheduler.isolate (fun () ->
-              runtime.logger.verbose (eventX "Writing {count} messages" >> setField "count" entries.Length)
-              state.logger.WriteLogEntries(request, state.callSettings)
-              |> ignore)
-
+            do runtime.logger.verbose (eventX "Writing {count} messages" >> setField "count" entries.Length)
+            do! writeBatch state entries
             do runtime.logger.verbose (eventX "Acking messages")
             do! Job.conIgnore acks
             do! Job.conIgnore flushes
@@ -273,7 +277,7 @@ module internal Impl =
 
       ] :> Job<_>
 
-    loop (createState conf)
+    loop (State.create conf)
 
 /// Create a new StackDriver target
 [<CompiledName "Create">]
@@ -295,13 +299,11 @@ type Builder(conf, callParent: Target.ParentCallback<Builder>) =
     !(callParent <| Builder({ conf with resource = resource }, callParent))
 
   member x.WithLabel(key, value) =
-    conf.labels.Add(key, value)
-    !(callParent <| Builder(conf, callParent))
+    !(callParent <| Builder({ conf with labels = conf.labels |> HashMap.add key value }, callParent))
 
   member x.WithLabels(labels: IDictionary<_,_>) =
-    for kvp in labels do
-      conf.labels.Add(kvp.Key, kvp.Value)
-    !(callParent <| Builder(conf, callParent))
+    let labels' = labels |> Seq.fold (fun hm (KeyValue (key, value)) -> hm |> HashMap.add key value) conf.labels
+    !(callParent <| Builder({ conf with labels = labels' }, callParent))
 
   member x.BatchesOf(size) =
     !(callParent <| Builder({ conf with maxBatchSize = size }, callParent))
