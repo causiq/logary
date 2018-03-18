@@ -62,7 +62,7 @@
     <Compile Include="Internals/Targets.fs" />
     <Compile Include="Target.fs" />
     <Compile Include="Internals/InternalLogger.fs" />
-    <Compile Include="Logging.fs" />
+    <Compile Include="Log.fs" />
     <!-- Below: events processing -->
     <Compile Include="EventsProcessing/Transformers.fs" />
     <Compile Include="EventsProcessing/Ticker.fs" />

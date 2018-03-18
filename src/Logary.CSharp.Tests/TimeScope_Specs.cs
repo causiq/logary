@@ -1,5 +1,4 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using Machine.Specifications;
 using NodaTime;
 
@@ -33,7 +32,7 @@ namespace Logary.CSharp.Tests
         //  manager.DisposeAsync().ToTask().Wait();
         };
 
-        static Logger subject = Logging.GetCurrentLogger();
+        static Logger subject = Log.Create<When_using_TimeScope>();
         static LogManager manager;
         static StringWriter output;
     }

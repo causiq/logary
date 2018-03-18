@@ -9,7 +9,7 @@ open System
 open System.Threading
 open Logary.EventsProcessing
 
-let logger = Logging.getLoggerByName "Servizz.Program"
+let logger = Log.create "Servizz.Program"
 
 type Speed = Fast | Slow | OtherSpeed of speed:int
 type LoginLogoutEvent =
@@ -38,8 +38,8 @@ let main argv =
   // if you need a Logger instance:
   let logger = logary.getLogger (PointName [| "Libryy" |])
   let librryLogger = LoggerAdapter.createGeneric logger
-  
-  Message.gaugeWithUnit "Test" (99./88.) Units.Seconds 
+
+  Message.gaugeWithUnit "Test" (99./88.) Units.Seconds
   |> logger.logSimple
 
   let someEventWithBinaryData = Message.templateEvent<string, byte[]> (Debug, "Some binary ({Disposition}) is {Binary}")

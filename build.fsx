@@ -1,5 +1,6 @@
 #r @"packages/build/FAKE/tools/FakeLib.dll"
 open System
+open System.IO
 open Fake
 
 Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
@@ -86,14 +87,17 @@ Target "Build" (fun _ ->
   })
 )
 
-Target "RunTest" (fun _ ->
+Target "Tests" (fun _ ->
   !! "src/tests/**/*.fsproj"
   |> Seq.iter (fun file ->
-    let path = file.Substring(0, file.Length - ".fsproj".Length)
-    let name = System.IO.Path.GetFileName path
+    let projectName =
+      file.Substring(0, file.Length - ".fsproj".Length)
+      |> Path.GetFileName
+    let path =
+      Path.GetDirectoryName file
     DotNetCli.RunCommand id (
-      sprintf "run %s/bin/%s/netcoreapp2.0/%s.dll --summary"
-        path configuration name))
+      sprintf "%s/bin/%s/netcoreapp2.0/%s.dll --summary"
+        path configuration projectName))
 )
 
 let packParameters name =
@@ -167,7 +171,7 @@ Target "All" ignore
 ==> "PaketFiles"
 ==> "ProjectVersion"
 ==> "Build"
-//==> "RunTest" // until I remove the path base and make it relative
+==> "Tests" // until I remove the path base and make it relative
 ==> "Pack"
 ==> "All"
 ==> "Push"

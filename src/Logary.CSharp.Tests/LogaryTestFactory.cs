@@ -1,10 +1,6 @@
 using System.IO;
-using System.Text.RegularExpressions;
 using Logary.Configuration;
-using Logary.EventsProcessing;
-using Logary.Targets;
 using TextWriter = Logary.Targets.TextWriter;
-using Hopac;
 
 namespace Logary.CSharp.Tests
 {

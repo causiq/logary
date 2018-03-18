@@ -117,6 +117,7 @@ group Targets
     nuget fszmq
     nuget log4net
     nuget protobuf-net
+    nuget System.Net.Http redirects: force
 
 group Examples
     source https://api.nuget.org/v3/index.json

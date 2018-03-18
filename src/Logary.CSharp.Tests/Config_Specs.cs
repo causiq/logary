@@ -43,41 +43,7 @@ namespace Logary.CSharp.Tests
         It can_log_fatal2 = () => logger.LogEvent(LogLevel.Fatal, "Hello world 2", flush: true).Wait();
     }
 
-    [Pure, Ignore("Does not work on Mono")]
-    public class When_getting_current_logger_name
-    {
-        static PointName subject = Logging.GetCurrentLoggerName();
-        static string nlogName = GetCurrentClassLogger();
 
-        It should_have_name_of_class_and_namespace =
-            () => subject.ShouldEqual(PointNameModule.Parse("Logary.CSharp.Tests.When_getting_current_logger_name"));
-        It should_have_the_same_name_as_the_NLog_algorithm =
-            () => nlogName.ShouldEqual(PointNameModule.Format(subject));
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        public static string GetCurrentClassLogger()
-        {
-            string loggerName;
-            Type declaringType;
-            int framesToSkip = 1;
-            do
-            {
-                var frame = new StackFrame(framesToSkip, false);
-                var method = frame.GetMethod();
-                declaringType = method.DeclaringType;
-                if (declaringType == null)
-                {
-                    loggerName = method.Name;
-                    break;
-                }
-
-                framesToSkip++;
-                loggerName = declaringType.FullName;
-            } while (declaringType.Module.Name.Equals("mscorlib.dll", StringComparison.OrdinalIgnoreCase));
-
-            return loggerName;
-        }
-    }
 
     public class When_logging_with_logger_gotten_from_GetCurrentLogger
     {
@@ -90,12 +56,12 @@ namespace Logary.CSharp.Tests
         It should_write_messages_to_text_writer =
             () => output.ToString().ShouldContain("logged line");
 
-     Cleanup afterwards = () => 
-        {
-            // manager.Dispose();
-        };
+        Cleanup afterwards = () =>
+            {
+//                manager.Dispose();
+            };
 
-        static Logger subject = Logging.GetCurrentLogger();
+        static Logger subject = Log.Create<When_logging_with_logger_gotten_from_GetCurrentLogger>();
         static LogManager manager;
         static StringWriter output;
     }
@@ -121,7 +87,7 @@ namespace Logary.CSharp.Tests
         It should_not_throw_when_calling_FlushPending = () => flushThrown.ShouldBeNull();
         It should_not_write_messages_to_text_writer = () => output.ToString().ShouldBeEmpty();
 
-        static Logger subject = Logging.GetCurrentLogger();
+        static Logger subject = Log.Create<When_logging_after_LogManager_Dispose>();
         static LogManager manager;
         static StringWriter output;
         static Exception thrownException;

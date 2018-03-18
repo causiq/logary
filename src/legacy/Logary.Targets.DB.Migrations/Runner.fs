@@ -33,7 +33,7 @@ type Runner(fac      : MigrationProcessorFactory,
             ?showSql : bool,
             ?logger  : Logger) =
 
-  let logger = defaultArg logger (Logging.getCurrentLogger())
+  let logger = defaultArg logger (Log.create<Runner>())
 
   let timeout = defaultArg timeout (TimeSpan.FromSeconds(60.))
   let showSql = defaultArg showSql true

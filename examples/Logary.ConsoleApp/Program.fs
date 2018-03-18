@@ -7,6 +7,7 @@ module Logary.ConsoleApp.Program
 #r "NodaTime.dll"
 #r "Logary.dll"
 #endif
+#nowarn "44"
 
 open System
 open Hopac
@@ -108,9 +109,9 @@ let main argv =
   let randomness =
     RandomWalk.create "Logary.ConsoleApp.randomWalk"
 
-  let timing = 
+  let timing =
     Timing.metric (PointName.parse "Logary.ConsoleApp.sampleTiming")
-  
+
   let randomWalkPipe =
     Events.events
     |> Pipe.tickTimer (randomness) (TimeSpan.FromMilliseconds 500.)
@@ -131,7 +132,7 @@ let main argv =
       //|> Events.flattenToProcessing
       //|> Events.sink ["console"; "influxdb"]
 
-      randomWalkPipe 
+      randomWalkPipe
       |> Events.sink ["console"; "influxdb"]
 
       randomWalkPipe
@@ -159,7 +160,7 @@ let main argv =
 
   let logger = logary.getLogger (PointName [| "Logary"; "Samples"; "main" |])
 
-  
+
   NormalUsage.act logger
 
   mre.Wait()

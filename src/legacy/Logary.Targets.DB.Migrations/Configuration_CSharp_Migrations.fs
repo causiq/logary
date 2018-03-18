@@ -15,11 +15,10 @@ open Logary.Targets.DB
 
 [<Extension>]
 module MigrationBuilderEx =
-  let private logger = Logging.getCurrentLogger ()
+  let private logger = Log.create "Logary.Configuration.Migrations"
 
   [<Extension; CompiledName "MigrateUp">]
-  let migrateUp (builder      : ThirdStep,
-                 processorFac : Func<IDbConnection, IMigrationProcessor>) =
+  let migrateUp (builder: ThirdStep, processorFac: Func<IDbConnection, IMigrationProcessor>) =
     let builder' = builder :> ConfigReader<DBConf>
     let conf = builder'.ReadConf()
     let conn = conf.connectionFactory ()

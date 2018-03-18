@@ -4,6 +4,7 @@
     <AssemblyName>Logary.Targets.Logstash.Tests</AssemblyName>
     <OutputType>Exe</OutputType>
     <TargetFrameworks>net461;netcoreapp2.0</TargetFrameworks>
+    <NoWarn>3277</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

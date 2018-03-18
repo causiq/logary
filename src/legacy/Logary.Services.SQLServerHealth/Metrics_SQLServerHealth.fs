@@ -154,15 +154,14 @@ let empty =
     openConn       = fun () -> failwith "connection factory needs to be provided" }
 
 type State =
-  internal { 
+  internal {
     connMgr     : Sql.ConnectionManager
     lastIOs     : Database.IOInfo list * Instant
     dps         : PointName list}
 
 module internal Impl =
   open Database
-  let logger =
-    Logging.getLoggerByName "Logary.Metrics.SQLServerHealth.Impl"
+  let logger = Log.create "Logary.Metrics.SQLServerHealth.Impl"
 
   let timeNow =
     SystemClock.Instance.GetCurrentInstant
@@ -184,7 +183,7 @@ module internal Impl =
       "io_stall",             fun io -> ofMs io.ioStall
       "num_of_reads",         fun io -> Gauge (float io.numOfReads, Scalar)
       "num_of_writes",        fun io -> Gauge (float io.numOfWrites, Scalar)
-      "num_of_bytes_read",    fun io -> ofBytes io.numOfBytesRead 
+      "num_of_bytes_read",    fun io -> ofBytes io.numOfBytesRead
       "num_of_bytes_written", fun io -> ofBytes io.numOfBytesRead
       "read_latency",         IOInfo.readLatency >> ofMs
       "write_latency",        IOInfo.writeLatency >> ofMs

@@ -1,13 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <AssemblyName>Logary.Services.SuaveReporter</AssemblyName>
-    <OutputType>Exe</OutputType>
-    <TargetFrameworks>net461;netcoreapp2.0</TargetFrameworks>
+    <AssemblyName>Logary.Ingestion.Http</AssemblyName>
+    <OutputType>Library</OutputType>
+    <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
   </PropertyGroup>
-
   <ItemGroup>
-    <Compile Include="SuaveReporter.fs" />
+    <Compile Include="Api.fs" />
     <None Include="app\README.md" />
     <None Include="app\app.js" />
     <None Include="app\index.html" />
@@ -20,6 +19,5 @@
     </None>
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />
   </ItemGroup>
-
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />
 </Project>

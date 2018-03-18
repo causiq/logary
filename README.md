@@ -320,7 +320,7 @@ outputs, *targets*. Further, its *services* run as their own processes or in
        also may change your data structure.
      </blockquote>
    * SQLServerHealth – a service that keeps track of IO/latency performance for highly loaded SQL Servers
-   * SuaveReporter – a well-maintained Suave WebPart that you run as a part of your Suave
+   * Ingestion.Http – a well-maintained Suave WebPart that you run as a part of your Suave
      server, that enables you to use [logary-js](https://www.npmjs.com/package/logary-js).
 
 ## Tutorial and things around Message
