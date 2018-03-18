@@ -4,12 +4,13 @@
     <AssemblyName>Logary.MetricsWriter</AssemblyName>
     <OutputType>Exe</OutputType>
     <TargetFrameworks>net461</TargetFrameworks>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
-    <ProjectReference Include="..\..\src\Logary\Logary.fsproj" />
-    <ProjectReference Include="..\..\src\metrics\Logary.Metrics.WinPerfCounters\Logary.Metrics.WinPerfCounters.fsproj" />
+    <ProjectReference Include="../../src/Logary/Logary.fsproj" />
+    <ProjectReference Include="../../src/legacy/Logary.Metrics.WinPerfCounters/Logary.Metrics.WinPerfCounters.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

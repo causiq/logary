@@ -5,6 +5,7 @@
     <!-- https://github.com/fluentmigrator/fluentmigrator/issues/712 -->
     <TargetFrameworks>net461</TargetFrameworks>
     <OutputType>Exe</OutputType>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Topshelf.fs" />
