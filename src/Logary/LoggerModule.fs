@@ -28,7 +28,8 @@ module Logger =
   let inline log (logger: Logger) logLevel messageFactory: Alt<unit> =
     if logLevel >= logger.level then
       logger.logWithAck logLevel messageFactory ^-> ignore
-    else Alt.always ()
+    else
+      Alt.always ()
 
   let private simpleTimeout millis loggerName =
     timeOutMillis millis
@@ -59,6 +60,10 @@ module Logger =
   /// It's recommended to have alerting on STDERR.
   let logSimple (logger: Logger) msg: unit =
     start (logWithTimeout logger defaultTimeout msg.level (fun _ -> msg) ^->. ())
+
+  /// See `logSimple`; but with a message factory parameter.
+  let logWith (logger: Logger) level messageFactory: unit =
+    start (logWithTimeout logger defaultTimeout level messageFactory ^->. ())
 
   /// Log a message, which returns a promise. The first Alt denotes having the
   /// Message placed in all Targets' buffers. The inner Promise denotes having
@@ -232,11 +237,7 @@ module Logger =
         logSimple logger (transform message)
         res)
 
-  let timeScopeT (logger: Logger)
-                 (nameEnding: string)
-                 (transform: Message -> Message)
-                 : TimeScope =
-
+  let timeScopeT (logger: Logger) (nameEnding: string) (transform: Message -> Message): TimeScope =
     let name = logger.name |> PointName.setEnding nameEnding
     let bisections : (int64 * string) list ref = ref []
 
@@ -245,9 +246,9 @@ module Logger =
     let addSpan (m, i) (span: int64 (* ticks *), label: string) =
       let spanName = PointName [| PointName.format name ; "span"; string i |]
       let spanLabelName = PointName.setEnding "label" spanName
- 
-      let m' = 
-        m 
+
+      let m' =
+        m
         |> Message.addGauge (PointName.format spanName) (Ticks.toGauge span)
         |> Message.setContext (PointName.format spanLabelName) label
 
@@ -302,8 +303,10 @@ module Logger =
     { new Logger with // Logger.apply delegator
       member x.logWithAck logLevel messageFactory =
         logger.logWithAck logLevel (messageFactory >> middleware)
-      member x.name = logger.name
-      member x.level = logger.level
+      member x.name =
+        logger.name
+      member x.level =
+        logger.level
     }
 
 /// Syntactic sugar on top of Logger for use of curried factory function
@@ -319,8 +322,14 @@ module LoggerEx =
     ack :> Promise<_>
 
   type Logger with
-    member inline x.log logLevel (messageFactory: LogLevel -> Message) :  Alt<unit> =
+    member x.log logLevel (messageFactory: LogLevel -> Message): Alt<unit> =
       Logger.log x logLevel messageFactory
+
+    member x.logSimple message: unit =
+      Logger.logSimple x message
+
+    member x.logWith level messageFactory: unit =
+      Logger.logWith x level messageFactory
 
     member x.verbose (messageFactory: LogLevel -> Message): unit =
       start (Logger.logWithTimeout x Logger.defaultTimeout Verbose messageFactory ^->. ())
@@ -382,5 +391,13 @@ module LoggerEx =
     member x.fatalWithAck (messageFactory: LogLevel -> Message): Promise<unit> =
       lwa x Fatal messageFactory
 
-    member x.logSimple message: unit =
-      Logger.logSimple x message
+    // Utilities for Job
+
+    /// Print the ToString representation of the Job before and after it is executed.
+    member x.beforeAfter atLevel (xJ: Job<'x>): Job<'x> =
+      job {
+        x.logWith atLevel (fun level -> Message.eventX (sprintf "Before %O" xJ) level)
+        let! res = xJ
+        x.logWith atLevel (fun level -> Message.eventX (sprintf "After %O" xJ) level)
+        return res
+      }

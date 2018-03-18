@@ -190,7 +190,6 @@ module internal Impl =
     runtime.logger.info (eventX "Started Stackdriver target")
 
     let rec loop (state: State): Job<unit> =
-      runtime.logger.verbose (eventX "Stackdriver loop")
       Alt.choose [
         // either shutdown, or
         api.shutdownCh ^=> fun ack ->
@@ -199,18 +198,20 @@ module internal Impl =
           ack *<= () :> Job<_>
 
         RingBuffer.take api.requests ^=> function
-          | Log (message, ack) -> job {
-              runtime.logger.verbose (eventX "Logging message")
+          | Log (message, ack) ->
+            job {
               let request = WriteLogEntriesRequest(LogName = state.logName, Resource = state.resource)
               request.Labels.Add(conf.labels)
               request.Entries.Add(write message)
+              runtime.logger.verbose (eventX "Logging message")
               do! Job.Scheduler.isolate (fun () -> state.logger.WriteLogEntries(request, state.callSettings) |> ignore)
               runtime.logger.verbose (eventX "Acking message")
               do! ack *<= ()
               return! loop state
             }
 
-          | Flush (ackCh, nack) -> job {
+          | Flush (ackCh, nack) ->
+            job {
               do! IVar.fill ackCh ()
               return! loop state
             }

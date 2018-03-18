@@ -95,21 +95,28 @@ module Job =
   let rec handleFailureWith (logger: Logger) p act (xJ : #Job<'x>) (ex: exn): SupervisedJob<'x> =
     match act with
     | Restart ->
-      logger.infoWithBP (eventX "Exception from supervised job, restarting now.") >>=.
+      logger.warnWithBP (
+        eventX "Exception from supervised job, restarting now."
+        >> addExn ex) >>=.
       supervise logger p xJ
     | RestartDelayed t ->
-      logger.infoWithBP (
-        eventX "Exception from supervised job, restarting in {delay}."
-        >> setField "delay" t) >>=.
+      logger.warnWithBP (
+        eventX "Exception from supervised job, restarting in {delay} ms."
+        >> setField "delay" t
+        >> addExn ex) >>=.
       timeOutMillis (int t) >>= fun () -> supervise logger p xJ
-    | Terminate -> 
-      logger.infoWithBP (eventX "Exception from supervised job, terminating.") >>=.
+    | Terminate ->
+      logger.warnWithBP (
+        eventX "Exception from supervised job, terminating."
+        >> addExn ex) >>=.
       Job.result (Choice2Of2 ex)
     | Escalate ->
-      logger.infoWithBP (eventX "Exception from supervised job, escalating.") >>=.
+      logger.warnWithBP (
+        eventX "Exception from supervised job, escalating."
+        >> addExn ex) >>=.
       Job.raises ex
 
-  and makeHandler (logger: Logger) (p: Policy) : #Job<'x> -> exn -> SupervisedJob<'x> =
+  and makeHandler (logger: Logger) (p: Policy): #Job<'x> -> exn -> SupervisedJob<'x> =
     match p with
     | Always act ->
       handleFailureWith logger p act
@@ -120,9 +127,9 @@ module Job =
       fun xJ ex ->
         e2actJ ex >>= fun act -> handleFailureWith logger p act xJ ex
 
-  and supervise (logger: Logger) (p: Policy) : #Job<'x> -> SupervisedJob<'x> =
+  and supervise (logger: Logger) (p: Policy): #Job<'x> -> SupervisedJob<'x> =
     let handle = makeHandler logger p
-    fun xJ -> Job.tryIn xJ (Choice1Of2 >> Job.result) (handle xJ)
+    fun xJ -> Job.tryIn (logger.beforeAfter Verbose xJ) (Choice1Of2 >> Job.result) (handle xJ)
 
   let superviseWithWill logger p w2xJ =
     let wl = Will.create ()
@@ -133,7 +140,7 @@ module Job =
 // In Supervisor
 // Policy -> #Job<'x> -> SupervisedJob<'x>
 // Policy -> (Will<'a> -> #Job<'x>) -> SupervisedJob<'x>
-// 
+//
 
 // In TargetConf (module)
 // TargetConf.create : (Will<'w> -> (RuntimeInfo * TargetAPI -> Job<unit>))
@@ -141,14 +148,14 @@ module Job =
 
 // In TTarget
 // TTarget.empty: Target internal state + Will<'a>
-// TTarget.create: Target internal config -> 
+// TTarget.create: Target internal config ->
 //                  Target internal state + Will<'a> ->
 //                  (RuntimeInfo * TargetAPI -> Job<unit>)
 // ## call: TTarget -> TargetConf + Will -> :TargetConf
 
 
 // In Target
-// 
+//
 // Target.create: RuntimeInfo (from Registry)
 //             -> name
 //             -> TargetConf
