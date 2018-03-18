@@ -4,3 +4,5 @@ image:
 
 build_script:
   - cmd: build.cmd
+
+test: off
