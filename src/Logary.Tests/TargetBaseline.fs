@@ -30,10 +30,10 @@ let basicTests targetName confFac =
       let conf = confFac targetName
       let! ri, _ = emptyRuntime
       let! targetApi = Target.create ri conf
-      do! logger.infoWithBP (eventX "Start, log and stop: log and wait 987654321")
+      do! logger.infoWithBP (eventX "Start, log and stop: log and wait")
       do! logMsgWaitAndShutdown targetApi (fun logAndWait ->
-          Message.eventInfo "Hello World!" |> logAndWait)
-      do! logger.infoWithBP (eventX "Start, log and stop: done! 987654321")
+          Message.eventInfo "Hello World! 371199" |> logAndWait)
+      do! logger.infoWithBP (eventX "Start, log and stop: done!")
     }
 
     testCaseJob "log exception message" <| job {

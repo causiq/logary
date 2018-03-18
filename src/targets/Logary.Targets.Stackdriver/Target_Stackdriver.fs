@@ -26,19 +26,99 @@ open System.Numerics
 do()
 
 /// A structure that enforces certain labeling invariants around monitored resources
-/// TODO: add more resource types.
+/// TO CONSIDER: add more resource types.
 /// SEE: https://cloud.google.com/logging/docs/api/v2/resource-list#service-names
 /// SEE: https://cloud.google.com/logging/docs/migration-v2#monitored-resources
 type ResourceType =
-  /// Compute resources have a zone and an instance id
-  | ComputeInstance of zone:string * instance:string
-  /// Containers have cluster/pod/namespace/instance data
-  | Container of clusterName:string * namespaceId:string * instanceId:string * podId:string * containerName:string * zone:string
-  /// AppEngine services are isolated units segregated by application module id and the version of the application
+  /// An API provided by the producer.
+  /// `service` (1): The API service name, such as "cloudsql.googleapis.com".
+  /// `method` (2): The API method, such as "disks.list".
+  /// `version`: The API version, such as "v1".
+  /// `location`: The service specific notion of location. This can be the name of a zone, region, or "global".
+  | Api of service:string * method:string * version:string * location:string
+  /// A virtual machine instance hosted in Google Compute Engine (GCE).
+  /// `instance_id` (1): The numeric VM instance identifier assigned by Compute Engine.
+  /// `zone`: The Compute Engine zone in which the VM is running.
+  | GCEInstance of zone:string * instance:string
+  /// A Google Container Engine (GKE) container instance.
+  /// `cluster_name` (1): An immutable name for the cluster the container is running in.
+  /// `namespace_id` (2): Immutable ID of the cluster namespace the container is running in.
+  /// `instance_id`: Immutable ID of the GCE instance the container is running in.
+  /// `pod_id`: Immutable ID of the pod the container is running in.
+  /// `container_name`: Immutable name of the container.
+  /// `zone`: The GCE zone in which the instance is running.
+  | Container of clusterName:string
+               * namespaceId:string
+               * instanceId:string
+               * podId:string
+               * containerName:string
+               * zone:string
+  /// A resource type used to indicate that a log is not associated with any specific resource.
+  | Global
+  /// AppEngine services are isolated units segregated by application module id
+  /// and the version of the application
   | AppEngine of moduleId:string * versionId: string
-  static member createComputeInstance(zone, instance) = ComputeInstance(zone, instance)
-  static member createContainer(cluster, ns, instance, pod, container, zone) = Container(cluster, ns, instance, pod, container, zone)
-  static member createAppEngine(moduleId, version) = AppEngine(moduleId, version)
+
+  member x.key =
+    match x with
+    | Api _ ->
+      "api"
+    | GCEInstance _ ->
+      "gce_instance"
+    | Container _ ->
+      "container"
+    | Global ->
+      "global"
+    | AppEngine _ ->
+      "gae_app"
+
+  /// See https://cloud.google.com/logging/docs/api/v2/resource-list for the list of resources
+  /// as well as required keys for each one
+  member x.labels projectId =
+    dict <|
+    ("project_id", projectId) ::
+    match x with
+    | Api (service, method, version, location) ->
+      [ "service", service
+        "method", method
+        "version", version
+        "location", location ]
+
+    | GCEInstance (zone, instance) ->
+      [ "zone", zone
+        "instance_id", instance ]
+
+    | Container (cluster, ns, instance, pod, container, zone) ->
+      [ "cluster_name", cluster
+        "namespace_id", ns
+        "instance_id", instance
+        "pod_id", pod
+        "container_name", container
+        "zone", zone ]
+
+    | Global ->
+      []
+
+    | AppEngine (moduleId, versionId) ->
+      [ "module_id", moduleId
+        "version_id", versionId ]
+
+  member x.toMonitoredResource project: MonitoredResource =
+    let r = MonitoredResource(Type = x.key)
+    r.Labels.Add(x.labels project)
+    r
+
+  static member createGCEInstance(zone, instance) =
+    GCEInstance(zone, instance)
+
+  static member createComputeInstance (zone, instance) =
+    GCEInstance (zone, instance)
+
+  static member createContainer(cluster, ns, instance, pod, container, zone) =
+    Container(cluster, ns, instance, pod, container, zone)
+
+  static member createAppEngine(moduleId, version) =
+    AppEngine(moduleId, version)
 
 type StackdriverConf =
   { /// Google Cloud Project Id
@@ -49,30 +129,33 @@ type StackdriverConf =
     resource: ResourceType
     /// Additional user labels to be added to the messages
     labels: IDictionary<string,string>
-    /// Maximum messages to wait for before sending
-    maxBatchSize: uint32 }
+    /// Maximum messages to send as a batch.
+    maxBatchSize: uint16 }
 
-  static member create (projectId, logId, resource, ?labels, ?batchSize) =
+  static member create (projectId, ?logId, ?resource, ?labels, ?batchSize) =
     { projectId = projectId
-      logId = logId
-      resource = resource
+      logId = defaultArg logId "apps"
+      resource = defaultArg resource Global
       labels = defaultArg labels (Dictionary<_,_>() :> IDictionary<_,_>)
-      maxBatchSize = defaultArg batchSize 10u }
+      maxBatchSize = defaultArg batchSize 50us }
 
-let empty: StackdriverConf = StackdriverConf.create("", "", Unchecked.defaultof<ResourceType>)
+let empty: StackdriverConf =
+  StackdriverConf.create "CHANGE_PROJECT_ID"
 
 module internal Impl =
   // constant computed once here
   let messageKey = "message"
-  let unformattedMessageKey = "template"
+  let unformattedMessageKey = "value"
 
-  let toSeverity = function
-    | LogLevel.Debug -> LogSeverity.Debug
-    | LogLevel.Error -> LogSeverity.Error
-    | LogLevel.Fatal -> LogSeverity.Critical
-    | LogLevel.Info -> LogSeverity.Info
-    | LogLevel.Warn -> LogSeverity.Warning
-    | LogLevel.Verbose -> LogSeverity.Debug
+  type LogLevel with
+    member x.toSeverity (): LogSeverity =
+      match x with
+      | LogLevel.Debug -> LogSeverity.Debug
+      | LogLevel.Error -> LogSeverity.Error
+      | LogLevel.Fatal -> LogSeverity.Critical
+      | LogLevel.Info -> LogSeverity.Info
+      | LogLevel.Warn -> LogSeverity.Warning
+      | LogLevel.Verbose -> LogSeverity.Debug
 
   // consider use destr whole msg context as TemplatePropertyValue, then send to WellKnownTypes
   let toProtobufValue (data:obj) =
@@ -104,37 +187,32 @@ module internal Impl =
     s.Fields.[k] <- toProtobufValue value
     s
 
-  let write (m: Message): LogEntry =
-    // labels are used in stackdriver for classification, so lets put context there.
-    // they expect only simple values really in the labels, so it's ok to just stringify them
-    let labels =
-      m
-      |> Message.getContextsOtherThanGaugeAndFields
-      |> Seq.map (fun (k, v) -> (k,string v))
-      |> dict
+  type Message with
+    member x.toLogEntry () =
+      // Labels are used in Stackdriver for classification, so lets put context there.
+      // They expect only simple values really in the labels, so it's ok to just stringify them
+      let labels =
+        Message.getContextsOtherThanGaugeAndFields x
+        |> Seq.map (fun (k, v) -> k, string v)
+        |> dict
 
-    let formatted, raw =
-      Logary.MessageWriter.verbatim.format m,
-      m.value
+      let formatted = Logary.MessageWriter.verbatim.format x
 
-    let addMessageFields m =
-      if formatted = raw then
-        m |> Map.add unformattedMessageKey (box raw) |> Map.add messageKey (box formatted)
-      else
-        m |> Map.add messageKey (box formatted)
+      let addMessageFields (values: seq<string * obj>): seq<_> =
+        seq {
+          if formatted = x.value then yield unformattedMessageKey, box formatted
+          yield messageKey, box formatted
+          yield! values
+        }
 
-    // really only need to include fields and the formatted message template, because context went to labels
-    let payloadFields =
-      m
-      |> Message.getAllFields
-      |> Map.ofSeq
-      |> addMessageFields
-      |> Map.toSeq
-      |> Seq.fold addToStruct (WellKnownTypes.Struct())
+      let payloadFields =
+        Message.getAllFields x
+        |> addMessageFields
+        |> Seq.fold addToStruct (WellKnownTypes.Struct())
 
-    let entry = LogEntry(Severity = toSeverity m.level, JsonPayload = payloadFields)
-    entry.Labels.Add(labels)
-    entry
+      let entry = LogEntry(Severity = x.level.toSeverity(), JsonPayload = payloadFields)
+      entry.Labels.Add labels
+      entry
 
   type State =
     { logName: string
@@ -144,44 +222,10 @@ module internal Impl =
       /// used as a wrapper around the above cancellation token
       callSettings: CallSettings }
 
-  let createLabels project = function
-    // check out https://cloud.google.com/logging/docs/api/v2/resource-list for the list of resources
-    // as well as required keys for each one
-    | ComputeInstance(zone, instance) ->
-      [ "project_id", project
-        "zone", zone
-        "instance_id", instance ] |> dict
-
-    | Container(cluster, ns, instance, pod, container, zone) ->
-      [ "project_id", project
-        "cluster_name", cluster
-        "namespace_id", ns
-        "instance_id", instance
-        "pod_id", pod
-        "container_name", container
-        "zone", zone ] |> dict
-    | AppEngine(moduleId, versionId) ->
-      [ "project_id", project
-        "module_id", moduleId
-        "version_id", versionId ] |> dict
-
-  let resourceName = function
-    | ComputeInstance _ ->
-      "gce_instance"
-    | Container _ ->
-      "container"
-    | AppEngine _ ->
-      "gae_app"
-
-  let createMonitoredResource project resourceType =
-    let r = MonitoredResource(Type = resourceName resourceType)
-    r.Labels.Add(createLabels project resourceType)
-    r
-
   let createState (conf: StackdriverConf) =
     let source = new System.Threading.CancellationTokenSource()
     { logger = LoggingServiceV2Client.Create()
-      resource = createMonitoredResource conf.projectId conf.resource
+      resource = conf.resource.toMonitoredResource conf.projectId
       logName = sprintf "projects/%s/logs/%s" conf.projectId (System.Net.WebUtility.UrlEncode conf.logId)
       cancellation = source
       callSettings = CallSettings.FromCancellationToken(source.Token) }
@@ -197,29 +241,39 @@ module internal Impl =
           state.cancellation.Cancel()
           ack *<= () :> Job<_>
 
-        RingBuffer.take api.requests ^=> function
-          | Log (message, ack) ->
-            job {
-              let request = WriteLogEntriesRequest(LogName = state.logName, Resource = state.resource)
-              request.Labels.Add(conf.labels)
-              request.Entries.Add(write message)
-              runtime.logger.verbose (eventX "Logging message")
-              do! Job.Scheduler.isolate (fun () -> state.logger.WriteLogEntries(request, state.callSettings) |> ignore)
-              runtime.logger.verbose (eventX "Acking message")
-              do! ack *<= ()
-              return! loop state
-            }
+        RingBuffer.takeBatch conf.maxBatchSize api.requests ^=> fun messages ->
+          let request = WriteLogEntriesRequest(LogName = state.logName, Resource = state.resource)
+          request.Labels.Add(conf.labels)
 
-          | Flush (ackCh, nack) ->
-            job {
-              do! IVar.fill ackCh ()
-              return! loop state
-            }
+          let entries, acks, flushes =
+            messages |> Array.fold (fun (entries, acks, flushes) -> function
+              | Log (message, ack) ->
+                message.toLogEntry() :: entries,
+                ack *<= () :: acks,
+                flushes
+              | Flush (ackCh, nack) ->
+                entries,
+                acks,
+                ackCh *<= () :: flushes)
+              ([], [], [])
+
+          request.Entries.AddRange entries
+
+          job {
+            do! Job.Scheduler.isolate (fun () ->
+              runtime.logger.verbose (eventX "Writing {count} messages" >> setField "count" entries.Length)
+              state.logger.WriteLogEntries(request, state.callSettings)
+              |> ignore)
+
+            do runtime.logger.verbose (eventX "Acking messages")
+            do! Job.conIgnore acks
+            do! Job.conIgnore flushes
+            return! loop state
+          }
 
       ] :> Job<_>
 
-    let state = createState conf
-    loop state
+    loop (createState conf)
 
 /// Create a new StackDriver target
 [<CompiledName "Create">]
