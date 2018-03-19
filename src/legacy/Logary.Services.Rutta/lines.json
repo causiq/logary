@@ -2,12 +2,10 @@
 
 {"a": 2}
 3
-4
-6
-1
+{"name": "D.E.F", "lines": [ "a", 2 ] }
 {"name": "A.B.C", "level": "Verbose", "value": "{user.username} logged in", "fields": { "user": { "id": 1, "username": "haf" } }, "@timestamp": "2018-03-14T00:14:10Z" }
 {"name": "A.B.C", "level": "Debug", "value": "{user.username} logged in", "fields": { "user": { "id": 1, "username": "haf" } }, "@timestamp": "2018-03-14T00:14:10Z" }
 {"name": "A.B.C", "level": "Info", "value": "{@user} logged in", "fields": { "user": { "id": 1, "username": "haf" } }, "@timestamp": "2018-03-14T00:14:10Z" }
 {"name": "A.B.C", "level": "Warn", "value": "{user.username} logged in", "fields": { "user": { "id": 1, "username": "haf" } }, "@timestamp": "2018-03-14T00:14:10Z" }
 {"name": "A.B.C", "level": "Error", "value": "{user}'s signup failed", "fields": { "user": "haf" }, "@timestamp": "2018-03-14T00:14:10Z" }
-{"name": "A.B.C", "level": "Fatal", "value": "App segfault", "fields": { "user": { "id": 1, "username": "haf" } }, "@timestamp": "2018-03-14T00:14:10Z" }
+{"name": "A.B.C", "level": "Fatal", "value": "App segfault", "fields": { "user": { "id": 1, "username": "haf" } } }

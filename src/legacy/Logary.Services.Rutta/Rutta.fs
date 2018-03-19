@@ -77,7 +77,6 @@ module Shipper =
   open Logary.Configuration
   open fszmq
   open fszmq.Socket
-  open Logary.Targets.Shipper
   open Logary.EventsProcessing
 
   let private runLogary shipperConf =
@@ -104,7 +103,7 @@ module Shipper =
       |> Config.targets [
           //Noop.create (Noop.empty) (PointName.ofSingle "noop")
           //Console.create (Console.empty) (PointName.ofSingle "console")
-          create shipperConf "rutta-shipper"
+          Shipper.create shipperConf "rutta-shipper"
         ]
       |> Config.loggerLevels [ ".*", Verbose ]
       |> Config.processing processing
@@ -117,11 +116,11 @@ module Shipper =
 
   let internal pushTo connectTo pars: Choice<unit, string> =
     printfn "%s" "spawning shipper in PUSH mode"
-    runLogary (PushTo connectTo)
+    runLogary (Shipper.PushTo connectTo)
 
   let internal pubTo connectTo pars: Choice<unit, string> =
     printfn "%s" "spawning shipper in PUB mode"
-    runLogary (PublishTo connectTo)
+    runLogary (Shipper.PublishTo connectTo)
 
 module Router =
   open Hopac
@@ -235,7 +234,7 @@ module Router =
           Events.events
           |> Events.sink (targets |> List.map (fun t -> t.name)))
       |> Config.loggerMinLevel ".*" Verbose
-      |> Config.ilogger (ILogger.Console Debug)
+      |> Config.ilogger (ILogger.LiterateConsole Debug)
       |> Config.build
       |> Hopac.Hopac.run
 
@@ -283,26 +282,30 @@ module Router =
   let rec private streamRecvLoop receiver (logger: Logger) =
     // https://gist.github.com/lancecarlson/fb0cfd0354005098d579
     // https://gist.github.com/claws/7231548#file-czmq-stream-server-c-L21
-    let frame = Socket.recv receiver
-    // Aborted socket due to closing process:
-    if isNull frame then () else
-    let bs = Socket.recv receiver
-    // http://api.zeromq.org/4-1:zmq-socket#toc19
-    // A connection was made
-    if bs.Length = 0 then streamRecvLoop receiver logger else
-    // printfn "Data received: %A" message
-    use ms = new MemoryStream(bs)
-    use sr = new StreamReader(ms, Encoding.UTF8)
-    while not sr.EndOfStream do
-      let line = sr.ReadLine()
-      match Json.parse line |> JsonResult.bind Json.decodeMessage with
-      | JPass message ->
-        logger.logSimple message
-      | JFail failure ->
-        logger.verbose (eventX "JFail: {line} => {failure}" >> setField "line" line >> setField "failure" failure)
+    try
+      let frame = Socket.recv receiver
+      // Aborted socket due to closing process:
+      if isNull frame then () else
+      let bs = Socket.recv receiver
+      // http://api.zeromq.org/4-1:zmq-socket#toc19
+      // A connection was made
+      if bs.Length = 0 then streamRecvLoop receiver logger else
+      // printfn "Data received: %A" message
+      use ms = new MemoryStream(bs)
+      use sr = new StreamReader(ms, Encoding.UTF8)
+      while not sr.EndOfStream do
+        let line = sr.ReadLine()
+        match Json.parse line |> JsonResult.bind Json.decodeMessage with
+        | JPass message ->
+          logger.logSimple message
+        | JFail failure ->
+          logger.verbose (eventX "JFail: {line} => {failure}" >> setField "line" line >> setField "failure" failure)
+      printfn "Looping..."
+      streamRecvLoop receiver logger
 
-    printfn "Looping..."
-    streamRecvLoop receiver logger
+    with :? ZMQError as zmq ->
+      logger.info (eventX "Shutting down streamRecvLoop due to {exn}." >> setField "exn" zmq.Message >> addExn zmq)
+      ()
 
   let streamBind binding = function
     | Router_Target target :: _ ->

@@ -148,7 +148,7 @@ let empty: StackdriverConf =
 module internal Impl =
   // constant computed once here
   let messageKey = "message"
-  let unformattedMessageKey = "value"
+  let valueKey = "value"
 
   type LogLevel with
     member x.toSeverity(): LogSeverity =
@@ -164,7 +164,10 @@ module internal Impl =
 
   // consider use destr whole msg context as TemplatePropertyValue, then send to WellKnownTypes
   let rec x2V (t: Type): 'T -> V =
-    let wrap (k: 'a -> V) = fun inp -> k (unbox inp)
+    let objT = typeof<obj>
+    let wrap (k: 'a -> V) =
+      fun inp -> k (unbox inp)
+
     let inline mkFieldPrinter (shape: IShapeMember<'DeclaringType>) =
       shape.Accept
         { new IMemberVisitor<'DeclaringType, string * ('DeclaringType -> V)> with
@@ -173,11 +176,14 @@ module internal Impl =
               field.Label, fieldPrinter << field.Project }
 
     match TypeShape.Create t with
-    | Shape.Unit -> wrap(fun () -> V.ForString "()") // 'T = unit
+    | Shape.Unit ->
+      wrap(fun () -> V.ForString "()") // 'T = unit
     | Shape.String ->
       wrap (fun (s: string) -> V.ForString s)
     | Shape.Bool ->
       wrap (fun (b: bool) -> V.ForBool b)
+    | Shape.Double ->
+      wrap (fun f -> V.ForNumber f)
     | Shape.Int16 ->
       wrap (int16 >> float >> V.ForNumber)
     | Shape.Int32 ->
@@ -196,45 +202,130 @@ module internal Impl =
       wrap (fun (b:DateTime) -> V.ForString (b.ToString("o")))
     | Shape.DateTimeOffset ->
       wrap (fun (b:DateTimeOffset) -> V.ForString (b.ToString("o")))
+
     | Shape.Array s when s.Rank = 1 ->
       s.Accept
         { new IArrayVisitor<'T -> V> with
             member __.Visit<'a> _ =
-              let convert = toV<'a> ()
-              wrap (fun xs -> xs |> Array.map convert |> fun args -> V.ForList(args))
+              wrap (fun xs ->
+                xs
+                |> List.map (fun x -> x2V (t.GetType()) x)
+                |> List.toArray
+                |> fun args -> V.ForList(args))
         }
+
     | Shape.FSharpList s ->
-      s.Accept
-        { new IFSharpListVisitor<'T -> V> with
-            member __.Visit<'a> () =
-              let tp = toV<'a>()
-              wrap (fun ts -> ts |> Array.ofList |> Array.map tp |> fun args -> V.ForList(args))
-        }
+        s.Accept
+          { new IFSharpListVisitor<'T -> V> with
+              member __.Visit<'a> () =
+                wrap (fun (ts: 'T list) ->
+                  ts
+                  |> List.map (fun t -> x2V (t.GetType()) t)
+                  |> List.toArray
+                  |> fun args -> V.ForList(args))
+          }
+
     | Shape.FSharpOption s ->
       s.Accept
         { new IFSharpOptionVisitor<'T -> V> with
             member __.Visit<'a> () =
-              let tV = toV<'a>()
-              wrap (function None -> V.ForNull() | Some x -> tV x)
+              wrap (function
+                | None -> V.ForNull()
+                | Some x ->
+                  x2V (x.GetType()) x)
         }
+
+    | Shape.FSharpUnion (:? ShapeFSharpUnion<'T> as shape) ->
+      let mkUnionCasePrinter (s: ShapeFSharpUnionCase<'T>) =
+        let fieldPrinters = s.Fields |> Array.map mkFieldPrinter
+        fun (u: 'T) ->
+          match fieldPrinters with
+          | [||] ->
+            V.ForString s.CaseInfo.Name
+
+          | [|_, fp|] ->
+            let str = Struct()
+            str.Fields.[s.CaseInfo.Name] <- fp u
+            V.ForStruct str
+
+          | fps ->
+            let values =
+              fps
+              |> Seq.map (fun (_, fp) -> fp u)
+              |> Seq.toArray
+              |> fun xs -> V.ForList(xs)
+
+            let str = Struct()
+            str.Fields.[s.CaseInfo.Name] <- values
+            V.ForStruct str
+
+      let casePrinters = shape.UnionCases |> Array.map mkUnionCasePrinter
+
+      fun (u:'T) ->
+        let printer = casePrinters.[shape.GetTag u]
+        printer u
+
     | Shape.FSharpMap s when s.Key = shapeof<string> ->
       s.Accept
         { new IFSharpMapVisitor<'T -> V> with
             member __.Visit<'k, 'v when 'k : comparison> () =
-              let v2V = toV<'v>()
-              wrap (fun (m: Map<string, 'v>) ->
+              wrap (fun (m: Map<string, 'T>) ->
                 let s = Struct()
                 for KeyValue (k, v) in m do
-                  s.Fields.[k] <- v2V v
+                  let pbV = x2V (v.GetType()) v
+                  s.Fields.[k] <- pbV
                 V.ForStruct s)
         }
-//    | Shape.FSharpSet s->
+
+//    | Shape.FSharpSet s ->
 //      s.Accept
 //        { new IFSharpSetVisitor<'T -> V> with
-//            member __.Visit<'a when 'a : comparison> _ =
-//              let convert = toV<'a> ()
-//              wrap (fun (xs: Set<'a>) -> xs |> Set.map convert |> fun args -> V.ForList(args))
-//        }
+//            member __.Visit<'a when 'a : comparison> () = // 'T = Set<'a>
+//              wrap (fun (xs: Set<'a>) ->
+//                xs
+//                |> Array.ofSeq
+//                |> Array.map (fun x -> x2V (x.GetType()) x)
+//                |> fun args -> V.ForList(args))
+//       }
+    | Shape.Enumerable s ->
+      match s.Element with
+      | Shape.KeyValuePair ks when ks.Key = shapeof<string> ->
+        s.Accept
+          { new IEnumerableVisitor<'T -> V> with
+              member __.Visit () =
+                wrap (fun (xs: seq<_>) ->
+                  let s = Struct()
+                  xs |> Seq.iter (fun (KeyValue (key, value)) ->
+                    s.Fields.[key] <- x2V (value.GetType()) value)
+                  V.ForStruct s)
+          }
+
+      | _ ->
+        s.Accept
+          { new IEnumerableVisitor<'T -> V> with
+              member __.Visit<'E, 'a when 'E :> seq<'a>> () =
+                wrap (fun (xs: seq<_>) ->
+                  let arr = ResizeArray<V>()
+                  for x in xs do
+                    let pbV = x2V (x.GetType()) (box x)
+                    arr.Add pbV
+                  V.ForList (arr.ToArray())
+                )
+          }
+
+    | Shape.KeyValuePair s when s.Key = shapeof<string> ->
+      s.Accept
+        { new IKeyValuePairVisitor<'T -> V> with
+            member x.Visit<'K, 'V> () =
+              wrap (fun (kvp: KeyValuePair<'K, 'V>) ->
+                let k: string = unbox kvp.Key
+                let v = x2V (kvp.Value.GetType()) kvp.Value
+                let s = Struct()
+                s.Fields.[k] <- v
+                V.ForStruct s
+              )
+        }
+
     | Shape.Exception s ->
       s.Accept
         { new IExceptionVisitor<'T -> V> with
@@ -282,8 +373,9 @@ module internal Impl =
         propPrinters |> Seq.iter (fun (label, fp) -> s.Fields.[label] <- fp r)
         V.ForStruct s
 
+    // TODO: BitmapNodeN
+
     | other ->
-      printfn ">>>>>>>>>>> Unsupported %O" typeof<'T>
       wrap (fun o -> V.ForString (string o))
 
   and toV<'T> (): 'T -> V =
@@ -307,8 +399,9 @@ module internal Impl =
 
       let addMessageFields (values: seq<string * obj>): seq<_> =
         seq {
-          if formatted = x.value then yield unformattedMessageKey, box formatted
           yield messageKey, box formatted
+          if formatted <> x.value then
+            yield valueKey, box formatted
           yield! values
         }
 
@@ -318,6 +411,7 @@ module internal Impl =
         |> Seq.fold addToStruct (WellKnownTypes.Struct())
 
       let entry = LogEntry(Severity = x.level.toSeverity(), JsonPayload = payloadFields)
+      entry.Timestamp <- Timestamp.FromDateTimeOffset (DateTimeOffset.ofEpoch x.timestamp)
       entry.Labels.Add labels
       entry
 
@@ -348,7 +442,10 @@ module internal Impl =
       |> ignore)
 
   let loop (conf: StackdriverConf) (runtime: RuntimeInfo, api: TargetAPI) =
-    runtime.logger.info (eventX "Started Stackdriver target")
+    runtime.logger.info (
+      eventX "Started Stackdriver target with project {projectId}, writing to {logName}"
+      >> setField "projectId" conf.projectId
+      >> setField "logName" conf.logId)
 
     let rec loop (state: State): Job<unit> =
       Alt.choose [
