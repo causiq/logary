@@ -4,7 +4,9 @@ module Logary.Tests.Formatting
 
 open System
 open Logary
+open Logary.Formatting
 open Expecto
+open Expecto.Flip
 open Logary.MessageWriter
 open Logary.MessageTemplates
 open Chiron
@@ -97,13 +99,12 @@ with
         failwithf "invalid comparison %A to %A" x other
 
 // set have order
-let shouldHaveFields msg fields tip =
+let shouldHaveFields msg fields message =
   msg
   |> Message.getAllFields
   |> Seq.map KV
   |> Set.ofSeq
-  |> fun actual ->
-     Expect.equal actual (fields |> Set.ofList) tip
+  |> Expect.equal message (Set.ofList fields)
 
 // just for test convenient, since file end of line is LF.
 let levelDatetimeMessagePathNewLine =
@@ -126,8 +127,13 @@ type CustomCycleReferenceType (id: int, name: string) =
   member __.Id = id
   member __.Name = name
 
+let jsonRawInput = """
+{"EventReceivedTime":"2018-03-19 15:33:43","SourceModuleName":"webapi","SourceModuleType":"im_file","date":"2018-03-19","time":"15:33:40","siteName":"W3SVC3060","hostName":"webfront-01","serverIp":"127.0.0.1","method":"GET","path":"/marketing/startpageconfiguration","query":"date=2018-03-19T15%3A33%3A41.0226690%2B00%3A00","listenPort":3060,"username":null,"clientIp":"127.0.0.1","protocol":"HTTP/1.1","userAgent":"GoogleHC/1.0","cookie":null,"referrer":null,"host":"localhost:3060","status":200,"substatus":0,"win32Status":0,"sent[bytes]":5028,"received[bytes]":456,"duration[ms]":3,"xForwardedFor":null,"timestamp":"2018-03-19T15:33:40Z","site":"webapi"}
+"""
+
 let tests = [
   testCase "json formatting" <| fun _ ->
+    // TODO: this test is sensitive to the locale it's running on; see date format
     complexMessage
     |> Logary.Formatting.Json.formatWith JsonFormattingOptions.Pretty
     |> fun actual ->
@@ -220,6 +226,23 @@ let tests = [
 """
        Expect.equal actual (expect.Trim([|'\n'|])) "cycle reference should work"
 
+  testCase "json parsing" <| fun () ->
+    match Json.parse jsonRawInput |> JsonResult.bind Json.decodeMessage with
+    | JPass m ->
+      DateTimeOffset.ofEpoch m.timestamp
+        |> Expect.equal "Should have timestamp from 'timestamp' prop in JSON"
+                        (DateTimeOffset.Parse("2018-03-19T15:33:40Z"))
+    | JFail err ->
+      failtestf "Failed with error %A" err
+
+  testCase "parse ISO8601" <| fun () ->
+    match Json.parse "\"2018-08-01T01:23:45Z\"" |> JsonResult.bind Json.Decode.dateTimeOffset with
+    | JPass m ->
+      DateTimeOffset.ofEpoch m.timestamp
+        |> Expect.equal "Parses to the right date time offset"
+                        (DateTimeOffset.Parse("2018-08-01T01:23:45Z"))
+    | JFail f ->
+      failtestf "Failure parsing ISO8601 %A" f
 
   testCase "cycle reference" <| fun _ ->
     Message.eventFormat(Info,"cycle reference")
@@ -261,7 +284,8 @@ I 1970-01-01T00:00:03.1234567+00:00: cycle reference []
         Inner =>
           "Some" => $1 }
 """
-       Expect.equal actual (expect.TrimStart([|'\n'|])) "cycle reference should work"
+       actual
+         |> Expect.equal "cycle reference should work" (expect.TrimStart([|'\n'|]))
 
   testCase "projection only" <| fun _ ->
     let only = <@@ Destructure.only<ProjectionTestOnly>(fun foo ->
@@ -271,7 +295,7 @@ I 1970-01-01T00:00:03.1234567+00:00: cycle reference []
         foo.ex.StackTrace;
         foo.ex.Data.Count;
         foo.ex.InnerException.Message
-        |]) @@>
+      |]) @@>
 
     Logary.Configuration.Config.configProjection only
 
@@ -308,8 +332,9 @@ I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "t
               ListDictionaryInternal {
                 Count => 2}}}
 """
-       Expect.equal actual (expect.TrimStart([|'\n'|]))
-         "formatting the message LevelDatetimePathMessageNl with projection"
+       actual
+        |> Expect.equal "formatting the message LevelDatetimePathMessageNl with projection"
+                        (expect.TrimStart([|'\n'|]))
 
 
   testCase "projection except" <| fun _ ->
@@ -349,26 +374,25 @@ I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "t
                 DayOfWeek => "Saturday"
                 Day => 11}}}
 """
-       Expect.equal actual (expect.TrimStart([|'\n'|]))
-         "formatting the message LevelDatetimePathMessageNl with projection"
+       actual
+          |> Expect.equal "formatting the message LevelDatetimePathMessageNl with projection"
+                         (expect.TrimStart([|'\n'|]))
+
 
   testCase "StringFormatter.Verbatim" <| fun _ ->
     Message.eventError "hello world"
     |> MessageWriter.verbatim.format
-    |> fun actual ->
-       Expect.equal actual "hello world" "formatting the message verbatim"
+    |> Expect.equal "formatting the message verbatim" "hello world"
 
   testCase "StringFormatter.VerbatimNewline" <| fun _ ->
     Message.eventError "hi there"
     |> MessageWriter.verbatimNewLine.format
-    |> fun actual ->
-       Expect.equal actual (sprintf "hi there%s" Environment.NewLine) "formatting the message verbatim with newline"
+    |> Expect.equal "formatting the message verbatim with newline" (sprintf "hi there%s" Environment.NewLine)
 
   testCase "StringFormatter.VerbatimNewlineTemplated" <| fun _ ->
     Message.eventFormat (Info, "what's {@direction}? {up:l}!", "up","up")
     |> MessageWriter.verbatimNewLine.format
-    |> fun actual ->
-       Expect.equal actual (sprintf "what's \"up\"? up!%s" Environment.NewLine) "formatting the message verbatim with newline, templated"
+    |> Expect.equal "formatting the message verbatim with newline, templated" (sprintf "what's \"up\"? up!%s" Environment.NewLine)
 
   testCase "StringFormatter.VerbatimNewlineTemplated.WithFields" <| fun _ ->
     skiptest ("depend on will we continue support Field, if we don't, no need test." +
@@ -381,26 +405,19 @@ I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "t
     //    Expect.equal actual (sprintf "what's up%s" Environment.NewLine) "formatting the message verbatim with newline, templated"
 
   testCase "StringFormatter.LevelDatetimePathMessageNl no exception" <| fun _ ->
-    sampleMessage
-    |> levelDatetimeMessagePathNewLine.format
-    |> fun actual ->
-       let expect = """
+    let expected = """
 I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "the first value" reverse. [a.b.c.d]
   fields:
     0 => "the first value"
     1 => "the second value"
 """
-       Expect.equal actual (expect.TrimStart([|'\n'|])) "formatting the message LevelDatetimePathMessageNl"
-
+    sampleMessage
+    |> levelDatetimeMessagePathNewLine.format
+    |> Expect.equal "formatting the message LevelDatetimePathMessageNl"
+                    (expected.TrimStart [| '\n' |])
 
   testCase "StringFormatter.LevelDatetimePathMessageNl with exception" <| fun _ ->
-    let inner = new Exception("inner exception")
-    let e = new Exception("Gremlings in the machinery", inner)
-    sampleMessage
-    |> Message.addExn e
-    |> levelDatetimeMessagePathNewLine.format
-    |> fun actual ->
-       let expect = """
+    let expect = """
 I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "the first value" reverse. [a.b.c.d]
   fields:
     0 => "the first value"
@@ -416,14 +433,15 @@ I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "t
               Message => "inner exception"
               HResult => -2146233088}}
 """
-       Expect.equal actual (expect.TrimStart([|'\n'|]))
-         "formatting the message LevelDatetimePathMessageNl with exception attached"
+    let inner = new Exception("inner exception")
+    let e = new Exception("Gremlings in the machinery", inner)
+    sampleMessage
+    |> Message.addExn e
+    |> levelDatetimeMessagePathNewLine.format
+    |> Expect.equal "formatting the message LevelDatetimePathMessageNl with exception attached" (expect.TrimStart([|'\n'|]))
 
   testCase "StringFormatter.LevelDatetimePathMessageNl complex data" <| fun _ ->
-    complexMessage
-    |> levelDatetimeMessagePathNewLine.format
-    |> fun actual ->
-       let expect = """
+    let expect = """
 I 1970-01-01T00:00:03.1234567+00:00: default foo is "{id = 999;\n name = \"whatever\";\n created = 11/11/2017 12:00:00 AM;}" here is a default "PropA is 45 and PropB raise exn" and stringify "Logary.Tests.Formatting+Obj" and destructure Obj { PropB: "The property (PropB) accessor threw an (TargetInvocationException): Oh noes, no referential transparency here", PropA: 45 } Gauges: [Processor.% Idle.Core 1: 75 %, svc1 request per second: 1.75 k, methodA took 25.00 s to execute] [a.b.c.d]
   fields:
     objDefault => "PropA is 45 and PropB raise exn"
@@ -514,7 +532,9 @@ I 1970-01-01T00:00:03.1234567+00:00: default foo is "{id = 999;\n name = \"whate
             created => 11/11/2017 12:00:00 AM}
     scalar array => [1, 2, 3, "4", "5", 6]
 """
-       Expect.equal actual (expect.TrimStart([|'\n'|])) "formatting complex message LevelDatetimePathMessageNl"
+    complexMessage
+    |> levelDatetimeMessagePathNewLine.format
+    |> Expect.equal "formatting complex message LevelDatetimePathMessageNl" (expect.TrimStart([|'\n'|]))
 
   testCase "Formatting.templateFormat, simple case" <| fun _ ->
     let format = "This {0} contains {1} words."
@@ -565,30 +585,29 @@ I 1970-01-01T00:00:03.1234567+00:00: default foo is "{id = 999;\n name = \"whate
     let version = System.Version(1,2,3,4)
     let msg = stringifyLogEvent version
 
-    shouldHaveFields msg [KV ("Version", version)] "should set field"
+    shouldHaveFields msg [KV ("Version", version)] "Should have 'Version' KV pair"
 
     msg
     |> MessageWriter.verbatim.format
-    |> fun actual ->
-       Expect.stringContains actual "1.2.3.4" "should call tostring() on version"
+    |> Expect.stringContains "should call tostring() on version" "1.2.3.4"
 
-  testCase "templateEvent<_> reconises the '@' symbol and will extract the properties of the captured value" <| fun _ ->
-    let structureLogEvent = Message.templateEvent<Version>(Info, "Found version {@Version}")
+  testCase "templateEvent<_> recognises the '@' symbol and will extract the properties of the captured value" <| fun _ ->
+    let structureLogEvent = Message.templateEvent<Version>(Info, "App at {@Version}")
     let version = System.Version(1,2,3,4)
     let msg = structureLogEvent version
 
-    shouldHaveFields msg [KV ("Version", version)] "should set field"
+    shouldHaveFields msg [KV ("Version", version)] "The 'Version' field should be set."
 
     msg
     |> MessageWriter.verbatim.format
     |> fun actual ->
-       Expect.stringContains actual "Build" "Should extract properties"
-       Expect.stringContains actual "Major" "Should extract properties"
-       Expect.stringContains actual "MajorRevision" "Should extract properties"
-       Expect.stringContains actual "Minor" "Should extract properties"
-       Expect.stringContains actual "MinorRevision" "Should extract properties"
-       Expect.stringContains actual "Revision" "Should extract properties"
-       Expect.stringContains actual "Version" "Should have typetag"
+       actual |> Expect.stringContains "Extracts 'Build'" "Build"
+       actual |> Expect.stringContains "Extracts 'Major'" "Major"
+       actual |> Expect.stringContains "Extracts 'MajorRevision'" "MajorRevision"
+       actual |> Expect.stringContains "Extracts 'Minor'" "Minor"
+       actual |> Expect.stringContains "Extracts 'MinorRevision'" "MinorRevision"
+       actual |> Expect.stringContains "Extracts 'Revision'" "Revision"
+       actual |> Expect.stringContains "Extracts 'Version'" "Version"
 
   testCase "templateEvent<_> works with one to four type params" <| fun _ ->
     let logEventGuid      = Message.templateEvent<Guid>            (Info, "This special {Guid} is logged")
@@ -603,53 +622,54 @@ I 1970-01-01T00:00:03.1234567+00:00: default foo is "{id = 999;\n name = \"whate
     shouldHaveFields (logEventExns e1 e2 e3 e4) [KV("one", e1); KV("two", e2); KV("three", e3); KV("four", e4)] "should set field"
 
   testCase "templateEvent<_> throws when there are positionally matched fields" <| fun _ ->
-    Expect.throws (fun () -> Message.templateEvent<int> (Info, "No named fields {0}") |> ignore)
-                  "No named fields passed 1 gen par"
-    Expect.throws (fun () -> Message.templateEvent<int, int> (Info, "No named fields {0} {1}") |> ignore)
-                  "No named fields passed 2 gen pars"
-    Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "No named fields {0} {1} {2}") |> ignore)
-                  "No named fields passed 3 gen pars"
-    Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "No named fields {0} {1} {2} {3}") |> ignore)
-                  "No named fields passed 4 gen pars"
+    Expect.throws "No named fields passed 1 gen par"
+      (fun () -> Message.templateEvent<int> (Info, "No named fields {0}") |> ignore)
+
+    Expect.throws "No named fields passed 2 gen pars"
+                  (fun () -> Message.templateEvent<int, int> (Info, "No named fields {0} {1}") |> ignore)
+    Expect.throws "No named fields passed 3 gen pars"
+                  (fun () -> Message.templateEvent<int, int, int> (Info, "No named fields {0} {1} {2}") |> ignore)
+    Expect.throws "No named fields passed 4 gen pars"
+                  (fun () -> Message.templateEvent<int, int, int, int> (Info, "No named fields {0} {1} {2} {3}") |> ignore)
 
   testCase "templateEvent<_> requires exactly the same number of type args and properties in the template" <| fun _ ->
-    Expect.throws (fun () -> Message.templateEvent<int> (Info, "Too many {Field1} {Field2}") |> ignore)
-                  "Missing one type arg"
-    Expect.throws (fun () -> Message.templateEvent<int> (Info, "Too many {Field1} {Field2} {Field3}") |> ignore)
-                  "Missing two type args"
-    Expect.throws (fun () -> Message.templateEvent<int> (Info, "Too few") |> ignore)
-                  "One type arg too many"
+    Expect.throws "Missing one type arg"
+                  (fun () -> Message.templateEvent<int> (Info, "Too many {Field1} {Field2}") |> ignore)
+    Expect.throws "Missing two type args"
+                  (fun () -> Message.templateEvent<int> (Info, "Too many {Field1} {Field2} {Field3}") |> ignore)
+    Expect.throws "One type arg too many"
+                  (fun () -> Message.templateEvent<int> (Info, "Too few") |> ignore)
 
-    Expect.throws (fun () -> Message.templateEvent<int, int> (Info, "Too many {Field1} {Field2} {Field3}") |> ignore)
-                  "Missing one type arg"
-    Expect.throws (fun () -> Message.templateEvent<int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4}") |> ignore)
-                  "Missing two type args"
-    Expect.throws (fun () -> Message.templateEvent<int, int> (Info, "Too few") |> ignore)
-                  "Two type args too many"
-    Expect.throws (fun () -> Message.templateEvent<int, int> (Info, "Too few {Field1}") |> ignore)
-                  "One type args too many"
+    Expect.throws "Missing one type arg"
+                  (fun () -> Message.templateEvent<int, int> (Info, "Too many {Field1} {Field2} {Field3}") |> ignore)
+    Expect.throws "Missing two type args"
+                  (fun () -> Message.templateEvent<int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4}") |> ignore)
+    Expect.throws "Two type args too many"
+                  (fun () -> Message.templateEvent<int, int> (Info, "Too few") |> ignore)
+    Expect.throws "One type args too many"
+                  (fun () -> Message.templateEvent<int, int> (Info, "Too few {Field1}") |> ignore)
 
-    Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4}") |> ignore)
-                  "One type args too few"
-    Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4} {Field5}") |> ignore)
-                  "Two type args too few"
-    Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "Too few") |> ignore)
-                  "Three type args too many"
-    Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "Too few {Field1}") |> ignore)
-                  "Two type args too many"
-    Expect.throws (fun () -> Message.templateEvent<int, int, int> (Info, "Too few {Field1} {Field2}") |> ignore)
-                  "One type arg too many"
+    Expect.throws "One type args too few"
+                  (fun () -> Message.templateEvent<int, int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4}") |> ignore)
+    Expect.throws "Two type args too few"
+                  (fun () -> Message.templateEvent<int, int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4} {Field5}") |> ignore)
+    Expect.throws "Three type args too many"
+                  (fun () -> Message.templateEvent<int, int, int> (Info, "Too few") |> ignore)
+    Expect.throws "Two type args too many"
+                  (fun () -> Message.templateEvent<int, int, int> (Info, "Too few {Field1}") |> ignore)
+    Expect.throws "One type arg too many"
+                  (fun () -> Message.templateEvent<int, int, int> (Info, "Too few {Field1} {Field2}") |> ignore)
 
-    Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4} {Field5}") |> ignore)
-                  "Missing one type arg"
-    Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4} {Field5} {Field6}") |> ignore)
-                  "Missing two type args"
-    Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too few") |> ignore)
-                  "Four type args too many"
-    Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too few {Field1}") |> ignore)
-                  "Three type args too many"
-    Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too few {Field1} {Field2}") |> ignore)
-                  "Two type args too many"
-    Expect.throws (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too few {Field1} {Field2} {Field3}") |> ignore)
-                  "One type arg too many"
+    Expect.throws "Missing one type arg"
+                  (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4} {Field5}") |> ignore)
+    Expect.throws "Missing two type args"
+                  (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too many {Field1} {Field2} {Field3} {Field4} {Field5} {Field6}") |> ignore)
+    Expect.throws "Four type args too many"
+                  (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too few") |> ignore)
+    Expect.throws "Three type args too many"
+                  (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too few {Field1}") |> ignore)
+    Expect.throws "Two type args too many"
+                  (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too few {Field1} {Field2}") |> ignore)
+    Expect.throws "One type arg too many"
+                  (fun () -> Message.templateEvent<int, int, int, int> (Info, "Too few {Field1} {Field2} {Field3}") |> ignore)
 ]

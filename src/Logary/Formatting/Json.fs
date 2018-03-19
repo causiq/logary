@@ -143,8 +143,6 @@ module internal JsonDecode =
       level json |> JsonResult.map (fun level -> Message.setLevel level m, remainder)
 
     | "timestamp", json
-    | "time", json
-    | "instant", json
     | "@timestamp", json ->
       timestamp json |> JsonResult.map (fun ts -> Message.setNanoEpoch ts m, remainder)
 

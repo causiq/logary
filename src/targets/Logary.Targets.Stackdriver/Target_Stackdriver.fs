@@ -383,6 +383,7 @@ module internal Impl =
       x2V typeof<'T> (box inp)
 
   let addToStruct (s: WellKnownTypes.Struct) (k, value: obj): WellKnownTypes.Struct =
+    if isNull value then s else
     s.Fields.[k] <- x2V (value.GetType()) value
     s
 
