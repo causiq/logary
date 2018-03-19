@@ -71,7 +71,11 @@ module Policy =
       match initD, mult, maxD with
       | 0u, _, _
       | _, 0u, _ -> always Restart
-      | _, _, _ -> fun r -> RestartDelayed (min maxD (initD * pown mult (int r)))
+      | _, _, _ -> fun r ->
+        if r = 0u then
+          RestartDelayed maxD
+        else
+          RestartDelayed (min maxD (initD * pown mult (int r)))
     let cM = MVar 1u
     DetermineWithJob ^ fun _ ->
       MVar.modifyFun (fun r -> r + 1u, r) cM
