@@ -300,7 +300,7 @@ module Router =
           logger.logSimple message
         | JFail failure ->
           logger.verbose (eventX "JFail: {line} => {failure}" >> setField "line" line >> setField "failure" failure)
-      printfn "Looping..."
+      //printfn "Looping..."
       streamRecvLoop receiver logger
 
     with :? ZMQError as zmq ->
