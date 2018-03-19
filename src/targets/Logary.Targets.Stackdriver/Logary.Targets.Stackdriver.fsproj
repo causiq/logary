@@ -4,6 +4,9 @@
     <AssemblyName>Logary.Targets.Stackdriver</AssemblyName>
     <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
   </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <Optimize>true</Optimize>
+  </PropertyGroup>
   <ItemGroup>
     <Compile Include="Target_Stackdriver.fs" />
     <None Include="paket.references" />

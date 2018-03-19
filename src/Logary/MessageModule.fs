@@ -96,13 +96,22 @@ module Message =
            Some (withoutPrefix, v)
          else None)
 
-  [<CompiledName "GetContextsOtherThanGaugeAndFields">]
-  let inline getContextsOtherThanGaugeAndFields message =
+  /// Gets all context values that are NOT:
+  /// - fields
+  /// - gauges
+  /// - exceptions
+  ///
+  [<CompiledName "GetOthers">]
+  let inline getOthers message =
     message.context
-    |> Seq.choose (fun (KeyValue (k,v)) ->
-       if k.StartsWith KnownLiterals.FieldsPrefix
-          || k.StartsWith KnownLiterals.GaugeTypePrefix then None
-       else Some (k,v))
+    |> Seq.choose (fun (KeyValue (k, v)) ->
+      if k.StartsWith KnownLiterals.FieldsPrefix
+         || k.StartsWith KnownLiterals.GaugeTypePrefix
+         || k = KnownLiterals.ErrorsContextName
+      then
+        None
+      else
+        Some (k,v))
 
   ///////////////// FIELDS ////////////////////
 

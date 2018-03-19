@@ -14,13 +14,16 @@ open Google.Protobuf.WellKnownTypes
 open Hopac
 open Hopac.Infixes
 open Logary
-open Logary.Message
-open Logary.Internals
-open Logary.Target
-open System.Collections.Generic
-open System.Runtime.CompilerServices
 open Logary.Configuration
+open Logary.Internals
+open Logary.Internals.TypeShape
+open Logary.Message
+open Logary.Target
+open Logary.Formatting
+open System
+open System.Collections.Generic
 open System.Numerics
+open System.Runtime.CompilerServices
 
 [<assembly:InternalsVisibleTo("Logary.Targets.Stackdriver.Tests")>]
 do()
@@ -157,35 +160,138 @@ module internal Impl =
       | LogLevel.Warn -> LogSeverity.Warning
       | LogLevel.Verbose -> LogSeverity.Debug
 
+  type V = WellKnownTypes.Value
+
   // consider use destr whole msg context as TemplatePropertyValue, then send to WellKnownTypes
-  let toProtobufValue (data: obj) =
-    // TODO: convert to TypeShape
-    match data with
-    | :? string as s ->
-      WellKnownTypes.Value.ForString(s)
-    | :? bool as b ->
-      WellKnownTypes.Value.ForBool(b)
-    | :? float as f ->
-      WellKnownTypes.Value.ForNumber(f)
-    | :? int64 as i ->
-      WellKnownTypes.Value.ForNumber(float i)
-    | :? BigInteger as b ->
-      WellKnownTypes.Value.ForNumber(float b)
-    | :? array<byte> as bytes ->
-      // could not find a good way to convert these, will just send null value instead
-      WellKnownTypes.Value.ForNull()
-    | _ ->
-      WellKnownTypes.Value.ForString(string data)
-    // | Value.Object values ->
-    //   values |> HashMap.toSeq
-    //   |> Seq.fold (fun (s: WellKnownTypes.Struct) (k,v) -> s.Fields.[k] <- toProtobufValue v; s) (WellKnownTypes.Struct())
-    //   |> WellKnownTypes.Value.ForStruct
-    // | Value.Array values ->
-    //   let valueArr = values |> List.map toProtobufValue |> List.toArray
-    //   WellKnownTypes.Value.ForList valueArr
+  let rec x2V (t: Type): 'T -> V =
+    let wrap (k: 'a -> V) = fun inp -> k (unbox inp)
+    let inline mkFieldPrinter (shape: IShapeMember<'DeclaringType>) =
+      shape.Accept
+        { new IMemberVisitor<'DeclaringType, string * ('DeclaringType -> V)> with
+            member __.Visit (field: ShapeMember<'DeclaringType, 'Field>) =
+              let fieldPrinter = toV<'Field>()
+              field.Label, fieldPrinter << field.Project }
+
+    match TypeShape.Create t with
+    | Shape.Unit -> wrap(fun () -> V.ForString "()") // 'T = unit
+    | Shape.String ->
+      wrap (fun (s: string) -> V.ForString s)
+    | Shape.Bool ->
+      wrap (fun (b: bool) -> V.ForBool b)
+    | Shape.Int16 ->
+      wrap (int16 >> float >> V.ForNumber)
+    | Shape.Int32 ->
+      wrap (int32 >> float >> V.ForNumber)
+    | Shape.Int64 ->
+      wrap (int64 >> float >> V.ForNumber)
+    | Shape.UInt16 ->
+      wrap (uint16 >> float >> V.ForNumber)
+    | Shape.UInt32 ->
+      wrap (uint32 >> float >> V.ForNumber)
+    | Shape.UInt64 ->
+      wrap (uint64 >> float >> V.ForNumber)
+    | Shape.BigInt ->
+      wrap ((fun (x: BigInteger) -> x) >> float >> V.ForNumber)
+    | Shape.DateTime ->
+      wrap (fun (b:DateTime) -> V.ForString (b.ToString("o")))
+    | Shape.DateTimeOffset ->
+      wrap (fun (b:DateTimeOffset) -> V.ForString (b.ToString("o")))
+    | Shape.Array s when s.Rank = 1 ->
+      s.Accept
+        { new IArrayVisitor<'T -> V> with
+            member __.Visit<'a> _ =
+              let convert = toV<'a> ()
+              wrap (fun xs -> xs |> Array.map convert |> fun args -> V.ForList(args))
+        }
+    | Shape.FSharpList s ->
+      s.Accept
+        { new IFSharpListVisitor<'T -> V> with
+            member __.Visit<'a> () =
+              let tp = toV<'a>()
+              wrap (fun ts -> ts |> Array.ofList |> Array.map tp |> fun args -> V.ForList(args))
+        }
+    | Shape.FSharpOption s ->
+      s.Accept
+        { new IFSharpOptionVisitor<'T -> V> with
+            member __.Visit<'a> () =
+              let tV = toV<'a>()
+              wrap (function None -> V.ForNull() | Some x -> tV x)
+        }
+    | Shape.FSharpMap s when s.Key = shapeof<string> ->
+      s.Accept
+        { new IFSharpMapVisitor<'T -> V> with
+            member __.Visit<'k, 'v when 'k : comparison> () =
+              let v2V = toV<'v>()
+              wrap (fun (m: Map<string, 'v>) ->
+                let s = Struct()
+                for KeyValue (k, v) in m do
+                  s.Fields.[k] <- v2V v
+                V.ForStruct s)
+        }
+//    | Shape.FSharpSet s->
+//      s.Accept
+//        { new IFSharpSetVisitor<'T -> V> with
+//            member __.Visit<'a when 'a : comparison> _ =
+//              let convert = toV<'a> ()
+//              wrap (fun (xs: Set<'a>) -> xs |> Set.map convert |> fun args -> V.ForList(args))
+//        }
+    | Shape.Exception s ->
+      s.Accept
+        { new IExceptionVisitor<'T -> V> with
+            member __.Visit() =
+              wrap (fun (e: exn) ->
+                let s = Struct()
+
+                if not (isNull e.Data) && e.Data.Count > 0 then
+                  s.Fields.["data"] <- toV<System.Collections.IDictionary>() e.Data
+
+                if not (isNull e.HelpLink) then
+                  s.Fields.["helpLink"] <- toV<string>() e.HelpLink
+
+                if not (isNull e.InnerException) then
+                  s.Fields.["inner"] <- toV<exn>() e.InnerException
+
+                if e.HResult <> Unchecked.defaultof<int> then
+                  s.Fields.["hresult"] <- toV<int>() e.HResult
+
+                s.Fields.["message"] <- toV<string>() e.Message
+                s.Fields.["source"] <- toV<string>() e.Source
+
+                if not (String.IsNullOrWhiteSpace e.StackTrace) then
+                  let lines = DotNetStacktrace.parse e.StackTrace
+                  s.Fields.["stacktrace"] <- toV<StacktraceLine[]>() lines
+
+                if not (isNull e.TargetSite) then
+                  s.Fields.["targetSite"] <- toV<string>() e.TargetSite.Name
+
+                V.ForStruct s
+              )
+        }
+
+    | Shape.FSharpRecord (:? ShapeFSharpRecord<'T> as s) ->
+      let fieldPrinters = s.Fields |> Array.map mkFieldPrinter
+      fun (r: 'T) ->
+        let s = Struct()
+        fieldPrinters |> Seq.iter (fun (label, fp) -> s.Fields.[label] <- fp r)
+        V.ForStruct s
+
+    | Shape.Poco (:? ShapePoco<'T> as shape) ->
+      let propPrinters = shape.Properties |> Array.map mkFieldPrinter
+      fun (r: 'T) ->
+        let s = Struct()
+        propPrinters |> Seq.iter (fun (label, fp) -> s.Fields.[label] <- fp r)
+        V.ForStruct s
+
+    | other ->
+      printfn ">>>>>>>>>>> Unsupported %O" typeof<'T>
+      wrap (fun o -> V.ForString (string o))
+
+  and toV<'T> (): 'T -> V =
+    fun inp ->
+      x2V typeof<'T> (box inp)
 
   let addToStruct (s: WellKnownTypes.Struct) (k, value: obj): WellKnownTypes.Struct =
-    s.Fields.[k] <- toProtobufValue value
+    s.Fields.[k] <- x2V (value.GetType()) value
     s
 
   type Message with
@@ -193,7 +299,7 @@ module internal Impl =
       // Labels are used in Stackdriver for classification, so lets put context there.
       // They expect only simple values really in the labels, so it's ok to just stringify them
       let labels =
-        Message.getContextsOtherThanGaugeAndFields x
+        Message.getOthers x
         |> Seq.map (fun (k, v) -> k, string v)
         |> dict
 

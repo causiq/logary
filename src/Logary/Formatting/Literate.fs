@@ -166,7 +166,7 @@ module Literate =
     // process others
     let others =
       message
-      |> Message.getContextsOtherThanGaugeAndFields
+      |> Message.getOthers
       |> Array.ofSeq
       |> Array.map (fun (k, v) -> k, destrByStructure v)
 

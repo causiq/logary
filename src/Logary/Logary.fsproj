@@ -74,6 +74,7 @@
     <Compile Include="Formatting/Json.fs" />
     <Compile Include="Formatting/Literate.fs" />
     <Compile Include="Formatting/MessageWriter.fs" />
+    <Compile Include="Formatting/DotNetStacktrace.fs" />
     <!-- Below: implementations, factory api -->
     <Compile Include="CSharp.fs" />
     <Compile Include="Configuration/Factory.Target.fs" />
