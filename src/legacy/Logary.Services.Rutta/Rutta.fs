@@ -439,10 +439,10 @@ module Program =
       exiting.Dispose()
       true
 
-    Service.Default
-    |> with_recovery (ServiceRecovery.Default |> restart (Time.s 5))
-    |> with_start start
-    |> with_stop (fun hc -> exiting.Set() ; stop hc)
+    defaultService
+    |> withRecovery (defaultServiceRecovery |> restart (Time.s 5))
+    |> withStart start
+    |> withStop (fun hc -> exiting.Set() ; stop hc)
     |> run
 
   let startUnix argv: int =

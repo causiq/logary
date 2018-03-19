@@ -1,4 +1,4 @@
-// copyright Henrik Feldt 2014
+// copyright Henrik Feldt 2018
 
 namespace Topshelf
 
@@ -10,149 +10,156 @@ module FSharpApi =
   open Topshelf.HostConfigurators
   open Topshelf.Runtime
 
-  type Service = 
-    { Start: HostControl -> bool
-      Stop: HostControl -> bool
-      HostConfiguration: (HostConfigurator -> HostConfigurator) list }
-    static member Default = 
-        { Start = (fun _ -> true)
-          Stop = (fun _ -> true)
-          HostConfiguration = [] }
+  type Service =
+    { start: HostControl -> bool
+      stop: HostControl -> bool
+      hostConfiguration: (HostConfigurator -> HostConfigurator) list }
+
+
+  let defaultService =
+    { start = (fun _ -> true)
+      stop = (fun _ -> true)
+      hostConfiguration = [] }
 
   let toAction f = new Action(f)
   let toAction1 f = new Action<_>(f)
   let toFunc f = new Func<_>(f)
 
-  let service_control (start: HostControl -> bool) (stop: HostControl -> bool) () =
+  let serviceControl (start: HostControl -> bool) (stop: HostControl -> bool) () =
     { new ServiceControl with
-      member x.Start hc =
-        start hc
-      member x.Stop hc =
-        stop hc }
-  
-  let create_service (hc:HostConfigurator) service_func = 
-    hc.Service<ServiceControl>(service_func |> toFunc) |> ignore
+        member x.Start hc =
+          start hc
+        member x.Stop hc =
+          stop hc }
 
-  let run service = 
-    let hostFactoryConfigurator hc = 
-        let createdHc = service.HostConfiguration |> List.fold (fun chc x -> x chc) hc
-        service_control service.Start service.Stop
-        |> create_service createdHc
+  let createService (hc:HostConfigurator) serviceFunc =
+    hc.Service<ServiceControl>(serviceFunc |> toFunc) |> ignore
+
+  let run service =
+    let hostFactoryConfigurator hc =
+        let createdHc = service.hostConfiguration |> List.fold (fun chc x -> x chc) hc
+        serviceControl service.start service.stop
+        |> createService createdHc
 
     hostFactoryConfigurator |> toAction1 |> HostFactory.Run |> int
 
-  [<Obsolete("This function has been renamed, use run instead", false)>]
-  let with_topshelf = run
+  let withStart f service =
+    {service with start = f}
 
-  let with_start f service = 
-    {service with Start = f}
+  let withStop f service =
+    {service with stop = f}
 
-  let with_stop f service = 
-    {service with Stop = f}
+  let addHostConfigurationStep step service = {service with hostConfiguration = step :: service.hostConfiguration}
 
-  let add_host_configuration_step step service = {service with HostConfiguration = step::service.HostConfiguration}
-  
-  let add_command_line_definition str action = add_host_configuration_step (fun c -> c.AddCommandLineDefinition(str, action |> toAction1);c)
+  let addCommandLineDefinition str action = addHostConfigurationStep (fun c -> c.AddCommandLineDefinition(str, action |> toAction1);c)
 
-  let add_command_line_switch str action = add_host_configuration_step (fun c -> c.AddCommandLineSwitch(str, action |> toAction1);c)
+  let addCommandLineSwitch str action = addHostConfigurationStep (fun c -> c.AddCommandLineSwitch(str, action |> toAction1);c)
 
-  let add_dependency dep_name = add_host_configuration_step (fun c -> c.AddDependency dep_name)
+  let addDependency dep_name = addHostConfigurationStep (fun c -> c.AddDependency dep_name)
 
-  let before_install f = add_host_configuration_step (fun c -> c.BeforeInstall(f |> toAction1))
+  let beforeInstall f = addHostConfigurationStep (fun c -> c.BeforeInstall(f |> toAction1))
 
-  let after_install f = add_host_configuration_step (fun c -> c.AfterInstall(f |> toAction1))
+  let afterInstall f = addHostConfigurationStep (fun c -> c.AfterInstall(f |> toAction1))
 
-  let apply_command_line str = add_host_configuration_step (fun c -> c.ApplyCommandLine str;c)
+  let applyCommandLine str = addHostConfigurationStep (fun c -> c.ApplyCommandLine str;c)
 
-  let before_uninstall f = add_host_configuration_step (fun c -> c.BeforeUninstall(f |> toAction))
+  let beforeUninstall f = addHostConfigurationStep (fun c -> c.BeforeUninstall(f |> toAction))
 
-  let after_uninstall f = add_host_configuration_step (fun c -> c.AfterUninstall(f |> toAction))
+  let afterUninstall f = addHostConfigurationStep (fun c -> c.AfterUninstall(f |> toAction))
 
-  let depends_on name = add_host_configuration_step (fun c -> c.DependsOn name)
+  let dependsOn name = addHostConfigurationStep (fun c -> c.DependsOn name)
 
-  let depends_on_eventlog = add_host_configuration_step (fun c -> c.DependsOnEventLog())
+  let dependsOn_eventlog = addHostConfigurationStep (fun c -> c.DependsOnEventLog())
 
-  let depends_on_iis = add_host_configuration_step (fun c -> c.DependsOnIis())
+  let dependsOn_iis = addHostConfigurationStep (fun c -> c.DependsOnIis())
 
-  let depends_on_mssql = add_host_configuration_step (fun c -> c.DependsOnMsSql())
+  let dependsOn_mssql = addHostConfigurationStep (fun c -> c.DependsOnMsSql())
 
-  let depends_on_rabbitmq = depends_on "RabbitMQ"
+  let dependsOn_rabbitmq = dependsOn "RabbitMQ"
 
-  let depends_on_msmq = add_host_configuration_step (fun c -> c.DependsOnMsmq())
+  let dependsOn_msmq = addHostConfigurationStep (fun c -> c.DependsOnMsmq())
 
-  let disabled = add_host_configuration_step (fun c -> c.Disabled())
+  let disabled = addHostConfigurationStep (fun c -> c.Disabled())
 
-  let enable_pause_and_continue = add_host_configuration_step (fun c -> c.EnablePauseAndContinue();c)
+  let enablePauseAndContinue = addHostConfigurationStep (fun c -> c.EnablePauseAndContinue();c)
 
-  let enable_service_recovery f = add_host_configuration_step (fun c -> c.EnableServiceRecovery(f |> toAction1))
+  let enableServiceRecovery f = addHostConfigurationStep (fun c -> c.EnableServiceRecovery(f |> toAction1))
 
-  let enable_shutdown = add_host_configuration_step (fun c -> c.EnableShutdown();c)
+  let enableShutdown = addHostConfigurationStep (fun c -> c.EnableShutdown();c)
 
-  let load_help_text_prefix asm str = add_host_configuration_step (fun c -> c.LoadHelpTextPrefix(asm,str))
+  let loadHelpTextPrefix asm str = addHostConfigurationStep (fun c -> c.LoadHelpTextPrefix(asm,str))
 
-  let run_as usr pwd = add_host_configuration_step (fun c -> c.RunAs(usr,pwd))
+  let runAs usr pwd = addHostConfigurationStep (fun c -> c.RunAs(usr,pwd))
 
-  let run_as_network_service = add_host_configuration_step (fun c -> c.RunAsNetworkService())
+  let runAsNetworkService = addHostConfigurationStep (fun c -> c.RunAsNetworkService())
 
-  let run_as_local_system = add_host_configuration_step (fun c -> c.RunAsLocalSystem())
+  let runAsLocalSystem = addHostConfigurationStep (fun c -> c.RunAsLocalSystem())
 
-  let run_as_local_service = add_host_configuration_step (fun c -> c.RunAsLocalService())
+  let runAsLocalService = addHostConfigurationStep (fun c -> c.RunAsLocalService())
 
-  let run_as_prompt = add_host_configuration_step (fun c -> c.RunAsPrompt())
+  let runAsPrompt = addHostConfigurationStep (fun c -> c.RunAsPrompt())
 
-  let help_text_prefix str = add_host_configuration_step (fun c -> c.SetHelpTextPrefix str)
+  let helpTextPrefix str = addHostConfigurationStep (fun c -> c.SetHelpTextPrefix str)
 
-  let start_auto = add_host_configuration_step (fun c -> c.StartAutomatically())
+  let startAuto = addHostConfigurationStep (fun c -> c.StartAutomatically())
 
-  let start_auto_delayed = add_host_configuration_step (fun c -> c.StartAutomaticallyDelayed())
+  let startAutoDelayed = addHostConfigurationStep (fun c -> c.StartAutomaticallyDelayed())
 
-  let start_manually = add_host_configuration_step (fun c -> c.StartManually())
+  let startManually = addHostConfigurationStep (fun c -> c.StartManually())
 
-  let use_env_builder f = add_host_configuration_step (fun c -> c.UseEnvironmentBuilder(new EnvironmentBuilderFactory(f));c)
+  let useEnvBuilder f = addHostConfigurationStep (fun c -> c.UseEnvironmentBuilder(new EnvironmentBuilderFactory(f));c)
 
-  let use_host_builder f = add_host_configuration_step (fun c -> c.UseHostBuilder(new HostBuilderFactory(f));c)
+  let useHostBuilder f = addHostConfigurationStep (fun c -> c.UseHostBuilder(new HostBuilderFactory(f));c)
 
-  let use_service_builder f = add_host_configuration_step (fun c -> c.UseServiceBuilder(new ServiceBuilderFactory(f));c)
+  let useServiceBuilder f = addHostConfigurationStep (fun c -> c.UseServiceBuilder(new ServiceBuilderFactory(f));c)
 
-  let use_test_host = add_host_configuration_step (fun c -> c.UseTestHost())
+  let useTestHost = addHostConfigurationStep (fun c -> c.UseTestHost())
 
   /// A module for handling the naming of the service. A part of the fluent configuration
   /// API.
   [<AutoOpen>]
   module Naming =
-    let service_name str = add_host_configuration_step (fun c -> c.SetServiceName str;c)
+    let serviceName str = addHostConfigurationStep (fun c -> c.SetServiceName str;c)
 
-    let instance_name str = add_host_configuration_step (fun c -> c.SetInstanceName str;c)
+    let instanceName str = addHostConfigurationStep (fun c -> c.SetInstanceName str;c)
 
-    let display_name str = add_host_configuration_step (fun c -> c.SetDisplayName str;c)
+    let displayName str = addHostConfigurationStep (fun c -> c.SetDisplayName str;c)
 
-    let description str = add_host_configuration_step (fun c -> c.SetDescription str;c)
+    let description str = addHostConfigurationStep (fun c -> c.SetDescription str;c)
 
-    let naming_from_asm asm = add_host_configuration_step (fun c -> HostConfiguratorExtensions.UseAssemblyInfoForServiceInfo(c, asm);c)
+    let namingFromAsm asm = addHostConfigurationStep (fun c -> HostConfiguratorExtensions.UseAssemblyInfoForServiceInfo(c, asm);c)
 
-    let naming_from_this_asm = add_host_configuration_step (fun c -> HostConfiguratorExtensions.UseAssemblyInfoForServiceInfo c;c)
+    let namingFromThisAsm = addHostConfigurationStep (fun c -> HostConfiguratorExtensions.UseAssemblyInfoForServiceInfo c;c)
 
   [<AutoOpen>]
   module Recovery =
-    type ServiceRecovery = 
-      { ServiceRecoveryConfigurations: (ServiceRecoveryConfigurator -> ServiceRecoveryConfigurator) list }
-      static member Default = {ServiceRecoveryConfigurations = []}
+    type ServiceRecovery =
+      { serviceRecoveryConfigurations: (ServiceRecoveryConfigurator -> ServiceRecoveryConfigurator) list }
 
-    let add_service_recovery_step step service = {service with ServiceRecoveryConfigurations = step::service.ServiceRecoveryConfigurations}
 
-    let with_recovery serviceRecovery = 
-        let f sc = serviceRecovery.ServiceRecoveryConfigurations |> List.fold (fun s x -> x s) sc |> ignore
-        add_host_configuration_step (fun c -> ServiceRecoveryConfiguratorExtensions.EnableServiceRecovery(c, f |> toAction1))
+    let defaultServiceRecovery =
+      { serviceRecoveryConfigurations = []}
 
-    let restart (span: TimeSpan) = add_service_recovery_step (fun c -> c.RestartService(int span.TotalMinutes))
+    let addServiceRecoveryStep step service = {service with serviceRecoveryConfigurations = step::service.serviceRecoveryConfigurations}
 
-    let restart_computer (span: TimeSpan) message  = add_service_recovery_step (fun c -> c.RestartComputer(int span.TotalMinutes, message))
+    let withRecovery serviceRecovery =
+        let f sc = serviceRecovery.serviceRecoveryConfigurations |> List.fold (fun s x -> x s) sc |> ignore
+        addHostConfigurationStep (fun c -> ServiceRecoveryConfiguratorExtensions.EnableServiceRecovery(c, f |> toAction1))
 
-    let run_program (span: TimeSpan) cmd = add_service_recovery_step (fun c -> c.RunProgram(int span.TotalMinutes, cmd))
+    let restart (span: TimeSpan) =
+      addServiceRecoveryStep (fun c -> c.RestartService(int span.TotalMinutes))
 
-    let set_reset_period (days: TimeSpan) = add_service_recovery_step (fun c -> c.SetResetPeriod(int days.TotalDays))
+    let restartComputer (span: TimeSpan) message =
+      addServiceRecoveryStep (fun c -> c.RestartComputer(int span.TotalMinutes, message))
 
-    let on_crash_only = add_service_recovery_step (fun c -> c.OnCrashOnly();c)
+    let runProgram (span: TimeSpan) cmd =
+      addServiceRecoveryStep (fun c -> c.RunProgram(int span.TotalMinutes, cmd))
+
+    let setResetPeriod (days: TimeSpan) =
+      addServiceRecoveryStep (fun c -> c.SetResetPeriod(int days.TotalDays))
+
+    let onCrashOnly =
+      addServiceRecoveryStep (fun c -> c.OnCrashOnly();c)
 
   /// A module for making constructing times nicer with F#, not a part of the
   /// fluent configuration API.
@@ -169,7 +176,7 @@ module FSharpApi =
   module HostControl =
     open System
 
-    let request_more_time (hc: HostControl) time =
+    let requestMoreTime (hc: HostControl) time =
       hc.RequestAdditionalTime time
 
     let restart (hc: HostControl) =
