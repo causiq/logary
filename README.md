@@ -1508,7 +1508,9 @@ messages.
  - Then enable rotation
  - Harden against exceptions during writes – mock FileSystem
 
-## Stackdriver target (alpha level)
+## Stackdriver target
+
+Development has been sponsored by [Tradera.com](https://www.tradera.com/?utm_source=logary).
 
 Logary also includes a logging target for [Google Cloud
 Stackdriver](https://cloud.google.com/stackdriver/).
