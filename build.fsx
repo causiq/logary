@@ -1,4 +1,5 @@
 #r @"packages/build/FAKE/tools/FakeLib.dll"
+open Fake
 open System
 open System.IO
 open Fake
@@ -133,22 +134,30 @@ Target "Push" (fun _ ->
 let curl uri =
   ()
 
-Target "PackageRuttaPrep"  (fun _ ->
-  curl "http://miru.hk/archive/ZeroMQ-4.0.4~miru1.0-x64.exe"
+let ruttaBinFolder =
+  "src/legacy/Logary.Services.Rutta/bin/Release/net461/"
 
+Target "PackageRuttaPrep"  (fun _ ->
+  let result =
+    ProcessHelper.ExecProcess (fun info ->
+      info.FileName <- "curl" 
+      info.WorkingDirectory <- ruttaBinFolder
+      info.Arguments <- "-LO http://miru.hk/archive/ZeroMQ-4.0.4~miru1.0-x64.exe")
+      (TimeSpan.FromMinutes 1.0)
+  if result <> 0 then failwithf "MyProc.exe returned with a non-zero exit code"
 )
 
 Target "PackageRutta" (fun _ ->
-  let folder = "src/legacy/Logary.Services.Rutta/bin/Release/net461/"
+  ignore (Directory.CreateDirectory "artifacts")
   ZipHelper.CreateZip
     // work dir
-    folder
+    ruttaBinFolder
     // file name
-    (sprintf "Rutta-v%s.zip" (release.SemVer.ToString()))
-    "A zip of the router/shipping service"
+    (sprintf "artifacts/Rutta-v%s.zip" (release.SemVer.ToString()))
+    "A zip of the Rutta router/shipping service"
     ZipHelper.DefaultZipLevel
     false
-    (!! (sprintf "%s/**/*" folder)))
+    (!! (sprintf "%s/**/*" ruttaBinFolder)))
 
 "PackageRuttaPrep" ==> "PackageRutta"
 "Build" ==> "PackageRutta"
