@@ -130,11 +130,32 @@ Target "Pack" (fun _ ->
 Target "Push" (fun _ ->
   Paket.Push (fun p -> { p with WorkingDir = "bin" }))
 
-#load "paket-files/build/fsharp/FAKE/modules/Octokit/Octokit.fsx"
+let curl uri =
+  ()
 
+Target "PackageRuttaPrep"  (fun _ ->
+  curl "http://miru.hk/archive/ZeroMQ-4.0.4~miru1.0-x64.exe"
+
+)
+
+Target "PackageRutta" (fun _ ->
+  let folder = "src/legacy/Logary.Services.Rutta/bin/Release/net461/"
+  ZipHelper.CreateZip
+    // work dir
+    folder
+    // file name
+    (sprintf "Rutta-v%s.zip" (release.SemVer.ToString()))
+    "A zip of the router/shipping service"
+    ZipHelper.DefaultZipLevel
+    false
+    (!! (sprintf "%s/**/*" folder)))
+
+"PackageRuttaPrep" ==> "PackageRutta"
+"Build" ==> "PackageRutta"
+
+#load "paket-files/build/fsharp/FAKE/modules/Octokit/Octokit.fsx"
 Target "Release" (fun _ ->
-    let gitOwner = "haf"
-    let gitName = "expecto"
+    let gitOwner, gitName = "logary", "logary"
     let gitOwnerName = gitOwner + "/" + gitName
     let remote =
         Git.CommandHelper.getGitResult "" "remote -v"
@@ -162,14 +183,14 @@ Target "Release" (fun _ ->
 Target "All" ignore
 
 "Clean"
-==> "AssemblyInfo"
-==> "PaketFiles"
-==> "ProjectVersion"
-==> "Build"
-==> "Tests" // until I remove the path base and make it relative
-==> "Pack"
-==> "All"
-==> "Push"
-==> "Release"
+  ==> "AssemblyInfo"
+  ==> "PaketFiles"
+  ==> "ProjectVersion"
+  ==> "Build"
+  ==> "Tests"
+  ==> "Pack"
+  ==> "All"
+  ==> "Push"
+  ==> "Release"
 
 RunTargetOrDefault "All"

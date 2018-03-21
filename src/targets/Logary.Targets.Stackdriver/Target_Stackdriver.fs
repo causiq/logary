@@ -307,6 +307,7 @@ module internal Impl =
                 wrap (fun (xs: seq<_>) ->
                   let arr = ResizeArray<V>()
                   for x in xs do
+                    // I can't make this not warn, but I want warnings in all of the file
                     let pbV = x2V (x.GetType()) (box x)
                     arr.Add pbV
                   V.ForList (arr.ToArray())
