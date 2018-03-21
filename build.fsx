@@ -159,8 +159,9 @@ Target "PackageRutta" (fun _ ->
     false
     (!! (sprintf "%s/**/*" ruttaBinFolder)))
 
-"PackageRuttaPrep" ==> "PackageRutta"
-"Build" ==> "PackageRutta"
+"Build" 
+  ==> "PackageRuttaPrep" 
+  ==> "PackageRutta"
 
 #load "paket-files/build/fsharp/FAKE/modules/Octokit/Octokit.fsx"
 Target "Release" (fun _ ->
