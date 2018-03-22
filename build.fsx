@@ -14,9 +14,11 @@ let owners = "Henrik Feldt & lust4life"
 let projectUrl = "https://github.com/logary/logary"
 let iconUrl = "https://raw.githubusercontent.com/logary/logary-assets/master/graphics/LogaryLogoSquare.png"
 let licenceUrl = "https://raw.githubusercontent.com/logary/logary/master/LICENSE.md"
-let copyright = sprintf "Copyright \169 %i" DateTime.Now.Year
+let copyright = sprintf "Copyright \169 %i Henrik Feldt" DateTime.Now.Year
 
-Target "Clean" (fun _ -> !!"./**/bin/" ++ "./**/obj/" |> CleanDirs)
+Target "Clean" (fun _ ->
+  !!"./src/**/bin/" ++ "./src/**/obj/"
+  |> CleanDirs)
 
 open AssemblyInfoFile
 
@@ -130,9 +132,6 @@ Target "Pack" (fun _ ->
 
 Target "Push" (fun _ ->
   Paket.Push (fun p -> { p with WorkingDir = "bin" }))
-
-let curl uri =
-  ()
 
 let ruttaBinFolder =
   "src/legacy/Logary.Services.Rutta/bin/Release/net461/"

@@ -29,7 +29,7 @@ let withException f =
 
 
 let exnMsg =
-  Message.event Error "some ex occur"
+  Message.event Error "Example message with exception"
   |> withException Message.addExn
 
 [<Tests>]
