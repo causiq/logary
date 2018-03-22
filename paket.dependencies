@@ -115,6 +115,7 @@ group Targets
     nuget elmah.io.client
     nuget elmah.io.core
     nuget fszmq
+    nuget libzmq_vc120 # specifically for Windows-support in Rutta
     nuget log4net
     nuget protobuf-net
     nuget System.Net.Http redirects: force

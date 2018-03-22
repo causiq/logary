@@ -138,13 +138,8 @@ let ruttaBinFolder =
   "src/legacy/Logary.Services.Rutta/bin/Release/net461/"
 
 Target "PackageRuttaPrep"  (fun _ ->
-  let result =
-    ProcessHelper.ExecProcess (fun info ->
-      info.FileName <- "curl" 
-      info.WorkingDirectory <- ruttaBinFolder
-      info.Arguments <- "-LO http://miru.hk/archive/ZeroMQ-4.0.4~miru1.0-x64.exe")
-      (TimeSpan.FromMinutes 1.0)
-  if result <> 0 then failwithf "MyProc.exe returned with a non-zero exit code"
+  "packages/targets/libzmq_vc120/build/native/bin/libzmq-x64-v120-mt-4_2_30_0.dll"
+    |> FileHelper.CopyFile (Path.Combine(ruttaBinFolder, "libzmq.dll"))
 )
 
 Target "PackageRutta" (fun _ ->
