@@ -4,7 +4,6 @@
     <AssemblyName>Logary.Targets.Stackdriver</AssemblyName>
     <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
     <Optimize>true</Optimize>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Target_Stackdriver.fs" />
