@@ -16,6 +16,7 @@ open Logary.Target
 open Logary.Targets
 open Logary.Targets.Stackdriver
 open System
+open System.IO
 open System.Collections.Generic
 
 let ri =
@@ -82,4 +83,6 @@ let target =
 
 [<EntryPoint>]
 let main argv =
+  let privKey = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "stackdriver-service-account.json")
+  Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", privKey)
   Tests.runTestsInAssembly defaultConfig argv

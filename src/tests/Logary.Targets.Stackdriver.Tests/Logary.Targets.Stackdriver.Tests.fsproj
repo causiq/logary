@@ -8,7 +8,9 @@
   <ItemGroup>
     <None Include="paket.references" />
     <None Include=".env" />
-    <None Include="stackdriver-service-account.json" />
+    <Content Include="stackdriver-service-account.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Compile Include="Program.fs" />
     <ProjectReference Include="../../Logary/Logary.fsproj" />
     <ProjectReference Include="..\..\Logary.Tests\Logary.Tests.fsproj" />

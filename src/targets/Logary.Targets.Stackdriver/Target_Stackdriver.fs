@@ -214,17 +214,6 @@ module internal Impl =
                 |> fun args -> V.ForList(args))
         }
 
-    | Shape.FSharpList s ->
-        s.Accept
-          { new IFSharpListVisitor<'T -> V> with
-              member __.Visit<'a> () =
-                wrap (fun (ts: 'T list) ->
-                  ts
-                  |> List.map (fun t -> x2V (t.GetType()) t)
-                  |> List.toArray
-                  |> fun args -> V.ForList(args))
-          }
-
     | Shape.FSharpOption s ->
       s.Accept
         { new IFSharpOptionVisitor<'T -> V> with
