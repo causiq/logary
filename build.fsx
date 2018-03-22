@@ -92,7 +92,6 @@ Target "Build" (fun _ ->
 
 let knownBroken =
   Set [
-    "Elmah", "https://github.com/logary/logary/issues/286"
     "Influx", "https://github.com/logary/logary/issues/283"
   ]
 
