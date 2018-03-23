@@ -137,3 +137,74 @@ module Uri =
 
   let parseConfigTString<'recordType> emptyValue uriString =
     parseConfigT<'recordType> emptyValue (Uri uriString)
+
+module TargetConfig =
+  let modu name = sprintf "Logary.Targets.%s" name
+  let asm name = sprintf "Logary.Targets.%s" name
+  let conf name = sprintf "%sConf" name
+
+  let moduleNameConfigName modu asm conf =
+    sprintf "%s, %s" modu asm,
+    sprintf "%s+%s, %s" modu conf asm
+
+  let moduleNameConfigNameAsm name =
+    moduleNameConfigName (modu name) (asm name) (conf name)
+
+  type DynamicConfig =
+    { configType: Type
+      moduleName: string
+      moduleType: Type
+    }
+    /// Creates the default target configuration particular to the target.
+    member x.getDefault () =
+      if isNull x.moduleType then
+        failwithf "Module '%s' did not resolve. Do you have its DLL next to rutta.exe?" x.moduleName
+
+      let defaultEmpty = x.moduleType.GetProperty("empty")
+      if isNull defaultEmpty then
+        failwithf "Module '%s' did not have a default config value named 'empty'." x.moduleName
+
+      defaultEmpty.GetValue(null)
+
+    /// Creates the final Logary TargetConf value that logary uses to build the target.
+    member x.createTargetConf (conf: obj) (name: string): TargetConf =
+      if isNull x.moduleType then
+        failwithf "Module '%s' did not have 'empty' conf-value. This should be fixed in the target's code."
+                  x.moduleName
+
+      let createMethod = x.moduleType.GetMethod("Create")
+      if isNull createMethod then
+        failwithf "Module '%s' did not have 'create' \"(name: string) -> (conf: 'conf) -> TargetConf\" function. This should be fixed in the target's code (with [<CompiledName \"Create\">] on itself)."
+                  x.moduleName
+
+      printfn "Invoking create on '%O'" createMethod
+      createMethod.Invoke(null, [| conf; name |])
+      :?> TargetConf
+
+    static member create configType moduleName moduleType =
+      //printfn "Create DynamicConfig with (configType=%A, moduleName=%A, moduleType=%A)" configType moduleName moduleType
+      { configType = configType
+        moduleName = moduleName
+        moduleType = moduleType }
+
+  let schemeToConfAndDefault =
+    [ "influxdb",    moduleNameConfigNameAsm "InfluxDb"
+      "stackdriver", moduleNameConfigNameAsm "Stackdriver"
+      "console",     moduleNameConfigName (modu "LiterateConsole") "Logary" (conf "LiterateConsole")
+    ]
+    |> List.map (fun (scheme, (moduleName, configName)) ->
+      let confType = Type.GetType configName
+      let moduleType = Type.GetType moduleName
+      scheme, DynamicConfig.create confType moduleName moduleType)
+    |> Map
+
+  let create (targetUri: Uri): TargetConf =
+    printfn "Creating a new target from URI: '%O'" targetUri
+    let scheme = targetUri.Scheme.ToLowerInvariant()
+    match schemeToConfAndDefault |> Map.tryFind scheme with
+    | None ->
+      failwithf "Rutta has not get got support for '%s' targets" scheme
+    | Some dynamicConfig ->
+      let configDefault = dynamicConfig.getDefault ()
+      Uri.parseConfig dynamicConfig.configType configDefault targetUri
+      |> fun config -> dynamicConfig.createTargetConf config scheme

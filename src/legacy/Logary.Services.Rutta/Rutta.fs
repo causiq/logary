@@ -138,78 +138,6 @@ module Router =
   open MBrace.FsPickler
   open MBrace.FsPickler.Combinators
 
-  /// TODO: move this module to Logary.Configuration.Uri
-  module TargetConfig =
-    let modu name = sprintf "Logary.Targets.%s" name
-    let asm name = sprintf "Logary.Targets.%s" name
-    let conf name = sprintf "%sConf" name
-
-    let moduleNameConfigName modu asm conf =
-      sprintf "%s, %s" modu asm,
-      sprintf "%s+%s, %s" modu conf asm
-
-    let moduleNameConfigNameAsm name =
-      moduleNameConfigName (modu name) (asm name) (conf name)
-
-    type DynamicConfig =
-      { configType: Type
-        moduleName: string
-        moduleType: Type
-      }
-      /// Creates the default target configuration particular to the target.
-      member x.getDefault () =
-        if isNull x.moduleType then
-          failwithf "Module '%s' did not resolve. Do you have its DLL next to rutta.exe?" x.moduleName
-
-        let defaultEmpty = x.moduleType.GetProperty("empty")
-        if isNull defaultEmpty then
-          failwithf "Module '%s' did not have a default config value named 'empty'." x.moduleName
-
-        defaultEmpty.GetValue(null)
-
-      /// Creates the final Logary TargetConf value that logary uses to build the target.
-      member x.createTargetConf (conf: obj) (name: string): TargetConf =
-        if isNull x.moduleType then
-          failwithf "Module '%s' did not have 'empty' conf-value. This should be fixed in the target's code."
-                    x.moduleName
-
-        let createMethod = x.moduleType.GetMethod("Create")
-        if isNull createMethod then
-          failwithf "Module '%s' did not have 'create' \"(name: string) -> (conf: 'conf) -> TargetConf\" function. This should be fixed in the target's code (with [<CompiledName \"Create\">] on itself)."
-                    x.moduleName
-
-        printfn "Invoking create on '%O'" createMethod
-        createMethod.Invoke(null, [| conf; name |])
-        :?> TargetConf
-
-      static member create configType moduleName moduleType =
-        //printfn "Create DynamicConfig with (configType=%A, moduleName=%A, moduleType=%A)" configType moduleName moduleType
-        { configType = configType
-          moduleName = moduleName
-          moduleType = moduleType }
-
-    let schemeToConfAndDefault =
-      [ "influxdb",    moduleNameConfigNameAsm "InfluxDb"
-        "stackdriver", moduleNameConfigNameAsm "Stackdriver"
-        "console",     moduleNameConfigName (modu "LiterateConsole") "Logary" (conf "LiterateConsole")
-      ]
-      |> List.map (fun (scheme, (moduleName, configName)) ->
-        let confType = Type.GetType configName
-        let moduleType = Type.GetType moduleName
-        scheme, DynamicConfig.create confType moduleName moduleType)
-      |> Map
-
-    let create (targetUri: Uri): TargetConf =
-      printfn "Creating a new target from URI: '%O'" targetUri
-      let scheme = targetUri.Scheme.ToLowerInvariant()
-      match schemeToConfAndDefault |> Map.tryFind scheme with
-      | None ->
-        failwithf "Rutta has not get got support for '%s' targets" scheme
-      | Some dynamicConfig ->
-        let configDefault = dynamicConfig.getDefault ()
-        Uri.parseConfig dynamicConfig.configType configDefault targetUri
-        |> fun config -> dynamicConfig.createTargetConf config scheme
-
   type State =
     { zmqCtx: Context
       receiver: Socket
@@ -395,8 +323,8 @@ module Program =
       fun _ -> Choice3Of3 msg
 
   let execute argv (exiting: ManualResetEventSlim): int =
-    let parser = ArgumentParser.Create<Args>()
-    let parsed = parser.Parse argv
+    let parser = ArgumentParser.Create<Args>(programName = "rutta.exe")
+    let parsed = parser.Parse(argv)
 
     parsed.GetAllResults()
     |> List.fold detailedParse (Choice2Of3 [])
@@ -406,7 +334,7 @@ module Program =
     // Choice3Of3 = more than one mode found
     | Choice1Of3 (modeName, start, pars) ->
       use health =
-        parsed.GetResult(<@ Health @>, defaultValue = ("127.0.0.1", 8888))
+        parsed.GetResult(Health, defaultValue = ("127.0.0.1", 8888))
         ||> Health.startServer
 
       match start pars with
@@ -419,7 +347,7 @@ module Program =
         2
 
     | Choice2Of3 pars ->
-      eprintfn "No mode given. You must pass one of: { --push-to, --pub-to, --router, --router-sub, --proxy } for Rutta to work."
+      eprintfn "No mode given. You must pass one of: { --push-to, --pub-to, --router, --router-sub, --router-stream, --proxy } for Rutta to work."
       10
 
     | Choice3Of3 error ->
