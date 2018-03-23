@@ -40,7 +40,7 @@ env:
     - TMPDIR=/tmp
 
 script:
-  - ./build.sh
+  - travis_wait ./build.sh
 
 notifications:
   email: false
