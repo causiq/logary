@@ -145,13 +145,10 @@ Target "Push" (fun _ ->
 let ruttaBinFolder =
   "src/legacy/Logary.Services.Rutta/bin/Release/net461/"
 
-Target "PackageRuttaPrep"  (fun _ ->
-  "packages/targets/libzmq_vc120/build/native/bin/libzmq-x64-v120-mt-4_2_30_0.dll"
-    |> FileHelper.CopyFile (Path.Combine(ruttaBinFolder, "libzmq.dll"))
-)
-
 Target "PackageRutta" (fun _ ->
   ignore (Directory.CreateDirectory "artifacts")
+  "packages/targets/libzmq_vc120/build/native/bin/libzmq-x64-v120-mt-4_2_30_0.dll"
+    |> FileHelper.CopyFile (Path.Combine(ruttaBinFolder, "libzmq.dll"))
   ZipHelper.CreateZip
     // work dir
     ruttaBinFolder
@@ -163,7 +160,6 @@ Target "PackageRutta" (fun _ ->
     (!! (sprintf "%s/**/*" ruttaBinFolder)))
 
 "Build" 
-  ==> "PackageRuttaPrep" 
   ==> "PackageRutta"
 
 #load "paket-files/build/fsharp/FAKE/modules/Octokit/Octokit.fsx"
