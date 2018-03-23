@@ -3,7 +3,6 @@ framework net461, netcoreapp2.0, netstandard2.0
 redirects on
 
 nuget Castle.Core
-nuget Chiron >= 7-beta
 nuget FParsec
 nuget FSharp.Core
 nuget Hopac
@@ -16,6 +15,7 @@ github logary/logary src/Logary.CSharp.Facade/Facade.cs
 github logary/logary src/Logary.Facade/Facade.fs
 github messagetemplates/messagetemplates-fsharp src/FsMtParser/FsMtParserFull.fs
 github xyncro/aether src/Aether/Aether.fs
+github neoeinstein/chiron:38e9d979fbab792904be19350f5fac9ebfaf9fd8 src/Chiron/Chiron.fs
 
 group Build
     source https://api.nuget.org/v3/index.json

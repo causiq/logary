@@ -11,6 +11,10 @@
     <DefineConstants>TYPESHAPE_EXPOSE;DEBUG</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\..\paket-files\neoeinstein\chiron\src\Chiron\Chiron.fs">
+      <Paket>True</Paket>
+      <Link>paket-files/Chiron.fs</Link>
+    </Compile>
     <Compile Include="..\..\paket-files\messagetemplates\messagetemplates-fsharp\src\FsMtParser\FsMtParserFull.fs">
       <Paket>True</Paket>
       <Link>paket-files/FsMtParserFull.fs</Link>

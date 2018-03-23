@@ -1,15 +1,23 @@
 module Logary.Tests.Formatting
+#if INTERACTIVE
+#I "bin/Release/net461"
+#r "Hopac.Core"
+#r "Hopac"
+#r "Chiron"
+#r "NodaTime"
+#r "Logary"
+#endif
 
-#nowarn "44"
-
-open System
-open Logary
-open Logary.Formatting
+open Chiron
 open Expecto
 open Expecto.Flip
-open Logary.MessageWriter
+open Logary
+open Logary.Formatting
 open Logary.MessageTemplates
-open Chiron
+open Logary.MessageWriter
+open System
+
+#nowarn "44"
 
 module Diff =
   // https://github.com/gjaldon/simple-diff/blob/f035463b4cba65d28301b432750e5dcf81c9e899/src/simple_diff.ml
@@ -108,7 +116,6 @@ module Diff =
         [Equal unchanged_lines] @
         get_diff old_lines_postsubseq new_lines_postsubseq
 
-
 let private sampleMessage: Message =
   Message.eventFormat (Info, "this is bad, with {1} and {0} reverse.", "the first value", "the second value")
   |> Message.setName (PointName.ofList ["a"; "b"; "c"; "d"])
@@ -117,21 +124,19 @@ let private sampleMessage: Message =
 type User =
   { id: int
     name: string
-    created: DateTime
-  }
+    created: DateTime }
 
 type Obj() =
-  member x.PropA =
+  member __.PropA =
     45
-  member x.PropB =
+  member __.PropB =
     raise (Exception ("Oh noes, no referential transparency here"))
 with
   interface IFormattable with
-    member x.ToString (format, provider) = "PropA is 45 and PropB raise exn"
+    member __.ToString (format, provider) = "PropA is 45 and PropB raise exn"
 
 let date20171111 =  DateTime.Parse("2017-11-11")
 let foo () = { id = 999; name = "whatever"; created = date20171111}
-
 
 let complexMessage: Message =
   let ex = exn "exception with data in it"

@@ -1,11 +1,11 @@
 FSharp.Core
 NodaTime
-Hopac
 FParsec
-Chiron
+Hopac
 
 File:YoLo.fs
 File:RingBuffer.fs
 File:TypeShape.fs
 File:FsMtParserFull.fs
 File:Aether.fs
+File:Chiron.fs
