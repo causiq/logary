@@ -9,7 +9,8 @@ open Logary
 open Logary.Target
 open Logary.Targets
 open Logary.Internals
-open Chiron
+open Logary.Internals.Chiron
+
 let emptyRuntime =
   RuntimeInfo.create "tests" "localhost"
 
