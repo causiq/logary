@@ -41,3 +41,6 @@ env:
 
 script:
   - ./build.sh
+
+notifications:
+  email: false
