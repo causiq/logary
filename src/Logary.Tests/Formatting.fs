@@ -145,8 +145,7 @@ let tests = [
     let actual =
       complexMessage
       |> Logary.Formatting.Json.formatWith JsonFormattingOptions.Pretty
-    let expected = """
-{
+    let expected = """{
   "name": "a.b.c.d",
   "value": "default foo is {foo} here is a default {objDefault} and stringify {$objStr} and destructure {@objDestr}",
   "level": "info",
@@ -234,9 +233,9 @@ let tests = [
 """
     let alines = actual.Split [| '\n' |]
     let elines = expected.Split [| '\n' |]
-    Array.zip alines elines
-    |> Array.iteri (fun i (aline, eline) ->
-      aline |> Expect.equal (sprintf "Should eq expected line %i" i) eline)
+    for i in 0 .. alines.Length do
+      let aline, eline = alines.[i], elines.[i]
+      aline |> Expect.equal (sprintf "Should eq expected line %i" i) eline
 
   testCase "json parsing" <| fun () ->
     match Json.parse jsonRawInput |> JsonResult.bind Json.decodeMessage with
