@@ -12,6 +12,7 @@
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Topshelf.fs" />
     <Compile Include="Rutta.fs" />
+    <Content Include="App.config" />
     <None Include="paket.references" />
     <ProjectReference Include="../../Logary/Logary.fsproj" />
     <ProjectReference Include="../Logary.Metrics.WinPerfCounters/Logary.Metrics.WinPerfCounters.fsproj" />
