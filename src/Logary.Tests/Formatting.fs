@@ -13,11 +13,14 @@ open Chiron
 
 module Diff =
   // https://github.com/gjaldon/simple-diff/blob/f035463b4cba65d28301b432750e5dcf81c9e899/src/simple_diff.ml
+  // Copyright (c) 2017 Gabriel Jaldon gjaldon85@gmail.com
+  // Permission to use, copy, modify, and distribute this software for any purpose with or without fee is hereby granted, provided that the above copyright notice and this permission notice appear in all copies.
+  // THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
   type Diff =
-    | Deleted of string array
-    | Added of string array
-    | Equal of string array
+    | Deleted of string[]
+    | Added of string[]
+    | Equal of string[]
 
   type T = Diff list
 
