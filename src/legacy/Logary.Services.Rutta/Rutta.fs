@@ -183,7 +183,7 @@ module Router =
         :?> TargetConf
 
       static member create configType moduleName moduleType =
-        printfn "Create DynamicConfig with (configType=%A, moduleName=%A, moduleType=%A)" configType moduleName moduleType
+        //printfn "Create DynamicConfig with (configType=%A, moduleName=%A, moduleType=%A)" configType moduleName moduleType
         { configType = configType
           moduleName = moduleName
           moduleType = moduleType }
