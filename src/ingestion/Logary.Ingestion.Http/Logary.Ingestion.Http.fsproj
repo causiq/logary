@@ -7,16 +7,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Api.fs" />
-    <None Include="app\README.md" />
-    <None Include="app\app.js" />
-    <None Include="app\index.html" />
-    <None Include="app\package.json" />
-    <None Include="app\webpack.config.js" />
     <None Include="Script.fsx" />
     <None Include="paket.references" />
-    <None Include="..\..\..\vendor\logary-js\src\client.coffee">
-      <Link>reference-source\client.coffee</Link>
-    </None>
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />
   </ItemGroup>
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />
