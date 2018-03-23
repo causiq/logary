@@ -3,20 +3,19 @@ module Logary.Tests.Formatting
 #I "bin/Release/net461"
 #r "Hopac.Core"
 #r "Hopac"
-#r "Chiron"
 #r "NodaTime"
 #r "Logary"
 #r "Expecto"
 #r "Expecto.FsCheck"
 #endif
 
-open Chiron
 open Expecto
 open Expecto.Flip
 open Logary
 open Logary.Formatting
 open Logary.MessageTemplates
 open Logary.MessageWriter
+open Logary.Internals.Chiron
 open System
 
 #nowarn "44"
@@ -229,8 +228,7 @@ let tests = [
       }
     ]
   }
-}
-"""
+}"""
     let alines = actual.Split [| '\n' |]
     let elines = expected.Split [| '\n' |]
     for i in 0 .. alines.Length do
