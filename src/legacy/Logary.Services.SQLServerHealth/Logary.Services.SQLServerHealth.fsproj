@@ -8,6 +8,7 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="App.config" />
     <Compile Include="Topshelf.fs" />
     <Compile Include="AsmUtils.fs" />
     <Compile Include="SQLServerPLE.fs" />

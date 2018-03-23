@@ -4,12 +4,13 @@
     <AssemblyName>Logary.Metrics.WinPerfCounters.Tests</AssemblyName>
     <OutputType>Exe</OutputType>
     <!-- Doesn't exist on Core
-    https://stackoverflow.com/questions/45675734/cpu-usage-in-net-core-at-least-on-windows 
+    https://stackoverflow.com/questions/45675734/cpu-usage-in-net-core-at-least-on-windows
     -->
     <TargetFrameworks>net461</TargetFrameworks>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="App.config" />
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />

@@ -6,6 +6,7 @@
     <TargetFrameworks>net461;netcoreapp2.0</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="App.config" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <ProjectReference Include="..\..\adapters\Logary.Adapters.Facade\Logary.Adapters.Facade.fsproj" />
