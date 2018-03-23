@@ -17,7 +17,7 @@ let licenceUrl = "https://raw.githubusercontent.com/logary/logary/master/LICENSE
 let copyright = sprintf "Copyright \169 %i Henrik Feldt" DateTime.Now.Year
 
 Target "Clean" (fun _ ->
-  !!"./src/**/bin/" ++ "./src/**/obj/"
+  !!"./src/**/bin/" ++ "./src/**/obj/" ++ "./artifacts"
   |> CleanDirs)
 
 open AssemblyInfoFile
