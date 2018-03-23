@@ -5,8 +5,8 @@ open Logary.Internals
 
 /// A module for decoding arbitrary JSON data into Message values.
 module internal JsonDecode =
-  open Chiron
-  open Chiron.Operators
+  open Logary.Internals.Chiron
+  open Logary.Internals.Chiron.Operators
   module D = Json.Decode
   open JsonTransformer
   open Logary
@@ -160,8 +160,8 @@ module internal JsonDecode =
 
 /// See JsonHelper.fs
 module Json =
-  open Chiron
-  open Chiron.Operators
+  open Logary.Internals.Chiron
+  open Logary.Internals.Chiron.Operators
   open Inference
   module D = Json.Decode
   module E = Json.Encode

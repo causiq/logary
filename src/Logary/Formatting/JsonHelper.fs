@@ -2,10 +2,11 @@ namespace Logary.Formatting
 
 module internal JsonHelper =
 
-  open Chiron
   open System.Reflection
   open System.Collections
   open System.Collections.Generic
+  open Logary.Internals
+  open Logary.Internals.Chiron
   open Logary.Internals.TypeShape
 
   module E = Chiron.Serialization.Json.Encode

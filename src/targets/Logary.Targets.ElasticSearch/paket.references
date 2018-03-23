@@ -2,5 +2,4 @@ group Targets
 FSharp.Core
 Hopac
 NodaTime
-Chiron
 Http.fs

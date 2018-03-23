@@ -58,7 +58,7 @@ Target "PaketFiles" (fun _ ->
           "paket-files/xyncro/aether/src/Aether/Aether.fs"
 
   replace "namespace Chiron" "namespace Logary.Internals.Chiron"
-          "paket-files/xyncro/aether/src/Aether/Aether.fs"
+          "paket-files/neoeinstein/chiron/src/Chiron/Chiron.fs"
 
   replace "module YoLo" "module internal Logary.YoLo"
           "paket-files/haf/YoLo/YoLo.fs"

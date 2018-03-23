@@ -100,7 +100,7 @@ module internal Global =
 
     open System
     open System.Collections.Concurrent
-    open Chiron
+    open Logary.Internals.Chiron
     open Logary.Formatting.JsonHelper
 
     module E = Chiron.Serialization.Json.Encode

@@ -140,7 +140,7 @@ let jsonRawInput = """
 """
 
 let tests = [
-  ptestCase "json formatting" <| fun _ ->
+  testCase "json formatting" <| fun _ ->
     // TODO: this test is sensitive to the locale it's running on; see date format
     let actual =
       complexMessage

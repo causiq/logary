@@ -127,13 +127,13 @@ module Router =
   open System
   open System.Text
   open System.IO
-  open Chiron
   open Logary
   open Logary.Message
   open Logary.Configuration
   open Logary.Targets
   open Logary.EventsProcessing
   open Logary.Formatting
+  open Logary.Internals.Chiron
   open fszmq
   open MBrace.FsPickler
   open MBrace.FsPickler.Combinators
@@ -324,7 +324,7 @@ module Program =
 
   let execute argv (exiting: ManualResetEventSlim): int =
     let parser = ArgumentParser.Create<Args>(programName = "rutta.exe")
-    let parsed = parser.Parse(argv)
+    let parsed = parser.Parse(argv, ignoreUnrecognized=true)
 
     parsed.GetAllResults()
     |> List.fold detailedParse (Choice2Of3 [])
