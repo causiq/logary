@@ -40,7 +40,7 @@ type ElasticSearchConf =
 
 let serialise: Message -> Json =
   fun message ->
-  let msgJson =AA
+  let msgJson =
     match Logary.Formatting.Json.encode message with
     | Json.Object jsonObj ->
       jsonObj

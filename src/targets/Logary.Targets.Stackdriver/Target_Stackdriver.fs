@@ -16,7 +16,7 @@ open Hopac.Infixes
 open Logary
 open Logary.Configuration
 open Logary.Internals
-open Logary.Internals.TypeShape
+open Logary.Internals.TypeShape.Core
 open Logary.Message
 open Logary.Target
 open Logary.Formatting

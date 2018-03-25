@@ -21,18 +21,19 @@ type Obj() =
     raise (Exception ("Oh noes, no referential transparency here"))
 
 type Arbs =
-
   static member Duration() =
     Arb.Default.TimeSpan()
     |> Arb.convert (Duration.FromTimeSpan) (fun d -> d.ToTimeSpan())
 
   static member HashMap() =
+    printfn "HashMap called"
     let nonNullKey = fun (KeyValue (k, _)) -> not (isNull (box k))
     let filter list = List.filter nonNullKey list
     Arb.Default.FsList()
     |> Arb.convert (filter >> HashMap.ofListPair) HashMap.toListPair
 
   static member Value() =
+    printfn "Value called"
     let contentTypes = Gen.elements [ "application/image+jpeg"; "application/octet-stream" ]
     let strings = Arb.generate<NonEmptyString> |> Gen.map (fun (NonEmptyString s) -> String s)
     let floats = Arb.generate<NormalFloat> |> Gen.map (fun (NormalFloat f) -> Float f)
@@ -62,6 +63,7 @@ type Arbs =
     Arb.fromGenShrink (generator, shrinker)
 
   static member Units() =
+    printfn "Units called"
     let isNormal f =
          not <| Double.IsInfinity f
       && not <| Double.IsNaN f
@@ -71,18 +73,52 @@ type Arbs =
       | Scaled (x, f) -> isNormal f
       | _ -> true)
 
-  static member Guage() =
+  static member Gauge() =
+    printfn "Gauge called"
     let isNormal f =
          not <| Double.IsInfinity f
       && not <| Double.IsNaN f
     Arb.Default.Derive()
     |> Arb.filter (function | Gauge (f, units) -> isNormal f)
 
-let fsCheckConfig =
-  { FsCheckConfig.defaultConfig with
-      arbitrary = [ typeof<Arbs> ]
-  }
+  static member Instant() =
+    printfn "Instant called"
+    Arb.Default.DateTimeOffset()
+    |> Arb.convert Instant.FromDateTimeOffset (fun i -> i.ToDateTimeOffset())
 
+  static member Exception() =
+    printfn "Exception called"
+    let failer message =
+      failwith message
+    let meth message =
+      failer message
+    let another message =
+      meth message
+    let generator =
+      gen {
+        let! (NonEmptyString message) = Arb.generate<NonEmptyString>
+        let! (NonEmptyString message2) = Arb.generate<NonEmptyString>
+        let! hasInner =
+          Gen.frequency [
+            1, Gen.constant false
+            2, Gen.constant true
+          ]
+        let! inner = Arb.generate<exn>
+        return
+          try another message
+          with e ->
+          if isNull inner then reraise ()
+          else raise (Exception (message2, inner))
+      }
+
+    let shrinker (e: exn): seq<exn> =
+      if not (isNull e.InnerException) then Seq.singleton e.InnerException
+      else Seq.empty
+
+    Arb.fromGenShrink (generator, shrinker)
+
+let fsCheckConfig =
+  { FsCheckConfig.defaultConfig with arbitrary = [ typeof<Arbs> ] }
 
 module Expect =
   /// Expect the passed float to be a number.
@@ -107,6 +143,9 @@ module Expect =
   let isNotEmpty (actual: string) format =
     Expect.isNotNull actual format
     if actual.Length = 0 then Tests.failtestf "%s. Should not be empty." format
+
+let testLabel label test =
+  Test.TestLabel (label, test, FocusState.Normal)
 
 [<Tests>]
 let tests =
@@ -726,7 +765,8 @@ let tests =
 
     testList "Target.Core" Tests.CoreTargets.tests
 
-    testList "Formatting" Tests.Formatting.tests
+    testLabel "Formatting" (Tests.Formatting.jsonTests fsCheckConfig)
+    testLabel "Formatting" (Tests.Formatting.textPrinters)
 
     testList "Registry" Tests.Registry.tests
   ]

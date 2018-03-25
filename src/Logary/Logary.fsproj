@@ -19,6 +19,10 @@
       <Paket>True</Paket>
       <Link>paket-files/FsMtParserFull.fs</Link>
     </Compile>
+    <Compile Include="..\..\paket-files\eiriktsarpalis\TypeShape\src\TypeShape\Utils.fs">
+      <Paket>True</Paket>
+      <Link>paket-files/Utils.fs</Link>
+    </Compile>
     <Compile Include="..\..\paket-files\eiriktsarpalis\TypeShape\src\TypeShape\TypeShape.fs">
       <Paket>True</Paket>
       <Link>paket-files/TypeShape.fs</Link>

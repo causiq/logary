@@ -1,28 +1,18 @@
 namespace Logary.Formatting
 
-module internal JsonHelper =
+open System
+open System.Reflection
+open System.Collections.Generic
+open Logary.Internals
+open Logary.Internals.Chiron
+open Logary.Internals.TypeShape.Core
+open Logary.Internals.TypeShape.Core.Utils
 
-  open System
-  open System.Reflection
-  open System.Collections.Generic
-  open Logary.Internals
-  open Logary.Internals.Chiron
-  open Logary.Internals.TypeShape
-
+module JsonHelper =
   module E = Chiron.Serialization.Json.Encode
-  module EI = Chiron.Inference.Json.Encode
 
   type ICustomJsonEncoderRegistry =
     abstract TryGetRegistration: System.Type -> CustomJsonEncoderFactory option
-
-  and BoxedLambda =
-    abstract InputType: System.Type
-    abstract InvokeBoxed: obj -> Json
-
-  and Wrap<'T>(f: 'T -> Json) =
-    interface BoxedLambda with
-     member __.InputType = typeof<'T>
-     member __.InvokeBoxed o = f (o :?> 'T)
 
   and CustomJsonEncoderFactory =
     JsonEncoder<obj> -> JsonEncoder<obj>
@@ -34,162 +24,180 @@ module internal JsonHelper =
     { new ICustomJsonEncoderRegistry with
         member __.TryGetRegistration _ = None }
 
-  let private chironDefaultsType = typeof<Chiron.Inference.Internal.ChironDefaults>
+  let private chironDefaultsType = typeof<Logary.Internals.Chiron.Inference.Internal.ChironDefaults>
 
-  /// try some basic type test for make a better decision to transform to json type
-  /// since chiron use monad and static type resolver style,
-  /// implementation here avoid using reflection as much as possible.
-  /// container type like list, array, dictionary... are support by testing IEnumerable
-  /// tuple in dotnet core or framework 4.7.1 are support ITuple, https://docs.microsoft.com/zh-cn/dotnet/api/system.runtime.compilerservices.ituple?view=netframework-4.7.1
-  /// so implement by typeshape reflection first, then migrate by test ITuple interface.
-  /// if user want to support union, record, poco... they can offer their own encoderFac.
-  let rec internal toJson (registry: ICustomJsonEncoderRegistry) (t: System.Type): BoxedLambda =
-    let wrap f = Wrap f :> BoxedLambda
-    let encode value = toJson registry (value.GetType())
+  // TO CONSIDER https://github.com/eiriktsarpalis/TypeShape/blob/master/src/TypeShape/Utils.fs
+  // let rec internal toJson (registry: ICustomJsonEncoderRegistry) (t: System.Type): obj -> Json =
+  let rec toJson<'T>(): 'T -> Json =
+    use ctx = new TypeGenerationContext()
+    toJsonCached<'T> ctx
 
-    let (|FromTypeRegistry|_|) (shape: TypeShape) =
-      registry.TryGetRegistration shape.Type
+  and private toJsonCached<'T> (ctx: TypeGenerationContext): 'T -> Json =
+    match ctx.InitOrGetCachedValue<'T -> Json>(fun c t -> c.Value t) with
+    | Cached (value = r) ->
+      r
+    | NotCached t ->
+      let p = toJsonAux<'T> ctx
+      ctx.Commit t p
 
-    let inline mkFieldPrinter (shape: IShapeMember<'DeclaringType>) =
-      shape.Accept
-        { new IMemberVisitor<'DeclaringType, string * ('DeclaringType -> BoxedLambda)> with
-            member __.Visit (field: ShapeMember<'DeclaringType, 'Field>) =
-              field.Label, encode << field.Project
-        }
+  and private toJsonAux<'T> (ctx: TypeGenerationContext): 'T -> Json =
+    let wrap (f: 'a -> Json) = unbox f
+    let inline enc (a: 'a) = Inference.Json.encode a
+    let mkFieldPrinter (field: IShapeMember<'DeclaringType>) =
+      field.Accept {
+        new IMemberVisitor<'DeclaringType, string * ('DeclaringType -> Json)> with
+          member __.Visit(field : ShapeMember<'DeclaringType, 'Field>) =
+            let fp = toJsonCached<'Field> ctx
+            field.Label, fp << field.Project
+      }
 
-    match TypeShape.Create t with
-    | FromTypeRegistry factory ->
-      factory encode
+    match shapeof<'T> with
     | Shape.Unit ->
       wrap (fun () -> Json.Null)
+
+    | Shape.Char ->
+      wrap (fun (c: char) -> E.string (string c))
+
     | Shape.String ->
-      wrap E.string
+      wrap (fun (s: string) -> Inference.Json.encode s)
+
     | Shape.Bool ->
-      wrap (fun (b: bool) -> E.bool b)
+      wrap (fun (x: bool) -> Inference.Json.encode x)
+
     | Shape.Double ->
-      wrap (fun (f: float) -> E.number (f.ToString()))
+      wrap (fun (x: float) -> Inference.Json.encode x)
+
     | Shape.Single ->
-      wrap (fun (s: single) -> E.number (s.ToString()))
+      wrap (fun (x: Single) -> Inference.Json.encode x)
+
     | Shape.BigInt ->
-      wrap (fun (bi: bigint) -> E.number (bi.ToString()))
-    | Shape.Int16 ->
-      wrap (fun (u: int16) -> E.number (u.ToString()))
-    | Shape.Int32 ->
-      wrap (fun (u: int32) -> E.number (u.ToString()))
-    | Shape.Int64 ->
-      wrap (fun (u: int64) -> E.number (u.ToString()))
+      wrap (fun (x: bigint) -> Inference.Json.encode x)
+
     | Shape.UInt16 ->
-      wrap (fun (u: uint16) -> E.number (u.ToString()))
+      wrap (fun (x: uint16) -> Inference.Json.encode x)
+
     | Shape.UInt32 ->
-      wrap (fun (u: uint32) -> E.number (u.ToString()))
+      wrap (fun (x: uint32) -> Inference.Json.encode x)
+
     | Shape.UInt64 ->
-      wrap (fun (u: uint64) -> E.number (u.ToString()))
+      wrap (fun (x: uint64) -> Inference.Json.encode x)
+
+    | Shape.Int16 ->
+      wrap (fun (x: int16) -> Inference.Json.encode x)
+
+    | Shape.Int32 ->
+      wrap (fun (x: int) -> Inference.Json.encode x)
+
+    | Shape.Int64 ->
+      wrap (fun (x: int64) -> Inference.Json.encode x)
+
     | Shape.DateTime ->
-      wrap (fun (dt: System.DateTime) -> E.string (dt.ToString "o"))
+      wrap (fun (x: DateTime) -> Inference.Json.encode x)
+
     | Shape.DateTimeOffset ->
-      wrap (fun (dto: System.DateTimeOffset) -> E.string (dto.ToString "o"))
+      wrap (fun (x: DateTimeOffset) -> Inference.Json.encode x)
+
+    | Shape.FSharpMap s when s.Key = shapeof<string> ->
+      s.Accept
+        { new IFSharpMapVisitor<'T -> Json> with
+            member x.Visit<'k, 'v when 'k : comparison> () =
+              let fp = toJsonCached<'v> ctx
+              wrap (fun (m: Map<string, 'v>) -> E.mapWith fp m)
+        }
 
     | Shape.FSharpOption s ->
       s.Accept
-        { new IFSharpOptionVisitor<BoxedLambda> with
-            member __.Visit<'a> () =
-              wrap (function
-                | None ->
-                  Json.Null
-                | Some x ->
-                  E.mapWith encode x)
+        { new IFSharpOptionVisitor<'T -> Json> with
+            member __.Visit<'a> () = // 'T = 'a option
+              let toJ = toJsonCached<'a> ctx
+              wrap (Option.fold (fun _ -> toJ) Json.Null)
         }
 
     | Shape.ByteArray ->
-      wrap (fun (bs: byte[]) -> E.bytes bs)
+      wrap E.bytes
 
-    | Shape.Enumerable s ->
-      match s.Element with
-      | Shape.KeyValuePair ks when ks.Key = shapeof<string> ->
-        s.Accept
-          { new IEnumerableVisitor<BoxedLambda> with
-              member __.Visit<'e, 't when 'e :> seq<'t>> () =
-                let fold =
-                  Seq.fold (fun (s: JsonObject) (KeyValue (key, value)) ->
-                    let json = encode value
-                    s |> JsonObject.add key json)
-                    JsonObject.empty
-                wrap (fold >> Json.Object)
-          }
-
-      | _ ->
-        s.Accept
-          { new IEnumerableVisitor<BoxedLambda> with
-              member __.Visit<'e, 't when 'e :> seq<'t>> () =
-                let map =
-                  Seq.map encode
-                  >> Seq.toList
-                wrap (map >> Json.Array)
-          }
-
-    | Shape.Exception s ->
-      let iff b value = if b then Some value else None
-
-      let field (pred: exn -> (string * 'x) option) (e: exn): (JsonObject -> _) -> JsonObject -> _ =
-        match pred e with
-        | Some (name, field) ->
-          fun next state ->
-            next (state |> JsonObject.add name (encode field))
-        | None ->
-          fun next state ->
-            next state
-
-      let data = field (fun e -> iff (not (isNull e.Data) && e.Data.Count > 0) ("data", e.Data))
-      let helpLink = field (fun e -> iff (not (isNull e.HelpLink)) ("helpLink", e.HelpLink))
-      let hresult = field (fun e -> iff (not (Unchecked.defaultof<int> = e.HResult)) ("hresult", e.HResult))
-      let innerException = field (fun e -> iff (not (isNull e.InnerException)) ("innerException", e.InnerException))
-      let message = field (fun e -> Some ("message", e.Message))
-      let source = field (fun e -> Some ("source", e.Source))
-      let stackTrace = field (fun e -> iff (not (String.IsNullOrWhiteSpace e.StackTrace)) ("stackTrace", e.StackTrace))
-      let targetSite = field (fun e -> iff (not (isNull e.TargetSite)) ("targetSite", e.TargetSite))
-
-      let composed e =
-        data e // ('s -> _) -> ('s -> _)
-        >> helpLink e
-        >> hresult e
-        >> innerException e
-        >> message e
-        >> source e
-        >> stackTrace e
-        >> targetSite e
-
+    | Shape.FSharpList s ->
       s.Accept
-        { new IExceptionVisitor<BoxedLambda> with
-            member __.Visit () =
-              wrap (fun e -> composed e Json.Object JsonObject.empty)
+        { new IFSharpListVisitor<'T -> Json> with
+            member __.Visit<'a> () = //  'T = 'a list
+              let ap = toJsonCached<'a> ctx
+              wrap (List.map ap >> E.list)
         }
 
-    | Shape.FSharpRecord (:? ShapeFSharpRecord<'T> as s) ->
-      let fps = s.Fields |> Array.map mkFieldPrinter
-      wrap (fun data ->
-        Seq.fold (fun s (label, fp) -> s |> JsonObject.add label (fp data)) JsonObject.empty
-        |> Json.Object)
+    | Shape.Tuple (:? ShapeTuple<'T> as shape) ->
+      let elemPrinters = shape.Elements |> Array.map mkFieldPrinter
+      fun (t: 'T) ->
+        elemPrinters
+        |> Array.map (fun (_, ep) -> ep t)
+        |> E.array
 
-    | Shape.Poco (:? ShapePoco<'T> as s) ->
-      let fps = s.Properties |> Array.map mkFieldPrinter
-      wrap (fun data ->
-        Seq.fold (fun s (label, fp) -> s |> JsonObject.add label (fp data)) JsonObject.empty
-        |> Json.Object)
+    | Shape.FSharpUnion (:? ShapeFSharpUnion<'T> as shape) ->
+      (* {
+        "type": "CaseName",
+        "user": { // case name field
+          "id": 2,
+          ...
+        },
+        "companyId": 1234 // case name field
+      } *)
+      let mkUnionCasePrinter (s: ShapeFSharpUnionCase<'T>) =
+        let fieldPrinters = s.Fields |> Array.map mkFieldPrinter
+        fun (u: 'T) ->
+          Map [
+            yield "type", String s.CaseInfo.Name
+            yield!
+              match fieldPrinters with
+              | [||] ->
+                [||]
+              | [| label, fp |] ->
+                [| label, fp u |]
+              | fps ->
+                fps |> Array.map (fun (label, fp) -> label, fp u)
+          ]
+          |> JsonObject.ofMap
+          |> Json.Object
 
-    | shape ->
-      printfn "Shape %O triggered default! %O" shape shape.Type
-      wrap (fun data -> tryToJsonWithDefault shape.Type data)
+      let casePrinters =
+        shape.UnionCases |> Array.map mkUnionCasePrinter
 
-  and private tryToJsonWithDefault dataType (data: obj) =
-    // can do some dataType toJson methodinfo cache here
-    let m = dataType.GetMethod("ToJson", BindingFlags.Public|||BindingFlags.Static,null,CallingConventions.Any,[|dataType|],null)
-    // maybe chiron default can hard code use type test above, avoid reflection here
-    let mOrDefault =
-      if isNull m then
-        chironDefaultsType.GetMethod("ToJson", BindingFlags.Public|||BindingFlags.Static,null, CallingConventions.Any,[|dataType|],null)
-      else m
-    if not <| isNull mOrDefault && mOrDefault.ReturnType = typeof<Json> then
-      let json = mOrDefault.Invoke(null,[|data|])
-      unbox json
-    else
-      E.string (string data)
+      fun (u: 'T) ->
+        let printer = casePrinters.[shape.GetTag u]
+        printer u
+
+    | Shape.FSharpRecord (:? ShapeFSharpRecord<'T> as shape) ->
+      let fps = shape.Fields |> Array.map (fun f -> lazy (mkFieldPrinter f))
+      fun (input: 'T) ->
+        fps
+        |> Seq.fold (fun s x ->
+            let label, fp = x.Value
+            s |> JsonObject.add label (fp input)) JsonObject.empty
+        |> Json.Object
+
+    | Shape.Poco (:? ShapePoco<'T> as shape) when shape.Properties.Length <> 0 ->
+      let fps = shape.Properties |> Array.map (fun p -> lazy (mkFieldPrinter p))
+      fun (input: 'T) ->
+        fps
+        |> Seq.fold (fun s x ->
+            let label, fp = x.Value
+            s |> JsonObject.add label (fp input)) JsonObject.empty
+        |> Json.Object
+
+    | other when other = shapeof<obj> ->
+      let toJsonTDef =
+        Type.GetType("Logary.Formatting.JsonHelper, Logary")
+          .GetMethod("toJsonCached", BindingFlags.Static ||| BindingFlags.NonPublic)
+      fun value ->
+        match box value with
+        | null ->
+          Json.Null
+        | otherwise ->
+          let typ = value.GetType() // string
+          if typ = typeof<obj> then Json.Object JsonObject.empty else
+          let toJsonT = toJsonTDef.MakeGenericMethod(typ) // toJsonCached<string>(): string -> Json: MethodInfo
+          let resFuncT = typedefof<FSharpFunc<_, _>>.MakeGenericType(typ, typeof<Json>) // string -> Json:
+          let resFuncInvoker = resFuncT.GetMethod("Invoke") // (string -> Json).Invoke: MethodInfo
+          let refFunc = toJsonT.Invoke(null, [| box ctx |]) // : toJson: string -> Json
+          resFuncInvoker.Invoke(refFunc, [| value |]) :?> Json // (toJson value): Json
+
+    | other ->
+      failwithf "Got shape %A" other

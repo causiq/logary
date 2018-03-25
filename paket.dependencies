@@ -9,6 +9,7 @@ nuget Hopac
 nuget NodaTime
 
 github eiriktsarpalis/TypeShape src/TypeShape/TypeShape.fs
+github eiriktsarpalis/TypeShape src/TypeShape/Utils.fs
 github haf/YoLo YoLo.fs
 github logary/RingBuffer RingBuffer.fs
 github logary/logary src/Logary.CSharp.Facade/Facade.cs

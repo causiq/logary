@@ -392,12 +392,12 @@ NUGET
       System.Runtime (>= 4.3) - restriction: || (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45)) (== netcoreapp2.0) (== netstandard2.0)
       System.Text.Encoding (>= 4.3) - restriction: || (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45)) (== netcoreapp2.0) (== netstandard2.0)
     System.Text.RegularExpressions (4.3) - restriction: || (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45)) (== netcoreapp2.0) (== netstandard2.0)
-      System.Collections (>= 4.3) - restriction: || (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45) (>= netstandard1.6)) (&& (== netcoreapp2.0) (>= dnxcore50)) (&& (== netcoreapp2.0) (< netcoreapp1.1)) (== netstandard2.0)
-      System.Globalization (>= 4.3) - restriction: || (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45) (>= netstandard1.6)) (&& (== netcoreapp2.0) (>= dnxcore50)) (&& (== netcoreapp2.0) (< netcoreapp1.1)) (== netstandard2.0)
-      System.Resources.ResourceManager (>= 4.3) - restriction: || (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45) (>= netstandard1.6)) (&& (== netcoreapp2.0) (>= dnxcore50)) (&& (== netcoreapp2.0) (< netcoreapp1.1)) (== netstandard2.0)
+      System.Collections (>= 4.3) - restriction: || (&& (== net461) (== netcoreapp2.0)) (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45) (>= netstandard1.6)) (&& (== netcoreapp2.0) (>= dnxcore50)) (&& (== netcoreapp2.0) (< netcoreapp1.1)) (== netstandard2.0)
+      System.Globalization (>= 4.3) - restriction: || (&& (== net461) (== netcoreapp2.0)) (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45) (>= netstandard1.6)) (&& (== netcoreapp2.0) (>= dnxcore50)) (&& (== netcoreapp2.0) (< netcoreapp1.1)) (== netstandard2.0)
+      System.Resources.ResourceManager (>= 4.3) - restriction: || (&& (== net461) (== netcoreapp2.0)) (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45) (>= netstandard1.6)) (&& (== netcoreapp2.0) (>= dnxcore50)) (&& (== netcoreapp2.0) (< netcoreapp1.1)) (== netstandard2.0)
       System.Runtime (>= 4.3) - restriction: || (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45)) (&& (== net461) (>= netcoreapp1.1)) (== netcoreapp2.0) (== netstandard2.0)
-      System.Runtime.Extensions (>= 4.3) - restriction: || (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45) (>= netstandard1.6)) (&& (== netcoreapp2.0) (>= dnxcore50)) (&& (== netcoreapp2.0) (< netcoreapp1.1)) (== netstandard2.0)
-      System.Threading (>= 4.3) - restriction: || (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45) (>= netstandard1.6)) (&& (== netcoreapp2.0) (>= dnxcore50)) (&& (== netcoreapp2.0) (< netcoreapp1.1)) (== netstandard2.0)
+      System.Runtime.Extensions (>= 4.3) - restriction: || (&& (== net461) (== netcoreapp2.0)) (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45) (>= netstandard1.6)) (&& (== netcoreapp2.0) (>= dnxcore50)) (&& (== netcoreapp2.0) (< netcoreapp1.1)) (== netstandard2.0)
+      System.Threading (>= 4.3) - restriction: || (&& (== net461) (== netcoreapp2.0)) (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45) (>= netstandard1.6)) (&& (== netcoreapp2.0) (>= dnxcore50)) (&& (== netcoreapp2.0) (< netcoreapp1.1)) (== netstandard2.0)
     System.Threading (4.3) - restriction: || (&& (== net461) (< net35)) (== netcoreapp2.0) (== netstandard2.0)
       System.Runtime (>= 4.3) - restriction: || (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45)) (== netcoreapp2.0) (== netstandard2.0)
       System.Threading.Tasks (>= 4.3) - restriction: || (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45)) (== netcoreapp2.0) (== netstandard2.0)
@@ -466,7 +466,8 @@ NUGET
       System.Xml.XmlDocument (>= 4.3) - restriction: || (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45)) (== netcoreapp2.0) (== netstandard2.0)
 GITHUB
   remote: eiriktsarpalis/TypeShape
-    src/TypeShape/TypeShape.fs (65867700142d4e66224a3a745b6f00b3d77a1f3e)
+    src/TypeShape/TypeShape.fs (198473bb2e74e68823fe457f511af48fe04ce17b)
+    src/TypeShape/Utils.fs (198473bb2e74e68823fe457f511af48fe04ce17b)
   remote: haf/YoLo
     YoLo.fs (e546b9806924efcb84523ac76fd3de4e0c3b1d9c)
   remote: logary/RingBuffer
@@ -474,8 +475,8 @@ GITHUB
       Expecto
       Hopac
   remote: logary/logary
-    src/Logary.CSharp.Facade/Facade.cs (43b19609c1ee86b53efe00ffa9a4d942acfe5230)
-    src/Logary.Facade/Facade.fs (43b19609c1ee86b53efe00ffa9a4d942acfe5230)
+    src/Logary.CSharp.Facade/Facade.cs (2f8743e07bc1ed4b88bf37a99f92864a28fe5a00)
+    src/Logary.Facade/Facade.fs (2f8743e07bc1ed4b88bf37a99f92864a28fe5a00)
   remote: messagetemplates/messagetemplates-fsharp
     src/FsMtParser/FsMtParserFull.fs (17bdfdcc237d7d725c23ebe0ef24c438c4ff7530)
   remote: xyncro/aether

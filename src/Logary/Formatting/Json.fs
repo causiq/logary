@@ -9,7 +9,6 @@ module internal JsonDecode =
   open Logary.Internals.Chiron.Operators
   module D = Json.Decode
   open JsonTransformer
-  open Logary
 
   /// Module with extensions to Chiron
   module JsonResult =
@@ -166,13 +165,12 @@ module Json =
   module D = Json.Decode
   module E = Json.Encode
 
-  let encode (data: obj): Json =
-    data
-      |> JsonHelper.toJson Global.jsonEncoderRegistry (data.GetType())
+  let encode (data: 'a): Json =
+    // |> JsonHelper.toJson Global.jsonEncoderRegistry data
+    JsonHelper.toJson<'a>() data
 
-  let formatWith options (data: obj): string =
-    encode data
-      |> Json.formatWith options
+  let formatWith options (data: 'a): string =
+    encode data |> Json.formatWith options
 
   let format (data: obj) =
     formatWith JsonFormattingOptions.Compact data
