@@ -167,11 +167,12 @@ module Json =
   module E = Json.Encode
 
   let encode (data: obj): Json =
-    data |> JsonHelper.toJsonTypeShape Global.jsonEncoderRegistry
+    data
+      |> JsonHelper.toJson Global.jsonEncoderRegistry (data.GetType())
 
   let formatWith options (data: obj): string =
     encode data
-    |> Json.formatWith options
+      |> Json.formatWith options
 
   let format (data: obj) =
     formatWith JsonFormattingOptions.Compact data
