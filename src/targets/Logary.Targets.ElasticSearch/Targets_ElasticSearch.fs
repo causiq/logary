@@ -17,7 +17,7 @@ open Logary
 open Logary.Configuration
 open Logary.Target
 open Logary.Internals
-open Chiron
+open Logary.Internals.Chiron
 
 /// This is the default address this Target publishes messages to.
 [<Literal>]
@@ -30,7 +30,7 @@ type ElasticSearchConf =
     /// ElasticSearch document "_type", by default "logs"
     _type: string
     /// Prefix for log indexs, defaults to "logary"
-    indexName: String}
+    indexName: string }
 
   /// Create a new ElasticSearch target config.
   static member create(?publishTo, ?_type, ?indexName) =
@@ -40,9 +40,9 @@ type ElasticSearchConf =
 
 let serialise: Message -> Json =
   fun message ->
-  let msgJson = 
+  let msgJson =AA
     match Logary.Formatting.Json.encode message with
-    | Json.Object jsonObj -> 
+    | Json.Object jsonObj ->
       jsonObj
       |> Inference.Json.Encode.required "@version" 2
       |> Inference.Json.Encode.required "@timestamp" (String (MessageWriter.formatTimestamp message.timestamp))

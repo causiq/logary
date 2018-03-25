@@ -164,9 +164,7 @@ module internal Impl =
 
   // consider use destr whole msg context as TemplatePropertyValue, then send to WellKnownTypes
   let rec x2V (t: Type): 'T -> V =
-    let objT = typeof<obj>
-    let wrap (k: 'a -> V) =
-      fun inp -> k (unbox inp)
+    let wrap (k: 'a -> V) = fun inp -> k (unbox inp)
 
     let inline mkFieldPrinter (shape: IShapeMember<'DeclaringType>) =
       shape.Accept
@@ -177,7 +175,7 @@ module internal Impl =
 
     match TypeShape.Create t with
     | Shape.Unit ->
-      wrap(fun () -> V.ForString "()") // 'T = unit
+      wrap (fun () -> V.ForString "()") // 'T = unit
     | Shape.String ->
       wrap (fun (s: string) -> V.ForString s)
     | Shape.Bool ->
@@ -292,7 +290,7 @@ module internal Impl =
       | _ ->
         s.Accept
           { new IEnumerableVisitor<'T -> V> with
-              member __.Visit<'E, 'a when 'E :> seq<'a>> () =
+              member __.Visit () =
                 wrap (fun (xs: seq<_>) ->
                   let arr = ResizeArray<V>()
                   for x in xs do
