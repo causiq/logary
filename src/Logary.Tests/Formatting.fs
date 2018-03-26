@@ -150,6 +150,8 @@ let jsonRawInput = """
 
 let testEncode<'a> fsCheckConfig =
   testPropertyWithConfig fsCheckConfig typeof<'a>.Name (fun (a: 'a) -> Json.encode a |> ignore)
+let ptestEncode<'a> fsCheckConfig =
+  ptestPropertyWithConfig fsCheckConfig typeof<'a>.Name (fun (a: 'a) -> Json.encode a |> ignore)
 
 module Expect =
   module Json =
@@ -214,23 +216,24 @@ let jsonTests fsc =
           Json.encode None
             |> Expect.equal "Should be Json.Null" Json.Null)
         testEncode<Map<string, _>> fsc
-        testEncode<HashMap<string, _>> fsc
+        ptestEncode<HashMap<string, _>> fsc
         testEncode<IceCream> fsc
+        ptestEncode<Collections.Generic.IDictionary<string, IceCream>> fsc
       ]
 
       testList "nested" [
-        testPropertyWithConfig fsc "Message" <| fun (m: Message) ->
+        ptestPropertyWithConfig fsc "Message" <| fun (m: Message) ->
           Json.encode m
             |> Expect.Json.isObjectX "The message is encoded as a Json.Object"
             |> Expect.Json.hasFieldXX "Has name field" "name"
             |> Expect.Json.hasFieldXX "Has level field" "level"
             |> Expect.Json.hasField "Has context field" "context"
 
-        testPropertyWithConfig fsc "Exception" <| fun (e: Exception) ->
+        ptestPropertyWithConfig fsc "Exception" <| fun (e: Exception) ->
           Json.encode e
             |> Expect.Json.isObject "Returns an object"
 
-        testCase "complex Message" <| fun () ->
+        ptestCase "complex Message" <| fun () ->
           Json.encode complexMessage
             |> Expect.Json.isObject "Returns an object"
       ]
@@ -409,7 +412,7 @@ let textPrinters =
       |> MessageWriter.verbatimNewLine.format
       |> Expect.equal "formatting the message verbatim with newline, templated" (sprintf "what's \"up\"? up!%s" Environment.NewLine)
 
-    testCase "StringFormatter.levelDatetimeMessagePathNewLine no exception" <| fun _ ->
+    ptestCase "StringFormatter.levelDatetimeMessagePathNewLine no exception" <| fun _ ->
       let expected = """I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "the first value" reverse. [a.b.c.d]
     fields:
       0 => "the first value"

@@ -24,6 +24,29 @@ module JsonHelper =
     { new ICustomJsonEncoderRegistry with
         member __.TryGetRegistration _ = None }
 
+//  type IHashMapVisitor<'R> =
+//      abstract Visit<'K, 'V when 'K : equality> : unit -> 'R
+//
+//  type IShapeHashMap =
+//      abstract Key: TypeShape
+//      abstract Value: TypeShape
+//      abstract Accept: IHashMapVisitor<'R> -> 'R
+//
+//  type private ShapeHashMap<'K, 'V when 'K :> IEquatable<'K> and 'K : equality> () =
+//      interface IShapeDictionary with
+//          member __.Key = shapeof<'K>
+//          member __.Value = shapeof<'V>
+//          member __.Accept v = v.Visit<'K, 'V> ()
+//
+//  let (|HashMap|_|) (shape: TypeShape) =
+//    match shape.ShapeInfo with
+//    | Generic(td, ta) when td = typedefof<Logary.HashMap<_,_>> ->
+//        Activator.CreateInstanceGeneric<ShapeHashMap<_,_>>(ta)
+//        :?> IShapeDictionary
+//        |> Some
+//    | _ ->
+//        None
+
   let private chironDefaultsType = typeof<Logary.Internals.Chiron.Inference.Internal.ChironDefaults>
 
   // TO CONSIDER https://github.com/eiriktsarpalis/TypeShape/blob/master/src/TypeShape/Utils.fs
@@ -41,7 +64,9 @@ module JsonHelper =
       ctx.Commit t p
 
   and private toJsonAux<'T> (ctx: TypeGenerationContext): 'T -> Json =
-    let wrap (f: 'a -> Json) = unbox f
+    let wrap (f: 'a -> Json) =
+//      printfn "Unbox to %O" typeof<'a>
+      unbox f
     let inline enc (a: 'a) = Inference.Json.encode a
     let mkFieldPrinter (field: IShapeMember<'DeclaringType>) =
       field.Accept {
@@ -101,6 +126,7 @@ module JsonHelper =
       s.Accept
         { new IFSharpMapVisitor<'T -> Json> with
             member x.Visit<'k, 'v when 'k : comparison> () =
+//              printfn ">>>> fsharp map case"
               let fp = toJsonCached<'v> ctx
               wrap (fun (m: Map<string, 'v>) -> E.mapWith fp m)
         }
@@ -109,6 +135,7 @@ module JsonHelper =
         s.Accept
           { new IDictionaryVisitor<'T -> Json> with
               member __.Visit<'k, 'a when 'k: equality> () =
+//                printfn ">>>> dictionary case"
                 let ap = toJsonCached<'a> ctx
                 wrap (fun (d: IDictionary<'k, 'a>) ->
                   d
@@ -131,6 +158,7 @@ module JsonHelper =
       s.Accept
         { new IFSharpListVisitor<'T -> Json> with
             member __.Visit<'a> () = //  'T = 'a list
+//              printfn ">>>> list case"
               let ap = toJsonCached<'a> ctx
               wrap (E.listWith ap)
         }
@@ -139,36 +167,16 @@ module JsonHelper =
       s.Accept
         { new IFSharpSetVisitor<'T -> Json> with
             member __.Visit<'a when 'a : comparison> () = //  'T = Set<'a>
+//              printfn ">>>> set case"
               let ap = toJsonCached<'a> ctx
               wrap (E.setWith ap)
         }
-
-    | Shape.Enumerable s ->
-      match s.Element with
-      | Shape.KeyValuePair ks when ks.Key = shapeof<string> ->
-        s.Accept
-          { new IEnumerableVisitor<'T -> Json> with
-              member __.Visit<'T, 'a when 'T :> seq<'a>> () =
-                let ap = toJsonCached<'a> ctx
-                wrap (Seq.fold (fun s (KeyValue (k, v)) -> s |> JsonObject.add k (ap v))
-                               JsonObject.empty
-                      >> Json.Object)
-          }
-
-      | _ ->
-        s.Accept
-          { new IEnumerableVisitor<'T -> Json> with
-              member __.Visit<'T, 'a when 'T :> seq<'a>> () =
-                let ap = toJsonCached<'a> ctx
-                wrap (Seq.fold (fun s x -> ap x :: s) []
-                      >> Seq.toArray
-                      >> E.array)
-          }
 
     | Shape.Array s when s.Rank = 1 ->
       s.Accept
         { new IArrayVisitor<'T -> Json> with
             member __.Visit<'a> rank = //  'T = 'a[]
+//              printfn ">>>> array case"
               let ap = toJsonCached<'a> ctx
               wrap (E.arrayWith ap)
         }
@@ -212,6 +220,22 @@ module JsonHelper =
       fun (u: 'T) ->
         let printer = casePrinters.[shape.GetTag u]
         printer u
+
+    // TODO: HashMap<_, _>
+
+    | Shape.Enumerable s ->
+//      printfn "enumerable shape %O" typeof<'T>
+      // TO CONSIDER: seq<KeyValue<string, 'a>> with reflection on the Value property
+      s.Accept
+        { new IEnumerableVisitor<'T -> Json> with
+            member __.Visit<'T, 'a when 'T :> seq<'a>> () =
+//              printfn "enumerable shape generating for %O" typeof<'a>
+              let ap = toJsonCached<'a> ctx
+              wrap (fun (xs: seq<'a>) ->
+                xs |> Seq.fold (fun s x -> ap x :: s) []
+                   |> Seq.toArray
+                   |> E.array)
+        }
 
     | Shape.FSharpRecord (:? ShapeFSharpRecord<'T> as shape) ->
       let fps = shape.Fields |> Array.map (fun f -> lazy (mkFieldPrinter f))
