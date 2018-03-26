@@ -132,6 +132,28 @@ module JsonHelper =
               wrap (E.setWith ap)
         }
 
+    | Shape.Enumerable s ->
+      match s.Element with
+      | Shape.KeyValuePair ks when ks.Key = shapeof<string> ->
+        s.Accept
+          { new IEnumerableVisitor<'T -> Json> with
+              member __.Visit<'T, 'a when 'T :> seq<'a>> () =
+                let ap = toJsonCached<'a> ctx
+                wrap (Seq.fold (fun s (KeyValue (k, v)) -> s |> JsonObject.add k (ap v))
+                               JsonObject.empty
+                      >> Json.Object)
+          }
+
+      | _ ->
+        s.Accept
+          { new IEnumerableVisitor<'T -> Json> with
+              member __.Visit<'T, 'a when 'T :> seq<'a>> () =
+                let ap = toJsonCached<'a> ctx
+                wrap (Seq.fold (fun s x -> ap x :: s) []
+                      >> Seq.toArray
+                      >> E.array)
+          }
+
     | Shape.Array s when s.Rank = 1 ->
       s.Accept
         { new IArrayVisitor<'T -> Json> with
