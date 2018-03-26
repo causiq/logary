@@ -105,6 +105,17 @@ module JsonHelper =
               wrap (fun (m: Map<string, 'v>) -> E.mapWith fp m)
         }
 
+    | Shape.Dictionary s ->
+        s.Accept
+          { new IDictionaryVisitor<'T -> Json> with
+              member __.Visit<'k, 'a when 'k: equality> () =
+                let ap = toJsonCached<'a> ctx
+                wrap (fun (d: IDictionary<'k, 'a>) ->
+                  d
+                  |> Seq.fold (fun s (KeyValue (k, v)) -> s |> JsonObject.add (sprintf "%O" k) (ap v)) JsonObject.empty
+                  |> Json.Object)
+          }
+
     | Shape.FSharpOption s ->
       s.Accept
         { new IFSharpOptionVisitor<'T -> Json> with
