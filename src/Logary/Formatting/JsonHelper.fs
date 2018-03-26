@@ -275,5 +275,5 @@ module JsonHelper =
     | other ->
       // TODO: comment back in while testing
 //      failwithf "Got shape %A" other
-      wrap (fun (x: 'T) -> string x |> Json.String)
+      fun x -> Json.String (x.ToString())
 
