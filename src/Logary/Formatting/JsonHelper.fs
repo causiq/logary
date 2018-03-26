@@ -273,4 +273,7 @@ module JsonHelper =
           resFuncInvoker.Invoke(refFunc, [| value |]) :?> Json // (toJson value): Json
 
     | other ->
-      failwithf "Got shape %A" other
+      // TODO: comment back in while testing
+//      failwithf "Got shape %A" other
+      wrap (fun (x: 'T) -> string x |> Json.String)
+
