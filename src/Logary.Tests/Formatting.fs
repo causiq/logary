@@ -224,11 +224,11 @@ let jsonTests fsc =
             |> Expect.Json.isObjectX "The message is encoded as a Json.Object"
             |> Expect.Json.hasFieldXX "Has name field" "name"
             |> Expect.Json.hasFieldXX "Has level field" "level"
-            |> Expect.Json.hasFieldXX "Has context field" "context"
+            |> Expect.Json.hasField "Has context field" "context"
 
-//        testPropertyWithConfig fsc "Exception" <| fun (e: Exception) ->
-//          Json.encode e
-//            |> Expect.Json.isObject "Returns an object"
+        testPropertyWithConfig fsc "Exception" <| fun (e: Exception) ->
+          Json.encode e
+            |> Expect.Json.isObject "Returns an object"
 
         testCase "complex Message" <| fun () ->
           Json.encode complexMessage

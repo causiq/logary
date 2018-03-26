@@ -121,7 +121,23 @@ module JsonHelper =
         { new IFSharpListVisitor<'T -> Json> with
             member __.Visit<'a> () = //  'T = 'a list
               let ap = toJsonCached<'a> ctx
-              wrap (List.map ap >> E.list)
+              wrap (E.listWith ap)
+        }
+
+    | Shape.FSharpSet s ->
+      s.Accept
+        { new IFSharpSetVisitor<'T -> Json> with
+            member __.Visit<'a when 'a : comparison> () = //  'T = Set<'a>
+              let ap = toJsonCached<'a> ctx
+              wrap (E.setWith ap)
+        }
+
+    | Shape.Array s when s.Rank = 1 ->
+      s.Accept
+        { new IArrayVisitor<'T -> Json> with
+            member __.Visit<'a> rank = //  'T = 'a[]
+              let ap = toJsonCached<'a> ctx
+              wrap (E.arrayWith ap)
         }
 
     | Shape.Tuple (:? ShapeTuple<'T> as shape) ->

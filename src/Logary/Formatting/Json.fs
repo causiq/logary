@@ -159,11 +159,16 @@ module internal JsonDecode =
 
 /// See JsonHelper.fs
 module Json =
+  open System
+  open System.Collections.Concurrent
+
   open Logary.Internals.Chiron
   open Logary.Internals.Chiron.Operators
   open Inference
   module D = Json.Decode
   module E = Json.Encode
+
+//  let private ec = new ConcurrentDictionary<Type, unit -> obj -> Json>()
 
   let encode (data: 'a): Json =
     // |> JsonHelper.toJson Global.jsonEncoderRegistry data
