@@ -69,7 +69,7 @@ type Expect =
     let actualParts = writtenParts |> List.ofSeq
     let expectedParts = expectedTokens |> List.map (fun (s, t) -> s, options.theme t)
     Expect.sequenceEqual actualParts expectedParts "literate tokenised parts must be correct"
-    
+
   static member literateCustomTokenisedPartsEqual (message, expectedTokens, ?customTokeniser, ?theme) =
     let options = match theme with
                   | Some theme -> { LiterateOptions.create() with theme = theme }
@@ -115,7 +115,7 @@ let tests =
       Message.event Info "hi {name}" |> ignore
 
     testCase "gauge" <| fun _ ->
-      Message.gauge 5L "Scalar" |> ignore
+      Message.gauge 5.0 "Scalar" |> ignore
 
     testCase "setSingleName" <| fun _ ->
       let msg = msg |> Message.setSingleName "Logary.Other"
@@ -254,7 +254,7 @@ let tests =
                               ">",            Punctuation ]
                       (sprintf "expect log level %A to render as token %A with text %s" logLevel expectedLevelToken expectedText)
       )
-    
+
     testProperty "literate theme is applied correctly" <| fun (theme: LiterateToken -> ConsoleColor) ->
       let fields = Map.ofList [ "where", box "The Other Side" ]
       let message = { Message.event Warn "Hello from {where}" with fields = fields }
@@ -419,7 +419,7 @@ let tests =
                 |> Message.addExn (exn "ex1")
                 |> Message.addExn (exn "ex2")
       let msgDto = msg.timestamp.ToDateTimeOffsetUtc()
-      let outputTemplateAndExpected = 
+      let outputTemplateAndExpected =
         [ "{timestamp:u}",                    msgDto.ToLocalTime().ToString("u")
           "{timestampUtc:u}",                 msgDto.ToString("u")
           "{level}",                          (options.getLogLevelText msg.level)

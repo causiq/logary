@@ -259,7 +259,15 @@ let jsonTests fsc =
             |> Expect.equal "Encodes as array of string" (Json.Array [ Json.String "A"; Json.String "B" ])
 
         testCase "stacktrace" <| fun () ->
-          DotNetStacktrace.parse DotNetStacktrace.sample
+          let sample = """  at Logary.Targets.InfluxDb.Impl.extractMessage(TargetMessage request) in /Users/h/dev/tradera/logary/src/targets/Logary.Targets.InfluxDb/Targets_InfluxDb.fs:line 278
+  at Microsoft.FSharp.Collections.Internal.IEnumerator.map@74.DoMoveNext(b& curr)
+  at Microsoft.FSharp.Collections.Internal.IEnumerator.MapEnumerator`1.System-Collections-IEnumerator-MoveNext()
+  at System.String.Join(String separator, IEnumerable`1 values)
+  at Logary.Targets.InfluxDb.Impl.x2yJ@1-2(InfluxDbConf conf, RuntimeInfo ri, TargetAPI api, Uri endpoint, HttpClient client, TargetMessage[] reqs) in /Users/h/dev/tradera/logary/src/targets/Logary.Targets.InfluxDb/Targets_InfluxDb.fs:line 308
+  at Hopac.Core.ContBind`2.DoWork(Worker& wr)
+  at Hopac.Core.Worker.Run(Scheduler sr, Int32 me)"""
+
+          DotNetStacktrace.parse sample
             |> Json.encode
             |> function
             | Json.Array lines ->

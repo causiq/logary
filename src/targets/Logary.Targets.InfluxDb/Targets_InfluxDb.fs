@@ -244,13 +244,13 @@ type InfluxDbConf =
     batchSize: uint16 }
 
   static member create(ep, db, ?user, ?password, ?consistency, ?retention, ?batchSize) =
-    { endpoint    = ep
-      db          = db
-      username    = defaultArg user None
-      password    = defaultArg password None
+    { endpoint = ep
+      db = db
+      username = defaultArg user None
+      password = defaultArg password None
       consistency = defaultArg consistency Quorum
-      retention   = defaultArg retention None
-      batchSize   = defaultArg batchSize 100us }
+      retention = defaultArg retention None
+      batchSize = defaultArg batchSize 100us }
 
 let empty =
   { endpoint    = Uri "http://127.0.0.1:8086/write"

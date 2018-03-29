@@ -116,7 +116,7 @@ type PointValue =
   | Event of template:string
   /// This is as value for a metric, with a unit attached. The unit can be
   /// something like Seconds or Hz.
-  | Gauge of value:int64 * units:string
+  | Gauge of value:float * units:string
 
 /// The # of nanoseconds after 1970-01-01 00:00:00.
 type EpochNanoSeconds = int64
@@ -318,12 +318,12 @@ module Literate =
       // to see the dates, numbers, currency, etc formatted in the local culture
       { formatProvider = defaultArg formatProvider Globalization.CultureInfo.CurrentCulture
         getLogLevelText = function
-                | Debug ->    "DBG"
-                | Error ->    "ERR"
-                | Fatal ->    "FTL"
-                | Info ->     "INF"
-                | Verbose ->  "VRB"
-                | Warn ->     "WRN"
+                | Debug -> "DBG"
+                | Error -> "ERR"
+                | Fatal -> "FTL"
+                | Info ->"INF"
+                | Verbose -> "VRB"
+                | Warn -> "WRN"
         theme = function
                 | Text -> ConsoleColor.White
                 | Subtext -> ConsoleColor.Gray
@@ -351,7 +351,7 @@ module Literals =
 
   /// What version of the Facade is this. This is a major version that allows the Facade
   /// adapter to choose how it handles the API.
-  let FacadeVersion = 2u
+  let FacadeVersion = 3u
 
   /// What language this Facade has. This controls things like naming standards.
   let FacadeLanguage = "F#"
@@ -555,7 +555,7 @@ module internal Formatting =
       Set.ofSeq matchedFields, List.ofSeq themedParts
 
     | Gauge (value, units) ->
-      Set.empty, [ sprintf "%i" value, NumericSymbol
+      Set.empty, [ sprintf "%f" value, NumericSymbol
                    sprintf "%s" units, KeywordSymbol ]
 
   let formatValue (fields: Map<string, obj>) (pv: PointValue) =
@@ -610,7 +610,7 @@ module internal Formatting =
 
   /// Split a structured message up into theme-able parts (tokens), allowing the
   /// final output to display to a user with colours to enhance readability.
-  let literateDefaultTokeniser (options: LiterateOptions) (message: Message) : (string * LiterateToken) list =
+  let literateDefaultTokeniser (options: LiterateOptions) (message: Message): (string * LiterateToken) list =
     let formatLocalTime (utcTicks: int64) =
       DateTimeOffset(utcTicks, TimeSpan.Zero).LocalDateTime.ToString("HH:mm:ss", options.formatProvider),
       Subtext

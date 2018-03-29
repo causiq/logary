@@ -45,23 +45,56 @@ module Reflection =
   let versionFrom: Type -> uint32 =
     Cache.memoize (fun loggerType -> readLiteral loggerType ("FacadeVersion", 1u))
 
+  [<CustomComparison; CustomEquality>]
   type ApiVersion =
     /// This API version did not have an explicit version field.
     | V1
     /// NS.Literals.FacadeVersion
     | V2
-
+    /// NS.Literals.FacadeVersion (Gauge is float)
+    | V3
     override x.ToString() =
       match x with
       | V1 -> "V1"
       | V2 -> "V2"
-
+      | V3 -> "V3"
     static member ofType (loggerType: Type) =
       match versionFrom loggerType with
+      | 3u ->
+        V3
       | 2u ->
         V2
       | _ ->
         V1
+    member x.intValue =
+      match x with
+      | V1 -> 1
+      | V2 -> 2
+      | V3 -> 3
+    interface IComparable with
+      member x.CompareTo other =
+        match other with
+        | :? ApiVersion as vOther ->
+          x.intValue.CompareTo vOther
+        | _ ->
+          1
+    override x.Equals other =
+      match other with
+      | :? ApiVersion as vOther ->
+        vOther.intValue = x.intValue
+      | _ ->
+        false
+    override x.GetHashCode() =
+      x.intValue.GetHashCode()
+    static member op_LessThan (v1: ApiVersion, v2: ApiVersion) =
+      v1.intValue < v2.intValue
+    static member op_GreaterThan (v1: ApiVersion, v2: ApiVersion) =
+      v1.intValue > v2.intValue
+    static member op_LessThanOrEqual (v1: ApiVersion, v2: ApiVersion) =
+      v1.intValue <= v2.intValue
+    static member op_GreaterThanOrEqual (v1: ApiVersion, v2: ApiVersion) =
+      v1.intValue >= v2.intValue
+
   let (|FSharp|CSharp|) (loggerType: Type) =
     let version = ApiVersion.ofType loggerType
     let globals = findModule (loggerType, "Global")
@@ -123,15 +156,18 @@ module LoggerAdapter =
 
   /// Convert the object instance to a PointValue. Is used from the
   /// other code in this module.
-  let toPointValue (o: obj): LoggerAdapterShared.OldPointValue =
+  let toPointValue (v: ApiVersion) (o: obj): LoggerAdapterShared.OldPointValue =
     let typ = o.GetType()
     let info, values = FSharpValue.GetUnionFields(o, typ)
     match info.Name, values with
     | "Event", [| template |] ->
       LoggerAdapterShared.OldPointValue.Event (template :?> string)
 
-    | "Gauge", [| value; units |] ->
+    | "Gauge", [| value; units |] when v <= ApiVersion.V2 ->
       LoggerAdapterShared.OldPointValue.Gauge (float (value :?> int64), Units.Scalar)
+
+    | "Gauge", [| value; units |] ->
+      LoggerAdapterShared.OldPointValue.Gauge (float (value :?> float), Units.Scalar)
 
     | caseName, values ->
       let valuesStr = values |> Array.map string |> String.concat ", "
@@ -147,11 +183,11 @@ module LoggerAdapter =
 
   /// Convert the object instance to a Logary.DataModel.Message. Is used from the
   /// other code in this module.
-  let toMsg fallbackName (o: obj): Message =
+  let toMsg (v: ApiVersion) fallbackName (o: obj): Message =
     let typ = o.GetType()
     let readProperty name = (findProperty (typ, name)).GetValue o
-    let oldPointValue = readProperty "value" |> toPointValue
-    let event = 
+    let oldPointValue = readProperty "value" |> toPointValue v
+    let event =
       match oldPointValue with
       | LoggerAdapterShared.OldPointValue.Event tpl -> tpl
       | _ -> String.Empty
@@ -162,7 +198,7 @@ module LoggerAdapter =
       timestamp = readProperty "timestamp" :?> EpochNanoSeconds
       level     = readProperty "level" |> toLogLevel }
     |> Message.setFieldsFromMap fields
-    |> (fun msg -> 
+    |> (fun msg ->
         match oldPointValue with
         | LoggerAdapterShared.OldPointValue.Gauge (value, units) ->
           msg |> Message.addGauge KnownLiterals.DefaultGaugeType (Gauge (value,units))
@@ -170,28 +206,28 @@ module LoggerAdapter =
 
   /// Convert the object instance to a message factory method. Is used from the
   /// other code in this module.
-  let toMsgFactory fallbackName oLevel (o: obj): LogLevel -> Message =
+  let toMsgFactory (v: ApiVersion) fallbackName oLevel (o: obj): LogLevel -> Message =
     let typ = o.GetType()
     let invokeMethod = findMethod (typ, "Invoke")
     fun level ->
-      toMsg fallbackName (invokeMethod.Invoke(o, [| oLevel |]))
+      toMsg v fallbackName (invokeMethod.Invoke(o, [| oLevel |]))
 
-  let internal (|Log|LogWithAck|LogSimple|) ((invocation, defaultName): IInvocation * string[]): Choice<_, _, _> =
+  let internal (|Log|LogWithAck|LogSimple|) ((invocation, defaultName, v): IInvocation * string[] * ApiVersion): Choice<_, _, _> =
     match invocation.Method.Name with
     | "log" ->
       let oLevel = invocation.Arguments.[0]
       let level = toLogLevel oLevel
-      let factory = toMsgFactory defaultName oLevel invocation.Arguments.[1]
+      let factory = toMsgFactory v defaultName oLevel invocation.Arguments.[1]
       Log (level, factory)
 
     | "logWithAck" ->
       let oLevel = invocation.Arguments.[0]
       let level = toLogLevel oLevel
-      let factory = toMsgFactory defaultName oLevel invocation.Arguments.[1]
+      let factory = toMsgFactory v defaultName oLevel invocation.Arguments.[1]
       LogWithAck (level, factory)
 
     | "logSimple" ->
-      let msg = toMsg defaultName invocation.Arguments.[0]
+      let msg = toMsg v defaultName invocation.Arguments.[0]
       LogSimple msg
 
     | meth ->
@@ -231,8 +267,8 @@ module LoggerAdapter =
 
     interface IInterceptor with
       member x.Intercept invocation =
-        match invocation, defaultName with
-        | Log (level, messageFactory) when version = V1 ->
+        match invocation, defaultName, version with
+        | Log (level, messageFactory) when version = ApiVersion.V1 ->
           let ret = logV1 level messageFactory
           invocation.ReturnValue <- ret
 
@@ -306,7 +342,7 @@ module LoggerCSharpAdapter =
     let typ = o.GetType()
     let readProperty name = (findProperty (typ, name)).GetValue o
     let oldPointValue = readProperty "Value" |> toPointValue
-    let event = 
+    let event =
       match oldPointValue with
       | LoggerAdapterShared.OldPointValue.Event tpl -> tpl
       | _ -> String.Empty
