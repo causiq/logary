@@ -1,6 +1,5 @@
 namespace Logary.Formatting
 
-
 type StacktraceLine =
   { site: string
     file: string option

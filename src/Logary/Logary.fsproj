@@ -43,6 +43,7 @@
     <Compile Include="HashMap.fsi" />
     <Compile Include="HashMap.fs" />
     <Compile Include="HashMapModule.fs" />
+    <Compile Include="Formatting/DotNetStacktrace.fs" />
     <Compile Include="Formatting/JsonHelper.fs" />
     <Compile Include="Formatting/MessageTemplates.fs" />
     <Compile Include="LogLevel.fs" />
@@ -82,7 +83,6 @@
     <Compile Include="Formatting/Json.fs" />
     <Compile Include="Formatting/Literate.fs" />
     <Compile Include="Formatting/MessageWriter.fs" />
-    <Compile Include="Formatting/DotNetStacktrace.fs" />
     <!-- Below: implementations, factory api -->
     <Compile Include="CSharp.fs" />
     <Compile Include="Configuration/Factory.Target.fs" />

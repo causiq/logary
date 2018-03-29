@@ -185,6 +185,34 @@ module JsonHelper =
     | meta when meta.Type.Namespace = "System.Reflection" ->
       fun x -> Json.String (x.ToString())
 
+    | Shape.Exception s ->
+      wrap (fun (e: exn) ->
+        let fields = ref JsonObject.empty
+
+        if not (isNull e.Data) && e.Data.Count > 0 then
+          fields := !fields |> JsonObject.add "data" (toJsonCached<System.Collections.IDictionary> ctx e.Data)
+
+        if not (isNull e.HelpLink) then
+          fields := !fields |> JsonObject.add "helpLink" (Json.String e.HelpLink)
+
+        if not (isNull e.InnerException) then
+          fields := !fields |> JsonObject.add "inner" (toJsonCached<exn> ctx e.InnerException)
+
+        if e.HResult <> Unchecked.defaultof<int> then
+          fields := !fields |> JsonObject.add "hresult" (toJsonCached<_> ctx e.HResult)
+
+        fields := !fields |> JsonObject.add "message" (Json.String e.Message)
+        fields := !fields |> JsonObject.add "source" (Json.String e.Source)
+
+        if not (String.IsNullOrWhiteSpace e.StackTrace) then
+          let lines = DotNetStacktrace.parse e.StackTrace
+          fields := !fields |> JsonObject.add "stacktrace" (toJsonCached<StacktraceLine[]> ctx lines)
+
+        if not (isNull e.TargetSite) then
+          fields := !fields |> JsonObject.add "targetSite" (Json.String e.TargetSite.Name)
+
+        Json.Object !fields)
+
     | Shape.FSharpMap s when s.Key = shapeof<string> ->
       s.Accept
         { new IFSharpMapVisitor<'T -> Json> with
