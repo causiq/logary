@@ -240,6 +240,9 @@ let jsonTests fsc =
         testCase "complex Message" <| fun () ->
           Json.encode complexMessage
             |> Expect.Json.isObject "Returns an object"
+
+        testPropertyWithConfig fsc "DotNetStacktrace.parse should never throw" <| fun (s: string) ->
+          ignore (DotNetStacktrace.parse s)
       ]
     ]
 
