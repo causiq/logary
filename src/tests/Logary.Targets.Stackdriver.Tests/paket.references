@@ -1,4 +1,3 @@
-group Tests
 Google.Cloud.Logging.V2
 Google.Api.Gax.Rest
 Google.Api.Gax

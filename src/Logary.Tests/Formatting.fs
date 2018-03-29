@@ -218,7 +218,7 @@ let jsonTests fsc =
         testEncode<Map<string, _>> fsc
         ptestEncode<HashMap<string, _>> fsc
         testEncode<IceCream> fsc
-        ptestEncode<Collections.Generic.IDictionary<string, IceCream>> fsc
+        testEncode<Collections.Generic.IDictionary<string, IceCream>> fsc
       ]
 
       testList "nested" [

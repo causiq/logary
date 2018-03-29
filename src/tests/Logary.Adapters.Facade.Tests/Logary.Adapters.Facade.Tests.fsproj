@@ -4,9 +4,9 @@
     <AssemblyName>Logary.Adapters.Facade.Tests</AssemblyName>
     <OutputType>Exe</OutputType>
     <TargetFrameworks>net461;netcoreapp2.0</TargetFrameworks>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="App.config" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <ProjectReference Include="..\..\adapters\Logary.Adapters.Facade\Logary.Adapters.Facade.fsproj" />

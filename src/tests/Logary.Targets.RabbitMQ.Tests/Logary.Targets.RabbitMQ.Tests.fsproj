@@ -4,9 +4,9 @@
     <AssemblyName>Logary.Targets.RabbitMQ.Tests</AssemblyName>
     <OutputType>Exe</OutputType>
     <TargetFrameworks>net461;netcoreapp2.0</TargetFrameworks>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="App.config" />
     <Compile Include="Program.fs" />
     <ProjectReference Include="../../Logary/Logary.fsproj" />
     <ProjectReference Include="../../targets/Logary.Targets.RabbitMQ/Logary.Targets.RabbitMQ.fsproj" />

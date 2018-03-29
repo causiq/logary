@@ -8,7 +8,6 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="App.config" />
     <Compile Include="Parsing.fs" />
     <Compile Include="Middleware.fs" />
     <Compile Include="Program.fs" />

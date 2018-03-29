@@ -4,12 +4,12 @@
     <AssemblyName>Logary.Suave</AssemblyName>
     <OutputType>Exe</OutputType>
     <TargetFrameworks>net461;netcoreapp2.0</TargetFrameworks>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
-    <Content Include="app.config" />
     <ProjectReference Include="..\..\src\Logary\Logary.fsproj" />
     <ProjectReference Include="..\..\src\adapters\Logary.Adapters.Facade\Logary.Adapters.Facade.fsproj" />
   </ItemGroup>

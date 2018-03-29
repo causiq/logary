@@ -4,9 +4,9 @@
     <AssemblyName>Logary.Targets.Stackdriver</AssemblyName>
     <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
     <Optimize>true</Optimize>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="App.config" />
     <Compile Include="Target_Stackdriver.fs" />
     <None Include="paket.references" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />

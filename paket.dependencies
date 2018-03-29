@@ -2,11 +2,48 @@
 framework net461, netcoreapp2.0, netstandard2.0
 redirects on
 
+nuget Argu
 nuget Castle.Core
+nuget EventStore.Client < 4
+nuget Expecto
+nuget Expecto.FsCheck
+nuget Machine.Specifications
+nuget Machine.Specifications.Should
+nuget Machine.Specifications.Runner.Console
+nuget Machine.Specifications.Runner.VisualStudio
+nuget Microsoft.NET.Test.Sdk
 nuget FParsec
 nuget FSharp.Core
+nuget FluentMigrator
+nuget FluentMigrator.Runner
+nuget FsCheck
+nuget FsPickler
+nuget FsPickler.Json
+nuget FsSql
+nuget Google.Api.Gax.Rest
+nuget Google.Cloud.Logging.V2
 nuget Hopac
+nuget Http.fs
+nuget Microsoft.ApplicationInsights
+nuget Microsoft.ApplicationInsights.DependencyCollector
+nuget NLog
 nuget NodaTime
+nuget RabbitMQ.Client
+nuget SQLite.Interop
+nuget SQLite.Interop.dll
+nuget Suave
+nuget System.Data.SQLite.Core
+nuget System.Net.Http
+nuget Topshelf ~> 4.1.0.117-develop
+nuget TweetinviAPI
+nuget Unquote
+nuget aliyun-log-csharp-sdk
+nuget elmah.corelibrary
+nuget elmah.io.client
+nuget elmah.io.core
+nuget fszmq
+nuget libzmq_vc120 # specifically for Windows-support in Rutta
+nuget protobuf-net
 
 github eiriktsarpalis/TypeShape src/TypeShape/TypeShape.fs
 github eiriktsarpalis/TypeShape src/TypeShape/Utils.fs
@@ -23,103 +60,6 @@ group Build
     framework net461, netcoreapp2.0, netstandard2.0
     nuget FAKE
     github fsharp/FAKE modules/Octokit/Octokit.fsx
-
-group Tests
-    source https://api.nuget.org/v3/index.json
-    framework net461, netcoreapp2.0, netstandard2.0
-    redirects on
-
-    nuget ApacheThrift
-    nuget Argu
-    nuget Castle.Core
-    nuget Chiron >= 7-beta
-    nuget Common.Logging
-    nuget Common.Logging.Core
-    nuget EventStore.Client < 4
-    nuget Expecto
-    nuget Expecto.FsCheck
-    nuget FParsec
-    nuget FSharp.Core
-    nuget FluentMigrator
-    nuget FluentMigrator.Runner
-    nuget FsCheck
-    nuget FsPickler
-    nuget FsPickler.Json
-    nuget FsSql
-    nuget Google.Api.Gax.Rest
-    nuget Google.Cloud.Logging.V2
-    nuget Hopac
-    nuget Http.fs
-    nuget Microsoft.NET.Test.Sdk
-    nuget Machine.Specifications
-    nuget Machine.Specifications.Runner.Console
-    nuget Machine.Specifications.Runner.VisualStudio
-    nuget Machine.Specifications.Should
-    nuget Microsoft.ApplicationInsights
-    nuget Microsoft.ApplicationInsights.DependencyCollector
-    nuget NLog ~> 4.5.0-rc04
-    nuget NodaTime
-    nuget RabbitMQ.Client
-    nuget SQLite.Interop
-    nuget SQLite.Interop.dll
-    nuget Suave
-    nuget System.Data.SQLite.Core
-    nuget Topshelf ~> 4.1.0.117-develop
-    nuget TweetinviAPI
-    nuget Unquote
-    nuget aliyun-log-csharp-sdk
-    nuget elmah.corelibrary
-    nuget elmah.io.client
-    nuget elmah.io.core
-    nuget fszmq
-    nuget log4net
-    nuget protobuf-net
-
-group Targets
-    source https://api.nuget.org/v3/index.json
-    framework net461, netcoreapp2.0, netstandard2.0
-    redirects on
-
-    nuget ApacheThrift
-    nuget Argu
-    nuget Castle.Core
-    nuget Chiron >= 7-beta
-    nuget Common.Logging
-    nuget Common.Logging.Core
-    nuget EventStore.Client < 4
-    nuget FParsec
-    nuget FSharp.Core
-    nuget FluentMigrator
-    nuget FluentMigrator.Runner
-    nuget FsCheck
-    nuget FsPickler
-    nuget FsPickler.Json
-    nuget FsSql
-    nuget Google.Api.Gax.Rest
-    nuget Google.Cloud.Logging.V2
-    nuget Hopac
-    nuget Http.fs
-    nuget Microsoft.ApplicationInsights
-    nuget Microsoft.ApplicationInsights.DependencyCollector
-    nuget NLog ~> 4.5.0-rc04
-    nuget NodaTime
-    nuget RabbitMQ.Client
-    nuget SQLite.Interop
-    nuget SQLite.Interop.dll
-    nuget Suave
-    nuget System.Data.SQLite.Core
-    nuget Topshelf ~> 4.1.0.117-develop
-    nuget TweetinviAPI
-    nuget Unquote
-    nuget aliyun-log-csharp-sdk
-    nuget elmah.corelibrary
-    nuget elmah.io.client
-    nuget elmah.io.core
-    nuget fszmq
-    nuget libzmq_vc120 # specifically for Windows-support in Rutta
-    nuget log4net
-    nuget protobuf-net
-    nuget System.Net.Http redirects: force
 
 group Examples
     source https://api.nuget.org/v3/index.json
