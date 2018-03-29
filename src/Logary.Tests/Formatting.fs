@@ -156,6 +156,19 @@ let ptestEncode<'a> fsCheckConfig =
   ptestPropertyWithConfig fsCheckConfig typeof<'a>.Name (fun (a: 'a) -> Json.encode a |> ignore)
 
 module Expect =
+  let private trim (s: string) = if isNull s then s else s.Trim()
+  let linesEqual (message: string) (expected: string) (actual: string) =
+    let sra = new IO.StringReader(actual)
+    let sre = new IO.StringReader(expected)
+    let mutable cont = true
+    let mutable linea = null
+    let mutable linee = null
+    while cont do
+      linea <- trim (sra.ReadLine())
+      linee <- trim (sre.ReadLine())
+      linea |> Expect.equal "Should equal the expected line" linee
+      cont <- not (isNull linea || isNull linee)
+
   module Json =
     /// Assert and pass through the value.
     let isObjectX message (value: Json) =
@@ -301,13 +314,13 @@ let jsonTests fsc =
 let textPrinters =
   testList "text printers" [
     testCase "cycle reference" <| fun _ ->
-      Message.eventFormat(Info,"cycle reference")
+      Message.eventFormat(Info, "cycle reference")
       |> Message.setNanoEpoch 3123456700L
       |> Message.setContext "CurrentPrincipal" System.Threading.Thread.CurrentPrincipal
       |> levelDatetimeMessagePathNewLine.format
       |> ignore // cycle reference should be handled, otherwise will throw stackoverflow exception
 
-    ptestCase "user custom destructure resolver support cycle reference check" <| fun _ ->
+    testCase "user custom destructure resolver support cycle reference check" <| fun _ ->
       Logary.Configuration.Config.configDestructure<CustomCycleReferenceRecord>(fun resolver req ->
         let instance = req.Value
         let refCount = req.IdManager
@@ -325,25 +338,45 @@ let textPrinters =
 
       let data = {inner = None; a= 42; b = "bad structure"}
       data.inner <- Some data
+      let expected = """I 1970-01-01T00:00:03.1234567+00:00: cycle reference []
+  others:
+    SelfReferenceData => $1
+      CustomCycleReferenceRecord {
+        Id => 42
+        Name => "bad structure"
+        Inner =>
+          "Some" => $1 }"""
+
       Message.eventFormat(Info,"cycle reference")
       |> Message.setNanoEpoch 3123456700L
       |> Message.setContext "SelfReferenceData" data
       |> levelDatetimeMessagePathNewLine.format
-      |> fun actual ->
-         let expect = """
-  I 1970-01-01T00:00:03.1234567+00:00: cycle reference []
-    others:
-      SelfReferenceData => $1
-        CustomCycleReferenceRecord {
-          Id => 42
-          Name => "bad structure"
-          Inner =>
-            "Some" => $1 }
-  """
-         actual
-           |> Expect.equal "cycle reference should work" (expect.TrimStart([|'\n'|]))
+      |> Expect.linesEqual "Lines should equal expected" expected
 
-    ptestCase "projection only" <| fun _ ->
+    testCase "projection only" <| fun _ ->
+      let expected = """I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "the first value" reverse. [a.b.c.d]
+  fields:
+    0 => "the first value"
+    1 => "the second value"
+  others:
+    only =>
+      ProjectionTestOnly {
+        user =>
+          User {
+            created =>
+              DateTime {
+                Day => 11}}
+        ex =>
+          Exception {
+            StackTrace => null
+            Message => "top"
+            InnerException =>
+              Exception {
+                Message => "inner exception"}
+            Data =>
+              ListDictionaryInternal {
+                Count => 2}}}
+"""
       let only = <@@ Destructure.only<ProjectionTestOnly>(fun foo ->
         [|
           foo.user.created.Day;
@@ -363,37 +396,34 @@ let textPrinters =
       sampleMessage
       |> Message.setContext "only" {ex = e; user= (foo ())}
       |> levelDatetimeMessagePathNewLine.format
-      |> fun actual ->
-         let expect = """
-  I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "the first value" reverse. [a.b.c.d]
-    fields:
-      0 => "the first value"
-      1 => "the second value"
-    others:
-      only =>
-        ProjectionTestOnly {
-          user =>
-            User {
-              created =>
-                DateTime {
-                  Day => 11}}
-          ex =>
-            Exception {
-              StackTrace => null
-              Message => "top"
-              InnerException =>
-                Exception {
-                  Message => "inner exception"}
-              Data =>
-                ListDictionaryInternal {
-                  Count => 2}}}
-  """
-         actual
-          |> Expect.equal "formatting the message LevelDatetimePathMessageNl with projection"
-                          (expect.TrimStart([|'\n'|]))
+      |> Expect.linesEqual "formatting the message LevelDatetimePathMessageNl with projection" expected
 
-
-    ptestCase "projection except" <| fun _ ->
+    testCase "projection except" <| fun _ ->
+      let expected = """I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "the first value" reverse. [a.b.c.d]
+  fields:
+    0 => "the first value"
+    1 => "the second value"
+  others:
+    except =>
+      ProjectionTestExcept {
+        user =>
+          User {
+            name => "whatever"
+            id => 999
+            created =>
+              DateTime {
+                Year => 2017
+                TimeOfDay => 00:00:00
+                Ticks => 636459552000000000
+                Second => 0
+                Month => 11
+                Minute => 0
+                Millisecond => 0
+                Kind => "Unspecified"
+                Hour => 0
+                DayOfYear => 315
+                DayOfWeek => "Saturday"
+                Day => 11}}}"""
       let except = <@@  Destructure.except<ProjectionTestExcept>(fun t -> [|t.user.created.Date|]) @@>
       let invalid = <@@ 1 + 1 @@>
       Logary.Configuration.Config.configProjection except
@@ -402,38 +432,7 @@ let textPrinters =
       sampleMessage
       |> Message.setContext "except" { user= (foo ())}
       |> levelDatetimeMessagePathNewLine.format
-      |> fun actual ->
-         let expect = """
-  I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "the first value" reverse. [a.b.c.d]
-    fields:
-      0 => "the first value"
-      1 => "the second value"
-    others:
-      except =>
-        ProjectionTestExcept {
-          user =>
-            User {
-              name => "whatever"
-              id => 999
-              created =>
-                DateTime {
-                  Year => 2017
-                  TimeOfDay => 00:00:00
-                  Ticks => 636459552000000000
-                  Second => 0
-                  Month => 11
-                  Minute => 0
-                  Millisecond => 0
-                  Kind => "Unspecified"
-                  Hour => 0
-                  DayOfYear => 315
-                  DayOfWeek => "Saturday"
-                  Day => 11}}}
-  """
-         actual
-            |> Expect.equal "formatting the message LevelDatetimePathMessageNl with projection"
-                           (expect.TrimStart([|'\n'|]))
-
+      |> Expect.linesEqual "formatting the message LevelDatetimePathMessageNl with projection" expected
 
     testCase "StringFormatter.Verbatim" <| fun _ ->
       Message.eventError "hello world"
@@ -450,15 +449,15 @@ let textPrinters =
       |> MessageWriter.verbatimNewLine.format
       |> Expect.equal "formatting the message verbatim with newline, templated" (sprintf "what's \"up\"? up!%s" Environment.NewLine)
 
-    ptestCase "StringFormatter.levelDatetimeMessagePathNewLine no exception" <| fun _ ->
+    testCase "StringFormatter.levelDatetimeMessagePathNewLine no exception" <| fun _ ->
       let expected = """I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "the first value" reverse. [a.b.c.d]
     fields:
       0 => "the first value"
-      1 => "the second value"
-"""
+      1 => "the second value" """
+
       sampleMessage
       |> levelDatetimeMessagePathNewLine.format
-      |> Expect.equal "formatting the message LevelDatetimePathMessageNl" expected
+      |> Expect.linesEqual "formatting the message LevelDatetimePathMessageNl" expected
 
     testCase "Formatting.templateFormat, simple case" <| fun _ ->
       let format = "This {0} contains {1} words."
