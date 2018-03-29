@@ -220,24 +220,24 @@ let jsonTests fsc =
             |> Expect.equal "Should be Json.Null" Json.Null)
         testEncode<Map<string, _>> fsc
         testEncode<HashMap<string, _>> fsc
-        testEncode<Set<_>> fsc
+        testEncode<Set<string>> fsc
         testEncode<IceCream> fsc
         testEncode<Collections.Generic.IDictionary<string, IceCream>> fsc
       ]
 
       testList "nested" [
-        ptestPropertyWithConfig fsc "Message" <| fun (m: Message) ->
+        testPropertyWithConfig fsc "Exception" <| fun (e: Exception) ->
+          Json.encode e
+            |> Expect.Json.isObject "Returns an object"
+
+        testPropertyWithConfig fsc "Message" <| fun (m: Message) ->
           Json.encode m
             |> Expect.Json.isObjectX "The message is encoded as a Json.Object"
             |> Expect.Json.hasFieldXX "Has name field" "name"
             |> Expect.Json.hasFieldXX "Has level field" "level"
             |> Expect.Json.hasField "Has context field" "context"
 
-        testPropertyWithConfig fsc "Exception" <| fun (e: Exception) ->
-          Json.encode e
-            |> Expect.Json.isObject "Returns an object"
-
-        ptestCase "complex Message" <| fun () ->
+        testCase "complex Message" <| fun () ->
           Json.encode complexMessage
             |> Expect.Json.isObject "Returns an object"
       ]

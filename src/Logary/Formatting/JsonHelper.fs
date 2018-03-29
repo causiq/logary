@@ -63,9 +63,6 @@ module Shape =
       Activator.CreateInstanceGeneric<ShapeHashMap<_,_>>(ta)
       :?> IShapeHashMap
       |> Some
-    | Generic(td, ta) ->
-      printfn "td.FullName: %s" td.FullName
-      None
     | _ ->
       None
 
@@ -90,29 +87,47 @@ module JsonHelper =
   // TO CONSIDER https://github.com/eiriktsarpalis/TypeShape/blob/master/src/TypeShape/Utils.fs
   // let rec internal toJson (registry: ICustomJsonEncoderRegistry) (t: System.Type): obj -> Json =
   let rec toJson<'T>(): 'T -> Json =
-    printfn "toJson %O" typeof<'T>
+//    printfn "toJson %O" typeof<'T>
     use ctx = new TypeGenerationContext()
     toJsonCached<'T> ctx
 
   and private toJsonCached<'T> (ctx: TypeGenerationContext): 'T -> Json =
-    printfn "toJsonCached %O" typeof<'T>
-    match ctx.InitOrGetCachedValue<'T -> Json>(fun c t -> c.Value t) with
-    | Cached (value = r) ->
-      r
-    | NotCached t ->
-      let p = toJsonAux<'T> ctx
-      ctx.Commit t p
+//    printfn "toJsonCached %O" typeof<'T>
+    if typeof<'T> = typeof<obj> then
+      toJsonAux<'T> ctx
+    else
+      match ctx.InitOrGetCachedValue<'T -> Json>(fun c t -> c.Value t) with
+      | Cached (value = r) ->
+        r
+      | NotCached t ->
+        let p = toJsonAux<'T> ctx
+        ctx.Commit t p
 
   and private toJsonAux<'T> (ctx: TypeGenerationContext): 'T -> Json =
-    printfn "toJsonAux %O" typeof<'T>
+//    printfn "toJsonAux %O" typeof<'T>
     let wrap (f: 'a -> Json) = unbox f
     let inline enc (a: 'a) = Inference.Json.encode a
     let mkFieldPrinter (field: IShapeMember<'DeclaringType>) =
       field.Accept {
         new IMemberVisitor<'DeclaringType, string * ('DeclaringType -> Json)> with
-          member __.Visit(field : ShapeMember<'DeclaringType, 'Field>) =
+          member __.Visit(field: ShapeMember<'DeclaringType, 'Field>) =
             let fp = toJsonCached<'Field> ctx
-            field.Label, fp << field.Project
+
+            let project declaringValue =
+              match box declaringValue with
+              | null ->
+                Json.Null
+              | _ ->
+                field.Project declaringValue |> fp
+
+            let project declaringValue =
+              try
+                project declaringValue
+              with e ->
+                let message = sprintf "Accessing property '%s' threw '%s'." field.Label (e.GetType().FullName)
+                Json.String message
+
+            field.Label, project
       }
 
     match shapeof<'T> with
@@ -166,6 +181,9 @@ module JsonHelper =
 
     | Shape.DateTimeOffset ->
       wrap (fun (x: DateTimeOffset) -> Inference.Json.encode x)
+
+    | meta when meta.Type.Namespace = "System.Reflection" ->
+      fun x -> Json.String (x.ToString())
 
     | Shape.FSharpMap s when s.Key = shapeof<string> ->
       s.Accept
@@ -290,12 +308,12 @@ module JsonHelper =
     // TODO: HashMap<_, _>
 
     | Shape.Enumerable s ->
-      printfn "JsonHelper: encode enumerable %O" s
+//      printfn "JsonHelper: encode enumerable %O" s
       // TO CONSIDER: seq<KeyValue<string, 'a>> with reflection on the Value property
       s.Accept
         { new IEnumerableVisitor<'T -> Json> with
             member __.Visit<'T, 'a when 'T :> seq<'a>> () =
-              printfn "enumerable shape generating for %O" typeof<'a>
+//              printfn "enumerable shape generating for %O" typeof<'a>
               let ap = toJsonCached<'a> ctx
               wrap (fun (xs: seq<'a>) ->
                 xs |> Seq.fold (fun s x -> ap x :: s) []
@@ -322,7 +340,7 @@ module JsonHelper =
         |> Json.Object
 
     | other when other = shapeof<obj> ->
-      printfn "JsonHelper: encode other %O" other
+//      printfn "JsonHelper: encode other %O" other
       let toJsonTDef =
         Type.GetType("Logary.Formatting.JsonHelper, Logary")
           .GetMethod("toJsonCached", BindingFlags.Static ||| BindingFlags.NonPublic)
@@ -349,6 +367,6 @@ module JsonHelper =
         E.array (vals.ToArray())
 
     | other ->
-      failwithf "JsonHelper: encode got shape %A" other
-//      fun x -> Json.String (x.ToString())
+      //failwithf "JsonHelper: encode got shape %A" other
+      fun x -> Json.String (x.ToString())
 
