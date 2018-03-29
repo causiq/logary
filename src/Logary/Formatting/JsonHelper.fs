@@ -3,10 +3,71 @@ namespace Logary.Formatting
 open System
 open System.Reflection
 open System.Collections.Generic
+open Logary
 open Logary.Internals
 open Logary.Internals.Chiron
 open Logary.Internals.TypeShape.Core
 open Logary.Internals.TypeShape.Core.Utils
+
+// Logary.HashMap
+
+type IHashMapVisitor<'R> =
+  abstract Visit<'K, 'V when 'K : equality> : unit -> 'R
+
+type IShapeHashMap =
+  abstract Key: TypeShape
+  abstract Value: TypeShape
+  abstract Accept: IHashMapVisitor<'R> -> 'R
+
+// System.Collections.Generic.IDictionary`2
+
+type IIDictionaryVisitor<'R> =
+  abstract Visit<'K, 'V when 'K : equality> : unit -> 'R
+
+type IShapeIDictionary =
+  abstract Key: TypeShape
+  abstract Value: TypeShape
+  abstract Accept: IIDictionaryVisitor<'R> -> 'R
+
+module Shape =
+
+  // System.Collections.Generic.IDictionary`2
+
+  type private ShapeIDictionary<'K, 'V when 'K : equality> () =
+    interface IShapeIDictionary with
+      member __.Key = shapeof<'K>
+      member __.Value = shapeof<'V>
+      member __.Accept v = v.Visit<'K, 'V> ()
+
+  let (|IDictionary|_|) (shape: TypeShape) =
+    match shape.ShapeInfo with
+    | Generic(td, ta) when td = typedefof<System.Collections.Generic.IDictionary<_, _>> ->
+      Activator.CreateInstanceGeneric<ShapeIDictionary<_, _>>(ta)
+      :?> IShapeIDictionary
+      |> Some
+    | _ ->
+      None
+
+  // Logary.HashMap`2
+
+  type private ShapeHashMap<'K, 'V when 'K : equality> () =
+    interface IShapeHashMap with
+      member __.Key = shapeof<'K>
+      member __.Value = shapeof<'V>
+      member __.Accept v = v.Visit<'K, 'V> ()
+
+  let (|HashMap|_|) (shape: TypeShape) =
+    match shape.ShapeInfo with
+    // I could not make 'k when 'k :> IEquatable<'k> work with typedefof<HashMap<_,_>>
+    | Generic(td, ta) when td.FullName = "Logary.HashMap`2" ->
+      Activator.CreateInstanceGeneric<ShapeHashMap<_,_>>(ta)
+      :?> IShapeHashMap
+      |> Some
+    | Generic(td, ta) ->
+      printfn "td.FullName: %s" td.FullName
+      None
+    | _ ->
+      None
 
 module JsonHelper =
   module E = Chiron.Serialization.Json.Encode
@@ -24,38 +85,17 @@ module JsonHelper =
     { new ICustomJsonEncoderRegistry with
         member __.TryGetRegistration _ = None }
 
-//  type IHashMapVisitor<'R> =
-//      abstract Visit<'K, 'V when 'K : equality> : unit -> 'R
-//
-//  type IShapeHashMap =
-//      abstract Key: TypeShape
-//      abstract Value: TypeShape
-//      abstract Accept: IHashMapVisitor<'R> -> 'R
-//
-//  type private ShapeHashMap<'K, 'V when 'K :> IEquatable<'K> and 'K : equality> () =
-//      interface IShapeDictionary with
-//          member __.Key = shapeof<'K>
-//          member __.Value = shapeof<'V>
-//          member __.Accept v = v.Visit<'K, 'V> ()
-//
-//  let (|HashMap|_|) (shape: TypeShape) =
-//    match shape.ShapeInfo with
-//    | Generic(td, ta) when td = typedefof<Logary.HashMap<_,_>> ->
-//        Activator.CreateInstanceGeneric<ShapeHashMap<_,_>>(ta)
-//        :?> IShapeDictionary
-//        |> Some
-//    | _ ->
-//        None
-
   let private chironDefaultsType = typeof<Logary.Internals.Chiron.Inference.Internal.ChironDefaults>
 
   // TO CONSIDER https://github.com/eiriktsarpalis/TypeShape/blob/master/src/TypeShape/Utils.fs
   // let rec internal toJson (registry: ICustomJsonEncoderRegistry) (t: System.Type): obj -> Json =
   let rec toJson<'T>(): 'T -> Json =
+    printfn "toJson %O" typeof<'T>
     use ctx = new TypeGenerationContext()
     toJsonCached<'T> ctx
 
   and private toJsonCached<'T> (ctx: TypeGenerationContext): 'T -> Json =
+    printfn "toJsonCached %O" typeof<'T>
     match ctx.InitOrGetCachedValue<'T -> Json>(fun c t -> c.Value t) with
     | Cached (value = r) ->
       r
@@ -64,9 +104,8 @@ module JsonHelper =
       ctx.Commit t p
 
   and private toJsonAux<'T> (ctx: TypeGenerationContext): 'T -> Json =
-    let wrap (f: 'a -> Json) =
-//      printfn "Unbox to %O" typeof<'a>
-      unbox f
+    printfn "toJsonAux %O" typeof<'T>
+    let wrap (f: 'a -> Json) = unbox f
     let inline enc (a: 'a) = Inference.Json.encode a
     let mkFieldPrinter (field: IShapeMember<'DeclaringType>) =
       field.Accept {
@@ -116,6 +155,12 @@ module JsonHelper =
     | Shape.Int64 ->
       wrap (fun (x: int64) -> Inference.Json.encode x)
 
+    | Shape.Guid ->
+      wrap (fun (x: Guid) -> Inference.Json.encode x)
+
+    | Shape.TimeSpan ->
+      wrap (fun (x: TimeSpan) -> E.string (x.ToString()))
+
     | Shape.DateTime ->
       wrap (fun (x: DateTime) -> Inference.Json.encode x)
 
@@ -126,22 +171,43 @@ module JsonHelper =
       s.Accept
         { new IFSharpMapVisitor<'T -> Json> with
             member x.Visit<'k, 'v when 'k : comparison> () =
-//              printfn ">>>> fsharp map case"
               let fp = toJsonCached<'v> ctx
               wrap (fun (m: Map<string, 'v>) -> E.mapWith fp m)
         }
 
+    | Shape.HashMap s when s.Key = shapeof<string> ->
+      s.Accept
+        { new IHashMapVisitor<'T -> Json> with
+            member x.Visit<'k, 'v when 'k : equality> () =
+              let fp = toJsonCached<'v> ctx
+              wrap (fun (m: HashMap<string, 'v>) ->
+                m
+                |> HashMap.toSeqPair
+                |> Seq.fold (fun s (KeyValue (k, v)) -> s |> JsonObject.add k (fp v)) JsonObject.empty
+                |> Json.Object)
+        }
+
     | Shape.Dictionary s ->
-        s.Accept
-          { new IDictionaryVisitor<'T -> Json> with
-              member __.Visit<'k, 'a when 'k: equality> () =
-//                printfn ">>>> dictionary case"
-                let ap = toJsonCached<'a> ctx
-                wrap (fun (d: IDictionary<'k, 'a>) ->
-                  d
-                  |> Seq.fold (fun s (KeyValue (k, v)) -> s |> JsonObject.add (sprintf "%O" k) (ap v)) JsonObject.empty
-                  |> Json.Object)
-          }
+      s.Accept
+        { new IDictionaryVisitor<'T -> Json> with
+            member __.Visit<'k, 'a when 'k: equality> () =
+              let ap = toJsonCached<'a> ctx
+              wrap (fun (d: Dictionary<'k, 'a>) ->
+                d
+                |> Seq.fold (fun s (KeyValue (k, v)) -> s |> JsonObject.add (sprintf "%O" k) (ap v)) JsonObject.empty
+                |> Json.Object)
+        }
+
+    | Shape.IDictionary s ->
+      s.Accept
+        { new IIDictionaryVisitor<'T -> Json> with
+            member __.Visit<'k, 'a when 'k: equality> () =
+              let ap = toJsonCached<'a> ctx
+              wrap (fun (d: IDictionary<'k, 'a>) ->
+                d
+                |> Seq.fold (fun s (KeyValue (k, v)) -> s |> JsonObject.add (sprintf "%O" k) (ap v)) JsonObject.empty
+                |> Json.Object)
+        }
 
     | Shape.FSharpOption s ->
       s.Accept
@@ -224,12 +290,12 @@ module JsonHelper =
     // TODO: HashMap<_, _>
 
     | Shape.Enumerable s ->
-//      printfn "enumerable shape %O" typeof<'T>
+      printfn "JsonHelper: encode enumerable %O" s
       // TO CONSIDER: seq<KeyValue<string, 'a>> with reflection on the Value property
       s.Accept
         { new IEnumerableVisitor<'T -> Json> with
             member __.Visit<'T, 'a when 'T :> seq<'a>> () =
-//              printfn "enumerable shape generating for %O" typeof<'a>
+              printfn "enumerable shape generating for %O" typeof<'a>
               let ap = toJsonCached<'a> ctx
               wrap (fun (xs: seq<'a>) ->
                 xs |> Seq.fold (fun s x -> ap x :: s) []
@@ -256,6 +322,7 @@ module JsonHelper =
         |> Json.Object
 
     | other when other = shapeof<obj> ->
+      printfn "JsonHelper: encode other %O" other
       let toJsonTDef =
         Type.GetType("Logary.Formatting.JsonHelper, Logary")
           .GetMethod("toJsonCached", BindingFlags.Static ||| BindingFlags.NonPublic)
@@ -263,7 +330,7 @@ module JsonHelper =
         match box value with
         | null ->
           Json.Null
-        | otherwise ->
+        | _ ->
           let typ = value.GetType() // string
           if typ = typeof<obj> then Json.Object JsonObject.empty else
           let toJsonT = toJsonTDef.MakeGenericMethod(typ) // toJsonCached<string>(): string -> Json: MethodInfo
@@ -272,8 +339,16 @@ module JsonHelper =
           let refFunc = toJsonT.Invoke(null, [| box ctx |]) // : toJson: string -> Json
           resFuncInvoker.Invoke(refFunc, [| value |]) :?> Json // (toJson value): Json
 
+    | other when typeof<System.Collections.IEnumerable>.IsAssignableFrom other.Type ->
+      fun (o: 'T) ->
+        let vals = ResizeArray<_>()
+        let e = box o :?> System.Collections.IEnumerable
+        for value in e do
+          let json = toJson<obj>() value
+          vals.Add json
+        E.array (vals.ToArray())
+
     | other ->
-      // TODO: comment back in while testing
-//      failwithf "Got shape %A" other
-      fun x -> Json.String (x.ToString())
+      failwithf "JsonHelper: encode got shape %A" other
+//      fun x -> Json.String (x.ToString())
 

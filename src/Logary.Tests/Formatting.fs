@@ -5,6 +5,7 @@ module Logary.Tests.Formatting
 #r "Hopac"
 #r "NodaTime"
 #r "Logary"
+#r "FsCheck"
 #r "Expecto"
 #r "Expecto.FsCheck"
 #endif
@@ -198,8 +199,10 @@ let jsonTests fsc =
         testEncode<int32> fsc
         testEncode<int64> fsc
         testEncode<string> fsc
+        testEncode<Guid> fsc
         testEncode<DateTime> fsc
         testEncode<DateTimeOffset> fsc
+        testEncode<TimeSpan> fsc
         testEncode<NodaTime.Instant> fsc
         testEncode<NodaTime.Duration> fsc
         testEncode<Gauge> fsc
@@ -216,7 +219,8 @@ let jsonTests fsc =
           Json.encode None
             |> Expect.equal "Should be Json.Null" Json.Null)
         testEncode<Map<string, _>> fsc
-        ptestEncode<HashMap<string, _>> fsc
+        testEncode<HashMap<string, _>> fsc
+        testEncode<Set<_>> fsc
         testEncode<IceCream> fsc
         testEncode<Collections.Generic.IDictionary<string, IceCream>> fsc
       ]
@@ -229,7 +233,7 @@ let jsonTests fsc =
             |> Expect.Json.hasFieldXX "Has level field" "level"
             |> Expect.Json.hasField "Has context field" "context"
 
-        ptestPropertyWithConfig fsc "Exception" <| fun (e: Exception) ->
+        testPropertyWithConfig fsc "Exception" <| fun (e: Exception) ->
           Json.encode e
             |> Expect.Json.isObject "Returns an object"
 

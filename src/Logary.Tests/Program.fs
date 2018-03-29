@@ -26,14 +26,12 @@ type Arbs =
     |> Arb.convert (Duration.FromTimeSpan) (fun d -> d.ToTimeSpan())
 
   static member HashMap() =
-    printfn "HashMap called"
     let nonNullKey = fun (KeyValue (k, _)) -> not (isNull (box k))
     let filter list = List.filter nonNullKey list
     Arb.Default.FsList()
     |> Arb.convert (filter >> HashMap.ofListPair) HashMap.toListPair
 
   static member Value() =
-    printfn "Value called"
     let contentTypes = Gen.elements [ "application/image+jpeg"; "application/octet-stream" ]
     let strings = Arb.generate<NonEmptyString> |> Gen.map (fun (NonEmptyString s) -> String s)
     let floats = Arb.generate<NormalFloat> |> Gen.map (fun (NormalFloat f) -> Float f)
@@ -63,7 +61,6 @@ type Arbs =
     Arb.fromGenShrink (generator, shrinker)
 
   static member Units() =
-    printfn "Units called"
     let isNormal f =
          not <| Double.IsInfinity f
       && not <| Double.IsNaN f
@@ -74,7 +71,6 @@ type Arbs =
       | _ -> true)
 
   static member Gauge() =
-    printfn "Gauge called"
     let isNormal f =
          not <| Double.IsInfinity f
       && not <| Double.IsNaN f
@@ -82,12 +78,10 @@ type Arbs =
     |> Arb.filter (function | Gauge (f, units) -> isNormal f)
 
   static member Instant() =
-    printfn "Instant called"
     Arb.Default.DateTimeOffset()
     |> Arb.convert Instant.FromDateTimeOffset (fun i -> i.ToDateTimeOffset())
 
   static member Exception() =
-    printfn "Exception called"
     let failer message =
       failwith message
     let meth message =
@@ -103,12 +97,13 @@ type Arbs =
             1, Gen.constant false
             2, Gen.constant true
           ]
-        let! inner = Arb.generate<exn>
+//        let! inner = Arb.generate<exn>
         return
           try another message
           with e ->
-          if isNull inner then reraise ()
-          else raise (Exception (message2, inner))
+//          if isNull inner then e
+//          else (Exception (message2, inner))
+            e
       }
 
     let shrinker (e: exn): seq<exn> =
