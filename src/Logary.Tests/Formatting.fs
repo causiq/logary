@@ -151,6 +151,7 @@ let jsonRawInput = """
 
 let testEncode<'a> fsCheckConfig =
   testPropertyWithConfig fsCheckConfig typeof<'a>.Name (fun (a: 'a) -> Json.encode a |> ignore)
+
 let ptestEncode<'a> fsCheckConfig =
   ptestPropertyWithConfig fsCheckConfig typeof<'a>.Name (fun (a: 'a) -> Json.encode a |> ignore)
 
@@ -184,12 +185,20 @@ module Expect =
       hasFieldX message field value |> ignore
       value
 
+    /// Assert and pass through the JsonObject value.
+    let hasFieldXXf message field callback (value: JsonObject) =
+      callback (hasFieldX message field value) |> ignore
+      value
+
     /// Assert the object has a field of the given name.
     let hasField message field value =
       hasFieldX message field value |> ignore
 
 let jsonTests fsc =
   testList "json" [
+    testCase "accessing .context" <| fun () ->
+      ignore (complexMessage.context)
+
     testList "encoding" [
       testList "primitives" [
         testEncode<uint16> fsc
@@ -208,21 +217,42 @@ let jsonTests fsc =
         testEncode<Gauge> fsc
         testEncode<int * int> fsc
         testEncode<Map<string, _> * Map<string, _> * string> fsc
-        //testEncode<Exception> fsc
-        testCase "null" (fun () ->
-          Json.encode null
-            |> Expect.equal "Should be Json.Null" Json.Null)
-        testCase "unit" (fun () ->
-          Json.encode ()
-            |> Expect.equal "Should be Json.Null" Json.Null)
-        testCase "None" (fun () ->
-          Json.encode None
-            |> Expect.equal "Should be Json.Null" Json.Null)
         testEncode<Map<string, _>> fsc
         testEncode<HashMap<string, _>> fsc
         testEncode<Set<string>> fsc
         testEncode<IceCream> fsc
         testEncode<Collections.Generic.IDictionary<string, IceCream>> fsc
+
+        testCase "null" (fun () ->
+          Json.encode null
+            |> Expect.equal "Should be Json.Null" Json.Null)
+
+        testCase "unit" (fun () ->
+          Json.encode ()
+            |> Expect.equal "Should be Json.Null" Json.Null)
+
+        testCase "None" (fun () ->
+          Json.encode None
+            |> Expect.equal "Should be Json.Null" Json.Null)
+
+        testCase "LogLevel" <| fun () ->
+          Debug
+            |> Json.encode
+            |> Expect.equal "Encodes to 'debug'" (Json.String "debug")
+
+        testCase "PointName" <| fun () ->
+          PointName [| "A"; "B" |]
+            |> Json.encode
+            |> Expect.equal "Encodes as array of string" (Json.Array [ Json.String "A"; Json.String "B" ])
+
+        testCase "stacktrace" <| fun () ->
+          DotNetStacktrace.parse DotNetStacktrace.sample
+            |> Json.encode
+            |> function
+            | Json.Array lines ->
+              lines |> Expect.isNonEmpty "Has non-empty stacktrace lines"
+            | other ->
+              failtestf "Unexpected json %A" other
       ]
 
       testList "nested" [
@@ -239,7 +269,8 @@ let jsonTests fsc =
 
         testCase "complex Message" <| fun () ->
           Json.encode complexMessage
-            |> Expect.Json.isObject "Returns an object"
+            |> Expect.Json.isObjectX "Returns an object"
+            |> Expect.Json.hasField "Has context field" "context"
 
         testPropertyWithConfig fsc "DotNetStacktrace.parse should never throw" <| fun (s: string) ->
           ignore (DotNetStacktrace.parse s)

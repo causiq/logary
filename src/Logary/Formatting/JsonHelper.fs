@@ -30,6 +30,11 @@ type IShapeIDictionary =
   abstract Accept: IIDictionaryVisitor<'R> -> 'R
 
 module Shape =
+  let private SomeU = Some() // avoid allocating all the time
+  let inline private test<'T> (s : TypeShape) =
+    match s with
+    | :? TypeShape<'T> -> SomeU
+    | _ -> None
 
   // System.Collections.Generic.IDictionary`2
 
@@ -66,6 +71,10 @@ module Shape =
     | _ ->
       None
 
+  let (|LogLevel|_|) (shape: TypeShape) = test<Logary.LogLevel> shape
+  let (|PointName|_|) (shape: TypeShape) = test<Logary.PointName> shape
+  //let (|Units|_|) (shape: TypeShape) = test<Logary.Units> shape
+
 module JsonHelper =
   module E = Chiron.Serialization.Json.Encode
 
@@ -83,6 +92,14 @@ module JsonHelper =
         member __.TryGetRegistration _ = None }
 
   let private chironDefaultsType = typeof<Logary.Internals.Chiron.Inference.Internal.ChironDefaults>
+
+  let private getKey (valueType: Type) =
+    let prop = valueType.GetProperty("Key")
+    fun (instance: obj) -> prop.GetValue(instance, null)
+
+  let private getValue (valueType: Type) =
+    let prop = valueType.GetProperty("Value")
+    fun (instance: obj) -> prop.GetValue(instance, null)
 
   // TO CONSIDER https://github.com/eiriktsarpalis/TypeShape/blob/master/src/TypeShape/Utils.fs
   // let rec internal toJson (registry: ICustomJsonEncoderRegistry) (t: System.Type): obj -> Json =
@@ -124,7 +141,7 @@ module JsonHelper =
               try
                 project declaringValue
               with e ->
-                let message = sprintf "Accessing property '%s' threw '%s'." field.Label (e.GetType().FullName)
+                let message = sprintf "Accessing property '%s' threw '%s'.\n%O" field.Label (e.GetType().FullName) e
                 Json.String message
 
             field.Label, project
@@ -182,6 +199,12 @@ module JsonHelper =
     | Shape.DateTimeOffset ->
       wrap (fun (x: DateTimeOffset) -> Inference.Json.encode x)
 
+    | Shape.LogLevel ->
+      wrap (fun (level: LogLevel) -> Json.String (level.ToString()))
+
+    | Shape.PointName ->
+      wrap (fun (PointName xs) -> E.arrayWith Json.String xs)
+
     | meta when meta.Type.Namespace = "System.Reflection" ->
       fun x -> Json.String (x.ToString())
 
@@ -221,6 +244,14 @@ module JsonHelper =
               wrap (fun (m: Map<string, 'v>) -> E.mapWith fp m)
         }
 
+    | Shape.FSharpMap s ->
+      s.Accept
+        { new IFSharpMapVisitor<'T -> Json> with
+            member x.Visit<'k, 'v when 'k : comparison> () =
+              let fp = toJsonCached<'v> ctx
+              wrap (fun (m: Map<'k, 'v>) -> E.mapWithCustomKey (sprintf "%O") fp m)
+        }
+
     | Shape.HashMap s when s.Key = shapeof<string> ->
       s.Accept
         { new IHashMapVisitor<'T -> Json> with
@@ -229,9 +260,14 @@ module JsonHelper =
               wrap (fun (m: HashMap<string, 'v>) ->
                 m
                 |> HashMap.toSeqPair
-                |> Seq.fold (fun s (KeyValue (k, v)) -> s |> JsonObject.add k (fp v)) JsonObject.empty
+                |> Seq.fold (fun s (KeyValue (k, v)) -> s |> JsonObject.add (sprintf "%O" k) (fp v)) JsonObject.empty
                 |> Json.Object)
         }
+
+    | Shape.HashMap s ->
+      fun (o: 'T) ->
+        let e = box o :?> System.Collections.IEnumerable
+        toJsonCached<_> ctx e
 
     | Shape.Dictionary s ->
       s.Accept
@@ -270,7 +306,7 @@ module JsonHelper =
       s.Accept
         { new IFSharpListVisitor<'T -> Json> with
             member __.Visit<'a> () = //  'T = 'a list
-//              printfn ">>>> list case"
+              //printfn ">>>> list case"
               let ap = toJsonCached<'a> ctx
               wrap (E.listWith ap)
         }
@@ -279,7 +315,7 @@ module JsonHelper =
       s.Accept
         { new IFSharpSetVisitor<'T -> Json> with
             member __.Visit<'a when 'a : comparison> () = //  'T = Set<'a>
-//              printfn ">>>> set case"
+              //printfn ">>>> set case"
               let ap = toJsonCached<'a> ctx
               wrap (E.setWith ap)
         }
@@ -288,7 +324,7 @@ module JsonHelper =
       s.Accept
         { new IArrayVisitor<'T -> Json> with
             member __.Visit<'a> rank = //  'T = 'a[]
-//              printfn ">>>> array case"
+              //printfn ">>>> array case"
               let ap = toJsonCached<'a> ctx
               wrap (E.arrayWith ap)
         }
@@ -333,21 +369,37 @@ module JsonHelper =
         let printer = casePrinters.[shape.GetTag u]
         printer u
 
-    // TODO: HashMap<_, _>
-
     | Shape.Enumerable s ->
-//      printfn "JsonHelper: encode enumerable %O" s
+      //printfn "JsonHelper: encode enumerable %O" s
       // TO CONSIDER: seq<KeyValue<string, 'a>> with reflection on the Value property
-      s.Accept
-        { new IEnumerableVisitor<'T -> Json> with
-            member __.Visit<'T, 'a when 'T :> seq<'a>> () =
-//              printfn "enumerable shape generating for %O" typeof<'a>
-              let ap = toJsonCached<'a> ctx
-              wrap (fun (xs: seq<'a>) ->
-                xs |> Seq.fold (fun s x -> ap x :: s) []
-                   |> Seq.toArray
-                   |> E.array)
-        }
+      match s.Element with
+      | Shape.KeyValuePair kvps ->
+        fun (o: 'T) ->
+          match box o with
+          | :? System.Collections.IEnumerable as e ->
+            let m = ref JsonObject.empty
+            let en = e.GetEnumerator()
+            while en.MoveNext () do
+              let valueType = en.Current.GetType()
+              let key = string (getKey valueType en.Current)
+              let value = getValue valueType en.Current
+              let json = toJsonCached<obj> ctx value
+              m := !m |> JsonObject.add key json
+            Json.Object !m
+          | _ ->
+            failwithf "Unexpected shape %O" s
+
+      | _ ->
+        s.Accept
+          { new IEnumerableVisitor<'T -> Json> with
+              member __.Visit<'T, 'a when 'T :> seq<'a>> () =
+                //printfn "enumerable shape generating for %O" typeof<'a>
+                let ap = toJsonCached<'a> ctx
+                wrap (fun (xs: seq<'a>) ->
+                  xs |> Seq.fold (fun s x -> ap x :: s) []
+                     |> Seq.toArray
+                     |> E.array)
+          }
 
     | Shape.FSharpRecord (:? ShapeFSharpRecord<'T> as shape) ->
       let fps = shape.Fields |> Array.map (fun f -> lazy (mkFieldPrinter f))

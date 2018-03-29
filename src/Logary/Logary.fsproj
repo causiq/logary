@@ -43,13 +43,13 @@
     <Compile Include="HashMap.fsi" />
     <Compile Include="HashMap.fs" />
     <Compile Include="HashMapModule.fs" />
-    <Compile Include="Formatting/DotNetStacktrace.fs" />
-    <Compile Include="Formatting/JsonHelper.fs" />
-    <Compile Include="Formatting/MessageTemplates.fs" />
     <Compile Include="LogLevel.fs" />
     <Compile Include="Constants.fs" />
     <Compile Include="Internals/Internals.fs" />
     <Compile Include="DataModel.fs" />
+    <Compile Include="Formatting/DotNetStacktrace.fs" />
+    <Compile Include="Formatting/JsonHelper.fs" />
+    <Compile Include="Formatting/MessageTemplates.fs" />
     <Compile Include="DurationModule.fs" />
     <Compile Include="UnitsModule.fs" />
     <Compile Include="Internals/NullLogger.fs" />

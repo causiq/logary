@@ -4,12 +4,14 @@ type StacktraceLine =
   { site: string
     file: string option
     lineNo: int option }
+  static member create site file lineNo =
+    { site = site; file = file; lineNo = lineNo }
 
 module DotNetStacktrace =
   open System
   open System.Text.RegularExpressions
 
-  let private sample = """  at Logary.Targets.InfluxDb.Impl.extractMessage(TargetMessage request) in /Users/h/dev/tradera/logary/src/targets/Logary.Targets.InfluxDb/Targets_InfluxDb.fs:line 278
+  let internal sample = """  at Logary.Targets.InfluxDb.Impl.extractMessage(TargetMessage request) in /Users/h/dev/tradera/logary/src/targets/Logary.Targets.InfluxDb/Targets_InfluxDb.fs:line 278
   at Microsoft.FSharp.Collections.Internal.IEnumerator.map@74.DoMoveNext(b& curr)
   at Microsoft.FSharp.Collections.Internal.IEnumerator.MapEnumerator`1.System-Collections-IEnumerator-MoveNext()
   at System.String.Join(String separator, IEnumerable`1 values)
