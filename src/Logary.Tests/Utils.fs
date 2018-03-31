@@ -6,6 +6,7 @@ open System.IO
 open Hopac
 open NodaTime
 open Expecto
+open Expecto.Flip
 open Expecto.Logging
 
 let internal logger = Log.create "Logary.Tests.Utils"
@@ -146,3 +147,58 @@ let logMsgWaitAndShutdown targetApi (logCallBack: (Message -> Job<unit>) -> #Job
     }
 
   Job.tryFinallyJob (logCallBack logAndWait) finaliseJob
+
+module Expect =
+  let private trim (s: string) = if isNull s then s else s.Trim()
+
+  let linesEqual (message: string) (expected: string) (actual: string) =
+    let sra = new IO.StringReader(actual)
+    let sre = new IO.StringReader(expected)
+    let mutable cont = true
+    let mutable linea = null
+    let mutable linee = null
+    while cont do
+      linea <- trim (sra.ReadLine())
+      linee <- trim (sre.ReadLine())
+      linea |> Expect.equal "Should equal the expected line" linee
+      cont <- not (isNull linea || isNull linee)
+
+  module Json =
+    open Logary.Internals.Chiron
+
+    /// Assert and pass through the value.
+    let isObjectX message (value: Json) =
+      match value with
+      | Json.Object nested ->
+        nested
+      | other ->
+        failtestf "Expected Json.Object, but was %A" other
+
+    /// Assert the Json value is a Json.Object.
+    let isObject message value =
+      isObjectX message value |> ignore
+
+    /// Assert and pass through the found field.
+    let hasFieldX message field (value: JsonObject) =
+      value
+        |> JsonObject.toMap
+        |> Map.tryFind field
+        |> function
+        | None ->
+          failtestf "Did not find field '%s' on Json.Object (%A)" field value
+        | Some f ->
+          f
+
+    /// Assert and pass through the JsonObject value.
+    let hasFieldXX message field (value: JsonObject) =
+      hasFieldX message field value |> ignore
+      value
+
+    /// Assert and pass through the JsonObject value.
+    let hasFieldXXf message field callback (value: JsonObject) =
+      callback (hasFieldX message field value) |> ignore
+      value
+
+    /// Assert the object has a field of the given name.
+    let hasField message field value =
+      hasFieldX message field value |> ignore

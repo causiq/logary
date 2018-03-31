@@ -155,58 +155,6 @@ let testEncode<'a> fsCheckConfig =
 let ptestEncode<'a> fsCheckConfig =
   ptestPropertyWithConfig fsCheckConfig typeof<'a>.Name (fun (a: 'a) -> Json.encode a |> ignore)
 
-module Expect =
-  let private trim (s: string) = if isNull s then s else s.Trim()
-  let linesEqual (message: string) (expected: string) (actual: string) =
-    let sra = new IO.StringReader(actual)
-    let sre = new IO.StringReader(expected)
-    let mutable cont = true
-    let mutable linea = null
-    let mutable linee = null
-    while cont do
-      linea <- trim (sra.ReadLine())
-      linee <- trim (sre.ReadLine())
-      linea |> Expect.equal "Should equal the expected line" linee
-      cont <- not (isNull linea || isNull linee)
-
-  module Json =
-    /// Assert and pass through the value.
-    let isObjectX message (value: Json) =
-      match value with
-      | Json.Object nested ->
-        nested
-      | other ->
-        failtestf "Expected Json.Object, but was %A" other
-
-    /// Assert the Json value is a Json.Object.
-    let isObject message value =
-      isObjectX message value |> ignore
-
-    /// Assert and pass through the found field.
-    let hasFieldX message field (value: JsonObject) =
-      value
-        |> JsonObject.toMap
-        |> Map.tryFind field
-        |> function
-        | None ->
-          failtestf "Did not find field '%s' on Json.Object (%A)" field value
-        | Some f ->
-          f
-
-    /// Assert and pass through the JsonObject value.
-    let hasFieldXX message field (value: JsonObject) =
-      hasFieldX message field value |> ignore
-      value
-
-    /// Assert and pass through the JsonObject value.
-    let hasFieldXXf message field callback (value: JsonObject) =
-      callback (hasFieldX message field value) |> ignore
-      value
-
-    /// Assert the object has a field of the given name.
-    let hasField message field value =
-      hasFieldX message field value |> ignore
-
 let jsonTests fsc =
   testList "json" [
     testCase "accessing .context" <| fun () ->
@@ -274,6 +222,14 @@ let jsonTests fsc =
               lines |> Expect.isNonEmpty "Has non-empty stacktrace lines"
             | other ->
               failtestf "Unexpected json %A" other
+
+        testCase "F# record" <| fun () ->
+          { id = 1; name = "haf"; created = DateTime.UtcNow }
+            |> Json.encode
+            |> Expect.Json.isObjectX "Returns an object with some fields"
+            |> Expect.Json.hasFieldXX "Has a name field" "name"
+            |> Expect.Json.hasFieldXX "Has a created field" "created"
+            |> Expect.Json.hasField "Has an id field" "id"
       ]
 
       testList "nested" [
