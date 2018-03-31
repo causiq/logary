@@ -141,7 +141,7 @@ module JsonHelper =
               try
                 project declaringValue
               with e ->
-                let message = sprintf "Accessing property '%s' threw '%s'.\n%O" field.Label (e.GetType().FullName) e
+                let message = Reflection.memberAccessExn field.Label e
                 Json.String message
 
             field.Label, project
