@@ -32,7 +32,7 @@ module InternalLogger =
 
       member x.name = x.name
 
-      /// internal logger will pass all log msg to targets,  
+      /// internal logger will pass all log msg to targets,
       /// so the min level on logger is Verbose
       /// let the internal logger targets decide which will be accepted
       /// so this property is generally useless
@@ -66,7 +66,7 @@ module InternalLogger =
           targets |> Seq.Con.iterJob (fun t -> Target.shutdown t ^=> id)
       ]
 
-    Job.supervise ri.logger Policy.exponentialBackoffSix (server [])
+    Job.supervise ri.logger Policy.exponentialBackoffForever (server [])
     |> Job.startIgnore
     >>-. api
 

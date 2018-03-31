@@ -79,11 +79,13 @@ let exnMsg =
 
 let timeMessage (nanos: int64) level =
   let value, units = float nanos, Scaled (Seconds, float Constants.NanosPerSecond)
-  Message.gaugeWithUnit "A.B.C.Check" value units
+  let name = PointName.parse "A.B.C"
+  Message.gaugeWithUnit name "Check" (Gauge (value, units))
   |> Message.setLevel level
 
 let gaugeMessage (value: float) level =
-  Message.gaugeWithUnit "Revolver" value (Div (Seconds, Units.Other "revolution"))
+  let name = PointName.parse "Revolver"
+  Message.gaugeWithUnit name "spin" (Gauge (value, (Div (Seconds, Units.Other "revolution"))))
   |> Message.setLevel level
 
 let multiGaugeMessage level =

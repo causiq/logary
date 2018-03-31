@@ -195,14 +195,20 @@ module Message =
 
   ///////////////// CTORS ////////////////////
 
-  /// Creates a new event message template with level
+  /// Create a new Message with the passed parameters. Consider using `event` and
+  /// `gauge` instead.
+  let create context level name value =
+    let timestamp = Global.getTimestamp ()
+    { context = context
+      level = level
+      name = name
+      timestamp = timestamp
+      value = value }
+
+  /// Creates a new event Message with a specified level.
   [<CompiledName "Event">]
   let event level template =
-    { name      = PointName.empty
-      value     = string template
-      context   = HashMap.empty
-      level     = level
-      timestamp = Global.getTimestamp () }
+    create HashMap.empty level PointName.empty template
 
   /// Creates a new event message template with level. Compared to `event`,
   /// this function has its parameters' order flipped.
@@ -210,33 +216,47 @@ module Message =
   let eventX template level =
     event level template
 
-  /// one message can take multi gauges
+  /// A single Message can take multiple gauges; use this function to add further
+  /// gauges to the message. You can add gauges to events as well.
   [<CompiledName "AddGauge">]
-  let addGauge gaugeType (gauge: Gauge) message =
-    let gaugeTypeName = KnownLiterals.GaugeTypePrefix + gaugeType
-    message |> setContext gaugeTypeName gauge
+  let addGauge gaugeName (gauge: Gauge) message =
+    let gaugeName = KnownLiterals.GaugeTypePrefix + gaugeName
+    message |> setContext gaugeName gauge
 
+  /// A single Message can take multiple gauges; use this function to add further
+  /// gauges to the message. You can add gauges to events as well.
+  [<CompiledName "AddGauges">]
+  let addGauges (gauges: #seq<string * Gauge>) message =
+    gauges |> Seq.fold (fun m (n, g) -> m |> addGauge n g) message
+
+  /// Creates a new Message with a single Gauge value and its unit (at Debug level).
+  [<CompiledName "GaugeWithUnit">]
+  let gaugeWithUnit sensorName gaugeName gauge =
+    create HashMap.empty Debug sensorName String.Empty
+    |> addGauge gaugeName gauge
+
+  /// Creates a new Message with a multiple Gauge values and their respective=
+  /// units (at Debug level).
+  [<CompiledName "GaugesWithUnits">]
+  let gaugesWithUnits sensorName (gauges: #seq<string * Gauge>) =
+    (create HashMap.empty Debug sensorName String.Empty, gauges)
+    ||> Seq.fold (fun m (n, g) -> m |> addGauge n g)
+
+  /// Creates a new Message with a single Gauge value (Debug level).
+  [<CompiledName "Gauge">]
+  let gauge sensorName gaugeName value =
+    gaugeWithUnit sensorName gaugeName (Gauge (value, Units.Scalar))
+
+  /// Creates a new Message with a multiple Gauge values (at Debug level).
+  [<CompiledName "Gauges">]
+  let gauges sensorName (gauges: #seq<string * float>) =
+    (create HashMap.empty Debug sensorName String.Empty, gauges)
+    ||> Seq.fold (fun m (n, v) -> m |> addGauge n (Gauge (v, Units.Scalar)))
 
   [<CompiledName "TryGetGauge">]
   let tryGetGauge gaugeType message: Gauge option =
     let gaugeTypeName = KnownLiterals.GaugeTypePrefix + gaugeType
     message |> tryGetContext gaugeTypeName
-
-  /// Creates a new gauge message with gauge, will use LogLevel.Debug
-  [<CompiledName "Gauge">]
-  let gaugeMessage gaugeType gauge =
-    event LogLevel.Debug String.Empty
-    |> addGauge gaugeType gauge
-
-  /// Creates a new gauge message with data point name, unit and value
-  [<CompiledName "Gauge">]
-  let gaugeWithUnit gaugeType value units =
-    gaugeMessage gaugeType (Gauge (value, units))
-
-  /// Creates a new gauge message with data point name and scalar value
-  [<CompiledName "Gauge">]
-  let gauge gaugeType value =
-    gaugeMessage gaugeType (Gauge (value, Units.Scalar))
 
   /// Create a verbose event message
   [<CompiledName "EventVerbose">]
@@ -322,7 +342,7 @@ module Message =
       let res = f input
       sw.Stop()
 
-      let message = sw.toGauge() |> gaugeMessage (PointName.format pointName)
+      let message = sw.toGauge() |> gaugeWithUnit pointName "time"
       res, message
 
   [<CompiledName "TimeAsync">]
@@ -333,10 +353,9 @@ module Message =
         let! res = fn input
         sw.Stop()
 
-        let message = sw.toGauge() |> gaugeMessage (PointName.format pointName)
+        let message = sw.toGauge() |> gaugeWithUnit pointName "time"
         return res, message
       }
-
 
   [<CompiledName "TimeJob">]
   let timeJob pointName (fn: 'input -> Job<'res>) : 'input -> Job<'res * Message> =
@@ -346,7 +365,7 @@ module Message =
         let! res = fn input
         sw.Stop()
 
-        let message = sw.toGauge() |> gaugeMessage (PointName.format pointName)
+        let message = sw.toGauge() |> gaugeWithUnit pointName "time"
         return res, message
       }
 
@@ -358,7 +377,7 @@ module Message =
       fn input |> Alt.afterFun (fun res ->
       sw.Stop()
 
-      let message = sw.toGauge() |> gaugeMessage (PointName.format pointName)
+      let message = sw.toGauge() |> gaugeWithUnit pointName "time"
       res, message
     ))
 
@@ -370,7 +389,7 @@ module Message =
       (fn input).ContinueWith((fun (task: Task<'res>) ->
         sw.Stop()
         task.Result, // will rethrow if needed
-        sw.toGauge() |> gaugeMessage (PointName.format pointName)
+        sw.toGauge() |> gaugeWithUnit pointName "time"
       ), TaskContinuationOptions.ExecuteSynchronously) // stopping SW is quick
 
   //#endregion
@@ -437,16 +456,6 @@ module Message =
   let setEvent format message =
     { message with value = string format }
 
-  [<Obsolete ("Use addGauge instand.")>]
-  [<CompiledName "SetGauge">]
-  let setGauge (value, units) message =
-    addGauge KnownLiterals.DefaultGaugeType (Gauge (value,units)) message
-
-  [<Obsolete ("Use addGauge instand.")>]
-  [<CompiledName "SetDerived">]
-  let setDerived (value, units) message =
-    setGauge (value,units) message
-
   /// Adds a new exception to the "errors" field in the message.
   /// AggregateExceptions are automatically expanded.
   [<CompiledName "AddException">]
@@ -464,7 +473,6 @@ module Message =
     match tryGetContext KnownLiterals.ErrorsContextName msg with
     | Some (errors) -> errors
     | _ -> List.empty
-
 
   //#endregion
 

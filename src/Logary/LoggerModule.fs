@@ -262,7 +262,7 @@ module Logger =
       sw.Stop()
       let level = Duration.FromTicks sw.ElapsedTicks |> decider
       sw.toGauge()
-      |> Message.gaugeMessage (PointName.format name)
+      |> Message.gaugeWithUnit name "duration"
       |> Message.setLevel level
       |> addSpans
 

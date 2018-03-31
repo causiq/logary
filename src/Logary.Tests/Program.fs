@@ -14,7 +14,7 @@ open Logary.Message
 open Logary.Configuration
 open FsCheck
 
-type Obj() =
+type SampleObject() =
   member x.PropA =
     45
   member x.PropB =
@@ -220,29 +220,6 @@ let tests =
       )
     ]
 
-    testList "Internals" [
-      testCase "Seq.any" <| fun () ->
-        Tests.skiptest "TBD"
-
-      testCase "Seq.last" <| fun () ->
-        Tests.skiptest "TBD"
-
-      testCase "Promise.instapromise" <| fun () ->
-        Tests.skiptest "TBD"
-
-      testCase "Alt.apply" <| fun () ->
-        Tests.skiptest "TBD"
-
-      testCase "List.Job.apply" <| fun () ->
-        Tests.skiptest "TBD"
-
-      testCase "List.traverseJobA" <| fun () ->
-        Tests.skiptest "TBD"
-
-      testCase "List.traverseAltA" <| fun () ->
-        Tests.skiptest "TBD"
-    ]
-
     testList "Config" [
       testCase "create" <| fun () ->
         Config.create "tests" "hostname-123" |> ignore
@@ -374,7 +351,9 @@ let tests =
            Expect.equal c names.Length "Should get same length after set fields"
 
       testPropertyWithConfig fsCheckConfig "gaugeMessage" <| fun g ->
-        let saved = gaugeMessage "gaugeTest" g |> tryGetGauge "gaugeTest"
+        let saved =
+          gaugeWithUnit (PointName.parse "Car.Speedometer") "dv/dt" g
+          |> tryGetGauge "dv/dt"
         Expect.equal saved (Some g) "Should be same"
 
       testCase "getAllGauges" <| fun _ ->
@@ -394,7 +373,7 @@ let tests =
         Expect.isTrue msgHasAllTag "Should have all tags"
 
       testCase "setFieldsFromObject: obj -> Message -> Message" <| fun () ->
-        let m = eventX "Hello world" Info |> setFieldsFromObject (Obj())
+        let m = eventX "Hello world" Info |> setFieldsFromObject (SampleObject())
         let field = m |> tryGetField "PropA"
         Expect.equal field (Some 45) "Should have PropA"
 
@@ -413,12 +392,12 @@ let tests =
         Expect.contains errors (upcast e2) "Should have arg null exn"
 
       testCase "time and timeJob" <| fun _ ->
-        let name = "some.gauge.at.location"
-        let timeFun = time (PointName.parse name) id
-        let (res, msg) = timeFun 100
+        let name = PointName.parse "some.gauge.at.location"
+        let timeFun = time name id
+        let res, msg = timeFun 100
         Expect.equal res 100 "Should have result"
 
-        let g = tryGetGauge name msg
+        let g = tryGetGauge "time" msg
         Expect.isSome g "Should have guage"
         match g with
         | Some (Gauge (_, Units.Scaled (Seconds, _))) -> ()
@@ -429,7 +408,7 @@ let tests =
 
         let test res msg =
           Expect.equal res 100 "Should have result"
-          let g = tryGetGauge name msg
+          let g = tryGetGauge "time" msg
           Expect.isSome g "Should have guage"
           match g with
           | Some (Gauge (_, Units.Scaled (Seconds, _))) -> ()

@@ -108,14 +108,14 @@ let tests =
 
         // given
         let! targets = [mockTarget "1"; mockTarget "2"; mockTarget "3"; mockTarget "4"] |> Job.seqCollect
-        let! (sendMsg, ctss) = run processing targets
+        let! sendMsg, ctss = run processing targets
 
         // when
         let rec generateLog count =
           if count = 100 then Alt.always ()
           else
             timeOutMillis 10 ^=> fun _ ->
-              (Message.gauge "someGaugeType" 2.
+              (Message.gauge (PointName.parse "A") "someGaugeType" 2.
               |> Message.setContext KnownLiterals.ServiceContextName "svc1"
               |> sendMsg)
               ^=>. generateLog (count - 1)

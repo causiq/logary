@@ -1218,7 +1218,7 @@ module File =
   /// Create a new File target through this.
   [<CompiledName "Create">]
   let create conf name =
-    TargetConf.create Policy.exponentialBackoffSix 512us (Impl.loop conf) name
+    TargetConf.create Policy.exponentialBackoffForever 512us (Impl.loop conf) name
 
   /// Use with LogaryFactory.New(s => s.Target<File.Builder>())
   type Builder(conf, callParent: ParentCallback<Builder>) =

@@ -69,6 +69,7 @@ module LiterateTesting =
         colourWriter    = fun sem parts -> writtenParts.AddRange(parts) },
     fun () -> writtenParts |> List.ofSeq
 
+/// 5 values
 let levels expectedTimeText: LiterateConsole.ColouredText list =
   [ { text = "[";                    colours = LiterateTesting.Theme.punctuationColours }
     { text = expectedTimeText;       colours = LiterateTesting.Theme.subtextColours }
@@ -336,7 +337,7 @@ let tests = [
         [ yield! levels expectedTimeText
           yield { text = "Gauges: "; colours = LiterateTesting.Theme.textColours }
           yield { text = "["; colours = LiterateTesting.Theme.punctuationColours }
-          yield { text = "A.B.C.Check"; colours = LiterateTesting.Theme.nameSymbolColours }
+          yield { text = "Check"; colours = LiterateTesting.Theme.nameSymbolColours }
           yield { text = " took "; colours = LiterateTesting.Theme.subtextColours }
           yield { text = "60,03"; colours = LiterateTesting.Theme.numericSymbolColours }
           yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
@@ -345,13 +346,13 @@ let tests = [
           yield { text = "]"; colours = LiterateTesting.Theme.punctuationColours }
           yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
           yield { text = "<"; colours = LiterateTesting.Theme.punctuationColours }
-          yield { text = ""; colours = LiterateTesting.Theme.subtextColours }
+          yield { text = "A.B.C"; colours = LiterateTesting.Theme.subtextColours }
           yield { text = ">"; colours = LiterateTesting.Theme.punctuationColours }
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
           yield { text = "  gauges:"; colours = LiterateTesting.Theme.textColours }
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
           yield { text = "    "; colours = LiterateTesting.Theme.textColours }
-          yield { text = "A.B.C.Check"; colours = LiterateTesting.Theme.subtextColours }
+          yield { text = "Check"; colours = LiterateTesting.Theme.subtextColours }
           yield { text = " => "; colours = LiterateTesting.Theme.punctuationColours }
           yield { text = "\"60.029379 ms\""; colours = LiterateTesting.Theme.stringSymbolColours }
         ]
@@ -363,7 +364,7 @@ let tests = [
         [ yield! levels expectedTimeText
           yield { text = "Gauges: "; colours = LiterateTesting.Theme.textColours }
           yield { text = "["; colours = LiterateTesting.Theme.punctuationColours }
-          yield { text = "A.B.C.Check"; colours = LiterateTesting.Theme.nameSymbolColours }
+          yield { text = "Check"; colours = LiterateTesting.Theme.nameSymbolColours }
           yield { text = " took "; colours = LiterateTesting.Theme.subtextColours }
           yield { text = "133,38"; colours = LiterateTesting.Theme.numericSymbolColours }
           yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
@@ -372,13 +373,13 @@ let tests = [
           yield { text = "]"; colours = LiterateTesting.Theme.punctuationColours }
           yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
           yield { text = "<"; colours = LiterateTesting.Theme.punctuationColours }
-          yield { text = ""; colours = LiterateTesting.Theme.subtextColours }
+          yield { text = "A.B.C"; colours = LiterateTesting.Theme.subtextColours }
           yield { text = ">"; colours = LiterateTesting.Theme.punctuationColours }
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
           yield { text = "  gauges:"; colours = LiterateTesting.Theme.textColours }
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
           yield { text = "    "; colours = LiterateTesting.Theme.textColours }
-          yield { text = "A.B.C.Check"; colours = LiterateTesting.Theme.subtextColours }
+          yield { text = "Check"; colours = LiterateTesting.Theme.subtextColours }
           yield { text = " => "; colours = LiterateTesting.Theme.punctuationColours }
           yield { text = "\"133.379 µs\""; colours = LiterateTesting.Theme.stringSymbolColours }
                  ]
@@ -390,7 +391,7 @@ let tests = [
         [ yield! levels expectedTimeText
           yield { text = "Gauges: "; colours = LiterateTesting.Theme.textColours }
           yield { text = "["; colours = LiterateTesting.Theme.punctuationColours }
-          yield { text = "A.B.C.Check"; colours = LiterateTesting.Theme.nameSymbolColours }
+          yield { text = "Check"; colours = LiterateTesting.Theme.nameSymbolColours }
           yield { text = " took "; colours = LiterateTesting.Theme.subtextColours }
           yield { text = "139"; colours = LiterateTesting.Theme.numericSymbolColours }
           yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
@@ -399,17 +400,17 @@ let tests = [
           yield { text = "]"; colours = LiterateTesting.Theme.punctuationColours }
           yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
           yield { text = "<"; colours = LiterateTesting.Theme.punctuationColours }
-          yield { text = ""; colours = LiterateTesting.Theme.subtextColours }
+          yield { text = "A.B.C"; colours = LiterateTesting.Theme.subtextColours }
           yield { text = ">"; colours = LiterateTesting.Theme.punctuationColours }
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
           yield { text = "  gauges:"; colours = LiterateTesting.Theme.textColours }
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
           yield { text = "    "; colours = LiterateTesting.Theme.textColours }
-          yield { text = "A.B.C.Check"; colours = LiterateTesting.Theme.subtextColours }
+          yield { text = "Check"; colours = LiterateTesting.Theme.subtextColours }
           yield { text = " => "; colours = LiterateTesting.Theme.punctuationColours }
           yield { text = "\"139 ns\""; colours = LiterateTesting.Theme.stringSymbolColours }
           ]
-        "Should print [06:15:02 INF] A.B.C.Perform took 139 μs, because nanoseconds is as accurate as it gets"
+        "Should print [06:15:02 INF] Check took 139 μs, because nanoseconds is as accurate as it gets"
 
     yield testLiterateCase "Single measurement per second gauge" (gaugeMessage 1.4562) <| fun expectedTimeText parts ->
       Expect.sequenceEqual
@@ -417,7 +418,7 @@ let tests = [
         [ yield! levels expectedTimeText
           yield { text = "Gauges: "; colours = LiterateTesting.Theme.textColours }
           yield { text = "["; colours = LiterateTesting.Theme.punctuationColours }
-          yield { text = "Revolver"; colours = LiterateTesting.Theme.nameSymbolColours }
+          yield { text = "spin"; colours = LiterateTesting.Theme.nameSymbolColours }
           yield { text = ":"; colours = LiterateTesting.Theme.punctuationColours }
           yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
           yield { text = "1,4562"; colours = LiterateTesting.Theme.numericSymbolColours }
@@ -426,17 +427,17 @@ let tests = [
           yield { text = "]"; colours = LiterateTesting.Theme.punctuationColours }
           yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
           yield { text = "<"; colours = LiterateTesting.Theme.punctuationColours }
-          yield { text = ""; colours = LiterateTesting.Theme.subtextColours }
+          yield { text = "Revolver"; colours = LiterateTesting.Theme.subtextColours }
           yield { text = ">"; colours = LiterateTesting.Theme.punctuationColours }
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
           yield { text = "  gauges:"; colours = LiterateTesting.Theme.textColours }
           yield { text = Environment.NewLine; colours = LiterateTesting.Theme.textColours }
           yield { text = "    "; colours = LiterateTesting.Theme.textColours }
-          yield { text = "Revolver"; colours = LiterateTesting.Theme.subtextColours }
+          yield { text = "spin"; colours = LiterateTesting.Theme.subtextColours }
           yield { text = " => "; colours = LiterateTesting.Theme.punctuationColours }
           yield { text = "\"1.4562 s/revolution\""; colours = LiterateTesting.Theme.stringSymbolColours }
                    ]
-        "Should print [06:15:02 INF] Revolver: 1,4562 s/revolution"
+        "Should print [06:15:02 INF] spin: 1,4562 s/revolution"
 
     yield testLiterateCase "Multiple measurements per second gauge" multiGaugeMessage <| fun expectedTimeText parts ->
       //LiterateConsole.empty.colourWriter (Global.getConsoleSemaphore ()) (upcast parts)

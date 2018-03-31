@@ -639,7 +639,7 @@ type LoggerExtensions =
   static member LogGauge(logger: Logger,
                          value: float,
                          units: Units,
-                         formatTemplate: string,
+                         gaugeName: string,
                          [<Optional; DefaultParameterValue(null:obj)>] fields: obj,
                          [<Optional; DefaultParameterValue(null:Func<Message, Message>)>] transform: Func<Message, Message>,
                          [<Optional; DefaultParameterValue(true)>] backpressure: bool,
@@ -651,9 +651,8 @@ type LoggerExtensions =
     let fields = if isNull fields then obj() else fields
 
     let message =
-      gaugeWithUnit (PointName.format logger.name) value units
+      gaugeWithUnit logger.name gaugeName (Gauge (value, units))
       |> setFieldsFromObject fields
-      |> setField "template" formatTemplate // overwrites any field named "template"
 
     let logFn = MiscHelpers.chooseLogFun logger message.level backpressure flush timeoutMillis
 
