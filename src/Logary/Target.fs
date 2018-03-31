@@ -17,7 +17,8 @@ type TargetConf = // formerly TargetUtils
   { name: string
     rules: Rule list
     bufferSize: uint16
-    /// Supervision policy
+    /// Supervision policy. Use `Logary.Internals.Policy` to choose. By default,
+    /// uses exponential backup with a maximum delay, retrying forever.
     policy: Policy
     middleware: Middleware list
     server: RuntimeInfo * TargetAPI -> Job<unit> }
@@ -31,20 +32,20 @@ module TargetConf =
 
   let create policy bufferSize server name: TargetConf =
     let will = Will.create ()
-    { name       = name
-      rules      = Rule.empty :: []
+    { name = name
+      rules = Rule.empty :: []
       bufferSize = bufferSize
-      policy     = policy
+      policy = policy
       middleware = []
-      server     = server will }
+      server = server will }
 
   let createSimple server name: TargetConf =
-    { name       = name
-      rules      = Rule.empty :: []
+    { name = name
+      rules = Rule.empty :: []
       bufferSize = 512us
-      policy     = Policy.exponentialBackoffSix
+      policy = Policy.exponentialBackoffForever
       middleware = []
-      server     = server }
+      server = server }
 
   let bufferSize size conf =
     { conf with bufferSize = size }
@@ -82,24 +83,6 @@ module Target =
 
   /// Logs the `Message` to all the targets.Target Middleware compose at here
   let logAll (xs: T seq) (msg: Message): Alt<Promise<unit>> =
-    // NOTE: it would probably be better to create a nack that cancels
-    // all outstanding requests to log (but lets others through)
-    // let targets = xs |> Seq.filter (fun t -> needSendToTarget t msg) |> List.ofSeq
-    // let latch = Latch targets.Length
-    // let traverse =
-    //   targets
-    //   |> List.traverseAltA (fun target ->
-    //      // TODO: think about compose time, as later as possible,
-    //      // could compose before put to api (will cause in another thread？)
-    //      let msg = msg |> Middleware.compose target.middleware
-    //      Alt.prepareJob <| fun () ->
-    //        let ack = IVar ()
-    //        Job.start (ack ^=>. Latch.decrement latch) >>-.
-    //        RingBuffer.put target.api.requests (Log (msg, ack)))
-    //   |> Alt.afterFun ignore
-
-    // traverse ^->. memo (Latch.await latch)
-
     let allAppendedAcks = IVar ()
 
     let appendToBufferConJob =
@@ -120,12 +103,6 @@ module Target =
   /// the Message was acked.
   let log (x: T) (msg: Message): Alt<Promise<unit>> =
     logAll [x] msg
-    // if needSendToTarget x msg then
-    //   let ack = IVar ()
-    //   Log (msg, ack)
-    //   |> RingBuffer.put x.api.requests
-    //   |> Alt.afterFun (fun () -> ack :> Promise<unit>)
-    // else Promise.instaPromise
 
   /// Send a flush RPC to the target and return the async with the ACKs. This will
   /// create an Alt that is composed of a job that blocks on placing the Message

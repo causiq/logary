@@ -87,7 +87,7 @@ module Policy =
 
   /// An exponential backoff strategy that sleeps: 100ms, 200ms, 400ms, 800ms,
   /// 1600ms, 3200ms and then maxes out at 6400ms.
-  let exponentialBackoffSix =
+  let exponentialBackoffForever =
     exponentialBackoff (* init [ms] *) 100u
                        (* mult *) 2u
                        (* max dur [ms] *) 6400u
