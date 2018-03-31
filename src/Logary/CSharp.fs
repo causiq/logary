@@ -55,19 +55,19 @@ type FSharpFunc =
   /// Convert a Func into an F# function
   static member OfFunc (f: Func<_,_,_>) =
     fun x y -> f.Invoke(x, y)
-    
+
   /// Convert a Func into an F# function
   static member OfFunc (f: Func<_,_,_,_>) =
     fun x y z -> f.Invoke(x, y, z)
-    
+
   /// Convert a Func into an F# function
   static member OfFunc (f: Func<_,_,_,_, _>) =
     fun x y z a -> f.Invoke(x, y, z, a)
-    
+
   /// Convert a Func into an F# function
   static member OfFunc (f: Func<_,_,_,_,_,_>) =
     fun x y z a b -> f.Invoke(x, y, z, a, b)
-    
+
   /// Convert a Func into an F# function
   static member OfFunc (f: Func<_,_,_,_,_,_,_>) =
     fun x y z a b c -> f.Invoke(x, y, z, a, b, c)
@@ -84,7 +84,7 @@ type Funcs =
   [<Extension>]
   static member ToFunc (a: Action<_>) =
     Func<_,_>(a.Invoke)
-  
+
   /// Converts an action to a function returning Unit
   [<Extension>]
   static member ToFunc (a: Action<_,_>) =
@@ -104,7 +104,7 @@ type Funcs =
   [<Extension>]
   static member ToFunc (f: Action<_,_,_, _, _>) =
     Func<_,_,_,_,_,_>(fun a b c d e -> f.Invoke(a, b, c, d, e))
-    
+
   /// Converts an action to a function returning Unit
   [<Extension>]
   static member ToFunc (g: Action<_,_,_, _, _, _>) =
@@ -229,7 +229,7 @@ type Funcs =
   [<Extension>]
   static member Untuple (f: Action<_ * _ * _ * _>) =
     Action<_,_,_,_>(fun a b c d -> f.Invoke(a,b,c,d))
-    
+
   /// Converts an action taking a 5-tuple into an action with 5 parameters
   [<Extension>]
   static member Untuple (g: Action<_ * _ * _ * _ * _>) =
@@ -322,7 +322,7 @@ type FSharpOption =
       None
 
   [<Extension>]
-  static member ToFSharpOption v = 
+  static member ToFSharpOption v =
     match box v with
     | null ->
       None
@@ -463,11 +463,11 @@ type FSharpList =
     List.choose chooser.Invoke l
 
   [<Extension>]
-  static member TryFind (l, pred: _ Predicate) = 
+  static member TryFind (l, pred: _ Predicate) =
     List.tryFind pred.Invoke l
 
   [<Extension>]
-  static member TryFind (l, value) = 
+  static member TryFind (l, value) =
     List.tryFind ((=) value) l
 
   [<Extension>]
@@ -554,7 +554,7 @@ module Alt =
     xAP
     |> Alt.afterFun (fun prom -> toTask promiseCt prom :> Task)
     |> toTask bufferCt
- 
+
 [<Extension>]
 type LoggerExtensions =
 
@@ -651,9 +651,9 @@ type LoggerExtensions =
     let fields = if isNull fields then obj() else fields
 
     let message =
-      Message.gaugeWithUnit (PointName.format logger.name) value units
-      |> Message.setFieldsFromObject fields
-      |> Message.setField "template" formatTemplate // overwrites any field named "template"
+      gaugeWithUnit (PointName.format logger.name) value units
+      |> setFieldsFromObject fields
+      |> setField "template" formatTemplate // overwrites any field named "template"
 
     let logFn = MiscHelpers.chooseLogFun logger message.level backpressure flush timeoutMillis
 
@@ -715,7 +715,7 @@ type LoggerExtensions =
       Logger.timeWithAckT logger nameEnding transform action
       >> fun (_, alt) -> Alt.toTasks bufferCt promiseCt alt
     Funcs.ToFunc<_> runnable
-    
+
   /// Run the function `func` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Seconds. As an exception to the rule,
   /// it is allowed to pass `nameEnding` as null to this function. This
@@ -789,7 +789,7 @@ type LoggerExtensions =
       )
     Funcs.ToFunc runnable
 
-  
+
   // TODO: time (single input, buffer written, ignore flush)
   // TODO: timeX (like above)
 
@@ -853,7 +853,7 @@ type LoggerExtensions =
     Funcs.ToFunc<'input, 'res> runnable
 
   // Corresponds to: timeTaskSimple
-  
+
   /// NOTE: You need to execute the returned function. Also see Logary.CSharp.MessageExtensions.TimeScope.
   ///
   /// Run the function `func` and measure how long its returned Task takes; logging that

@@ -93,7 +93,7 @@ module Uniform =
     if count' <= bigint r.values.Length then
       r.values.[int count' - 1] <- value
     else
-      let rnd = Rnd.nextInt' (min (int count') Int32.MaxValue)
+      let rnd = Rnd.nextIntMax (min (int count') Int32.MaxValue)
       if rnd < r.values.Length then
         r.values.[rnd] <- value
 

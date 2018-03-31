@@ -63,38 +63,33 @@ module Message =
     setContext name value message
 
   [<CompiledName "SetContextValues">]
-  let setContextValues (values : (string * obj) seq) message =
+  let setContextValues (values: (string * obj) seq) message =
     values |> Seq.fold (fun m (name, value) -> setContext name value m) message
 
   [<CompiledName "SetContextFromMap">]
-  let setContextFromMap (m: Map<string, obj>) message =
-    setContextValues (m |> Map.toSeq) message
+  let setContextFromMap (context: Map<string, obj>) message =
+    context |> Seq.fold (fun m (KeyValue (k, v)) -> m |> setContext k v) message
 
-  /// Uses reflection to set all
   [<CompiledName "SetContextFromObject">]
-  let setContextFromObject (data: obj) message =
-    Map.ofObject data
-    |> HashMap.toSeq
-    |> fun values -> setContextValues values message
+  let setContextFromObject (o: obj) message =
+    Reflection.propsFrom o
+    |> Seq.fold (fun m (label, value) -> m |> setContext label value) message
 
   /// Tries to get a context value
   [<CompiledName "TryGetContext">]
-  let inline tryGetContext name message =
+  let tryGetContext name message =
     if isNull name then None
     else Optic.get (Optic.contextValue_ name) message
 
-  [<CompiledName "GetContextsByPrefix">]
-  let inline getContextsByPrefix (prefix: string) message =
+  [<CompiledName "GetContextByPrefix">]
+  let getContextByPrefix (prefix: string) message =
     if String.IsNullOrEmpty prefix then
-      message.context |> HashMap.toSeq
-    else
-      let prefixLen = prefix.Length
       message.context
-      |> Seq.choose (fun (KeyValue (k,v)) ->
-         if k.StartsWith prefix then
-           let withoutPrefix = k.Substring(prefixLen)
-           Some (withoutPrefix, v)
-         else None)
+      |> HashMap.toSeq
+    else
+      message.context
+      |> Seq.filter (fun (KeyValue (k, _)) -> k.StartsWith prefix)
+      |> Seq.map (fun (KeyValue (k, v)) -> k.Substring(prefix.Length), v)
 
   /// Gets all context values that are NOT:
   /// - fields
@@ -102,7 +97,7 @@ module Message =
   /// - exceptions
   ///
   [<CompiledName "GetOthers">]
-  let inline getOthers message =
+  let getOthers message =
     message.context
     |> Seq.choose (fun (KeyValue (k, v)) ->
       if k.StartsWith KnownLiterals.FieldsPrefix
@@ -117,35 +112,17 @@ module Message =
 
   /// Get a partial setter lens to a field
   [<CompiledName "SetField">]
-  let inline setField name value message =
+  let setField name value message =
     let ctxFieldsKey = KnownLiterals.FieldsPrefix + name
     setContext ctxFieldsKey value message
 
-  /// Get a partial setter lens to a field with an unit
-  /// trans field to gauge
+  /// Sets the field with a value and its unit, on the message value.
   [<CompiledName "SetFieldUnit">]
-  let inline setFieldUnit name value units message =
+  let setFieldUnit name value units message =
     setField name (Gauge (value,units)) message
 
-  /// trans field to gauge
-
-  [<Obsolete ("Use setField instead.")>]
-  [<CompiledName "SetFieldValue">]
-  let setFieldValue (name: string) (field: Field) message =
-    setField name field message
-
-  [<Obsolete ("Use SetFieldsFromSeq instead.")>]
-  [<CompiledName "SetFieldValues">]
-  let setFieldValues (fields : (string * Field) seq) message =
-    fields |> Seq.fold (fun m (name, value) -> setFieldValue name value m) message
-
-  [<Obsolete ("Use SetFieldsFromSeq instead.")>]
-  [<CompiledName "SetFieldValuesArray">]
-  let setFieldValuesArray (fields : (string * Field)[]) message =
-    fields |> Array.fold (fun m (name, value) -> setFieldValue name value m) message
-
   [<CompiledName "SetFieldsFromSeq">]
-  let setFieldsFromSeq (fields : (string * obj) seq) message =
+  let setFieldsFromSeq (fields: (string * obj) seq) message =
     fields
     |> Seq.fold (fun m (name, value) -> setField name value m) message
 
@@ -157,18 +134,14 @@ module Message =
   [<CompiledName "SetFieldsFromMap">]
   let setFieldsFromHashMap (m: HashMap<string, obj>) message =
     m
-    |> Seq.fold (fun m (KeyValue (k,v)) -> setField k v m ) message
+    |> Seq.fold (fun m (KeyValue (k,v)) -> m |> setField k v) message
 
-  [<Obsolete ("Use setField instead.")>]
-  [<CompiledName "SetFieldFromObject">]
-  let setFieldFromObject name (data: obj) message =
-    setField name data message
-
-  /// Reflects over the object and sets the appropriate fields.
+  /// Reflects properties of plain old C# objects and puts those properties as
+  /// fields in the Message's context.
   [<CompiledName "SetFieldsFromObject">]
-  let setFieldsFromObject (data: obj) message =
-    Map.ofObject data
-    |> flip setFieldsFromHashMap message
+  let setFieldsFromObject (o: obj) message =
+    Reflection.propsFrom o
+    |> Seq.fold (fun m (label, value) -> m |> setField label value) message
 
   /// Get a partial getter lens to a field
   [<CompiledName "TryGetField">]
@@ -178,12 +151,12 @@ module Message =
 
   [<CompiledName "GetAllFields">]
   let getAllFields message =
-    getContextsByPrefix KnownLiterals.FieldsPrefix message
+    getContextByPrefix KnownLiterals.FieldsPrefix message
 
   [<CompiledName "GetAllGauges">]
   let getAllGauges message =
     message
-    |> getContextsByPrefix KnownLiterals.GaugeTypePrefix
+    |> getContextByPrefix KnownLiterals.GaugeTypePrefix
     |> Seq.choose (function
       | k, (:? Gauge as gauge) -> Some (k, gauge)
       | _ -> None)
@@ -264,16 +237,6 @@ module Message =
   [<CompiledName "Gauge">]
   let gauge gaugeType value =
     gaugeMessage gaugeType (Gauge (value, Units.Scalar))
-
-  [<Obsolete ("Use gaugeWithUnit instead.")>]
-  [<CompiledName "Derived">]
-  let derivedWithUnit dp value units =
-    gaugeWithUnit dp value units
-
-  [<Obsolete ("Use gauge instead.")>]
-  [<CompiledName "Derived">]
-  let derived dp value =
-    gauge dp value
 
   /// Create a verbose event message
   [<CompiledName "EventVerbose">]
