@@ -69,16 +69,16 @@ let testCaseTarget name fn =
 [<Tests>]
 let writesOverHttp =
   let msg =
-    Message.gaugeWithUnitf "Processor" "% User Time" 1. Percent
+    Message.gaugeWithUnitfs "Processor" "% User Time" Percent 1.
     |> Message.setField "inst1" 0.3463
     |> Message.setField "inst2" 0.223
     |> Message.setContext "service" "svc-2"
     |> Message.tag "my-tag"
     |> Message.tag "ext"
 
-  let msg1 = Message.gaugef "Processor" "Number 1" 0.3463
-  let msg2 = Message.gaugef "Processor" "Number 2" 0.3463
-  let msg3 = Message.gaugef "Processor" "Number 3" 0.3463
+  let msg1 = Message.gaugefs "Processor" "Number 1" 0.3463
+  let msg2 = Message.gaugefs "Processor" "Number 2" 0.3463
+  let msg3 = Message.gaugefs "Processor" "Number 3" 0.3463
 
   testList "writes over HTTP" [
     testCaseTarget "write message" (fun state target ->
@@ -114,7 +114,7 @@ let writesOverHttp =
       })
 
     testCaseTarget "target acks" (fun state target ->
-      let msg = Message.gaugef "S1" "Number 1" 0.3463
+      let msg = Message.gaugefs "S1" "Number 1" 0.3463
       job {
         let! ackPromise = Target.log target msg
         let! req2 = Ch.take state.req

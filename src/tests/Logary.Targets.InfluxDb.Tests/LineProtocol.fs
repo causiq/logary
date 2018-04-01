@@ -61,7 +61,7 @@ let lineProtocol =
 
       testCase "Simplest Valid Point (measurement + field + ts)" <| fun _ ->
         // sensor name is empty, measurement name is disk_free
-        gaugei "" "disk_free" 442221834240L
+        gaugei PointName.empty "disk_free" 442221834240L
           |> setNanoEpoch 1435362189575692182L
           |> Serialise.message
           |> Expect.equal
@@ -69,7 +69,7 @@ let lineProtocol =
               "disk_free value=442221834240i 1435362189575692182"
 
       testCase "With Tags + ts" <| fun _ ->
-        gaugei "" "disk_free" 442221834240L
+        gaugei PointName.empty "disk_free" 442221834240L
           |> setContext "hostname" "server01"
           |> setContext "disk_type" "SSD"
           |> setNanoEpoch 1435362189575692182L
