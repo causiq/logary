@@ -94,7 +94,7 @@ module Message =
   let getOthers message =
     let isPrefixed (k: string) =
       k.StartsWith KnownLiterals.FieldsPrefix
-      || k.StartsWith KnownLiterals.GaugeTypePrefix
+      || k.StartsWith KnownLiterals.GaugeNamePrefix
       || k = KnownLiterals.ErrorsContextName
 
     message.context |> Seq.choose (function
@@ -138,7 +138,6 @@ module Message =
     (message, Reflection.propsFrom o)
     ||> Seq.fold (fun m (label, value) -> m |> setField label value)
 
-  /// Get a partial getter lens to a field
   [<CompiledName "TryGetField">]
   let tryGetField name message =
     let ctxFieldsKey = KnownLiterals.FieldsPrefix + name
@@ -148,10 +147,12 @@ module Message =
   let getAllFields message =
     getContextByPrefix KnownLiterals.FieldsPrefix message
 
+  // GAUGES
+
   [<CompiledName "GetAllGauges">]
   let getAllGauges message =
     message
-    |> getContextByPrefix KnownLiterals.GaugeTypePrefix
+    |> getContextByPrefix KnownLiterals.GaugeNamePrefix
     |> Seq.choose (function
       | k, (:? Gauge as gauge) -> Some (k, gauge)
       | _ -> None)
@@ -213,7 +214,7 @@ module Message =
   /// gauges to the message. You can add gauges to events as well.
   [<CompiledName "AddGauge">]
   let addGauge gaugeName (gauge: Gauge) message =
-    let gaugeName = KnownLiterals.GaugeTypePrefix + gaugeName
+    let gaugeName = KnownLiterals.GaugeNamePrefix + gaugeName
     message |> setContext gaugeName gauge
 
   /// A single Message can take multiple gauges; use this function to add further
@@ -263,8 +264,8 @@ module Message =
     gaugeWithUniti sensorNameStr gaugeName ival Units.Scalar
 
   [<CompiledName "TryGetGauge">]
-  let tryGetGauge gaugeType message: Gauge option =
-    let gaugeTypeName = KnownLiterals.GaugeTypePrefix + gaugeType
+  let tryGetGauge gaugeName message: Gauge option =
+    let gaugeTypeName = KnownLiterals.GaugeNamePrefix + gaugeName
     message |> tryGetContext gaugeTypeName
 
   /// Create a verbose event message
@@ -484,6 +485,40 @@ module Message =
     | _ -> List.empty
 
   //#endregion
+
+  /// Patterns to match against the context; useful for extracting the data
+  /// slightly more semantically than "obj"-everything. Based on the known prefixes
+  /// in `KnownLiterals`.
+  module Patterns =
+    open KnownLiterals
+    open System
+
+    /// Pattern match the key
+    let (|Intern|Field|Gauge|Tags|Unmarked|) (KeyValue (key: string, value: obj)) =
+      match key with
+      | _ when key = ErrorsContextName
+            || key = ServiceContextName
+            || key = HostContextName
+            || key = SinkTargetsContextName ->
+        Intern
+
+      | _ when key = TagsContextName ->
+        let tags = unbox<Set<string>> value
+        Tags tags
+
+      | _ when key.StartsWith FieldsPrefix ->
+        let k = key.Substring FieldsPrefix.Length
+        Field (k, value)
+
+      | _ when key.Equals(DefaultGaugeName, StringComparison.InvariantCulture) ->
+        Gauge (String.Empty, value :?> Gauge)
+
+      | _ when key.StartsWith GaugeNamePrefix ->
+        let k = key.Substring GaugeNamePrefix.Length
+        Gauge (k, value :?> Gauge)
+
+      | _ ->
+        Unmarked
 
 [<AutoOpen>]
 module MessageEx =

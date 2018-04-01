@@ -13,7 +13,7 @@ module KnownLiterals =
 
   /// To recognize all gauge fields for generate formatted msg
   [<Literal>]
-  let GaugeTypePrefix = LogaryPrefix + "gauge."
+  let GaugeNamePrefix = LogaryPrefix + "gauge."
 
   /// for api compatibility, when user don't provide gauge type
   [<Literal>]
@@ -35,10 +35,8 @@ module KnownLiterals =
   [<Literal>]
   let SinkTargetsContextName =  LogaryPrefix +  "sink.targets"
 
-
 /// Time calculation constants
 module Constants =
-
   [<Literal>]
   let SecondsPerTick = 0.0000001
   [<Literal>]

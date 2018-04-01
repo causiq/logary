@@ -9,160 +9,132 @@ open HttpFs.Composition
 open Logary
 open Logary.Message
 open Logary.Internals
+open Logary.Internals.TypeShape.Core
 open Logary.Configuration
 
 /// An implementation for the InfluxDb-specific string format.
-module Serialisation =
+module Serialise =
+  [<Struct>]
+  type Escaped =
+    private Escaped of value:string
+  with
+    member x.isEmpty =
+      let (Escaped s) = x in String.IsNullOrWhiteSpace s
+    static member internal create value =
+      if isNull value then nullArg "value"
+      Escaped value
+    static member fieldValue (nonEscapedString: string) =
+      nonEscapedString
+        .Replace(",", @"\,")
+        .Replace(" ", "\ ")
+        .Replace("=", "\=")
+      |> Escaped
+    static member fieldName (nonEscapedString: string) =
+      Escaped.fieldValue nonEscapedString
+    static member tagValue (nonEscapedString: string) =
+      Escaped.fieldValue nonEscapedString
+    static member tagName (nonEscapedString: string) =
+      Escaped.fieldValue nonEscapedString
+    override x.ToString () =
+      let (Escaped s) = x in s
 
-  let serialiseTimestamp (ts: EpochNanoSeconds) =
-    ts.ToString(Culture.invariant)
+  let timestamp (ts: EpochNanoSeconds): Escaped =
+    Escaped.create (ts.ToString(Culture.invariant))
 
-  let escapeString (s: string) =
-    s
-     .Replace(",", @"\,")
-     .Replace(" ", "\ ")
-     .Replace("=", "\=")
+  let units: Units -> Escaped option = function
+    | Scalar ->
+      None
+    | other ->
+      Some (Escaped.fieldValue other.symbol)
 
-  let escapeStringValue (s: string) =
-    s
-     .Replace("\"", "\\\"")
-
-  let serialiseStringTag (s: string) =
-    escapeString s
-
-  let serialiseStringValue (s: string) =
-    "\"" + escapeStringValue s + "\""
-
-  let serialisePointName (pn: PointName) =
-    escapeString (pn.ToString())
-
-  let printTags = function
-    | [] ->
-      ""
-    | xs ->
-      // TO CONSIDER: assumes values are escaped
-      let joined =
-        xs |> List.map (fun (x, y) -> sprintf "%s=%s" (escapeString x) y)
-           |> String.concat ","
-      "," + joined
-
-  let printFields = function
-    | [] ->
-      "value=0"
-    | xs ->
-      // TO CONSIDER: assumes values are escaped
-      xs |> List.map (fun (x, y) -> sprintf "%s=%s" (escapeString x) y)
-         |> String.concat ","
-
-  let mapExtract fExtractValue =
-     HashMap.map (fun k -> fExtractValue >> Option.orDefault (fun () -> ""))
-     >> Seq.filter (fun (KeyValue (k, v)) -> v <> String.Empty)
-     >> Seq.map (fun (KeyValue (k, v)) -> k, v)
-     >> Seq.sortBy fst
-     >> List.ofSeq
-
-  let rec getValues (valueKey: string) isTag (kvs: (string * string) list) (values: (string * string) list) =
-    function
+  let value: Value -> Escaped = function
     | Float v ->
-      kvs, (valueKey, v.ToString(Culture.invariant)) :: values
-
+      Escaped.create (v.ToString(Culture.invariant))
     | Int64 v ->
-      kvs, (valueKey, v.ToString(Culture.invariant) + "i") :: values
-
+      Escaped.create (v.ToString(Culture.invariant) + "i")
     | BigInt v ->
       if v > bigint Int64.MaxValue then
-        let str = Int64.MaxValue.ToString(Culture.invariant) + "i"
-        kvs, (valueKey, str) :: values
+        Escaped.create (Int64.MaxValue.ToString(Culture.invariant) + "i")
       elif v < bigint Int64.MinValue then
-        let str = Int64.MinValue.ToString(Culture.invariant) + "i"
-        kvs, (valueKey, str) :: values
+        Escaped.create (Int64.MinValue.ToString(Culture.invariant) + "i")
       else
-        let str = v.ToString(Culture.invariant) + "i"
-        kvs, (valueKey, str) :: values
+        Escaped.create (v.ToString(Culture.invariant) + "i")
+    | Fraction _ as v ->
+      Escaped.create (v.toFloat().ToString(Culture.invariant))
 
-    | Fraction (n, d) ->
-      kvs,
-      (valueKey, (n / d).ToString(Culture.invariant)) :: values
-
-  and extractSimple valueKey isTag v =
-    match getValues valueKey isTag [] [] v with
-    | _, (_, str) :: _ -> Some str
-    | _ -> None
-
-  let simpleValue = getValues "value"
-
-  let removeSuppressTag suppress =
-    if suppress then
-      Map.map (fun k v ->
-        match k with
-        | KnownLiterals.TagsContextName ->
-          match v with
-          | Array tags ->
-            Value.Array (tags |> List.filter ((<>) (Value.String KnownLiterals.SuppressPointValue)))
-          | _ ->
-            v
-        | _ -> v)
-    else id
-
-  let contextValues suppress context: PointValue -> _ * _ =
-    let context' =
-      context
-      |> removeSuppressTag suppress
-      |> mapExtract (extractSimple "value" true)
-
-    function
-    | Gauge (value, Scalar) ->
-      let contextTags, contextFields = simpleValue false context' [] value
-      if suppress then contextTags, [] else contextTags, contextFields
-
-    | Gauge (value, units) ->
-      simpleValue false context' [] value |> fun (tags, fields) ->
-      let contextTags, contextFields =
-        ("unit", serialiseStringTag (Units.symbol units)) :: tags,
-        fields
-      if suppress then contextTags, [] else contextTags, contextFields
-
-    | Event templ ->
-      let kvs, values = simpleValue false context' [] (Value.Int64 1L)
-      kvs,
-      // events' templates vary a lot, so don't index them
-      ("event", serialiseStringValue templ) :: values
-
-  let fieldValues (fields: Map<PointName, Field>)  =
-    Map.toSeq fields
-    |> Seq.map (fun (key, (Field (value, _))) -> PointName.format key, value)
-    |> Map.ofSeq
-    |> Value.Object
-    |> getValues "value" false [] []
-
-  let measurementName (m: Message) =
-    match m.value with
-    | v when not (String.IsNullOrWhiteSpace v) ->
-      // events should result in measurements like "event_info" or "event_fatal"
-      // because that's how they're queried
-      escapeString (sprintf "event_%O" m.level)
+  let gaugeName (gname: string) (g: Gauge) =
+    match g.unit with
+    | Scalar ->
+      gname
     | _ ->
-      // whilst measurements should result in measurement names equivalent to their
-      // point names
-      serialisePointName m.name
+      sprintf "%s[%s]" gname g.unit.symbol
 
-  // pass the point name of the event as an extra field
-  let extraFields pointName = function
-    | Event _ ->
-      [ "pointName", serialiseStringValue (PointName.format pointName) ]
-    | _ ->
-      []
+  let str (s: string) = // ??
+    s.Replace("\"", "\\\"")
 
-  let serialiseMessage (message: Message): string =
-    let fieldTags, fieldFields = fieldValues message.fields
-    let contextTags, contextFields = contextValues suppress message.context message.value
-    let extraFields = extraFields message.name message.value
+  let strQ (s: string) = // ??
+    "\"" + str s + "\""
 
-    sprintf "%O%s %s %i"
-            (measurementName message)
-            (printTags (List.concat [fieldTags; contextTags]))
-            (printFields (List.concat [extraFields; fieldFields; contextFields]))
-            message.timestamp
+  let bool (b: bool): Escaped =
+    Escaped.create (if b then "true" else "false")
+
+  let field (f: obj): Escaped option =
+    let t = f.GetType()
+    if t.IsPrimitive then
+      Some (Escaped.fieldValue (t.ToString()))
+    else
+      None
+
+  let tags (xs: #seq<Escaped * Escaped>) =
+    if Seq.isEmpty xs then "" else
+    xs
+      |> Seq.map (fun (x, y) -> sprintf "%O=%O" x y)
+      |> String.concat ","
+      |> sprintf ",%s"
+
+  let fields (xs: #seq<Escaped * Escaped>) =
+    if Seq.isEmpty xs then "value=0" else
+    xs
+      |> Seq.map (fun (x, y) -> sprintf "%O=%O" x y)
+      |> String.concat ","
+
+  open Logary.Message.Patterns
+
+  let message (message: Message): string =
+    let ts = ResizeArray<_>()
+    let fs = ResizeArray<_>()
+    let measurement = ref (Escaped.create "")
+
+    if message.name <> PointName.empty then
+      measurement := Escaped.tagName (PointName.format message.name)
+
+    elif message.value <> String.Empty then
+      measurement := Escaped.tagName message.value
+
+    ts.Add (Escaped.tagName "level", Escaped.tagValue (message.level.ToString()))
+
+    for kv in message.context do
+      match kv with
+      | Unmarked | Intern -> ()
+      | Tags tags ->
+        ts.AddRange (tags |> Seq.map (fun t -> Escaped.tagName t, Escaped.tagValue "true"))
+
+      | Field (fname, f) ->
+        field f |> Option.iter (fun f -> fs.Add (Escaped.fieldName fname, f))
+
+      | Gauge (gname, g) ->
+        if (!measurement).isEmpty then
+          measurement := Escaped.tagName gname
+          fs.Add (Escaped.create "value", value g.value)
+          units g.unit |> Option.iter (fun u -> fs.Add (Escaped.create "unit", u))
+        else
+          let nameUnit = gaugeName gname g
+          fs.Add (Escaped.fieldName nameUnit, value g.value)
+
+        let formatted = Units.formatWithUnit Units.Suffix g.unit g.value
+        fs.Add (Escaped.fieldName "formatted", Escaped.fieldValue formatted)
+
+    sprintf "%O%s %s %O" !measurement (tags ts) (fields fs) (timestamp message.timestamp)
 
 type Consistency =
   /// the data must be written to disk by at least 1 valid node
@@ -306,7 +278,7 @@ module internal Impl =
           let entries, acks, flushes =
             messages |> Array.fold (fun (entries, acks, flushes) -> function
               | Log (message, ack) ->
-                Serialisation.serialiseMessage message :: entries,
+                Serialise.message message :: entries,
                 ack *<= () :: acks,
                 flushes
               | Flush (ackCh, nack) ->

@@ -151,6 +151,12 @@ module JsonHelper =
     | Shape.Unit ->
       wrap (fun () -> Json.Null)
 
+    | Shape.Byte ->
+      wrap (fun (b: byte) -> E.int (int b))
+
+    | Shape.SByte ->
+      wrap (fun (b: sbyte) -> E.int (int b))
+
     | Shape.Char ->
       wrap (fun (c: char) -> E.string (string c))
 
@@ -159,6 +165,9 @@ module JsonHelper =
 
     | Shape.Bool ->
       wrap (fun (x: bool) -> Inference.Json.encode x)
+
+    | Shape.Decimal ->
+      wrap (fun (d: decimal) -> E.decimal d)
 
     | Shape.Double ->
       wrap (fun (x: float) -> Inference.Json.encode x)

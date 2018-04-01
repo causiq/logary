@@ -160,7 +160,7 @@ let tests =
       [
         KnownLiterals.LogaryPrefix, "_logary."
         KnownLiterals.FieldsPrefix, "_fields."
-        KnownLiterals.GaugeTypePrefix, "_logary.gauge."
+        KnownLiterals.GaugeNamePrefix, "_logary.gauge."
 
         KnownLiterals.ErrorsContextName, "_logary.errors"
         KnownLiterals.ServiceContextName, "_logary.service"
@@ -238,7 +238,7 @@ let tests =
 
       testPropertyWithConfig fsCheckConfig "symbol can be called" <| fun (u: Units) ->
         try
-          Units.symbol u |> ignore
+          u.symbol |> ignore
           true
         with e ->
           Tests.failtestf "Should not throw, but did: %O" e
@@ -595,7 +595,7 @@ let tests =
             [ Metres; Amperes; Kelvins; Moles; Candelas; Watts; Hertz ] |> List.map (fun units ->
             testCase (sprintf "scaling %f %A" value units) (fun _ ->
               let actualf, actualu = Units.scale units value
-              let expectedu = sprintf "%s%s" prefix (Units.symbol units)
+              let expectedu = sprintf "%s%s" prefix units.symbol
               Expect.equal actualu expectedu "Should properly format the unit"
               Expect.floatClose Accuracy.veryHigh actualf expectedf "Should properly scale the value to the unit"
             )))
@@ -635,7 +635,7 @@ let tests =
             [ Metres; Amperes; Kelvins; Moles; Candelas; Watts; Hertz ] |> List.map (fun units ->
             testCase (sprintf "scaling %A %A" value units) (fun _ ->
               let actualf, actualu = Units.scale units value
-              let expectedu = sprintf "%s%s" prefix (Units.symbol units)
+              let expectedu = sprintf "%s%s" prefix units.symbol
               Expect.equal actualu expectedu "Should properly format the unit"
               Expect.floatClose Accuracy.veryHigh actualf expectedf "Should properly scale the value to the unit"
             )))

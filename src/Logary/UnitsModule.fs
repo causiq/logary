@@ -4,16 +4,21 @@ open System
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Units =
+  open YoLo
 
   type UnitOrientation =
     | Prefix
     | Suffix
 
   let rec formatValue = function
-    | Float f -> f.ToString()
-    | Int64 i -> i.ToString()
-    | BigInt bi -> bi.ToString()
-    | Fraction (n, d) -> sprintf "%d/%d" n d
+    | Float f ->
+      f.ToString(Culture.invariant)
+    | Int64 i ->
+      i.ToString(Culture.invariant)
+    | BigInt bi ->
+      bi.ToString(Culture.invariant)
+    | Fraction (n, d) ->
+      sprintf "%s/%s" (n.ToString(Culture.invariant)) (d.ToString(Culture.invariant))
 
   let scaleSeconds: float -> float * string =
     ((*) (float Constants.NanosPerSecond)) >> int64 >> function
@@ -39,10 +44,9 @@ module Units =
   let fractionsPrefixes: string[] =
     [| "m"; "μ"; "n"; "p"; "f"; "a"; "z"; "y" |]
 
-  let scaleBy10 units (value: float): float * string =
-    let symbol = Units.symbol units
+  let scaleBy10 (units: Units) (value: float): float * string =
     let value = abs value
-    if value = 0. || value = infinity then 1., symbol else
+    if value = 0. || value = infinity then 1., units.symbol else
     let fraction = value < 1.
     let prefixes = if fraction then fractionsPrefixes else multiplePrefixes
     let index =
@@ -57,14 +61,14 @@ module Units =
     let scaled = if fraction then 10.**(float (index + 1) * 3.) else 1. / 10.**(float index * 3.)
     //printfn "to scale with factor=%f, symbol=%s, index=%i" scaled symbol index
     scaled,
-    sprintf "%s%s" prefixes.[index] symbol
+    sprintf "%s%s" prefixes.[index] units.symbol
 
   let scaleBytes (value: float): float * string =
     let log2 x = log x / log 2.
     let prefixes = [| ""; "Ki"; "Mi"; "Gi"; "Ti"; "Pi" |] // note the capital K and the 'i'
     let index = int (log2 value) / 10
     1. / 2.**(float index * 10.),
-    sprintf "%s%s" prefixes.[index] (Units.symbol Bytes)
+    sprintf "%s%s" prefixes.[index] Bytes.symbol
 
   /// Takes a function that returns a *factor* (not the value multiplied)
   /// by the factor!
@@ -74,8 +78,8 @@ module Units =
       value * factor, unitStr
 
   // Given a Unit, returns the scaling function and the list of units available.
-  let rec scale units value: float * string =
-    let noopScale v = 1., Units.symbol units
+  let rec scale (units: Units) value: float * string =
+    let noopScale v = 1., units.symbol
     match units with
     | Bytes ->
       calculate scaleBytes value
@@ -99,15 +103,15 @@ module Units =
     | Other _ ->
       calculate noopScale value
     | Percent _ ->
-      calculate (fun v -> 100., Units.symbol Percent) value
+      calculate (fun v -> 100., Percent.symbol) value
     | Seconds ->
       calculate scaleSeconds value
     | Scaled (iu, scalef) ->
       scale iu (value / scalef)
 
-  let formatWithUnit orient un value =
+  let formatWithUnit orient (units: Units) value =
     let fval = formatValue value
-    match Units.symbol un with
+    match units.symbol with
     | "" ->
       fval
     | funit when orient = Prefix ->

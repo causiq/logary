@@ -46,7 +46,8 @@ type Units =
   static member Celsius =
     Offset (Kelvins, +273.15)
 
-  static member symbol = function
+  member x.symbol =
+    match x with
     | Bits -> "bit"
     | Bytes -> "B"
     | Seconds -> "s"
@@ -60,16 +61,14 @@ type Units =
     | Watts -> "W"
     | Hertz -> "Hz"
     | Other other -> other
-    | Scaled (units, scale) -> sprintf "%s / %f" (Units.symbol units) scale
+    | Scaled (units, scale) -> sprintf "%s / %f" units.symbol scale
     | Offset (units, offset) ->
-      sprintf "%s %s %f" (Units.symbol units)
-                         (if offset < 0. then "-" else "+")
-                         offset
-    | Mul (a, b) -> String.Concat [ "("; Units.symbol a; "*"; Units.symbol b; ")" ]
-    | Pow (a, b) -> String.Concat [ Units.symbol a; "^("; Units.symbol b; ")" ]
-    | Div (a, b) -> String.Concat [ Units.symbol a; "/"; Units.symbol b ]
-    | Root a -> String.Concat [ "sqrt("; Units.symbol a; ")" ]
-    | Log10 a -> String.Concat [ "log10("; Units.symbol a; ")" ]
+      sprintf "%s %s %f" units.symbol (if offset < 0. then "-" else "+") offset
+    | Mul (a, b) -> String.Concat [ "("; a.symbol; "*"; b.symbol; ")" ]
+    | Pow (a, b) -> String.Concat [ a.symbol; "^("; b.symbol; ")" ]
+    | Div (a, b) -> String.Concat [ a.symbol; "/"; b.symbol ]
+    | Root a -> String.Concat [ "sqrt("; a.symbol; ")" ]
+    | Log10 a -> String.Concat [ "log10("; a.symbol; ")" ]
 
 type PointName =
   PointName of hierarchy:string[]
