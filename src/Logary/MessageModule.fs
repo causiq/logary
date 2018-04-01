@@ -56,15 +56,9 @@ module Message =
     if isNull name then message
     else Optic.set (Optic.contextValue_ name) value message
 
-  /// Sets a context value.
-  [<Obsolete ("Use SetContext instand.")>]
-  [<CompiledName "SetContextValue">]
-  let setContextValue name value message =
-    setContext name value message
-
-  [<CompiledName "SetContextValues">]
-  let setContextValues (values: (string * obj) seq) message =
-    values |> Seq.fold (fun m (name, value) -> setContext name value m) message
+  let setContexts (values: #seq<string * obj>) message =
+    (message, values)
+    ||> Seq.fold (fun m (k, v) -> m |> setContext k v)
 
   [<CompiledName "SetContextFromMap">]
   let setContextFromMap (context: Map<string, obj>) message =
@@ -72,8 +66,8 @@ module Message =
 
   [<CompiledName "SetContextFromObject">]
   let setContextFromObject (o: obj) message =
-    Reflection.propsFrom o
-    |> Seq.fold (fun m (label, value) -> m |> setContext label value) message
+    (message, Reflection.propsFrom o)
+    ||> Seq.fold (fun m (label, value) -> m |> setContext label value)
 
   /// Tries to get a context value
   [<CompiledName "TryGetContext">]
@@ -98,14 +92,15 @@ module Message =
   ///
   [<CompiledName "GetOthers">]
   let getOthers message =
-    message.context
-    |> Seq.choose (fun (KeyValue (k, v)) ->
-      if k.StartsWith KnownLiterals.FieldsPrefix
-         || k.StartsWith KnownLiterals.GaugeTypePrefix
-         || k = KnownLiterals.ErrorsContextName
-      then
+    let isPrefixed (k: string) =
+      k.StartsWith KnownLiterals.FieldsPrefix
+      || k.StartsWith KnownLiterals.GaugeTypePrefix
+      || k = KnownLiterals.ErrorsContextName
+
+    message.context |> Seq.choose (function
+      | KeyValue (k, v) when isPrefixed k ->
         None
-      else
+      | KeyValue (k, v) ->
         Some (k,v))
 
   ///////////////// FIELDS ////////////////////
@@ -163,15 +158,13 @@ module Message =
 
   [<CompiledName "GetAllTags">]
   let getAllTags message =
-    match tryGetContext KnownLiterals.TagsContextName message with
-    | Some (tags:Set<string>)-> tags
-    | _ -> Set.empty
+    tryGetContext KnownLiterals.TagsContextName message
+    |> Option.orDefault (fun () -> Set.empty)
 
   [<CompiledName "GetAllSinks">]
-  let getAllSinks message =
-    match tryGetContext KnownLiterals.SinkTargetsContextName message with
-    | Some (sinks: Set<string>) -> sinks
-    | _ -> Set.empty
+  let getAllSinks message: Set<string> =
+    tryGetContext KnownLiterals.SinkTargetsContextName message
+    |> Option.orDefault (fun () -> Set.empty)
 
   [<CompiledName "GetAllSinks">]
   let addSinks (sinks: string list) message =
@@ -227,13 +220,21 @@ module Message =
   /// gauges to the message. You can add gauges to events as well.
   [<CompiledName "AddGauges">]
   let addGauges (gauges: #seq<string * Gauge>) message =
-    gauges |> Seq.fold (fun m (n, g) -> m |> addGauge n g) message
+    (message, gauges) ||> Seq.fold (fun m (n, g) -> m |> addGauge n g)
 
   /// Creates a new Message with a single Gauge value and its unit (at Debug level).
   [<CompiledName "GaugeWithUnit">]
   let gaugeWithUnit sensorName gaugeName gauge =
     create HashMap.empty Debug sensorName String.Empty
     |> addGauge gaugeName gauge
+
+  let inline gaugeWithUnitf sensorNameStr gaugeName fval units =
+    let g = Gauge (Float (float fval), units)
+    gaugeWithUnit (PointName.parse sensorNameStr) gaugeName g
+
+  let inline gaugeWithUniti sensorNameStr gaugeName ival units =
+    let g = Gauge (Int64 (int64 ival), units)
+    gaugeWithUnit (PointName.parse sensorNameStr) gaugeName g
 
   /// Creates a new Message with a multiple Gauge values and their respective=
   /// units (at Debug level).
@@ -249,9 +250,17 @@ module Message =
 
   /// Creates a new Message with a multiple Gauge values (at Debug level).
   [<CompiledName "Gauges">]
-  let gauges sensorName (gauges: #seq<string * float>) =
+  let gauges sensorName (gauges: #seq<string * Value>) =
     (create HashMap.empty Debug sensorName String.Empty, gauges)
     ||> Seq.fold (fun m (n, v) -> m |> addGauge n (Gauge (v, Units.Scalar)))
+
+  /// A float-compatible gauge
+  let inline gaugef sensorNameStr gaugeName fval =
+    gaugeWithUnitf sensorNameStr gaugeName fval Units.Scalar
+
+  /// An int-compatible gauge
+  let inline gaugei sensorNameStr gaugeName ival =
+    gaugeWithUniti sensorNameStr gaugeName ival Units.Scalar
 
   [<CompiledName "TryGetGauge">]
   let tryGetGauge gaugeType message: Gauge option =

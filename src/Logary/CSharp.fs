@@ -651,7 +651,7 @@ type LoggerExtensions =
     let fields = if isNull fields then obj() else fields
 
     let message =
-      gaugeWithUnit logger.name gaugeName (Gauge (value, units))
+      gaugeWithUnit logger.name gaugeName (Gauge (Float value, units))
       |> setFieldsFromObject fields
 
     let logFn = MiscHelpers.chooseLogFun logger message.level backpressure flush timeoutMillis

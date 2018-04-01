@@ -14,18 +14,6 @@ type ContentType = string
 /// this is how system clocks normally work.
 type EpochNanoSeconds = int64
 
-[<Obsolete ("Use .Net objects instead. This type is reserve for API backwards compatibility.")>]
-type Value =
-  | String of string
-  | Bool of bool
-  | Float of float
-  | Int64 of int64
-  | BigInt of bigint
-  | Binary of byte [] * ContentType
-  | Fraction of int64 * int64
-  | Object of HashMap<string, Value>
-  | Array of Value list
-
 type Units =
   | Bits
   | Bytes
@@ -127,11 +115,31 @@ module PointName =
     if isNull nameEnding then original else
     PointName (Array.append segments [| nameEnding |])
 
-type Gauge = Gauge of float * Units
+/// Allows you to clearly deliniate the accuracy and type of the measurement/gauge.
+type Value =
+  /// A CLR Double / F# float represented as a DU case
+  | Float of float
+  /// A CLR Int64 / F# int64 represented as a DU case
+  | Int64 of int64
+  | BigInt of bigint
+  | Fraction of int64 * int64
+  //| Binary of byte[] * ContentType
+  /// Convert the Gauge value to a float (best as possible; this **may** lead to
+  /// a loss of accuracy).
+  member x.asFloat () =
+    match x with
+    | Float f -> f
+    | Int64 i -> float i
+    | BigInt i -> float i
+    | Fraction (n, d) -> float n / float d
 
-[<Obsolete ("Use (Message.setField: string -> 'a -> Message -> Message) directly, just for api compatibility")>]
-type Field =
-  Field of Value * Units option
+type Gauge =
+  Gauge of Value * Units
+with
+  member x.value =
+    let (Gauge (v, _)) = x in v
+  member x.unit =
+    let (Gauge (_, u)) = x in u
 
 /// This is record that is logged.
 type Message =

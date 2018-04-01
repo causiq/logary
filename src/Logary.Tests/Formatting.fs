@@ -13,12 +13,12 @@ module Logary.Tests.Formatting
 open Expecto
 open Expecto.Flip
 open FsCheck
+open System
 open Logary
 open Logary.Formatting
 open Logary.MessageTemplates
 open Logary.MessageWriter
 open Logary.Internals.Chiron
-open System
 
 #nowarn "44"
 
@@ -78,9 +78,9 @@ let complexMessage: Message =
   |> Message.setContext "simple scalar key/value map" scalarKeyValueMap
   |> Message.setContext "just scalar key map" scalarKeyMap
   |> Message.setContext "no scalar key/value map" notScalarMap
-  |> Message.addGauge "svc1 request per second" (Gauge(1750., Units.Scalar))
-  |> Message.addGauge "Processor.% Idle.Core 1" (Gauge(0.75, Units.Percent))
-  |> Message.addGauge "methodA" (Gauge(25000000000., Units.Scaled (Seconds, float Constants.NanosPerSecond)))
+  |> Message.addGauge "svc1 request per second" (Gauge(Float 1750., Units.Scalar))
+  |> Message.addGauge "Processor.% Idle.Core 1" (Gauge(Float 0.75, Units.Percent))
+  |> Message.addGauge "methodA" (Gauge(Int64 25000000000L, Units.Scaled (Seconds, float Constants.NanosPerSecond)))
   |> Message.addExn ex
   |> Message.addExn (exn "another exception")
 

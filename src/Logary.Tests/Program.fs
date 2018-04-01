@@ -32,28 +32,16 @@ type Arbs =
     |> Arb.convert (filter >> HashMap.ofListPair) HashMap.toListPair
 
   static member Value() =
-    let contentTypes = Gen.elements [ "application/image+jpeg"; "application/octet-stream" ]
-    let strings = Arb.generate<NonEmptyString> |> Gen.map (fun (NonEmptyString s) -> String s)
     let floats = Arb.generate<NormalFloat> |> Gen.map (fun (NormalFloat f) -> Float f)
-    let bools = Gen.elements [ Bool true; Bool false ]
     let int64s = Arb.from<int64> |> Arb.convert Int64 (function Int64 ii -> ii | _ -> failwith "Not an Int64")
     let bigints = Arb.from<bigint> |> Arb.convert BigInt (function BigInt bi -> bi | _ -> failwith "Not a BigInt")
-    let binaries = gen {
-      let! bs = Gen.arrayOf (Arb.Default.Byte().Generator)
-      let! ct = contentTypes
-      return Binary (bs, ct)
-    }
     let generator =
       Gen.frequency [
-        6, strings
         6, floats
         6, int64s.Generator
         2, bigints.Generator
-        2, binaries
-        1, bools
       ]
     let shrinker = function
-      | String s -> Arb.shrink s |> Seq.map String
       | Float f -> Arb.shrink f |> Seq.map Float
       | Int64 _ as ii -> int64s.Shrinker ii
       | BigInt _ as bi -> bigints.Shrinker bi
@@ -75,7 +63,7 @@ type Arbs =
          not <| Double.IsInfinity f
       && not <| Double.IsNaN f
     Arb.Default.Derive()
-    |> Arb.filter (function | Gauge (f, units) -> isNormal f)
+    |> Arb.filter (function | Gauge (f, units) -> isNormal (f.asFloat()))
 
   static member Instant() =
     Arb.Default.DateTimeOffset()
@@ -97,12 +85,9 @@ type Arbs =
             1, Gen.constant false
             2, Gen.constant true
           ]
-//        let! inner = Arb.generate<exn>
         return
           try another message
           with e ->
-//          if isNull inner then e
-//          else (Exception (message2, inner))
             e
       }
 
@@ -226,8 +211,8 @@ let tests =
     ]
 
     testList "Value" [
-      testCase "String" <| fun () ->
-        String "abc" |> ignore
+      testCase "Float" <| fun () ->
+        Float 3. |> ignore
 
       testPropertyWithConfig fsCheckConfig "Value" <| fun (value: Value) ->
         match value with
@@ -236,10 +221,8 @@ let tests =
           Expect.isNotInfinity f "Should be a real number"
           Expect.isNotPositiveInfinity f "Should be a real number"
           Expect.isNotNegativeInfinity f "Should be a real number"
-        | String s ->
-          Expect.isNotNull s "Should not be null"
-          Expect.isNotEmpty s "Should not be empty"
-        | _ -> ()
+        | _ ->
+          ()
         true
     ]
 
@@ -358,7 +341,7 @@ let tests =
 
       testCase "getAllGauges" <| fun _ ->
         let names = Arb.generate<NonEmptyString> |> Gen.sample 0 5 |> List.distinct |> List.map (fun (NonEmptyString name) -> name)
-        let msg = names |> List.fold (fun m name -> m |> addGauge name (Gauge (1., Units.Scalar))) (eventInfo "")
+        let msg = names |> List.fold (fun m name -> m |> addGauge name (Gauge (Float 1., Units.Scalar))) (eventInfo "")
         let c = msg |> getAllGauges |> Seq.length
         Expect.equal c names.Length "Should get same length after add gauges"
 
@@ -460,19 +443,10 @@ let tests =
 
     testList "UnitsModule" [
       testList "formatValue" (
-        [ String "A", "A"
-          Bool true, "true"
-          Bool false, "false"
-          Float 62., "62"
+        [ Float 62., "62"
           Int64 84598L, "84598"
           BigInt 1024I, "1024"
-          Binary ([| 254uy |], "application/octet-stream"),
-          "hex:FE;content-type:application/octet-stream"
           Fraction (2L, 5L), "2/5"
-          Array [ String "B"; String "C" ], "[ B, C ]"
-
-          // TO CONSIDER – Value.Object
-          Object HashMap.empty, "Object"
         ]
         |> List.map (fun (value, expected) ->
             testCase (string value) (fun () ->

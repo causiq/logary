@@ -80,19 +80,20 @@ let exnMsg =
 let timeMessage (nanos: int64) level =
   let value, units = float nanos, Scaled (Seconds, float Constants.NanosPerSecond)
   let name = PointName.parse "A.B.C"
-  Message.gaugeWithUnit name "Check" (Gauge (value, units))
+  Message.gaugeWithUnit name "Check" (Gauge (Float value, units))
   |> Message.setLevel level
 
 let gaugeMessage (value: float) level =
   let name = PointName.parse "Revolver"
-  Message.gaugeWithUnit name "spin" (Gauge (value, (Div (Seconds, Units.Other "revolution"))))
+  Message.gaugeWithUnit name "spin" (Gauge (Float value, (Div (Seconds, Units.Other "revolution"))))
   |> Message.setLevel level
 
 let multiGaugeMessage level =
-  Message.event level "Processor.% Idle"
-  |> Message.addGauge "Core 1" (Gauge (0.001, Percent))
-  |> Message.addGauge "Core 2" (Gauge (0.99, Percent))
-  |> Message.addGauge "Core 3" (Gauge (0.473223755, Percent))
+  Message.event level "Processor.% Idle" |> Message.addGauges [
+    "Core 1", (Gauge (Fraction (1L, 1000L), Percent))
+    "Core 2", (Gauge (Float 0.99, Percent))
+    "Core 3", (Gauge (Float 0.473223755, Percent))
+  ]
   |> Message.setContext "host" "db-001"
   |> Message.setContext "service" "api-web"
 

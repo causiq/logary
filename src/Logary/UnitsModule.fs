@@ -10,22 +10,10 @@ module Units =
     | Suffix
 
   let rec formatValue = function
-    | String s -> s
-    | Bool true -> "true"
-    | Bool false -> "false"
     | Float f -> f.ToString()
     | Int64 i -> i.ToString()
     | BigInt bi -> bi.ToString()
-    | Binary (b, ct) ->
-      BitConverter.ToString(b).Replace("-", "")
-      |> fun h -> sprintf "hex:%s;content-type:%s" h ct
     | Fraction (n, d) -> sprintf "%d/%d" n d
-    | Array values ->
-      values
-      |> List.map formatValue
-      |> String.concat ", "
-      |> sprintf "[ %s ]"
-    | Object m -> "Object"
 
   let scaleSeconds: float -> float * string =
     ((*) (float Constants.NanosPerSecond)) >> int64 >> function
@@ -61,7 +49,7 @@ module Units =
       // at boundaries, like 0.001 s we want index to be (abs(-3) - 1) / 3
       // done with integer division
       let ioffset = if fraction then -1. else 0.
-      let tenPower = ceil (abs (log10 value)) // 3 from abs (log10 (1e-3)) // ceil is for handling e.g. log10 0.00099 = -3.004364805 
+      let tenPower = ceil (abs (log10 value)) // 3 from abs (log10 (1e-3)) // ceil is for handling e.g. log10 0.00099 = -3.004364805
       let index = int (tenPower + ioffset) / 3 // each index in steps of a thousand
       let maxIndex = prefixes.Length - 1
       //printfn "(index) ioffset=%f, tenPower=%f, index=%i, maxIndex=%i" ioffset tenPower index maxIndex
