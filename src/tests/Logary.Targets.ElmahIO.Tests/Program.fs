@@ -39,7 +39,7 @@ let tests =
 
     testList "getType" [
       testCase "of non-exception message" <| fun _ ->
-        let msg = Message.event Info "User signed up" |> Message.setSimpleName "A.B"
+        let msg = Message.event Info "User signed up" |> Message.setNameStr "A.B"
         let typ = ElmahIO.Impl.getType msg
         Expect.equal typ "A.B" "Should have name of Message as type"
 

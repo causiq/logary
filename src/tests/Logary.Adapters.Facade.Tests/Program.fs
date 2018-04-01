@@ -55,7 +55,7 @@ let tests =
       testProperty "convert string to unit" <| fun (x: Units) ->
         match x with
         | Other _ -> true
-        | x -> match LoggerAdapterShared.unitOfString (Units.symbol x) with
+        | x -> match LoggerAdapterShared.unitOfString x.symbol with
                | Other _ ->
                  true
                | res ->

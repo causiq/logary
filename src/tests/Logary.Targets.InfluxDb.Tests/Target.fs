@@ -69,18 +69,17 @@ let testCaseTarget name fn =
 [<Tests>]
 let writesOverHttp =
   let msg =
-    Message.gaugeWithUnit "Processor.% User Time" 1. Percent
+    Message.gaugeWithUnitf "Processor" "% User Time" 1. Percent
     |> Message.setField "inst1" 0.3463
     |> Message.setField "inst2" 0.223
     |> Message.setContext "service" "svc-2"
     |> Message.tag "my-tag"
     |> Message.tag "ext"
 
-  let msg1 = Message.gauge "Number 1" 0.3463
-  let msg2 = Message.gauge "Number 2" 0.3463
-  let msg3 = Message.gauge "Number 3" 0.3463
+  let msg1 = Message.gaugef "Processor" "Number 1" 0.3463
+  let msg2 = Message.gaugef "Processor" "Number 2" 0.3463
+  let msg3 = Message.gaugef "Processor" "Number 3" 0.3463
 
-  // TODO: need focus these test after porting influxdb
   testList "writes over HTTP" [
     testCaseTarget "write message" (fun state target ->
       job {
@@ -88,7 +87,7 @@ let writesOverHttp =
         do! ack
         let! req = Ch.take state.req
 
-        let expected = Serialisation.serialiseMessage msg
+        let expected = Serialise.message msg
 
         Encoding.UTF8.GetString req.rawForm
           |> Expect.equal "Should serialise correctly" expected
@@ -106,15 +105,16 @@ let writesOverHttp =
         let! req2 = Ch.take state.req
 
         Encoding.UTF8.GetString req2.rawForm
-          |> Expect.equal "Should newline-concatenate messages"
-                          (Serialisation.serialiseMessage msg2 + "\n" + Serialisation.serialiseMessage msg3 )
+          |> Expect.equal
+              "Should newline-concatenate messages"
+              (sprintf "%O\n%O" (Serialise.message msg2) (Serialise.message msg3))
 
         req.queryParam "db"
           |> Expect.equal "Should write to tests db" (Choice1Of2 "tests")
       })
 
     testCaseTarget "target acks" (fun state target ->
-      let msg = Message.gauge "Number 1" 0.3463
+      let msg = Message.gaugef "S1" "Number 1" 0.3463
       job {
         let! ackPromise = Target.log target msg
         let! req2 = Ch.take state.req

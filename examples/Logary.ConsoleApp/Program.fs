@@ -31,7 +31,7 @@ module RandomWalk =
         elif v + prevValue < -1. || v + prevValue > 1. then -v + prevValue
         else v + prevValue
 
-      let msg = Message.gaugeWithUnit pn value Seconds
+      let msg = Message.gaugeWithUnit pn "ticker" (Gauge (Float value, Seconds))
 
       (rnd, value), msg
 
@@ -58,24 +58,24 @@ module Timing =
   let reportAsync timing result = async.Bind(result, Job.toAsync << report timing)
 
   let metric name =
-    let minName = name |> PointName.setEnding "min" |> PointName.format
     let maxName = name |> PointName.setEnding "max" |> PointName.format
     let medianName = name |> PointName.setEnding "median" |> PointName.format
     let countName = name |> PointName.setEnding "count" |> PointName.format
     let upper95 = name |> PointName.setEnding "upper_95" |> PointName.format
 
     let reduce state = function
-      | Gauge(v, Seconds) ->
-        (v * float Constants.NanosPerSecond) :: state
-      | Gauge(v, _) -> v :: state
+      | Gauge (v, Seconds) ->
+        (v.toFloat() * float Constants.NanosPerSecond) :: state
+      | Gauge (v, _) ->
+        v.toFloat() :: state
 
     let tick state =
       let snap = Snapshot.create (state |> List.map int64 |> List.toArray)
-      [], [| snap |> Snapshot.size |> float |>  Message.gauge countName
-             snap |> Snapshot.median |> float |>  Message.gauge medianName
-             snap |> Snapshot.min |> float |> Message.gauge minName
-             snap |> Snapshot.max |> float |> Message.gauge maxName
-             snap |> Snapshot.percentile95th |> float |> Message.gauge upper95 |]
+      [], [| snap |> Snapshot.size |> Message.gaugeWithUniti name "size" Scalar
+             snap |> Snapshot.median |> Message.gaugeWithUniti name "median" Scalar
+             snap |> Snapshot.min |> Message.gaugeWithUniti name "min" Scalar
+             snap |> Snapshot.max |> Message.gaugeWithUniti name "max" Scalar
+             snap |> Snapshot.percentile95th |> Message.gaugeWithUniti name "upper_95" Scalar |]
 
     Ticker.create [] reduce tick
 
@@ -107,7 +107,8 @@ let main argv =
     }
 
   let randomness =
-    RandomWalk.create "Logary.ConsoleApp.randomWalk"
+    let pn = PointName.parse "Logary.ConsoleApp.randomWalk"
+    RandomWalk.create pn
 
   let timing =
     Timing.metric (PointName.parse "Logary.ConsoleApp.sampleTiming")

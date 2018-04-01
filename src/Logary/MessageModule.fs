@@ -229,13 +229,21 @@ module Message =
     create HashMap.empty Debug sensorName String.Empty
     |> addGauge gaugeName gauge
 
-  let inline gaugeWithUnitf sensorNameStr gaugeName fval units =
+  let inline gaugeWithUnitf sensorName gaugeName units fval =
     let g = Gauge (Float (float fval), units)
-    gaugeWithUnit (PointName.parse sensorNameStr) gaugeName g
+    gaugeWithUnit sensorName gaugeName g
 
-  let inline gaugeWithUniti sensorNameStr gaugeName ival units =
+  let inline gaugeWithUnitfs sensorNameStr gaugeName units fval =
+    let sensorName = PointName.parse sensorNameStr
+    gaugeWithUnitf sensorName gaugeName units fval
+
+  let inline gaugeWithUniti sensorName gaugeName units ival =
     let g = Gauge (Int64 (int64 ival), units)
-    gaugeWithUnit (PointName.parse sensorNameStr) gaugeName g
+    gaugeWithUnit sensorName gaugeName g
+
+  let inline gaugeWithUnitis sensorNameStr gaugeName units ival =
+    let sensorName = PointName.parse sensorNameStr
+    gaugeWithUniti sensorName gaugeName units ival
 
   /// Creates a new Message with a multiple Gauge values and their respective=
   /// units (at Debug level).
@@ -256,12 +264,18 @@ module Message =
     ||> Seq.fold (fun m (n, v) -> m |> addGauge n (Gauge (v, Units.Scalar)))
 
   /// A float-compatible gauge
-  let inline gaugef sensorNameStr gaugeName fval =
-    gaugeWithUnitf sensorNameStr gaugeName fval Units.Scalar
+  let inline gaugef sensorName gaugeName fval =
+    gaugeWithUnitf sensorName gaugeName Units.Scalar fval
+
+  let inline gaugefs sensorNameStr gaugeName fval =
+    gaugeWithUnitfs sensorNameStr gaugeName Units.Scalar fval
 
   /// An int-compatible gauge
-  let inline gaugei sensorNameStr gaugeName ival =
-    gaugeWithUniti sensorNameStr gaugeName ival Units.Scalar
+  let inline gaugei sensorName gaugeName ival =
+    gaugeWithUniti sensorName gaugeName Units.Scalar ival
+
+  let inline gaugeis sensorNameStr gaugeName ival =
+    gaugeWithUnitis sensorNameStr gaugeName Units.Scalar ival
 
   [<CompiledName "TryGetGauge">]
   let tryGetGauge gaugeName message: Gauge option =

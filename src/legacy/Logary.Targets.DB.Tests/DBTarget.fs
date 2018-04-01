@@ -183,7 +183,7 @@ let targetTests =
 
     testCase "initialise and metric" <| fun _ ->
       let target = start (fun () -> SQLiteDB.openConn inMemConnStrEmpheral)
-      try Message.gaugef "app" "signin" 3. |> Target.log target |> Job.Ignore |> run
+      try Message.gaugefs "app" "signin" 3. |> Target.log target |> Job.Ignore |> run
       finally stop target
 
     testCase "metric and read back returns result" <| fun _ ->
@@ -198,8 +198,8 @@ let targetTests =
 
       // given
       let target = start (fun () -> db)
-      Message.gaugef "web01.app" "signin" 3. |> Target.log target |> Job.Ignore |> run
-      Message.gaugef "web02.app" "signin" 6. |> Target.log target |> Job.Ignore |> run
+      Message.gaugefs "web01.app" "signin" 3. |> Target.log target |> Job.Ignore |> run
+      Message.gaugefs "web02.app" "signin" 6. |> Target.log target |> Job.Ignore |> run
       flush target
 
       // then

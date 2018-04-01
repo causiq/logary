@@ -32,6 +32,7 @@ let lineProtocol =
     testList "gauges" [
       testCase "Serialise timestamp" <| fun _ ->
         Serialise.timestamp 1439587925L
+          |> sprintf "%O"
           |> Expect.equal
               "Should be identical to Logary"
               "1439587925"
