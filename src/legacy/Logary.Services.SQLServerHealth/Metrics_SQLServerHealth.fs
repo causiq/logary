@@ -176,13 +176,13 @@ module internal Impl =
     IOInfo -> Gauge
 
   let datapoints =
-    let inline ofBytes v = Gauge (float v, Bytes)
-    let inline ofMs v = Gauge ((float v / 1000.), Seconds)
+    let inline ofBytes v = Gauge (Float (float v), Bytes)
+    let inline ofMs v = Gauge (Float (float v / 1000.), Seconds)
     [ "io_stall_read",        fun io -> ofMs io.ioStallReadMs
       "io_stall_write",       fun io -> ofMs io.ioStallWriteMs
       "io_stall",             fun io -> ofMs io.ioStall
-      "num_of_reads",         fun io -> Gauge (float io.numOfReads, Scalar)
-      "num_of_writes",        fun io -> Gauge (float io.numOfWrites, Scalar)
+      "num_of_reads",         fun io -> Gauge (Float (float io.numOfReads), Scalar)
+      "num_of_writes",        fun io -> Gauge (Float (float io.numOfWrites), Scalar)
       "num_of_bytes_read",    fun io -> ofBytes io.numOfBytesRead
       "num_of_bytes_written", fun io -> ofBytes io.numOfBytesRead
       "read_latency",         IOInfo.readLatency >> ofMs

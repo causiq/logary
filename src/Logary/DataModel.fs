@@ -126,7 +126,7 @@ type Value =
   //| Binary of byte[] * ContentType
   /// Convert the Gauge value to a float (best as possible; this **may** lead to
   /// a loss of accuracy).
-  member x.asFloat () =
+  member x.toFloat () =
     match x with
     | Float f -> f
     | Int64 i -> float i

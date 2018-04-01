@@ -123,7 +123,7 @@ module internal Global =
       configJsonEncoder<PointName>(fun _ name -> E.string (name.ToString()))
 
       configJsonEncoder<Gauge>(fun _ (Gauge (v, u)) ->
-        let (vs, us) = Units.scale u (v.asFloat())
+        let (vs, us) = Units.scale u (v.toFloat())
         E.string (sprintf "%s %s" (vs.ToString()) us))
 
       configJsonEncoder<Message>(fun resolver msg ->
@@ -190,7 +190,7 @@ module internal Global =
 
       configDestructure<Gauge>(fun _ req ->
         let (Gauge (value, units)) =  req.Value
-        let (scaledValue, unitsFormat) = Units.scale units (value.asFloat())
+        let (scaledValue, unitsFormat) = Units.scale units (value.toFloat())
         if String.IsNullOrEmpty unitsFormat then ScalarValue scaledValue
         else ScalarValue (sprintf "%s %s" (string scaledValue) unitsFormat))
 

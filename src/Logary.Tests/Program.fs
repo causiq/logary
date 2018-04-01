@@ -63,7 +63,7 @@ type Arbs =
          not <| Double.IsInfinity f
       && not <| Double.IsNaN f
     Arb.Default.Derive()
-    |> Arb.filter (function | Gauge (f, units) -> isNormal (f.asFloat()))
+    |> Arb.filter (function | Gauge (f, units) -> isNormal (f.toFloat()))
 
   static member Instant() =
     Arb.Default.DateTimeOffset()
@@ -167,7 +167,7 @@ let tests =
         KnownLiterals.HostContextName, "_logary.host"
         KnownLiterals.TagsContextName, "_logary.tags"
 
-        KnownLiterals.DefaultGaugeType, "default-gauge"
+        KnownLiterals.DefaultGaugeName, "default-gauge"
       ]
       |> List.map (fun (actual, expected) ->
           testCase (sprintf "ensuring constant '%s'" expected)<| fun () ->

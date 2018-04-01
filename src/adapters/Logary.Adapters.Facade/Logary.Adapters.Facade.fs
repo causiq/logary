@@ -139,8 +139,8 @@ module LoggerAdapterShared =
 
   /// temporary solution
   type OldPointValue =
-  | Event of string
-  | Gauge of float * Units
+    | Event of string
+    | Gauge of float * Units
 
 /// Utilities for creating a single 'MyLib.Logging.Logger' in the target type
 /// space. The original logger adapter (also see the LoggerCSharpAdapter further
@@ -201,7 +201,8 @@ module LoggerAdapter =
     |> (fun msg ->
         match oldPointValue with
         | LoggerAdapterShared.OldPointValue.Gauge (value, units) ->
-          msg |> Message.addGauge KnownLiterals.DefaultGaugeType (Gauge (value,units))
+          let g = Gauge (Float value, units)
+          msg |> Message.addGauge KnownLiterals.DefaultGaugeName g
         | _ -> msg)
 
   /// Convert the object instance to a message factory method. Is used from the
@@ -358,7 +359,8 @@ module LoggerCSharpAdapter =
     |> (fun msg ->
         match oldPointValue with
         | LoggerAdapterShared.OldPointValue.Gauge (value, units) ->
-          msg |> Message.addGauge KnownLiterals.DefaultGaugeType (Gauge (value, units))
+          let g = Gauge (Float value, units)
+          msg |> Message.addGauge KnownLiterals.DefaultGaugeName g
         | _ -> msg)
 
   module internal LogMessage =

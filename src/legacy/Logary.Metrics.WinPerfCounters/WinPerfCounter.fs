@@ -201,11 +201,11 @@ module WinPerfCounter =
           Array.empty
 
       | instances ->
-        instances 
-        |> Seq.distinct 
+        instances
+        |> Seq.distinct
         |> Seq.collect pcc.GetCounters
         |> Seq.groupBy (fun wpc -> wpc.CounterName)
-        |> Seq.map (fun (counterName, instanceCounters) -> 
+        |> Seq.map (fun (counterName, instanceCounters) ->
            WinPerfCounterInstance.create(pcc, instanceCounters, None, counterName))
         |> Seq.toArray
 
@@ -271,7 +271,7 @@ module WinPerfCounter =
       let message = Message.eventDebug (pc.baseName.ToString())
       pc.nextValues()
       |> Array.fold (fun m (gaugeType, vl) ->
-         m |> Message.addGauge gaugeType (Gauge (vl, pc.unit))) message
+         m |> Message.addGauge gaugeType (Gauge (Float vl, pc.unit))) message
 
     let getAllCounters () =
       Category.list ()

@@ -6,7 +6,7 @@ module KnownLiterals =
   /// Avoid conflict with user defined context key
   [<Literal>]
   let internal LogaryPrefix = "_logary."
-  
+
   /// To recognize all fields for generate formatted msg
   [<Literal>]
   let FieldsPrefix = "_fields."
@@ -14,11 +14,11 @@ module KnownLiterals =
   /// To recognize all gauge fields for generate formatted msg
   [<Literal>]
   let GaugeTypePrefix = LogaryPrefix + "gauge."
-  
+
   /// for api compatibility, when user don't provide gauge type
   [<Literal>]
-  let DefaultGaugeType = "default-gauge"
-  
+  let DefaultGaugeName = "default-gauge"
+
 
   [<Literal>]
   let ErrorsContextName = LogaryPrefix + "errors"

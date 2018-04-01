@@ -19,30 +19,29 @@ open Microsoft.ApplicationInsights.Extensibility.Implementation
 open Logary.HashMap
 
 type GaugeMap =
-/// Traces goes to: Overview -> Search -> Trace
-| GaugeToTrace
-/// Metrics goes to: Metrics Explorer -> Add Chart -> Custom
-| GaugeToMetrics
-/// Events goes to: Overview -> Search -> Event
-| GaugeToEvent
+  /// Traces goes to: Overview -> Search -> Trace
+  | GaugeToTrace
+  /// Metrics goes to: Metrics Explorer -> Add Chart -> Custom
+  | GaugeToMetrics
+  /// Events goes to: Overview -> Search -> Event
+  | GaugeToEvent
 
 type DerivedMap =
-/// Traces goes to: Overview -> Search -> Trace
-| DerivedToTrace
-/// Metrics goes to: Metrics Explorer -> Add Chart -> Custom
-| DerivedToMetrics
-/// Events goes to: Overview -> Search -> Event
-| DerivedToEvent
+  /// Traces goes to: Overview -> Search -> Trace
+  | DerivedToTrace
+  /// Metrics goes to: Metrics Explorer -> Add Chart -> Custom
+  | DerivedToMetrics
+  /// Events goes to: Overview -> Search -> Event
+  | DerivedToEvent
 
 type EventMap =
-/// Traces goes to: Overview -> Search -> Trace
-| EventToTrace
-/// Events goes to: Overview -> Search -> Event
-| EventToEvent
+  /// Traces goes to: Overview -> Search -> Trace
+  | EventToTrace
+  /// Events goes to: Overview -> Search -> Event
+  | EventToEvent
 
 type TelemetryMapping =
-  {
-    GaugeMapping: GaugeMap
+  { GaugeMapping: GaugeMap
     DerivedMapping: DerivedMap
     EventMapping: EventMap
   }
@@ -70,16 +69,16 @@ module internal Impl =
   // This is a placeholder for specific state that your target requires
   type State = { telemetryClient: TelemetryClient }
 
-  let sdkVersion = 
+  let sdkVersion =
       typeof<State>.GetType().Assembly.GetCustomAttributes<AssemblyInformationalVersionAttribute>()
       |> Seq.head |> fun x -> "logary: " + x.InformationalVersion
-  
+
   let makeMetric (gaugeType,valu,uni) =
     let (scaled, unit) = Units.scale uni valu
     let tel = MetricTelemetry(gaugeType, scaled)
     tel.Properties.Add("Unit", unit)
     tel
-  
+
   let makeEvent (gaugeType,valu,uni) =
     let (scaled, unit) = Units.scale uni valu
     let tel = EventTelemetry(gaugeType)
@@ -88,7 +87,7 @@ module internal Impl =
     tel
 
   let makeTrace (msg , level) =
-    let loglevel = 
+    let loglevel =
       match level with
       | LogLevel.Fatal -> SeverityLevel.Critical
       | LogLevel.Error -> SeverityLevel.Error
@@ -103,7 +102,7 @@ module internal Impl =
   // and as such doesn't have side effects until the Job is started.
   let loop (conf: AppInsightConf) // the conf is specific to your target
            (ri: RuntimeInfo, api: TargetAPI) =
-    
+
     let rec loop (state: State): Job<unit> =
       // Alt.choose will pick the channel/alternative that first gives a value
       Alt.choose [
@@ -125,13 +124,13 @@ module internal Impl =
               // Do something with the `message` value specific to the target
               // you are creating.
               let template = message.value
-              
+
               seq {
-                let tel = 
+                let tel =
                   match conf.MappingConfiguration.EventMapping with
                   | EventToEvent -> EventTelemetry(template) :> ITelemetry
                   | EventToTrace -> makeTrace(template,message.level) :> ITelemetry
-                
+
                 match tel with
                 | :? ISupportProperties as itm ->
                   itm.Properties.Add("PointName", PointName.format message.name)
@@ -140,18 +139,18 @@ module internal Impl =
                         itm.Properties.Add(k, (string v)))
                 | _ -> ()
 
-                  
+
                 yield tel
 
-                yield! message 
+                yield! message
                   |> Message.getAllGauges
                   |> Seq.map (fun (gaugeType, Gauge(value, units)) ->
                      match conf.MappingConfiguration.GaugeMapping with
-                     | GaugeToMetrics -> makeMetric(gaugeType, value, units) :> ITelemetry
-                     | GaugeToEvent -> makeEvent(gaugeType,value,units) :> ITelemetry
-                     | GaugeToTrace -> 
-                       let (scaled, unit) = Units.scale units value
-                       
+                     | GaugeToMetrics -> makeMetric(gaugeType, value.toFloat(), units) :> ITelemetry
+                     | GaugeToEvent -> makeEvent(gaugeType,value.toFloat(),units) :> ITelemetry
+                     | GaugeToTrace ->
+                       let (scaled, unit) = Units.scale units <| value.toFloat()
+
                        let info = sprintf "%s : %s %s" gaugeType (string scaled) (unit)
                        makeTrace(info, message.level):> ITelemetry)
               }
@@ -164,7 +163,7 @@ module internal Impl =
                  | :? EventTelemetry as itm -> state.telemetryClient.TrackEvent itm
                  | :? MetricTelemetry as itm -> state.telemetryClient.TrackMetric itm
                  | x -> failwithf "Unknown telemetry item: %O" x)
-              
+
               // This is a simple acknowledgement using unit as the signal
               do! ack *<= ()
 
@@ -181,7 +180,7 @@ module internal Impl =
               state.telemetryClient.Flush()
 
               // then perform the ack
-              do! IVar.fill ackCh () 
+              do! IVar.fill ackCh ()
 
               // then continue processing messages
               return! loop { telemetryClient = state.telemetryClient }

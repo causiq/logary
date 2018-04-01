@@ -44,11 +44,11 @@ module Literate =
         let lastIndex = gauges.Length - 1
         for i = 0 to lastIndex do
           let gaugeType, Gauge (value, units) = gauges.[i]
-          let scaledValue, unitsFormat = Units.scale units (value.asFloat())
+          let scaledValue, unitsFormat = Units.scale units (value.toFloat())
 
           match units with
           | Scaled (Seconds, scale) when scale = float Constants.NanosPerSecond ->
-            let value = value.asFloat ()
+            let value = value.toFloat ()
             let format = if value < 1000. then "N0" else "N2"
             yield gaugeType, NameSymbol
             yield " took ", Subtext

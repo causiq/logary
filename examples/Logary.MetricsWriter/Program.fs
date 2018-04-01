@@ -12,7 +12,7 @@ open Logary.EventsProcessing
 
 module Sample =
 
-  let randomWalk pn =
+  let randomWalk measurement =
     let reducer state = function
       | _ ->
         state
@@ -24,7 +24,7 @@ module Sample =
         elif v + prevValue < -1. || v + prevValue > 1. then -v + prevValue
         else v + prevValue
 
-      let msg = Message.gauge pn value
+      let msg = Message.gauge PointName.empty measurement (Float value)
 
       (rnd, value), msg
 
@@ -45,7 +45,7 @@ let main argv =
   let randomWalk = Sample.randomWalk "randomWalk"
   let walkPipe =  Events.events |> Pipe.tickTimer randomWalk (TimeSpan.FromMilliseconds 500.)
   let systemMetrics = Events.events |> Pipe.tickTimer (systemMetrics (PointName.parse "sys")) (TimeSpan.FromSeconds 10.)
-  let processing = 
+  let processing =
     Events.compose [
        walkPipe
        |> Events.sink ["WalkFile";]

@@ -39,7 +39,7 @@ let main argv =
   let logger = logary.getLogger (PointName [| "Libryy" |])
   let librryLogger = LoggerAdapter.createGeneric logger
 
-  Message.gaugeWithUnit "Test" (99./88.) Units.Seconds
+  Message.gaugeWithUnit logger.name "hundredtenpct" (Gauge (Fraction (99L, 90L), Units.Seconds))
   |> logger.logSimple
 
   let someEventWithBinaryData = Message.templateEvent<string, byte[]> (Debug, "Some binary ({Disposition}) is {Binary}")

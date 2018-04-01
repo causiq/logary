@@ -12,7 +12,7 @@ open Logary.Message
 open Logary
 open FsSql.Logging.LogLine
 
-let jsonFormat (data: obj): string = 
+let jsonFormat (data: obj): string =
   Logary.Formatting.Json.format data
 
 type DBConf =
@@ -67,11 +67,11 @@ module internal Impl =
 
   let insertMessage schema message connMgr =
     let template = message.value
-    let tplCount = insertEvent schema message template connMgr 
-    let gaugesCount = 
-      message 
+    let tplCount = insertEvent schema message template connMgr
+    let gaugesCount =
+      message
       |> Message.getAllGauges
-      |> Seq.sumBy (fun (gaugeType, Gauge(value,units)) -> insertGauge schema message value connMgr)
+      |> Seq.sumBy (fun (gaugeType, Gauge (value,units)) -> insertGauge schema message (value.toFloat()) connMgr)
     tplCount + gaugesCount
 
   let ensureOpen (c: IDbConnection) =
@@ -127,7 +127,7 @@ module internal Impl =
 
           | Flush (ackCh, nack) ->
             job {
-              do! IVar.fill ackCh () 
+              do! IVar.fill ackCh ()
               return! running state
             }
 
