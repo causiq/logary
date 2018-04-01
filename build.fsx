@@ -96,11 +96,6 @@ Target "Build" (fun _ ->
   })
 )
 
-let knownBroken =
-  Set [
-    "Influx", "https://github.com/logary/logary/issues/283"
-  ]
-
 Target "Tests" (fun _ ->
   let commandLine (file: string) =
     let projectName = file.Substring(0, file.Length - ".fsproj".Length) |> Path.GetFileName
@@ -110,7 +105,6 @@ Target "Tests" (fun _ ->
     !! "src/tests/**/*.fsproj"
     !! "src/*.Tests/*.fsproj"
   ]
-  |> Seq.filter (fun path -> not (knownBroken |> Seq.exists (fun (broken, _) -> path.Contains(broken))))
   |> Seq.iter (commandLine >> DotNetCli.RunCommand id))
 
 let packParameters name =

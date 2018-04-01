@@ -19,7 +19,6 @@ module KnownLiterals =
   [<Literal>]
   let DefaultGaugeName = "default-gauge"
 
-
   [<Literal>]
   let ErrorsContextName = LogaryPrefix + "errors"
 

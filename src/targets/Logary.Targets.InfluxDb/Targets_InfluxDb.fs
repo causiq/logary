@@ -1,14 +1,15 @@
 ﻿module Logary.Targets.InfluxDb
 
+open System
 open Hopac
 open Hopac.Infixes
 open Hopac.Extensions
 open HttpFs.Client
+open HttpFs.Composition
 open Logary
 open Logary.Message
 open Logary.Internals
 open Logary.Configuration
-open System
 
 /// An implementation for the InfluxDb-specific string format.
 module Serialisation =
@@ -53,165 +54,115 @@ module Serialisation =
       xs |> List.map (fun (x, y) -> sprintf "%s=%s" (escapeString x) y)
          |> String.concat ","
 
+  let mapExtract fExtractValue =
+     HashMap.map (fun k -> fExtractValue >> Option.orDefault (fun () -> ""))
+     >> Seq.filter (fun (KeyValue (k, v)) -> v <> String.Empty)
+     >> Seq.map (fun (KeyValue (k, v)) -> k, v)
+     >> Seq.sortBy fst
+     >> List.ofSeq
+
+  let rec getValues (valueKey: string) isTag (kvs: (string * string) list) (values: (string * string) list) =
+    function
+    | Float v ->
+      kvs, (valueKey, v.ToString(Culture.invariant)) :: values
+
+    | Int64 v ->
+      kvs, (valueKey, v.ToString(Culture.invariant) + "i") :: values
+
+    | BigInt v ->
+      if v > bigint Int64.MaxValue then
+        let str = Int64.MaxValue.ToString(Culture.invariant) + "i"
+        kvs, (valueKey, str) :: values
+      elif v < bigint Int64.MinValue then
+        let str = Int64.MinValue.ToString(Culture.invariant) + "i"
+        kvs, (valueKey, str) :: values
+      else
+        let str = v.ToString(Culture.invariant) + "i"
+        kvs, (valueKey, str) :: values
+
+    | Fraction (n, d) ->
+      kvs,
+      (valueKey, (n / d).ToString(Culture.invariant)) :: values
+
+  and extractSimple valueKey isTag v =
+    match getValues valueKey isTag [] [] v with
+    | _, (_, str) :: _ -> Some str
+    | _ -> None
+
+  let simpleValue = getValues "value"
+
+  let removeSuppressTag suppress =
+    if suppress then
+      Map.map (fun k v ->
+        match k with
+        | KnownLiterals.TagsContextName ->
+          match v with
+          | Array tags ->
+            Value.Array (tags |> List.filter ((<>) (Value.String KnownLiterals.SuppressPointValue)))
+          | _ ->
+            v
+        | _ -> v)
+    else id
+
+  let contextValues suppress context: PointValue -> _ * _ =
+    let context' =
+      context
+      |> removeSuppressTag suppress
+      |> mapExtract (extractSimple "value" true)
+
+    function
+    | Gauge (value, Scalar) ->
+      let contextTags, contextFields = simpleValue false context' [] value
+      if suppress then contextTags, [] else contextTags, contextFields
+
+    | Gauge (value, units) ->
+      simpleValue false context' [] value |> fun (tags, fields) ->
+      let contextTags, contextFields =
+        ("unit", serialiseStringTag (Units.symbol units)) :: tags,
+        fields
+      if suppress then contextTags, [] else contextTags, contextFields
+
+    | Event templ ->
+      let kvs, values = simpleValue false context' [] (Value.Int64 1L)
+      kvs,
+      // events' templates vary a lot, so don't index them
+      ("event", serialiseStringValue templ) :: values
+
+  let fieldValues (fields: Map<PointName, Field>)  =
+    Map.toSeq fields
+    |> Seq.map (fun (key, (Field (value, _))) -> PointName.format key, value)
+    |> Map.ofSeq
+    |> Value.Object
+    |> getValues "value" false [] []
+
+  let measurementName (m: Message) =
+    match m.value with
+    | v when not (String.IsNullOrWhiteSpace v) ->
+      // events should result in measurements like "event_info" or "event_fatal"
+      // because that's how they're queried
+      escapeString (sprintf "event_%O" m.level)
+    | _ ->
+      // whilst measurements should result in measurement names equivalent to their
+      // point names
+      serialisePointName m.name
+
+  // pass the point name of the event as an extra field
+  let extraFields pointName = function
+    | Event _ ->
+      [ "pointName", serialiseStringValue (PointName.format pointName) ]
+    | _ ->
+      []
+
   let serialiseMessage (message: Message): string =
-    failwith "TODO: needs to be discussed"
+    let fieldTags, fieldFields = fieldValues message.fields
+    let contextTags, contextFields = contextValues suppress message.context message.value
+    let extraFields = extraFields message.name message.value
 
-    // let mapExtract fExtractValue =
-    //   Map.map (fun k -> fExtractValue >> Option.orDefault "")
-    //   >> Seq.filter (fun (KeyValue (k, v)) -> v <> String.Empty)
-    //   >> Seq.map (fun (KeyValue (k, v)) -> k, v)
-    //   >> Seq.sortBy fst
-    //   >> List.ofSeq
-
-    // let rec getValues (valueKey: string)
-    //                   isTag
-    //                   (kvs : (string * string) list)
-    //                   (values : (string * string) list) =
-    //   function
-    //   | Float v ->
-    //     kvs, (valueKey, v.ToString(Culture.invariant)) :: values
-
-    //   | Int64 v ->
-    //     kvs, (valueKey, v.ToString(Culture.invariant) + "i") :: values
-
-    //   | String s ->
-    //     let fser = if isTag then serialiseStringTag else serialiseStringValue
-    //     kvs, (valueKey, fser s) :: values
-
-    //   | Bool true ->
-    //     kvs, (valueKey, "true") :: values
-
-    //   | Bool false ->
-    //     kvs, (valueKey, "false") :: values
-
-    //   | BigInt v ->
-    //     if v > bigint Int64.MaxValue then
-    //       let str = Int64.MaxValue.ToString(Culture.invariant) + "i"
-    //       kvs, (valueKey, str) :: values
-    //     elif v < bigint Int64.MinValue then
-    //       let str = Int64.MinValue.ToString(Culture.invariant) + "i"
-    //       kvs, (valueKey, str) :: values
-    //     else
-    //       let str = v.ToString(Culture.invariant) + "i"
-    //       kvs, (valueKey, str) :: values
-
-    //   | Binary (bs, ct) ->
-    //     ("value_ct", ct) :: kvs,
-    //     (valueKey, Convert.ToBase64String(bs)) :: values
-
-    //   | Fraction (n, d) ->
-    //     kvs,
-    //     (valueKey, (n / d).ToString(Culture.invariant)) :: values
-
-    //   | Object _ as o ->
-    //     complexValue valueKey kvs values o
-
-    //   | Array _ as a ->
-    //     complexValue valueKey kvs values a
-
-    // and extractSimple valueKey isTag v =
-    //   match getValues valueKey isTag [] [] v with
-    //   | _, (_, str) :: _ -> Some str
-    //   | _ -> None
-
-    // and complexValue valueKey kvs values = function
-    //   | Object mapKvs ->
-    //     let newValues = mapKvs |> mapExtract (extractSimple valueKey false)
-    //     kvs, newValues @ values
-
-    //   | Array arr ->
-    //     let rec array i acc = function
-    //       | [] ->
-    //         acc
-
-    //       | h :: tail ->
-    //         match extractSimple valueKey false h with
-    //         | Some str ->
-    //           array (i + 1) ((sprintf "arr_%i" i, str) :: acc) tail
-    //         | None ->
-    //           array i acc tail
-
-    //     kvs, array 0 [] arr
-
-    //   | x ->
-    //     failwithf "'%A' is not a complex value" x
-
-    // let simpleValue = getValues "value"
-
-    // let removeSuppressTag suppress =
-    //   if suppress then
-    //     Map.map (fun k v ->
-    //       match k with
-    //       | KnownLiterals.TagsContextName ->
-    //         match v with
-    //         | Array tags ->
-    //           Value.Array (tags |> List.filter ((<>) (Value.String KnownLiterals.SuppressPointValue)))
-    //         | _ ->
-    //           v
-    //       | _ -> v)
-    //   else id
-
-    // let contextValues suppress context: PointValue -> _ * _ =
-    //   let context' =
-    //     context
-    //     |> removeSuppressTag suppress
-    //     |> mapExtract (extractSimple "value" true)
-
-    //   function
-    //   | Gauge (value, Scalar)
-    //   | Derived (value, Scalar) ->
-    //     let contextTags, contextFields = simpleValue false context' [] value
-    //     if suppress then contextTags, [] else contextTags, contextFields
-
-    //   | Gauge (value, units)
-    //   | Derived (value, units) ->
-    //     simpleValue false context' [] value |> fun (tags, fields) ->
-    //     let contextTags, contextFields =
-    //       ("unit", serialiseStringTag (Units.symbol units)) :: tags,
-    //       fields
-    //     if suppress then contextTags, [] else contextTags, contextFields
-
-    //   | Event templ ->
-    //     let kvs, values = simpleValue false context' [] (Value.Int64 1L)
-    //     kvs,
-    //     // events' templates vary a lot, so don't index them
-    //     ("event", serialiseStringValue templ) :: values
-
-    // let fieldValues (fields: Map<PointName, Field>)  =
-    //   Map.toSeq fields
-    //   |> Seq.map (fun (key, (Field (value, _))) -> PointName.format key, value)
-    //   |> Map.ofSeq
-    //   |> Value.Object
-    //   |> getValues "value" false [] []
-
-    // let measurementName (m: Message) =
-    //   match m.value with
-    //   | Event _ ->
-    //     // events should result in measurements like "event_info" or "event_fatal"
-    //     // because that's how they're queried
-    //     escapeString (sprintf "event_%O" m.level)
-    //   | _ ->
-    //     // whilst measurements should result in measurement names equivalent to thei
-    //     // point names
-    //     serialisePointName m.name
-
-    // let extraFields pointName = function
-    //   // pass the point name of the event as an extra field
-    //   | Event _ ->
-    //     [ "pointName", serialiseStringValue (PointName.format pointName) ]
-    //   | _ ->
-    //     []
-
-    // let suppress = message |> Message.hasTag KnownLiterals.SuppressPointValue
-    // let fieldTags, fieldFields = fieldValues message.fields
-    // let contextTags, contextFields = contextValues suppress message.context message.value
-    // let extraFields = extraFields message.name message.value
-
-    // sprintf "%O%s %s %i"
-    //         (measurementName message)
-    //         (printTags (List.concat [fieldTags; contextTags]))
-    //         (printFields (List.concat [extraFields; fieldFields; contextFields]))
-    //         message.timestamp
+    sprintf "%O%s %s %i"
+            (measurementName message)
+            (printTags (List.concat [fieldTags; contextTags]))
+            (printFields (List.concat [extraFields; fieldFields; contextFields]))
+            message.timestamp
 
 type Consistency =
   /// the data must be written to disk by at least 1 valid node
@@ -264,74 +215,120 @@ let empty =
 module internal Impl =
   open System.Net.Http
   open System.Text
+  open Option.Operators
 
-  let reqestAckJobCreator request =
-    match request with
-    | Log (msg, ack) ->
-      ack *<= ()
-    | Flush (ackCh, nack) ->
-      IVar.fill ackCh ()
+  let endpoint (conf: InfluxDbConf) =
+    let ub = UriBuilder(conf.endpoint)
+    ub.Path <- "/write"
+    ub.Query <- "db=" + conf.db
+    ub.Uri
 
-  let extractMessage request =
-    match request with
-    | Log (msg, ack) ->
-      Serialisation.serialiseMessage msg
-    | _ ->
-      ""
+  let tuple a b = a, b
 
-  let loop (conf: InfluxDbConf) (ri: RuntimeInfo, api: TargetAPI) =
-    let endpoint =
-      let ub = UriBuilder(conf.endpoint)
-      ub.Path <- "/write"
-      ub.Query <- "db=" + conf.db
-      ub.Uri
+  /// Ensures the request is authenticated, should the configuration contain credentials.
+  let auth conf: JobFilter<Request, Response> =
+    match tuple <!> conf.username <*> conf.password with
+    | Some (username, password) ->
+      fun next req ->
+        req
+        |> Request.basicAuthentication username password
+        |> next
+    | None ->
+      fun next req ->
+        next req
 
-    let tryAddAuth conf =
-      conf.username
-      |> Option.bind (fun u -> conf.password |> Option.map (fun p -> u, p))
-      |> Option.fold (fun _ (u, p) -> Request.basicAuthentication u p) id
+  /// Guards so that all sent messages are successfully written.
+  let guardRespCode (runtime: RuntimeInfo) (body, statusCode) =
+    if statusCode >= 200 && statusCode <= 299 then
+      Job.result ()
+    else
+      runtime.logger.logWithAck Error (
+        eventX "InfluxDb target received response {statusCode} with {body}."
+        >> setField "statusCode" statusCode
+        >> setField "body" body)
+      |> Job.bind id
+      |> Job.bind (fun () -> Job.raises (Exception body))
 
-    let g (req: Request) = job {
-      use! resp = getResponse req
-      let! body = Response.readBodyAsString resp
-      return body, resp.statusCode
-    }
+  let bodyAndCode (resp: Response) =
+    resp
+    |> Job.useIn Response.readBodyAsString
+    |> Job.map (fun body -> body, resp.statusCode)
 
-    let client = new HttpClient()
+  // Move to Composition
+  let codec enc dec =
+    fun next inp ->
+      next (enc inp) |> Alt.afterJob dec
 
-    let rec loop (): Job<unit> =
+  // Move to Composition
+  let sinkJob (sink: _ -> #Job<unit>) =
+    fun next inp ->
+      next inp |> Alt.afterJob sink
+
+  // Move to Composition
+  module private JobFunc =
+    let bind (f: 'b -> #Job<'c>) (func: JobFunc<'a, 'b>): JobFunc<'a, 'c> =
+      func >> Alt.afterJob f
+
+  type State =
+    { client: HttpClient
+      send: string -> Alt<unit> }
+
+    interface IDisposable with
+      member x.Dispose() =
+        x.client.Dispose()
+
+    static member create (conf: InfluxDbConf) (runtime: RuntimeInfo) =
+      let client, endpoint = new HttpClient(), endpoint conf
+
+      let create body =
+        Request.createWithClient client Post endpoint
+        |> Request.bodyString body
+
+      let filters: JobFilter<Request, Response, string, unit> =
+        auth conf
+        >> codec create bodyAndCode
+        >> sinkJob (guardRespCode runtime)
+
+      { client = client; send = filters getResponse }
+
+  let loop (conf: InfluxDbConf) (runtime: RuntimeInfo, api: TargetAPI) =
+    runtime.logger.info (
+      eventX "Started InfluxDb target with endpoint {endpoint}."
+      >> setField "endpoint" (endpoint conf))
+
+    let rec loop (state: State): Job<unit> =
       Alt.choose [
         api.shutdownCh ^=> fun ack ->
+          runtime.logger.verbose (eventX "Shutting down InfluxDb target.")
           ack *<= () :> Job<_>
 
-        RingBuffer.takeBatch (conf.batchSize) api.requests ^=> fun reqs ->
-          let body =
-            reqs
-            |> Seq.map extractMessage
-            |> String.concat "\n"
-          let req =
-            Request.createWithClient client Post endpoint
-            |> Request.bodyString body
-            |> tryAddAuth conf
+        RingBuffer.takeBatch (conf.batchSize) api.requests ^=> fun messages ->
+          let entries, acks, flushes =
+            messages |> Array.fold (fun (entries, acks, flushes) -> function
+              | Log (message, ack) ->
+                Serialisation.serialiseMessage message :: entries,
+                ack *<= () :: acks,
+                flushes
+              | Flush (ackCh, nack) ->
+                entries,
+                acks,
+                ackCh *<= () :: flushes)
+              ([], [], [])
 
           job {
-            do! ri.logger.verboseWithBP (eventX "Sending {body}" >> Message.setField "body" body)
-            let! body, statusCode = g req
-            if statusCode > 299 then
-              let! errorFlush =
-                ri.logger.logWithAck Error (
-                  eventX  "Bad response {statusCode} with {body}"
-                  >> setField "statusCode" statusCode
-                  >> setField "body" body)
-              do! errorFlush
-              // will cause the target to restart through the supervisor
-              failwithf "Bad response statusCode=%i" statusCode
-            else
-              do! Seq.iterJobIgnore reqestAckJobCreator reqs
-              return! loop ()
+            do runtime.logger.verbose (eventX "Writing {count} messages" >> setField "count" (entries.Length))
+            do! entries |> String.concat "\n" |> state.send
+            do runtime.logger.verbose (eventX "Acking messages")
+            do! Job.conIgnore acks
+            do! Job.conIgnore flushes
+            return! loop state
           }
       ] :> Job<_>
-    loop ()
+
+    job {
+      use state = State.create conf runtime
+      return! loop state
+    }
 
 /// Create a new InfluxDb target.
 [<CompiledName "Create">]

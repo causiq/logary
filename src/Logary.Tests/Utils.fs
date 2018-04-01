@@ -67,7 +67,7 @@ type Tenant =
 
 let exnMsg =
   Message.event Error "Unhandled exception"
-  |> Message.setSimpleName "A.B.C"
+  |> Message.setNameStr "A.B.C"
   |> Message.setField "tenant" { tenantId = "12345"; permissions = "RWX" }
   |> Message.setContextFromMap (Map
     [ "user", box (Map

@@ -118,25 +118,25 @@ module Message =
 
   [<CompiledName "SetFieldsFromSeq">]
   let setFieldsFromSeq (fields: (string * obj) seq) message =
-    fields
-    |> Seq.fold (fun m (name, value) -> setField name value m) message
+    (message, fields)
+    ||> Seq.fold (fun m (name, value) -> m |> setField name value)
 
   [<CompiledName "SetFieldsFromMap">]
   let setFieldsFromMap (m: Map<string, obj>) message =
-    m
-    |> Map.fold (fun m k v -> setField k v m ) message
+    (message, m)
+    ||> Map.fold (fun m k v -> m |> setField k v)
 
   [<CompiledName "SetFieldsFromMap">]
   let setFieldsFromHashMap (m: HashMap<string, obj>) message =
-    m
-    |> Seq.fold (fun m (KeyValue (k,v)) -> m |> setField k v) message
+    (message, m)
+    ||> Seq.fold (fun m (KeyValue (k,v)) -> m |> setField k v)
 
   /// Reflects properties of plain old C# objects and puts those properties as
   /// fields in the Message's context.
   [<CompiledName "SetFieldsFromObject">]
   let setFieldsFromObject (o: obj) message =
-    Reflection.propsFrom o
-    |> Seq.fold (fun m (label, value) -> m |> setField label value) message
+    (message, Reflection.propsFrom o)
+    ||> Seq.fold (fun m (label, value) -> m |> setField label value)
 
   /// Get a partial getter lens to a field
   [<CompiledName "TryGetField">]
@@ -414,7 +414,7 @@ module Message =
 
   /// Sets the name of the message from a string.
   [<CompiledName "SetName">]
-  let setSimpleName name (msg: Message) =
+  let setNameStr name (msg: Message) =
     { msg with name = PointName.parse name }
 
   /// Sets the last bit of the Message name value to the given `nameEnding`.
