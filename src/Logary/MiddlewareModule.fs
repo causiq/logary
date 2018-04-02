@@ -18,7 +18,6 @@ module Middleware =
       Message.setContext KnownLiterals.HostContextName host msg
       |> next
 
-
   /// Sets the host name as a context value
   [<CompiledName "DnsHost">]
   let dnsHost: Middleware =
@@ -61,5 +60,5 @@ module Middleware =
   let compose: Middleware list -> Message -> Message = function
     | [] ->
       id
-    | middlewares -> 
+    | middlewares ->
       List.foldBack (fun f composed -> f composed) middlewares id

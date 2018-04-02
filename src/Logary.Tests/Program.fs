@@ -433,14 +433,6 @@ let tests =
         |> ignore
     ]
 
-    testList "ValueModule" [
-      testCase "exceptionToStringValueMap" <| fun () ->
-        Tests.skiptest "Use TypeShape"
-
-      testCase "create : 'a -> Value" <| fun () ->
-        Tests.skiptest "Use TypeShape"
-    ]
-
     testList "UnitsModule" [
       testList "formatValue" (
         [ Float 62., "62"
@@ -675,24 +667,6 @@ let tests =
         let out = Middleware.identity save m
         Expect.equal out m "Identity property"
         Expect.equal (!rm) m "Middlware was called"
-
-      testCase "host" <| fun () ->
-        Tests.skiptest "TODO: test host function"
-
-      testCase "dnsHost" <| fun () ->
-        Tests.skiptest "TODO: test dnsName function"
-
-      testCase "service name" <| fun () ->
-        Tests.skiptest "TODO: test service name function"
-
-      testCase "process name" <| fun () ->
-        Tests.skiptest "TODO: test process name function"
-
-      testCase "compose" <| fun () ->
-        Tests.skiptest "TODO: test compose function"
-
-      testCase "context" <| fun () ->
-        Tests.skiptest "TODO: test context function"
     ]
 
     testList "NodaTime.Duration" [
