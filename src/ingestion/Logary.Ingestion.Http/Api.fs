@@ -16,8 +16,7 @@ let private bind (f: 'a -> Choice<'b, 'c>) (v: Choice<'a, 'c>) =
 type ReporterConfig =
   { transform: Message -> Message
     rootPath: string
-    logger: Logger
-  }
+    logger: Logger }
 
   static member create transform rootPath logger =
     { transform = transform

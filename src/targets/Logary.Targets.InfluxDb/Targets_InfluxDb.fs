@@ -285,17 +285,17 @@ type Consistency =
   | Any
 
 type InfluxDbConf =
-    /// the write endpoint to send the values to
+    /// The write endpoint to send the values to
   { endpoint: Uri
     /// REQUIRED - sets the target database for the write
     db: string
-    /// if authentication is enabled, you must authenticate as a user with write permissions to the target database
+    /// If authentication is enabled, you must authenticate as a user with write permissions to the target database
     username: string option
-    /// if authentication is enabled, you must authenticate as a user with write permissions to the target database
+    /// If authentication is enabled, you must authenticate as a user with write permissions to the target database
     password: string option
-    /// set the number of nodes that must confirm the write. If the requirement is not met the return value will be partial write if some points in the batch fail, or write failure if all points in the batch fail.
+    /// Set the number of nodes that must confirm the write. If the requirement is not met the return value will be partial write if some points in the batch fail, or write failure if all points in the batch fail.
     consistency: Consistency
-    /// sets the target retention policy for the write. If not present the default retention policy is used
+    /// Sets the target retention policy for the write. If not present the default retention policy is used
     retention: string option
     /// Sets how many measurements should be batched together if new measurements are produced faster than we can write them one by one. Default is 100.
     batchSize: uint16 }
@@ -320,7 +320,6 @@ let empty =
 
 module internal Impl =
   open System.Net.Http
-  open System.Text
   open Option.Operators
 
   let endpoint (conf: InfluxDbConf) =
@@ -369,11 +368,6 @@ module internal Impl =
   let sinkJob (sink: _ -> #Job<unit>) =
     fun next inp ->
       next inp |> Alt.afterJob sink
-
-  // Move to Composition
-  module private JobFunc =
-    let bind (f: 'b -> #Job<'c>) (func: JobFunc<'a, 'b>): JobFunc<'a, 'c> =
-      func >> Alt.afterJob f
 
   type State =
     { client: HttpClient

@@ -1,6 +1,7 @@
 ﻿module Program
 
 open System
+//open System.Runtime.Remoting.Messaging
 open Suave
 open Suave.Operators
 open Suave.Filters
@@ -14,15 +15,20 @@ open Logary.Targets
 
 [<EntryPoint>]
 let main argv =
-  let logary = 
+  let threadId =
+    fun next msg ->
+      Message.setContext "managedThreadId" (System.Threading.Thread.CurrentThread.ManagedThreadId) msg
+      |> next
+
+  let logary =
     Config.create "suave.example" "localhost"
     |> Config.ilogger (ILogger.LiterateConsole Verbose)
+    |> Config.middleware threadId
     |> Config.target (LiterateConsole.create LiterateConsole.empty "console")
     |> Config.processing (Events.events |> Events.sink ["console"])
     |> Config.build
     |> Hopac.Hopac.run
 
-  
   LogaryFacadeAdapter.initialise<Suave.Logging.Logger> logary
 
   let logger = Suave.Logging.Log.create "logger.from.suave"
