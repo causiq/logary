@@ -1,6 +1,8 @@
 ﻿module Logary.Targets.InfluxDb
 
 open System
+open System.Text
+open System.Collections.Generic
 open Hopac
 open Hopac.Infixes
 open Hopac.Extensions
@@ -14,6 +16,8 @@ open Logary.Configuration
 
 /// An implementation for the InfluxDb-specific string format.
 module Serialise =
+
+  /// https://docs.influxdata.com/influxdb/v1.5/write_protocols/line_protocol_reference/
   [<Struct>]
   type Escaped =
     private Escaped of value:string
@@ -23,118 +27,218 @@ module Serialise =
     static member internal create value =
       if isNull value then nullArg "value"
       Escaped value
+
     static member fieldValue (nonEscapedString: string) =
+      // only replace " because we put quotes around the string
+      let inner = nonEscapedString.Replace("\"", "\\\"") // " -> \"
+      Escaped (sprintf "\"%s\"" inner)
+
+    static member fieldValue (b: bool) =
+      Escaped (if b then "T" else "F")
+
+    static member fieldValue (f: float) =
+      Escaped (f.ToString Culture.invariant)
+
+    static member fieldValue (i: int64) =
+      Escaped (i.ToString(Culture.invariant) + "i")
+
+    static member fieldValue (v: Value) =
+      match v with
+      | Float v ->
+        Escaped (v.ToString(Culture.invariant))
+      | Int64 v ->
+        Escaped (v.ToString(Culture.invariant) + "i")
+      | BigInt v ->
+        if v > bigint Int64.MaxValue then
+          Escaped (Int64.MaxValue.ToString(Culture.invariant) + "i")
+        elif v < bigint Int64.MinValue then
+          Escaped (Int64.MinValue.ToString(Culture.invariant) + "i")
+        else
+          Escaped (v.ToString(Culture.invariant) + "i")
+      | Fraction _ as v ->
+        Escaped (v.toFloat().ToString(Culture.invariant))
+
+    static member private escape (nonEscapedString: string) =
       nonEscapedString
         .Replace(",", @"\,")
         .Replace(" ", "\ ")
         .Replace("=", "\=")
       |> Escaped
+
     static member fieldName (nonEscapedString: string) =
-      Escaped.fieldValue nonEscapedString
+      Escaped.escape nonEscapedString
+
     static member tagValue (nonEscapedString: string) =
-      Escaped.fieldValue nonEscapedString
+      Escaped.escape nonEscapedString
+
     static member tagName (nonEscapedString: string) =
-      Escaped.fieldValue nonEscapedString
+      Escaped.escape nonEscapedString
+
     override x.ToString () =
       let (Escaped s) = x in s
 
   let timestamp (ts: EpochNanoSeconds): Escaped =
-    Escaped.create (ts.ToString(Culture.invariant))
+    ts.ToString Culture.invariant |> Escaped.create
 
-  let units: Units -> Escaped option = function
-    | Scalar ->
-      None
-    | other ->
-      Some (Escaped.fieldValue other.symbol)
+  let private anyValue (x: obj): Escaped option =
+    match x with
+    | :? string as s -> Some (Escaped.fieldValue s)
+    | :? uint16 as i -> Some (Escaped.fieldValue (int64 i))
+    | :? uint32 as i -> Some (Escaped.fieldValue (int64 i))
+    | :? uint64 as i -> Some (Escaped.fieldValue (BigInt (bigint i)))
+    | :? int16 as i -> Some (Escaped.fieldValue (int64 i))
+    | :? int32 as i -> Some (Escaped.fieldValue (int64 i))
+    | :? int64 as i -> Some (Escaped.fieldValue i)
+    | :? float as f -> Some (Escaped.fieldValue f)
+    | :? decimal as d -> Some (Escaped.fieldValue (float d))
+    | :? bool as b when b -> Some (Escaped.fieldValue b)
+    | :? bool as b -> Some (Escaped.fieldValue b)
+    | _ -> None
 
-  let value: Value -> Escaped = function
-    | Float v ->
-      Escaped.create (v.ToString(Culture.invariant))
-    | Int64 v ->
-      Escaped.create (v.ToString(Culture.invariant) + "i")
-    | BigInt v ->
-      if v > bigint Int64.MaxValue then
-        Escaped.create (Int64.MaxValue.ToString(Culture.invariant) + "i")
-      elif v < bigint Int64.MinValue then
-        Escaped.create (Int64.MinValue.ToString(Culture.invariant) + "i")
-      else
-        Escaped.create (v.ToString(Culture.invariant) + "i")
-    | Fraction _ as v ->
-      Escaped.create (v.toFloat().ToString(Culture.invariant))
+  let tag (tvalue: obj): Escaped option =
+    anyValue tvalue
 
-  let gaugeName (gname: string) (g: Gauge) =
-    match g.unit with
-    | Scalar ->
-      gname
-    | _ ->
-      sprintf "%s[%s]" gname g.unit.symbol
-
-  let str (s: string) = // ??
-    s.Replace("\"", "\\\"")
-
-  let strQ (s: string) = // ??
-    "\"" + str s + "\""
-
-  let bool (b: bool): Escaped =
-    Escaped.create (if b then "true" else "false")
-
-  let field (f: obj): Escaped option =
-    let t = f.GetType()
-    if t.IsPrimitive then
-      Some (Escaped.fieldValue (t.ToString()))
+  let tags (xs: #seq<Escaped * Escaped>): Escaped =
+    if Seq.isEmpty xs then Escaped.create ""
     else
-      None
-
-  let tags (xs: #seq<Escaped * Escaped>) =
-    if Seq.isEmpty xs then "" else
-    xs
+      xs
+      |> Seq.sortBy fst
       |> Seq.map (fun (x, y) -> sprintf "%O=%O" x y)
       |> String.concat ","
       |> sprintf ",%s"
+      |> Escaped.create
 
-  let fields (xs: #seq<Escaped * Escaped>) =
-    if Seq.isEmpty xs then "value=0" else
-    xs
+  let field (fvalue: obj): Escaped option =
+    anyValue fvalue
+
+  let fields (xs: #seq<Escaped * Escaped>): Escaped =
+    if Seq.isEmpty xs then Escaped.create "value=0"
+    else
+      xs
+      |> Seq.sortBy fst
       |> Seq.map (fun (x, y) -> sprintf "%O=%O" x y)
       |> String.concat ","
+      |> Escaped.create
 
   open Logary.Message.Patterns
 
+  let nameGauges (message: Message) (gauges: Dictionary<string, Escaped * string option>) =
+    let inline formatValueLiteral (v, x) =
+      match v, x with
+      | v, None ->
+        [| Escaped.create "value", v |]
+      | v, Some (formatted: string) ->
+        [| Escaped.create "value", v; Escaped.create "value_f", Escaped.fieldValue formatted |]
+
+    let allGaugesBut ignoredKey =
+      gauges |> Seq.collect (function
+        | KeyValue (k, _) when Some k = ignoredKey ->
+          [||]
+        | KeyValue (k, (v, None)) ->
+          [| Escaped.fieldName k, v |]
+        | KeyValue (k, (v, Some formatted)) ->
+          [| Escaped.fieldName k, v; Escaped.create (sprintf "%O_f" k), Escaped.fieldValue formatted |])
+
+    let singleGaugeAsValue =
+      gauges |> Seq.collect (fun (KeyValue (_, x)) -> formatValueLiteral x)
+
+    match message.name, message.value, gauges.Count with
+    // Empty event message
+    | PointName.Empty, template, 0 when not (String.IsNullOrWhiteSpace template) ->
+      Escaped.tagName template,
+      Seq.singleton (Escaped.create "value", Escaped.create "1i")
+
+    // Fully empty message
+    | PointName.Empty, _, 0 ->
+      Escaped.tagName "MISSING",
+      Seq.singleton (Escaped.create "value", Escaped.create "0")
+
+    // Event message with sensor/logger/measurement name, otherwise empty
+    | sensor, _, 0 ->
+      Escaped.tagName (PointName.format sensor),
+      Seq.singleton (Escaped.create "value", Escaped.create "1i")
+
+    // Non-empty event/template/message
+    | PointName.Empty, template, 1 when not (String.IsNullOrWhiteSpace template) ->
+      let measurement =
+        PointName.parse template
+        |> PointName.setEnding (Seq.head gauges.Keys)
+        |> PointName.format
+      Escaped.tagName measurement,
+      singleGaugeAsValue
+
+    // Empty sensor/logger/measurement name and event/template/message, use gauge name
+    | PointName.Empty, _, 1 ->
+      Escaped.tagName (Seq.head gauges.Keys),
+      singleGaugeAsValue
+
+    // Non-empty sensor/logger/measurement, single gauge, append to measurement name
+    | sensor, _, 1 ->
+      let measurement =
+        sensor
+        |> PointName.setEnding (Seq.head gauges.Keys)
+        |> PointName.format
+      Escaped.tagName measurement,
+      singleGaugeAsValue
+
+    // Multi-gauge message with event/template/message.
+    | PointName.Empty, template, n when not (String.IsNullOrWhiteSpace template) ->
+      Escaped.tagName template,
+      allGaugesBut None
+
+    // Multi-gauge message without event/template/message; pick first gauge as measurement (??)
+    | PointName.Empty, _, _ ->
+      let first = Seq.head gauges.Keys
+      Escaped.tagName first,
+      Seq.concat [
+        formatValueLiteral gauges.[first] :> seq<_>
+        allGaugesBut (Some first)
+      ]
+
+    // We have a measurement name and multiple gauges
+    | sensor, _, _ ->
+      Escaped.tagName (PointName.format sensor),
+      allGaugesBut None
+
   let message (message: Message): string =
-    let ts = ResizeArray<_>()
-    let fs = ResizeArray<_>()
-    let measurement = ref (Escaped.create "")
-
-    if message.name <> PointName.empty then
-      measurement := Escaped.tagName (PointName.format message.name)
-
-    elif message.value <> String.Empty then
-      measurement := Escaped.tagName message.value
-
-    ts.Add (Escaped.tagName "level", Escaped.tagValue (message.level.ToString()))
+    let ts = ResizeArray<_>() // tags
+    let fs = ResizeArray<_>() // fields
+    let gauges = Dictionary<string, _ * _ option>()
 
     for kv in message.context do
       match kv with
-      | Unmarked | Intern -> ()
-      | Tags tags ->
-        ts.AddRange (tags |> Seq.map (fun t -> Escaped.tagName t, Escaped.tagValue "true"))
+      | Intern -> ()
 
-      | Field (fname, f) ->
-        field f |> Option.iter (fun f -> fs.Add (Escaped.fieldName fname, f))
+      | Tags tags ->
+        tags
+        |> Seq.map (fun t -> Escaped.tagName t, Escaped.tagValue "true")
+        |> ts.AddRange
+
+      | Field (fname, fvalue) ->
+        field fvalue |> Option.iter (fun x -> fs.Add (Escaped.fieldName fname, x))
+
+      | Context (key, cvalue) ->
+        tag cvalue |> Option.iter (fun x -> ts.Add (Escaped.tagName key, x))
 
       | Gauge (gname, g) ->
-        if (!measurement).isEmpty then
-          measurement := Escaped.tagName gname
-          fs.Add (Escaped.create "value", value g.value)
-          units g.unit |> Option.iter (fun u -> fs.Add (Escaped.create "unit", u))
-        else
-          let nameUnit = gaugeName gname g
-          fs.Add (Escaped.fieldName nameUnit, value g.value)
+        gauges.[gname] <-
+          (Escaped.fieldValue g.value,
+           if g.unit = Scalar then None
+           else Some (Units.formatWithUnit Units.Suffix g.unit g.value))
 
-        let formatted = Units.formatWithUnit Units.Suffix g.unit g.value
-        fs.Add (Escaped.fieldName "formatted", Escaped.fieldValue formatted)
+    let measurement, gaugeFields = nameGauges message gauges
+    fs.AddRange gaugeFields
+    ts.Add (Escaped.tagName "level", Escaped.tagValue (message.level.ToString()))
 
-    sprintf "%O%s %s %O" !measurement (tags ts) (fields fs) (timestamp message.timestamp)
+    let sb = new StringBuilder()
+    let app (chars: string) = sb.Append chars |> ignore
+    app (sprintf "%O" measurement)
+    app (tags ts |> sprintf "%O")
+    app " "
+    app (fields fs |> sprintf "%O")
+    app " "
+    app (timestamp message.timestamp |> sprintf "%O")
+    sb.ToString()
 
 type Consistency =
   /// the data must be written to disk by at least 1 valid node
@@ -274,7 +378,7 @@ module internal Impl =
           runtime.logger.verbose (eventX "Shutting down InfluxDb target.")
           ack *<= () :> Job<_>
 
-        RingBuffer.takeBatch (conf.batchSize) api.requests ^=> fun messages ->
+        RingBuffer.takeBatch conf.batchSize api.requests ^=> fun messages ->
           let entries, acks, flushes =
             messages |> Array.fold (fun (entries, acks, flushes) -> function
               | Log (message, ack) ->

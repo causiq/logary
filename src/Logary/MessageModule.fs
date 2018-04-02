@@ -508,7 +508,7 @@ module Message =
     open System
 
     /// Pattern match the key
-    let (|Intern|Field|Gauge|Tags|Unmarked|) (KeyValue (key: string, value: obj)) =
+    let (|Intern|Field|Gauge|Tags|Context|) (KeyValue (key: string, value: obj)) =
       match key with
       | _ when key = ErrorsContextName
             || key = ServiceContextName
@@ -525,14 +525,18 @@ module Message =
         Field (k, value)
 
       | _ when key.Equals(DefaultGaugeName, StringComparison.InvariantCulture) ->
-        Gauge (String.Empty, value :?> Gauge)
+        Gauge (String.Empty, unbox<Gauge> value)
 
       | _ when key.StartsWith GaugeNamePrefix ->
         let k = key.Substring GaugeNamePrefix.Length
-        Gauge (k, value :?> Gauge)
+        Gauge (k, unbox<Gauge> value)
 
       | _ ->
-        Unmarked
+        match value with
+        | :? Gauge as g ->
+          Gauge (key, g)
+        | _ ->
+          Context (key, value)
 
 [<AutoOpen>]
 module MessageEx =

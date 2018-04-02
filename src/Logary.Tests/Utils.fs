@@ -151,6 +151,9 @@ let logMsgWaitAndShutdown targetApi (logCallBack: (Message -> Job<unit>) -> #Job
 
   Job.tryFinallyJob (logCallBack logAndWait) finaliseJob
 
+let testLabel label test =
+  TestLabel (label, test, FocusState.Normal)
+
 module Expect =
   let private trim (s: string) = if isNull s then s else s.Trim()
 

@@ -70,6 +70,7 @@ type Units =
     | Root a -> String.Concat [ "sqrt("; a.symbol; ")" ]
     | Log10 a -> String.Concat [ "log10("; a.symbol; ")" ]
 
+[<Struct>]
 type PointName =
   PointName of hierarchy:string[]
 with
@@ -85,6 +86,9 @@ with
 module PointName =
 
   let empty = PointName Array.empty
+
+  let (|Empty|_|) (pn: PointName) =
+    if pn.isEmpty then Some () else None
 
   [<CompiledName "OfSingle">]
   let ofSingle (segment: string) =
@@ -111,7 +115,7 @@ module PointName =
 
   [<CompiledName "SetEnding">]
   let setEnding (nameEnding: string) (PointName segments as original) =
-    if isNull nameEnding then original else
+    if String.IsNullOrWhiteSpace nameEnding then original else
     PointName (Array.append segments [| nameEnding |])
 
 /// Allows you to clearly deliniate the accuracy and type of the measurement/gauge.

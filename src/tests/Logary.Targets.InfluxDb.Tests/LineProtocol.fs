@@ -28,65 +28,56 @@ type MyObj = {foo: string; number: int}
 
 [<Tests>]
 let lineProtocol =
-  testList "syntax for line protocol" [
-    testList "gauges" [
-      testCase "Serialise timestamp" <| fun _ ->
+  testList "line protocol" [
+    testList "serialisation" [
+      testCase "timestamp" <| fun _ ->
         Serialise.timestamp 1439587925L
           |> sprintf "%O"
           |> Expect.equal
               "Should be identical to Logary"
               "1439587925"
+    ]
 
-      testCase "for example 1" <| fun _ ->
-        gauge PointName.empty "measurement" (Int64 12L)
+    testList "gauges" [
+      testCase "gauge = measurement, 1 scalar float gauge" <| fun _ ->
+        gauge PointName.empty "measurement" (Float 3.141592654)
           |> setNanoEpoch 1439587925L
           |> Serialise.message
           |> Expect.equal
               "Should serialise correctly"
-              "measurement value=12 1439587925"
+              "measurement,level=debug value=3.141592654 1439587925"
 
-      testCase "For example" <| fun _ ->
-        gauges (PointName.parse "measurement") [
-          "value", Float 12.
-          "otherVal", Float 21.
-        ]
-          |> setContext "foo" "bar"
-          |> setContext "bat" "baz"
-          // Timestamps must be in Unix time and are assumed to be in nanoseconds
-          |> setNanoEpoch 1439587925L
-          |> Serialise.message
-          |> Expect.equal
-              "Should serialise properly"
-              "measurement,bat=baz,foo=bar otherVal=21,value=12 1439587925"
-
-      testCase "Simplest Valid Point (measurement + field + ts)" <| fun _ ->
-        // sensor name is empty, measurement name is disk_free
-        gaugei PointName.empty "disk_free" 442221834240L
+      testCase "sensor = measurement, 1 scalar int64 gauge" <| fun _ ->
+        gaugei (PointName [| "disk_free" |]) "" 442221834240L
           |> setNanoEpoch 1435362189575692182L
           |> Serialise.message
           |> Expect.equal
               "Equals the right value"
-              "disk_free value=442221834240i 1435362189575692182"
+              "disk_free,level=debug value=442221834240i 1435362189575692182"
 
-      testCase "With Tags + ts" <| fun _ ->
-        gaugei PointName.empty "disk_free" 442221834240L
+      testCase "gauge = measurement, 1 bytes int64 gauge, 2 string contexts, 1 uint16 context" <| fun _ ->
+        gaugeWithUniti PointName.empty "disk_free" Bytes 442221834240L
           |> setContext "hostname" "server01"
           |> setContext "disk_type" "SSD"
+          |> setContext "rack_no" 2us
           |> setNanoEpoch 1435362189575692182L
           |> Serialise.message
           |> Expect.equal
               "Serialises as intended"
-              "disk_free,disk_type=SSD,hostname=server01 value=442221834240i 1435362189575692182"
+              @"disk_free,disk_type=SSD,hostname=server01,level=debug,rack_no=2i value=442221834240i,value_f=442221834240\ B 1435362189575692182"
 
-      testCase "Multiple Fields" <| fun _ ->
+      testCase "sensor = measurement, 1 bytes int64 gauge, 1 string contexts, 1 uint16 context, 1 field" <| fun _ ->
         let harddrive = PointName.parse "/dev/sda"
-        gaugeWithUnit harddrive "free_space" (Gauge (Int64 442221834240L, Bytes))
+        gaugeWithUniti harddrive "disk_free" Bytes 442221834240L
+          |> setContext "hostname" "server01"
           |> setField "disk_type" "SSD"
+          |> setContext "rack_no" 2us
+          |> setLevel Warn
           |> setNanoEpoch 1435362189575692182L
           |> Serialise.message
           |> Expect.equal
-              "Should equal"
-              "/dev/sda disk_type=\"SSD\",free_space=442221834240i 1435362189575692182"
+              "Serialises as intended"
+              "/dev/sda.disk_free,hostname=server01,level=warn,rack_no=2i disk_type=\"SSD\",disk_free=442221834240i,disk_free_f=442221834240\ B 1435362189575692182"
 
       testCase "Escaping Commas and Spaces" <| fun _ ->
         gauge PointName.empty "total disk free" (Int64 442221834240L)
@@ -136,6 +127,27 @@ let lineProtocol =
               "Should equal"
               @"""measurement\ with\ quotes"",tag\ key\ with\ spaces=tag\,value\,with""commas"" field_key\\\\=""string field value, only \"" need be quoted"",value=1i 1435362189575692182"
 
+
+      testList "advanced" [
+        let gauges =
+          [ "velocity", Gauge (Float 56.151, Div (Metres, Seconds))
+            "acceleration", Gauge (Float 0.3, Div (Div (Metres, Seconds), Seconds)) ]
+
+        let alternatives =
+          [ "Gauge c'tor", gaugesWithUnits (PointName.parse "Car-9B325M") gauges
+            "Event c'tor", eventDebug "Car-9B325M" |> addGauges gauges ]
+
+        for testN, mbase in alternatives do
+          yield testCase (sprintf "%s sensor = measurement, 1 float m s^-1 gauge, 1 float m s^-2 gauge, 2 string contexts" testN) <| fun _ ->
+            mbase
+              |> setContext "driverId" "haf"
+              |> setContext "tenantId" "821"
+              |> setNanoEpoch 1439587925L
+              |> Serialise.message
+              |> Expect.equal
+                  "Should serialise properly"
+                  "Car-9B325M,driverId=haf,level=debug,tenantId=821 velocity=56.151,acceleration=0.3 1439587925"
+      ]
     ]
 
     testList "with tagging" [
@@ -201,3 +213,4 @@ let lineProtocol =
               @"event_info pointName=""Measurement"",foo=""bar"",number=1i,event=""Template"",value=1i 1435362189575692182"
     ]
   ]
+  |> testLabel "influxdb"
