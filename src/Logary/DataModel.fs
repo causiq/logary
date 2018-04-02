@@ -193,14 +193,17 @@ type Message =
     context: HashMap<string, obj>
     /// How important? See the docs on the LogLevel type for details.
     level: LogLevel
-    /// When? nanoseconds since UNIX epoch.
+    /// When? The # of nanoseconds since the UNIX epoch (1970-01-01T00:00:00Z)
     timestamp: EpochNanoSeconds }
 
     /// Gets the timestamp as NodaTime ticks (100 ns per tick). If you're getting
     /// for DateTime and/or DateTimeOffset, remember that those start at
-    /// 0001-01-01.
+    /// 0001-01-01; use the functions on the DateTime/DateTimeOffset modules then instead.
     member x.timestampTicks: int64 =
       x.timestamp / Constants.NanosPerTick
+    /// The # of seconds since UNIX epoch 1970-01-01T00:00:00Z
+    member x.timestampEpochS: int64 =
+      x.timestamp / Constants.NanosPerSecond
 
 /// See the docs on the funtions for descriptions on how Ack works in conjunction
 /// with the promise.
@@ -226,7 +229,6 @@ type Logger =
   /// Gets the currently set log level (minimal,inclusive),
   /// aka. the granularity with which things are being logged.
   abstract level: LogLevel
-
 
 /// A disposable interface to use with `use` constructs and to create child-
 /// contexts. Since it inherits Logger, you can pass this scope down into child

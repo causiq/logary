@@ -2,7 +2,6 @@ namespace Logary
 
 open System
 open System.Runtime.CompilerServices
-open System.Runtime.InteropServices
 
 /// Extensions to facilitate converting DateTime and DateTimeOffset to EpochNanoSeconds.
 [<AutoOpen; Extension>]

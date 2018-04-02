@@ -16,6 +16,7 @@ open HttpFs.Composition
 /// An API access token
 type Token = string
 
+/// https://mixpanel.com/help/reference/http#tracking-via-http
 /// The configuration record for Mixpanel communication.
 type MixpanelConf =
   { batchSize: uint16
@@ -36,6 +37,44 @@ module Engage =
   let path = "/engage"
 
 let empty = MixpanelConf.create "MISSING_MIXPANEL_TOKEN"
+
+module internal E =
+  open Logary.Message.Patterns
+  open Logary.Formatting
+
+  module E = Json.Encode
+
+  let properties (conf: MixpanelConf) (m: Message) =
+    let baseObj =
+      JsonObject.empty
+      |> JsonObject.add "time" (E.int64 m.timestampEpochS)
+      |> JsonObject.add "token" (E.string conf.token)
+
+    // TO CONSIDER: warn if missing `distinct_id`
+    (baseObj, m.context)
+    ||> Seq.fold (fun o -> function
+      | Intern ->
+        o
+      | Field (key, value) ->
+        o |> JsonObject.add key (Json.encode value)
+      | Gauge (key, g) ->
+        o |> JsonObject.add key (Json.encode g)
+      | Tags tags ->
+        o |> JsonObject.add "tags" (E.stringSet tags)
+      | Context (key, value) ->
+        o |> JsonObject.add key (Json.encode value))
+    |> Json.Object
+
+  let event (m: Message) =
+    if m.value = "" then None
+    else Some (Json.String m.value)
+
+  let message (conf: MixpanelConf) (m: Message): _ option =
+    event m |> Option.map (fun e ->
+    E.propertyList [
+      "properties", properties conf m
+      "event", e
+    ])
 
 module internal Impl =
   open System.Net.Http
@@ -108,9 +147,14 @@ module internal Impl =
           let entries, acks, flushes =
             messages |> Array.fold (fun (entries, acks, flushes) -> function
               | Log (message, ack) ->
-                Serialise.message message :: entries,
+                let nextEntries =
+                  match E.message conf message with
+                  | None -> entries
+                  | Some m -> m :: entries
+                nextEntries,
                 ack *<= () :: acks,
                 flushes
+
               | Flush (ackCh, nack) ->
                 entries,
                 acks,
@@ -120,7 +164,7 @@ module internal Impl =
 
           job {
             do runtime.logger.verbose (eventX "Writing {count} messages" >> setField "count" (entries.Length))
-            do! entries |> String.concat "\n" |> state.send
+            do! Json.format (Json.Array entries) |> state.send
             do runtime.logger.verbose (eventX "Acking messages")
             do! Job.conIgnore acks
             do! Job.conIgnore flushes
