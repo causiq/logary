@@ -420,6 +420,7 @@ module internal Impl =
                 acks,
                 ackCh *<= () :: flushes)
               ([], [], [])
+            |> fun (es, aas, fls) -> List.rev es, List.rev aas, List.rev fls
 
           job {
             do runtime.logger.verbose (eventX "Writing {count} messages" >> setField "count" (entries.Length))

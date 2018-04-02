@@ -51,6 +51,7 @@ let withServer () =
 
   let listening, srv =
     startWebServerAsync cfg (request (fun r ctx -> async {
+      printfn "GOT REQ"
       do! Job.toAsync (Ch.give state.req r)
       return! Successful.NO_CONTENT ctx
     }))
@@ -81,11 +82,11 @@ let writesOverHttp =
   let msg3 = Message.gaugefs "Processor" "Number 3" 0.3463
 
   testList "writes over HTTP" [
-    testCaseTarget "write message" (fun state target ->
+    testCaseTarget "write single" (fun state target ->
       job {
         let! ack = Target.log target msg
-        do! ack
         let! req = Ch.take state.req
+        do! ack
 
         let expected = Serialise.message msg
 
@@ -96,7 +97,7 @@ let writesOverHttp =
           |> Expect.equal "Should write to tests db" (Choice1Of2 "tests")
       })
 
-    testCaseTarget "write message batch" (fun state target ->
+    testCaseTarget "write batch" (fun state target ->
       job {
         let! p1 = Target.log target msg1
         let! p2 = Target.log target msg2
@@ -129,3 +130,4 @@ let writesOverHttp =
           |> Expect.isTrue "Message should be acked"
       })
   ]
+  |> testLabel "influxdb"
