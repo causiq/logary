@@ -77,7 +77,7 @@ module Units =
       let factor, unitStr = calcFactor value
       value * factor, unitStr
 
-  // Given a Unit, returns the scaling function and the list of units available.
+  // Given a Unit, returns the scaled value and a composite unit (e.g. MiB or µs)
   let rec scale (units: Units) value: float * string =
     let noopScale v = 1., units.symbol
     match units with

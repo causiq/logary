@@ -46,6 +46,43 @@ type Units =
   static member Celsius =
     Offset (Kelvins, +273.15)
 
+  member x.name: string option =
+    match x with
+    | Bits ->
+      Some "bits"
+    | Bytes ->
+      Some "bytes"
+    | Seconds ->
+      Some "seconds"
+    | Metres ->
+      Some "metres"
+    | Scalar ->
+      Some "units"
+    | Amperes ->
+      Some "amperes"
+    | Kelvins ->
+      Some "kelvins"
+    | Moles ->
+      Some "moles"
+    | Candelas ->
+      Some "candelas"
+    | Percent ->
+      Some "percent"
+    | Watts ->
+      Some "watts"
+    | Hertz ->
+      Some "hertz"
+    | Other u ->
+      Some u
+    | Scaled _
+    | Offset _
+    | Mul _
+    | Pow _
+    | Div _
+    | Root _
+    | Log10 _ ->
+      None
+
   member x.symbol =
     match x with
     | Bits -> "bit"
@@ -61,7 +98,7 @@ type Units =
     | Watts -> "W"
     | Hertz -> "Hz"
     | Other other -> other
-    | Scaled (units, scale) -> sprintf "%s / %f" units.symbol scale
+    | Scaled (units, scale) -> sprintf "%s/%f" units.symbol scale
     | Offset (units, offset) ->
       sprintf "%s %s %f" units.symbol (if offset < 0. then "-" else "+") offset
     | Mul (a, b) -> String.Concat [ "("; a.symbol; "*"; b.symbol; ")" ]

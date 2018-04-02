@@ -65,13 +65,21 @@ module Serialise =
         .Replace("=", "\=")
       |> Escaped
 
-    static member fieldName (nonEscapedString: string) =
+    static member fieldKey (nonEscapedString: string) =
       Escaped.escape nonEscapedString
 
     static member tagValue (nonEscapedString: string) =
       Escaped.escape nonEscapedString
+    static member tagValue (value: float) =
+      Escaped (value.ToString Culture.invariant)
+    static member tagValue (value: int64) =
+      Escaped (value.ToString Culture.invariant)
+    static member tagValue (value: bigint) =
+      Escaped (value.ToString Culture.invariant)
+    static member tagValue (value: bool) =
+      Escaped (if value then "T" else "F")
 
-    static member tagName (nonEscapedString: string) =
+    static member tagKey (nonEscapedString: string) =
       Escaped.escape nonEscapedString
 
     override x.ToString () =
@@ -80,8 +88,33 @@ module Serialise =
   let timestamp (ts: EpochNanoSeconds): Escaped =
     ts.ToString Culture.invariant |> Escaped.create
 
-  let private anyValue (x: obj): Escaped option =
-    match x with
+  let tagValue (tvalue: obj): Escaped option =
+    match tvalue with
+    | :? string as s -> Some (Escaped.tagValue s)
+    | :? uint16 as i -> Some (Escaped.tagValue (int64 i))
+    | :? uint32 as i -> Some (Escaped.tagValue (int64 i))
+    | :? uint64 as i -> Some (Escaped.tagValue (i.ToString Culture.invariant))
+    | :? int16 as i -> Some (Escaped.tagValue (int64 i))
+    | :? int32 as i -> Some (Escaped.tagValue (int64 i))
+    | :? int64 as i -> Some (Escaped.tagValue i)
+    | :? float as f -> Some (Escaped.tagValue f)
+    | :? decimal as d -> Some (Escaped.tagValue (float d))
+    | :? bool as b when b -> Some (Escaped.tagValue b)
+    | :? bool as b -> Some (Escaped.tagValue b)
+    | _ -> None
+
+  let tags (xs: Dictionary<Escaped, Escaped>): Escaped =
+    if Seq.isEmpty xs then Escaped.create ""
+    else
+      xs
+      |> Seq.sortBy (fun kv -> kv.Key)
+      |> Seq.map (fun kv -> sprintf "%O=%O" kv.Key kv.Value)
+      |> String.concat ","
+      |> sprintf ",%s"
+      |> Escaped.create
+
+  let fieldValue (fvalue: obj): Escaped option =
+    match fvalue with
     | :? string as s -> Some (Escaped.fieldValue s)
     | :? uint16 as i -> Some (Escaped.fieldValue (int64 i))
     | :? uint32 as i -> Some (Escaped.fieldValue (int64 i))
@@ -95,21 +128,6 @@ module Serialise =
     | :? bool as b -> Some (Escaped.fieldValue b)
     | _ -> None
 
-  let tag (tvalue: obj): Escaped option =
-    anyValue tvalue
-
-  let tags (xs: #seq<Escaped * Escaped>): Escaped =
-    if Seq.isEmpty xs then Escaped.create ""
-    else
-      xs
-      |> Seq.sortBy fst
-      |> Seq.map (fun (x, y) -> sprintf "%O=%O" x y)
-      |> String.concat ","
-      |> sprintf ",%s"
-      |> Escaped.create
-
-  let field (fvalue: obj): Escaped option =
-    anyValue fvalue
 
   let fields (xs: #seq<Escaped * Escaped>): Escaped =
     if Seq.isEmpty xs then Escaped.create "value=0"
@@ -122,41 +140,44 @@ module Serialise =
 
   open Logary.Message.Patterns
 
-  let nameGauges (message: Message) (gauges: Dictionary<string, Escaped * string option>) =
-    let inline formatValueLiteral (v, x) =
-      match v, x with
-      | v, None ->
-        [| Escaped.create "value", v |]
-      | v, Some (formatted: string) ->
-        [| Escaped.create "value", v; Escaped.create "value_f", Escaped.fieldValue formatted |]
+  let nameGauges (message: Message) (gauges: Dictionary<string, Escaped * string option * string option>) =
+    let inline formatLiteral rawName (v, format: string option, units: string option): (Escaped * Escaped)[] =
+      [|
+          yield Escaped.fieldKey rawName, v
+          if Option.isSome format then
+            yield Escaped.fieldKey (sprintf "%s_f" rawName), Escaped.fieldValue (Option.get format)
+          if Option.isSome units then
+            yield Escaped.fieldKey (sprintf "%s_unit" rawName), Escaped.fieldValue (Option.get units)
+      |]
 
     let allGaugesBut ignoredKey =
       gauges |> Seq.collect (function
-        | KeyValue (k, _) when Some k = ignoredKey ->
-          [||]
-        | KeyValue (k, (v, None)) ->
-          [| Escaped.fieldName k, v |]
-        | KeyValue (k, (v, Some formatted)) ->
-          [| Escaped.fieldName k, v; Escaped.create (sprintf "%O_f" k), Escaped.fieldValue formatted |])
+        | KeyValue (k, _) when Some k = ignoredKey -> [||]
+        | KeyValue (k, x) -> formatLiteral k x)
 
     let singleGaugeAsValue =
-      gauges |> Seq.collect (fun (KeyValue (_, x)) -> formatValueLiteral x)
+      gauges |> Seq.collect (fun (KeyValue (_, x)) -> formatLiteral "value" x)
 
     match message.name, message.value, gauges.Count with
-    // Empty event message
-    | PointName.Empty, template, 0 when not (String.IsNullOrWhiteSpace template) ->
-      Escaped.tagName template,
-      Seq.singleton (Escaped.create "value", Escaped.create "1i")
-
     // Fully empty message
-    | PointName.Empty, _, 0 ->
-      Escaped.tagName "MISSING",
+    | PointName.Empty, template, 0 when String.IsNullOrWhiteSpace template ->
+      Escaped.tagKey "MISSING",
       Seq.singleton (Escaped.create "value", Escaped.create "0")
 
-    // Event message with sensor/logger/measurement name, otherwise empty
-    | sensor, _, 0 ->
-      Escaped.tagName (PointName.format sensor),
+    // Empty event message, the message becomes the measurement
+    | PointName.Empty, template, 0 ->
+      Escaped.tagKey template,
       Seq.singleton (Escaped.create "value", Escaped.create "1i")
+
+    // Event message with sensor/logger/measurement name, otherwise empty,
+    // the message becomes an event (this is the regular log message case)
+    | sensor, template, 0 ->
+      Escaped.tagKey (PointName.format sensor),
+      [|
+          Escaped.create "value", Escaped.create "1i"
+          Escaped.create "event", Escaped.fieldValue template
+      |]
+      :> seq<_>
 
     // Non-empty event/template/message
     | PointName.Empty, template, 1 when not (String.IsNullOrWhiteSpace template) ->
@@ -164,12 +185,12 @@ module Serialise =
         PointName.parse template
         |> PointName.setEnding (Seq.head gauges.Keys)
         |> PointName.format
-      Escaped.tagName measurement,
+      Escaped.tagKey measurement,
       singleGaugeAsValue
 
     // Empty sensor/logger/measurement name and event/template/message, use gauge name
     | PointName.Empty, _, 1 ->
-      Escaped.tagName (Seq.head gauges.Keys),
+      Escaped.tagKey (Seq.head gauges.Keys),
       singleGaugeAsValue
 
     // Non-empty sensor/logger/measurement, single gauge, append to measurement name
@@ -178,74 +199,83 @@ module Serialise =
         sensor
         |> PointName.setEnding (Seq.head gauges.Keys)
         |> PointName.format
-      Escaped.tagName measurement,
+      Escaped.tagKey measurement,
       singleGaugeAsValue
 
     // Multi-gauge message with event/template/message.
     | PointName.Empty, template, n when not (String.IsNullOrWhiteSpace template) ->
-      Escaped.tagName template,
+      Escaped.tagKey template,
       allGaugesBut None
 
     // Multi-gauge message without event/template/message; pick first gauge as measurement (??)
     | PointName.Empty, _, _ ->
       let first = Seq.head gauges.Keys
-      Escaped.tagName first,
+      Escaped.tagKey first,
       Seq.concat [
-        formatValueLiteral gauges.[first] :> seq<_>
+        formatLiteral "value" gauges.[first] :> seq<_>
         allGaugesBut (Some first)
       ]
 
     // We have a measurement name and multiple gauges
     | sensor, _, _ ->
-      Escaped.tagName (PointName.format sensor),
+      Escaped.tagKey (PointName.format sensor),
       allGaugesBut None
 
   let message (message: Message): string =
-    let ts = ResizeArray<_>() // tags
+    let ts = Dictionary<Escaped, Escaped>() // tags
     let fs = ResizeArray<_>() // fields
-    let gauges = Dictionary<string, _ * _ option>()
+    let gauges = Dictionary<string, Escaped * string option * string option>()
 
     for kv in message.context do
       match kv with
       | Intern -> ()
 
       | Tags tags ->
-        tags
-        |> Seq.map (fun t -> Escaped.tagName t, Escaped.tagValue "true")
-        |> ts.AddRange
+        ts.[Escaped.tagKey "tags"] <-
+          tags
+          |> Seq.filter (String.IsNullOrWhiteSpace >> not)
+          |> Seq.sortBy id
+          |> String.concat ","
+          |> Escaped.tagValue
 
       | Field (fname, fvalue) ->
-        field fvalue |> Option.iter (fun x -> fs.Add (Escaped.fieldName fname, x))
+        fieldValue fvalue |> Option.iter (fun x -> fs.Add (Escaped.fieldKey fname, x))
 
       | Context (key, cvalue) ->
-        tag cvalue |> Option.iter (fun x -> ts.Add (Escaped.tagName key, x))
+        tagValue cvalue |> Option.iter (fun x -> ts.Add (Escaped.tagKey key, x))
 
       | Gauge (gname, g) ->
-        gauges.[gname] <-
-          (Escaped.fieldValue g.value,
-           if g.unit = Scalar then None
-           else Some (Units.formatWithUnit Units.Suffix g.unit g.value))
+        let value = Escaped.fieldValue g.value
+        let units =
+          if g.unit = Scalar then
+            None
+          else
+            let scaled, units = Units.scale g.unit (g.value.toFloat())
+            // 2 decimal places, 3-5 sig-figs, see https://msdn.microsoft.com/visualfsharpdocs/conceptual/core.printf-module-%5bfsharp%5d
+            Some (sprintf "%0.2f %s" scaled units)
+        gauges.[gname] <- (value, units, g.unit.name)
+
+    ts.Add (Escaped.tagKey "level", Escaped.tagValue (message.level.ToString()))
 
     let measurement, gaugeFields = nameGauges message gauges
     fs.AddRange gaugeFields
-    ts.Add (Escaped.tagName "level", Escaped.tagValue (message.level.ToString()))
 
     let sb = new StringBuilder()
     let app (chars: string) = sb.Append chars |> ignore
-    app (sprintf "%O" measurement)
-    app (tags ts |> sprintf "%O")
+    app (measurement.ToString())
+    app ((tags ts).ToString())
     app " "
-    app (fields fs |> sprintf "%O")
+    app ((fields fs).ToString())
     app " "
-    app (timestamp message.timestamp |> sprintf "%O")
+    app ((timestamp message.timestamp).ToString())
     sb.ToString()
 
 type Consistency =
-  /// the data must be written to disk by at least 1 valid node
+  /// The data must be written to disk by at least 1 valid node
   | One
-  /// the data must be written to disk by (N/2 + 1) valid nodes (N is the replication factor for the target retention policy)
+  /// The data must be written to disk by (N/2 + 1) valid nodes (N is the replication factor for the target retention policy)
   | Quorum
-  ///  the data must be written to disk by all valid nodes
+  /// The data must be written to disk by all valid nodes
   | All
   /// a write is confirmed if hinted-handoff is successful, even if all target
   /// nodes report a write failure In this context, “valid node” means a node
