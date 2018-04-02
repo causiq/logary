@@ -113,7 +113,7 @@ module internal Impl =
 
   type State =
     { client: HttpClient
-      send: string -> Alt<unit> }
+      send: Json list -> Alt<unit> }
 
     interface IDisposable with
       member x.Dispose() =
@@ -122,11 +122,15 @@ module internal Impl =
     static member create (conf: MixpanelConf) (runtime: RuntimeInfo) =
       let client, endpoint = new HttpClient(), endpoint conf
 
-      let create body =
-        Request.createWithClient client Post endpoint
-        |> Request.bodyString body
+      let create (msgs: Json list) =
+        let data =
+          Json.format (Json.Array msgs)
+          |> UTF8.encodeBase64
 
-      let filters: JobFilter<Request, Response, string, unit> =
+        Request.createWithClient client Post endpoint
+        |> Request.body (BodyForm [ NameValue ("data", data) ])
+
+      let filters: JobFilter<Request, Response, Json list, unit> =
         codec create bodyAndCode
         >> sinkJob (guardRespCode runtime)
 
@@ -164,7 +168,7 @@ module internal Impl =
 
           job {
             do runtime.logger.verbose (eventX "Writing {count} messages" >> setField "count" (entries.Length))
-            do! Json.format (Json.Array entries) |> state.send
+            do! entries |> state.send
             do runtime.logger.verbose (eventX "Acking messages")
             do! Job.conIgnore acks
             do! Job.conIgnore flushes
@@ -176,7 +180,6 @@ module internal Impl =
       use state = State.create conf runtime
       return! loop state
     }
-
 
 /// Create a new Mixpanel target
 [<CompiledName "Create">]
