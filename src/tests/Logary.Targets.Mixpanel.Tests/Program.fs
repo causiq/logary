@@ -19,10 +19,10 @@ let env k =
 let start () =
   // You'll have to set the environment var MIXPANEL_TOKEN to run this;
   // but besides that, this is the only configuration you need:
-  MixpanelLogaryConf.create(env "MIXPANEL_TOKEN")
+  MixpanelConf.create(env "MIXPANEL_TOKEN")
 
 // TODO: Influx/Elmah-like basic tests
 
 [<EntryPoint>]
 let main argv =
-  Tests.defaultMainThisAssembly argv
+  Tests.runTestsInAssembly defaultConfig argv
