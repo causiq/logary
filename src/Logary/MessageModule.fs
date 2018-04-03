@@ -38,7 +38,9 @@ module Message =
       (fun v (x: Message) -> { x with timestamp = v })
 
     let boxWithOption_<'a> : Epimorphism<obj option,'a> =
-      (function | Some x -> Some (unbox<'a> x)
+      (function | Some (:? 'a as x) -> Some x
+                | Some x when isNull x -> Some null
+                | Some _ -> None
                 | None -> None),
       box >> Some
 
