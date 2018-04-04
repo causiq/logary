@@ -11,6 +11,11 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Topshelf.fs" />
+    <Compile Include="Args.fs" />
+    <Compile Include="Shipper.fs" />
+    <Compile Include="Router.fs" />
+    <Compile Include="Health.fs" />
+    <Compile Include="Proxy.fs" />
     <Compile Include="Rutta.fs" />
     <Content Include="App.config" />
     <None Include="paket.references" />

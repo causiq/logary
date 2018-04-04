@@ -1,4 +1,4 @@
-﻿module Logary.Ingestion.Api
+﻿module Logary.Ingestion.HTTP
 
 open Logary
 open Suave
@@ -14,18 +14,16 @@ let private bind (f: 'a -> Choice<'b, 'c>) (v: Choice<'a, 'c>) =
   | Choice2Of2 c -> Choice2Of2 c
 
 type ReporterConfig =
-  { transform: Message -> Message
-    rootPath: string
+  { rootPath: string
     logger: Logger }
 
-  static member create transform rootPath logger =
-    { transform = transform
-      rootPath = rootPath
+  static member create rootPath logger =
+    { rootPath = rootPath
       logger = logger }
 
 let defaultConfig =
   let logger = Log.create "SuaveReporter"
-  ReporterConfig.create id "/i/logary" logger
+  ReporterConfig.create "/i/logary" logger
 
 let private printHelp (config: ReporterConfig): WebPart =
   let message = sprintf "You can post a JSON structure to: %s" config.rootPath
