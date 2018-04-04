@@ -6,7 +6,7 @@
     <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Api.fs" />
+    <Compile Include="Http.fs" />
     <None Include="Script.fsx" />
     <None Include="paket.references" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />

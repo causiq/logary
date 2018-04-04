@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="UDP.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Logary\Logary.fsproj" />
+  </ItemGroup>
+</Project>
