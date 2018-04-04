@@ -7,20 +7,26 @@ module Router =
   open System.IO
   open Logary
   open Logary.Message
+  open Logary.Codecs
   open Logary.Configuration
   open Logary.Targets
   open Logary.EventsProcessing
   open Logary.Formatting
   open Logary.Internals.Chiron
   open fszmq
-  open MBrace.FsPickler
-  open MBrace.FsPickler.Combinators
 
   type State =
     { zmqCtx: Context
       receiver: Socket
       forwarder: LogManager
       logger: Logger }
+
+    static member create zmqContext receiver forwarder logger =
+      { zmqCtx = zmqContext
+        receiver = receiver
+        forwarder = forwarder
+        logger = logger }
+
     interface IDisposable with
       member x.Dispose() =
         (x.zmqCtx :> IDisposable).Dispose()
@@ -29,7 +35,6 @@ module Router =
   let private init binding (targetUris: Uri list) createSocket mode: State =
     let context = new Context()
     let receiver = createSocket context
-
     let forwarder =
       let hostName = System.Net.Dns.GetHostName()
       let targets = targetUris |> List.map TargetConfig.create
@@ -42,14 +47,10 @@ module Router =
       |> Config.loggerMinLevel ".*" Verbose
       |> Config.ilogger (ILogger.LiterateConsole Debug)
       |> Config.build
-      |> Hopac.Hopac.run
+      |> run
 
     let targetLogger = forwarder.getLogger (PointName.parse "Logary.Services.Rutta.Router")
-
-    { zmqCtx    = context
-      receiver  = receiver
-      forwarder = forwarder
-      logger    = targetLogger }
+    State.create context receiver forwarder targetLogger
 
   let rec private recvLoop receiver logger =
     match Socket.recvAll receiver with
@@ -85,42 +86,19 @@ module Router =
     | x ->
       Choice2Of2 (sprintf "Unknown parameter(s) %A" x)
 
-  let rec private streamRecvLoop receiver (logger: Logger) =
-    // https://gist.github.com/lancecarlson/fb0cfd0354005098d579
-    // https://gist.github.com/claws/7231548#file-czmq-stream-server-c-L21
-    try
-      let frame = Socket.recv receiver
-      // Aborted socket due to closing process:
-      if isNull frame then () else
-      let bs = Socket.recv receiver
-      // http://api.zeromq.org/4-1:zmq-socket#toc19
-      // A connection was made
-      if bs.Length = 0 then streamRecvLoop receiver logger else
-      // printfn "Data received: %A" message
-      use ms = new MemoryStream(bs)
-      use sr = new StreamReader(ms, Encoding.UTF8)
-      while not sr.EndOfStream do
-        let line = sr.ReadLine()
-        match Json.parse line |> JsonResult.bind Json.decodeMessage with
-        | JPass message ->
-          logger.logSimple message
-        | JFail failure ->
-          logger.verbose (eventX "JFail: {line} => {failure}" >> setField "line" line >> setField "failure" failure)
-      //printfn "Looping..."
+  let streamBind binding targets =
+    let targets = targets |> List.choose (function Router_Target target -> Some (Uri target) | _ -> None)
 
-      streamRecvLoop receiver logger
-
-    with :? ZMQError as zmq ->
-      logger.info (eventX "Shutting down streamRecvLoop due to {exn}." >> setField "exn" zmq.Message >> addExn zmq)
-      ()
-
-  let streamBind binding = function
-    | Router_Target target :: _ ->
+    if List.length targets = 0 then
+      Choice2Of2 (sprintf "Unknown parameter(s) %A" targets)
+    else
       printfn "Spawning router in STREAM mode from %s" binding
-      use state = init binding [ Uri target ] Context.stream "STREAM"
+      use state = init binding targets Context.stream "STREAM"
       Socket.bind state.receiver binding
-      Choice1Of2 (streamRecvLoop state.receiver state.logger)
 
-    | x ->
-      Choice2Of2 (sprintf "Unknown parameter(s) %A" x)
+      let next =
+        Codec.toJsonStringError Codec.json
+        >> Result.map state.logger.logSimple
+        >> Job.result
 
+      Choice1Of2 (Logary.Ingestion.TCP.streamRecvLoop state.receiver next)

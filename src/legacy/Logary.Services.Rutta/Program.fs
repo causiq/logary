@@ -40,7 +40,8 @@ let detailedParse: _ -> _ -> Choice<string * _ * _, _, string> = function
     | Router_Sub binding ->
       Choice1Of3 ("router xsub", Router.xsubBind binding, pars)
 
-    | Router_Stream binding ->
+    | Router_TCP binding ->
+      // TODO: support multiple Router_BINDING_TYPE arguments
       Choice1Of3 ("router stream", Router.streamBind binding, pars)
 
     | Proxy (xsubBind, xpubBind) ->
