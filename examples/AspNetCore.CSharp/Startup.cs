@@ -10,6 +10,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Logary.AspNetCore;
+using Logary.Configuration;
+using Logary;
 
 namespace AspNetCore.CSharp
 {
@@ -25,7 +28,15 @@ namespace AspNetCore.CSharp
     // This method gets called by the runtime. Use this method to add services to the container.
     public void ConfigureServices(IServiceCollection services)
     {
-      services.AddLogging(x => x.AddConsole());
+      var logary = LogaryFactory.New("Logary.AspNetCore","localhost",
+                with => with.InternalLogger(Logary.Configuration.ILogger.NewConsole(Logary.LogLevel.Debug))
+                        .Target<Logary.Targets.LiterateConsole.Builder>("console")).Result;
+
+      var logger = Logary.Log.Create<Startup> ();
+
+      Logary.LoggerModule.logSimple(logger, Logary.MessageEx.EventFormat(Logary.LogLevel.Info,"does it {work}", "yes!"));
+
+      services.AddLogging(x => x.ClearProviders().AddLogary(logary,true));
       services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
     }
 
@@ -41,7 +52,6 @@ namespace AspNetCore.CSharp
         app.UseHsts();
       }
 
-      app.UseHttpsRedirection();
       app.UseMvc();
     }
   }

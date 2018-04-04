@@ -3,12 +3,12 @@ namespace Logary.AspNetCore
 open Microsoft.Extensions.Logging
 open Logary
 open System.Threading
-open Logary.Internals.Aether.Optics
+open Logary.AspNetCore.LoggerAdapter
 
 [<ProviderAlias("Logary")>]
 type LogaryLoggerProvider(m: LogManager, needDispose: bool) =
 
-  let mutable (provider: IExternalScopeProvider) = Unchecked.defaultof<_>
+  let mutable (provider: IExternalScopeProvider) = null
 
   interface ISupportExternalScope with
     member x.SetScopeProvider (scopeProvider: IExternalScopeProvider) = provider <- scopeProvider
@@ -16,10 +16,10 @@ type LogaryLoggerProvider(m: LogManager, needDispose: bool) =
   interface ILoggerProvider with
     member x.CreateLogger (name: string) : ILogger =
       let scopeProvider =
-        if provider = Unchecked.defaultof<_> then 
+        if isNull provider then 
           new LoggerExternalScopeProvider() :> IExternalScopeProvider
         else provider
-      new LoggerAdaption(name, m, scopeProvider)
+      new LoggerAdaption(name, m, scopeProvider) :> ILogger
       
     member x.Dispose () =
       if needDispose then

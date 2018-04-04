@@ -2,6 +2,7 @@ namespace Logary
 
 open System
 open System.Threading
+open System
 
 /// An log scope with scope name and scope data
 type Scope =
@@ -13,12 +14,12 @@ type ILogScope =
 
 type AsyncLogScope() =
   static let _currentScope = new AsyncLocal<Scope list>()
-  static let nullValue = Unchecked.defaultof<Scope list>
+  // static let nullValue = null
   static do _currentScope.Value <- list.Empty
  
   let getCurrentScopeFromAsyncLocal () =
     let current = _currentScope.Value
-    if current = nullValue then
+    if obj.ReferenceEquals(current, null) then
       _currentScope.Value <- []
       []
     else current
