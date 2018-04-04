@@ -2,7 +2,6 @@ namespace Logary.Internals
 
 open Logary
 open Logary.Internals
-open Hopac
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module RuntimeInfo =

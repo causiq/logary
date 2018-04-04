@@ -1,4 +1,4 @@
-﻿source https://api.nuget.org/v3/index.json
+source https://api.nuget.org/v3/index.json
 framework net461, netcoreapp2.0, netstandard2.0
 redirects on
 
@@ -11,6 +11,7 @@ nuget Machine.Specifications
 nuget Machine.Specifications.Should
 nuget Machine.Specifications.Runner.Console
 nuget Machine.Specifications.Runner.VisualStudio
+nuget Microsoft.Extensions.Logging 2.1.0-preview1-final preview
 nuget Microsoft.NET.Test.Sdk
 nuget FParsec
 nuget FSharp.Core
@@ -63,7 +64,7 @@ group Build
 
 group Examples
     source https://api.nuget.org/v3/index.json
-    framework net461, netcoreapp2.0, netstandard2.0
+    framework auto-detect
     redirects on
 
     nuget Argu
@@ -72,5 +73,7 @@ group Examples
     nuget FParsec
     nuget FSharp.Core
     nuget Hopac
+    nuget Microsoft.AspNetCore.App == 2.1.0-preview1-final preview
+    nuget Microsoft.NETCore.Platforms == 2.1.0-preview1-26216-02 preview
     nuget NodaTime
     nuget RabbitMQ.Client

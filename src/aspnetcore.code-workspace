@@ -1,0 +1,10 @@
+{
+	"folders": [
+		{
+			"path": "Logary"
+		},
+		{
+			"path": "Logary.AspNetCore"
+		}
+	]
+}

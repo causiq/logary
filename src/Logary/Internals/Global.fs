@@ -1,16 +1,16 @@
 namespace Logary.Internals
 
 open Logary
+open System
 
 /// This module keeps track of the LoggingConfig reference.
 module internal Global =
   open NodaTime
 
+  let nullLogger = NullLogger() :> Logger
+
   type T =
-    { getLogger: PointName -> Logger
-      /// Gets a logger by name and applies the passed middleware to it. You can
-      /// also use `Logger.apply` on existing loggers to create new ones.
-      getLoggerWithMiddleware: PointName -> Middleware -> Logger
+    { logManager: LogManager option
       getTimestamp: unit -> EpochNanoSeconds
       /// Gets the console semaphore. When the process is running with an attached
       /// tty, this function is useful for getting the semaphore to synchronise
@@ -18,19 +18,22 @@ module internal Global =
       /// of the console output.
       getConsoleSemaphore: unit -> obj }
     with
-      static member create getLogger getLoggerWM getTs getCS =
-        { getLogger = getLogger
-          getLoggerWithMiddleware = getLoggerWM
+      static member create manager getTs getCS =
+        { logManager = Some manager
           getTimestamp = getTs
           getConsoleSemaphore = getCS }
+
+      member x.getLogger name =
+        match x.logManager with
+        | Some m -> m.getLogger name
+        | None -> nullLogger
+        
 
   /// Null object pattern; will only return loggers that don't log.
   let defaultConfig =
     let c = SystemClock.Instance
     let s = obj ()
-    let nl = NullLogger() :> Logger
-    { getLogger = fun pn -> nl
-      getLoggerWithMiddleware = fun pn mid -> nl
+    { logManager = None
       getTimestamp = fun () -> c.GetCurrentInstant().ToUnixTimeTicks() * Constants.NanosPerTick
       getConsoleSemaphore = fun () -> s }
 
@@ -76,7 +79,6 @@ module internal Global =
       member x.logWithAck level msgFactory =
         withLogger (fun logger -> logger.logWithAck level (msgFactory >> ensureName))
 
-
   /// Call to initialise Logary with a new Logary instance.
   let initialise cfg =
     config := (cfg, snd !config + 1u)
@@ -95,6 +97,12 @@ module internal Global =
   /// Run the passed function under the console semaphore lock.
   let lockSem fn =
     lock (getConsoleSemaphore ()) fn
+
+  let beginScope name lazyData =
+    match (fst !config).logManager with
+    | Some m -> m.beginScope name lazyData
+    | None -> {new IDisposable with member x.Dispose () = ()}
+    
 
   module Json =
 
