@@ -55,4 +55,8 @@ type LogManager =
   /// this will only affect the loggers (its name, not its instance) which have been created beafore
   abstract switchLoggerLevel: string * LogLevel -> unit
 
-  abstract beginScope : string -> Lazy<_> -> IDisposable
+  /// Add scope info when logging
+  abstract beginScope : Lazy<obj> -> IDisposable
+  
+  /// wrap external scope
+  abstract wrapScope : ILogScope -> unit

@@ -37,6 +37,7 @@ namespace AspNetCore.CSharp
       Logary.LoggerModule.logSimple(logger, Logary.MessageEx.EventFormat(Logary.LogLevel.Info,"does it {work}", "yes!"));
 
       services.AddLogging(x => x.ClearProviders().AddLogary(logary,true));
+      // services.AddLogging(x => x.ClearProviders().AddConsole(b=>b.IncludeScopes = true));
       services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
     }
 

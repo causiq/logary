@@ -23,7 +23,7 @@ module LoggerAdapter =
   
 
 
-  type LoggerAdaption(name: string, logManager: LogManager, scopeProvider: IExternalScopeProvider) =
+  type LoggerAdaption(name: string, logManager: LogManager) =
     let logger = logManager.getLogger (PointName.parse name)
     
     let processEvent (eventId: EventId) m =
@@ -51,14 +51,7 @@ module LoggerAdapter =
 
     interface ILogger with
       member x.BeginScope<'t> (state: 't) : IDisposable =
-        let d1 = logManager.beginScope String.Empty (lazy(state))
-        let d2 = scopeProvider.Push state
-        {
-          new IDisposable with
-            member x.Dispose () =
-              do d1.Dispose()
-              do d2.Dispose()
-        }
+        logManager.beginScope (lazy(box state))
 
       member x.IsEnabled (level: msLogLevel) = 
         if level = msLogLevel.None then false

@@ -103,7 +103,7 @@ module Registry =
       if m.name.isEmpty then { m with name = name } else m
 
     let fillWithScope (logScope: ILogScope) : Message -> Message =
-      logScope.fold (fun asOne scope -> scope :: asOne) []
+      logScope.collect ()
       |> Message.setContext KnownLiterals.ScopeContextName
 
 
@@ -266,5 +266,6 @@ module Registry =
         member x.shutdown () = shutdown t
         member x.switchLoggerLevel (path, logLevel) =
           Impl.switchLoggerLevel t path logLevel
-        member x.beginScope scopeName lazyData = t.logScope.push (Scope(scopeName, lazyData.Value))
+        member x.beginScope lazyData = t.logScope.push lazyData
+        member x.wrapScope scope = t.logScope.wrap scope
     }

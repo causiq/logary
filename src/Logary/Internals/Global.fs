@@ -98,9 +98,9 @@ module internal Global =
   let lockSem fn =
     lock (getConsoleSemaphore ()) fn
 
-  let beginScope name lazyData =
+  let beginScope lazyData =
     match (fst !config).logManager with
-    | Some m -> m.beginScope name lazyData
+    | Some m -> m.beginScope lazyData
     | None -> {new IDisposable with member x.Dispose () = ()}
     
 

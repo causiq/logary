@@ -4,22 +4,27 @@ open Microsoft.Extensions.Logging
 open Logary
 open System.Threading
 open Logary.AspNetCore.LoggerAdapter
+open System
 
 [<ProviderAlias("Logary")>]
 type LogaryLoggerProvider(m: LogManager, needDispose: bool) =
 
-  let mutable (provider: IExternalScopeProvider) = null
 
   interface ISupportExternalScope with
-    member x.SetScopeProvider (scopeProvider: IExternalScopeProvider) = provider <- scopeProvider
+    member x.SetScopeProvider (scopeProvider: IExternalScopeProvider) =
+      m.wrapScope {
+        new ILogScope with
+          member x.collect () = 
+            let mutableStateList = new ResizeArray<obj>()
+            do scopeProvider.ForEachScope(new Action<obj,ResizeArray<obj>>(fun data state -> state.Add(data)), mutableStateList)
+            mutableStateList |> List.ofSeq
+          member x.push lazyData = scopeProvider.Push(lazyData.Value)
+          member x.wrap scope = ()
+      } 
     
   interface ILoggerProvider with
     member x.CreateLogger (name: string) : ILogger =
-      let scopeProvider =
-        if isNull provider then 
-          new LoggerExternalScopeProvider() :> IExternalScopeProvider
-        else provider
-      new LoggerAdaption(name, m, scopeProvider) :> ILogger
+      new LoggerAdaption(name, m) :> ILogger
       
     member x.Dispose () =
       if needDispose then

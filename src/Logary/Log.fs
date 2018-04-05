@@ -35,8 +35,8 @@ type Log() =
     Log.create typeof<'forType>
 
   [<CompiledName "BeginScope">]
-  static member beginScope =
-    Global.beginScope 
+  static member beginScope lazyData =
+    Global.beginScope lazyData
 
 [<Obsolete "Use the Log module instead. E.g. `open Logary; Log.create \"MyLogger\"`.">]
 module Logging =

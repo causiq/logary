@@ -2,40 +2,48 @@ namespace Logary
 
 open System
 open System.Threading
-open System
-
-/// An log scope with scope name and scope data
-type Scope =
-  Scope of string * obj
 
 type ILogScope =
-  abstract fold: ('state -> Scope -> 'state) -> 'state -> 'state
-  abstract push: Scope -> IDisposable
+  abstract collect: unit -> obj list
+  abstract push: Lazy<obj> -> IDisposable
+  abstract wrap: ILogScope -> unit
 
 type AsyncLogScope() =
-  static let _currentScope = new AsyncLocal<Scope list>()
-  // static let nullValue = null
-  static do _currentScope.Value <- list.Empty
+  static let _currentScopeData = new AsyncLocal<Lazy<obj> list>()
+  static do _currentScopeData.Value <- list.Empty
  
-  let getCurrentScopeFromAsyncLocal () =
-    let current = _currentScope.Value
+  let getCurrentScopeDataFromAsyncLocal () =
+    let current = _currentScopeData.Value
     if obj.ReferenceEquals(current, null) then
-      _currentScope.Value <- []
+      _currentScopeData.Value <- []
       []
     else current
 
-  let parent = getCurrentScopeFromAsyncLocal ()
+  let mutable innerScope: ILogScope option = None
 
   interface ILogScope with
-    member x.fold folder state =
-      getCurrentScopeFromAsyncLocal ()
-      |> List.fold folder state 
+    member x.collect () =
+      let innerData =
+        match innerScope with
+        | Some inner -> inner.collect ()
+        | None -> []
 
-    member x.push scope =
-      let current = getCurrentScopeFromAsyncLocal ()
-      _currentScope.Value <- scope :: current
-      x :> IDisposable
+      getCurrentScopeDataFromAsyncLocal ()
+      |> List.map (fun lz -> lz.Value) 
+      |> List.append innerData
 
-  interface IDisposable with
-    member x.Dispose () =
-      _currentScope.Value <- parent
+    member x.push data =
+      match innerScope with
+      | Some inner ->
+        inner.push data
+      | None ->
+        let previous = getCurrentScopeDataFromAsyncLocal ()
+        _currentScopeData.Value <- data :: previous
+
+        {
+          new IDisposable with
+            member x.Dispose () =
+              _currentScopeData.Value <- previous
+        }
+    
+    member x.wrap inner = innerScope <- Some inner
