@@ -55,11 +55,6 @@ module Codec =
     open System.Xml
     open System.Xml.Linq
 
-    let private sample = """<log4j:event logger="com.howtodoinjava.Log4jXMLLayoutExample" timestamp="1368417841893" level="INFO" thread="main">
-    <log4j:message><![CDATA[Sample info message]]></log4j:message>
-    <log4j:locationInfo class="com.howtodoinjava.Log4jXMLLayoutExample" method="main" file="Log4jXMLLayoutExample.java" line="15"/>
-</log4j:event>"""
-
     let xn (ns: XNamespace) tag =
       XName.Get(tag, ns.NamespaceName)
 
