@@ -6,6 +6,7 @@ open Logary.Internals
 open Logary.Adapters.Facade
 open Hopac
 open NodaTime
+open System
 
 let stubLogger (minLevel: LogLevel)
                (message: Message ref)
@@ -39,6 +40,8 @@ let stubLogManager (message: Message ref) =
       member x.shutdown (fDur,sDur) =
         Alt.always (FlushInfo([],[]),ShutdownInfo([],[]))
       member x.switchLoggerLevel (path, minLevel) = ()
+      member x.wrapScope scope = ()
+      member x.beginScope data = {new IDisposable with member x.Dispose () = ()}
   }
 
 [<Tests>]
