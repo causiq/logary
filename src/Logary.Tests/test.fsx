@@ -1,4 +1,4 @@
-#I "bin/Debug"
+#I "bin/Debug/net461"
 #r "Logary.dll"
 #r "FsCheck.dll"
 #r "Hopac.dll"
@@ -25,15 +25,6 @@ open Logary.Targets
 printfn "before"
 
 
-let pipe =
-  Events.events
-  |> Pipe.chain (fun cont -> 
-       let mutable firstOccur = true
-
-       fun prev -> 
-         if firstOccur && prev.level >= LogLevel.Error then firstOccur <- false
-         cont prev)
-
 let logm = 
   Config.create "svc" "localhost" 
   |> Config.target (Targets.LiterateConsole.create Targets.LiterateConsole.empty "nice console")
@@ -43,9 +34,15 @@ let logm =
 
 let ab = logm.getLogger (PointName.parse "a.bxxxx")
 
-ab.info (Message.eventX "ab.info" >> (fun msg -> printfn "invoke %s" msg.value; msg)) // no invoke
-logm.switchLoggerLevel ("a.b.*", LogLevel.Info)
-ab.info (Message.eventX "ab.info" >> (fun msg -> printfn "invoke %s" msg.value; msg)) // hurry
+type BinaryDU = Binary of data:byte [] * contentType:ContentType
+// or
+type Binary = { data: byte[]; contentType: ContentType }
+
+let b1 = Binary ([|1uy|], "image/jpeg")
+let b2 = {data= [||]; contentType= "image/jpeg"}
+
+ab.fatal (Message.eventX "Got {@pic} DU, {pic}" >> Message.setField "pic" b1) 
+ab.fatal (Message.eventX "Got {@pic} Record {pic}" >> Message.setField "pic" b2) 
 
 
 logm.flushPending() |> run
