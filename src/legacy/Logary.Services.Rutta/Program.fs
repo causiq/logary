@@ -25,7 +25,6 @@ let executeShipper (args: ParseResults<ShipperArgs>) =
     Shipper.pushTo connect
 
 let executeSubCommand (ilevel: LogLevel) =
-  // TODO: configure internal logging with the given level
   function
   | Proxy args -> executeProxy args
   | Router args -> executeRouter ilevel args
