@@ -10,6 +10,7 @@ open Logary.Internals
 open Logary.Message
 open Logary.Configuration
 open Logary.EventsProcessing
+open System.Text.RegularExpressions
 
 let tests = [
   testCaseJob "from Config and Multi shutdown" <| job {
@@ -78,12 +79,45 @@ let tests = [
     do! logm.shutdown ()
   }
 
+  testCaseJob "log with scope" (job {
+    let! (logm, out, error)  = Utils.buildLogManager ()
+    let loggername = PointName.parse "logger.test"
+    let lg = logm.getLogger loggername
+
+    using (logm.beginScope (lazy(box "scope-1"))) (fun _ ->
+      lg.infoWithAck (eventX "1") |> Hopac.run
+
+      logm.flushPending () |> Hopac.run
+      let outStr = clearStream out
+      Expect.stringContains outStr "scope-1" "shoule have scope-1 as its scope"
+
+      using (logm.beginScope (lazy(box ("scope-2",2)))) (fun _ ->
+        lg.infoWithAck (eventX "2") |> Hopac.run
+
+        logm.flushPending () |> Hopac.run
+        let outStr = clearStream out
+        Expect.stringContains outStr "scope-1" "shoule have scope-1 as its scope as well"
+        Expect.stringContains outStr """["scope-2", 2]""" "shoule have scope-2 as its scope"
+      )
+
+      lg.infoWithAck (eventX "out 2") |> Hopac.run
+
+      logm.flushPending () |> Hopac.run
+      let outStr = clearStream out
+      Expect.stringContains outStr "scope-1" "shoule have scope-1 as its scope"
+      Expect.isFalse (outStr.Contains("scope-2")) "shoule not have scope-2 as its scope"
+    )
+
+    do! lg.infoWithAck (eventX "out 1")
+
+    do! logm.flushPending ()
+    let outStr = clearStream out
+    Expect.isNotRegexMatch outStr (new Regex("scope-\d")) "shoule not have scope value"
+
+    do! logm.shutdown ()
+  })
+
   testCaseJob "switch logger level" (job {
-    let clearStream (s: System.IO.StringWriter) =
-      let sb = s.GetStringBuilder ()
-      let str = string sb
-      sb.Clear () |> ignore
-      str
     let! (logm, out, error)  = Utils.buildLogManager ()
     let loggername = PointName.parse "logger.test"
     let lg = logm.getLogger loggername

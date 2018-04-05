@@ -18,6 +18,12 @@ let ftestCaseJob name xJ =
 let ptestCaseJob name xJ =
   ptestCaseAsync name (Job.toAsync xJ)
 
+let clearStream (s: System.IO.StringWriter) =
+  let sb = s.GetStringBuilder ()
+  let str = string sb
+  sb.Clear () |> ignore
+  str
+
 open Logary
 open Logary.Internals
 open Logary.Targets
