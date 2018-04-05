@@ -5,7 +5,7 @@ module Proxy =
   open fszmq
   open fszmq.Socket
 
-  let proxy xsubBind xpubBind _ =
+  let proxy xsubBind xpubBind =
     printfn """Proxy usage: takes the XSUB read-socket (that PUB sockets CONNECT to) \
                and then the XPUB write-socket (that SUB sockets CONNECT to). \
                --proxy %s %s"""
@@ -19,4 +19,4 @@ module Proxy =
     bind writer xpubBind
 
     printfn "%s" "Spawning proxy"
-    Choice1Of2 (Proxying.proxy reader writer None)
+    Proxying.proxy reader writer None

@@ -49,13 +49,11 @@ module Shipper =
       |> run
 
     mre.Wait()
-    Choice1Of2 ()
 
-  let internal pushTo connectTo pars: Choice<unit, string> =
+  let internal pushTo connectTo =
     printfn "%s" "spawning shipper in PUSH mode"
     runLogary (Shipper.PushTo connectTo)
 
-  let internal pubTo connectTo pars: Choice<unit, string> =
+  let internal pubTo connectTo =
     printfn "%s" "spawning shipper in PUB mode"
     runLogary (Shipper.PublishTo connectTo)
-

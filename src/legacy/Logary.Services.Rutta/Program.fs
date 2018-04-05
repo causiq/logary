@@ -1,95 +1,56 @@
 module Logary.Services.Rutta.Program
 
-open System.Reflection
-[<assembly: AssemblyTitle("Logary Rutta – a router/proxy/shipper for Windows and Unix")>]
-()
-
 open Argu
 open System
 open System.Threading
 open Topshelf
+open Logary
+open Logary.Services.Rutta
 
-let detailedParse: _ -> _ -> Choice<string * _ * _, _, string> = function
-  // we already have a mode set
-  | Choice1Of3 (modeName, start, pars) as curr -> function
-    | Router_Target _ as par ->
-      Choice1Of3 (modeName, start, par :: pars)
+let versionAndName = sprintf "Logary Rutta v%s" AssemblyVersionInformation.AssemblyVersion
 
-    // no mode cares about this:
-    | Health _ ->
-      curr
+let executeProxy (args: ParseResults<ProxyArgs>) =
+  Proxy.proxy (args.GetResult Xsub_Connect_To) (args.GetResult Xpub_Bind)
 
-    // no other known flags that are not modes:
-    | otherMode ->
-      let msg =
-        sprintf "%A given after having configured the '%s' mode; invalid parameters, exiting..."
-          otherMode modeName
-      Choice3Of3 msg
+let executeRouter (ilevel: LogLevel) (args: ParseResults<RouterArgs>) =
+  let listeners = args.GetResults RouterArgs.Listener
+  let targets = args.PostProcessResults(RouterArgs.Target, Parsers.targetConfig)
+  Router.start ilevel targets listeners
 
-  // still collecting parameters
-  | Choice2Of3 pars -> function
-    | Push_To connect ->
-      Choice1Of3 ("shipper push", Shipper.pushTo connect, pars)
+let executeShipper (args: ParseResults<ShipperArgs>) =
+  match args.GetAllResults() |> List.head with
+  | Pub_To binding ->
+    Shipper.pubTo binding
+  | Push_To connect ->
+    Shipper.pushTo connect
 
-    | Pub_To connect ->
-      Choice1Of3 ("shipper pub", Shipper.pubTo connect, pars)
-
-    | Router binding ->
-      Choice1Of3 ("router pull", Router.pullFrom binding, pars)
-
-    | Router_Sub binding ->
-      Choice1Of3 ("router xsub", Router.xsubBind binding, pars)
-
-    | Router_TCP binding ->
-      // TODO: support multiple Router_BINDING_TYPE arguments
-      Choice1Of3 ("router stream", Router.streamBind binding, pars)
-
-    | Proxy (xsubBind, xpubBind) ->
-      Choice1Of3 ("proxy", Proxy.proxy xsubBind xpubBind, pars)
-
-    | Router_Target _ as par ->
-      Choice2Of3 (par :: pars)
-
-    | Health _ ->
-      Choice2Of3 pars
-
-    | No_Health _ ->
-      Choice2Of3 pars
-
-  | Choice3Of3 msg ->
-    fun _ -> Choice3Of3 msg
+let executeSubCommand (ilevel: LogLevel) =
+  // TODO: configure internal logging with the given level
+  function
+  | Proxy args -> executeProxy args
+  | Router args -> executeRouter ilevel args
+  | Shipper args -> executeShipper args
+  | other -> failwith "Sub-command %A not handled in `executeSubCommand`. Send a PR?"
 
 let execute argv (exiting: ManualResetEventSlim): int =
-  let parser = ArgumentParser.Create<Args>(programName = "rutta.exe")
+  let parser = ArgumentParser.Create<Args>(programName = "rutta.exe", helpTextMessage = versionAndName)
   let parsed = parser.Parse(argv, ignoreUnrecognized=true)
 
-  parsed.GetAllResults()
-  |> List.fold detailedParse (Choice2Of3 [])
-  |> function
-  // Choice1Of3 = mode found
-  // Choice2Of3 = no mode found
-  // Choice3Of3 = more than one mode found
-  | Choice1Of3 (modeName, start, pars) ->
-    use health =
-      parsed.GetResult(Health, defaultValue = ("127.0.0.1", 8888))
-      ||> Health.startServer
-
-    match start pars with
-    | Choice1Of2 () ->
+  if parsed.Contains Version || parsed.Contains Help then
+    printfn "%s" (parser.PrintUsage())
+    0
+  else
+    let ilevel = if parsed.Contains Args.Verbose then LogLevel.Verbose else LogLevel.Info
+    use health = parsed.TryGetResult Args.Health |> Option.map Parsers.binding |> Health.startServer
+    match parsed.TryGetSubCommand() with
+    | Some cmd ->
+      executeSubCommand ilevel cmd
       exiting.Wait()
       0
 
-    | Choice2Of2 error ->
-      eprintfn "%s" error
-      2
-
-  | Choice2Of3 pars ->
-    eprintfn "No mode given. You must pass one of: { --push-to, --pub-to, --router, --router-sub, --router-stream, --proxy } for Rutta to work."
-    10
-
-  | Choice3Of3 error ->
-    eprintfn "%s" error
-    20
+    | None ->
+      eprintfn "%s" (parser.PrintUsage())
+      10
 
 let startWindows argv: int =
   let exiting = new ManualResetEventSlim(false)

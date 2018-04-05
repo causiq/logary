@@ -32,23 +32,10 @@ module Router =
         (x.zmqCtx :> IDisposable).Dispose()
         (x.receiver :> IDisposable).Dispose()
 
-  let private init binding (targetUris: Uri list) createSocket mode: State =
+  let private init baseConf createSocket: State =
     let context = new Context()
     let receiver = createSocket context
-    let forwarder =
-      let hostName = System.Net.Dns.GetHostName()
-      let targets = targetUris |> List.map TargetConfig.create
-
-      Config.create (sprintf "Logary Rutta[%s]" mode) hostName
-      |> Config.targets targets
-      |> Config.processing (
-          Events.events
-          |> Events.sink (targets |> List.map (fun t -> t.name)))
-      |> Config.loggerMinLevel ".*" Verbose
-      |> Config.ilogger (ILogger.LiterateConsole Debug)
-      |> Config.build
-      |> run
-
+    let forwarder = Config.build baseConf |> run
     let targetLogger = forwarder.getLogger (PointName.parse "Logary.Services.Rutta.Router")
     State.create context receiver forwarder targetLogger
 
@@ -65,40 +52,69 @@ module Router =
 
       recvLoop receiver logger
 
-  let pullFrom binding = function
-    | Router_Target target :: _ ->
-      printfn "Spawning router in PULL mode from %s" binding
-      use state = init binding [ Uri target ] Context.pull "PULL"
-      Socket.bind state.receiver binding
-      Choice1Of2 (recvLoop state.receiver state.logger)
+  let pullBind baseConf binding codec =
+    printfn "Spawning router in PULL mode from %s" binding
+    use state = init baseConf Context.pull
+    Socket.bind state.receiver binding
+    recvLoop state.receiver state.logger
 
-    | x ->
-      Choice2Of2 (sprintf "Unknown parameter(s) %A" x)
+  let subConnect baseConf binding codec =
+    printfn "Spawning router in SUB mode from %s" binding
+    use state = init baseConf Context.sub
+    Socket.subscribe state.receiver [""B]
+    Socket.connect state.receiver binding
+    recvLoop state.receiver state.logger
 
-  let xsubBind binding = function
-    | Router_Target target :: _ ->
-      printfn "Spawning router in SUB mode from %s" binding
-      use state = init binding [ Uri target ] Context.sub "SUB"
-      Socket.subscribe state.receiver [""B]
-      Socket.connect state.receiver binding
-      Choice1Of2 (recvLoop state.receiver state.logger)
+  let tcpBind baseConf binding (codec: Codec) =
+    printfn "Spawning router in STREAM mode from %s" binding
+    use state = init baseConf Context.stream
+    Socket.bind state.receiver binding
 
-    | x ->
-      Choice2Of2 (sprintf "Unknown parameter(s) %A" x)
+    let next =
+      codec
+      >> Result.map state.logger.logSimple
+      >> Job.result
 
-  let streamBind binding targets =
-    let targets = targets |> List.choose (function Router_Target target -> Some (Uri target) | _ -> None)
+    Logary.Ingestion.TCP.streamRecvLoop state.receiver next
 
-    if List.length targets = 0 then
-      Choice2Of2 (sprintf "Unknown parameter(s) %A" targets)
-    else
-      printfn "Spawning router in STREAM mode from %s" binding
-      use state = init binding targets Context.stream "STREAM"
-      Socket.bind state.receiver binding
+  let udpBind baseConf binding (codec: Codec) =
+    ()
 
-      let next =
-        Codec.toJsonStringError Codec.json
-        >> Result.map state.logger.logSimple
-        >> Job.result
+  let httpBind baseConf binding (codec: Codec) =
+    ()
 
-      Choice1Of2 (Logary.Ingestion.TCP.streamRecvLoop state.receiver next)
+  type C = Logary.Services.Rutta.Codec
+
+  let private toCodec = function
+    | C.Json ->
+      Codec.toJsonStringError Codec.json
+    | C.Plain ->
+      Codec.plain
+    | C.Binary ->
+      failwith "TODO: turn Shipper.Serialisation.deserialise into Codec = Binary"
+
+  let private toListener baseConf (mode: RMode) =
+    let fn =
+      match mode with
+      | Pull -> pullBind
+      | Sub -> subConnect
+      | TCP -> tcpBind
+      | UDP -> udpBind
+      | HTTP -> httpBind
+    fn baseConf
+
+  let start (ilevel: LogLevel) (targets: TargetConf list) (listeners: (RMode * string * C) list) =
+    let baseConf =
+      let hostName = System.Net.Dns.GetHostName()
+      Config.create "Logary Rutta[Router]" hostName
+      |> Config.targets targets
+      |> Config.processing (
+          Events.events
+          |> Events.sink (targets |> List.map (fun t -> t.name)))
+      |> Config.loggerMinLevel ".*" Verbose
+      |> Config.ilogger (ILogger.LiterateConsole ilevel)
+
+    listeners
+    |> Seq.map (fun (mode, binding, c) -> toListener baseConf mode, binding, toCodec c)
+    |> Seq.map (fun (start, binding, codec) -> start binding codec)
+    |> ignore // TODO start them async to avoid blocking on the first one
