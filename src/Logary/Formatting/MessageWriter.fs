@@ -43,6 +43,16 @@ module MessageWriter =
 
   let internal defaultDestr = Destructure.destructure Global.destructureRegistry Global.projectionStrategy
 
+  let expandedWithoutContext ending: MessageWriter =
+    { new MessageWriter with
+          member x.write tw m =
+            let level = string (caseNameOf m.level).[0]
+            let time = formatTimestamp m.timestamp
+            let body = tokeniseTemplateWithGauges tw.FormatProvider defaultDestr m |> collectAllToString
+            let name = m.name.ToString()
+            sprintf "%s %s: %s [%s]%s" level time body name ending |> tw.Write
+      }
+
   /// maxDepth can be avoided if cycle reference are handled properly
   let expanded highlightError nl ending: MessageWriter =
     { new MessageWriter with
@@ -81,7 +91,7 @@ module MessageWriter =
 
   /// <see cref="MessageWriter.LevelDatetimePathMessageNewLine" />
   let levelDatetimeMessagePath =
-    expanded false Environment.NewLine ""
+    expandedWithoutContext ""
 
   /// LevelDatetimePathMessageNl outputs the most information of the Message
   /// in text format, starting with the level as a single character,
@@ -90,7 +100,7 @@ module MessageWriter =
   /// Exceptions are called ToString() on and prints each line of the stack trace
   /// newline separated.
   let levelDatetimeMessagePathNewLine =
-    expanded false Environment.NewLine Environment.NewLine
+    expandedWithoutContext Environment.NewLine
     
   let contextWriter =
     { new MessageWriter with
