@@ -84,32 +84,28 @@ let tests = [
     let loggername = PointName.parse "logger.test"
     let lg = logm.getLogger loggername
 
-    using (logm.beginScope (lazy(box "scope-1"))) (fun _ ->
-      lg.infoWithAck (eventX "1") |> Hopac.run
+    let s1 = logm.beginScope (lazy(box "scope-1"))
+    do! lg.infoWithAck (eventX "1")
+    do! logm.flushPending ()
+    let outStr = clearStream out
+    Expect.stringContains outStr "scope-1" "shoule have scope-1 as its scope"
 
-      logm.flushPending () |> Hopac.run
-      let outStr = clearStream out
-      Expect.stringContains outStr "scope-1" "shoule have scope-1 as its scope"
+    let s2 = logm.beginScope (lazy(box ("scope-2",2)))
+    do! lg.infoWithAck (eventX "2")
+    do! logm.flushPending ()
+    let outStr = clearStream out
+    Expect.stringContains outStr "scope-1" "shoule have scope-1 as its scope as well"
+    Expect.stringContains outStr """["scope-2", 2]""" "shoule have scope-2 as its scope"
 
-      using (logm.beginScope (lazy(box ("scope-2",2)))) (fun _ ->
-        lg.infoWithAck (eventX "2") |> Hopac.run
+    do s2.Dispose ()
+    do! lg.infoWithAck (eventX "scope 2 dispose")
+    do! logm.flushPending ()
+    let outStr = clearStream out
+    Expect.stringContains outStr "scope-1" "shoule have scope-1 as its scope"
+    Expect.isFalse (outStr.Contains("scope-2")) "shoule not have scope-2 as its scope"
 
-        logm.flushPending () |> Hopac.run
-        let outStr = clearStream out
-        Expect.stringContains outStr "scope-1" "shoule have scope-1 as its scope as well"
-        Expect.stringContains outStr """["scope-2", 2]""" "shoule have scope-2 as its scope"
-      )
-
-      lg.infoWithAck (eventX "out 2") |> Hopac.run
-
-      logm.flushPending () |> Hopac.run
-      let outStr = clearStream out
-      Expect.stringContains outStr "scope-1" "shoule have scope-1 as its scope"
-      Expect.isFalse (outStr.Contains("scope-2")) "shoule not have scope-2 as its scope"
-    )
-
-    do! lg.infoWithAck (eventX "out 1")
-
+    do s1.Dispose ()
+    do! lg.infoWithAck (eventX "scope 1 dispose")
     do! logm.flushPending ()
     let outStr = clearStream out
     Expect.isNotRegexMatch outStr (new Regex("scope-\d")) "shoule not have scope value"

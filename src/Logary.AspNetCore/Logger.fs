@@ -8,17 +8,17 @@ open Logary.Internals.Aether.Optics
 
 module LoggerAdapter =
 
-  type msLogLevel = Microsoft.Extensions.Logging.LogLevel
+  type MSLogLevel = Microsoft.Extensions.Logging.LogLevel
 
-  let mapLogLevel (level: msLogLevel) =
+  let mapLogLevel (level: MSLogLevel) =
     match level with
-    | msLogLevel.Trace -> Verbose
-    | msLogLevel.Information -> Info
-    | msLogLevel.Debug -> Debug
-    | msLogLevel.Warning -> Warn
-    | msLogLevel.Error -> Error
-    | msLogLevel.Critical -> Fatal
-    | msLogLevel.None -> Fatal
+    | MSLogLevel.Trace -> Verbose
+    | MSLogLevel.Information -> Info
+    | MSLogLevel.Debug -> Debug
+    | MSLogLevel.Warning -> Warn
+    | MSLogLevel.Error -> Error
+    | MSLogLevel.Critical -> Fatal
+    | MSLogLevel.None -> Fatal
     | _ -> Fatal
   
 
@@ -29,7 +29,7 @@ module LoggerAdapter =
     let processEvent (eventId: EventId) m =
       let eventIdInfo = string eventId
       if eventIdInfo <> "0" then 
-        m |> Message.setContext "EventId" eventIdInfo
+        m |> Message.setContext "event-id" eventIdInfo
       else m
 
     let processState (state: 't) (ex: exn) (formatter: Func<'t,exn,string>) m =
@@ -39,30 +39,27 @@ module LoggerAdapter =
         let fields = kvSeq |> Seq.map (fun kv -> kv.Value ) |> Array.ofSeq 
         match messageTpl with
         | Some tpl -> m |> Message.setEvent tpl |> Message.setFields fields
-        | None -> m |> Message.setField "State" state
+        | None -> m |> Message.setField "state" state
 
       | _ ->
         if isNull formatter then
-          m |> Message.setField "State" state
+          m |> Message.setField "state" state
         else
           let customFormated = formatter.Invoke(state, ex)
-          m |> Message.setField "State" customFormated
+          m |> Message.setField "state" customFormated
 
 
     interface ILogger with
       member x.BeginScope<'t> (state: 't) : IDisposable =
         logManager.beginScope (lazy(box state))
 
-      member x.IsEnabled (level: msLogLevel) = 
-        if level = msLogLevel.None then false
+      member x.IsEnabled (level: MSLogLevel) =
+        if level = MSLogLevel.None then false
         else mapLogLevel level >= logger.level
 
-      member x.Log<'t> (level: msLogLevel, eventId: EventId, state: 't, ex: exn, formatter: Func<'t,exn,string>) =
-        if not ((x :> ILogger).IsEnabled level) then
-          do ()
-        else
-          Message.event (mapLogLevel level) "{State}"
-          |> Message.addExn ex
-          |> processEvent eventId
-          |> processState state ex formatter
-          |> logger.logSimple
+      member x.Log<'t> (level: MSLogLevel, eventId: EventId, state: 't, ex: exn, formatter: Func<'t,exn,string>) =
+        Message.eventX"{state}"
+        >> Message.addExn ex
+        >> processEvent eventId
+        >> processState state ex formatter
+        |> logger.logWith (mapLogLevel level)
