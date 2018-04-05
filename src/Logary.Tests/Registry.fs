@@ -79,7 +79,7 @@ let tests = [
     do! logm.shutdown ()
   }
 
-  ftestCaseJob "log with scope" (job {
+  testCaseJob "log with scope" (job {
     let! (logm, out, error)  = Utils.buildLogManager ()
     let loggername = PointName.parse "logger.test"
     let lg = logm.getLogger loggername
