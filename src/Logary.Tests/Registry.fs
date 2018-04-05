@@ -79,7 +79,7 @@ let tests = [
     do! logm.shutdown ()
   }
 
-  testCaseJob "log with scope" (job {
+  ftestCaseJob "log with scope" (job {
     let! (logm, out, error)  = Utils.buildLogManager ()
     let loggername = PointName.parse "logger.test"
     let lg = logm.getLogger loggername
@@ -91,21 +91,22 @@ let tests = [
     Expect.stringContains outStr "scope-1" "shoule have scope-1 as its scope"
 
     let s2 = logm.beginScope (lazy(box ("scope-2",2)))
-    do! lg.infoWithAck (eventX "2")
+    let newLogger = logm.getLogger (PointName.parse "logger.test.another")
+    do! newLogger.infoWithAck (eventX "2")
     do! logm.flushPending ()
     let outStr = clearStream out
     Expect.stringContains outStr "scope-1" "shoule have scope-1 as its scope as well"
     Expect.stringContains outStr """["scope-2", 2]""" "shoule have scope-2 as its scope"
 
     do s2.Dispose ()
-    do! lg.infoWithAck (eventX "scope 2 dispose")
+    do! newLogger.infoWithAck (eventX "scope 2 dispose")
     do! logm.flushPending ()
     let outStr = clearStream out
     Expect.stringContains outStr "scope-1" "shoule have scope-1 as its scope"
     Expect.isFalse (outStr.Contains("scope-2")) "shoule not have scope-2 as its scope"
 
     do s1.Dispose ()
-    do! lg.infoWithAck (eventX "scope 1 dispose")
+    do! newLogger.infoWithAck (eventX "scope 1 dispose")
     do! logm.flushPending ()
     let outStr = clearStream out
     Expect.isNotRegexMatch outStr (new Regex("scope-\d")) "shoule not have scope value"
