@@ -8,6 +8,7 @@ module Router =
   open Logary
   open Logary.Message
   open Logary.Codecs
+  open Logary.Ingestion
   open Logary.Configuration
   open Logary.Targets
   open Logary.EventsProcessing
@@ -19,68 +20,71 @@ module Router =
     { zmqCtx: Context
       receiver: Socket
       forwarder: LogManager
-      logger: Logger }
+      logger: Logger
+      sink: Ingest
+    }
 
-    static member create zmqContext receiver forwarder logger =
+    static member create zmqContext receiver forwarder logger sink =
       { zmqCtx = zmqContext
         receiver = receiver
         forwarder = forwarder
-        logger = logger }
+        logger = logger
+        sink = sink
+      }
 
     interface IDisposable with
       member x.Dispose() =
         (x.zmqCtx :> IDisposable).Dispose()
         (x.receiver :> IDisposable).Dispose()
 
-  let private init baseConf createSocket: State =
+  let private initZMQ baseConf codec createSocket: State =
     let context = new Context()
     let receiver = createSocket context
     let forwarder = Config.build baseConf |> run
     let targetLogger = forwarder.getLogger (PointName.parse "Logary.Services.Rutta.Router")
-    State.create context receiver forwarder targetLogger
+    let sink = codec >> Result.map targetLogger.logSimple >> Job.result
+    State.create context receiver forwarder targetLogger sink
 
-  let rec private recvLoop receiver logger =
-    match Socket.recvAll receiver with
-    // note: sending empty messages
-    | null | [||] -> ()
-    | datas ->
-      let message = Logary.Targets.Shipper.Serialisation.deserialise datas
+  let internal recv cancelled receiver (sink: Ingest) =
+    let rec loop () =
+      if Promise.Now.isFulfilled cancelled then Job.result () else
+      match Socket.recvAll receiver with
+      // note: sending empty messages
+      | null
+      | [||] ->
+        Job.result ()
+      | datas ->
+        sink (Ingested.ofBytes (Array.concat datas)) |> Job.bind (fun _ -> loop ())
+    loop ()
 
-      Logger.logWithAck logger message.level (fun _ -> message)
-      |> run
-      |> start
-
-      recvLoop receiver logger
-
-  let pullBind baseConf binding codec =
+  let pullBind (cancelled, baseConf) binding codec =
     printfn "Spawning router in PULL mode from %s" binding
-    use state = init baseConf Context.pull
+    use state = initZMQ baseConf codec Context.pull
     Socket.bind state.receiver binding
-    recvLoop state.receiver state.logger
+    recv cancelled state.receiver state.sink
 
-  let subConnect baseConf binding codec =
+  let subConnect (cancelled, baseConf) binding codec =
     printfn "Spawning router in SUB mode from %s" binding
-    use state = init baseConf Context.sub
+    use state = initZMQ baseConf codec Context.sub
     Socket.subscribe state.receiver [""B]
     Socket.connect state.receiver binding
-    recvLoop state.receiver state.logger
+    recv cancelled state.receiver state.logger
 
-  let tcpBind baseConf binding (codec: Codec) =
+  let tcpBind (cancelled, baseConf) binding (codec: Codec) =
     printfn "Spawning router in STREAM mode from %s" binding
-    use state = init baseConf Context.stream
+    use state = initZMQ baseConf codec Context.stream
     Socket.bind state.receiver binding
+    Logary.Ingestion.TCP.streamRecvLoop state.receiver state.sink
 
+  let udpBind (cancelled, baseConf) binding (codec: Codec) =
     let next =
       codec
       >> Result.map state.logger.logSimple
       >> Job.result
+    Logary.Ingestion.UDP.create binding next
 
-    Logary.Ingestion.TCP.streamRecvLoop state.receiver next
+  let httpBind (cancelled, baseConf) binding (codec: Codec) =
 
-  let udpBind baseConf binding (codec: Codec) =
-    ()
-
-  let httpBind baseConf binding (codec: Codec) =
     ()
 
   type C = Logary.Services.Rutta.Codec
@@ -93,7 +97,7 @@ module Router =
     | C.Binary ->
       failwith "TODO: turn Shipper.Serialisation.deserialise into Codec = Binary"
 
-  let private toListener baseConf (mode: RMode) =
+  let private toListener (cancelled, baseConf) (mode: RMode) =
     let fn =
       match mode with
       | Pull -> pullBind
@@ -101,9 +105,10 @@ module Router =
       | TCP -> tcpBind
       | UDP -> udpBind
       | HTTP -> httpBind
-    fn baseConf
+    fn (cancelled, baseConf)
 
   let start (ilevel: LogLevel) (targets: TargetConf list) (listeners: (RMode * string * C) list) =
+    let cancelled = IVar ()
     let baseConf =
       let hostName = System.Net.Dns.GetHostName()
       Config.create "Logary Rutta[Router]" hostName
@@ -115,6 +120,6 @@ module Router =
       |> Config.ilogger (ILogger.LiterateConsole ilevel)
 
     listeners
-    |> Seq.map (fun (mode, binding, c) -> toListener baseConf mode, binding, toCodec c)
-    |> Seq.map (fun (start, binding, codec) -> start binding codec)
+    |> Seq.map (fun (mode, binding, c) -> toListener (cancelled, baseConf) mode, binding, toCodec c)
+    |> Seq.map (fun (exec, binding, codec) -> exec binding codec)
     |> ignore // TODO start them async to avoid blocking on the first one

@@ -23,6 +23,8 @@
     <ProjectReference Include="../../Logary/Logary.fsproj" />
     <ProjectReference Include="../Logary.Metrics.WinPerfCounters/Logary.Metrics.WinPerfCounters.fsproj" />
     <ProjectReference Include="../Logary.Targets.Shipper/Logary.Targets.Shipper.fsproj" />
+    <ProjectReference Include="..\..\ingestion\Logary.Ingestion.Http\Logary.Ingestion.Http.fsproj" />
+    <ProjectReference Include="..\..\ingestion\Logary.Ingestion.UDP\Logary.Ingestion.UDP.fsproj" />
   </ItemGroup>
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />
 </Project>

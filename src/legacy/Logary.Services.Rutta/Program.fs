@@ -43,7 +43,7 @@ let execute argv (exiting: ManualResetEventSlim): int =
     use health = parsed.TryGetResult Args.Health |> Option.map Parsers.binding |> Health.startServer
     match parsed.TryGetSubCommand() with
     | Some cmd ->
-      executeSubCommand ilevel cmd
+      use running = executeSubCommand ilevel cmd
       exiting.Wait()
       0
 
