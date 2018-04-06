@@ -26,10 +26,14 @@ let executeShipper (args: ParseResults<ShipperArgs>) =
 
 let executeSubCommand (ilevel: LogLevel) =
   function
-  | Proxy args -> executeProxy args
-  | Router args -> executeRouter ilevel args
-  | Shipper args -> executeShipper args
-  | other -> failwith "Sub-command %A not handled in `executeSubCommand`. Send a PR?"
+  | Proxy args ->
+    executeProxy args
+  | Router args ->
+    executeRouter ilevel args
+  | Shipper args ->
+    executeShipper args
+  | other ->
+    failwith "Sub-command %A not handled in `executeSubCommand`. Send a PR?"
 
 let execute argv (exiting: ManualResetEventSlim): int =
   let parser = ArgumentParser.Create<Args>(programName = "rutta.exe", helpTextMessage = versionAndName)

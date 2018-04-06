@@ -1,6 +1,7 @@
 namespace Logary.Services.Rutta
 
 module Proxy =
+  open System
   open Logary
   open fszmq
   open fszmq.Socket
@@ -20,3 +21,4 @@ module Proxy =
 
     printfn "%s" "Spawning proxy"
     Proxying.proxy reader writer None
+    { new IDisposable with member x.Dispose () = () }

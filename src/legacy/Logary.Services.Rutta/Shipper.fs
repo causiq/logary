@@ -17,9 +17,7 @@ module Shipper =
   open fszmq.Socket
   open Logary.EventsProcessing
 
-  let private runLogary shipperConf =
-    use mre = new ManualResetEventSlim(false)
-    use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
+  let private runLogary shipperConf: IDisposable =
     let hostName = System.Net.Dns.GetHostName()
 
     let systemMetrics =
@@ -48,7 +46,7 @@ module Shipper =
       |> Config.build
       |> run
 
-    mre.Wait()
+    { new IDisposable with member x.Dispose () = run (logary.shutdown()) }
 
   let internal pushTo connectTo =
     printfn "%s" "spawning shipper in PUSH mode"

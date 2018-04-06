@@ -16,6 +16,9 @@ type UDPConfig =
   { endpoint: IPEndPoint
     /// Set this promise to a value to shut down the UDP receiver.
     cancelled: Promise<unit> }
+  static member create ep cancelled =
+    { endpoint = ep
+      cancelled = cancelled }
 
 let private ilogger = Log.create "Logary.Ingestion.UDP"
 
