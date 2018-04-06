@@ -25,7 +25,8 @@ type Codec =
   | Json
   /// Takes the newline-separates message and create a simple message from it
   | Plain
-  | Log4j
+  /// Log4J-XML input; each event should be newline-separated.
+  | Log4jXML
   /// Used for Rutta-to-Rutta communication with the ZMQ socket types
   | Binary
 
@@ -64,24 +65,6 @@ type ShipperArgs =
       | Push_To _ -> "Runs Rutta in Shipper/PUSH mode (send Messages from a node to router)"
       | Pub_To _ -> "Runs Rutta in Shipper/PUB mode (send Messages from a node to proxy)"
 
-type Args =
-  | [<AltCommandLine "-V"; Inherit; Unique>] Version
-  | [<AltCommandLine "-v"; Unique>] Verbose
-  | [<CliPrefix(CliPrefix.None)>] Proxy of args:ParseResults<ProxyArgs>
-  | [<CliPrefix(CliPrefix.None)>] Router of args:ParseResults<RouterArgs>
-  | [<CliPrefix(CliPrefix.None)>] Shipper of args:ParseResults<ShipperArgs>
-  | [<Unique>] Health of binding:string
-with
-  interface IArgParserTemplate with
-    member x.Usage =
-      match x with
-      | Version -> "Prints version information."
-      | Verbose -> "Enables verbose logging while running Rutta. Useful for debugging your setup."
-      | Proxy _ -> "Rutta in Proxy mode, does transparent forwarding of data between e.g. two subnets."
-      | Router _ -> "Rutta in Router mode, starts N listeners, each with a *codec* and *mode* and *endpoint/binding* as its input."
-      | Shipper _ -> "Rutta in shipper mode, sources metrics and sends it on to a Router or Proxy."
-      | Health _ -> "Give Rutta health binding information. Without this flag, no health endpoint is started."
-
 module Help =
   let describeMode = function
     | Pull _ -> "Runs Rutta in Router mode (PULL fan-in of Messages, forward to Target)."
@@ -95,6 +78,30 @@ module Help =
     | Plain -> "Takes the newline-separates message and create a simple message from it"
     | Binary -> "Used for Rutta-to-Rutta communication with the ZMQ socket types"
     | Log4j -> "Takes Log4j XML event, separated with newlines, as input"
+
+type Args =
+  | [<AltCommandLine "-V"; Inherit; Unique>] Version
+  | [<AltCommandLine "-v"; Inherit; Unique>] Verbose
+  | [<CliPrefix(CliPrefix.None)>] Proxy of args:ParseResults<ProxyArgs>
+  | [<CliPrefix(CliPrefix.None)>] Router of args:ParseResults<RouterArgs>
+  | [<CliPrefix(CliPrefix.None)>] Shipper of args:ParseResults<ShipperArgs>
+  | [<Unique>] Health of binding:string
+with
+  interface IArgParserTemplate with
+    member x.Usage =
+      match x with
+      | Version ->
+        "Prints version information."
+      | Verbose ->
+        "Enables verbose logging while running Rutta. Useful for debugging your setup."
+      | Proxy _ ->
+        "Rutta in Proxy mode, does transparent forwarding of data between e.g. two subnets."
+      | Router _ ->
+        "Rutta in Router mode, starts N listeners, each with a *codec* and *mode* and *endpoint/binding* as its input."
+      | Shipper _ ->
+        "Rutta in shipper mode, sources metrics and sends it on to a Router or Proxy."
+      | Health _ ->
+        "Give Rutta health binding information. Without this flag, no health endpoint is started."
 
 module Parsers =
   open System

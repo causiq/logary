@@ -15,12 +15,12 @@ type UDPConfig =
     /// Where to listen.
   { endpoint: IPEndPoint
     /// Set this promise to a value to shut down the UDP receiver.
-    cancelled: Promise<unit> }
-  static member create ep cancelled =
+    cancelled: Promise<unit>
+    ilogger: Logger }
+  static member create ep cancelled ilogger =
     { endpoint = ep
-      cancelled = cancelled }
-
-let private ilogger = Log.create "Logary.Ingestion.UDP"
+      cancelled = cancelled
+      ilogger = ilogger }
 
 // https://docs.microsoft.com/en-us/dotnet/api/system.net.sockets.udpclient.receiveasync?view=netframework-4.7.1#System_Net_Sockets_UdpClient_ReceiveAsync
 // exceptions not handled: https://msdn.microsoft.com/en-us/library/system.net.sockets.socketexception.errorcode(v=vs.110).aspx
@@ -67,7 +67,7 @@ let create (config: UDPConfig) (next: Ingest) =
 
   let receiveContext =
     job {
-      do ilogger.info (eventX "Starting UDP log listener at {endpoint}" >> setField "endpoint" config.endpoint)
+      do config.ilogger.info (eventX "Starting UDP log listener at {endpoint}" >> setField "endpoint" config.endpoint)
       use inSocket = new UdpClient(config.endpoint)
       try
         do! Job.start (handleDisposed recvThrew (receiveLoop inSocket))
@@ -77,7 +77,7 @@ let create (config: UDPConfig) (next: Ingest) =
         // finishes.
         do! config.cancelled
       finally
-        do ilogger.info (eventX "Stopping UDP log listener at {endpoint}" >> setField "endpoint" config.endpoint)
+        do config.ilogger.info (eventX "Stopping UDP log listener at {endpoint}" >> setField "endpoint" config.endpoint)
         try inSocket.Close()
         with _ -> ()
     }

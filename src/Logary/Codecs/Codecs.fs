@@ -94,7 +94,7 @@ module Codec =
     let foldProp acc e =
       acc |> HashMap.add (e |> xattr "name") (e |> xattr "value" |> box)
 
-    let parse (xml: string): Result<Log4JMessage, string> =
+    let parseInner xml =
       if String.IsNullOrWhiteSpace xml then Result.Error "Log4j event was empty" else
       let event = xelement xml
       if isNull event then Result.Error (sprintf "Failed to parse XML: %s" xml) else
@@ -108,6 +108,10 @@ module Codec =
           ||> Seq.fold foldProp
       }
       |> Result.Ok
+
+    let parse (xml: string): Result<Log4JMessage, string> =
+      try parseInner xml
+      with :? XmlException as xmle -> Result.Error (xmle.ToString())
 
   let log4jXML: Codec =
     fun input ->
