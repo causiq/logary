@@ -85,31 +85,21 @@ let tests = [
     let lg = logm.getLogger loggername
 
     let s1 = logm.beginScope (lazy(box "scope-1"))
-    do! lg.infoWithAck (eventX "1")
-    do! logm.flushPending ()
-    let outStr = clearStream out
-    Expect.stringContains outStr "scope-1" "shoule have scope-1 as its scope"
+    lg.info (eventX "1")
 
     let s2 = logm.beginScope (lazy(box ("scope-2",2)))
     let newLogger = logm.getLogger (PointName.parse "logger.test.another")
-    do! newLogger.infoWithAck (eventX "2")
-    do! logm.flushPending ()
-    let outStr = clearStream out
-    Expect.stringContains outStr "scope-1" "shoule have scope-1 as its scope as well"
-    Expect.stringContains outStr """["scope-2", 2]""" "shoule have scope-2 as its scope"
+    newLogger.info (eventX "2")
 
     do s2.Dispose ()
-    do! newLogger.infoWithAck (eventX "scope 2 dispose")
-    do! logm.flushPending ()
-    let outStr = clearStream out
-    Expect.stringContains outStr "scope-1" "shoule have scope-1 as its scope"
-    Expect.isFalse (outStr.Contains("scope-2")) "shoule not have scope-2 as its scope"
+    newLogger.info (eventX "scope 2 dispose")
 
     do s1.Dispose ()
-    do! newLogger.infoWithAck (eventX "scope 1 dispose")
+    newLogger.info (eventX "scope 1 dispose")
+
     do! logm.flushPending ()
     let outStr = clearStream out
-    Expect.isNotRegexMatch outStr (new Regex("scope-\d")) "shoule not have scope value"
+    Expect.isRegexMatch outStr (new Regex("scope-\d")) "shoule have scope value"
 
     do! logm.shutdown ()
   })
