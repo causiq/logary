@@ -25,6 +25,9 @@ type Ingested =
   static member ofBytes (bs: byte[]) =
     if isNull bs then nullArg "bs"
     Bytes (ArraySegment bs)
+  static member forceBytes = function
+    | Bytes bs -> bs
+    | String s -> failwithf "Unexpected string '%s' in Ingested, when byte[] was expected" s
 
   /// If a string, returns the string; or if array segment, tries to get the string
   /// from that array segment; ensure there are no half-characters in the array,

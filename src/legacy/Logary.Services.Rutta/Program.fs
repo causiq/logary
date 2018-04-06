@@ -39,7 +39,7 @@ let execute argv (exiting: ManualResetEventSlim): int =
   let parser = ArgumentParser.Create<Args>(programName = "rutta.exe", helpTextMessage = versionAndName)
   let parsed = parser.Parse(argv, ignoreUnrecognized=true)
 
-  if parsed.Contains Version || parsed.Contains Help then
+  if parsed.Contains Version || parsed.IsUsageRequested then
     printfn "%s" (parser.PrintUsage())
     0
   else

@@ -25,6 +25,7 @@ type Codec =
   | Json
   /// Takes the newline-separates message and create a simple message from it
   | Plain
+  | Log4j
   /// Used for Rutta-to-Rutta communication with the ZMQ socket types
   | Binary
 
@@ -65,7 +66,6 @@ type ShipperArgs =
 
 type Args =
   | [<AltCommandLine "-V"; Inherit; Unique>] Version
-  | [<AltCommandLine "-?"; Inherit; Unique>] Help
   | [<AltCommandLine "-v"; Unique>] Verbose
   | [<CliPrefix(CliPrefix.None)>] Proxy of args:ParseResults<ProxyArgs>
   | [<CliPrefix(CliPrefix.None)>] Router of args:ParseResults<RouterArgs>
@@ -76,7 +76,6 @@ with
     member x.Usage =
       match x with
       | Version -> "Prints version information."
-      | Help -> "Prints usage instructions."
       | Verbose -> "Enables verbose logging while running Rutta. Useful for debugging your setup."
       | Proxy _ -> "Rutta in Proxy mode, does transparent forwarding of data between e.g. two subnets."
       | Router _ -> "Rutta in Router mode, starts N listeners, each with a *codec* and *mode* and *endpoint/binding* as its input."
@@ -95,6 +94,7 @@ module Help =
     | Json -> "Uses the newline-separated JSON codec"
     | Plain -> "Takes the newline-separates message and create a simple message from it"
     | Binary -> "Used for Rutta-to-Rutta communication with the ZMQ socket types"
+    | Log4j -> "Takes Log4j XML event, separated with newlines, as input"
 
 module Parsers =
   open System

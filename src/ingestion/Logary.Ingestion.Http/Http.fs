@@ -1,6 +1,7 @@
 ﻿module Logary.Ingestion.HTTP
 
 open System.Text
+open System.Net
 open System.Threading
 open Hopac
 open Logary
@@ -15,20 +16,22 @@ open Suave.RequestErrors
 open Suave.Successful
 open Suave.Operators
 
-type ReporterConfig =
+type HTTPConfig =
   { rootPath: string
     cancelled: Promise<unit>
     suaveConfig: SuaveConfig
   }
-  static member create (rootPath, ?cancelled, ?suaveConfig) =
+  static member create (rootPath, ?cancelled, ?endpoint: IPEndPoint) =
+    let ep = defaultArg endpoint (IPEndPoint (IPAddress.Loopback, 8888))
+    let sc = { Suave.Web.defaultConfig with bindings = [ HttpBinding.create HTTP ep.Address (ep.Port |> uint16) ] }
     { rootPath = rootPath
       cancelled = defaultArg cancelled (IVar ())
-      suaveConfig = defaultArg suaveConfig Suave.Web.defaultConfig
+      suaveConfig = sc
     }
 
-let defaultConfig = ReporterConfig.create "/i/logary"
+let defaultConfig = HTTPConfig.create "/i/logary"
 
-let private printHelp (config: ReporterConfig): WebPart =
+let private printHelp (config: HTTPConfig): WebPart =
   let message = sprintf "You can post a JSON Objects to: %s" config.rootPath
   OK message >=> setMimeType "text/plain; charset=utf-8"
 
@@ -50,13 +53,13 @@ let private logMessage (next: Ingest): WebPart =
         return! fail err ctx
     }
 
-let api (config: ReporterConfig) (next: Ingest): WebPart =
+let api (config: HTTPConfig) (next: Ingest): WebPart =
   choose [
     GET >=> path config.rootPath >=> printHelp config
     POST >=>  path config.rootPath >=> logMessage next >=> setMimeType "application/json; charset=utf-8"
   ]
 
-let private createAdaptedCTS (config: ReporterConfig) =
+let private createAdaptedCTS (config: HTTPConfig) =
   let cts = new CancellationTokenSource()
   start (job {
     do! config.cancelled
@@ -64,7 +67,7 @@ let private createAdaptedCTS (config: ReporterConfig) =
   })
   cts
 
-let create (config: ReporterConfig) (next: Ingest) =
+let create (config: HTTPConfig) (next: Ingest) =
   job {
     do ilogger.info (eventX "Starting HTTP log listener at {bindings}" >> setField "bindings" config.suaveConfig.bindings)
     use cts = createAdaptedCTS config

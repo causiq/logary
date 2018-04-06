@@ -30,10 +30,28 @@ let private handleDisposed recvThrew (xJ: Job<unit>) =
     | :? ObjectDisposedException -> recvThrew *<= ()
     | e -> Job.raises e)
 
+let private hasODE (ae: AggregateException) =
+  let ae = ae.Flatten()
+  ae.InnerExceptions
+  |> Seq.tryPick (function
+    | :? ObjectDisposedException as ode -> Some ode
+    | _ -> None)
+
 type UdpClient with
   member internal x.getMessage () =
-    Job.fromTask (fun () -> x.ReceiveAsync())
-    |> Job.map (fun d -> d.Buffer)
+    let xJ =
+      Job.fromTask (fun () -> x.ReceiveAsync())
+      |> Job.map (fun d -> d.Buffer)
+
+    Job.tryWith xJ (function
+      | :? AggregateException as ae ->
+        match hasODE ae with
+        | Some ode ->
+          Job.raises ode
+        | None ->
+          Job.raises ae
+      | e ->
+        Job.raises e)
 
 /// Creates a new LogClient with an address, port and a sink (next.)
 let create (config: UDPConfig) (next: Ingest) =
