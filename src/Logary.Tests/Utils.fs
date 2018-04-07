@@ -14,8 +14,10 @@ let internal logger = Log.create "Logary.Tests.Utils"
 
 let testCaseJob name xJ =
   testCaseAsync name (Job.toAsync xJ)
+
 let ftestCaseJob name xJ =
   ftestCaseAsync name (Job.toAsync xJ)
+
 let ptestCaseJob name xJ =
   ptestCaseAsync name (Job.toAsync xJ)
 

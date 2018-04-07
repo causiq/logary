@@ -281,10 +281,7 @@ module Files =
 let tests = [
   TargetBaseline.basicTests "text writer" (fun name ->
     let _, _, twTargetConf = Utils.buildTextWriteTarget name
-    twTargetConf)
-
-  // TODO: don't want to actually print these
-  // basicTests "literate console" (LiterateConsole.create LiterateConsole.empty)
+    twTargetConf) false
 
   testCase "convert DateTimeOffset with timespan delta" <| fun _ ->
     let a = DateTimeOffset(2016, 07, 02, 12, 33, 56, TimeSpan.FromHours(2.0))

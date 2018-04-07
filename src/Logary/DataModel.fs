@@ -43,8 +43,12 @@ type Units =
   | Log10 of Units // Log of base:float * BaseUnit
 
   /// E.g. 5 degrees celsius is (5 + 273.15) K
-  static member Celsius =
-    Offset (Kelvins, +273.15)
+  static member Celsius = Offset (Kelvins, +273.15)
+
+  /// 5 min = 5 / (1/60) seconds = 360 s
+  static member Minutes = Scaled (Seconds, 1. / 60.)
+  static member Hours = Scaled (Seconds, 1. / 3600.)
+  static member Days = Scaled (Seconds, 1. / (24. * 3600.))
 
   member x.name: string option =
     match x with

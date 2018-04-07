@@ -2,6 +2,35 @@ module Logary.Tests.TargetBaseline
 
 open Logary
 open Logary.Tests.Utils
+
+module Messages =
+  open Logary.Message
+
+  /// A user signup event with lots of nice data:
+  ///
+  /// - Logged at Info level
+  /// - A nice message template
+  /// - Some context values (primitives)
+  /// - A Map in the context
+  /// - Some fields (to be templated into the string), including a string array
+  /// - A single gauge with the # (float) of days the user waited until signing up.
+  ///
+  let userUpgradedPlan =
+    Message.event Info "User#{userId} '{email}' signed up, after {promoCount} promotions: {@promotions}."
+    |> Message.setContexts [
+      "service", box "WebApi"
+      "machineType", box "n1-standard-1"
+      "computeInstance", box "gke-project-id-default-pool-2de02f1c-6g3f"
+      "tenant", box (Map [ "id", box 123; "name", box "Company ABC" ])
+    ]
+    |> Message.setFieldsFromSeq [
+      "userId", box "haf"
+      "email", box "haf@example.com"
+      "promoCount", box 3
+    ]
+    |> Message.setField "promotions" [ "timeLimited2day"; "enableInvoices"; "friendReferral" ]
+    |> Message.addGauge "timeUntilSignup" (Gauge (Float 2.3, Units.Days))
+
 open NodaTime
 open Hopac
 open Expecto
@@ -16,7 +45,16 @@ let private logger = Log.create "Logary.Tests.TargetBaseline"
 ///  - can start and stop
 ///  - can receive a few different sorts of messages
 ///
-let basicTests targetName confFac =
+let basicTests targetName confFac addTS =
+  let configure () =
+    job {
+      let conf = confFac targetName
+      let! ri, _ = emptyRuntime
+      let! targetApi = Target.create ri conf
+      let now = if addTS then SystemClock.Instance.GetCurrentInstant().ToString() else "-"
+      return targetApi, now
+    }
+
   testList (sprintf "basic tests for target '%s'" targetName) [
     testCaseJob "creating instance" <| job {
       let! ri, _ = emptyRuntime
@@ -29,23 +67,21 @@ let basicTests targetName confFac =
     }
 
     testCaseJob "start, log and stop" <| job {
-      let conf = confFac targetName
-      let! ri, _ = emptyRuntime
-      let! targetApi = Target.create ri conf
+      let! targetApi, now = configure ()
       do! logger.infoWithBP (eventX "Start, log and stop: log and wait")
       do! logMsgWaitAndShutdown targetApi (fun logAndWait ->
-        let now = SystemClock.Instance.GetCurrentInstant()
-        Message.eventInfo (sprintf "User signed up! @ %O" now) |> logAndWait)
+        Message.eventInfo (sprintf "User signed up! @ %s" now) |> logAndWait)
       do! logger.infoWithBP (eventX "Start, log and stop: done!")
     }
 
     testCaseJob "log exception message" <| job {
-      let! ri, _ = emptyRuntime
-      let conf = confFac targetName
-      let! targetApi = Target.create ri conf
-      let exnMsg =
-        let now = SystemClock.Instance.GetCurrentInstant()
-        { exnMsg with value = sprintf "%s @ %O" exnMsg.value now }
+      let! targetApi, now = configure ()
+      let exnMsg = { exnMsg with value = sprintf "%s @ %s" exnMsg.value now }
       do! logMsgWaitAndShutdown targetApi (fun logAndWait -> logAndWait exnMsg)
+    }
+
+    testCaseJob "log user upgraded plan message" <| job {
+      let! targetApi, now = configure ()
+      do! logMsgWaitAndShutdown targetApi (fun logAndWait -> logAndWait Messages.userUpgradedPlan)
     }
   ]
