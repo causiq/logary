@@ -34,6 +34,10 @@ type Log() =
   static member create<'forType> () =
     Log.create typeof<'forType>
 
+  [<CompiledName "BeginScope">]
+  static member beginScope lazyData =
+    Global.beginScope lazyData
+
 [<Obsolete "Use the Log module instead. E.g. `open Logary; Log.create \"MyLogger\"`.">]
 module Logging =
   [<Obsolete "Use the Log module instead. E.g. `Log.create pn`.">]

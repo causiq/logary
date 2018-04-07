@@ -35,6 +35,9 @@ module KnownLiterals =
   [<Literal>]
   let SinkTargetsContextName =  LogaryPrefix +  "sink.targets"
 
+  [<Literal>]
+  let ScopeContextName = LogaryPrefix + "scope"
+
 /// Time calculation constants
 module Constants =
   [<Literal>]

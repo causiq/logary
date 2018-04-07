@@ -91,8 +91,7 @@ module Config =
   let inline private setToGlobals (logManager: LogManager) =
     let config =
       { Global.defaultConfig with
-          getLogger = logManager.getLogger
-          getLoggerWithMiddleware = logManager.getLoggerWithMiddleware }
+          logManager = Some logManager}
     Global.initialise config
 
   let internal createInternalTargets = function

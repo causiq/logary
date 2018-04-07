@@ -249,12 +249,15 @@ module MessageTemplates =
     let inline tryByteArrayMaxBytes maxBytes (req: DestructureRequest)  =
       match req.Value with
       | :? array<Byte> as bytes ->
-        if bytes.Length <= maxBytes then someScalar bytes
-        else
-          let inline toHexString (b:byte) = b.ToString("X2")
-          let start = bytes |> Seq.take maxBytes |> Seq.map toHexString |> String.Concat
-          let description = start + "... (" + string bytes.Length + " bytes)"
-          someScalar description
+        let inline toHexString (b:byte) = b.ToString("X2")
+        let byteLength = bytes.Length
+        let takeCount = if byteLength > maxBytes then maxBytes else byteLength
+        let hexPart = bytes |> Seq.take takeCount |> Seq.map toHexString |> String.Concat
+        let description = 
+          if byteLength > maxBytes then
+            hexPart + "... " + "(" + string byteLength + " bytes)"
+          else hexPart + "(" + string byteLength + " bytes)"
+        someScalar description
       | _ -> None
 
     let inline tryByteArray (req: DestructureRequest)  = tryByteArrayMaxBytes 1024 req

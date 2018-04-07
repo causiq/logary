@@ -10,6 +10,7 @@ open Logary.Internals
 open Logary.Message
 open Logary.Configuration
 open Logary.EventsProcessing
+open System.Text.RegularExpressions
 
 let tests = [
   testCaseJob "from Config and Multi shutdown" <| job {
@@ -78,12 +79,32 @@ let tests = [
     do! logm.shutdown ()
   }
 
+  testCaseJob "log with scope" (job {
+    let! (logm, out, error)  = Utils.buildLogManager ()
+    let loggername = PointName.parse "logger.test"
+    let lg = logm.getLogger loggername
+
+    let s1 = logm.beginScope (lazy(box "scope-1"))
+    lg.info (eventX "1")
+
+    let s2 = logm.beginScope (lazy(box ("scope-2",2)))
+    let newLogger = logm.getLogger (PointName.parse "logger.test.another")
+    newLogger.info (eventX "2")
+
+    do s2.Dispose ()
+    newLogger.info (eventX "scope 2 dispose")
+
+    do s1.Dispose ()
+    newLogger.info (eventX "scope 1 dispose")
+
+    do! logm.flushPending ()
+    let outStr = clearStream out
+    Expect.isRegexMatch outStr (new Regex("scope-\d")) "shoule have scope value"
+
+    do! logm.shutdown ()
+  })
+
   testCaseJob "switch logger level" (job {
-    let clearStream (s: System.IO.StringWriter) =
-      let sb = s.GetStringBuilder ()
-      let str = string sb
-      sb.Clear () |> ignore
-      str
     let! (logm, out, error)  = Utils.buildLogManager ()
     let loggername = PointName.parse "logger.test"
     let lg = logm.getLogger loggername
