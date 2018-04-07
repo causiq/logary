@@ -9,6 +9,8 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
+// ReSharper disable InconsistentNaming
+
 namespace Logary.Facade
 {
     /// <summary>The log level denotes how 'important' the gauge or event message is.</summary>
@@ -79,7 +81,7 @@ namespace Logary.Facade
             return new Gauge(@value, unit);
         }
 
-        public static PointValue Empty { get; } = PointValue.FromEvent("Empty");
+        public static PointValue Empty { get; } = FromEvent("Empty");
     }
 
     static class DateTimeExtensions
@@ -150,48 +152,48 @@ namespace Logary.Facade
 
         public LogMessage(LogMessage msg, PointValue value)
         {
-            this.Name = msg.Name;
-            this.Level = msg.Level;
-            this.Value = value;
-            this.Fields = msg.Fields;
-            this.Timestamp = msg.Timestamp;
+            Name = msg.Name;
+            Level = msg.Level;
+            Value = value;
+            Fields = msg.Fields;
+            Timestamp = msg.Timestamp;
 
         }
 
         public LogMessage(LogMessage msg, string[] name)
         {
-            this.Name = name;
-            this.Level = msg.Level;
-            this.Value = msg.Value;
-            this.Fields = msg.Fields;
-            this.Timestamp = msg.Timestamp;
+            Name = name;
+            Level = msg.Level;
+            Value = msg.Value;
+            Fields = msg.Fields;
+            Timestamp = msg.Timestamp;
 
         }
         public LogMessage(LogMessage msg, LogLevel level)
         {
-            this.Name = msg.Name;
-            this.Level = level;
-            this.Value = msg.Value;
-            this.Fields = msg.Fields;
-            this.Timestamp = msg.Timestamp;
+            Name = msg.Name;
+            Level = level;
+            Value = msg.Value;
+            Fields = msg.Fields;
+            Timestamp = msg.Timestamp;
 
         }
         public LogMessage(LogMessage msg, ReadOnlyDictionary<string, object> fields)
         {
-            this.Name = msg.Name;
-            this.Level = msg.Level;
-            this.Value = msg.Value;
-            this.Fields = fields;
-            this.Timestamp = msg.Timestamp;
+            Name = msg.Name;
+            Level = msg.Level;
+            Value = msg.Value;
+            Fields = fields;
+            Timestamp = msg.Timestamp;
 
         }
         public LogMessage(LogMessage msg, long epochNanoSeconds)
         {
-            this.Name = msg.Name;
-            this.Level = msg.Level;
-            this.Value = msg.Value;
-            this.Fields = msg.Fields;
-            this.Timestamp = epochNanoSeconds;
+            Name = msg.Name;
+            Level = msg.Level;
+            Value = msg.Value;
+            Fields = msg.Fields;
+            Timestamp = epochNanoSeconds;
         }
     }
 
@@ -573,7 +575,7 @@ namespace Logary.Facade
                 className = declaringType.FullName;
             } while (declaringType.Module.Name.Equals("mscorlib.dll", StringComparison.OrdinalIgnoreCase));
 
-            return new Global.Flyweight(className.Split('.'));
+            return new Global.Flyweight((className ?? "Logary").Split('.'));
         }
 
         public static ILogger Create(string[] name)

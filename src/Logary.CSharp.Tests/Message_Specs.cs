@@ -1,5 +1,4 @@
 ﻿using Machine.Specifications;
-using Microsoft.FSharp.Collections;
 using NodaTime;
 
 // ReSharper disable InconsistentNaming

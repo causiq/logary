@@ -15,7 +15,7 @@ module Shipper =
   open Logary.Configuration
   open fszmq
   open fszmq.Socket
-  open Logary.EventsProcessing
+  open Logary.EventProcessing
 
   let private runLogary shipperConf: IDisposable =
     let hostName = System.Net.Dns.GetHostName()

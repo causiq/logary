@@ -39,7 +39,7 @@ module Message =
 
     let boxWithOption_<'a> : Epimorphism<obj option,'a> =
       (function | Some (:? 'a as x) -> Some x
-                | Some x when isNull x -> Some null
+                | Some x when isNull x -> Some (Unchecked.defaultof<obj> :?> 'a)
                 | Some _ -> None
                 | None -> None),
       box >> Some

@@ -1,8 +1,8 @@
-namespace Logary.EventsProcessing
+namespace Logary.EventProcessing
 
 open Hopac
 open Hopac.Infixes
-open Logary.EventsProcessing.Transformers
+open Logary.EventProcessing.Transformers
 
 type Cancellation = internal { cancelled: IVar<unit> }
 

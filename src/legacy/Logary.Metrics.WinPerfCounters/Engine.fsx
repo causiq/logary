@@ -1,4 +1,4 @@
-#I "bin/Release"
+#I "bin/Release/net461"
 #r "NodaTime.dll"
 #r "Hopac.Core.dll"
 #r "Hopac.dll"
@@ -52,13 +52,6 @@ window ms600 src
 |> Stream.mapFun (Seq.toList >> List.groupBy id >> List.ofSeq)
 |> Stream.consumeFun (printfn "%A")
 
-#r "../../../packages/Microsoft.Bcl.Async/lib/net40/Microsoft.Threading.Tasks.Extensions.Desktop.dll"
-#r "../../../packages/Microsoft.Bcl.Async/lib/net40/Microsoft.Threading.Tasks.Extensions.dll"
-#r "../../../packages/Microsoft.Bcl.Async/lib/net40/Microsoft.Threading.Tasks.dll"
-#r "../../../packages/Microsoft.Bcl/lib/net40/System.IO.dll"
-#r "../../../packages/Microsoft.Net.Http/lib/net40/System.Net.Http.dll"
-#r "../../../packages/Microsoft.Net.Http/lib/net40/System.Net.Http.Extensions.dll"
-#r "../../../packages/Microsoft.Net.Http/lib/net45/System.Net.Http.Primitives.dll"
 #r "../../../packages/Autofac/lib/net45/Autofac.dll"
 #r "../../../packages/Newtonsoft.Json/lib/net45/Newtonsoft.Json.dll"
 #r "../../../packages/TweetinviAPI/lib/net45/Tweetinvi.dll"
@@ -110,7 +103,7 @@ let stoppit : IVar<unit> = IVar ()
 
 let tags =
   tweets
-  |> Stream.chooseFun (fun args -> 
+  |> Stream.chooseFun (fun args ->
     hashtags args.Tweet.Text
     |> Option.map (fun tags -> args.Tweet, tags))
 

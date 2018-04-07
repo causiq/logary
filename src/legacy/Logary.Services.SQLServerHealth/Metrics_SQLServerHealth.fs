@@ -4,7 +4,7 @@ open System
 open System.IO
 open System.Data
 open Logary
-open Logary.EventsProcessing
+open Logary.EventProcessing
 open Logary.AsmUtils
 open NodaTime
 

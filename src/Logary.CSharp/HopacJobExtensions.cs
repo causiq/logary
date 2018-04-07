@@ -15,7 +15,8 @@ namespace Logary
         /// </summary>
         public static Task<T> ToTask<T>(this Job<T> job)
         {
-            return Logary.CSharp.Job.ToTask(job);
+            // ReSharper disable once RedundantNameQualifier
+            return global::Logary.CSharp.Job.ToTask(job);
         }
     }
 }

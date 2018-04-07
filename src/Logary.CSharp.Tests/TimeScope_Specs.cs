@@ -2,6 +2,11 @@
 using Machine.Specifications;
 using NodaTime;
 
+// ReSharper disable InconsistentNaming
+// ReSharper disable UnusedMember.Local
+// ReSharper disable FieldCanBeMadeReadOnly.Local
+// ReSharper disable UnusedMember.Global
+
 namespace Logary.CSharp.Tests
 {
     public class When_using_TimeScope

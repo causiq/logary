@@ -1,4 +1,4 @@
-namespace Logary.EventsProcessing
+namespace Logary.EventProcessing
 
 open Logary
 open Logary.Internals
@@ -31,7 +31,7 @@ module Events =
 
           let logAllConJob =
             msgs
-            |> Hopac.Extensions.Seq.Con.mapJob (fun msg -> 
+            |> Hopac.Extensions.Seq.Con.mapJob (fun msg ->
                logWithAck msg |> PipeResult.orDefault (Promise.instaPromise))
 
           let logAllAlt = Alt.prepareJob <| fun _ ->
@@ -53,7 +53,7 @@ module Events =
 
           let logAllConJob =
             allBuildedSource
-            |> Hopac.Extensions.Seq.Con.mapJob (fun logWithAck -> 
+            |> Hopac.Extensions.Seq.Con.mapJob (fun logWithAck ->
                logWithAck sourceItem |> PipeResult.orDefault (Promise.instaPromise))
 
           let logAllAlt = Alt.prepareJob <| fun _ ->

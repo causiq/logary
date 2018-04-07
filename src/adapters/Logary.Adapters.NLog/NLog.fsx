@@ -1,29 +1,28 @@
 ////////////// SAMPLE LOGARY CONFIGURATION //////////
-#I "bin/Debug"
-#r "NodaTime.dll"
-#r "Hopac.Core.dll"
-#r "Hopac.dll"
-#r "FParsec.dll"
-#r "Logary.dll"
+#I "bin/Release/net461"
+#r "NodaTime"
+#r "Hopac.Core"
+#r "Hopac"
+#r "FParsec"
+#r "Logary"
 open Hopac
 open Logary
+open Logary.EventProcessing
 open Logary.Configuration
 open Logary.Targets
 
-
 let logary =
-  withLogaryManager "Logary.ConsoleApp" (
-    withTargets [
-      LiterateConsole.create LiterateConsole.empty "literate"
-
-      // This target prints more info to the console than the literate one
-      // Console.create (Console.empty) "console"
-    ] >>
-    withRules [
-      Rule.createForTarget "literate"
-      //Rule.createForTarget "console"
-  ])
-  |> Hopac.run
+    Config.create "Logary.ConsoleApp" "localhost"
+    |> Config.targets [
+        LiterateConsole.create LiterateConsole.empty "console"
+      ]
+    |> Config.ilogger (ILogger.Console Info)
+    |> Config.middleware Middleware.dnsHost
+    |> Config.processing (
+      Events.events |> Events.sink ["console"]
+    )
+    |> Config.build
+    |> run
 
 ////////////// SAMPLE NLOG CONFIGURATION //////////
 
@@ -78,4 +77,3 @@ evt.Exception <- exceptiony()
 logger.Log evt
 
 LogManager.Shutdown()
-logary.DisposeAsync() |> run

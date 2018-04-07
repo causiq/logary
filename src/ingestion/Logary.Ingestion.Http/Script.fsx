@@ -1,4 +1,5 @@
 #r "../../../packages/Suave/lib/net40/Suave.dll"
+open System.IO
 open Suave
 open Suave.Http
 open Suave.RequestErrors
@@ -8,35 +9,43 @@ open Suave.Operators
 #I "../../../packages/FParsec/lib/net40-client"
 //#r "../../../packages/FParsec/lib/net40-client/FParsecCS.dll"
 #r "../../../packages/FParsec/lib/net40-client/FParsec.dll"
-#r "../../../packages/Aether/lib/net35/Aether.dll"
-#r "../../../packages/Chiron/lib/net40/Chiron.dll"
-#r "../../../packages/NodaTime/lib/net35-Client/NodaTime.dll"
+#r "../../../packages/NodaTime/lib/net45/NodaTime.dll"
 
-#I "bin/Debug"
-#r "bin/Debug/Logary.dll"
-#r "bin/Debug/Hopac.Core.dll"
-#r "bin/Debug/Hopac.dll"
+#I "bin/Debug/net461/"
+#r "Logary.dll"
+#r "Hopac.Core.dll"
+#r "Hopac.dll"
 open Logary
+open Logary.EventProcessing
 open Logary.Configuration
 open Logary.Targets
 open Hopac
-#load "../../../paket-files/haf/YoLo/YoLo.fs"
-#load "SuaveReporter.fs"
-open Logary.Services
-open System.IO
+#load "Http.fs"
+open Logary.Ingestion
 
 let root = Path.GetFullPath (Path.Combine (__SOURCE_DIRECTORY__, "app"))
 
 let logary =
-  withLogaryManager "Logary.Services.SuaveReporter" (
-    withTargets [
-      Console.create Console.empty (PointName.ofSingle "console")
-    ] >>
-    withRules [
-      Rule.createForTarget (PointName.ofSingle "console")
+  Config.create "Logary.ConsoleApp" "localhost"
+  |> Config.targets [
+      LiterateConsole.create LiterateConsole.empty "console"
+      Console.create Console.empty "fatal"
     ]
-  )
+  |> Config.ilogger (ILogger.Console Info)
+  |> Config.middleware Middleware.dnsHost
+  |> Config.processing (Events.events |> Events.sink ["console"])
+  |> Config.build
   |> run
+
+let httpConf =
+  { HTTP.defaultConfig with ilogger = logary.runtimeInfo.logger }
+
+let logger = logary.getLogger (PointName [| "JS" |])
+
+let next =
+  Codecs.Codec.toJsonStringError Codecs.Codec.json
+  >> Result.map logger.logSimple
+  >> Job.result
 
 startWebServer defaultConfig (
   choose [
@@ -46,7 +55,7 @@ startWebServer defaultConfig (
 
     Files.browse root
 
-    SuaveReporter.api (logary.getLogger (PointName.parse "Logary.Services.SuaveReporter")) None
+    HTTP.api httpConf next
 
     NOT_FOUND "Couldn't find the file you were looking for"
   ])

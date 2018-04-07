@@ -10,7 +10,7 @@ open Suave.Logging
 open Logary
 open Logary.Adapters.Facade
 open Logary.Configuration
-open Logary.EventsProcessing
+open Logary.EventProcessing
 open Logary.Targets
 
 [<EntryPoint>]

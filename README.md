@@ -150,7 +150,7 @@ string loggerId = "Logary.MyLogger";
 using (var logary = LogaryFactory.New("svc", "host",
     // You could define multiple targets. For HelloWorld, we use only console:
     with => with.InternalLogger(ILogger.NewConsole(LogLevel.Error))
-                .Target<TextWriter.Builder>("myFirstTarget", 
+                .Target<TextWriter.Builder>("myFirstTarget",
                    conf => conf.Target.WriteTo(System.Console.Out, System.Console.Error))).Result)
 {
     // Then let's log a message. For HelloWorld, we log a string:
@@ -171,8 +171,8 @@ open Logary // normal usage
 open Logary.Configuration // conf
 open Logary.Targets // conf
 open Logary.Metrics // conf
-open Logary.EventsProcessing // conf
-open Logary.EventsProcessing.Transformers // conf
+open Logary.EventProcessing // conf
+open Logary.EventProcessing.Transformers // conf
 
 module RandomWalk =
 
@@ -236,7 +236,7 @@ let main argv =
       |> Events.flattenToProcessing
       |> Events.sink ["console"; "influxdb"]
 
-      randomWalkPipe 
+      randomWalkPipe
       |> Events.sink ["console"; "influxdb"]
     ]
 
@@ -354,8 +354,8 @@ from as a part of the point name. its default value is the logger's (which log t
 
 context are generally classified into these categories: (you can try these code on test.fsx in Logary.Tests)
 
-#### Fields 
-   
+#### Fields
+
 prefix with "_fields."
 
 Fields are the structured data when you use structure logging like (https://messagetemplates.org/), there are mainly two style to achive this.
@@ -406,8 +406,8 @@ val it : string =
 
 
 #### Gauges
-  
-prefix with "_logary.gauge." 
+
+prefix with "_logary.gauge."
 
 which value is Gauge(float, units). An instantaneous value. Imagine the needle showing the speed your car is going or a digital display showing the same instantaneous metric value of your car's speed.
 
@@ -458,9 +458,9 @@ prefix with "_logary.errors"
 which value is a list<exn>, when exception are catched, you can just add them to your message like this.
 
 ```fsharp
-type User = 
+type User =
   {
-    id      : int 
+    id      : int
     name    : string
     created : DateTime
   }
@@ -512,7 +512,7 @@ val it : string =
 "
 
 ```
-  
+
 #### Tags
 
 prefix with "_logary.tags"
@@ -552,7 +552,7 @@ I 2018-01-26T09:51:06.0523375+00:00: https://github.com/alexandrnikitin/MPMCQueu
     _logary.tags => ["high-performance", "lock-free", "multiple-consumers", "queue"]
 
 ```
-  
+
 #### SinkTargetNames
 
 prefix with "_logary.sink.targets"
@@ -567,10 +567,10 @@ let pipeLine =
    |> Pipe.map (fun msg -> {msg with value = "https://github.com/alexandrnikitin/MPMCQueue.NET"})
    |> Events.sink ["nice console"]
 
-let logm = 
-  Config.create "svc" "localhost" 
-  |> Config.target (Targets.Console.create Targets.Console.empty "my console target") 
-  |> Config.target (Targets.LiterateConsole.create Targets.LiterateConsole.empty "nice console") 
+let logm =
+  Config.create "svc" "localhost"
+  |> Config.target (Targets.Console.create Targets.Console.empty "my console target")
+  |> Config.target (Targets.LiterateConsole.create Targets.LiterateConsole.empty "nice console")
   |> Config.processing pipeLine
   |> Config.build
   |> run
@@ -592,7 +592,7 @@ this will only show on LiterateConsole, not normal Console.
 
 #### User defined
 
-things you don't want to show on the message value, but show on the backstore. e.g: some structured data not belong the message template or data you can use in the EventsProcessing Pipeline.
+things you don't want to show on the message value, but show on the backstore. e.g: some structured data not belong the message template or data you can use in the EventProcessing Pipeline.
 
 
 ```fsharp
@@ -623,8 +623,8 @@ A logger's minimum level are config through `Config.loggerMinLevel "a.b.*" LogLe
 
 ```fsharp
 
-let logm = 
-  Config.create "svc" "localhost" 
+let logm =
+  Config.create "svc" "localhost"
   |> Config.target (Targets.LiterateConsole.create Targets.LiterateConsole.empty "nice console")
   |> Config.loggerMinLevel "a.b.*" LogLevel.Fatal
   |> Config.build
@@ -658,23 +658,23 @@ val it : unit = ()
 ```
 
 
-A target can have multiple rules (minlevel, path, filter), **specific rule should comes last, be careful with the add order**, A rule specifies what messages a target should accept. we do not encourage use rules heavily,only if when the target itself can decide which msg are acceptable. usually this decision is made by EventsProcessing pipeline, can be done with code rather than the rules.
+A target can have multiple rules (minlevel, path, filter), **specific rule should comes last, be careful with the add order**, A rule specifies what messages a target should accept. we do not encourage use rules heavily,only if when the target itself can decide which msg are acceptable. usually this decision is made by EventProcessing pipeline, can be done with code rather than the rules.
 
 Message log level are set when use logging api.
 
 ```fsharp
 
 let someRuleOnTarget =
-  Rule.empty 
+  Rule.empty
   |> Rule.setMinLevel LogLevel.Error // this target will only get message about error level (inclusive)
   |> Rule.setPath (System.Text.RegularExpressions.Regex("a.b.c.*")) // only accept message name under a.b.cxxxxx
   |> Rule.setAcceptIf (fun msg -> msg |> Message.hasTag "emergency")
 
-let tconf = 
+let tconf =
   Targets.LiterateConsole.create Targets.LiterateConsole.empty "nice console"
   |> TargetConf.addRule someRuleOnTarget
-let logm = 
-  Config.create "svc" "localhost" 
+let logm =
+  Config.create "svc" "localhost"
   |> Config.target tconf
   |> Config.loggerMinLevel "a.b.*" LogLevel.Fatal  // logger under a.bxxxx path only process Fatal message
   |> Config.loggerMinLevel "a.b.c.*" LogLevel.Info // logger under a.b.cxxxx path can process message above Info
@@ -826,7 +826,7 @@ whether the system is doing well or not, just from looking at the graphs.
 
 ### Logging fields & templating
 
-The templates syntax can be found here:  https://messagetemplates.org/#syntax 
+The templates syntax can be found here:  https://messagetemplates.org/#syntax
 
 Message Templates are a superset of standard .NET format strings, so any format
 string acceptable to string.Format() will also be correctly processed by logary.
@@ -844,18 +844,18 @@ string acceptable to string.Format() will also be correctly processed by logary.
    how the property is rendered; these format strings behave exactly as their
    counterparts within the `string.Format()` syntax
 
-### Metrics & EventsProcessing pipeline
+### Metrics & EventProcessing pipeline
 
 Sometimes you need a metric that runs continuously over time. A `Ticker` can be seems
-as a metric, it can be auto triggered or by manually. A ticker can be chained 
-in an pipe line (EventsProcessing).
+as a metric, it can be auto triggered or by manually. A ticker can be chained
+in an pipe line (EventProcessing).
 
 We have some windows performance counter metrics that you can use.
 
 But you sometimes want to chain metrics from events or gauges happening inside your own application.
 
 This sample demonstrates how to chain metric from other simpler ones.
-And we generates an exponentially weighted moving average from randomWalk gauges. 
+And we generates an exponentially weighted moving average from randomWalk gauges.
 
 ```fsharp
 module Program
@@ -868,7 +868,7 @@ open Logary.Configuration
 open NodaTime
 open Logary.Targets
 open Logary.Metrics.WinPerfCounters
-open Logary.EventsProcessing
+open Logary.EventProcessing
 
 module Sample =
 
@@ -905,7 +905,7 @@ let main argv =
   let randomWalk = Sample.randomWalk "randomWalk"
   let walkPipe =  Events.events |> Pipe.tickTimer randomWalk (TimeSpan.FromMilliseconds 500.)
   let systemMetrics = Events.events |> Pipe.tickTimer (systemMetrics (PointName.parse "sys")) (TimeSpan.FromSeconds 10.)
-  let processing = 
+  let processing =
     Events.compose [
        walkPipe
        |> Events.sink ["WalkFile";]
@@ -1293,7 +1293,7 @@ Or in C#:
 // set 'logDir' to specific path like Environment.CurrentDirectory if you are on windows
 .Target<File.Builder>(
     "file",
-    file => file.Target.FileSystem(new FileSystem.DotNetFileSystem(logDir)) 
+    file => file.Target.FileSystem(new FileSystem.DotNetFileSystem(logDir))
                        .Naming("{service}-{host}-{datetime}", "log").Done())
 ```
 
@@ -1557,10 +1557,10 @@ Stackdriver.create conf "target-name"
 ```csharp
 LogaryFactory.New("demoService",
                     conf => conf
-                            .InternalLoggingLevel(LogLevel.Verbose)                        
+                            .InternalLoggingLevel(LogLevel.Verbose)
                             .Target<Debugger.Builder>("internal.debugger", tb => tb.UseForInternalLog())
                             .Target<Logary.Targets.Console.Builder>("internal.console", tb => tb.UseForInternalLog())
-                            .Target<LiterateConsole.Builder>("console1")                            
+                            .Target<LiterateConsole.Builder>("console1")
                             .Target<AliYun.Builder>("AliYunLog", tb => {
                                  tb.MinLevel(LogLevel.Verbose)
                                  .Target
@@ -1585,7 +1585,7 @@ LogaryFactory.New("demoService",
 ## Microsoft Azure Application Insights target
 
 Target for [Microsoft Azure AppInsights](https://docs.microsoft.com/en-us/azure/application-insights/)
-logs the events as TRACE-messages (or Events/Metrics with a different MappingConfiguration). 
+logs the events as TRACE-messages (or Events/Metrics with a different MappingConfiguration).
 You need to set the API-key first. Then when you go to Azure Portal
 Application Insights and `Overview -> Search` you should be able to find the targets from there.
 Metrics goes to `Metrics Explorer -> Add Chart -> Custom`. [More info...](https://docs.microsoft.com/azure/application-insights/app-insights-create-new-resource)
@@ -2222,7 +2222,7 @@ You can't rely on any one notification method for critical alerts. Get alert
 notifications via iOS & Android push, SMS, and phone calls; escalate
 automatically to team members if the alert is not acknowledged.
 
-The Logary target for OpsGenie ensures that you can bring in your 
+The Logary target for OpsGenie ensures that you can bring in your
 Logging and Metrics into your daily operations.
 
 #### Features
@@ -2274,7 +2274,7 @@ open NodaTime
 open Hopac
 open Logary
 open Logary.Configuration
-open Logary.EventsProcessing
+open Logary.EventProcessing
 open Logary.Targets
 open Logary.Targets.ElmahIO
 open System.Threading
@@ -2286,14 +2286,14 @@ let main argv =
 
   let logary =
     let elmahioConf =
-      { logId = Guid.Parse(Environment.GetEnvironmentVariable("ELMAH_IO_LOG_ID")) 
+      { logId = Guid.Parse(Environment.GetEnvironmentVariable("ELMAH_IO_LOG_ID"))
         apiKey = "api key form elmah io"}
 
     Config.create "Logary.ElmahIO" "localhost"
     |> Config.targets [
         Console.create Console.empty "console"
         ElmahIO.create elmahioConf "elmah.io"
-      ] 
+      ]
     |> Config.processing (Events.events |> Events.sink ["console";"elmah.io";])
     |> Config.build
     |> run

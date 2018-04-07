@@ -8,6 +8,7 @@ namespace Cibryy
 
     public static class Core
     {
+        // ReSharper disable once InconsistentNaming
         static readonly ILogger _logger = Log.Create("Cibryy.Core");
 
         static Exception M4(string prefix)

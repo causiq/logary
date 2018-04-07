@@ -73,10 +73,10 @@
     <Compile Include="Internals/InternalLogger.fs" />
     <Compile Include="Log.fs" />
     <!-- Below: events processing -->
-    <Compile Include="EventsProcessing/Transformers.fs" />
-    <Compile Include="EventsProcessing/Ticker.fs" />
-    <Compile Include="EventsProcessing/Pipe.fs" />
-    <Compile Include="EventsProcessing/Events.fs" />
+    <Compile Include="EventProcessing/Transformers.fs" />
+    <Compile Include="EventProcessing/Ticker.fs" />
+    <Compile Include="EventProcessing/Pipe.fs" />
+    <Compile Include="EventProcessing/Events.fs" />
     <!-- Below: registry -->
     <Compile Include="Registry.fs" />
     <!-- Below: formatting, serialisation -->

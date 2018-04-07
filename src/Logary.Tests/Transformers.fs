@@ -4,8 +4,8 @@ open Expecto
 open NodaTime
 open Hopac
 open Logary
-open Logary.EventsProcessing
-open Logary.EventsProcessing.Transformers
+open Logary.EventProcessing
+open Logary.EventProcessing.Transformers
 
 [<Tests>]
 let bufferCounter =

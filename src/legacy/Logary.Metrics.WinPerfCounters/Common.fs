@@ -29,7 +29,7 @@ let systemCounters () =
        Percent,               Processor.``% Interrupt Time``
        Percent,               Processor.``% Privileged Time``
        Div (Scalar, Seconds), Processor.``Interrupts/sec``
-       Percent,               Processor.``% Idle Time`` 
+       Percent,               Processor.``% Idle Time``
     |] |> Array.map (fun (units, f) -> units, f (Processor.instances()))
 
     [| Bytes,                 Memory.``Available Bytes``
@@ -124,7 +124,7 @@ let byCategory pcc =
 
 
 let ofCounters (counters: WinPerfCounterInstance []) =
-  Logary.EventsProcessing.Ticker.create counters (fun counters item -> counters) (fun counters -> counters, counters |> Array.map Helpers.toValue)
+  Logary.EventProcessing.Ticker.create counters (fun counters item -> counters) (fun counters -> counters, counters |> Array.map Helpers.toValue)
 
 /// The "GPU" category is installed by the nVIDIA drivers
 let tryGPUMetric _ =
@@ -139,7 +139,7 @@ let gpuMetrics _ =
 
 let tryNVidiaGPUMetric _  =
   byCategory "NVIDIA GPU" |> Option.map ofCounters
-  
+
 let nvidiaMetrics pn =
   match tryNVidiaGPUMetric () with
   | None ->

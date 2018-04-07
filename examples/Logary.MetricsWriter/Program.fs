@@ -8,7 +8,7 @@ open Logary.Configuration
 open NodaTime
 open Logary.Targets
 open Logary.Metrics.WinPerfCounters
-open Logary.EventsProcessing
+open Logary.EventProcessing
 
 module Sample =
 

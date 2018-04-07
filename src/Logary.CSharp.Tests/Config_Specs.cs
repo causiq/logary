@@ -1,8 +1,5 @@
 using System;
-using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.IO;
-using System.Runtime.CompilerServices;
 using Machine.Specifications;
 using NodaTime;
 
@@ -58,7 +55,7 @@ namespace Logary.CSharp.Tests
 
         Cleanup afterwards = () =>
             {
-//                manager.Dispose();
+                Hopac.Hopac.run(manager.shutdown());
             };
 
         static Logger subject = Log.Create<When_logging_with_logger_gotten_from_GetCurrentLogger>();

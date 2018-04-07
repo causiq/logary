@@ -6,7 +6,7 @@ open Hopac.Infixes
 open Hopac.Extensions
 open Logary.Message
 open Logary.Internals
-open Logary.EventsProcessing
+open Logary.EventProcessing
 open NodaTime
 open System.Text.RegularExpressions
 
@@ -71,7 +71,7 @@ type LogManager =
   abstract shutdown: flush:Duration * shutdown:Duration -> Alt<FlushInfo * ShutdownInfo>
   abstract shutdown: unit -> Alt<unit>
 
-  /// Dynamically controls logger min level, 
+  /// Dynamically controls logger min level,
   /// this will only affect the loggers (its name, not its instance) which have been created beafore
   abstract switchLoggerLevel: string * LogLevel -> unit
 

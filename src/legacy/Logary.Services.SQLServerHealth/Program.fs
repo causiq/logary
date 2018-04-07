@@ -11,7 +11,7 @@ open Logary
 open Logary.Targets
 open Logary.Metrics
 open Logary.Configuration
-open Logary.EventsProcessing
+open Logary.EventProcessing
 open Logary.Metrics.SQLServerHealth
 open Argu
 
@@ -79,7 +79,7 @@ let execute interval sqlConf riemann argv (exiting: ManualResetEventSlim) =
     let cons, rm = "console", "riemann"
     let hostName = Dns.GetHostName()
     let sqlServerHealthTicker = SQLServerHealth.create sqlConf
-    let processing = 
+    let processing =
       Events.compose [
            Events.events
            |> Pipe.tickTimer sqlServerHealthTicker (TimeSpan.FromTicks(Duration.ticks interval |> int64))
@@ -91,7 +91,7 @@ let execute interval sqlConf riemann argv (exiting: ManualResetEventSlim) =
         Console.create Console.empty cons
        ]
     |> Config.processing processing
-    |> Config.build 
+    |> Config.build
     |> Hopac.Hopac.run
 
   exiting.Wait()

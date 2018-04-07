@@ -1,9 +1,9 @@
-#I "bin/Debug"
-#r "Castle.Core.dll"
-#r "Hopac.Core.dll"
-#r "Hopac.dll"
-#r "Logary.dll"
-#r "Cibryy.dll"
+#I "bin/Release/net461"
+#r "Castle.Core"
+#r "Hopac.Core"
+#r "Hopac"
+#r "Logary"
+#r "Cibryy"
 #load "../../adapters/Logary.Adapters.Facade/Logary.Adapters.Facade.fs"
 
 open Logary.Adapters.Facade

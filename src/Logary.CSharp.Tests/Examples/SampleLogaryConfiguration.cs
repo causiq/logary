@@ -6,6 +6,11 @@ using Logary.Configuration;
 using Logary.Targets;
 using Console = System.Console;
 
+// ReSharper disable InconsistentNaming
+// ReSharper disable UnusedMember.Local
+// ReSharper disable FieldCanBeMadeReadOnly.Local
+// ReSharper disable UnusedMember.Global
+
 namespace Logary.CSharp.Tests.Examples
 {
     public class When_using_fluent_API

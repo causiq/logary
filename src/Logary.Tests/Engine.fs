@@ -8,7 +8,7 @@ open Hopac
 open Hopac.Infixes
 open Hopac.Extensions
 open Logary.Internals
-open Logary.EventsProcessing
+open Logary.EventProcessing
 open NodaTime
 open System.Net.NetworkInformation
 

@@ -18,26 +18,28 @@ open Suave.Operators
 
 type HTTPConfig =
   { rootPath: string
+    ilogger: Logger
     cancelled: Promise<unit>
     suaveConfig: SuaveConfig
   }
-  static member create (rootPath, ?cancelled, ?endpoint: IPEndPoint) =
+  static member create (rootPath, ilogger, ?cancelled, ?endpoint: IPEndPoint) =
     let ep = defaultArg endpoint (IPEndPoint (IPAddress.Loopback, 8888))
     let sc = { Suave.Web.defaultConfig with bindings = [ HttpBinding.create HTTP ep.Address (ep.Port |> uint16) ] }
     { rootPath = rootPath
+      ilogger = ilogger
       cancelled = defaultArg cancelled (IVar ())
       suaveConfig = sc
     }
 
-let defaultConfig = HTTPConfig.create "/i/logary"
+let defaultConfig = HTTPConfig.create ("/i/logary", NullLogger.instance)
 
 let private printHelp (config: HTTPConfig): WebPart =
   let message = sprintf "You can post a JSON Objects to: %s" config.rootPath
   OK message >=> setMimeType "text/plain; charset=utf-8"
 
-let private ilogger = Log.create "Logary.Ingestion.HTTP"
 let private thx: WebPart =
   ACCEPTED "true"
+
 let private fail: string -> WebPart =
   Json.encode >> Json.format >> BAD_REQUEST
 
@@ -69,11 +71,11 @@ let private createAdaptedCTS (config: HTTPConfig) =
 
 let create (config: HTTPConfig) (next: Ingest) =
   job {
-    do ilogger.info (eventX "Starting HTTP log listener at {bindings}" >> setField "bindings" config.suaveConfig.bindings)
+    do config.ilogger.info (eventX "Starting HTTP log listener at {bindings}" >> setField "bindings" config.suaveConfig.bindings)
     use cts = createAdaptedCTS config
     let suaveConfig = { config.suaveConfig with cancellationToken = cts.Token }
     let started, listening = startWebServerAsync suaveConfig (api config next)
     do! Job.start (Job.fromAsync listening)
     do! config.cancelled
-    do ilogger.info (eventX "Stopping HTTP log listener at {bindings}" >> setField "bindings" config.suaveConfig.bindings)
+    do config.ilogger.info (eventX "Stopping HTTP log listener at {bindings}" >> setField "bindings" config.suaveConfig.bindings)
   }
