@@ -123,7 +123,7 @@ module Router =
       >> setField "codec" cname)
 
     let ep = Parsers.binding binding
-    let config = HTTP.HTTPConfig.create("/i/logary", cancelled, ep)
+    let config = HTTP.HTTPConfig.create("/i/logary", logary.runtimeInfo.logger, cancelled, ep)
     HTTP.create config sink
 
   type C = Logary.Services.Rutta.Codec
