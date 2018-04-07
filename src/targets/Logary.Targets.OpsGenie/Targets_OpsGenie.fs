@@ -199,7 +199,7 @@ module OpsGenieConfEx =
 
 let empty =
   OpsGenieConf.create (
-    Env.varDefault "OPSGENIE_API_KEY" "OPSGENIE_API_KEY=MISSING")
+    Env.varDefault "OPSGENIE_API_KEY" (fun () -> "OPSGENIE_API_KEY=MISSING"))
 
 module internal Impl =
   open Logary.Internals.Aether

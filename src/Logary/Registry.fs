@@ -223,6 +223,15 @@ module Registry =
       (targets |>  Seq.Con.mapJob flushTarget)
       >>- (partitionResults >> FlushInfo)
 
+    let internal onKestrel =
+      lazy (null <> System.Type.GetType "Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServer, Microsoft.AspNetCore.Server.Kestrel.Core")
+    let internal onIIS =
+      lazy (let he = System.Type.GetType "System.Web.Hosting.HostingEnvironment, System.Web"
+            if isNull he then false else he.GetProperty("IsHosted").GetValue(null) :?> bool)
+    let internal lc () =
+      if (onKestrel.Value || onIIS.Value)
+         && not ("true" = Env.varDefault "LOGARY_I_PROMISE_I_HAVE_PURCHASED_LICENSE" (fun () -> "false")) then
+         failwith "You must purchase a license for Logary to run it on or with IIS or Kestrel."
 
   // Middleware at:
   //  - LogaryConf (goes on all loggers) (through engine,and compose at call-site)
@@ -230,6 +239,8 @@ module Registry =
   //  - individual loggers (through engine,and compose at call-site)
 
   let create (conf: LogaryConf): Job<T> =
+    Impl.lc ()
+
     let ri, rname, rmid =
       conf.runtimeInfo,
       PointName [| "Logary"; "Registry" |],

@@ -58,7 +58,7 @@ module Engage =
 
 let empty =
   MixpanelConf.create (
-    Env.varDefault "MIXPANEL_TOKEN" "MIXPANEL_TOKEN=MISSING")
+    Env.varDefault "MIXPANEL_TOKEN" (fun () -> "MIXPANEL_TOKEN=MISSING"))
 
 module internal E =
   open Logary.Message.Patterns
