@@ -92,6 +92,7 @@ type Expect =
         yield ">",                                              Punctuation
         yield Environment.NewLine,                              Text ]
 
+    let writtenParts = LiterateTesting.getWrittenColourParts (message, options = options)
     let actualParts = writtenParts |> List.ofSeq
     let expectedParts = expectedTokens |> List.map (fun (s, t) -> s, options.theme t)
     Expect.sequenceEqual actualParts expectedParts "literate tokenised parts must be correct"
@@ -118,7 +119,7 @@ type Expect =
   /// Asserts that the LiterateConsoleTarget renders the template (with the provided fields, options, and tokeniser) and
   /// outputs coloured text that (when themed) will match the expected tokens.
   static member literateOutputPartsEqual (message, expectedTokens, ?options, ?customTokeniser) =
-    let writtenParts = LiterateTesting.getWrittenColourParts (message, ?customTokeniser = customTokeniser, ?options = options)    
+    let writtenParts = LiterateTesting.getWrittenColourParts (message, ?customTokeniser = customTokeniser, ?options = options)
     Expect.literateWrittenColouredTextEquals (writtenParts, expectedTokens, ?options = options)
 
 [<Tests>]
