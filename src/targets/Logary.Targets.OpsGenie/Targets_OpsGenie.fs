@@ -98,7 +98,9 @@ module internal E =
 
   let details (values: seq<string * obj>) =
     values
-    |> Seq.map (fun (k, v) -> k, Json.encode v)
+    // flatten the object, or else, OpsGenie barfs
+    // [14:32:08 ERR] OpsGenie target received response 422 with "'details#tenant' is invalid"
+    |> Seq.map (fun (k, v) -> k, Json.String (string v))
     |> Seq.toList
     |> JsonObject.ofPropertyList
     |> Json.Object
@@ -162,30 +164,52 @@ let empty =
     Env.varDefault "OPSGENIE_API_KEY" "OPSGENIE_API_KEY=MISSING")
 
 module internal Impl =
+  open Logary.Internals.Aether
+  open Logary.Internals.Aether.Operators
+  open Chiron.Optics
   open System.Net.Http
 
   let endpoint (conf: OpsGenieConf) =
     let ub = UriBuilder(conf.endpoint)
-    ub.Path <- "/alerts"
+    ub.Path <- sprintf "%s/alerts" ub.Path
     ub.Uri
 
+  let private errorMessage_ =
+     Optics.compose (Optics.compose Json.Object_ (Optics.JsonObject.key_ "message")) Optics.Json.String_
+
   /// Guards so that all sent messages are successfully written.
-  let guardRespCode (runtime: RuntimeInfo) (body, statusCode) =
+  let guardRespCode (runtime: RuntimeInfo) (body: Json, statusCode) =
     /// Create alert requests are processed asynchronously, therefore valid requests are responded with HTTP status 202 - Accepted.
     if statusCode = 202 then
       Job.result ()
     else
+      let message = Optics.get errorMessage_ body |> JsonResult.getOrThrow
       runtime.logger.logWithAck Error (
-        eventX "OpsGenie target received response {statusCode} with {body}."
+        eventX "OpsGenie target received response {statusCode} with {message}."
         >> setField "statusCode" statusCode
-        >> setField "body" body)
+        >> setField "message" message)
       |> Job.bind id
-      |> Job.bind (fun () -> Job.raises (Exception body))
+      |> Job.bind (fun () -> Job.raises (Exception message))
 
   let bodyAndCode (resp: Response) =
     resp
     |> Job.useIn Response.readBodyAsString
+    |> Job.map (Json.parse >> JsonResult.getOrThrow)
     |> Job.map (fun body -> body, resp.statusCode)
+
+  let speakJson: JobFilter<Request, _> =
+    let ct = ContentType.create ("application", "json", Encoding.UTF8)
+    fun next req ->
+      req
+      |> Request.setHeader (RequestHeader.Accept "application/json")
+      |> Request.setHeader (RequestHeader.ContentType ct)
+      |> next
+
+  let authenticated (apiKey: ApiKey): JobFilter<Request, _> =
+    fun next req ->
+      req
+      |> Request.setHeader (RequestHeader.Authorization (sprintf "GenieKey %s" apiKey))
+      |> next
 
   // Move to Composition
   let codec enc dec =
@@ -213,10 +237,12 @@ module internal Impl =
         |> Request.bodyString (Json.format msg)
 
       let filters: JobFilter<Request, Response, Json, unit> =
-        codec create bodyAndCode
+        speakJson
+        >> authenticated conf.apiKey
+        >> codec create bodyAndCode
         >> sinkJob (guardRespCode runtime)
 
-      { client = client; send = filters getResponse }
+      { client = client; send = filters (fun req -> printfn "%A" req; getResponse req) }
 
   let loop (conf: OpsGenieConf) (runtime: RuntimeInfo, api: TargetAPI) =
     runtime.logger.info (
