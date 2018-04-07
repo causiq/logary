@@ -39,12 +39,12 @@ type Priority =
   | P4
   | P5
   static member ofLogLevel = function
-    | Verbose -> P1
-    | Debug -> P1
-    | Info -> P2
+    | Verbose -> P5
+    | Debug -> P5
+    | Info -> P4
     | Warn -> P3
-    | Error -> P4
-    | Fatal -> P5
+    | Error -> P2
+    | Fatal -> P1
 
 module internal E =
   open Logary.Message.Patterns
@@ -127,28 +127,37 @@ module internal E =
     u |> Option.map (limitTo 100) |> Option.map E.string |> E.option
 
   /// Formats all exceptions as a big note.
-  let note (m: Message) =
+  let private exnsToString (m: Message) =
     match Message.getExns m with
     | [] ->
-      E.option None
+      None
     | es ->
       es
       |> List.map (sprintf "%O")
       |> String.concat "\n\n"
       |> limitTo 25000
       |> Some
-      |> E.optionWith E.string
+
+  let private getDescription m =
+    match Message.tryGetField "description" m, exnsToString m with
+    | None, None ->
+      None
+    | Some desc, Some exnText ->
+      Some (sprintf "%s\n\n%s" desc exnText)
+    | None, Some exnText ->
+      Some exnText
+    | Some desc, None ->
+      Some desc
 
   let logaryMessage (conf: OpsGenieConf) (x: Message) jObj =
     jObj
     |> E.required message "message" x.value
     |> E.required alias "alias" (conf.getAlias x)
-    |> E.optional description "description" (Message.tryGetField "description" x)
+    |> E.optional description "description" (getDescription x)
     |> E.required responders "responders" (conf.getResponders x)
     |> E.required tags "tags" (Message.getAllTags x)
     |> E.required details "details" (Message.getAllFields x)
     |> E.required source "source" x.name
-    |> E.required note "note" x
     |> E.required (Priority.ofLogLevel >> priority) "priority" x.level
 
   let encode (conf: OpsGenieConf) (m: Message): Json option =
