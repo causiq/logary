@@ -242,7 +242,7 @@ module internal Impl =
         >> codec create bodyAndCode
         >> sinkJob (guardRespCode runtime)
 
-      { client = client; send = filters (fun req -> printfn "%A" req; getResponse req) }
+      { client = client; send = filters getResponse }
 
   let loop (conf: OpsGenieConf) (runtime: RuntimeInfo, api: TargetAPI) =
     runtime.logger.info (
