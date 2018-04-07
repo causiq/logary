@@ -27,20 +27,20 @@ type Units =
   | Percent
   | Watts
   | Hertz
-  | Other of units:string
+  | Other of unit:string
   // E.g. to denote nano-seconds since epoch;
   // 1474139353507070000 would be Scaled(Seconds, 10.**9.) since year 1970
   // so to get back to seconds, you'd divide the value by 10.**9.
   // E.g. an op that takes 5ms would be represented as
   // Gauge(5000000, Scaled(Seconds, 10.**9.)) (ns) OR:
   // Gauge(50000, Scaled(Seconds, 10**7.)) (ticks):
-  | Scaled of units:Units * scale:float
-  | Offset of units:Units * offset:float
-  | Mul of Units * Units
-  | Pow of Units * Units
-  | Div of Units * Units
-  | Root of Units
-  | Log10 of Units // Log of base:float * BaseUnit
+  | Scaled of unit:Units * value:float
+  | Offset of unit:Units * value:float
+  | Mul of unitA:Units * unitB:Units
+  | Pow of ``base``:Units * power:Units
+  | Div of nom:Units * denom:Units
+  | Root of ``base``:Units
+  | Log10 of ``base``:Units // Log of base:float * BaseUnit
 
   /// E.g. 5 degrees celsius is (5 + 273.15) K
   static member Celsius = Offset (Kelvins, +273.15)

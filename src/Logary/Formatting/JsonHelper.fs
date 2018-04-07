@@ -74,6 +74,7 @@ module Shape =
   let (|LogLevel|_|) (shape: TypeShape) = test<Logary.LogLevel> shape
   let (|PointName|_|) (shape: TypeShape) = test<Logary.PointName> shape
   //let (|Units|_|) (shape: TypeShape) = test<Logary.Units> shape
+  let (|Gauge|_|) (shape: TypeShape) = test<Logary.Gauge> shape
 
 module JsonHelper =
   module E = Chiron.Serialization.Json.Encode
@@ -213,6 +214,26 @@ module JsonHelper =
 
     | Shape.PointName ->
       wrap (fun (PointName xs) -> E.arrayWith Json.String xs)
+
+    | Shape.Gauge ->
+      (*
+      Without this case:
+      {
+        "type":"Gauge",
+        "Item2":{
+          "type":"Scaled"
+          "scale":0.00001157407407407407,
+          "unit":{"type":"Seconds"},
+        },
+        "Item1":{"Item":2.3,"type":"Float"}
+      }
+      *)
+      wrap (fun (Gauge (v, u)) ->
+        E.propertyList [
+          "type", Json.String "gauge"
+          "value", toJsonCached ctx v
+          "unit", toJsonCached ctx u
+        ])
 
     | meta when meta.Type.Namespace = "System.Reflection" ->
       fun x -> Json.String (x.ToString())

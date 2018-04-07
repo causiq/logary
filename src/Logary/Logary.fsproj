@@ -52,6 +52,7 @@
     <Compile Include="Formatting/MessageTemplates.fs" />
     <Compile Include="DurationModule.fs" />
     <Compile Include="UnitsModule.fs" />
+    <Compile Include="GaugeModule.fs" />
     <Compile Include="Internals/NullLogger.fs" />
     <Compile Include="Middleware.fs" />
     <Compile Include="Internals/Global.fs" />

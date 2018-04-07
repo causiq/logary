@@ -14,10 +14,12 @@ module Messages =
   /// - A Map in the context
   /// - Some fields (to be templated into the string), including a string array
   /// - A single gauge with the # (float) of days the user waited until signing up.
+  /// - A couple of tags
   ///
   let userUpgradedPlan =
     Message.event Info "User#{userId} '{email}' signed up, after {promoCount} promotions: {@promotions}."
     |> Message.setContexts [
+      "env", box "production"
       "service", box "WebApi"
       "machineType", box "n1-standard-1"
       "computeInstance", box "gke-project-id-default-pool-2de02f1c-6g3f"
@@ -27,7 +29,9 @@ module Messages =
       "userId", box "haf"
       "email", box "haf@example.com"
       "promoCount", box 3
+      "ip", box "81.227.65.159" // 3 Sweden, Stockholm
     ]
+    |> Message.tag "funnel"
     |> Message.setField "promotions" [ "timeLimited2day"; "enableInvoices"; "friendReferral" ]
     |> Message.addGauge "timeUntilSignup" (Gauge (Float 2.3, Units.Days))
 

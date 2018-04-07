@@ -13,6 +13,18 @@ open Logary.Configuration
 open HttpFs.Client
 open HttpFs.Composition
 
+/// A **very** simple extractor for the `userId` field/`user` field.
+let extractUserIdOrUserDotId (m: Message) =
+  m
+  |> tryGetField "userId"
+  |> Option.orElse (m |> tryGetField "user")
+  |> Option.map string
+
+let extractIPField (m: Message) =
+  m
+  |> tryGetField "ip"
+  |> Option.map string
+
 /// An API access token
 type Token = string
 
@@ -23,13 +35,21 @@ type MixpanelConf =
     /// The write endpoint to send the values to
     endpoint: string
     /// Authentication token used for accessing the API.
-    token: Token }
+    token: Token
+    /// Callback that tries to extract the `distinct_id` from the message.
+    tryExtractDistinctId: Message -> string option
+    /// Callback that tries to extract the `ip` field from the message. This is used
+    /// by Mixpanel for geolocation.
+    tryExtractIP: Message -> string option
+  }
   /// Create a new Mixpanel configuration record for Logary to use for sending
   /// events to Mixpanel with.
-  static member create (token, ?endpoint, ?batchSize) =
+  static member create (token, ?endpoint, ?batchSize, ?tryExtractDistinctId, ?tryExtractIP) =
     { batchSize = max 1us (min (defaultArg batchSize 50us) 50us)
       endpoint = defaultArg endpoint "https://api.mixpanel.com/"
-      token = token }
+      token = token
+      tryExtractDistinctId = defaultArg tryExtractDistinctId extractUserIdOrUserDotId
+      tryExtractIP = defaultArg tryExtractIP extractIPField }
 
 module Track =
   let path = "/track"
@@ -46,35 +66,47 @@ module internal E =
 
   module E = Json.Encode
 
-  let properties (conf: MixpanelConf) (m: Message) =
+  // `time`:
+  // The time an event occurred. If present, the value should be a unix timestamp (seconds since midnight, January 1st, 1970 - UTC). If this property is not included in your request, Mixpanel will use the time the event arrives at the server.
+
+  let properties (ilogger: Logger) (conf: MixpanelConf) (m: Message) =
     let baseObj =
       JsonObject.empty
-      |> JsonObject.add "time" (E.int64 m.timestampEpochS)
-      |> JsonObject.add "token" (E.string conf.token)
+      |> E.required E.int64 "time" m.timestampEpochS
+      |> E.required E.string "token" conf.token
+      |> E.required E.string "formatted" (MessageWriter.verbatim.format m)
+      |> E.optional E.string "distinct_id" (conf.tryExtractDistinctId m)
+      |> E.optional E.string "ip" (conf.tryExtractIP m)
 
-    // TO CONSIDER: warn if missing `distinct_id`
-    (baseObj, m.context)
-    ||> Seq.fold (fun o -> function
-      | Intern ->
-        o
-      | Field (key, value) ->
-        o |> JsonObject.add key (Json.encode value)
-      | Gauge (key, g) ->
-        o |> JsonObject.add key (Json.encode g)
-      | Tags tags ->
-        o |> JsonObject.add "tags" (E.stringSet tags)
-      | Context (key, value) ->
-        o |> JsonObject.add key (Json.encode value))
-    |> Json.Object
+    let jObj =
+      (baseObj, m.context)
+      ||> Seq.fold (fun o -> function
+        | Intern ->
+          o
+        | Field (key, value) ->
+          o |> JsonObject.add key (Json.encode value)
+        | Gauge (key, g) ->
+          o
+            |> JsonObject.add key (Json.encode g)
+            |> JsonObject.add (sprintf "%s_f" key) (Json.String (Gauge.format g))
+        | Tags tags ->
+          o |> JsonObject.add "tags" (E.stringSet tags)
+        | Context (key, value) ->
+          o |> JsonObject.add key (Json.encode value))
+
+    if Option.isNone (JsonObject.tryFind "distinct_id" jObj) then
+      ilogger.info (eventX "Missing `distinct_id` from message {message}" >> setField "message" m)
+
+    Json.Object jObj
 
   let event (m: Message) =
     if m.value = "" then None
     else Some (Json.String m.value)
 
-  let message (conf: MixpanelConf) (m: Message): _ option =
+  let message (ilogger: Logger) (conf: MixpanelConf) (m: Message): _ option =
     event m |> Option.map (fun e ->
     E.propertyList [
-      "properties", properties conf m
+      "properties", properties ilogger conf m
       "event", e
     ])
 
@@ -154,7 +186,7 @@ module internal Impl =
             messages |> Array.fold (fun (entries, acks, flushes) -> function
               | Log (message, ack) ->
                 let nextEntries =
-                  match E.message conf message with
+                  match E.message api.runtimeInfo.logger conf message with
                   | None -> entries
                   | Some m -> m :: entries
                 nextEntries,
