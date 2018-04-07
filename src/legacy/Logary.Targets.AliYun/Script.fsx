@@ -1,15 +1,12 @@
-﻿#I "./../../../packages"
-#I "bin/Debug"
-
-#r "NodaTime.dll"
-#r "Hopac.dll"
-#r "Hopac.Core.dll"
-#r "Logary.dll"
-#r "AliyunLogSDK.dll"
-#r "LZ4Sharp.dll"
-#r "Google.ProtocolBuffers.dll"
-#r "Google.ProtocolBuffers.Serialization.dll"
-
+﻿#I "bin/Debug/net461"
+#r "NodaTime"
+#r "Hopac"
+#r "Hopac.Core"
+#r "Logary"
+#r "AliyunLogSDK"
+#r "LZ4Sharp"
+#r "Google.ProtocolBuffers"
+#r "Google.ProtocolBuffers.Serialization"
 #load "Targets_AliYun.fs"
 
 open System
@@ -25,21 +22,21 @@ printfn "begin"
 
 
 let aliyunConf = { AccessKeyId = "";
-                  AccessKey = ""; 
+                  AccessKey = "";
                   Endpoint = "";
                   ClientConnectTimeout = 2000;
                   ClientReadWriteTimeout = 2000;
                   Project = "";
                   Logstore = "";}
 
-let logm = 
+let logm =
     Config.create "testAliYun" "localhost"
     |> Config.target (Logary.Targets.AliYun.create aliyunConf "AliYunLog")
-    |> Config.ilogger (ILogger.Console Verbose) 
+    |> Config.ilogger (ILogger.Console Verbose)
     |> Config.build
     |> run
 let tuple = ("first",2,"Third")
-let msg = 
+let msg =
   Message.eventInfo ("Hello World! from {target}")
   |> Message.setField "target" "aliyun-target"
   |> Message.setContext "tuples" tuple
@@ -58,6 +55,6 @@ Hopac.timeOutMillis 3000 ^=> fun _ -> logm.shutdown timeWaiting timeWaiting
 |> fun info ->
    printfn "------------------after shutdow => %s %A %A" Environment.NewLine info
 
-// Login your AliYun sls console (https://sls.console.aliyun.com/). 
+// Login your AliYun sls console (https://sls.console.aliyun.com/).
 // Go to your logstore
 // Your events should be visible under logstore search
