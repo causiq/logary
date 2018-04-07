@@ -40,7 +40,7 @@ type Priority =
   | P5
   static member ofLogLevel = function
     | Verbose -> P1
-    | Debug -> P2
+    | Debug -> P1
     | Info -> P2
     | Warn -> P3
     | Error -> P4
