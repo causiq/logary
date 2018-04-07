@@ -211,9 +211,9 @@ let tests =
     ]
 
     testList "Value" [
-      testCase "Float" <| fun () ->
-        Float 3. |> ignore
-
+      testCase "Float" <| fun () -> ignore (Float 3.)
+      testCase "Int64" <| fun () -> ignore (Int64 3L)
+      testCase "BigInt" <| fun () -> ignore (BigInt 3I)
       testPropertyWithConfig fsCheckConfig "Value" <| fun (value: Value) ->
         match value with
         | Float f ->
@@ -404,6 +404,29 @@ let tests =
         test res1 msg1
         test res2 msg2
       })
+    ]
+
+    testList "Codecs" [
+      testCase "plain"  <| fun () ->
+        match Codecs.Codec.plain (Ingestion.Ingested.String "hello") with
+        | Result.Ok m ->
+          Expect.equal m.value "hello" "Should have right value"
+        | Result.Error err ->
+          failtestf "%s" err
+
+      testCase "log4j XML" <| fun () ->
+        let sample = """<log4j:event logger="com.howtodoinjava.Log4jXMLLayoutExample" timestamp="1368417841893" level="INFO" thread="main">
+    <log4j:message><![CDATA[Sample info message]]></log4j:message>
+    <log4j:locationInfo class="com.howtodoinjava.Log4jXMLLayoutExample" method="main" file="Log4jXMLLayoutExample.java" line="15"/>
+</log4j:event>"""
+        match Codecs.Codec.log4jXML (Ingestion.Ingested.String sample) with
+        | Result.Ok m ->
+          Expect.equal m.value "Sample info message" "Should parse the message properly"
+          Expect.equal m.level Info "Parses Info"
+          Expect.equal m.timestamp 1368417841893L "Should have correct timestamp"
+          Expect.equal m.name (PointName.parse "com.howtodoinjava.Log4jXMLLayoutExample") "Should parse logger name"
+        | Result.Error err ->
+          failtestf "%s" err
     ]
 
     testList "LoggerScope" [

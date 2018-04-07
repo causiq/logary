@@ -177,7 +177,7 @@ module TargetConfig =
         failwithf "Module '%s' did not have 'create' \"(name: string) -> (conf: 'conf) -> TargetConf\" function. This should be fixed in the target's code (with [<CompiledName \"Create\">] on itself)."
                   x.moduleName
 
-      printfn "Invoking create on '%O'" createMethod
+//      printfn "Invoking create on '%O'" createMethod
       createMethod.Invoke(null, [| conf; name |])
       :?> TargetConf
 
@@ -199,11 +199,10 @@ module TargetConfig =
     |> Map
 
   let create (targetUri: Uri): TargetConf =
-    printfn "Creating a new target from URI: '%O'" targetUri
     let scheme = targetUri.Scheme.ToLowerInvariant()
     match schemeToConfAndDefault |> Map.tryFind scheme with
     | None ->
-      failwithf "Rutta has not get got support for '%s' targets" scheme
+      failwithf "Logary has not yet got support for '%s' targets" scheme
     | Some dynamicConfig ->
       let configDefault = dynamicConfig.getDefault ()
       Uri.parseConfig dynamicConfig.configType configDefault targetUri

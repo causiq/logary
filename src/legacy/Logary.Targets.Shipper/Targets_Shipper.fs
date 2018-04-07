@@ -44,12 +44,11 @@ module Serialisation =
 
   let private binarySerializer = FsPickler.CreateBinarySerializer ()
 
-  let serialise (msg: Logary.Message): byte [] =
+  let serialise (msg: Logary.Message): byte[] =
     binarySerializer.Pickle msg
 
-  let deserialise (datas: byte [] []): Logary.Message =
-    use ms = new MemoryStream(datas |> Array.fold (fun s t -> s + t.Length) 0)
-    for bs in datas do ms.Write(bs, 0, bs.Length)
+  let deserialise (datas: ArraySegment<byte>): Logary.Message =
+    use ms = new MemoryStream(datas.Array, datas.Offset, datas.Count)
     ms.Seek(0L, SeekOrigin.Begin) |> ignore
     binarySerializer.UnPickle (ms.ToArray())
 
@@ -103,7 +102,7 @@ module internal Impl =
 
         RingBuffer.take api.requests ^=> function
           | Log (msg, ack) ->
-            job {              
+            job {
               let bytes = Serialisation.serialise msg
               do! Job.Scheduler.isolate (fun _ -> bytes |>> state.sender)
               do! ack *<= ()
