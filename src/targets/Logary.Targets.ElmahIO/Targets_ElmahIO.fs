@@ -61,7 +61,7 @@ module internal Impl =
     |> fun xs -> Collections.Generic.List<_>(xs)
 
   let getType (msg: Logary.Message) =
-    match msg |> getErrors |>  List.tryLast with
+    match msg |> getExns |>  List.tryLast with
     | Some exn ->
       exn.GetType().FullName
     | None ->
