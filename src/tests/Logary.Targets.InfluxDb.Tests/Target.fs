@@ -120,14 +120,13 @@ let writesOverHttp =
         let! ackPromise = Target.log target msg
         let! req2 = Ch.take state.req
 
-        do!
+        let! success =
           Alt.choose [
-            ackPromise :> Alt<_>
-            timeOut (TimeSpan.FromMilliseconds 100.0)
+            ackPromise ^->. true
+            timeOut (TimeSpan.FromMilliseconds 8000.0) ^->. false // see msg if you change timeout
           ]
 
-        Promise.Now.isFulfilled ackPromise
-          |> Expect.isTrue "Message should be acked"
+        success |> Expect.isTrue "Message should be acked, but failed to get acked within eight seconds."
       })
   ]
   |> testLabel "influxdb"
