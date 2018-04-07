@@ -51,7 +51,7 @@ let withServer () =
 
   let listening, srv =
     startWebServerAsync cfg (request (fun r ctx -> async {
-      printfn "GOT REQ"
+      //printfn "GOT REQ"
       do! Job.toAsync (Ch.give state.req r)
       return! Successful.NO_CONTENT ctx
     }))

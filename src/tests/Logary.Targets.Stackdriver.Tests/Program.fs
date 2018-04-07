@@ -53,7 +53,7 @@ open Stackdriver.Impl
 let target =
   testList "stackdriver" [
     TargetBaseline.basicTests "Google Stackdriver" (fun name ->
-      Stackdriver.create stackdriver.Value name)
+      Stackdriver.create stackdriver.Value name) true
 
     testCase "serialise" <| fun () ->
       let e1 = raisedExn "darn"

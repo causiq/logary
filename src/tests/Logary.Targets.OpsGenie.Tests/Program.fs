@@ -6,7 +6,7 @@ open Logary.Targets.OpsGenie
 open Expecto
 
 let conf =
-  { empty with apiKey = "6eb5f896-5836-48a4-a079-8881679c5327" }
+  { empty with apiKey = "3f0db134-19fe-4f59-92bc-92f5ad8b8cf3" }
 
 [<Tests>]
 let tests =

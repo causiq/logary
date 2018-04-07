@@ -8,20 +8,21 @@ open NodaTime
 open Hopac
 open Hopac.Infixes
 open Logary
+open Logary.Tests
 open Logary.Internals
 open Logary.Targets.Mixpanel
 
-let env k =
-  match Environment.GetEnvironmentVariable k with
-  | null -> failwithf "couldn't load key %s" k
-  | v -> v
-
-let start () =
+let conf =
   // You'll have to set the environment var MIXPANEL_TOKEN to run this;
   // but besides that, this is the only configuration you need:
-  MixpanelConf.create(env "MIXPANEL_TOKEN")
+  MixpanelConf.create "ec080ace2f4d2aca519dc70b5e1cd4ea"
 
-// TODO: Influx/Elmah-like basic tests
+[<Tests>]
+let tests =
+  TargetBaseline.basicTests "Mixpanel" (create conf) false
+
+  // TODO: handle 503s from Mixpanel
+
 
 [<EntryPoint>]
 let main argv =

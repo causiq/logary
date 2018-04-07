@@ -35,7 +35,7 @@ let exnMsg =
 [<Tests>]
 let tests =
   testList "elmah.io tests" [
-    TargetBaseline.basicTests "elmah.io" target
+    TargetBaseline.basicTests "elmah.io" target true
 
     testList "getType" [
       testCase "of non-exception message" <| fun _ ->
