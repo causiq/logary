@@ -13,7 +13,7 @@ module Literate =
     let windowsStackFrameLinePrefix = "   at "
     let monoStackFrameLinePrefix = "  at "
     m
-    |> Message.getErrors
+    |> Message.getExns
     |> Seq.collect (fun exn ->
        let exnLines = new StringReader(string exn)
        seq {

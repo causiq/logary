@@ -2,6 +2,7 @@ module Logary.Tests.TargetBaseline
 
 open Logary
 open Logary.Tests.Utils
+open NodaTime
 open Hopac
 open Expecto
 open Expecto.Logging
@@ -14,6 +15,7 @@ let private logger = Log.create "Logary.Tests.TargetBaseline"
 ///  - can create instance thereof
 ///  - can start and stop
 ///  - can receive a few different sorts of messages
+///
 let basicTests targetName confFac =
   testList (sprintf "basic tests for target '%s'" targetName) [
     testCaseJob "creating instance" <| job {
@@ -32,7 +34,8 @@ let basicTests targetName confFac =
       let! targetApi = Target.create ri conf
       do! logger.infoWithBP (eventX "Start, log and stop: log and wait")
       do! logMsgWaitAndShutdown targetApi (fun logAndWait ->
-          Message.eventInfo "Hello World! 371199" |> logAndWait)
+        let now = SystemClock.Instance.GetCurrentInstant()
+        Message.eventInfo (sprintf "User signed up! @ %O" now) |> logAndWait)
       do! logger.infoWithBP (eventX "Start, log and stop: done!")
     }
 
@@ -40,6 +43,9 @@ let basicTests targetName confFac =
       let! ri, _ = emptyRuntime
       let conf = confFac targetName
       let! targetApi = Target.create ri conf
+      let exnMsg =
+        let now = SystemClock.Instance.GetCurrentInstant()
+        { exnMsg with value = sprintf "%s @ %O" exnMsg.value now }
       do! logMsgWaitAndShutdown targetApi (fun logAndWait -> logAndWait exnMsg)
     }
   ]

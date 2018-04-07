@@ -367,10 +367,10 @@ let tests =
         Expect.equal dataf (Some 1) "Should have data field"
         Expect.equal timef (Some 2) "Should have time field"
 
-      testCase "addExn & getErrors" <| fun _ ->
+      testCase "addExn & getExns" <| fun _ ->
         let e1 = Exception ("e1")
         let e2 = ArgumentNullException ("e2")
-        let errors = eventInfo "" |> addExn e1 |> addExn e2 |> getErrors
+        let errors = eventInfo "" |> addExn e1 |> addExn e2 |> getExns
         Expect.contains errors e1 "Should have exn"
         Expect.contains errors (upcast e2) "Should have arg null exn"
 

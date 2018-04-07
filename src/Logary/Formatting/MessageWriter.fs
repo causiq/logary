@@ -13,12 +13,11 @@ type MessageWriter =
 [<AutoOpen>]
 module MessageWriterEx =
   type MessageWriter with
-    [<Obsolete "Try to write directly to a System.IO.TextWriter instead">]
+    /// Consider calling `MessageWriter.write (:TextWriter)` for higher perf.
     member x.format (m: Message) =
       use sw = new StringWriter()
       x.write sw m
       sw.ToString()
-
 
 /// simple message writer use messagetemplates
 /// json writer should use from other project that use fspickler.json
@@ -30,7 +29,7 @@ module MessageWriter =
   open Logary.MessageTemplates.Formatting.Literate
   open Logary.Formatting.Literate
   open Logary.Internals
-  
+
 
     /// Returns the case name of the object with union type 'ty.
   let private caseNameOf (x:'a) =
@@ -101,7 +100,7 @@ module MessageWriter =
   /// newline separated.
   let levelDatetimeMessagePathNewLine =
     expandedWithoutContext Environment.NewLine
-    
+
   let contextWriter =
     { new MessageWriter with
         member x.write tw m =

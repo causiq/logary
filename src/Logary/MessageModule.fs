@@ -489,16 +489,20 @@ module Message =
     let errorCtxName = KnownLiterals.ErrorsContextName
     let errors =
       match tryGetContext errorCtxName msg with
-      | Some (errors:list<exn>) -> e :: errors
-      | _ -> [e]
+      | Some errors ->
+        e :: errors
+      | _ ->
+        e :: []
 
     setContext errorCtxName errors msg
 
-  [<CompiledName "GetErrors">]
-  let getErrors msg: exn list =
+  [<CompiledName "GetExceptions">]
+  let getExns msg: exn list =
     match tryGetContext KnownLiterals.ErrorsContextName msg with
-    | Some (errors) -> errors
-    | _ -> List.empty
+    | Some errors ->
+      errors
+    | _ ->
+      []
 
   //#endregion
 

@@ -126,8 +126,18 @@ module internal E =
   let user (u: string option) =
     u |> Option.map (limitTo 100) |> Option.map E.string |> E.option
 
-  let note (n: string option) =
-    n |> Option.map (limitTo 25000) |> Option.map E.string |> E.option
+  /// Formats all exceptions as a big note.
+  let note (m: Message) =
+    match Message.getExns m with
+    | [] ->
+      E.option None
+    | es ->
+      es
+      |> List.map (sprintf "%O")
+      |> String.concat "\n\n"
+      |> limitTo 25000
+      |> Some
+      |> E.optionWith E.string
 
   let logaryMessage (conf: OpsGenieConf) (x: Message) jObj =
     jObj
@@ -138,11 +148,30 @@ module internal E =
     |> E.required tags "tags" (Message.getAllTags x)
     |> E.required details "details" (Message.getAllFields x)
     |> E.required source "source" x.name
+    |> E.required note "note" x
     |> E.required (Priority.ofLogLevel >> priority) "priority" x.level
 
   let encode (conf: OpsGenieConf) (m: Message): Json option =
     if String.IsNullOrWhiteSpace m.value then None else
     Some (logaryMessage conf m JsonObject.empty |> Json.Object)
+
+module Alias =
+  open Logary.Formatting
+  /// # of exceptions:
+  ///  - 1: The formatted message value alone, if no exceptions.
+  ///
+  /// Otherwise, the message value/template and
+  let defaultAlias (m: Message) =
+    let formatted = MessageWriter.verbatim.format m
+    match Message.getExns m with
+    | [] ->
+      formatted
+    | e :: [] ->
+      sprintf "%s: %s" formatted e.Message
+    | es ->
+      sprintf "%s (multiple exns); { %s }"
+        formatted
+        (es |> List.map (fun e -> sprintf "'%s'" e.Message) |> String.concat ", ")
 
 [<AutoOpen>]
 module OpsGenieConfEx =
@@ -156,7 +185,7 @@ module OpsGenieConfEx =
     static member create (apiKey, ?endpoint, ?getAlias, ?getResponders) =
       { endpoint = defaultArg endpoint "https://api.opsgenie.com/v2"
         apiKey = apiKey
-        getAlias = defaultArg getAlias (fun x -> x.value)
+        getAlias = defaultArg getAlias Alias.defaultAlias
         getResponders = defaultArg getResponders (fun _ -> Array.empty) }
 
 let empty =

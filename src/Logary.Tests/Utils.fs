@@ -71,7 +71,7 @@ type Tenant =
 
 let exnMsg =
   Message.event Error "Unhandled exception"
-  |> Message.setNameStr "A.B.C"
+  |> Message.setNameStr "Logary.Tests"
   |> Message.setField "tenant" { tenantId = "12345"; permissions = "RWX" }
   |> Message.setContextFromMap (Map
     [ "user", box (Map
@@ -113,6 +113,9 @@ let nanos xs =
 let helloWorldMsg =
   Message.eventX "Hello World!"
   >> Message.setTicksEpoch (0L: EpochNanoSeconds)
+  >> fun m ->
+      let now = SystemClock.Instance.GetCurrentInstant()
+      { m with value = sprintf "%s @ %O" m.value now }
 
 module Internals =
   type TimeoutResult<'T> =
