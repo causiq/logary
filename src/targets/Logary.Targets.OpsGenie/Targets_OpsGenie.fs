@@ -176,7 +176,7 @@ module internal Impl =
       Job.result ()
     else
       runtime.logger.logWithAck Error (
-        eventX "Mixpanel target received response {statusCode} with {body}."
+        eventX "OpsGenie target received response {statusCode} with {body}."
         >> setField "statusCode" statusCode
         >> setField "body" body)
       |> Job.bind id

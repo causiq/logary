@@ -1,6 +1,14 @@
 ﻿module Logary.Targets.OpsGenie.Tests.Program
 
+open Logary
+open Logary.Tests
+open Logary.Targets.OpsGenie
+open Expecto
+
+[<Tests>]
+let tests =
+  TargetBaseline.basicTests "OpsGenie" (create empty)
+
 [<EntryPoint>]
 let main argv =
-  printfn "TODO: remake"
-  0
+  Tests.runTestsInAssembly defaultConfig argv

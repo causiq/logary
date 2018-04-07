@@ -3,6 +3,7 @@ module Logary.Tests.Utils
 
 open System
 open System.IO
+open System.Runtime.CompilerServices
 open Hopac
 open NodaTime
 open Expecto
@@ -40,7 +41,7 @@ let buildLogManager () = job {
   let! logm =
     Config.create svc host
     // |> Config.ilogger iloggerConf
-    // |> Config.ilogger (ILogger.Console Verbose)
+    // |> Config.ilogger (ILogger.Console Error)
     |> Config.target twTargetConf
     |> Config.processing (Events.events |> Events.sink [tname])
     |> Config.disableGlobals
@@ -48,13 +49,16 @@ let buildLogManager () = job {
   return logm, out, error
 }
 
+[<MethodImpl(MethodImplOptions.NoInlining)>]
 let innermost () =
   raise (Exception "Bad things going on")
 
+[<MethodImpl(MethodImplOptions.NoInlining)>]
 let middleWay () =
   1 + 3 |> ignore
   innermost ()
 
+[<MethodImpl(MethodImplOptions.NoInlining)>]
 let withException f =
   try
     middleWay ()

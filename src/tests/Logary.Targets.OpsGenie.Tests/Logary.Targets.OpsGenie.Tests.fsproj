@@ -5,9 +5,11 @@
     <TargetFramework>netcoreapp2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\Logary.Tests\Logary.Tests.fsproj" />
     <ProjectReference Include="..\..\targets\Logary.Targets.OpsGenie\Logary.Targets.OpsGenie.fsproj" />
   </ItemGroup>
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />
