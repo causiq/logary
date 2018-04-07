@@ -320,16 +320,17 @@ let tests = [
           cb expectedTimeText written)
       })
 
-    yield testLiterateCase "printing 'Hello World!'" helloWorldMsg <| fun expectedTimeText parts ->
-      Expect.equal parts
-                   [ yield! levels expectedTimeText
-                     yield {text = "Hello World!"; colours = LiterateTesting.Theme.textColours }
-                     yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
-                     yield { text = "<"; colours = LiterateTesting.Theme.punctuationColours }
-                     yield { text = ""; colours = LiterateTesting.Theme.subtextColours }
-                     yield { text = ">"; colours = LiterateTesting.Theme.punctuationColours }
-                      ]
-                   "logging with info level and then finalising the target"
+    yield testLiterateCase "printing 'Hello World!'" helloWorld <| fun expectedTimeText parts ->
+      Expect.sequenceEqual
+        parts
+        [ yield! levels expectedTimeText
+          yield { text = "Hello World!"; colours = LiterateTesting.Theme.textColours }
+          yield { text = " "; colours = LiterateTesting.Theme.subtextColours }
+          yield { text = "<"; colours = LiterateTesting.Theme.punctuationColours }
+          yield { text = ""; colours = LiterateTesting.Theme.subtextColours }
+          yield { text = ">"; colours = LiterateTesting.Theme.punctuationColours }
+        ]
+        "Should log with info level"
 
     yield testLiterateCase "Time in ms" (timeMessage 60029379L) <| fun expectedTimeText parts ->
       Expect.sequenceEqual

@@ -110,9 +110,12 @@ let emptyRuntime =
 let nanos xs =
   Duration.FromTicks (xs / Constants.NanosPerTick)
 
-let helloWorldMsg =
+let helloWorld =
   Message.eventX "Hello World!"
   >> Message.setTicksEpoch (0L: EpochNanoSeconds)
+
+let helloWorldTS =
+  helloWorld
   >> fun m ->
       let now = SystemClock.Instance.GetCurrentInstant()
       { m with value = sprintf "%s @ %O" m.value now }
