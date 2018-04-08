@@ -3,6 +3,8 @@ module Logary.Targets.Mixpanel
 
 open System
 open System.Text
+open HttpFs.Client
+open HttpFs.Composition
 open Hopac
 open Hopac.Infixes
 open Logary
@@ -10,8 +12,6 @@ open Logary.Message
 open Logary.Internals
 open Logary.Internals.Chiron
 open Logary.Configuration
-open HttpFs.Client
-open HttpFs.Composition
 
 /// A **very** simple extractor for the `userId` field/`user` field.
 let extractUserIdOrUserDotId (m: Message) =

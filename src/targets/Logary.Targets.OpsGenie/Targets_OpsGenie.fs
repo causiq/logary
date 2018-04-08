@@ -5,13 +5,13 @@ open System
 open System.Text
 open Hopac
 open Hopac.Infixes
+open HttpFs.Client
+open HttpFs.Composition
 open Logary
 open Logary.Message
 open Logary.Internals
 open Logary.Internals.Chiron
 open Logary.Configuration
-open HttpFs.Client
-open HttpFs.Composition
 
 /// An API key
 type ApiKey = string
