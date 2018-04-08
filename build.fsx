@@ -116,7 +116,7 @@ let packParameters name =
     sprintf "/p:Owners=\"%s\"" owners
     "/p:PackageRequireLicenseAcceptance=false"
     sprintf "/p:Description=\"%s\"" (description.Replace(",",""))
-    sprintf "/p:PackageReleaseNotes=\"%O\"" ((toLines release.Notes).Replace(",",""))
+    sprintf "/p:PackageReleaseNotes=\"%O\"" ((toLines release.Notes).Replace(",","").Replace(";", "—"))
     sprintf "/p:Copyright=\"%s\"" copyright
     sprintf "/p:PackageTags=\"%s\"" tags
     sprintf "/p:PackageProjectUrl=\"%s\"" projectUrl
@@ -162,34 +162,42 @@ Target "PackageRutta" (fun _ ->
 "Build" 
   ==> "PackageRutta"
 
+let envRequired k =
+  let v = Environment.GetEnvironmentVariable k
+  if isNull v then failwithf "Missing environment key '%s'." k
+  v
+
+Target "CheckEnv" (fun _ -> ignore (envRequired "GITHUB_TOKEN"))
+
+// https://github.com/fsharp/FAKE/blob/master/modules/Octokit/Octokit.fsx#L87
 #load "paket-files/build/fsharp/FAKE/modules/Octokit/Octokit.fsx"
 Target "Release" (fun _ ->
-    let gitOwner, gitName = "logary", "logary"
-    let gitOwnerName = gitOwner + "/" + gitName
-    let remote =
-        Git.CommandHelper.getGitResult "" "remote -v"
-        |> Seq.tryFind (fun s -> s.EndsWith "(push)" && s.Contains gitOwnerName)
-        |> function None -> "git@github.com:logary/logary.git"
-                  | Some s -> s.Split().[0]
+  let gitOwner, gitName = "logary", "logary"
+  let gitOwnerName = gitOwner + "/" + gitName
+  let remote =
+      Git.CommandHelper.getGitResult "" "remote -v"
+      |> Seq.tryFind (fun s -> s.EndsWith "(push)" && s.Contains gitOwnerName)
+      |> function None -> "git@github.com:logary/logary.git"
+                | Some s -> s.Split().[0]
 
-    Git.Staging.StageAll ""
-    Git.Commit.Commit "" (sprintf "Bump version to %s" release.NugetVersion)
-    Git.Branches.pushBranch "" remote (Git.Information.getBranchName "")
+  Git.Staging.StageAll ""
+  Git.Commit.Commit "" (sprintf "Bump version to %s" release.NugetVersion)
+  Git.Branches.pushBranch "" remote (Git.Information.getBranchName "")
 
-    Git.Branches.tag "" release.NugetVersion
-    Git.Branches.pushTag "" remote release.NugetVersion
+  Git.Branches.tag "" release.NugetVersion
+  Git.Branches.pushTag "" remote release.NugetVersion
 
-    let user = getUserInput "Github Username: "
-    let pw = getUserPassword "Github Password: "
-
-    Octokit.createClient user pw
-    |> Octokit.createDraft gitOwner gitName release.NugetVersion
-        (Option.isSome release.SemVer.PreRelease) release.Notes
-    |> Octokit.releaseDraft
-    |> Async.RunSynchronously
+  Octokit.createClientWithToken (envRequired "GITHUB_TOKEN")
+  |> Octokit.createDraft gitOwner gitName release.NugetVersion
+      (Option.isSome release.SemVer.PreRelease) release.Notes
+  |> Octokit.releaseDraft
+  |> Async.RunSynchronously
 )
 
 Target "All" ignore
+
+"CheckEnv"
+  ==> "Release"
 
 "Clean"
   ==> "AssemblyInfo"

@@ -285,7 +285,7 @@ let textPrinters =
       |> ignore // cycle reference should be handled, otherwise will throw stackoverflow exception
 
     testCase "user custom destructure resolver support cycle reference check" <| fun _ ->
-      Logary.Configuration.Config.configDestructure<CustomCycleReferenceRecord>(fun resolver req ->
+      Logary.Configuration.Config.destructurer<CustomCycleReferenceRecord>(fun resolver req ->
         let instance = req.Value
         let refCount = req.IdManager
         match refCount.TryShowAsRefId instance with
@@ -350,7 +350,7 @@ let textPrinters =
           foo.ex.InnerException.Message
         |]) @@>
 
-      Logary.Configuration.Config.configProjection only
+      Logary.Configuration.Config.projection only
 
       let inner = exn "inner exception"
       let e = new Exception("top", inner)
@@ -390,8 +390,8 @@ let textPrinters =
                 Day => 11}}}"""
       let except = <@@  Destructure.except<ProjectionTestExcept>(fun t -> [|t.user.created.Date|]) @@>
       let invalid = <@@ 1 + 1 @@>
-      Logary.Configuration.Config.configProjection except
-      Logary.Configuration.Config.configProjection invalid
+      Logary.Configuration.Config.projection except
+      Logary.Configuration.Config.projection invalid
 
       sampleMessage
       |> Message.setContext "except" { user= (foo ())}

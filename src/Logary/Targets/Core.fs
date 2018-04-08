@@ -40,7 +40,7 @@ module TextWriter =
 
   module internal Impl =
 
-    let loop (twConf: TextWriterConf) (ri: RuntimeInfo, api: TargetAPI) =
+    let loop (twConf: TextWriterConf) (api: TargetAPI) =
 
       let rec loop (): Job<unit> =
         Alt.choose [
@@ -57,7 +57,7 @@ module TextWriter =
               job {
                 let writer = if message.level < twConf.isErrorAt then twConf.output else twConf.error
                 do! Job.Scheduler.isolate <| fun _ ->
-                  lock (ri.getConsoleSemaphore()) <| fun _ ->
+                  lock (api.runtime.getConsoleSemaphore()) <| fun _ ->
                     twConf.writer.write writer message
 
                 if twConf.flush then
@@ -107,7 +107,7 @@ module Console =
     static member create writer =
       { writer = writer }
 
-  let defaultMessageFormat = MessageWriter.expanded false System.Environment.NewLine System.Environment.NewLine
+  let defaultMessageFormat = MessageWriter.expandedWithoutContext System.Environment.NewLine
 
   /// Default console target configuration.
   let empty =
@@ -296,10 +296,10 @@ module LiterateConsole =
     open Hopac
     open Hopac.Infixes
 
-    let loop (lcConf: LiterateConsoleConf) (ri: RuntimeInfo, api: TargetAPI) =
+    let loop (lcConf: LiterateConsoleConf) (api: TargetAPI) =
       let output (data: ColouredText seq): Job<unit> =
         Job.Scheduler.isolate <| fun _ ->
-          lcConf.colourWriter (ri.getConsoleSemaphore ()) data
+          lcConf.colourWriter (api.runtime.getConsoleSemaphore ()) data
 
       let rec loop (): Job<unit> =
         Alt.choose [
@@ -388,7 +388,7 @@ module Debugger =
 
   module private Impl =
 
-    let loop conf (ri: RuntimeInfo, api: TargetAPI) =
+    let loop conf (api: TargetAPI) =
       let offLevel = 6
 
       let rec loop (): Job<unit> =
@@ -1110,9 +1110,8 @@ module File =
                 | other ->
                   Job.raises other)
 
-    let loop (conf: FileConf) (will: Will<TargetMessage[] * uint16>)
-             (ri: RuntimeInfo, api: TargetAPI)  =
-      let rotateCh = Ch ()
+    let loop (conf: FileConf) (will: Will<TargetMessage[] * uint16>) (api: TargetAPI) =
+      let ri, rotateCh = api.runtime, Ch ()
 
       let shutdownState =
         Logger.timeJobSimple ri.logger "shutdownState" shutdownState

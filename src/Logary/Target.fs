@@ -21,7 +21,7 @@ type TargetConf = // formerly TargetUtils
     /// uses exponential backup with a maximum delay, retrying forever.
     policy: Policy
     middleware: Middleware list
-    server: RuntimeInfo * TargetAPI -> Job<unit> }
+    server: TargetAPI -> Job<unit> }
 
   override x.ToString() =
     sprintf "TargetConf(%s)" x.name
@@ -121,7 +121,7 @@ module Target =
     Ch.give x.api.shutdownCh ack ^->. upcast ack
 
   let create (ri: RuntimeInfo) (conf: TargetConf): Job<T> =
-    let specificName =  sprintf "Logary.Target(%s)" conf.name
+    let specificName = sprintf "Logary.Target(%s)" conf.name
     let ri =
       let setName = setName (PointName.parse specificName)
       let setId = setContext "targetId" (Guid.NewGuid())
@@ -133,7 +133,7 @@ module Target =
 
     let api =
       { new TargetAPI with
-          member x.runtimeInfo = ri
+          member x.runtime = ri
           member x.requests = requests
           member x.shutdownCh = shutdownCh
       }
@@ -143,9 +143,7 @@ module Target =
         rules       = conf.rules
         api         = api }
 
-    let serverJob = conf.server (ri, api)
-    Job.supervise api.runtimeInfo.logger conf.policy serverJob
+    let serverJob = conf.server api
+    Job.supervise api.runtime.logger conf.policy serverJob
     |> Job.startIgnore
     >>-. t
-
-

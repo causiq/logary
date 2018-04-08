@@ -1,6 +1,5 @@
 namespace Logary
 
-
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Duration =
   open NodaTime

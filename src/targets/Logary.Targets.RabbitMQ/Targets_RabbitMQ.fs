@@ -41,16 +41,16 @@ type RabbitMQConf =
     password: string
 
     /// Sets the AMQP protocol (version) to use
-    /// for communications with the RabbitMQ broker. The default 
+    /// for communications with the RabbitMQ broker. The default
     /// is the RabbitMQ.Client-library's default protocol.
     /// Default is the latest supported.
     protocol: IProtocol
 
     /// Sets the host name of the broker to log to.
-    hostname: string 
+    hostname: string
 
-    ///	Sets the port to use for connections to the message broker 
-    /// (this is the broker's listening port). The default is '5672'. 
+    ///	Sets the port to use for connections to the message broker
+    /// (this is the broker's listening port). The default is '5672'.
     port: Port
 
     ///	Sets the routing key (aka. topic) with which
@@ -279,11 +279,10 @@ module internal Impl =
         }
     ]
 
-  let loop (conf: RabbitMQConf)
-           (ri: RuntimeInfo, api: TargetAPI) =
+  let loop (conf: RabbitMQConf) (api: TargetAPI) =
 
     let rec connect (): Job<unit> =
-      let conn = createConnection ri.service conf
+      let conn = createConnection api.runtime.service conf
       let model, acks, nacks = createModel conn
       active { connection = conn
                model      = model
@@ -299,7 +298,7 @@ module internal Impl =
     // enabled that matters (see `createModel`) – and the function `selectConfirm`
     and active (state: State): Job<unit> =
       Alt.choose [
-        selectConfirm ri.logger state active
+        selectConfirm api.runtime.logger state active
 
         RingBuffer.take api.requests ^=> function
           | Log (message, ack) ->
@@ -308,7 +307,7 @@ module internal Impl =
               let props, msgId = props state.model conf message
               let body = body conf message
               let inflight' = state.inflight |> Map.add msgId (ack, message)
-              
+
               state.model.BasicPublish(conf.exchange, topic, props, body)
               return! active { state with inflight = inflight' }
             }
@@ -325,7 +324,7 @@ module internal Impl =
               with e ->
                 Message.eventError "RabbitMQ target disposing connection and model/channel"
                 |> Message.addExn e
-                |> Logger.logSimple ri.logger
+                |> Logger.logSimple api.runtime.logger
             return! ack *<= ()
           }
       ] :> Job<_>
@@ -335,13 +334,13 @@ module internal Impl =
     and flushing (ackCh, nack) (state: State) =
       if Map.isEmpty state.inflight then
         job {
-          do! IVar.fill ackCh () 
+          do! IVar.fill ackCh ()
           return! active state
         }
       else
         Alt.choose [
           nack ^=>. active state
-          selectConfirm ri.logger state (flushing (ackCh, nack))
+          selectConfirm api.runtime.logger state (flushing (ackCh, nack))
         ] :> Job<_>
 
     connect ()

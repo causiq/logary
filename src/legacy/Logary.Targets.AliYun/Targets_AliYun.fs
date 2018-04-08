@@ -82,12 +82,11 @@ module internal Impl =
 
     log
 
-  let loop (conf: AliYunConf)
-           (runtime: RuntimeInfo, api: TargetAPI) =
+  let loop (conf: AliYunConf) (api: TargetAPI) =
 
     let logger =
       let pn = PointName [| "Logary"; "AliYun"; "loop" |]
-      Logger.apply (setName pn) runtime.logger
+      Logger.apply (setName pn) api.runtime.logger
 
     let sendLog (logClient:Aliyun.Api.LOG.LogClient) reqs extra =
       let (host, serviceName, project, logstore) = extra
@@ -102,7 +101,7 @@ module internal Impl =
       logger.verboseWithBP (eventX "res {header}" >> Message.setField "header" resHeader)
       >>=. Seq.iterJobIgnore reqestAckJobCreator reqs
 
-    let extraInfo = (runtime.host, runtime.service, conf.Project, conf.Logstore)
+    let extraInfo = (api.runtime.host, api.runtime.service, conf.Project, conf.Logstore)
 
     let rec running state =
       Alt.choose [

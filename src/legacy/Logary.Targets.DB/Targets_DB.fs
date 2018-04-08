@@ -90,12 +90,11 @@ module internal Impl =
     | Tx.Rollback _ -> logger.error (eventX "Insert was rolled back")
     | Tx.Failed ex -> logger.error (eventX "Insert failed" >> addExn ex)
 
-  let loop (conf: DBConf)
-           (svc: RuntimeInfo, api: TargetAPI)  =
+  let loop (conf: DBConf) (api: TargetAPI)  =
 
     let logger =
       let pn = PointName [| "Logary"; "DB"; "loop" |]
-      svc.logger |> Logger.apply (setName pn)
+      api.runtime.logger |> Logger.apply (setName pn)
 
     let rec init () =
       logger.debugWithBP (eventX "DB target is opening connection.")
@@ -114,7 +113,7 @@ module internal Impl =
               with e ->
                 Message.eventError "DB target disposing connection"
                 |> Message.addExn e
-                |> Logger.logSimple svc.logger
+                |> Logger.logSimple api.runtime.logger
             do! ack *<= ()
           }
 

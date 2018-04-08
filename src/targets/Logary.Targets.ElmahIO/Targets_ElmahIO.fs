@@ -76,7 +76,7 @@ module internal Impl =
       member x.Dispose () =
         x.client.Dispose ()
 
-  let loop (conf: ElmahIOConf) (ri: RuntimeInfo, api: TargetAPI) =
+  let loop (conf: ElmahIOConf) (api: TargetAPI) =
     let internalError = Ch ()
 
     let rec loop (state: State): Job<unit> =
@@ -86,15 +86,15 @@ module internal Impl =
           Message.eventError message.Title
           |> Message.setContext "internalErrorMessage" message
           |> Message.addExn ex
-          |> Logger.logSimple ri.logger
+          |> Logger.logSimple api.runtime.logger
           loop state
 
         RingBuffer.take api.requests ^=> function
           | Log (msg, ack) ->
             let sendMsg () =
               let elmahMsg = Elmah.Io.Client.Models.CreateMessage()
-              elmahMsg.Application <- ri.service
-              elmahMsg.Hostname <- ri.host
+              elmahMsg.Application <- api.runtime.service
+              elmahMsg.Hostname <- api.runtime.host
               elmahMsg.Detail <- format msg
               elmahMsg.DateTime <- Nullable(Instant.FromUnixTimeTicks(msg.timestampTicks).ToDateTimeUtc())
               elmahMsg.Title <- Logary.MessageWriter.verbatim.format msg

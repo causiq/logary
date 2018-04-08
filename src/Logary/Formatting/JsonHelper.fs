@@ -76,23 +76,23 @@ module Shape =
   //let (|Units|_|) (shape: TypeShape) = test<Logary.Units> shape
   let (|Gauge|_|) (shape: TypeShape) = test<Logary.Gauge> shape
 
-module JsonHelper =
+type internal JsonEncoderRegistry =
+  abstract tryGet: TypeShape -> JsonEncoderFactory option
+
+and internal JsonEncoderFactory =
+  JsonEncoder<obj> -> JsonEncoder<obj>
+
+and JsonEncoderFactory<'a> =
+  JsonEncoder<obj> -> JsonEncoder<'a>
+
+module internal JsonHelper =
   module E = Chiron.Serialization.Json.Encode
 
-  type ICustomJsonEncoderRegistry =
-    abstract TryGetRegistration: System.Type -> CustomJsonEncoderFactory option
+  let private emptyJsonEncoderRegistry =
+    { new JsonEncoderRegistry with member __.tryGet _ = None }
 
-  and CustomJsonEncoderFactory =
-    JsonEncoder<obj> -> JsonEncoder<obj>
-
-  and CustomJsonEncoderFactory<'t> =
-    JsonEncoder<obj> -> JsonEncoder<'t>
-
-  let emptyJsonEncoderRegistry =
-    { new ICustomJsonEncoderRegistry with
-        member __.TryGetRegistration _ = None }
-
-  let private chironDefaultsType = typeof<Logary.Internals.Chiron.Inference.Internal.ChironDefaults>
+  let private chironDefaultsType =
+    typeof<Logary.Internals.Chiron.Inference.Internal.ChironDefaults>
 
   let private getKey (valueType: Type) =
     let prop = valueType.GetProperty("Key")
@@ -102,34 +102,36 @@ module JsonHelper =
     let prop = valueType.GetProperty("Value")
     fun (instance: obj) -> prop.GetValue(instance, null)
 
+  let private (|Configured|_|) (er: JsonEncoderRegistry) (shape: TypeShape) =
+    er.tryGet shape
+
   // TO CONSIDER https://github.com/eiriktsarpalis/TypeShape/blob/master/src/TypeShape/Utils.fs
   // let rec internal toJson (registry: ICustomJsonEncoderRegistry) (t: System.Type): obj -> Json =
-  let rec toJson<'T>(): 'T -> Json =
-//    printfn "toJson %O" typeof<'T>
+  let rec toJson<'T> (er: JsonEncoderRegistry): 'T -> Json =
     use ctx = new TypeGenerationContext()
-    toJsonCached<'T> ctx
+    toJsonCached<'T> er ctx
 
-  and private toJsonCached<'T> (ctx: TypeGenerationContext): 'T -> Json =
-//    printfn "toJsonCached %O" typeof<'T>
+  and private toJsonCached<'T> (er: JsonEncoderRegistry) (ctx: TypeGenerationContext): 'T -> Json =
     if typeof<'T> = typeof<obj> then
-      toJsonAux<'T> ctx
+      toJsonAux<'T> er ctx
     else
       match ctx.InitOrGetCachedValue<'T -> Json>(fun c t -> c.Value t) with
       | Cached (value = r) ->
         r
       | NotCached t ->
-        let p = toJsonAux<'T> ctx
+        let p = toJsonAux<'T> er ctx
         ctx.Commit t p
 
-  and private toJsonAux<'T> (ctx: TypeGenerationContext): 'T -> Json =
-//    printfn "toJsonAux %O" typeof<'T>
+  and private toJsonAux<'T> (er: JsonEncoderRegistry) (ctx: TypeGenerationContext): 'T -> Json =
+    // Unboxing helper
     let wrap (f: 'a -> Json) = unbox f
-    let inline enc (a: 'a) = Inference.Json.encode a
+
+    // Field printer helper
     let mkFieldPrinter (field: IShapeMember<'DeclaringType>) =
       field.Accept {
         new IMemberVisitor<'DeclaringType, string * ('DeclaringType -> Json)> with
           member __.Visit(field: ShapeMember<'DeclaringType, 'Field>) =
-            let fp = toJsonCached<'Field> ctx
+            let fp = toJsonCached<'Field> er ctx
 
             let project declaringValue =
               match box declaringValue with
@@ -149,6 +151,11 @@ module JsonHelper =
       }
 
     match shapeof<'T> with
+    | Configured er factory ->
+      wrap (fun (x: 'T) ->
+        let resolver: JsonEncoder<obj> = toJsonCached er ctx
+        factory resolver x)
+
     | Shape.Unit ->
       wrap (fun () -> Json.Null)
 
@@ -231,8 +238,8 @@ module JsonHelper =
       wrap (fun (Gauge (v, u)) ->
         E.propertyList [
           "type", Json.String "gauge"
-          "value", toJsonCached ctx v
-          "unit", toJsonCached ctx u
+          "value", toJsonCached er ctx v
+          "unit", toJsonCached er ctx u
         ])
 
     | meta when meta.Type.Namespace = "System.Reflection" ->
@@ -243,23 +250,23 @@ module JsonHelper =
         let fields = ref JsonObject.empty
 
         if not (isNull e.Data) && e.Data.Count > 0 then
-          fields := !fields |> JsonObject.add "data" (toJsonCached<System.Collections.IDictionary> ctx e.Data)
+          fields := !fields |> JsonObject.add "data" (toJsonCached<System.Collections.IDictionary> er ctx e.Data)
 
         if not (isNull e.HelpLink) then
           fields := !fields |> JsonObject.add "helpLink" (Json.String e.HelpLink)
 
         if not (isNull e.InnerException) then
-          fields := !fields |> JsonObject.add "inner" (toJsonCached<exn> ctx e.InnerException)
+          fields := !fields |> JsonObject.add "inner" (toJsonCached<exn> er ctx e.InnerException)
 
         if e.HResult <> Unchecked.defaultof<int> then
-          fields := !fields |> JsonObject.add "hresult" (toJsonCached<_> ctx e.HResult)
+          fields := !fields |> JsonObject.add "hresult" (toJsonCached<_> er ctx e.HResult)
 
         fields := !fields |> JsonObject.add "message" (Json.String e.Message)
         fields := !fields |> JsonObject.add "source" (Json.String e.Source)
 
         if not (String.IsNullOrWhiteSpace e.StackTrace) then
           let lines = DotNetStacktrace.parse e.StackTrace
-          fields := !fields |> JsonObject.add "stacktrace" (toJsonCached<StacktraceLine[]> ctx lines)
+          fields := !fields |> JsonObject.add "stacktrace" (toJsonCached<StacktraceLine[]> er ctx lines)
 
         if not (isNull e.TargetSite) then
           fields := !fields |> JsonObject.add "targetSite" (Json.String e.TargetSite.Name)
@@ -270,7 +277,7 @@ module JsonHelper =
       s.Accept
         { new IFSharpMapVisitor<'T -> Json> with
             member x.Visit<'k, 'v when 'k : comparison> () =
-              let fp = toJsonCached<'v> ctx
+              let fp = toJsonCached<'v> er ctx
               wrap (fun (m: Map<string, 'v>) -> E.mapWith fp m)
         }
 
@@ -278,7 +285,7 @@ module JsonHelper =
       s.Accept
         { new IFSharpMapVisitor<'T -> Json> with
             member x.Visit<'k, 'v when 'k : comparison> () =
-              let fp = toJsonCached<'v> ctx
+              let fp = toJsonCached<'v> er ctx
               wrap (fun (m: Map<'k, 'v>) -> E.mapWithCustomKey (sprintf "%O") fp m)
         }
 
@@ -286,7 +293,7 @@ module JsonHelper =
       s.Accept
         { new IHashMapVisitor<'T -> Json> with
             member x.Visit<'k, 'v when 'k : equality> () =
-              let fp = toJsonCached<'v> ctx
+              let fp = toJsonCached<'v> er ctx
               wrap (fun (m: HashMap<string, 'v>) ->
                 m
                 |> HashMap.toSeqPair
@@ -297,13 +304,13 @@ module JsonHelper =
     | Shape.HashMap s ->
       fun (o: 'T) ->
         let e = box o :?> System.Collections.IEnumerable
-        toJsonCached<_> ctx e
+        toJsonCached<_> er ctx e
 
     | Shape.Dictionary s ->
       s.Accept
         { new IDictionaryVisitor<'T -> Json> with
             member __.Visit<'k, 'a when 'k: equality> () =
-              let ap = toJsonCached<'a> ctx
+              let ap = toJsonCached<'a> er ctx
               wrap (fun (d: Dictionary<'k, 'a>) ->
                 d
                 |> Seq.fold (fun s (KeyValue (k, v)) -> s |> JsonObject.add (sprintf "%O" k) (ap v)) JsonObject.empty
@@ -314,7 +321,7 @@ module JsonHelper =
       s.Accept
         { new IIDictionaryVisitor<'T -> Json> with
             member __.Visit<'k, 'a when 'k: equality> () =
-              let ap = toJsonCached<'a> ctx
+              let ap = toJsonCached<'a> er ctx
               wrap (fun (d: IDictionary<'k, 'a>) ->
                 d
                 |> Seq.fold (fun s (KeyValue (k, v)) -> s |> JsonObject.add (sprintf "%O" k) (ap v)) JsonObject.empty
@@ -325,7 +332,7 @@ module JsonHelper =
       s.Accept
         { new IFSharpOptionVisitor<'T -> Json> with
             member __.Visit<'a> () = // 'T = 'a option
-              let toJ = toJsonCached<'a> ctx
+              let toJ = toJsonCached<'a> er ctx
               wrap (Option.fold (fun _ -> toJ) Json.Null)
         }
 
@@ -337,7 +344,7 @@ module JsonHelper =
         { new IFSharpListVisitor<'T -> Json> with
             member __.Visit<'a> () = //  'T = 'a list
               //printfn ">>>> list case"
-              let ap = toJsonCached<'a> ctx
+              let ap = toJsonCached<'a> er ctx
               wrap (E.listWith ap)
         }
 
@@ -346,7 +353,7 @@ module JsonHelper =
         { new IFSharpSetVisitor<'T -> Json> with
             member __.Visit<'a when 'a : comparison> () = //  'T = Set<'a>
               //printfn ">>>> set case"
-              let ap = toJsonCached<'a> ctx
+              let ap = toJsonCached<'a> er ctx
               wrap (E.setWith ap)
         }
 
@@ -355,7 +362,7 @@ module JsonHelper =
         { new IArrayVisitor<'T -> Json> with
             member __.Visit<'a> rank = //  'T = 'a[]
               //printfn ">>>> array case"
-              let ap = toJsonCached<'a> ctx
+              let ap = toJsonCached<'a> er ctx
               wrap (E.arrayWith ap)
         }
 
@@ -413,7 +420,7 @@ module JsonHelper =
               let valueType = en.Current.GetType()
               let key = string (getKey valueType en.Current)
               let value = getValue valueType en.Current
-              let json = toJsonCached<obj> ctx value
+              let json = toJsonCached<obj> er ctx value
               m := !m |> JsonObject.add key json
             Json.Object !m
           | _ ->
@@ -424,7 +431,7 @@ module JsonHelper =
           { new IEnumerableVisitor<'T -> Json> with
               member __.Visit<'T, 'a when 'T :> seq<'a>> () =
                 //printfn "enumerable shape generating for %O" typeof<'a>
-                let ap = toJsonCached<'a> ctx
+                let ap = toJsonCached<'a> er ctx
                 wrap (fun (xs: seq<'a>) ->
                   xs |> Seq.fold (fun s x -> ap x :: s) []
                      |> Seq.toArray
@@ -464,7 +471,7 @@ module JsonHelper =
           let toJsonT = toJsonTDef.MakeGenericMethod(typ) // toJsonCached<string>(): string -> Json: MethodInfo
           let resFuncT = typedefof<FSharpFunc<_, _>>.MakeGenericType(typ, typeof<Json>) // string -> Json:
           let resFuncInvoker = resFuncT.GetMethod("Invoke") // (string -> Json).Invoke: MethodInfo
-          let refFunc = toJsonT.Invoke(null, [| box ctx |]) // : toJson: string -> Json
+          let refFunc = toJsonT.Invoke(null, [| box er; box ctx |]) // : toJson: string -> Json
           resFuncInvoker.Invoke(refFunc, [| value |]) :?> Json // (toJson value): Json
 
     | other when typeof<System.Collections.IEnumerable>.IsAssignableFrom other.Type ->
@@ -472,7 +479,7 @@ module JsonHelper =
         let vals = ResizeArray<_>()
         let e = box o :?> System.Collections.IEnumerable
         for value in e do
-          let json = toJson<obj>() value
+          let json = toJson<obj> er value
           vals.Add json
         E.array (vals.ToArray())
 

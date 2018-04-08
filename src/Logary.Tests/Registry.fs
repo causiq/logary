@@ -135,7 +135,7 @@ let tests = [
   })
 
   testCaseJob "flush/shutdown timeout and logging after shutdown with no blocking" (job {
-    let server (ri: RuntimeInfo, api: TargetAPI) =
+    let server (api: TargetAPI) =
       let rec loop () =
         Alt.choose [
           RingBuffer.take api.requests ^=> function

@@ -100,8 +100,7 @@ module internal Impl =
 
   // This is the main entry point of the target. It returns a Job<unit>
   // and as such doesn't have side effects until the Job is started.
-  let loop (conf: AppInsightConf) // the conf is specific to your target
-           (ri: RuntimeInfo, api: TargetAPI) =
+  let loop (conf: AppInsightConf) (api: TargetAPI) =
 
     let rec loop (state: State): Job<unit> =
       // Alt.choose will pick the channel/alternative that first gives a value

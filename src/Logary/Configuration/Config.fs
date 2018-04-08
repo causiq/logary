@@ -10,8 +10,7 @@ open Logary.Internals
 open Logary.Targets
 open Logary.EventProcessing
 open Logary.MessageTemplates.Destructure
-open Logary.Formatting.JsonHelper
-
+open Logary.Formatting
 
 /// Specifies the internal logger targets for Logary.
 [<RequireQualifiedAccess>]
@@ -144,12 +143,13 @@ module Config =
     logManager
 
 
-  /// maybe consider config below around registry,not globals
-  let configProjection projectionExpr =
+  // TO CONSIDER: config below around registry,not globals
+
+  let projection projectionExpr =
     Logary.Internals.Global.Destructure.configProjection projectionExpr
 
-  let configDestructure<'t> (factory: CustomDestructureFactory<'t>) =
+  let destructurer<'t> (factory: CustomDestructureFactory<'t>) =
     Logary.Internals.Global.Destructure.configDestructure<'t> factory
 
-  let configJsonEncoder<'t> (factory: CustomJsonEncoderFactory<'t>) =
-    Logary.Internals.Global.Json.configJsonEncoder<'t> factory
+  let jsonEncoder<'t> (factory: JsonEncoderFactory<'t>) =
+    Logary.Internals.Global.Json.configureEncoder<'t> factory

@@ -78,8 +78,7 @@ module internal Impl =
     Request.responseAsString request
     |> Job.Ignore
 
-  let loop (conf: ElasticSearchConf)
-           (ri: RuntimeInfo, api: TargetAPI) =
+  let loop (conf: ElasticSearchConf) (api: TargetAPI) =
 
     let rec loop (_: unit): Job<unit> =
       Alt.choose [

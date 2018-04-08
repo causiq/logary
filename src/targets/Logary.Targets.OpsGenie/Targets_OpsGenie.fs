@@ -282,25 +282,26 @@ module internal Impl =
 
       { client = client; send = filters getResponse }
 
-  let loop (conf: OpsGenieConf) (runtime: RuntimeInfo, api: TargetAPI) =
-    runtime.logger.info (
+  let loop (conf: OpsGenieConf) (api: TargetAPI) =
+    let logger = api.runtime.logger
+    logger.info (
       eventX "Started OpsGenie target with endpoint {endpoint}."
       >> setField "endpoint" (endpoint conf))
 
     let rec loop (state: State): Job<unit> =
       Alt.choose [
         api.shutdownCh ^=> fun ack ->
-          runtime.logger.verbose (eventX "Shutting down OpsGenie target.")
+          logger.verbose (eventX "Shutting down OpsGenie target.")
           ack *<= () :> Job<_>
 
         RingBuffer.take api.requests ^=> function
           | Log (message, ack) ->
             job {
-              do runtime.logger.verbose (eventX "Writing an alert")
+              do logger.verbose (eventX "Writing an alert")
               do! E.encode conf message
                   |> Option.map state.send
                   |> Option.orDefault (fun () -> Alt.always ())
-              do runtime.logger.verbose (eventX "Acking messages")
+              do logger.verbose (eventX "Acking messages")
               do! ack *<= ()
               return! loop state
             }
@@ -311,7 +312,7 @@ module internal Impl =
       ] :> Job<_>
 
     job {
-      use state = State.create conf runtime
+      use state = State.create conf api.runtime
       return! loop state
     }
 

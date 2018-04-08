@@ -100,16 +100,16 @@ module internal Global =
 
     open System
     open System.Collections.Concurrent
+    open Logary.Internals.TypeShape.Core
     open Logary.Internals.Chiron
-    open Logary.Formatting.JsonHelper
+    open Logary.Formatting
 
     module E = Chiron.Serialization.Json.Encode
     module EI = Chiron.Inference.Json.Encode
 
-    let private customJsonEncoderDic = new ConcurrentDictionary<Type,CustomJsonEncoderFactory>()
+    let private customJsonEncoderDic = new ConcurrentDictionary<TypeShape, JsonEncoderFactory>()
 
-    let configJsonEncoder<'t> (factory: CustomJsonEncoderFactory<'t>) =
-      let ty = typeof<'t>
+    let configureEncoder<'t> (factory: JsonEncoderFactory<'t>) =
       let untypedEncoder (resolver: JsonEncoder<obj>) (data: obj) =
         match data with
         | :? 't as typedData ->
@@ -117,32 +117,22 @@ module internal Global =
         | _ ->
           let message = sprintf "Could not down-cast value to '%s'. Value is: %O" typeof<'t>.FullName data
           Json.String message
-      customJsonEncoderDic.[ty] <- untypedEncoder
+      customJsonEncoderDic.[shapeof<'t>] <- untypedEncoder
 
-    let internal customJsonEncoderRegistry = lazy (
-      configJsonEncoder<PointName>(fun _ name -> E.string (name.ToString()))
+    let customJsonEncoderRegistry = lazy (
+      // Example:
+      //configureEncoder<Gauge>(fun resolve (Gauge (v, u)) ->
+      //  let (vs, us) = Units.scale u (v.toFloat())
+      //  E.string (sprintf "%s %s" (vs.ToString()) us))
 
-      configJsonEncoder<Gauge>(fun _ (Gauge (v, u)) ->
-        let (vs, us) = Units.scale u (v.toFloat())
-        E.string (sprintf "%s %s" (vs.ToString()) us))
-
-      configJsonEncoder<Message>(fun resolver msg ->
-        JsonObject.empty
-        |> EI.required "name" (string msg.name)
-        |> EI.required "value" msg.value
-        |> EI.required "level" (string msg.level)
-        |> EI.required "timestamp" msg.timestamp
-        |> E.required resolver "context" msg.context
-        |> JsonObject.toJson)
-
-      { new ICustomJsonEncoderRegistry with
-          member __.TryGetRegistration (runtimeType: Type) =
-            match customJsonEncoderDic.TryGetValue runtimeType with
+      { new JsonEncoderRegistry with
+          member __.tryGet (shape: TypeShape) =
+            match customJsonEncoderDic.TryGetValue shape with
             | true, factory ->
               Some factory
             | false , _ ->
               customJsonEncoderDic.Keys
-              |> Seq.tryFind (fun baseType -> baseType.IsAssignableFrom runtimeType)
+              |> Seq.tryFind (fun baseType -> baseType.Type.IsAssignableFrom shape.Type)
               |> Option.bind (fun key ->
                  match customJsonEncoderDic.TryGetValue key with
                  | true, factory -> Some factory

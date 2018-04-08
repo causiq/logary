@@ -78,8 +78,7 @@ module internal Impl =
     { zmqCtx = context
       sender = sender }
 
-  let serve (conf: ShipperConf)
-            (ri: RuntimeInfo, api: TargetAPI) =
+  let serve (conf: ShipperConf) (api: TargetAPI) =
 
     let rec init = function
       | Unconfigured ->

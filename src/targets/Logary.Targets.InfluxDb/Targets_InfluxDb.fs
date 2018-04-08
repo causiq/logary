@@ -391,15 +391,16 @@ module internal Impl =
 
       { client = client; send = filters getResponse }
 
-  let loop (conf: InfluxDbConf) (runtime: RuntimeInfo, api: TargetAPI) =
-    runtime.logger.info (
+  let loop (conf: InfluxDbConf) (api: TargetAPI) =
+    let logger = api.runtime.logger
+    logger.info (
       eventX "Started InfluxDb target with endpoint {endpoint}."
       >> setField "endpoint" (endpoint conf))
 
     let rec loop (state: State): Job<unit> =
       Alt.choose [
         api.shutdownCh ^=> fun ack ->
-          runtime.logger.verbose (eventX "Shutting down InfluxDb target.")
+          logger.verbose (eventX "Shutting down InfluxDb target.")
           ack *<= () :> Job<_>
 
         RingBuffer.takeBatch conf.batchSize api.requests ^=> fun messages ->
@@ -417,9 +418,9 @@ module internal Impl =
             |> fun (es, aas, fls) -> List.rev es, List.rev aas, List.rev fls
 
           job {
-            do runtime.logger.verbose (eventX "Writing {count} messages" >> setField "count" (entries.Length))
+            do logger.verbose (eventX "Writing {count} messages" >> setField "count" (entries.Length))
             do! entries |> String.concat "\n" |> state.send
-            do runtime.logger.verbose (eventX "Acking messages")
+            do logger.verbose (eventX "Acking messages")
             do! Job.conIgnore acks
             do! Job.conIgnore flushes
             return! loop state
@@ -427,7 +428,7 @@ module internal Impl =
       ] :> Job<_>
 
     job {
-      use state = State.create conf runtime
+      use state = State.create conf api.runtime
       return! loop state
     }
 

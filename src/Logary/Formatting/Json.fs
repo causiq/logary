@@ -171,8 +171,7 @@ module Json =
 //  let private ec = new ConcurrentDictionary<Type, unit -> obj -> Json>()
 
   let encode (data: 'a): Json =
-    // |> JsonHelper.toJson Global.jsonEncoderRegistry data
-    JsonHelper.toJson<'a>() data
+    JsonHelper.toJson<'a> Global.jsonEncoderRegistry data
 
   let formatWith options (data: 'a): string =
     encode data |> Json.formatWith options

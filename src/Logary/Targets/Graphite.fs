@@ -75,16 +75,16 @@ module Impl =
     Job.fromAsync (stream.AsyncWrite buffer) >>-.
     { state with sendRecvStream = Some stream }
 
-  let loop (conf: GraphiteConf) (svc: RuntimeInfo, api: TargetAPI) =
+  let loop (conf: GraphiteConf) (api: TargetAPI) =
 
     let rec running state: Job<unit> =
       Alt.choose [
         RingBuffer.take api.requests ^=> function
           | Log (message, ack) ->
             let pointName = sanitisePath message.name |> PointName.format
-            message 
-            |> MessageWriter.verbatim.format 
-            |> createMsg pointName (Instant.FromUnixTimeTicks message.timestampTicks) 
+            message
+            |> MessageWriter.verbatim.format
+            |> createMsg pointName (Instant.FromUnixTimeTicks message.timestampTicks)
             |> doWrite state >>= fun state' ->
             IVar.fill ack () >>= fun () ->
             running state'
@@ -101,7 +101,7 @@ module Impl =
 
     { client = new TcpClient(conf.hostname, int conf.port)
       sendRecvStream = None }
-    |> running 
+    |> running
 
 /// Create a new graphite target configuration.
 [<CompiledName "Create">]

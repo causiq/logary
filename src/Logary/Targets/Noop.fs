@@ -28,7 +28,7 @@ module internal Impl =
   // and as such doesn't have side effects until the Job is started.
   let loop (conf: NoopConf) // the conf is specific to your target
            (will: Will<State>) // optional will
-           (ri: RuntimeInfo, api: TargetAPI) =
+           (api: TargetAPI) =
 
     let rec loop (state: State) =
       // Alt.choose will pick the channel/alternative that first gives a value

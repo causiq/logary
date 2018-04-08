@@ -63,8 +63,7 @@ module internal Impl =
     { zmqCtx = context
       sender = sender }
 
-  let loop (conf: LogstashConf)
-           (ri: RuntimeInfo, api: TargetAPI): Job<unit> =
+  let loop (conf: LogstashConf) (api: TargetAPI): Job<unit> =
 
     let rec init config =
       createState config.publishTo config.mode |> loop
@@ -82,7 +81,7 @@ module internal Impl =
               // https://gist.github.com/jordansissel/2996677
               let bytes =
                 message
-                |> serialise 
+                |> serialise
                 |> System.Text.Encoding.UTF8.GetBytes
 
               do! Job.Scheduler.isolate (fun _ -> state.sender <~| (System.Text.Encoding.UTF8.GetBytes (message.name.ToString())) <<|  bytes)

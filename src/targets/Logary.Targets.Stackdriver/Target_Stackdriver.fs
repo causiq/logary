@@ -430,8 +430,10 @@ module internal Impl =
       state.logger.WriteLogEntries(request, state.callSettings)
       |> ignore)
 
-  let loop (conf: StackdriverConf) (runtime: RuntimeInfo, api: TargetAPI) =
-    runtime.logger.info (
+  let loop (conf: StackdriverConf) (api: TargetAPI) =
+    let logger = api.runtime.logger
+
+    logger.info (
       eventX "Started Stackdriver target with project {projectId}, writing to {logName}"
       >> setField "projectId" conf.projectId
       >> setField "logName" conf.logId)
@@ -440,7 +442,7 @@ module internal Impl =
       Alt.choose [
         // either shutdown, or
         api.shutdownCh ^=> fun ack ->
-          runtime.logger.verbose (eventX "Shutting down Stackdriver target")
+          logger.verbose (eventX "Shutting down Stackdriver target")
           state.cancellation.Cancel()
           ack *<= () :> Job<_>
 
@@ -459,9 +461,9 @@ module internal Impl =
               ([], [], [])
 
           job {
-            do runtime.logger.verbose (eventX "Writing {count} messages" >> setField "count" entries.Length)
+            do logger.verbose (eventX "Writing {count} messages" >> setField "count" entries.Length)
             do! writeBatch state entries
-            do runtime.logger.verbose (eventX "Acking messages")
+            do logger.verbose (eventX "Acking messages")
             do! Job.conIgnore acks
             do! Job.conIgnore flushes
             return! loop state
