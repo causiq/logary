@@ -45,6 +45,7 @@ let bufferCounter =
       Expect.equal expect [[1];[1;1;];] "one and then two after two single counts"
     })
   ]
+  |> testLabel "logary"
 
 [<Tests>]
 let snapshot =
@@ -116,7 +117,8 @@ let snapshot =
 
     testCase "empty: std dev" <| fun _ ->
       Expect.floatClose Accuracy.veryHigh (Snapshot.mean empty) 0. "zero"
-    ]
+  ]
+  |> testLabel "logary"
 
 let mockClock () =
   let mutable num = 0.
@@ -242,4 +244,5 @@ let reservoirs =
           0.23594443
           0.22072766 ]
       ]
-    ]
+   ]
+   |> testLabel "logary"

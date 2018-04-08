@@ -124,9 +124,6 @@ module Expect =
     Expect.isNotNull actual format
     if actual.Length = 0 then Tests.failtestf "%s. Should not be empty." format
 
-let testLabel label test =
-  Test.TestLabel (label, test, FocusState.Normal)
-
 [<Tests>]
 let tests =
   testList "logary" [
