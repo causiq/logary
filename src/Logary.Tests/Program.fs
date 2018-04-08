@@ -468,9 +468,6 @@ let tests =
         )
       )
 
-      testCase "formatWithUnit" <| fun () ->
-        Tests.skiptest "TBD"
-
       testList "scaling" [
         testList "s" [
           testCase "0.0000001 s" <| fun _ ->
@@ -653,6 +650,13 @@ let tests =
             )))
         ]
       ]
+    ]
+
+    testList "GaugeModule" [
+      testCase "formatWithUnit" <| fun () ->
+        let f = Gauge.format (Gauge (Float 2.34, Units.Days))
+        Expect.equal f "2.34 days" "Should format # days properly"
+
     ]
 
     // TO CONSIDER: bring back Scheduling when needed
