@@ -59,8 +59,8 @@ let basicTests targetName confFac addTS =
       return targetApi, now
     }
 
-  testList (sprintf "basic tests for target '%s'" targetName) [
-    testCaseJob "creating instance" <| job {
+  testList (sprintf "target '%s' basics" targetName) [
+    testCaseJob "create" <| job {
       let! ri, _ = emptyRuntime
       do! logger.infoWithBP (eventX "Creating instance: calling configFactory")
       let conf = confFac targetName

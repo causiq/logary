@@ -10,7 +10,7 @@ let conf =
 
 [<Tests>]
 let tests =
-  TargetBaseline.basicTests "OpsGenie" (create conf)
+  TargetBaseline.basicTests "OpsGenie" (create conf) true
 
 [<EntryPoint>]
 let main argv =
