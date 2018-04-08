@@ -73,7 +73,7 @@ let messageTemplates =
       let myDel = MyDelegate (fun (i1,i2) -> i1+i2)
       MtAssert.RenderedAs(
         "What even would a {del} print?", [| myDel |],
-        """What even would a "FormattingFromFsMessageTemplates+MyDelegate" print?""")
+        """What even would a "Logary.Tests.FsMessageTemplates+MyDelegate" print?""")
 
     testCase "a class instance is rendered in simple notation" <| fun () ->
       MtAssert.RenderedAs(
