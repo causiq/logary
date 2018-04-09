@@ -88,7 +88,7 @@ Target "TCReportVersion" (fun _ ->
     yield "major", string release.SemVer.Major
     yield "minor", string release.SemVer.Minor
     yield "build", release.SemVer.Build
-    yield "special", release.SemVer.PreRelease |> Option.map (sprintf "%O") |> Option.defaultValue ""
+    yield "special", release.SemVer.PreRelease |> Option.map (sprintf "%O") |> function None -> "" | Some x -> x
   ]
   |> Seq.filter (snd >> String.IsNullOrWhiteSpace >> not)
   |> Seq.iter (fun (name, value) -> TeamCityHelper.SetTeamCityParameter (sprintf "ver.%s" name) value)
