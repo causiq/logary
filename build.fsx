@@ -83,6 +83,15 @@ Target "ProjectVersion" (fun _ ->
     XMLHelper.XmlPoke file "Project/PropertyGroup/Version/text()" release.NugetVersion)
 )
 
+Target "TCReportVersion" (fun _ ->
+  [ yield "version", release.SemVer.ToString()
+    yield "major", string release.SemVer.Major
+    yield "minor", string release.SemVer.Minor
+    yield "build", release.SemVer.Build
+    yield "special", release.SemVer.PreRelease |> Option.map (sprintf "%O") |> Option.defaultValue ""
+  ] |> Seq.iter (fun (name, value) ->
+    printfn "##teamcity[setParameter name='ver.%s' value='%s']" name value))
+
 Target "Restore" (fun _ ->
   DotNetCli.Restore (fun p -> { p with WorkingDir = "src" })
 )
@@ -149,6 +158,7 @@ Target "PackageRutta" (fun _ ->
   ignore (Directory.CreateDirectory "artifacts")
   "packages/libzmq_vc120/build/native/bin/libzmq-x64-v120-mt-4_2_30_0.dll"
     |> FileHelper.CopyFile (Path.Combine(ruttaBinFolder, "libzmq.dll"))
+
   ZipHelper.CreateZip
     // work dir
     ruttaBinFolder
@@ -159,7 +169,8 @@ Target "PackageRutta" (fun _ ->
     false
     (!! (sprintf "%s/**/*" ruttaBinFolder)))
 
-"Build" 
+"Build"
+  =?> ("TCReportVersion", TeamCityHelper.TeamCityVersion |> Option.isSome)
   ==> "PackageRutta"
 
 let envRequired k =
