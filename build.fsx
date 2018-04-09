@@ -147,7 +147,7 @@ let ruttaBinFolder =
 
 Target "PackageRutta" (fun _ ->
   ignore (Directory.CreateDirectory "artifacts")
-  "packages/targets/libzmq_vc120/build/native/bin/libzmq-x64-v120-mt-4_2_30_0.dll"
+  "packages/libzmq_vc120/build/native/bin/libzmq-x64-v120-mt-4_2_30_0.dll"
     |> FileHelper.CopyFile (Path.Combine(ruttaBinFolder, "libzmq.dll"))
   ZipHelper.CreateZip
     // work dir
