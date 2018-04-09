@@ -42,6 +42,42 @@ type ProxyArgs =
       | Xpub_Bind _ ->
         "Bind in XPUB mode for SUB sockets to connect to."
 
+module Help =
+  open System
+  open System.Text
+  open FSharp.Reflection
+
+  let describeMode = function
+    | Pull _ -> "Runs Rutta in Router mode (PULL fan-in of Messages, forward to Target)."
+    | Sub _ -> "Runs Rutta in Router XSUB mode for PUB sockets to publish to."
+    | TCP _ -> "Runs Rutta in TCP STREAM server mode, that allows zmq to be used as a TCP socket. Send newline-separated JSON to this bound socket. See http://api.zeromq.org/4-0:zmq-socket#toc19"
+    | UDP _ -> "Runs Rutta in UDP server mode. Send newline-separated JSON datagrams to this socket."
+    | HTTP _ -> "Runs Rutta in HTTP server mode. Send JSON to /i/logary to have it converted to Messages."
+
+  let describeModes () =
+    let folder (sb: StringBuilder) (u: RMode) =
+      let mInfo, _ = FSharpValue.GetUnionFields(u, typeof<RMode>)
+      let mdesc = describeMode u
+      sb.AppendFormat(" - {0}: {1}{2}", mInfo.Name.ToLowerInvariant(), mdesc, Environment.NewLine)
+    [ Pull; Sub; TCP; UDP; HTTP ]
+    |> Seq.fold folder (StringBuilder())
+    |> sprintf "%O"
+
+  let describeCodec = function
+    | Json -> "Uses the newline-separated JSON codec"
+    | Plain -> "Takes the newline-separates message and create a simple message from it"
+    | Binary -> "Used for Rutta-to-Rutta communication with the ZMQ socket types"
+    | Log4jXML -> "Takes Log4j XML event, separated with newlines, as input"
+
+  let describeCodecs () =
+    let folder (sb: StringBuilder) (u: Codec) =
+      let mInfo, _ = FSharpValue.GetUnionFields(u, typeof<Codec>)
+      let mdesc = describeCodec u
+      sb.AppendFormat(" - {0}: {1}{2}", mInfo.Name.ToLowerInvariant(), mdesc, Environment.NewLine)
+    [ Json; Plain; Binary; Log4jXML ]
+    |> Seq.fold folder (StringBuilder())
+    |> sprintf "%O"
+
 [<RequireQualifiedAccess>]
 type RouterArgs =
   | [<Mandatory>] Listener of routerMode:RMode * bindingOrEndpoint:string * codec:Codec
@@ -51,7 +87,9 @@ type RouterArgs =
     member x.Usage =
       match x with
       | Listener _ ->
-        "Specifies a single listener which is a triple of a router mode (for the binding), the binding (e.g. \"127.0.0.1:20001\"), and a codec"
+        sprintf "Specifies a single listener which is a triple of a router mode (for the binding), the binding (e.g. \"127.0.0.1:20001\"), and a codec. Modes:\n%sCodecs:\n%s"
+                (Help.describeModes ())
+                (Help.describeCodecs ())
       | Target _ ->
         "Specifies a list of targets to ship to."
 
@@ -64,20 +102,6 @@ type ShipperArgs =
       match x with
       | Push_To _ -> "Runs Rutta in Shipper/PUSH mode (send Messages from a node to router)"
       | Pub_To _ -> "Runs Rutta in Shipper/PUB mode (send Messages from a node to proxy)"
-
-module Help =
-  let describeMode = function
-    | Pull _ -> "Runs Rutta in Router mode (PULL fan-in of Messages, forward to Target)."
-    | Sub _ -> "Runs Rutta in Router XSUB mode for PUB sockets to publish to."
-    | TCP _ -> "Runs Rutta in TCP STREAM server mode, that allows zmq to be used as a TCP socket. Send newline-separated JSON to this bound socket. See http://api.zeromq.org/4-0:zmq-socket#toc19"
-    | UDP _ -> "Runs Rutta in UDP server mode. Send newline-separated JSON datagrams to this socket."
-    | HTTP _ -> "Runs Rutta in HTTP server mode. Send JSON to /i/logary to have it converted to Messages."
-
-  let describeCodec = function
-    | Json -> "Uses the newline-separated JSON codec"
-    | Plain -> "Takes the newline-separates message and create a simple message from it"
-    | Binary -> "Used for Rutta-to-Rutta communication with the ZMQ socket types"
-    | Log4j -> "Takes Log4j XML event, separated with newlines, as input"
 
 type Args =
   | [<AltCommandLine "-V"; Inherit; Unique>] Version

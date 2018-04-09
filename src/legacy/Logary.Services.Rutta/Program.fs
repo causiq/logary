@@ -37,7 +37,7 @@ let executeSubCommand (ilevel: LogLevel) =
 
 let execute argv (exiting: ManualResetEventSlim): int =
   let parser = ArgumentParser.Create<Args>(programName = "rutta.exe", helpTextMessage = versionAndName)
-  let parsed = parser.Parse(argv, ignoreUnrecognized=true)
+  let parsed = parser.Parse(argv, ignoreUnrecognized=true, raiseOnUsage=false)
 
   if parsed.Contains Version || parsed.IsUsageRequested then
     printfn "%s" (parser.PrintUsage())
