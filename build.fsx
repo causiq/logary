@@ -89,8 +89,10 @@ Target "TCReportVersion" (fun _ ->
     yield "minor", string release.SemVer.Minor
     yield "build", release.SemVer.Build
     yield "special", release.SemVer.PreRelease |> Option.map (sprintf "%O") |> Option.defaultValue ""
-  ] |> Seq.iter (fun (name, value) ->
-    printfn "##teamcity[setParameter name='ver.%s' value='%s']" name value))
+  ]
+  |> Seq.filter (snd >> String.IsNullOrWhiteSpace >> not)
+  |> Seq.iter (fun (name, value) -> TeamCityHelper.SetTeamCityParameter (sprintf "ver.%s" name) value)
+)
 
 Target "Restore" (fun _ ->
   DotNetCli.Restore (fun p -> { p with WorkingDir = "src" })
