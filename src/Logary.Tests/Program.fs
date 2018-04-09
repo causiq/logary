@@ -411,19 +411,56 @@ let tests =
         | Result.Error err ->
           failtestf "%s" err
 
-      testCase "log4j XML" <| fun () ->
-        let sample = """<log4j:event logger="com.howtodoinjava.Log4jXMLLayoutExample" timestamp="1368417841893" level="INFO" thread="main">
+      testList "log4j XML" [
+        testCase "log4j XML 1" <| fun () ->
+          let sample = """<log4j:event logger="com.howtodoinjava.Log4jXMLLayoutExample" timestamp="1368417841893" level="INFO" thread="main">
     <log4j:message><![CDATA[Sample info message]]></log4j:message>
     <log4j:locationInfo class="com.howtodoinjava.Log4jXMLLayoutExample" method="main" file="Log4jXMLLayoutExample.java" line="15"/>
 </log4j:event>"""
-        match Codecs.Codec.log4jXML (Ingestion.Ingested.String sample) with
-        | Result.Ok m ->
-          Expect.equal m.value "Sample info message" "Should parse the message properly"
-          Expect.equal m.level Info "Parses Info"
-          Expect.equal m.timestamp 1368417841893L "Should have correct timestamp"
-          Expect.equal m.name (PointName.parse "com.howtodoinjava.Log4jXMLLayoutExample") "Should parse logger name"
-        | Result.Error err ->
-          failtestf "%s" err
+          match Codecs.Codec.log4jXML (Ingestion.Ingested.String sample) with
+          | Result.Ok m ->
+            Expect.equal m.value "Sample info message" "Should parse the message properly"
+            Expect.equal m.level Info "Parses Info"
+            Expect.equal m.timestamp 1368417841893L "Should have correct timestamp"
+            Expect.equal m.name (PointName.parse "com.howtodoinjava.Log4jXMLLayoutExample") "Should parse logger name"
+          | Result.Error err ->
+            failtestf "%s" err
+
+        testCase "chainsaw sample" <| fun () ->
+          // NDC: https://logging.apache.org/log4j/1.2/apidocs/org/apache/log4j/NDC.html
+          let sample = """<log4j:event logger="first logger" level="ERROR" thread="Thread-3" timestamp="1051494121460">
+  <log4j:message><![CDATA[errormsg 3]]></log4j:message>
+  <log4j:NDC><![CDATA[third]]></log4j:NDC>
+  <log4j:throwable><![CDATA[java.lang.Exception: someexception-third
+ 	at org.apache.log4j.chainsaw.Generator.run(Generator.java:94)
+]]></log4j:throwable>
+  <log4j:locationInfo class="org.apache.log4j.chainsaw.Generator"
+method="run" file="Generator.java" line="94"/>
+  <log4j:properties>
+    <log4j:data name="log4jmachinename" value="windows"/>
+    <log4j:data name="log4japp" value="udp-generator"/>
+  </log4j:properties>
+</log4j:event>"""
+          match Codecs.Codec.log4jXML (Ingestion.Ingested.String sample) with
+          | Result.Ok m ->
+            Expect.equal m.name (PointName.parse "first logger") "Should parse logger name"
+            Expect.equal m.value "errormsg 3" "Should parse the message properly"
+            Expect.equal m.level Error "Parses Error level"
+            Expect.equal (m |> Message.tryGetField "thread") (Some "Thread-3") "Thread is put as a field"
+            Expect.equal m.timestamp 1051494121460L "Should have correct timestamp"
+            Expect.equal (m |> Message.tryGetField "NDC") (Some "third") "NDC is put as a field"
+            Expect.equal (m |> Message.tryGetField "log4jmachinename") (Some "windows") "Since we can't distinguish properties into either context nor fields: put them as fields"
+            Expect.equal (m |> Message.tryGetField "log4japp") (Some "udp-generator") "Has log4japp-field"
+            let error: Formatting.StacktraceLine[] = m |> Message.tryGetField "error" |> Option.get
+            let expected =
+              " 	at org.apache.log4j.chainsaw.Generator.run(Generator.java:94)"
+              |> Formatting.DotNetStacktrace.parse
+            Expect.sequenceEqual error expected "Should have the same stacktrace parsed"
+          | Result.Error err ->
+            failtestf "%s" err
+
+
+      ]
     ]
 
     testList "LoggerScope" [

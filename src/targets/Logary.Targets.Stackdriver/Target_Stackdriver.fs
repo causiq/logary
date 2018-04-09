@@ -61,7 +61,6 @@ type ResourceType =
   /// AppEngine services are isolated units segregated by application module id
   /// and the version of the application
   | AppEngine of moduleId:string * versionId: string
-
   member x.key =
     match x with
     | Api _ ->

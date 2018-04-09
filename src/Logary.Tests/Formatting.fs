@@ -223,6 +223,31 @@ let jsonTests fsc =
             | other ->
               failtestf "Unexpected json %A" other
 
+        testCase "stacktrace 2" <| fun () ->
+          let sample = """
+CompanyA.WebApi.Client.WebApiException: Tradera Web API Error ---&gt; ServiceStack.ServiceClient.Web.WebServiceException: RestException
+   at ServiceStack.ServiceClient.Web.ServiceClientBase.ThrowWebServiceException[TResponse](Exception ex, String requestUri)
+   at ServiceStack.ServiceClient.Web.ServiceClientBase.ThrowResponseTypeException[TResponse](Object request, Exception ex, String requestUri)
+   at ServiceStack.ServiceClient.Web.ServiceClientBase.HandleResponseException[TResponse](Exception ex, Object request, String requestUri, Func`1 createWebRequest, Func`2 getResponse, TResponse&amp; response)
+   at ServiceStack.ServiceClient.Web.ServiceClientBase.Send[TResponse](String httpMethod, String relativeOrAbsoluteUrl, Object request)
+   at CompanyA.WebApi.Client.ApiClient.Send[TResponse](Func`2 func, Int32 retry)
+   --- End of inner exception stack trace ---
+   at CompanyA.WebApi.Client.ApiClient.Send[TResponse](Func`2 func, Int32 retry)
+   at CompanyA.WebApi.Client.ApiClient.Post[TResponse](IReturn`1 request)
+   at CompanyA.TouchWeb.Areas.Default.Services.SellableTicketsService.ExecuteSavedSearch(CustomResultPageApiResponse response) in C:\Projects\app\Applications\Web\SellableTicketsService.cs:line 73
+   at CompanyA.TouchWeb.Areas.Default.Services.SellableTicketsService.Get() in C:\Projects\app\Applications\Web\SellableTicketsService.cs:line 40"""
+          let parsed = DotNetStacktrace.parse sample
+          let withLines = parsed.[parsed.Length - 2..parsed.Length - 1]
+          withLines.[0]
+            |> function
+              | Line line ->
+                line.file |> Expect.equal "Should have parsed the file path" (Some @"C:\Projects\app\Applications\Web\SellableTicketsService.cs")
+                line.lineNo |> Expect.equal "Should have parsed the file path" (Some 73)
+              | InnerDelim ->
+                failtest "Unexpected InnerDelim"
+
+
+
         testCase "F# record" <| fun () ->
           { id = 1; name = "haf"; created = DateTime.UtcNow }
             |> Json.encode

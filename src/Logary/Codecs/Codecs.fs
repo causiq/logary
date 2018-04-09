@@ -91,8 +91,12 @@ module Codec =
       let reader = new XmlTextReader(xml, XmlNodeType.Element, parseCtx)
       XElement.Load reader
 
+    let inline addLiteral k v (m: HashMap<_, _>) =
+      (box v, m) ||> HashMap.add (sprintf "%s%s" KnownLiterals.FieldsPrefix k)
+
     let foldProp acc e =
-      acc |> HashMap.add (e |> xattr "name") (e |> xattr "value" |> box)
+      let key = e |> xattr "name"
+      (e |> xattr "value", acc) ||> addLiteral key
 
     let parseInner xml =
       if String.IsNullOrWhiteSpace xml then Result.Error "Log4j event was empty" else
@@ -104,8 +108,14 @@ module Codec =
         level = event |> xattr "level" |> LogLevel.ofString
         message = event |> xe ns "message" |> xtext
         properties =
+          let thread = event |> xattr "thread"
+          let ndc = event |> xe ns "NDC" |> xtext
+          let throwable = event |> xe ns "throwable" |> xtext |> DotNetStacktrace.parse
           (HashMap.empty, event |> xe ns "properties" |> xes "data")
           ||> Seq.fold foldProp
+          |> if thread = "" then id else addLiteral "thread" thread
+          |> if ndc = "" then id else addLiteral "NDC" ndc
+          |> if Array.isEmpty throwable then id else addLiteral "error" throwable
       }
       |> Result.Ok
 

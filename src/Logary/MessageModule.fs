@@ -47,6 +47,8 @@ module Message =
     let contextValue_ name =
       context_ >-> HashMap.value_ name >-> boxWithOption_
 
+    let contextValueObj_ name =
+      context_ >-> HashMap.value_ name
 
   //#region CONTEXT AND FIELDS
 
