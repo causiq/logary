@@ -63,8 +63,9 @@ module Router =
   let pullBind (cancelled, logary) (binding: string) (cname, codec) =
     let sink = createSink logary codec
     logary.runtimeInfo.logger.info (
-      eventX "Spawning router with {binding} in PULL mode, accepting {codec}."
+      eventX "Spawning router with {binding} in {mode} mode, accepting {codec}."
       >> setField "binding" binding
+      >> setField "mode" Pull
       >> setField "codec" cname)
 
     let create (context: Context) =
@@ -77,8 +78,9 @@ module Router =
   let subConnect (cancelled, logary) (binding: string) (cname, codec) =
     let sink = createSink logary codec
     logary.runtimeInfo.logger.info (
-      eventX "Spawning router with {binding} in SUB mode, accepting {codec}."
+      eventX "Spawning router with {binding} in {mode} mode, accepting {codec}."
       >> setField "binding" binding
+      >> setField "mode" Sub
       >> setField "codec" cname)
 
     let create (context: Context) =
@@ -92,8 +94,9 @@ module Router =
   let tcpBind (cancelled, logary) (binding: string) (cname, codec) =
     let sink = createSink logary codec
     logary.runtimeInfo.logger.info (
-      eventX "Spawning router with {binding} in UDP mode, accepting {codec}."
+      eventX "Spawning router with {binding} in {mode} mode, accepting {codec}."
       >> setField "binding" binding
+      >> setField "mode" TCP
       >> setField "codec" cname)
 
     let create (context: Context) =
@@ -107,8 +110,9 @@ module Router =
   let udpBind (cancelled, logary) (binding: string) (cname, codec) =
     let sink = createSink logary codec
     logary.runtimeInfo.logger.info (
-      eventX "Spawning router with {binding} in UDP mode, accepting {codec}."
+      eventX "Spawning router with {binding} in {mode} mode, accepting {codec}."
       >> setField "binding" binding
+      >> setField "mode" UDP
       >> setField "codec" cname)
 
     let ep = Parsers.binding binding
@@ -118,8 +122,9 @@ module Router =
   let httpBind (cancelled, logary) binding (cname, codec) =
     let sink = createSink logary codec
     logary.runtimeInfo.logger.info (
-      eventX "Spawning router with {binding} in HTTP mode, accepting {codec}."
+      eventX "Spawning router with {binding} in {mode} mode, accepting {codec}."
       >> setField "binding" binding
+      >> setField "mode" HTTP
       >> setField "codec" cname)
 
     let ep = Parsers.binding binding
@@ -167,7 +172,10 @@ module Router =
       |> Config.build
       |> run
 
-    logary.runtimeInfo.logger.debug (eventX "Starting {@listeners}" >> setField "listeners" listeners)
+    logary.runtimeInfo.logger.debug (
+      eventX "Starting {@listeners}, sending to {@targets}"
+      >> setField "listeners" listeners
+      >> setField "targets" (targets |> List.map (fun t -> t.name)))
 
     listeners
     |> Seq.map (fun (mode, binding, c) -> toListener (cancelled, logary) mode, binding, toCodec c)

@@ -2,6 +2,7 @@ module Logary.Services.Rutta.Program
 
 open Argu
 open System
+open System.Configuration
 open System.Threading
 open Topshelf
 open Logary
@@ -9,12 +10,22 @@ open Logary.Services.Rutta
 
 let versionAndName = sprintf "Logary Rutta v%s" AssemblyVersionInformation.AssemblyVersion
 
+let maybeSubcommand (argv: string[]): string[] =
+  let found = ConfigurationManager.AppSettings.["subcommand"]
+  if isNull found then argv else
+  let subArgv = ConfigurationManager.AppSettings.[found]
+  if isNull subArgv then [| yield found; yield! argv |] else
+  let subCmdArgv = subArgv.Split([| ' ' |], StringSplitOptions.RemoveEmptyEntries)
+  [| yield found; yield! subCmdArgv; yield! argv |]
+
 let executeProxy (args: ParseResults<ProxyArgs>) =
   Proxy.proxy (args.GetResult Xsub_Connect_To) (args.GetResult Xpub_Bind)
 
 let executeRouter (ilevel: LogLevel) (args: ParseResults<RouterArgs>) =
   let listeners = args.GetResults RouterArgs.Listener
   let targets = args.PostProcessResults(RouterArgs.Target, Parsers.targetConfig)
+  if List.isEmpty listeners || List.isEmpty targets then
+    failwith "Router `--listener` arguments empty, or `--target` arguments empty"
   Router.start ilevel targets listeners
 
 let executeShipper (args: ParseResults<ShipperArgs>) =
@@ -36,6 +47,7 @@ let executeSubCommand (ilevel: LogLevel) =
     failwith "Sub-command %A not handled in `executeSubCommand`. Send a PR?"
 
 let execute argv (exiting: ManualResetEventSlim): int =
+  let argv = maybeSubcommand argv
   let parser = ArgumentParser.Create<Args>(programName = "rutta.exe", helpTextMessage = versionAndName)
   let parsed = parser.Parse(argv, ignoreUnrecognized=true, raiseOnUsage=false)
 

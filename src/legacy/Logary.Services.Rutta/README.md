@@ -2,6 +2,14 @@
 
 Download the Logary source and build.
 
+## Router
+
+Example `App.config`:
+
+    <appSettings>
+      <add key="subcommand" value="router" />
+      <add key="router" value="--listener udp 127.0.0.1:20001 plain --target stackdriver://google/?projectId=your-project --target console://./" />
+    </appSettings>
 
 ## On Windows
 
