@@ -145,13 +145,13 @@ Target "Pack" (fun _ ->
     let name = System.IO.Path.GetFileName path
     DotNetCli.RunCommand id (
       sprintf
-        "pack %s -c %s -o ../bin %s"
+        "pack %s -c %s -o ./bin %s"
         proj configuration (packParameters name))
   )
 )
 
 Target "Push" (fun _ ->
-  Paket.Push (fun p -> { p with WorkingDir = "bin" }))
+  Paket.Push (fun p -> { p with WorkingDir = "src" }))
 
 let ruttaBinFolder =
   "src/legacy/Logary.Services.Rutta/bin/Release/net461/"
