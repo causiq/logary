@@ -27,6 +27,12 @@ open Logary.Targets
 open Logary.Configuration
 open Logary.EventProcessing
 
+let clearStream (s: System.IO.StringWriter) =
+  let sb = s.GetStringBuilder ()
+  let str = string sb
+  sb.Clear () |> ignore
+  str
+
 let buildTextWriteTarget name =
   let (out, error) = (new StringWriter (), new StringWriter ())
   let twconf = TextWriter.TextWriterConf.create (out, error)

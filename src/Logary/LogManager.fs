@@ -60,3 +60,10 @@ type LogManager =
   
   /// wrap external scope
   abstract wrapScope : ILogScope -> unit
+
+[<AutoOpen>]
+module LogManager =
+  type LogManager with
+
+    member x.beginScope<'t> (dataFac: unit -> 't) : IDisposable =
+      x.beginScope (lazy(dataFac () |> box))

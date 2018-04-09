@@ -10,6 +10,7 @@ open Logary.Internals
 open Logary.Message
 open Logary.Configuration
 open Logary.EventProcessing
+open System.Text.RegularExpressions
 
 let tests = [
   testCaseJob "from Config and Multi shutdown" <| job {
@@ -78,12 +79,35 @@ let tests = [
     do! logm.shutdown ()
   }
 
+  testCaseJob "log with scope" (job {
+    let! (logm, out, error)  = Utils.buildLogManager ()
+    let loggername = PointName.parse "logger.test"
+    let lg = logm.getLogger loggername
+
+    let s1 = logm.beginScope (fun _ -> "scope-1")
+    lg.info (eventX "scope1")
+
+    let s2 = logm.beginScope (fun _ -> "scope-2")
+    let newLogger = logm.getLogger (PointName.parse "logger.test.another")
+    newLogger.info (eventX "scope2")
+
+    do s2.Dispose ()
+    newLogger.info (eventX "2dispose")
+
+    do s1.Dispose ()
+    newLogger.info (eventX "1dispose")
+
+    do! logm.flushPending ()
+    let outStr = clearStream out
+    Expect.isRegexMatch outStr (new Regex("""scope1.*?_logary.scope => \["scope-1"\]""", RegexOptions.Singleline)) "shoule have scope-1 value"
+    Expect.isRegexMatch outStr (new Regex("""scope2.*?_logary.scope => \["scope-2", "scope-1"\]""", RegexOptions.Singleline)) "shoule have scope-1/2 value"
+    Expect.isRegexMatch outStr (new Regex("""2dispose.*?_logary.scope => \["scope-1"\]""", RegexOptions.Singleline)) "shoule only have scope-1 value"
+    Expect.isRegexMatch outStr (new Regex("1dispose.*?_logary.scope => \[\]", RegexOptions.Singleline)) "shoule have no scope value"
+
+    do! logm.shutdown ()
+  })
+
   testCaseJob "switch logger level" (job {
-    let clearStream (s: System.IO.StringWriter) =
-      let sb = s.GetStringBuilder ()
-      let str = string sb
-      sb.Clear () |> ignore
-      str
     let! (logm, out, error)  = Utils.buildLogManager ()
     let loggername = PointName.parse "logger.test"
     let lg = logm.getLogger loggername
