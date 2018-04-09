@@ -70,7 +70,11 @@ let startWindows argv: int =
     true
 
   defaultService
-  |> withRecovery (defaultServiceRecovery |> restart (Time.s 5))
+  |> withRecovery (
+      defaultServiceRecovery
+      |> restart (Time.s 5)
+      |> restart (Time.s 5)
+      |> restart (Time.s 5))
   |> withStart start
   |> withStop (fun hc -> exiting.Set() ; stop hc)
   |> run
