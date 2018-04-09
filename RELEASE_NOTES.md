@@ -1,3 +1,8 @@
+#### 5.0.0-beta.2
+* Rutta: support subcommand specification via App.config
+* Rutta: better logging about what targets start in Router
+* Core: Can generate nugets
+
 #### 5.0.0-beta
 * Core: Fully support both .Net Core and .Net FW, thanks @haf
 * Core: Completely new internals with very similar public API, thanks @lust4life, @haf
