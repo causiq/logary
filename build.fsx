@@ -172,7 +172,6 @@ Target "PackageRutta" (fun _ ->
     (!! (sprintf "%s/**/*" ruttaBinFolder)))
 
 "Build"
-  =?> ("TCReportVersion", TeamCityHelper.TeamCityVersion |> Option.isSome)
   ==> "PackageRutta"
 
 let envRequired k =
@@ -216,6 +215,7 @@ Target "All" ignore
   ==> "AssemblyInfo"
   ==> "PaketFiles"
   ==> "ProjectVersion"
+  =?> ("TCReportVersion", TeamCityHelper.TeamCityVersion |> Option.isSome)
   ==> "Build"
   ==> "Tests"
   ==> "Pack"
