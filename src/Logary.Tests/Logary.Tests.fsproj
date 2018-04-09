@@ -3,7 +3,7 @@
   <PropertyGroup>
     <AssemblyName>Logary.Tests</AssemblyName>
     <OutputType>Exe</OutputType>
-    <Version>5.0.0-beta</Version>
+    <Version>5.0.0-beta.2</Version>
     <TargetFrameworks>net461;netcoreapp2.0</TargetFrameworks>
     <NoWarn>44</NoWarn>
   </PropertyGroup>
