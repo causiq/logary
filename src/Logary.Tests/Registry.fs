@@ -79,33 +79,32 @@ let tests = [
     do! logm.shutdown ()
   }
 
-  testCaseJob "log with scope" (job {
-    let! (logm, out, error)  = Utils.buildLogManager ()
+  testCase "log with scope" <| fun _ ->
+    let (logm, out, _)  = Utils.buildLogManager () |> run
     let loggername = PointName.parse "logger.test"
     let lg = logm.getLogger loggername
 
     let s1 = logm.beginScope (fun _ -> "scope-1")
-    lg.info (eventX "scope1")
+    lg.infoWithBP (eventX "scope1") |> run
 
     let s2 = logm.beginScope (fun _ -> "scope-2")
     let newLogger = logm.getLogger (PointName.parse "logger.test.another")
-    newLogger.info (eventX "scope2")
+    newLogger.infoWithBP (eventX "scope2")  |> run
 
     do s2.Dispose ()
-    newLogger.info (eventX "2dispose")
+    newLogger.infoWithBP (eventX "2dispose")  |> run
 
     do s1.Dispose ()
-    newLogger.info (eventX "1dispose")
+    newLogger.infoWithBP (eventX "1dispose")  |> run
 
-    do! logm.flushPending ()
+    logm.flushPending () |> run
     let outStr = clearStream out
     Expect.isRegexMatch outStr (new Regex("""scope1.*?_logary.scope => \["scope-1"\]""", RegexOptions.Singleline)) "shoule have scope-1 value"
     Expect.isRegexMatch outStr (new Regex("""scope2.*?_logary.scope => \["scope-2", "scope-1"\]""", RegexOptions.Singleline)) "shoule have scope-1/2 value"
     Expect.isRegexMatch outStr (new Regex("""2dispose.*?_logary.scope => \["scope-1"\]""", RegexOptions.Singleline)) "shoule only have scope-1 value"
     Expect.isRegexMatch outStr (new Regex("1dispose.*?_logary.scope => \[\]", RegexOptions.Singleline)) "shoule have no scope value"
 
-    do! logm.shutdown ()
-  })
+    logm.shutdown () |> run
 
   testCaseJob "switch logger level" (job {
     let! (logm, out, error)  = Utils.buildLogManager ()
