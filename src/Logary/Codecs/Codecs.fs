@@ -38,7 +38,7 @@ module Codec =
 
   type Log4JMessage =
     { logger: string
-      /// Epoch
+      /// Epoch in milliseconds * e6 to nanos in Logary
       timestamp: int64
       level: LogLevel
       message: string
@@ -48,7 +48,7 @@ module Codec =
       { context = x.properties
         level = x.level
         name = PointName.parse x.logger
-        timestamp = x.timestamp
+        timestamp = x.timestamp * 1_000_000L
         value = x.message }
 
   module internal Log4JMessage =
@@ -88,12 +88,14 @@ module Codec =
         ""
 
     let tryTimestamp (s: string) =
-      if String.IsNullOrWhiteSpace s then Global.getTimestamp() else
-      match Int64.TryParse s with
-      | false, _ ->
-        Global.getTimestamp()
-      | true, value ->
-        value
+      if String.IsNullOrWhiteSpace s then
+        Global.getTimestamp() / 1_000_000L
+      else
+        match Int64.TryParse s with
+        | false, _ ->
+          Global.getTimestamp() / 1_000_000L
+        | true, value ->
+          value
 
     let ns = XNamespace.Get "http://jakarta.apache.org/log4j/"
 

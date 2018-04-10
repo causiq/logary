@@ -1,5 +1,6 @@
 module Logary.Tests.Codecs
 
+open System
 open Expecto
 open Expecto.Flip
 open Logary
@@ -17,7 +18,7 @@ let tests =
 
     testList "log4j XML" [
       testCase "log4j XML 1" <| fun () ->
-        let sample = """<log4j:event logger="com.howtodoinjava.Log4jXMLLayoutExample" timestamp="1368417841893" level="INFO" thread="main">
+        let sample = """<log4j:event logger="com.howtodoinjava.Log4jXMLLayoutExample" timestamp="1523366809000" level="INFO" thread="main">
     <log4j:message><![CDATA[Sample info message]]></log4j:message>
     <log4j:locationInfo class="com.howtodoinjava.Log4jXMLLayoutExample" method="main" file="Log4jXMLLayoutExample.java" line="15"/>
 </log4j:event>"""
@@ -28,7 +29,10 @@ let tests =
           m.level
             |> Expect.equal "Parses Info" Info
           m.timestamp
-            |> Expect.equal "Should have correct timestamp" 1368417841893L
+            |> Expect.equal "Should have correct timestamp" 1523366809000000000L
+          DateTimeOffset.ofEpoch m.timestamp
+            |> Expect.equal "Should equal the date this test was written"
+                            (DateTimeOffset.Parse("2018-04-10 13:26:49+0000"))
           m.name
             |> Expect.equal "Should parse logger name" (PointName.parse "com.howtodoinjava.Log4jXMLLayoutExample")
         | Result.Error err ->
@@ -64,7 +68,7 @@ method="run" file="Generator.java" line="94"/>
             |> Expect.equal "Thread is put as a field" (Some "Thread-3")
 
           m.timestamp
-            |> Expect.equal "Should have correct timestamp" 1051494121460L
+            |> Expect.equal "Should have correct timestamp" (1051494121460L * 1_000_000L)
 
           m |> Message.tryGetField "NDC"
             |> Expect.equal "NDC is put as a field" (Some "third")
