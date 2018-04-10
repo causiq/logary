@@ -20,7 +20,7 @@ open Logary.EventProcessing
 open Logary.Configuration
 open Logary.Targets
 open Hopac
-#load "Http.fs"
+#load "HTTP.fs"
 open Logary.Ingestion
 
 let root = Path.GetFullPath (Path.Combine (__SOURCE_DIRECTORY__, "app"))

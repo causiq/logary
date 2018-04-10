@@ -113,7 +113,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "legacy", "legacy", "{3DDC19
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ingestion", "ingestion", "{7B088401-ACED-40A5-9DC7-9E64523CE77C}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Ingestion.Http", "ingestion\Logary.Ingestion.Http\Logary.Ingestion.Http.fsproj", "{6BD97E30-0907-41E0-944D-5FD6A8B40589}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Ingestion.HTTP", "ingestion\Logary.Ingestion.HTTP\Logary.Ingestion.HTTP.fsproj", "{6BD97E30-0907-41E0-944D-5FD6A8B40589}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Metrics.WinPerfCounters", "legacy\Logary.Metrics.WinPerfCounters\Logary.Metrics.WinPerfCounters.fsproj", "{B7205E5A-702F-4652-BE81-BB95864F9788}"
 EndProject
