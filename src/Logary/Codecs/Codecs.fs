@@ -3,6 +3,7 @@ namespace Logary.Codecs
 open Logary
 open Logary.Message
 open Logary.Ingestion
+open Logary.Internals
 open Logary.Internals.Chiron
 open Logary.Formatting
 
@@ -59,27 +60,40 @@ module Codec =
       XName.Get(tag, ns.NamespaceName)
 
     let xattr name (el: XElement) =
-      if isNull el then "" else
-      el.Attribute(XName.Get name).Value
+      if isNull el || String.IsNullOrWhiteSpace name then "" else
+      let a = el.Attribute(XName.Get name)
+      if isNull a then "" else a.Value
 
     let xe (ns: XNamespace) name (doc: XElement) =
-      if isNull doc then null else
+      if isNull doc || String.IsNullOrWhiteSpace name then null else
       doc.Element (xn ns name)
 
     let xes (name: string) (el: XElement): seq<XElement> =
-      if isNull el then Seq.empty else
+      if isNull el || String.IsNullOrWhiteSpace name then Seq.empty else
       el.Nodes()
       |> Seq.choose (function
-        | :? XElement as xel -> Some xel
-        | _ -> None)
+        | :? XElement as xel ->
+          Some xel
+        | _ ->
+          None)
       |> Seq.filter (fun xel ->
         String.Equals(xel.Name.LocalName, name, StringComparison.InvariantCultureIgnoreCase))
 
     let xtext (e: XElement) =
       if isNull e then "" else
       match e.FirstNode with
-      | :? XText as txt -> txt.Value
-      | other -> ""
+      | :? XText as txt ->
+        txt.Value
+      | other ->
+        ""
+
+    let tryTimestamp (s: string) =
+      if String.IsNullOrWhiteSpace s then Global.getTimestamp() else
+      match Int64.TryParse s with
+      | false, _ ->
+        Global.getTimestamp()
+      | true, value ->
+        value
 
     let ns = XNamespace.Get "http://jakarta.apache.org/log4j/"
 
@@ -87,7 +101,7 @@ module Codec =
       // https://logging.apache.org/log4php/docs/layouts/xml.html
       let mngr = new XmlNamespaceManager(new NameTable())
       mngr.AddNamespace( "log4j", ns.NamespaceName)
-      let parseCtx = new XmlParserContext( null, mngr, null, XmlSpace.None )
+      let parseCtx = new XmlParserContext(null, mngr, null, XmlSpace.None)
       let reader = new XmlTextReader(xml, XmlNodeType.Element, parseCtx)
       XElement.Load reader
 
@@ -101,27 +115,30 @@ module Codec =
     let parseInner xml =
       if String.IsNullOrWhiteSpace xml then Result.Error "Log4j event was empty" else
       let event = xelement xml
-      if isNull event then Result.Error (sprintf "Failed to parse XML: %s" xml) else
-
-      { logger = event |> xattr "logger"
-        timestamp = event |> xattr "timestamp" |> int64
-        level = event |> xattr "level" |> LogLevel.ofString
-        message = event |> xe ns "message" |> xtext
-        properties =
-          let thread = event |> xattr "thread"
-          let ndc = event |> xe ns "NDC" |> xtext
-          let throwable = event |> xe ns "throwable" |> xtext |> DotNetStacktrace.parse
-          (HashMap.empty, event |> xe ns "properties" |> xes "data")
-          ||> Seq.fold foldProp
-          |> if thread = "" then id else addLiteral "thread" thread
-          |> if ndc = "" then id else addLiteral "NDC" ndc
-          |> if Array.isEmpty throwable then id else addLiteral "error" throwable
-      }
-      |> Result.Ok
+      if isNull event || event.Name <> xn ns "event" then
+        Result.Error (sprintf "Failed to parse XML: %s" xml)
+      else
+        { logger = event |> xattr "logger"
+          timestamp = event |> xattr "timestamp" |> tryTimestamp
+          level = event |> xattr "level" |> LogLevel.ofString
+          message = event |> xe ns "message" |> xtext
+          properties =
+            let thread = event |> xattr "thread"
+            let ndc = event |> xe ns "NDC" |> xtext
+            let throwable = event |> xe ns "throwable" |> xtext |> DotNetStacktrace.parse
+            (HashMap.empty, event |> xe ns "properties" |> xes "data")
+            ||> Seq.fold foldProp
+            |> if thread = "" then id else addLiteral "thread" thread
+            |> if ndc = "" then id else addLiteral "NDC" ndc
+            |> if Array.isEmpty throwable then id else addLiteral "error" throwable
+        }
+        |> Result.Ok
 
     let parse (xml: string): Result<Log4JMessage, string> =
       try parseInner xml
-      with :? XmlException as xmle -> Result.Error (xmle.ToString())
+      with
+      | :? XmlException as xmle -> Result.Error (xmle.ToString())
+      | :? InvalidOperationException as oee -> Result.Error (oee.ToString())
 
   let log4jXML: Codec =
     fun input ->

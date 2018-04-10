@@ -11,6 +11,7 @@
     <Compile Include="Utils.fs" />
     <Compile Include="Diff.fs" />
     <Compile Include="Engine.fs" />
+    <Compile Include="Codecs.fs" />
     <Compile Include="Formatting.fs" />
     <Compile Include="FsMessageTemplates.fs" />
     <Compile Include="TargetBaseline.fs" />
