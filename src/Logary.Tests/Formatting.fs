@@ -207,11 +207,11 @@ let jsonTests fsc =
             |> Expect.equal "Encodes as array of string" (Json.Array [ Json.String "A"; Json.String "B" ])
 
         testCase "stacktrace" <| fun () ->
-          let sample = """  at Logary.Targets.InfluxDb.Impl.extractMessage(TargetMessage request) in /Users/h/dev/tradera/logary/src/targets/Logary.Targets.InfluxDb/Targets_InfluxDb.fs:line 278
+          let sample = """  at Logary.Targets.InfluxDb.Impl.extractMessage(TargetMessage request) in /logary/src/targets/Logary.Targets.InfluxDb/Targets_InfluxDb.fs:line 278
   at Microsoft.FSharp.Collections.Internal.IEnumerator.map@74.DoMoveNext(b& curr)
   at Microsoft.FSharp.Collections.Internal.IEnumerator.MapEnumerator`1.System-Collections-IEnumerator-MoveNext()
   at System.String.Join(String separator, IEnumerable`1 values)
-  at Logary.Targets.InfluxDb.Impl.x2yJ@1-2(InfluxDbConf conf, RuntimeInfo ri, TargetAPI api, Uri endpoint, HttpClient client, TargetMessage[] reqs) in /Users/h/dev/tradera/logary/src/targets/Logary.Targets.InfluxDb/Targets_InfluxDb.fs:line 308
+  at Logary.Targets.InfluxDb.Impl.x2yJ@1-2(InfluxDbConf conf, RuntimeInfo ri, TargetAPI api, Uri endpoint, HttpClient client, TargetMessage[] reqs) in /logary/src/targets/Logary.Targets.InfluxDb/Targets_InfluxDb.fs:line 308
   at Hopac.Core.ContBind`2.DoWork(Worker& wr)
   at Hopac.Core.Worker.Run(Scheduler sr, Int32 me)"""
 
@@ -225,7 +225,7 @@ let jsonTests fsc =
 
         testCase "stacktrace 2" <| fun () ->
           let sample = """
-CompanyA.WebApi.Client.WebApiException: Tradera Web API Error ---&gt; ServiceStack.ServiceClient.Web.WebServiceException: RestException
+CompanyA.WebApi.Client.WebApiException: Service Web API Error ---&gt; ServiceStack.ServiceClient.Web.WebServiceException: RestException
    at ServiceStack.ServiceClient.Web.ServiceClientBase.ThrowWebServiceException[TResponse](Exception ex, String requestUri)
    at ServiceStack.ServiceClient.Web.ServiceClientBase.ThrowResponseTypeException[TResponse](Object request, Exception ex, String requestUri)
    at ServiceStack.ServiceClient.Web.ServiceClientBase.HandleResponseException[TResponse](Exception ex, Object request, String requestUri, Func`1 createWebRequest, Func`2 getResponse, TResponse&amp; response)
