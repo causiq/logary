@@ -145,6 +145,8 @@ let empty: StackdriverConf =
   StackdriverConf.create "CHANGE_PROJECT_ID"
 
 module internal Impl =
+  open Logary.Internals.Chiron
+
   // constant computed once here
   let messageKey = "message"
   let valueKey = "value"
@@ -161,217 +163,37 @@ module internal Impl =
 
   type V = WellKnownTypes.Value
 
-  // consider use destr whole msg context as TemplatePropertyValue, then send to WellKnownTypes
-  let rec x2V (t: Type): 'T -> V =
-    let wrap (k: 'a -> V) = fun inp -> k (unbox inp)
-
-    let inline mkFieldPrinter (shape: IShapeMember<'DeclaringType>) =
-      shape.Accept
-        { new IMemberVisitor<'DeclaringType, string * ('DeclaringType -> V)> with
-            member __.Visit (field: ShapeMember<'DeclaringType, 'Field>) =
-              let fieldPrinter = toV<'Field>()
-              field.Label, fieldPrinter << field.Project }
-
-    match TypeShape.Create t with
-    | Shape.Unit ->
-      wrap (fun () -> V.ForString "()") // 'T = unit
-    | Shape.String ->
-      wrap (fun (s: string) -> V.ForString s)
-    | Shape.Bool ->
-      wrap (fun (b: bool) -> V.ForBool b)
-    | Shape.Double ->
-      wrap (fun f -> V.ForNumber f)
-    | Shape.Int16 ->
-      wrap (int16 >> float >> V.ForNumber)
-    | Shape.Int32 ->
-      wrap (int32 >> float >> V.ForNumber)
-    | Shape.Int64 ->
-      wrap (int64 >> float >> V.ForNumber)
-    | Shape.UInt16 ->
-      wrap (uint16 >> float >> V.ForNumber)
-    | Shape.UInt32 ->
-      wrap (uint32 >> float >> V.ForNumber)
-    | Shape.UInt64 ->
-      wrap (uint64 >> float >> V.ForNumber)
-    | Shape.BigInt ->
-      wrap ((fun (x: BigInteger) -> x) >> float >> V.ForNumber)
-    | Shape.DateTime ->
-      wrap (fun (b:DateTime) -> V.ForString (b.ToString("o")))
-    | Shape.DateTimeOffset ->
-      wrap (fun (b:DateTimeOffset) -> V.ForString (b.ToString("o")))
-
-    | Shape.Array s when s.Rank = 1 ->
-      s.Accept
-        { new IArrayVisitor<'T -> V> with
-            member __.Visit<'a> _ =
-              wrap (fun xs ->
-                xs
-                |> List.map (fun x -> x2V (t.GetType()) x)
-                |> List.toArray
-                |> fun args -> V.ForList(args))
-        }
-
-    | Shape.FSharpOption s ->
-      s.Accept
-        { new IFSharpOptionVisitor<'T -> V> with
-            member __.Visit<'a> () =
-              wrap (function
-                | None -> V.ForNull()
-                | Some x ->
-                  x2V (x.GetType()) x)
-        }
-
-    | Shape.FSharpUnion (:? ShapeFSharpUnion<'T> as shape) ->
-      let mkUnionCasePrinter (s: ShapeFSharpUnionCase<'T>) =
-        let fieldPrinters = s.Fields |> Array.map mkFieldPrinter
-        fun (u: 'T) ->
-          match fieldPrinters with
-          | [||] ->
-            V.ForString s.CaseInfo.Name
-
-          | [|_, fp|] ->
-            let str = Struct()
-            str.Fields.[s.CaseInfo.Name] <- fp u
-            V.ForStruct str
-
-          | fps ->
-            let values =
-              fps
-              |> Seq.map (fun (_, fp) -> fp u)
-              |> Seq.toArray
-              |> fun xs -> V.ForList(xs)
-
-            let str = Struct()
-            str.Fields.[s.CaseInfo.Name] <- values
-            V.ForStruct str
-
-      let casePrinters = shape.UnionCases |> Array.map mkUnionCasePrinter
-
-      fun (u:'T) ->
-        let printer = casePrinters.[shape.GetTag u]
-        printer u
-
-    | Shape.FSharpMap s when s.Key = shapeof<string> ->
-      s.Accept
-        { new IFSharpMapVisitor<'T -> V> with
-            member __.Visit<'k, 'v when 'k : comparison> () =
-              wrap (fun (m: Map<string, 'T>) ->
-                let s = Struct()
-                for KeyValue (k, v) in m do
-                  let pbV = x2V (v.GetType()) v
-                  s.Fields.[k] <- pbV
-                V.ForStruct s)
-        }
-
-//    | Shape.FSharpSet s ->
-//      s.Accept
-//        { new IFSharpSetVisitor<'T -> V> with
-//            member __.Visit<'a when 'a : comparison> () = // 'T = Set<'a>
-//              wrap (fun (xs: Set<'a>) ->
-//                xs
-//                |> Array.ofSeq
-//                |> Array.map (fun x -> x2V (x.GetType()) x)
-//                |> fun args -> V.ForList(args))
-//       }
-    | Shape.Enumerable s ->
-      match s.Element with
-      | Shape.KeyValuePair ks when ks.Key = shapeof<string> ->
-        s.Accept
-          { new IEnumerableVisitor<'T -> V> with
-              member __.Visit () =
-                wrap (fun (xs: seq<_>) ->
-                  let s = Struct()
-                  xs |> Seq.iter (fun (KeyValue (key, value)) ->
-                    s.Fields.[key] <- x2V (value.GetType()) value)
-                  V.ForStruct s)
-          }
-
-      | _ ->
-        s.Accept
-          { new IEnumerableVisitor<'T -> V> with
-              member __.Visit () =
-                wrap (fun (xs: seq<_>) ->
-                  let arr = ResizeArray<V>()
-                  for x in xs do
-                    // I can't make this not warn, but I want warnings in all of the file
-                    let pbV = x2V (x.GetType()) (box x)
-                    arr.Add pbV
-                  V.ForList (arr.ToArray())
-                )
-          }
-
-    | Shape.KeyValuePair s when s.Key = shapeof<string> ->
-      s.Accept
-        { new IKeyValuePairVisitor<'T -> V> with
-            member x.Visit<'K, 'V> () =
-              wrap (fun (kvp: KeyValuePair<'K, 'V>) ->
-                let k: string = unbox kvp.Key
-                let v = x2V (kvp.Value.GetType()) kvp.Value
-                let s = Struct()
-                s.Fields.[k] <- v
-                V.ForStruct s
-              )
-        }
-
-    | Shape.Exception s ->
-      s.Accept
-        { new IExceptionVisitor<'T -> V> with
-            member __.Visit() =
-              wrap (fun (e: exn) ->
-                let s = Struct()
-
-                if not (isNull e.Data) && e.Data.Count > 0 then
-                  s.Fields.["data"] <- toV<System.Collections.IDictionary>() e.Data
-
-                if not (isNull e.HelpLink) then
-                  s.Fields.["helpLink"] <- toV<string>() e.HelpLink
-
-                if not (isNull e.InnerException) then
-                  s.Fields.["inner"] <- toV<exn>() e.InnerException
-
-                if e.HResult <> Unchecked.defaultof<int> then
-                  s.Fields.["hresult"] <- toV<int>() e.HResult
-
-                s.Fields.["message"] <- toV<string>() e.Message
-                s.Fields.["source"] <- toV<string>() e.Source
-
-                if not (String.IsNullOrWhiteSpace e.StackTrace) then
-                  let lines = DotNetStacktrace.parse e.StackTrace
-                  s.Fields.["stacktrace"] <- toV<StacktraceLine[]>() lines
-
-                if not (isNull e.TargetSite) then
-                  s.Fields.["targetSite"] <- toV<string>() e.TargetSite.Name
-
-                V.ForStruct s
-              )
-        }
-
-    | Shape.FSharpRecord (:? ShapeFSharpRecord<'T> as s) ->
-      let fieldPrinters = s.Fields |> Array.map mkFieldPrinter
-      fun (r: 'T) ->
-        let s = Struct()
-        fieldPrinters |> Seq.iter (fun (label, fp) -> s.Fields.[label] <- fp r)
-        V.ForStruct s
-
-    | Shape.Poco (:? ShapePoco<'T> as shape) ->
-      let propPrinters = shape.Properties |> Array.map mkFieldPrinter
-      fun (r: 'T) ->
-        let s = Struct()
-        propPrinters |> Seq.iter (fun (label, fp) -> s.Fields.[label] <- fp r)
-        V.ForStruct s
-
-    // TODO: BitmapNodeN
-
-    | other ->
-      wrap (fun o -> V.ForString (string o))
-
-  and toV<'T> (): 'T -> V =
-    fun inp ->
-      x2V typeof<'T> (box inp)
+  let rec toValue (json: Json) =
+    match json with
+    | Json.Number f ->
+      match Double.TryParse f with
+      | false, _ ->
+        V.ForString f
+      | true, f ->
+        V.ForNumber f
+    | Json.String s ->
+      V.ForString s
+    | Json.True ->
+      V.ForBool true
+    | Json.False ->
+      V.ForBool false
+    | Json.Null ->
+      V.ForNull ()
+    | Json.Array arr ->
+      let vs =
+        arr
+          |> List.fold (fun acc item -> (toValue item) :: acc) []
+          |> List.toArray
+      V.ForList vs
+    | Json.Object jObj ->
+      jObj
+        |> JsonObject.toMap
+        |> Seq.fold (fun (acc: Struct) (KeyValue (k, v)) -> acc.Fields.[k] <- toValue v; acc) (Struct ())
+        |> V.ForStruct
 
   let addToStruct (s: WellKnownTypes.Struct) (k, value: obj): WellKnownTypes.Struct =
     if isNull value then s else
-    s.Fields.[k] <- x2V (value.GetType()) value
+    s.Fields.[k] <- Json.encode value |> toValue
     s
 
   type Message with
