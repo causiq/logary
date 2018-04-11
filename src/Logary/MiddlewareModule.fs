@@ -65,10 +65,7 @@ module Middleware =
 
   [<CompiledName "FillWithContextSlot">]
   let fillWithContextSlot (dataSlot: IDataSlot) : Middleware =
-    // collect data when compose middleware
-    let data = dataSlot.collect ()
-
     fun next msg ->
       msg
-      |> Message.setContext KnownLiterals.ScopeContextName data
+      |> Message.setContext KnownLiterals.ScopeContextName (dataSlot.collect ())
       |> next

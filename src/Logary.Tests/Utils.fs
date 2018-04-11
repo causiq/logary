@@ -39,7 +39,7 @@ let buildTextWriteTarget name =
   let twTargetConf = TextWriter.create twconf name
   (out, error, twTargetConf)
 
-let buildLogManager () = job {
+let buildLogManagerWith configFac = job {
   let svc = "svc"
   let host = "localhost"
   let tname = "4test"
@@ -48,14 +48,16 @@ let buildLogManager () = job {
 
   let! logm =
     Config.create svc host
-    // |> Config.ilogger iloggerConf
-    // |> Config.ilogger (ILogger.Console Error)
     |> Config.target twTargetConf
     |> Config.processing (Events.events |> Events.sink [tname])
     |> Config.disableGlobals
+    |> configFac
     |> Config.build
   return logm, out, error
 }
+
+let buildLogManager () = buildLogManagerWith id
+
 
 [<MethodImpl(MethodImplOptions.NoInlining)>]
 let innermost () =

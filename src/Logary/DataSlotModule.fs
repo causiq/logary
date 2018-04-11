@@ -3,12 +3,18 @@ namespace Logary
 open System.Threading
 open System
 
+[<AutoOpen>]
+module DataSlotExtension =
+  type IDataSlot with
+    member x.push (dataFac: unit -> _) =
+      x.push (lazy (dataFac () |> box))
+
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module DataSlot =
 
   type internal AsyncLocalDataSlot () =
-    static let _currentData = new AsyncLocal<Lazy<obj> list>()
-    static do _currentData.Value <- list.Empty
+    let _currentData = new AsyncLocal<Lazy<obj> list>()
+    do _currentData.Value <- list.Empty
    
     let getCurrentDataFromAsyncLocal () =
       let current = _currentData.Value
