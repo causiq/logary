@@ -52,9 +52,6 @@ module Registry =
 
       /// default logger rules from logary conf, will be applied when create new logger
       defaultLoggerLevelRules : (string * LogLevel) list
-
-      /// support logging additional data from scope
-      logScope: ILogScope
     }
 
   /// Flush all pending messages for all targets. Flushes with no timeout; if
@@ -102,10 +99,6 @@ module Registry =
     let inline ensureName name (m: Message) =
       if m.name.isEmpty then { m with name = name } else m
 
-    let fillWithScope (logScope: ILogScope) : Message -> Message =
-      logScope.collect ()
-      |> Message.setContext KnownLiterals.ScopeContextName
-
     let inline getLogger (t: T) name mid =
       let nameStr = name.ToString ()
       match t.loggerLevelDic.TryGetValue nameStr with
@@ -126,7 +119,7 @@ module Registry =
               (t.isClosed ^->. Promise (()))
               <|>
               (Alt.prepareFun (fun _ ->
-                let msg = level |> messageFactory |> ensureName name |> fillWithScope t.logScope
+                let msg = level |> messageFactory |> ensureName name
                 t.msgProcessing msg mid))
             else Promise.instaPromise
 
@@ -253,8 +246,7 @@ module Registry =
             flushCh = flushCh
             shutdownCh = shutdownCh
             loggerLevelDic = new System.Collections.Concurrent.ConcurrentDictionary<string,LogLevel> ()
-            defaultLoggerLevelRules = conf.loggerLevels
-            logScope = new AsyncLogScope() }
+            defaultLoggerLevelRules = conf.loggerLevels}
 
         Job.supervise rlogger (Policy.restartDelayed 512u) (running ctss)
         |> Job.startIgnore
@@ -276,6 +268,4 @@ module Registry =
         member x.shutdown () = shutdown t
         member x.switchLoggerLevel (path, logLevel) =
           Impl.switchLoggerLevel t path logLevel
-        member x.beginScope lazyData = t.logScope.push lazyData
-        member x.wrapScope scope = t.logScope.wrap scope
     }

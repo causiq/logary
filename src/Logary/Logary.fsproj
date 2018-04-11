@@ -44,7 +44,8 @@
     <Compile Include="HashMap.fs" />
     <Compile Include="HashMapModule.fs" />
     <Compile Include="LogLevel.fs" />
-    <Compile Include="LogScope.fs" />
+    <Compile Include="DataSlot.fs" />
+    <Compile Include="DataSlotModule.fs" />
     <Compile Include="Constants.fs" />
     <Compile Include="Internals/Internals.fs" />
     <Compile Include="DataModel.fs" />

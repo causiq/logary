@@ -54,16 +54,3 @@ type LogManager =
   /// Dynamically controls logger min level, 
   /// this will only affect the loggers (its name, not its instance) which have been created beafore
   abstract switchLoggerLevel: string * LogLevel -> unit
-
-  /// Add scope info when logging
-  abstract beginScope : Lazy<obj> -> IDisposable
-  
-  /// wrap external scope
-  abstract wrapScope : ILogScope -> unit
-
-[<AutoOpen>]
-module LogManager =
-  type LogManager with
-
-    member x.beginScope<'t> (dataFac: unit -> 't) : IDisposable =
-      x.beginScope (lazy(dataFac () |> box))
