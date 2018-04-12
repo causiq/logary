@@ -2,8 +2,10 @@ REDIRECTS: ON
 RESTRICTION: || (== net461) (== netcoreapp2.0) (== netstandard2.0)
 NUGET
   remote: https://api.nuget.org/v3/index.json
-    aliyun-log-csharp-sdk (0.6)
-      Newtonsoft.Json (>= 10.0.2)
+    aliyun-log-csharp-sdk (1.0)
+      Google.Protobuf (>= 3.5.1) - restriction: || (&& (== net461) (>= netstandard2.0)) (== netcoreapp2.0) (== netstandard2.0)
+      lz4net (>= 1.0.15.93) - restriction: || (&& (== net461) (>= netstandard2.0)) (== netcoreapp2.0) (== netstandard2.0)
+      Newtonsoft.Json (>= 11.0.2) - restriction: || (&& (== net461) (>= netstandard2.0)) (== netcoreapp2.0) (== netstandard2.0)
     Argu (5.1)
       FSharp.Core (>= 4.0.0.1) - restriction: || (== net461) (&& (== netcoreapp2.0) (>= net45)) (&& (== netstandard2.0) (>= net45))
       FSharp.Core (>= 4.3.2) - restriction: || (&& (== net461) (< net45) (>= netstandard2.0)) (== netcoreapp2.0) (== netstandard2.0)
@@ -109,7 +111,7 @@ NUGET
       Google.Cloud.Logging.Type (>= 2.0)
       Grpc.Core (>= 1.7.1)
       NETStandard.Library (>= 1.6.1) - restriction: || (&& (== net461) (< net45) (>= netstandard1.5)) (== netcoreapp2.0) (== netstandard2.0)
-    Google.Protobuf (3.5.1)
+    Google.Protobuf (3.5.1) - restriction: || (&& (== net461) (>= netstandard2.0)) (== netcoreapp2.0) (== netstandard2.0)
       NETStandard.Library (>= 1.6.1) - restriction: || (&& (== net461) (< net45)) (== netcoreapp2.0) (== netstandard2.0)
     Grpc.Auth (1.10.1)
       Google.Apis.Auth (>= 1.21)
@@ -130,6 +132,11 @@ NUGET
       Hopac (>= 0.3.23)
       System.Diagnostics.FileVersionInfo (>= 4.3) - restriction: || (== netcoreapp2.0) (== netstandard2.0)
     libzmq_vc120 (4.2.30)
+    lz4net (1.0.15.93) - restriction: || (&& (== net461) (>= netstandard2.0)) (== netcoreapp2.0) (== netstandard2.0)
+      lz4net.unsafe.netcore (1.0.15.93) - restriction: || (&& (== net461) (< net20)) (== netcoreapp2.0) (== netstandard2.0)
+      NETStandard.Library (>= 1.6.1) - restriction: || (&& (== net461) (< net20)) (== netcoreapp2.0) (== netstandard2.0)
+    lz4net.unsafe.netcore (1.0.15.93) - restriction: || (&& (== net461) (< net20) (>= netstandard2.0)) (== netcoreapp2.0) (== netstandard2.0)
+      NETStandard.Library (>= 1.6.1)
     Machine.Specifications (0.12)
       NETStandard.Library (>= 1.6) - restriction: || (&& (== net461) (< net35)) (== netcoreapp2.0) (== netstandard2.0)
       System.Diagnostics.TextWriterTraceListener (>= 4.0) - restriction: || (&& (== net461) (< net35)) (== netcoreapp2.0) (== netstandard2.0)
@@ -237,7 +244,7 @@ NUGET
       System.Threading (>= 4.0.11) - restriction: || (&& (== net461) (< net35)) (== netcoreapp2.0) (== netstandard2.0)
     NETStandard.Library (2.0.1) - restriction: || (&& (== net461) (>= netstandard1.6)) (== netcoreapp2.0) (== netstandard2.0)
       Microsoft.NETCore.Platforms (>= 1.1)
-    Newtonsoft.Json (11.0.2)
+    Newtonsoft.Json (11.0.2) - restriction: || (&& (== net461) (>= netstandard2.0)) (== netcoreapp2.0) (== netstandard2.0)
     NitoAsyncEx.Context.StrongName (1.1)
     NLog (4.5.2)
     NodaTime (2.2.5)
@@ -1018,8 +1025,8 @@ GITHUB
       Expecto
       Hopac
   remote: logary/logary
-    src/Logary.CSharp.Facade/Facade.cs (d57cf196a34975a035181f1d6eef28bad3396505)
-    src/Logary.Facade/Facade.fs (d57cf196a34975a035181f1d6eef28bad3396505)
+    src/Logary.CSharp.Facade/Facade.cs (b47057c50350024e30ffa3fe3c6f750094db0110)
+    src/Logary.Facade/Facade.fs (b47057c50350024e30ffa3fe3c6f750094db0110)
   remote: messagetemplates/messagetemplates-fsharp
     src/FsMtParser/FsMtParserFull.fs (17bdfdcc237d7d725c23ebe0ef24c438c4ff7530)
   remote: xyncro/aether
