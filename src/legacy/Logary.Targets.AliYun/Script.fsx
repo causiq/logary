@@ -3,23 +3,17 @@
 #r "Hopac"
 #r "Hopac.Core"
 #r "Logary"
-#r "AliyunLogSDK"
-#r "LZ4Sharp"
-#r "Google.ProtocolBuffers"
-#r "Google.ProtocolBuffers.Serialization"
+#r "Aliyun.Api.Log"
+#r "LZ4"
+#r "Google.Protobuf"
 #load "Targets_AliYun.fs"
 
-open System
 open Hopac
-open Hopac.Infixes
 open Logary
 open Logary.Targets.AliYun
 open Logary.Configuration
-open Logary.Logger
-open NodaTime
 
 printfn "begin"
-
 
 let aliyunConf = { AccessKeyId = "";
                   AccessKey = "";
@@ -32,28 +26,23 @@ let aliyunConf = { AccessKeyId = "";
 let logm =
     Config.create "testAliYun" "localhost"
     |> Config.target (Logary.Targets.AliYun.create aliyunConf "AliYunLog")
-    |> Config.ilogger (ILogger.Console Verbose)
+    |> Config.ilogger (ILogger.LiterateConsole Verbose)
     |> Config.build
     |> run
-let tuple = ("first",2,"Third")
 let msg =
-  Message.eventInfo ("Hello World! from {target}")
-  |> Message.setField "target" "aliyun-target"
-  |> Message.setContext "tuples" tuple
+  Message.eventFormat (Info, "Hello World! from {target}", "aliyun-target")
+  |> Message.setContext "some tuple" ("first",2,"Third")
   |> fun msg -> Message.setContext "msg-itself" msg msg
+  |> Message.setLevel Error
 
-let curLogger = Logary.Logging.getCurrentLogger()
-let jiajunLogger = logm.getLogger (PointName [| "Logary"; "Aliyun"; "JiaJun"; "TestInScript" |])
+let curLogger = Log.create "test.log.fsx"
 
-msg |> logSimple curLogger
-msg |> Message.setLevel Error |> jiajunLogger.logSimple
+curLogger.log Error (fun _ -> msg) |> run
+printfn "send log done!"
 
-let timeWaiting = Duration.FromSeconds 5L
+logm.shutdown () |> run
 
-Hopac.timeOutMillis 3000 ^=> fun _ -> logm.shutdown timeWaiting timeWaiting
-|> run
-|> fun info ->
-   printfn "------------------after shutdow => %s %A %A" Environment.NewLine info
+printfn "done!"
 
 // Login your AliYun sls console (https://sls.console.aliyun.com/).
 // Go to your logstore

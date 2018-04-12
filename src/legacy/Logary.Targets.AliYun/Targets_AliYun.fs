@@ -1,14 +1,10 @@
 ﻿module Logary.Targets.AliYun
 
-// Ignore deprecations — if this target breaks it's removed from the code base
-#nowarn "44"
-
 open System
 open Logary
 open Logary.Internals
 open Logary.Message
 open Logary.Configuration
-open Logary.Formatting.Literate
 
 type AliYunConf =
   {
@@ -69,7 +65,7 @@ module internal Impl =
         msg |> Message.getAllGauges
         |> Seq.iter (fun (gaugeType, Gauge(value, units)) ->
            let gaugeType = sprintf "%s (%s)" gaugeType units.symbol
-           log.PushBack(gaugeType, value.ToString()))
+           log.PushBack(gaugeType, value.toFloat.ToString()))
 
         let context = MessageWriter.contextWriter.format msg
         log.PushBack("_ctx-all", context)
@@ -85,7 +81,7 @@ module internal Impl =
   let loop (conf: AliYunConf) (api: TargetAPI) =
 
     let logger =
-      let pn = PointName [| "Logary"; "AliYun"; "loop" |]
+      let pn = PointName [| "Logary"; "AliYun"; "Target" ;"loop" |]
       Logger.apply (setName pn) api.runtime.logger
 
     let sendLog (logClient:Aliyun.Api.LOG.LogClient) reqs extra =
@@ -96,10 +92,11 @@ module internal Impl =
       putLogRequest.Topic <- serviceName // use serviceName as log topic for quick(index default) group/search
       putLogRequest.LogItems <- ResizeArray<_> (Array.map (transToAliLogItem host logSendTime) reqs)
 
+      logger.debugWithBP (eventX "begin put log to aliyun") >>=.
       let res = logClient.PutLogs putLogRequest
       let resHeader = res.GetAllHeaders() |> Seq.map (|KeyValue|) |> Map.ofSeq
-      logger.verboseWithBP (eventX "res {header}" >> Message.setField "header" resHeader)
-      >>=. Seq.iterJobIgnore reqestAckJobCreator reqs
+      logger.verboseWithBP (eventX "res {header}" >> Message.setField "header" resHeader) >>=.
+      Seq.iterJobIgnore reqestAckJobCreator reqs
 
     let extraInfo = (api.runtime.host, api.runtime.service, conf.Project, conf.Logstore)
 
