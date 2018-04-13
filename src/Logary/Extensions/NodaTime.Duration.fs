@@ -9,5 +9,4 @@ module DurationEx =
   type Duration with
     [<Extension; CompiledName "ToGauge">]
     member dur.toGauge () =
-      dur.TotalTicks * float Constants.NanosPerTick,
-      Scaled (Seconds, float Constants.NanosPerSecond)
+      Ticks.toGauge dur.BclCompatibleTicks

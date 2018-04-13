@@ -9,6 +9,7 @@ open Logary.Internals
 open Logary.EventProcessing
 open NodaTime
 open System.Text.RegularExpressions
+open System
 
 
 /// This is the logary configuration structure having a memory of all
@@ -30,7 +31,7 @@ module Registry =
   /// The holder for the channels of communicating with the registry.
   type T =
     private {
-      runtimeInfo: RuntimeInfo
+      runtime: RuntimeInfo
       msgProcessing: Message -> Middleware option -> Alt<Promise<unit>>
 
       /// to show whether or not registry is shutdown, used contorl message communication channel
@@ -52,6 +53,9 @@ module Registry =
 
       /// default logger rules from logary conf, will be applied when create new logger
       defaultLoggerLevelRules : (string * LogLevel) list
+
+      /// generate span id
+      spanIdGenerator : SpanIdGenerator
     }
 
   /// Flush all pending messages for all targets. Flushes with no timeout; if
@@ -96,6 +100,14 @@ module Registry =
 
 
   module private Impl =
+
+    let getClock (runtime: RuntimeInfo) : IClock =
+      { new IClock with
+          member x.GetCurrentInstant () =
+            Instant.ofEpoch (runtime.getTimestamp ())
+      }
+
+
     let inline ensureName name (m: Message) =
       if m.name.isEmpty then { m with name = name } else m
 
@@ -240,13 +252,14 @@ module Registry =
     runningPipe
     >>= fun (sendMsg, ctss) ->
         let state =
-          { runtimeInfo = ri
+          { runtime = ri
             msgProcessing = wrapper sendMsg
             isClosed = isClosed
             flushCh = flushCh
             shutdownCh = shutdownCh
             loggerLevelDic = new System.Collections.Concurrent.ConcurrentDictionary<string,LogLevel> ()
-            defaultLoggerLevelRules = conf.loggerLevels}
+            defaultLoggerLevelRules = conf.loggerLevels
+            spanIdGenerator = { runtime= ri; counter = 0 }}
 
         Job.supervise rlogger (Policy.restartDelayed 512u) (running ctss)
         |> Job.startIgnore
@@ -259,7 +272,7 @@ module Registry =
         member x.getLoggerWithMiddleware name mid =
           Impl.getLogger t name (Some mid)
         member x.runtimeInfo =
-          t.runtimeInfo
+          t.runtime
         member x.flushPending dur =
           flushWithTimeout t dur
         member x.flushPending () = flush t
@@ -268,4 +281,6 @@ module Registry =
         member x.shutdown () = shutdown t
         member x.switchLoggerLevel (path, logLevel) =
           Impl.switchLoggerLevel t path logLevel
+        member x.createSpan parentSpan logger messageFac =
+          Span.createSpanT (Impl.getClock t.runtime)  t.spanIdGenerator parentSpan logger messageFac :> Span
     }

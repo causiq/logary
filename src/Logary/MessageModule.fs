@@ -187,6 +187,11 @@ module Message =
   let hasTag (tag: string) (message: Message) =
     message |> getAllTags |> Set.contains tag
 
+  /// Set span id
+  [<CompiledName "SetSpanId">]
+  let setSpanId (spanId: string) (message: Message) =
+    message |> setContext KnownLiterals.SpanIdContextName spanId
+
   //#endregion
 
   //#region CTORS

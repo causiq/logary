@@ -26,10 +26,7 @@ module Logger =
 
   /// Log a message, but don't await all targets to flush.
   let inline log (logger: Logger) logLevel messageFactory: Alt<unit> =
-    if logLevel >= logger.level then
-      logger.logWithAck logLevel messageFactory ^-> ignore
-    else
-      Alt.always ()
+    logger.logWithAck logLevel messageFactory ^-> ignore
 
   let private simpleTimeout millis loggerName =
     timeOutMillis millis

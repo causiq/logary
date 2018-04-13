@@ -38,6 +38,11 @@ module KnownLiterals =
   [<Literal>]
   let ScopeContextName = LogaryPrefix + "scope"
 
+  [<Literal>]
+  let SpanIdContextName = LogaryPrefix + "spanId"
+  [<Literal>]
+  let SpanInfoContextName = LogaryPrefix + "spanInfo"
+
 /// Time calculation constants
 module Constants =
   [<Literal>]
