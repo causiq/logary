@@ -62,6 +62,7 @@ module internal Span =
   open Hopac
   open Hopac.Infixes
 
+  /// id format: #host-service.hex.hex.hex#host-service.hex.hex.hex...
   type SpanIdGenerator (runtime: RuntimeInfo, counterDic: ConcurrentDictionary<string, int ref>) =
 
     new (runtime: RuntimeInfo) = SpanIdGenerator (runtime, new ConcurrentDictionary<string, int ref>())

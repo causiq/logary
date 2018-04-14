@@ -64,7 +64,7 @@ module Middleware =
       List.foldBack (fun f composed -> f composed) middlewares id
 
   [<CompiledName "FillWithContextSlot">]
-  let fillWithContextSlot (dataSlot: IDataSlot) : Middleware =
+  let fillWithContextSlot (dataSlot: DataSlot) : Middleware =
     fun next msg ->
       msg
       |> Message.setContext KnownLiterals.ScopeContextName (dataSlot.collect ())
