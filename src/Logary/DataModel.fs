@@ -209,6 +209,20 @@ type Message =
     member x.timestampEpochS: int64 =
       x.timestamp / Constants.NanosPerSecond
 
+/// span focus on time scope (scope means it needs explicitly specify its end) which usually used for tracing.
+/// message focus on data context which usually used for logging/metric (since metric can be express by gauge which inclued by message).
+/// one message can belong to a span, it means this log message happened in this span.
+/// span itself contains one message, when logging, it just fill message with some specific info (startTime, endTime, duration, id ...)，
+/// then every target can transform this message into their own backend's implementation (like zipkin,jaeger,opentracing...).
+/// since span can be finished, so they will have a logger and send it's message at that time.
+type Span =
+  inherit IDisposable
+
+  /// log its data into registry
+  abstract finish: (Message -> Message) -> Promise<unit>
+  /// the id of this span
+  abstract id: string
+
 /// See the docs on the funtions for descriptions on how Ack works in conjunction
 /// with the promise.
 type Logger =
@@ -233,6 +247,10 @@ type Logger =
   /// Gets the currently set log level (minimal,inclusive),
   /// aka. the granularity with which things are being logged.
   abstract level: LogLevel
+
+  /// Create a span and make itself as the span's tracer
+  abstract createSpan: string -> (LogLevel -> Message) -> Span
+  
 
 /// A disposable interface to use with `use` constructs and to create child-
 /// contexts. Since it inherits Logger, you can pass this scope down into child

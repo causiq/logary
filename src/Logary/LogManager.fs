@@ -3,7 +3,6 @@ namespace Logary
 open Logary.Internals
 open NodaTime
 open Hopac
-open System
 
 /// A data-structure that gives information about the outcome of a flush
 /// operation on the Registry. This data structure is only relevant if the
@@ -54,6 +53,3 @@ type LogManager =
   /// Dynamically controls logger min level, 
   /// this will only affect the loggers (its name, not its instance) which have been created beafore
   abstract switchLoggerLevel: string * LogLevel -> unit
-
-  /// Create a span with logger as its tracer
-  abstract createSpan: Span option -> Logger -> (LogLevel -> Message) -> Span

@@ -3,6 +3,8 @@ namespace Logary
 open System.Threading
 open System
 open NodaTime
+open System.Collections.Concurrent
+open Logary.Internals
 
 [<AutoOpen>]
 module DataSlotExtension =
@@ -60,6 +62,24 @@ module internal Span =
   open Hopac
   open Hopac.Infixes
 
+  type SpanIdGenerator (runtime: RuntimeInfo, counterDic: ConcurrentDictionary<string, int ref>) =
+
+    new (runtime: RuntimeInfo) = SpanIdGenerator (runtime, new ConcurrentDictionary<string, int ref>())
+
+    member x.removeFromCounter spanId =
+      counterDic.TryRemove(spanId) |> ignore
+
+    // we assume that one span will not have more then int64.MaxValue child spans in its lifetime
+    member x.generate (parentSpanId: string) =
+      let parentSpanId = if isNull parentSpanId then String.Empty else parentSpanId.Trim()
+      let localInfo = sprintf "#%s-%s" runtime.host runtime.service
+      let localInfoPrefix = if parentSpanId.Contains(localInfo) then parentSpanId else localInfo
+
+      let counter = counterDic.GetOrAdd(parentSpanId, ref 0)
+      let counter = Interlocked.Increment(counter)
+      sprintf "%s.%x" localInfoPrefix counter
+
+
   /// describe the time scope info about a span
   type SpanInfo =
     {
@@ -84,17 +104,16 @@ module internal Span =
       hasFired: bool
       childCount: int ref
       clock: IClock
+      idGen: SpanIdGenerator
     }
 
     interface Span with
       member x.id = x.id
 
-      member x.generateChildId () =
-        sprintf "%s.%d" x.id (System.Threading.Interlocked.Increment (x.childCount))
-
-      member x.finish () =
+      member x.finish (transform: Message -> Message) =
         if not x.hasFired then
-          let msgFac level =
+          do x.idGen.removeFromCounter x.id
+          let composedMsgFac level =
             let endAt = x.clock.GetCurrentInstant()
             let dur = endAt - x.beginAt
             let spanInfo = {
@@ -104,24 +123,21 @@ module internal Span =
               duration = dur.BclCompatibleTicks
             }
 
-            x.messageFac level
+            (x.messageFac >> transform) level
             |> Message.setContext KnownLiterals.SpanInfoContextName spanInfo
             |> Message.setSpanId x.id
 
-          x.logger.logWithAck Info x.messageFac >>=* id
+          x.logger.logWithAck Info composedMsgFac >>=* id
         else Promise (())
 
     interface IDisposable with
       member x.Dispose () =
-         (x :> Span).finish () |> Hopac.start
+         (x :> Span).finish id |> Hopac.start
 
 
-  let createSpanT (clock: IClock) (idGen: SpanIdGenerator) (parentSpan: Span option) (logger: Logger) (msgFac: LogLevel -> Message) : T =
+  let createSpanT (clock: IClock) (idGen: SpanIdGenerator) (parentSpanId: string) (logger: Logger) (msgFac: LogLevel -> Message) : T =
     let now = clock.GetCurrentInstant ()
-    let spanId =
-      match parentSpan with
-      | Some span -> span.generateChildId ()
-      | None -> idGen.Generate ()
+    let spanId = idGen.generate parentSpanId
 
     { messageFac = msgFac
       id = spanId
@@ -129,4 +145,5 @@ module internal Span =
       logger = logger
       hasFired = false
       childCount = ref 0
-      clock = clock}
+      clock = clock
+      idGen = idGen}
