@@ -294,17 +294,14 @@ module Logger =
           name
 
         member x.level = logger.level
+        member x.createSpan parentSpanId msgFactory = logger.createSpan parentSpanId msgFactory
     }
 
   let apply (middleware: Message -> Message) (logger: Logger): Logger =
-    { new Logger with // Logger.apply delegator
-      member x.logWithAck logLevel messageFactory =
+    { new LoggerWrapper(logger) with
+      override x.logWithAck logLevel messageFactory =
         logger.logWithAck logLevel (messageFactory >> middleware)
-      member x.name =
-        logger.name
-      member x.level =
-        logger.level
-    }
+    } :> Logger
 
 /// Syntactic sugar on top of Logger for use of curried factory function
 /// functions.

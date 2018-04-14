@@ -112,6 +112,34 @@ let tests = [
     do! logm.shutdown ()
   })
 
+  testCaseJob "log with span" (job {
+    let! (logm, out, _)  = Utils.buildLogManager ()
+    let checkSpanId spanId = job {
+      do! logm.flushPending ()
+      clearStream out
+      |> Expecto.Flip.Expect.stringContains "should has spanId" spanId
+    }
+
+    let lga = logm.getLogger "logger.a"
+    do! job {
+      use rootSpan = lga.createSpan "" (Message.eventX "some root span")
+      let lgb = logm.getLogger "logger.b"
+      use span1 = lgb.createSpan rootSpan.id (Message.eventX "some child span 1")
+      let span2 = lgb.createSpan rootSpan.id (Message.eventX "some child span 2")
+      do span2.Dispose ()
+
+      do! checkSpanId "#localhost-svc.1.2"
+
+      for i in 1..2 do
+        use spani = lgb.createSpan span1.id (fun level -> Message.eventFormat(level, "some grand span {taskId}", i) )
+        do! timeOutMillis 500
+        do! lgb.infoWithAck (eventX "some log message" >> setSpanId spani.id)
+        do! checkSpanId (sprintf "#localhost-svc.1.1.%d" i)
+    }
+
+    do! checkSpanId ("#localhost-svc.1")
+  })
+
   testCaseJob "switch logger level" (job {
     let! (logm, out, error)  = Utils.buildLogManager ()
     let loggername = PointName.parse "logger.test"

@@ -75,6 +75,9 @@ module internal Global =
 
       member x.logWithAck level msgFactory =
         withLogger (fun logger -> logger.logWithAck level (msgFactory >> ensureName))
+      
+      member x.createSpan parentSpanId msgFactory =
+        withLogger (fun logger -> logger.createSpan parentSpanId (msgFactory >> ensureName))
 
 
   /// Call to initialise Logary with a new Logary instance.

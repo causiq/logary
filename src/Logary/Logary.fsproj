@@ -65,8 +65,10 @@
     <Compile Include="Extensions/NodaTime.Duration.fs" />
     <Compile Include="Extensions/NodaTime.Instant.fs" />
     <Compile Include="Extensions/System.Dates.fs" />
+    <Compile Include="Extensions/LogManager.fs" />
     <Compile Include="MessageModule.fs" />
     <Compile Include="DataSlotModule.fs" />
+    <Compile Include="Internals/SpanModule.fs" />
     <Compile Include="MiddlewareModule.fs" />
     <Compile Include="LoggerModule.fs" />
     <!-- Below: runtime -->

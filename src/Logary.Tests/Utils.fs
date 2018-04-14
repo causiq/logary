@@ -115,6 +115,7 @@ let emptyRuntime =
   memo (
     Config.createInternalTargets (ILogger.LiterateConsole Verbose)
     |> Config.createInternalLogger (RuntimeInfo.create "logary-tests" "dev-machine")
+    |> Job.bind (fun (ri, _) -> ri|>Job.result)
   )
 
 let nanos xs =

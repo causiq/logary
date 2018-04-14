@@ -223,6 +223,15 @@ type Span =
   /// the id of this span
   abstract id: string
 
+type NoopSpan () =
+  interface Span with
+    member x.finish trasn = Promise(())
+    member x.id = String.Empty
+  interface IDisposable with
+    member x.Dispose () = ()
+
+  static member instance = new NoopSpan () :> Span
+
 /// See the docs on the funtions for descriptions on how Ack works in conjunction
 /// with the promise.
 type Logger =
@@ -251,6 +260,23 @@ type Logger =
   /// Create a span and make itself as the span's tracer
   abstract createSpan: string -> (LogLevel -> Message) -> Span
   
+type internal LoggerWrapper (logger: Logger) =
+
+  abstract name: PointName
+  abstract logWithAck: LogLevel -> (LogLevel -> Message) -> Alt<Promise<unit>>
+  abstract level: LogLevel
+  abstract createSpan: string -> (LogLevel -> Message) -> Span
+  default x.name = logger.name
+  default x.level = logger.level
+  default x.logWithAck logLevel messageFactory = logger.logWithAck logLevel messageFactory
+  default x.createSpan parentSpanId messageFactory = logger.createSpan parentSpanId messageFactory
+
+  interface Logger with
+    member x.name = x.name
+    member x.level = x.level
+    member x.logWithAck logLevel messageFactory = x.logWithAck logLevel messageFactory
+    member x.createSpan parentSpanId messageFactory = x.createSpan parentSpanId messageFactory
+
 
 /// A disposable interface to use with `use` constructs and to create child-
 /// contexts. Since it inherits Logger, you can pass this scope down into child

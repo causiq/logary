@@ -265,7 +265,7 @@ module Files =
       job {
         Tests.skiptest "Locks up, see https://github.com/haf/expecto/issues/2 but probably due to the Janitor loop"
 
-        let! ri, _ = emptyRuntime
+        let! ri = emptyRuntime
         let fileConf = FileConf.create folder (Naming ("10K", "log"))
         let! targetApi = Target.create ri  (File.create fileConf "basic2")
         do! logMsgWaitAndShutdown targetApi (fun logAndWait ->
@@ -305,7 +305,7 @@ let tests = [
 
       testCaseJob testMsg (job {
         // in context
-        let! ri, _ = emptyRuntime
+        let! ri = emptyRuntime
         let! targetApi = LiterateConsole.create conf "testLC" |> Target.create ri
 
         // because
@@ -512,7 +512,7 @@ let tests = [
   testList "text writer prints" [
     testCaseJob "message" <| (job {
       let out, error, conf = Utils.buildTextWriteTarget "writing console target"
-      let! ri, _ = emptyRuntime
+      let! ri = emptyRuntime
       let! targetApi = Target.create ri conf
 
       do! logMsgWaitAndShutdown targetApi (fun logAndWait ->
@@ -522,7 +522,7 @@ let tests = [
 
     testCaseJob "fields" <| (job {
       let out, error, conf = Utils.buildTextWriteTarget "writing console target"
-      let! ri, _ = emptyRuntime
+      let! ri = emptyRuntime
       let! targetApi = Target.create ri conf
 
       do! logMsgWaitAndShutdown targetApi (fun logAndWait ->
@@ -539,7 +539,7 @@ let tests = [
 
     testCaseJob "to correct stream" <| (job {
       let out, error, conf = Utils.buildTextWriteTarget "writing console target"
-      let! ri, _ = emptyRuntime
+      let! ri = emptyRuntime
       let! targetApi = Target.create ri conf
 
       do! logMsgWaitAndShutdown targetApi (fun logAndWait ->
