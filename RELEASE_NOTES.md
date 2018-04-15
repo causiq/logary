@@ -1,3 +1,10 @@
+#### 5.0.0-beta.3
+* Targets: AliYun target ported to .Net Core
+* Targets: StackDriver target goes via JSON encoding; makes it total (AFAIK)
+* Codecs: log4j XML fix correcting its timestamp handling
+* Ingestion: Publish HTTP ingestion as package
+* Ingestion: Publish UDP ingestion as package
+
 #### 5.0.0-beta.2
 * Rutta: support subcommand specification via App.config
 * Rutta: better logging about what targets start in Router

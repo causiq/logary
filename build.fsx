@@ -138,6 +138,8 @@ let packParameters name =
 
 Target "Pack" (fun _ ->
   !! "src/targets/**/*.fsproj"
+  ++ "src/adapters/**/*.fsproj"
+  ++ "src/ingestion/**/*.fsproj"
   ++ "src/Logary/Logary.fsproj"
   ++ "src/Logary.CSharp/Logary.CSharp.csproj"
   |> Seq.iter (fun proj ->
