@@ -20,7 +20,7 @@ open Hopac.Infixes
 let start (port: int) =
   let uri = Uri (sprintf "http://127.0.0.1:%i/write" port)
   let targConf = InfluxDbConf.create(uri, "tests")
-  emptyRuntime >>= (fun (ri, ilogger) ->
+  emptyRuntime >>= (fun (ri) ->
   Target.create ri (create targConf "influxdb"))
 
 let shutdown t =
