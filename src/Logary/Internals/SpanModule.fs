@@ -3,97 +3,162 @@ namespace Logary
 open System.Threading
 open System
 open NodaTime
-open System.Collections.Concurrent
-open Logary.Internals
-open Hopac
-open Hopac.Infixes
+open FSharp.NativeInterop
 
-/// describe the time scope info about a span
+
+/// describe the time scope info about a span, will be sent as a message's context data
+[<Struct>]
 type SpanInfo =
   {
     id : string
-    beginAt: int64 // UnixTimeTicks
-    endAt: int64 // UnixTimeTicks
-    duration: int64
+    beginAt: int64 // number of ticks since the Unix epoch. Negative values represent instants before the Unix epoch. (from NodaTime)
+    endAt: int64 // number of ticks since the Unix epoch. Negative values represent instants before the Unix epoch. (from NodaTime)
+    duration: int64 // total number of ticks in the duration as a 64-bit integer. (from NodaTime)
   }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module internal Span =
+module SpanBuilder =
 
-  /// id format: #host-service.hex.hex.hex#host-service.hex.hex.hex...
-  type SpanIdGenerator (runtime: RuntimeInfo, counterDic: ConcurrentDictionary<string, int ref>) =
-
-    new (runtime: RuntimeInfo) = SpanIdGenerator (runtime, new ConcurrentDictionary<string, int ref>())
-
-    member x.removeFromCounter spanId =
-      counterDic.TryRemove(spanId) |> ignore
-
-    // we assume that one span will not have more then int64.MaxValue child spans in its lifetime
-    member x.generate (parentSpanId: string) =
-      let parentSpanId = if isNull parentSpanId then String.Empty else parentSpanId.Trim()
-      let localInfo = sprintf "#%s-%s" runtime.host runtime.service
-      let localInfoPrefix = if parentSpanId.Contains(localInfo) then parentSpanId else localInfo
-
-      let counter = counterDic.GetOrAdd(parentSpanId, ref 0)
-      let counter = Interlocked.Increment(counter)
-      sprintf "%s.%x" localInfoPrefix counter
-
-
-  /// span focus on time scope (scope means it needs explicitly specify its end) which usually used for tracing.
-  /// message focus on data context which usually used for logging/metric (since metric can be express by gauge which inclued by message).
-  /// one message can belong to a span, it means this log message happened in this span.
-  /// span itself contains one message, when logging, it just fill message with some specific info (startTime, endTime, duration, id ...)，
-  /// then every target can transform this message into their own backend's implementation (like zipkin,jaeger,opentracing...).
-  /// since span can be finished, so they will have a logger and send it's message at that time.
-  type T =
+  type private T =
     {
+      parentSpanId: string
       messageFac: LogLevel -> Message
-      id: string
-      beginAt: Instant
-      logger: Logger
-      hasFired: bool
-      childCount: int ref
       clock: IClock
-      idGen: SpanIdGenerator
+      localRootPrefix: string
     }
 
-    interface Span with
-      member x.id = x.id
+  type private SpanBookmark =
+    {
+      spanId: string
+      childCount: int64 ref
+    }
 
-      member x.finish (transform: Message -> Message) =
-        if not x.hasFired then
-          do x.idGen.removeFromCounter x.id
-          let composedMsgFac level =
-            let endAt = x.clock.GetCurrentInstant()
-            let dur = endAt - x.beginAt
-            let spanInfo = {
-              id = x.id
-              beginAt = x.beginAt.ToUnixTimeTicks()
-              endAt = endAt.ToUnixTimeTicks()
-              duration = dur.BclCompatibleTicks
-            }
-
-            (x.messageFac >> transform) level
-            |> Message.setContext KnownLiterals.SpanInfoContextName spanInfo
-            |> Message.setSpanId x.id
-
-          x.logger.logWithAck Info composedMsgFac >>=* id
-        else Promise (())
-
-    interface IDisposable with
-      member x.Dispose () =
-         (x :> Span).finish id |> Hopac.start
+  let private getRandomLo () =
+    let mutable random = System.Guid.NewGuid()
+    && random
+    |> NativePtr.toNativeInt
+    |> NativePtr.ofNativeInt<int64>
+    |> NativePtr.read<int64>
 
 
-  let createSpanT (clock: IClock) (idGen: SpanIdGenerator) (parentSpanId: string) (logger: Logger) (msgFac: LogLevel -> Message) : T =
-    let now = clock.GetCurrentInstant ()
-    let spanId = idGen.generate parentSpanId
+  type SpanBuilder (logger: Logger) =
+    static let activeSpan:AsyncLocal<SpanBookmark> = new AsyncLocal<SpanBookmark> ()
+    static let localRootCount = ref 0L
+    static let mutable defaultRootPrefix = sprintf "%x" (getRandomLo ())
 
-    { messageFac = msgFac
-      id = spanId
-      beginAt = now
-      logger = logger
-      hasFired = false
-      childCount = ref 0
-      clock = clock
-      idGen = idGen}
+
+    let mutable t =
+      { parentSpanId = null
+        messageFac = Message.eventX ""
+        clock = NodaTime.SystemClock.Instance
+        localRootPrefix = defaultRootPrefix
+      }
+
+    let mutable hasFired = false
+
+    // we assume that one span will not have more then int64.MaxValue child spans in its lifetime
+    let generateId () =
+      // parent span id can be set explicitly (usually used when combine with outside service, e.g. through http, rpc...)
+      if String.IsNullOrEmpty t.parentSpanId then
+        // fallback to use from AsyncLocal ( ambient context )
+        let parent = activeSpan.Value
+        if obj.ReferenceEquals(parent, null) then
+          // root span from this service, prepend local info
+          sprintf "#%s.%x" t.localRootPrefix (Interlocked.Increment(localRootCount))
+        else
+          // child span from this service
+          sprintf "%s.%x" parent.spanId (Interlocked.Increment(parent.childCount))
+      else
+        // set parent spanId explicitly, check if it is a local span
+        let parentSpanId = t.parentSpanId
+        if parentSpanId.Substring(parentSpanId.LastIndexOf("#")+1).StartsWith(t.localRootPrefix) then
+          // child span belong to this service, use local root count
+          sprintf "%s.%x" parentSpanId (Interlocked.Increment(localRootCount))
+        else
+          // root span from this service, prepend local info
+          sprintf "%s#%s.%x" parentSpanId t.localRootPrefix (Interlocked.Increment(localRootCount))
+
+    member x.withParentId pid =
+      do t <- {t with parentSpanId = pid}
+      x
+
+    member x.withMessage fac =
+      do t <- {t with messageFac = fac}
+      x
+
+    member x.withClock clock =
+      do t <- {t with clock = clock}
+      x
+
+    member x.withLocalRootPrefix prefix =
+      if not <| String.IsNullOrEmpty(prefix) then
+        do t <- {t with localRootPrefix = prefix}
+      x
+    member x.start () =
+      let spanId = generateId ()
+      let beginAt = t.clock.GetCurrentInstant()
+
+      let previous = activeSpan.Value
+      let bookMark = {
+        spanId = spanId
+        childCount = ref 0L
+      }
+      activeSpan.Value <- bookMark
+
+      { new Span with
+          member x.id = spanId
+
+          member x.finish (transform: Message -> Message) =
+            let composedMsgFac level =
+              let endAt = t.clock.GetCurrentInstant()
+              let dur = endAt - beginAt
+              let spanInfo = {
+                id = spanId
+                beginAt = beginAt.ToUnixTimeTicks()
+                endAt = endAt.ToUnixTimeTicks()
+                duration = dur.BclCompatibleTicks
+              }
+
+              (t.messageFac >> transform) level
+              |> Message.setContext KnownLiterals.SpanInfoContextName spanInfo
+              |> Message.setSpanId spanId
+
+            if not hasFired then
+              do hasFired <- true
+              do activeSpan.Value <- previous
+              logger.logWith Info composedMsgFac
+
+          member x.Dispose () =
+            x.finish id
+      }
+
+    static member setGlobalLocalRootPrefix (rootPrefix: string) =
+      defaultRootPrefix <- rootPrefix
+
+    static member getActiveSpanId () =
+      let active = activeSpan.Value
+      if obj.ReferenceEquals(active, null) then null
+      else active.spanId
+
+  let create logger =
+      new SpanBuilder(logger)
+
+  let setClock (clock: IClock) (b: SpanBuilder) =
+    b.withClock clock
+  let setLocalRootPrefix (prefix: string) (b: SpanBuilder) =
+    b.withLocalRootPrefix prefix
+
+  let setParentSpanId (pid: string) (b: SpanBuilder) =
+    b.withParentId pid
+
+  let setMessage (fac: LogLevel -> Message) (b: SpanBuilder) =
+    b.withMessage fac
+
+  let start (b: SpanBuilder) =
+    b.start ()
+
+[<AutoOpen>]
+module LoggerSpanEx =
+  type Logger with
+    member x.buildSpan () =
+      SpanBuilder.create x

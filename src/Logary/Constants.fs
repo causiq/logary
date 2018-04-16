@@ -36,9 +36,6 @@ module KnownLiterals =
   let SinkTargetsContextName =  LogaryPrefix +  "sink.targets"
 
   [<Literal>]
-  let ScopeContextName = LogaryPrefix + "scope"
-
-  [<Literal>]
   let SpanIdContextName = LogaryPrefix + "spanId"
   [<Literal>]
   let SpanInfoContextName = LogaryPrefix + "spanInfo"

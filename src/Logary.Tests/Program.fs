@@ -426,8 +426,6 @@ let tests =
               ()
             member x.stop (decider: Duration -> LogLevel): Alt<Promise<unit>> =
               Promise.instaPromise
-            member x.createSpan id fac: Span =
-              NoopSpan.instance
         }
         |> ignore
     ]

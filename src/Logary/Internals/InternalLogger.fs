@@ -36,8 +36,6 @@ module internal InternalLogger =
       /// let the internal logger targets decide which will be accepted
       /// so this property is generally useless
       member x.level = LogLevel.Verbose
-      member x.createSpan parentSpanId messageFactory = NoopSpan.instance
-
 
   let create ri =
     let addCh, messageCh, shutdownCh = Ch (), Ch (), Ch ()

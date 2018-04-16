@@ -47,7 +47,6 @@
     <Compile Include="Constants.fs" />
     <Compile Include="DataModel.fs" />
     <Compile Include="Internals/RuntimeInfo.fs" />
-    <Compile Include="DataSlot.fs" />
     <Compile Include="Internals/Internals.fs" />
     <Compile Include="Formatting/DotNetStacktrace.fs" />
     <Compile Include="Formatting/JsonHelper.fs" />
@@ -67,10 +66,9 @@
     <Compile Include="Extensions/System.Dates.fs" />
     <Compile Include="Extensions/LogManager.fs" />
     <Compile Include="MessageModule.fs" />
-    <Compile Include="DataSlotModule.fs" />
+    <Compile Include="LoggerModule.fs" />
     <Compile Include="Internals/SpanModule.fs" />
     <Compile Include="MiddlewareModule.fs" />
-    <Compile Include="LoggerModule.fs" />
     <!-- Below: runtime -->
     <Compile Include="Internals/Supervisor.fs" />
     <Compile Include="Rule.fs" />

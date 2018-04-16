@@ -11,7 +11,6 @@ type NullLogger() =
     member x.logWithAck logLevel messageFactory = Promise.instaPromise
     member x.level = LogLevel.Fatal
     member x.name = PointName.ofList [ "Logary"; "NullLogger" ]
-    member x.createSpan parentSpanId transform = NoopSpan.instance
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module NullLogger =

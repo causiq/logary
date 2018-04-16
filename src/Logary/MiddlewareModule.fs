@@ -63,9 +63,8 @@ module Middleware =
     | middlewares ->
       List.foldBack (fun f composed -> f composed) middlewares id
 
-  [<CompiledName "FillWithContextSlot">]
-  let fillWithContextSlot (dataSlot: DataSlot) : Middleware =
+  let useAmbientSpanId () : Middleware =
     fun next msg ->
-      msg
-      |> Message.setContext KnownLiterals.ScopeContextName (dataSlot.collect ())
-      |> next
+      let ambientSpanId = SpanBuilder.SpanBuilder.getActiveSpanId ()
+      if isNull ambientSpanId then next msg
+      else msg |> Message.setSpanId ambientSpanId |> next

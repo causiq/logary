@@ -53,9 +53,6 @@ module Registry =
 
       /// default logger rules from logary conf, will be applied when create new logger
       defaultLoggerLevelRules : (string * LogLevel) list
-
-      /// the global span id generator
-      spanIdGenerator: Span.SpanIdGenerator
     }
 
   /// Flush all pending messages for all targets. Flushes with no timeout; if
@@ -101,12 +98,6 @@ module Registry =
 
   module private Impl =
 
-    let getClock (runtime: RuntimeInfo) : IClock =
-      { new IClock with
-          member x.GetCurrentInstant () =
-            Instant.ofEpoch (runtime.getTimestamp ())
-      }
-
     let inline ensureName name (m: Message) =
       if m.name.isEmpty then { m with name = name } else m
 
@@ -138,9 +129,6 @@ module Registry =
             match t.loggerLevelDic.TryGetValue nameStr with
             | true, minLevel -> minLevel
             | false, _  -> LogLevel.Info
-
-          member x.createSpan parentSpanId messageFactory =
-            Span.createSpanT (getClock t.runtime) t.spanIdGenerator parentSpanId x messageFactory :> Span
       }
 
     let inline switchLoggerLevel (t: T) path minLevel =
@@ -260,8 +248,7 @@ module Registry =
             flushCh = flushCh
             shutdownCh = shutdownCh
             loggerLevelDic = new System.Collections.Concurrent.ConcurrentDictionary<string,LogLevel> ()
-            defaultLoggerLevelRules = conf.loggerLevels
-            spanIdGenerator = new Span.SpanIdGenerator (ri) }
+            defaultLoggerLevelRules = conf.loggerLevels }
 
         Job.supervise rlogger (Policy.restartDelayed 512u) (running ctss)
         |> Job.startIgnore

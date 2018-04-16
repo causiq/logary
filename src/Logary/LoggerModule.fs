@@ -294,7 +294,6 @@ module Logger =
           name
 
         member x.level = logger.level
-        member x.createSpan parentSpanId msgFactory = logger.createSpan parentSpanId msgFactory
     }
 
   let apply (middleware: Message -> Message) (logger: Logger): Logger =

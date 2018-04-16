@@ -11,6 +11,7 @@ open Logary.Message
 open Logary.Configuration
 open Logary.EventProcessing
 open System.Text.RegularExpressions
+open Logary.SpanBuilder
 
 let tests = [
   testCaseJob "from Config and Multi shutdown" <| job {
@@ -78,66 +79,29 @@ let tests = [
     do! logm.shutdown ()
   }
 
-  testCaseJob "log with scope" (job {
-    let dataSlot = DataSlot.useDefault ()
-    let! (logm, out, _)  = Utils.buildLogManagerWith (fun r -> r |> Config.middleware (Middleware.fillWithContextSlot dataSlot) )
-
-    for _ in 1..10 do
-      let latch = Latch 4
-      let loggername = PointName.parse "logger.test"
-      let lg1 = logm.getLogger loggername
-
-      let s1 = dataSlot.push (fun _ -> "scope-1")
-      lg1.infoWithBP (eventX "scope1") |> Hopac.startWithActions ignore (latch.Decrement >> start)
-
-      let s2 = dataSlot.push (fun _ -> "scope-2")
-
-      let lg2 = logm.getLogger (PointName.parse "logger.test.another")
-      lg2.infoWithBP (eventX "scope2") |> Hopac.startWithActions ignore (latch.Decrement >> start)
-
-      do s2.Dispose ()
-      lg2.infoWithBP (eventX "2dispose") |> Hopac.startWithActions ignore (latch.Decrement >> start)
-
-      do s1.Dispose ()
-      lg2.infoWithBP (eventX "1dispose") |> Hopac.startWithActions ignore (latch.Decrement >> start)
-
-      do! latch |> Latch.await |> Alt.afterJob logm.flushPending
-
-      let outStr = clearStream out
-      Expect.isRegexMatch outStr (new Regex("""scope1.*?_logary.scope => \["scope-1"\]""", RegexOptions.Singleline)) "shoule have scope-1 value"
-      Expect.isRegexMatch outStr (new Regex("""scope2.*?_logary.scope => \["scope-2", "scope-1"\]""", RegexOptions.Singleline)) "shoule have scope-1/2 value"
-      Expect.isRegexMatch outStr (new Regex("""2dispose.*?_logary.scope => \["scope-1"\]""", RegexOptions.Singleline)) "shoule only have scope-1 value"
-      Expect.isRegexMatch outStr (new Regex("1dispose.*?_logary.scope => \[\]", RegexOptions.Singleline)) "shoule have no scope value"
-
-    do! logm.shutdown ()
-  })
-
   testCaseJob "log with span" (job {
-    let! (logm, out, _)  = Utils.buildLogManager ()
+    let! logm, out, _  = Utils.buildLogManagerWith (fun conf -> conf |> Config.middleware (Middleware.useAmbientSpanId ()))
+    
     let checkSpanId spanId = job {
       do! logm.flushPending ()
       clearStream out
       |> Expecto.Flip.Expect.stringContains "should has spanId" spanId
     }
-
+    SpanBuilder.setGlobalLocalRootPrefix "host-svc"
     let lga = logm.getLogger "logger.a"
-    do! job {
-      use rootSpan = lga.createSpan "" (Message.eventX "some root span")
-      let lgb = logm.getLogger "logger.b"
-      use span1 = lgb.createSpan rootSpan.id (Message.eventX "some child span 1")
-      let span2 = lgb.createSpan rootSpan.id (Message.eventX "some child span 2")
-      do span2.Dispose ()
+    use rootSpan = lga |> create |> setMessage (eventX "some root span") |> start
+    let lgb = logm.getLogger "logger.b"
+    use _ = lgb |> create |> setMessage (eventX "some child span") |> start
+    use _ = lgb |> create |> setMessage (eventX "some grand span") |> start
+    do! lgb.infoWithAck (eventX "some log message")
+    do! timeOutMillis 100
+    do! checkSpanId "#host-svc.1.1.1"
 
-      do! checkSpanId "#localhost-svc.1.2"
-
-      for i in 1..2 do
-        use spani = lgb.createSpan span1.id (fun level -> Message.eventFormat(level, "some grand span {taskId}", i) )
-        do! timeOutMillis 500
-        do! lgb.infoWithAck (eventX "some log message" >> setSpanId spani.id)
-        do! checkSpanId (sprintf "#localhost-svc.1.1.%d" i)
-    }
-
-    do! checkSpanId ("#localhost-svc.1")
+    // use explicitly set style
+    use spanFromRoot = lgb |> create |> setParentSpanId rootSpan.id |> setMessage (eventX "some child span") |> start
+    do! lgb.infoWithAck (eventX "some log message" >> setSpanId spanFromRoot.id)
+    do! checkSpanId spanFromRoot.id
+    do! logm.shutdown ()
   })
 
   testCaseJob "switch logger level" (job {
