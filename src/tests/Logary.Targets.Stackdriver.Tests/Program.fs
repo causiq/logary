@@ -42,7 +42,7 @@ let raisedExn msg =
 
 let stackdriver =
   lazy (
-    let project = env "tradera-lab" "STACKDRIVER_PROJECT"
+    let project = env "logary-ci" "STACKDRIVER_PROJECT"
     let logName = env "logary-tests" "STACKDRIVER_LOG"
     StackdriverConf.create(project, logName, Global)
   )
