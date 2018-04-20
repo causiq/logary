@@ -49,16 +49,16 @@ module Events =
         let allBuildedSource = pipes |> List.map (fun pipe -> pipe.build cont)
         fun sourceItem ->
 
-          let alllogedAcks = IVar ()
+          let allLoggedAcks = IVar ()
 
           let logAllConJob =
             allBuildedSource
             |> Hopac.Extensions.Seq.Con.mapJob (fun logWithAck ->
-               logWithAck sourceItem |> PipeResult.orDefault (Promise.instaPromise))
+               logWithAck sourceItem |> PipeResult.orDefault Promise.instaPromise)
 
           let logAllAlt = Alt.prepareJob <| fun _ ->
-            Job.start (logAllConJob >>= fun acks -> IVar.fill alllogedAcks acks)
-            >>-. alllogedAcks
+            Job.start (logAllConJob >>= fun acks -> IVar.fill allLoggedAcks acks)
+            >>-. allLoggedAcks
 
           logAllAlt ^-> fun acks -> Job.conIgnore acks |> memo
           |> PipeResult.HasResult

@@ -5,6 +5,7 @@ open Hopac
 open Hopac.Infixes
 open Logary.EventProcessing.Transformers
 
+[<Struct>]
 type PipeResult<'a> =
   internal
   | HasResult of 'a

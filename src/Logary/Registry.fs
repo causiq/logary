@@ -253,7 +253,8 @@ module Registry =
     let wrapper sendMsg msg mid =
       msg
       |> Middleware.compose (mid |> Option.fold (fun s t -> t :: s) rmid)
-      |> sendMsg |> PipeResult.orDefault Promise.instaPromise
+      |> sendMsg
+      |> PipeResult.orDefault Promise.instaPromise
 
     let flushCh, shutdownCh, isClosed = Ch (), Ch (), IVar ()
 
@@ -280,7 +281,7 @@ module Registry =
     let runningPipe =
       conf.processing
       |> Pipe.run (fun msg ->
-         let msgSinks =  msg |> Message.getAllSinks
+         let msgSinks = msg |> Message.getAllSinks
          let sinks =
            if Set.isEmpty msgSinks then targets
            else msgSinks |> Set.toList |> List.choose (fun name -> HashMap.tryFind name targetsMap)
