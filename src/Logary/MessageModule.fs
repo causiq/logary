@@ -189,8 +189,8 @@ module Message =
 
   /// Set span id
   [<CompiledName "SetSpanId">]
-  let setSpanId (spanId: string) (message: Message) =
-    message |> setContext KnownLiterals.SpanIdContextName spanId
+  let setSpanId (spanId: Guid) (message: Message) =
+    message |> setContext KnownLiterals.SpanIdContextName (SpanInfo.formatId spanId)
 
   //#endregion
 

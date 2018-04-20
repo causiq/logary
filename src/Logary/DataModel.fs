@@ -220,18 +220,17 @@ type Span =
 
   /// log its data into registry
   abstract finish: (Message -> Message) -> unit
-  /// the id of this span
-  abstract id: string  
+  /// the data of this span
+  abstract info: SpanInfo
+and SpanInfo =
+  {
+    traceId: Guid
+    parentSpanId: Guid option
+    spanId: Guid
+  }
 
-type NoopSpan () =
-  interface Span with
-    member x.finish trasn = ()
-    member x.id = String.Empty
-
-  interface IDisposable with
-    member x.Dispose () = ()
-
-  static member instance = new NoopSpan () :> Span
+  static member formatId (id: Guid) =
+    id.ToString("n")
 
 /// See the docs on the funtions for descriptions on how Ack works in conjunction
 /// with the promise.

@@ -65,6 +65,7 @@ module Middleware =
 
   let useAmbientSpanId () : Middleware =
     fun next msg ->
-      let ambientSpanId = SpanBuilder.SpanBuilder.getActiveSpanId ()
-      if isNull ambientSpanId then next msg
-      else msg |> Message.setSpanId ambientSpanId |> next
+      let ambientSpanId = SpanBuilder.getActiveSpanId ()
+      match ambientSpanId with
+      | Some ambientSpanId -> msg |> Message.setSpanId ambientSpanId |> next
+      | None -> next msg

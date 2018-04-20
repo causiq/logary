@@ -83,9 +83,9 @@ let tests = [
     let checkSpanId spanId = job {
       do! logm.flushPending ()
       clearStream out
-      |> Expect.stringContains "should have spanId" spanId
+      |> Expect.stringContains "should have spanId" (SpanInfo.formatId spanId)
     }
-    SpanBuilder.setGlobalLocalRootPrefix "host-svc"
+
     let lga = logm.getLogger "logger.a"
     use rootSpan = lga |> create |> setMessage (eventX "some root span") |> start
     let lgb = logm.getLogger "logger.b"
@@ -93,12 +93,13 @@ let tests = [
     use _ = lgb |> create |> setMessage (eventX "some grand span") |> start
     do! lgb.infoWithAck (eventX "some log message")
     do! timeOutMillis 100
-    do! checkSpanId "#host-svc.1.1.1"
+    clearStream out
+    |> Expect.stringContains "should have spanId" "_logary.spanId"
 
     // use explicitly set style
-    use spanFromRoot = lgb |> create |> setParentSpanId rootSpan.id |> setMessage (eventX "some child span") |> start
-    do! lgb.infoWithAck (eventX "some log message" >> setSpanId spanFromRoot.id)
-    do! checkSpanId spanFromRoot.id
+    use spanFromRoot = lgb |> create |> setParentSpanInfo rootSpan.info |> setMessage (eventX "some child span") |> start
+    do! lgb.infoWithAck (eventX "some log message" >> setSpanId spanFromRoot.info.spanId)
+    do! checkSpanId spanFromRoot.info.spanId
     do! logm.shutdown ()
   })
 

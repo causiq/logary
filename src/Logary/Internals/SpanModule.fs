@@ -3,83 +3,74 @@ namespace Logary
 open System.Threading
 open System
 open NodaTime
-open FSharp.NativeInterop
-
-
-/// describe the time scope info about a span, will be sent as a message's context data
-[<Struct>]
-type SpanInfo =
-  {
-    id : string
-    beginAt: int64 // number of ticks since the Unix epoch. Negative values represent instants before the Unix epoch. (from NodaTime)
-    endAt: int64 // number of ticks since the Unix epoch. Negative values represent instants before the Unix epoch. (from NodaTime)
-    duration: int64 // total number of ticks in the duration as a 64-bit integer. (from NodaTime)
-  }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module SpanBuilder =
 
+  /// describe the time scope info about a span, will be sent as a message's context data
+  [<Struct>]
+  type internal SpanLog =
+    {
+      traceId: string
+      spanId: string
+      parentSpanId: string
+      beginAt: int64 // number of ticks since the Unix epoch. Negative values represent instants before the Unix epoch. (from NodaTime)
+      endAt: int64 // number of ticks since the Unix epoch. Negative values represent instants before the Unix epoch. (from NodaTime)
+      duration: int64 // total number of ticks in the duration as a 64-bit integer. (from NodaTime)
+    }
+
   type private T =
     {
-      parentSpanId: string
+      traceId: Guid
+      spanId: Guid
+      parentSpanInfo: SpanInfo option
       messageFac: LogLevel -> Message
       clock: IClock
-      localRootPrefix: string
     }
 
-  type private SpanBookmark =
-    {
-      spanId: string
-      childCount: int64 ref
-    }
-
-  let private getRandomLo () =
-    let mutable random = System.Guid.NewGuid()
-    && random
-    |> NativePtr.toNativeInt
-    |> NativePtr.ofNativeInt<int64>
-    |> NativePtr.read<int64>
-
+  let private activeSpan:AsyncLocal<SpanInfo> = new AsyncLocal<SpanInfo> ()
 
   type SpanBuilder (logger: Logger) =
-    static let activeSpan:AsyncLocal<SpanBookmark> = new AsyncLocal<SpanBookmark> ()
-    static let localRootCount = ref 0L
-    static let mutable defaultRootPrefix = sprintf "%x" (getRandomLo ())
-
-
+    
     let mutable t =
-      { parentSpanId = null
+      { 
+        traceId = Guid.NewGuid()
+        spanId = Guid.NewGuid()
+        parentSpanInfo = None
         messageFac = Message.eventX ""
         clock = NodaTime.SystemClock.Instance
-        localRootPrefix = defaultRootPrefix
       }
 
     let mutable hasFired = false
 
-    // we assume that one span will not have more then int64.MaxValue child spans in its lifetime
-    let generateId () =
-      // parent span id can be set explicitly (usually used when combine with outside service, e.g. through http, rpc...)
-      if String.IsNullOrEmpty t.parentSpanId then
+    let generateSpanInfo () : SpanInfo =
+      // parentSpanInfo can be set explicitly (usually used when combine with outside service, e.g. through http, rpc...)
+      match t.parentSpanInfo with
+      | None ->
         // fallback to use from AsyncLocal ( ambient context )
         let parent = activeSpan.Value
         if obj.ReferenceEquals(parent, null) then
-          // root span from this service, prepend local info
-          sprintf "#%s.%x" t.localRootPrefix (Interlocked.Increment(localRootCount))
+          {
+            traceId = t.traceId
+            parentSpanId = None
+            spanId = t.spanId
+          }
         else
-          // child span from this service
-          sprintf "%s.%x" parent.spanId (Interlocked.Increment(parent.childCount))
-      else
-        // set parent spanId explicitly, check if it is a local span
-        let parentSpanId = t.parentSpanId
-        if parentSpanId.Substring(parentSpanId.LastIndexOf("#")+1).StartsWith(t.localRootPrefix) then
-          // child span belong to this service, use local root count
-          sprintf "%s.%x" parentSpanId (Interlocked.Increment(localRootCount))
-        else
-          // root span from this service, prepend local info
-          sprintf "%s#%s.%x" parentSpanId t.localRootPrefix (Interlocked.Increment(localRootCount))
+          // has ambient span
+          {
+            traceId = parent.traceId
+            parentSpanId = Some parent.spanId
+            spanId = t.spanId
+          }
+      | Some parent ->
+        {
+          traceId = parent.traceId
+          parentSpanId = Some parent.spanId
+          spanId = t.spanId
+        }
 
-    member x.withParentId pid =
-      do t <- {t with parentSpanId = pid}
+    member x.withParentSpanInfo info =
+      do t <- {t with parentSpanInfo = Some info}
       x
 
     member x.withMessage fac =
@@ -90,38 +81,32 @@ module SpanBuilder =
       do t <- {t with clock = clock}
       x
 
-    member x.withLocalRootPrefix prefix =
-      if not <| String.IsNullOrEmpty(prefix) then
-        do t <- {t with localRootPrefix = prefix}
-      x
     member x.start () =
-      let spanId = generateId ()
+      let spanInfo = generateSpanInfo ()
       let beginAt = t.clock.GetCurrentInstant()
 
       let previous = activeSpan.Value
-      let bookMark = {
-        spanId = spanId
-        childCount = ref 0L
-      }
-      activeSpan.Value <- bookMark
+      activeSpan.Value <- spanInfo
 
       { new Span with
-          member x.id = spanId
+          member x.info = spanInfo
 
           member x.finish (transform: Message -> Message) =
             let composedMsgFac level =
               let endAt = t.clock.GetCurrentInstant()
               let dur = endAt - beginAt
-              let spanInfo = {
-                id = spanId
+              let spanLog = {
+                traceId = SpanInfo.formatId spanInfo.traceId
+                spanId =  SpanInfo.formatId spanInfo.spanId
+                parentSpanId = spanInfo.parentSpanId |> Option.map SpanInfo.formatId |> Option.defaultValue null
                 beginAt = beginAt.ToUnixTimeTicks()
                 endAt = endAt.ToUnixTimeTicks()
                 duration = dur.BclCompatibleTicks
               }
 
               (t.messageFac >> transform) level
-              |> Message.setContext KnownLiterals.SpanInfoContextName spanInfo
-              |> Message.setSpanId spanId
+              |> Message.setContext KnownLiterals.SpanInfoContextName spanLog
+              |> Message.setSpanId spanInfo.spanId
 
             if not hasFired then
               do hasFired <- true
@@ -132,30 +117,26 @@ module SpanBuilder =
             x.finish id
       }
 
-    static member setGlobalLocalRootPrefix (rootPrefix: string) =
-      defaultRootPrefix <- rootPrefix
-
-    static member getActiveSpanId () =
-      let active = activeSpan.Value
-      if obj.ReferenceEquals(active, null) then null
-      else active.spanId
 
   let create logger =
       new SpanBuilder(logger)
 
   let setClock (clock: IClock) (b: SpanBuilder) =
     b.withClock clock
-  let setLocalRootPrefix (prefix: string) (b: SpanBuilder) =
-    b.withLocalRootPrefix prefix
 
-  let setParentSpanId (pid: string) (b: SpanBuilder) =
-    b.withParentId pid
+  let setParentSpanInfo (info: SpanInfo) (b: SpanBuilder) =
+    b.withParentSpanInfo info
 
   let setMessage (fac: LogLevel -> Message) (b: SpanBuilder) =
     b.withMessage fac
 
   let start (b: SpanBuilder) =
     b.start ()
+    
+  let getActiveSpanId () =
+    let active = activeSpan.Value
+    if obj.ReferenceEquals(active, null) then None
+    else Some active.spanId
 
 [<AutoOpen>]
 module LoggerSpanEx =
