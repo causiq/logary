@@ -1011,13 +1011,25 @@ ruby -pi.bak -e \
   paket-files/logary/logary/src/Logary.Facade/Facade.fs
 ```
 
-Or in FAKE style:
+Or in FAKE 4 style:
 
 ```fsharp
 Target "LoggingFile" (fun _ ->
-    ReplaceInFiles [ "namespace Logary.Facade", "namespace Kafunk.Logging" ]
+    ReplaceInFiles [ "namespace Logary.Facade", "namespace MyLib.Logging" ]
                    [ "paket-files/logary/logary/src/Logary.Facade/Facade.fs" ]
 )
+```
+
+Or in FAKE 5 style:
+
+```fsharp
+#r "paket: groupref Build //"
+#load ".fake/build.fsx/intellisense.fsx"
+open Fake.IO
+Target.create "Replace" <| fun _ ->
+  Shell.ReplaceInFiles
+    [ "Logary.Facade", "MyLib.Logging" ]
+    (!! "paket-files/logary/logary/src/Logary.Facade/Facade.fs")
 ```
 
 Now add to `paket.references` (replace `Logging` with a folder name of your choice,
