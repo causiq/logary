@@ -14,8 +14,8 @@ nuget Machine.Specifications.Runner.VisualStudio
 nuget Microsoft.NET.Test.Sdk
 nuget FParsec
 nuget FSharp.Core
-nuget FluentMigrator
-nuget FluentMigrator.Runner
+nuget FluentMigrator < 2
+nuget FluentMigrator.Runner < 2
 nuget FsCheck
 nuget FsPickler
 nuget FsPickler.Json
