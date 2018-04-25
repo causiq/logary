@@ -1,5 +1,8 @@
 #### 5.0.0-beta.4
-* Support parsing exn type and inner exception messages from .Net and Java stacktraces.
+* Support parsing exn type and inner exception messages from .Net and Java stacktraces. Thanks @haf
+* Fix most of https://github.com/logary/logary/issues/294, thanks @haf
+* Fix #285 for LiterateConsole. This should be it. Thanks @haf.
+* Move colourising tokenisers to a module more easily discoverable. Thanks @haf
 
 #### 5.0.0-beta.3
 * Targets: AliYun target ported to .Net Core
