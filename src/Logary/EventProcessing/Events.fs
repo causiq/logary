@@ -16,7 +16,7 @@ module Events =
 
   let tag tag pipe = pipe |> Pipe.filter (Message.hasTag tag)
 
-  let miniLevel level pipe =
+  let minLevel level pipe =
     pipe |> Pipe.filter (fun msg -> msg.level >= level)
 
   /// if msg with no specific sinks, will send to all targets
@@ -63,6 +63,4 @@ module Events =
           logAllAlt ^-> fun acks -> Job.conIgnore acks |> memo
           |> PipeResult.HasResult
 
-    { build = build
-      tickTimerJobs = allTickTimerJobs
-    }
+    { build = build; tickTimerJobs = allTickTimerJobs }
