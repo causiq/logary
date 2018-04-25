@@ -182,49 +182,42 @@ module LiterateConsole =
     /// Split a structured message up into theme-able parts (tokens), allowing the
     /// final output to display to a user with colours to enhance readability.
     let defaultTokeniser (options: LiterateConsoleConf) (message: Message) =
-      let writeState = { provider = options.formatProvider; idManager = RefIdManager ()}
-      let templateTokens = tokeniseTemplateWithGauges options.formatProvider destr message
-      let contextTokens = tokeniseContext writeState nl destr message
-      let exceptionTokens = tokeniseExceptions options.formatProvider nl message
-
       seq {
         yield "[", Punctuation
         yield options.formatLocalTime options.formatProvider message.timestamp
         yield " ", Subtext
         yield options.getLogLevelText message.level, getLogLevelToken message.level
         yield "] ", Punctuation
-        yield! templateTokens
+        yield! tokeniseTemplateWithGauges options.formatProvider destr message
 
         yield " ", Subtext
         yield "<", Punctuation
         yield string message.name, Subtext
         yield ">", Punctuation
+
+        yield! tokeniseExceptions options.formatProvider nl message
       }
 
     /// The extended tokeniser also prints all fields, context and gauges as separate lines in the output.
     /// Split a structured message up into theme-able parts (tokens), allowing the
     /// final output to display to a user with colours to enhance readability.
     let extendedTokeniser (options: LiterateConsoleConf) (message: Message) =
-      let writeState = { provider = options.formatProvider; idManager = RefIdManager ()}
-      let templateTokens = tokeniseTemplateWithGauges options.formatProvider destr message
-      let contextTokens = tokeniseContext writeState nl destr message
-      let exceptionTokens = tokeniseExceptions options.formatProvider nl message
-
       seq {
         yield "[", Punctuation
         yield options.formatLocalTime options.formatProvider message.timestamp
         yield " ", Subtext
         yield options.getLogLevelText message.level, getLogLevelToken message.level
         yield "] ", Punctuation
-        yield! templateTokens
+        yield! tokeniseTemplateWithGauges options.formatProvider destr message
 
         yield " ", Subtext
         yield "<", Punctuation
         yield string message.name, Subtext
         yield ">", Punctuation
 
-        yield! contextTokens
-        yield! exceptionTokens
+        let writeState = { provider = options.formatProvider; idManager = RefIdManager ()}
+        yield! tokeniseContext writeState nl destr message
+        yield! tokeniseExceptions options.formatProvider nl message
       }
 
   module Themes =

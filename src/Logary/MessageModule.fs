@@ -484,24 +484,32 @@ module Message =
   let setEvent format message =
     { message with value = string format }
 
-  /// Adds a new exception to the "errors" field in the message.
-  /// AggregateExceptions are automatically expanded.
+  /// Adds a new exception to the "_logary.errors" internal field in the message.
   [<CompiledName "AddException">]
   let addExn (e: exn) msg =
-    let errorCtxName = KnownLiterals.ErrorsContextName
     let errors =
-      match tryGetContext errorCtxName msg with
+      match tryGetContext KnownLiterals.ErrorsContextName msg with
       | Some errors ->
         e :: errors
       | _ ->
         e :: []
+    setContext KnownLiterals.ErrorsContextName errors msg
 
-    setContext errorCtxName errors msg
+  /// Adds new exceptions to the "_logary.errors" internal field in the message.
+  [<CompiledName "AddExceptions">]
+  let addExns (es: #seq<exn>) msg =
+    let errors =
+      match tryGetContext KnownLiterals.ErrorsContextName msg with
+      | Some errors ->
+        List.ofSeq es @ errors
+      | _ ->
+        List.ofSeq es
+    setContext KnownLiterals.ErrorsContextName errors msg
 
   [<CompiledName "GetExceptions">]
   let getExns msg: exn list =
     match tryGetContext KnownLiterals.ErrorsContextName msg with
-    | Some errors ->
+    | Some (errors: exn list) ->
       errors
     | _ ->
       []

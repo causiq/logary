@@ -42,9 +42,11 @@ let errorWithBP (logger: Logger) =
 
 let generateAndLogExn (logger: Logger) =
   let ex = getSampleException "Uhoh!"
-  logger.logSimple (Message.event Error "An error with an attached exception"
-                    |> Message.addExn ex
-                    |> Message.addExn (exn "another"))
+  logger.log Error (
+    Message.eventX "An error with an attached exception"
+    >> Message.addExn ex
+    >> Message.addExn (exn "another"))
+  |> Async.RunSynchronously
   99
 
 let staticWork () =

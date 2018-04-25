@@ -333,27 +333,40 @@ outputs, *targets*. Further, its *services* run as their own processes or in
 The core type is **`Message`**, which is the smallest unit you can log.
 
 ```fsharp
-/// This is record that is logged.
 type Message =
   { /// The 'path' or 'name' of this data point. Do not confuse message template in message.value
-    name      : PointName
-    /// things you want to describe this message (can be template or raw message)
-    value     : string
+    name: PointName
+    /// Event (template or raw message) E.g. "{user} logged in"
+    value: string
     /// Where in the code? Who did the operation? What tenant did the principal
     /// who did it belong to? ... context can be anything, you can decide how to deal with them in target
     /// through its key.
-    context   : HashMap<string, obj>
+    context: HashMap<string, obj>
     /// How important? See the docs on the LogLevel type for details.
-    level     : LogLevel
-    /// When? nanoseconds since UNIX epoch.
-    timestamp : EpochNanoSeconds }
+    level: LogLevel
+    /// When? The # of nanoseconds since the UNIX epoch (1970-01-01T00:00:00Z)
+    timestamp: EpochNanoSeconds }
 ```
 
 ### PointName
 
-A point is a location where you send a message from. Usually a module;
-in mature projects you also often have the name of the function that you log
-from as a part of the point name. its default value is the logger's (which log this message) name.
+Suppose you're measuring values coming from a car. This is what that could look like:
+
+```fsharp
+module Bicycle.SupervisorProcess
+open Logary
+open Logary.Message
+
+// "the sensor"
+let logger = Log.create "Car.SupervisorProcess"
+
+let tyreTick () =
+  // "the event is triggered, e.g. via a polling supervisor"
+  logger.info (
+    eventX "Tyres"
+    >> addGauge "front" (Gauge (Float 79.2421, Units.Pascal)))
+    >> addGauge "back" (Gauge (Float 90.159, Units.Pascal)))
+```
 
 ### Context
 

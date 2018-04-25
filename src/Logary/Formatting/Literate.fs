@@ -15,20 +15,20 @@ module Literate =
     m
     |> Message.getExns
     |> Seq.collect (fun exn ->
-       let exnLines = new StringReader(string exn)
-       seq {
-         let mutable line = exnLines.ReadLine()
-         while not (isNull line) do
-           if line.StartsWith(windowsStackFrameLinePrefix) || line.StartsWith(monoStackFrameLinePrefix) then
-             // subtext
-             yield nl, Subtext
-             yield line, Subtext
-           else
-             // regular text
-             yield nl, Text
-             yield line, Text
-           line <- exnLines.ReadLine()
-        })
+      let exnLines = new StringReader(string exn)
+      seq {
+        let mutable line = exnLines.ReadLine()
+        while not (isNull line) do
+          if line.StartsWith(windowsStackFrameLinePrefix) || line.StartsWith(monoStackFrameLinePrefix) then
+            // subtext
+            yield nl, Subtext
+            yield line, Subtext
+          else
+            // regular text
+            yield nl, Text
+            yield line, Text
+          line <- exnLines.ReadLine()
+       })
 
   let tokeniseTemplateByGauges (pvd: IFormatProvider) (gauges: seq<string * Gauge>) =
     let gauges =

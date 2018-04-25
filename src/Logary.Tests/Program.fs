@@ -54,8 +54,9 @@ type Arbs =
       && not <| Double.IsNaN f
     Arb.Default.Derive()
     |> Arb.filter (function
-      | Offset (x, f) -> isNormal f
-      | Scaled (x, f) -> isNormal f
+      | Pow (_, n)    -> isNormal n
+      | Offset (_, f) -> isNormal f
+      | Scaled (_, f) -> isNormal f
       | _ -> true)
 
   static member Gauge() =

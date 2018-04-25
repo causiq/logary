@@ -191,19 +191,28 @@ module LoggerAdapter =
       match oldPointValue with
       | LoggerAdapterShared.OldPointValue.Event tpl -> tpl
       | _ -> String.Empty
-    let fields = readProperty "fields" :?> Map<string, obj>
+    let fields, exns =
+      let m = readProperty "fields" :?> Map<string, obj>
+      match m |> Map.tryFind "errors" with
+      | None ->
+        m, []
+      | Some xs ->
+        m |> Map.remove "errors", xs :?> obj list |> List.map unbox<exn>
+
     { name      = PointName (readProperty "name" :?> string [] |> defaultName fallbackName)
       value     = event
       context   = HashMap.empty
       timestamp = readProperty "timestamp" :?> EpochNanoSeconds
       level     = readProperty "level" |> toLogLevel }
     |> Message.setFieldsFromMap fields
+    |> Message.addExns exns
     |> (fun msg ->
         match oldPointValue with
         | LoggerAdapterShared.OldPointValue.Gauge (value, units) ->
           let g = Gauge (Float value, units)
           msg |> Message.addGauge KnownLiterals.DefaultGaugeName g
-        | _ -> msg)
+        | _ ->
+          msg)
 
   /// Convert the object instance to a message factory method. Is used from the
   /// other code in this module.

@@ -155,6 +155,12 @@ let tests =
           Expect.notEqual (!msg).name (PointName [||]) "Should have non-empty point name"
           Expect.equal (!msg).name (PointName [| "Libryy"; "Core" |])
                        "Should have point name corresponding to the passed logger"
+
+        yield testCase "with exns" <| fun _ ->
+          let libryyLogger, msg = createLoggerSubject ()
+          let res = Libryy.Core.generateAndLogExn libryyLogger
+          let exns = Message.getExns !msg
+          Expect.equal 2 exns.Length "Has two exns"
       ]
 
       testList "global config" [
@@ -215,6 +221,7 @@ let tests =
           Expect.equal (!msg).name (PointName [| "Cibryy"; "Core" |])
                        "Should have point name corresponding to the passed logger"
       ]
+
       testList "global config" [
         let createLogManagerSubject () =
           let msg = ref (Message.event Info "empty")

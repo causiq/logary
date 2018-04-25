@@ -3,7 +3,9 @@
 * Fix most of #294, thanks @haf
 * Fix #285 for LiterateConsole. This should be it. Thanks @haf.
 * Move colourising tokenisers to a module more easily discoverable. Thanks @haf
-* Fix #300 naming of Events.miniLevel -> minLevel
+* Fix #300 naming of Events.miniLevel -> minLevel, thanks @haf
+* Fix #313 - passing along exns in the right format, thanks @haf
+* Fix #314 - add a few missing SI units
 
 #### 5.0.0-beta.3
 * Targets: AliYun target ported to .Net Core

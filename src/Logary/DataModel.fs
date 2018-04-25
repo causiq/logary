@@ -27,6 +27,8 @@ type Units =
   | Percent
   | Watts
   | Hertz
+  | Joules
+  | Grams
   | Other of unit:string
   // E.g. to denote nano-seconds since epoch;
   // 1474139353507070000 would be Scaled(Seconds, 10.**9.) since year 1970
@@ -37,13 +39,20 @@ type Units =
   | Scaled of unit:Units * value:float
   | Offset of unit:Units * value:float
   | Mul of unitA:Units * unitB:Units
-  | Pow of ``base``:Units * power:Units
+  | Pow of ``base``:Units * power:float
   | Div of nom:Units * denom:Units
   | Root of ``base``:Units
   | Log10 of ``base``:Units // Log of base:float * BaseUnit
 
   /// E.g. 5 degrees celsius is (5 + 273.15) K
   static member Celsius = Offset (Kelvins, +273.15)
+
+  static member SquareMetres = Pow (Metres, 2.)
+  static member KiloGrams = Scaled (Grams, 1.0e-3)
+  /// https://en.wikipedia.org/wiki/Newton_(unit)
+  static member Newtons = Div (Mul (Units.KiloGrams, Metres), Pow (Seconds, 2.))
+  /// https://en.wikipedia.org/wiki/Pascal_(unit)
+  static member Pascal = Div (Units.Newtons, Units.SquareMetres)
 
   /// 5 min = 5 / (1/60) seconds = 360 s
   static member Minutes = Scaled (Seconds, 1. / 60.)
@@ -66,6 +75,10 @@ type Units =
       Some "amperes"
     | Kelvins ->
       Some "kelvins"
+    | Joules ->
+      Some "Joules"
+    | Grams ->
+      Some "Grams"
     | Moles ->
       Some "moles"
     | Candelas ->
@@ -96,6 +109,8 @@ type Units =
     | Scalar -> ""
     | Amperes -> "A"
     | Kelvins -> "K"
+    | Joules -> "J"
+    | Grams -> "g"
     | Moles -> "mol"
     | Candelas -> "cd"
     | Percent -> "%"
@@ -106,7 +121,7 @@ type Units =
     | Offset (units, offset) ->
       sprintf "%s %s %f" units.symbol (if offset < 0. then "-" else "+") offset
     | Mul (a, b) -> String.Concat [ "("; a.symbol; "*"; b.symbol; ")" ]
-    | Pow (a, b) -> String.Concat [ a.symbol; "^("; b.symbol; ")" ]
+    | Pow (a, b) -> String.Concat [ a.symbol; "^("; string b; ")" ]
     | Div (a, b) -> String.Concat [ a.symbol; "/"; b.symbol ]
     | Root a -> String.Concat [ "sqrt("; a.symbol; ")" ]
     | Log10 a -> String.Concat [ "log10("; a.symbol; ")" ]

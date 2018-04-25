@@ -88,6 +88,8 @@ module Units =
     | Scalar
     | Amperes
     | Kelvins
+    | Joules
+    | Grams
     | Moles
     | Candelas
     | Watts
