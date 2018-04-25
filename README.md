@@ -232,7 +232,7 @@ let main argv =
   let processing =
     Events.compose [
       // all log message with log level above fatal will go to fatal target
-      Events.events |> Events.miniLevel LogLevel.Fatal |> Events.sink ["fatal"]
+      Events.events |> Events.minLevel LogLevel.Fatal |> Events.sink ["fatal"]
 
       // use windows perf counter to metric system info (cpu, disk, memory...) each 5 senonds, will go to console and influxdb
       Events.events

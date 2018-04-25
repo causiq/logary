@@ -92,7 +92,7 @@ let tests =
              |> Pipe.map (fun msg -> { msg with value = ":)"} )
              |> Events.sink ["2"]
 
-             Events.events |> Events.miniLevel Warn |> Events.sink ["3"]
+             Events.events |> Events.minLevel Warn |> Events.sink ["3"]
 
              Events.events
              |> Pipe.bufferTime (TimeSpan.FromMilliseconds 200.)

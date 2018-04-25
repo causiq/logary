@@ -119,7 +119,7 @@ let main argv =
 
   let processing =
     Events.compose [
-      Events.events |> Events.miniLevel LogLevel.Fatal |> Events.sink ["fatal"]
+      Events.events |> Events.minLevel LogLevel.Fatal |> Events.sink ["fatal"]
 
       //Events.events
       //|> Pipe.tickTimer (WinPerfCounters.appMetrics (PointName.ofSingle "app")) (TimeSpan.FromMilliseconds 5000.)
