@@ -1,3 +1,6 @@
+#### 5.0.0-beta.4
+* Support parsing exn type and inner exception messages from .Net and Java stacktraces.
+
 #### 5.0.0-beta.3
 * Targets: AliYun target ported to .Net Core
 * Targets: StackDriver target goes via JSON encoding; makes it total (AFAIK)

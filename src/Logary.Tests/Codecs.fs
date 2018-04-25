@@ -85,7 +85,7 @@ method="run" file="Generator.java" line="94"/>
               |> Option.get
 
           let expected =
-            " 	at org.apache.log4j.chainsaw.Generator.run(Generator.java:94)"
+            "java.lang.Exception: someexception-third\n 	at org.apache.log4j.chainsaw.Generator.run(Generator.java:94)"
             |> Formatting.DotNetStacktrace.parse
 
           error

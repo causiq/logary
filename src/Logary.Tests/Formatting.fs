@@ -583,7 +583,45 @@ CompanyA.WebApi.Client.WebApiException: Service Web API Error ---&gt; ServiceSta
           | Line line ->
             line.file |> Expect.equal "Should have parsed the file path" (Some @"C:\Projects\app\Applications\Web\SellableTicketsService.cs")
             line.lineNo |> Expect.equal "Should have parsed the file path" (Some 73)
-          | InnerDelim ->
-            failtest "Unexpected InnerDelim"
+          | other ->
+            failtestf "Unexpected %A" other
+
+    testCase "fusion stacktrace" <| fun () ->
+      let sample = """
+System.IO.FileNotFoundException: Could not load file or assembly 'Google.Api.Gax.Rest, Version=2.2.1.0, Culture=neutral, PublicKeyToken=3ec5ea7f18953e47' or one of its dependencies. The system cannot find the file specified.
+File name: 'Google.Api.Gax.Rest, Version=2.2.1.0, Culture=neutral, PublicKeyToken=3ec5ea7f18953e47'
+   at Google.Cloud.Storage.V1.StorageClient.Create(GoogleCredential credential, EncryptionKey encryptionKey)
+   at A.B.C.D.WebDav.WebDavService.<>c.<.ctor>b__4_0() in C:\A\B\C\D\WebDav\WebDavService.cs:line 27
+   at System.Lazy`1.CreateValue()
+   at System.Lazy`1.LazyInitValue()
+   at A.B.C.D.WebDav.WebDavService.TryGetFileSizeGCloud(String url, Int64& fileSize) in C:\A\B\C\D\WebDav\WebDavService.cs:line 119
+
+WRN: Assembly binding logging is turned OFF.
+To enable assembly bind failure logging, set the registry value [HKLM\Software\Microsoft\Fusion!EnableLog] (DWORD) to 1.
+Note: There is some performance penalty associated with assembly bind failure logging.
+To turn this feature off, remove the registry value [HKLM\Software\Microsoft\Fusion!EnableLog].
+"""
+      let parsed = DotNetStacktrace.parse sample
+
+      parsed.[0] |> function
+        | ExnType (et, msg) ->
+          et |> Expect.equal "Should be 'FileNotFoundException'" "System.IO.FileNotFoundException"
+          msg |> Expect.equal "Should be the remainder" "Could not load file or assembly 'Google.Api.Gax.Rest, Version=2.2.1.0, Culture=neutral, PublicKeyToken=3ec5ea7f18953e47' or one of its dependencies. The system cannot find the file specified."
+        | other -> failtestf "Unexpected %A" other
+
+      parsed.[1] |> function
+        | LineOutput msg ->
+          msg |> Expect.equal "Should be the full line" "File name: 'Google.Api.Gax.Rest, Version=2.2.1.0, Culture=neutral, PublicKeyToken=3ec5ea7f18953e47'"
+        | other -> failtestf "Unexpected %A" other
+
+      parsed.[7] |> function
+        | LineOutput msg ->
+          msg |> Expect.equal "Should be the full line" "WRN: Assembly binding logging is turned OFF."
+        | other -> failtestf "Unexpected %A" other
+
+      parsed.[8] |> function
+        | LineOutput msg ->
+          msg |> Expect.equal "Should be the full line" "To enable assembly bind failure logging, set the registry value [HKLM\Software\Microsoft\Fusion!EnableLog] (DWORD) to 1."
+        | other -> failtestf "Unexpected %A" other
   ]
 
