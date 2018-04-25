@@ -23,11 +23,13 @@ Target "Clean" (fun _ ->
 open AssemblyInfoFile
 
 Target "AssemblyInfo" (fun _ ->
-  [ "Logary", None
-    "Logary.Tests", None
-    "Logary.Facade", None
-    "Logary.Facade.Tests", None
-    "Logary.Services.Rutta", Some "legacy"
+  [ yield "Logary", None
+    yield "Logary.Tests", None
+    yield "Logary.Facade", None
+    yield "Logary.Adapters.Facade.", Some "adapters"
+    yield! Directory.GetDirectories "src/targets" |> Array.map Path.GetFileName |> Seq.map (fun x -> x, Some "targets")
+    yield "Logary.Facade.Tests", None
+    yield "Logary.Services.Rutta", Some "legacy"
   ]
   |> Seq.iter (fun (proj, subPath) ->
     [ Attribute.Title proj

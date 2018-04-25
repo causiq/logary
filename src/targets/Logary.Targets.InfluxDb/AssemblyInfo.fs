@@ -2,8 +2,8 @@
 namespace System
 open System.Reflection
 
-[<assembly: AssemblyTitleAttribute("Logary.Targets.ApplicationInsights")>]
-[<assembly: AssemblyProductAttribute("Logary.Targets.ApplicationInsights")>]
+[<assembly: AssemblyTitleAttribute("Logary.Targets.InfluxDb")>]
+[<assembly: AssemblyProductAttribute("Logary.Targets.InfluxDb")>]
 [<assembly: AssemblyCopyrightAttribute("Copyright © 2018 Henrik Feldt")>]
 [<assembly: AssemblyDescriptionAttribute("Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net.")>]
 [<assembly: AssemblyVersionAttribute("5.0.0")>]
@@ -11,8 +11,8 @@ open System.Reflection
 do ()
 
 module internal AssemblyVersionInformation =
-    let [<Literal>] AssemblyTitle = "Logary.Targets.ApplicationInsights"
-    let [<Literal>] AssemblyProduct = "Logary.Targets.ApplicationInsights"
+    let [<Literal>] AssemblyTitle = "Logary.Targets.InfluxDb"
+    let [<Literal>] AssemblyProduct = "Logary.Targets.InfluxDb"
     let [<Literal>] AssemblyCopyright = "Copyright © 2018 Henrik Feldt"
     let [<Literal>] AssemblyDescription = "Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net."
     let [<Literal>] AssemblyVersion = "5.0.0"
