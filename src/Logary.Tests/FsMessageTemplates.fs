@@ -153,7 +153,7 @@ let messageTemplates =
         "Welcome, customer {CustomerId:0000}", [|12|],
         "Welcome, customer 0012")
 
-    ptestList "alignment" [
+    testList "alignment" [
       let ``get alignment structure values`` (): obj[] seq =
         seq {
           let values: obj[] = [| 1234 |]
@@ -174,10 +174,22 @@ let messageTemplates =
           let values: obj[] = [| Cust() |]
           yield [| "C#"; values; "cus #{$cust:0,0}, pleasure to see you";             "cus #\"1234\", pleasure to see you"    |]
           yield [| "F#"; values; "cus #{$cust:0,0}, pleasure to see you";             "cus #\"1234\", pleasure to see you"    |]
+        }
+
+      for i, objs in ``get alignment structure values`` () |> Seq.mapi (fun i x -> i, x) do
+        yield testCase (sprintf "%i: %s" i (objs.[2] :?> string)) <| fun () ->
+          MtAssert.RenderedAs(downcast objs.[2], downcast objs.[1], downcast objs.[3])
+    ]
+
+    ptestList "alignment skipped" [
+      // move these into the non-skipped tests when https://github.com/logary/logary/issues/294 is fixed.
+      let ``get alignment structure values`` (): obj[] seq =
+        seq {
+          let values: obj[] = [| Cust() |]
           // formats/alignments don't propagate through to the 'destructured' inside values
           // They only apply to the outer (fully rendered) property text
-          yield [| "C#"; values; "cus #{@cust,80:0,0}, pleasure to see you";          "cus #     Cust { Seat: Chair { Back: \"straight\", Legs: [1, 2, 3, 4] }, Number: 1234 }, pleasure to see you"    |]
-          yield [| "F#"; values; "cus #{@cust,80:0,0}, pleasure to see you";          "cus #     Cust { Seat: Chair { Back: \"straight\", Legs: [1, 2, 3, 4] }, Number: 1234 }, pleasure to see you"    |]
+          yield [| "C#"; values; "cus #{@cust,80:0,0}, pleasure to see you";          "cus #     Cust { Seat: Chair { Back: \"straight\", Legs: [1, 2, 3, 4] }, Number: 1234 }, pleasure to see you" |]
+          yield [| "F#"; values; "cus #{@cust,80:0,0}, pleasure to see you";          "cus #     Cust { Seat: Chair { Back: \"straight\", Legs: [1, 2, 3, 4] }, Number: 1234 }, pleasure to see you" |]
         }
 
       for i, objs in ``get alignment structure values`` () |> Seq.mapi (fun i x -> i, x) do

@@ -57,7 +57,7 @@ module MessageTemplates =
     | SequenceValue of refId:int64 * TemplatePropertyValue list
     | StructureValue of refId:int64 * typeTag:string * values:PropertyNameAndValue list
     | DictionaryValue of refId:int64 * data: (TemplatePropertyValue * TemplatePropertyValue) list
-    
+
   and PropertyNameAndValue =
     { Name:string; Value:TemplatePropertyValue }
 
@@ -661,8 +661,8 @@ module MessageTemplates =
             let (formated, token) = tokenised
             let padded =
               match pt.align.direction with
-              |  AlignDirection.Right -> formated.PadRight(pt.align.width, ' ')
-              |  AlignDirection.Left -> formated.PadLeft(pt.align.width, ' ')
+              |  AlignDirection.Right -> formated.PadLeft(pt.align.width, ' ')
+              |  AlignDirection.Left -> formated.PadRight(pt.align.width, ' ')
               | _ -> formated
             (padded, token) |> Seq.singleton
         | _ -> tokenisePropValueCompact writeState pv null

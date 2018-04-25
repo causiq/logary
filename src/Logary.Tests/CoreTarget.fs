@@ -62,6 +62,7 @@ module LiterateTesting =
     let writtenParts = ResizeArray<LiterateConsole.ColouredText>()
     // replace everything except for tokenize
     { LiterateConsole.empty with
+        tokenise        = Tokenisers.extendedTokeniser
         formatProvider  = frenchFormatProvider
         getLogLevelText = singleLetterLogLevelText
         formatLocalTime = formatLocalTime
