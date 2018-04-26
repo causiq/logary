@@ -514,6 +514,10 @@ module Message =
     | _ ->
       []
 
+  [<CompiledName "TryGetError">]
+  let tryGetError msg: Formatting.StacktraceLine[] option =
+    tryGetField "error" msg
+
   //#endregion
 
   /// Patterns to match against the context; useful for extracting the data

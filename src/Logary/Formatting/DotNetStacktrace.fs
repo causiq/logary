@@ -9,14 +9,14 @@ type StacktraceLineData =
     { site = site; file = file; lineNo = lineNo }
 
 type StacktraceLine =
-  /// WRN: Assembly binding logging is turned OFF.
-  | LineOutput of data:string
   /// System.IO.FileNotFoundException: Could not load file or assembly 'Google.Api.Gax.Rest, Version=2.2.1.0, Culture=neutral, PublicKeyToken=3ec5ea7f18953e47' or one of its dependencies. The system cannot find the file specified.
   | ExnType of exnType:string * message:string
   /// "    at ServiceStack.ServiceClient.Web.ServiceClientBase.Send[TResponse](String httpMethod, String relativeOrAbsoluteUrl, Object request)"
   | Line of line:StacktraceLineData
   /// "--- End of inner exception stack trace ---"
   | InnerDelim
+  /// WRN: Assembly binding logging is turned OFF.
+  | LineOutput of data:string
 
 module DotNetStacktrace =
   open System

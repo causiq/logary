@@ -91,6 +91,11 @@ method="run" file="Generator.java" line="94"/>
           error
             |> Expect.sequenceEqual "Should have the same stacktrace parsed" expected
 
+          m
+            |> Message.tryGetError
+            |> Option.get
+            |> Expect.sequenceEqual "Should have same stacktrace with tryGetError" expected
+
         | Result.Error err ->
           failtestf "%s" err
 
