@@ -82,7 +82,7 @@ module Timing =
 module NormalUsage =
 
   let act (logger: Logger) =
-    Message.templateFormat("{userName} logged in", "haf")
+    Message.eventFormat("{userName} logged in", "haf")
     |> Logger.logSimple logger
 
     Message.eventFormat (Info, "{userName} logged in", "adam")

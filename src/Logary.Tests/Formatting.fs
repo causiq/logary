@@ -423,48 +423,48 @@ let textPrinters =
       |> levelDatetimeMessagePathNewLine.format
       |> Expect.linesEqual "formatting the message LevelDatetimePathMessageNl" expected
 
-    testCase "Formatting.templateFormat, simple case" <| fun _ ->
+    testCase "eventFormat, simple case" <| fun _ ->
       let format = "This {0} contains {1} words."
       let args: obj[] = [|"sentence"; 4|]
-      let msg = Message.templateFormat(format, args)
+      let msg = Message.eventFormat(format, args)
       shouldHaveFields msg [KV("0","sentence"); KV("1",4)] "converting a String.Format into a message template"
 
-    testCase "Formatting.templateFormat, named and positional fields" <| fun _ ->
+    testCase "eventFormat, named and positional fields" <| fun _ ->
       let format = "This {gramaticalStructure} contains {wordCount} {0}."
       let args: obj[] = [|"sentence"; 4; "words"|]
 
-      let msg = Message.templateFormat(format, args)
+      let msg = Message.eventFormat(format, args)
       shouldHaveFields msg [KV("gramaticalStructure","sentence"); KV("wordCount",4);KV("0","words")]
         "fields are matched left-to-right when any fields are named"
 
-    testCase "Formatting.templateFormat, positional fields" <| fun _ ->
+    testCase "eventFormat, positional fields" <| fun _ ->
       let format = "Positionally - two {2} . {2} . zero {0} . {0}"
       let args: obj[] = [|0;1;2;3|]
 
-      let msg = Message.templateFormat(format, args)
+      let msg = Message.eventFormat(format, args)
       shouldHaveFields msg [KV("0", 0); KV("2", 2);]
         "fields are matched positionally when all are numbered"
 
-    testCase "Formatting.templateFormat, named fields" <| fun _ ->
+    testCase "eventFormat, named fields" <| fun _ ->
       let format = "This {gramaticalStructure} contains {wordCount} words."
       let args: obj[] = [|"sentence"; 4|]
 
-      let msg = Message.templateFormat(format, args)
+      let msg = Message.eventFormat(format, args)
       shouldHaveFields msg [KV("gramaticalStructure","sentence"); KV("wordCount", 4);]
         "fields are matched left-to-right in message template"
 
-    testCase "Formatting.templateFormat, named fields, missing last" <| fun _ ->
+    testCase "eventFormat, named fields, missing last" <| fun _ ->
       let format = "This {gramaticalStructure} contains {wordCount} words."
       let args: obj[] = [|"sentence"|]
 
-      let msg = Message.templateFormat(format, args)
+      let msg = Message.eventFormat(format, args)
       shouldHaveFields msg [KV ("gramaticalStructure", "sentence")] "fields are matched left-to-right in message template"
 
-    testCase "Formatting.templateFormat, named fields, all missing" <| fun _ ->
+    testCase "eventFormat, named fields, all missing" <| fun _ ->
       let format = "This {gramaticalStructure} contains {wordCount} words."
       let args: obj[] = [||]
 
-      let msg = Message.templateFormat(format, args)
+      let msg = Message.eventFormat(format, args)
       shouldHaveFields msg [] "fields are matched left-to-right in message template"
 
     testCase "templateEvent<_> reconises the '$' symbol and will call 'ToString()' on the captured value" <| fun _ ->

@@ -573,7 +573,7 @@ module MessageEx =
     /// Converts a String.Format-style format string and an array of arguments into
     /// a message template and a set of fields.
     [<CompiledName "EventFormat">]
-    static member templateFormat (format: string, [<ParamArray>] args: obj[]) =
+    static member eventFormat (format: string, [<ParamArray>] args: obj[]) =
       Message.eventFormat (LogLevel.Info, format, args)
 
     static member templateEvent<'T> (level: LogLevel, format: string) : ('T -> Message) =

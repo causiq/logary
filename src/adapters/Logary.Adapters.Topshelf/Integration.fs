@@ -7,6 +7,7 @@ module LogaryConfiguratorExtensions =
   open Topshelf.HostConfigurators
   open Topshelf.Logging
   open Logary
+  open Logary.Adapters.Topshelf
 
   [<Extension; CompiledName "UseLogary">]
   let useLogary (_: HostConfigurator) (logary: LogManager) =
