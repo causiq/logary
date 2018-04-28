@@ -32,7 +32,9 @@ NUGET
     elmah.io.core (2.0.29)
       elmah.corelibrary (>= 1.2.2)
       elmah.io.client (>= 2.0.29)
-    EventStore.Client (4.1)
+    EventStore.ClientAPI.NetCore (4.1.0.23)
+      Newtonsoft.Json (>= 10.0.3) - restriction: || (&& (== net461) (>= netstandard2.0)) (== netcoreapp2.0) (== netstandard2.0)
+      protobuf-net (>= 2.3.2) - restriction: || (&& (== net461) (>= netstandard2.0)) (== netcoreapp2.0) (== netstandard2.0)
     Expecto (7.0.1)
       Argu (>= 5.1)
       Mono.Cecil (>= 0.10)
@@ -1025,8 +1027,8 @@ GITHUB
       Expecto
       Hopac
   remote: logary/logary
-    src/Logary.CSharp.Facade/Facade.cs (4e9ce626c5240a78bdef78f36a2c7188babbef12)
-    src/Logary.Facade/Facade.fs (4e9ce626c5240a78bdef78f36a2c7188babbef12)
+    src/Logary.CSharp.Facade/Facade.cs (ddc912410235583ddc5f9aa42a986704d357d299)
+    src/Logary.Facade/Facade.fs (ddc912410235583ddc5f9aa42a986704d357d299)
   remote: messagetemplates/messagetemplates-fsharp
     src/FsMtParser/FsMtParserFull.fs (17bdfdcc237d7d725c23ebe0ef24c438c4ff7530)
   remote: xyncro/aether
@@ -1561,12 +1563,12 @@ NUGET
       System.Runtime (>= 4.3) - restriction: || (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45)) (== netcoreapp2.0) (== netstandard2.0)
       System.Text.Encoding (>= 4.3) - restriction: || (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45)) (== netcoreapp2.0) (== netstandard2.0)
     System.Text.RegularExpressions (4.3) - restriction: || (&& (== net461) (< net451) (>= netstandard1.5)) (== netcoreapp2.0) (== netstandard2.0)
-      System.Collections (>= 4.3) - restriction: || (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45) (>= netstandard1.6)) (&& (== netcoreapp2.0) (>= dnxcore50)) (&& (== netcoreapp2.0) (< netcoreapp1.1)) (== netstandard2.0)
-      System.Globalization (>= 4.3) - restriction: || (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45) (>= netstandard1.6)) (&& (== netcoreapp2.0) (>= dnxcore50)) (&& (== netcoreapp2.0) (< netcoreapp1.1)) (== netstandard2.0)
-      System.Resources.ResourceManager (>= 4.3) - restriction: || (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45) (>= netstandard1.6)) (&& (== netcoreapp2.0) (>= dnxcore50)) (&& (== netcoreapp2.0) (< netcoreapp1.1)) (== netstandard2.0)
+      System.Collections (>= 4.3) - restriction: || (&& (== net461) (== netcoreapp2.0)) (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45) (>= netstandard1.6)) (&& (== netcoreapp2.0) (>= dnxcore50)) (&& (== netcoreapp2.0) (< netcoreapp1.1)) (== netstandard2.0)
+      System.Globalization (>= 4.3) - restriction: || (&& (== net461) (== netcoreapp2.0)) (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45) (>= netstandard1.6)) (&& (== netcoreapp2.0) (>= dnxcore50)) (&& (== netcoreapp2.0) (< netcoreapp1.1)) (== netstandard2.0)
+      System.Resources.ResourceManager (>= 4.3) - restriction: || (&& (== net461) (== netcoreapp2.0)) (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45) (>= netstandard1.6)) (&& (== netcoreapp2.0) (>= dnxcore50)) (&& (== netcoreapp2.0) (< netcoreapp1.1)) (== netstandard2.0)
       System.Runtime (>= 4.3) - restriction: || (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45)) (&& (== net461) (>= netcoreapp1.1)) (== netcoreapp2.0) (== netstandard2.0)
-      System.Runtime.Extensions (>= 4.3) - restriction: || (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45) (>= netstandard1.6)) (&& (== netcoreapp2.0) (>= dnxcore50)) (&& (== netcoreapp2.0) (< netcoreapp1.1)) (== netstandard2.0)
-      System.Threading (>= 4.3) - restriction: || (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45) (>= netstandard1.6)) (&& (== netcoreapp2.0) (>= dnxcore50)) (&& (== netcoreapp2.0) (< netcoreapp1.1)) (== netstandard2.0)
+      System.Runtime.Extensions (>= 4.3) - restriction: || (&& (== net461) (== netcoreapp2.0)) (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45) (>= netstandard1.6)) (&& (== netcoreapp2.0) (>= dnxcore50)) (&& (== netcoreapp2.0) (< netcoreapp1.1)) (== netstandard2.0)
+      System.Threading (>= 4.3) - restriction: || (&& (== net461) (== netcoreapp2.0)) (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45) (>= netstandard1.6)) (&& (== netcoreapp2.0) (>= dnxcore50)) (&& (== netcoreapp2.0) (< netcoreapp1.1)) (== netstandard2.0)
     System.Threading (4.3) - restriction: || (&& (== net461) (< net451) (>= netstandard1.5)) (== netcoreapp2.0) (== netstandard2.0)
       System.Runtime (>= 4.3) - restriction: || (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45)) (== netcoreapp2.0) (== netstandard2.0)
       System.Threading.Tasks (>= 4.3) - restriction: || (&& (== net461) (>= dnxcore50)) (&& (== net461) (< net45)) (== netcoreapp2.0) (== netstandard2.0)

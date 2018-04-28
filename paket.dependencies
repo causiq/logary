@@ -4,7 +4,7 @@ redirects on
 
 nuget Argu
 nuget Castle.Core
-nuget EventStore.Client
+nuget EventStore.ClientAPI.NetCore
 nuget Expecto
 nuget Expecto.FsCheck
 nuget Machine.Specifications
