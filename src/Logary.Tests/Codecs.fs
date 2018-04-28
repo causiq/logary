@@ -24,8 +24,6 @@ let tests =
           m.name
             |> Expect.equal "Should parse name of logger" (PointName.parse "MyProgram.ModuleA")
 
-          printfn "%A" m
-
           m
             |> Message.tryGetError
             |> Expect.isSome "Has the error parsed and ready"
