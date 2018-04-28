@@ -6,6 +6,7 @@
     <NoWarn>MSB3277</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Targets_InfluxDb.fs" />
     <None Include="paket.references" />
   </ItemGroup>

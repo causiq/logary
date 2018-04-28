@@ -6,6 +6,7 @@
     <NoWarn>MSB3277</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Targets_ElasticSearch.fs" />
     <None Include="paket.references" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />

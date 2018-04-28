@@ -28,6 +28,7 @@ Target "AssemblyInfo" (fun _ ->
     yield "Logary.Adapters.Facade", Some "adapters"
     yield! Directory.GetDirectories "src/targets" |> Array.map Path.GetFileName |> Seq.map (fun x -> x, Some "targets")
     yield! Directory.GetDirectories "src/adapters" |> Array.map Path.GetFileName |> Seq.map (fun x -> x, Some "adapters")
+    yield! Directory.GetDirectories "src/ingestion" |> Array.map Path.GetFileName |> Seq.map (fun x -> x, Some "ingestion")
     yield "Logary.Facade.Tests", None
     yield "Logary.Services.Rutta", Some "legacy"
   ]

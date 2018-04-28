@@ -5,6 +5,7 @@
     <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
     <Compile Include="UDP.fs" />
   </ItemGroup>
   <ItemGroup>

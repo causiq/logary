@@ -5,6 +5,7 @@
     <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
     <Compile Include="NLog.Targets.Logary.fs" />
     <None Include="paket.references" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />
