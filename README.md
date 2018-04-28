@@ -1922,7 +1922,7 @@ finally to targets which can then store them.
 
 Route, forward and print logs anywhere to anything.
 
-![Rutta help](./tools/docker-rutta-options.png))
+![Rutta help](./tools/docker-rutta-options.png)
 
 ### Usage
 
@@ -1930,7 +1930,7 @@ Route, forward and print logs anywhere to anything.
 docker run -p 10001:10001 --rm -it haaf/rutta router --listener tcp 0.0.0.0:10001 json --target console://./
 ```
 
-![Rutta help](./tools/docker-rutta-listener)
+![Rutta listener](./tools/docker-rutta-listener.jpg)
 
 ### In depth
 
