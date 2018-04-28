@@ -9,6 +9,7 @@ module internal JsonDecode =
   open Logary.Internals.Chiron.Operators
   module D = Json.Decode
   open JsonTransformer
+  open Logary
 
   /// Module with extensions to Chiron
   module JsonResult =
@@ -134,8 +135,20 @@ module internal JsonDecode =
     | "fields", json
     | "context", json ->
       context json |> JsonResult.map (fun values ->
-        { m with context = values |> HashMap.toSeqPair |> Seq.fold (addFieldKVP false) m.context },
-        remainder)
+      let constructed =
+        let name = KnownLiterals.FieldsPrefix + "error"
+        match values |> HashMap.tryFind name with
+        | Some (:? string as error) ->
+          match DotNetStacktrace.parse error with
+          | [||] ->
+            values
+          | st ->
+            values |> HashMap.add name (box st)
+        | _
+        | None ->
+          values
+      { m with context = constructed |> HashMap.toSeqPair |> Seq.fold (addFieldKVP false) m.context },
+      remainder)
 
     | "level", json
     | "severity", json ->
@@ -148,7 +161,7 @@ module internal JsonDecode =
     | otherProp, json ->
       JsonResult.pass (m, remainder |> JsonObject.add otherProp json)
 
-  let decodeObject: Decoder<JsonObject, Message> =
+  let message: Decoder<JsonObject, Message> =
     let initial = Message.event Debug "-"
     fun jsonObj ->
       JsonObject.toPropertyList jsonObj
@@ -180,4 +193,4 @@ module Json =
     formatWith JsonFormattingOptions.Compact data
 
   let decodeMessage =
-    Json.Decode.jsonObjectWith JsonDecode.decodeObject
+    Json.Decode.jsonObjectWith JsonDecode.message
