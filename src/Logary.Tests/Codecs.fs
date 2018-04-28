@@ -17,7 +17,7 @@ let tests =
         failtestf "%s" err
 
     testList "json" [
-      testCase "with fields.error and stacktrace" <| fun () ->
+      ftestCase "with fields.error and stacktrace" <| fun () ->
         let sample = @"{""name"": ""MyProgram.ModuleA"", ""level"": ""Fatal"", ""value"": ""App fatal error while saving image"", ""fields"": { ""user"": { ""id"": 1, ""username"": ""haf"" }, ""error"": ""System.IO.FileNotFoundException: Could not load file or assembly 'Google.Api.Gax.Rest, Version=2.2.1.0, Culture=neutral, PublicKeyToken=3ec5ea7f18953e47' or one of its dependencies. The system cannot find the file specified.\nFile name: 'Google.Api.Gax.Rest, Version=2.2.1.0, Culture=neutral, PublicKeyToken=3ec5ea7f18953e47'\n   at Google.Cloud.Storage.V1.StorageClient.Create(GoogleCredential credential, EncryptionKey encryptionKey)\n   at A.B.C.D.Image.ImageService.<>c.<.ctor>b__4_0() in C:\\A\\B\\C\\D\\Image\\ImageService.cs:line 27\n   at System.Lazy`1.CreateValue()\n   at System.Lazy`1.LazyInitValue()\n   at A.B.C.D.Image.ImageService.TryGetFileSizeGCloud(String url, Int64& fileSize) in C:\\A\\B\\C\\D\\Image\\ImageService.cs:line 119\n\nWRN: Assembly binding logging is turned OFF.\nTo enable assembly bind failure logging, set the registry value [HKLM\\Software\\Microsoft\\Fusion!EnableLog] (DWORD) to 1.\nNote: There is some performance penalty associated with assembly bind failure logging.\nTo turn this feature off, remove the registry value [HKLM\\Software\\Microsoft\\Fusion!EnableLog].\n\n"" } }"
         match Codec.json (Ingested.String sample) with
         | Result.Ok m ->
@@ -27,6 +27,16 @@ let tests =
           m
             |> Message.tryGetError
             |> Expect.isSome "Has the error parsed and ready"
+
+
+          let lines =
+            m
+              |> Message.tryGetError
+              |> Option.get
+
+          lines
+            |> Expect.isNonEmpty "Has at least one line"
+
         | Result.Error err ->
           failtestf "%A" err
     ]
