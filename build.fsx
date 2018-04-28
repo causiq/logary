@@ -2,7 +2,6 @@
 open Fake
 open System
 open System.IO
-open Fake
 
 Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 let configuration = environVarOrDefault "CONFIGURATION" "Release"
@@ -28,6 +27,7 @@ Target "AssemblyInfo" (fun _ ->
     yield "Logary.Facade", None
     yield "Logary.Adapters.Facade", Some "adapters"
     yield! Directory.GetDirectories "src/targets" |> Array.map Path.GetFileName |> Seq.map (fun x -> x, Some "targets")
+    yield! Directory.GetDirectories "src/adapters" |> Array.map Path.GetFileName |> Seq.map (fun x -> x, Some "adapters")
     yield "Logary.Facade.Tests", None
     yield "Logary.Services.Rutta", Some "legacy"
   ]
