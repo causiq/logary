@@ -1,3 +1,6 @@
+#### 5.0.0-beta.6
+* System.Diagnostics.Trace target
+
 #### 5.0.0-beta.5
 * Published haaf/rutta docker container
 * Improved JSON codec to capture `error` field.
