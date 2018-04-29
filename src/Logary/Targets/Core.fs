@@ -368,6 +368,74 @@ module LiterateConsole =
     interface SpecificTargetConf with
       member x.Build name = create conf name
 
+/// The System.Diagnostics.Trace Target for Logary
+module DiagnosticsTrace =
+  open System.Diagnostics
+  open Logary
+  open Logary.Configuration.Target
+  open Logary.Internals
+
+  /// Console configuration structure.
+  type TraceConf =
+    { writer: MessageWriter }
+
+    [<CompiledName "Create">]
+    static member create writer =
+      { writer = writer }
+
+  let defaultMessageFormat = MessageWriter.expandedWithoutContext System.Environment.NewLine
+
+  /// Default console target configuration.
+  let empty =
+    TraceConf.create defaultMessageFormat
+
+  module internal Impl =
+    open Hopac
+    open Hopac.Infixes
+
+    let loop (conf: TraceConf) (api: TargetAPI) =
+
+      let rec loop (): Job<unit> =
+        Alt.choose [
+          api.shutdownCh ^=> fun ack ->
+            ack *<= () :> Job<_>
+
+          RingBuffer.take api.requests ^=> function
+            | Log (message, ack) ->
+              job {
+                let str = conf.writer.format message
+                do! Job.Scheduler.isolate <| fun _ -> Trace.WriteLine(str)
+                do! ack *<= ()
+                return! loop ()
+              }
+
+            | Flush (ack, nack) ->
+              job {
+                do! IVar.fill ack ()
+                return! loop ()
+              }
+
+        ] :> Job<_>
+
+      loop ()
+
+  [<CompiledName "Create">]
+  let create conf name =
+    TargetConf.createSimple (Impl.loop conf) name
+
+  /// Use with LogaryFactory.New( s => s.Target<Console.Builder>() )
+  type Builder(conf, callParent: ParentCallback<Builder>) =
+
+    /// Specify the formatting style to use when logging to the console
+    member x.WithFormatter( sf: MessageWriter ) =
+      ! (callParent <| Builder({ conf with writer = sf }, callParent))
+
+    new(callParent: ParentCallback<_>) =
+      Builder(empty, callParent)
+
+    interface SpecificTargetConf with
+      member x.Build name = create conf name
+
 // Ignore deprecations (Debug doesn't have a Stream-ish to write to)
 #nowarn "44"
 
@@ -381,7 +449,6 @@ module Debugger =
   open Logary.Internals
   open Logary.Target
   open Logary.Configuration.Target
-
 
   let defaultMessageFormat = MessageWriter.expanded false System.Environment.NewLine System.Environment.NewLine
 
