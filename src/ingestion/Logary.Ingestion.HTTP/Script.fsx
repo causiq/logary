@@ -11,7 +11,7 @@ open Suave.Operators
 #r "../../../packages/FParsec/lib/net40-client/FParsec.dll"
 #r "../../../packages/NodaTime/lib/net45/NodaTime.dll"
 
-#I "bin/Debug/net461/"
+#I "bin/Release/net461/"
 #r "Logary.dll"
 #r "Hopac.Core.dll"
 #r "Hopac.dll"

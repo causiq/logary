@@ -1,9 +1,9 @@
-#I "bin/Debug/net461"
-#r "Logary.dll"
-#r "FsCheck.dll"
-#r "Hopac.dll"
-#r "Hopac.Core.dll"
-#r "NodaTime.dll"
+#I "bin/Release/net461"
+#r "Logary"
+#r "FsCheck"
+#r "Hopac"
+#r "Hopac.Core"
+#r "NodaTime"
 
 open Logary
 open Logary.Configuration
@@ -22,11 +22,9 @@ open Logary.MessageTemplates.Destructure
 open Logary.EventProcessing
 open Logary.Targets
 
-
 printfn "before"
 
-
-let pipe =
+let pipe () =
   Events.events
   |> Pipe.chain (fun cont ->
        let mutable firstOccur = true
@@ -39,6 +37,7 @@ let logm =
   Config.create "svc" "localhost"
   |> Config.target (Targets.LiterateConsole.create Targets.LiterateConsole.empty "nice console")
   |> Config.loggerMinLevel "a.b.*" LogLevel.Fatal
+  |> Config.processing (pipe ())
   |> Config.build
   |> run
 

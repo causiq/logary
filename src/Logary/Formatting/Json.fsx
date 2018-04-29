@@ -1,20 +1,12 @@
-#I "../bin/Debug/net461"
+#I "../bin/Release/net461"
 #r "FParsec"
 #r "Hopac.Core"
 #r "Hopac"
 #r "Logary"
 open System
 open System.Reflection
+open Logary.Formatting
 open Logary.Internals.Chiron
 open Logary.Internals.TypeShape.Core
-open Logary.Formatting.JsonHelper
 module E = Json.Encode
-toJson() "a"
-toJson() (box "a")
-toJson() (box [ (box "a") ])
-toJson() (box [ "a" ])
-toJson() []
-toJson() null
-toJson() ()
-toJson() (obj())
-toJson() (Map [ "a", String "b"])
+Json.encode "a"
