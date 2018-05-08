@@ -24,7 +24,7 @@ module DotNetStacktrace =
 
   let internal mline = Regex(@"at (?<site>.+?)(( in )((?<file>[^\n]+?)(:line (?<lineNo>\d{1,}))?))?$", RegexOptions.Multiline ||| RegexOptions.IgnoreCase)
   let internal mdelim = Regex(@"\S*--- [a-zA-Z ]+---", RegexOptions.Multiline ||| RegexOptions.IgnoreCase)
-  let internal mexnt = Regex(@"^(?<exnt>[a-z0-9\.+`]+Exception([0-9`+]+)?): (?<msg>.+)$", RegexOptions.Multiline ||| RegexOptions.IgnoreCase)
+  let internal mexnt = Regex(@"^(?<exnt>[a-z0-9\.+`]+Exception([a-z0-9`\.+\]\[]+)?): (?<msg>.+)$", RegexOptions.Multiline ||| RegexOptions.IgnoreCase)
 
   let (|Match|NoMatch|) (line: string) =
     let mline = mline.Match line

@@ -16,11 +16,11 @@ module Literate =
       [ data, Subtext ]
     | StacktraceLine.Line line ->
       [ yield "  at ", Punctuation
-        yield line.site, Text
+        yield line.site, Subtext
 
         if Option.isSome line.file then
-          yield " in ", Subtext
-          yield Option.get line.file, Text
+          yield " in ", Punctuation
+          yield Option.get line.file, Subtext
 
         if Option.isSome line.lineNo then
           yield ":", Punctuation
@@ -28,7 +28,7 @@ module Literate =
           yield Option.get line.lineNo |> string, NumericSymbol
       ]
     | StacktraceLine.InnerDelim ->
-      [ "--- End of inner exception stack trace ---", Subtext ]
+      [ "--- End of inner exception stack trace ---", Punctuation ]
 
   let tokeniseExceptions (pvd: IFormatProvider) (nl: string) (m: Message) =
     let exceptions =
