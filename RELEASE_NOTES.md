@@ -1,3 +1,6 @@
+#### 5.0.0-beta.7
+* Improve stacktrace parsing for WCF stacktraces
+
 #### 5.0.0-beta.6
 * System.Diagnostics.Trace target
 
