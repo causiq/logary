@@ -91,6 +91,7 @@
     <Compile Include="Configuration/Factory.Target.fs" />
     <Compile Include="Targets/Core.fs" />
     <Compile Include="Targets/Noop.fs" />
+    <Compile Include="Targets/BadBoy.fs" />
     <Compile Include="Targets/Graphite.fs" />
     <!-- Below: config -->
     <Compile Include="Configuration/Config.fs" />
