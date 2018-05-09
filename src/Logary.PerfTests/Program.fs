@@ -91,6 +91,9 @@ type LogEndToEndNoOutput() =
     x.logary.logger.logSimple (eventX "Hello world" Debug)
 
 module Tests =
+  // http://adamsitnik.com/the-new-Memory-Diagnoser/
+  // https://benchmarkdotnet.org/Advanced/Params.htm
+  // https://github.com/logary/logary/pull/323/files
   [<Tests>]
   let benchmarks =
     testList "benchmarks" [
