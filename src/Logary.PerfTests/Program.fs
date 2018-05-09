@@ -22,14 +22,14 @@ module Values =
   let targets =
     Map [
       "noop", Targets.Noop.create Targets.Noop.empty "sink"
-      "badboy_single_nodelay", Targets.BadBoy.create Targets.BadBoy.empty "sink"
-      "badboy_single_delay", Targets.BadBoy.create Targets.BadBoy.empty "sink"
-      "badboy_batch_nodelay", Targets.BadBoy.create Targets.BadBoy.empty "sink"
-      "badboy_batch_delay", Targets.BadBoy.create Targets.BadBoy.empty "sink"
+      "single_nodelay", Targets.BadBoy.create Targets.BadBoy.empty "sink"
+      "single_delay", Targets.BadBoy.create Targets.BadBoy.empty "sink"
+      "batch_nodelay", Targets.BadBoy.create Targets.BadBoy.empty "sink"
+      "batch_delay", Targets.BadBoy.create Targets.BadBoy.empty "sink"
     ]
   let baseJob =
     Job.Default
-      .WithInvocationCount(20480)
+      .WithInvocationCount(200_000)
       .WithWarmupCount(16)
       .WithLaunchCount(1)
       .WithGcServer(true)
@@ -50,9 +50,10 @@ type LogaryValue =
   new (target: string) =
     let logary =
       Config.create "Logary.ConsoleApp" "localhost"
-      |> Config.targets [ targets |> Map.find target ]
+      |> Config.target (targets |> Map.find target)
       |> Config.ilogger (ILogger.Console Warn)
       |> Config.processing (Events.events |> Events.sink [ "sink" ])
+      |> Config.loggerMinLevel ".*" Debug
       |> Config.build
       |> run
     { logger = logary.getLogger (PointName [| "PerfTestLogger" |])
@@ -61,13 +62,14 @@ type LogaryValue =
 type LogaryParam(value: LogaryValue) =
   interface IParam with
     member x.Value = box value
-    member x.DisplayText = sprintf "Logary with target=%s" value.target
-    member x.ToSourceCode() = sprintf "new Logary.PerTests.LogaryValue(%s)" value.target
+    member x.DisplayText = sprintf "Logary_%s" value.target
+    member x.ToSourceCode() = sprintf "new LogaryValue(\"%s\")" value.target
 
 [<MemoryDiagnoser>]
-[<ClrJob; CoreJob(isBaseline=true)>]
+//[<ClrJob; CoreJob(isBaseline=true)>]
+[<CoreJob(isBaseline=true)>]
 [<RPlotExporter; RankColumn>]
-type LogEndToEndNoOutput() =
+type Lgry() =
 
   [<ParamsSource("Configs"); DefaultValue>]
   val mutable logary: LogaryValue
@@ -75,20 +77,22 @@ type LogEndToEndNoOutput() =
   let toParam (x: IParam) = x
 
   member x.Configs() =
-    [ "noop"; "badboy_single_nodelay" ]
+    [ "single_nodelay"
+      "batch_delay"
+    ]
     |> Seq.map (LogaryValue >> LogaryParam >> toParam)
 
   [<Benchmark>]
-  member x.LogHelloWorld_WithAck() =
-    run (x.logary.logger.debugWithAck (eventX "Hello world"))
+  member x.wACK() =
+    run (x.logary.logger.warnWithAck (eventX "Hello world"))
 
   [<Benchmark>]
-  member x.LogHelloWorld_WithBP() =
-    run (x.logary.logger.debugWithBP (eventX "Hello world"))
+  member x.wBP() =
+    run (x.logary.logger.warnWithBP (eventX "Hello world"))
 
   [<Benchmark>]
-  member x.LogHelloWorld_Simple() =
-    x.logary.logger.logSimple (eventX "Hello world" Debug)
+  member x.simp() =
+    x.logary.logger.logSimple (eventX "Hello world" Warn)
 
 module Tests =
   // http://adamsitnik.com/the-new-Memory-Diagnoser/
@@ -99,7 +103,7 @@ module Tests =
     testList "benchmarks" [
       test "noop sink - baseline" {
         let summary =
-          benchmark<LogEndToEndNoOutput> benchmarkConfig (id >> box)
+          benchmark<Lgry> benchmarkConfig (id >> box)
         ()
       }
     ]
