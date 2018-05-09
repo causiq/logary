@@ -12,7 +12,7 @@ open Hopac
 open Logary
 open Logary.CSharp
 open Logary.Configuration
-open Logary.EventProcessing
+open Logary.Configuration
 
 /// This is useful to implement if you want add-on assemblies to be able to
 /// extend your builder. Then you just implement an interface that also

@@ -8,7 +8,7 @@ open Hopac.Extensions
 open Logary
 open Logary.Internals
 open Logary.Targets
-open Logary.EventProcessing
+open Logary.Configuration
 open Logary.MessageTemplates.Destructure
 open Logary.Formatting
 

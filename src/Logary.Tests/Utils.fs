@@ -25,7 +25,7 @@ open Logary
 open Logary.Internals
 open Logary.Targets
 open Logary.Configuration
-open Logary.EventProcessing
+open Logary.Configuration
 
 let buildTextWriteTarget name =
   let (out, error) = (new StringWriter (), new StringWriter ())

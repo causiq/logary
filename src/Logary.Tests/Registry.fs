@@ -9,7 +9,7 @@ open Logary
 open Logary.Internals
 open Logary.Message
 open Logary.Configuration
-open Logary.EventProcessing
+open Logary.Configuration
 
 let tests = [
   testCaseJob "from Config and Multi shutdown" <| job {

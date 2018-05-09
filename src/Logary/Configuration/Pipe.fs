@@ -1,9 +1,9 @@
-namespace Logary.EventProcessing
+namespace Logary.Configuration
 
 open System
 open Hopac
 open Hopac.Infixes
-open Logary.EventProcessing.Transformers
+open Logary.Configuration.Transformers
 
 [<Struct>]
 type PipeResult<'a> =

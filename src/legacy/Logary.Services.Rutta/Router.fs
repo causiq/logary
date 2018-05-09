@@ -12,7 +12,6 @@ module Router =
   open Logary.Ingestion
   open Logary.Configuration
   open Logary.Targets
-  open Logary.EventProcessing
   open Logary.Formatting
   open Logary.Internals.Chiron
   open fszmq

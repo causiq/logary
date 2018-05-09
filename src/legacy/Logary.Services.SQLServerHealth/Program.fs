@@ -11,7 +11,6 @@ open Logary
 open Logary.Targets
 open Logary.Metrics
 open Logary.Configuration
-open Logary.EventProcessing
 open Logary.Metrics.SQLServerHealth
 open Argu
 

@@ -1,5 +1,7 @@
 #### 5.0.0-beta.7
-* Improve stacktrace parsing for WCF stacktraces
+* Improve stacktrace parsing for WCF stacktraces, thanks @haf
+* Adding Logary.PerfTests to track https://github.com/logary/logary/issues/322 thanks @haf
+* Fix #318, move Logary.EventProcessing -> Logary.Configuration
 
 #### 5.0.0-beta.6
 * System.Diagnostics.Trace target

@@ -1,4 +1,4 @@
-namespace Logary.EventProcessing
+namespace Logary.Configuration
 
 open Logary
 open Logary.Internals

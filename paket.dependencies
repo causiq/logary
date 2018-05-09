@@ -74,3 +74,14 @@ group Examples
     nuget Hopac
     nuget NodaTime
     nuget RabbitMQ.Client
+
+group Benchmarks
+    source https://api.nuget.org/v3/index.json
+    framework net471, netcoreapp2.0
+    redirects on
+    nuget FParsec
+    nuget FSharp.Core
+    nuget Hopac
+    nuget NodaTime
+    nuget Expecto
+    nuget Expecto.BenchmarkDotNet

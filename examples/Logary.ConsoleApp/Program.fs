@@ -14,8 +14,8 @@ open Hopac
 open Logary
 open Logary.Configuration
 open Logary.Targets
-open Logary.EventProcessing
-open Logary.EventProcessing.Transformers
+open Logary.Configuration
+open Logary.Configuration.Transformers
 
 module RandomWalk =
 

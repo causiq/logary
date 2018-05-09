@@ -6,7 +6,7 @@ open Hopac.Infixes
 open Hopac.Extensions
 open Logary.Message
 open Logary.Internals
-open Logary.EventProcessing
+open Logary.Configuration
 open NodaTime
 open System.Text.RegularExpressions
 
