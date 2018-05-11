@@ -29,7 +29,7 @@ module Values =
     ]
   let baseJob =
     Job.Default
-      .WithInvocationCount(200_000)
+      .WithInvocationCount(20_000)
       .WithWarmupCount(16)
       .WithLaunchCount(1)
       .WithGcServer(true)
