@@ -5,9 +5,6 @@ open NodaTime
 open System
 open Logary
 
-/// A content-type annotation for a byte-array.
-type ContentType = string
-
 /// The main alias for time in Logary - the # of nanoseconds since 1970-01-01
 /// in Unix time. In effect it denotes the # of nanoseconds passed in
 /// international atomic time (TAI), but corrected for leap seconds – because
@@ -182,7 +179,6 @@ type Value =
   | Int64 of int64
   | BigInt of bigint
   | Fraction of int64 * int64
-  //| Binary of byte[] * ContentType
   /// Convert the Gauge value to a float (best as possible; this **may** lead to
   /// a loss of accuracy).
   member x.toFloat () =
@@ -199,6 +195,30 @@ with
     let (Gauge (v, _)) = x in v
   member x.unit =
     let (Gauge (_, u)) = x in u
+  static member ofNanos (ns: Value) =
+    Gauge (ns, Scaled (Seconds, float Constants.NanosPerSecond))
+  static member ofNanos (ns: int64) =
+    Gauge (Int64 ns, Scaled (Seconds, float Constants.NanosPerSecond))
+  static member ofNanos (ns: float) =
+    Gauge (Float ns, Scaled (Seconds, float Constants.NanosPerSecond))
+  static member ofMillis (ms: Value) =
+    Gauge (ms, Scaled (Seconds, float Constants.MillisPerSecond))
+  static member ofMillis (ms: float) =
+    Gauge (Float ms, Scaled (Seconds, float Constants.MillisPerSecond))
+  static member ofMillis (ms: int64) =
+    Gauge (Int64 ms, Scaled (Seconds, float Constants.MillisPerSecond))
+  static member ofBclTicks (bclTicks: Value) =
+    Gauge (bclTicks, Scaled (Seconds, float Constants.TicksPerSecond))
+  static member ofBclTicks (bclTicks: int64) =
+    Gauge (Int64 bclTicks, Scaled (Seconds, float Constants.TicksPerSecond))
+  static member ofBclTicks (bclTicks: float) =
+    Gauge (Float bclTicks, Scaled (Seconds, float Constants.TicksPerSecond))
+  static member ofStopwatchTicks (swTicks: Value) =
+    Gauge (swTicks, Scaled (Seconds, float System.Diagnostics.Stopwatch.Frequency))
+  static member ofStopwatchTicks (swTicks: int64) =
+    Gauge (Int64 swTicks, Scaled (Seconds, float System.Diagnostics.Stopwatch.Frequency))
+  static member ofStopwatchTicks (swTicks: float) =
+    Gauge (Float swTicks, Scaled (Seconds, float System.Diagnostics.Stopwatch.Frequency))
 
 /// This is record that is logged.
 type Message =

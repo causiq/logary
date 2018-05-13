@@ -1,3 +1,7 @@
+#### 5.0.0-beta.8
+* Correct Stopwatch.Frequency measurements for high-frequency timers.
+* Add Gauge.of{StopwatchTicks,...} methods
+
 #### 5.0.0-beta.7
 * Improve stacktrace parsing for WCF stacktraces, thanks @haf
 * Adding Logary.PerfTests to track https://github.com/logary/logary/issues/322 thanks @haf

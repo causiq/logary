@@ -1191,8 +1191,8 @@ module File =
     let loop (conf: FileConf) (will: Will<TargetMessage[] * uint16>) (api: TargetAPI) =
       let ri, rotateCh = api.runtime, Ch ()
 
-      let shutdownState =
-        Logger.timeJobSimple ri.logger "shutdownState" shutdownState
+      let shutdownState state =
+        ri.logger.timeJob (shutdownState state, measurement="shutDownState")
 
       // In this state the File target opens its file stream and checks if it
       // progress to the recovering state.
@@ -1212,7 +1212,6 @@ module File =
       and running (state: State): Job<unit> =
         Alt.choose [
           api.shutdownCh ^=> fun ack ->
-            ri.logger.debugWithBP (eventX "Shutting down file target (starting shutdownState)") >>=.
             shutdownState state >>=.
             ack *<= ()
 

@@ -14,9 +14,9 @@ open Logary
 /// Open this module to log in a more succinct way.
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Message =
+  open Formatting
 
   module Optic =
-
     let name_: Lens<Message, PointName> =
       (fun (x: Message) -> x.name),
       fun v (x: Message) -> { x with name = v }
@@ -45,10 +45,10 @@ module Message =
       box >> Some
 
     let contextValue_ name =
-      context_ >-> HashMap.value_ name >-> boxWithOption_
+      context_ >-> HashMap.Optic.value_ name >-> boxWithOption_
 
     let contextValueObj_ name =
-      context_ >-> HashMap.value_ name
+      context_ >-> HashMap.Optic.value_ name
 
   //#region CONTEXT AND FIELDS
 
@@ -364,7 +364,7 @@ module Message =
   /// Run the function `f` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Seconds.
   [<CompiledName "Time">]
-  let time pointName (f: 'input -> 'res) : 'input -> 'res * Message =
+  let time pointName (f: 'input -> 'res): 'input -> 'res * Message =
     fun input ->
       let sw = Stopwatch.StartNew()
       let res = f input
@@ -374,7 +374,7 @@ module Message =
       res, message
 
   [<CompiledName "TimeAsync">]
-  let timeAsync pointName (fn: 'input -> Async<'res>) : 'input -> Async<'res * Message> =
+  let timeAsync pointName (fn: 'input -> Async<'res>): 'input -> Async<'res * Message> =
     fun input ->
       async {
         let sw = Stopwatch.StartNew()
@@ -386,7 +386,7 @@ module Message =
       }
 
   [<CompiledName "TimeJob">]
-  let timeJob pointName (fn: 'input -> Job<'res>) : 'input -> Job<'res * Message> =
+  let timeJob pointName (fn: 'input -> Job<'res>): 'input -> Job<'res * Message> =
     fun input ->
       job {
         let sw = Stopwatch.StartNew()
@@ -398,7 +398,7 @@ module Message =
       }
 
   [<CompiledName "TimeAlt">]
-  let timeAlt pointName (fn: 'input -> Alt<'res>) : 'input -> Alt<'res * Message> =
+  let timeAlt pointName (fn: 'input -> Alt<'res>): 'input -> Alt<'res * Message> =
     fun input ->
     Alt.prepareFun (fun () ->
       let sw = Stopwatch.StartNew()
@@ -410,7 +410,7 @@ module Message =
     ))
 
   [<CompiledName "TimeTask">]
-  let timeTask pointName (fn: 'input -> Task<'res>) : 'input -> Task<'res * Message> =
+  let timeTask pointName (fn: 'input -> Task<'res>): 'input -> Task<'res * Message> =
     fun input ->
       let sw = Stopwatch.StartNew()
       // http://stackoverflow.com/questions/21520869/proper-way-of-handling-exception-in-task-continuewith
@@ -517,6 +517,15 @@ module Message =
   [<CompiledName "TryGetError">]
   let tryGetError msg: Formatting.StacktraceLine[] option =
     tryGetField "error" msg
+
+  [<CompiledName "AddCallerInfo">]
+  let addCallerInfo (memberName, path, line) msg =
+    match memberName, path, line with
+    | Some m, p, l ->
+      let data = StacktraceLineData.create m p l
+      msg |> setField "callerInfo" data
+    | None, _, _ ->
+      msg
 
   //#endregion
 

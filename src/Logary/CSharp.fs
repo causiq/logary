@@ -690,7 +690,7 @@ type LoggerExtensions =
   /// the message properly flushed to all targets' underlying "storage". Targets
   /// whose rules do not match the message will not be awaited.
   [<Extension>]
-  static member LogWithAck (logger, message: Message): Task<Task> =
+  static member LogWithAck (logger: Logger, message: Message): Task<Task> =
     let bufferCt = Unchecked.defaultof<CancellationToken>
     let promiseCt = Unchecked.defaultof<CancellationToken>
     Alt.toTasks bufferCt promiseCt (Logger.logWithAck logger message.level (fun _ -> message))
@@ -698,101 +698,6 @@ type LoggerExtensions =
   // TODO: timeAsyncWithAck, timeAsyncSimple
   // TODO: timeJobWithAck, timeJobSimple
   // TODO: timeAltWithAck, timeAltSimple
-
-  // - Back-pressure (if you await the task)
-  [<Extension>]
-  static member TimeWithAck (logger: Logger,
-                             action: Action,
-                             bufferCt,
-                             promiseCt,
-                             [<Optional; DefaultParameterValue(null:string)>] nameEnding,
-                             [<Optional; DefaultParameterValue(null:Func<Message,Message>)>] transform: Func<Message, Message>)
-                            : Func<Task<Task>> =
-    let action = FSharpFunc.OfAction action
-    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
-    let runnable =
-      Logger.timeWithAckT logger nameEnding transform action
-      >> fun (_, alt) -> Alt.toTasks bufferCt promiseCt alt
-    Funcs.ToFunc<_> runnable
-
-  /// Run the function `func` and measure how long it takes; logging that
-  /// measurement as a Gauge in the unit Seconds. As an exception to the rule,
-  /// it is allowed to pass `nameEnding` as null to this function. This
-  /// function returns the full schabang; i.e. it will let you wait for
-  /// Ack if you want. This adapter version for C# returns Task, and as such
-  /// it's a hot task that always will try to log. If you use this function
-  /// you should at least await the outer Task that provides backpressure.
-  ///
-  /// The function will yield when you code is complete, but the task may
-  /// not be completed by then.
-  ///
-  /// This function does not execute the callback.
-  [<Extension>]
-  static member TimeWithAck (logger,
-                             func: Func<'output>,
-                             bufferCt,
-                             promiseCt,
-                             [<Optional; DefaultParameterValue(null:string)>] nameEnding,
-                             [<Optional; DefaultParameterValue(null:Func<Message, Message>)>] transform: Func<Message, Message>)
-                            : Func<'output * Task<Task>> =
-    let func = FSharpFunc.OfFunc func
-    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
-    let runnable =
-      Logger.timeWithAckT logger nameEnding transform func
-      >> fun (res, alt) -> res, Alt.toTasks bufferCt promiseCt alt
-    Funcs.ToFunc<_> runnable
-
-  /// Run the function `func` and measure how long it takes; logging that
-  /// measurement as a Gauge in the unit Seconds. As an exception to the rule,
-  /// it is allowed to pass `nameEnding` as null to this function. This
-  /// function returns the full schabang; i.e. it will let you wait for
-  /// Ack if you want. This adapter version for C# returns Task, and as such
-  /// it's a hot task that always will try to log. If you use this function
-  /// you should at least await the outer Task that provides backpressure.
-  ///
-  /// The function will yield when you code is complete, but the task may
-  /// not be completed by then.
-  ///
-  /// This function does not execute the callback.
-  [<Extension>]
-  static member TimeWithAck (logger,
-                             func: Func<'input, 'output>,
-                             bufferCt,
-                             promiseCt,
-                             [<Optional; DefaultParameterValue(null:string)>] nameEnding,
-                             [<Optional; DefaultParameterValue(null:Func<Message, Message>)>] transform: Func<Message, Message>)
-                            : Func<'input, 'output * Task<Task>> =
-    let func = FSharpFunc.OfFunc func
-    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
-    let runnable =
-      Logger.timeWithAckT logger nameEnding transform func
-      >> fun (res, alt) -> res, Alt.toTasks bufferCt promiseCt alt
-    Funcs.ToFunc runnable
-
-  // corresponds to: timeTaskWithAckT
-
-  [<Extension>]
-  static member TimeTaskWithAck (logger,
-                                 func: Func<'input, Task<'output>>,
-                                 bufferCt,
-                                 promiseCt,
-                                 [<Optional; DefaultParameterValue(null:string)>] nameEnding,
-                                 [<Optional; DefaultParameterValue(null:Func<Message, Message>)>] transform: Func<Message, Message>)
-                                : Func<'input, Task<'output * Task<Task>>> =
-    let func = FSharpFunc.OfFunc func
-    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
-    let runnable input =
-      (Logger.timeTaskWithAckT logger nameEnding transform func input).ContinueWith (fun (task: Task<_>) ->
-        let res, alt = task.Result
-        res, Alt.toTasks bufferCt promiseCt alt
-      )
-    Funcs.ToFunc runnable
-
-
-  // TODO: time (single input, buffer written, ignore flush)
-  // TODO: timeX (like above)
-
-  // Corresponds to: timeSimple, timeSimpleX
 
   /// NOTE: You need to execute the returned action. Logary.CSharp.MessageExtensions.TimeScope.
   ///
@@ -803,82 +708,24 @@ type LoggerExtensions =
   /// Logs, but doesn't await all targets to flush. Without back-pressure (5 s timeout instead).
   /// The call you make to the function yields directly (after your code is done executing of course).
   [<Extension>]
-  static member Time (logger,
+  static member Time (logger: Logger,
                       action: Action,
-                      [<Optional; DefaultParameterValue(null:string)>] nameEnding,
+                      [<Optional; DefaultParameterValue(null:string)>] measurement: string,
                       [<Optional; DefaultParameterValue(null:Func<Message, Message>)>] transform: Func<Message, Message>)
                      : Action =
     let action = FSharpFunc.OfAction action
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
-    let runnable = Logger.timeSimpleT logger nameEnding transform action
-    Action runnable
+    let runnable = logger.timeFun (action, measurement, transform)
+    //Action runnable
+    failwith "TODO"
 
-  /// NOTE: You need to execute the returned function. Logary.CSharp.MessageExtensions.TimeScope.
-  ///
-  /// Run the function `func` and measure how long it takes; logging that
-  /// measurement as a Gauge in the unit Scaled(Seconds, 10^9). Finally transform the
-  /// message using the `transform` function, if given.
-  ///
-  /// Logs, but doesn't await all targets to flush. Without back-pressure (5 s timeout instead).
-  /// The call you make to the function yields directly (after your code is done executing of course).
-  [<Extension>]
-  static member Time (logger,
-                      func: Func<'res>,
-                      [<Optional; DefaultParameterValue(null:string)>] nameEnding,
-                      [<Optional; DefaultParameterValue(null:Func<Message, Message>)>] transform: Func<Message, Message>)
-                     : Func<'res> =
-    let func = FSharpFunc.OfFunc func
-    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
-    let runnable = Logger.timeSimpleT logger nameEnding transform func
-    Funcs.ToFunc<'res> runnable
-
-  /// NOTE: You need to execute the returned function. Logary.CSharp.MessageExtensions.TimeScope.
-  ///
-  /// Run the function `func` and measure how long it takes; logging that
-  /// measurement as a Gauge in the unit Scaled(Seconds, 10^9). Finally transform the
-  /// message using the `transform` function, if given.
-  ///
-  /// Logs, but doesn't await all targets to flush. Without back-pressure (5 s timeout instead).
-  /// The call you make to the function yields directly (after your code is done executing of course).
-  [<Extension>]
-  static member Time (logger,
-                      func: Func<'input, 'res>,
-                      [<Optional; DefaultParameterValue(null:string)>] nameEnding,
-                      [<Optional; DefaultParameterValue(null:Func<Message,Message>)>] transform: Func<Message, Message>)
-                     : Func<'input, 'res> =
-    let func = FSharpFunc.OfFunc func
-    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
-    let runnable = Logger.timeSimpleT logger nameEnding transform func
-    Funcs.ToFunc<'input, 'res> runnable
-
-  // Corresponds to: timeTaskSimple
-
-  /// NOTE: You need to execute the returned function. Also see Logary.CSharp.MessageExtensions.TimeScope.
-  ///
-  /// Run the function `func` and measure how long its returned Task takes; logging that
-  /// measurement as a Gauge in the unit Scaled(Seconds, 10^9). Finally transform the
-  /// message using the `transform` function, if given.
-  ///
-  /// Logs, but doesn't await all targets to flush. Without back-pressure (5 s timeout instead).
-  /// The call you make to the function yields directly (after your code is done executing of course).
-  /// The call you make to the function yields directly (after your code is done executing of course).
-  [<Extension>]
-  static member Time (logger,
-                      func: Func<'input, Task<'output>>,
-                      [<Optional; DefaultParameterValue(null:string)>] nameEnding: string,
-                      [<Optional; DefaultParameterValue(null:Func<Message, Message>)>] transform: Func<Message, Message>)
-                     : Func<'input, Task<'output>> =
-    let func = FSharpFunc.OfFunc func
-    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
-    let runnable = Logger.timeTaskSimpleT logger nameEnding transform func
-    Funcs.ToFunc runnable
 
   /// Create a new scope that starts a stopwatch on creation and logs the gauge of
   /// the duration its lifetime.
   [<Extension>]
-  static member TimeScope (logger,
+  static member TimeScope (logger: Logger,
                            [<Optional; DefaultParameterValue(null:string)>] nameEnding: string,
                            [<Optional; DefaultParameterValue(null:Func<Message,Message>)>] transform: Func<Message, Message>)
                           : TimeScope =
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
-    Logger.timeScopeT logger nameEnding transform
+    logger.timeScopeT nameEnding transform

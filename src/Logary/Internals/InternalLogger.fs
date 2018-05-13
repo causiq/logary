@@ -8,7 +8,7 @@ open Logary.Internals
 open Hopac.Extensions
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module InternalLogger =
+module internal InternalLogger =
   /// This logger is special: in the above case the Registry takes the responsibility
   /// of shutting down all targets, but this is a stand-alone logger that is used
   /// to log everything in Logary with, so it needs to capable of handling its
@@ -20,7 +20,7 @@ module InternalLogger =
       messageCh: Ch<Message * Promise<unit> * Ch<Promise<unit>>>
     }
   with
-    member inline x.name = PointName [| "Logary" |]
+    member x.name = PointName [| "Logary" |]
 
     interface Logger with // internal logger
       member x.logWithAck logLevel messageFactory =

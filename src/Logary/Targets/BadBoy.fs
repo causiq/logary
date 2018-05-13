@@ -4,6 +4,7 @@ module Logary.Targets.BadBoy
 open Hopac
 open Hopac.Infixes
 open Logary
+open Logary.Message
 open Logary.Internals
 open Logary.Configuration.Target
 open NodaTime
@@ -13,17 +14,20 @@ type BadBoyConf =
     delay: Duration
     batch: bool }
 
+/// Defaults: batch=true, delay=400ms
 let empty =
   { delay = Duration.FromMilliseconds 400L
     batch = true }
 
 module internal Impl =
   let loop (conf: BadBoyConf) (api: TargetAPI): Job<_> =
+    let ilogger = api.runtime.logger
+
     let rec singleLoopDelay () =
       let take =
         RingBuffer.take api.requests ^=> function
           | Log (message, ack) ->
-            timeOut (conf.delay.ToTimeSpan())
+            ilogger.timeAlt (timeOut (conf.delay.ToTimeSpan()), "single loop delay")
             >>=. ack *<= ()
             >>= singleLoopDelay
           | Flush (ack, nack) ->
@@ -62,7 +66,7 @@ module internal Impl =
                 ackCh *<= () :: flushes)
               ([], [], [])
 
-          timeOut (conf.delay.ToTimeSpan()) ^=> fun () ->
+          ilogger.timeAlt (timeOut (conf.delay.ToTimeSpan()), "batch loop delay") ^=> fun () ->
           Job.conIgnore acks >>=. Job.conIgnore flushes >>= batchLoopDelay
 
       let shutdown =
@@ -92,16 +96,17 @@ module internal Impl =
 
       take <|> shutdown
 
+    api.runtime.logger.debug (eventX (sprintf "Starting BadBoy with %A" conf))
     if conf.batch then
-      if conf.delay <> Duration.Zero then
-        upcast singleLoopDelay ()
-      else
-        upcast singleLoop ()
-    else
       if conf.delay <> Duration.Zero then
         upcast batchLoopDelay ()
       else
         upcast batchLoop ()
+    else
+      if conf.delay <> Duration.Zero then
+        upcast singleLoopDelay ()
+      else
+        upcast singleLoop ()
 
 [<CompiledName "Create">]
 let create conf name = TargetConf.createSimple (Impl.loop conf) name

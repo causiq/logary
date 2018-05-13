@@ -21,15 +21,9 @@ module Logger =
   // Logging methods //
   /////////////////////
 
-  // NOTE all extension methods are in CSharp.fs, so they've been removed from this file
-  // to avoid polluting the API unecessarily.
-
-  /// Log a message, but don't await all targets to flush.
+  /// Log a message, but don't await all targets to flush. Equivalent to logWithBP.
   let inline log (logger: Logger) logLevel messageFactory: Alt<unit> =
-    if logLevel >= logger.level then
-      logger.logWithAck logLevel messageFactory ^-> ignore
-    else
-      Alt.always ()
+    logger.logWithAck logLevel messageFactory ^-> ignore
 
   let private simpleTimeout millis loggerName =
     timeOutMillis millis
@@ -71,233 +65,6 @@ module Logger =
   /// whose rules do not match the message will not be awaited.
   let logWithAck (logger: Logger) logLevel messageFactory: Alt<Promise<unit>> =
     logger.logWithAck logLevel messageFactory
-
-  /// Run the function `f` and measure how long it takes; logging that
-  /// measurement as a Gauge in the unit Seconds. As an exception to the rule,
-  /// it is allowed to pass `nameEnding` as null to this function. This
-  /// function returns the full schabang; i.e. it will let you wait for
-  /// acks if you want. If you do not start/commit to the Alt, the
-  /// logging of the gauge will never happen.
-  let timeWithAckT (logger: Logger)
-                   (nameEnding: string)
-                   (transform: Message -> Message)
-                   (f: 'input -> 'res)
-                   : 'input -> 'res * Alt<Promise<unit>> =
-    let name = logger.name |> PointName.setEnding nameEnding
-    fun input ->
-      let res, message = Message.time name f input
-      let message = transform message
-      res, logWithAck logger message.level (fun _ -> message)
-
-  /// Run the function `f` and measure how long it takes; logging that
-  /// measurement as a Gauge in the unit Seconds. As an exception to the rule,
-  /// it is allowed to pass `nameEnding` as null to this function. This
-  /// function returns the full schabang; i.e. it will let you wait for
-  /// acks if you want. If you do not start/commit to the Alt, the
-  /// logging of the gauge will never happen.
-  let timeWithAck (logger: Logger)
-                  (nameEnding: string)
-                  (f: 'input -> 'res)
-                  : 'input -> 'res * Alt<Promise<unit>> =
-    timeWithAckT logger nameEnding id f
-
-  let time (logger: Logger)
-           (nameEnding: string)
-           (f: 'input -> 'res)
-           : 'input -> 'res * Alt<unit> =
-    let name = logger.name |> PointName.setEnding nameEnding
-    fun input ->
-      let res, message = Message.time name f input
-      res, log logger message.level (fun _ -> message)
-
-  let timeX (logger: Logger)
-            (f: 'input -> 'res)
-            : 'input -> 'res * Alt<unit> =
-    time logger null f
-
-  /// Run the function `f` and measure how long it takes; logging that
-  /// measurement as a Gauge in the unit Scaled(Seconds, 10^9). Finally
-  /// transform the message using the `transform` function.
-  let timeSimpleT (logger: Logger)
-                  (nameEnding: string)
-                  (transform: Message -> Message)
-                  (f: 'input -> 'res)
-                  : 'input -> 'res =
-    let name = logger.name |> PointName.setEnding nameEnding
-    fun input ->
-      let res, message = Message.time name f input
-      logSimple logger (transform message)
-      res
-
-  /// Run the function `f` and measure how long it takes; logging that
-  /// measurement as a Gauge in the unit Scaled(Seconds, 10^9).
-  let timeSimple (logger: Logger)
-                 (nameEnding: string)
-                 (f: 'input -> 'res)
-                 : 'input -> 'res =
-    timeSimpleT logger nameEnding id f
-
-  /// Run the function `f` and measure how long it takes; logging that
-  /// measurement as a Gauge in the unit Scaled(Seconds, 10^9).
-  let timeSimpleX (logger: Logger)
-                  (f: 'input -> 'res)
-                  : 'input -> 'res =
-    timeSimpleT logger null id f
-
-  [<CompiledName "TimeWithAck"; Extension>]
-  let timeAsyncWithAck (logger: Logger)
-                       (nameEnding: string)
-                       (f: 'input -> Async<'res>)
-                       : 'input -> Async<'res * Alt<Promise<unit>>> =
-    let name = logger.name |> PointName.setEnding nameEnding
-    fun input ->
-      Message.timeAsync name f input |> Async.map (fun (res, message) ->
-      res, logWithAck logger message.level (fun _ -> message))
-
-  [<CompiledName "TimeSimple"; Extension>]
-  let timeAsyncSimple (logger: Logger)
-                      (nameEnding: string)
-                      (f: 'input -> Async<'res>)
-                      : 'input -> Async<'res> =
-    let name = logger.name |> PointName.setEnding nameEnding
-    fun input ->
-      Message.timeAsync name f input |> Async.map (fun (res, message) ->
-      logSimple logger message
-      res)
-
-  [<CompiledName "TimeWithAck"; Extension>]
-  let timeJobWithAck (logger: Logger)
-                     (nameEnding: string)
-                     (f: 'input -> Job<'res>)
-                     : 'input -> Job<'res * Alt<Promise<unit>>> =
-    let name = logger.name |> PointName.setEnding nameEnding
-    fun input ->
-      Message.timeJob name f input |> Job.map (fun (res, message) ->
-      res, logWithAck logger message.level (fun _ -> message))
-
-  [<CompiledName "TimeSimple"; Extension>]
-  let timeJobSimple (logger: Logger)
-                    (nameEnding: string)
-                    (f: 'input -> Job<'res>)
-                    : 'input -> Job<'res> =
-    let name = logger.name |> PointName.setEnding nameEnding
-    fun input ->
-      Message.timeJob name f input |> Job.map (fun (res, message) ->
-      logSimple logger message
-      res)
-
-  [<CompiledName "TimeWithAck"; Extension>]
-  let timeAltWithAck (logger: Logger)
-                     (nameEnding: string)
-                     (f: 'input -> Alt<'res>)
-                     : 'input -> Alt<'res * Alt<Promise<unit>>> =
-    let name = logger.name |> PointName.setEnding nameEnding
-    fun input ->
-      Message.timeAlt name f input ^-> fun (res, message) ->
-      res, logWithAck logger message.level (fun _ -> message)
-
-  [<CompiledName "TimeSimple"; Extension>]
-  let timeAltSimple (logger: Logger)
-                    (nameEnding: string)
-                    (f: 'input -> Alt<'res>)
-                    : 'input -> Alt<'res> =
-    let name = logger.name |> PointName.setEnding nameEnding
-    fun input ->
-      Message.timeAlt name f input ^-> fun (res, message) ->
-      logSimple logger message
-      res
-
-  // corresponds to CSharp.TimeWithAck
-  let timeTaskWithAckT (logger: Logger)
-                       (nameEnding: string)
-                       (transform: Message -> Message)
-                       (f: 'input -> Task<'res>)
-                       : 'input -> Task<'res * Alt<Promise<unit>>> =
-    let name = logger.name |> PointName.setEnding nameEnding
-    fun input ->
-      (Message.timeTask name f input).ContinueWith(fun (task: Task<'res * Message>) ->
-        let res, message = task.Result
-        let message = transform message
-        res, logWithAck logger message.level (fun _ -> message))
-
-  // corresponds to CSharp.TimeWithAck
-  let timeTaskWithAck logger nameEnding (f: 'input -> Task<'res>) =
-    timeTaskWithAckT logger nameEnding id f
-
-  // corresponds to CSharp.TimeSimple
-  let timeTaskSimpleT (logger: Logger)
-                      (nameEnding: string)
-                      (transform: Message -> Message)
-                      (f: 'input -> Task<'res>)
-                      : 'input -> Task<'res> =
-    let name = logger.name |> PointName.setEnding nameEnding
-    fun input ->
-      (Message.timeTask name f input).ContinueWith(fun (task: Task<'res * Message>) ->
-        let res, message = task.Result
-        logSimple logger (transform message)
-        res)
-
-  let timeScopeT (logger: Logger) (nameEnding: string) (transform: Message -> Message): TimeScope =
-    let name = logger.name |> PointName.setEnding nameEnding
-    let bisections : (int64 * string) list ref = ref []
-
-    let sw = Stopwatch.StartNew()
-
-    let addSpan (m, i) (span: int64 (* ticks *), label: string) =
-      let spanName = PointName [| PointName.format name ; "span"; string i |]
-      let spanLabelName = PointName.setEnding "label" spanName
-
-      let m' =
-        m
-        |> Message.addGauge (PointName.format spanName) (Ticks.toGauge span)
-        |> Message.setContext (PointName.format spanLabelName) label
-
-      m', i + 1L
-
-    let addSpans m =
-      if !bisections = [] then m else
-      !bisections |> List.fold addSpan (m, 0L) |> fst
-
-    let stop (sw: Stopwatch) (decider: Duration -> LogLevel) =
-      sw.Stop()
-      let level = Duration.FromTicks sw.ElapsedTicks |> decider
-      sw.toGauge()
-      |> Message.gaugeWithUnit name "duration"
-      |> Message.setLevel level
-      |> addSpans
-
-    let bisect (sw: Stopwatch): string -> unit =
-      fun label ->
-        lock bisections <| fun () ->
-          match !bisections with
-          | [] ->
-            bisections := (sw.ElapsedTicks, label) :: []
-          | (latest, _) :: _ as bs ->
-            bisections := (sw.ElapsedTicks - latest, label) :: bs
-
-    { new TimeScope with
-        member x.Dispose () =
-          let message = stop sw (fun _ -> Debug)
-          logSimple logger message
-
-        member x.elapsed =
-          Duration.FromTimeSpan sw.Elapsed
-
-        member x.bisect label =
-          bisect sw label
-
-        member x.stop decider =
-          let m = stop sw decider
-          logger.logWithAck m.level (fun _ -> transform m)
-
-        member x.logWithAck logLevel messageFactory =
-          logger.logWithAck logLevel (messageFactory >> transform)
-
-        member x.name =
-          name
-
-        member x.level = logger.level
-    }
 
   let apply (middleware: Message -> Message) (logger: Logger): Logger =
     { new Logger with // Logger.apply delegator
@@ -391,7 +158,139 @@ module LoggerEx =
     member x.fatalWithAck (messageFactory: LogLevel -> Message): Promise<unit> =
       lwa x Fatal messageFactory
 
-    // Utilities for Job
+    member x.timeFun (f: 'input -> 'res,
+                      ?measurement: string,
+                      ?transform: Message -> Message,
+                      ?waitForAck: bool,
+                      [<CallerMemberName>] ?memberName: string,
+                      [<CallerFilePath>] ?path: string,
+                      [<CallerLineNumber>] ?line: int)
+                      : 'input -> Alt<'res> =
+      let measurement = defaultArg measurement null
+      let transform = defaultArg transform id
+      let waitForAck = defaultArg waitForAck false
+      fun input ->
+        let ts = StopwatchTicks.getTimestamp()
+        let res = f input
+        let dur = Gauge.ofStopwatchTicks (ts - StopwatchTicks.getTimestamp())
+        let cb dur =
+          fun level ->
+            dur
+            |> Message.gaugeWithUnit x.name measurement
+            |> Message.setLevel level
+            |> Message.addCallerInfo (memberName, path, line)
+            |> transform
+        if waitForAck then (x.logWithAck Debug (cb dur) ^=> id) ^->. res
+        else x.log Debug (cb dur) ^->. res
+
+    member x.timeJob (xJ: Job<'a>,
+                      ?measurement: string,
+                      ?transform: Message -> Message,
+                      ?waitForAck: bool,
+                      [<CallerMemberName>] ?memberName: string,
+                      [<CallerFilePath>] ?path: string,
+                      [<CallerLineNumber>] ?line: int)
+                      : Job<'a> =
+      let measurement = defaultArg measurement null
+      let transform = defaultArg transform id
+      let waitForAck = defaultArg waitForAck false
+      let cb dur =
+        fun level ->
+          dur
+          |> Message.gaugeWithUnit x.name measurement
+          |> Message.setLevel level
+          |> Message.addCallerInfo (memberName, path, line)
+          |> transform
+      let onComplete dur =
+        if waitForAck then x.logWithAck Debug (cb dur) ^=> id
+        else x.log Debug (cb dur)
+      Job.timeJob onComplete xJ
+
+    member x.timeAlt (xA: Alt<'a>,
+                      ?measurement: string,
+                      ?transform: Message -> Message,
+                      ?waitForAck: bool,
+                      [<CallerMemberName>] ?memberName: string,
+                      [<CallerFilePath>] ?path: string,
+                      [<CallerLineNumber>] ?line: int)
+                      : Alt<'a> =
+      let measurement = defaultArg measurement null
+      let transform = defaultArg transform id
+      let waitForAck = defaultArg waitForAck false
+      let cb wasNacked dur =
+        fun level ->
+          Message.gaugeWithUnit x.name measurement dur
+          |> Message.tag (if wasNacked then "nack" else "ack")
+          |> Message.setLevel level
+          |> Message.addCallerInfo (memberName, path, line)
+          |> transform
+      let onComplete dur =
+        if waitForAck then x.logWithAck Debug (cb true dur) ^=> id
+        else x.log Debug (cb true dur)
+      let onNack dur =
+        if waitForAck then x.logWithAck Debug (cb false dur) ^=> id
+        else x.log Debug (cb false dur)
+      Alt.timeJob onComplete onNack xA
+
+    member x.timeScopeT (scopeName: string) (transform: Message -> Message): TimeScope =
+      let name = x.name |> PointName.setEnding scopeName
+      let bisections: (StopwatchTicks * string) list ref = ref []
+
+      let sw = Stopwatch.StartNew()
+
+      let addSpan (m, i) (span: StopwatchTicks, label: string) =
+        let spanName = PointName [| PointName.format name ; "span"; string i |]
+        let spanLabelName = PointName.setEnding "label" spanName
+
+        let m' =
+          m
+          |> Message.addGauge (PointName.format spanName) (Gauge.ofStopwatchTicks span)
+          |> Message.setContext (PointName.format spanLabelName) label
+
+        m', i + 1L
+
+      let addSpans m =
+        if !bisections = [] then m else
+        !bisections |> List.fold addSpan (m, 0L) |> fst
+
+      let stop (sw: Stopwatch) (decider: Duration -> LogLevel) =
+        sw.Stop()
+        let level = Duration.FromTicks sw.Elapsed.Ticks |> decider
+        sw.toGauge()
+        |> Message.gaugeWithUnit name "duration"
+        |> Message.setLevel level
+        |> addSpans
+
+      let bisect (sw: Stopwatch): string -> unit =
+        fun label ->
+          lock bisections <| fun () ->
+          match !bisections with
+          | [] ->
+            bisections := (sw.ElapsedTicks, label) :: []
+          | (latest, _) :: _ as bs ->
+            bisections := (sw.ElapsedTicks - latest, label) :: bs
+
+      { new TimeScope with
+          member y.Dispose () =
+            let message = stop sw (fun _ -> Debug)
+            x.logSimple message
+
+          member y.elapsed =
+            Duration.FromTimeSpan sw.Elapsed
+
+          member y.bisect label =
+            bisect sw label
+
+          member y.stop decider =
+            let m = stop sw decider
+            x.logWithAck m.level (fun _ -> transform m)
+
+          member y.logWithAck logLevel messageFactory =
+            x.logWithAck logLevel (messageFactory >> transform)
+
+          member y.name = name
+          member y.level = x.level
+      }
 
     /// Print the ToString representation of the Job before and after it is executed.
     member x.beforeAfter atLevel (xJ: Job<'x>): Job<'x> =

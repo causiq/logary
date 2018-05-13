@@ -13,7 +13,7 @@ open Logary.Internals
 
 /// A target configuration is the 'reference' to the to-be-run target while it
 /// is being configured, and before Logary fully starts up.
-type TargetConf = // formerly TargetUtils
+type TargetConf =
   { name: string
     rules: Rule list
     bufferSize: uint16
@@ -25,7 +25,6 @@ type TargetConf = // formerly TargetUtils
 
   override x.ToString() =
     sprintf "TargetConf(%s)" x.name
-
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module TargetConf =

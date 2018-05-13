@@ -30,7 +30,7 @@ module Values =
   let baseJob =
     Job.Default
       .WithInvocationCount(20_000)
-      .WithWarmupCount(16)
+      .WithWarmupCount(4)
       .WithLaunchCount(1)
       .WithGcServer(true)
       .WithGcConcurrent(true)
@@ -51,7 +51,7 @@ type LogaryValue =
     let logary =
       Config.create "Logary.ConsoleApp" "localhost"
       |> Config.target (targets |> Map.find target)
-      |> Config.ilogger (ILogger.Console Warn)
+      |> Config.ilogger (ILogger.LiterateConsole Verbose)
       |> Config.processing (Events.events |> Events.sink [ "sink" ])
       |> Config.loggerMinLevel ".*" Debug
       |> Config.build

@@ -143,7 +143,7 @@ module Config =
     logManager
 
 
-  // TO CONSIDER: config below around registry,not globals
+  // TO CONSIDER: config below around registry, instead of as globals
 
   let projection projectionExpr =
     Logary.Internals.Global.Destructure.configProjection projectionExpr

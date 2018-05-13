@@ -11,7 +11,7 @@ open System.Runtime.CompilerServices
 open Hopac
 open Logary
 open Logary.CSharp
-open Logary.Configuration
+open Logary.Internals
 open Logary.Configuration
 
 /// This is useful to implement if you want add-on assemblies to be able to
@@ -31,10 +31,8 @@ type ConfigReader<'a> =
   abstract ReadConf: unit -> 'a
 
 type internal ConfBuilderTarget<'T when 'T :> Target.SpecificTargetConf> =
-  { tr: Rule               // for this specific target
-    specific : 'T option }
-with
-
+  { tr: Rule // for this specific target
+    specific: 'T option }
   interface Target.TargetConfBuild<'T> with
     member x.MinLevel logLevel =
       { x with tr = { x.tr with Rule.minLevel = logLevel } }

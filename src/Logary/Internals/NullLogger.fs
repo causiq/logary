@@ -6,7 +6,7 @@ open Logary
 /// A logger that does absolutely nothing, useful for feeding into the target
 /// that is actually *the* internal logger target, to avoid recursive calls to
 /// itself.
-type NullLogger() =
+type private NullLogger() =
   interface Logger with // null logger
     member x.logWithAck logLevel messageFactory = Promise.instaPromise
     member x.level = LogLevel.Fatal
@@ -14,6 +14,5 @@ type NullLogger() =
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module NullLogger =
-
   let instance =
     NullLogger () :> Logger
