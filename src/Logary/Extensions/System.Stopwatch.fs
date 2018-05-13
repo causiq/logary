@@ -23,8 +23,10 @@ module StopwatchEx =
       sw.Stop()
       res, sw.toGauge()
 
+/// http://geekswithblogs.net/BlackRabbitCoder/archive/2012/01/12/c.net-little-pitfalls-stopwatch-ticks-are-not-timespan-ticks.aspx
 type StopwatchTicks = int64
 
+/// http://geekswithblogs.net/BlackRabbitCoder/archive/2012/01/12/c.net-little-pitfalls-stopwatch-ticks-are-not-timespan-ticks.aspx
 module StopwatchTicks =
   let inline getTimestamp (): StopwatchTicks =
     Stopwatch.GetTimestamp()
