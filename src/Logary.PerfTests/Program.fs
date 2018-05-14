@@ -8,6 +8,7 @@ open Logary
 open Logary.Configuration
 open Logary.Message
 open BenchmarkDotNet
+open BenchmarkDotNet.Horology
 open BenchmarkDotNet.Code
 open BenchmarkDotNet.Jobs
 open BenchmarkDotNet.Reports
@@ -34,6 +35,7 @@ module TestData =
 [<AutoOpen>]
 module Values =
   let run = Hopac.Hopac.run
+
   let targets =
     Map [
       "noop", Targets.Noop.create Targets.Noop.empty "sink"
@@ -48,7 +50,7 @@ module Values =
       .WithInvocationCount(800)
       .WithWarmupCount(4)
       .WithLaunchCount(1)
-      .WithIterationTime(TimeInterval.Millisecond * 200)
+      //.WithIterationTime(TimeInterval.Millisecond * 200)
       .WithGcServer(true)
       .WithGcConcurrent(true)
 
@@ -63,8 +65,7 @@ type LogaryValue =
       |> Config.ilogger (ILogger.LiterateConsole Verbose)
       |> Config.processing (Events.events |> Events.sink [ "sink" ])
       |> Config.loggerMinLevel ".*" Debug
-      |> Config.build
-      |> run
+      |> Config.buildAndRun
     { logger = logary.getLogger (PointName [| "PerfTestLogger" |])
       target = target }
 
@@ -75,24 +76,28 @@ type LogaryParam(value: LogaryValue) =
     member x.ToSourceCode() = sprintf "new LogaryValue(\"%s\")" value.target
 
 type BP() =
+  let toParam (x: IParam) = x
+
   [<ParamsSource("Configs"); DefaultValue>]
   val mutable logary: LogaryValue
-
-  let toParam (x: IParam) = x
 
   member x.Configs() =
     [ "single_nodelay"; "batch_delay" ]
     |> Seq.map (LogaryValue >> LogaryParam >> toParam)
 
   [<Benchmark>]
-  member x.wBP() =
+  member x.smallMsg () =
+    run (x.logary.logger.warnWithBP TestData.helloWorld)
+
+  [<Benchmark>]
+  member x.largeMsg() =
     run (x.logary.logger.warnWithBP TestData.multiGaugeMessage)
 
 type ACK() =
+  let toParam (x: IParam) = x
+
   [<ParamsSource("LogaryConfigs"); DefaultValue>]
   val mutable logary: LogaryValue
-
-  let toParam (x: IParam) = x
 
   member x.LogaryConfigs() =
     [ "single_nodelay"; "batch_delay" ]
@@ -102,10 +107,19 @@ type ACK() =
   member x.wACK() =
     run (x.logary.logger.warnWithAck TestData.multiGaugeMessage)
 
+type Simple() =
+  let toParam (x: IParam) = x
 
-  //[<Benchmark>]
-  //member x.simp() =
-  //  x.logary.logger.logSimple (TestData.multiGaugeMessage Warn)
+  [<ParamsSource("LogaryConfigs"); DefaultValue>]
+  val mutable logary: LogaryValue
+
+  member x.LogaryConfigs() =
+    [ "single_nodelay"; "batch_delay" ]
+    |> Seq.map (LogaryValue >> LogaryParam >> toParam)
+
+  [<Benchmark>]
+  member x.simp() =
+    x.logary.logger.logSimple (TestData.multiGaugeMessage Warn)
 
 module Tests =
   open BenchmarkDotNet.Diagnosers
@@ -131,9 +145,20 @@ module Tests =
 
     testList "benchmarks" [
       test "backpressure" {
-        let cfg =
-          create (Job(Job.Core, baseJob))
-        let summary: Summary = benchmark<BP> config (id >> box) |> unbox
+        let cfg = config (Job(Job.Core, baseJob))
+        let summary: Summary = benchmark<BP> cfg (id >> box) |> unbox
+        ()
+      }
+
+      test "simple" {
+        let cfg = config (Job(Job.Core, baseJob))
+        let summary: Summary = benchmark<Simple> cfg (id >> box) |> unbox
+        ()
+      }
+
+      test "ack" {
+        let cfg = config (Job(Job.Core, baseJob))
+        let summary: Summary = benchmark<ACK> cfg (id >> box) |> unbox
         ()
       }
     ]
@@ -144,4 +169,5 @@ module Program =
     Environment.SetEnvironmentVariable("System.GC.Server", "true")
     Environment.SetEnvironmentVariable("gcServer", "1")
     use cts = new CancellationTokenSource()
+    let defaultConfig = { defaultConfig with ``parallel`` = false }
     runTestsInAssemblyWithCancel cts.Token defaultConfig argv

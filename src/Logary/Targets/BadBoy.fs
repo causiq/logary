@@ -66,13 +66,13 @@ module internal Impl =
                 ackCh *<= () :: flushes)
               ([], [], [])
 
-          ilogger.timeAlt (timeOut (conf.delay.ToTimeSpan()), "batch loop delay") ^=> fun () ->
+          ilogger.timeAlt (timeOut (conf.delay.ToTimeSpan()), "batch loop delay, delaying", logBefore=true) ^=> fun () ->
           Job.conIgnore acks >>=. Job.conIgnore flushes >>= batchLoopDelay
 
       let shutdown =
         api.shutdownCh ^=> fun ack -> IVar.fill ack ()
 
-      take <|> shutdown
+      ilogger.timeAlt (take, "batch loop delay, take", logBefore=true) <|> shutdown
 
     let batchLoop () =
       let take =
@@ -94,9 +94,12 @@ module internal Impl =
       let shutdown =
         api.shutdownCh ^=> fun ack -> IVar.fill ack ()
 
-      take <|> shutdown
+      ilogger.timeAlt (take, "batch loop, take", logBefore=true) <|> shutdown
 
-    api.runtime.logger.debug (eventX (sprintf "Starting BadBoy with %A" conf))
+    api.runtime.logger.debug (
+      eventX "Starting BadBoy with delay={delay}, batch={batch}."
+      >> setFieldsFromObject conf)
+
     if conf.batch then
       if conf.delay <> Duration.Zero then
         upcast batchLoopDelay ()

@@ -187,6 +187,7 @@ module LoggerEx =
                       ?measurement: string,
                       ?transform: Message -> Message,
                       ?waitForAck: bool,
+                      ?logBefore: bool,
                       [<CallerMemberName>] ?memberName: string,
                       [<CallerFilePath>] ?path: string,
                       [<CallerLineNumber>] ?line: int)
@@ -194,6 +195,7 @@ module LoggerEx =
       let measurement = defaultArg measurement null
       let transform = defaultArg transform id
       let waitForAck = defaultArg waitForAck false
+      let logBefore = defaultArg logBefore false
       let cb dur =
         fun level ->
           dur
@@ -204,12 +206,19 @@ module LoggerEx =
       let onComplete dur =
         if waitForAck then x.logWithAck Debug (cb dur) ^=> id
         else x.log Debug (cb dur)
-      Job.timeJob onComplete xJ
+      let timedJob =
+        Job.timeJob onComplete xJ
+      if logBefore then
+        x.log Verbose (Message.eventX "Before {measurement}" >> Message.setField "measurement" measurement)
+        >>=. timedJob
+      else
+        timedJob
 
     member x.timeAlt (xA: Alt<'a>,
                       ?measurement: string,
                       ?transform: Message -> Message,
                       ?waitForAck: bool,
+                      ?logBefore: bool,
                       [<CallerMemberName>] ?memberName: string,
                       [<CallerFilePath>] ?path: string,
                       [<CallerLineNumber>] ?line: int)
@@ -217,6 +226,7 @@ module LoggerEx =
       let measurement = defaultArg measurement null
       let transform = defaultArg transform id
       let waitForAck = defaultArg waitForAck false
+      let logBefore = defaultArg logBefore false
       let cb wasNacked dur =
         fun level ->
           Message.gaugeWithUnit x.name measurement dur
@@ -230,7 +240,13 @@ module LoggerEx =
       let onNack dur =
         if waitForAck then x.logWithAck Debug (cb false dur) ^=> id
         else x.log Debug (cb false dur)
-      Alt.timeJob onComplete onNack xA
+      let timedAlt =
+        Alt.timeJob onComplete onNack xA
+      if logBefore then
+        Alt.prepareJob (fun () ->
+          x.log Verbose (Message.eventX "Before {measurement}" >> Message.setField "measurement" measurement)
+          >>-. timedAlt)
+      else timedAlt
 
     member x.timeScopeT (scopeName: string) (transform: Message -> Message): TimeScope =
       let name = x.name |> PointName.setEnding scopeName

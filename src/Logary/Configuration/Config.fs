@@ -142,6 +142,8 @@ module Config =
     if lconf.setGlobals then do setToGlobals logManager
     logManager
 
+  let buildAndRun lconf: LogManager =
+    build lconf |> run
 
   // TO CONSIDER: config below around registry, instead of as globals
 
