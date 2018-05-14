@@ -160,14 +160,14 @@ module Registry =
 
     let inline shutdown (targets: Target.T list) (timeout: Duration option): Job<ShutdownInfo> =
       let shutdownTarget (target: Target.T) =
-        Target.shutdown target ^=> fun ack -> generateProcessResult target.Name ack timeout
+        Target.shutdown target ^=> fun ack -> generateProcessResult target.name ack timeout
 
       (targets |> Seq.Con.mapJob shutdownTarget)
       >>- (partitionResults >> ShutdownInfo)
 
     let inline flushPending (targets: Target.T list) (timeout: Duration option): Job<FlushInfo> =
       let flushTarget (target: Target.T) =
-        generateProcessResult target.Name (Target.flush target) timeout
+        generateProcessResult target.name (Target.flush target) timeout
 
       (targets |>  Seq.Con.mapJob flushTarget)
       >>- (partitionResults >> FlushInfo)
@@ -197,7 +197,7 @@ module Registry =
     let rlogger = ri.logger |> Logger.apply (setName rname)
 
     Impl.spawnTarget ri conf.targets >>= fun targets ->
-    let targetsMap = targets |> List.map (fun t -> t.Name, t) |> HashMap.ofList
+    let targetsMap = targets |> List.map (fun t -> t.name, t) |> HashMap.ofList
 
     let wrapper sendMsg msg mid =
       msg

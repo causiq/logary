@@ -11,19 +11,29 @@ module internal GlobalFunctions =
 
 module internal Promise =
   open Hopac
-  let instaPromise =
-    Alt.always (Promise (())) // new promise with unit value
+  let unit: Promise<unit> = Promise (())
+module internal Result =
+  let inline isOk r =
+    match r with Result.Ok _ -> true | Result.Error _ -> false
+  let inline isError r =
+    match r with Result.Ok _ -> false | Result.Error _ -> true
+
+module internal LogResult =
+  open Hopac
+  let success: Alt<Result<Promise<unit>, LogError>> = Alt.always (Result.Ok Promise.unit)
+  let bufferFull target: Alt<Result<Promise<unit>, LogError>> = Alt.always (Result.Error (BufferFull target))
+  let rejected: Alt<Result<Promise<unit>, LogError>> = Alt.always (Result.Error Rejected)
 
 module internal List =
   open Hopac
   /// Map a Job producing function over a list to get a new Job using
   /// applicative style (parallel). ('a -> Job<'b>) -> 'a list -> Job<'b list>
-  let rec traverseJobA (f: 'a -> #Job<'b>) (list: 'a list): Job<'b list> =
+  let rec traverseJobA (f: 'a -> #Job<'b>) (list: #seq<'a>): Job<'b list> =
     let cons head tail = head :: tail
     let initState = Job.result []
     let folder head tail =
       Job.apply tail (Job.apply (f head) (Job.result cons) )
-    List.foldBack folder list initState
+    Seq.foldBack folder list initState
 
 [<AutoOpen>]
 module internal Comparison =

@@ -244,6 +244,16 @@ type Message =
     member x.timestampEpochS: int64 =
       x.timestamp / Constants.NanosPerSecond
 
+/// Why was the message/metric/event not logged?
+[<Struct>]
+type LogError =
+  /// The buffer of the target was full, so the message was not logged.
+  | BufferFull of target:string
+  /// The target, or the processing step before the targets, rejected the message.
+  | Rejected
+
+type internal LogResult = Alt<Result<Promise<unit>, LogError>>
+
 /// See the docs on the funtions for descriptions on how Ack works in conjunction
 /// with the promise.
 type Logger =
@@ -253,17 +263,11 @@ type Logger =
 
   /// Write a message to the Logger. The returned value represents the commit
   /// point that Logary has acquired the message. The alternative is always
-  /// selectable (through `Alt.always ()` if the logger filtered out the message
-  /// due to a Rule).
-  ///
-  /// If the Message was not filtered through a Rule, but got sent onwards, the
-  /// promise is there to denote the ack that all targets have successfully
-  /// flushed the message. If you do not commit to the Alt then it will not be
-  /// logged.
-  ///
-  /// If you choose to not await the Promise/Ack it makes no difference, since
-  /// it will be garbage collected in the end, whether it's awaited or not.
-  abstract logWithAck: LogLevel -> (LogLevel -> Message) -> Alt<Promise<unit>>
+  /// selectable (through `Alt.always (Result.Ok (Promise (())))` if the logger filtered out
+  /// the message due to a Rule).
+  abstract logWithAck: LogLevel -> (LogLevel -> Message) -> LogResult
+
+  //abstract log: Message -> Alt<Result<Promise<unit>, unit>>
 
   /// Gets the currently set log level (minimal,inclusive),
   /// aka. the granularity with which things are being logged.

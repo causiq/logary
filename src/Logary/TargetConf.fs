@@ -6,6 +6,7 @@ namespace Logary
 
 open System
 open Hopac
+open Hopac.Extensions
 open Hopac.Infixes
 open Logary
 open Logary.Message
@@ -67,41 +68,74 @@ module Target =
   /// A target instance is a target loop job that can be re-executed on failure,
   /// and a normal path of communication; the `requests` `RingBuffer` as well as
   /// and out-of-band-method of shutting down the target; the `shutdownCh`.
+  [<Struct>]
   type T =
-    private {
-      name: string
-      api: TargetAPI
-      middleware: Middleware list
-      rules: Rule list
-    }
-  with
-    member x.Name = x.name
+    val name: string
+    val api: TargetAPI
+    val transform: Message -> Message
+    val rules: Rule list
+    internal new (name, api, middleware, rules) =
+      { name = name
+        api = api
+        transform = Middleware.compose middleware
+        rules = rules }
+    member x.accepts message =
+      Rule.accepts message x.rules
 
-  let needSendToTarget (target: T) msg =
-    Rule.canPass msg target.rules
+  /// If the alternative is committed to, the RingBuffer WILL enqueue the message. The tryLog operation is done as
+  /// `Ch.give x.tryPut m`.
+  let tryLog (msg: Message) (x: T): LogResult =
+    let msg = x.transform msg
+    if not (x.accepts msg) then LogResult.rejected
+    else
+      let ack = IVar ()
+      let targetMsg = Log (msg, ack)
+      // This returns immediately if the buffer is full; and the RingBuffer's server is
+      // always available to notify the caller that the buffer is full.
+      RingBuffer.tryPut x.api.requests targetMsg ^-> function
+        | true ->
+          Result.Ok (upcast ack)
+        | false ->
+          Result.Error (BufferFull x.name)
 
-  /// Logs the `Message` to all the targets.Target Middleware compose at here
-  let logAll (xs: T seq) (msg: Message): Alt<Promise<unit>> =
-    let allAppendedAcks = IVar ()
+  /// Logs the `Message` to all the targets.
+  let tryLogAll (targets: T[]) (msg: Message): Alt<Result<Promise<unit>, LogError>[]> =
+    Alt.withNackFun <| fun nack ->
+    let putAllPromises = IVar ()
+    let tryPutAll =
+      let abortPut = nack ^->. Result.Error Rejected
+      Seq.Con.mapJob (fun t -> tryLog msg t <|> abortPut) targets
+      >>- fun futures -> futures.ToArray()
+      >>= IVar.fill putAllPromises
+    putAllPromises
 
-    let appendToBufferConJob =
-      xs
-      |> Seq.filter (fun t -> needSendToTarget t msg)
-      |> Hopac.Extensions.Seq.Con.mapJob (fun target ->
-         let ack = IVar ()
-         let msg = msg |> Middleware.compose target.middleware
-         RingBuffer.put target.api.requests (Log (msg, ack)) ^->. ack)
+  let private folder t s =
+    match s, t with
+    | Ok _, Result.Error err ->
+      Result.Error [ err ]
+    | Ok oks, Ok ok ->
+      Ok (ok :: oks)
+    | Result.Error errors, Result.Error err ->
+      Result.Error (err :: errors)
+    | Result.Error errors, Ok _ ->
+      Result.Error errors
 
-    let logToAllTargetAlt = Alt.prepareJob <| fun _ ->
-      Job.start (appendToBufferConJob >>= fun acks -> IVar.fill allAppendedAcks acks)
-      >>-. allAppendedAcks
-
-    logToAllTargetAlt ^-> fun acks -> Job.conIgnore acks |> memo
-
-  /// Send the target a message, returning the same instance as was passed in when
-  /// the Message was acked.
-  let log (x: T) (msg: Message): Alt<Promise<unit>> =
-    logAll [x] msg
+  let tryLogAllReduce targets msg: LogResult =
+    tryLogAll targets msg ^=> function
+      | [||] ->
+        LogResult.success :> Job<_>
+      | ps ->
+        match (ps, Ok []) ||> Array.foldBack folder with
+        | Ok promises ->
+          let latch = Latch promises.Length
+          let dec = Latch.decrement latch
+          Job.start (promises |> Seq.Con.iterJob (fun p -> p ^=>. dec))
+          >>-. Ok (memo (Latch.await latch))
+        | Result.Error [] ->
+          // should not happen, error list always non empty:
+          Job.result (Result.Error Rejected)
+        | Result.Error (e :: _) ->
+          Job.result (Result.Error e)
 
   /// Send a flush RPC to the target and return the async with the ACKs. This will
   /// create an Alt that is composed of a job that blocks on placing the Message
@@ -115,7 +149,7 @@ module Target =
 
   /// Shutdown the target. The commit point is that the target accepts the
   /// shutdown signal and the promise returned is that shutdown has finished.
-  let shutdown x: Alt<Promise<_>> =
+  let shutdown (x: T): Alt<Promise<_>> =
     let ack = IVar ()
     Ch.give x.api.shutdownCh ack ^->. upcast ack
 
@@ -136,12 +170,8 @@ module Target =
           member x.requests = requests
           member x.shutdownCh = shutdownCh
       }
-    let t =
-      { name        = conf.name
-        middleware  = conf.middleware
-        rules       = conf.rules
-        api         = api }
 
+    let t = T(conf.name, api, conf.middleware, conf.rules)
     let serverJob = conf.server api
     Job.supervise api.runtime.logger conf.policy serverJob
     |> Job.startIgnore

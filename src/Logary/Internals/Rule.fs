@@ -95,8 +95,8 @@ module Rule =
       minLevel = level }
 
   /// Uses the first matched rule
-  [<CompiledName "CanPass">]
-  let canPass (msg: Message) (rules: Rule list) =
+  [<CompiledName "Accepts">]
+  let accepts (msg: Message) (rules: Rule list) =
     let pn = PointName.format msg.name
     rules
     |> List.tryFind (fun r -> r.path.IsMatch pn)

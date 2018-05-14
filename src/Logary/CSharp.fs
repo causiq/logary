@@ -504,6 +504,11 @@ module private MiscHelpers =
     { new IDisposable with
         member x.Dispose() = () }
 
+  let private raiseOrAwaitACK = function
+    | Result.Ok ack -> ack
+    | Result.Error _ -> Job.raises (exn "")
+
+
   let inline subscribe (ct: CancellationToken) (f: unit -> unit) =
     match ct with
     | _ when ct = CancellationToken.None ->
@@ -511,15 +516,9 @@ module private MiscHelpers =
     | ct ->
       upcast ct.Register (Action f)
 
-  let inline chooseLogFun logger logLevel backpressure flush timeoutMillis =
-    if flush then
-      Logger.logWithAck logger logLevel
-      >> Alt.afterJob id // Alt<Promise<unit>> -> Promise<unit>
-      >> Alt.afterFun (fun () -> true) // Promise<unit> -> bool
-    elif backpressure then
-      Logger.log logger logLevel >> Alt.afterFun (fun _ -> true)
-    else
-      Logger.logWithTimeout logger timeoutMillis logLevel
+  let inline chooseLogFun (logger: Logger) logLevel flush =
+    if flush then logger.logWithAck logLevel >> Alt.afterJob id // Alt<Promise<bool>> -> Promise<bool>
+    else logger.log logLevel >> Alt.afterFun (fun _ -> true)
 
 /// Functions callable by Logary.CSharp.
 [<Extension>]

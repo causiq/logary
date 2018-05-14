@@ -8,11 +8,10 @@ open Logary
 /// itself.
 type private NullLogger() =
   interface Logger with // null logger
-    member x.logWithAck logLevel messageFactory = Promise.instaPromise
+    member x.logWithAck logLevel messageFactory = Promise.altAlwaysTrue
     member x.level = LogLevel.Fatal
     member x.name = PointName.ofList [ "Logary"; "NullLogger" ]
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module NullLogger =
-  let instance =
-    NullLogger () :> Logger
+  let instance = NullLogger () :> Logger

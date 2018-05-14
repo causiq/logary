@@ -9,37 +9,16 @@ open System.Diagnostics
 open Logary
 open NodaTime
 
-/// The Logger module provides functions for expressing how a Message should be
-/// logged.
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix); Extension>]
 module Logger =
-
-  /// How many milliseconds Logary should wait for placing messages in the RingBuffer
-  let defaultTimeout = 5000u
-
   /////////////////////
   // Logging methods //
   /////////////////////
 
   /// Log a message, but don't await all targets to flush. Equivalent to logWithBP.
-  let inline log (logger: Logger) logLevel messageFactory: Alt<unit> =
-    logger.logWithAck logLevel messageFactory ^-> ignore
-
-  let private simpleTimeout millis loggerName =
-    timeOutMillis millis
-    |> Alt.afterFun (fun msg ->
-      Console.Error.WriteLine("Logary message timed out. This means that you have an underperforming Logary target. {0}Logger: {1}",
-                              Environment.NewLine, loggerName))
-
-  /// Log a message, but don't await all targets to flush. Also, if it takes more
-  /// than 5 seconds to add the log message to the buffer; simply drop the message.
-  /// Returns true if the message was successfully placed in the buffers, or
-  /// false otherwise.
-  let logWithTimeout (logger: Logger) (millis: uint32) logLevel messageFactory: Alt<bool> =
-    Alt.choose [
-      log logger logLevel messageFactory ^->. true
-      simpleTimeout (int millis) logger.name ^->. false
-    ]
+  let inline log (logger: Logger) logLevel messageFactory: Alt<bool> =
+    logger.logWithAck logLevel messageFactory ^-> function
+      | Ok _ -> true
+      | Error _ -> false
 
   /// Log a message, but don't synchronously wait for the message to be placed
   /// inside Logary's buffers. Instead the message will be added to Logary's
@@ -63,7 +42,7 @@ module Logger =
   /// Message placed in all Targets' buffers. The inner Promise denotes having
   /// the message properly flushed to all targets' underlying "storage". Targets
   /// whose rules do not match the message will not be awaited.
-  let logWithAck (logger: Logger) logLevel messageFactory: Alt<Promise<unit>> =
+  let logWithAck (logger: Logger) logLevel messageFactory: Alt<Promise<bool>> =
     logger.logWithAck logLevel messageFactory
 
   let apply (middleware: Message -> Message) (logger: Logger): Logger =
@@ -89,7 +68,7 @@ module LoggerEx =
     ack :> Promise<_>
 
   type Logger with
-    member x.log logLevel (messageFactory: LogLevel -> Message): Alt<unit> =
+    member x.log logLevel (messageFactory: LogLevel -> Message): Alt<bool> =
       Logger.log x logLevel messageFactory
 
     member x.logSimple message: unit =
@@ -105,7 +84,7 @@ module LoggerEx =
     member x.verboseWithBP (messageFactory: LogLevel -> Message): Alt<unit> =
       x.log Verbose messageFactory
 
-    member x.verboseWithAck (messageFactory: LogLevel -> Message): Promise<unit> =
+    member x.verboseWithAck (messageFactory: LogLevel -> Message): Promise<bool> =
       lwa x Verbose messageFactory
 
     member x.debug (messageFactory: LogLevel -> Message): unit =

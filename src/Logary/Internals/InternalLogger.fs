@@ -17,7 +17,7 @@ module InternalLogger =
     private {
       addCh: Ch<TargetConf>
       shutdownCh: Ch<unit>
-      messageCh: Ch<Message * Promise<unit> * Ch<Promise<unit>>>
+      messageCh: Ch<Message * Promise<unit> * Ch<Promise<bool>>>
     }
   with
     member x.name = PointName [| "Logary" |]
@@ -46,27 +46,27 @@ module InternalLogger =
         messageCh = messageCh
         shutdownCh = shutdownCh}
 
-    let rec server targets =
+    let rec iserver targets =
       Alt.choose [
         addCh ^=> fun targetConf ->
           Target.create ri targetConf >>= fun t ->
-          server (t :: targets)
+          iserver [| yield! targets; yield t |]
 
         messageCh ^=> fun (message, nack, replCh) ->
 
           Alt.choose [
-            Target.logAll targets message ^=> fun ack ->
-              replCh *<- ack ^=> fun () ->
-              server targets
+            Target.logAllReduce targets message ^=> fun result ->
+              replCh *<- result ^=> fun () ->
+              iserver targets
 
-            nack ^=> fun () -> server targets
+            nack ^=> fun () -> iserver targets
           ]
 
         shutdownCh ^=> fun () ->
           targets |> Seq.Con.iterJob (fun t -> Target.shutdown t ^=> id)
       ]
 
-    Job.supervise ri.logger Policy.exponentialBackoffForever (server [])
+    Job.supervise ri.logger Policy.exponentialBackoffForever (iserver Array.empty)
     |> Job.startIgnore
     >>-. api
 
