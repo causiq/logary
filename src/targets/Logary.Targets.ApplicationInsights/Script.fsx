@@ -8,7 +8,6 @@
 open System
 open Hopac
 open Logary
-open Logary.EventProcessing
 open Logary.Configuration
 open Logary.Targets
 open Logary.Targets.ApplicationInsights
