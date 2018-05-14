@@ -10,6 +10,7 @@ open Hopac.Extensions
 open Hopac.Infixes
 open Logary
 open Logary.Internals
+open Logary.Configuration
 
 module Reflection =
 

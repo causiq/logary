@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Logary.Configuration;
 using Machine.Specifications;
 using NodaTime;
 

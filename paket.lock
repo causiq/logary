@@ -1023,7 +1023,7 @@ GITHUB
   remote: haf/YoLo
     YoLo.fs (bd91bbe94a183aa9dc9c13e885c73b20516b01e7)
   remote: logary/RingBuffer
-    RingBuffer.fs (0fa46d2ed3d92679517c942240a1dc674767e69e)
+    RingBuffer.fs (014138cdfc9dff76e74dc154e68c929655bcbd86)
       Expecto
       Hopac
   remote: logary/logary

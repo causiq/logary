@@ -19,46 +19,37 @@ namespace Logary.CSharp.Tests
         static string subject;
 
         Establish context = () =>
-            {
-                writer = new StringWriter(new StringBuilder());
-                manager = LogaryFactory.New(
-                    "Logary.CSharp.Tests","localhost",
-                    with =>
-                        with.InternalLogger(ILogger.NewConsole(LogLevel.Fatal))
-                            .LoggerMinLevel(".*", LogLevel.Verbose)
-                            .Target<TextWriter.Builder>("sample string writer",
-                                t => t.Target.WriteTo(writer, writer))).Result;
-            };
+        {
+            writer = new StringWriter(new StringBuilder());
+            manager = LogaryFactory.New(
+                "Logary.CSharp.Tests", "localhost",
+                with =>
+                    with.InternalLogger(ILogger.NewConsole(LogLevel.Fatal))
+                        .LoggerMinLevel(".*", LogLevel.Verbose)
+                        .Target<TextWriter.Builder>("sample string writer",
+                            t => t.Target.WriteTo(writer, writer))).Result;
+        };
 
         Because reason = () =>
-            {
-                var logger = manager.GetLogger("TimeWithAck");
+        {
+            var logger = manager.GetLogger("Timers");
 
-                // Action
-                logger.TimeWithAck(() => { }, CancellationToken.None, CancellationToken.None, "Action")()
-                    .Result // wait for buffer
-                    .Wait(); // wait for promise
+            // Action
+            logger.Time(() => { }, "Action")();
 
-                // Func<>
-                var func1 = logger.TimeWithAck(() => 32, CancellationToken.None, CancellationToken.None, "Func<>")();
-                func1.Item1.ShouldEqual(32);
-                func1.Item2
-                    .Result // wait for buffer
-                    .Wait(); // wait for promise
+            // Func<>
+            var func1 = logger.Time(() => 32, "Func<>")();
+            func1.ShouldEqual(32);
 
-                // Func<,>
-                var func2 =
-                    logger.TimeWithAck<int, int>(i => i, CancellationToken.None, CancellationToken.None, "Func<,>")(10);
-                func2.Item1.ShouldEqual(10);
-                func2.Item2
-                    .Result // wait for buffer
-                    .Wait(); // wait for promise
+            // Func<,>
+            var func2 = logger.Time<int, int>(i => i, "Func<,>")(10);
+            func2.ShouldEqual(10);
 
-                using (logger.TimeScope("TimeScope"))
-                    Thread.Sleep(0);
+            using (logger.TimeScope("TimeScope"))
+                Thread.Sleep(0);
 
-                subject = writer.ToString();
-            };
+            subject = writer.ToString();
+        };
 
         It output_should_contain_Action = () => subject.ShouldContain("Action");
         It output_should_contain_Func1 = () => subject.ShouldContain("Func<>");
@@ -67,9 +58,9 @@ namespace Logary.CSharp.Tests
         It output_should_not_contain_TimeScope = () => subject.ShouldNotContain("TimeScope");
 
         Cleanup cleanup = () =>
-            {
-                // manager.Dispose();
-                writer.Dispose();
-            };
+        {
+            // manager.Dispose();
+            writer.Dispose();
+        };
     }
 }

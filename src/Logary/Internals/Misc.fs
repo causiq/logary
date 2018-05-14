@@ -1,4 +1,13 @@
-﻿namespace Logary.Internals
+﻿namespace Logary
+
+[<AutoOpen>]
+module internal GlobalFunctions =
+  let inline nullIsNone x =
+    match x with
+    | null ->
+      None
+    | x ->
+      Some x
 
 module internal Promise =
   open Hopac

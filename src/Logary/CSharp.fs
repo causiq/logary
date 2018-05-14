@@ -695,18 +695,6 @@ type LoggerExtensions =
     let promiseCt = Unchecked.defaultof<CancellationToken>
     Alt.toTasks bufferCt promiseCt (Logger.logWithAck logger message.level (fun _ -> message))
 
-  // TODO: timeAsyncWithAck, timeAsyncSimple
-  // TODO: timeJobWithAck, timeJobSimple
-  // TODO: timeAltWithAck, timeAltSimple
-
-  /// NOTE: You need to execute the returned action. Logary.CSharp.MessageExtensions.TimeScope.
-  ///
-  /// Run the function `action` and measure how long it takes; logging that
-  /// measurement as a Gauge in the unit Scaled(Seconds, 10^9). Finally transform the
-  /// message using the `transform` function, if given.
-  ///
-  /// Logs, but doesn't await all targets to flush. Without back-pressure (5 s timeout instead).
-  /// The call you make to the function yields directly (after your code is done executing of course).
   [<Extension>]
   static member Time (logger: Logger,
                       action: Action,
@@ -716,9 +704,29 @@ type LoggerExtensions =
     let action = FSharpFunc.OfAction action
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
     let runnable = logger.timeFun (action, measurement, transform)
-    //Action runnable
-    failwith "TODO"
+    Action runnable
 
+  [<Extension>]
+  static member Time (logger: Logger,
+                      func: Func<'res>,
+                      [<Optional; DefaultParameterValue(null:string)>] measurement: string,
+                      [<Optional; DefaultParameterValue(null:Func<Message, Message>)>] transform: Func<Message, Message>)
+                     : Func<'res> =
+    let func = FSharpFunc.OfFunc func
+    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
+    let runnable = logger.timeFun (func, measurement, transform)
+    Funcs.ToFunc<'res> runnable
+
+  [<Extension>]
+  static member Time (logger: Logger,
+                      func: Func<'input, 'res>,
+                      [<Optional; DefaultParameterValue(null:string)>] measurement: string,
+                      [<Optional; DefaultParameterValue(null:Func<Message, Message>)>] transform: Func<Message, Message>)
+                     : Func<'input, 'res> =
+    let func = FSharpFunc.OfFunc func
+    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
+    let runnable = logger.timeFun (func, measurement, transform)
+    Funcs.ToFunc<'input, 'res> runnable
 
   /// Create a new scope that starts a stopwatch on creation and logs the gauge of
   /// the duration its lifetime.

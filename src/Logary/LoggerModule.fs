@@ -162,14 +162,18 @@ module LoggerEx =
                       ?measurement: string,
                       ?transform: Message -> Message,
                       ?waitForAck: bool,
+                      ?logBefore: bool,
                       [<CallerMemberName>] ?memberName: string,
                       [<CallerFilePath>] ?path: string,
                       [<CallerLineNumber>] ?line: int)
-                      : 'input -> Alt<'res> =
-      let measurement = defaultArg measurement null
+                      : 'input -> 'res =
+      let measurement = measurement |> Option.bind nullIsNone |> Option.orElse memberName |> Option.defaultValue "time"
       let transform = defaultArg transform id
       let waitForAck = defaultArg waitForAck false
+      let logBefore = defaultArg logBefore false
       fun input ->
+        if logBefore then
+          x.verbose (Message.eventX "Before {measurement}" >> Message.setField "measurement" measurement)
         let ts = StopwatchTicks.getTimestamp()
         let res = f input
         let dur = Gauge.ofStopwatchTicks (ts - StopwatchTicks.getTimestamp())
@@ -180,8 +184,15 @@ module LoggerEx =
             |> Message.setLevel level
             |> Message.addCallerInfo (memberName, path, line)
             |> transform
-        if waitForAck then (x.logWithAck Debug (cb dur) ^=> id) ^->. res
-        else x.log Debug (cb dur) ^->. res
+        let logged =
+          memo (
+            if waitForAck then (x.logWithAck Debug (cb dur) ^=> id)
+            else x.log Debug (cb dur)
+          )
+        // TODO: handle this with returning false from tryEnqueue
+        while not (Promise.Now.isFulfilled logged) do
+          System.Threading.Thread.Sleep(1)
+        res
 
     member x.timeJob (xJ: Job<'a>,
                       ?measurement: string,
@@ -192,7 +203,7 @@ module LoggerEx =
                       [<CallerFilePath>] ?path: string,
                       [<CallerLineNumber>] ?line: int)
                       : Job<'a> =
-      let measurement = defaultArg measurement null
+      let measurement = measurement |> Option.bind nullIsNone |> Option.orElse memberName |> Option.defaultValue "time"
       let transform = defaultArg transform id
       let waitForAck = defaultArg waitForAck false
       let logBefore = defaultArg logBefore false
@@ -223,7 +234,7 @@ module LoggerEx =
                       [<CallerFilePath>] ?path: string,
                       [<CallerLineNumber>] ?line: int)
                       : Alt<'a> =
-      let measurement = defaultArg measurement null
+      let measurement = measurement |> Option.bind nullIsNone |> Option.orElse memberName |> Option.defaultValue "time"
       let transform = defaultArg transform id
       let waitForAck = defaultArg waitForAck false
       let logBefore = defaultArg logBefore false

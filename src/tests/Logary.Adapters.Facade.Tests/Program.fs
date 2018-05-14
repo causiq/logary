@@ -2,27 +2,24 @@
 
 open Expecto
 open Logary
-open Logary.Internals
+open Logary.Configuration
 open Logary.Adapters.Facade
 open Hopac
 open NodaTime
 
-let stubLogger (minLevel: LogLevel)
-               (message: Message ref)
-               name =
-
+let stubLogger (minLevel: LogLevel) (message: Message ref) name =
   { new Logger with // stub/tests
       member x.logWithAck level messageFactory =
         message := messageFactory level
         Alt.always (Promise (()))
 
-      member x.name =name
+      member x.name = name
       member x.level = minLevel }
 
 let stubLogManager (message: Message ref) =
   { new LogManager with
       member x.runtimeInfo =
-        RuntimeInfo.create "Facade Tests" "localhost"
+        Internals.RuntimeInfo.create "Facade Tests" "localhost"
         :> _
 
       member x.getLogger name =
