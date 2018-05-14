@@ -62,7 +62,7 @@ type LogaryValue =
     let logary =
       Config.create "Logary.ConsoleApp" "localhost"
       |> Config.target (targets |> Map.find target)
-      |> Config.ilogger (ILogger.LiterateConsole Verbose)
+      |> Config.ilogger (ILogger.LiterateConsole Warn)
       |> Config.processing (Events.events |> Events.sink [ "sink" ])
       |> Config.loggerMinLevel ".*" Debug
       |> Config.buildAndRun
