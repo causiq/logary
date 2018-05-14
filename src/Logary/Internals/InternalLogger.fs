@@ -8,7 +8,7 @@ open Logary.Internals
 open Hopac.Extensions
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module internal InternalLogger =
+module InternalLogger =
   /// This logger is special: in the above case the Registry takes the responsibility
   /// of shutting down all targets, but this is a stand-alone logger that is used
   /// to log everything in Logary with, so it needs to capable of handling its

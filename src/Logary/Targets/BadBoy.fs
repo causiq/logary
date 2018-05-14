@@ -14,9 +14,9 @@ type BadBoyConf =
     delay: Duration
     batch: bool }
 
-/// Defaults: batch=true, delay=400ms
+/// Defaults: batch=true, delay=200ms
 let empty =
-  { delay = Duration.FromMilliseconds 400L
+  { delay = Duration.FromMilliseconds 200L
     batch = true }
 
 module internal Impl =

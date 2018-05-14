@@ -212,9 +212,8 @@ module Registry =
         flushCh ^=> fun (ackCh, nack, timeout) ->
           rlogger.infoWithAck (eventX "Start Flush")
           ^=> fun _ ->
-              memo (Impl.flushPending targets timeout) ^=> fun flushInfo -> (ackCh *<- flushInfo)
-              <|>
-              nack
+              memo (Impl.flushPending targets timeout) ^=> Ch.give ackCh
+              <|> nack
           >>=. running ctss
 
         shutdownCh ^=> fun (res, timeout) ->

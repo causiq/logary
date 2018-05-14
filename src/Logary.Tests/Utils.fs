@@ -95,7 +95,8 @@ let gaugeMessage (value: float) level =
   |> Message.setLevel level
 
 let multiGaugeMessage level =
-  Message.event level "Processor.% Idle" |> Message.addGauges [
+  Message.event level "Processor.% Idle"
+  |> Message.addGauges [
     "Core 1", (Gauge (Fraction (1L, 1000L), Percent))
     "Core 2", (Gauge (Float 0.99, Percent))
     "Core 3", (Gauge (Float 0.473223755, Percent))
