@@ -7,6 +7,7 @@ nuget Castle.Core
 nuget EventStore.ClientAPI.NetCore
 nuget Expecto
 nuget Expecto.FsCheck
+nuget Expecto.Hopac
 nuget Machine.Specifications
 nuget Machine.Specifications.Should
 nuget Machine.Specifications.Runner.Console

@@ -75,6 +75,7 @@
     <Compile Include="Internals/RuntimeInfoModule.fs" />
     <Compile Include="Internals/Targets.fs" />
     <Compile Include="TargetConf.fs" />
+    <Compile Include="TargetModule.fs" />
     <Compile Include="Internals/InternalLogger.fs" />
     <Compile Include="Log.fs" />
     <!-- Below: events processing -->

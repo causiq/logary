@@ -252,6 +252,16 @@ type LogError =
   /// The target, or the processing step before the targets, rejected the message.
   | Rejected
 
+  static member wasRejected (e: LogError) =
+    match e with
+    | Rejected -> true
+    | _ -> false
+
+  static member bufferWasFull (e: LogError) =
+    match e with
+    | BufferFull _ -> true
+    | _ -> false
+
 type internal LogResult = Alt<Result<Promise<unit>, LogError>>
 
 /// See the docs on the funtions for descriptions on how Ack works in conjunction
@@ -261,11 +271,7 @@ type Logger =
   /// `Messages` produced from this instance.
   abstract name: PointName
 
-  /// Write a message to the Logger. The returned value represents the commit
-  /// point that Logary has acquired the message. The alternative is always
-  /// selectable (through `Alt.always (Result.Ok (Promise (())))` if the logger filtered out
-  /// the message due to a Rule).
-  abstract logWithAck: LogLevel -> (LogLevel -> Message) -> LogResult
+  abstract logWithAck: waitForBuffers:bool * level:LogLevel -> messageFactory:(LogLevel -> Message) -> LogResult
 
   //abstract log: Message -> Alt<Result<Promise<unit>, unit>>
 
@@ -293,4 +299,4 @@ type TimeScope =
 
   /// Call to stop the timer; decide in the passed function what level the
   /// resulting Gauge should have.
-  abstract stop : (Duration -> LogLevel) -> Alt<Promise<unit>>
+  abstract stop: (Duration -> LogLevel) -> LogResult

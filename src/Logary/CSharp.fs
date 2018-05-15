@@ -504,11 +504,6 @@ module private MiscHelpers =
     { new IDisposable with
         member x.Dispose() = () }
 
-  let private raiseOrAwaitACK = function
-    | Result.Ok ack -> ack
-    | Result.Error _ -> Job.raises (exn "")
-
-
   let inline subscribe (ct: CancellationToken) (f: unit -> unit) =
     match ct with
     | _ when ct = CancellationToken.None ->
@@ -516,9 +511,9 @@ module private MiscHelpers =
     | ct ->
       upcast ct.Register (Action f)
 
-  let inline chooseLogFun (logger: Logger) logLevel flush =
-    if flush then logger.logWithAck logLevel >> Alt.afterJob id // Alt<Promise<bool>> -> Promise<bool>
-    else logger.log logLevel >> Alt.afterFun (fun _ -> true)
+  let inline chooseLogFun (logger: Logger) logLevel withAck =
+    if withAck then logger.logAck logLevel >> (fun x -> x :> Alt<_>)
+    else logger.log logLevel >> Alt.afterFun ignore
 
 /// Functions callable by Logary.CSharp.
 [<Extension>]
@@ -555,39 +550,25 @@ module Alt =
     |> toTask bufferCt
 
 [<Extension>]
-type LoggerExtensions =
+type LoggerEx =
 
   // corresponds to: log, logWithTimeout
 
-  /// Log a message, but don't await all targets to flush. With NO back-pressure by default.
-  /// Backpressure implies the caller will wait until its message is in the buffer.
-  /// The timeout-milliseconds parameter is only used if backpressure is false.
-  /// If not using backpressure, the returned task yields after either 5 seconds or
-  /// when the message is accepted to all targets' ring buffers.
-  /// Flush implies backpressure.
-  ///
-  /// Remember to use the transform function to add an event template.
   [<Extension>]
   static member Log (logger: Logger,
                      logLevel: LogLevel,
                      transform: Func<Message, Message>,
-                     [<Optional; DefaultParameterValue(true)>] backpressure: bool,
-                     [<Optional; DefaultParameterValue(true)>] flush: bool,
-                     [<Optional; DefaultParameterValue(5000u)>] timeoutMillis: uint32)
+                     [<Optional; DefaultParameterValue(true)>] waitForAck: bool)
+                     // [<Optional, DefaultParemterValue(CancellationToken.None)>] ct: CancellationToken
                     : Task =
-    let timeoutMillis = if timeoutMillis = 0u then 5000u else timeoutMillis
-    let logFn = MiscHelpers.chooseLogFun logger logLevel backpressure flush timeoutMillis
+    if isNull transform then nullArg "transform"
+    let ct = CancellationToken.None // if isNull ct then CancellationToken.None else ct
+    let logFn = MiscHelpers.chooseLogFun logger logLevel waitForAck
     let transform = Funcs.ToFSharpFunc transform
-    upcast Alt.toTask CancellationToken.None (eventX "EVENT" >> transform |> logFn)
+    upcast Alt.toTask ct (eventX "EVENT" >> transform |> logFn)
 
   // corresponds to: log, logWithTimeout, logWithAck
 
-  /// Log an event, but don't await all targets to flush. With NO back-pressure by default.
-  /// Backpressure implies the caller will wait until its message is in the buffer.
-  /// The timeout-milliseconds parameter is only used if backpressure is false.
-  /// If not using backpressure, the returned task yields after either 5 seconds or
-  /// when the message is accepted to all targets' ring buffers.
-  /// Flush implies backpressure.
   [<Extension>]
   static member LogEvent(logger: Logger,
                          level: LogLevel,
@@ -595,14 +576,14 @@ type LoggerExtensions =
                          [<Optional; DefaultParameterValue(null:obj)>] fieldsObj: obj,
                          [<Optional; DefaultParameterValue(null:Exception)>] exn: Exception,
                          [<Optional; DefaultParameterValue(null:Func<Message,Message>)>] transform: Func<Message, Message>,
-                         [<Optional; DefaultParameterValue(true)>] backpressure: bool,
-                         [<Optional; DefaultParameterValue(true)>] flush: bool,
+                         [<Optional; DefaultParameterValue(true)>] waitForAck: bool,
                          [<Optional; DefaultParameterValue(5000u)>] timeoutMillis: uint32)
                         : Task =
+    let ct = CancellationToken.None // if isNull ct then CancellationToken.None else ct
     let timeoutMillis = if timeoutMillis = 0u then 5000u else timeoutMillis
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
     let fields = if isNull fieldsObj then obj() else fieldsObj
-    let logFn = MiscHelpers.chooseLogFun logger level backpressure flush timeoutMillis
+    let logFn = MiscHelpers.chooseLogFun logger level waitForAck
 
     let messageFactory =
       eventX formatTemplate
@@ -610,10 +591,7 @@ type LoggerExtensions =
       >> if isNull exn then id else Message.addExn exn
       >> transform
 
-    upcast Alt.toTask CancellationToken.None (logFn messageFactory)
-
-
-
+    upcast Alt.toTask ct (logFn messageFactory)
 
   /// Log an event, but don't await all targets to flush. WITH back-pressure by default.
   /// Backpressure implies the caller will wait until its message is in the buffer.
@@ -623,39 +601,28 @@ type LoggerExtensions =
                                formatTemplate: string,
                                [<ParamArray>] args: obj[])
                               : Task =
+    let ct = CancellationToken.None // if isNull ct then CancellationToken.None else ct
     let msgFac = fun _ -> Message.eventFormat (level, formatTemplate, args)
-    let call = Logger.log logger level msgFac |> Alt.afterFun (fun _ -> true)
-    upcast Alt.toTask CancellationToken.None call
+    let call = Logger.log logger level msgFac
+    upcast Alt.toTask ct call
 
-  /// Log a gauge, but don't await all targets to flush. With NO back-pressure by default.
-  /// Backpressure implies the caller will wait until its message is in the buffer.
-  /// The timeout-milliseconds parameter is only used if backpressure is false.
-  /// If not using backpressure, the returned task yields after either 5 seconds or
-  /// when the message is accepted to all targets' ring buffers.
-  /// Flush implies backpressure.
-  /// Returns true of the log was accepted to Logary.
   [<Extension>]
-  static member LogGauge(logger: Logger,
-                         value: float,
-                         units: Units,
-                         gaugeName: string,
-                         [<Optional; DefaultParameterValue(null:obj)>] fields: obj,
-                         [<Optional; DefaultParameterValue(null:Func<Message, Message>)>] transform: Func<Message, Message>,
-                         [<Optional; DefaultParameterValue(true)>] backpressure: bool,
-                         [<Optional; DefaultParameterValue(true)>] flush: bool,
-                         [<Optional; DefaultParameterValue(5000u)>] timeoutMillis: uint32)
-                        : Task<bool> =
-    let timeoutMillis = if timeoutMillis = 0u then 5000u else timeoutMillis
+  static member Gauge(logger: Logger,
+                      value: float,
+                      units: Units,
+                      measurement: string,
+                      [<Optional; DefaultParameterValue(null:obj)>] fields: obj,
+                      [<Optional; DefaultParameterValue(null:Func<Message, Message>)>] transform: Func<Message, Message>)
+                      : Task<bool> =
+    let ct = CancellationToken.None // if isNull ct then CancellationToken.None else ct
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
     let fields = if isNull fields then obj() else fields
 
     let message =
-      gaugeWithUnit logger.name gaugeName (Gauge (Float value, units))
+      gaugeWithUnit logger.name measurement (Gauge (Float value, units))
       |> setFieldsFromObject fields
 
-    let logFn = MiscHelpers.chooseLogFun logger message.level backpressure flush timeoutMillis
-
-    Alt.toTask CancellationToken.None (logFn (fun _ -> message))
+    Alt.toTask ct (Logger.log logger Debug (fun _ -> message))
 
   // corresponds to: logSimple
 
@@ -673,26 +640,11 @@ type LoggerExtensions =
   /// Log a message, which returns an inner Task. The outer Task denotes having the
   /// Message placed in all Targets' buffers. The inner Task denotes having
   /// the message properly flushed to all targets' underlying "storage". Targets
-  /// whose rules do not match the message will not be awaited. The cancellation token
-  /// can cancel the outer Task, but once it's in the buffers, the Log Message cannot
-  /// be retracted by cancelling; however if you await the inner task (the promise) then
-  /// the `promiseCt` allows you to cancel that await.
-  [<Extension>]
-  static member LogWithAck (logger, level, transform: Func<Message, Message>, bufferCt, promiseCt): Task<Task> =
-    let messageFactory =
-      eventX "EVENT"
-      >> Funcs.ToFSharpFunc transform
-    Alt.toTasks bufferCt promiseCt (Logger.logWithAck logger level messageFactory)
-
-  /// Log a message, which returns an inner Task. The outer Task denotes having the
-  /// Message placed in all Targets' buffers. The inner Task denotes having
-  /// the message properly flushed to all targets' underlying "storage". Targets
   /// whose rules do not match the message will not be awaited.
   [<Extension>]
-  static member LogWithAck (logger: Logger, message: Message): Task<Task> =
-    let bufferCt = Unchecked.defaultof<CancellationToken>
-    let promiseCt = Unchecked.defaultof<CancellationToken>
-    Alt.toTasks bufferCt promiseCt (Logger.logWithAck logger message.level (fun _ -> message))
+  static member LogWithAck (logger: Logger, message: Message): Task =
+    let ct = CancellationToken.None // if isNull ct then CancellationToken.None else ct
+    upcast Alt.toTask ct (logger.logAck message.level (fun _ -> message))
 
   [<Extension>]
   static member Time (logger: Logger,

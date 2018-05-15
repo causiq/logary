@@ -29,7 +29,7 @@ module Config =
       getSem: unit -> obj
       ilogger: ILogger
       middleware: Middleware list
-      processing: Events.Processing
+      processing: Processing
       setGlobals: bool
       loggerLevels : (string * LogLevel) list
     }
@@ -137,6 +137,7 @@ module Config =
           member x.processing = lconf.processing
           member x.loggerLevels = lconf.loggerLevels
       }
+
     Registry.create conf >>- fun registry ->
     let logManager = Registry.toLogManager registry
     if lconf.setGlobals then do setToGlobals logManager

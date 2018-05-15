@@ -8,6 +8,12 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.PerfTests", "src\Log
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Tests", "src\Logary.Tests\Logary.Tests.fsproj", "{07B94E4A-084A-4DA4-8357-21E375A2E6BF}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{31F5ADE6-6D2C-4ADB-9A3C-4529B1253468}"
+ProjectSection(SolutionItems) = preProject
+	paket.lock = paket.lock
+	paket.dependencies = paket.dependencies
+EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

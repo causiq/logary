@@ -9,64 +9,69 @@ open System.Diagnostics
 open Logary
 open NodaTime
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Logger =
   /////////////////////
   // Logging methods //
   /////////////////////
 
   /// Log a message, but don't await all targets to flush. Equivalent to logWithBP.
-  let inline log (logger: Logger) logLevel messageFactory: Alt<bool> =
-    logger.logWithAck logLevel messageFactory ^-> function
-      | Ok _ -> true
-      | Error _ -> false
+  /// Returns whether the message was successfully placed in the buffers.
+  /// SAFE.
+  let log (logger: Logger) logLevel messageFactory: Alt<bool> =
+    logger.logWithAck (false, logLevel) messageFactory ^-> function
+      | Ok _ ->
+        true
+      | Result.Error Rejected ->
+        true
+      | Result.Error (BufferFull _) ->
+        false
 
-  /// Log a message, but don't synchronously wait for the message to be placed
-  /// inside Logary's buffers. Instead the message will be added to Logary's
-  /// buffers asynchronously with a timeout of 5 second, and will then be dropped.
-  ///
-  /// This is the way we avoid the unbounded buffer problem.
-  ///
-  /// If you have dropped messages, they will be logged to STDERR. You should load-
-  /// test your app to ensure that your targets can send at a rate high enough
-  /// without dropping messages.
-  ///
-  /// It's recommended to have alerting on STDERR.
+  let private printDotOnOverflow b =
+    if b then System.Console.Error.Write '.' else ()
+
   let logSimple (logger: Logger) msg: unit =
-    start (logWithTimeout logger defaultTimeout msg.level (fun _ -> msg) ^->. ())
+    start (log logger msg.level (fun _ -> msg) ^-> printDotOnOverflow)
 
-  /// See `logSimple`; but with a message factory parameter.
   let logWith (logger: Logger) level messageFactory: unit =
-    start (logWithTimeout logger defaultTimeout level messageFactory ^->. ())
+    start (log logger level messageFactory ^-> printDotOnOverflow)
 
-  /// Log a message, which returns a promise. The first Alt denotes having the
-  /// Message placed in all Targets' buffers. The inner Promise denotes having
-  /// the message properly flushed to all targets' underlying "storage". Targets
-  /// whose rules do not match the message will not be awaited.
-  let logWithAck (logger: Logger) logLevel messageFactory: Alt<Promise<bool>> =
-    logger.logWithAck logLevel messageFactory
+  let logWithBP (logger: Logger) logLevel messageFactory: Alt<unit> =
+    logger.logWithAck (true, logLevel) messageFactory ^=> function
+      | Ok _ ->
+        Job.result ()
+      | Result.Error Rejected ->
+        Job.result ()
+      | Result.Error (BufferFull target) ->
+        Job.raises (exn (sprintf "logWithAck (true, _) should have waited for the RingBuffer(s) to accept the Message. Target(%s)" target))
 
-  let apply (middleware: Message -> Message) (logger: Logger): Logger =
+  /// Special case: e.g. Fatal messages.
+  let logAck (logger: Logger) level messageFactory: Promise<unit> =
+    let ack = IVar ()
+    let inner =
+      logger.logWithAck (true, level) messageFactory ^=> function
+        | Ok promise ->
+          Job.start (promise ^=> IVar.fill ack)
+        | Result.Error Rejected ->
+          IVar.fill ack ()
+        | Result.Error (BufferFull target) ->
+          let e = exn (sprintf "logWithAck (true, _) should have waited for the RingBuffer(s) to accept the Message. Target(%s)" target)
+          IVar.fillFailure ack e
+    start inner
+    ack :> Promise<_>
+
+  let apply (transform: Message -> Message) (logger: Logger): Logger =
     { new Logger with // Logger.apply delegator
-      member x.logWithAck logLevel messageFactory =
-        logger.logWithAck logLevel (messageFactory >> middleware)
+      member x.logWithAck (waitForBuffers, logLevel) messageFactory =
+        logger.logWithAck (waitForBuffers, logLevel) (messageFactory >> transform)
       member x.name =
         logger.name
       member x.level =
         logger.level
     }
 
-/// Syntactic sugar on top of Logger for use of curried factory function
-/// functions.
 [<AutoOpen>]
 module LoggerEx =
-
-  let private lwa (x: Logger) lvl f =
-    let ack = IVar ()
-    start (x.logWithAck lvl f
-           |> Alt.afterJob id
-           |> Alt.afterJob (IVar.fill ack))
-    ack :> Promise<_>
-
   type Logger with
     member x.log logLevel (messageFactory: LogLevel -> Message): Alt<bool> =
       Logger.log x logLevel messageFactory
@@ -77,65 +82,68 @@ module LoggerEx =
     member x.logWith level messageFactory: unit =
       Logger.logWith x level messageFactory
 
+    member x.logWithBP level messageFactory: Alt<unit> =
+      Logger.logWithBP x level messageFactory
+
+    member x.logAck level messageFactory: Promise<unit> =
+      Logger.logAck x level messageFactory
+
+    member x.apply transform: Logger =
+      Logger.apply transform x
+
     member x.verbose (messageFactory: LogLevel -> Message): unit =
-      start (Logger.logWithTimeout x Logger.defaultTimeout Verbose messageFactory ^->. ())
+      Logger.logWith x Verbose messageFactory
 
-    /// Log with backpressure
     member x.verboseWithBP (messageFactory: LogLevel -> Message): Alt<unit> =
-      x.log Verbose messageFactory
+      Logger.logWithBP x Verbose messageFactory
 
-    member x.verboseWithAck (messageFactory: LogLevel -> Message): Promise<bool> =
-      lwa x Verbose messageFactory
+    member x.verboseWithAck (messageFactory: LogLevel -> Message): Promise<unit> =
+      Logger.logAck x Verbose messageFactory
 
     member x.debug (messageFactory: LogLevel -> Message): unit =
-      start (Logger.logWithTimeout x Logger.defaultTimeout Debug messageFactory ^->. ())
+      Logger.logWith x Debug messageFactory
 
-    /// Log with backpressure
     member x.debugWithBP (messageFactory: LogLevel -> Message): Alt<unit> =
-      x.log Debug messageFactory
+      Logger.logWithBP x Debug messageFactory
 
     member x.debugWithAck (messageFactory: LogLevel -> Message): Promise<unit> =
-      lwa x Debug messageFactory
+      Logger.logAck x Debug messageFactory
 
     member x.info messageFactory: unit =
-      start (Logger.logWithTimeout x Logger.defaultTimeout Info messageFactory ^->. ())
+      Logger.logWith x Info messageFactory
 
-    /// Log with backpressure
     member x.infoWithBP messageFactory: Alt<unit> =
-      x.log Info messageFactory
+      Logger.logWithBP x Info messageFactory
 
     member x.infoWithAck (messageFactory: LogLevel -> Message): Promise<unit> =
-      lwa x Info messageFactory
+      Logger.logAck x Info messageFactory
 
     member x.warn messageFactory: unit =
-      start (Logger.logWithTimeout x Logger.defaultTimeout Warn messageFactory ^->. ())
+      Logger.logWith x Warn messageFactory
 
-    /// Log with backpressure
     member x.warnWithBP messageFactory: Alt<unit> =
-      x.log Warn messageFactory
+      Logger.logWithBP x Warn messageFactory
 
     member x.warnWithAck (messageFactory: LogLevel -> Message): Promise<unit> =
-      lwa x Warn messageFactory
+      Logger.logAck x Warn messageFactory
 
     member x.error messageFactory: unit =
-      start (Logger.logWithTimeout x Logger.defaultTimeout Error messageFactory ^->. ())
+      Logger.logWith x Error messageFactory
 
-    /// Log with backpressure
     member x.errorWithBP messageFactory: Alt<unit> =
-      x.log Error messageFactory
+      Logger.logWithBP x Error messageFactory
 
     member x.errorWithAck (messageFactory: LogLevel -> Message): Promise<unit> =
-      lwa x Error messageFactory
+      Logger.logAck x Error messageFactory
 
     member x.fatal messageFactory: unit =
-      start (Logger.logWithTimeout x Logger.defaultTimeout Fatal messageFactory ^->. ())
+      Logger.logWith x Fatal messageFactory
 
-    /// Log with backpressure
     member x.fatalWithBP messageFactory: Alt<unit> =
-      x.log Fatal messageFactory
+      Logger.logWithBP x Fatal messageFactory
 
     member x.fatalWithAck (messageFactory: LogLevel -> Message): Promise<unit> =
-      lwa x Fatal messageFactory
+      Logger.logAck x Fatal messageFactory
 
     member x.timeFun (f: 'input -> 'res,
                       ?measurement: string,
@@ -164,13 +172,15 @@ module LoggerEx =
             |> Message.addCallerInfo (memberName, path, line)
             |> transform
         let logged =
-          memo (
-            if waitForAck then (x.logWithAck Debug (cb dur) ^=> id)
-            else x.log Debug (cb dur)
-          )
-        // TODO: handle this with returning false from tryEnqueue
+          if waitForAck then
+            x.debugWithAck (cb dur)
+          else
+            x.debug (cb dur)
+            Promise.unit
+
         while not (Promise.Now.isFulfilled logged) do
-          System.Threading.Thread.Sleep(1)
+          System.Threading.Thread.Sleep(5)
+
         res
 
     member x.timeJob (xJ: Job<'a>,
@@ -194,8 +204,8 @@ module LoggerEx =
           |> Message.addCallerInfo (memberName, path, line)
           |> transform
       let onComplete dur =
-        if waitForAck then x.logWithAck Debug (cb dur) ^=> id
-        else x.log Debug (cb dur)
+        if waitForAck then x.logAck Debug (cb dur) :> Job<_>
+        else x.log Debug (cb dur) |> Job.Ignore
       let timedJob =
         Job.timeJob onComplete xJ
       if logBefore then
@@ -225,11 +235,11 @@ module LoggerEx =
           |> Message.addCallerInfo (memberName, path, line)
           |> transform
       let onComplete dur =
-        if waitForAck then x.logWithAck Debug (cb true dur) ^=> id
-        else x.log Debug (cb true dur)
+        if waitForAck then x.logAck Debug (cb true dur) :> Job<_>
+        else x.log Debug (cb true dur) |> Job.Ignore
       let onNack dur =
-        if waitForAck then x.logWithAck Debug (cb false dur) ^=> id
-        else x.log Debug (cb false dur)
+        if waitForAck then x.logAck Debug (cb false dur) :> Job<_>
+        else x.log Debug (cb false dur) |> Job.Ignore
       let timedAlt =
         Alt.timeJob onComplete onNack xA
       if logBefore then
@@ -289,10 +299,10 @@ module LoggerEx =
 
           member y.stop decider =
             let m = stop sw decider
-            x.logWithAck m.level (fun _ -> transform m)
+            x.logWithAck (false, m.level) (fun _ -> transform m)
 
-          member y.logWithAck logLevel messageFactory =
-            x.logWithAck logLevel (messageFactory >> transform)
+          member y.logWithAck (waitForBuffers, logLevel) messageFactory =
+            x.logWithAck (waitForBuffers, logLevel) (messageFactory >> transform)
 
           member y.name = name
           member y.level = x.level

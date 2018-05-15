@@ -1141,7 +1141,7 @@ module File =
           // TODO: consider that the TextWriter may block the thread here
           conf.writer.write state.writer message
           // TODO: consider whether to use the async API or not here
-          acks.Add (Promise.instaPromise, ack)
+          acks.Add (Promise.unit, ack)
           // Invariant: always flush fatal messages.
           if message.level = Fatal then
             ilogger.debug (eventX "Got fatal message; scheduling disk flush.")
@@ -1223,11 +1223,10 @@ module File =
               | Choice1Of2 () ->
                 checking state
               | Choice2Of2 err ->
-                ri.logger.logWithAck Error (
+                ri.logger.logAck Error (
                   eventX "IO Exception while writing to file. Batch size is {batchSize}."
                   >> setField "batchSize" conf.batchSize
                   >> addExn err)
-                >>= id
                 >>=. Will.update will (reqs, 1us)
                 >>=. Job.raises err
         ] :> Job<_>
@@ -1275,18 +1274,16 @@ module File =
             | Choice1Of2 () ->
               checking state
             | Choice2Of2 ex ->
-              ri.logger.logWithAck Error (
+              ri.logger.logAck Error (
                 eventX "Attempt {attempts} failed, trying again shortly."
                 >> Message.setField "attempts" recoverCount)
-              >>= id
               >>=. Will.update will (lastBatch, recoverCount + 1us)
               >>=. Job.raises ex
 
         | recoverCount ->
-          ri.logger.logWithAck Fatal (
+          ri.logger.logAck Fatal (
             eventX "Could not recover in {attempts} attempts."
             >> Message.setField "attempts" recoverCount)
-          >>= id
           >>=. Job.raises (Exception "File recovery failed, crashing out.")
 
       init ()

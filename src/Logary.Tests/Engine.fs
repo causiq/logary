@@ -2,6 +2,7 @@ module Logary.Tests.Engine
 
 open System
 open Expecto
+open FsCheck
 open Logary
 open Logary.Message
 open Hopac
@@ -13,8 +14,8 @@ open NodaTime
 open System.Net.NetworkInformation
 
 type MockTarget =
-  { server: string * (Message -> Alt<Promise<unit>>)
-    getMsgs: unit -> Message list Alt}
+  { server: string * (Message -> LogResult)
+    getMsgs: unit -> Alt<Message list> }
 
 let mockTarget name =
   let mailbox = Mailbox<Message> ()
@@ -22,17 +23,21 @@ let mockTarget name =
 
   let rec loop msgs =
     Alt.choose [
-      Mailbox.take mailbox ^=> fun newMsg -> loop [yield! msgs; yield newMsg]
+      Mailbox.take mailbox ^=> fun newMsg ->
+        loop [ yield! msgs; yield newMsg ]
 
       getMsgReq ^=> fun reply ->
         reply *<= msgs >>=. loop []
     ]
 
-  let sendMsg x = Mailbox.Now.send mailbox x; Promise.instaPromise
+  let sendMsg x =
+    Mailbox.Now.send mailbox x
+    LogResult.success
+
   let getMsgs () = getMsgReq *<-=>- id
 
   let target =
-    { server = (name,sendMsg)
+    { server = name, sendMsg
       getMsgs = getMsgs }
 
   loop [] |> Job.server >>-. target
@@ -50,13 +55,8 @@ let run pipe (targets:ResizeArray<MockTarget>) =
        msg
        |> Message.getAllSinks
        |> Seq.choose (fun targetName ->
-          let target = HashMap.tryFind targetName targetsMap
-          match target with
-          | Some target ->
-            let sendJob = target msg ^=> id
-            sendJob |> Some
-          | _ -> None)
-       |> Hopac.Extensions.Seq.Con.iterJob (id)
+          HashMap.tryFind targetName targetsMap |> Option.map (fun target -> target msg))
+       |> Job.conCollect
 
      let allAppendedAcks = IVar ()
 
@@ -64,13 +64,15 @@ let run pipe (targets:ResizeArray<MockTarget>) =
         Job.start (allSendJobs >>= IVar.fill allAppendedAcks)
         >>-. allAppendedAcks
 
-     logToAllTargetAlt ^->. Promise (()) |> HasResult)
-  |> fun runningPipe ->
-     runningPipe >>- fun (logMsg, ctss) ->
+     logToAllTargetAlt ^->. Ok Promise.unit |> HasResult)
+
+  |> Job.map (fun (logMsg, ctss) ->
      let wrapper x =
-       let res = logMsg x |> PipeResult.orDefault Promise.instaPromise
-       res ^=> fun ack -> ack |> Job.Ignore
-     (wrapper, ctss)
+       let res = logMsg x |> PipeResult.orDefault LogResult.success
+       res ^=> function
+         | Ok ack -> ack :> Job<_>
+         | Result.Error _ -> Promise.unit :> Job<_>
+     wrapper, ctss)
 
 
 let tests =
@@ -244,16 +246,15 @@ let tests =
         Events.compose [
            Events.events
            |> Pipe.bufferConditional dutiful
-           |> Pipe.map Seq.ofList
-           |> Events.flattenToProcessing
+           |> Events.flattenSeq
            |> Pipe.map (fun msg ->
               let sinks = if msg.level >= Error then ["email"] else ["dashboard"]
               msg |> Message.addSinks sinks)
         ]
 
       // given
-      let! targets = [mockTarget "email"; mockTarget "dashboard";] |> Job.seqCollect
-      let! (sendMsg, ctss) = run processing targets
+      let! targets = [mockTarget "email"; mockTarget "dashboard"] |> Job.seqCollect
+      let! sendMsg, ctss = run processing targets
 
       // when
       let makeMsg level time =

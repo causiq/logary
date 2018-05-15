@@ -9,27 +9,47 @@ open Logary
 open Logary.Internals
 open Logary.Message
 open Logary.Configuration
-open Logary.Configuration
+
+let testLogger = Logging.Log.create "Logary.Tests.Registry"
+
+let debug message =
+  testLogger.logWithAck Logging.Debug (Logging.Message.eventX message)
 
 let tests = [
   testCaseJob "from Config and Multi shutdown" <| job {
-    let! logm = Config.create "svc" "localhost" |> Config.build
+    do! debug "Starting LogManager..."
+    let! logm =
+      Config.create "svc" "localhost"
+      |> Config.ilogger (ILogger.LiterateConsole Verbose)
+      |> Config.build
+    do! debug "Started LogManager."
+
     let ri = logm.runtimeInfo
-    Expect.equal ri.service "svc" "should have service"
-    Expect.equal ri.host "localhost" "should have host"
+    Expect.equal ri.service "svc" "Has service"
+    Expect.equal ri.host "localhost" "Has host"
 
-    let timeout =  Duration.FromSeconds 3L
+    let timeout = Duration.FromSeconds 3L
 
-    let! (finfo, sinfo) = logm.shutdown (timeout, timeout)
-    let none = (List.empty<string>,List.empty<string>)
-    Expect.equal finfo (FlushInfo none) "shoule have no targets"
-    Expect.equal sinfo (ShutdownInfo none) "shoule have no targets"
+    do! debug "Shutting down LogManager (1)..."
+    let! finfo, sinfo = logm.shutdown (timeout, timeout)
+    do! debug "Shut down LogManager (1)."
+
+    let none = List.empty<string>, List.empty<string>
+    Expect.equal finfo (FlushInfo none) "No targets to shut down"
+    Expect.equal sinfo (ShutdownInfo none) "No targets to shut down"
+
+    do! debug "Shutting down LogManager (2)..."
     do! logm.shutdown ()
+    do! debug "Shut down LogManager (2). Flushing LogManager (1)..."
     do! logm.flushPending ()
+    do! debug "Flushed LogManager (1). Shutting down LogManager (3)..."
     do! logm.shutdown ()
-    let! (finfo) = logm.flushPending (timeout)
-    Expect.equal finfo (FlushInfo (["registry is closed"],[])) "shoule show registry is shutdown"
-
+    do! debug "Shut down LogManager (3). Flushing LogManager (2)..."
+    let! finfo = logm.flushPending timeout
+    do! debug "Flushed LogManager (2)."
+    Expect.equal
+      finfo (FlushInfo (["registry is closed"],[]))
+      "FlushPending should notify called that Registry is shut down."
   }
 
   testCaseJob "after shutting down no logging happens" <|

@@ -7,8 +7,8 @@ open Logary
 /// that is actually *the* internal logger target, to avoid recursive calls to
 /// itself.
 type private NullLogger() =
-  interface Logger with // null logger
-    member x.logWithAck logLevel messageFactory = Promise.altAlwaysTrue
+  interface Logger with
+    member x.logWithAck (_, _) _ = LogResult.success
     member x.level = LogLevel.Fatal
     member x.name = PointName.ofList [ "Logary"; "NullLogger" ]
 

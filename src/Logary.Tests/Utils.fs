@@ -146,14 +146,18 @@ let finalise target =
     | Internals.Success _ ->
       ())
 
-let logMsgWaitAndShutdown targetApi (logCallBack: (Message -> Job<unit>) -> #Job<unit>) =
+let logMsgWaitAndShutdown (targetApi: Target.T) (logCallBack: (Message -> Job<unit>) -> #Job<unit>) =
   let logAndWait (message: Message) =
     job {
-      do! logger.infoWithBP (Logging.Message.eventX "Sending message to target")
-      let! ack = Target.log targetApi message
-      do! logger.infoWithBP (Logging.Message.eventX "Waiting for target to ACK message")
-      do! ack
-      do! logger.infoWithBP (Logging.Message.eventX "Target ACKed message")
+      do! logger.infoWithBP (Logging.Message.eventX (sprintf "Sending message to Target(%s)" targetApi.name))
+      let! res = Target.tryLog targetApi message
+      match res with
+      | Ok ack ->
+        do! logger.infoWithBP (Logging.Message.eventX (sprintf "Waiting for Target(%s) to ACK message" targetApi.name))
+        do! ack
+        do! logger.infoWithBP (Logging.Message.eventX (sprintf "Target(%s) ACKed message" targetApi.name))
+      | Result.Error e ->
+        failtestf "%A" e
     }
   let finaliseJob =
     job {

@@ -12,12 +12,30 @@ module internal GlobalFunctions =
 module internal Promise =
   open Hopac
   let unit: Promise<unit> = Promise (())
+
 module internal Result =
   let inline isOk r =
     match r with Result.Ok _ -> true | Result.Error _ -> false
+
   let inline isError r =
     match r with Result.Ok _ -> false | Result.Error _ -> true
 
+  let private folder t s =
+    match s, t with
+    | Ok _, Result.Error err ->
+      Result.Error [ err ]
+    | Ok oks, Ok ok ->
+      Ok (ok :: oks)
+    | Result.Error errors, Result.Error err ->
+      Result.Error (err :: errors)
+    | Result.Error errors, Ok _ ->
+      Result.Error errors
+
+  let sequence rs =
+    (rs, Ok [])
+    ||> Array.foldBack folder
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal LogResult =
   open Hopac
   let success: Alt<Result<Promise<unit>, LogError>> = Alt.always (Result.Ok Promise.unit)

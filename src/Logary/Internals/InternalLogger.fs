@@ -17,18 +17,21 @@ module InternalLogger =
     private {
       addCh: Ch<TargetConf>
       shutdownCh: Ch<unit>
-      messageCh: Ch<Message * Promise<unit> * Ch<Promise<bool>>>
+      messageCh: Ch<Message * Promise<unit> * Ch<Result<Promise<unit>, LogError>>>
     }
   with
     member x.name = PointName [| "Logary" |]
 
     interface Logger with // internal logger
-      member x.logWithAck logLevel messageFactory =
+      member x.logWithAck (waitForBuffers, logLevel) messageFactory =
+        x.messageCh *<+->- fun replCh nack ->
+
         let message =
           match messageFactory logLevel with
           | msg when msg.name.isEmpty -> { msg with name = x.name }
           | msg -> msg
-        x.messageCh *<+->- fun replCh nack -> message, nack, replCh
+
+        message, nack, replCh
 
       member x.name = x.name
 
@@ -37,7 +40,6 @@ module InternalLogger =
       /// let the internal logger targets decide which will be accepted
       /// so this property is generally useless
       member x.level = LogLevel.Verbose
-
 
   let create ri =
     let addCh, messageCh, shutdownCh = Ch (), Ch (), Ch ()
@@ -53,14 +55,12 @@ module InternalLogger =
           iserver [| yield! targets; yield t |]
 
         messageCh ^=> fun (message, nack, replCh) ->
+          printfn "ILogger got '%s' message." message.value
 
-          Alt.choose [
-            Target.logAllReduce targets message ^=> fun result ->
-              replCh *<- result ^=> fun () ->
-              iserver targets
+          let forwardToTarget =
+            Target.tryLogAllReduce targets message ^=> Ch.give replCh
 
-            nack ^=> fun () -> iserver targets
-          ]
+          (forwardToTarget <|> nack) ^=> fun () -> iserver targets
 
         shutdownCh ^=> fun () ->
           targets |> Seq.Con.iterJob (fun t -> Target.shutdown t ^=> id)

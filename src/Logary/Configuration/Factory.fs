@@ -85,7 +85,7 @@ and ConfBuilder(conf) =
     |> Config.middleware (fun next msg -> middleware.Invoke(next, msg))
     |> ConfBuilder
 
-  member x.Processing(processor: Events.Processing) =
+  member x.Processing(processor: Processing) =
     conf
     |> Config.processing processor
     |> ConfBuilder
