@@ -1,8 +1,4 @@
-﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace Logary
+﻿namespace Logary
 {
     /// <summary>
     /// Extensions to the Logger interface that were hard to do inside Logary proper
