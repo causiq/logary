@@ -6,6 +6,7 @@ open System.Diagnostics
 open Topshelf.Logging
 open Topshelf.HostConfigurators
 open Logary
+open Logary.Configuration
 
 type TopshelfAdapter(logger: Logger) =
   let fromSourceLevel = function

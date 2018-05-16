@@ -37,6 +37,9 @@ type LogstashConf =
       logMetrics = defaultArg logMetrics false
       mode       = defaultArg mode PUSHPULL }
 
+let empty =
+  LogstashConf.create ()
+
 module internal Impl =
 
   type State =

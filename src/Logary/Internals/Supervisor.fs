@@ -133,7 +133,7 @@ module Job =
 
   and supervise (logger: Logger) (p: Policy): #Job<'x> -> SupervisedJob<'x> =
     let handle = makeHandler logger p
-    fun xJ -> Job.tryIn (logger.beforeAfter Verbose xJ) (Choice1Of2 >> Job.result) (handle xJ)
+    fun xJ -> Job.tryIn xJ (Choice1Of2 >> Job.result) (handle xJ)
 
   let superviseWithWill logger p w2xJ =
     let wl = Will.create ()

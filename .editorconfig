@@ -7,5 +7,12 @@ charset = utf-8
 indent_style = space
 indent_size = 2
 
+[*.cs]
+end_of_line = lf
+insert_final_newline = false
+charset = utf-8
+indent_style = space
+indent_size = 4
+
 [*.{csproj,fsproj}]
 end_of_line = crlf

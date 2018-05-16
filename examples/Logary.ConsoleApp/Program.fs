@@ -14,8 +14,8 @@ open Hopac
 open Logary
 open Logary.Configuration
 open Logary.Targets
-open Logary.EventProcessing
-open Logary.EventProcessing.Transformers
+open Logary.Configuration
+open Logary.Configuration.Transformers
 
 module RandomWalk =
 
@@ -140,8 +140,8 @@ let main argv =
       |> Pipe.choose (Message.tryGetGauge "Logary.ConsoleApp.randomWalk")
       |> Pipe.tickTimer timing (TimeSpan.FromSeconds 10.)
       |> Pipe.map Array.toSeq
-      |> Events.flattenToProcessing
-      |> Events.sink ["console";]
+      |> Events.flattenSeq
+      |> Events.sink ["console"]
     ]
 
   let logary =

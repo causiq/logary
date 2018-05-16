@@ -4,13 +4,13 @@ open NodaTime
 open System
 open System.Text
 open System.Threading
+open Expecto
+open Expecto.Flip
 open Logary
-open Logary.Tests.Utils
+open Logary.Tests
 open Logary.Configuration
 open Logary.Internals
 open Logary.Targets.InfluxDb
-open Expecto
-open Expecto.Flip
 open Suave
 open Suave.Operators
 open Hopac
@@ -84,7 +84,7 @@ let writesOverHttp =
   testList "writes over HTTP" [
     testCaseTarget "write single" (fun state target ->
       job {
-        let! ack = Target.log target msg
+        let! ack = Target.tryLog target msg ^-> Expect.isOk "Successfully placed message in buffer"
         let! req = Ch.take state.req
         do! ack
 
@@ -99,9 +99,9 @@ let writesOverHttp =
 
     testCaseTarget "write batch" (fun state target ->
       job {
-        let! p1 = Target.log target msg1
-        let! p2 = Target.log target msg2
-        let! p3 = Target.log target msg3
+        let! p1 = Target.tryLog target msg1 ^-> Expect.isOk "Successfully placed message in buffer"
+        let! p2 = Target.tryLog target msg2 ^-> Expect.isOk "Successfully placed message in buffer"
+        let! p3 = Target.tryLog target msg3 ^-> Expect.isOk "Successfully placed message in buffer"
         let! req = Ch.take state.req
         let! req2 = Ch.take state.req
 
@@ -117,7 +117,7 @@ let writesOverHttp =
     testCaseTarget "target acks" (fun state target ->
       let msg = Message.gaugefs "S1" "Number 1" 0.3463
       job {
-        let! ackPromise = Target.log target msg
+        let! ackPromise = Target.tryLog target msg ^-> Expect.isOk "Successfully placed message in buffer"
         let! req2 = Ch.take state.req
 
         let! success =

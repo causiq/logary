@@ -6,3 +6,4 @@ FluentMigrator.Runner
 FsSql
 System.Data.SQLite.Core
 Expecto
+Expecto.Hopac

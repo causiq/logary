@@ -10,5 +10,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="paket.references" />
+  </ItemGroup>
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />
 </Project>

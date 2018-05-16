@@ -24,45 +24,46 @@ namespace Logary.CSharp.Tests
         static Exception exception;
 
         Establish context = () =>
-            {
-                writer = new StringWriter(new StringBuilder());
-                timestamp = NodaTime.Instant.FromUnixTimeSeconds(987654);
-                exception = new ApplicationException("Nice exception");
-                var targetName = "sample string writer";
+        {
+            writer = new StringWriter(new StringBuilder());
+            timestamp = NodaTime.Instant.FromUnixTimeSeconds(987654);
+            exception = new ApplicationException("Nice exception");
+            var targetName = "sample string writer";
 
-                manager = LogaryFactory.New(
-                    "Logary.CSharp.Tests","localhost",
-                    with =>
-                        with.Use(MiddlewareModule.ProcessName)
-                            .Target<TextWriter.Builder>(targetName,
+            manager = LogaryFactory.New(
+                "Logary.CSharp.Tests", "localhost",
+                with =>
+                    with.Use(MiddlewareModule.ProcessName)
+                        .Target<TextWriter.Builder>(targetName,
                             t => t.Target.WriteTo(writer, writer)
-                                  .MinLevel(LogLevel.Verbose)
-                                  .SourceMatching(new Regex(".*")))).Result;
-            };
+                                .MinLevel(LogLevel.Verbose)
+                                .SourceMatching(new Regex(".*")))).Result;
+        };
 
         Because reason = () =>
-            {
-                var logger = manager.GetLogger("Logary.CSharp.Tests.When_configuring_with_CSharp_API");
-                logger.LogEvent(LogLevel.Warn, "the situation is dire, says {@foo}",
-                        new {foo = "oh-noes"}, exception,
-                        msg => msg.SetTimestamp(timestamp),
-                        true,
-                        true)
-                    .Wait();
-                subject = writer.ToString();
-            };
+        {
+            var logger = manager.GetLogger("Logary.CSharp.Tests.When_configuring_with_CSharp_API");
+            logger.LogEvent(LogLevel.Warn, "the situation is dire, says {@foo}",
+                    new {foo = "oh-noes"}, exception,
+                    msg => msg.SetTimestamp(timestamp), true)
+                .Wait();
+            subject = writer.ToString();
+        };
 
         It output_should_contain_exception = () => subject.ShouldContain(exception.Message);
         It output_should_contain_message = () => subject.ShouldContain("the situation is dire");
         It output_should_contain_the_field = () => subject.ShouldContain("oh-noes");
-        It output_should_contain_timestamp = () => subject.ShouldContain(timestamp.ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture));
+
+        It output_should_contain_timestamp = () =>
+            subject.ShouldContain(timestamp.ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture));
+
         It output_should_contain_processName_key = () => subject.ShouldContain("processName");
 
         Cleanup cleanup = () =>
-            {
-                // manager.Dispose();
-                writer.Dispose();
-            };
+        {
+            manager.shutdown().ToTask();
+            writer.Dispose();
+        };
     }
 
     public class When_configuring_with_CSharp_API_and_using_setter_transformer
@@ -74,44 +75,46 @@ namespace Logary.CSharp.Tests
         static Exception exception;
 
         Establish context = () =>
-            {
-                timestamp = NodaTime.Instant.FromUnixTimeSeconds(987654);
-                exception = new ApplicationException("Nice exception");
-                manager = LogaryTestFactory.GetManager(out writer);
-            };
+        {
+            timestamp = NodaTime.Instant.FromUnixTimeSeconds(987654);
+            exception = new ApplicationException("Nice exception");
+            manager = LogaryTestFactory.GetManager(out writer);
+        };
 
         Because reason = () =>
-            {
-                var logger = manager.GetLogger("Logary.CSharp.Tests.When_configuring_with_CSharp_API_and_using_setter_transformer");
+        {
+            var logger =
+                manager.GetLogger("Logary.CSharp.Tests.When_configuring_with_CSharp_API_and_using_setter_transformer");
 
-                logger.LogEvent(
-                    LogLevel.Warn,
-                    "the situation is dire",
-                    transform:
-                    msg => msg
-                        .SetFieldsFromObject(new {foo = "oh-noes"})
-                        .SetTimestamp(timestamp)
-                        .AddException(exception)
-                        .SetContextFromObject(new {contextdata = "the Contextdata"}),
-                    backpressure:true
-                ).Wait();
+            logger.LogEvent(
+                LogLevel.Warn,
+                "the situation is dire",
+                transform:
+                msg => msg
+                    .SetFieldsFromObject(new {foo = "oh-noes"})
+                    .SetTimestamp(timestamp)
+                    .AddException(exception)
+                    .SetContextFromObject(new {contextdata = "the Contextdata"})
+            ).Wait();
 
-                manager.FlushPending(Duration.FromSeconds(8L)).Wait();
-                subject = writer.ToString();
-            };
+            manager.FlushPending(Duration.FromSeconds(8L)).Wait();
+            subject = writer.ToString();
+        };
 
         It output_should_contain_context = () => subject.ShouldContain("the Contextdata");
         It output_should_contain_exception = () => subject.ShouldContain(exception.Message);
 
         It output_should_contain_message = () => subject.ShouldContain("the situation is dire");
         It output_should_contain_the_field = () => subject.ShouldContain("oh-noes");
-        It output_should_contain_timestamp = () => subject.ShouldContain(timestamp.ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture));
+
+        It output_should_contain_timestamp = () =>
+            subject.ShouldContain(timestamp.ToDateTimeOffset().ToString("o", CultureInfo.InvariantCulture));
 
         Cleanup cleanup = () =>
-            {
-                // manager.Dispose();
-                writer.Dispose();
-            };
+        {
+            // manager.Dispose();
+            writer.Dispose();
+        };
     }
 
     public class When_configuring_filter_with_API
@@ -121,30 +124,30 @@ namespace Logary.CSharp.Tests
         static string subject;
 
         Establish context = () =>
-            {
-                writer = new StringWriter(new StringBuilder());
-                manager = LogaryFactory.New("Logary.CSharp.Tests","localhost",
-                        with => with.Target<TextWriter.Builder>(
-                            "sample string writer",
-                            t => t.Target.WriteTo(writer, writer)
-                                .AcceptIf(m => !$"{m.name}".Contains("When_configuring_filter_with_API")))).Result;
-            };
+        {
+            writer = new StringWriter(new StringBuilder());
+            manager = LogaryFactory.New("Logary.CSharp.Tests", "localhost",
+                with => with.Target<TextWriter.Builder>(
+                    "sample string writer",
+                    t => t.Target.WriteTo(writer, writer)
+                        .AcceptIf(m => !$"{m.name}".Contains("When_configuring_filter_with_API")))).Result;
+        };
 
         Because reason = () =>
-            {
-                manager
-                    .GetLogger("Logary.CSharp.Tests.When_configuring_filter_with_API")
-                    .LogEvent(LogLevel.Warn, "the situation is dire", new {error = "oh-noes"}, flush:true)
-                    .Wait();
-                subject = writer.ToString();
-            };
+        {
+            manager
+                .GetLogger("Logary.CSharp.Tests.When_configuring_filter_with_API")
+                .LogEvent(LogLevel.Warn, "the situation is dire", new {error = "oh-noes"}, waitForAck: true)
+                .Wait();
+            subject = writer.ToString();
+        };
 
         It output_should_be_empty = () => subject.ShouldEqual("");
 
         Cleanup cleanup = () =>
-            {
-                // manager.Dispose();
-                writer.Dispose();
-            };
+        {
+            // manager.Dispose();
+            writer.Dispose();
+        };
     }
 }

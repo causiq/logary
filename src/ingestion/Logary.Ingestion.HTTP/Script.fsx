@@ -16,7 +16,6 @@ open Suave.Operators
 #r "Hopac.Core.dll"
 #r "Hopac.dll"
 open Logary
-open Logary.EventProcessing
 open Logary.Configuration
 open Logary.Targets
 open Hopac

@@ -9,6 +9,7 @@
   <ItemGroup>
     <Compile Include="DBTarget.fs" />
     <None Include="paket.references" />
+    <ProjectReference Include="..\..\Logary.Tests\Logary.Tests.fsproj" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />
     <ProjectReference Include="..\Logary.Targets.DB\Logary.Targets.DB.fsproj" />
     <ProjectReference Include="..\Logary.Targets.DB.Migrations\Logary.Targets.DB.Migrations.fsproj" />

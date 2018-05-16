@@ -74,8 +74,9 @@ let target =
       let! target = Target.create ri targetConf
 
       for i in 0..20 do
-        let! ack = Target.log target (event LogLevel.Info "thing happened at {blah}" |> setField "blah" 12345 |> setContext "zone" "foobar" |> addExn (raisedExn "boohoo"))
-        do! ack
+        let! ack =
+          Target.tryLog target (event LogLevel.Info "thing happened at {blah}" |> setField "blah" 12345 |> setContext "zone" "foobar" |> addExn (raisedExn "boohoo"))
+        do! ack |> function Ok ack -> ack | Result.Error e -> failtestf "Failure placing in buffer %A" e
 
       do! flush target
     }

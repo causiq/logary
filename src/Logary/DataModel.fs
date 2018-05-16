@@ -5,9 +5,6 @@ open NodaTime
 open System
 open Logary
 
-/// A content-type annotation for a byte-array.
-type ContentType = string
-
 /// The main alias for time in Logary - the # of nanoseconds since 1970-01-01
 /// in Unix time. In effect it denotes the # of nanoseconds passed in
 /// international atomic time (TAI), but corrected for leap seconds – because
@@ -182,7 +179,6 @@ type Value =
   | Int64 of int64
   | BigInt of bigint
   | Fraction of int64 * int64
-  //| Binary of byte[] * ContentType
   /// Convert the Gauge value to a float (best as possible; this **may** lead to
   /// a loss of accuracy).
   member x.toFloat () =
@@ -199,6 +195,30 @@ with
     let (Gauge (v, _)) = x in v
   member x.unit =
     let (Gauge (_, u)) = x in u
+  static member ofNanos (ns: Value) =
+    Gauge (ns, Scaled (Seconds, float Constants.NanosPerSecond))
+  static member ofNanos (ns: int64) =
+    Gauge (Int64 ns, Scaled (Seconds, float Constants.NanosPerSecond))
+  static member ofNanos (ns: float) =
+    Gauge (Float ns, Scaled (Seconds, float Constants.NanosPerSecond))
+  static member ofMillis (ms: Value) =
+    Gauge (ms, Scaled (Seconds, float Constants.MillisPerSecond))
+  static member ofMillis (ms: float) =
+    Gauge (Float ms, Scaled (Seconds, float Constants.MillisPerSecond))
+  static member ofMillis (ms: int64) =
+    Gauge (Int64 ms, Scaled (Seconds, float Constants.MillisPerSecond))
+  static member ofBclTicks (bclTicks: Value) =
+    Gauge (bclTicks, Scaled (Seconds, float Constants.TicksPerSecond))
+  static member ofBclTicks (bclTicks: int64) =
+    Gauge (Int64 bclTicks, Scaled (Seconds, float Constants.TicksPerSecond))
+  static member ofBclTicks (bclTicks: float) =
+    Gauge (Float bclTicks, Scaled (Seconds, float Constants.TicksPerSecond))
+  static member ofStopwatchTicks (swTicks: Value) =
+    Gauge (swTicks, Scaled (Seconds, float System.Diagnostics.Stopwatch.Frequency))
+  static member ofStopwatchTicks (swTicks: int64) =
+    Gauge (Int64 swTicks, Scaled (Seconds, float System.Diagnostics.Stopwatch.Frequency))
+  static member ofStopwatchTicks (swTicks: float) =
+    Gauge (Float swTicks, Scaled (Seconds, float System.Diagnostics.Stopwatch.Frequency))
 
 /// This is record that is logged.
 type Message =
@@ -224,6 +244,26 @@ type Message =
     member x.timestampEpochS: int64 =
       x.timestamp / Constants.NanosPerSecond
 
+/// Why was the message/metric/event not logged?
+[<Struct>]
+type LogError =
+  /// The buffer of the target was full, so the message was not logged.
+  | BufferFull of target:string
+  /// The target, or the processing step before the targets, rejected the message.
+  | Rejected
+
+  static member wasRejected (e: LogError) =
+    match e with
+    | Rejected -> true
+    | _ -> false
+
+  static member bufferWasFull (e: LogError) =
+    match e with
+    | BufferFull _ -> true
+    | _ -> false
+
+type internal LogResult = Alt<Result<Promise<unit>, LogError>>
+
 /// See the docs on the funtions for descriptions on how Ack works in conjunction
 /// with the promise.
 type Logger =
@@ -231,19 +271,9 @@ type Logger =
   /// `Messages` produced from this instance.
   abstract name: PointName
 
-  /// Write a message to the Logger. The returned value represents the commit
-  /// point that Logary has acquired the message. The alternative is always
-  /// selectable (through `Alt.always ()` if the logger filtered out the message
-  /// due to a Rule).
-  ///
-  /// If the Message was not filtered through a Rule, but got sent onwards, the
-  /// promise is there to denote the ack that all targets have successfully
-  /// flushed the message. If you do not commit to the Alt then it will not be
-  /// logged.
-  ///
-  /// If you choose to not await the Promise/Ack it makes no difference, since
-  /// it will be garbage collected in the end, whether it's awaited or not.
-  abstract logWithAck: LogLevel -> (LogLevel -> Message) -> Alt<Promise<unit>>
+  abstract logWithAck: waitForBuffers:bool * level:LogLevel -> messageFactory:(LogLevel -> Message) -> LogResult
+
+  //abstract log: Message -> Alt<Result<Promise<unit>, unit>>
 
   /// Gets the currently set log level (minimal,inclusive),
   /// aka. the granularity with which things are being logged.
@@ -269,4 +299,4 @@ type TimeScope =
 
   /// Call to stop the timer; decide in the passed function what level the
   /// resulting Gauge should have.
-  abstract stop : (Duration -> LogLevel) -> Alt<Promise<unit>>
+  abstract stop: (Duration -> LogLevel) -> LogResult

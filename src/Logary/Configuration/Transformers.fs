@@ -1,4 +1,4 @@
-namespace Logary.EventProcessing.Transformers
+namespace Logary.Configuration.Transformers
 
 module Snapshot =
   open System

@@ -11,8 +11,8 @@ open System.Runtime.CompilerServices
 open Hopac
 open Logary
 open Logary.CSharp
+open Logary.Internals
 open Logary.Configuration
-open Logary.EventProcessing
 
 /// This is useful to implement if you want add-on assemblies to be able to
 /// extend your builder. Then you just implement an interface that also
@@ -31,10 +31,8 @@ type ConfigReader<'a> =
   abstract ReadConf: unit -> 'a
 
 type internal ConfBuilderTarget<'T when 'T :> Target.SpecificTargetConf> =
-  { tr: Rule               // for this specific target
-    specific : 'T option }
-with
-
+  { tr: Rule // for this specific target
+    specific: 'T option }
   interface Target.TargetConfBuild<'T> with
     member x.MinLevel logLevel =
       { x with tr = { x.tr with Rule.minLevel = logLevel } }
@@ -87,7 +85,7 @@ and ConfBuilder(conf) =
     |> Config.middleware (fun next msg -> middleware.Invoke(next, msg))
     |> ConfBuilder
 
-  member x.Processing(processor: Events.Processing) =
+  member x.Processing(processor: Processing) =
     conf
     |> Config.processing processor
     |> ConfBuilder

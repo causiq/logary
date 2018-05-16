@@ -82,17 +82,35 @@ module HashMap =
   let inline ofArrayPair (xs: KeyValuePair<'k, 'v> []): HashMap<'k, 'v> =
     xs |> Array.fold (fun map (KeyValue (k, v)) -> map |> add k v) empty
 
-  let inline ofArray (xs : ('k * 'v) []): HashMap<'k, 'v> =
+  let inline ofArray (xs: ('k * 'v) []): HashMap<'k, 'v> =
     xs |> Array.fold (fun map (k, v) -> map |> add k v) empty
 
   let inline ofSeqPair (xs: KeyValuePair<'k, 'v> seq): HashMap<'k, 'v> =
     xs |> Seq.fold (fun map (KeyValue (k, v)) -> map |> add k v) empty
 
-  let inline ofSeq (xs : ('k * 'v) seq): HashMap<'k, 'v> =
+  let inline ofSeq (xs: ('k * 'v) seq): HashMap<'k, 'v> =
     xs |> Seq.fold (fun map (k, v) -> map |> add k v) empty
 
   let inline ofListPair (xs: KeyValuePair<'k, 'v> list): HashMap<'k, 'v> =
     xs |> List.fold (fun map (KeyValue (k, v)) -> map |> add k v) empty
 
-  let inline ofList (xs : ('k * 'v) list): HashMap<'k, 'v> =
+  let inline ofList (xs: ('k * 'v) list): HashMap<'k, 'v> =
     xs |> List.fold (fun map (k, v) -> map |> add k v) empty
+
+  module Optic =
+    open Logary.Internals.Aether
+
+    /// Prism to a value associated with a key in a map.
+    let key_ (k: 'k): Prism<HashMap<'k,'v>,'v> =
+      tryFind k,
+      (fun v x ->
+        if containsKey k x then x else set k v x )
+
+    /// Lens to a value option associated with a key in a map.
+    let value_ (k: 'k): Lens<HashMap<'k,'v>, 'v option> =
+      tryFind k,
+      (fun v x ->
+        match v with
+        | Some v -> set k v x
+        | _ -> unset k x)
+

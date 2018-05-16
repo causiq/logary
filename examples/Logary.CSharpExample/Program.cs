@@ -1,7 +1,7 @@
 ﻿
 /*
- * 
-    
+ *
+
 //   .Target<Logary.Targets.RabbitMQ.Builder>(
 //       "rabbitmq",
 //       conf => conf.Target.EnableTls("./cert/path.pfx", "TopSecret12345").Done()
@@ -30,7 +30,7 @@ namespace Logary.CSharpExample
     using CSharp;
     using Targets;
     using Adapters.Facade;
-    
+
     public static class Program
     {
         public static Task<LogManager> StartEverything()
@@ -64,8 +64,7 @@ namespace Logary.CSharpExample
                             //    "file",
                             //    conf => conf
                             //)
-                            .Target<InfluxDb.Builder>("influx",
-                                                      conf => conf.Target.DB("http://influxdb.service:8086").Done())
+                            .Target<InfluxDb.Builder>("influx", conf => conf.Target.DB("http://influxdb.service:8086").Done())
                 );
         }
 
@@ -83,22 +82,21 @@ namespace Logary.CSharpExample
             await logger.LogEvent(LogLevel.Debug, "Hello world. Important? {important}", new
             {
                 important = "yes"
-            }, backpressure: true);
+            });
 
             // await logging the fatal event and getting an ack back from each of the configured
             // targets
-            await logger.LogEvent(LogLevel.Fatal, "Fatal application error on finaliser thread.", flush: true);
+            await logger.LogEvent(LogLevel.Fatal, "Fatal application error on finaliser thread.", waitForAck: true);
 
             await logger.LogEvent(LogLevel.Verbose, "We need to log this with backpressure.", new
             {
                 tags = new[] { "tag1", "tag2" }
-            }, backpressure: true);
+            });
 
             // alternatively, you can use the ack-explicit functions together with the
             // data object model that's MessageModule.
             var message = MessageModule.Event(LogLevel.Warn, "Here be dragons!");
-            var ack = await logger.LogWithAck(message);
-            await ack;
+            await logger.LogWithAck(message);
 
             var val = logger.Time(() =>
                     {

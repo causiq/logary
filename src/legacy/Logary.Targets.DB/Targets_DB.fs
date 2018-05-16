@@ -23,6 +23,9 @@ type DBConf =
     { connectionFactory = openConn
       schema            = None }
 
+let empty =
+  DBConf.create (fun () -> failwith "Use 'DBConf.create connectionFactory'.")
+
 module internal Impl =
 
   type DBInternalState =

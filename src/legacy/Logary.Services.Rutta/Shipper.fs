@@ -15,7 +15,6 @@ module Shipper =
   open Logary.Configuration
   open fszmq
   open fszmq.Socket
-  open Logary.EventProcessing
 
   let private runLogary shipperConf: IDisposable =
     let hostName = System.Net.Dns.GetHostName()
@@ -29,7 +28,7 @@ module Shipper =
       Events.compose [
         systemMetrics
         |> Pipe.map Array.toSeq
-        |> Events.flattenToProcessing
+        |> Events.flattenSeq
         |> Events.sink ["rutta-shipper"]
       ]
 

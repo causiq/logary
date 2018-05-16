@@ -123,11 +123,10 @@ module internal Impl =
     if statusCode >= 200 && statusCode <= 299 && body = "1" then
       Job.result ()
     else
-      runtime.logger.logWithAck Error (
+      runtime.logger.errorWithBP (
         eventX "Mixpanel target received response {statusCode} with {body}."
         >> setField "statusCode" statusCode
         >> setField "body" body)
-      |> Job.bind id
       |> Job.bind (fun () -> Job.raises (Exception body))
 
   let bodyAndCode (resp: Response) =

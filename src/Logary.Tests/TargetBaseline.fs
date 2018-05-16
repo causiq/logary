@@ -74,7 +74,7 @@ let basicTests targetName confFac addTS =
       do! logger.infoWithBP (eventX "Creating instance: creating target")
       let! targetApi = Target.create ri conf
       do! logger.infoWithBP (eventX "Creating instance: asserting")
-      Expect.equal targetApi.Name targetName "Should be named"
+      Expect.equal targetApi.name targetName "Should be named"
     }
 
     testCaseJob "start, log and stop" <| job {

@@ -1,5 +1,6 @@
 namespace Logary
 
+open Logary.Internals
 open System.Net
 open System.Diagnostics
 

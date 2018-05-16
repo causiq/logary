@@ -1,5 +1,10 @@
 #### 5.0.0-beta.7
-* Improve stacktrace parsing for WCF stacktraces
+* Improve stacktrace parsing for WCF stacktraces, thanks @haf
+* Adding Logary.PerfTests to track https://github.com/logary/logary/issues/322 thanks @haf
+* Fix #318, move Logary.EventProcessing -> Logary.Configuration
+* Correct Stopwatch.Frequency measurements for high-frequency timers.
+* Add Gauge.of{StopwatchTicks,...} methods
+* Add Logger.time{Alt,Job,Fun} for timing of Hopac things and F# functions
 
 #### 5.0.0-beta.6
 * System.Diagnostics.Trace target

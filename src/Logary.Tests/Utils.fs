@@ -25,7 +25,7 @@ open Logary
 open Logary.Internals
 open Logary.Targets
 open Logary.Configuration
-open Logary.EventProcessing
+open Logary.Configuration
 
 let buildTextWriteTarget name =
   let (out, error) = (new StringWriter (), new StringWriter ())
@@ -95,7 +95,8 @@ let gaugeMessage (value: float) level =
   |> Message.setLevel level
 
 let multiGaugeMessage level =
-  Message.event level "Processor.% Idle" |> Message.addGauges [
+  Message.event level "Processor.% Idle"
+  |> Message.addGauges [
     "Core 1", (Gauge (Fraction (1L, 1000L), Percent))
     "Core 2", (Gauge (Float 0.99, Percent))
     "Core 3", (Gauge (Float 0.473223755, Percent))
@@ -133,7 +134,7 @@ let finaliseJob target =
     |> Alt.afterJob id
     |> Alt.afterFun Internals.Success
 
-    timeOutMillis 1000
+    timeOutMillis 8000
       |> Alt.afterFun (fun _ -> Internals.TimedOut)
   ]
 
@@ -145,14 +146,18 @@ let finalise target =
     | Internals.Success _ ->
       ())
 
-let logMsgWaitAndShutdown targetApi (logCallBack: (Message -> Job<unit>) -> #Job<unit>) =
+let logMsgWaitAndShutdown (targetApi: Target.T) (logCallBack: (Message -> Job<unit>) -> #Job<unit>) =
   let logAndWait (message: Message) =
     job {
-      do! logger.infoWithBP (Logging.Message.eventX "Sending message to target")
-      let! ack = Target.log targetApi message
-      do! logger.infoWithBP (Logging.Message.eventX "Waiting for target to ACK message")
-      do! ack
-      do! logger.infoWithBP (Logging.Message.eventX "Target ACKed message")
+      do! logger.infoWithBP (Logging.Message.eventX (sprintf "Sending message to Target(%s)" targetApi.name))
+      let! res = Target.tryLog targetApi message
+      match res with
+      | Ok ack ->
+        do! logger.infoWithBP (Logging.Message.eventX (sprintf "Waiting for Target(%s) to ACK message" targetApi.name))
+        do! ack
+        do! logger.infoWithBP (Logging.Message.eventX (sprintf "Target(%s) ACKed message" targetApi.name))
+      | Result.Error e ->
+        failtestf "%A" e
     }
   let finaliseJob =
     job {
@@ -168,6 +173,37 @@ let testLabel label test =
 
 module Expect =
   let private trim (s: string) = if isNull s then s else s.Trim()
+
+  /// Expect (Result.Ok x) and return x, otherwise fail the test.
+  let isOk (m: string) (xR: Result<_,_>) =
+    match xR with
+    | Result.Ok x ->
+      x
+    | Result.Error e ->
+      failtestf "Expected (Ok _), but got (Error %A). %s" e m
+
+  /// Expect the passed float to be a number.
+  let isNotNaN f format =
+    if Double.IsNaN f then failtestf "%s. Float was the NaN (not a number) value." format
+
+  /// Expect the passed float not to be positive infinity.
+  let isNotPositiveInfinity actual format =
+    if Double.IsPositiveInfinity actual then failtestf "%s. Float was positive infinity." format
+
+  /// Expect the passed float not to be negative infinity.
+  let isNotNegativeInfinity actual format =
+    if Double.IsNegativeInfinity actual then failtestf "%s. Float was negative infinity." format
+
+  /// Expect the passed float not to be infinity.
+  let isNotInfinity actual format =
+    isNotNegativeInfinity actual format
+    isNotPositiveInfinity actual format
+    // passed via excluded middle
+
+  /// Expect the passed string not to be empty.
+  let isNotEmpty (actual: string) format =
+    Expect.isNotNull actual format
+    if actual.Length = 0 then Tests.failtestf "%s. Should not be empty." format
 
   let linesEqual (message: string) (expected: string) (actual: string) =
     let sra = new IO.StringReader(actual)
