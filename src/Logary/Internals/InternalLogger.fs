@@ -55,8 +55,6 @@ module InternalLogger =
           iserver [| yield! targets; yield t |]
 
         messageCh ^=> fun (message, nack, replCh) ->
-          printfn "ILogger got '%s' message." message.value
-
           let forwardToTarget =
             Target.tryLogAllReduce targets message ^=> Ch.give replCh
 

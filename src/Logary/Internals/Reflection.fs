@@ -29,7 +29,8 @@ module Reflection =
               with e ->
                 box (memberAccessExn prop.Label e)
           | other ->
-            printfn "Other: %A" other
+            //printfn "Other: %A" other
+            ()
       }
     | _ ->
       fun _ -> Seq.empty
