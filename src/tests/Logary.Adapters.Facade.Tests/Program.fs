@@ -9,9 +9,9 @@ open NodaTime
 
 let stubLogger (minLevel: LogLevel) (message: Message ref) name =
   { new Logger with // stub/tests
-      member x.logWithAck level messageFactory =
+      member x.logWithAck (_, level) messageFactory =
         message := messageFactory level
-        Alt.always (Promise (()))
+        Alt.always (Ok (Promise (())))
 
       member x.name = name
       member x.level = minLevel }

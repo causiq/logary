@@ -134,7 +134,7 @@ let finaliseJob target =
     |> Alt.afterJob id
     |> Alt.afterFun Internals.Success
 
-    timeOutMillis 1000
+    timeOutMillis 8000
       |> Alt.afterFun (fun _ -> Internals.TimedOut)
   ]
 
@@ -173,6 +173,37 @@ let testLabel label test =
 
 module Expect =
   let private trim (s: string) = if isNull s then s else s.Trim()
+
+  /// Expect (Result.Ok x) and return x, otherwise fail the test.
+  let isOk (m: string) (xR: Result<_,_>) =
+    match xR with
+    | Result.Ok x ->
+      x
+    | Result.Error e ->
+      failtestf "Expected (Ok _), but got (Error %A). %s" e m
+
+  /// Expect the passed float to be a number.
+  let isNotNaN f format =
+    if Double.IsNaN f then failtestf "%s. Float was the NaN (not a number) value." format
+
+  /// Expect the passed float not to be positive infinity.
+  let isNotPositiveInfinity actual format =
+    if Double.IsPositiveInfinity actual then failtestf "%s. Float was positive infinity." format
+
+  /// Expect the passed float not to be negative infinity.
+  let isNotNegativeInfinity actual format =
+    if Double.IsNegativeInfinity actual then failtestf "%s. Float was negative infinity." format
+
+  /// Expect the passed float not to be infinity.
+  let isNotInfinity actual format =
+    isNotNegativeInfinity actual format
+    isNotPositiveInfinity actual format
+    // passed via excluded middle
+
+  /// Expect the passed string not to be empty.
+  let isNotEmpty (actual: string) format =
+    Expect.isNotNull actual format
+    if actual.Length = 0 then Tests.failtestf "%s. Should not be empty." format
 
   let linesEqual (message: string) (expected: string) (actual: string) =
     let sra = new IO.StringReader(actual)

@@ -26,10 +26,23 @@ module Target =
     member x.accepts message =
       Rule.accepts message x.rules
 
-  // TODO: put
+  /// WARNING: this may cause you headaches; are you sure you don't want to use tryLog?
+  ///
+  /// Returns an Alt that commits on the Targets' buffer accepting the message.
+  let log (x: T) (msg: Message): LogResult =
+    let msg = x.transform msg
+    if not (x.accepts msg) then LogResult.rejected
+    else
+      let ack = IVar ()
+      let targetMsg = Log (msg, ack)
+      RingBuffer.put x.api.requests targetMsg ^->.
+      Ok (upcast ack)
 
   /// If the alternative is committed to, the RingBuffer WILL enqueue the message. The tryLog operation is done as
   /// `Ch.give x.tryPut m`.
+  ///
+  /// Returns an Alt that commits on the Targets' buffer accepting the message OR the RingBuffer telling the caller that
+  /// it was full, and returning an Error(BufferFull [targetName]) LogResult.
   let tryLog (x: T) (msg: Message): LogResult =
     let msg = x.transform msg
     if not (x.accepts msg) then LogResult.rejected
@@ -44,21 +57,37 @@ module Target =
         | false ->
           Result.Error (BufferFull x.name)
 
-  // TODO: logAll
-
-  /// Logs the `Message` to all the targets.
-  let tryLogAll (targets: T[]) (msg: Message): Alt<Result<Promise<unit>, LogError>[]> =
+  /// returns: an Alt committed on:
+  ///   buffer took message <- dangerousBlockOnBuffer
+  ///   buffer maybe took message <- not dangerousBlockOnBuffer
+  let private logAll_ dangerousBlockOnBuffer targets msg =
     Alt.withNackJob <| fun nack ->
     //printfn "tryLogAll: creating alt with nack for %i targets" targets.Length
     let putAllPromises = IVar ()
+    let abortPut = nack ^->. Result.Error Rejected
+    let createPutJob t =
+      if dangerousBlockOnBuffer then
+        log t msg <|> abortPut
+      else
+        tryLog t msg <|> abortPut
     let tryPutAll =
-      let abortPut = nack ^->. Result.Error Rejected
-      Seq.Con.mapJob (fun t -> tryLog t msg <|> abortPut) targets
+      Seq.Con.mapJob createPutJob targets
       >>- fun results ->
             //printfn "tryLogAll: array-ing %i results" results.Count
             results.ToArray()
       >>= IVar.fill putAllPromises
     Job.start tryPutAll >>-. putAllPromises
+
+  /// WARNING: this may cause you headaches; are you sure you don't want to use tryLogAll?
+  ///
+  /// Returns an Alt that commits on ALL N Targets' buffers accepting the message. Even if the Alt was not committed to,
+  /// one or more targets (fewer than N) may have accepted the message.
+  let logAll (targets: T[]) (msg: Message): Alt<Result<Promise<unit>, LogError>[]> =
+    logAll_ (* DO BLOCK — WARNING *) true targets msg
+
+  /// Tries to log the `Message` to all the targets.
+  let tryLogAll (targets: T[]) (msg: Message): Alt<Result<Promise<unit>, LogError>[]> =
+    logAll_ (* do not block *) false targets msg
 
   let tryLogAllReduce targets msg: LogResult =
     tryLogAll targets msg ^=> function

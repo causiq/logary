@@ -28,7 +28,7 @@ module Shipper =
       Events.compose [
         systemMetrics
         |> Pipe.map Array.toSeq
-        |> Events.flattenToProcessing
+        |> Events.flattenSeq
         |> Events.sink ["rutta-shipper"]
       ]
 

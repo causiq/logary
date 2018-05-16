@@ -101,30 +101,6 @@ type Arbs =
 let fsCheckConfig =
   { FsCheckConfig.defaultConfig with arbitrary = [ typeof<Arbs> ] }
 
-module Expect =
-  /// Expect the passed float to be a number.
-  let isNotNaN f format =
-    if Double.IsNaN f then Tests.failtestf "%s. Float was the NaN (not a number) value." format
-
-  /// Expect the passed float not to be positive infinity.
-  let isNotPositiveInfinity actual format =
-    if Double.IsPositiveInfinity actual then Tests.failtestf "%s. Float was positive infinity." format
-
-  /// Expect the passed float not to be negative infinity.
-  let isNotNegativeInfinity actual format =
-    if Double.IsNegativeInfinity actual then Tests.failtestf "%s. Float was negative infinity." format
-
-  /// Expect the passed float not to be infinity.
-  let isNotInfinity actual format =
-    isNotNegativeInfinity actual format
-    isNotPositiveInfinity actual format
-    // passed via excluded middle
-
-  /// Expect the passed string not to be empty.
-  let isNotEmpty (actual: string) format =
-    Expect.isNotNull actual format
-    if actual.Length = 0 then Tests.failtestf "%s. Should not be empty." format
-
 [<Tests>]
 let tests =
   testList "logary" [
