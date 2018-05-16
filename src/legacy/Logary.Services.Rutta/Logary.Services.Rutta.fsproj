@@ -21,7 +21,7 @@
     <Compile Include="Health.fs" />
     <Compile Include="Proxy.fs" />
     <Compile Include="Program.fs" />
-    <!--<Content Include="App.config" />-->
+    <Content Include="App.config" />
     <None Include="paket.references" />
     <ProjectReference Include="../../Logary/Logary.fsproj" />
     <ProjectReference Include="../Logary.Metrics.WinPerfCounters/Logary.Metrics.WinPerfCounters.fsproj" />
