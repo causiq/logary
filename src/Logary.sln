@@ -131,8 +131,6 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Ingestion.UDP", "ing
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.EventStore", "adapters\Logary.Adapters.EventStore\Logary.Adapters.EventStore.fsproj", "{C00D180A-AF3C-401F-9A2A-47FC1FDCAF05}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.PerfTests", "Logary.PerfTests\Logary.PerfTests.fsproj", "{5AEAE838-A44C-4DDB-A06B-395B64885059}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -332,10 +330,6 @@ Global
 		{C00D180A-AF3C-401F-9A2A-47FC1FDCAF05}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C00D180A-AF3C-401F-9A2A-47FC1FDCAF05}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C00D180A-AF3C-401F-9A2A-47FC1FDCAF05}.Release|Any CPU.Build.0 = Release|Any CPU
-		{5AEAE838-A44C-4DDB-A06B-395B64885059}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{5AEAE838-A44C-4DDB-A06B-395B64885059}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{5AEAE838-A44C-4DDB-A06B-395B64885059}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{5AEAE838-A44C-4DDB-A06B-395B64885059}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -391,6 +385,5 @@ Global
 		{E1AE3903-1CE8-4418-ADEC-A4962FA238EF} = {7B088401-ACED-40A5-9DC7-9E64523CE77C}
 		{478D2597-9521-4BD2-A6DE-4DFCDF2F87E0} = {12DF3EEE-DBAB-44D1-BAAE-DAF26745DC1B}
 		{C00D180A-AF3C-401F-9A2A-47FC1FDCAF05} = {56BB77A4-DF59-49EC-92E6-C9CA2C2E9FDE}
-		{5AEAE838-A44C-4DDB-A06B-395B64885059} = {EA09AD42-B4E2-4B0D-8960-E87277F46F04}
 	EndGlobalSection
 EndGlobal
