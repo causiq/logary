@@ -10,6 +10,7 @@ open Hopac.Extensions
 open Hopac.Infixes
 open Logary
 open Logary.Internals
+open Logary.Configuration
 
 module Reflection =
 
@@ -258,11 +259,16 @@ module LoggerAdapter =
       let prom = IVar ()
 
       // kick off the logging no matter what
-      start (Logger.logWithAck logger level messageFactory ^=> IVar.fill prom)
+      start (logger.logWithAck (false, level) messageFactory ^=> IVar.fill prom)
 
       // take the promise from within the IVar and make it an Async (which is
       // "hot" in that starting it will return "immediately" and be idempotent)
-      (prom ^=> id) |> Job.toAsync
+      (prom ^=> function
+        | Ok ack ->
+          ack
+        | Result.Error err ->
+          Promise (()))
+      |> Job.toAsync
 
     let logV1 level messageFactory: unit =
       // start immediate because in the normal case we can put the Message
@@ -270,7 +276,7 @@ module LoggerAdapter =
       logWithAck level messageFactory |> Async.StartImmediate
 
     let logV2 level messageFactory: Async<unit> =
-      logger.log level messageFactory |> Alt.toAsync
+      logger.logWithBP level messageFactory |> Alt.toAsync
 
     let logSimple (msg: Message): unit =
       logger.logSimple msg
@@ -413,7 +419,7 @@ module LoggerCSharpAdapter =
       Alt.toTask ct (logger.log level messageFactory)
 
     let logWithAck level messageFactory ct =
-      Alt.toTask ct (logger.logWithAck level messageFactory)
+      Alt.toTask ct (logger.logWithAck (true, level) messageFactory)
 
     interface IInterceptor with
       member x.Intercept invocation =

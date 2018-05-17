@@ -284,6 +284,8 @@ let tests = [
     let _, _, twTargetConf = Utils.buildTextWriteTarget name
     twTargetConf) false
 
+  TargetBaseline.basicTests "System.Diagnostics.Trace" (DiagnosticsTrace.create DiagnosticsTrace.empty) false
+
   testCase "convert DateTimeOffset with timespan delta" <| fun _ ->
     let a = DateTimeOffset(2016, 07, 02, 12, 33, 56, TimeSpan.FromHours(2.0))
     let ts = a.timestamp

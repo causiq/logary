@@ -7,7 +7,7 @@ open Logary.Configuration
 open Logary.Adapters.Facade
 open System
 open System.Threading
-open Logary.EventProcessing
+open Logary.Configuration
 
 let logger = Log.create "Servizz.Program"
 

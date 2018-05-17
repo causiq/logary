@@ -38,6 +38,8 @@ type ElasticSearchConf =
       _type      = defaultArg _type "logs"
       indexName  = defaultArg indexName "logary" }
 
+let empty = ElasticSearchConf.create()
+
 let serialise: Message -> Json =
   fun message ->
   let msgJson =

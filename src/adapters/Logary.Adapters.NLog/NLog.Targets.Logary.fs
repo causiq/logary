@@ -5,7 +5,7 @@ open System.Collections.Concurrent
 open NodaTime
 open Logary
 open Logary.Message
-open Logary.Internals
+open Logary.Configuration
 
 /// The functions of the NLog domain and logary codomain.
 module internal Adaptation =
@@ -41,7 +41,7 @@ open Adaptation
 /// A Logary target for NLog. Uses Logger.logSimple. Takes either a reference to
 /// LogManager or a property `Logary` that can be set to give this target the
 /// instance of Logary to use for requesting loggers.
-[<Target("Logary")>] 
+[<Target("Logary")>]
 type LogaryTarget(logary: LogManager) =
   inherit Target()
 

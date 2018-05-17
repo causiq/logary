@@ -623,5 +623,27 @@ To turn this feature off, remove the registry value [HKLM\Software\Microsoft\Fus
         | LineOutput msg ->
           msg |> Expect.equal "Should be the full line" "To enable assembly bind failure logging, set the registry value [HKLM\Software\Microsoft\Fusion!EnableLog] (DWORD) to 1."
         | other -> failtestf "Unexpected %A" other
-  ]
 
+    testCase "wcf stacktrace" <| fun () ->
+      let sample = """System.ServiceModel.FaultException`1[System.ServiceModel.ExceptionDetail]: One or more errors occurred. (Fault Detail is equal to An ExceptionDetail, likely created by IncludeExceptionDetailInFaults=true, whose value is:
+System.AggregateException: One or more errors occurred. ----> System.IndexOutOfRangeException: AKeyHere
+   at System.Data.ProviderBase.FieldNameLookup.GetOrdinal(String fieldName)
+   at System.Data.SqlClient.SqlDataReader.GetOrdinal(String name)
+   at DatabaseAccess.SqlReaderExtensions.GetDefault[T](SqlDataReader r, String key) in d:\BuildAgent\work\ae3e9a35f63a8b8f\src\DatabaseAccess\DatabaseAccess\SqlReaderExtensions.cs:line 56
+   at ProcessServices.MemberQuery.<>c.<GetMember>b__2_1(SqlDataReader r) in C:\dev\DatabaseQueries\MemberQuery.cs:line 23
+   at DatabaseAccess.DbAccessor.<>c__DisplayClass14`1.<PerformSpReadSingle>b__13(SqlDataReader reader) in d:\BuildAgent\work\ae3e9a35f63a8b8f\src\DatabaseAccess\DatabaseAccess\DbAccessor.cs:line 284"""
+
+      let parsed = DotNetStacktrace.parse sample
+
+      parsed.[0] |> function
+        | ExnType (et, msg) ->
+          et |> Expect.equal "Should equal 'FaultException'" "System.ServiceModel.FaultException`1[System.ServiceModel.ExceptionDetail]"
+          msg |> Expect.equal "Should have message" "One or more errors occurred. (Fault Detail is equal to An ExceptionDetail, likely created by IncludeExceptionDetailInFaults=true, whose value is:"
+        | other -> failtestf "Unexpected %A" other
+
+      parsed.[1] |> function
+        | ExnType (et, msg) ->
+          et |> Expect.equal "Should equal 'AggregateException'" "System.AggregateException"
+          msg |> Expect.equal "Should have message" "One or more errors occurred. ----> System.IndexOutOfRangeException: AKeyHere"
+        | other -> failtestf "Unexpected %A" other
+  ]

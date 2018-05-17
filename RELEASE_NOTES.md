@@ -1,3 +1,19 @@
+#### 5.0.0-beta.7
+* Improve stacktrace parsing for WCF stacktraces, thanks @haf
+* Adding Logary.PerfTests to track https://github.com/logary/logary/issues/322 thanks @haf
+* Fix #318, move Logary.EventProcessing -> Logary.Configuration
+* Correct Stopwatch.Frequency measurements for high-frequency timers.
+* Add Gauge.of{StopwatchTicks,...} methods
+* Add Logger.time{Alt,Job,Fun} for timing of Hopac things and F# functions
+
+#### 5.0.0-beta.6
+* System.Diagnostics.Trace target
+
+#### 5.0.0-beta.5
+* Published haaf/rutta docker container
+* Improved JSON codec to capture `error` field.
+* Documented Rutta with screenshots and docs in README
+
 #### 5.0.0-beta.4
 * Support parsing exn type and inner exception messages from .Net and Java stacktraces. Thanks @haf
 * Fix most of #294, thanks @haf

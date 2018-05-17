@@ -4,8 +4,7 @@
 #r "Hopac"
 #r "Logary"
 #r "Cibryy"
-#load "../../adapters/Logary.Adapters.Facade/Logary.Adapters.Facade.fs"
-
+#r "Logary.Adapters.Facade"
 open Logary.Adapters.Facade
 
 let loggerT = typeof<Cibryy.Logging.ILogger>

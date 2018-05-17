@@ -1,13 +1,12 @@
-namespace Logary.EventProcessing
+namespace Logary.Configuration
 
 open System
 open Hopac
 open Hopac.Infixes
-open Logary.EventProcessing.Transformers
+open Logary.Configuration.Transformers
 
 [<Struct>]
 type PipeResult<'a> =
-  internal
   | HasResult of 'a
   | NoResult
 with
@@ -28,20 +27,28 @@ module PipeResult =
   let orDefault d x =
     match x with | HasResult x -> x | _ -> d
 
+  let create x = HasResult x
+
+  let map f x =
+    match x with | HasResult x -> HasResult (f x) | _ -> NoResult
+
+  let iter f x =
+    match x with | HasResult x -> f x | _ -> ()
 
 /// 'contInput means continuation function input
 /// 'contRes means continuation function output
 /// 'sourceItem means pipe source element
 /// when we have a pipe, we can pass a continuation to it,
 /// and then we can pipe source item to its builded processing
-type Pipe<'contInput,'contRes,'sourceItem> =
+[<Struct>]
+type Pipe<'contInput, 'contRes, 'sourceItem> =
   internal {
-    build: cont<'contInput,'contRes> -> source<'sourceItem,'contRes>
+    build: cont<'contInput, 'contRes> -> source<'sourceItem, 'contRes>
     tickTimerJobs: Job<Cancellation> list
   }
+
 and private cont<'a,'b> = 'a -> PipeResult<'b> // just for better type annotation
 and private source<'a,'b> = 'a -> PipeResult<'b> // just for better type annotation
-
 
 [<RequireQualifiedAccessAttribute>]
 module Pipe =
@@ -51,17 +58,6 @@ module Pipe =
       tickTimerJobs = List.empty
     }
 
-  /// when run cont for generate source, start all timer jobs in pipe at same time
-  let run cont pipe =
-    Job.conCollect pipe.tickTimerJobs
-    >>- fun ctss ->
-    let onNext = cont |> pipe.build
-    (onNext, ctss)
-
-  /// add a job to current pipe
-  let withTickJob tickJob pipe =
-    { pipe with tickTimerJobs = tickJob :: pipe.tickTimerJobs }
-
   let chain f pipe =
     { build = f >> pipe.build
       tickTimerJobs = pipe.tickTimerJobs
@@ -69,6 +65,24 @@ module Pipe =
 
   let map f pipe =
     pipe |> chain (fun cont -> f >> cont)
+
+  let after f pipe =
+    { build = pipe.build >> f
+      tickTimerJobs = pipe.tickTimerJobs
+    }
+
+
+  /// As we start the Pipe running, we also spawn all the tickers, receiving their
+  /// cancellation tokens in return.
+  let run cont pipe =
+    Job.conCollect pipe.tickTimerJobs >>- fun cancelTickers ->
+    let k = pipe.build cont
+    k, cancelTickers
+
+  /// add a job to current pipe
+  let withTickJob tickJob pipe =
+    { pipe with tickTimerJobs = tickJob :: pipe.tickTimerJobs }
+
 
   let filter predicate pipe =
     pipe |> chain (fun cont -> fun prev -> if predicate prev then cont prev else NoResult)
@@ -98,7 +112,7 @@ module Pipe =
              with
              | e ->
                // todo: handle exception
-               printfn "%A" e
+               eprintfn "%A" e
                upcast (loop state)
 
            updateMb ^=> (ticker.Folder state >> loop)

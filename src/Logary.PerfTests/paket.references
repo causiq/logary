@@ -1,0 +1,7 @@
+group Benchmarks
+FParsec
+NodaTime
+Hopac
+FSharp.Core
+Expecto
+Expecto.BenchmarkDotNet

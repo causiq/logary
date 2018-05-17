@@ -17,18 +17,21 @@ module InternalLogger =
     private {
       addCh: Ch<TargetConf>
       shutdownCh: Ch<unit>
-      messageCh: Ch<Message * Promise<unit> * Ch<Promise<unit>>>
+      messageCh: Ch<Message * Promise<unit> * Ch<Result<Promise<unit>, LogError>>>
     }
   with
-    member inline x.name = PointName [| "Logary" |]
+    member x.name = PointName [| "Logary" |]
 
     interface Logger with // internal logger
-      member x.logWithAck logLevel messageFactory =
+      member x.logWithAck (waitForBuffers, logLevel) messageFactory =
+        x.messageCh *<+->- fun replCh nack ->
+
         let message =
           match messageFactory logLevel with
           | msg when msg.name.isEmpty -> { msg with name = x.name }
           | msg -> msg
-        x.messageCh *<+->- fun replCh nack -> message, nack, replCh
+
+        message, nack, replCh
 
       member x.name = x.name
 
@@ -38,7 +41,6 @@ module InternalLogger =
       /// so this property is generally useless
       member x.level = LogLevel.Verbose
 
-
   let create ri =
     let addCh, messageCh, shutdownCh = Ch (), Ch (), Ch ()
     let api =
@@ -46,27 +48,23 @@ module InternalLogger =
         messageCh = messageCh
         shutdownCh = shutdownCh}
 
-    let rec server targets =
+    let rec iserver targets =
       Alt.choose [
         addCh ^=> fun targetConf ->
           Target.create ri targetConf >>= fun t ->
-          server (t :: targets)
+          iserver [| yield! targets; yield t |]
 
         messageCh ^=> fun (message, nack, replCh) ->
+          let forwardToTarget =
+            Target.tryLogAllReduce targets message ^=> Ch.give replCh
 
-          Alt.choose [
-            Target.logAll targets message ^=> fun ack ->
-              replCh *<- ack ^=> fun () ->
-              server targets
-
-            nack ^=> fun () -> server targets
-          ]
+          (forwardToTarget <|> nack) ^=> fun () -> iserver targets
 
         shutdownCh ^=> fun () ->
           targets |> Seq.Con.iterJob (fun t -> Target.shutdown t ^=> id)
       ]
 
-    Job.supervise ri.logger Policy.exponentialBackoffForever (server [])
+    Job.supervise ri.logger Policy.exponentialBackoffForever (iserver Array.empty)
     |> Job.startIgnore
     >>-. api
 

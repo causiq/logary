@@ -222,11 +222,10 @@ module internal Impl =
       Job.result ()
     else
       let message = Optics.get errorMessage_ body |> JsonResult.getOrThrow
-      runtime.logger.logWithAck Error (
+      runtime.logger.errorWithBP (
         eventX "OpsGenie target received response {statusCode} with {message}."
         >> setField "statusCode" statusCode
         >> setField "message" message)
-      |> Job.bind id
       |> Job.bind (fun () -> Job.raises (Exception message))
 
   let bodyAndCode (resp: Response) =

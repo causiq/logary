@@ -9,21 +9,9 @@ open Logary
 open Logary.Target
 open Logary.Targets
 open Logary.Internals
+open Logary.Tests
 open System.Globalization
 open System.Threading
-
-let emptyRuntime = RuntimeInfo.create "tests" "localhost"
-
-let flush = Target.flush >> Job.Ignore >> run
-
-let targConf =
-  Logstash.LogstashConf.create()
-
-let start () =
-  Target.create emptyRuntime (Logstash.create targConf "influxdb")
-  |> run
-
-let shutdown t = Target.shutdown t |> run |> run
 
 let raisedExn msg =
   let e = ref None: exn option ref
@@ -36,16 +24,13 @@ let now = Message.setUTCTicks (DateTime(2017,11,11).Ticks)
 [<Tests>]
 let target =
   testList "logstash" [
-    testCase "start and stop" <| fun _ ->
-      let subject = start ()
-      Message.eventWarn "integration test" |> Target.log subject |> run |> run
-      subject |> shutdown
+    TargetBaseline.basicTests "Logstash" (Logstash.create Logstash.empty) false
 
     testCase "serialise" <| fun _ ->
       let e1 = raisedExn "darn"
       let e2 = raisedExn "actual exn"
 
-      let subject = 
+      let subject =
         Message.eventWarn "Testing started"
         |> Message.setName (PointName.ofArray [| "a"; "b"; "c" |])
         |> Message.setField "data-key" "data-value"

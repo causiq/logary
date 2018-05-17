@@ -1,15 +1,15 @@
 ﻿#I "bin/Release/net461"
-#r "Hopac.Core.dll"
-#r "Hopac.dll"
-#r "Microsoft.ApplicationInsights.dll"
-#r "Microsoft.AI.DependencyCollector.dll"
-#r "Logary.dll"
+#r "Hopac.Core"
+#r "Hopac"
+#r "Microsoft.ApplicationInsights"
+#r "Microsoft.AI.DependencyCollector"
+#r "Logary"
 #load "Targets_AppInsights.fs"
 open System
 open Hopac
 open Logary
-open Logary.EventProcessing
 open Logary.Configuration
+open Logary.Targets
 open Logary.Targets.ApplicationInsights
 open Logary.Logger
 
@@ -23,14 +23,14 @@ let logger =
             MappingConfiguration = allToTrace}
             //MappingConfiguration = {GaugeMapping = GaugeToMetrics; DerivedMapping = DerivedToMetrics; EventMapping = EventToEvent; }}
       ) "ApplicationInsights"
-      LiterateConsole.create LiterateConsole.empty (PointName.ofSingle "console") ]
+      LiterateConsole.create LiterateConsole.empty "console" ]
   |> Config.loggerLevels [ ".*", Verbose ]
   |> Config.processing (Events.events |> Events.sink [ "console" ])
   |> Config.ilogger (ILogger.Console Debug)
   |> Config.build
   |> run
 
-let curLogger = Logary.Logging.getLoggerByName("testAppInsights")
+let curLogger = Log.create "testAppInsights"
 Message.eventInfo ("Hello World!")
 |> Message.setField "user" "Henrik"
 |> logSimple curLogger

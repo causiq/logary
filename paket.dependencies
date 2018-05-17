@@ -7,6 +7,7 @@ nuget Castle.Core
 nuget EventStore.ClientAPI.NetCore
 nuget Expecto
 nuget Expecto.FsCheck
+nuget Expecto.Hopac
 nuget Machine.Specifications
 nuget Machine.Specifications.Should
 nuget Machine.Specifications.Runner.Console
@@ -48,7 +49,7 @@ nuget protobuf-net
 github eiriktsarpalis/TypeShape src/TypeShape/TypeShape.fs
 github eiriktsarpalis/TypeShape src/TypeShape/Utils.fs
 github haf/YoLo:bd91bbe94a183aa9dc9c13e885c73b20516b01e7 YoLo.fs
-github logary/RingBuffer RingBuffer.fs
+github logary/RingBuffer:014138cdfc9dff76e74dc154e68c929655bcbd86 RingBuffer.fs
 github logary/logary src/Logary.CSharp.Facade/Facade.cs
 github logary/logary src/Logary.Facade/Facade.fs
 github messagetemplates/messagetemplates-fsharp src/FsMtParser/FsMtParserFull.fs
@@ -74,3 +75,14 @@ group Examples
     nuget Hopac
     nuget NodaTime
     nuget RabbitMQ.Client
+
+group Benchmarks
+    source https://api.nuget.org/v3/index.json
+    framework net471, netcoreapp2.0
+    redirects on
+    nuget FParsec
+    nuget FSharp.Core
+    nuget Hopac
+    nuget NodaTime
+    nuget Expecto
+    nuget Expecto.BenchmarkDotNet

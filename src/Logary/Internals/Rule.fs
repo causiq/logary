@@ -1,4 +1,4 @@
-namespace Logary
+namespace Logary.Internals
 
 open System
 open System.Text.RegularExpressions
@@ -94,10 +94,12 @@ module Rule =
       acceptIf = fun m -> messageFilter.Invoke m
       minLevel = level }
 
-  /// use the first matched rule
-  let canPass (msg: Message) (rules: Rule list) =
+  /// Uses the first matched rule
+  [<CompiledName "Accepts">]
+  let accepts (msg: Message) (rules: Rule list) =
+    let pn = PointName.format msg.name
     rules
-    |> List.tryFind (fun r -> r.path.IsMatch (PointName.format msg.name))
+    |> List.tryFind (fun r -> r.path.IsMatch pn)
     |> function
       | Some r ->
         msg.level >= r.minLevel && r.acceptIf msg

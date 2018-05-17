@@ -41,105 +41,122 @@ OR:
 Install-Package Logary
 ```
 
+
 ## Table of Contents
-  * [Logary v5](#logary-v5)
-    * [Why?](#why)
-    * [Install it](#install-it)
-    * [Table of Contents](#table-of-contents)
-    * [Hello World (C\#)](#hello-world-c)
-    * [Hello World (F\#)](#hello-world-f)
-    * [Overview](#overview)
-    * [Tutorial and things around Message](#tutorial-and-things-around-message)
-      * [PointName](#pointname)
-      * [Context](#context)
-      * [Fields](#fields)
-      * [Gauges](#gauges)
-      * [Exceptions](#exceptions)
-      * [Tags](#tags)
-      * [SinkTargetNames](#sinktargetnames)
-      * [User defined](#user-defined)
-      * [Rule & Hierarchical logging & Filter & Minimum level](#rule--hierarchical-logging--filter--minimum-level)
-      * [Log Level](#log-level)
-      * [Logging from modules](#logging-from-modules)
-      * [Logging from a class](#logging-from-a-class)
-      * [Logging fields & templating](#logging-fields--templating)
-      * [Metrics & EventProcessing pipeline](#metrics--eventprocessing-pipeline)
-    * [Formatting](#formatting)
-    * [Console logging](#console-logging)
-    * [Using logary in a library](#using-logary-in-a-library)
-      * [The Logary Facade Adapter](#the-logary-facade-adapter)
-      * [How do the error and log methods differ?](#how-do-the-error-and-log-methods-differ)
-      * [Passing more information](#passing-more-information)
-      * [A note on the FSI](#a-note-on-the-fsi)
-      * [More reading](#more-reading)
-    * [Using in a C\# library](#using-in-a-c-library)
-      * [More reading](#more-reading-1)
-    * [InfluxDb Target](#influxdb-target)
-    * [RabbitMQ Target](#rabbitmq-target)
-      * [Usage](#usage)
-    * [File target (alpha level)](#file-target-alpha-level)
-      * [Configuration](#configuration)
-      * [Policies &amp; specifications](#policies--specifications)
-      * [Performance](#performance)
-      * [Handling of errors](#handling-of-errors)
-      * [Invariants](#invariants)
-      * [Overview of buffers](#overview-of-buffers)
-      * [Notes on FILE\_FLAG\_NO\_BUFFERING](#notes-on-file_flag_no_buffering)
-        * [References](#references)
-        * [Example runs](#example-runs)
-          * [inProcBuffer = false, flushToDisk = true, caller awaits all acks at the end](#inprocbuffer--false-flushtodisk--true-caller-awaits-all-acks-at-the-end)
-          * [inProcBuffer = false, flushToDisk = true, caller awaits all ack after each](#inprocbuffer--false-flushtodisk--true-caller-awaits-all-ack-after-each)
-          * [inProcBuffer = true, flushToDisk = false, writeThrough=false caller awaits all acks at the end](#inprocbuffer--true-flushtodisk--false-writethroughfalse-caller-awaits-all-acks-at-the-end)
-      * [Work to be done](#work-to-be-done)
-    * [Stackdriver target (alpha level)](#stackdriver-target-alpha-level)
-    * [AliYun Log Service target](#aliYun-log-service-target)
-    * [Microsoft Azure Application Insights target](#microsoft-azure-application-insights-target)
-    * [EventStore adapter](#eventstore-adapter)
-    * [FsSQL adapter](#fssql-adapter)
-    * [Suave adapter](#suave-adapter)
-    * [Topshelf adapter](#topshelf-adapter)
-      * [From NLog\.RabbitMQ, log4net\.RabbitMQ?](#from-nlograbbitmq-log4netrabbitmq)
-    * [Comparison to NLog and log4net](#comparison-to-nlog-and-log4net)
-    * [Comparison to Codahale metrics &amp; Metrics\.NET](#comparison-to-codahale-metrics--metricsnet)
-    * [Comparison with Serilog](#comparison-with-serilog)
-    * [Rutta](#rutta)
-      * [The Shipper – from environment to Proxy or Router](#the-shipper--from-environment-to-proxy-or-router)
-        * [Pushing Shippers](#pushing-shippers)
-        * [Publishing Shippers](#publishing-shippers)
-      * [The Proxy – from Shipper to Router](#the-proxy--from-shipper-to-router)
-      * [The Router – from Shipper or Proxy to Target](#the-router--from-shipper-or-proxy-to-target)
-        * [Pulling Routers](#pulling-routers)
-        * [Subscribing Routers](#subscribing-routers)
-    * [Target Maintainers Wanted\!](#target-maintainers-wanted)
-    * [Building](#building)
-      * [Building a signed version](#building-a-signed-version)
-    * [Contributing](#contributing)
-      * [Writing a new target](#writing-a-new-target)
-        * [Target guidelines](#target-guidelines)
-        * [Publishing your target](#publishing-your-target)
-    * [Commercial Targets](#commercial-targets)
-      * [Mixpanel](#mixpanel)
-        * [Features](#features)
-        * [What's included?](#whats-included)
-      * [OpsGenie](#opsgenie)
-        * [Features](#features-1)
-      * [elmah\.io](#elmahio)
-        * [Usage](#usage-1)
-        * [What does it look like?](#what-does-it-look-like)
-      * [SumoLogic (community\-contributed)](#sumologic-community-contributed)
-      * [Want your SaaS\-logging service as a Target?](#want-your-saas-logging-service-as-a-target)
-    * [FAQ](#faq)
-      * [Getting MissingMethodException from FSharp\.Core](#getting-missingmethodexception-from-fsharpcore)
-      * [Getting MissingMethodException from Hopac\.Core](#getting-missingmethodexception-from-hopaccore)
-      * [Is v4\.0\.x a stable version?](#is-v40x-a-stable-version)
-      * [Isn't v4\.0\.x supposed to be API\-stable?](#isnt-v40x-supposed-to-be-api-stable)
-      * [Why does Logary depend on FParsec?](#why-does-logary-depend-on-fparsec)
-      * [Why do you depend on Hopac?](#why-do-you-depend-on-hopac)
-      * [How do I use Hopac from C\#?](#how-do-i-use-hopac-from-c)
-      * [What's logVerboseWithAck, logWithAck and how does it differ from logSimple?](#whats-logverbosewithack-logwithack-and-how-does-it-differ-from-logsimple)
-        * [logWithAck – so what's up with Promise?](#logwithack--so-whats-up-with-promise)
-        * [How do Promises work with C\#?](#how-do-promises-work-with-c)
-    * [License](#license)
+
+<!-- toc -->
+
+- [Hello World (C#)](#hello-world-c%23)
+- [Hello World (F#)](#hello-world-f%23)
+- [Overview](#overview)
+- [Tutorial and things around Message](#tutorial-and-things-around-message)
+  * [PointName](#pointname)
+  * [Context](#context)
+    + [Fields](#fields)
+    + [Gauges](#gauges)
+    + [Exceptions](#exceptions)
+    + [Tags](#tags)
+    + [SinkTargetNames](#sinktargetnames)
+    + [User defined](#user-defined)
+  * [Rule & Hierarchical logging & Filter & Minimum level](#rule--hierarchical-logging--filter--minimum-level)
+  * [Log Level](#log-level)
+  * [Logging from modules](#logging-from-modules)
+  * [Logging from a class](#logging-from-a-class)
+  * [Logging fields & templating](#logging-fields--templating)
+  * [Metrics & EventProcessing pipeline](#metrics--eventprocessing-pipeline)
+- [Formatting](#formatting)
+- [LiterateConsole logging](#literateconsole-logging)
+- [Using logary in a library](#using-logary-in-a-library)
+  * [The Logary Facade Adapter](#the-logary-facade-adapter)
+  * [How do the `error` and `log` methods differ?](#how-do-the-error-and-log-methods-differ)
+  * [Passing more information](#passing-more-information)
+  * [A note on the FSI](#a-note-on-the-fsi)
+  * [What about API stability?](#what-about-api-stability)
+  * [The compiler complains "The type 'Logger' is not compatible with the type](#the-compiler-complains-the-type-logger-is-not-compatible-with-the-type)
+  * [More reading](#more-reading)
+- [Using in a C# library](#using-in-a-c%23-library)
+  * [More reading](#more-reading-1)
+- [InfluxDb Target](#influxdb-target)
+- [RabbitMQ Target](#rabbitmq-target)
+  * [Usage](#usage)
+- [File target (alpha level)](#file-target-alpha-level)
+  * [Configuration](#configuration)
+  * [Policies & specifications](#policies--specifications)
+  * [Performance](#performance)
+  * [Handling of errors](#handling-of-errors)
+  * [Invariants](#invariants)
+  * [Overview of buffers](#overview-of-buffers)
+  * [Notes on `FILE_FLAG_NO_BUFFERING`](#notes-on-file_flag_no_buffering)
+    + [References](#references)
+    + [Example runs](#example-runs)
+      - [inProcBuffer = false, flushToDisk = true, caller awaits all acks at the end](#inprocbuffer--false-flushtodisk--true-caller-awaits-all-acks-at-the-end)
+      - [inProcBuffer = false, flushToDisk = true, caller awaits all ack after each](#inprocbuffer--false-flushtodisk--true-caller-awaits-all-ack-after-each)
+      - [inProcBuffer = true, flushToDisk = false, writeThrough=false caller awaits all acks at the end](#inprocbuffer--true-flushtodisk--false-writethroughfalse-caller-awaits-all-acks-at-the-end)
+  * [Work to be done](#work-to-be-done)
+- [Stackdriver target](#stackdriver-target)
+  * [Configuration](#configuration-1)
+  * [Further work](#further-work)
+- [AliYun Log Service target](#aliyun-log-service-target)
+  * [Usage](#usage-1)
+  * [What does it look like?](#what-does-it-look-like)
+- [Microsoft Azure Application Insights target](#microsoft-azure-application-insights-target)
+- [EventStore adapter](#eventstore-adapter)
+- [FsSQL adapter](#fssql-adapter)
+- [Suave adapter](#suave-adapter)
+- [Topshelf adapter](#topshelf-adapter)
+  * [From NLog.RabbitMQ, log4net.RabbitMQ?](#from-nlograbbitmq-log4netrabbitmq)
+  * [Logary.Adapters.NLog](#logaryadaptersnlog)
+- [Comparison to NLog and log4net](#comparison-to-nlog-and-log4net)
+- [Comparison to Codahale metrics & Metrics.NET](#comparison-to-codahale-metrics--metricsnet)
+- [Comparison with Serilog](#comparison-with-serilog)
+- [Rutta](#rutta)
+  * [Usage](#usage-2)
+  * [In depth](#in-depth)
+  * [The Shipper – from environment to Proxy or Router](#the-shipper-%E2%80%93-from-environment-to-proxy-or-router)
+    + [Pushing Shippers](#pushing-shippers)
+    + [Publishing Shippers](#publishing-shippers)
+  * [The Proxy – from Shipper to Router](#the-proxy-%E2%80%93-from-shipper-to-router)
+  * [The Router – from Shipper or Proxy to Target](#the-router-%E2%80%93-from-shipper-or-proxy-to-target)
+    + [Pulling Routers](#pulling-routers)
+    + [Subscribing Routers](#subscribing-routers)
+- [Building](#building)
+  * [Building a signed version](#building-a-signed-version)
+- [Contributing](#contributing)
+  * [File guidelines – module vs static method](#file-guidelines-%E2%80%93-module-vs-static-method)
+  * [File guidelines – plural vs singular](#file-guidelines-%E2%80%93-plural-vs-singular)
+  * [Namespace guidelines – `Logary.Internals` or not](#namespace-guidelines-%E2%80%93-logaryinternals-or-not)
+  * [RuntimeInfo and internal logging](#runtimeinfo-and-internal-logging)
+  * [When to write a new function?](#when-to-write-a-new-function)
+  * [How to open namespaces?](#how-to-open-namespaces)
+  * [To start the job or not?](#to-start-the-job-or-not)
+  * [Writing a new target](#writing-a-new-target)
+    + [Target guidelines](#target-guidelines)
+    + [Publishing your target](#publishing-your-target)
+- [Commercial Targets](#commercial-targets)
+  * [Mixpanel](#mixpanel)
+    + [Features](#features)
+    + [What's included?](#whats-included)
+  * [OpsGenie](#opsgenie)
+    + [Features](#features-1)
+  * [elmah.io](#elmahio)
+    + [Usage](#usage-3)
+    + [What does it look like?](#what-does-it-look-like-1)
+  * [SumoLogic (community-contributed)](#sumologic-community-contributed)
+  * [Want your SaaS-logging service as a Target?](#want-your-saas-logging-service-as-a-target)
+- [FAQ](#faq)
+  * [Getting MissingMethodException from FSharp.Core](#getting-missingmethodexception-from-fsharpcore)
+  * [Getting MissingMethodException from Hopac.Core](#getting-missingmethodexception-from-hopaccore)
+  * [Is v5.0.x a stable version?](#is-v50x-a-stable-version)
+  * [Isn't v4.0.x supposed to be API-stable?](#isnt-v40x-supposed-to-be-api-stable)
+  * [Why does Logary depend on FParsec?](#why-does-logary-depend-on-fparsec)
+  * [Why do you depend on Hopac?](#why-do-you-depend-on-hopac)
+  * [How do I use Hopac from C#?](#how-do-i-use-hopac-from-c%23)
+  * [What's `logVerboseWithAck`, `logWithAck` and how does it differ from `logSimple`?](#whats-logverbosewithack-logwithack-and-how-does-it-differ-from-logsimple)
+    + [`logWithAck` – so what's up with `Promise`?](#logwithack-%E2%80%93-so-whats-up-with-promise)
+    + [How do Promises work with C#?](#how-do-promises-work-with-c%23)
+- [License](#license)
+
+<!-- tocstop -->
 
 ## Hello World (C#)
 
@@ -1903,6 +1920,20 @@ finally to targets which can then store them.
 
 ## Rutta
 
+Route, forward and print logs anywhere to anything.
+
+![Rutta help](./tools/docker-rutta-options.png)
+
+### Usage
+
+```bash
+docker run -p 10001:10001 --rm -it haaf/rutta router --listener tcp 0.0.0.0:10001 json --target console://./
+```
+
+![Rutta listener](./tools/docker-rutta-listener.jpg)
+
+### In depth
+
 Rutta is software for shipping Messages between computers. Either from your own
 services or from Windows Performance Counters. This is useful if you want your
 services to ship all logs to a central point, before batching it and sending it
@@ -1934,26 +1965,15 @@ away.
 Enables log shipping from hosts that are not directly connected to the router
 nor to InfluxDB.
 
-Should be spawnable on Unix. Should be service-installable on Windows using
-TopShelf.
-
 #### Pushing Shippers
 
 Shippers CONNECT PUSH sockets to the Router's PULL socket.
 See http://lists.zeromq.org/pipermail/zeromq-dev/2012-February/015917.html
 
-``` bash
-./rutta --push-to tcp://headnode:6111
-```
-
 During network splits, the sending
 [PUSH socket blocks](http://api.zeromq.org/3-2:zmq-socket#toc14).
 
 #### Publishing Shippers
-
-``` bash
-./rutta --pub-to tcp://headnode:7111
-```
 
 During network splits, the sending XPUSH socket drops messages.
 
@@ -1962,27 +1982,14 @@ During network splits, the sending XPUSH socket drops messages.
 Proxies take inputs from Shippers or other Proxies that publish Messages
 using XPUB sockets:
 
-``` bash
-./rutta --pub-to tcp://headnode:7111
-```
-
 The Proxy is run this way, by providing a XSUB socket binding and a XPUB socket
 binding:
-
-``` bash
-./rutta --proxy tcp://10.42.0.1:7111 tcp://192.168.10.10:7112
-```
 
 During network splits, the receiving
 [XSUB socket drops messages](http://api.zeromq.org/3-2:zmq-socket#toc12).
 
 You can then connect to the Proxy with a Router that routes it to the final
 Target (like InfluxDB in this example):
-
-``` bash
-./rutta --router-sub tcp://192.168.10.10:7113 \
-        --router-target influxdb://user:pass@host:8086/write?db=databaseName
-```
 
 During network splits, the sending
 [XPUB socket drops messages](http://api.zeromq.org/3-2:zmq-socket#toc11).
@@ -1999,11 +2006,6 @@ V1 only implements the InfluxDB target.
 BINDs a PULL socket on a specified NIC/IP and PORT. Configures a single
 internal Target that pushes the received data.
 
-``` bash
-./rutta --router tcp://192.168.10.10:7113 \
-        --router-target influxdb://user:pass@host:8086/write?db=databaseName
-```
-
 During network splits, the listening
 [PULL socket blocks](http://api.zeromq.org/3-2:zmq-socket#toc15).
 
@@ -2012,11 +2014,6 @@ During network splits, the listening
 BINDs a SUB socket on a specified NIC/IP and POST. Configures a single internal
 Target that pushes the received data.
 
-``` bash
-./rutta --router-sub tcp://192.168.10.10:7113 \
-        --router-target influxdb://user:pass@host:8086/write?db=databaseName
-```
-
 **Serialisation** for Rutta is done using
 [FsPickler](https://nessos.github.io/FsPickler/tutorial.html#Picklers-and-Pickler-combinators).
 Since FsPickler uses a binary format, it should be assumed to break for any given
@@ -2024,11 +2021,6 @@ minor upgrade of FsPickler.
 
 Each ZMQ message contains a Message (see DataModel.fs) in the binary form
 given by the serialiser chosen.
-
-## Target Maintainers Wanted!
-
-Are you interested in maintaining a target? Let [me know](mailto:henrik@haf.se)
-or file a PR demonstrating your work.
 
 ## Building
 

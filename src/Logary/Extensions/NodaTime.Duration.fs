@@ -1,7 +1,9 @@
 namespace Logary
 
 open NodaTime
+open System
 open System.Runtime.CompilerServices
+open Logary
 
 [<AutoOpen; Extension>]
 module DurationEx =
@@ -9,5 +11,4 @@ module DurationEx =
   type Duration with
     [<Extension; CompiledName "ToGauge">]
     member dur.toGauge () =
-      dur.TotalTicks * float Constants.NanosPerTick,
-      Scaled (Seconds, float Constants.NanosPerSecond)
+      Gauge (BigInt (dur.ToBigIntegerNanoseconds()), Scaled (Seconds, float Constants.NanosPerSecond))

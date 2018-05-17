@@ -6,6 +6,11 @@ open Logary.Tests.Utils
 module Messages =
   open Logary.Message
 
+  type Sweetness =
+    | Cake of slices:uint16
+    | NoCake
+    | FruitSalad
+
   /// A user signup event with lots of nice data:
   ///
   /// - Logged at Info level
@@ -17,7 +22,7 @@ module Messages =
   /// - A couple of tags
   ///
   let userUpgradedPlan =
-    Message.event Info "User#{userId} '{email}' signed up, after {promoCount} promotions: {@promotions}."
+    Message.event Info "User#{userId} '{email}' signed up, after {promoCount} promotions: {@promotions}. Cake? {willThereBeCake}"
     |> Message.setContexts [
       "env", box "production"
       "service", box "WebApi"
@@ -30,6 +35,8 @@ module Messages =
       "email", box "haf@example.com"
       "promoCount", box 3
       "ip", box "81.227.65.159" // 3 Sweden, Stockholm
+      "afterDinner", box FruitSalad
+      "willThereBeCake", box (Cake 12us)
     ]
     |> Message.tag "funnel"
     |> Message.setField "promotions" [ "timeLimited2day"; "enableInvoices"; "friendReferral" ]
@@ -67,7 +74,7 @@ let basicTests targetName confFac addTS =
       do! logger.infoWithBP (eventX "Creating instance: creating target")
       let! targetApi = Target.create ri conf
       do! logger.infoWithBP (eventX "Creating instance: asserting")
-      Expect.equal targetApi.Name targetName "Should be named"
+      Expect.equal targetApi.name targetName "Should be named"
     }
 
     testCaseJob "start, log and stop" <| job {

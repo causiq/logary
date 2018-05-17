@@ -368,6 +368,74 @@ module LiterateConsole =
     interface SpecificTargetConf with
       member x.Build name = create conf name
 
+/// The System.Diagnostics.Trace Target for Logary
+module DiagnosticsTrace =
+  open System.Diagnostics
+  open Logary
+  open Logary.Configuration.Target
+  open Logary.Internals
+
+  /// Console configuration structure.
+  type TraceConf =
+    { writer: MessageWriter }
+
+    [<CompiledName "Create">]
+    static member create writer =
+      { writer = writer }
+
+  let defaultMessageFormat = MessageWriter.expandedWithoutContext System.Environment.NewLine
+
+  /// Default console target configuration.
+  let empty =
+    TraceConf.create defaultMessageFormat
+
+  module internal Impl =
+    open Hopac
+    open Hopac.Infixes
+
+    let loop (conf: TraceConf) (api: TargetAPI) =
+
+      let rec loop (): Job<unit> =
+        Alt.choose [
+          api.shutdownCh ^=> fun ack ->
+            ack *<= () :> Job<_>
+
+          RingBuffer.take api.requests ^=> function
+            | Log (message, ack) ->
+              job {
+                let str = conf.writer.format message
+                do! Job.Scheduler.isolate <| fun _ -> Trace.WriteLine(str)
+                do! ack *<= ()
+                return! loop ()
+              }
+
+            | Flush (ack, nack) ->
+              job {
+                do! IVar.fill ack ()
+                return! loop ()
+              }
+
+        ] :> Job<_>
+
+      loop ()
+
+  [<CompiledName "Create">]
+  let create conf name =
+    TargetConf.createSimple (Impl.loop conf) name
+
+  /// Use with LogaryFactory.New( s => s.Target<Console.Builder>() )
+  type Builder(conf, callParent: ParentCallback<Builder>) =
+
+    /// Specify the formatting style to use when logging to the console
+    member x.WithFormatter( sf: MessageWriter ) =
+      ! (callParent <| Builder({ conf with writer = sf }, callParent))
+
+    new(callParent: ParentCallback<_>) =
+      Builder(empty, callParent)
+
+    interface SpecificTargetConf with
+      member x.Build name = create conf name
+
 // Ignore deprecations (Debug doesn't have a Stream-ish to write to)
 #nowarn "44"
 
@@ -381,7 +449,6 @@ module Debugger =
   open Logary.Internals
   open Logary.Target
   open Logary.Configuration.Target
-
 
   let defaultMessageFormat = MessageWriter.expanded false System.Environment.NewLine System.Environment.NewLine
 
@@ -1074,7 +1141,7 @@ module File =
           // TODO: consider that the TextWriter may block the thread here
           conf.writer.write state.writer message
           // TODO: consider whether to use the async API or not here
-          acks.Add (Promise.instaPromise, ack)
+          acks.Add (Promise.unit, ack)
           // Invariant: always flush fatal messages.
           if message.level = Fatal then
             ilogger.debug (eventX "Got fatal message; scheduling disk flush.")
@@ -1124,8 +1191,8 @@ module File =
     let loop (conf: FileConf) (will: Will<TargetMessage[] * uint16>) (api: TargetAPI) =
       let ri, rotateCh = api.runtime, Ch ()
 
-      let shutdownState =
-        Logger.timeJobSimple ri.logger "shutdownState" shutdownState
+      let shutdownState state =
+        ri.logger.timeJob (shutdownState state, measurement="shutDownState")
 
       // In this state the File target opens its file stream and checks if it
       // progress to the recovering state.
@@ -1145,7 +1212,6 @@ module File =
       and running (state: State): Job<unit> =
         Alt.choose [
           api.shutdownCh ^=> fun ack ->
-            ri.logger.debugWithBP (eventX "Shutting down file target (starting shutdownState)") >>=.
             shutdownState state >>=.
             ack *<= ()
 
@@ -1157,11 +1223,10 @@ module File =
               | Choice1Of2 () ->
                 checking state
               | Choice2Of2 err ->
-                ri.logger.logWithAck Error (
+                ri.logger.logAck Error (
                   eventX "IO Exception while writing to file. Batch size is {batchSize}."
                   >> setField "batchSize" conf.batchSize
                   >> addExn err)
-                >>= id
                 >>=. Will.update will (reqs, 1us)
                 >>=. Job.raises err
         ] :> Job<_>
@@ -1209,18 +1274,16 @@ module File =
             | Choice1Of2 () ->
               checking state
             | Choice2Of2 ex ->
-              ri.logger.logWithAck Error (
+              ri.logger.logAck Error (
                 eventX "Attempt {attempts} failed, trying again shortly."
                 >> Message.setField "attempts" recoverCount)
-              >>= id
               >>=. Will.update will (lastBatch, recoverCount + 1us)
               >>=. Job.raises ex
 
         | recoverCount ->
-          ri.logger.logWithAck Fatal (
+          ri.logger.logAck Fatal (
             eventX "Could not recover in {attempts} attempts."
             >> Message.setField "attempts" recoverCount)
-          >>= id
           >>=. Job.raises (Exception "File recovery failed, crashing out.")
 
       init ()

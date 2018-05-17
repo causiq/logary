@@ -1,12 +1,11 @@
-#I "bin/Release"
-#r "NodaTime.dll"
-#r "Hopac.Core.dll"
-#r "Hopac.dll"
-#r "Logary.dll"
-#r "Logary.Metrics.WinPerfCounters.dll"
+#I "bin/Release/net461"
+#r "NodaTime"
+#r "Hopac.Core"
+#r "Hopac"
+#r "Logary"
+#r "Logary.Metrics.WinPerfCounters"
 open Hopac
 open Logary
-open Logary.Metric
 open Logary.Metrics
 open Logary.Metrics.WinPerfCounters
 
@@ -177,7 +176,7 @@ module WPC =
 
       /// In the `init` state, the counter depending on its Scope.
       let rec init () =
-        ilogger.verbose (eventX "Initialising {wpc}." >> setFieldFromObject "wpc" conf)
+        ilogger.verbose (eventX "Initialising {wpc}." >> setField "wpc" conf)
         match build ilogger (conf.category, conf.counter) conf.scope with
         | Choice1Of3 single ->
           acquireSingle single
@@ -225,7 +224,7 @@ module WPC =
           let values = pc |> Array.map (fun pc ->
             ilogger.verbose (
               eventX "Querying {wpc} with {instanceName}."
-              >> setFieldFromObject "wpc" conf
+              >> setField "wpc" conf
               >> setField "instanceName" pc.InstanceName)
             pc.InstanceName,
             Float (float (pc.NextValue())))
@@ -235,11 +234,12 @@ module WPC =
                 context =
                   Map [ KnownLiterals.TagsContextName,
                         Array [ String KnownLiterals.SuppressPointValue ] ]
+                  |> HashMap.ofSeqPair
             }
 
           let setField m (pn, value) =
-            let field = Field (value, Some conf.units)
-            m |> setFieldValue pn field
+            let field = Gauge (value, conf.units)
+            m |> addGauge pn field
 
           let message = Array.fold setField initial values
 
