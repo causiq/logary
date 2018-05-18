@@ -57,13 +57,13 @@ type GaugesTable() =
     |> ignore
 
     // if you're just shipping
-    base.Create.Index("IX_Gauges_EpochNanos").OnTable(Defaults.GaugesTable)
+    base.Create.Index("IX_Gauges_EpochNanos").OnTable(Defaults.GaugesTable).InSchema(Defaults.Schema)
       .OnColumn("EpochNanos").Descending().WithOptions().NonClustered()
     |> ignore
 
     // if you're also reading
     if indexForReading then
-      base.Create.Index("IX_Gauges_EpochNanos.Name.Level").OnTable(Defaults.GaugesTable)
+      base.Create.Index("IX_Gauges_EpochNanos.Name.Level").OnTable(Defaults.GaugesTable).InSchema(Defaults.Schema)
         .WithOptions().NonClustered()
         .OnColumn("EpochNanos").Descending()
         .OnColumn("Name").Ascending()
@@ -89,7 +89,7 @@ type EventsTable() =
     |> ignore
     
     // if you're just storing and deleting:
-    base.Create.Index("IX_Events_EpochNanos").OnTable(Defaults.EventsTable)
+    base.Create.Index("IX_Events_EpochNanos").OnTable(Defaults.EventsTable).InSchema(Defaults.Schema)
       .OnColumn("EpochNanos").Descending().WithOptions().NonClustered()
     |> ignore
 

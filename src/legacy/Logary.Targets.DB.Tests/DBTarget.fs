@@ -111,7 +111,6 @@ let read (m: Map<string, obj>) k =
     Tests.failtestf "converting key %s to %s failed, was: %s."
       k typeof<'a>.Name (m.[k].GetType().Name)
 
-
 [<Tests>]
 let targetTests =
   let flush = Target.flush >> Job.Ignore
@@ -258,6 +257,19 @@ let migrationTests =
     testCase "migating down with reading index" <| fun _ ->
       Runner(fac, forgetful).MigrateDown(Runner.IndexForReading)
     ]
+
+//The below requires a localhost MS SQL Server.
+//It will up and down the logary schema.
+//[<Tests>]
+let sqlservermigrationTests = 
+  let fac = SqlServer.SqlServerProcessorFactory()
+  let connectionString = "Server=localhost;Database=Logary_Migration_Test;Integrated Security=true;"
+  testList "migrating sqlserver db up and down" [
+
+    testCase "migrating up" <| fun _ -> 
+      Runner(fac,connectionString).MigrateUp()
+      Runner(fac,connectionString).MigrateDown()
+  ]
 
 [<EntryPoint>]
 let main args =
