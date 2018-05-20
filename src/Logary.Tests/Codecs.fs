@@ -104,22 +104,15 @@ method="run" file="Generator.java" line="94"/>
 
           m |> Message.tryGetField "log4japp"
             |> Expect.equal "Has log4japp-field" (Some "udp-generator")
-
-          let error: Formatting.StacktraceLine[] =
-            m |> Message.tryGetField "error"
-              |> Option.get
-
-          let expected =
-            "java.lang.Exception: someexception-third\n 	at org.apache.log4j.chainsaw.Generator.run(Generator.java:94)"
-            |> Formatting.DotNetStacktrace.parse
-
-          error
-            |> Expect.sequenceEqual "Should have the same stacktrace parsed" expected
-
-          m
-            |> Message.tryGetError
-            |> Option.get
-            |> Expect.sequenceEqual "Should have same stacktrace with tryGetError" expected
+          
+          m |> Message.tryGetField "error"
+            |> Expect.equal 
+                  "Should parse throwable correctly" 
+                  (
+                    Some "java.lang.Exception: someexception-third
+ 	at org.apache.log4j.chainsaw.Generator.run(Generator.java:94)
+"
+                  ) 
 
         | Result.Error err ->
           failtestf "%s" err
