@@ -9,10 +9,10 @@ Chat and support and get support:
 
 ## Why?
 
-Logary is a high-performance, semantic logging library which you can do health and metrics for
+Logary is a high-performance, structured logging library which you can do health and metrics for
 .Net.
 
- - Full support for Semantic Logging
+ - Full support for Structured/Semantic Logging
  - F# idiomatic code
  - Using C#? Then `Logary.CSharp` is for you!
  - Looking for an F# alternative to [`LibLog`](https://github.com/damianh/LibLog)?
@@ -190,8 +190,11 @@ open Logary // normal usage
 open Logary.Message // normal usage
 open Logary.Configuration // conf
 
+let logger = Log.create "Hello World logger"
+
 [<EntryPoint>]
 let main argv =
+  // normal console app boilerplate;
   use mre = new System.Threading.ManualResetEventSlim(false)
   use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
 
@@ -201,9 +204,6 @@ let main argv =
     |> Config.target (LiterateConsole.create LiterateConsole.empty "console")
     |> Config.build
     |> Hopac.Hopac.run
-
-  // Get a new logger. Also see Logging.getLoggerByName for statically getting
-  let logger = logary.getLogger (PointName [| "Logary"; "Samples"; "main" |])
 
   // log something
   logger.info (evenX "{userName} logged in" >> setField "user" "haf")
