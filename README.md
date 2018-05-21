@@ -185,105 +185,28 @@ using (var logary = LogaryFactory.New("svc", "host",
 ## Hello World (F#)
 
 ```fsharp
-
-
 open System
-open Hopac // conf
 open Logary // normal usage
+open Logary.Message // normal usage
 open Logary.Configuration // conf
-open Logary.Targets // conf
-open Logary.Metrics // conf
-open Logary.EventProcessing // conf
-open Logary.EventProcessing.Transformers // conf
-
-module RandomWalk =
-
-  let create pn =
-    let reducer state = function
-      | _ ->
-        state
-
-    let ticker (rnd : Random, prevValue) =
-      let value =
-        let v = (rnd.NextDouble() - 0.5) * 0.3
-        if abs v < 0.03 then rnd.NextDouble() - 0.5
-        elif v + prevValue < -1. || v + prevValue > 1. then -v + prevValue
-        else v + prevValue
-
-      let msg = Message.gaugeWithUnit pn value Seconds
-
-      (rnd, value), msg
-
-    let state =
-      let rnd = Random()
-      rnd, rnd.NextDouble()
-
-    Ticker.create state reducer ticker
-
 
 [<EntryPoint>]
 let main argv =
   use mre = new System.Threading.ManualResetEventSlim(false)
   use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
 
-  // sample configuration of a RMQ target
-  let rmqConf =
-    { RabbitMQ.empty with
-        appId = Some "Logary.ConsoleApp"
-        username = "appuser-12345"
-        password = "TopSecret1234"
-        tls = { RabbitMQ.TlsConf.certPath = "./certs/mycert.pfx"
-                RabbitMQ.TlsConf.certPassword = Some "AnotherSecret1243567" }
-              |> Some
-        compression = RabbitMQ.Compression.GZip
-    }
-
-  // ticker can be auto triggered or manually trigger
-  let randomness =
-    RandomWalk.create "Logary.ConsoleApp.randomWalk"
-
-  let randomWalkPipe =
-    Events.events
-    |> Pipe.tickTimer (randomness) (TimeSpan.FromMilliseconds 500.) // use a timer to auto trigger
-
-  let processing =
-    Events.compose [
-      // all log message with log level above fatal will go to fatal target
-      Events.events |> Events.minLevel LogLevel.Fatal |> Events.sink ["fatal"]
-
-      // use windows perf counter to metric system info (cpu, disk, memory...) each 5 senonds, will go to console and influxdb
-      Events.events
-      |> Pipe.tickTimer (WinPerfCounters.systemMetrics (PointName.ofSingle "system")) (TimeSpan.FromMilliseconds 5000.)
-      |> Pipe.map Array.toSeq
-      |> Events.flattenToProcessing
-      |> Events.sink ["console"; "influxdb"]
-
-      randomWalkPipe
-      |> Events.sink ["console"; "influxdb"]
-    ]
-
   // create a new Logary; save this instance somewhere "global" to your app/service
   let logary =
     Config.create "Logary.ConsoleApp" "localhost"
-    |> Config.targets [
-        LiterateConsole.create LiterateConsole.empty "console"
-        Console.create Console.empty "fatal"
-        RabbitMQ.create rmqConf "rabbitmq"
-        InfluxDb.create (InfluxDb.InfluxDbConf.create(Uri "http://192.168.99.100:8086/write", "logary", batchSize = 500us))
-                        "influxdb"
-      ]
-    |> Config.ilogger (ILogger.Console Info)
-    |> Config.middleware Middleware.dnsHost
-    |> Config.processing processing
+    |> Config.target (LiterateConsole.create LiterateConsole.empty "console")
     |> Config.build
-    |> run
+    |> Hopac.Hopac.run
 
   // Get a new logger. Also see Logging.getLoggerByName for statically getting
   let logger = logary.getLogger (PointName [| "Logary"; "Samples"; "main" |])
 
   // log something
-  Message.eventFormat (Info, "{userName} logged in", "haf")
-  |> Logger.logSimple logger
+  logger.info (evenX "{userName} logged in" >> setField "user" "haf")
 
   mre.Wait()
   0
@@ -420,14 +343,18 @@ val it : string =
         PropA => 45}
     userName => "You""
 
-or user this style:
+// or use this style:
 
 Message.event Info "user write some info"
 |> Message.setField "userName" "You"
 |> Message.setField "data" oneObj
 |> Message.setSimpleName "somewhere.this.message.happened"
 |> MessageWriter.levelDatetimeMessagePath.format
+```
 
+Results in:
+
+```
 val it : string =
   "I 2018-01-26T09:14:08.3286743+00:00: user write some info [somewhere.this.message.happened]
   fields:
@@ -436,9 +363,7 @@ val it : string =
         PropB => "The property (PropB) accessor threw an (TargetInvocationException): Oh noes, no referential transparency here"
         PropA => 45}
     userName => "You""
-
 ```
-
 
 #### Gauges
 
