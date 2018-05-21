@@ -1,3 +1,7 @@
+#### 5.0.0-beta.8
+* Disable stacktrace parsing for log4jxml codec (could possibly be made a boolean instead), thanks @pakselsson
+* Cross-compile Logary.Adapters.EventStore (net461;netstandard2.0), thanks @haf
+
 #### 5.0.0-beta.7
 * Improve stacktrace parsing for WCF stacktraces, thanks @haf
 * Adding Logary.PerfTests to track https://github.com/logary/logary/issues/322 thanks @haf
