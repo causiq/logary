@@ -1,2 +1,3 @@
 FSharp.Core
-EventStore.ClientAPI.NetCore
+EventStore.Client framework: = net461
+EventStore.ClientAPI.NetCore framework: = netstandard2.0
