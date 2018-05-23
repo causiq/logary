@@ -28,6 +28,7 @@
     <ProjectReference Include="../Logary.Targets.Shipper/Logary.Targets.Shipper.fsproj" />
     <ProjectReference Include="../../ingestion\Logary.Ingestion.HTTP/Logary.Ingestion.HTTP.fsproj" />
     <ProjectReference Include="../../ingestion\Logary.Ingestion.UDP/Logary.Ingestion.UDP.fsproj" />
+    <ProjectReference Include="..\..\targets\Logary.Targets.Stackdriver\Logary.Targets.Stackdriver.fsproj" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System.Configuration" />

@@ -1,6 +1,6 @@
+generate_load_scripts: true
 source https://api.nuget.org/v3/index.json
 framework net461, netcoreapp2.0, netstandard2.0
-redirects on
 
 nuget Argu
 nuget Castle.Core
@@ -22,8 +22,8 @@ nuget FsCheck
 nuget FsPickler
 nuget FsPickler.Json
 nuget FsSql
-nuget Google.Api.Gax.Rest
-nuget Google.Cloud.Logging.V2
+nuget Google.Api.Gax.Rest redirects: on
+nuget Google.Cloud.Logging.V2 redirects: on
 nuget Hopac
 nuget Http.fs
 nuget Microsoft.ApplicationInsights
@@ -43,7 +43,7 @@ nuget aliyun-log-csharp-sdk
 nuget elmah.corelibrary
 nuget elmah.io.client
 nuget elmah.io.core
-nuget fszmq
+nuget fszmq 12.2.2
 nuget libzmq_vc120 # specifically for Windows-support in Rutta
 nuget protobuf-net
 

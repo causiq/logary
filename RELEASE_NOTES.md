@@ -1,3 +1,6 @@
+#### 5.0.0-beta.10
+* Bump dependency on NodaTime, Http.fs
+
 #### 5.0.0-beta.9
 * Logary.Ingestion.HTTP.HTTPConf: IVar -> Promise correction see #332
 
