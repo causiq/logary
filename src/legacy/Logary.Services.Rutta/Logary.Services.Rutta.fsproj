@@ -5,7 +5,7 @@
     <RootNamespace>Logary.Services.Rutta</RootNamespace>
     <OutputType>Exe</OutputType>
     <!-- https://github.com/zeromq/fszmq/issues/145 -->
-    <TargetFrameworks>net461</TargetFrameworks>
+    <TargetFrameworks>net461;netcoreapp2.0</TargetFrameworks>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -24,10 +24,9 @@
     <Content Include="App.config" />
     <None Include="paket.references" />
     <ProjectReference Include="../../Logary/Logary.fsproj" />
-    <ProjectReference Include="../Logary.Metrics.WinPerfCounters/Logary.Metrics.WinPerfCounters.fsproj" />
     <ProjectReference Include="../Logary.Targets.Shipper/Logary.Targets.Shipper.fsproj" />
-    <ProjectReference Include="../../ingestion\Logary.Ingestion.HTTP/Logary.Ingestion.HTTP.fsproj" />
-    <ProjectReference Include="../../ingestion\Logary.Ingestion.UDP/Logary.Ingestion.UDP.fsproj" />
+    <ProjectReference Include="../../ingestion/Logary.Ingestion.HTTP/Logary.Ingestion.HTTP.fsproj" />
+    <ProjectReference Include="../../ingestion/Logary.Ingestion.UDP/Logary.Ingestion.UDP.fsproj" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System.Configuration" />
