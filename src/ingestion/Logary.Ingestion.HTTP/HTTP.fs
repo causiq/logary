@@ -22,12 +22,12 @@ type HTTPConfig =
     cancelled: Promise<unit>
     suaveConfig: SuaveConfig
   }
-  static member create (rootPath, ilogger, ?cancelled, ?endpoint: IPEndPoint) =
+  static member create (rootPath, ilogger, ?cancelled: Promise<unit>, ?endpoint: IPEndPoint) =
     let ep = defaultArg endpoint (IPEndPoint (IPAddress.Loopback, 8888))
     let sc = { Suave.Web.defaultConfig with bindings = [ HttpBinding.create HTTP ep.Address (ep.Port |> uint16) ] }
     { rootPath = rootPath
       ilogger = ilogger
-      cancelled = defaultArg cancelled (IVar ())
+      cancelled = cancelled |> Option.defaultWith (fun () -> upcast IVar ())
       suaveConfig = sc
     }
 

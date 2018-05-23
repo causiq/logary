@@ -1,7 +1,10 @@
+#### 5.0.0-beta.9
+* Logary.Ingestion.HTTP.HTTPConf: IVar -> Promise correction see #332
+
 #### 5.0.0-beta.8
 * Disable stacktrace parsing for log4jxml codec (could possibly be made a boolean instead), thanks @pakselsson
 * Cross-compile Logary.Adapters.EventStore (net461;netstandard2.0), thanks @haf
-* Move Newtonsoft.Json asm redirect to Stackdriver target
+* Move Newtonsoft.Json asm redirect to Stackdriver target, thanks @haf
 
 #### 5.0.0-beta.7
 * Improve stacktrace parsing for WCF stacktraces, thanks @haf
