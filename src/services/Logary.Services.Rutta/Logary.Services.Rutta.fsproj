@@ -8,6 +8,7 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Optimize>true</Optimize>
   </PropertyGroup>
+
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Ingestion.TCP.fs" />
@@ -21,13 +22,12 @@
     <Content Include="App.config" />
     <None Include="paket.references" />
     <ProjectReference Include="../../Logary/Logary.fsproj" />
-    <ProjectReference Include="../Logary.Targets.Shipper/Logary.Targets.Shipper.fsproj" />
+    <ProjectReference Include="../../targets/Logary.Targets.Shipper/Logary.Targets.Shipper.fsproj" />
     <ProjectReference Include="../../ingestion\Logary.Ingestion.HTTP/Logary.Ingestion.HTTP.fsproj" />
     <ProjectReference Include="../../ingestion\Logary.Ingestion.UDP/Logary.Ingestion.UDP.fsproj" />
-    <ProjectReference Include="..\..\targets\Logary.Targets.Stackdriver\Logary.Targets.Stackdriver.fsproj" />
-  </ItemGroup>
-  <ItemGroup>
+    <ProjectReference Include="../../targets/Logary.Targets.Stackdriver/Logary.Targets.Stackdriver.fsproj" />
     <Reference Include="System.Configuration" />
   </ItemGroup>
+
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />
 </Project>

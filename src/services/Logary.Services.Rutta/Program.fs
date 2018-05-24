@@ -4,6 +4,7 @@ open Argu
 open System
 open System.Configuration
 open System.Threading
+open System.Runtime.InteropServices
 open Topshelf
 open Logary
 open Logary.Services.Rutta
@@ -98,8 +99,10 @@ let startUnix argv: int =
 
 [<EntryPoint>]
 let main argv =
+  let osDesc = RuntimeInformation.OSDescription
+  eprintfn "Rutta running on '%s'" osDesc
   let isDashed = argv.Length >= 1 && argv.[0] = "--"
-  if Type.GetType "Mono.Runtime" <> null || isDashed then
+  if osDesc.Contains "Unix" || osDesc.Contains "Darwin" || isDashed then
     startUnix (if isDashed then argv.[1..] else argv)
   else
     startWindows argv
