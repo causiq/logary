@@ -1330,7 +1330,7 @@ can also be nicely put to use for local console apps that need to log to disk.
    while and happens frequently when you have thousands of servers), the target
    should save its last will and then retry a configurable number of times after
    waiting an exponentially growing duration between each try. It does this by
-   crashing and letting the supervisor handle the failure. Afterh exhausing the
+   crashing and letting the supervisor handle the failure. After exhausting the
    tries, the batch of log messages is discarded.
  - If there are IO errors on writing the log messages to disk, there's no
    guarantee that there won't be duplicate log lines written; however, they're
