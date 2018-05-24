@@ -143,8 +143,16 @@ module LiterateConsole =
   open Logary.MessageTemplates.Formatting.Literate
   open Hopac
 
-  type ConsoleColours = { foreground: ConsoleColor; background: ConsoleColor option }
-  type ColouredText = { text: string; colours: ConsoleColours }
+  [<Struct>]
+  type ConsoleColours =
+    { foreground: ConsoleColor
+      background: ConsoleColor option }
+
+  [<Struct>]
+  type ColouredText =
+    { text: string
+      colours: ConsoleColours }
+
   type Tokens = Logary.MessageTemplates.Formatting.Literate.LiterateToken
 
   /// Console configuration structure
@@ -238,13 +246,21 @@ module LiterateConsole =
     let missingTemplateFieldColours = { foreground=ConsoleColor.Red; background=None }
 
     let defaultTheme = function
-      | Tokens.Text -> textColours | Tokens.Subtext -> subtextColours | Tokens.Punctuation -> punctuationColours
-      | Tokens.LevelVerbose -> levelVerboseColours | Tokens.LevelDebug -> levelDebugColours
-      | Tokens.LevelInfo -> levelInfoColours | Tokens.LevelWarning -> levelWarningColours
-      | Tokens.LevelError -> levelErrorColours | Tokens.LevelFatal -> levelFatalColours
-      | Tokens.KeywordSymbol -> keywordSymbolColours | Tokens.NumericSymbol -> numericSymbolColours
-      | Tokens.StringSymbol -> stringSymbolColours | Tokens.OtherSymbol -> otherSymbolColours
-      | Tokens.NameSymbol -> nameSymbolColours | Tokens.MissingTemplateField -> missingTemplateFieldColours
+      | Tokens.Text -> textColours
+      | Tokens.Subtext -> subtextColours
+      | Tokens.Punctuation -> punctuationColours
+      | Tokens.LevelVerbose -> levelVerboseColours
+      | Tokens.LevelDebug -> levelDebugColours
+      | Tokens.LevelInfo -> levelInfoColours
+      | Tokens.LevelWarning -> levelWarningColours
+      | Tokens.LevelError -> levelErrorColours
+      | Tokens.LevelFatal -> levelFatalColours
+      | Tokens.KeywordSymbol -> keywordSymbolColours
+      | Tokens.NumericSymbol -> numericSymbolColours
+      | Tokens.StringSymbol -> stringSymbolColours
+      | Tokens.OtherSymbol -> otherSymbolColours
+      | Tokens.NameSymbol -> nameSymbolColours
+      | Tokens.MissingTemplateField -> missingTemplateFieldColours
 
     let internal consoleWriteLineColourParts (parts: ColouredText seq) =
       let originalForegroundColour = Console.ForegroundColor

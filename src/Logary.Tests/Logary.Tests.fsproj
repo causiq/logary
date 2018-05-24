@@ -1,7 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <AssemblyName>Logary.Tests</AssemblyName>
     <OutputType>Exe</OutputType>
     <Version>5.0.0-beta.11</Version>
     <TargetFrameworks>net461;netcoreapp2.0</TargetFrameworks>
@@ -16,6 +15,7 @@
     <Compile Include="FsMessageTemplates.fs" />
     <Compile Include="TargetBaseline.fs" />
     <Compile Include="CoreTarget.fs" />
+    <Compile Include="LiterateConsole.fs" />
     <Compile Include="Registry.fs" />
     <Compile Include="Transformers.fs" />
     <Compile Include="Program.fs" />

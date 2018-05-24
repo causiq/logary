@@ -481,10 +481,20 @@ module MessageTemplates =
 
       /// The output tokens, which can be potentially coloured.
       type LiterateToken =
-        | Text | Subtext
+        | Text
+        | Subtext
         | Punctuation
-        | LevelVerbose | LevelDebug | LevelInfo | LevelWarning | LevelError | LevelFatal
-        | KeywordSymbol | NumericSymbol | StringSymbol | OtherSymbol | NameSymbol
+        | LevelVerbose
+        | LevelDebug
+        | LevelInfo
+        | LevelWarning
+        | LevelError
+        | LevelFatal
+        | KeywordSymbol
+        | NumericSymbol
+        | StringSymbol
+        | OtherSymbol
+        | NameSymbol
         | MissingTemplateField
 
       let tokeniseRefId refId = (sprintf "$%d " refId), KeywordSymbol

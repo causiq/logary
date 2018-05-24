@@ -671,7 +671,8 @@ let tests =
 
     testList "Engine" Engine.tests
 
-    testList "Target.Core" CoreTargets.tests
+    testList "core targets" CoreTargets.tests
+    testLabel "literate console" LiterateConsole.tests
 
     testLabel "Formatting" (Formatting.jsonTests fsCheckConfig)
     testLabel "Formatting" Formatting.textPrinters
