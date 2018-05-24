@@ -5,6 +5,7 @@
 #### 5.0.0-beta.11
 * Cross-compile Rutta for .net core, subject to these limitations https://github.com/Topshelf/Topshelf/issues/444
 * Fix #330 – tagging Gauges
+* Fix #302 – Struct for Gauge
 
 #### 5.0.0-beta.10
 * Bump dependency on NodaTime, Http.fs

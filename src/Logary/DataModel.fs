@@ -188,6 +188,7 @@ type Value =
     | BigInt i -> float i
     | Fraction (n, d) -> float n / float d
 
+[<Struct>]
 type Gauge =
   Gauge of Value * Units
 with
