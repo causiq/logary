@@ -413,7 +413,7 @@ let tests = [
           ]
         "Should print [06:15:02 INF] Check took 139 μs, because nanoseconds is as accurate as it gets"
 
-    yield testLiterateCase "Single measurement per second gauge" (gaugeMessage 1.4562) <| fun expectedTimeText parts ->
+    yield testLiterateCase "single measurement per second gauge" (gaugeMessage 1.4562) <| fun expectedTimeText parts ->
       Expect.sequenceEqual
         parts
         [ yield! levels expectedTimeText
@@ -438,7 +438,7 @@ let tests = [
           yield { text = " => "; colours = LiterateTesting.Theme.punctuationColours }
           yield { text = "\"1.4562 s/revolution\""; colours = LiterateTesting.Theme.stringSymbolColours }
                    ]
-        "Should print [06:15:02 INF] spin: 1,4562 s/revolution"
+        "Should print '[06:15:02 INF] Gauges: [spin: 1,4562 s/revolution] <Revolver>'"
 
     yield testLiterateCase "Multiple measurements per second gauge" multiGaugeMessage <| fun expectedTimeText parts ->
       //LiterateConsole.empty.colourWriter (Global.getConsoleSemaphore ()) (upcast parts)
