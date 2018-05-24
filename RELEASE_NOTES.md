@@ -1,8 +1,8 @@
 #### 5.0.0-beta.11
-* Dot not crash on typecasts when constructing log message
-* Cross-compile Rutta for .net core, subject to these limitations https://github.com/Topshelf/Topshelf/issues/444
-* Fix #330 – tagging Gauges
-* Fix #302 – Struct for Gauge
+* Dot not crash on typecasts when constructing log message, thanks @yoff
+* Cross-compile Rutta for .net core, subject to these limitations https://github.com/Topshelf/Topshelf/issues/444, thanks @haf
+* Fix #330 – tagging Gauges, thanks @haf
+* Fix #302 – Struct for Gauge, thanks @haf
 
 #### 5.0.0-beta.10
 * Bump dependency on NodaTime, Http.fs
