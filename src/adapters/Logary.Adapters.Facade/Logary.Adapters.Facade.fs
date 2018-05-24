@@ -192,18 +192,44 @@ module LoggerAdapter =
       match oldPointValue with
       | LoggerAdapterShared.OldPointValue.Event tpl -> tpl
       | _ -> String.Empty
+
+    let toMap (x: obj) : Map<string, obj> =
+      match x with
+      | :? Map<string, obj> as m -> m
+      | _ -> Map.empty
+
+    let toObjList (xs: obj) : obj list =
+      match xs with
+      | :? (obj list) as l -> l
+      | _ -> []
+
+    let toStringArr (x: obj) : string [] =
+      match x with
+      | :? (string []) as a -> a
+      | _ -> [||]
+
+    let pickExn (x: obj) : exn option =
+      match x with
+      | :? exn as e -> Some e
+      | _ -> None
+
+    let toEpochNanoSeconds (x: obj) : EpochNanoSeconds =
+      match x with
+      | :? EpochNanoSeconds as ens -> ens
+      | _ -> 0L
+
     let fields, exns =
-      let m = readProperty "fields" :?> Map<string, obj>
+      let m = readProperty "fields" |> toMap
       match m |> Map.tryFind "errors" with
       | None ->
         m, []
       | Some xs ->
-        m |> Map.remove "errors", xs :?> obj list |> List.map unbox<exn>
+        m |> Map.remove "errors", xs |> toObjList |> List.choose pickExn
 
-    { name      = PointName (readProperty "name" :?> string [] |> defaultName fallbackName)
+    { name      = PointName (readProperty "name" |> toStringArr |> defaultName fallbackName)
       value     = event
       context   = HashMap.empty
-      timestamp = readProperty "timestamp" :?> EpochNanoSeconds
+      timestamp = readProperty "timestamp" |> toEpochNanoSeconds
       level     = readProperty "level" |> toLogLevel }
     |> Message.setFieldsFromMap fields
     |> Message.addExns exns

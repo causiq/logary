@@ -1,3 +1,7 @@
+
+#### 5.0.0-beta.12
+* Dot not crash on typecasts when constructing log message
+
 #### 5.0.0-beta.11
 * Cross-compile Rutta for .net core, subject to these limitations https://github.com/Topshelf/Topshelf/issues/444
 * Fix #330 – tagging Gauges
