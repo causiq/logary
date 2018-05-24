@@ -1,0 +1,5 @@
+#load "Microsoft.Win32.Registry.fsx" 
+#load "System.Security.Permissions.fsx" 
+#load "System.Security.Principal.Windows.fsx" 
+#load "System.Threading.AccessControl.fsx" 
+#r "../../../packages/System.Diagnostics.EventLog/lib/netstandard2.0/System.Diagnostics.EventLog.dll" 

@@ -1,0 +1,5 @@
+#load "System.Private.ServiceModel.csx" 
+#r "System.ServiceModel" 
+#r "System.IdentityModel" 
+#r "mscorlib" 
+#r "../../../packages/System.ServiceModel.Primitives/lib/net461/System.ServiceModel.Primitives.dll" 

@@ -1,0 +1,7 @@
+#load "Microsoft.Win32.Registry.csx" 
+#load "System.Configuration.ConfigurationManager.csx" 
+#load "System.Memory.csx" 
+#load "System.Security.Principal.Windows.csx" 
+#r "System" 
+#r "mscorlib" 
+#r "../../../packages/System.Diagnostics.PerformanceCounter/lib/net461/System.Diagnostics.PerformanceCounter.dll" 

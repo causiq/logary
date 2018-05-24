@@ -36,6 +36,8 @@ nuget SQLite.Interop.dll
 nuget Suave
 nuget System.Data.SQLite.Core
 nuget System.Net.Http
+nuget System.Configuration.ConfigurationManager >= 4.5.0-rc1 # topshelf
+nuget System.Data.SqlClient >= 4.5.0-rc1 # topshelf
 nuget Topshelf ~> 4.1.0.117-develop
 nuget TweetinviAPI
 nuget Unquote
@@ -43,7 +45,7 @@ nuget aliyun-log-csharp-sdk
 nuget elmah.corelibrary
 nuget elmah.io.client
 nuget elmah.io.core
-nuget fszmq 12.2.2
+nuget fszmq
 nuget libzmq_vc120 # specifically for Windows-support in Rutta
 nuget protobuf-net
 
