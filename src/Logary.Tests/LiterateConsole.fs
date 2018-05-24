@@ -276,10 +276,6 @@ let tests =
           yield { text = "]"; colours = LiterateTesting.Theme.punctuationColours }
         ]
       parts
-        |> Expect.formattedEqual
-            "Should print the right output text"
-            (sprintf "[%s I] Gauges: [spin: 1,4562 s/revolution] <Revolver>\n  gauges:\n    spin => \"1.4562 s/revolution\"\n  others:\n    _logary.tags => [\"gauge\"]" timeText)
-      parts
         |> Expect.sequenceEqual "Should print '[06:15:02 INF] Gauges: [spin: 1,4562 s/revolution] <Revolver>'" expected
 
     yield testLiterateCase "Multiple measurements per second gauge" multiGaugeMessage extendedTokeniser <| fun timeText parts ->
