@@ -45,7 +45,7 @@ let lineProtocol =
           |> Serialise.message
           |> Expect.equal
               "Should serialise correctly"
-              @"measurement,level=debug value=3.141592654,value_unit=""units"" 1439587925"
+              @"measurement,level=debug,tags=gauge value=3.141592654,value_unit=""units"" 1439587925"
 
       testCase "gauge = measurement, space, 1 scalar float gauge" <| fun _ ->
         gauge PointName.empty "io ops" (Float 3.141592654)
@@ -53,7 +53,7 @@ let lineProtocol =
           |> Serialise.message
           |> Expect.equal
               "Should serialise correctly"
-              @"io\ ops,level=debug value=3.141592654,value_unit=""units"" 1439587925"
+              @"io\ ops,level=debug,tags=gauge value=3.141592654,value_unit=""units"" 1439587925"
 
       testCase "sensor = measurement, 1 scalar int64 gauge" <| fun _ ->
         gaugei (PointName [| "disk_free" |]) "" 442221834240L
@@ -61,7 +61,7 @@ let lineProtocol =
           |> Serialise.message
           |> Expect.equal
               "Equals the right value"
-              @"disk_free,level=debug value=442221834240i,value_unit=""units"" 1435362189575692182"
+              @"disk_free,level=debug,tags=gauge value=442221834240i,value_unit=""units"" 1435362189575692182"
 
       testCase "gauge = measurement, 1 bytes int64 gauge, 2 string contexts, 1 uint16 context" <| fun _ ->
         gaugeWithUniti PointName.empty "disk_free" Bytes 442221834240L
@@ -72,7 +72,7 @@ let lineProtocol =
           |> Serialise.message
           |> Expect.equal
               "Serialises as intended"
-              @"disk_free,disk_type=SSD,hostname=server01,level=debug,rack_no=2 value=442221834240i,value_f=""411.85 GiB"",value_unit=""bytes"" 1435362189575692182"
+              @"disk_free,disk_type=SSD,hostname=server01,level=debug,rack_no=2,tags=gauge value=442221834240i,value_f=""411.85 GiB"",value_unit=""bytes"" 1435362189575692182"
 
       testCase "sensor = measurement, 1 bytes int64 gauge, 1 string contexts, 1 uint16 context, 1 field" <| fun _ ->
         let harddrive = PointName.parse "/dev/sda"
@@ -85,7 +85,7 @@ let lineProtocol =
           |> Serialise.message
           |> Expect.equal
               "Serialises as intended"
-              @"/dev/sda.disk_free,hostname=server01,level=warn,rack_no=2 disk_type=""SSD"",value=442221834240i,value_f=""411.85 GiB"",value_unit=""bytes"" 1435362189575692182"
+              @"/dev/sda.disk_free,hostname=server01,level=warn,rack_no=2,tags=gauge disk_type=""SSD"",value=442221834240i,value_f=""411.85 GiB"",value_unit=""bytes"" 1435362189575692182"
 
       testList "escaping" [
         testCase "commas, spaces" <| fun _ ->
@@ -95,7 +95,7 @@ let lineProtocol =
             |> Serialise.message
             |> Expect.equal
                 "Should equal"
-                @"total\ di\,sk\ free,level=debug,volumes\ in\,computer=/net\,/ho\=me\,/ value=442221834240i,value_unit=""units"" 1435362189575692182"
+                @"total\ di\,sk\ free,level=debug,tags=gauge,volumes\ in\,computer=/net\,/ho\=me\,/ value=442221834240i,value_unit=""units"" 1435362189575692182"
 
         testCase "equal signs" <| fun _ ->
           gauge PointName.empty "disk_free" (Int64 442221834240L)
@@ -104,7 +104,7 @@ let lineProtocol =
             |> Serialise.message
             |> Expect.equal
                 "Should equal"
-                @"disk_free,a\=b=x\=z,level=debug value=442221834240i,value_unit=""units"" 1435362189575692182"
+                @"disk_free,a\=b=x\=z,level=debug,tags=gauge value=442221834240i,value_unit=""units"" 1435362189575692182"
 
         testCase "backslashes" <| fun _ ->
           gauge PointName.empty "disk_free" (Int64 442221834240L)
@@ -113,7 +113,7 @@ let lineProtocol =
             |> Serialise.message
             |> Expect.equal
                 "Should equal"
-                @"disk_free,level=debug,path=C:\Windows value=442221834240i,value_unit=""units"" 1435362189575692182"
+                @"disk_free,level=debug,path=C:\Windows,tags=gauge value=442221834240i,value_unit=""units"" 1435362189575692182"
 
         testCase "two gauges, field key, gauge as field" <| fun _ ->
           gauges (PointName [| "disk" |])
@@ -124,7 +124,7 @@ let lineProtocol =
             |> Serialise.message
             |> Expect.equal
                 "Should equal"
-                @"disk,level=debug /dev/sda\ free=442221834240i,/dev/sda\ free_unit=""units"",io\ ops=200i,io\ ops_unit=""units"",working\ directories=""C:\My Documents\Stuff for examples,C:\My Documents"" 1435362189575692182"
+                @"disk,level=debug,tags=gauge /dev/sda\ free=442221834240i,/dev/sda\ free_unit=""units"",io\ ops=200i,io\ ops_unit=""units"",working\ directories=""C:\My Documents\Stuff for examples,C:\My Documents"" 1435362189575692182"
 
         testCase "banana split and cava" <| fun _ ->
           let sensor = PointName.empty
@@ -136,7 +136,7 @@ let lineProtocol =
             |> Serialise.message
             |> Expect.equal
                 "Should equal"
-                @"""measurement\ with\ quotes"",level=debug,tag\ key\ with\ spaces=tag\,value\,with""commas"" field_key\\\\=""string field value, only \"" need be quoted"",value=1i,value_unit=""units"" 1435362189575692182"
+                @"""measurement\ with\ quotes"",level=debug,tag\ key\ with\ spaces=tag\,value\,with""commas"",tags=gauge field_key\\\\=""string field value, only \"" need be quoted"",value=1i,value_unit=""units"" 1435362189575692182"
       ]
 
       testList "advanced" [
@@ -157,7 +157,7 @@ let lineProtocol =
               |> Serialise.message
               |> Expect.equal
                   "Should serialise properly"
-                  @"Car-9B325M,driverId=haf,level=debug,tenantId=821 acceleration=0.3,acceleration_f=""0.30 m/s/s"",velocity=56.151161131,velocity_f=""56.15 m/s"" 1435362189575692182"
+                  @"Car-9B325M,driverId=haf,level=debug,tags=gauge,tenantId=821 acceleration=0.3,acceleration_f=""0.30 m/s/s"",velocity=56.151161131,velocity_f=""56.15 m/s"" 1435362189575692182"
       ]
     ]
 
@@ -177,7 +177,7 @@ let lineProtocol =
           |> Serialise.message
           |> Expect.equal
               "Should have both the fields as values, and the default value"
-              @"Processor.%\ Utilisation,host=host-001,level=debug,tags=urgent\,w\ \ t Core\ 1=0.03,Core\ 1_f=""3.00 %"",Core\ 1_unit=""percent"",Core\ 2=0.06,Core\ 2_f=""6.00 %"",Core\ 2_unit=""percent"",Core\ 3=0.139,Core\ 3_f=""13.90 %"",Core\ 3_unit=""percent"",Total=1,Total_f=""100.00 %"",Total_unit=""percent"" 1435362189575692182"
+              @"Processor.%\ Utilisation,host=host-001,level=debug,tags=gauge\,urgent\,w\ \ t Core\ 1=0.03,Core\ 1_f=""3.00 %"",Core\ 1_unit=""percent"",Core\ 2=0.06,Core\ 2_f=""6.00 %"",Core\ 2_unit=""percent"",Core\ 3=0.139,Core\ 3_f=""13.90 %"",Core\ 3_unit=""percent"",Total=1,Total_f=""100.00 %"",Total_unit=""percent"" 1435362189575692182"
     ]
 
     testList "events" [
