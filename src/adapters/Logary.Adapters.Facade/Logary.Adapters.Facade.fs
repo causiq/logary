@@ -149,6 +149,16 @@ module LoggerAdapterShared =
 module LoggerAdapter =
   open Reflection
 
+  let castDefault<'a> (fallback: 'a) (x: obj) : 'a =
+    match x with
+    | :? 'a as a -> a
+    | _ -> fallback
+
+  let tryCast<'a> (x: obj) : 'a option =
+    match x with
+    | :? 'a as a -> Some a
+    | _ -> None
+
   let private defaultName (fallback: string[]) = function
     | [||] ->
       fallback
@@ -193,43 +203,18 @@ module LoggerAdapter =
       | LoggerAdapterShared.OldPointValue.Event tpl -> tpl
       | _ -> String.Empty
 
-    let toMap (x: obj) : Map<string, obj> =
-      match x with
-      | :? Map<string, obj> as m -> m
-      | _ -> Map.empty
-
-    let toObjList (xs: obj) : obj list =
-      match xs with
-      | :? (obj list) as l -> l
-      | _ -> []
-
-    let toStringArr (x: obj) : string [] =
-      match x with
-      | :? (string []) as a -> a
-      | _ -> [||]
-
-    let pickExn (x: obj) : exn option =
-      match x with
-      | :? exn as e -> Some e
-      | _ -> None
-
-    let toEpochNanoSeconds (x: obj) : EpochNanoSeconds =
-      match x with
-      | :? EpochNanoSeconds as ens -> ens
-      | _ -> 0L
-
     let fields, exns =
-      let m = readProperty "fields" |> toMap
+      let m = readProperty "fields" |> castDefault<Map<string, obj>> Map.empty
       match m |> Map.tryFind "errors" with
       | None ->
         m, []
       | Some xs ->
-        m |> Map.remove "errors", xs |> toObjList |> List.choose pickExn
+        m |> Map.remove "errors", xs |> castDefault<obj list> [] |> List.choose tryCast<exn>
 
-    { name      = PointName (readProperty "name" |> toStringArr |> defaultName fallbackName)
+    { name      = PointName (readProperty "name" |> castDefault<string []> [||] |> defaultName fallbackName)
       value     = event
       context   = HashMap.empty
-      timestamp = readProperty "timestamp" |> toEpochNanoSeconds
+      timestamp = readProperty "timestamp" |> castDefault<EpochNanoSeconds> 0L
       level     = readProperty "level" |> toLogLevel }
     |> Message.setFieldsFromMap fields
     |> Message.addExns exns
