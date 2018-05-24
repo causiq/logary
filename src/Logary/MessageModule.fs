@@ -219,7 +219,7 @@ module Message =
   [<CompiledName "AddGauge">]
   let addGauge gaugeName (gauge: Gauge) message =
     let gaugeName = KnownLiterals.GaugeNamePrefix + gaugeName
-    message |> setContext gaugeName gauge
+    message |> setContext gaugeName gauge |> tag KnownLiterals.GaugeTag
 
   /// A single Message can take multiple gauges; use this function to add further
   /// gauges to the message. You can add gauges to events as well.

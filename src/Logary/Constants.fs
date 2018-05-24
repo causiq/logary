@@ -15,6 +15,10 @@ module KnownLiterals =
   [<Literal>]
   let GaugeNamePrefix = LogaryPrefix + "gauge."
 
+  /// All gauges should have this tag. It's added whenever a gauge is added to the message.
+  [<Literal>]
+  let GaugeTag = "gauge"
+
   /// for api compatibility, when user don't provide gauge type
   [<Literal>]
   let DefaultGaugeName = "default-gauge"
