@@ -247,6 +247,23 @@ let tests =
       ]
 
     ]
+
+    testList "v3" [
+      testList "gauge" [
+        // input:Facade Gauge, output; Logary gauge message
+        testCase "toMsg" <| fun _ ->
+          let gauge : Logary.Facade.Message = {
+            name      = [|"lag"|]
+            value     = Logary.Facade.Gauge (0.120, "Seconds")
+            fields    = Map.empty
+            timestamp = Logary.Facade.Global.timestamp ()
+            level     = Logary.Facade.Debug }
+          let msg = LoggerAdapter.toMsg Reflection.ApiVersion.V3 [||] gauge
+
+          let g = msg.context |> HashMap.tryFind "lag"
+          Expect.isSome g "gauge is preserved"
+      ]
+    ]
   ]
 [<EntryPoint>]
 let main argv =
