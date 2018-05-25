@@ -1,6 +1,5 @@
 namespace Logary
 
-open NodaTime
 open Hopac
 open Hopac.Infixes
 

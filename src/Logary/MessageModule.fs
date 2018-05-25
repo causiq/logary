@@ -50,8 +50,6 @@ module Message =
     let contextValueObj_ name =
       context_ >-> HashMap.Optic.value_ name
 
-  //#region CONTEXT AND FIELDS
-
   ///////////////// CONTEXT ////////////////////
 
   /// Sets a context value if name exist, value will be override
@@ -60,6 +58,7 @@ module Message =
     if isNull name then message
     else Optic.set (Optic.contextValue_ name) value message
 
+  [<CompiledName "SetContexts">]
   let setContexts (values: #seq<string * obj>) message =
     (message, values)
     ||> Seq.fold (fun m (k, v) -> m |> setContext k v)
@@ -164,12 +163,12 @@ module Message =
   [<CompiledName "GetAllTags">]
   let getAllTags message =
     tryGetContext KnownLiterals.TagsContextName message
-    |> Option.orDefault (fun () -> Set.empty)
+    |> Option.defaultValue Set.empty
 
   [<CompiledName "GetAllSinks">]
   let getAllSinks message: Set<string> =
     tryGetContext KnownLiterals.SinkTargetsContextName message
-    |> Option.orDefault (fun () -> Set.empty)
+    |> Option.defaultValue Set.empty
 
   [<CompiledName "GetAllSinks">]
   let addSinks (sinks: string list) message =
@@ -187,10 +186,6 @@ module Message =
   let hasTag (tag: string) (message: Message) =
     message |> getAllTags |> Set.contains tag
 
-  //#endregion
-
-  //#region CTORS
-
   ///////////////// CTORS ////////////////////
 
   /// Create a new Message with the passed parameters. Consider using `event` and
@@ -205,14 +200,14 @@ module Message =
 
   /// Creates a new event Message with a specified level.
   [<CompiledName "Event">]
-  let event level template =
-    create HashMap.empty level PointName.empty template
+  let event level value =
+    create HashMap.empty level PointName.empty value
 
   /// Creates a new event message template with level. Compared to `event`,
   /// this function has its parameters' order flipped.
   [<CompiledName "Event">]
-  let eventX template level =
-    event level template
+  let eventX value level =
+    event level value
 
   /// A single Message can take multiple gauges; use this function to add further
   /// gauges to the message. You can add gauges to events as well.
@@ -420,10 +415,6 @@ module Message =
         sw.toGauge() |> gaugeWithUnit pointName "time"
       ), TaskContinuationOptions.ExecuteSynchronously) // stopping SW is quick
 
-  //#endregion
-
-  //#region PROPS
-
   ///////////////// PROPS ////////////////////
 
   /// Sets the name of the message to a PointName
@@ -479,10 +470,15 @@ module Message =
   let updateTimestamp message =
     { message with timestamp = Global.getTimestamp () }
 
+
   /// Replaces the value of the message with a new Event with the supplied format
   [<CompiledName "SetEvent">]
-  let setEvent format message =
-    { message with value = string format }
+  let setEvent format (message: Message) =
+    { message with value = format }
+
+  /// Synonym to setEvent.
+  [<CompiledName "SetValue">]
+  let setValue value (m: Message): Message = setEvent value m
 
   /// Adds a new exception to the "_logary.errors" internal field in the message.
   [<CompiledName "AddException">]
@@ -527,8 +523,6 @@ module Message =
     | None, _, _ ->
       msg
 
-  //#endregion
-
   /// Patterns to match against the context; useful for extracting the data
   /// slightly more semantically than "obj"-everything. Based on the known prefixes
   /// in `KnownLiterals`.
@@ -571,7 +565,6 @@ module Message =
 module MessageEx =
 
   type Message with
-
     /// Creates a new event with given level, format and arguments. Format may
     /// contain String.Format-esque format placeholders.
     [<CompiledName "EventFormat">]

@@ -272,6 +272,8 @@ type Logger =
   /// `Messages` produced from this instance.
   abstract name: PointName
 
+  /// - `waitForBuffers`: This causes the logger/caller to block on the RingBuffer being
+  ///   available to take the message. Giving a true here may cause the
   abstract logWithAck: waitForBuffers:bool * level:LogLevel -> messageFactory:(LogLevel -> Message) -> LogResult
 
   //abstract log: Message -> Alt<Result<Promise<unit>, unit>>

@@ -11,10 +11,6 @@ open NodaTime
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Logger =
-  /////////////////////
-  // Logging methods //
-  /////////////////////
-
   /// Log a message, but don't await all targets to flush. Equivalent to logWithBP.
   /// Returns whether the message was successfully placed in the buffers.
   /// SAFE.
