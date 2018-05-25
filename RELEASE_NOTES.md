@@ -1,3 +1,6 @@
+#### 5.0.0-beta.12
+* Preserve non-exceptions in error field
+
 #### 5.0.0-beta.11
 * Dot not crash on typecasts when constructing log message, thanks @yoff
 * Cross-compile Rutta for .net core, subject to these limitations https://github.com/Topshelf/Topshelf/issues/444, thanks @haf

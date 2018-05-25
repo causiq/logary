@@ -143,6 +143,23 @@ module LoggerAdapterShared =
     | Event of string
     | Gauge of float * Units
 
+module List =
+  let pickOff picker l =
+    let rec loop picked left =
+      function
+      | [] ->
+        List.rev picked, List.rev left
+
+      | (x::xs) ->
+        match picker x with
+        | None ->
+          loop picked (x::left) xs
+
+        | Some p ->
+          loop (p::picked) left xs
+    
+    loop [] [] l
+
 /// Utilities for creating a single 'MyLib.Logging.Logger' in the target type
 /// space. The original logger adapter (also see the LoggerCSharpAdapter further
 /// below)
@@ -208,8 +225,14 @@ module LoggerAdapter =
       match m |> Map.tryFind "errors" with
       | None ->
         m, []
-      | Some xs ->
-        m |> Map.remove "errors", xs |> castDefault<obj list> [] |> List.choose tryCast<exn>
+      | Some x ->
+        match x with
+        | :? (obj list) as xs ->
+          let ours, theirs = List.pickOff tryCast<exn> xs
+          m |> Map.add "errors" (box theirs), ours
+        
+        | _ ->
+          m, []
 
     { name      = PointName (readProperty "name" |> castDefault<string []> [||] |> defaultName fallbackName)
       value     = event
