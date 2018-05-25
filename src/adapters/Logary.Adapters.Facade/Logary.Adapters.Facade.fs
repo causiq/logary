@@ -182,6 +182,27 @@ module LoggerAdapter =
     | otherwise ->
       otherwise
 
+  let parseUnits =
+    function
+    | "Seconds" | "seconds" | "s" ->
+      Units.Seconds
+
+    | "Milliseconds" | "milliseconds" | "ms" ->
+      Units.Scaled (Units.Seconds, 1000.0)
+
+    | "Nanoseconds" | "nanoseconds" | "ns" ->
+      Units.Scaled (Units.Seconds, 1.0e9)
+
+    | _ ->
+      Units.Scalar
+
+  let toUnits (x: obj) =
+    match x with
+    | :? string as s ->
+      parseUnits s
+    | _ ->
+      Units.Scalar
+
   /// Convert the object instance to a PointValue. Is used from the
   /// other code in this module.
   let toPointValue (v: ApiVersion) (o: obj): LoggerAdapterShared.OldPointValue =
@@ -192,10 +213,10 @@ module LoggerAdapter =
       LoggerAdapterShared.OldPointValue.Event (template :?> string)
 
     | "Gauge", [| value; units |] when v <= ApiVersion.V2 ->
-      LoggerAdapterShared.OldPointValue.Gauge (float (value :?> int64), Units.Scalar)
+      LoggerAdapterShared.OldPointValue.Gauge (float (value :?> int64), toUnits units)
 
     | "Gauge", [| value; units |] ->
-      LoggerAdapterShared.OldPointValue.Gauge (float (value :?> float), Units.Scalar)
+      LoggerAdapterShared.OldPointValue.Gauge (float (value :?> float), toUnits units)
 
     | caseName, values ->
       let valuesStr = values |> Array.map string |> String.concat ", "
@@ -234,7 +255,8 @@ module LoggerAdapter =
         | _ ->
           m, []
 
-    { name      = PointName (readProperty "name" |> castDefault<string []> [||] |> defaultName fallbackName)
+    let pointName = readProperty "name" |> castDefault<string []> [||] |> defaultName fallbackName
+    { name      = PointName pointName
       value     = event
       context   = HashMap.empty
       timestamp = readProperty "timestamp" |> castDefault<EpochNanoSeconds> 0L
@@ -245,7 +267,11 @@ module LoggerAdapter =
         match oldPointValue with
         | LoggerAdapterShared.OldPointValue.Gauge (value, units) ->
           let g = Gauge (Float value, units)
-          msg |> Message.addGauge KnownLiterals.DefaultGaugeName g
+          let gaugeName =
+            match pointName.Length with
+            | 0 -> KnownLiterals.DefaultGaugeName
+            | n -> pointName.[n-1]
+          msg |> Message.addGauge gaugeName g
         | _ ->
           msg)
 
