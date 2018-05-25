@@ -76,7 +76,7 @@ module Reflection =
       member x.CompareTo other =
         match other with
         | :? ApiVersion as vOther ->
-          x.intValue.CompareTo vOther
+          x.intValue.CompareTo vOther.intValue
         | _ ->
           1
     override x.Equals other =
