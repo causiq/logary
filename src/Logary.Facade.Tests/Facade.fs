@@ -2,6 +2,8 @@
 
 open System
 open Expecto
+open Hopac
+open Hopac.Infixes
 open Logary.Facade
 open Logary.Facade.Literals
 open Logary.Facade.Literate
@@ -32,34 +34,36 @@ type DateTimeOffset with
     x.ToLocalTime().ToString("HH:mm:ss", options.formatProvider)
 
 type System.Int64 with
-  member x.ToDateTimeOffsetUtc() = DateTimeOffset(DateTimeOffset.ticksUTC x, TimeSpan.Zero)
-  member x.ToLiterateTimeString (options: LiterateOptions) = x.ToDateTimeOffsetUtc().ToLiterateTime(options)
+  member x.ToDateTimeOffsetUtc() =
+    DateTimeOffset(x, TimeSpan.Zero)
+  member x.ToLiterateTimeString (options: LiterateOptions) =
+    x.ToDateTimeOffsetUtc().ToLiterateTime(options)
 
 [<AutoOpen>]
 type LiterateTesting =
-
   /// Renders the `Message` using the `LiterateConsoleTarget` and returns the rendered coloured text parts.
   static member getWrittenColourParts (message, ?customTokeniser, ?options) =
-
     // Insteading of writing out to the console, write to an in-memory list so we can capture the values
     let writtenParts = ResizeArray<ColouredText>()
     let writtenPartsOutputWriter _ (bits: ColouredText list) = writtenParts.AddRange bits
-
-    let target = LiterateConsoleTarget(name = [||],
-                                       minLevel = Verbose,
-                                       ?options = options,
-                                       ?literateTokeniser = customTokeniser,
-                                       outputWriter = writtenPartsOutputWriter) :> Logger
-
-    target.logWithAck Verbose (fun _ -> message) |> Async.RunSynchronously
+    let target =
+      LiterateConsoleTarget(
+        name = [||],
+        minLevel = Verbose,
+        ?options = options,
+        ?literateTokeniser = customTokeniser,
+        outputWriter = writtenPartsOutputWriter)
+      :> Logger
+    target.logWithAck (true, Verbose) (fun _ -> message) >>- fun _ ->
     writtenParts :> ColouredText seq
 
 type Expect =
   /// Asserts that the rendered output (`ColouredText`) matches the expected tokens (`TokenisedPart`) using
   /// the provided `LiterateOptions` (and theme)
-  static member literateWrittenColouredTextEquals (writtenColouredTextParts: ColouredText seq,
-                                                   expectedTokens: LiterateTokenisation.TokenisedPart list,
-                                                   ?options: LiterateOptions) =
+  static member literateWrittenColouredTextEquals
+                  (writtenColouredTextParts: ColouredText seq,
+                   expectedTokens: LiterateFormatting.TokenisedPart list,
+                   ?options: LiterateOptions) =
 
     let options = defaultArg options (LiterateOptions.create())
 
@@ -71,14 +75,16 @@ type Expect =
     let expectedParts = expectedTokens |> List.map (fun (s, t) -> s, options.theme t)
     Expect.sequenceEqual actualParts expectedParts "literate rendered colours must be correct"
 
-  /// Asserts that the template rendered with the provided fields and options is equal to the 
+  /// Asserts that the template rendered with the provided fields and options is equal to the
   /// provided message tokens. This assertion focuses on the mesage parts, excluding the other
   /// parts of the output template.
   static member literateMessagePartsEqual (template, fields, expectedMessagePartTokens, ?options) =
     let options = defaultArg options (LiterateOptions.create())
     let logLevel, logLevelToken = Info, LevelInfo
-    let message = { Message.event logLevel template with fields = fields
-                                                         name = [|"X"; "Y"|] }
+    let message =
+      { Message.event logLevel template with
+          context = fields |> Seq.map (fun (KeyValue (k, v)) -> Literals.FieldsPrefix + k, v) |> Map.ofSeq
+          name = [|"X"; "Y"|] }
     let expectedTokens =
       [ yield "[",                                              Punctuation
         yield message.timestamp.ToLiterateTimeString(options),  Subtext
@@ -92,7 +98,7 @@ type Expect =
         yield ">",                                              Punctuation
         yield Environment.NewLine,                              Text ]
 
-    let writtenParts = LiterateTesting.getWrittenColourParts (message, options = options)
+    LiterateTesting.getWrittenColourParts (message, options = options) >>- fun writtenParts ->
     let actualParts = writtenParts |> List.ofSeq
     let expectedParts = expectedTokens |> List.map (fun (s, t) -> s, options.theme t)
     Expect.sequenceEqual actualParts expectedParts "literate tokenised parts must be correct"
@@ -109,8 +115,7 @@ type Expect =
                                        ?literateTokeniser = customTokeniser,
                                        outputWriter = writtenPartsOutputWriter) :> Logger
 
-    target.logWithAck Verbose (fun _ -> message) |> Async.RunSynchronously
-
+    target.logWithAck (true, Verbose) (fun _ -> message) >>- fun _ ->
     // First compare the output text without any colours. This gives a better test failure message.
     let actualOutputString = String.Join("", writtenParts |> Seq.map fst)
     let expectedOutputString = String.Join("", expectedTokens |> List.map fst)
@@ -119,7 +124,7 @@ type Expect =
   /// Asserts that the LiterateConsoleTarget renders the template (with the provided fields, options, and tokeniser) and
   /// outputs coloured text that (when themed) will match the expected tokens.
   static member literateOutputPartsEqual (message, expectedTokens, ?options, ?customTokeniser) =
-    let writtenParts = LiterateTesting.getWrittenColourParts (message, ?customTokeniser = customTokeniser, ?options = options)
+    LiterateTesting.getWrittenColourParts (message, ?customTokeniser = customTokeniser, ?options = options) >>- fun writtenParts ->
     Expect.literateWrittenColouredTextEquals (writtenParts, expectedTokens, ?options = options)
 
 [<Tests>]
@@ -129,15 +134,9 @@ let tests =
   Global.initialise { Global.defaultConfig with getLogger = Targets.create Fatal }
 
   testList "generic" [
-    testProperty "DateTime" <| fun (dt: DateTime) ->
-      let ticks = dt |> DateTime.timestamp |> DateTime.ticksUTC
-      let recreated = DateTime(ticks, DateTimeKind.Utc).Ticks
-      Expect.equal recreated (dt.Ticks) "should equal on ticks after conversion"
-
     testProperty "DateTimeOffset" <| fun (ts: DateTimeOffset) ->
-      let ticks = ts |> DateTimeOffset.timestamp |> DateTimeOffset.ticksUTC
-      let recreated = DateTimeOffset(ticks, TimeSpan.Zero).Ticks
-      Expect.equal recreated (ts.Ticks) "should equal after conversion"
+      let roundtripped = ts.toTimestamp() |> DateTimeOffset.ofTimestamp
+      Expect.equal roundtripped.Ticks ts.Ticks "should equal after conversion"
 
     testCase "event" <| fun _ ->
       Message.event Info "hi {name}" |> ignore
@@ -282,7 +281,7 @@ let tests =
                               ">",            Punctuation ]
                       (sprintf "expect log level %A to render as token %A with text %s" logLevel expectedLevelToken expectedText)
       )
-    
+
     testProperty "literate theme is applied correctly" <| fun (theme: LiterateToken -> ConsoleColor) ->
       let options = { LiterateOptions.create() with theme = theme }
       let fields = Map.ofList [ "where", box "The Other Side" ]
@@ -451,7 +450,7 @@ let tests =
                 |> Message.setSingleName source
                 |> Message.addExn (exn "ex1")
                 |> Message.addExn (exn "ex2")
-      let msgDto = msg.timestamp.ToDateTimeOffsetUtc()
+      let msgDto = msg.timestampDateTimeOffset()
       let outputTemplateAndExpected =
         [ "{timestamp:u}",                    msgDto.ToLocalTime().ToString("u")
           "{timestampUtc:u}",                 msgDto.ToString("u")
@@ -482,12 +481,16 @@ let tests =
     testCase "format template with invalid property correctly" <| fun _ ->
       // spaces are not valid in property names, so the 'property' is treated as text
       let str = "Hi {ho}, we're { something going on  } special"
-      let fields = Map [ "ho", box "hola"; "something going on", box "very" ]
-      let now = Global.timestamp ()
-      let nowDto = DateTimeOffset.ticksUTC now |> fun ticks -> DateTimeOffset(ticks, TimeSpan.Zero)
+      let fields =
+        [ "ho", box "hola"
+          "something going on", box "very" ]
+        |> Seq.map (fun (k, v) -> Literals.FieldsPrefix + k, v)
+        |> Map.ofSeq
+      let now = Global.getTimestamp ()
+      let nowDto = DateTimeOffset.ofTimestamp now
       let msg =
         Message.event Info str
-        |> fun m -> { m with fields = fields; timestamp = now }
+        |> fun m -> { m with context = fields; timestamp = now }
         |> Message.setSingleName "Logary.Facade.Tests"
       let subject = Formatting.defaultFormatter msg
       Expect.equal subject

@@ -54,13 +54,18 @@ module Reflection =
     | V2
     /// NS.Literals.FacadeVersion (Gauge is float)
     | V3
+    // NS.Literals.FacadeVersion (Async -> Hopac, timing functions, Units etc)
+    | V4
     override x.ToString() =
       match x with
       | V1 -> "V1"
       | V2 -> "V2"
       | V3 -> "V3"
+      | V4 -> "V4"
     static member ofType (loggerType: Type) =
       match versionFrom loggerType with
+      | 4u ->
+        V4
       | 3u ->
         V3
       | 2u ->
@@ -72,6 +77,7 @@ module Reflection =
       | V1 -> 1
       | V2 -> 2
       | V3 -> 3
+      | V4 -> 4
     interface IComparable with
       member x.CompareTo other =
         match other with

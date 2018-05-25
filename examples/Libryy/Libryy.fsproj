@@ -10,9 +10,11 @@
       <Paket>True</Paket>
       <Link>paket-files/Facade.fs</Link>
     </Compile>
+    <Compile Include="LoggingV2.fs" />
     <Compile Include="Libryy.fs" />
     <Compile Include="LoggingV1.fs" />
     <Compile Include="CoreV1.fs" />
+    <Compile Include="LoggingV3.fs" />
     <None Include="paket.references" />
     <ProjectReference Include="..\..\src\Logary\Logary.fsproj" />
   </ItemGroup>
