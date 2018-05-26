@@ -537,7 +537,7 @@ module internal LiterateTokenisation =
   let getTokenTypeForValue (value: obj) =
     match value with
     | :? bool -> KeywordSymbol
-    | :? int16 | :? int32 | :? int64 | :? decimal | :? float | :? double -> NumericSymbol
+    | :? int16 | :? int32 | :? int64 | :? decimal | :? float | :? single -> NumericSymbol
     | :? string | :? char -> StringSymbol
     | _ -> OtherSymbol
 
@@ -723,7 +723,9 @@ module internal LiterateFormatting =
   module OutputTemplateTokenisers =
     open System.Collections.Generic
 
-    let exceptionFieldNames = set [ Literals.FieldExnKey; Literals.FieldErrorsKey ]
+    let exceptionFieldNames =
+      set [ Literals.FieldExnKey; Literals.FieldErrorsKey ]
+
     let tokeniseExtraField (options: LiterateOptions) (message: Message) (field: KeyValuePair<string, obj>) =
       seq {
         yield " - ", Punctuation
