@@ -28,14 +28,6 @@ module internal Adaptation =
     else
       Debug
 
-  /// Copied from Logary.Internals.Cache, because disposing this target should
-  /// also remove the references to the loggers, whilst Logary.Internals.Cache
-  /// would have a static/global cache (more useful for type resolution that
-  /// won't change across instances).
-  let memoizeFactory<'input, 'output> (cache: ConcurrentDictionary<'input, 'output>) =
-    fun (f: 'input -> 'output) ->
-      fun x -> cache.GetOrAdd(x, f)
-
 open Adaptation
 
 /// A Logary target for NLog. Uses Logger.logSimple. Takes either a reference to
@@ -45,7 +37,7 @@ open Adaptation
 type LogaryTarget(logary: LogManager) =
   inherit Target()
 
-  let memoize = memoizeFactory (ConcurrentDictionary<_, _>())
+  let memoize = Cache.memoizeFactory (ConcurrentDictionary<_, _>())
 
   let mutable instance = logary
 

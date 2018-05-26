@@ -9,12 +9,14 @@
     <Compile Include="LoggingV1.fs" />
     <Compile Include="LoggingV2.fs" />
     <Compile Include="LoggingV3.fs" />
+    <Compile Include="LoggingV4.fs" />
     <Compile Include="..\..\paket-files\logary\logary\src\Logary.Facade\Facade.fs">
       <Paket>True</Paket>
       <Link>paket-files/Facade.fs</Link>
     </Compile>
     <Compile Include="CoreV1.fs" />
     <Compile Include="CoreV3.fs" />
+    <Compile Include="CoreV4.fs" />
     <Compile Include="CoreVCurrent.fs" />
     <None Include="paket.references" />
   </ItemGroup>

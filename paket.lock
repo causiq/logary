@@ -1103,8 +1103,8 @@ GITHUB
       Expecto.Hopac
       Hopac
   remote: logary/logary
-    src/Logary.CSharp.Facade/Facade.cs (1ed0e3a542dfbdba93e62fe23146e492daf32298)
-    src/Logary.Facade/Facade.fs (1ed0e3a542dfbdba93e62fe23146e492daf32298)
+    src/Logary.CSharp.Facade/Facade.cs (4837f9b497e633a36765b8ecf2ffade2d06fb4fb)
+    src/Logary.Facade/Facade.fs (4837f9b497e633a36765b8ecf2ffade2d06fb4fb)
   remote: messagetemplates/messagetemplates-fsharp
     src/FsMtParser/FsMtParserFull.fs (17bdfdcc237d7d725c23ebe0ef24c438c4ff7530)
   remote: xyncro/aether

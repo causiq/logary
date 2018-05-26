@@ -121,8 +121,8 @@ module Units =
     | funit ->
       String.Concat [ fval; " "; funit ]
 
-  /// Try to convert the string to a unit.
-  let tryParse (units: string) =
+  /// Convert the string to a unit, defaulting to Units.Other if unsuccessful.
+  let parse (units: string) =
     match String.toLowerInvariant units with
     | "seconds" | "s" ->
       Units.Seconds

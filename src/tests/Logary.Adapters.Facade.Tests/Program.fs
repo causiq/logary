@@ -46,8 +46,8 @@ let tests =
       testProperty "convert string to unit" <| fun (x: Units) ->
         match x with
         | Other _ -> true
-        | x -> match Units.tryParse x.symbol with
-               | Other _ ->
+        | x -> match Units.parse x.symbol with
+               | Other _ -> // consider doing assert = x instead
                  true
                | res ->
                  res = x
@@ -108,135 +108,7 @@ let tests =
       ]
     ]
 
-    testList "v3" [
-      testList "logger" [
-        let createLoggerSubject () =
-          let msg = ref (Message.event Info "empty")
-          let stub = stubLogger LogLevel.Info msg (PointName.parse "Libryy.CoreV3")
-          LoggerAdapter.createGeneric<Libryy.LoggingV3.Logger> stub,
-          msg
-
-        yield testCase "create adapter" <| fun _ ->
-          let msg = ref (Message.event Info "empty")
-          let stub = stubLogger LogLevel.Info msg (PointName.parse "Libryy.CoreV3")
-          let logger = LoggerAdapter.createString "Libryy.LoggingV3.Logger, Libryy" stub
-          Expect.isNotNull logger "Should have gotten logger back"
-
-        yield testCase "end to end with adapter, full logWithAck method" <| fun _ ->
-          let libryyLogger, msg = createLoggerSubject ()
-          let res = Libryy.CoreV3.work libryyLogger
-          Expect.equal 42 res "Should get result back"
-          assertWorkMessage (!msg)
-          Expect.equal (!msg).name (PointName.parse "Libryy.Core.work") "Should have set name"
-
-        yield testCase "end to end with adapter, log method" <| fun _ ->
-          let libryyLogger, msg = createLoggerSubject ()
-          let res = Libryy.CoreV3.workBackpressure libryyLogger
-          Expect.equal 45 res "Should get result back"
-          assertWorkMessage (!msg)
-          Expect.equal (!msg).name (PointName.parse "Libryy.Core.work") "Should have set name"
-
-        yield testCase "end to end with adapter, errorWithBP method" <| fun _ ->
-          let libryyLogger, msg = createLoggerSubject ()
-          let res = Libryy.CoreV3.errorWithBP libryyLogger
-          Expect.equal 43 res "Should get result back"
-          Expect.equal (!msg).level Error "Should have logged at Error level"
-          Expect.equal (!msg).value ( "Too simplistic") "Should have logged event template"
-          Expect.notEqual (!msg).timestamp 0L "Should have non-zero timestamp"
-          Expect.notEqual (!msg).name (PointName [||]) "Should have non-empty point name"
-          Expect.equal (!msg).name (PointName [| "Libryy"; "Core" |])
-                       "Should have point name corresponding to the passed logger"
-
-        yield testCase "with exns" <| fun _ ->
-          let libryyLogger, msg = createLoggerSubject ()
-          let res = Libryy.CoreV3.generateAndLogExn libryyLogger
-          let exns = Message.getExns !msg
-          Expect.equal 2 exns.Length "Has two exns"
-      ]
-
-      testList "global config" [
-        let createLogManagerSubject () =
-          let msg = ref (Message.event Info "empty")
-          stubLogManager msg, msg
-
-        yield testCase "initialise with LogManager" <| fun _ ->
-          let logManager, msg = createLogManagerSubject ()
-          LogaryFacadeAdapter.initialise<Libryy.LoggingV3.Logger> logManager
-          let res = Libryy.CoreV3.staticWork () |> Async.RunSynchronously
-          Expect.equal res 49 "Should return 49"
-          Expect.equal (!msg).level Debug "Should have logged at Debug level"
-          Expect.equal (!msg).value ( "A debug log") "Should have logged event template"
-      ]
-
-      // input:Facade Gauge, output; Logary gauge message
-      testList "gauge" [
-        let namedGauge name value units: Libryy.LoggingV3.Message =
-          { name      = name
-            value     = Libryy.LoggingV3.Gauge (value, units)
-            fields    = Map.empty
-            timestamp = Libryy.LoggingV3.Global.timestamp ()
-            level     = Libryy.LoggingV3.Debug }
-
-        let expectGauge name value units (msg: Message) =
-          let g = msg.context |> HashMap.tryFind name
-          Expect.isSome g "gauge is in context"
-
-          match g.Value with
-          | :? Gauge as gauge ->
-            let (Gauge (v, u)) = gauge
-            Expect.equal v value "has correct value"
-            Expect.equal u units "has correct units"
-          | _ ->
-            Expect.equal true false "Wrong type of gauge object"
-
-        yield testCase "Seconds" <| fun _ ->
-          let gauge = namedGauge [|"response"; "lag"|] 0.12 "Seconds"
-          LoggerAdapter.toMsg Reflection.ApiVersion.V3 [||] gauge
-          |> expectGauge "_logary.gauge.lag" (Float 0.12) Units.Seconds
-
-        yield testCase "s" <| fun _ ->
-          let gauge = namedGauge [|"response"; "lag"|] 0.12 "s"
-          LoggerAdapter.toMsg Reflection.ApiVersion.V3 [||] gauge
-          |> expectGauge "_logary.gauge.lag" (Float 0.12) Units.Seconds
-
-        yield testCase "Milliseconds" <| fun _ ->
-          let gauge = namedGauge [|"response"; "lag"|] 120.0 "Milliseconds"
-          LoggerAdapter.toMsg Reflection.ApiVersion.V3 [||] gauge
-          |> expectGauge "_logary.gauge.lag" (Float 120.0) (Units.Scaled (Units.Seconds, 1000.0))
-
-        yield testCase "ms" <| fun _ ->
-          let gauge = namedGauge [|"response"; "lag"|] 120.0 "ms"
-          LoggerAdapter.toMsg Reflection.ApiVersion.V3 [||] gauge
-          |> expectGauge "_logary.gauge.lag" (Float 120.0) (Units.Scaled (Units.Seconds, 1000.0))
-
-        yield testCase "µs" <| fun _ ->
-          let gauge = namedGauge [|"response"; "lag"|] 120.0 "µs"
-          LoggerAdapter.toMsg Reflection.ApiVersion.V3 [||] gauge
-          |> expectGauge "_logary.gauge.lag" (Float 120.0) (Units.Scaled (Units.Seconds, 1.0e6))
-
-        yield testCase "Nanoseconds" <| fun _ ->
-          let gauge = namedGauge [|"response"; "lag"|] 120.0 "Nanoseconds"
-          LoggerAdapter.toMsg Reflection.ApiVersion.V3 [||] gauge
-          |> expectGauge "_logary.gauge.lag" (Float 120.0) (Units.Scaled (Units.Seconds, 1.0e9))
-
-        yield testCase "ns" <| fun _ ->
-          let gauge = namedGauge [|"response"; "lag"|] 120.0 "ns"
-          LoggerAdapter.toMsg Reflection.ApiVersion.V3 [||] gauge
-          |> expectGauge "_logary.gauge.lag" (Float 120.0) (Units.Scaled (Units.Seconds, 1.0e9))
-
-        yield testCase "unknown turns is Units.Other" <| fun _ ->
-          let gauge = namedGauge [|"response"; "lag"|] 120.0 "Moments"
-          LoggerAdapter.toMsg Reflection.ApiVersion.V3 [||] gauge
-          |> expectGauge "_logary.gauge.lag" (Float 120.0) (Units.Other "Moments")
-
-        yield testCase "default name" <| fun _ ->
-          let gauge = namedGauge [||] 120.0 ""
-          LoggerAdapter.toMsg Reflection.ApiVersion.V3 [||] gauge
-          |> expectGauge "_logary.gauge.default-gauge" (Float 120.0) Units.Scalar
-      ]
-    ]
-
-    testList "cs" [
+    testList "C# v2" [
       testList "logger" [
         let createLoggerSubject () =
           let msg = ref (Message.event Info "empty")
@@ -306,7 +178,271 @@ let tests =
           Expect.equal (!msg).level Debug "Should have logged at Debug level"
           Expect.equal (!msg).value ("A debug log") "Should have logged event template"
       ]
+    ]
 
+    testList "v3" [
+      testList "logger" [
+        let createLoggerSubject () =
+          let msg = ref (Message.event Info "empty")
+          let stub = stubLogger LogLevel.Info msg (PointName.parse "Libryy.CoreV3")
+          LoggerAdapter.createGeneric<Libryy.LoggingV3.Logger> stub,
+          msg
+
+        yield testCase "create adapter" <| fun _ ->
+          let msg = ref (Message.event Info "empty")
+          let stub = stubLogger LogLevel.Info msg (PointName.parse "Libryy.CoreV3")
+          let logger = LoggerAdapter.createString "Libryy.LoggingV3.Logger, Libryy" stub
+          Expect.isNotNull logger "Should have gotten logger back"
+
+        yield testCase "end to end with adapter, full logWithAck method" <| fun _ ->
+          let libryyLogger, msg = createLoggerSubject ()
+          let res = Libryy.CoreV3.work libryyLogger
+          Expect.equal 42 res "Should get result back"
+          assertWorkMessage (!msg)
+          Expect.equal (!msg).name (PointName.parse "Libryy.Core.work") "Should have set name"
+
+        yield testCase "end to end with adapter, log method" <| fun _ ->
+          let libryyLogger, msg = createLoggerSubject ()
+          let res = Libryy.CoreV3.workBackpressure libryyLogger
+          Expect.equal 45 res "Should get result back"
+          assertWorkMessage (!msg)
+          Expect.equal (!msg).name (PointName.parse "Libryy.Core.work") "Should have set name"
+
+        yield testCase "end to end with adapter, errorWithBP method" <| fun _ ->
+          let libryyLogger, msg = createLoggerSubject ()
+          let res = Libryy.CoreV3.errorWithBP libryyLogger
+          Expect.equal 43 res "Should get result back"
+          Expect.equal (!msg).level Error "Should have logged at Error level"
+          Expect.equal (!msg).value ( "Too simplistic") "Should have logged event template"
+          Expect.notEqual (!msg).timestamp 0L "Should have non-zero timestamp"
+          Expect.notEqual (!msg).name (PointName [||]) "Should have non-empty point name"
+          Expect.equal (!msg).name (PointName [| "Libryy"; "Core" |])
+                       "Should have point name corresponding to the passed logger"
+
+        yield testCase "with exns" <| fun _ ->
+          let libryyLogger, msg = createLoggerSubject ()
+          let res = Libryy.CoreV3.generateAndLogExn libryyLogger
+          let exns = Message.getExns !msg
+          Expect.equal 2 exns.Length "Has two exns"
+      ]
+
+      testList "global config" [
+        let createLogManagerSubject () =
+          let msg = ref (Message.event Info "empty")
+          stubLogManager msg, msg
+
+        yield testCase "initialise with LogManager" <| fun _ ->
+          let logManager, msg = createLogManagerSubject ()
+          LogaryFacadeAdapter.initialise<Libryy.LoggingV3.Logger> logManager
+          let res = Libryy.CoreV3.staticWork () |> Async.RunSynchronously
+          Expect.equal res 49 "Should return 49"
+          Expect.equal (!msg).level Debug "Should have logged at Debug level"
+          Expect.equal (!msg).value ( "A debug log") "Should have logged event template"
+      ]
+
+      // input:Facade Gauge, output; Logary gauge message
+      testList "gauge" [
+        let loggerType = typeof<Libryy.LoggingV3.Logger>
+
+        let namedGauge name value units: Libryy.LoggingV3.Message =
+          { name      = name
+            value     = Libryy.LoggingV3.Gauge (value, units)
+            fields    = Map.empty
+            timestamp = Libryy.LoggingV3.Global.timestamp ()
+            level     = Libryy.LoggingV3.Debug }
+
+        let expectGauge name value units (msg: Message) =
+          let g = msg.context |> HashMap.tryFind name
+          Expect.isSome g "gauge is in context"
+
+          match g.Value with
+          | :? Gauge as gauge ->
+            let (Gauge (v, u)) = gauge
+            Expect.equal v value "has correct value"
+            Expect.equal u units "has correct units"
+          | _ ->
+            Expect.equal true false "Wrong type of gauge object"
+
+        let subject = LoggerAdapter.toMsgV3 Reflection.ApiVersion.V3 (loggerType, [||])
+
+        yield testCase "Seconds" <| fun _ ->
+          namedGauge [|"response"; "lag"|] 0.12 "Seconds"
+          |> subject
+          |> expectGauge "_logary.gauge.lag" (Float 0.12) Units.Seconds
+
+        yield testCase "s" <| fun _ ->
+          namedGauge [|"response"; "lag"|] 0.12 "s"
+          |> subject
+          |> expectGauge "_logary.gauge.lag" (Float 0.12) Units.Seconds
+
+        yield testCase "Milliseconds" <| fun _ ->
+          namedGauge [|"response"; "lag"|] 120.0 "Milliseconds"
+          |> subject
+          |> expectGauge "_logary.gauge.lag" (Float 120.0) (Units.Scaled (Units.Seconds, 1000.0))
+
+        yield testCase "ms" <| fun _ ->
+          namedGauge [|"response"; "lag"|] 120.0 "ms"
+          |> subject
+          |> expectGauge "_logary.gauge.lag" (Float 120.0) (Units.Scaled (Units.Seconds, 1000.0))
+
+        yield testCase "µs" <| fun _ ->
+          namedGauge [|"response"; "lag"|] 120.0 "µs"
+          |> subject
+          |> expectGauge "_logary.gauge.lag" (Float 120.0) (Units.Scaled (Units.Seconds, 1.0e6))
+
+        yield testCase "Nanoseconds" <| fun _ ->
+          namedGauge [|"response"; "lag"|] 120.0 "Nanoseconds"
+          |> subject
+          |> expectGauge "_logary.gauge.lag" (Float 120.0) (Units.Scaled (Units.Seconds, 1.0e9))
+
+        yield testCase "ns" <| fun _ ->
+          namedGauge [|"response"; "lag"|] 120.0 "ns"
+          |> subject
+          |> expectGauge "_logary.gauge.lag" (Float 120.0) (Units.Scaled (Units.Seconds, 1.0e9))
+
+        yield testCase "unknown turns is Units.Other" <| fun _ ->
+          namedGauge [|"response"; "lag"|] 120.0 "Moments"
+          |> subject
+          |> expectGauge "_logary.gauge.lag" (Float 120.0) (Units.Other "Moments")
+
+        yield testCase "default name" <| fun _ ->
+          namedGauge [||] 120.0 ""
+          |> subject
+          |> expectGauge "_logary.gauge.default-gauge" (Float 120.0) Units.Scalar
+      ]
+    ]
+
+    testList "v4" [
+      testList "logger" [
+        let createLoggerSubject () =
+          let msg = ref (Message.event Info "empty")
+          let stub = stubLogger LogLevel.Info msg (PointName.parse "Libryy.CoreV4")
+          LoggerAdapter.createGeneric<Libryy.LoggingV4.Logger> stub,
+          msg
+
+        yield testCase "create adapter" <| fun _ ->
+          let msg = ref (Message.event Info "empty")
+          let stub = stubLogger LogLevel.Info msg (PointName.parse "Libryy.CoreV4")
+          let logger = LoggerAdapter.createString "Libryy.LoggingV4.Logger, Libryy" stub
+          Expect.isNotNull logger "Should have gotten logger back"
+
+        yield ftestCase "end to end with adapter, full logWithAck method" <| fun _ ->
+          let libryyLogger, msg = createLoggerSubject ()
+          let res = Libryy.CoreV4.work libryyLogger
+          Expect.equal 42 res "Should get result back"
+          assertWorkMessage (!msg)
+          Expect.equal (!msg).name (PointName.parse "Libryy.Core.work") "Should have set name"
+
+        yield testCase "end to end with adapter, log method" <| fun _ ->
+          let libryyLogger, msg = createLoggerSubject ()
+          let res = Libryy.CoreV4.workBackpressure libryyLogger
+          Expect.equal 45 res "Should get result back"
+          assertWorkMessage (!msg)
+          Expect.equal (!msg).name (PointName.parse "Libryy.Core.work") "Should have set name"
+
+        yield testCase "end to end with adapter, errorWithBP method" <| fun _ ->
+          let libryyLogger, msg = createLoggerSubject ()
+          let res = Libryy.CoreV4.errorWithBP libryyLogger
+          Expect.equal 43 res "Should get result back"
+          Expect.equal (!msg).level Error "Should have logged at Error level"
+          Expect.equal (!msg).value ( "Too simplistic") "Should have logged event template"
+          Expect.notEqual (!msg).timestamp 0L "Should have non-zero timestamp"
+          Expect.notEqual (!msg).name (PointName [||]) "Should have non-empty point name"
+          Expect.equal (!msg).name (PointName [| "Libryy"; "Core" |])
+                       "Should have point name corresponding to the passed logger"
+
+        yield testCase "with exns" <| fun _ ->
+          let libryyLogger, msg = createLoggerSubject ()
+          let res = Libryy.CoreV4.generateAndLogExn libryyLogger
+          let exns = Message.getExns !msg
+          Expect.equal 2 exns.Length "Has two exns"
+      ]
+
+      testList "global config" [
+        let createLogManagerSubject () =
+          let msg = ref (Message.event Info "empty")
+          stubLogManager msg, msg
+
+        yield testCase "initialise with LogManager" <| fun _ ->
+          let logManager, msg = createLogManagerSubject ()
+          LogaryFacadeAdapter.initialise<Libryy.LoggingV4.Logger> logManager
+          let res = Libryy.CoreV3.staticWork () |> Async.RunSynchronously
+          Expect.equal res 49 "Should return 49"
+          Expect.equal (!msg).level Debug "Should have logged at Debug level"
+          Expect.equal (!msg).value ( "A debug log") "Should have logged event template"
+      ]
+
+      // input:Facade Gauge, output; Logary gauge message
+      testList "gauge" [
+        let loggerType = typeof<Libryy.LoggingV4.Logger>
+
+        let namedGauge sensor name value units: Libryy.LoggingV4.Message =
+          Libryy.LoggingV4.Gauge (Libryy.LoggingV4.Float value, units)
+          |> Libryy.LoggingV4.Message.gaugeWithUnit sensor name
+
+        let expectGauge name value units (msg: Message) =
+          let n = Libryy.LoggingV4.Literals.GaugeNamePrefix + name
+          let g = msg.context |> HashMap.tryFind n
+          Expect.isSome g "gauge is in context"
+
+          match g.Value with
+          | :? Gauge as gauge ->
+            let (Gauge (v, u)) = gauge
+            Expect.equal v value "has correct value"
+            Expect.equal u units "has correct units"
+          | _ ->
+            Expect.equal true false "Wrong type of gauge object"
+
+        let subject = LoggerAdapter.toMsgV4 (loggerType, [||])
+
+        let u name =
+          Libryy.LoggingV4.Units.Other name
+
+        yield testCase "Seconds" <| fun _ ->
+          namedGauge [|"container"|] "startup" 0.12 Libryy.LoggingV4.Units.Seconds
+          |> subject
+          |> expectGauge "_logary.gauge.startup" (Float 0.12) Units.Seconds
+
+        yield testCase "s" <| fun _ ->
+          namedGauge [|"container"|] "startup" 0.12 (u "s")
+          |> subject
+          |> expectGauge "_logary.gauge.startup" (Float 0.12) Units.Seconds
+
+        yield testCase "Milliseconds" <| fun _ ->
+          namedGauge [|"container"|] "startup" 120. (u "Milliseconds")
+          |> subject
+          |> expectGauge "_logary.gauge.startup" (Float 120.) (Units.Scaled (Units.Seconds, 1000.0))
+
+        yield testCase "ms" <| fun _ ->
+          namedGauge [|"container"|] "startup" 120.0 (u "ms")
+          |> subject
+          |> expectGauge "_logary.gauge.lag" (Float 120.0) (Units.Scaled (Units.Seconds, 1000.0))
+
+        yield testCase "µs" <| fun _ ->
+          namedGauge [|"container"|] "startup" 120.0 (u "µs")
+          |> subject
+          |> expectGauge "_logary.gauge.lag" (Float 120.0) (Units.Scaled (Units.Seconds, 1.0e6))
+
+        yield testCase "Nanoseconds" <| fun _ ->
+          namedGauge [|"container"|] "startup" 120.0 (u "Nanoseconds")
+          |> subject
+          |> expectGauge "_logary.gauge.lag" (Float 120.0) (Units.Scaled (Units.Seconds, 1.0e9))
+
+        yield testCase "ns" <| fun _ ->
+          namedGauge [|"container"|] "startup" 120.0 (u "ns")
+          |> subject
+          |> expectGauge "_logary.gauge.lag" (Float 120.0) (Units.Scaled (Units.Seconds, 1.0e9))
+
+        yield testCase "unknown turns is Units.Other" <| fun _ ->
+          namedGauge [|"container"|] "startup" 120.0 (u "Moments")
+          |> subject
+          |> expectGauge "_logary.gauge.lag" (Float 120.0) (Units.Other "Moments")
+
+        yield testCase "default name" <| fun _ ->
+          namedGauge [||] "" 120.0 (u "")
+          |> subject
+          |> expectGauge "_logary.gauge.default-gauge" (Float 120.0) Units.Scalar
+      ]
     ]
   ]
 
