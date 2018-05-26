@@ -247,6 +247,70 @@ let tests =
       ]
 
     ]
+
+    testList "v3" [
+      // input:Facade Gauge, output; Logary gauge message
+      testList "gauge" [
+        let namedGauge name value units : Logary.Facade.Message = {
+          name      = name
+          value     = Logary.Facade.Gauge (value, units)
+          fields    = Map.empty
+          timestamp = Logary.Facade.Global.timestamp ()
+          level     = Logary.Facade.Debug }
+
+        let expectGauge name value units (msg: Message) =
+          let g = msg.context |> HashMap.tryFind name
+          Expect.isSome g "gauge is in context"
+
+          match g.Value with
+          | :? Gauge as gauge ->
+            let (Gauge (v, u)) = gauge
+            Expect.equal v value "has correct value"
+            Expect.equal u units "has correct units"
+          | _ ->
+            Expect.equal true false "Wrong type of gauge object"
+
+        yield testCase "Seconds" <| fun _ ->
+          let gauge = namedGauge [|"response"; "lag"|] 0.12 "Seconds"
+          LoggerAdapter.toMsg Reflection.ApiVersion.V3 [||] gauge
+          |> expectGauge "_logary.gauge.lag" (Float 0.12) Units.Seconds
+
+        yield testCase "s" <| fun _ ->
+          let gauge = namedGauge [|"response"; "lag"|] 0.12 "s"
+          LoggerAdapter.toMsg Reflection.ApiVersion.V3 [||] gauge
+          |> expectGauge "_logary.gauge.lag" (Float 0.12) Units.Seconds
+
+        yield testCase "Milliseconds" <| fun _ ->
+          let gauge = namedGauge [|"response"; "lag"|] 120.0 "Milliseconds"
+          LoggerAdapter.toMsg Reflection.ApiVersion.V3 [||] gauge
+          |> expectGauge "_logary.gauge.lag" (Float 120.0) (Units.Scaled (Units.Seconds, 1000.0))
+
+        yield testCase "ms" <| fun _ ->
+          let gauge = namedGauge [|"response"; "lag"|] 120.0 "ms"
+          LoggerAdapter.toMsg Reflection.ApiVersion.V3 [||] gauge
+          |> expectGauge "_logary.gauge.lag" (Float 120.0) (Units.Scaled (Units.Seconds, 1000.0))
+
+        yield testCase "Nanoseconds" <| fun _ ->
+          let gauge = namedGauge [|"response"; "lag"|] 120.0 "Nanoseconds"
+          LoggerAdapter.toMsg Reflection.ApiVersion.V3 [||] gauge
+          |> expectGauge "_logary.gauge.lag" (Float 120.0) (Units.Scaled (Units.Seconds, 1.0e9))
+
+        yield testCase "ns" <| fun _ ->
+          let gauge = namedGauge [|"response"; "lag"|] 120.0 "ns"
+          LoggerAdapter.toMsg Reflection.ApiVersion.V3 [||] gauge
+          |> expectGauge "_logary.gauge.lag" (Float 120.0) (Units.Scaled (Units.Seconds, 1.0e9))
+
+        yield testCase "Scalar is default unit" <| fun _ ->
+          let gauge = namedGauge [|"response"; "lag"|] 120.0 "Moments"
+          LoggerAdapter.toMsg Reflection.ApiVersion.V3 [||] gauge
+          |> expectGauge "_logary.gauge.lag" (Float 120.0) Units.Scalar
+
+        yield testCase "default name" <| fun _ ->
+          let gauge = namedGauge [||] 120.0 ""
+          LoggerAdapter.toMsg Reflection.ApiVersion.V3 [||] gauge
+          |> expectGauge "_logary.gauge.default-gauge" (Float 120.0) Units.Scalar
+      ]
+    ]
   ]
 [<EntryPoint>]
 let main argv =
