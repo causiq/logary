@@ -1,7 +1,8 @@
 #### 5.0.0-beta.12
-* Preserve non-exceptions in error field
-* Fix crash when comparing versions in adapter
-* Adapter handles gauges better
+* Build Facade v4 for Hopac-based software, thanks @haf
+* Preserve non-exceptions in error field, thanks @yoff
+* Fix crash when comparing versions in adapter, thanks @yoff
+* Adapter handles gauges and their units better, allowing the Facade to pass in metrics, thanks @yoff
 
 #### 5.0.0-beta.11
 * Dot not crash on typecasts when constructing log message, thanks @yoff

@@ -1,19 +1,18 @@
-﻿module Libryy.Core
+﻿module Libryy.CoreV3
 
 // Note: this library has no reference to Logary proper
-open Libryy.Logging
+// Note: this file tests the previous version
 
-let coreLogger = Log.create "Libryy.Core"
+open Libryy.LoggingV1
+
+let coreLogger = Log.create "Libryy.CoreV3"
 
 let getSampleException messagePrefix =
   let m4 () = failwithf "%s (a sample exception)" messagePrefix
   let m3 () = m4 ()
   let m2 () = m3 ()
   let m1 () = m2 ()
-  try
-    m1 ()
-  with
-  | ex -> ex
+  try m1 () with ex -> ex
 
 let work (logger: Logger) =
   logger.logWithAck Warn (
@@ -26,31 +25,26 @@ let work (logger: Logger) =
 
   42
 
-let workBackpressure (logger: Logger) =
+let workNonAsync (logger: Logger) =
   logger.log Warn (
     Message.eventX "Hey {user}!"
     >> Message.setFieldValue "user" "haf"
     >> Message.setSingleName "Libryy.Core.work"
     >> Message.setTimestamp 1470047883029045000L)
-  |> Async.RunSynchronously
 
   45
 
-let errorWithBP (logger: Logger) =
-  logger.errorWithBP (Message.eventX "Too simplistic") |> Async.RunSynchronously
+let simpleWork (logger: Logger) =
+  logger.logSimple (Message.event Error "Too simplistic")
   43
 
 let generateAndLogExn (logger: Logger) =
   let ex = getSampleException "Uhoh!"
-  logger.log Error (
-    Message.eventX "An error with an attached exception"
-    >> Message.addExn ex
-    >> Message.addExn (exn "another"))
-  |> Async.RunSynchronously
+  logger.logSimple (Message.event Error "An error with an attached exception"
+                    |> Message.addExn ex
+                    |> Message.addExn (exn "another"))
   99
 
 let staticWork () =
-  async {
-    do! coreLogger.debugWithBP (Message.eventX "A debug log")
-    return 49
-  }
+  coreLogger.logSimple (Message.event Debug "A debug log")
+  49

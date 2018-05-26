@@ -127,23 +127,6 @@ module Reflection =
     printfn "----------"
 
 module LoggerAdapterShared =
-
-  let unitOfString (s: string) =
-    match s with
-    | "bit" -> Bits
-    | "B" -> Bytes
-    | "s" -> Seconds
-    | "m" -> Metres
-    | "" -> Scalar
-    | "A" -> Amperes
-    | "K" -> Kelvins
-    | "mol" -> Moles
-    | "cd" -> Candelas
-    | "%" -> Percent
-    | "W" -> Watts
-    | "Hz" -> Hertz
-    | other -> Other other
-
   /// temporary solution
   type OldPointValue =
     | Event of string
@@ -156,14 +139,14 @@ module List =
       | [] ->
         List.rev picked, List.rev left
 
-      | (x::xs) ->
+      | x :: xs ->
         match picker x with
         | None ->
           loop picked (x::left) xs
 
         | Some p ->
           loop (p::picked) left xs
-    
+
     loop [] [] l
 
 /// Utilities for creating a single 'MyLib.Logging.Logger' in the target type
@@ -188,24 +171,10 @@ module LoggerAdapter =
     | otherwise ->
       otherwise
 
-  let parseUnits =
-    function
-    | "Seconds" | "seconds" | "s" ->
-      Units.Seconds
-
-    | "Milliseconds" | "milliseconds" | "ms" ->
-      Units.Scaled (Units.Seconds, 1000.0)
-
-    | "Nanoseconds" | "nanoseconds" | "ns" ->
-      Units.Scaled (Units.Seconds, 1.0e9)
-
-    | _ ->
-      Units.Scalar
-
   let toUnits (x: obj) =
     match x with
     | :? string as s ->
-      parseUnits s
+      Units.tryParse s
     | _ ->
       Units.Scalar
 
@@ -257,7 +226,7 @@ module LoggerAdapter =
         | :? (obj list) as xs ->
           let ours, theirs = List.pickOff tryCast<exn> xs
           m |> Map.add "errors" (box theirs), ours
-        
+
         | _ ->
           m, []
 
@@ -411,7 +380,8 @@ module LoggerCSharpAdapter =
       let valueValue = valueField.GetValue(o) :?> int64
       let unitField = findField (typ, "Unit")
       let unitValue = unitField.GetValue(o) :?> string
-      LoggerAdapterShared.OldPointValue.Gauge (float valueValue, LoggerAdapterShared.unitOfString unitValue)
+      let converted = Units.tryParse unitValue
+      LoggerAdapterShared.OldPointValue.Gauge (float valueValue, converted)
     else
       failwithf "Unknown point value type name '%s'" typ.Name
 

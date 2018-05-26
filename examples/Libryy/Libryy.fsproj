@@ -6,17 +6,17 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="LoggingV1.fs" />
+    <Compile Include="LoggingV2.fs" />
+    <Compile Include="LoggingV3.fs" />
     <Compile Include="..\..\paket-files\logary\logary\src\Logary.Facade\Facade.fs">
       <Paket>True</Paket>
       <Link>paket-files/Facade.fs</Link>
     </Compile>
-    <Compile Include="LoggingV2.fs" />
-    <Compile Include="Libryy.fs" />
-    <Compile Include="LoggingV1.fs" />
     <Compile Include="CoreV1.fs" />
-    <Compile Include="LoggingV3.fs" />
+    <Compile Include="CoreV3.fs" />
+    <Compile Include="CoreVCurrent.fs" />
     <None Include="paket.references" />
-    <ProjectReference Include="..\..\src\Logary\Logary.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

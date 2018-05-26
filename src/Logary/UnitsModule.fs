@@ -120,3 +120,41 @@ module Units =
       String.Concat [ funit; " "; fval ]
     | funit ->
       String.Concat [ fval; " "; funit ]
+
+  /// Try to convert the string to a unit.
+  let tryParse (units: string) =
+    match String.toLowerInvariant units with
+    | "seconds" | "s" ->
+      Units.Seconds
+    | "milliseconds" | "ms" ->
+      Units.Scaled (Units.Seconds, 1.0e3)
+    | "microseconds" | "us" | "µs" ->
+      Units.Scaled (Units.Seconds, 1.0e6)
+    | "nanoseconds" | "ns" ->
+      Units.Scaled (Units.Seconds, 1.0e9)
+    | "bit" | "bits" ->
+      Bits
+    | "b" | "bytes" ->
+      Bytes
+    | "m" | "metres" ->
+      Metres
+    | "" ->
+      Scalar
+    | "a" | "amps" | "amperes" ->
+      Amperes
+    | "k" ->
+      Kelvins
+    | "mol" | "moles" ->
+      Moles
+    | "cd" | "candelas" ->
+      Candelas
+    | "%" ->
+      Percent
+    | "w" ->
+      Watts
+    | "hz" | "hertz" ->
+      Hertz
+    | "" | "scalar" | "unit" | "units" | "item" | "items" ->
+      Units.Scalar
+    | _ ->
+      Units.Other units

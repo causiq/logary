@@ -7,7 +7,6 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="FacadeV3.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <ProjectReference Include="..\..\adapters\Logary.Adapters.Facade\Logary.Adapters.Facade.fsproj" />
