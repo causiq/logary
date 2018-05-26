@@ -39,14 +39,14 @@ type LiterateTesting =
   static member getWrittenColourParts (message, ?customTokeniser, ?options) =
     // Insteading of writing out to the console, write to an in-memory list so we can capture the values
     let writtenParts = ResizeArray<ColouredText>()
-    let writtenPartsOutputWriter _ (bits: ColouredText list) = writtenParts.AddRange bits
+    let addToList _ (bits: ColouredText list) = writtenParts.AddRange bits
     let target =
       LiterateConsoleTarget(
         name = [||],
         minLevel = Verbose,
         ?options = options,
         ?literateTokeniser = customTokeniser,
-        outputWriter = writtenPartsOutputWriter)
+        outputWriter = addToList)
       :> Logger
     target.logWithAck (true, Verbose) (fun _ -> message) >>- fun _ ->
     writtenParts :> ColouredText seq
@@ -310,6 +310,7 @@ let tests =
             Environment.NewLine,      Text ]
 
         Expect.literateOutputPartsEqual (message, expectedTokens, options=options)
+        |> run
 
       testPropertyWithConfig FsCheckConfig.defaultConfig "default tokeniser uses the options `formatProvider` correctly" <| fun (amount: decimal, date: DateTimeOffset) ->
         [ "fr-FR"; "da-DK"; "de-DE"; "en-AU"; "en-US"; ]
@@ -413,10 +414,12 @@ let tests =
         Expect.literateOutputPartsEqual (message, expectedTokens)
         |> run
 
-      testCase "when the message has no name (source), the default rendering will not output the name parts" <| fun _ ->
-        let message = Message.event Debug "Hello from {where}"
-                      |> Message.setSingleName ""
-                      |> Message.setField "where" "The Other Side"
+      testCase "message without name skips outputting it" <| fun _ ->
+        let message =
+          Message.event Debug "Hello from {where}"
+          |> Message.setSingleName ""
+          |> Message.setField "where" "The Other Side"
+
         let expectedTimestamp = message.timestampDateTimeOffset().ToLiterateTime (LiterateOptions.create())
         let expectedTokens =
           [ "[",                  Punctuation
@@ -485,7 +488,7 @@ let tests =
                                             nl + " - " + nonTemplatePropName2 + ": " + (string nonTemplatePropValue2)
             "{properties}",                 " - " + nonTemplatePropName1 + ": " + (string nonTemplatePropValue1) +
                                             nl + " - " + nonTemplatePropName2 + ": " + (string nonTemplatePropValue2)
-            "{exceptions}",                 nl + "System.Exception: ex2" + nl + "System.Exception: ex1"
+            "{exceptions}",                 nl + "System.Exception: ex1" + nl + "System.Exception: ex2"
             "",                             "" ]
 
         for (outputTemplate, expected) in outputTemplateAndExpected do

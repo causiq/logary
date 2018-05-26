@@ -323,6 +323,7 @@ module internal H =
       | :? list<obj> as exns -> exns |> List.choose (function :? exn as e -> Some e | _ -> None)
       | _ -> [])
     |> Option.defaultValue []
+    |> List.rev
 
 /// This is record that is logged. It's capable of representing both metrics
 /// (gauges) and events. See https://github.com/logary/logary for details.
@@ -702,7 +703,8 @@ module internal LiterateTokenisation =
     go []
 
   let tokeniseExns (options: LiterateOptions) message =
-    H.getExns message.context |> List.collect (tokeniseExn options)
+    H.getExns message.context
+    |> List.collect (tokeniseExn options)
 
   let tokeniseLogLevel = function
     | Verbose -> LevelVerbose
@@ -722,9 +724,8 @@ module internal LiterateTokenisation =
         .ToString("HH:mm:ss", options.formatProvider),
       Subtext
 
-    let _, themedMessageParts =
-      message.value |> tokeniseValue options message.context
-
+    let fields = message.getFields()
+    let _, themedMessageParts = message.value |> tokeniseValue options fields
     let themedExceptionParts = tokeniseExns options message
 
     [ yield "[", Punctuation
@@ -825,8 +826,7 @@ module internal LiterateFormatting =
       }
 
     let tokeniseExtraFields (options: LiterateOptions) (message: Message) (templateFieldNames: Set<string>) =
-      let fieldsToExclude = Set.add Literals.ErrorsContextName templateFieldNames
-      let extraFields = message.getFields() |> Map.filter (fun key _ -> not (fieldsToExclude.Contains key))
+      let extraFields = message.getFields() |> Map.filter (fun key _ -> not (templateFieldNames.Contains key))
       let mutable isFirst = true
       seq {
         for field in extraFields do
@@ -1201,6 +1201,8 @@ module Message =
       | _ ->
         e :: []
     setContext Literals.ErrorsContextName exns msg
+
+  let getExns (msg: Message) = H.getExns msg.context
 
   let addCallerInfo (memberName, path, line) msg =
     match memberName, path, line with
