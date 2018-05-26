@@ -12,29 +12,23 @@ let stubLogger (minLevel: LogLevel) (message: Message ref) name =
       member x.logWithAck (_, level) messageFactory =
         message := messageFactory level
         Alt.always (Ok (Promise (())))
-
       member x.name = name
       member x.level = minLevel }
 
 let stubLogManager (message: Message ref) =
   { new LogManager with
       member x.runtimeInfo =
-        Internals.RuntimeInfo.create "Facade Tests" "localhost"
-        :> _
-
+        Internals.RuntimeInfo.create "Facade Tests" "localhost" :> _
       member x.getLogger name =
         stubLogger Verbose message name
-
       member x.getLoggerWithMiddleware name mid =
         stubLogger Verbose message name
-
       member x.flushPending dur =
         Alt.always (FlushInfo([],[]))
       member x.shutdown () = Alt.always ()
       member x.flushPending () = Alt.always ()
-
       member x.shutdown (fDur,sDur) =
-        Alt.always (FlushInfo([],[]),ShutdownInfo([],[]))
+        Alt.always (FlushInfo([],[]), ShutdownInfo([],[]))
       member x.switchLoggerLevel (path, minLevel) = ()
   }
 
@@ -52,7 +46,7 @@ let tests =
       testProperty "convert string to unit" <| fun (x: Units) ->
         match x with
         | Other _ -> true
-        | x -> match LoggerAdapterShared.unitOfString x.symbol with
+        | x -> match Units.tryParse x.symbol with
                | Other _ ->
                  true
                | res ->
@@ -118,14 +112,14 @@ let tests =
       testList "logger" [
         let createLoggerSubject () =
           let msg = ref (Message.event Info "empty")
-          let stub = stubLogger LogLevel.Info msg (PointName.parse "Libryy.Core")
+          let stub = stubLogger LogLevel.Info msg (PointName.parse "Libryy.CoreV3")
           LoggerAdapter.createGeneric<Libryy.LoggingV3.Logger> stub,
           msg
 
         yield testCase "create adapter" <| fun _ ->
           let msg = ref (Message.event Info "empty")
-          let stub = stubLogger LogLevel.Info msg (PointName.parse "Libryy.Core")
-          let logger = LoggerAdapter.createString "Libryy.Logging.Logger, Libryy" stub
+          let stub = stubLogger LogLevel.Info msg (PointName.parse "Libryy.CoreV3")
+          let logger = LoggerAdapter.createString "Libryy.LoggingV3.Logger, Libryy" stub
           Expect.isNotNull logger "Should have gotten logger back"
 
         yield testCase "end to end with adapter, full logWithAck method" <| fun _ ->
@@ -167,7 +161,7 @@ let tests =
 
         yield testCase "initialise with LogManager" <| fun _ ->
           let logManager, msg = createLogManagerSubject ()
-          LogaryFacadeAdapter.initialise<Libryy.Logging.Logger> logManager
+          LogaryFacadeAdapter.initialise<Libryy.LoggingV3.Logger> logManager
           let res = Libryy.CoreV3.staticWork () |> Async.RunSynchronously
           Expect.equal res 49 "Should return 49"
           Expect.equal (!msg).level Debug "Should have logged at Debug level"
