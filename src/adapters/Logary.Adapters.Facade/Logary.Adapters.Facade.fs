@@ -43,12 +43,16 @@ module Reflection =
   let findMethod: Type * string -> MethodInfo =
     Cache.memoize (fun (typ, meth) -> typ.GetMethod meth)
 
+  /// Gets the method on the type; the strings are part of the cache key
+  let findStaticMethod: Type * string -> MethodInfo =
+    Cache.memoize (fun (typ, meth) -> typ.GetMethod(meth, BindingFlags.Static ||| BindingFlags.NonPublic))
+
   /// Gets the property on the type
   let findProperty: Type * string -> PropertyInfo =
     Cache.memoize (fun (typ, prop) -> typ.GetProperty prop)
 
   let findStaticProperty: Type * string -> PropertyInfo =
-    Cache.memoize (fun (typ, prop) -> typ.GetProperty(prop, BindingFlags.Static ||| BindingFlags.Public))
+    Cache.memoize (fun (typ, prop) -> typ.GetProperty(prop, BindingFlags.Static ||| BindingFlags.NonPublic))
 
   let findField: Type * string -> FieldInfo =
     Cache.memoize (fun (typ, field) -> typ.GetField field)
@@ -149,6 +153,23 @@ module Reflection =
       printfn " - %A\n   : %s" arg (argType.FullName)
       printfn "   :> %s" argType.BaseType.FullName
     printfn "Method.Name: %s" invocation.Method.Name
+    printfn "----------"
+
+  let rawPrintM (method: MethodInfo) (args: obj[]) =
+    printfn "Target method"
+    printfn "============="
+    printfn "Parameters: "
+    for arg in method.GetParameters() do
+      let argType = arg.GetType()
+      printfn " - %A" arg
+    printfn "Method.Name: %s" method.Name
+    printfn "---------"
+    printfn "Argument values:"
+    printfn "----------------"
+    for arg in args do
+      let argType = arg.GetType()
+      printfn " - %A" arg
+      printfn "   :> %s" argType.BaseType.FullName
     printfn "----------"
 
 module LoggerAdapterShared =
@@ -302,7 +323,53 @@ module LoggerAdapter =
       // TO CONSIDER: how much GC does returning this function generate?
       fun level -> toMsgV4 (loggerType, fallbackName) (messageFactory.Invoke(fsFunc, [| oLevel |]))
 
-  let internal (|Log|LogWithAckV3|LogWithAck|LogSimple|) ((invocation, defaultName, v, loggerType): IInvocation * string[] * ApiVersion * Type): Choice<_, _, _, _> =
+  module LogResult =
+    /// Homomorphism on the LogResult value.
+    let mapErr<'err> (onFull: string -> 'err) (onRejected: 'err) (xA: LogResult) =
+      printfn "Invoking mapErr"
+      xA ^-> function
+        | Ok ack ->
+          printfn "mapErr => ok"
+          Ok ack
+        | Result.Error (BufferFull target) ->
+          printfn "mapErr => buffer full"
+          Result.Error (onFull target)
+        | Result.Error Rejected ->
+          printfn "mapErr => rejected"
+          Result.Error onRejected
+
+    let createMapErr =
+      let mapErrMethodModule = Type.GetType "Logary.Adapters.Facade.LoggerAdapter+LogResult, Logary.Adapters.Facade"
+      let mapErrMethodType = mapErrMethodModule.GetMethod("mapErr", BindingFlags.Public ||| BindingFlags.Static)
+      fun (loggerType: Type) ->
+        let logErrorType = findModule (loggerType, "LogError")
+        mapErrMethodType.MakeGenericMethod [| logErrorType |]
+
+  let ofLogResult (loggerType: Type): LogResult -> obj =
+    // HOT PATH
+    let logErrorType = findModule (loggerType, "LogError")
+    let logResultModule = findModule (loggerType, "LogResultModule")
+
+    let bufferFullMethod = findStaticMethod (logResultModule, "bufferFull")
+    let bufferFullFSharpFunction = typedefof<FSharpFunc<_,_>>.MakeGenericType([| typeof<string>; logErrorType |])
+    let bufferFull =
+      FSharpValue.MakeFunction(
+        bufferFullFSharpFunction,
+        fun (target: obj) -> bufferFullMethod.Invoke(null, [| target |]))
+
+    let rejectedValue = findStaticProperty(logResultModule, "rejected").GetValue(null, null)
+    let mapErr = LogResult.createMapErr loggerType
+    fun (result: LogResult) ->
+      let args = [| bufferFull; rejectedValue; box result |]
+      do rawPrintM mapErr args
+      let res = mapErr.Invoke(null, args)
+      printfn "Result: %A" res
+      res
+
+  let internal (|LogWithAck|LogWithAckV3|Log|LogSimple|)
+               (invocation: IInvocation, defaultName: string[], v: ApiVersion, loggerType: Type)
+               : Choice<(LogResult -> obj) * (bool * LogLevel) * (LogLevel -> Message),
+                         _, _, _> =
     // HOT PATH
     match invocation.Method.Name with
     | "logWithAck" when v = V4 ->
@@ -310,11 +377,14 @@ module LoggerAdapter =
       let oLevel = invocation.Arguments.[1]
       let level = toLogLevel loggerType oLevel
       let factory = toMsgFactory v (loggerType, defaultName) oLevel invocation.Arguments.[2]
-      LogWithAck ((wait, level), factory)
+      let mapResult = ofLogResult loggerType
+      LogWithAck (mapResult, (wait, level), factory)
 
-    | "logSimple" when v <= V1 ->
-      let msg = toMsgV3 v (loggerType, defaultName) invocation.Arguments.[0]
-      LogSimple msg
+    | "logWithAck" when v <= V3 ->
+      let oLevel = invocation.Arguments.[0]
+      let level = toLogLevel loggerType oLevel
+      let factory = toMsgFactory v (loggerType, defaultName) oLevel invocation.Arguments.[1]
+      LogWithAckV3 (level, factory)
 
     | "log" when v <= V3 ->
       let oLevel = invocation.Arguments.[0]
@@ -322,11 +392,10 @@ module LoggerAdapter =
       let factory = toMsgFactory v (loggerType, defaultName) oLevel invocation.Arguments.[1]
       Log (level, factory)
 
-    | "logWithAck" when v <= V3 ->
-      let oLevel = invocation.Arguments.[0]
-      let level = toLogLevel loggerType oLevel
-      let factory = toMsgFactory v (loggerType, defaultName) oLevel invocation.Arguments.[1]
-      LogWithAckV3 (level, factory)
+    | "logSimple" when v <= V1 ->
+      let msg = toMsgV3 v (loggerType, defaultName) invocation.Arguments.[0]
+      LogSimple msg
+
 
     | meth ->
       failwithf "Method '%s' should not exist on Logary.Facade.Logger, with type '%O' @ %A." meth loggerType v
@@ -372,16 +441,18 @@ module LoggerAdapter =
 
     // NOT HOT PATH
     /// v4+
-    let logWithAck (waitForBuffers: bool, level: LogLevel) (messageFactory: LogLevel -> Message): LogResult =
+    let logWithAck (mapResult: LogResult -> (* facade-typed result *) obj)
+                   (waitForBuffers: bool, level: LogLevel) (messageFactory: LogLevel -> Message): obj =
       // HOT PATH
       logger.logWithAck (waitForBuffers, level) messageFactory
+      |> mapResult
 
     interface IInterceptor with
       member x.Intercept invocation =
         // HOT PATH
         match invocation, defaultName, version, loggerType with
-        | LogWithAck ((wait, level), messageFactory) ->
-          invocation.ReturnValue <- logWithAck (wait, level) messageFactory
+        | LogWithAck (mapResult, (wait, level), messageFactory) ->
+          invocation.ReturnValue <- logWithAck mapResult (wait, level) messageFactory
 
         | LogWithAckV3 (level, messageFactory) ->
           invocation.ReturnValue <- logWithAckV3 level messageFactory
