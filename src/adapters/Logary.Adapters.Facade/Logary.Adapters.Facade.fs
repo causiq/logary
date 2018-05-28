@@ -318,10 +318,14 @@ module LoggerAdapter =
     let fsFuncType = messageFactoryTypeOf fsFunc loggerType
     let messageFactory = findMethod (fsFuncType, "Invoke")
     if v <= V3 then
-      fun level -> toMsgV3 v (loggerType, fallbackName) (messageFactory.Invoke(fsFunc, [| oLevel |]))
+      fun level ->
+        do rawPrintM messageFactory [| oLevel; level |]
+        toMsgV3 v (loggerType, fallbackName) (messageFactory.Invoke(fsFunc, [| oLevel |]))
     else
       // TO CONSIDER: how much GC does returning this function generate?
-      fun level -> toMsgV4 (loggerType, fallbackName) (messageFactory.Invoke(fsFunc, [| oLevel |]))
+      fun level ->
+        do rawPrintM messageFactory [| oLevel; level |]
+        toMsgV4 (loggerType, fallbackName) (messageFactory.Invoke(fsFunc, [| oLevel |]))
 
   module LogResult =
     /// Homomorphism on the LogResult value.
@@ -361,7 +365,7 @@ module LoggerAdapter =
     let mapErr = LogResult.createMapErr loggerType
     fun (result: LogResult) ->
       let args = [| bufferFull; rejectedValue; box result |]
-      do rawPrintM mapErr args
+      // do rawPrintM mapErr args
       let res = mapErr.Invoke(null, args)
       printfn "Result: %A" res
       res
