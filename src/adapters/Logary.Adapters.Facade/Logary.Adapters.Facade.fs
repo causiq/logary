@@ -318,7 +318,8 @@ module LoggerAdapter =
     | 2 ->
       Units.Scalar
     | 3 ->
-      let oP = findProperty(unitsType, "unitString")
+      let oP = findProperty(unitsType, "otherUnit")
+      printfn "property: %O, properties: %A, fields: %A" oP (unitsType.GetProperties()) (unitsType.GetFields())
       // seems this property is not stable:
       if isNull oP then Units.Scalar else
       let unitString = oP.GetValue o

@@ -140,7 +140,8 @@ type Units =
   | Scaled of unit:Units * value:float
   | Seconds
   | Scalar
-  | Other of unitString:string
+  | Other of unit:string
+  member x.otherUnit = match x with Other s -> s | _ -> null // reflection-workaorund
 
 /// Time calculation constants
 module Constants =

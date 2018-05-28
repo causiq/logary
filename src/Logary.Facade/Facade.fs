@@ -141,6 +141,7 @@ type Units =
   | Seconds
   | Scalar
   | Other of unit:string
+  member x.otherUnit = match x with Other s -> s | _ -> null // reflection-workaorund
 
 /// Time calculation constants
 module Constants =
@@ -1400,3 +1401,4 @@ module LoggerEx =
           x.log Verbose (Message.eventX "Before {measurement}" >> Message.setField "measurement" measurement)
           >>-. timedAlt)
       else timedAlt
+
