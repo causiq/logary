@@ -311,7 +311,7 @@ module internal Promise =
 module internal LogResult =
   let success: Alt<Result<Promise<unit>, LogError>> = Alt.always (Result.Ok Promise.unit)
   let bufferFull target: Alt<Result<Promise<unit>, LogError>> = Alt.always (Result.Error (BufferFull target))
-  let rejected: Alt<Result<Promise<unit>, LogError>> = Alt.always (Result.Error Rejected)
+  let rejected: LogError = Rejected
 
 module internal H =
   /// Finds all exceptions
