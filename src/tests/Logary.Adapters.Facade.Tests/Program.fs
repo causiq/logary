@@ -366,7 +366,7 @@ let tests =
         yield testCase "initialise with LogManager" <| fun _ ->
           let logManager, msg = createLogManagerSubject ()
           LogaryFacadeAdapter.initialise<Libryy.LoggingV4.Logger> logManager
-          let res = Libryy.CoreV3.staticWork () |> Async.RunSynchronously
+          let res = Libryy.CoreV4.staticWork () |> run
           Expect.equal res 49 "Should return 49"
           Expect.equal (!msg).level Debug "Should have logged at Debug level"
           Expect.equal (!msg).value ( "A debug log") "Should have logged event template"
@@ -399,7 +399,7 @@ let tests =
 
         let subject = LoggerAdapter.toMsgV4 (loggerType, [||])
 
-        yield testCase "Seconds" <| fun _ ->          
+        yield testCase "Seconds" <| fun _ ->
           namedGauge [|"container"|] "startup" 0.12 Libryy.LoggingV4.Units.Seconds
           |> subject
           |> expectGauge "startup" (Libryy.LoggingV4.Float 0.12) Libryy.LoggingV4.Units.Seconds
