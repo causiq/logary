@@ -313,7 +313,7 @@ let tests =
     ]
 
     testList "v4" [
-      testList "logger" [
+      yield testList "logger" [
         let createLoggerSubject () =
           let msg = ref (Message.event Info "empty")
           let stub = stubLogger LogLevel.Info msg (PointName.parse "Libryy.CoreV4")
@@ -358,7 +358,7 @@ let tests =
           Expect.equal 2 exns.Length "Has two exns"
       ]
 
-      testList "global config" [
+      yield testList "global config" [
         let createLogManagerSubject () =
           let msg = ref (Message.event Info "empty")
           stubLogManager msg, msg
@@ -372,9 +372,42 @@ let tests =
           Expect.equal (!msg).value ( "A debug log") "Should have logged event template"
       ]
 
+      let loggerType = typeof<Libryy.LoggingV4.Logger>
+
+      let v4float f =
+        Libryy.LoggingV4.Float f
+
+      let v4seconds =
+        Libryy.LoggingV4.Seconds
+
+      let v4scalar =
+        Libryy.LoggingV4.Scalar
+
+      let v4other str =
+        Libryy.LoggingV4.Other str
+
+      let v4scaled baseUnit scale =
+        Libryy.LoggingV4.Scaled (baseUnit, scale)
+
+      let v4gauge v u =
+        Libryy.LoggingV4.Gauge (v, u)
+
+      yield testList "units" [
+        let values =
+          [ v4scaled v4seconds 1e3, Scaled (Seconds, 1e3)
+            v4seconds, Seconds
+            v4other "xs", Other "xs"
+          ]
+
+        for source, target in values do
+          let sourceType = source.GetType().FullName
+          yield testCase (sprintf "convert %s => %A" sourceType target) <| fun () ->
+            LoggerAdapter.toUnits loggerType source
+            |> Flip.Expect.equal "Should convert successfully" target
+      ]
+
       // input:Facade Gauge, output; Logary gauge message
-      testList "gauge" [
-        let loggerType = typeof<Libryy.LoggingV4.Logger>
+      yield testList "gauge" [
 
         let namedGauge sensor name value units: Libryy.LoggingV4.Message =
           Libryy.LoggingV4.Gauge (Libryy.LoggingV4.Float value, units)
@@ -394,18 +427,6 @@ let tests =
           Expect.equal u units "has correct units"
 
         let subjectToLogary = LoggerAdapter.toMsgV4 (loggerType, [||])
-
-        let v4float f =
-          Libryy.LoggingV4.Float f
-
-        let v4seconds =
-          Libryy.LoggingV4.Seconds
-
-        let v4scaled baseUnit scale =
-          Libryy.LoggingV4.Scaled (baseUnit, scale)
-
-        let v4gauge v u =
-          Libryy.LoggingV4.Gauge (v, u)
 
         yield testCase "Seconds" <| fun _ ->
           v4gauge (v4float 0.12) v4seconds

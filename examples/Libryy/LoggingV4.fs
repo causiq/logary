@@ -140,7 +140,7 @@ type Units =
   | Scaled of unit:Units * value:float
   | Seconds
   | Scalar
-  | Other of unit:string
+  | Other of unitString:string
 
 /// Time calculation constants
 module Constants =

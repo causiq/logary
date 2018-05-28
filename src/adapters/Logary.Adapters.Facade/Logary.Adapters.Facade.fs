@@ -14,31 +14,6 @@ open Logary.Configuration
 
 module Reflection =
 
-  /// Given an object (a boxed LogLevel type in the using assembly's type-space)
-  /// gives back a memoized function that looks up the LogLevel type in the using assembly's type-space.
-  ///
-  /// Saves the call to `logLevel.GetType()`, as we already know the logger type at the time of generating the logger.
-  ///
-  /// The LogLevel value is NOT part of the cache key; only the logger type is.
-  ///
-  /// Returns `level:LogLevel -> loggerType:Type -> logLevelType:Type
-  let logLevelTypeOf: obj -> Type -> Type =
-    // NOT HOT PATH
-    let memoize = Cache.memoizeFactory (ConcurrentDictionary<_,_>()) // expensive call
-    fun (logLevel: obj) ->
-      // HOT PATH, cheap call
-      memoize (fun _ ->
-        // NOT HOT PATH, expensive call; called once per adapter assembly load, per adapted library
-        logLevel.GetType())
-
-  let messageTypeOf: obj -> Type -> Type =
-    let memoize = Cache.memoizeFactory (ConcurrentDictionary<_,_>())
-    fun (message: obj) -> memoize (fun _ -> message.GetType())
-
-  let messageFactoryTypeOf: obj -> Type -> Type =
-    let memoize = Cache.memoizeFactory (ConcurrentDictionary<_,_>())
-    fun (fsFunc: obj) -> memoize (fun _ -> fsFunc.GetType())
-
   /// Gets the method on the type; the strings are part of the cache key
   let findMethod: Type * string -> MethodInfo =
     Cache.memoize (fun (typ, meth) -> typ.GetMethod meth)
@@ -218,7 +193,7 @@ module LoggerAdapter =
     | otherwise ->
       otherwise
 
-  let toUnits (x: obj) =
+  let strToUnits (x: obj) =
     match x with
     | :? string as s ->
       Units.parse s
@@ -235,14 +210,44 @@ module LoggerAdapter =
       LoggerAdapterShared.OldPointValue.Event (template :?> string)
 
     | "Gauge", [| value; units |] when v <= ApiVersion.V2 ->
-      LoggerAdapterShared.OldPointValue.Gauge (float (value :?> int64), toUnits units)
+      LoggerAdapterShared.OldPointValue.Gauge (float (value :?> int64), strToUnits units)
 
     | "Gauge", [| value; units |] ->
-      LoggerAdapterShared.OldPointValue.Gauge (float (value :?> float), toUnits units)
+      LoggerAdapterShared.OldPointValue.Gauge (float (value :?> float), strToUnits units)
 
     | caseName, values ->
       let valuesStr = values |> Array.map string |> String.concat ", "
       failwithf "Unknown union case '%s (%s)' on '%s'" caseName valuesStr typ.FullName
+
+  /// Given an object (a boxed LogLevel type in the using assembly's type-space)
+  /// gives back a memoized function that looks up the LogLevel type in the using assembly's type-space.
+  ///
+  /// Saves the call to `logLevel.GetType()`, as we already know the logger type at the time of generating the logger.
+  ///
+  /// The LogLevel value is NOT part of the cache key; only the logger type is.
+  ///
+  /// Returns `level:LogLevel -> loggerType:Type -> logLevelType:Type
+  let logLevelTypeOf: obj -> Type -> Type =
+    // NOT HOT PATH
+    let memoize = Cache.memoizeFactory (ConcurrentDictionary<_,_>()) // expensive call
+    fun (logLevel: obj) ->
+      // HOT PATH, cheap call
+      memoize (fun _ ->
+        // NOT HOT PATH, expensive call; called once per adapter assembly load, per adapted library
+        logLevel.GetType())
+
+  let messageTypeOf: obj -> Type -> Type =
+    let memoize = Cache.memoizeFactory (ConcurrentDictionary<_,_>())
+    fun (message: obj) -> memoize (fun _ -> message.GetType())
+  let gaugeTypeOf: obj -> Type -> Type =
+    let memoize = Cache.memoizeFactory (ConcurrentDictionary<_,_>())
+    fun (gauge: obj) -> memoize (fun _ -> gauge.GetType())
+  let unitTypeOf: obj -> Type -> Type =
+    let memoize = Cache.memoizeFactory (ConcurrentDictionary<_,_>())
+    fun (units: obj) -> memoize (fun _ -> units.GetType())
+  let valueTypeOf: obj -> Type -> Type =
+    let memoize = Cache.memoizeFactory (ConcurrentDictionary<_,_>())
+    fun (value: obj) -> memoize (fun _ -> value.GetType())
 
   /// Convert the object instance to a LogLevel. Is used from the
   /// other code in this module.
@@ -299,26 +304,45 @@ module LoggerAdapter =
         | _ ->
           msg)
 
-  let toUnit (o: obj): Units =
-    // TODO:
-    Units.Scalar
+  let rec toUnits (loggerType: Type) (o: obj): Units =
+    let unitsType = unitTypeOf o loggerType
+    let tag = findProperty(unitsType, "Tag").GetValue o :?> int
+    printfn "Value=%A, Tag=%i" o tag
+    match tag with
+    | 0 ->
+      let u = findProperty(unitsType, "unit").GetValue o
+      let v = findProperty(unitsType, "value").GetValue o :?> float
+      Units.Scaled (toUnits loggerType u, v)
+    | 1 ->
+      Units.Seconds
+    | 2 ->
+      Units.Scalar
+    | 3 ->
+      let oP = findProperty(unitsType, "unitString")
+      // seems this property is not stable:
+      if isNull oP then Units.Scalar else
+      let unitString = oP.GetValue o
+      strToUnits unitString
+    | other ->
+      failwithf "Unknown tag %i, for %O => %A" other unitsType o
 
-  let toValue (o: obj): Value =
-    let toFloatMethod = findMethod (o.GetType(), "toFloat")
+  let toValue (loggerType: Type) (o: obj): Value =
+    let valueType = valueTypeOf o loggerType
+    let toFloatMethod = findMethod (valueType, "toFloat")
     let floatValue = toFloatMethod.Invoke(o, [||])
     Float (floatValue :?> float)
 
-  let toGauge (o: obj): Gauge =
-    let gaugeType = o.GetType()
+  let toGauge (loggerType: Type) (o: obj): Gauge =
+    let gaugeType = gaugeTypeOf o loggerType
     let unit = findProperty(gaugeType, "unit").GetValue o
     let value = findProperty(gaugeType, "value").GetValue o
-    Gauge (toValue value, toUnit unit)
+    Gauge (toValue loggerType value, toUnits loggerType unit)
 
-  let toContext (context: Map<string, obj>): HashMap<string, obj> =
+  let toContext loggerType (context: Map<string, obj>): HashMap<string, obj> =
     context
     |> Seq.map (fun (KeyValue (k, v)) ->
       if k.StartsWith KnownLiterals.GaugeNamePrefix then
-        KeyValuePair (k, box (toGauge v))
+        KeyValuePair (k, box (toGauge loggerType v))
       else
         KeyValuePair (k, v))
     |> HashMap.ofSeqPair
@@ -331,7 +355,7 @@ module LoggerAdapter =
     { name = readProperty "name" |> castDefault<string []> [||] |> defaultName fallbackName |> PointName
       value = readProperty "value" |> castDefault<string> ""
       // TO CONSIDER: optimising creating a HashMap of a Map:
-      context = readProperty "context" |> castDefault<Map<string, obj>> Map.empty |> toContext
+      context = readProperty "context" |> castDefault<Map<string, obj>> Map.empty |> toContext loggerType
       level = readProperty "level" |> toLogLevel loggerType
       timestamp = readProperty "timestamp" |> castDefault<EpochNanoSeconds> 0L
     }
