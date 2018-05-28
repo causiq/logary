@@ -326,7 +326,7 @@ let tests =
           let logger = LoggerAdapter.createString "Libryy.LoggingV4.Logger, Libryy" stub
           Expect.isNotNull logger "Should have gotten logger back"
 
-        yield ftestCase "end to end with adapter, full logWithAck method" <| fun _ ->
+        yield testCase "end to end with adapter, full logWithAck method" <| fun _ ->
           let libryyLogger, msg = createLoggerSubject ()
           let res = Libryy.CoreV4.work libryyLogger
           Expect.equal 42 res "Should get result back"

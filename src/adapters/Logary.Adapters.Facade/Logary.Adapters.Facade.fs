@@ -254,7 +254,7 @@ module LoggerAdapter =
   /// Convert the object instance to a Logary.DataModel.Message. Is used from the
   /// other code in this module.
   let toMsgV3 (v: ApiVersion) (loggerType, fallbackName) (o: obj): Message =
-    if v >= V3 then invalidOp "This function only works for <= V3 facades"
+    if v > V3 then invalidOp "This function only works for <= V3 facades"
     let messageType = messageTypeOf o loggerType
     let readProperty name = (findProperty (messageType, name)).GetValue o
     let oldPointValue = readProperty "value" |> toPointValue v
