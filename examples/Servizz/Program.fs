@@ -73,7 +73,7 @@ let main argv =
   let simpleWorkExnResult = Libryy.CoreV4.generateAndLogExn librryLogger
   logLibryyResult simpleWorkExnResult
 
-  let staticWorkResult = Libryy.CoreV4.staticWork() |> Async.RunSynchronously
+  let staticWorkResult = Libryy.CoreV4.staticWork() |> run
   logLibryyResult staticWorkResult
 
   mre.Wait()
