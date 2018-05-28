@@ -96,7 +96,7 @@ namespace Logary
         /// <param name="values">Values to add.</param>
         public static Message SetContextValues(this Message message, params Tuple<string, object>[] values)
         {
-            return MessageModule.setContexts(values, message);
+            return MessageModule.SetContexts(values, message);
         }
 
         /// <summary>

@@ -4,6 +4,7 @@ open System
 open System.Collections.Concurrent
 open NodaTime
 open Logary
+open Logary.Internals
 open Logary.Message
 open Logary.Configuration
 

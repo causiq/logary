@@ -67,13 +67,13 @@ let main argv =
   let gotLibryyResultEvent = Message.templateEvent<int> (Debug, "Got {LibryyResult} from Libryy")
   let logLibryyResult result = gotLibryyResultEvent result |> logger.logSimple
 
-  let workResult = Libryy.Core.work librryLogger
+  let workResult = Libryy.CoreV4.work librryLogger
   logLibryyResult workResult
 
-  let simpleWorkExnResult = Libryy.Core.generateAndLogExn librryLogger
+  let simpleWorkExnResult = Libryy.CoreV4.generateAndLogExn librryLogger
   logLibryyResult simpleWorkExnResult
 
-  let staticWorkResult = Libryy.Core.staticWork() |> Async.RunSynchronously
+  let staticWorkResult = Libryy.CoreV4.staticWork() |> Async.RunSynchronously
   logLibryyResult staticWorkResult
 
   mre.Wait()
