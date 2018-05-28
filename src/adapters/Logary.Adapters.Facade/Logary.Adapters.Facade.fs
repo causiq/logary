@@ -315,8 +315,9 @@ module LoggerAdapter =
   /// other code in this module.
   let toMsgFactory (v: ApiVersion) (loggerType, fallbackName) oLevel (fsFunc: obj): LogLevel -> Message =
     // HOT PATH
-    let fsFuncType = fsFunc.GetType () // messageFactoryTypeOf fsFunc loggerType
-    let messageFactory = fsFuncType.GetMethod "Invoke" //findMethod (fsFuncType, "Invoke")
+    let fsFuncType = fsFunc.GetType ()
+    //                messageFactoryTypeOf fsFunc loggerType (using this cached variant crashes)
+    let messageFactory = findMethod (fsFuncType, "Invoke")
     if v <= V3 then
       fun level ->
         do rawPrintM messageFactory [| oLevel; level |]
