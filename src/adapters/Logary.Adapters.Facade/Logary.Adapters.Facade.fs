@@ -330,16 +330,12 @@ module LoggerAdapter =
   module LogResult =
     /// Homomorphism on the LogResult value.
     let mapErr<'err> (onFull: string -> 'err) (onRejected: 'err) (xA: LogResult) =
-      printfn "Invoking mapErr"
       xA ^-> function
         | Ok ack ->
-          printfn "mapErr => ok"
           Ok ack
         | Result.Error (BufferFull target) ->
-          printfn "mapErr => buffer full"
           Result.Error (onFull target)
         | Result.Error Rejected ->
-          printfn "mapErr => rejected"
           Result.Error onRejected
 
     let createMapErr =
@@ -366,9 +362,7 @@ module LoggerAdapter =
     fun (result: LogResult) ->
       let args = [| bufferFull; rejectedValue; box result |]
       // do rawPrintM mapErr args
-      let res = mapErr.Invoke(null, args)
-      printfn "Result: %A" res
-      res
+      mapErr.Invoke(null, args)
 
   let internal (|LogWithAck|LogWithAckV3|Log|LogSimple|)
                (invocation: IInvocation, defaultName: string[], v: ApiVersion, loggerType: Type)
@@ -399,7 +393,6 @@ module LoggerAdapter =
     | "logSimple" when v <= V1 ->
       let msg = toMsgV3 v (loggerType, defaultName) invocation.Arguments.[0]
       LogSimple msg
-
 
     | meth ->
       failwithf "Method '%s' should not exist on Logary.Facade.Logger, with type '%O' @ %A." meth loggerType v

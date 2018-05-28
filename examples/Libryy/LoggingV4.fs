@@ -309,8 +309,8 @@ module internal Promise =
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal LogResult =
-  let success: LogResult = Alt.always (Result.Ok Promise.unit)
-  let bufferFull target: LogResult = Alt.always (Result.Error (BufferFull target))
+  let success: Alt<Result<Promise<unit>, LogError>> = Alt.always (Result.Ok Promise.unit)
+  let bufferFull target: Alt<Result<Promise<unit>, LogError>> = Alt.always (Result.Error (BufferFull target))
   let rejected: LogError = Rejected
 
 module internal H =

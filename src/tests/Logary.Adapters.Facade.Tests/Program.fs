@@ -380,47 +380,50 @@ let tests =
           Libryy.LoggingV4.Gauge (Libryy.LoggingV4.Float value, units)
           |> Libryy.LoggingV4.Message.gaugeWithUnit sensor name
 
-        let gaugeMessage name gauge: Libryy.LoggingV4.Message =
-          Libryy.LoggingV4.Message.gaugeWithUnit [|"container"|] name gauge
+        let gaugeMessage gauge: Libryy.LoggingV4.Message =
+          Libryy.LoggingV4.Message.gaugeWithUnit [|"container"|] "startup" gauge
 
         let expectGauge name value units (msg: Message) =
-          printfn "Msg: %A" msg
           let n = Libryy.LoggingV4.Literals.GaugeNamePrefix + name
           let g = msg.context |> HashMap.tryFind n
           Expect.isSome g "gauge is in context"
 
-          match g.Value with
-          | :? Libryy.LoggingV4.Gauge as gauge ->
-            let (Libryy.LoggingV4.Gauge (v, u)) = gauge
-            Expect.equal v value "has correct value"
-            Expect.equal u units "has correct units"
-          | _ ->
-            Expect.equal true false "Wrong type of gauge object"
+          let gauge = g.Value :?> Gauge
+          let (Gauge (v, u)) = gauge
+          Expect.equal v value "has correct value"
+          Expect.equal u units "has correct units"
 
-        let subject = LoggerAdapter.toMsgV4 (loggerType, [||])
+        let subjectToLogary = LoggerAdapter.toMsgV4 (loggerType, [||])
+
+        let v4float f =
+          Libryy.LoggingV4.Float f
+
+        let v4seconds =
+          Libryy.LoggingV4.Seconds
+
+        let v4scaled baseUnit scale =
+          Libryy.LoggingV4.Scaled (baseUnit, scale)
+
+        let v4gauge v u =
+          Libryy.LoggingV4.Gauge (v, u)
 
         yield testCase "Seconds" <| fun _ ->
-          namedGauge [|"container"|] "startup" 0.12 Libryy.LoggingV4.Units.Seconds
-          |> subject
-          |> expectGauge "startup" (Libryy.LoggingV4.Float 0.12) Libryy.LoggingV4.Units.Seconds
+          v4gauge (v4float 0.12) v4seconds
+          |> gaugeMessage
+          |> subjectToLogary
+          |> expectGauge "startup" (Float 0.12) Units.Seconds
 
-        // yield testCase "Milliseconds" <| fun _ ->
-        //   Libryy.LoggingV4.Gauge.ofMillis 120.0
-        //   |> gaugeMessage "startup"
-        //   |> subject
-        //   |> expectGauge "startup" (Libryy.LoggingV4.Float 120.) (Libryy.LoggingV4.Units.Scaled (Libryy.LoggingV4.Units.Seconds, 1000.0))
+        yield testCase "Milliseconds" <| fun _ ->
+          v4gauge (v4float 120.0) (v4scaled v4seconds 1e3)
+          |> gaugeMessage
+          |> subjectToLogary
+          |> expectGauge "startup" (Float 120.) (Units.Scaled (Units.Seconds, 1e3))
 
-        // yield testCase "Nanoseconds" <| fun _ ->
-        //   Libryy.LoggingV4.Gauge.ofNanos 120.0
-        //   |> gaugeMessage "startup"
-        //   |> subject
-        //   |> expectGauge "startup" (Libryy.LoggingV4.Float 120.0) (Libryy.LoggingV4.Units.Scaled (Libryy.LoggingV4.Units.Seconds, 1.0e9))
-
-        // yield testCase "Ticks" <| fun _ ->
-        //   Libryy.LoggingV4.Gauge.ofTicks 120.0
-        //   |> gaugeMessage "startup"
-        //   |> subject
-        //   |> expectGauge "startup" (Libryy.LoggingV4.Float 120.0) (Libryy.LoggingV4.Units.Scaled (Libryy.LoggingV4.Units.Seconds, 1.0e7))
+        yield testCase "Nanoseconds" <| fun _ ->
+          v4gauge (v4float 120.0) (v4scaled v4seconds 1e9)
+          |> gaugeMessage
+          |> subjectToLogary
+          |> expectGauge "startup" (Float 120.0) (Units.Scaled (Units.Seconds, 1e9))
       ]
     ]
   ]
