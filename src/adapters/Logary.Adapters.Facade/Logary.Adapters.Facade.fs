@@ -27,7 +27,7 @@ module Reflection =
     Cache.memoize (fun (typ, prop) -> typ.GetProperty prop)
 
   let findStaticProperty: Type * string -> PropertyInfo =
-    Cache.memoize (fun (typ, prop) -> typ.GetProperty(prop, BindingFlags.Static ||| BindingFlags.NonPublic))
+    Cache.memoize (fun (typ, prop) -> typ.GetProperty(prop, BindingFlags.Static ||| BindingFlags.Public ||| BindingFlags.NonPublic))
 
   let findField: Type * string -> FieldInfo =
     Cache.memoize (fun (typ, field) -> typ.GetField field)
@@ -307,7 +307,7 @@ module LoggerAdapter =
   let rec toUnits (loggerType: Type) (o: obj): Units =
     let unitsType = unitTypeOf o loggerType
     let tag = findProperty(unitsType, "Tag").GetValue o :?> int
-    printfn "Value=%A, Tag=%i" o tag
+    //printfn "Value=%A, Tag=%i" o tag
     match tag with
     | 0 ->
       let u = findProperty(unitsType, "unit").GetValue o
@@ -319,7 +319,7 @@ module LoggerAdapter =
       Units.Scalar
     | 3 ->
       let oP = findProperty(unitsType, "otherUnit")
-      printfn "property: %O, properties: %A, fields: %A" oP (unitsType.GetProperties()) (unitsType.GetFields())
+      //printfn "property: %O, properties: %A, fields: %A" oP (unitsType.GetProperties()) (unitsType.GetFields())
       // seems this property is not stable:
       if isNull oP then Units.Scalar else
       let unitString = oP.GetValue o
@@ -370,12 +370,12 @@ module LoggerAdapter =
     let messageFactory = findMethod (fsFuncType, "Invoke")
     if v <= V3 then
       fun level ->
-        do rawPrintM messageFactory [| oLevel; level |]
+        //do rawPrintM messageFactory [| oLevel; level |]
         toMsgV3 v (loggerType, fallbackName) (messageFactory.Invoke(fsFunc, [| oLevel |]))
     else
       // TO CONSIDER: how much GC does returning this function generate?
       fun level ->
-        do rawPrintM messageFactory [| oLevel; level |]
+        //do rawPrintM messageFactory [| oLevel; level |]
         toMsgV4 (loggerType, fallbackName) (messageFactory.Invoke(fsFunc, [| oLevel |]))
 
   module LogResult =
@@ -610,17 +610,15 @@ module LoggerCSharpAdapter =
       let logMessageT =
         findModule (loggerType, "LogMessage")
       //printfn "%A ====> c'tor(%A)" logMessageT ctorTs
-      let emptyValueT = findModule (loggerType, "PointValue")
-      let emptyValue =
-        findStaticProperty (emptyValueT, "Empty")
-        |> fun t -> t.GetValue(null, null)
+      let pointValueType = findModule (loggerType, "PointValue")
+      let emptyValueProp = findStaticProperty (pointValueType, "Empty")
+      let emptyValue = emptyValueProp.GetValue(null, null)
 
       fun (name: string[]) (level: obj) ->
         let ts =  Logary.Internals.Global.getTimestamp ()
         let args = [| box name; level; emptyValue; box emptyDic; box ts |]
         //printfn "====> %s(%A)" logMessageT.Name args
         Activator.CreateInstance(logMessageT, args)
-
 
   type private I (loggerType: Type, logger: Logger, version: ApiVersion) =
     let (PointName defaultName) = logger.name
