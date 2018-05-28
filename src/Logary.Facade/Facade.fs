@@ -120,6 +120,7 @@ type Value =
   | Int64 of int64
   | BigInt of bigint
   | Fraction of int64 * int64
+
   /// Convert the Gauge value to a float (best as possible; this **may** lead to
   /// a loss of accuracy).
   member x.toFloat () =
@@ -306,6 +307,10 @@ type internal LogResult = Alt<Result<Promise<unit>, LogError>>
 
 module internal Promise =
   let unit: Promise<unit> = Promise (())
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module internal LogError =
+  let rejected: LogError = Rejected
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal LogResult =

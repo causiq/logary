@@ -199,6 +199,7 @@ module List =
 /// space. The original logger adapter (also see the LoggerCSharpAdapter further
 /// below)
 module LoggerAdapter =
+  open System.Collections.Generic
   open Reflection
 
   let private castDefault<'a> (fallback: 'a) (x: obj): 'a =
@@ -298,6 +299,30 @@ module LoggerAdapter =
         | _ ->
           msg)
 
+  let toUnit (o: obj): Units =
+    // TODO:
+    Units.Scalar
+
+  let toValue (o: obj): Value =
+    let toFloatMethod = findMethod (o.GetType(), "toFloat")
+    let floatValue = toFloatMethod.Invoke(o, [||])
+    Float (floatValue :?> float)
+
+  let toGauge (o: obj): Gauge =
+    let gaugeType = o.GetType()
+    let unit = findProperty(gaugeType, "unit").GetValue o
+    let value = findProperty(gaugeType, "value").GetValue o
+    Gauge (toValue value, toUnit unit)
+
+  let toContext (context: Map<string, obj>): HashMap<string, obj> =
+    context
+    |> Seq.map (fun (KeyValue (k, v)) ->
+      if k.StartsWith KnownLiterals.GaugeNamePrefix then
+        KeyValuePair (k, box (toGauge v))
+      else
+        KeyValuePair (k, v))
+    |> HashMap.ofSeqPair
+
   // NOT HOT PATH
   let toMsgV4 (loggerType, fallbackName) (o: obj): Message =
     // HOT PATH
@@ -306,7 +331,7 @@ module LoggerAdapter =
     { name = readProperty "name" |> castDefault<string []> [||] |> defaultName fallbackName |> PointName
       value = readProperty "value" |> castDefault<string> ""
       // TO CONSIDER: optimising creating a HashMap of a Map:
-      context = readProperty "context" |> castDefault<Map<string, obj>> Map.empty |> HashMap.ofSeqPair
+      context = readProperty "context" |> castDefault<Map<string, obj>> Map.empty |> toContext
       level = readProperty "level" |> toLogLevel loggerType
       timestamp = readProperty "timestamp" |> castDefault<EpochNanoSeconds> 0L
     }
@@ -349,6 +374,7 @@ module LoggerAdapter =
   let ofLogResult (loggerType: Type): LogResult -> obj =
     // HOT PATH
     let logErrorType = findModule (loggerType, "LogError")
+    let logErrorModule = findModule (loggerType, "LogErrorModule")
     let logResultModule = findModule (loggerType, "LogResultModule")
 
     let bufferFullMethod = findStaticMethod (logResultModule, "bufferFull")
@@ -358,7 +384,7 @@ module LoggerAdapter =
         bufferFullFSharpFunction,
         fun (target: obj) -> bufferFullMethod.Invoke(null, [| target |]))
 
-    let rejectedValue = findStaticProperty(logResultModule, "rejected").GetValue(null, null)
+    let rejectedValue = findStaticProperty(logErrorModule, "rejected").GetValue(null, null)
     let mapErr = LogResult.createMapErr loggerType
     fun (result: LogResult) ->
       let args = [| bufferFull; rejectedValue; box result |]
