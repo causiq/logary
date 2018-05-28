@@ -168,7 +168,7 @@ module Reflection =
     printfn "----------------"
     for arg in args do
       let argType = arg.GetType()
-      printfn " - %A" arg
+      printfn " - %A  (%s)" arg argType.FullName
       printfn "   :> %s" argType.BaseType.FullName
     printfn "----------"
 
