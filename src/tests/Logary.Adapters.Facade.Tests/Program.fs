@@ -216,7 +216,7 @@ let tests =
           Expect.equal (!msg).value ( "Too simplistic") "Should have logged event template"
           Expect.notEqual (!msg).timestamp 0L "Should have non-zero timestamp"
           Expect.notEqual (!msg).name (PointName [||]) "Should have non-empty point name"
-          Expect.equal (!msg).name (PointName [| "Libryy"; "Core" |])
+          Expect.equal (!msg).name (PointName [| "Libryy"; "CoreV3" |])
                        "Should have point name corresponding to the passed logger"
 
         yield testCase "with exns" <| fun _ ->
@@ -331,14 +331,14 @@ let tests =
           let res = Libryy.CoreV4.work libryyLogger
           Expect.equal 42 res "Should get result back"
           assertWorkMessage (!msg)
-          Expect.equal (!msg).name (PointName.parse "Libryy.Core.work") "Should have set name"
+          Expect.equal (!msg).name (PointName.parse "Libryy.Core.work-work-work") "Should have set name"
 
         yield testCase "end to end with adapter, log method" <| fun _ ->
           let libryyLogger, msg = createLoggerSubject ()
           let res = Libryy.CoreV4.workBackpressure libryyLogger
           Expect.equal 45 res "Should get result back"
           assertWorkMessage (!msg)
-          Expect.equal (!msg).name (PointName.parse "Libryy.Core.work") "Should have set name"
+          Expect.equal (!msg).name (PointName.parse "Libryy.Core.work-bp") "Should have set name"
 
         yield testCase "end to end with adapter, errorWithBP method" <| fun _ ->
           let libryyLogger, msg = createLoggerSubject ()
@@ -348,7 +348,7 @@ let tests =
           Expect.equal (!msg).value ( "Too simplistic") "Should have logged event template"
           Expect.notEqual (!msg).timestamp 0L "Should have non-zero timestamp"
           Expect.notEqual (!msg).name (PointName [||]) "Should have non-empty point name"
-          Expect.equal (!msg).name (PointName [| "Libryy"; "Core" |])
+          Expect.equal (!msg).name (PointName [| "Libryy"; "CoreV4" |])
                        "Should have point name corresponding to the passed logger"
 
         yield testCase "with exns" <| fun _ ->

@@ -20,7 +20,7 @@ let work (logger: Logger) =
     logger.logWithAck (false, Warn) (
       Message.eventX "Hey {user}!"
       >> Message.setField "user" "haf"
-      >> Message.setSingleName "Libryy.Core.work"
+      >> Message.setSingleName "Libryy.Core.work-work-work"
       >> Message.addExn (getSampleException "Warnings can have exceptions too!")
       >> Message.setTimestamp 1470047883029045000L)
     |> run
@@ -36,7 +36,7 @@ let workBackpressure (logger: Logger) =
     logger.log Warn (
       Message.eventX "Hey {user}!"
       >> Message.setField "user" "haf"
-      >> Message.setSingleName "Libryy.Core.work"
+      >> Message.setSingleName "Libryy.Core.work-bp"
       >> Message.setTimestamp 1470047883029045000L)
     |> run
   if not ok then failwith "Returned false"
