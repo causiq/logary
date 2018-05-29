@@ -7,7 +7,7 @@ open System
 open NodaTime
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module SpanBuilder =
+module Span =
 
   /// describe the time scope info about a span, will be sent as a message's context data
   [<Struct>]
@@ -134,4 +134,4 @@ module SpanBuilder =
 module LoggerSpanEx =
   type Logger with
     member x.buildSpan () =
-      SpanBuilder.create x
+      Span.create x

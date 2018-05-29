@@ -103,7 +103,7 @@ let tests =
 
       testCaseJob testMsg (job {
         // in context
-        let! ri, _ = emptyRuntime
+        let! ri = emptyRuntime
         let! targetApi = LiterateConsole.create conf "testLC" |> Target.create ri
 
         // because

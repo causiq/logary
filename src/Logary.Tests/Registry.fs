@@ -10,10 +10,11 @@ open Logary.Internals
 open Logary.Message
 open Logary.Configuration
 
-let testLogger = Logging.Log.create "Logary.Tests.Registry"
+let testLogger = Log.create "Logary.Tests.Registry"
 
-let debug message =
-  testLogger.logWithAck Logging.Debug (Logging.Message.eventX message)
+let debug message = testLogger.logWithBP Debug (eventX message)
+
+let timeout = Duration.FromSeconds 1.
 
 let tests = [
   testCaseJob "from Config and Multi shutdown" <| job {
@@ -29,10 +30,10 @@ let tests = [
     ri.host |> Expect.equal "should have host" "localhost"
 
     do! debug "Shutting down LogManager (1)..."
-    let! finfo, sinfo = logm.shutdown (timeout, timeout)
+    do! logm.shutdown()
     do! debug "Shut down LogManager (1)."
 
-    let! (finfo, sinfo) = logm.shutdown (timeout, timeout)
+    let! finfo, sinfo = logm.shutdown(timeout, timeout)
     let none = List.empty<string>, List.empty<string>
     finfo |> Expect.equal "Should have no targets" (FlushInfo none)
     sinfo |> Expect.equal "Should have no targets" (ShutdownInfo none)
@@ -43,7 +44,7 @@ let tests = [
     do! debug "Flushed LogManager (1). Shutting down LogManager (3)..."
     do! logm.shutdown ()
     do! debug "Shut down LogManager (3). Flushing LogManager (2)..."
-    let! finfo = logm.flushPending timeout
+    let! finfo = logm.flushPending(timeout)
     do! debug "Flushed LogManager (2)."
     finfo
       |> Expect.equal "FlushPending should notify called that Registry is shut down."
@@ -105,17 +106,17 @@ let tests = [
     }
 
     let lga = logm.getLogger "logger.a"
-    use rootSpan = lga |> create |> setMessage (eventX "some root span") |> start
+    use rootSpan = lga |> Span.create |> Span.setMessage (eventX "some root span") |> Span.start
     let lgb = logm.getLogger "logger.b"
-    use _ = lgb |> create |> setMessage (eventX "some child span") |> start
-    use _ = lgb |> create |> setMessage (eventX "some grand span") |> start
+    use _ = lgb |> Span.create |> Span.setMessage (eventX "some child span") |> Span.start
+    use _ = lgb |> Span.create |> Span.setMessage (eventX "some grand span") |> Span.start
     do! lgb.infoWithAck (eventX "some log message")
     do! timeOutMillis 100
     clearStream out
     |> Expect.stringContains "should have spanId" "_logary.spanId"
 
     // use explicitly set style
-    use spanFromRoot = lgb |> create |> setParentSpanInfo rootSpan.info |> setMessage (eventX "some child span") |> start
+    use spanFromRoot = lgb |> Span.create |> Span.setParentSpanInfo rootSpan.info |> Span.setMessage (eventX "some child span") |> Span.start
     do! lgb.infoWithAck (eventX "some log message" >> setSpanId spanFromRoot.info.spanId)
     do! checkSpanId spanFromRoot.info.spanId
     do! logm.shutdown ()

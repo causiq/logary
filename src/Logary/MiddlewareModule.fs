@@ -59,7 +59,7 @@ module Middleware =
   [<CompiledName "AmbientSpanId">]
   let ambientSpanId (): Middleware =
     fun next msg ->
-      let ambientSpanId = SpanBuilder.getActiveSpanId ()
+      let ambientSpanId = Span.getActiveSpanId ()
       match ambientSpanId with
       | Some ambientSpanId -> msg |> Message.setSpanId ambientSpanId |> next
       | None -> next msg

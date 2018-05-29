@@ -32,6 +32,10 @@ type LogManager =
   /// a specific name that you keep for a sub-component of your application or
   /// the name of the class. Also have a look at Logging.GetCurrentLogger().
   abstract getLogger: PointName -> Logger
+  /// Get a logger denoted by the name passed as the parameter. This name can either be
+  /// a specific name that you keep for a sub-component of your application or
+  /// the name of the class. Also have a look at Logging.GetCurrentLogger().
+  abstract getLogger: string -> Logger
 
   abstract getLoggerWithMiddleware: PointName -> Middleware -> Logger
 
