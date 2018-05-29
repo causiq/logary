@@ -30,13 +30,11 @@ let tests = [
     ri.host |> Expect.equal "should have host" "localhost"
 
     do! debug "Shutting down LogManager (1)..."
-    do! logm.shutdown()
-    do! debug "Shut down LogManager (1)."
-
     let! finfo, sinfo = logm.shutdown(timeout, timeout)
     let none = List.empty<string>, List.empty<string>
     finfo |> Expect.equal "Should have no targets" (FlushInfo none)
     sinfo |> Expect.equal "Should have no targets" (ShutdownInfo none)
+    do! debug "Shut down LogManager (1)."
     do! debug "Shutting down LogManager (2)."
     do! logm.shutdown ()
     do! debug "Shut down LogManager (2). Flushing LogManager (1)..."
