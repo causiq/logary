@@ -4,8 +4,9 @@ open System
 open System.Collections.Concurrent
 open NodaTime
 open Logary
-open Logary.Message
 open Logary.Internals
+open Logary.Message
+open Logary.Configuration
 
 /// The functions of the NLog domain and logary codomain.
 module internal Adaptation =
@@ -28,24 +29,16 @@ module internal Adaptation =
     else
       Debug
 
-  /// Copied from Logary.Internals.Cache, because disposing this target should
-  /// also remove the references to the loggers, whilst Logary.Internals.Cache
-  /// would have a static/global cache (more useful for type resolution that
-  /// won't change across instances).
-  let memoizeFactory<'input, 'output> (cache: ConcurrentDictionary<'input, 'output>) =
-    fun (f: 'input -> 'output) ->
-      fun x -> cache.GetOrAdd(x, f)
-
 open Adaptation
 
 /// A Logary target for NLog. Uses Logger.logSimple. Takes either a reference to
 /// LogManager or a property `Logary` that can be set to give this target the
 /// instance of Logary to use for requesting loggers.
-[<Target("Logary")>] 
+[<Target("Logary")>]
 type LogaryTarget(logary: LogManager) =
   inherit Target()
 
-  let memoize = memoizeFactory (ConcurrentDictionary<_, _>())
+  let memoize = Cache.memoizeFactory (ConcurrentDictionary<_, _>())
 
   let mutable instance = logary
 

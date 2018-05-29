@@ -14,8 +14,6 @@ module TextWriter =
 
   let defaultMessageFormat = MessageWriter.expanded false System.Environment.NewLine System.Environment.NewLine
 
-
-
   /// Configuration for a text writer
   type TextWriterConf =
     { /// A message writer to specify how to write the Message.
@@ -145,8 +143,16 @@ module LiterateConsole =
   open Logary.MessageTemplates.Formatting.Literate
   open Hopac
 
-  type ConsoleColours = { foreground: ConsoleColor; background: ConsoleColor option }
-  type ColouredText = { text: string; colours: ConsoleColours }
+  [<Struct>]
+  type ConsoleColours =
+    { foreground: ConsoleColor
+      background: ConsoleColor option }
+
+  [<Struct>]
+  type ColouredText =
+    { text: string
+      colours: ConsoleColours }
+
   type Tokens = Logary.MessageTemplates.Formatting.Literate.LiterateToken
 
   /// Console configuration structure
@@ -167,116 +173,137 @@ module LiterateConsole =
       /// to the console with the appropriate colours.
       colourWriter: obj -> ColouredText seq -> unit }
 
-  module internal LiterateFormatting =
-    open Logary.MessageTemplates
-    open Logary.MessageTemplates.Formatting
+  open Logary.MessageTemplates
+  open Logary.MessageTemplates.Formatting
+
+  module Tokenisers =
+    let private getLogLevelToken = function
+      | Verbose -> LevelVerbose
+      | Debug -> LevelDebug
+      | Info -> LevelInfo
+      | Warn -> LevelWarning
+      | Error -> LevelError
+      | Fatal -> LevelFatal
+
+    let private nl, destr, maxDepth = Environment.NewLine, MessageWriter.defaultDestr, 10
 
     /// Split a structured message up into theme-able parts (tokens), allowing the
     /// final output to display to a user with colours to enhance readability.
-    let literateDefaultTokeniser (options: LiterateConsoleConf) (message: Message) =
-      let nl = Environment.NewLine
-      let destr = MessageWriter.defaultDestr
-      let maxDepth = 10
-      let pvd = options.formatProvider
-      let writeState = { provider = pvd; idManager = RefIdManager ()}
-
-      let templateTokens = tokeniseTemplateWithGauges pvd destr message
-      let contextTokens = tokeniseContext writeState nl destr message
-      let exceptionTokens = tokeniseExceptions pvd nl message
-
-      let getLogLevelToken = function
-        | Verbose -> LevelVerbose
-        | Debug -> LevelDebug
-        | Info -> LevelInfo
-        | Warn -> LevelWarning
-        | Error -> LevelError
-        | Fatal -> LevelFatal
-
+    let defaultTokeniser (options: LiterateConsoleConf) (message: Message) =
       seq {
         yield "[", Punctuation
         yield options.formatLocalTime options.formatProvider message.timestamp
         yield " ", Subtext
         yield options.getLogLevelText message.level, getLogLevelToken message.level
         yield "] ", Punctuation
-        yield! templateTokens
+        yield! tokeniseTemplateWithGauges options.formatProvider destr message
 
         yield " ", Subtext
         yield "<", Punctuation
         yield string message.name, Subtext
         yield ">", Punctuation
 
-        yield! contextTokens
-        yield! exceptionTokens
+        yield! tokeniseExceptions options.formatProvider nl message
       }
 
-    module DefaultTheme =
-      let textColours = { foreground=ConsoleColor.White; background=None }
-      let subtextColours = { foreground=ConsoleColor.Gray; background=None }
-      let punctuationColours = { foreground=ConsoleColor.DarkGray; background=None }
-      let levelVerboseColours = { foreground=ConsoleColor.Gray; background=None }
-      let levelDebugColours = { foreground=ConsoleColor.Gray; background=None }
-      let levelInfoColours = { foreground=ConsoleColor.White; background=None }
-      let levelWarningColours = { foreground=ConsoleColor.Yellow; background=None }
-      let levelErrorColours = { foreground=ConsoleColor.White; background=Some ConsoleColor.Red }
-      let levelFatalColours = { foreground=ConsoleColor.White; background=Some ConsoleColor.Red }
-      let keywordSymbolColours = { foreground=ConsoleColor.Blue; background=None }
-      let numericSymbolColours = { foreground=ConsoleColor.Magenta; background=None }
-      let stringSymbolColours = { foreground=ConsoleColor.Cyan; background=None }
-      let otherSymbolColours = { foreground=ConsoleColor.Green; background=None }
-      let nameSymbolColours = { foreground=ConsoleColor.Gray; background=None }
-      let missingTemplateFieldColours = { foreground=ConsoleColor.Red; background=None }
+    /// The extended tokeniser also prints all fields, context and gauges as separate lines in the output.
+    /// Split a structured message up into theme-able parts (tokens), allowing the
+    /// final output to display to a user with colours to enhance readability.
+    let extendedTokeniser (options: LiterateConsoleConf) (message: Message) =
+      seq {
+        yield "[", Punctuation
+        yield options.formatLocalTime options.formatProvider message.timestamp
+        yield " ", Subtext
+        yield options.getLogLevelText message.level, getLogLevelToken message.level
+        yield "] ", Punctuation
+        yield! tokeniseTemplateWithGauges options.formatProvider destr message
 
-      let theme = function
-        | Tokens.Text -> textColours | Tokens.Subtext -> subtextColours | Tokens.Punctuation -> punctuationColours
-        | Tokens.LevelVerbose -> levelVerboseColours | Tokens.LevelDebug -> levelDebugColours
-        | Tokens.LevelInfo -> levelInfoColours | Tokens.LevelWarning -> levelWarningColours
-        | Tokens.LevelError -> levelErrorColours | Tokens.LevelFatal -> levelFatalColours
-        | Tokens.KeywordSymbol -> keywordSymbolColours | Tokens.NumericSymbol -> numericSymbolColours
-        | Tokens.StringSymbol -> stringSymbolColours | Tokens.OtherSymbol -> otherSymbolColours
-        | Tokens.NameSymbol -> nameSymbolColours | Tokens.MissingTemplateField -> missingTemplateFieldColours
+        yield " ", Subtext
+        yield "<", Punctuation
+        yield string message.name, Subtext
+        yield ">", Punctuation
 
-    let consoleWriteLineColourParts (parts: ColouredText seq) =
-        let originalForegroundColour = Console.ForegroundColor
-        let originalBackgroundColour = Console.BackgroundColor
+        let writeState = { provider = options.formatProvider; idManager = RefIdManager ()}
+        yield! tokeniseContext writeState nl destr message
+        yield! tokeniseExceptions options.formatProvider nl message
+      }
 
-        // The console APIs are quite slow and clumsy. We avoid changing the foreground
-        // and background colours whenever possible, which speeds things up a bit.
-        let mutable currentForegroundColour = originalForegroundColour
-        let mutable currentBackgroundColour = originalBackgroundColour
+  module Themes =
+    let textColours = { foreground=ConsoleColor.White; background=None }
+    let subtextColours = { foreground=ConsoleColor.Gray; background=None }
+    let punctuationColours = { foreground=ConsoleColor.DarkGray; background=None }
+    let levelVerboseColours = { foreground=ConsoleColor.Gray; background=None }
+    let levelDebugColours = { foreground=ConsoleColor.Gray; background=None }
+    let levelInfoColours = { foreground=ConsoleColor.White; background=None }
+    let levelWarningColours = { foreground=ConsoleColor.Yellow; background=None }
+    let levelErrorColours = { foreground=ConsoleColor.White; background=Some ConsoleColor.Red }
+    let levelFatalColours = { foreground=ConsoleColor.White; background=Some ConsoleColor.Red }
+    let keywordSymbolColours = { foreground=ConsoleColor.Blue; background=None }
+    let numericSymbolColours = { foreground=ConsoleColor.Magenta; background=None }
+    let stringSymbolColours = { foreground=ConsoleColor.Cyan; background=None }
+    let otherSymbolColours = { foreground=ConsoleColor.Green; background=None }
+    let nameSymbolColours = { foreground=ConsoleColor.Gray; background=None }
+    let missingTemplateFieldColours = { foreground=ConsoleColor.Red; background=None }
 
-        let inline maybeResetBgColour (backgroundColour: ConsoleColor option) =
-          match backgroundColour with
-          | Some bgc ->
-            if bgc <> currentBackgroundColour then
-              Console.BackgroundColor <- bgc
-              currentBackgroundColour <- bgc
-          | None -> // "we don't have a specific colour, so leave (or reset to) the original/default"
-            match currentBackgroundColour with
-            | c when c = originalBackgroundColour -> ()
-            | otherwise ->
-              // calling reset here helps with different default background colours
-              Console.ResetColor()
-              currentForegroundColour <- Console.ForegroundColor
-              currentBackgroundColour <- originalBackgroundColour
+    let defaultTheme = function
+      | Tokens.Text -> textColours
+      | Tokens.Subtext -> subtextColours
+      | Tokens.Punctuation -> punctuationColours
+      | Tokens.LevelVerbose -> levelVerboseColours
+      | Tokens.LevelDebug -> levelDebugColours
+      | Tokens.LevelInfo -> levelInfoColours
+      | Tokens.LevelWarning -> levelWarningColours
+      | Tokens.LevelError -> levelErrorColours
+      | Tokens.LevelFatal -> levelFatalColours
+      | Tokens.KeywordSymbol -> keywordSymbolColours
+      | Tokens.NumericSymbol -> numericSymbolColours
+      | Tokens.StringSymbol -> stringSymbolColours
+      | Tokens.OtherSymbol -> otherSymbolColours
+      | Tokens.NameSymbol -> nameSymbolColours
+      | Tokens.MissingTemplateField -> missingTemplateFieldColours
 
-        parts |> Seq.iter (fun part ->
-          maybeResetBgColour part.colours.background
-          if currentForegroundColour <> part.colours.foreground then
-            Console.ForegroundColor <- part.colours.foreground
-            currentForegroundColour <- part.colours.foreground
-          Console.Write(part.text)
-        )
-        if currentForegroundColour <> originalForegroundColour then
-          Console.ForegroundColor <- originalForegroundColour
-        maybeResetBgColour None
-        Console.WriteLine()
+    let internal consoleWriteLineColourParts (parts: ColouredText seq) =
+      let originalForegroundColour = Console.ForegroundColor
+      let originalBackgroundColour = Console.BackgroundColor
 
-    let consoleWriteColourPartsAtomically sem (parts: ColouredText seq) =
-      lock sem <| fun _ -> consoleWriteLineColourParts parts
+      // The console APIs are quite slow and clumsy. We avoid changing the foreground
+      // and background colours whenever possible, which speeds things up a bit.
+      let mutable currentForegroundColour = originalForegroundColour
+      let mutable currentBackgroundColour = originalBackgroundColour
+
+      let inline maybeResetBgColour (backgroundColour: ConsoleColor option) =
+        match backgroundColour with
+        | Some bgc ->
+          if bgc <> currentBackgroundColour then
+            Console.BackgroundColor <- bgc
+            currentBackgroundColour <- bgc
+        | None -> // "we don't have a specific colour, so leave (or reset to) the original/default"
+          match currentBackgroundColour with
+          | c when c = originalBackgroundColour -> ()
+          | otherwise ->
+            // calling reset here helps with different default background colours
+            Console.ResetColor()
+            currentForegroundColour <- Console.ForegroundColor
+            currentBackgroundColour <- originalBackgroundColour
+
+      parts |> Seq.iter (fun part ->
+        maybeResetBgColour part.colours.background
+        if currentForegroundColour <> part.colours.foreground then
+          Console.ForegroundColor <- part.colours.foreground
+          currentForegroundColour <- part.colours.foreground
+        Console.Write(part.text)
+      )
+      if currentForegroundColour <> originalForegroundColour then
+        Console.ForegroundColor <- originalForegroundColour
+      maybeResetBgColour None
+      Console.WriteLine()
+
+    let defaultThemeWriter sem (parts: ColouredText seq) =
+      lock sem (fun () -> consoleWriteLineColourParts parts)
 
   /// Default console target configuration.
   let empty =
-    { formatProvider  = Globalization.CultureInfo.CurrentCulture
+    { formatProvider = Globalization.CultureInfo.CurrentCulture
       formatLocalTime = fun provider epochNanoSeconds ->
         let ts = DateTimeOffset.ofEpoch epochNanoSeconds
         ts.LocalDateTime.ToString("HH:mm:ss", provider),
@@ -288,9 +315,9 @@ module LiterateConsole =
         | Warn ->    "WRN"
         | Error ->   "ERR"
         | Fatal ->   "FTL"
-      tokenise = LiterateFormatting.literateDefaultTokeniser
-      theme = LiterateFormatting.DefaultTheme.theme
-      colourWriter = LiterateFormatting.consoleWriteColourPartsAtomically }
+      tokenise = Tokenisers.defaultTokeniser
+      theme = Themes.defaultTheme
+      colourWriter = Themes.defaultThemeWriter }
 
   module internal Impl =
     open Hopac
@@ -313,10 +340,10 @@ module LiterateConsole =
                     |> output
                 with e ->
                   do! output (seq {
-                    yield { text="Error in Logary console target rendering: "; colours=LiterateFormatting.DefaultTheme.levelErrorColours }
-                    yield { text=e.ToString(); colours=LiterateFormatting.DefaultTheme.textColours }
+                    yield { text="Error in Logary console target rendering: "; colours=Themes.levelErrorColours }
+                    yield { text=e.ToString(); colours=Themes.textColours }
                   })
-                  do! output (seq { yield { text=sprintf "%A" logMsg; colours=LiterateFormatting.DefaultTheme.subtextColours }})
+                  do! output (seq { yield { text=sprintf "%A" logMsg; colours=Themes.subtextColours }})
                 do! ack *<= ()
                 return! loop ()
               }
@@ -357,6 +384,74 @@ module LiterateConsole =
     interface SpecificTargetConf with
       member x.Build name = create conf name
 
+/// The System.Diagnostics.Trace Target for Logary
+module DiagnosticsTrace =
+  open System.Diagnostics
+  open Logary
+  open Logary.Configuration.Target
+  open Logary.Internals
+
+  /// Console configuration structure.
+  type TraceConf =
+    { writer: MessageWriter }
+
+    [<CompiledName "Create">]
+    static member create writer =
+      { writer = writer }
+
+  let defaultMessageFormat = MessageWriter.expandedWithoutContext System.Environment.NewLine
+
+  /// Default console target configuration.
+  let empty =
+    TraceConf.create defaultMessageFormat
+
+  module internal Impl =
+    open Hopac
+    open Hopac.Infixes
+
+    let loop (conf: TraceConf) (api: TargetAPI) =
+
+      let rec loop (): Job<unit> =
+        Alt.choose [
+          api.shutdownCh ^=> fun ack ->
+            ack *<= () :> Job<_>
+
+          RingBuffer.take api.requests ^=> function
+            | Log (message, ack) ->
+              job {
+                let str = conf.writer.format message
+                do! Job.Scheduler.isolate <| fun _ -> Trace.WriteLine(str)
+                do! ack *<= ()
+                return! loop ()
+              }
+
+            | Flush (ack, nack) ->
+              job {
+                do! IVar.fill ack ()
+                return! loop ()
+              }
+
+        ] :> Job<_>
+
+      loop ()
+
+  [<CompiledName "Create">]
+  let create conf name =
+    TargetConf.createSimple (Impl.loop conf) name
+
+  /// Use with LogaryFactory.New( s => s.Target<Console.Builder>() )
+  type Builder(conf, callParent: ParentCallback<Builder>) =
+
+    /// Specify the formatting style to use when logging to the console
+    member x.WithFormatter( sf: MessageWriter ) =
+      ! (callParent <| Builder({ conf with writer = sf }, callParent))
+
+    new(callParent: ParentCallback<_>) =
+      Builder(empty, callParent)
+
+    interface SpecificTargetConf with
+      member x.Build name = create conf name
+
 // Ignore deprecations (Debug doesn't have a Stream-ish to write to)
 #nowarn "44"
 
@@ -370,7 +465,6 @@ module Debugger =
   open Logary.Internals
   open Logary.Target
   open Logary.Configuration.Target
-
 
   let defaultMessageFormat = MessageWriter.expanded false System.Environment.NewLine System.Environment.NewLine
 
@@ -1063,7 +1157,7 @@ module File =
           // TODO: consider that the TextWriter may block the thread here
           conf.writer.write state.writer message
           // TODO: consider whether to use the async API or not here
-          acks.Add (Promise.instaPromise, ack)
+          acks.Add (Promise.unit, ack)
           // Invariant: always flush fatal messages.
           if message.level = Fatal then
             ilogger.debug (eventX "Got fatal message; scheduling disk flush.")
@@ -1113,8 +1207,8 @@ module File =
     let loop (conf: FileConf) (will: Will<TargetMessage[] * uint16>) (api: TargetAPI) =
       let ri, rotateCh = api.runtime, Ch ()
 
-      let shutdownState =
-        Logger.timeJobSimple ri.logger "shutdownState" shutdownState
+      let shutdownState state =
+        ri.logger.timeJob (shutdownState state, measurement="shutDownState")
 
       // In this state the File target opens its file stream and checks if it
       // progress to the recovering state.
@@ -1134,7 +1228,6 @@ module File =
       and running (state: State): Job<unit> =
         Alt.choose [
           api.shutdownCh ^=> fun ack ->
-            ri.logger.debugWithBP (eventX "Shutting down file target (starting shutdownState)") >>=.
             shutdownState state >>=.
             ack *<= ()
 
@@ -1146,11 +1239,10 @@ module File =
               | Choice1Of2 () ->
                 checking state
               | Choice2Of2 err ->
-                ri.logger.logWithAck Error (
+                ri.logger.logAck Error (
                   eventX "IO Exception while writing to file. Batch size is {batchSize}."
                   >> setField "batchSize" conf.batchSize
                   >> addExn err)
-                >>= id
                 >>=. Will.update will (reqs, 1us)
                 >>=. Job.raises err
         ] :> Job<_>
@@ -1198,18 +1290,16 @@ module File =
             | Choice1Of2 () ->
               checking state
             | Choice2Of2 ex ->
-              ri.logger.logWithAck Error (
+              ri.logger.logAck Error (
                 eventX "Attempt {attempts} failed, trying again shortly."
                 >> Message.setField "attempts" recoverCount)
-              >>= id
               >>=. Will.update will (lastBatch, recoverCount + 1us)
               >>=. Job.raises ex
 
         | recoverCount ->
-          ri.logger.logWithAck Fatal (
+          ri.logger.logAck Fatal (
             eventX "Could not recover in {attempts} attempts."
             >> Message.setField "attempts" recoverCount)
-          >>= id
           >>=. Job.raises (Exception "File recovery failed, crashing out.")
 
       init ()

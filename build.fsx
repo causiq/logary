@@ -2,7 +2,6 @@
 open Fake
 open System
 open System.IO
-open Fake
 
 Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 let configuration = environVarOrDefault "CONFIGURATION" "Release"
@@ -23,11 +22,15 @@ Target "Clean" (fun _ ->
 open AssemblyInfoFile
 
 Target "AssemblyInfo" (fun _ ->
-  [ "Logary", None
-    "Logary.Tests", None
-    "Logary.Facade", None
-    "Logary.Facade.Tests", None
-    "Logary.Services.Rutta", Some "legacy"
+  [ yield "Logary", None
+    yield "Logary.Tests", None
+    yield "Logary.Facade", None
+    yield "Logary.Adapters.Facade", Some "adapters"
+    yield! Directory.GetDirectories "src/targets" |> Array.map Path.GetFileName |> Seq.map (fun x -> x, Some "targets")
+    yield! Directory.GetDirectories "src/adapters" |> Array.map Path.GetFileName |> Seq.map (fun x -> x, Some "adapters")
+    yield! Directory.GetDirectories "src/ingestion" |> Array.map Path.GetFileName |> Seq.map (fun x -> x, Some "ingestion")
+    yield "Logary.Facade.Tests", None
+    yield "Logary.Services.Rutta", Some "services"
   ]
   |> Seq.iter (fun (proj, subPath) ->
     [ Attribute.Title proj
@@ -156,7 +159,7 @@ Target "Push" (fun _ ->
   Paket.Push (fun p -> { p with WorkingDir = "src" }))
 
 let ruttaBinFolder =
-  "src/legacy/Logary.Services.Rutta/bin/Release/net461/"
+  "src/services/Logary.Services.Rutta/bin/Release/net461/"
 
 Target "PackageRutta" (fun _ ->
   ignore (Directory.CreateDirectory "artifacts")

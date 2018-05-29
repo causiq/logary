@@ -1,0 +1,7 @@
+#load "Microsoft.Win32.Registry.csx" 
+#load "System.Security.Permissions.csx" 
+#load "System.Security.Principal.Windows.csx" 
+#load "System.Threading.AccessControl.csx" 
+#r "System" 
+#r "mscorlib" 
+#r "../../../packages/System.Diagnostics.EventLog/lib/net461/System.Diagnostics.EventLog.dll" 

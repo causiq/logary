@@ -423,48 +423,48 @@ let textPrinters =
       |> levelDatetimeMessagePathNewLine.format
       |> Expect.linesEqual "formatting the message LevelDatetimePathMessageNl" expected
 
-    testCase "Formatting.templateFormat, simple case" <| fun _ ->
+    testCase "eventFormat, simple case" <| fun _ ->
       let format = "This {0} contains {1} words."
       let args: obj[] = [|"sentence"; 4|]
-      let msg = Message.templateFormat(format, args)
+      let msg = Message.eventFormat(format, args)
       shouldHaveFields msg [KV("0","sentence"); KV("1",4)] "converting a String.Format into a message template"
 
-    testCase "Formatting.templateFormat, named and positional fields" <| fun _ ->
+    testCase "eventFormat, named and positional fields" <| fun _ ->
       let format = "This {gramaticalStructure} contains {wordCount} {0}."
       let args: obj[] = [|"sentence"; 4; "words"|]
 
-      let msg = Message.templateFormat(format, args)
+      let msg = Message.eventFormat(format, args)
       shouldHaveFields msg [KV("gramaticalStructure","sentence"); KV("wordCount",4);KV("0","words")]
         "fields are matched left-to-right when any fields are named"
 
-    testCase "Formatting.templateFormat, positional fields" <| fun _ ->
+    testCase "eventFormat, positional fields" <| fun _ ->
       let format = "Positionally - two {2} . {2} . zero {0} . {0}"
       let args: obj[] = [|0;1;2;3|]
 
-      let msg = Message.templateFormat(format, args)
+      let msg = Message.eventFormat(format, args)
       shouldHaveFields msg [KV("0", 0); KV("2", 2);]
         "fields are matched positionally when all are numbered"
 
-    testCase "Formatting.templateFormat, named fields" <| fun _ ->
+    testCase "eventFormat, named fields" <| fun _ ->
       let format = "This {gramaticalStructure} contains {wordCount} words."
       let args: obj[] = [|"sentence"; 4|]
 
-      let msg = Message.templateFormat(format, args)
+      let msg = Message.eventFormat(format, args)
       shouldHaveFields msg [KV("gramaticalStructure","sentence"); KV("wordCount", 4);]
         "fields are matched left-to-right in message template"
 
-    testCase "Formatting.templateFormat, named fields, missing last" <| fun _ ->
+    testCase "eventFormat, named fields, missing last" <| fun _ ->
       let format = "This {gramaticalStructure} contains {wordCount} words."
       let args: obj[] = [|"sentence"|]
 
-      let msg = Message.templateFormat(format, args)
+      let msg = Message.eventFormat(format, args)
       shouldHaveFields msg [KV ("gramaticalStructure", "sentence")] "fields are matched left-to-right in message template"
 
-    testCase "Formatting.templateFormat, named fields, all missing" <| fun _ ->
+    testCase "eventFormat, named fields, all missing" <| fun _ ->
       let format = "This {gramaticalStructure} contains {wordCount} words."
       let args: obj[] = [||]
 
-      let msg = Message.templateFormat(format, args)
+      let msg = Message.eventFormat(format, args)
       shouldHaveFields msg [] "fields are matched left-to-right in message template"
 
     testCase "templateEvent<_> reconises the '$' symbol and will call 'ToString()' on the captured value" <| fun _ ->
@@ -583,7 +583,67 @@ CompanyA.WebApi.Client.WebApiException: Service Web API Error ---&gt; ServiceSta
           | Line line ->
             line.file |> Expect.equal "Should have parsed the file path" (Some @"C:\Projects\app\Applications\Web\SellableTicketsService.cs")
             line.lineNo |> Expect.equal "Should have parsed the file path" (Some 73)
-          | InnerDelim ->
-            failtest "Unexpected InnerDelim"
-  ]
+          | other ->
+            failtestf "Unexpected %A" other
 
+    testCase "fusion stacktrace" <| fun () ->
+      let sample = """
+System.IO.FileNotFoundException: Could not load file or assembly 'Google.Api.Gax.Rest, Version=2.2.1.0, Culture=neutral, PublicKeyToken=3ec5ea7f18953e47' or one of its dependencies. The system cannot find the file specified.
+File name: 'Google.Api.Gax.Rest, Version=2.2.1.0, Culture=neutral, PublicKeyToken=3ec5ea7f18953e47'
+   at Google.Cloud.Storage.V1.StorageClient.Create(GoogleCredential credential, EncryptionKey encryptionKey)
+   at A.B.C.D.WebDav.WebDavService.<>c.<.ctor>b__4_0() in C:\A\B\C\D\WebDav\WebDavService.cs:line 27
+   at System.Lazy`1.CreateValue()
+   at System.Lazy`1.LazyInitValue()
+   at A.B.C.D.WebDav.WebDavService.TryGetFileSizeGCloud(String url, Int64& fileSize) in C:\A\B\C\D\WebDav\WebDavService.cs:line 119
+
+WRN: Assembly binding logging is turned OFF.
+To enable assembly bind failure logging, set the registry value [HKLM\Software\Microsoft\Fusion!EnableLog] (DWORD) to 1.
+Note: There is some performance penalty associated with assembly bind failure logging.
+To turn this feature off, remove the registry value [HKLM\Software\Microsoft\Fusion!EnableLog].
+"""
+      let parsed = DotNetStacktrace.parse sample
+
+      parsed.[0] |> function
+        | ExnType (et, msg) ->
+          et |> Expect.equal "Should be 'FileNotFoundException'" "System.IO.FileNotFoundException"
+          msg |> Expect.equal "Should be the remainder" "Could not load file or assembly 'Google.Api.Gax.Rest, Version=2.2.1.0, Culture=neutral, PublicKeyToken=3ec5ea7f18953e47' or one of its dependencies. The system cannot find the file specified."
+        | other -> failtestf "Unexpected %A" other
+
+      parsed.[1] |> function
+        | LineOutput msg ->
+          msg |> Expect.equal "Should be the full line" "File name: 'Google.Api.Gax.Rest, Version=2.2.1.0, Culture=neutral, PublicKeyToken=3ec5ea7f18953e47'"
+        | other -> failtestf "Unexpected %A" other
+
+      parsed.[7] |> function
+        | LineOutput msg ->
+          msg |> Expect.equal "Should be the full line" "WRN: Assembly binding logging is turned OFF."
+        | other -> failtestf "Unexpected %A" other
+
+      parsed.[8] |> function
+        | LineOutput msg ->
+          msg |> Expect.equal "Should be the full line" "To enable assembly bind failure logging, set the registry value [HKLM\Software\Microsoft\Fusion!EnableLog] (DWORD) to 1."
+        | other -> failtestf "Unexpected %A" other
+
+    testCase "wcf stacktrace" <| fun () ->
+      let sample = """System.ServiceModel.FaultException`1[System.ServiceModel.ExceptionDetail]: One or more errors occurred. (Fault Detail is equal to An ExceptionDetail, likely created by IncludeExceptionDetailInFaults=true, whose value is:
+System.AggregateException: One or more errors occurred. ----> System.IndexOutOfRangeException: AKeyHere
+   at System.Data.ProviderBase.FieldNameLookup.GetOrdinal(String fieldName)
+   at System.Data.SqlClient.SqlDataReader.GetOrdinal(String name)
+   at DatabaseAccess.SqlReaderExtensions.GetDefault[T](SqlDataReader r, String key) in d:\BuildAgent\work\ae3e9a35f63a8b8f\src\DatabaseAccess\DatabaseAccess\SqlReaderExtensions.cs:line 56
+   at ProcessServices.MemberQuery.<>c.<GetMember>b__2_1(SqlDataReader r) in C:\dev\DatabaseQueries\MemberQuery.cs:line 23
+   at DatabaseAccess.DbAccessor.<>c__DisplayClass14`1.<PerformSpReadSingle>b__13(SqlDataReader reader) in d:\BuildAgent\work\ae3e9a35f63a8b8f\src\DatabaseAccess\DatabaseAccess\DbAccessor.cs:line 284"""
+
+      let parsed = DotNetStacktrace.parse sample
+
+      parsed.[0] |> function
+        | ExnType (et, msg) ->
+          et |> Expect.equal "Should equal 'FaultException'" "System.ServiceModel.FaultException`1[System.ServiceModel.ExceptionDetail]"
+          msg |> Expect.equal "Should have message" "One or more errors occurred. (Fault Detail is equal to An ExceptionDetail, likely created by IncludeExceptionDetailInFaults=true, whose value is:"
+        | other -> failtestf "Unexpected %A" other
+
+      parsed.[1] |> function
+        | ExnType (et, msg) ->
+          et |> Expect.equal "Should equal 'AggregateException'" "System.AggregateException"
+          msg |> Expect.equal "Should have message" "One or more errors occurred. ----> System.IndexOutOfRangeException: AKeyHere"
+        | other -> failtestf "Unexpected %A" other
+  ]

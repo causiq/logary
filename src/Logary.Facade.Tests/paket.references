@@ -5,4 +5,5 @@ NodaTime
 Hopac
 FsCheck
 Expecto
+Expecto.Hopac
 Expecto.FsCheck

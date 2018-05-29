@@ -54,8 +54,9 @@ type Arbs =
       && not <| Double.IsNaN f
     Arb.Default.Derive()
     |> Arb.filter (function
-      | Offset (x, f) -> isNormal f
-      | Scaled (x, f) -> isNormal f
+      | Pow (_, n)    -> isNormal n
+      | Offset (_, f) -> isNormal f
+      | Scaled (_, f) -> isNormal f
       | _ -> true)
 
   static member Gauge() =
@@ -99,30 +100,6 @@ type Arbs =
 
 let fsCheckConfig =
   { FsCheckConfig.defaultConfig with arbitrary = [ typeof<Arbs> ] }
-
-module Expect =
-  /// Expect the passed float to be a number.
-  let isNotNaN f format =
-    if Double.IsNaN f then Tests.failtestf "%s. Float was the NaN (not a number) value." format
-
-  /// Expect the passed float not to be positive infinity.
-  let isNotPositiveInfinity actual format =
-    if Double.IsPositiveInfinity actual then Tests.failtestf "%s. Float was positive infinity." format
-
-  /// Expect the passed float not to be negative infinity.
-  let isNotNegativeInfinity actual format =
-    if Double.IsNegativeInfinity actual then Tests.failtestf "%s. Float was negative infinity." format
-
-  /// Expect the passed float not to be infinity.
-  let isNotInfinity actual format =
-    isNotNegativeInfinity actual format
-    isNotPositiveInfinity actual format
-    // passed via excluded middle
-
-  /// Expect the passed string not to be empty.
-  let isNotEmpty (actual: string) format =
-    Expect.isNotNull actual format
-    if actual.Length = 0 then Tests.failtestf "%s. Should not be empty." format
 
 [<Tests>]
 let tests =
@@ -417,15 +394,15 @@ let tests =
       testCase "public interface" <| fun () ->
         { new TimeScope with
             member x.name: PointName = PointName.ofSingle "B"
-            member x.logWithAck (level: LogLevel) (factory: LogLevel -> Message): Alt<Promise<unit>> =
-              Promise.instaPromise
+            member x.logWithAck (waitForBuffers, level) (messageFactory: LogLevel -> Message) =
+              LogResult.success
             member x.level: LogLevel = LogLevel.Info
             member x.Dispose () = ()
             member x.elapsed = Duration.Zero
             member x.bisect (label: string): unit =
               ()
-            member x.stop (decider: Duration -> LogLevel): Alt<Promise<unit>> =
-              Promise.instaPromise
+            member x.stop (decider: Duration -> LogLevel) =
+              LogResult.success
         }
         |> ignore
     ]
@@ -633,7 +610,6 @@ let tests =
       testCase "formatWithUnit" <| fun () ->
         let f = Gauge.format (Gauge (Float 2.34, Units.Days))
         Expect.equal f "2.34 days" "Should format # days properly"
-
     ]
 
     // TO CONSIDER: bring back Scheduling when needed
@@ -644,15 +620,24 @@ let tests =
         Expect.equal sut.name (PointName.parse "Logary.NullLogger")
                      "Is called Logary.NullLogger"
 
-      testCaseAsync "logWithAck returns" (async {
+      testCaseJob "logWithAck success" (job {
         let sut = NullLogger.instance
-        let! p = Alt.toAsync (sut.logWithAck Fatal (eventX "hi"))
-        do! Alt.toAsync (p :> Alt<_>)
+        let! p = sut.logWithAck (true, Fatal) (eventX "hi")
+        match p with
+        | Ok ack ->
+          do! ack
+        | Result.Error e ->
+          failtestf "%A" e
       })
 
-      testCaseAsync "log returns" (async {
+      testCaseJob "logAck success" (job {
+        do! NullLogger.instance.logAck Fatal (eventX "Hi")
+      })
+
+      testCaseJob "log success" (job {
         let sut = NullLogger.instance
-        do! Alt.toAsync (sut.log Fatal (eventX "hi"))
+        let! res = sut.log Fatal (eventX "hi")
+        Expect.isTrue res "Should return true as a stubbed value"
       })
     ]
 
@@ -686,7 +671,8 @@ let tests =
 
     testList "Engine" Engine.tests
 
-    testList "Target.Core" CoreTargets.tests
+    testList "core targets" CoreTargets.tests
+    testLabel "literate console" LiterateConsole.tests
 
     testLabel "Formatting" (Formatting.jsonTests fsCheckConfig)
     testLabel "Formatting" Formatting.textPrinters

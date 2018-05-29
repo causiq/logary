@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using Machine.Specifications;
 using NodaTime;
+using Logary.Configuration;
 
 // ReSharper disable InconsistentNaming
 // ReSharper disable UnusedMember.Local

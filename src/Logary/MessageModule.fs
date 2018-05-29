@@ -14,9 +14,9 @@ open Logary
 /// Open this module to log in a more succinct way.
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Message =
+  open Formatting
 
   module Optic =
-
     let name_: Lens<Message, PointName> =
       (fun (x: Message) -> x.name),
       fun v (x: Message) -> { x with name = v }
@@ -45,12 +45,10 @@ module Message =
       box >> Some
 
     let contextValue_ name =
-      context_ >-> HashMap.value_ name >-> boxWithOption_
+      context_ >-> HashMap.Optic.value_ name >-> boxWithOption_
 
     let contextValueObj_ name =
-      context_ >-> HashMap.value_ name
-
-  //#region CONTEXT AND FIELDS
+      context_ >-> HashMap.Optic.value_ name
 
   ///////////////// CONTEXT ////////////////////
 
@@ -60,6 +58,7 @@ module Message =
     if isNull name then message
     else Optic.set (Optic.contextValue_ name) value message
 
+  [<CompiledName "SetContexts">]
   let setContexts (values: #seq<string * obj>) message =
     (message, values)
     ||> Seq.fold (fun m (k, v) -> m |> setContext k v)
@@ -164,12 +163,12 @@ module Message =
   [<CompiledName "GetAllTags">]
   let getAllTags message =
     tryGetContext KnownLiterals.TagsContextName message
-    |> Option.orDefault (fun () -> Set.empty)
+    |> Option.defaultValue Set.empty
 
   [<CompiledName "GetAllSinks">]
   let getAllSinks message: Set<string> =
     tryGetContext KnownLiterals.SinkTargetsContextName message
-    |> Option.orDefault (fun () -> Set.empty)
+    |> Option.defaultValue Set.empty
 
   [<CompiledName "GetAllSinks">]
   let addSinks (sinks: string list) message =
@@ -187,14 +186,10 @@ module Message =
   let hasTag (tag: string) (message: Message) =
     message |> getAllTags |> Set.contains tag
 
-  /// Set span id
+  /// Set SpanId
   [<CompiledName "SetSpanId">]
   let setSpanId (spanId: Guid) (message: Message) =
     message |> setContext KnownLiterals.SpanIdContextName (SpanInfo.formatId spanId)
-
-  //#endregion
-
-  //#region CTORS
 
   ///////////////// CTORS ////////////////////
 
@@ -210,21 +205,21 @@ module Message =
 
   /// Creates a new event Message with a specified level.
   [<CompiledName "Event">]
-  let event level template =
-    create HashMap.empty level PointName.empty template
+  let event level value =
+    create HashMap.empty level PointName.empty value
 
   /// Creates a new event message template with level. Compared to `event`,
   /// this function has its parameters' order flipped.
   [<CompiledName "Event">]
-  let eventX template level =
-    event level template
+  let eventX value level =
+    event level value
 
   /// A single Message can take multiple gauges; use this function to add further
   /// gauges to the message. You can add gauges to events as well.
   [<CompiledName "AddGauge">]
   let addGauge gaugeName (gauge: Gauge) message =
     let gaugeName = KnownLiterals.GaugeNamePrefix + gaugeName
-    message |> setContext gaugeName gauge
+    message |> setContext gaugeName gauge |> tag KnownLiterals.GaugeTag
 
   /// A single Message can take multiple gauges; use this function to add further
   /// gauges to the message. You can add gauges to events as well.
@@ -369,7 +364,7 @@ module Message =
   /// Run the function `f` and measure how long it takes; logging that
   /// measurement as a Gauge in the unit Seconds.
   [<CompiledName "Time">]
-  let time pointName (f: 'input -> 'res) : 'input -> 'res * Message =
+  let time pointName (f: 'input -> 'res): 'input -> 'res * Message =
     fun input ->
       let sw = Stopwatch.StartNew()
       let res = f input
@@ -379,7 +374,7 @@ module Message =
       res, message
 
   [<CompiledName "TimeAsync">]
-  let timeAsync pointName (fn: 'input -> Async<'res>) : 'input -> Async<'res * Message> =
+  let timeAsync pointName (fn: 'input -> Async<'res>): 'input -> Async<'res * Message> =
     fun input ->
       async {
         let sw = Stopwatch.StartNew()
@@ -391,7 +386,7 @@ module Message =
       }
 
   [<CompiledName "TimeJob">]
-  let timeJob pointName (fn: 'input -> Job<'res>) : 'input -> Job<'res * Message> =
+  let timeJob pointName (fn: 'input -> Job<'res>): 'input -> Job<'res * Message> =
     fun input ->
       job {
         let sw = Stopwatch.StartNew()
@@ -403,7 +398,7 @@ module Message =
       }
 
   [<CompiledName "TimeAlt">]
-  let timeAlt pointName (fn: 'input -> Alt<'res>) : 'input -> Alt<'res * Message> =
+  let timeAlt pointName (fn: 'input -> Alt<'res>): 'input -> Alt<'res * Message> =
     fun input ->
     Alt.prepareFun (fun () ->
       let sw = Stopwatch.StartNew()
@@ -415,7 +410,7 @@ module Message =
     ))
 
   [<CompiledName "TimeTask">]
-  let timeTask pointName (fn: 'input -> Task<'res>) : 'input -> Task<'res * Message> =
+  let timeTask pointName (fn: 'input -> Task<'res>): 'input -> Task<'res * Message> =
     fun input ->
       let sw = Stopwatch.StartNew()
       // http://stackoverflow.com/questions/21520869/proper-way-of-handling-exception-in-task-continuewith
@@ -424,10 +419,6 @@ module Message =
         task.Result, // will rethrow if needed
         sw.toGauge() |> gaugeWithUnit pointName "time"
       ), TaskContinuationOptions.ExecuteSynchronously) // stopping SW is quick
-
-  //#endregion
-
-  //#region PROPS
 
   ///////////////// PROPS ////////////////////
 
@@ -484,34 +475,58 @@ module Message =
   let updateTimestamp message =
     { message with timestamp = Global.getTimestamp () }
 
+
   /// Replaces the value of the message with a new Event with the supplied format
   [<CompiledName "SetEvent">]
-  let setEvent format message =
-    { message with value = string format }
+  let setEvent format (message: Message) =
+    { message with value = format }
 
-  /// Adds a new exception to the "errors" field in the message.
-  /// AggregateExceptions are automatically expanded.
+  /// Synonym to setEvent.
+  [<CompiledName "SetValue">]
+  let setValue value (m: Message): Message = setEvent value m
+
+  /// Adds a new exception to the "_logary.errors" internal field in the message.
   [<CompiledName "AddException">]
   let addExn (e: exn) msg =
-    let errorCtxName = KnownLiterals.ErrorsContextName
     let errors =
-      match tryGetContext errorCtxName msg with
+      match tryGetContext KnownLiterals.ErrorsContextName msg with
       | Some errors ->
         e :: errors
       | _ ->
         e :: []
+    setContext KnownLiterals.ErrorsContextName errors msg
 
-    setContext errorCtxName errors msg
+  /// Adds new exceptions to the "_logary.errors" internal field in the message.
+  [<CompiledName "AddExceptions">]
+  let addExns (es: #seq<exn>) msg =
+    let errors =
+      match tryGetContext KnownLiterals.ErrorsContextName msg with
+      | Some errors ->
+        List.ofSeq es @ errors
+      | _ ->
+        List.ofSeq es
+    setContext KnownLiterals.ErrorsContextName errors msg
 
   [<CompiledName "GetExceptions">]
   let getExns msg: exn list =
     match tryGetContext KnownLiterals.ErrorsContextName msg with
-    | Some errors ->
+    | Some (errors: exn list) ->
       errors
     | _ ->
       []
 
-  //#endregion
+  [<CompiledName "TryGetError">]
+  let tryGetError msg: Formatting.StacktraceLine[] option =
+    tryGetField "error" msg
+
+  [<CompiledName "AddCallerInfo">]
+  let addCallerInfo (memberName, path, line) msg =
+    match memberName, path, line with
+    | Some m, p, l ->
+      let data = StacktraceLineData.create m p l
+      msg |> setField "callerInfo" data
+    | None, _, _ ->
+      msg
 
   /// Patterns to match against the context; useful for extracting the data
   /// slightly more semantically than "obj"-everything. Based on the known prefixes
@@ -555,7 +570,6 @@ module Message =
 module MessageEx =
 
   type Message with
-
     /// Creates a new event with given level, format and arguments. Format may
     /// contain String.Format-esque format placeholders.
     [<CompiledName "EventFormat">]
@@ -566,7 +580,7 @@ module MessageEx =
     /// Converts a String.Format-style format string and an array of arguments into
     /// a message template and a set of fields.
     [<CompiledName "EventFormat">]
-    static member templateFormat (format: string, [<ParamArray>] args: obj[]) =
+    static member eventFormat (format: string, [<ParamArray>] args: obj[]) =
       Message.eventFormat (LogLevel.Info, format, args)
 
     static member templateEvent<'T> (level: LogLevel, format: string) : ('T -> Message) =

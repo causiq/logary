@@ -9,26 +9,42 @@ open Logary.MessageTemplates.Formatting
 open Logary.MessageTemplates.Formatting.Literate
 
 module Literate =
+  let private printLine = function
+    | StacktraceLine.ExnType (et, m) ->
+      [ String.Concat [ et; ": "; m ], Text ]
+    | StacktraceLine.LineOutput data ->
+      [ data, Subtext ]
+    | StacktraceLine.Line line ->
+      [ yield "  at ", Punctuation
+        yield line.site, Subtext
+
+        if Option.isSome line.file then
+          yield " in ", Punctuation
+          yield Option.get line.file, Subtext
+
+        if Option.isSome line.lineNo then
+          yield ":", Punctuation
+          yield "line ", Subtext
+          yield Option.get line.lineNo |> string, NumericSymbol
+      ]
+    | StacktraceLine.InnerDelim ->
+      [ "--- End of inner exception stack trace ---", Punctuation ]
+
   let tokeniseExceptions (pvd: IFormatProvider) (nl: string) (m: Message) =
-    let windowsStackFrameLinePrefix = "   at "
-    let monoStackFrameLinePrefix = "  at "
-    m
-    |> Message.getExns
-    |> Seq.collect (fun exn ->
-       let exnLines = new StringReader(string exn)
-       seq {
-         let mutable line = exnLines.ReadLine()
-         while not (isNull line) do
-           if line.StartsWith(windowsStackFrameLinePrefix) || line.StartsWith(monoStackFrameLinePrefix) then
-             // subtext
-             yield nl, Subtext
-             yield line, Subtext
-           else
-             // regular text
-             yield nl, Text
-             yield line, Text
-           line <- exnLines.ReadLine()
-        })
+    let exceptions =
+        Message.getExns m |> Seq.collect (fun e ->
+          [ yield printLine (ExnType (e.GetType().FullName, e.Message))
+            yield! DotNetStacktrace.parse e.StackTrace |> Seq.map printLine
+          ])
+
+    let error =
+        Message.tryGetError m
+        |> Option.fold (fun s t -> t :: s) []
+        |> Seq.collect id
+        |> Seq.map printLine
+
+    Seq.concat [ exceptions; error ]
+    |> Seq.collect (fun line -> [ yield nl, Subtext; yield! line ])
 
   let tokeniseTemplateByGauges (pvd: IFormatProvider) (gauges: seq<string * Gauge>) =
     let gauges =

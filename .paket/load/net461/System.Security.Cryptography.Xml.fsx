@@ -1,0 +1,6 @@
+#load "System.Security.Cryptography.Pkcs.fsx" 
+#load "System.Security.Permissions.fsx" 
+#r "System" 
+#r "System.Security" 
+#r "System.Xml" 
+#r "../../../packages/System.Security.Cryptography.Xml/lib/net461/System.Security.Cryptography.Xml.dll" 

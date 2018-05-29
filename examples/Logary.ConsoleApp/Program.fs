@@ -14,8 +14,8 @@ open Hopac
 open Logary
 open Logary.Configuration
 open Logary.Targets
-open Logary.EventProcessing
-open Logary.EventProcessing.Transformers
+open Logary.Configuration
+open Logary.Configuration.Transformers
 
 module RandomWalk =
 
@@ -82,7 +82,7 @@ module Timing =
 module NormalUsage =
 
   let act (logger: Logger) =
-    Message.templateFormat("{userName} logged in", "haf")
+    Message.eventFormat("{userName} logged in", "haf")
     |> Logger.logSimple logger
 
     Message.eventFormat (Info, "{userName} logged in", "adam")
@@ -119,7 +119,7 @@ let main argv =
 
   let processing =
     Events.compose [
-      Events.events |> Events.miniLevel LogLevel.Fatal |> Events.sink ["fatal"]
+      Events.events |> Events.minLevel LogLevel.Fatal |> Events.sink ["fatal"]
 
       //Events.events
       //|> Pipe.tickTimer (WinPerfCounters.appMetrics (PointName.ofSingle "app")) (TimeSpan.FromMilliseconds 5000.)
@@ -140,8 +140,8 @@ let main argv =
       |> Pipe.choose (Message.tryGetGauge "Logary.ConsoleApp.randomWalk")
       |> Pipe.tickTimer timing (TimeSpan.FromSeconds 10.)
       |> Pipe.map Array.toSeq
-      |> Events.flattenToProcessing
-      |> Events.sink ["console";]
+      |> Events.flattenSeq
+      |> Events.sink ["console"]
     ]
 
   let logary =

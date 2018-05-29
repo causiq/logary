@@ -1,3 +1,55 @@
+#### 5.0.0-beta.12
+* Build Facade v4 for Hopac-based software, thanks @haf
+* Preserve non-exceptions in error field, thanks @yoff
+* Fix crash when comparing versions in adapter, thanks @yoff
+* Adapter handles gauges and their units better, allowing the Facade to pass in metrics, thanks @yoff
+* Add in Scope support
+
+#### 5.0.0-beta.11
+* Dot not crash on typecasts when constructing log message, thanks @yoff
+* Cross-compile Rutta for .net core, subject to these limitations https://github.com/Topshelf/Topshelf/issues/444, thanks @haf
+* Fix #330 – tagging Gauges, thanks @haf
+* Fix #302 – Struct for Gauge, thanks @haf
+
+#### 5.0.0-beta.10
+* Bump dependency on NodaTime, Http.fs
+
+#### 5.0.0-beta.9
+* Logary.Ingestion.HTTP.HTTPConf: IVar -> Promise correction see #332
+
+#### 5.0.0-beta.8
+* Disable stacktrace parsing for log4jxml codec (could possibly be made a boolean instead), thanks @pakselsson
+* Cross-compile Logary.Adapters.EventStore (net461;netstandard2.0), thanks @haf
+* Move Newtonsoft.Json asm redirect to Stackdriver target, thanks @haf
+
+#### 5.0.0-beta.7
+* Improve stacktrace parsing for WCF stacktraces, thanks @haf
+* Adding Logary.PerfTests to track https://github.com/logary/logary/issues/322 thanks @haf
+* Fix #318, move Logary.EventProcessing -> Logary.Configuration
+* Correct Stopwatch.Frequency measurements for high-frequency timers. Thanks @haf
+* Add Gauge.of{StopwatchTicks,...} methods, thanks @haf
+* Add Logger.time{Alt,Job,Fun} for timing of Hopac things and F# functions, thanks @haf
+* Binding redirect for Rutta / Newtonsoft.Json #324, thanks @akselsson
+
+#### 5.0.0-beta.6
+* System.Diagnostics.Trace target
+
+#### 5.0.0-beta.5
+* Published haaf/rutta docker container
+* Improved JSON codec to capture `error` field.
+* Documented Rutta with screenshots and docs in README
+
+#### 5.0.0-beta.4
+* Support parsing exn type and inner exception messages from .Net and Java stacktraces. Thanks @haf
+* Fix most of #294, thanks @haf
+* Fix #285 for LiterateConsole. This should be it. Thanks @haf.
+* Move colourising tokenisers to a module more easily discoverable. Thanks @haf
+* Fix #300 naming of Events.miniLevel -> minLevel, thanks @haf
+* Fix #313 - passing along exns in the right format, thanks @haf
+* Fix #314 - add a few missing SI units
+* Fix #315 - print complete, parsed exns in console
+* Add Topshelf and EventStore (for .Net Core) adapters
+
 #### 5.0.0-beta.3
 * Targets: AliYun target ported to .Net Core
 * Targets: StackDriver target goes via JSON encoding; makes it total (AFAIK)

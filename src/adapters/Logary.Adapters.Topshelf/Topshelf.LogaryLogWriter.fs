@@ -1,4 +1,4 @@
-﻿namespace Topshelf.Logging
+﻿namespace Logary.Adapters.Topshelf
 
 open System
 open System.Runtime.CompilerServices
@@ -6,9 +6,9 @@ open System.Diagnostics
 open Topshelf.Logging
 open Topshelf.HostConfigurators
 open Logary
+open Logary.Configuration
 
 type TopshelfAdapter(logger: Logger) =
-
   let fromSourceLevel = function
     | SourceLevels.Off
     | SourceLevels.Verbose     -> Verbose
@@ -169,7 +169,6 @@ type LogaryHostLoggerConfigurator(logary: LogManager) =
 
 [<Extension>]
 module ConfiguratorExtensions =
-
   [<Extension; CompiledName "UseLogary">]
   let useLogary (hc: HostConfigurator) (logary: LogManager) =
     HostLogger.UseLogger(new LogaryHostLoggerConfigurator(logary))

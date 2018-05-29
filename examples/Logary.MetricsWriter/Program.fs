@@ -8,7 +8,7 @@ open Logary.Configuration
 open NodaTime
 open Logary.Targets
 open Logary.Metrics.WinPerfCounters
-open Logary.EventProcessing
+open Logary.Configuration
 
 module Sample =
 
@@ -65,7 +65,7 @@ let main argv =
 
        systemMetrics
        |> Pipe.map Array.toSeq
-       |> Events.flattenToProcessing
+       |> Events.flattenSeq
        |> Events.sink ["LiterateConsole"; "WPCMetricFile";]
 
     ]

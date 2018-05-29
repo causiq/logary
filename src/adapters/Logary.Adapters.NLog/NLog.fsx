@@ -7,22 +7,21 @@
 #r "Logary"
 open Hopac
 open Logary
-open Logary.EventProcessing
 open Logary.Configuration
 open Logary.Targets
 
 let logary =
-    Config.create "Logary.ConsoleApp" "localhost"
-    |> Config.targets [
-        LiterateConsole.create LiterateConsole.empty "console"
-      ]
-    |> Config.ilogger (ILogger.Console Info)
-    |> Config.middleware Middleware.dnsHost
-    |> Config.processing (
-      Events.events |> Events.sink ["console"]
-    )
-    |> Config.build
-    |> run
+  Config.create "Logary.ConsoleApp" "localhost"
+  |> Config.targets [
+      LiterateConsole.create LiterateConsole.empty "console"
+    ]
+  |> Config.ilogger (ILogger.Console Info)
+  |> Config.middleware Middleware.dnsHost
+  |> Config.processing (
+    Events.events |> Events.sink ["console"]
+  )
+  |> Config.build
+  |> run
 
 ////////////// SAMPLE NLOG CONFIGURATION //////////
 

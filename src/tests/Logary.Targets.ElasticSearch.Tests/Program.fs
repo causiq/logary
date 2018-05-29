@@ -6,6 +6,7 @@ open Expecto
 open Hopac
 open Hopac.Infixes
 open Logary
+open Logary.Tests
 open Logary.Target
 open Logary.Targets
 open Logary.Internals
@@ -37,10 +38,7 @@ let now = Message.setUTCTicks System.DateTime.UtcNow.Ticks
 [<Tests>]
 let target =
   testList "elasticsearch" [
-    testCase "start and stop" <| fun _ ->
-      let subject = start ()
-      Message.eventWarn "integration test" |> Target.log subject |> run |> run
-      subject |> shutdown
+    TargetBaseline.basicTests "ElasticSearch" (ElasticSearch.create ElasticSearch.empty) false
 
     testCase "serialise" <| fun _ ->
       let e1 = raisedExn "darn"

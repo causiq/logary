@@ -1,12 +1,14 @@
+generate_load_scripts: true
 source https://api.nuget.org/v3/index.json
 framework net461, netcoreapp2.0, netstandard2.0
-redirects on
 
 nuget Argu
 nuget Castle.Core
-nuget EventStore.Client
+nuget EventStore.Client ~> 4.1
+nuget EventStore.ClientAPI.NetCore
 nuget Expecto
 nuget Expecto.FsCheck
+nuget Expecto.Hopac
 nuget Machine.Specifications
 nuget Machine.Specifications.Should
 nuget Machine.Specifications.Runner.Console
@@ -14,14 +16,14 @@ nuget Machine.Specifications.Runner.VisualStudio
 nuget Microsoft.NET.Test.Sdk
 nuget FParsec
 nuget FSharp.Core
-nuget FluentMigrator
-nuget FluentMigrator.Runner
+nuget FluentMigrator < 2
+nuget FluentMigrator.Runner < 2
 nuget FsCheck
 nuget FsPickler
 nuget FsPickler.Json
 nuget FsSql
-nuget Google.Api.Gax.Rest
-nuget Google.Cloud.Logging.V2
+nuget Google.Api.Gax.Rest redirects: on
+nuget Google.Cloud.Logging.V2 redirects: on
 nuget Hopac
 nuget Http.fs
 nuget Microsoft.ApplicationInsights
@@ -34,6 +36,8 @@ nuget SQLite.Interop.dll
 nuget Suave
 nuget System.Data.SQLite.Core
 nuget System.Net.Http
+nuget System.Configuration.ConfigurationManager >= 4.5.0-rc1 # topshelf
+nuget System.Data.SqlClient >= 4.5.0-rc1 # topshelf
 nuget Topshelf ~> 4.1.0.117-develop
 nuget TweetinviAPI
 nuget Unquote
@@ -48,7 +52,7 @@ nuget protobuf-net
 github eiriktsarpalis/TypeShape src/TypeShape/TypeShape.fs
 github eiriktsarpalis/TypeShape src/TypeShape/Utils.fs
 github haf/YoLo:bd91bbe94a183aa9dc9c13e885c73b20516b01e7 YoLo.fs
-github logary/RingBuffer RingBuffer.fs
+github logary/RingBuffer:014138cdfc9dff76e74dc154e68c929655bcbd86 RingBuffer.fs
 github logary/logary src/Logary.CSharp.Facade/Facade.cs
 github logary/logary src/Logary.Facade/Facade.fs
 github messagetemplates/messagetemplates-fsharp src/FsMtParser/FsMtParserFull.fs
@@ -74,3 +78,14 @@ group Examples
     nuget Hopac
     nuget NodaTime
     nuget RabbitMQ.Client
+
+group Benchmarks
+    source https://api.nuget.org/v3/index.json
+    framework net471, netcoreapp2.0
+    redirects on
+    nuget FParsec
+    nuget FSharp.Core
+    nuget Hopac
+    nuget NodaTime
+    nuget Expecto
+    nuget Expecto.BenchmarkDotNet

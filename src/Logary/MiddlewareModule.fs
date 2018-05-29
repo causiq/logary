@@ -1,5 +1,6 @@
 namespace Logary
 
+open Logary.Internals
 open System.Net
 open System.Diagnostics
 
@@ -55,6 +56,14 @@ module Middleware =
       Message.setContext name value msg
       |> next
 
+  [<CompiledName "AmbientSpanId">]
+  let ambientSpanId (): Middleware =
+    fun next msg ->
+      let ambientSpanId = SpanBuilder.getActiveSpanId ()
+      match ambientSpanId with
+      | Some ambientSpanId -> msg |> Message.setSpanId ambientSpanId |> next
+      | None -> next msg
+
   /// Compose the list of middlewares together into a single Message->Message function.
   [<CompiledName "Compose">]
   let compose: Middleware list -> Message -> Message = function
@@ -62,10 +71,3 @@ module Middleware =
       id
     | middlewares ->
       List.foldBack (fun f composed -> f composed) middlewares id
-
-  let useAmbientSpanId () : Middleware =
-    fun next msg ->
-      let ambientSpanId = SpanBuilder.getActiveSpanId ()
-      match ambientSpanId with
-      | Some ambientSpanId -> msg |> Message.setSpanId ambientSpanId |> next
-      | None -> next msg
