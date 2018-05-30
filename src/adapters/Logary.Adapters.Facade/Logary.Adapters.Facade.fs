@@ -310,8 +310,8 @@ module LoggerAdapter =
     //printfn "Value=%A, Tag=%i" o tag
     match tag with
     | 0 ->
-      let u = findProperty(unitsType, "unit").GetValue o
-      let v = findProperty(unitsType, "value").GetValue o :?> float
+      let u = findProperty(unitsType, "scaledUnit").GetValue o
+      let v = findProperty(unitsType, "scaledFloat").GetValue o :?> float
       Units.Scaled (toUnits loggerType u, v)
     | 1 ->
       Units.Seconds
