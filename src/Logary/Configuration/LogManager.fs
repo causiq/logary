@@ -4,6 +4,7 @@ open Hopac
 open Logary
 open Logary.Internals
 open NodaTime
+open System.Runtime.CompilerServices
 
 /// A data-structure that gives information about the outcome of a flush
 /// operation on the Registry. This data structure is only relevant if the
@@ -32,10 +33,6 @@ type LogManager =
   /// a specific name that you keep for a sub-component of your application or
   /// the name of the class. Also have a look at Logging.GetCurrentLogger().
   abstract getLogger: PointName -> Logger
-  /// Get a logger denoted by the name passed as the parameter. This name can either be
-  /// a specific name that you keep for a sub-component of your application or
-  /// the name of the class. Also have a look at Logging.GetCurrentLogger().
-  abstract getLogger: string -> Logger
 
   abstract getLoggerWithMiddleware: PointName -> Middleware -> Logger
 
@@ -58,3 +55,9 @@ type LogManager =
   /// Dynamically controls logger min level,
   /// this will only affect the loggers (its name, not its instance) which have been created beafore
   abstract switchLoggerLevel: string * LogLevel -> unit
+
+[<AutoOpen; Extension>]
+module LogManagerEx =
+  type LogManager with
+    member x.getLogger name =
+      x.getLogger (PointName.parse name)

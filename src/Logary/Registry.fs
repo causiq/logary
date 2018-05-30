@@ -273,9 +273,6 @@ module Registry =
     { new LogManager with
         member x.getLogger name =
           Impl.getLogger t name None
-        member x.getLogger name =
-          let pn = PointName.parse name
-          Impl.getLogger t pn None
         member x.getLoggerWithMiddleware name mid =
           Impl.getLogger t name (Some mid)
         member x.runtimeInfo =
