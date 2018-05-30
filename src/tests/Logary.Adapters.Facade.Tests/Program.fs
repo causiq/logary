@@ -20,12 +20,8 @@ let stubLogManager (message: Message ref) =
   { new LogManager with
       member x.runtimeInfo =
         Internals.RuntimeInfo.create "Facade Tests" "localhost" :> _
-      member x.getLogger (name: PointName) =
-        stubLogger Verbose message name
       member x.getLogger name =
-        let pn = PointName.parse name
-        stubLogger Verbose message pn
-
+        stubLogger Verbose message name
       member x.getLoggerWithMiddleware name mid =
         stubLogger Verbose message name
       member x.flushPending dur =
