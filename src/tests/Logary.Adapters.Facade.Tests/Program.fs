@@ -24,7 +24,7 @@ let stubLogManager (message: Message ref) =
         stubLogger Verbose message name
       member x.getLogger name =
         let pn = PointName.parse name
-        stubLogger Verbose message name
+        stubLogger Verbose message pn
 
       member x.getLoggerWithMiddleware name mid =
         stubLogger Verbose message name
