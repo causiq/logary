@@ -304,6 +304,14 @@ module LoggerAdapter =
         | _ ->
           msg)
 
+  let unitsTypeOf (o: obj) (loggerType: Type): Type =
+    let cachedType = unitTypeOf o loggerType
+    let unitsType = o.GetType()
+    if cachedType <> unitsType then
+      failwithf "Cached unit type: %s, actual unit type: %s, logger type: %s"
+                cachedType.FullName unitsType.FullName loggerType.FullName
+    cachedType
+
   let rec toUnits (loggerType: Type) (o: obj): Units =
     let unitsType = unitTypeOf o loggerType
     let tag = findProperty(unitsType, "Tag").GetValue o :?> int
