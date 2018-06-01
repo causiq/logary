@@ -141,7 +141,10 @@ type Units =
   | Seconds
   | Scalar
   | Other of unit:string
-  member x.otherUnit = match x with Other s -> s | _ -> null // reflection-workaorund
+  // reflection-workarounds for non-stable field names on different F# versions (???):
+  member x.scaledFloat = match x with Scaled (_, f) -> f | _ -> 0.
+  member x.scaledUnit = match x with Scaled (u, _) -> u | _ -> failwith "Only available on Scaled"
+  member x.otherUnit = match x with Other s -> s | _ -> null
 
 /// Time calculation constants
 module Constants =
@@ -1401,4 +1404,3 @@ module LoggerEx =
           x.log Verbose (Message.eventX "Before {measurement}" >> Message.setField "measurement" measurement)
           >>-. timedAlt)
       else timedAlt
-
