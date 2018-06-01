@@ -4,16 +4,17 @@ open System
 open Hopac
 open Hopac.Infixes
 open NodaTime
-open Expecto
+open Expecto.Flip
 open Logary
 open Logary.Internals
 open Logary.Message
 open Logary.Configuration
 
-let testLogger = Logging.Log.create "Logary.Tests.Registry"
+let testLogger = Log.create "Logary.Tests.Registry"
 
-let debug message =
-  testLogger.logWithAck Logging.Debug (Logging.Message.eventX message)
+let debug message = testLogger.logWithBP Debug (eventX message)
+
+let timeout = Duration.FromSeconds 1.
 
 let tests = [
   testCaseJob "from Config and Multi shutdown" <| job {
@@ -25,31 +26,27 @@ let tests = [
     do! debug "Started LogManager."
 
     let ri = logm.runtimeInfo
-    Expect.equal ri.service "svc" "Has service"
-    Expect.equal ri.host "localhost" "Has host"
-
-    let timeout = Duration.FromSeconds 3L
+    ri.service |> Expect.equal "should have service" "svc"
+    ri.host |> Expect.equal "should have host" "localhost"
 
     do! debug "Shutting down LogManager (1)..."
-    let! finfo, sinfo = logm.shutdown (timeout, timeout)
-    do! debug "Shut down LogManager (1)."
-
+    let! finfo, sinfo = logm.shutdown(timeout, timeout)
     let none = List.empty<string>, List.empty<string>
-    Expect.equal finfo (FlushInfo none) "No targets to shut down"
-    Expect.equal sinfo (ShutdownInfo none) "No targets to shut down"
-
-    do! debug "Shutting down LogManager (2)..."
+    finfo |> Expect.equal "Should have no targets" (FlushInfo none)
+    sinfo |> Expect.equal "Should have no targets" (ShutdownInfo none)
+    do! debug "Shut down LogManager (1)."
+    do! debug "Shutting down LogManager (2)."
     do! logm.shutdown ()
     do! debug "Shut down LogManager (2). Flushing LogManager (1)..."
     do! logm.flushPending ()
     do! debug "Flushed LogManager (1). Shutting down LogManager (3)..."
     do! logm.shutdown ()
     do! debug "Shut down LogManager (3). Flushing LogManager (2)..."
-    let! finfo = logm.flushPending timeout
+    let! finfo = logm.flushPending(timeout)
     do! debug "Flushed LogManager (2)."
-    Expect.equal
-      finfo (FlushInfo (["registry is closed"],[]))
-      "FlushPending should notify called that Registry is shut down."
+    finfo
+      |> Expect.equal "FlushPending should notify called that Registry is shut down."
+                      (FlushInfo (["registry is closed"],[]))
   }
 
   testCaseJob "after shutting down no logging happens" <|
@@ -57,7 +54,6 @@ let tests = [
       let! (logm, out, error) = Utils.buildLogManager ()
       let loggername = PointName.parse "logger.test"
 
-      let ilg = logm.runtimeInfo.logger
       let lg = logm.getLogger loggername
 
       do! lg.infoWithAck (eventX "test info msg")
@@ -65,16 +61,16 @@ let tests = [
 
       let outStr = out.ToString()
       let errorStr = error.ToString()
-      Expect.stringContains outStr "info msg" "shoule"
-      Expect.stringContains errorStr "error msg" "shoule"
+      outStr |> Expect.stringContains "shoule contains" "info msg"
+      errorStr |> Expect.stringContains "shoule contains" "error msg"
 
       let timeout =  Duration.FromSeconds 3L
-      let! (finfo, sinfo) = logm.shutdown(timeout, timeout)
+      let! _ = logm.shutdown(timeout, timeout)
 
       do! lg.errorWithBP (eventX "error after shutdown")
 
       let errorOutput = error.ToString()
-      if errorOutput.Contains("after") then Tests.failtestf "should not contains after, actual %s" errorOutput
+      if errorOutput.Contains("after") then Expecto.Tests.failtestf "should not contains after, actual %s" errorOutput
     }
 
   testCaseJob "getlogger with middleware" <| job {
@@ -88,22 +84,43 @@ let tests = [
 
     let outStr = out.ToString()
     let errorStr = error.ToString()
-    Expect.stringContains outStr "svc" "shoule have svc ctx info"
-    Expect.stringContains outStr "localhost" "shoule have host ctx info"
-    Expect.stringContains errorStr "svc" "shoule have svc ctx info"
-    Expect.stringContains errorStr "localhost" "shoule have host ctx info"
-    Expect.stringContains outStr correlationId "shoule have correlationId ctx info"
-    Expect.stringContains errorStr correlationId "shoule have correlationId ctx info"
+    outStr |> Expect.stringContains "shoule have svc ctx info" "svc"
+    outStr |> Expect.stringContains "shoule have host ctx info" "localhost"
+    errorStr |> Expect.stringContains "shoule have svc ctx info" "svc"
+    errorStr |> Expect.stringContains "shoule have host ctx info" "localhost"
+    outStr |> Expect.stringContains "shoule have correlationId ctx info" correlationId
+    errorStr |> Expect.stringContains "shoule have correlationId ctx info" correlationId
 
     do! logm.shutdown ()
   }
 
+  testCaseJob "log with span" (job {
+    let! logm, out, _  = Utils.buildLogManagerWith (fun conf -> conf |> Config.middleware (Middleware.ambientSpanId ()))
+
+    let checkSpanId spanId = job {
+      do! logm.flushPending ()
+      clearStream out
+      |> Expect.stringContains "should have spanId" (SpanInfo.formatId spanId)
+    }
+
+    let lga = logm.getLogger "logger.a"
+    use rootSpan = lga |> Span.create |> Span.setMessage (eventX "some root span") |> Span.start
+    let lgb = logm.getLogger "logger.b"
+    use _ = lgb |> Span.create |> Span.setMessage (eventX "some child span") |> Span.start
+    use _ = lgb |> Span.create |> Span.setMessage (eventX "some grand span") |> Span.start
+    do! lgb.infoWithAck (eventX "some log message")
+    do! timeOutMillis 100
+    clearStream out
+    |> Expect.stringContains "should have spanId" "_logary.spanId"
+
+    // use explicitly set style
+    use spanFromRoot = lgb |> Span.create |> Span.setParentSpanInfo rootSpan.info |> Span.setMessage (eventX "some child span") |> Span.start
+    do! lgb.infoWithAck (eventX "some log message" >> setSpanId spanFromRoot.info.spanId)
+    do! checkSpanId spanFromRoot.info.spanId
+    do! logm.shutdown ()
+  })
+
   testCaseJob "switch logger level" (job {
-    let clearStream (s: System.IO.StringWriter) =
-      let sb = s.GetStringBuilder ()
-      let str = string sb
-      sb.Clear () |> ignore
-      str
     let! (logm, out, error)  = Utils.buildLogManager ()
     let loggername = PointName.parse "logger.test"
     let lg = logm.getLogger loggername
@@ -115,10 +132,10 @@ let tests = [
 
     let outStr = clearStream out
     let errorStr = clearStream error
-    Expect.isFalse (outStr.Contains("debug")) "shoule not have debug level msg, since the default rule is .* -> Info"
-    Expect.isFalse (outStr.Contains("verbose")) "shoule not have verbose level msg, since the default rule is .* -> Info"
-    Expect.stringContains outStr "info" "shoule have info level msg"
-    Expect.stringContains errorStr "error" "shoule have error level msg"
+    (outStr.Contains("debug")) |> Expect.isFalse  "shoule not have debug level msg, since the default rule is .* -> Info"
+    (outStr.Contains("verbose")) |> Expect.isFalse "shoule not have verbose level msg, since the default rule is .* -> Info"
+    outStr |> Expect.stringContains "shoule have info level msg" "info"
+    errorStr |> Expect.stringContains "shoule have error level msg" "error"
 
 
     logm.switchLoggerLevel (".*test", LogLevel.Verbose)
@@ -127,9 +144,9 @@ let tests = [
     do! lg.infoWithAck (eventX "test info msg")
     do! logm.flushPending ()
     let outStr = clearStream out
-    Expect.stringContains outStr "debug" "shoule have debug level msg after switch logger level"
-    Expect.stringContains outStr "verbose" "shoule have verbose level msg after switch logger level"
-    Expect.stringContains outStr "info" "shoule have info level msg"
+    outStr |> Expect.stringContains "shoule have debug level msg after switch logger level" "debug"
+    outStr |> Expect.stringContains "shoule have verbose level msg after switch logger level" "verbose"
+    outStr |> Expect.stringContains "shoule have info level msg" "info"
 
     let lgWithSameNameAfterSwitch = logm.getLogger loggername
     do! lgWithSameNameAfterSwitch.debugWithAck (eventX "test debug msg")
@@ -137,9 +154,9 @@ let tests = [
     do! lgWithSameNameAfterSwitch.infoWithAck (eventX "test info msg")
     do! logm.flushPending ()
     let outStr = clearStream out
-    Expect.stringContains outStr "debug" "shoule have debug level msg after switch logger level"
-    Expect.stringContains outStr "verbose" "shoule have verbose level msg after switch logger level"
-    Expect.stringContains outStr "info" "shoule have info level msg"
+    outStr |> Expect.stringContains "shoule have debug level msg after switch logger level" "debug"
+    outStr |> Expect.stringContains "shoule have verbose level msg after switch logger level" "verbose"
+    outStr |> Expect.stringContains "shoule have info level msg" "info"
 
     let lgWithDiffNameAfterSwitch = logm.getLogger (PointName.parse "xxx.yyy.zzz.test")
     do! lgWithDiffNameAfterSwitch.debugWithAck (eventX "test debug msg")
@@ -147,10 +164,9 @@ let tests = [
     do! lgWithDiffNameAfterSwitch.infoWithAck (eventX "test info msg")
     do! logm.flushPending ()
     let outStr = clearStream out
-    Expect.isFalse (outStr.Contains("debug")) "shoule not have debug level msg after switch logger level"
-    Expect.isFalse (outStr.Contains("verbose")) "shoule not have verbose level msg after switch logger level"
-    Expect.stringContains outStr "info" "shoule have info level msg"
-
+    (outStr.Contains("debug")) |> Expect.isFalse  "shoule not have debug level msg after switch logger level"
+    (outStr.Contains("verbose")) |> Expect.isFalse  "shoule not have verbose level msg after switch logger level"
+    outStr |> Expect.stringContains "shoule have info level msg" "info"
     do! logm.shutdown ()
   })
 
@@ -181,11 +197,11 @@ let tests = [
     let! (finfo, sinfo) = logm.shutdown (ms100, ms100)
     let (FlushInfo (fack, ftimeout)) = finfo
     let (ShutdownInfo (sack, stimeout)) = sinfo
-    Expect.equal fack [] "should have no flush ack target"
-    Expect.contains ftimeout "mockTarget" "should have flush timeout target"
+    fack |> Expect.equal "should have no flush ack target" []
+    ftimeout |> Expect.contains "should have flush timeout target" "mockTarget"
 
-    Expect.equal sack [] "should have no shutdown ack target"
-    Expect.contains stimeout "mockTarget" "should have shutdown timeout target"
+    sack |> Expect.equal "should have no shutdown ack target"  []
+    stimeout |> Expect.contains "should have shutdown timeout target" "mockTarget"
 
     let! logm =
         Config.create "svc" "host"
@@ -193,14 +209,14 @@ let tests = [
         |> Config.build
 
     let ms300 =  Duration.FromMilliseconds 300L
-    let! (finfo, sinfo) = logm.shutdown (ms300, ms300)
+    let! finfo, sinfo = logm.shutdown (ms300, ms300)
     let (FlushInfo (fack, ftimeout)) = finfo
     let (ShutdownInfo (sack, stimeout)) = sinfo
-    Expect.equal ftimeout [] "should have no flush timeout target"
-    Expect.contains fack "mockTarget" "should have flush ack target"
+    ftimeout |> Expect.equal "should have no flush timeout target" []
+    fack |> Expect.contains "should have flush ack target" "mockTarget"
 
-    Expect.equal stimeout [] "should have no shutdown timeout target"
-    Expect.contains sack "mockTarget" "should have shutdown ack target"
+    stimeout |> Expect.equal "should have no shutdown timeout target" []
+    sack |> Expect.contains "should have shutdown ack target" "mockTarget"
 
 
     let mockTarget =
@@ -223,6 +239,5 @@ let tests = [
     do! lg.infoWithBP (eventX "can be logger with no blocking beacuse check registry closed")
     do! lg.infoWithBP (eventX "can be logger with no blocking beacuse check registry closed")
     do! lg.infoWithBP (eventX "can be logger with no blocking beacuse check registry closed")
-
   })
 ]

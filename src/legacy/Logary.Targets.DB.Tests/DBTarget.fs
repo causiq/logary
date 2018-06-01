@@ -28,13 +28,14 @@ module SQLiteDB =
   let InMemConnStrEmpheral = "FullUri=file::memory:"
 
   let private consoleAndDebugger =
-    let ilogger = InternalLogger.create runtime |> run
-    [ Console.create Console.empty "console"
-      Debugger.create Debugger.empty "debugger" ]
-    |> List.map (fun conf -> InternalLogger.add conf ilogger)
-    |> Job.conIgnore
-    |> run
-    ilogger :> Logger
+    let logm =
+      Config.create "tests" "localhost"
+      |> Config.disableGlobals
+      |> Config.ilogger (ILogger.Targets [ Console.create Console.empty "console"; Debugger.create Debugger.empty "debugger" ])
+      |> Config.build
+      |> run
+
+    logm.getLogger (PointName.parse "test")
 
   open System
   open Logary.DB.Migrations

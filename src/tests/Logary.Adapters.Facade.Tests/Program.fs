@@ -6,6 +6,7 @@ open Logary.Configuration
 open Logary.Adapters.Facade
 open Hopac
 open NodaTime
+open System
 
 let stubLogger (minLevel: LogLevel) (message: Message ref) name =
   { new Logger with // stub/tests

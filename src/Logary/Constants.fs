@@ -39,6 +39,11 @@ module KnownLiterals =
   [<Literal>]
   let SinkTargetsContextName =  LogaryPrefix +  "sink.targets"
 
+  [<Literal>]
+  let SpanIdContextName = LogaryPrefix + "spanId"
+  [<Literal>]
+  let SpanInfoContextName = LogaryPrefix + "spanInfo"
+
 /// Time calculation constants
 module Constants =
   /// BCL ticks. Not the same as Stopwatch ticks.

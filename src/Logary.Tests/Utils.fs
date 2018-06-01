@@ -27,13 +27,19 @@ open Logary.Targets
 open Logary.Configuration
 open Logary.Configuration
 
+let clearStream (s: System.IO.StringWriter) =
+  let sb = s.GetStringBuilder ()
+  let str = string sb
+  sb.Clear () |> ignore
+  str
+
 let buildTextWriteTarget name =
   let (out, error) = (new StringWriter (), new StringWriter ())
   let twconf = TextWriter.TextWriterConf.create (out, error)
   let twTargetConf = TextWriter.create twconf name
   (out, error, twTargetConf)
 
-let buildLogManager () = job {
+let buildLogManagerWith configFac = job {
   let svc = "svc"
   let host = "localhost"
   let tname = "4test"
@@ -42,14 +48,16 @@ let buildLogManager () = job {
 
   let! logm =
     Config.create svc host
-    // |> Config.ilogger iloggerConf
-    // |> Config.ilogger (ILogger.Console Error)
     |> Config.target twTargetConf
     |> Config.processing (Events.events |> Events.sink [tname])
     |> Config.disableGlobals
+    |> configFac
     |> Config.build
   return logm, out, error
 }
+
+let buildLogManager () = buildLogManagerWith id
+
 
 [<MethodImpl(MethodImplOptions.NoInlining)>]
 let innermost () =
@@ -108,6 +116,7 @@ let emptyRuntime =
   memo (
     Config.createInternalTargets (ILogger.LiterateConsole Verbose)
     |> Config.createInternalLogger (RuntimeInfo.create "logary-tests" "dev-machine")
+    |> Job.bind (fun (ri, _) -> ri|>Job.result)
   )
 
 let nanos xs =

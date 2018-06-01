@@ -8,6 +8,7 @@ open Logary.Message
 open Logary.Internals
 open Logary.Configuration
 open NodaTime
+open System
 open System.Text.RegularExpressions
 open System.Collections.Concurrent
 
@@ -99,6 +100,7 @@ module Registry =
 
 
   module private Impl =
+
     let inline ensureName name (m: Message) =
       if m.name.isEmpty then { m with name = name } else m
 

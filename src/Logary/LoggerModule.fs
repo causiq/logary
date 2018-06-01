@@ -56,15 +56,11 @@ module Logger =
     start inner
     ack :> Promise<_>
 
-  let apply (transform: Message -> Message) (logger: Logger): Logger =
-    { new Logger with // Logger.apply delegator
-      member x.logWithAck (waitForBuffers, logLevel) messageFactory =
-        logger.logWithAck (waitForBuffers, logLevel) (messageFactory >> transform)
-      member x.name =
-        logger.name
-      member x.level =
-        logger.level
-    }
+  let apply (middleware: Message -> Message) (logger: Logger): Logger =
+    { new LoggerWrapper(logger) with
+      override x.logWithAck (waitForBuffers, logLevel) messageFactory =
+        logger.logWithAck (waitForBuffers, logLevel) (messageFactory >> middleware)
+    } :> Logger
 
 [<AutoOpen>]
 module LoggerEx =

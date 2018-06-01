@@ -76,7 +76,6 @@ module internal Global =
       member x.logWithAck (waitForBuffers, level) msgFactory =
         withLogger (fun logger -> logger.logWithAck (waitForBuffers, level) (msgFactory >> ensureName))
 
-
   /// Call to initialise Logary with a new Logary instance.
   let initialise cfg =
     config := (cfg, snd !config + 1u)

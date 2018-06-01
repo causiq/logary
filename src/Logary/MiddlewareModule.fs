@@ -56,6 +56,14 @@ module Middleware =
       Message.setContext name value msg
       |> next
 
+  [<CompiledName "AmbientSpanId">]
+  let ambientSpanId (): Middleware =
+    fun next msg ->
+      let ambientSpanId = Span.getActiveSpanId ()
+      match ambientSpanId with
+      | Some ambientSpanId -> msg |> Message.setSpanId ambientSpanId |> next
+      | None -> next msg
+
   /// Compose the list of middlewares together into a single Message->Message function.
   [<CompiledName "Compose">]
   let compose: Middleware list -> Message -> Message = function

@@ -186,6 +186,11 @@ module Message =
   let hasTag (tag: string) (message: Message) =
     message |> getAllTags |> Set.contains tag
 
+  /// Set SpanId
+  [<CompiledName "SetSpanId">]
+  let setSpanId (spanId: Guid) (message: Message) =
+    message |> setContext KnownLiterals.SpanIdContextName (SpanInfo.formatId spanId)
+
   ///////////////// CTORS ////////////////////
 
   /// Create a new Message with the passed parameters. Consider using `event` and

@@ -43,7 +43,7 @@ type LogaryTarget(logary: LogManager) =
   let mutable instance = logary
 
   let getLogger =
-    memoize (fun name ->
+    memoize (fun (name: PointName) ->
       if Unchecked.defaultof<LogManager> = instance then
         invalidOp "Please set the Logary property"
       else

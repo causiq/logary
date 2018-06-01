@@ -24,22 +24,18 @@ Logary is a high-performance, structured logging library which you can do health
  - A wide range of adapters and targets to choose from!
 
 Created by [Henrik Feldt, et al](https://haf.github.io) and sponsored by
-[qvitoo – A.I. bookkeeping](https://qvitoo.com/?utm_source=github&utm_campaign=logary).
+[Qvitoo_ – A.I. bookkeeping](https://qvitoo.com/?utm_source=github&utm_campaign=logary).
 
 ## Install it
 
 paket.dependencies:
 
-```
-source https://www.nuget.org/api/v2
-nuget Logary
-```
+    source https://www.nuget.org/api/v2
+    nuget Logary
 
 OR:
 
-```
-Install-Package Logary
-```
+    Install-Package Logary
 
 
 ## Table of Contents

@@ -3,6 +3,7 @@
 * Preserve non-exceptions in error field, thanks @yoff
 * Fix crash when comparing versions in adapter, thanks @yoff
 * Adapter handles gauges and their units better, allowing the Facade to pass in metrics, thanks @yoff
+* Add in Scope support
 
 #### 5.0.0-beta.11
 * Dot not crash on typecasts when constructing log message, thanks @yoff

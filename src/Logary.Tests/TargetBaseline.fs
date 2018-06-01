@@ -60,7 +60,7 @@ let basicTests targetName confFac addTS =
   let configure () =
     job {
       let conf = confFac targetName
-      let! ri, _ = emptyRuntime
+      let! ri = emptyRuntime
       let! targetApi = Target.create ri conf
       let now = if addTS then SystemClock.Instance.GetCurrentInstant().ToString() else "-"
       return targetApi, now
@@ -68,7 +68,7 @@ let basicTests targetName confFac addTS =
 
   testList (sprintf "target '%s' basics" targetName) [
     testCaseJob "create" <| job {
-      let! ri, _ = emptyRuntime
+      let! ri = emptyRuntime
       do! logger.infoWithBP (eventX "Creating instance: calling configFactory")
       let conf = confFac targetName
       do! logger.infoWithBP (eventX "Creating instance: creating target")

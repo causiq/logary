@@ -66,8 +66,9 @@
     <Compile Include="Extensions/NodaTime.Instant.fs" />
     <Compile Include="Extensions/System.Dates.fs" />
     <Compile Include="MessageModule.fs" />
-    <Compile Include="MiddlewareModule.fs" />
     <Compile Include="LoggerModule.fs" />
+    <Compile Include="SpanModule.fs" />
+    <Compile Include="MiddlewareModule.fs" />
     <!-- Below: runtime -->
     <Compile Include="Internals/Supervisor.fs" />
     <Compile Include="Internals/Rule.fs" />

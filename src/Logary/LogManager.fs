@@ -1,10 +1,8 @@
-namespace Logary.Configuration
+namespace Logary
 
-open Hopac
-open Logary
 open Logary.Internals
 open NodaTime
-open System.Runtime.CompilerServices
+open Hopac
 
 /// A data-structure that gives information about the outcome of a flush
 /// operation on the Registry. This data structure is only relevant if the
@@ -52,12 +50,6 @@ type LogManager =
   abstract shutdown: flush:Duration * shutdown:Duration -> Alt<FlushInfo * ShutdownInfo>
   abstract shutdown: unit -> Alt<unit>
 
-  /// Dynamically controls logger min level,
+  /// Dynamically controls logger min level, 
   /// this will only affect the loggers (its name, not its instance) which have been created beafore
   abstract switchLoggerLevel: string * LogLevel -> unit
-
-[<AutoOpen; Extension>]
-module LogManagerEx =
-  type LogManager with
-    member x.getLogger name =
-      x.getLogger (PointName.parse name)

@@ -245,6 +245,36 @@ type Message =
     member x.timestampEpochS: int64 =
       x.timestamp / Constants.NanosPerSecond
 
+/// A Span focuses primarily on a timed scope of execution, which will come to end. This
+/// abstraction is primarily used for tracing.
+///
+/// One Message can belong to a Span, which means the Message was logged during the Span.
+///
+/// The Span itself, will finally yield a single Message with tracing-specific Gauges such as;
+///  - `startTime`
+///  - `endTime`
+///  - `id`
+///  - etc...
+///
+/// It is then up to the Target implementations for the various tracing solutions to interpret
+/// this message into something it can send.
+///
+/// The Span keeps track of the logger used to initialise it.
+type Span =
+  inherit IDisposable
+  /// Log the Span's data into Logary.
+  abstract finish: (Message -> Message) -> unit
+  /// Gets the collected data for this Span.
+  abstract info: SpanInfo
+
+and SpanInfo =
+  { traceId: Guid
+    parentSpanId: Guid option
+    spanId: Guid }
+
+  static member formatId (id: Guid) =
+    id.ToString("n")
+
 /// Why was the message/metric/event not logged?
 [<Struct>]
 type LogError =
@@ -281,6 +311,20 @@ type Logger =
   /// Gets the currently set log level (minimal,inclusive),
   /// aka. the granularity with which things are being logged.
   abstract level: LogLevel
+
+type internal LoggerWrapper(logger: Logger) =
+  abstract name: PointName
+  abstract level: LogLevel
+  abstract logWithAck: bool * LogLevel -> (LogLevel -> Message) -> LogResult
+  default x.name = logger.name
+  default x.level = logger.level
+  default x.logWithAck (waitForBuffers, logLevel) messageFactory =
+    logger.logWithAck (waitForBuffers, logLevel) messageFactory
+  interface Logger with
+    member x.name = x.name
+    member x.level = x.level
+    member x.logWithAck (waitForBuffers, logLevel) messageFactory =
+      x.logWithAck (waitForBuffers, logLevel) messageFactory
 
 /// A disposable interface to use with `use` constructs and to create child-
 /// contexts. Since it inherits Logger, you can pass this scope down into child
