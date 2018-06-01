@@ -304,6 +304,7 @@ module LoggerAdapter =
         | _ ->
           msg)
 
+  (* Sanity check; shadows 'unitsTypeOf'
   let unitsTypeOf (o: obj) (loggerType: Type): Type =
     let cachedType = unitTypeOf o loggerType
     let unitsType = o.GetType()
@@ -311,6 +312,7 @@ module LoggerAdapter =
       failwithf "Cached unit type: %s, actual unit type: %s, logger type: %s"
                 cachedType.FullName unitsType.FullName loggerType.FullName
     cachedType
+  *)
 
   let rec toUnits (loggerType: Type) (o: obj): Units =
     let unitsType = unitTypeOf o loggerType
