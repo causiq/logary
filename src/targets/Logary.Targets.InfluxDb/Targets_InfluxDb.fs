@@ -289,6 +289,8 @@ type InfluxDbConf =
   { endpoint: Uri
     /// REQUIRED - sets the target database for the write
     db: string
+    /// Disables the creation of the database on spawning the target.
+    disableCreateDB: bool
     /// If authentication is enabled, you must authenticate as a user with write permissions to the target database
     username: string option
     /// If authentication is enabled, you must authenticate as a user with write permissions to the target database
@@ -300,9 +302,10 @@ type InfluxDbConf =
     /// Sets how many measurements should be batched together if new measurements are produced faster than we can write them one by one. Default is 100.
     batchSize: uint16 }
 
-  static member create(ep, db, ?user, ?password, ?consistency, ?retention, ?batchSize) =
+  static member create(ep, db, ?disableCreateDB, ?user, ?password, ?consistency, ?retention, ?batchSize) =
     { endpoint = ep
       db = db
+      disableCreateDB = defaultArg disableCreateDB false
       username = defaultArg user None
       password = defaultArg password None
       consistency = defaultArg consistency Quorum
@@ -312,6 +315,7 @@ type InfluxDbConf =
 let empty =
   { endpoint    = Uri "http://127.0.0.1:8086/write"
     db          = "logary"
+    disableCreateDB = false
     username    = None
     password    = None
     consistency = Quorum
@@ -367,6 +371,21 @@ module internal Impl =
   let sinkJob (sink: _ -> #Job<unit>) =
     fun next inp ->
       next inp |> Alt.afterJob sink
+
+  (*
+  let maybeCreateDB (disabled: bool) =
+    if disabled then
+      fun next inp ->
+        next inp
+    else
+      fun next inp ->
+        next inp ^=> fun (body, statusCode) ->
+          if statusCode = 404 && body.Contains "database not found" then
+            send (FormData [ NameValue ("q", sprintf "CREATE DATABASE %s") ]) ^=>
+            next inp
+          else
+            Job.result (body, statusCode)
+            *)
 
   type State =
     { client: HttpClient
@@ -477,6 +496,10 @@ type Builder(conf, callParent: Target.ParentCallback<Builder>) =
   /// Sets the target database for the write - defaults to `logary`.
   member x.DB db =
     update { conf with db = db }
+
+  /// Disable the create-database if doesn't exist feature of this target.
+  member x.DisableCreateDB() =
+    update { conf with disableCreateDB = true }
 
   /// the write endpoint to send the values to
   member x.WriteEndpoint(writeEndpoint: Uri) =

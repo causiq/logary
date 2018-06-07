@@ -17,9 +17,9 @@ open Hopac
 open Hopac.Extensions
 open Hopac.Infixes
 
-let start (port: int) =
+let start factory (port: int) =
   let uri = Uri (sprintf "http://127.0.0.1:%i/write" port)
-  let targConf = InfluxDbConf.create(uri, "tests")
+  let targConf = factory (InfluxDbConf.create(uri, "tests"))
   emptyRuntime >>= fun ri ->
   Target.create ri (create targConf "influxdb")
 
@@ -60,15 +60,17 @@ let withServer () =
   Job.fromAsync (Async.Ignore listening) >>-.
   state
 
-let testCaseTarget name fn =
+let testCaseTarget factory name fn =
   testCaseJob name (job {
     use! state = withServer ()
-    let! target = start state.port
+    let! target = start factory state.port
     do! Job.tryFinallyJob (fn state target) (shutdown target)
   })
 
+let disableCreateDB (conf: InfluxDbConf) = { conf with disableCreateDB = true }
+
 [<Tests>]
-let writesOverHttp =
+let tests =
   let msg =
     Message.gaugeWithUnitfs "Processor" "% User Time" Percent 1.
     |> Message.setField "inst1" 0.3463
@@ -81,52 +83,56 @@ let writesOverHttp =
   let msg2 = Message.gaugefs "Processor" "Number 2" 0.3463
   let msg3 = Message.gaugefs "Processor" "Number 3" 0.3463
 
-  testList "writes over HTTP" [
-    testCaseTarget "write single" (fun state target ->
-      job {
-        let! ack = Target.tryLog target msg ^-> Expect.isOk "Successfully placed message in buffer"
-        let! req = Ch.take state.req
-        do! ack
+  testList "influxdb" [
+    testList "writes over HTTP" [
+      testCaseTarget disableCreateDB "write single" (fun state target ->
+        job {
+          let! ack = Target.tryLog target msg ^-> Expect.isOk "Successfully placed message in buffer"
+          let! req = Ch.take state.req
+          do! ack
 
-        let expected = Serialise.message msg
+          let expected = Serialise.message msg
 
-        Encoding.UTF8.GetString req.rawForm
-          |> Expect.equal "Should serialise correctly" expected
+          Encoding.UTF8.GetString req.rawForm
+            |> Expect.equal "Should serialise correctly" expected
 
-        req.queryParam "db"
-          |> Expect.equal "Should write to tests db" (Choice1Of2 "tests")
-      })
+          req.queryParam "db"
+            |> Expect.equal "Should write to tests db" (Choice1Of2 "tests")
+        })
 
-    testCaseTarget "write batch" (fun state target ->
-      job {
-        let! p1 = Target.tryLog target msg1 ^-> Expect.isOk "Successfully placed message in buffer"
-        let! p2 = Target.tryLog target msg2 ^-> Expect.isOk "Successfully placed message in buffer"
-        let! p3 = Target.tryLog target msg3 ^-> Expect.isOk "Successfully placed message in buffer"
-        let! req = Ch.take state.req
-        let! req2 = Ch.take state.req
+      testCaseTarget disableCreateDB "write batch" (fun state target ->
+        job {
+          let! p1 = Target.tryLog target msg1 ^-> Expect.isOk "Successfully placed message in buffer"
+          let! p2 = Target.tryLog target msg2 ^-> Expect.isOk "Successfully placed message in buffer"
+          let! p3 = Target.tryLog target msg3 ^-> Expect.isOk "Successfully placed message in buffer"
+          let! req = Ch.take state.req
+          let! req2 = Ch.take state.req
 
-        Encoding.UTF8.GetString req2.rawForm
-          |> Expect.equal
-              "Should newline-concatenate messages"
-              (sprintf "%O\n%O" (Serialise.message msg2) (Serialise.message msg3))
+          Encoding.UTF8.GetString req2.rawForm
+            |> Expect.equal
+                "Should newline-concatenate messages"
+                (sprintf "%O\n%O" (Serialise.message msg2) (Serialise.message msg3))
 
-        req.queryParam "db"
-          |> Expect.equal "Should write to tests db" (Choice1Of2 "tests")
-      })
+          req.queryParam "db"
+            |> Expect.equal "Should write to tests db" (Choice1Of2 "tests")
+        })
 
-    testCaseTarget "target acks" (fun state target ->
-      let msg = Message.gaugefs "S1" "Number 1" 0.3463
-      job {
-        let! ackPromise = Target.tryLog target msg ^-> Expect.isOk "Successfully placed message in buffer"
-        let! req2 = Ch.take state.req
+      testCaseTarget disableCreateDB "target acks" (fun state target ->
+        let msg = Message.gaugefs "S1" "Number 1" 0.3463
+        job {
+          let! ackPromise = Target.tryLog target msg ^-> Expect.isOk "Successfully placed message in buffer"
+          let! req2 = Ch.take state.req
 
-        let! success =
-          Alt.choose [
-            ackPromise ^->. true
-            timeOut (TimeSpan.FromMilliseconds 8000.0) ^->. false // see msg if you change timeout
-          ]
+          let! success =
+            Alt.choose [
+              ackPromise ^->. true
+              timeOut (TimeSpan.FromMilliseconds 8000.0) ^->. false // see msg if you change timeout
+            ]
 
-        success |> Expect.isTrue "Message should be acked, but failed to get acked within eight seconds."
-      })
+          success |> Expect.isTrue "Message should be acked, but failed to get acked within eight seconds."
+        })
+    ]
+
+    testCaseTarget id "create database if missing" <| fun state target ->
+      Job.result ()
   ]
-  |> testLabel "influxdb"
