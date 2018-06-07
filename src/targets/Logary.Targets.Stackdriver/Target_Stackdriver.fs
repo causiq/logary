@@ -221,7 +221,8 @@ module internal Impl =
         |> Seq.fold addToStruct (WellKnownTypes.Struct())
 
       let entry = LogEntry(Severity = x.level.toSeverity(), JsonPayload = payloadFields)
-      entry.Timestamp <- Timestamp.FromDateTimeOffset (DateTimeOffset.ofEpoch x.timestamp)
+      //entry.
+      entry.Timestamp <- Timestamp.FromDateTime (DateTime.ofEpoch x.timestamp)
       entry.Labels.Add labels
       entry
 

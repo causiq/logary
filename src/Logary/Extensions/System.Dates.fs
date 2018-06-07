@@ -28,3 +28,8 @@ module DateTimeOffset =
   /// Get the DateTimeOffset from EpochNanoSeconds
   let ofEpoch (epoch: EpochNanoSeconds): DateTimeOffset =
     DateTimeOffset(ticksUTC epoch, TimeSpan.Zero)
+
+module DateTime =
+  /// Get the DateTime from EpochNanoSeconds
+  let ofEpoch (epoch: EpochNanoSeconds): DateTime =
+    DateTime(DateTimeOffset.ticksUTC epoch, DateTimeKind.Utc)

@@ -701,6 +701,14 @@ let tests =
           epochNanoS = dto.timestamp)
     ]
 
+    testCase "DateTimeOffset.ofEpoch" <| fun _ ->
+      let ts = SystemClock.Instance.GetCurrentInstant()
+      let tsns = ts.ToUnixTimeTicks() * Constants.NanosPerTick
+      let subject = DateTimeOffset.ofEpoch tsns
+      subject.Year |> Flip.Expect.equal "Year eq" (ts.ToDateTimeOffset().Year)
+      subject.Second |> Flip.Expect.equal "Second eq" (ts.ToDateTimeOffset().Second)
+      subject.Millisecond |> Flip.Expect.equal "Millisecond eq" (ts.ToDateTimeOffset().Millisecond)
+
     testList "Engine" Engine.tests
 
     testList "core targets" CoreTargets.tests
