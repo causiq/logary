@@ -20,7 +20,39 @@ type SampleObject() =
   member x.PropB =
     raise (Exception ("Oh noes, no referential transparency here"))
 
+type Domain =
+  Domain of hiera:string[]
+with
+  member x.value =
+    let (Domain values) = x
+    String.concat "." values
+
 type Arbs =
+  static member Domain (): Arbitrary<Domain> =
+    gen {
+      let! top = ["se"; "com"; "net"] |> Gen.elements
+      let! sub = [ "haf"; "qvitoo"; "bücher.ch"] |> Gen.elements
+      return Domain [| sub; top |]
+    }
+    |> Arb.fromGen
+
+  static member Uri (): Arbitrary<Uri> =
+    let legalChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~:#[]@!$&'()*+,;=".ToCharArray()
+    let segment = gen {
+      let! l = Gen.choose(1,15)
+      let! chars = Gen.arrayOfLength l (Gen.elements legalChars)
+      return string chars
+    }
+    gen {
+      let! scheme = ["http"; "https"] |> Gen.elements
+      let! domain = Arbs.Domain () |> Arb.toGen
+      let! segs = Gen.choose(1,6)
+      let! segments = Gen.listOfLength segs segment
+      let path = "/" + (String.concat "/" segments)
+      return Uri (sprintf "%s://%s%s" scheme domain.value path)
+    }
+    |> Arb.fromGen
+
   static member Duration() =
     Arb.Default.TimeSpan()
     |> Arb.convert (Duration.FromTimeSpan) (fun d -> d.ToTimeSpan())

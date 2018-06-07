@@ -170,6 +170,7 @@ let jsonTests fsc =
         testEncode<int64> fsc
         testEncode<string> fsc
         testEncode<Guid> fsc
+        testEncode<Uri> fsc
         testEncode<DateTime> fsc
         testEncode<DateTimeOffset> fsc
         testEncode<TimeSpan> fsc

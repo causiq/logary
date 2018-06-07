@@ -73,8 +73,11 @@ module Shape =
 
   let (|LogLevel|_|) (shape: TypeShape) = test<Logary.LogLevel> shape
   let (|PointName|_|) (shape: TypeShape) = test<Logary.PointName> shape
-  //let (|Units|_|) (shape: TypeShape) = test<Logary.Units> shape
   let (|Gauge|_|) (shape: TypeShape) = test<Logary.Gauge> shape
+  let (|Instant|_|) (shape: TypeShape) = test<NodaTime.Instant> shape
+  let (|LocalDate|_|) (shape: TypeShape) = test<NodaTime.LocalDate> shape
+  let (|Duration|_|) (shape: TypeShape) = test<NodaTime.Duration> shape
+  let (|Uri|_|) (shape: TypeShape) = test<System.Uri> shape
 
 type internal JsonEncoderRegistry =
   abstract tryGet: TypeShape -> JsonEncoderFactory option
@@ -207,6 +210,9 @@ module internal JsonHelper =
     | Shape.Guid ->
       wrap (fun (x: Guid) -> Inference.Json.encode x)
 
+    | Shape.Uri ->
+      wrap (fun (x: Uri) -> E.string (x.ToString()))
+
     | Shape.TimeSpan ->
       wrap (fun (x: TimeSpan) -> E.string (x.ToString()))
 
@@ -215,6 +221,15 @@ module internal JsonHelper =
 
     | Shape.DateTimeOffset ->
       wrap (fun (x: DateTimeOffset) -> Inference.Json.encode x)
+
+    | Shape.Instant ->
+      wrap (fun (x: NodaTime.Instant) -> E.string (NodaTime.Text.InstantPattern.ExtendedIso.Format x))
+
+    | Shape.LocalDate ->
+      wrap (fun (x: NodaTime.LocalDate) -> E.string (NodaTime.Text.LocalDatePattern.Iso.Format x))
+
+    | Shape.Duration ->
+      wrap (fun (x: NodaTime.Duration) -> E.string (NodaTime.Text.DurationPattern.Roundtrip.Format x))
 
     | Shape.LogLevel ->
       wrap (fun (level: LogLevel) -> Json.String (level.ToString()))
