@@ -4,8 +4,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{9F28952C-9E3
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary", "src\Logary\Logary.fsproj", "{55399874-D8FA-48A2-A8E3-94AB4BA5C8C7}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.PerfTests", "src\Logary.PerfTests\Logary.PerfTests.fsproj", "{810DE877-14FB-4934-9BAE-195DF185BB69}"
-EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Tests", "src\Logary.Tests\Logary.Tests.fsproj", "{07B94E4A-084A-4DA4-8357-21E375A2E6BF}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{31F5ADE6-6D2C-4ADB-9A3C-4529B1253468}"
@@ -14,6 +12,10 @@ ProjectSection(SolutionItems) = preProject
 	paket.dependencies = paket.dependencies
 EndProjectSection
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Facade", "src\Logary.Facade\Logary.Facade.fsproj", "{D348EAAC-B359-499E-A68A-31173109ABCB}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Facade", "src\adapters\Logary.Adapters.Facade\Logary.Adapters.Facade.fsproj", "{C69D8AB2-4190-43D2-A04D-1483291DCA95}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,21 +23,26 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{55399874-D8FA-48A2-A8E3-94AB4BA5C8C7} = {9F28952C-9E31-4BAD-9EA7-393ED314234B}
-		{810DE877-14FB-4934-9BAE-195DF185BB69} = {9F28952C-9E31-4BAD-9EA7-393ED314234B}
 		{07B94E4A-084A-4DA4-8357-21E375A2E6BF} = {9F28952C-9E31-4BAD-9EA7-393ED314234B}
+		{D348EAAC-B359-499E-A68A-31173109ABCB} = {9F28952C-9E31-4BAD-9EA7-393ED314234B}
+		{C69D8AB2-4190-43D2-A04D-1483291DCA95} = {9F28952C-9E31-4BAD-9EA7-393ED314234B}
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{55399874-D8FA-48A2-A8E3-94AB4BA5C8C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{55399874-D8FA-48A2-A8E3-94AB4BA5C8C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{55399874-D8FA-48A2-A8E3-94AB4BA5C8C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{55399874-D8FA-48A2-A8E3-94AB4BA5C8C7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{810DE877-14FB-4934-9BAE-195DF185BB69}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{810DE877-14FB-4934-9BAE-195DF185BB69}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{810DE877-14FB-4934-9BAE-195DF185BB69}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{810DE877-14FB-4934-9BAE-195DF185BB69}.Release|Any CPU.Build.0 = Release|Any CPU
 		{07B94E4A-084A-4DA4-8357-21E375A2E6BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{07B94E4A-084A-4DA4-8357-21E375A2E6BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{07B94E4A-084A-4DA4-8357-21E375A2E6BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{07B94E4A-084A-4DA4-8357-21E375A2E6BF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D348EAAC-B359-499E-A68A-31173109ABCB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D348EAAC-B359-499E-A68A-31173109ABCB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D348EAAC-B359-499E-A68A-31173109ABCB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D348EAAC-B359-499E-A68A-31173109ABCB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C69D8AB2-4190-43D2-A04D-1483291DCA95}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C69D8AB2-4190-43D2-A04D-1483291DCA95}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C69D8AB2-4190-43D2-A04D-1483291DCA95}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C69D8AB2-4190-43D2-A04D-1483291DCA95}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

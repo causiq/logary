@@ -703,7 +703,7 @@ module LogaryFacadeAdapter =
       member x.Intercept invocation =
         match invocation with
         | GetLogger name ->
-          logManager.runtimeInfo.logger.debug (Message.eventX "getLogger invoked with {name}" >> Message.setField "name" name)
+          logManager.runtimeInfo.logger.debug (Message.eventX "Adapter's getLogger invoked with {name}" >> Message.setField "name" name)
           invocation.ReturnValue <-
             PointName name
             |> logManager.getLogger
