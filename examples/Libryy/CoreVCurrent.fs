@@ -2,6 +2,7 @@
 
 // Note: this library has no reference to Logary proper
 open Libryy.Logging
+open Hopac
 
 let coreLogger = Log.create "Libryy.Core"
 
@@ -13,41 +14,50 @@ let getSampleException messagePrefix =
   try m1 () with e -> e
 
 let work (logger: Logger) =
-  logger.logWithAck Warn (
-    Message.eventX "Hey {user}!"
-    >> Message.setFieldValue "user" "haf"
-    >> Message.setSingleName "Libryy.Core.work"
-    >> Message.addExn (getSampleException "Warnings can have exceptions too!")
-    >> Message.setTimestamp 1470047883029045000L)
-  |> Async.RunSynchronously
+  let res =
+    logger.logWithAck (false, Warn) (
+      Message.eventX "Hey {user}!"
+      >> Message.setField "user" "haf"
+      >> Message.setSingleName "Libryy.Core.work-work-work"
+      >> Message.addExn (getSampleException "Warnings can have exceptions too!")
+      >> Message.setTimestamp 1470047883029045000L)
+    |> run
+
+  match res with
+  | Ok ack -> run ack
+  | Result.Error err -> failwithf "%A" err
 
   42
 
 let workBackpressure (logger: Logger) =
-  logger.log Warn (
-    Message.eventX "Hey {user}!"
-    >> Message.setFieldValue "user" "haf"
-    >> Message.setSingleName "Libryy.Core.work"
-    >> Message.setTimestamp 1470047883029045000L)
-  |> Async.RunSynchronously
-
+  let ok =
+    logger.log Warn (
+      Message.eventX "Hey {user}!"
+      >> Message.setField "user" "haf"
+      >> Message.setSingleName "Libryy.Core.work-bp"
+      >> Message.setTimestamp 1470047883029045000L)
+    |> run
+  if not ok then failwith "Returned false"
   45
 
 let errorWithBP (logger: Logger) =
-  logger.errorWithBP (Message.eventX "Too simplistic") |> Async.RunSynchronously
+  logger.errorWithBP (Message.eventX "Too simplistic")
+  |> run
+
   43
 
 let generateAndLogExn (logger: Logger) =
   let ex = getSampleException "Uhoh!"
-  logger.log Error (
+
+  logger.error (
     Message.eventX "An error with an attached exception"
     >> Message.addExn ex
     >> Message.addExn (exn "another"))
-  |> Async.RunSynchronously
+
   99
 
 let staticWork () =
-  async {
+  job {
     do! coreLogger.debugWithBP (Message.eventX "A debug log")
     return 49
   }
