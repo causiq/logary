@@ -99,6 +99,10 @@ module Literate =
         None
     tokeniseTemplate pvd template tryGetPropertyValue
 
+  let private plainContextValues (values: seq<string * obj>) =
+    values
+    |> Seq.filter (fun (k, v) -> not (k.StartsWith "_"))
+
   let tokeniseTemplateWithGauges (pvd: IFormatProvider) destr message =
     let tplByGauges =
       message
@@ -110,8 +114,10 @@ module Literate =
     else
       let parsedTemplate = parse message.value
       let tplByFields =
-        message
-        |> Message.getAllFields
+        Seq.concat [
+          Message.getAllFields message
+          Message.getOthers message
+        ]
         |> tokeniseTemplateByFields pvd parsedTemplate destr
       if Seq.isEmpty tplByGauges then
         tplByFields

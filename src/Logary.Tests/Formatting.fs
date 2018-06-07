@@ -21,6 +21,7 @@ open Logary.MessageWriter
 open Logary.Internals.Chiron
 
 #nowarn "44"
+open Logary
 
 let private sampleMessage: Message =
   Message.eventFormat (Info, "this is bad, with {1} and {0} reverse.", "the first value", "the second value")
@@ -399,22 +400,30 @@ let textPrinters =
       |> levelDatetimeMessagePathNewLine.format
       |> Expect.linesEqual "formatting the message LevelDatetimePathMessageNl with projection" expected
 
-    testCase "StringFormatter.Verbatim" <| fun _ ->
+    testCase "MessageWriter.verbatim" <| fun _ ->
       Message.eventError "hello world"
       |> MessageWriter.verbatim.format
       |> Expect.equal "formatting the message verbatim" "hello world"
 
-    testCase "StringFormatter.VerbatimNewline" <| fun _ ->
+    testCase "MessageWriter.verbatimNewline 1" <| fun _ ->
       Message.eventError "hi there"
       |> MessageWriter.verbatimNewLine.format
       |> Expect.equal "formatting the message verbatim with newline" (sprintf "hi there%s" Environment.NewLine)
 
-    testCase "StringFormatter.VerbatimNewlineTemplated" <| fun _ ->
+    testCase "MessageWriter.verbatimNewline 2" <| fun _ ->
       Message.eventFormat (Info, "what's {@direction}? {up:l}!", "up","up")
       |> MessageWriter.verbatimNewLine.format
       |> Expect.equal "formatting the message verbatim with newline, templated" (sprintf "what's \"up\"? up!%s" Environment.NewLine)
 
-    testCase "StringFormatter.levelDatetimeMessagePathNewLine no exception" <| fun _ ->
+    testCase "MessageWriter.verbatimNewline with context" <| fun _ ->
+      Message.event Debug "Started App {softwareVersion} in {duration}"
+      |> Message.setContext "softwareVersion" "v1.2.3-a4a4a4"
+      |> Message.setField "duration" "1.151s"
+      |> MessageWriter.verbatimNewLine.format
+      |> Expect.equal "Should format from context too"
+                      (sprintf "Started App \"v1.2.3-a4a4a4\" in \"1.151s\"%s" Environment.NewLine)
+
+    testCase "MessageWriter.levelDatetimeMessagePathNewLine no exception" <| fun _ ->
       let expected = """I 1970-01-01T00:00:03.1234567+00:00: this is bad, with "the second value" and "the first value" reverse. [a.b.c.d]
     fields:
       0 => "the first value"
@@ -424,13 +433,13 @@ let textPrinters =
       |> levelDatetimeMessagePathNewLine.format
       |> Expect.linesEqual "formatting the message LevelDatetimePathMessageNl" expected
 
-    testCase "eventFormat, simple case" <| fun _ ->
+    testCase "Message.eventFormat, simple case" <| fun _ ->
       let format = "This {0} contains {1} words."
       let args: obj[] = [|"sentence"; 4|]
       let msg = Message.eventFormat(format, args)
       shouldHaveFields msg [KV("0","sentence"); KV("1",4)] "converting a String.Format into a message template"
 
-    testCase "eventFormat, named and positional fields" <| fun _ ->
+    testCase "Message.eventFormat, named and positional fields" <| fun _ ->
       let format = "This {gramaticalStructure} contains {wordCount} {0}."
       let args: obj[] = [|"sentence"; 4; "words"|]
 
@@ -438,7 +447,7 @@ let textPrinters =
       shouldHaveFields msg [KV("gramaticalStructure","sentence"); KV("wordCount",4);KV("0","words")]
         "fields are matched left-to-right when any fields are named"
 
-    testCase "eventFormat, positional fields" <| fun _ ->
+    testCase "Message.eventFormat, positional fields" <| fun _ ->
       let format = "Positionally - two {2} . {2} . zero {0} . {0}"
       let args: obj[] = [|0;1;2;3|]
 

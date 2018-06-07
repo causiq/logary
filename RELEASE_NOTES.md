@@ -1,3 +1,6 @@
+#### 5.0.0-beta.15
+* Fix #341 — template from context as well as fields
+
 #### 5.0.0-beta.14
 * Fix #340 — Pass value and formatted values
 * Fix #339 — Handle more common/known types in the Json serialiser
