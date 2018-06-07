@@ -3,7 +3,8 @@
 * Preserve non-exceptions in error field, thanks @yoff
 * Fix crash when comparing versions in adapter, thanks @yoff
 * Adapter handles gauges and their units better, allowing the Facade to pass in metrics, thanks @yoff
-* Add in Scope support
+* Add in Scope support, thanks @haf and @lust4life
+* Fix #336 — more than ~25 crashes of a Target would crash Logary with an arithmetic overflow. Thanks @haf
 
 #### 5.0.0-beta.11
 * Dot not crash on typecasts when constructing log message, thanks @yoff
