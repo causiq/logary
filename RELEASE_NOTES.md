@@ -1,3 +1,6 @@
+#### 5.0.0-beta.14
+* Fix #340 — Pass value and formatted values 
+
 #### 5.0.0-beta.13
 * Fix inverted if-statement in printDotOnOverflow
 

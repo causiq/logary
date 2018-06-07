@@ -147,10 +147,6 @@ let empty: StackdriverConf =
 module internal Impl =
   open Logary.Internals.Chiron
 
-  // constant computed once here
-  let messageKey = "message"
-  let valueKey = "value"
-
   type LogLevel with
     member x.toSeverity(): LogSeverity =
       match x with
@@ -196,6 +192,11 @@ module internal Impl =
     s.Fields.[k] <- Json.encode value |> toValue
     s
 
+  [<Literal>]
+  let MessageKey = "message"
+  [<Literal>]
+  let ValueKey = "value"
+
   type Message with
     member x.toLogEntry () =
       // Labels are used in Stackdriver for classification, so lets put context there.
@@ -209,9 +210,8 @@ module internal Impl =
 
       let addMessageFields (values: seq<string * obj>): seq<_> =
         seq {
-          yield messageKey, box formatted
-          if formatted <> x.value then
-            yield valueKey, box formatted
+          yield MessageKey, box formatted
+          yield ValueKey, box x.value
           yield! values
         }
 
@@ -263,7 +263,7 @@ module internal Impl =
       Alt.choose [
         // either shutdown, or
         api.shutdownCh ^=> fun ack ->
-          logger.verbose (eventX "Shutting down Stackdriver target")
+          logger.verbose (eventX "Shutting down Stackdriver target.")
           state.cancellation.Cancel()
           ack *<= () :> Job<_>
 
@@ -282,9 +282,9 @@ module internal Impl =
               ([], [], [])
 
           job {
-            do logger.verbose (eventX "Writing {count} messages" >> setField "count" entries.Length)
+            do logger.verbose (eventX "Writing {count} messages." >> setField "count" entries.Length)
             do! writeBatch state entries
-            do logger.verbose (eventX "Acking messages")
+            do logger.verbose (eventX "Acking messages.")
             do! Job.conIgnore acks
             do! Job.conIgnore flushes
             return! loop state
