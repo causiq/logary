@@ -75,7 +75,11 @@ module Policy =
         if r = 0u then
           RestartDelayed maxD
         else
-          RestartDelayed (min maxD (initD * pown mult (int r)))
+          // 2u^31 works, 2u^32 overflows
+          let cappedR = min r 31u
+          // initD * uint32 close to 2^28 would overflow, sum instead
+          RestartDelayed (min maxD (initD + pown mult (int cappedR)))
+
     let cM = MVar 1u
     DetermineWithJob ^ fun _ ->
       MVar.modifyFun (fun r -> r + 1u, r) cM
@@ -90,7 +94,7 @@ module Policy =
   let exponentialBackoffForever =
     exponentialBackoff (* init [ms] *) 100u
                        (* mult *) 2u
-                       (* max dur [ms] *) 6400u
+                       (* max dur [ms] *) 16000u
                        (* retry indefinitely *) System.UInt32.MaxValue
 
 type SupervisedJob<'a> = Job<Choice<'a,exn>>
@@ -110,12 +114,12 @@ module Job =
         >> addExn ex) >>=.
       timeOutMillis (int t) >>= fun () -> supervise logger p xJ
     | Terminate ->
-      logger.warnWithBP (
+      logger.errorWithBP (
         eventX "Exception from supervised job, terminating."
         >> addExn ex) >>=.
       Job.result (Choice2Of2 ex)
     | Escalate ->
-      logger.warnWithBP (
+      logger.errorWithBP (
         eventX "Exception from supervised job, escalating."
         >> addExn ex) >>=.
       Job.raises ex
