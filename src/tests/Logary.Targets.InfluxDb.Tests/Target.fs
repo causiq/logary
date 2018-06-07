@@ -67,7 +67,7 @@ let testCaseTarget factory name fn =
     do! Job.tryFinallyJob (fn state target) (shutdown target)
   })
 
-let disableCreateDB (conf: InfluxDb.InfluxDbConf) = { conf with disableCreateDB = true }
+let disableCreateDB (conf: InfluxDbConf) = { conf with disableCreateDB = true }
 
 [<Tests>]
 let tests =
@@ -134,5 +134,5 @@ let tests =
     ]
 
     testCaseTarget id "create database if missing" <| fun state target ->
-      ()
+      Job.result ()
   ]
