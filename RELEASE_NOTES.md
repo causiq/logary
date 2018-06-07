@@ -1,3 +1,6 @@
+#### 5.0.0-beta.13
+* Fix inverted if-statement in printDotOnOverflow
+
 #### 5.0.0-beta.12
 * Build Facade v4 for Hopac-based software, thanks @haf
 * Preserve non-exceptions in error field, thanks @yoff

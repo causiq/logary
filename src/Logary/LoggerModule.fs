@@ -23,8 +23,8 @@ module Logger =
       | Result.Error (BufferFull _) ->
         false
 
-  let private printDotOnOverflow b =
-    if b then System.Console.Error.Write '.' else ()
+  let private printDotOnOverflow success =
+    if not success then System.Console.Error.Write '.' else ()
 
   let logSimple (logger: Logger) msg: unit =
     start (log logger msg.level (fun _ -> msg) ^-> printDotOnOverflow)
