@@ -731,7 +731,7 @@ module LogaryFacadeAdapter =
             (unbox >> fun name ->
               // Can be used to track if there are too many `Log.create` calls; these will cause a large number of dynamic
               // proxies to be generated.
-              logManager.runtimeInfo.logger.debug (Message.eventX "getLogger invoked with {name}" >> Message.setField "name" name)
+              logManager.runtimeInfo.logger.verbose (Message.eventX "Adapter's getLogger invoked with {name}" >> Message.setField "name" name)
               PointName name
               |> logManager.getLogger
               |> LoggerAdapter.create loggerType))
