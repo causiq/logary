@@ -1,3 +1,6 @@
+#### 5.0.0-beta.16
+* Make Adapter.getLogger a verbose log operation
+
 #### 5.0.0-beta.15
 * Fix #341 — template from context as well as fields
 
