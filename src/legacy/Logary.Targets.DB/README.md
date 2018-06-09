@@ -1,2 +1,0 @@
-# Logary DB Target
-

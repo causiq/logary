@@ -1,8 +1,0 @@
-File:YoLo.fs
-
-FSharp.Core
-NodaTime
-Hopac
-FsCheck
-Expecto
-Expecto.FsCheck
