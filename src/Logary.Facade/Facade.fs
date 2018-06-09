@@ -3,8 +3,9 @@
 /// completely stand-alone in that it has no external references and its adapter
 /// in Logary has been well tested.
 ///
-/// This facade is Apache licensed unless running on MSFT-based web servers, in which
-/// case you need a commercial license: contact henrik@haf.se for one.
+/// This file is licensed under the Apache 2.0 license without modifications.
+/// This license applies to v3 of the Logary Facade. You can copy and paste this
+/// code into your software, which freezes this license in place.
 namespace Logary.Facade
 
 open System
