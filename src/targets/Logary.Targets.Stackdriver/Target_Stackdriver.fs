@@ -198,12 +198,15 @@ module internal Impl =
   let ValueKey = "value"
 
   type Message with
+    // https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry
     member x.toLogEntry () =
       // Labels are used in Stackdriver for classification, so lets put context there.
       // They expect only simple values really in the labels, so it's ok to just stringify them
       let labels =
-        Message.getOthers x
-        |> Seq.map (fun (k, v) -> k, string v)
+        Seq.concat [
+          Seq.singleton ("logger", PointName.format x.name)
+          Message.getOthers x |> Seq.map (fun (k, v) -> k, string v)
+        ]
         |> dict
 
       let formatted = Logary.MessageWriter.verbatim.format x
@@ -221,7 +224,6 @@ module internal Impl =
         |> Seq.fold addToStruct (WellKnownTypes.Struct())
 
       let entry = LogEntry(Severity = x.level.toSeverity(), JsonPayload = payloadFields)
-      //entry.
       entry.Timestamp <- Timestamp.FromDateTime (DateTime.ofEpoch x.timestamp)
       entry.Labels.Add labels
       entry
