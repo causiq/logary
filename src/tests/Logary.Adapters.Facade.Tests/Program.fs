@@ -8,13 +8,27 @@ open Hopac
 open NodaTime
 open System
 
+type BaseLogger(minLevel, name, result, ?message: Message ref) =
+  let m = defaultArg message (ref (Message.event Info "EMPTY"))
+  member x.message = m
+  interface Logger with
+    member x.logWithAck (_, level) messageFactory =
+      m := messageFactory level
+      result
+    member x.name = name
+    member x.level = minLevel
+
 let stubLogger (minLevel: LogLevel) (message: Message ref) name =
-  { new Logger with // stub/tests
-      member x.logWithAck (_, level) messageFactory =
-        message := messageFactory level
-        Alt.always (Ok (Promise (())))
-      member x.name = name
-      member x.level = minLevel }
+  BaseLogger(minLevel, name, Alt.always (Ok (Promise (()))), message)
+  :> Logger
+
+let stubLoggerReject name =
+  BaseLogger(Debug, name, Alt.always (Result.Error LogError.Rejected))
+  :> Logger
+
+let stubLoggerFull name targetName =
+  BaseLogger(Debug, name, Alt.always (Result.Error (LogError.BufferFull targetName)))
+  :> Logger
 
 let stubLogManager (message: Message ref) =
   { new LogManager with
@@ -333,6 +347,20 @@ let tests =
           Expect.equal 42 res "Should get result back"
           assertWorkMessage (!msg)
           Expect.equal (!msg).name (PointName.parse "Libryy.Core.work-work-work") "Should have set name"
+
+        yield testCaseJob "end to end with rejection result" <| job {
+          let properLogger = stubLoggerReject (PointName.parse "Adapters.Facade.v4")
+          let subject = LoggerAdapter.createGeneric<Libryy.LoggingV4.Logger> properLogger
+          let! res = subject.logWithAck (false, Libryy.LoggingV4.LogLevel.Warn) (Libryy.LoggingV4.Message.eventX "Hello world")
+          res |> Flip.Expect.equal "Should eq rejected" (Result.Error Libryy.LoggingV4.LogError.Rejected)
+        }
+
+        yield testCaseJob "end to end with buffer full result" <| job {
+          let properLogger = stubLoggerFull (PointName.parse "Adapters.Facade.v4") "t1"
+          let subject = LoggerAdapter.createGeneric<Libryy.LoggingV4.Logger> properLogger
+          let! res = subject.logWithAck (false, Libryy.LoggingV4.LogLevel.Warn) (Libryy.LoggingV4.Message.eventX "Hello world")
+          res |> Flip.Expect.equal "Should eq rejected" (Result.Error (Libryy.LoggingV4.LogError.BufferFull "t1"))
+        }
 
         yield testCase "end to end with adapter, log method" <| fun _ ->
           let libryyLogger, msg = createLoggerSubject ()

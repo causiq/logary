@@ -315,6 +315,7 @@ module internal Promise =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal LogError =
   let rejected: LogError = Rejected
+  let bufferFull target: LogError = BufferFull target
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal LogResult =

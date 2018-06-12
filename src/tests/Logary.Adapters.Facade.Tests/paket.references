@@ -3,4 +3,5 @@ Hopac
 FSharp.Core
 FsCheck
 Expecto
+Expecto.Hopac
 Expecto.FsCheck

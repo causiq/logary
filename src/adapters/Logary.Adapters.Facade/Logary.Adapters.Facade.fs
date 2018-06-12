@@ -410,9 +410,8 @@ module LoggerAdapter =
     // HOT PATH
     let logErrorType = findModule (loggerType, "LogError")
     let logErrorModule = findModule (loggerType, "LogErrorModule")
-    let logResultModule = findModule (loggerType, "LogResultModule")
 
-    let bufferFullMethod = findStaticMethod (logResultModule, "bufferFull")
+    let bufferFullMethod = findStaticMethod (logErrorModule, "bufferFull")
     let bufferFullFSharpFunction = typedefof<FSharpFunc<_,_>>.MakeGenericType([| typeof<string>; logErrorType |])
     let bufferFull =
       FSharpValue.MakeFunction(
