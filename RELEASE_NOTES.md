@@ -2,6 +2,7 @@
 * Make Adapter.getLogger a verbose log operation
 * Fix #347 - BufferFull result from Logary proper, through Facade cast exn
 * Fix #346 — Stackdriver not sending Logger.name — now sent as `labels.logger`.
+* Fix #343 — prettyprint IPEndPoint and IPAddress
 
 #### 5.0.0-beta.15
 * Fix #341 — template from context as well as fields

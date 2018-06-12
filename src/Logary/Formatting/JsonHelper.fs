@@ -78,6 +78,8 @@ module Shape =
   let (|LocalDate|_|) (shape: TypeShape) = test<NodaTime.LocalDate> shape
   let (|Duration|_|) (shape: TypeShape) = test<NodaTime.Duration> shape
   let (|Uri|_|) (shape: TypeShape) = test<System.Uri> shape
+  let (|IPAddress|_|) (shape: TypeShape) = test<System.Net.IPAddress> shape
+  let (|IPEndPoint|_|) (shape: TypeShape) = test<System.Net.IPEndPoint> shape
 
 type internal JsonEncoderRegistry =
   abstract tryGet: TypeShape -> JsonEncoderFactory option
@@ -221,6 +223,12 @@ module internal JsonHelper =
 
     | Shape.DateTimeOffset ->
       wrap (fun (x: DateTimeOffset) -> Inference.Json.encode x)
+
+    | Shape.IPAddress ->
+      wrap (fun (x: System.Net.IPAddress) -> E.string (x.ToString()))
+
+    | Shape.IPEndPoint ->
+      wrap (fun (x: System.Net.IPEndPoint) -> E.string (x.ToString()))
 
     | Shape.Instant ->
       wrap (fun (x: NodaTime.Instant) -> E.string (NodaTime.Text.InstantPattern.ExtendedIso.Format x))
