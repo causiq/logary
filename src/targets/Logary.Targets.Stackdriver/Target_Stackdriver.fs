@@ -300,7 +300,8 @@ module internal Impl =
 /// Create a new StackDriver target
 [<CompiledName "Create">]
 let create conf name =
-  TargetConf.createSimple (Impl.loop conf) name
+  { TargetConf.createSimple (Impl.loop conf) name
+      with bufferSize = 2048us }
 
 type Builder(conf, callParent: Target.ParentCallback<Builder>) =
 
