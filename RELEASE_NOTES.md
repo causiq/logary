@@ -1,3 +1,6 @@
+#### 5.0.0-beta.17
+* Fix #348 — wait for buffers
+
 #### 5.0.0-beta.16
 * Make Adapter.getLogger a verbose log operation
 * Fix #347 - BufferFull result from Logary proper, through Facade cast exn

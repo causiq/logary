@@ -4,6 +4,7 @@ namespace Logary
 open Hopac
 open Hopac.Infixes
 open Hopac.Extensions
+open Logary
 open Logary.Message
 open Logary.Internals
 open Logary.Configuration
@@ -101,8 +102,15 @@ module Registry =
 
   module private Impl =
 
-    let inline ensureName name (m: Message) =
+    let ensureName name (m: Message) =
       if m.name.isEmpty then { m with name = name } else m
+
+    let boxedUnit = box ()
+    let ensureWaitFor waitForBuffers (m: Message) =
+      if waitForBuffers then
+        { m with context = m.context |> HashMap.add KnownLiterals.WaitForBuffers boxedUnit }
+      else
+        m
 
     let inline getLogger (t: T) name mid =
       let nameStr = name.ToString ()
@@ -126,7 +134,13 @@ module Registry =
             if level >= x.level then
               // When the registry is shut down, reject the log message.
               let rejection = t.isClosed ^->. Result.Error Rejected
-              let logMessage = Alt.prepareFun (fun () -> messageFactory level |> ensureName name |> t.runPipeline mid)
+
+              let logMessage = Alt.prepareFun <| fun () ->
+                messageFactory level
+                |> ensureName name
+                |> ensureWaitFor waitForBuffers
+                |> t.runPipeline mid
+
               rejection <|> logMessage
             else
               LogResult.success

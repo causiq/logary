@@ -40,7 +40,11 @@ module KnownLiterals =
   let SinkTargetsContextName =  LogaryPrefix +  "sink.targets"
 
   [<Literal>]
+  let WaitForBuffers = LogaryPrefix + "waitForBuffers"
+
+  [<Literal>]
   let SpanIdContextName = LogaryPrefix + "spanId"
+
   [<Literal>]
   let SpanInfoContextName = LogaryPrefix + "spanInfo"
 

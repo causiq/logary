@@ -89,27 +89,32 @@ module Target =
   let tryLogAll (targets: T[]) (msg: Message): Alt<Result<Promise<unit>, LogError>[]> =
     logAll_ (* do not block *) false targets msg
 
-  let tryLogAllReduce targets msg: LogResult =
-    tryLogAll targets msg ^=> function
-      | [||] ->
-        //printfn "tryLogAllReduce: Success from empty targets array"
-        LogResult.success :> Job<_>
-      | ps ->
-        match Result.sequence ps with
-        | Ok promises ->
-          let latch = Latch promises.Length
-          let dec = Latch.decrement latch
-          Job.start (promises |> Seq.Con.iterJob (fun p -> p ^=>. dec))
-          >>-. Ok (memo (Latch.await latch))
-        | Result.Error [] ->
-          // should not happen, error list always non empty:
-          //printfn "tryLogAllReduce: Failure from empty error array"
-          Job.result (Result.Error Rejected)
-        | Result.Error (e :: _) ->
-          //printfn "tryLogAllReduce: Failure from NON-empty error array %A" e
-          Job.result (Result.Error e)
+  let private logAllReduceHandler (results: Result<Promise<unit>, LogError>[]) =
+    match results with
+    | [||] ->
+      //printfn "tryLogAllReduce: Success from empty targets array"
+      LogResult.success :> Job<_>
+    | ps ->
+      match Result.sequence ps with
+      | Ok promises ->
+        let latch = Latch promises.Length
+        let dec = Latch.decrement latch
+        Job.start (promises |> Seq.Con.iterJob (fun p -> p ^=>. dec))
+        >>-. Ok (memo (Latch.await latch))
+      | Result.Error [] ->
+        // should not happen, error list always non empty:
+        //printfn "tryLogAllReduce: Failure from empty error array"
+        Job.result (Result.Error Rejected)
+      | Result.Error (e :: _) ->
+        //printfn "tryLogAllReduce: Failure from NON-empty error array %A" e
+        Job.result (Result.Error e)
 
-  // TODO: logAllReduce
+
+  let tryLogAllReduce targets msg: LogResult =
+    tryLogAll targets msg ^=> logAllReduceHandler
+
+  let logAllReduce targets msg: LogResult =
+    logAll targets msg ^=> logAllReduceHandler
 
   /// Send a flush RPC to the target and return the async with the ACKs. This will
   /// create an Alt that is composed of a job that blocks on placing the Message

@@ -55,7 +55,10 @@ module internal InternalLogger =
 
         messageCh ^=> fun (message, nack, replCh) ->
           let forwardToTarget =
-            Target.tryLogAllReduce targets message ^=> Ch.give replCh
+            if message.context |> HashMap.containsKey KnownLiterals.WaitForBuffers then
+              Target.logAllReduce targets message ^=> Ch.give replCh
+            else
+              Target.tryLogAllReduce targets message ^=> Ch.give replCh
 
           (forwardToTarget <|> nack) ^=> fun () -> iserver targets
 
