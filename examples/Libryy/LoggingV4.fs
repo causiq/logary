@@ -399,7 +399,8 @@ module Logger =
       | Result.Error Rejected ->
         Job.result ()
       | Result.Error (BufferFull target) ->
-        Job.raises (exn (sprintf "logWithAck (true, _) should have waited for the RingBuffer(s) to accept the Message. Target(%s)" target))
+        //Job.raises (exn (sprintf "logWithAck (true, _) should have waited for the RingBuffer(s) to accept the Message. Target(%s)" target))
+        Job.result ()
 
   /// Special case: e.g. Fatal messages.
   let logAck (logger: Logger) level messageFactory: Promise<unit> =
@@ -411,8 +412,9 @@ module Logger =
         | Result.Error Rejected ->
           IVar.fill ack ()
         | Result.Error (BufferFull target) ->
-          let e = exn (sprintf "logWithAck (true, _) should have waited for the RingBuffer(s) to accept the Message. Target(%s)" target)
-          IVar.fillFailure ack e
+          //let e = exn (sprintf "logWithAck (true, _) should have waited for the RingBuffer(s) to accept the Message. Target(%s)" target)
+          //IVar.fillFailure ack e
+          IVar.fill ack ()
     start inner
     ack :> Promise<_>
 

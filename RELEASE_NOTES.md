@@ -1,3 +1,6 @@
+#### 5.0.0-beta.18
+* Ref #348 — wait for buffers - don't throw exceptions; push fix till later
+
 #### 5.0.0-beta.17
 * Fix #348 — wait for buffers
 
