@@ -2459,12 +2459,8 @@ and can be used like so:
 
 ```csharp
 var message = MessageModule.Event(LogLevel.Warn, "Here be dragons!");
-logger.LogWithAck(message)
-  // dotting Result blocks on the placing of the Message in Logary's buffers
-  .Result
-  // calling Wait on the inner task blocks on all configured targets
-  // flushing
-  .Wait();
+// force the buffers of all configured targets to be flushed
+await logger.LogWithAck(message);
 ```
 
 ## License
