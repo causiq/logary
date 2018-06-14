@@ -42,8 +42,8 @@ OR:
 
 <!-- toc -->
 
-- [Hello World (C#)](#hello-world-c%23)
-- [Hello World (F#)](#hello-world-f%23)
+- [Hello World (C#)](#hello-world-c)
+- [Hello World (F#)](#hello-world-f)
 - [Overview](#overview)
 - [Tutorial and things around Message](#tutorial-and-things-around-message)
   * [PointName](#pointname)
@@ -70,7 +70,7 @@ OR:
   * [What about API stability?](#what-about-api-stability)
   * [The compiler complains "The type 'Logger' is not compatible with the type](#the-compiler-complains-the-type-logger-is-not-compatible-with-the-type)
   * [More reading](#more-reading)
-- [Using in a C# library](#using-in-a-c%23-library)
+- [Using in a C# library](#using-in-a-c-library)
   * [More reading](#more-reading-1)
 - [InfluxDb Target](#influxdb-target)
 - [RabbitMQ Target](#rabbitmq-target)
@@ -146,10 +146,10 @@ OR:
   * [Isn't v4.0.x supposed to be API-stable?](#isnt-v40x-supposed-to-be-api-stable)
   * [Why does Logary depend on FParsec?](#why-does-logary-depend-on-fparsec)
   * [Why do you depend on Hopac?](#why-do-you-depend-on-hopac)
-  * [How do I use Hopac from C#?](#how-do-i-use-hopac-from-c%23)
+  * [How do I use Hopac from C#?](#how-do-i-use-hopac-from-c)
   * [What's `logVerboseWithAck`, `logWithAck` and how does it differ from `logSimple`?](#whats-logverbosewithack-logwithack-and-how-does-it-differ-from-logsimple)
     + [`logWithAck` – so what's up with `Promise`?](#logwithack-%E2%80%93-so-whats-up-with-promise)
-    + [How do Promises work with C#?](#how-do-promises-work-with-c%23)
+    + [How do Promises work with C#?](#how-do-promises-work-with-c)
 - [License](#license)
 
 <!-- tocstop -->
