@@ -329,8 +329,8 @@ module internal H =
     context
     |> Map.tryFind Literals.ErrorsContextName
     |> Option.map (function
-      | :? list<exn> as exns -> exns
-      | :? list<obj> as exns -> exns |> List.choose (function :? exn as e -> Some e | _ -> None)
+      | :? list<exn> as exns -> exns |> List.filter (isNull >> not)
+      | :? list<obj> as exns -> exns |> List.choose (function :? exn as e when not (isNull e) -> Some e | _ -> None)
       | _ -> [])
     |> Option.defaultValue []
     |> List.rev
@@ -383,8 +383,8 @@ module Logger =
       | Result.Error (BufferFull _) ->
         false
 
-  let private printDotOnOverflow b =
-    if b then System.Console.Error.Write '.' else ()
+  let private printDotOnOverflow accepted =
+    if not accepted then System.Console.Error.Write '.' else ()
 
   let logSimple (logger: Logger) msg: unit =
     start (log logger msg.level (fun _ -> msg) ^-> printDotOnOverflow)
