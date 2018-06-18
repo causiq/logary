@@ -58,10 +58,16 @@ module Logger =
     start inner
     ack :> Promise<_>
 
+  let private ensureName name =
+    fun (m: Message) ->
+      if m.name.isEmpty then { m with name = name } else m
+
   let apply (middleware: Message -> Message) (logger: Logger): Logger =
+    let ensureName = ensureName logger.name
     { new LoggerWrapper(logger) with
-      override x.logWithAck (waitForBuffers, logLevel) messageFactory =
-        logger.logWithAck (waitForBuffers, logLevel) (messageFactory >> middleware)
+        override x.logWithAck (waitForBuffers, logLevel) messageFactory =
+          logger.logWithAck (waitForBuffers, logLevel) (
+            messageFactory >> ensureName >> middleware)
     } :> Logger
 
 [<AutoOpen>]

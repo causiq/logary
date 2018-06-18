@@ -24,6 +24,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cibryy", "examples\Cibryy\C
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Libryy", "examples\Libryy\Libryy.fsproj", "{EEDC4E13-9C8C-4DF4-887F-BEF17EE940BB}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Facade.Tests", "src\Logary.Facade.Tests\Logary.Facade.Tests.fsproj", "{4D646024-6D9B-4F76-8CB0-71C74841BBCA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -37,6 +39,7 @@ Global
 		{3BBAF0E4-9024-4E2F-B72D-23FE14FA4D17} = {9F28952C-9E31-4BAD-9EA7-393ED314234B}
 		{3C5509C3-4A96-4F42-B1AD-0860E189BD80} = {83C15BBC-57DE-41B8-B120-B07072F7D4C8}
 		{EEDC4E13-9C8C-4DF4-887F-BEF17EE940BB} = {83C15BBC-57DE-41B8-B120-B07072F7D4C8}
+		{4D646024-6D9B-4F76-8CB0-71C74841BBCA} = {9F28952C-9E31-4BAD-9EA7-393ED314234B}
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{55399874-D8FA-48A2-A8E3-94AB4BA5C8C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -67,5 +70,9 @@ Global
 		{EEDC4E13-9C8C-4DF4-887F-BEF17EE940BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EEDC4E13-9C8C-4DF4-887F-BEF17EE940BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EEDC4E13-9C8C-4DF4-887F-BEF17EE940BB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4D646024-6D9B-4F76-8CB0-71C74841BBCA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4D646024-6D9B-4F76-8CB0-71C74841BBCA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4D646024-6D9B-4F76-8CB0-71C74841BBCA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4D646024-6D9B-4F76-8CB0-71C74841BBCA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

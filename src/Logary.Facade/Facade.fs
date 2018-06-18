@@ -360,6 +360,14 @@ type Message =
     |> Seq.map (fun (KeyValue (k, v)) -> k.Substring(Literals.FieldsPrefix.Length), v)
     |> Map.ofSeq
 
+  member x.getContext(): Map<string, obj> =
+    x.context
+    |> Map.toSeq
+    |> Seq.filter (fun (k, _) ->
+         not (k.StartsWith Literals.FieldsPrefix)
+      && not (k.StartsWith Literals.LogaryPrefix))
+    |> Map.ofSeq
+
   /// If you're looking for how to transform the Message's fields, then use the
   /// module methods rather than instance methods, since you'll be creating new
   /// values rather than changing an existing value.
@@ -418,10 +426,15 @@ module Logger =
     start inner
     ack :> Promise<_>
 
+  let private ensureName name =
+    fun (m: Message) ->
+      if m.name.Length = 0 then { m with name = name } else m
+
   let apply (transform: Message -> Message) (logger: Logger): Logger =
+    let ensureName = ensureName logger.name
     { new Logger with
         member x.logWithAck (waitForBuffers, logLevel) messageFactory =
-          logger.logWithAck (waitForBuffers, logLevel) (messageFactory >> transform)
+          logger.logWithAck (waitForBuffers, logLevel) (messageFactory >> ensureName >> transform)
         member x.name =
           logger.name }
 
@@ -675,12 +688,12 @@ module internal LiterateTokenisation =
     | _ ->
       OtherSymbol
 
-  let tokeniseValue (options: LiterateOptions) (fields: Map<string, obj>) (template: string) =
+  let tokeniseValue (options: LiterateOptions) (fields: Map<string, obj>) (context: Map<string, obj>) (template: string) =
     let themedParts = ResizeArray<TokenisedPart>()
     let matchedFields = ResizeArray<string>()
     let foundText (text: string) = themedParts.Add (text, Text)
     let foundProp (prop: FsMtParser.Property) =
-      match Map.tryFind prop.name fields with
+      match fields |> Map.tryFind prop.name |> Option.orElseWith (fun () -> context |> Map.tryFind prop.name) with
       | Some propValue ->
         // render using string.Format, so the formatting is applied
         let stringFormatTemplate = prop.AppendPropertyString(StringBuilder(), "0").ToString()
@@ -736,8 +749,8 @@ module internal LiterateTokenisation =
         .ToString("HH:mm:ss", options.formatProvider),
       Subtext
 
-    let fields = message.getFields()
-    let _, themedMessageParts = message.value |> tokeniseValue options fields
+    let fields, context = message.getFields(), message.getContext()
+    let _, themedMessageParts = message.value |> tokeniseValue options fields context
     let themedExceptionParts = tokeniseExns options message
 
     [ yield "[", Punctuation
@@ -758,9 +771,9 @@ module internal Formatting =
   open Literate
   open System.Text
 
-  let formatValue (fields: Map<string, obj>) value =
+  let formatValue (fields: Map<string, obj>) (context: Map<string, obj>) value =
     let matchedFields, themedParts =
-      LiterateTokenisation.tokeniseValue (LiterateOptions.createInvariant()) fields value
+      LiterateTokenisation.tokeniseValue (LiterateOptions.createInvariant()) fields context value
     matchedFields, System.String.Concat(themedParts |> Seq.map fst)
 
   let formatLevel (level: LogLevel) =
@@ -793,8 +806,8 @@ module internal Formatting =
 
   /// let the ISO8601 love flow
   let defaultFormatter (message: Message) =
-    let fields = message.getFields()
-    let matchedFields, valueString = formatValue fields message.value
+    let fields, context = message.getFields(), message.getContext()
+    let matchedFields, valueString = formatValue fields context message.value
 
     // [I] 2014-04-05T12:34:56Z: Hello World! [my.sample.app]
     formatLevel message.level +
@@ -891,23 +904,23 @@ module internal LiterateFormatting =
   let tokeniserForOutputTemplate template: LiterateTokeniser =
     let tokens = parseTemplate template
     fun options message ->
-      let fields = message.getFields()
+      let fields, context = message.getFields(), message.getContext()
       // render the message template first so we have the template-matched fields available
       let matchedFields, messageParts =
-        tokeniseValue options fields message.value
+        tokeniseValue options fields context message.value
 
       let tokeniseOutputTemplateField fieldName format = seq {
         match fieldName with
-        | "timestamp" ->            yield! tokeniseTimestamp format options message
-        | "timestampUtc" ->         yield! tokeniseTimestampUtc format options message
-        | "level" ->                yield! tokeniseLogLevel options message
-        | "source" ->               yield! tokeniseSource options message
-        | "newline" ->              yield! tokeniseNewline options message
-        | "tab" ->                  yield! tokeniseTab options message
-        | "message" ->              yield! messageParts
-        | "properties" ->           yield! tokeniseExtraFields options message matchedFields
-        | "exceptions" ->           yield! tokeniseExns options message
-        | _ ->                      yield! tokeniseMissingField fieldName format
+        | "timestamp" ->    yield! tokeniseTimestamp format options message
+        | "timestampUtc" -> yield! tokeniseTimestampUtc format options message
+        | "level" ->        yield! tokeniseLogLevel options message
+        | "source" ->       yield! tokeniseSource options message
+        | "newline" ->      yield! tokeniseNewline options message
+        | "tab" ->          yield! tokeniseTab options message
+        | "message" ->      yield! messageParts
+        | "properties" ->   yield! tokeniseExtraFields options message matchedFields
+        | "exceptions" ->   yield! tokeniseExns options message
+        | _ ->              yield! tokeniseMissingField fieldName format
       }
 
       seq {
