@@ -42,18 +42,8 @@ module MessageWriter =
 
   let internal defaultDestr = Destructure.destructure Global.destructureRegistry Global.projectionStrategy
 
-  let expandedWithoutContext ending: MessageWriter =
-    { new MessageWriter with
-          member x.write tw m =
-            let level = string (caseNameOf m.level).[0]
-            let time = formatTimestamp m.timestamp
-            let body = tokeniseTemplateWithGauges tw.FormatProvider defaultDestr m |> collectAllToString
-            let name = m.name.ToString()
-            sprintf "%s %s: %s [%s]%s" level time body name ending |> tw.Write
-      }
-
   /// maxDepth can be avoided if cycle reference are handled properly
-  let expanded highlightError nl ending: MessageWriter =
+  let expanded showErrors showContext nl ending: MessageWriter =
     { new MessageWriter with
         member x.write tw m =
           let writeState = { provider = tw.FormatProvider; idManager = RefIdManager ()}
@@ -61,13 +51,39 @@ module MessageWriter =
           let time = formatTimestamp m.timestamp
           let body = tokeniseTemplateWithGauges tw.FormatProvider defaultDestr m |> collectAllToString
           let name = m.name.ToString()
-          let context = tokeniseContext writeState nl defaultDestr m |> collectAllToString
+          let context =
+            if showContext then
+              tokeniseContext writeState nl defaultDestr m |> collectAllToString
+            else
+              ""
 
-          if highlightError then
+          if showErrors then
             let errors = tokeniseExceptions tw.FormatProvider nl m |> collectAllToString
             sprintf "%s %s: %s [%s]%s%s%s" level time body name context errors ending |> tw.Write
-          else sprintf "%s %s: %s [%s]%s%s" level time body name context ending |> tw.Write
+          else
+            sprintf "%s %s: %s [%s]%s%s" level time body name context ending |> tw.Write
     }
+
+  /// Do not show context values, show exceptions.
+  let singleLineNoContext: MessageWriter =
+    expanded true false " " Environment.NewLine
+  [<Obsolete "Use singleLineNoContext">]
+  let expandedWithoutContext = singleLineNoContext
+
+  /// Show context values, show exceptions.
+  let singleLineWithContext: MessageWriter =
+    expanded true true " " Environment.NewLine
+
+  /// Show no context values, no exceptions.
+  let singleLineNoContextNoExns: MessageWriter =
+    expanded false false " " Environment.NewLine
+
+  let multiLineNoContext: MessageWriter =
+    expanded true false Environment.NewLine Environment.NewLine
+  let multiLineWithContext: MessageWriter =
+    expanded true true Environment.NewLine Environment.NewLine
+  let multiLineNoContextNoExns: MessageWriter =
+    expanded false false Environment.NewLine Environment.NewLine
 
   /// Verbatim simply outputs the message and no other information
   /// and doesn't append a newline to the string.
@@ -80,7 +96,7 @@ module MessageWriter =
     }
 
   /// VerbatimNewline simply outputs the omessage and no other information
-  /// and does append a newline to the string.
+  /// and appends a newline to the string.
   let verbatimNewLine =
     { new MessageWriter with
         member x.write tw m =
@@ -89,17 +105,14 @@ module MessageWriter =
     }
 
   /// <see cref="MessageWriter.LevelDatetimePathMessageNewLine" />
-  let levelDatetimeMessagePath =
-    expandedWithoutContext ""
+  let levelDatetimeMessagePath = singleLineNoContext
 
   /// LevelDatetimePathMessageNl outputs the most information of the Message
   /// in text format, starting with the level as a single character,
   /// then the ISO8601 format of a DateTime (with +00:00 to show UTC time),
   /// then the path in square brackets: [Path.Here], the message and a newline.
-  /// Exceptions are called ToString() on and prints each line of the stack trace
-  /// newline separated.
-  let levelDatetimeMessagePathNewLine =
-    expandedWithoutContext Environment.NewLine
+  /// Exceptions are called ToString() on and prints each line with a space between
+  let levelDatetimeMessagePathNewLine = singleLineNoContext
 
   let contextWriter =
     { new MessageWriter with

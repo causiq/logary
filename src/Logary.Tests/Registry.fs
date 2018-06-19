@@ -74,7 +74,7 @@ let tests = [
     }
 
   testCaseJob "getlogger with middleware" <| job {
-    let! (logm, out, error)  = Utils.buildLogManager ()
+    let! logm, out, error  = Utils.buildLogManager ()
     let loggername = PointName.parse "logger.test"
     let correlationId = Guid.NewGuid().ToString("N")
     let customMid = Middleware.context "correlationId" correlationId

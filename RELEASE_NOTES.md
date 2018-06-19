@@ -2,6 +2,7 @@
 * Fix #354 — Facade v4 `getExns` may return nulls
 * Fix #350 — Ensure `setLastName` in Facade keeps the parent logger name
 * Fix #355 — Facade v4, support pretty printing context values
+* Fix #356 — Ensure addExn gets printed with plain console
 
 #### 5.0.0-beta.18
 * Ref #348 — wait for buffers - don't throw exceptions; push fix till later

@@ -35,7 +35,7 @@ let clearStream (s: System.IO.StringWriter) =
 
 let buildTextWriteTarget name =
   let (out, error) = (new StringWriter (), new StringWriter ())
-  let twconf = TextWriter.TextWriterConf.create (out, error)
+  let twconf = TextWriter.TextWriterConf.create (out, error, MessageWriter.multiLineWithContext)
   let twTargetConf = TextWriter.create twconf name
   (out, error, twTargetConf)
 
@@ -43,7 +43,7 @@ let buildLogManagerWith configFac = job {
   let svc = "svc"
   let host = "localhost"
   let tname = "4test"
-  let (out, error, twTargetConf) = buildTextWriteTarget tname
+  let out, error, twTargetConf = buildTextWriteTarget tname
   // let iloggerConf = ILogger.Targets [ twTargetConf ]
 
   let! logm =

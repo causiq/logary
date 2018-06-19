@@ -12,7 +12,7 @@ module TextWriter =
   open Logary.Internals
   open Logary.Configuration.Target
 
-  let defaultMessageFormat = MessageWriter.expanded false System.Environment.NewLine System.Environment.NewLine
+  let defaultMessageFormat = MessageWriter.expanded (* show errors *)true (* show context *) false System.Environment.NewLine System.Environment.NewLine
 
   /// Configuration for a text writer
   type TextWriterConf =
@@ -105,7 +105,7 @@ module Console =
     static member create writer =
       { writer = writer }
 
-  let defaultMessageFormat = MessageWriter.expandedWithoutContext System.Environment.NewLine
+  let defaultMessageFormat = MessageWriter.singleLineNoContext
 
   /// Default console target configuration.
   let empty =
@@ -399,7 +399,7 @@ module DiagnosticsTrace =
     static member create writer =
       { writer = writer }
 
-  let defaultMessageFormat = MessageWriter.expandedWithoutContext System.Environment.NewLine
+  let defaultMessageFormat = MessageWriter.singleLineNoContext
 
   /// Default console target configuration.
   let empty =
@@ -466,7 +466,7 @@ module Debugger =
   open Logary.Target
   open Logary.Configuration.Target
 
-  let defaultMessageFormat = MessageWriter.expanded false System.Environment.NewLine System.Environment.NewLine
+  let defaultMessageFormat = MessageWriter.multiLineNoContext
 
   type DebuggerConf =
     { writer: MessageWriter }
@@ -475,7 +475,7 @@ module Debugger =
     /// formats how the Messages and Gauges/Derived-s are printed)
     [<CompiledName "Create">]
     static member create (?writer) =
-      { writer = defaultArg writer (defaultMessageFormat) }
+      { writer = defaultArg writer defaultMessageFormat }
 
   /// Default debugger configuration
   let empty = DebuggerConf.create ()
@@ -1015,7 +1015,7 @@ module File =
       /// How many times to try to recover a failed batch messages.
       attempts: uint16 }
 
-  let defaultMessageFormat = MessageWriter.expanded false System.Environment.NewLine System.Environment.NewLine
+  let defaultMessageFormat = MessageWriter.multiLineNoContext
 
   /// The empty/default configuration for the Logary file target.
   let empty =
