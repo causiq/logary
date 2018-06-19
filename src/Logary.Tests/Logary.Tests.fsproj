@@ -2,7 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <Version>5.0.0-beta.18</Version>
+    <Version>5.0.0-beta.19</Version>
     <Version>5.0.0-beta.12</Version>
     <TargetFrameworks>net461;netcoreapp2.0</TargetFrameworks>
     <NoWarn>44</NoWarn>
