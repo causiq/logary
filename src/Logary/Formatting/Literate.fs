@@ -32,16 +32,16 @@ module Literate =
 
   let tokeniseExceptions (pvd: IFormatProvider) (nl: string) (m: Message) =
     let exceptions =
-        Message.getExns m |> Seq.collect (fun e ->
-          [ yield printLine (ExnType (e.GetType().FullName, e.Message))
-            yield! DotNetStacktrace.parse e.StackTrace |> Seq.map printLine
-          ])
+      Message.getExns m |> Seq.collect (fun e ->
+        [ yield printLine (ExnType (e.GetType().FullName, e.Message))
+          yield! DotNetStacktrace.parse e.StackTrace |> Seq.map printLine
+        ])
 
     let error =
-        Message.tryGetError m
-        |> Option.fold (fun s t -> t :: s) []
-        |> Seq.collect id
-        |> Seq.map printLine
+      Message.tryGetError m
+      |> Option.fold (fun s t -> t :: s) []
+      |> Seq.collect id
+      |> Seq.map printLine
 
     Seq.concat [ exceptions; error ]
     |> Seq.collect (fun line -> [ yield nl, Subtext; yield! line ])

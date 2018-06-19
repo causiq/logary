@@ -51,7 +51,7 @@ with
   interface IFormattable with
     member __.ToString (format, provider) = "PropA is 45 and PropB raise exn"
 
-let date20171111 =  DateTime.Parse("2017-11-11")
+let date20171111 = DateTime.Parse("2017-11-11")
 let foo () = { id = 999; name = "whatever"; created = date20171111}
 
 let complexMessage: Message =
@@ -279,6 +279,17 @@ let jsonTests fsc =
 
 let textPrinters =
   testList "text printers" [
+    testCase "singleLineNoContext with exception" <| fun _ ->
+      let ex = withException id
+      Message.event Error "Hi"
+      |> Message.setNameStr "A.B.C"
+      |> Message.setNanoEpoch 3123456700L
+      |> Message.addExn ex
+      |> MessageWriter.singleLineNoContext.format
+      |> Expect.stringContains
+        "Should return correct string"
+        "E 1970-01-01T00:00:03.1234567+00:00: Hi [A.B.C] System.Exception: Bad things going on   at Logary.Tests.Utils.innermost[a]() in"
+
     testCase "cycle reference" <| fun _ ->
       Message.eventFormat(Info, "cycle reference")
       |> Message.setNanoEpoch 3123456700L
