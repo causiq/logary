@@ -43,11 +43,11 @@ let private thx: WebPart =
 let private fail: string -> WebPart =
   Json.encode >> Json.format >> BAD_REQUEST
 
-let private logMessage (next: Ingest): WebPart =
+let private logMessage (next: HttpContext -> Ingest): WebPart =
   fun ctx ->
     async {
       let input = Ingested.ofBytes ctx.request.rawForm
-      let! res = Job.toAsync (next input)
+      let! res = Job.toAsync (next ctx input)
       match res with
       | Ok () ->
         return! thx ctx
@@ -55,7 +55,7 @@ let private logMessage (next: Ingest): WebPart =
         return! fail err ctx
     }
 
-let api (config: HTTPConfig) (next: Ingest): WebPart =
+let api (config: HTTPConfig) (next: HttpContext -> Ingest): WebPart =
   choose [
     GET >=> path config.rootPath >=> printHelp config
     POST >=>  path config.rootPath >=> logMessage next >=> setMimeType "application/json; charset=utf-8"
@@ -74,7 +74,7 @@ let create (config: HTTPConfig) (next: Ingest) =
     do config.ilogger.info (eventX "Starting HTTP log listener at {bindings}" >> setField "bindings" config.suaveConfig.bindings)
     use cts = createAdaptedCTS config
     let suaveConfig = { config.suaveConfig with cancellationToken = cts.Token }
-    let started, listening = startWebServerAsync suaveConfig (api config next)
+    let started, listening = startWebServerAsync suaveConfig (api config (fun _ -> next))
     do! Job.start (Job.fromAsync listening)
     do! config.cancelled
     do config.ilogger.info (eventX "Stopping HTTP log listener at {bindings}" >> setField "bindings" config.suaveConfig.bindings)

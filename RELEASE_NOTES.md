@@ -1,3 +1,6 @@
+#### 5.0.0-beta.20
+* Enable access to Suave.HttpContext for HTTP ingestion
+
 #### 5.0.0-beta.19
 * Fix #354 — Facade v4 `getExns` may return nulls
 * Fix #350 — Ensure `setLastName` in Facade keeps the parent logger name

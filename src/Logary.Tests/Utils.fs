@@ -25,7 +25,6 @@ open Logary
 open Logary.Internals
 open Logary.Targets
 open Logary.Configuration
-open Logary.Configuration
 
 let clearStream (s: System.IO.StringWriter) =
   let sb = s.GetStringBuilder ()
