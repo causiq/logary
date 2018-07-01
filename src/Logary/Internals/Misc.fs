@@ -42,6 +42,20 @@ module internal LogResult =
   let bufferFull target: Alt<Result<Promise<unit>, LogError>> = Alt.always (Result.Error (BufferFull target))
   let rejected: Alt<Result<Promise<unit>, LogError>> = Alt.always (Result.Error Rejected)
 
+module internal Seq =
+  /// Get the head and the tail of the sequence, throwing if the sequence contains no elements.
+  let headTail (xs: #seq<_>): 't * seq<'t> =
+    let e = xs.GetEnumerator()
+    if not (e.MoveNext()) then
+      failwithf "Could not get first element of sequence"
+    e.Current, seq {
+      try
+        while e.MoveNext() do
+          yield e.Current
+      finally
+        e.Dispose()
+    }
+
 module internal List =
   open Hopac
   /// Map a Job producing function over a list to get a new Job using

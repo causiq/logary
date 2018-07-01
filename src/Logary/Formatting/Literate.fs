@@ -30,13 +30,34 @@ module Literate =
     | StacktraceLine.InnerDelim ->
       [ "--- End of inner exception stack trace ---", Punctuation ]
 
-  let rec private tokeniseException (e: exn) =
-    [ yield printLine (ExnType (e.GetType().FullName, e.Message))
+  /// Iterates through an exception hierarchy and uses `DotNetStacktrace.parse` on the stacktraces, yielding a
+  /// the lines (outer list), each consisting of a string and a literate token specifying how that string is to be
+  /// formatted.
+  let rec private tokeniseException (e: exn): seq<(string * LiterateToken) list> =
+    // each inner list represents a written/outputted text line
+    seq {
+      yield printLine (ExnType (e.GetType().FullName, e.Message))
       yield! DotNetStacktrace.parse e.StackTrace |> Seq.map printLine
-      if not (isNull e.InnerException) then
+      match e with
+      | :? AggregateException as ae when not (isNull ae.InnerExceptions) && ae.InnerExceptions.Count > 1 ->
+        let mutable i = 0
+        for e in ae.InnerExceptions do
+          i <- i + 1
+          let firstLine, remainder = tokeniseException e |> Seq.headTail
+          yield [
+            yield sprintf "Inner exn#", Subtext
+            yield string i, NumericSymbol
+            yield sprintf " ", Punctuation
+            yield! firstLine
+          ]
+          yield! remainder
+
+      | _ when not (isNull e.InnerException) ->
         yield printLine InnerDelim
         yield! tokeniseException e.InnerException
-    ]
+      | _ ->
+        ()
+    }
 
   let tokeniseExceptions (pvd: IFormatProvider) (nl: string) (m: Message) =
     let exceptions =

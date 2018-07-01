@@ -12,58 +12,16 @@ open Logary.Targets.LiterateConsole
 open Logary.Targets.LiterateConsole.Tokenisers
 open Logary.Formatting
 
-module Expect =
-  open System.Text
-
-  /// This will pass:
-  ///
-  /// [ 1; 2; 3; 4; 5; 6 ]
-  ///   |> Expect.sequenceContainsOrder "Valid ordering of subsequence" [ 1; 3; 5 ]
-  ///
-  /// This will fail:
-  /// [ 1; 2; 3; 4; 5; 6 ]
-  ///   |> Expect.sequenceContainsOrder "Wrong order of 0th and 1th elem" [ 3; 1; 6 ]
-  ///
-  /// This will fail:
-  /// [ 1; 2; 3; 4; 5; 6 ]
-  ///   |> Expect.sequenceContainsOrder "Missing 7 from actual" [ 1; 3; 7 ]
-  ///
-  /// This will pass:
-  /// [ 1; 2; 3; 4; 5; 6 ]
-  ///   |> Expect.sequenceContainsOrder "Empty list passes" []
-  ///
-  let sequenceContainsOrder message (expectedSub: #seq<'t>) (actual: #seq<'t>) =
-    use ee = expectedSub.GetEnumerator()
-    let el = System.Collections.Generic.Queue<'t> expectedSub
-    use ae = actual.GetEnumerator()
-    let al = ResizeArray<'t>()
-
-    let rec iter i =
-      if el.Count = 0 then (* success *) () else
-      if not (ae.MoveNext()) then failwithf "Remainder %A of expected enumerable, after going through actual enumerable." el else
-      al.Add ae.Current
-      let expected = el.Peek()
-      if expected = ae.Current then
-        ignore (el.Dequeue())
-        iter (i + 1)
-      else
-        iter (i + 1)
-
-    iter 0
-
-  let formattedEqual message expected (parts: LiterateConsole.ColouredText list) =
-    let app (sb: StringBuilder) (value: string) = sb.Append value
-    (StringBuilder(), parts |> List.map (fun x -> x.text))
-      ||> List.fold (fun state t -> app state t)
-      |> fun sb -> sb.ToString()
-      |> Expect.equal message expected
-
 let tokenisation =
   let failingFn (inner) =
     raise (exn ("Top level exn", inner))
 
-  let throwAnotherExn (inner) =
+  let throwAnotherExn inner =
     try failingFn inner
+    with e -> e
+
+  let throwAggrExn inner1 inner2 =
+    try raise (AggregateException("Outer aggregate exception", inner1, inner2))
     with e -> e
 
   testList "tokenisation" [
@@ -81,6 +39,21 @@ let tokenisation =
       Message.event Warn "General error" |> Message.addExn exnOuter
         |> Literate.tokeniseExceptions Culture.invariant "-"
         |> Expect.sequenceContainsOrder "Has correct output" expected
+
+    testCase "tokenise Aggregate exn" <| fun _ ->
+      let e1, e2 = withException id, withException id
+      let exnOuter = throwAggrExn e1 e2
+      let expected =
+        [ "-", MessageTemplates.Formatting.Literate.Subtext // newline
+          "System.AggregateException: Outer aggregate exception (Bad things going on) (Bad things going on)", MessageTemplates.Formatting.Literate.Text
+          "Logary.Tests.LiterateConsole.throwAggrExn@69(Exception inner)", MessageTemplates.Formatting.Literate.Subtext
+          "--- End of inner exception stack trace ---", MessageTemplates.Formatting.Literate.Punctuation
+          "System.Exception: Bad things going on", MessageTemplates.Formatting.Literate.Text
+          "Logary.Tests.Utils.innermost[a]()", MessageTemplates.Formatting.Literate.Subtext
+        ]
+      Message.event Warn "My error" |> Message.addExn exnOuter
+        |> Literate.tokeniseExceptions Culture.invariant "-"
+        |> Expect.sequenceEqual "Has correct output" expected
   ]
 
 module LiterateTesting =

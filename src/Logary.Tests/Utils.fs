@@ -225,6 +225,51 @@ module Expect =
       linea |> Expect.equal "Should equal the expected line" linee
       cont <- not (isNull linea || isNull linee)
 
+  open System.Text
+
+  /// This will pass:
+  ///
+  /// [ 1; 2; 3; 4; 5; 6 ]
+  ///   |> Expect.sequenceContainsOrder "Valid ordering of subsequence" [ 1; 3; 5 ]
+  ///
+  /// This will fail:
+  /// [ 1; 2; 3; 4; 5; 6 ]
+  ///   |> Expect.sequenceContainsOrder "Wrong order of 0th and 1th elem" [ 3; 1; 6 ]
+  ///
+  /// This will fail:
+  /// [ 1; 2; 3; 4; 5; 6 ]
+  ///   |> Expect.sequenceContainsOrder "Missing 7 from actual" [ 1; 3; 7 ]
+  ///
+  /// This will pass:
+  /// [ 1; 2; 3; 4; 5; 6 ]
+  ///   |> Expect.sequenceContainsOrder "Empty list passes" []
+  ///
+  let sequenceContainsOrder message (expectedSub: #seq<'t>) (actual: #seq<'t>) =
+    use ee = expectedSub.GetEnumerator()
+    let el = System.Collections.Generic.Queue<'t> expectedSub
+    use ae = actual.GetEnumerator()
+    let al = ResizeArray<'t>()
+
+    let rec iter i =
+      if el.Count = 0 then (* success *) () else
+      if not (ae.MoveNext()) then failwithf "Remainder %A of expected enumerable, after going through actual enumerable." el else
+      al.Add ae.Current
+      let expected = el.Peek()
+      if expected = ae.Current then
+        ignore (el.Dequeue())
+        iter (i + 1)
+      else
+        iter (i + 1)
+
+    iter 0
+
+  let formattedEqual message expected (parts: LiterateConsole.ColouredText list) =
+    let app (sb: StringBuilder) (value: string) = sb.Append value
+    (StringBuilder(), parts |> List.map (fun x -> x.text))
+      ||> List.fold (fun state t -> app state t)
+      |> fun sb -> sb.ToString()
+      |> Expect.equal message expected
+
   module Json =
     open Logary.Internals.Chiron
 

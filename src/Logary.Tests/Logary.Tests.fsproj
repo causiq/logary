@@ -16,7 +16,7 @@
     <Compile Include="FsMessageTemplates.fs" />
     <Compile Include="TargetBaseline.fs" />
     <Compile Include="CoreTarget.fs" />
-    <Compile Include="LiterateConsole.fs" />
+    <Compile Include="Literate.fs" />
     <Compile Include="Registry.fs" />
     <Compile Include="Transformers.fs" />
     <Compile Include="Program.fs" />

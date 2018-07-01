@@ -1,5 +1,6 @@
 #### 5.0.0-beta.21
-* Fix #357 — simple exns
+* Fix #357 — for simple exns
+* Fix #357 — for AggregateException
 
 #### 5.0.0-beta.20
 * Enable access to Suave.HttpContext for HTTP ingestion

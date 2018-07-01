@@ -30,7 +30,7 @@ let pipe () =
 //       fun prev ->
 //         if firstOccur && prev.level >= LogLevel.Error then firstOccur <- false
 //         cont prev)
-  |> Events.sink [ "bad boy" ]
+  |> Events.sink []
 
 let logm =
   Config.create "svc" "localhost"
@@ -63,3 +63,33 @@ ab.info (Message.eventX "ab.info" >> (fun msg -> printfn "invoke %s" msg.value; 
 
 
 logm.flushPending() |> run
+
+
+//////
+
+let innermost () =
+  raise (Exception "Bad things going on")
+
+let middleWay () =
+  1 + 3 |> ignore
+  innermost ()
+
+let withException f =
+  try middleWay ()
+  with e -> f e
+
+let failingFn (inner) =
+  raise (exn ("Top level exn", inner))
+
+let throwAnotherExn inner =
+  try failingFn inner
+  with e -> e
+
+let throwAggrExn inner1 inner2 =
+  try raise (AggregateException("Outer aggregate exception", inner1, inner2))
+  with e -> e
+
+let e1 = withException id
+let e = throwAggrExn e1 e1
+
+ab.fatal (Message.eventX "ab.fatal" >> Message.addExn e)
