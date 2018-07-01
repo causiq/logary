@@ -227,6 +227,9 @@ module Expect =
 
   open System.Text
 
+  let printSeq (xs: #seq<_>): string =
+    xs |> Seq.mapi (fun i x -> sprintf "  [%i] %A" i x) |> String.concat Environment.NewLine
+
   /// This will pass:
   ///
   /// [ 1; 2; 3; 4; 5; 6 ]
@@ -249,17 +252,22 @@ module Expect =
     let el = System.Collections.Generic.Queue<'t> expectedSub
     use ae = actual.GetEnumerator()
     let al = ResizeArray<'t>()
+    let nl = Environment.NewLine
 
     let rec iter i =
       if el.Count = 0 then (* success *) () else
-      if not (ae.MoveNext()) then failwithf "Remainder %A of expected enumerable, after going through actual enumerable." el else
-      al.Add ae.Current
-      let expected = el.Peek()
-      if expected = ae.Current then
-        ignore (el.Dequeue())
-        iter (i + 1)
+      if not (ae.MoveNext()) then
+        failtestf
+          "Remainder of expected enumerable:%s%s%sWent through actual enumerable (%i items):%s%s"
+          nl (printSeq el) nl i nl (printSeq al)
       else
-        iter (i + 1)
+        al.Add ae.Current
+        let expected = el.Peek()
+        if expected = ae.Current then
+          ignore (el.Dequeue())
+          iter (i + 1)
+        else
+          iter (i + 1)
 
     iter 0
 

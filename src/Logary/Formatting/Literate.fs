@@ -27,8 +27,8 @@ module Literate =
           yield "line ", Subtext
           yield Option.get line.lineNo |> string, NumericSymbol
       ]
-    | StacktraceLine.InnerDelim ->
-      [ "--- End of inner exception stack trace ---", Punctuation ]
+    | StacktraceLine.StacktraceDelim ->
+      [ "--- End of exception stack trace ---", Punctuation ]
 
   /// Iterates through an exception hierarchy and uses `DotNetStacktrace.parse` on the stacktraces, yielding a
   /// the lines (outer list), each consisting of a string and a literate token specifying how that string is to be
@@ -44,6 +44,7 @@ module Literate =
         for e in ae.InnerExceptions do
           i <- i + 1
           let firstLine, remainder = tokeniseException e |> Seq.headTail
+          yield printLine StacktraceDelim
           yield [
             yield sprintf "Inner exn#", Subtext
             yield string i, NumericSymbol
@@ -53,7 +54,7 @@ module Literate =
           yield! remainder
 
       | _ when not (isNull e.InnerException) ->
-        yield printLine InnerDelim
+        yield printLine StacktraceDelim
         yield! tokeniseException e.InnerException
       | _ ->
         ()

@@ -14,7 +14,7 @@ type StacktraceLine =
   /// "    at ServiceStack.ServiceClient.Web.ServiceClientBase.Send[TResponse](String httpMethod, String relativeOrAbsoluteUrl, Object request)"
   | Line of line:StacktraceLineData
   /// "--- End of inner exception stack trace ---"
-  | InnerDelim
+  | StacktraceDelim
   /// WRN: Assembly binding logging is turned OFF.
   | LineOutput of data:string
 
@@ -35,7 +35,7 @@ module DotNetStacktrace =
       let lineNo = let ln = mline.Groups.["lineNo"] in if String.IsNullOrWhiteSpace ln.Value then None else Some (int ln.Value)
       Match (Line { site = site; file = file; lineNo = lineNo })
     elif mdelim.Success then
-      Match InnerDelim
+      Match StacktraceDelim
     else
       let mexnt = mexnt.Match line
       if mexnt.Success then
