@@ -712,11 +712,12 @@ let tests =
     testList "Engine" Engine.tests
 
     testList "core targets" CoreTargets.tests
-    testLabel "literate console" LiterateConsole.tests
+    testLabel "literate console" LiterateConsole.tokenisation
+    testLabel "literate console" LiterateConsole.parts
 
-    testLabel "Formatting" (Formatting.jsonTests fsCheckConfig)
-    testLabel "Formatting" Formatting.textPrinters
-    testLabel "Formatting" (Formatting.stacktrace fsCheckConfig)
+    testLabel "formatting" (Formatting.jsonTests fsCheckConfig)
+    testLabel "formatting" Formatting.textPrinters
+    testLabel "formatting" (Formatting.stacktrace fsCheckConfig)
 
     Codecs.tests
 

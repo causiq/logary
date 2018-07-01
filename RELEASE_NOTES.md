@@ -1,3 +1,6 @@
+#### 5.0.0-beta.21
+* Fix #357 — simple exns
+
 #### 5.0.0-beta.20
 * Enable access to Suave.HttpContext for HTTP ingestion
 

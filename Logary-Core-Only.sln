@@ -1,6 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{9F28952C-9E31-4BAD-9EA7-393ED314234B}"
+ProjectSection(SolutionItems) = preProject
+	RELEASE_NOTES.md = RELEASE_NOTES.md
+EndProjectSection
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary", "src\Logary\Logary.fsproj", "{55399874-D8FA-48A2-A8E3-94AB4BA5C8C7}"
 EndProject

@@ -9,7 +9,7 @@ open Logary.MessageTemplates.Formatting
 open Logary.MessageTemplates.Formatting.Literate
 
 module Literate =
-  let private printLine = function
+  let rec private printLine = function
     | StacktraceLine.ExnType (et, m) ->
       [ String.Concat [ et; ": "; m ], Text ]
     | StacktraceLine.LineOutput data ->
@@ -30,12 +30,17 @@ module Literate =
     | StacktraceLine.InnerDelim ->
       [ "--- End of inner exception stack trace ---", Punctuation ]
 
+  let rec private tokeniseException (e: exn) =
+    [ yield printLine (ExnType (e.GetType().FullName, e.Message))
+      yield! DotNetStacktrace.parse e.StackTrace |> Seq.map printLine
+      if not (isNull e.InnerException) then
+        yield printLine InnerDelim
+        yield! tokeniseException e.InnerException
+    ]
+
   let tokeniseExceptions (pvd: IFormatProvider) (nl: string) (m: Message) =
     let exceptions =
-      Message.getExns m |> Seq.collect (fun e ->
-        [ yield printLine (ExnType (e.GetType().FullName, e.Message))
-          yield! DotNetStacktrace.parse e.StackTrace |> Seq.map printLine
-        ])
+      Message.getExns m |> Seq.collect tokeniseException
 
     let error =
       Message.tryGetError m
