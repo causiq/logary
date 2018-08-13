@@ -1,3 +1,6 @@
+#### 5.0.0-beta.22
+* Fix #349 via #363 — thanks @akselsson
+
 #### 5.0.0-beta.21
 * Fix #357 — for simple exns
 * Fix #357 — for AggregateException
