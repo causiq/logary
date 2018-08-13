@@ -39,6 +39,11 @@ let raisedExn msg =
   try raise <| ApplicationException(msg)
   with ex -> e := Some ex
   (!e).Value
+let raisedExnWithInner  msg inner =
+  let e = ref None: exn option ref
+  try raise <| ApplicationException(msg,inner)
+  with ex -> e := Some ex
+  (!e).Value
 
 let stackdriver =
   lazy (
@@ -55,27 +60,45 @@ let target =
     TargetBaseline.basicTests "Google Stackdriver" (fun name ->
       Stackdriver.create stackdriver.Value name) true
 
-    testCase "serialise" <| fun () ->
-      let e1 = raisedExn "darn"
-      let e2 = raisedExn "actual exn"
+    testCase "serialise with error" <| fun () ->
       let subject =
         Message.eventWarn "Testing started"
         |> Message.setField "data-key" "data-value"
         |> Message.setField "tags" [ "integration" ]
         |> Message.setContext "service" "tests"
-        |> Message.addExn e2
+        |> Message.setField "error" "Error at x"
         |> fun m -> m.toLogEntry()
 
       Expect.equal subject.Severity LogSeverity.Warning "severity should be warning"
       Expect.equal (subject.Labels.["service"]) "tests" "should have correct context"
 
+      let expectedMessage = "Testing started" + Environment.NewLine + "Error at x"
+      Expect.equal subject.JsonPayload.Fields.["message"].StringValue expectedMessage "should have message with error"
+    
+    testCase "serialise with exception" <| fun () ->
+      let exn = raisedExnWithInner "raised exception" (raisedExn "inner")
+      let subject =
+        Message.eventWarn "Testing started"
+        |> Message.setField "data-key" "data-value"
+        |> Message.setField "tags" [ "integration" ]
+        |> Message.setContext "service" "tests"
+        |> Message.addExn exn
+        |> fun m -> m.toLogEntry()
+
+      Expect.equal subject.Severity LogSeverity.Warning "severity should be warning"
+      Expect.equal (subject.Labels.["service"]) "tests" "should have correct context"
+
+      let expectedMessage = "Testing started" + Environment.NewLine + exn.ToString() 
+      Expect.equal subject.JsonPayload.Fields.["message"].StringValue expectedMessage "should have message with error"
+ 
+ 
     testCaseJob "send" <| job {
       let targetConf = Stackdriver.create stackdriver.Value "logary-stackdriver"
       let! target = Target.create ri targetConf
 
       for i in 0..20 do
         let! ack =
-          Target.tryLog target (event LogLevel.Info "thing happened at {blah}" |> setField "blah" 12345 |> setContext "zone" "foobar" |> addExn (raisedExn "boohoo"))
+          Target.tryLog target (event LogLevel.Error "thing happened at {blah}" |> setField "application" "logary tests" |> setContext "zone" "foobar" |> addExn (raisedExnWithInner "outer exception" (raisedExn "inner exception")))
         do! ack |> function Ok ack -> ack | Result.Error e -> failtestf "Failure placing in buffer %A" e
 
       do! flush target

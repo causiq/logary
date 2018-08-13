@@ -20,7 +20,9 @@ open Logary.Internals.TypeShape.Core
 open Logary.Message
 open Logary.Target
 open Logary.Formatting
+open System.Globalization
 open System
+open System.IO
 open System.Collections.Generic
 open System.Numerics
 open System.Runtime.CompilerServices
@@ -192,6 +194,25 @@ module internal Impl =
     s.Fields.[k] <- Json.encode value |> toValue
     s
 
+  // When logging error data from App Engine, Kubernetes Engine or Compute Engine, the only requirement is for the log entry to contain the full error message and stack trace. 
+  // It should be logged as a multi-line textPayload or in the message field of jsonPayload
+  // https://cloud.google.com/error-reporting/docs/formatting-error-messages
+  let formatMessageField (m: Message) =   
+      use sw = new StringWriter()
+      MessageWriter.verbatim.write sw m
+      
+      let error = tryGetField "error" m
+      if error.IsSome then
+        sw.Write Environment.NewLine
+        sw.Write (error.Value.ToString())
+
+      getExns m 
+        |> Seq.iter (fun exn ->
+          sw.Write Environment.NewLine
+          sw.Write exn)
+      
+      sw.ToString()
+
   [<Literal>]
   let MessageKey = "message"
   [<Literal>]
@@ -209,11 +230,9 @@ module internal Impl =
         ]
         |> dict
 
-      let formatted = Logary.MessageWriter.verbatim.format x
-
       let addMessageFields (values: seq<string * obj>): seq<_> =
         seq {
-          yield MessageKey, box formatted
+          yield MessageKey, box (formatMessageField x)
           yield ValueKey, box x.value
           yield! values
         }
