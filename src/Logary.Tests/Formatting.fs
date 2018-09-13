@@ -150,6 +150,13 @@ let jsonRawInput = """
 {"EventReceivedTime":"2018-03-19 15:33:43","SourceModuleName":"webapi","SourceModuleType":"im_file","date":"2018-03-19","time":"15:33:40","siteName":"W3SVC3060","hostName":"webfront-01","serverIp":"127.0.0.1","method":"GET","path":"/marketing/startpageconfiguration","query":"date=2018-03-19T15%3A33%3A41.0226690%2B00%3A00","listenPort":3060,"username":null,"clientIp":"127.0.0.1","protocol":"HTTP/1.1","userAgent":"GoogleHC/1.0","cookie":null,"referrer":null,"host":"localhost:3060","status":200,"substatus":0,"win32Status":0,"sent[bytes]":5028,"received[bytes]":456,"duration[ms]":3,"xForwardedFor":null,"timestamp":"2018-03-19T15:33:40Z","site":"webapi"}
 """
 
+let jsonBatch = """
+[
+  {"name":"A.B.C","value":"Changed company","fields":{},"context":{},"level":"info","timestamp":"2018-09-13T21:27:55.205Z"},
+  {"name":"D.E","value":"User signed out","fields":{},"context":{},"level":"debug","timestamp":"2018-09-13T21:30:20.000Z"}
+]
+"""
+
 let testEncode<'a> fsCheckConfig =
   testPropertyWithConfig fsCheckConfig typeof<'a>.Name (fun (a: 'a) -> Json.encode a |> ignore)
 
@@ -280,6 +287,26 @@ let jsonTests fsc =
                             (DateTimeOffset.Parse("2018-08-01T01:23:45Z"))
         | JFail f ->
           failtestf "Failure parsing ISO8601 %A" f
+
+      testCase "simplest possible batch JSON" <| fun () ->
+        match Json.parse jsonBatch |> JsonResult.bind Json.decodeMessage with
+        | JPass ms ->
+          let m = ms.[0]
+          m.name.isEmpty
+            |> Expect.isFalse "Expected non-empty name"
+          m.name.ToString()
+            |> Expect.equal "Should eq A.B.C." "A.B.C"
+          m.value
+            |> Expect.equal "Eq" "Changed company"
+          m.level
+            |> Expect.equal "Info level" Info
+
+          let m = ms.[1]
+          m.value
+            |> Expect.equal "Eq" "User signed out"
+
+        | JFail err ->
+          failtestf "Parse failure %A" err
     ]
   ]
 
