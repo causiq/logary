@@ -260,6 +260,7 @@ let jsonTests fsc =
       testCase "message" <| fun () ->
         match Json.parse jsonRawInput |> JsonResult.bind Json.decodeMessage with
         | JPass m ->
+          let m = m.[0]
           DateTimeOffset.ofEpoch m.timestamp
             |> Expect.equal "Should have timestamp from 'timestamp' prop in JSON"
                             (DateTimeOffset.Parse("2018-03-19T15:33:40Z"))

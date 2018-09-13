@@ -37,9 +37,9 @@ module Router =
         (x.zmqCtx :> IDisposable).Dispose()
         (x.receiver :> IDisposable).Dispose()
 
-  let private createSink (logary: LogManager) codec =
+  let private createSink (logary: LogManager) (codec: Logary.Codecs.Codec) =
     let targetLogger = logary.getLogger (PointName.parse "Logary.Services.Rutta.Router")
-    codec >> Result.map targetLogger.logSimple >> Job.result
+    codec >> Result.map (Array.iter targetLogger.logSimple) >> Job.result
 
   let internal recv cancelled createSocket (ilogger: Logger) (sink: Ingest) =
     let loop () =
@@ -141,6 +141,7 @@ module Router =
       "binary",
       Ingested.forceBytes
       >> Shipper.Serialisation.deserialise
+      >> Array.singleton
       >> Result.Ok
     | C.Log4jXML ->
       "log4jxml",

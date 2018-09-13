@@ -193,4 +193,7 @@ module Json =
     formatWith JsonFormattingOptions.Compact data
 
   let decodeMessage =
-    Json.Decode.jsonObjectWith JsonDecode.message
+    let single = Json.Decode.jsonObjectWith JsonDecode.message
+    Json.Decode.either
+      (single |> Decoder.map Array.singleton)
+      (D.arrayWith single)

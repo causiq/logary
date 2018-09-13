@@ -12,7 +12,7 @@ let tests =
     testCase "plain"  <| fun () ->
       match Codec.plain (Ingested.String "hello") with
       | Result.Ok m ->
-        m.value |> Expect.equal "Should have right value" "hello"
+        m.[0].value |> Expect.equal "Should have right value" "hello"
       | Result.Error err ->
         failtestf "%s" err
 
@@ -21,16 +21,16 @@ let tests =
         let sample = @"{""name"": ""MyProgram.ModuleA"", ""level"": ""Fatal"", ""value"": ""App fatal error while saving image"", ""fields"": { ""user"": { ""id"": 1, ""username"": ""haf"" }, ""error"": ""System.IO.FileNotFoundException: Could not load file or assembly 'Google.Api.Gax.Rest, Version=2.2.1.0, Culture=neutral, PublicKeyToken=3ec5ea7f18953e47' or one of its dependencies. The system cannot find the file specified.\nFile name: 'Google.Api.Gax.Rest, Version=2.2.1.0, Culture=neutral, PublicKeyToken=3ec5ea7f18953e47'\n   at Google.Cloud.Storage.V1.StorageClient.Create(GoogleCredential credential, EncryptionKey encryptionKey)\n   at A.B.C.D.Image.ImageService.<>c.<.ctor>b__4_0() in C:\\A\\B\\C\\D\\Image\\ImageService.cs:line 27\n   at System.Lazy`1.CreateValue()\n   at System.Lazy`1.LazyInitValue()\n   at A.B.C.D.Image.ImageService.TryGetFileSizeGCloud(String url, Int64& fileSize) in C:\\A\\B\\C\\D\\Image\\ImageService.cs:line 119\n\nWRN: Assembly binding logging is turned OFF.\nTo enable assembly bind failure logging, set the registry value [HKLM\\Software\\Microsoft\\Fusion!EnableLog] (DWORD) to 1.\nNote: There is some performance penalty associated with assembly bind failure logging.\nTo turn this feature off, remove the registry value [HKLM\\Software\\Microsoft\\Fusion!EnableLog].\n\n"" } }"
         match Codec.json (Ingested.String sample) with
         | Result.Ok m ->
-          m.name
+          m.[0].name
             |> Expect.equal "Should parse name of logger" (PointName.parse "MyProgram.ModuleA")
 
-          m
+          m.[0]
             |> Message.tryGetError
             |> Expect.isSome "Has the error parsed and ready"
 
 
           let lines =
-            m
+            m.[0]
               |> Message.tryGetError
               |> Option.get
 
@@ -49,6 +49,7 @@ let tests =
 </log4j:event>"""
         match Codec.log4jXML (Ingested.String sample) with
         | Result.Ok m ->
+          let m = m.[0]
           m.value
             |> Expect.equal "Should parse the message properly" "Sample info message"
           m.level
@@ -80,6 +81,7 @@ method="run" file="Generator.java" line="94"/>
 </log4j:event>"""
         match Codec.log4jXML (Ingested.String sample) with
         | Result.Ok m ->
+          let m = m.[0]
           m.name
             |> Expect.equal "Should parse logger name" (PointName.parse "first logger")
 
@@ -104,15 +106,15 @@ method="run" file="Generator.java" line="94"/>
 
           m |> Message.tryGetField "log4japp"
             |> Expect.equal "Has log4japp-field" (Some "udp-generator")
-          
+
           m |> Message.tryGetField "error"
-            |> Expect.equal 
-                  "Should parse throwable correctly" 
+            |> Expect.equal
+                  "Should parse throwable correctly"
                   (
                     Some "java.lang.Exception: someexception-third
  	at org.apache.log4j.chainsaw.Generator.run(Generator.java:94)
 "
-                  ) 
+                  )
 
         | Result.Error err ->
           failtestf "%s" err

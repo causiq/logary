@@ -1,3 +1,6 @@
+#### 5.0.0-beta.23
+* Fix #365 — thanks @haf — support for ingesting batched messages
+
 #### 5.0.0-beta.22
 * Fix #349 via #363 — thanks @akselsson
 

@@ -7,9 +7,9 @@ open Logary.Internals
 open Logary.Internals.Chiron
 open Logary.Formatting
 
-type Codec = Ingested -> Result<Message, string>
+type Codec = Ingested -> Result<Message[], string>
 
-type Codec<'err> = Ingested -> Result<Message, 'err>
+type Codec<'err> = Ingested -> Result<Message[], 'err>
 
 module Codec =
   /// Converts a typed codec to one returning JSON string as the errors.
@@ -34,7 +34,7 @@ module Codec =
   let plain: Codec =
     fun input ->
       let value = input.utf8String()
-      Ok (event Debug value)
+      Ok (event Debug value |> Array.singleton)
 
   type Log4JMessage =
     { logger: string
@@ -147,6 +147,7 @@ module Codec =
       input.utf8String ()
       |> Log4JMessage.parse
       |> Result.map (fun log4jm -> log4jm.normalise ())
+      |> Result.map Array.singleton
 
   // let regex: Codec
   // let csv: Codec
