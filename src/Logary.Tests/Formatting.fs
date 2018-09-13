@@ -239,6 +239,11 @@ let jsonTests fsc =
           Json.encode e
             |> Expect.Json.isObject "Returns an object"
 
+        testCase "F# Exception" <| fun () ->
+          let e = withFSharpExn id
+          Json.encode e
+            |> Expect.Json.isObject "Returns an object"
+
         testPropertyWithConfig fsc "Message" <| fun (m: Message) ->
           Json.encode m
             |> Expect.Json.isObjectX "The message is encoded as a Json.Object"
@@ -289,7 +294,7 @@ let textPrinters =
       |> MessageWriter.singleLineNoContext.format
       |> Expect.stringContains
         "Should return correct string"
-        "E 1970-01-01T00:00:03.1234567+00:00: Hi [A.B.C] System.Exception: Bad things going on   at Logary.Tests.Utils.innermost[a]() in"
+        "E 1970-01-01T00:00:03.1234567+00:00: Hi [A.B.C] System.Exception: Bad things going on   at Logary.Tests.Utils.innermost[a](Boolean throwCLRExn) in"
 
     testCase "cycle reference" <| fun _ ->
       Message.eventFormat(Info, "cycle reference")

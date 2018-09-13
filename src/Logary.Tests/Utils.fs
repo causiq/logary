@@ -57,20 +57,31 @@ let buildLogManagerWith configFac = job {
 
 let buildLogManager () = buildLogManagerWith id
 
+exception MyFSharpExn of epoch:int64
 
 [<MethodImpl(MethodImplOptions.NoInlining)>]
-let innermost () =
-  raise (Exception "Bad things going on")
+let innermost (throwCLRExn: bool) =
+  if throwCLRExn then
+    raise (Exception "Bad things going on")
+  else
+    raise (MyFSharpExn 42L)
 
 [<MethodImpl(MethodImplOptions.NoInlining)>]
-let middleWay () =
+let middleWay throwCLRExn =
   1 + 3 |> ignore
-  innermost ()
+  innermost throwCLRExn
 
 [<MethodImpl(MethodImplOptions.NoInlining)>]
 let withException f =
   try
-    middleWay ()
+    middleWay true
+  with e ->
+    f e
+
+[<MethodImpl(MethodImplOptions.NoInlining)>]
+let withFSharpExn f =
+  try
+    middleWay false
   with e ->
     f e
 

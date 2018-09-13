@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -e
+set -o pipefail
+dotnet build --framework netcoreapp2.0 -c Debug
+dotnet run --framework netcoreapp2.0 -c Debug -- --summary "$@"

@@ -31,10 +31,10 @@ let tokenisation =
       let expected =
         [ "-", MessageTemplates.Formatting.Literate.Subtext // newline
           "System.Exception: Top level exn", MessageTemplates.Formatting.Literate.Text
-          "Logary.Tests.LiterateConsole.throwAnotherExn@19(Exception inner)", MessageTemplates.Formatting.Literate.Subtext
+          "Logary.Tests.LiterateConsole.throwAnotherExn@20.Invoke(Exception inner)", MessageTemplates.Formatting.Literate.Subtext
           "--- End of exception stack trace ---", MessageTemplates.Formatting.Literate.Punctuation
           "System.Exception: Bad things going on", MessageTemplates.Formatting.Literate.Text
-          "Logary.Tests.Utils.innermost[a]()", MessageTemplates.Formatting.Literate.Subtext
+          "Logary.Tests.Utils.innermost[a](Boolean throwCLRExn)", MessageTemplates.Formatting.Literate.Subtext
         ]
       Message.event Warn "General error" |> Message.addExn exnOuter
         |> Literate.tokeniseExceptions Culture.invariant "-"
@@ -46,13 +46,13 @@ let tokenisation =
       let expected =
         [ "-", MessageTemplates.Formatting.Literate.Subtext // newline
           "System.AggregateException: Outer aggregate exception (Bad things going on) (Bad things going on)", MessageTemplates.Formatting.Literate.Text
-          "Logary.Tests.LiterateConsole.throwAggrExn@23(Exception inner1, Exception inner2)", MessageTemplates.Formatting.Literate.Subtext
+          "Logary.Tests.LiterateConsole.throwAggrExn@24.Invoke(Exception inner1, Exception inner2)", MessageTemplates.Formatting.Literate.Subtext
           "--- End of exception stack trace ---", MessageTemplates.Formatting.Literate.Punctuation
           "System.Exception: Bad things going on", MessageTemplates.Formatting.Literate.Text
-          "Logary.Tests.Utils.innermost[a]()", MessageTemplates.Formatting.Literate.Subtext
+          "Logary.Tests.Utils.innermost[a](Boolean throwCLRExn)", MessageTemplates.Formatting.Literate.Subtext
           "--- End of exception stack trace ---", MessageTemplates.Formatting.Literate.Punctuation
           "System.Exception: Bad things going on", MessageTemplates.Formatting.Literate.Text
-          "Logary.Tests.Utils.innermost[a]()", MessageTemplates.Formatting.Literate.Subtext
+          "Logary.Tests.Utils.innermost[a](Boolean throwCLRExn)", MessageTemplates.Formatting.Literate.Subtext
         ]
       Message.event Warn "My error" |> Message.addExn exnOuter
         |> Literate.tokeniseExceptions Culture.invariant "-"
