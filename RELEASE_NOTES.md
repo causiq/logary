@@ -1,3 +1,7 @@
+#### 5.0.0-beta.24
+* Upgrade all dependencies, except; constrain Suave <2.5, thanks @haf
+* Fix timestamp JSON deserialisation error — assume we get timestamp in ns since epoch, thanks @haf
+
 #### 5.0.0-beta.23
 * Fix #365 — thanks @haf — support for ingesting batched messages
 
