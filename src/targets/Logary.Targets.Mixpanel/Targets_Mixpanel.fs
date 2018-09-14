@@ -13,11 +13,12 @@ open Logary.Internals
 open Logary.Internals.Chiron
 open Logary.Configuration
 
-/// A **very** simple extractor for the `userId` field/`user` field.
+/// A **very** simple extractor for the `userId` field/`user` field/context value.
 let extractUserIdOrUserDotId (m: Message) =
   m
   |> tryGetField "userId"
   |> Option.orElse (m |> tryGetField "user")
+  |> Option.orElse (m |> tryGetContext "userId")
   |> Option.map string
 
 let extractIPField (m: Message) =

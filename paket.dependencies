@@ -33,7 +33,7 @@ nuget NodaTime
 nuget RabbitMQ.Client
 nuget SQLite.Interop
 nuget SQLite.Interop.dll
-nuget Suave
+nuget Suave < 2.5
 nuget System.Data.SQLite.Core
 nuget System.Net.Http
 nuget System.Configuration.ConfigurationManager >= 4.5.0-rc1 # topshelf
