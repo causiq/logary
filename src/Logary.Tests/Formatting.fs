@@ -153,7 +153,8 @@ let jsonRawInput = """
 let jsonBatch = """
 [
   {"name":"A.B.C","value":"Changed company","fields":{},"context":{},"level":"info","timestamp":"2018-09-13T21:27:55.205Z"},
-  {"name":"D.E","value":"User signed out","fields":{},"context":{},"level":"debug","timestamp":"2018-09-13T21:30:20.000Z"}
+  {"name":"D.E","value":"User signed out","fields":{},"context":{},"level":"debug","timestamp":"2018-09-13T21:30:20.000Z"},
+  {"name":"F.G.H","value":"User login failed 5 times","fields":{},"context":{"userId":"123456789"},"level":"warn","timestamp":1536935071394000000}
 ]
 """
 
@@ -304,6 +305,10 @@ let jsonTests fsc =
           let m = ms.[1]
           m.value
             |> Expect.equal "Eq" "User signed out"
+
+          let m = ms.[2]
+          m.timestamp
+            |> Expect.equal "Has correct TS" 1_536_935_071_394_000_000L
 
         | JFail err ->
           failtestf "Parse failure %A" err

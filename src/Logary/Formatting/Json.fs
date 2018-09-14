@@ -120,7 +120,7 @@ module internal JsonDecode =
     D.dateTimeOffset |> Decoder.map (fun dto -> dto.timestamp)
 
   let timestamp: Decoder<Json, EpochNanoSeconds> =
-    timestampOfNs |> Decoder.orElse (fun _ -> timestampOfDto)
+    Json.Decode.either timestampOfNs timestampOfDto
 
   let private foldJsonObject (m: Message, remainder: JsonObject) = function
     | "name", json
