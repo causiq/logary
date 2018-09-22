@@ -1,4 +1,3 @@
 #load "Newtonsoft.Json.csx" 
-#load "System.Net.Http.csx" 
-#load "System.Reflection.TypeExtensions.csx" 
+#r "System.Net.Http" 
 #r "../../../packages/Google.Apis.Core/lib/net45/Google.Apis.Core.dll" 

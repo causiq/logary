@@ -1,3 +1,3 @@
-#r "../../../packages/Hopac/lib/netstandard1.6/Hopac.Core.dll" 
-#r "../../../packages/Hopac/lib/netstandard1.6/Hopac.Platform.dll" 
-#r "../../../packages/Hopac/lib/netstandard1.6/Hopac.dll" 
+#r "../../../packages/Hopac/lib/netstandard2.0/Hopac.Core.dll" 
+#r "../../../packages/Hopac/lib/netstandard2.0/Hopac.Platform.dll" 
+#r "../../../packages/Hopac/lib/netstandard2.0/Hopac.dll" 

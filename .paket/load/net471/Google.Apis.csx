@@ -1,6 +1,5 @@
 #load "Google.Apis.Core.csx" 
 #load "Newtonsoft.Json.csx" 
-#load "System.Net.Http.csx" 
-#load "System.Reflection.TypeExtensions.csx" 
+#r "System.Net.Http" 
 #r "../../../packages/Google.Apis/lib/net45/Google.Apis.dll" 
 #r "../../../packages/Google.Apis/lib/net45/Google.Apis.PlatformServices.dll" 

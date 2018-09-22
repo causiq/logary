@@ -1,6 +1,4 @@
 #load "Google.Apis.csx" 
 #load "Google.Apis.Core.csx" 
-#load "System.Diagnostics.Process.csx" 
-#load "System.Net.Requests.csx" 
-#r "../../../packages/Google.Apis.Auth/lib/netstandard1.3/Google.Apis.Auth.dll" 
-#r "../../../packages/Google.Apis.Auth/lib/netstandard1.3/Google.Apis.Auth.PlatformServices.dll" 
+#r "../../../packages/Google.Apis.Auth/lib/netstandard2.0/Google.Apis.Auth.dll" 
+#r "../../../packages/Google.Apis.Auth/lib/netstandard2.0/Google.Apis.Auth.PlatformServices.dll" 
