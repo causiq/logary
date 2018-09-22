@@ -1,3 +1,6 @@
+#### 5.0.0-beta.25
+* Upgrade to F# v4.5 and Hopac v0.4
+
 #### 5.0.0-beta.24
 * Upgrade all dependencies, except; constrain Suave <2.5, thanks @haf
 * Fix timestamp JSON deserialisation error — assume we get timestamp in ns since epoch or ISO8601 TS, thanks @haf

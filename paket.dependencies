@@ -15,15 +15,15 @@ nuget Machine.Specifications.Runner.Console
 nuget Machine.Specifications.Runner.VisualStudio
 nuget Microsoft.NET.Test.Sdk
 nuget FParsec
-nuget FSharp.Core
+nuget FSharp.Core ~> 4.5
 nuget FluentMigrator < 2
 nuget FluentMigrator.Runner < 2
 nuget FsCheck
 nuget FsPickler
 nuget FsPickler.Json
 nuget FsSql
-nuget Google.Api.Gax.Rest redirects: on
-nuget Google.Cloud.Logging.V2 redirects: on
+nuget Google.Api.Gax.Rest
+nuget Google.Cloud.Logging.V2
 nuget Hopac
 nuget Http.fs
 nuget Microsoft.ApplicationInsights
