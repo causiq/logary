@@ -30,6 +30,8 @@ type OpsGenieConf =
     apiKey: ApiKey
     /// Alias the message to something semantically useful.
     getAlias: Message -> string
+    /// Render the message for Opsgenie
+    getMessage: Message -> string
     getResponders: Message -> Responder[] }
 
 type Priority =
@@ -151,7 +153,7 @@ module internal E =
 
   let logaryMessage (conf: OpsGenieConf) (x: Message) jObj =
     jObj
-    |> E.required message "message" x.value
+    |> E.required message "message" (conf.getMessage x)
     |> E.required alias "alias" (conf.getAlias x)
     |> E.optional description "description" (getDescription x)
     |> E.required responders "responders" (conf.getResponders x)
@@ -164,13 +166,13 @@ module internal E =
     if String.IsNullOrWhiteSpace m.value then None else
     Some (logaryMessage conf m JsonObject.empty |> Json.Object)
 
-module Alias =
+module Defaults =
   open Logary.Formatting
   /// # of exceptions:
   ///  - 1: The formatted message value alone, if no exceptions.
   ///
   /// Otherwise, the message value/template and
-  let defaultAlias (m: Message) =
+  let defaultMessage (m: Message) =
     let formatted = MessageWriter.verbatim.format m
     match Message.getExns m with
     | [] ->
@@ -182,6 +184,13 @@ module Alias =
         formatted
         (es |> List.map (fun e -> sprintf "'%s'" e.Message) |> String.concat ", ")
 
+  let defaultAlias (m: Message) =
+    m.value
+
+module Alias =
+  [<Obsolete "Use Defaults.defaultAlias">]
+  let defaultAlias = Defaults.defaultAlias
+
 [<AutoOpen>]
 module OpsGenieConfEx =
   type OpsGenieConf with
@@ -191,10 +200,11 @@ module OpsGenieConfEx =
     /// - `getAlias`: dedup-name for the message, should be human readable
     /// - `getResponders`: special-case responding. Perhaps by the assembly that triggered
     ///   the message?
-    static member create (apiKey, ?endpoint, ?getAlias, ?getResponders) =
+    static member create (apiKey, ?endpoint, ?getAlias, ?getMessage, ?getResponders) =
       { endpoint = defaultArg endpoint "https://api.opsgenie.com/v2"
         apiKey = apiKey
-        getAlias = defaultArg getAlias Alias.defaultAlias
+        getAlias = defaultArg getAlias Defaults.defaultAlias
+        getMessage = defaultArg getMessage Defaults.defaultAlias
         getResponders = defaultArg getResponders (fun _ -> Array.empty) }
 
 let empty =
