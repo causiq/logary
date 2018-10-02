@@ -151,6 +151,7 @@ module internal E =
     | Some desc, None ->
       Some desc
 
+  /// https://docs.opsgenie.com/docs/alert-api#section-create-alert
   let logaryMessage (conf: OpsGenieConf) (x: Message) jObj =
     jObj
     |> E.required message "message" (conf.getMessage x)
