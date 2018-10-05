@@ -312,7 +312,7 @@ context are generally classified into these categories: (you can try these code 
 
 prefix with "_fields."
 
-Fields are the structured data when you use structure logging like (https://messagetemplates.org/), there are mainly two style to achive this.
+Fields are the structured data when you use structure logging like (https://messagetemplates.org/), there are mainly two style to achieve this.
 
 ```fsharp
 type SomeInfo() =
@@ -1273,7 +1273,7 @@ should be deleted, whilst the rotation policies dictates when the files should
 be rotated (thereby the previous file archived).
 
 Furthermore, you can specify a **naming** specification that dictates how the
-files sould be named on disk.
+files should be named on disk.
 
  - Deletion of files happen directly when at least one deletion policy has
    triggered.
