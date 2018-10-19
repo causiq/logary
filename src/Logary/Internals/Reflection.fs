@@ -2,9 +2,7 @@ namespace Logary.Internals
 
 module Reflection =
   open System
-  open System.Collections.Concurrent
   open Logary.Internals.TypeShape.Core
-  open Logary.Internals.TypeShape.Core.Utils
 
   /// Used internally to format the exception message to put in place of properties
   /// that could not be accessed without exceptions being thrown.
@@ -35,9 +33,9 @@ module Reflection =
     | _ ->
       fun _ -> Seq.empty
 
-  let private propsResolvers = ConcurrentDictionary<Type, obj -> seq<string * obj>>()
+  let private prosFromFactoryWithMemorize = Logary.Internals.Cache.memoize propsFromFactory
 
   let propsFrom (value: obj): seq<string * obj> =
-    let valueType = value.GetType()
-    let resolver = propsResolvers.GetOrAdd(valueType, Func<_, _>(propsFromFactory))
-    resolver value
+    match value with
+    | null -> Seq.empty
+    | _ -> prosFromFactoryWithMemorize (value.GetType()) value

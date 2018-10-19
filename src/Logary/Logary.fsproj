@@ -4,6 +4,8 @@
     <AssemblyName>Logary</AssemblyName>
     <Version>5.0.0-beta.28</Version>
     <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
+    <Version>5.0.0-beta.26</Version>
+    <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
     <NoWarn>44;2003</NoWarn>
     <DefineConstants>TYPESHAPE_EXPOSE</DefineConstants>
   </PropertyGroup>
@@ -48,8 +50,8 @@
     <Compile Include="DataModel.fs" />
     <Compile Include="Internals/Misc.fs" />
     <Compile Include="Internals/Rnd.fs" />
-    <Compile Include="Internals/Reflection.fs" />
     <Compile Include="Internals/Cache.fs" />
+    <Compile Include="Internals/Reflection.fs" />
     <Compile Include="Internals/NullLogger.fs" />
     <Compile Include="Internals/Middleware.fs" />
     <Compile Include="Formatting/DotNetStacktrace.fs" />
