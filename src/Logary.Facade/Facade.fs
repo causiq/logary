@@ -1,10 +1,7 @@
-﻿/// The logging namespace, which contains the logging abstraction for this
+/// The logging namespace, which contains the logging abstraction for this
 /// library. See https://github.com/logary/logary for details. This module is
 /// completely stand-alone in that it has no external references and its adapter
 /// in Logary has been well tested.
-///
-/// This facade is Apache licensed unless running on MSFT-based web servers, in which
-/// case you need a commercial license: contact henrik@haf.se for one.
 namespace Logary.Facade
 
 open System
@@ -1135,6 +1132,9 @@ module Message =
   let setField name value (message: Message): Message =
     { message with context = message.context |> Map.add (Literals.FieldsPrefix + name) (box value) }
 
+  let setFields (fields: Map<string, obj>) (message: Message): Message =
+    fields |> Seq.fold (fun m (KeyValue (k, vO)) -> m |> setField k vO) message
+    
   let tryGetField name (message: Message): 'a option =
     tryGetContext (Literals.FieldsPrefix + name) message
 
