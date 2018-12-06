@@ -91,7 +91,7 @@ let tests =
           let! req = Ch.take state.req
           do! ack
 
-          let expected = Serialise.message Set.empty msg
+          let expected = Serialise.message Constants.AllowedInfluxTags msg
 
           Encoding.UTF8.GetString req.rawForm
             |> Expect.equal "Should serialise correctly" expected
