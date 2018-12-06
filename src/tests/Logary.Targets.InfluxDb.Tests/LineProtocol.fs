@@ -69,7 +69,7 @@ let lineProtocol =
           |> setContext "disk_type" "SSD"
           |> setContext "rack_no" 2us
           |> setNanoEpoch 1435362189575692182L
-          |> Serialise.message Set.empty
+          |> Serialise.message (Constants.AllowedInfluxTags |> Set.union (Set [ "disk_type"; "rack_no" ]))
           |> Expect.equal
               "Serialises as intended"
               @"disk_free,disk_type=SSD,hostname=server01,level=debug,rack_no=2,tags=gauge value=442221834240i,value_f=""411.85 GiB"",value_unit=""bytes"" 1435362189575692182"
@@ -82,7 +82,7 @@ let lineProtocol =
           |> setContext "rack_no" 2us
           |> setLevel Warn
           |> setNanoEpoch 1435362189575692182L
-          |> Serialise.message Constants.AllowedInfluxTags
+          |> Serialise.message (Constants.AllowedInfluxTags |> Set.add "rack_no")
           |> Expect.equal
               "Serialises as intended"
               @"/dev/sda.disk_free,hostname=server01,level=warn,rack_no=2,tags=gauge disk_type=""SSD"",value=442221834240i,value_f=""411.85 GiB"",value_unit=""bytes"" 1435362189575692182"
@@ -92,7 +92,7 @@ let lineProtocol =
           gauge PointName.empty "total di,sk free" (Int64 442221834240L)
             |> setContext "volumes in,computer" "/net,/ho=me,/"
             |> setNanoEpoch 1435362189575692182L
-            |> Serialise.message Constants.AllowedInfluxTags
+            |> Serialise.message (Constants.AllowedInfluxTags |> Set.add "volumes in,computer")
             |> Expect.equal
                 "Should equal"
                 @"total\ di\,sk\ free,level=debug,tags=gauge,volumes\ in\,computer=/net\,/ho\=me\,/ value=442221834240i,value_unit=""units"" 1435362189575692182"
@@ -101,7 +101,7 @@ let lineProtocol =
           gauge PointName.empty "disk_free" (Int64 442221834240L)
             |> setContext "a=b" "x=z"
             |> setNanoEpoch 1435362189575692182L
-            |> Serialise.message Constants.AllowedInfluxTags
+            |> Serialise.message (Constants.AllowedInfluxTags |> Set.add "a=b")
             |> Expect.equal
                 "Should equal"
                 @"disk_free,a\=b=x\=z,level=debug,tags=gauge value=442221834240i,value_unit=""units"" 1435362189575692182"
@@ -154,7 +154,7 @@ let lineProtocol =
               |> setContext "driverId" "haf"
               |> setContext "tenantId" "821"
               |> setNanoEpoch 1435362189575692182L
-              |> Serialise.message Constants.AllowedInfluxTags
+              |> Serialise.message (Constants.AllowedInfluxTags |> Set.union (Set [ "driverId"; "tenantId" ]))
               |> Expect.equal
                   "Should serialise properly"
                   @"Car-9B325M,driverId=haf,level=debug,tags=gauge,tenantId=821 acceleration=0.3,acceleration_f=""0.30 m/s/s"",velocity=56.151161131,velocity_f=""56.15 m/s"" 1435362189575692182"
@@ -190,7 +190,7 @@ let lineProtocol =
           |> setContext "host" "www-002.example.com"
           |> setContext "dc" "ams3"
           |> setNanoEpoch 1435362189575692182L
-          |> Serialise.message Constants.AllowedInfluxTags
+          |> Serialise.message (Constants.AllowedInfluxTags |> Set.add "service_version")
           |> Expect.equal
               "Should equal"
               @"Corp.Svc.Host.Sample,dc=ams3,host=www-002.example.com,level=info,service=Corp\ Svc,service_version=v2.0.2-e43562 event=""Hej {name}"",name=""haf"",value=1i 1435362189575692182"
