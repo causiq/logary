@@ -14,6 +14,29 @@ open Logary.Internals
 open Logary.Internals.TypeShape.Core
 open Logary.Configuration
 
+module Constants =
+
+  /// What context keys are passed as influx db tags by default?
+  ///
+  /// This is configured in InfluxDbConf.create
+  let AllowedInfluxTags =
+    Set [
+      "service"
+      "host"
+      "hostname"
+      "app"
+      "cluster"
+      "clusterName"
+      "rack"
+      "dc"
+      "deployment"
+      "deploymentName"
+      "namespace"
+      "zone"
+      "region"
+      "country"
+    ]
+
 /// An implementation for the InfluxDb-specific string format.
 module Serialise =
 
@@ -316,7 +339,7 @@ type InfluxDbConf =
       consistency = defaultArg consistency Quorum
       retention = defaultArg retention None
       batchSize = defaultArg batchSize 100us
-      allowedTags = defaultArg allowedTags Set.empty }
+      allowedTags = defaultArg allowedTags Constants.AllowedInfluxTags }
 
 let empty =
   { endpoint    = Uri "http://127.0.0.1:8086/write"
@@ -327,7 +350,7 @@ let empty =
     consistency = Quorum
     retention   = None
     batchSize   = 100us
-    allowedTags = Set.empty }
+    allowedTags = Constants.AllowedInfluxTags }
 
 module internal Impl =
   open System.Net.Http
