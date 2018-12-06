@@ -42,7 +42,7 @@ let lineProtocol =
       testCase "gauge = measurement, 1 scalar float gauge" <| fun _ ->
         gauge PointName.empty "measurement" (Float 3.141592654)
           |> setNanoEpoch 1439587925L
-          |> Serialise.message Set.empty
+          |> Serialise.message Constants.AllowedInfluxTags
           |> Expect.equal
               "Should serialise correctly"
               @"measurement,level=debug,tags=gauge value=3.141592654,value_unit=""units"" 1439587925"
@@ -50,7 +50,7 @@ let lineProtocol =
       testCase "gauge = measurement, space, 1 scalar float gauge" <| fun _ ->
         gauge PointName.empty "io ops" (Float 3.141592654)
           |> setNanoEpoch 1439587925L
-          |> Serialise.message Set.empty
+          |> Serialise.message Constants.AllowedInfluxTags
           |> Expect.equal
               "Should serialise correctly"
               @"io\ ops,level=debug,tags=gauge value=3.141592654,value_unit=""units"" 1439587925"
@@ -58,7 +58,7 @@ let lineProtocol =
       testCase "sensor = measurement, 1 scalar int64 gauge" <| fun _ ->
         gaugei (PointName [| "disk_free" |]) "" 442221834240L
           |> setNanoEpoch 1435362189575692182L
-          |> Serialise.message Set.empty
+          |> Serialise.message Constants.AllowedInfluxTags
           |> Expect.equal
               "Equals the right value"
               @"disk_free,level=debug,tags=gauge value=442221834240i,value_unit=""units"" 1435362189575692182"
@@ -82,7 +82,7 @@ let lineProtocol =
           |> setContext "rack_no" 2us
           |> setLevel Warn
           |> setNanoEpoch 1435362189575692182L
-          |> Serialise.message Set.empty
+          |> Serialise.message Constants.AllowedInfluxTags
           |> Expect.equal
               "Serialises as intended"
               @"/dev/sda.disk_free,hostname=server01,level=warn,rack_no=2,tags=gauge disk_type=""SSD"",value=442221834240i,value_f=""411.85 GiB"",value_unit=""bytes"" 1435362189575692182"
@@ -92,7 +92,7 @@ let lineProtocol =
           gauge PointName.empty "total di,sk free" (Int64 442221834240L)
             |> setContext "volumes in,computer" "/net,/ho=me,/"
             |> setNanoEpoch 1435362189575692182L
-            |> Serialise.message Set.empty
+            |> Serialise.message Constants.AllowedInfluxTags
             |> Expect.equal
                 "Should equal"
                 @"total\ di\,sk\ free,level=debug,tags=gauge,volumes\ in\,computer=/net\,/ho\=me\,/ value=442221834240i,value_unit=""units"" 1435362189575692182"
@@ -101,7 +101,7 @@ let lineProtocol =
           gauge PointName.empty "disk_free" (Int64 442221834240L)
             |> setContext "a=b" "x=z"
             |> setNanoEpoch 1435362189575692182L
-            |> Serialise.message Set.empty
+            |> Serialise.message Constants.AllowedInfluxTags
             |> Expect.equal
                 "Should equal"
                 @"disk_free,a\=b=x\=z,level=debug,tags=gauge value=442221834240i,value_unit=""units"" 1435362189575692182"
@@ -110,7 +110,7 @@ let lineProtocol =
           gauge PointName.empty "disk_free" (Int64 442221834240L)
             |> setContext "path" @"C:\Windows"
             |> setNanoEpoch 1435362189575692182L
-            |> Serialise.message Set.empty
+            |> Serialise.message Constants.AllowedInfluxTags
             |> Expect.equal
                 "Should equal"
                 @"disk_free,level=debug,path=C:\Windows,tags=gauge value=442221834240i,value_unit=""units"" 1435362189575692182"
@@ -121,7 +121,7 @@ let lineProtocol =
               "io ops", Int64 200L ]
             |> setField "working directories" @"C:\My Documents\Stuff for examples,C:\My Documents"
             |> setNanoEpoch 1435362189575692182L
-            |> Serialise.message Set.empty
+            |> Serialise.message Constants.AllowedInfluxTags
             |> Expect.equal
                 "Should equal"
                 @"disk,level=debug,tags=gauge /dev/sda\ free=442221834240i,/dev/sda\ free_unit=""units"",io\ ops=200i,io\ ops_unit=""units"",working\ directories=""C:\My Documents\Stuff for examples,C:\My Documents"" 1435362189575692182"
@@ -133,7 +133,7 @@ let lineProtocol =
             |> setField @"field_key\\\\" "string field value, only \" need be quoted"
             |> setContext "tag key with spaces" "tag,value,with\"commas\""
             |> setNanoEpoch 1435362189575692182L
-            |> Serialise.message Set.empty
+            |> Serialise.message Constants.AllowedInfluxTags
             |> Expect.equal
                 "Should equal"
                 @"""measurement\ with\ quotes"",level=debug,tag\ key\ with\ spaces=tag\,value\,with""commas"",tags=gauge field_key\\\\=""string field value, only \"" need be quoted"",value=1i,value_unit=""units"" 1435362189575692182"
@@ -154,7 +154,7 @@ let lineProtocol =
               |> setContext "driverId" "haf"
               |> setContext "tenantId" "821"
               |> setNanoEpoch 1435362189575692182L
-              |> Serialise.message Set.empty
+              |> Serialise.message Constants.AllowedInfluxTags
               |> Expect.equal
                   "Should serialise properly"
                   @"Car-9B325M,driverId=haf,level=debug,tags=gauge,tenantId=821 acceleration=0.3,acceleration_f=""0.30 m/s/s"",velocity=56.151161131,velocity_f=""56.15 m/s"" 1435362189575692182"
@@ -174,7 +174,7 @@ let lineProtocol =
           |> tag "urgent"
           |> tag "w  t"
           |> setNanoEpoch 1435362189575692182L
-          |> Serialise.message Set.empty
+          |> Serialise.message Constants.AllowedInfluxTags
           |> Expect.equal
               "Should have both the fields as values, and the default value"
               @"Processor.%\ Utilisation,host=host-001,level=debug,tags=gauge\,urgent\,w\ \ t Core\ 1=0.03,Core\ 1_f=""3.00 %"",Core\ 1_unit=""percent"",Core\ 2=0.06,Core\ 2_f=""6.00 %"",Core\ 2_unit=""percent"",Core\ 3=0.139,Core\ 3_f=""13.90 %"",Core\ 3_unit=""percent"",Total=1,Total_f=""100.00 %"",Total_unit=""percent"" 1435362189575692182"
@@ -190,7 +190,7 @@ let lineProtocol =
           |> setContext "host" "www-002.example.com"
           |> setContext "dc" "ams3"
           |> setNanoEpoch 1435362189575692182L
-          |> Serialise.message Set.empty
+          |> Serialise.message Constants.AllowedInfluxTags
           |> Expect.equal
               "Should equal"
               @"Corp.Svc.Host.Sample,dc=ams3,host=www-002.example.com,level=info,service=Corp\ Svc,service_version=v2.0.2-e43562 event=""Hej {name}"",name=""haf"",value=1i 1435362189575692182"
@@ -201,7 +201,7 @@ let lineProtocol =
           |> setField "Field2" 2L
           |> setNameStr "my_sensor"
           |> setNanoEpoch 1435362189575692182L
-          |> Serialise.message Set.empty
+          |> Serialise.message Constants.AllowedInfluxTags
           |> Expect.equal
               "Should equal"
               @"my_sensor,level=info Field1=""value1"",Field2=2i,event=""A template with {Field1} interpolated"",value=1i 1435362189575692182"
@@ -212,7 +212,7 @@ let lineProtocol =
           |> setFieldsFromObject obj
           |> setNameStr "Measurement"
           |> setNanoEpoch 1435362189575692182L
-          |> Serialise.message Set.empty
+          |> Serialise.message Constants.AllowedInfluxTags
           |> Expect.equal
               "Should equal"
               @"Measurement,level=info event=""Template"",foo=""bar"",number=1i,value=1i 1435362189575692182"
