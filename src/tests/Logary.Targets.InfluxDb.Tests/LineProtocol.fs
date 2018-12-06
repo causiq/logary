@@ -136,7 +136,7 @@ let lineProtocol =
             |> Serialise.message Constants.AllowedInfluxTags
             |> Expect.equal
                 "Should equal"
-                @"""measurement\ with\ quotes"",level=debug,tag\ key\ with\ spaces=tag\,value\,with""commas"",tags=gauge field_key\\\\=""string field value, only \"" need be quoted"",value=1i,value_unit=""units"" 1435362189575692182"
+                @"""measurement\ with\ quotes"",level=debug,tags=gauge field_key\\\\=""string field value, only \"" need be quoted"",tag\ key\ with\ spaces=""tag,value,with\""commas\"""",value=1i,value_unit=""units"" 1435362189575692182"
       ]
 
       testList "advanced" [
