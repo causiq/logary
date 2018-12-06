@@ -1,3 +1,6 @@
+#### 5.0.0-beta.28
+* Make tags opt-in for Influx target (on master)
+
 #### 5.0.0-beta.27
 * Make tags opt-in for Influx target
 
