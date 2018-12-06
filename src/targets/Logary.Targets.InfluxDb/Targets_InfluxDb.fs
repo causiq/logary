@@ -221,7 +221,7 @@ module Serialise =
       Escaped.tagKey (PointName.format sensor),
       allGaugesBut None
 
-  let message (message: Message): string =
+  let message (allowedTags: Set<string>) (message: Message): string =
     let ts = Dictionary<Escaped, Escaped>() // tags
     let fs = ResizeArray<_>() // fields
     let gauges = Dictionary<string, Escaped * string option * string option>()
@@ -241,8 +241,11 @@ module Serialise =
       | Field (fname, fvalue) ->
         fieldValue fvalue |> Option.iter (fun x -> fs.Add (Escaped.fieldKey fname, x))
 
-      | Context (key, cvalue) ->
+      | Context (key, cvalue) when allowedTags |> Set.contains key ->
         tagValue cvalue |> Option.iter (fun x -> ts.Add (Escaped.tagKey key, x))
+
+      | Context (key, cvalue) ->
+        fieldValue cvalue |> Option.iter (fun x -> fs.Add (Escaped.fieldKey key, x))
 
       | Gauge (gname, g) ->
         let value = Escaped.fieldValue g.value
@@ -300,9 +303,11 @@ type InfluxDbConf =
     /// Sets the target retention policy for the write. If not present the default retention policy is used
     retention: string option
     /// Sets how many measurements should be batched together if new measurements are produced faster than we can write them one by one. Default is 100.
-    batchSize: uint16 }
+    batchSize: uint16
+    /// What context names to pass as InfluxDB tags.
+    allowedTags: Set<string> }
 
-  static member create(ep, db, ?disableCreateDB, ?user, ?password, ?consistency, ?retention, ?batchSize) =
+  static member create(ep, db, ?disableCreateDB, ?user, ?password, ?consistency, ?retention, ?batchSize, ?allowedTags) =
     { endpoint = ep
       db = db
       disableCreateDB = defaultArg disableCreateDB false
@@ -310,7 +315,8 @@ type InfluxDbConf =
       password = defaultArg password None
       consistency = defaultArg consistency Quorum
       retention = defaultArg retention None
-      batchSize = defaultArg batchSize 100us }
+      batchSize = defaultArg batchSize 100us
+      allowedTags = defaultArg allowedTags Set.empty }
 
 let empty =
   { endpoint    = Uri "http://127.0.0.1:8086/write"
@@ -320,7 +326,8 @@ let empty =
     password    = None
     consistency = Quorum
     retention   = None
-    batchSize   = 100us }
+    batchSize   = 100us
+    allowedTags = Set.empty }
 
 module internal Impl =
   open System.Net.Http
@@ -425,7 +432,7 @@ module internal Impl =
           let entries, acks, flushes =
             messages |> Array.fold (fun (entries, acks, flushes) -> function
               | Log (message, ack) ->
-                Serialise.message message :: entries,
+                Serialise.message conf.allowedTags message :: entries,
                 ack *<= () :: acks,
                 flushes
               | Flush (ackCh, nack) ->

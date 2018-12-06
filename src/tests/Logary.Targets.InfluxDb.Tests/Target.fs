@@ -91,7 +91,7 @@ let tests =
           let! req = Ch.take state.req
           do! ack
 
-          let expected = Serialise.message msg
+          let expected = Serialise.message Set.empty msg
 
           Encoding.UTF8.GetString req.rawForm
             |> Expect.equal "Should serialise correctly" expected
@@ -111,7 +111,7 @@ let tests =
           Encoding.UTF8.GetString req2.rawForm
             |> Expect.equal
                 "Should newline-concatenate messages"
-                (sprintf "%O\n%O" (Serialise.message msg2) (Serialise.message msg3))
+                (sprintf "%O\n%O" (Serialise.message Set.empty msg2) (Serialise.message Set.empty msg3))
 
           req.queryParam "db"
             |> Expect.equal "Should write to tests db" (Choice1Of2 "tests")
