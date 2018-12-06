@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.ComponentModel.csx" 
 #r "Microsoft.CSharp" 
 #r "System" 

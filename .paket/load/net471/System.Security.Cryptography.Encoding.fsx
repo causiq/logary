@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Collections.fsx" 
 #load "System.Collections.Concurrent.fsx" 
 #load "System.Linq.fsx" 

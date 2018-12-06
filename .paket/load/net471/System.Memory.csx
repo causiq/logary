@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Buffers.csx" 
 #load "System.Numerics.Vectors.csx" 
 #load "System.Runtime.CompilerServices.Unsafe.csx" 

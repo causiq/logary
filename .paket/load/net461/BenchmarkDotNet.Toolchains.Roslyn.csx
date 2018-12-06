@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "BenchmarkDotNet.Core.csx" 
 #load "Microsoft.CodeAnalysis.CSharp.csx" 
 #load "System.Threading.Tasks.csx" 

@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "Microsoft.Extensions.PlatformAbstractions.fsx" 
 #load "Newtonsoft.Json.fsx" 
 #load "System.Interactive.Async.fsx" 

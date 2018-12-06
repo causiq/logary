@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Collections.csx" 
 #load "System.Diagnostics.Debug.csx" 
 #load "System.Globalization.csx" 
@@ -16,4 +18,3 @@
 #load "System.Runtime.Extensions.csx" 
 #load "System.Threading.csx" 
 #r "System.Core" 
-#r "mscorlib" 

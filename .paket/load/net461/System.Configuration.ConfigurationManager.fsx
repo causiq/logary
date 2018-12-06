@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Security.Cryptography.ProtectedData.fsx" 
 #load "System.Security.Permissions.fsx" 
 #r "System" 

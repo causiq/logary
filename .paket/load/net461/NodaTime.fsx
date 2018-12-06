@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Runtime.Serialization.Xml.fsx" 
 #r "Microsoft.CSharp" 
 #r "System" 

@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Collections.fsx" 
 #load "System.Diagnostics.Debug.fsx" 
 #load "System.Diagnostics.Tracing.fsx" 

@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Interactive.Async.fsx" 
 #load "System.Runtime.Loader.fsx" 
 #load "System.Threading.Thread.fsx" 

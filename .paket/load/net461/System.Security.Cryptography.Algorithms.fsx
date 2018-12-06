@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Collections.fsx" 
 #load "System.IO.fsx" 
 #load "System.Resources.ResourceManager.fsx" 

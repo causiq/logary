@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "Microsoft.Win32.Registry.csx" 
 #load "System.Buffers.csx" 
 #load "System.Diagnostics.DiagnosticSource.csx" 

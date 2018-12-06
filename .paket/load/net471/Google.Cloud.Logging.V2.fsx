@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "Google.Api.CommonProtos.fsx" 
 #load "Google.Api.Gax.Grpc.fsx" 
 #load "Google.Cloud.Logging.Type.fsx" 

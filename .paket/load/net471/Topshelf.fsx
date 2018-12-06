@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #r "System" 
 #r "System.Configuration.Install" 
 #r "System.Core" 

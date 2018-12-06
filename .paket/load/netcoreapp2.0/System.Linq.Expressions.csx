@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Linq.csx" 
 #load "System.ObjectModel.csx" 
 #load "System.Reflection.Emit.csx" 

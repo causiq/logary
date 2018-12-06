@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.AppContext.csx" 
 #load "System.Collections.Concurrent.csx" 
 #load "System.Diagnostics.FileVersionInfo.csx" 

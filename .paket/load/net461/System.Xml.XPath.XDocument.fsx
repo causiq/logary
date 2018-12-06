@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Diagnostics.Debug.fsx" 
 #load "System.Linq.fsx" 
 #load "System.Resources.ResourceManager.fsx" 

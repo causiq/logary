@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.AppContext.fsx" 
 #load "System.IO.FileSystem.fsx" 
 #load "System.Reflection.TypeExtensions.fsx" 

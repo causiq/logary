@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Collections.NonGeneric.fsx" 
 #load "System.Globalization.fsx" 
 #load "System.Globalization.Extensions.fsx" 

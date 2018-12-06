@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Security.AccessControl.csx" 
 #r "System" 
 #r "System.Data" 

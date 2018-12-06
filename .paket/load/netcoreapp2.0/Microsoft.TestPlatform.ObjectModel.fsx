@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.ComponentModel.EventBasedAsync.fsx" 
 #load "System.ComponentModel.TypeConverter.fsx" 
 #load "System.Diagnostics.Process.fsx" 

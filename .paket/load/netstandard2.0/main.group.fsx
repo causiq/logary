@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #r "../../../packages/Microsoft.TestPlatform.ObjectModel/lib/netstandard1.5/Microsoft.TestPlatform.PlatformAbstractions.dll" 
 #r "../../../packages/RabbitMQ.Client/lib/netstandard1.5/RabbitMQ.Client.dll" 
 #r "../../../packages/TweetinviAPI/lib/netstandard1.4/Tweetinvi.Security.dll" 

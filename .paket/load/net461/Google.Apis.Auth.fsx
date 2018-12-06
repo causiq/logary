@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "Google.Apis.fsx" 
 #load "Google.Apis.Core.fsx" 
 #r "System.Net.Http" 

@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "Google.Apis.Auth.csx" 
 #load "Grpc.Core.csx" 
 #r "Microsoft.CSharp" 

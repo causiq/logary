@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "Autofac.csx" 
 #load "Newtonsoft.Json.csx" 
 #load "NitoAsyncEx.Context.StrongName.csx" 

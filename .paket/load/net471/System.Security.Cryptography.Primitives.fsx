@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Diagnostics.Debug.fsx" 
 #load "System.Globalization.fsx" 
 #load "System.IO.fsx" 

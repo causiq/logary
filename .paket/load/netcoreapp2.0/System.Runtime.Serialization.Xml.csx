@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Private.DataContractSerialization.csx" 
 #load "System.Runtime.Serialization.Primitives.csx" 
 #load "System.Xml.ReaderWriter.csx" 

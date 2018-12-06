@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Linq.csx" 
 #load "System.Threading.csx" 
 #load "System.Xml.ReaderWriter.csx" 

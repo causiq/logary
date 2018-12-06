@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "Google.Apis.Auth.fsx" 
 #load "Grpc.Core.fsx" 
 #r "Microsoft.CSharp" 

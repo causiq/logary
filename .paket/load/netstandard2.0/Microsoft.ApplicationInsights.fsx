@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Diagnostics.DiagnosticSource.fsx" 
 #load "System.Diagnostics.StackTrace.fsx" 
 #load "System.Net.Requests.fsx" 

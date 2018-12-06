@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Globalization.csx" 
 #load "System.IO.csx" 
 #load "System.IO.FileSystem.csx" 

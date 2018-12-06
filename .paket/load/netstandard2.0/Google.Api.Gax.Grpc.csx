@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "Google.Api.CommonProtos.csx" 
 #load "Google.Api.Gax.csx" 
 #load "Google.Apis.Auth.csx" 

@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "Microsoft.Diagnostics.Tracing.EventSource.Redist.fsx" 
 #load "System.Collections.Concurrent.fsx" 
 #load "System.Console.fsx" 

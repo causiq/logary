@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.IO.FileSystem.csx" 
 #load "System.Reflection.csx" 
 #load "System.Reflection.Metadata.csx" 

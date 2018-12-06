@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Collections.Concurrent.csx" 
 #load "System.Security.Claims.csx" 
 #load "System.Security.Cryptography.Algorithms.csx" 

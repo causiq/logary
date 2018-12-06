@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Threading.fsx" 
 #load "System.Xml.ReaderWriter.fsx" 
 #load "System.Xml.XmlDocument.fsx" 

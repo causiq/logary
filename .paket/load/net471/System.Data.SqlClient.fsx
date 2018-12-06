@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "Microsoft.Win32.Registry.fsx" 
 #load "System.Buffers.fsx" 
 #load "System.Diagnostics.DiagnosticSource.fsx" 

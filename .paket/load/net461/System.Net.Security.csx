@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "Microsoft.Win32.Primitives.csx" 
 #load "System.Collections.csx" 
 #load "System.Collections.Concurrent.csx" 

@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Reflection.Emit.Lightweight.csx" 
 #r "System.Runtime.Serialization" 
 #r "System.Xml" 

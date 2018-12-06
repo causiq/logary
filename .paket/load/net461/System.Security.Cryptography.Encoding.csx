@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Collections.csx" 
 #load "System.Collections.Concurrent.csx" 
 #load "System.Linq.csx" 

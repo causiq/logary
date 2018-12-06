@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Linq.fsx" 
 #load "System.Reflection.Emit.fsx" 
 #load "System.Reflection.Emit.ILGeneration.fsx" 

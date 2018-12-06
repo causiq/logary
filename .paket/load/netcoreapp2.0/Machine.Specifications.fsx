@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Diagnostics.TextWriterTraceListener.fsx" 
 #load "System.Diagnostics.TraceSource.fsx" 
 #load "System.Xml.XPath.fsx" 

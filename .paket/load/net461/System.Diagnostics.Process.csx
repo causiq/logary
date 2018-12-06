@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "Microsoft.Win32.Primitives.csx" 
 #load "Microsoft.Win32.Registry.csx" 
 #load "System.Collections.csx" 

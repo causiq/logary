@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.IO.FileSystem.fsx" 
 #load "System.Reflection.fsx" 
 #load "System.Reflection.Metadata.fsx" 

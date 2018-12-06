@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Memory.csx" 
 #r "System.Security" 
 #r "mscorlib" 

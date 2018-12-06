@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Collections.csx" 
 #load "System.Diagnostics.Debug.csx" 
 #load "System.Diagnostics.DiagnosticSource.csx" 
@@ -19,7 +21,6 @@
 #load "System.Text.Encoding.csx" 
 #load "System.Threading.csx" 
 #load "System.Threading.Tasks.csx" 
-#r "System.Net.Http" 
 #r "System" 
 #r "System.Core" 
 #r "mscorlib" 

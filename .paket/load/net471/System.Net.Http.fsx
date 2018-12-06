@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Collections.fsx" 
 #load "System.Diagnostics.Debug.fsx" 
 #load "System.Diagnostics.DiagnosticSource.fsx" 
@@ -20,7 +22,6 @@
 #load "System.Text.Encoding.fsx" 
 #load "System.Threading.fsx" 
 #load "System.Threading.Tasks.fsx" 
-#r "System.Net.Http" 
 #r "System" 
 #r "System.Core" 
 #r "../../../packages/System.Net.Http/lib/net46/System.Net.Http.dll" 

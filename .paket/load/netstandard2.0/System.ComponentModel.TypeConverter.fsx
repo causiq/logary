@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Collections.NonGeneric.fsx" 
 #load "System.Collections.Specialized.fsx" 
 #load "System.ComponentModel.fsx" 

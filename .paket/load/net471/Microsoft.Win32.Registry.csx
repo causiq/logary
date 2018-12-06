@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Buffers.csx" 
 #load "System.Memory.csx" 
 #load "System.Security.AccessControl.csx" 

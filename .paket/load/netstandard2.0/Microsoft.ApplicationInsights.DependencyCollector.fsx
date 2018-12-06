@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "Microsoft.ApplicationInsights.fsx" 
 #load "Microsoft.Extensions.PlatformAbstractions.fsx" 
 #load "System.Data.SqlClient.fsx" 

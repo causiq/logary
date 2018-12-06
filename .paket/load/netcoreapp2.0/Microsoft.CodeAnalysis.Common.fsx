@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.AppContext.fsx" 
 #load "System.Collections.Concurrent.fsx" 
 #load "System.Diagnostics.FileVersionInfo.fsx" 

@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Collections.Specialized.csx" 
 #load "System.ComponentModel.csx" 
 #load "System.ComponentModel.TypeConverter.csx" 

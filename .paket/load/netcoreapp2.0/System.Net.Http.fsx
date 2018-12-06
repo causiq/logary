@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Diagnostics.DiagnosticSource.fsx" 
 #load "System.IO.FileSystem.fsx" 
 #load "System.Security.Cryptography.Algorithms.fsx" 

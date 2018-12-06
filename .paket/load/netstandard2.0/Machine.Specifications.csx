@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Diagnostics.TextWriterTraceListener.csx" 
 #load "System.Diagnostics.TraceSource.csx" 
 #load "System.Reflection.TypeExtensions.csx" 

@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Diagnostics.DiagnosticSource.csx" 
 #load "System.IO.FileSystem.csx" 
 #load "System.Security.Cryptography.Algorithms.csx" 

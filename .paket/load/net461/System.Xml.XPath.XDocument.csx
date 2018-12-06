@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Diagnostics.Debug.csx" 
 #load "System.Linq.csx" 
 #load "System.Resources.ResourceManager.csx" 

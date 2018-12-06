@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "Autofac.fsx" 
 #load "Newtonsoft.Json.fsx" 
 #load "NitoAsyncEx.Context.StrongName.fsx" 

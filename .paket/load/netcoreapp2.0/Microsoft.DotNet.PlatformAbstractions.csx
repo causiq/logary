@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.AppContext.csx" 
 #load "System.IO.FileSystem.csx" 
 #load "System.Runtime.InteropServices.RuntimeInformation.csx" 

@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "Microsoft.Win32.Primitives.fsx" 
 #load "System.Collections.fsx" 
 #load "System.Collections.Concurrent.fsx" 

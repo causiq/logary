@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "Microsoft.Diagnostics.Tracing.EventSource.Redist.csx" 
 #load "System.Collections.Concurrent.csx" 
 #load "System.Console.csx" 

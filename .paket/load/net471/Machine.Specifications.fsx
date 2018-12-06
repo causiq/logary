@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Diagnostics.TextWriterTraceListener.fsx" 
 #load "System.Diagnostics.TraceSource.fsx" 
 #load "System.Reflection.fsx" 
@@ -5,10 +7,10 @@
 #load "System.Reflection.TypeExtensions.fsx" 
 #load "System.Xml.XPath.fsx" 
 #load "System.Xml.XPath.XDocument.fsx" 
+#r "Microsoft.CSharp" 
 #r "System" 
 #r "System.Runtime.Remoting" 
 #r "System.Xml" 
 #r "System.Xml.Linq" 
-#r "Microsoft.CSharp" 
 #r "System.Xml.Serialization" 
 #r "../../../packages/Machine.Specifications/lib/net45/Machine.Specifications.dll" 

@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #r "../../../packages/Expecto.BenchmarkDotNet/lib/net461/Expecto.BenchmarkDotNet.dll" 
 #r "../../../packages/Microsoft.ApplicationInsights/lib/net46/Microsoft.ApplicationInsights.dll" 
 #r "../../../packages/Google.Api.Gax/lib/net45/Google.Api.Gax.dll" 

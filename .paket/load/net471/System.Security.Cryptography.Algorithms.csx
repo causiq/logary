@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Collections.csx" 
 #load "System.IO.csx" 
 #load "System.Resources.ResourceManager.csx" 

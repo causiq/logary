@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.ComponentModel.EventBasedAsync.csx" 
 #load "System.ComponentModel.TypeConverter.csx" 
 #load "System.Diagnostics.Process.csx" 

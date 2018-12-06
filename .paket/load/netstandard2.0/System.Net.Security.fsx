@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Collections.Concurrent.fsx" 
 #load "System.Security.Claims.fsx" 
 #load "System.Security.Cryptography.Algorithms.fsx" 

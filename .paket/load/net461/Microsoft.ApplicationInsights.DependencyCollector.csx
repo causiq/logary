@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "Microsoft.ApplicationInsights.csx" 
 #load "Microsoft.ApplicationInsights.Agent.Intercept.csx" 
 #load "Microsoft.Extensions.PlatformAbstractions.csx" 

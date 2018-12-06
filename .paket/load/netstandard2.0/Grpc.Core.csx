@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Interactive.Async.csx" 
 #load "System.Runtime.Loader.csx" 
 #load "System.Threading.Thread.csx" 

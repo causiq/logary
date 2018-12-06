@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Private.DataContractSerialization.fsx" 
 #load "System.Runtime.Serialization.Primitives.fsx" 
 #load "System.Xml.ReaderWriter.fsx" 

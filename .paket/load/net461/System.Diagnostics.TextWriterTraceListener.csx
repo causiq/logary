@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Diagnostics.TraceSource.csx" 
 #load "System.Globalization.csx" 
 #load "System.IO.csx" 

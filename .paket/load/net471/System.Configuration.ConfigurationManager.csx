@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Security.Cryptography.ProtectedData.csx" 
 #load "System.Security.Permissions.csx" 
 #r "System" 

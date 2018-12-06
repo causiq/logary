@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Linq.csx" 
 #load "System.Linq.Expressions.csx" 
 #load "System.ObjectModel.csx" 

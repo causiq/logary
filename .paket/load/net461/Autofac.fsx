@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.ComponentModel.fsx" 
 #r "Microsoft.CSharp" 
 #r "System" 

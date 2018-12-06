@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Reflection.csx" 
 #load "System.Reflection.Emit.ILGeneration.csx" 
 #load "System.Reflection.Primitives.csx" 

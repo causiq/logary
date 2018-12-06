@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "System.Collections.NonGeneric.csx" 
 #load "System.Globalization.csx" 
 #load "System.Globalization.Extensions.csx" 

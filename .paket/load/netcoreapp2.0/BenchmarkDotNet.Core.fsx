@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "Microsoft.DotNet.InternalAbstractions.fsx" 
 #load "Microsoft.DotNet.PlatformAbstractions.fsx" 
 #load "Microsoft.Win32.Registry.fsx" 

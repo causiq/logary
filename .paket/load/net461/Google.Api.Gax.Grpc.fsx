@@ -1,3 +1,5 @@
+namespace PaketLoadScripts
+
 #load "Google.Api.CommonProtos.fsx" 
 #load "Google.Api.Gax.fsx" 
 #load "Google.Apis.Auth.fsx" 
