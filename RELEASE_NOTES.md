@@ -1,5 +1,8 @@
+#### 5.0.0-beta.27
+* Make tags opt-in for Influx target
+
 #### 5.0.0-beta.26
-*  Switch Opsgenie alias/message around #369, thanks @haf
+* Switch Opsgenie alias/message around #369, thanks @haf
 
 #### 5.0.0-beta.25
 * Upgrade to F# v4.5 and Hopac v0.4, fixes #367, thanks @haf
