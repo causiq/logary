@@ -110,7 +110,7 @@ let lineProtocol =
           gauge PointName.empty "disk_free" (Int64 442221834240L)
             |> setContext "path" @"C:\Windows"
             |> setNanoEpoch 1435362189575692182L
-            |> Serialise.message Constants.AllowedInfluxTags
+            |> Serialise.message (Constants.AllowedInfluxTags |> Set.add "path")
             |> Expect.equal
                 "Should equal"
                 @"disk_free,level=debug,path=C:\Windows,tags=gauge value=442221834240i,value_unit=""units"" 1435362189575692182"
