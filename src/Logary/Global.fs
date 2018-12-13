@@ -73,8 +73,8 @@ module internal Global =
       member x.level =
         withLogger (fun logger -> logger.level)
 
-      member x.logWithAck (waitForBuffers, level) msgFactory =
-        withLogger (fun logger -> logger.logWithAck (waitForBuffers, level) (msgFactory >> ensureName))
+      member x.logWithAck (putBufferTimeOut, level) msgFactory =
+        withLogger (fun logger -> logger.logWithAck (putBufferTimeOut, level) (msgFactory >> ensureName))
 
   /// Call to initialise Logary with a new Logary instance.
   let initialise cfg =

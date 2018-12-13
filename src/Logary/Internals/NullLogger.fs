@@ -8,7 +8,7 @@ open Logary
 /// itself.
 type private NullLogger() =
   interface Logger with
-    member x.logWithAck (_, _) _ = LogResult.success
+    member x.logWithAck (_, _) _ = Alt.always (Result.Ok Promise.unit)
     member x.level = LogLevel.Fatal
     member x.name = PointName.ofList [ "Logary"; "NullLogger" ]
 

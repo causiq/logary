@@ -10,7 +10,7 @@ module internal LogResult =
 
 module internal LogError =
   let targetBufferFull (targetName: string): ProcessResult = Result.Error (Message.eventFormat("{target} 's log buffer is full", targetName))
-  
+
   let timeOutToPutBuffer (targetName: string) (waitSeconds: double): ProcessResult = Result.Error (Message.eventFormat("time out: waiting {duration} seconds to putting message on to {target} 's log buffer", waitSeconds, targetName))
 
   let clientAbortLogging: ProcessResult = Result.Error (Message.eventFormat("client abort logging"))
@@ -18,18 +18,19 @@ module internal LogError =
   let registryClosed: ProcessResult = Result.Error (Message.eventFormat("registry has been shutdown"))
 
 module internal ProcessResult =
+  open Hopac
 
-  let reduce (processResults: ProcessResult[]) =
+  let success: ProcessResult = Ok (Promise.unit)
+
+  let reduce (processResults: #seq<ProcessResult>): ProcessResult =
     let errorMsg (errors: Message list) = Message.eventFormat ("some targets processing failed: {errors}", errors)
     (([], []), processResults)
-    ||> Array.fold (fun (oks, errors) result ->
+    ||> Seq.fold (fun (oks, errors) result ->
         match result with
         | Ok promise -> promise :: oks, errors
         | Result.Error error -> oks, error :: errors
      )
-    |> fun (oks, errors) ->
-      match oks, errors with
-      | [], [] -> Ok []
-      | _, [] -> Ok oks
-      | [], _ -> Result.Error (errorMsg errors)
-      | _ -> Result.Error (errorMsg errors)
+    |> function
+      | [], [] -> success
+      | promises, [] -> promises |> Job.conIgnore |> memo |> Ok
+      | _, errors -> Result.Error (errorMsg errors)

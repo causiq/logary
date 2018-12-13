@@ -29,14 +29,11 @@ module Target =
       Rule.accepts message x.rules
 
 
-  /// <summary> Returns an Alt that commits on the Targets' buffer accepting the message. </summary>
-  /// 
-  /// <param name="putBufferTimeOut">
-  /// means it will try to wait this duration for putting the message onto buffer,otherwise return timeout error, and cancel putting message.
-  /// if putBufferTimeOut <=  Duration.Zero , it will try to detect whether the buffer is full and return immediately
-  /// </param> 
-  /// 
-  let log (x: T) (msg: Message) (putBufferTimeOut: Duration): LogResult =
+  /// Returns an Alt that commits on the Targets' buffer accepting the message.
+  ///
+  /// - `putBufferTimeOut` means it will try to wait this duration for putting the message onto buffer,otherwise return timeout error, and cancel putting message.
+  ///   if `putBufferTimeOut <=  Duration.Zero` , it will try to detect whether the buffer is full and return immediately
+  let log (putBufferTimeOut: Duration) (x: T) (msg: Message): LogResult =
     let msg = x.transform msg
     if not (x.accepts msg) then LogResult.notAcceptByTarget x.name
     else
@@ -59,40 +56,17 @@ module Target =
     let putAllPromises = IVar ()
     let abortPut = nack ^->. LogError.clientAbortLogging
     let createPutJob t =
-      log t msg putBufferTimeOut <|> abortPut
+      log putBufferTimeOut t msg <|> abortPut
     let tryPutAll =
       Seq.Con.mapJob createPutJob targets
-      >>- fun results ->
-            //printfn "tryLogAll: array-ing %i results" results.Count
-            results.ToArray()
       >>= IVar.fill putAllPromises
     Job.start tryPutAll >>-. putAllPromises
 
-  let private logAllReduceHandler (results: ProcessResult[]) =
-    match results with
-    | [||] ->
-      //printfn "tryLogAllReduce: Success from empty targets array"
-      LogResult.success :> Job<_>
-    | ps ->
-      match ProcessResult.reduce ps with
-      | Ok promises ->
-        let latch = Latch promises.Length
-        let dec = Latch.decrement latch
-        Job.start (promises |> Seq.Con.iterJob (fun p -> p ^=>. dec))
-        >>-. Ok (memo (Latch.await latch))
-      | Result.Error msg ->
-        //printfn "tryLogAllReduce: Failure from NON-empty error array %A" e
-        Job.result (Result.Error msg)
 
-  /// Returns an Alt that commits on ALL N Targets' buffers accepting the message. 
+  /// Returns an Alt that commits on ALL N Targets' buffers accepting the message.
   /// Even if the Alt was not committed to, one or more targets (fewer than N) may have accepted the message.
-  let tryLogAllReduce targets msg: LogResult =
-    logAll_ Duration.Zero targets msg ^=> logAllReduceHandler
-
-  /// Returns an Alt that commits on ALL N Targets' buffers accepting the message. 
-  /// Even if the Alt was not committed to, one or more targets (fewer than N) may have accepted the message.
-  let logAllReduce targets msg putBufferTimeOut : LogResult =
-    logAll_ putBufferTimeOut targets msg ^=> logAllReduceHandler
+  let logAllReduce putBufferTimeOut targets msg: LogResult =
+    logAll_ putBufferTimeOut targets msg ^-> ProcessResult.reduce
 
   /// Send a flush RPC to the target and return the async with the ACKs. This will
   /// create an Alt that is composed of a job that blocks on placing the Message

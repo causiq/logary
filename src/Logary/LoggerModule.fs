@@ -14,7 +14,7 @@ module Logger =
   /// Log a message, but don't await all targets to flush. Equivalent to logWithBP.
   /// Returns whether the message was successfully placed in the buffers.
   /// SAFE.
-  let log (logger: Logger) logLevel messageFactory: Alt<bool> =
+  let log (logger: Logger) timeOut logLevel messageFactory: Alt<bool> =
     logger.logWithAck (false, logLevel) messageFactory ^-> function
       | Ok _ ->
         true

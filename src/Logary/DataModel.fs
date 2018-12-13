@@ -285,11 +285,13 @@ type Logger =
   /// `Messages` produced from this instance.
   abstract name: PointName
 
-  /// - `waitForBuffers`: This causes the logger/caller to block on the RingBuffer being
-  ///   available to take the message. Giving a true here may cause the
-  abstract logWithAck: waitForBuffers:bool * level:LogLevel -> messageFactory:(LogLevel -> Message) -> LogResult
-
-  //abstract log: Message -> Alt<Result<Promise<unit>, unit>>
+  /// Returns an Alt that commits on ALL N Targets' buffers accepting the message.
+  /// Even if the Alt was not committed to, one or more targets (fewer than N) may have accepted the message.
+  /// And this can not be canceled.
+  ///
+  /// - `putBufferTimeOut`: time out duration waiting for each target buffer to be available to take the message.
+  ///   if `putBufferTimeOut <=  Duration.Zero` , it will try to detect whether the buffer is full and return immediately
+  abstract logWithAck: putBufferTimeOut:Duration * level:LogLevel -> messageFactory:(LogLevel -> Message) -> LogResult
 
   /// Gets the currently set log level (minimal,inclusive),
   /// aka. the granularity with which things are being logged.
@@ -298,16 +300,17 @@ type Logger =
 type internal LoggerWrapper(logger: Logger) =
   abstract name: PointName
   abstract level: LogLevel
-  abstract logWithAck: bool * LogLevel -> (LogLevel -> Message) -> LogResult
+  abstract logWithAck: Duration * LogLevel -> (LogLevel -> Message) -> LogResult
   default x.name = logger.name
   default x.level = logger.level
-  default x.logWithAck (waitForBuffers, logLevel) messageFactory =
-    logger.logWithAck (waitForBuffers, logLevel) messageFactory
+  default x.logWithAck (putBufferTimeOut, logLevel) messageFactory =
+    logger.logWithAck (putBufferTimeOut, logLevel) messageFactory
+
   interface Logger with
     member x.name = x.name
     member x.level = x.level
-    member x.logWithAck (waitForBuffers, logLevel) messageFactory =
-      x.logWithAck (waitForBuffers, logLevel) messageFactory
+    member x.logWithAck (putBufferTimeOut, logLevel) messageFactory =
+      x.logWithAck (putBufferTimeOut, logLevel) messageFactory
 
 /// A disposable interface to use with `use` constructs and to create child-
 /// contexts. Since it inherits Logger, you can pass this scope down into child
