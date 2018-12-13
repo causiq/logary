@@ -275,25 +275,8 @@ and SpanInfo =
   static member formatId (id: Guid) =
     id.ToString("n")
 
-/// Why was the message/metric/event not logged?
-[<Struct>]
-type LogError =
-  /// The buffer of the target was full, so the message was not logged.
-  | BufferFull of target:string
-  /// The target, or the processing step before the targets, rejected the message.
-  | Rejected
-
-  static member wasRejected (e: LogError) =
-    match e with
-    | Rejected -> true
-    | _ -> false
-
-  static member bufferWasFull (e: LogError) =
-    match e with
-    | BufferFull _ -> true
-    | _ -> false
-
-type internal LogResult = Alt<Result<Promise<unit>, LogError>>
+type internal ProcessResult = Result<Promise<unit>, Message>
+type internal LogResult = Alt<ProcessResult>
 
 /// See the docs on the funtions for descriptions on how Ack works in conjunction
 /// with the promise.

@@ -3,9 +3,7 @@
   <PropertyGroup>
     <AssemblyName>Logary</AssemblyName>
     <Version>5.0.0-beta.28</Version>
-    <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
-    <Version>5.0.0-beta.26</Version>
-    <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <NoWarn>44;2003</NoWarn>
     <DefineConstants>TYPESHAPE_EXPOSE</DefineConstants>
   </PropertyGroup>
@@ -68,6 +66,7 @@
     <Compile Include="Extensions/NodaTime.Instant.fs" />
     <Compile Include="Extensions/System.Dates.fs" />
     <Compile Include="MessageModule.fs" />
+    <Compile Include="LogResultModule.fs" />
     <Compile Include="LoggerModule.fs" />
     <Compile Include="SpanModule.fs" />
     <Compile Include="MiddlewareModule.fs" />

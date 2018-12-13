@@ -35,9 +35,9 @@ module PipeResult =
   let iter f x =
     match x with | HasResult x -> f x | _ -> ()
 
-/// 'contInput means continuation function input
-/// 'contRes means continuation function output
-/// 'sourceItem means pipe source element
+/// 'contInput means continuation function input.
+/// 'contRes means continuation function output.
+/// 'sourceItem means pipe source element.
 /// when we have a pipe, we can pass a continuation to it,
 /// and then we can pipe source item to its builded processing
 [<Struct>]

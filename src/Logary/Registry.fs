@@ -133,7 +133,7 @@ module Registry =
           member x.logWithAck (waitForBuffers, level) messageFactory =
             if level >= x.level then
               // When the registry is shut down, reject the log message.
-              let rejection = t.isClosed ^->. Result.Error Rejected
+              let rejection = t.isClosed ^->. LogError.registryClosed
 
               let logMessage = Alt.prepareFun <| fun () ->
                 messageFactory level
@@ -207,10 +207,10 @@ module Registry =
          && not ("true" = Env.varDefault "LOGARY_I_PROMISE_I_HAVE_PURCHASED_LICENSE" (fun () -> "false")) then
          failwith "You must purchase a license for Logary to run it on or with IIS or Kestrel."
 
-  // Middleware at:
-  //  - LogaryConf (goes on all loggers) (through engine,and compose at call-site)
-  //  - TargetConf (goes on specific target) (composes in engine when sending msg to target)
-  //  - individual loggers (through engine,and compose at call-site)
+  // Middlewares at:
+  //  - LogaryConf (goes on all loggers) (compose at call-site)
+  //  - TargetConf (goes on specific target) (composes when creating target,not compose at call-site when sending message)
+  //  - individual loggers (compose at call-site)
 
   let create (conf: LogaryConf): Job<T> =
     Impl.lc ()
@@ -226,7 +226,9 @@ module Registry =
       msg
       |> Middleware.compose (mid |> Option.fold (fun s t -> t :: s) rmid)
       |> sendMsg
-      |> PipeResult.orDefault LogResult.rejected
+      |> PipeResult.orDefault LogResult.success 
+      // PipeResult.NoResult usually means do some fire-and-forget operation,e.g. push msg on to some buffer/sinks, wating for some condition to trigger next action.
+      // so we should treat it as the msg has been logged/processed. use `LogResult.success` may be more reasonable.
 
     let flushCh, shutdownCh, isClosed = Ch (), Ch (), IVar ()
 

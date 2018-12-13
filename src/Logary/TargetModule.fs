@@ -1,4 +1,5 @@
 namespace Logary
+open NodaTime
 
 module Target =
   open System
@@ -7,6 +8,7 @@ module Target =
   open Hopac.Extensions
   open Logary.Message
   open Logary.Internals
+  open NodaTime
 
   /// A target instance is a target loop job that can be re-executed on failure,
   /// and a normal path of communication; the `requests` `RingBuffer` as well as
@@ -26,50 +28,38 @@ module Target =
     member x.accepts message =
       Rule.accepts message x.rules
 
-  /// WARNING: this may cause you headaches; are you sure you don't want to use tryLog?
-  ///
-  /// Returns an Alt that commits on the Targets' buffer accepting the message.
-  let log (x: T) (msg: Message): LogResult =
-    let msg = x.transform msg
-    if not (x.accepts msg) then LogResult.rejected
-    else
-      let ack = IVar ()
-      let targetMsg = Log (msg, ack)
-      RingBuffer.put x.api.requests targetMsg ^->.
-      Ok (upcast ack)
 
-  /// If the alternative is committed to, the RingBuffer WILL enqueue the message. The tryLog operation is done as
-  /// `Ch.give x.tryPut m`.
-  ///
-  /// Returns an Alt that commits on the Targets' buffer accepting the message OR the RingBuffer telling the caller that
-  /// it was full, and returning an Error(BufferFull [targetName]) LogResult.
-  let tryLog (x: T) (msg: Message): LogResult =
+  /// <summary> Returns an Alt that commits on the Targets' buffer accepting the message. </summary>
+  /// 
+  /// <param name="putBufferTimeOut">
+  /// means it will try to wait this duration for putting the message onto buffer,otherwise return timeout error, and cancel putting message.
+  /// if putBufferTimeOut <=  Duration.Zero , it will try to detect whether the buffer is full and return immediately
+  /// </param> 
+  /// 
+  let log (x: T) (msg: Message) (putBufferTimeOut: Duration): LogResult =
     let msg = x.transform msg
-    if not (x.accepts msg) then LogResult.rejected
+    if not (x.accepts msg) then LogResult.notAcceptByTarget x.name
     else
       let ack = IVar ()
       let targetMsg = Log (msg, ack)
-      // This returns immediately if the buffer is full; and the RingBuffer's server is
-      // always available to notify the caller that the buffer is full.
-      RingBuffer.tryPut x.api.requests targetMsg ^-> function
+      if putBufferTimeOut <= Duration.Zero then
+        RingBuffer.tryPut x.api.requests targetMsg ^-> function
         | true ->
           Result.Ok (upcast ack)
         | false ->
-          Result.Error (BufferFull x.name)
+          LogError.targetBufferFull x.name
+      else
+        RingBuffer.put x.api.requests targetMsg ^->. Result.Ok (upcast ack)
+        <|>
+        timeOut (putBufferTimeOut.ToTimeSpan()) ^-> fun _ -> LogError.timeOutToPutBuffer x.name putBufferTimeOut.TotalSeconds
 
-  /// returns: an Alt committed on:
-  ///   buffer took message <- dangerousBlockOnBuffer
-  ///   buffer maybe took message <- not dangerousBlockOnBuffer
-  let private logAll_ dangerousBlockOnBuffer targets msg =
+  let private logAll_ putBufferTimeOut targets msg =
     Alt.withNackJob <| fun nack ->
     //printfn "tryLogAll: creating alt with nack for %i targets" targets.Length
     let putAllPromises = IVar ()
-    let abortPut = nack ^->. Result.Error Rejected
+    let abortPut = nack ^->. LogError.clientAbortLogging
     let createPutJob t =
-      if dangerousBlockOnBuffer then
-        log t msg <|> abortPut
-      else
-        tryLog t msg <|> abortPut
+      log t msg putBufferTimeOut <|> abortPut
     let tryPutAll =
       Seq.Con.mapJob createPutJob targets
       >>- fun results ->
@@ -78,43 +68,31 @@ module Target =
       >>= IVar.fill putAllPromises
     Job.start tryPutAll >>-. putAllPromises
 
-  /// WARNING: this may cause you headaches; are you sure you don't want to use tryLogAll?
-  ///
-  /// Returns an Alt that commits on ALL N Targets' buffers accepting the message. Even if the Alt was not committed to,
-  /// one or more targets (fewer than N) may have accepted the message.
-  let logAll (targets: T[]) (msg: Message): Alt<Result<Promise<unit>, LogError>[]> =
-    logAll_ (* DO BLOCK — WARNING *) true targets msg
-
-  /// Tries to log the `Message` to all the targets.
-  let tryLogAll (targets: T[]) (msg: Message): Alt<Result<Promise<unit>, LogError>[]> =
-    logAll_ (* do not block *) false targets msg
-
-  let private logAllReduceHandler (results: Result<Promise<unit>, LogError>[]) =
+  let private logAllReduceHandler (results: ProcessResult[]) =
     match results with
     | [||] ->
       //printfn "tryLogAllReduce: Success from empty targets array"
       LogResult.success :> Job<_>
     | ps ->
-      match Result.sequence ps with
+      match ProcessResult.reduce ps with
       | Ok promises ->
         let latch = Latch promises.Length
         let dec = Latch.decrement latch
         Job.start (promises |> Seq.Con.iterJob (fun p -> p ^=>. dec))
         >>-. Ok (memo (Latch.await latch))
-      | Result.Error [] ->
-        // should not happen, error list always non empty:
-        //printfn "tryLogAllReduce: Failure from empty error array"
-        Job.result (Result.Error Rejected)
-      | Result.Error (e :: _) ->
+      | Result.Error msg ->
         //printfn "tryLogAllReduce: Failure from NON-empty error array %A" e
-        Job.result (Result.Error e)
+        Job.result (Result.Error msg)
 
-
+  /// Returns an Alt that commits on ALL N Targets' buffers accepting the message. 
+  /// Even if the Alt was not committed to, one or more targets (fewer than N) may have accepted the message.
   let tryLogAllReduce targets msg: LogResult =
-    tryLogAll targets msg ^=> logAllReduceHandler
+    logAll_ Duration.Zero targets msg ^=> logAllReduceHandler
 
-  let logAllReduce targets msg: LogResult =
-    logAll targets msg ^=> logAllReduceHandler
+  /// Returns an Alt that commits on ALL N Targets' buffers accepting the message. 
+  /// Even if the Alt was not committed to, one or more targets (fewer than N) may have accepted the message.
+  let logAllReduce targets msg putBufferTimeOut : LogResult =
+    logAll_ putBufferTimeOut targets msg ^=> logAllReduceHandler
 
   /// Send a flush RPC to the target and return the async with the ACKs. This will
   /// create an Alt that is composed of a job that blocks on placing the Message

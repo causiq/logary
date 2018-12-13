@@ -78,6 +78,31 @@ let run pipe (targets:ResizeArray<MockTarget>) =
 let tests =
   [
     testList "processing builder" [
+      ftestCaseJob "pipe compose" (job {
+        let processing = 
+          Events.compose [
+            Events.events
+            |> Events.minLevel Fatal 
+            |> Events.sink ["1"]
+
+            Events.events
+            |> Events.minLevel Warn 
+            |> Events.sink ["2"]
+          ]
+        
+        let! targets = [mockTarget "1"; mockTarget "2"; ] |> Job.seqCollect
+        let! sendMsg, ctss = run processing targets
+        let msgToSend = Message.event Error "error message"
+        do! sendMsg msgToSend
+
+        let! msgsFromEachTarget = targets |> Seq.Con.mapJob (fun t -> t.getMsgs ())
+        let (msgs1,msgs2) = (msgsFromEachTarget.[0],msgsFromEachTarget.[1])
+         
+        Expect.equal (List.length msgs1) 0 "should have 0 message in target 1"
+        Expect.equal (List.length msgs2) 1 "should have 1 message in target 2"
+      })
+
+
       ptestCaseJob "message routing" (job {
 
         // context

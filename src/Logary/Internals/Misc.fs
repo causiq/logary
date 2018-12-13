@@ -35,13 +35,6 @@ module internal Result =
     (rs, Ok [])
     ||> Array.foldBack folder
 
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module internal LogResult =
-  open Hopac
-  let success: Alt<Result<Promise<unit>, LogError>> = Alt.always (Result.Ok Promise.unit)
-  let bufferFull target: Alt<Result<Promise<unit>, LogError>> = Alt.always (Result.Error (BufferFull target))
-  let rejected: Alt<Result<Promise<unit>, LogError>> = Alt.always (Result.Error Rejected)
-
 module internal Seq =
   /// Get the head and the tail of the sequence, throwing if the sequence contains no elements.
   let headTail (xs: #seq<_>): 't * seq<'t> =
