@@ -78,23 +78,23 @@ let messageTemplates =
     testCase "a class instance is rendered in simple notation" <| fun () ->
       MtAssert.RenderedAs(
         "I sat at {@Chair}", [|Chair()|],
-        """I sat at Chair { Legs: [1, 2, 3, 4], Back: "straight" }""")
+        """I sat at Chair { Back: "straight", Legs: [1, 2, 3, 4] }""")
 
     testCase "a class instance is rendered in simple notation using format provider" <| fun () ->
       MtAssert.RenderedAs(
         "I received {@Receipt}", [|Receipt()|],
-        "I received Receipt { When: 20/05/2013 16:39:00, Sum: 12,345 }",
+        "I received Receipt { Sum: 12,345, When: 20/05/2013 16:39:00 }",
         provider=CultureInfo("fr-FR"))
 
     testCase "a F# record object is rendered in simple notation with type" <| fun () ->
       MtAssert.RenderedAs(
         "I sat at {@Chair}", [|{ Back="straight"; Legs=[|1;2;3;4|] }|],
-        """I sat at ChairRecord { Legs: [1, 2, 3, 4], Back: "straight" }""")
+        """I sat at ChairRecord { Back: "straight", Legs: [1, 2, 3, 4] }""")
 
     testCase "a F# record object is rendered in simple notation with type using format provider" <| fun () ->
       MtAssert.RenderedAs( "I received {@Receipt}",
         [| { Sum=12.345; When=DateTime(2013, 5, 20, 16, 39, 0) } |],
-        "I received ReceiptRecord { When: 20/05/2013 16:39:00, Sum: 12,345 }",
+        "I received ReceiptRecord { Sum: 12,345, When: 20/05/2013 16:39:00 }",
         provider=(CultureInfo("fr-FR")))
 
     testCase "an object with default destructuring is rendered as a string literal" <| fun () ->
@@ -174,22 +174,9 @@ let messageTemplates =
           let values: obj[] = [| Cust() |]
           yield [| "C#"; values; "cus #{$cust:0,0}, pleasure to see you";             "cus #\"1234\", pleasure to see you"    |]
           yield [| "F#"; values; "cus #{$cust:0,0}, pleasure to see you";             "cus #\"1234\", pleasure to see you"    |]
-        }
+          yield [| "C#"; values; "cus #{@cust,80:0,0}, pleasure to see you";          """cus #     Cust { Number: 1234, Seat: Chair { Back: "straight", Legs: [1, 2, 3, 4] } }, pleasure to see you""" |]
+          yield [| "F#"; values; "cus #{@cust,80:0,0}, pleasure to see you";          """cus #     Cust { Number: 1234, Seat: Chair { Back: "straight", Legs: [1, 2, 3, 4] } }, pleasure to see you""" |]
 
-      for i, objs in ``get alignment structure values`` () |> Seq.mapi (fun i x -> i, x) do
-        yield testCase (sprintf "%i: %s" i (objs.[2] :?> string)) <| fun () ->
-          MtAssert.RenderedAs(downcast objs.[2], downcast objs.[1], downcast objs.[3])
-    ]
-
-    ptestList "alignment skipped" [
-      // move these into the non-skipped tests when https://github.com/logary/logary/issues/294 is fixed.
-      let ``get alignment structure values`` (): obj[] seq =
-        seq {
-          let values: obj[] = [| Cust() |]
-          // formats/alignments don't propagate through to the 'destructured' inside values
-          // They only apply to the outer (fully rendered) property text
-          yield [| "C#"; values; "cus #{@cust,80:0,0}, pleasure to see you";          "cus #     Cust { Seat: Chair { Back: \"straight\", Legs: [1, 2, 3, 4] }, Number: 1234 }, pleasure to see you" |]
-          yield [| "F#"; values; "cus #{@cust,80:0,0}, pleasure to see you";          "cus #     Cust { Seat: Chair { Back: \"straight\", Legs: [1, 2, 3, 4] }, Number: 1234 }, pleasure to see you" |]
         }
 
       for i, objs in ``get alignment structure values`` () |> Seq.mapi (fun i x -> i, x) do
@@ -207,7 +194,7 @@ let messageTemplates =
       let template = "I like {@item1} and {@item2}"
       let values: obj[] = [| ChairItem({ Back="straight"; Legs=[|1;2;3;4|] })
                              ReceiptItem({ Sum=12.345; When=DateTime(2013, 5, 20, 16, 39, 0) }) |]
-      let expected = """I like ("ChairItem": ChairRecord { Legs: [1, 2, 3, 4], Back: "straight" }) and ("ReceiptItem": ReceiptRecord { When: 20/05/2013 16:39:00, Sum: 12,345 })"""
+      let expected = """I like ("ChairItem": ChairRecord { Back: "straight", Legs: [1, 2, 3, 4] }) and ("ReceiptItem": ReceiptRecord { Sum: 12,345, When: 20/05/2013 16:39:00 })"""
       MtAssert.RenderedAs( template, values, expected, provider)
 
 
@@ -231,7 +218,7 @@ let messageTemplates =
 
       // Render fields deeper than level 2 with 'null' values
       // In this case, only The Trunk.Item3 (Tree list) is after level 2
-      let expected = """I like ("Leaf": 12,345) and ("Leaf": 12,345) and ("Trunk": [12,345, 20/05/2013 16:39:00 +09:30, [("Leaf": 12,345), ("Leaf": 12,345)]]) and ("ChairItem": ChairRecord { Legs: [1, 2, 3, 4, 5], Back: "slanted" })"""
+      let expected = """I like ("Leaf": 12,345) and ("Leaf": 12,345) and ("Trunk": [12,345, 20/05/2013 16:39:00 +09:30, [("Leaf": 12,345), ("Leaf": 12,345)]]) and ("ChairItem": ChairRecord { Back: "slanted", Legs: [1, 2, 3, 4, 5] })"""
 
       MtAssert.RenderedAs( template, values, expected, provider, maxDepth=2)
 
