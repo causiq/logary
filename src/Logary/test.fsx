@@ -1,26 +1,12 @@
 #I "bin/Release/net461"
-#I "../../packages/Hopac/lib/netstandard2.0"
+#r "Logary"
 #r "Hopac"
 #r "Hopac.Core"
+#r "NodaTime"
 open Hopac
-
-open Hopac.Infixes
-
-let a:Alt<unit> = Alt.prepareJob <| fun () ->
-  timeOutMillis 5000 
-  |> Job.map (fun _ -> Alt.never ())
-
-let res = 
-  a ^-> fun _ -> printf "hahah" 
-  <|> 
-  timeOutMillis 1000 ^-> fun _ -> printf "timeout"
-
-run res
-
 open Logary
 open Logary.Internals
 open Logary.Configuration
-
 let logm =
   Config.create "svc" "localhost"
   |> Config.target (Targets.LiterateConsole.create Targets.LiterateConsole.empty "nice console")
