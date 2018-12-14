@@ -24,7 +24,9 @@ type LogaryConf =
   /// Optional stream transformer.
   abstract processing: Processing
   /// each logger's min level
-  abstract loggerLevels : (string * LogLevel) list
+  abstract loggerLevels: (string * LogLevel) list
+  /// handler for process log error
+  abstract logResultHandler: (ProcessResult -> unit)
 
 /// This is the main state container in Logary.
 module Registry =
@@ -264,7 +266,17 @@ module Registry =
           NoResult
         else
           let putBufferTimeOut = msg |> Message.tryGetContext KnownLiterals.WaitForBuffers |> Option.defaultValue Duration.Zero
-          msg |> Target.logAllReduce putBufferTimeOut targets |> HasResult)
+          msg 
+          |> Target.logAllReduce putBufferTimeOut targets
+          |> Alt.afterFun (fun result ->
+            start (Job.thunk (fun _ ->
+              try
+                conf.logResultHandler result
+              with
+              | e ->
+                 eprintfn "%A" e ))
+            result)
+          |> HasResult)
 
     runningPipe >>= fun (sendMsg, ctss) ->
     let state =

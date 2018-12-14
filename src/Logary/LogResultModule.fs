@@ -1,5 +1,6 @@
 namespace Logary
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal LogResult =
   open Hopac
 
@@ -17,6 +18,7 @@ module internal LogError =
 
   let registryClosed: ProcessResult = Result.Error (Message.eventFormat("registry has been shutdown"))
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal ProcessResult =
   open Hopac
 

@@ -40,7 +40,7 @@ module Events =
         >>-. putAllPromises ^-> ProcessResult.reduce
     )
 
-  // build here means dispatch each event/message to all pipes, not chains them.
+  /// build here means dispatch each event/message to all pipes, not chains them.
   let build pipes =
     let allTickTimerJobs = List.collect (fun pipe -> pipe.tickTimerJobs) pipes
 

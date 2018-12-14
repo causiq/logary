@@ -2,61 +2,39 @@
 
 open Hopac
 open Hopac.Infixes
-open System
 open System.Runtime.CompilerServices
-open System.Threading.Tasks
 open System.Diagnostics
 open Logary
 open NodaTime
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Logger =
-  /// Log a message, but don't await all targets to flush. Equivalent to logWithBP.
-  /// Returns whether the message was successfully placed in the buffers.
-  /// SAFE.
-  let log (logger: Logger) logLevel messageFactory: Alt<bool> =
-    logger.logWithAck (Duration.Zero, logLevel) messageFactory ^-> function
-      | Ok _ ->
-        true
-      | Result.Error Rejected ->
-        true
-      | Result.Error (BufferFull _) ->
-        false
+  let defaultPutBufferTimeOut = Duration.FromSeconds 5L
+  let defaultBackPressurePutBufferTimeOut = Duration.FromMinutes 1L
 
-  let private printDotOnOverflow success =
-    if not success then System.Console.Error.Write '.' else ()
-
-  let logSimple (logger: Logger) msg: unit =
-    start (log logger msg.level (fun _ -> msg) ^-> printDotOnOverflow)
-
+  /// log message without blocking, and ignore its result.
+  /// default `putBufferTimeOut` is 3 seconds
   let logWith (logger: Logger) level messageFactory: unit =
-    start (log logger level messageFactory ^-> printDotOnOverflow)
+    startIgnore (logger.logWithAck (defaultPutBufferTimeOut, level) messageFactory)
 
-  let logWithBP (logger: Logger) logLevel messageFactory: Alt<unit> =
-    logger.logWithAck (true, logLevel) messageFactory ^=> function
-      | Ok _ ->
-        Job.result ()
-      | Result.Error Rejected ->
-        Job.result ()
-      | Result.Error (BufferFull target) ->
-        //Job.raises (exn (sprintf "logWithAck (true, _) should have waited for the RingBuffer(s) to accept the Message. Target(%s)" target))
-        Job.result ()
+  /// log message without blocking, and ignore its result.
+  /// default `putBufferTimeOut` is 3 seconds
+  let logSimple (logger: Logger) msg: unit =
+    logWith logger msg.level (fun _ -> msg)
 
-  /// Special case: e.g. Fatal messages.
+  /// log message, but don't await all targets to flush.
+  /// 
+  /// default `putBufferTimeOut` is 1 minutes to back pressure the buffers (not the backend process after target buffer)
+  let logWithBP (logger: Logger) logLevel messageFactory : Alt<unit> =
+    logger.logWithAck (defaultBackPressurePutBufferTimeOut, logLevel) messageFactory ^-> ignore
+
+  /// log message, leave the error result handle in registry error handler.
+  /// when read the return pomise, it will waiting for buffer's backend process flush logs
   let logAck (logger: Logger) level messageFactory: Promise<unit> =
-    let ack = IVar ()
-    let inner =
-      logger.logWithAck (true, level) messageFactory ^=> function
-        | Ok promise ->
-          Job.start (promise ^=> IVar.fill ack)
-        | Result.Error Rejected ->
-          IVar.fill ack ()
-        | Result.Error (BufferFull target) ->
-          //let e = exn (sprintf "logWithAck (true, _) should have waited for the RingBuffer(s) to accept the Message. Target(%s)" target)
-          //IVar.fillFailure ack e
-          IVar.fill ack ()
-    start inner
-    ack :> Promise<_>
+    logger.logWithAck (defaultBackPressurePutBufferTimeOut, level) messageFactory
+    >>=* function
+    | Ok promise -> promise
+    | _ -> Promise.unit
 
   let private ensureName name =
     fun (m: Message) ->
@@ -73,8 +51,15 @@ module Logger =
 [<AutoOpen>]
 module LoggerEx =
   type Logger with
+    
+    /// Log a message, but don't await all targets to flush.
+    /// Returns whether the message was successfully placed in the buffers.
+    /// 
+    /// default `putBufferTimeOut` is 3 seconds
     member x.log logLevel (messageFactory: LogLevel -> Message): Alt<bool> =
-      Logger.log x logLevel messageFactory
+      x.logWithAck (Logger.defaultPutBufferTimeOut, logLevel) messageFactory ^-> function
+      | Ok _ -> true
+      | _ -> false
 
     member x.logSimple message: unit =
       Logger.logSimple x message
@@ -299,7 +284,7 @@ module LoggerEx =
 
           member y.stop decider =
             let m = stop sw decider
-            x.logWithAck (false, m.level) (fun _ -> transform m)
+            x.logWithAck (Duration.Zero, m.level) (fun _ -> transform m)
 
           member y.logWithAck (waitForBuffers, logLevel) messageFactory =
             x.logWithAck (waitForBuffers, logLevel) (messageFactory >> transform)

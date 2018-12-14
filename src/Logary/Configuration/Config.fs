@@ -31,7 +31,8 @@ module Config =
       middleware: Middleware list
       processing: Processing
       setGlobals: bool
-      loggerLevels : (string * LogLevel) list
+      loggerLevels: (string * LogLevel) list
+      logResultHandler: ProcessResult -> unit
     }
 
   let create service host =
@@ -45,6 +46,7 @@ module Config =
       setGlobals   = true
       processing   = Events.events
       loggerLevels = [(".*", LogLevel.Info)]
+      logResultHandler = function | Result.Error error -> System.Console.Error.Write (MessageWriter.singleLineNoContext.format error) | _ -> ()
     }
 
   let target tconf lconf =
@@ -83,6 +85,9 @@ module Config =
   /// logger which is not set minlevel is Info by default.
   let loggerMinLevel path minLevel lconf =
     { lconf with loggerLevels = (path, minLevel) :: lconf.loggerLevels }
+
+  let logResultHandler handler lconf =
+    { lconf with logResultHandler = handler }
 
   let disableGlobals lconf =
     { lconf with setGlobals = false }
@@ -136,6 +141,7 @@ module Config =
           member x.middleware = middleware
           member x.processing = lconf.processing
           member x.loggerLevels = lconf.loggerLevels
+          member x.logResultHandler = lconf.logResultHandler
       }
 
     Registry.create conf >>- fun registry ->
