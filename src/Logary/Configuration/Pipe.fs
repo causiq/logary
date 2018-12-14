@@ -4,6 +4,7 @@ open System
 open Hopac
 open Hopac.Infixes
 open Logary.Configuration.Transformers
+open NodaTime
 
 [<Struct>]
 type PipeResult<'a> =
@@ -131,9 +132,9 @@ module Pipe =
          Mailbox.Now.send updateMb prev
          NoResult)
 
-  let tickTimer (ticker: Ticker<_,_,_>) (timespan: TimeSpan) pipe =
+  let tickTimer (ticker: Ticker<_,_,_>) (duration: Duration) pipe =
     pipe
-    |> withTickJob (ticker.TickEvery timespan)
+    |> withTickJob (ticker.TickEvery duration)
     |> tick ticker
 
   let buffer n pipe =
@@ -149,9 +150,9 @@ module Pipe =
          else
            NoResult)
 
-  let bufferTime timespan pipe =
+  let bufferTime duration pipe =
     let ticker = BufferTicker ()
-    pipe |> tickTimer ticker timespan
+    pipe |> tickTimer ticker duration
 
   /// maybe use ArraySegment instead
   let slidingWindow size pipe =
@@ -178,10 +179,10 @@ module Pipe =
   //          window.[slidingLen] <- prev
   //          cont window)
 
-  let counter (mapping: _ -> int64) timespan pipe =
+  let counter (mapping: _ -> int64) duration pipe =
     pipe
     |> map mapping
-    |> bufferTime timespan
+    |> bufferTime duration
     |> map (Seq.sum)
 
   let percentile (mapping: _ -> int64 array) quantile pipe =
