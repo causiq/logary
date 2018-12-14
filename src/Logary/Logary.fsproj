@@ -3,7 +3,7 @@
   <PropertyGroup>
     <AssemblyName>Logary</AssemblyName>
     <Version>5.0.0-beta.28</Version>
-    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
     <NoWarn>44;2003</NoWarn>
     <DefineConstants>TYPESHAPE_EXPOSE</DefineConstants>
   </PropertyGroup>
