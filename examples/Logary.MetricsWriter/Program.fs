@@ -43,8 +43,8 @@ let main argv =
   let clock = SystemClock.Instance
   let tenSecondsEWMATicker = EWMATicker (Duration.FromSeconds 1L, Duration.FromSeconds 10L, clock)
   let randomWalk = Sample.randomWalk "randomWalk"
-  let walkPipe =  Events.events |> Pipe.tickTimer randomWalk (TimeSpan.FromMilliseconds 500.)
-  let systemMetrics = Events.events |> Pipe.tickTimer (systemMetrics (PointName.parse "sys")) (TimeSpan.FromSeconds 10.)
+  let walkPipe =  Events.events |> Pipe.tickTimer randomWalk (Duration.FromMilliseconds 500.)
+  let systemMetrics = Events.events |> Pipe.tickTimer (systemMetrics (PointName.parse "sys")) (Duration.FromSeconds 10.)
   let processing =
     Events.compose [
        walkPipe
@@ -52,14 +52,14 @@ let main argv =
 
        walkPipe
        |> Pipe.choose (Message.tryGetGauge "randomWalk")
-       |> Pipe.counter (fun _ -> 1L) (TimeSpan.FromSeconds 2.)
+       |> Pipe.counter (fun _ -> 1L) (Duration.FromSeconds 2.)
        |> Pipe.map (fun counted -> Message.eventFormat (Info, "There are {totalNumbers} randomWalk within 2s", [|counted|]))
        |> Events.sink ["Console";]
 
        walkPipe
        |> Pipe.choose (Message.tryGetGauge "randomWalk")
        |> Pipe.map (fun _ -> 1L) // think of randomWalk as an event, mapping to 1
-       |> Pipe.tickTimer tenSecondsEWMATicker (TimeSpan.FromSeconds 5.)
+       |> Pipe.tickTimer tenSecondsEWMATicker (Duration.FromSeconds 5.)
        |> Pipe.map (fun rate -> Message.eventFormat (Info, "tenSecondsEWMA of randomWalk's rate is {rateInSec}", [|rate|]))
        |> Events.sink ["Console";]
 

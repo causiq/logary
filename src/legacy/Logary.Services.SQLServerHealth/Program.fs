@@ -81,7 +81,7 @@ let execute interval sqlConf riemann argv (exiting: ManualResetEventSlim) =
     let processing =
       Events.compose [
            Events.events
-           |> Pipe.tickTimer sqlServerHealthTicker (TimeSpan.FromTicks(Duration.ticks interval |> int64))
+           |> Pipe.tickTimer sqlServerHealthTicker interval
            |> Events.sink [cons; rm;]
         ]
 

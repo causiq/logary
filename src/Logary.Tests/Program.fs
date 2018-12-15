@@ -654,7 +654,7 @@ let tests =
 
       testCaseJob "logWithAck success" (job {
         let sut = NullLogger.instance
-        let! p = sut.logWithAck (Duration.FromSeconds 3L, Fatal) (eventX "hi")
+        let! p = sut.logWithAck (true, Fatal) (eventX "hi")
         match p with
         | Ok ack ->
           do! ack
