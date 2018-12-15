@@ -416,11 +416,9 @@ module LoggerAdapter =
 
     let onError message = MessageWriter.singleLineNoContext.format message
 
-    let mapErr = LogResult.createMapErr loggerType
-    fun (result: LogResult) ->
-      let args = [| box onError; box result |]
-      // do rawPrintM mapErr args
-      mapErr.Invoke(null, args)
+    // let mapErr = LogResult.createMapErr loggerType
+
+    LogResult.mapErr<string> onError >> box
 
   let internal (|LogWithAck|LogWithAckV3|Log|LogSimple|)
                (invocation: IInvocation, defaultName: string[], v: ApiVersion, loggerType: Type)

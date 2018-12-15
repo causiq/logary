@@ -299,29 +299,14 @@ module Alt =
         >>-. x)
       Job.start markNack >>-. altCommit)
 
-/// Why was the message/metric/event not logged?
-[<Struct>]
-type LogError =
-  /// The buffer of the target was full, so the message was not logged.
-  | BufferFull of target:string
-  /// The target, or the processing step before the targets, rejected the message.
-  | Rejected
-
-type internal LogResult = Alt<Result<Promise<unit>, LogError>>
+type internal LogResult = Alt<Result<Promise<unit>, string>>
 
 module internal Promise =
   let unit: Promise<unit> = Promise (())
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module internal LogError =
-  let rejected: LogError = Rejected
-  let bufferFull target: LogError = BufferFull target
-
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal LogResult =
-  let success: Alt<Result<Promise<unit>, LogError>> = Alt.always (Result.Ok Promise.unit)
-  let bufferFull target: Alt<Result<Promise<unit>, LogError>> = Alt.always (Result.Error (BufferFull target))
-  let rejected: Alt<Result<Promise<unit>, LogError>> = Alt.always (Result.Error Rejected)
+  let success: LogResult = Alt.always (Result.Ok Promise.unit)
 
 module internal H =
   /// Finds all exceptions
@@ -360,6 +345,14 @@ type Message =
     |> Seq.map (fun (KeyValue (k, v)) -> k.Substring(Literals.FieldsPrefix.Length), v)
     |> Map.ofSeq
 
+  member x.getContext(): Map<string, obj> =
+    x.context
+    |> Map.toSeq
+    |> Seq.filter (fun (k, _) ->
+         not (k.StartsWith Literals.FieldsPrefix)
+      && not (k.StartsWith Literals.LogaryPrefix))
+    |> Map.ofSeq
+
   /// If you're looking for how to transform the Message's fields, then use the
   /// module methods rather than instance methods, since you'll be creating new
   /// values rather than changing an existing value.
@@ -378,9 +371,7 @@ module Logger =
     logger.logWithAck (false, logLevel) messageFactory ^-> function
       | Ok _ ->
         true
-      | Result.Error Rejected ->
-        true
-      | Result.Error (BufferFull _) ->
+      | Result.Error error ->
         false
 
   let private printDotOnOverflow accepted =
@@ -396,10 +387,7 @@ module Logger =
     logger.logWithAck (true, logLevel) messageFactory ^=> function
       | Ok _ ->
         Job.result ()
-      | Result.Error Rejected ->
-        Job.result ()
-      | Result.Error (BufferFull target) ->
-        //Job.raises (exn (sprintf "logWithAck (true, _) should have waited for the RingBuffer(s) to accept the Message. Target(%s)" target))
+      | Result.Error error ->
         Job.result ()
 
   /// Special case: e.g. Fatal messages.
@@ -409,19 +397,20 @@ module Logger =
       logger.logWithAck (true, level) messageFactory ^=> function
         | Ok promise ->
           Job.start (promise ^=> IVar.fill ack)
-        | Result.Error Rejected ->
-          IVar.fill ack ()
-        | Result.Error (BufferFull target) ->
-          //let e = exn (sprintf "logWithAck (true, _) should have waited for the RingBuffer(s) to accept the Message. Target(%s)" target)
-          //IVar.fillFailure ack e
+        | Result.Error error ->
           IVar.fill ack ()
     start inner
     ack :> Promise<_>
 
+  let private ensureName name =
+    fun (m: Message) ->
+      if m.name.Length = 0 then { m with name = name } else m
+
   let apply (transform: Message -> Message) (logger: Logger): Logger =
+    let ensureName = ensureName logger.name
     { new Logger with
         member x.logWithAck (waitForBuffers, logLevel) messageFactory =
-          logger.logWithAck (waitForBuffers, logLevel) (messageFactory >> transform)
+          logger.logWithAck (waitForBuffers, logLevel) (messageFactory >> ensureName >> transform)
         member x.name =
           logger.name }
 
@@ -675,12 +664,12 @@ module internal LiterateTokenisation =
     | _ ->
       OtherSymbol
 
-  let tokeniseValue (options: LiterateOptions) (fields: Map<string, obj>) (template: string) =
+  let tokeniseValue (options: LiterateOptions) (fields: Map<string, obj>) (context: Map<string, obj>) (template: string) =
     let themedParts = ResizeArray<TokenisedPart>()
     let matchedFields = ResizeArray<string>()
     let foundText (text: string) = themedParts.Add (text, Text)
     let foundProp (prop: FsMtParser.Property) =
-      match Map.tryFind prop.name fields with
+      match fields |> Map.tryFind prop.name |> Option.orElseWith (fun () -> context |> Map.tryFind prop.name) with
       | Some propValue ->
         // render using string.Format, so the formatting is applied
         let stringFormatTemplate = prop.AppendPropertyString(StringBuilder(), "0").ToString()
@@ -736,8 +725,8 @@ module internal LiterateTokenisation =
         .ToString("HH:mm:ss", options.formatProvider),
       Subtext
 
-    let fields = message.getFields()
-    let _, themedMessageParts = message.value |> tokeniseValue options fields
+    let fields, context = message.getFields(), message.getContext()
+    let _, themedMessageParts = message.value |> tokeniseValue options fields context
     let themedExceptionParts = tokeniseExns options message
 
     [ yield "[", Punctuation
@@ -758,9 +747,9 @@ module internal Formatting =
   open Literate
   open System.Text
 
-  let formatValue (fields: Map<string, obj>) value =
+  let formatValue (fields: Map<string, obj>) (context: Map<string, obj>) value =
     let matchedFields, themedParts =
-      LiterateTokenisation.tokeniseValue (LiterateOptions.createInvariant()) fields value
+      LiterateTokenisation.tokeniseValue (LiterateOptions.createInvariant()) fields context value
     matchedFields, System.String.Concat(themedParts |> Seq.map fst)
 
   let formatLevel (level: LogLevel) =
@@ -793,8 +782,8 @@ module internal Formatting =
 
   /// let the ISO8601 love flow
   let defaultFormatter (message: Message) =
-    let fields = message.getFields()
-    let matchedFields, valueString = formatValue fields message.value
+    let fields, context = message.getFields(), message.getContext()
+    let matchedFields, valueString = formatValue fields context message.value
 
     // [I] 2014-04-05T12:34:56Z: Hello World! [my.sample.app]
     formatLevel message.level +
@@ -891,23 +880,23 @@ module internal LiterateFormatting =
   let tokeniserForOutputTemplate template: LiterateTokeniser =
     let tokens = parseTemplate template
     fun options message ->
-      let fields = message.getFields()
+      let fields, context = message.getFields(), message.getContext()
       // render the message template first so we have the template-matched fields available
       let matchedFields, messageParts =
-        tokeniseValue options fields message.value
+        tokeniseValue options fields context message.value
 
       let tokeniseOutputTemplateField fieldName format = seq {
         match fieldName with
-        | "timestamp" ->            yield! tokeniseTimestamp format options message
-        | "timestampUtc" ->         yield! tokeniseTimestampUtc format options message
-        | "level" ->                yield! tokeniseLogLevel options message
-        | "source" ->               yield! tokeniseSource options message
-        | "newline" ->              yield! tokeniseNewline options message
-        | "tab" ->                  yield! tokeniseTab options message
-        | "message" ->              yield! messageParts
-        | "properties" ->           yield! tokeniseExtraFields options message matchedFields
-        | "exceptions" ->           yield! tokeniseExns options message
-        | _ ->                      yield! tokeniseMissingField fieldName format
+        | "timestamp" ->    yield! tokeniseTimestamp format options message
+        | "timestampUtc" -> yield! tokeniseTimestampUtc format options message
+        | "level" ->        yield! tokeniseLogLevel options message
+        | "source" ->       yield! tokeniseSource options message
+        | "newline" ->      yield! tokeniseNewline options message
+        | "tab" ->          yield! tokeniseTab options message
+        | "message" ->      yield! messageParts
+        | "properties" ->   yield! tokeniseExtraFields options message matchedFields
+        | "exceptions" ->   yield! tokeniseExns options message
+        | _ ->              yield! tokeniseMissingField fieldName format
       }
 
       seq {
@@ -1122,6 +1111,9 @@ module Message =
   let setField name value (message: Message): Message =
     { message with context = message.context |> Map.add (Literals.FieldsPrefix + name) (box value) }
 
+  let setFields (fields: Map<string, obj>) (message: Message): Message =
+    fields |> Seq.fold (fun m (KeyValue (k, vO)) -> m |> setField k vO) message
+    
   let tryGetField name (message: Message): 'a option =
     tryGetContext (Literals.FieldsPrefix + name) message
 
