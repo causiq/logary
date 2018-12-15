@@ -414,7 +414,7 @@ module LoggerAdapter =
 
     // let rejectedValue = findStaticProperty(logErrorModule, "rejected").GetValue(null, null)
 
-    let onError message = MessageWriter.singleLineNoContext.format message
+    let onError message = MessageWriter.verbatim.format message
 
     // let mapErr = LogResult.createMapErr loggerType
 
