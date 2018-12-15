@@ -50,6 +50,8 @@ module Target =
         <|>
         timeOut (putBufferTimeOut.toTimeSpanSafe()) ^-> fun _ -> LogError.timeOutToPutBuffer x.name putBufferTimeOut.TotalSeconds
 
+  let tryLog (x: T) (msg: Message): LogResult = log Duration.Zero x msg
+
   let private logAll_ putBufferTimeOut targets msg =
     Alt.withNackJob <| fun nack ->
     //printfn "tryLogAll: creating alt with nack for %i targets" targets.Length
