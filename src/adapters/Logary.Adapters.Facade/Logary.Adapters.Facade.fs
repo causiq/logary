@@ -390,14 +390,8 @@ module LoggerAdapter =
 
   module LogResult =
     /// Homomorphism on the LogResult value.
-    let mapErr<'err> (onFull: string -> 'err) (onRejected: 'err) (xA: LogResult) =
-      xA ^-> function
-        | Ok ack ->
-          Ok ack
-        | Result.Error (BufferFull target) ->
-          Result.Error (onFull target)
-        | Result.Error Rejected ->
-          Result.Error onRejected
+    let mapErr<'err> (onError: Message -> 'err)  (xA: LogResult) =
+      xA ^-> Result.mapError onError
 
     let createMapErr =
       let mapErrMethodModule = Type.GetType "Logary.Adapters.Facade.LoggerAdapter+LogResult, Logary.Adapters.Facade"
@@ -408,20 +402,23 @@ module LoggerAdapter =
 
   let ofLogResult (loggerType: Type): LogResult -> obj =
     // HOT PATH
-    let logErrorType = findModule (loggerType, "LogError")
-    let logErrorModule = findModule (loggerType, "LogErrorModule")
+    // let logErrorType = findModule (loggerType, "LogError")
+    // let logErrorModule = findModule (loggerType, "LogErrorModule")
 
-    let bufferFullMethod = findStaticMethod (logErrorModule, "bufferFull")
-    let bufferFullFSharpFunction = typedefof<FSharpFunc<_,_>>.MakeGenericType([| typeof<string>; logErrorType |])
-    let bufferFull =
-      FSharpValue.MakeFunction(
-        bufferFullFSharpFunction,
-        fun (target: obj) -> bufferFullMethod.Invoke(null, [| target |]))
+    // let bufferFullMethod = findStaticMethod (logErrorModule, "bufferFull")
+    // let bufferFullFSharpFunction = typedefof<FSharpFunc<_,_>>.MakeGenericType([| typeof<string>; logErrorType |])
+    // let bufferFull =
+    //   FSharpValue.MakeFunction(
+    //     bufferFullFSharpFunction,
+    //     fun (target: obj) -> bufferFullMethod.Invoke(null, [| target |]))
 
-    let rejectedValue = findStaticProperty(logErrorModule, "rejected").GetValue(null, null)
+    // let rejectedValue = findStaticProperty(logErrorModule, "rejected").GetValue(null, null)
+
+    let onError message = MessageWriter.singleLineNoContext.format message
+
     let mapErr = LogResult.createMapErr loggerType
     fun (result: LogResult) ->
-      let args = [| bufferFull; rejectedValue; box result |]
+      let args = [| box onError; box result |]
       // do rawPrintM mapErr args
       mapErr.Invoke(null, args)
 
