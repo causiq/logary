@@ -143,7 +143,7 @@ let targetTests =
       let! target = start (fun () -> db)
 
       let logToTarget =
-        Target.log target
+        Target.log (Duration.FromSeconds 1L) target
         >> Alt.afterFun (Expect.isOk "Should log successfully")
 
       // when
@@ -186,7 +186,7 @@ let targetTests =
       let! target = start (fun () -> SQLiteDB.openConn SQLiteDB.InMemConnStrEmpheral)
 
       let logToTarget =
-        Target.log target
+        Target.log (Duration.FromSeconds 1L) target
         >> Alt.afterFun (Expect.isOk "Should log successfully")
 
       do! Job.tryFinallyJob
@@ -211,7 +211,7 @@ let targetTests =
       let! target = start (fun () -> db)
 
       let logToTarget =
-        Target.log target
+        Target.log (Duration.FromSeconds 1L) target
         >> Alt.afterFun (Expect.isOk "Should log successfully")
 
       let! ack = Message.gaugefs "web01.app" "signin" 3. |> logToTarget
