@@ -43,6 +43,9 @@ module KnownLiterals =
   let WaitForBuffers = LogaryPrefix + "waitForBuffers"
 
   [<Literal>]
+  let WaitForBuffersTimeout = LogaryPrefix + "waitForBuffersTimeout"
+
+  [<Literal>]
   let SpanIdContextName = LogaryPrefix + "spanId"
 
   [<Literal>]

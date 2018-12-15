@@ -7,7 +7,7 @@ module internal LogResult =
   let success: LogResult = Alt.always (Result.Ok Promise.unit)
   let error message : LogResult = Alt.always (Result.Error message)
 
-  let notAcceptByTarget (targetName: string) = error (Message.eventFormat("not accept by {target}", targetName))
+  let notAcceptedByTarget (targetName: string) = error (Message.eventFormat("not accept by {target}", targetName))
 
 module internal LogError =
   let targetBufferFull (targetName: string): ProcessResult = Result.Error (Message.eventFormat("{target} 's log buffer is full", targetName))

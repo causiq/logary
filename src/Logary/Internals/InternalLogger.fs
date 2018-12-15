@@ -22,14 +22,14 @@ module internal InternalLogger =
     member x.name = PointName [| "Logary" |]
 
     interface Logger with // internal logger
-      member x.logWithAck (putBufferTimeOut, logLevel) messageFactory =
+      member x.logWithAck (waitForBuffers, logLevel) messageFactory =
         x.messageCh *<+->- fun replCh nack ->
 
         let message =
           match messageFactory logLevel with
           | msg when msg.name.isEmpty -> { msg with name = x.name }
           | msg -> msg
-          |> Message.setContext KnownLiterals.WaitForBuffers putBufferTimeOut
+          |> Message.setContext KnownLiterals.WaitForBuffers waitForBuffers
 
         message, nack, replCh
 
@@ -56,7 +56,11 @@ module internal InternalLogger =
 
         messageCh ^=> fun (message, nack, replCh) ->
           let forwardToTarget =
-            let putBufferTimeOut = message |> Message.tryGetContext KnownLiterals.WaitForBuffers |> Option.defaultValue NodaTime.Duration.Zero
+            let putBufferTimeOut = message |> Message.tryGetContext KnownLiterals.WaitForBuffersTimeout |> Option.defaultValue NodaTime.Duration.Zero
+            let putBufferTimeOut =
+              message |> Message.tryGetContext KnownLiterals.WaitForBuffers
+              |> Option.defaultValue false // non blocking waiting default
+              |> function | true -> putBufferTimeOut | false -> NodaTime.Duration.Zero
             Target.logAllReduce putBufferTimeOut targets message ^=> Ch.give replCh
 
           (forwardToTarget <|> nack) ^=> fun () -> iserver targets

@@ -113,7 +113,7 @@ module Pipe =
              with
              | e ->
                // todo: handle exception
-               eprintfn "%A" e
+               eprintfn "%O" e
                upcast (loop state)
 
            updateMb ^=> (ticker.Folder state >> loop)

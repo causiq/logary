@@ -27,6 +27,8 @@ type LogaryConf =
   abstract loggerLevels: (string * LogLevel) list
   /// handler for process log error
   abstract logResultHandler: (ProcessResult -> unit)
+  /// time out duration waiting for each target buffer to be available to take the message, if users choose logging message and waitForBuffers
+  abstract defaultWaitForBuffersTimeout: Duration
 
 /// This is the main state container in Logary.
 module Registry =
@@ -127,7 +129,7 @@ module Registry =
       { new Logger with
           member x.name = name
 
-          member x.logWithAck (putBufferTimeOut, level) messageFactory =
+          member x.logWithAck (waitForBuffers, level) messageFactory =
             if level >= x.level then
               // When the registry is shut down, reject the log message.
               let rejection = t.isClosed ^->. LogError.registryClosed
@@ -135,7 +137,7 @@ module Registry =
               let logMessage = Alt.prepareFun <| fun () ->
                 messageFactory level
                 |> ensureName name
-                |> ensureWaitFor putBufferTimeOut
+                |> ensureWaitFor waitForBuffers
                 |> t.runPipeline mid
 
               rejection <|> logMessage
@@ -167,7 +169,7 @@ module Registry =
       match timeout with
         | None -> processAlt ^->. (name,true)
         | Some duration ->
-          timeOut (duration.ToTimeSpan ()) ^->. (name,false)
+          timeOut (duration.toTimeSpanSafe()) ^->. (name,false)
           <|>
           processAlt ^->. (name,true)
 
@@ -265,8 +267,13 @@ module Registry =
         if Array.isEmpty targets then
           NoResult
         else
-          let putBufferTimeOut = msg |> Message.tryGetContext KnownLiterals.WaitForBuffers |> Option.defaultValue Duration.Zero
-          msg 
+          let putBufferTimeOut = msg |> Message.tryGetContext KnownLiterals.WaitForBuffersTimeout |> Option.defaultValue conf.defaultWaitForBuffersTimeout
+          let putBufferTimeOut =
+            msg |> Message.tryGetContext KnownLiterals.WaitForBuffers
+            |> Option.defaultValue false // non blocking waiting default
+            |> function | true -> putBufferTimeOut | false -> Duration.Zero
+
+          msg
           |> Target.logAllReduce putBufferTimeOut targets
           |> Alt.afterFun (fun result ->
             start (Job.thunk (fun _ ->
@@ -274,7 +281,7 @@ module Registry =
                 conf.logResultHandler result
               with
               | e ->
-                 eprintfn "%A" e ))
+                eprintfn "%O" e ))
             result)
           |> HasResult)
 

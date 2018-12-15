@@ -35,7 +35,7 @@ module Target =
   ///   if `putBufferTimeOut <=  Duration.Zero` , it will try to detect whether the buffer is full and return immediately
   let log (putBufferTimeOut: Duration) (x: T) (msg: Message): LogResult =
     let msg = x.transform msg
-    if not (x.accepts msg) then LogResult.notAcceptByTarget x.name
+    if not (x.accepts msg) then LogResult.notAcceptedByTarget x.name
     else
       let ack = IVar ()
       let targetMsg = Log (msg, ack)
@@ -48,7 +48,7 @@ module Target =
       else
         RingBuffer.put x.api.requests targetMsg ^->. Result.Ok (upcast ack)
         <|>
-        timeOut (putBufferTimeOut.ToTimeSpan()) ^-> fun _ -> LogError.timeOutToPutBuffer x.name putBufferTimeOut.TotalSeconds
+        timeOut (putBufferTimeOut.toTimeSpanSafe()) ^-> fun _ -> LogError.timeOutToPutBuffer x.name putBufferTimeOut.TotalSeconds
 
   let private logAll_ putBufferTimeOut targets msg =
     Alt.withNackJob <| fun nack ->

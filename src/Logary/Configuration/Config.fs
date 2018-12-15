@@ -11,6 +11,7 @@ open Logary.Targets
 open Logary.Configuration
 open Logary.MessageTemplates.Destructure
 open Logary.Formatting
+open NodaTime
 
 /// Specifies the internal logger targets for Logary.
 [<RequireQualifiedAccess>]
@@ -33,6 +34,7 @@ module Config =
       setGlobals: bool
       loggerLevels: (string * LogLevel) list
       logResultHandler: ProcessResult -> unit
+      defaultWaitForBuffersTimeout: Duration
     }
 
   let create service host =
@@ -47,6 +49,7 @@ module Config =
       processing   = Events.events
       loggerLevels = [(".*", LogLevel.Info)]
       logResultHandler = function | Result.Error error -> System.Console.Error.Write (MessageWriter.singleLineNoContext.format error) | _ -> ()
+      defaultWaitForBuffersTimeout = Duration.FromSeconds 3L
     }
 
   let target tconf lconf =
@@ -142,6 +145,7 @@ module Config =
           member x.processing = lconf.processing
           member x.loggerLevels = lconf.loggerLevels
           member x.logResultHandler = lconf.logResultHandler
+          member x.defaultWaitForBuffersTimeout = lconf.defaultWaitForBuffersTimeout
       }
 
     Registry.create conf >>- fun registry ->

@@ -191,6 +191,11 @@ module Message =
   let setSpanId (spanId: Guid) (message: Message) =
     message |> setContext KnownLiterals.SpanIdContextName (SpanInfo.formatId spanId)
 
+  /// For users who want to controll timeout in each message when logging `WaitForBuffers = true`
+  [<CompiledName "WaitForBuffersTimeout">]
+  let waitForBuffersTimeout (duration: Duration) (message: Message) =
+    message |> setContext KnownLiterals.WaitForBuffersTimeout duration
+
   ///////////////// CTORS ////////////////////
 
   /// Create a new Message with the passed parameters. Consider using `event` and

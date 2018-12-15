@@ -9,29 +9,30 @@ open NodaTime
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Logger =
-  let defaultPutBufferTimeOut = Duration.FromSeconds 5L
   let defaultBackPressurePutBufferTimeOut = Duration.FromMinutes 1L
 
   /// log message without blocking, and ignore its result.
-  /// default `putBufferTimeOut` is 3 seconds
+  /// if the buffer is full, drop this message
   let logWith (logger: Logger) level messageFactory: unit =
-    startIgnore (logger.logWithAck (defaultPutBufferTimeOut, level) messageFactory)
+    startIgnore (logger.logWithAck (false, level) messageFactory)
 
   /// log message without blocking, and ignore its result.
-  /// default `putBufferTimeOut` is 3 seconds
+  /// if the buffer is full, drop this message
   let logSimple (logger: Logger) msg: unit =
     logWith logger msg.level (fun _ -> msg)
 
-  /// log message, but don't await all targets to flush.
-  /// 
-  /// default `putBufferTimeOut` is 1 minutes to back pressure the buffers (not the backend process after target buffer)
+  /// log message, but don't await all targets to flush. And backpressure the buffers.
+  ///
+  /// default `waitForBuffersTimeout` is 1 minutes to back pressure the buffers (not the backend process after target buffer)
   let logWithBP (logger: Logger) logLevel messageFactory : Alt<unit> =
-    logger.logWithAck (defaultBackPressurePutBufferTimeOut, logLevel) messageFactory ^-> ignore
+    logger.logWithAck (true, logLevel) (messageFactory >> Message.waitForBuffersTimeout defaultBackPressurePutBufferTimeOut) ^-> ignore
 
   /// log message, leave the error result handle in registry error handler.
   /// when read the return pomise, it will waiting for buffer's backend process flush logs
+  ///
+  /// default `waitForBuffersTimeout` is 1 minutes to back pressure the buffers (not the backend process after target buffer)
   let logAck (logger: Logger) level messageFactory: Promise<unit> =
-    logger.logWithAck (defaultBackPressurePutBufferTimeOut, level) messageFactory
+    logger.logWithAck (true, level) (messageFactory >> Message.waitForBuffersTimeout defaultBackPressurePutBufferTimeOut)
     >>=* function
     | Ok promise -> promise
     | _ -> Promise.unit
@@ -51,13 +52,13 @@ module Logger =
 [<AutoOpen>]
 module LoggerEx =
   type Logger with
-    
+
     /// Log a message, but don't await all targets to flush.
     /// Returns whether the message was successfully placed in the buffers.
-    /// 
-    /// default `putBufferTimeOut` is 3 seconds
+    ///
+    /// if the buffer is full, drop this message, return false
     member x.log logLevel (messageFactory: LogLevel -> Message): Alt<bool> =
-      x.logWithAck (Logger.defaultPutBufferTimeOut, logLevel) messageFactory ^-> function
+      x.logWithAck (false, logLevel) messageFactory ^-> function
       | Ok _ -> true
       | _ -> false
 
@@ -284,7 +285,7 @@ module LoggerEx =
 
           member y.stop decider =
             let m = stop sw decider
-            x.logWithAck (Duration.Zero, m.level) (fun _ -> transform m)
+            x.logWithAck (false, m.level) (fun _ -> transform m)
 
           member y.logWithAck (waitForBuffers, logLevel) messageFactory =
             x.logWithAck (waitForBuffers, logLevel) (messageFactory >> transform)

@@ -289,9 +289,9 @@ type Logger =
   /// Even if the Alt was not committed to, one or more targets (fewer than N) may have accepted the message.
   /// And this can not be canceled.
   ///
-  /// - `putBufferTimeOut`: time out duration waiting for each target buffer to be available to take the message.
-  ///   if `putBufferTimeOut <=  Duration.Zero` , it will try to detect whether the buffer is full and return immediately
-  abstract logWithAck: putBufferTimeOut:Duration * level:LogLevel -> messageFactory:(LogLevel -> Message) -> LogResult
+  /// - `waitForBuffers`: `true` means waiting for each target buffer to be available to take the message.
+  ///   `false` means it will try to detect whether the buffer is full and return immediately.
+  abstract logWithAck: waitForBuffers:bool * level:LogLevel -> messageFactory:(LogLevel -> Message) -> LogResult
 
   /// Gets the currently set log level (minimal,inclusive),
   /// aka. the granularity with which things are being logged.
@@ -300,17 +300,17 @@ type Logger =
 type internal LoggerWrapper(logger: Logger) =
   abstract name: PointName
   abstract level: LogLevel
-  abstract logWithAck: Duration * LogLevel -> (LogLevel -> Message) -> LogResult
+  abstract logWithAck: bool * LogLevel -> (LogLevel -> Message) -> LogResult
   default x.name = logger.name
   default x.level = logger.level
-  default x.logWithAck (putBufferTimeOut, logLevel) messageFactory =
-    logger.logWithAck (putBufferTimeOut, logLevel) messageFactory
+  default x.logWithAck (waitForBuffers, logLevel) messageFactory =
+    logger.logWithAck (waitForBuffers, logLevel) messageFactory
 
   interface Logger with
     member x.name = x.name
     member x.level = x.level
-    member x.logWithAck (putBufferTimeOut, logLevel) messageFactory =
-      x.logWithAck (putBufferTimeOut, logLevel) messageFactory
+    member x.logWithAck (waitForBuffers, logLevel) messageFactory =
+      x.logWithAck (waitForBuffers, logLevel) messageFactory
 
 /// A disposable interface to use with `use` constructs and to create child-
 /// contexts. Since it inherits Logger, you can pass this scope down into child
