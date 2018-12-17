@@ -1086,7 +1086,7 @@ GITHUB
   remote: haf/YoLo
     YoLo.fs (bd91bbe94a183aa9dc9c13e885c73b20516b01e7)
   remote: logary/RingBuffer
-    RingBuffer.fs (014138cdfc9dff76e74dc154e68c929655bcbd86)
+    RingBuffer.fs (4ae23a7481076091fff153961196df302683d756)
       Expecto
       Expecto.BenchmarkDotNet
       Expecto.FsCheck
