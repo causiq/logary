@@ -347,11 +347,9 @@ type Message =
 
   member x.getContext(): Map<string, obj> =
     x.context
-    |> Map.toSeq
-    |> Seq.filter (fun (k, _) ->
+    |> Map.filter (fun k _ ->
          not (k.StartsWith Literals.FieldsPrefix)
       && not (k.StartsWith Literals.LogaryPrefix))
-    |> Map.ofSeq
 
   /// If you're looking for how to transform the Message's fields, then use the
   /// module methods rather than instance methods, since you'll be creating new
