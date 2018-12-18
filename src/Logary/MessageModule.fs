@@ -493,13 +493,15 @@ module Message =
   /// Adds a new exception to the "_logary.errors" internal field in the message.
   [<CompiledName "AddException">]
   let addExn (e: exn) msg =
-    let errors =
-      match tryGetContext KnownLiterals.ErrorsContextName msg with
-      | Some errors ->
-        e :: errors
-      | _ ->
-        e :: []
-    setContext KnownLiterals.ErrorsContextName errors msg
+    if isNull e then msg
+    else
+      let errors =
+        match tryGetContext KnownLiterals.ErrorsContextName msg with
+        | Some errors ->
+          e :: errors
+        | _ ->
+          e :: []
+      setContext KnownLiterals.ErrorsContextName errors msg
 
   /// Adds new exceptions to the "_logary.errors" internal field in the message.
   [<CompiledName "AddExceptions">]
