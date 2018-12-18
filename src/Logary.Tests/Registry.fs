@@ -95,7 +95,7 @@ let tests = [
   }
 
   testCaseJob "log with span" (job {
-    let! logm, out, _  = Utils.buildLogManagerWith (fun conf -> conf |> Config.middleware (Middleware.ambientSpanId ()))
+    let! logm, out, _  = Utils.buildLogManagerWith (fun conf -> conf |> Config.middleware Middleware.ambientSpanId)
 
     let checkSpanId spanId = job {
       do! logm.flushPending ()
