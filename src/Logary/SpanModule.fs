@@ -11,7 +11,7 @@ module Span =
 
   /// describe the time scope info about a span, will be sent as a message's context data
   [<Struct>]
-  type internal SpanLog =
+  type SpanLog =
     { traceId: string
       spanId: string
       parentSpanId: string
