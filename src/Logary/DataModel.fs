@@ -275,6 +275,17 @@ and SpanInfo =
   static member formatId (id: Guid) =
     id.ToString("n")
 
+/// describe the time scope info about a span, will be sent as a message's context data
+[<Struct>]
+type SpanLog =
+  { traceId: string
+    spanId: string
+    parentSpanId: string
+    beginAt: int64 // number of ticks since the Unix epoch. Negative values represent instants before the Unix epoch. (from NodaTime)
+    endAt: int64 // number of ticks since the Unix epoch. Negative values represent instants before the Unix epoch. (from NodaTime)
+    duration: int64 // total number of ticks in the duration as a 64-bit integer. (from NodaTime)
+  }
+
 type internal ProcessResult = Result<Promise<unit>, Message>
 type internal LogResult = Alt<ProcessResult>
 

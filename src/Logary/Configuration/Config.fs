@@ -158,9 +158,11 @@ module Config =
 
   // TO CONSIDER: config below around registry, instead of as globals
 
+  /// use this to choose which properties you want or not to show on message formatting
   let projection projectionExpr =
     Logary.Internals.Global.Destructure.configProjection projectionExpr
 
+  /// use this to customise how to destructure type
   let destructurer<'t> (factory: CustomDestructureFactory<'t>) =
     Logary.Internals.Global.Destructure.configDestructure<'t> factory
 

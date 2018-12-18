@@ -210,6 +210,29 @@ module internal Global =
 
           StructureValue (refId, typeTag, nvs))
 
+      configDestructure<Duration>(fun resolver req -> ScalarValue req.Value)
+
+      configDestructure<SpanLog>(fun resolver req -> 
+        let spanLog = req.Value
+        let refCount = req.IdManager
+        match refCount.TryShowAsRefId req with
+        | _, Some pv -> pv
+        | refId, None ->
+          let typeTag = typeof<SpanLog>.Name
+          let nvs = [
+            if not <| isNull spanLog.traceId then
+              yield { Name = "TraceId"; Value = ScalarValue spanLog.traceId }
+            if not <| isNull spanLog.parentSpanId then
+              yield { Name = "ParentSpanId"; Value = ScalarValue spanLog.parentSpanId }
+            if not <| isNull spanLog.spanId then
+              yield { Name = "SpanId"; Value = ScalarValue spanLog.spanId }
+            yield { Name = "BeginAt"; Value = ScalarValue (Instant.FromUnixTimeTicks(spanLog.beginAt)) }
+            yield { Name = "EndAt"; Value = ScalarValue (Instant.FromUnixTimeTicks(spanLog.endAt)) }
+            yield { Name = "Duration"; Value = ScalarValue (Duration.FromTicks(spanLog.duration)) }
+          ]
+
+          StructureValue (refId, typeTag, nvs))
+
       {
         new ICustomDestructureRegistry with
           member __.TryGetRegistration (runtimeType: Type) =
