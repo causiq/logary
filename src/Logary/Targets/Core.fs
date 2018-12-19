@@ -676,11 +676,11 @@ module File =
   /// Bytes
   let B (n: int64) = n
   /// Kilobytes
-  let KiB n = n * 1024L * 1024L
+  let KiB n = n * 1024L
   /// Megabytes
-  let MiB n = n * 1024L * 1024L * 1024L
+  let MiB n = n * 1024L * 1024L
   /// Gigabytes
-  let GiB n = n * 1024L * 1024L * 1024L * 1024L
+  let GiB n = n * 1024L * 1024L * 1024L
 
   /// These are the available rotation policies
   type RotationPolicy =

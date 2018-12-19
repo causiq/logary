@@ -215,6 +215,15 @@ module Files =
             acks.Add ack
           Job.conIgnore acks)
       }
+    
+    testList "quantities" [
+      testCase "1 KiB is 1024 B" <| fun _ ->
+        Expect.isTrue (KiB 1L = B 1024L) "1 KiB should be equal 1024 B"
+      testCase "1 MiB is 1024 KiB" <| fun _ ->
+        Expect.isTrue (MiB 1L = KiB 1024L) "1 MiB should be equal 1024 KiB"
+      testCase "1 GiB is 1024 MiB" <| fun _ ->
+        Expect.isTrue (GiB 1L = MiB 1024L) "1 GiB should be equal 1024 MiB"
+    ]
   ]
 
 let tests = [
