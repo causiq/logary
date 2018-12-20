@@ -276,12 +276,11 @@ module Registry =
           msg
           |> Target.logAllReduce putBufferTimeOut targets
           |> Alt.afterFun (fun result ->
-            start (Job.thunk (fun _ ->
-              try
-                conf.logResultHandler result
-              with
-              | e ->
-                eprintfn "%O" e ))
+            try
+              conf.logResultHandler result
+            with
+            | e ->
+              eprintfn "%O" e
             result)
           |> HasResult)
 

@@ -14,7 +14,7 @@ module Logger =
   /// log message without blocking, and ignore its result.
   /// if the buffer is full, drop this message
   let logWith (logger: Logger) level messageFactory: unit =
-    startIgnore (logger.logWithAck (false, level) messageFactory)
+    queueIgnore (logger.logWithAck (false, level) messageFactory)
 
   /// log message without blocking, and ignore its result.
   /// if the buffer is full, drop this message

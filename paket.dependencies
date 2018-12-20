@@ -88,4 +88,5 @@ group Benchmarks
     nuget Hopac
     nuget NodaTime
     nuget Expecto
-    nuget Expecto.BenchmarkDotNet
+    nuget Expecto.BenchmarkDotNet == 8.6.5
+    nuget BenchmarkDotNet == 0.10.14 
