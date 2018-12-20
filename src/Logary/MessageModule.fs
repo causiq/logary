@@ -191,6 +191,11 @@ module Message =
   let setSpanId (spanId: Guid) (message: Message) =
     message |> setContext KnownLiterals.SpanIdContextName (SpanInfo.formatId spanId)
 
+  /// For users who want to controll timeout in each message when logging `WaitForBuffers = true`
+  [<CompiledName "WaitForBuffersTimeout">]
+  let waitForBuffersTimeout (duration: Duration) (message: Message) =
+    message |> setContext KnownLiterals.WaitForBuffersTimeout duration
+
   ///////////////// CTORS ////////////////////
 
   /// Create a new Message with the passed parameters. Consider using `event` and
@@ -488,13 +493,15 @@ module Message =
   /// Adds a new exception to the "_logary.errors" internal field in the message.
   [<CompiledName "AddException">]
   let addExn (e: exn) msg =
-    let errors =
-      match tryGetContext KnownLiterals.ErrorsContextName msg with
-      | Some errors ->
-        e :: errors
-      | _ ->
-        e :: []
-    setContext KnownLiterals.ErrorsContextName errors msg
+    if isNull e then msg
+    else
+      let errors =
+        match tryGetContext KnownLiterals.ErrorsContextName msg with
+        | Some errors ->
+          e :: errors
+        | _ ->
+          e :: []
+      setContext KnownLiterals.ErrorsContextName errors msg
 
   /// Adds new exceptions to the "_logary.errors" internal field in the message.
   [<CompiledName "AddExceptions">]

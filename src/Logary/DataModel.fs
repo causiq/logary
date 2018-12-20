@@ -275,25 +275,19 @@ and SpanInfo =
   static member formatId (id: Guid) =
     id.ToString("n")
 
-/// Why was the message/metric/event not logged?
+/// describe the time scope info about a span, will be sent as a message's context data
 [<Struct>]
-type LogError =
-  /// The buffer of the target was full, so the message was not logged.
-  | BufferFull of target:string
-  /// The target, or the processing step before the targets, rejected the message.
-  | Rejected
+type SpanLog =
+  { traceId: string
+    spanId: string
+    parentSpanId: string
+    beginAt: int64 // number of ticks since the Unix epoch. Negative values represent instants before the Unix epoch. (from NodaTime)
+    endAt: int64 // number of ticks since the Unix epoch. Negative values represent instants before the Unix epoch. (from NodaTime)
+    duration: int64 // total number of ticks in the duration as a 64-bit integer. (from NodaTime)
+  }
 
-  static member wasRejected (e: LogError) =
-    match e with
-    | Rejected -> true
-    | _ -> false
-
-  static member bufferWasFull (e: LogError) =
-    match e with
-    | BufferFull _ -> true
-    | _ -> false
-
-type internal LogResult = Alt<Result<Promise<unit>, LogError>>
+type internal ProcessResult = Result<Promise<unit>, Message>
+type internal LogResult = Alt<ProcessResult>
 
 /// See the docs on the funtions for descriptions on how Ack works in conjunction
 /// with the promise.
@@ -302,11 +296,13 @@ type Logger =
   /// `Messages` produced from this instance.
   abstract name: PointName
 
-  /// - `waitForBuffers`: This causes the logger/caller to block on the RingBuffer being
-  ///   available to take the message. Giving a true here may cause the
+  /// Returns an Alt that commits on ALL N Targets' buffers accepting the message.
+  /// Even if the Alt was not committed to, one or more targets (fewer than N) may have accepted the message.
+  /// And this can not be canceled.
+  ///
+  /// - `waitForBuffers`: `true` means waiting for each target buffer to be available to take the message.
+  ///   `false` means it will try to detect whether the buffer is full and return immediately.
   abstract logWithAck: waitForBuffers:bool * level:LogLevel -> messageFactory:(LogLevel -> Message) -> LogResult
-
-  //abstract log: Message -> Alt<Result<Promise<unit>, unit>>
 
   /// Gets the currently set log level (minimal,inclusive),
   /// aka. the granularity with which things are being logged.
@@ -320,6 +316,7 @@ type internal LoggerWrapper(logger: Logger) =
   default x.level = logger.level
   default x.logWithAck (waitForBuffers, logLevel) messageFactory =
     logger.logWithAck (waitForBuffers, logLevel) messageFactory
+
   interface Logger with
     member x.name = x.name
     member x.level = x.level

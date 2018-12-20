@@ -16,6 +16,7 @@ open Logary.Configuration
 open Logary.Targets
 open Logary.Configuration
 open Logary.Configuration.Transformers
+open NodaTime
 
 module RandomWalk =
 
@@ -115,20 +116,20 @@ let main argv =
 
   let randomWalkPipe =
     Events.events
-    |> Pipe.tickTimer (randomness) (TimeSpan.FromMilliseconds 500.)
+    |> Pipe.tickTimer (randomness) (Duration.FromMilliseconds 500.)
 
   let processing =
     Events.compose [
       Events.events |> Events.minLevel LogLevel.Fatal |> Events.sink ["fatal"]
 
       //Events.events
-      //|> Pipe.tickTimer (WinPerfCounters.appMetrics (PointName.ofSingle "app")) (TimeSpan.FromMilliseconds 5000.)
+      //|> Pipe.tickTimer (WinPerfCounters.appMetrics (PointName.ofSingle "app")) (Duration.FromMilliseconds 5000.)
       //|> Pipe.map Array.toSeq
       //|> Events.flattenToProcessing
       //|> Events.sink ["console"; "influxdb"]
 
       //Events.events
-      //|> Pipe.tickTimer (WinPerfCounters.systemMetrics (PointName.ofSingle "system")) (TimeSpan.FromMilliseconds 5000.)
+      //|> Pipe.tickTimer (WinPerfCounters.systemMetrics (PointName.ofSingle "system")) (Duration.FromMilliseconds 5000.)
       //|> Pipe.map Array.toSeq
       //|> Events.flattenToProcessing
       //|> Events.sink ["console"; "influxdb"]
@@ -138,7 +139,7 @@ let main argv =
 
       randomWalkPipe
       |> Pipe.choose (Message.tryGetGauge "Logary.ConsoleApp.randomWalk")
-      |> Pipe.tickTimer timing (TimeSpan.FromSeconds 10.)
+      |> Pipe.tickTimer timing (Duration.FromSeconds 10.)
       |> Pipe.map Array.toSeq
       |> Events.flattenSeq
       |> Events.sink ["console"]

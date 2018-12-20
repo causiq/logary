@@ -27,11 +27,11 @@ module internal Impl =
       let take =
         RingBuffer.take api.requests ^=> function
           | Log (message, ack) ->
-            ilogger.timeAlt (timeOut (conf.delay.ToTimeSpan()), "single loop delay")
+            ilogger.timeAlt (timeOut (conf.delay.toTimeSpanSafe()), "single loop delay")
             >>=. ack *<= ()
             >>= singleLoopDelay
           | Flush (ack, nack) ->
-            let simulateWrite = timeOut (conf.delay.ToTimeSpan()) ^=>. IVar.fill ack ()
+            let simulateWrite = timeOut (conf.delay.toTimeSpanSafe()) ^=>. IVar.fill ack ()
             (simulateWrite <|> nack) >>= singleLoopDelay
 
       let shutdown =
@@ -66,7 +66,7 @@ module internal Impl =
                 ackCh *<= () :: flushes)
               ([], [], [])
 
-          ilogger.timeAlt (timeOut (conf.delay.ToTimeSpan()), "batch loop delay, delaying", logBefore=true) ^=> fun () ->
+          ilogger.timeAlt (timeOut (conf.delay.toTimeSpanSafe()), "batch loop delay, delaying", logBefore=true) ^=> fun () ->
           Job.conIgnore acks >>=. Job.conIgnore flushes >>= batchLoopDelay
 
       let shutdown =

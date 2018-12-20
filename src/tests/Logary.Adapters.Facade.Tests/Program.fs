@@ -23,11 +23,11 @@ let stubLogger (minLevel: LogLevel) (message: Message ref) name =
   :> Logger
 
 let stubLoggerReject name =
-  BaseLogger(Debug, name, Alt.always (Result.Error LogError.Rejected))
+  BaseLogger(Debug, name, Alt.always (Result.Error (Message.event Info "Rejected")))
   :> Logger
 
-let stubLoggerFull name targetName =
-  BaseLogger(Debug, name, Alt.always (Result.Error (LogError.BufferFull targetName)))
+let stubLoggerFull name (targetName: string) =
+  BaseLogger(Debug, name, Alt.always (Result.Error (Message.eventFormat("BufferFull {target}", targetName))))
   :> Logger
 
 let stubLogManager (message: Message ref) =
@@ -352,14 +352,14 @@ let tests =
           let properLogger = stubLoggerReject (PointName.parse "Adapters.Facade.v4")
           let subject = LoggerAdapter.createGeneric<Libryy.LoggingV4.Logger> properLogger
           let! res = subject.logWithAck (false, Libryy.LoggingV4.LogLevel.Warn) (Libryy.LoggingV4.Message.eventX "Hello world")
-          res |> Flip.Expect.equal "Should eq rejected" (Result.Error Libryy.LoggingV4.LogError.Rejected)
+          res |> Flip.Expect.equal "Should eq rejected" (Result.Error "Rejected")
         }
 
         yield testCaseJob "end to end with buffer full result" <| job {
           let properLogger = stubLoggerFull (PointName.parse "Adapters.Facade.v4") "t1"
           let subject = LoggerAdapter.createGeneric<Libryy.LoggingV4.Logger> properLogger
           let! res = subject.logWithAck (false, Libryy.LoggingV4.LogLevel.Warn) (Libryy.LoggingV4.Message.eventX "Hello world")
-          res |> Flip.Expect.equal "Should eq rejected" (Result.Error (Libryy.LoggingV4.LogError.BufferFull "t1"))
+          res |> Flip.Expect.equal "Should eq rejected" (Result.Error ("BufferFull \"t1\""))
         }
 
         yield testCase "end to end with adapter, log method" <| fun _ ->

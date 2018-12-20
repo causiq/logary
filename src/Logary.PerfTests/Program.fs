@@ -3,20 +3,13 @@ namespace Logary.PerfTests
 open System
 open System.Threading
 open Expecto
-open Expecto.Flip
 open Logary
 open Logary.Configuration
 open Logary.Message
-open BenchmarkDotNet
-open BenchmarkDotNet.Horology
 open BenchmarkDotNet.Code
 open BenchmarkDotNet.Jobs
-open BenchmarkDotNet.Reports
 open BenchmarkDotNet.Attributes
-open BenchmarkDotNet.Attributes.Jobs
-open BenchmarkDotNet.Attributes.Exporters
-open BenchmarkDotNet.Attributes.Columns
-open BenchmarkDotNet.Attributes.Jobs
+open NodaTime
 
 module TestData =
   let helloWorld =
@@ -36,18 +29,28 @@ module TestData =
 module Values =
   let run = Hopac.Hopac.run
 
+
   let targets =
     Map [
-      "noop", Targets.Noop.create Targets.Noop.empty "sink"
-      "single_nodelay", Targets.BadBoy.create Targets.BadBoy.empty "sink"
-      "single_delay", Targets.BadBoy.create Targets.BadBoy.empty "sink"
-      "batch_nodelay", Targets.BadBoy.create Targets.BadBoy.empty "sink"
-      "batch_delay", Targets.BadBoy.create Targets.BadBoy.empty "sink"
+      "single_nodelay", Targets.BadBoy.create {Targets.BadBoy.empty with delay = Duration.Zero; batch = false } "sink"
+      "single_delay", Targets.BadBoy.create {Targets.BadBoy.empty with batch = false }  "sink"
+      "batch_nodelay", Targets.BadBoy.create {Targets.BadBoy.empty with delay = Duration.Zero; batch = true }  "sink"
+      "batch_delay", Targets.BadBoy.create {Targets.BadBoy.empty with batch = true }  "sink"
     ]
 
   let baseJob =
     Job.Default
       .WithInvocationCount(800)
+      .WithWarmupCount(4)
+      .WithLaunchCount(1)
+      //.WithIterationTime(TimeInterval.Millisecond * 200)
+      .WithGcServer(true)
+      .WithGcConcurrent(true)
+
+
+  let smallInvocationJob =
+    Job.Default
+      .WithInvocationCount(16)
       .WithWarmupCount(4)
       .WithLaunchCount(1)
       //.WithIterationTime(TimeInterval.Millisecond * 200)
@@ -62,9 +65,6 @@ type LogaryValue =
     let logary =
       Config.create "Logary.ConsoleApp" "localhost"
       |> Config.target (targets |> Map.find target)
-      |> Config.ilogger (ILogger.LiterateConsole Warn)
-      |> Config.processing (Events.events |> Events.sink [ "sink" ])
-      |> Config.loggerMinLevel ".*" Debug
       |> Config.buildAndRun
     { logger = logary.getLogger (PointName [| "PerfTestLogger" |])
       target = target }
@@ -82,7 +82,7 @@ type BP() =
   val mutable logary: LogaryValue
 
   member x.Configs() =
-    [ "single_nodelay"; "batch_delay" ]
+    [ "single_nodelay";"batch_delay" ]
     |> Seq.map (LogaryValue >> LogaryParam >> toParam)
 
   [<Benchmark>]
@@ -100,7 +100,7 @@ type ACK() =
   val mutable logary: LogaryValue
 
   member x.LogaryConfigs() =
-    [ "single_nodelay"; "batch_delay" ]
+    [ "single_nodelay";"batch_delay" ]
     |> Seq.map (LogaryValue >> LogaryParam >> toParam)
 
   [<Benchmark>]
@@ -114,12 +114,13 @@ type Simple() =
   val mutable logary: LogaryValue
 
   member x.LogaryConfigs() =
-    [ "single_nodelay"; "batch_delay" ]
+    [ "single_nodelay";"batch_delay" ]
     |> Seq.map (LogaryValue >> LogaryParam >> toParam)
 
   [<Benchmark>]
   member x.simp() =
     x.logary.logger.logSimple (TestData.multiGaugeMessage Warn)
+
 
 module Tests =
   open BenchmarkDotNet.Diagnosers
@@ -134,9 +135,9 @@ module Tests =
     let config xJ =
       { benchmarkConfig with
           exporters =
-            [ new CsvExporter(CsvSeparator.Comma)
-              new Exporters.HtmlExporter()
-              new Exporters.RPlotExporter()
+            [ new BenchmarkDotNet.Exporters.Csv.CsvExporter(CsvSeparator.Comma)
+              new BenchmarkDotNet.Exporters.HtmlExporter()
+              new BenchmarkDotNet.Exporters.RPlotExporter()
             ]
           diagnosers =
             [ new MemoryDiagnoser() ]
@@ -146,20 +147,17 @@ module Tests =
     testList "benchmarks" [
       test "backpressure" {
         let cfg = config (Job(Job.Core, baseJob))
-        let summary: Summary = benchmark<BP> cfg (id >> box) |> unbox
-        ()
+        benchmark<BP> cfg box |> ignore
       }
 
       test "simple" {
         let cfg = config (Job(Job.Core, baseJob))
-        let summary: Summary = benchmark<Simple> cfg (id >> box) |> unbox
-        ()
+        benchmark<Simple> cfg box |> ignore
       }
 
       test "ack" {
-        let cfg = config (Job(Job.Core, baseJob))
-        let summary: Summary = benchmark<ACK> cfg (id >> box) |> unbox
-        ()
+        let cfg = config (Job(Job.Core, smallInvocationJob))
+        benchmark<ACK> cfg box |> ignore
       }
     ]
 

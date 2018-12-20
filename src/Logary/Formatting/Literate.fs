@@ -34,31 +34,33 @@ module Literate =
   /// the lines (outer list), each consisting of a string and a literate token specifying how that string is to be
   /// formatted.
   let rec private tokeniseException (e: exn): seq<(string * LiterateToken) list> =
-    // each inner list represents a written/outputted text line
-    seq {
-      yield printLine (ExnType (e.GetType().FullName, e.Message))
-      yield! DotNetStacktrace.parse e.StackTrace |> Seq.map printLine
-      match e with
-      | :? AggregateException as ae when not (isNull ae.InnerExceptions) && ae.InnerExceptions.Count > 1 ->
-        let mutable i = 0
-        for e in ae.InnerExceptions do
-          i <- i + 1
-          let firstLine, remainder = tokeniseException e |> Seq.headTail
-          yield printLine StacktraceDelim
-          yield [
-            yield sprintf "Inner exn#", Subtext
-            yield string i, NumericSymbol
-            yield sprintf " ", Punctuation
-            yield! firstLine
-          ]
-          yield! remainder
+    if isNull e then Seq.empty
+    else
+      // each inner list represents a written/outputted text line
+      seq {
+        yield printLine (ExnType (e.GetType().FullName, e.Message))
+        yield! DotNetStacktrace.parse e.StackTrace |> Seq.map printLine
+        match e with
+        | :? AggregateException as ae when not (isNull ae.InnerExceptions) && ae.InnerExceptions.Count > 1 ->
+          let mutable i = 0
+          for e in ae.InnerExceptions do
+            i <- i + 1
+            let firstLine, remainder = tokeniseException e |> Seq.headTail
+            yield printLine StacktraceDelim
+            yield [
+              yield sprintf "Inner exn#", Subtext
+              yield string i, NumericSymbol
+              yield sprintf " ", Punctuation
+              yield! firstLine
+            ]
+            yield! remainder
 
-      | _ when not (isNull e.InnerException) ->
-        yield printLine StacktraceDelim
-        yield! tokeniseException e.InnerException
-      | _ ->
-        ()
-    }
+        | _ when not (isNull e.InnerException) ->
+          yield printLine StacktraceDelim
+          yield! tokeniseException e.InnerException
+        | _ ->
+          ()
+      }
 
   let tokeniseExceptions (pvd: IFormatProvider) (nl: string) (m: Message) =
     let exceptions =

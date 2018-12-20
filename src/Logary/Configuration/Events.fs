@@ -21,7 +21,7 @@ module Events =
   let minLevel level pipe =
     pipe |> Pipe.filter (fun msg -> msg.level >= level)
 
-  /// if msg with no specific sinks, will send to all targets
+  /// if msg with no specific sinks, it will send to all targets
   let sink (names: string list) pipe =
     pipe |> Pipe.map (Message.addSinks names)
 
@@ -31,23 +31,33 @@ module Events =
       fun (msgs: #seq<_>) ->
         HasResult << Alt.prepareJob <| fun () ->
 
+        let putAllPromises = IVar ()
+
         msgs
-        |> Seq.Con.mapJob (fun msg -> next msg |> PipeResult.orDefault LogResult.rejected)
-        |> Job.map (fun results -> Result.sequence (results.ToArray()))
-        |> Job.map (function
-          | Ok _ ->
-            LogResult.success
-          | Result.Error [] ->
-            failwithf "No results for %A" (List.ofSeq msgs)
-          | Result.Error (e :: _) ->
-            Alt.always (Result.Error e))
-        )
+        |> Seq.Con.mapJob (fun msg -> next msg |> PipeResult.orDefault LogResult.success)
+        >>= IVar.fill putAllPromises
+        |> Job.start
+        >>-. putAllPromises ^-> ProcessResult.reduce
+    )
 
+  /// compose here means dispatch each event/message to all pipes, not chains them.
   let compose pipes =
-    let build cont =
-      let composed =
-        pipes |> List.fold (fun k pipe -> pipe.build k) cont
+    let allTickTimerJobs = List.collect (fun pipe -> pipe.tickTimerJobs) pipes
 
-      fun sourceItem -> composed sourceItem
+    let build =
+      fun cont ->
+        let allBuildedSource = pipes |> List.map (fun pipe -> pipe.build cont)
+        fun sourceItem ->
+          HasResult << Alt.prepareJob <| fun () ->
+            let alllogedAcks = IVar ()
 
-    { build = build; tickTimerJobs = List.collect (fun pipe -> pipe.tickTimerJobs) pipes }
+            allBuildedSource
+            |> Hopac.Extensions.Seq.Con.mapJob (fun logWithAck ->
+               logWithAck sourceItem |> PipeResult.orDefault (LogResult.success))
+            >>= IVar.fill alllogedAcks
+            |> Job.start
+            >>-. alllogedAcks ^-> ProcessResult.reduce
+
+    { build = build
+      tickTimerJobs = allTickTimerJobs
+    }

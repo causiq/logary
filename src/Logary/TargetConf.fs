@@ -19,6 +19,7 @@ type TargetConf =
     /// Supervision policy. Use `Logary.Internals.Policy` to choose. By default,
     /// uses exponential backup with a maximum delay, retrying forever.
     policy: Policy
+    /// (goes on specific target) (composes when creating target, not compose at call-site when sending message)
     middleware: Middleware list
     server: TargetAPI -> Job<unit> }
 

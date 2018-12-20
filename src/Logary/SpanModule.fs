@@ -8,18 +8,6 @@ open NodaTime
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Span =
-
-  /// describe the time scope info about a span, will be sent as a message's context data
-  [<Struct>]
-  type internal SpanLog =
-    { traceId: string
-      spanId: string
-      parentSpanId: string
-      beginAt: int64 // number of ticks since the Unix epoch. Negative values represent instants before the Unix epoch. (from NodaTime)
-      endAt: int64 // number of ticks since the Unix epoch. Negative values represent instants before the Unix epoch. (from NodaTime)
-      duration: int64 // total number of ticks in the duration as a 64-bit integer. (from NodaTime)
-    }
-
   type private T =
     { traceId: Guid
       spanId: Guid
@@ -98,7 +86,6 @@ module Span =
 
               (t.messageFac >> transform) level
               |> setContext KnownLiterals.SpanInfoContextName spanLog
-              |> setSpanId spanInfo.spanId
 
             if not hasFired then
               do hasFired <- true

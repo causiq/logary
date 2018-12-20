@@ -78,6 +78,31 @@ let run pipe (targets:ResizeArray<MockTarget>) =
 let tests =
   [
     testList "processing builder" [
+      testCaseJob "pipe compose" (job {
+        let processing = 
+          Events.compose [
+            Events.events
+            |> Events.minLevel Fatal 
+            |> Events.sink ["1"]
+
+            Events.events
+            |> Events.minLevel Warn 
+            |> Events.sink ["2"]
+          ]
+        
+        let! targets = [mockTarget "1"; mockTarget "2"; ] |> Job.seqCollect
+        let! sendMsg, ctss = run processing targets
+        let msgToSend = Message.event Error "error message"
+        do! sendMsg msgToSend
+
+        let! msgsFromEachTarget = targets |> Seq.Con.mapJob (fun t -> t.getMsgs ())
+        let (msgs1,msgs2) = (msgsFromEachTarget.[0],msgsFromEachTarget.[1])
+         
+        Expect.equal (List.length msgs1) 0 "should have 0 message in target 1"
+        Expect.equal (List.length msgs2) 1 "should have 1 message in target 2"
+      })
+
+
       ptestCaseJob "message routing" (job {
 
         // context
@@ -85,7 +110,7 @@ let tests =
           Events.compose [
              Events.events
              |> Events.service "svc1"
-             |> Pipe.counter (fun _ -> 1L) (TimeSpan.FromMilliseconds 100.)
+             |> Pipe.counter (fun _ -> 1L) (Duration.FromMilliseconds 100.)
              |> Pipe.map (fun counted -> Message.event Info (sprintf "counter result is %i within 100 ms" counted))
              |> Events.sink ["1"]
 
@@ -97,7 +122,7 @@ let tests =
              Events.events |> Events.minLevel Warn |> Events.sink ["3"]
 
              Events.events
-             |> Pipe.bufferTime (TimeSpan.FromMilliseconds 200.)
+             |> Pipe.bufferTime (Duration.FromMilliseconds 200.)
              |> Pipe.map (fun msgs -> Message.event Info (sprintf "there are %i msgs on every 200 milliseconds" (Seq.length msgs)))
              |> Events.sink ["4"]
 
@@ -196,12 +221,12 @@ let tests =
       let processing =
         Events.compose [
            Events.events
-           |> Pipe.tickTimer pingOk  (TimeSpan.FromSeconds 1.) // check health every 1 seconds
+           |> Pipe.tickTimer pingOk  (Duration.FromSeconds 1.) // check health every 1 seconds
            |> Pipe.filter (fun msg -> msg.level >= Warn)
            |> Events.sink ["TargetForUnhealthySvc"]  // report unhealthy info into some target
 
            Events.events
-           |> Pipe.withTickJob (pingFailed.TickEvery (TimeSpan.FromSeconds 1.))
+           |> Pipe.withTickJob (pingFailed.TickEvery (Duration.FromSeconds 1.))
            |> Pipe.tick pingFailed
            |> Pipe.filter (fun msg -> msg.level >= Warn)
            |> Events.sink ["TargetForUnhealthySvc"]

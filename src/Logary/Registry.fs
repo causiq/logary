@@ -9,7 +9,6 @@ open Logary.Message
 open Logary.Internals
 open Logary.Configuration
 open NodaTime
-open System
 open System.Text.RegularExpressions
 open System.Collections.Concurrent
 
@@ -20,12 +19,16 @@ type LogaryConf =
   abstract targets: HashMap<string, TargetConf>
   /// Service metadata - what name etc.
   abstract runtimeInfo: RuntimeInfo
-  /// Extra middleware added to every resolved logger.
+  /// Extra middleware added to every resolved logger. (compose at call-site)
   abstract middleware: Middleware[]
   /// Optional stream transformer.
   abstract processing: Processing
   /// each logger's min level
-  abstract loggerLevels : (string * LogLevel) list
+  abstract loggerLevels: (string * LogLevel) list
+  /// handler for process log error
+  abstract logResultHandler: (ProcessResult -> unit)
+  /// time out duration waiting for each target buffer to be available to take the message, if users choose logging message and waitForBuffers
+  abstract defaultWaitForBuffersTimeout: Duration
 
 /// This is the main state container in Logary.
 module Registry =
@@ -105,12 +108,8 @@ module Registry =
     let ensureName name (m: Message) =
       if m.name.isEmpty then { m with name = name } else m
 
-    let boxedUnit = box ()
-    let ensureWaitFor waitForBuffers (m: Message) =
-      if waitForBuffers then
-        { m with context = m.context |> HashMap.add KnownLiterals.WaitForBuffers boxedUnit }
-      else
-        m
+    let ensureWaitFor timeOut (m: Message) =
+      m |> Message.setContext KnownLiterals.WaitForBuffers timeOut
 
     let inline getLogger (t: T) name mid =
       let nameStr = name.ToString ()
@@ -133,7 +132,7 @@ module Registry =
           member x.logWithAck (waitForBuffers, level) messageFactory =
             if level >= x.level then
               // When the registry is shut down, reject the log message.
-              let rejection = t.isClosed ^->. Result.Error Rejected
+              let rejection = t.isClosed ^->. LogError.registryClosed
 
               let logMessage = Alt.prepareFun <| fun () ->
                 messageFactory level
@@ -170,7 +169,7 @@ module Registry =
       match timeout with
         | None -> processAlt ^->. (name,true)
         | Some duration ->
-          timeOut (duration.ToTimeSpan ()) ^->. (name,false)
+          timeOut (duration.toTimeSpanSafe()) ^->. (name,false)
           <|>
           processAlt ^->. (name,true)
 
@@ -207,11 +206,10 @@ module Registry =
          && not ("true" = Env.varDefault "LOGARY_I_PROMISE_I_HAVE_PURCHASED_LICENSE" (fun () -> "false")) then
          failwith "You must purchase a license for Logary to run it on or with IIS or Kestrel."
 
-  // Middleware at:
-  //  - LogaryConf (goes on all loggers) (through engine,and compose at call-site)
-  //  - TargetConf (goes on specific target) (composes in engine when sending msg to target)
-  //  - individual loggers (through engine,and compose at call-site)
-
+  // Middlewares at:
+  //  - LogaryConf (goes on all loggers) (compose at call-site)
+  //  - TargetConf (goes on specific target) (composes when creating target,not compose at call-site when sending message)
+  //  - individual loggers (compose at call-site)
   let create (conf: LogaryConf): Job<T> =
     Impl.lc ()
 
@@ -222,11 +220,13 @@ module Registry =
 
     let rlogger = ri.logger |> Logger.apply (setName rname)
 
+    // PipeResult.NoResult usually means do some fire-and-forget operation,e.g. push msg on to some buffer/sinks, wating for some condition to trigger next action.
+    // so we should treat it as the msg has been logged/processed. use `LogResult.success` may be more reasonable.
     let wrapper sendMsg mid msg =
       msg
       |> Middleware.compose (mid |> Option.fold (fun s t -> t :: s) rmid)
       |> sendMsg
-      |> PipeResult.orDefault LogResult.rejected
+      |> PipeResult.orDefault LogResult.success
 
     let flushCh, shutdownCh, isClosed = Ch (), Ch (), IVar ()
 
@@ -267,7 +267,22 @@ module Registry =
         if Array.isEmpty targets then
           NoResult
         else
-          msg |> Target.tryLogAllReduce targets |> HasResult)
+          let putBufferTimeOut = msg |> Message.tryGetContext KnownLiterals.WaitForBuffersTimeout |> Option.defaultValue conf.defaultWaitForBuffersTimeout
+          let putBufferTimeOut =
+            msg |> Message.tryGetContext KnownLiterals.WaitForBuffers
+            |> Option.defaultValue false // non blocking waiting default
+            |> function | true -> putBufferTimeOut | false -> Duration.Zero
+
+          msg
+          |> Target.logAllReduce putBufferTimeOut targets
+          |> Alt.afterFun (fun result ->
+            try
+              conf.logResultHandler result
+            with
+            | e ->
+              eprintfn "%O" e
+            result)
+          |> HasResult)
 
     runningPipe >>= fun (sendMsg, ctss) ->
     let state =

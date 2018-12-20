@@ -3,6 +3,8 @@ namespace Logary.Configuration
 open Hopac
 open Hopac.Infixes
 open Logary.Configuration.Transformers
+open NodaTime
+open Logary
 
 type Cancellation = internal { cancelled: IVar<unit> }
 
@@ -28,11 +30,11 @@ type Ticker<'state,'t,'r> (initialState:'state) =
   member this.Ticked = tickCh :> Alt<_>
   member this.Tick () = tickCh *<- ()
 
-  member this.TickEvery timespan =
+  member this.TickEvery (duration: Duration) =
     let cancellation = Cancellation.create ()
     let rec loop () =
       Alt.choose [
-        timeOut timespan ^=> fun _ ->
+        timeOut (duration.toTimeSpanSafe()) ^=> fun _ ->
           this.Tick () ^=> fun _ ->
           loop ()
 

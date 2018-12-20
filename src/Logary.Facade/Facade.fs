@@ -296,29 +296,14 @@ module Alt =
         >>-. x)
       Job.start markNack >>-. altCommit)
 
-/// Why was the message/metric/event not logged?
-[<Struct>]
-type LogError =
-  /// The buffer of the target was full, so the message was not logged.
-  | BufferFull of target:string
-  /// The target, or the processing step before the targets, rejected the message.
-  | Rejected
-
-type internal LogResult = Alt<Result<Promise<unit>, LogError>>
+type internal LogResult = Alt<Result<Promise<unit>, string>>
 
 module internal Promise =
   let unit: Promise<unit> = Promise (())
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module internal LogError =
-  let rejected: LogError = Rejected
-  let bufferFull target: LogError = BufferFull target
-
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal LogResult =
-  let success: Alt<Result<Promise<unit>, LogError>> = Alt.always (Result.Ok Promise.unit)
-  let bufferFull target: Alt<Result<Promise<unit>, LogError>> = Alt.always (Result.Error (BufferFull target))
-  let rejected: Alt<Result<Promise<unit>, LogError>> = Alt.always (Result.Error Rejected)
+  let success: LogResult = Alt.always (Result.Ok Promise.unit)
 
 module internal H =
   /// Finds all exceptions
@@ -359,11 +344,9 @@ type Message =
 
   member x.getContext(): Map<string, obj> =
     x.context
-    |> Map.toSeq
-    |> Seq.filter (fun (k, _) ->
+    |> Map.filter (fun k _ ->
          not (k.StartsWith Literals.FieldsPrefix)
       && not (k.StartsWith Literals.LogaryPrefix))
-    |> Map.ofSeq
 
   /// If you're looking for how to transform the Message's fields, then use the
   /// module methods rather than instance methods, since you'll be creating new
@@ -383,9 +366,7 @@ module Logger =
     logger.logWithAck (false, logLevel) messageFactory ^-> function
       | Ok _ ->
         true
-      | Result.Error Rejected ->
-        true
-      | Result.Error (BufferFull _) ->
+      | Result.Error error ->
         false
 
   let private printDotOnOverflow accepted =
@@ -401,10 +382,7 @@ module Logger =
     logger.logWithAck (true, logLevel) messageFactory ^=> function
       | Ok _ ->
         Job.result ()
-      | Result.Error Rejected ->
-        Job.result ()
-      | Result.Error (BufferFull target) ->
-        //Job.raises (exn (sprintf "logWithAck (true, _) should have waited for the RingBuffer(s) to accept the Message. Target(%s)" target))
+      | Result.Error error ->
         Job.result ()
 
   /// Special case: e.g. Fatal messages.
@@ -414,11 +392,7 @@ module Logger =
       logger.logWithAck (true, level) messageFactory ^=> function
         | Ok promise ->
           Job.start (promise ^=> IVar.fill ack)
-        | Result.Error Rejected ->
-          IVar.fill ack ()
-        | Result.Error (BufferFull target) ->
-          //let e = exn (sprintf "logWithAck (true, _) should have waited for the RingBuffer(s) to accept the Message. Target(%s)" target)
-          //IVar.fillFailure ack e
+        | Result.Error error ->
           IVar.fill ack ()
     start inner
     ack :> Promise<_>

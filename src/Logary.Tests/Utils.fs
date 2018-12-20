@@ -169,7 +169,7 @@ let logMsgWaitAndShutdown (targetApi: Target.T) (logCallBack: (Message -> Job<un
   let logAndWait (message: Message) =
     job {
       do! logger.infoWithBP (Logging.Message.eventX (sprintf "Sending message to Target(%s)" targetApi.name))
-      let! res = Target.tryLog targetApi message
+      let! res = Target.log Duration.Zero targetApi message
       match res with
       | Ok ack ->
         do! logger.infoWithBP (Logging.Message.eventX (sprintf "Waiting for Target(%s) to ACK message" targetApi.name))
@@ -233,7 +233,7 @@ module Expect =
     while cont do
       linea <- trim (sra.ReadLine())
       linee <- trim (sre.ReadLine())
-      linea |> Expect.equal "Should equal the expected line" linee
+      linea |> Expect.equal message linee
       cont <- not (isNull linea || isNull linee)
 
   open System.Text

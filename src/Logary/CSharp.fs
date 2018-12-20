@@ -603,7 +603,7 @@ type LoggerEx =
                               : Task =
     let ct = CancellationToken.None // if isNull ct then CancellationToken.None else ct
     let msgFac = fun _ -> Message.eventFormat (level, formatTemplate, args)
-    let call = Logger.log logger level msgFac
+    let call = logger.logWithBP level msgFac
     upcast Alt.toTask ct call
 
   [<Extension>]
@@ -622,7 +622,7 @@ type LoggerEx =
       gaugeWithUnit logger.name measurement (Gauge (Float value, units))
       |> setFieldsFromObject fields
 
-    Alt.toTask ct (Logger.log logger Debug (fun _ -> message))
+    Alt.toTask ct (logger.log Debug (fun _ -> message))
 
   // corresponds to: logSimple
 

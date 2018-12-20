@@ -396,7 +396,7 @@ module MessageTemplates =
             let nvs =
               ty.GetProperties(lookupPropFlags)
               |> Array.filter (fun p -> not <| isNull p && (isInclude p.Name))
-              |> Array.sortBy (fun p -> p.Name)
+              |> Array.sortByDescending (fun p -> p.Name)
               |> Array.fold (fun nvs p ->
                  let name = p.Name
                  match tryGetValueWithProp p instance with
@@ -662,20 +662,30 @@ module MessageTemplates =
         }
 
       let tokeniseProperty (writeState: WriteState) (pt: Property) (pv: TemplatePropertyValue) =
-        match pv with
-        | ScalarValue sv ->
-          let tokenised = tokeniseScalarValue writeState.provider sv pt.format
+        let tokenised =
+          match pv with
+          | ScalarValue sv -> tokeniseScalarValue writeState.provider sv pt.format |> Seq.singleton
+          | _ -> tokenisePropValueCompact writeState pv null
 
-          if pt.align.isEmpty then tokenised |> Seq.singleton
-          else
-            let (formated, token) = tokenised
-            let padded =
+        if pt.align.isEmpty then tokenised
+        else
+          let sb = System.Text.StringBuilder ()
+          tokenised |> Seq.map fst |> Seq.iter (sb.Append >> ignore)
+          let allFormatedTextWithoutAlign = sb.ToString ()
+          if pt.align.width > allFormatedTextWithoutAlign.Length then
+            let pads = pt.align.width - allFormatedTextWithoutAlign.Length
+            seq {
               match pt.align.direction with
-              |  AlignDirection.Right -> formated.PadLeft(pt.align.width, ' ')
-              |  AlignDirection.Left -> formated.PadRight(pt.align.width, ' ')
-              | _ -> formated
-            (padded, token) |> Seq.singleton
-        | _ -> tokenisePropValueCompact writeState pv null
+              |  AlignDirection.Right ->
+                yield! (" ", Subtext) |> Seq.replicate pads
+                yield! tokenised
+              |  AlignDirection.Left ->
+                yield! tokenised
+                yield! (" ", Subtext) |> Seq.replicate pads
+              | _ -> yield! tokenised
+            }
+          else tokenised
+
 
       let tokeniseTemplate (pvd: IFormatProvider) (t: Template) tryGetPropertyValue =
         t.tokens

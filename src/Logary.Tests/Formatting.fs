@@ -423,22 +423,23 @@ let textPrinters =
       ProjectionTestExcept {
         user =>
           User {
-            name => "whatever"
-            id => 999
             created =>
               DateTime {
-                Year => 2017
-                TimeOfDay => 00:00:00
-                Ticks => 636459552000000000
-                Second => 0
-                Month => 11
-                Minute => 0
-                Millisecond => 0
-                Kind => "Unspecified"
-                Hour => 0
-                DayOfYear => 315
+                Day => 11
                 DayOfWeek => "Saturday"
-                Day => 11}}}"""
+                DayOfYear => 315
+                Hour => 0
+                Kind => "Unspecified"
+                Millisecond => 0
+                Minute => 0
+                Month => 11
+                Second => 0
+                Ticks => 636459552000000000
+                TimeOfDay => 00:00:00
+                Year => 2017}
+            id => 999
+            name => "whatever"}}
+"""
       let except = <@@  Destructure.except<ProjectionTestExcept>(fun t -> [|t.user.created.Date|]) @@>
       let invalid = <@@ 1 + 1 @@>
       Logary.Configuration.Config.projection except
