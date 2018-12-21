@@ -3,6 +3,5 @@ NodaTime
 FSharp.Core
 Machine.Specifications
 Machine.Specifications.Should
-Machine.Specifications.Runner.Console
 Machine.Specifications.Runner.VisualStudio
 Microsoft.NET.Test.Sdk

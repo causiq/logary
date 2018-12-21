@@ -12,7 +12,6 @@ nuget Expecto.FsCheck
 nuget Expecto.Hopac
 nuget Machine.Specifications
 nuget Machine.Specifications.Should
-nuget Machine.Specifications.Runner.Console
 nuget Machine.Specifications.Runner.VisualStudio
 nuget Microsoft.NET.Test.Sdk
 nuget FParsec
