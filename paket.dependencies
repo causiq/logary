@@ -1,6 +1,7 @@
 generate_load_scripts: true
 source https://api.nuget.org/v3/index.json
-framework net461, netcoreapp2.0, netstandard2.0
+storage none
+framework auto-detect
 
 nuget Argu
 nuget Castle.Core
@@ -61,13 +62,24 @@ github neoeinstein/chiron:38e9d979fbab792904be19350f5fac9ebfaf9fd8 src/Chiron/Ch
 
 group Build
     source https://api.nuget.org/v3/index.json
-    framework net461, netcoreapp2.0, netstandard2.0
-    nuget FAKE
-    github fsharp/FAKE modules/Octokit/Octokit.fsx
+    storage none
+    framework auto-detect
+
+    nuget Fake.DotNet.Cli
+    nuget Fake.IO.FileSystem
+    nuget Fake.Core.Target
+    nuget Fake.Core.ReleaseNotes
+    nuget Fake.IO.FileSystem
+    nuget Fake.Tools.Octo
+    nuget Fake.Tools.Git
+    nuget Fake.DotNet.Paket
+    nuget Fake.Core.Xml
+    nuget Fake.Api.GitHub
 
 group Examples
     source https://api.nuget.org/v3/index.json
-    framework net461, netcoreapp2.0, netstandard2.0
+    storage none
+    framework auto-detect
     redirects on
 
     nuget Argu
@@ -81,8 +93,10 @@ group Examples
 
 group Benchmarks
     source https://api.nuget.org/v3/index.json
-    framework net471, netcoreapp2.0
+    storage none
+    framework auto-detect
     redirects on
+
     nuget FParsec
     nuget FSharp.Core
     nuget Hopac
