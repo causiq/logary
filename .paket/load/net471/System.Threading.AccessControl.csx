@@ -1,5 +1,0 @@
-#load "System.Security.AccessControl.csx" 
-#load "System.Security.Principal.Windows.csx" 
-#r "System" 
-#r "mscorlib" 
-#r "../../../packages/System.Threading.AccessControl/lib/net461/System.Threading.AccessControl.dll" 

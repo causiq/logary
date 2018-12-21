@@ -22,3 +22,8 @@ obj/
 packages/
 paket-files/
 tools/
+
+.paket/*
+!.paket/*.proj
+!.paket/*.props
+!.paket/*.targets

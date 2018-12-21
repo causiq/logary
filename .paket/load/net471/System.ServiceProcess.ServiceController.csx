@@ -1,5 +1,0 @@
-#load "System.Diagnostics.EventLog.csx" 
-#r "System" 
-#r "System.ServiceProcess" 
-#r "mscorlib" 
-#r "../../../packages/System.ServiceProcess.ServiceController/lib/net461/System.ServiceProcess.ServiceController.dll" 

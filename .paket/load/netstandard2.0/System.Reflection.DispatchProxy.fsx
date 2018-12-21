@@ -1,1 +1,0 @@
-#r "../../../packages/System.Reflection.DispatchProxy/lib/netstandard2.0/System.Reflection.DispatchProxy.dll" 

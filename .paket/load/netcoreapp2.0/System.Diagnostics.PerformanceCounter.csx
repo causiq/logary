@@ -1,5 +1,0 @@
-#load "Microsoft.Win32.Registry.csx" 
-#load "System.Configuration.ConfigurationManager.csx" 
-#load "System.Memory.csx" 
-#load "System.Security.Principal.Windows.csx" 
-#r "../../../packages/System.Diagnostics.PerformanceCounter/lib/netstandard2.0/System.Diagnostics.PerformanceCounter.dll" 

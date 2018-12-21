@@ -1,7 +1,0 @@
-#load "System.Configuration.ConfigurationManager.csx" 
-#load "System.DirectoryServices.csx" 
-#load "System.DirectoryServices.Protocols.csx" 
-#load "System.IO.FileSystem.AccessControl.csx" 
-#load "System.Security.AccessControl.csx" 
-#load "System.Security.Principal.Windows.csx" 
-#r "../../../packages/System.DirectoryServices.AccountManagement/lib/netstandard2.0/System.DirectoryServices.AccountManagement.dll" 

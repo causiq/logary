@@ -1,5 +1,0 @@
-#load "Microsoft.Win32.Registry.csx" 
-#load "System.Security.Permissions.csx" 
-#load "System.Security.Principal.Windows.csx" 
-#load "System.Threading.AccessControl.csx" 
-#r "../../../packages/System.Diagnostics.EventLog/lib/netstandard2.0/System.Diagnostics.EventLog.dll" 
