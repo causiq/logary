@@ -1,5 +1,0 @@
-#load "Microsoft.Win32.SystemEvents.csx" 
-#r "System" 
-#r "System.Drawing" 
-#r "mscorlib" 
-#r "../../../packages/System.Drawing.Common/lib/net461/System.Drawing.Common.dll" 

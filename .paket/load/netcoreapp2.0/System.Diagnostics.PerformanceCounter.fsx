@@ -1,5 +1,0 @@
-#load "Microsoft.Win32.Registry.fsx" 
-#load "System.Configuration.ConfigurationManager.fsx" 
-#load "System.Memory.fsx" 
-#load "System.Security.Principal.Windows.fsx" 
-#r "../../../packages/System.Diagnostics.PerformanceCounter/lib/netstandard2.0/System.Diagnostics.PerformanceCounter.dll" 

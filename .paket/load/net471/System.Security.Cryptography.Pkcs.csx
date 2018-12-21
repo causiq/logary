@@ -1,7 +1,0 @@
-#load "System.Buffers.csx" 
-#load "System.Memory.csx" 
-#load "System.Security.Cryptography.Cng.csx" 
-#r "System.Security" 
-#r "mscorlib" 
-#r "System" 
-#r "../../../packages/System.Security.Cryptography.Pkcs/lib/net461/System.Security.Cryptography.Pkcs.dll" 

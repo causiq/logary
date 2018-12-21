@@ -1,7 +1,7 @@
 language: csharp
-dist: trusty
+dist: xenial
 sudo: false
-dotnet: 2.1.101
+dotnet: 2.1.500
 
 matrix:
   fast_finish: true
@@ -27,10 +27,10 @@ matrix:
     - mono: weekly
     - mono: latest
 
+
 addons:
   apt:
     packages:
-    - dotnet-sharedframework-microsoft.netcore.app-1.1.2
     - libzmq3-dev
 
 env:
@@ -40,7 +40,7 @@ env:
     - TMPDIR=/tmp
 
 script:
-  - travis_wait ./build.sh
+  - travis_wait ./fake.sh build
 
 notifications:
   email: false

@@ -1,1 +1,0 @@
-#r "../../../packages/System.Data.Odbc/lib/netcoreapp2.0/System.Data.Odbc.dll" 
