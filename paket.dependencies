@@ -65,8 +65,8 @@ group Build
     storage none
     framework auto-detect
 
+    nuget Fake.DotNet.AssemblyInfoFile
     nuget Fake.DotNet.Cli
-    nuget Fake.IO.FileSystem
     nuget Fake.Core.Target
     nuget Fake.Core.ReleaseNotes
     nuget Fake.IO.FileSystem
@@ -75,6 +75,8 @@ group Build
     nuget Fake.DotNet.Paket
     nuget Fake.Core.Xml
     nuget Fake.Api.GitHub
+    nuget Fake.BuildServer.TeamCity
+    nuget Fake.IO.Zip
 
 group Examples
     source https://api.nuget.org/v3/index.json

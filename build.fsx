@@ -1,11 +1,28 @@
-#r @"packages/build/FAKE/tools/FakeLib.dll"
-open Fake
+#r "paket: groupref Build //"
+
+#load "./.fake/build.fsx/intellisense.fsx"
+
+// https://github.com/ionide/ionide-vscode-fsharp/issues/839#issuecomment-396296095
+#if !FAKE
+  #r "Facades/netstandard"
+#endif
+
 open System
 open System.IO
+open Fake.Core
+open Fake.DotNet
+open Fake.IO
+open Fake.Tools
+open Fake.IO.Globbing.Operators
+open Fake.Core.TargetOperators
+open Fake.Api
+open Fake.BuildServer
+open Fake.SystemHelper
 
 Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
-let configuration = environVarOrDefault "CONFIGURATION" "Release"
-let release = IO.File.ReadAllLines "RELEASE_NOTES.md" |> ReleaseNotesHelper.parseReleaseNotes
+
+let configuration = Environment.environVarOrDefault "CONFIGURATION" "Release"
+let release = ReleaseNotes.load "RELEASE_NOTES.md" 
 let description = "Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net."
 let tags = "structured logging f# logs logging performance metrics semantic"
 let authors = "Henrik Feldt"
@@ -15,13 +32,11 @@ let iconUrl = "https://raw.githubusercontent.com/logary/logary-assets/master/gra
 let licenceUrl = "https://raw.githubusercontent.com/logary/logary/master/LICENSE.md"
 let copyright = sprintf "Copyright \169 %i Henrik Feldt" DateTime.Now.Year
 
-Target "Clean" (fun _ ->
-  !!"./src/**/bin/" ++ "./src/**/obj/" ++ "./artifacts"
-  |> CleanDirs)
+Target.create "Clean" (fun _ ->
+  !!"./**/bin/" ++ "./**/obj/" ++ "./artifacts"
+  |> Shell.cleanDirs)
 
-open AssemblyInfoFile
-
-Target "AssemblyInfo" (fun _ ->
+Target.create "AssemblyInfo" (fun _ ->
   [ yield "Logary", None
     yield "Logary.Tests", None
     yield "Logary.Facade", None
@@ -33,14 +48,14 @@ Target "AssemblyInfo" (fun _ ->
     yield "Logary.Services.Rutta", Some "services"
   ]
   |> Seq.iter (fun (proj, subPath) ->
-    [ Attribute.Title proj
-      Attribute.Product proj
-      Attribute.Copyright copyright
-      Attribute.Description description
-      Attribute.Version release.AssemblyVersion
-      Attribute.FileVersion release.AssemblyVersion
+    [ AssemblyInfo.Title proj
+      AssemblyInfo.Product proj
+      AssemblyInfo.Copyright copyright
+      AssemblyInfo.Description description
+      AssemblyInfo.Version release.AssemblyVersion
+      AssemblyInfo.FileVersion release.AssemblyVersion
     ]
-    |> CreateFSharpAssemblyInfo (
+    |> AssemblyInfoFile.createFSharp (
       match subPath with
       | None -> sprintf "src/%s/AssemblyInfo.fs" proj
       | Some path -> sprintf "src/%s/%s/AssemblyInfo.fs" path proj)
@@ -48,9 +63,9 @@ Target "AssemblyInfo" (fun _ ->
 )
 
 let replace fromStr toStr path =
-  FileHelper.ReplaceInFiles [fromStr, toStr] [path]
+   Shell.replaceInFiles [fromStr, toStr] [path]
 
-Target "PaketFiles" (fun _ ->
+Target.create "PaketFiles" (fun _ ->
   replace "module FsMtParserFull" "module Logary.Internals.FsMtParserFull"
           "paket-files/messagetemplates/messagetemplates-fsharp/src/FsMtParser/FsMtParserFull.fs"
 
@@ -79,38 +94,33 @@ Target "PaketFiles" (fun _ ->
           "paket-files/logary/logary/src/Logary.CSharp.Facade/Facade.cs"
 )
 
-Target "ProjectVersion" (fun _ ->
+Target.create "ProjectVersion" (fun _ ->
   !! "src/*/*.fsproj"
   |> Seq.iter (fun file ->
     printfn "Changing file %s" file
-    XMLHelper.XmlPoke file "Project/PropertyGroup/Version/text()" release.NugetVersion)
+    Xml.poke file "Project/PropertyGroup/Version/text()" release.NugetVersion)
 )
 
-Target "TCReportVersion" (fun _ ->
+Target.create "TCReportVersion" (fun _ ->
   [ yield "version", release.SemVer.ToString()
     yield "major", string release.SemVer.Major
     yield "minor", string release.SemVer.Minor
-    yield "build", release.SemVer.Build
+    yield "build", string release.SemVer.Build
     yield "special", release.SemVer.PreRelease |> Option.map (sprintf "%O") |> function None -> "" | Some x -> x
   ]
   |> Seq.filter (snd >> String.IsNullOrWhiteSpace >> not)
-  |> Seq.iter (fun (name, value) -> TeamCityHelper.SetTeamCityParameter (sprintf "ver.%s" name) value)
-)
-
-Target "Restore" (fun _ ->
-  DotNetCli.Restore (fun p -> { p with WorkingDir = "src" })
+  |> Seq.iter (fun (name, value) -> TeamCity.setParameter (sprintf "ver.%s" name) value)
 )
 
 /// This also restores.
-Target "Build" (fun _ ->
-  DotNetCli.Build (fun p ->
+Target.create "Build" (fun _ ->
+  DotNet.build (fun p ->
   { p with
-      Configuration = configuration
-      Project = "src/Logary.sln"
-  })
+      Configuration = DotNet.BuildConfiguration.Custom configuration
+  }) "src/Logary.sln"
 )
 
-Target "Tests" (fun _ ->
+Target.create "Tests" (fun _ ->
   let commandLine (file: string) =
     let projectName = file.Substring(0, file.Length - ".fsproj".Length) |> Path.GetFileName
     let path = Path.GetDirectoryName file
@@ -119,7 +129,7 @@ Target "Tests" (fun _ ->
     !! "src/tests/**/*.fsproj"
     !! "src/*.Tests/*.fsproj"
   ]
-  |> Seq.iter (commandLine >> DotNetCli.RunCommand id))
+  |> Seq.iter (commandLine >> DotNet.exec id "" >> ignore))
 
 let packParameters name =
   [ "--no-build"
@@ -130,7 +140,7 @@ let packParameters name =
     sprintf "/p:Owners=\"%s\"" owners
     "/p:PackageRequireLicenseAcceptance=false"
     sprintf "/p:Description=\"%s\"" (description.Replace(",",""))
-    sprintf "/p:PackageReleaseNotes=\"%O\"" ((toLines release.Notes).Replace(",","").Replace(";", "—"))
+    sprintf "/p:PackageReleaseNotes=\"%O\"" ((release.Notes |> String.toLines).Replace(",","").Replace(";", "—"))
     sprintf "/p:Copyright=\"%s\"" copyright
     sprintf "/p:PackageTags=\"%s\"" tags
     sprintf "/p:PackageProjectUrl=\"%s\"" projectUrl
@@ -139,7 +149,7 @@ let packParameters name =
   ]
   |> String.concat " "
 
-Target "Pack" (fun _ ->
+Target.create "Pack" (fun _ ->
   !! "src/targets/**/*.fsproj"
   ++ "src/adapters/**/*.fsproj"
   ++ "src/ingestion/**/*.fsproj"
@@ -148,31 +158,31 @@ Target "Pack" (fun _ ->
   |> Seq.iter (fun proj ->
     let path = proj.Substring(0, proj.Length - ".fsproj".Length)
     let name = System.IO.Path.GetFileName path
-    DotNetCli.RunCommand id (
+    DotNet.exec id "" (
       sprintf
         "pack %s -c %s -o ./bin %s"
-        proj configuration (packParameters name))
+        proj configuration (packParameters name)) |> ignore
   )
 )
 
-Target "Push" (fun _ ->
-  Paket.Push (fun p -> { p with WorkingDir = "src" }))
+Target.create "Push" (fun _ ->
+  Paket.push (fun p -> { p with WorkingDir = "src" }))
 
 let ruttaBinFolder =
   "src/services/Logary.Services.Rutta/bin/Release/net461/"
 
-Target "PackageRutta" (fun _ ->
+Target.create "PackageRutta" (fun _ ->
   ignore (Directory.CreateDirectory "artifacts")
   "packages/libzmq_vc120/build/native/bin/libzmq-x64-v120-mt-4_2_30_0.dll"
-    |> FileHelper.CopyFile (Path.Combine(ruttaBinFolder, "libzmq.dll"))
+  |> Shell.copyFile(Path.Combine(ruttaBinFolder, "libzmq.dll"))
 
-  ZipHelper.CreateZip
+  Zip.createZip
     // work dir
     ruttaBinFolder
     // file name
     (sprintf "artifacts/Rutta-v%s.zip" (release.SemVer.ToString()))
     "A zip of the Rutta router/shipping service"
-    ZipHelper.DefaultZipLevel
+    Zip.DefaultZipLevel
     false
     (!! (sprintf "%s/**/*" ruttaBinFolder)))
 
@@ -184,11 +194,9 @@ let envRequired k =
   if isNull v then failwithf "Missing environment key '%s'." k
   v
 
-Target "CheckEnv" (fun _ -> ignore (envRequired "GITHUB_TOKEN"))
+Target.create "CheckEnv" (fun _ -> ignore (envRequired "GITHUB_TOKEN"))
 
-// https://github.com/fsharp/FAKE/blob/master/modules/Octokit/Octokit.fsx#L87
-#load "paket-files/build/fsharp/FAKE/modules/Octokit/Octokit.fsx"
-Target "Release" (fun _ ->
+Target.create "Release" (fun _ ->
   let gitOwner, gitName = "logary", "logary"
   let gitOwnerName = gitOwner + "/" + gitName
   let remote =
@@ -197,21 +205,20 @@ Target "Release" (fun _ ->
       |> function None -> "git@github.com:logary/logary.git"
                 | Some s -> s.Split().[0]
 
-  Git.Staging.StageAll ""
-  Git.Commit.Commit "" (sprintf "Bump version to %s" release.NugetVersion)
+  Git.Staging.stageAll ""
+  Git.CommitMessage.setMessage "" (sprintf "Bump version to %s" release.NugetVersion)
   Git.Branches.pushBranch "" remote (Git.Information.getBranchName "")
 
   Git.Branches.tag "" release.NugetVersion
   Git.Branches.pushTag "" remote release.NugetVersion
 
-  Octokit.createClientWithToken (envRequired "GITHUB_TOKEN")
-  |> Octokit.createDraft gitOwner gitName release.NugetVersion
+  GitHub.createClientWithToken (envRequired "GITHUB_TOKEN")
+  |> GitHub.draftNewRelease gitOwner gitName release.NugetVersion
       (Option.isSome release.SemVer.PreRelease) release.Notes
-  |> Octokit.releaseDraft
+  |> GitHub.publishDraft
   |> Async.RunSynchronously
 )
 
-Target "All" ignore
 
 "CheckEnv"
   ==> "Release"
@@ -220,12 +227,11 @@ Target "All" ignore
   ==> "AssemblyInfo"
   ==> "PaketFiles"
   ==> "ProjectVersion"
-  =?> ("TCReportVersion", TeamCityHelper.TeamCityVersion |> Option.isSome)
+  =?> ("TCReportVersion", TeamCity.Environment.Version |> Option.isSome)
   ==> "Build"
   ==> "Tests"
   ==> "Pack"
-  ==> "All"
   ==> "Push"
   ==> "Release"
 
-RunTargetOrDefault "All"
+Target.runOrDefault "Pack"
