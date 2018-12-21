@@ -4,23 +4,9 @@ dist: xenial
 sudo: false
 dotnet: 2.2
 
-matrix:
-  fast_finish: true
-  
-  include:
-    - os: linux
-    - os: osx
-      osx_image: xcode9.2
-    - os: osx
-      osx_image: xcode9.3beta
-
-  allow_failures:
-    - os: linux
-
 addons:
   apt:
     packages:
-    - dotnet-sharedframework-microsoft.netcore.app-1.1.2
     - libzmq3-dev
 
 env:
