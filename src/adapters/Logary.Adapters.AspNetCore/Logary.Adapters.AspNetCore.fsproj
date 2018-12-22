@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Description>Logary support for ASP.NET Core logging</Description>
+    <Version>3.0.0-alpha.1</Version>
+    <Authors>Logary Contributors</Authors>
+    <PackageTags>logary;aspnet;aspnetcore</PackageTags>
+    <PackageIconUrl>https://raw.githubusercontent.com/logary/logary-assets/master/graphics/LogaryLogoSquare.png</PackageIconUrl>
+    <PackageProjectUrl>https://github.com/logary/AspNetCore</PackageProjectUrl>
+    <PackageLicenseUrl>https://raw.githubusercontent.com/logary/logary/master/LICENSE.md</PackageLicenseUrl>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Logger.fs" />
+    <Compile Include="LoggerProvider.fs" />
+    <Compile Include="Extensions.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="paket.references" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../src/Logary/Logary.fsproj" />
+  </ItemGroup>
+  <Import Project="..\..\..\.paket\Paket.Restore.targets" />
+</Project>

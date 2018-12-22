@@ -48,6 +48,7 @@ nuget elmah.io.core
 nuget fszmq
 nuget libzmq_vc120 # specifically for Windows-support in Rutta
 nuget protobuf-net
+nuget Microsoft.Extensions.Logging
 
 github eiriktsarpalis/TypeShape src/TypeShape/TypeShape.fs
 github eiriktsarpalis/TypeShape src/TypeShape/Utils.fs
@@ -105,3 +106,11 @@ group Benchmarks
     nuget Expecto
     nuget Expecto.BenchmarkDotNet == 8.6.5
     nuget BenchmarkDotNet == 0.10.14 
+
+group AspNetCoreAdapterExample
+    source https://api.nuget.org/v3/index.json
+    storage none
+    framework auto-detect
+    redirects on
+
+    nuget Microsoft.AspNetCore.App >= 2.2.0
