@@ -1,9 +1,5 @@
 # Logary.Adapters.AspNetCore
 
-[![Travis build status](https://travis-ci.org/logary/AspNetCore.png)](https://travis-ci.org/logary/AspNetCore)
-[![AppVeyor Build status](https://ci.appveyor.com/api/projects/status/2i50hps9aipbwimb?svg=true)](https://ci.appveyor.com/project/lust4life/aspnetcore)
-[![NuGet Badge](https://buildstats.info/nuget/Logary.Adapters.AspNetCore)](https://www.nuget.org/packages/Logary.Adapters.AspNetCore)
-
 
 Logary logging for ASP.NET Core. This package routes ASP.NET Core log messages through Logary, so you can get information about ASP.NET's internal operations logged to the same Logary targets as your application events.
 
@@ -46,7 +42,7 @@ public class Program
 }
 ```
 
-More detail see [sample and run](https://github.com/logary/AspNetCore/blob/master/samples/AspNetCore.CSharp/Program.cs) :
+More detail see [sample and run](https://github.com/logary/logary/blob/aspnet-core-adapter/examples/aspnetcore/AspNetCore.CSharp/Program.cs) :
 
 default output （aspnet core console）：
 
