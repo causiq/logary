@@ -10,10 +10,10 @@ nuget EventStore.ClientAPI.NetCore
 nuget Expecto
 nuget Expecto.FsCheck
 nuget Expecto.Hopac
+nuget Jaeger.Thrift
 nuget Machine.Specifications
 nuget Machine.Specifications.Should
-nuget Machine.Specifications.Runner.VisualStudio
-nuget Microsoft.NET.Test.Sdk
+nuget Machine.Specifications.Runner.Console
 nuget FParsec
 nuget FSharp.Core ~> 4.5
 nuget FluentMigrator < 2
