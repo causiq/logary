@@ -90,7 +90,7 @@ module Span =
             if not hasFired then
               do hasFired <- true
               do activeSpan.Value <- previous
-              logger.logWith Info composedMsgFac
+              logger.logWithBP Info composedMsgFac |> Hopac.Hopac.start
 
           member x.Dispose () =
             x.finish id

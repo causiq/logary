@@ -191,6 +191,12 @@ module Message =
   let setSpanId (spanId: Guid) (message: Message) =
     message |> setContext KnownLiterals.SpanIdContextName (SpanInfo.formatId spanId)
 
+  let tryGetSpanId (message: Message) : Guid option =
+    message |> tryGetContext KnownLiterals.SpanIdContextName |> Option.map Guid.Parse
+
+  let tryGetSpanInfo (message: Message) : SpanLog option =
+    message |>  tryGetContext KnownLiterals.SpanInfoContextName
+
   /// For users who want to controll timeout in each message when logging `WaitForBuffers = true`
   [<CompiledName "WaitForBuffersTimeout">]
   let waitForBuffersTimeout (duration: Duration) (message: Message) =
