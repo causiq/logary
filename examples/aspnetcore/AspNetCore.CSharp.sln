@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AspNetCore.CSharp", ".\AspNetCore.CSharp\AspNetCore.CSharp.csproj", "{D62C8473-5FA2-4C01-A626-485A2434A19A}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "LogaryHelper", ".\LogaryHelper\LogaryHelper.fsproj", "{938E3C37-E95C-4ACE-B4E8-20C4738A4BD6}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary", "../../src/Logary/Logary.fsproj", "{1054B389-95A6-4F72-8913-81F27C531130}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.AspNetCore", "..\..\src\adapters\Logary.Adapters.AspNetCore\Logary.Adapters.AspNetCore.fsproj", "{C3DD5A2C-0E92-462C-8D58-B71CD87B17E3}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D62C8473-5FA2-4C01-A626-485A2434A19A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D62C8473-5FA2-4C01-A626-485A2434A19A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D62C8473-5FA2-4C01-A626-485A2434A19A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D62C8473-5FA2-4C01-A626-485A2434A19A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{938E3C37-E95C-4ACE-B4E8-20C4738A4BD6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{938E3C37-E95C-4ACE-B4E8-20C4738A4BD6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{938E3C37-E95C-4ACE-B4E8-20C4738A4BD6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{938E3C37-E95C-4ACE-B4E8-20C4738A4BD6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1054B389-95A6-4F72-8913-81F27C531130}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1054B389-95A6-4F72-8913-81F27C531130}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1054B389-95A6-4F72-8913-81F27C531130}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1054B389-95A6-4F72-8913-81F27C531130}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C3DD5A2C-0E92-462C-8D58-B71CD87B17E3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C3DD5A2C-0E92-462C-8D58-B71CD87B17E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C3DD5A2C-0E92-462C-8D58-B71CD87B17E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C3DD5A2C-0E92-462C-8D58-B71CD87B17E3}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
