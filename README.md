@@ -1947,25 +1947,9 @@ given by the serialiser chosen.
 
 [![Logary on Windows](https://ci.appveyor.com/api/projects/status/uf2n4l6a0tp7jq4p?svg=true)](https://ci.appveyor.com/project/haf/logary) [![Logary on Linux](https://travis-ci.org/logary/logary.svg?branch=master)](https://travis-ci.org/logary/logary)
 
-Assuming you have Ruby 1.9.3 or later installed:
-
-``` bash
-git clone --recursive -j8 git://github.com/logary/logary.git
-cd logary
-bundle
-bundle exec rake
-```
-
-### Building a signed version
-
-``` bash
-# first place your files here:
-# tools/logary.pvk
-# tools/logary.pvk.password
-# tools/logary.spc
-LOGARY_SIGN_ASSEMBLY=true bundle exec rake
-# DEBUG=true LOGARY_SIGN_ASSEMBLY=true bundle exec rake
-```
+    git clone git@github.com:logary/logary.git
+    cd logary
+    ./fake.sh build
 
 ## Contributing
 
