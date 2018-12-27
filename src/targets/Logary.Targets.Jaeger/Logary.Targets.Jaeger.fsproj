@@ -4,6 +4,8 @@
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="TSizeCountTransport.fs" />
+    <Compile Include="TUdpClientTransport.fs" />
     <Compile Include="Targets_Jaeger.fs" />
     <None Include="paket.references" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />

@@ -49,6 +49,7 @@ nuget fszmq
 nuget libzmq_vc120 # specifically for Windows-support in Rutta
 nuget protobuf-net
 nuget Microsoft.Extensions.Logging
+nuget System.Memory
 
 github eiriktsarpalis/TypeShape src/TypeShape/TypeShape.fs
 github eiriktsarpalis/TypeShape src/TypeShape/Utils.fs
