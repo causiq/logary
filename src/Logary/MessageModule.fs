@@ -546,17 +546,10 @@ module Message =
   /// in `KnownLiterals`.
   module Patterns =
     open KnownLiterals
-    open System
 
     /// Pattern match the key
     let (|Intern|Field|Gauge|Tags|Context|) (KeyValue (key: string, value: obj)) =
       match key with
-      | _ when key = ErrorsContextName
-            || key = ServiceContextName
-            || key = HostContextName
-            || key = SinkTargetsContextName ->
-        Intern
-
       | _ when key = TagsContextName ->
         let tags = unbox<Set<string>> value
         Tags tags
@@ -571,6 +564,9 @@ module Message =
       | _ when key.StartsWith GaugeNamePrefix ->
         let k = key.Substring GaugeNamePrefix.Length
         Gauge (k, unbox<Gauge> value)
+
+      | _ when key.StartsWith LogaryPrefix ->
+        Intern
 
       | _ ->
         match value with
