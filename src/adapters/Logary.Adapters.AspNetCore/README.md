@@ -56,3 +56,7 @@ with logary (literate console => expand tokenise):
 with logary (literate console => oneline tokenise):
 
 <img width="1876" alt="image" src="https://user-images.githubusercontent.com/3074328/50156442-d2ef5500-0309-11e9-876d-ab0ac73eb5ed.png">
+
+
+with logary (jaeger tracing target)
+<img width="2557" alt="image" src="https://user-images.githubusercontent.com/3074328/50510985-bb148f80-0ac6-11e9-8caa-b7f22f9b7193.png">
