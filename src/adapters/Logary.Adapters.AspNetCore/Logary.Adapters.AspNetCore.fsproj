@@ -3,7 +3,6 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <Description>Logary support for ASP.NET Core logging</Description>
-    <Version>3.0.0-alpha.1</Version>
     <Authors>Logary Contributors</Authors>
     <PackageTags>logary;aspnet;aspnetcore</PackageTags>
     <PackageIconUrl>https://raw.githubusercontent.com/logary/logary-assets/master/graphics/LogaryLogoSquare.png</PackageIconUrl>
