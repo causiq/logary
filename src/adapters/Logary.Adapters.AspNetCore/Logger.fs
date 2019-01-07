@@ -71,4 +71,5 @@ module LoggerAdapter =
         >> if isNull ex then id else Message.addExn ex
         >> processEvent eventId
         >> processState state ex formatter
-        |> logger.logWith (mapLogLevel level)
+        |> logger.logWithBP (mapLogLevel level)
+        |> Hopac.Hopac.start

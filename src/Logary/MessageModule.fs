@@ -191,6 +191,12 @@ module Message =
   let setSpanId (spanId: Guid) (message: Message) =
     message |> setContext KnownLiterals.SpanIdContextName (SpanInfo.formatId spanId)
 
+  let tryGetSpanId (message: Message) : Guid option =
+    message |> tryGetContext KnownLiterals.SpanIdContextName |> Option.map Guid.Parse
+
+  let tryGetSpanInfo (message: Message) : SpanLog option =
+    message |>  tryGetContext KnownLiterals.SpanInfoContextName
+
   /// For users who want to controll timeout in each message when logging `WaitForBuffers = true`
   [<CompiledName "WaitForBuffersTimeout">]
   let waitForBuffersTimeout (duration: Duration) (message: Message) =
@@ -540,17 +546,10 @@ module Message =
   /// in `KnownLiterals`.
   module Patterns =
     open KnownLiterals
-    open System
 
     /// Pattern match the key
     let (|Intern|Field|Gauge|Tags|Context|) (KeyValue (key: string, value: obj)) =
       match key with
-      | _ when key = ErrorsContextName
-            || key = ServiceContextName
-            || key = HostContextName
-            || key = SinkTargetsContextName ->
-        Intern
-
       | _ when key = TagsContextName ->
         let tags = unbox<Set<string>> value
         Tags tags
@@ -565,6 +564,9 @@ module Message =
       | _ when key.StartsWith GaugeNamePrefix ->
         let k = key.Substring GaugeNamePrefix.Length
         Gauge (k, unbox<Gauge> value)
+
+      | _ when key.StartsWith LogaryPrefix ->
+        Intern
 
       | _ ->
         match value with

@@ -1,13 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <AssemblyName>Logary.Targets.AliYun</AssemblyName>
-    <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
+    <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Targets_AliYun.fs" />
-    <None Include="Script.fsx" />
+    <Compile Include="TSizeCountTransport.fs" />
+    <Compile Include="TUdpClientTransport.fs" />
+    <Compile Include="Targets_Jaeger.fs" />
     <None Include="paket.references" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />
   </ItemGroup>

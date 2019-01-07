@@ -108,8 +108,8 @@ module Registry =
     let ensureName name (m: Message) =
       if m.name.isEmpty then { m with name = name } else m
 
-    let ensureWaitFor timeOut (m: Message) =
-      m |> Message.setContext KnownLiterals.WaitForBuffers timeOut
+    let ensureWaitFor waitForBuffers (m: Message) =
+      m |> Message.setContext KnownLiterals.WaitForBuffers waitForBuffers
 
     let inline getLogger (t: T) name mid =
       let nameStr = name.ToString ()

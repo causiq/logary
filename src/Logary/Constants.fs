@@ -5,7 +5,7 @@ module KnownLiterals =
 
   /// Avoid conflict with user defined context key
   [<Literal>]
-  let internal LogaryPrefix = "_logary."
+  let LogaryPrefix = "_logary."
 
   /// To recognize all fields for generate formatted msg
   [<Literal>]

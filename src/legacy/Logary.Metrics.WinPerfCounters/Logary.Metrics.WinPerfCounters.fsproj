@@ -2,7 +2,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AssemblyName>Logary.Metrics.WinPerfCounters</AssemblyName>
-    <Version>5.0.0</Version>
     <!-- Doesn't exist on Core
     https://stackoverflow.com/questions/45675734/cpu-usage-in-net-core-at-least-on-windows 
     -->
