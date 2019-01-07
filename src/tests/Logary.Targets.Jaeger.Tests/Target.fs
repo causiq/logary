@@ -5,16 +5,11 @@ open Logary.Tests
 open Hopac
 open Logary
 open Expecto
-open Thrift.Protocols
-open Thrift.Transports.Client
-open Thrift
 open NodaTime
 open Logary.Message
 
 module Target =
   open Jaeger.Thrift
-  open Logary
-  open Logary.Targets.Jaeger
 
   let shutdown t =
     job {
