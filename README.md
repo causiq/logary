@@ -2015,7 +2015,12 @@ Now ensure your shell has something like this as initialisation logic:
     eval `/usr/libexec/path_helper -s`
     export DOTNET_CLI_TELEMETRY_OPTOUT=1
 
-Or otherwise, you'll have a hard time building.
+Or otherwise, you'll have a hard time building. We recommend using Rider, rather
+than anything else to write F#, since this is a rather large project:
+
+    brew cask install rider
+
+You'll find Rider in your Applications folder.
 
 ## Contributing
 
