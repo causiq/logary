@@ -2005,6 +2005,18 @@ given by the serialiser chosen.
     cd logary
     ./fake.sh build
 
+If you have to install .Net Core first:
+
+    brew cask install dotnet-sdk
+
+Now ensure your shell has something like this as initialisation logic:
+
+    export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+    eval `/usr/libexec/path_helper -s`
+    export DOTNET_CLI_TELEMETRY_OPTOUT=1
+
+Or otherwise, you'll have a hard time building.
+
 ## Contributing
 
 Clone it like above. Ensure you can build it. Open `Logary.sln`.  Make a change,
