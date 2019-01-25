@@ -1,3 +1,7 @@
+#### 5.0.0-beta.30
+* Upgrade Rutta docker image and minor README fixes, thanks @haf
+* Ensure Rutta / HTTP codec can optionally enable CORS, thanks @haf
+
 #### 5.0.0-beta.29
 * BREAKING CHANGE. Change error model and failed-logs-model to be configuration based, #378, thanks @lust4life
 * Merge ASP.Net Core adapter into Logary repo proper #381, thanks @lust4life
