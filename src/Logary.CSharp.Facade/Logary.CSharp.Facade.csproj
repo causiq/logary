@@ -3,7 +3,7 @@
   <PropertyGroup>
     <AssemblyName>Logary.CSharp.Facade</AssemblyName>
     <Version>5.0.0</Version>
-    <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <RootNamespace>Logary.Facade</RootNamespace>
   </PropertyGroup>
 </Project>

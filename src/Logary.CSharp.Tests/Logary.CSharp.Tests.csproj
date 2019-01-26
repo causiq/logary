@@ -3,7 +3,7 @@
   <PropertyGroup>
     <AssemblyName>Logary.CSharp.Tests</AssemblyName>
     <Version>5.0.0-alpha</Version>
-    <TargetFrameworks>net461;netcoreapp2.0</TargetFrameworks>
+    <TargetFrameworks>netcoreapp2.0</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
     <None Include="paket.references" />

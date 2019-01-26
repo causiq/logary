@@ -270,8 +270,5 @@ module FSharpApi =
     let requestMoreTime (hc: HostControl) time =
       hc.RequestAdditionalTime time
 
-    let restart (hc: HostControl) =
-      hc.Restart()
-
     let stop (hc: HostControl) =
       hc.Stop()

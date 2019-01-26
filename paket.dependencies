@@ -1,7 +1,7 @@
-generate_load_scripts: true
 source https://api.nuget.org/v3/index.json
 storage none
 framework auto-detect
+version 5.193.0
 
 nuget Argu
 nuget Castle.Core
@@ -46,7 +46,6 @@ nuget elmah.corelibrary
 nuget elmah.io.client
 nuget elmah.io.core
 nuget fszmq
-nuget libzmq_vc120 # specifically for Windows-support in Rutta
 nuget protobuf-net
 nuget Microsoft.Extensions.Logging
 nuget System.Memory

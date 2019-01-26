@@ -5,9 +5,9 @@ ProjectSection(SolutionItems) = preProject
 	RELEASE_NOTES.md = RELEASE_NOTES.md
 EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary", "src\Logary\Logary.fsproj", "{55399874-D8FA-48A2-A8E3-94AB4BA5C8C7}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary", "Logary\Logary.fsproj", "{55399874-D8FA-48A2-A8E3-94AB4BA5C8C7}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Tests", "src\Logary.Tests\Logary.Tests.fsproj", "{07B94E4A-084A-4DA4-8357-21E375A2E6BF}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Tests", "Logary.Tests\Logary.Tests.fsproj", "{07B94E4A-084A-4DA4-8357-21E375A2E6BF}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{31F5ADE6-6D2C-4ADB-9A3C-4529B1253468}"
 ProjectSection(SolutionItems) = preProject
@@ -15,19 +15,19 @@ ProjectSection(SolutionItems) = preProject
 	paket.dependencies = paket.dependencies
 EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Facade", "src\Logary.Facade\Logary.Facade.fsproj", "{D348EAAC-B359-499E-A68A-31173109ABCB}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Facade", "Logary.Facade\Logary.Facade.fsproj", "{D348EAAC-B359-499E-A68A-31173109ABCB}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Facade", "src\adapters\Logary.Adapters.Facade\Logary.Adapters.Facade.fsproj", "{C69D8AB2-4190-43D2-A04D-1483291DCA95}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Facade", "adapters\Logary.Adapters.Facade\Logary.Adapters.Facade.fsproj", "{C69D8AB2-4190-43D2-A04D-1483291DCA95}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Facade.Tests", "src\tests\Logary.Adapters.Facade.Tests\Logary.Adapters.Facade.Tests.fsproj", "{3BBAF0E4-9024-4E2F-B72D-23FE14FA4D17}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Facade.Tests", "tests\Logary.Adapters.Facade.Tests\Logary.Adapters.Facade.Tests.fsproj", "{3BBAF0E4-9024-4E2F-B72D-23FE14FA4D17}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{83C15BBC-57DE-41B8-B120-B07072F7D4C8}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "..\examples", "{83C15BBC-57DE-41B8-B120-B07072F7D4C8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cibryy", "examples\Cibryy\Cibryy.csproj", "{3C5509C3-4A96-4F42-B1AD-0860E189BD80}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cibryy", "..\examples\Cibryy\Cibryy.csproj", "{3C5509C3-4A96-4F42-B1AD-0860E189BD80}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Libryy", "examples\Libryy\Libryy.fsproj", "{EEDC4E13-9C8C-4DF4-887F-BEF17EE940BB}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Libryy", "..\examples\Libryy\Libryy.fsproj", "{EEDC4E13-9C8C-4DF4-887F-BEF17EE940BB}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Facade.Tests", "src\Logary.Facade.Tests\Logary.Facade.Tests.fsproj", "{4D646024-6D9B-4F76-8CB0-71C74841BBCA}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Facade.Tests", "Logary.Facade.Tests\Logary.Facade.Tests.fsproj", "{4D646024-6D9B-4F76-8CB0-71C74841BBCA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

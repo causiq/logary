@@ -32,13 +32,6 @@ let iconUrl = "https://raw.githubusercontent.com/logary/logary-assets/master/gra
 let licenceUrl = "https://raw.githubusercontent.com/logary/logary/master/LICENSE.md"
 let copyright = sprintf "Copyright \169 %i Henrik Feldt" DateTime.Now.Year
 
-Target.create "Clean" (fun _ ->
-  // This line actually ensures we get the correct version checked in
-  // instead of the one previously bundled with 'fake`
-  Git.CommandHelper.gitCommand "" "checkout .paket/Paket.Restore.targets"
-  !!"./**/bin/" ++ "./**/obj/" ++ "./artifacts"
-  |> Shell.cleanDirs)
-
 Target.create "AssemblyInfo" (fun _ ->
   [ yield "Logary", None
     yield "Logary.Tests", None
@@ -226,8 +219,7 @@ Target.create "Release" (fun _ ->
 "CheckEnv"
   ==> "Release"
 
-"Clean"
-  ==> "AssemblyInfo"
+"AssemblyInfo"
   ==> "PaketFiles"
   ==> "ProjectVersion"
   =?> ("TCReportVersion", TeamCity.Environment.Version |> Option.isSome)
