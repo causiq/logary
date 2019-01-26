@@ -6,7 +6,6 @@ open Hopac
 open Hopac.Infixes
 open Logary
 open Logary.Message
-open Logary.Target
 open Logary.Configuration
 open Logary.Internals
 open RabbitMQ.Client
@@ -113,7 +112,6 @@ let empty =
 module internal Impl =
 
   module Counter =
-    open System
     open System.Threading
 
     let mutable private counter = 0L
@@ -165,9 +163,7 @@ module internal Impl =
         RequestedConnectionTimeout = int (conf.connectionTimeout.ToTimeSpan().TotalMilliseconds)
       )
 
-    let conn = fac.CreateConnection(clientName)
-    conn.AutoClose <- false // closed when disposed
-    conn
+    fac.CreateConnection(clientName)
 
   let createModel (conn: IConnection) =
     let model = conn.CreateModel()
