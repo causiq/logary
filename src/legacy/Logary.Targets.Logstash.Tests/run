@@ -1,6 +1,0 @@
-#!/usr/bin/env sh
-set -e
-set -o pipefail
-dotnet restore
-dotnet build
-mono --debug bin/Debug/net461/Logary.Targets.Logstash.Tests.exe
