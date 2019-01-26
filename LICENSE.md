@@ -41,7 +41,7 @@ This section defines the licenses for each subcomponent of Logary.
 
 ## Logary Library (Logary-lib)
 
-Present at `src/Logary{,Tests,PerfTests}` and `src/adapters/*`. Each being a .Net librariy that you link your own
+Present at `src/Logary{,Tests,PerfTests}` and `src/adapters/*`. Each being a .Net library that you link your own
 code/software to.
 
 Non-profits and non-profit projects are free to use without payment, subject to the Terms of Service defined below.
@@ -51,7 +51,7 @@ Terms of Service defined below.
 
 ## Targets
 
-Present at `src/targets`, being .Net libraries that you link your own software to, or add as plugins to Rutta.
+Present at `src/targets/*`, being .Net libraries that you link your own software to, or add as plugins to Rutta.
 
 Targets incorporated into the Logary code-base cannot be used without using the Logary library, but their code is free
 to modify, extend and sell under the *Apache 2.0* license, unless specified otherwise on a per target basis (see below).
@@ -65,7 +65,7 @@ All other targets (and their code-bases) are licensed as Apache 2.0 (Appendix A 
 
 ## Rutta
 
-Present at `src/services`, being an executable program and docker container.
+Present at `src/services/*`, being an executable program and docker container.
 
 Rutta is *dual-licensed* as **GPL v3**, or as **a commercial license**. Purchasing a commercial license for Rutta lets
 you use and extend its source code for your own commercial purposes and not open source that change.
@@ -81,7 +81,7 @@ you don't want to send a pull request with your change, you must purchase the co
 
 Present at `src/Logary{,CSharp}.Facade{,.Tests}`. Also called the Façade, in short.
 
-The Façade is Apache 2.0 licensed.
+The Façade is **Apache 2.0** licensed.
 
 The *Library Façade* is distinct from the *Façade Adapter*, since the Façade is Apache 2.0-licensed code, whilst the
 *Façade Adapter* (in `src/adapters/Logary.Adapters.Facade`) doesn't work without Logary-lib.
@@ -180,8 +180,8 @@ You must renew the license(s) yearly, at a 60% discount of the initial price tha
 instant when the license expires.
 
 So for example, if you have 5 different services, each with access to 10 cores, and your team is 5 backend and 2
-frontend developers, you pay 10*100 + 5*20 + 250 = €1,350 euro the first year, and €540 every subsequent year if the
-number of cores used in production and the number of developers "owning"/building the software is the same.
+frontend developers, you pay 10 \* 100 + 5 \* 20 + 250 = €1,350 euro the first year, and €540 every subsequent year if
+the number of cores used in production and the number of developers "owning"/building the software is the same.
 
 ### 1.3 Means of Payment
 
