@@ -19,7 +19,7 @@
             <InstallBootstrapperCommand Condition=" '$(PaketBootstrapperFeed)' != '' ">$(InstallBootstrapperCommand) --add-source "$(PaketBootstrapperFeed)"</InstallBootstrapperCommand>
             <InstallBootstrapperCommand Condition=" '$(InstallBootstrapperOtherArgs)' != '' ">$(InstallBootstrapperCommand) $(InstallBootstrapperOtherArgs)"</InstallBootstrapperCommand>
         </PropertyGroup>
-        <Exec Command="$(InstallBootstrapperCommand)" WorkingDirectory="$(RepoRoot)" />
+        <Exec Command="$(InstallBootstrapperCommand)" WorkingDirectory="$(RepoRoot)" IgnoreExitCode="true" />
     </Target>
 
     <Target Name="InstallPaket" DependsOnTargets="InstallPaketBootstrapper" Condition="Exists('$(PaketExe)') == false">
