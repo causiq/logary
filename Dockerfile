@@ -5,8 +5,6 @@ FROM microsoft/dotnet:2.2-sdk as build
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y locales && \
-    locale && \
-    locale -a && \
     locale-gen C C.UTF-8 && \
     DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y git vim libczmq4 libprotobuf-c-dev libprotobuf-dev libprotobuf10 ca-certificates
