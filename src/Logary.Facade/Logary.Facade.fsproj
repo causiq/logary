@@ -3,7 +3,7 @@
   <PropertyGroup>
     <AssemblyName>Logary.Facade</AssemblyName>
     <Version>5.0.0-rc.1</Version>
-    <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />

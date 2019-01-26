@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <Version>5.0.0-rc.1</Version>
-    <TargetFrameworks>net461;netcoreapp2.0</TargetFrameworks>
+    <TargetFrameworks>netcoreapp2.0</TargetFrameworks>
     <NoWarn>44</NoWarn>
   </PropertyGroup>
   <ItemGroup>
