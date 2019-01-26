@@ -172,7 +172,7 @@ Target.create "Push" (fun _ ->
   Paket.push (fun p -> { p with WorkingDir = "src" }))
 
 let ruttaBinFolder =
-  "src/services/Logary.Services.Rutta/bin/Release/net461/"
+  "src/services/Logary.Services.Rutta/bin/Release/netcoreapp2.2/publish/"
 
 Target.create "PackageRutta" (fun _ ->
   ignore (Directory.CreateDirectory "artifacts")
