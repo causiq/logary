@@ -1,0 +1,5 @@
+**/bin
+**/obj
+.fake
+.vscode
+paket-files/

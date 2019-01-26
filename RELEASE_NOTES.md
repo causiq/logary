@@ -1,6 +1,7 @@
-#### 5.0.0-beta.30
+#### 5.0.0-rc.1
 * Upgrade Rutta docker image and minor README fixes, thanks @haf
 * Ensure Rutta / HTTP codec can optionally enable CORS, thanks @haf
+* Finish writing LICENSE.md, thanks @haf
 
 #### 5.0.0-beta.29
 * BREAKING CHANGE. Change error model and failed-logs-model to be configuration based, #378, thanks @lust4life
