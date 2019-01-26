@@ -137,9 +137,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{A275B1A2
 ProjectSection(SolutionItems) = preProject
 	..\RELEASE_NOTES.md = ..\RELEASE_NOTES.md
 	..\build.fsx = ..\build.fsx
-	..\build.cmd = ..\build.cmd
 	..\appveyor.yml = ..\appveyor.yml
-	..\build.sh = ..\build.sh
 EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "licenses", "licenses", "{5CA272A8-9745-4680-B926-BE759CB551DD}"
