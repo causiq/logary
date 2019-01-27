@@ -1,4 +1,4 @@
-VERSION_SUFFIX=$(./tools/get_version.sh)
+VERSION_SUFFIX=$(shell ./tools/get_version.sh)
 
 all: restore build
 
@@ -15,7 +15,13 @@ build: prepare
 test:
 	./fake.sh build --target Tests
 
-release: restore build tests
+image:
+	docker build . -t haaf/rutta:latest -t haaf/rutta:$(VERSION_SUFFIX)
+
+push:
+	docker push haaf/rutta
+
+release: restore build tests image push
 	dotnet publish
 
 clean:
