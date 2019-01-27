@@ -14,6 +14,7 @@ ENV LC_ALL=C.UTF-8
 WORKDIR /build/
 COPY . .
 
+RUN dotnet restore src/Logary.sln
 RUN ./fake.sh build
 
 #-alpine

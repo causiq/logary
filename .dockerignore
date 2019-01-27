@@ -3,6 +3,7 @@
 .fake
 .vscode
 paket-files/
+.paket/.store
 .paket/paket
 .paket/paket.exe
 .paket/paket.bootstrapper
