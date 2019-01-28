@@ -23,11 +23,11 @@ RUN dotnet restore src/Logary.sln
 RUN ./fake.sh build
 RUN dotnet publish -c Release src/services/Logary.Services.Rutta
 RUN find 'src/targets' -type f \
-    \( -name "Logary.Targets.*.dll" \
+    \( -name 'Logary.Targets.*.dll' \
        -or -name 'Logary.Targets.*.pdb' \
-       -or -name "Logary.Targets.*.xml" \) \
+       -or -name 'Logary.Targets.*.xml' \) \
     -not -path '*/obj/*' \
-    -exec cp {} src/services/Logary.Services.Rutta/bin/Release/netcoreapp1.2/publish/ \;
+    -exec cp {} src/services/Logary.Services.Rutta/bin/Release/netcoreapp2.2/publish/ \;
 
 #-alpine
 FROM microsoft/dotnet:2.2-runtime
