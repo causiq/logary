@@ -15,12 +15,7 @@ build: prepare
 test:
 	./fake.sh build --target Tests
 
-TARGET_FILES:=$(shell find . -type f -name "Logary.Target.*")
-rutta/%:
-	echo "Copying target files $(TARGET_FILES)"
-	cp $< $@
-
-image: copy_targets
+image:
 	docker build . -t haaf/rutta:latest -t haaf/rutta:$(VERSION_SUFFIX)
 
 push:
