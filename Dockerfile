@@ -22,7 +22,6 @@ COPY . .
 RUN dotnet restore src/Logary.sln
 RUN ./fake.sh build
 RUN dotnet publish -c Release src/services/Logary.Services.Rutta
-RUN find src/targets -type f -name "Logary.Targets.*" | xargs cp {} +
 RUN find 'src/targets' -type f \
     \( -name "Logary.Targets.*.dll" \
        -or -name 'Logary.Targets.*.pdb' \
