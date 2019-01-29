@@ -8,3 +8,4 @@ paket-files/
 .paket/paket.exe
 .paket/paket.bootstrapper
 .paket/paket.bootstrapper.exe
+Dockerfile

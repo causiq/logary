@@ -48,6 +48,7 @@ nuget fszmq
 nuget protobuf-net
 nuget Microsoft.Extensions.Logging
 nuget System.Memory
+nuget System.Data.Odbc
 
 github eiriktsarpalis/TypeShape src/TypeShape/TypeShape.fs
 github eiriktsarpalis/TypeShape src/TypeShape/Utils.fs
