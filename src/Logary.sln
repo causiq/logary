@@ -121,6 +121,12 @@ ProjectSection(SolutionItems) = preProject
 	..\licenses\Apache-2.0.md = ..\licenses\Apache-2.0.md
 EndProjectSection
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Jaeger", "targets\Logary.Targets.Jaeger\Logary.Targets.Jaeger.fsproj", "{95FA23BE-49AB-4721-A099-6B73B4E2C0D5}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.AspNetCore", "adapters\Logary.Adapters.AspNetCore\Logary.Adapters.AspNetCore.fsproj", "{B7BD505B-66D2-40B5-863C-8975032C2AE3}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Jaeger.Tests", "tests\Logary.Targets.Jaeger.Tests\Logary.Targets.Jaeger.Tests.fsproj", "{9ACC2DBA-BBE1-414F-AEB0-57CD9768875A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -280,6 +286,18 @@ Global
 		{6E70C4BE-5354-484B-AC71-91936DCCA4F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6E70C4BE-5354-484B-AC71-91936DCCA4F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6E70C4BE-5354-484B-AC71-91936DCCA4F2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{95FA23BE-49AB-4721-A099-6B73B4E2C0D5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{95FA23BE-49AB-4721-A099-6B73B4E2C0D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{95FA23BE-49AB-4721-A099-6B73B4E2C0D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{95FA23BE-49AB-4721-A099-6B73B4E2C0D5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B7BD505B-66D2-40B5-863C-8975032C2AE3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B7BD505B-66D2-40B5-863C-8975032C2AE3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B7BD505B-66D2-40B5-863C-8975032C2AE3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B7BD505B-66D2-40B5-863C-8975032C2AE3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9ACC2DBA-BBE1-414F-AEB0-57CD9768875A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9ACC2DBA-BBE1-414F-AEB0-57CD9768875A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9ACC2DBA-BBE1-414F-AEB0-57CD9768875A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9ACC2DBA-BBE1-414F-AEB0-57CD9768875A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -324,5 +342,8 @@ Global
 		{2FA9E1EE-902C-442E-8905-A49DD0145CE8} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{6E70C4BE-5354-484B-AC71-91936DCCA4F2} = {45AD4DB5-AE45-447D-9389-A4DF16AF8F44}
 		{478D2597-9521-4BD2-A6DE-4DFCDF2F87E0} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
+		{95FA23BE-49AB-4721-A099-6B73B4E2C0D5} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
+		{B7BD505B-66D2-40B5-863C-8975032C2AE3} = {56BB77A4-DF59-49EC-92E6-C9CA2C2E9FDE}
+		{9ACC2DBA-BBE1-414F-AEB0-57CD9768875A} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 	EndGlobalSection
 EndGlobal
