@@ -22,7 +22,7 @@ open Fake.SystemHelper
 Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 
 let configuration = Environment.environVarOrDefault "CONFIGURATION" "Release"
-let release = ReleaseNotes.load "RELEASE_NOTES.md" 
+let release = ReleaseNotes.load "RELEASE_NOTES.md"
 let description = "Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net."
 let tags = "structured logging f# logs logging performance metrics semantic"
 let authors = "Henrik Feldt"
@@ -31,6 +31,12 @@ let projectUrl = "https://github.com/logary/logary"
 let iconUrl = "https://raw.githubusercontent.com/logary/logary-assets/master/graphics/LogaryLogoSquare.png"
 let licenceUrl = "https://raw.githubusercontent.com/logary/logary/master/LICENSE.md"
 let copyright = sprintf "Copyright \169 %i Henrik Feldt" DateTime.Now.Year
+
+Target.create "Clean" (fun _ ->
+  // This line actually ensures we get the correct version checked in
+  // instead of the one previously bundled with 'fake`
+  Git.CommandHelper.gitCommand "" "checkout .paket/Paket.Restore.targets"
+  )
 
 Target.create "AssemblyInfo" (fun _ ->
   [ yield "Logary", None
@@ -219,7 +225,8 @@ Target.create "Release" (fun _ ->
 "CheckEnv"
   ==> "Release"
 
-"AssemblyInfo"
+"Clean"
+  ==> "AssemblyInfo"
   ==> "PaketFiles"
   ==> "ProjectVersion"
   =?> ("TCReportVersion", TeamCity.Environment.Version |> Option.isSome)
