@@ -1,11 +1,11 @@
 language: csharp
 dist: xenial
 sudo: false
-dotnet: 2.2
+dotnet: 2.2.103
 
 matrix:
   fast_finish: true
-  
+
   include:
     - os: linux
       mono: 5.10.0
