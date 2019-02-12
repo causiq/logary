@@ -1,3 +1,4 @@
+.PHONY: restore build test
 VERSION_SUFFIX=$(shell ./tools/get_version.sh)
 
 all: restore build
@@ -7,7 +8,7 @@ prepare:
 	./fake.sh build --target PaketFiles
 
 restore:
-	dotnet restore
+	dotnet restore src/Logary.sln
 
 build: prepare
 	dotnet build src/Logary.sln -c Release
