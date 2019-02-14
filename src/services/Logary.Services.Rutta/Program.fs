@@ -100,7 +100,7 @@ let startUnix argv: int =
 [<EntryPoint>]
 let main argv =
   let osDesc = RuntimeInformation.OSDescription
-  eprintfn "Rutta running on '%s'" osDesc
+  eprintfn "Rutta %s running on '%s'" AssemblyVersionInformation.AssemblyFileVersion osDesc
   let isDashed = argv.Length >= 1 && argv.[0] = "--"
   if osDesc.Contains "Linux" || osDesc.Contains "Unix" || osDesc.Contains "Darwin" || isDashed then
     startUnix (if isDashed then argv.[1..] else argv)
