@@ -4,16 +4,12 @@ module Router =
   open Hopac
   open Hopac.Infixes
   open System
-  open System.Text
-  open System.IO
   open Logary
   open Logary.Message
   open Logary.Codecs
   open Logary.Ingestion
   open Logary.Configuration
   open Logary.Targets
-  open Logary.Formatting
-  open Logary.Internals.Chiron
   open fszmq
 
   type State =

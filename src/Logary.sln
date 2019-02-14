@@ -127,6 +127,11 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.AspNetCore"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Jaeger.Tests", "tests\Logary.Targets.Jaeger.Tests\Logary.Targets.Jaeger.Tests.fsproj", "{9ACC2DBA-BBE1-414F-AEB0-57CD9768875A}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "rutta-helm-chart", "rutta-helm-chart", "{D64D7F8D-F4D5-4873-98BE-5427756F63D4}"
+ProjectSection(SolutionItems) = preProject
+	services\rutta-helm-chart\values.yaml = services\rutta-helm-chart\values.yaml
+EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -345,5 +350,6 @@ Global
 		{95FA23BE-49AB-4721-A099-6B73B4E2C0D5} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{B7BD505B-66D2-40B5-863C-8975032C2AE3} = {56BB77A4-DF59-49EC-92E6-C9CA2C2E9FDE}
 		{9ACC2DBA-BBE1-414F-AEB0-57CD9768875A} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
+		{D64D7F8D-F4D5-4873-98BE-5427756F63D4} = {45AD4DB5-AE45-447D-9389-A4DF16AF8F44}
 	EndGlobalSection
 EndGlobal
