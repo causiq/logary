@@ -12,3 +12,4 @@ let commandLineParsing =
         ignore (Parsers.binding "127.0.0.1:8080")
     ]
   ]
+  |> testLabel "rutta"

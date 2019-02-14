@@ -27,8 +27,7 @@ type JaegerSpanFlags = Sampled = 1
 
 [<RequireQualifiedAccess>]
 module JaegerTarget =
-  open System.Threading
-
+  
   type JaegerConf = {
     ProcessTags: Map<string,obj>
     /// bytes, spans size reach to this size will be send to jaeger, otherwise it is appended to buffer waitting for flush
@@ -84,7 +83,6 @@ module JaegerTarget =
 
   module internal Impl =
 
-    open Logary
     open System.Runtime.CompilerServices
 
     [<assembly: InternalsVisibleTo("Logary.Targets.Jaeger.Tests")>]

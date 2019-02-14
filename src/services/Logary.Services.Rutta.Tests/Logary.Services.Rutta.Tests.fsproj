@@ -12,6 +12,15 @@
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />
+    <ProjectReference Include="..\..\targets\Logary.Targets.AliYun\Logary.Targets.AliYun.fsproj" />
+    <ProjectReference Include="..\..\targets\Logary.Targets.ApplicationInsights\Logary.Targets.ApplicationInsights.fsproj" />
+    <ProjectReference Include="..\..\targets\Logary.Targets.ElasticSearch\Logary.Targets.ElasticSearch.fsproj" />
+    <ProjectReference Include="..\..\targets\Logary.Targets.ElmahIO\Logary.Targets.ElmahIO.fsproj" />
+    <ProjectReference Include="..\..\targets\Logary.Targets.InfluxDb\Logary.Targets.InfluxDb.fsproj" />
+    <ProjectReference Include="..\..\targets\Logary.Targets.Jaeger\Logary.Targets.Jaeger.fsproj" />
+    <ProjectReference Include="..\..\targets\Logary.Targets.Mixpanel\Logary.Targets.Mixpanel.fsproj" />
+    <ProjectReference Include="..\..\targets\Logary.Targets.OpsGenie\Logary.Targets.OpsGenie.fsproj" />
+    <ProjectReference Include="..\..\targets\Logary.Targets.RabbitMQ\Logary.Targets.RabbitMQ.fsproj" />
     <ProjectReference Include="..\Logary.Services.Rutta\Logary.Services.Rutta.fsproj" />
   </ItemGroup>
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />

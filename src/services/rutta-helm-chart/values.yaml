@@ -3,6 +3,13 @@ replicaCount: 3
 nameOverride: ""
 fullnameOverride: ""
 
+image: {}
+
+targets:
+- console://./
+# replace the above with one of:
+#- 
+
 ingress:
   enabled: true
   annotations: {}
