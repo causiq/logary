@@ -10,6 +10,6 @@ A common configuration for Rutta is to configure a Stackdriver target, a HTTP in
 
 By default this chart exposes a HTTP listener/endpoint and prints to console; in order for it to log to Stackdriver, AliYun or AppInsights, you have to configure those explicitly in the values file.
 
-## Parameters
+## Configuration
 
 TODO.
