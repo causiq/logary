@@ -5,7 +5,8 @@
 Follow Logary at twitter: [@logarylib](https://twitter.com/logarylib)
 
 Chat and support and get support:
-[![Gitter chat](https://badges.gitter.im/logary.png)](https://gitter.im/logary/logary)
+[![Gitter chat](https://badges.gitter.im/logary.png)](https://gitter.im/logary/logary). If you have questions
+about the license or paid support, e-mail henrik-at-haf.se.
 
 ## Why?
 
