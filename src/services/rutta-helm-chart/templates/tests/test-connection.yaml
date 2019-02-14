@@ -11,8 +11,8 @@ metadata:
     "helm.sh/hook": test-success
 spec:
   containers:
-  - name: wget
+  - name: curl
     image: busybox
-    command: ['wget']
+    command: ['curl']
     args:  ['{{ include "rutta.fullname" . }}:{{ .Values.service.port }}']
   restartPolicy: Never
