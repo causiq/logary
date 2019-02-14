@@ -10,6 +10,22 @@ A common configuration for Rutta is to configure a Stackdriver target, a HTTP in
 
 By default this chart exposes a HTTP listener/endpoint and prints to console; in order for it to log to Stackdriver, AliYun or AppInsights, you have to configure those explicitly in the values file.
 
+## Installation
+
+    helm install incubator/rutta --name my-rutta-release
+
+## Uninstallation
+
+    helm delete my-rutta-rutta
+
+## See versions of Rutta
+
+    helm list
+
 ## Configuration
 
-TODO.
+| Parameter                    | Description                      | Default              |
+|------------------------------|----------------------------------|----------------------|
+| `replicas`                   | Number of nodes                  | `1`                  |
+| `deploymentStrategy`         | Deployment strategy              | `RollingUpdate`      |
+

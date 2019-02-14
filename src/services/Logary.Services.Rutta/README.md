@@ -1,10 +1,10 @@
-# Rutta
+# Rutta ᜑ high performance log router
 
 The recommended approach to using Rutta is to run it as a docker container;
 
     docker run --rm -it haaf/rutta
     
-or, if you're a Kubernetees user;
+or, if you're a Kubernetes user;
 
     helm install incubator/rutta
 
