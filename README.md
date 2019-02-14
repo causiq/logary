@@ -106,7 +106,6 @@ OR:
   - [Microsoft Azure Application Insights target](#microsoft-azure-application-insights-target)
   - [EventStore adapter](#eventstore-adapter)
   - [FsSQL adapter](#fssql-adapter)
-  - [Suave adapter](#suave-adapter)
   - [Topshelf adapter](#topshelf-adapter)
     - [From NLog.RabbitMQ, log4net.RabbitMQ?](#from-nlograbbitmq-log4netrabbitmq)
     - [Logary.Adapters.NLog](#logaryadaptersnlog)
@@ -218,8 +217,7 @@ let main argv =
 ## Overview
 
 Logary is itself a library for metrics and events with extensible inputs, *adapters*, and
-outputs, *targets*. Further, its *services* run as their own processes or in
-[Suave][suave-site].
+outputs, *targets*. Further, its *services* run as their own processes.
 
  - **Logary** – the main logging and metrics library. Your app depends on this.
  - Logary.CSharp - C# facade that makes it more *object oriented*.
@@ -250,10 +248,6 @@ outputs, *targets*. Further, its *services* run as their own processes or in
    * <span title="A web authorisation library">Hawk</span> - Logibit's
      [Hawk](https://www.nuget.org/packages/Hawk/) logs into Logary.
    * log4net – lets log4net log into Logary.
-   * <span title="Suave is a web server library that makes you happy">Suave</span> – ships
-     [Suave](https://suave.io) to logs into Logary.
-   * <span title="Topshelf is a Windows service host">Topshelf</span> – ships
-     [Topshelf](https://www.nuget.org/packages/Topshelf/) logs into Logary.
  - **Logary.Metrics** (from *environment* into Logary):
    * WinPerfCounters – an API to access Windows Performance Counters.
  - **Logary.Services** (stand-alone functionality):
@@ -268,7 +262,7 @@ outputs, *targets*. Further, its *services* run as their own processes or in
        also may change your data structure.
      </blockquote>
    * SQLServerHealth – a service that keeps track of IO/latency performance for highly loaded SQL Servers
-   * Ingestion.Http – a well-maintained Suave WebPart that you run as a part of your Suave
+   * Ingestion.Http – a well-maintained F# WebPart that you run as a part of your F#
      server, that enables you to use [logary-js](https://www.npmjs.com/package/logary-js).
 
 ## Tutorial and things around Message
@@ -1633,19 +1627,9 @@ let adapter = FsSqlAdapter logger
 
 ## Suave adapter
 
-Suave from v2.0-rc1 uses the Facade. See the "Using logary in a library" to
-easily and in an automated manner extract logs and metrics from Suave.
-
-## Topshelf adapter
-
-Use to extract logs from [Topshelf (Plain HTTP)][topshelf-site].
-
-```fsharp
-open Logary
-open Topshelf.Logging
-use logary = // ... create logary
-let host = HostFactory.New(fun x -> x.UseLogary(logary))
-```
+Suave from v2.0-rc1 & < 2.5 uses the Facade. See the "Using logary in a library" to
+easily and in an automated manner extract logs and metrics from Suave. Suave v2.5 and above
+has unfortunately made the decision to break semver compatibility.
 
 ### From NLog.RabbitMQ, log4net.RabbitMQ?
 
@@ -1882,7 +1866,7 @@ finally to targets which can then store them.
  - Logary's InfluxDb target supports fields and can batch multiple Windows
    Performance Counters or metrics into a single Measurement
  - Logary has a JS-counterpart, *logary-js* which lets you log into
-   `Logary.Services.SuaveReporter` on the server; events and metrics.
+   `Logary.Services.Rutta` on the server; events and metrics.
  - Logary has paid support available if you need it.
  - Logary supports the side-kick pattern, where you outsource your shipping of
    logs from your main process to a co-process through Rutta's Shipper and
@@ -2520,9 +2504,9 @@ await logger.LogWithAck(message);
 
 ## License
 
-[Apache 2.0 w/ amendment: MSFT's web servers -> commercial license needed][apache]
+[GPL v3, Apache 2.0 and MIT depending on library][licenses]
 
- [apache]: https://www.apache.org/licenses/LICENSE-2.0.html
+ [licenses]: https://github.com/logary/logary/blob/master/LICENSE.md
  [nuget-logary]: https://www.nuget.org/packages/Logary/
  [github-ringbuffer]: https://github.com/logary/RingBuffer
  [src-logstash]: https://github.com/logary/logary/blob/master/src/targets/Logary.Targets.Logstash/Targets_Logstash.fs
@@ -2533,5 +2517,4 @@ await logger.LogWithAck(message);
  [eventstore-site]: https://geteventstore.com
  [fssql-nuget]: https://www.nuget.org/packages/FsSql/
  [fssql-github]: https://github.com/mausch/FsSql
- [suave-site]: https://suave.io/?utm_source=github&utm_campaign=logary
  [topshelf-site]: http://topshelf-project.com/
