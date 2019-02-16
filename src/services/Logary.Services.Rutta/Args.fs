@@ -30,7 +30,8 @@ type Codec =
   /// Used for Rutta-to-Rutta communication with the ZMQ socket types
   | Binary
 
-type ProxyArgs =
+[<RequireSubcommand>]
+type ProxySubCommand =
   | [<Mandatory; Unique>] Xsub_Connect_To of endpoint:string
   | [<Mandatory; Unique>] Xpub_Bind of binding:string
 
@@ -78,8 +79,8 @@ module Help =
     |> Seq.fold folder (StringBuilder())
     |> sprintf "%O"
 
-[<RequireQualifiedAccess>]
-type RouterArgs =
+[<RequireQualifiedAccess; RequireSubcommand>]
+type RouterSubCommand =
   | [<Mandatory>] Listener of routerMode:RMode * bindingOrEndpoint:string * codec:Codec
   | [<Mandatory>] Target of targetUri:string
 
@@ -93,7 +94,8 @@ type RouterArgs =
       | Target _ ->
         "Specifies a list of targets to ship to."
 
-type ShipperArgs =
+[<RequireSubcommand>]
+type ShipperSubCommand =
   | [<Unique>] Push_To of pushConnectToSocket:string
   | [<Unique>] Pub_To of pubBindSocket:string
 
@@ -106,9 +108,9 @@ type ShipperArgs =
 type Args =
   | [<AltCommandLine "-V"; Inherit; Unique>] Version
   | [<AltCommandLine "-v"; Inherit; Unique>] Verbose
-  | [<CliPrefix(CliPrefix.None)>] Proxy of args:ParseResults<ProxyArgs>
-  | [<CliPrefix(CliPrefix.None)>] Router of args:ParseResults<RouterArgs>
-  | [<CliPrefix(CliPrefix.None)>] Shipper of args:ParseResults<ShipperArgs>
+  | [<CliPrefix(CliPrefix.None)>] Proxy of args:ParseResults<ProxySubCommand>
+  | [<CliPrefix(CliPrefix.None)>] Router of args:ParseResults<RouterSubCommand>
+  | [<CliPrefix(CliPrefix.None)>] Shipper of args:ParseResults<ShipperSubCommand>
   | [<Unique>] Health of binding:string
 with
   interface IArgParserTemplate with
