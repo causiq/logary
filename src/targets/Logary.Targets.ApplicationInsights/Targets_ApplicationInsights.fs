@@ -3,10 +3,8 @@ module Logary.Targets.ApplicationInsights
 
 open System
 open Hopac
-open Hopac.Ch
 open Hopac.Infixes
 open Logary
-open Logary.Target
 open Logary.Internals
 open Logary.Configuration
 
@@ -16,7 +14,6 @@ open Microsoft.ApplicationInsights.DataContracts
 open Microsoft.ApplicationInsights.DependencyCollector
 open Microsoft.ApplicationInsights.Extensibility
 open Microsoft.ApplicationInsights.Extensibility.Implementation
-open Logary.HashMap
 
 type GaugeMap =
   /// Traces goes to: Overview -> Search -> Trace
@@ -47,7 +44,7 @@ type TelemetryMapping =
   }
 
 /// Microsoft Application Insights configuration
-type AppInsightConf =
+type ApplicationInsightsConf =
   { /// The Application Insights key. Get it from Azure Portal -> App Insights -> Properties -> INSTRUMENTATION KEY  https://docs.microsoft.com/azure/application-insights/app-insights-create-new-resource
     InstrumentationKey: string
     /// Whether to use Developer Mode with AI - will send more frequent messages at cost of higher CPU etc.
@@ -100,7 +97,7 @@ module internal Impl =
 
   // This is the main entry point of the target. It returns a Job<unit>
   // and as such doesn't have side effects until the Job is started.
-  let loop (conf: AppInsightConf) (api: TargetAPI) =
+  let loop (conf: ApplicationInsightsConf) (api: TargetAPI) =
 
     let rec loop (state: State): Job<unit> =
       // Alt.choose will pick the channel/alternative that first gives a value
@@ -202,7 +199,8 @@ module internal Impl =
 
 /// Create a new YOUR TARGET NAME HERE target
 [<CompiledName "Create">]
-let create conf name = TargetConf.createSimple (Impl.loop conf) name
+let create conf name =
+  TargetConf.createSimple (Impl.loop conf) name
 
 // The Builder construct is a DSL for C#-people. It's nice for them to have
 // a DSL where you can't make mistakes. The general idea is that first 'new'

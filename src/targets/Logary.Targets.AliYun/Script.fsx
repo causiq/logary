@@ -1,4 +1,4 @@
-﻿#I "bin/Debug/net461"
+﻿#I "bin/Debug/netstandard2.0"
 #r "NodaTime"
 #r "Hopac"
 #r "Hopac.Core"

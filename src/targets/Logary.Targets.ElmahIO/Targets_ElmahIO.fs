@@ -9,7 +9,6 @@ open Hopac
 open Hopac.Infixes
 open Logary
 open Logary.Message
-open Logary.Target
 open Logary.Internals
 open Logary.Configuration
 open Elmah.Io.Client
@@ -28,7 +27,6 @@ let empty = { logId = Guid.Empty ; apiKey = String.Empty}
 
 module internal Impl =
   open Logary.Internals.Aether
-  open Logary.Internals.Aether.Operators
 
   module Severity =
 
@@ -43,14 +41,9 @@ module internal Impl =
 
   let getVersion () =
     let a = System.Reflection.Assembly.GetCallingAssembly()
-#if DNXCORE50
-    (typeof<Random>.GetTypeInfo().Assembly)
-#else
     System.Reflection.Assembly.GetCallingAssembly()
-#endif
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-            .InformationalVersion
-
+      .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+      .InformationalVersion
 
   let getData (msg: Logary.Message) =
     msg.context
@@ -78,8 +71,16 @@ module internal Impl =
 
   let loop (conf: ElmahIOConf) (api: TargetAPI) =
     let internalError = Ch ()
+    
+    let rec initialise (): Job<unit> =
+      if conf.logId = Guid.Empty || String.IsNullOrEmpty(conf.apiKey) then
+        Job.raises (exn "Cannot configure target with empty logId or empty apiKey")
+      else
+        let state = { client = ElmahioAPI.Create(conf.apiKey) } // Elmah.IO specific
+        state.client.Messages.OnMessageFail.Add (Ch.send internalError >> start)
+        running state
 
-    let rec loop (state: State): Job<unit> =
+    and running (state: State): Job<unit> =
       Alt.choose [
         internalError ^=> fun (args: FailEventArgs) ->
           let message, ex = args.Message, args.Error
@@ -87,7 +88,7 @@ module internal Impl =
           |> Message.setContext "internalErrorMessage" message
           |> Message.addExn ex
           |> Logger.logSimple api.runtime.logger
-          loop state
+          running state
 
         RingBuffer.take api.requests ^=> function
           | Log (msg, ack) ->
@@ -116,33 +117,26 @@ module internal Impl =
 
             Job.fromTask sendMsg
             >>= fun _ -> ack *<= ()
-            >>=. loop state
+            >>=. running state
 
           | Flush (ackCh, nack) ->
             job {
               do! IVar.fill ackCh ()
-              return! loop state
+              return! running state
             }
 
         api.shutdownCh ^=> fun ack ->
           Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
           >>=. ack *<= ()
+          
       ] :> Job<_>
 
-    let state =
-      { client = ElmahioAPI.Create(conf.apiKey) // Elmah.IO specific
-      }
-
-    state.client.Messages.OnMessageFail.Add (Ch.send internalError >> start)
-
-    loop state
+    initialise ()
 
 /// Create a new Elmah.IO target
-let create conf: string -> TargetConf =
-  if conf.logId = Guid.Empty || String.IsNullOrEmpty(conf.apiKey) then
-    failwith "Cannot configure target with empty logId"
-
-  TargetConf.createSimple (Impl.loop conf)
+[<CompiledName "Create">] 
+let create conf name: TargetConf =
+  TargetConf.createSimple (Impl.loop conf) name
 
 /// Use with LogaryFactory.New( s => s.Target<ElmahIO.Builder>().WithLogId("MY GUID HERE") )
 type Builder(conf, callParent: Target.ParentCallback<Builder>) =

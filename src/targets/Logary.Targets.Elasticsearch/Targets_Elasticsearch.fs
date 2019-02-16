@@ -4,18 +4,11 @@ module Logary.Targets.Elasticsearch
 #nowarn "1104"
 
 open Hopac
-open NodaTime
 open System
-open System.Net
-open System.Net.Sockets
-open System.IO
 open System.Security.Cryptography
-open Hopac
 open Hopac.Infixes
-open Hopac.Extensions
 open Logary
 open Logary.Configuration
-open Logary.Target
 open Logary.Internals
 open Logary.Internals.Chiron
 
@@ -104,7 +97,9 @@ module internal Impl =
 
     loop ()
 
-let create conf = TargetConf.createSimple (Impl.loop conf)
+[<CompiledName "Create">]
+let create conf name =
+  TargetConf.createSimple (Impl.loop conf) name
 
 /// Use with LogaryFactory.New( s => s.Target<Elasticsearch.Builder>() )
 type Builder(conf, callParent: Target.ParentCallback<Builder>) =
