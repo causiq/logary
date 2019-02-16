@@ -9,22 +9,17 @@ open Google.Api.Gax.Grpc
 open Google.Cloud.Logging.Type
 open Google.Cloud.Logging.V2
 open Google.Protobuf
-open Google.Protobuf.Collections
 open Google.Protobuf.WellKnownTypes
 open Hopac
 open Hopac.Infixes
 open Logary
 open Logary.Configuration
 open Logary.Internals
-open Logary.Internals.TypeShape.Core
 open Logary.Message
-open Logary.Target
 open Logary.Formatting
-open System.Globalization
 open System
 open System.IO
 open System.Collections.Generic
-open System.Numerics
 open System.Runtime.CompilerServices
 
 [<assembly:InternalsVisibleTo("Logary.Targets.Stackdriver.Tests")>]
@@ -169,6 +164,8 @@ module internal Impl =
         V.ForString f
       | true, f ->
         V.ForNumber f
+    | Json.String s when isNull s ->
+      V.ForString "🕷" // spider = null
     | Json.String s ->
       V.ForString s
     | Json.True ->
