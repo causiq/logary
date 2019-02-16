@@ -5,6 +5,11 @@
     <Version>5.0.0-rc.1</Version>
     <TargetFrameworks>netcoreapp2.2</TargetFrameworks>
     <NoWarn>44</NoWarn>
+    <DebugSymbols>true</DebugSymbols>
+    <Tailcalls>true</Tailcalls>
+    <GenerateTailCalls>true</GenerateTailCalls>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Utils.fs" />

@@ -4,6 +4,11 @@
     <AssemblyName>Logary.Targets.Stackdriver.Tests</AssemblyName>
     <OutputType>Exe</OutputType>
     <TargetFrameworks>netcoreapp2.2</TargetFrameworks>
+    <DebugSymbols>true</DebugSymbols>
+    <Tailcalls>true</Tailcalls>
+    <GenerateTailCalls>true</GenerateTailCalls>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
   </PropertyGroup>
   <ItemGroup>
     <None Include="paket.references" />
