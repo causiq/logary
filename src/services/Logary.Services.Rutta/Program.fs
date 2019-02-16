@@ -37,19 +37,24 @@ let executeShipper (cmdRes: ParseResults<ShipperSubCommand>) =
     Shipper.pushTo connect
     
 let inline executeParser argv (exiting: ManualResetEventSlim) (subParser: ArgumentParser<'SubCommand>) executeCommand cmdRes =
-  try
-    let results = subParser.Parse(argv, ignoreMissing=false, ignoreUnrecognized=false, raiseOnUsage=false)
-    if results.IsUsageRequested then
-      eprintfn "%s" (subParser.PrintUsage())
-      20
-    else
-      use running = executeCommand cmdRes
-      exiting.Wait()
-      0
-  // Workaround for https://github.com/fsprojects/Argu/issues/113#issuecomment-464390860
-  with :? ArguParseException as e ->
+  // --help is a workaround for https://github.com/fsprojects/Argu/issues/113#issuecomment-464390860
+  if Array.contains "--help" argv then
     eprintfn "%s" (subParser.PrintUsage())
-    20
+    0
+  else
+    try
+      let results = subParser.Parse(argv, ignoreMissing=false, ignoreUnrecognized=false, raiseOnUsage=false)
+      if results.IsUsageRequested then
+        eprintfn "%s" (subParser.PrintUsage())
+        21
+      else
+        use running = executeCommand cmdRes
+        exiting.Wait()
+        0
+    // A subcommand without parameters; workaround for https://github.com/fsprojects/Argu/issues/113#issuecomment-464390860
+    with :? ArguParseException as e ->
+      eprintfn "%s" (subParser.PrintUsage())
+      22
 
 let execute argv (exiting: ManualResetEventSlim): int =
   let argv = maybeSubcommand argv
