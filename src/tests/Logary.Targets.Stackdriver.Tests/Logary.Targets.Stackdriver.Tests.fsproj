@@ -3,7 +3,7 @@
   <PropertyGroup>
     <AssemblyName>Logary.Targets.Stackdriver.Tests</AssemblyName>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>netcoreapp2.0</TargetFrameworks>
+    <TargetFrameworks>netcoreapp2.2</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
     <None Include="paket.references" />
