@@ -53,7 +53,7 @@ namespace Logary.CSharpExample
                                 conf => conf.Target.ConnectTo("127.0.0.1", 2131)
                             )
                             .Target<Debugger.Builder>("debugger")
-                            .Target<ElasticSearch.Builder>(
+                            .Target<Elasticsearch.Builder>(
                                 "es",
                                 conf => conf.Target
                                     .PublishTo("elasticsearch.service")

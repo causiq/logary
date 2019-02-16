@@ -192,7 +192,7 @@ module TargetConfig =
       "aliyun",      moduleNameConfigNameAsm "AliYun"
       "applicationinsights", moduleNameConfigNameAsm "ApplicationInsights"
       "console",     moduleNameConfigName (modu "LiterateConsole") "Logary" (conf "LiterateConsole")
-      "elasticsearch", moduleNameConfigNameAsm "ElasticSearch"
+      "elasticsearch", moduleNameConfigNameAsm "Elasticsearch"
       "elmahio",     moduleNameConfigNameAsm "ElmahIO"
       "influxdb",    moduleNameConfigNameAsm "InfluxDb"
       "jaeger",      moduleNameConfigNameAsm "Jaeger"

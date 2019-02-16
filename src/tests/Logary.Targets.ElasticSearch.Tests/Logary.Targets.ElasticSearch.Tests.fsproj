@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <AssemblyName>Logary.Targets.ElasticSearch.Tests</AssemblyName>
+    <AssemblyName>Logary.Targets.Elasticsearch.Tests</AssemblyName>
     <OutputType>Exe</OutputType>
     <TargetFrameworks>netcoreapp2.0</TargetFrameworks>
     <NoWarn>MSB3277</NoWarn>
@@ -11,7 +11,7 @@
     <None Include="paket.references" />
     <ProjectReference Include="../../Logary/Logary.fsproj" />
     <ProjectReference Include="..\..\Logary.Tests\Logary.Tests.fsproj" />
-    <ProjectReference Include="..\..\targets\Logary.Targets.ElasticSearch\Logary.Targets.ElasticSearch.fsproj" />
+    <ProjectReference Include="..\..\targets\Logary.Targets.Elasticsearch\Logary.Targets.Elasticsearch.fsproj" />
   </ItemGroup>
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />
 </Project>

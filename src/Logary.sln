@@ -55,9 +55,9 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Servizz", "..\examples\Serv
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Libryy", "..\examples\Libryy\Libryy.fsproj", "{A64CF176-66D8-459F-BF45-AF5B5C3098A2}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.ElasticSearch", "targets\Logary.Targets.ElasticSearch\Logary.Targets.ElasticSearch.fsproj", "{64A5B3B2-0F73-44B5-A178-C66A9DB830D6}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Elasticsearch", "targets\Logary.Targets.Elasticsearch\Logary.Targets.Elasticsearch.fsproj", "{64A5B3B2-0F73-44B5-A178-C66A9DB830D6}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.ElasticSearch.Tests", "tests\Logary.Targets.ElasticSearch.Tests\Logary.Targets.ElasticSearch.Tests.fsproj", "{2A4CB8E9-C123-4E07-A814-CF6B74FFC87D}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Elasticsearch.Tests", "tests\Logary.Targets.Elasticsearch.Tests\Logary.Targets.Elasticsearch.Tests.fsproj", "{2A4CB8E9-C123-4E07-A814-CF6B74FFC87D}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.RabbitMQ", "targets\Logary.Targets.RabbitMQ\Logary.Targets.RabbitMQ.fsproj", "{FE1BC08F-A41A-41CC-9F03-996EA9B3B477}"
 EndProject

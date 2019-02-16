@@ -8,7 +8,7 @@ image: {}
 targets:
 - console://./
 # replace the above with one of:
-#- 
+#- stackdriver:// ...
 
 ingress:
   enabled: true
