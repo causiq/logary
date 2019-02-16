@@ -55,16 +55,11 @@ let inline executeParser argv (exiting: ManualResetEventSlim) (subParser: Argume
     with :? ArguParseException as e ->
       eprintfn "%s" (subParser.PrintUsage())
       22
-
-let execute argv (exiting: ManualResetEventSlim): int =
-  let argv = maybeSubcommand argv
-  let parser = ArgumentParser.Create<Args>(programName = "rutta.exe", helpTextMessage = versionAndName)
-  let results = parser.Parse(argv, ignoreUnrecognized=true, raiseOnUsage=false)
-  
+      
+let executeInner argv exiting (parser: ArgumentParser<Args>) (results: ParseResults<Args>) =
   if results.Contains Version || results.IsUsageRequested then
     printfn "%s" (parser.PrintUsage())
     0
-    
   else
     let ilevel = if results.Contains Args.Verbose then LogLevel.Verbose else LogLevel.Info
     use health = results.TryGetResult Args.Health |> Option.map Parsers.binding |> Health.startServer
@@ -85,6 +80,16 @@ let execute argv (exiting: ManualResetEventSlim): int =
     | None ->
       eprintfn "%s" (parser.PrintUsage())
       10
+      
+let execute argv (exiting: ManualResetEventSlim): int =
+  let argv = maybeSubcommand argv
+  let parser = ArgumentParser.Create<Args>(programName = "rutta.exe", helpTextMessage = versionAndName)
+  try
+    let results = parser.Parse(argv, ignoreMissing=false, ignoreUnrecognized=true, raiseOnUsage=false)
+    executeInner argv exiting parser results
+  with :? ArguParseException as e ->
+    printfn "%s" e.Message
+    11
 
 ///////////// WINDOWS //////////////
 let startWindows argv: int =
@@ -122,6 +127,7 @@ let startUnix argv: int =
 let main argv =
   let osDesc = RuntimeInformation.OSDescription
   eprintfn "Rutta %s running on '%s'" AssemblyVersionInformation.AssemblyFileVersion osDesc
+  eprintfn ""
   let isDashed = argv.Length >= 1 && argv.[0] = "--"
   if osDesc.Contains "Linux" || osDesc.Contains "Unix" || osDesc.Contains "Darwin" || isDashed then
     startUnix (if isDashed then argv.[1..] else argv)
