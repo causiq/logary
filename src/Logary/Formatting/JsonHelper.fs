@@ -224,7 +224,7 @@ module internal JsonHelper =
       wrap (fun (x: Guid) -> Inference.Json.encode x)
 
     | Shape.Uri ->
-      wrap (fun (x: Uri) -> E.string (x.ToString()))
+      wrap (fun (x: Uri) -> if isNull x then Null else String (x.ToString()))
 
     | Shape.TimeSpan ->
       wrap (fun (x: TimeSpan) -> E.string (x.ToString()))
