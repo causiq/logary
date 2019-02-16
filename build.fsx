@@ -129,6 +129,7 @@ Target.create "Tests" (fun _ ->
     sprintf "%s/bin/%s/netcoreapp2.0/%s.dll --summary" path configuration projectName
   Seq.concat [
     !! "src/tests/**/*.fsproj"
+    !! "src/services/*.Tests/*.fsproj"
     !! "src/*.Tests/*.fsproj"
   ]
   |> Seq.iter (commandLine >> DotNet.exec id "" >> ignore))
