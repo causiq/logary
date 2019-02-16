@@ -185,7 +185,7 @@ module internal JsonHelper =
       wrap (fun (c: char) -> E.string (string c))
 
     | Shape.String ->
-      wrap (fun (s: string) -> Inference.Json.encode s)
+      wrap (fun (s: string) -> if isNull s then Null else String s)
 
     | Shape.Bool ->
       wrap (fun (x: bool) -> Inference.Json.encode x)
