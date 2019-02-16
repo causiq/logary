@@ -7,7 +7,7 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Targets_AliYun.fs" />
-    <None Include="Script.fsx" />
+    <!--<None Include="Script.fsx" />-->
     <None Include="paket.references" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />
   </ItemGroup>
