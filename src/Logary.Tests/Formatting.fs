@@ -1,18 +1,16 @@
 module Logary.Tests.Formatting
 #if INTERACTIVE
-#I "bin/Release/net461"
+#I "bin/Release/netstandard2.0"
 #r "Hopac.Core"
 #r "Hopac"
 #r "NodaTime"
 #r "Logary"
-#r "FsCheck"
 #r "Expecto"
 #r "Expecto.FsCheck"
 #endif
 
 open Expecto
 open Expecto.Flip
-open FsCheck
 open System
 open Logary
 open Logary.Formatting
@@ -21,7 +19,6 @@ open Logary.MessageWriter
 open Logary.Internals.Chiron
 
 #nowarn "44"
-open Logary
 
 let private sampleMessage: Message =
   Message.eventFormat (Info, "this is bad, with {1} and {0} reverse.", "the first value", "the second value")
@@ -209,7 +206,20 @@ let jsonTests fsc =
         testCase "LogLevel" <| fun () ->
           Debug
             |> Json.encode
-            |> Expect.equal "Encodes to 'debug'" (Json.String "debug")
+            |> Expect.equal "Encodes to 'debug'" (String "debug")
+            
+        testCase "FSharpFunc" <| fun () ->
+          let example = fun (a: int) (b: float) -> float a * b
+          match Json.encode example with
+          | String s ->
+            match Regex.``match`` @"val example@\d{1,}: \(Int32 -> FSharpFunc`2\)" s with
+            | Some g ->
+              ()
+            | None ->
+              s |> Expect.equal "Encodes to F#-ish string"
+                                "val example: int -> FSharpFunc`2"
+          | x ->
+            failtest "Unexpected JSON data %A" x
 
         testCase "PointName" <| fun () ->
           PointName [| "A"; "B" |]

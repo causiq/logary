@@ -31,7 +31,7 @@ type IShapeIDictionary =
 
 module Shape =
   let private SomeU = Some() // avoid allocating all the time
-  let inline private test<'T> (s : TypeShape) =
+  let inline private test<'T> (s: TypeShape) =
     match s with
     | :? TypeShape<'T> -> SomeU
     | _ -> None
@@ -70,6 +70,16 @@ module Shape =
       |> Some
     | _ ->
       None
+      
+  open FSharp.Quotations
+  
+  let rec funcName = function
+    | Patterns.Call (None, methodInfo, _) ->
+      methodInfo.Name
+    | Patterns.Lambda (_, expr) ->
+      funcName expr
+    | _ ->
+      failwith "Unexpected input"
 
   let (|LogLevel|_|) (shape: TypeShape) = test<Logary.LogLevel> shape
   let (|PointName|_|) (shape: TypeShape) = test<Logary.PointName> shape
@@ -91,6 +101,7 @@ and JsonEncoderFactory<'a> =
   JsonEncoder<obj> -> JsonEncoder<'a>
 
 module internal JsonHelper =
+
   module E = Chiron.Serialization.Json.Encode
 
   let private emptyJsonEncoderRegistry =
@@ -478,6 +489,15 @@ module internal JsonHelper =
             let label, fp = x.Value
             s |> JsonObject.add label (fp input)) JsonObject.empty
         |> Json.Object
+        
+    | Shape.FSharpFunc s ->
+      s.Accept
+        { new IFSharpFuncVisitor<'T -> Json> with
+            member __.Visit<'domain, 'codomain> () = // 'T = 'a option
+              fun func ->
+                let name = func.GetType().Name
+                Json.String (sprintf "val %s: (%s -> %s)" name s.Domain.Type.Name s.CoDomain.Type.Name)
+        }
 
     | other when other = shapeof<obj> ->
 //      printfn "JsonHelper: encode other %O" other
