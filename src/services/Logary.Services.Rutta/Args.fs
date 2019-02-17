@@ -88,11 +88,19 @@ type RouterSubCommand =
     member x.Usage =
       match x with
       | Listener _ ->
-        sprintf "Specifies a single listener which is a triple of a router mode (for the binding), the binding (e.g. \"127.0.0.1:20001\"), and a codec. Modes:\n%sCodecs:\n%s"
-                (Help.describeModes ())
-                (Help.describeCodecs ())
+        System.String.Concat [
+          "A listener is a triple of <router mode, binding, codec>. You can specify many of these:\n"
+          "## Binding\n"
+          "E.g. \"127.0.0.1:20001\" or \"[::]:8080\"\n"
+          "## Router modes:\n"
+          Help.describeModes ()
+          "\n"
+          "## Codecs:\n"
+          Help.describeCodecs ()
+        ]
+
       | Target _ ->
-        "Specifies a list of targets to ship to."
+        "Specifies a targets to ship to. You can specify meny of these."
 
 [<RequireSubcommand>]
 type ShipperSubCommand =
