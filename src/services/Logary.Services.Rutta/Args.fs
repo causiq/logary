@@ -93,6 +93,7 @@ module Help =
 type RouterSubCommand =
   | [<Mandatory>] Listener of routerMode:RMode * bindingOrEndpoint:string * codec:Codec
   | [<Mandatory>] Target of targetUri:string
+  | Disable_CORS
 
   interface IArgParserTemplate with
     member x.Usage =
@@ -108,7 +109,10 @@ type RouterSubCommand =
           "## Codecs:\n"
           Help.describeCodecs ()
         ]
-
+        
+      | Disable_CORS ->
+        "Disables CORS, but your log ingestion is probably still open to people doing a `curl`."
+        
       | Target _ ->
         "Specifies a targets to ship to. You can specify meny of these."
 

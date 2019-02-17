@@ -1,6 +1,13 @@
 #### 5.0.0-rc.1
-* Upgrade Rutta docker image and minor README fixes, thanks @haf
+* Print better help message for UDP ingestion targets, thanks @haf
 * Ensure Rutta / HTTP codec can optionally enable CORS, thanks @haf
+* Update README for newest Rutta, thanks @haf
+* Upgrade/fix Rutta command line parsing to assist user better and not crash `dotnet`, thanks @haf
+* Remove older mono's from .travis.yml, thanks @haf
+* Set up Travis to push docker image on git tags, thanks @haf
+* Create `haaf/rutta-curl` image as a utility image, thanks @haf
+* Create `Makefile` for simpler builds, thanks @haf
+* Enable smart version+tag docker image tagging in Makefile, thanks @haf
 * Finish writing LICENSE.md, thanks @haf
 
 #### 5.0.0-beta.29

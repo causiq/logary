@@ -27,7 +27,7 @@ type OriginResult =
   /// Don't return this header
   | Reject
   
-  static member allowAll =
+  static member allowAll _ =
     Star
     
   static member allowRequester origin =
@@ -118,7 +118,7 @@ type HTTPConfig with
       cancelled = cancelled |> Option.defaultWith (fun () -> upcast IVar ())
       onSuccess = defaultArg onSuccess Impl.onSuccess
       onError = defaultArg onError Impl.onError
-      webConfig = { defaultConfig with bindings = binding :: [] }
+      webConfig = { defaultConfig with bindings = binding :: []; hideHeader = true }
       allowCORS = Option.isSome accessControlAllowOrigin
       accessControlAllowOrigin = acao
       accessControlAllowHeaders = acah
@@ -158,6 +158,8 @@ module HTTP =
         >=> setHeader "Access-Control-Allow-Methods" am
         >=> setHeader "Access-Control-Allow-Headers" ah
         >=> setHeader "Access-Control-Max-Age" aa)
+        >=> setHeader "Content-Type" "text/plain; charset=utf-8"
+        >=> OK ""
     else
       never
   
@@ -176,7 +178,7 @@ module HTTP =
             getLogger = fun name ->
               Suave.Logging.LiterateConsoleTarget(name, Suave.Logging.LogLevel.Error) :> Suave.Logging.Logger }
       Suave.Logging.Global.initialiseIfDefault logging
-      do config.ilogger.info (eventX "Starting HTTP recv-loop at {bindings}" >> setField "bindings" config.webConfig.bindings)
+      do config.ilogger.info (eventX "Starting HTTP recv-loop at {bindings}. CORS enabled={allowCORS}" >> setField "bindings" config.webConfig.bindings >> setField "allowCORS" config.allowCORS)
       use cts = createAdaptedCTS config
       let suaveConfig = { config.webConfig with cancellationToken = cts.Token }
       let webStarted, webListening = startWebServerAsync suaveConfig (api config next)

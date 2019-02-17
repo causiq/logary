@@ -137,16 +137,17 @@ module Router =
     UDP.create config next
 
   // HTTP
-  let httpBind (cancelled, ilogger: Logger, logary) binding (cname, codec) =
+  let httpBind cors (cancelled, ilogger: Logger, logary) binding (cname, codec) =
     ilogger.info (
       eventX "Spawning router with {binding} in {mode} mode, accepting {codec}."
       >> setField "binding" binding
       >> setField "mode" HTTP
       >> setField "codec" cname)
 
+    let acao = if cors then Some OriginResult.allowAll else None
     let ilogger = ilogger |> Logger.setNameEnding "http"
     let ep = Parsers.binding binding
-    let config = HTTPConfig.create("/i/logary", logary, ilogger, cancelled, ep)
+    let config = HTTPConfig.create("/i/logary", logary, ilogger, cancelled, ep, ?accessControlAllowOrigin = acao)
     let next = createSink logary codec
     HTTP.create config next
 
@@ -169,17 +170,17 @@ module Router =
 
   type Binding = string
   
-  let private toListener (cancelled, ilogger, baseConf) (mode: RMode): Binding -> string * Codec -> Job<IngestServer> =
+  let private toListener (cancelled, cors, ilogger, baseConf) (mode: RMode): Binding -> string * Codec -> Job<IngestServer> =
     let fn =
       match mode with
       | Pull -> pullBind
       | Sub -> subConnect
       | TCP -> tcpBind
       | UDP -> udpBind
-      | HTTP -> httpBind
+      | HTTP -> httpBind cors
     fn (cancelled, ilogger, baseConf)
 
-  let start (ilevel: LogLevel) (targets: TargetConf list) (listeners: (RMode * string * C) list) =
+  let start (cors, ilevel: LogLevel) (targets: TargetConf list) (listeners: (RMode * string * C) list) =
     let cancelled = IVar ()
 
     let logary =
@@ -200,10 +201,10 @@ module Router =
       eventX "Starting {@listeners}, sending to {@targets}"
       >> setField "listeners" listeners
       >> setField "targets" (targets |> List.map (fun t -> t.name)))
-
+    
     let servers =
       listeners
-      |> Seq.map (fun (mode, binding, c) -> toListener (cancelled, ilogger, logary) mode, binding, toCodec c)
+      |> Seq.map (fun (mode, binding, c) -> toListener (cancelled, cors, ilogger, logary) mode, binding, toCodec c)
       |> Seq.mapJob (fun (exec, binding, codec) -> exec binding codec)
       |> run
       

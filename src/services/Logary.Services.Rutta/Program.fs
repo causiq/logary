@@ -25,9 +25,10 @@ let executeProxy (args: ParseResults<ProxySubCommand>) =
 let executeRouter (ilevel: LogLevel) (args: ParseResults<RouterSubCommand>) =
   let listeners = args.GetResults RouterSubCommand.Listener
   let targets = args.PostProcessResults(RouterSubCommand.Target, Parsers.targetConfig)
+  let cors = not (args.Contains RouterSubCommand.Disable_CORS)
   if List.isEmpty listeners || List.isEmpty targets then
     failwith "Router `--listener` arguments empty, or `--target` arguments empty"
-  Router.start ilevel targets listeners
+  Router.start (cors, ilevel) targets listeners
 
 let executeShipper (cmdRes: ParseResults<ShipperSubCommand>) =
   match cmdRes.GetAllResults() |> List.head with
