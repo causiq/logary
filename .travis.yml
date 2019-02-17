@@ -25,12 +25,8 @@ env:
   - DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   - TMPDIR=/tmp
 
-jobs:
-  include:
-    - stage: Build
-      script: travis_wait make
-    - stage: Publish Rutta
-      script: make push
+script:
+- travis_wait make
 
 after_success:
 - make ci_push
