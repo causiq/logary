@@ -154,11 +154,9 @@ module Parsers =
   open Logary.Configuration
 
   let binding (binding: string): IPEndPoint =
-    match binding.Split([| ':' |]) with
-    | [| nic; p |] ->
-      IPEndPoint(IPAddress.Parse nic, int p)
-    | _ ->
-      failwithf "Invalid binding '%s'. Expected format '<ip>:<port>'." binding
+    let portIndex = binding.LastIndexOf(':')
+    let nic, port = binding.[0..portIndex], binding.[portIndex+1..]
+    IPEndPoint(IPAddress.Parse nic, int port)
 
   let targetConfig (targetUri: string): TargetConf =
     TargetConfig.create (Uri targetUri)

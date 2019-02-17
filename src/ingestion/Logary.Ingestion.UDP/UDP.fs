@@ -52,42 +52,58 @@ module internal Impl =
   /// https://docs.microsoft.com/en-us/dotnet/api/system.net.sockets.udpclient.receiveasync?view=netframework-4.7.1#System_Net_Sockets_UdpClient_ReceiveAsync
   /// exceptions not handled: https://msdn.microsoft.com/en-us/library/system.net.sockets.socketexception.errorcode(v=vs.110).aspx
   /// https://stackoverflow.com/a/18314614/63621
-  let ignoreODE (xP: Proc) =
-    Alt.tryIn (Proc.join xP) Alt.always (function
+  let ignoreODE completedIV (xJ: Job<unit>) =
+    Job.tryWith xJ (function
       | :? ObjectDisposedException ->
-        Alt.always ()
+        IVar.fill completedIV ()
       | e ->
-        Alt.raises e)
+        IVar.fillFailure completedIV e)
     
+  //[<TailRecursive>]
   /// Iterate over the UDP datagram inputs, interpreting them as bytes, send them onto `next`, take the next datagram.
   /// Then, queue it all up as a Proc, to allow us to join it later.
-  let receiveLoop (next: Ingest) (inSocket: UdpClient): Job<Proc> =
-    Job.iterate () (
-      inSocket.getMessage
-      >-> Ingested.ofBytes
-      >=> next >> Job.Ignore // UDP doesn't care about backpressure, ignore the ack-structure
-    )
-    |> Proc.queue
+  let receiveLoop (cancelled: Promise<unit>) (next: Ingest) (inSocket: UdpClient) =
+    job {
+      while true  do
+        let! msg = inSocket.getMessage()
+        let! res = next (Ingested.ofBytes msg)
+        ignore res // nothing to do; UDP is fire-and-forget
+    }
 
 module UDP =
   let recv (started: IVar<unit>, shutdown: IVar<unit>) (config: UDPConfig) (next: Ingest) =
     job {
-      config.ilogger.info (eventX "Starting UDP recv-loop at {endpoint}" >> setField "endpoint" config.endpoint)
-      
+      config.ilogger.info (fun level ->
+        let a = config.endpoint.Address
+        let af = a.AddressFamily
+        let endpoint =
+          if a.Equals IPAddress.Any then
+            IPAddress.Loopback
+          elif a.Equals IPAddress.IPv6Any then
+            IPAddress.IPv6Loopback
+          else
+            a
+
+        event level "Starting UDP recv-loop at {endpoint}. You can send data to this endpoint with {ncCommand}, and then typing your message/JSON. The UDP target expects datagrams, so the newline character will be part of the message if you send those."
+        |> setField "ncCommand" (sprintf "nc -u -p 54321 %O %i" endpoint config.endpoint.Port)
+        |> setField "endpoint" config.endpoint)
+
+      let completed = IVar ()
       use inSocket = new UdpClient(config.endpoint)
-      
+
       let close () =
         config.ilogger.info (eventX "Stopping UDP recv-loop at {endpoint}" >> setField "endpoint" config.endpoint)
         try inSocket.Close() with _ -> ()
         
       // start the client "server" Proc
-      let! xP = Impl.receiveLoop next inSocket
+      do! Job.start (Impl.ignoreODE completed (Impl.receiveLoop config.cancelled next inSocket))
       do! started *<= ()
       
       // this may throw, thereby ignoring the wait on the `cancelled` Promise
       return!
-        Job.tryFinallyFun (config.cancelled <|> Impl.ignoreODE xP) close
-        >>= IVar.fill shutdown
+        Job.tryFinallyJob
+          (Job.tryFinallyFun (config.cancelled <|> completed) close)
+          (IVar.fill shutdown ())
     }
   
   /// Creates a new LogClient with an address, port and a sink (next.)

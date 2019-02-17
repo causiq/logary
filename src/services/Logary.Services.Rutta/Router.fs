@@ -36,7 +36,7 @@ module Router =
         (x.receiver :> IDisposable).Dispose()
 
   let private createSink (logary: LogManager) (codec: Logary.Codecs.Codec) =
-    let targetLogger = logary.getLogger (PointName.parse "Logary.Services.Rutta.Router")
+    let targetLogger = logary.getLogger (PointName.parse "Rutta")
     codec >> Result.map (Array.iter targetLogger.logSimple) >> Job.result
 
   let internal zmqRecv createSocket =
@@ -194,7 +194,7 @@ module Router =
       |> Config.build
       |> run
       
-    let ilogger = logary.runtimeInfo.logger |> Logger.setNameEnding "Router"
+    let ilogger = logary.runtimeInfo.logger |> Logger.setName "Rutta"
 
     ilogger.debug (
       eventX "Starting {@listeners}, sending to {@targets}"

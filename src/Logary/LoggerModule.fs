@@ -47,12 +47,19 @@ module Logger =
       >> ensureName logger.name
     logger.logWithAck (true, level) factory
     >>=* function | Ok ack -> ack | _ -> Promise.unit
-      
+
+  /// Sets the Logger's name.
+  let setPointName (name: PointName) (logger: Logger): Logger =
+    { new LoggerWrapper(logger) with override x.name = name }
+    :> Logger
+
+  /// Set the Logger's name; the name is passed to `PointName.parse` before being set as the Logger name.
+  let setName (name: string) (logger: Logger): Logger =
+    setPointName (PointName.parse name) logger
+
   /// Sets the logger's name to end with the passed string segment.
   let setNameEnding (ending: string) (logger: Logger): Logger =
-    let nextName = PointName.setEnding ending logger.name
-    { new LoggerWrapper(logger) with override x.name = nextName }
-    :> Logger
+    setPointName (PointName.setEnding ending logger.name) logger
 
   /// Applies a `Message -> Message` pipe to the logger's `logWithAck` function.
   let apply (middleware: Message -> Message) (logger: Logger): Logger =
