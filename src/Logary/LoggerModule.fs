@@ -11,43 +11,56 @@ open NodaTime
 module Logger =
   let defaultBackPressurePutBufferTimeOut = Duration.FromMinutes 1L
 
-  /// log message without blocking, and ignore its result.
-  /// if the buffer is full, drop this message
-  let logWith (logger: Logger) level messageFactory: unit =
-    queueIgnore (logger.logWithAck (false, level) messageFactory)
+  let internal ensureName name (m: Message) =
+    if m.name.isEmpty then { m with name = name } else m
 
-  /// log message without blocking, and ignore its result.
-  /// if the buffer is full, drop this message
+  /// Log the message without blocking, and ignore its result.
+  /// If the buffer is full, drop the message.
+  let logWith (logger: Logger) level messageFactory: unit =
+    let factory = messageFactory >> ensureName logger.name
+    queueIgnore (logger.logWithAck (false, level) factory)
+
+  /// Log the message without blocking, and ignore its result.
+  /// If the buffer is full, drop the message.
   let logSimple (logger: Logger) msg: unit =
-    logWith logger msg.level (fun _ -> msg)
+    logWith logger msg.level (fun _ -> ensureName logger.name msg)
 
   /// log message, but don't await all targets to flush. And backpressure the buffers.
   ///
   /// default `waitForBuffersTimeout` is 1 minutes to back pressure the buffers (not the backend process after target buffer)
   let logWithBP (logger: Logger) logLevel messageFactory : Alt<unit> =
-    logger.logWithAck (true, logLevel) (messageFactory >> Message.waitForBuffersTimeout defaultBackPressurePutBufferTimeOut) ^-> ignore
+    let factory =
+      messageFactory
+      >> Message.waitForBuffersTimeout defaultBackPressurePutBufferTimeOut
+      >> ensureName logger.name
+    logger.logWithAck (true, logLevel) factory ^-> ignore
 
-  /// log message, leave the error result handle in registry error handler.
-  /// when read the return pomise, it will waiting for buffer's backend process flush logs
+  /// Log the message, leaving any error result to be handled by the registry error handler.
+  /// The returned pomise, will be waiting for buffer's backend target to flush its logs.
   ///
-  /// default `waitForBuffersTimeout` is 1 minutes to back pressure the buffers (not the backend process after target buffer)
+  /// By default `waitForBuffersTimeout` is at 1 minute. This is in order for back pressure to wait for the buffers
+  /// (not the actual backend's after-target buffer).
   let logAck (logger: Logger) level messageFactory: Promise<unit> =
-    logger.logWithAck (true, level) (messageFactory >> Message.waitForBuffersTimeout defaultBackPressurePutBufferTimeOut)
-    >>=* function
-    | Ok promise -> promise
-    | _ -> Promise.unit
+    let factory =
+      messageFactory
+      >> Message.waitForBuffersTimeout defaultBackPressurePutBufferTimeOut
+      >> ensureName logger.name
+    logger.logWithAck (true, level) factory
+    >>=* function | Ok ack -> ack | _ -> Promise.unit
+      
+  /// Sets the logger's name to end with the passed string segment.
+  let setNameEnding (ending: string) (logger: Logger): Logger =
+    let nextName = PointName.setEnding ending logger.name
+    { new LoggerWrapper(logger) with override x.name = nextName }
+    :> Logger
 
-  let private ensureName name =
-    fun (m: Message) ->
-      if m.name.isEmpty then { m with name = name } else m
-
+  /// Applies a `Message -> Message` pipe to the logger's `logWithAck` function.
   let apply (middleware: Message -> Message) (logger: Logger): Logger =
-    let ensureName = ensureName logger.name
     { new LoggerWrapper(logger) with
         override x.logWithAck (waitForBuffers, logLevel) messageFactory =
-          logger.logWithAck (waitForBuffers, logLevel) (
-            messageFactory >> ensureName >> middleware)
-    } :> Logger
+          logger.logWithAck (waitForBuffers, logLevel) (messageFactory >> middleware)
+    }
+    :> Logger
 
 [<AutoOpen>]
 module LoggerEx =
@@ -58,7 +71,10 @@ module LoggerEx =
     ///
     /// if the buffer is full, drop this message, return false
     member x.log logLevel (messageFactory: LogLevel -> Message): Alt<bool> =
-      x.logWithAck (false, logLevel) messageFactory ^-> function
+      let factory =
+        messageFactory
+        >> Logger.ensureName x.name
+      x.logWithAck (false, logLevel) factory ^-> function
       | Ok _ -> true
       | _ -> false
 

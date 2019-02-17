@@ -43,7 +43,7 @@ let inline executeParser argv (exiting: ManualResetEventSlim) (subParser: Argume
     0
   else
     try
-      let results = subParser.Parse(argv, ignoreMissing=false, ignoreUnrecognized=false, raiseOnUsage=false)
+      let results = subParser.Parse(argv.[1..], ignoreMissing=false, ignoreUnrecognized=false, raiseOnUsage=false)
       if results.IsUsageRequested then
         eprintfn "%s" (subParser.PrintUsage())
         21
@@ -53,7 +53,7 @@ let inline executeParser argv (exiting: ManualResetEventSlim) (subParser: Argume
         0
     // A subcommand without parameters; workaround for https://github.com/fsprojects/Argu/issues/113#issuecomment-464390860
     with :? ArguParseException as e ->
-      eprintfn "%s" (subParser.PrintUsage())
+      eprintfn "%s" e.Message
       22
       
 let executeInner argv exiting (parser: ArgumentParser<Args>) (results: ParseResults<Args>) =
@@ -83,7 +83,7 @@ let executeInner argv exiting (parser: ArgumentParser<Args>) (results: ParseResu
       
 let execute argv (exiting: ManualResetEventSlim): int =
   let argv = maybeSubcommand argv
-  let parser = ArgumentParser.Create<Args>(programName = "rutta.exe", helpTextMessage = versionAndName)
+  let parser = ArgumentParser.Create<Args>(programName = "rutta.exe", helpTextMessage = versionAndName, checkStructure = Help.checkStructure)
   try
     let results = parser.Parse(argv, ignoreMissing=false, ignoreUnrecognized=true, raiseOnUsage=false)
     executeInner argv exiting parser results
@@ -126,7 +126,7 @@ let startUnix argv: int =
 [<EntryPoint>]
 let main argv =
   let osDesc = RuntimeInformation.OSDescription
-  eprintfn "Rutta %s running on '%s'" AssemblyVersionInformation.AssemblyFileVersion osDesc
+  eprintfn "Rutta %s running on '%s'. ZMQ v%O." AssemblyVersionInformation.AssemblyFileVersion osDesc fszmq.ZMQ.version
   eprintfn ""
   let isDashed = argv.Length >= 1 && argv.[0] = "--"
   if osDesc.Contains "Linux" || osDesc.Contains "Unix" || osDesc.Contains "Darwin" || isDashed then

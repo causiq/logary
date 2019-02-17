@@ -15,7 +15,6 @@
 
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Ingestion.TCP.fs" />
     <Compile Include="Topshelf.fs" />
     <Compile Include="Args.fs" />
     <Compile Include="Shipper.fs" />
@@ -31,6 +30,7 @@
     <ProjectReference Include="../../ingestion\Logary.Ingestion.HTTP/Logary.Ingestion.HTTP.fsproj" />
     <ProjectReference Include="../../ingestion\Logary.Ingestion.UDP/Logary.Ingestion.UDP.fsproj" />
     <ProjectReference Include="../../targets/Logary.Targets.Stackdriver/Logary.Targets.Stackdriver.fsproj" />
+    <ProjectReference Include="..\..\ingestion\Logary.Ingestion.TCP\Logary.Ingestion.TCP.fsproj" />
     <Reference Include="System.Configuration" />
   </ItemGroup>
 

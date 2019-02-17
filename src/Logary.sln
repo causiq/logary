@@ -84,6 +84,9 @@ EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Suave", "..\examples\Logary.Suave\Logary.Suave.fsproj", "{1721A791-AC1F-4F79-9E1D-AB8F125B85BF}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ingestion", "ingestion", "{7B088401-ACED-40A5-9DC7-9E64523CE77C}"
+ProjectSection(SolutionItems) = preProject
+	ingestion\README.md = ingestion\README.md
+EndProjectSection
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Ingestion.HTTP", "ingestion\Logary.Ingestion.HTTP\Logary.Ingestion.HTTP.fsproj", "{6BD97E30-0907-41E0-944D-5FD6A8B40589}"
 EndProject
@@ -131,6 +134,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "rutta-helm-chart", "rutta-h
 ProjectSection(SolutionItems) = preProject
 	services\rutta-helm-chart\values.yaml = services\rutta-helm-chart\values.yaml
 EndProjectSection
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Ingestion.TCP", "ingestion\Logary.Ingestion.TCP\Logary.Ingestion.TCP.fsproj", "{7626CD7A-C582-49B8-97CB-E0FD7107F10C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -304,6 +309,10 @@ Global
 		{9ACC2DBA-BBE1-414F-AEB0-57CD9768875A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9ACC2DBA-BBE1-414F-AEB0-57CD9768875A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9ACC2DBA-BBE1-414F-AEB0-57CD9768875A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7626CD7A-C582-49B8-97CB-E0FD7107F10C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7626CD7A-C582-49B8-97CB-E0FD7107F10C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7626CD7A-C582-49B8-97CB-E0FD7107F10C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7626CD7A-C582-49B8-97CB-E0FD7107F10C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -352,5 +361,6 @@ Global
 		{B7BD505B-66D2-40B5-863C-8975032C2AE3} = {56BB77A4-DF59-49EC-92E6-C9CA2C2E9FDE}
 		{9ACC2DBA-BBE1-414F-AEB0-57CD9768875A} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{D64D7F8D-F4D5-4873-98BE-5427756F63D4} = {45AD4DB5-AE45-447D-9389-A4DF16AF8F44}
+		{7626CD7A-C582-49B8-97CB-E0FD7107F10C} = {7B088401-ACED-40A5-9DC7-9E64523CE77C}
 	EndGlobalSection
 EndGlobal

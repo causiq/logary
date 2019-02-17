@@ -2,9 +2,10 @@ namespace Logary.Internals
 
 open Hopac
 open Hopac.Infixes
+open Hopac.Extensions
+open NodaTime
 open Logary
 open Logary.Internals
-open Hopac.Extensions
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal InternalLogger =
@@ -56,11 +57,18 @@ module internal InternalLogger =
 
         messageCh ^=> fun (message, nack, replCh) ->
           let forwardToTarget =
-            let putBufferTimeOut = message |> Message.tryGetContext KnownLiterals.WaitForBuffersTimeout |> Option.defaultValue NodaTime.Duration.Zero
             let putBufferTimeOut =
-              message |> Message.tryGetContext KnownLiterals.WaitForBuffers
+              message
+              |> Message.tryGetContext KnownLiterals.WaitForBuffersTimeout
+              |> Option.defaultValue Duration.Zero
+              
+            let waitForBuffers =
+              message
+              |> Message.tryGetContext KnownLiterals.WaitForBuffers
               |> Option.defaultValue false // non blocking waiting default
-              |> function | true -> putBufferTimeOut | false -> NodaTime.Duration.Zero
+              
+            let putBufferTimeOut = if waitForBuffers then putBufferTimeOut else Duration.Zero
+            
             Target.logAllReduce putBufferTimeOut targets message ^=> Ch.give replCh
 
           (forwardToTarget <|> nack) ^=> fun () -> iserver targets

@@ -8,6 +8,7 @@ open System.Reflection
 [<assembly: AssemblyTitle("Logary Rutta – a router/proxy/shipper for Windows and Unix")>]
 ()
 
+
 type RMode =
   /// zmq PULL socket. Does a PULL socket bind call.
   | Pull
@@ -44,6 +45,15 @@ type ProxySubCommand =
         "Bind in XPUB mode for SUB sockets to connect to."
 
 module Help =
+
+  /// Whether Argu should go through every union case; in RELEASE mode it does not.
+  let checkStructure =
+  #if RELEASE
+    false
+  #else
+    true
+  #endif
+  
   open System
   open System.Text
   open FSharp.Reflection

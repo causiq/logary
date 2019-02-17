@@ -3,7 +3,9 @@ namespace Logary.Services.Rutta
 module Router =
   open Hopac
   open Hopac.Infixes
+  open Hopac.Extensions
   open System
+  open System.Net
   open Logary
   open Logary.Message
   open Logary.Codecs
@@ -37,27 +39,29 @@ module Router =
     let targetLogger = logary.getLogger (PointName.parse "Logary.Services.Rutta.Router")
     codec >> Result.map (Array.iter targetLogger.logSimple) >> Job.result
 
-  let internal recv cancelled createSocket (ilogger: Logger) (sink: Ingest) =
-    let loop () =
+  let internal zmqRecv createSocket =
+    let recv (started, shutdown) (cfg: IngestServerConfig) next =
+      Job.Scheduler.isolate <| fun () ->
       use context = new Context()
       use socket = createSocket context
-      while not (Promise.Now.isFulfilled cancelled) do
+      queue (started *<= ())
+      while not (Promise.Now.isFulfilled cfg.cancelled) do
         // note: sending empty messages
         match Socket.recvAll socket with
         | null
         | [||] -> ()
         | datas ->
           start (
-            sink (Ingested.ofBytes (Array.concat datas)) |> Job.map (function
+            next (Ingested.ofBytes (Array.concat datas)) |> Job.map (function
             | Result.Ok () -> ()
-            | Result.Error err -> ilogger.info (eventX "Error from sink {err}" >> setField "err" err)))
+            | Result.Error err -> cfg.ilogger.info (eventX "Error from sink {err}" >> setField "err" err)))
+      queue (shutdown *<= ())
 
-    let iJ = Job.Scheduler.isolate loop
-    Job.queue iJ
+    IngestServer.create recv
 
-  let pullBind (cancelled, logary) (binding: string) (cname, codec) =
-    let sink = createSink logary codec
-    logary.runtimeInfo.logger.info (
+  /// ZMQ PULL
+  let pullBind (cancelled, ilogger: Logger, logary) (binding: string) (cname, codec) =
+    ilogger.info (
       eventX "Spawning router with {binding} in {mode} mode, accepting {codec}."
       >> setField "binding" binding
       >> setField "mode" Pull
@@ -67,12 +71,19 @@ module Router =
       let socket = Context.pull context
       Socket.bind socket (sprintf "tcp://%s" binding)
       socket
+    
+    let config =
+      let ilogger = ilogger |> Logger.setNameEnding "zmqPull"
+      { new IngestServerConfig with
+          member x.cancelled = cancelled
+          member x.ilogger = ilogger }
 
-    recv cancelled create logary.runtimeInfo.logger sink
+    let next = createSink logary codec
+    zmqRecv create config next
 
-  let subConnect (cancelled, logary) (binding: string) (cname, codec) =
-    let sink = createSink logary codec
-    logary.runtimeInfo.logger.info (
+  /// ZMQ SUB
+  let subConnect (cancelled, ilogger: Logger, logary) (binding: string) (cname, codec) =
+    ilogger.info (
       eventX "Spawning router with {binding} in {mode} mode, accepting {codec}."
       >> setField "binding" binding
       >> setField "mode" Sub
@@ -83,12 +94,19 @@ module Router =
       Socket.subscribe socket [""B]
       Socket.connect socket (sprintf "tcp://%s" binding)
       socket
+      
+    let config =
+      let ilogger = ilogger |> Logger.setNameEnding "zmqSub"
+      { new IngestServerConfig with
+          member x.cancelled = cancelled
+          member x.ilogger = ilogger }
 
-    recv cancelled create logary.runtimeInfo.logger sink
+    let next = createSink logary codec
+    zmqRecv create config next
 
-  let tcpBind (cancelled, logary) (binding: string) (cname, codec) =
-    let sink = createSink logary codec
-    logary.runtimeInfo.logger.info (
+  /// ZMQ STREAM
+  let tcpBind (cancelled, ilogger: Logger, logary) (binding: string) (cname, codec) =
+    ilogger.info (
       eventX "Spawning router with {binding} in {mode} mode, accepting {codec}."
       >> setField "binding" binding
       >> setField "mode" TCP
@@ -99,32 +117,38 @@ module Router =
       Socket.bind socket (sprintf "tcp://%s" binding)
       socket
 
-    let config = TCP.TCPConfig.create create cancelled logary.runtimeInfo.logger
-    TCP.create config sink
+    let ilogger = ilogger |> Logger.setNameEnding "zmqStream"
+    let config = TCPConfig.create create cancelled ilogger
+    let next = createSink logary codec
+    TCP.create config next
 
-  let udpBind (cancelled, logary) (binding: string) (cname, codec) =
-    let sink = createSink logary codec
-    logary.runtimeInfo.logger.info (
+  /// UDP
+  let udpBind (cancelled, ilogger: Logger, logary) (binding: string) (cname, codec) =
+    ilogger.info (
       eventX "Spawning router with {binding} in {mode} mode, accepting {codec}."
       >> setField "binding" binding
       >> setField "mode" UDP
       >> setField "codec" cname)
 
+    let ilogger = ilogger |> Logger.setNameEnding "udp"
     let ep = Parsers.binding binding
-    let config = UDP.UDPConfig.create ep cancelled logary.runtimeInfo.logger
-    UDP.create config sink
+    let config = UDPConfig.create ep cancelled ilogger
+    let next = createSink logary codec
+    UDP.create config next
 
-  let httpBind (cancelled, logary) binding (cname, codec) =
-    let sink = createSink logary codec
-    logary.runtimeInfo.logger.info (
+  // HTTP
+  let httpBind (cancelled, ilogger: Logger, logary) binding (cname, codec) =
+    ilogger.info (
       eventX "Spawning router with {binding} in {mode} mode, accepting {codec}."
       >> setField "binding" binding
       >> setField "mode" HTTP
       >> setField "codec" cname)
 
+    let ilogger = ilogger |> Logger.setNameEnding "http"
     let ep = Parsers.binding binding
-    let config = HTTP.HTTPConfig.create("/i/logary", logary.runtimeInfo.logger, cancelled, ep)
-    HTTP.create config sink
+    let config = HTTPConfig.create("/i/logary", logary, ilogger, cancelled, ep)
+    let next = createSink logary codec
+    HTTP.create config next
 
   type C = Logary.Services.Rutta.Codec
 
@@ -143,7 +167,9 @@ module Router =
       "log4jxml",
       Codec.log4jXML
 
-  let private toListener (cancelled, baseConf) (mode: RMode) =
+  type Binding = string
+  
+  let private toListener (cancelled, ilogger, baseConf) (mode: RMode): Binding -> string * Codec -> Job<IngestServer> =
     let fn =
       match mode with
       | Pull -> pullBind
@@ -151,13 +177,13 @@ module Router =
       | TCP -> tcpBind
       | UDP -> udpBind
       | HTTP -> httpBind
-    fn (cancelled, baseConf)
+    fn (cancelled, ilogger, baseConf)
 
   let start (ilevel: LogLevel) (targets: TargetConf list) (listeners: (RMode * string * C) list) =
     let cancelled = IVar ()
 
     let logary =
-      let hostName = System.Net.Dns.GetHostName()
+      let hostName = Dns.GetHostName()
       Config.create "Logary Rutta[Router]" hostName
       |> Config.targets targets
       |> Config.processing (
@@ -167,21 +193,35 @@ module Router =
       |> Config.ilogger (ILogger.LiterateConsole ilevel)
       |> Config.build
       |> run
+      
+    let ilogger = logary.runtimeInfo.logger |> Logger.setNameEnding "Router"
 
-    logary.runtimeInfo.logger.debug (
+    ilogger.debug (
       eventX "Starting {@listeners}, sending to {@targets}"
       >> setField "listeners" listeners
       >> setField "targets" (targets |> List.map (fun t -> t.name)))
 
-    listeners
-    |> Seq.map (fun (mode, binding, c) -> toListener (cancelled, logary) mode, binding, toCodec c)
-    |> Seq.map (fun (exec, binding, codec) -> exec binding codec)
-    |> Seq.iter start
-
+    let servers =
+      listeners
+      |> Seq.map (fun (mode, binding, c) -> toListener (cancelled, ilogger, logary) mode, binding, toCodec c)
+      |> Seq.mapJob (fun (exec, binding, codec) -> exec binding codec)
+      |> run
+      
+    let allShutdown =
+      servers
+      |> Seq.map IngestServer.waitForShutdown
+      |> Job.conIgnore
+    
+    ilogger.debug (
+      eventX "Router start of {@listeners}, sending to {@targets}, successful."
+      >> setField "listeners" listeners
+      >> setField "targets" (targets |> List.map (fun t -> t.name)))
+      
     { new IDisposable with
         member x.Dispose () =
           run (
-            logary.shutdown () >>=.
             cancelled *<= ()
+            >>=. allShutdown
+            >>=. logary.shutdown ()
           )
     }

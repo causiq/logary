@@ -1,4 +1,4 @@
-﻿module Logary.Ingestion.UDP
+﻿namespace Logary.Ingestion
 
 open Logary
 open Logary.Message
@@ -6,80 +6,90 @@ open Logary.Internals
 open Hopac
 open Hopac.Infixes
 open System
-open System.Text
-open System.Threading
 open System.Net
 open System.Net.Sockets
 
 type UDPConfig =
-    /// Where to listen.
-  { endpoint: IPEndPoint
-    /// Set this promise to a value to shut down the UDP receiver.
+  { /// Set this promise to a value to shut down the UDP receiver.
     cancelled: Promise<unit>
+    /// Where to listen.
+    endpoint: IPEndPoint
     ilogger: Logger }
-  static member create ep cancelled ilogger =
-    { endpoint = ep
-      cancelled = cancelled
+  
+  interface IngestServerConfig with
+    member x.cancelled = x.cancelled
+    member x.ilogger = x.ilogger
+ 
+  static member create endpoint cancelled ilogger =
+    { cancelled = cancelled
+      endpoint = endpoint
       ilogger = ilogger }
 
-// https://docs.microsoft.com/en-us/dotnet/api/system.net.sockets.udpclient.receiveasync?view=netframework-4.7.1#System_Net_Sockets_UdpClient_ReceiveAsync
-// exceptions not handled: https://msdn.microsoft.com/en-us/library/system.net.sockets.socketexception.errorcode(v=vs.110).aspx
-let private handleDisposed recvThrew (xJ: Job<unit>) =
-  Job.tryWith xJ (function
-    // https://stackoverflow.com/a/18314614/63621
-    | :? ObjectDisposedException -> recvThrew *<= ()
-    | e -> Job.raises e)
+module internal Impl =
+  let hasODE (ae: AggregateException) =
+    let ae = ae.Flatten()
+    ae.InnerExceptions
+    |> Seq.tryPick (function
+      | :? ObjectDisposedException as ode -> Some ode
+      | _ -> None)
 
-let private hasODE (ae: AggregateException) =
-  let ae = ae.Flatten()
-  ae.InnerExceptions
-  |> Seq.tryPick (function
-    | :? ObjectDisposedException as ode -> Some ode
-    | _ -> None)
+  type UdpClient with
+    member x.getMessage () =
+      let xJ =
+        Job.fromTask (fun () -> x.ReceiveAsync())
+        |> Job.map (fun d -> d.Buffer)
 
-type UdpClient with
-  member internal x.getMessage () =
-    let xJ =
-      Job.fromTask (fun () -> x.ReceiveAsync())
-      |> Job.map (fun d -> d.Buffer)
+      Job.tryWith xJ (function
+        | :? AggregateException as ae ->
+          match hasODE ae with
+          | Some ode ->
+            Job.raises ode
+          | None ->
+            Job.raises ae
+        | e ->
+          Job.raises e)
 
-    Job.tryWith xJ (function
-      | :? AggregateException as ae ->
-        match hasODE ae with
-        | Some ode ->
-          Job.raises ode
-        | None ->
-          Job.raises ae
+  /// https://docs.microsoft.com/en-us/dotnet/api/system.net.sockets.udpclient.receiveasync?view=netframework-4.7.1#System_Net_Sockets_UdpClient_ReceiveAsync
+  /// exceptions not handled: https://msdn.microsoft.com/en-us/library/system.net.sockets.socketexception.errorcode(v=vs.110).aspx
+  /// https://stackoverflow.com/a/18314614/63621
+  let ignoreODE (xP: Proc) =
+    Alt.tryIn (Proc.join xP) Alt.always (function
+      | :? ObjectDisposedException ->
+        Alt.always ()
       | e ->
-        Job.raises e)
+        Alt.raises e)
+    
+  /// Iterate over the UDP datagram inputs, interpreting them as bytes, send them onto `next`, take the next datagram.
+  /// Then, queue it all up as a Proc, to allow us to join it later.
+  let receiveLoop (next: Ingest) (inSocket: UdpClient): Job<Proc> =
+    Job.iterate () (
+      inSocket.getMessage
+      >-> Ingested.ofBytes
+      >=> next >> Job.Ignore // UDP doesn't care about backpressure, ignore the ack-structure
+    )
+    |> Proc.queue
 
-/// Creates a new LogClient with an address, port and a sink (next.)
-let create (config: UDPConfig) (next: Ingest) =
-  let rec receiveLoop (inSocket: UdpClient) =
+module UDP =
+  let recv (started: IVar<unit>, shutdown: IVar<unit>) (config: UDPConfig) (next: Ingest) =
     job {
-      let! msg = inSocket.getMessage()
-      let! res = next (Ingested.ofBytes msg)
-      ignore res // nothing to do; UDP is fire-and-forget
-      return! receiveLoop inSocket
-    }
-
-  let recvThrew = IVar ()
-
-  let receiveContext =
-    job {
-      do config.ilogger.info (eventX "Starting UDP log listener at {endpoint}" >> setField "endpoint" config.endpoint)
+      config.ilogger.info (eventX "Starting UDP recv-loop at {endpoint}" >> setField "endpoint" config.endpoint)
+      
       use inSocket = new UdpClient(config.endpoint)
-      try
-        do! Job.start (handleDisposed recvThrew (receiveLoop inSocket))
-        // if we're cancelled, fall through the finally and cancel the UdpClient. This will throw an
-        // ObjectDisposedException on the parallel thread (Job.start-ed).
-        // `handleDisposed` will set the flag `recvThrew` that we await after the receiveContext job
-        // finishes.
-        do! config.cancelled
-      finally
-        do config.ilogger.info (eventX "Stopping UDP log listener at {endpoint}" >> setField "endpoint" config.endpoint)
-        try inSocket.Close()
-        with _ -> ()
+      
+      let close () =
+        config.ilogger.info (eventX "Stopping UDP recv-loop at {endpoint}" >> setField "endpoint" config.endpoint)
+        try inSocket.Close() with _ -> ()
+        
+      // start the client "server" Proc
+      let! xP = Impl.receiveLoop next inSocket
+      do! started *<= ()
+      
+      // this may throw, thereby ignoring the wait on the `cancelled` Promise
+      return!
+        Job.tryFinallyFun (config.cancelled <|> Impl.ignoreODE xP) close
+        >>= IVar.fill shutdown
     }
-
-  receiveContext >>=. recvThrew
+  
+  /// Creates a new LogClient with an address, port and a sink (next.)
+  let create: ServerFactory<UDPConfig> =
+    IngestServer.create recv
