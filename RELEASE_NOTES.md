@@ -9,6 +9,11 @@
 * Create `Makefile` for simpler builds, thanks @haf
 * Enable smart version+tag docker image tagging in Makefile, thanks @haf
 * Finish writing LICENSE.md, thanks @haf
+* Upgrade all .Tests and Services to netcoreapp2.2, thanks @haf
+* Rename ElasticSearch -> Elasticsearch, thanks @haf
+* Normalise Elasticsearch, Jaeger and ApplicationInsights naming and module layout, thanks @haf
+* Pretty-print F# function signatures when instances thereof are logged, thanks @haf
+* Fix bug in JSON encoder that missed null strings, thanks @haf
 
 #### 5.0.0-beta.29
 * BREAKING CHANGE. Change error model and failed-logs-model to be configuration based, #378, thanks @lust4life

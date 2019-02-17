@@ -71,16 +71,6 @@ module Shape =
     | _ ->
       None
       
-  open FSharp.Quotations
-  
-  let rec funcName = function
-    | Patterns.Call (None, methodInfo, _) ->
-      methodInfo.Name
-    | Patterns.Lambda (_, expr) ->
-      funcName expr
-    | _ ->
-      failwith "Unexpected input"
-
   let (|LogLevel|_|) (shape: TypeShape) = test<Logary.LogLevel> shape
   let (|PointName|_|) (shape: TypeShape) = test<Logary.PointName> shape
   let (|Gauge|_|) (shape: TypeShape) = test<Logary.Gauge> shape
