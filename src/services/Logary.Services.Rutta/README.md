@@ -1,20 +1,26 @@
-# Rutta
+# Rutta ᜑ high performance log router 🦋
 
-Download the Logary source and build.
+The recommended approach to using Rutta is to run it as a docker container;
 
-## Router
+    docker run --rm -it haaf/rutta
+    
+or, if you're a Kubernetes user;
 
-Example `App.config`:
+    helm install incubator/rutta
 
-    <appSettings>
-      <add key="subcommand" value="router" />
-      <add key="router" value="--listener udp 127.0.0.1:20001 plain --target stackdriver://google/?projectId=your-project --target console://./" />
-    </appSettings>
+See the [Rutta Helm chart for details][helm-chart]
 
-## On Windows
 
-You'll need `libzmq.dll` present when running Rutta, a v4.x from http://zeromq.org/distro:microsoft-windows.
+## Testing Rutta
 
-### Stackdriver
 
-You'll need Google's DLLs which are specific to the OS you run on.
+Terminal 1
+
+    nc -u -p 54321 127.0.0.1 9090
+    hello world
+
+Terminal 2
+
+    dotnet run -- router --listener udp 0.0.0.0:9090 plain --target console://. --verbose
+
+ [helm-chart]: https://github.com/logary/logary/tree/master/src/services/rutta-helm-chart

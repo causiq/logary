@@ -1,13 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <AssemblyName>Logary.Targets.ElasticSearch</AssemblyName>
+    <AssemblyName>Logary.Targets.Elasticsearch</AssemblyName>
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <NoWarn>MSB3277</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Targets_ElasticSearch.fs" />
+    <Compile Include="Targets_Elasticsearch.fs" />
     <None Include="paket.references" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />
   </ItemGroup>

@@ -31,7 +31,7 @@ type IShapeIDictionary =
 
 module Shape =
   let private SomeU = Some() // avoid allocating all the time
-  let inline private test<'T> (s : TypeShape) =
+  let inline private test<'T> (s: TypeShape) =
     match s with
     | :? TypeShape<'T> -> SomeU
     | _ -> None
@@ -70,7 +70,7 @@ module Shape =
       |> Some
     | _ ->
       None
-
+      
   let (|LogLevel|_|) (shape: TypeShape) = test<Logary.LogLevel> shape
   let (|PointName|_|) (shape: TypeShape) = test<Logary.PointName> shape
   let (|Gauge|_|) (shape: TypeShape) = test<Logary.Gauge> shape
@@ -91,6 +91,7 @@ and JsonEncoderFactory<'a> =
   JsonEncoder<obj> -> JsonEncoder<'a>
 
 module internal JsonHelper =
+
   module E = Chiron.Serialization.Json.Encode
 
   let private emptyJsonEncoderRegistry =
@@ -174,7 +175,7 @@ module internal JsonHelper =
       wrap (fun (c: char) -> E.string (string c))
 
     | Shape.String ->
-      wrap (fun (s: string) -> Inference.Json.encode s)
+      wrap (fun (s: string) -> if isNull s then Null else String s)
 
     | Shape.Bool ->
       wrap (fun (x: bool) -> Inference.Json.encode x)
@@ -213,7 +214,7 @@ module internal JsonHelper =
       wrap (fun (x: Guid) -> Inference.Json.encode x)
 
     | Shape.Uri ->
-      wrap (fun (x: Uri) -> E.string (x.ToString()))
+      wrap (fun (x: Uri) -> if isNull x then Null else String (x.ToString()))
 
     | Shape.TimeSpan ->
       wrap (fun (x: TimeSpan) -> E.string (x.ToString()))
@@ -478,6 +479,15 @@ module internal JsonHelper =
             let label, fp = x.Value
             s |> JsonObject.add label (fp input)) JsonObject.empty
         |> Json.Object
+        
+    | Shape.FSharpFunc s ->
+      s.Accept
+        { new IFSharpFuncVisitor<'T -> Json> with
+            member __.Visit<'domain, 'codomain> () = // 'T = 'a option
+              fun func ->
+                let name = func.GetType().Name
+                Json.String (sprintf "val %s: (%s -> %s)" name s.Domain.Type.Name s.CoDomain.Type.Name)
+        }
 
     | other when other = shapeof<obj> ->
 //      printfn "JsonHelper: encode other %O" other

@@ -11,7 +11,6 @@ open HttpFs.Composition
 open Logary
 open Logary.Message
 open Logary.Internals
-open Logary.Internals.TypeShape.Core
 open Logary.Configuration
 
 module Constants =

@@ -55,9 +55,9 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Servizz", "..\examples\Serv
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Libryy", "..\examples\Libryy\Libryy.fsproj", "{A64CF176-66D8-459F-BF45-AF5B5C3098A2}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.ElasticSearch", "targets\Logary.Targets.ElasticSearch\Logary.Targets.ElasticSearch.fsproj", "{64A5B3B2-0F73-44B5-A178-C66A9DB830D6}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Elasticsearch", "targets\Logary.Targets.Elasticsearch\Logary.Targets.Elasticsearch.fsproj", "{64A5B3B2-0F73-44B5-A178-C66A9DB830D6}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.ElasticSearch.Tests", "tests\Logary.Targets.ElasticSearch.Tests\Logary.Targets.ElasticSearch.Tests.fsproj", "{2A4CB8E9-C123-4E07-A814-CF6B74FFC87D}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Elasticsearch.Tests", "tests\Logary.Targets.Elasticsearch.Tests\Logary.Targets.Elasticsearch.Tests.fsproj", "{2A4CB8E9-C123-4E07-A814-CF6B74FFC87D}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.RabbitMQ", "targets\Logary.Targets.RabbitMQ\Logary.Targets.RabbitMQ.fsproj", "{FE1BC08F-A41A-41CC-9F03-996EA9B3B477}"
 EndProject
@@ -84,6 +84,9 @@ EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Suave", "..\examples\Logary.Suave\Logary.Suave.fsproj", "{1721A791-AC1F-4F79-9E1D-AB8F125B85BF}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ingestion", "ingestion", "{7B088401-ACED-40A5-9DC7-9E64523CE77C}"
+ProjectSection(SolutionItems) = preProject
+	ingestion\README.md = ingestion\README.md
+EndProjectSection
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Ingestion.HTTP", "ingestion\Logary.Ingestion.HTTP\Logary.Ingestion.HTTP.fsproj", "{6BD97E30-0907-41E0-944D-5FD6A8B40589}"
 EndProject
@@ -126,6 +129,23 @@ EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.AspNetCore", "adapters\Logary.Adapters.AspNetCore\Logary.Adapters.AspNetCore.fsproj", "{B7BD505B-66D2-40B5-863C-8975032C2AE3}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Jaeger.Tests", "tests\Logary.Targets.Jaeger.Tests\Logary.Targets.Jaeger.Tests.fsproj", "{9ACC2DBA-BBE1-414F-AEB0-57CD9768875A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "rutta-helm-chart", "rutta-helm-chart", "{D64D7F8D-F4D5-4873-98BE-5427756F63D4}"
+ProjectSection(SolutionItems) = preProject
+	services\rutta-helm-chart\values.yaml = services\rutta-helm-chart\values.yaml
+	services\rutta-helm-chart\README.md = services\rutta-helm-chart\README.md
+EndProjectSection
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Ingestion.TCP", "ingestion\Logary.Ingestion.TCP\Logary.Ingestion.TCP.fsproj", "{7626CD7A-C582-49B8-97CB-E0FD7107F10C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "templates", "templates", "{C55E707F-D15A-4C2C-A67F-6D1AE11F487C}"
+ProjectSection(SolutionItems) = preProject
+	services\rutta-helm-chart\templates\_helpers.tpl = services\rutta-helm-chart\templates\_helpers.tpl
+	services\rutta-helm-chart\templates\deployment.yaml = services\rutta-helm-chart\templates\deployment.yaml
+	services\rutta-helm-chart\templates\ingress.yaml = services\rutta-helm-chart\templates\ingress.yaml
+	services\rutta-helm-chart\templates\NOTES.txt = services\rutta-helm-chart\templates\NOTES.txt
+	services\rutta-helm-chart\templates\service.yaml = services\rutta-helm-chart\templates\service.yaml
+EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -263,6 +283,7 @@ Global
 		{8EF6FFD7-5238-4CCA-A5FC-46161DA1C2F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{8EF6FFD7-5238-4CCA-A5FC-46161DA1C2F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8EF6FFD7-5238-4CCA-A5FC-46161DA1C2F5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8EF6FFD7-5238-4CCA-A5FC-46161DA1C2F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{52038D8A-986F-4DB1-BDF3-BD878F0E5D4C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{52038D8A-986F-4DB1-BDF3-BD878F0E5D4C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{52038D8A-986F-4DB1-BDF3-BD878F0E5D4C}.Release|Any CPU.Build.0 = Release|Any CPU
@@ -298,6 +319,10 @@ Global
 		{9ACC2DBA-BBE1-414F-AEB0-57CD9768875A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9ACC2DBA-BBE1-414F-AEB0-57CD9768875A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9ACC2DBA-BBE1-414F-AEB0-57CD9768875A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7626CD7A-C582-49B8-97CB-E0FD7107F10C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7626CD7A-C582-49B8-97CB-E0FD7107F10C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7626CD7A-C582-49B8-97CB-E0FD7107F10C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7626CD7A-C582-49B8-97CB-E0FD7107F10C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -345,5 +370,8 @@ Global
 		{95FA23BE-49AB-4721-A099-6B73B4E2C0D5} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{B7BD505B-66D2-40B5-863C-8975032C2AE3} = {56BB77A4-DF59-49EC-92E6-C9CA2C2E9FDE}
 		{9ACC2DBA-BBE1-414F-AEB0-57CD9768875A} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
+		{D64D7F8D-F4D5-4873-98BE-5427756F63D4} = {45AD4DB5-AE45-447D-9389-A4DF16AF8F44}
+		{7626CD7A-C582-49B8-97CB-E0FD7107F10C} = {7B088401-ACED-40A5-9DC7-9E64523CE77C}
+		{C55E707F-D15A-4C2C-A67F-6D1AE11F487C} = {D64D7F8D-F4D5-4873-98BE-5427756F63D4}
 	EndGlobalSection
 EndGlobal

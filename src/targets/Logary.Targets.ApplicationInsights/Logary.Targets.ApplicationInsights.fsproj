@@ -6,8 +6,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Targets_AppInsights.fs" />
-    <None Include="Script.fsx" />
+    <Compile Include="Targets_ApplicationInsights.fs" />
+    <!--<None Include="Script.fsx" />-->
     <None Include="paket.references" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />
   </ItemGroup>

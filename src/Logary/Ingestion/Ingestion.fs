@@ -2,9 +2,9 @@ namespace Logary.Ingestion
 
 open System
 open System.Text
-open Logary
-open Logary.Message
 open Hopac
+open Hopac.Infixes
+open Logary
 
 /// An ingested value. Either a string or a byte array.
 [<Struct>]
@@ -37,13 +37,38 @@ type Ingested =
     | Bytes bs -> Encoding.UTF8.GetString(bs.Array, bs.Offset, bs.Count)
     | String s -> s
 
-/// Callback when there are UDP packets available.
+/// Callback when there are packets available.
 /// TO CONSIDER: `'err` instead of string.
 type Ingest = Ingested -> Job<Result<unit, string>>
 
-//module Ingest =
-//  let withCodec (next: Logger): Ingest =
-//    fun input ->
-//        next.verbose (eventX "JFail: {line} => {failure}" >> setField "line" line >> setField "failure" failure)
-//        let jsonFail =
-//        Job.result (Result.Error jsonFail)
+type IngestServerConfig =
+  abstract cancelled: Promise<unit>
+  abstract ilogger: Logger
+
+type IngestServer =
+  private {
+    started: Promise<unit>
+    shutdown: Promise<unit>
+  }
+
+type ServerFactory<'config when 'config :> IngestServerConfig> =
+  'config -> Ingest -> Job<IngestServer>
+
+module IngestServer =
+  /// Create a new ingest server. The passed `recv` function is asynchronously queued to run with Hopac. In other words,
+  /// executing the returned job doesn't block on `recv` completing. In fact, the contrary is true; this code assumes
+  /// that `recv` will block for as long as the loop as running, and then feed any exceptions to the `shutdown`
+  /// `IVar<unit>` (second tuple item) that it is passed.
+  ///
+  /// This function is responsible for instantiating the `IVar<unit>` values to be passed to `recv`, thereby freeing
+  /// implementors of doing that manually.
+  ///
+  /// Returns a `ServerFactory<_>`.
+  let create (recv: (_*_) -> 'config -> Ingest -> Job<unit>): ServerFactory<_> =
+    fun (config: 'config) (next: Ingest) ->
+      let started, shutdown as signals = IVar (), IVar ()
+      Job.queue (recv signals config next)
+      >>-. { started=started; shutdown=shutdown }
+      
+  let waitForStart x = x.started
+  let waitForShutdown x = x.shutdown

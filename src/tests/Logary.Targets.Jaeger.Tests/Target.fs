@@ -1,6 +1,7 @@
 ﻿namespace Logary.Targets.Jaeger.Tests
 
 open Logary.Targets.Jaeger
+open Logary.Targets
 open Logary.Tests
 open Hopac
 open Logary
@@ -30,7 +31,7 @@ module Target =
   let testCaseTarget factory name fn =
     testCaseJob name (job {
       let state = new ResizeArray<Jaeger.Thrift.Batch>()
-      let jaegerConf = factory JaegerTarget.empty
+      let jaegerConf = factory Jaeger.empty
       let! ri = emptyRuntime
 
       let spanSender =
@@ -42,7 +43,7 @@ module Target =
         }
 
       let targetConf =
-        TargetConf.createSimple (JaegerTarget.startServe jaegerConf spanSender JaegerTarget.defaultSpanSizeCounter) "jaeger"
+        TargetConf.createSimple (Jaeger.Impl.loop jaegerConf spanSender Jaeger.defaultSpanSizeCounter) "jaeger"
         |> TargetConf.middleware Middleware.ambientSpanId
 
       let! target = Target.create ri targetConf
@@ -127,7 +128,7 @@ module Target =
 
         })
 
-      testCaseTarget (fun conf -> {conf with AutoFlushInterval = Duration.FromSeconds 2.;})
+      testCaseTarget (fun conf -> {conf with autoFlushInterval = Duration.FromSeconds 2.;})
         "AutoFlush Span"
         (fun state logger flush ->
           job {
@@ -143,7 +144,7 @@ module Target =
             Expect.equal state.Count 1 "should get 1 batch, trigger by auto flush"
           })
 
-      testCaseTarget (fun conf -> {conf with AutoFlushInterval = Duration.FromSeconds 2.; RetentionTime = Duration.FromSeconds 1.})
+      testCaseTarget (fun conf -> {conf with autoFlushInterval = Duration.FromSeconds 2.; retentionTime = Duration.FromSeconds 1.})
         "Auto GC Spans"
         (fun state logger flush ->
           job {

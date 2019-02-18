@@ -41,7 +41,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y libczmq4 libprotobuf-c-dev libprotobuf10 ca-certificates
 
 WORKDIR /logary/
-COPY --from=build /build/src/services/Logary.Services.Rutta/bin/Release/netcoreapp2.2/publish/* /logary/
+COPY --from=build /build/src/services/Logary.Services.Rutta/bin/Release/netcoreapp2.2/linux-x64/publish/* /logary/
 
 ENTRYPOINT ["dotnet", "/logary/rutta.dll"]
 CMD []

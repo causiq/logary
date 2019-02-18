@@ -4,9 +4,12 @@ namespace Logary.Services.Rutta
 // ignore "Uppercase variable identifiers should not generally be used in patterns, and may indicate a misspelt pattern name."
 
 open Argu
+open Logary.Configuration
+
 open System.Reflection
 [<assembly: AssemblyTitle("Logary Rutta – a router/proxy/shipper for Windows and Unix")>]
 ()
+
 
 type RMode =
   /// zmq PULL socket. Does a PULL socket bind call.
@@ -30,7 +33,8 @@ type Codec =
   /// Used for Rutta-to-Rutta communication with the ZMQ socket types
   | Binary
 
-type ProxyArgs =
+[<RequireSubcommand>]
+type ProxySubCommand =
   | [<Mandatory; Unique>] Xsub_Connect_To of endpoint:string
   | [<Mandatory; Unique>] Xpub_Bind of binding:string
 
@@ -43,6 +47,15 @@ type ProxyArgs =
         "Bind in XPUB mode for SUB sockets to connect to."
 
 module Help =
+
+  /// Whether Argu should go through every union case; in RELEASE mode it does not.
+  let checkStructure =
+  #if RELEASE
+    false
+  #else
+    true
+  #endif
+  
   open System
   open System.Text
   open FSharp.Reflection
@@ -58,7 +71,7 @@ module Help =
     let folder (sb: StringBuilder) (u: RMode) =
       let mInfo, _ = FSharpValue.GetUnionFields(u, typeof<RMode>)
       let mdesc = describeMode u
-      sb.AppendFormat(" - {0}: {1}{2}", mInfo.Name.ToLowerInvariant(), mdesc, Environment.NewLine)
+      sb.AppendFormat("- {0}: {1}{2}", mInfo.Name.ToLowerInvariant(), mdesc, Environment.NewLine)
     [ Pull; Sub; TCP; UDP; HTTP ]
     |> Seq.fold folder (StringBuilder())
     |> sprintf "%O"
@@ -78,22 +91,39 @@ module Help =
     |> Seq.fold folder (StringBuilder())
     |> sprintf "%O"
 
-[<RequireQualifiedAccess>]
-type RouterArgs =
+[<RequireQualifiedAccess; RequireSubcommand>]
+type RouterSubCommand =
   | [<Mandatory>] Listener of routerMode:RMode * bindingOrEndpoint:string * codec:Codec
   | [<Mandatory>] Target of targetUri:string
+  | Disable_CORS
 
   interface IArgParserTemplate with
     member x.Usage =
       match x with
       | Listener _ ->
-        sprintf "Specifies a single listener which is a triple of a router mode (for the binding), the binding (e.g. \"127.0.0.1:20001\"), and a codec. Modes:\n%sCodecs:\n%s"
-                (Help.describeModes ())
-                (Help.describeCodecs ())
+        System.String.Concat [
+          "A listener is a triple of <router mode, binding, codec>. You can specify many of these:\n"
+          "## Binding\n"
+          "E.g. \"127.0.0.1:20001\" or \"[::]:8080\"\n"
+          "## Router modes:\n"
+          Help.describeModes ()
+          "\n"
+          "## Codecs:\n"
+          Help.describeCodecs ()
+        ]
+        
+      | Disable_CORS ->
+        "Disables CORS, but your log ingestion is probably still open to people doing a `curl`."
+        
       | Target _ ->
-        "Specifies a list of targets to ship to."
+        let available =
+          TargetConfig.schemeToConfAndDefault
+          |> Seq.map (fun (KeyValue (k, _)) -> sprintf "- %s://" k)
+          |> String.concat "\n"
+        sprintf "Specifies a targets to ship to. You can specify many of these. Available targets:\n%s" available
 
-type ShipperArgs =
+[<RequireSubcommand>]
+type ShipperSubCommand =
   | [<Unique>] Push_To of pushConnectToSocket:string
   | [<Unique>] Pub_To of pubBindSocket:string
 
@@ -106,10 +136,10 @@ type ShipperArgs =
 type Args =
   | [<AltCommandLine "-V"; Inherit; Unique>] Version
   | [<AltCommandLine "-v"; Inherit; Unique>] Verbose
-  | [<CliPrefix(CliPrefix.None)>] Proxy of args:ParseResults<ProxyArgs>
-  | [<CliPrefix(CliPrefix.None)>] Router of args:ParseResults<RouterArgs>
-  | [<CliPrefix(CliPrefix.None)>] Shipper of args:ParseResults<ShipperArgs>
-  | [<Unique>] Health of binding:string
+  | [<CliPrefix(CliPrefix.None)>] Proxy of args:ParseResults<ProxySubCommand>
+  | [<CliPrefix(CliPrefix.None)>] Router of args:ParseResults<RouterSubCommand>
+  | [<CliPrefix(CliPrefix.None)>] Shipper of args:ParseResults<ShipperSubCommand>
+  | [<AltCommandLine "-h"; Inherit>] Health of binding:string
 with
   interface IArgParserTemplate with
     member x.Usage =
@@ -134,11 +164,9 @@ module Parsers =
   open Logary.Configuration
 
   let binding (binding: string): IPEndPoint =
-    match binding.Split([| ':' |]) with
-    | [| nic; p |] ->
-      IPEndPoint(IPAddress.Parse nic, int p)
-    | _ ->
-      failwithf "Invalid binding '%s'. Expected format '<ip>:<port>'." binding
+    let portIndex = binding.LastIndexOf(':')
+    let nic, port = binding.[0..portIndex-1], binding.[portIndex+1..]
+    IPEndPoint(IPAddress.Parse nic, int port)
 
   let targetConfig (targetUri: string): TargetConf =
     TargetConfig.create (Uri targetUri)

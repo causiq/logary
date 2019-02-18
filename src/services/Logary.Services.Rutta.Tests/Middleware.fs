@@ -7,7 +7,7 @@ open Logary.Services.Rutta.Program
 
 [<Tests>]
 let messageEnrichment =
-  testList "Enrichment" [
+  testList "enrichment" [
     testCase "message has host" <| fun _ ->
       let hostname = System.Net.Dns.GetHostName()
       
@@ -18,3 +18,4 @@ let messageEnrichment =
                    (enrichedMsg |> Message.tryGetContext KnownLiterals.HostContextName)
                    "Should contain the 'host' value and it should equal the Dns.GetHostName() value"
   ]
+  |> testLabel "rutta"

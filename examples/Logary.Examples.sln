@@ -19,7 +19,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logary.CSharp", "..\src\Log
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Logstash", "..\src\targets\Logary.Targets.Logstash\Logary.Targets.Logstash.fsproj", "{F9AAC195-D3F7-4160-A829-5F9775791AD5}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.ElasticSearch", "..\src\targets\Logary.Targets.ElasticSearch\Logary.Targets.ElasticSearch.fsproj", "{64A5B3B2-0F73-44B5-A178-C66A9DB830D6}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Logary.Targets.Elasticsearch", "..\src\targets\Logary.Targets.Elasticsearch\Logary.Targets.Elasticsearch.fsproj", "{64A5B3B2-0F73-44B5-A178-C66A9DB830D6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

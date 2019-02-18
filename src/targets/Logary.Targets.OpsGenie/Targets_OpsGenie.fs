@@ -49,7 +49,6 @@ type Priority =
     | Fatal -> P1
 
 module internal E =
-  open Logary.Message.Patterns
   open Logary.Formatting
 
   module E = Json.Encode
@@ -168,7 +167,6 @@ module internal E =
     Some (logaryMessage conf m JsonObject.empty |> Json.Object)
 
 module Defaults =
-  open Logary.Formatting
   /// # of exceptions:
   ///  - 1: The formatted message value alone, if no exceptions.
   ///
@@ -214,7 +212,6 @@ let empty =
 
 module internal Impl =
   open Logary.Internals.Aether
-  open Logary.Internals.Aether.Operators
   open Chiron.Optics
   open System.Net.Http
 

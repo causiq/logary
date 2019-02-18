@@ -1,21 +1,14 @@
 /// A Logary target for Elasticsearch
-module Logary.Targets.ElasticSearch
+module Logary.Targets.Elasticsearch
 
 #nowarn "1104"
 
 open Hopac
-open NodaTime
 open System
-open System.Net
-open System.Net.Sockets
-open System.IO
 open System.Security.Cryptography
-open Hopac
 open Hopac.Infixes
-open Hopac.Extensions
 open Logary
 open Logary.Configuration
-open Logary.Target
 open Logary.Internals
 open Logary.Internals.Chiron
 
@@ -24,21 +17,21 @@ open Logary.Internals.Chiron
 let DefaultPublishTo =
   "http://localhost:9200"
 
-type ElasticSearchConf =
+type ElasticsearchConf =
   { /// Server URL, by default "http://localhost:9200"
     publishTo: string
-    /// ElasticSearch document "_type", by default "logs"
+    /// Elasticsearch document "_type", by default "logs"
     _type: string
     /// Prefix for log indexs, defaults to "logary"
     indexName: string }
 
-  /// Create a new ElasticSearch target config.
+  /// Create a new Elasticsearch target config.
   static member create(?publishTo, ?_type, ?indexName) =
     { publishTo  = defaultArg publishTo DefaultPublishTo
       _type      = defaultArg _type "logs"
       indexName  = defaultArg indexName "logary" }
 
-let empty = ElasticSearchConf.create()
+let empty = ElasticsearchConf.create()
 
 let serialise: Message -> Json =
   fun message ->
@@ -68,7 +61,7 @@ module internal Impl =
     |> BitConverter.ToString
     |> String.replace "-" ""
 
-  let sendToElasticSearch elasticUrl _type indexName (message: Message) =
+  let sendToElasticsearch elasticUrl _type indexName (message: Message) =
     let _index  = indexName + "-" + DateTime.UtcNow.ToString("yyy-MM-dd")
     let bytes = serialiseToJsonBytes message
     let _id = generateId bytes
@@ -80,7 +73,7 @@ module internal Impl =
     Request.responseAsString request
     |> Job.Ignore
 
-  let loop (conf: ElasticSearchConf) (api: TargetAPI) =
+  let loop (conf: ElasticsearchConf) (api: TargetAPI) =
 
     let rec loop (_: unit): Job<unit> =
       Alt.choose [
@@ -90,7 +83,7 @@ module internal Impl =
         RingBuffer.take api.requests ^=> function
           | Log (message, ack) ->
             job {
-              do! sendToElasticSearch conf.publishTo conf._type conf.indexName message
+              do! sendToElasticsearch conf.publishTo conf._type conf.indexName message
               do! ack *<= ()
               return! loop ()
             }
@@ -104,12 +97,14 @@ module internal Impl =
 
     loop ()
 
-let create conf = TargetConf.createSimple (Impl.loop conf)
+[<CompiledName "Create">]
+let create conf name =
+  TargetConf.createSimple (Impl.loop conf) name
 
-/// Use with LogaryFactory.New( s => s.Target<ElasticSearch.Builder>() )
+/// Use with LogaryFactory.New( s => s.Target<Elasticsearch.Builder>() )
 type Builder(conf, callParent: Target.ParentCallback<Builder>) =
 
-  /// Specifies the ElasticSearch url.
+  /// Specifies the Elasticsearch url.
   member x.PublishTo(publishTo: string) =
     Builder({ conf with publishTo = publishTo }, callParent)
 
@@ -121,7 +116,7 @@ type Builder(conf, callParent: Target.ParentCallback<Builder>) =
     ! (callParent x)
 
   new(callParent: Target.ParentCallback<_>) =
-    Builder(ElasticSearchConf.create DefaultPublishTo, callParent)
+    Builder(ElasticsearchConf.create DefaultPublishTo, callParent)
 
   interface Target.SpecificTargetConf with
     member x.Build name =

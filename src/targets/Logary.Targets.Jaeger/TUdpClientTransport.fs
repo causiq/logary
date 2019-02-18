@@ -1,4 +1,4 @@
-namespace Logary.Targets.Jaeger
+namespace Logary.Clients.Jaeger
 
 open Thrift.Transports
 open System.Net.Sockets

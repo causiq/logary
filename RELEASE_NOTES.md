@@ -1,7 +1,27 @@
 #### 5.0.0-rc.1
-* Upgrade Rutta docker image and minor README fixes, thanks @haf
+* Print better help message for UDP ingestion targets, thanks @haf
+* Ensure Rutta / HTTP codec logs errors to stdout, thanks @haf
 * Ensure Rutta / HTTP codec can optionally enable CORS, thanks @haf
+* Allow HTTP codec to be nicely parametised with onSuccess, onFailure, thanks @haf
+* Extract TCP ingestion to its own package, thanks @haf
+* Print ZMQ version on start of Rutta, thanks @haf
+* Update README for newest Rutta, thanks @haf
+* Upgrade/fix Rutta command line parsing to assist user better and not crash `dotnet`, thanks @haf
+* Remove older mono's from .travis.yml, thanks @haf
+* Set up Travis to push docker image on git tags, thanks @haf
+* Create `haaf/rutta-curl` image as a utility image, thanks @haf
+* Create `Makefile` for simpler builds, thanks @haf
+* Enable smart version+tag docker image tagging in Makefile, thanks @haf
 * Finish writing LICENSE.md, thanks @haf
+* Upgrade all .Tests and Services to netcoreapp2.2, thanks @haf
+* Rename ElasticSearch -> Elasticsearch, thanks @haf
+* Normalise Elasticsearch, Jaeger and ApplicationInsights naming and module layout, thanks @haf
+* Pretty-print F# function signatures when instances thereof are logged, thanks @haf
+* Fix bug in JSON encoder that missed null strings, thanks @haf
+* Create an IngestServer abstraction and module, thanks @haf
+* Port all Ingestion implementation to the new IngestServer abstraction, thanks @haf
+* Move `ensureName` from middleware to `Logger` in Logary, thanks @haf
+* Add Rutta Helm chart, thanks @haf
 
 #### 5.0.0-beta.29
 * BREAKING CHANGE. Change error model and failed-logs-model to be configuration based, #378, thanks @lust4life

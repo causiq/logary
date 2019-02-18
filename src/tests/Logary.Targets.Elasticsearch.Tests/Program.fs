@@ -18,11 +18,11 @@ let emptyRuntime =
 let flush = Target.flush >> Job.Ignore >> run
 
 let targConf =
-  ElasticSearch.ElasticSearchConf.create()
+  Elasticsearch.ElasticsearchConf.create()
 
 
 let start () =
-  Target.create emptyRuntime (ElasticSearch.create targConf "elasticsearch")
+  Target.create emptyRuntime (Elasticsearch.create targConf "elasticsearch")
   |> run
 
 let shutdown t = Target.shutdown t |> run |> run
@@ -38,7 +38,7 @@ let now = Message.setUTCTicks System.DateTime.UtcNow.Ticks
 [<Tests>]
 let target =
   testList "elasticsearch" [
-    TargetBaseline.basicTests "ElasticSearch" (ElasticSearch.create ElasticSearch.empty) false
+    TargetBaseline.basicTests "Elasticsearch" (Elasticsearch.create Elasticsearch.empty) false
 
     testCase "serialise" <| fun _ ->
       let e1 = raisedExn "darn"
@@ -53,7 +53,7 @@ let target =
         |> Message.setContext "service" "tests"
         |> Message.addExn e2
         |> now
-        |> ElasticSearch.serialise
+        |> Elasticsearch.serialise
         |> Json.format
 
       Expect.equal subject "expected" "should serialise to proper message"

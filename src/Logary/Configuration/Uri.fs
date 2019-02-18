@@ -188,9 +188,18 @@ module TargetConfig =
         moduleType = moduleType }
 
   let schemeToConfAndDefault =
-    [ "influxdb",    moduleNameConfigNameAsm "InfluxDb"
-      "stackdriver", moduleNameConfigNameAsm "Stackdriver"
+    [
+      "aliyun",      moduleNameConfigNameAsm "AliYun"
+      "applicationinsights", moduleNameConfigNameAsm "ApplicationInsights"
       "console",     moduleNameConfigName (modu "LiterateConsole") "Logary" (conf "LiterateConsole")
+      "elasticsearch", moduleNameConfigNameAsm "Elasticsearch"
+      "elmahio",     moduleNameConfigNameAsm "ElmahIO"
+      "influxdb",    moduleNameConfigNameAsm "InfluxDb"
+      "jaeger",      moduleNameConfigNameAsm "Jaeger"
+      "mixpanel",    moduleNameConfigNameAsm "Mixpanel"
+      "opsgenie",    moduleNameConfigNameAsm "OpsGenie"
+      "rabbitmq",    moduleNameConfigNameAsm "RabbitMQ"
+      "stackdriver", moduleNameConfigNameAsm "Stackdriver"
     ]
     |> List.map (fun (scheme, (moduleName, configName)) ->
       let confType = Type.GetType configName

@@ -4,7 +4,11 @@
     <AssemblyName>Logary.Services.Rutta.Tests</AssemblyName>
     <OutputType>Exe</OutputType>
     <TargetFrameworks>netcoreapp2.2</TargetFrameworks>
+    <DebugSymbols>true</DebugSymbols>
+    <Tailcalls>true</Tailcalls>
+    <GenerateTailCalls>true</GenerateTailCalls>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Parsing.fs" />
@@ -12,6 +16,15 @@
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />
+    <ProjectReference Include="..\..\targets\Logary.Targets.AliYun\Logary.Targets.AliYun.fsproj" />
+    <ProjectReference Include="..\..\targets\Logary.Targets.ApplicationInsights\Logary.Targets.ApplicationInsights.fsproj" />
+    <ProjectReference Include="..\..\targets\Logary.Targets.Elasticsearch\Logary.Targets.Elasticsearch.fsproj" />
+    <ProjectReference Include="..\..\targets\Logary.Targets.ElmahIO\Logary.Targets.ElmahIO.fsproj" />
+    <ProjectReference Include="..\..\targets\Logary.Targets.InfluxDb\Logary.Targets.InfluxDb.fsproj" />
+    <ProjectReference Include="..\..\targets\Logary.Targets.Jaeger\Logary.Targets.Jaeger.fsproj" />
+    <ProjectReference Include="..\..\targets\Logary.Targets.Mixpanel\Logary.Targets.Mixpanel.fsproj" />
+    <ProjectReference Include="..\..\targets\Logary.Targets.OpsGenie\Logary.Targets.OpsGenie.fsproj" />
+    <ProjectReference Include="..\..\targets\Logary.Targets.RabbitMQ\Logary.Targets.RabbitMQ.fsproj" />
     <ProjectReference Include="..\Logary.Services.Rutta\Logary.Services.Rutta.fsproj" />
   </ItemGroup>
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />

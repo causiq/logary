@@ -1,10 +1,10 @@
-﻿#I "bin/Release/net461"
+﻿#I "bin/Release/netstandard2.0"
 #r "Hopac.Core"
 #r "Hopac"
 #r "Microsoft.ApplicationInsights"
 #r "Microsoft.AI.DependencyCollector"
 #r "Logary"
-#load "Targets_AppInsights.fs"
+#load "Targets_ApplicationInsights.fs"
 open System
 open Hopac
 open Logary
