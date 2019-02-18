@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
       - name: {{ .Chart.Name | quote }}
-        image: {{ .Values.image | default "haaf/rutta:5.0.0-rc.1.144439a1" | quote }}
+        image: {{ .Values.image | default "haaf/rutta:5.0.0-rc.1.597e31a3" | quote }}
         args:
         {{- if .Values.router }}
         - "router"
@@ -70,16 +70,11 @@ spec:
           {{- end }}
         {{- end }}
 
-        livenessProbe:
-        {{- range .Values.router.listeners }}
-        {{- if eq .mode "http" }}
-          httpGet:
-            path: /
-            port: {{ .binding.port }}
-        {{- end }}
-        {{- end }}
-
         {{- if not .Values.disableHealth }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 9090
         readinessProbe:
           httpGet:
             path: /health
