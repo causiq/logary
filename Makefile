@@ -23,10 +23,10 @@ test: build
 image:
 ifneq ($(TRAVIS_TAG),)
 	docker build -t haaf/rutta:latest -t haaf/rutta:$(TAG_VERSION_SUFFIX) -t haaf/rutta:$(TRAVIS_TAG) .
-	docker build -t haaf/rutta-curl:latest -t haaf/rutta-curl:$(TAG_VERSION_SUFFIX) -t haaf/rutta:$(TRAVIS_TAG) src/services/rutta-curl
+	docker build -t haaf/rutta-curl:latest -t haaf/rutta-curl:$(TAG_VERSION_SUFFIX) -t haaf/rutta:$(TRAVIS_TAG) src/services/rutta-helm-chart/rutta-curl
 else
 	docker build -t haaf/rutta:latest -t haaf/rutta:$(TAG_VERSION_SUFFIX) .
-	docker build -t haaf/rutta-curl:latest -t haaf/rutta-curl:$(TAG_VERSION_SUFFIX) src/services/rutta-curl
+	docker build -t haaf/rutta-curl:latest -t haaf/rutta-curl:$(TAG_VERSION_SUFFIX) src/services/rutta-helm-chart/rutta-curl
 endif
 
 push:
