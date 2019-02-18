@@ -22,6 +22,7 @@ obj/
 packages/
 paket-files/
 tools/
+pkg/
 
 .paket/*
 !.paket/*.proj

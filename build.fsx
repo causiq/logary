@@ -36,7 +36,7 @@ let iconUrl = "https://raw.githubusercontent.com/logary/logary-assets/master/gra
 let licenceUrl = "https://raw.githubusercontent.com/logary/logary/master/LICENSE.md"
 let copyright = sprintf "Copyright \169 %i Henrik Feldt" DateTime.Now.Year
 
-let pkgPath = "./pkg"
+let pkgPath = Path.GetFullPath "./pkg"
 
 let testProjects =
   !! "src/tests/**/*.fsproj"
@@ -54,7 +54,6 @@ let envRequired k =
   let v = Environment.GetEnvironmentVariable k
   if isNull v then failwithf "Missing environment key '%s'." k
   v
-
 
 Target.create "Clean" <| fun _ ->
   // This line actually ensures we get the correct version checked in
@@ -177,9 +176,16 @@ Target.create "Pack" <| fun _ ->
         MSBuildParams = args }
   DotNet.pack setParams pkgSln
 
-Target.create "Push" (fun _ -> Paket.push (fun p -> { p with WorkingDir = pkgPath }))
+Target.create "Push" <| fun _ ->
+  let setParams (p: Paket.PaketPushParams) =
+    { p with
+        WorkingDir = pkgPath
+        ApiKey = envRequired "NUGET_TOKEN" }
+  Paket.push setParams
 
-Target.create "CheckEnv" (fun _ -> ignore (envRequired "GITHUB_TOKEN"))
+Target.create "CheckEnv" <| fun _ ->
+  ignore (envRequired "GITHUB_TOKEN")
+  ignore (envRequired "NUGET_TOKEN")
 
 Target.create "Release" (fun _ ->
   let gitOwner, gitName = "logary", "logary"
