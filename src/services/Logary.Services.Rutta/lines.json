@@ -1,7 +1,5 @@
 {"name": "A", "context": {"a": 1}}
-
 {"a": 2}
-3
 {"name": "D.E.F", "lines": [ "a", 2 ] }
 {"name": "A.B.C", "level": "Verbose", "value": "{user.username} logged in", "fields": { "user": { "id": 1, "username": "haf" } }, "@timestamp": "2018-03-14T00:14:10Z" }
 {"name": "A.B.C", "level": "Debug", "value": "{user.username} logged in", "fields": { "user": { "id": 1, "username": "haf" } }, "@timestamp": "2018-03-14T00:14:10Z" }

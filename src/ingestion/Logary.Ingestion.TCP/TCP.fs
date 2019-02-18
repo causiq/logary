@@ -49,7 +49,13 @@ module TCP =
           // This allows us to read a bunch of messages in from a single message
           while not sr.EndOfStream do
             let line = Ingested.ofString (sr.ReadLine())
-            let nJ = Job.Ignore (next line)
+            let nJ = job {
+              match! next line with
+              | Result.Error error ->
+                config.ilogger.error (eventX error)
+              | Result.Ok () ->
+                ()
+              }
             queue nJ
             
       with :? ZMQError as zmq ->

@@ -62,12 +62,16 @@ module internal Impl =
   //[<TailRecursive>]
   /// Iterate over the UDP datagram inputs, interpreting them as bytes, send them onto `next`, take the next datagram.
   /// Then, queue it all up as a Proc, to allow us to join it later.
-  let receiveLoop (cancelled: Promise<unit>) (next: Ingest) (inSocket: UdpClient) =
+  let receiveLoop (ilogger: Logger) (next: Ingest) (inSocket: UdpClient) =
     job {
       while true  do
         let! msg = inSocket.getMessage()
         let! res = next (Ingested.ofBytes msg)
-        ignore res // nothing to do; UDP is fire-and-forget
+        match res with
+        | Result.Error error ->
+          ilogger.error (eventX error)
+        | Result.Ok () ->
+          ()
     }
 
 module UDP =
@@ -96,7 +100,7 @@ module UDP =
         try inSocket.Close() with _ -> ()
         
       // start the client "server" Proc
-      do! Job.start (Impl.ignoreODE completed (Impl.receiveLoop config.cancelled next inSocket))
+      do! Job.start (Impl.ignoreODE completed (Impl.receiveLoop config.ilogger next inSocket))
       do! started *<= ()
       
       // this may throw, thereby ignoring the wait on the `cancelled` Promise
