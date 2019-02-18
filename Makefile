@@ -1,20 +1,24 @@
 .PHONY: restore build test
+export CONFIGURATION=${CONFIGURATION:-'Release'}
 TAG_VERSION_SUFFIX=$(shell tools/get_version.sh)
 
 all: restore build
 
 prepare:
-	./fake.sh build --target AssemblyInfo
-	./fake.sh build --target PaketFiles
+	./fake.sh build --single-target --target AssemblyInfo
+	./fake.sh build --single-target --target PaketFiles
+
+version:
+	./fake.sh build --single-target --target ProjectVersion
 
 restore:
 	dotnet restore src/Logary.sln
 
-build: prepare
+build: prepare version restore
 	dotnet build src/Logary.sln -c Release
 
-test:
-	./fake.sh build --target Tests
+test: build
+	./fake.sh build --single-target --target Tests
 
 image:
 ifneq ($(TRAVIS_TAG),)
@@ -40,8 +44,16 @@ else
 	docker push haaf/rutta-curl:$(TAG_VERSION_SUFFIX)
 endif
 
-release: restore build tests image push
-	dotnet publish
+pack_library:
+	./fake.sh build --single-target --target Pack
+
+push_library: pack_library
+	./fake.sh build --single-target --target Push
+
+release_library:
+	./fake.sh build --single-target --target Release
+
+release: restore build test release_library image push
 
 clean:
 	git clean -fxd
