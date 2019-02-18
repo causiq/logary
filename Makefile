@@ -48,9 +48,11 @@ pack_library:
 	./fake.sh build --single-target --target Pack
 
 push_library: pack_library
+	./fake.sh build --single-target --target CheckEnv
 	./fake.sh build --single-target --target Push
 
 release_library:
+	./fake.sh build --single-target --target CheckEnv
 	./fake.sh build --single-target --target Release
 
 release: restore build test release_library image push
