@@ -1,6 +1,8 @@
 #r "paket: groupref Build //"
 
+#nowarn "52"
 #load "./.fake/build.fsx/intellisense.fsx"
+#load "paket-files/build/eiriktsarpalis/snippets/SlnTools/SlnTools.fs"
 
 // https://github.com/ionide/ionide-vscode-fsharp/issues/839#issuecomment-396296095
 #if !FAKE
@@ -21,7 +23,9 @@ open Fake.SystemHelper
 
 Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 
-let configuration = Environment.environVarOrDefault "CONFIGURATION" "Release"
+let configuration =
+  Environment.environVarOrDefault "CONFIGURATION" "Release"
+  |> DotNet.BuildConfiguration.fromString
 let release = ReleaseNotes.load "RELEASE_NOTES.md"
 let description = "Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net."
 let tags = "structured logging f# logs logging performance metrics semantic"
@@ -32,11 +36,30 @@ let iconUrl = "https://raw.githubusercontent.com/logary/logary-assets/master/gra
 let licenceUrl = "https://raw.githubusercontent.com/logary/logary/master/LICENSE.md"
 let copyright = sprintf "Copyright \169 %i Henrik Feldt" DateTime.Now.Year
 
-Target.create "Clean" (fun _ ->
+let pkgPath = "./pkg"
+
+let testProjects =
+  !! "src/tests/**/*.fsproj"
+  ++ "src/services/*.Tests/*.fsproj"
+  ++ "src/*.Tests/*.fsproj"
+
+let libProjects =
+  !! "src/targets/**/*.fsproj"
+  ++ "src/adapters/**/*.fsproj"
+  ++ "src/ingestion/**/*.fsproj"
+  ++ "src/Logary/Logary.fsproj"
+  ++ "src/Logary.CSharp/Logary.CSharp.csproj"
+
+let envRequired k =
+  let v = Environment.GetEnvironmentVariable k
+  if isNull v then failwithf "Missing environment key '%s'." k
+  v
+
+
+Target.create "Clean" <| fun _ ->
   // This line actually ensures we get the correct version checked in
   // instead of the one previously bundled with 'fake`
   Git.CommandHelper.gitCommand "" "checkout .paket/Paket.Restore.targets"
-  )
 
 Target.create "AssemblyInfo" (fun _ ->
   [ yield "Logary", None
@@ -116,86 +139,45 @@ Target.create "TCReportVersion" (fun _ ->
 
 /// This also restores.
 Target.create "Build" (fun _ ->
-  DotNet.build (fun p ->
-  { p with
-      Configuration = DotNet.BuildConfiguration.Custom configuration
-  }) "src/Logary.sln"
+  DotNet.build (fun p -> { p with Configuration = configuration }) "src/Logary.sln"
 )
 
 Target.create "Tests" (fun _ ->
   let commandLine (file: string) =
     let projectName = file.Substring(0, file.Length - ".fsproj".Length) |> Path.GetFileName
     let path = Path.GetDirectoryName file
-    sprintf "%s/bin/%s/netcoreapp2.2/%s.dll --summary" path configuration projectName
-  Seq.concat [
-    !! "src/tests/**/*.fsproj"
-    !! "src/services/*.Tests/*.fsproj"
-    !! "src/*.Tests/*.fsproj"
-  ]
+    sprintf "%s/bin/%O/netcoreapp2.2/%s.dll --summary" path configuration projectName
+  testProjects
   |> Seq.iter (commandLine >> DotNet.exec id "" >> ignore))
 
-let packParameters name =
-  [ "--no-build"
-    "--no-restore"
-    sprintf "/p:Title=\"%s\"" name
-    "/p:PackageVersion=" + release.NugetVersion
-    sprintf "/p:Authors=\"%s\"" authors
-    sprintf "/p:Owners=\"%s\"" owners
-    "/p:PackageRequireLicenseAcceptance=true"
-    sprintf "/p:Description=\"%s\"" (description.Replace(",",""))
-    sprintf "/p:PackageReleaseNotes=\"%O\"" ((release.Notes |> String.toLines).Replace(",","").Replace(";", "—"))
-    sprintf "/p:Copyright=\"%s\"" copyright
-    sprintf "/p:PackageTags=\"%s\"" tags
-    sprintf "/p:PackageProjectUrl=\"%s\"" projectUrl
-    sprintf "/p:PackageIconUrl=\"%s\"" iconUrl
-    sprintf "/p:PackageLicenseUrl=\"%s\"" licenceUrl
-  ]
-  |> String.concat " "
+Target.create "Pack" <| fun _ ->
+  let args =
+    { MSBuild.CliArguments.Create() with
+        NoLogo = true
+        DoRestore = false
+        Properties =
+          [ "PackageVersion", release.NugetVersion
+            "Authors", authors
+            "Owners", owners
+            "PackageRequireLicenseAcceptance", "true"
+            "Description", description.Replace(",","")
+            "PackageReleaseNotes", (release.Notes |> String.toLines).Replace(",","").Replace(";", "—")
+            "Copyright", copyright
+            "PackageTags", tags
+            "PackageProjectUrl", projectUrl
+            "PackageIconUrl", iconUrl
+            "PackageLicenseUrl", licenceUrl
+          ]
+    }
+  let pkgSln = SlnTools.createTempSolutionFile libProjects
+  let setParams (p: DotNet.PackOptions) =
+    { p with
+        OutputPath = Some pkgPath
+        Configuration = configuration
+        MSBuildParams = args }
+  DotNet.pack setParams pkgSln
 
-Target.create "Pack" (fun _ ->
-  !! "src/targets/**/*.fsproj"
-  ++ "src/adapters/**/*.fsproj"
-  ++ "src/ingestion/**/*.fsproj"
-  ++ "src/Logary/Logary.fsproj"
-  ++ "src/Logary.CSharp/Logary.CSharp.csproj"
-  |> Seq.iter (fun proj ->
-    let path = proj.Substring(0, proj.Length - ".fsproj".Length)
-    let name = System.IO.Path.GetFileName path
-    DotNet.exec id "" (
-      sprintf
-        "pack %s -c %s -o ./bin %s"
-        proj configuration (packParameters name)) |> ignore
-  )
-)
-
-Target.create "Push" (fun _ ->
-  Paket.push (fun p -> { p with WorkingDir = "src" }))
-
-let ruttaBinFolder =
-  "src/services/Logary.Services.Rutta/bin/Release/netcoreapp2.2/publish/"
-
-Target.create "PackageRutta" (fun _ ->
-  ignore (Directory.CreateDirectory "artifacts")
-  "packages/libzmq_vc120/build/native/bin/libzmq-x64-v120-mt-4_2_30_0.dll"
-  |> Shell.copyFile(Path.Combine(ruttaBinFolder, "libzmq.dll"))
-
-  Zip.createZip
-    // work dir
-    ruttaBinFolder
-    // file name
-    (sprintf "artifacts/Rutta-v%s.zip" (release.SemVer.ToString()))
-    "A zip of the Rutta router/shipping service"
-    Zip.DefaultZipLevel
-    false
-    (!! (sprintf "%s/**/*" ruttaBinFolder)))
-
-"Build"
-  ==> "PackageRutta"
-
-let envRequired k =
-  let v = Environment.GetEnvironmentVariable k
-  if isNull v then failwithf "Missing environment key '%s'." k
-  v
+Target.create "Push" (fun _ -> Paket.push (fun p -> { p with WorkingDir = pkgPath }))
 
 Target.create "CheckEnv" (fun _ -> ignore (envRequired "GITHUB_TOKEN"))
 
@@ -221,7 +203,6 @@ Target.create "Release" (fun _ ->
   |> GitHub.publishDraft
   |> Async.RunSynchronously
 )
-
 
 "CheckEnv"
   ==> "Release"

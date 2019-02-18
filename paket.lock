@@ -265,7 +265,7 @@ NUGET
       Microsoft.Win32.Registry (>= 4.5)
       Microsoft.Win32.Registry.AccessControl (>= 4.5)
       Microsoft.Win32.SystemEvents (>= 4.5)
-      Microsoft.Windows.Compatibility.Shims (>= 2.0.1) - restriction: || (== netcoreapp2.0) (&& (== netcoreapp2.2) (< netcoreapp2.1)) (&& (== netstandard2.0) (>= netcoreapp2.0))
+      Microsoft.Windows.Compatibility.Shims (>= 2.0.1) - restriction: || (== netcoreapp2.0) (&& (== netcoreapp2.2) (== netstandard2.0)) (&& (== netcoreapp2.2) (< netcoreapp2.1)) (&& (== netstandard2.0) (>= netcoreapp2.0))
       System.CodeDom (>= 4.5)
       System.ComponentModel.Composition (>= 4.5)
       System.Configuration.ConfigurationManager (>= 4.5)
@@ -503,7 +503,7 @@ NUGET
       Microsoft.NETCore.Platforms (>= 2.0) - restriction: || (== netcoreapp2.0) (== netcoreapp2.2) (&& (== netstandard2.0) (>= netcoreapp2.0))
       Microsoft.Win32.Registry (>= 4.5) - restriction: || (== netcoreapp2.0) (== netcoreapp2.2) (&& (== netstandard2.0) (>= netcoreapp2.0))
       System.Configuration.ConfigurationManager (>= 4.5) - restriction: || (== netcoreapp2.0) (== netcoreapp2.2) (&& (== netstandard2.0) (>= netcoreapp2.0))
-      System.Memory (>= 4.5) - restriction: || (== netcoreapp2.0) (&& (== netcoreapp2.2) (< netcoreapp2.1)) (&& (== netstandard2.0) (>= netcoreapp2.0))
+      System.Memory (>= 4.5) - restriction: || (== netcoreapp2.0) (&& (== netcoreapp2.2) (== netstandard2.0)) (&& (== netcoreapp2.2) (< netcoreapp2.1)) (&& (== netstandard2.0) (>= netcoreapp2.0))
       System.Security.Principal.Windows (>= 4.5) - restriction: || (== netcoreapp2.0) (== netcoreapp2.2) (&& (== netstandard2.0) (>= netcoreapp2.0))
     System.Diagnostics.StackTrace (4.3)
       System.IO.FileSystem (>= 4.3)
@@ -880,7 +880,7 @@ NUGET
       System.Security.Cryptography.Primitives (>= 4.3)
       System.Text.Encoding (>= 4.3)
     System.Security.Cryptography.Cng (4.5)
-      Microsoft.NETCore.Platforms (>= 2.0) - restriction: || (== netcoreapp2.0) (&& (== netcoreapp2.2) (< netcoreapp2.1)) (&& (== netstandard2.0) (>= netcoreapp2.0))
+      Microsoft.NETCore.Platforms (>= 2.0) - restriction: || (== netcoreapp2.0) (&& (== netcoreapp2.2) (== netstandard2.0)) (&& (== netcoreapp2.2) (< netcoreapp2.1)) (&& (== netstandard2.0) (>= netcoreapp2.0))
     System.Security.Cryptography.Csp (4.3)
       Microsoft.NETCore.Platforms (>= 1.1)
       System.IO (>= 4.3)
@@ -909,7 +909,7 @@ NUGET
       System.Security.Cryptography.Primitives (>= 4.3)
       System.Text.Encoding (>= 4.3)
     System.Security.Cryptography.OpenSsl (4.5)
-      Microsoft.NETCore.Platforms (>= 2.0) - restriction: || (== netcoreapp2.0) (&& (== netcoreapp2.2) (< netcoreapp2.1)) (&& (== netstandard2.0) (>= netcoreapp2.0))
+      Microsoft.NETCore.Platforms (>= 2.0) - restriction: || (== netcoreapp2.0) (&& (== netcoreapp2.2) (== netstandard2.0)) (&& (== netcoreapp2.2) (< netcoreapp2.1)) (&& (== netstandard2.0) (>= netcoreapp2.0))
     System.Security.Cryptography.Pkcs (4.5.2)
       System.Buffers (>= 4.4) - restriction: || (&& (== netcoreapp2.0) (>= monoandroid) (< netstandard2.0)) (&& (== netcoreapp2.0) (>= monotouch)) (&& (== netcoreapp2.0) (>= xamarinios)) (&& (== netcoreapp2.0) (>= xamarinmac)) (&& (== netcoreapp2.0) (>= xamarintvos)) (&& (== netcoreapp2.0) (>= xamarinwatchos)) (&& (== netcoreapp2.2) (>= monoandroid) (< netstandard2.0)) (&& (== netcoreapp2.2) (>= monotouch)) (&& (== netcoreapp2.2) (< netcoreapp2.0)) (&& (== netcoreapp2.2) (>= xamarinios)) (&& (== netcoreapp2.2) (>= xamarinmac)) (&& (== netcoreapp2.2) (>= xamarintvos)) (&& (== netcoreapp2.2) (>= xamarinwatchos)) (== netstandard2.0)
       System.Memory (>= 4.5.1) - restriction: || (== netcoreapp2.0) (&& (== netcoreapp2.2) (>= monoandroid) (< netstandard2.0)) (&& (== netcoreapp2.2) (>= monotouch)) (&& (== netcoreapp2.2) (< netcoreapp2.0)) (&& (== netcoreapp2.2) (< netcoreapp2.1)) (&& (== netcoreapp2.2) (>= uap10.1)) (&& (== netcoreapp2.2) (>= xamarinios)) (&& (== netcoreapp2.2) (>= xamarinmac)) (&& (== netcoreapp2.2) (>= xamarintvos)) (&& (== netcoreapp2.2) (>= xamarinwatchos)) (== netstandard2.0)
@@ -1131,8 +1131,8 @@ NUGET
       FSharp.Core (>= 4.2.3)
 GITHUB
   remote: eiriktsarpalis/TypeShape
-    src/TypeShape/TypeShape.fs (cfeb5e5b7408b957e43f35fd4c353b599550cc22)
-    src/TypeShape/Utils.fs (cfeb5e5b7408b957e43f35fd4c353b599550cc22)
+    src/TypeShape/TypeShape.fs (c39f18a164a9ce227656e2806c2bddfdde623a68)
+    src/TypeShape/Utils.fs (c39f18a164a9ce227656e2806c2bddfdde623a68)
   remote: haf/YoLo
     YoLo.fs (bd91bbe94a183aa9dc9c13e885c73b20516b01e7)
   remote: logary/RingBuffer
@@ -1143,14 +1143,16 @@ GITHUB
       Expecto.Hopac
       Hopac
   remote: logary/logary
-    src/Logary.CSharp.Facade/Facade.cs (aa54d623674b685b880320c08a4dc5bdcc600c3c)
-    src/Logary.Facade/Facade.fs (aa54d623674b685b880320c08a4dc5bdcc600c3c)
+    src/Logary.CSharp.Facade/Facade.cs (f57cefb7fec89106032f60589583f8565915ab42)
+    src/Logary.Facade/Facade.fs (f57cefb7fec89106032f60589583f8565915ab42)
   remote: messagetemplates/messagetemplates-fsharp
     src/FsMtParser/FsMtParserFull.fs (17bdfdcc237d7d725c23ebe0ef24c438c4ff7530)
   remote: xyncro/aether
     src/Aether/Aether.fs (8dcbdc50190ac05851f4ccf57b356afbae5821a5)
   remote: neoeinstein/chiron
     src/Chiron/Chiron.fs (38e9d979fbab792904be19350f5fac9ebfaf9fd8)
+  remote: eiriktsarpalis/snippets
+    SlnTools/SlnTools.fs (a9d4560393d1c71668ff3535e74fa8cc36287beb)
 GROUP AspNetCoreAdapterExample
 REDIRECTS: ON
 STORAGE: NONE
@@ -3170,7 +3172,7 @@ NUGET
     FSharp.Control.Reactive (4.1)
       FSharp.Core (>= 4.2.3)
       System.Reactive (>= 4.0)
-    FSharp.Core (4.6)
+    FSharp.Core (4.5)
     Microsoft.Build (15.9.20)
       Microsoft.Build.Framework (>= 15.9.20)
       Microsoft.Win32.Registry (>= 4.3)
@@ -3763,7 +3765,9 @@ NUGET
       System.Xml.ReaderWriter (>= 4.3)
       System.Xml.XmlDocument (>= 4.3)
       System.Xml.XPath (>= 4.3)
-
+GITHUB
+  remote: eiriktsarpalis/snippets
+    SlnTools/SlnTools.fs (a9d4560393d1c71668ff3535e74fa8cc36287beb)
 GROUP Examples
 REDIRECTS: ON
 STORAGE: NONE
@@ -4172,7 +4176,7 @@ NUGET
       System.Security.Cryptography.Primitives (>= 4.3)
       System.Text.Encoding (>= 4.3)
     System.Security.Cryptography.Cng (4.5)
-      Microsoft.NETCore.Platforms (>= 2.0) - restriction: || (== netcoreapp2.0) (&& (== netcoreapp2.2) (< netcoreapp2.1)) (&& (== netstandard2.0) (>= netcoreapp2.0))
+      Microsoft.NETCore.Platforms (>= 2.0) - restriction: || (== netcoreapp2.0) (&& (== netcoreapp2.2) (== netstandard2.0)) (&& (== netcoreapp2.2) (< netcoreapp2.1)) (&& (== netstandard2.0) (>= netcoreapp2.0))
     System.Security.Cryptography.Csp (4.3)
       Microsoft.NETCore.Platforms (>= 1.1)
       System.IO (>= 4.3)
@@ -4201,7 +4205,7 @@ NUGET
       System.Security.Cryptography.Primitives (>= 4.3)
       System.Text.Encoding (>= 4.3)
     System.Security.Cryptography.OpenSsl (4.5)
-      Microsoft.NETCore.Platforms (>= 2.0) - restriction: || (== netcoreapp2.0) (&& (== netcoreapp2.2) (< netcoreapp2.1)) (&& (== netstandard2.0) (>= netcoreapp2.0))
+      Microsoft.NETCore.Platforms (>= 2.0) - restriction: || (== netcoreapp2.0) (&& (== netcoreapp2.2) (== netstandard2.0)) (&& (== netcoreapp2.2) (< netcoreapp2.1)) (&& (== netstandard2.0) (>= netcoreapp2.0))
     System.Security.Cryptography.Primitives (4.3)
       System.Diagnostics.Debug (>= 4.3)
       System.Globalization (>= 4.3)

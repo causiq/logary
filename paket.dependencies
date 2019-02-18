@@ -61,56 +61,59 @@ github xyncro/aether src/Aether/Aether.fs
 github neoeinstein/chiron:38e9d979fbab792904be19350f5fac9ebfaf9fd8 src/Chiron/Chiron.fs
 
 group Build
-    source https://api.nuget.org/v3/index.json
-    storage none
-    framework auto-detect
+  source https://api.nuget.org/v3/index.json
+  storage none
+  framework auto-detect
 
-    nuget Fake.DotNet.AssemblyInfoFile
-    nuget Fake.DotNet.Cli
-    nuget Fake.Core.Target
-    nuget Fake.Core.ReleaseNotes
-    nuget Fake.IO.FileSystem
-    nuget Fake.Tools.Octo
-    nuget Fake.Tools.Git
-    nuget Fake.DotNet.Paket
-    nuget Fake.Core.Xml
-    nuget Fake.Api.GitHub
-    nuget Fake.BuildServer.TeamCity
-    nuget Fake.IO.Zip
+  nuget FSharp.Core 4.5.0.0
+  nuget Fake.DotNet.AssemblyInfoFile
+  nuget Fake.DotNet.Cli
+  nuget Fake.Core.Target
+  nuget Fake.Core.ReleaseNotes
+  nuget Fake.IO.FileSystem
+  nuget Fake.Tools.Octo
+  nuget Fake.Tools.Git
+  nuget Fake.DotNet.Paket
+  nuget Fake.Core.Xml
+  nuget Fake.Api.GitHub
+  nuget Fake.BuildServer.TeamCity
+  nuget Fake.IO.Zip
+
+  github eiriktsarpalis/snippets SlnTools/SlnTools.fs
 
 group Examples
-    source https://api.nuget.org/v3/index.json
-    storage none
-    framework auto-detect
-    redirects on
+  source https://api.nuget.org/v3/index.json
+  storage none
+  framework auto-detect
+  redirects on
 
-    nuget Argu
-    nuget Castle.Core
-    nuget Chiron >= 7-beta
-    nuget FParsec
-    nuget FSharp.Core
-    nuget Hopac
-    nuget NodaTime
-    nuget RabbitMQ.Client
+  nuget Argu
+  nuget Castle.Core
+  nuget Chiron >= 7-beta
+  nuget FParsec
+  nuget FSharp.Core
+  nuget Hopac
+  nuget NodaTime
+  nuget RabbitMQ.Client
 
 group Benchmarks
-    source https://api.nuget.org/v3/index.json
-    storage none
-    framework auto-detect
-    redirects on
+  source https://api.nuget.org/v3/index.json
+  storage none
+  framework auto-detect
+  redirects on
 
-    nuget FParsec
-    nuget FSharp.Core
-    nuget Hopac
-    nuget NodaTime
-    nuget Expecto
-    nuget Expecto.BenchmarkDotNet == 8.6.5
-    nuget BenchmarkDotNet == 0.10.14 
+  nuget FParsec
+  nuget FSharp.Core
+  nuget Hopac
+  nuget NodaTime
+  nuget Expecto
+  nuget Expecto.BenchmarkDotNet == 8.6.5
+  nuget BenchmarkDotNet == 0.10.14 
 
 group AspNetCoreAdapterExample
-    source https://api.nuget.org/v3/index.json
-    storage none
-    framework auto-detect
-    redirects on
+  source https://api.nuget.org/v3/index.json
+  storage none
+  framework auto-detect
+  redirects on
 
-    nuget Microsoft.AspNetCore.App >= 2.2.0
+  nuget Microsoft.AspNetCore.App >= 2.2.0
