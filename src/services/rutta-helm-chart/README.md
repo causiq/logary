@@ -10,13 +10,15 @@ A common configuration for Rutta is to configure a Stackdriver target, a HTTP in
 
 By default this chart exposes a HTTP listener/endpoint and prints to console; in order for it to log to Stackdriver, AliYun or AppInsights, you have to configure those explicitly in the values file.
 
+Have a look at the `values.yaml` file in order to get an idea of what you can configure.
+
 ## Installation
 
-    helm install incubator/rutta --name my-rutta-release
+    helm install incubator/rutta --name logary-rutta
 
 ## Uninstallation
 
-    helm delete my-rutta-rutta
+    helm delete logary-rutta
 
 ## See versions of Rutta
 
@@ -26,6 +28,12 @@ By default this chart exposes a HTTP listener/endpoint and prints to console; in
 
 | Parameter                    | Description                      | Default              |
 |------------------------------|----------------------------------|----------------------|
-| `replicas`                   | Number of nodes                  | `1`                  |
-| `deploymentStrategy`         | Deployment strategy              | `RollingUpdate`      |
+| `replicaCount`               | Number of deployment pods        | `3`                  |
+| `nameOverride`               |                                  | ``                   |
+| `fullnameOverride`           |                                  | ``                   |
+| `verbose`                    | Log internal logs to stdout      | `true`               |
+| `disableHealth`              | Disable health checks and health listener | `false`     |
+| `router.disableCORS`         | Disable CORS, improves security  | `false`              |
+| `router.listeners`           | Allows you to specify the Rutta ingestion points | Array w/ 1xHTTP, 2X UDP (internal)      |
+| `router.targets`      | Where to send your logs. Customise here! | Array w/ 1x console |
 
