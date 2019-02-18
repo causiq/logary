@@ -1,6 +1,6 @@
 source https://api.nuget.org/v3/index.json
 framework auto-detect
-version 5.193.0
+version 5.196.2
 
 nuget Argu
 nuget Castle.Core
