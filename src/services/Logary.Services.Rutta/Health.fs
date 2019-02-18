@@ -1,7 +1,7 @@
 namespace Logary.Services.Rutta
 
 module Health =
-  open Logary
+  open System.Runtime.InteropServices
   open System
   open System.Net
   open System.Threading
@@ -9,14 +9,21 @@ module Health =
   open Suave.Operators
   open Suave.Filters
   open Suave.Successful
+  open fszmq
+  
+  let healthMessage osDesc =
+    let time = DateTime.UtcNow.ToString("o")
+    sprintf "Rutta %s running on '%s'. ZMQ v%O. %s"
+      AssemblyVersionInformation.AssemblyFileVersion
+      RuntimeInformation.OSDescription
+      ZMQ.version
+      time
 
   module App =
 
-    open System.IO
-    open System.Reflection
-
     let app =
-      GET >=> path "/health" >=> OK (sprintf "Logary Rutta %s" AssemblyVersionInformation.AssemblyVersion)
+      GET >=> path "/health" >=> warbler (fun _ -> OK (healthMessage ()))
+//      GET >=> path "/metrics" >=> ...
 
   let startServerInner (binding: IPEndPoint) =
     let cts = new CancellationTokenSource()

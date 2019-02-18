@@ -1,3 +1,4 @@
+{{- if .Values.router -}}
 apiVersion: v1
 kind: Service
 metadata:
@@ -7,12 +8,17 @@ metadata:
     helm.sh/chart: {{ include "rutta.chart" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
+
 spec:
-  type: {{ .Values.service.type }}
   ports:
-    - port: {{ .Values.httpPort | default "80" }}
-      protocol: TCP
-      name: http
+  {{- range .Values.router.listeners }}
+  - port: {{ .binding.port | required "Your binding needs a port specified." }}
+    {{- if (eq .mode "udp") }}
+    protocol: "UDP"
+    {{- end }}
+    name: "{{ .mode }}-{{ .codec }}"
+  {{- end }}
   selector:
     app.kubernetes.io/name: {{ include "rutta.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}

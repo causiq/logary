@@ -1,3 +1,4 @@
+{{- $fullName := include "rutta.fullname" . -}}
 apiVersion: v1
 kind: Pod
 metadata:
@@ -9,10 +10,18 @@ metadata:
     app.kubernetes.io/managed-by: {{ .Release.Service }}
   annotations:
     "helm.sh/hook": test-success
+
 spec:
   containers:
+  {{- range .Values.router.listeners -}}
+  {{ if (eq .mode "http") }}
   - name: curl
-    image: busybox
-    command: ['curl']
-    args:  ['{{ include "rutta.fullname" . }}:{{ .Values.service.port }}']
+    image: haaf/rutta-curl
+    args:
+    - '-X'
+    - 'OPTIONS'
+    - '-i'
+    - 'http://{{ $fullName }}:{{ .binding.port }}/i/logary'
+  {{ end }}
+  {{- end }}
   restartPolicy: Never

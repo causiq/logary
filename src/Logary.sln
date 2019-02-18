@@ -133,9 +133,19 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "rutta-helm-chart", "rutta-helm-chart", "{D64D7F8D-F4D5-4873-98BE-5427756F63D4}"
 ProjectSection(SolutionItems) = preProject
 	services\rutta-helm-chart\values.yaml = services\rutta-helm-chart\values.yaml
+	services\rutta-helm-chart\README.md = services\rutta-helm-chart\README.md
 EndProjectSection
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Ingestion.TCP", "ingestion\Logary.Ingestion.TCP\Logary.Ingestion.TCP.fsproj", "{7626CD7A-C582-49B8-97CB-E0FD7107F10C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "templates", "templates", "{C55E707F-D15A-4C2C-A67F-6D1AE11F487C}"
+ProjectSection(SolutionItems) = preProject
+	services\rutta-helm-chart\templates\_helpers.tpl = services\rutta-helm-chart\templates\_helpers.tpl
+	services\rutta-helm-chart\templates\deployment.yaml = services\rutta-helm-chart\templates\deployment.yaml
+	services\rutta-helm-chart\templates\ingress.yaml = services\rutta-helm-chart\templates\ingress.yaml
+	services\rutta-helm-chart\templates\NOTES.txt = services\rutta-helm-chart\templates\NOTES.txt
+	services\rutta-helm-chart\templates\service.yaml = services\rutta-helm-chart\templates\service.yaml
+EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -362,5 +372,6 @@ Global
 		{9ACC2DBA-BBE1-414F-AEB0-57CD9768875A} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{D64D7F8D-F4D5-4873-98BE-5427756F63D4} = {45AD4DB5-AE45-447D-9389-A4DF16AF8F44}
 		{7626CD7A-C582-49B8-97CB-E0FD7107F10C} = {7B088401-ACED-40A5-9DC7-9E64523CE77C}
+		{C55E707F-D15A-4C2C-A67F-6D1AE11F487C} = {D64D7F8D-F4D5-4873-98BE-5427756F63D4}
 	EndGlobalSection
 EndGlobal

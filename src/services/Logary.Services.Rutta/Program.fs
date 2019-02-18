@@ -126,9 +126,9 @@ let startUnix argv: int =
 ////////////// BOTH //////////////
 [<EntryPoint>]
 let main argv =
+  eprintfn "%s\n" (Health.healthMessage ())
+  
   let osDesc = RuntimeInformation.OSDescription
-  eprintfn "Rutta %s running on '%s'. ZMQ v%O." AssemblyVersionInformation.AssemblyFileVersion osDesc fszmq.ZMQ.version
-  eprintfn ""
   let isDashed = argv.Length >= 1 && argv.[0] = "--"
   if osDesc.Contains "Linux" || osDesc.Contains "Unix" || osDesc.Contains "Darwin" || isDashed then
     startUnix (if isDashed then argv.[1..] else argv)

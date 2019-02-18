@@ -4,6 +4,8 @@ namespace Logary.Services.Rutta
 // ignore "Uppercase variable identifiers should not generally be used in patterns, and may indicate a misspelt pattern name."
 
 open Argu
+open Logary.Configuration
+
 open System.Reflection
 [<assembly: AssemblyTitle("Logary Rutta – a router/proxy/shipper for Windows and Unix")>]
 ()
@@ -69,7 +71,7 @@ module Help =
     let folder (sb: StringBuilder) (u: RMode) =
       let mInfo, _ = FSharpValue.GetUnionFields(u, typeof<RMode>)
       let mdesc = describeMode u
-      sb.AppendFormat(" - {0}: {1}{2}", mInfo.Name.ToLowerInvariant(), mdesc, Environment.NewLine)
+      sb.AppendFormat("- {0}: {1}{2}", mInfo.Name.ToLowerInvariant(), mdesc, Environment.NewLine)
     [ Pull; Sub; TCP; UDP; HTTP ]
     |> Seq.fold folder (StringBuilder())
     |> sprintf "%O"
@@ -114,7 +116,11 @@ type RouterSubCommand =
         "Disables CORS, but your log ingestion is probably still open to people doing a `curl`."
         
       | Target _ ->
-        "Specifies a targets to ship to. You can specify meny of these."
+        let available =
+          TargetConfig.schemeToConfAndDefault
+          |> Seq.map (fun (KeyValue (k, _)) -> sprintf "- %s://" k)
+          |> String.concat "\n"
+        sprintf "Specifies a targets to ship to. You can specify many of these. Available targets:\n%s" available
 
 [<RequireSubcommand>]
 type ShipperSubCommand =
@@ -133,7 +139,7 @@ type Args =
   | [<CliPrefix(CliPrefix.None)>] Proxy of args:ParseResults<ProxySubCommand>
   | [<CliPrefix(CliPrefix.None)>] Router of args:ParseResults<RouterSubCommand>
   | [<CliPrefix(CliPrefix.None)>] Shipper of args:ParseResults<ShipperSubCommand>
-  | [<Unique>] Health of binding:string
+  | [<AltCommandLine "-h"; Inherit>] Health of binding:string
 with
   interface IArgParserTemplate with
     member x.Usage =
@@ -159,7 +165,7 @@ module Parsers =
 
   let binding (binding: string): IPEndPoint =
     let portIndex = binding.LastIndexOf(':')
-    let nic, port = binding.[0..portIndex], binding.[portIndex+1..]
+    let nic, port = binding.[0..portIndex-1], binding.[portIndex+1..]
     IPEndPoint(IPAddress.Parse nic, int port)
 
   let targetConfig (targetUri: string): TargetConf =
