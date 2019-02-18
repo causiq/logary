@@ -1,4 +1,5 @@
 source https://api.nuget.org/v3/index.json
+clitool paket
 framework auto-detect
 version 5.196.2
 
