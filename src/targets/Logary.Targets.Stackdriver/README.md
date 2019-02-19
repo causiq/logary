@@ -6,6 +6,8 @@
  - [Granting, changing and revoking access][policies]
  - [Service Accounts overview][sa-o]
 
+Want a quick-start? Install the [Rutta Helm chart][helm]
+
 You can run the following to set up a GCP service account with the right permissions;
 
 ```bash
@@ -41,3 +43,4 @@ gcloud iam service-accounts keys create "${RUTTA_SA_NAME}.json" \
  [roles]: https://cloud.google.com/iam/docs/granting-roles-to-service-accounts
  [policies]: https://cloud.google.com/iam/docs/granting-changing-revoking-access
  [sa-o]: https://cloud.google.com/iam/docs/understanding-service-accounts
+ [helm]: https://github.com/logary/logary/tree/master/src/services/rutta-helm-chart/README.md
