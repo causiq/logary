@@ -8,7 +8,9 @@ or, if you're a Kubernetes user;
 
     helm install incubator/rutta
 
-See the [Rutta Helm chart for details][helm-chart]
+See the [Rutta Helm chart for details][helm-chart] on installation.
+
+See the [Stackdriver docs][stackdriver-docs] for configuring the Stackdriver target.
 
 
 ## Testing Rutta
@@ -23,4 +25,5 @@ Terminal 2
 
     dotnet run -- router --listener udp 0.0.0.0:9090 plain --target console://. --verbose
 
- [helm-chart]: https://github.com/logary/logary/tree/master/src/services/rutta-helm-chart
+ [helm-chart]: https://github.com/logary/logary/tree/master/src/services/rutta-helm-chart/README.md
+ [stackdriver-docs]: https://github.com/logary/logary/blob/master/src/targets/Logary.Targets.Stackdriver/README.md
