@@ -37,6 +37,6 @@ Have a look at the `values.yaml` file in order to get an idea of what you can co
 | `router.listeners`           | Allows you to specify the Rutta ingestion points | Array w/ 1xHTTP, 2X UDP (internal)      |
 | `router.targets`      | Where to send your logs. Customise here! | Array w/ 1x console |
 
-Once you've deployed, you should consider customising your own (`values.yaml`)(./values.yaml) in order to
+Once you've deployed, you should consider customising your own [`values.yaml`](./values.yaml) in order to
 customise the chart according to your databases/monitoring infrastructure.
 
