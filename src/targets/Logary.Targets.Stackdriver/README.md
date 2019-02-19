@@ -6,6 +6,7 @@
  - [Granting, changing and revoking access][policies]
  - [Service Accounts overview][sa-o]
 
+You can run the following to set up a GCP service account with the right permissions;
 
     gcloud iam service-accounts get-iam-policy logary-ci-writer@logary-ci.iam.gserviceaccount.com
     gcloud projects add-iam-policy-binding logary-ci \
