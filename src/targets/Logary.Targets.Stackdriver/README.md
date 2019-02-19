@@ -30,7 +30,7 @@ gcloud iam service-accounts --project "${PROJECT_ID}" create "${RUTTA_SA_NAME}" 
 
 # Configure its permissions
 gcloud iam service-accounts get-iam-policy "${RUTTA_SA_EMAIL}"
-gcloud projects add-iam-policy-binding "${RUTTA_SA_NAME}" \
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
     --member "serviceAccount:${RUTTA_SA_EMAIL}" \
     --role roles/logging.logWriter
 
