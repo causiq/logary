@@ -39,6 +39,10 @@ gcloud iam service-accounts keys create "${RUTTA_SA_NAME}.json" \
     --iam-account "${RUTTA_SA_EMAIL}"
 ```
 
+If you've set this up with the Helm chart (and you've configured your ingresses), you can now test your logging with:
+
+    curl -X POST -d '{"message": "Hello world"}' https://api.example.com/i/logary -i
+
  [access-control]: https://cloud.google.com/logging/docs/access-control
  [roles]: https://cloud.google.com/iam/docs/granting-roles-to-service-accounts
  [policies]: https://cloud.google.com/iam/docs/granting-changing-revoking-access
