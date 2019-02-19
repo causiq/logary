@@ -20,20 +20,21 @@ So in your case, if you're using [Rutta][rutta], you can configure it like this;
 ```bash
 export RUTTA_SA_NAME="logary-rutta"
 export PROJECT_ID="corp-stage"
+export RUTTA_SA_EMAIL="${RUTTA_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 
 # Create it
 gcloud iam service-accounts --project "${PROJECT_ID}" create "${RUTTA_SA_NAME}" \
   "--display-name=${RUTTA_SA_NAME}"
 
 # Configure its permissions
-gcloud iam service-accounts get-iam-policy "${RUTTA_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
+gcloud iam service-accounts get-iam-policy "${RUTTA_SA_EMAIL}"
 gcloud projects add-iam-policy-binding "${RUTTA_SA_NAME}" \
-    --member serviceAccount:${RUTTA_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com \
+    --member "serviceAccount:${RUTTA_SA_EMAIL}" \
     --role roles/logging.logWriter
 
 # Create its key
 gcloud iam service-accounts keys create "${RUTTA_SA_NAME}.json" \
-    --iam-account "${RUTTA_SA_NAME}"
+    --iam-account "${RUTTA_SA_EMAIL}"
 ```
 
  [access-control]: https://cloud.google.com/logging/docs/access-control
