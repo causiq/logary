@@ -1,0 +1,4 @@
+group Benchmarks
+FSharp.Core
+Expecto
+Expecto.BenchmarkDotNet
