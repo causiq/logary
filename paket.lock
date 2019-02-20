@@ -99,14 +99,21 @@ NUGET
       Google.Api.Gax (>= 2.5)
       Google.Apis.Auth (>= 1.35.1)
       NETStandard.Library (>= 1.6.1)
-    Google.Apis (1.37)
-      Google.Apis.Core (>= 1.37)
+    Google.Apis (1.38)
+      Google.Apis.Core (>= 1.38)
       Newtonsoft.Json (>= 10.0.2)
-    Google.Apis.Auth (1.37)
-      Google.Apis (>= 1.37)
-      Google.Apis.Core (>= 1.37)
-    Google.Apis.Core (1.37)
+    Google.Apis.Auth (1.38)
+      Google.Apis (>= 1.38)
+      Google.Apis.Core (>= 1.38)
+    Google.Apis.Bigquery.v2 (1.38.0.1484)
+      Google.Apis (>= 1.38)
+      Google.Apis.Auth (>= 1.38)
+    Google.Apis.Core (1.38)
       Newtonsoft.Json (>= 10.0.2)
+    Google.Cloud.BigQuery.V2 (1.3)
+      Google.Api.Gax.Rest (>= 2.5)
+      Google.Apis.Bigquery.v2 (>= 1.38.0.1484)
+      NETStandard.Library (>= 1.6.1)
     Google.Cloud.Logging.Type (2.0)
       Google.Api.CommonProtos (>= 1.1)
       NETStandard.Library (>= 1.6.1)
@@ -316,6 +323,7 @@ NUGET
     NitoAsyncEx.Context.StrongName (1.1)
     NLog (4.5.11)
     NodaTime (2.4.4)
+    paket (5.197.2) - clitool: true
     protobuf-net (2.4)
       System.Reflection.Emit (>= 4.3) - restriction: || (== netcoreapp2.0) (&& (== netcoreapp2.2) (< netcoreapp2.1)) (&& (== netcoreapp2.2) (< netstandard2.0)) (== netstandard2.0)
       System.Reflection.Emit.Lightweight (>= 4.3) - restriction: || (== netcoreapp2.0) (&& (== netcoreapp2.2) (< netcoreapp2.1)) (&& (== netcoreapp2.2) (< netstandard2.0)) (== netstandard2.0)
@@ -1143,16 +1151,14 @@ GITHUB
       Expecto.Hopac
       Hopac
   remote: logary/logary
-    src/Logary.CSharp.Facade/Facade.cs (f57cefb7fec89106032f60589583f8565915ab42)
-    src/Logary.Facade/Facade.fs (f57cefb7fec89106032f60589583f8565915ab42)
+    src/Logary.CSharp.Facade/Facade.cs (e60f559b2b948565178ea50c72c0322809be8eaf)
+    src/Logary.Facade/Facade.fs (e60f559b2b948565178ea50c72c0322809be8eaf)
   remote: messagetemplates/messagetemplates-fsharp
     src/FsMtParser/FsMtParserFull.fs (17bdfdcc237d7d725c23ebe0ef24c438c4ff7530)
   remote: xyncro/aether
     src/Aether/Aether.fs (8dcbdc50190ac05851f4ccf57b356afbae5821a5)
   remote: neoeinstein/chiron
     src/Chiron/Chiron.fs (38e9d979fbab792904be19350f5fac9ebfaf9fd8)
-  remote: eiriktsarpalis/snippets
-    SlnTools/SlnTools.fs (a9d4560393d1c71668ff3535e74fa8cc36287beb)
 GROUP AspNetCoreAdapterExample
 REDIRECTS: ON
 STORAGE: NONE
@@ -3589,7 +3595,7 @@ NUGET
       System.Security.Cryptography.Primitives (>= 4.3)
       System.Text.Encoding (>= 4.3)
     System.Security.Cryptography.Cng (4.5)
-      Microsoft.NETCore.Platforms (>= 2.0) - restriction: || (== netcoreapp2.0) (&& (== netcoreapp2.2) (< netcoreapp2.1)) (&& (== netstandard2.0) (>= netcoreapp2.0))
+      Microsoft.NETCore.Platforms (>= 2.0) - restriction: || (== netcoreapp2.0) (&& (== netcoreapp2.2) (== netstandard2.0)) (&& (== netcoreapp2.2) (< netcoreapp2.1)) (&& (== netstandard2.0) (>= netcoreapp2.0))
     System.Security.Cryptography.Csp (4.3)
       Microsoft.NETCore.Platforms (>= 1.1)
       System.IO (>= 4.3)
@@ -3618,7 +3624,7 @@ NUGET
       System.Security.Cryptography.Primitives (>= 4.3)
       System.Text.Encoding (>= 4.3)
     System.Security.Cryptography.OpenSsl (4.5)
-      Microsoft.NETCore.Platforms (>= 2.0) - restriction: || (== netcoreapp2.0) (&& (== netcoreapp2.2) (< netcoreapp2.1)) (&& (== netstandard2.0) (>= netcoreapp2.0))
+      Microsoft.NETCore.Platforms (>= 2.0) - restriction: || (== netcoreapp2.0) (&& (== netcoreapp2.2) (== netstandard2.0)) (&& (== netcoreapp2.2) (< netcoreapp2.1)) (&& (== netstandard2.0) (>= netcoreapp2.0))
     System.Security.Cryptography.Primitives (4.3)
       System.Diagnostics.Debug (>= 4.3)
       System.Globalization (>= 4.3)

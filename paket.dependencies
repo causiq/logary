@@ -24,6 +24,7 @@ nuget FsPickler.Json
 nuget FsSql
 nuget Google.Api.Gax.Rest
 nuget Google.Cloud.Logging.V2
+nuget Google.Cloud.BigQuery.V2
 nuget Hopac
 nuget Http.fs
 nuget Microsoft.ApplicationInsights
@@ -109,7 +110,7 @@ group Benchmarks
   nuget NodaTime
   nuget Expecto
   nuget Expecto.BenchmarkDotNet == 8.6.5
-  nuget BenchmarkDotNet == 0.10.14 
+  nuget BenchmarkDotNet == 0.10.14
 
 group AspNetCoreAdapterExample
   source https://api.nuget.org/v3/index.json
