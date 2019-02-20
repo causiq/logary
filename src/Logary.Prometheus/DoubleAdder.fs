@@ -89,7 +89,7 @@ module DoubleAdder =
     new(x) = { content = x }
 
     member x.tryAdd value =
-      let contentLocal = Volatile.Read &x.content
+      let contentLocal = x.content
       let addedValue = BitConverter.Int64BitsToDouble contentLocal + value |> BitConverter.DoubleToInt64Bits
       contentLocal = Interlocked.CompareExchange(&x.content, addedValue, contentLocal)
 
@@ -118,7 +118,7 @@ module DoubleAdder =
     new () = new DoubleAdder(0.)
 
     member x.tryLockCellBusy () =
-      Volatile.Read &x.cellBusy = 0 && 0 = Interlocked.CompareExchange(&x.cellBusy, 1, 0)
+      x.cellBusy = 0 && 0 = Interlocked.CompareExchange(&x.cellBusy, 1, 0)
 
     member x.Add (value: float) =
       let mutable stillLoop = true
@@ -127,18 +127,18 @@ module DoubleAdder =
       let mutable collideFlip = false
 
       while (stillLoop) do
-        let cellsLocal = Volatile.Read &x.cells
+        let cellsLocal = x.cells
 
         if isNull cellsLocal then
-          let baseValueLocal = Volatile.Read &x.baseValue
+          let baseValueLocal = x.baseValue
           let addedValue = BitConverter.Int64BitsToDouble baseValueLocal + value |> BitConverter.DoubleToInt64Bits
           if (baseValueLocal = Interlocked.CompareExchange(&x.baseValue, addedValue, baseValueLocal)) then
             stillLoop <- false
           else
             // create cells
-            if (isNull(Volatile.Read &x.cells) && x.tryLockCellBusy()) then
+            if (isNull x.cells && x.tryLockCellBusy()) then
               try
-                if (isNull(Volatile.Read &x.cells)) then
+                if (isNull x.cells) then
                   let cs = Array.zeroCreate<Cell> 2
                   cs.[0] <- new Cell(BitConverter.DoubleToInt64Bits value)
                   Volatile.Write(&x.cells, cs)
@@ -152,7 +152,7 @@ module DoubleAdder =
           if (isNull (box threadHashCodeRef)) then
             threadHashCodeRef <- x.threadHashCode.Value
 
-          let cellsLocal = Volatile.Read &x.cells
+          let cellsLocal = x.cells
           let cellsLocalLen = cellsLocal.Length
           let mutable hashCode = threadHashCodeRef.Value
           let cell = cellsLocal.[(cellsLocalLen - 1) &&& hashCode]
@@ -162,7 +162,7 @@ module DoubleAdder =
             // create cell
             if(x.tryLockCellBusy()) then
               try
-                if (cellsLocal = Volatile.Read &x.cells) then
+                if (cellsLocal = x.cells) then
                   let cellToBeAttached = new Cell(BitConverter.DoubleToInt64Bits value)
                   cellsLocal.[(cellsLocalLen - 1) &&& hashCode] <- cellToBeAttached
                   stillLoop <- false
@@ -189,9 +189,9 @@ module DoubleAdder =
                   needRehash <- true
                 else
                   // expand cells
-                  if (cellsLocal = Volatile.Read &x.cells && x.tryLockCellBusy()) then
+                  if (cellsLocal = x.cells && x.tryLockCellBusy()) then
                       try
-                        if (cellsLocal = Volatile.Read &x.cells) then
+                        if (cellsLocal = x.cells) then
                           let cellsExpanded = Array.zeroCreate<Cell> (cellsLocalLen <<< 1)
                           Array.iteri (fun oldCellIdx oldCell -> cellsExpanded.[oldCellIdx] <- oldCell) cellsLocal
                           cellsExpanded.[cellsLocalLen] <- new Cell(BitConverter.DoubleToInt64Bits value)

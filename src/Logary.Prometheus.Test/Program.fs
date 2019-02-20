@@ -42,8 +42,8 @@ type Counter() =
 
   let mutable doubleAdderCounter = new DoubleAdder()
 
-  [<Params(1,2,4,8,16,32,64,128,256)>]
-//  [<Params(1,32)>]
+  [<Params(1,2,4,8,16,32)>]
+//  [<Params(16)>]
   [<DefaultValue>]
   val mutable threadCount:int
 
@@ -78,7 +78,7 @@ type Counter() =
     x.invokeFunc <- doubleAdderCounter.Add
     x.runAndEnsureResult <| fun () -> doubleAdderCounter.Sum ()
 
-  [<Benchmark(Baseline = true, OperationsPerInvoke = iterationCount)>]
+//  [<Benchmark(Baseline = true, OperationsPerInvoke = iterationCount)>]
   member x.interLocked () =
     x.launchWorker ()
     x.invokeFunc <- interLockedAdd
@@ -115,7 +115,7 @@ module Tests =
 
     testList "benchmarks" [
       test "Counter" {
-        let testJob4Debug = Job.Default.WithLaunchCount(1).WithWarmupCount(2).WithTargetCount(4).WithInvocationCount(2).WithUnrollFactor(2)
+        let testJob4Debug = Job.Default.WithLaunchCount(1).WithWarmupCount(2).WithTargetCount(10).WithInvocationCount(2).WithUnrollFactor(2)
         let cfg = config (Job(Job.Default))
         let cfg = config (Job(testJob4Debug))
 
