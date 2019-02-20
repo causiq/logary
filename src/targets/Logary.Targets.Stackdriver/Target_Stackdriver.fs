@@ -121,7 +121,7 @@ type ResourceType =
 
 type StackdriverConf =
   { /// Google Cloud Project Id
-    projectId: string
+    projectId: string option
     /// Name of the log to which to write
     logId: string
     /// Resource currently being monitored
@@ -131,7 +131,7 @@ type StackdriverConf =
     /// Maximum messages to send as a batch.
     maxBatchSize: uint16 }
 
-  static member create (projectId, ?logId, ?resource, ?labels, ?batchSize) =
+  static member create (?projectId, ?logId, ?resource, ?labels, ?batchSize) =
     { projectId = projectId
       logId = defaultArg logId "apps"
       resource = defaultArg resource Global
@@ -139,9 +139,10 @@ type StackdriverConf =
       maxBatchSize = defaultArg batchSize 50us }
 
 let empty: StackdriverConf =
-  StackdriverConf.create "CHANGE_PROJECT_ID"
+  StackdriverConf.create()
 
 module internal Impl =
+  open Google.Api.Gax
   open Logary.Internals.Chiron
 
   type LogLevel with
@@ -238,6 +239,8 @@ module internal Impl =
         Message.getAllFields x
         |> addMessageFields
         |> Seq.fold addToStruct (WellKnownTypes.Struct())
+        
+      // TO CONSIDER: entry.InsertId <- m |> Message.messageId
 
       let entry = LogEntry(Severity = x.level.toSeverity(), JsonPayload = payloadFields)
       entry.Timestamp <- Timestamp.FromDateTime (DateTime.ofEpoch x.timestamp)
@@ -253,15 +256,6 @@ module internal Impl =
       /// used as a wrapper around the above cancellation token
       callSettings: CallSettings }
 
-    static member create (conf: StackdriverConf) =
-      let source = new System.Threading.CancellationTokenSource()
-      { logger = LoggingServiceV2Client.Create()
-        resource = conf.resource.toMonitoredResource conf.projectId
-        labels = conf.labels |> HashMap.toDictionary
-        logName = sprintf "projects/%s/logs/%s" conf.projectId (System.Net.WebUtility.UrlEncode conf.logId)
-        cancellation = source
-        callSettings = CallSettings.FromCancellationToken(source.Token) }
-
   let writeBatch (state: State) (entries: LogEntry list): Job<unit> =
     Job.Scheduler.isolate (fun () ->
       let request = WriteLogEntriesRequest(LogName = state.logName, Resource = state.resource)
@@ -269,16 +263,38 @@ module internal Impl =
       request.Labels.Add state.labels
       state.logger.WriteLogEntries(request, state.callSettings)
       |> ignore)
-
+    
   let loop (conf: StackdriverConf) (api: TargetAPI) =
     let logger = api.runtime.logger
+    
+    let rec initialise (conf: StackdriverConf) =
+      job {
+        let! platform = Platform.InstanceAsync()
+        // TO CONSIDER: feed everything of platform into the context and choose the monitored resource from it.
+        // https://github.com/googleapis/google-cloud-dotnet/blob/b36872c110349c3d73106d333396c9e24dc494e2/apis/Google.Cloud.Logging.Log4Net/Google.Cloud.Logging.Log4Net/GoogleStackdriverAppender.cs#L245
+        let source = new System.Threading.CancellationTokenSource()
+        let client = LoggingServiceV2Client.Create()
+        let projectId = conf.projectId |> Option.defaultValue platform.ProjectId
+        let resource = conf.resource.toMonitoredResource projectId
+        let logName = sprintf "projects/%s/logs/%s" projectId (System.Net.WebUtility.UrlEncode conf.logId)
 
-    logger.info (
-      eventX "Started Stackdriver target with project {projectId}, writing to {logName}"
-      >> setField "projectId" conf.projectId
-      >> setField "logName" conf.logId)
+        do! logger.infoWithBP (
+              eventX "Started Stackdriver target with project {projectId}, writing to {logName}."
+              >> setField "projectId" projectId
+              >> setField "logName" conf.logId)
+        
+        let state =
+          { logger = client
+            resource = resource
+            labels = conf.labels |> HashMap.toDictionary
+            logName = logName
+            cancellation = source
+            callSettings = CallSettings.FromCancellationToken(source.Token) }
+          
+        return! running state
+      }
 
-    let rec loop (state: State): Job<unit> =
+    and running (state: State): Job<unit> =
       Alt.choose [
         // either shutdown, or
         api.shutdownCh ^=> fun ack ->
@@ -306,12 +322,12 @@ module internal Impl =
             do logger.verbose (eventX "Acking messages.")
             do! Job.conIgnore acks
             do! Job.conIgnore flushes
-            return! loop state
+            return! running state
           }
 
       ] :> Job<_>
 
-    loop (State.create conf)
+    initialise conf
 
 /// Create a new StackDriver target
 [<CompiledName "Create">]

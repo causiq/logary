@@ -172,11 +172,7 @@ module internal JsonDecode =
 
 /// See JsonHelper.fs
 module Json =
-  open System
-  open System.Collections.Concurrent
-
   open Logary.Internals.Chiron
-  open Logary.Internals.Chiron.Operators
   open Inference
   module D = Json.Decode
   module E = Json.Encode
