@@ -162,7 +162,7 @@ module Router =
 
   let private toCodec = function
     | C.Json ->
-      "json", Codec.toJsonStringError Codec.json
+      "json", Codec.json
     | C.Plain ->
       "plain", Codec.plain
     | C.Binary ->

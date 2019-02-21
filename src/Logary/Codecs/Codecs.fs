@@ -12,22 +12,16 @@ type Codec = Ingested -> Result<Message[], string>
 type Codec<'err> = Ingested -> Result<Message[], 'err>
 
 module Codec =
-  /// Converts a typed codec to one returning JSON string as the errors.
-  let toJsonStringError (c: Codec<'err>): Codec =
-    fun input ->
-      c input
-      |> Result.mapError (Json.encode >> Json.format)
-
   /// A codec that reads each input as a bag-of-fields to add to a message. Uses
   /// the function `Json.decodeMessage` from `Logary.Formatting` in the background.
-  let json: Codec<JsonFailure> =
+  let json: Codec =
     fun input ->
       let line = input.utf8String ()
       match Json.parse line |> JsonResult.bind Json.decodeMessage with
       | JPass message ->
         Ok message
       | JFail failure ->
-        Result.Error failure
+        Result.Error (JsonFailure.summarize failure)
 
   /// A codec that reads each input as a single message with the message's value
   /// equal to the input.

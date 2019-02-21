@@ -205,15 +205,21 @@ module internal JsonDecode =
       // add extreneous properties to the remainder
       | otherProp, json ->
         JsonResult.pass (m, remainder |> JsonObject.add otherProp json)
-
-  let message: Decoder<JsonObject, Message> =
+        
+  let messageObject: ObjectReader<Message> =
     let initial = Message.event Debug "-"
     fun jsonObj ->
+      //printfn "Called 'message' decoder"
+      //JFail (SingleFailure (InvalidJson "Nope nope"))
       JsonObject.toPropertyList jsonObj
       |> JsonResult.foldBind foldJsonObject (initial, JsonObject.empty)
       |> JsonResult.bind (fun (message, remainder) ->
         decodeMap true message.context remainder |> JsonResult.map (fun nextContext ->
         { message with context = nextContext }))
+
+  let message: JsonDecoder<Message> =
+    D.jsonObject >=> messageObject
+    
 
 /// See JsonHelper.fs
 module Json =
@@ -231,8 +237,11 @@ module Json =
   let format (data: obj) =
     formatWith JsonFormattingOptions.Compact data
 
-  let decodeMessage =
-    let single = Json.Decode.jsonObjectWith JsonDecode.message
-    Json.Decode.either
-      (single |> Decoder.map Array.singleton)
-      (D.arrayWith single)
+  let decodeMessage: JsonDecoder<Message[]> =
+    function
+    | Json.Object map ->
+      JsonDecode.messageObject map |> JsonResult.map Array.singleton
+    | Json.Array _ as json ->
+      D.arrayWith JsonDecode.message json
+    | other ->
+      JFail (SingleFailure (InvalidJson "Value is not a valid Message object"))
