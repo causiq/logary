@@ -715,7 +715,7 @@ let tests =
     testLabel "literate console" LiterateConsole.tokenisation
     testLabel "literate console" LiterateConsole.parts
 
-    testLabel "formatting" (Formatting.jsonTests fsCheckConfig)
+    testLabel "formatting" (Json.tests fsCheckConfig)
     testLabel "formatting" Formatting.textPrinters
     testLabel "formatting" (Formatting.stacktrace fsCheckConfig)
 

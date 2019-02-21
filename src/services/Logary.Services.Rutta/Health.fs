@@ -20,10 +20,8 @@ module Health =
       time
 
   module App =
-
     let app =
       GET >=> path "/health" >=> warbler (fun _ -> OK (healthMessage ()))
-//      GET >=> path "/metrics" >=> ...
 
   let startServerInner (binding: IPEndPoint) =
     let cts = new CancellationTokenSource()

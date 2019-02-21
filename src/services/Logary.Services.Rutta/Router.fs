@@ -37,8 +37,15 @@ module Router =
 
   let private createSink (logary: LogManager) (codec: Logary.Codecs.Codec) =
     let targetLogger = logary.getLogger (PointName.parse "Rutta")
-    codec >> Result.map (Array.iter targetLogger.logSimple) >> Job.result
-
+    //codec >> Result.map (Array.iter targetLogger.logSimple) >> Job.result
+    fun input ->
+        match codec input with
+        | Result.Ok messages ->
+          messages |> Array.iter targetLogger.logSimple
+          Job.result (Result.Ok ())
+        | Result.Error error ->
+          Job.result (Result.Error error)
+  
   let internal zmqRecv createSocket =
     let recv (started, shutdown) (cfg: IngestServerConfig) next =
       Job.Scheduler.isolate <| fun () ->

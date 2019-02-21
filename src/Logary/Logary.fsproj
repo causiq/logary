@@ -2,7 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AssemblyName>Logary</AssemblyName>
-    <Version>5.0.0-rc.1</Version>
+    <Version>5.0.0-rc.2</Version>
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <NoWarn>44;2003</NoWarn>
     <DefineConstants>TYPESHAPE_EXPOSE</DefineConstants>

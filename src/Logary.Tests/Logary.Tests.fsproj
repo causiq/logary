@@ -2,8 +2,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <Version>5.0.0-rc.1</Version>
-    <TargetFrameworks>netcoreapp2.2</TargetFrameworks>
+    <Version>5.0.0-rc.2</Version>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
     <NoWarn>44</NoWarn>
     <DebugSymbols>true</DebugSymbols>
     <Tailcalls>true</Tailcalls>
@@ -16,6 +16,7 @@
     <Compile Include="Diff.fs" />
     <Compile Include="Engine.fs" />
     <Compile Include="Codecs.fs" />
+    <Compile Include="Json.fs" />
     <Compile Include="Formatting.fs" />
     <Compile Include="FsMessageTemplates.fs" />
     <Compile Include="TargetBaseline.fs" />

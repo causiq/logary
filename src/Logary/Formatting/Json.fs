@@ -122,44 +122,47 @@ module internal JsonDecode =
   let timestamp: Decoder<Json, EpochNanoSeconds> =
     Json.Decode.either timestampOfNs timestampOfDto
 
-  let private foldJsonObject (m: Message, remainder: JsonObject) = function
-    | "name", json
-    | "source", json
-    | "logger", json ->
-      name json |> JsonResult.map (fun name -> Message.setName name m, remainder)
+  let private foldJsonObject (m: Message, remainder: JsonObject) =
+    fun (prop, json) ->
+      match prop, json with
+      | "name", json
+      | "source", json
+      | "logger", json ->
+        name json |> JsonResult.map (fun name -> Message.setName name m, remainder)
 
-    | "message", json
-    | "value", json  ->
-      value json |> JsonResult.map (fun value -> { m with value = value }, remainder)
+      | "message", json
+      | "value", json  ->
+        value json |> JsonResult.map (fun value -> { m with value = value }, remainder)
 
-    | "fields", json
-    | "context", json ->
-      context json |> JsonResult.map (fun values ->
-      let constructed =
-        let name = KnownLiterals.FieldsPrefix + "error"
-        match values |> HashMap.tryFind name with
-        | Some (:? string as error) ->
-          match DotNetStacktrace.parse error with
-          | [||] ->
+      | "fields", json
+      | "context", json ->
+        context json |> JsonResult.map (fun values ->
+        let constructed =
+          let name = KnownLiterals.FieldsPrefix + "error"
+          match values |> HashMap.tryFind name with
+          | Some (:? string as error) ->
+            match DotNetStacktrace.parse error with
+            | [||] ->
+              values
+            | st ->
+              values |> HashMap.add name (box st)
+          | _
+          | None ->
             values
-          | st ->
-            values |> HashMap.add name (box st)
-        | _
-        | None ->
-          values
-      { m with context = constructed |> HashMap.toSeqPair |> Seq.fold (addFieldKVP false) m.context },
-      remainder)
+        { m with context = constructed |> HashMap.toSeqPair |> Seq.fold (addFieldKVP false) m.context },
+        remainder)
 
-    | "level", json
-    | "severity", json ->
-      level json |> JsonResult.map (fun level -> Message.setLevel level m, remainder)
+      | "level", json
+      | "severity", json ->
+        level json |> JsonResult.map (fun level -> Message.setLevel level m, remainder)
 
-    | "timestamp", json
-    | "@timestamp", json ->
-      timestamp json |> JsonResult.map (fun ts -> Message.setNanoEpoch ts m, remainder)
+      | "timestamp", json
+      | "@timestamp", json ->
+        timestamp json |> JsonResult.map (fun ts -> Message.setNanoEpoch ts m, remainder)
+        
 
-    | otherProp, json ->
-      JsonResult.pass (m, remainder |> JsonObject.add otherProp json)
+      | otherProp, json ->
+        JsonResult.pass (m, remainder |> JsonObject.add otherProp json)
 
   let message: Decoder<JsonObject, Message> =
     let initial = Message.event Debug "-"
@@ -167,8 +170,8 @@ module internal JsonDecode =
       JsonObject.toPropertyList jsonObj
       |> JsonResult.foldBind foldJsonObject (initial, JsonObject.empty)
       |> JsonResult.bind (fun (message, remainder) ->
-      decodeMap true message.context remainder |> JsonResult.map (fun nextContext ->
-      { message with context = nextContext }))
+        decodeMap true message.context remainder |> JsonResult.map (fun nextContext ->
+        { message with context = nextContext }))
 
 /// See JsonHelper.fs
 module Json =
