@@ -292,6 +292,29 @@ let tests fsc =
 
         | JFail err ->
           failtestf "Parse failure %A" err
+          
+      testList "fields and context" [
+        let sample = """{"message":"Hi {user}", "context":{"app":"native"}, "fields": {"user":"haf"}, "lastly": true, "myObj": {"isProp":"nested"} }"""
+        let subject =
+          Json.parse sample
+            |> JsonResult.bind Json.decodeMessage
+            |> JsonResult.getOrThrow
+            |> Array.head
+        printfn "Sample %A" subject
+
+        yield testCase "field" <| fun () ->
+          subject |> Message.tryGetField "user" |> Expect.equal "Field equals" (Some "haf")
+        yield testCase "context" <| fun () ->
+          subject |> Message.tryGetContext "app" |> Expect.equal "Field equals" (Some "native")
+        yield testCase "field from outside" <| fun () ->
+          subject |> Message.tryGetField "lastly" |> Expect.equal "Should have a true value" (Some true)
+        yield testCase "nested obj from outside" <| fun () ->
+          let nested = HashMap.empty |> HashMap.add "isProp" (box "nested")
+          subject
+            |> Message.tryGetField "myObj"
+            |> Option.get
+            |> Expect.equal "Should have a true value" (Some nested)
+      ]
     ]
   ]
 

@@ -150,14 +150,14 @@ module internal JsonDecode =
       | "context", json ->
         let decodeValues (values: HashMap<string, obj>) =
           let constructed =
-            let name = KnownLiterals.FieldsPrefix + "error"
-            match values |> HashMap.tryFind name with
+            let errorKey = KnownLiterals.FieldsPrefix + "error"
+            match values |> HashMap.tryFind errorKey with
             | Some (:? string as error) ->
               match DotNetStacktrace.parse error with
               | [||] ->
                 values
               | st ->
-                values |> HashMap.add name (box st)
+                values |> HashMap.add errorKey (box st)
             | _
             | None ->
               values
@@ -179,7 +179,7 @@ module internal JsonDecode =
         timestamp json
           |> JsonResult.map (fun ts -> Message.setNanoEpoch ts m, remainder)
           |> JsonResult.mapError (fun _ -> m, remainder)
-        
+
       | otherProp, json ->
         JsonResult.pass (m, remainder |> JsonObject.add otherProp json)
 
