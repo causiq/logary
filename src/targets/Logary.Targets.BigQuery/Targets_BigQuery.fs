@@ -13,7 +13,7 @@ open Logary.Configuration.Target
 [<assembly:InternalsVisibleTo("Logary.Targets.BigQuery.Tests")>]
 do()
 
-
+// NOTE: this target is in ALPHA state (and it's fairly simple)
 type BigQueryConf =
   { projectId: string option
     dataset: string
@@ -21,9 +21,9 @@ type BigQueryConf =
   }
   
   static member create (?projectId: string, ?dataset: string, ?table: string) =
-    { dataset = defaultArg dataset "logs"
+    { projectId = projectId
+      dataset = defaultArg dataset "logs"
       table = defaultArg table "all"
-      projectId = projectId
     }
 
 let empty = BigQueryConf.create()
