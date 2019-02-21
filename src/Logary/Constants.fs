@@ -7,11 +7,11 @@ module KnownLiterals =
   [<Literal>]
   let LogaryPrefix = "_logary."
 
-  /// To recognize all fields for generate formatted msg
+  /// To recognise the regular fields when generating the templated message 
   [<Literal>]
   let FieldsPrefix = "_fields."
 
-  /// To recognize all gauge fields for generate formatted msg
+  /// To recognise the gauge fields when generating the templated message 
   [<Literal>]
   let GaugeNamePrefix = LogaryPrefix + "gauge."
 
@@ -22,7 +22,7 @@ module KnownLiterals =
   /// for api compatibility, when user don't provide gauge type
   [<Literal>]
   let DefaultGaugeName = "default-gauge"
-
+  
   [<Literal>]
   let ErrorsContextName = LogaryPrefix + "errors"
 

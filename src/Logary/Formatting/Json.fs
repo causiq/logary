@@ -51,17 +51,21 @@ module internal JsonDecode =
   let value: Decoder<Json, string> =
     Optics.get Optics.Json.String_
 
-  let private addField prefix acc key v =
+  let private addToFields prefix acc key v =
     acc |> HashMap.add ((if prefix then KnownLiterals.FieldsPrefix else "") + key) v
-
+    
   let private addFieldKVP prefix acc (KeyValue (key, v)) =
-    addField prefix acc key v
+    addToFields prefix acc key v
+    
+  let private addToContext acc key v =
+    acc |> HashMap.add key v
+
 
   /// Decodes a JsonObject into a CLR HashMap<string, obj> value that can be
   /// put into the context of the Message
   let rec private decodeMap topLevel initialState: Decoder<JsonObject, HashMap<string, obj>> =
     let foldIntoMap (acc: HashMap<string, obj>) (key, vJ) =
-      decodeValue vJ |> JsonResult.map (addField topLevel acc key)
+      decodeValue vJ |> JsonResult.map (addToFields topLevel acc key)
     JsonObject.toPropertyList
     >> JsonResult.foldBind foldIntoMap initialState
 
@@ -97,9 +101,39 @@ module internal JsonDecode =
     | Json.Null ->
       JsonResult.pass (box None)
 
-  let context: Decoder<Json, HashMap<string, obj>> =
-    Optics.get Optics.Json.Object_
-    >> JsonResult.bind (decodeMap true HashMap.empty)
+  let error: JsonDecoder<obj> =
+    let parse =
+      DotNetStacktrace.parse >> function
+        | [||] ->
+          printfn "Parse fail"
+          JFail (SingleFailure (InvalidJson "'error' property is not a Stacktrace"))
+        | trace ->
+          printfn "Parse success"
+          JPass trace
+    let trace: JsonDecoder<StacktraceLine[]> = D.string >> JsonResult.bind parse
+    Json.Decode.either (box <!> trace) (box <!> D.string)
+
+  let errors = D.arrayWith error
+
+  let private _context decodeOne addOne: HashMap<string, obj> -> Decoder<Json, HashMap<string, obj>> =
+    let foldIntoMap (acc: HashMap<string, obj>) (key, vJ) =
+      decodeOne (key, vJ) |> JsonResult.map (addOne acc key)
+
+    fun prevContext ->
+      D.jsonObject >=> fun xJO ->
+      JsonObject.toPropertyList xJO
+      |> JsonResult.foldBind foldIntoMap prevContext
+
+  let context: HashMap<string, obj> -> Decoder<Json, HashMap<string, obj>> =
+    _context (fun (key, vJ) -> decodeValue vJ) addToContext
+
+  let fields: HashMap<string, obj> -> Decoder<Json, HashMap<string, obj>> =
+    let decodeField = function
+      | k, vJ when k = "error" ->
+        error vJ
+      | _, vJ ->
+        decodeValue vJ
+    _context decodeField (addToFields true)
 
   /// Decodes the Message's `level` from a `Json` value.
   let level: Decoder<Json, LogLevel> =
@@ -132,54 +166,43 @@ module internal JsonDecode =
 
   let private foldJsonObject (m: Message, remainder: JsonObject) =
     fun (prop, json) ->
+      JsonResult.mapError (fun _ -> m, remainder) <|
       match prop, json with
       | "name", json
       | "source", json
       | "logger", json ->
         name json
           |> JsonResult.map (fun name -> Message.setName name m, remainder)
-          |> JsonResult.mapError (fun _ -> m, remainder)
 
       | "message", json
       | "value", json  ->
         value json
           |> JsonResult.map (fun value -> { m with value = value }, remainder)
-          |> JsonResult.mapError (fun _ -> m, remainder)
 
-      | "fields", json
+      | "_logary.error", json
+      | "error", json ->
+        error json
+          |> JsonResult.map (fun value -> m |> Message.setField "error" value, remainder)
+          
+      | "fields", json ->
+        fields m.context json
+          |> JsonResult.map (fun context -> { m with context = context }, remainder)
+
       | "context", json ->
-        let decodeValues (values: HashMap<string, obj>) =
-          let constructed =
-            let errorKey = KnownLiterals.FieldsPrefix + "error"
-            match values |> HashMap.tryFind errorKey with
-            | Some (:? string as error) ->
-              match DotNetStacktrace.parse error with
-              | [||] ->
-                values
-              | st ->
-                values |> HashMap.add errorKey (box st)
-            | _
-            | None ->
-              values
-          { m with context = constructed |> HashMap.toSeqPair |> Seq.fold (addFieldKVP false) m.context },
-          remainder
-
-        context json
-          |> JsonResult.map decodeValues
-          |> JsonResult.mapError (fun _ -> m, remainder)
-
+        context m.context json
+          |> JsonResult.map (fun context -> { m with context = context }, remainder)
+          
       | "level", json
       | "severity", json ->
         level json
           |> JsonResult.map (fun level -> Message.setLevel level m, remainder)
-          |> JsonResult.mapError (fun _ -> m, remainder)
 
       | "timestamp", json
       | "@timestamp", json ->
         timestamp json
           |> JsonResult.map (fun ts -> Message.setNanoEpoch ts m, remainder)
-          |> JsonResult.mapError (fun _ -> m, remainder)
 
+      // add extreneous properties to the remainder
       | otherProp, json ->
         JsonResult.pass (m, remainder |> JsonObject.add otherProp json)
 

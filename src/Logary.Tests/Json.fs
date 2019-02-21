@@ -300,7 +300,6 @@ let tests fsc =
             |> JsonResult.bind Json.decodeMessage
             |> JsonResult.getOrThrow
             |> Array.head
-        printfn "Sample %A" subject
 
         yield testCase "field" <| fun () ->
           subject |> Message.tryGetField "user" |> Expect.equal "Field equals" (Some "haf")
@@ -309,11 +308,12 @@ let tests fsc =
         yield testCase "field from outside" <| fun () ->
           subject |> Message.tryGetField "lastly" |> Expect.equal "Should have a true value" (Some true)
         yield testCase "nested obj from outside" <| fun () ->
-          let nested = HashMap.empty |> HashMap.add "isProp" (box "nested")
+          let expected = HashMap.empty |> HashMap.add "isProp" (box "nested") |> HashMap.toList
           subject
             |> Message.tryGetField "myObj"
             |> Option.get
-            |> Expect.equal "Should have a true value" (Some nested)
+            |> HashMap.toList
+            |> Expect.equal "Should have a true value" expected
       ]
     ]
   ]

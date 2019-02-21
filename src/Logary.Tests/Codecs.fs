@@ -23,17 +23,13 @@ let tests =
         | Result.Ok m ->
           m.[0].name
             |> Expect.equal "Should parse name of logger" (PointName.parse "MyProgram.ModuleA")
-
           m.[0]
             |> Message.tryGetError
             |> Expect.isSome "Has the error parsed and ready"
-
-
           let lines =
             m.[0]
               |> Message.tryGetError
               |> Option.get
-
           lines
             |> Expect.isNonEmpty "Has at least one line"
 
