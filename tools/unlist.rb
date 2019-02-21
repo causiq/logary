@@ -3,7 +3,7 @@ require 'rake'
 require 'json'
 
 package = ARGV[0] || raise('Must supply name of package')
-api_key = ENV['NUGET_KEY'] || raise('Must have NUGET_KEY')
+api_key = ENV['NUGET_TOKEN'] || raise('Must have NUGET_TOKEN')
 
 package_info = JSON.parse(`curl --silent -L "https://api.nuget.org/v3-flatcontainer/#{package}/index.json"`)
 
@@ -23,7 +23,7 @@ end.map do |version|
 end.each do |version, answer|
   if answer then
     $stdout.puts "Deleting #{package} v#{version}"
-    sh "yes | mono --debug nuget.exe delete #{package} #{version} #{api_key} -source https://api.nuget.org/v3/index.json"
+    `curl --silent -i -X "X-NuGet-ApiKey: #{api_key}" -X DELETE https://www.nuget.org/api/v2/package/#{package}/#{version}`
   end
 end
 
