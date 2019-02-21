@@ -80,7 +80,8 @@ router:
   # - mixpanel://
   # - opsgenie://
   # - rabbitmq://
-  # - stackdriver://logary-test/applog ...
+  # - stackdriver://./?logId=apps
+  # - bigquery://?dataset=logs&table=all
   targets:
   - console://./
 
