@@ -1519,6 +1519,16 @@ Stackdriver.create conf "target-name"
 * flushing
   * the underlying library doesn't provide a flush mechanism yet
 
+## Google Cloud Platform BigQuery
+
+```fsharp
+open Logary.Targets.BigQuery
+let conf = BigQueryConf.create(projectId, tableName, resource)
+
+// within `withTargets`:
+BigQuery.create conf "bq" // ...
+```
+
 ## Jaeger Tracing target
 
 - https://www.jaegertracing.io/
