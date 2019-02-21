@@ -1,5 +1,4 @@
-﻿namespace Logary.Prometheus
-
+﻿namespace Logary.Metric
 
 #nowarn "9"
 

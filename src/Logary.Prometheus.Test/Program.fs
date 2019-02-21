@@ -55,6 +55,7 @@ type Counter() =
   [<DefaultValue>]
   val mutable threads: Thread[]
 
+
   member x.launchWorker () =
     interlockedCounter <- 0L
     doubleAdderCounter <- new DoubleAdder()
@@ -78,7 +79,8 @@ type Counter() =
     x.invokeFunc <- doubleAdderCounter.Add
     x.runAndEnsureResult <| fun () -> doubleAdderCounter.Sum ()
 
-//  [<Benchmark(Baseline = true, OperationsPerInvoke = iterationCount)>]
+
+  [<Benchmark(Baseline = true, OperationsPerInvoke = iterationCount)>]
   member x.interLocked () =
     x.launchWorker ()
     x.invokeFunc <- interLockedAdd
@@ -91,6 +93,7 @@ type Counter() =
     let invokeCountEachThread = float (iterationCount / x.threadCount)
     let expect = Seq.fold (fun acc addValue -> acc + (float addValue) * invokeCountEachThread) 0. [1..x.threadCount]
     let actural = getActuralFunc ()
+
     if expect <> actural then failwithf "expect %A not equal actural %A" expect actural
 
 
@@ -115,7 +118,7 @@ module Tests =
 
     testList "benchmarks" [
       test "Counter" {
-        let testJob4Debug = Job.Default.WithLaunchCount(1).WithWarmupCount(2).WithTargetCount(10).WithInvocationCount(2).WithUnrollFactor(2)
+        let testJob4Debug = Job.Default.WithLaunchCount(1).WithWarmupCount(2).WithTargetCount(4).WithInvocationCount(4).WithUnrollFactor(2)
         let cfg = config (Job(Job.Default))
         let cfg = config (Job(testJob4Debug))
 

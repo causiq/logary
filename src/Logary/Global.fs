@@ -17,12 +17,6 @@ module internal Global =
       /// around. You must take this if you e.g. make a change to the colourisation
       /// of the console output.
       getConsoleSemaphore: unit -> obj }
-    with
-      static member create getLogger getLoggerWM getTs getCS =
-        { getLogger = getLogger
-          getLoggerWithMiddleware = getLoggerWM
-          getTimestamp = getTs
-          getConsoleSemaphore = getCS }
 
   /// Null object pattern; will only return loggers that don't log.
   let defaultConfig =
@@ -94,6 +88,7 @@ module internal Global =
   /// Run the passed function under the console semaphore lock.
   let lockSem fn =
     lock (getConsoleSemaphore ()) fn
+
 
   module Json =
 
@@ -212,7 +207,7 @@ module internal Global =
 
       configDestructure<Duration>(fun resolver req -> ScalarValue req.Value)
 
-      configDestructure<SpanLog>(fun resolver req -> 
+      configDestructure<SpanLog>(fun resolver req ->
         let spanLog = req.Value
         let refCount = req.IdManager
         match refCount.TryShowAsRefId req with

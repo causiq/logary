@@ -6,6 +6,7 @@ open Hopac.Infixes
 open Hopac.Extensions
 open Logary
 open Logary.Message
+open Logary.Metric
 open Logary.Internals
 open Logary.Configuration
 open NodaTime
@@ -316,4 +317,5 @@ module Registry =
           shutdown t
         member x.switchLoggerLevel (path, logLevel) =
           Impl.switchLoggerLevel t path logLevel
+        member x.metricRegistry = new MetricRegistry()
     }
