@@ -3,16 +3,24 @@ namespace Logary.Formatting
 open Logary
 open Logary.Internals
 
+module JsonResult =
+  open Logary.Internals.Chiron
+  
+  let inline mapError (f2b: JsonFailure -> 'a) (aR: JsonResult<'a>): JsonResult<'a> =
+    match aR with
+    | JPass a -> JPass a
+    | JFail x -> JPass (f2b x)
+
 /// A module for decoding arbitrary JSON data into Message values.
 module internal JsonDecode =
   open Logary.Internals.Chiron
   open Logary.Internals.Chiron.Operators
   module D = Json.Decode
   open JsonTransformer
-  open Logary
 
   /// Module with extensions to Chiron
   module JsonResult =
+        
     let inline orElse (a2bR: JsonFailure -> JsonResult<'a>) (aR: JsonResult<'a>): JsonResult<'a> =
       match aR with
       | JPass a -> JsonResult.pass a
@@ -128,39 +136,50 @@ module internal JsonDecode =
       | "name", json
       | "source", json
       | "logger", json ->
-        name json |> JsonResult.map (fun name -> Message.setName name m, remainder)
+        name json
+          |> JsonResult.map (fun name -> Message.setName name m, remainder)
+          |> JsonResult.mapError (fun _ -> m, remainder)
 
       | "message", json
       | "value", json  ->
-        value json |> JsonResult.map (fun value -> { m with value = value }, remainder)
+        value json
+          |> JsonResult.map (fun value -> { m with value = value }, remainder)
+          |> JsonResult.mapError (fun _ -> m, remainder)
 
       | "fields", json
       | "context", json ->
-        context json |> JsonResult.map (fun values ->
-        let constructed =
-          let name = KnownLiterals.FieldsPrefix + "error"
-          match values |> HashMap.tryFind name with
-          | Some (:? string as error) ->
-            match DotNetStacktrace.parse error with
-            | [||] ->
+        let decodeValues (values: HashMap<string, obj>) =
+          let constructed =
+            let name = KnownLiterals.FieldsPrefix + "error"
+            match values |> HashMap.tryFind name with
+            | Some (:? string as error) ->
+              match DotNetStacktrace.parse error with
+              | [||] ->
+                values
+              | st ->
+                values |> HashMap.add name (box st)
+            | _
+            | None ->
               values
-            | st ->
-              values |> HashMap.add name (box st)
-          | _
-          | None ->
-            values
-        { m with context = constructed |> HashMap.toSeqPair |> Seq.fold (addFieldKVP false) m.context },
-        remainder)
+          { m with context = constructed |> HashMap.toSeqPair |> Seq.fold (addFieldKVP false) m.context },
+          remainder
+
+        context json
+          |> JsonResult.map decodeValues
+          |> JsonResult.mapError (fun _ -> m, remainder)
 
       | "level", json
       | "severity", json ->
-        level json |> JsonResult.map (fun level -> Message.setLevel level m, remainder)
+        level json
+          |> JsonResult.map (fun level -> Message.setLevel level m, remainder)
+          |> JsonResult.mapError (fun _ -> m, remainder)
 
       | "timestamp", json
       | "@timestamp", json ->
-        timestamp json |> JsonResult.map (fun ts -> Message.setNanoEpoch ts m, remainder)
+        timestamp json
+          |> JsonResult.map (fun ts -> Message.setNanoEpoch ts m, remainder)
+          |> JsonResult.mapError (fun _ -> m, remainder)
         
-
       | otherProp, json ->
         JsonResult.pass (m, remainder |> JsonObject.add otherProp json)
 
@@ -179,8 +198,6 @@ module Json =
   open Inference
   module D = Json.Decode
   module E = Json.Encode
-
-//  let private ec = new ConcurrentDictionary<Type, unit -> obj -> Json>()
 
   let encode (data: 'a): Json =
     JsonHelper.toJson<'a> Global.jsonEncoderRegistry data

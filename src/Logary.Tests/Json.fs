@@ -91,7 +91,7 @@ let jsonInputCrash = """
   },
   "level": "Debug",
   "name": "HomeViewModel",
-  "timestamp": "2019-02-20T18:03:19.425+01:00",
+  "timestamp": "2019-02-20T18:03:19.42512311+01:00",
   "value": "unlock_ride_api_successful"
 }
 """
@@ -239,7 +239,7 @@ let tests fsc =
         | JFail err ->
           failtestf "Failed with error %A" err
 
-      ptestCase "message crash (regression)" <| fun () ->
+      testCase "message crash (regression)" <| fun () ->
         let res =
           Json.parse jsonInputCrash
             |> JsonResult.bind Json.decodeMessage
@@ -255,7 +255,6 @@ let tests fsc =
         | JFail f ->
           failtestf "Failure parsing ISO8601 %A" f
 
-      
       testCase "ISO8601 with offset" <| fun () ->
         for (input, pattern) in
           [ "2019-02-20T18:03:19.425+01:00", "yyyy-MM-dd'T'HH:mm:ss.FFFzzz"
