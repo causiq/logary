@@ -2,6 +2,7 @@
 * Enable project id discoverability with google metadata server in Stackdriver, thanks @haf
 * Create a new Google BigQuery target, thanks @haf
 * Stability fixes for Rutta JSON ingestion, thanks @haf
+* Improve sending of StacktraceLine[] to Stackdriver, thanks @haf
 
 #### 5.0.0-rc.1
 * Print better help message for UDP ingestion targets, thanks @haf
