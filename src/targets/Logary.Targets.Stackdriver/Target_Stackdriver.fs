@@ -196,20 +196,46 @@ module internal Impl =
   // It should be logged as a multi-line textPayload or in the message field of jsonPayload
   // https://cloud.google.com/error-reporting/docs/formatting-error-messages
   let formatMessageField (m: Message) =   
-      use sw = new StringWriter()
-      MessageWriter.verbatim.write sw m
+    use sw = new StringWriter()
+    MessageWriter.verbatim.write sw m
+    
+    let error = m |> tryGetField "error"
+    if error.IsSome then
+      sw.Write Environment.NewLine
+      sw.Write (error.Value.ToString())
       
-      let error = tryGetField "error" m
-      if error.IsSome then
-        sw.Write Environment.NewLine
-        sw.Write (error.Value.ToString())
+    let errorST: StacktraceLine[] option = m |> tryGetField "error"
+    if errorST.IsSome then
+      sw.Write Environment.NewLine
+      for line in Option.get errorST do
+        match line with
+        | ExnType (exnType, message) ->
+          sw.Write exnType
+          sw.Write ": "
+          sw.Write message
+          sw.WriteLine()
+        | Line line ->
+          sw.Write "   at "
+          sw.Write line.site
+          line.file |> Option.iter (fun file ->
+            sw.Write " in "
+            sw.Write file)
+          line.lineNo |> Option.iter (fun no ->
+            sw.Write ":"
+            sw.Write no)
+          sw.WriteLine()
+        | StacktraceDelim ->
+          sw.WriteLine("-----------")
+        | LineOutput data ->
+          sw.WriteLine data
+      sw.Write (error.Value.ToString())
 
-      getExns m 
-        |> Seq.iter (fun exn ->
-          sw.Write Environment.NewLine
-          sw.Write exn)
-      
-      sw.ToString()
+    getExns m 
+      |> Seq.iter (fun exn ->
+        sw.Write Environment.NewLine
+        sw.Write exn)
+    
+    sw.ToString()
 
   [<Literal>]
   let MessageKey = "message"
