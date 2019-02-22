@@ -8,7 +8,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y locales && \
     locale-gen C C.UTF-8 && \
     DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y git vim libzmq3-dev libczmq4 libprotobuf-c-dev libprotobuf-dev libprotobuf10 ca-certificates
+    DEBIAN_FRONTEND=noninteractive apt-get install -y git vim libzmq3-dev libczmq4 libprotobuf-c-dev libprotobuf-dev libprotobuf10 ca-certificates && \
+    ldconfig
 
 ENV LC_ALL=C.UTF-8
 
@@ -38,7 +39,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y locales && \
     locale-gen C C.UTF-8 && \
     DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y libczmq4 libprotobuf-c-dev libprotobuf10 ca-certificates
+    DEBIAN_FRONTEND=noninteractive apt-get install -y libczmq4 libprotobuf-c-dev libprotobuf10 ca-certificates && \
+    ldconfig
 
 WORKDIR /logary/
 COPY --from=build /build/src/services/Logary.Services.Rutta/bin/Release/netcoreapp2.2/linux-x64/publish/* /logary/
