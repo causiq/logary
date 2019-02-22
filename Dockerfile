@@ -8,7 +8,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y locales && \
     locale-gen C C.UTF-8 && \
     DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y git vim libczmq4 libprotobuf-c-dev libprotobuf-dev libprotobuf10 ca-certificates
+    DEBIAN_FRONTEND=noninteractive apt-get install -y git vim libzmq3-dev libczmq4 libprotobuf-c-dev libprotobuf-dev libprotobuf10 ca-certificates
 
 ENV LC_ALL=C.UTF-8
 
