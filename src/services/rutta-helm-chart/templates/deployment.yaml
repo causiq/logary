@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
       - name: {{ .Chart.Name | quote }}
-        image: {{ .Values.image | default "haaf/rutta:5.0.0-rc.1.597e31a3" | quote }}
+        image: {{ .Values.image | default "haaf/rutta:5.0.0-rc.2.211cd352" | quote }}
         args:
         {{- if .Values.router }}
         - "router"
