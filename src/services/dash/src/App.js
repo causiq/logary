@@ -1,42 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import moment from 'moment'
 import classNames from 'classnames'
 import CircularBuffer from './lib/circularBuffer'
+import subscribe from './lib/subscribe'
 import sse from './lib/sse'
-import { Scheduler, BehaviorSubject } from 'rxjs';
-import { scan, map, auditTime, combineLatest } from 'rxjs/operators'
+import { Scheduler, BehaviorSubject, interval } from 'rxjs'
+import { scan, map, auditTime, combineLatest, startWith } from 'rxjs/operators'
 import "./App.css"
-
-/**
- * Subscribe to all of an object's observables { [name: string]: Observable } structure.
- */
-const subscribe = (observables, props) => {
-  const initialState =
-    Object.keys(observables)
-          .reduce((acc, k) => ({ ...acc, [`${k}`]: { isLoading: true } }), {})
-  return Component => outerProps => {
-    const [ state, setState ] = useState(initialState)
-    useEffect(() => {
-      const subscriptions = []
-      Object.keys(observables).forEach(k => {
-        subscriptions.push(observables[k].subscribe(value => {
-          setState({
-            ...state,
-            [`${k}`]: {
-              value,
-              isLoading: false
-            }
-          })
-        }))
-      })
-      return () => {
-        subscriptions.forEach(sub => {
-          sub.unsubscribe();
-        })
-      }
-    }, [ observables ])
-    return <Component {...props} {...state} {...outerProps} />
-  }
-}
 
 function template(value, fields = {}, context = {}) {
   return value.replace(/\{(\w+)\}/g, (match, key, y, z) => {
@@ -45,9 +15,14 @@ function template(value, fields = {}, context = {}) {
   })
 }
 
-const allLogs$ = sse("http://localhost:8765/logs").pipe(
+const interpret = m => ({
+  ...m,
+  message: template(m.value, m.fields, m.context)
+})
+
+const allLogs$ = sse("http://localhost:8080/logs").pipe(
   map(JSON.parse),
-  map(m => ({ ...m, message: template(m.value, m.fields, m.context) })),
+  map(interpret),
   scan((acc, x, i) => acc.push(x), new CircularBuffer(2048)),
   auditTime(0, Scheduler.animationFrameScheduler), // https://rxjs-dev.firebaseapp.com/api/operators/auditTime
   map(xs => xs.snapshot())
@@ -63,14 +38,16 @@ const MessageTableInner = (props) => {
       <td className='level'>{message.level}</td>
       <td className='message' title={message.value}>{message.message}</td>
       <td className='name'>{message.name}</td>
+      <td className='timestamp' title={message.timestamp}>{moment(message.timestamp).fromNow()}</td>
     </tr>)
 
-  return <table>
+  return <table data-age={props.age.value}>
     <thead>
       <tr>
         <th className='level'>Level</th>
         <th className='message'>Message</th>
         <th className='name'>Name</th>
+        <th className='timestamp'>Timestamp</th>
       </tr>
     </thead>
     <tbody>
@@ -89,12 +66,14 @@ const FilterInput = ({ filter, setFilter }) =>
 
 const filter$ = new BehaviorSubject('')
 const Filter = subscribe({ filter$ }, { setFilter: x => filter$.next(x) })(FilterInput)
+const age = interval(1000).pipe(startWith(0))
 
 const message$ = allLogs$.pipe(
   combineLatest(filter$),
-  map(([ xs, filter ]) => xs.filter(x => x.message.indexOf(filter) !== -1))
+  map(([ xs, filter ]) =>
+    xs.filter(x => x.level === filter || x.message.indexOf(filter) !== -1 || x.name.indexOf(filter) !== -1))
 )
-const MessageTable = subscribe({ message$ })(MessageTableInner)
+const MessageTable = subscribe({ message$, age })(MessageTableInner)
 
 const App = () => {
   return <React.Fragment>

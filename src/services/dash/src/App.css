@@ -63,3 +63,11 @@ tr.level-debug,
 tr.level-verbose {
   color: #aaa;
 }
+
+td.level {
+  width: 20px;
+}
+td.timestamp {
+  width: 30px;
+  white-space: nowrap;
+}

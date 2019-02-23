@@ -1,4 +1,4 @@
-var port = process.env.PORT || process.argv[2] || 8765;
+var port = process.env.PORT || process.argv[2] || 8080;
 var bind = process.env.PORT || process.argv[3] || '127.0.0.1';
 var express = require('express');
 var app = express();

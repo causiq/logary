@@ -9,6 +9,7 @@
     "gun": "^0.9.9999991",
     "immutable": "^4.0.0-rc.12",
     "logary": "^5.0.2",
+    "moment": "^2.24.0",
     "react": "^16.8.3",
     "react-dom": "^16.8.3",
     "react-scripts": "2.1.5",
@@ -17,6 +18,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
+    "start:production": "NODE_ENV=production node server.js",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
