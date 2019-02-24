@@ -68,6 +68,5 @@ td.level {
   width: 20px;
 }
 td.timestamp {
-  width: 30px;
-  white-space: nowrap;
+  width: 100px;
 }
