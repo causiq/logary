@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@emotion/core": "^10.0.7",
+    "@emotion/primitives": "^10.0.7",
     "classnames": "^2.2.6",
+    "emotion-theming": "^10.0.7",
     "express": "^4.16.4",
     "express-sse": "^0.5.0",
     "gun": "^0.9.9999991",
@@ -11,8 +14,12 @@
     "logary": "^5.0.2",
     "moment": "^2.24.0",
     "react": "^16.8.3",
+    "react-art": "^16.8.3",
     "react-dom": "^16.8.3",
+    "react-native-web": "^0.10.0",
+    "react-primitives": "^0.7.0",
     "react-scripts": "2.1.5",
+    "react-sketchapp": "^3.0.0-beta.3",
     "react-window": "^1.5.2",
     "rxjs": "^6.4.0"
   },
@@ -23,7 +30,8 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "server": "nodemon server.js",
-    "dev": "concurrently --kill-others-on-fail \"yarn server\" \"yarn start\""
+    "dev": "concurrently --kill-others-on-fail \"yarn server\" \"yarn start\"",
+    "render": "skpm-build --watch --run"
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -35,6 +43,7 @@
     "not op_mini all"
   ],
   "devDependencies": {
+    "@skpm/builder": "^0.5.14",
     "concurrently": "^4.1.0",
     "nodemon": "^1.18.10"
   }
