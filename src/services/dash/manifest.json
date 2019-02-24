@@ -1,0 +1,15 @@
+{
+  "compatibleVersion": 3,
+  "bundleVersion": 1,
+  "commands": [
+    {
+      "name": "react-sketchapp: logarydash",
+      "identifier": "main",
+      "script": "./src/App.js"
+    }
+  ],
+  "menu": {
+    "isRoot": true,
+    "items": ["main"]
+  }
+}
