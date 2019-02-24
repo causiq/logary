@@ -103,17 +103,23 @@ const longLine = css({
 
 const shortLine = css({
   width: '100px',
-  flexGrow: 10
+  flexGrow: 10,
+  textOverflow: 'ellipsis'
 })
 
 const xshortLine = css({
   width: '80px',
   flexGrow: 5,
+  whiteSpace: 'normal'
 })
 
 const tinyLine = css({
   width: '50px',
   flexGrow: 1
+})
+
+const smallText = css({
+  fontSize: '80%'
 })
 
 const header = css({
@@ -125,7 +131,7 @@ const header = css({
 
 const Cell = styled.Text({
   ...text,
-  padding: '1em',
+  padding: '0.8em',
 })
 
 /**
@@ -164,7 +170,7 @@ const MessageTableInner = ({
       <Cell css={[ tinyLine, colourised ]} data-name='level'>{message.level}</Cell>
       <Cell css={[ longLine ]} data-name='message' title={message.value}>{message.message}</Cell>
       <Cell css={[ shortLine ]} data-name='name'>{message.name}</Cell>
-      <Cell css={[ xshortLine ]} data-name='timestamp' title={message.timestamp}>{moment(message.timestamp).fromNow()}</Cell>
+      <Cell css={[ shortLine ]} data-name='timestamp' title={message.timestamp}>{moment(message.timestamp).fromNow()}</Cell>
     </Row>})
 
   return <Table data-age={age.value} css={css({
@@ -176,7 +182,7 @@ const MessageTableInner = ({
       <Cell css={[ tinyLine ]} className='level'>Level</Cell>
       <Cell css={[ longLine ]} className='message'>Message</Cell>
       <Cell css={[ shortLine ]} className='name'>Name</Cell>
-      <Cell css={[ xshortLine ]} className='timestamp'>Timestamp</Cell>
+      <Cell css={[ shortLine ]} className='timestamp'>TS</Cell>
     </Row>
     {rows}
   </Table>
@@ -196,8 +202,11 @@ const globalStyles = css({
     fontSize: '130%'
   },
   '::selection': {
-    backgroundColor: theme.highlight,
-    color: theme.highlightText
+    backgroundColor: theme.warning,
+    color: theme.highlightText,
+  },
+  'div[title]': {
+    textDecoration: '1px dotted white'
   }
 })
 
