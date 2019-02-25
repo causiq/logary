@@ -25,13 +25,14 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "start:production": "NODE_ENV=production node server.js",
+    "start:sketch": "skpm-build --watch --run",
+    "start:server": "nodemon server.js",
+    "start:dev": "concurrently --kill-others-on-fail \"yarn start:server\" \"yarn start\"",
+    "start:ios": "react-native start-ios",
+    "start:metro": "node node_modules/react-native/local-cli/cli.js start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "server": "nodemon server.js",
-    "dev": "concurrently --kill-others-on-fail \"yarn server\" \"yarn start\"",
-    "render": "skpm-build --watch --run"
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -44,6 +45,7 @@
   ],
   "devDependencies": {
     "@skpm/builder": "^0.5.14",
+    "canvas": "^2.3.1",
     "concurrently": "^4.1.0",
     "nodemon": "^1.18.10"
   }

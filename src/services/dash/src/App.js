@@ -1,3 +1,4 @@
+// eslint-disable-next-line
 import React from 'react';
 import moment from 'moment'
 import CircularBuffer from './lib/circularBuffer'
@@ -32,9 +33,9 @@ const allLogs$ = sse("http://localhost:8080/logs").pipe(
   retryWhen(e => e.pipe(delay(1000))),
   map(JSON.parse),
   concatMap(interpret),
-  scan((acc, x, i) => acc.push(x), new CircularBuffer(2048)),
+  scan((acc, x) => acc.push(x), new CircularBuffer(2048)),
   auditTime(0, Scheduler.animationFrameScheduler), // https://rxjs-dev.firebaseapp.com/api/operators/auditTime
-  map(xs => xs.snapshot())
+  map(xs => xs.snapshot().snapshot)
 )
 
 const filter$ = new BehaviorSubject('')
@@ -104,22 +105,13 @@ const longLine = css({
 const shortLine = css({
   width: '100px',
   flexGrow: 10,
-  textOverflow: 'ellipsis'
-})
-
-const xshortLine = css({
-  width: '80px',
-  flexGrow: 5,
-  whiteSpace: 'normal'
+  textOverflow: 'ellipsis',
+  maxWidth: '160px'
 })
 
 const tinyLine = css({
   width: '50px',
   flexGrow: 1
-})
-
-const smallText = css({
-  fontSize: '80%'
 })
 
 const header = css({
@@ -137,15 +129,15 @@ const Cell = styled.Text({
 /**
  * Main container: initialize the flex, direction is row
  */
-const Row = styled.View({
-  display: 'flex',
-  flexDirection: 'row',
-  flexGrow: 0,
-  width: '100%',
-  '&:hover': {
-    border: `1px solid ${theme.highlight}`
-  }
-})
+const Row = styled.View`
+  display: flex;
+  flex-direction: row;
+  flex-grow: 0;
+  width: 100%;
+`
+// &:hover {
+//   color: black;
+// }
 
 const Table = styled.View({})
 
@@ -196,10 +188,16 @@ const globalStyles = css({
     minHeight: '100vh',
     fontSize: '10px',
     color: theme.text,
-    minWidth: '350px'
+    minWidth: '350px',
+    margin: 0,
+    padding: 0,
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif',
+    WebkitFontSmoothing: 'antialiased',
+    MozOsxFontSmoothing: 'grayscale'
   },
   '#root': {
-    fontSize: '130%'
+    fontSize: '130%',
+    paddingTop: '50px'
   },
   '::selection': {
     backgroundColor: theme.warning,
@@ -207,7 +205,8 @@ const globalStyles = css({
   },
   'div[title]': {
     textDecoration: '1px dotted white'
-  }
+  },
+
 })
 
 const H1 = styled.Text`
@@ -221,7 +220,14 @@ const Header = styled.View({
   display: 'flex',
   flexDirection: 'row',
   alignItems: 'center',
-  padding: '1vmin'
+  padding: '1vmin',
+  height: '50px',
+  width: '100%',
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  backgroundColor: theme.bg,
+  zIndex: 200
 })
 
 const App = () => {
@@ -236,6 +242,9 @@ const App = () => {
 }
 
 export default App;
+
+// https://medium.com/@jonnykalambay/your-first-hybrid-app-in-15-minutes-react-native-on-the-web-2cc2646051e
+// https://github.com/jonnyk20/hybrid-app-pokedex
 
 //import Gun from 'gun/gun'
 //var gun = Gun(['http://localhost:8765/gun']);

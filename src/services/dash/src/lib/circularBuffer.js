@@ -9,7 +9,7 @@ export default class CircularBuffer {
       throw new Error("Invalid argument: capacity; must ≥1")
     }
     this.len = 0 // tracks current size
-    this.pos = 0 // points to most recent value
+    this.pos = 0 // points to value to be written
     this.capacity = capacity
     this.buffer = new Array(capacity)
     this.snap = List()
@@ -24,19 +24,24 @@ export default class CircularBuffer {
   }
 
   push = item => {
-    const write = (this.pos + 1) % this.capacity
     this.len = Math.max(this.len, Math.min(this.capacity, this.pos + 1))
-    this.buffer[write] = item
-    this.pos = write
+    this.buffer[this.pos] = item
+    this.pos = (this.pos + 1) % this.capacity
+    //console.log('after push len=', this.len, 'pos=', this.pos)
     return this;
   }
 
   forEach = fn => {
-  	let k = Math.abs((this.pos - this.len + 1) % this.capacity)
-    for (let i = 0; i < this.len; i++) {
-      fn(this.buffer[k], i)
-      k = (k + 1) % this.capacity
+    // cap = 3, written 1 items; len = 1, pos = 1, k = 0
+    // cap = 3, written 2 items; len = 2, pos = 2, k = 0
+    // cap = 3, written 3 items; len = 3, pos = 0, k = 0
+    // cap = 3, written 4 items; len = 3, pos = 1, k = pos
+    // cap = 3, written 5 items; len = 3, pos = 2, k = pos
+    const kI = this.len === this.capacity ? this.pos : 0
+    for (let i = 0, k = kI; i < this.len; i++, k = (k + 1) % this.capacity) {
+      fn(this.buffer[k], i, k)
     }
+    return kI
   }
 
   /**
@@ -44,9 +49,18 @@ export default class CircularBuffer {
    * as the last call.
    */
   snapshot = () => {
+    let kI
     this.snap = this.snap.withMutations(xs => {
-      this.forEach((x, i) => { xs = xs.set(i, x) });
+      kI = this.forEach((x, i) => { xs = xs.set(i, x) });
     })
-    return this.snap;
+    const c = this.capacity;
+    return {
+      snapshot: this.snap,
+      capacity: this.capacity,
+      kI,
+      getKey(i) {
+        return (i + kI) % c;
+      }
+    }
   }
 }
