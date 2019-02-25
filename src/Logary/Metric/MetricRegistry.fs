@@ -22,3 +22,5 @@ type MetricRegistry() =
 
   default x.getMetrictInfos () =
     metricBackStore.Values |> Seq.map (fun metric -> metric.export ())
+
+  member x.registerMetricWithNoLables builder = (x.registerMetric builder).noLabels
