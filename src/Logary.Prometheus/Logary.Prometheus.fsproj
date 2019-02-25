@@ -4,7 +4,7 @@
     <TargetFramework>netcoreapp2.1</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="DoubleAdder.fs" />
+    <Compile Include="Exporter.fs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="paket.references" />

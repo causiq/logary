@@ -10,6 +10,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="DoubleAdder.fs" />
     <Compile Include="Program.fs" />
     <Content Include="paket.references" />
     <ProjectReference Include="../Logary/Logary.fsproj" />
