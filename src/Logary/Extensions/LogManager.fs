@@ -11,6 +11,5 @@ module LogManagerEx =
   type LogManager with
     member x.getLogger name =
       x.getLogger (PointName.parse name)
-      
-    static member DefaultMetricRegistry = defaultMetricRegistry
 
+    static member DefaultMetricRegistry = defaultMetricRegistry

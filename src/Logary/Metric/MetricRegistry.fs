@@ -14,9 +14,9 @@ type MetricRegistry() =
 
   default x.registerMetric builder =
     let metricName = builder.basicConf.name
-    let metric = metricBackStore.GetOrAdd(metricName, fun _ -> builder.build() :> MetricExporter)
+    let metric = metricBackStore.GetOrAdd(metricName, fun _ -> new Metric<_>(builder) :> MetricExporter)
     if metric.basicConf <> builder.basicConf then
-      failwithf "metric with same name needs have same basic conf: registered one: %A, newer one: %A" 
+      failwithf "metric with same name needs have same basic conf: registered one: %A, newer one: %A"
         metric.basicConf builder.basicConf
     else downcast metric
 

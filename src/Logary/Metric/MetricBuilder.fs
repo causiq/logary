@@ -2,17 +2,18 @@ namespace Logary.Metric
 
 open System.Collections.Concurrent
 
-[<AbstractClass>]
+type MetricBuilder<'t when 't :> IMetric> =
+  abstract basicConf: BasicConf
+  abstract build: unit -> 't
+
 type Metric<'t when 't :> IMetric> (builder: MetricBuilder<'t>) =
 
   let emptyLabel = Map.empty
   let metricStore = new ConcurrentDictionary<Map<string,string>, 't>()
-  let noLabelMetric = new Lazy<'t>(fun _ -> metricStore.GetOrAdd(emptyLabel, fun _ -> builder.build().wrapper))
+  let noLabelMetric = new Lazy<'t>(fun _ -> metricStore.GetOrAdd(emptyLabel, fun _ -> builder.build()))
 
   /// label values of label names, should in same order
   abstract labels: string[] -> 't
-
-  abstract wrapper: 't
 
   override x.labels labelValues =
     let labelNames = builder.basicConf.labelNames
@@ -23,7 +24,7 @@ type Metric<'t when 't :> IMetric> (builder: MetricBuilder<'t>) =
       | _, 0 -> failwith "metric has label names but not provide label values, maybe you need invoke noLables"
       | a, b when a = b -> Array.zip labelNames labelValues |> Map.ofSeq
       | _ -> failwith "metric labels should have same name/value length"
-    let metric = metricStore.GetOrAdd(labels, fun _ ->  builder.build().wrapper)
+    let metric = metricStore.GetOrAdd(labels, fun _ ->  builder.build())
     metric
 
   member x.noLabels = noLabelMetric.Value
@@ -38,10 +39,6 @@ type Metric<'t when 't :> IMetric> (builder: MetricBuilder<'t>) =
         info)
       (basicInfo, metricInfos)
 
-and MetricBuilder<'t when 't :> IMetric> =
-  abstract basicConf: BasicConf
-  abstract build: unit -> Metric<'t>
-
 
 type GaugeConf =
  {
@@ -49,26 +46,23 @@ type GaugeConf =
  }
 
  interface MetricBuilder<IGauge> with
-   member x.build () = new Gauge(x) :> Metric<IGauge>
+   member x.build () = new Gauge(x) :> IGauge
 
    member x.basicConf = x.basicInfo
 
  static member create name description =
    let basic = { name =  name; description = description; labelNames = [||] }
    {basicInfo = basic}
-   
+
 and Gauge(conf) =
- inherit Metric<IGauge>(conf)
 
  let mutable gaugeValue = new DoubleAdder()
-
- override x.wrapper = x :> IGauge
 
  interface IGauge with
    member x.inc value = gaugeValue.Add value
    member x.dec value = gaugeValue.Add -value
    member x.set value = gaugeValue <- new DoubleAdder(value)
-   member x.explore () = 
+   member x.explore () =
      let confInfo = conf.basicInfo
      let basicInfo = { name= confInfo.name; description = confInfo.description }
      let gaugeValue =  gaugeValue.Sum()
