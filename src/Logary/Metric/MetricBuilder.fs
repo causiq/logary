@@ -4,13 +4,13 @@ open System.Collections.Concurrent
 
 type MetricBuilder<'t when 't :> IMetric> =
   abstract basicConf: BasicConf
-  abstract build: unit -> 't
+  abstract build: Map<string,string> -> 't
 
 type Metric<'t when 't :> IMetric> (builder: MetricBuilder<'t>) =
 
   let emptyLabel = Map.empty
   let metricStore = new ConcurrentDictionary<Map<string,string>, 't>()
-  let noLabelMetric = new Lazy<'t>(fun _ -> metricStore.GetOrAdd(emptyLabel, fun _ -> builder.build()))
+  let noLabelMetric = new Lazy<'t>(fun _ -> metricStore.GetOrAdd(emptyLabel, fun lables -> builder.build lables))
 
   /// label values of label names, should in same order
   abstract labels: string[] -> 't
@@ -24,7 +24,7 @@ type Metric<'t when 't :> IMetric> (builder: MetricBuilder<'t>) =
       | _, 0 -> failwith "metric has label names but not provide label values, maybe you need invoke noLables"
       | a, b when a = b -> Array.zip labelNames labelValues |> Map.ofSeq
       | _ -> failwith "metric labels should have same name/value length"
-    let metric = metricStore.GetOrAdd(labels, fun _ ->  builder.build())
+    let metric = metricStore.GetOrAdd(labels, fun labels ->  builder.build labels)
     metric
 
   member x.noLabels = noLabelMetric.Value
@@ -39,41 +39,3 @@ type Metric<'t when 't :> IMetric> (builder: MetricBuilder<'t>) =
         info)
       (basicInfo, metricInfos)
 
-
-type GaugeConf =
- {
-   basicInfo: BasicConf
- }
-
- interface MetricBuilder<IGauge> with
-   member x.build () = new Gauge(x) :> IGauge
-
-   member x.basicConf = x.basicInfo
-
- static member create name description =
-   let basic = { name =  name; description = description; labelNames = [||] }
-   {basicInfo = basic}
-
-and Gauge(conf) =
-
- let mutable gaugeValue = new DoubleAdder()
-
- interface IGauge with
-   member x.inc value = gaugeValue.Add value
-   member x.dec value = gaugeValue.Add -value
-   member x.set value = gaugeValue <- new DoubleAdder(value)
-   member x.explore () =
-     let confInfo = conf.basicInfo
-     let basicInfo = { name= confInfo.name; description = confInfo.description }
-     let gaugeValue =  gaugeValue.Sum()
-     let metricInfo = { labels = Map.empty; gaugeValue = gaugeValue }
-     (basicInfo, MetricInfo.Gauge metricInfo)
-
-
-
-//
-//type HistogramConf<'t when 't :> IMetric> =
-//  {
-//    basicInfo: BasicConf
-//    buckets: float array
-//  }

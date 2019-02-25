@@ -17,7 +17,8 @@ type GaugeInfo =
 type HistogramInfo =
   {
     labels: Map<string,string>
-    x: int
+    bucketsInfo: Map<float,float>
+    sumInfo: float
   }
 
 type MetricInfo =
@@ -26,10 +27,10 @@ type MetricInfo =
 
 type IMetric =
   abstract explore: unit -> BasicInfo * MetricInfo
-  
+
 type IGauge =
   inherit IMetric
-  
+
   abstract inc: float -> unit
   abstract dec: float -> unit
   abstract set: float -> unit
@@ -37,7 +38,8 @@ type IGauge =
 type IHistogram =
   inherit IMetric
 
-  abstract observe: float -> unit
+  abstract observe: value:float -> unit
+  abstract observe: value:float * count:float -> unit
 
 
 type BasicConf =
