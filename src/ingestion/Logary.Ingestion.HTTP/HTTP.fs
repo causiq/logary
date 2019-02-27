@@ -181,11 +181,13 @@ module HTTP =
 
   let recv (started: IVar<unit>, shutdown: IVar<unit>) config next =
     job {
-      //LogaryFacadeAdapter.initialise<Suave.Logging.Logger> config.logary
       let logging =
         { Suave.Logging.Global.defaultConfig with
             getLogger = fun name ->
-              Suave.Logging.LiterateConsoleTarget(name, Suave.Logging.LogLevel.Error) :> Suave.Logging.Logger }
+              config.ilogger
+              |> Logger.setNameEnding (String.concat "-" name)
+              |> LoggerAdapter.createGeneric<Suave.Logging.Logger>
+        }
       Suave.Logging.Global.initialiseIfDefault logging
       do config.ilogger.info (eventX "Starting HTTP recv-loop at {bindings}. CORS enabled={allowCORS}" >> setField "bindings" config.webConfig.bindings >> setField "allowCORS" config.allowCORS)
       use cts = createAdaptedCTS config

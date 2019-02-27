@@ -1,46 +1,17 @@
 ﻿module Logary.Targets.Shipper
 
 open System
-open System.Threading
 open MBrace.FsPickler
 open Hopac
 open Hopac.Infixes
 open Logary
-open Logary.Target
-open Logary.Targets
 open Logary.Internals
 open Logary.Configuration
 open fszmq
 open fszmq.Socket
-open Logary.Configuration
 
 module Serialisation =
   open System.IO
-  open Logary
-  open MBrace.FsPickler.Combinators
-
-  (*
-  let pValue: Pickler<Value> =
-    Pickler.auto
-
-  let pUnits =
-    Pickler.sum (fun x bits bytes ss ms scls amps kels mols cdls mul pow div root log ->
-      match x with
-      | Bits -> bits ()
-      | Bytes -> bytes ()
-      | Seconds -> ss ()
-      | Metres -> ms ()
-      | Scalar -> scls ()
-      | Amperes -> amps ()
-      | Kelvins -> kels ()
-      | Moles -> mols ()
-      | Candelas -> cdls ()
-      | Mul (u1, u2) -> mul (u1, u2)
-      | Pow (u1, u2) -> pow (u1, u2)
-      | Div (u1, u2) -> div (u1, u2)
-      | Root u -> root u
-      | Log10 u -> log u)
-    ^+ Pickler.variant Bits*)
 
   let private binarySerializer = FsPickler.CreateBinarySerializer ()
 
@@ -53,12 +24,18 @@ module Serialisation =
     binarySerializer.UnPickle (ms.ToArray())
 
 type ShipperConf =
-  | PublishTo of connectTo:string
-  | PushTo of connectTo:string
-  | Unconfigured
+  { publishTo: string option
+    pushTo: string option }
+  static member createPub endpoint =
+    { publishTo = Some endpoint
+      pushTo = None }
+  static member createPush endpoint =
+    { publishTo = None
+      pushTo = Some endpoint }
 
 let empty =
-  Unconfigured
+  { publishTo = None
+    pushTo = None }
 
 module internal Impl =
 
@@ -74,31 +51,13 @@ module internal Impl =
     let context = new Context()
     let sender = createSocket context
     Socket.connect sender connectTo
-    //Socket.bind sender connectTo
     { zmqCtx = context
       sender = sender }
 
   let serve (conf: ShipperConf) (api: TargetAPI) =
-
-    let rec init = function
-      | Unconfigured ->
-        failwith "Rutta.Shipper should not start in Unconfigured"
-
-      | PublishTo connectTo ->
-        createState connectTo Context.pub "PUB"
-        |> loop
-
-      | PushTo connectTo ->
-        createState connectTo Context.push "PUSH"
-        |> loop
-
-    and loop (state: State): Job<unit> =
+    
+    let rec loop (state: State): Job<unit> =
       Alt.choose [
-        api.shutdownCh ^=> fun ack -> job {
-          do! Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
-          return! ack *<= ()
-        }
-
         RingBuffer.take api.requests ^=> function
           | Log (msg, ack) ->
             job {
@@ -109,21 +68,39 @@ module internal Impl =
             }
 
           | Flush (ackCh, nack) ->
-            job {
-              do! IVar.fill ackCh ()
-              return! loop state
-            }
+            ackCh *<= ()
+            >>= fun () -> loop state
+            
+        api.shutdownCh ^=> fun ack ->
+          Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
+          >>=. IVar.fill ack ()
       ] :> Job<_>
 
-    init conf
+    match conf.publishTo, conf.pushTo with
+    | Some endpoint, _ ->
+      loop (createState endpoint Context.pub "PUB")
+    | _, Some endpoint ->
+      loop (createState endpoint Context.push "PUSH")
+    | _, _ ->
+      failwithf "Failed to start Shipper target, because all of {publishTo, pushTo, sseBinding} had empty values."
 
 /// Create a new Shipper target
-let create conf = TargetConf.createSimple (Impl.serve conf)
+[<CompiledName "Create">]
+let create conf name =
+  TargetConf.createSimple (Impl.serve conf) name
 
 /// Use with LogaryFactory.New( s => s.Target<Noop.Builder>() )
 type Builder(conf, callParent: Target.ParentCallback<Builder>) =
-  member x.PublishTo(connectTo: string) =
-    ! (callParent <| Builder(PublishTo connectTo, callParent))
+  let ret fn =
+    ! (callParent <| Builder(fn conf, callParent))
+    
+  /// Opens a ZMQ PUB socket 
+  member x.PublishTo(endpoint: string) =
+    ret <| fun conf -> { conf with publishTo = Some endpoint }
+    
+  /// Opens a ZMQ PUSH socket to an existing binding
+  member x.PushTo(endpoint: string) =
+    ret <| fun conf -> { conf with pushTo = Some endpoint }
 
   new(callParent: Target.ParentCallback<_>) =
     Builder(empty, callParent)

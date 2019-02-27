@@ -26,6 +26,7 @@ Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 let configuration =
   Environment.environVarOrDefault "CONFIGURATION" "Release"
   |> DotNet.BuildConfiguration.fromString
+
 let release = ReleaseNotes.load "RELEASE_NOTES.md"
 let description = "Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net."
 let tags = "structured logging f# logs logging performance metrics semantic"
@@ -138,9 +139,17 @@ Target.create "TCReportVersion" (fun _ ->
 )
 
 /// This also restores.
-Target.create "Build" (fun _ ->
-  DotNet.build (fun p -> { p with Configuration = configuration }) "src/Logary.sln"
-)
+Target.create "Build" <| fun _ ->
+  let msbuildParams =
+    { MSBuild.CliArguments.Create() with
+        Verbosity = Some Quiet
+        NoLogo = true
+        Properties = [ "Optimize", "true"; "DebugSymbols", "true" ] }
+  let setParams (o: DotNet.BuildOptions) =
+    { o with
+        Configuration = configuration
+        MSBuildParams = msbuildParams }
+  DotNet.build setParams "src/Logary.sln"
 
 Target.create "Tests" (fun _ ->
   let commandLine (file: string) =
