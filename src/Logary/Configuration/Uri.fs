@@ -201,6 +201,7 @@ module TargetConfig =
       "rabbitmq",    moduleNameConfigNameAsm "RabbitMQ"
       "stackdriver", moduleNameConfigNameAsm "Stackdriver"
       "bigquery",    moduleNameConfigNameAsm "BigQuery"
+      "shipper",     moduleNameConfigNameAsm "Shipper"
     ]
     |> List.map (fun (scheme, (moduleName, configName)) ->
       let confType = Type.GetType configName
