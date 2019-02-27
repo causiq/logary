@@ -35,6 +35,7 @@ module Config =
       loggerLevels: (string * LogLevel) list
       logResultHandler: ProcessResult -> unit
       defaultWaitForBuffersTimeout: Duration
+      enableHookMetric: bool
     }
 
   let create service host =
@@ -50,6 +51,7 @@ module Config =
       loggerLevels = [(".*", LogLevel.Info)]
       logResultHandler = function | Result.Error error -> System.Console.Error.Write (MessageWriter.singleLineNoContext.format error) | _ -> ()
       defaultWaitForBuffersTimeout = Duration.FromSeconds 3L
+      enableHookMetric = false
     }
 
   let target tconf lconf =
@@ -94,6 +96,9 @@ module Config =
 
   let disableGlobals lconf =
     { lconf with setGlobals = false }
+
+  let enableHookMetric lconf =
+    { lconf with enableHookMetric = true }
 
   let inline private setToGlobals (logManager: LogManager) =
     let config =
@@ -146,6 +151,7 @@ module Config =
           member x.loggerLevels = lconf.loggerLevels
           member x.logResultHandler = lconf.logResultHandler
           member x.defaultWaitForBuffersTimeout = lconf.defaultWaitForBuffersTimeout
+          member x.enableHookMetric = lconf.enableHookMetric
       }
 
     Registry.create conf >>- fun registry ->

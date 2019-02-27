@@ -30,9 +30,12 @@ type LogaryConf =
   abstract logResultHandler: (ProcessResult -> unit)
   /// time out duration waiting for each target buffer to be available to take the message, if users choose logging message and waitForBuffers
   abstract defaultWaitForBuffersTimeout: Duration
+  /// if enabled, logary's gauges or metric counter from message will be trans to metric registry
+  abstract enableHookMetric: bool
 
 /// This is the main state container in Logary.
 module Registry =
+
   /// The holder for the channels of communicating with the registry.
   type T =
     private {
@@ -59,6 +62,9 @@ module Registry =
 
       /// default logger rules from logary conf, will be applied when create new logger
       defaultLoggerLevelRules: (string * LogLevel) list
+
+      /// metric registry
+      metricRegistry: MetricRegistry
     }
 
   /// Flush all pending messages for all targets. Flushes with no timeout; if
@@ -105,6 +111,7 @@ module Registry =
 
 
   module private Impl =
+    open Metric
 
     let ensureName name (m: Message) =
       if m.name.isEmpty then { m with name = name } else m
@@ -207,6 +214,60 @@ module Registry =
          && not ("true" = Env.varDefault "LOGARY_I_PROMISE_I_HAVE_PURCHASED_LICENSE" (fun () -> "false")) then
          failwith "You must purchase a license for Logary to run it on or with IIS or Kestrel."
 
+    // check if msg has enable metric counter
+    let hookupMetric (metricRegistry: MetricRegistry) (message: Message) =
+      // process log message as counter
+      let counterMetricConf = message |> Message.tryGetCounterMetricConf
+      match counterMetricConf with
+      | None -> do ()
+      | Some counterMetricConf ->
+        let counterMetric = GaugeConf.create counterMetricConf |> metricRegistry.registerMetric
+        let counter =
+          match counterMetricConf.labelNames with
+          | [||] -> counterMetric.noLabels
+          | labelNames ->
+            // find lable name's value from message's context, fields goes first
+            let labelValues =
+              labelNames |> Array.map (fun labelName ->
+                match message |> Message.tryGetField labelName with
+                | Some labelValue -> string labelValue
+                | None ->
+                  match message |> Message.tryGetContext labelName with
+                  | Some labelValue -> string labelValue
+                  | None -> failwithf "label name (%s) not found in message,maybe you should metric with nolables" labelName
+              )
+            counterMetric.labels labelValues
+
+        counter.inc 1.
+
+
+      // process logary's gauge
+      let sensorName = message.name |> PointName.format
+      let gauges = message |> Message.getAllGauges
+      gauges |> Seq.iter (fun (gaugeName, gauge) ->
+        // TO CONSIDER: todo : add conf for transform sensor / gauge name into prometheus's limitation
+        // TO CONSIDER: maybe make senor + gauge as one metric name, not as one metric with gauge name as label
+        let gaugeMetric =
+          GaugeConf.create { name = sensorName; description = sensorName; labelNames = [| "gauge_name" |]}
+          |> metricRegistry.registerMetric
+          |> Metric.labels [| gaugeName |]
+
+        let gaugeValue = gauge.value.toFloat ()
+        gaugeMetric.set gaugeValue
+      )
+
+      // process logary's span as gauge
+      let spanInfo = message |> Message.tryGetSpanInfo
+      match spanInfo with
+      | None -> do ()
+      | Some spanInfo ->
+        let gaugeMetric =
+          let metricName = message.name |> PointName.format
+          GaugeConf.create(metricName, metricName) |> metricRegistry.registerMetric
+          |> Metric.noLabels
+        let durationInSeconds = (NodaTime.Duration.FromTicks spanInfo.duration).TotalSeconds
+        gaugeMetric.set durationInSeconds
+
   // Middlewares at:
   //  - LogaryConf (goes on all loggers) (compose at call-site)
   //  - TargetConf (goes on specific target) (composes when creating target,not compose at call-site when sending message)
@@ -232,7 +293,7 @@ module Registry =
     let flushCh, shutdownCh, isClosed = Ch (), Ch (), IVar ()
 
     Impl.spawnTargets ri conf.targets >>= fun targets ->
-    let byName = targets |> Array.map (fun t -> t.name, t) |> HashMap.ofArray
+    let targetsByName = targets |> Array.map (fun t -> t.name, t) |> HashMap.ofArray
 
     let rec running ctss =
       Alt.choose [
@@ -254,16 +315,20 @@ module Registry =
           >>= IVar.fill isClosed
       ]
 
+    let metricRegistry = new MetricRegistry()
     // pipe.run should only be invoke once, because state in pipes is captured when pipe.run
     let runningPipe =
       conf.processing
       |> Pipe.run (fun msg ->
+
+        if conf.enableHookMetric then Impl.hookupMetric metricRegistry msg
+
         let sinks = Message.getAllSinks msg
         let targets =
           if Set.isEmpty sinks then
             targets
           else
-            sinks |> Seq.choose (fun name -> HashMap.tryFind name byName) |> Array.ofSeq
+            sinks |> Seq.choose (fun name -> HashMap.tryFind name targetsByName) |> Array.ofSeq
 
         if Array.isEmpty targets then
           NoResult
@@ -293,7 +358,8 @@ module Registry =
         flushCh = flushCh
         shutdownCh = shutdownCh
         loggerLevels = new ConcurrentDictionary<string,LogLevel> ()
-        defaultLoggerLevelRules = conf.loggerLevels }
+        defaultLoggerLevelRules = conf.loggerLevels
+        metricRegistry = metricRegistry}
 
     Job.supervise rlogger (Policy.restartDelayed 512u) (running ctss)
     |> Job.startIgnore
@@ -317,5 +383,5 @@ module Registry =
           shutdown t
         member x.switchLoggerLevel (path, logLevel) =
           Impl.switchLoggerLevel t path logLevel
-        member x.metricRegistry = new MetricRegistry()
+        member x.metricRegistry = t.metricRegistry
     }

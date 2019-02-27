@@ -9,7 +9,8 @@ type HistogramConf=
 
   interface MetricBuilder<IHistogram> with
     member x.basicConf = x.basicInfo
-    member x.build lables = new Histogram(x, lables) :> IHistogram
+    member x.build lables registry = new Histogram(x, lables) :> IHistogram
+
 
 
 and Histogram(conf, labels) =
@@ -43,10 +44,6 @@ module HistogramConf =
 
   let defaultBuckets = [| 0.005; 0.01; 0.025; 0.05; 0.075; 0.1; 0.25; 0.5; 0.75; 1.; 2.5; 5.0; 7.5; 10. |]
 
-  let create name description =
-    let basic =  { name =  name; description = description; labelNames = [||] }
-    { basicInfo = basic; buckets = defaultBuckets }
-
   let buckets buckets conf =
     { conf with buckets = buckets }
 
@@ -69,3 +66,9 @@ module HistogramConf =
         yield start * Math.Pow(factor,float i)
       }
     { conf with buckets = buckets |> Array.ofSeq }
+
+open HistogramConf
+type HistogramConf with
+  static member create(name, description) =
+    let basic =  { name =  name; description = description; labelNames = [||] }
+    { basicInfo = basic; buckets = defaultBuckets }

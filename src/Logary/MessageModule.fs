@@ -150,7 +150,7 @@ module Message =
   let getAllFields message =
     getContextByPrefix KnownLiterals.FieldsPrefix message
 
-  // GAUGES
+  ///////////////// GAUGES ////////////////////
 
   [<CompiledName "GetAllGauges">]
   let getAllGauges message =
@@ -170,7 +170,7 @@ module Message =
     tryGetContext KnownLiterals.SinkTargetsContextName message
     |> Option.defaultValue Set.empty
 
-  [<CompiledName "GetAllSinks">]
+  [<CompiledName "AddSinks">]
   let addSinks (sinks: string list) message =
     let sinks = message |> getAllSinks |> Set.union (Set.ofList sinks)
     setContext KnownLiterals.SinkTargetsContextName sinks message
@@ -186,14 +186,41 @@ module Message =
   let hasTag (tag: string) (message: Message) =
     message |> getAllTags |> Set.contains tag
 
+  /// A single Message can take multiple gauges; use this function to add further
+  /// gauges to the message. You can add gauges to events as well.
+  [<CompiledName "AddGauge">]
+  let addGauge gaugeName (gauge: Gauge) message =
+    let gaugeName = KnownLiterals.GaugeNamePrefix + gaugeName
+    message |> setContext gaugeName gauge |> tag KnownLiterals.GaugeTag
+
+  /// A single Message can take multiple gauges; use this function to add further
+  /// gauges to the message. You can add gauges to events as well.
+  [<CompiledName "AddGauges">]
+  let addGauges (gauges: #seq<string * Gauge>) message =
+    (message, gauges) ||> Seq.fold (fun m (n, g) -> m |> addGauge n g)
+
+  /// if one log message needs metric its count, then we can invoke this method for shortcut.
+  /// if one needs metric gauges or histogram, it's better to define a metric type to handle this case.
+  /// since these metric are not bound to message/logger, and can be cached by filed declaration (more efficient).
+  /// labelNames will grab its value from message's context: fields -> contexts, if not found, will raise error
+  [<CompiledName "EnableCounterMetric">]
+  let enableCounterMetric (counterConf: Metric.BasicConf) (message: Message) =
+    message |> setContext KnownLiterals.CounterMetricConfContextName counterConf
+
+  [<CompiledName "TryGetCounterMetricConf">]
+  let tryGetCounterMetricConf (message: Message) : Metric.BasicConf option =
+    message |> tryGetContext KnownLiterals.CounterMetricConfContextName
+
   /// Set SpanId
   [<CompiledName "SetSpanId">]
   let setSpanId (spanId: Guid) (message: Message) =
     message |> setContext KnownLiterals.SpanIdContextName (SpanInfo.formatId spanId)
 
+  [<CompiledName "TryGetSpanId">]
   let tryGetSpanId (message: Message) : Guid option =
     message |> tryGetContext KnownLiterals.SpanIdContextName |> Option.map Guid.Parse
 
+  [<CompiledName "TryGetSpanInfo">]
   let tryGetSpanInfo (message: Message) : SpanLog option =
     message |>  tryGetContext KnownLiterals.SpanInfoContextName
 
@@ -224,19 +251,6 @@ module Message =
   [<CompiledName "Event">]
   let eventX value level =
     event level value
-
-  /// A single Message can take multiple gauges; use this function to add further
-  /// gauges to the message. You can add gauges to events as well.
-  [<CompiledName "AddGauge">]
-  let addGauge gaugeName (gauge: Gauge) message =
-    let gaugeName = KnownLiterals.GaugeNamePrefix + gaugeName
-    message |> setContext gaugeName gauge |> tag KnownLiterals.GaugeTag
-
-  /// A single Message can take multiple gauges; use this function to add further
-  /// gauges to the message. You can add gauges to events as well.
-  [<CompiledName "AddGauges">]
-  let addGauges (gauges: #seq<string * Gauge>) message =
-    (message, gauges) ||> Seq.fold (fun m (n, g) -> m |> addGauge n g)
 
   /// Creates a new Message with a single Gauge value and its unit (at Debug level).
   [<CompiledName "GaugeWithUnit">]
