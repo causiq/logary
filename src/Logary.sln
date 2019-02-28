@@ -150,6 +150,7 @@ EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.BigQuery", "targets\Logary.Targets.BigQuery\Logary.Targets.BigQuery.fsproj", "{87C8A931-CE78-4FC9-9825-71D3F8D9E373}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.BigQuery.Tests", "tests\Logary.Targets.BigQuery.Tests\Logary.Targets.BigQuery.Tests.fsproj", "{E05032D6-67E5-4DD8-9645-7603C157E648}"
+EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Prometheus", "Logary.Prometheus\Logary.Prometheus.fsproj", "{890FF892-B005-4902-9E22-FDC36213DFCC}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Prometheus.Test", "Logary.Prometheus.Test\Logary.Prometheus.Test.fsproj", "{152403F4-BCAC-442A-929D-A4E394AD1040}"
