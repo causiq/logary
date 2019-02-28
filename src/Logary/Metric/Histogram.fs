@@ -14,6 +14,10 @@ type HistogramConf=
 
 
 and Histogram(conf, labels) =
+  do
+    let containsLe = conf.basicInfo.labelNames |> Array.contains "le"
+    if containsLe then failwith "Histogram cannot have a label named 'le'"
+
   let sumCounter = new DoubleAdder()
   let originSortedBucket = conf.buckets |> Array.sort
   let sortedBuckets =

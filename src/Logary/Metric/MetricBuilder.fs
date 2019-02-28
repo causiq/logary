@@ -34,6 +34,11 @@ and Metric<'t when 't :> IMetric> (builder: MetricBuilder<'t>, registry: MetricR
     member x.export () =
       let basicConf = builder.basicConf
       let basicInfo = { name= basicConf.name; description = basicConf.description }
+
+      if basicConf.labelNames.Length = 0 then
+        // https://prometheus.io/docs/practices/instrumentation/#avoid-missing-metrics
+        noLabelMetric.Value |> ignore
+
       let metricInfos = metricStore.Values |> Seq.map (fun metric ->
         let _, info = metric.explore()
         info)

@@ -1,0 +1,5 @@
+FSharp.Core
+NodaTime
+Hopac
+Expecto
+Expecto.Hopac

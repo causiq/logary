@@ -245,7 +245,6 @@ module Registry =
       let sensorName = message.name |> PointName.format
       let gauges = message |> Message.getAllGauges
       gauges |> Seq.iter (fun (gaugeName, gauge) ->
-        // TO CONSIDER: todo : add conf for transform sensor / gauge name into prometheus's limitation
         // TO CONSIDER: maybe make senor + gauge as one metric name, not as one metric with gauge name as label
         let gaugeMetric =
           GaugeConf.create { name = sensorName; description = sensorName; labelNames = [| "gauge_name" |]}
