@@ -286,6 +286,15 @@ type Message =
     timestamp: EpochNanoSeconds }
 ```
 
+LogLevel:
+- Verbose - this you normally don’t send over the wire
+- Debug - like you expect logging to be; this happened, that happened, but you probably wouldn’t care about reading these in a backend system because they would be too numerous
+- Info - these log lines denote important business events (or even not so important); you might e.g. have “user signed up”, “bluetooth connection failed after {retries}”
+- Warn - there was an exception from a portion of the code we did not expect exceptions from, e.g. while “online = true in the connectivity manager, we still failed to send a request”, or “backend responded with 503 Service Unavailable”
+- Error - something went wrong that we cannot recover from, please restart the app/service. E.g. backend or dependency service responded with 500 Internal Server Error.
+- Fatal - register a handler for app crash on app launch, upon crash write to local storage, continue crash. Upon launch, if local storage for crashes non empty, send this log level with a stacktrace in the “error” field.
+
+
 ### PointName
 
 Suppose you're measuring values coming from a car. This is what that could look like:
