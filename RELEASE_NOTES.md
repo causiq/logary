@@ -1,5 +1,6 @@
 #### 5.0.0-rc.3
 * Correct ZMQ installation in Debian-based Dockerfile for Rutta, thanks @haf
+* Correct response headers for CORS POST requests for /i/logary, thanks @haf
 
 #### 5.0.0-rc.2
 * Enable project id discoverability with google metadata server in Stackdriver, thanks @haf
