@@ -130,13 +130,16 @@ module HTTP =
   open System
   open Impl
   open Logary.Adapters.Facade
-  
+
+  let withOrigin config next =
+    warbler (fun ctx ->
+      let o = ctx.request.header "origin" |> Choice.orDefault (fun () -> "http://localhost")
+      let ao = config.accessControlAllowOrigin o
+      next ao)
+
   let CORS (config: HTTPConfig) =
     if config.allowCORS then
       warbler (fun ctx ->
-        let o = ctx.request.header "origin" |> Choice.orDefault (fun () -> "http://localhost")
-        let ao =
-          config.accessControlAllowOrigin o
         let h =
           ctx.request.header "access-control-request-headers"
           |> Choice.map (fun h  -> h.Split([|','|], StringSplitOptions.RemoveEmptyEntries) |> List.ofArray)
@@ -154,7 +157,7 @@ module HTTP =
           |> String.concat ", "
         let aa = string config.accessControlMaxAge.TotalSeconds
         
-        ao.asWebPart
+        withOrigin config (fun ao -> ao.asWebPart)
         >=> setHeader "Access-Control-Allow-Methods" am
         >=> setHeader "Access-Control-Allow-Headers" ah
         >=> setHeader "Access-Control-Max-Age" aa)
@@ -162,14 +165,20 @@ module HTTP =
         >=> OK ""
     else
       never
-  
+
   let api (config: HTTPConfig) next: WebPart =
     setMimeType "application/json; charset=utf-8" >=> choose [
       GET >=> path config.rootPath >=> printHelp config
-      OPTIONS >=> CORS config
-      POST >=> path config.rootPath >=> Impl.ingestWith (config.onSuccess, config.onError) next
+
+      OPTIONS
+        >=> CORS config
+
+      POST
+        >=> path config.rootPath
+        >=> withOrigin config (fun ao -> ao.asWebPart)
+        >=> Impl.ingestWith (config.onSuccess, config.onError) next
     ]
-    
+
   let recv (started: IVar<unit>, shutdown: IVar<unit>) config next =
     job {
       let logging =
