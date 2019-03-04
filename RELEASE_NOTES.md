@@ -1,3 +1,6 @@
+#### 5.0.0-rc.4
+* Correct ZMQ installation in Debian-based Dockerfile for Rutta, second try, thanks @haf
+
 #### 5.0.0-rc.3
 * Correct ZMQ installation in Debian-based Dockerfile for Rutta, thanks @haf
 * Correct response headers for CORS POST requests for /i/logary, thanks @haf

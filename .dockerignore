@@ -9,3 +9,4 @@ paket-files/
 .paket/paket.bootstrapper
 .paket/paket.bootstrapper.exe
 Dockerfile
+README.md

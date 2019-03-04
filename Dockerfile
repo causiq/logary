@@ -39,7 +39,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y locales && \
     locale-gen C C.UTF-8 && \
     DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y libczmq4 libprotobuf-c-dev libprotobuf10 ca-certificates && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y libzmq3-dev libczmq4 libprotobuf-c-dev libprotobuf10 ca-certificates && \
     ldconfig
 
 WORKDIR /logary/
