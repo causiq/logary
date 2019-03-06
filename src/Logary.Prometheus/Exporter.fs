@@ -6,6 +6,7 @@ open Logary.Metric
 open Suave
 open Suave.Filters
 open Suave.Operators
+open Suave.Writers
 open Hopac
 
 
@@ -39,7 +40,7 @@ module ExporterConf =
       failwithf "(%s) is invalid, names beginning with __ are reserved for internal use." name
     else name
 
-  let create urlPath registry =
+  let create (urlPath: string) (registry: MetricRegistry) =
     {
       metricNameTransformer = defaultMetricNameTrans
       metricRegistry = registry
@@ -47,8 +48,12 @@ module ExporterConf =
       urlPath =  urlPath
     }
 
+  let webConfig webConfig conf =
+    { conf with webConfig = webConfig }
+
 
 module Exporter =
+  open System.Threading
   open System.Globalization
   open Logary.Internals.Chiron.Formatting
   open System.IO
@@ -155,9 +160,11 @@ module Exporter =
 
   let internal exportWebPart exportConf : WebPart =
     let urlPath = exportConf.urlPath
-    path urlPath >=> GET >=> request (fun r ->  Successful.OK (exportToPrometheus exportConf))
+    path urlPath >=> GET  >=> setHeader "Content-Type" "text/plain; charset=utf-8" >=> request (fun r ->  Successful.OK (exportToPrometheus exportConf))
 
 
-  let run conf =
+  let runAsync token conf  =
     let myApp = exportWebPart conf
-    startWebServer conf.webConfig myApp
+    let _, srv = startWebServerAsync conf.webConfig myApp
+    Async.StartAsTask(srv, cancellationToken = token)
+

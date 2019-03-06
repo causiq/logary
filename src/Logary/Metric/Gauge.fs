@@ -11,7 +11,9 @@ type GaugeConf =
     member x.build labels registry =
       let histrgomMetric =
         x.histogramConf
-        |> Option.map (fun conf -> conf |> registry.registerMetric |> Metric.noLabels)
+        |> Option.map (fun conf ->
+          let labelValues = conf.basicInfo.labelNames |> Array.map (fun name -> labels.[name])
+          conf |> registry.registerMetric |> Metric.labels labelValues)
       new Gauge(x, labels, histrgomMetric) :> IGauge
 
     member x.basicConf = x.basicInfo
@@ -65,5 +67,7 @@ module GaugeConf =
     let basicInfo = gaugeConf.basicInfo
     let histogramMetricName = sprintf "%s_histogram" basicInfo.name
     let histogramDescription = sprintf "histogram of gauge:`%s`" basicInfo.description
-    let histogramConf = HistogramConf.create(histogramMetricName, histogramDescription) |> HistogramConf.buckets buckets
+    let histogramConf =
+      HistogramConf.create {gaugeConf.basicInfo with name=histogramMetricName; description = histogramDescription;}
+      |> HistogramConf.buckets buckets
     { gaugeConf with histogramConf = Some histogramConf }
