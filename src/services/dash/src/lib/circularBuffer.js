@@ -1,4 +1,4 @@
-import { List } from "immutable";
+import { OrderedSet } from "immutable";
 
 /**
  * A circular buffer that overwrites the oldest item when its capacity is reached.
@@ -12,7 +12,7 @@ export default class CircularBuffer {
     this.pos = 0 // points to value to be written
     this.capacity = capacity
     this.buffer = new Array(capacity)
-    this.snap = List()
+    this.snap = OrderedSet()
   }
 
   get length() {
@@ -48,19 +48,11 @@ export default class CircularBuffer {
    * Returns a snapshot of the values in this buffer. If nothing has changed, returns the same reference
    * as the last call.
    */
-  snapshot = () => {
-    let kI
-    this.snap = this.snap.withMutations(xs => {
-      kI = this.forEach((x, i) => { xs = xs.set(i, x) });
-    })
-    const c = this.capacity;
-    return {
-      snapshot: this.snap,
-      capacity: this.capacity,
-      kI,
-      getKey(i) {
-        return (i + kI) % c;
-      }
-    }
+  snapshot = (sortBy, filter = _ => true) => {
+    return this.snap = OrderedSet().withMutations(xs => {
+      this.forEach((x, _, k) => {
+        xs = filter(x) ? xs.add({ ...x, key: k }) : xs
+      });
+    }).sort(sortBy)
   }
 }

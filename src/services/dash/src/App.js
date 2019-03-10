@@ -12,6 +12,30 @@ import { Global, jsx } from '@emotion/core'
 import styled, { css } from '@emotion/primitives'
 import { ThemeProvider } from 'emotion-theming'
 
+///// FILTERING
+class StringFilter {
+  constructor(substr) { this.substr = substr }
+  eval = x => x.level === this.substr || x.message.indexOf(this.substr) !== -1 || x.name.indexOf(this.substr) !== -1
+}
+
+///// SORTING
+const invert = res => {
+  return res === 0
+    ? 0
+    : res < 0 ? 1 : -1
+}
+export const invertSorter = fn => (a, b) => invert(fn(a, b))
+
+export class Sorter {
+  constructor(field, cb, inverted = false) {
+    this.field = field
+    this.cb = cb
+    this.inverted = inverted
+  }
+  sort = (a, b) =>
+    this.inverted ? invert(this.cb(a, b)) : this.cb(a, b)
+}
+
 ////////////////////////// DATA //////////////////////
 
 // Nice: https://usehooks.com/
@@ -29,24 +53,54 @@ const interpret = input => {
     : of({ ...input, message: template(input.value, input.fields, input.context) })
 }
 
+const buildFilter = (filters) =>
+  filters != null && filters.length > 0
+    ? x => filters.every(f => f.eval(x))
+    : x => x
+
+export const buildSortBy = sorters =>
+  sorters != null && sorters.length > 0
+    ? (a, b) => {
+      for (let i = 0; i < sorters.length; i++) {
+        let res = sorters[i].sort(a, b)
+        if (res !== 0) {
+          return res
+        }
+      }
+      return 0
+    }
+    : null
+
+export const sortByTS = (a, b) => {
+  const diff = a.timestamp - b.timestamp
+  return diff === 0
+    ? 0
+    : diff > 0 ? 1 : -1
+}
+
+export const sortByName = (a, b) => {
+  return a.name != null && b.name != null
+    ? a.name.localeCompare(b.name)
+    : 0
+}
+
+const filter$ = new BehaviorSubject([])
+const sorter$ = new BehaviorSubject([ new Sorter('timestamp', sortByTS, true) ])
+
 const allLogs$ = sse("http://localhost:8080/logs").pipe(
   retryWhen(e => e.pipe(delay(1000))),
   map(JSON.parse),
   concatMap(interpret),
-  scan((acc, x) => acc.push(x), new CircularBuffer(2048)),
+  scan((acc, x) => acc.push(x), new CircularBuffer(3)),
   auditTime(0, Scheduler.animationFrameScheduler), // https://rxjs-dev.firebaseapp.com/api/operators/auditTime
-  map(xs => xs.snapshot().snapshot)
+  combineLatest(
+    sorter$.pipe(map(buildSortBy)),
+    filter$.pipe(map(buildFilter))),
+  map(([ buf, sortBy, filter ]) => buf.snapshot(sortBy, filter))
 )
 
-const filter$ = new BehaviorSubject('')
 const age = interval(1000).pipe(startWith(0))
-
-const messages = allLogs$.pipe(
-  combineLatest(filter$),
-  map(([ xs, filter ]) =>
-    xs.filter(x => x.level === filter || x.message.indexOf(filter) !== -1 || x.name.indexOf(filter) !== -1)
-  )
-)
+const messages = allLogs$
 
 ////////////////////////// VIEWS //////////////////////
 
@@ -58,8 +112,8 @@ const theme = {
   highlightText: '#D9EDFF', // whiter blue
   info: '#1B5A75',
   infoFocus: '#2E9AC9', // carrebean ocean blue
-  warning: '#DB8C1F', // organge
-  warningFocus: '#DB8C1F', // brighter orange
+  warn: '#DB8C1F', // organge
+  warnFocus: '#DB8C1F', // brighter orange
   error: '#CC5A54', // red
   errorFocus: '#DE625B' // brighter red
 }
@@ -76,7 +130,7 @@ const FilterInput = ({ filter, setFilter }) =>
     placeholder="Filter logs..."
     />
 
-const Filter = subscribe({ filter$ }, { setFilter: x => filter$.next(x) })(FilterInput)
+const Filter = subscribe({ filter$ }, { setFilter: x => filter$.next([ new StringFilter(x) ]) })(FilterInput)
 
 /**
  * Wrappers around cells and other wrappers: flex, row, wrap
@@ -154,16 +208,17 @@ const MessageTableInner = ({
     return "Loading..."
   }
 
-  const rows = messages.value.map((message, i) => {
+  const rows = messages.value.map(message => {
     const colourised = css({
       backgroundColor: theme[message.level] || 'inherit'
     })
-    return <Row key={`message-${i}`}>
-      <Cell css={[ tinyLine, colourised ]} data-name='level'>{message.level}</Cell>
-      <Cell css={[ longLine ]} data-name='message' title={message.value}>{message.message}</Cell>
-      <Cell css={[ shortLine ]} data-name='name'>{message.name}</Cell>
-      <Cell css={[ shortLine ]} data-name='timestamp' title={message.timestamp}>{moment(message.timestamp).fromNow()}</Cell>
-    </Row>})
+    return <Row key={message.key}>
+        <Cell css={[ tinyLine, colourised ]} data-name='level'>{message.level}</Cell>
+        <Cell css={[ longLine ]} data-name='message' title={message.value}>{message.message}</Cell>
+        <Cell css={[ shortLine ]} data-name='name'>{message.name}</Cell>
+        <Cell css={[ shortLine ]} data-name='timestamp' title={message.timestamp}>{moment(message.timestamp / 1000000.0).fromNow()}</Cell>
+      </Row>
+  })
 
   return <Table data-age={age.value} css={css({
     '> *:nth-child(2n+1)': {

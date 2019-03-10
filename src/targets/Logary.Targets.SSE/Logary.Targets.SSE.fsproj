@@ -9,6 +9,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\adapters\Logary.Adapters.Facade\Logary.Adapters.Facade.fsproj" />
+    <ProjectReference Include="..\..\ingestion\Logary.Ingestion.HTTP\Logary.Ingestion.HTTP.fsproj" />
     <ProjectReference Include="..\..\Logary\Logary.fsproj" />
   </ItemGroup>
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />

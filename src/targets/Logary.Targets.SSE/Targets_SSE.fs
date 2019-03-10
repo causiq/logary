@@ -6,6 +6,7 @@ open Hopac.Infixes
 open Logary
 open Logary.Message
 open Logary.Internals
+open Logary.CORS
 open Logary.Configuration.Target
 
 [<assembly:InternalsVisibleTo("Logary.Targets.SSE.Tests")>]
@@ -16,11 +17,16 @@ type SSEConf =
   { path: string
     ip: string
     port: int
+    cors: bool
+    corsConfig: CORSConfig
   }
-  static member create (?path, ?ip, ?port) =
+  static member create (?path, ?ip, ?port, ?cors, ?corsConfig) =
+    let acao = if defaultArg cors true then Some OriginResult.allowAll else None
     { path = defaultArg path "/"
       ip = defaultArg ip "0.0.0.0"
       port = defaultArg port 8080
+      cors = Option.isSome acao
+      corsConfig = corsConfig |> Option.defaultWith (fun () -> CORSConfig.create(?accessControlAllowOrigin=acao))
     }
 
 let empty = SSEConf.create()
@@ -32,12 +38,14 @@ module internal Impl =
   open Suave
   open Suave.Sockets
   open Suave.Sockets.Control
+  open Suave.Utils
+  open Suave.Filters
   type SSEMessage = Suave.EventSource.Message
   open Logary.Internals.Chiron
   module E = Serialization.Json.Encode
+  module FJson = Logary.Internals.Chiron.Formatting.Json
   open Logary.Adapters.Facade
   open Logary.Formatting
-  open Suave.Utils
 
   type State =
     private {
@@ -64,10 +72,10 @@ module internal Impl =
       let data, typ =
         match messages with
         | m :: [] ->
-          Json.formatWith JsonFormattingOptions.Compact m,
+          FJson.formatWith JsonFormattingOptions.Compact m,
           single
         | ms ->
-          Json.formatWith JsonFormattingOptions.Compact (Array ms),
+          FJson.formatWith JsonFormattingOptions.Compact (Array ms),
           multi
       let message = SSEMessage.createType mId data single
       return! EventSource.send conn message
@@ -101,9 +109,17 @@ module internal Impl =
     fun (conn: Connection) ->
       // one tap call per client, as denoted by the connection
       iter (state.tap ()) conn
+  
+  let api (conf: SSEConf) (state: State) ilogger =
+    let (>=>) = Suave.Operators.(>=>)
+    path conf.path >=> choose [
+      OPTIONS
+        >=> API.CORS conf.corsConfig
 
-  let api (state: State) ilogger =
-    EventSource.handShake (setupClient (state, ilogger))
+      GET
+        >=> API.withOrigin conf.corsConfig (fun ao -> ao.asWebPart)
+        >=> EventSource.handShake (setupClient (state, ilogger))
+    ]
 
   let listen (conf: SSEConf) ilogger =
     job {
@@ -116,13 +132,16 @@ module internal Impl =
         }
       Suave.Logging.Global.initialiseIfDefault logging
       let bindings = HttpBinding.createSimple HTTP conf.ip conf.port :: []
-      do ilogger.info (eventX "Starting HTTP recv-loop at {bindings}." >> setField "bindings" bindings)
+      do ilogger.info (eventX "Starting HTTP SSE endpoint at {bindings}/{path}, CORS enabled={allowCORS}."
+                       >> setField "bindings" bindings
+                       >> setField "path" conf.path
+                       >> setField "allowCORS" conf.corsConfig.allowCORS)
 
       let cts = new CancellationTokenSource()
       let ms = Stream.Src.create ()
       let state = State.create cts ms
       let suaveConfig = { Web.defaultConfig with cancellationToken = cts.Token; bindings = bindings }
-      let started, instance = startWebServerAsync suaveConfig (api state ilogger)
+      let started, instance = startWebServerAsync suaveConfig (api conf state ilogger)
       // 1. start the server
       // 2. wait for it to start serving requests
       Async.Start(instance, cts.Token)

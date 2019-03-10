@@ -1,5 +1,5 @@
 import CircularBuffer from "./circularBuffer";
-import { List } from "immutable";
+import { OrderedSet } from "immutable";
 
 describe('circular buffer', () => {
   let subject
@@ -25,16 +25,15 @@ describe('circular buffer', () => {
 
   describe("snapshot empty", () => {
     it("equals empty", () => {
-      const empty = List(),
+      const empty = OrderedSet(),
             sn1 = subject.snapshot()
-      expect(sn1.snapshot).toEqual(empty)
-      expect(sn1.kI).toEqual(0)
+      expect(sn1).toEqual(empty)
     })
 
-    it("immutable List equality", () => {
-      const one = List([ 1 ]), two = List([ 1 ]);
+    it("immutable OrderedSet equality", () => {
+      const one = OrderedSet([ 1 ]), two = OrderedSet([ 1 ]);
       expect(one).toEqual(two)
-      const three = two.push(2);
+      const three = two.add(2);
       expect(one).not.toEqual(three)
     })
   })
@@ -46,29 +45,14 @@ describe('circular buffer', () => {
       subject.push(1);
       expect(subject.length).toEqual(1)
       expect(subject.isFull()).toBeFalsy()
-      const sn1 = subject.snapshot()
-      expect(sn1.snapshot === subject.snapshot().snapshot).toBeTruthy()
-      expect(sn1.snapshot.get(0)).toEqual(1)
-      expect(sn1.snapshot.get(1)).toBeUndefined()
-      expect(sn1.kI).toEqual(0)
 
       subject.push(2)
       expect(subject.length).toEqual(2)
       expect(subject.isFull()).toBeTruthy()
-      const sn2 = subject.snapshot()
-      expect(sn2.snapshot === subject.snapshot().snapshot).toBeTruthy()
-      expect(sn2.snapshot.get(0)).toEqual(1)
-      expect(sn2.snapshot.get(1)).toEqual(2)
-      expect(sn2.kI).toEqual(0)
 
       subject.push(3)
       expect(subject.length).toEqual(2)
       expect(subject.isFull()).toBeTruthy()
-      const sn3 = subject.snapshot()
-      expect(sn3.snapshot === subject.snapshot().snapshot).toBeTruthy()
-      expect(sn3.snapshot.get(0)).toEqual(2)
-      expect(sn3.snapshot.get(1)).toEqual(3)
-      expect(sn3.kI).toEqual(1)
     })
 
     describe("forEach", () => {

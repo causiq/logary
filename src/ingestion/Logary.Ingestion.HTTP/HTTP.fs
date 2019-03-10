@@ -1,22 +1,8 @@
-﻿namespace Logary.Ingestion
+﻿namespace Logary.CORS
 
-open System.Net
-open System.Threading
-open Hopac
-open Logary
-open Logary.Configuration
-open Logary.Message
-open Logary.Formatting
-open Logary.Internals
-open Logary.Internals.Chiron
 open NodaTime
 open Suave
-open Suave.Filters
 open Suave.Writers
-open Suave.RequestErrors
-open Suave.Successful
-open Suave.Operators
-
 type HTTPOrigin = string
 
 type OriginResult =
@@ -39,15 +25,8 @@ type OriginResult =
     | Origin origin -> setHeader "Access-Control-Allow-Origin" origin
     | Reject -> never // bails out of the pipeline
 
-type HTTPConfig =
-  { ilogger: Logger
-    logary: LogManager
-    cancelled: Promise<unit>
-    rootPath: string
-    webConfig: SuaveConfig
-    onSuccess: WebPart
-    onError: string -> WebPart
-    /// Toggle CORS-support on/off. This is toggled on if you supply a `accessControlAllowOrigin` callback
+type CORSConfig =
+  { /// Toggle CORS-support on/off. This is toggled on if you supply a `accessControlAllowOrigin` callback
     allowCORS: bool
     /// https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS#The_HTTP_response_headers
     accessControlAllowOrigin: HTTPOrigin -> OriginResult
@@ -57,9 +36,86 @@ type HTTPConfig =
     accessControlAllowHeaders: string list -> string list
     /// For how long does this policy apply?
     accessControlMaxAge: Duration
-    
   }
+  static member create(?accessControlAllowOrigin, ?accessControlAllowHeaders, ?accessControlMaxAge) =
+    let allowCORS, acao, acah =
+      Option.isSome accessControlAllowOrigin,
+      accessControlAllowOrigin |> Option.defaultValue (fun _ -> Star),
+      accessControlAllowHeaders |> Option.defaultValue id
+    { allowCORS = Option.isSome accessControlAllowOrigin
+      accessControlAllowOrigin = acao
+      accessControlAllowHeaders = acah
+      accessControlAllowMethods = fun _ -> HttpMethod.POST :: []
+      accessControlMaxAge = defaultArg accessControlMaxAge (Duration.FromDays 1) }
+    
+    
+module API =
+  open System
+  open Suave.Operators
+  open Suave.Successful
   
+  let withOrigin config next =
+    warbler (fun ctx ->
+      let o = ctx.request.header "origin" |> Choice.orDefault (fun () -> "http://localhost")
+      let ao = config.accessControlAllowOrigin o
+      next ao)
+
+  let CORS (config: CORSConfig) =
+    if config.allowCORS then
+      warbler (fun ctx ->
+        let h =
+          ctx.request.header "access-control-request-headers"
+          |> Choice.map (fun h  -> h.Split([|','|], StringSplitOptions.RemoveEmptyEntries) |> List.ofArray)
+          |> Choice.orDefault (fun () -> "Content-Type" :: [])
+        let ah =
+          config.accessControlAllowHeaders h
+          |> String.concat ", "
+        let m =
+          ctx.request.header "access-control-request-method"
+          |> Choice.map HttpMethod.parse
+          |> Choice.orDefault (fun () -> HttpMethod.POST)
+        let am =
+          config.accessControlAllowMethods m
+          |> List.map (fun m -> m.ToString())
+          |> String.concat ", "
+        let aa = string config.accessControlMaxAge.TotalSeconds
+        
+        withOrigin config (fun ao -> ao.asWebPart)
+        >=> setHeader "Access-Control-Allow-Methods" am
+        >=> setHeader "Access-Control-Allow-Headers" ah
+        >=> setHeader "Access-Control-Max-Age" aa)
+        >=> setHeader "Content-Type" "text/plain; charset=utf-8"
+        >=> OK ""
+    else
+      never
+
+
+namespace Logary.Ingestion
+
+open System.Net
+open System.Threading
+open Hopac
+open Logary
+open Logary.Configuration
+open Logary.Message
+open Logary.Formatting
+open Logary.Internals
+open Logary.Internals.Chiron
+open Logary.CORS
+open Suave
+open Suave.Successful
+open Suave.RequestErrors
+
+type HTTPConfig =
+  { ilogger: Logger
+    logary: LogManager
+    cancelled: Promise<unit>
+    rootPath: string
+    webConfig: SuaveConfig
+    onSuccess: WebPart
+    onError: string -> WebPart
+    corsConfig: CORSConfig
+  }
   interface IngestServerConfig with
     member x.cancelled = x.cancelled
     member x.ilogger = x.ilogger
@@ -96,22 +152,11 @@ module internal Impl =
     cts
 
 type HTTPConfig with
-  static member create
-    (rootPath, logary, ilogger,
-     ?cancelled: Promise<unit>, ?endpoint, ?onSuccess, ?onError,
-     ?accessControlAllowOrigin,
-     ?accessControlAllowHeaders,
-     ?accessControlMaxAge) =
-    
+  static member create(rootPath, logary, ilogger, ?cancelled: Promise<unit>, ?endpoint, ?onSuccess, ?onError, ?corsConfig) =
     let binding =
       let ep = defaultArg endpoint (IPEndPoint (IPAddress.Loopback, 8888))
       HttpBinding.create HTTP ep.Address (ep.Port |> uint16)
       
-    let allowCORS, acao, acah =
-      Option.isSome accessControlAllowOrigin,
-      accessControlAllowOrigin |> Option.defaultValue (fun _ -> Star),
-      accessControlAllowHeaders |> Option.defaultValue id
-
     { rootPath = rootPath
       logary = logary
       ilogger = ilogger
@@ -119,63 +164,26 @@ type HTTPConfig with
       onSuccess = defaultArg onSuccess Impl.onSuccess
       onError = defaultArg onError Impl.onError
       webConfig = { defaultConfig with bindings = binding :: []; hideHeader = true }
-      allowCORS = Option.isSome accessControlAllowOrigin
-      accessControlAllowOrigin = acao
-      accessControlAllowHeaders = acah
-      accessControlAllowMethods = fun _ -> HttpMethod.POST :: []
-      accessControlMaxAge = defaultArg accessControlMaxAge (Duration.FromDays 1)
+      corsConfig = defaultArg corsConfig (CORSConfig.create())
     }
 
 module HTTP =
-  open System
   open Impl
   open Logary.Adapters.Facade
-
-  let withOrigin config next =
-    warbler (fun ctx ->
-      let o = ctx.request.header "origin" |> Choice.orDefault (fun () -> "http://localhost")
-      let ao = config.accessControlAllowOrigin o
-      next ao)
-
-  let CORS (config: HTTPConfig) =
-    if config.allowCORS then
-      warbler (fun ctx ->
-        let h =
-          ctx.request.header "access-control-request-headers"
-          |> Choice.map (fun h  -> h.Split([|','|], StringSplitOptions.RemoveEmptyEntries) |> List.ofArray)
-          |> Choice.orDefault (fun () -> "Content-Type" :: [])
-        let ah =
-          config.accessControlAllowHeaders h
-          |> String.concat ", "
-        let m =
-          ctx.request.header "access-control-request-method"
-          |> Choice.map HttpMethod.parse
-          |> Choice.orDefault (fun () -> HttpMethod.POST)
-        let am =
-          config.accessControlAllowMethods m
-          |> List.map (fun m -> m.ToString())
-          |> String.concat ", "
-        let aa = string config.accessControlMaxAge.TotalSeconds
-        
-        withOrigin config (fun ao -> ao.asWebPart)
-        >=> setHeader "Access-Control-Allow-Methods" am
-        >=> setHeader "Access-Control-Allow-Headers" ah
-        >=> setHeader "Access-Control-Max-Age" aa)
-        >=> setHeader "Content-Type" "text/plain; charset=utf-8"
-        >=> OK ""
-    else
-      never
+  open Suave.Filters
+  open Suave.Operators
+  open Suave.Writers
 
   let api (config: HTTPConfig) next: WebPart =
     setMimeType "application/json; charset=utf-8" >=> choose [
       GET >=> path config.rootPath >=> printHelp config
 
       OPTIONS
-        >=> CORS config
+        >=> API.CORS config.corsConfig
 
       POST
         >=> path config.rootPath
-        >=> withOrigin config (fun ao -> ao.asWebPart)
+        >=> API.withOrigin config.corsConfig (fun ao -> ao.asWebPart)
         >=> Impl.ingestWith (config.onSuccess, config.onError) next
     ]
 
@@ -189,7 +197,7 @@ module HTTP =
               |> LoggerAdapter.createGeneric<Suave.Logging.Logger>
         }
       Suave.Logging.Global.initialiseIfDefault logging
-      do config.ilogger.info (eventX "Starting HTTP recv-loop at {bindings}. CORS enabled={allowCORS}" >> setField "bindings" config.webConfig.bindings >> setField "allowCORS" config.allowCORS)
+      do config.ilogger.info (eventX "Starting HTTP recv-loop at {bindings}. CORS enabled={allowCORS}" >> setField "bindings" config.webConfig.bindings >> setField "allowCORS" config.corsConfig.allowCORS)
       use cts = createAdaptedCTS config
       let suaveConfig = { config.webConfig with cancellationToken = cts.Token }
       let webStarted, webListening = startWebServerAsync suaveConfig (api config next)
