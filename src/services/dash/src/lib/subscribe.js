@@ -16,7 +16,6 @@ const subscribe = (observables, innerProps) => Component => {
       Object.keys(observables).forEach(k => {
         this.subscriptions.push(observables[k].subscribe(value => {
           this.setState({
-            ...this.state,
             [`${k}`]: {
               value,
               isLoading: false

@@ -24,7 +24,7 @@ describe('sorting', () => {
   })
 
   it('can invert sorter object', () => {
-    const s = new Sorter('timestamp', sortByTS, true)
+    const s = new Sorter('timestamp', sortByTS, 1)
     expect(s.sort({ timestamp: 1 }, { timestamp: 2 })).toEqual(1)
     expect(s.sort({ timestamp: 2 }, { timestamp: 2 })).toEqual(0)
     expect(s.sort({ timestamp: 2 }, { timestamp: 1 })).toEqual(-1)

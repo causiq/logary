@@ -27,13 +27,13 @@ const invert = res => {
 export const invertSorter = fn => (a, b) => invert(fn(a, b))
 
 export class Sorter {
-  constructor(field, cb, inverted = false) {
+  constructor(field, cb, counter = 0) {
     this.field = field
     this.cb = cb
-    this.inverted = inverted
+    this.counter = counter
   }
   sort = (a, b) =>
-    this.inverted ? invert(this.cb(a, b)) : this.cb(a, b)
+    this.counter === 1 ? invert(this.cb(a, b)) : this.cb(a, b)
 }
 
 ////////////////////////// DATA //////////////////////
@@ -84,8 +84,21 @@ export const sortByName = (a, b) => {
     : 0
 }
 
+export const sortByMessage = (a, b) => {
+  return a.message != null && b.name != null
+    ? a.message.localeCompare(b.message)
+    : 0
+}
+
+const Sorters = {
+  timestamp: sortByTS,
+  name: sortByName,
+  message: sortByMessage
+}
+
 const filter$ = new BehaviorSubject([])
-const sorter$ = new BehaviorSubject([ new Sorter('timestamp', sortByTS, true) ])
+const defaultSorters = [ new Sorter('timestamp', sortByTS, 1) ];
+const sorter$ = new BehaviorSubject(defaultSorters)
 
 const allLogs$ = sse("http://localhost:8080/logs").pipe(
   retryWhen(e => e.pipe(delay(1000))),
@@ -132,6 +145,25 @@ const FilterInput = ({ filter, setFilter }) =>
 
 const Filter = subscribe({ filter$ }, { setFilter: x => filter$.next([ new StringFilter(x) ]) })(FilterInput)
 
+const SortBox = styled.View({})
+const Text = styled.Text({
+  padding: '1vmin'
+})
+const SortingSpec = subscribe({ sorter$ }, { reset: () => sorter$.next(defaultSorters) })(({ sorter$, reset }) => {
+  if (sorter$.isLoading) return "Loading sorters..."
+
+  const text =
+    sorter$.value.length === 0
+      ? 'nothing'
+      : sorter$.value
+          .map(s => `${s.field} ${s.counter === 0 ? 'asc' : 'desc'}`)
+          .join(', ')
+
+  return <SortBox>
+    <Text>Sorted on: {text}</Text>
+  </SortBox>
+})
+
 /**
  * Wrappers around cells and other wrappers: flex, row, wrap
  */
@@ -175,6 +207,12 @@ const header = css({
   fontWeight: 'bold'
 })
 
+const sortable = css({
+  ':hover': {
+    'cursor': 'pointer'
+  }
+})
+
 const Cell = styled.Text({
   ...text,
   padding: '0.8em',
@@ -183,15 +221,12 @@ const Cell = styled.Text({
 /**
  * Main container: initialize the flex, direction is row
  */
-const Row = styled.View`
-  display: flex;
-  flex-direction: row;
-  flex-grow: 0;
-  width: 100%;
-`
-// &:hover {
-//   color: black;
-// }
+const Row = styled.View({
+  display: 'flex',
+  flexDirection: 'row',
+  flexGrow: 0,
+  width: '100%'
+});
 
 const Table = styled.View({})
 
@@ -202,10 +237,12 @@ const Table = styled.View({})
 const MessageTableInner = ({
   messages,
   age,
+  sorter$,
+  sortOn,
   ...rest
 }) => {
-  if (messages.isLoading) {
-    return "Loading..."
+  if (messages.isLoading || sorter$.isLoading) {
+    return <Text>Loading...</Text>
   }
 
   const rows = messages.value.map(message => {
@@ -226,16 +263,38 @@ const MessageTableInner = ({
     },
   })} {...rest}>
     <Row css={[ wrapper, header ]}>
-      <Cell css={[ tinyLine ]} className='level'>Level</Cell>
-      <Cell css={[ longLine ]} className='message'>Message</Cell>
-      <Cell css={[ shortLine ]} className='name'>Name</Cell>
-      <Cell css={[ shortLine ]} className='timestamp'>TS</Cell>
+      <Cell css={[ tinyLine, sortable ]} className='level' onClick={_ => sortOn(sorter$.value, 'level')}>Level</Cell>
+      <Cell css={[ longLine, sortable ]} className='message' onClick={_ => sortOn(sorter$.value, 'message')}>Message</Cell>
+      <Cell css={[ shortLine, sortable ]} className='name' onClick={_ => sortOn(sorter$.value, 'name')}>Name</Cell>
+      <Cell css={[ shortLine, sortable ]} className='timestamp' onClick={_ => sortOn(sorter$.value, 'timestamp')}>TS</Cell>
     </Row>
     {rows}
   </Table>
 }
 
-const MessageTable = subscribe({ messages, age })(MessageTableInner)
+const reduceSorters = (sorters, field) => {
+  const next = []
+  let found = false
+  for (let s of sorters) {
+    if (s.field === field) {
+      found = true
+      if (s.counter === 1) {}
+      else {
+        next.push(new Sorter(s.field, s.cb, s.counter + 1))
+      }
+    } else {
+      next.push(s)
+    }
+  }
+  if (!found && Sorters[field] != null) {
+    next.push(new Sorter(field, Sorters[field], 0))
+  }
+  return next
+}
+
+const MessageTable = subscribe({ messages, sorter$, age }, {
+  sortOn: (sorters, field) => sorter$.next(reduceSorters(sorters, field))
+})(MessageTableInner)
 
 const globalStyles = css({
   body: {
@@ -292,6 +351,7 @@ const App = () => {
       <H1>Logary Dash</H1>
       <Filter />
     </Header>
+    <SortingSpec />
     <MessageTable css={css({ width: '100%' })} />
   </ThemeProvider>
 }
