@@ -5,7 +5,7 @@ import CircularBuffer from './lib/circularBuffer'
 import subscribe from './lib/subscribe'
 import sse from './lib/sse'
 import { Scheduler, BehaviorSubject, interval, of, from } from 'rxjs'
-import { scan, map, auditTime, combineLatest, startWith, retryWhen, delay, concatMap } from 'rxjs/operators'
+import { scan, map, auditTime, combineLatest, startWith, retryWhen, delay, concatMap, filter } from 'rxjs/operators'
 
 /** @jsx jsx */
 import { Global, jsx } from '@emotion/core'
@@ -99,12 +99,16 @@ const Sorters = {
 const filter$ = new BehaviorSubject([])
 const defaultSorters = [ new Sorter('timestamp', sortByTS, 1) ];
 const sorter$ = new BehaviorSubject(defaultSorters)
+const status$ = new BehaviorSubject('running')
 
 const allLogs$ = sse("http://localhost:8080/logs").pipe(
   retryWhen(e => e.pipe(delay(1000))),
+  combineLatest(status$),
+  filter(([, status ]) => status === 'running'),
+  map(([ e, ]) => e),
   map(JSON.parse),
   concatMap(interpret),
-  scan((acc, x) => acc.push(x), new CircularBuffer(3)),
+  scan((acc, x) => acc.push(x), new CircularBuffer(2048)),
   auditTime(0, Scheduler.animationFrameScheduler), // https://rxjs-dev.firebaseapp.com/api/operators/auditTime
   combineLatest(
     sorter$.pipe(map(buildSortBy)),
