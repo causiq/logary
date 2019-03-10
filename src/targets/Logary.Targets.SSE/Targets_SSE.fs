@@ -27,6 +27,7 @@ let empty = SSEConf.create()
 
 module internal Impl =
 
+  open System
   open System.Threading
   open Logary.Adapters.Facade
   open Logary.Formatting
@@ -59,16 +60,22 @@ module internal Impl =
         }
       reader c.len (c.pos + (uint16 c.values.Length - c.len))
     
-  let createCTS (cancelled: Promise<unit>) =
-    let cts = new CancellationTokenSource()
-    start (cancelled >>- fun () -> cts.Cancel())
-    cts
-
+  type State =
+    private {
+      cts: CancellationTokenSource
+    }
+    static member create cts = { cts=cts }
+    interface IAsyncDisposable with
+      member x.DisposeAsync () =
+        Job.delay <| fun _ ->
+        x.cts.Cancel()
+        x.cts.Dispose()
+        Job.unit ()
+    
   let api (conf: SSEConf) ilogger = Successful.OK "TODO"
 
-  let listen conf ilogger (cancelled: Promise<unit>) =
+  let listen conf ilogger =
     job {
-      let started, shutdown = IVar (), IVar ()
       let logging =
         { Suave.Logging.Global.defaultConfig with
             getLogger = fun name ->
@@ -79,25 +86,19 @@ module internal Impl =
       Suave.Logging.Global.initialiseIfDefault logging
       let bindings = HttpBinding.createSimple HTTP conf.ip conf.port :: []
       do ilogger.info (eventX "Starting HTTP recv-loop at {bindings}." >> setField "bindings" bindings)
-      use cts = createCTS cancelled
-      let suaveConfig = { Web.defaultConfig with cancellationToken = cts.Token
-                                                 bindings = bindings }
-      let webStarted, webListening = startWebServerAsync suaveConfig (api conf ilogger)
-      do! Job.start (Job.fromAsync webListening |> Job.bind (IVar.fill shutdown))
-      do! Job.start (Job.fromAsync webStarted |> Job.bind (fun _ -> IVar.fill started ()))
-      do! cancelled
-      do ilogger.info (eventX "Stopping HTTP recv-loop at {bindings}." >> setField "bindings" bindings)
-      return started, shutdown
+      
+      let cts = new CancellationTokenSource()
+      let suaveConfig = { Web.defaultConfig with cancellationToken = cts.Token; bindings = bindings }
+      let started, instance = startWebServerAsync suaveConfig (api conf ilogger)
+      // 1. start the server
+      // 2. wait for it to start serving requests
+      Async.Start(instance, cts.Token)
+      return! Job.fromAsync started >>-. (State.create cts)
     }
       
   type Message with
     member x.toJSONMessage() =
       Json.encode x
-  
-  type State =
-    { shutdown: Promise<unit>
-      cancelled: IVar<unit>
-    }
   
   // This is the main entry point of the target. It returns a Job<unit>
   // and as such doesn't have side effects until the Job is started.
@@ -106,13 +107,11 @@ module internal Impl =
 
     let rec initialise () =
       job {
-        let cancelled = IVar ()
-        let! started, shutdown = listen conf ilogger cancelled
-        let state = { cancelled=cancelled; shutdown=shutdown }
+        let! state = listen conf ilogger
         return! running state
       }
       
-    and running (state: State): Job<_> =
+    and running (state: IAsyncDisposable): Job<_> =
       Alt.choose [
         RingBuffer.takeBatch 10us api.requests ^=> fun messages ->
           let entries, acks, flushes =
@@ -140,8 +139,8 @@ module internal Impl =
           }
 
         api.shutdownCh ^=> fun ack ->
-          state.cancelled *<= ()
-          >>=. state.shutdown
+          state.DisposeAsync()
+          >>=. ilogger.verboseWithBP (eventX "Disposed state, acking...")
           >>=. ack *<= ()
       ] :> Job<_>
 
@@ -158,6 +157,10 @@ type Builder(conf, callParent: ParentCallback<Builder>) =
     Builder(conf', callParent)
   member x.Path(path: string) =
     update { conf with path = path }
+  member x.IP(ip: string) =
+    update { conf with ip = ip }
+  member x.Port(port: int) =
+    update { conf with port = port }
   new(callParent: ParentCallback<_>) =
     Builder(empty, callParent)
 

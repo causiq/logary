@@ -5,8 +5,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Targets_SSE.fs" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>

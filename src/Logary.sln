@@ -153,6 +153,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.BigQuery.Tes
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.SSE", "targets\Logary.Targets.SSE\Logary.Targets.SSE.fsproj", "{867D340F-7898-482B-B9DA-E027DE3F3D4E}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.SSE.Tests", "tests\Logary.Targets.SSE.Tests\Logary.Targets.SSE.Tests.fsproj", "{A3428348-80A5-4465-87DD-03D8CD3910C7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -341,6 +343,10 @@ Global
 		{867D340F-7898-482B-B9DA-E027DE3F3D4E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{867D340F-7898-482B-B9DA-E027DE3F3D4E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{867D340F-7898-482B-B9DA-E027DE3F3D4E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A3428348-80A5-4465-87DD-03D8CD3910C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A3428348-80A5-4465-87DD-03D8CD3910C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A3428348-80A5-4465-87DD-03D8CD3910C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A3428348-80A5-4465-87DD-03D8CD3910C7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -394,5 +400,6 @@ Global
 		{87C8A931-CE78-4FC9-9825-71D3F8D9E373} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{E05032D6-67E5-4DD8-9645-7603C157E648} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{867D340F-7898-482B-B9DA-E027DE3F3D4E} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
+		{A3428348-80A5-4465-87DD-03D8CD3910C7} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 	EndGlobalSection
 EndGlobal
