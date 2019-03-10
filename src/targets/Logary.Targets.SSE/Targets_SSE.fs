@@ -29,52 +29,83 @@ module internal Impl =
 
   open System
   open System.Threading
+  open Suave
+  open Suave.Sockets
+  open Suave.Sockets.Control
+  type SSEMessage = Suave.EventSource.Message
+  open Logary.Internals.Chiron
+  module E = Serialization.Json.Encode
   open Logary.Adapters.Facade
   open Logary.Formatting
-  open Suave
+  open Suave.Utils
 
-  module History =
-    type Container<'a> =
-      { values: 'a []
-        pos: uint16
-        len: uint16 }
-
-    let create (len: uint16) =
-      { values = Array.zeroCreate (int len)
-        pos = 0us
-        len = 0us }
-
-    let add c x =
-      let pos' = c.pos % uint16 c.values.Length
-      Array.set c.values (int pos') x
-      { c with pos = pos' + 1us
-               len = if pos' < c.pos then c.len else c.len + 1us }
-
-    let read (c: Container<'a>) =
-      let clone = c.values.Clone() :?> 'a []
-      let rec reader remaining pos = seq {
-        if remaining <> 0us then
-          let pos' = pos % uint16 c.values.Length
-          yield c.values.[int pos']
-          yield! reader (remaining - 1us) (pos' + 1us)
-        }
-      reader c.len (c.pos + (uint16 c.values.Length - c.len))
-    
   type State =
     private {
       cts: CancellationTokenSource
+      ms: Stream.Src<Json list>
     }
-    static member create cts = { cts=cts }
+    member x.tap () =
+      Stream.Src.tap x.ms
+    member x.give messages =
+      Stream.Src.value x.ms messages
+    static member create cts ms = { cts=cts; ms=ms}
     interface IAsyncDisposable with
       member x.DisposeAsync () =
         Job.delay <| fun _ ->
         x.cts.Cancel()
         x.cts.Dispose()
         Job.unit ()
-    
-  let api (conf: SSEConf) ilogger = Successful.OK "TODO"
 
-  let listen conf ilogger =
+  let serialise (messages: Json list) (conn: Connection) =
+    let single = "Logary.Message"
+    let multi = "Logary.Message[]"
+    socket {
+      let mId = (ThreadSafeRandom.nextUInt64 ()).ToString(Culture.invariant)
+      let data, typ =
+        match messages with
+        | m :: [] ->
+          Json.formatWith JsonFormattingOptions.Compact m,
+          single
+        | ms ->
+          Json.formatWith JsonFormattingOptions.Compact (Array ms),
+          multi
+      let message = SSEMessage.createType mId data single
+      return! EventSource.send conn message
+    }
+
+  let rec iter (stream: Stream<Json list>) (conn: Connection) =
+    let hb =
+      timeOutMillis 1000 ^->.
+      Choice1Of2 (Choice2Of2 "♥️")
+
+    let receive =
+      stream ^-> function
+        | Stream.Cons (evt, next) ->
+          Choice1Of2 (Choice1Of2 (evt, next))
+        | Stream.Nil ->
+          Choice2Of2 (ConnectionError "Stream terminated, please reconnect.")
+
+    socket {
+      let! msgOrHB = Job.toAsync (receive <|> hb)
+      match msgOrHB with
+      | Choice1Of2 (messages, next) ->
+        do! serialise messages conn
+        return! iter next conn
+
+      | Choice2Of2 hb ->
+        do! EventSource.comment conn hb
+        return! iter stream conn
+    }
+
+  let setupClient (state: State, ilogger) =
+    fun (conn: Connection) ->
+      // one tap call per client, as denoted by the connection
+      iter (state.tap ()) conn
+
+  let api (state: State) ilogger =
+    EventSource.handShake (setupClient (state, ilogger))
+
+  let listen (conf: SSEConf) ilogger =
     job {
       let logging =
         { Suave.Logging.Global.defaultConfig with
@@ -86,20 +117,22 @@ module internal Impl =
       Suave.Logging.Global.initialiseIfDefault logging
       let bindings = HttpBinding.createSimple HTTP conf.ip conf.port :: []
       do ilogger.info (eventX "Starting HTTP recv-loop at {bindings}." >> setField "bindings" bindings)
-      
+
       let cts = new CancellationTokenSource()
+      let ms = Stream.Src.create ()
+      let state = State.create cts ms
       let suaveConfig = { Web.defaultConfig with cancellationToken = cts.Token; bindings = bindings }
-      let started, instance = startWebServerAsync suaveConfig (api conf ilogger)
+      let started, instance = startWebServerAsync suaveConfig (api state ilogger)
       // 1. start the server
       // 2. wait for it to start serving requests
       Async.Start(instance, cts.Token)
-      return! Job.fromAsync started >>-. (State.create cts)
+      return! Job.fromAsync started >>-. state
     }
-      
+
   type Message with
     member x.toJSONMessage() =
       Json.encode x
-  
+
   // This is the main entry point of the target. It returns a Job<unit>
   // and as such doesn't have side effects until the Job is started.
   let loop (conf: SSEConf) (api: TargetAPI) =
@@ -110,8 +143,8 @@ module internal Impl =
         let! state = listen conf ilogger
         return! running state
       }
-      
-    and running (state: IAsyncDisposable): Job<_> =
+
+    and running (state: State): Job<_> =
       Alt.choose [
         RingBuffer.takeBatch 10us api.requests ^=> fun messages ->
           let entries, acks, flushes =
@@ -125,13 +158,10 @@ module internal Impl =
                 acks,
                 ackCh *<= () :: flushes)
               ([], [], [])
-              
+
           job {
-            do ilogger.verbose (eventX "Writing {count} messages." >> setField "count" entries.Length)
-
-            // TODO: send
-            // do! state.send entries
-
+            do ilogger.verbose (eventX "Sending {count} messages to all clients." >> setField "count" entries.Length)
+            do! state.give entries
             do ilogger.verbose (eventX "Acking messages.")
             do! Job.conIgnore acks
             do! Job.conIgnore flushes
@@ -139,14 +169,14 @@ module internal Impl =
           }
 
         api.shutdownCh ^=> fun ack ->
-          state.DisposeAsync()
+          (state :> IAsyncDisposable).DisposeAsync()
           >>=. ilogger.verboseWithBP (eventX "Disposed state, acking...")
           >>=. ack *<= ()
       ] :> Job<_>
 
     initialise ()
 
-/// Create a new BigQuery target
+/// Create a new SSE target
 [<CompiledName "Create">]
 let create conf name =
   TargetConf.createSimple (Impl.loop conf) name
