@@ -221,7 +221,7 @@ const MessageTableInner = ({
   })
 
   return <Table data-age={age.value} css={css({
-    '> *:nth-child(2n+1)': {
+    '> *:nth-of-type(2n+1)': {
       backgroundColor: theme.bg2
     },
   })} {...rest}>
