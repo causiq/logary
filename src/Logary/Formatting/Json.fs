@@ -105,10 +105,8 @@ module internal JsonDecode =
     let parse =
       DotNetStacktrace.parse >> function
         | [||] ->
-          printfn "Parse fail"
           JFail (SingleFailure (InvalidJson "'error' property is not a Stacktrace"))
         | trace ->
-          printfn "Parse success"
           JPass trace
     let trace: JsonDecoder<StacktraceLine[]> = D.string >> JsonResult.bind parse
     Json.Decode.either (box <!> trace) (box <!> D.string)

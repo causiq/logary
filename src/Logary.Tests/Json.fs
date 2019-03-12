@@ -5,8 +5,10 @@ open System.Globalization
 open Logary
 open Logary.Internals.Chiron
 open Logary.Formatting
+open NodaTime
 open Expecto
 open Expecto.Flip
+open NodaTime.Text
 
 type Countries =
   | Sweden
@@ -246,28 +248,55 @@ let tests fsc =
             |> JsonResult.getOrThrow
         res |> Expect.isNonEmpty "Should have message values"
 
-      testCase "ISO8601" <| fun () ->
-        match Json.parse "\"2018-08-01T01:23:45Z\"" |> JsonResult.bind Json.Decode.dateTimeOffset with
-        | JPass m ->
-          DateTimeOffset.ofEpoch m.timestamp
-            |> Expect.equal "Parses to the right date time offset"
-                            (DateTimeOffset.Parse("2018-08-01T01:23:45Z"))
-        | JFail f ->
-          failtestf "Failure parsing ISO8601 %A" f
+      testList "offset date time" [
+        yield testCase "ISO8601" <| fun () ->
+          let expected = DateTimeOffset.Parse("2018-08-01T01:23:45Z")
+          Json.String "2018-08-01T01:23:45Z"
+            |> Json.Decode.dateTimeOffset
+            |> JsonResult.getOrThrow
+            |> Expect.equal "Parses to the right date time offset" expected
 
-      testCase "ISO8601 with offset" <| fun () ->
-        for (input, pattern) in
-          [ "2019-02-20T18:03:19.425+01:00", "yyyy-MM-dd'T'HH:mm:ss.FFFzzz"
-            "2019-02-20T17:03:19.4250000Z", "yyyy-MM-dd'T'HH:mm:ss.FFFFFFF'Z'" ] do
-          DateTimeOffset.ParseExact (input, [| pattern |], CultureInfo.InvariantCulture, Globalization.DateTimeStyles.AssumeUniversal)
-            |> Expect.equal "Exact" (DateTimeOffset.Parse("2019-02-20T17:03:19.425Z", CultureInfo.InvariantCulture))
-            
-      testCase "ISO8601 as string" <| fun () ->
-        match Json.parse "\"2019-02-20T18:03:19.425+01:00\"" |> JsonResult.bind Json.Decode.dateTimeOffset with
-        | JPass m ->
-          m |> Expect.equal "Parses to the right date time offset" (DateTimeOffset.Parse("2019-02-20T17:03:19.425Z", CultureInfo.InvariantCulture))
-        | JFail f ->
-          failtestf "Failure parsing ISO8601 w/ offset %A" f
+        yield testCase "InstantPattern.Create with nine decimals" <| fun () ->
+          let p = InstantPattern.Create("yyyy-MM-dd'T'HH:mm:ss.FFFFFFFFF'Z'", Culture.invariant)
+          "2019-02-01T14:45:50.123456789Z"
+            |> p.Parse
+            |> fun r -> r.Success
+            |> Expect.isTrue "Succeeded"
+
+        let baseI = Instant.FromUtc(2019, 02, 01, 14, 45, 50)
+        let samples =
+          [ "2019-02-01T14:45:50.123456789Z", 123456789L
+            "2019-02-01T14:45:50.12345678Z", 123456780L
+            "2019-02-01T14:45:50.1234567Z", 123456700L
+            "2019-02-01T14:45:50.123456Z", 123456000L
+            "2019-02-01T14:45:50.12345Z", 123450000L
+            "2019-02-01T14:45:50.1234Z", 123400000L
+            "2019-02-01T14:45:50.123Z", 123000000L
+            "2019-02-01T14:45:50.12Z", 120000000L
+            "2019-02-01T14:45:50.1Z", 100000000L
+            "2019-02-01T14:45:50Z", 0L
+          ]
+          |> List.map (fun (i, o) -> i, baseI + Duration.FromNanoseconds o)
+
+        let testInstant (i, e: Instant) =
+          testCase (sprintf "instant %s parses correctly" i) <| fun () ->
+            Json.String i
+              |> Json.Decode.instant
+              |> JsonResult.getOrThrow
+              |> Expect.equal "Can be gotten as a Instant, accurately" e
+
+        yield! samples |> List.map testInstant
+
+        let testDTO (i, e: Instant) =
+          testCase (sprintf "date time offset %s parses correctly" i) <| fun () ->
+            let e = e.ToDateTimeOffset()
+            Json.String i
+              |> Json.Decode.dateTimeOffset
+              |> JsonResult.getOrThrow
+              |> Expect.equal "Parses to the right date time offset" e
+
+        yield! samples |> List.map testDTO
+      ]
 
       testCase "simplest possible batch JSON" <| fun () ->
         match Json.parse jsonBatch |> JsonResult.bind Json.decodeMessage with
