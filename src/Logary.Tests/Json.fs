@@ -264,7 +264,7 @@ let tests fsc =
             |> Expect.isTrue "Succeeded"
 
         let baseI = Instant.FromUtc(2019, 02, 01, 14, 45, 50)
-        let samples =
+        let zuluSamples =
           [ "2019-02-01T14:45:50.123456789Z", 123456789L
             "2019-02-01T14:45:50.12345678Z", 123456780L
             "2019-02-01T14:45:50.1234567Z", 123456700L
@@ -285,9 +285,7 @@ let tests fsc =
               |> JsonResult.getOrThrow
               |> Expect.equal "Can be gotten as a Instant, accurately" e
 
-        yield! samples |> List.map testInstant
-
-        let testDTO (i, e: Instant) =
+        let testDTOZulu (i, e: Instant) =
           testCase (sprintf "date time offset %s parses correctly" i) <| fun () ->
             let e = e.ToDateTimeOffset()
             Json.String i
@@ -295,7 +293,34 @@ let tests fsc =
               |> JsonResult.getOrThrow
               |> Expect.equal "Parses to the right date time offset" e
 
-        yield! samples |> List.map testDTO
+        yield! zuluSamples |> List.map testInstant
+        yield! zuluSamples |> List.map testDTOZulu
+
+        let baseO = baseI.WithOffset(Offset.FromHours 1)
+        let offsetSamples =
+          [ "2019-02-01T15:45:50.123456789+01:00", 123456789L
+            "2019-02-01T15:45:50.123456789+01", 123456789L
+            "2019-02-01T15:45:50.12345678+01:00", 123456780L
+            "2019-02-01T15:45:50.1234567+01:00", 123456700L
+            "2019-02-01T15:45:50.123456+01:00", 123456000L
+            "2019-02-01T15:45:50.12345+01:00", 123450000L
+            "2019-02-01T15:45:50.1234+01:00", 123400000L
+            "2019-02-01T15:45:50.123+01:00", 123000000L
+            "2019-02-01T15:45:50.12+01:00", 120000000L
+            "2019-02-01T15:45:50.1+01:00", 100000000L
+            "2019-02-01T15:45:50+01:00", 0L
+            "2019-02-01T15:45:50+01", 0L
+          ]
+          |> List.map (fun (i, o) -> i, baseO + Duration.FromNanoseconds o)
+
+        let testDTOPlus (i, o: OffsetDateTime) =
+          testCase (sprintf "offset date time %s parses correctly" i) <| fun () ->
+            Json.String i
+              |> Json.Decode.offsetDateTime
+              |> JsonResult.getOrThrow
+              |> Expect.equal "Parses to the right date time offset" o
+
+        yield! offsetSamples |> List.map testDTOPlus
       ]
 
       testCase "simplest possible batch JSON" <| fun () ->

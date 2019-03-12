@@ -1651,7 +1651,6 @@ module Serialization =
             let dateTime =
                 string >=> Decoder.fromThrowingConverter dateTimeParser
 
-
             let guid =
                 string >=> Decoder.fromThrowingConverter System.Guid.Parse
 
