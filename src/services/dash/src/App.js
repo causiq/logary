@@ -327,12 +327,12 @@ const globalStyles = css({
 
 })
 
-const H1 = styled.Text`
-  margin: 0 14px;
-  padding: 0;
-  font-size: 200%;
-  font-weight: bold
-`
+const H1 = styled.Text({
+  margin: '14px',
+  padding: 0,
+  fontSize: '200%',
+  fontWeight: 'bold'
+})
 
 const Header = styled.View({
   display: 'flex',
@@ -364,7 +364,3 @@ export default App;
 
 // https://medium.com/@jonnykalambay/your-first-hybrid-app-in-15-minutes-react-native-on-the-web-2cc2646051e
 // https://github.com/jonnyk20/hybrid-app-pokedex
-
-//import Gun from 'gun/gun'
-//var gun = Gun(['http://localhost:8765/gun']);
-//gun.get('logs').set({ "title": "Hello gun world"})
