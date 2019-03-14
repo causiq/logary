@@ -722,6 +722,8 @@ let tests =
     Codecs.tests
 
     testList "Registry" Tests.Registry.tests
+
+    testList "Metric" Logary.Tests.Metrics.tests
   ]
 
 [<EntryPoint>]

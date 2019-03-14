@@ -165,6 +165,7 @@ module Exporter =
 
   let runAsync token conf  =
     let myApp = exportWebPart conf
-    let _, srv = startWebServerAsync conf.webConfig myApp
+    let suaveConfig = { conf.webConfig with cancellationToken = token }
+    let _, srv = startWebServerAsync suaveConfig myApp
     Async.StartAsTask(srv, cancellationToken = token)
 

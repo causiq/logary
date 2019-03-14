@@ -1,4 +1,4 @@
-module Logary.Tests.Metrics
+module Logary.Tests.Transformers
 
 open Expecto
 open NodaTime

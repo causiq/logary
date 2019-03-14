@@ -60,7 +60,6 @@
     <Compile Include="Metric\DoubleAdder.fs" />
     <Compile Include="Metric\Metric.fs" />
     <Compile Include="Metric\MetricBuilder.fs" />
-    <Compile Include="Metric\MetricRegistry.fs" />
     <Compile Include="Metric\Histogram.fs" />
     <Compile Include="Metric\Gauge.fs" />
     <Compile Include="LogManager.fs" />

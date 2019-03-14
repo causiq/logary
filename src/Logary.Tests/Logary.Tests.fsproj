@@ -13,6 +13,7 @@
     <ServerGarbageCollection>true</ServerGarbageCollection>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Metrics.fs" />
     <Compile Include="Utils.fs" />
     <Compile Include="Diff.fs" />
     <Compile Include="Engine.fs" />

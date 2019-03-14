@@ -28,6 +28,7 @@ type GaugeConf =
 and Gauge(conf, labels, histogram) =
 
   let mutable gaugeValue = new DoubleAdder()
+  let changeGaugeValueLock = obj ()
 
   let tryDoHistogramObserve () =
     histogram |> Option.iter(fun histogram ->
@@ -36,16 +37,19 @@ and Gauge(conf, labels, histogram) =
 
   interface IGauge with
     member x.inc value =
-      gaugeValue.Add value
-      tryDoHistogramObserve()
+      match histogram with
+      | Some histogram ->
+        lock changeGaugeValueLock <| fun () ->
+          gaugeValue.Add value
+          gaugeValue.Sum () |> histogram.observe
+      | None -> gaugeValue.Add value
 
     member x.dec value =
-      gaugeValue.Add -value
-      tryDoHistogramObserve()
+      (x :> IGauge).inc -value
 
     member x.set value =
       gaugeValue <- new DoubleAdder(value)
-      tryDoHistogramObserve()
+      histogram |> Option.iter(fun histogram -> histogram.observe value)
 
     member x.explore () =
       let confInfo = conf.basicInfo
@@ -57,11 +61,13 @@ and Gauge(conf, labels, histogram) =
 module GaugeConf =
 
   /// Use this method carefully, since this will calculate each gague's change value as the ovserve data for histogram.
+  /// And it will cause a lock to change gauge value.
   /// Consider using histogram seperately
   let enableHistogram histogramConf gaugeConf =
     { gaugeConf with histogramConf = Some histogramConf }
 
-  /// Use this method carefully, since this will calculate each gague's change value as the ovserve data for histogram
+  /// Use this method carefully, since this will calculate each gague's change value as the ovserve data for histogram.
+  /// And it will cause a lock to change gauge value.
   /// Consider using histogram seperately
   let withHistogram buckets gaugeConf =
     let basicInfo = gaugeConf.basicInfo
