@@ -45,6 +45,7 @@ let stubLogManager (message: Message ref) =
       member x.shutdown (fDur,sDur) =
         Alt.always (FlushInfo([],[]), ShutdownInfo([],[]))
       member x.switchLoggerLevel (path, minLevel) = ()
+      member x.metricRegistry = new Metric.MetricRegistry()
   }
 
 [<Tests>]
