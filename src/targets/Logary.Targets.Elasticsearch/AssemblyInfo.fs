@@ -2,8 +2,8 @@
 namespace System
 open System.Reflection
 
-[<assembly: AssemblyTitleAttribute("Logary.Targets.Elasticsearch")>]
-[<assembly: AssemblyProductAttribute("Logary.Targets.Elasticsearch")>]
+[<assembly: AssemblyTitleAttribute("Logary.Targets.ElasticSearch")>]
+[<assembly: AssemblyProductAttribute("Logary.Targets.ElasticSearch")>]
 [<assembly: AssemblyCopyrightAttribute("Copyright © 2019 Henrik Feldt")>]
 [<assembly: AssemblyDescriptionAttribute("Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net.")>]
 [<assembly: AssemblyVersionAttribute("5.0.0")>]
@@ -11,8 +11,8 @@ open System.Reflection
 do ()
 
 module internal AssemblyVersionInformation =
-    let [<Literal>] AssemblyTitle = "Logary.Targets.Elasticsearch"
-    let [<Literal>] AssemblyProduct = "Logary.Targets.Elasticsearch"
+    let [<Literal>] AssemblyTitle = "Logary.Targets.ElasticSearch"
+    let [<Literal>] AssemblyProduct = "Logary.Targets.ElasticSearch"
     let [<Literal>] AssemblyCopyright = "Copyright © 2019 Henrik Feldt"
     let [<Literal>] AssemblyDescription = "Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net."
     let [<Literal>] AssemblyVersion = "5.0.0"
