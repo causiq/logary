@@ -106,11 +106,10 @@ let tests = [
     let _, MetricInfo.Gauge gaugeInfo = gauge.explore ()
     gaugeInfo.gaugeValue |> Expect.equal "gauge value should be 250" 250.
 
-  testCase "gauge with histogram" <| fun () ->
+  testList "gauge with histogram" [
     let testBuckets = [| 5.; 10.; 50.; 100.; |]
     let registry = new MetricRegistry()
     let gauge = gaugeConf |> GaugeConf.withHistogram testBuckets |> registry.registerMetricWithNoLabels
-
 
     gauge.set 200.
     gauge.dec 140. // 60
@@ -122,20 +121,26 @@ let tests = [
     gauge.inc 18.  // 25
 
     let metricInfos = registry.getMetricInfos () |> Array.ofSeq
-    let _, metricDetails = metricInfos |> Array.find (fun (basicInfo , _) -> basicInfo.name = gaugeConf.basicInfo.name)
-    metricDetails |> Expect.sequenceEqual "should have one gauge detail" [ MetricInfo.Gauge { labels= Map.empty ; gaugeValue = 25. } ]
 
-    let _, metricDetails = metricInfos |> Array.find (fun (basicInfo , _) -> basicInfo.name = sprintf "%s_histogram" gaugeConf.basicInfo.name)
-    let bucketsInfo = [(5.,0.); (10.,1.); (50., 5.); (100., 1.); (Double.PositiveInfinity, 1.)] |> Map.ofSeq
-    metricDetails |> Expect.sequenceEqual "should have histogram detail" [ MetricInfo.Histogram { labels= Map.empty ; bucketsInfo = bucketsInfo; sumInfo = float(200+60+45+40+25+15+7+25) } ]
+    yield testCase "gauge detail" <| fun () ->
+      let _, metricDetails = metricInfos |> Array.find (fun (basicInfo , _) -> basicInfo.name = gaugeConf.basicInfo.name)
+      metricDetails |> Expect.sequenceEqual "should have one gauge detail" [ MetricInfo.Gauge { labels= Map.empty ; gaugeValue = 25. } ]
 
+    yield testCase "histogram detail" <| fun () ->
+      let _, metricDetails = metricInfos |> Array.find (fun (basicInfo , _) -> basicInfo.name = sprintf "%s_histogram" gaugeConf.basicInfo.name)
+      let bucketsInfo = [(5.,0.); (10.,1.); (50., 5.); (100., 1.); (Double.PositiveInfinity, 1.)] |> Map.ofSeq
+      metricDetails |> Expect.sequenceEqual "should have histogram detail" [ MetricInfo.Histogram { labels= Map.empty ; bucketsInfo = bucketsInfo; sumInfo = float(200+60+45+40+25+15+7+25) } ]
+  ]
+
+  testCase "gauge with histogram but no gauge occur, should exported a empty result" <| fun () ->
+    let testBuckets = [| 5.; 10.; 50.; 100.; |]
     let registry = new MetricRegistry()
     let histogramConf = HistogramConf.create("some histogram", "some histogram") |> HistogramConf.buckets testBuckets
     let gauge = gaugeConf |> GaugeConf.enableHistogram histogramConf |> registry.registerMetricWithNoLabels
 
     let metricInfos = registry.getMetricInfos () |> Array.ofSeq
     let _, metricDetails = metricInfos |> Array.find (fun (basicInfo , _) -> basicInfo.name = gaugeConf.basicInfo.name)
-    metricDetails |> Expect.sequenceEqual "should have one empty gauge detail" [ MetricInfo.Gauge { labels= Map.empty ; gaugeValue = 0. } ]
+    metricDetails |> Expect.sequenceEqual "should have one empty gauge details" [ MetricInfo.Gauge { labels= Map.empty ; gaugeValue = 0. } ]
 
     let _, metricDetails = metricInfos |> Array.find (fun (basicInfo , _) -> basicInfo.name = histogramConf.basicInfo.name)
     let bucketsInfo = testBuckets |> Array.map (fun i -> (i, 0.)) |> Map.ofSeq |> Map.add Double.PositiveInfinity 0.

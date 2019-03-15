@@ -60,15 +60,21 @@ and Gauge(conf, labels, histogram) =
 
 module GaugeConf =
 
-  /// Use this method carefully, since this will calculate each gauge's change value as the ovserve data for histogram.
-  /// And it will cause a lock to change gauge value.
-  /// Consider using histogram seperately
+  /// Consider using histogram seperately.
+  /// Technically, a gauge can also be a histogram, so if you want to measure some histograms when gauge something,
+  /// you can use this method. However, because the gauge can use the inc/dec method compared to the histogram,
+  /// if you need to use the histogram when gauge, it will cause the sum operation after inc/dec.
+  /// In order to ensure the histogram is more accurate under multi-threading, the lock will be performed.
+  /// But if it is a simple gauge, which does not use lock for multithreaded inc/dec
   let enableHistogram histogramConf gaugeConf =
     { gaugeConf with histogramConf = Some histogramConf }
 
-  /// Use this method carefully, since this will calculate each gauge's change value as the ovserve data for histogram.
-  /// And it will cause a lock to change gauge value.
-  /// Consider using histogram seperately
+  /// Consider using histogram seperately.
+  /// Technically, a gauge can also be a histogram, so if you want to measure some histograms when gauge something,
+  /// you can use this method. However, because the gauge can use the inc/dec method compared to the histogram,
+  /// if you need to use the histogram when gauge, it will cause the sum operation after inc/dec.
+  /// In order to ensure the histogram is more accurate under multi-threading, the lock will be performed.
+  /// But if it is a simple gauge, which does not use lock for multithreaded inc/dec
   let withHistogram buckets gaugeConf =
     let basicInfo = gaugeConf.basicInfo
     let histogramMetricName = sprintf "%s_histogram" basicInfo.name
