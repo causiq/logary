@@ -3,6 +3,7 @@ namespace Logary
 open Logary.Internals
 open System.Net
 open System.Diagnostics
+open Logary.Metric
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Middleware =
@@ -71,3 +72,59 @@ module Middleware =
       id
     | middlewares ->
       List.foldBack (fun f composed -> f composed) middlewares id
+
+  /// sending logary's gauges/span or log message with metric counter to metric registry
+  let internal enableHookMetric (metricRegistry: MetricRegistry): Middleware =
+    fun next message ->
+      // process log message as counter
+      let counterMetricConf = message |> Message.tryGetCounterMetricConf
+      match counterMetricConf with
+      | None -> do ()
+      | Some counterMetricConf ->
+        let counterMetric = GaugeConf.create counterMetricConf |> metricRegistry.registerMetric
+        let counter =
+          match counterMetricConf.labelNames with
+          | [||] -> counterMetric.noLabels
+          | labelNames ->
+            // find lable name's value from message's context, fields goes first
+            let labelValues =
+              labelNames |> Array.map (fun labelName ->
+                match message |> Message.tryGetField labelName with
+                | Some labelValue -> string labelValue
+                | None ->
+                  match message |> Message.tryGetContext labelName with
+                  | Some labelValue -> string labelValue
+                  | None -> sprintf "label name (%s) not found in message, but specified when metric" labelName
+              )
+            counterMetric.labels labelValues
+
+        counter.inc 1.
+
+
+      // process logary's gauge
+      let sensorName = message.name |> PointName.format
+      let gauges = message |> Message.getAllGauges
+      gauges |> Seq.iter (fun (gaugeName, gauge) ->
+        // TO CONSIDER: maybe make senor + gauge as one metric name, not as one metric with gauge name as label
+        let gaugeMetric =
+          GaugeConf.create { name = sensorName; description = sensorName; labelNames = [| "gauge_name" |]}
+          |> metricRegistry.registerMetric
+          |> Metric.labels [| gaugeName |]
+
+        let gaugeValue = gauge.value.toFloat ()
+        gaugeMetric.set gaugeValue
+      )
+
+      // process logary's span as gauge
+      let spanInfo = message |> Message.tryGetSpanInfo
+      match spanInfo with
+      | None -> do ()
+      | Some spanInfo ->
+        let gaugeMetric =
+          let metricName = message.name |> PointName.format
+          GaugeConf.create(metricName, metricName) |> metricRegistry.registerMetric
+          |> Metric.noLabels
+        let durationInSeconds = (NodaTime.Duration.FromTicks spanInfo.duration).TotalSeconds
+        gaugeMetric.set durationInSeconds
+
+      next message

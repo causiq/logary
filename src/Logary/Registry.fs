@@ -30,8 +30,8 @@ type LogaryConf =
   abstract logResultHandler: (ProcessResult -> unit)
   /// time out duration waiting for each target buffer to be available to take the message, if users choose logging message and waitForBuffers
   abstract defaultWaitForBuffersTimeout: Duration
-  /// if enabled, logary's gauges or metric counter from message will be trans to metric registry
-  abstract enableHookMetric: bool
+  /// the metric registry for metric
+  abstract metricRegistry: MetricRegistry
 
 /// This is the main state container in Logary.
 module Registry =
@@ -214,59 +214,6 @@ module Registry =
          && not ("true" = Env.varDefault "LOGARY_I_PROMISE_I_HAVE_PURCHASED_LICENSE" (fun () -> "false")) then
          failwith "You must purchase a license for Logary to run it on or with IIS or Kestrel."
 
-    // check if msg has enable metric counter
-    let hookupMetric (metricRegistry: MetricRegistry) (message: Message) =
-      // process log message as counter
-      let counterMetricConf = message |> Message.tryGetCounterMetricConf
-      match counterMetricConf with
-      | None -> do ()
-      | Some counterMetricConf ->
-        let counterMetric = GaugeConf.create counterMetricConf |> metricRegistry.registerMetric
-        let counter =
-          match counterMetricConf.labelNames with
-          | [||] -> counterMetric.noLabels
-          | labelNames ->
-            // find lable name's value from message's context, fields goes first
-            let labelValues =
-              labelNames |> Array.map (fun labelName ->
-                match message |> Message.tryGetField labelName with
-                | Some labelValue -> string labelValue
-                | None ->
-                  match message |> Message.tryGetContext labelName with
-                  | Some labelValue -> string labelValue
-                  | None -> sprintf "label name (%s) not found in message, but specified when metric" labelName
-              )
-            counterMetric.labels labelValues
-
-        counter.inc 1.
-
-
-      // process logary's gauge
-      let sensorName = message.name |> PointName.format
-      let gauges = message |> Message.getAllGauges
-      gauges |> Seq.iter (fun (gaugeName, gauge) ->
-        // TO CONSIDER: maybe make senor + gauge as one metric name, not as one metric with gauge name as label
-        let gaugeMetric =
-          GaugeConf.create { name = sensorName; description = sensorName; labelNames = [| "gauge_name" |]}
-          |> metricRegistry.registerMetric
-          |> Metric.labels [| gaugeName |]
-
-        let gaugeValue = gauge.value.toFloat ()
-        gaugeMetric.set gaugeValue
-      )
-
-      // process logary's span as gauge
-      let spanInfo = message |> Message.tryGetSpanInfo
-      match spanInfo with
-      | None -> do ()
-      | Some spanInfo ->
-        let gaugeMetric =
-          let metricName = message.name |> PointName.format
-          GaugeConf.create(metricName, metricName) |> metricRegistry.registerMetric
-          |> Metric.noLabels
-        let durationInSeconds = (NodaTime.Duration.FromTicks spanInfo.duration).TotalSeconds
-        gaugeMetric.set durationInSeconds
-
   // Middlewares at:
   //  - LogaryConf (goes on all loggers) (compose at call-site)
   //  - TargetConf (goes on specific target) (composes when creating target,not compose at call-site when sending message)
@@ -314,14 +261,10 @@ module Registry =
           >>= IVar.fill isClosed
       ]
 
-    let metricRegistry = new MetricRegistry()
     // pipe.run should only be invoke once, because state in pipes is captured when pipe.run
     let runningPipe =
       conf.processing
       |> Pipe.run (fun msg ->
-
-        if conf.enableHookMetric then Impl.hookupMetric metricRegistry msg
-
         let sinks = Message.getAllSinks msg
         let targets =
           if Set.isEmpty sinks then
@@ -358,7 +301,7 @@ module Registry =
         shutdownCh = shutdownCh
         loggerLevels = new ConcurrentDictionary<string,LogLevel> ()
         defaultLoggerLevelRules = conf.loggerLevels
-        metricRegistry = metricRegistry}
+        metricRegistry = conf.metricRegistry}
 
     Job.supervise rlogger (Policy.restartDelayed 512u) (running ctss)
     |> Job.startIgnore
