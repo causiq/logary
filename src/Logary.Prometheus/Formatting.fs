@@ -55,7 +55,7 @@ module Formatting =
     | Gauge _ -> "gauge"
     | Histogram _ -> "histogram"
 
-  let getIdentifier nameTransform (name: string) (labels: Map<string,string>) =
+  let getIdentifier nameTransform metricName (labels: Map<string,string>) =
     let labelsStr =
       if labels.Count = 0 then ""
       else
@@ -65,7 +65,27 @@ module Formatting =
             sprintf "%s=\"%s\"" (nameTransform name) (escapeLabelValue value))
         sprintf "{%s}" (String.Join(",", eachPairs))
 
-    sprintf "%s%s" name labelsStr
+    sprintf "%s%s" metricName labelsStr
+
+  let formatGuage sb nameTransform metricName (gauge: GaugeInfo) =
+    let identifier = getIdentifier nameTransform metricName gauge.labels
+    let gaugeValueStr = gauge.gaugeValue |> formatFloat
+    appendLine sb (sprintf "%s %s" identifier gaugeValueStr)
+
+  let formatHistogram sb nameTransform metricName (histogram: HistogramInfo) =
+    let mutable cumulativeCount = 0.
+    for (KeyValue(upperBound, count)) in histogram.bucketsInfo do
+      let labelsWithLe = histogram.labels |> Map.add "le" (upperBound |> formatFloat)
+      let bucketIdentifier = getIdentifier nameTransform (sprintf "%s_bucket" metricName) labelsWithLe
+      cumulativeCount <- cumulativeCount + count
+      appendLine sb (sprintf "%s %s" bucketIdentifier (cumulativeCount |> formatFloat))
+
+    let sumIdentifier = getIdentifier nameTransform (sprintf "%s_sum" metricName) histogram.labels
+    appendLine sb (sprintf "%s %s" sumIdentifier (histogram.sumInfo |> formatFloat))
+
+    let countIdentifier = getIdentifier nameTransform (sprintf "%s_count" metricName) histogram.labels
+    appendLine sb (sprintf "%s %s" countIdentifier (cumulativeCount |> formatFloat))
+
 
   //  # HELP http_requests_total The total number of HTTP requests.
   //  # TYPE http_requests_total counter
@@ -103,19 +123,6 @@ module Formatting =
       for metricInfo in metricInfos do
         match metricInfo with
         | Gauge gauge ->
-          let identifier = getIdentifier nameTransform metricName gauge.labels
-          let gaugeValueStr = gauge.gaugeValue |> formatFloat
-          appendLine sb (sprintf "%s %s" identifier gaugeValueStr)
+          formatGuage sb nameTransform metricName gauge
         | Histogram histogram ->
-          let mutable cumulativeCount = 0.
-          for (KeyValue(upperBound, count)) in histogram.bucketsInfo do
-            let labelsWithLe = histogram.labels |> Map.add "le" (upperBound |> formatFloat)
-            let bucketIdentifier = getIdentifier nameTransform (sprintf "%s_bucket" metricName) labelsWithLe
-            cumulativeCount <- cumulativeCount + count
-            appendLine sb (sprintf "%s %s" bucketIdentifier (cumulativeCount |> formatFloat))
-
-          let sumIdentifier = getIdentifier nameTransform (sprintf "%s_sum" metricName) histogram.labels
-          appendLine sb (sprintf "%s %s" sumIdentifier (histogram.sumInfo |> formatFloat))
-
-          let countIdentifier = getIdentifier nameTransform (sprintf "%s_count" metricName) histogram.labels
-          appendLine sb (sprintf "%s %s" countIdentifier (cumulativeCount |> formatFloat))
+          formatHistogram sb nameTransform metricName histogram
