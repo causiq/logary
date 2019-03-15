@@ -5,6 +5,7 @@
     <Version>5.0.0-rc.2</Version>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Formatting.fs" />
     <Compile Include="Exporter.fs" />
   </ItemGroup>
   <ItemGroup>

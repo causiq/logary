@@ -5,6 +5,7 @@ open System.Net
 open System.Threading
 open Expecto
 open Logary
+open Logary.Prometheus
 open Logary.Prometheus.Exporter
 open Logary.Metric
 open Expecto.Flip
@@ -13,6 +14,7 @@ open Hopac
 
 module Exporter =
 
+  open Logary.Prometheus
   open Suave
 
 
@@ -109,10 +111,10 @@ time_latancy_histogram_count{endpoint="/users"} 3
 
 
     testCase "default metric name transformer" <| fun () ->
-      ExporterConf.defaultMetricNameTrans "items in queue" |> Expect.equal "should transform" "items_in_queue"
-      ExporterConf.defaultMetricNameTrans "logary.some.module.function.duration" |> Expect.equal "should transform" "logary_some_module_function_duration"
-      ExporterConf.defaultMetricNameTrans "4just some@test" |> Expect.equal "should transform" "metric_4just_some_test"
-      ExporterConf.defaultMetricNameTrans "__just some test" |> Expect.equal "should transform" "metric_just_some_test"
+      Formatting.defaultMetricNameTrans "items in queue" |> Expect.equal "should transform" "items_in_queue"
+      Formatting.defaultMetricNameTrans "logary.some.module.function.duration" |> Expect.equal "should transform" "logary_some_module_function_duration"
+      Formatting.defaultMetricNameTrans "4just some@test" |> Expect.equal "should transform" "metric_4just_some_test"
+      Formatting.defaultMetricNameTrans "__just some test" |> Expect.equal "should transform" "metric_just_some_test"
 
   ]
 
