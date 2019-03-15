@@ -86,7 +86,7 @@ module Middleware =
           match counterMetricConf.labelNames with
           | [||] -> counterMetric.noLabels
           | labelNames ->
-            // find lable name's value from message's context, fields goes first
+            // find label name's value from message's context, fields goes first
             let labelValues =
               labelNames |> Array.map (fun labelName ->
                 match message |> Message.tryGetField labelName with

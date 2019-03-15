@@ -52,7 +52,7 @@ and MetricRegistry() =
   abstract registerMetric<'t when 't:> IMetric> : MetricBuilder<'t> -> Metric<'t>
 
   /// get metric infos for exporting to backends like prometheus
-  abstract getMetrictInfos: unit -> seq<BasicInfo * seq<MetricInfo>>
+  abstract getMetricInfos: unit -> seq<BasicInfo * seq<MetricInfo>>
 
   default x.registerMetric builder =
     let metricName = builder.basicConf.name
@@ -62,7 +62,7 @@ and MetricRegistry() =
         metric.basicConf builder.basicConf
     else downcast metric
 
-  default x.getMetrictInfos () =
+  default x.getMetricInfos () =
     metricBackStore.Values |> Seq.map (fun metric -> metric.export ())
 
   member x.registerMetricWithNoLabels builder = (x.registerMetric builder).noLabels

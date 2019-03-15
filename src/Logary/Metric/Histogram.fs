@@ -4,7 +4,7 @@ open System
 type HistogramConf=
   {
     basicInfo: BasicConf
-    buckets: float array
+    buckets: float[]
   }
 
   interface MetricBuilder<IHistogram> with
@@ -52,7 +52,7 @@ module HistogramConf =
     { conf with buckets = buckets }
 
   let linearBuckets start width count conf =
-    if count < 1 then failwith "count needs positive"
+    if count < 1 then invalidArg "count" "count needs positive"
     let buckets = seq {
       for i in 0 .. count-1 do
         yield start + float i * width
@@ -61,9 +61,9 @@ module HistogramConf =
 
 
   let exponentialBuckets start factor count conf =
-    if count < 1 then failwith "count needs positive"
-    if start <= 0. then failwith "start needs positive"
-    if factor <= 1. then failwith "factor needs > 1"
+    if count < 1 then invalidArg "count" "count needs positive"
+    if start <= 0. then invalidArg "start" "start needs positive"
+    if factor <= 1. then invalidArg "factor" "factor needs > 1"
 
     let buckets = seq {
       for i in 0 .. count-1 do

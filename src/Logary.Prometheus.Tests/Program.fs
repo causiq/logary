@@ -35,12 +35,10 @@ module Exporter =
 
       let webConfig = defaultConfig.withBindings [HttpBinding.create HTTP IPAddress.Loopback 8081us]
 
-      let cts = new CancellationTokenSource()
-      use cancelWebServer =  { new IDisposable with member x.Dispose() = cts.Cancel () }
-      ExporterConf.create "/metrics" metricRegitsry
-      |> ExporterConf.webConfig webConfig
-      |> Exporter.runAsync cts.Token
-      |> ignore
+      use webServer =
+        ExporterConf.create "/metrics" metricRegitsry
+        |> ExporterConf.webConfig webConfig
+        |> Exporter.run
 
       let gauge =
         GaugeConf.create {name = "time_latancy"; description = "test time latancy"; labelNames = [| "endpoint" |]}

@@ -33,7 +33,7 @@ module ExporterConf =
       nameResult <- "metric_" + nameResult
     notValidAfterPartRegex.Replace(nameResult, "_")
 
-  let nameValidator name =
+  let validateName name =
     if not <| validNameRegex.IsMatch name then
       failwithf "name (%s) should match regex %s" name (validNameRegex.ToString())
     elif reservedNameRegex.IsMatch name then
@@ -73,7 +73,7 @@ module Exporter =
     if Double.IsPositiveInfinity value then "+Inf"
     elif Double.IsNegativeInfinity value then "-Inf"
     elif Double.IsNaN value then "Nan"
-    else value.ToString(CultureInfo.InvariantCulture)
+    else value.ToString(Culture.invariant)
 
   let appendLine (sb: StringBuilder) s =
     sb.AppendLine s |> ignore
@@ -151,8 +151,8 @@ module Exporter =
 
   let exportToPrometheus exportConf =
     let metricRegistry = exportConf.metricRegistry
-    let metricNameTransformer = exportConf.metricNameTransformer >> ExporterConf.nameValidator
-    let metricInfos = metricRegistry.getMetrictInfos ()
+    let metricNameTransformer = exportConf.metricNameTransformer >> ExporterConf.validateName
+    let metricInfos = metricRegistry.getMetricInfos ()
     let sb = new System.Text.StringBuilder ()
     metricInfos |> Seq.iter (exportMetricInfo sb metricNameTransformer)
     sb.ToString()
@@ -160,12 +160,16 @@ module Exporter =
 
   let internal exportWebPart exportConf : WebPart =
     let urlPath = exportConf.urlPath
-    path urlPath >=> GET  >=> setHeader "Content-Type" "text/plain; charset=utf-8" >=> request (fun r ->  Successful.OK (exportToPrometheus exportConf))
+    path urlPath >=> GET
+      >=> setHeader "Content-Type" "text/plain; charset=utf-8"
+      >=> request (fun r ->  Successful.OK (exportToPrometheus exportConf))
 
 
-  let runAsync token conf  =
+  let run conf  =
+    let cts = new CancellationTokenSource()
     let myApp = exportWebPart conf
-    let suaveConfig = { conf.webConfig with cancellationToken = token }
+    let suaveConfig = { conf.webConfig with cancellationToken = cts.Token }
     let _, srv = startWebServerAsync suaveConfig myApp
-    Async.StartAsTask(srv, cancellationToken = token)
+    Async.Start (srv, cancellationToken = cts.Token)
+    { new IDisposable with member x.Dispose() = cts.Cancel () }
 

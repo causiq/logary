@@ -3,18 +3,18 @@ namespace Logary.Metric
 
 type GaugeConf =
   {
-   basicInfo: BasicConf
-   histogramConf: HistogramConf option
+    basicInfo: BasicConf
+    histogramConf: HistogramConf option
   }
 
   interface MetricBuilder<IGauge> with
     member x.build labels registry =
-      let histrgomMetric =
+      let histogramMetric =
         x.histogramConf
         |> Option.map (fun conf ->
           let labelValues = conf.basicInfo.labelNames |> Array.map (fun name -> labels.[name])
           conf |> registry.registerMetric |> Metric.labels labelValues)
-      new Gauge(x, labels, histrgomMetric) :> IGauge
+      new Gauge(x, labels, histogramMetric) :> IGauge
 
     member x.basicConf = x.basicInfo
 
@@ -56,17 +56,17 @@ and Gauge(conf, labels, histogram) =
       let basicInfo = { name= confInfo.name; description = confInfo.description }
       let gaugeValue =  gaugeValue.Sum()
       let metricInfo = { labels = labels; gaugeValue = gaugeValue }
-      (basicInfo, MetricInfo.Gauge metricInfo)
+      basicInfo, MetricInfo.Gauge metricInfo
 
 module GaugeConf =
 
-  /// Use this method carefully, since this will calculate each gague's change value as the ovserve data for histogram.
+  /// Use this method carefully, since this will calculate each gauge's change value as the ovserve data for histogram.
   /// And it will cause a lock to change gauge value.
   /// Consider using histogram seperately
   let enableHistogram histogramConf gaugeConf =
     { gaugeConf with histogramConf = Some histogramConf }
 
-  /// Use this method carefully, since this will calculate each gague's change value as the ovserve data for histogram.
+  /// Use this method carefully, since this will calculate each gauge's change value as the ovserve data for histogram.
   /// And it will cause a lock to change gauge value.
   /// Consider using histogram seperately
   let withHistogram buckets gaugeConf =

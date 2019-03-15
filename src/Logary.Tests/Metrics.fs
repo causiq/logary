@@ -15,7 +15,8 @@ let tests = [
     let gauge = gaugeConf |> registry.registerMetric
     gauge.noLabels.inc 5.
     let basicInfo, MetricInfo.Gauge gaugeInfo = gauge.noLabels.explore ()
-    basicInfo |> Expect.equal "should have same basic info" { name = gaugeConf.basicInfo.name; description = gaugeConf.basicInfo.description }
+    basicInfo.name |> Expect.equal "should have same name"  gaugeConf.basicInfo.name
+    basicInfo.description |> Expect.equal "should have same description"  gaugeConf.basicInfo.description
     gaugeInfo.labels |> Expect.equal "should have empty labels" Map.empty
     gaugeInfo.gaugeValue  |> Expect.equal  "should have same gauge value" 5.
 
@@ -45,26 +46,26 @@ let tests = [
   testCase "register metric with labels" <| fun () ->
 
     Expect.throws "should throws when gauge with label value but no label names set up" <| fun () ->
-        let registry = new MetricRegistry()
-        let gauge = gaugeConf |> registry.registerMetric
-        (gauge.labels [| "some queue name" |]).set 10.
+      let registry = new MetricRegistry()
+      let gauge = gaugeConf |> registry.registerMetric
+      (gauge.labels [| "some queue name" |]).set 10.
 
     Expect.throws "should throws when label values's length not equal label names's length" <| fun () ->
-        let registry = new MetricRegistry()
-        let gauge = {basicConf with labelNames = [| "queue name" |]} |> GaugeConf.create |> registry.registerMetric
-        (gauge.labels [| "some queue name"; "some other value" |]).set 10.
+      let registry = new MetricRegistry()
+      let gauge = {basicConf with labelNames = [| "queue name" |]} |> GaugeConf.create |> registry.registerMetric
+      (gauge.labels [| "some queue name"; "some other value" |]).set 10.
 
     Expect.throws "should throws when label values's length not equal label names's length" <| fun () ->
-        let registry = new MetricRegistry()
-        let gauge = {basicConf with labelNames = [| "queue name" |]} |> GaugeConf.create |> registry.registerMetric
-        (gauge.labels [||]).set 10.
+      let registry = new MetricRegistry()
+      let gauge = {basicConf with labelNames = [| "queue name" |]} |> GaugeConf.create |> registry.registerMetric
+      (gauge.labels [||]).set 10.
 
     let registry = new MetricRegistry()
     let gauge = {basicConf with labelNames = [| "queue name" |]} |> GaugeConf.create |> registry.registerMetric
     (gauge.labels [| "some queue name" |]).set 10.
     gauge.noLabels.set 20.
 
-    let metricInfos = registry.getMetrictInfos ()
+    let metricInfos = registry.getMetricInfos ()
     metricInfos |> Seq.length |> Expect.equal "should have only one metric" 1
 
     let _, metricInfoDetails = metricInfos |> Seq.head
@@ -73,7 +74,8 @@ let tests = [
       match metricInfoDetail with
       | MetricInfo.Gauge gaugeInfo ->
         match gaugeInfo with
-        | gaugeInfo when gaugeInfo.labels = Map.empty ->  gaugeInfo.gaugeValue  |> Expect.equal "no label name metric should have gauge value 20." 20.
+        | gaugeInfo when gaugeInfo.labels = Map.empty ->
+          gaugeInfo.gaugeValue  |> Expect.equal "no label name metric should have gauge value 20." 20.
         | _ ->  gaugeInfo.gaugeValue  |> Expect.equal "metric with label name should have gauge value 10." 10.
       | _ -> failtest "should not occur"
 
@@ -81,13 +83,14 @@ let tests = [
   testCase "get metric info from metric registry" <| fun () ->
     let registry = new MetricRegistry()
     let gauge = {basicConf with labelNames = [| "queue name" |]} |> GaugeConf.create |> registry.registerMetric
-    let metricInfos = registry.getMetrictInfos ()
+    let metricInfos = registry.getMetricInfos ()
     let basicInfo, metricInfoDetails = metricInfos |> Seq.head
-    basicInfo |> Expect.equal "should have same basic info" { name = gaugeConf.basicInfo.name; description = gaugeConf.basicInfo.description }
+    basicInfo.name |> Expect.equal "should have same name"  gaugeConf.basicInfo.name
+    basicInfo.description |> Expect.equal "should have same description"  gaugeConf.basicInfo.description
     metricInfoDetails |> Expect.isEmpty "should have empty metric detail since there's no gauge operation"
 
     (gauge.labels [| "some queue name" |]).set 10.
-    let _, metricInfoDetails = registry.getMetrictInfos () |> Seq.head
+    let _, metricInfoDetails = registry.getMetricInfos () |> Seq.head
     metricInfoDetails |> Expect.sequenceEqual "should have one gauge detail" [ MetricInfo.Gauge { labels= [("queue name", "some queue name")] |> Map.ofSeq ; gaugeValue = 10. } ]
 
   testCase "gauge" <| fun () ->
@@ -116,7 +119,7 @@ let tests = [
     gauge.dec 8.   // 7
     gauge.inc 18.  // 25
 
-    let metricInfos = registry.getMetrictInfos ()
+    let metricInfos = registry.getMetricInfos ()
     let _, metricDetails = metricInfos |> Seq.find (fun (basicInfo , _) -> basicInfo.name = gaugeConf.basicInfo.name)
     metricDetails |> Expect.sequenceEqual "should have one gauge detail" [ MetricInfo.Gauge { labels= Map.empty ; gaugeValue = 25. } ]
 
@@ -128,7 +131,7 @@ let tests = [
     let histogramConf = HistogramConf.create("some histogram", "some histogram") |> HistogramConf.buckets testBuckets
     let gauge = gaugeConf |> GaugeConf.enableHistogram histogramConf |> registry.registerMetricWithNoLabels
 
-    let metricInfos = registry.getMetrictInfos ()
+    let metricInfos = registry.getMetricInfos ()
     let _, metricDetails = metricInfos |> Seq.find (fun (basicInfo , _) -> basicInfo.name = gaugeConf.basicInfo.name)
     metricDetails |> Expect.sequenceEqual "should have one empty gauge detail" [ MetricInfo.Gauge { labels= Map.empty ; gaugeValue = 0. } ]
 
@@ -137,7 +140,7 @@ let tests = [
     metricDetails |> Expect.sequenceEqual "should have empty histogram detail" [ MetricInfo.Histogram { labels= Map.empty ; bucketsInfo = bucketsInfo; sumInfo = 0. } ]
 
 
-  testCase "histogram with lable" <| fun () ->
+  testCase "histogram with label" <| fun () ->
     let testBuckets = [| 5.; 10.; 50.; 100.; |]
     let registry = new MetricRegistry()
 
@@ -147,7 +150,7 @@ let tests = [
     (histogram.labels [| "queue a" |]).observe 15.
     (histogram.labels [| "queue b" |]).observe 85.
 
-    let metricInfos = registry.getMetrictInfos ()
+    let metricInfos = registry.getMetricInfos ()
     let _, metricDetails = metricInfos |> Seq.find (fun (basicInfo , _) -> basicInfo.name = histogramConf.basicInfo.name)
     let bucketsInfo = testBuckets |> Seq.map (fun i -> (i, 0.)) |> Map.ofSeq |> Map.add Double.PositiveInfinity 0.
     metricDetails |> Expect.containsAll "should contains histogram detail" [
