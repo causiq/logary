@@ -25,6 +25,7 @@ module Exporter =
 
 
     testCaseJob "export to prometheus text protocol" <| job {
+      let metricRegitsry = new MetricRegistry()
       let httpClient = new HttpClient()
       httpClient.BaseAddress <- Uri("http://127.0.0.1:8080/")
       let exportedTextJob = Job.liftTask (fun (endpoint:string) -> httpClient.GetStringAsync(endpoint)) "metrics"
@@ -34,14 +35,14 @@ module Exporter =
       let cts = new CancellationTokenSource()
       use cancelWebServer =  { new IDisposable with member x.Dispose() = cts.Cancel () }
 
-      ExporterConf.create "/metrics" LogManager.DefaultMetricRegistry
+      ExporterConf.create "/metrics" metricRegitsry
       |> Exporter.runAsync cts.Token
       |> ignore
 
       let gauge =
         GaugeConf.create {name = "time_latancy"; description = "test time latancy"; labelNames = [| "endpoint" |]}
         |> GaugeConf.withHistogram [|50.; 100.; 500.;|]
-        |> LogManager.DefaultMetricRegistry.registerMetric
+        |> metricRegitsry.registerMetric
 
       (gauge.labels [| "/users" |]).inc 100.
       (gauge.labels [| "/users" |]).inc 200.
