@@ -19,6 +19,12 @@ module Exporter =
   let checkTextProtocol expected actual =
     expected |> String.split '\n' |> Expect.containsAll "should exported to prometheus text protocol" (actual |> String.trimStart |> String.split '\n')
 
+  let getExportedTextJob baseAddress =
+    let httpClient = new HttpClient()
+    httpClient.BaseAddress <- Uri(baseAddress)
+    let exportedTextJob = Job.liftTask (fun (endpoint:string) -> httpClient.GetStringAsync(endpoint)) "metrics"
+    exportedTextJob
+
 
   [<Tests>]
   let tests = testList "Logary.Prometheus" [
@@ -26,16 +32,13 @@ module Exporter =
 
     testCaseJob "export to prometheus text protocol" <| job {
       let metricRegitsry = new MetricRegistry()
-      let httpClient = new HttpClient()
-      httpClient.BaseAddress <- Uri("http://127.0.0.1:8080/")
-      let exportedTextJob = Job.liftTask (fun (endpoint:string) -> httpClient.GetStringAsync(endpoint)) "metrics"
 
       let webConfig = defaultConfig.withBindings [HttpBinding.create HTTP IPAddress.Loopback 8081us]
 
       let cts = new CancellationTokenSource()
       use cancelWebServer =  { new IDisposable with member x.Dispose() = cts.Cancel () }
-
       ExporterConf.create "/metrics" metricRegitsry
+      |> ExporterConf.webConfig webConfig
       |> Exporter.runAsync cts.Token
       |> ignore
 
@@ -49,6 +52,7 @@ module Exporter =
       (gauge.labels [| "/books" |]).inc 50.
       (gauge.labels [| "/books" |]).dec 20.
 
+      let exportedTextJob = getExportedTextJob "http://127.0.0.1:8081/"
       let! exportedText = exportedTextJob
 
 
@@ -101,7 +105,6 @@ time_latancy_histogram_count{endpoint="/users"} 3
       let! exportedText = exportedTextJob
 
       checkTextProtocol expected exportedText
-
     }
 
 
