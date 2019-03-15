@@ -25,10 +25,10 @@ module Formatting =
 
   let validateName name =
     if not <| validNameRegex.IsMatch name then
-      failwithf "name (%s) should match regex %s" name (validNameRegex.ToString())
+      Result.Error (sprintf "name (%s) should match regex %s" name (validNameRegex.ToString()))
     elif reservedNameRegex.IsMatch name then
-      failwithf "(%s) is invalid, names beginning with __ are reserved for internal use." name
-    else name
+      Result.Error (sprintf "(%s) is invalid, names beginning with __ are reserved for internal use." name)
+    else Result.Ok name
 
   /// HELP lines may contain any sequence of UTF-8 characters (after the metric name),
   /// but the backslash and the line feed characters have to be escaped as \\ and \n, respectively

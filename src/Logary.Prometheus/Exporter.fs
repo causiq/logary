@@ -33,9 +33,14 @@ module ExporterConf =
 module Exporter =
   open System.Threading
 
+  let forceValidateName name =
+    match Formatting.validateName name with
+    | Error msg -> failwith msg
+    | Ok name -> name
+
   let exportToPrometheus exportConf =
     let metricRegistry = exportConf.metricRegistry
-    let metricNameTransformer = exportConf.metricNameTransformer >> Formatting.validateName
+    let metricNameTransformer = exportConf.metricNameTransformer >> forceValidateName
     let metricInfos = metricRegistry.getMetricInfos ()
     let sb = new System.Text.StringBuilder ()
     metricInfos |> Seq.iter (Formatting.formatMetricInfo sb metricNameTransformer)
