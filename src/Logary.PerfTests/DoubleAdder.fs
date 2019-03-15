@@ -21,7 +21,7 @@ module DoubleAdderPerf =
     [<Benchmark(Baseline = true)>]
     member x.interLockedAdd () =
       let mutable loop = true
-      while(loop) do
+      while loop do
         let originLocal = interlockedCounter
         let added = BitConverter.Int64BitsToDouble originLocal + 2. |> BitConverter.DoubleToInt64Bits
         loop <- originLocal <> Interlocked.CompareExchange(&interlockedCounter,added, originLocal)
@@ -34,7 +34,7 @@ module DoubleAdderPerf =
 
     let interLockedAdd value =
       let mutable loop = true
-      while(loop) do
+      while loop do
         let originLocal = interlockedCounter
         let added = BitConverter.Int64BitsToDouble originLocal + value |> BitConverter.DoubleToInt64Bits
         loop <- originLocal <> Interlocked.CompareExchange(&interlockedCounter,added, originLocal)

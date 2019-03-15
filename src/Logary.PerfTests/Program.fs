@@ -144,7 +144,7 @@ module Tests =
           jobs = [ xJ ]
       }
 
-    ptestList "benchmarks" [
+    testList "benchmarks" [
       test "backpressure" {
         let cfg = config (Job(Job.Core, baseJob))
         benchmark<BP> cfg box |> ignore

@@ -131,7 +131,7 @@ module DoubleAdder =
         if isNull cellsLocal then
           let baseValueLocal = x.baseValue
           let addedValue = BitConverter.Int64BitsToDouble baseValueLocal + value |> BitConverter.DoubleToInt64Bits
-          if (baseValueLocal = Interlocked.CompareExchange(&x.baseValue, addedValue, baseValueLocal)) then
+          if baseValueLocal = Interlocked.CompareExchange(&x.baseValue, addedValue, baseValueLocal) then
             stillLoop <- false
           else
             // create cells

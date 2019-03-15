@@ -9,7 +9,7 @@ type HistogramConf=
 
   interface MetricBuilder<IHistogram> with
     member x.basicConf = x.basicInfo
-    member x.build lables registry = new Histogram(x, lables) :> IHistogram
+    member x.build labels registry = new Histogram(x, labels) :> IHistogram
 
 
 

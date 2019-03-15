@@ -34,12 +34,12 @@ let tests = [
 
   testCase "register metric with no labels" <| fun () ->
     let registry = new MetricRegistry()
-    let gauge = gaugeConf |> registry.registerMetricWithNoLables
+    let gauge = gaugeConf |> registry.registerMetricWithNoLabels
     gauge.inc 10.
     let gauge = gaugeConf |> registry.registerMetric
     gauge.noLabels.inc 10.
     let _, MetricInfo.Gauge gaugeInfo = gauge.noLabels.explore ()
-    gaugeInfo.gaugeValue |> Expect.equal "registerMetricWithNoLables is just a shotcut for registerMetric(gaugeConf).noLabels" 20.
+    gaugeInfo.gaugeValue |> Expect.equal "registerMetricWithNoLabels is just a shotcut for registerMetric(gaugeConf).noLabels" 20.
 
 
   testCase "register metric with labels" <| fun () ->
@@ -92,7 +92,7 @@ let tests = [
 
   testCase "gauge" <| fun () ->
     let registry = new MetricRegistry()
-    let gauge = gaugeConf |> registry.registerMetricWithNoLables
+    let gauge = gaugeConf |> registry.registerMetricWithNoLabels
     gauge.set 200.
     gauge.inc 100.
     gauge.inc -50.
@@ -104,7 +104,7 @@ let tests = [
   testCase "gauge with histogram" <| fun () ->
     let testBuckets = [| 5.; 10.; 50.; 100.; |]
     let registry = new MetricRegistry()
-    let gauge = gaugeConf |> GaugeConf.withHistogram testBuckets |> registry.registerMetricWithNoLables
+    let gauge = gaugeConf |> GaugeConf.withHistogram testBuckets |> registry.registerMetricWithNoLabels
 
 
     gauge.set 200.
@@ -126,7 +126,7 @@ let tests = [
 
     let registry = new MetricRegistry()
     let histogramConf = HistogramConf.create("some histogram", "some histogram") |> HistogramConf.buckets testBuckets
-    let gauge = gaugeConf |> GaugeConf.enableHistogram histogramConf |> registry.registerMetricWithNoLables
+    let gauge = gaugeConf |> GaugeConf.enableHistogram histogramConf |> registry.registerMetricWithNoLabels
 
     let metricInfos = registry.getMetrictInfos ()
     let _, metricDetails = metricInfos |> Seq.find (fun (basicInfo , _) -> basicInfo.name = gaugeConf.basicInfo.name)

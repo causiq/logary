@@ -234,7 +234,7 @@ module Registry =
                 | None ->
                   match message |> Message.tryGetContext labelName with
                   | Some labelValue -> string labelValue
-                  | None -> failwithf "label name (%s) not found in message,maybe you should metric with nolables" labelName
+                  | None -> failwithf "label name (%s) not found in message,maybe you should metric with nolabels" labelName
               )
             counterMetric.labels labelValues
 

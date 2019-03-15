@@ -10,7 +10,7 @@ and Metric<'t when 't :> IMetric> (builder: MetricBuilder<'t>, registry: MetricR
 
   let emptyLabel = Map.empty
   let metricStore = new ConcurrentDictionary<Map<string,string>, 't>()
-  let noLabelMetric = new Lazy<'t>(fun _ -> metricStore.GetOrAdd(emptyLabel, fun lables -> builder.build lables registry))
+  let noLabelMetric = new Lazy<'t>(fun _ -> metricStore.GetOrAdd(emptyLabel, fun labels -> builder.build labels registry))
 
   /// label values of label names, should in same order
   abstract labels: string[] -> 't
@@ -20,8 +20,8 @@ and Metric<'t when 't :> IMetric> (builder: MetricBuilder<'t>, registry: MetricR
     let labels =
       match labelNames.Length, labelValues.Length with
       | 0, 0 -> Map.empty
-      | 0, _ -> failwith "metric has no label names but provide label values, maybe you need invoke noLables"
-      | _, 0 -> failwith "metric has label names but not provide label values, maybe you need invoke noLables"
+      | 0, _ -> failwith "metric has no label names but provide label values, maybe you need invoke noLabels"
+      | _, 0 -> failwith "metric has label names but not provide label values, maybe you need invoke noLabels"
       | a, b when a = b -> Array.zip labelNames labelValues |> Map.ofSeq
       | _ -> failwith "metric labels should have same name/value length"
     let metric = metricStore.GetOrAdd(labels, fun labels ->  builder.build labels registry)
@@ -65,7 +65,7 @@ and MetricRegistry() =
   default x.getMetrictInfos () =
     metricBackStore.Values |> Seq.map (fun metric -> metric.export ())
 
-  member x.registerMetricWithNoLables builder = (x.registerMetric builder).noLabels
+  member x.registerMetricWithNoLabels builder = (x.registerMetric builder).noLabels
 
 
 module Metric =
