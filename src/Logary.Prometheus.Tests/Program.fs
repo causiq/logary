@@ -5,7 +5,7 @@ open System.Net
 open System.Threading
 open Expecto
 open Logary
-open Logary.Prometheus
+open Logary.Prometheus.Exporter
 open Logary.Metric
 open Expecto.Flip
 open System.Net.Http

@@ -1,4 +1,4 @@
-﻿namespace Logary.Prometheus
+﻿namespace Logary.Prometheus.Exporter
 open System
 open System.Text
 open System.Text.RegularExpressions
