@@ -192,7 +192,7 @@ let tests = [
       gauge.labels [| "151" |] |> ignore
     )
 
-  ftestCase "avoid high cardinality warn strategy" <| fun () ->
+  testCase "avoid high cardinality warn strategy" <| fun () ->
     let registry = new MetricRegistry()
     let testLogger = {
       new Logger with
