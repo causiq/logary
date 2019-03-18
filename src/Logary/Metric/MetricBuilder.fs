@@ -14,25 +14,34 @@ and Metric<'t when 't :> IMetric> (builder: MetricBuilder<'t>, registry: MetricR
   let metricStore = new ConcurrentDictionary<Map<string,string>, 't>()
   let noLabelMetric = new Lazy<'t>(fun _ -> metricStore.GetOrAdd(emptyLabel, fun labels -> builder.build labels registry))
 
+  let doWithFailStrategy (strategy: FailStrategy) message =
+    match strategy with
+    | Throw -> failwith message
+    | FailStrategy.Warn logger ->
+      Message.eventX message |> logger.warn
+
   member x.labels (labelValues: string[]) =
+    let doWithFailStrategy = doWithFailStrategy builder.basicConf.failStrategy
+
     builder.basicConf.avoidHighCardinality |> Option.iter (fun cardinality ->
       if metricStore.Count >= cardinality then
-        match builder.basicConf.failStrategy with
-        | Throw -> failwithf "Do not use labels with high cardinality (more then %d label values), such as user IDs, email addresses, or other unbounded sets of values." cardinality
-        | FailStrategy.Warn logger ->
-          Message.eventX "Do not use labels with high cardinality (more then {cardinality} label values), such as user IDs, email addresses, or other unbounded sets of values."
-          >> Message.setField "cardinality" cardinality
-          |> logger.warn
+        doWithFailStrategy (sprintf "Do not use labels with high cardinality (more then %d label values), such as user IDs, email addresses, or other unbounded sets of values." cardinality)
     )
 
     let labelNames = builder.basicConf.labelNames
     let labels =
       match labelNames.Length, labelValues.Length with
       | 0, 0 -> Map.empty
-      | 0, _ -> failwith "metric has no label names but provide label values, maybe you need invoke noLabels"
-      | _, 0 -> failwith "metric has label names but not provide label values, maybe you need invoke noLabels"
+      | 0, _ ->
+        doWithFailStrategy "metric has no label names but provide label values, maybe you need invoke noLabels"
+        Map.empty
+      | _, 0 ->
+        doWithFailStrategy "metric has label names but not provide label values, maybe you need invoke noLabels"
+        Map.empty
       | a, b when a = b -> Array.zip labelNames labelValues |> Map.ofSeq
-      | _ -> failwith "metric labels should have same name/value length"
+      | _ ->
+        doWithFailStrategy "metric labels should have same name/value length"
+        Map.empty
 
     let metric = metricStore.GetOrAdd(labels, fun labels ->  builder.build labels registry)
     metric
