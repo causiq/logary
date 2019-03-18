@@ -4,8 +4,9 @@ open Expecto
 open Logary
 open Logary.Metric
 open Expecto.Flip
+open Logary.Metric
 
-let private basicConf = { name =  "items.in.queue"; description = "items in queue"; labelNames = [||] }
+let private basicConf = BasicConf.create "items.in.queue" "items in queue"
 let private gaugeConf = GaugeConf.create basicConf
 
 let tests = [
@@ -151,7 +152,11 @@ let tests = [
     let testBuckets = [| 5.; 10.; 50.; 100.; |]
     let registry = new MetricRegistry()
 
-    let histogramConf = HistogramConf.create {name = "some histogram"; description = "some histogram"; labelNames = [| "queue name" |]} |> HistogramConf.buckets testBuckets
+    let histogramConf =
+      {name = "some histogram"; description = "some histogram"; labelNames = [| "queue name" |]; avoidHighCardinality = Some BasicConf.defaultHighCardinalityLimit}
+      |> HistogramConf.create
+      |> HistogramConf.buckets testBuckets
+
     let histogram = histogramConf |> registry.registerMetric
 
     (histogram.labels [| "queue a" |]).observe 15.
@@ -175,4 +180,14 @@ let tests = [
   testCase "histogram get exponentialBuckets" <| fun () ->
     let histogramConf = HistogramConf.create("some histogram", "some histogram") |> HistogramConf.exponentialBuckets 5. 5. 5
     histogramConf.buckets |> Expect.sequenceEqual "should have buckets" [ 5.; 25.; 125.; 625.; 3125.; ]
+
+  testCase "avoid high cardinality" <| fun () ->
+    let registry = new MetricRegistry()
+    let gauge = {basicConf with labelNames = [| "user_id" |]} |> GaugeConf.create |> registry.registerMetric
+    for userId in 1..150 do
+      gauge.labels [| string userId |] |> ignore
+
+    Expect.throws "should throw if reach the high cardinality limit" (fun () ->
+      gauge.labels [| "151" |] |> ignore
+    )
 ]

@@ -47,7 +47,19 @@ type BasicConf =
     name: string
     description: string
     labelNames: string []
+    avoidHighCardinality: option<int>
   }
+
+module BasicConf =
+
+  /// https://prometheus.io/docs/practices/instrumentation/#do-not-overuse-labels
+  let defaultHighCardinalityLimit = 150
+
+  let create name description =
+    { name =  name; description = description; labelNames = [||]; avoidHighCardinality = Some defaultHighCardinalityLimit }
+
+  let labelNames labelNames conf =
+    { conf with labelNames = labelNames }
 
 /// used for exporting data
 type MetricExporter =

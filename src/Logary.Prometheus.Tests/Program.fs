@@ -43,7 +43,8 @@ module Exporter =
         |> Exporter.run
 
       let gauge =
-        GaugeConf.create {name = "time_latancy"; description = "test time latancy"; labelNames = [| "endpoint" |]}
+        {name = "time_latancy"; description = "test time latancy"; labelNames = [| "endpoint" |]; avoidHighCardinality = None}
+        |> GaugeConf.create
         |> GaugeConf.withHistogram [|50.; 100.; 500.;|]
         |> metricRegitsry.registerMetric
 

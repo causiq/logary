@@ -16,6 +16,9 @@ and Metric<'t when 't :> IMetric> (builder: MetricBuilder<'t>, registry: MetricR
   abstract labels: string[] -> 't
 
   override x.labels labelValues =
+    builder.basicConf.avoidHighCardinality |> Option.iter (fun cardinality ->
+      if metricStore.Count >= cardinality then failwith "Do not use labels with high cardinality (many different label values), such as user IDs, email addresses, or other unbounded sets of values.")
+
     let labelNames = builder.basicConf.labelNames
     let labels =
       match labelNames.Length, labelValues.Length with
@@ -24,6 +27,7 @@ and Metric<'t when 't :> IMetric> (builder: MetricBuilder<'t>, registry: MetricR
       | _, 0 -> failwith "metric has label names but not provide label values, maybe you need invoke noLabels"
       | a, b when a = b -> Array.zip labelNames labelValues |> Map.ofSeq
       | _ -> failwith "metric labels should have same name/value length"
+
     let metric = metricStore.GetOrAdd(labels, fun labels ->  builder.build labels registry)
     metric
 

@@ -19,7 +19,7 @@ type GaugeConf =
     member x.basicConf = x.basicInfo
 
   static member create (name, description) =
-    let basic = { name =  name; description = description; labelNames = [||] }
+    let basic = BasicConf.create name description
     {basicInfo = basic; histogramConf = None}
 
   static member create (basic) =

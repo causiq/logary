@@ -107,7 +107,9 @@ module Middleware =
       gauges |> Seq.iter (fun (gaugeName, gauge) ->
         // TO CONSIDER: maybe make senor + gauge as one metric name, not as one metric with gauge name as label
         let gaugeMetric =
-          GaugeConf.create { name = sensorName; description = sensorName; labelNames = [| "gauge_name" |]}
+          BasicConf.create sensorName sensorName
+          |> BasicConf.labelNames [| "gauge_name" |]
+          |> GaugeConf.create
           |> metricRegistry.registerMetric
           |> Metric.labels [| gaugeName |]
 

@@ -78,6 +78,6 @@ module HistogramConf =
 open HistogramConf
 type HistogramConf with
   static member create(name, description) =
-    let basic =  { name =  name; description = description; labelNames = [||] }
+    let basic = BasicConf.create name description
     { basicInfo = basic; buckets = defaultBuckets }
   static member create basic  = { basicInfo = basic; buckets = defaultBuckets }
