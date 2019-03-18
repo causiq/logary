@@ -200,7 +200,7 @@ let tests = [
         member x.level = Info
         member x.logWithAck (waitForBuffer, level) factory =
           let msg = factory level
-          msg.value |> Expect.equal "should warn message with info" "Do not use labels with high cardinality (more then {cardinality} label values), such as user IDs, email addresses, or other unbounded sets of values."
+          msg.value |> Expect.equal "should warn message with info" "Do not use labels with high cardinality (more then 150 label values), such as user IDs, email addresses, or other unbounded sets of values."
           msg.level |> Expect.equal "should have warn level" LogLevel.Warn
           LogResult.success
     }
