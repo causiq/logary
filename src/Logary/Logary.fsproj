@@ -59,10 +59,6 @@
     <Compile Include="GaugeModule.fs" />
     <Compile Include="Metric\DoubleAdder.fs" />
     <Compile Include="Metric\Metric.fs" />
-    <Compile Include="Metric\MetricBuilder.fs" />
-    <Compile Include="Metric\Histogram.fs" />
-    <Compile Include="Metric\Gauge.fs" />
-    <Compile Include="LogManager.fs" />
     <Compile Include="Global.fs" />
     <Compile Include="Extensions/System.Stopwatch.fs" />
     <Compile Include="Extensions/Hopac.Alt.fs" />
@@ -70,10 +66,14 @@
     <Compile Include="Extensions/NodaTime.Duration.fs" />
     <Compile Include="Extensions/NodaTime.Instant.fs" />
     <Compile Include="Extensions/System.Dates.fs" />
-    <Compile Include="Extensions\LogManager.fs" />
     <Compile Include="MessageModule.fs" />
     <Compile Include="LogResultModule.fs" />
     <Compile Include="LoggerModule.fs" />
+    <Compile Include="Metric\MetricBuilder.fs" />
+    <Compile Include="Metric\Histogram.fs" />
+    <Compile Include="Metric\Gauge.fs" />
+    <Compile Include="LogManager.fs" />
+    <Compile Include="Extensions\LogManager.fs" />
     <Compile Include="SpanModule.fs" />
     <Compile Include="MiddlewareModule.fs" />
     <!-- Below: runtime -->

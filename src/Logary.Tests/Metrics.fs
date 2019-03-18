@@ -153,7 +153,8 @@ let tests = [
     let registry = new MetricRegistry()
 
     let histogramConf =
-      {name = "some histogram"; description = "some histogram"; labelNames = [| "queue name" |]; avoidHighCardinality = Some BasicConf.defaultHighCardinalityLimit}
+      BasicConf.create "some histogram" "some histogram"
+      |> BasicConf.labelNames [| "queue name" |]
       |> HistogramConf.create
       |> HistogramConf.buckets testBuckets
 
@@ -181,7 +182,7 @@ let tests = [
     let histogramConf = HistogramConf.create("some histogram", "some histogram") |> HistogramConf.exponentialBuckets 5. 5. 5
     histogramConf.buckets |> Expect.sequenceEqual "should have buckets" [ 5.; 25.; 125.; 625.; 3125.; ]
 
-  testCase "avoid high cardinality" <| fun () ->
+  testCase "avoid high cardinality throw strategy" <| fun () ->
     let registry = new MetricRegistry()
     let gauge = {basicConf with labelNames = [| "user_id" |]} |> GaugeConf.create |> registry.registerMetric
     for userId in 1..150 do
@@ -190,4 +191,24 @@ let tests = [
     Expect.throws "should throw if reach the high cardinality limit" (fun () ->
       gauge.labels [| "151" |] |> ignore
     )
+
+  ftestCase "avoid high cardinality warn strategy" <| fun () ->
+    let registry = new MetricRegistry()
+    let testLogger = {
+      new Logger with
+        member x.name = PointName [| "test" |]
+        member x.level = Info
+        member x.logWithAck (waitForBuffer, level) factory =
+          let msg = factory level
+          msg.value |> Expect.equal "should warn message with info" "Do not use labels with high cardinality (more then {cardinality} label values), such as user IDs, email addresses, or other unbounded sets of values."
+          msg.level |> Expect.equal "should have warn level" LogLevel.Warn
+          LogResult.success
+    }
+
+    let warn = Warn testLogger
+    let gauge = {basicConf with labelNames = [| "user_id" |] ; failStrategy = warn} |> GaugeConf.create |> registry.registerMetric
+    for userId in 1..150 do
+      gauge.labels [| string userId |] |> ignore
+
+    gauge.labels [| "151" |] |> ignore
 ]

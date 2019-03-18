@@ -1,5 +1,7 @@
 namespace Logary.Metric
 
+open Logary
+open Logary.Internals
 open System.Collections.Concurrent
 
 type MetricBuilder<'t when 't :> IMetric> =
@@ -12,12 +14,16 @@ and Metric<'t when 't :> IMetric> (builder: MetricBuilder<'t>, registry: MetricR
   let metricStore = new ConcurrentDictionary<Map<string,string>, 't>()
   let noLabelMetric = new Lazy<'t>(fun _ -> metricStore.GetOrAdd(emptyLabel, fun labels -> builder.build labels registry))
 
-  /// label values of label names, should in same order
-  abstract labels: string[] -> 't
-
-  override x.labels labelValues =
+  member x.labels (labelValues: string[]) =
     builder.basicConf.avoidHighCardinality |> Option.iter (fun cardinality ->
-      if metricStore.Count >= cardinality then failwith "Do not use labels with high cardinality (many different label values), such as user IDs, email addresses, or other unbounded sets of values.")
+      if metricStore.Count >= cardinality then
+        match builder.basicConf.failStrategy with
+        | Throw -> failwithf "Do not use labels with high cardinality (more then %d label values), such as user IDs, email addresses, or other unbounded sets of values." cardinality
+        | FailStrategy.Warn logger ->
+          Message.eventX "Do not use labels with high cardinality (more then {cardinality} label values), such as user IDs, email addresses, or other unbounded sets of values."
+          >> Message.setField "cardinality" cardinality
+          |> logger.warn
+    )
 
     let labelNames = builder.basicConf.labelNames
     let labels =
@@ -52,13 +58,7 @@ and Metric<'t when 't :> IMetric> (builder: MetricBuilder<'t>, registry: MetricR
 and MetricRegistry() =
   let metricBackStore = new ConcurrentDictionary<string, MetricExporter>()
 
-  /// register a metric to manager if not exist, otherwise return the registered one
-  abstract registerMetric<'t when 't:> IMetric> : MetricBuilder<'t> -> Metric<'t>
-
-  /// get metric infos for exporting to backends like prometheus
-  abstract getMetricInfos: unit -> seq<BasicInfo * seq<MetricInfo>>
-
-  default x.registerMetric builder =
+  member x.registerMetric<'t when 't:> IMetric> (builder: MetricBuilder<'t>) : Metric<'t> =
     let metricName = builder.basicConf.name
     let metric = metricBackStore.GetOrAdd(metricName, fun _ -> new Metric<_>(builder, x) :> MetricExporter)
     if metric.basicConf <> builder.basicConf then
@@ -66,7 +66,7 @@ and MetricRegistry() =
         metric.basicConf builder.basicConf
     else downcast metric
 
-  default x.getMetricInfos () =
+  member x.getMetricInfos () =
     metricBackStore.Values |> Seq.map (fun metric -> metric.export ())
 
   member x.registerMetricWithNoLabels builder = (x.registerMetric builder).noLabels

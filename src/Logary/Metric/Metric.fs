@@ -1,4 +1,6 @@
 namespace Logary.Metric
+
+open Logary
 open System.Collections.Concurrent
 
 
@@ -42,12 +44,17 @@ type IHistogram =
   abstract observe: value:float * count:float -> unit
 
 
+type FailStrategy =
+  | Throw
+  | Warn of Logger
+
 type BasicConf =
   {
     name: string
     description: string
     labelNames: string []
     avoidHighCardinality: option<int>
+    failStrategy: FailStrategy
   }
 
 module BasicConf =
@@ -56,10 +63,13 @@ module BasicConf =
   let defaultHighCardinalityLimit = 150
 
   let create name description =
-    { name =  name; description = description; labelNames = [||]; avoidHighCardinality = Some defaultHighCardinalityLimit }
+    { name =  name; description = description; labelNames = [||]; avoidHighCardinality = Some defaultHighCardinalityLimit; failStrategy = Throw }
 
   let labelNames labelNames conf =
     { conf with labelNames = labelNames }
+
+  let failStrategy strategy conf =
+    { conf with failStrategy = strategy }
 
 /// used for exporting data
 type MetricExporter =
