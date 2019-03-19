@@ -1,6 +1,5 @@
 namespace Logary.Metric
 
-open Logary
 open Logary.Internals
 open System.Collections.Concurrent
 
@@ -16,9 +15,8 @@ and Metric<'t when 't :> IMetric> (builder: MetricBuilder<'t>, registry: MetricR
 
   let doWithFailStrategy (strategy: FailStrategy) message =
     match strategy with
+    | Default -> registry.defaultFailBehavior message
     | Throw -> failwith message
-    | FailStrategy.Warn logger ->
-      Message.eventX message |> logger.warn
 
   member x.labels (labelValues: string[]) =
     let doWithFailStrategy = doWithFailStrategy builder.basicConf.failStrategy
@@ -66,19 +64,27 @@ and Metric<'t when 't :> IMetric> (builder: MetricBuilder<'t>, registry: MetricR
 /// used for register metric, and can export metric infos
 and MetricRegistry() =
   let metricBackStore = new ConcurrentDictionary<string, MetricExporter>()
+  let defaultFailBehaviorD = DVar.create failwith
 
   member x.registerMetric<'t when 't:> IMetric> (builder: MetricBuilder<'t>) : Metric<'t> =
     let metricName = builder.basicConf.name
     let metric = metricBackStore.GetOrAdd(metricName, fun _ -> new Metric<_>(builder, x) :> MetricExporter)
     if metric.basicConf <> builder.basicConf then
-      failwithf "metric with same name needs have same basic conf: registered one: %A, newer one: %A"
-        metric.basicConf builder.basicConf
-    else downcast metric
+      sprintf "metric with same name needs have same basic conf: registered one: %A, newer one: %A"
+              metric.basicConf builder.basicConf
+      |> x.defaultFailBehavior
+
+    downcast metric
 
   member x.getMetricInfos () =
     metricBackStore.Values |> Seq.map (fun metric -> metric.export ())
 
   member x.registerMetricWithNoLabels builder = (x.registerMetric builder).noLabels
+
+  member x.changeDefaultFailBehavior behavior = DVar.set defaultFailBehaviorD behavior
+
+  member x.defaultFailBehavior = DVar.get defaultFailBehaviorD
+
 
 
 module Metric =

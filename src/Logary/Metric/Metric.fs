@@ -45,8 +45,9 @@ type IHistogram =
 
 
 type FailStrategy =
+  /// default means: throw if behavior not changed, metric registry from logary's registry will change throw to warn by internal logger
+  | Default
   | Throw
-  | Warn of Logger
 
 type BasicConf =
   {
@@ -63,13 +64,13 @@ module BasicConf =
   let defaultHighCardinalityLimit = 150
 
   let create name description =
-    { name =  name; description = description; labelNames = [||]; avoidHighCardinality = Some defaultHighCardinalityLimit; failStrategy = Throw }
+    { name =  name; description = description; labelNames = [||]; avoidHighCardinality = Some defaultHighCardinalityLimit; failStrategy = Default }
 
   let labelNames labelNames conf =
     { conf with labelNames = labelNames }
 
-  let failStrategy strategy conf =
-    { conf with failStrategy = strategy }
+  let throwWhenFail conf =
+    { conf with failStrategy = Throw }
 
 /// used for exporting data
 type MetricExporter =

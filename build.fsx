@@ -116,6 +116,9 @@ Target.create "PaketFiles" (fun _ ->
 
   replace "namespace Logary.Facade" "namespace Cibryy.Logging"
           "paket-files/logary/logary/src/Logary.CSharp.Facade/Facade.cs"
+
+  replace "namespace Utilities" "namespace Logary.Internals"
+          "paket-files/haf/DVar/src/DVar/DVar.fs"
 )
 
 Target.create "ProjectVersion" (fun _ ->

@@ -55,6 +55,7 @@ nuget System.Data.Odbc
 github eiriktsarpalis/TypeShape src/TypeShape/TypeShape.fs
 github eiriktsarpalis/TypeShape src/TypeShape/Utils.fs
 github haf/YoLo:bd91bbe94a183aa9dc9c13e885c73b20516b01e7 YoLo.fs
+github haf/DVar src/DVar/DVar.fs
 github logary/RingBuffer RingBuffer.fs
 github logary/logary src/Logary.CSharp.Facade/Facade.cs
 github logary/logary src/Logary.Facade/Facade.fs

@@ -204,6 +204,9 @@ module Registry =
       (targets |> Seq.Con.mapJob flushTarget)
       >>- (partitionResults >> FlushInfo)
 
+    let changeMetricDefaultFailBehavior (logger: Logger) (metricRegistry: MetricRegistry) =
+      metricRegistry.changeDefaultFailBehavior (eventX >> logger.warn)
+
     let internal onKestrel =
       lazy (null <> System.Type.GetType "Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServer, Microsoft.AspNetCore.Server.Kestrel.Core")
     let internal onIIS =
@@ -291,6 +294,8 @@ module Registry =
               eprintfn "%O" e
             result)
           |> HasResult)
+
+    Impl.changeMetricDefaultFailBehavior ri.logger conf.metricRegistry
 
     runningPipe >>= fun (sendMsg, ctss) ->
     let state =

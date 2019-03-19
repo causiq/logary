@@ -4,6 +4,7 @@ open Expecto
 open Logary
 open Logary.Metric
 open Expecto.Flip
+open Logary
 open Logary.Metric
 
 let private basicConf = BasicConf.create "items.in.queue" "items in queue"
@@ -184,7 +185,7 @@ let tests = [
 
   testCase "avoid high cardinality throw strategy" <| fun () ->
     let registry = new MetricRegistry()
-    let gauge = {basicConf with labelNames = [| "user_id" |]} |> GaugeConf.create |> registry.registerMetric
+    let gauge = basicConf |> BasicConf.labelNames [| "user_id" |] |> BasicConf.throwWhenFail |> GaugeConf.create |> registry.registerMetric
     for userId in 1..150 do
       gauge.labels [| string userId |] |> ignore
 
@@ -192,7 +193,7 @@ let tests = [
       gauge.labels [| "151" |] |> ignore
     )
 
-  testCase "avoid high cardinality warn strategy" <| fun () ->
+  testCase "avoid high cardinality change default fail strategy" <| fun () ->
     let registry = new MetricRegistry()
     let testLogger = {
       new Logger with
@@ -205,10 +206,18 @@ let tests = [
           LogResult.success
     }
 
-    let warn = Warn testLogger
-    let gauge = {basicConf with labelNames = [| "user_id" |] ; failStrategy = warn} |> GaugeConf.create |> registry.registerMetric
+    let warnBehavior = Message.eventX >> testLogger.warn
+    let gauge = {basicConf with labelNames = [| "user_id" |]} |> GaugeConf.create |> registry.registerMetric
+
     for userId in 1..150 do
       gauge.labels [| string userId |] |> ignore
 
-    gauge.labels [| "151" |] |> ignore
+    Expect.throws "should throw if not change default fail behavior" (fun () ->
+      gauge.labels [| "151" |] |> ignore
+    )
+
+    registry.changeDefaultFailBehavior warnBehavior
+
+    gauge.labels [| "152" |] |> ignore
+
 ]
