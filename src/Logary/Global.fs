@@ -31,32 +31,14 @@ module internal Global =
   /// This is the "Global Variable" containing the last configured Logary
   /// instance. If you configure more than one logary instance this will be
   /// replaced.
-  let internal config =
-    ref (defaultConfig, (* logical clock *) 1u)
+  let internal configD = DVar.create defaultConfig
 
   /// The flyweight references the current configuration. If you want
   /// multiple per-process logging setups, then don't use the static methods,
   /// but instead pass a Logger instance around, setting the name field of the
   /// Message value you pass into the logger.
   type Flyweight(name: PointName) =
-    // The object's private fields are initialised to the current config's
-    // logger.
-    let updating = obj()
-    let mutable fwClock: uint32 = snd !config
-    let mutable logger: Logger = (fst !config).getLogger name
-
-    /// A function that tries to run the action with the current logger, and
-    /// which reconfigures if the configuration is updated.
-    let withLogger action =
-      if snd !config <> fwClock then // if we are outdated
-        lock updating <| fun _ ->
-          let cfg, cfgClock = !config // reread the config's clock after taking lock
-          if cfgClock <> fwClock then // recheck after taking lock to avoid races
-            logger <- cfg.getLogger name // get the current logger
-            fwClock <- cfgClock // update instance's clock
-
-      // finally execute the action with the logger
-      action logger
+    let loggerD = configD |> DVar.map (fun cfg -> cfg.getLogger name)
 
     let ensureName (m: Message) =
       if m.name.isEmpty then { m with name = name } else m
@@ -65,25 +47,21 @@ module internal Global =
       member x.name = name
 
       member x.level =
-        withLogger (fun logger -> logger.level)
+        let logger = DVar.get loggerD in logger.level
 
       member x.logWithAck (putBufferTimeOut, level) msgFactory =
-        withLogger (fun logger -> logger.logWithAck (putBufferTimeOut, level) (msgFactory >> ensureName))
+        let logger = DVar.get loggerD in logger.logWithAck (putBufferTimeOut, level) (msgFactory >> ensureName)
 
   /// Call to initialise Logary with a new Logary instance.
-  let initialise cfg =
-    config := (cfg, snd !config + 1u)
+  let initialise cfg = DVar.set configD cfg
 
-  let getStaticLogger (name: PointName) =
-    Flyweight(name)
+  let getStaticLogger (name: PointName) = Flyweight(name) :> Logger
 
   /// Gets the current timestamp.
-  let getTimestamp (): EpochNanoSeconds =
-    (fst !config).getTimestamp ()
+  let getTimestamp () = let config = DVar.get configD in config.getTimestamp ()
 
   /// Returns the synchronisation object to use when printing to the console.
-  let getConsoleSemaphore () =
-    (fst !config).getConsoleSemaphore()
+  let getConsoleSemaphore () = let config = DVar.get configD in config.getConsoleSemaphore ()
 
   /// Run the passed function under the console semaphore lock.
   let lockSem fn =

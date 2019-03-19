@@ -15,7 +15,7 @@ type Log() =
   [<CompiledName "Create">]
   static member create name: Logger =
     if isNull (box name) then nullArg "name"
-    Global.getStaticLogger name :> Logger
+    Global.getStaticLogger name
 
   /// Creates a logger by a given name.
   [<CompiledName "Create">]

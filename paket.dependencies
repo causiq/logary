@@ -91,7 +91,6 @@ group Examples
 
   nuget Argu
   nuget Castle.Core
-  nuget Chiron >= 7-beta
   nuget FParsec
   nuget FSharp.Core
   nuget Hopac
