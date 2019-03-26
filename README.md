@@ -163,6 +163,8 @@ OR:
 
 ## Hello World (C#)
 
+> Be sure to choose Logary version 5 (enable pre-release), or it won't work!
+
 ```csharp
 using Logary;
 using Logary.Configuration;
@@ -187,6 +189,8 @@ using (var logary = LogaryFactory.New("svc", "host",
 
 ## Hello World (F#)
 
+> Be sure to choose Logary version 5 (enable pre-release), or it won't work!
+
 ```fsharp
 open System
 open Logary // normal usage
@@ -204,12 +208,12 @@ let main argv =
   // create a new Logary; save this instance somewhere "global" to your app/service
   let logary =
     Config.create "Logary.ConsoleApp" "localhost"
-    |> Config.target (LiterateConsole.create LiterateConsole.empty "console")
+    |> Config.target (Targets.LiterateConsole.create LiterateConsole.empty "console")
     |> Config.build
     |> Hopac.Hopac.run
 
   // log something
-  logger.info (evenX "{userName} logged in" >> setField "user" "haf")
+  logger.info (eventX "{userName} logged in" >> setField "user" "haf")
 
   mre.Wait()
   0

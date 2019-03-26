@@ -167,7 +167,7 @@ The price in EUR (€) is calculated as follows:
 where
 
 - `C`: # of cores in total production deployment
-- `P`: # of developers owning/working on the software
+- `D`: # of developers owning/working on the software
 
 You can load- and stress-test in a test-/staging-environment, for free, as long as that environment never serves production
 traffic.

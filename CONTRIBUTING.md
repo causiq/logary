@@ -7,4 +7,4 @@
 
 ## Intellectual property assignment
 
-Please see [`LICENSE.md`](./LICENCE.md)
+Please see [`LICENSE.md`](./LICENSE.md)
