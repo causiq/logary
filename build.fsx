@@ -187,6 +187,7 @@ Target.create "Pack" <| fun _ ->
 Target.create "Push" <| fun _ ->
   let setParams (p: Paket.PaketPushParams) =
     { p with
+        ToolPath = Path.GetFullPath "./.paket/paket"
         WorkingDir = pkgPath
         ApiKey = envRequired "NUGET_TOKEN" }
   Paket.push setParams
