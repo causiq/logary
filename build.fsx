@@ -44,6 +44,7 @@ let testProjects =
   ++ "src/services/*.Tests/*.fsproj"
   ++ "src/*.Tests/*.fsproj"
   -- "src/tests/Logary.Targets.BigQuery.Tests/*.fsproj"
+  -- "src/tests/Logary.Targets.SSE.Tests/*.fsproj"
 
 let libProjects =
   !! "src/targets/**/*.fsproj"
@@ -103,9 +104,6 @@ Target.create "PaketFiles" (fun _ ->
 
   replace "module Aether" "module Logary.Internals.Aether"
           "paket-files/xyncro/aether/src/Aether/Aether.fs"
-
-  replace "namespace Chiron" "namespace Logary.Internals.Chiron"
-          "paket-files/neoeinstein/chiron/src/Chiron/Chiron.fs"
 
   replace "module YoLo" "module internal Logary.YoLo"
           "paket-files/haf/YoLo/YoLo.fs"

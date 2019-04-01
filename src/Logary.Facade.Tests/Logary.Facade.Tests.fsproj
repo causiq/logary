@@ -2,7 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AssemblyName>Logary.Facade.Tests</AssemblyName>
-    <Version>5.0.0-rc.5</Version>
+    <Version>5.0.0-rc.6</Version>
     <Version>5.0.0-rc.3</Version>
     <OutputType>Exe</OutputType>
     <TargetFrameworks>netcoreapp2.2</TargetFrameworks>
