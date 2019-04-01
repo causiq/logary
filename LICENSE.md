@@ -3,31 +3,16 @@ Copyright 2018 Henrik Feldt, Jun and contributors.
 Logary is the collective name for:
 
  - a *logging library* for .Net (Logary-lib) including *adapters*,
+ - a *Dash web app* that shows streaming logs in your browser,
  - a number of *target* implementations for the library (things Logary-lib can send logs to),
  - a service called *Rutta* that ships, transforms, enhances or proxies logs,
+ - a *Helm chart for Rutta*,
  - a *library façade* for use in your own code, to quickly and easily add structured logging capabilities with no
    dependency on a third party library, and
  - a *JavaScript library* to send logs from web browsers and react-native apps.
 
-Logary-lib has been entirely authored by @haf. Included in version five are @lust4life improvements of large potitions
-of the Logary-lib code as well as new targets and adapters.
-
-This suite of software is a labour of love. At the time of writing (Jan 2019), we've yet to sell a single license. We
-didn't write Logary to become rich.
-
-However, money is needed for humans to eat and live. It's not more than fair that people or corporations utilising
-Logary for commercial endeavours, pay part of the revenue towards Logary's development and maintenance. As such,
-Logary's different software components are licensed independently.
-
-We believe there is value in having the source code of the software you depend on being **open source**—that is—open to
-read and modify under the terms of its license. Over the ~5 years that Logary has existed as open source software, there
-hasn't been a single request for help that hasn't been possible to address in the issue tracker — all without paying a
-dime — we don't provide paid support, but we obviously provide support.
-
-If you don't find the above agreeable, don't use Logary.
-
 If you want to support the eco-system of open source and you're a professional developer using Logary commercially, you
-should consider purchasing the commercial license to support Logary's maintenance. For some of Logary, you have purchase
+should purchase the commercial license to support Logary's maintenance. For some of Logary, you have purchase
 a commercial license, for others, you're don't have to. All of this is detailed below.
 
 All of Logary is under the *Terms of Service* (ToS). These ToS are distinct from the *Commercial License* which is in
@@ -47,6 +32,15 @@ code/software to.
 Non-profits and non-profit projects are free to use without payment, subject to the Terms of Service defined below.
 
 For-profit or commercial entities must purchase licenses to use Logary for their production environments, subject to the
+Terms of Service defined below.
+
+## Logary Dash
+
+Present at `src/services/Dash` and `src/targets/Logary.Targets.SSE`; a web app and an EventSource/SSE based target.
+
+Non-profits and non-profit projects are free to use without payment, subject to the Terms of Service defined below.
+
+For-profit or commercial entities must purchase licenses to use Dash for their production environments, subject to the
 Terms of Service defined below.
 
 ## Targets

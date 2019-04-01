@@ -31,6 +31,7 @@
     <ProjectReference Include="../../ingestion\Logary.Ingestion.UDP/Logary.Ingestion.UDP.fsproj" />
     <ProjectReference Include="../../targets/Logary.Targets.Stackdriver/Logary.Targets.Stackdriver.fsproj" />
     <ProjectReference Include="..\..\ingestion\Logary.Ingestion.TCP\Logary.Ingestion.TCP.fsproj" />
+    <ProjectReference Include="..\..\targets\Logary.Targets.SSE\Logary.Targets.SSE.fsproj" />
     <Reference Include="System.Configuration" />
   </ItemGroup>
 

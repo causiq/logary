@@ -205,8 +205,8 @@ module internal JsonDecode =
         JsonResult.pass (m, remainder |> JsonObject.add otherProp json)
         
   let messageObject: ObjectReader<Message> =
-    let initial = Message.event Debug "-"
     fun jsonObj ->
+      let initial = Message.event Debug "-"
       //printfn "Called 'message' decoder"
       //JFail (SingleFailure (InvalidJson "Nope nope"))
       JsonObject.toPropertyList jsonObj

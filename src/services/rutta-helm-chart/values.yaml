@@ -82,6 +82,7 @@ router:
   # - rabbitmq://
   # - stackdriver://./?logId=apps
   # - bigquery://?dataset=logs&table=all
+  # - sse://./?path=/logs&cors=false
   targets:
   - console://./
 

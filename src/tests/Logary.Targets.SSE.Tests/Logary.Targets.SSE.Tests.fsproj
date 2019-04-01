@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <DebugSymbols>true</DebugSymbols>
+    <Tailcalls>true</Tailcalls>
+    <GenerateTailCalls>true</GenerateTailCalls>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="paket.references" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Logary.Tests\Logary.Tests.fsproj" />
+    <ProjectReference Include="..\..\Logary\Logary.fsproj" />
+    <ProjectReference Include="..\..\targets\Logary.Targets.SSE\Logary.Targets.SSE.fsproj" />
+  </ItemGroup>
+  <Import Project="..\..\..\.paket\Paket.Restore.targets" />
+</Project>

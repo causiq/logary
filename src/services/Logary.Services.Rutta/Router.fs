@@ -10,6 +10,7 @@ module Router =
   open Logary.Message
   open Logary.Codecs
   open Logary.Ingestion
+  open Logary.CORS
   open Logary.Configuration
   open Logary.Targets
   open fszmq
@@ -154,7 +155,8 @@ module Router =
     let acao = if cors then Some OriginResult.allowAll else None
     let ilogger = ilogger |> Logger.setNameEnding "http"
     let ep = Parsers.binding binding
-    let config = HTTPConfig.create("/i/logary", logary, ilogger, cancelled, ep, ?accessControlAllowOrigin = acao)
+    let corsConfig = CORSConfig.create(?accessControlAllowOrigin = acao)
+    let config = HTTPConfig.create("/i/logary", logary, ilogger, cancelled, ep, corsConfig=corsConfig)
     let next = createSink logary codec
     HTTP.create config next
 

@@ -12,6 +12,7 @@ module Shipper =
   open Logary.Targets
   open Logary.Internals
   open Logary.Configuration
+  open Logary.Targets.Shipper
   open fszmq
   open fszmq.Socket
 
@@ -45,10 +46,10 @@ module Shipper =
 
     { new IDisposable with member x.Dispose () = run (logary.shutdown()) }
 
-  let internal pushTo connectTo =
+  let internal pushTo endpoint =
     printfn "%s" "spawning shipper in PUSH mode"
-    runLogary (Shipper.PushTo connectTo)
+    runLogary (ShipperConf.createPush endpoint)
 
-  let internal pubTo connectTo =
+  let internal pubTo endpoint =
     printfn "%s" "spawning shipper in PUB mode"
-    runLogary (Shipper.PublishTo connectTo)
+    runLogary (ShipperConf.createPub endpoint)
