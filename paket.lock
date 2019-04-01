@@ -111,6 +111,10 @@ NUGET
       Google.Api.Gax.Rest (>= 2.5)
       Google.Apis.Bigquery.v2 (>= 1.38.0.1484)
       NETStandard.Library (>= 1.6.1)
+    Google.Cloud.Iam.V1 (1.1)
+      Google.Api.Gax.Grpc (>= 2.4)
+      Grpc.Core (>= 1.12)
+      NETStandard.Library (>= 1.6.1)
     Google.Cloud.Logging.Type (2.0)
       Google.Api.CommonProtos (>= 1.1)
       NETStandard.Library (>= 1.6.1)
@@ -119,6 +123,11 @@ NUGET
       Google.Api.Gax.Grpc (>= 2.4)
       Google.Cloud.Logging.Type (>= 2.0)
       Grpc.Core (>= 1.12)
+      NETStandard.Library (>= 1.6.1)
+    Google.Cloud.PubSub.V1 (1.1.0-beta01)
+      Google.Api.Gax.Grpc (>= 2.5)
+      Google.Cloud.Iam.V1 (>= 1.0)
+      Grpc.Core (>= 1.17.1)
       NETStandard.Library (>= 1.6.1)
     Google.Protobuf (3.6.1)
       NETStandard.Library (>= 1.6.1)
@@ -1154,14 +1163,12 @@ GITHUB
       Expecto.Hopac
       Hopac
   remote: logary/logary
-    src/Logary.CSharp.Facade/Facade.cs (025e8923e3b5d717e7655aa8915b151b8c16f334)
-    src/Logary.Facade/Facade.fs (025e8923e3b5d717e7655aa8915b151b8c16f334)
+    src/Logary.CSharp.Facade/Facade.cs (05e88bab88515b010aea354c115ab303d3b5d44c)
+    src/Logary.Facade/Facade.fs (05e88bab88515b010aea354c115ab303d3b5d44c)
   remote: messagetemplates/messagetemplates-fsharp
     src/FsMtParser/FsMtParserFull.fs (17bdfdcc237d7d725c23ebe0ef24c438c4ff7530)
   remote: xyncro/aether
     src/Aether/Aether.fs (8dcbdc50190ac05851f4ccf57b356afbae5821a5)
-  remote: neoeinstein/chiron
-    src/Chiron/Chiron.fs (38e9d979fbab792904be19350f5fac9ebfaf9fd8)
 GROUP AspNetCoreAdapterExample
 REDIRECTS: ON
 STORAGE: NONE

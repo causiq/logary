@@ -11,5 +11,9 @@ trim_trailing_whitespace = true
 [*.cs]
 indent_size = 4
 
+[*.fs]
+indent_size = 2
+trim_trailing_whitespace = true
+
 [*.{csproj,fsproj}]
 end_of_line = crlf

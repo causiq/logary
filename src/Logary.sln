@@ -159,6 +159,10 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.SSE.Tests", 
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Prometheus.Tests", "Logary.Prometheus.Tests\Logary.Prometheus.Tests.fsproj", "{23A24D14-96EC-4E87-9CA6-7713AAD52FEC}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.GooglePubSub", "targets\Logary.Targets.GooglePubSub\Logary.Targets.GooglePubSub.fsproj", "{04E63B68-4FD0-495F-9A67-7AB08DD005BA}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.GooglePubSub.Tests", "tests\Logary.Targets.GooglePubSub.Tests\Logary.Targets.GooglePubSub.Tests.fsproj", "{FD69D037-8928-42DC-9791-407AAA9F7E0A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -359,6 +363,14 @@ Global
 		{23A24D14-96EC-4E87-9CA6-7713AAD52FEC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{23A24D14-96EC-4E87-9CA6-7713AAD52FEC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{23A24D14-96EC-4E87-9CA6-7713AAD52FEC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{04E63B68-4FD0-495F-9A67-7AB08DD005BA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{04E63B68-4FD0-495F-9A67-7AB08DD005BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{04E63B68-4FD0-495F-9A67-7AB08DD005BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{04E63B68-4FD0-495F-9A67-7AB08DD005BA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FD69D037-8928-42DC-9791-407AAA9F7E0A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FD69D037-8928-42DC-9791-407AAA9F7E0A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FD69D037-8928-42DC-9791-407AAA9F7E0A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FD69D037-8928-42DC-9791-407AAA9F7E0A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -415,5 +427,7 @@ Global
 		{A3428348-80A5-4465-87DD-03D8CD3910C7} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{890FF892-B005-4902-9E22-FDC36213DFCC} = {EA09AD42-B4E2-4B0D-8960-E87277F46F04}
 		{23A24D14-96EC-4E87-9CA6-7713AAD52FEC} = {EA09AD42-B4E2-4B0D-8960-E87277F46F04}
+		{04E63B68-4FD0-495F-9A67-7AB08DD005BA} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
+		{FD69D037-8928-42DC-9791-407AAA9F7E0A} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 	EndGlobalSection
 EndGlobal
