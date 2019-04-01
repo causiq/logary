@@ -1,3 +1,6 @@
+#### 5.0.0-rc.7
+* Build improvements, thanks @haf
+
 #### 5.0.0-rc.6
 * Logary Dash target, thanks @haf
 
