@@ -1,3 +1,6 @@
+#### 5.0.0-rc.6
+* Logary Dash target, thanks @haf
+
 #### 5.0.0-rc.5
 * Improve ISO8601 with JSON parsing, fixes #400, thanks @haf
 
