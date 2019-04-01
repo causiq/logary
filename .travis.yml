@@ -3,7 +3,7 @@ dist: xenial
 sudo: false
 dotnet: 2.2.103
 mono:
-- 5.18.0
+- 5.18.1
 - latest
 matrix:
   fast_finish: true
