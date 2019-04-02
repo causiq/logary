@@ -121,13 +121,6 @@ Target.create "PaketFiles" (fun _ ->
           "paket-files/haf/DVar/src/DVar/DVar.fs"
 )
 
-Target.create "ProjectVersion" (fun _ ->
-  !! "src/*/*.fsproj"
-  |> Seq.iter (fun file ->
-    printfn "Changing file %s" file
-    Xml.poke file "Project/PropertyGroup/Version/text()" release.NugetVersion)
-)
-
 Target.create "TCReportVersion" (fun _ ->
   [ yield "version", release.SemVer.ToString()
     yield "major", string release.SemVer.Major
@@ -145,7 +138,7 @@ Target.create "Build" <| fun _ ->
     { MSBuild.CliArguments.Create() with
         Verbosity = Some Quiet
         NoLogo = true
-        Properties = [ "Optimize", "true"; "DebugSymbols", "true" ] }
+        Properties = [ "Optimize", "true"; "DebugSymbols", "true"; "Version", release.NugetVersion ] }
   let setParams (o: DotNet.BuildOptions) =
     { o with
         Configuration = configuration
@@ -228,7 +221,6 @@ Target.create "Release" (fun _ ->
 "Clean"
   ==> "AssemblyInfo"
   ==> "PaketFiles"
-  ==> "ProjectVersion"
   =?> ("TCReportVersion", TeamCity.Environment.Version |> Option.isSome)
   ==> "Build"
   ==> "Tests"
