@@ -1,9 +1,7 @@
 namespace Logary.Metric
 
-
 type GaugeConf =
-  {
-    basicInfo: BasicConf
+  { basicInfo: BasicConf
     histogramConf: HistogramConf option
   }
 
@@ -20,10 +18,10 @@ type GaugeConf =
 
   static member create (name, description) =
     let basic = BasicConf.create name description
-    {basicInfo = basic; histogramConf = None}
+    { basicInfo = basic; histogramConf = None }
 
   static member create (basic) =
-    {basicInfo = basic; histogramConf = None}
+    { basicInfo = basic; histogramConf = None }
 
 and Gauge(conf, labels, histogram) =
 

@@ -1,24 +1,17 @@
 namespace Logary.Metric
 
-open Logary
-open System.Collections.Concurrent
-
-
 type BasicInfo =
-  {
-    name: string
+  { name: string
     description: string
   }
 
 type GaugeInfo =
-  {
-    labels: Map<string,string>
+  { labels: Map<string,string>
     gaugeValue: float
   }
 
 type HistogramInfo =
-  {
-    labels: Map<string,string>
+  { labels: Map<string,string>
     bucketsInfo: Map<float,float>
     sumInfo: float
   }
@@ -50,8 +43,7 @@ type FailStrategy =
   | Throw
 
 type BasicConf =
-  {
-    name: string
+  { name: string
     description: string
     labelNames: string []
     avoidHighCardinality: option<int>

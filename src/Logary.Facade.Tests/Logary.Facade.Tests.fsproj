@@ -4,6 +4,7 @@
     <AssemblyName>Logary.Facade.Tests</AssemblyName>
     <Version>5.0.0-rc.6</Version>
     <Version>5.0.0-rc.3</Version>
+    <Version>5.0.0-rc.7</Version>
     <OutputType>Exe</OutputType>
     <TargetFrameworks>netcoreapp2.2</TargetFrameworks>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>

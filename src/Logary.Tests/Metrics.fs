@@ -4,11 +4,11 @@ open Expecto
 open Logary
 open Logary.Metric
 open Expecto.Flip
-open Logary
-open Logary.Metric
 
 let private basicConf = BasicConf.create "items.in.queue" "items in queue"
 let private gaugeConf = GaugeConf.create basicConf
+
+#nowarn "25"
 
 let tests = [
 

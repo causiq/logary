@@ -3,6 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <Version>5.0.0-rc.6</Version>
+    <Version>5.0.0-rc.7</Version>
     <Version>5.0.0-rc.3</Version>
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <NoWarn>44</NoWarn>

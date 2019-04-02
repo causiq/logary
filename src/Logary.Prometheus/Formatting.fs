@@ -1,8 +1,6 @@
 namespace Logary.Prometheus
 
 open System
-open System.Globalization
-open System.IO
 open System.Text
 open System.Text.RegularExpressions
 open Logary.Metric
