@@ -2,7 +2,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <Version>5.0.0-rc.7</Version>
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <AssemblyName>Logary.Prometheus.Tests</AssemblyName>
     <RootNamespace>Logary.Prometheus.Tests</RootNamespace>
