@@ -138,7 +138,7 @@ Target.create "Build" <| fun _ ->
     { MSBuild.CliArguments.Create() with
         Verbosity = Some Quiet
         NoLogo = true
-        Properties = [ "Optimize", "true"; "DebugSymbols", "true"; "Version", release.NugetVersion ] }
+        Properties = [ "Optimize", "true"; "DebugSymbols", "true"; "Version", release.AssemblyVersion ] }
   let setParams (o: DotNet.BuildOptions) =
     { o with
         Configuration = configuration
