@@ -3,6 +3,7 @@ description: A role with minimal permissions to allow writing to PubSub, Stackdr
 stage: Beta
 includedPermissions:
 # https://cloud.google.com/bigquery/docs/access-control
+- bigquery.tables.create # since BigQuery tables can only have nullable columns added, we want to have Logary add the table itself
 - bigquery.tables.update # since the target needs to be able to migrate the table's schema, I ask you, anonymous not to break our CI tests by changing the schema
 - bigquery.tables.updateData # gives https://cloud.google.com/bigquery/docs/reference/rest/v2/tabledata/insertAll
 - bigquery.tables.get # since we may want to diff our target schema with the table's current schema
