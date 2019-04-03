@@ -74,18 +74,27 @@ module internal Impl =
 
     /// Gets the client for the given topic. The reason this function exists, is that the topic can be dynamically
     /// decided based on the message contents.
-    member x.clientFor (conf: GooglePubSubConf) (topic: Topic): Job<State * PublisherClient> =
+    member x.clientFor (logger: Logger, conf: GooglePubSubConf) (topic: Topic): Job<State * PublisherClient> =
       match x.clients |> Map.tryFind topic with
       | Some c ->
         Job.result (x, c)
       | None ->
         let tn = new TopicName(x.projectId, topic)
         job {
-          let! publisherService = PublisherServiceApiClient.CreateAsync(settings=conf.pubSettings)
+          let! api = PublisherServiceApiClient.CreateAsync(settings=conf.pubSettings)
+          try
+            logger.verbose (eventX "Getting {topic}" >> setField "topic" tn)
+            let! _ = Alt.fromTask <| fun ct -> api.GetTopicAsync(tn, ct)
+            ()
+          with e ->
+            logger.info (eventX "Creating {topic}. Exn contains error from GetTopic RPC call." >> setField "topic" tn >> addExn e)
+            let _ = api.CreateTopic(tn (* and call settings *))
+            ()
+
           let! client = PublisherClient.CreateAsync(tn (* and ClientCreationSettings and PublisherClient.Settings *))
-          let _ = publisherService.CreateTopic(tn (* and call settings *))
-          let nextState = { x with clients = x.clients |> Map.add topic client }
-          return nextState, client
+          return
+            { x with clients = x.clients |> Map.add topic client },
+            client
         }
 
     /// Shuts down all the clients in this state.
@@ -112,7 +121,7 @@ module internal Impl =
         let initialState = { projectId=projectId; clients=Map.empty }
         match conf.topic with
         | Constant tn ->
-          let! nextState, _ = initialState.clientFor conf tn
+          let! nextState, _ = initialState.clientFor (logger, conf) tn
           return! running nextState
         | _ ->
           return! running initialState
@@ -124,7 +133,7 @@ module internal Impl =
           | TargetMessage.Log (m, a) ->
             job {
               let topic = conf.topicFor m
-              let! stateNext, client = state.clientFor conf topic
+              let! stateNext, client = state.clientFor (logger, conf) topic
               let message = m.toPubSub()
               let! messageId = client.publish message
               logger.verbose (eventX "Got ack of {messageId}" >> setField "messageId" messageId)

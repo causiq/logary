@@ -34,8 +34,8 @@ let raisedExnWithInner  msg inner =
 
 let lazyConf =
   lazy (
-    let project = env "logary-ci" "GOOGLE_PUB_SUB_PROJECT"
-    let topic = env "logary_tests" "GOOGLE_PUB_SUB_TOPIC"
+    let project = env "crucial-baton-203418" "GOOGLE_PUB_SUB_PROJECT"
+    let topic = env "logs" "GOOGLE_PUB_SUB_TOPIC"
     GooglePubSubConf.create(project, TopicSelector.Constant topic)
   )
 

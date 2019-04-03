@@ -10,3 +10,4 @@ includedPermissions:
 - logging.logEntries.create # since we want to test writing of logs
 - pubsub.topics.publish # since we want to test writing of messages in pubsub, equiv to roles/pubsub.publisher
 - pubsub.topics.create # since we want to test the Selector function naming the topic
+- pubsub.topics.get # since we want to ensure the topic exists before writing to it

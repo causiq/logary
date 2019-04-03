@@ -10,11 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Logary.Tests\Logary.Tests.fsproj" />
     <ProjectReference Include="..\..\targets\Logary.Targets.GooglePubSub\Logary.Targets.GooglePubSub.fsproj" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="paket.references" />
-  </ItemGroup>
-  <ItemGroup>
     <Content Include="pubsub-service-account.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
