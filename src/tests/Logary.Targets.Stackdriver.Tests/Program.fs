@@ -47,7 +47,7 @@ let raisedExnWithInner  msg inner =
 
 let stackdriver =
   lazy (
-    let project = env "logary-ci" "STACKDRIVER_PROJECT"
+    let project = env "crucial-baton-203418" "STACKDRIVER_PROJECT"
     let logName = env "logary-tests" "STACKDRIVER_LOG"
     StackdriverConf.create(project, logName, Global)
   )
