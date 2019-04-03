@@ -1,6 +1,7 @@
 namespace Logary
 
 open Logary.Internals
+open Logary.Metric
 open NodaTime
 open Hopac
 
@@ -23,6 +24,7 @@ type ShutdownInfo = ShutdownInfo of acks:string list * timeouts:string list
 /// This is also a synchronous wrapper around the asynchronous actors that make
 /// up logary
 type LogManager =
+
   /// Gets the service name that is used to filter and process the logs further
   /// downstream. This property is configured at initialisation of Logary.
   abstract runtimeInfo: RuntimeInfo
@@ -50,6 +52,9 @@ type LogManager =
   abstract shutdown: flush:Duration * shutdown:Duration -> Alt<FlushInfo * ShutdownInfo>
   abstract shutdown: unit -> Alt<unit>
 
-  /// Dynamically controls logger min level, 
+  /// Dynamically controls logger min level,
   /// this will only affect the loggers (its name, not its instance) which have been created beafore
   abstract switchLoggerLevel: string * LogLevel -> unit
+
+  /// register metrics
+  abstract metricRegistry: MetricRegistry

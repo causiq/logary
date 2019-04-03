@@ -2,8 +2,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <Version>5.0.0-rc.6</Version>
-    <Version>5.0.0-rc.3</Version>
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <NoWarn>44</NoWarn>
     <DebugSymbols>true</DebugSymbols>
@@ -13,6 +11,7 @@
     <ServerGarbageCollection>true</ServerGarbageCollection>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Metrics.fs" />
     <Compile Include="Utils.fs" />
     <Compile Include="Diff.fs" />
     <Compile Include="Engine.fs" />

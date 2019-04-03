@@ -1,3 +1,6 @@
+#### 5.0.0-rc.8
+* Prometheus Support 🎉, thanks @lust4life
+
 #### 5.0.0-rc.7
 * Build improvements, thanks @haf
 

@@ -116,13 +116,9 @@ Target.create "PaketFiles" (fun _ ->
 
   replace "namespace Logary.Facade" "namespace Cibryy.Logging"
           "paket-files/logary/logary/src/Logary.CSharp.Facade/Facade.cs"
-)
 
-Target.create "ProjectVersion" (fun _ ->
-  !! "src/*/*.fsproj"
-  |> Seq.iter (fun file ->
-    printfn "Changing file %s" file
-    Xml.poke file "Project/PropertyGroup/Version/text()" release.NugetVersion)
+  replace "namespace Utilities" "namespace Logary.Internals"
+          "paket-files/haf/DVar/src/DVar/DVar.fs"
 )
 
 Target.create "TCReportVersion" (fun _ ->
@@ -142,7 +138,7 @@ Target.create "Build" <| fun _ ->
     { MSBuild.CliArguments.Create() with
         Verbosity = Some Quiet
         NoLogo = true
-        Properties = [ "Optimize", "true"; "DebugSymbols", "true" ] }
+        Properties = [ "Optimize", "true"; "DebugSymbols", "true"; "Version", release.AssemblyVersion ] }
   let setParams (o: DotNet.BuildOptions) =
     { o with
         Configuration = configuration
@@ -225,7 +221,6 @@ Target.create "Release" (fun _ ->
 "Clean"
   ==> "AssemblyInfo"
   ==> "PaketFiles"
-  ==> "ProjectVersion"
   =?> ("TCReportVersion", TeamCity.Environment.Version |> Option.isSome)
   ==> "Build"
   ==> "Tests"

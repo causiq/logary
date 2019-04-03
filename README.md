@@ -161,32 +161,6 @@ OR:
 
 <!-- /TOC -->
 
-## Hello World (C#)
-
-> Be sure to choose Logary version 5 (enable pre-release), or it won't work!
-
-```csharp
-using Logary;
-using Logary.Configuration;
-using Logary.Targets;
-
-// snip
-
-// NuGet: Install-Package Logary
-string loggerId = "Logary.MyLogger";
-using (var logary = LogaryFactory.New("svc", "host",
-    // You could define multiple targets. For HelloWorld, we use only console:
-    with => with.InternalLogger(ILogger.NewConsole(LogLevel.Error))
-                .Target<TextWriter.Builder>("myFirstTarget",
-                   conf => conf.Target.WriteTo(System.Console.Out, System.Console.Error))).Result)
-{
-    // Then let's log a message. For HelloWorld, we log a string:
-    var logger = logary.getLogger(Logary.PointNameModule.Parse(loggerId));
-    logger.logSimple(Logary.MessageModule.Event(Logary.LogLevel.Info, "Hello World!"));
-    System.Console.ReadLine();
-}
-```
-
 ## Hello World (F#)
 
 > Be sure to choose Logary version 5 (enable pre-release), or it won't work!
@@ -217,6 +191,32 @@ let main argv =
 
   mre.Wait()
   0
+```
+
+## Hello World (C#)
+
+> Be sure to choose Logary version 5 (enable pre-release), or it won't work!
+
+```csharp
+using Logary;
+using Logary.Configuration;
+using Logary.Targets;
+
+// snip
+
+// NuGet: Install-Package Logary
+string loggerId = "Logary.MyLogger";
+using (var logary = LogaryFactory.New("svc", "host",
+    // You could define multiple targets. For HelloWorld, we use only console:
+    with => with.InternalLogger(ILogger.NewConsole(LogLevel.Error))
+                .Target<TextWriter.Builder>("myFirstTarget",
+                   conf => conf.Target.WriteTo(System.Console.Out, System.Console.Error))).Result)
+{
+    // Then let's log a message. For HelloWorld, we log a string:
+    var logger = logary.getLogger(Logary.PointNameModule.Parse(loggerId));
+    logger.logSimple(Logary.MessageModule.Event(Logary.LogLevel.Info, "Hello World!"));
+    System.Console.ReadLine();
+}
 ```
 
 ## Overview
@@ -814,6 +814,12 @@ string acceptable to string.Format() will also be correctly processed by logary.
  * Property names may be suffixed with an optional format, e.g. `:000`, to control
    how the property is rendered; these format strings behave exactly as their
    counterparts within the `string.Format()` syntax
+
+## Prometheus
+
+Logary supports Prometheus. Reference `Logary.Prometheus` and create metrics:
+
+TBD
 
 ### Metrics & EventProcessing pipeline
 

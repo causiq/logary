@@ -6,6 +6,7 @@ open Hopac
 open Hopac.Infixes
 open Hopac.Extensions
 open Logary
+open Logary.Metric
 open Logary.Internals
 open Logary.Targets
 open Logary.Configuration
@@ -21,6 +22,7 @@ type ILogger =
   | Targets of config:TargetConf list
 
 module Config =
+
   type T =
     private {
       targets: HashMap<string, TargetConf>
@@ -35,6 +37,7 @@ module Config =
       loggerLevels: (string * LogLevel) list
       logResultHandler: ProcessResult -> unit
       defaultWaitForBuffersTimeout: Duration
+      metricRegistry: MetricRegistry
     }
 
   let create service host =
@@ -44,15 +47,16 @@ module Config =
       getTimestamp = Global.getTimestamp
       getSem       = Global.getConsoleSemaphore
       middleware   = List.empty
-      ilogger      = ILogger.Console Warn
+      ilogger      = ILogger.Console LogLevel.Warn
       setGlobals   = true
       processing   = Events.events
       loggerLevels = [(".*", LogLevel.Info)]
       logResultHandler = function | Result.Error error -> System.Console.Error.Write (MessageWriter.singleLineNoContext.format error) | _ -> ()
       defaultWaitForBuffersTimeout = Duration.FromSeconds 3L
+      metricRegistry = new MetricRegistry()
     }
 
-  let target tconf lconf =
+  let target (tconf: TargetConf) lconf =
     { lconf with targets = lconf.targets |> HashMap.add tconf.name tconf }
 
   let targets tconfs lconf =
@@ -95,6 +99,9 @@ module Config =
   let disableGlobals lconf =
     { lconf with setGlobals = false }
 
+  let metricRegistry metricRegistry lconf =
+    { lconf with metricRegistry = metricRegistry }
+
   let inline private setToGlobals (logManager: LogManager) =
     let config =
       { Global.defaultConfig with
@@ -134,7 +141,9 @@ module Config =
     createInternalLogger ri (createInternalTargets lconf.ilogger) >>= fun (ri, ilogger) ->
     let mids =
       [ Middleware.host lconf.host
-        Middleware.service lconf.service ]
+        Middleware.service lconf.service
+        Middleware.enableHookMetric lconf.metricRegistry
+      ]
     let middleware = Array.ofList (lconf.middleware @ mids)
 
     let conf =
@@ -146,6 +155,7 @@ module Config =
           member x.loggerLevels = lconf.loggerLevels
           member x.logResultHandler = lconf.logResultHandler
           member x.defaultWaitForBuffersTimeout = lconf.defaultWaitForBuffersTimeout
+          member x.metricRegistry = lconf.metricRegistry
       }
 
     Registry.create conf >>- fun registry ->

@@ -2,8 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AssemblyName>Logary</AssemblyName>
-    <Version>5.0.0-rc.6</Version>
-    <Version>5.0.0-rc.3</Version>
+    <Version>5.0.0-rc.8</Version>
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <NoWarn>44;2003</NoWarn>
     <DefineConstants>TYPESHAPE_EXPOSE</DefineConstants>
@@ -12,6 +11,10 @@
     <DefineConstants>TYPESHAPE_EXPOSE;DEBUG</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\..\paket-files\haf\DVar\src\DVar\DVar.fs">
+      <Paket>True</Paket>
+      <Link>paket-files/DVar.fs</Link>
+    </Compile>
     <Compile Include="..\..\paket-files\messagetemplates\messagetemplates-fsharp\src\FsMtParser\FsMtParserFull.fs">
       <Paket>True</Paket>
       <Link>paket-files/FsMtParserFull.fs</Link>
@@ -50,12 +53,18 @@
     <Compile Include="Internals/Reflection.fs" />
     <Compile Include="Internals/NullLogger.fs" />
     <Compile Include="Internals/Middleware.fs" />
+    <Compile Include="Internals/RuntimeInfo.fs" />
     <Compile Include="Formatting/DotNetStacktrace.fs" />
     <Compile Include="Formatting/JsonHelper.fs" />
     <Compile Include="Formatting/MessageTemplates.fs" />
     <Compile Include="DurationModule.fs" />
     <Compile Include="UnitsModule.fs" />
     <Compile Include="GaugeModule.fs" />
+    <Compile Include="Metric\DoubleAdder.fs" />
+    <Compile Include="Metric\Metric.fs" />
+    <Compile Include="Metric\MetricBuilder.fs" />
+    <Compile Include="Metric\Histogram.fs" />
+    <Compile Include="Metric\Gauge.fs" />
     <Compile Include="Global.fs" />
     <Compile Include="Extensions/System.Stopwatch.fs" />
     <Compile Include="Extensions/Hopac.Alt.fs" />
@@ -66,12 +75,13 @@
     <Compile Include="MessageModule.fs" />
     <Compile Include="LogResultModule.fs" />
     <Compile Include="LoggerModule.fs" />
+    <Compile Include="LogManager.fs" />
+    <Compile Include="Extensions\LogManager.fs" />
     <Compile Include="SpanModule.fs" />
     <Compile Include="MiddlewareModule.fs" />
     <!-- Below: runtime -->
     <Compile Include="Internals/Supervisor.fs" />
     <Compile Include="Internals/Rule.fs" />
-    <Compile Include="Internals/RuntimeInfo.fs" />
     <Compile Include="Internals/RuntimeInfoModule.fs" />
     <Compile Include="Internals/Targets.fs" />
     <Compile Include="TargetConf.fs" />
@@ -79,7 +89,6 @@
     <Compile Include="Internals/InternalLogger.fs" />
     <Compile Include="Log.fs" />
     <!-- Below: events processing -->
-    <Compile Include="Configuration/LogManager.fs" />
     <Compile Include="Configuration/Transformers.fs" />
     <Compile Include="Configuration/Ticker.fs" />
     <Compile Include="Configuration/Pipe.fs" />

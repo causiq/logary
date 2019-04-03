@@ -6,6 +6,7 @@ open Hopac.Infixes
 open Hopac.Extensions
 open Logary
 open Logary.Message
+open Logary.Metric
 open Logary.Internals
 open Logary.Configuration
 open NodaTime
@@ -29,9 +30,12 @@ type LogaryConf =
   abstract logResultHandler: (ProcessResult -> unit)
   /// time out duration waiting for each target buffer to be available to take the message, if users choose logging message and waitForBuffers
   abstract defaultWaitForBuffersTimeout: Duration
+  /// the metric registry for metric
+  abstract metricRegistry: MetricRegistry
 
 /// This is the main state container in Logary.
 module Registry =
+
   /// The holder for the channels of communicating with the registry.
   type T =
     private {
@@ -58,6 +62,9 @@ module Registry =
 
       /// default logger rules from logary conf, will be applied when create new logger
       defaultLoggerLevelRules: (string * LogLevel) list
+
+      /// metric registry
+      metricRegistry: MetricRegistry
     }
 
   /// Flush all pending messages for all targets. Flushes with no timeout; if
@@ -104,6 +111,7 @@ module Registry =
 
 
   module private Impl =
+    open Metric
 
     let ensureName name (m: Message) =
       if m.name.isEmpty then { m with name = name } else m
@@ -196,6 +204,9 @@ module Registry =
       (targets |> Seq.Con.mapJob flushTarget)
       >>- (partitionResults >> FlushInfo)
 
+    let changeMetricDefaultFailBehavior (logger: Logger) (metricRegistry: MetricRegistry) =
+      metricRegistry.changeDefaultFailBehavior (eventX >> logger.warn)
+
     let internal onKestrel =
       lazy (null <> System.Type.GetType "Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServer, Microsoft.AspNetCore.Server.Kestrel.Core")
     let internal onIIS =
@@ -231,7 +242,7 @@ module Registry =
     let flushCh, shutdownCh, isClosed = Ch (), Ch (), IVar ()
 
     Impl.spawnTargets ri conf.targets >>= fun targets ->
-    let byName = targets |> Array.map (fun t -> t.name, t) |> HashMap.ofArray
+    let targetsByName = targets |> Array.map (fun t -> t.name, t) |> HashMap.ofArray
 
     let rec running ctss =
       Alt.choose [
@@ -262,7 +273,7 @@ module Registry =
           if Set.isEmpty sinks then
             targets
           else
-            sinks |> Seq.choose (fun name -> HashMap.tryFind name byName) |> Array.ofSeq
+            sinks |> Seq.choose (fun name -> HashMap.tryFind name targetsByName) |> Array.ofSeq
 
         if Array.isEmpty targets then
           NoResult
@@ -284,6 +295,8 @@ module Registry =
             result)
           |> HasResult)
 
+    Impl.changeMetricDefaultFailBehavior ri.logger conf.metricRegistry
+
     runningPipe >>= fun (sendMsg, ctss) ->
     let state =
       { runtimeInfo = ri
@@ -292,7 +305,8 @@ module Registry =
         flushCh = flushCh
         shutdownCh = shutdownCh
         loggerLevels = new ConcurrentDictionary<string,LogLevel> ()
-        defaultLoggerLevelRules = conf.loggerLevels }
+        defaultLoggerLevelRules = conf.loggerLevels
+        metricRegistry = conf.metricRegistry}
 
     Job.supervise rlogger (Policy.restartDelayed 512u) (running ctss)
     |> Job.startIgnore
@@ -316,4 +330,5 @@ module Registry =
           shutdown t
         member x.switchLoggerLevel (path, logLevel) =
           Impl.switchLoggerLevel t path logLevel
+        member x.metricRegistry = t.metricRegistry
     }

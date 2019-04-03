@@ -2,14 +2,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netcoreapp2.0</TargetFrameworks>
-    <Version>5.0.0-rc.6</Version>
-    <Version>5.0.0-rc.3</Version>
     <OutputType>Exe</OutputType>
     <ServerGarbageCollection>true</ServerGarbageCollection>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="DoubleAdder.fs" />
     <Compile Include="Program.fs" />
     <Content Include="paket.references" />
     <ProjectReference Include="../Logary/Logary.fsproj" />
