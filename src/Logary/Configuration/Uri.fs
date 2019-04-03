@@ -201,6 +201,7 @@ module TargetConfig =
       "rabbitmq",    moduleNameConfigNameAsm "RabbitMQ"
       "stackdriver", moduleNameConfigNameAsm "Stackdriver"
       "bigquery",    moduleNameConfigNameAsm "BigQuery"
+      "googlepubsub", moduleNameConfigNameAsm "GooglePubSub"
       "shipper",     moduleNameConfigNameAsm "Shipper"
       "sse",         moduleNameConfigNameAsm "SSE"
     ]
