@@ -33,7 +33,10 @@ type GooglePubSubConf =
       selector m
 
   /// https://googleapis.github.io/google-cloud-dotnet/docs/Google.Cloud.PubSub.V1/api/Google.Cloud.PubSub.V1.PublisherServiceApiSettings.html
-  static member create (?projectId: string, ?topic: TopicSelector, ?shutdownTimeout: Duration, ?pubSettings: PublisherServiceApiSettings) =
+  static member create (?projectId: string,
+                        ?topic: TopicSelector,
+                        ?shutdownTimeout: Duration,
+                        ?pubSettings: PublisherServiceApiSettings) =
     { projectId = projectId
       topic = topic |> Option.defaultValue (Constant "logs")
       shutdownTimeout = defaultArg shutdownTimeout (Duration.FromSeconds 5L)
