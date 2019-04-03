@@ -39,9 +39,10 @@ let raisedExnWithInner  msg inner =
 
 let bigQuery =
   lazy (
-    let project = env "logary-ci" "BIGQUERY_PROJECT"
-    let logName = env "logary_tests" "BIGQUERY_TABLE"
-    BigQueryConf.create(project, logName)
+    let project = env "crucial-baton-203418" "BIGQUERY_PROJECT"
+    let dataset = env "logs" "BIGQUERY_DATASET"
+    let table = env "all" "BIGQUERY_TABLE"
+    BigQueryConf.create(project, dataset, table)
   )
 
 [<Tests>]

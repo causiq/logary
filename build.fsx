@@ -43,7 +43,6 @@ let testProjects =
   !! "src/tests/**/*.fsproj"
   ++ "src/services/*.Tests/*.fsproj"
   ++ "src/*.Tests/*.fsproj"
-  -- "src/tests/Logary.Targets.BigQuery.Tests/*.fsproj"
   -- "src/tests/Logary.Targets.SSE.Tests/*.fsproj"
 
 let libProjects =
