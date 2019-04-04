@@ -8,13 +8,10 @@ prepare:
 	./fake.sh build --single-target --target AssemblyInfo
 	./fake.sh build --single-target --target PaketFiles
 
-version:
-	./fake.sh build --single-target --target ProjectVersion
-
 restore:
 	dotnet restore src/Logary.sln
 
-build: prepare version restore
+build: prepare restore
 	dotnet build src/Logary.sln -c Release
 
 test: build
