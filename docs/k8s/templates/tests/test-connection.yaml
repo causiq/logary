@@ -14,5 +14,5 @@ spec:
     - name: wget
       image: busybox
       command: ['wget']
-      args:  ['{{ include "logary-site.fullname" . }}:{{ .Values.service.port }}']
+      args:  ['{{ include "logary-site.fullname" . }}:80']
   restartPolicy: Never

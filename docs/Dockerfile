@@ -10,4 +10,5 @@ COPY . .
 
 RUN yarn build
 
+ENV PORT=80
 CMD ["yarn", "start"]
