@@ -10,7 +10,7 @@ steps:
   - eu.gcr.io/$PROJECT_ID/logary-site:$COMMIT_SHA
   - -t
   - eu.gcr.io/$PROJECT_ID/logary-site:latest
-  - .
+  - docs
 
 - name: gcr.io/cloud-builders/docker
   args: ["push", "eu.gcr.io/$PROJECT_ID/logary-site:$COMMIT_SHA" ]
