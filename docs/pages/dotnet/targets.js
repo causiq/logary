@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import Layout from '../components/Layout'
-import ConfTable from '../components/ConfTable'
+import Layout from '../../components/Layout'
+import ConfTable from '../../components/ConfTable'
 
 function GooglePubSub() {
   const conf = [
