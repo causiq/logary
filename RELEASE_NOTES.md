@@ -1,6 +1,7 @@
 #### 5.0.0-rc.8
 * Prometheus Support 🎉, thanks @lust4life
 * Google Pub/Sub support 🎊, thanks @haf
+* New domain with docs at https://logary.tech 😎, thanks @haf
 
 #### 5.0.0-rc.7
 * Build improvements, thanks @haf
