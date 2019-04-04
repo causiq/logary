@@ -63,12 +63,22 @@ spec:
         {{- if (eq .binding.port 9090.0) -}}
         {{ fail "Port 9090 is reserved for Rutta health checks. Don't add a listener on it, please." }}
         {{- end }}
-
         - containerPort: {{ .binding.port | required "Your binding needs a port specified." }}
           {{- if (eq .mode "udp") }}
           protocol: "UDP"
           {{- end }}
         {{- end }}
+
+        {{- if .Values.deployment.env }}
+        env:
+        {{- with .Values.deployment.env }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- end }}
+
+        volumeMounts:
+        - name: etc-rutta
+          mountPath: /etc/rutta
 
         {{- if not .Values.disableHealth }}
         livenessProbe:
@@ -82,17 +92,22 @@ spec:
         {{- end }}
 
         resources:
-          {{- toYaml .Values.resources | nindent 12 }}
+        {{- toYaml .Values.resources | nindent 10 }}
+
+      volumes:
+      - name: etc-rutta
+        secret:
+          secretName: {{ include "rutta.fullname" . }}
 
       {{- with .Values.nodeSelector }}
       nodeSelector:
-        {{- toYaml . | nindent 8 }}
+      {{- toYaml . | nindent 8 }}
       {{- end }}
     {{- with .Values.affinity }}
       affinity:
-        {{- toYaml . | nindent 8 }}
+      {{- toYaml . | nindent 8 }}
     {{- end }}
     {{- with .Values.tolerations }}
       tolerations:
-        {{- toYaml . | nindent 8 }}
+      {{- toYaml . | nindent 8 }}
     {{- end }}

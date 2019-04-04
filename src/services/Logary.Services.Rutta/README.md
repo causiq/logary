@@ -3,7 +3,7 @@
 The recommended approach to using Rutta is to run it as a docker container;
 
     docker run --rm -it haaf/rutta
-    
+
 or, if you're a Kubernetes user;
 
     helm install incubator/rutta
@@ -14,7 +14,6 @@ See the [Stackdriver docs][stackdriver-docs] for configuring the Stackdriver tar
 
 
 ## Testing Rutta
-
 
 Terminal 1
 

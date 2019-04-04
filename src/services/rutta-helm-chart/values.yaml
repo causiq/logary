@@ -19,6 +19,22 @@ verbose: true
 # future prometheus metrics endpoint
 disableHealth: false
 
+# Deployment files
+etc:
+  stubEtc: true
+  #data: {}
+
+  # Example:
+  #data:
+  #  gcs.json: |
+  #    JSON KEY HERE { ... }
+
+deployment:
+  env: {}
+  # Example:
+  #- name: GOOGLE_APPLICATION_CREDENTIALS
+  #  value: "/etc/rutta/rutta-gcs.json"
+
 # Router:
 # More help with # docker run --rm -it haaf/rutta:latest router --help
 router:
@@ -82,6 +98,7 @@ router:
   # - rabbitmq://
   # - stackdriver://./?logId=apps
   # - bigquery://?dataset=logs&table=all
+  # - googlepubsub://./
   # - sse://./?path=/logs&cors=false
   targets:
   - console://./
