@@ -1,0 +1,20 @@
+{
+  "name": "logary-docs",
+  "version": "1.0.0",
+  "description": "Logary site with next.js",
+  "main": "index.js",
+  "repository": "https://github.com/logary/logary",
+  "author": "Henrik Feldt",
+  "license": "GPL-3.0-only",
+  "private": false,
+  "dependencies": {
+    "next": "^8.0.4",
+    "react": "^16.8.6",
+    "react-dom": "^16.8.6"
+  },
+  "scripts": {
+    "dev": "next",
+    "build": "next build",
+    "start": "next start"
+  }
+}
