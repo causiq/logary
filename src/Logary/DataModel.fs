@@ -156,7 +156,7 @@ module PointName =
   /// treat this value like an immutable value.
   [<CompiledName "OfArray">]
   let ofArray (hiera: string[]) =
-    PointName hiera
+     PointName hiera
 
   [<CompiledName "Parse">]
   let parse (s: string) =
@@ -244,6 +244,41 @@ type Message =
     /// The # of seconds since UNIX epoch 1970-01-01T00:00:00Z
     member x.timestampEpochS: int64 =
       x.timestamp / Constants.NanosPerSecond
+      
+
+/// Patterns to match against the context; useful for extracting the data
+/// slightly more semantically than "obj"-everything. Based on the known prefixes
+/// in `KnownLiterals`.
+module MessagePatterns =
+  open KnownLiterals
+
+  /// Pattern match the key
+  let (|Intern|Field|Gauge|Tags|Context|) (KeyValue (key: string, value: obj)) =
+    match key with
+    | _ when key = TagsContextName ->
+      let tags = unbox<Set<string>> value
+      Tags tags
+
+    | _ when key.StartsWith FieldsPrefix ->
+      let k = key.Substring FieldsPrefix.Length
+      Field (k, value)
+
+    | _ when key.Equals(DefaultGaugeName, StringComparison.InvariantCulture) ->
+      Gauge (String.Empty, unbox<Gauge> value)
+
+    | _ when key.StartsWith GaugeNamePrefix ->
+      let k = key.Substring GaugeNamePrefix.Length
+      Gauge (k, unbox<Gauge> value)
+
+    | _ when key.StartsWith LogaryPrefix ->
+      Intern
+
+    | _ ->
+      match value with
+      | :? Gauge as g ->
+        Gauge (key, g)
+      | _ ->
+        Context (key, value)
 
 /// A Span focuses primarily on a timed scope of execution, which will come to end. This
 /// abstraction is primarily used for tracing.

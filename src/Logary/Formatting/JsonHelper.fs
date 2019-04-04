@@ -70,10 +70,12 @@ module Shape =
       |> Some
     | _ ->
       None
-      
+
   let (|LogLevel|_|) (shape: TypeShape) = test<Logary.LogLevel> shape
   let (|PointName|_|) (shape: TypeShape) = test<Logary.PointName> shape
   let (|Gauge|_|) (shape: TypeShape) = test<Logary.Gauge> shape
+  let (|Value|_|) (shape: TypeShape) = test<Logary.Value> shape
+  let (|Message|_|) (shape: TypeShape) = test<Logary.Message> shape
   let (|Instant|_|) (shape: TypeShape) = test<NodaTime.Instant> shape
   let (|LocalDate|_|) (shape: TypeShape) = test<NodaTime.LocalDate> shape
   let (|Duration|_|) (shape: TypeShape) = test<NodaTime.Duration> shape
@@ -93,6 +95,7 @@ and JsonEncoderFactory<'a> =
 module internal JsonHelper =
 
   module E = Chiron.Serialization.Json.Encode
+  module EI = Chiron.Inference.Json.Encode
 
   let private emptyJsonEncoderRegistry =
     { new JsonEncoderRegistry with member __.tryGet _ = None }
@@ -246,6 +249,23 @@ module internal JsonHelper =
     | Shape.PointName ->
       wrap (fun (PointName xs) -> E.arrayWith Json.String xs)
 
+    | Shape.Value ->
+      wrap (
+        E.propertyList << function
+        | Float x ->
+          [ "type", E.string "float"
+            "value", E.float x ]
+        | Int64 x ->
+          [ "type", E.string "int64"
+            "value", E.int64 x ]
+        | BigInt x ->
+          [ "type", E.string "bigint"
+            "value", E.bigint x ]
+        | Fraction (n, d) ->
+          [ "type", E.string "fraction"
+            "value", E.tuple2 E.int64 E.int64 (n, d) ]
+      )
+
     | Shape.Gauge ->
       (*
       Without this case:
@@ -264,6 +284,38 @@ module internal JsonHelper =
           "type", Json.String "gauge"
           "value", toJsonCached er ctx v
           "unit", toJsonCached er ctx u
+        ])
+
+    | Shape.Message ->
+      wrap (fun (m: Message) ->
+        E.propertyList [
+          yield "name", Json.String (m.name.ToString())
+          yield "value", Json.String m.value
+          yield "level", Json.String (m.level.ToString())
+          yield "timestamp", Json.Number (m.timestamp.ToString())
+          let gauges = ResizeArray<string * Json>()
+          let fields = ResizeArray<string * Json>()
+          let context = ResizeArray<string * Json>()
+          for f in m.context do
+            match f with
+            | MessagePatterns.Tags tags ->
+              yield "tags", E.arrayWith E.string (Array.ofSeq tags)
+
+            | MessagePatterns.Intern ->
+              ()
+
+            | MessagePatterns.Field (name, v) ->
+              fields.Add(name, toJsonCached er ctx v)
+
+            | MessagePatterns.Gauge (name, g) ->
+              gauges.Add(name, toJsonCached er ctx g)
+
+            | MessagePatterns.Context (name, v) ->
+              context.Add(name, toJsonCached er ctx v)
+
+          yield "gauges", Json.Object (JsonObject.ofSeq gauges)
+          yield "fields", Json.Object (JsonObject.ofSeq fields)
+          yield "context", Json.Object (JsonObject.ofSeq context)
         ])
 
     | meta when meta.Type.Namespace = "System.Reflection" ->
@@ -479,7 +531,7 @@ module internal JsonHelper =
             let label, fp = x.Value
             s |> JsonObject.add label (fp input)) JsonObject.empty
         |> Json.Object
-        
+
     | Shape.FSharpFunc s ->
       s.Accept
         { new IFSharpFuncVisitor<'T -> Json> with

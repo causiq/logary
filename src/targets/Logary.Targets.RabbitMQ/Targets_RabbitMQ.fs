@@ -110,6 +110,7 @@ let empty =
     compression       = NoCompression }
 
 module internal Impl =
+  open System.Text
 
   module Counter =
     open System.Threading
@@ -210,9 +211,13 @@ module internal Impl =
         use gz = new IO.Compression.GZipStream(ms, IO.Compression.CompressionMode.Compress)
         gz.Write(bytes, 0, bytes.Length)
         ms.ToArray()
+        
+  let utf8 = Encoding.UTF8
 
   let body (conf: RabbitMQConf) (message: Message) =
-    Logary.Formatting.Json.format message |> System.Text.Encoding.UTF8.GetBytes |> compress conf.compression
+    Logary.Formatting.Json.encodeFormat message
+      |> utf8.GetBytes
+      |> compress conf.compression
 
   let selectConfirm (ilogger: Logger) state (kont: State -> Job<unit>): Alt<_> =
 

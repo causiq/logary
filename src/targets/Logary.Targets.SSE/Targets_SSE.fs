@@ -72,10 +72,10 @@ module internal Impl =
       let data, typ =
         match messages with
         | m :: [] ->
-          FJson.formatWith JsonFormattingOptions.Compact m,
+          FJson.encodeWith JsonFormattingOptions.Compact m,
           single
         | ms ->
-          FJson.formatWith JsonFormattingOptions.Compact (Array ms),
+          FJson.encodeWith JsonFormattingOptions.Compact (Array ms),
           multi
       let message = SSEMessage.createType mId data single
       return! EventSource.send conn message

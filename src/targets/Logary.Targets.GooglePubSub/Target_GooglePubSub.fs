@@ -132,7 +132,7 @@ module internal Impl =
           do! logger.infoWithBP (eventX "Started GooglePubSub target with project {projectId}, writing to topic=Constant({topic})." >> setField "projectId" projectId >> setField "topic" tn)
           return! running nextState
         | _ ->
-          do! logger.infoWithBP (eventX "Started GooglePubSub target with project {projectId}, writing to topic=Selector({topic})." >> setField "projectId" projectId >> setField "topic" conf.topic)
+          do! logger.infoWithBP (eventX "Started GooglePubSub target with project {projectId}, writing to topic=Selector(Message -> Topic)." >> setField "projectId" projectId)
           return! running initialState
       }
 

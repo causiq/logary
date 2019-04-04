@@ -62,7 +62,7 @@ let empty =
     Env.varDefault "MIXPANEL_TOKEN" (fun () -> "MIXPANEL_TOKEN=MISSING"))
 
 module internal E =
-  open Logary.Message.Patterns
+  open Logary.MessagePatterns
   open Logary.Formatting
 
   module E = Json.Encode

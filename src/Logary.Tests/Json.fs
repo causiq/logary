@@ -1,7 +1,6 @@
 module Logary.Tests.Json
 
 open System
-open System.Globalization
 open Logary
 open Logary.Internals.Chiron
 open Logary.Formatting
@@ -112,6 +111,40 @@ let testEncode<'a> fsCheckConfig =
 let ptestEncode<'a> fsCheckConfig =
   ptestPropertyWithConfig fsCheckConfig typeof<'a>.Name (fun (a: 'a) -> Json.encode a |> ignore)
 
+let testRoundtrip<'a when 'a : equality> fsCheckConfig (decoder: JsonDecoder<'a>) =
+  testPropertyWithConfig fsCheckConfig typeof<'a>.Name (fun (a: 'a) ->
+    let encoded = Json.encode a
+    try
+      encoded
+        |> decoder
+        |> JsonResult.getOrThrow
+        |> Expect.equal "Should eq to input" a
+    with _ ->
+      printfn "Encoded %A" encoded
+      reraise()
+    )
+
+module Expect =
+  module Message =
+    let equal (message: string) (expected: Message) (actual: Message) =
+      actual.name
+        |> Expect.equal "name" expected.name
+      actual.level
+        |> Expect.equal "level" expected.level
+      actual.timestamp
+        |> Expect.equal "timestamp" expected.timestamp
+      actual.value
+        |> Expect.equal "value" expected.value
+
+      for KeyValue (k, v) in actual.context do
+        match expected.context |> HashMap.tryFind k with
+        | None ->
+          failtestf "Failed to find key %s in actual's Message.context" k
+        | Some v ->
+          v |> Expect.equal "value" v
+
+      ()
+
 let tests fsc =
   testList "json" [
     testCase "accessing .context" <| fun () ->
@@ -158,7 +191,7 @@ let tests fsc =
           Logary.LogLevel.Debug
             |> Json.encode
             |> Expect.equal "Encodes to 'debug'" (String "debug")
-            
+
         testCase "FSharpFunc" <| fun () ->
           let example = fun (a: int) (b: float) -> float a * b
           match Json.encode example with
@@ -232,9 +265,8 @@ let tests fsc =
 
     testList "decoding" [
       testCase "message" <| fun () ->
-        match Json.parse jsonRawInput |> JsonResult.bind Json.decodeMessage with
+        match Json.parse jsonRawInput |> JsonResult.bind Json.Decode.message with
         | JPass m ->
-          let m = m.[0]
           DateTimeOffset.ofEpoch m.timestamp
             |> Expect.equal "Should have timestamp from 'timestamp' prop in JSON"
                             (DateTimeOffset.Parse("2018-03-19T15:33:40Z"))
@@ -244,7 +276,7 @@ let tests fsc =
       testCase "message crash (regression)" <| fun () ->
         let res =
           Json.parse jsonInputCrash
-            |> JsonResult.bind Json.decodeMessage
+            |> JsonResult.bind Json.Decode.messageBatch
             |> JsonResult.getOrThrow
         res |> Expect.isNonEmpty "Should have message values"
 
@@ -324,7 +356,7 @@ let tests fsc =
       ]
 
       testCase "simplest possible batch JSON" <| fun () ->
-        match Json.parse jsonBatch |> JsonResult.bind Json.decodeMessage with
+        match Json.parse jsonBatch |> JsonResult.bind Json.Decode.messageBatch with
         | JPass ms ->
           let m = ms.[0]
           m.name.isEmpty
@@ -346,21 +378,23 @@ let tests fsc =
 
         | JFail err ->
           failtestf "Parse failure %A" err
-          
+
       testList "fields and context" [
         let sample = """{"message":"Hi {user}", "context":{"app":"native"}, "fields": {"user":"haf"}, "lastly": true, "myObj": {"isProp":"nested"} }"""
         let subject =
           Json.parse sample
-            |> JsonResult.bind Json.decodeMessage
+            |> JsonResult.bind Json.Decode.message
             |> JsonResult.getOrThrow
-            |> Array.head
 
         yield testCase "field" <| fun () ->
           subject |> Message.tryGetField "user" |> Expect.equal "Field equals" (Some "haf")
+
         yield testCase "context" <| fun () ->
           subject |> Message.tryGetContext "app" |> Expect.equal "Field equals" (Some "native")
+
         yield testCase "field from outside" <| fun () ->
           subject |> Message.tryGetField "lastly" |> Expect.equal "Should have a true value" (Some true)
+
         yield testCase "nested obj from outside" <| fun () ->
           let expected = HashMap.empty |> HashMap.add "isProp" (box "nested") |> HashMap.toList
           subject
@@ -369,6 +403,36 @@ let tests fsc =
             |> HashMap.toList
             |> Expect.equal "Should have a true value" expected
       ]
+    ]
+
+    testList "roundtrip" [
+      testRoundtrip<PointName> fsc Json.Decode.pointName
+      testRoundtrip<Value> fsc Json.Decode.gaugeValue
+      testRoundtrip<Gauge> fsc Json.Decode.gauge
+      testRoundtrip<LogLevel> fsc Json.Decode.level
+
+      testCase "small record" <| fun () ->
+        let subject = Message.event Info "Hi" |> Message.setContext "user" (foo ())
+        let encoded = subject |> Json.encode
+        encoded
+          |> Expect.Json.isObjectX "encodes Message to JsonObject"
+          |> JsonObject.find "context"
+          |> JsonResult.getOrThrow
+          |> Expect.Json.isObjectX "encodes context to JsonObject"
+          |> JsonObject.find "user"
+          |> JsonResult.getOrThrow
+          |> Expect.Json.isObject "Encodes the Record as JsonObject"
+
+      testCase "default gauge" <| fun () ->
+        let input = Message.gaugef (PointName [| "car" |]) "throttle" 0.45
+        let encoded = input |> Json.encode
+        let decoded = encoded |> Json.Decode.message |> JsonResult.getOrThrow
+        decoded |> Expect.Message.equal "Should eq decoded" input
+
+      ptestCase "complex message" <| fun () ->
+        let encoded = Json.encode complexMessage
+        let decoded = encoded |> Json.Decode.message |> JsonResult.getOrThrow
+        decoded |> Expect.Message.equal "Should eq after roundtrip" complexMessage
     ]
   ]
 

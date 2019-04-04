@@ -49,7 +49,7 @@ module internal Impl =
     msg.context
     |> HashMap.toSeq
     |> Seq.map( fun (name, v) ->
-       let jsonStr = Logary.Formatting.Json.format v
+       let jsonStr = Logary.Formatting.Json.encodeFormat v
        Elmah.Io.Client.Models.Item(name, jsonStr))
     |> fun xs -> Collections.Generic.List<_>(xs)
 

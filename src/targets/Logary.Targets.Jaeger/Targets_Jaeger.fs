@@ -163,14 +163,14 @@ module internal Impl =
 
     let errors = msg |> Message.getExns
     if errors.Length <> 0 then
-      let errorsStr = errors |> Json.formatWith (Logary.Internals.Chiron.Formatting.JsonFormattingOptions.Pretty)
+      let errorsStr = errors |> Json.encodeFormatWith (Logary.Internals.Chiron.Formatting.JsonFormattingOptions.Pretty)
       buildJaegerTag "errors" errorsStr |> tags.Add
 
 
     msg.context
     |> Seq.filter (fun (KeyValue (k, _)) -> not (k.StartsWith KnownLiterals.LogaryPrefix || k.StartsWith KnownLiterals.FieldsPrefix))
     |> Seq.iter (fun (KeyValue (k, v)) ->
-      let vStr = v |> Json.format
+      let vStr = v |> Json.encodeFormat
       buildJaegerTag k vStr |> tags.Add
     )
 

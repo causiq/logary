@@ -89,6 +89,7 @@ type Arbs =
       | Pow (_, n)    -> isNormal n
       | Offset (_, f) -> isNormal f
       | Scaled (_, f) -> isNormal f
+      | Other x -> not (isNull x)
       | _ -> true)
 
   static member Gauge() =

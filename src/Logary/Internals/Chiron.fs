@@ -404,6 +404,7 @@ module JsonObject =
         | o -> o
 
     let mapToList mps = Map.toList mps |> List.rev
+    
     let listToMap ps = List.rev ps |> Map.ofList
 
     let dedupeWithMap kvps m =
@@ -424,6 +425,7 @@ module JsonObject =
             else
                 ReadObject (ps, mps)
 
+    //
     let toPropertyListWithCustomKeyQuick (parse: Decoder<string,'a>) (decode: Decoder<Json,'b>) : Decoder<JsonObject,('a * 'b) list> = function
         | WriteObject ps
         | ReadObject (ps, _) ->
@@ -531,32 +533,44 @@ module JsonObject =
             | (k,v) :: ps ->
                 inner ((toString k, encode v) :: agg) ps
         inner [] ps
+        
     let ofPropertyListWith (encode: JsonEncoder<'a>) (ps: (string * 'a) list): JsonObject =
         ofPropertyListWithCustomKey id encode ps
+        
     let ofPropertyList (ps: (string * Json) list): JsonObject =
         List.rev ps
         |> WriteObject
 
+    //
     let toMapWithCustomKeyQuick (parse: Decoder<string,'k>) (decode: Decoder<Json,'v>) =
         toPropertyListWithCustomKeyQuick parse decode
         |> Decoder.map Map.ofList
+        
     let toMapWithCustomKey (parse: Decoder<string,'k>) (decode: Decoder<Json,'v>) =
         toPropertyListWithCustomKey parse decode
         |> Decoder.map Map.ofList
+        
     let toMapWithQuick (decode: Decoder<Json,'v>) =
         toPropertyListWithQuick decode
         |> Decoder.map Map.ofList
+        
     let toMapWith (decode: Decoder<Json,'v>) =
         toPropertyListWith decode
         |> Decoder.map Map.ofList
+        
     let toMap = function
         | WriteObject ps -> List.rev ps |> Map.ofList
         | ReadObject (_, mps) -> mps
+        
+    let ofSeq (s: #seq<string * _>) =
+      ReadObject (List.ofSeq s, Map.ofSeq s)
 
     let ofMap m = ReadObject (mapToList m, m)
+    
     let ofMapWith (encode: JsonEncoder<'a>) (m: Map<string, 'a>): JsonObject =
         let newMap = Map.map (fun _ a -> encode a) m
         ReadObject (mapToList newMap, newMap)
+        
     let ofMapWithCustomKey (toString: 'k -> string) (encode: JsonEncoder<'v>) (m: Map<'k, 'v>): JsonObject =
         let newList =
             mapToList m

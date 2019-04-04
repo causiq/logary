@@ -160,7 +160,7 @@ module Serialise =
       |> String.concat ","
       |> Escaped.create
 
-  open Logary.Message.Patterns
+  open Logary.MessagePatterns
 
   let nameGauges (message: Message) (gauges: Dictionary<string, Escaped * string option * string option>) =
     let inline formatLiteral rawName (v, format: string option, units: string option): (Escaped * Escaped)[] =

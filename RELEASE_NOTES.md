@@ -1,3 +1,7 @@
+#### 5.0.0-rc.9
+* BREAKING: move Logary.Message.Patterns to Logary.MessagePatterns, thanks @haf
+* Roundtripping JSON encode/decode, thanks @haf
+
 #### 5.0.0-rc.8
 * Prometheus Support 🎉, thanks @lust4life
 * Google Pub/Sub support 🎊, thanks @haf
