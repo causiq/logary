@@ -1,10 +1,9 @@
 import Layout from '../components/Layout'
 
-export default function Rutta() {
+export default function Vision() {
   return (
     <Layout>
-      <p>Logary Rutta</p>
-
+      <p>Prometheus</p>
     </Layout>
   )
 }
