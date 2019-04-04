@@ -11,12 +11,12 @@
     <ServerGarbageCollection>true</ServerGarbageCollection>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <None Include=".env" />
     <Content Include="stackdriver-service-account.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Compile Include="Program.fs" />
     <ProjectReference Include="../../Logary/Logary.fsproj" />
     <ProjectReference Include="..\..\Logary.Tests\Logary.Tests.fsproj" />
     <ProjectReference Include="..\..\targets\Logary.Targets.Stackdriver\Logary.Targets.Stackdriver.fsproj" />

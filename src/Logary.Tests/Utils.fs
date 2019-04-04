@@ -20,6 +20,15 @@ let ftestCaseJob name xJ =
 
 let ptestCaseJob name xJ =
   ptestCaseAsync name (Job.toAsync xJ)
+  
+let env defaultValue k =
+  match Environment.GetEnvironmentVariable k with
+  | null when isNull defaultValue ->
+    failwithf "Couldn't load key %s" k
+  | null ->
+    defaultValue
+  | v ->
+    v
 
 open Logary
 open Logary.Internals
@@ -84,6 +93,18 @@ let withFSharpExn f =
     middleWay false
   with e ->
     f e
+
+let raisedExn msg =
+  let e = ref None: exn option ref
+  try raise <| ApplicationException(msg)
+  with ex -> e := Some ex
+  (!e).Value
+  
+let raisedExnWithInner msg inner =
+  let e = ref None: exn option ref
+  try raise <| ApplicationException(msg,inner)
+  with ex -> e := Some ex
+  (!e).Value
 
 type Tenant =
   { tenantId: string

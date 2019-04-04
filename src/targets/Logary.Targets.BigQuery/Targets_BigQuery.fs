@@ -48,6 +48,11 @@ module internal Impl =
     builder.Add(req "fields" "STRING")
     builder.Build()
     
+  let maybeUpdate (projectId: string) (dataset: BigQueryDataset) (subject: BigQueryTable) (tableSchema: TableSchema) =
+    let mutable shouldUpdate = false
+    // we need recursive structural equality on the schema, and the C# lib doesn't seem to have that out of the box
+    Job.unit ()
+
   type Message with
     member x.toRow() =
       let row = new BigQueryInsertRow() 
@@ -86,6 +91,7 @@ module internal Impl =
         let client = BigQueryClient.Create(projectId)
         let dataset = client.GetOrCreateDataset(conf.dataset)
         let table = dataset.GetOrCreateTable(conf.table, tableSchema)
+        do! maybeUpdate projectId dataset table tableSchema
         return! running { table=table; client=client }
       }
       

@@ -1,27 +1,19 @@
 ﻿module Program
 
 open System
-open NodaTime
 open Expecto
 open Hopac
-open Hopac.Infixes
 open Logary
 open Logary.Tests
-open Logary.Target
 open Logary.Targets
 open Logary.Internals
 open Logary.Internals.Chiron
 
-let emptyRuntime =
-  RuntimeInfo.create "tests" "localhost"
-
-let flush = Target.flush >> Job.Ignore >> run
-
 let targConf =
   Elasticsearch.ElasticsearchConf.create()
 
-
 let start () =
+  let emptyRuntime = RuntimeInfo.create "tests" "localhost"
   Target.create emptyRuntime (Elasticsearch.create targConf "elasticsearch")
   |> run
 
@@ -58,3 +50,8 @@ let target =
 
       Expect.equal subject "expected" "should serialise to proper message"
     ]
+
+[<EntryPoint>]
+let main argv =
+  //Tests.runTestsInAssembly defaultConfig argv
+  0

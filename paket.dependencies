@@ -25,6 +25,7 @@ nuget FsSql
 nuget Google.Api.Gax.Rest
 nuget Google.Cloud.Logging.V2
 nuget Google.Cloud.BigQuery.V2
+nuget Google.Cloud.PubSub.V1 1.1.0-beta01
 nuget Hopac
 nuget Http.fs
 nuget Microsoft.ApplicationInsights

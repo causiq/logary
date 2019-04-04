@@ -1,53 +1,20 @@
 ﻿module Program
 
 open Expecto
-open Google.Cloud.Logging.V2
 open Google.Cloud.Logging.Type
-open Google.Protobuf.WellKnownTypes
-open Google.Api.Gax.Grpc
-open Grpc
-open Grpc.Core
 open Hopac
 open Logary
 open Logary.Tests
 open Logary.Internals
 open Logary.Message
-open Logary.Target
 open Logary.Targets
 open Logary.Targets.Stackdriver
 open System
 open System.IO
-open System.Collections.Generic
-
-let ri =
-  RuntimeInfo.create "tests" "localhost"
-
-let flush =
-  Target.flush >> Job.Ignore
-
-let env defaultValue k =
-  match Environment.GetEnvironmentVariable k with
-  | null when isNull defaultValue ->
-    failwithf "Couldn't load key %s" k
-  | null ->
-    defaultValue
-  | v ->
-    v
-
-let raisedExn msg =
-  let e = ref None: exn option ref
-  try raise <| ApplicationException(msg)
-  with ex -> e := Some ex
-  (!e).Value
-let raisedExnWithInner  msg inner =
-  let e = ref None: exn option ref
-  try raise <| ApplicationException(msg,inner)
-  with ex -> e := Some ex
-  (!e).Value
 
 let stackdriver =
   lazy (
-    let project = env "logary-ci" "STACKDRIVER_PROJECT"
+    let project = env "crucial-baton-203418" "STACKDRIVER_PROJECT"
     let logName = env "logary-tests" "STACKDRIVER_LOG"
     StackdriverConf.create(project, logName, Global)
   )
@@ -93,6 +60,7 @@ let target =
  
  
     testCaseJob "send" <| job {
+      let ri = RuntimeInfo.create "tests" "localhost"
       let targetConf = Stackdriver.create stackdriver.Value "logary-stackdriver"
       let! target = Target.create ri targetConf
 
@@ -101,7 +69,7 @@ let target =
           Target.tryLog target (event LogLevel.Error "thing happened at {blah}" |> setField "application" "logary tests" |> setContext "zone" "foobar" |> addExn (raisedExnWithInner "outer exception" (raisedExn "inner exception")))
         do! ack |> function Ok ack -> ack | Result.Error e -> failtestf "Failure placing in buffer %A" e
 
-      do! flush target
+      do! finalise target
     }
   ]
 

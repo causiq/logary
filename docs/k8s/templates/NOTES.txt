@@ -1,0 +1,4 @@
+Congratulations on installing Logary-site
+
+    helm upgrade --dry-run --debug --install logary-site ./k8s --namespace logary --set image.repository={{ .Values.image.repository }}
+

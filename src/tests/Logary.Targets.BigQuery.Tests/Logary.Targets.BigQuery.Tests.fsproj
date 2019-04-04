@@ -10,14 +10,12 @@
     <ServerGarbageCollection>true</ServerGarbageCollection>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Program.fs" />
     <None Include=".env" />
     <None Include="paket.references" />
-  </ItemGroup>
-  <ItemGroup>
     <Content Include="bigquery-service-account.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Logary.Tests\Logary.Tests.fsproj" />

@@ -1,0 +1,6 @@
+FSharp.Core
+NodaTime
+Hopac
+Google.Cloud.PubSub.V1
+Expecto
+Expecto.Hopac
