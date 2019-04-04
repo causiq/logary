@@ -5,7 +5,7 @@ steps:
   args:
   - build
   - -f
-  - Dockerfile
+  - docs/Dockerfile
   - -t
   - eu.gcr.io/$PROJECT_ID/logary-site:$COMMIT_SHA
   - -t
