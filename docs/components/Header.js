@@ -14,7 +14,7 @@ const Header = () =>
         </Link>
       </li>
       <li>
-        <Link href="/targets">
+        <Link href="/logary-dotnet-targets">
           <a title="Available targets in Logary">Targets</a>
         </Link>
       </li>
