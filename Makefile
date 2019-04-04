@@ -1,4 +1,4 @@
-.PHONY: restore build test
+.PHONY: restore build test docs
 export CONFIGURATION=${CONFIGURATION:-'Release'}
 TAG_VERSION_SUFFIX=$(shell tools/get_version.sh)
 
@@ -16,6 +16,9 @@ build: prepare restore
 
 test: build
 	./fake.sh build --single-target --target Tests
+
+docs:
+	(cd ./docs && yarn && yarn dev)
 
 image:
 ifneq ($(TRAVIS_TAG),)
