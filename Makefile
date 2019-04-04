@@ -1,6 +1,6 @@
 .PHONY: restore build test docs
 export CONFIGURATION=${CONFIGURATION:-'Release'}
-TAG_VERSION_SUFFIX=$(shell tools/get_version.sh)
+TAG_VERSION_SUFFIX := $(shell tools/version.sh)
 
 all: restore build
 
@@ -21,6 +21,7 @@ docs:
 	(cd ./docs && yarn && yarn dev)
 
 image:
+	echo "Building image v$(TAG_VERSION_SUFFIX)"
 ifneq ($(TRAVIS_TAG),)
 	docker build -t haaf/rutta:latest -t haaf/rutta:$(TAG_VERSION_SUFFIX) -t haaf/rutta:$(TRAVIS_TAG) .
 	docker build -t haaf/rutta-curl:latest -t haaf/rutta-curl:$(TAG_VERSION_SUFFIX) -t haaf/rutta:$(TRAVIS_TAG) src/services/rutta-helm-chart/rutta-curl
@@ -55,7 +56,7 @@ release_library:
 	./fake.sh build --single-target --target CheckEnv
 	./fake.sh build --single-target --target Release
 
-release: restore build test release_library image push
+release: restore build test pack_library push_library release_library image push
 
 clean:
 	git clean -fxd

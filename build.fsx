@@ -50,6 +50,7 @@ let libProjects =
   ++ "src/adapters/**/*.fsproj"
   ++ "src/ingestion/**/*.fsproj"
   ++ "src/Logary/Logary.fsproj"
+  ++ "src/Logary.Prometheus/Logary.Prometheus.fsproj"
   ++ "src/Logary.CSharp/Logary.CSharp.csproj"
 
 let envRequired k =
