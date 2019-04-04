@@ -47,21 +47,25 @@ let empty = GooglePubSubConf.create()
 
 /// https://googleapis.github.io/google-cloud-dotnet/docs/Google.Cloud.PubSub.V1/
 module internal Impl =
+  open System
+  open System.Text
+  open System.Security.Cryptography
   open System.Threading.Tasks
   open Google.Protobuf
   open Logary.Formatting
   open Logary.Internals.Chiron
 
+  let utf8 = Encoding.UTF8
+  let sha1 = HashAlgorithm.Create "SHA1" // 160 bit hash algo
+
   type Message with
     member x.toPubSub() =
       let psm = new PubsubMessage()
-      psm.MessageId <- "" // TODO: hash message contents
-      // TODO: configurable attributes
-      // TODO: unit test the removal of all _logary.-prefixes when serialising the message to JSON
-      // TODO: unit test the creation of a gauge from JSON
       let json = Json.encode x |> Json.formatWith JsonFormattingOptions.Compact
+      let bytes = utf8.GetBytes json
+      let hash = sha1.ComputeHash bytes
       psm.Data <- ByteString.CopyFromUtf8 json
-      // psm.Attributes.Add // TO CONSIDER: more attributes
+      psm.MessageId <- Convert.ToBase64String hash
       psm
 
   type PublisherClient with
