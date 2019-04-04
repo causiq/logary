@@ -29,7 +29,7 @@ app
       if (shouldRemap) {
         return app.render(req, res, newPath, query)
       } else {
-        return handle(req, res, parsed);
+        return handle(req, res, parsedUrl);
       }
 
     })
