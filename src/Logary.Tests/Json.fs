@@ -428,11 +428,6 @@ let tests fsc =
         let encoded = input |> Json.encode
         let decoded = encoded |> Json.Decode.message |> JsonResult.getOrThrow
         decoded |> Expect.Message.equal "Should eq decoded" input
-
-      ptestCase "complex message" <| fun () ->
-        let encoded = Json.encode complexMessage
-        let decoded = encoded |> Json.Decode.message |> JsonResult.getOrThrow
-        decoded |> Expect.Message.equal "Should eq after roundtrip" complexMessage
     ]
   ]
 
