@@ -56,7 +56,7 @@ release_library:
 	./fake.sh build --single-target --target CheckEnv
 	./fake.sh build --single-target --target Release
 
-release: restore build test pack_library push_library release_library image push
+release: restore build test pack_library release_library image push push_library
 
 clean:
 	git clean -fxd
