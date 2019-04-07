@@ -36,7 +36,7 @@ TweetShare.propTypes = {
   url: PropTypes.string,
   via: PropTypes.string,
   related: PropTypes.string,
-  hashtags: PropTypes.string,
+  hashtags: PropTypes.arrayOf(PropTypes.string),
   options: PropTypes.object,
   size: PropTypes.string,
   lang: PropTypes.string,

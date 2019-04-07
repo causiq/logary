@@ -39,8 +39,14 @@ const Header = () =>
           <Button onClick={() => Router.push("https://github.com/logary")}>
             <FontAwesomeIcon icon={faGithub} /> Follow @logary
           </Button>
+        </div>
+        <div>
           <div className="twitter-tweet">
-            <TweetShare text="Logary can get your company's business analytics bootstrapped in a few hours!" via="logarylib" related="henrikfeldt" />
+            <TweetShare
+              text="Logary can get your company's business analytics bootstrapped in a few hours!"
+              via="logarylib" related="henrikfeldt"
+              size="large"
+              hashtags={["monitoring", "logging", "metrics", "analytics", "pwa", "mobile", "reactNative"]}/>
           </div>
         </div>
       </div>

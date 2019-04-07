@@ -1,20 +1,31 @@
 /* ======= Landing Page ======= */
 .landing-page {
-  .header {
-    background: $text-color;
+  header {
+    background: $text-color url("../images/avi-richards-1487561-unsplash.jpg") no-repeat 10% center;
+    background-size: cover;
     color: rgba(256, 256, 256, 0.85);
     padding: 60px 0;
     a {
       color: #fff;
+    }
+    .container {
+      background: rgba(0,0,0,0.4);
+      padding: 1rem;
     }
   }
   .branding {
     text-transform: uppercase;
     margin-bottom: 20px;
     .logo {
-      font-size: 38px;
+      font-size: 6vw;
+      text-shadow: rgba(0,0,0,0.2) 1px 1px 5px;
       margin-top: 0;
       margin-bottom: 0;
+    }
+    @media (min-width: 575.98px) {
+      .logo {
+        font-size: 38px;
+      }
     }
     .text-bold {
       font-weight: 800;
@@ -28,7 +39,7 @@
 
   .tagline {
     font-weight: 600;
-    font-size: 20px;
+    font-size: 3vw;
     p {
       margin-bottom: 5px;
       &:last-child {
@@ -37,6 +48,11 @@
     }
     .text-highlight {
       color: darken($color-primary, 20%);
+    }
+  }
+  @media (min-width: 575.98px) {
+    .tagline {
+      font-size: 20px;
     }
   }
 
