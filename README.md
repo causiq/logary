@@ -2,7 +2,7 @@
 [![Travis build status](https://api.travis-ci.org/logary/logary.png)](https://travis-ci.org/logary/logary)
 [![NuGet Badge](https://buildstats.info/nuget/Logary)](https://www.nuget.org/packages/Logary)
 
-Follow Logary at twitter: [@logarylib](https://twitter.com/logarylib)
+Follow Logary at twitter: [@logarylib](https://twitter.com/logarylib) — [logary.tech](https://logary.tech) has the docs!
 
 Chat and support and get support:
 [![Gitter chat](https://badges.gitter.im/logary.png)](https://gitter.im/logary/logary). If you have questions
