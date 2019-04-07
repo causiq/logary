@@ -2,3 +2,4 @@ node_modules/
 .next/
 .DS_Store
 .npmrc
+prettydocs-v2.1/

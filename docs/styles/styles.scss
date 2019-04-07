@@ -1,0 +1,40 @@
+$color-primary: #40babd;
+$color-green: #75c181;
+$color-red: #f77b6b;
+$color-blue: #58bbee;
+$color-orange: #F88C30;
+$color-yellow: rgb(243, 220, 29); // https://ux.stackexchange.com/questions/25558/what-is-the-official-javascript-logo-icon
+$color-pink: #EA5395;
+$color-purple: #6800EE;
+
+$text-color: #494d55;
+$text-color-secondary: lighten($text-color, 10%);
+$text-grey: lighten($text-color-secondary, 25%);
+$grey: lighten($text-color-secondary, 25%);
+$light-grey: #c3c3c3;
+$dark-grey: #666;
+$black: #000;
+$smoky-white: #f5f5f5;
+$smoky-grey: #f9f9fb;
+$divider: #f0f0f0;
+
+$new: #60A823;
+$error: #E65348;
+$facebook: #3b5998;
+$twitter: #55acee;
+$google: #dd4b39;
+$github: #444;
+
+@import "mixins";
+@import "base";
+@import "doc";
+@import "landing";
+@import "~@fortawesome/fontawesome-pro/scss/fontawesome.scss";
+// https://github.com/FortAwesome/Font-Awesome-Pro/blob/master/scss/fontawesome.scss
+// https://fontawesome.com/how-to-use/with-the-api/setup/configuration
+// https://github.com/FortAwesome/react-fontawesome/issues/134#issuecomment-471940596
+// https://github.com/zeit/next.js/issues/5187#issuecomment-443532629
+// https://spectrum.chat/next-js/general/how-to-properly-load-font-awesome-pro-into-a-next-js-application~56b0396d-8b7d-447d-9f46-24ba6192936e
+// https://chriscourses.com/blog/loading-fonts-webpack
+// TO CONSIDER: https://github.com/rohanray/next-fonts
+@import url("https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800");
