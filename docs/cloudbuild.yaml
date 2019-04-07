@@ -5,7 +5,7 @@ steps:
   entrypoint: bash
   args:
   - '-c'
-  - echo "${_FONTAWESOME_AUTH_TOKEN}" >.npmrc
+  - echo "//npm.fontawesome.com/:_authToken=${_FONTAWESOME_AUTH_TOKEN}" >>.npmrc
 
 - name: 'gcr.io/cloud-builders/docker'
   args:
