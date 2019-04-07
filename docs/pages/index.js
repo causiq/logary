@@ -79,12 +79,12 @@ export default function Index() {
             </div>
           </div>
 
-          <div className="item item-blue col-lg-4 col-6">
+          <div className="item item-pink col-lg-4 col-6">
             <div className="item-inner">
               <div className="icon-holder">
                 <FontAwesomeIcon icon={faPuzzlePiece} />
               </div>
-              <h3 className="title">Targets</h3>
+              <h3 className="title">Targets / Sinks</h3>
               <p className="intro">
                 Logary can send logs, metrics and spans to a wide range of targets. Have a look here to see what's available!
               </p>
@@ -133,7 +133,7 @@ export default function Index() {
             </div>
           </div>
 
-          <div className="item item-pink col-lg-4 col-6">
+          <div className="item item-green col-lg-4 col-6">
             <div className="item-inner">
               <div className="icon-holder">
                 <FontAwesomeIcon icon={faLifeRing} />
@@ -176,7 +176,7 @@ export default function Index() {
                 <PrometheusIcon />
               </div>
               <h3 className="title">Logary Prometheus for .Net Core</h3>
-              <p className="intro">With <em>Logary.Prometheus</em> you can expose you app metrics for Prometheus and Grafana.</p>
+              <p className="intro">With <code>Logary.Prometheus</code> you can expose you app metrics for Prometheus and Grafana.</p>
               <Link href="/logary-prometheus-dotnet">
                 <a className="link"><span></span></a>
               </Link>

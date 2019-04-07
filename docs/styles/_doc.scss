@@ -32,9 +32,9 @@
     .body-purple & {
       color: $color-purple;
     }
-  }
-  [data-icon] {
-    font-size: 30px;
+    .body-yellow & {
+      color: $color-yellow;
+    }
   }
   .meta {
     color: $grey;
@@ -118,6 +118,9 @@
   }
   .body-purple & {
     color: darken($color-purple, 5%);
+  }
+  .body-yellow & {
+    color: darken($color-yellow, 20%);
   }
   .svg-inline--fa {
     @include opacity(0.6);
@@ -208,6 +211,9 @@
   }
   .body-purple & {
     border-bottom-color: lighten($color-purple, 20%);
+  }
+  .body-yellow & {
+    border-bottom-color: $color-yellow;
   }
 }
 .table-bordered > thead > tr > th {
@@ -400,6 +406,18 @@
   }
 }
 
+.body-yellow {
+  .header {
+    border-color: $color-yellow;
+  }
+  a {
+    color: darken($color-yellow, 20%);
+    &:hover {
+      color: darken($color-yellow, 30%);
+    }
+  }
+}
+
 .body-red {
   .header {
     border-color: $color-red;
@@ -448,8 +466,6 @@
       text-decoration: none;
       background: none;
     }
-    .nav {
-    }
     &.active {
       background: none;
       color: $color-primary;
@@ -477,6 +493,10 @@
       .body-purple & {
         color: $color-purple;
         border-color: $color-purple;
+      }
+      .body-yellow & {
+        color: darken($color-yellow, 20%);
+        border-color: $color-yellow;
       }
     }
   }
@@ -526,6 +546,9 @@
       .body-purple & {
         color: $color-purple;
       }
+      .body-yellow & {
+        color: darken($color-yellow, 20%);
+      }
     }
   }
 }
@@ -567,6 +590,9 @@
   }
   .body-purple & {
     background: darken($color-purple, 5%);
+  }
+  .body-yellow & {
+    background: darken($color-yellow, 5%);
   }
 
   a {

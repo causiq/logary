@@ -37,11 +37,9 @@ a {
 }
 
 code {
-  background: #222;
-  color: #fff;
   font-size: 14px;
   font-weight: bold;
-  font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
+  font-family: "PT Mono", monospace;
   padding: 2px 8px;
   padding-top: 4px;
   display: inline-block;
@@ -182,6 +180,11 @@ a.btn-purple {
   }
 }
 
+::selection {
+  color: white;
+  background: $color-primary;
+}
+
 .btn-cta {
   padding: 7px 15px;
 }
@@ -220,7 +223,7 @@ select {
 header {
   background: $text-color url("../images/avi-richards-1487561-unsplash.jpg") no-repeat 10% center;
   background-size: cover;
-  color: rgba(256, 256, 256, 0.85);
+  color: rgba(256, 256, 256, 1);
   border-top: 5px solid $color-primary;
   padding: 30px 0;
   a {
@@ -252,24 +255,6 @@ header {
   }
   .text-highlight {
     color: $color-primary;
-    .body-green & {
-      color: $color-green;
-    }
-    .body-blue & {
-      color: $color-blue;
-    }
-    .body-orange & {
-      color: $color-orange;
-    }
-    .body-red & {
-      color: $color-red;
-    }
-    .body-pink & {
-      color: $color-pink;
-    }
-    .body-purple & {
-      color: $color-purple;
-    }
   }
   .text-bold {
     font-weight: 800;
@@ -296,20 +281,24 @@ header {
     .body-purple & {
       color: $color-purple;
     }
+    .body-yellow & {
+      color: $color-yellow;
+    }
   }
 }
 
 .breadcrumb {
+  font-weight: 400;
   background: none;
   margin-bottom: 0;
   padding: 0;
   li {
-    color: rgba(256, 256, 256, 0.5);
+    color: rgba(256, 256, 256, 0.8);
     &.active {
-      color: rgba(256, 256, 256, 0.5);
+      color: rgba(256, 256, 256, 0.8);
     }
     a {
-      color: rgba(256, 256, 256, 0.5);
+      color: rgba(256, 256, 256, 0.8);
       &:hover {
         color: #fff;
       }
