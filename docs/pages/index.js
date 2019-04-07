@@ -12,9 +12,13 @@ import DotnetIcon from '../components/DotnetIcon'
 import PrometheusIcon from '../components/PrometheusIcon'
 import { faAtom, faBalanceScale, faBooks, faSatelliteDish, faPuzzlePiece } from '@fortawesome/pro-light-svg-icons'
 import { faJs } from '@fortawesome/free-brands-svg-icons';
+import Head from 'next/head';
 
 export default function Index() {
   return <Layout name="landing-page">
+    <Head>
+      <title>Logary — Professional logging, metrics and analytics for your apps</title>
+    </Head>
     <section className="cards-section text-center">
       <div className="container">
         <h2 className="title">Professional logging, metrics and analytics for your apps</h2>
