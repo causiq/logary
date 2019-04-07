@@ -20,7 +20,7 @@ export default function Index() {
 
   return <Layout name="landing-page">
     <Head>
-      <title>Logary — Professional logging, metrics and analytics for your apps</title>
+      <title>Logary v5 — Professional logging, metrics and analytics for your apps</title>
     </Head>
     <section className="cards-section text-center">
       <div className="container">
