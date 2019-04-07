@@ -1,9 +1,10 @@
 # gcloud builds submit --project $PROJECT_ID . --config cloudbuild.yaml
 
 steps:
-- name: 'gcr.io/cloud-builders/bash'
+- name: 'gcr.io/cloud-builders/git'
+  entrypoint: bash
   args:
-  - -c
+  - '-c'
   - echo "${_FONTAWESOME_AUTH_TOKEN}" >.npmrc
 
 - name: 'gcr.io/cloud-builders/docker'
