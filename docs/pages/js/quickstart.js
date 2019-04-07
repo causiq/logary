@@ -2,7 +2,6 @@ import Layout from '../../components/Layout'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faJs } from '@fortawesome/free-brands-svg-icons';
 import { faClock } from '@fortawesome/pro-regular-svg-icons';
-import { BashCode } from '../../components/Code'
 
 export default function JSQuickstart() {
   return (
@@ -27,10 +26,16 @@ export default function JSQuickstart() {
                   <p>
                     The first step is to install the Logary package from npm.
                   </p>
-                  <BashCode>npm install --save logary</BashCode>
+                  <p>
+                    <code>npm install --save logary</code>
+                  </p>
                   <p>Or you're using yarn...</p>
-                  <BashCode>yarn add logary</BashCode>
-                  <a href="https://github.com/logary/logary-js#how-to-use" title="Continue here..">Continue here...</a>
+                  <p>
+                    <code>yarn add logary</code>
+                  </p>
+                  <p>
+                    <a href="https://github.com/logary/logary-js#how-to-use" title="Continue here..">Continue here...</a>
+                  </p>
                 </section>
               </div>
             </div>
@@ -38,7 +43,7 @@ export default function JSQuickstart() {
             <div className="doc-sidebar col-md-3 col-12 order-0 d-none d-md-flex">
               <div id="doc-nav" className="doc-nav">
                 <nav id="doc-menu" className="nav doc-menu flex-column sticky">
-                  <a className="nav-link scrollto">Install package</a>
+                  <a className="nav-link scrollto">Install the package</a>
                 </nav>{/*doc-menu*/}
               </div>
             </div>{/*doc-sidebar*/}
