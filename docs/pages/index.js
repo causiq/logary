@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import Layout from '../components/Layout'
 import Link from 'next/link'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -5,7 +6,6 @@ import {
   faFileChartLine,
   faLifeRing,
   faChevronDoubleDown,
-  faRoute,
   faCoins
 } from '@fortawesome/pro-solid-svg-icons'
 import DotnetIcon from '../components/DotnetIcon'
@@ -13,8 +13,11 @@ import PrometheusIcon from '../components/PrometheusIcon'
 import { faAtom, faBalanceScale, faBooks, faSatelliteDish, faPuzzlePiece } from '@fortawesome/pro-light-svg-icons'
 import { faJs } from '@fortawesome/free-brands-svg-icons';
 import Head from 'next/head';
+import ScrollLink from '../components/ScrollLink'
 
 export default function Index() {
+  const howToRef = useRef(null);
+
   return <Layout name="landing-page">
     <Head>
       <title>Logary — Professional logging, metrics and analytics for your apps</title>
@@ -25,16 +28,29 @@ export default function Index() {
         <div className="intro">
           <p>
             Logary is a logging, tracing and metric library for .Net and JS as well as
-            a stand-alone, cloud-native log router/ingress called Rutta.
+            a stand-alone, ☁-native log router/ingress called Rutta.
           </p>
+
           <div className="cta-container">
             <a className="btn btn-primary btn-cta"
               href="https://www.nuget.org/packages/Logary/5.0.0-rc.9"
               target="_blank">
               <FontAwesomeIcon icon={faChevronDoubleDown} />
-              Install Now
+              .Net package
+            </a>{' '}
+            <a className="btn btn-primary btn-cta"
+              href="https://www.npmjs.com/package/logary"
+              target="_blank">
+              <FontAwesomeIcon icon={faChevronDoubleDown} />
+              JS package
             </a>
           </div>
+
+          <p>
+            Maybe you're 🤒/😴 giving all your customers' interaction data to large american corporations?
+            Then you've come to the right place.
+            Scroll to <ScrollLink targetRef={howToRef}>how does it work?</ScrollLink> to learn more.
+          </p>
         </div>
 
         <div id="cards-wrapper" className="cards-wrapper row">
@@ -78,14 +94,14 @@ export default function Index() {
             </div>
           </div>
 
-          <div className="item item-primary col-lg-4 col-6">
+          <div className="item item-blue col-lg-4 col-6" ref={howToRef}>
             <div className="item-inner">
               <div className="icon-holder">
-                <FontAwesomeIcon icon={faFileChartLine} />
+                <FontAwesomeIcon icon={faAtom} />
               </div>
-              <h3 className="title">Tutorials</h3>
-              <p className="intro">Learn how to use Logary to visualise the state and interactions with your apps.</p>
-              <Link href="/tutorials/visualise">
+              <h3 id="how-does-it-work" className="title">How does it work?</h3>
+              <p className="intro">Let's have a look at this site and how we do analytics here...</p>
+              <Link href="/tutorials/how-does-logary-work?">
                 <a className="link"><span></span></a>
               </Link>
             </div>
@@ -128,14 +144,16 @@ export default function Index() {
             </div>
           </div>
 
-          <div className="item item-blue col-lg-4 col-6">
+          <div className="item item-primary col-lg-4 col-6">
             <div className="item-inner">
               <div className="icon-holder">
-                <FontAwesomeIcon icon={faAtom} />
+                <FontAwesomeIcon icon={faFileChartLine} />
               </div>
-              <h3 className="title">Showcases</h3>
-              <p className="intro">Layout for showcase page. Lorem ipsum dolor sit amet, consectetuer adipiscing elit </p>
-              <a className="link" href="showcase.html"><span></span></a>
+              <h3 className="title">Tutorials</h3>
+              <p className="intro">Learn how to use Logary to visualise the state and interactions with your apps.</p>
+              <Link href="/tutorials/visualise">
+                <a className="link"><span></span></a>
+              </Link>
             </div>
           </div>
 
@@ -146,7 +164,9 @@ export default function Index() {
               </div>
               <h3 className="title">License &amp; Credits</h3>
               <p className="intro">Layout for license &amp; credits page. Consectetuer adipiscing elit.</p>
-              <a className="link" href="license.html"><span></span></a>
+              <Link href="/pricing">
+                <a className="link"><span></span></a>
+              </Link>
             </div>
           </div>
 

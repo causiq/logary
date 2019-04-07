@@ -218,7 +218,8 @@ select {
 
 /* ====== Header ====== */
 header {
-  background: $text-color;
+  background: $text-color url("../images/avi-richards-1487561-unsplash.jpg") no-repeat 10% center;
+  background-size: cover;
   color: rgba(256, 256, 256, 0.85);
   border-top: 5px solid $color-primary;
   padding: 30px 0;
@@ -227,6 +228,8 @@ header {
   }
   .container {
     position: relative;
+    background: rgba(0,0,0,0.4);
+    padding: 1rem;
   }
 }
 .branding {
@@ -234,12 +237,18 @@ header {
   margin-bottom: 10px;
 
   .logo {
-    font-size: 28px;
+    font-size: 6vw;
+    text-shadow: rgba(0,0,0,0.2) 1px 1px 5px;
     margin-top: 0;
     margin-bottom: 0;
-    a {
-      text-decoration: none;
+  }
+  @media (min-width: 575.98px) {
+    .logo {
+      font-size: 38px;
     }
+  }
+  a {
+    text-decoration: none;
   }
   .text-highlight {
     color: $color-primary;
@@ -338,12 +347,22 @@ header {
     }
   }
 }
-
 .top-search-box {
   position: absolute;
   right: 15px;
   top: 15px;
 }
+
+.social-container {
+  .twitter-tweet {
+    display: inline-block;
+    margin-right: 5px;
+    position: relative;
+    top: 5px;
+    min-height: 28px;
+  }
+}
+
 
 /* ====== Footer ====== */
 .footer {

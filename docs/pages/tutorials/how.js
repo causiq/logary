@@ -1,9 +1,9 @@
 import Layout from '../../components/Layout'
 
-export default function JSDocs() {
+export default function How() {
   return (
     <Layout>
-      <p>Logary JS docs</p>
+      <p>How</p>
     </Layout>
   )
 }

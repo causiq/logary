@@ -10,10 +10,15 @@ const Header = () =>
   <header className="header text-center">
     <div className="container">
       <div className="branding">
-        <h1 className="logo">
-          <span aria-hidden="true" className="icon_documents_alt icon"></span>
-          <span className="text-highlight">Logary</span><span className="text-bold">Analytics</span>
-        </h1>
+        <Link href="/">
+          <a>
+            <h1 className="logo">
+                {/* TODO: logary logo */}
+                <span aria-hidden="true" className="icon_documents_alt icon"></span>
+                <span className="text-highlight">Logary</span><span className="text-bold">Analytics</span>
+            </h1>
+          </a>
+        </Link>
       </div>
 
       <div className="tagline">
@@ -54,28 +59,3 @@ const Header = () =>
   </header>
 
 export default Header;
-
-/* <nav>
-  <ul>
-    <li>
-      <Link href="/">
-        <a title="Home">Home</a>
-      </Link>
-    </li>
-    <li>
-      <Link href="/vision">
-        <a title="The vision of Logary">Vision</a>
-      </Link>
-    </li>
-    <li>
-      <Link href="/logary-dotnet-targets">
-        <a title="Available targets in Logary">Targets</a>
-      </Link>
-    </li>
-    <li>
-      <Link href="/rutta">
-        <a title="Log router and ingestion point">Rutta</a>
-      </Link>
-    </li>
-  </ul>
-</nav>*/

@@ -6,5 +6,6 @@ module.exports = {
   '/logary-dotnet-targets': '/dotnet/targets',
   '/logary-js-quickstart': '/js/quickstart',
   '/logary-js-documentation': '/js/docs',
-  '/logary-rutta': '/rutta'
+  '/logary-rutta': '/rutta',
+  '/tutorials/how-does-logary-work': '/tutorials/how'
 }
