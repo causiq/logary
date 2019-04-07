@@ -29,9 +29,9 @@ app
       if (shouldRemap) {
         return app.render(req, res, newPath, query)
       } else {
+        // console.log('got parsed url ', parsedUrl)
         return handle(req, res, parsedUrl);
       }
-
     })
 
     server.listen(port, err => {

@@ -8,17 +8,31 @@
   "license": "GPL-3.0-only",
   "private": false,
   "dependencies": {
+    "@fortawesome/fontawesome-pro": "^5.8.1",
+    "@fortawesome/fontawesome-svg-core": "^1.2.17",
+    "@fortawesome/free-brands-svg-icons": "^5.8.1",
+    "@fortawesome/pro-light-svg-icons": "^5.8.1",
+    "@fortawesome/pro-regular-svg-icons": "^5.8.1",
+    "@fortawesome/pro-solid-svg-icons": "^5.8.1",
+    "@fortawesome/react-fontawesome": "^0.1.4",
+    "@zeit/next-css": "^1.0.1",
+    "@zeit/next-sass": "^1.0.1",
+    "bootstrap": "^4.3.1",
+    "lunr": "^2.3.6",
     "next": "^8.0.4",
     "next-images": "^1.1.1",
+    "node-sass": "^4.11.0",
     "react": "^16.8.6",
-    "react-dom": "^16.8.6"
+    "react-dom": "^16.8.6",
+    "react-lunr": "^0.6.0",
+    "reactstrap": "^8.0.0"
+  },
+  "devDependencies": {
+    "express": "^4.16.4"
   },
   "scripts": {
     "dev": "node server.js",
     "build": "next build",
     "start": "NODE_ENV=production node server.js -p $PORT"
-  },
-  "devDependencies": {
-    "express": "^4.16.4"
   }
 }
