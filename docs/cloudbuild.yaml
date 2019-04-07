@@ -4,9 +4,7 @@ steps:
 - name: 'gcr.io/cloud-builders/bash'
   args:
   - -c
-  - echo "${FONTAWESOME_AUTH_TOKEN}" >.npmrc
-  env:
-  - FONTAWESOME_AUTH_TOKEN=${_FONTAWESOME_AUTH_TOKEN}
+  - echo "${_FONTAWESOME_AUTH_TOKEN}" >.npmrc
 
 - name: 'gcr.io/cloud-builders/docker'
   args:
