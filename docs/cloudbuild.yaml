@@ -4,13 +4,9 @@ steps:
 - name: 'gcr.io/cloud-builders/bash'
   args:
   - -c
-  - |
-    echo "${NPMRC1}" >.npmrc
-    echo "${NPMRC2}" >>.npmrc
-  
+  - echo "${FONTAWESOME_AUTH_TOKEN}" >.npmrc
   env:
-  - NPMRC1=${_NPMRC1}
-  - NPMRC2=${_NPMRC2}
+  - FONTAWESOME_AUTH_TOKEN=${_FONTAWESOME_AUTH_TOKEN}
 
 - name: 'gcr.io/cloud-builders/docker'
   args:
@@ -38,8 +34,7 @@ steps:
 substitutions:
   _CLOUDSDK_COMPUTE_ZONE: 'CHANGE_ME'
   _CLOUDSDK_CONTAINER_CLUSTER: 'CHANGE_ME'
-  _NPMRC1: 'CHANGE_ME'
-  _NPMRC2: 'CHANGE_ME'
+  _FONTAWESOME_AUTH_TOKEN: 'CHANGE_ME'
 
 tags:
 - oss
