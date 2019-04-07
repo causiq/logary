@@ -1,6 +1,17 @@
 # gcloud builds submit --project $PROJECT_ID . --config cloudbuild.yaml
 
 steps:
+- name: 'gcr.io/cloud-builders/bash'
+  args:
+  - -c
+  - |
+    echo "${NPMRC1}" >.npmrc
+    echo "${NPMRC2}" >>.npmrc
+  
+  env:
+  - NPMRC1=${_NPMRC1}
+  - NPMRC2=${_NPMRC2}
+
 - name: 'gcr.io/cloud-builders/docker'
   args:
   - build
@@ -27,6 +38,8 @@ steps:
 substitutions:
   _CLOUDSDK_COMPUTE_ZONE: 'CHANGE_ME'
   _CLOUDSDK_CONTAINER_CLUSTER: 'CHANGE_ME'
+  _NPMRC1: 'CHANGE_ME'
+  _NPMRC2: 'CHANGE_ME'
 
 tags:
 - oss
