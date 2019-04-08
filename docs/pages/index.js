@@ -27,9 +27,19 @@ export default function Index() {
         <h2 className="title">Professional logging, metrics and analytics for your apps</h2>
         <div className="intro">
           <p>
+            Would you like to <i>proactively handle any negative experiences</i> that your users' are having?<br />
+            Maybe you're 🤒/😴 giving all your interaction data to large american corporations ®?<br />
+            Or do you just want to measure <i>app latency</i> and <i>track revenue</i>?
+          </p>
+
+          <p><em>Then you've come to the right place, because Logary solves that for you.</em></p>
+
+          <p>
             Logary is a logging, tracing and metric library for .Net and JS as well as
             a stand-alone, ☁-native log router/ingress called Rutta.
           </p>
+
+          <p><ScrollLink targetRef={howToRef}>How does it work?</ScrollLink></p>
 
           <div className="cta-container">
             <a className="btn btn-primary btn-cta"
@@ -45,12 +55,6 @@ export default function Index() {
               JS package
             </a>
           </div>
-
-          <p>
-            Maybe you're 🤒/😴 giving all your customers' interaction data to large american corporations?
-            Then you've come to the right place.
-            Scroll to <ScrollLink targetRef={howToRef}>how does it work?</ScrollLink> to learn more.
-          </p>
         </div>
 
         <div id="cards-wrapper" className="cards-wrapper row">
