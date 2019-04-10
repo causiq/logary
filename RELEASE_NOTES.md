@@ -1,3 +1,6 @@
+#### 5.0.0-rc.10
+* Add `Message.{setReceiveTimestamp,setReceiveEpochNano}` for ingestion points to use, thanks @haf
+
 #### 5.0.0-rc.9
 * BREAKING: move Logary.Message.Patterns to Logary.MessagePatterns, thanks @haf
 * Roundtripping JSON encode/decode, thanks @haf
