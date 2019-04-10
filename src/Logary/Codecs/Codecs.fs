@@ -14,6 +14,9 @@ type Codec<'err> = Ingested -> Result<Message[], 'err>
 module Codec =
   /// A codec that reads each input as a bag-of-fields to add to a message. Uses
   /// the function `Json.decodeMessage` from `Logary.Formatting` in the background.
+  ///
+  /// REMEMBER: you should use `Message.setReceiveTimestamp` to set the receive timestamp, after
+  /// decoding!
   let json: Codec =
     fun input ->
       let line = input.utf8String ()
@@ -25,6 +28,9 @@ module Codec =
 
   /// A codec that reads each input as a single message with the message's value
   /// equal to the input.
+  ///
+  /// REMEMBER: you should use `Message.setReceiveTimestamp` to set the receive timestamp, after
+  /// decoding!
   let plain: Codec =
     fun input ->
       let value = input.utf8String()
@@ -136,6 +142,10 @@ module Codec =
       | :? XmlException as xmle -> Result.Error (xmle.ToString())
       | :? InvalidOperationException as oee -> Result.Error (oee.ToString())
 
+  /// A codec that parses a string as XML and then uses the log4xml schema to extract information. 
+  ///
+  /// REMEMBER: you should use `Message.setReceiveTimestamp` to set the receive timestamp, after
+  /// decoding!
   let log4jXML: Codec =
     fun input ->
       input.utf8String ()
