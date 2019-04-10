@@ -18,8 +18,8 @@ module Codec =
     fun input ->
       let line = input.utf8String ()
       match Json.parse line |> JsonResult.bind Json.Decode.messageBatch with
-      | JPass message ->
-        Ok message
+      | JPass messages ->
+        Ok messages
       | JFail failure ->
         Result.Error (JsonFailure.summarize failure)
 

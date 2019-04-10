@@ -480,8 +480,22 @@ module Message =
     { msg with timestamp = ts }
 
   [<CompiledName "SetTimestamp">]
-  let setTimestamp (instant: Instant) msg =
-    { msg with timestamp = instant.ToUnixTimeTicks() * Constants.NanosPerTick }
+  let setTimestamp (ts: Instant) msg =
+    { msg with timestamp = ts.ToUnixTimeTicks() * Constants.NanosPerTick }
+
+  /// When you create log messages from ingested data, not all client clocks may be fully accurate, or you may not have
+  /// validations in place to ensure the sending code is fully trusted. Therefore, we tag those Messages with the
+  /// timestamp for when they were received.
+  [<CompiledName "SetReceiveNanoEpoch">]
+  let setReceiveNanoEpoch (ts: EpochNanoSeconds) msg =
+    setField "receiveTimestamp" ts msg
+
+  /// When you create log messages from ingested data, not all client clocks may be fully accurate, or you may not have
+  /// validations in place to ensure the sending code is fully trusted. Therefore, we tag those Messages with the
+  /// timestamp for when they were received.
+  [<CompiledName "SetReceiveTimestamp">]
+  let setReceiveTimestamp (ts: Instant) msg =
+    setField "receiveTimestamp" (ts.ToUnixTimeTicks() * Constants.NanosPerTick) msg
 
   /// Sets the number of ticks since epoch. There are 10 ticks per micro-second,
   /// so a tick is a 1/10th microsecond, so it's 100 nanoseconds long.

@@ -40,12 +40,15 @@ module Router =
     let targetLogger = logary.getLogger (PointName.parse "Rutta")
     //codec >> Result.map (Array.iter targetLogger.logSimple) >> Job.result
     fun input ->
-        match codec input with
-        | Result.Ok messages ->
-          messages |> Array.iter targetLogger.logSimple
-          Job.result (Result.Ok ())
-        | Result.Error error ->
-          Job.result (Result.Error error)
+      match codec input with
+      | Result.Ok messages ->
+        let received = logary.runtimeInfo.getTimestamp()
+        messages
+          |> Array.map (Message.setReceiveNanoEpoch received)
+          |> Array.iter targetLogger.logSimple
+        Job.result (Result.Ok ())
+      | Result.Error error ->
+        Job.result (Result.Error error)
   
   let internal zmqRecv createSocket =
     let recv (started, shutdown) (cfg: IngestServerConfig) next =
@@ -179,7 +182,7 @@ module Router =
 
   type Binding = string
   
-  let private toListener (cancelled, cors, ilogger, baseConf) (mode: RMode): Binding -> string * Codec -> Job<IngestServer> =
+  let private toListener (cancelled, cors, ilogger, logary) (mode: RMode): Binding -> string * Codec -> Job<IngestServer> =
     let fn =
       match mode with
       | Pull -> pullBind
@@ -187,7 +190,7 @@ module Router =
       | TCP -> tcpBind
       | UDP -> udpBind
       | HTTP -> httpBind cors
-    fn (cancelled, ilogger, baseConf)
+    fn (cancelled, ilogger, logary)
 
   let start (cors, ilevel: LogLevel) (targets: TargetConf list) (listeners: (RMode * string * C) list) =
     let cancelled = IVar ()
