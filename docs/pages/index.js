@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import Layout from '../components/Layout'
 import Link from 'next/link'
+import Head from 'next/head';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faFileChartLine,
@@ -12,7 +13,6 @@ import DotnetIcon from '../components/DotnetIcon'
 import PrometheusIcon from '../components/PrometheusIcon'
 import { faAtom, faBalanceScale, faBooks, faSatelliteDish, faPuzzlePiece } from '@fortawesome/pro-light-svg-icons'
 import { faJs } from '@fortawesome/free-brands-svg-icons';
-import Head from 'next/head';
 import ScrollLink from '../components/ScrollLink'
 
 export default function Index() {
@@ -43,7 +43,7 @@ export default function Index() {
 
           <div className="cta-container">
             <a className="btn btn-primary btn-cta"
-              href="https://www.nuget.org/packages/Logary/5.0.0-rc.9"
+              href="https://www.nuget.org/packages/Logary/5.0.0-rc.10"
               target="_blank">
               <FontAwesomeIcon icon={faChevronDoubleDown} />
               .Net package

@@ -1,6 +1,6 @@
 import { ScrollTo } from "react-scroll-to"
 
-const ScrollLink = ({ targetRef, children }) => {
+const ScrollLink = ({ href = "#", targetRef, children, ...rest }) => {
   function handleClick(scrollTo) {
     return evt => {
       evt.preventDefault()
@@ -14,7 +14,7 @@ const ScrollLink = ({ targetRef, children }) => {
 
   return <ScrollTo>
     {({ scrollTo }) =>
-      <a href="/" onClick={handleClick(scrollTo)}>
+      <a href={href} onClick={handleClick(scrollTo)} {...rest}>
         {children}
       </a>
     }

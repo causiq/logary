@@ -1,6 +1,6 @@
 const Code = ({ lang, children }) =>
   <pre>
-    <code class={`language-${lang}`}>
+    <code className={`language-${lang}`}>
       {children}
     </code>
   </pre>

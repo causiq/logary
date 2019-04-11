@@ -16,18 +16,18 @@ const PageHeader = () =>
         </Link>
       </div>
 
-      <ol class="breadcrumb">
-        <li class="breadcrumb-item">
+      <ol className="breadcrumb">
+        <li className="breadcrumb-item">
           <Link href="/">
             <a>Start</a>
           </Link>
         </li>
-        <li class="breadcrumb-item active">Quick Start</li>
+        <li className="breadcrumb-item active">Quick Start</li>
       </ol>
 
-      <div class="top-search-box">
-        <form class="form-inline search-form justify-content-center" action="" method="get">
-          <input type="text" placeholder="Search..." name="search" class="form-control search-input" />
+      <div className="top-search-box">
+        <form className="form-inline search-form justify-content-center" action="" method="get">
+          <input type="text" placeholder="Search..." name="search" className="form-control search-input" />
           <Button type="submit" className="btn search-btn" value="Search">
             <FontAwesomeIcon icon="search" />
           </Button>

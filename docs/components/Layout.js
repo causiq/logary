@@ -14,8 +14,8 @@ config.autoAddCss = false
 
 library.add(faHeart, faSearch, faGithub, faPaperPlane)
 
-const Layout = ({ name, className = [], router, children }) => {
-  return <div className={classNames(className, name || 'root')}>
+const Layout = ({ name, className = [], router, children, ...rest }) => {
+  return <div className={classNames(className, name || 'root')} {...rest}>
     <div className='page-wrapper'>
       <Head>
         <meta name="viewport" content="width=device-width, initial-scale=1" key="viewport" />
