@@ -220,8 +220,5 @@ export default function Index() {
         </div>
       </div>
     </section>
-    <ul id="where-to-go-next-options">
-
-    </ul>
   </Layout>
 }
