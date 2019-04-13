@@ -24,6 +24,12 @@ spec:
       - name: {{ .Chart.Name }}
         image: "{{ .Values.image.repository }}/{{ .Values.image.name | default "logary-site:latest" }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+        - name: STRIPE_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name:  {{ include "logary-site.fullname" . }}-stripe
+              key: secretKey
         ports:
         - name: http
           containerPort: 80

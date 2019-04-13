@@ -6,6 +6,8 @@ image:
 ingress:
   annotations: {}
 
+# stripeSecretKey: ...
+
 nameOverride: ""
 fullnameOverride: ""
 resources: {}
