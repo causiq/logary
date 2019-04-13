@@ -87,7 +87,13 @@ export default function Pricing() {
         process.env.NODE_ENV === 'production'
           ? 'pk_live_CbFgv1mQ8yvjUrYWhtIR8awZ'
           : 'pk_test_OC5b0afrMpraAlH9frTen9C7';
-      setStripe(window.Stripe(key));
+      if (window.Stripe != null) {
+        setStripe(window.Stripe(key));
+      } else {
+        document.querySelector('#stripe-js').addEventListener('load', () => {
+          setStripe(window.Stripe(key));
+        })
+      }
     }
   }, [])
 
