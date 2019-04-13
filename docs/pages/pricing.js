@@ -46,7 +46,7 @@ const handleReady = () => {
   console.log('[ready]');
 };
 
-const CheckoutForm = injectStripe(({ stripe, total, onCompleted }) => {
+const CheckoutForm = injectStripe(({ stripe, total }) => {
   const [ purchaseComplete, setPurchaseComplete ] = useState(false)
 
   const handleSubmit = async (ev) => {
