@@ -4,6 +4,9 @@ const { parse } = require('url')
 const routes = require("./routes")
 
 const dev = process.env.NODE_ENV !== 'production'
+const stripeKey = process.env.STRIPE_SECRET_KEY
+if (stripeKey == null) throw new Error("Missing env var STRIPE_SECRET_KEY")
+const stripe = require("stripe")(stripeKey)
 const app = next({ dev })
 const handle = app.getRequestHandler()
 
@@ -20,6 +23,7 @@ app
   .prepare()
   .then(() => {
     const server = express()
+    server.use(require("body-parser").text())
     const port = process.env.PORT || 3000
 
     server.get('*', (req, res) => {
@@ -33,6 +37,22 @@ app
         return handle(req, res, parsedUrl);
       }
     })
+
+    server.post("/charge", async (req, res) => {
+      try {
+        let {status} = await stripe.charges.create({
+          amount: 2000,
+          currency: "usd",
+          description: "An example charge",
+          source: req.body
+        });
+
+        res.json({ status });
+      } catch (err) {
+        console.error(err)
+        res.status(500).end();
+      }
+    });
 
     server.listen(port, err => {
       if (err) throw err

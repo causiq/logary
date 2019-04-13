@@ -19,6 +19,7 @@
     "@zeit/next-sass": "^1.0.1",
     "babel-plugin-macros": "^2.5.1",
     "babel-plugin-preval": "^3.0.1",
+    "body-parser": "^1.18.3",
     "bootstrap": "^4.3.1",
     "classnames": "^2.2.6",
     "highlight.js": "^9.15.6",
@@ -34,13 +35,14 @@
     "react-lunr": "^0.6.0",
     "react-scroll-to": "^2.0.5",
     "react-stripe-elements": "^2.0.3",
-    "reactstrap": "^8.0.0"
+    "reactstrap": "^8.0.0",
+    "stripe": "^6.28.0"
   },
   "devDependencies": {
     "express": "^4.16.4"
   },
   "scripts": {
-    "dev": "node server.js",
+    "dev": "STRIPE_SECRET_KEY=sk_test_wKhdTXjsPFI1YcISwxzXx3EP node server.js",
     "build": "next build",
     "start": "NODE_ENV=production node server.js -p $PORT"
   }

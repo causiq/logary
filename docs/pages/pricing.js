@@ -46,13 +46,19 @@ const handleReady = () => {
   console.log('[ready]');
 };
 
-const CheckoutForm = injectStripe(({ stripe, total }) => {
-  const handleSubmit = (ev) => {
+const CheckoutForm = injectStripe(({ stripe, total, onCompleted }) => {
+  const handleSubmit = async (ev) => {
     ev.preventDefault();
     if (stripe != null) {
-      stripe
-        .createToken()
-        .then((payload) => console.log('[token]', payload))
+      const { token } = await stripe.createToken({
+        name: "Name"
+      });
+      const response = await fetch("/charge", {
+        method: "POST",
+        headers: {"Content-Type": "text/plain"},
+        body: token.id
+      });
+      if (response.ok) onCompleted(response);
     } else {
       console.log("Stripe.js hasn't loaded yet.")
     }
@@ -75,11 +81,13 @@ const CheckoutForm = injectStripe(({ stripe, total }) => {
   );
 })
 
+// https://stripe.com/docs/recipes/elements-react
 // https://codepen.io/davidchin/pen/GpNvqw
 export default function Pricing() {
-  const [ cores, setCores ] = useState(8);
-  const [ devs, setDevs ] = useState(3);
-  const [ stripe, setStripe ] = useState(null);
+  const [ cores, setCores ] = useState(8)
+  const [ devs, setDevs ] = useState(3)
+  const [ stripe, setStripe ] = useState(null)
+  const [ purchaseComplete, setPurchaseComplete ] = useState(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window != null) {
