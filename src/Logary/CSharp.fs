@@ -626,13 +626,7 @@ type LoggerEx =
 
   // corresponds to: logSimple
 
-  /// Log a message, but don't synchronously wait for the message to be placed
-  /// inside Logary's buffers. Instead the message will be added to Logary's
-  /// buffers asynchronously with a timeout of 5 seconds, and will then be
-  /// dropped. We avoid the unbounded buffer problem by dropping the message.
-  /// If you have dropped messages, they will be logged to STDERR. You should load-
-  /// test your app to ensure that your targets can send at a rate high enough
-  /// without dropping messages.
+  /// Log the message without blocking, and ignore its result. If the buffer is full, drop the message.
   [<Extension>]
   static member LogSimple (logger, message): unit =
     Logger.logSimple logger message

@@ -167,8 +167,9 @@ OR:
 
 ```fsharp
 open System
+open Hopac // the concurrency library in use
 open Logary // normal usage
-open Logary.Message // normal usage
+open Logary.Message // normal usage without doing `Message.`
 open Logary.Configuration // conf
 
 let logger = Log.create "Hello World logger"
@@ -184,7 +185,7 @@ let main argv =
     Config.create "Logary.ConsoleApp" "localhost"
     |> Config.target (Targets.LiterateConsole.create LiterateConsole.empty "console")
     |> Config.build
-    |> Hopac.Hopac.run
+    |> run
 
   // log something
   logger.info (eventX "{userName} logged in" >> setField "user" "haf")
@@ -204,8 +205,7 @@ using Logary.Targets;
 
 // snip
 
-// NuGet: Install-Package Logary
-string loggerId = "Logary.MyLogger";
+var loggerId = "Logary.MyLogger";
 using (var logary = LogaryFactory.New("svc", "host",
     // You could define multiple targets. For HelloWorld, we use only console:
     with => with.InternalLogger(ILogger.NewConsole(LogLevel.Error))

@@ -1,15 +1,4 @@
-const Code = ({ lang, children }) =>
-  <pre>
-    <code className={`language-${lang}`}>
-      {children}
-    </code>
-  </pre>
-
-const BashCode = ({ children }) =>
-  <Code lang="bash">
-    {children}
-  </Code>
-
-export { BashCode }
-
+import Lowlight from 'react-lowlight'
+const Code = (props) => <Lowlight {...props} />
+Code.propTypes = Lowlight.propTypes;
 export default Code

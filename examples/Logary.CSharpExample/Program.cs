@@ -1,29 +1,6 @@
-﻿
-/*
- *
-
-//   .Target<Logary.Targets.RabbitMQ.Builder>(
-//       "rabbitmq",
-//       conf => conf.Target.EnableTls("./cert/path.pfx", "TopSecret12345").Done()
-//   )
-// currently Windows only:
-/*
-    .Target<DB.Builder>("db",
-        conf => conf.Target
-            .ConnectionFactory(() => new SQLiteConnection())
-            .DefaultSchema()
-            .MigrateUp(
-                conn => new SqliteProcessor(conn,
-                    new SqliteGenerator(),
-                    new ConsoleAnnouncer(),
-                    new MigrationOptions(false, "", 60),
-                                            new SqliteDbFactory())))
-*/
-
-namespace Logary.CSharpExample
+﻿namespace Logary.CSharpExample
 {
     using System;
-    using System.Text.RegularExpressions;
     using System.Threading;
     using System.Threading.Tasks;
     using Configuration;
@@ -33,51 +10,18 @@ namespace Logary.CSharpExample
 
     public static class Program
     {
-        public static Task<LogManager> StartEverything()
-        {
-            return LogaryFactory.New("Logary.CSharpExample","localhost",
-                with => with.InternalLogger(ILogger.NewConsole(LogLevel.Debug))
-                        // .Metrics(m =>
-                        //     m.AddMetric(Duration.FromSeconds(3L), "appMetrics", WinPerfCounters.appMetrics)
-                        //      .AddMetric(Duration.FromSeconds(3L), "systemMetrics", WinPerfCounters.systemMetrics))
-                        .Target<TextWriter.Builder>(
-                          "console1",
-                          conf =>
-                            conf.Target.WriteTo(System.Console.Out, System.Console.Error)
-                                .MinLevel(LogLevel.Verbose)
-                                .AcceptIf(line => true)
-                                .SourceMatching(new Regex(".*"))
-                            )
-                            .Target<Graphite.Builder>(
-                                "graphite",
-                                conf => conf.Target.ConnectTo("127.0.0.1", 2131)
-                            )
-                            .Target<Debugger.Builder>("debugger")
-                            .Target<Elasticsearch.Builder>(
-                                "es",
-                                conf => conf.Target
-                                    .PublishTo("elasticsearch.service")
-                                    .Type("logs") // index-name
-                                    .Done()
-                            )
-                            //.Target<File.Builder>(
-                            //    "file",
-                            //    conf => conf
-                            //)
-                            .Target<InfluxDb.Builder>("influx", conf => conf.Target.DB("http://influxdb.service:8086").Done())
-                );
-        }
-
         public static Task<LogManager> StartLiterate()
         {
-            return LogaryFactory.New("Logary.CSharpExample","localhost",
+            return LogaryFactory.New("Logary.CSharpExample","laptop",
                 with => with.InternalLogger(ILogger.NewConsole(LogLevel.Debug))
                         .Target<LiterateConsole.Builder>("console1"));
         }
 
-
         public static async Task SampleUsage(Logger logger)
         {
+            // without async
+            logger.LogSimple(MessageModule.Event(LogLevel.Info, "User logged in"));
+            
             // await placing the Hello World event in the buffer
             await logger.LogEvent(LogLevel.Debug, "Hello world. Important? {important}", new
             {
@@ -137,19 +81,22 @@ namespace Logary.CSharpExample
 
         public static int Main(string[] args)
         {
+            // normal console app boilerplate;
             var mre = new ManualResetEventSlim(false);
             System.Console.CancelKeyPress += (sender, arg) => mre.Set();
 
             var logary = StartLiterate().Result;
-            {
-                LogaryFacadeAdapter.Initialise<Cibryy.Logging.ILogger>(logary);
-                var logger = logary.GetLogger("main");
-                SampleCibryyUsage(LoggerCSharpAdapter.Create<Cibryy.Logging.ILogger>(logger));
-
-                //SampleUsage(logger).Wait();
-                mre.Wait();
-            }
-
+            
+            // Usage with a library:
+            LogaryFacadeAdapter.Initialise<Cibryy.Logging.ILogger>(logary);
+            var logger = logary.GetLogger("main");
+            SampleCibryyUsage(LoggerCSharpAdapter.Create<Cibryy.Logging.ILogger>(logger));
+            
+            // Usage in this program:
+            SampleUsage(logger).Wait();
+                
+            // Wait for CTRL+C
+            mre.Wait();
             return 0;
         }
     }

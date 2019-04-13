@@ -18,9 +18,7 @@ export default function Rutta() {
       </Head>
       <DocSection {...toc[0]}>
         <h2 className="section-title">Install the Helm chart</h2>
-        <p>
-          The first step is to install the Rutta Helm chart into your Kubernetes cluster.
-        </p>
+        <p>The first step is to install the Rutta Helm chart into your Kubernetes cluster.</p>
         <p>Rutta is a high-performance log router/shipper written in F# but configured from the command line. It's "cloud native" in that it runs as a docker container on top of .Net Core</p>
         <p>Rutta is GPLv3 licensed (or alternatively commercially licensed). It's a packaging of Logary as a service, that you can run, either as a sidecar container or as a log router deployment.</p>
         <p>Rutta is completely stateless, so you can run any number of replicas. It runs as a Kubernetes deployment with three replicas by default.</p>

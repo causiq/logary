@@ -25,9 +25,6 @@ export default function JSQuickstart() {
         <p>
           <code>yarn add logary</code>
         </p>
-        <p>
-          <a href="https://github.com/logary/logary-js#how-to-use" title="Continue here..">Continue here...</a>
-        </p>
       </DocSection>
     </DocPage>
   )

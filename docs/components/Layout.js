@@ -4,6 +4,8 @@ import classNames from 'classnames'
 import SiteHeader from './SiteHeader'
 import PageHeader from './PageHeader'
 import Footer from './Footer'
+
+// Font awesome
 import 'bootstrap/dist/css/bootstrap.min.css'
 import '@fortawesome/fontawesome-svg-core/styles.css'
 import "../styles/styles.scss"
@@ -14,6 +16,20 @@ config.autoAddCss = false
 
 library.add(faHeart, faSearch, faGithub, faPaperPlane)
 
+// Syntax highlighting
+import Lowlight from 'react-lowlight'
+// https://github.com/isagalaev/highlight.js/tree/master/src/languages
+import langFs from 'highlight.js/lib/languages/fsharp'
+import langCs from 'highlight.js/lib/languages/cs'
+import langJavascript from 'highlight.js/lib/languages/javascript'
+import langJson from 'highlight.js/lib/languages/json'
+import 'highlight.js/styles/atom-one-light.css'
+Lowlight.registerLanguage('fsharp', langFs)
+Lowlight.registerLanguage('csharp', langCs)
+Lowlight.registerLanguage('javascript', langJavascript)
+Lowlight.registerLanguage('json', langJson)
+
+// Actual layout
 const Layout = ({ name, className = [], router, children, ...rest }) => {
   return <div className={classNames(className, name || 'root')} {...rest}>
     <div className='page-wrapper'>
