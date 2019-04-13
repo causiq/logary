@@ -7,11 +7,10 @@ import DotnetIcon from '../../components/DotnetIcon'
 
 export default function DOTNetQuickstart() {
   const toc =
-    [ { id: "#install-the-package", title: "Install the package", ref: useRef(null) },
-      { id: "#hello-fsharp", title: "Hello F#", ref: useRef(null) },
-      { id: "#hello-csharp", title: "Hello C#", ref: useRef(null) },
+    [ { id: "install-the-package", title: "Install the package", ref: useRef(null) },
+      { id: "hello-fsharp", title: "Hello F#", ref: useRef(null) },
+      { id: "hello-csharp", title: "Hello C#", ref: useRef(null) },
     ]
-
 
   return (
     <DocPage name="dotnet-quickstart" title=".Net Quickstart" icon={<DotnetIcon width={58} />} colour="purple" readingMinutes={4} toc={toc}>

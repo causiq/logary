@@ -30,7 +30,7 @@ Lowlight.registerLanguage('javascript', langJavascript)
 Lowlight.registerLanguage('json', langJson)
 
 // Actual layout
-const Layout = ({ name, className = [], router, children, ...rest }) => {
+const Layout = ({ name, title, className = [], router, children, ...rest }) => {
   return <div className={classNames(className, name || 'root')} {...rest}>
     <div className='page-wrapper'>
       <Head>
@@ -39,7 +39,9 @@ const Layout = ({ name, className = [], router, children, ...rest }) => {
         <meta name="description" content="Logary is a logging, tracing and metric library for .Net and JS as well as a stand-alone, cloud-native log router/ingress called Rutta." key="description" />
         <meta name="author" content="Henrik Feldt" key="author" />
       </Head>
-      {router.pathname === "/" ? <SiteHeader /> : <PageHeader />}
+      {router.pathname === "/"
+        ? <SiteHeader />
+        : <PageHeader title={title} />}
       {children}
       <Footer />
     </div>

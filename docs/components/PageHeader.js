@@ -1,9 +1,8 @@
 import Link from 'next/link'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { Button } from 'reactstrap'
-import Router from 'next/router'
 
-const PageHeader = () =>
+const PageHeader = ({ title }) =>
   <header className="header">
     <div className="container">
       <div className="branding">
@@ -22,7 +21,7 @@ const PageHeader = () =>
             <a>Start</a>
           </Link>
         </li>
-        <li className="breadcrumb-item active">Quick Start</li>
+        <li className="breadcrumb-item active">{title}</li>
       </ol>
 
       <div className="top-search-box">

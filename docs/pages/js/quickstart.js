@@ -6,7 +6,7 @@ import DocSection from '../../components/DocSection'
 
 export default function JSQuickstart() {
   const toc =
-    [ { id: "#install-the-package", title: "Install the package", ref: useRef(null) } ]
+    [ { id: "install-the-package", title: "Install the package", ref: useRef(null) } ]
 
   return (
     <DocPage name="js-quickstart" title="JavaScript Quickstart" faIcon={faJs} colour="yellow" readingMinutes={2} toc={toc}>

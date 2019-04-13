@@ -16,7 +16,7 @@ export const DocPage = (props) => {
     ...rest
   } = props;
 
-  return <Layout name={name} className={`body-${colour}`} {...rest}>
+  return <Layout name={name} title={title} className={`body-${colour}`} {...rest}>
     <div className="doc-wrapper">
       <div className="container">
 
@@ -26,9 +26,12 @@ export const DocPage = (props) => {
               ? icon
               : <FontAwesomeIcon icon={faIcon} />} {title}
           </h1>
-          <div className="meta">
-            <FontAwesomeIcon icon={faClock} size="1x" /> Expected reading time: {readingMinutes} minutes
-          </div>
+          {readingMinutes != null
+            ? <div className="meta">
+                <FontAwesomeIcon icon={faClock} size="1x" />{' '}
+                Expected reading time: {readingMinutes} minutes
+              </div>
+              : null}
         </div>
 
         <div className="doc-body row">

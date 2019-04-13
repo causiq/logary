@@ -7,9 +7,9 @@ import { faSatelliteDish } from '@fortawesome/pro-light-svg-icons';
 
 export default function Rutta() {
   const toc =
-    [ { id: "#introduction", title: "Introduction", ref: useRef(null) },
-      { id: "#install-helm-chart", title: "Install the Helm chart", ref: useRef(null) },
-      { id: "#architecture", title: "Rutta architecture", ref: useRef(null) } ]
+    [ { id: "introduction", title: "Introduction", ref: useRef(null) },
+      { id: "install-helm-chart", title: "Install the Helm chart", ref: useRef(null) },
+      { id: "architecture", title: "Rutta architecture", ref: useRef(null) } ]
 
   return (
     <DocPage name="rutta" title="Logary Rutta" faIcon={faSatelliteDish} colour="bluee" readingMinutes={2} toc={toc}>

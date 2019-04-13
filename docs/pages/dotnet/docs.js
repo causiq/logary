@@ -6,7 +6,7 @@ import DocSection from '../../components/DocSection'
 
 export default function DotnetDocs() {
   const toc =
-    [ { id: "#TODO", title: "TODO", ref: useRef(null) } ]
+    [ { id: "TODO", title: "TODO", ref: useRef(null) } ]
 
   return (
     <DocPage name="js-quickstart" title="TODO" faIcon={faJs} colour="yellow" readingMinutes={2} toc={toc}>
