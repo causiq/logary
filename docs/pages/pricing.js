@@ -94,6 +94,7 @@ const CheckoutForm = injectStripe(({ stripe, total }) => {
 export default function Pricing() {
   const [ cores, setCores ] = useState(8)
   const [ devs, setDevs ] = useState(3)
+  const [ years, setYears ] = useState(2)
   const [ stripe, setStripe ] = useState(null)
 
   useEffect(() => {
@@ -118,11 +119,12 @@ export default function Pricing() {
     ]
 
   const continuousRebate = 0.6, // 60% off the next year
-        total = cores * 100 + devs * 20 + 250,
-        totalNextYear = total * (1 - continuousRebate);
+        oneYear = cores * 100 + devs * 20 + 250,
+        total = oneYear * years,
+        nextYear = oneYear * (1 - continuousRebate);
 
   return (
-    <DocPage name="pricing" title="Pricing" faIcon={faCoins} colour="yellow" toc={toc}>
+    <DocPage name="pricing" title="Pricing" faIcon={faCoins} colour="primary" toc={toc}>
       <Head>
         <title key="title">Logary — Pricing</title>
         <script id="stripe-js" src="https://js.stripe.com/v3/" async></script>
@@ -158,9 +160,18 @@ export default function Pricing() {
               maxValue={15} minValue={1} value={devs} onChange={v => setDevs(v)} />
           </section>
 
+          <section>
+            <label htmlFor="years">
+              Number of years to buy a license for
+            </label>
+            <InputRange id="years"
+              formatLabel={v => v <= 1 ? `${v} year` : `${v} years`}
+              maxValue={15} minValue={1} value={years} onChange={v => setYears(v)} />
+          </section>
+
           <p className="total" style={{margin: '50px 0 0 0', fontWeight: 'bold'}}>
-            Total first year: {total} EUR<br />
-            Subsequent years: {totalNextYear} EUR
+            Total (excl VAT): {total} EUR<br />
+            Subsequent years: {nextYear} EUR
           </p>
 
           <p>
