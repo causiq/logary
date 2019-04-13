@@ -14,7 +14,7 @@ export default function DOTNetQuickstart() {
 
 
   return (
-    <DocPage name="dotnet-quickstart" title=".Net Quickstart" icon={<DotnetIcon width={58} />} colour="purple" readingMinutes={2} toc={toc}>
+    <DocPage name="dotnet-quickstart" title=".Net Quickstart" icon={<DotnetIcon width={58} />} colour="purple" readingMinutes={4} toc={toc}>
       <Head>
         <title key="title">Logary — .Net Quickstart</title>
       </Head>
