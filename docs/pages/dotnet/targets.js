@@ -48,7 +48,7 @@ export default function Targets() {
         <dt>Google Pub/Sub</dt>
         <dd>
           <Link href="#google-pubsub">
-            Docs
+            <a>Docs</a>
           </Link>
         </dd>
       </dl>
