@@ -27,17 +27,9 @@ Logary is a high-performance, structured logging library which you can do health
 Created by [Henrik Feldt, et al](https://haf.github.io) and sponsored by
 [Qvitoo_ – A.I. bookkeeping](https://qvitoo.com/?utm_source=github&utm_campaign=logary).
 
-## Install it
+## Installation
 
-paket.dependencies:
-
-    source https://www.nuget.org/api/v2
-    nuget Logary
-
-OR:
-
-    Install-Package Logary
-
+See [docs](https://logary.tech/logary-dotnet-quickstart)
 
 ## Table of Contents
 
@@ -45,7 +37,7 @@ OR:
 
 - [Logary v5](#logary-v5)
   - [Why?](#why)
-  - [Install it](#install-it)
+  - [Installation](#installation)
   - [Table of Contents](#table-of-contents)
   - [Hello World (C#)](#hello-world-c)
   - [Hello World (F#)](#hello-world-f)
@@ -163,112 +155,16 @@ OR:
 
 ## Hello World (F#)
 
-> Be sure to choose Logary version 5 (enable pre-release), or it won't work!
-
-```fsharp
-open System
-open Hopac // the concurrency library in use
-open Logary // normal usage
-open Logary.Message // normal usage without doing `Message.`
-open Logary.Configuration // conf
-
-let logger = Log.create "Hello World logger"
-
-[<EntryPoint>]
-let main argv =
-  // normal console app boilerplate;
-  use mre = new System.Threading.ManualResetEventSlim(false)
-  use sub = Console.CancelKeyPress.Subscribe (fun _ -> mre.Set())
-
-  // create a new Logary; save this instance somewhere "global" to your app/service
-  let logary =
-    Config.create "Logary.ConsoleApp" "localhost"
-    |> Config.target (Targets.LiterateConsole.create LiterateConsole.empty "console")
-    |> Config.build
-    |> run
-
-  // log something
-  logger.info (eventX "{userName} logged in" >> setField "user" "haf")
-
-  mre.Wait()
-  0
-```
+See [docs](https://logary.tech/logary-dotnet-quickstart)
 
 ## Hello World (C#)
 
-> Be sure to choose Logary version 5 (enable pre-release), or it won't work!
-
-```csharp
-using Logary;
-using Logary.Configuration;
-using Logary.Targets;
-
-// snip
-
-var loggerId = "Logary.MyLogger";
-using (var logary = LogaryFactory.New("svc", "host",
-    // You could define multiple targets. For HelloWorld, we use only console:
-    with => with.InternalLogger(ILogger.NewConsole(LogLevel.Error))
-                .Target<TextWriter.Builder>("myFirstTarget",
-                   conf => conf.Target.WriteTo(System.Console.Out, System.Console.Error))).Result)
-{
-    // Then let's log a message. For HelloWorld, we log a string:
-    var logger = logary.getLogger(Logary.PointNameModule.Parse(loggerId));
-    logger.logSimple(Logary.MessageModule.Event(Logary.LogLevel.Info, "Hello World!"));
-    System.Console.ReadLine();
-}
-```
+See [docs](https://logary.tech/logary-dotnet-quickstart)
 
 ## Overview
 
 Logary is itself a library for metrics and events with extensible inputs, *adapters*, and
 outputs, *targets*. Further, its *services* run as their own processes.
-
- - **Logary** – the main logging and metrics library. Your app depends on this.
- - Logary.CSharp - C# facade that makes it more *object oriented*.
- - Logary.Facade - single file to use in your F# library.
- - **Logary.Targets** (from *Logary* into DBs and monitoring infra):
-   * DB – write logs into an arbitrary database: SQL Server, MySQL, PostgreSQL, sqlite and so on...
-   * *DB.Migrations* – uses [FluentMigrator](https://github.com/schambers/fluentmigrator/)
-     to create and then upgrade your DB between versions of Logary.
-   * Heka – ships *Events* and *Metrics* into Heka.
-   * InfluxDb – ships *Events* (as annotations) and *Metrics* into [InfluxDb](https://influxdata.com).
-   * Logstash – ships *Events* and *Metrics* into [Logstash](https://www.elastic.co/products/logstash)
-     [over](https://www.elastic.co/guide/en/logstash/current/plugins-inputs-zeromq.html)
-     [ZeroMQ](http://zeromq.org/).
-   * <span title="A transactional e-mail service that lets you send e-mail with code">Mailgun</span>
-     – ships *Events* over e-mail – send yourself warnings, errors and fatal errors
-     via [Mailgun](http://www.mailgun.com/).
-   * <span title="The sharpest clojurian knife in the drawer for acting on metrics">Riemann</span>
-     – ships *Events* (as a 1-valued gauage) and *Metrics* into [Riemann](http://riemann.io/).
-   * Shipper – ships *Messages* (*Events*/*Metrics*) to the `Router` or `Proxy` (see `Rutta` above)
-   * ApplicationInsights - ships *Messages* (*Events*/*Metrics*) as trace items to Microsoft Azure Application Insights
- - **Logary.Adapters** (from *X* into Logary):
-   * <span title="Make yourself dependent on not just one, but two logging frameworks">CommonLogging</span>
-     – *moar abstract* logs into Logary.
-   * EventStore – [EventStore](https://geteventstore.com/) logs into Logary.
-   * *Facade* –  receiver for `Logary.Facade` logs.
-   * <span title="F# API for dealing with DBs">FsSql</span> –
-     [FsSql][fssql-nuget] logs into Logary.
-   * <span title="A web authorisation library">Hawk</span> - Logibit's
-     [Hawk](https://www.nuget.org/packages/Hawk/) logs into Logary.
-   * log4net – lets log4net log into Logary.
- - **Logary.Metrics** (from *environment* into Logary):
-   * WinPerfCounters – an API to access Windows Performance Counters.
- - **Logary.Services** (stand-alone functionality):
-   * Rutta – a godly service of three:
-     1. *Ships* Windows Performance Counters to the `Router` or `Proxy`, pushing via a PUB or PUSH ZeroMQ socket.
-     2. *Proxies* `Messages` between the `Shipper` and the `Router`, listening on a ZeroMQ XSUB/XPUB socket.
-     3. *Routes* `Messages` to Targets, listening on a ZeroMQ SUB or PULL socket.
-     <blockquote>
-       Note that the shipping feature is its own target as well. Why? So that you can send logs in an efficient,
-       high-performance manner between machines, without going through a potentially destructive
-       mapping to another serialisation format or through another log router (Heka, Logstash) which
-       also may change your data structure.
-     </blockquote>
-   * SQLServerHealth – a service that keeps track of IO/latency performance for highly loaded SQL Servers
-   * Ingestion.Http – a well-maintained F# WebPart that you run as a part of your F#
-     server, that enables you to use [logary-js](https://www.npmjs.com/package/logary-js).
 
 ## Tutorial and things around Message
 
