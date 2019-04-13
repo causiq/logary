@@ -8,6 +8,7 @@ export const DocPage = (props) => {
     name,
     colour,
     title,
+    icon,
     faIcon,
     readingMinutes,
     toc,
@@ -21,7 +22,9 @@ export const DocPage = (props) => {
 
         <div id="doc-header" className="doc-header text-center">
           <h1 className="doc-title">
-            <FontAwesomeIcon icon={faIcon} /> {title}
+            {icon != null
+              ? icon
+              : <FontAwesomeIcon icon={faIcon} />} {title}
           </h1>
           <div className="meta">
             <FontAwesomeIcon icon={faClock} size="1x" /> Expected reading time: {readingMinutes} minutes

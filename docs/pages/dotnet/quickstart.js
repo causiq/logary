@@ -1,9 +1,9 @@
 import { useRef } from 'react'
 import Head from 'next/head';
-import { faJs } from '@fortawesome/free-brands-svg-icons';
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import Code from '../../components/Code'
+import DotnetIcon from '../../components/DotnetIcon'
 
 export default function DOTNetQuickstart() {
   const toc =
@@ -12,8 +12,9 @@ export default function DOTNetQuickstart() {
       { id: "#hello-csharp", title: "Hello C#", ref: useRef(null) },
     ]
 
+
   return (
-    <DocPage name="dotnet-quickstart" title=".Net Quickstart" faIcon={faJs} colour="yellow" readingMinutes={2} toc={toc}>
+    <DocPage name="dotnet-quickstart" title=".Net Quickstart" icon={<DotnetIcon width={58} />} colour="purple" readingMinutes={2} toc={toc}>
       <Head>
         <title key="title">Logary — .Net Quickstart</title>
       </Head>
