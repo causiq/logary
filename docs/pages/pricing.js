@@ -47,6 +47,8 @@ const handleReady = () => {
 };
 
 const CheckoutForm = injectStripe(({ stripe, total, onCompleted }) => {
+  const [ purchaseComplete, setPurchaseComplete ] = useState(false)
+
   const handleSubmit = async (ev) => {
     ev.preventDefault();
     if (stripe != null) {
@@ -58,10 +60,16 @@ const CheckoutForm = injectStripe(({ stripe, total, onCompleted }) => {
         headers: {"Content-Type": "text/plain"},
         body: token.id
       });
-      if (response.ok) onCompleted(response);
+      if (response.ok) setPurchaseComplete(true);
     } else {
       console.log("Stripe.js hasn't loaded yet.")
     }
+  }
+
+  if (purchaseComplete) {
+    return (
+      "Thank you for your purchase! We will e-mail you your license key!"
+    )
   }
 
   return (
@@ -87,7 +95,6 @@ export default function Pricing() {
   const [ cores, setCores ] = useState(8)
   const [ devs, setDevs ] = useState(3)
   const [ stripe, setStripe ] = useState(null)
-  const [ purchaseComplete, setPurchaseComplete ] = useState(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window != null) {
