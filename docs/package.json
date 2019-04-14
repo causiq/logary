@@ -8,6 +8,9 @@
   "license": "GPL-3.0-only",
   "private": false,
   "dependencies": {
+    "@babel/cli": "^7.4.3",
+    "@babel/core": "^7.4.3",
+    "@babel/preset-env": "^7.4.3",
     "@fortawesome/fontawesome-pro": "^5.8.1",
     "@fortawesome/fontawesome-svg-core": "^1.2.17",
     "@fortawesome/free-brands-svg-icons": "^5.8.1",
@@ -39,11 +42,12 @@
     "stripe": "^6.28.0"
   },
   "devDependencies": {
-    "express": "^4.16.4"
+    "express": "^4.16.4",
+    "nodemon": "^1.18.11"
   },
   "scripts": {
-    "dev": "STRIPE_SECRET_KEY=sk_test_wKhdTXjsPFI1YcISwxzXx3EP node server.js",
     "build": "next build",
+    "dev": "nodemon server.js",
     "start": "NODE_ENV=production node server.js -p $PORT"
   }
 }

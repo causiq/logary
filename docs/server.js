@@ -2,11 +2,13 @@ const express = require('express')
 const next = require('next')
 const { parse } = require('url')
 const routes = require("./routes")
+const pricing = require('./components/calculatePrice')
 
 const dev = process.env.NODE_ENV !== 'production'
-const stripeKey = process.env.STRIPE_SECRET_KEY
-if (stripeKey == null) throw new Error("Missing env var STRIPE_SECRET_KEY")
+const stripeKey = process.env.LOGARY_STRIPE_SECRET_KEY
+if (stripeKey == null) throw new Error("Missing env var LOGARY_STRIPE_SECRET_KEY")
 const stripe = require("stripe")(stripeKey)
+stripe.setApiVersion('2019-03-14');
 const app = next({ dev })
 const handle = app.getRequestHandler()
 
@@ -24,6 +26,7 @@ app
   .then(() => {
     const server = express()
     server.use(require("body-parser").text())
+    server.use(require("body-parser").json())
     const port = process.env.PORT || 3000
 
     server.get('*', (req, res) => {
@@ -39,15 +42,24 @@ app
     })
 
     server.post("/charge", async (req, res) => {
+      console.log("Received body", req.body)
       try {
-        let {status} = await stripe.charges.create({
-          amount: 2000,
-          currency: "usd",
-          description: "An example charge",
-          source: req.body
+        const chargeVAT = req.body.customer.vatNo == null || req.body.customer.vatNo === "",
+              ep = pricing.calculatePrice(req.body.cores, req.body.devs, req.body.years, pricing.ContinuousRebate, chargeVAT)
+
+        if (!pricing.equal(ep.total, req.body.price.total)) {
+          logger.error("Received value from client", rq.body.price, "but calculated it as", ep)
+          res.status(400).statusMessage("Bad amount or not same currency");
+          return;
+        }
+
+        const cr = await stripe.charges.create({
+          ...ep.total,
+          description: req.body.token.name,
+          source: req.body.token.id
         });
 
-        res.json({ status });
+        res.json({ status: cr.status });
       } catch (err) {
         console.error(err)
         res.status(500).end();
