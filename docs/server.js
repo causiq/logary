@@ -42,7 +42,6 @@ app
     })
 
     server.post("/charge", async (req, res) => {
-      console.log("Received body", req.body)
       try {
         const chargeVAT = req.body.customer.vatNo == null || req.body.customer.vatNo === "",
               ep = pricing.calculatePrice(req.body.cores, req.body.devs, req.body.years, pricing.ContinuousRebate, chargeVAT)
@@ -52,6 +51,8 @@ app
           res.status(400).statusMessage("Bad amount or not same currency");
           return;
         }
+
+        console.log(JSON.stringify(req.body))
 
         const cr = await stripe.charges.create({
           ...ep.total,
