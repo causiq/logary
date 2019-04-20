@@ -37,24 +37,35 @@ exports.ContinuousRebate = ContinuousRebate
 function calculatePrice(cores, devs, years, continuousRebate, chargeVAT=false){
   if (!cores || !devs || !years || !continuousRebate) throw new Error("Missing parameters to 'calculatePrice'");
   if (cores < 1 || devs < 1 || years < 1 || continuousRebate >= 1.0 || continuousRebate < 0) throw new Error(`Bad parameters cores=${cores}, devs=${devs}, years=${years}, cr=${continuousRebate}.`);
-  const oneYear = (cores * 100 + devs * 20 + 250) * 100,
+  const oneYearBase = (cores * 100 + devs * 20 + 250) * 100,
         vatRate = chargeVAT ? 0.25 : 0.0;
 
-  const totalExclVAT = oneYear * years,
-        totalVAT = vatRate * totalExclVAT,
-        total = money(totalExclVAT + totalVAT),
-        nextYearExclVAT = oneYear * (1 - continuousRebate),
+  const oneYearExclVAT = oneYearBase,
+        oneYearVAT = vatRate * oneYearExclVAT,
+        oneYear = money(oneYearExclVAT + oneYearVAT),
+        nextYearExclVAT = oneYearBase * (1 - continuousRebate),
         nextYearVAT = vatRate * nextYearExclVAT,
-        nextYear = money(nextYearExclVAT + nextYearVAT);
+        nextYear = money(nextYearExclVAT + nextYearVAT),
+        totalExclVAT = oneYearExclVAT + (years - 1) * nextYearExclVAT,
+        totalVAT = vatRate * totalExclVAT,
+        total = money(totalExclVAT + totalVAT);
 
   return {
+    oneYearExclVAT: money(oneYearExclVAT),
+    oneYearVAT: money(oneYearVAT),
+    oneYear,
     totalExclVAT: money(totalExclVAT),
     totalVAT: money(totalVAT),
     total,
-    nextYearExclVAT: money(totalExclVAT),
+    nextYearExclVAT: money(nextYearExclVAT),
     nextYearVAT: money(nextYearVAT),
     nextYear,
-    chargeVAT
+    continuousRebate,
+    cores,
+    devs,
+    years,
+    chargeVAT,
+    vatRate
   }
 }
 exports.calculatePrice = calculatePrice

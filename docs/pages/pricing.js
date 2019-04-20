@@ -34,6 +34,7 @@ const createOptions = (fontSize, padding) => {
 
 function newCustomer() {
   return {
+    companyName: "",
     name: "",
     vatNo: "",
     email: ""
@@ -59,7 +60,7 @@ const CheckoutForm = injectStripe(({ stripe, cores, devs, years }) => {
     setChargePending(true);
 
     const tr = await stripe.createToken({
-      name: `${customer.name} c=${cores}, d=${devs}, y=${years}`
+      name: `${customer.companyName} c=${cores}, d=${devs}, y=${years}`
     });
 
     if (tr.token == null) {
@@ -88,6 +89,7 @@ const CheckoutForm = injectStripe(({ stripe, cores, devs, years }) => {
     });
 
     if (response.ok) setChargeComplete(true);
+    else setError()
   }
 
   if (chargeComplete) {
@@ -102,15 +104,17 @@ const CheckoutForm = injectStripe(({ stripe, cores, devs, years }) => {
       <Input
         className="StripeElement"
         placeholder="Company name"
-        value={customer.name} onChange={e => setCustomer({
+        data-cy="customer-companyName"
+        value={customer.companyName} onChange={e => setCustomer({
           ...customer,
-          name: e.target.value
+          companyName: e.target.value
         })}
         required
       />
 
       <Input
         className="StripeElement"
+        data-cy="customer-vatNo"
         placeholder="Your company's VAT No. (optional)"
         value={customer.vatNo} onChange={e => setCustomer({
           ...customer,
@@ -120,20 +124,35 @@ const CheckoutForm = injectStripe(({ stripe, cores, devs, years }) => {
 
       <Input
         className="StripeElement"
+        data-cy="customer-name"
+        placeholder="Your name"
+        type="text"
+        autoComplete="name"
+        value={customer.name} onChange={e => setCustomer({
+          ...customer,
+          name: e.target.value
+        })}
+        required
+      />
+
+      <Input
+        className="StripeElement"
         placeholder="Your e-mail"
+        data-cy="customer-email"
         type="email"
+        autoComplete="email"
         value={customer.email} onChange={e => setCustomer({
           ...customer,
           email: e.target.value
         })}
+        required
       />
 
-
       <CardElement {...createOptions(12)} />
+
       {error != null
         ? <p className="text-danger">{error.message}</p>
         : null}
-
 
       <p>
         {price.chargeVAT
@@ -147,7 +166,12 @@ const CheckoutForm = injectStripe(({ stripe, cores, devs, years }) => {
           </>}
       </p>
 
-      <Button color='primary' disabled={price.total.amount <= 0 || !stripe || chargePending}> Pay {formatMoney(price.total)}</Button>
+      <Button
+        data-cy='pay'
+        color='primary'
+        disabled={price.total.amount <= 0 || !stripe || chargePending}>
+        Pay {formatMoney(price.total)}
+      </Button>
     </Form>
   );
 })
@@ -230,7 +254,7 @@ export default function Pricing() {
             </section>
 
             <p className="total" style={{margin: '50px 0 0 0', fontWeight: 'bold'}}>
-              Total: {formatMoney(price.totalExclVAT)}
+              Total (for {years} years): {formatMoney(price.totalExclVAT)}
             </p>
             <p>
               Subsequently: {formatMoney(price.nextYear)}/year
