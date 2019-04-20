@@ -269,7 +269,9 @@ export default function Pricing() {
           <h2 className="section-title">Purchase license</h2>
           <p>
             This form reflects your selection above. You're purchasing
-            a license for {cores} cores, {devs} developers for {years} years. 🦋
+            a license for {cores} cores, {devs} developers for {years} years. This sets up
+            a subscription, so that after {years === 1 ? "the first year" : `${years} years`}, you'll
+            be charged {formatMoney(price.nextYear)} at the beginning of the year.
           </p>
           <Elements>
             <CheckoutForm
