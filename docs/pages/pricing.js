@@ -233,18 +233,19 @@ export default function Pricing() {
               Total: {formatMoney(price.totalExclVAT)}
             </p>
             <p>
-              Subsequent years: {formatMoney(price.nextYear)}
+              Subsequently: {formatMoney(price.nextYear)}/year
             </p>
 
             <p>
-              Your license will be delivered by e-mail upon purchase.
+              Your license will be delivered by e-mail 📧 upon purchase.
             </p>
           </form>
         </DocSection>
         <DocSection {...toc[1]}>
           <h2 className="section-title">Purchase license</h2>
           <p>
-            You can use the below form to purchase a license.
+            This form reflects your selection above. You're purchasing
+            a license for {cores} cores, {devs} developers for {years} years. 🦋
           </p>
           <Elements>
             <CheckoutForm
