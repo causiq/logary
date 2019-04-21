@@ -231,10 +231,13 @@ header {
   }
   .container {
     position: relative;
-    background: rgba(0,0,0,0.4);
+    background: rgba(0,0,0,0.6);
     padding: 1rem;
   }
 }
+
+.visually-hidden { border: 0; clip: rect(0 0 0 0); height: 1px; margin: -1px; overflow: hidden; padding: 0; position: absolute; width: 1px; }
+
 .branding {
   text-transform: uppercase;
   margin-bottom: 10px;
@@ -247,7 +250,7 @@ header {
   }
   @media (min-width: 575.98px) {
     .logo {
-      font-size: 38px;
+      font-size: 33px;
     }
   }
   a {
@@ -255,6 +258,7 @@ header {
   }
   .text-highlight {
     color: $color-primary;
+    font-weight: 800;
   }
   .text-bold {
     font-weight: 800;
@@ -284,6 +288,13 @@ header {
     .body-yellow & {
       color: $color-yellow;
     }
+  }
+}
+.page-wrapper .branding .logo {
+  .text-second {
+    position: relative;
+    margin: 0 0 0 1rem;
+    bottom: -5px
   }
 }
 

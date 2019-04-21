@@ -6,6 +6,7 @@ import { faHeart } from '@fortawesome/pro-solid-svg-icons';
 import { faGithub } from "@fortawesome/free-brands-svg-icons"
 import { useState } from 'react'
 import Router from 'next/router'
+import LogaryLogo from './LogaryLogo';
 
 const Social = () =>
   <>
@@ -44,9 +45,9 @@ const SiteHeader = ({ query, setQuery }) => {
         <Link href="/">
           <a>
             <h1 className="logo">
-                {/* TODO: logary logo */}
-                <span aria-hidden="true" className="icon_documents_alt icon"></span>
-                <span className="text-highlight">Logary</span><span className="text-bold">Analytics</span>
+              <LogaryLogo style={{ width: '220px', height: 'auto'}} />
+              <span className="text-highlight visually-hidden">Logary</span><br />
+              <span className="text-bold">Analytics</span>
             </h1>
           </a>
         </Link>

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { Button } from 'reactstrap'
 import { useState } from 'react'
+import LogaryLogo from './LogaryLogo';
 
 const PageHeader = ({ title, query, setQuery }) => {
   const [ tempQuery, setTempQuery ] = useState(query || '');
@@ -17,7 +18,8 @@ const PageHeader = ({ title, query, setQuery }) => {
         <Link href="/">
           <a>
             <h1 className="logo">
-              <span className="text-highlight">Logary</span><span className="text-bold">Analytics</span>
+              <LogaryLogo style={{ width: '220px', height: 'auto'}} />
+              <span className="text-highlight text-first visually-hidden">Logary</span><span className="text-bold text-second">Analytics</span>
             </h1>
           </a>
         </Link>

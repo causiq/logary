@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import Head from 'next/head';
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
-import { Form, FormFeedback, Input } from 'reactstrap';
+import { Form, Input } from 'reactstrap';
 import { calculatePrice, ContinuousRebate, formatMoney } from '../../components/calculatePrice'
 import { faCoins } from '@fortawesome/pro-solid-svg-icons'
 import { useState, useEffect } from 'react'
