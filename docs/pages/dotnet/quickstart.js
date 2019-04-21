@@ -25,14 +25,14 @@ export default function DOTNetQuickstart() {
         <h2 className="section-title">Download .Net Core 2.2</h2>
         <p>
           Download the <a href="https://dotnet.microsoft.com/download">.NET Core 2.2 SDK</a> to try .NET Core on your Windows, macOS, or Linux machine. Visit <a href="https://hub.docker.com/_/microsoft-dotnet-core/">dotnet/core</a> if you prefer to use Docker containers.
-        </p> 
+        </p>
         <p>All .NET Core versions are available at <a href="https://dotnet.microsoft.com/download/archives">.NET Core Downloads</a> if you're looking for another .NET Core version.</p>
       </DocSection>
       <DocSection {...toc[1]}>
-        <h2 className="section-title">.Net Nore 2.2</h2>
+        <h2 className="section-title">.Net Core 2.2</h2>
         <p>
           The latest version is <a href="https://docs.microsoft.com/en-us/dotnet/core/whats-new/dotnet-core-2-2">.NET Core 2.2</a> New features include: framework-dependent deployments, startup hooks, AAD authentication with Azure SQL, and support for Windows ARM32.
-        </p> 
+        </p>
       </DocSection>
       <DocSection {...toc[2]}>
         <h2 className="section-title">Create your first application</h2>

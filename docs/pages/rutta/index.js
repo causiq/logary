@@ -106,7 +106,7 @@ export default function Rutta() {
         <p>Enables log shipping from hosts that are not directly connected to the router nor to InfluxDB. </p>
         <h5>Pushing Shippers</h5>
         <p>Shippers CONNECT PUSH sockets to the Router's PULL socket. See <a href="https://lists.zeromq.org/pipermail/zeromq-dev/2012-February/015917.html"> http://lists.zeromq.org/pipermail/zeromq-dev/2012-February/015917.html</a></p>
-        <p>During network splits, the sending <a href="http://api.zeromq.org/3-2:zmq-socket#toc14" PUSH socket blocks></a>.</p>
+        <p>During network splits, the sending <a href="http://api.zeromq.org/3-2:zmq-socket#toc14">PUSH socket blocks</a>.</p>
         <h5>Pushing Shippers</h5>
         <p>During network splits, the sending XPUSH socket drops messages.</p>
       </DocSection>
