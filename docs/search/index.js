@@ -1,8 +1,10 @@
 import lunr from 'lunr';
 import pages from './pages.json'
 
+// https://lunrjs.com/docs/index.html
 // https://lunrjs.com/docs/lunr.Builder.html
-// see scripts/buildIndex.js
+// see ./buildIndex.js
+// https://github.com/angeloashmore/react-lunr
 export const index = lunr(function () {
   this.field('title', { boost: 3 })
   this.field('subtitle', { boost: 2 })
