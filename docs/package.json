@@ -55,7 +55,7 @@
     "build": "next build",
     "build:search": "babel-node ./search/buildIndex.js",
     "build:search:auto": "concurrently --kill-others \"yarn run build:search\" \"yarn run dev\"",
-    "dev": "nodemon --ignore cypress/ server.js",
+    "dev": "nodemon --ignore search/ --ignore cypress/ server.js",
     "start": "NODE_ENV=production node server.js -p $PORT",
     "cypress:open": "cypress open"
   }

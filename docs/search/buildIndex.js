@@ -98,7 +98,17 @@ async function execute() {
   const pages = [
     '/',
     '/logary-dotnet-quickstart',
-    '/logary-js-quickstart'
+    '/logary-js-quickstart',
+    '/logary-dotnet-targets',
+    '/tutorials/how-does-logary-work?',
+    '/logary-js-documentation',
+    '/logary-dotnet-documentation',
+    '/faqs',
+    '/tutorials',
+    '/license',
+    '/logary-prometheus-dotnet',
+    '/logary-rutta',
+    '/pricing'
   ]
 
   let i = 0, results = {};
