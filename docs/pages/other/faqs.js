@@ -16,14 +16,14 @@ var tree = low.highlight('js', '"use strict";').value
 export default function FAQs() {
 
   const toc =
-  [ 
+  [
     { id: "faq", title: "FAQ", ref: useRef(null) },
     { id: "ctnal", title: "Comparison to NLog and log4net", ref: useRef(null) },
     { id: "ctcmm", title: "Comparison to Codahale metrics & Metrics.NET", ref: useRef(null) },
     { id: "cws", title: "Comparison with Serilog", ref: useRef(null) },
-    
+
   ]
-  
+
   return (
     <DocPage name="all-target" title="FAQs" faIcon={faLifeRing} colour="green" readingMinutes={2} toc={toc}>
       <Head>
@@ -31,43 +31,6 @@ export default function FAQs() {
       </Head>
       <DocSection {...toc[0]}>
         <h2 className="section-title">FAQ</h2>
-        <h3>Getting MissingMethodException from FSharp.Core</h3>
-          <p>You need to add a rebind to the latest F# version in your executable:</p>
-          <Code language="xml" value={
-              preval`
-              const fs = require('fs')
-              const val = fs.readFileSync(__dirname + '/../../../examples/FAQs/Doc1.xml', 'utf8')
-              module.exports = val
-              `
-            } />
-
-        <h3>Getting MissingMethodException from Hopac.Core</h3>
-          <p>Inspect the version specified in the <a href="https://www.nuget.org/packages/Logary/"> Logary package </a> and ensure that you have that exact version installed. Hopac is currently pre-v1 so it is often doing breaking changes between versions.</p>
-        
-        <h3>Is v5.0.x a stable version?</h3>
-          <p>It's stable to run. The API is alpha.</p>
-        
-        <h3>Isn't v4.0.x supposed to be API-stable?</h3>
-          <p>We're not doing pre-release versions because they make it impossible for other packages to be released as stable versions. But we need to work through Logary in production; as such you can imagine that qvitoo is taking the risk and cost of making v4.0 RTM as stable and reliable as can be.</p>
-
-        <h3>Why does Logary depend on FParsec?</h3>
-          <p>For tow reasons;</p>
-          <ol type="1">
-            <li>we use Chiron for json formatting which depend on FParsec</li>
-            <li>Aether is vendored in Logary.Utils.Aether and depend on it.</li>
-          </ol>
-          <p>We previously depended on Newtonsoft.Json, but that library is often depended on from other packages and we want Logary to be as free of dependencies as possible, in order to make it as stable as possible.</p>
-        
-        <h3>Why do you depend on Hopac?</h3>
-          <p>Hopac supports a few things that async doesn't:</p>
-          <ol type="1">
-            <li>Rendezvous and selective concurrency primitives (select A or B)</li>
-            <li>Negative ACKs instead of CancellationToken-s</li>
-          </ol>
-          <p>We also wanted support for synchronous rendezvous between channels/job/alts/promises/etc. This still supports asynchronous operations towards the outside. Together it makes for an excellent choice for cooperating 'agents', like the Registry and Supervisor and Target Instance that we have in the library.</p>
-          <p>Besides the technical upsides, it's a good thing there's a book written about the concurrency model that Hopac implements – <a href="https://www.amazon.com/Concurrent-Programming-ML-John-Reppy/dp/0521714729/"> Concurrent Programming in ML </a> which lets us get developers up to speed quickly.</p>
-          <p>Finally, our unit tests sped up 30x when porting from Async. The performance boost is a nice feature of a logging framework and comes primarily from less GC collection and the 'hand off' between synchronising concurrency primitives being synchronously scheduled inside Hopac rather than implemented using Thread/Semaphore/Monitor primitives on top of the ThreadPool.</p>
-        
         <h3>How do I use Hopac from C#?</h3>
           <p>You're better off following the examples in C# and using the Task-wrapped public APIs than going spelunking into the dire straits of Hopac and F#.</p>
           <p>Just pull in Logary.CSharp to make this happen. You'll also have to open the Logary namespace.</p>
@@ -99,12 +62,46 @@ export default function FAQs() {
               module.exports = val
               `
             } />
+
+        <h3>Getting MissingMethodException from FSharp.Core</h3>
+          <p>You need to add a rebind to the latest F# version in your executable:</p>
+          <Code language="xml" value={
+              preval`
+              const fs = require('fs')
+              const val = fs.readFileSync(__dirname + '/../../../examples/FAQs/Doc1.xml', 'utf8')
+              module.exports = val
+              `
+            } />
+
+        <h3>Is v5.0.x a stable version?</h3>
+          <p>Yes, it's very stable.</p>
+
+        <h3>Why does Logary depend on FParsec?</h3>
+          <p>For tow reasons;</p>
+          <ol type="1">
+            <li>we use Chiron for json formatting which depend on FParsec</li>
+            <li>Aether is vendored in Logary.Utils.Aether and depend on it.</li>
+          </ol>
+
+        <h3>Why do you depend on Hopac?</h3>
+          <p>Hopac supports a few things that async doesn't:</p>
+          <ol type="1">
+            <li>Rendezvous and selective concurrency primitives (select A or B)</li>
+            <li>Negative ACKs instead of CancellationToken-s</li>
+          </ol>
+          <p>We also wanted support for synchronous rendezvous between channels/job/alts/promises/etc. This still supports asynchronous operations towards the outside. Together it makes for an excellent choice for cooperating 'agents', like the Registry and Supervisor and Target Instance that we have in the library.</p>
+          <p>Besides the technical upsides, it's a good thing there's a book written about the concurrency model that Hopac implements – <a href="https://www.amazon.com/Concurrent-Programming-ML-John-Reppy/dp/0521714729/"> Concurrent Programming in ML </a> which lets us get developers up to speed quickly.</p>
+          <p>Finally, our unit tests sped up 30x when porting from Async. The performance boost is a nice feature of a logging framework and comes primarily from less GC collection and the 'hand off' between synchronising concurrency primitives being synchronously scheduled inside Hopac rather than implemented using Thread/Semaphore/Monitor primitives on top of the ThreadPool.</p>
+
+        <h3>Getting MissingMethodException from Hopac.Core</h3>
+          <p>Inspect the version specified in the <a href="https://www.nuget.org/packages/Logary/"> Logary package </a> and ensure that you have that exact version installed. Hopac is currently pre-v1 so it is often doing breaking changes between versions.</p>
+
       </DocSection>
       <DocSection {...toc[1]}>
         <h2 className="section-title">Comparison to NLog and log4net</h2>
         <p>
           Why Logary instead of one of the classic logging frameworks?
-        </p> 
+        </p>
         <ul>
           <li>You get semantic logging with Logary</li>
           <br></br>
@@ -132,13 +129,13 @@ export default function FAQs() {
       </DocSection>
       <DocSection {...toc[2]}>
         <h2 className="section-title">Comparison to Codahale metrics & Metrics.NET</h2>
-        <p>Why Logary rather than Metrics.NET, the primary alternative?</p> 
-        <p>In order to understand the differences, you first need to understand the vocabulary. Logary uses the name <span className="_code"> Message </span> to mean either an <span className="_code">Event </span> , a <span className="_code"> Gauge </span> or a <span className="_code"> Derived </span>. This comes from analysing the different sorts of things one would like to ship from an app.</p> 
-        <p>Starting with an <span className="_code"> Event </span>; this is the main value when you're logging (in fact, it's Logary.PointValue.Event(template:string) that you're using.) An event is like a Gauge at a particular instant on the global timeline with a value of 1 (one).</p> 
-        <p>Which brings us to what a <span className="_code"> Gauge </span> is. It's a specific value at an instant. It's what you see as a temporature on a thermometer in your apartment, e.g. <span className="_code"> 10.2 degrees celcius </span>. In the International System of Units (SI-Units), you could say it's the same as 283.2 K. Logary aims to be the foundational layer for all your metrics, so it uses these units. A <span className="_code"> Gauge </span> value of your temperature could be created like so <span className="_code"> Message.gaugeWithUnit Kelvin (Float 283.2) </span> or <span className="_code"> Gauge (Float 283.2, Kelvin) </span>.</p> 
-        <p>A <span className="_code"> Derived metric </span>, like <span className="_code"> Kelvin/s </span> is useful if you're planning on writing a thermostat to control the temperature. A change in target temperature causes a rate of change.</p> 
-        <p>Another sample metric could be represented by the name <span className="_code"> [| "MyApp"; "API" "requests" |] </span> and <span className="_code"> PointValue </span> of <span className="_code"> Derived (Float 144.2, Div (Scalar, Seconds)) </span>, if the API is experiencing a request rate of 144.2 requests per second.</p> 
-        <p>Armed with this knowledge, we can now do a mapping between Codahale's metrics and those of Logary:</p> 
+        <p>Why Logary rather than Metrics.NET, the primary alternative?</p>
+        <p>In order to understand the differences, you first need to understand the vocabulary. Logary uses the name <span className="_code"> Message </span> to mean either an <span className="_code">Event </span> , a <span className="_code"> Gauge </span> or a <span className="_code"> Derived </span>. This comes from analysing the different sorts of things one would like to ship from an app.</p>
+        <p>Starting with an <span className="_code"> Event </span>; this is the main value when you're logging (in fact, it's Logary.PointValue.Event(template:string) that you're using.) An event is like a Gauge at a particular instant on the global timeline with a value of 1 (one).</p>
+        <p>Which brings us to what a <span className="_code"> Gauge </span> is. It's a specific value at an instant. It's what you see as a temporature on a thermometer in your apartment, e.g. <span className="_code"> 10.2 degrees celcius </span>. In the International System of Units (SI-Units), you could say it's the same as 283.2 K. Logary aims to be the foundational layer for all your metrics, so it uses these units. A <span className="_code"> Gauge </span> value of your temperature could be created like so <span className="_code"> Message.gaugeWithUnit Kelvin (Float 283.2) </span> or <span className="_code"> Gauge (Float 283.2, Kelvin) </span>.</p>
+        <p>A <span className="_code"> Derived metric </span>, like <span className="_code"> Kelvin/s </span> is useful if you're planning on writing a thermostat to control the temperature. A change in target temperature causes a rate of change.</p>
+        <p>Another sample metric could be represented by the name <span className="_code"> [| "MyApp"; "API" "requests" |] </span> and <span className="_code"> PointValue </span> of <span className="_code"> Derived (Float 144.2, Div (Scalar, Seconds)) </span>, if the API is experiencing a request rate of 144.2 requests per second.</p>
+        <p>Armed with this knowledge, we can now do a mapping between Codahale's metrics and those of Logary:</p>
         <ul>
           <li><span className="_code"> Gauges </span> (measuring instantaneous values) -> <span className="_code"> PointValue.Gauge(.., ..) </span>.</li>
           <br></br>
