@@ -44,6 +44,7 @@
   }
 }
 
+.search-section,
 .cards-section {
   padding: 60px 0;
   background: $smoky-grey;
@@ -54,6 +55,8 @@
     font-size: 24px;
     font-weight: 600;
   }
+
+  .results,
   .intro {
     margin: 0 auto;
     max-width: 800px;
@@ -65,6 +68,7 @@
     margin-left: auto;
     margin-right: auto;
   }
+
   .item {
     margin-bottom: 30px;
 
@@ -210,6 +214,14 @@
     [data-icon] {
       color: $color-purple;
     }
+  }
+}
+
+.search-section .results {
+  ol {
+    list-style: none;
+    margin: 0;
+    padding: 0
   }
 }
 

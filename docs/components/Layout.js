@@ -10,7 +10,7 @@ import 'bootstrap/dist/css/bootstrap.min.css'
 import '@fortawesome/fontawesome-svg-core/styles.css'
 import "../styles/styles.scss"
 import { library, config } from '@fortawesome/fontawesome-svg-core'
-import { faHeart, faSearch, faPaperPlane } from '@fortawesome/pro-solid-svg-icons'
+import { faHeart, faSearch, faPaperPlane, faPrintSearch } from '@fortawesome/pro-solid-svg-icons'
 import { faGithub } from "@fortawesome/free-brands-svg-icons"
 config.autoAddCss = false
 
@@ -29,8 +29,17 @@ Lowlight.registerLanguage('csharp', langCs)
 Lowlight.registerLanguage('javascript', langJavascript)
 Lowlight.registerLanguage('json', langJson)
 
+import { useState } from 'react'
+import { useLunr } from 'react-lunr'
+import { index, store } from '../search'
+import SearchPage from './SearchPage'
+
 // Actual layout
 const Layout = ({ name, title, className = [], router, children, ...rest }) => {
+  const [query, setQuery] = useState(null)
+  const results = useLunr(query, index, store),
+        isSearching = query != null && query.length > 0
+
   return <div className={classNames(className, name || 'root')} {...rest}>
     <div className='page-wrapper'>
       <Head>
@@ -40,9 +49,11 @@ const Layout = ({ name, title, className = [], router, children, ...rest }) => {
         <meta name="author" content="Henrik Feldt" key="author" />
       </Head>
       {router.pathname === "/"
-        ? <SiteHeader />
-        : <PageHeader title={title} />}
-      {children}
+        ? <SiteHeader query={query} setQuery={setQuery} />
+        : <PageHeader title={title} query={query} setQuery={setQuery} />}
+      {isSearching
+        ? <SearchPage query={query} setQuery={setQuery} results={results} />
+        : children}
       <Footer />
     </div>
   </div>

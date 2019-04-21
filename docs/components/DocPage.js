@@ -41,7 +41,7 @@ export const DocPage = (props) => {
 
           <div className="doc-sidebar col-md-3 col-12 order-0 d-none d-md-flex">
             <div id="doc-nav" className="doc-nav">
-              <DocMenu value={toc} />
+              {toc != null ? <DocMenu value={toc} /> : null}
             </div>
           </div>
         </div>
