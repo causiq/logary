@@ -245,8 +245,7 @@ header {
   .logo {
     font-size: 6vw;
     text-shadow: rgba(0,0,0,0.2) 1px 1px 5px;
-    margin-top: 0;
-    margin-bottom: 0;
+    margin: 0 auto;
   }
   @media (min-width: 575.98px) {
     .logo {
@@ -289,6 +288,10 @@ header {
       color: $color-yellow;
     }
   }
+}
+
+.landing-page .branding .logo {
+  margin: 4rem 0;
 }
 .page-wrapper .branding .logo {
   .text-second {
