@@ -144,7 +144,10 @@ export default function Index() {
               </div>
               <h3 className="title">FAQs</h3>
               <p className="intro">Layout for FAQ page. Lorem ipsum dolor sit amet, consectetuer adipiscing elit</p>
-              <a className="link" href="faqs.html"><span></span></a>
+              {/* <a className="link" href="/faqs"><span></span></a> */}
+              <Link href="/faqs">
+                <a className="link"><span></span></a>
+              </Link>
             </div>
           </div>
 
@@ -155,7 +158,7 @@ export default function Index() {
               </div>
               <h3 className="title">Tutorials</h3>
               <p className="intro">Learn how to use Logary to visualise the state and interactions with your apps.</p>
-              <Link href="/tutorials/visualise">
+              <Link href="/tutorials">
                 <a className="link"><span></span></a>
               </Link>
             </div>
@@ -168,7 +171,7 @@ export default function Index() {
               </div>
               <h3 className="title">License &amp; Credits</h3>
               <p className="intro">Layout for license &amp; credits page. Consectetuer adipiscing elit.</p>
-              <Link href="/pricing">
+              <Link href="/license">
                 <a className="link"><span></span></a>
               </Link>
             </div>

@@ -7,5 +7,9 @@ module.exports = {
   '/logary-js-quickstart': '/js/quickstart',
   '/logary-js-documentation': '/js/docs',
   '/logary-rutta': '/rutta',
-  '/tutorials/how-does-logary-work': '/tutorials/how'
+  '/tutorials/how-does-logary-work': '/tutorials/how',
+  '/faqs': '/other/faqs',
+  '/license': '/other/license',
+  '/pricing': '/other/pricing',
+  '/tutorials': '/other/tutorial'
 }
