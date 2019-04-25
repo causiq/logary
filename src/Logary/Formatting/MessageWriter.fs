@@ -118,6 +118,9 @@ module MessageWriter =
     { new MessageWriter with
         member x.write tw m =
           let writeState = { provider = tw.FormatProvider; idManager = RefIdManager ()}
-          tokeniseContext writeState Environment.NewLine defaultDestr m
-          |> Seq.map fst |> Seq.iter tw.Write
+          let ctxWithErrors = seq {
+            yield! tokeniseContext writeState Environment.NewLine defaultDestr m
+            yield! tokeniseExceptions tw.FormatProvider Environment.NewLine m
+          }
+          ctxWithErrors |> Seq.map fst |> Seq.iter tw.Write
     }
