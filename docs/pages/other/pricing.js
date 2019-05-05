@@ -89,7 +89,7 @@ const CheckoutForm = injectStripe(({ stripe, cores, devs, years }) => {
     });
 
     if (response.ok) setChargeComplete(true);
-    else setError()
+    else setError(null)
   }
 
   if (chargeComplete) {
