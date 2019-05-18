@@ -68,7 +68,7 @@ const SiteHeader = ({ query, setQuery }) => {
             name="search" className="form-control search-input"
             onChange={e => setTempQuery(e.target.value)}
             value={tempQuery}
-            autoFocus />
+            />
           <Button type="submit" className="btn search-btn" value="Search">
             <FontAwesomeIcon icon="search" />
           </Button>
