@@ -5045,14 +5045,14 @@ growly@^1.3.0:
   resolved "https://registry.yarnpkg.com/growly/-/growly-1.3.0.tgz#f10748cbe76af964b7c96c93c6bcc28af120c081"
   integrity sha1-8QdIy+dq+WS3yWyTxrzCivEgwIE=
 
-gun@^0.9.9999991:
-  version "0.9.9999991"
-  resolved "https://registry.yarnpkg.com/gun/-/gun-0.9.9999991.tgz#d0d0e3230992dbd2306bbfe6372bb3a57c3a3ffa"
-  integrity sha512-tH29XmVl5PPJp2wKEaIKrT5OQhqrPAzAzfYRuKjBIubDqQQPs7SIa7EplOY/K1j7L9Rex5zPAyEBZFj+lz0y+Q==
+gun@^0.2019.416:
+  version "0.2019.416"
+  resolved "https://registry.yarnpkg.com/gun/-/gun-0.2019.416.tgz#429a630b4fdaf0c1926a77b0d4d2e7f9e978cf1e"
+  integrity sha512-1ybmFOehH/NcwGL9heOboxp8UFKTZ+0/LiBvKvpfk9Lx3P/JsxN5V3rUzzbh0tg+gSvoxbvjJ/Hmk1D8g1zXQQ==
   dependencies:
-    ws "~>5.2.0"
+    ws "~>6.2.1"
   optionalDependencies:
-    node-webcrypto-ossl "^1.0.39"
+    node-webcrypto-ossl "^1.0.43"
     text-encoding "^0.7.0"
 
 gzip-size@5.0.0:
@@ -7249,6 +7249,11 @@ nan@2, nan@^2.12.1, nan@^2.9.2:
   resolved "https://registry.yarnpkg.com/nan/-/nan-2.12.1.tgz#7b1aa193e9aa86057e3c7bbd0ac448e770925552"
   integrity sha512-JY7V6lRkStKcKTvHO5NVSQRv+RV+FIL5pvDoLiAtSL9pKlC5x9PKQcZDsq7m4FO4d57mkhC6Z+QhAh3Jdk5JFw==
 
+nan@^2.13.2:
+  version "2.14.0"
+  resolved "https://registry.yarnpkg.com/nan/-/nan-2.14.0.tgz#7818f722027b2459a86f0295d434d1fc2336c52c"
+  integrity sha512-INOFj37C7k3AfaNTtX8RhsTw7qRy7eLET14cROi9+5HAVbbHuIWUHEauBv5qT4Av2tWasiTY1Jw6puUNqRJXQg==
+
 nanomatch@^1.2.9:
   version "1.2.13"
   resolved "https://registry.yarnpkg.com/nanomatch/-/nanomatch-1.2.13.tgz#b87a8aa4fc0de8fe6be88895b38983ff265bd119"
@@ -7425,13 +7430,13 @@ node-releases@^1.1.3:
   dependencies:
     semver "^5.3.0"
 
-node-webcrypto-ossl@^1.0.39:
-  version "1.0.42"
-  resolved "https://registry.yarnpkg.com/node-webcrypto-ossl/-/node-webcrypto-ossl-1.0.42.tgz#d1c46d90e21786d878819ae38ed90efa877506f5"
-  integrity sha512-EjnUO+j+0bDtYLvl5/c+QoWDJebhjCCIajSod0vtNBwtLNbgjxiGrmsGEbNaBSbi5rUWKS5zGP3Zl4/pLOka0g==
+node-webcrypto-ossl@^1.0.43:
+  version "1.0.45"
+  resolved "https://registry.yarnpkg.com/node-webcrypto-ossl/-/node-webcrypto-ossl-1.0.45.tgz#8705698666fa6c577e885ad4e017d2d5cc0ab1a2"
+  integrity sha512-4Rzzp7fsUt7+U3bxLw0+VDa6GoIExavVuJUqCsWHn/RRObKS5P1aH6mSrZ3W7DdCeU/BCXDxcwPUZEmefy9maA==
   dependencies:
     mkdirp "^0.5.1"
-    nan "^2.12.1"
+    nan "^2.13.2"
     tslib "^1.9.3"
     webcrypto-core "^0.1.26"
 
@@ -11571,10 +11576,17 @@ write@^0.2.1:
   dependencies:
     mkdirp "^0.5.1"
 
-ws@^5.2.0, ws@~>5.2.0:
+ws@^5.2.0:
   version "5.2.2"
   resolved "https://registry.yarnpkg.com/ws/-/ws-5.2.2.tgz#dffef14866b8e8dc9133582514d1befaf96e980f"
   integrity sha512-jaHFD6PFv6UgoIVda6qZllptQsMlDEJkTQcybzzXDYM1XO9Y8em691FGMPmM46WGyLU4z9KMgQN+qrux/nhlHA==
+  dependencies:
+    async-limiter "~1.0.0"
+
+ws@~>6.2.1:
+  version "6.2.1"
+  resolved "https://registry.yarnpkg.com/ws/-/ws-6.2.1.tgz#442fdf0a47ed64f59b6a5d8ff130f4748ed524fb"
+  integrity sha512-GIyAXC2cB7LjvpgMt9EKS2ldqr0MTrORaleiOno6TweZ6r3TKtoFQWay/2PceJ3RuBasOHzXNn5Lrw1X0bEjqA==
   dependencies:
     async-limiter "~1.0.0"
 
