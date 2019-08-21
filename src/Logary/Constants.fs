@@ -49,7 +49,7 @@ module KnownLiterals =
   let SpanIdContextName = LogaryPrefix + "spanId"
 
   [<Literal>]
-  let SpanInfoContextName = LogaryPrefix + "spanInfo"
+  let SpanDataContextName = LogaryPrefix + "spanData"
 
   [<Literal>]
   let CounterMetricConfContextName = LogaryPrefix + "counter.conf"

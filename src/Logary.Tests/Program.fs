@@ -464,9 +464,9 @@ let tests =
         Expect.isTrue hasIDisposable "Should implement IDisposable"
     ]
 
-    testList "TimeScope" [
+    testList "TimeLogger" [
       testCase "public interface" <| fun () ->
-        { new TimeScope with
+        { new TimeLogger with
             member x.name: PointName = PointName.ofSingle "B"
             member x.logWithAck (waitForBuffers, level) (messageFactory: LogLevel -> Message) =
               LogResult.success
@@ -475,8 +475,7 @@ let tests =
             member x.elapsed = Duration.Zero
             member x.bisect (label: string): unit =
               ()
-            member x.stop (decider: Duration -> LogLevel) =
-              LogResult.success
+            member x.finish (transform: Message -> Message) = ()
         }
         |> ignore
     ]

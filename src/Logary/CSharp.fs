@@ -679,6 +679,6 @@ type LoggerEx =
   static member TimeScope (logger: Logger,
                            [<Optional; DefaultParameterValue(null:string)>] nameEnding: string,
                            [<Optional; DefaultParameterValue(null:Func<Message,Message>)>] transform: Func<Message, Message>)
-                          : TimeScope =
+                          : TimeLogger =
     let transform = if isNull transform then id else FSharpFunc.OfFunc transform
     logger.timeScopeT nameEnding transform

@@ -184,20 +184,21 @@ module internal Global =
       configDestructure<SpanId>(fun _ req -> ScalarValue (req.Value.ToString()))
       configDestructure<TraceId>(fun _ req -> ScalarValue (req.Value.ToString()))
 
-      configDestructure<SpanLog>(fun resolver req ->
-        let spanLog = req.Value
+      configDestructure<SpanData>(fun resolver req ->
+        let data = req.Value
         let refCount = req.IdManager
         match refCount.TryShowAsRefId req with
         | _, Some pv -> pv
         | refId, None ->
-          let typeTag = typeof<SpanLog>.Name
+          let typeTag = typeof<SpanData>.Name
           let nvs = [
-            yield { Name = "TraceId"; Value = req.WithNewValue spanLog.traceId |> resolver }
-            yield { Name = "ParentSpanId"; Value = req.WithNewValue spanLog.parentSpanId |> resolver }
-            yield { Name = "SpanId"; Value = req.WithNewValue spanLog.spanId |> resolver }
-            yield { Name = "BeginAt"; Value = ScalarValue (Instant.ofEpoch spanLog.beginAt) }
-            yield { Name = "EndAt"; Value = ScalarValue (Instant.ofEpoch spanLog.endAt) }
-            yield { Name = "Duration"; Value = ScalarValue (Duration.FromNanoseconds spanLog.duration) }
+            yield { Name = "TraceId"; Value = req.WithNewValue data.context.traceId |> resolver }
+            if Option.isSome data.context.parentSpanId then
+              yield { Name = "ParentSpanId"; Value = req.WithNewValue data.context.parentSpanId |> resolver }
+            yield { Name = "SpanId"; Value = req.WithNewValue data.context.spanId |> resolver }
+            yield { Name = "BeginAt"; Value = ScalarValue (Instant.ofEpoch data.started) }
+            yield { Name = "EndAt"; Value = ScalarValue (Instant.ofEpoch data.finished) }
+            yield { Name = "Duration"; Value = ScalarValue data.elapsed }
           ]
 
           StructureValue (refId, typeTag, nvs))

@@ -257,7 +257,7 @@ module LoggerEx =
           >>-. timedAlt)
       else timedAlt
 
-    member x.timeScopeT (scopeName: string) (transform: Message -> Message): TimeScope =
+    member x.timeScopeT (scopeName: string) (transform: Message -> Message): TimeLogger =
       let name = x.name |> PointName.setEnding scopeName
       let bisections: (StopwatchTicks * string) list ref = ref []
 
@@ -278,13 +278,14 @@ module LoggerEx =
         if !bisections = [] then m else
         !bisections |> List.fold addSpan (m, 0L) |> fst
 
-      let stop (sw: Stopwatch) (decider: Duration -> LogLevel) =
+      let stop (sw: Stopwatch) (transformer: Message -> Message) =
         sw.Stop()
-        let level = Duration.FromTicks sw.Elapsed.Ticks |> decider
-        sw.toGauge()
-        |> Message.gaugeWithUnit name "duration"
-        |> Message.setLevel level
-        |> addSpans
+        fun level ->
+          sw.toGauge()
+          |> Message.gaugeWithUnit name "duration"
+          |> Message.setLevel level
+          |> transformer
+          |> addSpans
 
       let bisect (sw: Stopwatch): string -> unit =
         fun label ->
@@ -295,20 +296,18 @@ module LoggerEx =
           | (latest, _) :: _ as bs ->
             bisections := (sw.ElapsedTicks - latest, label) :: bs
 
-      { new TimeScope with
-          member y.Dispose () =
-            let message = stop sw (fun _ -> Debug)
-            x.logSimple message
+      { new TimeLogger with
+          member __.Dispose () =
+            x.logWith Info (stop sw transform)
 
-          member y.elapsed =
+          member __.elapsed =
             Duration.FromTimeSpan sw.Elapsed
 
           member y.bisect label =
             bisect sw label
 
-          member y.stop decider =
-            let m = stop sw decider
-            x.logWithAck (false, m.level) (fun _ -> transform m)
+          member y.finish messageTransform =
+            x.logWith Info (stop sw messageTransform >> transform)
 
           member y.logWithAck (waitForBuffers, logLevel) messageFactory =
             x.logWithAck (waitForBuffers, logLevel) (messageFactory >> transform)

@@ -3,6 +3,7 @@ namespace Logary
 open Hopac
 open NodaTime
 open System
+open System.Collections.Generic
 open Logary
 
 /// The main alias for time in Logary - the # of nanoseconds since 1970-01-01
@@ -171,14 +172,15 @@ module PointName =
     if String.IsNullOrWhiteSpace nameEnding then original else
     PointName (Array.append segments [| nameEnding |])
 
-/// Allows you to clearly deliniate the accuracy and type of the measurement/gauge.
+/// Allows you to clearly delineate the accuracy and type of the measurement/gauge.
+[<Struct>]
 type Value =
   /// A CLR Double / F# float represented as a DU case
-  | Float of float
+  | Float of float:float
   /// A CLR Int64 / F# int64 represented as a DU case
-  | Int64 of int64
-  | BigInt of bigint
-  | Fraction of int64 * int64
+  | Int64 of int64:int64
+  | BigInt of bigint:bigint
+  | Fraction of numerator:int64 * denominator:int64
   /// Convert the Gauge value to a float (best as possible; this **may** lead to
   /// a loss of accuracy).
   member x.toFloat () =
@@ -297,57 +299,164 @@ type SpanId =
   static member Zero = { id = 0L }
   override x.ToString() = String.Format("{0:x16}", x.id)
 
-/// A Span focuses primarily on a timed scope of execution, which will come to end. This
-/// abstraction is primarily used for tracing.
-///
-/// One Message can belong to a Span, which means the Message was logged during the Span.
-///
-/// The Span itself, will finally yield a single Message with tracing-specific Gauges such as;
-///  - `startTime`
-///  - `endTime`
-///  - `id`
-///  - etc...
-///
-/// It is then up to the Target implementations for the various tracing solutions to interpret
-/// this message into something it can send.
-///
-/// The Span keeps track of the logger used to initialise it.
-type Span =
-  inherit IDisposable
-  /// Log the Span's data into Logary.
-  abstract finish: (Message -> Message) -> unit
-  /// Gets the collected data for this Span.
-  abstract info: SpanInfo
+[<Flags; RequireQualifiedAccess>]
+type SpanFlags =
+  | None = 0
+  | Sampled = 1
+  | Debug = 2
 
 /// https://www.jaegertracing.io/docs/1.13/client-libraries/#trace-span-identity
-and SpanInfo =
-  { traceId: TraceId
-    parentSpanId: SpanId option
-    spanId: SpanId
-    flags: int32 }
+/// TO CONSIDER: https://www.w3.org/TR/trace-context/#tracestate-field
+/// TO CONSIDER: codecs from binary/http, etc...
+[<Sealed>]
+type SpanContext(traceId: TraceId, spanId: SpanId, ?flags: SpanFlags, ?parentSpanId: SpanId) =
+  let flag = defaultArg flags SpanFlags.None
+  member x.traceId = traceId
+  member x.parentSpanId = parentSpanId
+  member x.spanId = spanId
+  member x.flags = flag
 
-/// describe the time scope info about a span, will be sent as a message's context data
-[<Struct>]
-type SpanLog =
-  { traceId: TraceId
-    spanId: SpanId
-    parentSpanId: SpanId option
-    /// number of nanoseconds since the Unix epoch. Negative values represent instants before the Unix epoch.
-    beginAt: EpochNanoSeconds
-    /// number of nanoseconds since the Unix epoch. Negative values represent instants before the Unix epoch.
-    endAt: EpochNanoSeconds
-    /// total number of nanoseconds in the duration as a 64-bit integer.
-    duration: int64
-  }
+  member x.isRootSpan = Option.isNone parentSpanId
+  member x.isRecorded = int flag > 0
+  member x.isSampled = int flag > 0
+  member x.isDebug = flag &&& SpanFlags.Debug = SpanFlags.Debug
+
+  member x.withParent (context: SpanContext) =
+    new SpanContext(context.traceId, x.spanId, x.flags ||| context.flags, context.spanId)
+
+type SpanLink = SpanContext * IReadOnlyList<KeyValuePair<string, string>>
+
+/// https://github.com/grpc/grpc/blob/master/doc/statuscodes.md
+/// https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/api-tracing.md#statuscanonicalcode
+[<RequireQualifiedAccess>]
+type SpanCanonicalCode =
+  /// The operation completed successfully.
+  | OK = 0
+  /// The operation was cancelled (typically by the caller).
+  | Cancelled = 1
+  /// Unknown error. For example, this error may be returned when a Status value received from another address space belongs to an error space that is not known in this address space. Also errors raised by APIs that do not return enough error information may be converted to this error.
+  | UnknownError = 2
+  /// Client specified an invalid argument. Note that this differs from FailedPrecondition. InvalidArgument indicates arguments that are problematic regardless of the state of the system.
+  | InvalidArgument = 3
+  /// Deadline expired before operation could complete. For operations that change the state of the system, this error may be returned even if the operation has completed successfully.
+  | DeadlineExceeded = 4
+  /// Some requested entity (e.g., file or directory) was not found.
+  | NotFound = 5
+  /// Some entity that we attempted to create (e.g., file or directory) already exists.
+  | AlreadyExists = 6
+  /// The caller does not have permission to execute the specified operation. PermissionDenied must not be used if the caller cannot be identified (use Unauthenticated1 instead for those errors).
+  | PermissionDenied = 7
+  /// Some resource has been exhausted, perhaps a per-user quota, or perhaps the entire file system is out of space.
+  | ResourceExhausted = 8
+  /// Operation was rejected because the system is not in a state required for the operation's execution.
+  | FailedPrecondition = 9
+  /// The operation was aborted, typically due to a concurrency issue like sequencer check failures, transaction aborts, etc.
+  | Aborted = 10
+  /// Operation was attempted past the valid range. E.g., seeking or reading past end of file. Unlike InvalidArgument, this error indicates a problem that may be fixed if the system state changes.
+  | OutOfRange = 11
+  /// Operation is not implemented or not supported/enabled in this service.
+  | Unimplemented = 12
+  /// Internal errors. Means some invariants expected by underlying system has been broken.
+  | InternalError = 13
+  /// The service is currently unavailable. This is a most likely a transient condition and may be corrected by retrying with a backoff.
+  | Unavailable = 14
+  /// Unrecoverable data loss or corruption.
+  | DataLoss = 15
+  /// The request does not have valid authentication credentials for the operation.
+  | Unauthenticated = 16
+
+type SpanStatus = SpanCanonicalCode * string option
+
+/// Operations that are available on a Span
+/// https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/api-tracing.md#span-operations
+type SpanOps =
+  // Wait with these ones
+  // https://github.com/open-telemetry/opentelemetry-specification/issues/223
+  // Returns the flag whether this span will be recorded. Returns true if this Span is active and recording information like events with the AddEvent operation and attributes using SetAttributes.
+  //abstract isRecordingEvents: bool
+
+  /// https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/api-tracing.md#add-links
+  /// A Span MUST have the ability to record links to other Spans. Linked Spans can be from the same or a different trace. See Links description.
+  abstract addLink: SpanLink -> unit
+  /// An API to set a single Attribute where the attribute properties are passed as arguments. This MAY be called SetAttribute. To avoid extra allocations some implementations may offer a separate API for each of the possible value types.
+  abstract setAttribute: string * Value -> unit
+  /// An API to set a single Attribute where the attribute properties are passed as arguments. This MAY be called SetAttribute. To avoid extra allocations some implementations may offer a separate API for each of the possible value types.
+  abstract setAttribute: string * bool -> unit
+  /// An API to set a single Attribute where the attribute properties are passed as arguments. This MAY be called SetAttribute. To avoid extra allocations some implementations may offer a separate API for each of the possible value types.
+  abstract setAttribute: string * string -> unit
+
+  /// Sets the Span's status; anything other than OK will bump the level to Warn
+  abstract setStatus: SpanCanonicalCode -> unit
+  /// Sets the Span's status and a description; anything other than OK will bump the level to Warn
+  abstract setStatus: SpanCanonicalCode * string -> unit
+
+  // addEvent via logger's methods
+  // updateName / updateLabel via x.label <- "new label"
+
+  /// Call to stop the timer/Span. This method call is non-blocking, but executes the callback on the caller's thread.
+  abstract finish: (Message -> Message) -> unit
+  /// Call to stop the timer/Span. This method call is non-blocking.
+  abstract finish: unit -> unit
+
+  // Logary-specific:
+  abstract setFlags: SpanFlags -> unit
+
+type SpanKind =
+  | Internal = 0
+  | Client = 1
+  | Server = 2
+
+type SpanData =
+  /// The Span's context. An API that returns the SpanContext for the given Span. The returned value may be used even after the Span is finished. The returned value MUST be the same for the entire Span lifetime. This MAY be called GetContext.
+  abstract context: SpanContext
+  // parentSpanId is in x.context.parentSpanId
+  // resource = logger.name
+
+  abstract kind: SpanKind
+
+  /// The name of the Span
+  abstract label: string
+  /// When this Span was started. The Span's start and end timestamps reflect the elapsed real time of the operation. A Span's start time SHOULD be set to the current time on span creation.
+  abstract started: EpochNanoSeconds
+  /// When this Span was finished
+  abstract finished: EpochNanoSeconds
+  /// How long this Span has been in existence, or otherwise its total duration, if finished
+  abstract elapsed: Duration
+  /// The Span's flags, e.g. whether to sample or debug this particular span.
+  /// Logary-specific: this turns to Sampled if a Warn or Error event is logged into this Span.
+  abstract flags: SpanFlags
+  /// A list of Links to other Spans
+  abstract links: IReadOnlyList<SpanLink>
+  /// A set of events / Messages this span has seen
+  abstract events: IReadOnlyList<Message>
+  /// Returns the Span's status
+  abstract status: SpanStatus
+
+/// A Span represents a single operation within a trace. Spans can be nested to form a trace tree. Each trace contains a root span, which typically describes the end-to-end latency and, optionally, one or more sub-spans for its sub-operations.
+/// Reference: https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/api-tracing.md#span
+type Span =
+  inherit SpanOps
+  inherit SpanData
+  /// The operation name / Span label. After the Span is created, it SHOULD be possible to change the its name [label in this case].
+  abstract label: string with get
+  /// Setting this property, updates the Span name. Upon this update, any sampling behavior based on Span name will depend on the implementation.
+  abstract setLabel: (string -> string) -> unit
+  /// When this Span was finished
+  abstract finished: EpochNanoSeconds option
 
 type internal ProcessResult = Result<Promise<unit>, Message>
 type internal LogResult = Alt<ProcessResult>
 
-/// See the docs on the funtions for descriptions on how Ack works in conjunction
-/// with the promise.
+/// See the docs on the functions for descriptions on how Ack works in conjunction
+/// with the Promise.
 type Logger =
   /// The PointName for this `Logger`: corresponds to the `name` field for the
   /// `Messages` produced from this instance.
+  ///
+  /// To use a car metaphor, this could be Fleet.Cars.Volvo.X90 and you could then
+  /// add gauges for each sub-measurement/sensor; like Engine.RPM or Engine.Temperature.
+  ///
+  /// This field is NOT the same as the Span operation/label/name, instead see `Span.label` for that.
   abstract name: PointName
 
   /// Returns an Alt that commits on ALL N Targets' buffers accepting the message.
@@ -385,16 +494,18 @@ type LoggerScope =
   inherit IDisposable
   inherit Logger
 
-/// Should be created from a Time(LogLevel, callerName) call.
-type TimeScope =
+type TimeLogger =
   inherit LoggerScope
-  /// Gets the currently elapsed duration of this time scope scope.
+  /// How long this Span has been in existence, or otherwise its total duration, if finished
   abstract elapsed: Duration
-
-  /// Call to sub-divide the TimeScope into two spans with the previous span
-  /// labelled as the passed string.
   abstract bisect: string -> unit
+  /// Call to stop the timer/Span. This method call is non-blocking, but executes the callback on the caller's thread.
+  abstract finish: (Message -> Message) -> unit
 
-  /// Call to stop the timer; decide in the passed function what level the
-  /// resulting Gauge should have.
-  abstract stop: (Duration -> LogLevel) -> LogResult
+type SpanLogger =
+  inherit LoggerScope
+  inherit Span
+
+  /// Makes the `SpanLogger` log through to its Logger as well as keeping the events
+  /// in the Span.
+  abstract logThrough: unit -> unit

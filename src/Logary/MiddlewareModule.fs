@@ -73,7 +73,7 @@ module Middleware =
     | middlewares ->
       List.foldBack (fun f composed -> f composed) middlewares id
 
-  /// sending logary's gauges/span or log message with metric counter to metric registry
+  /// Sending logary's gauges/span or log message with metric counter to the (Prometheus) Metric registry
   let internal enableHookMetric (metricRegistry: MetricRegistry): Middleware =
     fun next message ->
       // process log message as counter
@@ -117,16 +117,13 @@ module Middleware =
         gaugeMetric.set gaugeValue
       )
 
-      // process logary's span as gauge
-      let spanInfo = message |> Message.tryGetSpanInfo
-      match spanInfo with
-      | None -> do ()
-      | Some spanInfo ->
-        let gaugeMetric =
-          let metricName = message.name |> PointName.format
-          GaugeConf.create(metricName, metricName) |> metricRegistry.registerMetric
-          |> Metric.noLabels
-        let durationInSeconds = (NodaTime.Duration.FromTicks spanInfo.duration).TotalSeconds
-        gaugeMetric.set durationInSeconds
+      // process Logary's Span as gauge
+      Message.tryGetSpanData message |> Option.iter (fun spanData ->
+      let gaugeMetric =
+        let metricName = message.name |> PointName.format
+        GaugeConf.create(metricName, metricName)
+        |> metricRegistry.registerMetric
+        |> Metric.noLabels
+      gaugeMetric.set spanData.elapsed.TotalSeconds)
 
       next message

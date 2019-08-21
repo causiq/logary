@@ -221,8 +221,8 @@ module Message =
     message |> tryGetContext KnownLiterals.SpanIdContextName
 
   [<CompiledName "TryGetSpanInfo">]
-  let tryGetSpanInfo (message: Message) : SpanLog option =
-    message |>  tryGetContext KnownLiterals.SpanInfoContextName
+  let tryGetSpanData (message: Message) : SpanData option =
+    message |>  tryGetContext KnownLiterals.SpanDataContextName
 
   /// For users who want to control timeout for each message when logging `WaitForBuffers = true`
   [<CompiledName "WaitForBuffersTimeout">]

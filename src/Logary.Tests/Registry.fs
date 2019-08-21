@@ -113,8 +113,8 @@ let tests = [
 
     // use explicitly set style
     use spanFromRoot = lgb.startSpan("some child span", rootSpan)
-    do! lgb.infoWithAck (eventX "some log message" >> setSpanId spanFromRoot.info.spanId)
-    do! checkSpanId spanFromRoot.info.spanId
+    do! lgb.infoWithAck (eventX "some log message" >> setSpanId spanFromRoot.context.spanId)
+    do! checkSpanId spanFromRoot.context.spanId
     do! manager.shutdown ()
   })
 

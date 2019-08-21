@@ -169,10 +169,10 @@ module internal Impl =
     let jaegerLog = new Jaeger.Thrift.Log(timestamp, tags)
     jaegerLog
 
-  let buildJaegerSpan (messageWriter: MessageWriter) (spanMsg: Message) (s: SpanLog) (childLogs: Jaeger.Thrift.Log list) =
+  let buildJaegerSpan (messageWriter: MessageWriter) (spanMsg: Message) (s: SpanData) (childLogs: Jaeger.Thrift.Log list) =
     // time unit: Microseconds
-    let startTime = s.beginAt / Constants.TicksPerMicro
-    let duration = s.duration / Constants.TicksPerMicro
+    let startTime = s.started / Constants.TicksPerMicro
+    let duration = s.elapsed / Constants.TicksPerMicro
     // only support sampled for now, and always sampled
     let flags = int JaegerSpanFlags.Sampled
     let operationName = spanMsg.value
@@ -180,7 +180,12 @@ module internal Impl =
 
     let parent = s.parentSpanId |> Option.map (fun x -> x.id) |> Option.defaultValue 0L
 
-    let jaegerSpan = new Jaeger.Thrift.Span(s.traceId.low, s.traceId.high, s.spanId.id, parent, operationName, flags, startTime, duration)
+    // https://github.com/jaegertracing/jaeger-client-java/blob/master/jaeger-core/src/test/java/io/jaegertracing/internal/JaegerSpanTest.java#L254-L265
+    let jaegerSpan =
+      new Jaeger.Thrift.Span(
+        s.context.traceId.low, s.context.traceId.high, s.context.spanId.id,
+        parent, operationName, flags, startTime, duration.ToInt64Nanoseconds() / 1000L)
+
     // setting reference is not supported for the time being
     // and this can be implement in this target project, as a Logary's plugin to extension Message/Logger module
     // jaegerSpan.References <- new ResizeArray<_>()
@@ -215,15 +220,15 @@ module internal Impl =
       state
     )
 
-  let appendToBuffer (logger: Logger) spanMsg spanLog childMsgs (state: State) =
-    let jaegerSpan = buildJaegerSpan state.messageWriter spanMsg spanLog childMsgs
+  let appendToBuffer (logger: Logger) spanMsg (data: SpanData) childMsgs (state: State) =
+    let jaegerSpan = buildJaegerSpan state.messageWriter spanMsg data childMsgs
     let spanSize = state.spanSizeCounter.sizeOf jaegerSpan
     let spanListSize = spanSize + state.spanListSize
 
     logger.verbose (Message.eventX "{spanSize} / {spanListSize}" >> Message.setFields [|spanSize; spanListSize|])
 
     state.spanList.Add jaegerSpan
-    state.spanIdMap.Remove(spanLog.spanId) |> ignore
+    state.spanIdMap.Remove(data.context.spanId) |> ignore
 
     if spanListSize >= state.batchSpanSize then
       flushToJaeger logger state
@@ -231,14 +236,14 @@ module internal Impl =
       Job.result {state with spanListSize = spanListSize}
 
   let tryLogSpan (logger: Logger) (msg: Message) (state: State) =
-    match Message.tryGetSpanInfo msg with
-    | Some spanLog ->
+    match Message.tryGetSpanData msg with
+    | Some data ->
       let childLogs =
-        match state.spanIdMap.TryGetValue spanLog.spanId with
+        match state.spanIdMap.TryGetValue data.context.spanId with
         | true, (_, childLogs) -> childLogs
         | false, _ -> []
 
-      let state = appendToBuffer logger msg spanLog childLogs state
+      let state = appendToBuffer logger msg data childLogs state
       state
 
     | None ->
@@ -276,7 +281,7 @@ module internal Impl =
 
         RingBuffer.takeAll api.requests ^=> fun logReqMsg ->
           logReqMsg
-          |> Hopac.Extensions.Seq.foldFromJob state (fun state  logReq ->
+          |> Hopac.Extensions.Seq.foldFromJob state (fun state logReq ->
             match logReq with
             | Flush (ack, nack) ->
               let flushState =

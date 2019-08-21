@@ -62,25 +62,29 @@ module Target =
     testList "jaeger" [
       testCaseTarget id "send log to jaeger span format" (fun state logger flush ->
         job {
-          let rootSpan = logger.startSpan "root span"
+          let root = logger.startSpan "root span"
 
-          do! eventX "before some action: {userId}" >> setField "userId" 123 |> logger.infoWithBP
+          do! root.infoWithAck (eventX "before some action: {userId}" >> setField "userId" 123)
 
-          do! timeOutMillis 100
+          // now we do some action (pretending to!)
 
           // use explicitly setSpanId style, since we use Hopac `do! timeOutMillis 100` before (the ambientSpanId middleware will not be guaranteed)
-          do! eventX "after some action: {orderId}" >> setField "orderId" 321 >> setSpanId rootSpan.info.spanId |> logger.infoWithBP
+          do! eventX "after some action: {orderId}" >> setField "orderId" 321 >> setSpanId root.context.spanId |> logger.infoWithBP
 
           let conStr = "Host=;Database=;Username=;Password=;"
 
           // use explicitly setParentSpanInfo style, since we use Hopac `do! timeOutMillis 100` before (the ambientSpanId middleware will not be guaranteed)
-          let childSpan = logger.buildSpan "child span" |> Span.withTransform (tag "DB Query" >> tag "Postgresql" >> setContext "conn str" conStr) |> Span.setParentSpanInfo rootSpan.info |> Span.start
+          let childSpan =
+            logger.buildSpan "child span"
+              |> Span.withTransform (tag "DB Query" >> tag "Postgresql" >> setContext "conn str" conStr)
+              |> Span.withParentSpan root
+              |> Span.start
 
           let sql = "select count(*) from xxx"
           do! eventX "query : {sql}" >> setField "sql" sql >> setTimestamp (Instant.FromUnixTimeSeconds 1L) |> logger.infoWithBP
 
           childSpan.Dispose()
-          rootSpan.Dispose()
+          root.Dispose()
 
           Expect.isEmpty state "since batch span size is 1mb as default"
 
