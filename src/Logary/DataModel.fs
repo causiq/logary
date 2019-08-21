@@ -285,15 +285,17 @@ type TraceId =
   { high: int64
     low: int64 }
   member x.isZero = x.high = 0L && x.low = 0L
+  static member Zero = { high=0L; low=0L }
   override x.ToString() =
-    if x.high = 0L then String.Format("{0:x}", x.low)
-    else String.Format("{0:x}{1:x}", x.high, x.low)
+    if x.high = 0L then String.Format("{0:x16}", x.low)
+    else String.Format("{0:x16}{1:x16}", x.high, x.low)
 
 [<Struct>]
 type SpanId =
   { id: int64 }
   member x.isZero = x.id = 0L
-  override x.ToString() = String.Format("{0:x}", x.id)
+  static member Zero = { id = 0L }
+  override x.ToString() = String.Format("{0:x16}", x.id)
 
 /// A Span focuses primarily on a timed scope of execution, which will come to end. This
 /// abstraction is primarily used for tracing.

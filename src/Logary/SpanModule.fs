@@ -8,6 +8,7 @@ open System
 open System.Globalization
 open System.Runtime.CompilerServices
 
+/// Extensions for TraceId and SpanId.
 [<AutoOpen>]
 module SpanModuleEx =
   open System.Text.RegularExpressions
@@ -24,19 +25,17 @@ module SpanModuleEx =
         low = BitConverter.ToInt64(bs, 8) }
 
     static member ofString (s: string) =
-      if s.Length > 32 then
-        Result.Error(sprintf "Could not parse string more than 32 chars into TraceId: %s" s)
-      else
-        let highLen = max 0 (s.Length - 16)
-        let high = // "".Substring(0, 0) => ""
-          match Int64.TryParse(s.Substring(0, highLen), NumberStyles.HexNumber, null) with
-          | false, _ -> 0L
-          | true, high -> high
-        let low =
-          match Int64.TryParse(s.Substring highLen, NumberStyles.HexNumber, null) with
-          | false, _ -> 0L
-          | true, low -> low
-        Ok(TraceId.create (high, low))
+      if s.Length > 32 then TraceId.Zero else
+      let highLen = max 0 (s.Length - 16)
+      let high = // "".Substring(0, 0) => ""
+        match Int64.TryParse(s.Substring(0, highLen), NumberStyles.HexNumber, null) with
+        | false, _ -> 0L
+        | true, high -> high
+      let low =
+        match Int64.TryParse(s.Substring highLen, NumberStyles.HexNumber, null) with
+        | false, _ -> 0L
+        | true, low -> low
+      TraceId.create (high, low)
 
   type SpanId with
     static member create (?value: int64) =
@@ -45,9 +44,8 @@ module SpanModuleEx =
       SpanId.create tId.low
     static member ofString (s: string) =
       match Int64.TryParse(s, NumberStyles.HexNumber, null) with
-      | false, _ -> SpanId.create 0L
+      | false, _ -> SpanId.Zero
       | true, v -> SpanId.create v
-
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Span =
@@ -63,6 +61,7 @@ module Span =
 
   type SpanBuilder(logger: Logger, label: string, ?traceId: TraceId, ?parentSpanId: SpanId, ?spanId: SpanId) =
     let messageFactory = eventX label
+
     let mutable t =
       { traceId = traceId |> Option.defaultWith TraceId.create
         spanId = spanId |> Option.defaultWith SpanId.create

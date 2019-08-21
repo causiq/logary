@@ -111,8 +111,8 @@ let testEncode<'a> fsCheckConfig =
 let ptestEncode<'a> fsCheckConfig =
   ptestPropertyWithConfig fsCheckConfig typeof<'a>.Name (fun (a: 'a) -> Json.encode a |> ignore)
 
-let testRoundtrip<'a when 'a : equality> fsCheckConfig (decoder: JsonDecoder<'a>) =
-  testPropertyWithConfig fsCheckConfig typeof<'a>.Name (fun (a: 'a) ->
+let private testRoundtripInner<'a when 'a : equality> (createTest, suffix) fsCheckConfig (decoder: JsonDecoder<'a>) =
+  createTest fsCheckConfig (sprintf "%s%s" typeof<'a>.Name suffix) (fun (a: 'a) ->
     let encoded = Json.encode a
     try
       encoded
@@ -123,6 +123,15 @@ let testRoundtrip<'a when 'a : equality> fsCheckConfig (decoder: JsonDecoder<'a>
       printfn "Encoded %A" encoded
       reraise()
     )
+let testRoundtrip<'a when 'a : equality> fsCheckConfig (decoder: JsonDecoder<'a>) =
+  testRoundtripInner (testPropertyWithConfig, "") fsCheckConfig decoder
+
+let testRoundtripStdGen (s1, s2) fsCheckConfig decoder =
+  // TODO: upgrade Expecto
+  ignore fsCheckConfig
+  ignore decoder
+  ptestCase (sprintf "TODO: upgrade expecto: testPropertyWithConfigStdGen (%i,%i) fsc decoder" s1 s2) (fun () -> ())
+  //testRoundtripInner (testPropertyWithConfigStdGen (s1, s2), sprintf "(%i, %i)" s1 s2) fsCheckConfig decoder
 
 module Expect =
   module Message =
@@ -421,10 +430,13 @@ let tests fsc =
     ]
 
     testList "roundtrip" [
-      testRoundtrip<PointName> fsc Json.Decode.pointName
-      testRoundtrip<Value> fsc Json.Decode.gaugeValue
-      testRoundtrip<Gauge> fsc Json.Decode.gauge
-      testRoundtrip<LogLevel> fsc Json.Decode.level
+      testRoundtrip fsc Json.Decode.pointName
+      testRoundtrip fsc Json.Decode.gaugeValue
+      testRoundtrip fsc Json.Decode.gauge
+      testRoundtrip fsc Json.Decode.level
+      testRoundtripStdGen (285974835, 296635594) fsc Json.Decode.traceId
+      testRoundtrip fsc Json.Decode.traceId
+      testRoundtrip fsc Json.Decode.spanId
 
       testCase "small record" <| fun () ->
         let subject = Message.event Info "Hi" |> Message.setContext "user" (foo ())

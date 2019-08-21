@@ -7,12 +7,12 @@ open Logary.Internals
 
 module internal JsonResult =
   open Logary.Internals.Chiron
-  
+
   let inline mapError (f2b: JsonFailure -> 'a) (aR: JsonResult<'a>): JsonResult<'a> =
     match aR with
     | JPass a -> JPass a
     | JFail x -> JPass (f2b x)
-        
+
   let foldBind (folder: 'state -> 'item -> JsonResult<'state>) (state: 'state) (xsJ: seq<'item>): JsonResult<'state> =
     Seq.fold (fun aJ xJ -> aJ |> JsonResult.bind (fun a -> folder a xJ))
              (JsonResult.pass state)
@@ -23,7 +23,7 @@ module Json =
   open Logary.Internals.Chiron.JsonTransformer
   module D = Json.Decode
   module DI = Inference.Json.Decode
-  
+
   /// A module for decoding arbitrary JSON data into Message values.
   module internal Decode =
     open Logary.Internals.Chiron.Operators
@@ -42,7 +42,7 @@ module Json =
     /// Decodes a set of string tags (not key-value tags, but atomic tags)
     let tags: JsonDecoder<Set<string>> =
       D.setWith D.string
-      
+
     let rec unit: JsonDecoder<Units> =
       let inner () =
         function
@@ -102,7 +102,7 @@ module Json =
           Log10 <!> D.required unit "base"
         | other ->
           JsonResult.propertyNotFound other |> Decoder.always
-          
+
       D.jsonObject >=> (
         DI.required "type"
         |> Decoder.map String.toLowerInvariant
@@ -127,7 +127,7 @@ module Json =
         DI.required "type"
         |> Decoder.map String.toLowerInvariant
         |> Decoder.bind inner
-      ) 
+      )
 
     let gauge: JsonDecoder<Gauge> =
       let inner (_: string) =
@@ -160,31 +160,31 @@ module Json =
       | Json.Object values ->
         // consider tail-recursive alternative
         decodeMap false HashMap.empty values |> JsonResult.map box
-  
+
       | Json.String value ->
         JsonResult.pass (box value)
-  
+
       | Json.Array values ->
         let foldIntoarray (vs: obj list) (vJ: Json) =
           decodeValue vJ |> JsonResult.map (fun v -> v :: vs)
-  
+
         values
         |> JsonResult.foldBind foldIntoarray []
         |> JsonResult.map box
-  
+
       | Json.Number _ as num ->
         D.float num
         |> JsonResult.map box
-  
+
       | Json.False ->
         JsonResult.pass (box false)
-  
+
       | Json.True ->
         JsonResult.pass (box true)
-  
+
       | Json.Null ->
         JsonResult.pass (box None)
-  
+
     /// Decodes a DotNetStacktrace or an error string.
     let error: JsonDecoder<obj> =
       let parse =
@@ -195,22 +195,22 @@ module Json =
             JPass trace
       let trace: JsonDecoder<StacktraceLine[]> = D.string >> JsonResult.bind parse
       Json.Decode.either (box <!> trace) (box <!> D.string)
-  
+
     /// Decodes an array of `error`
     let errors = D.arrayWith error
-  
+
     let private _context decodeOne addOne: HashMap<string, obj> -> Decoder<Json, HashMap<string, obj>> =
       let foldIntoMap (acc: HashMap<string, obj>) (key, vJ) =
         decodeOne (key, vJ) |> JsonResult.map (addOne acc key)
-  
+
       fun prevContext ->
         D.jsonObject >=> fun xJO ->
         JsonObject.toPropertyList xJO
         |> JsonResult.foldBind foldIntoMap prevContext
-  
+
     let context: HashMap<string, obj> -> Decoder<Json, HashMap<string, obj>> =
       _context (fun (key, vJ) -> decodeValue vJ) addToContext
-  
+
     let fields: HashMap<string, obj> -> JsonDecoder<HashMap<string, obj>> =
       let decodeField = function
         | k, vJ when k = "error" ->
@@ -222,17 +222,23 @@ module Json =
     let gauges: HashMap<string, obj> -> JsonDecoder<HashMap<string, obj>> =
       let addOne acc _ (k, v) =
         acc |> HashMap.add k (box v)
-        
+
       let decodeGauge (k, vJ) =
         gauge vJ |> JsonResult.map (fun g ->
         KnownLiterals.GaugeNamePrefix + k, g)
 
       _context decodeGauge addOne
-  
+
     /// Decodes the Message's `level` from a `Json` value.
     let level: JsonDecoder<LogLevel> =
       LogLevel.ofString <!> D.string
-  
+
+    let spanId: JsonDecoder<SpanId> =
+      SpanId.ofString <!> D.string
+
+    let traceId: JsonDecoder<TraceId> =
+      TraceId.ofString <!> D.string
+
     /// Decodes the Message timestamp from a `Json` value, assuming that it's a
     /// number and that that number is the number of milliseconds since the Unix
     /// Epoch. This is the most likely representation of the epoch when the
@@ -245,20 +251,20 @@ module Json =
     /// => 1351700038292 // ms
     let timestampOfMs: JsonDecoder<EpochNanoSeconds> =
       D.int64 |> Decoder.map ((*) 1_000_000L)
-  
+
     let timestampOfMicroS: JsonDecoder<EpochNanoSeconds> =
       D.int64 |> Decoder.map ((*) 1_000L)
-  
+
     let timestampOfNs: JsonDecoder<EpochNanoSeconds> =
       D.int64
-  
+
     let timestampOfDto: JsonDecoder<EpochNanoSeconds> =
       D.dateTimeOffset |> Decoder.map (fun dto -> dto.timestamp)
-  
+
     /// Decodes a timestamp from nanoseconds since epoch or from an RFC3339 date.
     let timestamp: JsonDecoder<EpochNanoSeconds> =
       Json.Decode.either timestampOfNs timestampOfDto
-  
+
     let private foldJsonObject (m: Message, remainder: JsonObject) =
       fun (prop, json) ->
         JsonResult.mapError (fun _ -> m, remainder) <|
@@ -268,43 +274,43 @@ module Json =
         | "logger", json ->
           pointName json
             |> JsonResult.map (fun name -> Message.setName name m, remainder)
-  
+
         | "message", json
         | "value", json  ->
           value json
             |> JsonResult.map (fun value -> { m with value = value }, remainder)
-  
+
         | "_logary.error", json
         | "error", json ->
           error json
             |> JsonResult.map (fun value -> m |> Message.setField "error" value, remainder)
-  
+
         | "fields", json ->
           fields m.context json
             |> JsonResult.map (fun context -> { m with context = context }, remainder)
-  
+
         | "context", json ->
           context m.context json
             |> JsonResult.map (fun context -> { m with context = context }, remainder)
-            
+
         | "gauges", json ->
           gauges m.context json
             |> JsonResult.map (fun context -> { m with context = context }, remainder)
-            
+
         | "tags", json ->
           tags json
             |> JsonResult.map (fun tags -> Message.setContext KnownLiterals.TagsContextName tags m, remainder)
-  
+
         | "level", json
         | "severity", json ->
           level json
             |> JsonResult.map (fun level -> Message.setLevel level m, remainder)
-  
+
         | "timestamp", json
         | "@timestamp", json ->
           timestamp json
             |> JsonResult.map (fun ts -> Message.setNanoEpoch ts m, remainder)
-  
+
         // add extreneous properties to the remainder
         | otherProp, json ->
           JsonResult.pass (m, remainder |> JsonObject.add otherProp json)
@@ -323,16 +329,16 @@ module Json =
     /// Decodes a Message
     let message: JsonDecoder<Message> =
       D.jsonObject >=> messageObject
-      
+
     /// Decodes an Message[]
     let messageArray: JsonDecoder<Message[]> =
       D.arrayWith message
-      
+
     /// Decodes a Message or an Message[]
     let messageBatch: JsonDecoder<Message[]> =
       D.either (message |> Decoder.map Array.singleton)
                messageArray
-    
+
   let encode (data: 'a): Json =
     JsonHelper.toJson<'a> Global.jsonEncoderRegistry data
 
