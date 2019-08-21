@@ -169,6 +169,7 @@ let tests fsc =
         testEncode<Gauge> fsc
         testEncode<SpanId> fsc
         testEncode<TraceId> fsc
+        testEncode<ChildEx> fsc
         testEncode<int * int> fsc
         testEncode<Map<string, _> * Map<string, _> * string> fsc
         testEncode<Map<string, _>> fsc

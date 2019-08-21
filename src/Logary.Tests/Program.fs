@@ -114,15 +114,16 @@ type Arbs =
       gen {
         let! (NonEmptyString message) = Arb.generate<NonEmptyString>
         let! (NonEmptyString message2) = Arb.generate<NonEmptyString>
-        let! hasInner =
+        let! exnFac =
           Gen.frequency [
-            1, Gen.constant false
-            2, Gen.constant true
+            1, Gen.constant failer
+            2, Gen.constant another
+            2, Gen.constant (fun m -> ChildEx(m) :> exn)
           ]
+
         return
-          try another message
-          with e ->
-            e
+          try exnFac message
+          with e -> e
       }
 
     let shrinker (e: exn): seq<exn> =
@@ -130,6 +131,11 @@ type Arbs =
       else Seq.empty
 
     Arb.fromGenShrink (generator, shrinker)
+
+  static member ChildEx() =
+    Arb.generate<NonEmptyString>
+      |> Gen.map (fun (NonEmptyString m) -> ChildEx m)
+      |> Arb.fromGen
 
 let fsCheckConfig =
   { FsCheckConfig.defaultConfig with arbitrary = [ typeof<Arbs> ] }

@@ -322,32 +322,37 @@ module internal JsonHelper =
       fun x -> Json.String (x.ToString())
 
     | Shape.Exception s ->
-      wrap (fun (e: exn) ->
-        let fields = ref JsonObject.empty
+      s.Accept
+        { new IExceptionVisitor<'T -> Json> with
+          member x.Visit<'exn when 'exn :> exn and 'exn : not struct and 'exn : null> () =
+            wrap (fun (e: 'exn) ->
+              let fields = ref JsonObject.empty
 
-        if not (isNull e.Data) && e.Data.Count > 0 then
-          fields := !fields |> JsonObject.add "data" (toJsonCached<System.Collections.IDictionary> er ctx e.Data)
+              if not (isNull e.Data) && e.Data.Count > 0 then
+                fields := !fields |> JsonObject.add "data" (toJsonCached<System.Collections.IDictionary> er ctx e.Data)
 
-        if not (isNull e.HelpLink) then
-          fields := !fields |> JsonObject.add "helpLink" (Json.String e.HelpLink)
+              if not (isNull e.HelpLink) then
+                fields := !fields |> JsonObject.add "helpLink" (Json.String e.HelpLink)
 
-        if not (isNull e.InnerException) then
-          fields := !fields |> JsonObject.add "inner" (toJsonCached<exn> er ctx e.InnerException)
+              if not (isNull e.InnerException) then
+                fields := !fields |> JsonObject.add "inner" (toJsonCached<exn> er ctx e.InnerException)
 
-        if e.HResult <> Unchecked.defaultof<int> then
-          fields := !fields |> JsonObject.add "hresult" (toJsonCached<_> er ctx e.HResult)
+              if e.HResult <> Unchecked.defaultof<int> then
+                fields := !fields |> JsonObject.add "hresult" (toJsonCached<_> er ctx e.HResult)
 
-        fields := !fields |> JsonObject.add "message" (Json.String e.Message)
-        fields := !fields |> JsonObject.add "source" (Json.String e.Source)
+              fields := !fields |> JsonObject.add "message" (Json.String e.Message)
+              fields := !fields |> JsonObject.add "source" (Json.String e.Source)
 
-        if not (String.IsNullOrWhiteSpace e.StackTrace) then
-          let lines = DotNetStacktrace.parse e.StackTrace
-          fields := !fields |> JsonObject.add "stacktrace" (toJsonCached<StacktraceLine[]> er ctx lines)
+              if not (String.IsNullOrWhiteSpace e.StackTrace) then
+                let lines = DotNetStacktrace.parse e.StackTrace
+                fields := !fields |> JsonObject.add "stacktrace" (toJsonCached<StacktraceLine[]> er ctx lines)
 
-        if not (isNull e.TargetSite) then
-          fields := !fields |> JsonObject.add "targetSite" (Json.String e.TargetSite.Name)
+              if not (isNull e.TargetSite) then
+                fields := !fields |> JsonObject.add "targetSite" (Json.String e.TargetSite.Name)
 
-        Json.Object !fields)
+              Json.Object !fields
+            )
+      }
 
     | Shape.FSharpMap s when s.Key = shapeof<string> ->
       s.Accept
