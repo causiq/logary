@@ -195,6 +195,18 @@ let tests fsc =
             |> Json.encode
             |> Expect.equal "Encodes to 'debug'" (String "debug")
 
+        testCase "SpanId regex" <| fun () ->
+          SpanId.create()
+            |> Json.encode
+            |> Expect.Json.isStringX "Serialises as a String value"
+            |> Expect.isMatch "Should be hex-formatted as 8 bytes (16 chars)" "([a-z0-9]){16}"
+
+        testCase "TraceId regex" <| fun () ->
+          TraceId.create()
+            |> Json.encode
+            |> Expect.Json.isStringX "Serialises as a String value"
+            |> Expect.isMatch "Should be hex-formatted as 16 bytes (32 chars)" "([a-z0-9]){32}"
+
         testCase "FSharpFunc" <| fun () ->
           let example = fun (a: int) (b: float) -> float a * b
           match Json.encode example with

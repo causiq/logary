@@ -332,6 +332,13 @@ module Expect =
     let isObject message value =
       isObjectX message value |> ignore
 
+    let isStringX message (value: Json) =
+      match value with
+      | String inner ->
+        inner
+      | other ->
+        failtestf "Expected Json.String, but was %A" other
+
     /// Assert and pass through the found field.
     let hasFieldX message field (value: JsonObject) =
       value

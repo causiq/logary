@@ -74,6 +74,8 @@ module Shape =
   let (|LogLevel|_|) (shape: TypeShape) = test<Logary.LogLevel> shape
   let (|PointName|_|) (shape: TypeShape) = test<Logary.PointName> shape
   let (|Gauge|_|) (shape: TypeShape) = test<Logary.Gauge> shape
+  let (|TraceId|_|) (shape: TypeShape) = test<Logary.TraceId> shape
+  let (|SpanId|_|) (shape: TypeShape) = test<Logary.SpanId> shape
   let (|Value|_|) (shape: TypeShape) = test<Logary.Value> shape
   let (|Message|_|) (shape: TypeShape) = test<Logary.Message> shape
   let (|Instant|_|) (shape: TypeShape) = test<NodaTime.Instant> shape
@@ -215,6 +217,12 @@ module internal JsonHelper =
 
     | Shape.Guid ->
       wrap (fun (x: Guid) -> Inference.Json.encode x)
+
+    | Shape.TraceId ->
+      wrap (fun (x: TraceId) -> String (x.ToString()))
+
+    | Shape.SpanId ->
+      wrap (fun (x: SpanId) -> String (x.ToString()))
 
     | Shape.Uri ->
       wrap (fun (x: Uri) -> if isNull x then Null else String (x.ToString()))
