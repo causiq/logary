@@ -244,7 +244,7 @@ type Message =
     /// The # of seconds since UNIX epoch 1970-01-01T00:00:00Z
     member x.timestampEpochS: int64 =
       x.timestamp / Constants.NanosPerSecond
-      
+
 
 /// Patterns to match against the context; useful for extracting the data
 /// slightly more semantically than "obj"-everything. Based on the known prefixes
@@ -280,6 +280,21 @@ module MessagePatterns =
       | _ ->
         Context (key, value)
 
+[<Struct>]
+type TraceId =
+  { high: int64
+    low: int64 }
+  member x.isZero = x.high = 0L && x.low = 0L
+  override x.ToString() =
+    if x.high = 0L then String.Format("{0:x}", x.low)
+    else String.Format("{0:x}{1:x}", x.high, x.low)
+
+[<Struct>]
+type SpanId =
+  { id: int64 }
+  member x.isZero = x.id = 0L
+  override x.ToString() = String.Format("{0:x}", x.id)
+
 /// A Span focuses primarily on a timed scope of execution, which will come to end. This
 /// abstraction is primarily used for tracing.
 ///
@@ -302,23 +317,25 @@ type Span =
   /// Gets the collected data for this Span.
   abstract info: SpanInfo
 
+/// https://www.jaegertracing.io/docs/1.13/client-libraries/#trace-span-identity
 and SpanInfo =
-  { traceId: Guid
-    parentSpanId: Guid option
-    spanId: Guid }
-
-  static member formatId (id: Guid) =
-    id.ToString("n")
+  { traceId: TraceId
+    parentSpanId: SpanId option
+    spanId: SpanId
+    flags: int32 }
 
 /// describe the time scope info about a span, will be sent as a message's context data
 [<Struct>]
 type SpanLog =
-  { traceId: string
-    spanId: string
-    parentSpanId: string
-    beginAt: int64 // number of ticks since the Unix epoch. Negative values represent instants before the Unix epoch. (from NodaTime)
-    endAt: int64 // number of ticks since the Unix epoch. Negative values represent instants before the Unix epoch. (from NodaTime)
-    duration: int64 // total number of ticks in the duration as a 64-bit integer. (from NodaTime)
+  { traceId: TraceId
+    spanId: SpanId
+    parentSpanId: SpanId option
+    /// number of nanoseconds since the Unix epoch. Negative values represent instants before the Unix epoch.
+    beginAt: EpochNanoSeconds
+    /// number of nanoseconds since the Unix epoch. Negative values represent instants before the Unix epoch.
+    endAt: EpochNanoSeconds
+    /// total number of nanoseconds in the duration as a 64-bit integer.
+    duration: int64
   }
 
 type internal ProcessResult = Result<Promise<unit>, Message>

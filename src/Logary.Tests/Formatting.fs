@@ -256,11 +256,11 @@ let textPrinters =
       shouldHaveFields msg [KV("0","sentence"); KV("1",4)] "converting a String.Format into a message template"
 
     testCase "Message.eventFormat, named and positional fields" <| fun _ ->
-      let format = "This {gramaticalStructure} contains {wordCount} {0}."
+      let format = "This {grammaticalStructure} contains {wordCount} {0}."
       let args: obj[] = [|"sentence"; 4; "words"|]
 
       let msg = Message.eventFormat(format, args)
-      shouldHaveFields msg [KV("gramaticalStructure","sentence"); KV("wordCount",4);KV("0","words")]
+      shouldHaveFields msg [KV("grammaticalStructure","sentence"); KV("wordCount",4);KV("0","words")]
         "fields are matched left-to-right when any fields are named"
 
     testCase "Message.eventFormat, positional fields" <| fun _ ->
@@ -272,28 +272,28 @@ let textPrinters =
         "fields are matched positionally when all are numbered"
 
     testCase "eventFormat, named fields" <| fun _ ->
-      let format = "This {gramaticalStructure} contains {wordCount} words."
+      let format = "This {grammaticalStructure} contains {wordCount} words."
       let args: obj[] = [|"sentence"; 4|]
 
       let msg = Message.eventFormat(format, args)
-      shouldHaveFields msg [KV("gramaticalStructure","sentence"); KV("wordCount", 4);]
+      shouldHaveFields msg [KV("grammaticalStructure","sentence"); KV("wordCount", 4);]
         "fields are matched left-to-right in message template"
 
     testCase "eventFormat, named fields, missing last" <| fun _ ->
-      let format = "This {gramaticalStructure} contains {wordCount} words."
+      let format = "This {grammaticalStructure} contains {wordCount} words."
       let args: obj[] = [|"sentence"|]
 
       let msg = Message.eventFormat(format, args)
-      shouldHaveFields msg [KV ("gramaticalStructure", "sentence")] "fields are matched left-to-right in message template"
+      shouldHaveFields msg [KV ("grammaticalStructure", "sentence")] "fields are matched left-to-right in message template"
 
     testCase "eventFormat, named fields, all missing" <| fun _ ->
-      let format = "This {gramaticalStructure} contains {wordCount} words."
+      let format = "This {grammaticalStructure} contains {wordCount} words."
       let args: obj[] = [||]
 
       let msg = Message.eventFormat(format, args)
       shouldHaveFields msg [] "fields are matched left-to-right in message template"
 
-    testCase "templateEvent<_> reconises the '$' symbol and will call 'ToString()' on the captured value" <| fun _ ->
+    testCase "templateEvent<_> recognises the '$' symbol and will call 'ToString()' on the captured value" <| fun _ ->
       let stringifyLogEvent = Message.templateEvent<Version>(Info, "Found version {$Version}")
       let version = System.Version(1,2,3,4)
       let msg = stringifyLogEvent version
@@ -302,7 +302,7 @@ let textPrinters =
 
       msg
       |> MessageWriter.verbatim.format
-      |> Expect.stringContains "should call tostring() on version" "1.2.3.4"
+      |> Expect.stringContains "should call ToString() on version" "1.2.3.4"
 
     testCase "templateEvent<_> recognises the '@' symbol and will extract the properties of the captured value" <| fun _ ->
       let structureLogEvent = Message.templateEvent<Version>(Info, "App at {@Version}")

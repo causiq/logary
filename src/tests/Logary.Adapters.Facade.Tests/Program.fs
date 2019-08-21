@@ -36,7 +36,7 @@ let stubLogManager (message: Message ref) =
         Internals.RuntimeInfo.create "Facade Tests" "localhost" :> _
       member x.getLogger name =
         stubLogger Verbose message name
-      member x.getLoggerWithMiddleware name mid =
+      member x.getLoggerWithMiddleware (name, mid) =
         stubLogger Verbose message name
       member x.flushPending dur =
         Alt.always (FlushInfo([],[]))

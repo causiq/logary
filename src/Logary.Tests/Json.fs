@@ -167,6 +167,8 @@ let tests fsc =
         testEncode<NodaTime.Instant> fsc
         testEncode<NodaTime.Duration> fsc
         testEncode<Gauge> fsc
+        testEncode<SpanId> fsc
+        testEncode<TraceId> fsc
         testEncode<int * int> fsc
         testEncode<Map<string, _> * Map<string, _> * string> fsc
         testEncode<Map<string, _>> fsc

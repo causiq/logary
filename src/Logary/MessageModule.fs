@@ -101,7 +101,7 @@ module Message =
       || k = KnownLiterals.ErrorsContextName
 
     message.context |> Seq.choose (function
-      | KeyValue (k, v) when isPrefixed k ->
+      | KeyValue (k, _) when isPrefixed k ->
         None
       | KeyValue (k, v) ->
         Some (k,v))
@@ -213,12 +213,12 @@ module Message =
 
   /// Set SpanId
   [<CompiledName "SetSpanId">]
-  let setSpanId (spanId: Guid) (message: Message) =
-    message |> setContext KnownLiterals.SpanIdContextName (SpanInfo.formatId spanId)
+  let setSpanId (spanId: SpanId) (message: Message) =
+    message |> setContext KnownLiterals.SpanIdContextName spanId
 
   [<CompiledName "TryGetSpanId">]
-  let tryGetSpanId (message: Message) : Guid option =
-    message |> tryGetContext KnownLiterals.SpanIdContextName |> Option.map Guid.Parse
+  let tryGetSpanId (message: Message): SpanId option =
+    message |> tryGetContext KnownLiterals.SpanIdContextName
 
   [<CompiledName "TryGetSpanInfo">]
   let tryGetSpanInfo (message: Message) : SpanLog option =

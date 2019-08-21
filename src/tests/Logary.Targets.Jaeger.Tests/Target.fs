@@ -37,9 +37,9 @@ module Target =
       let spanSender =
         {
           new SpanSender with
-            member x.SendBatch batch =
+            member x.sendBatch batch =
               Job.lift (fun batch -> state.Add batch) batch
-            member x.Dispose () = ()
+            member x.Dispose() = ()
         }
 
       let targetConf =
@@ -59,24 +59,22 @@ module Target =
 
   [<Tests>]
   let tests =
-
     testList "jaeger" [
       testCaseTarget id "send log to jaeger span format" (fun state logger flush ->
         job {
-
-          let rootSpan = logger.buildSpan () |> Span.setMessage (eventX "root span") |> Span.start
+          let rootSpan = logger.startSpan "root span"
 
           do! eventX "before some action: {userId}" >> setField "userId" 123 |> logger.infoWithBP
 
           do! timeOutMillis 100
 
-          // use explicitly setSpanId style, since we use hopac `do! timeOutMillis 100` before (the ambientSpanId middleware will not be guaranteed)
+          // use explicitly setSpanId style, since we use Hopac `do! timeOutMillis 100` before (the ambientSpanId middleware will not be guaranteed)
           do! eventX "after some action: {orderId}" >> setField "orderId" 321 >> setSpanId rootSpan.info.spanId |> logger.infoWithBP
 
           let conStr = "Host=;Database=;Username=;Password=;"
 
-          // use explicitly setParentSpanInfo style, since we use hopac `do! timeOutMillis 100` before (the ambientSpanId middleware will not be guaranteed)
-          let childSpan = Span.create logger |> Span.setMessage (eventX "child span" >> tag "DB Query" >> tag "Postgresql" >> setContext "conn str" conStr) |> Span.setParentSpanInfo rootSpan.info |> Span.start
+          // use explicitly setParentSpanInfo style, since we use Hopac `do! timeOutMillis 100` before (the ambientSpanId middleware will not be guaranteed)
+          let childSpan = logger.buildSpan "child span" |> Span.withTransform (tag "DB Query" >> tag "Postgresql" >> setContext "conn str" conStr) |> Span.setParentSpanInfo rootSpan.info |> Span.start
 
           let sql = "select count(*) from xxx"
           do! eventX "query : {sql}" >> setField "sql" sql >> setTimestamp (Instant.FromUnixTimeSeconds 1L) |> logger.infoWithBP
@@ -128,12 +126,11 @@ module Target =
 
         })
 
-      testCaseTarget (fun conf -> {conf with autoFlushInterval = Duration.FromSeconds 2.;})
+      testCaseTarget (fun conf -> { conf with autoFlushInterval = Duration.FromSeconds 2.; })
         "AutoFlush Span"
-        (fun state logger flush ->
+        (fun state logger _ ->
           job {
-
-            let span = logger.buildSpan () |> Span.setMessage (eventX "some span") |> Span.start
+            let span = logger.buildSpan "some span" |> Span.start
             do! eventX "before some action: {userId}" >> setField "userId" 123 |> logger.infoWithBP
             span.Dispose()
 
@@ -141,15 +138,15 @@ module Target =
 
             do! timeOutMillis 2500
 
-            Expect.equal state.Count 1 "should get 1 batch, trigger by auto flush"
+            Expect.equal state.Count 1 "should get 1 batch, triggered by auto flush"
           })
 
-      testCaseTarget (fun conf -> {conf with autoFlushInterval = Duration.FromSeconds 2.; retentionTime = Duration.FromSeconds 1.})
+      testCaseTarget (fun conf -> { conf with autoFlushInterval = Duration.FromSeconds 2.; retentionTime = Duration.FromSeconds 1. })
         "Auto GC Spans"
         (fun state logger flush ->
           job {
 
-            let span = logger.buildSpan () |> Span.setMessage (eventX "some span") |> Span.start
+            let span = logger.buildSpan "some span" |> Span.start
             do! eventX "before some action: {userId}" >> setField "userId" 123 |> logger.infoWithBP
 
             do! flush
@@ -158,11 +155,11 @@ module Target =
 
             do! timeOutMillis 2500
 
-            Expect.isEmpty state "since there is not any finished span, and log message should be gc"
+            Expect.isEmpty state "since there is not any finished span, and log message should be GC:ed"
 
             span.Dispose()
             do! flush
-            Expect.equal state.Count 1 "should get 1 batch, trigger by flush"
+            Expect.equal state.Count 1 "should get 1 batch, triggered by flush"
             let spans = state.[0].Spans
             Expect.equal spans.Count 1 "should get 1 span"
             let logs = spans.[0].Logs

@@ -52,17 +52,15 @@ let tests = [
   testCaseJob "after shutting down no logging happens" <|
     job {
       let! (logm, out, error) = Utils.buildLogManager ()
-      let loggername = PointName.parse "logger.test"
-
-      let lg = logm.getLogger loggername
+      let lg = logm.getLogger "logger.test"
 
       do! lg.infoWithAck (eventX "test info msg")
       do! lg.errorWithAck (eventX "test error msg")
 
       let outStr = out.ToString()
       let errorStr = error.ToString()
-      outStr |> Expect.stringContains "shoule contains" "info msg"
-      errorStr |> Expect.stringContains "shoule contains" "error msg"
+      outStr |> Expect.stringContains "should contains" "info msg"
+      errorStr |> Expect.stringContains "should contains" "error msg"
 
       let timeout =  Duration.FromSeconds 3L
       let! _ = logm.shutdown(timeout, timeout)
@@ -73,57 +71,56 @@ let tests = [
       if errorOutput.Contains("after") then Expecto.Tests.failtestf "should not contains after, actual %s" errorOutput
     }
 
-  testCaseJob "getlogger with middleware" <| job {
+  testCaseJob "getLogger with middleware" <| job {
     let! logm, out, error  = Utils.buildLogManager ()
-    let loggername = PointName.parse "logger.test"
     let correlationId = Guid.NewGuid().ToString("N")
     let customMid = Middleware.context "correlationId" correlationId
-    let lg = logm.getLoggerWithMiddleware loggername customMid
+    let lg = logm.getLoggerWithMiddleware ("logger.test", customMid)
     do! lg.infoWithAck (eventX "test info msg")
     do! lg.errorWithAck (eventX "test error msg")
 
     let outStr = out.ToString()
     let errorStr = error.ToString()
-    outStr |> Expect.stringContains "shoule have svc ctx info" "svc"
-    outStr |> Expect.stringContains "shoule have host ctx info" "localhost"
-    errorStr |> Expect.stringContains "shoule have svc ctx info" "svc"
-    errorStr |> Expect.stringContains "shoule have host ctx info" "localhost"
-    outStr |> Expect.stringContains "shoule have correlationId ctx info" correlationId
-    errorStr |> Expect.stringContains "shoule have correlationId ctx info" correlationId
+    outStr |> Expect.stringContains "should have svc ctx info" "svc"
+    outStr |> Expect.stringContains "should have host ctx info" "localhost"
+    errorStr |> Expect.stringContains "should have svc ctx info" "svc"
+    errorStr |> Expect.stringContains "should have host ctx info" "localhost"
+    outStr |> Expect.stringContains "should have correlationId ctx info" correlationId
+    errorStr |> Expect.stringContains "should have correlationId ctx info" correlationId
 
     do! logm.shutdown ()
   }
 
   testCaseJob "log with span" (job {
-    let! logm, out, _  = Utils.buildLogManagerWith (fun conf -> conf |> Config.middleware Middleware.ambientSpanId)
+    let! manager, out, _  = Utils.buildLogManagerWith (fun conf -> conf |> Config.middleware Middleware.ambientSpanId)
 
     let checkSpanId spanId = job {
-      do! logm.flushPending ()
+      do! manager.flushPending ()
       clearStream out
-      |> Expect.stringContains "should have spanId" (SpanInfo.formatId spanId)
+      |> Expect.stringContains "should have spanId" (spanId.ToString())
     }
 
-    let lga = logm.getLogger "logger.a"
-    use rootSpan = lga |> Span.create |> Span.setMessage (eventX "some root span") |> Span.start
-    let lgb = logm.getLogger "logger.b"
-    use _ = lgb |> Span.create |> Span.setMessage (eventX "some child span") |> Span.start
-    use _ = lgb |> Span.create |> Span.setMessage (eventX "some grand span") |> Span.start
+    let lga = manager.getLogger "logger.a"
+    use rootSpan = lga.startSpan "some root span"
+    let lgb = manager.getLogger "logger.b"
+    use _ = lgb.startSpan "some child span"
+    use _ = lgb.startSpan "some grand span"
     do! lgb.infoWithAck (eventX "some log message")
     do! timeOutMillis 100
+
     clearStream out
     |> Expect.stringContains "should have spanId" "_logary.spanId"
 
     // use explicitly set style
-    use spanFromRoot = lgb |> Span.create |> Span.setParentSpanInfo rootSpan.info |> Span.setMessage (eventX "some child span") |> Span.start
+    use spanFromRoot = lgb.startSpan("some child span", rootSpan)
     do! lgb.infoWithAck (eventX "some log message" >> setSpanId spanFromRoot.info.spanId)
     do! checkSpanId spanFromRoot.info.spanId
-    do! logm.shutdown ()
+    do! manager.shutdown ()
   })
 
   testCaseJob "switch logger level" (job {
-    let! (logm, out, error)  = Utils.buildLogManager ()
-    let loggername = PointName.parse "logger.test"
-    let lg = logm.getLogger loggername
+    let! logm, out, error = Utils.buildLogManager ()
+    let lg = logm.getLogger "logger.test"
     do! lg.debugWithAck (eventX "test debug msg")
     do! lg.verboseWithAck (eventX "test verbose msg")
     do! lg.infoWithAck (eventX "test info msg")
@@ -132,10 +129,10 @@ let tests = [
 
     let outStr = clearStream out
     let errorStr = clearStream error
-    (outStr.Contains("debug")) |> Expect.isFalse  "shoule not have debug level msg, since the default rule is .* -> Info"
-    (outStr.Contains("verbose")) |> Expect.isFalse "shoule not have verbose level msg, since the default rule is .* -> Info"
-    outStr |> Expect.stringContains "shoule have info level msg" "info"
-    errorStr |> Expect.stringContains "shoule have error level msg" "error"
+    (outStr.Contains("debug")) |> Expect.isFalse  "should not have debug level msg, since the default rule is .* -> Info"
+    (outStr.Contains("verbose")) |> Expect.isFalse "should not have verbose level msg, since the default rule is .* -> Info"
+    outStr |> Expect.stringContains "should have info level msg" "info"
+    errorStr |> Expect.stringContains "should have error level msg" "error"
 
 
     logm.switchLoggerLevel (".*test", LogLevel.Verbose)
@@ -144,29 +141,29 @@ let tests = [
     do! lg.infoWithAck (eventX "test info msg")
     do! logm.flushPending ()
     let outStr = clearStream out
-    outStr |> Expect.stringContains "shoule have debug level msg after switch logger level" "debug"
-    outStr |> Expect.stringContains "shoule have verbose level msg after switch logger level" "verbose"
-    outStr |> Expect.stringContains "shoule have info level msg" "info"
+    outStr |> Expect.stringContains "should have debug level msg after switch logger level" "debug"
+    outStr |> Expect.stringContains "should have verbose level msg after switch logger level" "verbose"
+    outStr |> Expect.stringContains "should have info level msg" "info"
 
-    let lgWithSameNameAfterSwitch = logm.getLogger loggername
+    let lgWithSameNameAfterSwitch = logm.getLogger "logger.test"
     do! lgWithSameNameAfterSwitch.debugWithAck (eventX "test debug msg")
     do! lgWithSameNameAfterSwitch.verboseWithAck (eventX "test verbose msg")
     do! lgWithSameNameAfterSwitch.infoWithAck (eventX "test info msg")
     do! logm.flushPending ()
     let outStr = clearStream out
-    outStr |> Expect.stringContains "shoule have debug level msg after switch logger level" "debug"
-    outStr |> Expect.stringContains "shoule have verbose level msg after switch logger level" "verbose"
-    outStr |> Expect.stringContains "shoule have info level msg" "info"
+    outStr |> Expect.stringContains "should have debug level msg after switch logger level" "debug"
+    outStr |> Expect.stringContains "should have verbose level msg after switch logger level" "verbose"
+    outStr |> Expect.stringContains "should have info level msg" "info"
 
-    let lgWithDiffNameAfterSwitch = logm.getLogger (PointName.parse "xxx.yyy.zzz.test")
+    let lgWithDiffNameAfterSwitch = logm.getLogger "xxx.yyy.zzz.test"
     do! lgWithDiffNameAfterSwitch.debugWithAck (eventX "test debug msg")
     do! lgWithDiffNameAfterSwitch.verboseWithAck (eventX "test verbose msg")
     do! lgWithDiffNameAfterSwitch.infoWithAck (eventX "test info msg")
     do! logm.flushPending ()
     let outStr = clearStream out
-    (outStr.Contains("debug")) |> Expect.isFalse  "shoule not have debug level msg after switch logger level"
-    (outStr.Contains("verbose")) |> Expect.isFalse  "shoule not have verbose level msg after switch logger level"
-    outStr |> Expect.stringContains "shoule have info level msg" "info"
+    (outStr.Contains("debug")) |> Expect.isFalse "should not have debug level msg after switch logger level"
+    (outStr.Contains("verbose")) |> Expect.isFalse "should not have verbose level msg after switch logger level"
+    outStr |> Expect.stringContains "should have info level msg" "info"
     do! logm.shutdown ()
   })
 
@@ -178,7 +175,7 @@ let tests = [
           | Flush (ack, nack) ->
             let flushWork = Hopac.timeOutMillis 200 ^=>. ack *<= ()
             (flushWork <|> nack) >>= loop
-          | Log (msg, ack) ->
+          | Log (_, ack) ->
             ack *<= () >>= loop
 
           api.shutdownCh ^=> fun ack -> Hopac.timeOutMillis 200 ^=>. ack *<= ()
@@ -229,15 +226,15 @@ let tests = [
       |> Config.processing (Events.events |> Events.sink ["mockTarget"])
       |> Config.build
 
-    let lg = logm.getLogger (PointName.parse "logger.test")
+    let lg = logm.getLogger "logger.test"
     do! lg.infoWithBP (eventX "can be logger with no blocking")
     do! lg.infoWithBP (eventX "can be logger with no blocking")
     do! lg.infoWithBP (eventX "can be logger with no blocking")
     do! logm.shutdown ()
-    do! lg.infoWithBP (eventX "can be logger with no blocking beacuse ring buffer")
-    do! lg.infoWithBP (eventX "can be logger with no blocking beacuse ring buffer")
-    do! lg.infoWithBP (eventX "can be logger with no blocking beacuse check registry closed")
-    do! lg.infoWithBP (eventX "can be logger with no blocking beacuse check registry closed")
-    do! lg.infoWithBP (eventX "can be logger with no blocking beacuse check registry closed")
+    do! lg.infoWithBP (eventX "can be logger with no blocking because ring buffer")
+    do! lg.infoWithBP (eventX "can be logger with no blocking because ring buffer")
+    do! lg.infoWithBP (eventX "can be logger with no blocking because check registry closed")
+    do! lg.infoWithBP (eventX "can be logger with no blocking because check registry closed")
+    do! lg.infoWithBP (eventX "can be logger with no blocking because check registry closed")
   })
 ]

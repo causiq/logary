@@ -157,7 +157,7 @@ type TopshelfAdapter(logger: Logger) =
 type LogaryWriterFactory(logary: LogManager) =
   interface LogWriterFactory with
     member x.Get name =
-      let llogger = logary.getLogger (PointName.parse name)
+      let llogger = logary.getLogger name
       TopshelfAdapter llogger :> LogWriter
     member x.Shutdown () =
       ()

@@ -14,18 +14,19 @@ open Thrift.Transports.Client
 open Thrift.Protocols
 open System.Threading
 open System.Security.Cryptography
-open System.Text
 
 type SpanSizeCounter =
-  abstract SizeOf: span: Jaeger.Thrift.Span -> int
+  abstract sizeOf: span: Jaeger.Thrift.Span -> int
 
 type SpanSender =
   inherit IDisposable
-  abstract SendBatch: batch: Jaeger.Thrift.Batch -> Job<unit>
+  abstract sendBatch: batch: Jaeger.Thrift.Batch -> Job<unit>
 
 [<Flags>]
-type JaegerSpanFlags = Sampled = 1
-  
+type JaegerSpanFlags =
+  | Sampled = 1
+  | Debug = 2
+
 type JaegerConf = {
   processTags: Map<string,obj>
   /// bytes, spans size reach to this size will be send to jaeger, otherwise it is appended to buffer waitting for flush
@@ -54,7 +55,7 @@ let empty = {
 let defaultSpanSizeCounter =
   {
     new SpanSizeCounter with
-      member x.SizeOf span =
+      member x.sizeOf span =
         use counterTransport = new TSizeCountTransport()
         use sizeCountProtocol = new TCompactProtocol(counterTransport)
         span.WriteAsync(sizeCountProtocol, CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult()
@@ -71,7 +72,7 @@ let createSpanSender conf =
 
   let sender = {
     new SpanSender with
-      member x.SendBatch batch =
+      member x.sendBatch batch =
         Hopac.Job.fromUnitTask(fun _ -> client.emitBatchAsync(batch,CancellationToken.None))
       member x.Dispose () =
         client.Dispose()
@@ -87,7 +88,7 @@ module internal Impl =
   do()
 
   type State =
-    { spanIdMap: Dictionary<Guid,Instant * Jaeger.Thrift.Log list>
+    { spanIdMap: Dictionary<SpanId, Instant * Jaeger.Thrift.Log list>
       spanList: ResizeArray<Jaeger.Thrift.Span>
       spanListSize: int
       spanSender: SpanSender
@@ -98,20 +99,6 @@ module internal Impl =
     }
 
   let md5 = MD5.Create ()
-
-  let asIdHighLow str =
-    if String.IsNullOrEmpty str then (0L,0L)
-    else
-      let byteArr =
-        match Guid.TryParse str with
-        | true, guid ->
-          guid.ToByteArray()
-        | false, _ ->
-          md5.ComputeHash(Encoding.UTF8.GetBytes(str))
-
-      let high = BitConverter.ToInt64(byteArr, 0)
-      let low = BitConverter.ToInt64(byteArr, 8)
-      high, low
 
   let buildJaegerTag k (v: obj) =
     let tag = Jaeger.Thrift.Tag()
@@ -151,12 +138,12 @@ module internal Impl =
 
   let asJaegerTags (messageWriter: MessageWriter) (msg: Message) =
     let tags = new ResizeArray<_>()
-    let formatedMsg = messageWriter.format msg
+    let fmtMsg = messageWriter.format msg
     buildJaegerTag "logger-level" msg.level |> tags.Add
     buildJaegerTag "logger-name" msg.name |> tags.Add
 
-    // gauges will be formated in this msg
-    buildJaegerTag "logger-msg" formatedMsg |> tags.Add
+    // gauges will be formatted in this msg
+    buildJaegerTag "logger-msg" fmtMsg |> tags.Add
 
     let tagStr = String.Join(",", msg |> Message.getAllTags)
     if tagStr <> String.Empty then buildJaegerTag "tags" tagStr |> tags.Add
@@ -182,22 +169,20 @@ module internal Impl =
     let jaegerLog = new Jaeger.Thrift.Log(timestamp, tags)
     jaegerLog
 
-  let buildJaegerSpan (messageWriter: MessageWriter) (spanMsg: Message) (spanLog: SpanLog) (childLogs: Jaeger.Thrift.Log list) =
+  let buildJaegerSpan (messageWriter: MessageWriter) (spanMsg: Message) (s: SpanLog) (childLogs: Jaeger.Thrift.Log list) =
     // time unit: Microseconds
-    let startTime = spanLog.beginAt / Constants.TicksPerMicro
-    let duration = spanLog.duration / Constants.TicksPerMicro
+    let startTime = s.beginAt / Constants.TicksPerMicro
+    let duration = s.duration / Constants.TicksPerMicro
     // only support sampled for now, and always sampled
     let flags = int JaegerSpanFlags.Sampled
     let operationName = spanMsg.value
     let tags = asJaegerTags messageWriter spanMsg
 
-    let traceIdHigh, traceIdLow = asIdHighLow spanLog.traceId
-    let _, spanIdLow = asIdHighLow spanLog.spanId
-    let _, parentSpanIdLow = asIdHighLow spanLog.parentSpanId
+    let parent = s.parentSpanId |> Option.map (fun x -> x.id) |> Option.defaultValue 0L
 
-    let jaegerSpan = new Jaeger.Thrift.Span(traceIdLow, traceIdHigh, spanIdLow, parentSpanIdLow, operationName, flags, startTime, duration)
+    let jaegerSpan = new Jaeger.Thrift.Span(s.traceId.low, s.traceId.high, s.spanId.id, parent, operationName, flags, startTime, duration)
     // setting reference is not supported for the time being
-    // and this can be implement in this target project, as a logary's plugin to extension Message/Logger module
+    // and this can be implement in this target project, as a Logary's plugin to extension Message/Logger module
     // jaegerSpan.References <- new ResizeArray<_>()
     jaegerSpan.Logs <- new ResizeArray<_>(childLogs)
     jaegerSpan.Tags <- tags
@@ -207,7 +192,7 @@ module internal Impl =
     if state.spanList.Count > 0 then
       let jaegerBatch = new Jaeger.Thrift.Batch(state.jaegerProcess, state.spanList)
       let state' =  { state with spanListSize = 0; spanList = new ResizeArray<_>() }
-      let emitBatchJ = state.spanSender.SendBatch jaegerBatch
+      let emitBatchJ = state.spanSender.sendBatch jaegerBatch
 
       Job.tryIn emitBatchJ (fun _ -> Job.result state' ) (fun exn ->
         Message.eventX "flush to jaeger failed"
@@ -230,15 +215,15 @@ module internal Impl =
       state
     )
 
-  let appendToBuffer (logger: Logger) spanId spanMsg spanLog childMsgs (state: State) =
+  let appendToBuffer (logger: Logger) spanMsg spanLog childMsgs (state: State) =
     let jaegerSpan = buildJaegerSpan state.messageWriter spanMsg spanLog childMsgs
-    let spanSize = state.spanSizeCounter.SizeOf jaegerSpan
+    let spanSize = state.spanSizeCounter.sizeOf jaegerSpan
     let spanListSize = spanSize + state.spanListSize
 
     logger.verbose (Message.eventX "{spanSize} / {spanListSize}" >> Message.setFields [|spanSize; spanListSize|])
 
     state.spanList.Add jaegerSpan
-    state.spanIdMap.Remove(spanId) |> ignore
+    state.spanIdMap.Remove(spanLog.spanId) |> ignore
 
     if spanListSize >= state.batchSpanSize then
       flushToJaeger logger state
@@ -246,27 +231,18 @@ module internal Impl =
       Job.result {state with spanListSize = spanListSize}
 
   let tryLogSpan (logger: Logger) (msg: Message) (state: State) =
-    match msg |> Message.tryGetSpanInfo with
+    match Message.tryGetSpanInfo msg with
     | Some spanLog ->
-      match Guid.TryParse spanLog.spanId with
-      | true, spanId ->
-        let childLogs =
-          match state.spanIdMap.TryGetValue spanId with
-          | true, (_, childLogs) -> childLogs
-          | false, _ -> []
+      let childLogs =
+        match state.spanIdMap.TryGetValue spanLog.spanId with
+        | true, (_, childLogs) -> childLogs
+        | false, _ -> []
 
-        let state = appendToBuffer logger spanId msg spanLog childLogs state
-        state
-
-      | false, _ ->
-        Message.eventX "{spanId} can't be parsed to GUID"
-        >> Message.setFields [| spanLog.spanId |]
-        |> logger.error
-
-        Job.result state
+      let state = appendToBuffer logger msg spanLog childLogs state
+      state
 
     | None ->
-      match msg |> Message.tryGetSpanId with
+      match Message.tryGetSpanId msg with
       | Some spanId ->
         // append this message wait for some span to occur, these messages will be the span's logs
         let appendedLogs =
@@ -284,12 +260,12 @@ module internal Impl =
         Job.result state
 
   let loop (conf: JaegerConf) spanSender spanSizeCounter (api: TargetAPI) =
-  
+
     let logger = api.runtime.logger
     let always = Alt.unit ()
-  
+
     let autoFlushCh = Ch ()
-  
+
     let rec running (state: State) =
       Alt.choose [
         api.shutdownCh ^=> fun ack ->
@@ -297,7 +273,7 @@ module internal Impl =
             state.spanIdMap.Clear()
             state.spanSender.Dispose()
             ack *<= ()
-  
+
         RingBuffer.takeAll api.requests ^=> fun logReqMsg ->
           logReqMsg
           |> Hopac.Extensions.Seq.foldFromJob state (fun state  logReq ->
@@ -305,26 +281,26 @@ module internal Impl =
             | Flush (ack, nack) ->
               let flushState =
                 always ^=> (fun _ -> flushToJaeger logger state >>= (fun state -> IVar.fill ack () >>-. state))
-  
+
               ((nack ^->. state) <|> flushState) :> Job<_>
-  
+
             | Log (msg, ack) ->
               let tryLogSpanJ = tryLogSpan logger msg state
               let tryLogSpanSafe =  Job.tryWith tryLogSpanJ (fun exn ->
-  
+
                 Message.eventX "tryLogSpan failed. Drop msg : {msg}"
                 >> Message.setFields [| msg |]
                 >> Message.addExn exn
                 |> logger.error
-  
+
                 Job.result state
               )
-  
+
               tryLogSpanSafe >>= (fun state -> IVar.fill ack () >>-. state)
           )
           >>= running
-  
-  
+
+
         autoFlushCh ^=> fun _ ->
           flushToJaegerAndGC logger state conf.retentionTime >>= running
       ] :> Job<_>
@@ -333,7 +309,7 @@ module internal Impl =
     let jaegerProcess = initProcess api.runtime conf.processTags
 
     let state = {
-      spanIdMap = new Dictionary<Guid,Instant * Jaeger.Thrift.Log list>()
+      spanIdMap = new Dictionary<SpanId, Instant * Jaeger.Thrift.Log list>()
       spanList = new ResizeArray<Jaeger.Thrift.Span>()
       spanListSize = 0
       spanSender = spanSender

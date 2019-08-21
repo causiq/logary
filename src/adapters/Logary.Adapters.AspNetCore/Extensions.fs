@@ -1,7 +1,6 @@
 namespace Logary.Adapters.AspNetCore
 
 open Logary
-open Logary.Configuration
 open Microsoft.Extensions.Logging
 open System.Runtime.CompilerServices
 

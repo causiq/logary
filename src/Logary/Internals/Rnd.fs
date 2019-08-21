@@ -20,6 +20,12 @@ module internal Rnd =
     random.Value.NextBytes buf
     BitConverter.ToInt64 (buf, 0)
 
+  let nextInt64NonZero () =
+    let mutable value = 0L
+    while value = 0L do
+      value <- nextInt64 ()
+    value
+
   /// Get the next int64 within [0, max]
   let nextInt64Max (max: int64) =
     let mutable bits = 0L

@@ -111,8 +111,6 @@ module Registry =
 
 
   module private Impl =
-    open Metric
-
     let ensureName name (m: Message) =
       if m.name.isEmpty then { m with name = name } else m
 
@@ -316,7 +314,7 @@ module Registry =
     { new LogManager with
         member x.getLogger name =
           Impl.getLogger t name None
-        member x.getLoggerWithMiddleware name mid =
+        member x.getLoggerWithMiddleware (name, mid) =
           Impl.getLogger t name (Some mid)
         member x.runtimeInfo =
           t.runtimeInfo

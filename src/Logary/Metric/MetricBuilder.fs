@@ -66,7 +66,7 @@ and MetricRegistry() =
   let metricBackStore = new ConcurrentDictionary<string, MetricExporter>()
   let defaultFailBehaviorD = DVar.create failwith
 
-  member x.registerMetric<'t when 't:> IMetric> (builder: MetricBuilder<'t>) : Metric<'t> =
+  member x.registerMetric<'t when 't:> IMetric> (builder: MetricBuilder<'t>): Metric<'t> =
     let metricName = builder.basicConf.name
     let metric = metricBackStore.GetOrAdd(metricName, fun _ -> new Metric<_>(builder, x) :> MetricExporter)
     if metric.basicConf <> builder.basicConf then

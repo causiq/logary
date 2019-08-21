@@ -9,7 +9,8 @@ module LogManagerEx =
   let defaultMetricRegistry = new MetricRegistry()
 
   type LogManager with
-    member x.getLogger name =
-      x.getLogger (PointName.parse name)
-
+    member x.getLogger (loggerName: string) =
+      x.getLogger (PointName.parse loggerName)
+    member x.getLoggerWithMiddleware (loggerName: string, middleware) =
+      x.getLoggerWithMiddleware (PointName.parse loggerName, middleware)
     static member DefaultMetricRegistry = defaultMetricRegistry

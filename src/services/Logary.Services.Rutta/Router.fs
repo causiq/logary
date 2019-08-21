@@ -37,7 +37,7 @@ module Router =
         (x.receiver :> IDisposable).Dispose()
 
   let private createSink (logary: LogManager) (codec: Logary.Codecs.Codec) =
-    let targetLogger = logary.getLogger (PointName.parse "Rutta")
+    let targetLogger = logary.getLogger "Rutta"
     //codec >> Result.map (Array.iter targetLogger.logSimple) >> Job.result
     fun input ->
       match codec input with
@@ -49,7 +49,7 @@ module Router =
         Job.result (Result.Ok ())
       | Result.Error error ->
         Job.result (Result.Error error)
-  
+
   let internal zmqRecv createSocket =
     let recv (started, shutdown) (cfg: IngestServerConfig) next =
       Job.Scheduler.isolate <| fun () ->
@@ -82,7 +82,7 @@ module Router =
       let socket = Context.pull context
       Socket.bind socket (sprintf "tcp://%s" binding)
       socket
-    
+
     let config =
       let ilogger = ilogger |> Logger.setNameEnding "zmqPull"
       { new IngestServerConfig with
@@ -105,7 +105,7 @@ module Router =
       Socket.subscribe socket [""B]
       Socket.connect socket (sprintf "tcp://%s" binding)
       socket
-      
+
     let config =
       let ilogger = ilogger |> Logger.setNameEnding "zmqSub"
       { new IngestServerConfig with
@@ -181,7 +181,7 @@ module Router =
       Codec.log4jXML
 
   type Binding = string
-  
+
   let private toListener (cancelled, cors, ilogger, logary) (mode: RMode): Binding -> string * Codec -> Job<IngestServer> =
     let fn =
       match mode with
@@ -206,30 +206,30 @@ module Router =
       |> Config.ilogger (ILogger.LiterateConsole ilevel)
       |> Config.build
       |> run
-      
+
     let ilogger = logary.runtimeInfo.logger |> Logger.setName "Rutta"
 
     ilogger.debug (
       eventX "Starting {@listeners}, sending to {@targets}"
       >> setField "listeners" listeners
       >> setField "targets" (targets |> List.map (fun t -> t.name)))
-    
+
     let servers =
       listeners
       |> Seq.map (fun (mode, binding, c) -> toListener (cancelled, cors, ilogger, logary) mode, binding, toCodec c)
       |> Seq.mapJob (fun (exec, binding, codec) -> exec binding codec)
       |> run
-      
+
     let allShutdown =
       servers
       |> Seq.map IngestServer.waitForShutdown
       |> Job.conIgnore
-    
+
     ilogger.debug (
       eventX "Router start of {@listeners}, sending to {@targets}, successful."
       >> setField "listeners" listeners
       >> setField "targets" (targets |> List.map (fun t -> t.name)))
-      
+
     { new IDisposable with
         member x.Dispose () =
           run (

@@ -34,7 +34,7 @@ type LogManager =
   /// the name of the class. Also have a look at Logging.GetCurrentLogger().
   abstract getLogger: PointName -> Logger
 
-  abstract getLoggerWithMiddleware: PointName -> Middleware -> Logger
+  abstract getLoggerWithMiddleware: PointName * Middleware -> Logger
 
   /// Awaits that all targets finish responding to a flush message
   /// so that we can be certain they have processed all previous messages.

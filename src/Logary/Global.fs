@@ -10,7 +10,7 @@ module internal Global =
     { getLogger: PointName -> Logger
       /// Gets a logger by name and applies the passed middleware to it. You can
       /// also use `Logger.apply` on existing loggers to create new ones.
-      getLoggerWithMiddleware: PointName -> Middleware -> Logger
+      getLoggerWithMiddleware: PointName * Middleware -> Logger
       getTimestamp: unit -> EpochNanoSeconds
       /// Gets the console semaphore. When the process is running with an attached
       /// tty, this function is useful for getting the semaphore to synchronise
@@ -23,8 +23,8 @@ module internal Global =
     let c = SystemClock.Instance
     let s = obj ()
     let nl = NullLogger() :> Logger
-    { getLogger = fun pn -> nl
-      getLoggerWithMiddleware = fun pn mid -> nl
+    { getLogger = fun _ -> nl
+      getLoggerWithMiddleware = fun (_, _) -> nl
       getTimestamp = fun () -> c.GetCurrentInstant().ToUnixTimeTicks() * Constants.NanosPerTick
       getConsoleSemaphore = fun () -> s }
 
@@ -67,10 +67,8 @@ module internal Global =
   let lockSem fn =
     lock (getConsoleSemaphore ()) fn
 
-
   module Json =
 
-    open System
     open System.Collections.Concurrent
     open Logary.Internals.TypeShape.Core
     open Logary.Internals.Chiron
@@ -149,7 +147,6 @@ module internal Global =
       customDestructureDic.[ty] <- untypedFactory
 
     let internal customDestructureRegistry = lazy (
-
       configDestructure<Gauge>(fun _ req ->
         let (Gauge (value, units)) =  req.Value
         let (scaledValue, unitsFormat) = Units.scale units (value.toFloat())
@@ -183,7 +180,9 @@ module internal Global =
 
           StructureValue (refId, typeTag, nvs))
 
-      configDestructure<Duration>(fun resolver req -> ScalarValue req.Value)
+      configDestructure<Duration>(fun _ req -> ScalarValue req.Value)
+      configDestructure<SpanId>(fun _ req -> ScalarValue (req.Value.ToString()))
+      configDestructure<TraceId>(fun _ req -> ScalarValue (req.Value.ToString()))
 
       configDestructure<SpanLog>(fun resolver req ->
         let spanLog = req.Value
@@ -193,15 +192,12 @@ module internal Global =
         | refId, None ->
           let typeTag = typeof<SpanLog>.Name
           let nvs = [
-            if not <| isNull spanLog.traceId then
-              yield { Name = "TraceId"; Value = ScalarValue spanLog.traceId }
-            if not <| isNull spanLog.parentSpanId then
-              yield { Name = "ParentSpanId"; Value = ScalarValue spanLog.parentSpanId }
-            if not <| isNull spanLog.spanId then
-              yield { Name = "SpanId"; Value = ScalarValue spanLog.spanId }
-            yield { Name = "BeginAt"; Value = ScalarValue (Instant.FromUnixTimeTicks(spanLog.beginAt)) }
-            yield { Name = "EndAt"; Value = ScalarValue (Instant.FromUnixTimeTicks(spanLog.endAt)) }
-            yield { Name = "Duration"; Value = ScalarValue (Duration.FromTicks(spanLog.duration)) }
+            yield { Name = "TraceId"; Value = req.WithNewValue spanLog.traceId |> resolver }
+            yield { Name = "ParentSpanId"; Value = req.WithNewValue spanLog.parentSpanId |> resolver }
+            yield { Name = "SpanId"; Value = req.WithNewValue spanLog.spanId |> resolver }
+            yield { Name = "BeginAt"; Value = ScalarValue (Instant.ofEpoch spanLog.beginAt) }
+            yield { Name = "EndAt"; Value = ScalarValue (Instant.ofEpoch spanLog.endAt) }
+            yield { Name = "Duration"; Value = ScalarValue (Duration.FromNanoseconds spanLog.duration) }
           ]
 
           StructureValue (refId, typeTag, nvs))
