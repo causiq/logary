@@ -3,6 +3,7 @@ namespace Logary.Formatting
 open System
 open System.Reflection
 open System.Collections.Generic
+open System.Net.Sockets
 open Logary
 open Logary.Internals
 open Logary.Internals.Chiron
@@ -357,6 +358,12 @@ module internal JsonHelper =
 
               if not (isNull e.TargetSite) then
                 fields := !fields |> JsonObject.add "targetSite" (Json.String e.TargetSite.Name)
+
+              match box e with
+              | :? SocketException as se ->
+                let json = Inference.Json.encode se.ErrorCode
+                fields := !fields |> JsonObject.add "errorCode" json
+              | _ -> ()
 
               Json.Object !fields
             )
