@@ -250,6 +250,7 @@ module Serialise =
 
     for kv in message.context do
       match kv with
+      | Exns _
       | Intern -> ()
 
       | Tags tags ->
