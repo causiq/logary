@@ -27,10 +27,10 @@ module MoveMe =
 
 module SuaveAdapter =
   let getter: Getter<HttpContext> =
-    fun ctx ->
-      ctx.request.header >> function
-        | Choice1Of2 value -> value :: []
-        | Choice2Of2 _ -> []
+    fun ctx nameOrPrefix ->
+      ctx.request.headers
+        |> List.filter (fun (name, _) -> name.StartsWith nameOrPrefix)
+        |> List.map (fun (name, value) -> name, value :: [])
 
   let setter: Setter<HttpContext> =
     fun (k: string, vs) ctx ->
@@ -72,6 +72,25 @@ module SuaveAdapter =
 
       span, nextCtx
 
+  type SpanLogger with
+    member x.finish (res: HttpContext option) =
+      res |> Option.iter (fun ctx ->
+        if ctx.response.status.code >= 500 then
+          x.setStatus(SpanCanonicalCode.InternalError)
+          x.setAttribute("error", true)
+        elif ctx.response.status.code >= 400 then x.setAttribute("http.bad_request", true)
+        x.setAttribute("http.status_code", ctx.response.status.code)
+        x.setAttribute("http.status_text", ctx.response.status.reason)
+      )
+      x.finish()
+
+    member x.finishWithExn (_: HttpContext, e: exn) =
+      x.setAttribute("http.status_code", 500)
+      x.setStatus(SpanCanonicalCode.InternalError, e.ToString())
+      x.setAttribute("error", true)
+      x.error (eventX "Unhandled error" >> addExn e)
+      x.finish()
+
   type HttpContext with
     member x.logger: SpanLogger =
       match x.userState |> Map.tryFind UserStateLoggerKey with
@@ -93,17 +112,10 @@ module SuaveAdapter =
         spanLogger.logThrough()
         try
           let! res = app ctx
-          res |> Option.iter (fun ctx ->
-            if ctx.response.status.code >= 500 then spanLogger.setAttribute("error", true)
-            elif ctx.response.status.code >= 400 then spanLogger.setAttribute("http.bad_request", true)
-            spanLogger.setAttribute("http.status_code", ctx.response.status.code)
-            spanLogger.setAttribute("http.status_text", ctx.response.status.reason)
-          )
-          spanLogger.finish()
+          spanLogger.finish res
           return res
         with e ->
-          spanLogger.error (eventX "Unhandled error" >> addExn e)
-          spanLogger.finish()
+          spanLogger.finishWithExn (ctx, e)
           return e.reraise()
       }
 

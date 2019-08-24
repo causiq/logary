@@ -16,6 +16,7 @@ open Logary.Formatting
 open Logary.Internals
 open Logary.Internals.Chiron.Formatting
 open Logary.Trace
+open Logary.Trace.Sampling
 open Logary.Targets
 
 type Client =
@@ -66,6 +67,8 @@ type JaegerConf =
 
     /// How long do we wait for ambient logs, before sending the Spans off to Jaeger?
     spanDelay: Duration
+
+    sampler: Sampler
   }
 
 let empty =
@@ -85,6 +88,7 @@ let empty =
     messageWriter = MessageWriter.verbatim
     client = None
     spanDelay = Duration.FromSeconds 5L
+    sampler = new ConstSampler(true)
   }
 
 module internal Impl =
@@ -408,6 +412,7 @@ type ISecondStep =
     abstract WithPacketSize: packetSize: uint16 -> ISecondStep
     abstract WithTime: flushInterval: Duration * retentionTime: Duration -> ISecondStep
     abstract WithMessageWriter: writer: MessageWriter -> ISecondStep
+    abstract WithSampler: sampler: Sampler -> ISecondStep
     abstract Done: unit -> Target.TargetConfBuild<Builder>
 
 and Builder(conf: JaegerConf, callParent: Target.ParentCallback<_>) =
@@ -433,6 +438,10 @@ and Builder(conf: JaegerConf, callParent: Target.ParentCallback<_>) =
 
     member x.WithMessageWriter mw =
       Builder({conf with messageWriter = mw}, callParent)
+      :> ISecondStep
+
+    member x.WithSampler s =
+      Builder({ conf with sampler = s }, callParent)
       :> ISecondStep
 
     member x.Done () =
