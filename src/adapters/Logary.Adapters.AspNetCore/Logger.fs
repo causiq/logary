@@ -3,6 +3,7 @@ namespace Logary.Adapters.AspNetCore
 open System
 open Microsoft.Extensions.Logging
 open Logary
+open Logary.Trace
 open System.Collections.Generic;
 
 [<AutoOpen>]

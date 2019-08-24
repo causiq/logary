@@ -72,8 +72,6 @@ module Target =
       |> Expect.isTrue (sprintf "Should have tag %s => %b, tags: %A" k v tags)
     tags
 
-
-
   [<Tests>]
   let tests =
     testList "jaeger" [

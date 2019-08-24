@@ -406,7 +406,9 @@ type SpanContext(traceId: TraceId, spanId: SpanId, ?flags: SpanFlags, ?parentSpa
 
   member x.withParent (context: SpanContext) =
     new SpanContext(context.traceId, x.spanId, x.flags ||| context.flags, context.spanId)
-
+  override x.ToString() =
+    sprintf "SpanContext(isRootSpan=%b, isSampled=%b, isDebug=%b, traceId=%O, spanId=%O, parentSpanId=%O)"
+            x.isRootSpan x.isSampled x.isDebug x.traceId x.spanId x.parentSpanId
 
 [<Struct; RequireQualifiedAccess>]
 type SpanAttrValue =

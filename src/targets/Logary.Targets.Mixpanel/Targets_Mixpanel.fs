@@ -93,7 +93,10 @@ module internal E =
         | Tags tags ->
           o |> JsonObject.add "tags" (E.stringSet tags)
         | Context (key, value) ->
-          o |> JsonObject.add key (Json.encode value))
+          o |> JsonObject.add key (Json.encode value)
+
+        | Exns _ ->
+          o)
 
     if Option.isNone (JsonObject.tryFind "distinct_id" jObj) then
       ilogger.info (eventX "Missing `distinct_id` from message {message}" >> setField "message" m)

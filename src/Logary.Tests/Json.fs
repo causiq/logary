@@ -1,6 +1,7 @@
 module Logary.Tests.Json
 
 open System
+open System.Collections.Generic
 open Logary
 open Logary.Internals.Chiron
 open Logary.Formatting
@@ -146,14 +147,14 @@ module Expect =
       actual.value
         |> Expect.equal "value" expected.value
 
-      for KeyValue (k, v) in actual.context do
-        match expected.context |> HashMap.tryFind k with
+      for KeyValue (k, v) in expected.context do
+        match actual.context |> HashMap.tryFind k with
         | None ->
-          failtestf "Failed to find key %s in actual's Message.context" k
-        | Some v ->
-          v |> Expect.equal "value" v
-
-      ()
+          let expKeys = (expected.context |> HashMap.toDictionary).Keys |> fun ks -> String.Join(", ", ks)
+          let actKeys = (actual.context |> HashMap.toDictionary).Keys |> fun ks -> String.Join(", ", ks)
+          failtestf "The key '%s' was in expected.context, but not in actual.context.\n>Exp keys: %s\n> Act keys: %s\n%s" k expKeys actKeys message
+        | Some actualValue ->
+          actualValue |> Expect.equal "value" v
 
 let tests fsc =
   testList "json" [
@@ -209,7 +210,7 @@ let tests fsc =
           SpanId.create()
             |> Json.encode
             |> Expect.Json.isStringX "Serialises as a String value"
-            |> Expect.isMatch "Should be hex-formatted as 8 bytes (16 chars)" "([a-z0-9]){16}"
+            |> Expect.isMatch "Should be hex-formatted as 8 bytes (1-16 chars)" "([a-z0-9]){1,16}"
 
         testCase "TraceId regex" <| fun () ->
           TraceId.create()

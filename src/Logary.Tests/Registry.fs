@@ -1,6 +1,8 @@
 module Logary.Tests.Registry
 
+open Expecto
 open System
+open System.Threading
 open Hopac
 open Hopac.Infixes
 open NodaTime
@@ -92,32 +94,90 @@ let tests = [
     do! logm.shutdown ()
   }
 
-  testCaseJob "log with span" (job {
-    let! manager, out, _  = Utils.buildLogManagerWith (fun conf -> conf |> Config.middleware Middleware.ambientSpanId)
-
-    let checkSpanId spanId = job {
-      do! manager.flushPending ()
-      clearStream out
-      |> Expect.stringContains "should have spanId" (spanId.ToString())
+  Tests.testSequencedGroup "ambient spans (must run on its own)" <|
+  testList "ambient spans" [
+    let prepare = job {
+      let! manager, out, _  = Utils.buildLogManagerWith (fun conf -> conf |> Config.middleware Middleware.ambientSpanId)
+      let checkSpanId spanId = job {
+        do! manager.flushPending ()
+        let output = clearStream out
+        let message = sprintf "The output should have spanId, but was:\n%s" output
+        output
+          |> Expect.stringContains message (spanId.ToString())
+      }
+      return manager, checkSpanId, out
     }
 
-    let lga = manager.getLogger "logger.a"
-    use rootSpan = lga.startSpan "some root span"
-    let lgb = manager.getLogger "logger.b"
-    use _ = lgb.startSpan "some child span"
-    use _ = lgb.startSpan "some grand span"
-    do! lgb.infoWithAck (eventX "some log message")
-    do! timeOutMillis 100
+    let tryWith xs2xJ =
+      prepare >>= fun (manager, checkSpanId, out) ->
+      Job.tryFinallyJob (xs2xJ (manager, checkSpanId, out)) (manager.shutdown())
 
-    clearStream out
-    |> Expect.stringContains "should have spanId" "_logary.spanId"
+    yield testCaseJob "by default has no ambient spans" (job {
+      ActiveSpan.getSpan()
+        |> Expect.isNone "Initially has no ambient span"
+    })
 
-    // use explicitly set style
-    use spanFromRoot = lgb.startSpan("some child span", rootSpan)
-    do! lgb.infoWithAck (eventX "some log message" >> setSpanId spanFromRoot.context.spanId)
-    do! checkSpanId spanFromRoot.context.spanId
-    do! manager.shutdown ()
-  })
+    yield ftestCaseJob "ambientonanza" (tryWith <| fun (manager, checkSpanId, _) -> job {
+      let a = manager.getLogger "logger.a"
+      let b = manager.getLogger "logger.b"
+
+      let outsideJob () =
+        use parentSpan = a.startSpan("parent", enableAmbient=true)
+        let active = ActiveSpan.getContext ()
+        active
+          |> Expect.equal "Has an ambient span from 'parent' span" (Some parentSpan.context)
+
+        let childSpan = parentSpan.startSpan("child 1", parentSpan)
+        ActiveSpan.getSpan()
+          |> Expect.equal "Has an ambient span from 'parent' span — 'child 1' span did not opt in to ambient" (Some parentSpan.context.spanId)
+
+        let grandChildSpan = childSpan.startSpan("grand-child", childSpan, enableAmbient=true)
+        ActiveSpan.getSpan()
+          |> Expect.equal "Has an ambient span from 'grand-child' span" (Some grandChildSpan.context.spanId)
+
+        // this log message will have the ambient spanId of 'grand-child' span:
+        start (b.infoWithBP (eventX "MAJOR EVENT HAPPENED"))
+
+        // reset ambient:
+        grandChildSpan.finish()
+        ActiveSpan.getSpan()
+          |> Expect.equal "Has an ambient span from 'parent' span" (Some parentSpan.context.spanId)
+
+        childSpan.finish()
+        ActiveSpan.getSpan()
+          |> Expect.equal "Has an ambient span from 'parent' span" (Some parentSpan.context.spanId)
+
+        parentSpan.finish()
+        ActiveSpan.getSpan()
+          |> Expect.isNone "Does not have an ambient SpanId after finishing the 'parent' Span"
+
+        grandChildSpan.context.spanId
+
+      let expectedSpanId = outsideJob ()
+
+      // ensure that MAJOR EVENT received the ambient spanId
+      do! checkSpanId expectedSpanId
+    })
+
+    yield testCaseJob "log ambient into span" (tryWith <| fun (manager, assertHasSpanId, _) -> job {
+      let a = manager.getLogger "logger.a"
+      let b = manager.getLogger "logger.b"
+      use parentSpan = a.startSpan("parent", enableAmbient=true)
+      use childSpan = b.startSpan("child 2", parentSpan)
+
+      // you can finish the parent before the child according to the specs
+      parentSpan.finish()
+
+      // log via a non-Span attached logger;
+      do! b.infoWithAck (eventX "some log message" >> setSpanId childSpan.context.spanId)
+
+      // now let's finish the child
+      childSpan.finish()
+
+      // assert!
+      do! assertHasSpanId childSpan.context.spanId
+    })
+  ]
 
   testCaseJob "switch logger level" (job {
     let! logm, out, error = Utils.buildLogManager ()

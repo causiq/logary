@@ -61,10 +61,11 @@ module Middleware =
   [<CompiledName "AmbientSpanId">]
   let ambientSpanId: Middleware =
     fun next msg ->
-      let ambientSpanId = ActiveSpan.getSpan ()
-      match ambientSpanId with
-      | Some ambientSpanId -> msg |> Message.setSpanId ambientSpanId |> next
-      | None -> next msg
+      match ActiveSpan.getSpan () with
+      | Some ambientSpanId ->
+        msg |> Message.setSpanId ambientSpanId |> next
+      | None ->
+        next msg
 
   /// Compose the list of middlewares together into a single Message->Message function.
   [<CompiledName "Compose">]

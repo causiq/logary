@@ -208,6 +208,20 @@ module Extensions =
       member x.logThrough () = logThrough <- true
       member x.Dispose() = _finish x id
 
+module ActiveSpan =
+  let private asyncLocal: AsyncLocal<SpanContext> = new AsyncLocal<SpanContext>()
+
+  let getContext () =
+    let active = asyncLocal.Value
+    if obj.ReferenceEquals(active, null) then None
+    else Some active
+
+  let setContext (ctx: SpanContext option) =
+    asyncLocal.Value <- match ctx with Some ctx -> ctx | _ -> Unchecked.defaultof<_>
+
+  let getSpan () =
+    getContext () |> Option.map (fun ctx -> ctx.spanId)
+
 type SpanBuilder(logger: Logger, label: string) =
   let mutable _started = Global.getTimestamp()
   let mutable _enableAmbient = false
@@ -222,18 +236,16 @@ type SpanBuilder(logger: Logger, label: string) =
   let mutable _status = SpanCanonicalCode.OK, None
   let mutable _logThrough = false
 
-  let createContext (): SpanContext * SpanContext =
-    let ambient = SpanBuilder.ActiveSpan.Value
+  let createContext (): SpanContext * SpanContext option =
     let spanId = _spanId |> Option.defaultWith SpanId.create
-    if Option.isNone _parentSpanId && _enableAmbient && not (obj.ReferenceEquals(ambient, null)) then
+    match ActiveSpan.getContext () with
+    | Some ambient when _parentSpanId.IsNone && _enableAmbient ->
       SpanContext(ambient.traceId, spanId, _flags ||| ambient.flags, ambient.spanId),
-      ambient
-    else
+      Some ambient
+    | _ ->
       let traceId = _traceId |> Option.defaultWith TraceId.create
       SpanContext(traceId, spanId, _flags, ?parentSpanId=_parentSpanId),
-      ambient
-
-  static member internal ActiveSpan: AsyncLocal<SpanContext> = new AsyncLocal<SpanContext>()
+      None
 
   /// WARNING: Enabling "ambient" support is only valid if you ONLY use `System.Threading.Tasks.Task` and their
   /// derivatives.
@@ -242,6 +254,15 @@ type SpanBuilder(logger: Logger, label: string) =
   /// whose context will be inherited.
   member x.enableAmbient () =
     _enableAmbient <- true
+    x
+
+  /// WARNING: Enabling "ambient" support is only valid if you ONLY use `System.Threading.Tasks.Task` and their
+  /// derivatives.
+  ///
+  /// However, F#'s async doesn't use `AsyncLocal` and neither does Hopac. It is the context that calls `start()`
+  /// whose context will be inherited.
+  member x.setAmbientEnabled enabled =
+    _enableAmbient <- enabled
     x
 
   member x.addLink link =
@@ -324,8 +345,12 @@ type SpanBuilder(logger: Logger, label: string) =
   member x.start() =
     let context, ambient = createContext ()
 
-    if _enableAmbient then SpanBuilder.ActiveSpan.Value <- context
-    let reset () = if _enableAmbient then SpanBuilder.ActiveSpan.Value <- ambient
+    if _enableAmbient then
+      ActiveSpan.setContext (Some context)
+
+    let reset () =
+      if _enableAmbient then
+        ActiveSpan.setContext ambient
 
     let attrs, links = ResizeArray<_>(_attrs), ResizeArray<_>(_links)
     new T(logger, label, _transform, _started, context, _kind, links, attrs, _status, reset, _logThrough)
@@ -337,28 +362,22 @@ module Span =
   let create logger label = new SpanBuilder(logger, label)
   let start (x: SpanBuilder) = x.start()
 
-module ActiveSpan =
-  let getContext () =
-    let active = SpanBuilder.ActiveSpan.Value
-    if obj.ReferenceEquals(active, null) then None
-    else Some active
-
-  let getSpan () =
-    getContext () |> Option.map (fun ctx -> ctx.spanId)
-
 [<AutoOpen; Extension>]
 module LoggerEx =
   type Logger with
-    member x.buildSpan (label: string, ?parent: SpanContext, ?transform: Message -> Message) =
+    member x.buildSpan (label: string, ?parent: SpanContext, ?transform: Message -> Message, ?enableAmbient: bool) =
       let builder = new SpanBuilder(x, label)
       parent |> Option.iter (builder.withParent >> ignore)
-      builder.withTransform(Option.defaultValue id transform)
+      builder
+        .withTransform(Option.defaultValue id transform)
+        .setAmbientEnabled(defaultArg enableAmbient false)
 
-    member x.buildSpan (label: string, parent: SpanData, ?transform: Message -> Message) =
-      x.buildSpan (label, parent.context, ?transform=transform)
+    member x.buildSpan (label: string, parent: SpanData, ?transform: Message -> Message, ?enableAmbient: bool) =
+      x.buildSpan (label, parent.context, ?transform=transform, ?enableAmbient=enableAmbient)
 
-    member x.startSpan (label: string, ?parent: SpanContext, ?transform: Message -> Message) =
-      x.buildSpan(label, ?parent=parent, ?transform=transform).start()
+    member x.startSpan (label: string, ?parent: SpanContext, ?transform: Message -> Message, ?enableAmbient: bool) =
+      x.buildSpan(label, ?parent=parent, ?transform=transform, ?enableAmbient=enableAmbient)
+       .start()
 
-    member x.startSpan (label: string, parent: SpanData, ?transform: Message -> Message) =
-      x.startSpan (label, parent.context, ?transform=transform)
+    member x.startSpan (label: string, parent: SpanData, ?transform: Message -> Message, ?enableAmbient: bool) =
+      x.startSpan (label, parent.context, ?transform=transform, ?enableAmbient=enableAmbient)
