@@ -6,6 +6,14 @@ open Logary.Tests
 open Hopac
 open Expecto
 open Expecto.Flip
+module TestUtil =
+  open Expecto.Logging
+  open Expecto.Logging.Message
+  let test = Expecto.Logging.Log.create "Jaeger Test"
+  let debug message = test.debug (eventX message)
+  let info message = test.info (eventX message)
+open TestUtil
+
 open Logary
 open Logary.Internals
 open Logary.Trace
@@ -13,6 +21,7 @@ open Logary.Message
 open NodaTime
 
 module Target =
+
   open Jaeger.Thrift
 
   let shutdown t =
@@ -63,6 +72,8 @@ module Target =
       |> Expect.isTrue (sprintf "Should have tag %s => %b, tags: %A" k v tags)
     tags
 
+
+
   [<Tests>]
   let tests =
     testList "jaeger" [
@@ -78,28 +89,40 @@ module Target =
           do! eventX "after some action: {orderId}" >> setField "orderId" 321 >> setSpanId root.context.spanId |> logger.infoWithBP
 
           let child = logger.startSpan("sql.Query", root, tag "pgsql" >> setContext "connStr" connStr)
-          do! eventX "query={query}" >> setField "query" sampleQuery |> logger.infoWithBP
+          do! eventX "query={query}" >> setField "query" sampleQuery |> child.infoWithBP
 
           child.finish()
           root.finish() // TODO: finish only does Hopac.queue, so it may not be enough with the flow below
           do! flush
 
+          debug "flushed"
+
           batches.Count
-            |> Expect.equal "Should have one Batch logged" 1
-          batches.[0].Spans.Count
-            |> Expect.equal "This batch has two Spans" 2
+            |> Expect.equal "Should have logged one batch" 1
+
+          debug "getting first batch"
 
           let batch = batches.[0]
           batch.Process.ServiceName
             |> Expect.equal "should equal the default runtime service name" "logary-tests"
 
+          batch.Process.Tags
+            |> Expect.isNonEmpty "Has default process tags"
+
+          debug "getting batch process tags [0]"
+
           let defaultTag = batch.Process.Tags.[0]
           defaultTag.Key
-            |> Expect.equal "Should have default tag" "hostname"
+            |> Expect.equal "Should have default tag hostname" "hostname"
           defaultTag.VType
-            |> Expect.equal "Should have default tag" TagType.STRING
+            |> Expect.equal "Should have default tag hostname of type String" TagType.STRING
           defaultTag.VStr
-            |> Expect.equal  "Should have default tag" "dev-machine"
+            |> Expect.equal  "Should have default tag with value 'dev-machine'" "dev-machine"
+
+          debug "getting batch span count"
+
+          batch.Spans.Count
+            |> Expect.equal "This (only) batch has two Spans" 2
 
           let childSpan, rootSpan = batch.Spans.[0], batch.Spans.[1]
 
@@ -110,14 +133,18 @@ module Target =
           childSpan.ParentSpanId
             |> Expect.equal "Should equal root span's spanId" rootSpan.SpanId
 
+          debug "testing child span tags"
+
           let loggerName = "jaeger.target.test"
           childSpan.Tags
             |> hasStringTag "level" "info"
             |> hasStringTag "component" loggerName
             |> hasStringTag "event" "sql.Query"
             |> hasBoolTag "pgsql" true
-            |> hasStringTag "connStr" (sprintf "\"%s\"" connStr)
+            |> hasStringTag "connStr" (sprintf "%s" connStr)
             |> ignore
+
+          debug "testing childSpan.Logs.[0]"
 
           let childLog = childSpan.Logs.[0]
           Expect.isGreaterThan "timestamp unit is µs (micro)" (childLog.Timestamp, expectedMinNs / 1000L)
@@ -139,9 +166,13 @@ module Target =
           rootSpan.Logs.Count
             |> Expect.equal "Should have two logs in root span" 2
 
+          debug "testing rootSpan.Logs.[0]"
+
           rootSpan.Logs.[0].Fields
             |> hasStringTag "event" "before some action: 123"
             |> ignore
+
+          debug "testing rootSpan.Logs.[1]"
 
           rootSpan.Logs.[1].Fields
             |> hasStringTag "event" "after some action: 321"

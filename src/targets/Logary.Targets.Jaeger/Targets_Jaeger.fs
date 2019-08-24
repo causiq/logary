@@ -274,7 +274,7 @@ module internal Impl =
     // `retentionTime` Duration, either a `Span` will be logged and then flushed and the `ambient` `Log` value associated with it,
     // OR the `ambient` `Log` values will be garbage collected.
     if not wasAdded then
-      ri.logger.verbose (eventX "handleAmbientLog did not find deferred Span, enqueueing Log as ambient")
+      ri.logger.verbose (eventX "handleAmbientLog did not find deferred Span={spanId}, enqueueing Log as ambient" >> setField "spanId" spanId)
       state.ambient.enqueue(spanId, log)
 
     state
@@ -282,8 +282,10 @@ module internal Impl =
   let handleSpan (conf, ri: RuntimeInfo) (msg: Message, span: SpanData, samplerAttrs: SpanAttr list, ack: IVar<unit>) (state: State): State =
     let ambientLogs = state.ambient.tryGetAndRemove span.context.spanId
     let jaegerSpan = buildJaegerSpan conf.messageWriter (msg, span, samplerAttrs, ambientLogs)
-
-    ri.logger.verbose (eventX "handleSpan deferring Span={spanId}" >> setField "spanId" span.context.spanId)
+    ri.logger.verbose (
+      eventX "handleSpan deferring Span={spanId} & associated {ambientCount} ambient logs"
+      >> setField "spanId" span.context.spanId
+      >> setField "ambientCount" ambientLogs.Length)
     state.deferred.defer(span.context.spanId, (jaegerSpan, ack))
     state
 
