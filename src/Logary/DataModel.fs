@@ -579,8 +579,13 @@ namespace Logary.Trace.Propagation
 
 open Logary.Trace
 
-/// Gets a (key: string, value: string[]) pair from some object-like data structure
-type Getter<'t> = 't -> string -> string list
+/// Gets a (key: string, value: string[]) pair from some object-like data structure. Getters return a list of
+/// headers; for the given key/prefix passed. It's up to each getter's implementation to decide whether to interpret
+/// the passed string as a prefix (like in the case of Jaeger baggage) or as a complete string (all other cases)
+type Getter<'t> =
+  't
+    -> (* key / prefix *) string
+    -> (* all key-values pairs *) ( (* key *) string * (* values *) string list) list
 
 /// Sets a (key: string, value: string[]) pair into some object-like data structure
 type Setter<'t> = string * string list -> 't -> 't

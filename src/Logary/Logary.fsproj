@@ -80,6 +80,7 @@
     <Compile Include="LogManager.fs" />
     <Compile Include="Extensions/LogManager.fs" />
     <Compile Include="Trace/SpanModule.fs" />
+    <Compile Include="Trace\Propagation.fs" />
     <Compile Include="MiddlewareModule.fs" />
     <!-- Below: runtime -->
     <Compile Include="Internals/Supervisor.fs" />

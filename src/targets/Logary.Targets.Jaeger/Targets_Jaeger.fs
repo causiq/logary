@@ -306,7 +306,6 @@ module internal Impl =
         ri.logger.error (Message.eventX "Sending to Batch to Jaeger Agent failed" >> Message.addExn exn)
         ackAll)
 
-
   let loop (conf: JaegerConf) (api: TargetAPI) =
     api.runtime.logger.info (
       eventX "Started Jaeger target with endpoint {host}:{port}"
