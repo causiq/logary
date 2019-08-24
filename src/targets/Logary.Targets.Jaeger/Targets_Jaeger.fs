@@ -227,7 +227,7 @@ module internal Impl =
       new Jaeger.Thrift.Log(x.timestamp / 1000L, jaegerTags)
 
   /// https://github.com/jaegertracing/jaeger-client-java/blob/master/jaeger-core/src/test/java/io/jaegertracing/internal/JaegerSpanTest.java#L254-L265
-  let buildJaegerSpan (mw: MessageWriter) (msg: Message, span: SpanData, ambientLogs: Jaeger.Thrift.Log list) =
+  let buildJaegerSpan (mw: MessageWriter) (msg: Message, span: SpanData, samplerAttrs: SpanAttr list, ambientLogs: Jaeger.Thrift.Log list) =
     let parent = span.parentSpanId |> Option.map (fun x -> x.id) |> Option.defaultValue 0L
     let jaegerSpan =
       new Jaeger.Thrift.Span(
@@ -250,7 +250,9 @@ module internal Impl =
     // and this can be implement in this target project, as a Logary's plugin to extension Message/Logger module
     // jaegerSpan.References <- new ResizeArray<_>()
     jaegerSpan.Logs <- logs
-    jaegerSpan.Tags <- msg.getJaegerTags mw
+    let tags = ResizeArray<_>(msg.getJaegerTags mw)
+    tags.AddRange (samplerAttrs |> List.map toTag)
+    jaegerSpan.Tags <- tags
     jaegerSpan
 
   /// When an ambient log `Message` is received, it means it is *not* carrying a `SpanData` instance in its `.context`,
@@ -276,9 +278,9 @@ module internal Impl =
 
     state
 
-  let handleSpan (conf, ri: RuntimeInfo) (msg: Message, span: SpanData, ack: IVar<unit>) (state: State): State =
+  let handleSpan (conf, ri: RuntimeInfo) (msg: Message, span: SpanData, samplerAttrs: SpanAttr list, ack: IVar<unit>) (state: State): State =
     let ambientLogs = state.ambient.tryGetAndRemove span.context.spanId
-    let jaegerSpan = buildJaegerSpan conf.messageWriter (msg, span, ambientLogs)
+    let jaegerSpan = buildJaegerSpan conf.messageWriter (msg, span, samplerAttrs, ambientLogs)
 
     ri.logger.verbose (eventX "handleSpan deferring Span={spanId}" >> setField "spanId" span.context.spanId)
     state.deferred.defer(span.context.spanId, (jaegerSpan, ack))
@@ -339,8 +341,12 @@ module internal Impl =
             // or we get log messages with no SpanId:s in them.
             match Message.tryGetSpanData message with
             | Some span ->
-              handleSpan (conf, api.runtime) (message, span, ack) state
-              |> running
+              match conf.sampler.shouldSample span with
+              | Ok attrs ->
+                handleSpan (conf, api.runtime) (message, span, attrs, ack) state
+                |> running
+              | Result.Error () ->
+                running state
 
             | None ->
               // Messages without SpanId:s are dropped. This can be avoided by configuring a pipeline processing
@@ -408,12 +414,12 @@ let create conf name =
   TargetConf.createSimple (Impl.loop conf) name
 
 type ISecondStep =
-    abstract WithProcessAttrs: processAttrs: SpanAttr list -> ISecondStep
-    abstract WithPacketSize: packetSize: uint16 -> ISecondStep
-    abstract WithTime: flushInterval: Duration * retentionTime: Duration -> ISecondStep
-    abstract WithMessageWriter: writer: MessageWriter -> ISecondStep
-    abstract WithSampler: sampler: Sampler -> ISecondStep
-    abstract Done: unit -> Target.TargetConfBuild<Builder>
+  abstract WithProcessAttrs: processAttrs: SpanAttr list -> ISecondStep
+  abstract WithPacketSize: packetSize: uint16 -> ISecondStep
+  abstract WithTime: flushInterval: Duration * retentionTime: Duration -> ISecondStep
+  abstract WithMessageWriter: writer: MessageWriter -> ISecondStep
+  abstract WithSampler: sampler: Sampler -> ISecondStep
+  abstract Done: unit -> Target.TargetConfBuild<Builder>
 
 and Builder(conf: JaegerConf, callParent: Target.ParentCallback<_>) =
   new(callParent: Target.ParentCallback<_>) =
