@@ -234,7 +234,8 @@ module internal Impl =
         span.context.traceId.low, span.context.traceId.high, span.context.spanId.id,
         parent,
         msg.value,
-        int span.flags,
+        // if we get here, the span is sampled since we have 'samplerAttrs'
+        int (span.flags ||| SpanFlags.Sampled),
         // time unit: Microseconds (µs) for both the epoch timestamp and the duration
         span.started / 1000L,
         (span.finished - span.started) / 1000L)
