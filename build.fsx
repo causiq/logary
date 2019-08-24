@@ -44,6 +44,7 @@ let testProjects =
   ++ "src/services/*.Tests/*.fsproj"
   ++ "src/*.Tests/*.fsproj"
   -- "src/tests/Logary.Targets.SSE.Tests/*.fsproj"
+  -- "src/tests/Logary.Targets.OpsGenie.Tests/*.fsproj"
 
 let libProjects =
   !! "src/targets/**/*.fsproj"
