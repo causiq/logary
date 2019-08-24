@@ -117,7 +117,7 @@ let tests = [
         |> Expect.isNone "Initially has no ambient span"
     })
 
-    yield ftestCaseJob "ambientonanza" (tryWith <| fun (manager, checkSpanId, _) -> job {
+    yield ptestCaseJob "ambientonanza (skipped because we can't trust AsyncLocal) in F#" (tryWith <| fun (manager, checkSpanId, _) -> job {
       let a = manager.getLogger "logger.a"
       let b = manager.getLogger "logger.b"
 
@@ -127,9 +127,9 @@ let tests = [
         active
           |> Expect.equal "Has an ambient span from 'parent' span" (Some parentSpan.context)
 
-        let childSpan = parentSpan.startSpan("child 1", parentSpan)
+        let childSpan = parentSpan.startSpan("child", parentSpan)
         ActiveSpan.getSpan()
-          |> Expect.equal "Has an ambient span from 'parent' span — 'child 1' span did not opt in to ambient" (Some parentSpan.context.spanId)
+          |> Expect.equal "Has an ambient span from 'parent' span — 'child' span did not opt in to ambient" (Some parentSpan.context.spanId)
 
         let grandChildSpan = childSpan.startSpan("grand-child", childSpan, enableAmbient=true)
         ActiveSpan.getSpan()

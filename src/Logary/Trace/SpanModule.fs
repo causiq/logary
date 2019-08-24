@@ -240,9 +240,11 @@ type SpanBuilder(logger: Logger, label: string) =
     let spanId = _spanId |> Option.defaultWith SpanId.create
     match ActiveSpan.getContext () with
     | Some ambient when _parentSpanId.IsNone && _enableAmbient ->
+      printfn "createContext() => has ambient"
       SpanContext(ambient.traceId, spanId, _flags ||| ambient.flags, ambient.spanId),
       Some ambient
     | _ ->
+      printfn "createContext() => has no ambient"
       let traceId = _traceId |> Option.defaultWith TraceId.create
       SpanContext(traceId, spanId, _flags, ?parentSpanId=_parentSpanId),
       None
@@ -346,10 +348,12 @@ type SpanBuilder(logger: Logger, label: string) =
     let context, ambient = createContext ()
 
     if _enableAmbient then
+      //printfn "start() => ActiveSpan.setContext(context=%O)" context
       ActiveSpan.setContext (Some context)
 
     let reset () =
       if _enableAmbient then
+        //printfn "start() => ActiveSpan.setContext(ambient=%O)" ambient
         ActiveSpan.setContext ambient
 
     let attrs, links = ResizeArray<_>(_attrs), ResizeArray<_>(_links)
