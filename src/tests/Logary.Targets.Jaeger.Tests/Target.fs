@@ -4,10 +4,13 @@ open Logary.Targets.Jaeger
 open Logary.Targets
 open Logary.Tests
 open Hopac
-open Logary
 open Expecto
-open NodaTime
+open Expecto.Flip
+open Logary
+open Logary.Internals
+open Logary.Trace
 open Logary.Message
+open NodaTime
 
 module Target =
   open Jaeger.Thrift
@@ -20,153 +23,128 @@ module Target =
 
   let asLogger (target: Target.T) =
     { new Logger with
+        member x.level = Verbose
         member x.name = PointName.parse "jaeger.target.test"
-
         member x.logWithAck (waitForBuffers, level) messageFactory =
           messageFactory level |> setName x.name |> Target.tryLog target
-
-        member x.level = Verbose
     }
 
   let testCaseTarget factory name fn =
     testCaseJob name (job {
-      let state = new ResizeArray<Jaeger.Thrift.Batch>()
-      let jaegerConf = factory Jaeger.empty
+      let batches = new ResizeArray<Jaeger.Thrift.Batch>()
       let! ri = emptyRuntime
 
-      let spanSender =
-        {
-          new SpanSender with
-            member x.sendBatch batch =
-              Job.lift (fun batch -> state.Add batch) batch
-            member x.Dispose() = ()
-        }
+      let client =
+        { new Client with
+            member x.send batch = batches.Add batch; Alt.unit ()
+            member x.Dispose() = () }
+      let jaegerConf = factory { Jaeger.empty with client = Some client }
 
       let targetConf =
-        TargetConf.createSimple (Jaeger.Impl.loop jaegerConf spanSender Jaeger.defaultSpanSizeCounter) "jaeger"
+        TargetConf.createSimple (Jaeger.Impl.loop jaegerConf) "jaeger"
         |> TargetConf.middleware Middleware.ambientSpanId
 
       let! target = Target.create ri targetConf
       let logger = asLogger target
       let flush = Target.flush target
 
-      do! Job.tryFinallyJob (fn state logger flush) (shutdown target)
+      do! Job.tryFinallyJob (fn batches logger flush (ri :> RuntimeInfo)) (shutdown target)
     })
 
-  let hasTag k v (tags: #seq<Jaeger.Thrift.Tag>) =
-    let hasTag = tags |> Seq.exists (fun t -> t.Key = k && t.VType = TagType.STRING && t.VStr = v)
-    Expect.isTrue hasTag (sprintf "Should have tag %s => %s, tags: %A" k v tags)
+  let hasStringTag k v (tags: #seq<Jaeger.Thrift.Tag>) =
+    tags
+      |> Seq.exists (fun t -> t.Key = k && t.VType = TagType.STRING && t.VStr = v)
+      |> Expect.isTrue (sprintf "Should have tag %s => %s, tags: %A" k v tags)
+    tags
+
+  let hasBoolTag k v (tags: #seq<Jaeger.Thrift.Tag>) =
+    tags
+      |> Seq.exists (fun t -> t.Key = k && t.VType = TagType.BOOL && t.VBool = v)
+      |> Expect.isTrue (sprintf "Should have tag %s => %b, tags: %A" k v tags)
+    tags
 
   [<Tests>]
   let tests =
     testList "jaeger" [
-      testCaseTarget id "send log to jaeger span format" (fun state logger flush ->
+      testCaseTarget id "send log to jaeger span format" (fun batches logger flush ri ->
+        let connStr = "Host=;Database=;Username=;Password=;"
+        let sampleQuery = "select count(*) from orders"
+        let expectedMinNs, expectedMaxNs = ri.getTimestamp(), ri.getTimestamp() + Duration.FromSeconds(8L).ToInt64Nanoseconds()
+
         job {
-          let root = logger.startSpan "root span"
+          let root = logger.startSpan "GET /orders"
 
-          do! root.infoWithAck (eventX "before some action: {userId}" >> setField "userId" 123)
-
-          // now we do some action (pretending to!)
-
-          // use explicitly setSpanId style, since we use Hopac `do! timeOutMillis 100` before (the ambientSpanId middleware will not be guaranteed)
+          do! eventX "before some action: {userId}" >> setField "userId" 123 |> root.infoWithBP
           do! eventX "after some action: {orderId}" >> setField "orderId" 321 >> setSpanId root.context.spanId |> logger.infoWithBP
 
-          let conStr = "Host=;Database=;Username=;Password=;"
+          let child = logger.startSpan("sql.Query", root, tag "pgsql" >> setContext "connStr" connStr)
+          do! eventX "query={query}" >> setField "query" sampleQuery |> logger.infoWithBP
 
-          // use explicitly setParentSpanInfo style, since we use Hopac `do! timeOutMillis 100` before (the ambientSpanId middleware will not be guaranteed)
-          let childSpan =
-            logger.buildSpan "child span"
-              |> Span.withTransform (tag "DB Query" >> tag "Postgresql" >> setContext "conn str" conStr)
-              |> Span.withParentSpan root
-              |> Span.start
-
-          let sql = "select count(*) from xxx"
-          do! eventX "query : {sql}" >> setField "sql" sql >> setTimestamp (Instant.FromUnixTimeSeconds 1L) |> logger.infoWithBP
-
-          childSpan.Dispose()
-          root.Dispose()
-
-          Expect.isEmpty state "since batch span size is 1mb as default"
-
+          child.finish()
+          root.finish() // TODO: finish only does Hopac.queue, so it may not be enough with the flow below
           do! flush
-          Expect.equal state.Count 1 "should get 1 batch"
 
-          let batch = state.[0]
-          let proc = batch.Process
-          let defaultTag = proc.Tags.[0]
-          Expect.equal proc.ServiceName "logary-tests" "should equal the default runtime service name"
-          Expect.equal defaultTag.Key "host" "Should have default tag"
-          Expect.equal defaultTag.VType TagType.STRING "Should have default tag"
-          Expect.equal defaultTag.VStr "dev-machine" "Should have default tag"
+          batches.Count
+            |> Expect.equal "Should have one Batch logged" 1
+          batches.[0].Spans.Count
+            |> Expect.equal "This batch has two Spans" 2
 
-          let spans = batch.Spans
-          Expect.equal spans.Count 2 "Should have two spans"
-          let childSpan = spans.[0]
-          let rootSpan = spans.[1]
+          let batch = batches.[0]
+          batch.Process.ServiceName
+            |> Expect.equal "should equal the default runtime service name" "logary-tests"
 
-          Expect.equal childSpan.OperationName "child span" "Should equal"
-          Expect.equal childSpan.Flags (int JaegerSpanFlags.Sampled) "Should have sampled flag"
-          Expect.equal childSpan.ParentSpanId rootSpan.SpanId "Should equal root span's spanId"
+          let defaultTag = batch.Process.Tags.[0]
+          defaultTag.Key
+            |> Expect.equal "Should have default tag" "hostname"
+          defaultTag.VType
+            |> Expect.equal "Should have default tag" TagType.STRING
+          defaultTag.VStr
+            |> Expect.equal  "Should have default tag" "dev-machine"
+
+          let childSpan, rootSpan = batch.Spans.[0], batch.Spans.[1]
+
+          childSpan.OperationName
+            |> Expect.equal "Innermost Span should eq query-SpanLogger's label" child.label
+          enum<SpanFlags>(childSpan.Flags)
+            |> Expect.equal "Should equal sampled flag" SpanFlags.Sampled
+          childSpan.ParentSpanId
+            |> Expect.equal "Should equal root span's spanId" rootSpan.SpanId
+
           let loggerName = "jaeger.target.test"
-          hasTag "logger-level" "info" childSpan.Tags
-          hasTag "logger-name" loggerName childSpan.Tags
-          hasTag "logger-msg" "child span" childSpan.Tags
-          hasTag "tags" "DB Query,Postgresql" childSpan.Tags
-          hasTag "conn str" (sprintf "\"%s\"" conStr) childSpan.Tags
+          childSpan.Tags
+            |> hasStringTag "level" "info"
+            |> hasStringTag "component" loggerName
+            |> hasStringTag "event" "sql.Query"
+            |> hasBoolTag "pgsql" true
+            |> hasStringTag "connStr" (sprintf "\"%s\"" connStr)
+            |> ignore
+
           let childLog = childSpan.Logs.[0]
-          Expect.equal childLog.Timestamp 1000000L "timestamp unit is Microseconds"
-          hasTag "logger-level" "info" childLog.Fields
-          hasTag "logger-name" loggerName childLog.Fields
-          hasTag "logger-msg" "query : \"select count(*) from xxx\"" childLog.Fields
+          Expect.isGreaterThan "timestamp unit is µs (micro)" (childLog.Timestamp, expectedMinNs / 1000L)
+          Expect.isLessThan "timestamp unit is µs (micro)" (childLog.Timestamp, expectedMaxNs / 1000L)
 
-          Expect.equal rootSpan.OperationName "root span" "Should equal"
-          Expect.equal rootSpan.Flags (int JaegerSpanFlags.Sampled) "Should have sampled flag"
-          Expect.equal rootSpan.ParentSpanId 0L "Should have no parentSpanId"
-          let rootLogs = rootSpan.Logs
-          Expect.equal rootLogs.Count 2 "Should have two logs in root span"
-          hasTag "logger-msg" "after some action: 321" rootLogs.[0].Fields
-          hasTag "logger-msg" "before some action: 123" rootLogs.[1].Fields
+          childLog.Fields
+            |> hasStringTag "level" "info"
+            |> hasStringTag "component" loggerName
+            |> hasStringTag "event" (sprintf "query=\"%s\"" sampleQuery)
+            |> ignore
 
+          rootSpan.OperationName
+            |> Expect.equal "Has root span name" root.label
 
+          Expect.isGreaterThan "Is sampled" (int rootSpan.Flags, 0)
+          rootSpan.ParentSpanId
+            |> Expect.equal "Root has no parent" 0L
+
+          rootSpan.Logs.Count
+            |> Expect.equal "Should have two logs in root span" 2
+
+          rootSpan.Logs.[0].Fields
+            |> hasStringTag "event" "before some action: 123"
+            |> ignore
+
+          rootSpan.Logs.[1].Fields
+            |> hasStringTag "event" "after some action: 321"
+            |> ignore
         })
-
-      testCaseTarget (fun conf -> { conf with autoFlushInterval = Duration.FromSeconds 2.; })
-        "AutoFlush Span"
-        (fun state logger _ ->
-          job {
-            let span = logger.buildSpan "some span" |> Span.start
-            do! eventX "before some action: {userId}" >> setField "userId" 123 |> logger.infoWithBP
-            span.Dispose()
-
-            Expect.isEmpty state "since batch span size is 1mb as default"
-
-            do! timeOutMillis 2500
-
-            Expect.equal state.Count 1 "should get 1 batch, triggered by auto flush"
-          })
-
-      testCaseTarget (fun conf -> { conf with autoFlushInterval = Duration.FromSeconds 2.; retentionTime = Duration.FromSeconds 1. })
-        "Auto GC Spans"
-        (fun state logger flush ->
-          job {
-
-            let span = logger.buildSpan "some span" |> Span.start
-            do! eventX "before some action: {userId}" >> setField "userId" 123 |> logger.infoWithBP
-
-            do! flush
-
-            Expect.isEmpty state "since there is not any finished span"
-
-            do! timeOutMillis 2500
-
-            Expect.isEmpty state "since there is not any finished span, and log message should be GC:ed"
-
-            span.Dispose()
-            do! flush
-            Expect.equal state.Count 1 "should get 1 batch, triggered by flush"
-            let spans = state.[0].Spans
-            Expect.equal spans.Count 1 "should get 1 span"
-            let logs = spans.[0].Logs
-            Expect.isEmpty logs "should have no logs in span, since logs have been gc"
-          })
     ]

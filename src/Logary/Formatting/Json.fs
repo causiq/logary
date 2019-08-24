@@ -3,6 +3,7 @@ namespace Logary.Formatting
 #nowarn "40"
 
 open Logary
+open Logary.Trace
 open Logary.Internals
 
 module internal JsonResult =
@@ -209,7 +210,7 @@ module Json =
         |> JsonResult.foldBind foldIntoMap prevContext
 
     let context: HashMap<string, obj> -> Decoder<Json, HashMap<string, obj>> =
-      _context (fun (key, vJ) -> decodeValue vJ) addToContext
+      _context (fun (_, vJ) -> decodeValue vJ) addToContext
 
     let fields: HashMap<string, obj> -> JsonDecoder<HashMap<string, obj>> =
       let decodeField = function

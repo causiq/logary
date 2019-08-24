@@ -75,8 +75,8 @@ module Shape =
   let (|LogLevel|_|) (shape: TypeShape) = test<Logary.LogLevel> shape
   let (|PointName|_|) (shape: TypeShape) = test<Logary.PointName> shape
   let (|Gauge|_|) (shape: TypeShape) = test<Logary.Gauge> shape
-  let (|TraceId|_|) (shape: TypeShape) = test<Logary.TraceId> shape
-  let (|SpanId|_|) (shape: TypeShape) = test<Logary.SpanId> shape
+  let (|TraceId|_|) (shape: TypeShape) = test<Logary.Trace.TraceId> shape
+  let (|SpanId|_|) (shape: TypeShape) = test<Logary.Trace.SpanId> shape
   let (|Value|_|) (shape: TypeShape) = test<Logary.Value> shape
   let (|Message|_|) (shape: TypeShape) = test<Logary.Message> shape
   let (|Instant|_|) (shape: TypeShape) = test<NodaTime.Instant> shape
@@ -220,10 +220,10 @@ module internal JsonHelper =
       wrap (fun (x: Guid) -> Inference.Json.encode x)
 
     | Shape.TraceId ->
-      wrap (fun (x: TraceId) -> String (x.ToString()))
+      wrap (fun (x: Trace.TraceId) -> String (x.ToString()))
 
     | Shape.SpanId ->
-      wrap (fun (x: SpanId) -> String (x.ToString()))
+      wrap (fun (x: Trace.SpanId) -> String (x.ToString()))
 
     | Shape.Uri ->
       wrap (fun (x: Uri) -> if isNull x then Null else String (x.ToString()))
@@ -305,6 +305,7 @@ module internal JsonHelper =
           let gauges = ResizeArray<string * Json>()
           let fields = ResizeArray<string * Json>()
           let context = ResizeArray<string * Json>()
+          let errors = ref []
           for f in m.context do
             match f with
             | MessagePatterns.Tags tags ->
@@ -322,9 +323,14 @@ module internal JsonHelper =
             | MessagePatterns.Context (name, v) ->
               context.Add(name, toJsonCached er ctx v)
 
+            | MessagePatterns.Exns errs ->
+              for error in errs do
+                errors := toJsonCached er ctx error :: !errors
+
           yield "gauges", Json.Object (JsonObject.ofSeq gauges)
           yield "fields", Json.Object (JsonObject.ofSeq fields)
           yield "context", Json.Object (JsonObject.ofSeq context)
+          yield "errors", Json.Array (!errors)
         ])
 
     | meta when meta.Type.Namespace = "System.Reflection" ->
@@ -397,7 +403,7 @@ module internal JsonHelper =
                 |> Json.Object)
         }
 
-    | Shape.HashMap s ->
+    | Shape.HashMap _ ->
       fun (o: 'T) ->
         let e = box o :?> System.Collections.IEnumerable
         toJsonCached<_> er ctx e
@@ -506,7 +512,7 @@ module internal JsonHelper =
       //printfn "JsonHelper: encode enumerable %O" s
       // TO CONSIDER: seq<KeyValue<string, 'a>> with reflection on the Value property
       match s.Element with
-      | Shape.KeyValuePair kvps ->
+      | Shape.KeyValuePair _ ->
         fun (o: 'T) ->
           match box o with
           | :? System.Collections.IEnumerable as e ->
@@ -588,7 +594,7 @@ module internal JsonHelper =
           vals.Add json
         E.array (vals.ToArray())
 
-    | other ->
+    | _ ->
       //failwithf "JsonHelper: encode got shape %A" other
       fun x -> Json.String (x.ToString())
 

@@ -1,369 +1,435 @@
 ﻿module Logary.Targets.Jaeger
 
-open System
-open Logary
-open Logary.Internals
-open Logary.Configuration
-open Logary.Formatting
-open Logary.Clients.Jaeger
-open NodaTime
 open Hopac
 open Hopac.Infixes
+open Jaeger.Thrift
+open NodaTime
+open System
 open System.Collections.Generic
-open Thrift.Transports.Client
+open System.Runtime.InteropServices
 open Thrift.Protocols
-open System.Threading
-open System.Security.Cryptography
+open Thrift.Transports.Client
+open Logary
+open Logary.Message
+open Logary.Configuration
+open Logary.Formatting
+open Logary.Internals
+open Logary.Internals.Chiron.Formatting
+open Logary.Trace
+open Logary.Targets
 
-type SpanSizeCounter =
-  abstract sizeOf: span: Jaeger.Thrift.Span -> int
-
-type SpanSender =
+type Client =
   inherit IDisposable
-  abstract sendBatch: batch: Jaeger.Thrift.Batch -> Job<unit>
+  abstract send: batch: Jaeger.Thrift.Batch -> Alt<unit>
 
-[<Flags>]
-type JaegerSpanFlags =
-  | Sampled = 1
-  | Debug = 2
+type JaegerConf =
+  { /// Tags present in all Spans logged from this instance of the target.
+    processTags: SpanAttr list
 
-type JaegerConf = {
-  processTags: Map<string,obj>
-  /// bytes, spans size reach to this size will be send to jaeger, otherwise it is appended to buffer waitting for flush
-  batchSpanSize: int
-  /// flush time interval, every flush time, it will flush buffer span to jaeger
-  autoFlushInterval: Duration
-  /// duration to reserve log message, after the time if span doesn't finish, this message/log will be dropped
-  retentionTime: Duration
-  host: string
-  port: int
-  /// format message tpl
-  messageWriter: MessageWriter
-}
+    /// The maximum package size in bytes; should not be larger than the network's MTU,
+    /// which often is: `System.UInt16.MaxValue`, 65535 bytes.
+    ///
+    /// https://serverfault.com/questions/246508/how-is-the-mtu-is-65535-in-udp-but-ethernet-does-not-allow-frame-size-more-than
+    ///
+    /// Note that anything larger than 1472 bytes will be broken up as _fragments_ on the ethernet
+    /// layer.
+    ///
+    /// Some OSes will NOT transmit UDP if data will be fragmented. I.E. Linux doc, By default, Linux
+    /// UDP does path MTU (Maximum Transmission Unit) discovery. This means the kernel will keep
+    /// track of the MTU to a specific target IP address and return EMSGSIZE when a UDP packet
+    /// write exceeds it.
+    packetSize: uint16
 
-let empty = {
-  processTags = Map.empty
-  batchSpanSize = 1024 * 1024 // default 1 mb
-  autoFlushInterval = Duration.FromSeconds 10.
-  retentionTime = Duration.FromMinutes 5.
-  messageWriter = MessageWriter.verbatim
-  host = "localhost"
-  port = 6831
-}
+    /// Specifies how long to retain log messages not logged with the `SpanLogger`, but only has
+    /// a SpanId attached. After this duration, if the parent Span has not completed, the Message
+    /// will be dropped.
+    retentionTime: Duration
 
-/// create you own protocol if not using compact, e.g. TBinaryProtocol
-let defaultSpanSizeCounter =
-  {
-    new SpanSizeCounter with
-      member x.sizeOf span =
-        use counterTransport = new TSizeCountTransport()
-        use sizeCountProtocol = new TCompactProtocol(counterTransport)
-        span.WriteAsync(sizeCountProtocol, CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult()
-        counterTransport.Size
+    /// How many items that the Jaeger target will pick from the buffers and try to send at a go. Prefer
+    /// larger sizes (towards 512) over smaller sizes, since the default Exporter is buffered and on top of
+    /// that, the operating system buffers in the network stack.
+    batchSize: uint16
+
+    /// The Jaeger DNS name to send to.
+    jaegerHost: string
+
+    /// The Jaeger port to send to.
+    jaegerPort: uint16
+
+    /// Formatter to translate log messages into Jaeger tag values.
+    messageWriter: MessageWriter
+
+    /// Allows you to override the sending mechanism; have a look at the implementation for docs on how
+    /// to do this. Useful if you want to switch to an HTTP transport, or the Binary instead of Compact
+    /// format.
+    client: Client option
+
+    /// How long do we wait for ambient logs, before sending the Spans off to Jaeger?
+    spanDelay: Duration
   }
 
-/// create you own protocol if not using compact, e.g. TBinaryProtocol
-let createSpanSender conf =
-  let host = conf.host
-  let port = conf.port
-  let paketSize = conf.batchSpanSize
-  let protocol = new TCompactProtocol(new TBufferedClientTransport(new TUdpClientTransport(host,port), paketSize))
-  let client = new Jaeger.Thrift.Agent.Agent.Client(protocol)
-
-  let sender = {
-    new SpanSender with
-      member x.sendBatch batch =
-        Hopac.Job.fromUnitTask(fun _ -> client.emitBatchAsync(batch,CancellationToken.None))
-      member x.Dispose () =
-        client.Dispose()
-    }
-
-  sender
+let empty =
+  // TODO: samplers
+  { processTags = []
+    packetSize =
+      if RuntimeInformation.IsOSPlatform OSPlatform.OSX then
+        // sysctl -a | grep gram
+        9216us
+      else
+        // default UInt16.MaxValue, like in jaeger-client-node
+        UInt16.MaxValue
+    retentionTime = Duration.FromMinutes 5.
+    jaegerHost = "localhost"
+    jaegerPort = 6831us
+    batchSize = 512us
+    messageWriter = MessageWriter.verbatim
+    client = None
+    spanDelay = Duration.FromSeconds 5L
+  }
 
 module internal Impl =
-
+  open MessagePatterns
   open System.Runtime.CompilerServices
-
   [<assembly: InternalsVisibleTo("Logary.Targets.Jaeger.Tests")>]
   do()
 
-  type State =
-    { spanIdMap: Dictionary<SpanId, Instant * Jaeger.Thrift.Log list>
-      spanList: ResizeArray<Jaeger.Thrift.Span>
-      spanListSize: int
-      spanSender: SpanSender
-      jaegerProcess: Jaeger.Thrift.Process
-      spanSizeCounter: SpanSizeCounter
-      batchSpanSize: int
-      messageWriter: MessageWriter
+
+  let private dispose (d: #IDisposable) = d.Dispose()
+
+  let createClient conf: Client =
+    let protocol =
+      new TCompactProtocol(
+        new TBufferedClientTransport(
+          new TUdpClientTransport(conf.jaegerHost, int conf.jaegerPort),
+          int conf.packetSize))
+
+    let client = new Jaeger.Thrift.Agent.Agent.Client(protocol)
+
+    { new Client with
+        member x.send batch =
+          Alt.fromUnitTask (fun ct -> client.emitBatchAsync(batch, ct))
+        member x.Dispose () =
+          client.Dispose()
     }
 
-  let md5 = MD5.Create ()
+  type SpanAttrValue with
+    member x.writeTo (tag: Tag) =
+      match x with
+      | SpanAttrValue.B v ->
+        tag.VBool <- v
+        tag.VType <- TagType.BOOL
+      | SpanAttrValue.S s ->
+        tag.VStr <- s
+        tag.VType <- TagType.STRING
+      | SpanAttrValue.V v ->
+        match v with
+        | Float f ->
+          tag.VDouble <- f
+          tag.VType <- TagType.DOUBLE
+        | BigInt i ->
+          tag.VDouble <- float i
+          tag.VType <- TagType.DOUBLE
+        | Int64 i ->
+          tag.VLong <- i
+          tag.VType <- TagType.LONG
+        | Fraction _ ->
+          tag.VDouble <- v.toFloat()
+          tag.VType <- TagType.DOUBLE
 
-  let buildJaegerTag k (v: obj) =
-    let tag = Jaeger.Thrift.Tag()
-    tag.Key <- k
+  /// The state is highly mutable, in that it's expected that only one green Hopac thread at a time accesses it,
+  /// and when it does, may mutate the instances in the state, before recursing to take further LogMessage requests.
+  ///
+  type State =
+    { /// A cache of `SpanId -> Log list`, with methods corresponding to the use-cases;
+      /// - garbage collecting if no matching span was logged
+      /// - getting the `Log list` for a given `SpanId`, and removing those from future consideration, and
+      /// - enqueueing more `Log` items, for future consideration.
+      ///
+      /// E.g.
+      /// T1 logs M1: "Hello spanId=1"
+      /// T2 logs M2: "Span 1 start" (SpanData)
+      /// Target receives M1, no matching span in
+      ambient: ListCache<SpanId, Jaeger.Thrift.Log>
+      deferred: DeferBuffer<SpanId, Jaeger.Thrift.Span * IVar<unit>>
+      client: Client
+      jaegerProcess: Jaeger.Thrift.Process
+    }
 
-    match v with
-    | :? string as v ->
-      tag.VStr <- v
-      tag.VType <- Jaeger.Thrift.TagType.STRING
-    | :? bool as v ->
-      tag.VBool <- v
-      tag.VType <- Jaeger.Thrift.TagType.BOOL
-    | :? array<byte> as v ->
-      tag.VBinary <- v
-      tag.VType <- Jaeger.Thrift.TagType.BINARY
-    | _ ->
-      tag.VStr <- Convert.ToString(v)
-      tag.VType <- Jaeger.Thrift.TagType.STRING
-
+  let toTag ((k, v): SpanAttr) =
+    let tag = Jaeger.Thrift.Tag(Key = k)
+    v.writeTo tag
     tag
 
-  let initProcess (runtime:RuntimeInfo) (processTags: Map<string, obj>) =
-    let serviceName = runtime.service
-    let host = runtime.host
+  let objToTag (k: string, v: obj) =
+    match v with
+    | :? string as s ->
+      toTag (k, SpanAttrValue.S s) |> Some
+    | :? bool as b ->
+      toTag (k, SpanAttrValue.B b) |> Some
+    | :? Value as v ->
+      toTag (k, SpanAttrValue.V v) |> Some
+    | :? float as f ->
+      toTag (k, SpanAttrValue.V (Float f)) |> Some
+    | :? int as i ->
+      toTag (k, SpanAttrValue.V (Int64 (int64 i))) |> Some
+    | :? int64 as i ->
+      toTag (k, SpanAttrValue.V (Int64 i)) |> Some
+    | :? bigint as bi ->
+      toTag (k, SpanAttrValue.V (BigInt bi)) |> Some
+    | null ->
+      None
+    | o ->
+      toTag (k, SpanAttrValue.S (o.ToString())) |> Some
 
-    let p = Jaeger.Thrift.Process (serviceName)
-
-    let tags =
-      processTags |> Map.add "host" (box host)
-      |> Map.fold (fun s k v ->
-        buildJaegerTag k v :: s
-       ) []
+  let createJaegerProcess (runtime: RuntimeInfo) (processTags: SpanAttr list) =
+    let p = Jaeger.Thrift.Process (runtime.service)
+    p.Tags <-
+      [ "hostname", SpanAttrValue.S runtime.host
+        "logary.version", SpanAttrValue.S AssemblyVersionInformation.AssemblyVersion
+      ] @ processTags
+      |> List.map toTag
       |> ResizeArray
-
-    p.Tags <- tags
     p
 
-  let asJaegerTags (messageWriter: MessageWriter) (msg: Message) =
-    let tags = new ResizeArray<_>()
-    let fmtMsg = messageWriter.format msg
-    buildJaegerTag "logger-level" msg.level |> tags.Add
-    buildJaegerTag "logger-name" msg.name |> tags.Add
+  type Message with
+    member x.getJaegerTags (mw: MessageWriter) =
+      let str s = SpanAttrValue.S s
+      seq {
+        yield ("event", str <| mw.format x) |> toTag
+        yield ("level", str <| x.level.ToString()) |> toTag
+        yield ("component", str <| x.name.ToString()) |> toTag
+        for kv in x.context do
+          match kv with
+          | Gauge _
+          | Intern _ -> ()
+          | Field (k, v)
+          | Context (k, v) ->
+            match objToTag (k, v) with
+            | None -> ()
+            | Some tag -> yield tag
 
-    // gauges will be formatted in this msg
-    buildJaegerTag "logger-msg" fmtMsg |> tags.Add
+          | Tags tags ->
+            for tag in tags |> Set.toSeq do
+              yield (tag, SpanAttrValue.B true) |> toTag
 
-    let tagStr = String.Join(",", msg |> Message.getAllTags)
-    if tagStr <> String.Empty then buildJaegerTag "tags" tagStr |> tags.Add
+          | Exns errors ->
+            yield ("error", SpanAttrValue.B true) |> toTag
+            yield ("errors", errors |> Json.encodeFormatWith (JsonFormattingOptions.Pretty) |> str) |> toTag
+      }
+      |> ResizeArray
 
-    let errors = msg |> Message.getExns
-    if errors.Length <> 0 then
-      let errorsStr = errors |> Json.encodeFormatWith (Logary.Internals.Chiron.Formatting.JsonFormattingOptions.Pretty)
-      buildJaegerTag "errors" errorsStr |> tags.Add
+    member x.getJaegerLog (mw: MessageWriter) =
+      let jaegerTags = x.getJaegerTags mw
+      new Jaeger.Thrift.Log(x.timestamp / 1000L, jaegerTags)
 
-
-    msg.context
-    |> Seq.filter (fun (KeyValue (k, _)) -> not (k.StartsWith KnownLiterals.LogaryPrefix || k.StartsWith KnownLiterals.FieldsPrefix))
-    |> Seq.iter (fun (KeyValue (k, v)) ->
-      let vStr = v |> Json.encodeFormat
-      buildJaegerTag k vStr |> tags.Add
-    )
-
-    tags
-
-  let asJaegerLog (messageWriter: MessageWriter) (msg: Message) =
-    let timestamp = msg.timestamp / Constants.NanosPerTick / Constants.TicksPerMicro
-    let tags = asJaegerTags messageWriter msg
-    let jaegerLog = new Jaeger.Thrift.Log(timestamp, tags)
-    jaegerLog
-
-  let buildJaegerSpan (messageWriter: MessageWriter) (spanMsg: Message) (s: SpanData) (childLogs: Jaeger.Thrift.Log list) =
-    // time unit: Microseconds
-    let startTime = s.started / Constants.TicksPerMicro
-    let duration = s.elapsed / Constants.TicksPerMicro
-    // only support sampled for now, and always sampled
-    let flags = int JaegerSpanFlags.Sampled
-    let operationName = spanMsg.value
-    let tags = asJaegerTags messageWriter spanMsg
-
-    let parent = s.parentSpanId |> Option.map (fun x -> x.id) |> Option.defaultValue 0L
-
-    // https://github.com/jaegertracing/jaeger-client-java/blob/master/jaeger-core/src/test/java/io/jaegertracing/internal/JaegerSpanTest.java#L254-L265
+  /// https://github.com/jaegertracing/jaeger-client-java/blob/master/jaeger-core/src/test/java/io/jaegertracing/internal/JaegerSpanTest.java#L254-L265
+  let buildJaegerSpan (mw: MessageWriter) (msg: Message, span: SpanData, ambientLogs: Jaeger.Thrift.Log list) =
+    let parent = span.parentSpanId |> Option.map (fun x -> x.id) |> Option.defaultValue 0L
     let jaegerSpan =
       new Jaeger.Thrift.Span(
-        s.context.traceId.low, s.context.traceId.high, s.context.spanId.id,
-        parent, operationName, flags, startTime, duration.ToInt64Nanoseconds() / 1000L)
+        span.context.traceId.low, span.context.traceId.high, span.context.spanId.id,
+        parent,
+        msg.value,
+        int span.flags,
+        // time unit: Microseconds (µs) for both the epoch timestamp and the duration
+        span.started / 1000L,
+        (span.finished - span.started) / 1000L)
+
+    let logs = ResizeArray<_>(span.events.Count + ambientLogs.Length)
+    Seq.concat [|
+      span.events |> Seq.map (fun m -> m.getJaegerLog mw)
+      ambientLogs :> _
+    |]
+    |> logs.AddRange
 
     // setting reference is not supported for the time being
     // and this can be implement in this target project, as a Logary's plugin to extension Message/Logger module
     // jaegerSpan.References <- new ResizeArray<_>()
-    jaegerSpan.Logs <- new ResizeArray<_>(childLogs)
-    jaegerSpan.Tags <- tags
+    jaegerSpan.Logs <- logs
+    jaegerSpan.Tags <- msg.getJaegerTags mw
     jaegerSpan
 
-  let flushToJaeger (logger: Logger) state =
-    if state.spanList.Count > 0 then
-      let jaegerBatch = new Jaeger.Thrift.Batch(state.jaegerProcess, state.spanList)
-      let state' =  { state with spanListSize = 0; spanList = new ResizeArray<_>() }
-      let emitBatchJ = state.spanSender.sendBatch jaegerBatch
+  /// When an ambient log `Message` is received, it means it is *not* carrying a `SpanData` instance in its `.context`,
+  /// and hence must be either added to an existing deferred `Span`, OR be pushed to the `ambient` `ListCache` in
+  /// the state, waiting for a `Span` to be completed and later flushed to the Jaeger client.
+  let handleAmbientLog (msg: Message, conf, ri: RuntimeInfo, state: State) (spanId: SpanId): State =
+    // First convert the message to a Jaeger log message
+    let log = msg.getJaegerLog conf.messageWriter
 
-      Job.tryIn emitBatchJ (fun _ -> Job.result state' ) (fun exn ->
-        Message.eventX "flush to jaeger failed"
-        >> Message.addExn exn
-        |> logger.error
+    // Now, see if there's a matching deferred `Span`, that we can add the `Log` to;
+    let wasAdded =
+      state.deferred.tryModify(spanId, fun (span, ack) ->
+        ri.logger.verbose (eventX "handleAmbientLog found deferred Span={spanId}, saving `Log`:s into it" >> setField "spanId" spanId)
+        span.Logs.Add log
+        span, ack)
 
-        Job.result state'
-      )
-    else Job.result state
+    // Otherwise, if there wasn't, we'll keep track of the ambient log `Message` for `conf.retentionTime`. During the
+    // `retentionTime` Duration, either a `Span` will be logged and then flushed and the `ambient` `Log` value associated with it,
+    // OR the `ambient` `Log` values will be garbage collected.
+    if not wasAdded then
+      ri.logger.verbose (eventX "handleAmbientLog did not find deferred Span, enqueueing Log as ambient")
+      state.ambient.enqueue(spanId, log)
 
-  let flushToJaegerAndGC (logger: Logger) state retentionTime =
-    flushToJaeger logger state >>- (fun state ->
-      let now = SystemClock.Instance.GetCurrentInstant()
-      state.spanIdMap
-      |> Seq.filter (fun (KeyValue(_, (firstOccurTime, _))) -> now - firstOccurTime > retentionTime)
-      |> Seq.map (fun (KeyValue(k,_)) -> k)
-      |> Seq.toList
-      |> List.iter (fun k -> state.spanIdMap.Remove k |> ignore)
+    state
 
-      state
-    )
+  let handleSpan (conf, ri: RuntimeInfo) (msg: Message, span: SpanData, ack: IVar<unit>) (state: State): State =
+    let ambientLogs = state.ambient.tryGetAndRemove span.context.spanId
+    let jaegerSpan = buildJaegerSpan conf.messageWriter (msg, span, ambientLogs)
 
-  let appendToBuffer (logger: Logger) spanMsg (data: SpanData) childMsgs (state: State) =
-    let jaegerSpan = buildJaegerSpan state.messageWriter spanMsg data childMsgs
-    let spanSize = state.spanSizeCounter.sizeOf jaegerSpan
-    let spanListSize = spanSize + state.spanListSize
+    ri.logger.verbose (eventX "handleSpan deferring Span={spanId}" >> setField "spanId" span.context.spanId)
+    state.deferred.defer(span.context.spanId, (jaegerSpan, ack))
+    state
 
-    logger.verbose (Message.eventX "{spanSize} / {spanListSize}" >> Message.setFields [|spanSize; spanListSize|])
+  /// Selects immediately, commits on the completion of `client.send`'s Alt return value, and if NACK:ed,
+  /// automatically cancels the client's send operation without cleaning up.
+  let flushSpans (ri: RuntimeInfo, client: Client, proc: Process) (spanKVPs: KeyValuePair<SpanId, Jaeger.Thrift.Span * IVar<unit>> list): Alt<unit> =
+    if List.isEmpty spanKVPs then Alt.unit () else
+    ri.logger.verbose (eventX "flushSpans is flushing {count} Spans" >> setField "count" spanKVPs.Length)
 
-    state.spanList.Add jaegerSpan
-    state.spanIdMap.Remove(data.context.spanId) |> ignore
+    let spans = ResizeArray<_>(spanKVPs.Length)
 
-    if spanListSize >= state.batchSpanSize then
-      flushToJaeger logger state
-    else
-      Job.result {state with spanListSize = spanListSize}
+    spanKVPs
+      |> Seq.map (fun (KeyValue (_, (span, _))) -> span)
+      |> spans.AddRange
 
-  let tryLogSpan (logger: Logger) (msg: Message) (state: State) =
-    match Message.tryGetSpanData msg with
-    | Some data ->
-      let childLogs =
-        match state.spanIdMap.TryGetValue data.context.spanId with
-        | true, (_, childLogs) -> childLogs
-        | false, _ -> []
+    let ackAll =
+      spanKVPs
+        |> Seq.map (fun (KeyValue (_, (_, ack))) -> ack *<= ())
+        |> Job.conIgnore
 
-      let state = appendToBuffer logger msg data childLogs state
-      state
+    let jaegerBatch = new Jaeger.Thrift.Batch(proc, spans)
 
-    | None ->
-      match Message.tryGetSpanId msg with
-      | Some spanId ->
-        // append this message wait for some span to occur, these messages will be the span's logs
-        let appendedLogs =
-          match state.spanIdMap.TryGetValue spanId with
-          | true, (instant, logs) ->
-            let log = asJaegerLog state.messageWriter msg
-            instant, log :: logs
-          | false, _ -> SystemClock.Instance.GetCurrentInstant(), [asJaegerLog state.messageWriter msg]
+    Alt.tryIn
+      (client.send jaegerBatch)
+      (fun () -> ackAll)
+      (fun exn ->
+        ri.logger.error (Message.eventX "Sending to Batch to Jaeger Agent failed" >> Message.addExn exn)
+        ackAll)
 
-        state.spanIdMap.[spanId] <- appendedLogs
 
-        Job.result state
-      | None ->
-        // Drop this message, this can be avoid by config a pipeline processing to sink message to this target if has spanid
-        Job.result state
+  let loop (conf: JaegerConf) (api: TargetAPI) =
+    api.runtime.logger.info (
+      eventX "Started Jaeger target with endpoint {host}:{port}"
+      >> setField "host" conf.jaegerHost
+      >> setField "port" conf.jaegerPort)
 
-  let loop (conf: JaegerConf) spanSender spanSizeCounter (api: TargetAPI) =
-
-    let logger = api.runtime.logger
-    let always = Alt.unit ()
-
-    let autoFlushCh = Ch ()
+    let ticker, dueToSend = Ch (), Ch ()
 
     let rec running (state: State) =
-      Alt.choose [
+      Alt.choosy [|
         api.shutdownCh ^=> fun ack ->
-          flushToJaeger logger state >>= fun state ->
-            state.spanIdMap.Clear()
-            state.spanSender.Dispose()
+          api.runtime.logger.verbose (eventX "Shutting down the Jaeger target and flushing {count} deferred Spans..." >> setField "count" state.deferred.count)
+          flushSpans (api.runtime, state.client, state.jaegerProcess) (state.deferred.dequeueAll()) >>= fun () ->
+            dispose state.ambient
+            dispose state.deferred
+            dispose state.client
+            api.runtime.logger.verbose (eventX "Shutting down the Jaeger target.")
             ack *<= ()
 
-        RingBuffer.takeAll api.requests ^=> fun logReqMsg ->
-          logReqMsg
-          |> Hopac.Extensions.Seq.foldFromJob state (fun state logReq ->
-            match logReq with
-            | Flush (ack, nack) ->
-              let flushState =
-                always ^=> (fun _ -> flushToJaeger logger state >>= (fun state -> IVar.fill ack () >>-. state))
+        dueToSend ^=>
+          (flushSpans (api.runtime, state.client, state.jaegerProcess)
+           >=> fun () -> running state)
 
-              ((nack ^->. state) <|> flushState) :> Job<_>
+        RingBuffer.take api.requests ^=> function
+          | Log (message, ack) ->
+            // We either get messages with SpanData in them, we get ambient log messages with SpanId in them,
+            // or we get log messages with no SpanId:s in them.
+            match Message.tryGetSpanData message with
+            | Some span ->
+              handleSpan (conf, api.runtime) (message, span, ack) state
+              |> running
 
-            | Log (msg, ack) ->
-              let tryLogSpanJ = tryLogSpan logger msg state
-              let tryLogSpanSafe =  Job.tryWith tryLogSpanJ (fun exn ->
+            | None ->
+              // Messages without SpanId:s are dropped. This can be avoided by configuring a pipeline processing
+              // Pipe to only add Jaeger as a sink if the message has a SpanId attached.
+              let nextState =
+                Message.tryGetSpanId message
+                |> Option.map (handleAmbientLog (message, conf, api.runtime, state))
+                |> Option.defaultValue state
 
-                Message.eventX "tryLogSpan failed. Drop msg : {msg}"
-                >> Message.setFields [| msg |]
-                >> Message.addExn exn
-                |> logger.error
+              ack *<= () >>= fun () ->
+              running nextState
 
-                Job.result state
-              )
+          | Flush (ack, nack) ->
+            Alt.choosy [|
+              flushSpans (api.runtime, state.client, state.jaegerProcess) (state.deferred.dequeueAll()) ^=> fun () ->
+                ack *<= () >>-. state
 
-              tryLogSpanSafe >>= (fun state -> IVar.fill ack () >>-. state)
-          )
-          >>= running
+              nack ^->. state
+            |]
+            >>= running
 
+        ticker ^=> fun _ ->
+          let due =
+            state.deferred.dequeueDue() |> List.map (fun (KeyValue (spanId, (span, ack))) ->
+            let ambientLogs = state.ambient.tryGetAndRemove spanId
+            span.Logs.AddRange ambientLogs
+            KeyValuePair<_,_>(spanId, (span, ack)))
 
-        autoFlushCh ^=> fun _ ->
-          flushToJaegerAndGC logger state conf.retentionTime >>= running
-      ] :> Job<_>
+          let gced = state.ambient.gc ()
+          if gced.Count > 0 then
+            api.runtime.logger.verbose (
+              eventX "Garbage-collected {count} ambient logs with {spanIds}"
+              >> setField "count" gced.Count
+              >> setField "spanIds" gced)
 
+          // Place the due values in the buffer; the main Jaeger target loop will select from the `dueToSend` channel
+          // before taking new ticks anyway, thus ensuring there's only ever one batch waiting in the channel.
+          Ch.send dueToSend due >>= fun () ->
+          running state
+      |]
+      :> Job<_>
 
-    let jaegerProcess = initProcess api.runtime conf.processTags
+    let state =
+      { ambient = new ListCache<SpanId, Jaeger.Thrift.Log>(api.runtime.getTimestamp, conf.retentionTime)
+        deferred = new DeferBuffer<SpanId, Jaeger.Thrift.Span * IVar<unit>>(api.runtime.getTimestamp, conf.spanDelay)
+        client = conf.client |> Option.defaultWith (fun () -> createClient conf)
+        jaegerProcess = createJaegerProcess api.runtime conf.processTags
+      }
 
-    let state = {
-      spanIdMap = new Dictionary<SpanId, Instant * Jaeger.Thrift.Log list>()
-      spanList = new ResizeArray<Jaeger.Thrift.Span>()
-      spanListSize = 0
-      spanSender = spanSender
-      jaegerProcess = jaegerProcess
-      spanSizeCounter = spanSizeCounter
-      batchSpanSize = conf.batchSpanSize
-      messageWriter = conf.messageWriter
-    }
+    let tickerOnce = timeOutMillis 2000 ^=> Ch.give ticker
 
-
-    let autoFlushJob =
-      timeOut (conf.autoFlushInterval.toTimeSpanSafe()) ^=> Ch.give autoFlushCh
-
-    Job.foreverServer autoFlushJob
+    Job.foreverServer tickerOnce
     >>=. running state
 
-
 /// Create a new Jaeger target.
+///
+/// By default uses UDP, so if you're on macOS, run `sudo sysctl net.inet.udp.maxdgram=65536`
+/// to bump it. See https://github.com/jaegertracing/jaeger-client-node/issues/124 and
+/// https://www.jaegertracing.io/docs/1.13/client-libraries/#emsgsize-and-udp-buffer-limits
+/// for details.
+///
+/// Also see the `JaegerConf` type's docs.
 [<CompiledName "Create">]
 let create conf name =
-  let spanSender = createSpanSender conf
-  TargetConf.createSimple (Impl.loop conf spanSender defaultSpanSizeCounter) name
+  TargetConf.createSimple (Impl.loop conf) name
 
 type ISecondStep =
-    abstract WithTags: Map<string,obj> -> ISecondStep
-    abstract WithBatchSpanSize: int -> ISecondStep
-    abstract WithTime: Duration * Duration -> ISecondStep
-    abstract WithMessageWriter: MessageWriter -> ISecondStep
+    abstract WithProcessAttrs: processAttrs: SpanAttr list -> ISecondStep
+    abstract WithPacketSize: packetSize: uint16 -> ISecondStep
+    abstract WithTime: flushInterval: Duration * retentionTime: Duration -> ISecondStep
+    abstract WithMessageWriter: writer: MessageWriter -> ISecondStep
     abstract Done: unit -> Target.TargetConfBuild<Builder>
-and Builder(conf: JaegerConf, callParent: Target.ParentCallback<_>) =
 
+and Builder(conf: JaegerConf, callParent: Target.ParentCallback<_>) =
   new(callParent: Target.ParentCallback<_>) =
     Builder(empty, callParent)
 
-  member x.WithJaegerClient(host, port) =
-    Builder({conf with host = host; port = port}, callParent)
+  member x.WithJaegerAgent(host, port) =
+    Builder({conf with jaegerHost = host; jaegerPort = port}, callParent)
     :> ISecondStep
 
   interface ISecondStep with
-    member x.WithTags tags =
+    member x.WithProcessAttrs tags =
       Builder({conf with processTags = tags}, callParent)
       :> ISecondStep
 
-    member x.WithBatchSpanSize batchSize =
-      Builder({conf with batchSpanSize = batchSize}, callParent)
+    member x.WithPacketSize batchSize =
+      Builder({conf with packetSize = batchSize}, callParent)
       :> ISecondStep
 
-    member x.WithTime (flushInterval: Duration, retensionTime: Duration )  =
-      Builder({conf with autoFlushInterval = flushInterval; retentionTime = retensionTime}, callParent)
+    member x.WithTime (spanDelay: Duration, retentionTime: Duration)  =
+      Builder({conf with spanDelay = spanDelay; retentionTime = retentionTime}, callParent)
       :> ISecondStep
 
     member x.WithMessageWriter mw =

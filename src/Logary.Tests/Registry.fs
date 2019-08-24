@@ -9,6 +9,7 @@ open Logary
 open Logary.Internals
 open Logary.Message
 open Logary.Configuration
+open Logary.Trace
 
 let testLogger = Log.create "Logary.Tests.Registry"
 

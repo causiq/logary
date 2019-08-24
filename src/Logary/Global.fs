@@ -181,16 +181,16 @@ module internal Global =
           StructureValue (refId, typeTag, nvs))
 
       configDestructure<Duration>(fun _ req -> ScalarValue req.Value)
-      configDestructure<SpanId>(fun _ req -> ScalarValue (req.Value.ToString()))
-      configDestructure<TraceId>(fun _ req -> ScalarValue (req.Value.ToString()))
+      configDestructure<Trace.SpanId>(fun _ req -> ScalarValue (req.Value.ToString()))
+      configDestructure<Trace.TraceId>(fun _ req -> ScalarValue (req.Value.ToString()))
 
-      configDestructure<SpanData>(fun resolver req ->
+      configDestructure<Trace.SpanData>(fun resolver req ->
         let data = req.Value
         let refCount = req.IdManager
         match refCount.TryShowAsRefId req with
         | _, Some pv -> pv
         | refId, None ->
-          let typeTag = typeof<SpanData>.Name
+          let typeTag = typeof<Trace.SpanData>.Name
           let nvs = [
             yield { Name = "TraceId"; Value = req.WithNewValue data.context.traceId |> resolver }
             if Option.isSome data.context.parentSpanId then

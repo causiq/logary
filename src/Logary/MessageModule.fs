@@ -213,15 +213,15 @@ module Message =
 
   /// Set SpanId
   [<CompiledName "SetSpanId">]
-  let setSpanId (spanId: SpanId) (message: Message) =
+  let setSpanId (spanId: Trace.SpanId) (message: Message) =
     message |> setContext KnownLiterals.SpanIdContextName spanId
 
   [<CompiledName "TryGetSpanId">]
-  let tryGetSpanId (message: Message): SpanId option =
+  let tryGetSpanId (message: Message): Trace.SpanId option =
     message |> tryGetContext KnownLiterals.SpanIdContextName
 
   [<CompiledName "TryGetSpanInfo">]
-  let tryGetSpanData (message: Message) : SpanData option =
+  let tryGetSpanData (message: Message) : Trace.SpanData option =
     message |>  tryGetContext KnownLiterals.SpanDataContextName
 
   /// For users who want to control timeout for each message when logging `WaitForBuffers = true`

@@ -467,7 +467,7 @@ module internal Impl =
           job {
             do logger.verbose (eventX "Writing {count} messages" >> setField "count" (entries.Length))
             do! entries |> String.concat "\n" |> state.send
-            do logger.verbose (eventX "Acking messages")
+            do logger.verbose (eventX "ACK:ing messages")
             do! Job.conIgnore acks
             do! Job.conIgnore flushes
             return! loop state

@@ -1,8 +1,9 @@
 namespace Logary
 
-open Logary.Internals
 open System.Net
 open System.Diagnostics
+open Logary.Trace
+open Logary.Internals
 open Logary.Metric
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -60,7 +61,7 @@ module Middleware =
   [<CompiledName "AmbientSpanId">]
   let ambientSpanId: Middleware =
     fun next msg ->
-      let ambientSpanId = Span.getActiveSpanId ()
+      let ambientSpanId = ActiveSpan.getSpan ()
       match ambientSpanId with
       | Some ambientSpanId -> msg |> Message.setSpanId ambientSpanId |> next
       | None -> next msg

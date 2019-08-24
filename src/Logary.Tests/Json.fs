@@ -4,6 +4,7 @@ open System
 open Logary
 open Logary.Internals.Chiron
 open Logary.Formatting
+open Logary.Trace
 open NodaTime
 open Expecto
 open Expecto.Flip

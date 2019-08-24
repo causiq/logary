@@ -1,4 +1,4 @@
-namespace Logary.Clients.Jaeger
+namespace Logary.Targets
 
 open Thrift.Transports
 open System.Net.Sockets
@@ -20,7 +20,7 @@ type TUdpClientTransport(udpClient: UdpClient) =
     |> Option.map (fun c -> c.Connected)
     |> Option.defaultValue false
 
-  override x.OpenAsync ct = 
+  override x.OpenAsync ct =
     if ct.IsCancellationRequested then Task.FromCanceled ct
     else Task.CompletedTask
 
@@ -41,12 +41,11 @@ type TUdpClientTransport(udpClient: UdpClient) =
 
   override x.Close () = udpClient.Close ()
 
-  override x.Dispose disposing = 
-    if not disposed && disposing then 
+  override x.Dispose disposing =
+    if not disposed && disposing then
       udpClient.Dispose()
       disposed <- true
     else do ()
 
 
 
-  

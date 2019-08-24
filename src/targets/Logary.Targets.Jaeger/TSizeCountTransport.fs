@@ -1,4 +1,4 @@
-namespace Logary.Clients.Jaeger
+namespace Logary.Targets
 
 open Thrift.Transports
 open System.Threading.Tasks
@@ -10,7 +10,7 @@ type TSizeCountTransport() =
   let mutable size = 0
   override x.IsOpen = true
 
-  override x.OpenAsync ct = 
+  override x.OpenAsync ct =
     if ct.IsCancellationRequested then Task.FromCanceled ct
     else Task.CompletedTask
 
