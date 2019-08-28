@@ -73,6 +73,7 @@
     <Compile Include="Extensions/NodaTime.Instant.fs" />
     <Compile Include="Extensions/System.Dates.fs" />
     <Compile Include="Internals.Global.fs" />
+    <Compile Include="Log.fs" />
     <Compile Include="MessageModule.fs" />
     <Compile Include="LoggerModule.fs" />
     <Compile Include="Internals.LogResultModule.fs" />
@@ -89,7 +90,6 @@
     <Compile Include="TargetConf.fs" />
     <Compile Include="TargetModule.fs" />
     <Compile Include="Internals.InternalLogger.fs" />
-    <Compile Include="Log.fs" />
     <!-- Below: events processing -->
     <Compile Include="Configuration/Transformers.fs" />
     <Compile Include="Configuration/Ticker.fs" />
