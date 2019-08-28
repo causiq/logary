@@ -66,8 +66,7 @@ type MtAssert =
     let actual = Formatting.formatWithProvider provider template values
     Expect.equal actual expected "format should work"
 
-[<Tests>]
-let messageTemplates =
+let tests =
   testList "message templates" [
     testCase "a delegate is rendered as a string" <| fun () ->
       let myDel = MyDelegate (fun (i1,i2) -> i1+i2)

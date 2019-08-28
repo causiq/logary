@@ -1,4 +1,4 @@
-module Logary.Tests.Metrics
+module Logary.Tests.Metric
 open System
 open Expecto
 open Logary

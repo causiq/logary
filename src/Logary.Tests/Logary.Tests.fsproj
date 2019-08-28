@@ -17,7 +17,9 @@
     <Compile Include="Utils.Arbs.fs" />
     <Compile Include="Internals.HashMap.fs" />
     <Compile Include="Internals.Global.fs" />
-    <Compile Include="Constants.fs" />
+    <Compile Include="Utils.FsCheck.fs" />
+    <Compile Include="Core.Constants.fs" />
+    <Compile Include="Core.DateTime.fs" />
     <Compile Include="Core.Units.fs" />
     <Compile Include="Core.Value.fs" />
     <Compile Include="Core.Engine.fs" />
@@ -26,8 +28,11 @@
     <Compile Include="Core.PointName.fs" />
     <Compile Include="Core.Message.fs" />
     <Compile Include="Core.Gauge.fs" />
+    <Compile Include="Core.NullLogger.fs" />
+    <Compile Include="Core.Logger.fs" />
+    <Compile Include="Core.Middleware.fs" />
     <Compile Include="Trace.fs" />
-    <Compile Include="Metrics.fs" />
+    <Compile Include="Metric.fs" />
     <Compile Include="Codecs.fs" />
     <Compile Include="Formatting.Json.fs" />
     <Compile Include="Formatting.MessageWriters.fs" />

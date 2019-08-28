@@ -7,8 +7,7 @@ open Logary
 open Logary.Codecs
 open Logary.Ingestion
 
-let tests =
-  testList "codecs" [
+let tests = [
     testCase "plain"  <| fun () ->
       match Codec.plain (Ingested.String "hello") with
       | Result.Ok m ->

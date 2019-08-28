@@ -87,7 +87,7 @@ let tests =
     testList "writes over HTTP" [
       testCaseTarget disableCreateDB "write single" (fun state target ->
         job {
-          let! ack = Target.tryLog target msg ^-> Expect.isOk "Successfully placed message in buffer"
+          let! ack = Target.tryLog target msg ^-> Expect.isOkX "Successfully placed message in buffer"
           let! req = Ch.take state.req
           do! ack
 
@@ -102,9 +102,9 @@ let tests =
 
       testCaseTarget disableCreateDB "write batch" (fun state target ->
         job {
-          let! p1 = Target.tryLog target msg1 ^-> Expect.isOk "Successfully placed message in buffer"
-          let! p2 = Target.tryLog target msg2 ^-> Expect.isOk "Successfully placed message in buffer"
-          let! p3 = Target.tryLog target msg3 ^-> Expect.isOk "Successfully placed message in buffer"
+          let! p1 = Target.tryLog target msg1 ^-> Expect.isOkX "Successfully placed message in buffer"
+          let! p2 = Target.tryLog target msg2 ^-> Expect.isOkX "Successfully placed message in buffer"
+          let! p3 = Target.tryLog target msg3 ^-> Expect.isOkX "Successfully placed message in buffer"
           let! req = Ch.take state.req
           let! req2 = Ch.take state.req
 
@@ -120,8 +120,10 @@ let tests =
       testCaseTarget disableCreateDB "target acks" (fun state target ->
         let msg = Message.gaugefs "S1" "Number 1" 0.3463
         job {
-          let! ackPromise = Target.tryLog target msg ^-> Expect.isOk "Successfully placed message in buffer"
-          let! req2 = Ch.take state.req
+          let! ackPromise =
+            Target.tryLog target msg ^->
+            Expect.isOkX "Successfully placed message in buffer"
+          let! _ = Ch.take state.req
 
           let! success =
             Alt.choose [

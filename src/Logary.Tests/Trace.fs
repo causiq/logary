@@ -16,7 +16,7 @@ module List =
 [<Tests>]
 let tests =
   let logger = Log.create "Logary.Tests.Trace"
-  testList "trace" [
+  [
     testList "span (builder)" [
       testCase "build, start, finish span" <| fun () ->
         let spanLogger =
