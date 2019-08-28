@@ -4,6 +4,7 @@ open Logary
 open Logary.Message
 open Logary.Internals
 open NodaTime
+open Hopac
 open System.Threading
 open System
 open System.Collections.Generic
@@ -107,10 +108,13 @@ module Extensions =
     let mutable _status = status
     let _semaphore = obj ()
     let _events = ResizeArray<_>(50)
+    let alreadyFinished =
+      let m = Message.eventFormat("Span={label} already finished", label)
+      LogResult.error m
 
     let _finish x transformMessage =
       lock _semaphore <| fun () ->
-      if Option.isSome _finished then () else
+      if Option.isSome _finished then alreadyFinished else
       let ts = Global.getTimestamp()
 
       do _finished <- Some ts
@@ -118,13 +122,13 @@ module Extensions =
 
       let spanData = x :> SpanData
 
-      let composedMsgFac level =
-        event level _label
+      let message =
+        event Info _label
         |> transform
         |> transformMessage
         |> setContext KnownLiterals.SpanDataContextName spanData
 
-      inner.logWith Info composedMsgFac
+      inner.logWithAck (false, Info) (fun _ -> message)
 
     let _setStatus (code, desc) =
       lock _semaphore <| fun () ->
@@ -186,6 +190,7 @@ module Extensions =
       member __.flags = _flags
       member __.links = links :> IReadOnlyList<_>
       member __.events = _events :> IReadOnlyList<_>
+      member __.attrs = attrs |> Map.ofSeq :> IReadOnlyDictionary<_, _>
       member __.status = _status
 
     interface SpanOps with
@@ -196,8 +201,11 @@ module Extensions =
       member x.setStatus (code: SpanCanonicalCode) = _setStatus (code, None)
       member x.setStatus (code: SpanCanonicalCode, description: string) = _setStatus (code, Some description)
       member x.setFlags flags = _setFlags flags
-      member x.finish transform = _finish x transform
-      member x.finish () = _finish x id
+      member x.finish transform = queueIgnore (_finish x transform)
+      member x.finish () = queueIgnore (_finish x id)
+
+    interface SpanOpsAdvanced with
+      member x.finishWithAck transform = _finish x transform
 
     interface Span with
       member __.label = _label
@@ -206,7 +214,7 @@ module Extensions =
 
     interface SpanLogger with
       member x.logThrough () = logThrough <- true
-      member x.Dispose() = _finish x id
+      member x.Dispose() = queueIgnore (_finish x id)
 
 module ActiveSpan =
   let private asyncLocal: AsyncLocal<SpanContext> = new AsyncLocal<SpanContext>()
@@ -359,6 +367,7 @@ type SpanBuilder(logger: Logger, label: string) =
     let attrs, links = ResizeArray<_>(_attrs), ResizeArray<_>(_links)
     new T(logger, label, _transform, _started, context, _kind, links, attrs, _status, reset, _logThrough)
     :> SpanLogger
+
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Span =

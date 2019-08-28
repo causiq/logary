@@ -36,7 +36,7 @@ module Logger =
     logger.logWithAck (true, logLevel) factory ^-> ignore
 
   /// Log the message, leaving any error result to be handled by the registry error handler.
-  /// The returned pomise, will be waiting for buffer's backend target to flush its logs.
+  /// The returned promise will be waiting for buffer's backend target to flush its messages.
   ///
   /// By default `waitForBuffersTimeout` is at 1 minute. This is in order for back pressure to wait for the buffers
   /// (not the actual backend's after-target buffer).

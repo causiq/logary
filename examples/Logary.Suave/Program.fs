@@ -119,6 +119,7 @@ module SuaveAdapter =
           return e.reraise()
       }
 
+open Logary.Prometheus.Exporter
 open SuaveAdapter
 
 [<EntryPoint>]
@@ -140,15 +141,16 @@ let main _ =
 
   let app: WebPart =
     choose [
-      path "/" >=> GET >=> spanLogger (fun logger ->
+      GET >=> path "/" >=> spanLogger (fun logger ->
         logger.info (eventX "Returning from the first route: 'GET /'")
         OK (sprintf "Hello World! My route has been going for %O" logger.elapsed))
 
-      path "/" >=> POST >=> OK "{\"hello\": \"world\"}"
+      POST >=> path "/" >=> OK "{\"hello\": \"world\"}"
 
       request (fun req -> NOT_FOUND (sprintf "What are you trying to do? %s wasn't found, anyway! :-s" req.path))
     ]
 
+  use metrics = Exporter.run (ExporterConf.create(logary.metricRegistry))
   startWebServer defaultConfig (withTracing logger app)
 
   0

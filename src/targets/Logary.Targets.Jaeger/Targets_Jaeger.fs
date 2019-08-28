@@ -91,31 +91,8 @@ let empty =
     sampler = new ConstSampler(true)
   }
 
-module internal Impl =
+module internal Mapping =
   open MessagePatterns
-  open System.Runtime.CompilerServices
-  [<assembly: InternalsVisibleTo("Logary.Targets.Jaeger.Tests")>]
-  do()
-
-
-  let private dispose (d: #IDisposable) = d.Dispose()
-
-  let createClient conf: Client =
-    let protocol =
-      new TCompactProtocol(
-        new TBufferedClientTransport(
-          new TUdpClientTransport(conf.jaegerHost, int conf.jaegerPort),
-          int conf.packetSize))
-
-    let client = new Jaeger.Thrift.Agent.Agent.Client(protocol)
-
-    { new Client with
-        member x.send batch =
-          Alt.fromUnitTask (fun ct -> client.emitBatchAsync(batch, ct))
-        member x.Dispose () =
-          client.Dispose()
-    }
-
   type SpanAttrValue with
     member x.writeTo (tag: Tag) =
       match x with
@@ -140,24 +117,6 @@ module internal Impl =
           tag.VDouble <- v.toFloat()
           tag.VType <- TagType.DOUBLE
 
-  /// The state is highly mutable, in that it's expected that only one green Hopac thread at a time accesses it,
-  /// and when it does, may mutate the instances in the state, before recursing to take further LogMessage requests.
-  ///
-  type State =
-    { /// A cache of `SpanId -> Log list`, with methods corresponding to the use-cases;
-      /// - garbage collecting if no matching span was logged
-      /// - getting the `Log list` for a given `SpanId`, and removing those from future consideration, and
-      /// - enqueueing more `Log` items, for future consideration.
-      ///
-      /// E.g.
-      /// T1 logs M1: "Hello spanId=1"
-      /// T2 logs M2: "Span 1 start" (SpanData)
-      /// Target receives M1, no matching span in
-      ambient: ListCache<SpanId, Jaeger.Thrift.Log>
-      deferred: DeferBuffer<SpanId, Jaeger.Thrift.Span * IVar<unit>>
-      client: Client
-      jaegerProcess: Jaeger.Thrift.Process
-    }
 
   let toTag ((k, v): SpanAttr) =
     let tag = Jaeger.Thrift.Tag(Key = k)
@@ -196,10 +155,12 @@ module internal Impl =
     p
 
   type Message with
-    member x.getJaegerTags (mw: MessageWriter) =
+    member x.getJaegerTags (mw: MessageWriter, ?skipEvent: bool) =
+      let skipEvent = defaultArg skipEvent false
       let str s = SpanAttrValue.S s
       seq {
-        yield ("event", str <| mw.format x) |> toTag
+        if not skipEvent then
+          yield ("event", str <| mw.format x) |> toTag
         yield ("level", str <| x.level.ToString()) |> toTag
         yield ("component", str <| x.name.ToString()) |> toTag
         for kv in x.context do
@@ -222,9 +183,53 @@ module internal Impl =
       }
       |> ResizeArray
 
-    member x.getJaegerLog (mw: MessageWriter) =
-      let jaegerTags = x.getJaegerTags mw
+    member x.getJaegerLog (mw: MessageWriter, ?skipEvent: bool) =
+      let jaegerTags = x.getJaegerTags(mw, ?skipEvent=skipEvent)
       new Jaeger.Thrift.Log(x.timestamp / 1000L, jaegerTags)
+
+module internal Impl =
+  open Mapping
+  open System.Runtime.CompilerServices
+  [<assembly: InternalsVisibleTo("Logary.Targets.Jaeger.Tests")>]
+  do()
+
+
+  let private dispose (d: #IDisposable) = d.Dispose()
+
+  let createClient conf: Client =
+    let protocol =
+      new TCompactProtocol(
+        new TBufferedClientTransport(
+          new TUdpClientTransport(conf.jaegerHost, int conf.jaegerPort),
+          int conf.packetSize))
+
+    let client = new Jaeger.Thrift.Agent.Agent.Client(protocol)
+
+    { new Client with
+        member x.send batch =
+          Alt.fromUnitTask (fun ct -> client.emitBatchAsync(batch, ct))
+        member x.Dispose () =
+          client.Dispose()
+    }
+
+  /// The state is highly mutable, in that it's expected that only one green Hopac thread at a time accesses it,
+  /// and when it does, may mutate the instances in the state, before recursing to take further LogMessage requests.
+  ///
+  type State =
+    { /// A cache of `SpanId -> Log list`, with methods corresponding to the use-cases;
+      /// - garbage collecting if no matching span was logged
+      /// - getting the `Log list` for a given `SpanId`, and removing those from future consideration, and
+      /// - enqueueing more `Log` items, for future consideration.
+      ///
+      /// E.g.
+      /// T1 logs M1: "Hello spanId=1"
+      /// T2 logs M2: "Span 1 start" (SpanData)
+      /// Target receives M1, no matching span in
+      ambient: ListCache<SpanId, Jaeger.Thrift.Log>
+      deferred: DeferBuffer<SpanId, Jaeger.Thrift.Span * IVar<unit>>
+      client: Client
+      jaegerProcess: Jaeger.Thrift.Process
+    }
 
   /// https://github.com/jaegertracing/jaeger-client-java/blob/master/jaeger-core/src/test/java/io/jaegertracing/internal/JaegerSpanTest.java#L254-L265
   let buildJaegerSpan (mw: MessageWriter) (msg: Message, span: SpanData, samplerAttrs: SpanAttr list, ambientLogs: Jaeger.Thrift.Log list) =
@@ -251,8 +256,15 @@ module internal Impl =
     // and this can be implement in this target project, as a Logary's plugin to extension Message/Logger module
     // jaegerSpan.References <- new ResizeArray<_>()
     jaegerSpan.Logs <- logs
-    let tags = ResizeArray<_>(msg.getJaegerTags mw)
-    tags.AddRange (samplerAttrs |> List.map toTag)
+    let tags =
+      Seq.concat [
+        msg.getJaegerTags(mw, skipEvent=true) |> Seq.map (fun tag -> tag.Key, tag)
+        samplerAttrs |> List.map toTag |> Seq.map (fun tag -> tag.Key, tag)
+        span.attrs |> Seq.map (fun (KeyValue (key, value)) -> key, toTag (key, value))
+      ] |> Seq.fold (fun s (k, tag) -> s |> Map.add k tag) Map.empty
+        |> Map.toSeq
+        |> Seq.map snd
+        |> ResizeArray<_>
     jaegerSpan.Tags <- tags
     jaegerSpan
 
@@ -283,8 +295,9 @@ module internal Impl =
     let ambientLogs = state.ambient.tryGetAndRemove span.context.spanId
     let jaegerSpan = buildJaegerSpan conf.messageWriter (msg, span, samplerAttrs, ambientLogs)
     ri.logger.verbose (
-      eventX "handleSpan deferring Span={spanId} & associated {ambientCount} ambient logs"
+      eventX "handleSpan deferring Span={spanId} & associated {ambientCount} ambient and {spanCount} Span logs"
       >> setField "spanId" span.context.spanId
+      >> setField "spanCount" span.events.Count
       >> setField "ambientCount" ambientLogs.Length)
     state.deferred.defer(span.context.spanId, (jaegerSpan, ack))
     state

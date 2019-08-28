@@ -53,7 +53,7 @@ type LogManager =
   abstract shutdown: unit -> Alt<unit>
 
   /// Dynamically controls logger min level,
-  /// this will only affect the loggers (its name, not its instance) which have been created beafore
+  /// this will only affect the loggers (its name, not its instance) that have been created before
   abstract switchLoggerLevel: string * LogLevel -> unit
 
   /// register metrics

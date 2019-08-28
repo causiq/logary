@@ -9,26 +9,23 @@ open Logary.Metric
 open Logary.Prometheus
 
 type ExporterConf =
-  {
-    metricNameTransformer: string -> string
+  { metricNameTransformer: string -> string
     metricRegistry: MetricRegistry
     webConfig: SuaveConfig
     urlPath: string
   }
 
-module ExporterConf =
-
-  let create (urlPath: string) (registry: MetricRegistry) =
-    {
-      metricNameTransformer = Formatting.defaultMetricNameTrans
+  static member create (registry: MetricRegistry, ?urlPath: string) =
+    { metricNameTransformer = Formatting.defaultMetricNameTrans
       metricRegistry = registry
-      webConfig = defaultConfig
-      urlPath =  urlPath
+      webConfig = defaultConfig.withBindings [ HttpBinding.createSimple HTTP "0.0.0.0" 9121 ]
+      urlPath = defaultArg urlPath "/metrics"
     }
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module ExporterConf =
   let webConfig webConfig conf =
     { conf with webConfig = webConfig }
-
 
 module Exporter =
   open System.Threading
@@ -46,14 +43,13 @@ module Exporter =
     metricInfos |> Seq.iter (Formatting.formatMetricInfo sb metricNameTransformer)
     sb.ToString()
 
-  let internal exportWebPart exportConf : WebPart =
-    let urlPath = exportConf.urlPath
-    path urlPath >=> GET
+  let internal exportWebPart exportConf: WebPart =
+    GET
+      >=> path exportConf.urlPath
       >=> setHeader "Content-Type" "text/plain; charset=utf-8"
       >=> request (fun r ->  Successful.OK (exportToPrometheus exportConf))
 
-
-  let run conf  =
+  let run conf =
     let cts = new CancellationTokenSource()
     let myApp = exportWebPart conf
     let suaveConfig = { conf.webConfig with cancellationToken = cts.Token }

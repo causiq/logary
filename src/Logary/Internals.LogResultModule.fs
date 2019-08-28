@@ -5,9 +5,9 @@ module internal LogResult =
   open Hopac
 
   let success: LogResult = Alt.always (Result.Ok Promise.unit)
-  let error message : LogResult = Alt.always (Result.Error message)
+  let error message: LogResult = Alt.always (Result.Error message)
 
-  let notAcceptedByTarget (targetName: string) = error (Message.eventFormat("not accept by {target}", targetName))
+  let notAcceptedByTarget (targetName: string) = error (Message.eventFormat("The target '{target}' did not accept the Message", targetName))
 
 module internal LogError =
   let targetBufferFull (targetName: string): ProcessResult = Result.Error (Message.eventFormat("{target} 's log buffer is full", targetName))

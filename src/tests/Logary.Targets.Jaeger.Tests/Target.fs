@@ -18,6 +18,7 @@ open Logary
 open Logary.Internals
 open Logary.Trace
 open Logary.Message
+open Logary.Targets.Jaeger.Mapping
 open NodaTime
 
 module Target =
@@ -75,6 +76,73 @@ module Target =
   [<Tests>]
   let tests =
     testList "jaeger" [
+      testCaseJob "span.finishWithAck" <| job {
+        let logger = StubLogger.createWith "Logary.Targets.Jaeger.Tests" Verbose
+        let span = SpanBuilder(logger, "op_name").debug().start()
+        let! res = span.finishWithAck id
+        do! res |> Expect.isOkX "Has Ok result"
+      }
+
+      testCaseJob "does not overwrite 'component'" <| job {
+        let hello = event Debug "Hello world!"
+        let stubLogger = StubLogger.createWith "Logary.Targets.Jaeger.Tests" Verbose
+        let spanLoggerB = SpanBuilder(stubLogger, "op_name").debug().setAttribute("component", "http")
+
+        let spanLogger = spanLoggerB.start()
+        spanLogger.events |> Expect.isEmpty "Has no events"
+        spanLogger.logSimple hello
+        spanLogger.events |> Expect.isNonEmpty "Has the 'Hello world!' event"
+
+        let! res = spanLogger.finishWithAck id
+        do! res |> Expect.isOkX "finishWithAck => Ok _"
+        let m = stubLogger.logged.[0].getMessage()
+
+        let spanJ = Impl.buildJaegerSpan MessageWriter.verbatim (m, spanLogger, [], [ hello.getJaegerLog MessageWriter.verbatim ])
+
+        spanJ.Duration
+          |> Expect.notEqual "Non-zero duration" 0L
+
+        spanJ.Flags &&& int SpanFlags.Debug > 0
+          |> Expect.isTrue "Should have the 'debug' flag"
+
+        spanJ.Flags &&& int SpanFlags.Sampled > 0
+          |> Expect.isTrue "Should have the 'sample' flag since debug was set"
+
+        spanJ.TraceIdHigh
+          |> Expect.notEqual "Non-zero TraceId" 0L
+
+        spanJ.TraceIdLow
+          |> Expect.notEqual "Non-zero TraceId" 0L
+
+        spanJ.Logs
+          |> Expect.isNonEmpty "Has logs"
+
+        spanJ.Logs.[0].Fields
+          |> hasStringTag "event" hello.value
+          |> ignore
+
+        spanJ.StartTime
+          |> Expect.equal "Equals the start time of spanLogger in µs"
+                          (spanLogger.started / 1_000L)
+
+        spanJ.Duration
+          |> Expect.equal "(end - start) / 1000L"
+                          (((spanLogger.finished |> Option.defaultValue 0L) - spanLogger.started) / 1000L)
+
+        spanJ.OperationName
+          |> Expect.equal "OperationName = spanLogger.label" spanLogger.label
+
+        spanJ.SpanId
+          |> Expect.notEqual "Non-zero SpanId" 0L
+
+        spanJ.ParentSpanId
+          |> Expect.equal "No parent" 0L
+
+        spanJ.Tags
+          |> hasStringTag "component" "http"
+          |> ignore
+      }
+
       testCaseTarget id "send log to jaeger span format" (fun batches logger flush ri ->
         let connStr = "Host=;Database=;Username=;Password=;"
         let sampleQuery = "select count(*) from orders"
@@ -89,9 +157,12 @@ module Target =
           let child = logger.startSpan("sql.Query", root, tag "pgsql" >> setContext "connStr" connStr)
           do! eventX "query={query}" >> setField "query" sampleQuery |> child.infoWithBP
 
-          child.finish()
-          root.finish() // TODO: finish only does Hopac.queue, so it may not be enough with the flow below
+          let! childRes = child.finishWithAck id
+          let! rootRes = root.finishWithAck id
+
           do! flush
+          do! childRes |> Expect.isOkX "ChildRes has Ok result, and is ACK:ed"
+          do! rootRes |> Expect.isOkX "RootRes has Ok result, and is ACK:ed"
 
           debug "flushed"
 

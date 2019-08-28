@@ -165,6 +165,12 @@ type SpanOps =
   /// Call to stop the timer/Span. This method call is non-blocking.
   abstract finish: unit -> unit
 
+type SpanOpsAdvanced =
+  /// Call to stop the timer/Span. The `transform` callback is not run until the LogResult is selected/awaited/run,
+  /// and unless the `LogResult` is used, the `Message` will not be logged. This function is used internally to allow
+  /// testing and ensuring the logging pipeline, end to end.
+  abstract finishWithAck: transform: (Message -> Message) -> LogResult
+
 type SpanKind =
   | Internal = 0
   | Client = 1
@@ -193,6 +199,8 @@ type SpanData =
   abstract links: IReadOnlyList<SpanLink>
   /// A set of events / Messages this span has seen
   abstract events: IReadOnlyList<Message>
+  /// Gets the attributes of the Span
+  abstract attrs: IReadOnlyDictionary<string, SpanAttrValue>
   /// Returns the Span's status
   abstract status: SpanStatus
 
@@ -201,6 +209,7 @@ type SpanData =
 /// All Span's methods and properties are thread-safe to use/access/read.
 type Span =
   inherit SpanOps
+  inherit SpanOpsAdvanced
   inherit SpanData
   /// The operation name / Span label. After the Span is created, it SHOULD be possible to change the its name [label in this case].
   abstract label: string

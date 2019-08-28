@@ -15,6 +15,7 @@
     <Compile Include="Utils.Expect.fs" />
     <Compile Include="Utils.Samples.fs" />
     <Compile Include="Utils.Arbs.fs" />
+    <Compile Include="Utils.Logger.fs" />
     <Compile Include="Internals.HashMap.fs" />
     <Compile Include="Internals.Global.fs" />
     <Compile Include="Utils.FsCheck.fs" />
