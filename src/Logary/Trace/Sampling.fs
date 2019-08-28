@@ -147,7 +147,7 @@ type RateLimitingSampler(?maxTracesPerSecond: float, ?getTimestamp) =
     sprintf "RateLimitingSampler(maxTracesPerSecond=%f)" _maxRate
   static member Type = "ratelimiting"
   interface Sampler with
-    member x.shouldSample span =
+    member x.shouldSample _ =
       if limiter.checkCredit 1.0 then ok
       else no
   interface IDisposable with
@@ -210,12 +210,15 @@ type PerKeySamplerOptions =
   /// Optionally specify a strategy per key
   | PerKeyStrategy of key: string * strategy: Sampler
 
+/// Computes <see cref="Sample"/> using the name of the operation, and maintains a specific
+/// <see cref="GuaranteedThroughputSampler"/> instance for each operation.
 [<Sealed>]
 type PerKeySampler(opts: PerKeySamplerOptions list) =
-  let logger = Log.create "Logary.Trace.Sampling.PerOperationSampler"
+  let logger = Log.create "Logary.Trace.Sampling.PerKeySampler"
   let sem = obj ()
   let keyToS = new Dictionary<string, Sampler>()
   let fallback = new ProbabilisticSampler() :> Sampler
+  let mutable logged = false
 
   let samplingRate =
     opts
@@ -236,7 +239,11 @@ type PerKeySampler(opts: PerKeySamplerOptions list) =
     lock sem <| fun () ->
     match keyToS.TryGetValue span.label with
     | false, _ when keyToS.Count >= int maxTracked ->
-      logger.info (eventX "Exceeded the maximum number of operations {maxTracked} for PerKeySampler" >> setField "maxTracked" maxTracked)
+      if not logged then
+        logger.info (
+          eventX "Exceeded the maximum number of operations {maxTracked} for PerKeySampler"
+          >> setField "maxTracked" maxTracked)
+        logged <- true
       fallback
 
     | false, _ ->
@@ -251,6 +258,9 @@ type PerKeySampler(opts: PerKeySamplerOptions list) =
     member x.shouldSample span =
       let sampler = findSamplerFor span
       sampler.shouldSample span
-  interface IDisposable with
-    member x.Dispose() = ()
 
+  interface IDisposable with
+    member x.Dispose() =
+      for (KeyValue (_, sampler)) in keyToS do
+        sampler.Dispose()
+      fallback.Dispose()
