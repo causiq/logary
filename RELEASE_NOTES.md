@@ -1,3 +1,10 @@
+#### 5.0.0-rc.11
+* Implement OpenTelemetry specification for Trace (tracing), thanks @haf
+* Implement nice Jaeger samplers, thanks @haf
+* Default AsyncLocal SpanContext storage to being off, thanks @haf
+* Improve Logary.Suave example with Trace support, thanks @haf
+* Clean up unit tests in Logary.Tests, thanks @haf
+
 #### 5.0.0-rc.10
 * Add `Message.{setReceiveTimestamp,setReceiveEpochNano}` for ingestion points to use, thanks @haf
 
