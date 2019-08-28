@@ -10,7 +10,7 @@ open Logary.Metric
 open Logary.Internals
 open Logary.Targets
 open Logary.Configuration
-open Logary.MessageTemplates.Destructure
+open Logary.Formatting.MessageTemplates.Destructure
 open Logary.Formatting
 open NodaTime
 

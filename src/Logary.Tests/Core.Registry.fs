@@ -2,7 +2,6 @@ module Logary.Tests.Registry
 
 open Expecto
 open System
-open System.Threading
 open Hopac
 open Hopac.Infixes
 open NodaTime
@@ -54,7 +53,7 @@ let tests = [
 
   testCaseJob "after shutting down no logging happens" <|
     job {
-      let! (logm, out, error) = Utils.buildLogManager ()
+      let! (logm, out, error) = buildLogManager ()
       let lg = logm.getLogger "logger.test"
 
       do! lg.infoWithAck (eventX "test info msg")
@@ -75,7 +74,7 @@ let tests = [
     }
 
   testCaseJob "getLogger with middleware" <| job {
-    let! logm, out, error  = Utils.buildLogManager ()
+    let! logm, out, error  = buildLogManager ()
     let correlationId = Guid.NewGuid().ToString("N")
     let customMid = Middleware.context "correlationId" correlationId
     let lg = logm.getLoggerWithMiddleware ("logger.test", customMid)
@@ -97,7 +96,7 @@ let tests = [
   Tests.testSequencedGroup "ambient spans (must run on its own)" <|
   testList "ambient spans" [
     let prepare = job {
-      let! manager, out, _  = Utils.buildLogManagerWith (fun conf -> conf |> Config.middleware Middleware.ambientSpanId)
+      let! manager, out, _  = buildLogManagerWith (fun conf -> conf |> Config.middleware Middleware.ambientSpanId)
       let checkSpanId spanId = job {
         do! manager.flushPending ()
         let output = clearStream out
@@ -180,7 +179,7 @@ let tests = [
   ]
 
   testCaseJob "switch logger level" (job {
-    let! logm, out, error = Utils.buildLogManager ()
+    let! logm, out, error = buildLogManager ()
     let lg = logm.getLogger "logger.test"
     do! lg.debugWithAck (eventX "test debug msg")
     do! lg.verboseWithAck (eventX "test verbose msg")

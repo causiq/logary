@@ -1,9 +1,9 @@
-module Logary.Tests.FsMessageTemplates
+module Logary.Tests.Formatting.MessageTemplates
 
 open System
 open System.Globalization
 open Expecto
-open Logary.MessageTemplates
+open Logary.Formatting.MessageTemplates
 
 let invariantProvider =
   CultureInfo.InvariantCulture :> System.IFormatProvider
@@ -73,7 +73,7 @@ let messageTemplates =
       let myDel = MyDelegate (fun (i1,i2) -> i1+i2)
       MtAssert.RenderedAs(
         "What even would a {del} print?", [| myDel |],
-        """What even would a "Logary.Tests.FsMessageTemplates+MyDelegate" print?""")
+        """What even would a "Logary.Tests.Formatting.MessageTemplates+MyDelegate" print?""")
 
     testCase "a class instance is rendered in simple notation" <| fun () ->
       MtAssert.RenderedAs(

@@ -8,7 +8,6 @@ open System.Collections.Generic;
 
 [<AutoOpen>]
 module LoggerAdapter =
-
   type MSLogLevel = Microsoft.Extensions.Logging.LogLevel
 
   type Microsoft.Extensions.Logging.LogLevel with

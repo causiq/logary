@@ -3,14 +3,10 @@
 namespace Logary
 
 open System
-open System.Reflection
-open System.Diagnostics
-open System.Diagnostics.Contracts
-open System.Runtime.CompilerServices
 open Logary
 open Logary.Internals
 
-type Log() =
+type Log =
   /// Creates a logger by a given point name.
   [<CompiledName "Create">]
   static member create name: Logger =
@@ -33,18 +29,3 @@ type Log() =
   [<CompiledName "Create">]
   static member create<'forType> () =
     Log.create typeof<'forType>
-
-[<Obsolete "Use the Log module instead. E.g. `open Logary; Log.create \"MyLogger\"`.">]
-module Logging =
-  [<Obsolete "Use the Log module instead. E.g. `Log.create pn`.">]
-  let getCurrentLoggerName () =
-    failwith "Use `Log.create<YourClass>()` instead."
-  [<Obsolete "Use the Log module instead. E.g. `Log.create pn`.">]
-  let getCurrentLogger () =
-    failwith "Use `Log.create<YourClass>()` instead."
-  [<Obsolete "Use the Log module instead. E.g. `Log.create pn`.">]
-  let getLoggerByPointName (pn: PointName) =
-    Log.create pn
-  [<Obsolete "Use the Log module instead. E.g. `Log.create \"MyLogger\"`.">]
-  let getLoggerByName (name: string) =
-    Log.create name

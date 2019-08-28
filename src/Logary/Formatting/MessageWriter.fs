@@ -24,9 +24,9 @@ module MessageWriterEx =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module MessageWriter =
   open Microsoft.FSharp.Reflection
-  open Logary.MessageTemplates
-  open Logary.MessageTemplates.Formatting
-  open Logary.MessageTemplates.Formatting.Literate
+  open Logary.Formatting.MessageTemplates
+  open Logary.Formatting.MessageTemplates.Formatting
+  open Logary.Formatting.MessageTemplates.Formatting.Literate
   open Logary.Formatting.Literate
   open Logary.Internals
 

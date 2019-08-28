@@ -3,8 +3,6 @@
   <PropertyGroup>
     <AssemblyName>Logary</AssemblyName>
     <Version>5.0.0-rc.8</Version>
-    <Version>5.0.0-rc.7</Version>
-    <Version>5.0.0-rc.3</Version>
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <NoWarn>44;2003</NoWarn>
     <DefineConstants>TYPESHAPE_EXPOSE</DefineConstants>
@@ -42,12 +40,13 @@
       <Link>paket-files/RingBuffer.fs</Link>
     </Compile>
     <!-- Below: values -->
-    <Compile Include="HashMap.fsi" />
-    <Compile Include="HashMap.fs" />
-    <Compile Include="HashMapModule.fs" />
+    <Compile Include="Internals.HashMap.fsi" />
+    <Compile Include="Internals.HashMap.fs" />
+    <Compile Include="Internals.HashMapModule.fs" />
     <Compile Include="LogLevel.fs" />
     <Compile Include="Constants.fs" />
     <Compile Include="DataModel.fs" />
+    <Compile Include="DataModel.Trace.fs" />
     <Compile Include="Internals/Misc.fs" />
     <Compile Include="Internals/Chiron.fs" />
     <Compile Include="Internals/Rnd.fs" />
@@ -68,20 +67,19 @@
     <Compile Include="Metric/Histogram.fs" />
     <Compile Include="Metric/Gauge.fs" />
     <Compile Include="Extensions/System.Stopwatch.fs" />
-    <Compile Include="Extensions/Hopac.Alt.fs" />
     <Compile Include="Extensions/Hopac.Job.fs" />
+    <Compile Include="Extensions\Hopac.Alt.fs" />
     <Compile Include="Extensions/NodaTime.Duration.fs" />
     <Compile Include="Extensions/NodaTime.Instant.fs" />
     <Compile Include="Extensions/System.Dates.fs" />
-    <Compile Include="Global.fs" />
+    <Compile Include="Internals.Global.fs" />
     <Compile Include="MessageModule.fs" />
-    <Compile Include="LogResultModule.fs" />
     <Compile Include="LoggerModule.fs" />
-    <Compile Include="LogManager.fs" />
-    <Compile Include="Extensions/LogManager.fs" />
+    <Compile Include="Internals.LogResultModule.fs" />
     <Compile Include="Trace/SpanModule.fs" />
-    <Compile Include="Trace\Propagation.fs" />
-    <Compile Include="Trace\Sampling.fs" />
+    <Compile Include="Trace/Propagation.fs" />
+    <Compile Include="Trace/Sampling.fs" />
+    <Compile Include="LogManager.fs" />
     <Compile Include="MiddlewareModule.fs" />
     <!-- Below: runtime -->
     <Compile Include="Internals/Supervisor.fs" />
@@ -90,7 +88,7 @@
     <Compile Include="Internals/Targets.fs" />
     <Compile Include="TargetConf.fs" />
     <Compile Include="TargetModule.fs" />
-    <Compile Include="Internals/InternalLogger.fs" />
+    <Compile Include="Internals.InternalLogger.fs" />
     <Compile Include="Log.fs" />
     <!-- Below: events processing -->
     <Compile Include="Configuration/Transformers.fs" />
@@ -103,8 +101,8 @@
     <Compile Include="Formatting/Json.fs" />
     <Compile Include="Formatting/Literate.fs" />
     <Compile Include="Formatting/MessageWriter.fs" />
-    <Compile Include="Ingestion/Ingestion.fs" />
-    <Compile Include="Codecs/Codecs.fs" />
+    <Compile Include="Ingestion.fs" />
+    <Compile Include="Codecs.fs" />
     <!-- Below: implementations, factory api -->
     <Compile Include="CSharp.fs" />
     <Compile Include="Configuration/Factory.Target.fs" />

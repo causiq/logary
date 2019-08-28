@@ -4,7 +4,6 @@ open Logary
 open Logary.Tests.Utils
 
 module Messages =
-  open Logary.Message
 
   type Sweetness =
     | Cake of slices:uint16

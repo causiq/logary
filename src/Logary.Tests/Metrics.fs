@@ -11,7 +11,6 @@ let private gaugeConf = GaugeConf.create basicConf
 #nowarn "25"
 
 let tests = [
-
   testCase "register metric" <| fun () ->
     let registry = new MetricRegistry()
     let gauge = gaugeConf |> registry.registerMetric

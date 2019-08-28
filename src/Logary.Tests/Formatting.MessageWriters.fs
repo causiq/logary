@@ -1,11 +1,12 @@
-module Logary.Tests.Formatting
+module Logary.Tests.Formatting.MessageWriters
 
 open Expecto
 open Expecto.Flip
 open System
 open Logary
+open Logary.Tests
 open Logary.Formatting
-open Logary.MessageTemplates
+open Logary.Formatting.MessageTemplates
 open Logary.MessageWriter
 
 type User =
@@ -81,8 +82,8 @@ let private sampleMessage: Message =
   |> Message.setName (PointName.ofList ["a"; "b"; "c"; "d"])
   |> Message.setNanoEpoch 3123456700L
 
-let textPrinters =
-  testList "text printers" [
+let tests =
+  testList "message writers" [
     testCase "singleLineNoContext with exception" <| fun _ ->
       let ex = withException id
       Message.event Error "Hi"

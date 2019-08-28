@@ -1,9 +1,9 @@
 namespace Logary.Metric
+
 open System
 
 type HistogramConf=
-  {
-    basicInfo: BasicConf
+  { basicInfo: BasicConf
     buckets: float[]
   }
 

@@ -1,4 +1,10 @@
 ﻿namespace Logary.Targets
+open Logary.Formatting
+open Logary.Formatting
+open Logary.Formatting
+open Logary.Formatting
+open Logary.Formatting
+open Logary.Formatting
 
 
 /// A module implementing a text writer target. Useful for writing to the
@@ -139,8 +145,7 @@ module LiterateConsole =
   open Logary
   open Logary.Internals
   open Logary.Configuration.Target
-  open Logary.Formatting.Literate
-  open Logary.MessageTemplates.Formatting.Literate
+  open Logary.Formatting.MessageTemplates.Formatting.Literate
   open Hopac
 
   [<Struct>]
@@ -153,7 +158,7 @@ module LiterateConsole =
     { text: string
       colours: ConsoleColours }
 
-  type Tokens = Logary.MessageTemplates.Formatting.Literate.LiterateToken
+  type Tokens = Logary.Formatting.MessageTemplates.Formatting.Literate.LiterateToken
 
   /// Console configuration structure
   type LiterateConsoleConf =
@@ -173,8 +178,8 @@ module LiterateConsole =
       /// to the console with the appropriate colours.
       colourWriter: obj -> ColouredText seq -> unit }
 
-  open Logary.MessageTemplates
-  open Logary.MessageTemplates.Formatting
+  open Logary.Formatting.MessageTemplates
+  open Logary.Formatting.MessageTemplates.Formatting
 
   module Tokenisers =
     let private getLogLevelToken = function
@@ -196,14 +201,14 @@ module LiterateConsole =
         yield " ", Subtext
         yield options.getLogLevelText message.level, getLogLevelToken message.level
         yield "] ", Punctuation
-        yield! tokeniseTemplateWithGauges options.formatProvider destr message
+        yield! Literate.tokeniseTemplateWithGauges options.formatProvider destr message
 
         yield " ", Subtext
         yield "<", Punctuation
         yield string message.name, Subtext
         yield ">", Punctuation
 
-        yield! tokeniseExceptions options.formatProvider nl message
+        yield! Literate.tokeniseExceptions options.formatProvider nl message
       }
 
     /// The extended tokeniser also prints all fields, context and gauges as separate lines in the output.
@@ -216,7 +221,7 @@ module LiterateConsole =
         yield " ", Subtext
         yield options.getLogLevelText message.level, getLogLevelToken message.level
         yield "] ", Punctuation
-        yield! tokeniseTemplateWithGauges options.formatProvider destr message
+        yield! Literate.tokeniseTemplateWithGauges options.formatProvider destr message
 
         yield " ", Subtext
         yield "<", Punctuation
@@ -224,8 +229,8 @@ module LiterateConsole =
         yield ">", Punctuation
 
         let writeState = { provider = options.formatProvider; idManager = RefIdManager ()}
-        yield! tokeniseContext writeState nl destr message
-        yield! tokeniseExceptions options.formatProvider nl message
+        yield! Literate.tokeniseContext writeState nl destr message
+        yield! Literate.tokeniseExceptions options.formatProvider nl message
       }
 
   module Themes =
@@ -923,8 +928,6 @@ module File =
 
   /// Module for deleting old log files.
   module internal Janitor =
-    open System.IO
-
     let globFiles (ri: RuntimeInfo) (fs: FileSystem) (Naming (spec, ext) as naming) =
       fs.glob (naming.regex ri)
       |> Seq.map (fun fi ->

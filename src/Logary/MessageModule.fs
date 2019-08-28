@@ -8,7 +8,7 @@ open System.Diagnostics
 open Logary.Internals
 open Logary.Internals.Aether
 open Logary.Internals.Aether.Operators
-open Logary.MessageTemplates
+open Logary.Formatting.MessageTemplates
 open Logary
 
 /// Open this module to log in a more succinct way.

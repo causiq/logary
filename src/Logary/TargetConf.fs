@@ -2,12 +2,7 @@
 /// and methods to interact with those targets.
 namespace Logary
 
-open System
 open Hopac
-open Hopac.Extensions
-open Hopac.Infixes
-open Logary
-open Logary.Message
 open Logary.Internals
 
 /// A target configuration is the 'reference' to the to-be-run target while it

@@ -18,9 +18,9 @@
 //  and Phil Bagwell's Ideal Hash Trie (http://lampwww.epfl.ch/papers/idealhashtrees.pdf)
 //  and http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
 
-namespace Logary
+namespace Logary.Internals
 
-module Details =
+module internal HashMapDetails =
   open System
   [<Literal>]
   let TrieShift     = 4
@@ -77,7 +77,7 @@ module Details =
   let inline hashOf<'T when 'T :> IEquatable<'T>> (v: 'T)           = (box v).GetHashCode () |> uint32
   let inline equals<'T when 'T :> IEquatable<'T>> (l: 'T) (r: 'T)  = l.Equals r
 
-open Details
+open HashMapDetails
 
 open System.Collections.Generic
 

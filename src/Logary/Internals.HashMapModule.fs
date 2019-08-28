@@ -17,7 +17,7 @@
 namespace Logary
 
 module HashMap =
-
+  open Logary.Internals
   open System.Collections.Generic
 
   let inline containsKey (key: 'K) (m: HashMap<'K, 'V>): bool =

@@ -6,7 +6,6 @@ open System.Globalization
 open System.IO
 open System.Threading
 open Expecto
-open Expecto
 open Logary
 open Logary.Internals
 open Logary.Targets
@@ -15,8 +14,6 @@ open Hopac.Infixes
 open NodaTime
 
 let logger = Expecto.Logging.Log.create "CoreTargets"
-
-open Logary.Tests.Utils
 
 module Files =
 
@@ -215,7 +212,7 @@ module Files =
             acks.Add ack
           Job.conIgnore acks)
       }
-    
+
     testList "quantities" [
       testCase "1 KiB is 1024 B" <| fun _ ->
         Expect.isTrue (KiB 1L = B 1024L) "1 KiB should be equal 1024 B"
@@ -228,7 +225,7 @@ module Files =
 
 let tests = [
   TargetBaseline.basicTests "text writer" (fun name ->
-    let _, _, twTargetConf = Utils.buildTextWriteTarget name
+    let _, _, twTargetConf = buildTextWriterTarget name
     twTargetConf) false
 
   TargetBaseline.basicTests "System.Diagnostics.Trace" (DiagnosticsTrace.create DiagnosticsTrace.empty) false
@@ -250,7 +247,7 @@ let tests = [
 
   testList "text writer prints" [
     testCaseJob "message" <| (job {
-      let out, error, conf = Utils.buildTextWriteTarget "writing console target"
+      let out, error, conf = buildTextWriterTarget "writing console target"
       let! ri = emptyRuntime
       let! targetApi = Target.create ri conf
 
@@ -260,7 +257,7 @@ let tests = [
     })
 
     testCaseJob "fields" <| (job {
-      let out, error, conf = Utils.buildTextWriteTarget "writing console target"
+      let out, error, conf = buildTextWriterTarget "writing console target"
       let! ri = emptyRuntime
       let! targetApi = Target.create ri conf
 
@@ -277,7 +274,7 @@ let tests = [
     })
 
     testCaseJob "to correct stream" <| (job {
-      let out, error, conf = Utils.buildTextWriteTarget "writing console target"
+      let out, error, conf = buildTextWriterTarget "writing console target"
       let! ri = emptyRuntime
       let! targetApi = Target.create ri conf
 

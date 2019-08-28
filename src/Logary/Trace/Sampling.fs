@@ -15,9 +15,9 @@ type Sampler =
 namespace Logary.Trace.Sampling
 
 open Logary
+open Logary.Internals
 open Logary.Trace
 open Constants
-open Logary.Internals
 open System
 
 /// https://github.com/jaegertracing/jaeger-client-csharp/blob/master/src/Jaeger/Util/RateLimiter.cs
@@ -90,14 +90,14 @@ type ProbabilisticSampler(?samplingRate: float) =
   let ok, no = Result.Ok tags, Result.Error ()
 
   override x.ToString() =
-    sprintf "ProbabilisticSampler(samplingRate=%f, boundary=[%i, %i])" samplingRate negativeBoundary positiveBoundary
+    sprintf "ProbabilisticSampler(samplingRate=%f, boundary=[%i, %i))" samplingRate negativeBoundary positiveBoundary
 
   static member Type = "probabilistic"
   interface Sampler with
     member x.shouldSample span =
       let traceId = span.context.traceId
       if traceId.isZero then no
-      elif traceId.high > 0L && traceId.high <= positiveBoundary then ok
+      elif traceId.high > 0L && traceId.high < positiveBoundary then ok
       elif traceId.high <= 0L && traceId.high >= negativeBoundary then ok
       else no
 

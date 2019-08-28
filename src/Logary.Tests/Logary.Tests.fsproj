@@ -11,19 +11,32 @@
     <ServerGarbageCollection>true</ServerGarbageCollection>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Utils.Target.fs" />
+    <Compile Include="Utils.Expect.fs" />
+    <Compile Include="Utils.Samples.fs" />
+    <Compile Include="Utils.Arbs.fs" />
+    <Compile Include="Internals.HashMap.fs" />
+    <Compile Include="Internals.Global.fs" />
+    <Compile Include="Constants.fs" />
+    <Compile Include="Core.Units.fs" />
+    <Compile Include="Core.Value.fs" />
+    <Compile Include="Core.Engine.fs" />
+    <Compile Include="Core.LogLevel.fs" />
+    <Compile Include="Core.Registry.fs" />
+    <Compile Include="Core.PointName.fs" />
+    <Compile Include="Core.Message.fs" />
+    <Compile Include="Core.Gauge.fs" />
+    <Compile Include="Trace.fs" />
     <Compile Include="Metrics.fs" />
-    <Compile Include="Utils.fs" />
-    <Compile Include="Diff.fs" />
-    <Compile Include="Engine.fs" />
     <Compile Include="Codecs.fs" />
-    <Compile Include="Json.fs" />
-    <Compile Include="Formatting.fs" />
-    <Compile Include="FsMessageTemplates.fs" />
-    <Compile Include="TargetBaseline.fs" />
-    <Compile Include="CoreTarget.fs" />
-    <Compile Include="Literate.fs" />
-    <Compile Include="Registry.fs" />
-    <Compile Include="Transformers.fs" />
+    <Compile Include="Formatting.Json.fs" />
+    <Compile Include="Formatting.MessageWriters.fs" />
+    <Compile Include="Formatting.Literate.fs" />
+    <Compile Include="Formatting.MessageTemplates.fs" />
+    <Compile Include="Targets.Baseline.fs" />
+    <Compile Include="Targets.Core.fs" />
+    <Compile Include="Configuration.Transformers.fs" />
+    <Compile Include="Configuration.Config.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <ProjectReference Include="../Logary/Logary.fsproj" />

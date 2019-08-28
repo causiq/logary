@@ -1,12 +1,11 @@
 ﻿namespace Logary.Formatting
 
 open System
-open System.IO
 open Logary
-open Logary.MessageTemplates
-open Logary.MessageTemplates.Destructure
-open Logary.MessageTemplates.Formatting
-open Logary.MessageTemplates.Formatting.Literate
+open Logary.Formatting.MessageTemplates
+open Logary.Formatting.MessageTemplates.Destructure
+open Logary.Formatting.MessageTemplates.Formatting
+open Logary.Formatting.MessageTemplates.Formatting.Literate
 
 module Literate =
   let rec private printLine = function

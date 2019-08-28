@@ -1,8 +1,8 @@
 module Logary.Tests.Json
 
 open System
-open System.Collections.Generic
 open Logary
+open Logary.Internals
 open Logary.Internals.Chiron
 open Logary.Formatting
 open Logary.Trace
@@ -32,7 +32,7 @@ type Obj() =
     raise (Exception ("Oh noes, no referential transparency here"))
 with
   interface IFormattable with
-    member __.ToString (format, provider) = "PropA is 45 and PropB raise exn"
+    member __.ToString (_, _) = "PropA is 45 and PropB raise exn"
 
 let date20171111 = DateTime.Parse("2017-11-11")
 let foo () = { id = 999; name = "whatever"; created = date20171111}

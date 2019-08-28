@@ -8,7 +8,6 @@ module Target =
   open Hopac.Extensions
   open Logary.Message
   open Logary.Internals
-  open NodaTime
 
   /// A target instance is a target loop job that can be re-executed on failure,
   /// and a normal path of communication; the `requests` `RingBuffer` as well as

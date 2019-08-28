@@ -6,7 +6,6 @@ open Hopac
 open Hopac.Infixes
 open NodaTime
 open System
-open System.Runtime.CompilerServices
 open System.Net.Sockets
 open System.Text.RegularExpressions
 open Logary

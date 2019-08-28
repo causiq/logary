@@ -7,7 +7,6 @@ open Logary
 open Logary.Configuration
 open Logary.Configuration.Transformers
 
-[<Tests>]
 let bufferCounter =
   let take n stream =
     stream |> Stream.take n |> Stream.toSeq
@@ -45,9 +44,7 @@ let bufferCounter =
       Expect.equal expect [[1];[1;1;];] "one and then two after two single counts"
     })
   ]
-  |> testLabel "logary"
 
-[<Tests>]
 let snapshot =
   let sample = Snapshot.create [| 5L; 1L; 2L; 3L; 4L |]
   let empty = Snapshot.create [||]
@@ -118,7 +115,6 @@ let snapshot =
     testCase "empty: std dev" <| fun _ ->
       Expect.floatClose Accuracy.veryHigh (Snapshot.mean empty) 0. "zero"
   ]
-  |> testLabel "logary"
 
 let mockClock () =
   let mutable num = 0.
@@ -130,7 +126,6 @@ let mockClock () =
         res
   }
 
-[<Tests>]
 let reservoirs =
   testList "reservoirs" [
     testCase "uniform: update 1000 times" <| fun _ ->
@@ -245,4 +240,9 @@ let reservoirs =
           0.22072766 ]
       ]
    ]
-   |> testLabel "logary"
+
+let tests = [
+  bufferCounter
+  snapshot
+  reservoirs
+]

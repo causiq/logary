@@ -18,7 +18,7 @@
 //  and Phil Bagwell's Ideal Hash Trie (http://lampwww.epfl.ch/papers/idealhashtrees.pdf)
 //  and http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
 
-namespace Logary
+namespace Logary.Internals
 
 open System.Runtime.InteropServices
 open System.Collections.Generic

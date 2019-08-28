@@ -1,4 +1,4 @@
-﻿namespace Logary
+﻿namespace Logary.Formatting
 
 module MessageTemplates =
 
@@ -40,8 +40,8 @@ module MessageTemplates =
       __.Properties |> Array.forall (fun prop -> prop.IsPositional ())
 
   and TemplateToken =
-  | Text of string
-  | Property of Property
+    | Text of string
+    | Property of Property
 
   /// refId in ref count depend on the order of the obj send to calculate, e.g:
   /// A { userInfo : { some info }, users: [ userInfo] } ,
