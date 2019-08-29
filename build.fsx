@@ -187,6 +187,7 @@ Target.create "Push" <| fun _ ->
         ToolPath = Path.GetFullPath "./.paket/paket"
         WorkingDir = pkgPath
         ApiKey = envRequired "NUGET_TOKEN" }
+  // for f in *; do ../.paket/paket push  --api-key $NUGET_TOKEN $f; done
   Paket.push setParams
 
 Target.create "CheckEnv" <| fun _ ->
