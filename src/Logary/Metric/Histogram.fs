@@ -2,20 +2,18 @@ namespace Logary.Metric
 
 open System
 
-type HistogramConf=
-  { basicInfo: BasicConf
+type HistogramConf =
+  { conf: BasicConf
     buckets: float[]
   }
 
   interface MetricBuilder<IHistogram> with
-    member x.basicConf = x.basicInfo
-    member x.build labels registry = new Histogram(x, labels) :> IHistogram
-
-
+    member x.conf = x.conf
+    member x.build _ labels = new Histogram(x, labels) :> IHistogram
 
 and Histogram(conf, labels) =
   do
-    let containsLe = conf.basicInfo.labelNames |> Array.contains "le"
+    let containsLe = conf.conf.labelNames |> Array.contains "le"
     if containsLe then failwith "Histogram cannot have a label named 'le'"
 
   let sumCounter = new DoubleAdder()
@@ -37,10 +35,10 @@ and Histogram(conf, labels) =
         sumCounter.Add value
 
     member x.explore () =
-      let confInfo = conf.basicInfo
+      let confInfo = conf.conf
       let basicInfo = { name= confInfo.name; description = confInfo.description }
       let sumInfo =  sumCounter.Sum()
-      let bucketsInfo = sortedBucketCounters |> Map.map (fun upperBound counter -> counter.Sum())
+      let bucketsInfo = sortedBucketCounters |> Map.map (fun _ counter -> counter.Sum())
       let metricInfo = { labels = labels; sumInfo = sumInfo; bucketsInfo = bucketsInfo }
       (basicInfo, MetricInfo.Histogram metricInfo)
 
@@ -56,7 +54,7 @@ module HistogramConf =
     { conf with buckets = buckets }
 
   let linearBuckets start width count conf =
-    if count < 1 then invalidArg "count" "count needs positive"
+    if count < 1 then invalidArg "count" "count must be positive"
     let buckets = seq {
       for i in 0 .. count-1 do
         yield start + float i * width
@@ -65,19 +63,22 @@ module HistogramConf =
 
 
   let exponentialBuckets start factor count conf =
-    if count < 1 then invalidArg "count" "count needs positive"
-    if start <= 0. then invalidArg "start" "start needs positive"
-    if factor <= 1. then invalidArg "factor" "factor needs > 1"
+    if count < 1 then invalidArg "count" "count must be positive"
+    if start <= 0. then invalidArg "start" "start must be positive"
+    if factor <= 1. then invalidArg "factor" "factor must be > 1"
 
     let buckets = seq {
       for i in 0 .. count-1 do
-        yield start * Math.Pow(factor,float i)
+        yield start * Math.Pow(factor, float i)
       }
     { conf with buckets = buckets |> Array.ofSeq }
 
 open HistogramConf
+
 type HistogramConf with
   static member create(name, description) =
-    let basic = BasicConf.create name description
-    { basicInfo = basic; buckets = defaultBuckets }
-  static member create basic  = { basicInfo = basic; buckets = defaultBuckets }
+    let basic = BasicConf.create(name, description)
+    { conf = basic; buckets = defaultBuckets }
+
+  static member create basic =
+    { conf = basic; buckets = defaultBuckets }

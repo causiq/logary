@@ -38,11 +38,11 @@ module Exporter =
           |> Exporter.run
 
         let gauge =
-          BasicConf.create "time_latency" "test time latency"
+          BasicConf.create("time_latency", "test time latency")
           |> BasicConf.labelNames [| "endpoint" |]
           |> GaugeConf.create
           |> GaugeConf.withHistogram [|50.; 100.; 500.;|]
-          |> metricRegistry.registerMetric
+          |> metricRegistry.getOrCreate
 
         (gauge.labels [| "/users" |]).inc 100.
         (gauge.labels [| "/users" |]).inc 200.

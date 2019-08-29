@@ -4,6 +4,7 @@
 * Default AsyncLocal SpanContext storage to being off, thanks @haf
 * Improve Logary.Suave example with Trace support, thanks @haf
 * Clean up unit tests in Logary.Tests, thanks @haf
+* Made Prometheus exporter export convention-based Spans, thanks @haf
 
 #### 5.0.0-rc.10
 * Add `Message.{setReceiveTimestamp,setReceiveEpochNano}` for ingestion points to use, thanks @haf

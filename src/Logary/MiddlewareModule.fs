@@ -75,57 +75,102 @@ module Middleware =
     | middlewares ->
       List.foldBack (fun f composed -> f composed) middlewares id
 
-  /// Sending logary's gauges/span or log message with metric counter to the (Prometheus) Metric registry
-  let internal enableHookMetric (metricRegistry: MetricRegistry): Middleware =
-    fun next message ->
-      // process log message as counter
-      let counterMetricConf = message |> Message.tryGetCounterMetricConf
-      match counterMetricConf with
-      | None -> do ()
-      | Some counterMetricConf ->
-        let counterMetric = GaugeConf.create counterMetricConf |> metricRegistry.registerMetric
-        let counter =
-          match counterMetricConf.labelNames with
-          | [||] -> counterMetric.noLabels
-          | labelNames ->
-            // find label name's value from message's context, fields goes first
-            let labelValues =
-              labelNames |> Array.map (fun labelName ->
-                match message |> Message.tryGetField labelName with
-                | Some labelValue -> string labelValue
-                | None ->
-                  match message |> Message.tryGetContext labelName with
-                  | Some labelValue -> string labelValue
-                  | None -> sprintf "label name (%s) not found in message, but specified when metric" labelName
-              )
-            counterMetric.labels labelValues
+  /// You can enable this middleware if you want Gauges and other Metrics coming as messages in Logary (e.g. via
+  /// the Trace functionality), to be emitted into the `MetricRegistry`.
+  ///
+  /// Will send Logary's Gauges/SpanData or a plain log message with a metric counter to the (Prometheus) Metric
+  /// registry.
+  ///
+  /// Will try to match Spans with conventions and map those to the Prometheus conventions:
+  /// https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/data-semantic-conventions.md
+  /// to:
+  /// https://github.com/prometheus/client_ruby#histogram
+  let internal metricsToRegistry (registry: MetricRegistry): Middleware =
+    /// Find label name's value from Message's context, fields goes first
+    let getLabelValues message labelName =
+      message
+        |> Message.tryGetField labelName
+        |> Option.orElseWith (fun () -> message |> Message.tryGetContext labelName)
+        |> Option.map string
+        |> Option.defaultWith (fun () -> sprintf "The label \"%s\" was not found in the Message, but was specified in the BasicConf given to Message.enableCounterMetric." labelName)
 
-        counter.inc 1.
+    let processMessageAsCounter message conf =
+      let counterMetric = GaugeConf.create conf |> registry.getOrCreate
+      let counter =
+        match conf.labelNames with
+        | [||] ->
+          counterMetric.noLabels
+        | labelNames ->
+          labelNames
+            |> Array.map (getLabelValues message)
+            |> counterMetric.labels
+      counter.inc 1.
 
-
-      // process logary's gauge
-      let sensorName = message.name |> PointName.format
-      let gauges = message |> Message.getAllGauges
-      gauges |> Seq.iter (fun (gaugeName, gauge) ->
-        // TO CONSIDER: maybe make senor + gauge as one metric name, not as one metric with gauge name as label
-        let gaugeMetric =
-          BasicConf.create sensorName sensorName
-          |> BasicConf.labelNames [| "gauge_name" |]
-          |> GaugeConf.create
-          |> metricRegistry.registerMetric
-          |> Metric.labels [| gaugeName |]
-
-        let gaugeValue = gauge.value.toFloat ()
-        gaugeMetric.set gaugeValue
-      )
-
-      // process Logary's Span as gauge
-      Message.tryGetSpanData message |> Option.iter (fun spanData ->
+    let processLogaryGauge sensorName (gaugeName, gauge: Logary.Gauge) =
+      // TO CONSIDER: maybe make sensor + gauge as one metric name, not as one metric with gauge name as label
       let gaugeMetric =
-        let metricName = message.name |> PointName.format
-        GaugeConf.create(metricName, metricName)
-        |> metricRegistry.registerMetric
-        |> Metric.noLabels
-      gaugeMetric.set spanData.elapsed.TotalSeconds)
+        GaugeConf.create(sensorName, "Gauge via " + sensorName, [| "gauge_name" |])
+        |> registry.getOrCreate
+        |> Metric.labels [| gaugeName |]
+
+      let gaugeValue = gauge.value.toFloat ()
+      gaugeMetric.set gaugeValue
+
+    let processSpanAsGauge (span: SpanData) =
+      let via = span.resource |> Option.map (fun name -> " via " + name.ToString()) |> Option.defaultValue ""
+      let gauge = GaugeConf.create(span.label, "Span" + via) |> registry.getOrCreate
+      gauge.noLabels.set span.elapsed.TotalSeconds
+
+    /// https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/data-semantic-conventions.md
+    let processSpanAsConvention (span: SpanData) =
+      let httpLabels () =
+         List.concat [
+           span.tryGetInt "http.status_code" |> Option.map (fun code -> ("code", string code) :: []) |> Option.defaultValue []
+           span.tryGetString "http.method" |> Option.map (fun m -> ("method", m) :: []) |> Option.defaultValue []
+           span.tryGetString "http.route" |> Option.map (fun r -> ("route", r) :: []) |> Option.defaultValue []
+           span.tryGetBool "error" |> Option.map (fun error -> ("error", string error) :: []) |> Option.defaultValue []
+         ]
+         |> Map
+
+      let histO, labels =
+        match span.kind, span.``component`` with
+        | SpanKind.Server, Some "http" ->
+          registry.getOrCreate Conventions.http_server_request_duration_seconds |> Some,
+          httpLabels ()
+
+        | SpanKind.Client, Some "http" ->
+          registry.getOrCreate Conventions.http_client_request_duration_seconds |> Some,
+          httpLabels ()
+
+        | _ ->
+          None,
+          Map.empty
+
+      histO |> Option.iter (fun histogram ->
+      histogram.labels(labels).observe span.elapsed.TotalSeconds)
+
+    /// https://prometheus.io/docs/practices/naming/
+    /// ...should have a (single-word) application prefix relevant to the domain the metric belongs to. The prefix is
+    /// sometimes referred to as namespace by client libraries. For metrics specific to an application, the prefix is
+    /// usually the application name itself. Sometimes, however, metrics are more generic, like standardized metrics
+    /// exported by client libraries.
+    ///
+    /// Examples:
+    /// - `prometheus_notifications_total` (specific to the Prometheus server)
+    /// - `process_cpu_seconds_total` (exported by many client libraries)
+    /// - `http_server_request_duration_seconds` (for all HTTP requests)
+    ///
+    /// Also tries to extract convention-based global gauges, see
+    /// https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/data-semantic-conventions.md
+    let processLogarySpan (span: SpanData) =
+      processSpanAsGauge span
+      processSpanAsConvention span
+
+    fun next message ->
+      Message.tryGetCounterMetricConf message |> Option.iter (processMessageAsCounter message)
+
+      let sensorName = message.name.ToString()
+      Message.getAllGauges message |> Seq.iter (processLogaryGauge sensorName)
+      Message.tryGetSpanData message |> Option.iter processLogarySpan
 
       next message

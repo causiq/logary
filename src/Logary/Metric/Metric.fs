@@ -37,32 +37,38 @@ type IHistogram =
   abstract observe: value:float * count:float -> unit
 
 
+[<RequireQualifiedAccess>]
 type FailStrategy =
-  /// default means: throw if behavior not changed, metric registry from logary's registry will change throw to warn by internal logger
+  /// The default FailStrategy is to call `MetricRegistry.defaultFailBehavior`
   | Default
+  /// The Throw FailStrategy is to raise an unhandled uncatchable exception.
   | Throw
 
 type BasicConf =
   { name: string
     description: string
-    labelNames: string []
-    avoidHighCardinality: option<int>
+    labelNames: string[]
+    avoidHighCardinality: int option
     failStrategy: FailStrategy
   }
 
 module BasicConf =
-
   /// https://prometheus.io/docs/practices/instrumentation/#do-not-overuse-labels
   let defaultHighCardinalityLimit = 150
-
-  let create name description =
-    { name =  name; description = description; labelNames = [||]; avoidHighCardinality = Some defaultHighCardinalityLimit; failStrategy = Default }
 
   let labelNames labelNames conf =
     { conf with labelNames = labelNames }
 
   let throwWhenFail conf =
-    { conf with failStrategy = Throw }
+    { conf with failStrategy = FailStrategy.Throw }
+
+type BasicConf with
+  static member create (name, description, ?labelNames) =
+    { name = name
+      description = description
+      labelNames = defaultArg labelNames [||]
+      avoidHighCardinality = Some BasicConf.defaultHighCardinalityLimit
+      failStrategy = FailStrategy.Default }
 
 /// used for exporting data
 type MetricExporter =

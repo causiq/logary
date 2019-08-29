@@ -13,6 +13,7 @@ open Logary.Trace
 open Logary.Trace.Propagation
 open Logary.Adapters.Facade
 open Logary.Configuration
+open Logary.Metric
 open Logary.Targets
 
 [<AutoOpen>]
@@ -26,6 +27,7 @@ module MoveMe =
       Unchecked.defaultof<_>
 
 module SuaveAdapter =
+
   let getter: Getter<HttpContext> =
     fun ctx nameOrPrefix ->
       ctx.request.headers
@@ -62,7 +64,8 @@ module SuaveAdapter =
          .setKind(SpanKind.Server)
          .setAttribute("component", "http")
          .setAttribute("http.method", ctx.request.method.ToString())
-         .setAttribute("http.route", ctx.request.url.PathAndQuery)
+         .setAttribute("http.route", ctx.request.url.AbsolutePath)
+         .setAttribute("http.query", ctx.request.url.Query)
          .setAttributes(attrs)
          .start()
 
@@ -82,7 +85,7 @@ module SuaveAdapter =
         x.setAttribute("http.status_code", ctx.response.status.code)
         x.setAttribute("http.status_text", ctx.response.status.reason)
       )
-      x.finish()
+      x.finish ()
 
     member x.finishWithExn (_: HttpContext, e: exn) =
       x.setAttribute("http.status_code", 500)
@@ -141,9 +144,9 @@ let main _ =
 
   let app: WebPart =
     choose [
-      GET >=> path "/" >=> spanLogger (fun logger ->
+      GET >=> path "/hello" >=> spanLogger (fun logger ->
         logger.info (eventX "Returning from the first route: 'GET /'")
-        OK (sprintf "Hello World! My route has been going for %O" logger.elapsed))
+        OK (sprintf "Hello World! My route has been going for %O so far..." logger.elapsed))
 
       POST >=> path "/" >=> OK "{\"hello\": \"world\"}"
 

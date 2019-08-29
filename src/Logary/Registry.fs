@@ -203,7 +203,7 @@ module Registry =
       >>- (partitionResults >> FlushInfo)
 
     let changeMetricDefaultFailBehavior (logger: Logger) (metricRegistry: MetricRegistry) =
-      metricRegistry.changeDefaultFailBehavior (eventX >> logger.warn)
+      metricRegistry.setFailBehaviour (eventX >> logger.warn)
 
     let internal onKestrel =
       lazy (null <> System.Type.GetType "Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServer, Microsoft.AspNetCore.Server.Kestrel.Core")

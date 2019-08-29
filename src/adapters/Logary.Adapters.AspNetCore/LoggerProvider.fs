@@ -5,14 +5,14 @@ open Microsoft.Extensions.Logging
 open Hopac
 
 [<ProviderAlias("Logary")>]
-type LogaryLoggerProvider(logary: LogManager, needDispose: bool) =
+type LogaryLoggerProvider(logary: LogManager, shutdownOnDispose: bool) =
   interface ILoggerProvider with
     member x.CreateLogger (name: string): ILogger =
       let logger = logary.getLogger name
-      new LoggerAdaption(name, logger) :> ILogger
+      new LoggerAdapter(logger) :> ILogger
 
     member x.Dispose () =
-      if needDispose then
+      if shutdownOnDispose then
         let task = logary.shutdown () |> Hopac.startAsTask
         task.ConfigureAwait(false).GetAwaiter().GetResult()
       else

@@ -61,6 +61,35 @@ module Extensions =
       match box x with
       | :? Logger as logger -> Some logger.name
       | _ -> None
+    member x.tryGet key =
+      match x.attrs.TryGetValue key with
+      | false, _ -> None
+      | true, value -> Some value
+    member x.tryGetString key =
+      match x.tryGet key with
+      | Some (SpanAttrValue.S value) -> Some value
+      | _ -> None
+    member x.tryGetBool key =
+      match x.tryGet key with
+      | Some (SpanAttrValue.B value) -> Some value
+      | _ -> None
+    member x.tryGetValue key =
+      match x.tryGet key with
+      | Some (SpanAttrValue.V v) -> Some v
+      | _ -> None
+    member x.tryGetFloat key =
+      match x.tryGetValue key with
+      | Some v -> Some (v.toFloat())
+      | _ -> None
+    member x.tryGetInt key =
+      match x.tryGetValue key with
+      | Some (Int64 i) -> Some i
+      | Some v -> Some (int64 (v.toFloat()))
+      | _ -> None
+    /// Returns the `component` attribute value associated with the `SpanData`; useful to use in conjunction with
+    /// https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/data-semantic-conventions.md
+    member x.``component`` =
+      x.tryGetString "component"
 
   type SpanOps with
     member x.sample () =
@@ -84,137 +113,144 @@ module Extensions =
     member x.setAttribute (key: string, value: bigint) =
       x.setAttribute(key, Value.BigInt value)
 
-  /// https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/api-tracing.md#span
-  type internal T(inner: Logger,
-                  label: string,
-                  transform: Message -> Message,
-                  started: EpochNanoSeconds,
-                  context: SpanContext,
-                  kind: SpanKind,
-                  // once passed, is owned by T
-                  links: ResizeArray<_>,
-                  // once passed, is owned by T
-                  attrs: ResizeArray<_>,
-                  status: SpanCanonicalCode * string option,
-                  onFinish: unit -> unit,
-                  logThrough: bool) =
-    inherit LoggerWrapper(inner)
+/// https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/api-tracing.md#span
+type internal T(inner: Logger,
+                label: string,
+                transform: Message -> Message,
+                started: EpochNanoSeconds,
+                context: SpanContext,
+                kind: SpanKind,
+                // once passed, is owned by T
+                links: ResizeArray<_>,
+                // once passed, is owned by T
+                attrs: ResizeArray<_>,
+                status: SpanCanonicalCode * string option,
+                onFinish: unit -> unit,
+                logThrough: bool) =
+  inherit LoggerWrapper(inner)
 
-    let mutable kind = kind
-    let mutable logThrough = logThrough
-    let mutable _label = label
-    let mutable _finished = None
-    let mutable _flags = context.flags
-    let mutable _status = status
-    let _semaphore = obj ()
-    let _events = ResizeArray<_>(50)
-    let alreadyFinished =
-      let m = Message.eventFormat("Span={label} already finished", label)
-      LogResult.error m
+  let mutable kind = kind
+  let mutable logThrough = logThrough
+  let mutable _label = label
+  let mutable _finished = None
+  let mutable _flags = context.flags
+  let mutable _status = status
+  let _semaphore = obj ()
+  let _events = ResizeArray<_>(50)
+  let alreadyFinished =
+    let m = Message.eventFormat("Span={label} already finished", label)
+    LogResult.error m
 
-    let _finish x transformMessage =
-      lock _semaphore <| fun () ->
-      if Option.isSome _finished then alreadyFinished else
-      let ts = Global.getTimestamp()
+  let _finish x transformMessage =
+    lock _semaphore <| fun () ->
+    if Option.isSome _finished then alreadyFinished else
+    let ts = Global.getTimestamp()
 
-      do _finished <- Some ts
-      do onFinish()
+    do _finished <- Some ts
+    do onFinish()
 
-      let spanData = x :> SpanData
+    let spanData = x :> SpanData
 
-      let message =
-        event Info _label
-        |> transform
-        |> transformMessage
-        |> setContext KnownLiterals.SpanDataContextName spanData
+    let message =
+      event Info _label
+      |> transform
+      |> transformMessage
+      |> setContext KnownLiterals.SpanDataContextName spanData
 
-      inner.logWithAck (false, Info) (fun _ -> message)
+    inner.logWithAck (false, Info) (fun _ -> message)
 
-    let _setStatus (code, desc) =
-      lock _semaphore <| fun () ->
-      _status <- code, desc
+  let _setStatus (code, desc) =
+    lock _semaphore <| fun () ->
+    _status <- code, desc
 
-    let _setLabel labelFactory =
-      lock _semaphore <| fun () ->
-      _label <- labelFactory _label
+  let _setLabel labelFactory =
+    lock _semaphore <| fun () ->
+    _label <- labelFactory _label
 
-    let _addAttr (k: string, a: SpanAttrValue) =
-      lock _semaphore <| fun () ->
-      attrs.Add (k, a)
+  let _addAttr (k: string, a: SpanAttrValue) =
+    lock _semaphore <| fun () ->
+    attrs.Add (k, a)
 
-    let _addLink (link: SpanLink) =
-      lock _semaphore <| fun () ->
-      links.Add link
+  let _addLink (link: SpanLink) =
+    lock _semaphore <| fun () ->
+    links.Add link
 
-    let _setFlags (setFlags: SpanFlags -> SpanFlags) =
-      lock _semaphore <| fun () ->
-      _flags <- setFlags _flags
+  let _setFlags (setFlags: SpanFlags -> SpanFlags) =
+    lock _semaphore <| fun () ->
+    _flags <- setFlags _flags
 
-    let _elapsed () =
-      Duration.FromNanoseconds(
-        match _finished with
-        | None -> Global.getTimestamp() - started
-        | Some finished -> finished - started)
+  let _elapsed () =
+    Duration.FromNanoseconds(
+      match _finished with
+      | None -> Global.getTimestamp() - started
+      | Some finished -> finished - started)
 
-    override x.logWithAck (waitForBuffers, logLevel) messageFactory =
-      let message = messageFactory logLevel
+  let _attrsAsDic = lazy (attrs |> Map.ofSeq :> IReadOnlyDictionary<_, _>)
+  let _calcAttrs () =
+    if Option.isNone _finished then
+      attrs |> Map.ofSeq :> IReadOnlyDictionary<_, _>
+    else
+      _attrsAsDic.Value
 
-      let res =
-        // log through to the other targets if needed
-        if logThrough then
-          inner.logWithAck (waitForBuffers, logLevel) (fun _ -> message)
-        else
-          LogResult.success
+  override x.logWithAck (waitForBuffers, logLevel) messageFactory =
+    let message = messageFactory logLevel
 
-      lock _semaphore <| fun () ->
-      // add to _events
-      _events.Add message
+    let res =
+      // log through to the other targets if needed
+      if logThrough then
+        inner.logWithAck (waitForBuffers, logLevel) (fun _ -> message)
+      else
+        LogResult.success
 
-      // ensure we set the sampled flag if level >= Warn
-      if logLevel >= Warn then
-        _flags <- _flags ||| SpanFlags.Sampled
+    lock _semaphore <| fun () ->
+    // add to _events
+    _events.Add message
 
-      // set the error flag when errors are logged
-      if logLevel >= Error then
-        attrs.Add ("error", SpanAttrValue.B true)
+    // ensure we set the sampled flag if level >= Warn
+    if logLevel >= Warn then
+      _flags <- _flags ||| SpanFlags.Sampled
 
-      res
+    // set the error flag when errors are logged
+    if logLevel >= Error then
+      attrs.Add ("error", SpanAttrValue.B true)
 
-    interface SpanData with
-      member __.context = context
-      member __.kind = kind
-      member __.label = _label
-      member __.started = started
-      member __.finished = _finished |> Option.defaultValue 0L
-      member __.elapsed = _elapsed ()
-      member __.flags = _flags
-      member __.links = links :> IReadOnlyList<_>
-      member __.events = _events :> IReadOnlyList<_>
-      member __.attrs = attrs |> Map.ofSeq :> IReadOnlyDictionary<_, _>
-      member __.status = _status
+    res
 
-    interface SpanOps with
-      member x.addLink link = _addLink link
-      member x.setAttribute (key: string, value: Value) = _addAttr (key, SpanAttrValue.V value)
-      member x.setAttribute (key: string, boolean: bool) = _addAttr (key, SpanAttrValue.B boolean)
-      member x.setAttribute (key: string, string: string) = _addAttr (key, SpanAttrValue.S string)
-      member x.setStatus (code: SpanCanonicalCode) = _setStatus (code, None)
-      member x.setStatus (code: SpanCanonicalCode, description: string) = _setStatus (code, Some description)
-      member x.setFlags flags = _setFlags flags
-      member x.finish transform = queueIgnore (_finish x transform)
-      member x.finish () = queueIgnore (_finish x id)
+  interface SpanData with
+    member __.context = context
+    member __.kind = kind
+    member __.label = _label
+    member __.started = started
+    member __.finished = _finished |> Option.defaultValue 0L
+    member __.elapsed = _elapsed ()
+    member __.flags = _flags
+    member __.links = links :> IReadOnlyList<_>
+    member __.events = _events :> IReadOnlyList<_>
+    member __.attrs = _calcAttrs ()
+    member __.status = _status
 
-    interface SpanOpsAdvanced with
-      member x.finishWithAck transform = _finish x transform
+  interface SpanOps with
+    member x.addLink link = _addLink link
+    member x.setAttribute (key: string, value: Value) = _addAttr (key, SpanAttrValue.V value)
+    member x.setAttribute (key: string, boolean: bool) = _addAttr (key, SpanAttrValue.B boolean)
+    member x.setAttribute (key: string, string: string) = _addAttr (key, SpanAttrValue.S string)
+    member x.setStatus (code: SpanCanonicalCode) = _setStatus (code, None)
+    member x.setStatus (code: SpanCanonicalCode, description: string) = _setStatus (code, Some description)
+    member x.setFlags flags = _setFlags flags
+    member x.finish transform = queueIgnore (_finish x transform)
+    member x.finish () = queueIgnore (_finish x id)
 
-    interface Span with
-      member __.label = _label
-      member __.setLabel labelFactory = _setLabel labelFactory
-      member __.finished = _finished
+  interface SpanOpsAdvanced with
+    member x.finishWithAck transform = _finish x transform
 
-    interface SpanLogger with
-      member x.logThrough () = logThrough <- true
-      member x.Dispose() = queueIgnore (_finish x id)
+  interface Span with
+    member __.label = _label
+    member __.setLabel labelFactory = _setLabel labelFactory
+    member __.finished = _finished
+
+  interface SpanLogger with
+    member x.logThrough () = logThrough <- true
+    member x.Dispose() = queueIgnore (_finish x id)
 
 module ActiveSpan =
   let private asyncLocal: AsyncLocal<SpanContext> = new AsyncLocal<SpanContext>()

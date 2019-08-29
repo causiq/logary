@@ -142,7 +142,7 @@ module Config =
     let mids =
       [ Middleware.host lconf.host
         Middleware.service lconf.service
-        Middleware.enableHookMetric lconf.metricRegistry
+        Middleware.metricsToRegistry lconf.metricRegistry
       ]
     let middleware = Array.ofList (lconf.middleware @ mids)
 

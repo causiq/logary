@@ -182,8 +182,8 @@ type SpanData =
   abstract context: SpanContext
   // parentSpanId is in x.context.parentSpanId
   // resource = logger.name
+  /// Is this Span a Client, Server or Internal Span value?
   abstract kind: SpanKind
-
   /// The name of the Span
   abstract label: string
   /// When this Span was started. The Span's start and end timestamps reflect the elapsed real time of the operation. A Span's start time SHOULD be set to the current time on span creation.
