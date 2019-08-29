@@ -9,19 +9,19 @@
     }
   },
   "profiles": {
-    "IIS Express": {
-      "commandName": "IISExpress",
-      "launchBrowser": true,
-      "launchUrl": "api/values",
+    "Logary.AspNetCore.API": {
+      "commandName": "Project",
+      "launchBrowser": false,
+      "launchUrl": "api/todo",
+      "applicationUrl": "https://localhost:5001;http://localhost:5000",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
-    "Logary.AspNetCore.API": {
-      "commandName": "Project",
-      "launchBrowser": true,
+    "IIS Express": {
+      "commandName": "IISExpress",
+      "launchBrowser": false,
       "launchUrl": "api/todo",
-      "applicationUrl": "https://localhost:5001;http://localhost:5000",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }

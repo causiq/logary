@@ -87,8 +87,12 @@ group MSFT
   framework auto-detect
   redirects on
   nuget FSharp.Core ~> 4.7
-  nuget Microsoft.AspNetCore
-  nuget Microsoft.Extensions.Logging
+  nuget Microsoft.Extensions.DependencyInjection.Abstractions ~> 2.0
+  nuget Microsoft.Extensions.Hosting.Abstractions ~> 2.0
+  nuget Microsoft.Extensions.Logging ~> 2.0
+  nuget Microsoft.Extensions.Options ~> 2.0
+  nuget Microsoft.AspNetCore.Hosting.Abstractions ~> 2.0
+  nuget Microsoft.AspNetCore.Mvc.Core ~> 2.0
 
 group Examples
   source https://api.nuget.org/v3/index.json
@@ -123,5 +127,5 @@ group AspNetCoreExample
   storage none
   framework auto-detect
   redirects on
-  nuget Microsoft.AspNetCore.App
-  nuget Microsoft.AspNetCore
+  nuget Microsoft.AspNetCore.App 2.2.5
+  nuget Microsoft.AspNetCore 2.2.0

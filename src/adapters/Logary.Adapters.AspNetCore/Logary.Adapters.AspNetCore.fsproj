@@ -1,14 +1,14 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <Description>Logary support for ASP.NET Core logging</Description>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
+    <Description>Logary support for ASP.NET Core (MS MVC) logging for the `Microsoft.Extensions.*` packages.</Description>
     <Authors>Logary Contributors</Authors>
-    <PackageTags>logary;aspnet;aspnetcore</PackageTags>
+    <PackageTags>logary;opentelemetry;tracing;jaeger;aspnet</PackageTags>
     <PackageIconUrl>https://raw.githubusercontent.com/logary/logary-assets/master/graphics/LogaryLogoSquare.png</PackageIconUrl>
-    <PackageProjectUrl>https://github.com/logary/AspNetCore</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/logary/logary</PackageProjectUrl>
     <PackageLicenseUrl>https://raw.githubusercontent.com/logary/logary/master/LICENSE.md</PackageLicenseUrl>
-    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Logger.fs" />

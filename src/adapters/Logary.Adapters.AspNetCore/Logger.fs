@@ -7,7 +7,7 @@ open Logary.Trace
 open System.Collections.Generic;
 
 [<AutoOpen>]
-module LoggerAdapter =
+module internal TypeExtensions =
   type MSLogLevel = Microsoft.Extensions.Logging.LogLevel
 
   type Microsoft.Extensions.Logging.LogLevel with
@@ -26,7 +26,7 @@ type LoggerAdapter(logger: Logger) =
   let processEvent (eventId: EventId) m =
     let eventIdInfo = string eventId
     if eventIdInfo <> "0" then
-      m |> Message.setContext "event-id" eventIdInfo
+      m |> Message.setField "event-id" eventIdInfo
     else m
 
   let processState (state: 't) (ex: exn) (formatter: Func<'t, exn, string>) m =
@@ -43,18 +43,18 @@ type LoggerAdapter(logger: Logger) =
           m |> Message.setField "state" kvList
         else
           let customFormatted = formatter.Invoke(state, ex)
-          m |> Message.setEvent customFormatted |> Message.setContext "state" kvList
+          m |> Message.setEvent customFormatted |> Message.setField "state" kvList
     | _ ->
       if isNull formatter then
         m |> Message.setField "state" state
       else
         let customFormatted = formatter.Invoke(state, ex)
-        m |> Message.setEvent customFormatted |> Message.setContext "state" state
+        m |> Message.setEvent customFormatted |> Message.setField "state" state
 
 
   interface ILogger with
     member x.BeginScope<'t> (state: 't): IDisposable =
-      logger.startSpan("Scope with {state}", transform=processState state null null)
+      logger.timeScopeT("Scope") (processState state null null)
       :> IDisposable
 
     member x.IsEnabled (level: MSLogLevel) =

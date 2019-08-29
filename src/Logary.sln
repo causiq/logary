@@ -165,6 +165,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.GooglePubSub
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logary.AspNetCore.API", "..\examples\Logary.AspNetCore.API\Logary.AspNetCore.API.csproj", "{C855A0B3-C794-49B7-B064-44DBB1BCC094}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Suave", "adapters\Logary.Adapters.Suave\Logary.Adapters.Suave.fsproj", "{C43F6DF2-F112-4ABF-AD5F-17C3C38F4392}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -377,6 +379,10 @@ Global
 		{C855A0B3-C794-49B7-B064-44DBB1BCC094}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C855A0B3-C794-49B7-B064-44DBB1BCC094}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C855A0B3-C794-49B7-B064-44DBB1BCC094}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C43F6DF2-F112-4ABF-AD5F-17C3C38F4392}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C43F6DF2-F112-4ABF-AD5F-17C3C38F4392}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C43F6DF2-F112-4ABF-AD5F-17C3C38F4392}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C43F6DF2-F112-4ABF-AD5F-17C3C38F4392}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -436,5 +442,6 @@ Global
 		{04E63B68-4FD0-495F-9A67-7AB08DD005BA} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{FD69D037-8928-42DC-9791-407AAA9F7E0A} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{C855A0B3-C794-49B7-B064-44DBB1BCC094} = {60FC06B0-58BB-4D96-96FE-FD92EA4BAA5E}
+		{C43F6DF2-F112-4ABF-AD5F-17C3C38F4392} = {56BB77A4-DF59-49EC-92E6-C9CA2C2E9FDE}
 	EndGlobalSection
 EndGlobal

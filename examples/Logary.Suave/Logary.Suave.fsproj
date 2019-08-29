@@ -14,6 +14,7 @@
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
+    <ProjectReference Include="..\..\src\adapters\Logary.Adapters.Suave\Logary.Adapters.Suave.fsproj" />
     <ProjectReference Include="..\..\src\Logary.Prometheus\Logary.Prometheus.fsproj" />
     <ProjectReference Include="..\..\src\Logary\Logary.fsproj" />
     <ProjectReference Include="..\..\src\adapters\Logary.Adapters.Facade\Logary.Adapters.Facade.fsproj" />

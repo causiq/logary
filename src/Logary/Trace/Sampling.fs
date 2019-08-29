@@ -254,6 +254,9 @@ type PerKeySampler(opts: PerKeySamplerOptions list) =
     | true, s ->
       s
 
+  new(samplingRate, tracesPerSecond) =
+    new PerKeySampler([ SamplingRate samplingRate; TracesPerSecond tracesPerSecond ])
+
   interface Sampler with
     member x.shouldSample span =
       let sampler = findSamplerFor span

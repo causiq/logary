@@ -205,23 +205,11 @@ module Registry =
     let changeMetricDefaultFailBehavior (logger: Logger) (metricRegistry: MetricRegistry) =
       metricRegistry.setFailBehaviour (eventX >> logger.warn)
 
-    let internal onKestrel =
-      lazy (null <> System.Type.GetType "Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServer, Microsoft.AspNetCore.Server.Kestrel.Core")
-    let internal onIIS =
-      lazy (let he = System.Type.GetType "System.Web.Hosting.HostingEnvironment, System.Web"
-            if isNull he then false else he.GetProperty("IsHosted").GetValue(null) :?> bool)
-    let internal lc () =
-      if (onKestrel.Value || onIIS.Value)
-         && not ("true" = Env.varDefault "LOGARY_I_PROMISE_I_HAVE_PURCHASED_LICENSE" (fun () -> "false")) then
-         failwith "You must purchase a license for Logary to run it on or with IIS or Kestrel."
-
   // Middlewares at:
   //  - LogaryConf (goes on all loggers) (compose at call-site)
   //  - TargetConf (goes on specific target) (composes when creating target,not compose at call-site when sending message)
   //  - individual loggers (compose at call-site)
   let create (conf: LogaryConf): Job<T> =
-    Impl.lc ()
-
     let ri, rname, rmid =
       conf.runtimeInfo,
       PointName [| "Logary"; "Registry" |],
