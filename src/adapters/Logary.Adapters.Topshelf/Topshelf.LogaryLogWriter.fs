@@ -1,12 +1,10 @@
 ﻿namespace Logary.Adapters.Topshelf
 
-open System
 open System.Runtime.CompilerServices
 open System.Diagnostics
 open Topshelf.Logging
 open Topshelf.HostConfigurators
 open Logary
-open Logary.Configuration
 
 type TopshelfAdapter(logger: Logger) =
   let fromSourceLevel = function

@@ -57,7 +57,7 @@ module Exporter =
 # TYPE time_latency gauge
 time_latency{endpoint="/books"} 30
 time_latency{endpoint="/users"} 300
-# HELP time_latency_histogram histogram of gauge:`test time latency`
+# HELP time_latency_histogram histogram of gauge: 'test time latency'
 # TYPE time_latency_histogram histogram
 time_latency_histogram_bucket{endpoint="/books",le="50"} 2
 time_latency_histogram_bucket{endpoint="/books",le="100"} 2
@@ -83,7 +83,7 @@ time_latency_histogram_count{endpoint="/users"} 2
 # TYPE time_latency gauge
 time_latency{endpoint="/books"} 250
 time_latency{endpoint="/users"} 250
-# HELP time_latency_histogram histogram of gauge:`test time latency`
+# HELP time_latency_histogram histogram of gauge: 'test time latency'
 # TYPE time_latency_histogram histogram
 time_latency_histogram_bucket{endpoint="/books",le="50"} 2
 time_latency_histogram_bucket{endpoint="/books",le="100"} 2

@@ -1,16 +1,12 @@
 ﻿namespace NLog.Targets
 
-open System
 open System.Collections.Concurrent
-open NodaTime
 open Logary
 open Logary.Internals
 open Logary.Message
-open Logary.Configuration
 
 /// The functions of the NLog domain and logary codomain.
 module internal Adaptation =
-  open NLog
 
   /// Map the NLog.LogLevel to a Logary.LogLevel.
   let mapLogLevel (level: NLog.LogLevel) =

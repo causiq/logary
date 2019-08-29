@@ -370,7 +370,7 @@ module LiterateConsole =
   let create conf name =
     TargetConf.createSimple (Impl.loop conf) name
 
-  /// Use with LogaryFactory.New( s => s.Target<LiterateConsole.Builder>() )
+  /// Use with `LogaryFactory.New(s => s.Target<LiterateConsole.Builder>("literate", x => ...))`
   type Builder(conf, callParent: ParentCallback<Builder>) =
     let update (conf' : LiterateConsoleConf): Builder =
       Builder(conf', callParent)
@@ -382,6 +382,20 @@ module LiterateConsole =
     /// Lets you specify how log levels are written out.
     member x.WithLevelFormatter(toStringFun: Func<LogLevel, string>) =
       update { conf with getLogLevelText = toStringFun.Invoke }
+
+    /// Specifies how to tokenise the Message values
+    member x.WithTokeniser(tokeniser: Func<LiterateConsoleConf, Message, seq<string * LiterateToken>>) =
+      let wrapped conf message = tokeniser.Invoke(conf, message)
+      update { conf with tokenise = wrapped }
+
+    member x.WithExtendedTokeniser() =
+      update { conf with tokenise = Tokenisers.extendedTokeniser }
+
+    member x.WithSingleLineTokeniser() =
+      update { conf with tokenise = Tokenisers.defaultTokeniser }
+
+    member x.Done() =
+      ! (callParent x)
 
     new(callParent: ParentCallback<_>) =
       Builder(empty, callParent)

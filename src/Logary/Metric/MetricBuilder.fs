@@ -11,10 +11,10 @@ and Metric<'t when 't :> IMetric> (builder: MetricBuilder<'t>, registry: MetricR
   let _noLabels = Map.empty
   let metricStore = new ConcurrentDictionary<Map<string, string>, 't>()
   let noLabelMetric = new Lazy<'t>(fun _ -> metricStore.GetOrAdd(_noLabels, builder.build registry))
-  let fail =
+  let fail message =
     match builder.conf.failStrategy with
-    | FailStrategy.Default -> registry.defaultFailBehavior
-    | FailStrategy.Throw -> failwith
+    | FailStrategy.Default -> DVar.get registry.failBehaviour message
+    | FailStrategy.Throw -> failwith message
 
   let checkCardinalityOrFail () =
     match builder.conf.avoidHighCardinality with
@@ -67,15 +67,16 @@ and Metric<'t when 't :> IMetric> (builder: MetricBuilder<'t>, registry: MetricR
 /// used for register metric, and can export metric infos
 and MetricRegistry() =
   let metricBackStore = new ConcurrentDictionary<string, MetricExporter>()
-  let defaultFailBehaviorD = DVar.create failwith
+  let _failBehaviourD = DVar.create failwith
 
   member x.getOrCreate<'t when 't:> IMetric> (builder: MetricBuilder<'t>): Metric<'t> =
     let metricName = builder.conf.name
     let metric = metricBackStore.GetOrAdd(metricName, fun _ -> new Metric<_>(builder, x) :> MetricExporter)
     if metric.basicConf <> builder.conf then
+      let fail = DVar.get _failBehaviourD
       sprintf "metric with same name needs have same basic conf: registered one: %A, newer one: %A"
               metric.basicConf builder.conf
-      |> x.defaultFailBehavior
+      |> fail
 
     downcast metric
 
@@ -86,10 +87,10 @@ and MetricRegistry() =
     x.getOrCreate(builder).noLabels
 
   member x.setFailBehaviour behaviour =
-    DVar.set defaultFailBehaviorD behaviour
+    DVar.set _failBehaviourD behaviour
 
-  member x.defaultFailBehavior =
-    DVar.get defaultFailBehaviorD
+  member x.failBehaviour: DVar<_> =
+    _failBehaviourD
 
 module Metric =
   let labels (labelValues: string[]) (metric: Metric<_>) = metric.labels labelValues

@@ -1,11 +1,11 @@
-namespace Logary.Adapters.AspNetCore
+namespace Microsoft.Extensions.Logging
 
 open Logary
-open Microsoft.Extensions.Logging
+open Logary.Adapters.AspNetCore
 open System.Runtime.CompilerServices
 
 [<AutoOpen; Extension>]
-module ILoggingBuilderExtensions =
+module ILoggingBuilderEx =
   [<Extension; CompiledName "AddLogary">]
   let addLogary (x: ILoggingBuilder, m: LogManager): ILoggingBuilder =
     // provider add from builder doesn't dispose from framework
@@ -13,7 +13,7 @@ module ILoggingBuilderExtensions =
     x.AddProvider(new LogaryLoggerProvider(m, false))
 
 [<AutoOpen; Extension>]
-module ILoggerFactoryExtensions =
+module ILoggerFactoryEx =
   /// `needDispose` : whether or not when ILoggerFactory dispose
   [<Extension; CompiledName "AddLogary">]
   let addLogary (x: ILoggerFactory, m: LogManager, needDispose: bool): ILoggerFactory =

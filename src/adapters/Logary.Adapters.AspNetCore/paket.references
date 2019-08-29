@@ -1,2 +1,4 @@
+group MSFT
 Microsoft.Extensions.Logging
 FSharp.Core
+Microsoft.AspNetCore

@@ -134,7 +134,6 @@ let main _ =
       LiterateConsole.create LiterateConsole.empty "console"
       Jaeger.create { Jaeger.empty with jaegerPort = 30831us } "jaeger"
     ]
-    |> Config.processing (Events.events |> Events.sink ["console"; "jaeger"])
     |> Config.build
     |> run
 

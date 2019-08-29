@@ -6,6 +6,8 @@
 namespace Logary.Configuration
 
 open System
+open System.Net
+open System.Net.Sockets
 open System.Threading.Tasks
 open System.Runtime.CompilerServices
 open Hopac
@@ -160,3 +162,9 @@ type LogaryFactory =
     let cb = configurator.Invoke (ConfBuilder config)
     let xJ = Config.build cb.conf
     Job.ToTask xJ
+
+  static member New(service: string, configurator: Func<ConfBuilder, ConfBuilder>): Task<LogManager> =
+    let getHostName () =
+      try Dns.GetHostName()
+      with :? SocketException -> "localhost"
+    LogaryFactory.New(service, getHostName(), configurator)

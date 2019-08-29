@@ -192,18 +192,18 @@ module internal Impl =
     s.Fields.[k] <- Json.encode value |> toValue
     s
 
-  // When logging error data from App Engine, Kubernetes Engine or Compute Engine, the only requirement is for the log entry to contain the full error message and stack trace. 
+  // When logging error data from App Engine, Kubernetes Engine or Compute Engine, the only requirement is for the log entry to contain the full error message and stack trace.
   // It should be logged as a multi-line textPayload or in the message field of jsonPayload
   // https://cloud.google.com/error-reporting/docs/formatting-error-messages
-  let formatMessageField (m: Message) =   
+  let formatMessageField (m: Message) =
     use sw = new StringWriter()
     MessageWriter.verbatim.write sw m
-    
+
     let error = m |> tryGetField "error"
     if error.IsSome then
       sw.Write Environment.NewLine
       sw.Write (error.Value.ToString())
-      
+
     let errorST: StacktraceLine[] option = m |> tryGetField "error"
     if errorST.IsSome then
       sw.Write Environment.NewLine
@@ -230,11 +230,11 @@ module internal Impl =
           sw.WriteLine data
       sw.Write (error.Value.ToString())
 
-    getExns m 
+    getExns m
       |> Seq.iter (fun exn ->
         sw.Write Environment.NewLine
         sw.Write exn)
-    
+
     sw.ToString()
 
   [<Literal>]
@@ -265,7 +265,7 @@ module internal Impl =
         Message.getAllFields x
         |> addMessageFields
         |> Seq.fold addToStruct (WellKnownTypes.Struct())
-        
+
       // TO CONSIDER: entry.InsertId <- m |> Message.messageId
 
       let entry = LogEntry(Severity = x.level.toSeverity(), JsonPayload = payloadFields)
@@ -282,17 +282,16 @@ module internal Impl =
       /// used as a wrapper around the above cancellation token
       callSettings: CallSettings }
 
-  let writeBatch (state: State) (entries: LogEntry list): Job<unit> =
-    Job.Scheduler.isolate (fun () ->
+  let writeBatch (state: State) (entries: LogEntry list) =
+    Job.fromTask (fun () ->
       let request = WriteLogEntriesRequest(LogName = state.logName, Resource = state.resource)
       request.Entries.AddRange entries
       request.Labels.Add state.labels
-      state.logger.WriteLogEntries(request, state.callSettings)
-      |> ignore)
-    
+      state.logger.WriteLogEntriesAsync(request, state.callSettings))
+
   let loop (conf: StackdriverConf) (api: TargetAPI) =
     let logger = api.runtime.logger
-    
+
     let rec initialise (conf: StackdriverConf) =
       job {
         let! platform = Platform.InstanceAsync()
@@ -308,7 +307,7 @@ module internal Impl =
               eventX "Started Stackdriver target with project {projectId}, writing to {logName}."
               >> setField "projectId" projectId
               >> setField "logName" conf.logId)
-        
+
         let state =
           { logger = client
             resource = resource
@@ -316,7 +315,7 @@ module internal Impl =
             logName = logName
             cancellation = source
             callSettings = CallSettings.FromCancellationToken(source.Token) }
-          
+
         return! running state
       }
 
@@ -344,7 +343,7 @@ module internal Impl =
 
           job {
             do logger.verbose (eventX "Writing {count} messages." >> setField "count" entries.Length)
-            do! writeBatch state entries
+            let! _ = writeBatch state entries
             do logger.verbose (eventX "Acking messages.")
             do! Job.conIgnore acks
             do! Job.conIgnore flushes

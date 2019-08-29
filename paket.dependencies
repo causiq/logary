@@ -1,7 +1,7 @@
 source https://api.nuget.org/v3/index.json
 clitool paket
 framework auto-detect
-version 5.196.2
+version 5.216.0
 
 nuget Argu
 nuget Castle.Core
@@ -15,17 +15,19 @@ nuget Machine.Specifications
 nuget Machine.Specifications.Should
 nuget Machine.Specifications.Runner.Console
 nuget FParsec
-nuget FSharp.Core ~> 4.5
+nuget FSharp.Core ~> 4.7
 nuget FluentMigrator < 2
 nuget FluentMigrator.Runner < 2
 nuget FsCheck
 nuget FsPickler
 nuget FsPickler.Json
 nuget FsSql
-nuget Google.Api.Gax.Rest
-nuget Google.Cloud.Logging.V2
-nuget Google.Cloud.BigQuery.V2
-nuget Google.Cloud.PubSub.V1 1.1.0-beta01
+
+nuget Google.Api.Gax.Rest ~> 2.6 strategy: min
+nuget Google.Cloud.Logging.V2 ~> 2.2 strategy: min
+nuget Google.Cloud.BigQuery.V2 ~> 1.3 strategy: min
+nuget Google.Cloud.PubSub.V1 1.1.0-beta01 strategy: min
+
 nuget Hopac
 nuget Http.fs
 nuget Microsoft.ApplicationInsights
@@ -38,23 +40,18 @@ nuget SQLite.Interop.dll
 nuget Suave < 2.5
 nuget System.Data.SQLite.Core
 nuget System.Net.Http
-nuget System.Configuration.ConfigurationManager >= 4.5.0-rc1 # topshelf
-nuget System.Data.SqlClient >= 4.5.0-rc1 # topshelf
-nuget Topshelf ~> 4.1.0.117-develop
-nuget TweetinviAPI
-nuget Unquote
+nuget Topshelf
 nuget aliyun-log-csharp-sdk
 nuget elmah.corelibrary
 nuget elmah.io.client
 nuget elmah.io.core
 nuget fszmq
 nuget protobuf-net
-nuget Microsoft.Extensions.Logging
 nuget System.Memory
 nuget System.Data.Odbc
 
-github eiriktsarpalis/TypeShape src/TypeShape/TypeShape.fs
-github eiriktsarpalis/TypeShape src/TypeShape/Utils.fs
+github eiriktsarpalis/TypeShape:c39f18a164a9ce227656e2806c2bddfdde623a68 src/TypeShape/TypeShape.fs
+github eiriktsarpalis/TypeShape:c39f18a164a9ce227656e2806c2bddfdde623a68 src/TypeShape/Utils.fs
 github haf/YoLo:bd91bbe94a183aa9dc9c13e885c73b20516b01e7 YoLo.fs
 github haf/DVar src/DVar/DVar.fs
 github logary/RingBuffer RingBuffer.fs
@@ -68,7 +65,7 @@ group Build
   storage none
   framework auto-detect
 
-  nuget FSharp.Core 4.5.0.0
+  nuget FSharp.Core ~> 4.7
   nuget Fake.DotNet.AssemblyInfoFile
   nuget Fake.DotNet.Cli
   nuget Fake.Core.Target
@@ -84,6 +81,15 @@ group Build
 
   github eiriktsarpalis/snippets SlnTools/SlnTools.fs
 
+group MSFT
+  source https://api.nuget.org/v3/index.json
+  storage none
+  framework auto-detect
+  redirects on
+  nuget FSharp.Core ~> 4.7
+  nuget Microsoft.AspNetCore
+  nuget Microsoft.Extensions.Logging
+
 group Examples
   source https://api.nuget.org/v3/index.json
   storage none
@@ -93,7 +99,7 @@ group Examples
   nuget Argu
   nuget Castle.Core
   nuget FParsec
-  nuget FSharp.Core
+  nuget FSharp.Core ~> 4.7
   nuget Hopac
   nuget NodaTime
   nuget RabbitMQ.Client
@@ -105,17 +111,17 @@ group Benchmarks
   redirects on
 
   nuget FParsec
-  nuget FSharp.Core
+  nuget FSharp.Core ~> 4.7
   nuget Hopac
   nuget NodaTime
   nuget Expecto
-  nuget Expecto.BenchmarkDotNet == 8.6.5
-  nuget BenchmarkDotNet == 0.10.14
+  nuget Expecto.BenchmarkDotNet
+  nuget BenchmarkDotNet
 
-group AspNetCoreAdapterExample
+group AspNetCoreExample
   source https://api.nuget.org/v3/index.json
   storage none
   framework auto-detect
   redirects on
-
-  nuget Microsoft.AspNetCore.App >= 2.2.0
+  nuget Microsoft.AspNetCore.App
+  nuget Microsoft.AspNetCore

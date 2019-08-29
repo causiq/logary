@@ -208,7 +208,6 @@ module Target =
           childSpan.Tags
             |> hasStringTag "level" "info"
             |> hasStringTag "component" loggerName
-            |> hasStringTag "event" "sql.Query"
             |> hasBoolTag "pgsql" true
             |> hasStringTag "connStr" (sprintf "%s" connStr)
             |> ignore
