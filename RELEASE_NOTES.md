@@ -1,3 +1,6 @@
+#### 5.0.0-rc.13
+* Retry NuGet release + index, thanks @haf
+
 #### 5.0.0-rc.12
 * Downgrade to F# 4.6.2 since 4.7.0 is broken for TypeProviders, thanks @haf
 
