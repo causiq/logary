@@ -15,7 +15,7 @@ nuget Machine.Specifications
 nuget Machine.Specifications.Should
 nuget Machine.Specifications.Runner.Console
 nuget FParsec
-nuget FSharp.Core ~> 4.7
+nuget FSharp.Core ~> 4.6.0
 nuget FluentMigrator < 2
 nuget FluentMigrator.Runner < 2
 nuget FsCheck
@@ -65,7 +65,7 @@ group Build
   storage none
   framework auto-detect
 
-  nuget FSharp.Core ~> 4.7
+  nuget FSharp.Core ~> 4.6.0
   nuget Fake.DotNet.AssemblyInfoFile
   nuget Fake.DotNet.Cli
   nuget Fake.Core.Target
@@ -86,7 +86,7 @@ group MSFT
   storage none
   framework auto-detect
   redirects on
-  nuget FSharp.Core ~> 4.7
+  nuget FSharp.Core ~> 4.6.0
   nuget Microsoft.Extensions.DependencyInjection.Abstractions ~> 2.0
   nuget Microsoft.Extensions.Hosting.Abstractions ~> 2.0
   nuget Microsoft.Extensions.Logging ~> 2.0
@@ -103,7 +103,7 @@ group Examples
   nuget Argu
   nuget Castle.Core
   nuget FParsec
-  nuget FSharp.Core ~> 4.7
+  nuget FSharp.Core ~> 4.6.0
   nuget Hopac
   nuget NodaTime
   nuget RabbitMQ.Client
@@ -115,7 +115,7 @@ group Benchmarks
   redirects on
 
   nuget FParsec
-  nuget FSharp.Core ~> 4.7
+  nuget FSharp.Core ~> 4.6.0
   nuget Hopac
   nuget NodaTime
   nuget Expecto

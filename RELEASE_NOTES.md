@@ -1,3 +1,6 @@
+#### 5.0.0-rc.12
+* Downgrade to F# 4.6.2 since 4.7.0 is broken for TypeProviders, thanks @haf
+
 #### 5.0.0-rc.11
 * Implement OpenTelemetry specification for Trace (tracing), thanks @haf
 * Implement nice Jaeger samplers, thanks @haf
