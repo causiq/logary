@@ -68,6 +68,7 @@ type JaegerConf =
     /// How long do we wait for ambient logs, before sending the Spans off to Jaeger?
     spanDelay: Duration
 
+    /// What Sampler should be used to decide whether to forward the log?
     sampler: Sampler
   }
 
