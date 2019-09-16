@@ -5,7 +5,7 @@ dotnet: 2.2.103
 
 mono:
 - 6.0.0
-- 5.8.0
+- 5.10.0
 - latest
 
 matrix:
@@ -13,7 +13,7 @@ matrix:
 
   allow_failures:
   - mono: latest
-  - mono: 5.8.0
+  - mono: 5.10.0
 
 addons:
   apt:
