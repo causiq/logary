@@ -1,4 +1,4 @@
-.PHONY: restore build test docs
+.PHONY: prepare restore build test docs
 export CONFIGURATION=${CONFIGURATION:-'Release'}
 TAG_VERSION_SUFFIX := $(shell tools/version.sh)
 
@@ -9,6 +9,7 @@ prepare:
 	./fake.sh build --single-target --target PaketFiles
 
 restore:
+	tools/install-tools
 	dotnet restore src/Logary.sln
 
 build: prepare restore
