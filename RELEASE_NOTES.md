@@ -1,3 +1,6 @@
+#### 5.0.0
+* Logary v5 🦄
+
 #### 5.0.0-rc.13
 * Retry NuGet release + index, thanks @haf
 
