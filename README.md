@@ -24,7 +24,7 @@ Logary is a high-performance, structured logging library which you can do health
  - Add metrics to your service/app!
  - A wide range of adapters and targets to choose from!
 
-Created by [Henrik Feldt, et al](https://haf.github.io) and sponsored by
+Created by [Henrik Feldt, et al](https://twitter.com/henrikfeldt) and sponsored by
 [Qvitoo_ – Modern accounting](https://qvitoo.com/?utm_source=github&utm_campaign=logary).
 
 ## Installation
