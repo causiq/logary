@@ -1,7 +1,6 @@
 module Logary.Tests.Trace
 
 open System
-open System.Diagnostics
 open Expecto
 open Expecto.Flip
 open Logary

@@ -268,6 +268,7 @@ module B3 =
     if Map.isEmpty traceState then context
     else context |> Option.map (fun ctx -> ctx.withState traceState)
 
+
   let injectSingle (setter: Setter<'a>) (context: SpanContext) (target: 'a): 'a =
     let flags =
       if context.isDebug then "d"
@@ -293,6 +294,7 @@ module B3 =
       extractMulti get source
     | Some sc ->
       attrs, Some sc
+      
 
   let inject (setter: Setter<'a>) (ctx: SpanContext) (target: 'a): 'a =
     injectSingle setter ctx target
