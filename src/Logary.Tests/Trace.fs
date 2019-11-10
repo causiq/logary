@@ -4,6 +4,7 @@ open System
 open Expecto
 open Expecto.Flip
 open Logary
+open Logary.Internals.Regex
 open Logary.Trace
 open Logary.Trace.Sampling
 open Logary.Trace.Propagation
@@ -97,6 +98,93 @@ let tests =
     ]
 
     testList "propagation" [
+      testList "B3" [
+        yield testList "single" [
+          yield! [
+            "80f198ee56343ba864fe8b2a57d3eff7-e457b5a2e4d86bd1-1-05e3ac9a4f6e3b90"
+            "80f198ee56343ba864fe8b2a57d3eff7-e457b5a2e4d86bd1-1"
+            "80f198ee56343ba864fe8b2a57d3eff7-e457b5a2e4d86bd1"
+            "80F198EE56343BA864FE8B2A57D3EFF7-E457B5A2E4D86BD1-1-05E3AC9A4F6E3B90"
+            "80F198EE56343BA864FE8B2A57D3EFF7-E457B5A2E4D86BD1-1"
+            "80F198EE56343BA864FE8B2A57D3EFF7-E457B5A2E4D86BD1"
+            ]
+            |> List.map (fun example -> testCase (sprintf "Regex <pattern> '%s' => SpanContext" example) <| fun () ->
+              match example with
+              | Regex B3.ExtractRegex [ traceId; spanId; sampled; parentSpanId ] ->
+                traceId |> Expect.notEqual "Has a trace id if matched" ""
+                spanId |> Expect.notEqual "Has a span id if matched" ""
+                sampled |> Expect.notEqual "Has a sampled value if matched" ""
+                parentSpanId |> Expect.notEqual "Has a parent span if matched" ""
+
+              | Regex B3.ExtractRegex [ traceId; spanId; sampled ] ->
+                traceId |> Expect.notEqual "Has a trace id if matched" ""
+                spanId |> Expect.notEqual "Has a span id if matched" ""
+                sampled |> Expect.notEqual "Has a sampled value if matched" ""
+
+              | Regex B3.ExtractRegex [ traceId; spanId ] ->
+                traceId |> Expect.notEqual "Has a trace id if matched" ""
+                spanId |> Expect.notEqual "Has a span id if matched" ""
+
+              | _ ->
+                failtestf "Failed to extract B3 headers from '%s'" example
+              )
+
+        ]
+
+        yield! [
+          "single",
+            Map [
+              "b3", "80f198ee56343ba864fe8b2a57d3eff7-e457b5a2e4d86bd1-d-05e3ac9a4f6e3b90"
+              "uberctx-userId", "haf"
+            ]
+          "multi",
+            Map [
+              "X-B3-TraceId", "80f198ee56343ba864fe8b2a57d3eff7"
+              "X-B3-ParentSpanId", "05e3ac9a4f6e3b90"
+              "X-B3-SpanId", "e457b5a2e4d86bd1"
+              "uberctx-userId", "haf"
+              "x-b3-flags", "1" // same as 'd' (otherwise x-b3-sampled: 1)
+            ]
+        ] |> List.map (fun (variant, m) ->
+          ftestCase (sprintf "extract from map %s" variant) <| fun () ->
+            let spanAttrs, contextO = B3.extract Extract.mapWithSingle m
+
+            spanAttrs
+              |> Expect.isEmpty "No attributes in Zipkin"
+
+            contextO
+              |> Expect.isSome "Extracts values successfully"
+
+            let context = Option.get contextO
+
+            context.traceState
+              |> Map.tryFind "userId"
+              |> Expect.equal "TraceState/baggage a 'userId' key with a 'haf' value" (Some "haf")
+
+            context.traceId
+              |> Expect.equal "Has correct TraceId" (TraceId.ofString "80f198ee56343ba864fe8b2a57d3eff7")
+
+            context.parentSpanId
+              |> Expect.equal "Has parentSpanId in SpanContext" (Some (SpanId.ofString "05e3ac9a4f6e3b90"))
+
+            context.spanId
+              |> Expect.equal "Has a SpanId" (SpanId.ofString "e457b5a2e4d86bd1")
+
+            context.isDebug
+              |> Expect.isTrue "is debug"
+
+            context.isSampled
+              |> Expect.isTrue "is sampled"
+
+            context.isRecorded
+              |> Expect.isTrue "is recorded"
+          )
+      ]
+
+      testList "W3C" [
+        // TODO
+      ]
+
       testList "Jaeger" [
         yield! [ // example uber-trace-id header values
           "abcdef1234567890abcdef1234567890:1234567890fedcba:0:3"
@@ -111,10 +199,9 @@ let tests =
           "ABCDEF1234567890ABCDEF1234567890:1234567890FEDCBA:0:3"
           "ABCDEF1234567890ABCDEF1234567890:1234567890FEDCBA:12345FEDCBA67890:0"
           "ABCDEF1234567890:1234567890FEDCBA:0:0"
-        ]
-          |> List.map (fun example -> testCase (sprintf "extract Regex trace-id from '%s'" example) <| fun () ->
+        ] |> List.map (fun example -> testCase (sprintf "Regex <pattern> '%s' => SpanContext" example) <| fun () ->
             match example with
-            | Jaeger.Regex Jaeger.ExtractRegex [ traceId; spanId; _; _ ] ->
+            | Regex Jaeger.ExtractRegex [ traceId; spanId; _; _ ] ->
               TraceId.ofString traceId |> Expect.notEqual "Non-zero TraceId" TraceId.Zero
               SpanId.ofString spanId |> Expect.notEqual "Non-zero SpanId" SpanId.Zero
             | _ ->
@@ -134,7 +221,7 @@ let tests =
             |> Expect.contains "Has a jaeger-debug-id value" ("jaeger-debug-id", SpanAttrValue.S "37337")
 
           contextO
-            |> Expect.isSome "Has a previous context"
+            |> Expect.isSome "Extracts values successfully"
 
           let context = Option.get contextO
 

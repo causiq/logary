@@ -1,5 +1,6 @@
 namespace Logary.Trace.Propagation
 
+open System
 open System.Collections.Generic
 
 module Extract =
@@ -7,21 +8,21 @@ module Extract =
   let mapWithSeq: Getter<Map<string, _>> =
     fun source nameOrPrefix ->
       source
-        |> Seq.filter (fun (KeyValue (key, _)) -> key.StartsWith nameOrPrefix)
+        |> Seq.filter (fun (KeyValue (key, _)) -> key.StartsWith(nameOrPrefix, StringComparison.InvariantCultureIgnoreCase))
         |> Seq.map (fun (KeyValue (k, values)) -> k, List.ofSeq values)
         |> List.ofSeq
 
   let mapWithSingle: Getter<Map<string, string>> =
     fun source nameOrPrefix ->
       source
-        |> Seq.filter (fun (KeyValue (key, _)) -> key.StartsWith nameOrPrefix)
+        |> Seq.filter (fun (KeyValue (key, _)) -> key.StartsWith(nameOrPrefix, StringComparison.InvariantCultureIgnoreCase))
         |> Seq.map (fun (KeyValue (k, value)) -> k, value :: [])
         |> List.ofSeq
 
   let mapWithList: Getter<Map<string, _>> =
     fun source nameOrPrefix ->
       source
-        |> Seq.filter (fun (KeyValue (key, _)) -> key.StartsWith nameOrPrefix)
+        |> Seq.filter (fun (KeyValue (key, _)) -> key.StartsWith(nameOrPrefix, StringComparison.InvariantCultureIgnoreCase))
         |> Seq.map (fun (KeyValue (k, values)) -> k, values)
         |> List.ofSeq
 
@@ -29,14 +30,14 @@ module Extract =
   let dictionaryWithSeq: Getter<IDictionary<string, _>> =
     fun source nameOrPrefix ->
       source
-        |> Seq.filter (fun (KeyValue (key, _)) -> key.StartsWith nameOrPrefix)
+        |> Seq.filter (fun (KeyValue (key, _)) -> key.StartsWith(nameOrPrefix, StringComparison.InvariantCultureIgnoreCase))
         |> Seq.map (fun (KeyValue (k, values)) -> k, List.ofSeq values)
         |> List.ofSeq
 
   let dictionaryWithSingle: Getter<IDictionary<string, string>> =
     fun source nameOrPrefix ->
       source
-        |> Seq.filter (fun (KeyValue (key, _)) -> key.StartsWith nameOrPrefix)
+        |> Seq.filter (fun (KeyValue (key, _)) -> key.StartsWith(nameOrPrefix, StringComparison.InvariantCultureIgnoreCase))
         |> Seq.map (fun (KeyValue (k, value)) -> k, value :: [])
         |> List.ofSeq
 
@@ -45,15 +46,18 @@ module Inject =
   // Maps
   let mapWithSeq: Setter<Map<string, seq<string>>> =
     fun (name, values) target ->
-      target |> Map.add name (values :> seq<_>)
+      target
+        |> Map.add name (values :> seq<_>)
 
   let mapWithList: Setter<Map<string, string list>> =
     fun (name, values) target ->
-      target |> Map.add name values
+      target
+        |> Map.add name values
 
   let mapWithArray: Setter<Map<string, string[]>> =
     fun (name, values) target ->
-      target |> Map.add name (Array.ofList values)
+      target
+        |> Map.add name (Array.ofList values)
 
 
   // Dictionaries

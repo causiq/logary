@@ -54,6 +54,7 @@
     <Compile Include="Internals/NullLogger.fs" />
     <Compile Include="Internals/Middleware.fs" />
     <Compile Include="Internals/RuntimeInfo.fs" />
+    <Compile Include="Internals/Regex.fs" />
     <Compile Include="Formatting/DotNetStacktrace.fs" />
     <Compile Include="Formatting/JsonHelper.fs" />
     <Compile Include="Formatting/MessageTemplates.fs" />
@@ -63,12 +64,12 @@
     <Compile Include="Metric/DoubleAdder.fs" />
     <Compile Include="Metric/Metric.fs" />
     <Compile Include="Metric/MetricBuilder.fs" />
-    <Compile Include="Metric\Histogram.fs" />
-    <Compile Include="Metric\Gauge.fs" />
-    <Compile Include="Metric\Conventions.fs" />
+    <Compile Include="Metric/Histogram.fs" />
+    <Compile Include="Metric/Gauge.fs" />
+    <Compile Include="Metric/Conventions.fs" />
     <Compile Include="Extensions/System.Stopwatch.fs" />
     <Compile Include="Extensions/Hopac.Job.fs" />
-    <Compile Include="Extensions\Hopac.Alt.fs" />
+    <Compile Include="Extensions/Hopac.Alt.fs" />
     <Compile Include="Extensions/NodaTime.Duration.fs" />
     <Compile Include="Extensions/NodaTime.Instant.fs" />
     <Compile Include="Extensions/System.Dates.fs" />
@@ -79,8 +80,8 @@
     <Compile Include="Internals.LogResultModule.fs" />
     <Compile Include="Trace/SpanModule.fs" />
     <Compile Include="Trace/Propagation.fs" />
+    <Compile Include="Trace/Propagation.ExtractInject.fs" />
     <Compile Include="Trace/Sampling.fs" />
-    <Compile Include="Trace/GetAndSet.fs" />
     <Compile Include="LogManager.fs" />
     <Compile Include="MiddlewareModule.fs" />
     <!-- Below: runtime -->
