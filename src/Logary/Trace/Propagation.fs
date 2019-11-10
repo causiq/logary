@@ -188,8 +188,8 @@ module B3 =
   let ExtractRegex = @"^([A-F0-9]{32}|[A-F0-9]{16})-([A-F0-9]{1,16})(?:-(\d|d)(?:-([A-F0-9]{0,16}))?)?$"
 
   let internal parseFlags = function
+    | "d" -> SpanFlags.Debug ||| SpanFlags.Sampled
     | "1" -> SpanFlags.Sampled
-    | "d" -> SpanFlags.Debug
     | "0" | _ -> SpanFlags.None
 
   let internal getSingleExact (get: Getter<_>) source header =
@@ -205,10 +205,14 @@ module B3 =
   let extractMulti (get: Getter<'a>) (source: 'a): SpanAttr list * SpanContext option =
     let getFlags () =
       getSingleExact get source FlagsHeader
-        |> Option.map (fun _ -> SpanFlags.Debug)
+        |> Option.bind (function
+          | "1" -> Some (SpanFlags.Debug ||| SpanFlags.Sampled)
+          | _ -> None)
         |> Option.orElseWith (fun () ->
           getSingleExact get source SampledHeader
-            |> Option.map (fun _ -> SpanFlags.Sampled)
+            |> Option.bind (function
+              | "1" -> Some SpanFlags.Sampled
+              | _ -> None)
         )
         |> Option.defaultValue SpanFlags.None
 

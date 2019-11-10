@@ -57,12 +57,14 @@ type SpanContext(traceId: TraceId, spanId: SpanId, ?flags: SpanFlags, ?parentSpa
     SpanContext(context.traceId, x.spanId, x.flags ||| context.flags, context.spanId)
   member x.withState (nextState: Map<string, string>) =
     SpanContext(x.traceId, x.spanId, x.flags, ?parentSpanId=x.parentSpanId, ?traceState=Some nextState)
+  member x.withFlags nextFlags =
+    SpanContext(x.traceId, x.spanId, nextFlags, ?parentSpanId=x.parentSpanId, ?traceState=Some x.traceState)
   override x.ToString() =
     let keys =
       if Map.isEmpty x.traceState then "[]"
       else sprintf "[ %s ]" (x.traceState |> Seq.map (fun (KeyValue (k, _)) -> k) |> String.concat ", ")
-    sprintf "SpanContext(isRootSpan=%b, isSampled=%b, isDebug=%b, traceId=%O, spanId=%O, parentSpanId=%O, traceState(keys)=%s)"
-            x.isRootSpan x.isSampled x.isDebug x.traceId x.spanId x.parentSpanId keys
+    sprintf "SpanContext(isRootSpan=%b, flags={%O}, isDebug=%b, traceId=%O, spanId=%O, parentSpanId=%O, traceState(keys)=%s)"
+            x.isRootSpan x.flags x.isDebug x.traceId x.spanId x.parentSpanId keys
   override x.Equals(other) = match other with :? SpanContext as sc -> equal sc | _ -> false
   override x.GetHashCode() = currentHash
   interface IEquatable<SpanContext> with member x.Equals other = equal other

@@ -1,6 +1,7 @@
 module Logary.Tests.Trace
 
 open System
+open System.Diagnostics
 open Expecto
 open Expecto.Flip
 open Logary
@@ -23,28 +24,38 @@ let injectExtractProperty (inject: Setter<Map<string, string list>> -> SpanConte
   // no null keys
   if ctx.traceState |> Map.containsKey null then () else
   // null value -> ""
-  let ctx =
+  let newCtx =
     ctx.traceState
-      |> Map.map (fun _ v -> if isNull v then "" else v)
+      |> Map.toSeq
+      // cannot pass whitespace keys, since they are all string based
+      |> Seq.filter (fun (k, _) -> not (String.IsNullOrWhiteSpace k))
+      // cannot pass null values, since they are all string based and there's no null available
+      |> Seq.map (fun (k, v) -> k, if isNull v then "" else v)
+      |> Map.ofSeq
       |> ctx.withState
+      // fix generated flags: Debug (implies) -> Sampled
+      |> fun newCtx -> if ctx.isDebug then newCtx.withFlags (newCtx.flags ||| SpanFlags.Sampled) else newCtx
   // otherwise:
 
-  let _, resCtx =
+  let injected =
     Map.empty
-      |> inject Inject.mapWithList ctx
+      |> inject Inject.mapWithList newCtx
+
+  let _, resCtx =
+    injected
       |> extract Extract.mapWithList
 
   resCtx
     |> Option.get
     |> fun x -> x.traceState
-    |> Expect.sequenceEqual "ContextAttr extraction matches `ctx.traceState` input" ctx.traceState
+    |> Expect.sequenceEqual "ContextAttr extraction matches `ctx.traceState` input" newCtx.traceState
 
   resCtx
     |> Expect.isSome "Has resCtx"
 
   resCtx
     |> Option.get
-    |> Expect.equal "resCtx = input ctx" ctx
+    |> Expect.equal "resCtx = input ctx" newCtx
 
 
 [<Tests>]
@@ -160,7 +171,6 @@ let tests =
               | _ ->
                 failtestf "Failed to extract B3 headers from '%s'" example
               )
-
         ]
 
         yield! [
@@ -178,7 +188,7 @@ let tests =
               "x-b3-flags", "1" // same as 'd' (otherwise x-b3-sampled: 1)
             ]
         ] |> List.map (fun (variant, m) ->
-          ftestCase (sprintf "extract from map %s" variant) <| fun () ->
+          testCase (sprintf "extract from map %s" variant) <| fun () ->
             let spanAttrs, contextO = B3.extract Extract.mapWithSingle m
 
             spanAttrs
@@ -212,9 +222,60 @@ let tests =
               |> Expect.isTrue "is recorded"
           )
 
+
+        let createSubject flag =
+          let input = Map [ "b3", (sprintf "80f198ee56343ba864fe8b2a57d3eff7-e457b5a2e4d86bd1-%s-05e3ac9a4f6e3b90" flag) ]
+          let _, contextO = B3.extract Extract.mapWithSingle input
+          contextO |> Expect.isSome "Extracts values successfully"
+          Option.get contextO
+
+        yield testCase "extract debug" <| fun () ->
+          let subject = createSubject "d"
+          subject.isDebug |> Expect.isTrue "is debug"
+          subject.isSampled |> Expect.isTrue "is therefore sampled"
+          subject.flags |> Expect.equal "Eq Debug XOR Sampled" (SpanFlags.Debug ^^^ SpanFlags.Sampled)
+
+        let createHeaders flag =
+          let origin = createSubject flag
+          let headers = Map.empty |> B3.inject Inject.mapWithList origin
+          headers.["b3"]
+
+        yield testCase "inject debug" <| fun () ->
+          let subject = createHeaders "d"
+          subject
+            |> List.head
+            |> Expect.stringContains "Has -d- inside it" "-d-"
+
+
+        yield testCase "extract sampled" <| fun () ->
+          let subject = createSubject "1"
+          subject.isDebug |> Expect.isFalse "is not debug"
+          subject.isSampled |> Expect.isTrue "but is sampled"
+          subject.flags |> Expect.equal "Eq Sampled" SpanFlags.Sampled
+
+        yield testCase "inject sampled" <| fun () ->
+          let subject = createHeaders "1"
+          subject
+            |> List.head
+            |> Expect.stringContains "Has -1- inside it" "-1-"
+
+
+        yield testCase "extract not sampled" <| fun () ->
+          let subject = createSubject "0"
+          subject.isDebug |> Expect.isFalse "is not debug"
+          subject.isSampled |> Expect.isFalse "is not sampled"
+          subject.flags |> Expect.equal "Eq None" SpanFlags.None
+
+        yield testCase "inject NOT sampled" <| fun () ->
+          let subject = createHeaders "0"
+          subject
+            |> List.head
+            |> Expect.stringContains "Has -0- inside it" "-0-"
+
+
         yield testProperty "roundtrip multi" (injectExtractProperty (B3.injectMulti, B3.extractMulti))
         yield testProperty "roundtrip single" (injectExtractProperty (B3.injectSingle, B3.extractSingle))
-        yield testProperty "roundtrip combined" (injectExtractProperty (B3.injectSingle, B3.extractSingle))
+        yield testProperty "roundtrip combined" (injectExtractProperty (B3.inject, B3.extract))
       ]
 
       testList "W3C" [
