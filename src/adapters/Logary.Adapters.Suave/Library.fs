@@ -42,15 +42,15 @@ module LogaryAdapter =
 
   let UserStateLoggerKey = "Logary.Trace.SpanLogger"
 
-
 [<AutoOpen>]
 module SuaveEx =
   open LogaryAdapter
 
   type Logger with
-    member x.startSpan (ctx: HttpContext) =
+    member x.startSpan (ctx: HttpContext, ?propagator) =
+      let propagator = defaultArg propagator Jaeger.propagator
       let started = Global.timestamp()
-      let attrs, _, parentO = Jaeger.extract getter ctx
+      let attrs, _, parentO = propagator.extract(getter, ctx)
       // https://github.com/open-telemetry/opentelemetry-specification/issues/210
       // https://github.com/open-telemetry/opentelemetry-python/pull/89/files
       let span =
@@ -100,6 +100,7 @@ module SpanLoggerEx =
       x.finish()
 
 module Filters =
+
   let spanLogger (f: SpanLogger -> WebPart): WebPart =
     context (fun ctx -> f ctx.logger)
 

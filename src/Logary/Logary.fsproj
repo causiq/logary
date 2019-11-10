@@ -80,6 +80,7 @@
     <Compile Include="Trace/SpanModule.fs" />
     <Compile Include="Trace/Propagation.fs" />
     <Compile Include="Trace/Sampling.fs" />
+    <Compile Include="Trace/GetAndSet.fs" />
     <Compile Include="LogManager.fs" />
     <Compile Include="MiddlewareModule.fs" />
     <!-- Below: runtime -->

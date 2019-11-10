@@ -6,6 +6,7 @@ open Expecto.Flip
 open Logary
 open Logary.Trace
 open Logary.Trace.Sampling
+open Logary.Trace.Propagation
 open NodaTime
 
 module List =
@@ -57,41 +58,132 @@ let tests =
           attrs
             |> List.findByKey Constants.SamplerType
             |> Expect.equal "Should eq 'const'" (SpanAttrValue.S "const")
+      ]
 
-        testList "probabilistic" [
-          let traceIdHigh = 0x3fffffffffffffffL
-          yield testCase "TraceId.high" <| fun () ->
-            traceIdHigh + 1L
-              |> Expect.equal "int64 (float Int64.MaxValue * 0.5)" (int64 (float Int64.MaxValue * 0.5))
+      yield testList "probabilistic" [
+        let traceIdHigh = 0x3fffffffffffffffL
+        yield testCase "TraceId.high" <| fun () ->
+          traceIdHigh + 1L
+            |> Expect.equal "int64 (float Int64.MaxValue * 0.5)" (int64 (float Int64.MaxValue * 0.5))
 
-          let traceIdLow = -0x4000000000000000L
-          yield testCase "TraceId.low" <| fun () ->
-            traceIdLow
-              |> Expect.equal "int64 (float Int64.MinValue * 0.5)" (int64 (float Int64.MinValue * 0.5))
+        let traceIdLow = -0x4000000000000000L
+        yield testCase "TraceId.low" <| fun () ->
+          traceIdLow
+            |> Expect.equal "int64 (float Int64.MinValue * 0.5)" (int64 (float Int64.MinValue * 0.5))
 
 
-          let sampler = new ProbabilisticSampler(samplingRate=0.5) :> Sampler
-          yield testCase "not sampling" <| fun () ->
-            let nonSampledSpan = sampleSpanBuilder.withParent(TraceId.create(traceIdHigh + 1L), SpanId.create()).start()
-            sampler.shouldSample nonSampledSpan
-              |> Expect.isError "Should not sample"
+        let sampler = new ProbabilisticSampler(samplingRate=0.5) :> Sampler
+        yield testCase "not sampling" <| fun () ->
+          let nonSampledSpan = sampleSpanBuilder.withParent(TraceId.create(traceIdHigh + 1L), SpanId.create()).start()
+          sampler.shouldSample nonSampledSpan
+            |> Expect.isError "Should not sample"
 
-          let sampledSpan = sampleSpanBuilder.withParent(TraceId.create(traceIdHigh), SpanId.create()).start()
-          yield testCase "sampling" <| fun () ->
-            sampler.shouldSample sampledSpan |> Expect.isOk "Should sample"
+        let sampledSpan = sampleSpanBuilder.withParent(TraceId.create(traceIdHigh), SpanId.create()).start()
+        yield testCase "sampling" <| fun () ->
+          sampler.shouldSample sampledSpan |> Expect.isOk "Should sample"
 
-          yield testCase "attrs" <| fun () ->
-            let attrs =
-              sampler.shouldSample sampledSpan
-                |> Expect.isOkX "Should sample"
-            attrs
-              |> List.findByKey Constants.SamplerParam
-              |> Expect.equal "Equals 0.5" (SpanAttrValue.V (Float 0.5))
+        yield testCase "attrs" <| fun () ->
+          let attrs =
+            sampler.shouldSample sampledSpan
+              |> Expect.isOkX "Should sample"
+          attrs
+            |> List.findByKey Constants.SamplerParam
+            |> Expect.equal "Equals 0.5" (SpanAttrValue.V (Float 0.5))
 
-            attrs
-              |> List.findByKey Constants.SamplerType
-              |> Expect.equal "Equals 0.5" (SpanAttrValue.S "probabilistic")
+          attrs
+            |> List.findByKey Constants.SamplerType
+            |> Expect.equal "Equals 0.5" (SpanAttrValue.S "probabilistic")
+      ]
+    ]
+
+    testList "propagation" [
+      testList "Jaeger" [
+        yield! [
+          "abcdef1234567890abcdef1234567890:1234567890fedcba:0:3"
+          "abcdef1234567890abcdef1234567890:1234567890fedcba:0:2"
+          "abcdef1234567890abcdef1234567890:1234567890fedcba:0:1"
+          "abcdef1234567890abcdef1234567890:1234567890fedcba:0:0"
+          "abcdef1234567890abcdef1234567890:1234567890fedcba:12345fedcba67890:3"
+          "abcdef1234567890abcdef1234567890:1234567890fedcba:12345fedcba67890:2"
+          "abcdef1234567890abcdef1234567890:1234567890fedcba:12345fedcba67890:1"
+          "abcdef1234567890abcdef1234567890:1234567890fedcba:12345fedcba67890:0"
+          "abcdef1234567890:1234567890fedcba:0:0"
+          "ABCDEF1234567890ABCDEF1234567890:1234567890FEDCBA:0:3"
+          "ABCDEF1234567890ABCDEF1234567890:1234567890FEDCBA:12345FEDCBA67890:0"
+          "ABCDEF1234567890:1234567890FEDCBA:0:0"
         ]
+          |> List.map (fun example -> testCase (sprintf "extract Regex trace-id from '%s'" example) <| fun () ->
+            match example with
+            | Jaeger.Regex Jaeger.ExtractRegex [ traceId; spanId; _; _ ] ->
+              TraceId.ofString traceId |> Expect.notEqual "Non-zero TraceId" TraceId.Zero
+              SpanId.ofString spanId |> Expect.notEqual "Non-zero SpanId" SpanId.Zero
+            | _ ->
+              failtestf "Couldn't extract from '%s'" example
+            )
+
+        yield testCase "extract from map" <| fun () ->
+          let m = Map [
+            "uber-trace-id", "abcdef1234567890abcdef1234567890:1234567890fedcba:0:3"
+            "uberctx-userId", "haf"
+            "jaeger-debug-id", "37337"
+          ]
+
+          let spanAttrs, contextAttrs, contextO = Jaeger.extract Extract.mapWithSingle m
+
+          spanAttrs
+            |> Expect.contains "Has a jaeger-debug-id value" ("jaeger-debug-id", SpanAttrValue.S "37337")
+
+          contextAttrs
+            |> Expect.contains "Has a userId value" ("userId", "haf")
+
+          contextO
+            |> Expect.isSome "Has a previous context"
+
+          let context = Option.get contextO
+
+          context.traceId
+            |> Expect.equal "Has correct TraceId" (TraceId.ofString "abcdef1234567890abcdef1234567890")
+
+          context.parentSpanId
+            |> Expect.isNone "Has no parentSpanId in SpanContext, since it's 0"
+
+          context.spanId
+            |> Expect.equal "Has a SpanId" (SpanId.ofString "1234567890fedcba")
+
+          context.isDebug
+            |> Expect.isTrue "Since Debug|||Sampled = 3 = flags"
+
+          context.isSampled
+            |> Expect.isTrue "Since Debug|||Sampled = 3 = flags"
+
+          context.isRecorded
+            |> Expect.isTrue "Since Debug|||Sampled = 3 = flags"
+
+        let injectExtractProperty (ctxAttrs: Map<string, string>, ctx: SpanContext) =
+          // no zero contexts
+          if ctx.isZero then () else
+          // no null keys
+          if ctxAttrs |> Map.containsKey null then () else
+          // null value -> ""
+          let ctxAttrs = ctxAttrs |> Map.map (fun _ v -> if isNull v then "" else v)
+          // otherwise:
+
+          let _, resCtxAttrs, resCtx =
+            Map.empty
+              |> Jaeger.inject Inject.mapWithList (Map.toList ctxAttrs, ctx)
+              |> Jaeger.extract Extract.mapWithList
+
+          resCtxAttrs
+            |> Expect.sequenceEqual "SpanAttr list matches `ctxAttrs` input" (Map.toList ctxAttrs)
+
+          resCtx
+            |> Expect.isSome "Has resCtx"
+
+          resCtx
+            |> Option.get
+            |> Expect.equal "resCtx = input ctx" ctx
+
+        yield testProperty "roundtrip inject/extract" injectExtractProperty
       ]
     ]
   ]

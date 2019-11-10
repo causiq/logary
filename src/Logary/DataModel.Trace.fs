@@ -34,21 +34,31 @@ type SpanFlags =
 [<Sealed>]
 type SpanContext(traceId: TraceId, spanId: SpanId, ?flags: SpanFlags, ?parentSpanId: SpanId) =
   let flag = defaultArg flags SpanFlags.None
+  let parentSpan = match parentSpanId with Some psId when psId <> SpanId.Zero -> Some psId | _ -> None
+  let equal (other: SpanContext) =
+    traceId = other.traceId && spanId = other.spanId && flag = other.flags && parentSpan = other.parentSpanId
+  let currentHash = hash traceId ^^^ 307 * hash spanId ^^^ 307 * hash flags ^^^ 307 * hash parentSpanId
   member x.traceId = traceId
-  member x.parentSpanId = parentSpanId
+  member x.parentSpanId = parentSpan
   member x.spanId = spanId
   member x.flags = flag
 
-  member x.isRootSpan = Option.isNone parentSpanId
+  member x.isRootSpan = Option.isNone parentSpan
   member x.isRecorded = int flag > 0
   member x.isSampled = int flag > 0
   member x.isDebug = flag &&& SpanFlags.Debug = SpanFlags.Debug
+  member x.isZero = traceId.isZero || spanId.isZero
+  static member Zero = SpanContext(TraceId.Zero, SpanId.Zero)
 
   member x.withParent (context: SpanContext) =
     new SpanContext(context.traceId, x.spanId, x.flags ||| context.flags, context.spanId)
   override x.ToString() =
     sprintf "SpanContext(isRootSpan=%b, isSampled=%b, isDebug=%b, traceId=%O, spanId=%O, parentSpanId=%O)"
             x.isRootSpan x.isSampled x.isDebug x.traceId x.spanId x.parentSpanId
+  override x.Equals(other) = match other with :? SpanContext as sc -> equal sc | _ -> false
+  override x.GetHashCode() = currentHash
+  interface IEquatable<SpanContext> with member x.Equals other = equal other
+
 
 [<Struct; RequireQualifiedAccess>]
 type SpanAttrValue =
@@ -67,6 +77,7 @@ type SpanAttrValue =
     | SpanAttrValue.V v -> Uri.EscapeUriString (v.ToString())
 
 type SpanAttr = string * SpanAttrValue
+type ContextAttr = string * string
 
 /// A Span may reference zero or more other Spans or Traces that are causally related.
 ///
@@ -244,10 +255,14 @@ type Setter<'t> = string * string list -> 't -> 't
 /// A propagator is responsible for reading/writing into a carrier. A specific implementation of
 /// a propagator may know the Jaeger `uber-trace-id` format, of the Zipkin B3 format or the W3C Trace Context format.
 type Propagator =
-  /// Extracts span attributes (e.g. debug-id, correlation-id, request-id),
-  /// (distributed) context attributes and the span context from the carrier.
-  abstract extract: getter: Getter<'t> * carrier: 't -> spanAttrs: SpanAttr list * contextAttrs: SpanAttr list * spanContextO: SpanContext option
+  /// Extracts:
+  /// - Span attributes (e.g. debug-id, correlation-id, request-id),
+  /// - (distributed) Context attributes, and
+  /// - the Span context from the carrier.
+  abstract extract:
+    getter: Getter<'t> * carrier: 't
+      -> spanAttrs: SpanAttr list * contextAttrs: ContextAttr list * spanContextO: SpanContext option
   /// Injects the given (distributed) context attributes and span context (parent id, trace-state) into the target carrier.
-  abstract inject: setter: Setter<'t> * contextAttrs: SpanAttr list * spanContext: SpanContext * target: 't -> 't
-
-
+  abstract inject:
+    setter: Setter<'t> * contextAttrs: ContextAttr list * spanContext: SpanContext * target: 't
+      -> 't

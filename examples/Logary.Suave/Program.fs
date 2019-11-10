@@ -31,9 +31,11 @@ let main _ =
 
   let app: WebPart =
     choose [
-      GET >=> path "/hello" >=> spanLogger (fun logger ->
-        logger.info (eventX "Returning from the first route: 'GET /'")
-        OK (sprintf "Hello World! My route has been going for %O so far..." logger.elapsed))
+      GET
+        >=> path "/hello"
+        >=> spanLogger (fun logger ->
+              logger.info (eventX "Returning from the first route: 'GET /'")
+              OK (sprintf "Hello World! My route has been going for %O so far..." logger.elapsed))
 
       POST >=> path "/" >=> OK "{\"hello\": \"world\"}"
 
