@@ -15,6 +15,38 @@ module List =
     List.find (fun (k, _) -> k = key)
     >> function (_, v) -> v
 
+let injectExtractProperty (inject: Setter<Map<string, string list>> -> SpanContext -> Map<string, string list> -> Map<string, string list>,
+                           extract: Getter<Map<string, string list>> -> Map<string, string list> -> SpanAttr list * SpanContext option)
+                          (ctx: SpanContext) =
+  // no zero contexts
+  if ctx.isZero then () else
+  // no null keys
+  if ctx.traceState |> Map.containsKey null then () else
+  // null value -> ""
+  let ctx =
+    ctx.traceState
+      |> Map.map (fun _ v -> if isNull v then "" else v)
+      |> ctx.withState
+  // otherwise:
+
+  let _, resCtx =
+    Map.empty
+      |> inject Inject.mapWithList ctx
+      |> extract Extract.mapWithList
+
+  resCtx
+    |> Option.get
+    |> fun x -> x.traceState
+    |> Expect.sequenceEqual "ContextAttr extraction matches `ctx.traceState` input" ctx.traceState
+
+  resCtx
+    |> Expect.isSome "Has resCtx"
+
+  resCtx
+    |> Option.get
+    |> Expect.equal "resCtx = input ctx" ctx
+
+
 [<Tests>]
 let tests =
   let logger = Log.create "Logary.Tests.Trace"
@@ -179,6 +211,10 @@ let tests =
             context.isRecorded
               |> Expect.isTrue "is recorded"
           )
+
+        yield testProperty "roundtrip multi" (injectExtractProperty (B3.injectMulti, B3.extractMulti))
+        yield testProperty "roundtrip single" (injectExtractProperty (B3.injectSingle, B3.extractSingle))
+        yield testProperty "roundtrip combined" (injectExtractProperty (B3.injectSingle, B3.extractSingle))
       ]
 
       testList "W3C" [
@@ -247,36 +283,7 @@ let tests =
           context.isRecorded
             |> Expect.isTrue "Since Debug|||Sampled = 3 = flags"
 
-        let injectExtractProperty (ctx: SpanContext) =
-          // no zero contexts
-          if ctx.isZero then () else
-          // no null keys
-          if ctx.traceState |> Map.containsKey null then () else
-          // null value -> ""
-          let ctx =
-            ctx.traceState
-              |> Map.map (fun _ v -> if isNull v then "" else v)
-              |> ctx.withState
-          // otherwise:
-
-          let _, resCtx =
-            Map.empty
-              |> Jaeger.inject Inject.mapWithList ctx
-              |> Jaeger.extract Extract.mapWithList
-
-          resCtx
-            |> Option.get
-            |> fun x -> x.traceState
-            |> Expect.sequenceEqual "ContextAttr extraction matches `ctx.traceState` input" ctx.traceState
-
-          resCtx
-            |> Expect.isSome "Has resCtx"
-
-          resCtx
-            |> Option.get
-            |> Expect.equal "resCtx = input ctx" ctx
-
-        yield testProperty "roundtrip inject and extract" injectExtractProperty
+        yield testProperty "roundtrip inject and extract" (injectExtractProperty (Jaeger.inject, Jaeger.extract))
       ]
     ]
   ]

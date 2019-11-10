@@ -34,6 +34,13 @@ module internal JaegerBaggage =
     ]
     |> Map.ofSeq
 
+
+  let inject setter (context: SpanContext) target =
+    context.traceState
+      |> Seq.map (fun (KeyValue (k, v)) -> sprintf "%s%s" Prefix k, (SpanAttrValue.S v).uriEncode() :: [])
+      |> Seq.fold (fun x data -> setter data x) target
+
+
 /// https://www.jaegertracing.io/docs/1.14/client-libraries/#trace-span-identity
 /// `uber-trace-id: {trace-id}:{span-id}:{parent-span-id}:{flags}`
 ///
@@ -105,14 +112,9 @@ module Jaeger =
   let inject (setter: Setter<'t>) (context: SpanContext) (target: 't): 't =
     let psId = match context.parentSpanId with None -> "0" | Some psId -> psId.ToString()
     let trace = sprintf "%O:%O:%O:%i" context.traceId context.spanId psId (byte context.flags)
-    let setBaggage target =
-      context.traceState
-        |> Seq.map (fun (KeyValue (k, v)) -> sprintf "%s%s" BaggageHeaderPrefix k, (SpanAttrValue.S v).uriEncode() :: [])
-        |> Seq.fold (fun x data -> setter data x) target
-
     target
       |> setter (TraceHeader, trace :: [])
-      |> setBaggage
+      |> JaegerBaggage.inject setter context
 
   let propagator =
     { new Propagator with
@@ -218,8 +220,21 @@ module B3 =
     let traceState = get source BaggageHeaderPrefix |> JaegerBaggage.extract
     SpanContext(TraceId.ofString traceId, SpanId.ofString spanId, flags, ?parentSpanId=parentSpanIdO, ?traceState=Some traceState)))
 
-  let injectMulti (setter: Setter<'a>) (ctx: SpanContext) (target: 'a): 'a =
+  let injectMulti (setter: Setter<'a>) (context: SpanContext) (target: 'a): 'a =
+    let flagsHeader, flagsValue =
+      if context.isDebug then FlagsHeader, "1"
+      elif context.isSampled then SampledHeader, "1"
+      else SampledHeader, "0"
+
     target
+      |> setter (flagsHeader, flagsValue :: [])
+      |> setter (TraceIdHeader, context.traceId.ToString() :: [])
+      |> setter (SpanIdHeader, context.spanId.ToString() :: [])
+      |> match context.parentSpanId with
+         | None -> id
+         | Some psId -> setter (ParentSpanIdHeader, psId.ToString() :: [])
+      |> JaegerBaggage.inject setter context
+
 
 
   let extractSingle (get: Getter<'a>) (source: 'a): SpanAttr list * SpanContext option =
@@ -249,8 +264,22 @@ module B3 =
     if Map.isEmpty traceState then context
     else context |> Option.map (fun ctx -> ctx.withState traceState)
 
-  let injectSingle (setter: Setter<'a>) (ctx: SpanContext) (target: 'a): 'a =
+  let injectSingle (setter: Setter<'a>) (context: SpanContext) (target: 'a): 'a =
+    let flags =
+      if context.isDebug then "d"
+      elif context.isSampled then "1"
+      else "0"
+
+    let parentSpanId =
+      match context.parentSpanId with
+      | None -> ""
+      | Some psId -> sprintf "-%O" psId
+
+    let trace = sprintf "%O-%O-%s%s" context.traceId context.spanId flags parentSpanId
+
     target
+      |> setter (TraceHeader, trace :: [])
+      |> JaegerBaggage.inject setter context
 
 
   let extract (get: Getter<'a>) (source: 'a): SpanAttr list * SpanContext option =
@@ -271,7 +300,7 @@ module B3 =
           extract getter carrier
         member x.inject(setter, ctx, carrier) =
           inject setter ctx carrier
-       }
+    }
 
 
 module Combined =
