@@ -53,7 +53,7 @@ module Jaeger =
   let ExtractRegex = "^([A-F0-9]{32}|[A-F0-9]{16}):([A-F0-9]{1,16}):([A-F0-9]{0,16}):(\d)$"
 
 
-  let extract (get: Getter<'t>) (source: 't): SpanAttr list * ContextAttr list * SpanContext option =
+  let extract (get: Getter<'t>) (source: 't): SpanAttr list * SpanContext option =
     let context =
       match get source TraceHeader with
       | (_, headerValue :: _) :: _ ->
@@ -77,7 +77,7 @@ module Jaeger =
       | _ ->
         []
 
-    let baggage: ContextAttr list =
+    let traceState: Map<string, string> =
       [ for header, values in get source BaggageHeaderPrefix do
           match values with
           | valueEncoded :: _ ->
@@ -85,16 +85,19 @@ module Jaeger =
             yield key, Uri.UnescapeDataString valueEncoded
           | _ -> ()
       ]
+      |> Map.ofSeq
 
-    attrs, baggage, context
+    attrs,
+    if Map.isEmpty traceState then context
+    else context |> Option.map (fun ctx -> ctx.withState traceState)
 
-  let inject (setter: Setter<'t>) (contextAttrs: ContextAttr list, context: SpanContext) (target: 't): 't =
+  let inject (setter: Setter<'t>) (context: SpanContext) (target: 't): 't =
     let psId = match context.parentSpanId with None -> "0" | Some psId -> psId.ToString()
     let trace = sprintf "%O:%O:%O:%i" context.traceId context.spanId psId (byte context.flags)
     let setBaggage target =
-      contextAttrs
-        |> List.map (fun (k, v) -> sprintf "%s%s" BaggageHeaderPrefix k, (SpanAttrValue.S v).uriEncode() :: [])
-        |> List.fold (fun x data -> setter data x) target
+      context.traceState
+        |> Seq.map (fun (KeyValue (k, v)) -> sprintf "%s%s" BaggageHeaderPrefix k, (SpanAttrValue.S v).uriEncode() :: [])
+        |> Seq.fold (fun x data -> setter data x) target
 
     target
       |> setter (TraceHeader, trace :: [])
@@ -104,8 +107,8 @@ module Jaeger =
     { new Propagator with
         member x.extract(getter, instance) =
           extract getter instance
-        member x.inject(setter, ctxAttrs, ctx, target) =
-          inject setter (ctxAttrs, ctx) target
+        member x.inject(setter, ctx, target) =
+          inject setter ctx target
     }
 
 module B3 =
@@ -121,16 +124,16 @@ module Combined =
           member x.extract<'t>(getter, instance: 't) =
             let rec tryExtract = function
               | [] ->
-                [], [], None
+                [], None
               | p: Propagator :: tail ->
                 match p.extract(getter, instance) with
-                | sAs, cAs, Some ctxO ->
-                  sAs, cAs, Some ctxO
-                | _, _, _ ->
+                | sAs, Some ctxO ->
+                  sAs, Some ctxO
+                | _, _ ->
                   tryExtract tail
             tryExtract ps
 
-          member x.inject(setter, ctxAttrs, ctx, target) =
+          member x.inject(setter, ctx, target) =
             let p = List.head ps
-            p.inject(setter, ctxAttrs, ctx, target)
+            p.inject(setter, ctx, target)
       }

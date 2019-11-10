@@ -50,7 +50,7 @@ module SuaveEx =
     member x.startSpan (ctx: HttpContext, ?propagator) =
       let propagator = defaultArg propagator Jaeger.propagator
       let started = Global.timestamp()
-      let attrs, _, parentO = propagator.extract(getter, ctx)
+      let attrs, parentO = propagator.extract(getter, ctx)
       // https://github.com/open-telemetry/opentelemetry-specification/issues/210
       // https://github.com/open-telemetry/opentelemetry-python/pull/89/files
       let span =

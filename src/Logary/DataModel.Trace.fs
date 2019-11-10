@@ -27,21 +27,24 @@ type SpanFlags =
   | Sampled = 1
   | Debug = 2
 
+/// Value object with contextual tracing data.
+///
 /// https://opentracing.io/specification/#references-between-spans
 /// https://www.jaegertracing.io/docs/1.13/client-libraries/#trace-span-identity
-/// TO CONSIDER: https://www.w3.org/TR/trace-context/#tracestate-field
-/// TO CONSIDER: codecs from binary/http, etc...
+/// https://www.w3.org/TR/trace-context/#tracestate-field
 [<Sealed>]
-type SpanContext(traceId: TraceId, spanId: SpanId, ?flags: SpanFlags, ?parentSpanId: SpanId) =
+type SpanContext(traceId: TraceId, spanId: SpanId, ?flags: SpanFlags, ?parentSpanId: SpanId, ?traceState: Map<string, string>) =
   let flag = defaultArg flags SpanFlags.None
+  let state = defaultArg traceState Map.empty
   let parentSpan = match parentSpanId with Some psId when psId <> SpanId.Zero -> Some psId | _ -> None
   let equal (other: SpanContext) =
-    traceId = other.traceId && spanId = other.spanId && flag = other.flags && parentSpan = other.parentSpanId
-  let currentHash = hash traceId ^^^ 307 * hash spanId ^^^ 307 * hash flags ^^^ 307 * hash parentSpanId
+    traceId = other.traceId && spanId = other.spanId && flag = other.flags && parentSpan = other.parentSpanId && state = other.traceState
+  let currentHash = hash traceId ^^^ 307 * hash spanId ^^^ 307 * hash flags ^^^ 307 * hash parentSpanId ^^^ 307 * hash state
   member x.traceId = traceId
   member x.parentSpanId = parentSpan
   member x.spanId = spanId
   member x.flags = flag
+  member x.traceState = state
 
   member x.isRootSpan = Option.isNone parentSpan
   member x.isRecorded = int flag > 0
@@ -51,10 +54,15 @@ type SpanContext(traceId: TraceId, spanId: SpanId, ?flags: SpanFlags, ?parentSpa
   static member Zero = SpanContext(TraceId.Zero, SpanId.Zero)
 
   member x.withParent (context: SpanContext) =
-    new SpanContext(context.traceId, x.spanId, x.flags ||| context.flags, context.spanId)
+    SpanContext(context.traceId, x.spanId, x.flags ||| context.flags, context.spanId)
+  member x.withState (nextState: Map<string, string>) =
+    SpanContext(x.traceId, x.spanId, x.flags, ?parentSpanId=x.parentSpanId, ?traceState=Some nextState)
   override x.ToString() =
-    sprintf "SpanContext(isRootSpan=%b, isSampled=%b, isDebug=%b, traceId=%O, spanId=%O, parentSpanId=%O)"
-            x.isRootSpan x.isSampled x.isDebug x.traceId x.spanId x.parentSpanId
+    let keys =
+      if Map.isEmpty x.traceState then "[]"
+      else sprintf "[ %s ]" (x.traceState |> Seq.map (fun (KeyValue (k, _)) -> k) |> String.concat ", ")
+    sprintf "SpanContext(isRootSpan=%b, isSampled=%b, isDebug=%b, traceId=%O, spanId=%O, parentSpanId=%O, traceState(keys)=%s)"
+            x.isRootSpan x.isSampled x.isDebug x.traceId x.spanId x.parentSpanId keys
   override x.Equals(other) = match other with :? SpanContext as sc -> equal sc | _ -> false
   override x.GetHashCode() = currentHash
   interface IEquatable<SpanContext> with member x.Equals other = equal other
@@ -261,8 +269,8 @@ type Propagator =
   /// - the Span context from the carrier.
   abstract extract:
     getter: Getter<'t> * carrier: 't
-      -> spanAttrs: SpanAttr list * contextAttrs: ContextAttr list * spanContextO: SpanContext option
+      -> spanAttrs: SpanAttr list * spanContextO: SpanContext option
   /// Injects the given (distributed) context attributes and span context (parent id, trace-state) into the target carrier.
   abstract inject:
-    setter: Setter<'t> * contextAttrs: ContextAttr list * spanContext: SpanContext * target: 't
+    setter: Setter<'t> * spanContext: SpanContext * target: 't
       -> 't

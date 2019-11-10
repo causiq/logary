@@ -98,7 +98,7 @@ let tests =
 
     testList "propagation" [
       testList "Jaeger" [
-        yield! [
+        yield! [ // example uber-trace-id header values
           "abcdef1234567890abcdef1234567890:1234567890fedcba:0:3"
           "abcdef1234567890abcdef1234567890:1234567890fedcba:0:2"
           "abcdef1234567890abcdef1234567890:1234567890fedcba:0:1"
@@ -128,18 +128,19 @@ let tests =
             "jaeger-debug-id", "37337"
           ]
 
-          let spanAttrs, contextAttrs, contextO = Jaeger.extract Extract.mapWithSingle m
+          let spanAttrs, contextO = Jaeger.extract Extract.mapWithSingle m
 
           spanAttrs
             |> Expect.contains "Has a jaeger-debug-id value" ("jaeger-debug-id", SpanAttrValue.S "37337")
-
-          contextAttrs
-            |> Expect.contains "Has a userId value" ("userId", "haf")
 
           contextO
             |> Expect.isSome "Has a previous context"
 
           let context = Option.get contextO
+
+          context.traceState
+            |> Map.tryFind "userId"
+            |> Expect.equal "TraceState/baggage a 'userId' key with a 'haf' value" (Some "haf")
 
           context.traceId
             |> Expect.equal "Has correct TraceId" (TraceId.ofString "abcdef1234567890abcdef1234567890")
@@ -159,22 +160,27 @@ let tests =
           context.isRecorded
             |> Expect.isTrue "Since Debug|||Sampled = 3 = flags"
 
-        let injectExtractProperty (ctxAttrs: Map<string, string>, ctx: SpanContext) =
+        let injectExtractProperty (ctx: SpanContext) =
           // no zero contexts
           if ctx.isZero then () else
           // no null keys
-          if ctxAttrs |> Map.containsKey null then () else
+          if ctx.traceState |> Map.containsKey null then () else
           // null value -> ""
-          let ctxAttrs = ctxAttrs |> Map.map (fun _ v -> if isNull v then "" else v)
+          let ctx =
+            ctx.traceState
+              |> Map.map (fun _ v -> if isNull v then "" else v)
+              |> ctx.withState
           // otherwise:
 
-          let _, resCtxAttrs, resCtx =
+          let _, resCtx =
             Map.empty
-              |> Jaeger.inject Inject.mapWithList (Map.toList ctxAttrs, ctx)
+              |> Jaeger.inject Inject.mapWithList ctx
               |> Jaeger.extract Extract.mapWithList
 
-          resCtxAttrs
-            |> Expect.sequenceEqual "SpanAttr list matches `ctxAttrs` input" (Map.toList ctxAttrs)
+          resCtx
+            |> Option.get
+            |> fun x -> x.traceState
+            |> Expect.sequenceEqual "ContextAttr extraction matches `ctx.traceState` input" ctx.traceState
 
           resCtx
             |> Expect.isSome "Has resCtx"
@@ -183,7 +189,7 @@ let tests =
             |> Option.get
             |> Expect.equal "resCtx = input ctx" ctx
 
-        yield testProperty "roundtrip inject/extract" injectExtractProperty
+        yield testProperty "roundtrip inject and extract" injectExtractProperty
       ]
     ]
   ]
