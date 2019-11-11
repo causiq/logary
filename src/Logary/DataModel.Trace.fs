@@ -62,6 +62,8 @@ type SpanContext(traceId: TraceId,
   member x.parentSpanId = parentSpan
   member x.spanId = spanId
   member x.flags = flag
+
+  /// Primarily supported by W3C tracing
   member x.traceState = state
 
   /// User-supplied key-value pairs

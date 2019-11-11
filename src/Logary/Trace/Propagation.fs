@@ -1,11 +1,92 @@
 namespace Logary.Trace.Propagation
 
 open System
+open System.Text
 open Logary.Trace
 open Logary.Internals.Regex
 
 /// https://w3c.github.io/trace-context/#trace-context-http-headers-format
 module W3C =
+
+  [<Struct>]
+  type NameValue =
+    { name: string
+      value: string
+      properties: (string * string option) list }
+    member x.hasProperties = not (List.isEmpty x.properties)
+
+  type CorrelationContext = CorrelationContext of nameValues: NameValue list
+
+  module CorrelationContext =
+    open FParsec
+
+    type Parser<'t> = Parser<'t, unit>
+
+    let private toBytes: string -> byte list =
+      Encoding.UTF8.GetBytes >> List.ofArray
+
+    let private toBytePair (s: string) =
+      byte >> fun i -> i, toBytes (i.ToString s)
+
+    let private index =
+      let range = [ 0x00 .. 0xff ]
+      let lower = List.map (toBytePair "x2") range
+      let upper = List.map (toBytePair "X2") range
+
+      lower @ upper
+
+    let private byteIndex =
+      index
+      |> Map.ofList
+
+    let private hexIndex =
+      index
+      |> List.map (fun (a, b) -> (b, a))
+      |> Map.ofList
+
+    let private pctP: Parser<char[]> =
+      tuple3 (pchar '%') hex hex
+      |>> (fun (p, a, b) ->
+          [| p; a; b |])
+
+    let private makeParser (pred: char -> bool) =
+      many (attempt pctP <|> (satisfy pred |>> Array.singleton))
+      |>> fun x ->
+          new string (Array.concat x)
+
+    let headerNameP: Parser<string> = pstringCI "correlation-context"
+
+    let nameP =
+      spaces >>. makeParser ((<>) '=') .>> spaces
+
+    let valueP: Parser<string * (string * string option) list> = // '   haf;awesome;really=yes!%F0%9F%8E%B8%0A'
+      let contentsP: Parser<string> = // haf
+        makeParser (fun c -> c <> ';' && c <> ',')
+
+      let propertyOpP: Parser<string> = // 'really' | 'yes!%F0%9F%8E%B8%0A'
+        makeParser (fun c -> c <> '=' && c <> ';')
+
+      let propertyP: Parser<string * string option> = // ';awesome' | 'really=yes!%F0%9F%8E%B8%0A'
+        skipChar ';' >>. (propertyOpP .>>. opt (skipChar '=' >>. propertyOpP))
+
+      let propertiesP: Parser<(string * string option) list> = // 'awesome;oh yes' | 'a;b;c=e'
+        sepEndBy1 propertyP (pchar ';')
+
+      let optPropertiesP: Parser<(string * string option) list> = // same as above, but yields empty list if non-existent
+        opt propertiesP |>> Option.defaultValue []
+
+      spaces >>. contentsP .>>. optPropertiesP .>> spaces
+
+    let headerValueP: Parser<CorrelationContext> =
+      let nameValueP =
+        nameP .>>. valueP |>> fun (name, (value, properties)) ->
+          { name=name; value=value; properties=properties }
+      sepBy nameValueP (pchar ',') |>> CorrelationContext
+
+    let tryParse s =
+      match run (headerValueP .>> eof) s with
+      | Success (x, _, _) -> Result.Ok x
+      | Failure (e, _, _) -> Result.Error e
 
   let extract (getter: Getter<'a>) (source: 'a): SpanAttr list * SpanContext option =
     [], None
