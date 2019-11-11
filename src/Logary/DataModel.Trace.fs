@@ -32,19 +32,44 @@ type SpanFlags =
 /// https://opentracing.io/specification/#references-between-spans
 /// https://www.jaegertracing.io/docs/1.13/client-libraries/#trace-span-identity
 /// https://www.w3.org/TR/trace-context/#tracestate-field
+/// https://w3c.github.io/correlation-context/
 [<Sealed>]
-type SpanContext(traceId: TraceId, spanId: SpanId, ?flags: SpanFlags, ?parentSpanId: SpanId, ?traceState: Map<string, string>) =
+type SpanContext(traceId: TraceId,
+                 spanId: SpanId,
+                 ?flags: SpanFlags,
+                 ?parentSpanId: SpanId,
+                 ?traceState: Map<string, string>,
+                 ?traceContext: Map<string, string>) =
   let flag = defaultArg flags SpanFlags.None
   let state = defaultArg traceState Map.empty
+  let context = defaultArg traceContext Map.empty
   let parentSpan = match parentSpanId with Some psId when psId <> SpanId.Zero -> Some psId | _ -> None
   let equal (other: SpanContext) =
-    traceId = other.traceId && spanId = other.spanId && flag = other.flags && parentSpan = other.parentSpanId && state = other.traceState
-  let currentHash = hash traceId ^^^ 307 * hash spanId ^^^ 307 * hash flags ^^^ 307 * hash parentSpanId ^^^ 307 * hash state
+       traceId = other.traceId
+    && spanId = other.spanId
+    && flag = other.flags
+    && parentSpan = other.parentSpanId
+    && state = other.traceState
+    && context = other.traceContext
+  let currentHash =
+    hash traceId * 17
+    + hash spanId * 17
+    + hash flags * 17
+    + hash parentSpanId * 17
+    + hash state * 17
+    + hash context
   member x.traceId = traceId
   member x.parentSpanId = parentSpan
   member x.spanId = spanId
   member x.flags = flag
   member x.traceState = state
+
+  /// User-supplied key-value pairs
+  /// Jaeger: calls this baggage
+  /// Logary: calls this context
+  /// Zipkin: doesn't support it, but uses the term Baggage from Jaeger
+  /// W3C: calls this correlation context
+  member x.traceContext = context
 
   member x.isRootSpan = Option.isNone parentSpan
   member x.isRecorded = int flag > 0
@@ -54,17 +79,26 @@ type SpanContext(traceId: TraceId, spanId: SpanId, ?flags: SpanFlags, ?parentSpa
   static member Zero = SpanContext(TraceId.Zero, SpanId.Zero)
 
   member x.withParent (context: SpanContext) =
-    SpanContext(context.traceId, x.spanId, x.flags ||| context.flags, context.spanId)
+    SpanContext(context.traceId, x.spanId, x.flags ||| context.flags, context.spanId, ?traceState=Some x.traceState, ?traceContext=Some x.traceContext)
+
   member x.withState (nextState: Map<string, string>) =
-    SpanContext(x.traceId, x.spanId, x.flags, ?parentSpanId=x.parentSpanId, ?traceState=Some nextState)
+    SpanContext(x.traceId, x.spanId, x.flags, ?parentSpanId=x.parentSpanId, ?traceState=Some nextState, ?traceContext=Some x.traceContext)
+
+  member x.withContext (nextContext: Map<string, string>) =
+    SpanContext(x.traceId, x.spanId, x.flags, ?parentSpanId=x.parentSpanId, ?traceState=Some x.traceState, ?traceContext=Some nextContext)
+
   member x.withFlags nextFlags =
-    SpanContext(x.traceId, x.spanId, nextFlags, ?parentSpanId=x.parentSpanId, ?traceState=Some x.traceState)
+    SpanContext(x.traceId, x.spanId, nextFlags, ?parentSpanId=x.parentSpanId, ?traceState=Some x.traceState, ?traceContext=Some x.traceContext)
+
   override x.ToString() =
-    let keys =
+    let stateKeys =
       if Map.isEmpty x.traceState then "[]"
       else sprintf "[ %s ]" (x.traceState |> Seq.map (fun (KeyValue (k, _)) -> k) |> String.concat ", ")
-    sprintf "SpanContext(isRootSpan=%b, flags={%O}, isDebug=%b, traceId=%O, spanId=%O, parentSpanId=%O, traceState(keys)=%s)"
-            x.isRootSpan x.flags x.isDebug x.traceId x.spanId x.parentSpanId keys
+    let ctxKeys =
+      if Map.isEmpty x.traceContext then "[]"
+      else sprintf "[ %s ]" (x.traceContext |> Seq.map (fun (KeyValue (k, _)) -> k) |> String.concat ", ")
+    sprintf "SpanContext(isRootSpan=%b, flags={%O}, isDebug=%b, traceId=%O, spanId=%O, parentSpanId=%O, traceState(keys)=%s, traceContext(keys)=%s)"
+            x.isRootSpan x.flags x.isDebug x.traceId x.spanId x.parentSpanId stateKeys ctxKeys
   override x.Equals(other) = match other with :? SpanContext as sc -> equal sc | _ -> false
   override x.GetHashCode() = currentHash
   interface IEquatable<SpanContext> with member x.Equals other = equal other

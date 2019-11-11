@@ -18,23 +18,21 @@ module List =
 let injectExtractProperty (inject: Setter<Map<string, string list>> -> SpanContext -> Map<string, string list> -> Map<string, string list>,
                            extract: Getter<Map<string, string list>> -> Map<string, string list> -> SpanAttr list * SpanContext option)
                           (ctx: SpanContext) =
-  // no zero contexts
-  if ctx.isZero then () else
-  // no null keys
-  if ctx.traceState |> Map.containsKey null then () else
-  // null value -> ""
-  let newCtx =
-    ctx.traceState
-      |> Map.toSeq
+  let cleanMap (m: Map<string, string>) =
+    m |> Map.toSeq
       // cannot pass whitespace keys, since they are all string based
       |> Seq.filter (fun (k, _) -> not (String.IsNullOrWhiteSpace k))
       // cannot pass null values, since they are all string based and there's no null available
       |> Seq.map (fun (k, v) -> k, if isNull v then "" else v)
       |> Map.ofSeq
-      |> ctx.withState
-      // fix generated flags: Debug (implies) -> Sampled
-      |> fun newCtx -> if ctx.isDebug then newCtx.withFlags (newCtx.flags ||| SpanFlags.Sampled) else newCtx
-  // otherwise:
+
+  // no zero contexts
+  if ctx.isZero then () else
+  // no null keys
+  let newCtx =
+    ctx.withState(Map.empty (* partial *)).withContext(cleanMap ctx.traceContext)
+    // fix generated flags: Debug (implies) -> Sampled
+    |> fun newCtx -> if ctx.isDebug then newCtx.withFlags (newCtx.flags ||| SpanFlags.Sampled) else newCtx
 
   let injected =
     Map.empty
@@ -46,8 +44,8 @@ let injectExtractProperty (inject: Setter<Map<string, string list>> -> SpanConte
 
   resCtx
     |> Option.get
-    |> fun x -> x.traceState
-    |> Expect.sequenceEqual "ContextAttr extraction matches `ctx.traceState` input" newCtx.traceState
+    |> fun x -> x.traceContext
+    |> Expect.sequenceEqual "ContextAttr extraction matches `ctx.traceContext` input" newCtx.traceContext
 
   resCtx
     |> Expect.isSome "Has resCtx"
@@ -199,6 +197,9 @@ let tests =
             let context = Option.get contextO
 
             context.traceState
+              |> Expect.isEmpty "No TraceState in the B3 format"
+
+            context.traceContext
               |> Map.tryFind "userId"
               |> Expect.equal "TraceState/baggage a 'userId' key with a 'haf' value" (Some "haf")
 
@@ -321,7 +322,7 @@ let tests =
 
           let context = Option.get contextO
 
-          context.traceState
+          context.traceContext
             |> Map.tryFind "userId"
             |> Expect.equal "TraceState/baggage a 'userId' key with a 'haf' value" (Some "haf")
 

@@ -5,7 +5,7 @@ open Logary.Trace
 open Logary.Internals.Regex
 
 /// https://w3c.github.io/trace-context/#trace-context-http-headers-format
-module W3CTraceContext =
+module W3C =
 
   let extract (getter: Getter<'a>) (source: 'a): SpanAttr list * SpanContext option =
     [], None
@@ -36,7 +36,7 @@ module internal JaegerBaggage =
 
 
   let inject setter (context: SpanContext) target =
-    context.traceState
+    context.traceContext
       |> Seq.map (fun (KeyValue (k, v)) -> sprintf "%s%s" Prefix k, (SpanAttrValue.S v).uriEncode() :: [])
       |> Seq.fold (fun x data -> setter data x) target
 
@@ -102,12 +102,12 @@ module Jaeger =
       | _ ->
         []
 
-    let traceState: Map<string, string> =
+    let traceContext: Map<string, string> =
       get source BaggageHeaderPrefix |> JaegerBaggage.extract
 
     attrs,
-    if Map.isEmpty traceState then context
-    else context |> Option.map (fun ctx -> ctx.withState traceState)
+    if Map.isEmpty traceContext then context
+    else context |> Option.map (fun ctx -> ctx.withContext traceContext)
 
   let inject (setter: Setter<'t>) (context: SpanContext) (target: 't): 't =
     let psId = match context.parentSpanId with None -> "0" | Some psId -> psId.ToString()
@@ -221,8 +221,8 @@ module B3 =
     getSingleExact get source SpanIdHeader |> Option.map (fun spanId ->
     let flags = getFlags ()
     let parentSpanIdO = getSingleExact get source ParentSpanIdHeader |> Option.map SpanId.ofString
-    let traceState = get source BaggageHeaderPrefix |> JaegerBaggage.extract
-    SpanContext(TraceId.ofString traceId, SpanId.ofString spanId, flags, ?parentSpanId=parentSpanIdO, ?traceState=Some traceState)))
+    let traceContext = get source BaggageHeaderPrefix |> JaegerBaggage.extract
+    SpanContext(TraceId.ofString traceId, SpanId.ofString spanId, flags, ?parentSpanId=parentSpanIdO, ?traceContext=Some traceContext)))
 
   let injectMulti (setter: Setter<'a>) (context: SpanContext) (target: 'a): 'a =
     let flagsHeader, flagsValue =
@@ -261,12 +261,12 @@ module B3 =
           SpanContext(TraceId.ofString traceId, SpanId.ofString spanId, flags, ?parentSpanId=psIdO)
         )
 
-    let traceState: Map<string, string> =
+    let traceContext: Map<string, string> =
       get source BaggageHeaderPrefix |> JaegerBaggage.extract
 
     [],
-    if Map.isEmpty traceState then context
-    else context |> Option.map (fun ctx -> ctx.withState traceState)
+    if Map.isEmpty traceContext then context
+    else context |> Option.map (fun ctx -> ctx.withContext traceContext)
 
 
   let injectSingle (setter: Setter<'a>) (context: SpanContext) (target: 'a): 'a =
@@ -294,7 +294,7 @@ module B3 =
       extractMulti get source
     | Some sc ->
       attrs, Some sc
-      
+
 
   let inject (setter: Setter<'a>) (ctx: SpanContext) (target: 'a): 'a =
     injectSingle setter ctx target
