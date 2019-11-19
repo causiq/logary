@@ -30,7 +30,7 @@ let injectExtractProperty (inject: Setter<Map<string, string list>> -> SpanConte
   if ctx.isZero then () else
   // no null keys
   let newCtx =
-    ctx.withState(Map.empty (* partial *)).withContext(cleanMap ctx.traceContext)
+    ctx.withState(TraceState.empty (* partial *)).withContext(cleanMap ctx.traceContext)
     // fix generated flags: Debug (implies) -> Sampled
     |> fun newCtx -> if ctx.isDebug then newCtx.withFlags (newCtx.flags ||| SpanFlags.Sampled) else newCtx
 
@@ -43,6 +43,9 @@ let injectExtractProperty (inject: Setter<Map<string, string list>> -> SpanConte
       |> extract Extract.mapWithList
 
   resCtx
+    |> Expect.isSome (sprintf "`resCtx` has a value after `extract`; input map %A" injected)
+
+  resCtx
     |> Option.get
     |> fun x -> x.traceContext
     |> Expect.sequenceEqual "ContextAttr extraction matches `ctx.traceContext` input" newCtx.traceContext
@@ -53,6 +56,11 @@ let injectExtractProperty (inject: Setter<Map<string, string list>> -> SpanConte
   resCtx
     |> Option.get
     |> Expect.equal "resCtx = input ctx" newCtx
+
+
+let injectExtractPropertyW3C (inject, extract) (ctx: SpanContext) =
+  let nextCtx = SpanContext(ctx.traceId, ctx.spanId, ctx.flags, traceState=ctx.traceState)
+  injectExtractProperty (inject, extract) nextCtx
 
 
 [<Tests>]
@@ -196,8 +204,8 @@ let tests =
 
             let context = Option.get contextO
 
-            context.traceState
-              |> Expect.isEmpty "No TraceState in the B3 format"
+            context.traceState.isZero
+              |> Expect.isTrue "No TraceState in the B3 format"
 
             context.traceContext
               |> Map.tryFind "userId"
@@ -273,13 +281,125 @@ let tests =
             |> Expect.stringContains "Has -0- inside it" "-0-"
 
 
-        yield testProperty "roundtrip multi" (injectExtractProperty (B3.injectMulti, B3.extractMulti))
-        yield testProperty "roundtrip single" (injectExtractProperty (B3.injectSingle, B3.extractSingle))
-        yield testProperty "roundtrip combined" (injectExtractProperty (B3.inject, B3.extract))
+        yield testPropertyWithConfig fsc "roundtrip multi" (injectExtractProperty (B3.injectMulti, B3.extractMulti))
+        yield testPropertyWithConfig fsc "roundtrip single" (injectExtractProperty (B3.injectSingle, B3.extractSingle))
+        yield testPropertyWithConfig fsc "roundtrip combined" (injectExtractProperty (B3.inject, B3.extract))
       ]
 
       testList "W3C" [
-        // TODO
+        yield testList "traceparent" [
+          yield! [
+            "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01"
+            "00-0af7651916cd43dd8448eb211c80319c-00f067aa0ba902b7-01"
+            "00-0af7651916cd43dd8448eb211c80319c-00f067aa0ba902b7-00"
+          ] |> List.map (fun example ->
+            testCase (sprintf "traceparent='%s'" example) <| fun _ ->
+              let m = Map [ "traceparent", example ]
+              let _, ctx = W3C.extract Extract.mapWithSingle m
+              ctx
+                |> Expect.isSome "Returns a context"
+
+              ctx.Value.traceId
+                |> Expect.equal "Has TraceId" (TraceId.ofString "0af7651916cd43dd8448eb211c80319c")
+
+              ctx.Value.spanId.isZero
+                |> Expect.isFalse "SpanId is non-zero"
+
+              if example.EndsWith "01" then
+                ctx.Value.flags &&& SpanFlags.Sampled = SpanFlags.Sampled
+                  |> Expect.isTrue "Has the Sampled flag"
+              elif example.EndsWith "00" then
+                ctx.Value.flags &&& SpanFlags.Sampled = SpanFlags.Sampled
+                  |> Expect.isFalse "Has the Sampled flag"
+            )
+        ]
+
+        yield testList "tracestate" [
+          yield! [
+            "a@b", TraceStateKey ("a", Some "b")
+            "b", TraceStateKey ("b", None)
+            "a_-_*/@vnd_11", TraceStateKey ("a_-_*/", Some "vnd_11")
+          ] |> List.map (fun (key, expected) ->
+            testCase (sprintf "key='%s'" key) <| fun () ->
+              match FParsec.CharParsers.run (W3C.TraceState.keyP) key with
+              | FParsec.CharParsers.ParserResult.Success (res, _, _) ->
+                res |> Expect.equal "Should parse to TraceStateKey value" expected
+              | FParsec.CharParsers.ParserResult.Failure (res, _, _) ->
+                failtestf "%A" res
+            )
+
+          yield testCase "many tracestate headers are concatenated" <| fun () ->
+            let subject = [
+              "traceparent", [ "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01" ]
+              "tracestate", [ "congo=ucfJifl5GOE" ]
+              "tracestate", [ "rojo=00f067aa0ba902b7" ]
+            ]
+            let _, ctx = W3C.extract Extract.listWithList subject
+            ctx.Value.traceState
+              |> Expect.equal "Has correct trace state value" (TraceState.ofList [
+                TraceStateKey ("congo", None), "ucfJifl5GOE"
+                TraceStateKey ("rojo", None), "00f067aa0ba902b7"
+              ])
+
+          yield! [
+            [ "congo=t61rcWkgMzE" ], [
+              TraceStateKey ("congo", None), "t61rcWkgMzE"
+            ]
+
+            [ "congo=ucfJifl5GOE,rojo=00f067aa0ba902b7" ], [
+              TraceStateKey ("congo", None), "ucfJifl5GOE"
+              TraceStateKey ("rojo", None), "00f067aa0ba902b7"
+            ]
+
+            [ "congo=ucfJifl5GOE"
+              "rojo=00f067aa0ba902b7" ], [
+              TraceStateKey ("congo", None), "ucfJifl5GOE"
+              TraceStateKey ("rojo", None), "00f067aa0ba902b7"
+            ]
+
+            [ "rojo=00f067aa0ba902b7"
+              "congo=ucfJifl5GOE" ], [
+              TraceStateKey ("rojo", None), "00f067aa0ba902b7"
+              TraceStateKey ("congo", None), "ucfJifl5GOE"
+            ]
+
+            [ "congo=ucfJifl5GOE,rojo@vnd1=00f067aa0ba902b7" ], [
+              TraceStateKey ("congo", None), "ucfJifl5GOE"
+              TraceStateKey ("rojo", Some "vnd1"), "00f067aa0ba902b7"
+            ]
+          ] |> List.map (fun (examples, values) ->
+            testCase (sprintf "tracestate='%s' %i keys, %i headers" (String.concat "," examples) values.Length examples.Length) <| fun _ ->
+              // most realistic variant, a list headers, each with a list of values:
+              let headers = [
+                yield "traceparent", [ "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01" ]
+                for example in examples do
+                  yield "tracestate", [ example ]
+              ]
+
+              let _, ctx = W3C.extract Extract.listWithList headers
+              let ctx = Option.get ctx
+
+              ctx.traceId
+                |> Expect.equal "Has TraceId" (TraceId.ofString "0af7651916cd43dd8448eb211c80319c")
+
+              ctx.spanId
+                |> Expect.equal "Has SpanId" (SpanId.ofString "b7ad6b7169203331")
+
+              int (ctx.flags &&& SpanFlags.Sampled) > 0
+                |> Expect.isTrue "Has the Sampled flag"
+
+              ctx.traceState.isZero
+                |> Expect.isFalse "Has non-zero traceState value"
+
+              ctx.traceState.value
+                |> Expect.sequenceEqual "Has the ordered sequence of expected values in traceState" values
+            )
+        ]
+
+        yield testList "correlation-context" [
+        ]
+
+        yield testPropertyWithConfig fsc "roundtrip combined" (injectExtractPropertyW3C (W3C.inject, W3C.extract))
       ]
 
       testList "Jaeger" [
@@ -344,7 +464,7 @@ let tests =
           context.isRecorded
             |> Expect.isTrue "Since Debug|||Sampled = 3 = flags"
 
-        yield testProperty "roundtrip inject and extract" (injectExtractProperty (Jaeger.inject, Jaeger.extract))
+        yield testPropertyWithConfig fsc "roundtrip inject and extract" (injectExtractProperty (Jaeger.inject, Jaeger.extract))
       ]
     ]
   ]

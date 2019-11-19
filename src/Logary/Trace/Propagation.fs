@@ -1,12 +1,19 @@
 namespace Logary.Trace.Propagation
 
 open System
+open System.Globalization
 open System.Text
+open System.Text.RegularExpressions
 open Logary.Trace
 open Logary.Internals.Regex
+open Logary.YoLo
 
 /// https://w3c.github.io/trace-context/#trace-context-http-headers-format
 module W3C =
+  open Extract
+
+  let TraceParentHeader = "traceparent"
+
 
   [<Struct>]
   type NameValue =
@@ -15,7 +22,16 @@ module W3C =
       properties: (string * string option) list }
     member x.hasProperties = not (List.isEmpty x.properties)
 
-  type CorrelationContext = CorrelationContext of nameValues: NameValue list
+  type CorrelationContext(nameValues: NameValue list) =
+    let m = lazy (nameValues |> List.map (fun x -> x.name, x) |> Map.ofList)
+    let l = lazy (m.Value |> Seq.map (fun (KeyValue (_, v)) -> v) |> List.ofSeq)
+    let ms = lazy (m.Value |> Map.map (fun _ v -> v.value))
+    member x.value = m.Value
+    member x.valueStrings = ms.Value
+    member x.asList = l.Value
+    member x.isEmpty = List.isEmpty nameValues
+
+
 
   module CorrelationContext =
     open FParsec
@@ -54,7 +70,9 @@ module W3C =
       |>> fun x ->
           new string (Array.concat x)
 
-    let headerNameP: Parser<string> = pstringCI "correlation-context"
+    let Header = "correlation-context"
+
+    let headerNameP: Parser<string> = pstringCI Header
 
     let nameP =
       spaces >>. makeParser ((<>) '=') .>> spaces
@@ -88,11 +106,116 @@ module W3C =
       | Success (x, _, _) -> Result.Ok x
       | Failure (e, _, _) -> Result.Error e
 
+    let tryParseOption s =
+      match run (headerValueP .>> eof) s with
+      | Success (x, _, _) -> Some x
+      | Failure (_, _, _) -> None
+
+  module TraceState =
+    open FParsec
+
+    let Header = "tracestate"
+
+    let headerNameP: Parser<string, unit> =
+      pstringCI Header <?> "'tracestate' string"
+
+    let lcalphaP =
+      let lcalphaPred =
+        fun c ->
+          int c >= 0x61 && int c <= 0x7A
+          || int c >= int 'a' && int c <= int 'z'
+      satisfy lcalphaPred
+
+    let keyP: Parser<TraceStateKey, _> =
+      let varP = manyChars2 lcalphaP (lcalphaP <|> digit <|> pchar '_' <|> pchar '-' <|> pchar '*' <|> pchar '/')
+      let keyP = varP <?> "keyP"
+      let vendorP = skipChar '@' >>. varP <?> "vendorSuffix alike '@custom_vendor'"
+      (keyP .>>. opt vendorP) |>> TraceStateKey
+
+    let valueP =
+      let nblkChrP =
+        let inRange i =
+             i >= 0x21 && i <= 0x2B
+          || i >= 0x2D && i <= 0x3C
+          || i >= 0x3E && i <= 0x7E
+        satisfy (fun c -> inRange (int c))
+      let chrP = pchar (char 0x20) <|> nblkChrP
+      manyChars2 chrP nblkChrP <?> "valueP"
+
+    let listMemberP: Parser<_, _> =
+      pipe3 keyP (skipChar '=') valueP (fun k _ v -> k, v)
+      <?> "listMemberP"
+
+    let listP =
+      sepBy listMemberP (pchar ',')
+      <?> "listP"
+
+    let tryParse s =
+      match run (listP .>> eof) s with
+      | Success (x, _, _) -> Result.Ok x
+      | Failure (e, _, _) -> Result.Error e
+
+    let tryParseOption s =
+      match run (listP .>> eof) s with
+      | Success (x, _, _) -> Some x
+      | Failure (_, _, _) -> None
+
+  /// https://www.w3.org/TR/trace-context/#version-format
+  let ExtractRegex = Regex("^
+    (?<version>[0-9A-F]{2})-
+    (?<traceId>[0-9A-F]{32})-
+    (?<parentId>[0-9A-F-]{16})-
+    (?<traceFlags>[0-9A-F]{2})
+    $", RegexOptions.IgnorePatternWhitespace ||| RegexOptions.IgnoreCase ||| RegexOptions.Compiled)
+
   let extract (getter: Getter<'a>) (source: 'a): SpanAttr list * SpanContext option =
-    [], None
+
+    let traceStateO =
+      let headers = getManyExact getter source TraceState.Header
+      headers
+        |> List.concat
+        |> List.map TraceState.tryParseOption
+        |> List.filter Option.isSome
+        |> List.map Option.get
+        |> List.concat
+        |> function [] -> None | tss -> TraceState.ofList tss |> Some
+
+    let addTraceState (ctx: SpanContext) =
+      match traceStateO with
+      | None -> ctx
+      | Some state -> ctx.withState state
+
+    let spanCtx =
+      getSingleExact getter source TraceParentHeader
+        |> Option.bind (function
+          | Regex ExtractRegex [ (* version *) _; traceId; parentSpanId; flags ] ->
+            let traceId, parentSpanId = TraceId.ofString traceId, SpanId.ofString parentSpanId
+            match Int32.TryParse(flags, NumberStyles.AllowHexSpecifier, Culture.invariant) with
+            | false, _ ->
+              None
+            | true, flags ->
+              let flags = enum<SpanFlags> flags
+              Some (SpanContext(traceId, parentSpanId, flags))
+          | _ ->
+            None)
+        |> Option.map addTraceState
+
+    let attrs: SpanAttr list =
+      []
+
+    let traceContext: Map<string, string> =
+      getSingleExact getter source CorrelationContext.Header
+        |> Option.bind CorrelationContext.tryParseOption
+        |> Option.map (fun ctx -> ctx.valueStrings) // TO CONSIDER: forwarding properties!
+        |> Option.defaultValue Map.empty
+
+    attrs,
+    if Map.isEmpty traceContext then spanCtx
+    else spanCtx |> Option.map (fun ctx -> ctx.withContext traceContext)
 
   let inject (setter: Setter<'a>) (ctx: SpanContext) (target: 'a): 'a =
-    target
+    let value = sprintf "00-%s-%O-%02x" (ctx.traceId.To32HexString()) ctx.spanId (int ctx.flags)
+    setter (TraceParentHeader, value :: []) target
 
   let propagator =
     { new Propagator with
@@ -149,6 +272,8 @@ module internal JaegerBaggage =
 ///        * Instructs the backend to try really hard not to drop this trace
 ///   - Other bits are unused
 module Jaeger =
+  open Extract
+
   /// https://github.com/jaegertracing/jaeger-client-node#debug-traces-forced-sampling
   ///
   /// When Jaeger sees this header in the request that otherwise has no tracing context, it ensures that the new trace started for this request will be sampled in the "debug" mode (meaning it should survive all downsampling that might happen in the collection pipeline), and the root span will have a tag as if this statement was executed:
@@ -156,15 +281,17 @@ module Jaeger =
   let DebugIdHeader = "jaeger-debug-id"
   let TraceHeader = "uber-trace-id"
   let BaggageHeaderPrefix = JaegerBaggage.Prefix
-  let ExtractRegex = "^([A-F0-9]{32}|[A-F0-9]{16}):([A-F0-9]{1,16}):([A-F0-9]{0,16}):(\d)$"
+
+
+  let ExtractRegex = Regex("^([A-F0-9]{32}|[A-F0-9]{16}):([A-F0-9]{1,16}):([A-F0-9]{0,16}):(\d)$",
+                           RegexOptions.IgnorePatternWhitespace ||| RegexOptions.IgnoreCase ||| RegexOptions.Compiled)
 
 
   let extract (get: Getter<'t>) (source: 't): SpanAttr list * SpanContext option =
 
     let context =
-      get source TraceHeader
-        |> List.tryPick (fun (name, values) -> if name = TraceHeader then Some values else None)
-        |> Option.bind (List.tryPick (function
+      getSingleExact get source TraceHeader
+        |> Option.bind (function
           | Regex ExtractRegex [ traceId; spanId; parentSpanId; flags ] ->
             let traceId, spanId = TraceId.ofString traceId, SpanId.ofString spanId
             let psId =
@@ -174,7 +301,6 @@ module Jaeger =
             Some (SpanContext(traceId, spanId, flags, ?parentSpanId=psId))
           | _ ->
             None)
-        )
 
     let attrs: SpanAttr list =
       match get source DebugIdHeader with
@@ -256,6 +382,7 @@ module Jaeger =
 ///
 ///  https://github.com/openzipkin/b3-propagation
 module B3 =
+  open Extract
 
   let BaggageHeaderPrefix = JaegerBaggage.Prefix
   let TraceHeader = "b3"
@@ -266,22 +393,14 @@ module B3 =
   let SampledHeader = "x-b3-sampled"
 
 
-  let ExtractRegex = @"^([A-F0-9]{32}|[A-F0-9]{16})-([A-F0-9]{1,16})(?:-(\d|d)(?:-([A-F0-9]{0,16}))?)?$"
+  let ExtractRegex = Regex(@"^([A-F0-9]{32}|[A-F0-9]{16})-([A-F0-9]{1,16})(?:-(\d|d)(?:-([A-F0-9]{0,16}))?)?$",
+                           RegexOptions.IgnorePatternWhitespace ||| RegexOptions.IgnoreCase ||| RegexOptions.Compiled)
+
 
   let internal parseFlags = function
     | "d" -> SpanFlags.Debug ||| SpanFlags.Sampled
     | "1" -> SpanFlags.Sampled
     | "0" | _ -> SpanFlags.None
-
-  let internal getSingleExact (get: Getter<_>) source header =
-    get source header |> List.tryPick (function
-      | name, value :: _ when name.ToLowerInvariant() = header -> Some value
-      | _ -> None)
-
-  let internal getManyExact (get: Getter<_>) source header =
-    get source header |> List.tryPick (function
-      | name, values when name.ToLowerInvariant() = header -> Some values
-      | _ -> None)
 
   let extractMulti (get: Getter<'a>) (source: 'a): SpanAttr list * SpanContext option =
     let getFlags () =
@@ -321,11 +440,11 @@ module B3 =
       |> JaegerBaggage.inject setter context
 
 
-
   let extractSingle (get: Getter<'a>) (source: 'a): SpanAttr list * SpanContext option =
     let context =
       getManyExact get source TraceHeader
-        |> Option.bind (List.tryPick (function
+        |> List.concat
+        |> List.tryPick (function
           | Regex ExtractRegex [ traceId; spanId; flags; parentSpanId ] ->
             let psId = SpanId.ofString parentSpanId
             Some (traceId, spanId, parseFlags flags, Some psId)
@@ -337,7 +456,6 @@ module B3 =
             Some (traceId, spanId, SpanFlags.None, None)
           | _ ->
             None)
-        )
         |> Option.map (fun (traceId, spanId, flags, psIdO) ->
           SpanContext(TraceId.ofString traceId, SpanId.ofString spanId, flags, ?parentSpanId=psIdO)
         )

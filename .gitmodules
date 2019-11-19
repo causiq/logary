@@ -1,0 +1,3 @@
+[submodule "tests/w3c-trace-context-suite"]
+	path = tests/w3c-trace-context-suite
+	url = https://github.com/w3c/trace-context.git

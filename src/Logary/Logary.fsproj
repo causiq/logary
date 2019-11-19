@@ -79,8 +79,8 @@
     <Compile Include="LoggerModule.fs" />
     <Compile Include="Internals.LogResultModule.fs" />
     <Compile Include="Trace/SpanModule.fs" />
+    <Compile Include="Trace\Propagation.ExtractInject.fs" />
     <Compile Include="Trace/Propagation.fs" />
-    <Compile Include="Trace/Propagation.ExtractInject.fs" />
     <Compile Include="Trace/Sampling.fs" />
     <Compile Include="LogManager.fs" />
     <Compile Include="MiddlewareModule.fs" />

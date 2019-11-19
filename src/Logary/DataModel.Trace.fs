@@ -10,6 +10,8 @@ type TraceId =
     low: int64 }
   member x.isZero = x.high = 0L && x.low = 0L
   static member Zero = { high=0L; low=0L }
+  member x.To32HexString() =
+    String.Format("{0:x16}{1:x16}", x.high, x.low)
   override x.ToString() =
     if x.high = 0L then String.Format("{0:x16}", x.low)
     else String.Format("{0:x16}{1:x16}", x.high, x.low)
@@ -19,13 +21,75 @@ type SpanId =
   { id: int64 }
   member x.isZero = x.id = 0L
   static member Zero = { id = 0L }
-  override x.ToString() = String.Format("{0:x}", x.id)
+  override x.ToString() = String.Format("{0:x16}", x.id)
 
 [<Flags; RequireQualifiedAccess>]
 type SpanFlags =
   | None = 0
   | Sampled = 1
   | Debug = 2
+
+[<Struct>]
+type TraceStateKey =
+  TraceStateKey of key: string * vendor: string option
+with
+  member x.value =
+    match x with
+    | TraceStateKey (key, Some vendor) -> sprintf "%s@%s" key vendor
+    | TraceStateKey (key, _) -> key
+  override x.ToString() = x.value
+
+
+type TraceState private (value: (TraceStateKey * string) list) =
+  let build () =
+    let hs = HashSet()
+    let res = ResizeArray<_>(value.Length)
+    for k, v in value do if hs.Add k then res.Add (k, v)
+    List.ofSeq res
+
+  let listing = lazy (build ())
+
+  let equal (o: TraceState) =
+    o.value = listing.Value
+
+  member x.value = listing.Value
+
+  /// Write appends at the head of the list of values that the TraceState contains; according to the spec when a new hop
+  /// receives the request.
+  member x.write k v =
+    let nextList = listing.Value |> List.filter (fun (existingK, _) -> k <> existingK)
+    (k, v) :: nextList
+    |> TraceState
+
+  member x.isZero = List.isEmpty value
+
+  override x.Equals o =
+    match o with
+    | :? TraceState as ts -> equal ts
+    | _ -> false
+
+  override x.GetHashCode() = hash listing.Value
+
+  override x.ToString() =
+    if x.isZero then
+      "TraceState([])"
+    else
+      listing.Value
+        |> List.map fst
+        |> List.map (sprintf "'%O'")
+        |> String.concat ", "
+        |> sprintf "TraceState(%s)"
+
+  interface IEquatable<TraceState> with
+    member x.Equals o = equal o
+
+  static member empty = TraceState([])
+  static member Zero = TraceState([])
+  static member (+) (x: TraceState, (k, v)) = x.write k v
+
+  static member ofList xs = TraceState(xs)
+  static member ofSeq xs = TraceState(List.ofSeq xs)
+  static member ofArray xs = TraceState(List.ofArray xs)
 
 /// Value object with contextual tracing data.
 ///
@@ -38,10 +102,10 @@ type SpanContext(traceId: TraceId,
                  spanId: SpanId,
                  ?flags: SpanFlags,
                  ?parentSpanId: SpanId,
-                 ?traceState: Map<string, string>,
+                 ?traceState: TraceState,
                  ?traceContext: Map<string, string>) =
   let flag = defaultArg flags SpanFlags.None
-  let state = defaultArg traceState Map.empty
+  let state = defaultArg traceState TraceState.empty
   let context = defaultArg traceContext Map.empty
   let parentSpan = match parentSpanId with Some psId when psId <> SpanId.Zero -> Some psId | _ -> None
   let equal (other: SpanContext) =
@@ -63,7 +127,10 @@ type SpanContext(traceId: TraceId,
   member x.spanId = spanId
   member x.flags = flag
 
-  /// Primarily supported by W3C tracing
+  /// Primarily supported by (W3C tracing)[https://www.w3.org/TR/trace-context/#tracestate-header) and
+  /// (OpenTelemetry)[https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/api-tracing.md#spancontext].
+  /// Carries system-specific configuration data, represented as a list of key-value pairs. TraceState allows multiple
+  /// tracing systems to participate in the same trace.
   member x.traceState = state
 
   /// User-supplied key-value pairs
@@ -78,12 +145,14 @@ type SpanContext(traceId: TraceId,
   member x.isSampled = int flag > 0
   member x.isDebug = flag &&& SpanFlags.Debug = SpanFlags.Debug
   member x.isZero = traceId.isZero || spanId.isZero
+  /// https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/api-tracing.md
+  member x.isValid = not (x.isZero)
   static member Zero = SpanContext(TraceId.Zero, SpanId.Zero)
 
   member x.withParent (context: SpanContext) =
     SpanContext(context.traceId, x.spanId, x.flags ||| context.flags, context.spanId, ?traceState=Some x.traceState, ?traceContext=Some x.traceContext)
 
-  member x.withState (nextState: Map<string, string>) =
+  member x.withState (nextState: TraceState) =
     SpanContext(x.traceId, x.spanId, x.flags, ?parentSpanId=x.parentSpanId, ?traceState=Some nextState, ?traceContext=Some x.traceContext)
 
   member x.withContext (nextContext: Map<string, string>) =
@@ -93,14 +162,11 @@ type SpanContext(traceId: TraceId,
     SpanContext(x.traceId, x.spanId, nextFlags, ?parentSpanId=x.parentSpanId, ?traceState=Some x.traceState, ?traceContext=Some x.traceContext)
 
   override x.ToString() =
-    let stateKeys =
-      if Map.isEmpty x.traceState then "[]"
-      else sprintf "[ %s ]" (x.traceState |> Seq.map (fun (KeyValue (k, _)) -> k) |> String.concat ", ")
     let ctxKeys =
       if Map.isEmpty x.traceContext then "[]"
-      else sprintf "[ %s ]" (x.traceContext |> Seq.map (fun (KeyValue (k, _)) -> k) |> String.concat ", ")
-    sprintf "SpanContext(isRootSpan=%b, flags={%O}, isDebug=%b, traceId=%O, spanId=%O, parentSpanId=%O, traceState(keys)=%s, traceContext(keys)=%s)"
-            x.isRootSpan x.flags x.isDebug x.traceId x.spanId x.parentSpanId stateKeys ctxKeys
+      else sprintf "[ %s ]" (x.traceContext |> Seq.map (fun (KeyValue (k, _)) -> sprintf "'%s'" k) |> String.concat ", ")
+    sprintf "SpanContext(isRootSpan=%b, flags={%O}, isDebug=%b, traceId=%O, spanId=%O, parentSpanId=%O, %O, TraceContext(%s))"
+            x.isRootSpan x.flags x.isDebug x.traceId x.spanId x.parentSpanId x.traceState ctxKeys
   override x.Equals(other) = match other with :? SpanContext as sc -> equal sc | _ -> false
   override x.GetHashCode() = currentHash
   interface IEquatable<SpanContext> with member x.Equals other = equal other
@@ -249,6 +315,10 @@ type SpanData =
   abstract finished: EpochNanoSeconds
   /// How long this Span has been in existence, or otherwise its total duration, if finished
   abstract elapsed: NodaTime.Duration
+  /// Returns true if this Span is recording information like events with the AddEvent operation, attributes using
+  /// SetAttributes, status with SetStatus, etc.
+  /// https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/api-tracing.md#isrecording
+  abstract isRecording: bool
   /// The Span's flags, e.g. whether to sample or debug this particular span.
   /// Logary-specific: this turns to Sampled if a Warn or Error event is logged into this Span.
   abstract flags: SpanFlags

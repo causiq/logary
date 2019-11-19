@@ -223,6 +223,7 @@ type internal T(inner: Logger,
     member __.started = started
     member __.finished = _finished |> Option.defaultValue 0L
     member __.elapsed = _elapsed ()
+    member __.isRecording = _finished |> Option.isNone
     member __.flags = _flags
     member __.links = links :> IReadOnlyList<_>
     member __.events = _events :> IReadOnlyList<_>

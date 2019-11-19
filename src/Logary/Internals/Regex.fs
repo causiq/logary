@@ -2,8 +2,8 @@ module internal Logary.Internals.Regex
 
 open System.Text.RegularExpressions
 
-let (|Regex|_|) pattern input =
-  let m = Regex.Match(input, pattern, RegexOptions.IgnorePatternWhitespace ||| RegexOptions.IgnoreCase)
+let (|Regex|_|) (pattern: Regex) (input: string) =
+  let m = pattern.Match(input)
   if m.Success then
     seq { for g in m.Groups -> g }
       |> Seq.filter (fun g -> g.Success)

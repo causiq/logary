@@ -4,6 +4,7 @@ open System
 open NodaTime
 open Logary
 open FsCheck
+open Logary.Trace
 
 type Arbs =
   static member Domain (): Arbitrary<Domain> =
@@ -113,6 +114,11 @@ type Arbs =
   static member ChildEx() =
     Arb.generate<NonEmptyString>
       |> Gen.map (fun (NonEmptyString m) -> ChildEx m)
+      |> Arb.fromGen
+
+  static member TraceState() =
+    Arb.generate<(TraceStateKey * string) list>
+      |> Gen.map TraceState.ofList
       |> Arb.fromGen
 
 

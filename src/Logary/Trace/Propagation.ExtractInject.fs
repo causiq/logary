@@ -1,9 +1,21 @@
 namespace Logary.Trace.Propagation
 
 open System
+open System
 open System.Collections.Generic
 
 module Extract =
+
+  /// Gets a single item from the `source` using the `getter`.
+  let internal getSingleExact (getter: Getter<_>) source header =
+    getter source header |> List.tryPick (function
+      | name, value :: _ when name.ToLowerInvariant() = header -> Some value
+      | _ -> None)
+
+  let internal getManyExact (get: Getter<_>) source header =
+    get source header |> List.choose (function
+      | name, values when name.ToLowerInvariant() = header -> Some values
+      | _ -> None)
 
   let mapWithSeq: Getter<Map<string, _>> =
     fun source nameOrPrefix ->
@@ -40,6 +52,14 @@ module Extract =
         |> Seq.filter (fun (KeyValue (key, _)) -> key.StartsWith(nameOrPrefix, StringComparison.InvariantCultureIgnoreCase))
         |> Seq.map (fun (KeyValue (k, value)) -> k, value :: [])
         |> List.ofSeq
+
+  // List
+
+  /// IRL you may get multiple headers with the same keys, each containing a list of values
+  let listWithList: Getter<(string * string list) list> =
+    fun source nameOrPrefix ->
+      source
+        |> List.filter (fun (k, _) -> k.StartsWith(nameOrPrefix, StringComparison.InvariantCultureIgnoreCase))
 
 module Inject =
 
