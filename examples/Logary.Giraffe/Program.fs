@@ -2,6 +2,7 @@ module Logary.Giraffe.App
 
 open System
 open System.IO
+open System.Net.Http
 open Logary
 open Logary.Message
 open Logary.Configuration
@@ -12,6 +13,7 @@ open Microsoft.AspNetCore.Hosting
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.DependencyInjection
 open Giraffe
+open FSharp.Control.Tasks.V2
 
 // ---------------------------------
 // Models
@@ -19,7 +21,7 @@ open Giraffe
 
 type Message =
     {
-        Text : string
+        Text: string
     }
 
 // ---------------------------------
@@ -32,18 +34,18 @@ module Views =
     let layout (content: XmlNode list) =
         html [] [
             head [] [
-                title []  [ encodedText "Logary.Giraffe" ]
-                link [ _rel  "stylesheet"
+                title [] [ encodedText "Logary.Giraffe" ]
+                link [ _rel "stylesheet"
                        _type "text/css"
                        _href "/main.css" ]
             ]
             body [] content
         ]
 
-    let partial () =
+    let partial() =
         h1 [] [ encodedText "Logary.Giraffe" ]
 
-    let index (model : Message) =
+    let index (model: Message) =
         [
             partial()
             p [] [ encodedText model.Text ]
@@ -54,19 +56,55 @@ module Views =
 // ---------------------------------
 
 let indexHandler (name: string) =
-    let greetings = sprintf "Hello %s, from Giraffe!" name
-    let model     = { Text = greetings }
-    let view      = Views.index model
-    htmlView view
+  let greetings = sprintf "Hello %s, from Giraffe!" name
+  let model = { Text = greetings }
+  let view = Views.index model
+  htmlView view
+
+type InputItem =
+  { arguments: string[]; url: string }
+
+
+open Logary.Trace
+open Logary.Trace.Propagation
+open Logary.Internals.Chiron
+open Logary.Trace.Propagation
+
+type J = Logary.Internals.Chiron.Json
+
+let tracestateHandler (inputs: InputItem[]): HttpHandler =
+  // CancellationToken docs only available for Controllers !??!?
+  let c = new HttpClient()
+  fun next ctx ->
+    task {
+      let span = ctx.getOrCreateSpanLogger "traceStateHandler"
+      for input in inputs do
+        ctx.logger.info (
+          eventX "=> Test for {input}, posting JSON content to {url}"
+          >> setField "input" input.arguments
+          >> setField "url" input.url)
+
+        let body = input.arguments |> Seq.map J.String |> Seq.toList |> J.Array |> Json.format
+        let message = new HttpRequestMessage(HttpMethod.Post, input.url)
+        message.Content <- new StringContent(body)
+        let message = W3C.inject Inject.httpRequestMessage span.context message
+
+        use! res = c.SendAsync(message)
+        ctx.logger.info (eventX "<= Got {code} back" >> setField "code" res.StatusCode)
+
+      return! text "All sent!" next ctx
+    }
 
 let webApp =
-    choose [
-        GET >=>
-            choose [
-                route "/" >=> indexHandler "world"
-                routef "/hello/%s" indexHandler
-            ]
-        setStatusCode 404 >=> text "Not Found" ]
+  choose [
+    GET >=> choose [
+      route "/" >=> indexHandler "Logary"
+      routef "/hello/%s" indexHandler
+      route "/error" >=> (fun _ _ -> failwith "Something went wrong!")
+    ]
+    POST >=> route "/w3c/tracestate" >=> bindModel<InputItem[]> None tracestateHandler
+    setStatusCode 404 >=> text "Not Found"
+  ]
 
 // ---------------------------------
 // Error handler
@@ -122,7 +160,7 @@ let main _ =
         .UseLogary(logary)
         .UseContentRoot(contentRoot)
         .UseWebRoot(webRoot)
-        .Configure(Action<IApplicationBuilder> (configureApp logger))
+        .Configure(Action<IApplicationBuilder>(configureApp logger))
         .ConfigureServices(configureServices)
         .ConfigureLogging(configureLogging)
         .Build()

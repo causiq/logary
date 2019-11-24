@@ -3,6 +3,7 @@ namespace Logary.Trace.Propagation
 open System
 open System
 open System.Collections.Generic
+open System.Net.Http
 
 module Extract =
 
@@ -115,3 +116,11 @@ module Inject =
       let copy = new Dictionary<_,_>(target)
       copy.[name] <- Array.ofList values
       copy :> IDictionary<_,_>
+
+
+  // HttpClient
+
+  let httpRequestMessage: Setter<HttpRequestMessage> =
+    fun (name, value) target ->
+      target.Headers.Add(name, value)
+      target

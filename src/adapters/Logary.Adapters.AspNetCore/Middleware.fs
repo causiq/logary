@@ -6,7 +6,6 @@ open Logary.Message
 open Logary.Trace
 open Logary.Trace.Propagation
 open Logary.Adapters.AspNetCore
-open Logary.Trace.Propagation
 open Microsoft.AspNetCore.Http
 open System.Runtime.CompilerServices
 
@@ -61,6 +60,14 @@ module HttpContextEx =
     | true, value ->
       Some (value :?> SpanLogger)
 
+  [<Extension; CompiledName "SpanLogger">]
+  let logger (httpCtx: HttpContext) =
+    match spanLogger httpCtx with
+    | None ->
+      Log.create "Logary.Adapters.AspNetCore"
+    | Some logger ->
+      logger :> _
+
   [<Extension; CompiledName "GetOrCreateSpanLogger">]
   let getOrCreateSpanLogger (httpCtx: HttpContext, name: string, propagator: Propagator option) =
     match spanLogger httpCtx with
@@ -77,6 +84,7 @@ module HttpContextEx =
       value
 
   type HttpContext with
+    member x.logger = logger x
     member x.spanLogger = spanLogger x
     member x.getOrCreateSpanLogger(name: string, ?propagator) = getOrCreateSpanLogger (x, name, propagator)
 

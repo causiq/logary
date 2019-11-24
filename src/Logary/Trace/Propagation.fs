@@ -8,6 +8,19 @@ open Logary.Trace
 open Logary.Internals.Regex
 open Logary.YoLo
 
+module internal Logic =
+
+  let zeroSpanIdRegeneratedTraceId: TraceId*SpanId -> TraceId*SpanId =
+    function
+    | _, spanId when spanId.isZero ->
+      TraceId.create(), SpanId.create()
+    | traceId, spanId ->
+      traceId, spanId
+
+  let apply (traceId: TraceId, spanId: SpanId): TraceId * SpanId =
+    zeroSpanIdRegeneratedTraceId (traceId, spanId)
+
+
 /// https://w3c.github.io/trace-context/#trace-context-http-headers-format
 module W3C =
   open Extract
@@ -195,6 +208,7 @@ module W3C =
               None
             | true, flags ->
               let flags = enum<SpanFlags> flags
+              let traceId, parentSpanId = Logic.apply (traceId, parentSpanId)
               Some (SpanContext(traceId, parentSpanId, flags))
           | _ ->
             None)
