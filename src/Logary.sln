@@ -117,6 +117,7 @@ ProjectSection(SolutionItems) = preProject
 	..\RELEASE_NOTES.md = ..\RELEASE_NOTES.md
 	..\build.fsx = ..\build.fsx
 	..\appveyor.yml = ..\appveyor.yml
+	..\paket.dependencies = ..\paket.dependencies
 EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "licenses", "licenses", "{5CA272A8-9745-4680-B926-BE759CB551DD}"
@@ -167,6 +168,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logary.AspNetCore.API", "..\examples\Logary.AspNetCore.API\Logary.AspNetCore.API.csproj", "{C855A0B3-C794-49B7-B064-44DBB1BCC094}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Suave", "adapters\Logary.Adapters.Suave\Logary.Adapters.Suave.fsproj", "{C43F6DF2-F112-4ABF-AD5F-17C3C38F4392}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Giraffe", "..\examples\Logary.Giraffe\Logary.Giraffe.fsproj", "{26327A5D-5D23-4855-BE6D-39792685E89C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -384,6 +387,10 @@ Global
 		{C43F6DF2-F112-4ABF-AD5F-17C3C38F4392}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C43F6DF2-F112-4ABF-AD5F-17C3C38F4392}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C43F6DF2-F112-4ABF-AD5F-17C3C38F4392}.Release|Any CPU.Build.0 = Release|Any CPU
+		{26327A5D-5D23-4855-BE6D-39792685E89C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{26327A5D-5D23-4855-BE6D-39792685E89C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{26327A5D-5D23-4855-BE6D-39792685E89C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{26327A5D-5D23-4855-BE6D-39792685E89C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -444,5 +451,6 @@ Global
 		{FD69D037-8928-42DC-9791-407AAA9F7E0A} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 		{C855A0B3-C794-49B7-B064-44DBB1BCC094} = {60FC06B0-58BB-4D96-96FE-FD92EA4BAA5E}
 		{C43F6DF2-F112-4ABF-AD5F-17C3C38F4392} = {56BB77A4-DF59-49EC-92E6-C9CA2C2E9FDE}
+		{26327A5D-5D23-4855-BE6D-39792685E89C} = {60FC06B0-58BB-4D96-96FE-FD92EA4BAA5E}
 	EndGlobalSection
 EndGlobal
