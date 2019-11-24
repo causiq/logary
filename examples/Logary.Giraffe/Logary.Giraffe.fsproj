@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
+    <DebugType>portable</DebugType>
+    <AssemblyName>Logary.Giraffe</AssemblyName>
+    <OutputType>Exe</OutputType>
+    <EnableDefaultContentItems>false</EnableDefaultContentItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.fs" />
+    <Content Include="public\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <None Include="paket.references" />
+    <ProjectReference Include="..\..\src\adapters\Logary.Adapters.AspNetCore\Logary.Adapters.AspNetCore.fsproj" />
+    <ProjectReference Include="..\..\src\Logary.Prometheus\Logary.Prometheus.fsproj" />
+    <ProjectReference Include="..\..\src\targets\Logary.Targets.Jaeger\Logary.Targets.Jaeger.fsproj" />
+  </ItemGroup>
+  <Import Project="..\..\.paket\Paket.Restore.targets" />
+</Project>

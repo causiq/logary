@@ -1,3 +1,4 @@
-group AspNetCoreExample
-Microsoft.AspNetCore.App
-Microsoft.AspNetCore
+group MSFT
+TaskBuilder.fs
+Giraffe
+Microsoft.AspNetCore.Http.Features

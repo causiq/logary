@@ -35,8 +35,7 @@ namespace Logary.AspNetCore.API
         static IWebHostBuilder CreateWebHostBuilder(string[] args, LogManager logary)
         {
             return WebHost.CreateDefaultBuilder(args)
-                .ConfigureServices(services => services.AddLogary(logary))
-                .ConfigureLogging(logging => logging.AddLogary(logary))
+                .UseLogary(logary)
                 .UseStartup<Startup>();
         }
     }
