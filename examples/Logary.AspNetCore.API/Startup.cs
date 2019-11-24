@@ -21,9 +21,9 @@ namespace Logary.AspNetCore.API
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddDbContext<TodoContext>(opt =>
-                opt.UseInMemoryDatabase("TodoList"));
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_3_0);
+            services
+                .AddDbContext<TodoContext>( opt => opt.UseInMemoryDatabase("TodoList"))
+                .AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_3_0);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -38,6 +38,8 @@ namespace Logary.AspNetCore.API
             app.UseRouting();
             app.UseEndpoints(ep => ep.MapControllers());
 
+            // This fails on macOS for some reason:
+            // https://github.com/dotnet/corefx/issues/41897#issuecomment-557884006
             //app.UseHttpsRedirection();
         }
     }

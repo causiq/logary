@@ -1,50 +1,20 @@
 namespace Microsoft.Extensions.Logging
 
 open FSharp.Control.Tasks.V2
-open System
 open Logary
 open Logary.Message
 open Logary.Trace
 open Logary.Trace.Propagation
-open Microsoft.AspNetCore.Builder
-open Microsoft.AspNetCore.Hosting
+open Logary.Adapters.AspNetCore
+open Logary.Trace.Propagation
 open Microsoft.AspNetCore.Http
-open Microsoft.Extensions.DependencyInjection
-open Microsoft.Extensions.Hosting
 open System.Runtime.CompilerServices
-
-[<AutoOpen>]
-module internal SystemEx =
-  open System.Runtime.ExceptionServices
-
-  type Exception with
-    member x.reraise () =
-      ExceptionDispatchInfo.Capture(x).Throw()
-      Unchecked.defaultof<_>
-
-
-module LogaryAdapter =
-
-  let getter: Getter<HttpContext> =
-    fun ctx nameOrPrefix ->
-      [ for h in ctx.Request.Headers do
-          if h.Key.StartsWith(nameOrPrefix, StringComparison.InvariantCultureIgnoreCase) then
-            yield h.Key, List.ofArray (h.Value.ToArray())
-      ]
-
-  let setter: Setter<HttpContext> =
-    fun (k: string, vs) ctx ->
-      ctx.Response.Headers.SetCommaSeparatedValues(k, Array.ofList vs)
-      ctx
-
-  let UserStateLoggerKey = "Logary.Trace.SpanLogger"
 
 [<Extension; AutoOpen>]
 module LoggerEx =
-  open LogaryAdapter
+  open Logary.Trace.Propagation.HttpContext
 
-  [<Extension; CompiledName "StartSpan">]
-  let startSpan (x: Logger, ctx: HttpContext, propagator: Propagator option) =
+  let private startNewSpanFrom (x: Logger, ctx: HttpContext, propagator: Propagator option) =
     let propagator = propagator |> Option.defaultWith (fun () -> Combined.choose [ Jaeger.propagator; W3C.propagator ])
     let attrs, parentO = propagator.extract(getter, ctx)
     // https://github.com/open-telemetry/opentelemetry-specification/issues/210
@@ -65,9 +35,50 @@ module LoggerEx =
 
     span, ctx
 
+  [<Extension; CompiledName "StartSpan">]
+  let startSpan (x: Logger, ctx: HttpContext, propagator: Propagator option) =
+    if isNull ctx then nullArg "ctx"
+    match ctx.Items.TryGetValue UserStateLoggerKey with
+    | false, _ ->
+      startNewSpanFrom (x, ctx, propagator)
+    | true, existing ->
+      eprintfn "'startSpan' called more than once for a HttpContext"
+      existing :?> SpanLogger, ctx
+
   type Logger with
     member x.startSpan (ctx: HttpContext, ?propagator: Propagator) =
       startSpan (x, ctx, propagator)
+
+[<Extension; AutoOpen>]
+module HttpContextEx =
+
+  [<Extension; CompiledName "SpanLogger">]
+  let spanLogger (httpCtx: HttpContext) =
+    if isNull httpCtx then None else
+    match httpCtx.Items.TryGetValue HttpContext.UserStateLoggerKey with
+    | false, _ ->
+      None
+    | true, value ->
+      Some (value :?> SpanLogger)
+
+  [<Extension; CompiledName "GetOrCreateSpanLogger">]
+  let getOrCreateSpanLogger (httpCtx: HttpContext, name: string, propagator: Propagator option) =
+    match spanLogger httpCtx with
+    | None when not (isNull httpCtx) ->
+      let created = Log.create name
+      let logger, _ = created.startSpan(httpCtx, ?propagator=propagator)
+      logger
+
+    | None ->
+      let created = Log.create name
+      created.startSpan(name)
+
+    | Some value ->
+      value
+
+  type HttpContext with
+    member x.spanLogger = spanLogger x
+    member x.getOrCreateSpanLogger(name: string, ?propagator) = getOrCreateSpanLogger (x, name, propagator)
 
 [<Extension; AutoOpen>]
 module SpanLoggerEx =
@@ -83,7 +94,7 @@ module SpanLoggerEx =
     x.finish ()
 
   [<Extension; CompiledName "FinishWithException">]
-  let finishWithExn (x: SpanLogger, ctx: HttpContext, ex: exn) =
+  let finishWithExn (x: SpanLogger, _: HttpContext, ex: exn) =
     x.setAttribute("http.status_code", 500)
     x.setStatus(SpanCanonicalCode.InternalError, ex.ToString())
     x.setAttribute("error", true)
@@ -107,44 +118,3 @@ type LogaryMiddleware(next: RequestDelegate, logger: Logger) =
         spanLogger.finishWithExn (ctx, e)
         return e.reraise()
     }
-
-type LogaryStartupFilter() =
-  interface IStartupFilter with
-    member x.Configure(next: Action<IApplicationBuilder>) =
-      let build (next: Action<IApplicationBuilder>) (b: IApplicationBuilder) =
-        b.UseMiddleware<LogaryMiddleware>() |> ignore
-        next.Invoke b
-      Action<_>(build next)
-
-module internal Impl =
-
-  let addServices (logary: LogManager) _ (s: IServiceCollection) =
-    s.AddSingleton(logary)
-     .AddSingleton(logary.getLogger(logary.runtimeInfo.service))
-     .AddTransient<IStartupFilter, LogaryStartupFilter>()
-    |> ignore
-
-[<Extension; AutoOpen>]
-module IHostBuilderEx =
-  open Impl
-
-  [<Extension; CompiledName "UseLogary">]
-  let useLogary (builder: IHostBuilder, logary: LogManager) =
-     let cb = Action<_,_>(addServices logary)
-     builder.ConfigureServices(cb)
-
-  type IHostBuilder with
-    member x.UseLogary(logary: LogManager) = useLogary (x, logary)
-
-// OR, you can use:
-[<Extension; AutoOpen>]
-module IWebHostBuilderEx =
-  open Impl
-
-  [<Extension; CompiledName "UseLogary">]
-  let useLogary (builder: IWebHostBuilder, logary: LogManager) =
-     let cb = Action<_>(addServices logary ())
-     builder.ConfigureServices(cb)
-
-  type IWebHostBuilder with
-    member x.UseLogary(logary: LogManager) = useLogary (x, logary)

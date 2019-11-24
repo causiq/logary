@@ -93,7 +93,6 @@ let configureApp logger (app: IApplicationBuilder) =
       app.UseDeveloperExceptionPage()
      else
       app.UseGiraffeErrorHandler(errorHandler logger))
-        .UseHttpsRedirection()
         .UseCors(configureCors)
         .UseStaticFiles()
         .UseGiraffe(webApp)

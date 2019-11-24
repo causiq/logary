@@ -12,8 +12,10 @@
   </PropertyGroup>
   <ItemGroup>
     <Content Include="paket.references" />
+    <Compile Include="Internal.SystemEx.fs" />
+    <Compile Include="Propagation.HttpContext.fs" />
     <Compile Include="Middleware.fs" />
-    <Compile Include="Facade.fs" />
+    <Compile Include="Startup.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../../src/Logary/Logary.fsproj" />

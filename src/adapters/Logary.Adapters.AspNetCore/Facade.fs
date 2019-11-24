@@ -1,2 +1,0 @@
-namespace Logary.Adapters.AspNetCore
-
