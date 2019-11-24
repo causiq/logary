@@ -10,15 +10,22 @@ open Logary.YoLo
 
 module internal Logic =
 
-  let zeroSpanIdRegeneratedTraceId: TraceId*SpanId -> TraceId*SpanId =
+  let zeroSpanShouldRegenerateBoth: TraceId*SpanId -> TraceId*SpanId =
     function
     | _, spanId when spanId.isZero ->
       TraceId.create(), SpanId.create()
-    | traceId, spanId ->
-      traceId, spanId
+    | traceId, spanId -> traceId, spanId
+
+  let zeroTraceShouldRegenerateBoth: TraceId*SpanId -> TraceId*SpanId =
+    function
+    | traceId, _ when traceId.isZero ->
+      TraceId.create(), SpanId.create()
+    | traceId, spanId -> traceId, spanId
 
   let apply (traceId: TraceId, spanId: SpanId): TraceId * SpanId =
-    zeroSpanIdRegeneratedTraceId (traceId, spanId)
+    (traceId, spanId)
+    |> zeroSpanShouldRegenerateBoth
+    |> zeroTraceShouldRegenerateBoth
 
 
 /// https://w3c.github.io/trace-context/#trace-context-http-headers-format
