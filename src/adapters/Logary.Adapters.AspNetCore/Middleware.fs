@@ -1,11 +1,9 @@
-namespace Microsoft.Extensions.Logging
+namespace Logary.Trace
 
-open FSharp.Control.Tasks.V2
 open Logary
 open Logary.Message
 open Logary.Trace
 open Logary.Trace.Propagation
-open Logary.Adapters.AspNetCore
 open Microsoft.AspNetCore.Http
 open System.Runtime.CompilerServices
 
@@ -48,6 +46,44 @@ module LoggerEx =
     member x.startSpan (ctx: HttpContext, ?propagator: Propagator) =
       startSpan (x, ctx, propagator)
 
+
+[<Extension; AutoOpen>]
+module SpanLoggerEx =
+
+  [<Extension; CompiledName "Finish">]
+  let finish (x: SpanLogger, ctx: HttpContext) =
+    if ctx.Response.StatusCode >= 500 then
+      x.setStatus(SpanCanonicalCode.InternalError)
+      x.setAttribute("error", true)
+    elif
+      ctx.Response.StatusCode >= 400 then x.setAttribute("http.bad_request", true)
+    x.setAttribute("http.status_code", ctx.Response.StatusCode)
+    x.finish ()
+
+  [<Extension; CompiledName "FinishWithException">]
+  let finishWithExn (x: SpanLogger, _: HttpContext, ex: exn) =
+    x.setAttribute("http.status_code", 500)
+    x.setStatus(SpanCanonicalCode.InternalError, ex.ToString())
+    x.setAttribute("error", true)
+    x.error (eventX "Unhandled error" >> addExn ex)
+    x.finish()
+
+  type SpanLogger with
+    member x.finish (ctx: HttpContext) = finish (x, ctx)
+    member x.finishWithExn (ctx: HttpContext, ex: exn) = finishWithExn (x, ctx, ex)
+
+
+
+namespace Microsoft.Extensions.Logging
+
+open FSharp.Control.Tasks.V2
+open Logary
+open Logary.Trace
+open Logary.Trace.Propagation
+open Logary.Adapters.AspNetCore
+open Microsoft.AspNetCore.Http
+open System.Runtime.CompilerServices
+
 [<Extension; AutoOpen>]
 module HttpContextEx =
 
@@ -78,8 +114,8 @@ module HttpContextEx =
 
     | None ->
       let created = Log.create name
-      created.startSpan(name)
-
+      created.buildSpan(name).start()
+      
     | Some value ->
       value
 
@@ -88,30 +124,6 @@ module HttpContextEx =
     member x.spanLogger = spanLogger x
     member x.getOrCreateSpanLogger(name: string, ?propagator) = getOrCreateSpanLogger (x, name, propagator)
 
-[<Extension; AutoOpen>]
-module SpanLoggerEx =
-
-  [<Extension; CompiledName "Finish">]
-  let finish (x: SpanLogger, ctx: HttpContext) =
-    if ctx.Response.StatusCode >= 500 then
-      x.setStatus(SpanCanonicalCode.InternalError)
-      x.setAttribute("error", true)
-    elif
-      ctx.Response.StatusCode >= 400 then x.setAttribute("http.bad_request", true)
-    x.setAttribute("http.status_code", ctx.Response.StatusCode)
-    x.finish ()
-
-  [<Extension; CompiledName "FinishWithException">]
-  let finishWithExn (x: SpanLogger, _: HttpContext, ex: exn) =
-    x.setAttribute("http.status_code", 500)
-    x.setStatus(SpanCanonicalCode.InternalError, ex.ToString())
-    x.setAttribute("error", true)
-    x.error (eventX "Unhandled error" >> addExn ex)
-    x.finish()
-
-  type SpanLogger with
-    member x.finish (ctx: HttpContext) = finish (x, ctx)
-    member x.finishWithExn (ctx: HttpContext, ex: exn) = finishWithExn (x, ctx, ex)
 
 type LogaryMiddleware(next: RequestDelegate, logger: Logger) =
   member __.Invoke (ctx: HttpContext) =

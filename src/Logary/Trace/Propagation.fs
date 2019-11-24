@@ -8,25 +8,37 @@ open Logary.Trace
 open Logary.Internals.Regex
 open Logary.YoLo
 
-module internal Logic =
+module internal EdgeCaseLogic =
 
-  let zeroSpanShouldRegenerateBoth: TraceId*SpanId -> TraceId*SpanId =
+  type Signature = uint8 * TraceId * SpanId -> uint8 * TraceId * SpanId
+
+  let zeroSpanShouldRegenerateBoth: Signature =
     function
-    | _, spanId when spanId.isZero ->
-      TraceId.create(), SpanId.create()
-    | traceId, spanId -> traceId, spanId
+    | v, _, spanId when spanId.isZero ->
+      v, TraceId.create(), SpanId.create()
+    | v, traceId, spanId -> v, traceId, spanId
 
-  let zeroTraceShouldRegenerateBoth: TraceId*SpanId -> TraceId*SpanId =
+  let zeroTraceShouldRegenerateBoth: Signature =
     function
-    | traceId, _ when traceId.isZero ->
-      TraceId.create(), SpanId.create()
-    | traceId, spanId -> traceId, spanId
+    | v, traceId, _ when traceId.isZero ->
+      v, TraceId.create(), SpanId.create()
+    | v, traceId, spanId -> v, traceId, spanId
 
-  let apply (traceId: TraceId, spanId: SpanId): TraceId * SpanId =
-    (traceId, spanId)
-    |> zeroSpanShouldRegenerateBoth
-    |> zeroTraceShouldRegenerateBoth
+  let test_traceparent_version_0xff: Signature =
+    function
+    | v, t, s when v <> 0uy ->
+      0uy, TraceId.create(), SpanId.create()
+    | v, t, s ->
+      v, t, s
 
+  let apply: Signature =
+    test_traceparent_version_0xff
+    >> zeroSpanShouldRegenerateBoth
+    >> zeroTraceShouldRegenerateBoth
+
+  let applyWithFlags value flags =
+    let v, t, s = apply value
+    t, s, flags
 
 /// https://w3c.github.io/trace-context/#trace-context-http-headers-format
 module W3C =
@@ -188,6 +200,19 @@ module W3C =
     (?<traceFlags>[0-9A-F]{2})
     $", RegexOptions.IgnorePatternWhitespace ||| RegexOptions.IgnoreCase ||| RegexOptions.Compiled)
 
+  let inline private parseByteHex value =
+    match Byte.TryParse (value, NumberStyles.AllowHexSpecifier, Culture.invariant) with
+    | false, _ -> None
+    | true, v -> Some v
+
+  let inline private parseInt32Hex value =
+    match Int32.TryParse (value, NumberStyles.AllowHexSpecifier, Culture.invariant) with
+    | false, _ -> None
+    | true, v -> Some v
+
+
+  open Option.Operators
+
   let extract (getter: Getter<'a>) (source: 'a): SpanAttr list * SpanContext option =
 
     let traceStateO =
@@ -205,18 +230,19 @@ module W3C =
       | None -> ctx
       | Some state -> ctx.withState state
 
+    let parse version traceId parentSpanId flags =
+          fun ver (flags: SpanFlags) ->
+            let t, s, f = EdgeCaseLogic.applyWithFlags (ver, traceId, parentSpanId) flags
+            SpanContext(t, s, f)
+      <!> parseByteHex version
+      <*> (parseInt32Hex flags |> Option.map enum<SpanFlags>)
+
     let spanCtx =
       getSingleExact getter source TraceParentHeader
         |> Option.bind (function
-          | Regex ExtractRegex [ (* version *) _; traceId; parentSpanId; flags ] ->
+          | Regex ExtractRegex [ version; traceId; parentSpanId; flags ] ->
             let traceId, parentSpanId = TraceId.ofString traceId, SpanId.ofString parentSpanId
-            match Int32.TryParse(flags, NumberStyles.AllowHexSpecifier, Culture.invariant) with
-            | false, _ ->
-              None
-            | true, flags ->
-              let flags = enum<SpanFlags> flags
-              let traceId, parentSpanId = Logic.apply (traceId, parentSpanId)
-              Some (SpanContext(traceId, parentSpanId, flags))
+            parse version traceId parentSpanId flags
           | _ ->
             None)
         |> Option.map addTraceState

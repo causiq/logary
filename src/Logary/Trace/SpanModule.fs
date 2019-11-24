@@ -3,6 +3,7 @@ namespace Logary.Trace
 open Logary
 open Logary.Message
 open Logary.Internals
+open Logary.Trace.Propagation
 open NodaTime
 open Hopac
 open System.Threading
@@ -415,19 +416,37 @@ module Span =
 [<AutoOpen; Extension>]
 module LoggerEx =
   type Logger with
-    member x.buildSpan (label: string, ?parent: SpanContext, ?transform: Message -> Message, ?enableAmbient: bool) =
-      let builder = new SpanBuilder(x, label)
+    member x.buildSpan (label: string, ?parent: SpanContext, ?enhance: SpanBuilder -> SpanBuilder, ?transform: Message -> Message, ?enableAmbient: bool) =
+      let builder =
+        new SpanBuilder(x, label)
+          |> Option.defaultValue id enhance
+
       parent |> Option.iter (builder.withParent >> ignore)
+
       builder
         .withTransform(Option.defaultValue id transform)
         .setAmbientEnabled(defaultArg enableAmbient false)
 
-    member x.buildSpan (label: string, parent: SpanData, ?transform: Message -> Message, ?enableAmbient: bool) =
-      x.buildSpan (label, parent.context, ?transform=transform, ?enableAmbient=enableAmbient)
+    member x.buildSpan (label, parent: SpanData, ?enhance, ?transform, ?enableAmbient) =
+      x.buildSpan (label, parent.context, ?enhance=enhance, ?transform=transform, ?enableAmbient=enableAmbient)
 
-    member x.startSpan (label: string, ?parent: SpanContext, ?transform: Message -> Message, ?enableAmbient: bool) =
-      x.buildSpan(label, ?parent=parent, ?transform=transform, ?enableAmbient=enableAmbient)
-       .start()
+    member x.startSpan (label, ?parent: SpanData, ?enhance, ?transform: Message -> Message, ?enableAmbient: bool) =
+      let parentO = parent |> Option.map (fun p -> p.context)
+      let builder = x.buildSpan(label, ?parent=parentO, ?enhance=enhance, ?transform=transform, ?enableAmbient=enableAmbient)
+      builder.start()
 
-    member x.startSpan (label: string, parent: SpanData, ?transform: Message -> Message, ?enableAmbient: bool) =
-      x.startSpan (label, parent.context, ?transform=transform, ?enableAmbient=enableAmbient)
+[<AutoOpen; Extension>]
+module SpanLoggerEx =
+  type SpanLogger with
+    member x.startChild (label: string, ?enhance: SpanBuilder -> SpanBuilder, ?transform: Message -> Message, ?enableAmbient: bool) =
+      let enhance = enhance |> Option.defaultValue (fun b -> b.setKind SpanKind.Client)
+      let logger = x :> Logger
+      let builder = logger.buildSpan(label, x.context, enhance, ?transform=transform, ?enableAmbient=enableAmbient)
+      builder.start()
+
+    member x.inject (propagator: Propagator, setter: Setter<'t>, target: 't): 't =
+      propagator.inject (setter, x.context, target)
+
+    member x.injectWith (propagator: Propagator, setter: Setter<'t>): 't -> 't =
+      fun t ->
+        propagator.inject(setter, x.context, t)

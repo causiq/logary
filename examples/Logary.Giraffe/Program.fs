@@ -68,7 +68,6 @@ type InputItem =
 open Logary.Trace
 open Logary.Trace.Propagation
 open Logary.Internals.Chiron
-open Logary.Trace.Propagation
 
 type J = Logary.Internals.Chiron.Json
 
@@ -79,18 +78,18 @@ let tracestateHandler (inputs: InputItem[]): HttpHandler =
     task {
       let span = ctx.getOrCreateSpanLogger "traceStateHandler"
       for input in inputs do
-        ctx.logger.info (
-          eventX "=> Test for {input}, posting JSON content to {url}"
-          >> setField "input" input.arguments
-          >> setField "url" input.url)
-
         let body = input.arguments |> Seq.map J.String |> Seq.toList |> J.Array |> Json.format
         let message = new HttpRequestMessage(HttpMethod.Post, input.url)
         message.Content <- new StringContent(body)
-        let message = W3C.inject Inject.httpRequestMessage span.context message
 
-        use! res = c.SendAsync(message)
-        ctx.logger.info (eventX "<= Got {code} back" >> setField "code" res.StatusCode)
+        use span = span.startChild("Call TestSuite")
+
+        use! res =
+          message
+            |> span.injectWith (W3C.propagator, Inject.httpRequestMessage)
+            |> c.SendAsync
+
+        ctx.logger.info (eventX "Received response code={code} from test suite" >> setField "code" res.StatusCode)
 
       return! text "All sent!" next ctx
     }

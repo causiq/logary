@@ -1,7 +1,6 @@
 namespace Logary.Trace.Propagation
 
 open System
-open System
 open System.Collections.Generic
 open System.Net.Http
 
@@ -9,9 +8,10 @@ module Extract =
 
   /// Gets a single item from the `source` using the `getter`.
   let internal getSingleExact (getter: Getter<_>) source header =
-    getter source header |> List.tryPick (function
-      | name, value :: _ when name.ToLowerInvariant() = header -> Some value
-      | _ -> None)
+    getter source header
+      |> List.tryPick (function
+        | name, value :: _ when name.ToLowerInvariant() = header -> Some value
+        | _ -> None)
 
   let internal getManyExact (get: Getter<_>) source header =
     get source header |> List.choose (function
