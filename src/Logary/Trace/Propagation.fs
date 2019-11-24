@@ -164,7 +164,7 @@ module W3C =
   let ExtractRegex = Regex("^
     (?<version>[0-9A-F]{2})-
     (?<traceId>[0-9A-F]{32})-
-    (?<parentId>[0-9A-F-]{16})-
+    (?<parentId>[0-9A-F]{16})-
     (?<traceFlags>[0-9A-F]{2})
     $", RegexOptions.IgnorePatternWhitespace ||| RegexOptions.IgnoreCase ||| RegexOptions.Compiled)
 

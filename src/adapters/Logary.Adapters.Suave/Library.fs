@@ -1,5 +1,6 @@
 ﻿namespace Suave
 
+open System
 open Suave.Logging
 open Logary
 open Logary.Message
@@ -21,7 +22,7 @@ module LogaryAdapter =
   let getter: Getter<HttpContext> =
     fun ctx nameOrPrefix ->
       ctx.request.headers
-        |> List.filter (fun (name, _) -> name.StartsWith nameOrPrefix)
+        |> List.filter (fun (name, _) -> name.StartsWith(nameOrPrefix, StringComparison.InvariantCultureIgnoreCase))
         |> List.map (fun (name, value) -> name, value :: [])
 
   let setter: Setter<HttpContext> =
