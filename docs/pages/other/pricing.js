@@ -83,7 +83,7 @@ const CheckoutForm = injectStripe(({ stripe, cores, devs, years }) => {
 
     console.log("Received token=", tr.token, "posting body=", body)
 
-    const response = await fetch("/charge", {
+    const response = await fetch("/api/charge", {
       method: "POST",
       headers: {"Content-Type": "application/json; charset=utf-8"},
       body: JSON.stringify(body)

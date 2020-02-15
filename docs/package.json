@@ -45,22 +45,23 @@
   },
   "devDependencies": {
     "@babel/node": "^7.2.2",
+    "@types/react": "^16.9.19",
     "axios": "^0.19.2",
     "concurrently": "^5.1.0",
     "cypress": "^4.0.2",
-    "express": "^4.16.4",
-    "htmlparser2": "^4.0.0",
-    "nodemon": "^2.0.2",
     "eslint": "^6.8.0",
     "eslint-plugin-react": "^7.18.2",
-    "eslint-plugin-react-hooks": "^2.3.0"
+    "eslint-plugin-react-hooks": "^2.3.0",
+    "htmlparser2": "^4.0.0",
+    "nodemon": "^2.0.2",
+    "typescript": "^3.7.5"
   },
   "scripts": {
     "build": "next build",
     "build:search": "babel-node ./search/buildIndex.js",
     "build:search:auto": "concurrently --kill-others \"yarn run build:search\" \"yarn run dev\"",
-    "dev": "nodemon --ignore search/ --ignore cypress/ server.js",
-    "start": "NODE_ENV=production node server.js -p $PORT",
-    "cypress:open": "cypress open"
+    "dev": "next dev",
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run --record --key 714cc2a7-fdda-4f31-85da-844d60a84e1c"
   }
 }
