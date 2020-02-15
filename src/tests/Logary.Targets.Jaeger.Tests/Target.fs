@@ -154,7 +154,7 @@ module Target =
           do! eventX "before some action: {userId}" >> setField "userId" 123 |> root.infoWithBP
           do! eventX "after some action: {orderId}" >> setField "orderId" 321 >> setSpanId root.context.spanId |> logger.infoWithBP
 
-          let child = logger.startSpan("sql.Query", root, tag "pgsql" >> setContext "connStr" connStr)
+          let child = logger.startSpan("sql.Query", root, transform=(tag "pgsql" >> setContext "connStr" connStr))
           do! eventX "query={query}" >> setField "query" sampleQuery |> child.infoWithBP
 
           let! childRes = child.finishWithAck id
