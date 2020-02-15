@@ -2,6 +2,10 @@
   "name": "Logary",
   "alias": "logary.tech",
 
+  "env": {
+    "LOGARY_STRIPE_SECRET_KEY": "@logary_stripe_secret_key"
+  },
+
   "github": {
     "enabled": true
   },
