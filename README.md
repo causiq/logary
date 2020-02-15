@@ -1,5 +1,5 @@
 # Logary v5
-[![Travis build status](https://api.travis-ci.org/logary/logary.png)](https://travis-ci.org/logary/logary)
+[![Travis build status](https://travis-ci.com/logary/logary.svg?branch=master)](https://travis-ci.com/logary/logary)
 [![NuGet Badge](https://buildstats.info/nuget/Logary)](https://www.nuget.org/packages/Logary)
 
 Follow Logary at twitter: [@logarylib](https://twitter.com/logarylib) — [logary.tech](https://logary.tech) has the docs!
