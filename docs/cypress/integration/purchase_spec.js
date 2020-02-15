@@ -1,6 +1,6 @@
 describe('purchase', function() {
   beforeEach(() => {
-    cy.visit('http://localhost:3000/pricing')
+    cy.visit('http://localhost:3000/other/pricing')
   })
 
   it('4242 card', function() {

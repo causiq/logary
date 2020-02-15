@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import Head from 'next/head';
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
-import rutta from '../../images/logary-rutta-router.svg'
+import rutta from '../../images/rutta-router.svg'
 import { faSatelliteDish } from '@fortawesome/pro-light-svg-icons';
 import use1 from '../../images/usage1.png'
 import use2 from '../../images/usage2.jpg'

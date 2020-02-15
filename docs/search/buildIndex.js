@@ -97,18 +97,18 @@ import path from 'path'
 async function execute() {
   const pages = [
     '/',
-    '/logary-dotnet-quickstart',
-    '/logary-js-quickstart',
-    '/logary-dotnet-targets',
-    '/tutorials/how-does-logary-work?',
-    '/logary-js-documentation',
-    '/logary-dotnet-documentation',
-    '/faqs',
-    '/tutorials',
-    '/license',
-    '/logary-prometheus-dotnet',
-    '/logary-rutta',
-    '/pricing'
+    '/dotnet/quickstart',
+    '/js/quickstart',
+    '/dotnet/targets',
+    '/other/tutorial/how?',
+    '/js/docs',
+    '/dotnet/docs',
+    '/other/faqs',
+    '/other/tutorial',
+    '/other/license',
+    '/dotnet/prometheus',
+    '/rutta',
+    '/other/pricing'
   ]
 
   let i = 0, results = {};

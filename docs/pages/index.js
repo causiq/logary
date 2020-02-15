@@ -66,7 +66,7 @@ export default function Index() {
               </div>
               <h3 className="title">JS Quickstart</h3>
               <p className="intro">Learn how to add analytics to your web/react-native apps.</p>
-              <Link href="/logary-js-quickstart">
+              <Link href="/js/quickstart">
                 <a className="link"><span></span></a>
               </Link>
             </div>
@@ -79,7 +79,7 @@ export default function Index() {
               </div>
               <h3 className="title">.Net Core Quickstart</h3>
               <p className="intro">Instrument your backend services for a cloud native architecture.</p>
-              <a className="link" href="/logary-dotnet-quickstart"><span></span></a>
+              <a className="link" href="/dotnet/quickstart"><span></span></a>
             </div>
           </div>
 
@@ -92,7 +92,7 @@ export default function Index() {
               <p className="intro">
                 Logary can send logs, metrics and spans to a wide range of targets. Have a look here to see what's available!
               </p>
-              <Link href="/logary-dotnet-targets">
+              <Link href="/dotnet/targets">
                 <a className="link"><span></span></a>
               </Link>
             </div>
@@ -105,7 +105,7 @@ export default function Index() {
               </div>
               <h3 id="how-does-it-work" className="title">How does it work?</h3>
               <p className="intro">Let's have a look at this site and how we do analytics here...</p>
-              <Link href="/tutorials/how-does-logary-work?">
+              <Link href="/other/tutorial/how?">
                 <a className="link"><span></span></a>
               </Link>
             </div>
@@ -118,7 +118,7 @@ export default function Index() {
               </div>
               <h3 className="title">JS Documentation</h3>
               <p className="intro">Read up on how to use the JavaScript library</p>
-              <Link href="/logary-js-documentation">
+              <Link href="/js/docs">
                 <a className="link"><span></span></a>
               </Link>
             </div>
@@ -131,7 +131,7 @@ export default function Index() {
               </div>
               <h3 className="title">.Net Core Documentation</h3>
               <p className="intro">Read up on how to use the library</p>
-              <Link href="/logary-dotnet-documentation">
+              <Link href="/dotnet/docs">
                 <a className="link"><span></span></a>
               </Link>
             </div>
@@ -144,8 +144,8 @@ export default function Index() {
               </div>
               <h3 className="title">FAQs</h3>
               <p className="intro">Layout for FAQ page. Lorem ipsum dolor sit amet, consectetuer adipiscing elit</p>
-              {/* <a className="link" href="/faqs"><span></span></a> */}
-              <Link href="/faqs">
+              {/* <a className="link" href="/other/faqs"><span></span></a> */}
+              <Link href="/other/faqs">
                 <a className="link"><span></span></a>
               </Link>
             </div>
@@ -158,7 +158,7 @@ export default function Index() {
               </div>
               <h3 className="title">Tutorials</h3>
               <p className="intro">Learn how to use Logary to visualise the state and interactions with your apps.</p>
-              <Link href="/tutorials">
+              <Link href="/other/tutorial">
                 <a className="link"><span></span></a>
               </Link>
             </div>
@@ -171,7 +171,7 @@ export default function Index() {
               </div>
               <h3 className="title">License &amp; Credits</h3>
               <p className="intro">Layout for license &amp; credits page. Consectetuer adipiscing elit.</p>
-              <Link href="/license">
+              <Link href="/other/license">
                 <a className="link"><span></span></a>
               </Link>
             </div>
@@ -184,7 +184,7 @@ export default function Index() {
               </div>
               <h3 className="title">Logary Prometheus for .Net Core</h3>
               <p className="intro">With <code>Logary.Prometheus</code> you can expose you app metrics for Prometheus and Grafana.</p>
-              <Link href="/logary-prometheus-dotnet">
+              <Link href="/dotnet/prometheus">
                 <a className="link"><span></span></a>
               </Link>
             </div>
@@ -199,7 +199,7 @@ export default function Index() {
               <p className="intro">
                 A stand-alone, cloud-native log router and ingestion point for HTTP, UDP, ZeroMQ, TCP, and more.
               </p>
-              <Link href="/logary-rutta">
+              <Link href="/rutta">
                 <a className="link"><span></span></a>
               </Link>
             </div>
@@ -214,7 +214,7 @@ export default function Index() {
               <p className="intro">
                 Purchase a commercial license to super-charge your company's logging, metrics and analytics, and improve Logary!
               </p>
-              <Link href="/pricing">
+              <Link href="/other/pricing">
                 <a className="link"><span></span></a>
               </Link>
             </div>
