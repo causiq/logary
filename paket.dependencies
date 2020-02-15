@@ -1,7 +1,7 @@
 source https://api.nuget.org/v3/index.json
 clitool paket
 framework auto-detect
-version 5.236.0
+version 5.242.1
 
 nuget Argu
 nuget Castle.Core

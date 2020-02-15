@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-source .env
+[[ -r .env ]] && source .env
 set -eu
 set -o pipefail
 

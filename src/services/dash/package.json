@@ -9,16 +9,16 @@
     "emotion-theming": "^10.0.7",
     "express": "^4.16.4",
     "express-sse": "^0.5.0",
-    "gun": "^0.2019.416",
+    "gun": "^0.2020.116",
     "immutable": "^4.0.0-rc.12",
     "logary": "^5.0.2",
     "moment": "^2.24.0",
     "react": "^16.8.3",
     "react-art": "^16.8.3",
     "react-dom": "^16.8.3",
-    "react-native-web": "^0.10.0",
-    "react-primitives": "^0.7.0",
-    "react-scripts": "2.1.5",
+    "react-native-web": "^0.12.1",
+    "react-primitives": "^0.8.0",
+    "react-scripts": "3.4.0",
     "react-sketchapp": "^3.0.0-beta.3",
     "react-window": "^1.5.2",
     "rxjs": "^6.4.0"
@@ -44,9 +44,9 @@
     "not op_mini all"
   ],
   "devDependencies": {
-    "@skpm/builder": "^0.5.14",
+    "@skpm/builder": "^0.7.5",
     "canvas": "^2.3.1",
-    "concurrently": "^4.1.0",
-    "nodemon": "^1.18.10"
+    "concurrently": "^5.1.0",
+    "nodemon": "^2.0.2"
   }
 }
