@@ -60,7 +60,7 @@
     "build": "next build",
     "build:search": "babel-node ./search/buildIndex.js",
     "build:search:auto": "concurrently --kill-others \"yarn run build:search\" \"yarn run dev\"",
-    "dev": "next dev",
+    "dev": "LOGARY_STRIPE_SECRET_KEY=sk_test_Thjj04Dm2Rs7oD26eIT8V5rZ next dev",
     "cypress:open": "cypress open",
     "cypress:run": "cypress run --record --key 714cc2a7-fdda-4f31-85da-844d60a84e1c"
   }
