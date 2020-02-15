@@ -27,6 +27,7 @@
     "classnames": "^2.2.6",
     "email-addresses": "^3.0.3",
     "highlight.js": "^9.15.6",
+    "isomorphic-unfetch": "^3.0.0",
     "logary": "^5.0.2",
     "lunr": "^2.3.6",
     "next": "^9.2.1",
@@ -49,7 +50,10 @@
     "cypress": "^4.0.2",
     "express": "^4.16.4",
     "htmlparser2": "^4.0.0",
-    "nodemon": "^2.0.2"
+    "nodemon": "^2.0.2",
+    "eslint": "^6.8.0",
+    "eslint-plugin-react": "^7.18.2",
+    "eslint-plugin-react-hooks": "^2.3.0"
   },
   "scripts": {
     "build": "next build",

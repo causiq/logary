@@ -12,10 +12,9 @@
 // the project's config changing)
 
 module.exports = (on, config) => {
-  on("before:browser:launch", (browser = {}, args) => {
+  on("before:browser:launch", (browser, args) => {
     if (browser.name === "chrome" || browser.name === "chromium") {
-      args.push("--disable-site-isolation-trials");
-      return args;
+      launchOptions.args.push("--disable-site-isolation-trials")
     }
-  });
-};
+  })
+}

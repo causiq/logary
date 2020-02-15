@@ -10,6 +10,7 @@ import InputRange from 'react-input-range'
 import { StripeProvider, injectStripe } from 'react-stripe-elements'
 import { Elements, CardElement } from 'react-stripe-elements';
 import { Button } from 'reactstrap';
+import fetch from 'isomorphic-unfetch'
 import "react-input-range/lib/css/index.css"
 
 const createOptions = (fontSize, padding) => {
