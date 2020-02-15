@@ -1,4 +1,4 @@
-.PHONY: prepare restore build test docs
+.PHONY: prepare restore build test docs docs_ci
 export CONFIGURATION=${CONFIGURATION:-'Release'}
 TAG_VERSION_SUFFIX := $(shell tools/version.sh)
 
@@ -20,6 +20,10 @@ test: build
 
 docs:
 	(cd ./docs && yarn && yarn dev)
+
+docs_ci:
+	npm install -g now-pipeline@1.8.0
+	(cd ./docs && yarn && yarn cypress:run)
 
 image:
 	echo "Building image v$(TAG_VERSION_SUFFIX)"
