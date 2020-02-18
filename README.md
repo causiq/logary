@@ -29,4 +29,4 @@ Created by [Henrik Feldt, et al](https://twitter.com/henrikfeldt) and sponsored 
 
 ## Installation
 
-See [docs](https://logary.tech/logary-dotnet-quickstart)
+See [docs](https://logary.tech/dotnet/quickstart)
