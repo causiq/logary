@@ -30,7 +30,7 @@
     "isomorphic-unfetch": "^3.0.0",
     "logary": "^5.0.2",
     "lunr": "^2.3.6",
-    "next": "^9.2.1",
+    "next": "^9.3.2",
     "next-images": "^1.1.1",
     "node-sass": "^4.11.0",
     "react": "^16.8.6",
