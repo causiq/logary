@@ -8,8 +8,8 @@
 </p>
 
 <p align="center">
-  <a href="https://twitter.com/logarylib">@logarylib</a>
-  <a href="https://logary.tech">logary.tech</a>
+  Twitter: <a href="https://twitter.com/logarylib">@logarylib</a>  
+  Docs: <a href="https://logary.tech">logary.tech</a>
 </p>
 
 ## Why?
