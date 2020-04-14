@@ -1,11 +1,15 @@
-# Logary v5
+<h1 align="center">Logary</h1>
+
 <p align="center">
-[![Travis build status](https://travis-ci.com/logary/logary.svg?branch=master)](https://travis-ci.com/logary/logary)
-[![NuGet Badge](https://buildstats.info/nuget/Logary)](https://www.nuget.org/packages/Logary)
-<a href="https://github.com/sponsors/haf" title="Sponsor this"><img src="https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=red" /></a>
-[@logarylib](https://twitter.com/logarylib)
-[logary.tech](https://logary.tech)
-[![Gitter chat](https://badges.gitter.im/logary.png)](https://gitter.im/logary/logary)
+  <a href="https://travis-ci.com/logary/logary"><img src="https://travis-ci.com/logary/logary.svg?branch=master" /></a>
+  <a href="https://www.nuget.org/packages/Logary"><img src="https://buildstats.info/nuget/Logary" title="NuGet Badge" /></a>
+  <a href="https://github.com/sponsors/haf" title="Sponsor this"><img src="https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=red" /></a>
+  <a href="https://gitter.im/logary/logary"><img src="https://badges.gitter.im/logary.png" alt="Gitter chat" /></a>
+</p>
+
+<p align="center">
+  <a href="https://twitter.com/logarylib">@logarylib</a>
+  <a href="https://logary.tech">logary.tech</a>
 </p>
 
 ## Why?
