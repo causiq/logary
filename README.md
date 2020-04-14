@@ -1,12 +1,12 @@
 # Logary v5
+<p align="center">
 [![Travis build status](https://travis-ci.com/logary/logary.svg?branch=master)](https://travis-ci.com/logary/logary)
 [![NuGet Badge](https://buildstats.info/nuget/Logary)](https://www.nuget.org/packages/Logary)
-
-Follow Logary at twitter: [@logarylib](https://twitter.com/logarylib) — [logary.tech](https://logary.tech) has the docs!
-
-Chat and support and get support:
-[![Gitter chat](https://badges.gitter.im/logary.png)](https://gitter.im/logary/logary). If you have questions
-about the license or paid support, e-mail henrik-at-haf.se.
+<a href="https://github.com/sponsors/haf" title="Sponsor this"><img src="https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=red" /></a>
+[@logarylib](https://twitter.com/logarylib)
+[logary.tech](https://logary.tech)
+[![Gitter chat](https://badges.gitter.im/logary.png)](https://gitter.im/logary/logary)
+</p>
 
 ## Why?
 
