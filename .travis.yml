@@ -3,15 +3,6 @@ dist: xenial
 sudo: false
 dotnet: 3.1.1
 node_js: 12
-mono:
-- 6.8.0
-- 5.20.0
-- latest
-matrix:
-  fast_finish: true
-  allow_failures:
-  - mono: latest
-  - mono: 5.10.0
 addons:
   apt:
     packages:
