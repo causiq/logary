@@ -23,6 +23,7 @@ import langFs from 'highlight.js/lib/languages/fsharp'
 import langCs from 'highlight.js/lib/languages/cs'
 import langJavascript from 'highlight.js/lib/languages/javascript'
 import langJson from 'highlight.js/lib/languages/json'
+import useDrift, { DriftContext } from '../components/useDrift'
 import 'highlight.js/styles/atom-one-light.css'
 Lowlight.registerLanguage('fsharp', langFs)
 Lowlight.registerLanguage('csharp', langCs)
@@ -35,8 +36,11 @@ import { index, store } from '../search'
 import SearchPage from './SearchPage'
 
 // Actual layout
-const Layout = ({ name, title, className = [], router, children, ...rest }) => {
+const Layout = ({ name, title, className = [], router, children, noChat, ...rest }) => {
   const [query, setQuery] = useState(null)
+
+  const drift = useDrift("gvi23z7y7p36", noChat, () => {})
+
   const results = useLunr(query, index, store),
         isSearching = query != null && query.length > 0
 
@@ -54,13 +58,16 @@ const Layout = ({ name, title, className = [], router, children, ...rest }) => {
         <link rel="apple-touch-icon" sizes="200x200" href={require("../images/icon-200x200.png")} key="apple-touch-icon-200x200" />
         <link rel="apple-touch-icon" sizes="500x500" href={require("../images/icon-500x500.png")} key="apple-touch-icon-500x500" />
       </Head>
-      {router.pathname === "/"
-        ? <SiteHeader query={query} setQuery={setQuery} />
-        : <PageHeader title={title} query={query} setQuery={setQuery} />}
-      {isSearching
-        ? <SearchPage query={query} setQuery={setQuery} results={results} />
-        : children}
-      <Footer />
+
+      <DriftContext.Provider value={drift.current}>
+        {router.pathname === "/"
+          ? <SiteHeader query={query} setQuery={setQuery} />
+          : <PageHeader title={title} query={query} setQuery={setQuery} />}
+        {isSearching
+          ? <SearchPage query={query} setQuery={setQuery} results={results} />
+          : children}
+        <Footer />
+      </DriftContext.Provider>
     </div>
   </div>
 }
