@@ -5,6 +5,7 @@ import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import Code from '../../components/Code'
 import stn from '../../public/images/SinkTargetNames.png'
+import preval from 'babel-plugin-preval/macro'
 
 export default function DotnetDocs() {
   const toc =

@@ -3,7 +3,7 @@ import Head from 'next/head';
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import rutta from '../../public/images/logary-rutta-router.svg'
-import { faSatelliteDish } from '@fortawesome/fontawesome-free';
+import { faSatelliteDish } from '@fortawesome/fontawesome-free'
 import use1 from '../../public/images/usage1.png'
 import use2 from '../../public/images/usage2.jpg'
 
@@ -19,7 +19,6 @@ export default function Rutta() {
       { id: "rutta-helm-chart", title: "Logary Rutta Helm chart", ref: useRef(null) },
       { id: "install-helm-chart", title: "Install the Helm chart", ref: useRef(null) },
       { id: "architecture", title: "Rutta architecture", ref: useRef(null) } ,
-
     ]
 
   return (

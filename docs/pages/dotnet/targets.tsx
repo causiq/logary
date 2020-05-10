@@ -5,7 +5,6 @@ import { faPuzzlePiece } from '@fortawesome/fontawesome-free';
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import Code from '../../components/Code'
-// import stn from '../../public/images/SinkTargetNames.png'
 import wdill from '../../public/images/What does it look like.png'
 import wdill1 from '../../public/images/What does it look like1.png'
 import wdill2 from '../../public/images/What does it look like2.png'
@@ -13,9 +12,8 @@ import mixpanel from '../../public/images/mixpanel.png'
 import opsgenie from '../../public/images/OpsGenie.png'
 import elmah_io from '../../public/images/elmah.io.png'
 import wdill3 from '../../public/images/What does it look like3.png'
-import sumologic from '../../public/images/SumoLogic .png'
-
-
+import sumologic from '../../public/images/SumoLogic.png'
+import preval from 'babel-plugin-preval/macro'
 
 export default function Targets() {
 

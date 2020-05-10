@@ -4,6 +4,7 @@ import { faJs } from '@fortawesome/free-brands-svg-icons';
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import Code from '../../components/Code'
+import preval from 'babel-plugin-preval/macro'
 
 export default function JSQuickstart() {
   const toc =

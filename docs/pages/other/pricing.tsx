@@ -12,18 +12,18 @@ import { Elements, CardElement } from 'react-stripe-elements';
 import { Button } from 'reactstrap';
 import fetch from 'isomorphic-unfetch'
 
-const createOptions = (fontSize, padding) => {
+const createOptions = (fontSize: number, padding = null) => {
   return {
     style: {
       base: {
-        fontSize,
+        fontSize: `${fontSize}px`,
         color: '#424770',
         letterSpacing: '0.025em',
         fontFamily: 'Source Code Pro, monospace',
         '::placeholder': {
           color: '#aab7c4',
         },
-        padding,
+        padding: padding || '0px',
       },
       invalid: {
         color: '#9e2146',
@@ -180,10 +180,13 @@ function useStripe(setStripe) {
   const stripeKey = process.env.NODE_ENV === 'production' ? 'pk_live_jLZwxPipS9vhFeNXVjOXshuZ' : 'pk_test_9z9OjSCGtTSgPcj8nCZWNNUy';
   useEffect(() => {
     if (typeof window !== 'undefined' && window != null) {
+      // @ts-ignore
       if (window.Stripe != null) {
+        // @ts-ignore
         setStripe(window.Stripe(stripeKey));
       } else {
         document.querySelector('#stripe-js').addEventListener('load', () => {
+          // @ts-ignore
           setStripe(window.Stripe(stripeKey));
         })
       }

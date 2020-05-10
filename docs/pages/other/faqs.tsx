@@ -5,6 +5,7 @@ import { faLifeRing } from '@fortawesome/fontawesome-free';
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import Code from '../../components/Code'
+import preval from 'babel-plugin-preval/macro'
 
 export default function FAQs() {
 
