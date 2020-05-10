@@ -1,3 +1,6 @@
 [submodule "tests/w3c-trace-context-suite"]
 	path = src/tests/w3c-trace-context-suite
 	url = https://github.com/w3c/trace-context.git
+[submodule "src/logary-js"]
+	path = src/logary-js
+	url = git@github.com:logary/logary-js.git
