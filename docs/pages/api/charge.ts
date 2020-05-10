@@ -1,6 +1,7 @@
 import { calculatePrice, formatMoney, ContinuousRebate, equal } from '../../components/calculatePrice'
 import { NextApiRequest, NextApiResponse } from 'next'
 import { parseOneAddress } from "email-addresses"
+import { PaymentMethod } from '@stripe/stripe-js'
 
 const stripeKey = process.env.LOGARY_STRIPE_SECRET_KEY
 if (stripeKey == null) throw new Error("Missing env var LOGARY_STRIPE_SECRET_KEY")
@@ -14,7 +15,7 @@ stripe.setApiVersion('2019-03-14')
  * @param {address,name,local,domain,parts} parsedEmail
  * @returns https://stripe.com/docs/api/customers/create
  */
-const getOrCreateCustomer = async (token, customer, parsedEmail) => {
+const getOrCreateCustomer = async (token: string, customer: Record<string, any>, parsedEmail: Record<string, any>) => {
   console.debug("Listing customers based on the e-mail provided.")
   const res = await stripe.customers.list({ limit: 1, email: parsedEmail.address })
   if (res.data.length > 0) {
@@ -50,7 +51,7 @@ const getOrCreateCustomer = async (token, customer, parsedEmail) => {
   });
 }
 
-const stringly = price =>
+const stringly = (price: any) =>
   Object
     .keys(price)
     .map(k => [ k, typeof price[k] === 'object' ? formatMoney(price[k]) : String(price[k])])
@@ -68,8 +69,8 @@ const getProducts = async () =>  {
   }
 
   return {
-    cores: ps.data.filter(x => x.name === 'logary_license_cores')[0],
-    devs: ps.data.filter(x => x.name === "logary_license_devs")[0]
+    cores: ps.data.filter((x: Record<string, any>) => x.name === 'logary_license_cores')[0],
+    devs: ps.data.filter((x: Record<string, any>) => x.name === "logary_license_devs")[0]
   }
 }
 
@@ -77,7 +78,7 @@ const getProducts = async () =>  {
  * https://stripe.com/docs/api/subscriptions/create
  * @param {Stripe.Customer} customer
  */
-const createSubscription = async (cores, devs, price, customer) => {
+const createSubscription = async (cores: number, devs: number, price: any, customer: Record<string, any>) => {
   // e.g. ("logary_devs_5", "logary_devs_1") => ...
   // @ts-ignore quick way to sort...
   const sortLatestSuffix = (x, y) => /_(\d{1,})/.exec(y)[1] - /_(\d{1,})/.exec(x)[1]
@@ -116,6 +117,36 @@ function badReq(res: NextApiResponse, message: string) {
   })
 }
 
+export type Customer = Readonly<{
+  companyName: string;
+  name: string;
+  vatNo: string;
+  email: string;
+}>
+
+export type ChargeRequest = Readonly<{
+  paymentMethod: PaymentMethod;
+  price: ReturnType<typeof calculatePrice>;
+  cores: number;
+  devs: number;
+  years: number;
+  customer: Customer;
+}>
+
+type ChargeSuccessResponse = Readonly<{
+  type: 'success';
+  payload: Readonly<{ code: string; title: string; }>;
+}>
+
+type ChargeFailureResponse = Readonly<{
+  type: 'failure';
+  payload: Readonly<{ code: string; title: string; }>;
+}>
+
+export type ChargeResponse =
+  | ChargeSuccessResponse
+  | ChargeFailureResponse
+
 export default async function charge(req: NextApiRequest, res: NextApiResponse) {
   if (!req.body || !req.body.customer) {
     badReq(res, "Missing body or body.customer value")
@@ -149,7 +180,7 @@ export default async function charge(req: NextApiRequest, res: NextApiResponse) 
       return
     }
 
-    const customer = await getOrCreateCustomer(req.body.token.id, req.body.customer, email);
+    const customer = await getOrCreateCustomer(req.body.paymentMethod.id, req.body.customer, email);
     const subscription = await createSubscription(req.body.cores, req.body.devs, ep, customer);
     const outcome = `${subscription.status}|${(subscription.latest_invoice.payment_intent || {}).status}`;
     console.info(`Outcome for ${customer.id}: ${outcome}`)

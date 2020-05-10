@@ -2,29 +2,40 @@ import { faClock } from '@fortawesome/fontawesome-free';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import Layout from './Layout'
 import DocMenu from './DocMenu'
+import { IconProp } from '@fortawesome/fontawesome-svg-core';
+import { ReactNode } from 'react';
 
-export const DocPage = (props) => {
-  const {
-    name,
-    colour,
-    title,
-    icon,
-    faIcon,
-    readingMinutes,
-    toc,
-    children,
-    ...rest
-  } = props;
+type Props = Readonly<{
+  name: string;
+  colour: string;
+  title: string;
+  icon?: ReactNode;
+  faIcon?: IconProp;
+  children: ReactNode;
+  readingMinutes?: number;
+  toc: any[]
+}>
 
+export default function DocPage({
+  name,
+  colour,
+  title,
+  icon,
+  faIcon,
+  readingMinutes,
+  toc,
+  children,
+  ...rest
+}: Props) {
   return <Layout name={name} title={title} className={`body-${colour}`} {...rest}>
     <div className="doc-wrapper">
       <div className="container">
 
         <div id="doc-header" className="doc-header text-center">
           <h1 className="doc-title">
-            {icon != null
-              ? icon
-              : <FontAwesomeIcon icon={faIcon} />} {title}
+            {faIcon != null
+              ? <FontAwesomeIcon icon={faIcon} />
+              : icon} {title}
           </h1>
           {readingMinutes != null
             ? <div className="meta">
@@ -49,5 +60,3 @@ export const DocPage = (props) => {
     </div>
   </Layout>
 }
-
-export default DocPage;

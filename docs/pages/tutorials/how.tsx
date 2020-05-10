@@ -2,7 +2,7 @@ import Layout from '../../components/Layout'
 
 export default function How() {
   return (
-    <Layout>
+    <Layout name='tutorial-how' title='tutorial-how'>
       <p>How</p>
     </Layout>
   )

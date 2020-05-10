@@ -1,6 +1,5 @@
 import { useRef } from 'react'
-import Head from 'next/head';
-import { faBooks } from '@fortawesome/fontawesome-free';
+import { faBooks } from '@fortawesome/fontawesome-free'
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import Code from '../../components/Code'
@@ -9,12 +8,9 @@ import preval from 'babel-plugin-preval/macro'
 
 const Samples =
   preval`
-    const fs = require('fs'),
-          path = require('path'),
-          basePath = __dirname + '/../../examples/dotnet',
-          files = fs.readdirSync(basePath);
-
-    module.exports = files
+    const fs = require('fs'), path = require('path'), basePath = __dirname + '/../../examples/dotnet';
+    module.exports = fs
+      .readdirSync(basePath)
       .map(file => [ file, fs.readFileSync(path.join(basePath, file), 'utf8') ])
       .reduce((acc, item) => {
         acc[item[0]] = item[1];
@@ -22,9 +18,8 @@ const Samples =
       }, {})
   `
 
-function Sample({ fileName, language = 'fsharp' }) {
-  return <Code value={Samples[fileName]} language={language} />
-}
+const Sample = ({ fileName, language = 'fsharp' }: { fileName: string, language?: 'fsharp' | 'text' }) =>
+  <Code value={Samples[fileName]} language={language} />
 
 export default function DotnetDocs() {
   const toc =
@@ -41,10 +36,13 @@ export default function DotnetDocs() {
     ]
 
   return (
-    <DocPage name=".net-documentation" title=".Net Core Documentation" faIcon={faBooks} colour="purple" readingMinutes={2} toc={toc}>
-      <Head>
-        <title key="title">.Net Core Documentation</title>
-      </Head>
+    <DocPage
+      name=".net-documentation"
+      title=".Net Core Documentation"
+      faIcon={faBooks}
+      colour="purple"
+      readingMinutes={2}
+      toc={toc}>
 
       <DocSection {...toc[0]}>
         <h2 className="section-title">PointName</h2>

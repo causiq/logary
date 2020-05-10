@@ -1,14 +1,12 @@
 
 import { useRef } from 'react'
-import Head from 'next/head';
 import { faBalanceScale } from '@fortawesome/fontawesome-free';
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 
 export default function License() {
 
-  const toc =
-  [
+  const toc = [
     { id: "logary-licencing", title: "Logary licencing", ref: useRef(null) } ,
     { id: "terms-of-service", title: "Terms of Service (ToS)", ref: useRef(null) } ,
     { id: "commercial-license", title: "Commercial License", ref: useRef(null) }
@@ -16,9 +14,7 @@ export default function License() {
 
   return (
     <DocPage name="all-target" title="License" faIcon={faBalanceScale} colour="orange" readingMinutes={1} toc={toc}>
-      <Head>
-        <title key="title">License</title>
-      </Head>
+
       <DocSection {...toc[0]}>
         <h2 className="section-title">Logary licencing</h2>
         <p></p>
@@ -53,6 +49,7 @@ export default function License() {
           <p>MIT-licensed, see <a href="https://github.com/logary/logary-js/blob/master/LICENSE">logary/logary-js/LICENSE.</a> </p>
           <p>This NPM package is published at <a href="https://www.npmjs.com/package/logary">logary/logary-js/LICENSE.</a> </p>
       </DocSection>
+
       <DocSection {...toc[1]}>
         <h2 className="section-title">Terms of Service (ToS)</h2>
         <p></p>

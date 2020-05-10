@@ -5,10 +5,6 @@ import SiteHeader from './SiteHeader'
 import PageHeader from './PageHeader'
 import Footer from './Footer'
 
-// Font awesome
-import { config } from '@fortawesome/fontawesome-svg-core'
-config.autoAddCss = false
-
 // Syntax highlighting
 import Lowlight from 'react-lowlight'
 // https://github.com/isagalaev/highlight.js/tree/master/src/languages
@@ -28,14 +24,23 @@ Lowlight.registerLanguage('json', langJson)
 Lowlight.registerLanguage('xml', langXML)
 Lowlight.registerLanguage('text', langText)
 
-import { useState } from 'react'
+import { useState, ReactNode } from 'react'
 import { useLunr } from 'react-lunr'
 import { index, store } from '../public/search'
 import SearchPage from './SearchPage'
 
+type Props = Readonly<{
+  name: string;
+  title: string;
+  className?: string | string[];
+  router: any;
+  children: ReactNode;
+  noChat?: boolean;
+}>
+
 // Actual layout
-const Layout = ({ name, title, className = [], router, children, noChat, ...rest }) => {
-  const [query, setQuery] = useState(null)
+const Layout = ({ name, title, className = [], router, children, noChat, ...rest }: Props) => {
+  const [query, setQuery] = useState<string | null>(null)
 
   const drift = useDrift("gvi23z7y7p36", noChat, x => x)
 
@@ -55,6 +60,7 @@ const Layout = ({ name, title, className = [], router, children, noChat, ...rest
         <link rel="icon" type="image/png" href={require("../public/images/icon-200x200.png")} sizes="200x200" key="icon-200x200" />
         <link rel="apple-touch-icon" sizes="200x200" href={require("../public/images/icon-200x200.png")} key="apple-touch-icon-200x200" />
         <link rel="apple-touch-icon" sizes="500x500" href={require("../public/images/icon-500x500.png")} key="apple-touch-icon-500x500" />
+        <title>{title}</title>
       </Head>
 
       <DriftContext.Provider value={drift.current}>

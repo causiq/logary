@@ -1,6 +1,8 @@
 export const epsilon = 0.0000001;
 
-export function money(amount, currency = "EUR") {
+type Money = Readonly<{ amount: number; currency: 'EUR'}>
+
+export function money(amount: number, currency: 'EUR' = "EUR"): Money {
   if (amount == null) throw new Error("Missing amount, received=" + amount)
   if (typeof amount !== 'number') throw new Error("Missing amount, received=" + typeof amount)
   if (currency == null) throw new Error("Missing currency, received=" + currency)
@@ -9,11 +11,11 @@ export function money(amount, currency = "EUR") {
   return { amount, currency }
 }
 
-export function formatMoney({ amount, currency }) {
+export function formatMoney({ amount, currency }: Money) {
   return `${amount / 100.0} ${currency}`
 }
 
-export function equal(m1, m2) {
+export function equal(m1: Money, m2: Money) {
   return Math.abs(m1.amount - m2.amount) < epsilon
     && m1.currency === m2.currency;
 }
@@ -28,7 +30,7 @@ export const ContinuousRebate = 0.6
  * @param {Number} continuousRebate Float
  * @returns {totalExclVAT, total: { amount: 100xEUR, currency: "EUR"}, nextYear: Money}
  */
-export function calculatePrice(cores, devs, years, continuousRebate, chargeVAT=false){
+export function calculatePrice(cores: number, devs: number, years: number, continuousRebate: number, chargeVAT: boolean = false) {
   if (!cores || !devs || !years || !continuousRebate) throw new Error("Missing parameters to 'calculatePrice'");
   if (cores < 1 || devs < 1 || years < 1 || continuousRebate >= 1.0 || continuousRebate < 0) throw new Error(`Bad parameters cores=${cores}, devs=${devs}, years=${years}, cr=${continuousRebate}.`);
   const oneYearBase = (cores * 100 + devs * 20 + 250) * 100,

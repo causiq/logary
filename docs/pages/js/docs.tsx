@@ -2,7 +2,7 @@ import Layout from '../../components/Layout'
 
 export default function JSDocs() {
   return (
-    <Layout>
+    <Layout name='js-docs' title='JavaScript docs'>
       <p>Logary JS docs</p>
     </Layout>
   )

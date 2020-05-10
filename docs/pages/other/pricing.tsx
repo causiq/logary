@@ -1,78 +1,112 @@
-import { useRef } from 'react'
+import { useState, useRef, useCallback, useMemo, useLayoutEffect, ReactElement } from 'react'
 import Head from 'next/head';
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
-import { Form, Input } from 'reactstrap';
-import { calculatePrice, ContinuousRebate, formatMoney } from '../../components/calculatePrice'
+import { Form, Input, Button } from 'reactstrap'
 import { faCoins } from '@fortawesome/fontawesome-free'
-import { useState, useEffect } from 'react'
 import InputRange from 'react-input-range'
-import { StripeProvider, injectStripe } from 'react-stripe-elements'
-import { Elements, CardElement } from 'react-stripe-elements';
-import { Button } from 'reactstrap';
 import fetch from 'isomorphic-unfetch'
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
+import { loadStripe, StripeError, StripeCardElementChangeEvent, PaymentMethod } from '@stripe/stripe-js'
+import { calculatePrice, ContinuousRebate, formatMoney } from '../../components/calculatePrice'
+import { ChargeRequest, Customer } from '../api/charge'
 
-const createOptions = (fontSize: number, padding = null) => {
-  return {
-    style: {
-      base: {
-        fontSize: `${fontSize}px`,
-        color: '#424770',
-        letterSpacing: '0.025em',
-        fontFamily: 'Source Code Pro, monospace',
-        '::placeholder': {
-          color: '#aab7c4',
-        },
-        padding: padding || '0px',
-      },
-      invalid: {
-        color: '#9e2146',
-      },
-    },
-  };
-};
+const emptyCustomer: Customer = { companyName: "", name: "", vatNo: "", email: "" }
 
-function newCustomer() {
+type Status =
+  | { type: 'initial' }
+  | { type: 'error', error: StripeError }
+  | { type: 'card-filled-out' }
+  | { type: 'pending-paymentMethod' }
+  | { type: 'pending-charge', paymentMethod: PaymentMethod }
+  | { type: 'completed' }
+
+const initialStatus: Status = { type: 'initial' }
+
+function nextFromCardEvent(_: Status, event: StripeCardElementChangeEvent): Status {
+  if (event.error != null) {
+    return {
+      type: 'error',
+      error: event.error
+    }
+  }
+
+  if (event.complete) {
+    return {
+      type: 'card-filled-out'
+    }
+  }
+
   return {
-    companyName: "",
-    name: "",
-    vatNo: "",
-    email: ""
+    type: 'initial'
   }
 }
 
-const CheckoutForm = injectStripe(({ stripe, cores, devs, years }) => {
-  const [ customer, setCustomer ] = useState(newCustomer());
-  const [ error, setError ] = useState(null)
-  const [ chargePending, setChargePending ] = useState(false)
-  const [ chargeComplete, setChargeComplete ] = useState(false)
+type CheckoutFormProps = Readonly<{ cores: number; devs: number; years: number }>
+
+const CheckoutForm = ({ cores, devs, years }: CheckoutFormProps): ReactElement => {
+  const stripe = useStripe()
+  const elements = useElements()
+
+  const [ customer, setCustomer ] = useState(emptyCustomer)
+  const [ status, setStatus ] = useState<Status>(initialStatus)
+
   const chargeVAT = customer.vatNo == null || customer.vatNo === ""
-  const price = calculatePrice(cores, devs, years, ContinuousRebate, chargeVAT)
+  const price = useMemo(() => calculatePrice(cores, devs, years, ContinuousRebate, chargeVAT), [ cores, devs, years ])
 
-  const handleSubmit = async (ev) => {
-    ev.preventDefault();
+  const handleCardChange = useCallback((e: StripeCardElementChangeEvent) => {
+    setStatus(nextFromCardEvent(status, e))
+  }, [ status, setStatus ])
 
-    if (stripe == null) {
+  useLayoutEffect(() => {
+    if (status.type === 'error') {
+      // @ts-ignore magic
+      elements.getElement('card').focus()
+    }
+  }, [ status ])
+
+  const handleSubmit = useCallback(() => async (ev: any) => {
+    ev.preventDefault()
+
+    if (stripe == null || elements == null) {
       console.log("Stripe not loaded yet.")
-      return;
+      return
     }
 
-    setChargePending(true);
+    if (status.type === 'error') return
 
-    const tr = await stripe.createToken({
-      name: `${customer.companyName} c=${cores}, d=${devs}, y=${years}`
-    });
-
-    if (tr.token == null) {
-      console.error("failure creating charge", tr.error)
-      setError(tr.error)
-      setChargePending(false)
-      setChargeComplete(false)
-      return;
+    if (status.type === 'card-filled-out') {
+      setStatus({ type: 'pending-paymentMethod' })
     }
 
-    const body = {
-      token: tr.token,
+    const cardE = elements.getElement(CardElement)
+
+    if (cardE == null) {
+      throw new Error('elements.getElement(CardElement) => null')
+    }
+
+    const { error, paymentMethod } = await stripe.createPaymentMethod({
+      type: 'card',
+      card: cardE,
+      billing_details: customer,
+      metadata: { cores, devs, years, timestamp: Date.now(), clientTime: new Date().toString() }
+    })
+
+    if (error != null) {
+      setStatus({ type: 'error', error })
+      return
+    }
+    else if (paymentMethod != null) {
+      setStatus({ type: 'pending-charge', paymentMethod })
+      // continue
+    }
+    else {
+      throw new Error('Stripe\'s TypeScript types indicate paymentMethod and also error can be null, but IRL it should be either or')
+      // crash
+    }
+
+    const body: ChargeRequest = {
+      paymentMethod,
       price,
       cores,
       devs,
@@ -80,22 +114,22 @@ const CheckoutForm = injectStripe(({ stripe, cores, devs, years }) => {
       customer
     }
 
-    console.log("Received token=", tr.token, "posting body=", body)
-
-    const response = await fetch("/api/charge", {
-      method: "POST",
-      headers: {"Content-Type": "application/json; charset=utf-8"},
+    const response = await fetch('/api/charge', {
+      method: 'POST',
+      headers: { "content-type": "application/json; charset=utf-8" },
       body: JSON.stringify(body)
     });
 
-    if (response.ok) setChargeComplete(true);
-    else setError(null)
-  }
+    const responseBody = await response.json()
 
-  if (chargeComplete) {
-    return (
-      "Thank you for your purchase! We will e-mail you your license key!"
-    )
+    if (response.ok) setStatus({ type: 'completed' })
+    else setStatus({ type: 'error', error: responseBody.payload })
+  }, [ stripe, elements, status, setStatus ])
+
+  if (status.type === 'completed') {
+    return <>
+      Thank you for your purchase! We will e-mail you your license key!
+    </>
   }
 
   return (
@@ -148,18 +182,36 @@ const CheckoutForm = injectStripe(({ stripe, cores, devs, years }) => {
         required
       />
 
-      <CardElement {...createOptions(12)} />
+      <CardElement
+        options={{
+          iconStyle: 'solid',
+          style: {
+            base: {
+              fontSize: '12px',
+              color: '#424770',
+              letterSpacing: '0.025em',
+              fontFamily: 'Source Code Pro, monospace',
+              '::placeholder': {
+                color: '#aab7c4',
+              },
+            },
+            invalid: {
+              color: '#9e2146',
+            },
+          }
+        }}
+        onChange={handleCardChange}/>
 
-      {error != null
-        ? <p className="text-danger">{error.message}</p>
+      {status.type === 'error'
+        ? <p className="text-danger">{status.error.message}</p>
         : null}
 
       <p>
         {price.chargeVAT
           ? <>
             Subtotal: {formatMoney(price.totalExclVAT)}
-            <br/>VAT (25%): {formatMoney(price.totalVAT)}
-            <br/>Total: {formatMoney(price.total)}
+            <br />VAT (25%): {formatMoney(price.totalVAT)}
+            <br />Total: {formatMoney(price.total)}
           </>
           : <>
             Total: {formatMoney(price.total)}
@@ -169,52 +221,38 @@ const CheckoutForm = injectStripe(({ stripe, cores, devs, years }) => {
       <Button
         data-cy='pay'
         color='primary'
-        disabled={price.total.amount <= 0 || !stripe || chargePending}>
-        Pay {formatMoney(price.total)}
+        disabled={
+          price.total.amount <= 0
+          || !stripe
+          || status.type === 'pending-charge'
+          || status.type === 'pending-paymentMethod'}>
+        {status.type.indexOf('pending-') !== -1
+          ? 'Processing...'
+          : `Pay ${formatMoney(price.total)}`}
       </Button>
     </Form>
-  );
-})
-
-function useStripe(setStripe) {
-  const stripeKey = process.env.NODE_ENV === 'production' ? 'pk_live_jLZwxPipS9vhFeNXVjOXshuZ' : 'pk_test_9z9OjSCGtTSgPcj8nCZWNNUy';
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window != null) {
-      // @ts-ignore
-      if (window.Stripe != null) {
-        // @ts-ignore
-        setStripe(window.Stripe(stripeKey));
-      } else {
-        document.querySelector('#stripe-js').addEventListener('load', () => {
-          // @ts-ignore
-          setStripe(window.Stripe(stripeKey));
-        })
-      }
-    }
-  }, [])
+  )
 }
 
-// https://stripe.com/docs/recipes/elements-react
-// https://codepen.io/davidchin/pen/GpNvqw
+const stripeP = loadStripe(process.env.NODE_ENV === 'production' ? 'pk_live_jLZwxPipS9vhFeNXVjOXshuZ' : 'pk_test_9z9OjSCGtTSgPcj8nCZWNNUy')
+
 export default function Pricing() {
-  const [ cores, setCores ] = useState(8)
-  const [ devs, setDevs ] = useState(3)
-  const [ years, setYears ] = useState(2)
-  const [ stripe, setStripe ] = useState(null)
+  const [cores, setCores] = useState(8)
+  const [devs, setDevs] = useState(3)
+  const [years, setYears] = useState(2)
   const price = calculatePrice(cores, devs, years, ContinuousRebate, false)
-  useStripe(setStripe);
 
   const toc =
-    [ { id: "calculator", title: "Calculator", ref: useRef(null) },
-      { id: "purchase", title: "Purchase license", ref: useRef(null) },
+    [{ id: "calculator", title: "Calculator", ref: useRef(null) },
+    { id: "purchase", title: "Purchase license", ref: useRef(null) },
     ]
 
   return (
-    <StripeProvider stripe={stripe}>
+    <Elements stripe={stripeP}>
       <DocPage name="pricing" title="Pricing" faIcon={faCoins} colour="primary" toc={toc}>
         <Head>
           <title key="title">Logary — Pricing</title>
-          <script id="stripe-js"  key="stripe" src="https://js.stripe.com/v3/" async></script>
+          <script id="stripe-js" key="stripe" src="https://js.stripe.com/v3/" async></script>
         </Head>
         <DocSection {...toc[0]}>
           <h2 className="section-title">Calculator</h2>
@@ -265,7 +303,7 @@ export default function Pricing() {
                 onChange={v => typeof v === 'number' ? setYears(v) : null} />
             </section>
 
-            <p className="total" style={{margin: '50px 0 0 0', fontWeight: 'bold'}}>
+            <p className="total" style={{ margin: '50px 0 0 0', fontWeight: 'bold' }}>
               Total (for {years} years): {formatMoney(price.totalExclVAT)}
             </p>
             <p>
@@ -285,14 +323,9 @@ export default function Pricing() {
             a subscription, so that after {years === 1 ? "the first year" : `${years} years`}, you'll
             be charged {formatMoney(price.nextYear)} at the beginning of the year.
           </p>
-          <Elements>
-            <CheckoutForm
-              devs={devs}
-              cores={cores}
-              years={years} />
-          </Elements>
+          <CheckoutForm devs={devs} cores={cores} years={years} />
         </DocSection>
       </DocPage>
-    </StripeProvider>
+    </Elements>
   )
 }

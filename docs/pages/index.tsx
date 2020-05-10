@@ -1,7 +1,6 @@
 import { useRef } from 'react'
 import Layout from '../components/Layout'
 import Link from 'next/link'
-import Head from 'next/head';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import DotnetIcon from '../components/DotnetIcon'
 import PrometheusIcon from '../components/PrometheusIcon'
@@ -13,12 +12,9 @@ import { faJs } from '@fortawesome/free-brands-svg-icons';
 import ScrollLink from '../components/ScrollLink'
 
 export default function Index() {
-  const howToRef = useRef(null);
+  const howToRef = useRef(null)
 
-  return <Layout name="landing-page">
-    <Head>
-      <title>Logary v5 — Professional logging, metrics and analytics for your apps</title>
-    </Head>
+  return <Layout name="landing-page" title={'Professional logging, metrics and analytics for your apps'}>
     <section className="cards-section text-center">
       <div className="container">
         <h2 className="title">Professional logging, metrics and analytics for your apps</h2>

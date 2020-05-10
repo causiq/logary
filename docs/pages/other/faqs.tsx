@@ -9,13 +9,11 @@ import preval from 'babel-plugin-preval/macro'
 
 export default function FAQs() {
 
-  const toc =
-  [
+  const toc = [
     { id: "faq", title: "FAQ", ref: useRef(null) },
     { id: "ctnal", title: "Comparison to NLog and log4net", ref: useRef(null) },
     { id: "ctcmm", title: "Comparison to Codahale metrics & Metrics.NET", ref: useRef(null) },
     { id: "cws", title: "Comparison with Serilog", ref: useRef(null) },
-
   ]
 
   return (
