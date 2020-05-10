@@ -11,15 +11,15 @@
 
 open System
 open System.IO
-open Fake.Core
-open Fake.DotNet
-open Fake.IO
-open Fake.Tools
-open Fake.IO.Globbing.Operators
-open Fake.Core.TargetOperators
 open Fake.Api
 open Fake.BuildServer
+open Fake.Core
+open Fake.Core.TargetOperators
+open Fake.DotNet
+open Fake.IO
+open Fake.IO.Globbing.Operators
 open Fake.SystemHelper
+open Fake.Tools
 
 Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 
@@ -28,16 +28,18 @@ let configuration =
   |> DotNet.BuildConfiguration.fromString
 
 let release = ReleaseNotes.load "RELEASE_NOTES.md"
-let description = "Logary is a high performance, multi-target logging, metric and health-check library for mono and .Net."
-let tags = "structured logging f# logs logging performance metrics semantic"
-let authors = "Henrik Feldt"
-let owners = "Henrik Feldt"
-let projectUrl = "https://github.com/logary/logary"
-let iconUrl = "https://raw.githubusercontent.com/logary/logary-assets/master/graphics/LogaryLogoSquare.png"
-let licenceUrl = "https://raw.githubusercontent.com/logary/logary/master/LICENSE.md"
-let copyright = sprintf "Copyright \169 %i Henrik Feldt" DateTime.Now.Year
+let testFramework = "netcoreapp3.1"
+let dotnetExePath = "dotnet"
+
+let githubToken = lazy(Environment.environVarOrFail "GITHUB_TOKEN")
+let nugetToken = lazy(Environment.environVarOrFail "NUGET_TOKEN")
 
 let pkgPath = Path.GetFullPath "./pkg"
+
+BuildServer.install [
+  Travis.Installer
+  AppVeyor.Installer
+]
 
 let testProjects =
   !! "src/tests/**/*.fsproj"
@@ -54,12 +56,11 @@ let libProjects =
   ++ "src/Logary.Prometheus/Logary.Prometheus.fsproj"
   ++ "src/Logary.CSharp/Logary.CSharp.csproj"
 
-let envRequired k =
-  let v = Environment.GetEnvironmentVariable k
-  if isNull v then failwithf "Missing environment key '%s'." k
-  v
-
 Target.create "Clean" <| fun _ ->
+  !! "./**/bin/"
+  ++ "./**/obj/"
+  ++ pkgPath
+  |> Shell.cleanDirs
   // This line actually ensures we get the correct version checked in
   // instead of the one previously bundled with 'fake`
   Git.CommandHelper.gitCommand "" "checkout .paket/Paket.Restore.targets"
@@ -78,8 +79,6 @@ Target.create "AssemblyInfo" (fun _ ->
   |> Seq.iter (fun (proj, subPath) ->
     [ AssemblyInfo.Title proj
       AssemblyInfo.Product proj
-      AssemblyInfo.Copyright copyright
-      AssemblyInfo.Description description
       AssemblyInfo.Version release.AssemblyVersion
       AssemblyInfo.FileVersion release.AssemblyVersion
     ]
@@ -122,17 +121,6 @@ Target.create "PaketFiles" (fun _ ->
           "paket-files/haf/DVar/src/DVar/DVar.fs"
 )
 
-Target.create "TCReportVersion" (fun _ ->
-  [ yield "version", release.SemVer.ToString()
-    yield "major", string release.SemVer.Major
-    yield "minor", string release.SemVer.Minor
-    yield "build", string release.SemVer.Build
-    yield "special", release.SemVer.PreRelease |> Option.map (sprintf "%O") |> function None -> "" | Some x -> x
-  ]
-  |> Seq.filter (snd >> String.IsNullOrWhiteSpace >> not)
-  |> Seq.iter (fun (name, value) -> TeamCity.setParameter (sprintf "ver.%s" name) value)
-)
-
 /// This also restores.
 Target.create "Build" <| fun _ ->
   let msbuildParams =
@@ -140,38 +128,31 @@ Target.create "Build" <| fun _ ->
         Verbosity = Some Quiet
         NoLogo = true
         Properties = [ "Optimize", "true"; "DebugSymbols", "true"; "Version", release.AssemblyVersion ] }
+
   let setParams (o: DotNet.BuildOptions) =
     { o with
         Configuration = configuration
         MSBuildParams = msbuildParams }
+
   DotNet.build setParams "src/Logary.sln"
 
 Target.create "Tests" (fun _ ->
   let commandLine (file: string) =
     let projectName = file.Substring(0, file.Length - ".fsproj".Length) |> Path.GetFileName
     let path = Path.GetDirectoryName file
-    sprintf "%s/bin/%O/netcoreapp2.2/%s.dll --summary" path configuration projectName
+    sprintf "%s/bin/%O/%s/%s.dll --summary" path configuration testFramework projectName
   testProjects
-  |> Seq.iter (commandLine >> DotNet.exec id "" >> ignore))
+    |> Seq.iter (commandLine >> DotNet.exec id "" >> ignore))
 
 Target.create "Pack" <| fun _ ->
   let args =
     { MSBuild.CliArguments.Create() with
         NoLogo = true
         DoRestore = false
-        Properties =
-          [ "PackageVersion", release.NugetVersion
-            "Authors", authors
-            "Owners", owners
-            "PackageRequireLicenseAcceptance", "true"
-            "Description", description.Replace(",","")
-            "PackageReleaseNotes", (release.Notes |> String.toLines).Replace(",","").Replace(";", "—")
-            "Copyright", copyright
-            "PackageTags", tags
-            "PackageProjectUrl", projectUrl
-            "PackageIconUrl", iconUrl
-            "PackageLicenseUrl", licenceUrl
-          ]
+        Properties = [
+          "Version", release.NugetVersion
+          "PackageReleaseNotes", String.toLines release.Notes
+        ]
     }
   let pkgSln = SlnTools.createTempSolutionFile libProjects
   let setParams (p: DotNet.PackOptions) =
@@ -184,22 +165,19 @@ Target.create "Pack" <| fun _ ->
 Target.create "Push" <| fun _ ->
   let setParams (p: Paket.PaketPushParams) =
     { p with
-        ToolPath = Path.GetFullPath "./.paket/paket"
         WorkingDir = pkgPath
-        ApiKey = envRequired "NUGET_TOKEN" }
-  // for f in *.nupkg; do ../.paket/paket push  --api-key $NUGET_TOKEN $f; done
+        ApiKey = nugetToken.Value }
+  // for f in *.nupkg; do dotnet paket push  --api-key $NUGET_TOKEN $f; done
   Paket.push setParams
 
 Target.create "CheckEnv" <| fun _ ->
-  ignore (envRequired "GITHUB_TOKEN")
-  ignore (envRequired "NUGET_TOKEN")
+  ignore (githubToken.Value)
+  ignore (nugetToken.Value)
 
-Target.create "Release" (fun _ ->
-  let gitOwner, gitName = "logary", "logary"
-  let gitOwnerName = gitOwner + "/" + gitName
+Target.create "Release" <| fun _ ->
   let remote =
       Git.CommandHelper.getGitResult "" "remote -v"
-      |> Seq.tryFind (fun s -> s.EndsWith "(push)" && s.Contains gitOwnerName)
+      |> Seq.tryFind (fun s -> s.EndsWith "(push)" && s.Contains "logary/logary")
       |> function None -> "git@github.com:logary/logary.git"
                 | Some s -> s.Split().[0]
 
@@ -210,12 +188,12 @@ Target.create "Release" (fun _ ->
   Git.Branches.tag "" release.NugetVersion
   Git.Branches.pushTag "" remote release.NugetVersion
 
-  GitHub.createClientWithToken (envRequired "GITHUB_TOKEN")
-  |> GitHub.draftNewRelease gitOwner gitName release.NugetVersion
-      (Option.isSome release.SemVer.PreRelease) release.Notes
+  githubToken.Value
+  |> GitHub.createClientWithToken
+  |> GitHub.draftNewRelease "logary" "logary" release.NugetVersion
+                            release.SemVer.PreRelease.IsSome release.Notes
   |> GitHub.publishDraft
   |> Async.RunSynchronously
-)
 
 "CheckEnv"
   ==> "Release"
@@ -223,7 +201,6 @@ Target.create "Release" (fun _ ->
 "Clean"
   ==> "AssemblyInfo"
   ==> "PaketFiles"
-  =?> ("TCReportVersion", TeamCity.Environment.Version |> Option.isSome)
   ==> "Build"
   ==> "Tests"
   ==> "Pack"

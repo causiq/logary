@@ -3,7 +3,7 @@
   <PropertyGroup>
     <AssemblyName>Logary.Targets.InfluxDb.Tests</AssemblyName>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>netcoreapp2.2</TargetFrameworks>
+    <TargetFrameworks>netcoreapp3.1</TargetFrameworks>
     <NoWarn>MSB3277</NoWarn>
     <DebugSymbols>true</DebugSymbols>
     <Tailcalls>true</Tailcalls>

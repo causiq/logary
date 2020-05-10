@@ -1,7 +1,6 @@
 source https://api.nuget.org/v3/index.json
-clitool paket
-framework auto-detect
-version 5.242.1
+framework netstandard2.0, netcoreapp3.1
+version 5.242.2
 
 nuget Argu
 nuget Castle.Core
@@ -66,18 +65,20 @@ group Build
   framework auto-detect
 
   nuget FSharp.Core ~> 4.7.0
+  nuget Fake.Api.GitHub
+  nuget Fake.BuildServer.AppVeyor
+  nuget Fake.BuildServer.TeamCity
+  nuget Fake.BuildServer.Travis
+  nuget Fake.Core.ReleaseNotes
+  nuget Fake.Core.Target
+  nuget Fake.Core.Xml
   nuget Fake.DotNet.AssemblyInfoFile
   nuget Fake.DotNet.Cli
-  nuget Fake.Core.Target
-  nuget Fake.Core.ReleaseNotes
-  nuget Fake.IO.FileSystem
-  nuget Fake.Tools.Octo
-  nuget Fake.Tools.Git
   nuget Fake.DotNet.Paket
-  nuget Fake.Core.Xml
-  nuget Fake.Api.GitHub
-  nuget Fake.BuildServer.TeamCity
+  nuget Fake.IO.FileSystem
   nuget Fake.IO.Zip
+  nuget Fake.Tools.Git
+  nuget Fake.Tools.Octo
 
   github eiriktsarpalis/snippets SlnTools/SlnTools.fs
 

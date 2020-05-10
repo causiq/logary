@@ -28,7 +28,7 @@ RUN find 'src/targets' -type f \
        -or -name 'Logary.Targets.*.pdb' \
        -or -name 'Logary.Targets.*.xml' \) \
     -not -path '*/obj/*' \
-    -exec cp {} src/services/Logary.Services.Rutta/bin/Release/netcoreapp2.2/linux-x64/publish/ \;
+    -exec cp {} src/services/Logary.Services.Rutta/bin/Release/netcoreapp3.1/linux-x64/publish/ \;
 
 #-alpine
 FROM microsoft/dotnet:2.2-runtime
@@ -43,7 +43,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     ldconfig
 
 WORKDIR /logary/
-COPY --from=build /build/src/services/Logary.Services.Rutta/bin/Release/netcoreapp2.2/linux-x64/publish/* /logary/
+COPY --from=build /build/src/services/Logary.Services.Rutta/bin/Release/netcoreapp3.1/linux-x64/publish/* /logary/
 
 ENTRYPOINT ["dotnet", "/logary/rutta.dll"]
 CMD []

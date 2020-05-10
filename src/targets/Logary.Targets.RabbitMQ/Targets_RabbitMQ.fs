@@ -155,13 +155,13 @@ module internal Impl =
         VirtualHost = conf.vHost,
         UserName = conf.username,
         Password = conf.password,
-        RequestedHeartbeat = 60us,
+        RequestedHeartbeat = TimeSpan.FromSeconds 60.,
         AutomaticRecoveryEnabled = true,
         NetworkRecoveryInterval = TimeSpan.FromSeconds 30.,
         TopologyRecoveryEnabled = true,
         Port = int conf.port,
         Ssl = tls,
-        RequestedConnectionTimeout = int (conf.connectionTimeout.ToTimeSpan().TotalMilliseconds)
+        RequestedConnectionTimeout = conf.connectionTimeout.ToTimeSpan()
       )
 
     fac.CreateConnection(clientName)
@@ -211,13 +211,14 @@ module internal Impl =
         use gz = new IO.Compression.GZipStream(ms, IO.Compression.CompressionMode.Compress)
         gz.Write(bytes, 0, bytes.Length)
         ms.ToArray()
-        
+
   let utf8 = Encoding.UTF8
 
   let body (conf: RabbitMQConf) (message: Message) =
     Logary.Formatting.Json.encodeFormat message
       |> utf8.GetBytes
       |> compress conf.compression
+      |> fun bs -> new ReadOnlyMemory<byte>(bs)
 
   let selectConfirm (ilogger: Logger) state (kont: State -> Job<unit>): Alt<_> =
 

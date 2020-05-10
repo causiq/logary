@@ -5,7 +5,11 @@ metadata:
 build:
   artifacts:
   - image: haaf/logary-docs-web
+    context: docs
 deploy:
   kustomize:
     paths:
-    - k8s/test
+    - docs/k8s/test
+    kubeContext: docker-desktop
+portForward:
+  resourceType: Service

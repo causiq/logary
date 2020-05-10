@@ -3,5 +3,5 @@
 set -eu
 set -o pipefail
 
-./tools/install-tools
-.fake/fake "$@"
+dotnet tool restore
+dotnet tool run fake $@
