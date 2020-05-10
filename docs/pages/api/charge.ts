@@ -10,45 +10,50 @@ stripe.setApiVersion('2019-03-14')
 
 /**
  * https://stripe.com/docs/billing/subscriptions/payment
- * @param {*} token Stripe Source id or Token https://stripe.com/docs/api#tokens https://stripe.com/docs/api#sources
+ * @param {*} paymentMethod Stripe Payment Method Id
  * @param {companyName, name, email, vatNo?} customer
  * @param {address,name,local,domain,parts} parsedEmail
  * @returns https://stripe.com/docs/api/customers/create
  */
-const getOrCreateCustomer = async (token: string, customer: Record<string, any>, parsedEmail: Record<string, any>) => {
+const getOrCreateCustomer = async (paymentMethodId: string, customer: Record<string, any>, parsedEmail: Record<string, any>) => {
   console.debug("Listing customers based on the e-mail provided.")
-  const res = await stripe.customers.list({ limit: 1, email: parsedEmail.address })
-  if (res.data.length > 0) {
-    const existing = res.data[0]
-    if (token === existing.default_source) {
-      console.info(`Found existing customer with id ${existing.id}, reusing as tokens were identical.`)
-      return existing;
-    }
 
-    console.info(`Found existing customer with id ${existing.id}, updating source.`)
-    return await stripe.customers.update(existing.id, {
-      source: token,
-      metadata: {
-        ...existing.metadata,
-        emailName: parsedEmail.name,
-        companyName: customer.companyName.trim(),
-        updated: Date.now(),
-      },
-    })
-  }
-
-  console.info("Creating new customer.")
-  return await stripe.customers.create({
-    name: customer.name.trim(),
-    email: parsedEmail.address,
-    description: `Customer for "${customer.name.trim()}" <${parsedEmail.address}>`,
+  const shared = {
     metadata: {
       emailName: parsedEmail.name,
       companyName: customer.companyName.trim(),
-      created: Date.now(),
     },
-    source: token
-  });
+    invoice_settings: {
+      default_payment_method: paymentMethodId,
+    },
+    tax_exempt: customer.vatNo != null ? 'reverse' : 'none'
+  }
+
+  const res = await stripe.customers.list({ limit: 1, email: parsedEmail.address })
+
+  if (res.data.length > 0) {
+    const existing = res.data[0]
+    if (paymentMethodId === existing.default_source) {
+      console.info(`Found existing customer with id ${existing.id}, reusing as tokens were identical.`)
+      return existing
+    }
+
+    console.info(`Found existing customer with id ${existing.id}, updating payment method, and ...`)
+    await stripe.paymentMethods.attach(paymentMethodId, {customer: existing.id})
+
+    console.info(`... now (for ${existing.id}) the customer data`)
+    return await stripe.customers.update(existing.id, { ...shared, metadata: { ...existing.metadata, updated: Date.now() } })
+  }
+
+  console.info("Creating new customer, see https://stripe.com/docs/api/customers/create")
+  return await stripe.customers.create({
+    ...shared,
+    name: customer.name.trim(),
+    email: parsedEmail.address,
+    description: `Customer for "${customer.name.trim()}" <${parsedEmail.address}>`,
+    payment_method: paymentMethodId,
+    metadata: { ...(shared.metadata), created: Date.now() }
+  })
 }
 
 const stringly = (price: any) =>

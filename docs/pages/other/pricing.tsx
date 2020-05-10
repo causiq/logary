@@ -1,8 +1,7 @@
-import { useState, useRef, useCallback, useMemo, useLayoutEffect, ReactElement } from 'react'
-import Head from 'next/head';
+import React, { useState, useRef, useCallback, useMemo, ReactElement, FormEvent } from 'react'
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
-import { Form, Input, Button } from 'reactstrap'
+import { Input, Button } from 'reactstrap'
 import { faCoins } from '@fortawesome/fontawesome-free'
 import InputRange from 'react-input-range'
 import fetch from 'isomorphic-unfetch'
@@ -44,6 +43,8 @@ function nextFromCardEvent(_: Status, event: StripeCardElementChangeEvent): Stat
 
 type CheckoutFormProps = Readonly<{ cores: number; devs: number; years: number }>
 
+const useEffect = typeof window === 'undefined' ? React.useEffect : React.useLayoutEffect
+
 const CheckoutForm = ({ cores, devs, years }: CheckoutFormProps): ReactElement => {
   const stripe = useStripe()
   const elements = useElements()
@@ -54,18 +55,17 @@ const CheckoutForm = ({ cores, devs, years }: CheckoutFormProps): ReactElement =
   const chargeVAT = customer.vatNo == null || customer.vatNo === ""
   const price = useMemo(() => calculatePrice(cores, devs, years, ContinuousRebate, chargeVAT), [ cores, devs, years ])
 
-  const handleCardChange = useCallback((e: StripeCardElementChangeEvent) => {
-    setStatus(nextFromCardEvent(status, e))
-  }, [ status, setStatus ])
+  const handleCardChange = useCallback((e: StripeCardElementChangeEvent) => setStatus(nextFromCardEvent(status, e)), [ status, setStatus ])
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (status.type === 'error') {
       // @ts-ignore magic
       elements.getElement('card').focus()
     }
   }, [ status ])
 
-  const handleSubmit = useCallback(() => async (ev: any) => {
+  const handleSubmit = useCallback(async (ev: FormEvent<HTMLFormElement>) => {
+    console.log('handling submit')
     ev.preventDefault()
 
     if (stripe == null || elements == null) {
@@ -88,8 +88,17 @@ const CheckoutForm = ({ cores, devs, years }: CheckoutFormProps): ReactElement =
     const { error, paymentMethod } = await stripe.createPaymentMethod({
       type: 'card',
       card: cardE,
-      billing_details: customer,
-      metadata: { cores, devs, years, timestamp: Date.now(), clientTime: new Date().toString() }
+      billing_details: {
+        email: customer.email,
+        name: customer.name
+      },
+      metadata: {
+        cores, devs, years,
+        timestamp: Date.now(),
+        clientTime: new Date().toString(),
+        vatNo: customer.vatNo,
+        companyName: customer.companyName
+      }
     })
 
     if (error != null) {
@@ -133,7 +142,7 @@ const CheckoutForm = ({ cores, devs, years }: CheckoutFormProps): ReactElement =
   }
 
   return (
-    <Form onSubmit={handleSubmit} className="Checkout">
+    <form onSubmit={handleSubmit} className="Checkout">
 
       <Input
         className="StripeElement"
@@ -219,6 +228,7 @@ const CheckoutForm = ({ cores, devs, years }: CheckoutFormProps): ReactElement =
       </p>
 
       <Button
+        type='submit'
         data-cy='pay'
         color='primary'
         disabled={
@@ -230,7 +240,7 @@ const CheckoutForm = ({ cores, devs, years }: CheckoutFormProps): ReactElement =
           ? 'Processing...'
           : `Pay ${formatMoney(price.total)}`}
       </Button>
-    </Form>
+    </form>
   )
 }
 
@@ -250,10 +260,6 @@ export default function Pricing() {
   return (
     <Elements stripe={stripeP}>
       <DocPage name="pricing" title="Pricing" faIcon={faCoins} colour="primary" toc={toc}>
-        <Head>
-          <title key="title">Logary — Pricing</title>
-          <script id="stripe-js" key="stripe" src="https://js.stripe.com/v3/" async></script>
-        </Head>
         <DocSection {...toc[0]}>
           <h2 className="section-title">Calculator</h2>
           <p>
