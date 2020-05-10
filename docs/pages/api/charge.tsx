@@ -1,4 +1,5 @@
 import { calculatePrice, formatMoney, ContinuousRebate, equal } from '../../components/calculatePrice'
+import { NextApiRequest, NextApiResponse } from 'next'
 import { parseOneAddress } from "email-addresses"
 
 const stripeKey = process.env.LOGARY_STRIPE_SECRET_KEY
@@ -108,7 +109,19 @@ const createSubscription = async (cores, devs, price, customer) => {
   return s;
 }
 
-export default async function charge(req, res) {
+function badReq(res: NextApiResponse, message: string) {
+  res.status(400).json({
+    type: 'failure',
+    payload: { message }
+  })
+}
+
+export default async function charge(req: NextApiRequest, res: NextApiResponse) {
+  if (!req.body || !req.body.customer) {
+    badReq(res, "Missing body or body.customer value")
+    return
+  }
+
   try {
     // validate price
     const chargeVAT = req.body.customer.vatNo == null || req.body.customer.vatNo === "",
@@ -118,7 +131,7 @@ export default async function charge(req, res) {
 
     if (!equal(ep.total, req.body.price.total)) {
       console.error("Received value from client", req.body.price, "but calculated it as", ep)
-      res.status(400).statusMessage("Bad amount or not same currency");
+      badReq(res, "Bad amount or not same currency")
       return
     }
 
@@ -126,13 +139,13 @@ export default async function charge(req, res) {
     // https://www.npmjs.com/package/email-addresses#obj--addrsparseoneaddressopts
     const email = parseOneAddress({ input: req.body.customer.email, rejectTLD: true, simple: false });
     if (email == null) {
-      res.status(400).statusMessage("Bad e-mail");
+      badReq(res, "Bad e-mail")
       return
     }
 
     // validate company name
     if (req.body.customer.companyName == null || req.body.customer.companyName.trim().length === 0) {
-      res.status(400).statusMessage("Bad company name");
+      badReq(res, "Bad company name")
       return
     }
 

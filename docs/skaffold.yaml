@@ -1,0 +1,11 @@
+apiVersion: skaffold/v2beta3
+kind: Config
+metadata:
+  name: docs
+build:
+  artifacts:
+  - image: haaf/logary-docs-web
+deploy:
+  kustomize:
+    paths:
+    - k8s/test
