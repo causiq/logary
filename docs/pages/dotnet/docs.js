@@ -1,16 +1,14 @@
 import { useRef } from 'react'
 import Head from 'next/head';
-import { faBooks } from '@fortawesome/pro-light-svg-icons';
+import { faBooks } from '@fortawesome/fontawesome-free';
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import Code from '../../components/Code'
-import stn from '../../images/SinkTargetNames.png'
-// '@fortawesome/pro-light-svg-icons'
-
+import stn from '../../public/images/SinkTargetNames.png'
 
 export default function DotnetDocs() {
   const toc =
-    [ 
+    [
       { id: "pointName", title: "PointName", ref: useRef(null) },
       { id: "context", title: "Context", ref: useRef(null) },
       { id: "rhfm", title: "Rule & Hierarchical logging & Filter & Minimum level", ref: useRef(null) },
@@ -31,7 +29,7 @@ export default function DotnetDocs() {
         <h2 className="section-title">PointName</h2>
         <p>
           Suppose you're measuring values coming from a car. This is what that could look like:
-        </p> 
+        </p>
           <Code language="fsharp" value={
             preval`
             const fs = require('fs')
@@ -44,13 +42,13 @@ export default function DotnetDocs() {
         <h2 className="section-title">Context</h2>
         <p>
           context are generally classified into these categories: (you can try these code on test.fsx in Logary.Tests)
-        </p> 
+        </p>
 
         <h3>Fields</h3>
           <p>
             prefix with "_fields."</p><p>
             Fields are the structured data when you use structure logging like (https://messagetemplates.org/), there are mainly two style to achieve this.
-          </p> 
+          </p>
           <Code language="fsharp" value={
               preval`
               const fs = require('fs')
@@ -69,7 +67,7 @@ export default function DotnetDocs() {
 
         <h3>Gauges</h3>
           <p>prefix with "_logary.gauge."</p>
-          
+
           <p>which value is Gauge(float, units). An instantaneous value. Imagine the needle showing the speed your car is going or a digital display showing the same instantaneous metric value of your car's speed.</p>
 
           <p>you can add gauges with one message, or use gauge as the message. The difference between them is, if you use gauges as the message, the value in message are auto generate by gauges when formatting them :</p>
@@ -82,7 +80,7 @@ export default function DotnetDocs() {
             } />
         <h3>Tags</h3>
           <p>prefix with "_logary.tags"</p>
-          
+
           <p>which value is a set , tags are help with identity one type message when you do some pipeline processing.</p>
           <Code language="fsharp" value={
               preval`
@@ -94,7 +92,7 @@ export default function DotnetDocs() {
 
           <h3>SinkTargetNames</h3>
             <p>prefix with "_logary.sink.targets"</p>
-            
+
             <p>They are generally are set by Events Processing, you can define which targets (sinks) your message will go. if not set, message will go to all targets and let the targets themself to decide whether or not to accept it.</p>
             <Code language="fsharp" value={
               preval`
@@ -107,9 +105,9 @@ export default function DotnetDocs() {
             <img src={stn} alt="SinkTargetNames" />
             <p></p>
             <p>this will only show on LiterateConsole, not normal Console.</p>
-          
+
           <h3>SinkTargetNames</h3>
-            
+
             <p>things you don't want to show on the message value, but show on the backstore. e.g: some structured data not belong the message template or data you can use in the EventProcessing Pipeline.</p>
             <Code language="fsharp" value={
               preval`
@@ -121,7 +119,7 @@ export default function DotnetDocs() {
       </DocSection>
       <DocSection {...toc[2]}>
         <h2 className="section-title">Rule & Hierarchical logging & Filter & Minimum level</h2>
-        
+
         <p>A logger have a minimum level which message's level below it is not processed when logging these message. Can give us Low overhead logging – evaluate your Message only if a level is switched on. Especially when you use logging api with message factory.</p>
         <p>A logger's minimum level are config through Config.loggerMinLevel "a.b.*" LogLevel.Fatal on logary conf (usually globally) use a specific name or some hierarchy path. And can be switch on fly logm.switchLoggerLevel ("a.b.*", LogLevel.Info),this will only affect the loggers (its name, not its instance) which have been created beafore. e.g. the default level is Error on prod, use a pipe line detect an error message, switch to Info for 5 mins then change it back. can be use for auto collecting more useful info when things goes wrong.</p>
         <Code language="fsharp" value={
@@ -131,7 +129,7 @@ export default function DotnetDocs() {
               module.exports = val
               `
             } />
-        
+
       </DocSection>
       <DocSection {...toc[3]}>
         <h2 className="section-title">Log Level</h2>

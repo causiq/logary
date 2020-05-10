@@ -2,3 +2,4 @@ node_modules/
 .next/
 .DS_Store
 prettydocs-v2.1/
+yarn-error.log

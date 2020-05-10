@@ -1,6 +1,7 @@
-const withCSS = require('@zeit/next-css')
-const withSass = require('@zeit/next-sass')
-const withImages = require('next-images')
-module.exports = withCSS(withSass(withImages({
-  target: 'serverless'
-})))
+const withImages = require('next-images')({ target: 'serverless' })
+module.exports = {
+  ...withImages,
+  env: {
+    LOGARY_STRIPE_SECRET_KEY: process.env.LOGARY_STRIPE_SECRET_KEY
+  }
+}

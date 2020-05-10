@@ -1,17 +1,10 @@
 
 import { useRef } from 'react'
 import Head from 'next/head';
-import { faLifeRing } from '@fortawesome/pro-light-svg-icons';
+import { faLifeRing } from '@fortawesome/fontawesome-free';
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import Code from '../../components/Code'
-var low = require('lowlight')
-var tree = low.highlight('js', '"use strict";').value
-
-// import stn from '../../images/SinkTargetNames.png'
-
-
-
 
 export default function FAQs() {
 

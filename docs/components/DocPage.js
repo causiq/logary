@@ -1,4 +1,4 @@
-import { faClock } from '@fortawesome/pro-regular-svg-icons';
+import { faClock } from '@fortawesome/fontawesome-free';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import Layout from './Layout'
 import DocMenu from './DocMenu'

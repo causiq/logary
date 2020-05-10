@@ -3,15 +3,12 @@ import Layout from '../components/Layout'
 import Link from 'next/link'
 import Head from 'next/head';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import {
-  faFileChartLine,
-  faLifeRing,
-  faChevronDoubleDown,
-  faCoins
-} from '@fortawesome/pro-solid-svg-icons'
 import DotnetIcon from '../components/DotnetIcon'
 import PrometheusIcon from '../components/PrometheusIcon'
-import { faAtom, faBalanceScale, faBooks, faSatelliteDish, faPuzzlePiece } from '@fortawesome/pro-light-svg-icons'
+import {
+  faFileChartLine, faLifeRing, faChevronDoubleDown, faCoins,
+  faAtom, faBalanceScale, faBooks, faSatelliteDish, faBullseye
+} from '@fortawesome/fontawesome-free'
 import { faJs } from '@fortawesome/free-brands-svg-icons';
 import ScrollLink from '../components/ScrollLink'
 
@@ -86,7 +83,7 @@ export default function Index() {
           <div className="item item-pink col-lg-4 col-6">
             <div className="item-inner">
               <div className="icon-holder">
-                <FontAwesomeIcon icon={faPuzzlePiece} />
+                <FontAwesomeIcon icon={faBullseye} />
               </div>
               <h3 className="title">Targets / Sinks</h3>
               <p className="intro">

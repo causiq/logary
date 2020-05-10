@@ -1,6 +1,0 @@
-Congratulations on installing Logary-site.
-
-    helm upgrade --dry-run --debug --install logary-site ./k8s --namespace logary && \
-      --set image.repository={{ .Values.image.repository }} && \
-      --set stripeSecretKey={{ .Values.stripeSecretKey | default "base64 encoded stripe secret key" }}
-

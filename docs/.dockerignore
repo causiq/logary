@@ -1,2 +1,15 @@
-k8s
-node_modules
+*
+
+!@types
+!components
+!lib
+!pages
+!public
+!styles
+
+!.npmrc
+!next-env.d.ts
+!next.config.js
+!package.json
+!tsconfig.json
+!yarn.lock

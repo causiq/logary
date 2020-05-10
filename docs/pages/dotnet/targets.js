@@ -1,26 +1,26 @@
 
 import { useRef } from 'react'
 import Head from 'next/head';
-import { faPuzzlePiece } from '@fortawesome/pro-light-svg-icons';
+import { faPuzzlePiece } from '@fortawesome/fontawesome-free';
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import Code from '../../components/Code'
-// import stn from '../../images/SinkTargetNames.png'
-import wdill from '../../images/What does it look like.png'
-import wdill1 from '../../images/What does it look like1.png'
-import wdill2 from '../../images/What does it look like2.png'
-import mixpanel from '../../images/mixpanel.png'
-import opsgenie from '../../images/OpsGenie.png'
-import elmah_io from '../../images/elmah.io.png'
-import wdill3 from '../../images/What does it look like3.png'
-import sumologic from '../../images/SumoLogic .png'
+// import stn from '../../public/images/SinkTargetNames.png'
+import wdill from '../../public/images/What does it look like.png'
+import wdill1 from '../../public/images/What does it look like1.png'
+import wdill2 from '../../public/images/What does it look like2.png'
+import mixpanel from '../../public/images/mixpanel.png'
+import opsgenie from '../../public/images/OpsGenie.png'
+import elmah_io from '../../public/images/elmah.io.png'
+import wdill3 from '../../public/images/What does it look like3.png'
+import sumologic from '../../public/images/SumoLogic .png'
 
 
 
 export default function Targets() {
 
   const toc =
-  [ 
+  [
     { id: "influxdb-target", title: "InfluxDb Target", ref: useRef(null) },
     { id: "file-target", title: "File target (alpha level)", ref: useRef(null) },
     { id: "stackdriver-target", title: "Stackdriver target", ref: useRef(null) },
@@ -31,7 +31,7 @@ export default function Targets() {
     // { id: "me", title: "Metrics & EventProcessing pipeline", ref: useRef(null) },
     // { id: "building", title: "Building", ref: useRef(null) },
   ]
-  
+
   return (
     <DocPage name="all-target" title="Target / Sinks" faIcon={faPuzzlePiece} colour="pink" readingMinutes={2} toc={toc}>
       <Head>
@@ -41,7 +41,7 @@ export default function Targets() {
         <h2 className="section-title">InfluxDb Target</h2>
         <p>
           Suppose you're measuring values coming from a car. This is what that could look like:
-        </p> 
+        </p>
         <ul>
           <li>Events will be logged to InfluxDb like such:<span className="_code"> "pointName, event=template, ctx1=ctxval1, ctx2=ctxval2 field1=fieldval1, field2=fieldval2 value=1i 14566666xxxx"</span></li>
           <br></br>
@@ -51,7 +51,7 @@ export default function Targets() {
           <br></br>
           <li>
             Events will be logged in these influx measure names, so that you could e.g. put <span className="_code"> "event_fatal" </span>as an annotation in Grafana:
-            
+
             <ul>
             <br></br>
               <li><span className="_code"> event_verbose </span></li>
@@ -68,7 +68,7 @@ export default function Targets() {
         <h2 className="section-title">File target (alpha level)</h2>
         <p>
           Logary's file target is primarily geared towards systems that are running on single machines as it prints a human-readable format, rather than a machine- readable one.
-        </p> 
+        </p>
 
         <h3>Configuration</h3>
           <p>
@@ -117,7 +117,7 @@ export default function Targets() {
             <li>Non-target-fatal <span className="_code">IOExceptions</span>, for example when NTFS ACKs file deletes but still keeps the file listable and available for some duration afterwards are retried on a case-by-case basis. Internal Warn-level messages are logged.</li><br></br>
             <li>Fatal <span className="_code">IOExceptions</span> – more other cases; directory not found, file not found, etc. are not retried. The target should crash and restart. Its current batch is then retried forever, while logging internal Fatal-level exceptions.</li>
           </ul>
-        
+
         <h3>Invariants</h3>
           <ul>
             <li>The File target is modelled as a transaction log and trades speed against safety that the contents have been written to disk, but does not do the bookkeeping required to use FILE_FLAG_NO_BUFFER.</li>
@@ -133,12 +133,12 @@ export default function Targets() {
             <li>If there are IO errors on writing the log messages to disk, there's no guarantee that there won't be duplicate log lines written; however, they're normally timestamped, so downstream log ingestion systems can do de-duplication. This is from the batched nature of the File target.</li>
             <br></br>
           </ul>
-        
+
         <h3>Overview of buffers</h3>
           <ol type="1">
             <li>
               You write a Message from your call-site, this message is synchronised upon between the sending thread and the receiving thread using Hopac.
-              
+
               <ol type="I">
               <br></br>
                 <li>If you use one of the logWithAck functions, placing the message in the RingBuffer can be awaited (or NACKed)</li>
@@ -158,7 +158,7 @@ export default function Targets() {
             <br></br>
           </ol>
           <p>Note that disposing Logary, e.g. during application exit flushes all buffers.</p>
-        
+
         <h3>Notes on FILE_FLAG_NO_BUFFERING</h3>
           <p>I've been considering supporting <a href="https://docs.microsoft.com/en-us/windows/desktop/FileIO/file-buffering"> NO_BUFFERING </a>but this would require callers to possibly wait for the 4096 bytes buffer to fill up before ACKing messages. However, for low-throughput logging, where each log line may be around, say, 240 bytes of text, having the NO_BUFFERING flag set may end up losing us more than it gains us.</p>
           <h5>References</h5>
@@ -353,7 +353,7 @@ export default function Targets() {
             `
           } />
         <h3>What does it look like?</h3>
-          <img className="wdill" src={wdill} alt="What does it look like" />  
+          <img className="wdill" src={wdill} alt="What does it look like" />
       </DocSection>
       <DocSection {...toc[4]}>
         <h2 className="section-title">AliYun Log Service target</h2>
@@ -366,16 +366,16 @@ export default function Targets() {
               `
             } />
         <h3>What does it look like?</h3>
-          <img className="wdill" src={wdill2} alt="What does it look like" />  
-          <img className="wdill" src={wdill1} alt="What does it look like" />  
+          <img className="wdill" src={wdill2} alt="What does it look like" />
+          <img className="wdill" src={wdill1} alt="What does it look like" />
       </DocSection>
       <DocSection {...toc[5]}>
         <h2 className="section-title">Microsoft Azure Application Insights target</h2>
         <p>
           Target for <a href="https://docs.microsoft.com/en-us/azure/azure-monitor/overview"> Microsoft Azure AppInsights </a> logs the events as TRACE-messages (or Events/Metrics with a different
-           MappingConfiguration). You need to set the API-key first. Then when you go to Azure Portal Application Insights and 
-           <span className="_code"> Overview -> Search </span> you should be able to find the targets from there. Metrics goes to <span className="_code"> Metrics Explorer -> Add Chart -> 
-           Custom. </span> <a href="https://docs.microsoft.com/en-us/azure/azure-monitor/app/create-new-resource">More info...</a> 
+           MappingConfiguration). You need to set the API-key first. Then when you go to Azure Portal Application Insights and
+           <span className="_code"> Overview -> Search </span> you should be able to find the targets from there. Metrics goes to <span className="_code"> Metrics Explorer -> Add Chart ->
+           Custom. </span> <a href="https://docs.microsoft.com/en-us/azure/azure-monitor/app/create-new-resource">More info...</a>
         </p>
       </DocSection>
       <DocSection {...toc[6]}>
@@ -427,7 +427,7 @@ export default function Targets() {
               <br></br>
             </ul>
           <p>This assumes you have an account at <a href="https://www.opsgenie.com/"> OpsGenie.</a></p>
-        
+
         <h3>elmah.io</h3>
           <a href="https://elmah.io/"> <img src={elmah_io} ></img> </a>
           <p></p>
@@ -465,9 +465,9 @@ export default function Targets() {
             } />
             <p>This assumes you have an account at <a href="https://elmah.io/"> elmah.io.</a></p>
 
-        <h3>SumoLogic (community-contributed)</h3>  
+        <h3>SumoLogic (community-contributed)</h3>
         <a href="https://www.sumologic.com/"><img src={sumologic}></img></a>
-        <p></p>  
+        <p></p>
         <p>SumoLogic is a hosted service (at about 99 USD per month) that unifies logging, metrics, analytics and dashboards in a single service. As such it's a perfect Target for Logary, since Logary supports both logs and metrics.</p>
         <p>Have a look at @neoeinstein's <a href="https://neoeinstein.github.io/Logary.Targets.SumoLogic/"> Logary.Targets.SumoLogic </a> for the official docs and a sample of how to use it.</p>
         <span className="_code"> source https://www.nuget.org/api/v2 </span>
@@ -482,7 +482,7 @@ export default function Targets() {
           <p><li>Send me an e-mail and I'll target the target for you. Pricing: a small initial fee and then a monthly maintenance fee, you'll have a beautiful way of getting logs and metrics to your servers!.</li></p>
           <p>This is by far the easiest option and ensures that your Target is stable and easy to use for your customers. I'll even write some Markdown/HTML-formatted docs for your site about how to use Logary with your target.</p>
         </ol>
-        
+
       </DocSection>
     </DocPage>
   )

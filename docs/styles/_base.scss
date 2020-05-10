@@ -221,7 +221,7 @@ select {
 
 /* ====== Header ====== */
 header {
-  background: $text-color url("../images/avi-richards-1487561-unsplash.jpg") no-repeat 10% center;
+  background: $text-color url("../public/images/avi-richards-1487561-unsplash.jpg") no-repeat 10% center;
   background-size: cover;
   color: rgba(256, 256, 256, 1);
   border-top: 5px solid $color-primary;
@@ -401,7 +401,7 @@ header {
 }
 
 .elmah {
-  // background-image: url('../images/elmah.io.png');
+  // background-image: url('../public/images/elmah.io.png');
 }
 
 .usage {

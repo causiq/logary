@@ -1,17 +1,9 @@
 
 import { useRef } from 'react'
 import Head from 'next/head';
-import { faBalanceScale } from '@fortawesome/pro-light-svg-icons';
+import { faBalanceScale } from '@fortawesome/fontawesome-free';
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
-import Code from '../../components/Code'
-var low = require('lowlight')
-var tree = low.highlight('js', '"use strict";').value
-
-// import stn from '../../images/SinkTargetNames.png'
-
-
-
 
 export default function License() {
 
@@ -19,9 +11,9 @@ export default function License() {
   [
     { id: "logary-licencing", title: "Logary licencing", ref: useRef(null) } ,
     { id: "terms-of-service", title: "Terms of Service (ToS)", ref: useRef(null) } ,
-    { id: "commercial-license", title: "Commercial License", ref: useRef(null) } 
+    { id: "commercial-license", title: "Commercial License", ref: useRef(null) }
   ]
-  
+
   return (
     <DocPage name="all-target" title="License" faIcon={faBalanceScale} colour="orange" readingMinutes={1} toc={toc}>
       <Head>
@@ -113,7 +105,7 @@ export default function License() {
           <p>The invoice must be paid within 10 days of its issuance.</p>
           <h5>1.4.2 Credit/Debit Card</h5>
           <p>Credit/Debit card payments are immediate.</p>
-        
+
         <h3>2. Allowances</h3>
           <p>By purchasing this license you may make changes to the Software without open sourcing or sending a pull request with those changes. Furthermore, you are free to link the Software to your own software, under the terms of this license.</p>
         <h3>3. Refunds</h3>

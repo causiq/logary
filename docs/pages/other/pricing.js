@@ -4,14 +4,13 @@ import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import { Form, Input } from 'reactstrap';
 import { calculatePrice, ContinuousRebate, formatMoney } from '../../components/calculatePrice'
-import { faCoins } from '@fortawesome/pro-solid-svg-icons'
+import { faCoins } from '@fortawesome/fontawesome-free'
 import { useState, useEffect } from 'react'
 import InputRange from 'react-input-range'
 import { StripeProvider, injectStripe } from 'react-stripe-elements'
 import { Elements, CardElement } from 'react-stripe-elements';
 import { Button } from 'reactstrap';
 import fetch from 'isomorphic-unfetch'
-import "react-input-range/lib/css/index.css"
 
 const createOptions = (fontSize, padding) => {
   return {

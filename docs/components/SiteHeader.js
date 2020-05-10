@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import TweetShare from './TweetShare'
 import { Button } from 'reactstrap'
-import { faHeart } from '@fortawesome/pro-solid-svg-icons';
+import { faHeart } from '@fortawesome/fontawesome-free';
 import { faGithub } from "@fortawesome/free-brands-svg-icons"
 import { useState } from 'react'
 import Router from 'next/router'

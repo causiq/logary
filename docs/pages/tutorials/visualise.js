@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import Head from 'next/head';
-import { faFileChartLine } from '@fortawesome/pro-solid-svg-icons';
+import { faFileChartLine } from '@fortawesome/fontawesome-free';
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import Code from '../../components/Code'
@@ -103,7 +103,7 @@ export default function Tutorials() {
             of a REST API should be handled inside the Target.</li>
             <li>Don't do blocking calls;
             <ul>
-            <li>Convert <code>Task&lt;_&gt;</code> and <code>Async&lt;_&gt;</code> to <code>Job&lt;_&gt;</code> by using the Hopac 
+            <li>Convert <code>Task&lt;_&gt;</code> and <code>Async&lt;_&gt;</code> to <code>Job&lt;_&gt;</code> by using the Hopac
             <a href="https://hopac.github.io/Hopac/Hopac.html#def:val%20Hopac.Job.fromAsync" rel="nofollow">conversion methods</a></li>
             <li>If you need to block, use <a href="https://hopac.github.io/Hopac/Hopac.html#def:val%20Hopac.Job.Scheduler.isolate" rel="nofollow">Scheduler.isolate</a> so that your
             blocking call doesn't stop all Targets.</li>
