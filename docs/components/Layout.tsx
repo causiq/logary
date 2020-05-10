@@ -17,7 +17,8 @@ import langCs from 'highlight.js/lib/languages/cs'
 import langJavascript from 'highlight.js/lib/languages/javascript'
 import langJson from 'highlight.js/lib/languages/json'
 import langXML from 'highlight.js/lib/languages/xml'
-import useDrift, { DriftContext } from '../components/useDrift'
+import langText from 'highlight.js/lib/languages/plaintext'
+import useDrift, { DriftContext } from './useDrift'
 Lowlight.registerLanguage('fsharp', langFs)
 Lowlight.registerLanguage('fs', langFs)
 Lowlight.registerLanguage('csharp', langCs)
@@ -25,6 +26,7 @@ Lowlight.registerLanguage('cs', langCs)
 Lowlight.registerLanguage('javascript', langJavascript)
 Lowlight.registerLanguage('json', langJson)
 Lowlight.registerLanguage('xml', langXML)
+Lowlight.registerLanguage('text', langText)
 
 import { useState } from 'react'
 import { useLunr } from 'react-lunr'
@@ -35,7 +37,7 @@ import SearchPage from './SearchPage'
 const Layout = ({ name, title, className = [], router, children, noChat, ...rest }) => {
   const [query, setQuery] = useState(null)
 
-  const drift = useDrift("gvi23z7y7p36", noChat, () => {})
+  const drift = useDrift("gvi23z7y7p36", noChat, x => x)
 
   const results = useLunr(query, index, store),
         isSearching = query != null && query.length > 0

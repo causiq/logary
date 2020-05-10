@@ -1,15 +1,18 @@
+# https://skaffold.dev/docs/references/yaml/
 apiVersion: skaffold/v2beta3
 kind: Config
 metadata:
   name: docs
 build:
   artifacts:
-  - image: haaf/logary-docs-web
+  - image: logary/docs-web
     context: docs
+
 deploy:
+  kubeContext: docker-desktop
   kustomize:
     paths:
-    - docs/k8s/test
-    kubeContext: docker-desktop
+    - docs/k8s/test # TODO: move all samples to under docs/
+
 portForward:
-  resourceType: Service
+  - resourceType: Service

@@ -26,8 +26,6 @@ export default function Targets() {
     { id: "alst", title: "AliYun Log Service target", ref: useRef(null) },
     { id: "maait", title: "Microsoft Azure Application Insights target", ref: useRef(null) },
     { id: "commercial-targets", title: "Commercial Targets", ref: useRef(null) },
-    // { id: "me", title: "Metrics & EventProcessing pipeline", ref: useRef(null) },
-    // { id: "building", title: "Building", ref: useRef(null) },
   ]
 
   return (

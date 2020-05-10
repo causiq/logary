@@ -1,0 +1,8 @@
+val it : string =
+  "I 2018-01-26T09:08:21.6590074+00:00: Hey "You", here is a default "PropA is 45 and PropB raise exn" and stringify "FSI_0002+SomeInfo" and destructure SomeInfo { PropB: "The property (PropB) accessor threw an (TargetInvocationException): Oh noes, no referential transparency here", PropA: 45 } [Company.APIModule.calculateTotals]
+  fields:
+    info =>
+      SomeInfo {
+        PropB => "The property (PropB) accessor threw an (TargetInvocationException): Oh noes, no referential transparency here"
+        PropA => 45}
+    userName => "You""

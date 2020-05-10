@@ -37,7 +37,7 @@ spec:
 
       containers:
       - name: docs-web
-        image: haaf/logary-docs-web
+        image: logary/docs-web
 
         ports:
         - name: http

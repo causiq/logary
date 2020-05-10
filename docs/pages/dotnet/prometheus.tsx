@@ -24,7 +24,7 @@ export default function Vision() {
         <Code language="fsharp" value={
           preval`
             const fs = require('fs')
-            const val = fs.readFileSync(__dirname + '/../../examples/Prometheus.fs', 'utf8')
+            const val = fs.readFileSync(__dirname + '/../../examples/dotnet/Prometheus.fs', 'utf8')
             module.exports = val
           `
         } />
