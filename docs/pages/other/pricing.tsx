@@ -233,27 +233,36 @@ export default function Pricing() {
               <label htmlFor="cpu-cores">
                 Number of cores in total production deployment
               </label>
-              <InputRange id="cpu-cores"
+              <InputRange
                 formatLabel={v => v <= 1 ? `${v} core` : `${v} cores`}
-                maxValue={30} minValue={1} value={cores} onChange={v => setCores(v)} />
+                maxValue={30}
+                minValue={1}
+                value={cores}
+                onChange={v => typeof v === 'number' ? setCores(v) : null} />
             </section>
 
             <section>
               <label htmlFor="developers">
                 Number of developers owning/working on the software (seats)
               </label>
-              <InputRange id="developers"
+              <InputRange
                 formatLabel={v => v <= 1 ? `${v} developer` : `${v} developers`}
-                maxValue={15} minValue={1} value={devs} onChange={v => setDevs(v)} />
+                maxValue={15}
+                minValue={1}
+                value={devs}
+                onChange={v => typeof v === 'number' ? setDevs(v) : null} />
             </section>
 
             <section>
               <label htmlFor="years">
                 Number of years to buy a license for
               </label>
-              <InputRange id="years"
+              <InputRange
                 formatLabel={v => v <= 1 ? `${v} year` : `${v} years`}
-                maxValue={15} minValue={1} value={years} onChange={v => setYears(v)} />
+                maxValue={15}
+                minValue={1}
+                value={years}
+                onChange={v => typeof v === 'number' ? setYears(v) : null} />
             </section>
 
             <p className="total" style={{margin: '50px 0 0 0', fontWeight: 'bold'}}>
