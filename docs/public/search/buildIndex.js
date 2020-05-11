@@ -97,18 +97,19 @@ import path from 'path'
 async function execute() {
   const pages = [
     '/',
-    '/dotnet/quickstart',
-    '/js/quickstart',
-    '/dotnet/targets',
-    '/other/tutorial/how?',
-    '/js/docs',
     '/dotnet/docs',
-    '/other/faqs',
-    '/other/tutorial',
-    '/other/license',
     '/dotnet/prometheus',
+    '/dotnet/quickstart',
+    '/dotnet/targets',
+    '/js/docs',
+    '/js/quickstart',
+    '/other/faqs',
+    '/other/license',
+    '/other/pricing',
+    '/other/tutorial',
     '/rutta',
-    '/other/pricing'
+    '/tutorials/how',
+    '/tutorials/visualise',
   ]
 
   let i = 0, results = {};
