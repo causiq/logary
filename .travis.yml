@@ -1,7 +1,7 @@
 language: csharp
 dist: xenial
 sudo: false
-dotnet: 3.1.1
+dotnet: 3.1.200
 node_js: 12
 addons:
   apt:
@@ -18,8 +18,10 @@ env:
   - secure: d7E/0YWyuz76IBRATPK9b35CbGLI/5k0+My934d9A/FYTlFywdBOVIsgw7QwngMDIkY7lIsgNfNp0wwvXk4327i6I4TmkgSwCHRa8j7xnGSKgZs+cJIaO7eQbyFJ3s+jhZe9RlAol1Nx15gv+7U9UYhUc4fiqfwHElGqO2udKBg=
 script:
 - make
-- make docs_ci
-after_success:
-- make ci_push
+
+#- make docs_ci
+#after_success:
+#- make ci_push
+ 
 notifications:
   email: false

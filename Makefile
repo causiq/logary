@@ -9,7 +9,6 @@ prepare:
 	./fake.sh build --single-target --target PaketFiles
 
 restore:
-	tools/install-tools
 	dotnet restore src/Logary.sln
 
 build: prepare restore
