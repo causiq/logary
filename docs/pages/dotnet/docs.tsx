@@ -3,22 +3,10 @@ import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import Code from '../../components/Code'
 import stn from '../../public/images/SinkTargetNames.png'
-import preval from 'babel-plugin-preval/macro'
-
-const Samples =
-  preval`
-    const fs = require('fs'), path = require('path'), basePath = __dirname + '/../../examples/dotnet';
-    module.exports = fs
-      .readdirSync(basePath)
-      .map(file => [ file, fs.readFileSync(path.join(basePath, file), 'utf8') ])
-      .reduce((acc, item) => {
-        acc[item[0]] = item[1];
-        return acc;
-      }, {})
-  `
+import { DotNet } from '../../components/samples'
 
 const Sample = ({ fileName, language = 'fsharp' }: { fileName: string, language?: 'fsharp' | 'text' }) =>
-  <Code value={Samples[fileName]} language={language} />
+  <Code value={DotNet[fileName]} language={language} />
 
 export default function DotnetDocs() {
   return (

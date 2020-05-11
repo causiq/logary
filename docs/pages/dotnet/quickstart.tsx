@@ -2,7 +2,7 @@ import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import Code from '../../components/Code'
 import DotnetIcon from '../../components/DotnetIcon'
-import preval from 'babel-plugin-preval/macro'
+import { DotNet } from '../../components/samples'
 
 export default function DOTNetQuickstart() {
   return (
@@ -20,25 +20,12 @@ export default function DOTNetQuickstart() {
       </DocSection>
 
       <DocSection title='Hello world (F#)' id='hello-world-fsharp'>
-        <Code language="fsharp" value={
-          preval`
-          const fs = require('fs')
-          const val = fs.readFileSync(__dirname + '/../../../examples/Logary.ConsoleApp/Program.fs', 'utf8')
-          module.exports = val
-          `
-        } />
+        <Code language="fsharp" value={DotNet['HelloWorld.fs']} />
       </DocSection>
 
       <DocSection title='Hello world (C#)' id='hello-world-csharp'>
-        <Code language="csharp" value={
-          preval`
-          const fs = require('fs')
-          const val = fs.readFileSync(__dirname + '/../../../examples/Logary.CSharpExample/Program.cs', 'utf8')
-          module.exports = val
-          `
-        } />
+        <Code language="csharp" value={DotNet['HelloWorld.cs']} />
       </DocSection>
-
     </DocPage>
   )
 }

@@ -11,9 +11,9 @@ import opsgenie from '../../public/images/OpsGenie.png'
 import elmah_io from '../../public/images/elmah.io.png'
 import wdill3 from '../../public/images/What does it look like3.png'
 import sumologic from '../../public/images/SumoLogic.png'
-import preval from 'babel-plugin-preval/macro'
+import { Targets } from '../../components/samples'
 
-export default function Targets() {
+export default function TargetsPage() {
   return (
     <DocPage name="all-target" title="Targets / Sinks" faIcon={faPuzzlePiece} colour="pink">
       <DocSection title='InfluxDB' id='influxdb'>
@@ -51,32 +51,18 @@ export default function Targets() {
         <p>
           Folders that don't exist when the target starts are automatically created on target start-up in the current service's security context. Should the calls to create the folder fail, the target is never started, but will restart continuously like any ther Logary target.
           </p>
-        <Code language="fsharp" value={
-          preval`
-            const fs = require('fs')
-            const val = fs.readFileSync(__dirname + '/../../../examples/TargetCode/Doc1.fs', 'utf8')
-            module.exports = val
-            `
-        } />
+        <Code language="fsharp" value={Targets['Doc1.fs']} />
         <p>
           Or in C#:
           </p>
-        <Code language="csharp" value={
-          preval`
-            const fs = require('fs')
-            const val = fs.readFileSync(__dirname + '/../../../examples/TargetCode/Doc2.cs', 'utf8')
-            module.exports = val
-            `
-        } />
+        <Code language="fsharp" value={Targets['Doc2.cs']} />
 
         <h3>Policies &amp; specifications</h3>
         <p>You can specify a number of deletion and rotation policies when configuring the file target. The deletion policies dictate when the oldest logs should be deleted, whilst the rotation policies dictates when the files should be rotated (thereby the previous file archived).</p>
         <p>Furthermore, you can specify a naming specification that dictates how the files should be named on disk.</p>
         <ul>
           <li>Deletion of files happen directly when at least one deletion policy has triggered.</li>
-          <br></br>
           <li>Rotation of files happen directly when at least one rotation policy has triggered.</li>
-          <br></br>
           <li>Naming specifications should automatically be amended with sequence number, should that be required.</li>
         </ul>
 
@@ -95,26 +81,18 @@ export default function Targets() {
         <h3>Invariants</h3>
         <ul>
           <li>The File target is modelled as a transaction log and trades speed against safety that the contents have been written to disk, but does not do the bookkeeping required to use FILE_FLAG_NO_BUFFER.</li>
-          <br></br>
           <li>Fatal level events are automatically flushed/fsync-ed.</li>
-          <br></br>
           <li>Only a single writer to a file is allowed at any given time. This invariant exists because atomic flushes to files are only possible on Linux up to the page size used in the page cache.</li>
-          <br></br>
           <li>Only asynchronous IO is done, i.e. the Logary worker thread is not blocked by calls into the operating system. Because of the overhead of translating callbacks into Job/Alt structures, we try to write as much data as possible on every call into the operating system. This means that Messages to be logged can be ACKed in batches rather than individually.</li>
-          <br></br>
           <li>If your disk collapses while writing log messages (which happens once in a while and happens frequently when you have thousands of servers), the target should save its last will and then retry a configurable number of times after waiting an exponentially growing duration between each try. It does this by crashing and letting the supervisor handle the failure. After exhausting the tries, the batch of log messages is discarded.</li>
-          <br></br>
           <li>If there are IO errors on writing the log messages to disk, there's no guarantee that there won't be duplicate log lines written; however, they're normally timestamped, so downstream log ingestion systems can do de-duplication. This is from the batched nature of the File target.</li>
-          <br></br>
         </ul>
 
         <h3>Overview of buffers</h3>
         <ol type="1">
           <li>
             You write a Message from your call-site, this message is synchronised upon between the sending thread and the receiving thread using Hopac.
-
-              <ol type="I">
-              <br></br>
+            <ol type="I">
               <li>If you use one of the logWithAck functions, placing the message in the RingBuffer can be awaited (or NACKed)</li>
               <li> If you use the logSimple function, the synchronisation is hoisted onto the concurrency scheduler's pending queue and raced with a timeout to be discarded if the logging subsystem is overwhelmed.</li>
             </ol>
@@ -275,13 +253,8 @@ export default function Targets() {
         </p>
         <h3>Configuration</h3>
         <p>The target can be configured like so:</p>
-        <Code language="fsharp" value={
-          preval`
-            const fs = require('fs')
-            const val = fs.readFileSync(__dirname + '/../../../examples/TargetCode/Doc3.fs', 'utf8')
-            module.exports = val
-            `
-        } />
+        <Code language="fsharp" value={Targets['Doc3.fs']} />
+
         <p>Then, within withTargets:</p>
         <pre>Stackdriver.create conf "target-name"</pre>
 
@@ -311,32 +284,19 @@ export default function Targets() {
         <p>add ambientSpanId middleware to the target, if you want to use ambient span</p>
         <pre>jaegerTargetConf |> TargetConf.middleware Middleware.ambientSpanId</pre>
         <p>then create span for some tracing, log message as usual:</p>
-        <Code language="fsharp" value={
-          preval`
-            const fs = require('fs')
-            const val = fs.readFileSync(__dirname + '/../../../examples/TargetCode/Doc4.fs', 'utf8')
-            module.exports = val
-            `
-        } />
+        <Code language="fsharp" value={Targets['Doc4.fs']} />
+
         <p>if not using ambient span, you can use Message.setSpanId for log message and Span.setParentSpanInfo for childSpan creation.</p>
-        <Code language="fsharp" value={
-          preval`
-            const fs = require('fs')
-            const val = fs.readFileSync(__dirname + '/../../../examples/TargetCode/Doc5.fs', 'utf8')
-            module.exports = val
-            `
-        } />
+        <Code language="fsharp" value={Targets['Doc5.fs']} />
+
         <h3>What does it look like?</h3>
         <img className="wdill" src={wdill} alt="What does it look like" />
       </DocSection>
 
       <DocSection title='AliYun Log Service target' id='aliyun'>
         <h3>Usage</h3>
-        <Code language="fsharp" value={preval`
-          const fs = require('fs')
-          const val = fs.readFileSync(__dirname + '/../../../examples/TargetCode/Doc6.fs', 'utf8')
-          module.exports = val
-        `} />
+        <Code language="fsharp" value={Targets['Doc6.fs']} />
+
         <h3>What does it look like?</h3>
         <img className="wdill" src={wdill2} alt="What does it look like" />
         <img className="wdill" src={wdill1} alt="What does it look like" />
@@ -409,32 +369,15 @@ export default function Targets() {
         <p><span className="_code"> Install-Package Logary.Targets.Elmah.Io </span></p>
         <h5>Usage</h5>
         <p>Configure elmah.io just like you would any normal target.</p>
-        <Code language="fsharp" value={
-          preval`
-              const fs = require('fs')
-              const val = fs.readFileSync(__dirname + '/../../../examples/TargetCode/Doc7.fs', 'utf8')
-              module.exports = val
-              `
-        } />
-        <br></br>
+        <Code language="fsharp" value={Targets['Doc7.fs']} />
+
         <p>Or from C#:</p>
-        <Code language="fsharp" value={
-          preval`
-              const fs = require('fs')
-              const val = fs.readFileSync(__dirname + '/../../../examples/TargetCode/Doc8.cs', 'utf8')
-              module.exports = val
-              `
-        } />
+        <Code language="fsharp" value={Targets['Doc8.cs']} />
+
         <img src={wdill3}></img>
-        <p></p>
         <p>You'll get the same view by logging this Message:</p>
-        <Code language="fsharp" value={
-          preval`
-              const fs = require('fs')
-              const val = fs.readFileSync(__dirname + '/../../../examples/TargetCode/Doc9.fs', 'utf8')
-              module.exports = val
-              `
-        } />
+        <Code language="fsharp" value={Targets['Doc9.fs']} />
+
         <p>This assumes you have an account at <a href="https://elmah.io/"> elmah.io.</a></p>
 
         <h3>SumoLogic (community-contributed)</h3>
