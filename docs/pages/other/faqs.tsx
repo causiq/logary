@@ -1,24 +1,14 @@
-
-import { useRef } from 'react'
-import { faLifeRing } from '@fortawesome/fontawesome-free';
+import { faLifeRing } from '@fortawesome/fontawesome-free'
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import Code from '../../components/Code'
 import preval from 'babel-plugin-preval/macro'
 
 export default function FAQs() {
-
-  const toc = [
-    { id: "faq", title: "FAQ", ref: useRef(null) },
-    { id: "ctnal", title: "Comparison to NLog and log4net", ref: useRef(null) },
-    { id: "ctcmm", title: "Comparison to Codahale metrics & Metrics.NET", ref: useRef(null) },
-    { id: "cws", title: "Comparison with Serilog", ref: useRef(null) },
-  ]
-
   return (
-    <DocPage name="all-target" title="FAQs" faIcon={faLifeRing} colour="green" estimationMinutes={2} toc={toc}>
-      <DocSection {...toc[0]}>
-        <h2 className="section-title">FAQ</h2>
+    <DocPage name="all-target" title="FAQs" faIcon={faLifeRing} colour="green">
+      <DocSection title='FAQ' id='faq'>
+
         <h3>How do I use Hopac from C#?</h3>
           <p>You're better off following the examples in C# and using the Task-wrapped public APIs than going spelunking into the dire straits of Hopac and F#.</p>
           <p>Just pull in Logary.CSharp to make this happen. You'll also have to open the Logary namespace.</p>
@@ -85,7 +75,8 @@ export default function FAQs() {
           <p>Inspect the version specified in the <a href="https://www.nuget.org/packages/Logary/"> Logary package </a> and ensure that you have that exact version installed. Hopac is currently pre-v1 so it is often doing breaking changes between versions.</p>
 
       </DocSection>
-      <DocSection {...toc[1]}>
+
+      <DocSection title='Comparison to NLog and log4net' id='nlog-log4net'>
         <h2 className="section-title">Comparison to NLog and log4net</h2>
         <p>
           Why Logary instead of one of the classic logging frameworks?
@@ -115,9 +106,9 @@ export default function FAQs() {
           <br></br>
         </ul>
       </DocSection>
-      <DocSection {...toc[2]}>
-        <h2 className="section-title">Comparison to Codahale metrics & Metrics.NET</h2>
-        <p>Why Logary rather than Metrics.NET, the primary alternative?</p>
+
+      <DocSection title='Comparison to Codahale metrics &amp; Metrics.NET' id='codahale-metricsnet'>
+        <p>Why Logary rather than Metrics.NET?</p>
         <p>In order to understand the differences, you first need to understand the vocabulary. Logary uses the name <span className="_code"> Message </span> to mean either an <span className="_code">Event </span> , a <span className="_code"> Gauge </span> or a <span className="_code"> Derived </span>. This comes from analysing the different sorts of things one would like to ship from an app.</p>
         <p>Starting with an <span className="_code"> Event </span>; this is the main value when you're logging (in fact, it's Logary.PointValue.Event(template:string) that you're using.) An event is like a Gauge at a particular instant on the global timeline with a value of 1 (one).</p>
         <p>Which brings us to what a <span className="_code"> Gauge </span> is. It's a specific value at an instant. It's what you see as a temporature on a thermometer in your apartment, e.g. <span className="_code"> 10.2 degrees celcius </span>. In the International System of Units (SI-Units), you could say it's the same as 283.2 K. Logary aims to be the foundational layer for all your metrics, so it uses these units. A <span className="_code"> Gauge </span> value of your temperature could be created like so <span className="_code"> Message.gaugeWithUnit Kelvin (Float 283.2) </span> or <span className="_code"> Gauge (Float 283.2, Kelvin) </span>.</p>
@@ -157,9 +148,8 @@ export default function FAQs() {
         </ul>
         <p>The aim of Logary is to connect values from call-sites, to configurable derivations, such as percentiles(, potentially again to derivations), and finally to targets which can then store them.</p>
       </DocSection>
-      <DocSection {...toc[3]}>
+      <DocSection title='Logary and Serilog' id='logary-and-serilog'>
         <h2 className="section-title">Comparison with Serilog</h2>
-        <p></p>
         <ul>
           <li>Both support structured logging</li>
           <li>Both run on .Net</li>

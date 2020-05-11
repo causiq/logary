@@ -19,7 +19,7 @@ type Props = Readonly<{
   title: string;
   icon?: ReactNode;
   faIcon?: IconProp;
-  children: ReactNode[];
+  children: ReactNode;
   estimationMinutes?: number;
   noEstimation?: boolean;
   noChat?: boolean;
@@ -29,14 +29,14 @@ type Props = Readonly<{
 /**
  * Create a table of contents for the doc page; each ToC link can be clicked to support scrolling
  */
-function forwardChildren(cs: ReactNode[]): [ReactNode[], ToCItem[]] {
+function forwardChildren(cs: ReactNode, matchType: string = 'DocSection'): [ReactNode[], ToCItem[]] {
   const nextChildren: ReactNode[] = [], tocItems: ToCItem[] = []
 
   Children.forEach(cs, child => {
     // @ts-ignore It is either there, and we have a value, or it's null
-    const typeName = child.type.displayName
+    const typeName = child.type?.displayName
 
-    if (isValidElement(child) && typeName === 'DocSection') {
+    if (isValidElement(child) && typeName === matchType) {
       const props = child.props as DocSectionProps
       const childRef = createRef<HTMLElement>()
       nextChildren.push(cloneElement(child, {
@@ -56,6 +56,34 @@ function forwardChildren(cs: ReactNode[]): [ReactNode[], ToCItem[]] {
   return [nextChildren, tocItems]
 }
 
+// Debug tools:
+
+// import { useEffect } from 'react'
+
+// useEffect(() => {
+//   router.beforePopState(state => { console.log('beforePopState', state); return true })
+//   router.events.on('routeChangeStart', console.log.bind(console, 'routeChangeStart'))
+//   router.events.on('routeChangeComplete', console.log.bind(console, 'routeChangeComplete'))
+//   router.events.on('routeChangeError', console.log.bind(console, 'routeChangeError'))
+//   router.events.on('beforeHistoryChange', console.log.bind(console, 'beforeHistoryChange'))
+//
+//   const handlePop = (e: PopStateEvent) => { console.log(`state: ${JSON.stringify(e.state)}`) }
+//   window.addEventListener('popstate', handlePop)
+//   return () => window.removeEventListener('popstate', handlePop)
+// })
+
+// useEffect(() => {
+//   const logScroll = (name: string) => (args: any) => console.log(name, args, window.scrollY)
+//   const logStart = logScroll('hashChangeStart')
+//   const logComplete = logScroll('hashChangeComplete')
+
+//   router.events.on('hashChangeStart', logStart)
+//   router.events.on('hashChangeComplete', logComplete)
+//   return () => {
+//     router.events.off('hashChangeStart', logStart)
+//     router.events.off('hashChangeComplete', logComplete)
+//   }
+// })
 
 export default function DocPage({
   name,
@@ -68,45 +96,38 @@ export default function DocPage({
   children: cs,
   ...rest
 }: Props) {
-
   const router = useRouter()
 
   const [children, toc] = useMemo(() => forwardChildren(cs), [cs])
 
-  // useEffect(() => {
-  //   Router.beforePopState(state => { console.log('beforePopState', state); return true })
-  //   Router.events.on('routeChangeStart', console.log.bind(console, 'routeChangeStart'))
-  //   Router.events.on('routeChangeComplete', console.log.bind(console, 'routeChangeComplete'))
-  //   Router.events.on('routeChangeError', console.log.bind(console, 'routeChangeError'))
-  //   Router.events.on('beforeHistoryChange', console.log.bind(console, 'beforeHistoryChange'))
-  //   Router.events.on('hashChangeStart', console.log.bind(console, 'hashChangeStart'))
-  //   Router.events.on('hashChangeComplete', console.log.bind(console, 'hashChangeComplete'))
-  // })
-
-  // useEffect(() => {
-  //   const handlePop = (e: PopStateEvent) => { console.log(`state: ${JSON.stringify(e.state)}`) }
-  //   window.addEventListener('popstate', handlePop)
-  //   return () => window.removeEventListener('popstate', handlePop)
-  // })
-
   useSectionTracking(toc, section => {
     if (history.pushState == null) return
 
-    // const pathname = new URL(location.href).pathname
-    // const pathAndSearch = section == null ? pathname : `${pathname}#${section.id}`
-    // history.pushState({ url: window.location.href, as: router.asPath }, document.title, pathAndSearch)
-
     // https://nextjs.org/docs/api-reference/next/router
-    const asPath = router.asPath.indexOf("#") === -1 ? router.asPath : router.asPath.substring(0, router.asPath.indexOf("#"))
+    const [ asPath, ] = router.asPath.split("#")
     const nextAsPath = section != null ? `${asPath}#${section.id}` : asPath
-    console.log('url aka pathname=', router.pathname, 'asPath=', nextAsPath)
-    router.replace(router.pathname, nextAsPath, { shallow: true })
+
+    // When we go back, don't update the history state with this information (it would without this check, since a new
+    // section has scrolled into view).
+    if (nextAsPath === history.state.as) return
+
+    // This is how NextJS uses the History API:
+    // https://github.com/zeit/next.js/blob/e91c0fccbb7ab2efa53004728e9f7494c840c264/packages/next/next-server/lib/router/router.ts#L521-L532
+    const nextState = { url: router.pathname, as: nextAsPath, options: { shallow: true } }
+    //console.log('url aka pathname=', router.pathname, 'asPath=', nextAsPath, 'history.state=', history.state, 'nextState', nextState)
+
+    history.pushState(nextState, '', nextAsPath)
+
+    // Can't use this since it ALWAYS scrolls to the active element, so when the user scrolls up, and we change
+    // the hash of the browser, the browser viewport is immediately scrolled to the top of that section:
+    //
+    // router.replace(router.pathname, nextAsPath, { shallow: true })
+    //  => change('replaceState') => scrollToHash
   })
 
   return <Layout name={name} title={title} className={`body-${colour}`} {...rest}>
     <div className="doc-wrapper">
       <div className="container">
-
         <div id="doc-header" className="doc-header text-center">
           <h1 className="doc-title">
             {faIcon != null

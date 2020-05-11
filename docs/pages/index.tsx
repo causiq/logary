@@ -14,7 +14,7 @@ import ScrollLink from '../components/ScrollLink'
 export default function Index() {
   const howToRef = useRef(null)
 
-  return <Layout name="landing-page" title={'Professional logging, metrics and analytics for your apps'}>
+  return <Layout name="landing-page" title='Professional logging, metrics and analytics for your apps'>
     <section className="cards-section text-center">
       <div className="container">
         <h2 className="title">Professional logging, metrics and analytics for your apps</h2>

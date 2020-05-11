@@ -1,21 +1,12 @@
-
-import { useRef } from 'react'
-import { faBalanceScale } from '@fortawesome/fontawesome-free';
+import { faBalanceScale } from '@fortawesome/fontawesome-free'
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 
 export default function License() {
-
-  const toc = [
-    { id: "logary-licencing", title: "Logary licencing", ref: useRef(null) } ,
-    { id: "terms-of-service", title: "Terms of Service (ToS)", ref: useRef(null) } ,
-    { id: "commercial-license", title: "Commercial License", ref: useRef(null) }
-  ]
-
   return (
-    <DocPage name="all-target" title="License" faIcon={faBalanceScale} colour="orange" estimationMinutes={1} toc={toc}>
+    <DocPage name="all-target" title="License" faIcon={faBalanceScale} colour="orange">
 
-      <DocSection {...toc[0]}>
+      <DocSection title='Logary licensing' id='logary-licensing'>
         <h2 className="section-title">Logary licencing</h2>
         <p></p>
         <p>This section defines the licenses for each subcomponent of Logary.</p>
@@ -50,7 +41,7 @@ export default function License() {
           <p>This NPM package is published at <a href="https://www.npmjs.com/package/logary">logary/logary-js/LICENSE.</a> </p>
       </DocSection>
 
-      <DocSection {...toc[1]}>
+      <DocSection title='Terms of Service' id='tos'>
         <h2 className="section-title">Terms of Service (ToS)</h2>
         <p></p>
         <h3>1. Jurisdiction</h3>
@@ -70,7 +61,8 @@ export default function License() {
         <h3>7. Changes to the terms</h3>
           <p>Logary's authors may make changes to these Terms from time to time. When we introduce changes we will commit the most current version to this document, and if a revision of the Terms is material and you have made a purchase of the commercial license, we will notify you of the new Terms (either by e-mail or a Github notification) as appropriate. If you do not agree to the modified terms, you should discontinue your use of Logary.</p>
       </DocSection>
-      <DocSection {...toc[2]}>
+
+      <DocSection title='Commercial license' id='commercial-license'>
         <h2 className="section-title">Commercial License</h2>
         <p></p>
         <p>This section defines the terms of the Commercial License.</p>

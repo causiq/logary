@@ -1,4 +1,3 @@
-import { useRef } from 'react'
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import PrometheusIcon from '../../components/PrometheusIcon'
@@ -6,15 +5,11 @@ import Code from '../../components/Code'
 import preval from 'babel-plugin-preval/macro'
 
 export default function Vision() {
-  const toc =
-    [{ id: "prometheus", title: "Prometheus", ref: useRef(null) }]
-
   return (
-    <DocPage name="js-quickstart" title="Prometheus" icon={<PrometheusIcon />} colour="orange" estimationMinutes={2} toc={toc}>
-      <DocSection {...toc[0]}>
-        <h2 className="section-title">Prometheus</h2>
+    <DocPage name="js-quickstart" title="Prometheus" icon={<PrometheusIcon />} colour="orange">
+      <DocSection title='Prometheus' id='prometheus'>
         <p>
-          Logary supports Prometheus. Reference <span className="_code"> Logary.Prometheus </span> and create metrics:
+          Logary supports Prometheus. Reference <span className="_code">Logary.Prometheus</span> and create metrics:
         </p>
         <p>TBD</p>
         <Code language="fsharp" value={
