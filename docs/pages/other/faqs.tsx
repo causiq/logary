@@ -36,7 +36,7 @@ export default function FAQs() {
             <Code language="cs" value={
               preval`
               const fs = require('fs')
-              const val = fs.readFileSync(__dirname + '/../../../examples/FAQs/Doc3.cs', 'utf8')
+              const val = fs.readFileSync(__dirname + '/../../examples/FAQs/Doc3.cs', 'utf8')
               module.exports = val
               `
             } />
@@ -46,7 +46,7 @@ export default function FAQs() {
           <Code language="xml" value={
               preval`
               const fs = require('fs')
-              const val = fs.readFileSync(__dirname + '/../../../examples/FAQs/Doc1.xml', 'utf8')
+              const val = fs.readFileSync(__dirname + '/../../examples/FAQs/Doc1.xml', 'utf8')
               module.exports = val
               `
             } />
@@ -137,13 +137,7 @@ export default function FAQs() {
           <br></br>
           <li>At a system level (e.g. the CPU utilisation is 0.352% – which can be represented as</li>
           <br></br>
-          <Code language="fsharp" value={
-              preval`
-              const fs = require('fs')
-              const val = 'let mhz = Div(Scaled(Hz, 1e-6)) in Gauge(Fraction (1300, 36800), Div(mhz, mhz))'
-              module.exports = val
-              `
-            } />
+          <Code language="fsharp" value='let mhz = Div(Scaled(Hz, 1e-6)) in Gauge(Fraction (1300, 36800), Div(mhz, mhz))' />
           <p>as collected by Rutta's Shipper from a compute node.</p>
         </ul>
         <p>The aim of Logary is to connect values from call-sites, to configurable derivations, such as percentiles(, potentially again to derivations), and finally to targets which can then store them.</p>

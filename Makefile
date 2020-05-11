@@ -5,6 +5,7 @@ TAG_VERSION_SUFFIX := $(shell tools/version.sh)
 all: restore build
 
 prepare:
+  dotnet tool restore
 	./fake.sh build --single-target --target AssemblyInfo
 	./fake.sh build --single-target --target PaketFiles
 
