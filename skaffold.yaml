@@ -4,6 +4,8 @@ kind: Config
 metadata:
   name: docs
 build:
+  local:
+    useDockerCLI: true
   artifacts:
   - image: logary/docs-web
     context: docs
