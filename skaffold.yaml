@@ -12,7 +12,8 @@ deploy:
   kubeContext: docker-desktop
   kustomize:
     paths:
-    - docs/k8s/test # TODO: move all samples to under docs/
+    - docs/k8s/test
+    - examples/shared/k8s/test
 
 portForward:
-  - resourceType: Service
+- resourceType: Service

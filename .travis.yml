@@ -3,6 +3,7 @@ dist: xenial
 sudo: false
 dotnet: 3.1.200
 node_js: 12
+mono: none
 addons:
   apt:
     packages:
@@ -11,8 +12,8 @@ services:
 - docker
 env:
   global:
-  - DOTNET_CLI_TELEMETRY_OPTOUT: 1
-  - DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  - DOTNET_CLI_TELEMETRY_OPTOUT="1"
+  - DOTNET_SKIP_FIRST_TIME_EXPERIENCE="true"
   - TMPDIR=/tmp
   - secure: M3SRlsAT2fDKrbZatBXwrN8Ta6L4iB8XqBgaMJqoJab1ptZRSjdYCwtk7II/l1dfe3ayI0P/NfKyh2oCmjKVtN2eLD3o/zF9pg8iuQu4sIEP20SJLLqyPT6fDnOE5Y6aZx9jXEEXshXmFlo7ot0HlbJkpFwfFbQ+tdMwq8HqzG4=
   - secure: d7E/0YWyuz76IBRATPK9b35CbGLI/5k0+My934d9A/FYTlFywdBOVIsgw7QwngMDIkY7lIsgNfNp0wwvXk4327i6I4TmkgSwCHRa8j7xnGSKgZs+cJIaO7eQbyFJ3s+jhZe9RlAol1Nx15gv+7U9UYhUc4fiqfwHElGqO2udKBg=
@@ -22,6 +23,6 @@ script:
 #- make docs_ci
 #after_success:
 #- make ci_push
- 
+
 notifications:
   email: false
