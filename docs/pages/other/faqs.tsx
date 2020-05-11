@@ -1,6 +1,5 @@
 
 import { useRef } from 'react'
-import Head from 'next/head';
 import { faLifeRing } from '@fortawesome/fontawesome-free';
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
@@ -17,10 +16,7 @@ export default function FAQs() {
   ]
 
   return (
-    <DocPage name="all-target" title="FAQs" faIcon={faLifeRing} colour="green" readingMinutes={2} toc={toc}>
-      <Head>
-        <title key="title">FAQs</title>
-      </Head>
+    <DocPage name="all-target" title="FAQs" faIcon={faLifeRing} colour="green" estimationMinutes={2} toc={toc}>
       <DocSection {...toc[0]}>
         <h2 className="section-title">FAQ</h2>
         <h3>How do I use Hopac from C#?</h3>

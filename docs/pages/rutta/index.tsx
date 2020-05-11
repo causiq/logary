@@ -1,5 +1,4 @@
 import { useRef } from 'react'
-import Head from 'next/head';
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import rutta from '../../public/images/logary-rutta-router.svg'
@@ -22,10 +21,14 @@ export default function Rutta() {
     ]
 
   return (
-    <DocPage name="rutta" title="Logary Rutta" faIcon={faSatelliteDish} colour="bluee" readingMinutes={2} toc={toc}>
-      <Head>
-        <title key="title">Logary — Rutta – cloud native log router and event/log ingress</title>
-      </Head>
+    <DocPage
+      name="rutta"
+      title="Rutta – cloud native log router and event/log ingress"
+      faIcon={faSatelliteDish}
+      colour="blue"
+      estimationMinutes={2}
+      toc={toc}>
+
       <DocSection {...toc[0]}>
         <h2 className="section-title">Usage1</h2>
         <p></p>

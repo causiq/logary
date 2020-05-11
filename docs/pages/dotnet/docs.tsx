@@ -1,4 +1,3 @@
-import { useRef } from 'react'
 import { faBooks } from '@fortawesome/fontawesome-free'
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
@@ -22,40 +21,21 @@ const Sample = ({ fileName, language = 'fsharp' }: { fileName: string, language?
   <Code value={Samples[fileName]} language={language} />
 
 export default function DotnetDocs() {
-  const toc =
-    [
-      { id: "pointName", title: "PointName", ref: useRef(null) },
-      { id: "context", title: "Context", ref: useRef(null) },
-      { id: "rhfm", title: "Rule & Hierarchical logging & Filter & Minimum level", ref: useRef(null) },
-      { id: "log-level", title: "Log Level", ref: useRef(null) },
-      { id: "logging-from-modules", title: "Logging from modules", ref: useRef(null) },
-      { id: "logging-from-class", title: "Logging from a class", ref: useRef(null) },
-      { id: "lt", title: "Logging fields & templating", ref: useRef(null) },
-      { id: "me", title: "Metrics & EventProcessing pipeline", ref: useRef(null) },
-      { id: "building", title: "Building", ref: useRef(null) },
-    ]
-
   return (
     <DocPage
       name=".net-documentation"
       title=".Net Core Documentation"
       faIcon={faBooks}
-      colour="purple"
-      readingMinutes={2}
-      toc={toc}>
+      colour="purple">
 
-      <DocSection {...toc[0]}>
-        <h2 className="section-title">PointName</h2>
-        <p>
-          Suppose you're measuring values coming from a car. This is what that could look like:
-        </p>
+      <DocSection title='An example' id='an-example'>
+        <p>Suppose you're measuring values coming from a car. This is what that could look like:</p>
         <Sample fileName='Car.fs' />
       </DocSection>
 
-      <DocSection {...toc[1]}>
-        <h2 className="section-title">Context</h2>
+      <DocSection title='Passing values around' id='passing-values-around'>
         <p>
-          context are generally classified into these categories: (you can try these code on test.fsx in Logary.Tests)
+          Context is generally classified into these categories: (you can try these code on test.fsx in Logary.Tests)
         </p>
 
         <h3>Fields</h3>
@@ -98,15 +78,13 @@ export default function DotnetDocs() {
         <Sample fileName='Doc7.fs' />
       </DocSection>
 
-      <DocSection {...toc[2]}>
-        <h2 className="section-title">Rule &amp; Hierarchical logging &amp; Filter &amp; Minimum level</h2>
+      <DocSection title='Filtering logs' id='filtering-logs'>
         <p>A logger have a minimum level which message's level below it is not processed when logging these message. Can give us Low overhead logging – evaluate your Message only if a level is switched on. Especially when you use logging api with message factory.</p>
         <p>A logger's minimum level are config through Config.loggerMinLevel "a.b.*" LogLevel.Fatal on logary conf (usually globally) use a specific name or some hierarchy path. And can be switch on fly logm.switchLoggerLevel ("a.b.*", LogLevel.Info),this will only affect the loggers (its name, not its instance) which have been created beafore. e.g. the default level is Error on prod, use a pipe line detect an error message, switch to Info for 5 mins then change it back. can be use for auto collecting more useful info when things goes wrong.</p>
         <Sample fileName='Doc8.fs' />
       </DocSection>
 
-      <DocSection {...toc[3]}>
-        <h2 className="section-title">Log Level</h2>
+      <DocSection title='Log levels' id='log-levels'>
         <p>The highest log level is Fatal, which should be reserved for things that make your service/process crash. Things like; "my disk is full and I'm a database trying to start", or "I'm a 2-tier service built with a database, that I cannot do any work without" warrant the Fatal level.</p>
         <p>The next level is Error, which should be reserved for what you consider to be edge-cases. E.g. if the data received from a socket is corrupt, or there was an unhandled exception that you as a programmer did not have in your mental model while writing the code. These events should be logged at the Error level.</p>
         <p>At this level human beings are normally directly alerted.</p>
@@ -117,15 +95,13 @@ export default function DotnetDocs() {
         <p>Verbose is the level when you want that little extra. Not normally enabled.</p>
       </DocSection>
 
-      <DocSection {...toc[4]}>
-        <h2 className="section-title">Logging from modules</h2>
+      <DocSection title='Logging from modules' id='logging-from-modules'>
         <p>Let's say you have a module in your F# code that you want to log from. You can either get a logger like shown in Hello World, or you can do something like this:</p>
         <Sample fileName='Doc9.fs' />
         <p>If you want to name your logger with a specific name, you can use Logging.getLoggerByName instead. (This is different for the Facade file)</p>
       </DocSection>
 
-      <DocSection {...toc[5]}>
-        <h2 className="section-title">Logging from a class</h2>
+      <DocSection title='Logging from classes' id='logging-from-classes'>
         <p>Similarly, sometimes you want to log from a class, and perhaps log some metrics too.</p>
         <Sample fileName='Doc10.fs' />
 
@@ -134,8 +110,7 @@ export default function DotnetDocs() {
         <p>In fact, the more you do this, the more use you will have of Logary and of the dashboard you put up in Kibana (via Logstash) or Grafana (via InfluxDb). Put it up on a big TV in your office and you'll develop a second sense of whether the system is doing well or not, just from looking at the graphs.</p>
       </DocSection>
 
-      <DocSection {...toc[6]}>
-        <h2 className="section-title">Logging fields &amp; templatings</h2>
+      <DocSection title='Structured logging and interpolation' id='structured-logging-interpolation'>
         <p>The templates syntax can be found here: <a href="https://messagetemplates.org/#syntax"></a></p>
         <p>Message Templates are a superset of standard .NET format strings, so any format string acceptable to string.Format() will also be correctly processed by logary.</p>
         <ul>
@@ -149,7 +124,7 @@ export default function DotnetDocs() {
         </ul>
       </DocSection>
 
-      <DocSection {...toc[7]}>
+      <DocSection title='Per-process event processing' id='per-process-event-processing'>
         <h2 className="section-title">Metrics &amp; EventProcessing pipeline</h2>
         <p>Sometimes you need a metric that runs continuously over time. A Ticker can be seems as a metric, it can be auto triggered or by manually. A ticker can be chained in an pipe line (EventProcessing).</p>
         <p>We have some windows performance counter metrics that you can use.</p>

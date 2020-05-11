@@ -1,6 +1,5 @@
 import { useRef } from 'react'
-import Head from 'next/head';
-import { faJs } from '@fortawesome/free-brands-svg-icons';
+import { faJs } from '@fortawesome/free-brands-svg-icons'
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import Code from '../../components/Code'
@@ -14,10 +13,7 @@ export default function JSQuickstart() {
     ]
 
   return (
-    <DocPage name="js-quickstart" title="JavaScript Quickstart" faIcon={faJs} colour="yellow" readingMinutes={2} toc={toc}>
-      <Head>
-        <title key="title">Logary — Javacript Quickstart</title>
-      </Head>
+    <DocPage name="js-quickstart" title="JavaScript Quickstart" faIcon={faJs} colour="yellow" estimationMinutes={2} toc={toc}>
       <DocSection {...toc[0]}>
         <h2 className="section-title">Install the package</h2>
         <p>

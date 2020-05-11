@@ -12,4 +12,4 @@ export const DocMenu = (props) => {
   )
 }
 
-export default DocMenu;
+export default DocMenu

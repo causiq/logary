@@ -17,8 +17,7 @@ import preval from 'babel-plugin-preval/macro'
 
 export default function Targets() {
 
-  const toc =
-  [
+  const toc = [
     { id: "influxdb-target", title: "InfluxDb Target", ref: useRef(null) },
     { id: "file-target", title: "File target (alpha level)", ref: useRef(null) },
     { id: "stackdriver-target", title: "Stackdriver target", ref: useRef(null) },
@@ -29,10 +28,7 @@ export default function Targets() {
   ]
 
   return (
-    <DocPage name="all-target" title="Target / Sinks" faIcon={faPuzzlePiece} colour="pink" readingMinutes={2} toc={toc}>
-      <Head>
-        <title key="title">Target / Sinks</title>
-      </Head>
+    <DocPage name="all-target" title="Targets / Sinks" faIcon={faPuzzlePiece} colour="pink" estimationMinutes={2} toc={toc}>
       <DocSection {...toc[0]}>
         <h2 className="section-title">InfluxDb Target</h2>
         <p>

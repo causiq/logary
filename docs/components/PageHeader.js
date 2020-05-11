@@ -47,7 +47,7 @@ const PageHeader = ({ title, query, setQuery }) => {
             autoFocus
             />
           <Button type="submit" className="btn search-btn" value="Search">
-            <FontAwesomeIcon icon="search" />
+            {/* <FontAwesomeIcon icon="search" /> */}
           </Button>
         </form>
       </div>

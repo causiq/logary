@@ -1,5 +1,4 @@
 import { useRef } from 'react'
-import Head from 'next/head';
 import { faFileChartLine } from '@fortawesome/fontawesome-free';
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
@@ -19,11 +18,10 @@ export default function Tutorials() {
   ]
 
   return (
-    <DocPage name="js-quickstart" title="Tutorials" faIcon={faFileChartLine} colour="primary" readingMinutes={3} toc={toc}>
-      <Head>
-        <title key="title">Tutorials</title>
-      </Head>
+    <DocPage name="js-quickstart" title="Tutorials" faIcon={faFileChartLine} colour="primary" estimationMinutes={3} toc={toc}>
+
       Clone it like above. Ensure you can build it. Open <span className="_code"> Logary.sln </span>. Make a change, send a PR towards master. To balance the app.config files, try <span className="_code"> mono tools/paket.exe install --redirects --clean-redirects --createnewbindingfiles</span>
+
       <DocSection {...toc[0]}>
         <h2 className="section-title">File guidelines – module vs static method</h2>
         <p></p>

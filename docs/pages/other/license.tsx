@@ -13,7 +13,7 @@ export default function License() {
   ]
 
   return (
-    <DocPage name="all-target" title="License" faIcon={faBalanceScale} colour="orange" readingMinutes={1} toc={toc}>
+    <DocPage name="all-target" title="License" faIcon={faBalanceScale} colour="orange" estimationMinutes={1} toc={toc}>
 
       <DocSection {...toc[0]}>
         <h2 className="section-title">Logary licencing</h2>
