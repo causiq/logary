@@ -1,7 +1,7 @@
 image:
-  - Visual Studio 2019
+- Visual Studio 2019
 
 build_script:
-  - cmd: fake.cmd build
+- cmd: fake.cmd build
 
 test: off

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 set -o pipefail
 set -e
 BASEDIR=$(dirname "$0")

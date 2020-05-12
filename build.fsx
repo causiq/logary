@@ -61,8 +61,7 @@ Target.create "Clean" <| fun _ ->
   ++ "./**/obj/"
   ++ pkgPath
   |> Shell.cleanDirs
-  // This line actually ensures we get the correct version checked in
-  // instead of the one previously bundled with 'fake`
+  // This line actually ensures we get the correct version checked in instead of the one previously bundled with 'fake`
   Git.CommandHelper.gitCommand "" "checkout .paket/Paket.Restore.targets"
 
 Target.create "AssemblyInfo" (fun _ ->

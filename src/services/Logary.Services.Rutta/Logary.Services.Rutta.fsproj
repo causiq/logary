@@ -32,7 +32,6 @@
     <ProjectReference Include="../../ingestion/Logary.Ingestion.TCP/Logary.Ingestion.TCP.fsproj" />
     <ProjectReference Include="../../targets/Logary.Targets.GooglePubSub/Logary.Targets.GooglePubSub.fsproj" />
     <ProjectReference Include="../../targets/Logary.Targets.SSE/Logary.Targets.SSE.fsproj" />
-    <Reference Include="System.Configuration" />
   </ItemGroup>
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />
 </Project>
