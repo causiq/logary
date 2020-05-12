@@ -1,16 +1,16 @@
 .PHONY: prepare restore build test docs docs_ci
-export CONFIGURATION=${CONFIGURATION:-'Release'}
+
+CONFIGURATION ?= Release
 TAG_VERSION_SUFFIX := $(shell tools/version.sh)
 
-all: restore build
+all: restore prepare build
 
 prepare:
-	dotnet tool restore
 	./fake.sh build --single-target --target AssemblyInfo
 	./fake.sh build --single-target --target PaketFiles
 
 restore:
-	dotnet restore src/Logary.sln
+	dotnet tool restore
 
 build: prepare restore
 	dotnet build src/Logary.sln -c Release
@@ -36,7 +36,7 @@ release_library:
 	./fake.sh build --single-target --target CheckEnv
 	./fake.sh build --single-target --target Release
 
-release: restore build test pack_library release_library image push push_library
+release: restore build test pack_library release_library push_library
 
 clean:
 	git clean -fxd

@@ -5,7 +5,7 @@ metadata:
   name: docs
 build:
   local:
-    useDockerCLI: true
+    useDockerCLI: false
   artifacts:
   - image: logary/docs-web
     context: docs
