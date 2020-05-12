@@ -125,14 +125,14 @@ export default function DocPage({
     //  => change('replaceState') => scrollToHash
   })
 
-  return <Layout name={name} title={title} className={`body-${colour}`} {...rest}>
+  return <Layout name={name} title={`${title} — Logary`} className={`body-${colour}`} {...rest}>
     <div className="doc-wrapper">
       <div className="container">
         <div id="doc-header" className="doc-header text-center">
           <h1 className="doc-title">
             {faIcon != null
               ? <FontAwesomeIcon icon={faIcon} />
-              : icon} {title} — Logary
+              : icon} {title}
           </h1>
           {!noEstimation && <div className="meta">
             {/* <FontAwesomeIcon icon={faClock} size="1x" /> */}
