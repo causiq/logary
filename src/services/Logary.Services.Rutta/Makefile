@@ -1,10 +1,12 @@
-.PHONY: image push
+.PHONY: dotnet_build image push
 
 TAG_VERSION_SUFFIX := $(shell ../../../tools/version.sh)
 
 image:
-	docker build -t logary/rutta:latest -t logary/rutta:$(TAG_VERSION_SUFFIX) .
-	docker build -t logary/rutta-curl:latest -t logary/rutta-curl:$(TAG_VERSION_SUFFIX) ../rutta-helm-chart/rutta-curl
+	(cd ../../.. && \
+  docker build -t logary/rutta:latest -t logary/rutta:$(TAG_VERSION_SUFFIX) \
+    -f src/services/Logary.Services.Rutta/Dockerfile \
+    .)
 
 push:
 	docker push logary/rutta:latest
