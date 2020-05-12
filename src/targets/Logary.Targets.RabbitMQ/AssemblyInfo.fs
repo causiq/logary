@@ -4,12 +4,12 @@ open System.Reflection
 
 [<assembly: AssemblyTitleAttribute("Logary.Targets.RabbitMQ")>]
 [<assembly: AssemblyProductAttribute("Logary.Targets.RabbitMQ")>]
-[<assembly: AssemblyVersionAttribute("5.0.0")>]
-[<assembly: AssemblyFileVersionAttribute("5.0.0")>]
+[<assembly: AssemblyVersionAttribute("5.0.1")>]
+[<assembly: AssemblyFileVersionAttribute("5.0.1")>]
 do ()
 
 module internal AssemblyVersionInformation =
     let [<Literal>] AssemblyTitle = "Logary.Targets.RabbitMQ"
     let [<Literal>] AssemblyProduct = "Logary.Targets.RabbitMQ"
-    let [<Literal>] AssemblyVersion = "5.0.0"
-    let [<Literal>] AssemblyFileVersion = "5.0.0"
+    let [<Literal>] AssemblyVersion = "5.0.1"
+    let [<Literal>] AssemblyFileVersion = "5.0.1"

@@ -4,9 +4,9 @@ TAG_VERSION_SUFFIX := $(shell ../../../tools/version.sh)
 
 image:
 	(cd ../../.. && \
-  docker build -t logary/rutta:latest -t logary/rutta:$(TAG_VERSION_SUFFIX) \
-    -f src/services/Logary.Services.Rutta/Dockerfile \
-    .)
+	docker build -t logary/rutta:latest -t logary/rutta:$(TAG_VERSION_SUFFIX) \
+  	-f src/services/Logary.Services.Rutta/Dockerfile \
+		.)
 
 push:
 	docker push logary/rutta:latest
