@@ -14,8 +14,8 @@ deploy:
   kubeContext: docker-desktop
   kustomize:
     paths:
-    - docs/k8s/test
-    - examples/shared/k8s/test
+    - docs/k8s/dev
+    - examples/shared/k8s/dev
 
 portForward:
 - resourceType: Service
