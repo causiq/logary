@@ -1,5 +1,5 @@
 #-alpine
-FROM microsoft/dotnet:2.2-sdk as build
+FROM microsoft/dotnet:3.1-sdk as build
 
 #RUN apk add --no-cache --update bash git vim zeromq protobuf protobuf-dev ca-certificates && \
 #    rm -f /var/cache/apk/*
@@ -31,7 +31,7 @@ RUN find 'src/targets' -type f \
     -exec cp {} src/services/Logary.Services.Rutta/bin/Release/netcoreapp3.1/linux-x64/publish/ \;
 
 #-alpine
-FROM microsoft/dotnet:2.2-runtime
+FROM microsoft/dotnet:3.1-runtime
 
 #RUN apk add --no-cache --update zeromq protobuf protobuf-dev ca-certificates && \
 #    rm -f /var/cache/apk/*
@@ -41,6 +41,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y libzmq3-dev libczmq4 libprotobuf-c-dev libprotobuf10 ca-certificates && \
     ldconfig
+
+USER logary
 
 WORKDIR /logary/
 COPY --from=build /build/src/services/Logary.Services.Rutta/bin/Release/netcoreapp3.1/linux-x64/publish/* /logary/

@@ -5,7 +5,7 @@ TAG_VERSION_SUFFIX := $(shell tools/version.sh)
 all: restore build
 
 prepare:
-  dotnet tool restore
+	dotnet tool restore
 	./fake.sh build --single-target --target AssemblyInfo
 	./fake.sh build --single-target --target PaketFiles
 
@@ -24,31 +24,6 @@ docs:
 docs_ci:
 	npm install -g now-pipeline@1.8.0
 	(cd ./docs && yarn && yarn cypress:run)
-
-image:
-	echo "Building image v$(TAG_VERSION_SUFFIX)"
-ifneq ($(TRAVIS_TAG),)
-	docker build -t haaf/rutta:latest -t haaf/rutta:$(TAG_VERSION_SUFFIX) -t haaf/rutta:$(TRAVIS_TAG) .
-	docker build -t haaf/rutta-curl:latest -t haaf/rutta-curl:$(TAG_VERSION_SUFFIX) -t haaf/rutta:$(TRAVIS_TAG) src/services/rutta-helm-chart/rutta-curl
-else
-	docker build -t haaf/rutta:latest -t haaf/rutta:$(TAG_VERSION_SUFFIX) .
-	docker build -t haaf/rutta-curl:latest -t haaf/rutta-curl:$(TAG_VERSION_SUFFIX) src/services/rutta-helm-chart/rutta-curl
-endif
-
-push:
-ifneq ($(TRAVIS_TAG),)
-	docker push haaf/rutta:latest
-	docker push haaf/rutta:$(TRAVIS_TAG)
-	docker push haaf/rutta:$(TAG_VERSION_SUFFIX)
-	docker push haaf/rutta-curl:latest
-	docker push haaf/rutta-curl:$(TRAVIS_TAG)
-	docker push haaf/rutta-curl:$(TAG_VERSION_SUFFIX)
-else
-	docker push haaf/rutta:latest
-	docker push haaf/rutta:$(TAG_VERSION_SUFFIX)
-	docker push haaf/rutta-curl:latest
-	docker push haaf/rutta-curl:$(TAG_VERSION_SUFFIX)
-endif
 
 pack_library:
 	./fake.sh build --single-target --target Pack

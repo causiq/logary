@@ -1,6 +1,0 @@
-Congratulations on installing Logary Rutta!
-
-{{ if not .Values.stubEtc }}
-You should create secret/{{ include "rutta.fullname" . }} in namespace {{ .Release.Namespace }}, in order
-to configure Rutta properly, or use `--set etc.stubEtc: true`.
-{{ end }}

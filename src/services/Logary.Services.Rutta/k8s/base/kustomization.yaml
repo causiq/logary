@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- deployment.yaml # consider a daemonset: https://kubernetes.io/docs/concepts/services-networking/service-topology/
+#- configmap.yaml
+- service.yaml
+#- virtualservice.yaml # for routing from the gateway
+- horizontalpodautoscaler.yaml # consider using prometheus-adapter and scaling based on queue size instead
+- poddisruptionbudget.yaml
+#- servicemonitor.yaml # for metrics from Rutta
+
+commonLabels:
+  app: logary
+  component: rutta
+
+# TODO: remember your bitnami SealedSecrets, or else otherwise use:
+#secretGenerator:
+#- name: oauth2-proxy
+#  namespace: auth
+#  files:
+#  - oauth2-client-secret
+#  - oauth2-cookie-secret
+#  type: Opaque
+
+namespace: analytics
