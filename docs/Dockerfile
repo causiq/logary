@@ -1,5 +1,5 @@
 # Builder ---
-FROM node:14-alpine as build
+FROM node:14-alpine as builder
 
 ENV NEXT_TELEMETRY_DISABLED=1 NODE_ENV=production
 
@@ -9,6 +9,7 @@ COPY package.json yarn.lock /app/
 RUN yarn install --frozen-lockfile --non-interactive --production=false
 
 COPY . .
+RUN sed -i s/serverless/server/g next.config.js
 RUN yarn build
 
 # Runner ---
@@ -29,7 +30,7 @@ ARG COMMIT_REF
 ENV COMMIT_SHA=$COMMIT_SHA
 ENV COMMIT_REF=$COMMIT_REF
 
-EXPOSE 80/tcp
+EXPOSE 3000/tcp
 
 CMD yarn start
 

@@ -64,7 +64,7 @@
     "build:search:auto": "concurrently --kill-others \"yarn run build:search\" \"yarn run dev\"",
     "build:image": "docker build . -t haaf/logary-docs:$(git rev-parse HEAD)",
     "dev": "COMMIT_SHA=$(git rev-parse HEAD) COMMIT_REF=$(git symbolic-ref HEAD) next dev",
-    "start": "COMMIT_SHA=$(git rev-parse HEAD) COMMIT_REF=$(git symbolic-ref HEAD) next start --port 80",
+    "start": "next start",
     "cypress:open": "cypress open",
     "cypress:run": "now-pipeline --as CYPRESS_baseUrl --alias logary.tech --test 'cypress run --record --key 714cc2a7-fdda-4f31-85da-844d60a84e1c'"
   }
