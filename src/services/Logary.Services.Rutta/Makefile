@@ -11,5 +11,5 @@ image:
 push:
 	docker push logary/rutta:latest
 	docker push logary/rutta:$(TAG_VERSION_SUFFIX)
-	docker push logary/rutta-curl:latest
-	docker push logary/rutta-curl:$(TAG_VERSION_SUFFIX)
+
+release: image push

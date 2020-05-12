@@ -1,4 +1,4 @@
-.PHONY: restore version_files build test docs docs_ci
+.PHONY: restore version_files build test docs docs_ci rutta
 
 CONFIGURATION ?= release
 TAG_VERSION_SUFFIX := $(shell tools/version.sh)
@@ -36,7 +36,10 @@ release_library:
 	dotnet fake build --single-target --target CheckEnv
 	dotnet fake build --single-target --target Release
 
-release: restore build test pack_library release_library push_library
+rutta:
+	(cd src/services/Logary.Services.Rutta && make release)
+
+release: restore build test pack_library release_library push_library rutta
 
 clean:
 	git clean -fxd
