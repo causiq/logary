@@ -1,0 +1,31 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: rutta
+
+spec:
+  template:
+    spec:
+      affinity:
+        # https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#always-co-located-in-the-same-node
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - rutta # see your kustomization.yaml file
+            topologyKey: kubernetes.io/hostname
+
+          # https://blog.verygoodsecurity.com/posts/kubernetes-multi-az-deployments-using-pod-anti-affinity/
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - rutta # see your kustomization.yaml file
+              topologyKey: failure-domain.beta.kubernetes.io/zone
+            weight: 100

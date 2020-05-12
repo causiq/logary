@@ -1,6 +1,8 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: analytics
+  name: logary
+
   annotations:
     istio-injection: enabled
+    logary-injection: disabled

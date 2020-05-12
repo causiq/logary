@@ -1,0 +1,18 @@
+# https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/#communicating-with-daemon-pods
+apiVersion: v1
+kind: Service
+metadata:
+  name: rutta
+
+spec:
+  # DNS: Create a headless service with the same pod selector, and then discover DaemonSets using the endpoints resource or retrieve multiple A records from DNS.
+  clusterIP: None
+
+  ports:
+  - name: http-json
+    port: 80
+    targetPort: http-json
+
+  - name: udp-json
+    port: 14001
+    targetPort: udp-json

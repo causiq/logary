@@ -55,7 +55,7 @@ module Help =
   #else
     true
   #endif
-  
+
   open System
   open System.Text
   open FSharp.Reflection
@@ -77,7 +77,7 @@ module Help =
     |> sprintf "%O"
 
   let describeCodec = function
-    | Json -> "Uses the newline-separated JSON codec"
+    | Json -> "Uses the JSON codec; framing (what separates messages) is up to the listener mode."
     | Plain -> "Takes the newline-separates message and create a simple message from it"
     | Binary -> "Used for Rutta-to-Rutta communication with the ZMQ socket types"
     | Log4jXML -> "Takes Log4j XML event, separated with newlines, as input"
@@ -103,18 +103,18 @@ type RouterSubCommand =
       | Listener _ ->
         System.String.Concat [
           "A listener is a triple of <router mode, binding, codec>. You can specify many of these:\n"
-          "## Binding\n"
-          "E.g. \"127.0.0.1:20001\" or \"[::]:8080\"\n"
           "## Router modes:\n"
           Help.describeModes ()
+          "## Binding\n"
+          "E.g. \"127.0.0.1:20001\" or \"[::]:8080\"\n"
           "\n"
           "## Codecs:\n"
           Help.describeCodecs ()
         ]
-        
+
       | Disable_CORS ->
         "Disables CORS, but your log ingestion is probably still open to people doing a `curl`."
-        
+
       | Target _ ->
         let available =
           TargetConfig.schemeToConfAndDefault

@@ -4,12 +4,13 @@ import rutta from '../../public/images/logary-rutta-router.svg'
 import { faSatelliteDish } from '@fortawesome/fontawesome-free'
 import use1 from '../../public/images/usage1.png'
 import use2 from '../../public/images/usage2.jpg'
+import Code from '../../components/Code'
 
 export default function Rutta() {
   return (
     <DocPage
       name="rutta"
-      title="Rutta – cloud native log router and event/log ingress"
+      title="Rutta ᜑ high performance log router 🦋"
       faIcon={faSatelliteDish}
       colour="blue">
 
@@ -19,11 +20,53 @@ export default function Rutta() {
       </DocSection>
 
       <DocSection title='With Docker' id='docker'>
-        <p><pre>docker run -p 10001:10001 --rm -it haaf/rutta router --listener tcp 0.0.0.0:10001 json --target console://./</pre></p>
+        <Code lang='text' value='docker run -p 10001:10001 --rm -it logary/rutta:latest router --listener tcp 0.0.0.0:10001 json --target console://./' />
         <img src={use2} className="usage"></img>
       </DocSection>
 
+      <DocSection title='With Kubernetes' id='k8s'>
+        <p>Logary Rutta works great for shipping logs from nodes into a central location.</p>
+
+        <p>
+          You can either deploy Logary Rutta as a DaemonSet, which will cause it to appear on every node in your
+          cluster. The Kubernetes code is available in <a href='https://github.com/logary/logary/tree/master/src/services/Logary.Services.Rutta/k8s'>
+            src/service/Logary.Services.Rutta/k8s
+          </a>
+        </p>
+
+        <Code lang='text' value='kustomize build k8s/as-daemonset | kubectl apply -f -' />
+
+        <p>or you can deploy it as a load-balanced Deployment that is used by multiple nodes;</p>
+
+        <Code value={`
+# useful when you only have one node and you're testing:
+kustomize build k8s/as-deployment | kubectl apply -f -
+
+# alternative, for production:
+kustomize build k8s/as-deployment-with-scaling | kubectl apply -f -
+        `}/>
+
+        <p>In your kustomization.yaml file, you might have:</p>
+
+        <Code value={`
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+bases:
+- github.com/logary/logary/src/services/Logary.Services.Rutta/k8s/as-deployment
+# alt:
+# - github.com/logary/logary/src/services/Logary.Services.Rutta/k8s/as-deployment-with-scaling
+
+namespace: logary`} />
+
+        It's no harder than that!
+      </DocSection>
+
       <DocSection title='In depth' id='in-depth'>
+        <p>Rutta is GPLv3 licensed, that you can run, either as a sidecar container or as a log router deployment or as a daemonset.</p>
+        <p>Rutta is completely stateless, so you can run any number of replicas. It runs as a Kubernetes deployment with three replicas by default.</p>
+        <p>A common configuration for Rutta is to configure a Stackdriver target, a HTTP ingestion listener as well as a UDP ingestion listener. Your apps send UDP log messages to the UDP endpoint and your frontends (native apps and web sites) send HTTP messages to the HTTP endpoint. Rutta when batch-ships these log messages into Stackdriver.</p>
+        <p>By default this chart exposes a HTTP listener/endpoint and prints to console; in order for it to log to Stackdriver, AliYun or AppInsights, you have to configure those explicitly in the values file.</p>
         <p>Rutta is software for shipping Messages between computers. Either from your own services or from Windows Performance Counters. This is useful if you want your services to ship all logs to a central point, before batching it and sending it off to InfluxDb. It's also useful if you want to firewall off a single subnet for certain processing and only have a single point ship logs and metrics.</p>
         <ul>
           <li>v1: Hard-coded supported target types. Initially we'll just support InfluxDB.</li>
@@ -71,48 +114,9 @@ export default function Rutta() {
         <p>Each ZMQ message contains a Message (see DataModel.fs) in the binary form given by the serialiser chosen.</p>
       </DocSection>
 
-      <DocSection title='Helm chart' id='helm-chart'>
-        <h2 className="section-title">Logary Rutta Helm chart</h2>
-        <p>The first step is to install the Rutta Helm chart into your Kubernetes cluster.</p>
-        <p>Rutta is a high-performance log router/shipper written in F# but configured from the command line. It's "cloud native" in that it runs as a docker container on top of .Net Core</p>
-        <p>Rutta is GPLv3 licensed (or alternatively commercially licensed). It's a packaging of Logary as a service, that you can run, either as a sidecar container or as a log router deployment.</p>
-        <p>Rutta is completely stateless, so you can run any number of replicas. It runs as a Kubernetes deployment with three replicas by default.</p>
-        <p>A common configuration for Rutta is to configure a Stackdriver target, a HTTP ingestion listener as well as a UDP ingestion listener. Your apps send UDP log messages to the UDP endpoint and your frontends (native apps and web sites) send HTTP messages to the HTTP endpoint. Rutta when batch-ships these log messages into Stackdriver.</p>
-        <p>By default this chart exposes a HTTP listener/endpoint and prints to console; in order for it to log to Stackdriver, AliYun or AppInsights, you have to configure those explicitly in the values file.</p>
-        <p>Have a look at the values.yaml file in order to get an idea of what you can configure.</p>
-
-        <h3 className="section-title">Install the chart</h3>
-        <p>
-          The first step is to install the Rutta Helm chart into your Kubernetes cluster.
-        </p>
-        <code><pre>{
-          `helm install https://github.com/logary/logary/tree/master/src/services/rutta-helm-chart && \\
-    --name rutta && \\
-    --namespace monitoring`
-        }</pre></code>
-        <p>
-          Or if you've downloaded the chart;
-        </p>
-        <code><pre>{
-          `helm install ./rutta-helm-chart && \\
-    --name rutta && \\
-    --namespace monitoring`
-        }</pre></code>
-        <p>
-          If you use a local values file, you can upgrade the chart.
-        </p>
-        <code><pre>{
-          `helm upgrade --debug --install rutta && \\
-    ./rutta-helm-chart && \\
-    --namespace monitoring && \\
-    --values values/rutta.yaml`
-        }</pre></code>
-      </DocSection>
-
       <DocSection title='Router mode' id='rutta-router-mode'>
-        <h2 className="section-title">Rutta Router mode</h2>
         <p>The router mode lets you take inputs from a `listener` (tcp, udp, ...), interpret it with a `codec` and then send it to a `target`.</p>
-        <img src={rutta} alt="Rutta in Router mode" />
+        <img src={rutta} width="100%" alt="Rutta in Router mode" />
       </DocSection>
     </DocPage>
   )

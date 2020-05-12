@@ -1,17 +1,19 @@
 # Rutta ᜑ high performance log router 🦋
 
-The recommended approach to using Rutta is to run it as a docker container;
+Logary Rutta works great for shipping logs from nodes into a central location.
 
-    docker run --rm -it haaf/rutta
+You can either deploy Logary Rutta as a DaemonSet, which will cause it to appear on every node in your
+cluster:
 
-or, if you're a Kubernetes user;
+    kustomize build k8s/as-daemonset | kubectl apply -f -
 
-    helm install incubator/rutta
+or you can deploy it as a load-balanced Deployment that is used by multiple nodes;
 
-See the [Rutta Helm chart for details][helm-chart] on installation.
+    # useful when you only have one node and you're testing:
+    kustomize build k8s/as-daemonset | kubectl apply -f -
 
-See the [Stackdriver docs][stackdriver-docs] for configuring the Stackdriver target.
-
+    # alternative, for production:
+    kustomize build k8s/as-daemonset-with-scaling | kubectl apply -f -
 
 ## Testing Rutta
 

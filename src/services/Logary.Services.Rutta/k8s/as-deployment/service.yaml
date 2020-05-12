@@ -1,0 +1,22 @@
+# This service will round-robin requests to Rutta
+apiVersion: v1
+kind: Service
+metadata:
+  name: rutta
+
+spec:
+  ports:
+  - name: http-json
+    port: 80
+    targetPort: http-json
+
+  - name: udp-json
+    port: 14001
+    targetPort: udp-json
+    protocol: UDP
+
+  topologyKeys:
+  - "kubernetes.io/hostname"
+  - "topology.kubernetes.io/zone"
+  - "topology.kubernetes.io/region"
+  - "*"
