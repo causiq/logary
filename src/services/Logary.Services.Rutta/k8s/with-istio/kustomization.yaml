@@ -1,12 +1,10 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-bases: []
+resources:
 # choose one of:
 #- ../as-daemonset
 #- ../as-deployment
-
-resources:
 - virtualservice.yaml
 
 # you'll need to add `istio-system/ingress` to take in external traffic and use this folder

@@ -1,15 +1,13 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-bases:
+resources:
 - ../as-deployment
+- horizontalpodautoscaler.yaml
+- poddisruptionbudget.yaml
 
 patchesStrategicMerge:
 - deployment.yaml
-
-resources:
-- horizontalpodautoscaler.yaml
-- poddisruptionbudget.yaml
 
 commonLabels:
   app: logary

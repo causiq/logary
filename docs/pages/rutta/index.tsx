@@ -52,7 +52,7 @@ kustomize build k8s/as-deployment-with-scaling | kubectl apply -f -
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-bases:
+resources:
 - github.com/logary/logary/src/services/Logary.Services.Rutta/k8s/as-deployment
 # alt:
 # - github.com/logary/logary/src/services/Logary.Services.Rutta/k8s/as-deployment-with-scaling
