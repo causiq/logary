@@ -15,8 +15,9 @@ spec:
     targetPort: udp-json
     protocol: UDP
 
-  topologyKeys:
-  - "kubernetes.io/hostname"
-  - "topology.kubernetes.io/zone"
-  - "topology.kubernetes.io/region"
-  - "*"
+  # Available from k8s 1.17 (GKE is at 1.15/1.16 and docker-desktop is at 1.16 at the time of writing)
+  #topologyKeys:
+  #- "kubernetes.io/hostname"
+  #- "topology.kubernetes.io/zone"
+  #- "topology.kubernetes.io/region"
+  #- "*"
