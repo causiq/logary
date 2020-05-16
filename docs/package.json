@@ -24,7 +24,7 @@
     "classnames": "^2.2.6",
     "email-addresses": "^3.0.3",
     "highlight.js": "^9.15.6",
-    "isomorphic-unfetch": "^3.0.0",
+    "cross-fetch": "^3.0.0",
     "logary": "^5.0.2",
     "lunr": "^2.3.6",
     "next": "^9.3.2",

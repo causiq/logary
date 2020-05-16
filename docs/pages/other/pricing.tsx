@@ -1,10 +1,10 @@
-import React, { useState, useRef, useCallback, useMemo, ReactElement, FormEvent } from 'react'
+import React, { useState, useCallback, useMemo, ReactElement, FormEvent } from 'react'
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import { Input, Button } from 'reactstrap'
 import { faCoins } from '@fortawesome/fontawesome-free'
 import InputRange from 'react-input-range'
-import fetch from 'isomorphic-unfetch'
+import fetch from 'cross-fetch'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { loadStripe, StripeError, StripeCardElementChangeEvent, PaymentMethod } from '@stripe/stripe-js'
 import { calculatePrice, ContinuousRebate, formatMoney } from '../../components/calculatePrice'
@@ -252,16 +252,10 @@ export default function Pricing() {
   const [years, setYears] = useState(2)
   const price = calculatePrice(cores, devs, years, ContinuousRebate, false)
 
-  const toc =
-    [{ id: "calculator", title: "Calculator", ref: useRef(null) },
-    { id: "purchase", title: "Purchase license", ref: useRef(null) },
-    ]
-
   return (
     <Elements stripe={stripeP}>
-      <DocPage name="pricing" title="Pricing" faIcon={faCoins} colour="primary" toc={toc}>
-        <DocSection {...toc[0]}>
-          <h2 className="section-title">Calculator</h2>
+      <DocPage name="pricing" title="Pricing" faIcon={faCoins} colour="primary">
+        <DocSection title='Calculator' id='calculator'>
           <p>
             Logary's pricing is transparent. You don't have to sign up to a newsletter to know what it
             would cost you to run it for your for-profit service. Licenses are yearly and subscription
@@ -321,8 +315,7 @@ export default function Pricing() {
             </p>
           </form>
         </DocSection>
-        <DocSection {...toc[1]}>
-          <h2 className="section-title">Purchase license</h2>
+        <DocSection title='Purchase' id='purchase'>
           <p>
             This form reflects your selection above. You're purchasing
             a license for {cores} cores, {devs} developers for {years} years. This sets up

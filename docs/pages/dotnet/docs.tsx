@@ -113,7 +113,6 @@ export default function DotnetDocs() {
       </DocSection>
 
       <DocSection title='Per-process event processing' id='per-process-event-processing'>
-        <h2 className="section-title">Metrics &amp; EventProcessing pipeline</h2>
         <p>Sometimes you need a metric that runs continuously over time. A Ticker can be seems as a metric, it can be auto triggered or by manually. A ticker can be chained in an pipe line (EventProcessing).</p>
         <p>We have some windows performance counter metrics that you can use.</p>
         <p>But you sometimes want to chain metrics from events or gauges happening inside your own application.</p>

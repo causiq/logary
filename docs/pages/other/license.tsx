@@ -7,7 +7,6 @@ export default function License() {
     <DocPage name="all-target" title="License" faIcon={faBalanceScale} colour="orange">
 
       <DocSection title='Logary licensing' id='logary-licensing'>
-        <h2 className="section-title">Logary licencing</h2>
         <p></p>
         <p>This section defines the licenses for each subcomponent of Logary.</p>
         <h3>Logary Library (Logary-lib)</h3>
@@ -42,7 +41,6 @@ export default function License() {
       </DocSection>
 
       <DocSection title='Terms of Service' id='tos'>
-        <h2 className="section-title">Terms of Service (ToS)</h2>
         <p></p>
         <h3>1. Jurisdiction</h3>
           <p>This software's license shall be interpreted in accordance with the laws of Sweden.</p>
@@ -63,7 +61,6 @@ export default function License() {
       </DocSection>
 
       <DocSection title='Commercial license' id='commercial-license'>
-        <h2 className="section-title">Commercial License</h2>
         <p></p>
         <p>This section defines the terms of the Commercial License.</p>
         <p>The Commercial License is subject to the Terms of Service (ToS) above. It applies to a Work or Software, its source code and the running/deployment of the software.</p>

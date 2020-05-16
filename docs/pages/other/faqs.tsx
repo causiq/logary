@@ -74,7 +74,6 @@ export default function FAQs() {
       </DocSection>
 
       <DocSection title='Comparison to NLog and log4net' id='nlog-log4net'>
-        <h2 className="section-title">Comparison to NLog and log4net</h2>
         <p>
           Why Logary instead of one of the classic logging frameworks?
         </p>
@@ -140,7 +139,6 @@ export default function FAQs() {
         <p>The aim of Logary is to connect values from call-sites, to configurable derivations, such as percentiles(, potentially again to derivations), and finally to targets which can then store them.</p>
       </DocSection>
       <DocSection title='Logary and Serilog' id='logary-and-serilog'>
-        <h2 className="section-title">Comparison with Serilog</h2>
         <ul>
           <li>Both support structured logging</li>
           <li>Both run on .Net</li>

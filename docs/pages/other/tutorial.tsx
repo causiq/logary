@@ -27,7 +27,6 @@ export default function Tutorials() {
       </DocSection>
 
       <DocSection title='Namespace guidelines' id='namespaces'>
-        <h2 className="section-title">Namespace guidelines </h2>
         <p>– <span className="_code">Logary.Internals</span> or not</p>
         <p>Things that end-users of the library are not likely to configure should go in <span className="_code">Logary.Internals</span> . Examples include <span className="_code"> Logary.Internals.Globals </span> and <span className="_code"> Logary.Internals.RuntimeInfo </span> (which is configured with the config API instead).</p>
       </DocSection>
