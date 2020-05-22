@@ -6,7 +6,7 @@ export default function JSDocs() {
     <OutreachLayout
       title='Logary Analytics'
       style={{ backgroundColor: '#efffff'}}
-      description='How can you improve your decision making process for your SaaS app or e-commerce?'>
+      description='How can you improve your decision making process for your SaaS app or e-commerce site?'>
       <main>
         <h1>Heard of the OODA loop?</h1>
         <h2>Find out ✨</h2>
