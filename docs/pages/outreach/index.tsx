@@ -3,7 +3,10 @@ import OutreachLayout from '../../components/OutreachLayout'
 
 export default function JSDocs() {
   return (
-    <OutreachLayout title='Logary Analytics' style={{ backgroundColor: '#efffff'}}>
+    <OutreachLayout
+      title='Logary Analytics'
+      style={{ backgroundColor: '#efffff'}}
+      description='How can you improve your decision making process for your SaaS app or e-commerce?'>
       <main>
         <h1>Heard of the OODA loop?</h1>
         <h2>Find out ✨</h2>
