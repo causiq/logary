@@ -17,7 +17,7 @@ export default function JSDocs() {
         </p>
 
         <p>
-          We think there's a niche in between the three separate layers of your business; a tool that
+          We think there's a niche in between the three separate roles in your business; a tool that
           collects and highlights all of the below:
         </p>
 
@@ -27,7 +27,10 @@ export default function JSDocs() {
           <li>"dev/ops data" — the trinity of tracing, metrics, logs</li>
         </ol>
 
-        <p>so that all three roles can <b>communicate around the same data.</b></p>
+        <p>
+          so that all three roles can communicate around the same data, <b>and also know how to
+          effectively change their behaviour based on it.</b>
+        </p>
 
         <h2>Does this sound interesting to you?</h2>
 
