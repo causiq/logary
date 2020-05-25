@@ -43,7 +43,7 @@ export default function JSDocs() {
         .layout { padding: 2em; }
         main { max-width: 450px; margin: 0 auto;}
         h2 { margin: 2em 0 1em; }
-        iframe { margin-top: 2em; }
+        iframe { margin: 2em 0; }
         ol { font-size: 1.2em; }
         p {
           margin: 1.5em 0;
