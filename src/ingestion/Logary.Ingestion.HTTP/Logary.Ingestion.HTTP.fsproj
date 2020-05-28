@@ -3,7 +3,7 @@
   <PropertyGroup>
     <AssemblyName>Logary.Ingestion.HTTP</AssemblyName>
     <OutputType>Library</OutputType>
-    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />

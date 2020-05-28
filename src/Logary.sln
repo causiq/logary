@@ -171,6 +171,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Adapters.Suave", "ad
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Giraffe", "..\examples\Logary.Giraffe\Logary.Giraffe.fsproj", "{26327A5D-5D23-4855-BE6D-39792685E89C}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Kafka", "targets\Logary.Targets.Kafka\Logary.Targets.Kafka.fsproj", "{29AA4786-288E-45B8-9FBC-FD57E465D0F6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -391,6 +393,10 @@ Global
 		{26327A5D-5D23-4855-BE6D-39792685E89C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{26327A5D-5D23-4855-BE6D-39792685E89C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{26327A5D-5D23-4855-BE6D-39792685E89C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{29AA4786-288E-45B8-9FBC-FD57E465D0F6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{29AA4786-288E-45B8-9FBC-FD57E465D0F6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{29AA4786-288E-45B8-9FBC-FD57E465D0F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{29AA4786-288E-45B8-9FBC-FD57E465D0F6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -452,5 +458,6 @@ Global
 		{C855A0B3-C794-49B7-B064-44DBB1BCC094} = {60FC06B0-58BB-4D96-96FE-FD92EA4BAA5E}
 		{C43F6DF2-F112-4ABF-AD5F-17C3C38F4392} = {56BB77A4-DF59-49EC-92E6-C9CA2C2E9FDE}
 		{26327A5D-5D23-4855-BE6D-39792685E89C} = {60FC06B0-58BB-4D96-96FE-FD92EA4BAA5E}
+		{29AA4786-288E-45B8-9FBC-FD57E465D0F6} = {978EDEA3-ABF9-4EC9-A864-1D425E18CFE6}
 	EndGlobalSection
 EndGlobal

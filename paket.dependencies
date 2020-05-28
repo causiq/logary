@@ -3,7 +3,7 @@ framework netstandard2.0, netcoreapp3.1
 version 5.242.2
 
 nuget Argu
-nuget Castle.Core
+nuget Castle.Core ~> 4.4
 nuget EventStore.Client ~> 4.1
 nuget EventStore.ClientAPI.NetCore
 nuget Expecto
@@ -48,6 +48,8 @@ nuget fszmq
 nuget protobuf-net
 nuget System.Memory
 nuget System.Data.Odbc
+
+nuget Confluent.Kafka
 
 github eiriktsarpalis/TypeShape:c39f18a164a9ce227656e2806c2bddfdde623a68 src/TypeShape/TypeShape.fs
 github eiriktsarpalis/TypeShape:c39f18a164a9ce227656e2806c2bddfdde623a68 src/TypeShape/Utils.fs

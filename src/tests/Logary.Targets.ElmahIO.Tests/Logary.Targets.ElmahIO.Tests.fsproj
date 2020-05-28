@@ -3,7 +3,7 @@
   <PropertyGroup>
     <AssemblyName>Logary.Targets.ElmahIO.Tests</AssemblyName>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>netcoreapp3.1</TargetFrameworks>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
     <DebugSymbols>true</DebugSymbols>
     <Tailcalls>true</Tailcalls>
     <GenerateTailCalls>true</GenerateTailCalls>
