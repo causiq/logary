@@ -186,7 +186,7 @@ module internal Mapping =
 
     member x.getJaegerLog (mw: MessageWriter, ?skipEvent: bool) =
       let jaegerTags = x.getJaegerTags(mw, ?skipEvent=skipEvent)
-      new Jaeger.Thrift.Log(x.timestamp / 1000L, jaegerTags)
+      Jaeger.Thrift.Log(x.timestamp / 1000L, jaegerTags)
 
 module internal Impl =
   open Mapping
@@ -236,7 +236,7 @@ module internal Impl =
   let buildJaegerSpan (mw: MessageWriter) (msg: Message, span: SpanData, samplerAttrs: SpanAttr list, ambientLogs: Jaeger.Thrift.Log list) =
     let parent = span.parentSpanId |> Option.map (fun x -> x.id) |> Option.defaultValue 0L
     let jaegerSpan =
-      new Jaeger.Thrift.Span(
+      Jaeger.Thrift.Span(
         span.context.traceId.low, span.context.traceId.high, span.context.spanId.id,
         parent,
         msg.value,

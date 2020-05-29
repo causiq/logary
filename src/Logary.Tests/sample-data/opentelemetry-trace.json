@@ -1,0 +1,120 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "type": 0,
+            "stringValue": "collector-exporter"
+          },
+          {
+            "key": "telemetry.sdk.language",
+            "type": 0,
+            "stringValue": "webjs"
+          },
+          {
+            "key": "telemetry.sdk.name",
+            "type": 0,
+            "stringValue": "opentelemetry"
+          },
+          {
+            "key": "telemetry.sdk.version",
+            "type": 0,
+            "stringValue": "0.8.2"
+          }
+        ],
+        "droppedAttributesCount": 0
+      },
+      "instrumentationLibrarySpans": [
+        {
+          "spans": [
+            {
+              "traceId": "/BT9YiqN8gKc3XLo3NwjYQ==",
+              "spanId": "y2frKwjk+ZY=",
+              "parentSpanId": "Mr7fLFYV/Qw=",
+              "name": "http://localhost:3000/_next/static/development/dll/dll_f9de5cbc314a1e41f91e.js?ts=1590763200731",
+              "kind": 1,
+              "startTimeUnixNano": 1590713291596845000,
+              "endTimeUnixNano": 1590713291676070000,
+              "attributes": [
+                {
+                  "key": "userId",
+                  "type": 0,
+                  "stringValue": "12345678"
+                },
+                {
+                  "key": "component",
+                  "type": 0,
+                  "stringValue": "document-load"
+                }
+              ],
+              "droppedAttributesCount": 0,
+              "events": [
+                {
+                  "timeUnixNano": 1590713291596845000,
+                  "name": "fetchStart",
+                  "attributes": [],
+                  "droppedAttributesCount": 0
+                },
+                {
+                  "timeUnixNano": 1590713291603650000,
+                  "name": "domainLookupStart",
+                  "attributes": [],
+                  "droppedAttributesCount": 0
+                },
+                {
+                  "timeUnixNano": 1590713291603665000,
+                  "name": "domainLookupEnd",
+                  "attributes": [],
+                  "droppedAttributesCount": 0
+                },
+                {
+                  "timeUnixNano": 1590713291603665000,
+                  "name": "connectStart",
+                  "attributes": [],
+                  "droppedAttributesCount": 0
+                },
+                {
+                  "timeUnixNano": 1590713291603815000,
+                  "name": "connectEnd",
+                  "attributes": [],
+                  "droppedAttributesCount": 0
+                },
+                {
+                  "timeUnixNano": 1590713291604605000,
+                  "name": "requestStart",
+                  "attributes": [],
+                  "droppedAttributesCount": 0
+                },
+                {
+                  "timeUnixNano": 1590713291612640000,
+                  "name": "responseStart",
+                  "attributes": [],
+                  "droppedAttributesCount": 0
+                },
+                {
+                  "timeUnixNano": 1590713291676070000,
+                  "name": "responseEnd",
+                  "attributes": [],
+                  "droppedAttributesCount": 0
+                }
+              ],
+              "droppedEventsCount": 0,
+              "status": {
+                "code": 0
+              },
+              "links": [],
+              "droppedLinksCount": 0
+            }
+          ],
+          "instrumentationLibrary": {
+            "name": "opentelemetry - webjs",
+            "version": "0.8.2"
+          }
+        }
+      ]
+    }
+  ]
+}
+

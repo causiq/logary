@@ -70,7 +70,7 @@ let tests =
     testList "span (builder)" [
       testCase "build, start, finish span" <| fun () ->
         let spanLogger =
-          SpanBuilder(logger, "new_span")
+          SpanBuilder("new_span")
             .setAttribute("test", true)
             .debug()
             .start()
@@ -84,12 +84,12 @@ let tests =
         spanLogger.finished
           |> Expect.isNone "Should not have finished yet"
 
-        spanLogger.finish()
+        spanLogger.finish() |> ignore
     ]
 
     testList "sampling" [
-      let sampleSpanBuilder: SpanBuilder = SpanBuilder(logger, "sampling_span").setAttribute("test", true).debug()
-      let sampleSpan: SpanLogger = sampleSpanBuilder.start()
+      let sampleSpanBuilder: SpanBuilder = SpanBuilder("sampling_span").setAttribute("test", true).debug()
+      let sampleSpan: SpanLogger = sampleSpanBuilder.startWith logger
 
       yield testList "const" [
         testCase "always sample param" <| fun () ->

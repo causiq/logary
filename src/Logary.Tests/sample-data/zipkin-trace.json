@@ -1,0 +1,29 @@
+{
+  "traceId": "e36668394e9f7d9183832dc863222880",
+  "parentId": "f8f31d9520843b40",
+  "name": "http://localhost:3000/_next/static/development/_ssgManifest.js?ts=1590760683661",
+  "id": "7c341aa41f691383",
+  "timestamp": 1590710774586371,
+  "duration": 27590,
+  "localEndpoint": {
+    "serviceName": "with-nextjs"
+  },
+  "tags": {
+    "userId": "12345678",
+    "component": "document-load",
+    "ot.status_code": "OK",
+    "telemetry.sdk.language": "webjs",
+    "telemetry.sdk.name": "opentelemetry",
+    "telemetry.sdk.version": "0.8.2"
+  },
+  "annotations": [
+    { "timestamp": 1590710774586371, "value": "fetchStart" },
+    { "timestamp": 1590710774586371, "value": "domainLookupStart" },
+    { "timestamp": 1590710774586371, "value": "domainLookupEnd" },
+    { "timestamp": 1590710774586371, "value": "connectStart" },
+    { "timestamp": 1590710774586371, "value": "connectEnd" },
+    { "timestamp": 1590710774606121, "value": "requestStart" },
+    { "timestamp": 1590710774613401, "value": "responseStart" },
+    { "timestamp": 1590710774613961, "value": "responseEnd" }
+  ]
+}

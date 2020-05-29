@@ -280,26 +280,23 @@ type SpanOps =
   /// Writes the flags for this Span
   abstract setFlags: setFlagCallback: (SpanFlags -> SpanFlags) -> unit
 
-  // addEvent via logger's methods
+  // Primarily do addEvent via logger's methods; but you have it available here, too
+  abstract addEvent: event:Message -> unit
+
   // updateName / updateLabel via x.label <- "new label"
 
   /// Call to stop the timer/Span. This method call is non-blocking, but executes the callback on the caller's thread.
-  abstract finish: transform: (Message -> Message) -> unit
+  abstract finish: transform: (Message -> Message) -> Message
+  abstract finish: ts:EpochNanoSeconds -> Message
   /// Call to stop the timer/Span. This method call is non-blocking.
-  abstract finish: unit -> unit
-
-type SpanOpsAdvanced =
-  /// Call to stop the timer/Span. The `transform` callback is not run until the LogResult is selected/awaited/run,
-  /// and unless the `LogResult` is used, the `Message` will not be logged. This function is used internally to allow
-  /// testing and ensuring the logging pipeline, end to end.
-  abstract finishWithAck: transform: (Message -> Message) -> LogResult
+  abstract finish: unit -> Message
 
 type SpanKind =
   | Internal = 0
   | Client = 1
   | Server = 2
 
-/// SpanData is readonly, so all its properties are thread-safe to access and share.
+/// SpanData is readonly, so all its properties are thread-safe to access and share. Also see SpanImpl for a DTO value.
 type SpanData =
   /// The Span's context. An API that returns the SpanContext for the given Span. The returned value may be used even after the Span is finished. The returned value MUST be the same for the entire Span lifetime. This MAY be called GetContext.
   abstract context: SpanContext
@@ -331,12 +328,18 @@ type SpanData =
   /// Returns the Span's status
   abstract status: SpanStatus
 
+type SpanOpsAdvanced =
+  /// Call to stop the timer/Span. The `transform` callback is not run until the LogResult is selected/awaited/run,
+  /// and unless the `LogResult` is used, the `Message` will not be logged. This function is used internally to allow
+  /// testing and ensuring the logging pipeline, end to end.
+  abstract finishWithAck: transform:(Message -> Message) -> LogResult
+  abstract finishWithAck: ts:EpochNanoSeconds -> LogResult
+
 /// A Span represents a single operation within a trace. Spans can be nested to form a trace tree. Each trace contains a root span, which typically describes the end-to-end latency and, optionally, one or more sub-spans for its sub-operations.
 /// Reference: https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/api-tracing.md#span
 /// All Span's methods and properties are thread-safe to use/access/read.
 type Span =
   inherit SpanOps
-  inherit SpanOpsAdvanced
   inherit SpanData
   /// The operation name / Span label. After the Span is created, it SHOULD be possible to change the its name [label in this case].
   abstract label: string
@@ -348,6 +351,7 @@ type Span =
 type SpanLogger =
   inherit LoggerScope
   inherit Span
+  inherit SpanOpsAdvanced
 
   /// Makes the `SpanLogger` log through to its Logger as well as keeping the events
   /// in the Span.

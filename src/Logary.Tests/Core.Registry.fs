@@ -138,15 +138,15 @@ let tests = [
         start (b.infoWithBP (eventX "MAJOR EVENT HAPPENED"))
 
         // reset ambient:
-        grandChildSpan.finish()
+        grandChildSpan.finish() |> ignore
         ActiveSpan.getSpan()
           |> Expect.equal "Has an ambient span from 'parent' span" (Some parentSpan.context.spanId)
 
-        childSpan.finish()
+        childSpan.finish() |> ignore
         ActiveSpan.getSpan()
           |> Expect.equal "Has an ambient span from 'parent' span" (Some parentSpan.context.spanId)
 
-        parentSpan.finish()
+        parentSpan.finish() |> ignore
         ActiveSpan.getSpan()
           |> Expect.isNone "Does not have an ambient SpanId after finishing the 'parent' Span"
 
@@ -165,13 +165,13 @@ let tests = [
       use childSpan = b.startSpan("child 2", parentSpan)
 
       // you can finish the parent before the child according to the specs
-      parentSpan.finish()
+      do! parentSpan.finishAck()
 
       // log via a non-Span attached logger;
       do! b.infoWithAck (eventX "some log message" >> setSpanId childSpan.context.spanId)
 
       // now let's finish the child
-      childSpan.finish()
+      do! childSpan.finishAck()
 
       // assert!
       do! assertHasSpanId childSpan.context.spanId

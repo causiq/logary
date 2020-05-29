@@ -79,6 +79,7 @@ module Shape =
   let (|SpanId|_|) (shape: TypeShape) = test<Logary.Trace.SpanId> shape
   let (|Value|_|) (shape: TypeShape) = test<Logary.Value> shape
   let (|Message|_|) (shape: TypeShape) = test<Logary.Message> shape
+  let (|SpanData|_|) (shape: TypeShape) = test<Logary.Trace.SpanData> shape
   let (|Instant|_|) (shape: TypeShape) = test<NodaTime.Instant> shape
   let (|LocalDate|_|) (shape: TypeShape) = test<NodaTime.LocalDate> shape
   let (|Duration|_|) (shape: TypeShape) = test<NodaTime.Duration> shape

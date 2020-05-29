@@ -222,7 +222,7 @@ module Message =
 
   [<CompiledName "TryGetSpanInfo">]
   let tryGetSpanData (message: Message) : Trace.SpanData option =
-    message |>  tryGetContext KnownLiterals.SpanDataContextName
+    message |> tryGetContext KnownLiterals.SpanDataContextName
 
   /// For users who want to control timeout for each message when logging `WaitForBuffers = true`
   [<CompiledName "WaitForBuffersTimeout">]

@@ -2,19 +2,11 @@ namespace Logary.Services.Rutta
 
 module Shipper =
   open System
-  open System.Threading
-  open MBrace.FsPickler
-  open NodaTime
   open Hopac
-  open Hopac.Infixes
   open Logary
-  open Logary.Target
   open Logary.Targets
-  open Logary.Internals
   open Logary.Configuration
   open Logary.Targets.Shipper
-  open fszmq
-  open fszmq.Socket
 
   let private runLogary shipperConf: IDisposable =
     let hostName = System.Net.Dns.GetHostName()

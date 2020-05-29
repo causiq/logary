@@ -189,6 +189,8 @@ let tests fsc =
         testEncode<IceCream> fsc
         testEncode<Collections.Generic.IDictionary<string, IceCream>> fsc
 
+        testEncode<SpanData> fsc
+
         testCase "null" (fun () ->
           Json.encode null
             |> Expect.equal "Should be Json.Null" Json.Null)
@@ -406,7 +408,21 @@ let tests fsc =
           failtestf "Parse failure %A" err
 
       testList "fields and context" [
-        let sample = """{"message":"Hi {user}", "context":{"app":"native"}, "fields": {"user":"haf"}, "lastly": true, "myObj": {"isProp":"nested"} }"""
+        let sample = """
+{
+  "message": "Hi {user}",
+  "context": {
+    "app": "native"
+  },
+  "fields": {
+    "user": "haf"
+  },
+  "lastly": true,
+  "myObj": {
+    "isProp": "nested"
+  }
+}
+"""
         let subject =
           Json.parse sample
             |> JsonResult.bind Json.Decode.message
@@ -429,6 +445,39 @@ let tests fsc =
             |> HashMap.toList
             |> Expect.equal "Should have a true value" expected
       ]
+
+      ftestCase "Span" <| fun () ->
+        // mimicks "zipkin-trace.json" with Logary conventions
+        let start = 1_590_710_774_586_371_000L
+        let span =
+          SpanBuilder("GET /_next/static/development/dll/dll_f9de5cbc314a1e41f91e.js?ts=1590763200731")
+            .sample()
+            .setAttribute("userId", "12345678")
+            .setAttribute("component", "document-load")
+            .setStatus(SpanCanonicalCode.OK)
+            .setAttribute("telemetry.sdk.language", "fsharp")
+            .setAttribute("telemetry.sdk.name", "logary")
+            .setAttribute("telemetry.sdk.version", AssemblyVersionInformation.AssemblyVersion)
+            .setKind(SpanKind.Server)
+            .setStarted(start)
+            .addEvents([
+              Message.event Info "fetchStart" |> Message.setNanoEpoch 1_590_710_774_586_371_000L
+              Message.event Info "domainLookupStart" |> Message.setNanoEpoch 1_590_710_774_586_371_000L
+              Message.event Info "domainLookupEnd" |> Message.setNanoEpoch 1_590_710_774_586_371_000L
+              Message.event Info "connectStart" |> Message.setNanoEpoch 1_590_710_774_586_371_000L
+              Message.event Info "connectEnd" |> Message.setNanoEpoch 1_590_710_774_586_371_000L
+              Message.event Info "requestStart" |> Message.setNanoEpoch 1_590_710_774_606_121_000L
+              Message.event Info "responseStart" |> Message.setNanoEpoch 1_590_710_774_613_401_000L
+              Message.event Info "responseEnd" |> Message.setNanoEpoch 1_590_710_774_613_961_000L
+            ])
+            .start()
+
+        let m = span.finish (start + 27_590_000L)
+
+        m
+          |> Json.encode
+          |> Json.format
+          |> printfn "%s"
     ]
 
     testList "roundtrip" [
@@ -439,6 +488,8 @@ let tests fsc =
       testRoundtripStdGen (285974835, 296635594) fsc Json.Decode.traceId
       testRoundtrip fsc Json.Decode.traceId
       testRoundtrip fsc Json.Decode.spanId
+      // TODO:
+      // testRoundtrip fsc Json.Decode.spanData
 
       testCase "small record" <| fun () ->
         let subject = Message.event Info "Hi" |> Message.setContext "user" (foo ())

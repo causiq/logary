@@ -1,6 +1,7 @@
 namespace Logary.Tests
 
 open System
+open System.Collections.Generic
 open NodaTime
 open Logary
 open FsCheck
@@ -81,6 +82,35 @@ type Arbs =
   static member Instant() =
     Arb.Default.DateTimeOffset()
     |> Arb.convert Instant.FromDateTimeOffset (fun i -> i.ToDateTimeOffset())
+
+  static member SpanData(): Arbitrary<SpanData> =
+    let generator = gen {
+      let! traceId = Arb.generate<TraceId>
+      let! spanId = Arb.generate<SpanId>
+      let! parent = Gen.oneof [ Gen.constant None; Arb.generate<SpanId> |> Gen.map Some ]
+      let context = SpanContext(traceId, spanId, ?parentSpanId=parent)
+      let! (NonEmptyString label) = Arb.generate<NonEmptyString>
+      let! started = Arb.generate<EpochNanoSeconds>
+      let ended = started + 1_340_000_000L // 1.34s
+      let! flags = Arb.generate<SpanFlags>
+      let! attrs = Arb.generate<Dictionary<string, SpanAttrValue>>
+      let! status = Arb.generate<SpanStatus>
+
+      return { new SpanData with
+                 member x.context = context
+                 member x.kind = SpanKind.Client
+                 member x.label = label
+                 member x.started = started
+                 member x.finished = ended
+                 member x.elapsed = Duration.FromNanoseconds (ended - started)
+                 member x.isRecording = false
+                 member x.flags = flags
+                 member x.links = [] :> IReadOnlyList<_>
+                 member x.events = [] :> IReadOnlyList<_>
+                 member x.attrs = attrs :> IReadOnlyDictionary<_,_>
+                 member x.status = status } }
+    let shrinker (s: SpanData): SpanData seq = Seq.empty
+    Arb.fromGenShrink (generator, shrinker)
 
   static member Exception() =
     let failer message =

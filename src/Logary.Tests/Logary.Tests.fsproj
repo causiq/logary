@@ -11,6 +11,8 @@
     <ServerGarbageCollection>true</ServerGarbageCollection>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="sample-data\opentelemetry-trace.json" />
+    <Content Include="sample-data\zipkin-trace.json" />
     <Compile Include="Utils.Target.fs" />
     <Compile Include="Utils.Expect.fs" />
     <Compile Include="Utils.Samples.fs" />

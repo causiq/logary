@@ -9,6 +9,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DefineConstants>TYPESHAPE_EXPOSE;DEBUG</DefineConstants>
   </PropertyGroup>
+
   <ItemGroup>
     <Compile Include="..\..\paket-files\haf\DVar\src\DVar\DVar.fs">
       <Paket>True</Paket>
@@ -38,6 +39,7 @@
       <Paket>True</Paket>
       <Link>paket-files/RingBuffer.fs</Link>
     </Compile>
+
     <!-- Below: values -->
     <Compile Include="Internals.HashMap.fsi" />
     <Compile Include="Internals.HashMap.fs" />
@@ -79,11 +81,12 @@
     <Compile Include="LoggerModule.fs" />
     <Compile Include="Internals.LogResultModule.fs" />
     <Compile Include="Trace/SpanModule.fs" />
-    <Compile Include="Trace\Propagation.ExtractInject.fs" />
+    <Compile Include="Trace/Propagation.ExtractInject.fs" />
     <Compile Include="Trace/Propagation.fs" />
     <Compile Include="Trace/Sampling.fs" />
     <Compile Include="LogManager.fs" />
     <Compile Include="MiddlewareModule.fs" />
+
     <!-- Below: runtime -->
     <Compile Include="Internals/Supervisor.fs" />
     <Compile Include="Internals/Rule.fs" />
@@ -92,11 +95,13 @@
     <Compile Include="TargetConf.fs" />
     <Compile Include="TargetModule.fs" />
     <Compile Include="Internals.InternalLogger.fs" />
+
     <!-- Below: events processing -->
     <Compile Include="Configuration/Transformers.fs" />
     <Compile Include="Configuration/Ticker.fs" />
     <Compile Include="Configuration/Pipe.fs" />
     <Compile Include="Configuration/Events.fs" />
+
     <!-- Below: registry -->
     <Compile Include="Registry.fs" />
     <!-- Below: formatting, serialisation -->
@@ -105,6 +110,7 @@
     <Compile Include="Formatting/MessageWriter.fs" />
     <Compile Include="Ingestion.fs" />
     <Compile Include="Codecs.fs" />
+
     <!-- Below: implementations, factory api -->
     <Compile Include="CSharp.fs" />
     <Compile Include="Configuration/Factory.Target.fs" />
@@ -112,6 +118,7 @@
     <Compile Include="Targets/Noop.fs" />
     <Compile Include="Targets/BadBoy.fs" />
     <Compile Include="Targets/Graphite.fs" />
+
     <!-- Below: config -->
     <Compile Include="Configuration/Config.fs" />
     <Compile Include="Configuration/Factory.fs" />

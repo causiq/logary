@@ -114,51 +114,44 @@ module Extensions =
     member x.setAttribute (key: string, value: bigint) =
       x.setAttribute(key, Value.BigInt value)
 
-/// https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/api-tracing.md#span
-type internal T(inner: Logger,
-                label: string,
-                transform: Message -> Message,
-                started: EpochNanoSeconds,
-                context: SpanContext,
-                kind: SpanKind,
-                // once passed, is owned by T
-                links: ResizeArray<_>,
-                // once passed, is owned by T
-                attrs: ResizeArray<_>,
-                status: SpanCanonicalCode * string option,
-                onFinish: unit -> unit,
-                logThrough: bool) =
-  inherit LoggerWrapper(inner)
+/// This is a DTO for Span.
+type SpanImpl(label: string,
+              transform: Message -> Message,
+              started: EpochNanoSeconds,
+              context: SpanContext,
+              kind: SpanKind,
+              // once passed, is owned by SpanImpl
+              links: ResizeArray<_>,
+              // once passed, is owned by SpanImpl
+              attrs: ResizeArray<_>,
+              events: ResizeArray<_>,
+              status: SpanCanonicalCode * string option,
+              onFinish: unit -> unit) =
 
   let mutable kind = kind
-  let mutable logThrough = logThrough
   let mutable _label = label
   let mutable _finished = None
   let mutable _flags = context.flags
   let mutable _status = status
+  let mutable _highestLevel = Info
   let _semaphore = obj ()
-  let _events = ResizeArray<_>(50)
-  let alreadyFinished =
-    let m = Message.eventFormat("Span={label} already finished", label)
-    LogResult.error m
+  let alreadyFinished = Message.eventFormat("Span={label} already finished", label) |> Message.setLevel Error
 
-  let _finish x transformMessage =
+  let _finish x ts transformMessage =
     lock _semaphore <| fun () ->
-    if Option.isSome _finished then alreadyFinished else
-    let ts = Global.getTimestamp()
+    if Option.isSome _finished then false, alreadyFinished else
+    let ts = ts |> Option.defaultWith Global.getTimestamp
 
     do _finished <- Some ts
     do onFinish()
 
     let spanData = x :> SpanData
 
-    let message =
-      event Info _label
-      |> transform
-      |> transformMessage
-      |> setContext KnownLiterals.SpanDataContextName spanData
-
-    inner.logWithAck (false, Info) (fun _ -> message)
+    true,
+    event _highestLevel _label
+    |> transform
+    |> transformMessage
+    |> setContext KnownLiterals.SpanDataContextName spanData
 
   let _setStatus (code, desc) =
     lock _semaphore <| fun () ->
@@ -193,29 +186,22 @@ type internal T(inner: Logger,
     else
       _attrsAsDic.Value
 
-  override x.logWithAck (waitForBuffers, logLevel) messageFactory =
-    let message = messageFactory logLevel
-
-    let res =
-      // log through to the other targets if needed
-      if logThrough then
-        inner.logWithAck (waitForBuffers, logLevel) (fun _ -> message)
-      else
-        LogResult.success
-
+  let _addEvent message =
     lock _semaphore <| fun () ->
     // add to _events
-    _events.Add message
+    events.Add message
 
     // ensure we set the sampled flag if level >= Warn
-    if logLevel >= Warn then
+    if message.level >= Warn then
       _flags <- _flags ||| SpanFlags.Sampled
 
     // set the error flag when errors are logged
-    if logLevel >= Error then
+    if message.level >= Error then
       attrs.Add ("error", SpanAttrValue.B true)
 
-    res
+    if message.level > _highestLevel then
+      _highestLevel <- message.level
+
 
   interface SpanData with
     member __.context = context
@@ -227,9 +213,10 @@ type internal T(inner: Logger,
     member __.isRecording = _finished |> Option.isNone
     member __.flags = _flags
     member __.links = links :> IReadOnlyList<_>
-    member __.events = _events :> IReadOnlyList<_>
+    member __.events = events :> IReadOnlyList<_>
     member __.attrs = _calcAttrs ()
     member __.status = _status
+
 
   interface SpanOps with
     member x.addLink link = _addLink link
@@ -239,20 +226,98 @@ type internal T(inner: Logger,
     member x.setStatus (code: SpanCanonicalCode) = _setStatus (code, None)
     member x.setStatus (code: SpanCanonicalCode, description: string) = _setStatus (code, Some description)
     member x.setFlags flags = _setFlags flags
-    member x.finish transform = queueIgnore (_finish x transform)
-    member x.finish () = queueIgnore (_finish x id)
+    member x.addEvent m = _addEvent m
+    member x.finish transform = snd (_finish x None transform)
+    member x.finish ts = snd (_finish x (Some ts) id)
+    member x.finish () = snd (_finish x None id)
 
-  interface SpanOpsAdvanced with
-    member x.finishWithAck transform = _finish x transform
 
   interface Span with
     member __.label = _label
     member __.setLabel labelFactory = _setLabel labelFactory
     member __.finished = _finished
 
+/// https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/api-tracing.md#span
+type internal T(logger: Logger,
+                label: string,
+                transform: Message -> Message,
+                started: EpochNanoSeconds,
+                context: SpanContext,
+                kind: SpanKind,
+                // once passed, is owned by T
+                links: ResizeArray<_>,
+                // once passed, is owned by T
+                attrs: ResizeArray<_>,
+                // once passed, is owned by T
+                events: ResizeArray<_>,
+                status: SpanCanonicalCode * string option,
+                onFinish: unit -> unit,
+                logThrough: bool) =
+  inherit LoggerWrapper(logger)
+
+  let mutable _logThrough = logThrough
+
+  let span = SpanImpl(label, transform, started, context, kind, links, attrs, events, status, onFinish) :> Span
+
+  override x.logWithAck (waitForBuffers, logLevel) messageFactory =
+    let message = messageFactory logLevel
+
+    span.addEvent message
+
+    if _logThrough then
+      logger.logWithAck (waitForBuffers, message.level) (fun _ -> message)
+    else
+      LogResult.success
+
+  interface SpanData with
+    member __.context = span.context
+    member __.kind = span.kind
+    member __.label = span.label
+    member __.started = span.started
+    member __.finished = (span :> SpanData).finished
+    member __.elapsed = span.elapsed
+    member __.isRecording = span.isRecording
+    member __.flags = span.flags
+    member __.links = span.links
+    member __.events = span.events
+    member __.attrs = span.attrs
+    member __.status = span.status
+
+
+  interface SpanOps with
+    member x.addLink link = span.addLink link
+    member x.setAttribute (key: string, value: Value) = span.setAttribute(key, value)
+    member x.setAttribute (key: string, boolean: bool) = span.setAttribute(key, boolean)
+    member x.setAttribute (key: string, string: string) = span.setAttribute(key, string)
+    member x.setStatus (code: SpanCanonicalCode) = span.setStatus code
+    member x.setStatus (code: SpanCanonicalCode, description: string) = span.setStatus(code, description)
+    member x.setFlags flags = span.setFlags flags
+    member x.addEvent m = span.addEvent m
+    member x.finish (transform: _ -> _) = span.finish transform
+    member x.finish (ts: EpochNanoSeconds) = span.finish ts
+    member x.finish () = span.finish()
+
+
+  interface Span with
+    member __.label = span.label
+    member __.setLabel labelFactory = span.setLabel labelFactory
+    member __.finished = span.finished
+
+
+  interface SpanOpsAdvanced with
+    member __.finishWithAck (transform: _ -> _) =
+      let message = span.finish(transform)
+      logger.logWithAck (false, message.level) (fun _ -> message)
+
+    member x.finishWithAck (ts: EpochNanoSeconds) =
+      let message = span.finish(ts)
+      logger.logWithAck (false, message.level) (fun _ -> message)
+
   interface SpanLogger with
-    member x.logThrough () = logThrough <- true
-    member x.Dispose() = queueIgnore (_finish x id)
+    member x.logThrough () = _logThrough <- true
+    member x.Dispose() =
+      let message = span.finish()
+      queueIgnore (logger.logWithAck (false, message.level) (fun _ -> message))
 
 module ActiveSpan =
   let private asyncLocal: AsyncLocal<SpanContext> = new AsyncLocal<SpanContext>()
@@ -268,7 +333,7 @@ module ActiveSpan =
   let getSpan () =
     getContext () |> Option.map (fun ctx -> ctx.spanId)
 
-type SpanBuilder(logger: Logger, label: string) =
+type SpanBuilder(label: string) =
   let mutable _started = Global.getTimestamp()
   let mutable _enableAmbient = false
   let mutable _transform = id
@@ -281,6 +346,7 @@ type SpanBuilder(logger: Logger, label: string) =
   let _attrs = ResizeArray<_>(50)
   let mutable _status = SpanCanonicalCode.OK, None
   let mutable _logThrough = false
+  let _events = ResizeArray<Message>()
 
   let createContext (): SpanContext * SpanContext option =
     let spanId = _spanId |> Option.defaultWith SpanId.create
@@ -389,36 +455,41 @@ type SpanBuilder(logger: Logger, label: string) =
     x
   member x.setTimestamp (ts: EpochNanoSeconds) =
     x.setStarted ts
-
+  member x.addEvents (es: #seq<Message>) =
+    _events.AddRange es
+    x
   member x.start() =
     let context, ambient = createContext ()
 
-    if _enableAmbient then
-      //printfn "start() => ActiveSpan.setContext(context=%O)" context
-      ActiveSpan.setContext (Some context)
+    if _enableAmbient then ActiveSpan.setContext (Some context)
+    let reset () = if _enableAmbient then ActiveSpan.setContext ambient
 
-    let reset () =
-      if _enableAmbient then
-        //printfn "start() => ActiveSpan.setContext(ambient=%O)" ambient
-        ActiveSpan.setContext ambient
+    SpanImpl(label, _transform, _started, context, _kind, _links, _attrs, _events, _status, reset)
+    :> Span
 
-    let attrs, links = ResizeArray<_>(_attrs), ResizeArray<_>(_links)
-    new T(logger, label, _transform, _started, context, _kind, links, attrs, _status, reset, _logThrough)
+  member x.startWith(logger: Logger) =
+    let context, ambient = createContext ()
+
+    if _enableAmbient then ActiveSpan.setContext (Some context)
+    let reset () = if _enableAmbient then ActiveSpan.setContext ambient
+
+    new T(logger, label, _transform, _started, context, _kind, _links, _attrs, _events, _status, reset, _logThrough)
     :> SpanLogger
 
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Span =
   /// Use the instance methods on the returned object
-  let create logger label = new SpanBuilder(logger, label)
+  let create label = SpanBuilder(label)
   let start (x: SpanBuilder) = x.start()
+  let startWith (x: SpanBuilder) logger = x.startWith logger
 
-[<AutoOpen; Extension>]
+[<AutoOpen>]
 module LoggerEx =
   type Logger with
     member x.buildSpan (label: string, ?parent: SpanContext, ?enhance: SpanBuilder -> SpanBuilder, ?transform: Message -> Message, ?enableAmbient: bool) =
       let builder =
-        new SpanBuilder(x, label)
+        SpanBuilder(label)
           |> Option.defaultValue id enhance
 
       parent |> Option.iter (builder.withParent >> ignore)
@@ -433,9 +504,9 @@ module LoggerEx =
     member x.startSpan (label, ?parent: SpanData, ?enhance, ?transform: Message -> Message, ?enableAmbient: bool) =
       let parentO = parent |> Option.map (fun p -> p.context)
       let builder = x.buildSpan(label, ?parent=parentO, ?enhance=enhance, ?transform=transform, ?enableAmbient=enableAmbient)
-      builder.start()
+      builder.startWith x
 
-[<AutoOpen; Extension>]
+[<AutoOpen>]
 module SpanLoggerEx =
   type SpanLogger with
     member x.startChild (label: string, ?enhance: SpanBuilder -> SpanBuilder, ?transform: Message -> Message, ?enableAmbient: bool) =
@@ -450,3 +521,14 @@ module SpanLoggerEx =
     member x.injectWith (propagator: Propagator, setter: Setter<'t>): 't -> 't =
       fun t ->
         propagator.inject(setter, x.context, t)
+
+[<AutoOpen>]
+module SpanOpsAdvancedEx =
+  open Hopac.Infixes
+  type SpanOpsAdvanced with
+    member x.finishAck (ts: EpochNanoSeconds) =
+      x.finishWithAck(ts)
+      >>=* function | Ok ack -> ack | _ -> Promise.unit
+    member x.finishAck() =
+      x.finishWithAck id
+      >>=* function | Ok ack -> ack | _ -> Promise.unit
