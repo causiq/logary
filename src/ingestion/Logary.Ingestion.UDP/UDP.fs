@@ -1,7 +1,6 @@
 ﻿namespace Logary.Ingestion
 
 open Logary
-open Logary.Message
 open Logary.Internals
 open Hopac
 open Hopac.Infixes
@@ -15,11 +14,11 @@ type UDPConfig =
     /// Where to listen.
     endpoint: IPEndPoint
     ilogger: Logger }
-  
+
   interface IngestServerConfig with
     member x.cancelled = x.cancelled
     member x.ilogger = x.ilogger
- 
+
   static member create endpoint cancelled ilogger =
     { cancelled = cancelled
       endpoint = endpoint
@@ -58,58 +57,59 @@ module internal Impl =
         IVar.fill completedIV ()
       | e ->
         IVar.fillFailure completedIV e)
-    
+
   //[<TailRecursive>]
   /// Iterate over the UDP datagram inputs, interpreting them as bytes, send them onto `next`, take the next datagram.
   /// Then, queue it all up as a Proc, to allow us to join it later.
   let receiveLoop (ilogger: Logger) (next: Ingest) (inSocket: UdpClient) =
     job {
-      while true  do
+      while true do
         let! msg = inSocket.getMessage()
-        let! res = next (Ingested.ofBytes msg)
-        match res with
+        match! next (Ingested.ofBytes msg) with
         | Result.Error error ->
-          ilogger.error (eventX error)
+          ilogger.error error
         | Result.Ok () ->
           ()
     }
 
 module UDP =
   let recv (started: IVar<unit>, shutdown: IVar<unit>) (config: UDPConfig) (next: Ingest) =
-    job {
-      config.ilogger.info (fun level ->
-        let a = config.endpoint.Address
-        let af = a.AddressFamily
-        let endpoint =
-          if a.Equals IPAddress.Any then
-            IPAddress.Loopback
-          elif a.Equals IPAddress.IPv6Any then
-            IPAddress.IPv6Loopback
-          else
-            a
+    let endpoint =
+      let a = config.endpoint.Address
+      if a.Equals IPAddress.Any then
+        IPAddress.Loopback
+      elif a.Equals IPAddress.IPv6Any then
+        IPAddress.IPv6Loopback
+      else
+        a
 
-        event level "Starting UDP recv-loop at {endpoint}. You can send data to this endpoint with {ncCommand}, and then typing your message/JSON. The UDP target expects datagrams, so the newline character will be part of the message if you send those."
-        |> setField "ncCommand" (sprintf "nc -u -p 54321 %O %i" endpoint config.endpoint.Port)
-        |> setField "endpoint" config.endpoint)
+    let endpointS = endpoint.ToString()
+
+    job {
+      config.ilogger.info (
+        "Starting UDP recv-loop at {endpoint}. You can send data to this endpoint with {ncCommand}, and then typing your message/JSON. The UDP target expects datagrams, so the newline character will be part of the message if you send those.",
+        fun m ->
+          m.setField("ncCommand", sprintf "nc -u -p 54321 %O %i" endpoint config.endpoint.Port)
+          m.setField("endpoint", endpointS))
 
       let completed = IVar ()
       use inSocket = new UdpClient(config.endpoint)
 
       let close () =
-        config.ilogger.info (eventX "Stopping UDP recv-loop at {endpoint}" >> setField "endpoint" config.endpoint)
+        config.ilogger.info ("Stopping UDP recv-loop at {endpoint}", fun m -> m.setField("endpoint", endpointS))
         try inSocket.Close() with _ -> ()
-        
+
       // start the client "server" Proc
       do! Job.start (Impl.ignoreODE completed (Impl.receiveLoop config.ilogger next inSocket))
       do! started *<= ()
-      
+
       // this may throw, thereby ignoring the wait on the `cancelled` Promise
       return!
         Job.tryFinallyJob
           (Job.tryFinallyFun (config.cancelled <|> completed) close)
           (IVar.fill shutdown ())
     }
-  
+
   /// Creates a new LogClient with an address, port and a sink (next.)
   let create: ServerFactory<UDPConfig> =
     IngestServer.create recv

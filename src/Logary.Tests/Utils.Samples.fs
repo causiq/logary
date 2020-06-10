@@ -34,22 +34,20 @@ module Utils =
   open NodaTime
 
   let timeMessage (nanos: int64) level =
-    let value, units = float nanos, Scaled (Seconds, float Constants.NanosPerSecond)
-    let name = PointName.parse "A.B.C"
-    Message.gaugeWithUnit name "Check" (Gauge (Float value, units))
-    |> Message.setLevel level
+    let value, units = float nanos, U.Scaled (U.Seconds, float Constants.NanosPerSecond)
+    let g = Gauge (Value.Float value, units)
+    Model.GaugeMessage(g, Map [ "gauge_name", "A.B.C" ], level=level)
 
   let gaugeMessage (value: float) level =
-    let name = PointName.parse "Revolver"
-    Message.gaugeWithUnit name "spin" (Gauge (Float value, (Div (Seconds, Units.Other "revolution"))))
-    |> Message.setLevel level
+    let g = Gauge (Value.Float value, (U.Div (U.Seconds, U.Other "revolution")))
+    Model.GaugeMessage(g, Map [ "gauge_name", "Revolver.spin" ], level=level)
 
   let multiGaugeMessage level =
     Message.event level "Processor.% Idle"
     |> Message.addGauges [
-      "Core 1", (Gauge (Fraction (1L, 1000L), Percent))
-      "Core 2", (Gauge (Float 0.99, Percent))
-      "Core 3", (Gauge (Float 0.473223755, Percent))
+      "Core 1", (Gauge (Value.Fraction (1L, 1000L), Percent))
+      "Core 2", (Gauge (Value.Float 0.99, Percent))
+      "Core 3", (Gauge (Value.Float 0.473223755, Percent))
     ]
     |> Message.setContext "host" "db-001"
     |> Message.setContext "service" "api-web"
@@ -105,7 +103,7 @@ module Utils =
     |> withException Message.addExn
 
   let helloWorld =
-    Message.eventX "Hello World!"
+    Message.Model.EventMessage "Hello World!"
     >> Message.setTicksEpoch (0L: EpochNanoSeconds)
 
   let helloWorldTS =

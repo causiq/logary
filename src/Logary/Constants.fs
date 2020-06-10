@@ -1,59 +1,5 @@
 namespace Logary
 
-/// Literals Logary uses for placing values in the Message structure.
-module KnownLiterals =
-
-  /// Avoid conflict with user defined context key
-  [<Literal>]
-  let LogaryPrefix = "_logary."
-
-  /// To recognise the regular fields when generating the templated message
-  [<Literal>]
-  let FieldsPrefix = "_fields."
-
-  /// To recognise the gauge fields when generating the templated message
-  [<Literal>]
-  let GaugeNamePrefix = LogaryPrefix + "gauge."
-
-  /// All gauges should have this tag. It's added whenever a gauge is added to the message.
-  [<Literal>]
-  let GaugeTag = "gauge"
-
-  /// for api compatibility, when user don't provide gauge type
-  [<Literal>]
-  let DefaultGaugeName = "default-gauge"
-
-  [<Literal>]
-  let ErrorsContextName = LogaryPrefix + "errors"
-
-  [<Literal>]
-  let ServiceContextName =  LogaryPrefix + "service"
-
-  [<Literal>]
-  let HostContextName =  LogaryPrefix + "host"
-
-  /// The tags context field
-  [<Literal>]
-  let TagsContextName =  LogaryPrefix +  "tags"
-
-  [<Literal>]
-  let SinkTargetsContextName =  LogaryPrefix +  "sink.targets"
-
-  [<Literal>]
-  let WaitForBuffers = LogaryPrefix + "waitForBuffers"
-
-  [<Literal>]
-  let WaitForBuffersTimeout = LogaryPrefix + "waitForBuffersTimeout"
-
-  [<Literal>]
-  let SpanIdContextName = LogaryPrefix + "spanId"
-
-  [<Literal>]
-  let SpanDataContextName = LogaryPrefix + "spanData"
-
-  [<Literal>]
-  let CounterMetricConfContextName = LogaryPrefix + "counter.conf"
-
 /// Time calculation constants
 module Constants =
   /// BCL ticks. Not the same as Stopwatch ticks.
@@ -65,6 +11,8 @@ module Constants =
   [<Literal>]
   let MicrosPerTick = 0.1
 
+  /// Nanos per BCL tick. Not the same as Stopwatch.ElapsedTicks; see
+  /// https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.stopwatch.frequency?view=netcore-3.1)
   [<Literal>]
   let NanosPerTick = 100L
   [<Literal>]
@@ -94,3 +42,5 @@ module Constants =
   /// BCL ticks. Not the same as Stopwatch ticks.
   [<Literal>]
   let TicksPerMicro = 10L
+
+  let BCLTicksAt1970 = System.DateTimeOffset(1970, 1, 1, 0, 0, 0, System.TimeSpan.Zero).Ticks

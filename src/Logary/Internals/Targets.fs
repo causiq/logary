@@ -6,10 +6,10 @@ open Logary.Internals
 
 /// The protocol for a targets runtime path (not the shutdown).
 type TargetMessage =
-  /// Log and send something that can be acked with the message.
-  | Log of message:Message * ack:IVar<unit>
+  /// Log and send something that can be ACK:ed with the message.
+  | Log of message: LogaryMessage * ack: IVar<unit>
   /// Flush messages! Also, reply when you're done flushing your queue.
-  | Flush of ack:IVar<unit> * nack:Promise<unit>
+  | Flush of ack: IVar<unit> * nack: Promise<unit>
 
 /// Logary's way to talk with Targets as seen from the Targets.
 ///

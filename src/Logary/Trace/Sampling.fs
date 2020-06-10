@@ -1,6 +1,7 @@
 namespace Logary.Trace
 
 open System
+open Logary
 
 module Constants =
   let SamplerType = "sampler.type"
@@ -11,17 +12,19 @@ module Constants =
 
 type Sampler =
   inherit IDisposable
-  abstract shouldSample: span: SpanData -> Result<SpanAttr list, unit>
+  abstract shouldSample: span: SpanMessage -> Result<SpanAttr list, unit>
 
 namespace Logary.Trace.Sampling
 
 open Logary
-open Logary.Message
 open Logary.Internals
 open Logary.Trace
 open Constants
 open System
 open System.Collections.Generic
+
+module private Helper = let kv k v = KeyValuePair<_,_>(k, v)
+open Helper
 
 /// https://github.com/jaegertracing/jaeger-client-csharp/blob/master/src/Jaeger/Util/RateLimiter.cs
 type RateLimiter(creditsPerSecond: float, maxBalance: float, ?getTimestamp: unit -> EpochNanoSeconds) =
@@ -65,7 +68,7 @@ type ConstSampler(?decision: bool) =
       |> Option.orElseWith (fun () -> Env.varParse ((=) "true") "JAEGER_SAMPLER_PARAM")
       |> Option.defaultValue true
 
-  let ok = Result.Ok [ SamplerType, SpanAttrValue.S ConstSampler.Type; SamplerParam, SpanAttrValue.B true ]
+  let ok = Result.Ok [ kv SamplerType (Value.Str ConstSampler.Type); kv SamplerParam (Value.Bool true) ]
   override x.ToString() = sprintf "ConstSampler(%b)" decision
   static member Type = "const"
   interface Sampler with
@@ -89,7 +92,10 @@ type ProbabilisticSampler(?samplingRate: float) =
       int64 (float Int64.MaxValue * _samplingRate),
       int64 (float Int64.MinValue * _samplingRate)
 
-  let tags = [ SamplerType, SpanAttrValue.S ProbabilisticSampler.Type; SamplerParam, SpanAttrValue.V (Float _samplingRate) ]
+  let tags: SpanAttr list = [
+    kv SamplerType (Value.Str ProbabilisticSampler.Type)
+    kv SamplerParam (Value.Float _samplingRate)
+  ]
   let ok, no = Result.Ok tags, Result.Error ()
 
   member x.samplingRate = _samplingRate
@@ -115,7 +121,7 @@ type LevelSampler(?minLevel: LogLevel) =
       |> Option.orElseWith (fun () -> Env.varParse LogLevel.ofString "JAEGER_SAMPLER_PARAM")
       |> Option.defaultValue Warn
 
-  let tags = [ SamplerType, SpanAttrValue.S LevelSampler.Type; SamplerParam, SpanAttrValue.S (minLevel.ToString()) ]
+  let tags = [ kv SamplerType (Value.Str LevelSampler.Type); kv SamplerParam (Value.Str (minLevel.ToString())) ]
   let ok, no = Result.Ok tags, Result.Error ()
   override x.ToString() =
     sprintf "LevelSampler(minLevel=%O)" minLevel
@@ -140,7 +146,7 @@ type RateLimitingSampler(?maxTracesPerSecond: float, ?getTimestamp) =
       |> Option.defaultValue DefaultSamplingProbability)
 
   let limiter = RateLimiter(_maxRate, max _maxRate 1.0, ?getTimestamp = getTimestamp)
-  let tags = [ SamplerType, SpanAttrValue.S RateLimitingSampler.Type; SamplerParam, SpanAttrValue.V (Float _maxRate) ]
+  let tags = [ kv SamplerType (Value.Str RateLimitingSampler.Type); kv SamplerParam (Value.Float _maxRate) ]
   let ok, no = Result.Ok tags, Result.Error ()
   member x.maxRate = _maxRate
   override x.ToString() =
@@ -169,10 +175,10 @@ type GuaranteedThroughputSampler(tracesPerSecond: float, ?samplingRate: float, ?
   let rateLimitingSampler = new RateLimitingSampler(tracesPerSecond, ?getTimestamp=getTimestamp)
   let sem = obj ()
   let tags decider = [
-    SamplerType, SpanAttrValue.S (sprintf "%s-%s" GuaranteedThroughputSampler.Type decider)
-    SamplerParam, SpanAttrValue.V (Float probSampler.samplingRate)
-    "sampler.sampling_rate", SpanAttrValue.V (Float probSampler.samplingRate)
-    "sampler.traces_per_second", SpanAttrValue.V (Float tracesPerSecond)
+    kv SamplerType (Value.Str (sprintf "%s-%s" GuaranteedThroughputSampler.Type decider))
+    kv SamplerParam (Value.Float probSampler.samplingRate)
+    kv "sampler.sampling_rate" (Value.Float probSampler.samplingRate)
+    kv "sampler.traces_per_second" (Value.Float tracesPerSecond)
   ]
   member x.samplingRate = probSampler.samplingRate
   member x.minTracesPerSecond = tracesPerSecond
@@ -216,7 +222,7 @@ type PerKeySamplerOptions =
 type PerKeySampler(opts: PerKeySamplerOptions list) =
   let logger = Log.create "Logary.Trace.Sampling.PerKeySampler"
   let sem = obj ()
-  let keyToS = new Dictionary<string, Sampler>()
+  let keyToS = Dictionary<string, Sampler>()
   let fallback = new ProbabilisticSampler() :> Sampler
   let mutable logged = false
 
@@ -235,14 +241,14 @@ type PerKeySampler(opts: PerKeySamplerOptions list) =
       |> List.tryPick (function PerKeyStrategy (k, s) when k = label -> Some s | _ -> None)
       |> Option.defaultWith (fun () -> new GuaranteedThroughputSampler(samplingRate) :> Sampler)
 
-  let findSamplerFor (span: SpanData) =
+  let findSamplerFor (span: SpanMessage) =
     lock sem <| fun () ->
     match keyToS.TryGetValue span.label with
     | false, _ when keyToS.Count >= int maxTracked ->
       if not logged then
-        logger.info (
-          eventX "Exceeded the maximum number of operations {maxTracked} for PerKeySampler"
-          >> setField "maxTracked" maxTracked)
+        let m = Model.EventMessage "Exceeded the maximum number of operations {maxTracked} for PerKeySampler"
+        m.setField("maxTracked", Value.Int64 (int64 maxTracked))
+        Hopac.Hopac.queueIgnore (logger.logWithAck(false, m))
         logged <- true
       fallback
 

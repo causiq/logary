@@ -17,15 +17,15 @@ type Log =
   [<CompiledName "Create">]
   static member create name: Logger =
     PointName.parse name
-    |> Log.create
+      |> Log.create
 
   /// Creates a logger for a given type.
   [<CompiledName "Create">]
   static member create (typ: Type): Logger =
     typ.FullName.Replace("+", ".")
-    |> Log.create
+      |> Log.create
 
-  /// Craetes a logger by for a given type.
+  /// Creates a logger by for a given type.
   [<CompiledName "Create">]
   static member create<'forType> () =
     Log.create typeof<'forType>

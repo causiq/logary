@@ -17,7 +17,7 @@ let logger = Expecto.Logging.Log.create "CoreTargets"
 
 module Files =
 
-  open FileSystem
+  open Logary.Targets.FileSystem
   open File
 
   let env = Environment.GetEnvironmentVariable
@@ -232,7 +232,7 @@ let tests = [
 
   testCase "convert DateTimeOffset with timespan delta" <| fun _ ->
     let a = DateTimeOffset(2016, 07, 02, 12, 33, 56, TimeSpan.FromHours(2.0))
-    let ts = a.timestamp
+    let ts = a.asTimestamp
     let b = ts |> DateTimeOffset.ofEpoch
     Expect.equal a.Ticks b.Ticks "Should be convertible to timestamp and back, including accounting for TimeSpans"
 
@@ -240,7 +240,7 @@ let tests = [
     let actual, _ =
       let fp: IFormatProvider = upcast CultureInfo "sv-SE"
       LiterateConsole.empty.formatLocalTime
-        fp (DateTimeOffset(2016, 10, 25, 11, 17, 41, TimeSpan(2,0,0)).timestamp)
+        fp (DateTimeOffset(2016, 10, 25, 11, 17, 41, TimeSpan(2,0,0)).asTimestamp)
     let expected = "13:17:41"
     Expect.isTrue (Regex.IsMatch(actual, @"\d{2}:\d{2}:\d{2}"))
       (sprintf "Should print the time without time zone, was: %s" actual)

@@ -32,9 +32,9 @@ let clearStream (s: System.IO.StringWriter) =
 
 let buildTextWriterTarget name =
   let (out, error) = (new StringWriter (), new StringWriter ())
-  let twconf = TextWriter.TextWriterConf.create (out, error, MessageWriter.multiLineWithContext)
+  let twconf = TextWriter.TextWriterConf.create(out, error)
   let twTargetConf = TextWriter.create twconf name
-  (out, error, twTargetConf)
+  out, error, twTargetConf
 
 let buildLogManagerWith configFac = job {
   let svc = "svc"
@@ -46,7 +46,7 @@ let buildLogManagerWith configFac = job {
   let! logm =
     Config.create svc host
     |> Config.target twTargetConf
-    |> Config.processing (Events.events |> Events.sink [tname])
+    |> Config.processing (Events.events |> Events.setTargets [tname])
     |> Config.disableGlobals
     |> configFac
     |> Config.build
@@ -58,7 +58,7 @@ let buildLogManager () = buildLogManagerWith id
 
 let emptyRuntime =
   memo (
-    Config.createInternalTargets (ILogger.LiterateConsole Verbose)
+    Config.createInternalTargets (ILogger.Console Verbose)
     |> Config.createInternalLogger (RuntimeInfo.create "logary-tests" "dev-machine")
     |> Job.map (fun (ri, _) -> ri)
   )
@@ -89,8 +89,8 @@ let finalise target =
     | Internals.Success _ ->
       ())
 
-let logMsgWaitAndShutdown (targetApi: Target.T) (logCallBack: (Message -> Job<unit>) -> #Job<unit>) =
-  let logAndWait (message: Message) =
+let logMsgWaitAndShutdown (targetApi: Target.T) (logCallBack: (_ -> Job<unit>) -> #Job<unit>) =
+  let logAndWait message =
     job {
       do! logger.infoWithBP (Logging.Message.eventX (sprintf "Sending message to Target(%s)" targetApi.name))
       let! res = Target.log Duration.Zero targetApi message
@@ -110,7 +110,4 @@ let logMsgWaitAndShutdown (targetApi: Target.T) (logCallBack: (Message -> Job<un
     }
 
   Job.tryFinallyJob (logCallBack logAndWait) finaliseJob
-
-let testLabel label test =
-  TestLabel (label, test, FocusState.Normal)
 

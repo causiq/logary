@@ -4,9 +4,8 @@ open System
 open System.IO
 open System.Net.Http
 open Logary
-open Logary.Message
-open Logary.Configuration
 open Logary.Targets
+open Logary.Configuration
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Cors.Infrastructure
 open Microsoft.AspNetCore.Hosting
@@ -89,7 +88,8 @@ let tracestateHandler (inputs: InputItem[]): HttpHandler =
             |> span.injectWith (W3C.propagator, Inject.httpRequestMessage)
             |> c.SendAsync
 
-        ctx.logger.info (eventX "Received response code={code} from test suite" >> setField "code" res.StatusCode)
+        ctx.logger.info("Received response code={code} from test suite", fun m ->
+          m.setField("code", int res.StatusCode))
 
       return! text "All sent!" next ctx
     }
@@ -110,7 +110,7 @@ let webApp =
 // ---------------------------------
 
 let errorHandler (logger: Logger) (ex: Exception) _ =
-    logger.error (eventX "An unhandled exception has occurred while executing the request." >> addExn ex)
+    logger.error("An unhandled exception has occurred while executing the request.", ex)
     clearResponse >=> setStatusCode 500 >=> text ex.Message
 
 // ---------------------------------
@@ -146,7 +146,7 @@ let configureLogging (builder: ILoggingBuilder) =
 let main _ =
     let logary =
       Config.create "Logary.Giraffe" "laptop"
-      |> Config.target (LiterateConsole.create LiterateConsole.empty "console")
+      |> Config.target (Console.create Console.empty "console")
       |> Config.ilogger (ILogger.Console Debug)
       |> Config.build
       |> Hopac.Hopac.run

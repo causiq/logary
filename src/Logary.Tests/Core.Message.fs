@@ -14,8 +14,8 @@ let tests =
         Expect.equal m.level Info "Should have info level"
         Expect.equal m.value ("Hello world") "Should have template"
 
-      testCase "eventX: string -> LogLevel -> Message" <| fun _ ->
-        let m = eventX "Hello world" Info
+      testCase "Model.EventMessage: string -> LogLevel -> Message" <| fun _ ->
+        let m = Model.EventMessage "Hello world" Info
         Expect.equal m.level Info "Should have info level"
         Expect.equal m.value ("Hello world") "Should have template"
 
@@ -60,7 +60,7 @@ let tests =
 
       testCase "getAllGauges" <| fun _ ->
         let names = Arb.generate<NonEmptyString> |> Gen.sample 0 5 |> List.distinct |> List.map (fun (NonEmptyString name) -> name)
-        let msg = names |> List.fold (fun m name -> m |> addGauge name (Gauge (Float 1., Units.Scalar))) (eventInfo "")
+        let msg = names |> List.fold (fun m name -> m |> addGauge name (Gauge (Value.Float 1., Units.Scalar))) (eventInfo "")
         let c = msg |> getAllGauges |> Seq.length
         Expect.equal c names.Length "Should get same length after add gauges"
 
@@ -75,7 +75,7 @@ let tests =
         Expect.isTrue msgHasAllTag "Should have all tags"
 
       testCase "setFieldsFromObject: obj -> Message -> Message" <| fun () ->
-        let m = eventX "Hello world" Info |> setFieldsFromObject (SampleObject())
+        let m = Model.EventMessage "Hello world" Info |> setFieldsFromObject (SampleObject())
         let field = m |> tryGetField "PropA"
         Expect.equal field (Some 45) "Should have PropA"
 
@@ -111,7 +111,7 @@ let tests =
         let test res msg =
           Expect.equal res 100 "Should have result"
           let g = tryGetGauge "time" msg
-          Expect.isSome g "Should have guage"
+          Expect.isSome g "Should have gauge"
           match g with
           | Some (Gauge (_, Units.Scaled (Seconds, _))) -> ()
           | g -> failtestf "Should have units.scaled (seconds, _) , actual: %A" g

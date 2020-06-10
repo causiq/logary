@@ -1,5 +1,5 @@
 source https://api.nuget.org/v3/index.json
-framework netstandard2.0, netcoreapp3.1
+framework netstandard2.0, netstandard2.1, netcoreapp3.1
 version 5.242.2
 
 nuget Argu
@@ -50,6 +50,8 @@ nuget System.Memory
 nuget System.Data.Odbc
 
 nuget Confluent.Kafka
+nuget Falanx.Sdk
+nuget Falanx.Proto.Codec.Binary
 
 github eiriktsarpalis/TypeShape:c39f18a164a9ce227656e2806c2bddfdde623a68 src/TypeShape/TypeShape.fs
 github eiriktsarpalis/TypeShape:c39f18a164a9ce227656e2806c2bddfdde623a68 src/TypeShape/Utils.fs

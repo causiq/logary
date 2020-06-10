@@ -6,57 +6,61 @@ open Hopac
 open Hopac.Infixes
 open Hopac.Extensions
 
-type Processing = Pipe<Message, LogResult, Message>
+type Processing = Pipe<Model.LogaryMessageBase, LogResult, Model.LogaryMessageBase>
 
-[<RequireQualifiedAccessAttribute>]
+[<RequireQualifiedAccess>]
 module Events =
-  let events<'r> = Pipe.start<Message, 'r>
+  let events<'r> = Pipe.start<Model.LogaryMessageBase, 'r>
 
-  let service svc pipe =
-    pipe |> Pipe.filter (fun msg -> Message.tryGetContext KnownLiterals.ServiceContextName msg = Some svc)
-
-  let tag tag pipe =
-    pipe |> Pipe.filter (Message.hasTag tag)
-
-  let minLevel level pipe =
-    pipe |> Pipe.filter (fun msg -> msg.level >= level)
-
-  /// if msg with no specific sinks, it will send to all targets
-  let sink (names: string list) pipe =
-    pipe |> Pipe.map (Message.addSinks names)
-
-  let flattenSeq (pipe: Pipe<#seq<Message>, LogResult, Message>): Processing =
+  let hasField tag pipe: Processing =
     pipe
-    |> Pipe.chain (fun next ->
-      fun (msgs: #seq<_>) ->
-        HasResult << Alt.prepareJob <| fun () ->
+      |> Pipe.filter (fun m -> m.fields.ContainsKey tag)
 
-        let putAllPromises = IVar ()
+  let minLevel level pipe: Processing =
+    pipe
+      |> Pipe.filter (fun msg -> msg.level >= level)
 
-        msgs
-        |> Seq.Con.mapJob (fun msg -> next msg |> PipeResult.orDefault LogResult.success)
-        >>= IVar.fill putAllPromises
-        |> Job.start
-        >>-. putAllPromises ^-> ProcessResult.reduce
-    )
+  /// If the message declares no specific sinks, it will be sent to all targets.
+  let setTargets (names: #seq<string>) pipe: Processing =
+    pipe
+      |> Pipe.map (fun (m: Model.LogaryMessageBase) ->
+        m.targets <- Set.ofSeq names
+        m)
 
-  /// compose here means dispatch each event/message to all pipes, not chains them.
+  let setTarget name pipe: Processing =
+    pipe |> setTargets [ name ]
+
+  let flattenSeq (pipe: Pipe<#seq<Model.LogaryMessageBase>, LogResult, Model.LogaryMessageBase>): Processing =
+    pipe
+      |> Pipe.chain (fun next ->
+          fun (msgs: #seq<_>) ->
+            HasResult << Alt.prepareJob <| fun () ->
+
+            let putAllPromises = IVar ()
+
+            msgs |> Seq.Con.mapJob (fun msg -> next msg |> PipeResult.defaultValue LogResult.success)
+            >>= IVar.fill putAllPromises
+            |> Job.start
+            >>-. putAllPromises ^-> ProcessResult.reduce)
+
+  /// Compose here means dispatch each event/message to all pipes, not chain all pipes together.
   let compose pipes =
     let allTickTimerJobs = List.collect (fun pipe -> pipe.tickTimerJobs) pipes
 
     let build =
       fun cont ->
-        let allBuildedSource = pipes |> List.map (fun pipe -> pipe.build cont)
+        let composedSource = pipes |> List.map (fun pipe -> pipe.build cont)
+
         fun sourceItem ->
           HasResult << Alt.prepareJob <| fun () ->
-            let alllogedAcks = IVar ()
 
-            allBuildedSource
-            |> Hopac.Extensions.Seq.Con.mapJob (fun logWithAck ->
-               logWithAck sourceItem |> PipeResult.orDefault (LogResult.success))
-            >>= IVar.fill alllogedAcks
-            |> Job.start
-            >>-. alllogedAcks ^-> ProcessResult.reduce
+          let allLoggedAcks = IVar ()
+
+          composedSource |> Hopac.Extensions.Seq.Con.mapJob (fun logWithAck ->
+             logWithAck sourceItem |> PipeResult.defaultValue (LogResult.success))
+          >>= IVar.fill allLoggedAcks
+          |> Job.start
+          >>-. allLoggedAcks ^-> ProcessResult.reduce
 
     { build = build
       tickTimerJobs = allTickTimerJobs

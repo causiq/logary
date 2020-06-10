@@ -16,20 +16,15 @@ open Logary.CSharp
 open Logary.Internals
 open Logary.Configuration
 
-/// This is useful to implement if you want add-on assemblies to be able to
-/// extend your builder. Then you just implement an interface that also
-/// inherits this interface and makes your extensions to the target configuration
-/// be extension methods in the extending assembly, calling this method to
-/// read the conf, and then returning the modified configuration to the
-/// builder by other means (e.g. by calling a method on the 'intermediate')
-/// interface (that is in the core target builder configuration). Since the
-/// builder knows its callback, it can implement this 'intermediate' interface
-/// with a method taking the new configuration (that was read from and mutated
-/// from here).
+/// This is useful to implement if you want add-on assemblies to be able to extend your builder. Then you just implement
+/// an interface that also inherits this interface and makes your extensions to the target configuration be extension
+/// methods in the extending assembly, calling this method to read the conf, and then returning the modified
+/// configuration to the builder by other means (e.g. by calling a method on the 'intermediate') interface (that is in =
+/// the core target builder configuration). Since the builder knows its callback, it can implement this 'intermediate'
+/// interface with a method taking the new configuration (that was read from and mutated from here).
 type ConfigReader<'a> =
-  /// an accessor for the internal state; don't use unless you know what you're
-  /// doing! Used by the migrations to get the current configuration. Allows you
-  /// to modify or use the configuration.
+  /// An accessor for the internal state; don't use unless you know what you're doing! Used by the migrations to get the
+  /// current configuration. Allows you to modify or use the configuration.
   abstract ReadConf: unit -> 'a
 
 type internal ConfBuilderTarget<'T when 'T :> Target.SpecificTargetConf> =
@@ -65,9 +60,9 @@ and ConfBuilder(conf) =
   /// have a context field 'service' that specifies what service the code is running in.
   ///
   /// Please see Logary.Middleware for common middleware to use.
-  member x.UseFunc(middleware: Func<Func<Message, Message>, Func<Message, Message>>): ConfBuilder =
+  member x.UseFunc(middleware: Func<Func<Model.LogaryMessageBase, Model.LogaryMessageBase>, Func<Model.LogaryMessageBase, Model.LogaryMessageBase>>): ConfBuilder =
     conf
-    |> Config.middleware (fun next msg -> middleware.Invoke(new Func<_,_>(next)).Invoke msg)
+    |> Config.middleware (fun next msg -> middleware.Invoke(Func<_,_>(next)).Invoke msg)
     |> ConfBuilder
 
   /// Call this method to add middleware to Logary. Middleware is useful for interrogating
@@ -82,7 +77,7 @@ and ConfBuilder(conf) =
 
   /// Depending on what the compiler decides; we may be passed a MethodGroup that
   /// can be converted to this signature:
-  member x.Use(middleware: Func<Message -> Message, Message, Message>) =
+  member x.Use(middleware: Func<Model.LogaryMessageBase -> Model.LogaryMessageBase, Model.LogaryMessageBase, Model.LogaryMessageBase>) =
     conf
     |> Config.middleware (fun next msg -> middleware.Invoke(next, msg))
     |> ConfBuilder
@@ -147,7 +142,7 @@ module FactoryApiExtensions =
   /// <returns>The same as input</returns>
   [<Extension; CompiledName "Target">]
   let target<'T when 'T :> Target.SpecificTargetConf> (builder: ConfBuilder) (name: string) =
-    builder.Target<'T>(name, new Func<_, _>(id))
+    builder.Target<'T>(name, Func<_, _>(id))
 
 /// The main entry point for object oriented languages to interface with Logary,
 /// to configure it.

@@ -2,23 +2,22 @@ module Logary.Tests.Engine
 
 open System
 open Expecto
-open FsCheck
 open Logary
-open Logary.Message
 open Hopac
 open Hopac.Infixes
 open Hopac.Extensions
 open Logary.Internals
 open Logary.Configuration
+open Logary.Model
 open NodaTime
 open System.Net.NetworkInformation
 
 type MockTarget =
-  { server: string * (Message -> LogResult)
-    getMsgs: unit -> Alt<Message list> }
+  { server: string * (LogaryMessageBase -> LogResult)
+    getMsgs: unit -> Alt<LogaryMessageBase list> }
 
 let mockTarget name =
-  let mailbox = Mailbox<Message> ()
+  let mailbox = Mailbox<LogaryMessageBase> ()
   let getMsgReq = Ch ()
 
   let rec loop msgs =
@@ -42,20 +41,18 @@ let mockTarget name =
 
   loop [] |> Job.server >>-. target
 
-let run pipe (targets:ResizeArray<MockTarget>) =
+let run pipe (targets: ResizeArray<MockTarget>) =
   let targetsMap =
     targets
-    |> Seq.map (fun t -> t.server)
-    |> List.ofSeq
-    |> HashMap.ofList
+      |> Seq.map (fun t -> t.server)
+      |> Map.ofSeq
 
   pipe
-  |> Pipe.run (fun msg ->
+    |> Pipe.run (fun (msg: LogaryMessageBase) ->
      let allSendJobs =
-       msg
-       |> Message.getAllSinks
-       |> Seq.choose (fun targetName ->
-          HashMap.tryFind targetName targetsMap |> Option.map (fun target -> target msg))
+       msg.targets
+       |> Seq.choose (fun targetName -> Map.tryFind targetName targetsMap)
+       |> Seq.map (fun target -> target msg)
        |> Job.conCollect
 
      let allAppendedAcks = IVar ()
@@ -66,38 +63,38 @@ let run pipe (targets:ResizeArray<MockTarget>) =
 
      logToAllTargetAlt ^->. Ok Promise.unit |> HasResult)
 
-  |> Job.map (fun (logMsg, ctss) ->
+  |> Job.map (fun (logMsg, cancellations) ->
      let wrapper x =
        let res = logMsg x |> PipeResult.orDefault LogResult.success
        res ^=> function
          | Ok ack -> ack :> Job<_>
          | Result.Error _ -> Promise.unit :> Job<_>
-     wrapper, ctss)
+     wrapper, cancellations)
 
 
 let tests =
   [
     testList "processing builder" [
       testCaseJob "pipe compose" (job {
-        let processing = 
+        let processing =
           Events.compose [
             Events.events
-            |> Events.minLevel Fatal 
-            |> Events.sink ["1"]
+            |> Events.minLevel Fatal
+            |> Events.setTargets ["1"]
 
             Events.events
-            |> Events.minLevel Warn 
-            |> Events.sink ["2"]
+            |> Events.minLevel Warn
+            |> Events.setTargets ["2"]
           ]
-        
+
         let! targets = [mockTarget "1"; mockTarget "2"; ] |> Job.seqCollect
         let! sendMsg, ctss = run processing targets
-        let msgToSend = Message.event Error "error message"
+        let msgToSend = Model.EventMessage("error message", level=Error)
         do! sendMsg msgToSend
 
         let! msgsFromEachTarget = targets |> Seq.Con.mapJob (fun t -> t.getMsgs ())
         let (msgs1,msgs2) = (msgsFromEachTarget.[0],msgsFromEachTarget.[1])
-         
+
         Expect.equal (List.length msgs1) 0 "should have 0 message in target 1"
         Expect.equal (List.length msgs2) 1 "should have 1 message in target 2"
       })
@@ -109,22 +106,22 @@ let tests =
         let processing =
           Events.compose [
              Events.events
-             |> Events.service "svc1"
+             |> Events.setService "svc1"
              |> Pipe.counter (fun _ -> 1L) (Duration.FromMilliseconds 100.)
              |> Pipe.map (fun counted -> Message.event Info (sprintf "counter result is %i within 100 ms" counted))
-             |> Events.sink ["1"]
+             |> Events.setTargets ["1"]
 
              Events.events
              |> Events.tag "gotoTarget2"
              |> Pipe.map (fun msg -> { msg with value = ":)"} )
-             |> Events.sink ["2"]
+             |> Events.setTargets ["2"]
 
-             Events.events |> Events.minLevel Warn |> Events.sink ["3"]
+             Events.events |> Events.minLevel Warn |> Events.setTargets ["3"]
 
              Events.events
-             |> Pipe.bufferTime (Duration.FromMilliseconds 200.)
+             |> Pipe.bufferTime ri (Duration.FromMilliseconds 200.)
              |> Pipe.map (fun msgs -> Message.event Info (sprintf "there are %i msgs on every 200 milliseconds" (Seq.length msgs)))
-             |> Events.sink ["4"]
+             |> Events.setTargets ["4"]
 
             //  Events.events
             //  |> Events.tag "metric request latency"
@@ -221,15 +218,15 @@ let tests =
       let processing =
         Events.compose [
            Events.events
-           |> Pipe.tickTimer pingOk  (Duration.FromSeconds 1.) // check health every 1 seconds
-           |> Pipe.filter (fun msg -> msg.level >= Warn)
-           |> Events.sink ["TargetForUnhealthySvc"]  // report unhealthy info into some target
+             |> Pipe.tickTimer pingOk (Duration.FromSeconds 1.) // check health every 1 seconds
+             |> Pipe.filter (fun msg -> msg.level >= Warn)
+             |> Events.setTargets ["TargetForUnhealthySvc"]  // report unhealthy info into some target
 
            Events.events
-           |> Pipe.withTickJob (pingFailed.TickEvery (Duration.FromSeconds 1.))
-           |> Pipe.tick pingFailed
-           |> Pipe.filter (fun msg -> msg.level >= Warn)
-           |> Events.sink ["TargetForUnhealthySvc"]
+             |> Pipe.withTickJob (pingFailed.TickEvery (Duration.FromSeconds 1.))
+             |> Pipe.tick pingFailed
+             |> Pipe.filter (fun msg -> msg.level >= Warn)
+             |> Events.setTargets ["TargetForUnhealthySvc"]
         ]
 
       // given
@@ -253,8 +250,8 @@ let tests =
 
     testCaseJob "buffer conditinal pipe" (job {
 
-      let dutiful (msg: Message, buffered: Message list) =
-        let dt =DateTime.Parse("10:10").ToUniversalTime()
+      let dutiful (msg: LogaryMessageBase, buffered: LogaryMessageBase list) =
+        let dt = DateTime.Parse("10:10").ToUniversalTime()
         let timeNow = Instant.FromDateTimeUtc(dt)
         let tenMins = Duration.FromMinutes(10L)
         let durationFromFirstBufferMsg =
@@ -273,8 +270,8 @@ let tests =
            |> Pipe.bufferConditional dutiful
            |> Events.flattenSeq
            |> Pipe.map (fun msg ->
-              let sinks = if msg.level >= Error then ["email"] else ["dashboard"]
-              msg |> Message.addSinks sinks)
+              let targets = if msg.level >= Error then ["email"] else ["dashboard"]
+              msg.targets <- msg.targets + targets)
         ]
 
       // given
@@ -282,42 +279,43 @@ let tests =
       let! sendMsg, ctss = run processing targets
 
       // when
-      let makeMsg level time =
-        Message.event level (Guid.NewGuid().ToString("N"))
-        |> Message.setTimestamp (Instant.FromDateTimeUtc(DateTime.Parse(time).ToUniversalTime()))
+      let sendMessage level time =
+        Model.EventMessage(Guid.NewGuid().ToString("N"),
+                           level=level,
+                           timestamp=Instant.FromDateTimeUtc(DateTime.Parse(time).ToUniversalTime()).asTimestamp)
         |> sendMsg
 
-      do! makeMsg Info "10:01"
-      do! makeMsg Debug "10:02"
-      do! makeMsg Verbose "10:05"
-      do! makeMsg Info "10:05"
-      do! makeMsg Info "10:05"
+      do! sendMessage Info "10:01"
+      do! sendMessage Debug "10:02"
+      do! sendMessage Verbose "10:05"
+      do! sendMessage Info "10:05"
+      do! sendMessage Info "10:05"
 
       let! msgsFromEachTarget = targets |> Seq.Con.mapJob (fun t -> t.getMsgs ())
       let (msgFromEmail, msgFromDashboard) = (msgsFromEachTarget.[0],msgsFromEachTarget.[1])
       Expect.isEmpty msgFromEmail "no error msg occur,so no msg"
       Expect.isEmpty msgFromDashboard "no error msg occur,so no msg"
 
-      do! makeMsg Info "10:05"
-      do! makeMsg Warn "10:06"
-      do! makeMsg Warn "10:07"
-      do! makeMsg Error "10:08"
+      do! sendMessage Info "10:05"
+      do! sendMessage Warn "10:06"
+      do! sendMessage Warn "10:07"
+      do! sendMessage Error "10:08"
       let! msgsFromEachTarget = targets |> Seq.Con.mapJob (fun t -> t.getMsgs ())
       let (msgFromEmail, msgFromDashboard) = (msgsFromEachTarget.[0],msgsFromEachTarget.[1])
       Expect.equal msgFromEmail.Length 1 "1 error msg send to email"
       Expect.equal msgFromDashboard.Length 3 "3 other msg send to dashboard"
 
-      do! makeMsg Fatal "10:09"
+      do! sendMessage Fatal "10:09"
       let! msgsFromEachTarget = targets |> Seq.Con.mapJob (fun t -> t.getMsgs ())
       let (msgFromEmail, msgFromDashboard) = (msgsFromEachTarget.[0],msgsFromEachTarget.[1])
       Expect.isEmpty msgFromDashboard "no bufferd msg"
       Expect.equal msgFromEmail.Length 1 "1 error msg continue send to email"
 
-      do! makeMsg Info "09:50"
-      do! makeMsg Info "09:55"
-      do! makeMsg Info "10:05"
-      do! makeMsg Info "10:06"
-      do! makeMsg Fatal "10:15"
+      do! sendMessage Info "09:50"
+      do! sendMessage Info "09:55"
+      do! sendMessage Info "10:05"
+      do! sendMessage Info "10:06"
+      do! sendMessage Fatal "10:15"
       let! msgsFromEachTarget = targets |> Seq.Con.mapJob (fun t -> t.getMsgs ())
       let (msgFromEmail, msgFromDashboard) = (msgsFromEachTarget.[0],msgsFromEachTarget.[1])
       Expect.equal msgFromEmail.Length 1 "1 Fatal msg send to email"

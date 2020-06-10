@@ -1,14 +1,13 @@
 namespace Logary
+
 open NodaTime
+open Hopac
+open Hopac.Infixes
+open Hopac.Extensions
+open Logary
+open Logary.Internals
 
 module Target =
-  open System
-  open Hopac
-  open Hopac.Infixes
-  open Hopac.Extensions
-  open Logary.Message
-  open Logary.Internals
-
   /// A target instance is a target loop job that can be re-executed on failure,
   /// and a normal path of communication; the `requests` `RingBuffer` as well as
   /// and out-of-band-method of shutting down the target; the `shutdownCh`.
@@ -16,7 +15,7 @@ module Target =
   type T =
     val name: string
     val api: TargetAPI
-    val transform: Message -> Message
+    val transform: Model.LogaryMessageBase -> Model.LogaryMessageBase
     val rules: Rule list
     internal new (name, api, middleware, rules) =
       { name = name
@@ -32,9 +31,9 @@ module Target =
   ///
   /// - `putBufferTimeOut` means it will try to wait this duration for putting the message onto buffer,otherwise return timeout error, and cancel putting message.
   ///   if `putBufferTimeOut <=  Duration.Zero` , it will try to detect whether the buffer is full and return immediately
-  let log (putBufferTimeOut: Duration) (x: T) (msg: Message): LogResult =
+  let log (putBufferTimeOut: Duration) (x: T) (msg: Model.LogaryMessageBase): LogResult =
     let msg = x.transform msg
-    if not (x.accepts msg) then LogResult.notAcceptedByTarget x.name
+    if not (x.accepts msg) then LogResult.targetBufferFull x.name
     else
       let ack = IVar ()
       let targetMsg = Log (msg, ack)
@@ -45,17 +44,17 @@ module Target =
         | false ->
           LogError.targetBufferFull x.name
       else
-        RingBuffer.put x.api.requests targetMsg ^->. Result.Ok (upcast ack)
-        <|>
-        timeOut (putBufferTimeOut.toTimeSpanSafe()) ^-> fun _ -> LogError.timeOutToPutBuffer x.name putBufferTimeOut.TotalSeconds
+        let putA = RingBuffer.put x.api.requests targetMsg ^->. Result.Ok (ack :> Promise<_>)
+        let timeA = timeOut (putBufferTimeOut.toTimeSpanSafe()) ^-> fun _ -> LogError.targetBufferFull x.name
+        putA <|> timeA
 
-  let tryLog (x: T) (msg: Message): LogResult = log Duration.Zero x msg
+  let tryLog (x: T) (msg: Model.LogaryMessageBase): LogResult = log Duration.Zero x msg
 
   let private logAll_ putBufferTimeOut targets msg =
     Alt.withNackJob <| fun nack ->
     //printfn "tryLogAll: creating alt with nack for %i targets" targets.Length
     let putAllPromises = IVar ()
-    let abortPut = nack ^->. LogError.clientAbortLogging
+    let abortPut = nack ^-> LogError.clientAbortLogging
     let createPutJob t =
       log putBufferTimeOut t msg <|> abortPut
     let tryPutAll =
@@ -86,11 +85,13 @@ module Target =
     Ch.give x.api.shutdownCh ack ^->. upcast ack
 
   let create (ri: RuntimeInfo) (conf: TargetConf): Job<T> =
-    let specificName = sprintf "Logary.Target(%s)" conf.name
+    let specificName = PointName.parse (sprintf "Logary.Target(%s)" conf.name)
+    let targetId = Value.Str (Id.create().toBase64String())
     let ri =
-      let setName = setName (PointName.parse specificName)
-      let setId = setContext "targetId" (Guid.NewGuid())
-      let logger = ri.logger |> Logger.apply (setName >> setId)
+      let logger =
+        ri.logger |> Logger.apply (fun m ->
+            m.name <- specificName
+            m.setContext("targetId", targetId))
       ri |> RuntimeInfo.setLogger logger
 
     let shutdownCh = Ch ()

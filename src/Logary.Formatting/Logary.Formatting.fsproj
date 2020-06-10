@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\paket-files\messagetemplates\messagetemplates-fsharp\src\FsMtParser\FsMtParserFull.fs">
+      <Paket>True</Paket>
+      <Link>paket-files/FsMtParserFull.fs</Link>
+    </Compile>
+    <Compile Include="MessageTemplates.fs" />
+    <Compile Include="Destructure.fs" />
+    <Compile Include="Literate.fs" />
+    <Compile Include="MessageWriter.fs" />
+    <None Include="paket.references" />
+    <Compile Include="JsonHelper.fs" />
+    <Compile Include="Json.fs" />
+    <Compile Include="ColouredConsole.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Logary\Logary.fsproj" />
+  </ItemGroup>
+  <Import Project="..\..\.paket\Paket.Restore.targets" />
+</Project>

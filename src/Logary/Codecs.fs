@@ -1,15 +1,16 @@
 namespace Logary.Codecs
 
+open System.Collections.Generic
 open Logary
-open Logary.Message
 open Logary.Ingestion
 open Logary.Internals
 open Logary.Internals.Chiron
-open Logary.Formatting
+open Logary.Json
+open Logary.Model
 
-type Codec = Ingested -> Result<Message[], string>
+type Codec = Ingested -> Result<Model.LogaryMessageBase[], string>
 
-type Codec<'err> = Ingested -> Result<Message[], 'err>
+type Codec<'err> = Ingested -> Result<Model.LogaryMessageBase[], 'err>
 
 module Codec =
   /// A codec that reads each input as a bag-of-fields to add to a message. Uses
@@ -33,8 +34,11 @@ module Codec =
   /// decoding!
   let plain: Codec =
     fun input ->
-      let value = input.utf8String()
-      Ok (event Debug value |> Array.singleton)
+      input.utf8String()
+        |> Model.EventMessage
+        :> Model.LogaryMessageBase
+        |> Array.singleton
+        |> Ok
 
   type Log4JMessage =
     { logger: string
@@ -42,14 +46,13 @@ module Codec =
       timestamp: int64
       level: LogLevel
       message: string
-      properties: HashMap<string, obj> }
+      properties: IReadOnlyDictionary<string, Value> }
 
-    member x.normalise(): Message =
-      { context = x.properties
-        level = x.level
-        name = PointName.parse x.logger
-        timestamp = x.timestamp * 1_000_000L
-        value = x.message }
+    member x.normalise(): Model.EventMessage =
+      Model.EventMessage(x.message, None, x.timestamp * 1_000_000L,
+                         ?name = Some (PointName.parse x.logger),
+                         ?level = Some x.level,
+                         ?ctx = Some x.properties)
 
   module internal Log4JMessage =
     open System
@@ -84,7 +87,7 @@ module Codec =
       match e.FirstNode with
       | :? XText as txt ->
         txt.Value
-      | other ->
+      | _ ->
         ""
 
     let tryTimestamp (s: string) =
@@ -101,14 +104,14 @@ module Codec =
 
     let xelement (xml: string) =
       // https://logging.apache.org/log4php/docs/layouts/xml.html
-      let mngr = new XmlNamespaceManager(new NameTable())
+      let mngr = XmlNamespaceManager(NameTable())
       mngr.AddNamespace( "log4j", ns.NamespaceName)
-      let parseCtx = new XmlParserContext(null, mngr, null, XmlSpace.None)
+      let parseCtx = XmlParserContext(null, mngr, null, XmlSpace.None)
       let reader = new XmlTextReader(xml, XmlNodeType.Element, parseCtx)
       XElement.Load reader
 
-    let inline addLiteral k v (m: HashMap<_, _>) =
-      (box v, m) ||> HashMap.add (sprintf "%s%s" KnownLiterals.FieldsPrefix k)
+    let inline addLiteral k v (m: Map<_, _>) =
+      (Value.Str v, m) ||> Map.add k
 
     let foldProp acc e =
       let key = e |> xattr "name"
@@ -128,21 +131,22 @@ module Codec =
             let thread = event |> xattr "thread"
             let ndc = event |> xe ns "NDC" |> xtext
             let throwable = event |> xe ns "throwable" |> xtext
-            (HashMap.empty, event |> xe ns "properties" |> xes "data")
+            (Map.empty, event |> xe ns "properties" |> xes "data")
             ||> Seq.fold foldProp
             |> if thread = "" then id else addLiteral "thread" thread
             |> if ndc = "" then id else addLiteral "NDC" ndc
             |> if String.IsNullOrEmpty throwable then id else addLiteral "error" throwable
+            :> IReadOnlyDictionary<string, Value>
         }
         |> Result.Ok
 
     let parse (xml: string): Result<Log4JMessage, string> =
       try parseInner xml
       with
-      | :? XmlException as xmle -> Result.Error (xmle.ToString())
+      | :? XmlException as xmlE -> Result.Error (xmlE.ToString())
       | :? InvalidOperationException as oee -> Result.Error (oee.ToString())
 
-  /// A codec that parses a string as XML and then uses the log4xml schema to extract information. 
+  /// A codec that parses a string as XML and then uses the log4xml schema to extract information.
   ///
   /// REMEMBER: you should use `Message.setReceiveTimestamp` to set the receive timestamp, after
   /// decoding!
@@ -150,7 +154,7 @@ module Codec =
     fun input ->
       input.utf8String ()
       |> Log4JMessage.parse
-      |> Result.map (fun log4jm -> log4jm.normalise ())
+      |> Result.map (fun log4jm -> log4jm.normalise () :> LogaryMessageBase)
       |> Result.map Array.singleton
 
   // let regex: Codec

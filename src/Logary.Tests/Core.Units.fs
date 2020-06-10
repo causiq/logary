@@ -5,20 +5,6 @@ open Logary
 
 let tests =
   [
-    testList "formatValue" (
-      [ Float 62., "62"
-        Int64 84598L, "84598"
-        BigInt 1024I, "1024"
-        Fraction (2L, 5L), "2/5"
-      ]
-      |> List.map (fun (value, expected) ->
-          testCase (string value) (fun () ->
-            let actual = Units.formatValue value
-            Expect.equal actual expected "Should have correct result"
-          )
-      )
-    )
-
     testList "scaling" [
       testList "s" [
         testCase "0.0000001 s" <| fun _ ->

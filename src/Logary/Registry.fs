@@ -5,7 +5,7 @@ open Hopac
 open Hopac.Infixes
 open Hopac.Extensions
 open Logary
-open Logary.Message
+open Logary.Model
 open Logary.Metric
 open Logary.Internals
 open Logary.Configuration
@@ -17,19 +17,20 @@ open System.Collections.Concurrent
 /// configured targets, middlewares, etc.
 type LogaryConf =
   /// A map of the targets by name.
-  abstract targets: HashMap<string, TargetConf>
+  abstract targets: Map<string, TargetConf>
   /// Service metadata - what name etc.
   abstract runtimeInfo: RuntimeInfo
-  /// Extra middleware added to every resolved logger. (compose at call-site)
+  /// Extra middleware added to every resolved logger. (composed and invoked at call-site)
   abstract middleware: Middleware[]
   /// Optional stream transformer.
   abstract processing: Processing
-  /// each logger's min level
+  /// The minimum log level accepted, by logger name/logger name regex.
   abstract loggerLevels: (string * LogLevel) list
-  /// handler for process log error
+  /// This handler is invoked with the result of each completed message. It provides a "port" where you can read every
+  /// result going through Logary, beyond the caller's thread.
   abstract logResultHandler: (ProcessResult -> unit)
   /// time out duration waiting for each target buffer to be available to take the message, if users choose logging message and waitForBuffers
-  abstract defaultWaitForBuffersTimeout: Duration
+  abstract waitForTargetsTimeout: Duration
   /// the metric registry for metric
   abstract metricRegistry: MetricRegistry
 
@@ -41,7 +42,7 @@ module Registry =
     private {
       runtimeInfo: RuntimeInfo
 
-      runPipeline: Middleware option -> Message -> LogResult
+      emit: Model.LogaryMessageBase -> LogResult
 
       /// to show whether or not registry is shutdown, used to control the
       /// message communication channel to avoid the case of endless blocking
@@ -70,21 +71,18 @@ module Registry =
   /// Flush all pending messages for all targets. Flushes with no timeout; if
   /// this Alternative yields, all targets were flushed.
   let flush (t: T): Alt<unit> =
-    t.isClosed
-    <|>
-    ((t.flushCh *<+->- fun flushCh nack -> flushCh, nack, None) ^-> ignore)
+        t.isClosed
+    <|> (t.flushCh *<+->- fun flushCh nack -> flushCh, nack, None) ^-> ignore
 
-
-  let private alreadyClosed = FlushInfo (["registry is closed"], [])
+  let private isShutDown = FlushInfo (["The Registry is shut down"], [])
 
   /// Flush all pending messages for all targets. This Alternative always
   /// yields after waiting for the specified `timeout`; then giving back the
   /// `FlushInfo` data-structure that recorded what targets were successfully
   /// flushed and which ones timed out.
   let flushWithTimeout (t: T) (timeout: Duration): Alt<FlushInfo> =
-    (t.isClosed ^->. alreadyClosed)
-    <|>
-    (t.flushCh *<+->- fun flushCh nack -> flushCh, nack, Some timeout)
+        t.isClosed ^->. isShutDown
+    <|> t.flushCh *<+->- fun flushCh nack -> flushCh, nack, Some timeout
 
 
   /// Shutdown the registry and flush all targets before shutting it down. This
@@ -111,73 +109,50 @@ module Registry =
 
 
   module private Impl =
-    let ensureName name (m: Message) =
-      if m.name.isEmpty then { m with name = name } else m
+    let computeLevel (registry: T) =
+      fun (loggerName: string) ->
+        registry.defaultLoggerLevelRules
+          |> List.tryFind (fun (path, _) -> path = loggerName || Regex.IsMatch(loggerName, path))
+          |> Option.map snd
+          |> Option.defaultValue Info
 
-    let ensureWaitFor waitForBuffers (m: Message) =
-      m |> Message.setContext KnownLiterals.WaitForBuffers waitForBuffers
-
-    let inline getLogger (t: T) name mid =
-      let nameStr = name.ToString ()
-      match t.loggerLevels.TryGetValue nameStr with
-      | true, _ ->
-        ()
-      | false, _  ->
-        let foundDefault =
-          t.defaultLoggerLevelRules
-          |> List.tryFind (fun (path, _) -> path = nameStr || Regex.IsMatch(nameStr, path))
-        match foundDefault with
-        | Some (_, minLevel) ->
-          t.loggerLevels.[nameStr] <- minLevel
-        | None ->
-          t.loggerLevels.[nameStr] <- LogLevel.Info
-
+    let getLogger (registry: T) name =
+      let computeLevel = computeLevel registry
       { new Logger with
           member x.name = name
-
-          member x.logWithAck (waitForBuffers, level) messageFactory =
-            if level >= x.level then
-              // When the registry is shut down, reject the log message.
-              let rejection = t.isClosed ^->. LogError.registryClosed
-
-              let logMessage = Alt.prepareFun <| fun () ->
-                messageFactory level
-                |> ensureName name
-                |> ensureWaitFor waitForBuffers
-                |> t.runPipeline mid
-
-              rejection <|> logMessage
-            else
-              LogResult.success
-
+          member x.logWithAck(waitForBuffers, message) =
+            if Promise.Now.isFulfilled registry.isClosed then LogResult.registryClosed () else
+            if message.level < x.level then LogResult.success else
+            let message = message.getAsBase Model.EventMessage
+            message.ensureName name
+            registry.emit message
           member x.level =
-            match t.loggerLevels.TryGetValue nameStr with
-            | true, minLevel ->
-              minLevel
-            | false, _  ->
-              Info
+            let loggerName = x.name.ToString()
+            registry.loggerLevels.GetOrAdd(loggerName, computeLevel)
       }
 
     let switchLoggerLevel (t: T) path minLevel =
-      // maybe use msg passing style, if we need support affect loggers create after this switch.
-      let regPath = Regex (path, RegexOptions.Compiled)
+      let regPath = Regex(path)
+
       t.loggerLevels
-      |> Seq.iter (fun (KeyValue (name, _)) ->
-        if name = path || regPath.IsMatch name then t.loggerLevels.[name] <- minLevel)
+        |> Seq.filter (fun (KeyValue (name, _)) -> name = path || regPath.IsMatch name)
+        |> Seq.map (fun (KeyValue (name, _)) -> name)
+        |> Seq.toArray
+        |> Array.iter (fun name -> t.loggerLevels.[name] <- minLevel)
 
     let spawnTargets (ri: RuntimeInfo) targets =
       targets
-      |> HashMap.toList
+      |> Map.toList
       |> List.traverseJobA (fun (_, conf) -> Target.create ri conf)
       |> Job.map List.toArray
 
     let generateProcessResult name processAlt (timeout:Duration option) =
       match timeout with
-        | None -> processAlt ^->. (name,true)
-        | Some duration ->
-          timeOut (duration.toTimeSpanSafe()) ^->. (name,false)
-          <|>
-          processAlt ^->. (name,true)
+      | None ->
+        processAlt ^->. (name, true)
+      | Some duration ->
+            timeOut (duration.toTimeSpanSafe()) ^->. (name, false)
+        <|> processAlt ^->. (name, true)
 
     let partitionResults results =
       results
@@ -199,51 +174,37 @@ module Registry =
       let flushTarget (target: Target.T) =
         generateProcessResult target.name (Target.flush target) timeout
 
-      (targets |> Seq.Con.mapJob flushTarget)
+      Seq.Con.mapJob flushTarget targets
       >>- (partitionResults >> FlushInfo)
 
-    let changeMetricDefaultFailBehavior (logger: Logger) (metricRegistry: MetricRegistry) =
-      metricRegistry.setFailBehaviour (eventX >> logger.warn)
+    let setMetricFailBehaviour (logger: Logger) (metricRegistry: MetricRegistry) =
+      metricRegistry.setFailBehaviour logger.warn
 
   // Middlewares at:
   //  - LogaryConf (goes on all loggers) (compose at call-site)
   //  - TargetConf (goes on specific target) (composes when creating target,not compose at call-site when sending message)
   //  - individual loggers (compose at call-site)
   let create (conf: LogaryConf): Job<T> =
-    let ri, rname, rmid =
-      conf.runtimeInfo,
-      PointName [| "Logary"; "Registry" |],
-      List.ofArray conf.middleware
-
-    let rlogger = ri.logger |> Logger.apply (setName rname)
-
-    // PipeResult.NoResult usually means do some fire-and-forget operation,e.g. push msg on to some buffer/sinks, wating for some condition to trigger next action.
-    // so we should treat it as the msg has been logged/processed. use `LogResult.success` may be more reasonable.
-    let wrapper sendMsg mid msg =
-      msg
-      |> Middleware.compose (mid |> Option.fold (fun s t -> t :: s) rmid)
-      |> sendMsg
-      |> PipeResult.orDefault LogResult.success
-
+    let ri, registryName = conf.runtimeInfo, PointName [| "Logary"; "Registry" |]
+    let registryLogger = ri.logger |> Logger.setPointName registryName
     let flushCh, shutdownCh, isClosed = Ch (), Ch (), IVar ()
 
     Impl.spawnTargets ri conf.targets >>= fun targets ->
-    let targetsByName = targets |> Array.map (fun t -> t.name, t) |> HashMap.ofArray
+    let targetsByName = targets |> Array.map (fun t -> t.name, t) |> Map.ofArray
 
-    let rec running ctss =
+    let rec running (cancellations: ResizeArray<Cancellation>) =
       Alt.choose [
         flushCh ^=> fun (ackCh, nack, timeout) ->
           let flushOrAbort =
-            memo (Impl.flushPending targets timeout) ^=> Ch.give ackCh
+                memo (Impl.flushPending targets timeout) ^=> Ch.give ackCh
             <|> nack
 
-          rlogger.timeAlt (flushOrAbort, "flushOrAbort")
-          >>=. running ctss
+          registryLogger.timeAlt(flushOrAbort, "flushOrAbort")
+          >>=. running cancellations
 
         shutdownCh ^=> fun (res, timeout) ->
-          //printfn "SHUTTING DOWN"
-          rlogger.infoWithAck (eventX "Shutting down")
-          ^=>. Seq.Con.iterJob Cancellation.cancel ctss
+          registryLogger.eventAck "Shutting down"
+          ^=>. Seq.Con.iterJob Cancellation.cancel cancellations
           >>=. Impl.shutdown targets timeout
           >>= fun shutdownInfo ->
               InternalLogger.shutdown ri.logger ^=>. res *<= shutdownInfo
@@ -251,59 +212,48 @@ module Registry =
       ]
 
     // pipe.run should only be invoke once, because state in pipes is captured when pipe.run
-    let runningPipe =
-      conf.processing
-      |> Pipe.run (fun msg ->
-        let sinks = Message.getAllSinks msg
+    let pipe =
+      conf.processing |> Pipe.run (fun msg ->
         let targets =
-          if Set.isEmpty sinks then
+          if Set.isEmpty msg.targets then
             targets
           else
-            sinks |> Seq.choose (fun name -> HashMap.tryFind name targetsByName) |> Array.ofSeq
+            msg.targets |> Seq.choose (fun name -> Map.tryFind name targetsByName) |> Array.ofSeq
 
         if Array.isEmpty targets then
           NoResult
         else
-          let putBufferTimeOut = msg |> Message.tryGetContext KnownLiterals.WaitForBuffersTimeout |> Option.defaultValue conf.defaultWaitForBuffersTimeout
-          let putBufferTimeOut =
-            msg |> Message.tryGetContext KnownLiterals.WaitForBuffers
-            |> Option.defaultValue false // non blocking waiting default
-            |> function | true -> putBufferTimeOut | false -> Duration.Zero
-
+          let putBufferTimeOut = if msg.waitForTargets then conf.waitForTargetsTimeout else Duration.Zero
           msg
-          |> Target.logAllReduce putBufferTimeOut targets
-          |> Alt.afterFun (fun result ->
-            try
-              conf.logResultHandler result
-            with
-            | e ->
-              eprintfn "%O" e
-            result)
-          |> HasResult)
+            |> Target.logAllReduce putBufferTimeOut targets
+            |> Alt.afterFun (fun result ->
+                try conf.logResultHandler result
+                with e -> eprintfn "%O" e
+                result)
+            |> HasResult)
 
-    Impl.changeMetricDefaultFailBehavior ri.logger conf.metricRegistry
+    Impl.setMetricFailBehaviour ri.logger conf.metricRegistry
 
-    runningPipe >>= fun (sendMsg, ctss) ->
+    let middleware = Middleware.compose conf.middleware
+
+    pipe >>= fun (runPipeOnMessage, cancellations) ->
     let state =
       { runtimeInfo = ri
-        runPipeline = wrapper sendMsg
+        emit = middleware >> runPipeOnMessage >> PipeResult.defaultValue LogResult.success
         isClosed = isClosed
         flushCh = flushCh
         shutdownCh = shutdownCh
-        loggerLevels = new ConcurrentDictionary<string,LogLevel> ()
+        loggerLevels = ConcurrentDictionary<string, LogLevel>()
         defaultLoggerLevelRules = conf.loggerLevels
-        metricRegistry = conf.metricRegistry}
+        metricRegistry = conf.metricRegistry }
 
-    Job.supervise rlogger (Policy.restartDelayed 512u) (running ctss)
-    |> Job.startIgnore
+    Job.startIgnore (Job.supervise registryLogger (Policy.restartDelayed 512u) (running cancellations))
     >>-. state
 
   let toLogManager (t: T): LogManager =
     { new LogManager with
         member x.getLogger name =
-          Impl.getLogger t name None
-        member x.getLoggerWithMiddleware (name, mid) =
-          Impl.getLogger t name (Some mid)
+          Impl.getLogger t name
         member x.runtimeInfo =
           t.runtimeInfo
         member x.flushPending dur =

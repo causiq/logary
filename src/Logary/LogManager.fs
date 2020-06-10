@@ -5,16 +5,6 @@ open Logary.Metric
 open NodaTime
 open Hopac
 
-/// A data-structure that gives information about the outcome of a flush
-/// operation on the Registry. This data structure is only relevant if the
-/// flush operation had an associated timeout.
-type FlushInfo = FlushInfo of acks:string list * timeouts:string list
-
-/// A data-structure that gives information about the outcome of a shutdown
-/// operation on the Registry. This data structure is only relevant if the
-/// shutdown operation had an associated timeout.
-type ShutdownInfo = ShutdownInfo of acks:string list * timeouts:string list
-
 /// LogManager is the public interface to Logary and takes care of getting
 /// loggers from names. It is also responsible for running Dispose at the
 /// end of the application in order to run the target shutdown logic. That said,
@@ -24,7 +14,6 @@ type ShutdownInfo = ShutdownInfo of acks:string list * timeouts:string list
 /// This is also a synchronous wrapper around the asynchronous actors that make
 /// up logary
 type LogManager =
-
   /// Gets the service name that is used to filter and process the logs further
   /// downstream. This property is configured at initialisation of Logary.
   abstract runtimeInfo: RuntimeInfo
@@ -33,8 +22,6 @@ type LogManager =
   /// a specific name that you keep for a sub-component of your application or
   /// the name of the class. Also have a look at Logging.GetCurrentLogger().
   abstract getLogger: PointName -> Logger
-
-  abstract getLoggerWithMiddleware: PointName * Middleware -> Logger
 
   /// Awaits that all targets finish responding to a flush message
   /// so that we can be certain they have processed all previous messages.
@@ -56,20 +43,12 @@ type LogManager =
   /// this will only affect the loggers (its name, not its instance) that have been created before
   abstract switchLoggerLevel: string * LogLevel -> unit
 
-  /// register metrics
+  /// The manager-global Metrics registry
   abstract metricRegistry: MetricRegistry
 
-
-open System.Runtime.CompilerServices
-
-[<AutoOpen; Extension>]
+[<AutoOpen>]
 module LogManagerEx =
-  // TODO: move to Global module!
-  let defaultMetricRegistry = new MetricRegistry()
 
   type LogManager with
     member x.getLogger (loggerName: string) =
       x.getLogger (PointName.parse loggerName)
-    member x.getLoggerWithMiddleware (loggerName: string, middleware) =
-      x.getLoggerWithMiddleware (PointName.parse loggerName, middleware)
-    static member DefaultMetricRegistry = defaultMetricRegistry

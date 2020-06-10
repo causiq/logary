@@ -3,7 +3,6 @@ namespace Microsoft.Extensions.Logging
 open System
 open System.Runtime.CompilerServices
 open Logary
-open Logary.Message
 open Microsoft.AspNetCore.Builder
 open Microsoft.Extensions.Hosting
 open Microsoft.AspNetCore.Hosting
@@ -27,21 +26,20 @@ module LogLevelEx =
 
 type LogaryLogger(inner: Logger) =
   interface ILogger with
-    member x.BeginScope<'TState>(state: 'TState) =
-      { new IDisposable with member __.Dispose () = () }
+    member x.BeginScope<'TState>(_: 'TState) =
+      inner.scoped inner.name :> _
+
     member x.IsEnabled logLevel =
       inner.level <= logLevel.asLogary
+
     member x.Log<'TState> (logLevel, eventId, state: 'TState, ex, formatter) =
       // don't log more verbose log messages than we have to
       if inner.level > logLevel.asLogary then () else
-      // we don't want to throw exceptions while formatting... so precompute the message:
-      let message = formatter.Invoke(state, ex)
       // closure-capture variables and send to Logary
-      let messageFactory level =
-        event level message
-        |> setField "eventId" eventId
-        |> if isNull ex then id else addExn ex
-      inner.logWith logLevel.asLogary messageFactory
+      let message =
+        let text = formatter.Invoke(state, ex)
+        Model.EventMessage(text, level=logLevel.asLogary)
+      inner.log message
 
 
 type LogaryLoggerFactory(accessor: IHttpContextAccessor, logary: LogManager) =

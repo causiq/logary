@@ -1,5 +1,5 @@
 // https://usehooks.com/useScript/
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react';
 
 const cachedScripts: string[] = []
 

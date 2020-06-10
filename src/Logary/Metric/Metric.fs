@@ -2,18 +2,26 @@ namespace Logary.Metric
 
 type BasicInfo =
   { name: string
-    description: string
-  }
+    description: string }
 
 type GaugeInfo =
-  { labels: Map<string,string>
-    gaugeValue: float
+  { /// The labels this Histogram "is for"; like its name.
+    labels: Map<string, string>
+    /// The current value of the gauge
+    value: float
+    /// Which unit is this measurement in?
+    unit: Logary.U
   }
 
 type HistogramInfo =
-  { labels: Map<string,string>
-    bucketsInfo: Map<float,float>
-    sumInfo: float
+  { /// The labels this Histogram "is for"; like its name.
+    labels: Map<string, string>
+    /// A mapping between bucket upper bounds, inclusive, and its count
+    buckets: Map<float, float>
+    /// Total sum of observed values
+    sum: float
+    /// Which unit is the base unit for this histogram?
+    unit: Logary.U
   }
 
 type MetricInfo =
@@ -32,9 +40,8 @@ type IGauge =
 
 type IHistogram =
   inherit IMetric
-
-  abstract observe: value:float -> unit
-  abstract observe: value:float * count:float -> unit
+  abstract observe: value: float -> unit
+  abstract observe: value: float * count: float -> unit
 
 
 [<RequireQualifiedAccess>]
@@ -46,11 +53,14 @@ type FailStrategy =
 
 type BasicConf =
   { name: string
+    unit: Logary.U
     description: string
     labelNames: string[]
     avoidHighCardinality: int option
     failStrategy: FailStrategy
   }
+  member x.asInfo: BasicInfo =
+    { name=x.name; description=x.description }
 
 module BasicConf =
   /// https://prometheus.io/docs/practices/instrumentation/#do-not-overuse-labels
@@ -63,14 +73,15 @@ module BasicConf =
     { conf with failStrategy = FailStrategy.Throw }
 
 type BasicConf with
-  static member create (name, description, ?labelNames) =
+  static member create (name, description, units, ?labelNames) =
     { name = name
+      unit = units
       description = description
       labelNames = defaultArg labelNames [||]
       avoidHighCardinality = Some BasicConf.defaultHighCardinalityLimit
       failStrategy = FailStrategy.Default }
 
-/// used for exporting data
+/// Used for reading the state of the metric.
 type MetricExporter =
   abstract basicConf: BasicConf
   abstract export: unit -> BasicInfo * seq<MetricInfo>

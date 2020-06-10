@@ -1,13 +1,13 @@
 ﻿namespace Logary.CSharp
 
 open Logary
-open Logary.Message
 open System
 open Hopac
+open Hopac.Infixes
 open System.Threading
 open System.Threading.Tasks
 open System.Runtime.CompilerServices
-open System.Runtime.InteropServices
+open Logary.Model
 
 
 // This file is partially from
@@ -252,54 +252,6 @@ type Funcs =
   static member AndThen (f: Func<_,_>, g: Func<_,_>) =
     Func<_,_>(fun x -> g.Invoke(f.Invoke(x)))
 
-  /// Extension method on a func that times the executing of the function.
-  [<Extension>]
-  static member Time (a: Action<'input>, [<ParamArray>] pointName: string[]): Func<'input, Message> =
-    let timef = Message.time (PointName pointName) (FSharpFunc.OfAction a)
-    Funcs.ToFunc (timef >> snd)
-
-  /// Extension method on a func that times the executing of the function.
-  [<Extension>]
-  static member Time (a: Action<'a, 'b>, [<ParamArray>] pointName: string[]): Func<'a, 'b, Message> =
-    let timef =
-      FSharpFunc.OfAction a
-      >> Message.time (PointName pointName)
-      >> fun resf -> resf >> snd
-    Funcs.ToFunc<_, _, _> timef
-
-  /// Extension method on a func that times the executing of the function.
-  [<Extension>]
-  static member Time (a: Action<'a, 'b, 'c>, [<ParamArray>] pointName: string[]): Func<'a, 'b, 'c, Message> =
-    let timef =
-      FSharpFunc.OfAction a
-      >> uncurry
-      >> Message.time (PointName pointName)
-      >> fun resf -> resf >> snd
-      >> curry
-    Funcs.ToFunc<_, _, _, _> timef
-
-  /// Extension method on a func that times the executing of the function.
-  [<Extension>]
-  static member Time (f: Func<'input,'output>, [<ParamArray>] pointName: string[]): Func<'input, 'output * Message> =
-    let timef = Message.time (PointName pointName) (Funcs.ToFSharpFunc f)
-    Funcs.ToFunc timef
-
-  /// Extension method on a func that times the executing of the function.
-  [<Extension>]
-  static member Time (f: Func<'input, _, 'output>, [<ParamArray>] pointName: string[]): Func<'input, _, 'output * Message> =
-    let timef = Funcs.ToFSharpFunc f >> Message.time (PointName pointName)
-    Funcs.ToFunc<_, _, _> timef
-
-  /// Extension method on a func that times the executing of the function.
-  [<Extension>]
-  static member Time (f: Func<'input, _, _, 'output>, [<ParamArray>] pointName: string[]): Func<'input, _, _, 'output * Message> =
-    let timef =
-      Funcs.ToFSharpFunc f
-      >> uncurry
-      >> Message.time (PointName pointName)
-      >> curry
-    Funcs.ToFunc<_, _, _, _> timef
-
 [<Extension>]
 type FSharpOption =
   [<Extension>]
@@ -494,191 +446,21 @@ type FSharpSet =
 type FSharpMap =
   static member Create([<ParamArray>] values) =
     Map.ofArray values
-
   [<Extension>]
   static member ToFSharpMap values =
     Map.ofSeq values
 
-module private MiscHelpers =
-  let private disposable =
-    { new IDisposable with
-        member x.Dispose() = () }
-
-  let inline subscribe (ct: CancellationToken) (f: unit -> unit) =
-    match ct with
-    | _ when ct = CancellationToken.None ->
-      disposable
-    | ct ->
-      upcast ct.Register (Action f)
-
-  let inline chooseLogFun (logger: Logger) logLevel withAck =
-    if withAck then logger.logAck logLevel >> (fun x -> x :> Alt<_>)
-    else logger.log logLevel >> Alt.afterFun ignore
-
-/// Functions callable by Logary.CSharp.
-[<Extension>]
-type Job =
-  [<Extension>]
-  static member ToTask<'a> (xJ: Job<'a>): Task<'a> =
-    let tcs = new TaskCompletionSource<'a>()
-    xJ |> Job.map (tcs.SetResult >> ignore) |> start
-    tcs.Task
-
-module Alt =
-
-  let toTask (ct: CancellationToken) (xA: Alt<'res>): Task<'res> =
-    // attach to parent because placing in buffer should be quick in the normal case
-    let tcs = TaskCompletionSource<'res>(TaskCreationOptions.AttachedToParent) // alloc TCS
-    let nack = IVar () // alloc
-    let sub = MiscHelpers.subscribe ct (fun () -> start (IVar.fill nack ())) // only alloc IVar if ct <> None
-    start (
-      Alt.tryFinallyFun (
-        Alt.choose [
-          Alt.tryIn xA
-                    (fun res -> Job.thunk (fun () -> tcs.SetResult res))
-                    (fun ex -> Job.thunk (fun () -> tcs.SetException ex))
-          nack |> Alt.afterFun tcs.SetCanceled // |> Alt.afterFun (fun () -> printfn "Cancelled")
-        ]
-      ) sub.Dispose
-    )
-    // alloc on access?
-    tcs.Task
-
-  let internal toTasks bufferCt promiseCt (xAP: Alt<Promise<unit>>): Task<Task> =
-    xAP
-    |> Alt.afterFun (fun prom -> toTask promiseCt prom :> Task)
-    |> toTask bufferCt
 
 [<Extension>]
 type LoggerEx =
-
-  // corresponds to: log, logWithTimeout
+  [<Extension>]
+  static member Log(logger: Logger, m: LogaryMessageBase, ct: CancellationToken): Task =
+    upcast Alt.toTask ct (logger.logBP(m) ^->. ())
 
   [<Extension>]
-  static member Log (logger: Logger,
-                     logLevel: LogLevel,
-                     transform: Func<Message, Message>,
-                     [<Optional; DefaultParameterValue(true)>] waitForAck: bool)
-                     // [<Optional, DefaultParemterValue(CancellationToken.None)>] ct: CancellationToken
-                    : Task =
-    if isNull transform then nullArg "transform"
-    let ct = CancellationToken.None // if isNull ct then CancellationToken.None else ct
-    let logFn = MiscHelpers.chooseLogFun logger logLevel waitForAck
-    let transform = Funcs.ToFSharpFunc transform
-    upcast Alt.toTask ct (eventX "EVENT" >> transform |> logFn)
-
-  // corresponds to: log, logWithTimeout, logWithAck
-
-  [<Extension>]
-  static member LogEvent(logger: Logger,
-                         level: LogLevel,
-                         formatTemplate: string,
-                         [<Optional; DefaultParameterValue(null:obj)>] fieldsObj: obj,
-                         [<Optional; DefaultParameterValue(null:Exception)>] exn: Exception,
-                         [<Optional; DefaultParameterValue(null:Func<Message,Message>)>] transform: Func<Message, Message>,
-                         [<Optional; DefaultParameterValue(true)>] waitForAck: bool,
-                         [<Optional; DefaultParameterValue(5000u)>] timeoutMillis: uint32)
-                        : Task =
-    let ct = CancellationToken.None // if isNull ct then CancellationToken.None else ct
-    let timeoutMillis = if timeoutMillis = 0u then 5000u else timeoutMillis
-    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
-    let fields = if isNull fieldsObj then obj() else fieldsObj
-    let logFn = MiscHelpers.chooseLogFun logger level waitForAck
-
-    let messageFactory =
-      eventX formatTemplate
-      >> setFieldsFromObject fields
-      >> if isNull exn then id else Message.addExn exn
-      >> transform
-
-    upcast Alt.toTask ct (logFn messageFactory)
-
-  /// Log an event, but don't await all targets to flush. WITH back-pressure by default.
-  /// Backpressure implies the caller will wait until its message is in the buffer.
-  [<Extension>]
-  static member LogEventFormat(logger: Logger,
-                               level: LogLevel,
-                               formatTemplate: string,
-                               [<ParamArray>] args: obj[])
-                              : Task =
-    let ct = CancellationToken.None // if isNull ct then CancellationToken.None else ct
-    let msgFac = fun _ -> Message.eventFormat (level, formatTemplate, args)
-    let call = logger.logWithBP level msgFac
-    upcast Alt.toTask ct call
-
-  [<Extension>]
-  static member Gauge(logger: Logger,
-                      value: float,
-                      units: Units,
-                      measurement: string,
-                      [<Optional; DefaultParameterValue(null:obj)>] fields: obj,
-                      [<Optional; DefaultParameterValue(null:Func<Message, Message>)>] transform: Func<Message, Message>)
-                      : Task<bool> =
-    let ct = CancellationToken.None // if isNull ct then CancellationToken.None else ct
-    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
-    let fields = if isNull fields then obj() else fields
-
-    let message =
-      gaugeWithUnit logger.name measurement (Gauge (Float value, units))
-      |> setFieldsFromObject fields
-
-    Alt.toTask ct (logger.log Debug (fun _ -> message))
-
-  // corresponds to: logSimple
-
-  /// Log the message without blocking, and ignore its result. If the buffer is full, drop the message.
-  [<Extension>]
-  static member LogSimple (logger, message): unit =
-    Logger.logSimple logger message
-
-  /// Log a message, which returns an inner Task. The outer Task denotes having the
-  /// Message placed in all Targets' buffers. The inner Task denotes having
-  /// the message properly flushed to all targets' underlying "storage". Targets
-  /// whose rules do not match the message will not be awaited.
-  [<Extension>]
-  static member LogWithAck (logger: Logger, message: Message): Task =
-    let ct = CancellationToken.None // if isNull ct then CancellationToken.None else ct
-    upcast Alt.toTask ct (logger.logAck message.level (fun _ -> message))
-
-  [<Extension>]
-  static member Time (logger: Logger,
-                      action: Action,
-                      [<Optional; DefaultParameterValue(null:string)>] measurement: string,
-                      [<Optional; DefaultParameterValue(null:Func<Message, Message>)>] transform: Func<Message, Message>)
-                     : Action =
-    let action = FSharpFunc.OfAction action
-    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
-    let runnable = logger.timeFun (action, measurement, transform)
-    Action runnable
-
-  [<Extension>]
-  static member Time (logger: Logger,
-                      func: Func<'res>,
-                      [<Optional; DefaultParameterValue(null:string)>] measurement: string,
-                      [<Optional; DefaultParameterValue(null:Func<Message, Message>)>] transform: Func<Message, Message>)
-                     : Func<'res> =
-    let func = FSharpFunc.OfFunc func
-    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
-    let runnable = logger.timeFun (func, measurement, transform)
-    Funcs.ToFunc<'res> runnable
-
-  [<Extension>]
-  static member Time (logger: Logger,
-                      func: Func<'input, 'res>,
-                      [<Optional; DefaultParameterValue(null:string)>] measurement: string,
-                      [<Optional; DefaultParameterValue(null:Func<Message, Message>)>] transform: Func<Message, Message>)
-                     : Func<'input, 'res> =
-    let func = FSharpFunc.OfFunc func
-    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
-    let runnable = logger.timeFun (func, measurement, transform)
-    Funcs.ToFunc<'input, 'res> runnable
-
-  /// Create a new scope that starts a stopwatch on creation and logs the gauge of
-  /// the duration its lifetime.
-  [<Extension>]
-  static member TimeScope (logger: Logger,
-                           [<Optional; DefaultParameterValue(null:string)>] nameEnding: string,
-                           [<Optional; DefaultParameterValue(null:Func<Message,Message>)>] transform: Func<Message, Message>)
-                          : TimeLogger =
-    let transform = if isNull transform then id else FSharpFunc.OfFunc transform
-    logger.timeScopeT nameEnding transform
+  static member LogWithAck(logger: Logger, m: LogaryMessageBase, ct: CancellationToken): Task =
+    upcast Alt.toTask ct (
+      logger.logWithAck(true, m) ^=> function
+        | Ok ack -> ack
+        | Result.Error _ -> Promise.unit)
+    

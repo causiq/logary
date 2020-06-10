@@ -3,7 +3,6 @@ namespace Logary.Tests
 open System
 open Expecto
 open Expecto.Flip
-open Logary.Targets.LiterateConsole
 
 module Expect =
   let private trim (s: string) = if isNull s then s else s.Trim()
@@ -51,8 +50,6 @@ module Expect =
       linea |> Expect.equal message linee
       cont <- not (isNull linea || isNull linee)
 
-  open System.Text
-
   let printSeq (xs: #seq<_>): string =
     xs |> Seq.mapi (fun i x -> sprintf "  [%i] %A" i x) |> String.concat Environment.NewLine
 
@@ -97,13 +94,6 @@ module Expect =
 
     iter 0
 
-  let formattedEqual message expected (parts: ColouredText list) =
-    let app (sb: StringBuilder) (value: string) = sb.Append value
-    (StringBuilder(), parts |> List.map (fun x -> x.text))
-      ||> List.fold (fun state t -> app state t)
-      |> fun sb -> sb.ToString()
-      |> Expect.equal message expected
-
   module Json =
     open Logary.Internals.Chiron
 
@@ -113,7 +103,7 @@ module Expect =
       | Json.Object nested ->
         nested
       | other ->
-        failtestf "Expected Json.Object, but was %A" other
+        failtestf "%s. Expected Json.Object, but was %A" message other
 
     /// Assert the Json value is a Json.Object.
     let isObject message value =
@@ -124,7 +114,7 @@ module Expect =
       | String inner ->
         inner
       | other ->
-        failtestf "Expected Json.String, but was %A" other
+        failtestf "%s Expected Json.String, but was %A" message other
 
     /// Assert and pass through the found field.
     let hasFieldX message field (value: JsonObject) =
@@ -133,7 +123,7 @@ module Expect =
         |> Map.tryFind field
         |> function
         | None ->
-          failtestf "Did not find field '%s' on Json.Object (%A)" field value
+          failtestf "%s. Did not find field '%s' on Json.Object (%A)" message field value
         | Some f ->
           f
 

@@ -15,10 +15,10 @@ module Serialisation =
 
   let private binarySerializer = FsPickler.CreateBinarySerializer ()
 
-  let serialise (msg: Logary.Message): byte[] =
+  let serialise (msg: LogaryMessage): byte[] =
     binarySerializer.Pickle msg
 
-  let deserialise (datas: ArraySegment<byte>): Logary.Message =
+  let deserialise (datas: ArraySegment<byte>): LogaryMessage =
     use ms = new MemoryStream(datas.Array, datas.Offset, datas.Count)
     ms.Seek(0L, SeekOrigin.Begin) |> ignore
     binarySerializer.UnPickle (ms.ToArray())
@@ -55,7 +55,7 @@ module internal Impl =
       sender = sender }
 
   let serve (conf: ShipperConf) (api: TargetAPI) =
-    
+
     let rec loop (state: State): Job<unit> =
       Alt.choose [
         RingBuffer.take api.requests ^=> function
@@ -70,7 +70,7 @@ module internal Impl =
           | Flush (ackCh, nack) ->
             ackCh *<= ()
             >>= fun () -> loop state
-            
+
         api.shutdownCh ^=> fun ack ->
           Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
           >>=. IVar.fill ack ()
@@ -93,11 +93,11 @@ let create conf name =
 type Builder(conf, callParent: Target.ParentCallback<Builder>) =
   let ret fn =
     ! (callParent <| Builder(fn conf, callParent))
-    
-  /// Opens a ZMQ PUB socket 
+
+  /// Opens a ZMQ PUB socket
   member x.PublishTo(endpoint: string) =
     ret <| fun conf -> { conf with publishTo = Some endpoint }
-    
+
   /// Opens a ZMQ PUSH socket to an existing binding
   member x.PushTo(endpoint: string) =
     ret <| fun conf -> { conf with pushTo = Some endpoint }

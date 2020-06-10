@@ -35,18 +35,15 @@ type Arbs =
 
   static member Duration() =
     Arb.Default.TimeSpan()
-    |> Arb.convert (Duration.FromTimeSpan) (fun d -> d.ToTimeSpan())
+      |> Arb.convert (Duration.FromTimeSpan) (fun d -> d.ToTimeSpan())
 
-  static member HashMap() =
-    let nonNullKey = fun (KeyValue (k, _)) -> not (isNull (box k))
-    let filter list = List.filter nonNullKey list
-    Arb.Default.FsList()
-    |> Arb.convert (filter >> HashMap.ofListPair) HashMap.toListPair
+  static member Map() =
+    Arb.Default.Map<NonEmptyString, 'value>()
 
   static member Value() =
-    let floats = Arb.generate<NormalFloat> |> Gen.map (fun (NormalFloat f) -> Float f)
-    let int64s = Arb.from<int64> |> Arb.convert Int64 (function Int64 ii -> ii | _ -> failwith "Not an Int64")
-    let bigints = Arb.from<bigint> |> Arb.convert BigInt (function BigInt bi -> bi | _ -> failwith "Not a BigInt")
+    let floats = Arb.generate<NormalFloat> |> Gen.map (fun (NormalFloat f) -> Value.Float f)
+    let int64s = Arb.from<int64> |> Arb.convert Value.Int64 (function Value.Int64 ii -> ii | _ -> failwith "Not an Int64")
+    let bigints = Arb.from<bigint> |> Arb.convert Value.BigInt (function Value.BigInt bi -> bi | _ -> failwith "Not a BigInt")
     let generator =
       Gen.frequency [
         6, floats
@@ -54,9 +51,9 @@ type Arbs =
         2, bigints.Generator
       ]
     let shrinker = function
-      | Float f -> Arb.shrink f |> Seq.map Float
-      | Int64 _ as ii -> int64s.Shrinker ii
-      | BigInt _ as bi -> bigints.Shrinker bi
+      | Value.Float f -> Arb.shrink f |> Seq.map Value.Float
+      | Value.Int64 _ as ii -> int64s.Shrinker ii
+      | Value.BigInt _ as bi -> bigints.Shrinker bi
       | otherwise -> Seq.empty
     Arb.fromGenShrink (generator, shrinker)
 
@@ -65,11 +62,11 @@ type Arbs =
          not <| Double.IsInfinity f
       && not <| Double.IsNaN f
     Arb.Default.Derive()
-    |> Arb.filter (function
-      | Pow (_, n)    -> isNormal n
-      | Offset (_, f) -> isNormal f
-      | Scaled (_, f) -> isNormal f
-      | Other x -> not (isNull x)
+      |> Arb.filter (function
+      | U.Pow (_, n)    -> isNormal n
+      | U.Offset (_, f) -> isNormal f
+      | U.Scaled (_, f) -> isNormal f
+      | U.Other x -> not (isNull x)
       | _ -> true)
 
   static member Gauge() =
@@ -77,39 +74,35 @@ type Arbs =
          not <| Double.IsInfinity f
       && not <| Double.IsNaN f
     Arb.Default.Derive()
-    |> Arb.filter (function | Gauge (f, units) -> isNormal (f.toFloat()))
+      |> Arb.filter (function | Gauge (f, units) -> isNormal f.asFloat)
 
   static member Instant() =
     Arb.Default.DateTimeOffset()
     |> Arb.convert Instant.FromDateTimeOffset (fun i -> i.ToDateTimeOffset())
 
-  static member SpanData(): Arbitrary<SpanData> =
+  static member SpanData(): Arbitrary<SpanMessage> =
     let generator = gen {
       let! traceId = Arb.generate<TraceId>
       let! spanId = Arb.generate<SpanId>
       let! parent = Gen.oneof [ Gen.constant None; Arb.generate<SpanId> |> Gen.map Some ]
-      let context = SpanContext(traceId, spanId, ?parentSpanId=parent)
+      let context = SpanContext(traceId, spanId, parent)
       let! (NonEmptyString label) = Arb.generate<NonEmptyString>
       let! started = Arb.generate<EpochNanoSeconds>
-      let ended = started + 1_340_000_000L // 1.34s
+      let finished = started + 1_340_000_000L // 1.34s
       let! flags = Arb.generate<SpanFlags>
-      let! attrs = Arb.generate<Dictionary<string, SpanAttrValue>>
+      let! attrs = Arb.generate<Dictionary<string, Value>>
       let! status = Arb.generate<SpanStatus>
-
-      return { new SpanData with
-                 member x.context = context
-                 member x.kind = SpanKind.Client
-                 member x.label = label
-                 member x.started = started
-                 member x.finished = ended
-                 member x.elapsed = Duration.FromNanoseconds (ended - started)
-                 member x.isRecording = false
-                 member x.flags = flags
-                 member x.links = [] :> IReadOnlyList<_>
-                 member x.events = [] :> IReadOnlyList<_>
-                 member x.attrs = attrs :> IReadOnlyDictionary<_,_>
-                 member x.status = status } }
-    let shrinker (s: SpanData): SpanData seq = Seq.empty
+      let dto = Model.SpanMessage(context)
+      dto.label <- label
+      dto.started <- started
+      dto.finished <- Some finished
+      dto.spanKind <- SpanKind.Internal
+      dto.status <- status
+      dto.setAttributes attrs
+      dto.flags <- flags
+      return dto :> Logary.SpanMessage
+    }
+    let shrinker (s: SpanMessage): SpanMessage seq = Seq.empty
     Arb.fromGenShrink (generator, shrinker)
 
   static member Exception() =

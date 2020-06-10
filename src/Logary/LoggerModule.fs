@@ -1,52 +1,39 @@
 ﻿namespace Logary
 
+open System
+open System.Diagnostics
+open System.Runtime.CompilerServices
 open Hopac
 open Hopac.Infixes
-open System.Runtime.CompilerServices
-open System.Diagnostics
 open Logary
-open NodaTime
+open Logary.Internals
+open Logary.Model
+open Logary.Trace
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Logger =
-  let defaultBackPressurePutBufferTimeOut = Duration.FromMinutes 1L
 
-  let internal ensureName name (m: Message) =
-    if m.name.isEmpty then { m with name = name } else m
+  /// Log the message without blocking, and ignore how it went. If all targets' buffers are full, the message is
+  /// dropped immediately. This is the safest function to log with, from a liveness perspective.
+  let log (logger: Logger) message: unit =
+    queueIgnore (logger.logWithAck(false, message))
 
-  /// Log the message without blocking, and ignore its result.
-  /// If the buffer is full, drop the message.
-  let logWith (logger: Logger) level messageFactory: unit =
-    let factory = messageFactory >> ensureName logger.name
-    queueIgnore (logger.logWithAck (false, level) factory)
-
-  /// Log the message without blocking, and ignore its result.
-  /// If the buffer is full, drop the message.
-  let logSimple (logger: Logger) msg: unit =
-    logWith logger msg.level (fun _ -> ensureName logger.name msg)
-
-  /// log message, but don't await all targets to flush. And backpressure the buffers.
-  ///
-  /// default `waitForBuffersTimeout` is 1 minutes to back pressure the buffers (not the backend process after target buffer)
-  let logWithBP (logger: Logger) logLevel messageFactory : Alt<unit> =
-    let factory =
-      messageFactory
-      >> Message.waitForBuffersTimeout defaultBackPressurePutBufferTimeOut
-      >> ensureName logger.name
-    logger.logWithAck (true, logLevel) factory ^-> ignore
+  /// Logs the message with back pressure; this means that if the Alt is committed to, all target buffers have accepted
+  /// the message. Otherwise, if the Alt is not committed to, at least one target buffer rejected the message.
+  let logBP (logger: Logger) message: Alt<bool> =
+    logger.logWithAck(true, message) ^-> Result.isOk
 
   /// Log the message, leaving any error result to be handled by the registry error handler.
-  /// The returned promise will be waiting for buffer's backend target to flush its messages.
-  ///
-  /// By default `waitForBuffersTimeout` is at 1 minute. This is in order for back pressure to wait for the buffers
-  /// (not the actual backend's after-target buffer).
-  let logAck (logger: Logger) level messageFactory: Promise<unit> =
-    let factory =
-      messageFactory
-      >> Message.waitForBuffersTimeout defaultBackPressurePutBufferTimeOut
-      >> ensureName logger.name
-    logger.logWithAck (true, level) factory
-    >>=* function | Ok ack -> ack | _ -> Promise.unit
+  /// The returned Promise will be waiting for all matched targets to ACK the message, or if there was a failure,
+  /// returns false as the result of the promise.
+  let logAck (logger: Logger) message: Promise<bool> =
+    logger.logWithAck(true, message) >>=* function
+      | Ok ack -> ack ^->. true
+      | Result.Error _ -> Promise false :> _
+
+  /// Logs the message and hands back a LogResult. Does not wait for target buffers.
+  let logWithAck (logger: Logger) message =
+    logger.logWithAck(false, message)
 
   /// Sets the Logger's name.
   let setPointName (name: PointName) (logger: Logger): Logger =
@@ -62,265 +49,377 @@ module Logger =
     setPointName (PointName.setEnding ending logger.name) logger
 
   /// Applies a `Message -> Message` pipe to the logger's `logWithAck` function.
-  let apply (middleware: Message -> Message) (logger: Logger): Logger =
+  let apply (middleware: Model.LogaryMessageBase -> unit) (logger: Logger): Logger =
     { new LoggerWrapper(logger) with
-        override x.logWithAck (waitForBuffers, logLevel) messageFactory =
-          logger.logWithAck (waitForBuffers, logLevel) (messageFactory >> middleware)
+        override x.logWithAck (waitForBuffers, message) =
+          let m =
+            match message with
+            | :? LogaryMessageBase as bm -> bm
+            | _ -> message.getAsBase Model.EventMessage
+          middleware m
+          logger.logWithAck (waitForBuffers, m)
     }
     :> Logger
 
 [<AutoOpen>]
 module LoggerEx =
   type Logger with
+    [<CompiledName "Log">]
+    member x.log(message, ?builder): unit =
+      builder |> Option.iter (fun f -> f message)
+      Logger.log x message
 
-    /// Log a message, but don't await all targets to flush.
-    /// Returns whether the message was successfully placed in the buffers.
-    ///
-    /// if the buffer is full, drop this message, return false
-    member x.log logLevel (messageFactory: LogLevel -> Message): Alt<bool> =
-      let factory =
-        messageFactory
-        >> Logger.ensureName x.name
-      x.logWithAck (false, logLevel) factory ^-> function
-      | Ok _ -> true
-      | _ -> false
+    [<CompiledName "LogBP">]
+    member x.logBP(message, ?builder) : Alt<bool> =
+      builder |> Option.iter (fun f -> f message)
+      Logger.logBP x message
 
-    member x.logSimple message: unit =
-      Logger.logSimple x message
+    [<CompiledName "LogAck">]
+    member x.logAck(message, ?builder): Promise<bool> =
+      builder |> Option.iter (fun f -> f message)
+      Logger.logAck x message
 
-    member x.logWith level messageFactory: unit =
-      Logger.logWith x level messageFactory
-
-    member x.logWithBP level messageFactory: Alt<unit> =
-      Logger.logWithBP x level messageFactory
-
-    member x.logAck level messageFactory: Promise<unit> =
-      Logger.logAck x level messageFactory
-
+    [<CompiledName "Apply">]
     member x.apply transform: Logger =
       Logger.apply transform x
 
-    member x.verbose (messageFactory: LogLevel -> Message): unit =
-      Logger.logWith x Verbose messageFactory
+    /// Also see: `eventBP`, `eventAck`, `eventWithAck` and the `log*` alternatives.
+    [<CompiledName "Event">]
+    member x.event(event: string, ?builder): unit =
+      let m = Model.EventMessage(event)
+      builder |> Option.iter (fun f -> f m)
+      Logger.log x m
 
-    member x.verboseWithBP (messageFactory: LogLevel -> Message): Alt<unit> =
-      Logger.logWithBP x Verbose messageFactory
+    /// Also see: `event`, `eventAck`, `eventWithAck` and the `log*` alternatives.
+    [<CompiledName "EventBP">]
+    member x.eventBP(event: string, ?builder): Alt<unit> =
+      let m = Model.EventMessage(event)
+      builder |> Option.iter (fun f -> f m)
+      Logger.logBP x m |> Alt.Ignore
 
-    member x.verboseWithAck (messageFactory: LogLevel -> Message): Promise<unit> =
-      Logger.logAck x Verbose messageFactory
+    /// Also see: `event`, `eventBP`, `eventWithAck` and the `log*` alternatives.
+    [<CompiledName "EventAck">]
+    member x.eventAck(event: string, ?builder): Promise<unit> =
+      let m = Model.EventMessage(event)
+      builder |> Option.iter (fun f -> f m)
+      Logger.logAck x m >>-*. ()
 
-    member x.debug (messageFactory: LogLevel -> Message): unit =
-      Logger.logWith x Debug messageFactory
+    /// Also see: `event`, `eventBP`, `eventAck` and the `log*` alternatives.
+    [<CompiledName "EventWithAck">]
+    member x.eventWithAck(event: string, ?builder): LogResult =
+      let m = Model.EventMessage event
+      builder |> Option.iter (fun f -> f m)
+      x.logWithAck(true, m)
 
-    member x.debugWithBP (messageFactory: LogLevel -> Message): Alt<unit> =
-      Logger.logWithBP x Debug messageFactory
+    // verbose, debug, info-level events:
 
-    member x.debugWithAck (messageFactory: LogLevel -> Message): Promise<unit> =
-      Logger.logAck x Debug messageFactory
+    [<CompiledName "Verbose">]
+    member x.verbose(message, ?builder) =
+      let m = (Model.EventMessage(message, None, level=Verbose))
+      builder |> Option.iter (fun f -> f m)
+      Logger.log x m
 
-    member x.info messageFactory: unit =
-      Logger.logWith x Info messageFactory
+    [<CompiledName "Debug">]
+    member x.debug(message, ?builder) =
+      let m = (Model.EventMessage(message, None, level=Debug))
+      builder |> Option.iter (fun f -> f m)
+      Logger.log x m
 
-    member x.infoWithBP messageFactory: Alt<unit> =
-      Logger.logWithBP x Info messageFactory
+    [<CompiledName "Info">]
+    member x.info(message, ?builder) =
+      let m = (Model.EventMessage(message, None, level=Info))
+      builder |> Option.iter (fun f -> f m)
+      Logger.log x m
 
-    member x.infoWithAck (messageFactory: LogLevel -> Message): Promise<unit> =
-      Logger.logAck x Info messageFactory
+    // the below have -Ack and -BP overloads
 
-    member x.warn messageFactory: unit =
-      Logger.logWith x Warn messageFactory
+    [<CompiledName "Warn">]
+    member x.warn(message, ?builder): unit =
+      let m = (Model.EventMessage(message, None, level=Warn))
+      builder |> Option.iter (fun f -> f m)
+      Logger.log x m
 
-    member x.warnWithBP messageFactory: Alt<unit> =
-      Logger.logWithBP x Warn messageFactory
+    [<CompiledName "Warn">]
+    member x.warn(message: string, e: exn, ?builder): unit =
+      let m = Model.EventMessage(message, None, level=Warn, error=e.toErrorInfo())
+      builder |> Option.iter (fun f -> f m)
+      Logger.log x m
 
-    member x.warnWithAck (messageFactory: LogLevel -> Message): Promise<unit> =
-      Logger.logAck x Warn messageFactory
+    [<CompiledName "WarnBP">]
+    member x.warnBP(message, ?builder): Alt<bool> =
+      let m = (Model.EventMessage(message, None, level=Warn))
+      builder |> Option.iter (fun f -> f m)
+      Logger.logBP x m
 
-    member x.error messageFactory: unit =
-      Logger.logWith x Error messageFactory
+    [<CompiledName "WarnBPIgnore">]
+    member x.warnBPIgnore(message, ?builder): Alt<unit> =
+      x.warnBP(message, ?builder=builder) |> Alt.Ignore
 
-    member x.errorWithBP messageFactory: Alt<unit> =
-      Logger.logWithBP x Error messageFactory
+    [<CompiledName "WarnAck">]
+    member x.warnAck(message, ?builder): Promise<bool> =
+      let m = (Model.EventMessage(message, None, level=Warn))
+      builder |> Option.iter (fun f -> f m)
+      Logger.logAck x m
 
-    member x.errorWithAck (messageFactory: LogLevel -> Message): Promise<unit> =
-      Logger.logAck x Error messageFactory
+    [<CompiledName "WarnAckIgnore">]
+    member x.warnAckIgnore(message, ?builder): Promise<unit> =
+      x.warnAck(message, ?builder=builder) >>-*. ()
 
-    member x.fatal messageFactory: unit =
-      Logger.logWith x Fatal messageFactory
 
-    member x.fatalWithBP messageFactory: Alt<unit> =
-      Logger.logWithBP x Fatal messageFactory
+    [<CompiledName "Error">]
+    member x.error(message, ?builder): unit =
+      let m = Model.EventMessage(message, None, level=Error)
+      builder |> Option.iter (fun f -> f m)
+      Logger.log x m
 
-    member x.fatalWithAck (messageFactory: LogLevel -> Message): Promise<unit> =
-      Logger.logAck x Fatal messageFactory
+    [<CompiledName "Error">]
+    member x.error(message: string, e: exn, ?builder): unit =
+      let m = Model.EventMessage(message, None, level=Error, error=e.toErrorInfo())
+      builder |> Option.iter (fun f -> f m)
+      Logger.log x m
 
-    member x.timeFun (f: 'input -> 'res,
-                      ?measurement: string,
-                      ?transform: Message -> Message,
-                      ?waitForAck: bool,
-                      ?logBefore: bool,
-                      [<CallerMemberName>] ?memberName: string,
-                      [<CallerFilePath>] ?path: string,
-                      [<CallerLineNumber>] ?line: int)
-                      : 'input -> 'res =
-      let measurement = measurement |> Option.bind nullIsNone |> Option.orElse memberName |> Option.defaultValue "time"
-      let transform = defaultArg transform id
-      let waitForAck = defaultArg waitForAck false
-      let logBefore = defaultArg logBefore false
+    [<CompiledName "ErrorBP">]
+    member x.errorBP(message, ?builder): Alt<bool> =
+      let m = Model.EventMessage(message, None, level=Error)
+      builder |> Option.iter (fun f -> f m)
+      Logger.logBP x m
+
+    [<CompiledName "ErrorBPIgnore">]
+    member x.errorBPIgnore(message, ?builder): Alt<unit> =
+      x.errorBP(message, ?builder=builder) |> Alt.Ignore
+
+    [<CompiledName "ErrorAck">]
+    member x.errorAck(message, ?builder): Promise<bool> =
+      let m = Model.EventMessage(message, None, level=Error)
+      builder |> Option.iter (fun f -> f m)
+      Logger.logAck x m
+
+    [<CompiledName "ErrorAckIgnore">]
+    member x.errorAckIgnore(message, ?builder): Promise<unit> =
+      x.errorAck(message, ?builder=builder) >>-*. ()
+
+
+    [<CompiledName "Fatal">]
+    member x.fatal(message, ?builder): unit =
+      let m = Model.EventMessage(message, None, level=Fatal)
+      builder |> Option.iter (fun f -> f m)
+      Logger.log x m
+
+    [<CompiledName "Fatal">]
+    member x.fatal(message: string, e: exn, ?builder): unit =
+      let m = Model.EventMessage(message, None, level=Fatal, error=e.toErrorInfo())
+      builder |> Option.iter (fun f -> f m)
+      Logger.log x m
+
+    [<CompiledName "FatalBP">]
+    member x.fatalBP(message, ?builder): Alt<bool> =
+      let m = Model.EventMessage(message, None, level=Fatal)
+      builder |> Option.iter (fun f -> f m)
+      Logger.logBP x m
+
+    [<CompiledName "FatalBPIgnore">]
+    member x.fatalBPIgnore(message, ?builder): Alt<unit> =
+      x.fatalBP(message, ?builder=builder) |> Alt.Ignore
+
+    [<CompiledName "FatalAck">]
+    member x.fatalAck(message, ?builder): Promise<bool> =
+      let m = Model.EventMessage(message, None, level=Fatal)
+      builder |> Option.iter (fun f -> f m)
+      Logger.logAck x m
+
+    [<CompiledName "FatalAckIgnore">]
+    member x.fatalAckIgnore(message, ?builder): Promise<unit> =
+      x.fatalAck(message, ?builder=builder) >>-*. ()
+
+    // gauges
+
+    [<CompiledName "Gauge">]
+    member x.gauge(gauge, labels, ?builder): unit =
+      let m = Model.GaugeMessage(gauge, labels)
+      builder |> Option.iter (fun f -> f m)
+      Logger.log x m
+
+    [<CompiledName "GaugeBP">]
+    member x.gaugeBP(gauge, labels, ?builder): Alt<unit> =
+      let m = Model.GaugeMessage(gauge, labels)
+      builder |> Option.iter (fun f -> f m)
+      Logger.logBP x m |> Alt.Ignore
+
+    [<CompiledName "GaugeAck">]
+    member x.gaugeAck(gauge, labels, ?builder): Promise<unit> =
+      let m = Model.GaugeMessage(gauge, labels)
+      builder |> Option.iter (fun f -> f m)
+      Logger.logAck x m >>-*. ()
+
+    [<CompiledName "GaugeWithAck">]
+    member x.gaugeWithAck(gauge, labels, ?builder): LogResult =
+      let m = Model.GaugeMessage(gauge, labels)
+      builder |> Option.iter (fun f -> f m)
+      x.logWithAck(true, m)
+
+
+    // spans/timers:
+
+    [<CompiledName "TimeFun">]
+    member x.timeFunWrap (fn: 'a -> 'b, ?measurement: string, ?builder,
+                          [<CallerMemberName>] ?memberName: string, [<CallerFilePath>] ?file: string,
+                          [<CallerLineNumber>] ?line: int): 'a -> 'b =
+
+      let measurement =
+        measurement
+          |> Option.bind nullIsNone
+          |> Option.orElse memberName
+          |> Option.defaultValue "time"
+
+      let log (ts: EpochNanoSeconds) (dur: Gauge) =
+        let labels = Map [
+          "logger", x.name.ToString()
+          "gauge_name", measurement
+        ]
+        let m = Model.GaugeMessage(dur, labels, timestamp=ts, level=Debug)
+        m.addCallerInfo(defaultArg memberName "timeFunWrap", ?file=file, ?lineNo=line)
+        builder |> Option.iter (fun f -> f m)
+        x.log m
+
       fun input ->
-        if logBefore then
-          x.verbose (Message.eventX "Before {measurement}" >> Message.setField "measurement" measurement)
-        let ts = StopwatchTicks.getTimestamp()
-        let res = f input
-        let dur = Gauge.ofStopwatchTicks (ts - StopwatchTicks.getTimestamp())
-        let cb dur =
-          fun level ->
-            dur
-            |> Message.gaugeWithUnit x.name measurement
-            |> Message.setLevel level
-            |> Message.addCallerInfo (memberName, path, line)
-            |> transform
-        let logged =
-          if waitForAck then
-            x.debugWithAck (cb dur)
-          else
-            x.debug (cb dur)
-            Promise.unit
-
-        while not (Promise.Now.isFulfilled logged) do
-          System.Threading.Thread.Sleep(5)
-
+        let ts = Global.getTimestamp()
+        let res, dur = Stopwatch.time (fun () -> fn input)
+        log ts dur
         res
 
-    member x.timeJob (xJ: Job<'a>,
-                      ?measurement: string,
-                      ?transform: Message -> Message,
-                      ?waitForAck: bool,
-                      ?logBefore: bool,
-                      [<CallerMemberName>] ?memberName: string,
-                      [<CallerFilePath>] ?path: string,
-                      [<CallerLineNumber>] ?line: int)
-                      : Job<'a> =
-      let measurement = measurement |> Option.bind nullIsNone |> Option.orElse memberName |> Option.defaultValue "time"
-      let transform = defaultArg transform id
-      let waitForAck = defaultArg waitForAck false
-      let logBefore = defaultArg logBefore false
-      let cb dur =
-        fun level ->
-          dur
-          |> Message.gaugeWithUnit x.name measurement
-          |> Message.setLevel level
-          |> Message.addCallerInfo (memberName, path, line)
-          |> transform
-      let onComplete dur =
-        if waitForAck then x.logAck Debug (cb dur) :> Job<_>
-        else x.log Debug (cb dur) |> Job.Ignore
-      let timedJob =
-        Job.timeJob onComplete xJ
-      if logBefore then
-        x.log Verbose (Message.eventX "Before {measurement}" >> Message.setField "measurement" measurement)
-        >>=. timedJob
-      else
-        timedJob
 
-    member x.timeAlt (xA: Alt<'a>,
-                      ?measurement: string,
-                      ?transform: Message -> Message,
-                      ?waitForAck: bool,
-                      ?logBefore: bool,
-                      [<CallerMemberName>] ?memberName: string,
-                      [<CallerFilePath>] ?path: string,
-                      [<CallerLineNumber>] ?line: int)
-                      : Alt<'a> =
-      let measurement = measurement |> Option.bind nullIsNone |> Option.orElse memberName |> Option.defaultValue "time"
-      let transform = defaultArg transform id
-      let waitForAck = defaultArg waitForAck false
-      let logBefore = defaultArg logBefore false
-      let cb wasNacked dur =
-        fun level ->
-          Message.gaugeWithUnit x.name measurement dur
-          |> Message.tag (if wasNacked then "nack" else "ack")
-          |> Message.setLevel level
-          |> Message.addCallerInfo (memberName, path, line)
-          |> transform
-      let onComplete dur =
-        if waitForAck then x.logAck Debug (cb true dur) :> Job<_>
-        else x.log Debug (cb true dur) |> Job.Ignore
-      let onNack dur =
-        if waitForAck then x.logAck Debug (cb false dur) :> Job<_>
-        else x.log Debug (cb false dur) |> Job.Ignore
-      let timedAlt =
-        Alt.timeJob onComplete onNack xA
-      if logBefore then
-        Alt.prepareJob (fun () ->
-          x.log Verbose (Message.eventX "Before {measurement}" >> Message.setField "measurement" measurement)
-          >>-. timedAlt)
-      else timedAlt
+    [<CompiledName "TimeJob">]
+    member x.timeJob (xJ: Job<'a>, ?measurement: string, ?builder,
+                     [<CallerMemberName>] ?memberName: string, [<CallerFilePath>] ?file: string,
+                     [<CallerLineNumber>] ?line: int): Job<'a> =
 
-    member x.timeScopeT (scopeName: string) (transform: Message -> Message): TimeLogger =
-      let name = x.name |> PointName.setEnding scopeName
-      let bisections: (StopwatchTicks * string) list ref = ref []
+      let measurement =
+        measurement
+          |> Option.bind nullIsNone
+          |> Option.orElse memberName
+          |> Option.defaultValue "time"
 
-      let sw = Stopwatch.StartNew()
+      let cb ts dur =
+        let labels = Map [
+          "logger", x.name.ToString()
+          "gauge_name", measurement
+        ]
+        let m = Model.GaugeMessage(dur, labels, timestamp=ts, level=Debug)
+        m.addCallerInfo(defaultArg memberName "timeJob", ?file=file, ?lineNo=line)
+        builder |> Option.iter (fun f -> f m)
+        m
 
-      let addSpan (m, i) (span: StopwatchTicks, label: string) =
-        let spanName = PointName [| PointName.format name ; "span"; string i |]
-        let spanLabelName = PointName.setEnding "label" spanName
+      let onComplete ts dur = x.logBP (cb ts dur) ^->. ()
 
-        let m' =
-          m
-          |> Message.addGauge (PointName.format spanName) (Gauge.ofStopwatchTicks span)
-          |> Message.setContext (PointName.format spanLabelName) label
+      Job.timeJob onComplete xJ
 
-        m', i + 1L
+    [<CompiledName "TimeAlt">]
+    member x.timeAlt (xA: Alt<'a>, ?measurement: string, ?builder,
+                      [<CallerMemberName>] ?memberName: string, [<CallerFilePath>] ?file: string,
+                      [<CallerLineNumber>] ?line: int): Alt<'a> =
 
-      let addSpans m =
-        if !bisections = [] then m else
-        !bisections |> List.fold addSpan (m, 0L) |> fst
+      let measurement =
+        measurement
+          |> Option.bind nullIsNone
+          |> Option.orElse memberName
+          |> Option.defaultValue "time"
 
-      let stop (sw: Stopwatch) (transformer: Message -> Message) =
-        sw.Stop()
-        fun level ->
-          sw.toGauge()
-          |> Message.gaugeWithUnit name "duration"
-          |> Message.setLevel level
-          |> transformer
-          |> addSpans
+      let cb ts wasNacked dur =
+        let labels = Map [
+          "logger", x.name.ToString()
+          "gauge_name", measurement
+          "outcome", if wasNacked then "nack" else "ack"
+        ]
+        let m = Model.GaugeMessage(dur, labels, timestamp=ts, level=Debug)
+        m.addCallerInfo(defaultArg memberName "timeAlt", ?file=file, ?lineNo=line)
+        builder |> Option.iter (fun f -> f m)
+        m
 
-      let bisect (sw: Stopwatch): string -> unit =
-        fun label ->
-          lock bisections <| fun () ->
-          match !bisections with
-          | [] ->
-            bisections := (sw.ElapsedTicks, label) :: []
-          | (latest, _) :: _ as bs ->
-            bisections := (sw.ElapsedTicks - latest, label) :: bs
+      let onComplete ts dur = x.logBP (cb ts true dur)
+      let onNack ts dur = x.logBP (cb ts false dur) ^->. ()
 
-      { new TimeLogger with
-          member __.Dispose () =
-            x.logWith Info (stop sw transform)
+      Alt.timeJob onComplete onNack xA
 
-          member __.elapsed =
-            Duration.FromTimeSpan sw.Elapsed
+    [<CompiledName "Scoped">]
+    member x.scoped label =
+      match x with
+      | :? SpanLogger as s ->
+        s.startChild(label)
+      | _ ->
+        x.startSpan(label)
 
-          member y.bisect label =
-            bisect sw label
+    [<CompiledName "Scoped">]
+    member x.scoped(label: PointName) =
+      x.scoped(label.ToString())
 
-          member y.finish messageTransform =
-            x.logWith Info (stop sw messageTransform >> transform)
 
-          member y.logWithAck (waitForBuffers, logLevel) messageFactory =
-            x.logWithAck (waitForBuffers, logLevel) (messageFactory >> transform)
+    // Deferred message constructor methods:
 
-          member y.name = name
-          member y.level = x.level
-      }
+    [<CompiledName "LogWithBP">]
+    member x.logWithBP logLevel messageFactory =
+      if logLevel >= x.level then x.logBP (messageFactory logLevel) |> Alt.Ignore
+      else Alt.unit ()
 
-    /// Print the ToString representation of the Job before and after it is executed.
-    member x.beforeAfter atLevel (xJ: Job<'x>): Job<'x> =
-      job {
-        x.logWith atLevel (fun level -> Message.eventX (sprintf "Before %O" xJ) level)
-        let! res = xJ
-        x.logWith atLevel (fun level -> Message.eventX (sprintf "After %O" xJ) level)
-        return res
-      }
+
+    [<CompiledName "DebugWithBP">]
+    member x.debugWithBP messageFactory =
+      if x.level >= Debug then x.logBP (messageFactory Debug) |> Alt.Ignore
+      else Alt.unit ()
+
+    [<CompiledName "DebugWithAck">]
+    member x.debugWithAck messageFactory =
+      if x.level >= Debug then x.logAck (messageFactory Debug) >>-*. ()
+      else Promise.unit
+
+
+    [<CompiledName "InfoWithBP">]
+    member x.infoWithBP messageFactory =
+      if x.level >= Info then x.logBP (messageFactory Info) |> Alt.Ignore
+      else Alt.unit ()
+
+    [<CompiledName "InfoWithAck">]
+    member x.infoWithAck messageFactory =
+      if x.level >= Info then x.logAck (messageFactory Info) >>-*. ()
+      else Promise.unit
+
+
+    [<CompiledName "WarnWithBP">]
+    member x.warnWithBP messageFactory =
+      if x.level >= Warn then x.logBP (messageFactory Warn) |> Alt.Ignore
+      else Alt.unit ()
+
+    [<CompiledName "WarnWithAck">]
+    member x.warnWithAck messageFactory =
+      if x.level >= Warn then x.logAck (messageFactory Warn) >>-*. ()
+      else Promise.unit
+
+
+    [<CompiledName "ErrorWithBP">]
+    member x.errorWithBP messageFactory =
+      if x.level >= Error then x.logBP(messageFactory Error) |> Alt.Ignore
+      else Alt.unit ()
+
+    [<CompiledName "ErrorWithAck">]
+    member x.errorWithAck messageFactory =
+      if x.level >= Error then x.logAck (messageFactory Error) >>-*. ()
+      else Promise.unit
+
+
+    [<CompiledName "FatalWithBP"; Obsolete "It doesn't make sense to use a deferred message callback for Fatal level logs. Rewrite as logger.fatalBP(message) or logger.fatalBP(message, fun m -> m.setField(\"key\", value))">]
+    member x.fatalWithBP messageFactory = x.logBP (messageFactory Fatal) |> Alt.Ignore
+
+    [<CompiledName "FatalWithAck"; Obsolete "It doesn't make sense to use a deferred message callback for Fatal level logs. Rewrite as logger.fatalAck(message) or logger.fatalAck(message, fun m -> m.setField(\"key\", value))">]
+    member x.fatalWithAck messageFactory = x.logAck(messageFactory Fatal) >>-*. ()
+
+
+module private Example =
+  let doBigComputerStuff () =
+    42
+
+  let logIn (logger: Logger) =
+    logger.event("User logged in", fun e -> e.setField("user", Value.Str "12345"))
+
+    use scope = logger.scoped "computing the meaning to life"
+    let res = doBigComputerStuff ()
+    scope.info("Found solution, it's all in the logs!", fun m -> m.setField("res", res))
+    res

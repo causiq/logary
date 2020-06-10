@@ -4,7 +4,6 @@ module Logary.Targets.BadBoy
 open Hopac
 open Hopac.Infixes
 open Logary
-open Logary.Message
 open Logary.Internals
 open Logary.Configuration.Target
 open NodaTime
@@ -26,7 +25,7 @@ module internal Impl =
     let rec singleLoopDelay () =
       let take =
         RingBuffer.take api.requests ^=> function
-          | Log (message, ack) ->
+          | Log (_, ack) ->
             ilogger.timeAlt (timeOut (conf.delay.toTimeSpanSafe()), "single loop delay")
             >>=. ack *<= ()
             >>= singleLoopDelay
@@ -60,24 +59,24 @@ module internal Impl =
                 message :: entries,
                 ack *<= () :: acks,
                 flushes
-              | Flush (ackCh, nack) ->
+              | Flush (ackCh, _) ->
                 entries,
                 acks,
                 ackCh *<= () :: flushes)
               ([], [], [])
 
-          ilogger.timeAlt (timeOut (conf.delay.toTimeSpanSafe()), "batch loop delay, delaying", logBefore=true) ^=> fun () ->
+          ilogger.timeAlt (timeOut (conf.delay.toTimeSpanSafe()), "batch loop delay, delaying") ^=> fun () ->
           Job.conIgnore acks >>=. Job.conIgnore flushes >>= batchLoopDelay
 
       let shutdown =
         api.shutdownCh ^=> fun ack -> IVar.fill ack ()
 
-      ilogger.timeAlt (take, "batch loop delay, take", logBefore=true) <|> shutdown
+      ilogger.timeAlt (take, "batch loop delay, take") <|> shutdown
 
     let batchLoop () =
       let take =
         RingBuffer.takeBatch 256us api.requests ^=> fun messages ->
-          let entries, acks, flushes =
+          let _, acks, flushes =
             // Make a single pass over the array, accumulating the entries, acks and flushes.
             messages |> Array.fold (fun (entries, acks, flushes) -> function
               | Log (message, ack) ->
@@ -94,11 +93,11 @@ module internal Impl =
       let shutdown =
         api.shutdownCh ^=> fun ack -> IVar.fill ack ()
 
-      ilogger.timeAlt (take, "batch loop, take", logBefore=true) <|> shutdown
+      ilogger.timeAlt (take, "batch loop, take") <|> shutdown
 
-    api.runtime.logger.debug (
-      eventX "Starting BadBoy with delay={delay}, batch={batch}."
-      >> setFieldsFromObject conf)
+    api.runtime.logger.event ("Starting BadBoy with delay={delay}, batch={batch}.", fun m ->
+      m.setGauge("delay", conf.delay)
+      m.setField("batch", conf.batch))
 
     if conf.batch then
       if conf.delay <> Duration.Zero then

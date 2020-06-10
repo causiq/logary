@@ -1,7 +1,6 @@
 namespace Logary.Trace
 
 open Logary
-open Logary.Message
 open Logary.Trace
 open Logary.Trace.Propagation
 open Microsoft.AspNetCore.Http
@@ -24,7 +23,7 @@ module LoggerEx =
        .setAttribute("http.route", ctx.Request.Path.Value)
        .setAttribute("http.query", ctx.Request.QueryString.Value)
        .setAttributes(attrs)
-       .start()
+       .startWith(x)
 
     if ctx.Request.Query.ContainsKey "debug" then span.debug()
 
@@ -65,7 +64,7 @@ module SpanLoggerEx =
     x.setAttribute("http.status_code", 500)
     x.setStatus(SpanCanonicalCode.InternalError, ex.ToString())
     x.setAttribute("error", true)
-    x.error (eventX "Unhandled error" >> addExn ex)
+    x.error("Unhandled exception", fun m -> m.addExn ex)
     x.finish()
 
   type SpanLogger with
@@ -114,8 +113,8 @@ module HttpContextEx =
 
     | None ->
       let created = Log.create name
-      created.buildSpan(name).start()
-      
+      created.buildSpan(name).startWith created
+
     | Some value ->
       value
 
@@ -133,8 +132,10 @@ type LogaryMiddleware(next: RequestDelegate, logger: Logger) =
       try
         do! next.Invoke(ctx)
         spanLogger.finish ctx
+          |> ignore
         return ctx
       with e ->
         spanLogger.finishWithExn (ctx, e)
+          |> ignore
         return e.reraise()
     }

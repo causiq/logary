@@ -2,9 +2,10 @@ namespace Logary.Configuration
 
 open Hopac
 open Hopac.Infixes
-open Logary.Configuration.Transformers
 open NodaTime
 open Logary
+open Logary.Internals
+open Logary.Configuration.Transformers
 
 type Cancellation = internal { cancelled: IVar<unit> }
 
@@ -20,54 +21,53 @@ module Cancellation =
     IVar.tryFill cancellation.cancelled ()
 
 [<AbstractClass>]
-type Ticker<'state,'t,'r> (initialState:'state) =
+type Ticker<'state,'t,'r>(initialState:'state) =
   let tickCh = Ch<unit> ()
 
-  abstract member Folder     : 'state -> 't -> 'state
-  abstract member HandleTick : 'state -> 'state * 'r
+  abstract reducer   : state: 'state -> 't -> 'state
+  abstract handleTick: 'state -> 'state * 'r
 
-  member this.InitialState = initialState
-  member this.Ticked = tickCh :> Alt<_>
-  member this.Tick () = tickCh *<- ()
+  member _.initialState = initialState
+  member _.ticked = tickCh :> Alt<_>
+  member _.tick () = tickCh *<- ()
 
-  member this.TickEvery (duration: Duration) =
+  member x.tickEvery(ri: RuntimeInfo, duration: Duration) =
     let cancellation = Cancellation.create ()
+
     let rec loop () =
       Alt.choose [
         timeOut (duration.toTimeSpanSafe()) ^=> fun _ ->
-          this.Tick () ^=> fun _ ->
-          loop ()
+          x.tick() ^=> loop
 
         Cancellation.isCancelled cancellation
       ]
 
-    // TODO: Job.supervise internalLogger (Policy.restart) (loop ()) |> Job.start
-    loop () |> Job.start
+    let xA = loop ()
+    Job.start (Job.superviseIgnore ri.logger Policy.exponentialBackoffForever xA)
     >>-. cancellation
 
 module Ticker =
-  let create (initialState: 's) (folder: 's -> 't -> 's) (handleTick: 's -> 's * 'r) =
-    {
-      new Ticker<'s,'t,'r> (initialState) with
-        member this.Folder state item = folder state item
-        member this.HandleTick state = handleTick state
+  let create (initialState: 's) (reducer: 's -> 't -> 's) (handleTick: 's -> 's * 'r) =
+    { new Ticker<'s,'t,'r>(initialState) with
+        member x.reducer state item = reducer state item
+        member x.handleTick state = handleTick state
     }
 
 type BufferTicker<'t> () =
-  inherit Ticker<ResizeArray<'t>,'t,list<'t>>(ResizeArray())
-    override this.Folder state item =
+  inherit Ticker<ResizeArray<'t>, 't, list<'t>>(ResizeArray())
+    override _.reducer state item =
       state.Add item
       state
 
-    override this.HandleTick state =
+    override _.handleTick state =
       ResizeArray(), state |> List.ofSeq
 
 type EWMATicker (rateUnit, alphaPeriod, iclock) =
   inherit Ticker<ExpWeightedMovAvg.EWMAState,int64,float>(ExpWeightedMovAvg.create alphaPeriod iclock)
-    override this.Folder ewma item =
+    override _.reducer ewma item =
       ExpWeightedMovAvg.update ewma item
 
-    override this.HandleTick ewma =
+    override _.handleTick ewma =
       let ewma' = ExpWeightedMovAvg.tick ewma
       let rate = ewma' |> ExpWeightedMovAvg.rateInUnit rateUnit
       ewma', rate

@@ -8,7 +8,7 @@ module Reflection =
   /// that could not be accessed without exceptions being thrown.
   ///
   /// Used by the below `propsFrom` as well as `JsonHelper`.
-  let internal memberAccessExn (fieldOrPropName: string) (e: exn): string =
+  let memberAccessExn (fieldOrPropName: string) (e: exn): string =
     sprintf "Accessing property '%s' threw '%s'.\n%O" fieldOrPropName (e.GetType().FullName) e
 
   /// Read the props from a plain old CLR object. Used a lot from C# with its
@@ -26,7 +26,7 @@ module Reflection =
                 pi.GetValue value
               with e ->
                 box (memberAccessExn prop.Label e)
-          | other ->
+          | _ ->
             //printfn "Other: %A" other
             ()
       }

@@ -15,7 +15,7 @@ let tests = [
 
       Expect.equal logger.level LogLevel.Fatal "should equal NullLogger's Fatal"
 
-      eventX "test" |> logger.info
+      Model.EventMessage "test" |> logger.info
       Expect.equal message.value "None" "should equal with no effect"
       Expect.equal message.level LogLevel.Info "should equal with no effect"
 
@@ -33,7 +33,7 @@ let tests = [
       Expect.equal (Global.getTimestamp ()) (newConfig.getTimestamp ()) "should equal with new change"
       Expect.equal (Global.getConsoleSemaphore ()) defaultSemaphore "should equal with no change"
 
-      eventX "test" |> logger.error
+      Model.EventMessage "test" |> logger.error
       Expect.equal message.value "test" "should equal with new effect"
       Expect.equal message.level LogLevel.Error "should equal with new effect"
       Expect.equal logger.level LogLevel.Warn "should equal new logger's Warn"

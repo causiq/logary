@@ -1,12 +1,13 @@
 namespace Logary.Trace.Propagation
 
 open System
+open System.Collections.Generic
 open System.Globalization
 open System.Text
 open System.Text.RegularExpressions
+open Logary
 open Logary.Trace
 open Logary.Internals.Regex
-open Logary.YoLo
 
 module internal EdgeCaseLogic =
 
@@ -26,7 +27,7 @@ module internal EdgeCaseLogic =
 
   let test_traceparent_version_0xff: Signature =
     function
-    | v, t, s when v <> 0uy ->
+    | v, _, _ when v <> 0uy ->
       0uy, TraceId.create(), SpanId.create()
     | v, t, s ->
       v, t, s
@@ -37,7 +38,7 @@ module internal EdgeCaseLogic =
     >> zeroTraceShouldRegenerateBoth
 
   let applyWithFlags value flags =
-    let v, t, s = apply value
+    let _, t, s = apply value
     t, s, flags
 
 /// https://w3c.github.io/trace-context/#trace-context-http-headers-format
@@ -200,12 +201,12 @@ module W3C =
     (?<traceFlags>[0-9A-F]{2})
     $", RegexOptions.IgnorePatternWhitespace ||| RegexOptions.IgnoreCase ||| RegexOptions.Compiled)
 
-  let inline private parseByteHex value =
+  let inline private parseByteHex (value: string) =
     match Byte.TryParse (value, NumberStyles.AllowHexSpecifier, Culture.invariant) with
     | false, _ -> None
     | true, v -> Some v
 
-  let inline private parseInt32Hex value =
+  let inline private parseInt32Hex (value: string) =
     match Int32.TryParse (value, NumberStyles.AllowHexSpecifier, Culture.invariant) with
     | false, _ -> None
     | true, v -> Some v
@@ -233,7 +234,7 @@ module W3C =
     let parse version traceId parentSpanId flags =
           fun ver (flags: SpanFlags) ->
             let t, s, f = EdgeCaseLogic.applyWithFlags (ver, traceId, parentSpanId) flags
-            SpanContext(t, s, f)
+            SpanContext(t, s, None, f)
       <!> parseByteHex version
       <*> (parseInt32Hex flags |> Option.map enum<SpanFlags>)
 
@@ -275,7 +276,7 @@ module W3C =
 module internal JaegerBaggage =
   let Prefix = "uberctx-"
 
-  let extract (source: (string * string list) list): Map<string, string> =
+  let extract (source: (string * string list) list): IReadOnlyDictionary<string, string> =
     [ for header, values in source do
         match values with
         | valueEncoded :: _ ->
@@ -284,11 +285,12 @@ module internal JaegerBaggage =
         | _ -> ()
     ]
     |> Map.ofSeq
+    :> _
 
 
   let inject setter (context: SpanContext) target =
     context.traceContext
-      |> Seq.map (fun (KeyValue (k, v)) -> sprintf "%s%s" Prefix k, (SpanAttrValue.S v).uriEncode() :: [])
+      |> Seq.map (fun (KeyValue (k, v)) -> sprintf "%s%s" Prefix k, (Value.Str v).uriEncode() :: [])
       |> Seq.fold (fun x data -> setter data x) target
 
 
@@ -345,22 +347,22 @@ module Jaeger =
               if parentSpanId = "" || parentSpanId = "0"
               then None else Some (SpanId.ofString parentSpanId)
             let flags = enum<SpanFlags>(int flags)
-            Some (SpanContext(traceId, spanId, flags, ?parentSpanId=psId))
+            Some (SpanContext(traceId, spanId, psId, flags))
           | _ ->
             None)
 
     let attrs: SpanAttr list =
       match get source DebugIdHeader with
       | (_, debugIdValue :: _) :: _ ->
-        [ DebugIdHeader, SpanAttrValue.S debugIdValue ]
+        [ KeyValuePair<_,_>(DebugIdHeader, Value.Str debugIdValue) ]
       | _ ->
         []
 
-    let traceContext: Map<string, string> =
+    let traceContext: IReadOnlyDictionary<string, string> =
       get source BaggageHeaderPrefix |> JaegerBaggage.extract
 
     attrs,
-    if Map.isEmpty traceContext then context
+    if traceContext.Count = 0 then context
     else context |> Option.map (fun ctx -> ctx.withContext traceContext)
 
   let inject (setter: Setter<'t>) (context: SpanContext) (target: 't): 't =
@@ -469,7 +471,7 @@ module B3 =
     let flags = getFlags ()
     let parentSpanIdO = getSingleExact get source ParentSpanIdHeader |> Option.map SpanId.ofString
     let traceContext = get source BaggageHeaderPrefix |> JaegerBaggage.extract
-    SpanContext(TraceId.ofString traceId, SpanId.ofString spanId, flags, ?parentSpanId=parentSpanIdO, ?traceContext=Some traceContext)))
+    SpanContext(TraceId.ofString traceId, SpanId.ofString spanId, parentSpanIdO, flags, ?traceContext=Some traceContext)))
 
   let injectMulti (setter: Setter<'a>) (context: SpanContext) (target: 'a): 'a =
     let flagsHeader, flagsValue =
@@ -494,24 +496,24 @@ module B3 =
         |> List.tryPick (function
           | Regex ExtractRegex [ traceId; spanId; flags; parentSpanId ] ->
             let psId = SpanId.ofString parentSpanId
-            Some (traceId, spanId, parseFlags flags, Some psId)
+            Some (traceId, spanId, Some psId, parseFlags flags)
 
           | Regex ExtractRegex [ traceId; spanId; flags ] ->
-            Some (traceId, spanId, parseFlags flags, None)
+            Some (traceId, spanId, None, parseFlags flags)
 
           | Regex ExtractRegex [ traceId; spanId ] ->
-            Some (traceId, spanId, SpanFlags.None, None)
+            Some (traceId, spanId, None, SpanFlags.None)
           | _ ->
             None)
-        |> Option.map (fun (traceId, spanId, flags, psIdO) ->
-          SpanContext(TraceId.ofString traceId, SpanId.ofString spanId, flags, ?parentSpanId=psIdO)
+        |> Option.map (fun (traceId, spanId, psIdO, flags) ->
+          SpanContext(TraceId.ofString traceId, SpanId.ofString spanId, psIdO, flags)
         )
 
-    let traceContext: Map<string, string> =
+    let traceContext: IReadOnlyDictionary<string, string> =
       get source BaggageHeaderPrefix |> JaegerBaggage.extract
 
     [],
-    if Map.isEmpty traceContext then context
+    if traceContext.Count = 0 then context
     else context |> Option.map (fun ctx -> ctx.withContext traceContext)
 
 

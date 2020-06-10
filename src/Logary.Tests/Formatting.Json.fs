@@ -62,9 +62,9 @@ let complexMessage: Message =
   |> Message.setContext "simple scalar key/value map" scalarKeyValueMap
   |> Message.setContext "just scalar key map" scalarKeyMap
   |> Message.setContext "no scalar key/value map" notScalarMap
-  |> Message.addGauge "svc1 request per second" (Gauge(Float 1750., Units.Scalar))
-  |> Message.addGauge "Processor.% Idle.Core 1" (Gauge(Float 0.75, Units.Percent))
-  |> Message.addGauge "methodA" (Gauge(Int64 25000000000L, Units.Scaled (Seconds, float Constants.NanosPerSecond)))
+  |> Message.addGauge "svc1 request per second" (Gauge(Value.Float 1750., Units.Scalar))
+  |> Message.addGauge "Processor.% Idle.Core 1" (Gauge(Value.Float 0.75, Units.Percent))
+  |> Message.addGauge "methodA" (Gauge(Value.Int64 25000000000L, Units.Scaled (Seconds, float Constants.NanosPerSecond)))
   |> Message.addExn ex
   |> Message.addExn (exn "another exception")
 
@@ -189,7 +189,7 @@ let tests fsc =
         testEncode<IceCream> fsc
         testEncode<Collections.Generic.IDictionary<string, IceCream>> fsc
 
-        testEncode<SpanData> fsc
+        testEncode<SpanMessage> fsc
 
         testCase "null" (fun () ->
           Json.encode null

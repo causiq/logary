@@ -18,7 +18,7 @@ let tests = [
         Prop.forAll nanoSeconds (fun epochNanoS ->
           let instant = Instant.ofEpoch epochNanoS
           let dto = instant.ToDateTimeOffset ()
-          epochNanoS = dto.timestamp)
+          epochNanoS = dto.asTimestamp)
     ]
 
     testCase "DateTimeOffset.ofEpoch" <| fun _ ->

@@ -1,8 +1,7 @@
 ﻿namespace Logary.CORS
 
 open NodaTime
-open Suave
-open Suave.Writers
+
 type HTTPOrigin = string
 
 type OriginResult =
@@ -12,13 +11,13 @@ type OriginResult =
   | Origin of origin:string
   /// Don't return this header
   | Reject
-  
+
   static member allowAll _ =
     Star
-    
+
   static member allowRequester origin =
     Origin origin
-  
+
   member x.asWebPart =
     match x with
     | Star -> setHeader "Access-Control-Allow-Origin" "*"
@@ -47,13 +46,12 @@ type CORSConfig =
       accessControlAllowHeaders = acah
       accessControlAllowMethods = fun _ -> HttpMethod.POST :: []
       accessControlMaxAge = defaultArg accessControlMaxAge (Duration.FromDays 1) }
-    
-    
+
+
 module API =
   open System
-  open Suave.Operators
-  open Suave.Successful
-  
+  open Giraffe
+
   let withOrigin config next =
     warbler (fun ctx ->
       let o = ctx.request.header "origin" |> Choice.orDefault (fun () -> "http://localhost")
@@ -79,7 +77,7 @@ module API =
           |> List.map (fun m -> m.ToString())
           |> String.concat ", "
         let aa = string config.accessControlMaxAge.TotalSeconds
-        
+
         withOrigin config (fun ao -> ao.asWebPart)
         >=> setHeader "Access-Control-Allow-Methods" am
         >=> setHeader "Access-Control-Allow-Headers" ah
@@ -95,16 +93,11 @@ namespace Logary.Ingestion
 open System.Net
 open System.Threading
 open Hopac
+open Giraffe
 open Logary
-open Logary.Configuration
-open Logary.Message
-open Logary.Formatting
 open Logary.Internals
 open Logary.Internals.Chiron
 open Logary.CORS
-open Suave
-open Suave.Successful
-open Suave.RequestErrors
 
 type HTTPConfig =
   { ilogger: Logger
@@ -112,25 +105,25 @@ type HTTPConfig =
     cancelled: Promise<unit>
     rootPath: string
     webConfig: SuaveConfig
-    onSuccess: WebPart
+    onSuccess: HttpHandler
     onError: string -> WebPart
     corsConfig: CORSConfig
   }
   interface IngestServerConfig with
     member x.cancelled = x.cancelled
     member x.ilogger = x.ilogger
-    
+
 module internal Impl =
   let printHelp (config: HTTPConfig): WebPart =
     let message = sprintf "You can post a JSON Objects to: %s" config.rootPath
     OK message
-  
+
   let onSuccess: WebPart =
     ACCEPTED "true"
-  
+
   let onError: string -> WebPart =
-    Json.encode >> Json.format >> BAD_REQUEST
-  
+    Json.String >> Json.format >> BAD_REQUEST
+
   let ingestWith (onSuccess, onError) (next: Ingest): WebPart =
     fun ctx ->
       async {
@@ -142,7 +135,7 @@ module internal Impl =
         | Result.Error err ->
           return! onError err ctx
       }
-  
+
   let createAdaptedCTS (config: HTTPConfig) =
     let cts = new CancellationTokenSource()
     start (job {
@@ -156,7 +149,7 @@ type HTTPConfig with
     let binding =
       let ep = defaultArg endpoint (IPEndPoint (IPAddress.Loopback, 8888))
       HttpBinding.create HTTP ep.Address (ep.Port |> uint16)
-      
+
     { rootPath = rootPath
       logary = logary
       ilogger = ilogger
@@ -169,7 +162,6 @@ type HTTPConfig with
 
 module HTTP =
   open Impl
-  open Logary.Adapters.Facade
   open Suave.Filters
   open Suave.Operators
   open Suave.Writers
@@ -197,15 +189,15 @@ module HTTP =
               |> LoggerAdapter.createGeneric<Suave.Logging.Logger>
         }
       Suave.Logging.Global.initialiseIfDefault logging
-      do config.ilogger.info (eventX "Starting HTTP recv-loop at {bindings}. CORS enabled={allowCORS}" >> setField "bindings" config.webConfig.bindings >> setField "allowCORS" config.corsConfig.allowCORS)
+      do config.ilogger.info("Starting HTTP recv-loop at {bindings}. CORS enabled={allowCORS}" >> setField "bindings" config.webConfig.bindings >> setField "allowCORS" config.corsConfig.allowCORS)
       use cts = createAdaptedCTS config
       let suaveConfig = { config.webConfig with cancellationToken = cts.Token }
       let webStarted, webListening = startWebServerAsync suaveConfig (api config next)
       do! Job.start (Job.fromAsync webListening |> Job.bind (IVar.fill shutdown))
       do! Job.start (Job.fromAsync webStarted |> Job.bind (fun _ -> IVar.fill started ()))
       do! config.cancelled
-      do config.ilogger.info (eventX "Stopping HTTP recv-loop at {bindings}" >> setField "bindings" config.webConfig.bindings)
+      do config.ilogger.info (Model.EventMessage "Stopping HTTP recv-loop at {bindings}" >> setField "bindings" config.webConfig.bindings)
     }
-  
+
   let create: ServerFactory<HTTPConfig> =
     IngestServer.create recv

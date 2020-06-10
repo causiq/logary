@@ -11,9 +11,9 @@ open Logary
 type Ingested =
   /// See https://github.com/fsharp/fslang-suggestions/issues/648
   /// Useful for Protobuf/gRPC ingestion points
-  | Bytes of bs:ArraySegment<byte> // TO CONSIDER: slices
+  | Bytes of bs: ArraySegment<byte> // TO CONSIDER: slices
   /// Useful for JSON/HTTP/TCP-lines ingestion points
-  | String of s:string
+  | String of s: string
   /// Create a new Ingested value from a string
   static member ofString s =
     if isNull s then nullArg "s"
@@ -69,6 +69,6 @@ module IngestServer =
       let started, shutdown as signals = IVar (), IVar ()
       Job.queue (recv signals config next)
       >>-. { started=started; shutdown=shutdown }
-      
+
   let waitForStart x = x.started
   let waitForShutdown x = x.shutdown

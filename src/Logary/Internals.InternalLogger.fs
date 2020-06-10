@@ -5,34 +5,27 @@ open Hopac.Infixes
 open Hopac.Extensions
 open NodaTime
 open Logary
+open Logary.Model
 open Logary.Internals
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal InternalLogger =
-  /// This logger is special: in the above case the Registry takes the responsibility
-  /// of shutting down all targets, but this is a stand-alone logger that is used
-  /// to log everything in Logary with, so it needs to capable of handling its
+  /// This logger is special: in the above case the Registry takes the responsibility of shutting down all targets, but
+  /// this is a stand-alone logger that is used to log everything in Logary with, so it needs to capable of handling its
   /// own disposal. It must not throw under any circumstances.
   type T =
     private {
       addCh: Ch<TargetConf>
       shutdownCh: Ch<unit>
-      messageCh: Ch<Message * Promise<unit> * Ch<ProcessResult>>
+      messageCh: Ch<Model.LogaryMessageBase * Promise<unit> * Ch<ProcessResult>>
     }
   with
     member x.name = PointName [| "Logary" |]
 
     interface Logger with // internal logger
-      member x.logWithAck (waitForBuffers, logLevel) messageFactory =
-        x.messageCh *<+->- fun replCh nack ->
-
-        let message =
-          match messageFactory logLevel with
-          | msg when msg.name.isEmpty -> { msg with name = x.name }
-          | msg -> msg
-          |> Message.setContext KnownLiterals.WaitForBuffers waitForBuffers
-
-        message, nack, replCh
+      member x.logWithAck (_, message) =
+        let m = message.getAsBase EventMessage
+        x.messageCh *<+->- fun replCh nack -> m, nack, replCh
 
       member x.name = x.name
 
@@ -44,10 +37,7 @@ module internal InternalLogger =
 
   let create ri =
     let addCh, messageCh, shutdownCh = Ch (), Ch (), Ch ()
-    let api =
-      { addCh = addCh
-        messageCh = messageCh
-        shutdownCh = shutdownCh}
+    let api = { addCh = addCh; messageCh = messageCh; shutdownCh = shutdownCh}
 
     let rec iserver targets =
       Alt.choose [
@@ -56,22 +46,9 @@ module internal InternalLogger =
           iserver [| yield! targets; yield t |]
 
         messageCh ^=> fun (message, nack, replCh) ->
-          let forwardToTarget =
-            let putBufferTimeOut =
-              message
-              |> Message.tryGetContext KnownLiterals.WaitForBuffersTimeout
-              |> Option.defaultValue Duration.Zero
-              
-            let waitForBuffers =
-              message
-              |> Message.tryGetContext KnownLiterals.WaitForBuffers
-              |> Option.defaultValue false // non blocking waiting default
-              
-            let putBufferTimeOut = if waitForBuffers then putBufferTimeOut else Duration.Zero
-            
-            Target.logAllReduce putBufferTimeOut targets message ^=> Ch.give replCh
-
-          (forwardToTarget <|> nack) ^=> fun () -> iserver targets
+          let forwardToTarget = Target.logAllReduce Duration.Zero targets message ^=> Ch.give replCh
+          (forwardToTarget <|> nack) ^=> fun () ->
+          iserver targets
 
         shutdownCh ^=> fun () ->
           targets |> Seq.Con.iterJob (fun t -> Target.shutdown t ^=> id)

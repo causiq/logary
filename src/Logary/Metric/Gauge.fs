@@ -1,10 +1,11 @@
 namespace Logary.Metric
 
+open Logary
+
 [<Struct>] // since it only has sizeof<*void> size, and thus should be easy to use in CPU registers.
 type GaugeConf =
   { conf: BasicConf
-    histogramConf: HistogramConf option
-  }
+    histogramConf: HistogramConf option }
 
   interface MetricBuilder<IGauge> with
     member x.build registry labels =
@@ -13,26 +14,27 @@ type GaugeConf =
         |> Option.map (fun conf ->
           let labelValues = conf.conf.labelNames |> Array.map (fun name -> labels.[name])
           conf |> registry.getOrCreate |> Metric.labels labelValues)
-      new Gauge(x, labels, histogramMetric) :> IGauge
+      Gauge(x, labels, histogramMetric) :> IGauge
 
     member x.conf = x.conf
 
-  static member create (name, description, ?labelNames, ?histogramConf) =
-    let basic = BasicConf.create(name, description, ?labelNames=labelNames)
+  static member create (name, description, ?units, ?labelNames, ?histogramConf) =
+    let units = defaultArg units U.Scalar
+    let basic = BasicConf.create(name, description, units, ?labelNames=labelNames)
     { conf = basic; histogramConf = histogramConf }
 
-  static member create innerConf =
+  static member create (innerConf: BasicConf) =
     { conf = innerConf; histogramConf = None }
 
-and Gauge(conf, labels, histogram) =
-  let mutable gaugeValue = new DoubleAdder()
-  let changeGaugeValueLock = obj ()
+and Gauge(gaugeConf, labels, histogram) =
+  let mutable gaugeValue = DoubleAdder()
+  let updateGaugeSem = obj ()
 
   interface IGauge with
     member x.inc value =
       match histogram with
       | Some histogram ->
-        lock changeGaugeValueLock <| fun () ->
+        lock updateGaugeSem <| fun () ->
           gaugeValue.Add value
           gaugeValue.Sum () |> histogram.observe
       | None ->
@@ -42,15 +44,12 @@ and Gauge(conf, labels, histogram) =
       (x :> IGauge).inc -value
 
     member x.set value =
-      gaugeValue <- new DoubleAdder(value)
+      gaugeValue <- DoubleAdder(value)
       histogram |> Option.iter (fun histogram -> histogram.observe value)
 
     member x.explore () =
-      let confInfo = conf.conf
-      let basicInfo = { name = confInfo.name; description = confInfo.description }
-      let gaugeValue = gaugeValue.Sum()
-      let metricInfo = { labels = labels; gaugeValue = gaugeValue }
-      basicInfo, MetricInfo.Gauge metricInfo
+      let info = { labels = labels; value = gaugeValue.Sum(); unit = gaugeConf.conf.unit }
+      gaugeConf.conf.asInfo, MetricInfo.Gauge info
 
 module GaugeConf =
   /// Consider using Histogram separately.
@@ -70,7 +69,7 @@ module GaugeConf =
   /// if you need to use the histogram when gauge, it will cause the sum operation after inc/dec.
   ///
   /// In order to ensure the histogram is more accurate under multi-threading, a lock will be held during updating.
-  /// But if it is a simple gauge, which does not use lock for multithreaded inc/dec.
+  /// But if it is a simple gauge, which does not use lock for multi-threaded inc/dec.
   let withHistogram buckets gaugeConf =
     let basicInfo = gaugeConf.conf
     let histogramMetricName = sprintf "%s_histogram" basicInfo.name

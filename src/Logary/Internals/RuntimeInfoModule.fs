@@ -1,8 +1,8 @@
 namespace Logary.Internals
 
+open Hopac
 open Logary
 open Logary.Internals
-open Hopac
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module RuntimeInfo =
@@ -13,21 +13,21 @@ module RuntimeInfo =
       host: string
       service: string
       getTimestamp: unit -> EpochNanoSeconds
-      getConsoleSemaphore: unit -> obj
+      consoleLock: DVar<Lock>
       logger: Logger
     }
     interface RuntimeInfo with
       member x.service = x.service
       member x.host = x.host
       member x.getTimestamp () = x.getTimestamp ()
-      member x.getConsoleSemaphore () = x.getConsoleSemaphore ()
+      member x.consoleLock = x.consoleLock
       member x.logger = x.logger
 
     static member create (other: RuntimeInfo) =
       { host = other.host
         service = other.service
         getTimestamp = other.getTimestamp
-        getConsoleSemaphore = other.getConsoleSemaphore
+        consoleLock = other.consoleLock
         logger = other.logger }
 
   /// Create a new RuntimeInfo record from the passed parameters.
@@ -38,7 +38,7 @@ module RuntimeInfo =
     { service = service
       host = host
       getTimestamp = Global.getTimestamp
-      getConsoleSemaphore = Global.getConsoleSemaphore
+      consoleLock = Global.semaphoreD
       logger = NullLogger.instance }
 
   let setServiceName sn: RuntimeInfo -> RuntimeInfo = function
@@ -58,12 +58,6 @@ module RuntimeInfo =
       { t with getTimestamp = fn } :> _
     | other ->
       { T.create other with getTimestamp = fn } :> _
-
-  let setGetConsoleSemaphore fn: RuntimeInfo -> RuntimeInfo = function
-    | :? T as t ->
-      { t with getConsoleSemaphore = fn } :> _
-    | other ->
-      { T.create other with getConsoleSemaphore = fn } :> _
 
   let setLogger logger: RuntimeInfo -> RuntimeInfo =
     function

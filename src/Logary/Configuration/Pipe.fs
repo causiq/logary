@@ -4,6 +4,7 @@ open System
 open Hopac
 open Hopac.Infixes
 open Logary.Configuration.Transformers
+open Logary.Internals
 open NodaTime
 
 [<Struct>]
@@ -17,7 +18,7 @@ with
     match x with | HasResult x -> Some x | _ -> None
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-[<RequireQualifiedAccessAttribute>]
+[<RequireQualifiedAccess>]
 module PipeResult =
   let hasValue (x: PipeResult<_>) =
     match x with | HasResult _ -> true | _ -> false
@@ -25,7 +26,8 @@ module PipeResult =
   let tryGet (x: PipeResult<_>) =
     match x with | HasResult x -> Some x | _ -> None
 
-  let orDefault d x =
+
+  let defaultValue d x =
     match x with | HasResult x -> x | _ -> d
 
   let create x = HasResult x
@@ -40,7 +42,7 @@ module PipeResult =
 /// 'contRes means continuation function output.
 /// 'sourceItem means pipe source element.
 /// when we have a pipe, we can pass a continuation to it,
-/// and then we can pipe source item to its builded processing
+/// and then we can pipe source item to its built processing
 [<Struct>]
 type Pipe<'contInput, 'contRes, 'sourceItem> =
   internal {
@@ -51,7 +53,7 @@ type Pipe<'contInput, 'contRes, 'sourceItem> =
 and private cont<'a,'b> = 'a -> PipeResult<'b> // just for better type annotation
 and private source<'a,'b> = 'a -> PipeResult<'b> // just for better type annotation
 
-[<RequireQualifiedAccessAttribute>]
+[<RequireQualifiedAccess>]
 module Pipe =
 
   let start<'t,'r> =
@@ -85,7 +87,7 @@ module Pipe =
     { pipe with tickTimerJobs = tickJob :: pipe.tickTimerJobs }
 
 
-  let filter predicate pipe =
+  let filter (predicate: 'message -> bool) pipe =
     pipe |> chain (fun cont -> fun prev -> if predicate prev then cont prev else NoResult)
 
   let choose chooser pipe =
@@ -104,10 +106,11 @@ module Pipe =
 
        let rec loop state =
          Alt.choose [
-           ticker.Ticked ^=> fun _ ->
+           ticker.ticked ^=> fun _ ->
              try
-               let state', item = ticker.HandleTick state
-               item |> cont
+               let state', item = ticker.handleTick state
+               item
+               |> cont
                |> function | HasResult x -> x >>=. loop state'
                            | _ -> upcast (loop state')
              with
@@ -116,11 +119,11 @@ module Pipe =
                eprintfn "%O" e
                upcast (loop state)
 
-           updateMb ^=> (ticker.Folder state >> loop)
+           updateMb ^=> (ticker.reducer state >> loop)
          ]
 
        // think about how to handle exception when ticker fun (folder/handletick throw exception)
-       loop ticker.InitialState |> Hopac.server
+       loop ticker.initialState |> Hopac.server
        //  Job.supervise internalLogger (Policy.restart) (loop ticker.InitialState)
 
        fun prev ->
@@ -132,10 +135,10 @@ module Pipe =
          Mailbox.Now.send updateMb prev
          NoResult)
 
-  let tickTimer (ticker: Ticker<_,_,_>) (duration: Duration) pipe =
+  let tickTimer (ticker: Ticker<_,_,_>) (ri: RuntimeInfo) (duration: Duration) pipe =
     pipe
-    |> withTickJob (ticker.TickEvery duration)
-    |> tick ticker
+      |> withTickJob (ticker.tickEvery(ri, duration))
+      |> tick ticker
 
   let buffer n pipe =
     pipe
@@ -150,9 +153,9 @@ module Pipe =
          else
            NoResult)
 
-  let bufferTime duration pipe =
+  let bufferTime ri duration pipe =
     let ticker = BufferTicker ()
-    pipe |> tickTimer ticker duration
+    pipe |> tickTimer ticker ri duration
 
   /// maybe use ArraySegment instead
   let slidingWindow size pipe =
@@ -179,10 +182,10 @@ module Pipe =
   //          window.[slidingLen] <- prev
   //          cont window)
 
-  let counter (mapping: _ -> int64) duration pipe =
+  let counter (mapping: _ -> int64) ri duration pipe =
     pipe
     |> map mapping
-    |> bufferTime duration
+    |> bufferTime ri duration
     |> map (Seq.sum)
 
   let percentile (mapping: _ -> int64 array) quantile pipe =

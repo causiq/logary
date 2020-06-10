@@ -8,7 +8,6 @@ module FSharpApi =
   open System
   open Topshelf
   open Topshelf.HostConfigurators
-  open Topshelf.Runtime
 
   type Service =
     { start: HostControl -> bool
@@ -21,9 +20,9 @@ module FSharpApi =
       stop = (fun _ -> true)
       hostConfiguration = [] }
 
-  let toAction f = new Action(f)
-  let toAction1 f = new Action<_>(f)
-  let toFunc f = new Func<_>(f)
+  let toAction f = Action(f)
+  let toAction1 f = Action<_>(f)
+  let toFunc f = Func<_>(f)
 
   let serviceControl (start: HostControl -> bool) (stop: HostControl -> bool) () =
     { new ServiceControl with
@@ -265,8 +264,6 @@ module FSharpApi =
   /// A module that wraps the calls to HostControl, not a part of the fluent
   /// configuration API.
   module HostControl =
-    open System
-
     let requestMoreTime (hc: HostControl) time =
       hc.RequestAdditionalTime time
 

@@ -1,7 +1,6 @@
 ﻿namespace Logary.Internals
 
 open Logary
-open Logary.Message
 open Hopac
 open Hopac.Infixes
 
@@ -97,32 +96,30 @@ module Policy =
                        (* max dur [ms] *) 16000u
                        (* retry indefinitely *) System.UInt32.MaxValue
 
-type SupervisedJob<'a> = Job<Choice<'a,exn>>
+type SupervisedJob<'a> = Job<Result<'a,exn>>
 
 module Job =
   let rec handleFailureWith (logger: Logger) p act (xJ : #Job<'x>) (ex: exn): SupervisedJob<'x> =
     match act with
     | Restart ->
-      logger.warnWithBP (
-        eventX "Exception from supervised job, restarting now."
-        >> addExn ex) >>=.
-      supervise logger p xJ
+      logger.eventBP("Exception from supervised job, restarting now.", fun m ->
+        m.addExn(ex, Warn))
+      >>=. supervise logger p xJ
+
     | RestartDelayed t ->
-      logger.warnWithBP (
-        eventX "Exception from supervised job, restarting in {delay} ms."
-        >> setField "delay" t
-        >> addExn ex) >>=.
-      timeOutMillis (int t) >>= fun () -> supervise logger p xJ
+      logger.eventBP("Exception from supervised job, restarting in {delay} ms.", fun m ->
+        m.setField("delay", Value.Int64 (int64 t))
+        m.addExn(ex, Warn))
+      >>=. timeOutMillis (int t)
+      >>= fun () -> supervise logger p xJ
+
     | Terminate ->
-      logger.errorWithBP (
-        eventX "Exception from supervised job, terminating."
-        >> addExn ex) >>=.
-      Job.result (Choice2Of2 ex)
+      logger.eventBP("Exception from supervised job, terminating.", fun m -> m.addExn ex)
+      >>-. Result.Error ex
+
     | Escalate ->
-      logger.errorWithBP (
-        eventX "Exception from supervised job, escalating."
-        >> addExn ex) >>=.
-      Job.raises ex
+      logger.eventBP ("Exception from supervised job, escalating.", fun m -> m.addExn ex)
+      >>=. Job.raises ex
 
   and makeHandler (logger: Logger) (p: Policy): #Job<'x> -> exn -> SupervisedJob<'x> =
     match p with
@@ -135,9 +132,12 @@ module Job =
       fun xJ ex ->
         e2actJ ex >>= fun act -> handleFailureWith logger p act xJ ex
 
-  and supervise (logger: Logger) (p: Policy): #Job<'x> -> SupervisedJob<'x> =
-    let handle = makeHandler logger p
-    fun xJ -> Job.tryIn xJ (Choice1Of2 >> Job.result) (handle xJ)
+  and supervise (logger: Logger) (policy: Policy): #Job<'x> -> SupervisedJob<'x> =
+    let handle = makeHandler logger policy
+    fun xJ -> Job.tryIn xJ (Result.Ok >> Job.result) (handle xJ)
+
+  let superviseIgnore logger policy xJ =
+    supervise logger policy xJ |> Job.Ignore
 
   let superviseWithWill logger p w2xJ =
     let wl = Will.create ()

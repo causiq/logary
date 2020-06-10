@@ -1,0 +1,193 @@
+namespace Logary.Model
+
+open Logary
+open NodaTime
+open Logary.Internals
+open Logary.Trace
+open System.Threading
+open System.Collections.Generic
+
+/// Once you pass mutable reference types into this message c'tor, those references are owned by the SpanMessage and
+/// should not be mutated from the outside.
+[<Sealed>]
+type SpanMessage(label: string,
+                 transform: SpanMessage -> SpanMessage,
+                 started: EpochNanoSeconds,
+                 spanContext: SpanContext,
+                 spanKind: SpanKind,
+                 links: IList<_>,
+                 attrs: IReadOnlyDictionary<string, Value>,
+                 events: IList<Logary.EventMessage>,
+                 status: SpanCanonicalCode * string option,
+                 onFinish: unit -> unit,
+                 ?messageId,
+                 ?name,
+                 ?level,
+                 ?ctx,
+                 ?gauges,
+                 ?received) =
+
+  inherit LogaryMessageBase(MessageKind.Span, started, ?messageId=messageId, ?name=name, ?level=level, ?ctx=ctx, ?fs=Some attrs, ?gauges=gauges, ?received=received)
+
+  let links = ResizeArray<_>(links)
+  let events = ResizeArray<_>(events)
+
+  let mutable _context = spanContext
+  let mutable _spanKind = spanKind
+  let mutable _label = label
+  let mutable _finished = None
+  let mutable _flags = _context.flags
+  let mutable _status = status
+  let mutable _highestLevel = Info
+  let _semaphore = obj ()
+
+  let _finish x tsFin: SpanMessage =
+    if Option.isSome _finished then
+      x
+    else
+      lock _semaphore <| fun () ->
+      let tsFin = tsFin |> Option.defaultWith Global.getTimestamp
+
+      do _finished <- Some tsFin
+      do onFinish()
+
+      transform x
+
+  let _setStatus (code, desc) =
+    lock _semaphore <| fun () ->
+    _status <- code, desc
+
+  let _setLabel labelFactory =
+    lock _semaphore <| fun () ->
+    _label <- labelFactory _label
+
+  let _addLink (link: SpanLink) =
+    lock _semaphore <| fun () ->
+    links.Add link
+
+  let _setFlags (setFlags: SpanFlags -> SpanFlags) =
+    lock _semaphore <| fun () ->
+    _flags <- setFlags _flags
+
+  new() =
+    SpanMessage("", id, 0L, SpanContext.Zero, SpanKind.Internal, ResizeArray<_>(), Map.empty, ResizeArray<_>(), (SpanCanonicalCode.OK, None), id)
+
+  new(context: SpanContext) =
+    SpanMessage("", id, 0L, context, SpanKind.Internal, ResizeArray<_>(), Map.empty, ResizeArray<_>(), (SpanCanonicalCode.OK, None), id)
+
+  new(m: Logary.SpanMessage) =
+    let ctx = Dictionary<_,_>() in let fs = Dictionary<_,_>() in let gauges = Dictionary<_,_>() in let attrs = Dictionary<_,_>()
+    let prevCtx = (m :> LogaryMessage).context
+    prevCtx |> Seq.iter (fun (KeyValue (k, v)) -> ctx.Add(k, v))
+    m.fields |> Seq.iter (fun (KeyValue (k, v)) -> fs.Add(k, v))
+    m.gauges |> Seq.iter (fun (KeyValue (k, v)) -> gauges.Add(k, v))
+    m.attrs  |> Seq.iter (fun (KeyValue (k, v)) -> attrs.Add(k, v))
+    let links = List<_> m.links
+    let events = List<_> m.events
+    SpanMessage(m.label, id, m.started, m.context, m.kind, links, attrs, events, m.status, id, m.id, m.name, m.level, ctx, gauges)
+
+  member private x._elapsed () =
+    let delta =
+      match _finished with
+      | None ->
+        Global.getTimestamp() - base.timestamp
+      | Some finished ->
+        finished - base.timestamp
+    Duration.FromNanoseconds delta
+
+  member private x.addAttr (k: string, a: Value) =
+    Monitor.Enter _semaphore
+    try base.fields.Add (k, a)
+    finally Monitor.Exit _semaphore
+
+  member private x.addEvent (message: Logary.EventMessage) =
+    Monitor.Enter(_semaphore)
+    try
+      // add to _events
+      events.Add message
+
+      // ensure we set the sampled flag if level >= Warn
+      if message.level >= Warn then
+        _flags <- _flags ||| SpanFlags.Sampled
+
+      // set the error flag when errors are logged
+      if message.level >= Error then
+        base.fields.Add("error", Value.Bool true)
+
+      if message.level > _highestLevel then
+        _highestLevel <- message.level
+    finally
+      Monitor.Exit(_semaphore)
+
+  member x.finish(runAfterFinish: SpanMessage -> unit) =
+    _finish x None |> runAfterFinish
+    x
+
+  member val context = _context with get, set
+  member val label = _label with get, set
+  member val flags = _flags with get, set
+  member val spanKind = _spanKind with get, set
+  member x.started with get () = base.timestamp and set v = base.timestamp <- v
+  member val finished = _finished with get, set
+  member val status = _status with get, set
+
+  override x.level with get() = _highestLevel and set v = _highestLevel <- v
+
+  override x.spanId
+    with get() = Some _context.spanId
+     and set v = v |> Option.iter (fun newSpanId -> _context <- _context.withSpanId newSpanId)
+
+  member x.setEvents (es: IReadOnlyList<_>) =
+    Monitor.Enter _semaphore
+    try
+      events.Clear()
+      events.AddRange es
+    finally
+      Monitor.Exit _semaphore
+
+  member x.setLinks (ls: IReadOnlyList<_>) =
+    Monitor.Enter _semaphore
+    try
+      links.Clear()
+      links.AddRange ls
+    finally
+      Monitor.Exit _semaphore
+
+  member x.setAttributes (attrs: _) =
+    Monitor.Enter _semaphore
+    try
+      for (KeyValue (k, v)) in attrs do
+        base.fields.[k] <- v
+    finally
+      Monitor.Exit _semaphore
+
+  interface Logary.SpanMessage with
+    member __.label = _label
+    member __.context = _context
+    member __.kind = spanKind
+    member __.started = started
+    member __.finished = _finished |> Option.defaultValue 0L
+    member __.flags = _flags
+    member __.links = links :> IReadOnlyList<_>
+    member __.events = events :> IReadOnlyList<_>
+    member __.attrs = base.fields :> _
+    member __.status = _status
+
+
+  interface SpanOps with
+    member x.addLink link = _addLink link
+    member x.setAttribute(key: string, value: Value) = x.addAttr (key, value)
+    member x.setStatus (code: SpanCanonicalCode) = _setStatus (code, None)
+    member x.setStatus (code: SpanCanonicalCode, description: string) = _setStatus (code, Some description)
+    member x.setFlags flags = _setFlags flags
+    member x.addEvent m = x.addEvent m
+    member x.finish ts = _finish x (Some ts) :> _
+    member x.finish () = _finish x None :> _
+
+
+  interface Span with
+    member x.elapsed = x._elapsed()
+    member __.isRecording = _finished |> Option.isNone
+    member __.setLabel labelFactory = _setLabel labelFactory
+    member __.finished = _finished
+

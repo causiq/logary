@@ -3,10 +3,9 @@ namespace Logary.Internals
 open System
 open System.Text.RegularExpressions
 open Logary
-open Logary.Internals
 
 /// This is the accept filter that is before the message is passed to the target
-type MessageFilter = Message -> bool
+type MessageFilter = Model.LogaryMessageBase -> bool
 
 /// A rule specifies what messages a target should accept.
 /// we do not encourage use rules heavily,only if when the target itself can decide which msg are acceptable.
@@ -96,7 +95,7 @@ module Rule =
 
   /// Uses the first matched rule
   [<CompiledName "Accepts">]
-  let accepts (msg: Message) (rules: Rule list) =
+  let accepts (msg: Model.LogaryMessageBase) (rules: Rule list) =
     let pn = PointName.format msg.name
     rules
     |> List.tryFind (fun r -> r.path.IsMatch pn)

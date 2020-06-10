@@ -295,7 +295,7 @@ module LoggerAdapter =
     |> (fun msg ->
         match oldPointValue with
         | LoggerAdapterShared.OldPointValue.Gauge (value, units) ->
-          let g = Gauge (Float value, units)
+          let g = Gauge (Value.Float value, units)
           let gaugeName =
             match pointName.Length with
             | 0 -> KnownLiterals.DefaultGaugeName
@@ -341,7 +341,7 @@ module LoggerAdapter =
     let valueType = valueTypeOf o loggerType
     let toFloatMethod = findMethod (valueType, "toFloat")
     let floatValue = toFloatMethod.Invoke(o, [||])
-    Float (floatValue :?> float)
+    Value.Float (floatValue :?> float)
 
   let toGauge (loggerType: Type) (o: obj): Gauge =
     let gaugeType = gaugeTypeOf o loggerType
@@ -597,7 +597,7 @@ module LoggerCSharpAdapter =
     |> (fun msg ->
         match oldPointValue with
         | LoggerAdapterShared.OldPointValue.Gauge (value, units) ->
-          let g = Gauge (Float value, units)
+          let g = Gauge (Value.Float value, units)
           msg |> Message.addGauge KnownLiterals.DefaultGaugeName g
         | _ -> msg)
 

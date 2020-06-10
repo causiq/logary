@@ -1,20 +1,19 @@
 module Logary.Tests.NullLogger
 
 open Expecto
+open Expecto.Flip
 open Hopac
 open Logary
-open Logary.Message
 open Logary.Internals
 
 let tests = [
   testCase "should be named 'Logary.NullLogger'" <| fun () ->
-    let sut = NullLogger.instance
-    Expect.equal sut.name (PointName.parse "Logary.NullLogger")
-                 "Is called Logary.NullLogger"
+    NullLogger.instance.name
+      |> Expect.equal "Is called Logary.NullLogger" (PointName.parse "Logary.NullLogger")
 
   testCaseJob "logWithAck success" (job {
     let sut = NullLogger.instance
-    let! p = sut.logWithAck (true, Fatal) (eventX "hi")
+    let! p = sut.logWithAck(true, Model.EventMessage("hi", level=Fatal))
     match p with
     | Ok ack ->
       do! ack
@@ -23,12 +22,13 @@ let tests = [
   })
 
   testCaseJob "logAck success" (job {
-    do! NullLogger.instance.logAck Fatal (eventX "Hi")
+    let! ok = NullLogger.instance.fatalAck "Hi"
+    ok |> Expect.isTrue "Success"
   })
 
-  testCaseJob "log success" (job {
+  testCaseJob "logBP success" (job {
     let sut = NullLogger.instance
-    let! res = sut.log Fatal (eventX "hi")
-    Expect.isTrue res "Should return true as a stubbed value"
+    let! res = sut.logBP (Model.EventMessage "testing logBP")
+    res |> Expect.isTrue "Should return true as a stubbed value"
   })
 ]

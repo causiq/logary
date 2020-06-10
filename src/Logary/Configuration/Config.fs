@@ -2,6 +2,8 @@
 /// required configuration for Logary.
 namespace Logary.Configuration
 
+open System.Threading
+open FSharp.Control.Tasks.V2.ContextInsensitive
 open Hopac
 open Hopac.Infixes
 open Hopac.Extensions
@@ -10,54 +12,64 @@ open Logary.Metric
 open Logary.Internals
 open Logary.Targets
 open Logary.Configuration
-open Logary.Formatting.MessageTemplates.Destructure
-open Logary.Formatting
 open NodaTime
 
 /// Specifies the internal logger targets for Logary.
 [<RequireQualifiedAccess>]
 type ILogger =
   | Console of minLevel:LogLevel
-  | LiterateConsole of minLevel:LogLevel
   | Targets of config:TargetConf list
 
 module Config =
 
   type T =
     private {
-      targets: HashMap<string, TargetConf>
+      targets: Map<string, TargetConf>
       host: string
       service: string
       getTimestamp: unit -> EpochNanoSeconds
-      getSem: unit -> obj
+      consoleLock: DVar<Lock>
       ilogger: ILogger
       middleware: Middleware list
       processing: Processing
       setGlobals: bool
       loggerLevels: (string * LogLevel) list
       logResultHandler: ProcessResult -> unit
-      defaultWaitForBuffersTimeout: Duration
+      waitForTargetsTimeout: Duration
       metricRegistry: MetricRegistry
     }
 
   let create service host =
-    { targets      = HashMap.empty
-      host         = host
-      service      = service
-      getTimestamp = Global.getTimestamp
-      getSem       = Global.getConsoleSemaphore
-      middleware   = List.empty
-      ilogger      = ILogger.Console LogLevel.Warn
-      setGlobals   = true
-      processing   = Events.events
-      loggerLevels = [(".*", LogLevel.Info)]
-      logResultHandler = function | Result.Error error -> System.Console.Error.Write (MessageWriter.singleLineNoContext.format error) | _ -> ()
-      defaultWaitForBuffersTimeout = Duration.FromSeconds 3L
-      metricRegistry = new MetricRegistry()
+    let simple = SimpleMessageWriter() :> MessageWriter
+    let errorHandler (xR: ProcessResult) =
+      match xR with
+      | Result.Error em ->
+        task {
+          use cts = new CancellationTokenSource()
+          try do! simple.write(System.Console.Error, em, cts.Token)
+          with _ -> ()
+        }
+
+        |> ignore
+      | _ -> ()
+
+    { targets          = Map.empty
+      host             = host
+      service          = service
+      getTimestamp     = Global.getTimestamp
+      consoleLock      = Global.semaphoreD
+      middleware       = List.empty
+      ilogger          = ILogger.Console LogLevel.Warn
+      setGlobals       = true
+      processing       = Events.events
+      loggerLevels     = [(".*", LogLevel.Info)]
+      logResultHandler = errorHandler
+      waitForTargetsTimeout = Duration.FromSeconds 3L
+      metricRegistry = MetricRegistry()
     }
 
   let target (tconf: TargetConf) lconf =
-    { lconf with targets = lconf.targets |> HashMap.add tconf.name tconf }
+    { lconf with targets = lconf.targets |> Map.add tconf.name tconf }
 
   let targets tconfs lconf =
     tconfs |> Seq.fold (fun lconf tconf -> lconf |> target tconf) lconf
@@ -72,7 +84,7 @@ module Config =
     { lconf with getTimestamp = getTimestamp }
 
   let consoleSemaphore getConsoleSemaphore lconf =
-    { lconf with getSem = getConsoleSemaphore }
+    { lconf with consoleLock = getConsoleSemaphore }
 
   let middleware mid (lconf: T) =
     { lconf with middleware = mid :: lconf.middleware }
@@ -103,20 +115,12 @@ module Config =
     { lconf with metricRegistry = metricRegistry }
 
   let inline private setToGlobals (logManager: LogManager) =
-    let config =
-      { Global.defaultConfig with
-          getLogger = logManager.getLogger
-          getLoggerWithMiddleware = logManager.getLoggerWithMiddleware }
+    let config = { Global.defaultConfig with getLogger = logManager.getLogger }
     Global.initialise config
 
   let internal createInternalTargets = function
     | ILogger.Console minLevel ->
       let target = Console.create Console.empty "internal"
-      let rule = Rule.empty |> Rule.setMinLevel minLevel
-      [ TargetConf.setRule rule target ]
-
-    | ILogger.LiterateConsole minLevel ->
-      let target = LiterateConsole.create LiterateConsole.empty "internal"
       let rule = Rule.empty |> Rule.setMinLevel minLevel
       [ TargetConf.setRule rule target ]
 
@@ -135,10 +139,10 @@ module Config =
       { service = lconf.service
         host = lconf.host
         getTimestamp = lconf.getTimestamp
-        getConsoleSemaphore = lconf.getSem
+        consoleLock = lconf.consoleLock
         logger = NullLogger.instance }
 
-    createInternalLogger ri (createInternalTargets lconf.ilogger) >>= fun (ri, ilogger) ->
+    createInternalLogger ri (createInternalTargets lconf.ilogger) >>= fun (ri, _) ->
     let mids =
       [ Middleware.host lconf.host
         Middleware.service lconf.service
@@ -154,7 +158,7 @@ module Config =
           member x.processing = lconf.processing
           member x.loggerLevels = lconf.loggerLevels
           member x.logResultHandler = lconf.logResultHandler
-          member x.defaultWaitForBuffersTimeout = lconf.defaultWaitForBuffersTimeout
+          member x.waitForTargetsTimeout = lconf.waitForTargetsTimeout
           member x.metricRegistry = lconf.metricRegistry
       }
 
@@ -165,16 +169,3 @@ module Config =
 
   let buildAndRun lconf: LogManager =
     build lconf |> run
-
-  // TO CONSIDER: config below around registry, instead of as globals
-
-  /// use this to choose which properties you want or not to show on message formatting
-  let projection projectionExpr =
-    Logary.Internals.Global.Destructure.configProjection projectionExpr
-
-  /// use this to customise how to destructure type
-  let destructurer<'t> (factory: CustomDestructureFactory<'t>) =
-    Logary.Internals.Global.Destructure.configDestructure<'t> factory
-
-  let jsonEncoder<'t> (factory: JsonEncoderFactory<'t>) =
-    Logary.Internals.Global.Json.configureEncoder<'t> factory

@@ -6,6 +6,6 @@ open Logary
 
 let tests = [
   testCase "formatWithUnit" <| fun () ->
-    let f = Gauge.format (Gauge (Float 2.34, Units.Days))
+    let f = Gauge.format (Gauge (Value.Float 2.34, Units.Days))
     f |> Expect.equal "Should format # days properly" "2.34 days"
 ]

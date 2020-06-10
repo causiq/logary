@@ -8,13 +8,12 @@ open NodaTime
 open Expecto.Flip
 open Logary
 open Logary.Internals
-open Logary.Message
 open Logary.Configuration
 open Logary.Trace
 
 let testLogger = Log.create "Logary.Tests.Registry"
 
-let debug message = testLogger.logWithBP Debug (eventX message)
+let debug (message: string) = testLogger.logBP(Model.EventMessage(message, level=Debug)) ^-> ignore
 
 let timeout = Duration.FromSeconds 1.
 
@@ -23,7 +22,7 @@ let tests = [
     do! debug "Starting LogManager..."
     let! logm =
       Config.create "svc" "localhost"
-      |> Config.ilogger (ILogger.LiterateConsole Verbose)
+      |> Config.ilogger (ILogger.Console Verbose)
       |> Config.build
     do! debug "Started LogManager."
 
@@ -53,11 +52,11 @@ let tests = [
 
   testCaseJob "after shutting down no logging happens" <|
     job {
-      let! (logm, out, error) = buildLogManager ()
+      let! logm, out, error = buildLogManager ()
       let lg = logm.getLogger "logger.test"
 
-      do! lg.infoWithAck (eventX "test info msg")
-      do! lg.errorWithAck (eventX "test error msg")
+      do! lg.eventAck("test info msg", fun m -> m.level <- Info)
+      do! lg.errorAckIgnore("test error msg")
 
       let outStr = out.ToString()
       let errorStr = error.ToString()
@@ -67,19 +66,19 @@ let tests = [
       let timeout =  Duration.FromSeconds 3L
       let! _ = logm.shutdown(timeout, timeout)
 
-      do! lg.errorWithBP (eventX "error after shutdown")
+      do! lg.errorBPIgnore("error after shutdown")
 
       let errorOutput = error.ToString()
       if errorOutput.Contains("after") then Expecto.Tests.failtestf "should not contains after, actual %s" errorOutput
     }
 
   testCaseJob "getLogger with middleware" <| job {
-    let! logm, out, error  = buildLogManager ()
     let correlationId = Guid.NewGuid().ToString("N")
-    let customMid = Middleware.context "correlationId" correlationId
-    let lg = logm.getLoggerWithMiddleware ("logger.test", customMid)
-    do! lg.infoWithAck (eventX "test info msg")
-    do! lg.errorWithAck (eventX "test error msg")
+    let customMid = Middleware.context "correlationId" (Value.Str correlationId)
+    let! logm, out, error = buildLogManagerWith (Config.middleware customMid)
+    let lg = logm.getLogger("logger.test")
+    do! lg.eventAck "test info msg"
+    do! lg.errorAckIgnore "test error msg"
 
     let outStr = out.ToString()
     let errorStr = error.ToString()
@@ -135,10 +134,11 @@ let tests = [
           |> Expect.equal "Has an ambient span from 'grand-child' span" (Some grandChildSpan.context.spanId)
 
         // this log message will have the ambient spanId of 'grand-child' span:
-        start (b.infoWithBP (eventX "MAJOR EVENT HAPPENED"))
+        b.info "MAJOR EVENT HAPPENED"
 
         // reset ambient:
         grandChildSpan.finish() |> ignore
+
         ActiveSpan.getSpan()
           |> Expect.equal "Has an ambient span from 'parent' span" (Some parentSpan.context.spanId)
 
@@ -168,7 +168,7 @@ let tests = [
       do! parentSpan.finishAck()
 
       // log via a non-Span attached logger;
-      do! b.infoWithAck (eventX "some log message" >> setSpanId childSpan.context.spanId)
+      do! b.eventAck("some log message", fun m -> m.spanId <- Some childSpan.context.spanId)
 
       // now let's finish the child
       do! childSpan.finishAck()
@@ -181,10 +181,10 @@ let tests = [
   testCaseJob "switch logger level" (job {
     let! logm, out, error = buildLogManager ()
     let lg = logm.getLogger "logger.test"
-    do! lg.debugWithAck (eventX "test debug msg")
-    do! lg.verboseWithAck (eventX "test verbose msg")
-    do! lg.infoWithAck (eventX "test info msg")
-    do! lg.errorWithAck (eventX "test error msg")
+    do! lg.eventAck("test debug msg", fun m -> m.level <- Debug)
+    do! lg.eventAck("test verbose msg", fun m -> m.level <- Verbose)
+    do! lg.eventAck("test info msg", fun m -> m.level <- Info)
+    do! lg.errorAckIgnore("test error msg")
     do! logm.flushPending ()
 
     let outStr = clearStream out
@@ -196,9 +196,9 @@ let tests = [
 
 
     logm.switchLoggerLevel (".*test", LogLevel.Verbose)
-    do! lg.debugWithAck (eventX "test debug msg")
-    do! lg.verboseWithAck (eventX "test verbose msg")
-    do! lg.infoWithAck (eventX "test info msg")
+    do! lg.eventAck("test debug msg", fun m -> m.level <- Debug)
+    do! lg.eventAck("test verbose msg", fun m -> m.level <- Verbose)
+    do! lg.eventAck("test info msg", fun m -> m.level <- Info)
     do! logm.flushPending ()
     let outStr = clearStream out
     outStr |> Expect.stringContains "should have debug level msg after switch logger level" "debug"
@@ -206,9 +206,9 @@ let tests = [
     outStr |> Expect.stringContains "should have info level msg" "info"
 
     let lgWithSameNameAfterSwitch = logm.getLogger "logger.test"
-    do! lgWithSameNameAfterSwitch.debugWithAck (eventX "test debug msg")
-    do! lgWithSameNameAfterSwitch.verboseWithAck (eventX "test verbose msg")
-    do! lgWithSameNameAfterSwitch.infoWithAck (eventX "test info msg")
+    do! lgWithSameNameAfterSwitch.eventAck("test debug msg", fun m -> m.level <- Debug)
+    do! lgWithSameNameAfterSwitch.eventAck("test verbose msg", fun m -> m.level <- Verbose)
+    do! lgWithSameNameAfterSwitch.eventAck("test info msg", fun m -> m.level <- Info)
     do! logm.flushPending ()
     let outStr = clearStream out
     outStr |> Expect.stringContains "should have debug level msg after switch logger level" "debug"
@@ -216,9 +216,9 @@ let tests = [
     outStr |> Expect.stringContains "should have info level msg" "info"
 
     let lgWithDiffNameAfterSwitch = logm.getLogger "xxx.yyy.zzz.test"
-    do! lgWithDiffNameAfterSwitch.debugWithAck (eventX "test debug msg")
-    do! lgWithDiffNameAfterSwitch.verboseWithAck (eventX "test verbose msg")
-    do! lgWithDiffNameAfterSwitch.infoWithAck (eventX "test info msg")
+    do! lgWithDiffNameAfterSwitch.eventAck("test debug msg", fun m -> m.level <- Debug)
+    do! lgWithDiffNameAfterSwitch.eventAck("test verbose msg", fun m -> m.level <- Verbose)
+    do! lgWithDiffNameAfterSwitch.eventAck("test info msg", fun m -> m.level <- Info)
     do! logm.flushPending ()
     let outStr = clearStream out
     (outStr.Contains("debug")) |> Expect.isFalse "should not have debug level msg after switch logger level"
@@ -233,12 +233,12 @@ let tests = [
         Alt.choose [
           RingBuffer.take api.requests ^=> function
           | Flush (ack, nack) ->
-            let flushWork = Hopac.timeOutMillis 200 ^=>. ack *<= ()
+            let flushWork = timeOutMillis 200 ^=>. ack *<= ()
             (flushWork <|> nack) >>= loop
           | Log (_, ack) ->
             ack *<= () >>= loop
 
-          api.shutdownCh ^=> fun ack -> Hopac.timeOutMillis 200 ^=>. ack *<= ()
+          api.shutdownCh ^=> fun ack -> timeOutMillis 200 ^=>. ack *<= ()
         ] :> Job<_>
 
       loop ()
@@ -283,18 +283,29 @@ let tests = [
     let! logm =
       Config.create "svc" "host"
       |> Config.target mockTarget
-      |> Config.processing (Events.events |> Events.sink ["mockTarget"])
+      |> Config.processing (Events.events |> Events.setTarget "mockTarget")
       |> Config.build
 
     let lg = logm.getLogger "logger.test"
-    do! lg.infoWithBP (eventX "can be logger with no blocking")
-    do! lg.infoWithBP (eventX "can be logger with no blocking")
-    do! lg.infoWithBP (eventX "can be logger with no blocking")
-    do! logm.shutdown ()
-    do! lg.infoWithBP (eventX "can be logger with no blocking because ring buffer")
-    do! lg.infoWithBP (eventX "can be logger with no blocking because ring buffer")
-    do! lg.infoWithBP (eventX "can be logger with no blocking because check registry closed")
-    do! lg.infoWithBP (eventX "can be logger with no blocking because check registry closed")
-    do! lg.infoWithBP (eventX "can be logger with no blocking because check registry closed")
+
+    let! res = lg.logBP (Model.EventMessage "Can be successfully logged")
+    res
+      |> Expect.isTrue "Should log successfully with logBP: ...: Alt<bool>-API"
+
+    // AFTER SHUTTING DOWN:
+    do! logm.shutdown()
+
+    let! res = lg.logAck (Model.EventMessage "Cannot be logged because the registry from which the logger comes, is closed.")
+    res
+      |> Expect.isFalse "Should fail to log, asserting on Alt<bool>-API"
+
+    match! lg.logWithAck (true, Model.EventMessage "Second try") with
+    | Ok _ ->
+      failtestf "Should not be possible to place message in Targets' buffers, but Alt<Ok _> was result from logWithAck"
+
+    | Result.Error m ->
+      m.ckind
+        |> Expect.equal "Should fail due to the RegistryClosed reason" ControlMessageKind.RegistryClosed
+
   })
 ]

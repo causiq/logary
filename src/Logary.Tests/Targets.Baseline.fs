@@ -39,7 +39,7 @@ module Messages =
     ]
     |> Message.tag "funnel"
     |> Message.setField "promotions" [ "timeLimited2day"; "enableInvoices"; "friendReferral" ]
-    |> Message.addGauge "timeUntilSignup" (Gauge (Float 2.3, Units.Days))
+    |> Message.addGauge "timeUntilSignup" (Gauge (Value.Float 2.3, Units.Days))
 
 open NodaTime
 open Hopac
@@ -68,21 +68,21 @@ let basicTests targetName confFac addTS =
   testList (sprintf "target '%s' basics" targetName) [
     testCaseJob "create" <| job {
       let! ri = emptyRuntime
-      do! logger.infoWithBP (eventX "Creating instance: calling configFactory")
+      do! logger.infoWithBP (Model.EventMessage "Creating instance: calling configFactory")
       let conf = confFac targetName
-      do! logger.infoWithBP (eventX "Creating instance: creating target")
+      do! logger.infoWithBP (Model.EventMessage "Creating instance: creating target")
       let! targetApi = Target.create ri conf
-      do! logger.infoWithBP (eventX "Creating instance: asserting")
+      do! logger.infoWithBP (Model.EventMessage "Creating instance: asserting")
       Expect.equal targetApi.name targetName "Should be named"
       do! finalise targetApi
     }
 
     testCaseJob "start, log and stop" <| job {
       let! targetApi, now = configure ()
-      do! logger.infoWithBP (eventX "Start, log and stop: log and wait")
+      do! logger.infoWithBP (Model.EventMessage "Start, log and stop: log and wait")
       do! logMsgWaitAndShutdown targetApi (fun logAndWait ->
         Message.eventInfo (sprintf "User signed up! @ %s" now) |> logAndWait)
-      do! logger.infoWithBP (eventX "Start, log and stop: done!")
+      do! logger.infoWithBP (Model.EventMessage "Start, log and stop: done!")
     }
 
     testCaseJob "log exception message" <| job {

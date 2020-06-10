@@ -23,14 +23,14 @@ let tests = [
     testCase "public interface" <| fun () ->
       { new TimeLogger with
           member x.name: PointName = PointName.ofSingle "B"
-          member x.logWithAck (waitForBuffers, level) (messageFactory: LogLevel -> Message) =
+          member x.logWithAck (waitForBuffers, message) =
             LogResult.success
           member x.level: LogLevel = LogLevel.Info
           member x.Dispose () = ()
           member x.elapsed = Duration.Zero
           member x.bisect (label: string): unit =
             ()
-          member x.finish (transform: Message -> Message) = ()
+          member x.finish (transform: LogaryMessage -> LogaryMessage) = ()
       }
       |> ignore
   ]

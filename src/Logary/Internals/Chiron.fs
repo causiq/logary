@@ -1,5 +1,7 @@
 namespace Logary.Internals.Chiron
 
+open System.Collections.Generic
+
 type JsonMemberType =
     | Object
     | Array
@@ -62,7 +64,7 @@ type JsonFailureTag =
     | ChoiceTag of choice: uint32
 type JsonFailureReason =
     | OtherError of err: exn
-    | PropertyNotFound of name: string
+    | MessageTypeUnknown of name: string
     | TypeMismatch of expected: JsonMemberType * actual: JsonMemberType
     | DeserializationError of targetType: System.Type * err: exn
     | InvalidJson of err: string
@@ -99,7 +101,7 @@ module JsonFailureTag =
 module JsonFailureReason =
     let toString = function
         | OtherError e -> string e
-        | PropertyNotFound k -> "Failed to find expected property: " + k
+        | MessageTypeUnknown typ -> "Unknown message type: '" + typ + "'"
         | TypeMismatch (e,a) -> System.String.Concat ("Expected to find ", JsonMemberType.describe e, ", but instead found ", JsonMemberType.describe a)
         | DeserializationError (t,e) -> System.String.Concat ("Unable to deserialize value as '", t.FullName, "': ", string e)
         | InvalidJson e -> "Invalid JSON, failed to parse: " + e
@@ -154,7 +156,7 @@ module JsonResult =
     let deserializationError<'a> exn : JsonResult<'a> = fail (SingleFailure (DeserializationError (typeof<'a>, exn)))
     let invalidJson err : JsonResult<'a> = fail (SingleFailure (InvalidJson err))
     let noInput<'a> : JsonResult<'a> = fail (SingleFailure NoInput)
-    let propertyNotFound f : JsonResult<'a> = fail (SingleFailure (PropertyNotFound f))
+    let messageTypeUnknown f : JsonResult<'a> = fail (SingleFailure (MessageTypeUnknown f))
     let failWithTag t f : JsonResult<'a> = fail (Tagged (t, f))
 
     let inline bind (a2bR: 'a -> JsonResult<'b>) (aR : JsonResult<'a>) : JsonResult<'b> =
@@ -199,6 +201,23 @@ module JsonResult =
                 | JFail e1 -> fail e1
         | ContinueOnError ->
             fun c2aR c a2Rb -> apply (c2aR c) a2Rb
+
+    let inline mapError (f2b: JsonFailure -> 'a) (aR: JsonResult<'a>): JsonResult<'a> =
+        match aR with
+        | JPass a -> JPass a
+        | JFail x -> JPass (f2b x)
+
+    let foldBind (folder: 'state -> 'item -> JsonResult<'state>) (state: 'state) (xsJ: seq<'item>): JsonResult<'state> =
+        Seq.fold (fun aJ xJ -> aJ |> bind (fun a -> folder a xJ))
+                 (pass state)
+                 xsJ
+
+    let ofOption failureReason xO =
+        match xO with
+        | None ->
+          JFail (SingleFailure failureReason)
+        | Some st ->
+          JPass st
 
 type Decoder<'s,'a> = 's -> JsonResult<'a>
 
@@ -393,7 +412,7 @@ module JsonObject =
     let find k jsonObj =
         match tryFind k jsonObj with
         | Some v -> JsonResult.pass v
-        | None -> JsonResult.propertyNotFound k
+        | None -> JsonResult.messageTypeUnknown k
 
     let optimizeRead = function
         | WriteObject ps -> ReadObject (ps, Map.ofList (List.rev ps))
@@ -404,7 +423,7 @@ module JsonObject =
         | o -> o
 
     let mapToList mps = Map.toList mps |> List.rev
-    
+
     let listToMap ps = List.rev ps |> Map.ofList
 
     let dedupeWithMap kvps m =
@@ -533,10 +552,10 @@ module JsonObject =
             | (k,v) :: ps ->
                 inner ((toString k, encode v) :: agg) ps
         inner [] ps
-        
+
     let ofPropertyListWith (encode: JsonEncoder<'a>) (ps: (string * 'a) list): JsonObject =
         ofPropertyListWithCustomKey id encode ps
-        
+
     let ofPropertyList (ps: (string * Json) list): JsonObject =
         List.rev ps
         |> WriteObject
@@ -545,37 +564,50 @@ module JsonObject =
     let toMapWithCustomKeyQuick (parse: Decoder<string,'k>) (decode: Decoder<Json,'v>) =
         toPropertyListWithCustomKeyQuick parse decode
         |> Decoder.map Map.ofList
-        
+
     let toMapWithCustomKey (parse: Decoder<string,'k>) (decode: Decoder<Json,'v>) =
         toPropertyListWithCustomKey parse decode
         |> Decoder.map Map.ofList
-        
+
     let toMapWithQuick (decode: Decoder<Json,'v>) =
         toPropertyListWithQuick decode
         |> Decoder.map Map.ofList
-        
+
     let toMapWith (decode: Decoder<Json,'v>) =
         toPropertyListWith decode
         |> Decoder.map Map.ofList
-        
+
     let toMap = function
         | WriteObject ps -> List.rev ps |> Map.ofList
         | ReadObject (_, mps) -> mps
-        
+
     let ofSeq (s: #seq<string * _>) =
       ReadObject (List.ofSeq s, Map.ofSeq s)
 
     let ofMap m = ReadObject (mapToList m, m)
-    
+
     let ofMapWith (encode: JsonEncoder<'a>) (m: Map<string, 'a>): JsonObject =
         let newMap = Map.map (fun _ a -> encode a) m
         ReadObject (mapToList newMap, newMap)
-        
+
     let ofMapWithCustomKey (toString: 'k -> string) (encode: JsonEncoder<'v>) (m: Map<'k, 'v>): JsonObject =
         let newList =
             mapToList m
             |> List.map (fun (k,v) -> (toString k, encode v))
         ReadObject (newList, Map.ofList newList)
+
+    let ofReadDictWith (encode: JsonEncoder<'a>) (m: IReadOnlyDictionary<string, 'a>): JsonObject =
+        let newSeq = Seq.map (fun (KeyValue(k, v)) -> k, encode v) m
+        let newList = List.ofSeq newSeq |> List.rev
+        let newMap = Map.ofSeq newSeq
+        ReadObject (newList, newMap)
+
+    let ofReadDictWithCustomKey (toString: 'k -> string) (encode: JsonEncoder<'a>) (m: IReadOnlyDictionary<'k, 'a>): JsonObject =
+        let newSeq = Seq.map (fun (KeyValue(k, v)) -> toString k, encode v) m
+        let newList = List.ofSeq newSeq |> List.rev
+        let newMap = Map.ofSeq newSeq
+        ReadObject (newList, newMap)
+
 
     let toJson jObj = Json.Object jObj
 
@@ -898,9 +930,9 @@ module Serialization =
             let requiredMixin (build: ObjectBuilder<'a>) a jObj =
                 build a jObj
 
-            let optionalMixin build aO jObj =
+            let optionalMixin (build: ObjectBuilder<'a>) aO jObj =
                 match aO with
-                | Some a -> buildWith a jObj
+                | Some a -> build a jObj
                 | None -> jObj
 
             let ref (): JsonEncoder<'a> ref * JsonEncoder<'a> =
@@ -940,6 +972,15 @@ module Serialization =
             let listWith (encode: JsonEncoder<'a>) (els: 'a list): Json =
                 List.map encode els
                 |> list
+
+            let ilist (els: IList<Json>): Json =
+                Json.Array (List.ofSeq els)
+
+            let ilistWith (encode: JsonEncoder<'a>) (els: IList<'a>): Json =
+                els
+                |> Seq.map encode
+                |> List.ofSeq
+                |> Json.Array
 
             let array (els: Json array): Json =
                 List.ofArray els
@@ -981,6 +1022,14 @@ module Serialization =
 
             let mapWith (encode: JsonEncoder<'a>) (m: Map<string, 'a>): Json =
                 JsonObject.ofMapWith encode m
+                |> jsonObject
+
+            let readDictWith (encode: JsonEncoder<'a>) (m: IReadOnlyDictionary<string, 'a>): Json =
+                JsonObject.ofReadDictWith encode m
+                |> jsonObject
+
+            let readDictWithCustomKey (toString: 'k -> string) (encode: JsonEncoder<'a>) (m: IReadOnlyDictionary<'k, 'a>): Json =
+                JsonObject.ofReadDictWithCustomKey toString encode m
                 |> jsonObject
 
             let mapWithCustomKey (toString: 'a -> string) (encode: JsonEncoder<'b>) (m: Map<'a, 'b>): Json =
@@ -1661,7 +1710,9 @@ module Serialization =
                 let toDTO (odt: OffsetDateTime) = odt.ToDateTimeOffset()
                 offsetDateTime |> Decoder.map toDTO
 
-            let dateTimeParser s = System.DateTime.ParseExact (s, [| "s"; "r"; "o" |], CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AdjustToUniversal)
+            let dateTimeParser (s: string) =
+              System.DateTime.ParseExact (s, [| "s"; "r"; "o" |], CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AdjustToUniversal)
+
             let dateTime =
                 string >=> Decoder.fromThrowingConverter dateTimeParser
 

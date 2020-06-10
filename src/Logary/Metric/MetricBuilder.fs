@@ -9,7 +9,7 @@ type MetricBuilder<'t when 't :> IMetric> =
 
 and Metric<'t when 't :> IMetric> (builder: MetricBuilder<'t>, registry: MetricRegistry) =
   let _noLabels = Map.empty
-  let metricStore = new ConcurrentDictionary<Map<string, string>, 't>()
+  let metricStore = ConcurrentDictionary<Map<string, string>, 't>()
   let noLabelMetric = new Lazy<'t>(fun _ -> metricStore.GetOrAdd(_noLabels, builder.build registry))
   let fail message =
     match builder.conf.failStrategy with
@@ -64,14 +64,14 @@ and Metric<'t when 't :> IMetric> (builder: MetricBuilder<'t>, registry: MetricR
         info)
       (basicInfo, metricInfos)
 
-/// used for register metric, and can export metric infos
+/// Used to register metrics, and can export MetricInfo:s.
 and MetricRegistry() =
-  let metricBackStore = new ConcurrentDictionary<string, MetricExporter>()
+  let metricBackStore = ConcurrentDictionary<string, MetricExporter>()
   let _failBehaviourD = DVar.create failwith
 
   member x.getOrCreate<'t when 't:> IMetric> (builder: MetricBuilder<'t>): Metric<'t> =
     let metricName = builder.conf.name
-    let metric = metricBackStore.GetOrAdd(metricName, fun _ -> new Metric<_>(builder, x) :> MetricExporter)
+    let metric = metricBackStore.GetOrAdd(metricName, fun _ -> Metric<_>(builder, x) :> MetricExporter)
     if metric.basicConf <> builder.conf then
       let fail = DVar.get _failBehaviourD
       sprintf "metric with same name needs have same basic conf: registered one: %A, newer one: %A"

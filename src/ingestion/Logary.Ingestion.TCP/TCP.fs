@@ -3,7 +3,6 @@
 open System.Text
 open System.IO
 open Logary
-open Logary.Message
 open Logary.Internals
 open Hopac
 open fszmq
@@ -14,11 +13,11 @@ type TCPConfig =
     /// TCP-ingestion server specific information
     createSocket: Context -> Socket
   }
-  
+
   interface IngestServerConfig with
     member x.cancelled = x.cancelled
     member x.ilogger = x.ilogger
-    
+
   static member create createSocket cancelled ilogger =
     { cancelled = cancelled
       createSocket = createSocket
@@ -27,7 +26,7 @@ type TCPConfig =
 module TCP =
   let recv (started: IVar<unit>, shutdown: IVar<unit>) (config: TCPConfig) (next: Ingest) =
     Job.Scheduler.isolate <| fun () ->
-    config.ilogger.info (eventX "Starting ZMQ STREAM/TCP recv-loop.")
+    config.ilogger.info "Starting ZMQ STREAM/TCP recv-loop."
     // https://gist.github.com/lancecarlson/fb0cfd0354005098d579
     // https://gist.github.com/claws/7231548#file-czmq-stream-server-c-L21
     // In https://github.com/zeromq/libzmq/issues/1573 we discovered that;
@@ -36,6 +35,7 @@ module TCP =
     use socket = config.createSocket context
     try
       try
+        start (IVar.fill started ())
         while not (Promise.Now.isFulfilled config.cancelled) do
           let frame = Socket.recv socket
           // Aborted socket due to closing process:
@@ -52,21 +52,21 @@ module TCP =
             let nJ = job {
               match! next line with
               | Result.Error error ->
-                config.ilogger.error (eventX error)
+                config.ilogger.error error
               | Result.Ok () ->
                 ()
               }
             queue nJ
-            
+
       with :? ZMQError as zmq ->
-        config.ilogger.warn (
-          eventX "Shutting down ZMQ STREAM/TCP recv-loop due to {exn}. ZMQ Error No={errorNo}"
-          >> setField "exn" zmq.Message
-          >> setField "errorNo" zmq.ErrorNumber)
+        config.ilogger.warn("Shutting down ZMQ STREAM/TCP recv-loop due to {exn}. ZMQ Error No={errorNo}", fun m ->
+          m.setField("exn", zmq.Message)
+          m.setField("errorNo", zmq.ErrorNumber))
         reraise ()
     finally
-      config.ilogger.info (eventX "Shutting down ZMQ STREAM/TCP recv-loop.")
-  
+      config.ilogger.info "Shutting down ZMQ STREAM/TCP recv-loop."
+      queue (IVar.fill shutdown ())
+
   /// Create a new TCP ingestion server.
   let create: ServerFactory<TCPConfig> =
     IngestServer.create recv

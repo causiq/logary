@@ -102,11 +102,11 @@ let tests =
 
           attrs
             |> List.findByKey Constants.SamplerParam
-            |> Expect.equal "Should eq 'true'" (SpanAttrValue.B true)
+            |> Expect.equal "Should eq 'true'" (Value.Bool true)
 
           attrs
             |> List.findByKey Constants.SamplerType
-            |> Expect.equal "Should eq 'const'" (SpanAttrValue.S "const")
+            |> Expect.equal "Should eq 'const'" (Value.Str "const")
       ]
 
       yield testList "probabilistic" [
@@ -137,11 +137,11 @@ let tests =
               |> Expect.isOkX "Should sample"
           attrs
             |> List.findByKey Constants.SamplerParam
-            |> Expect.equal "Equals 0.5" (SpanAttrValue.V (Float 0.5))
+            |> Expect.equal "Equals 0.5" (Value.Float 0.5)
 
           attrs
             |> List.findByKey Constants.SamplerType
-            |> Expect.equal "Equals 0.5" (SpanAttrValue.S "probabilistic")
+            |> Expect.equal "Equals 0.5" (Value.Str "probabilistic")
       ]
     ]
 
@@ -435,7 +435,7 @@ let tests =
           let spanAttrs, contextO = Jaeger.extract Extract.mapWithSingle m
 
           spanAttrs
-            |> Expect.contains "Has a jaeger-debug-id value" ("jaeger-debug-id", SpanAttrValue.S "37337")
+            |> Expect.contains "Has a jaeger-debug-id value" ("jaeger-debug-id", Value.Str "37337")
 
           contextO
             |> Expect.isSome "Extracts values successfully"
