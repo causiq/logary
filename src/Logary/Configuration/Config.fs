@@ -3,7 +3,7 @@
 namespace Logary.Configuration
 
 open System.Threading
-open FSharp.Control.Tasks.V2.ContextInsensitive
+open FSharp.Control.Tasks.Builders
 open Hopac
 open Hopac.Infixes
 open Hopac.Extensions

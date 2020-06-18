@@ -1,6 +1,7 @@
 ﻿module Logary.Targets.Shipper
 
 open System
+open Logary.Model
 open MBrace.FsPickler
 open Hopac
 open Hopac.Infixes
@@ -11,17 +12,14 @@ open fszmq
 open fszmq.Socket
 
 module Serialisation =
-  open System.IO
 
   let private binarySerializer = FsPickler.CreateBinarySerializer ()
 
-  let serialise (msg: LogaryMessage): byte[] =
+  let serialise (msg: #LogaryMessageBase): byte[] =
     binarySerializer.Pickle msg
 
-  let deserialise (datas: ArraySegment<byte>): LogaryMessage =
-    use ms = new MemoryStream(datas.Array, datas.Offset, datas.Count)
-    ms.Seek(0L, SeekOrigin.Begin) |> ignore
-    binarySerializer.UnPickle (ms.ToArray())
+  let deserialise (datas: byte[]): #LogaryMessageBase =
+    binarySerializer.UnPickle datas
 
 type ShipperConf =
   { publishTo: string option
@@ -47,7 +45,7 @@ module internal Impl =
         (x.zmqCtx :> IDisposable).Dispose()
         (x.sender :> IDisposable).Dispose()
 
-  let createState connectTo createSocket mode: State =
+  let createState connectTo createSocket _: State =
     let context = new Context()
     let sender = createSocket context
     Socket.connect sender connectTo
@@ -61,7 +59,8 @@ module internal Impl =
         RingBuffer.take api.requests ^=> function
           | Log (msg, ack) ->
             job {
-              let bytes = Serialisation.serialise msg
+              let msgBase = msg.getAsBase(EventMessage)
+              let bytes = Serialisation.serialise msgBase
               do! Job.Scheduler.isolate (fun _ -> bytes |>> state.sender)
               do! ack *<= ()
               return! loop state

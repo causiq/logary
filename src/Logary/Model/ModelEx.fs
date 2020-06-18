@@ -27,6 +27,12 @@ type Model.LogaryMessageBase with
   member x.setField(key, value: bool) = x.setField(key, Value.ofPrimitive value)
   member x.setField(key, value: SpanId) = x.setField(key, Value.ofPrimitive value)
   member x.setField(key, value: TraceId) = x.setField(key, Value.ofPrimitive value)
+  member x.setField(baseKey, formattable: IValueFormattable) =
+    match formattable.toKeyValues baseKey with
+    | Choice1Of2 (KeyValue (key, value)) ->
+      x.setField(key, value)
+    | Choice2Of2 kvs ->
+      x.setFieldValues kvs
 
   member x.setGauge(key, value: Duration) = x.setGauge(key, Gauge.ofDuration value)
 
@@ -41,3 +47,9 @@ type Model.LogaryMessageBase with
   member x.setContext(key, numerator: int64, denominator: int64) = x.setContext(key, Value.Fraction (numerator, denominator))
   member x.setContext(key, value: string) = x.setContext(key, Value.ofPrimitive value)
   member x.setContext(key, value: bool) = x.setContext(key, Value.ofPrimitive value)
+  member x.setContext(baseKey, formattable: IValueFormattable) =
+    match formattable.toKeyValues baseKey with
+    | Choice1Of2 (KeyValue (key, value)) ->
+      x.setContext(key, value)
+    | Choice2Of2 kvs ->
+      x.setContextValues kvs

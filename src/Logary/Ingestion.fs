@@ -1,49 +1,110 @@
 namespace Logary.Ingestion
 
-open System
+open System.Buffers
+open System.Collections.Generic
+open System.Net
 open System.Text
 open Hopac
 open Hopac.Infixes
 open Logary
+open Logary.Internals
 
 /// An ingested value. Either a string or a byte array.
-[<Struct>]
+[<Struct; RequireQualifiedAccess>]
 type Ingested =
   /// See https://github.com/fsharp/fslang-suggestions/issues/648
   /// Useful for Protobuf/gRPC ingestion points
-  | Bytes of bs: ArraySegment<byte> // TO CONSIDER: slices
+  | Bytes of bs: byte[]
+  | ByteSeq of ros: ReadOnlySequence<byte>
   /// Useful for JSON/HTTP/TCP-lines ingestion points
   | String of s: string
   /// Create a new Ingested value from a string
   static member ofString s =
     if isNull s then nullArg "s"
     String s
-  /// Create a new Ingested value from the ArraySegment passed
-  static member ofArraySegment bs =
+  /// Create a new Ingested value from the ReadOnlySequence passed
+  static member ofBytes bs =
     Bytes bs
   /// Create a new Ingested value from the byte array
-  static member ofBytes (bs: byte[]) =
-    if isNull bs then nullArg "bs"
-    Bytes (ArraySegment bs)
+  static member ofReadOnlySeq (bs: ReadOnlySequence<byte>) =
+    Bytes (bs.ToArray())
   static member forceBytes = function
     | Bytes bs -> bs
-    | String s -> failwithf "Unexpected string '%s' in Ingested, when byte[] was expected" s
+    | ByteSeq r -> r.ToArray()
+    | String s -> failwithf "Unexpected string '%s' in Ingested, when ReadOnlySequence<byte> was expected" s
 
   /// If a string, returns the string; or if array segment, tries to get the string
   /// from that array segment; ensure there are no half-characters in the array,
   /// or you'll get back a broken string value.
   member x.utf8String() =
     match x with
-    | Bytes bs -> Encoding.UTF8.GetString(bs.Array, bs.Offset, bs.Count)
+    | ByteSeq bs -> Strings.parseAsUTF8 bs
+    | Bytes bs -> Encoding.UTF8.GetString bs
     | String s -> s
 
 /// Callback when there are packets available.
 /// TO CONSIDER: `'err` instead of string.
 type Ingest = Ingested -> Job<Result<unit, string>>
 
+
+type Scheme = Scheme of scheme: string
+type NIC =
+  NIC of nic: string
+with
+  member x.asIPAddress =
+    let (NIC n) = x in IPAddress.Parse n
+
+type Port = Port of port: uint16
+
+type Binding =
+  Binding of Scheme * NIC * Port
+with
+  member x.withScheme s =
+    let (Binding (_, n, p)) = x
+    Binding (Scheme s, n, p)
+  member x.nicAndPort =
+    let (Binding (_, NIC n, Port p)) = x
+    sprintf "%s:%i" n p
+  member x.asEndpoint =
+    let (Binding (_, NIC n, Port p)) = x
+    IPEndPoint(IPAddress.Parse(n), int p)
+  override x.ToString() =
+    let (Binding (Scheme s, NIC n, Port p)) = x
+    sprintf "%s://%s:%i" s n p
+  static member create(scheme, nic, port) =
+    Binding (scheme, NIC nic, Port port)
+  static member create(scheme, nic, port) =
+    Binding (Scheme scheme, NIC nic, Port port)
+
+type BindingList =
+  BindingList of bindings: Binding list
+with
+  member x.Length =
+    let (BindingList bs) = x
+    bs.Length
+  member x.toCommaSeparatedString() =
+    let (BindingList bs) = x in bs
+      |> List.map (fun b -> b.ToString())
+      |> String.concat ", "
+
+  static member create (bs: #seq<_>) =
+    BindingList (List.ofSeq bs)
+  interface IEnumerable<Binding> with
+    member x.GetEnumerator() =
+      let (BindingList bs) = x
+      (bs :> IEnumerable<_>).GetEnumerator()
+  interface System.Collections.IEnumerable with
+    member x.GetEnumerator() =
+      (x :> IEnumerable<Binding>).GetEnumerator() :> _
+  interface IValueFormattable with
+    member x.toKeyValues baseKey =
+      let value = x.toCommaSeparatedString() |> Value.Str
+      Choice1Of2 (KeyValuePair(baseKey, value))
+
 type IngestServerConfig =
   abstract cancelled: Promise<unit>
   abstract ilogger: Logger
+  abstract bindings: BindingList
 
 type IngestServer =
   private {

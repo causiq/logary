@@ -11,10 +11,6 @@
     <DefineConstants>TYPESHAPE_EXPOSE;DEBUG</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\..\paket-files\messagetemplates\messagetemplates-fsharp\src\FsMtParser\FsMtParserFull.fs">
-      <Paket>True</Paket>
-      <Link>paket-files/FsMtParserFull.fs</Link>
-    </Compile>
     <Compile Include="..\..\paket-files\haf\DVar\src\DVar\DVar.fs">
       <Paket>True</Paket>
       <Link>paket-files/DVar.fs</Link>
@@ -51,7 +47,6 @@
     <Compile Include="Logger.fs" />
     <Compile Include="Trace.Span.fs" />
     <Compile Include="Trace.Propagation.fs" />
-    <Compile Include="Internals\TaskBuilder.fs" />
     <Compile Include="Internals/Misc.fs" />
     <Compile Include="Internals/Chiron.fs" />
     <Compile Include="Internals/Rnd.fs" />
@@ -71,12 +66,14 @@
     <Compile Include="Internals\Hopac.Alt.fs" />
     <Compile Include="Internals\MessageWriter.fs" />
     <Compile Include="Internals\DotNetStacktrace.fs" />
+    <Compile Include="Internals\Strings.fs" />
     <Compile Include="Metric/DoubleAdder.fs" />
     <Compile Include="Metric/Metric.fs" />
     <Compile Include="Metric/MetricBuilder.fs" />
     <Compile Include="Metric/Histogram.fs" />
     <Compile Include="Metric/Gauge.fs" />
     <Compile Include="Metric/Conventions.fs" />
+    <Compile Include="Metric\Prometheus.fs" />
     <Compile Include="Global.fs" />
     <Compile Include="Extensions.fs" />
     <Compile Include="Model\LogaryMessageBase.fs" />

@@ -1,4 +1,2 @@
-group MSFT
 Microsoft.EntityFrameworkCore
 Microsoft.EntityFrameworkCore.InMemory
-Microsoft.AspNetCore.Http.Features

@@ -1,10 +1,1 @@
-group MSFT
-
-Microsoft.Extensions.DependencyInjection.Abstractions
-Microsoft.Extensions.Hosting.Abstractions
-Microsoft.Extensions.Logging
-Microsoft.Extensions.Options
-Microsoft.AspNetCore.Mvc.Core
-
 FSharp.Core
-TaskBuilder.fs

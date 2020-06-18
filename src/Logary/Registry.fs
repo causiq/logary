@@ -5,7 +5,6 @@ open Hopac
 open Hopac.Infixes
 open Hopac.Extensions
 open Logary
-open Logary.Model
 open Logary.Metric
 open Logary.Internals
 open Logary.Configuration
@@ -108,6 +107,7 @@ module Registry =
         flushInfo, shutdownInfo)))
 
 
+
   module private Impl =
     let computeLevel (registry: T) =
       fun (loggerName: string) ->
@@ -178,7 +178,7 @@ module Registry =
       >>- (partitionResults >> FlushInfo)
 
     let setMetricFailBehaviour (logger: Logger) (metricRegistry: MetricRegistry) =
-      metricRegistry.setFailBehaviour logger.warn
+      metricRegistry.setFailWith logger.warn
 
   // Middlewares at:
   //  - LogaryConf (goes on all loggers) (compose at call-site)
@@ -258,13 +258,9 @@ module Registry =
           t.runtimeInfo
         member x.flushPending dur =
           flushWithTimeout t dur
-        member x.flushPending () =
-          flush t
         member x.shutdown (flushTO, shutdownTO) =
           shutdownWithTimeouts t flushTO shutdownTO
-        member x.shutdown () =
-          shutdown t
         member x.switchLoggerLevel (path, logLevel) =
           Impl.switchLoggerLevel t path logLevel
-        member x.metricRegistry = t.metricRegistry
+        member x.metrics = t.metricRegistry
     }

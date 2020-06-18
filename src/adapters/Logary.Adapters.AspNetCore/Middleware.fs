@@ -1,141 +1,149 @@
-namespace Logary.Trace
+namespace Logary
 
-open Logary
+open System.Diagnostics
+open System.Globalization
+open Logary.Metric
 open Logary.Trace
-open Logary.Trace.Propagation
+open System.Threading.Tasks
+open FSharp.Control.Tasks.Builders
 open Microsoft.AspNetCore.Http
-open System.Runtime.CompilerServices
+open Microsoft.AspNetCore.Routing
 
-[<Extension; AutoOpen>]
-module LoggerEx =
-  open Logary.Trace.Propagation.HttpContext
+module RequestInfo =
+  let getLabels (ctx: HttpContext, ilogger: Logger, conf: MetricConf) (route: RouteValueDictionary option): Map<string, string> =
+    let mutable labels = Map.empty
 
-  let private startNewSpanFrom (x: Logger, ctx: HttpContext, propagator: Propagator option) =
-    let propagator = propagator |> Option.defaultWith (fun () -> Combined.choose [ Jaeger.propagator; W3C.propagator ])
-    let attrs, parentO = propagator.extract(getter, ctx)
-    // https://github.com/open-telemetry/opentelemetry-specification/issues/210
-    // https://github.com/open-telemetry/opentelemetry-python/pull/89/files
-    let span =
-      x.buildSpan(sprintf "%O %s" ctx.Request.Method ctx.Request.Path.Value, ?parent=parentO)
-       .setKind(SpanKind.Server)
-       .setAttribute("component", "http")
-       .setAttribute("http.method", ctx.Request.Method)
-       .setAttribute("http.route", ctx.Request.Path.Value)
-       .setAttribute("http.query", ctx.Request.QueryString.Value)
-       .setAttributes(attrs)
-       .startWith(x)
+    let getRouteValue key =
+      route
+        |> Option.map (fun route ->
+          match route.TryGetValue key with
+          | true, (:? string as value) -> value
+          | _ -> ""
+        )
+        |> Option.defaultValue ""
 
-    if ctx.Request.Query.ContainsKey "debug" then span.debug()
+    let add key value =
+      labels <- labels |> Map.add key value
 
-    ctx.Items.[UserStateLoggerKey] <- span
+    for label in conf.labelNames do
+      match label with
+      | "action"
+      | "controller" ->
+        getRouteValue label
+          |> add label
+      | "code" ->
+        ctx.Response.StatusCode.ToString(CultureInfo.InvariantCulture)
+          |> add label
+      | "method" ->
+        ctx.Request.Method
+          |> add label
+      | unknown ->
+        let message = sprintf "Unknown label value '%s' configured in metric conf for metric '%s'." unknown conf.name
+        ilogger.debug(message)
 
-    span, ctx
+    labels
 
-  [<Extension; CompiledName "StartSpan">]
-  let startSpan (x: Logger, ctx: HttpContext, propagator: Propagator option) =
-    if isNull ctx then nullArg "ctx"
-    match ctx.Items.TryGetValue UserStateLoggerKey with
-    | false, _ ->
-      startNewSpanFrom (x, ctx, propagator)
-    | true, existing ->
-      eprintfn "'startSpan' called more than once for a HttpContext"
-      existing :?> SpanLogger, ctx
+[<AllowNullLiteral>]
+type ICapturedRouteDataFeature =
+  abstract values: RouteValueDictionary
 
-  type Logger with
-    member x.startSpan (ctx: HttpContext, ?propagator: Propagator) =
-      startSpan (x, ctx, propagator)
+[<Sealed>]
+type CapturedRouteDataFeature() =
+  let routeValues = RouteValueDictionary()
+  interface ICapturedRouteDataFeature with
+    member val values = routeValues with get
 
+module internal RouteData =
+  let RouteSpecific = Set [ "action"; "controller" ]
 
-[<Extension; AutoOpen>]
-module SpanLoggerEx =
+[<Sealed>]
+type SpanMiddleware(next: RequestDelegate, logary: LogManager, logger: Logger) =
+  let fake = MetricConf.create("http_span_fake_metric", "Fake metric conf", U.Scalar)
 
-  [<Extension; CompiledName "Finish">]
-  let finish (x: SpanLogger, ctx: HttpContext) =
-    if ctx.Response.StatusCode >= 500 then
-      x.setStatus(SpanCanonicalCode.InternalError)
-      x.setAttribute("error", true)
-    elif
-      ctx.Response.StatusCode >= 400 then x.setAttribute("http.bad_request", true)
-    x.setAttribute("http.status_code", ctx.Response.StatusCode)
-    x.finish ()
-
-  [<Extension; CompiledName "FinishWithException">]
-  let finishWithExn (x: SpanLogger, _: HttpContext, ex: exn) =
-    x.setAttribute("http.status_code", 500)
-    x.setStatus(SpanCanonicalCode.InternalError, ex.ToString())
-    x.setAttribute("error", true)
-    x.error("Unhandled exception", fun m -> m.addExn ex)
-    x.finish()
-
-  type SpanLogger with
-    member x.finish (ctx: HttpContext) = finish (x, ctx)
-    member x.finishWithExn (ctx: HttpContext, ex: exn) = finishWithExn (x, ctx, ex)
-
-
-
-namespace Microsoft.Extensions.Logging
-
-open FSharp.Control.Tasks.V2
-open Logary
-open Logary.Trace
-open Logary.Trace.Propagation
-open Logary.Adapters.AspNetCore
-open Microsoft.AspNetCore.Http
-open System.Runtime.CompilerServices
-
-[<Extension; AutoOpen>]
-module HttpContextEx =
-
-  [<Extension; CompiledName "SpanLogger">]
-  let spanLogger (httpCtx: HttpContext) =
-    if isNull httpCtx then None else
-    match httpCtx.Items.TryGetValue HttpContext.UserStateLoggerKey with
-    | false, _ ->
-      None
-    | true, value ->
-      Some (value :?> SpanLogger)
-
-  [<Extension; CompiledName "SpanLogger">]
-  let logger (httpCtx: HttpContext) =
-    match spanLogger httpCtx with
-    | None ->
-      Log.create "Logary.Adapters.AspNetCore"
-    | Some logger ->
-      logger :> _
-
-  [<Extension; CompiledName "GetOrCreateSpanLogger">]
-  let getOrCreateSpanLogger (httpCtx: HttpContext, name: string, propagator: Propagator option) =
-    match spanLogger httpCtx with
-    | None when not (isNull httpCtx) ->
-      let created = Log.create name
-      let logger, _ = created.startSpan(httpCtx, ?propagator=propagator)
-      logger
-
-    | None ->
-      let created = Log.create name
-      created.buildSpan(name).startWith created
-
-    | Some value ->
-      value
-
-  type HttpContext with
-    member x.logger = logger x
-    member x.spanLogger = spanLogger x
-    member x.getOrCreateSpanLogger(name: string, ?propagator) = getOrCreateSpanLogger (x, name, propagator)
-
-
-type LogaryMiddleware(next: RequestDelegate, logger: Logger) =
-  member __.Invoke (ctx: HttpContext) =
-    let spanLogger, ctx = logger.startSpan ctx
-    spanLogger.logThrough()
+  member __.Invoke(ctx: HttpContext): Task =
     task {
+      let route =
+        let route = ctx.Features.Get<ICapturedRouteDataFeature>()
+        if not (isNull route) then route.values
+        else ctx.GetRouteData().Values
+
+      let labels = RequestInfo.getLabels (ctx, logary.runtimeInfo.logger, fake) (Some route)
+
+      let spanLogger, ctx = logger.startSpan ctx
+      spanLogger.logThrough()
+
       try
         do! next.Invoke(ctx)
-        spanLogger.finish ctx
+        spanLogger.finish(ctx, fun m -> m.setFieldValues labels)
           |> ignore
         return ctx
       with e ->
-        spanLogger.finishWithExn (ctx, e)
+        spanLogger.finishWithExn(ctx, e)
           |> ignore
         return e.reraise()
-    }
+    } :> _
+
+/// Allows subsequent middlewares to access this middleware's cached route data values.
+/// This isolates downstream middlewares from runtime changes to route data.
+/// Should run after `UseRouting()`.
+/// Data is stored in context via `ICapturedRouteDataFeature`.
+type CaptureRouteDataMiddleware(next: RequestDelegate) =
+  member __.Invoke(ctx: HttpContext): Task =
+    let actual = ctx.GetRouteData()
+
+    if isNull actual || actual.Values.Count <= 0 then next.Invoke ctx else
+
+    // TODO: check what's in here...
+    let captured = CapturedRouteDataFeature()
+
+    for KeyValue (key, value) in actual.Values do
+      (captured :> ICapturedRouteDataFeature).values.Add(key, value)
+
+    ctx.Features.Set<ICapturedRouteDataFeature>(captured)
+
+    next.Invoke ctx
+
+
+[<AbstractClass>]
+type MetricMiddlewareBase<'a when 'a :> IMetric> (logary: LogManager, builder: MetricBuilder<'a>) =
+  let hasRouteSpecific =
+    Set builder.conf.labelNames |> Set.intersect RouteData.RouteSpecific |> Set.isEmpty |> not
+
+  let baseMetric = logary.metrics.getOrCreate builder
+
+  member private x.resolve (ctx: HttpContext, ?route: RouteValueDictionary) =
+    let labels = RequestInfo.getLabels (ctx, logary.runtimeInfo.logger, builder.conf) route
+    baseMetric.withLabels labels
+
+  member x.getMetric (ctx: HttpContext): 'a =
+    if not hasRouteSpecific then x.resolve(ctx) else
+    let route = ctx.Features.Get<ICapturedRouteDataFeature>()
+    if not (isNull route) then x.resolve(ctx, route.values)
+    else x.resolve(ctx, ctx.GetRouteData().Values)
+
+[<Sealed>]
+type DurationHistogramMiddleware(next: RequestDelegate, logary: LogManager) =
+  inherit MetricMiddlewareBase<IHistogram>(logary, Conventions.http_server_request_duration_seconds)
+  member __.Invoke(ctx): Task =
+    let metric = base.getMetric(ctx)
+    task {
+      let started = Stopwatch.getTimestamp()
+      try
+        do! next.Invoke(ctx)
+      finally
+        let dur = Stopwatch.toDuration (Stopwatch.getTimestamp() - started)
+        metric.observe(dur.TotalSeconds)
+    } :> _
+
+[<Sealed>]
+type RequestCountMiddleware(next: RequestDelegate, logary: LogManager) =
+  inherit MetricMiddlewareBase<IGauge>(logary, Conventions.http_server_request_count)
+
+  member __.Invoke(ctx): Task =
+    let metric = base.getMetric ctx
+    task {
+      try
+        do! next.Invoke ctx
+      finally
+        metric.inc 1.
+    } :> _

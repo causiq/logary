@@ -20,35 +20,33 @@ type LogManager =
 
   /// Get a logger denoted by the name passed as the parameter. This name can either be
   /// a specific name that you keep for a sub-component of your application or
-  /// the name of the class. Also have a look at Logging.GetCurrentLogger().
+  /// the name of the class. Also have a look at `Log.create<T>()`.
   abstract getLogger: PointName -> Logger
 
   /// Awaits that all targets finish responding to a flush message
   /// so that we can be certain they have processed all previous messages.
   /// This function is useful together with unit tests for the targets.
   abstract flushPending: Duration -> Alt<FlushInfo>
-  abstract flushPending: unit -> Alt<unit>
 
   /// Shuts Logary down after flushing, given a timeout duration to wait before
   /// counting the target as timed out in responding. The duration is applied
   /// to each actor's communication. Does an ordered shutdown.
   ///
-  /// First duration: flush duration
-  /// Second duration: shutdown duration
-  /// Returns the shutdown book keeping info
+  /// First duration: flush duration allowed for
+  /// Second duration: shutdown duration allowed for
+  ///
+  /// Returns the shutdown info.
   abstract shutdown: flush:Duration * shutdown:Duration -> Alt<FlushInfo * ShutdownInfo>
-  abstract shutdown: unit -> Alt<unit>
 
-  /// Dynamically controls logger min level,
-  /// this will only affect the loggers (its name, not its instance) that have been created before
+  /// Dynamically controls logger min level.
+  /// This will only affect the loggers (its name, not its instance) that have been created before
   abstract switchLoggerLevel: string * LogLevel -> unit
 
   /// The manager-global Metrics registry
-  abstract metricRegistry: MetricRegistry
+  abstract metrics: MetricRegistry
 
 [<AutoOpen>]
 module LogManagerEx =
-
   type LogManager with
     member x.getLogger (loggerName: string) =
       x.getLogger (PointName.parse loggerName)

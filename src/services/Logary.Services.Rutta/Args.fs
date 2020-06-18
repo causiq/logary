@@ -1,5 +1,7 @@
 namespace Logary.Services.Rutta
 
+open Logary.Ingestion
+
 #nowarn "49"
 // ignore "Uppercase variable identifiers should not generally be used in patterns, and may indicate a misspelt pattern name."
 
@@ -11,19 +13,31 @@ open System.Reflection
 ()
 
 
-type RMode =
-  /// zmq PULL socket. Does a PULL socket bind call.
+type RuttaMode =
+  /// ØMQ PULL socket. Does a PULL socket bind call.
   | Pull
-  /// zmq SUB socket. Does a SUB connect call.
+  /// ØMQ SUB socket. Does a SUB connect call.
   | Sub
-  /// TCP listener, aka zmq STREAM socket.
+  /// ØMQ STREAM socket: a basic TCP listener
   | TCP
   /// UDP listener
   | UDP
   /// HTTP listener
   | HTTP
+  member x.isWithØMQ =
+    match x with | Pull | Sub | TCP -> true | _ -> false
+  override x.ToString() =
+    match x with
+    | Pull -> "pull"
+    | Sub -> "sub"
+    | TCP -> "tcp"
+    | UDP -> "udp"
+    | HTTP -> "http"
+  member x.asScheme =
+    Scheme (x.ToString())
 
-type Codec =
+[<RequireQualifiedAccess>]
+type RuttaCodec =
   /// Uses the newline-separated JSON codec
   | Json
   /// Takes the newline-separates message and create a simple message from it
@@ -68,8 +82,8 @@ module Help =
     | HTTP _ -> "Runs Rutta in HTTP server mode. Send JSON to /i/logary to have it converted to Messages."
 
   let describeModes () =
-    let folder (sb: StringBuilder) (u: RMode) =
-      let mInfo, _ = FSharpValue.GetUnionFields(u, typeof<RMode>)
+    let folder (sb: StringBuilder) (u: RuttaMode) =
+      let mInfo, _ = FSharpValue.GetUnionFields(u, typeof<RuttaMode>)
       let mdesc = describeMode u
       sb.AppendFormat("- {0}: {1}{2}", mInfo.Name.ToLowerInvariant(), mdesc, Environment.NewLine)
     [ Pull; Sub; TCP; UDP; HTTP ]
@@ -77,23 +91,23 @@ module Help =
     |> sprintf "%O"
 
   let describeCodec = function
-    | Json -> "Uses the JSON codec; framing (what separates messages) is up to the listener mode."
-    | Plain -> "Takes the newline-separates message and create a simple message from it"
-    | Binary -> "Used for Rutta-to-Rutta communication with the ZMQ socket types"
-    | Log4jXML -> "Takes Log4j XML event, separated with newlines, as input"
+    | RuttaCodec.Json -> "Uses the JSON codec; framing (what separates messages) is up to the listener mode."
+    | RuttaCodec.Plain -> "Takes the newline-separates message and create a simple message from it"
+    | RuttaCodec.Binary -> "Used for Rutta-to-Rutta communication with the ZMQ socket types"
+    | RuttaCodec.Log4jXML -> "Takes Log4j XML event, separated with newlines, as input"
 
   let describeCodecs () =
-    let folder (sb: StringBuilder) (u: Codec) =
-      let mInfo, _ = FSharpValue.GetUnionFields(u, typeof<Codec>)
+    let folder (sb: StringBuilder) (u: RuttaCodec) =
+      let mInfo, _ = FSharpValue.GetUnionFields(u, typeof<RuttaCodec>)
       let mdesc = describeCodec u
       sb.AppendFormat(" - {0}: {1}{2}", mInfo.Name.ToLowerInvariant(), mdesc, Environment.NewLine)
-    [ Json; Plain; Binary; Log4jXML ]
+    [ RuttaCodec.Json; RuttaCodec.Plain; RuttaCodec.Binary; RuttaCodec.Log4jXML ]
     |> Seq.fold folder (StringBuilder())
     |> sprintf "%O"
 
 [<RequireQualifiedAccess; RequireSubcommand>]
 type RouterSubCommand =
-  | [<Mandatory>] Listener of routerMode:RMode * bindingOrEndpoint:string * codec:Codec
+  | [<Mandatory>] Listener of routerMode:RuttaMode * bindingOrEndpoints:string * codec:RuttaCodec
   | [<Mandatory>] Target of targetUri:string
   | Disable_CORS
 
@@ -105,8 +119,8 @@ type RouterSubCommand =
           "A listener is a triple of <router mode, binding, codec>. You can specify many of these:\n"
           "## Router modes:\n"
           Help.describeModes ()
-          "## Binding\n"
-          "E.g. \"127.0.0.1:20001\" or \"[::]:8080\"\n"
+          "## Binding(s)\n"
+          "E.g. \"127.0.0.1:20001\" or \"0.0.0.0:9090,0.0.0.0:9443\" or \"[::]:8080\" or \"[::]:8080,[1234::1]:9090\"\n"
           "\n"
           "## Codecs:\n"
           Help.describeCodecs ()
@@ -159,14 +173,30 @@ with
 
 module Parsers =
   open System
-  open System.Net
   open Logary
-  open Logary.Configuration
 
-  let binding (binding: string): IPEndPoint =
+  let bindingString (binding: string): Binding =
     let portIndex = binding.LastIndexOf(':')
     let nic, port = binding.[0..portIndex-1], binding.[portIndex+1..]
-    IPEndPoint(IPAddress.Parse nic, int port)
+    Binding.create("tcp", nic, uint16 port)
+
+  let listener (mode: RuttaMode, nicAndPorts: string, codec: RuttaCodec): RuttaMode * BindingList * RuttaCodec =
+    let parseNICAndPort (nicAndPort: string) =
+      let portIndex = nicAndPort.LastIndexOf(':')
+      NIC nicAndPort.[0..portIndex-1],
+      Port (uint16 nicAndPort.[portIndex+1..])
+
+    let parseNICAndPorts (nicAndPorts: string) =
+      nicAndPorts.Split(',', StringSplitOptions.RemoveEmptyEntries)
+        |> Array.map (fun s -> s.Trim())
+        |> Array.map parseNICAndPort
+
+    let bindings =
+      parseNICAndPorts nicAndPorts
+        |> Array.map (fun (nic, port) -> Binding (mode.asScheme, nic, port))
+        |> BindingList.create
+
+    mode, bindings, codec
 
   let targetConfig (targetUri: string): TargetConf =
     TargetConfig.create (Uri targetUri)

@@ -43,7 +43,7 @@ type LogaryMessageBase(kind, ?timestamp, ?messageId, ?name, ?level,
   /// Ensure that you set all the BasicConf's labels in the logged message fields/context.
   ///
   /// TO CONSIDER: making this field internal, hiding behind methods instead
-  member val counterConf: Metric.BasicConf option = None with get, set
+  member val counterConf: Metric.MetricConf option = None with get, set
 
   /// Where to route this message
   member val internal targets: Set<string> = Set.empty with get, set
@@ -81,6 +81,9 @@ type LogaryMessageBase(kind, ?timestamp, ?messageId, ?name, ?level,
 
   member x.setFieldValues(other: IReadOnlyDictionary<string, Value>) =
     for (KeyValue (k, v)) in other do x.fields.[k] <- v
+
+  member x.setFieldValues(other: IReadOnlyDictionary<string, string>) =
+    for (KeyValue (k, v)) in other do x.fields.[k] <- Value.Str v
 
   member x.setGaugeValues(other: IReadOnlyDictionary<string, Gauge>) =
     for (KeyValue (k, v)) in other do x.gauges.[k] <- v

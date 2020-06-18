@@ -75,7 +75,7 @@ let tracestateHandler (inputs: InputItem[]): HttpHandler =
   let c = new HttpClient()
   fun next ctx ->
     task {
-      let span = ctx.getOrCreateSpanLogger "traceStateHandler"
+      let span = ctx.getCreateLogger "traceStateHandler"
       for input in inputs do
         let body = input.arguments |> Seq.map J.String |> Seq.toList |> J.Array |> Json.format
         let message = new HttpRequestMessage(HttpMethod.Post, input.url)
@@ -110,8 +110,8 @@ let webApp =
 // ---------------------------------
 
 let errorHandler (logger: Logger) (ex: Exception) _ =
-    logger.error("An unhandled exception has occurred while executing the request.", ex)
-    clearResponse >=> setStatusCode 500 >=> text ex.Message
+  logger.error("An unhandled exception has occurred while executing the request.", ex)
+  clearResponse >=> setStatusCode 500 >=> text ex.Message
 
 // ---------------------------------
 // Config and Main
@@ -138,30 +138,25 @@ let configureServices (services: IServiceCollection) =
     services.AddCors().AddGiraffe()
       |> ignore
 
-let configureLogging (builder: ILoggingBuilder) =
-    builder.AddConsole()
-      |> ignore
-
 [<EntryPoint>]
 let main _ =
-    let logary =
-      Config.create "Logary.Giraffe" "laptop"
-      |> Config.target (Console.create Console.empty "console")
-      |> Config.ilogger (ILogger.Console Debug)
-      |> Config.build
-      |> Hopac.Hopac.run
+  let logary =
+    Config.create "Logary.Giraffe" "laptop"
+    |> Config.target (Console.create Console.empty "console")
+    |> Config.ilogger (ILogger.Console Debug)
+    |> Config.build
+    |> Hopac.Hopac.run
 
-    let logger = logary.getLogger "Logary.Giraffe"
-    let contentRoot = Directory.GetCurrentDirectory()
-    let webRoot = Path.Combine(contentRoot, "public")
-    WebHostBuilder()
-        .UseKestrel()
-        .UseLogary(logary)
-        .UseContentRoot(contentRoot)
-        .UseWebRoot(webRoot)
-        .Configure(Action<IApplicationBuilder>(configureApp logger))
-        .ConfigureServices(configureServices)
-        .ConfigureLogging(configureLogging)
-        .Build()
-        .Run()
-    0
+  let logger = logary.getLogger "Logary.Giraffe"
+  let contentRoot = Directory.GetCurrentDirectory()
+  let webRoot = Path.Combine(contentRoot, "public")
+  WebHostBuilder()
+    .UseKestrel()
+    .UseLogary(logary)
+    .UseContentRoot(contentRoot)
+    .UseWebRoot(webRoot)
+    .Configure(Action<IApplicationBuilder>(configureApp logger))
+    .ConfigureServices(configureServices)
+    .Build()
+    .Run()
+  0

@@ -5,5 +5,5 @@ Topshelf
 fszmq
 FsPickler
 Argu
-Suave
 System.Data.Odbc
+Giraffe

@@ -8,7 +8,8 @@ open System.Net
 open Logary
 open Logary.Codecs
 open Logary.Ingestion
-open Logary.CORS
+open Logary.Ingestion.HTTP
+open Logary.Ingestion.HTTP.CORS
 open Logary.Configuration
 open Logary.Targets
 open fszmq
@@ -34,7 +35,7 @@ type State =
       (x.zmqCtx :> IDisposable).Dispose()
       (x.receiver :> IDisposable).Dispose()
 
-let private createSink (logary: LogManager) (codec: Logary.Codecs.Codec) =
+let private createIngest (logary: LogManager) (codec: Logary.Codecs.Codec): Ingest =
   let targetLogger = logary.getLogger "Rutta"
   //codec >> Result.map (Array.iter targetLogger.logWith) >> Job.result
   fun input ->
@@ -42,16 +43,15 @@ let private createSink (logary: LogManager) (codec: Logary.Codecs.Codec) =
     | Result.Ok messages ->
       let received = logary.runtimeInfo.getTimestamp()
       messages
-        |> Array.map (fun m -> m.received <- received; m)
+        |> Array.map (fun m -> m.received <- Some received; m)
         |> Array.iter targetLogger.log
       Job.result (Result.Ok ())
     | Result.Error error ->
       Job.result (Result.Error error)
 
-let internal zmqRecv createSocket =
+let internal zmqRecv (context: Context) createSocket =
   let recv (started, shutdown) (cfg: IngestServerConfig) next =
     Job.Scheduler.isolate <| fun () ->
-    use context = new Context()
     use socket = createSocket context
     queue (started *<= ())
     while not (Promise.Now.isFulfilled cfg.cancelled) do
@@ -69,125 +69,117 @@ let internal zmqRecv createSocket =
 
   IngestServer.create recv
 
+// ZMQ API docs http://api.zeromq.org/master:_start
+// Context: A ØMQ context is thread safe and may be shared among as many application threads as necessary, without any additional locking required on the part of the caller.
+// Sockets: ØMQ has both thread safe socket type and not thread safe socket types. Applications MUST NOT use a not thread safe socket from multiple threads except after migrating a socket from one thread to another with a "full fence" memory barrier.
+
+type IngestServerConfigImpl(cancelled, ilogger, bindings) =
+  interface IngestServerConfig with
+    member x.cancelled = cancelled
+    member x.ilogger = ilogger
+    member x.bindings = bindings
+
 /// ZMQ PULL
-let pullBind (cancelled, ilogger: Logger, logary) (binding: string) (cname, codec) =
+let pullBind (context: Context) (cancelled, ilogger: Logger, logary) (bindings: BindingList) (cname: string, codec) =
   ilogger.info ("Spawning router with {binding} in {mode} mode, accepting {codec}.", fun m ->
-    m.setField("binding", binding)
+    m.setField("bindings", bindings)
     m.setField("mode", "pull")
     m.setField("codec", cname))
 
   let create (context: Context) =
     let socket = Context.pull context
-    Socket.bind socket (sprintf "tcp://%s" binding)
+    for binding in bindings do
+      Socket.bind socket (sprintf "tcp://%s" binding.nicAndPort)
     socket
 
-  let config =
-    let ilogger = ilogger |> Logger.setNameEnding "zmqPull"
-    { new IngestServerConfig with
-        member x.cancelled = cancelled
-        member x.ilogger = ilogger }
-
-  let next = createSink logary codec
-  zmqRecv create config next
+  let ingest = createIngest logary codec
+  let config = IngestServerConfigImpl(cancelled, ilogger |> Logger.setNameEnding "zmqPull", bindings) :> IngestServerConfig
+  zmqRecv context create config ingest
 
 /// ZMQ SUB
-let subConnect (cancelled, ilogger: Logger, logary) (binding: string) (cname, codec) =
+let subConnect (context: Context) (cancelled, ilogger: Logger, logary) (bindings: BindingList) (cname: string, codec) =
   ilogger.info ("Spawning router with {binding} in {mode} mode, accepting {codec}.", fun m ->
-    m.setField("binding", binding)
+    m.setField("bindings", bindings)
     m.setField("mode", "sub")
     m.setField("codec", cname))
 
   let create (context: Context) =
     let socket = Context.sub context
     Socket.subscribe socket [""B]
-    Socket.connect socket (sprintf "tcp://%s" binding)
+    for binding in bindings do
+      Socket.connect socket (sprintf "tcp://%s" binding.nicAndPort)
     socket
 
-  let config =
-    let ilogger = ilogger |> Logger.setNameEnding "zmqSub"
-    { new IngestServerConfig with
-        member x.cancelled = cancelled
-        member x.ilogger = ilogger }
-
-  let next = createSink logary codec
-  zmqRecv create config next
+  let config = IngestServerConfigImpl(cancelled, ilogger |> Logger.setNameEnding "zmqSub", bindings) :> IngestServerConfig
+  let ingest = createIngest logary codec
+  zmqRecv context create config ingest
 
 /// ZMQ STREAM
-let tcpBind (cancelled, ilogger: Logger, logary) (binding: string) (cname, codec) =
+let tcpBind (context: Context) (cancelled, ilogger: Logger, logary) (bindings: BindingList) (cname: string, codec) =
   ilogger.info ("Spawning router with {binding} in {mode} mode, accepting {codec}.", fun m ->
-    m.setField("binding", binding)
+    m.setField("bindings", bindings)
     m.setField("mode", "tcp")
     m.setField("codec", cname))
 
-  let create (context: Context) =
-    let socket = Context.stream context
-    Socket.bind socket (sprintf "tcp://%s" binding)
-    socket
-
   let ilogger = ilogger |> Logger.setNameEnding "zmqStream"
-  let config = TCPConfig.create create cancelled ilogger
-  let next = createSink logary codec
+  let config = TCPConfig.create context bindings cancelled ilogger
+  let next = createIngest logary codec
   TCP.create config next
 
 /// UDP
-let udpBind (cancelled, ilogger: Logger, logary) (binding: string) (cname, codec) =
+let udpBind (cancelled, ilogger: Logger, logary) (bindings: BindingList) (cname: string, codec) =
   ilogger.info ("Spawning router with {binding} in {mode} mode, accepting {codec}.", fun m ->
-    m.setField("binding", binding)
+    m.setField("binding", bindings)
     m.setField("mode", "udp")
     m.setField("codec", cname))
 
   let ilogger = ilogger |> Logger.setNameEnding "udp"
-  let ep = Parsers.binding binding
-  let config = UDPConfig.create ep cancelled ilogger
-  let next = createSink logary codec
+  let config = UDPConfig.create bindings cancelled ilogger
+  let next = createIngest logary codec
   UDP.create config next
 
 // HTTP
-let httpBind cors (cancelled, ilogger: Logger, logary) binding (cname, codec) =
-  ilogger.info (
-    Model.EventMessage "Spawning router with {binding} in {mode} mode, accepting {codec}."
-    >> setField "binding" binding
-    >> setField "mode" HTTP
-    >> setField "codec" cname)
+let httpBind cors (cancelled, ilogger: Logger, logary: LogManager) (bindings: BindingList) (cname: string, codec) =
+  ilogger.info ("Spawning router with {bindings} in {mode} mode, accepting {codec}.", fun m ->
+    m.setField("binding", bindings)
+    m.setField("mode", HTTP.ToString())
+    m.setField("codec", cname))
 
   let acao = if cors then Some OriginResult.allowAll else None
   let ilogger = ilogger |> Logger.setNameEnding "http"
-  let ep = Parsers.binding binding
   let corsConfig = CORSConfig.create(?accessControlAllowOrigin = acao)
-  let config = HTTPConfig.create("/i/logary", logary, ilogger, cancelled, ep, corsConfig=corsConfig)
-  let next = createSink logary codec
+  let config = HTTPConfig.create("/", logary, ilogger, cancelled, bindings, corsConfig=corsConfig)
+  let next = createIngest logary codec
   HTTP.create config next
 
-type C = Logary.Services.Rutta.Codec
-
+// Private:
 let private toCodec = function
-  | C.Json ->
+  | RuttaCodec.Json ->
     "json", Codec.json
-  | C.Plain ->
+  | RuttaCodec.Plain ->
     "plain", Codec.plain
-  | C.Binary ->
+  | RuttaCodec.Binary ->
     "binary",
     Ingested.forceBytes
     >> Shipper.Serialisation.deserialise
     >> Array.singleton
     >> Result.Ok
-  | C.Log4jXML ->
+  | RuttaCodec.Log4jXML ->
     "log4jxml",
     Codec.log4jXML
 
-type Binding = string
+let private listenersToString (ls: #seq<(RuttaMode * BindingList * RuttaCodec)>) =
+  ls
+    |> Seq.map (fun (r, bindings, c) -> sprintf "%O %s %O" r (bindings.toCommaSeparatedString()) c)
+    |> String.concat ", "
 
-let private toListener (cancelled, cors, ilogger, logary) (mode: RMode): Binding -> string * Codec -> Job<IngestServer> =
-  let fn =
-    match mode with
-    | Pull -> pullBind
-    | Sub -> subConnect
-    | TCP -> tcpBind
-    | UDP -> udpBind
-    | HTTP -> httpBind cors
-  fn (cancelled, ilogger, logary)
+let private targetsToString (ts: #seq<TargetConf>) =
+  ts
+    |> Seq.map (fun t -> t.name)
+    |> String.concat ","
 
-let start (cors, ilevel: LogLevel) (targets: TargetConf list) (listeners: (RMode * string * C) list) =
+// Public:
+let start (cors, ilevel: LogLevel) (targets: TargetConf list) (listeners: (RuttaMode * BindingList * RuttaCodec) list) =
   let cancelled = IVar ()
 
   let logary =
@@ -198,38 +190,49 @@ let start (cors, ilevel: LogLevel) (targets: TargetConf list) (listeners: (RMode
         Events.events
         |> Events.setTargets (targets |> List.map (fun t -> t.name)))
     |> Config.loggerMinLevel ".*" Verbose
-    |> Config.ilogger (ILogger.LiterateConsole ilevel)
+    |> Config.ilogger (ILogger.Console ilevel)
     |> Config.build
     |> run
 
   let ilogger = logary.runtimeInfo.logger |> Logger.setName "Rutta"
 
-  ilogger.debug (
-    Model.EventMessage "Starting {@listeners}, sending to {@targets}"
-    >> setField "listeners" listeners
-    >> setField "targets" (targets |> List.map (fun t -> t.name)))
+  ilogger.debug ("Starting {listeners}, sending to {targets}", fun m ->
+    m.setField("targets", targetsToString targets)
+    m.setField("listeners", listenersToString listeners))
+
+  let zmqContext = lazy (new Context())
 
   let servers =
     listeners
-    |> Seq.map (fun (mode, binding, c) -> toListener (cancelled, cors, ilogger, logary) mode, binding, toCodec c)
-    |> Seq.mapJob (fun (exec, binding, codec) -> exec binding codec)
-    |> run
+      |> Seq.mapJob (fun (mode, bindings, ruttaCodec) ->
+        let factory =
+          match mode with
+          | Pull -> pullBind zmqContext.Value
+          | Sub -> subConnect zmqContext.Value
+          | TCP -> tcpBind zmqContext.Value
+          | UDP -> udpBind
+          | HTTP -> httpBind cors
+        factory (cancelled, ilogger, logary) bindings (toCodec ruttaCodec))
+      |> run
 
   let allShutdown =
     servers
     |> Seq.map IngestServer.waitForShutdown
     |> Job.conIgnore
 
-  ilogger.debug (
-    Model.EventMessage "Router start of {@listeners}, sending to {@targets}, successful."
-    >> setField "listeners" listeners
-    >> setField "targets" (targets |> List.map (fun t -> t.name)))
+  ilogger.debug ("Router start of {@listeners}, sending to {@targets}, successful.", fun m ->
+    m.setField("listeners", listenersToString listeners)
+    m.setField("targets", targetsToString targets))
 
   { new IDisposable with
       member x.Dispose () =
-        run (
-          cancelled *<= ()
-          >>=. allShutdown
-          >>=. logary.shutdown ()
-        )
+        // first, cancel all listeners and wait for them to shut down
+        run (cancelled *<= () >>=. allShutdown)
+
+        // now dispose the ZMQ context
+        if zmqContext.IsValueCreated then
+          (zmqContext.Value :> IDisposable).Dispose()
+
+        // finally, shut down the LogManager
+        run (logary.shutdown())
   }

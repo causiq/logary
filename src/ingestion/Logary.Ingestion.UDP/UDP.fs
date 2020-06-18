@@ -12,16 +12,17 @@ type UDPConfig =
   { /// Set this promise to a value to shut down the UDP receiver.
     cancelled: Promise<unit>
     /// Where to listen.
-    endpoint: IPEndPoint
+    bindings: BindingList
     ilogger: Logger }
 
   interface IngestServerConfig with
     member x.cancelled = x.cancelled
     member x.ilogger = x.ilogger
+    member x.bindings = x.bindings
 
-  static member create endpoint cancelled ilogger =
+  static member create bindings cancelled ilogger =
     { cancelled = cancelled
-      endpoint = endpoint
+      bindings = bindings
       ilogger = ilogger }
 
 module internal Impl =
@@ -73,41 +74,61 @@ module internal Impl =
     }
 
 module UDP =
-  let recv (started: IVar<unit>, shutdown: IVar<unit>) (config: UDPConfig) (next: Ingest) =
-    let endpoint =
-      let a = config.endpoint.Address
-      if a.Equals IPAddress.Any then
-        IPAddress.Loopback
-      elif a.Equals IPAddress.IPv6Any then
-        IPAddress.IPv6Loopback
-      else
-        a
+  let internal addressFrom (endpoint: IPEndPoint) =
+    let a = endpoint.Address
+    if a.Equals IPAddress.Any then
+      IPAddress.Loopback
+    elif a.Equals IPAddress.IPv6Any then
+      IPAddress.IPv6Loopback
+    else
+      a
 
-    let endpointS = endpoint.ToString()
-
+  let recvSingle (ilogger: Logger, onStartJ: Job<unit>, onShutdownJ: Job<unit>, cancelled: Promise<unit>, endpoint: IPEndPoint) (ingest: Ingest) =
+    let ilogger = ilogger |> Logger.apply (fun m -> m.setField("endpoint", endpoint.ToString()))
     job {
-      config.ilogger.info (
+      ilogger.info(
         "Starting UDP recv-loop at {endpoint}. You can send data to this endpoint with {ncCommand}, and then typing your message/JSON. The UDP target expects datagrams, so the newline character will be part of the message if you send those.",
-        fun m ->
-          m.setField("ncCommand", sprintf "nc -u -p 54321 %O %i" endpoint config.endpoint.Port)
-          m.setField("endpoint", endpointS))
+        fun m -> m.setField("ncCommand", sprintf "nc -u -p 54321 %O %i" endpoint endpoint.Port))
 
       let completed = IVar ()
-      use inSocket = new UdpClient(config.endpoint)
+      use inSocket = new UdpClient(endpoint)
 
       let close () =
-        config.ilogger.info ("Stopping UDP recv-loop at {endpoint}", fun m -> m.setField("endpoint", endpointS))
+        ilogger.info "Stopping UDP recv-loop at {endpoint}"
         try inSocket.Close() with _ -> ()
 
       // start the client "server" Proc
-      do! Job.start (Impl.ignoreODE completed (Impl.receiveLoop config.ilogger next inSocket))
-      do! started *<= ()
+      do! Job.start (Impl.ignoreODE completed (Impl.receiveLoop ilogger ingest inSocket))
+      do! onStartJ
 
       // this may throw, thereby ignoring the wait on the `cancelled` Promise
       return!
         Job.tryFinallyJob
-          (Job.tryFinallyFun (config.cancelled <|> completed) close)
-          (IVar.fill shutdown ())
+          (Job.tryFinallyFun (cancelled <|> completed) close)
+          onShutdownJ
+    }
+
+  let recv (started: IVar<unit>, shutdown: IVar<unit>) (config: UDPConfig) (ingest: Ingest) =
+    let startLatch, shutdownLatch =
+      Latch config.bindings.Length,
+      Latch config.bindings.Length
+
+    let startAllJ =
+      config.bindings
+        |> Seq.map (fun binding ->
+          recvSingle (config.ilogger,
+                      Latch.decrement startLatch,
+                      Latch.decrement shutdownLatch,
+                      config.cancelled,
+                      binding.asEndpoint)
+                     ingest)
+        |> Job.conIgnore
+        |> Job.start
+
+    job {
+      do! startAllJ
+      do! Latch.await startLatch ^=> IVar.fill started
+      do! Latch.await shutdownLatch ^=> IVar.fill shutdown
     }
 
   /// Creates a new LogClient with an address, port and a sink (next.)

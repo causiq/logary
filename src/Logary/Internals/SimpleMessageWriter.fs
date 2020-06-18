@@ -1,9 +1,9 @@
 namespace Logary.Internals
 
+open FSharp.Control.Tasks.Builders
 open System
-open FSharp.Control.Tasks.V2.ContextInsensitive
-open Logary.Internals
 open Logary
+open Logary.Internals
 
 type SimpleMessageWriter() =
   interface MessageWriter with

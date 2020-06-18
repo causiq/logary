@@ -1,44 +1,44 @@
 source https://api.nuget.org/v3/index.json
-framework netstandard2.0, netstandard2.1, netcoreapp3.1
+framework netstandard2.1, netcoreapp3.1
 version 5.242.2
 
 nuget Argu
 nuget Castle.Core ~> 4.4
-nuget EventStore.Client ~> 4.1
-nuget EventStore.ClientAPI.NetCore
+nuget Confluent.Kafka
+nuget EventStore.Client
 nuget Expecto
 nuget Expecto.FsCheck
 nuget Expecto.Hopac
-nuget Jaeger.Thrift
-nuget Machine.Specifications
-nuget Machine.Specifications.Should
-nuget Machine.Specifications.Runner.Console
 nuget FParsec
-nuget FSharp.Core ~> 4.7.0
-nuget FluentMigrator < 2
-nuget FluentMigrator.Runner < 2
+nuget FSharp.Core ~> 4.7
+nuget Falanx.Proto.Codec.Binary
+nuget Falanx.Sdk
+nuget FluentMigrator
+nuget FluentMigrator.Runner
 nuget FsCheck
 nuget FsPickler
 nuget FsPickler.Json
 nuget FsSql
-
-nuget Google.Api.Gax.Rest ~> 2.6 strategy: min
-nuget Google.Cloud.Logging.V2 ~> 2.2 strategy: min
-nuget Google.Cloud.BigQuery.V2 ~> 1.3 strategy: min
-nuget Google.Cloud.PubSub.V1 1.1.0-beta01 strategy: min
-
+nuget Giraffe prerelease
 nuget Hopac
 nuget Http.fs
+nuget Jaeger.Thrift
+nuget Machine.Specifications
+nuget Machine.Specifications.Runner.Console
+nuget Machine.Specifications.Should
 nuget Microsoft.ApplicationInsights
 nuget Microsoft.ApplicationInsights.DependencyCollector
+nuget Microsoft.EntityFrameworkCore
+nuget Microsoft.EntityFrameworkCore.InMemory
 nuget NLog
 nuget NodaTime
 nuget RabbitMQ.Client
 nuget SQLite.Interop
 nuget SQLite.Interop.dll
-nuget Suave < 2.5
+nuget System.Data.Odbc
 nuget System.Data.SQLite.Core
-nuget System.Net.Http
+nuget System.Memory
+nuget Ply
 nuget Topshelf
 nuget aliyun-log-csharp-sdk
 nuget elmah.corelibrary
@@ -46,12 +46,11 @@ nuget elmah.io.client
 nuget elmah.io.core
 nuget fszmq
 nuget protobuf-net
-nuget System.Memory
-nuget System.Data.Odbc
 
-nuget Confluent.Kafka
-nuget Falanx.Sdk
-nuget Falanx.Proto.Codec.Binary
+nuget Google.Api.Gax.Rest strategy: min
+nuget Google.Cloud.Logging.V2 strategy: min
+nuget Google.Cloud.BigQuery.V2 strategy: min
+nuget Google.Cloud.PubSub.V1 strategy: min
 
 github eiriktsarpalis/TypeShape:c39f18a164a9ce227656e2806c2bddfdde623a68 src/TypeShape/TypeShape.fs
 github eiriktsarpalis/TypeShape:c39f18a164a9ce227656e2806c2bddfdde623a68 src/TypeShape/Utils.fs
@@ -86,23 +85,6 @@ group Build
 
   github eiriktsarpalis/snippets SlnTools/SlnTools.fs
 
-group MSFT
-  source https://api.nuget.org/v3/index.json
-  storage none
-  framework auto-detect
-  redirects on
-  nuget FSharp.Core ~> 4.7
-  nuget Microsoft.Extensions.Logging ~> 3
-  nuget Microsoft.Extensions.Hosting.Abstractions ~> 3
-  nuget Microsoft.AspNetCore.Http.Features
-  nuget Microsoft.AspNetCore.Mvc.Core
-  nuget Microsoft.Extensions.DependencyInjection.Abstractions
-  nuget Microsoft.Extensions.Options
-  nuget Microsoft.EntityFrameworkCore
-  nuget Microsoft.EntityFrameworkCore.InMemory
-  nuget TaskBuilder.fs
-  nuget Giraffe ~> 4
-
 group Examples
   source https://api.nuget.org/v3/index.json
   storage none
@@ -112,7 +94,7 @@ group Examples
   nuget Argu
   nuget Castle.Core
   nuget FParsec
-  nuget FSharp.Core ~> 4.7.0
+  nuget FSharp.Core ~> 4.7
   nuget Hopac
   nuget NodaTime
   nuget RabbitMQ.Client
@@ -124,7 +106,7 @@ group Benchmarks
   redirects on
 
   nuget FParsec
-  nuget FSharp.Core ~> 4.7.0
+  nuget FSharp.Core ~> 4.7
   nuget Hopac
   nuget NodaTime
   nuget Expecto

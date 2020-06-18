@@ -5,19 +5,19 @@ open Logary
 
 [<Struct>]
 type HistogramConf =
-  { conf: BasicConf; buckets: float[] }
+  { metricConf: MetricConf; buckets: float[] }
 
   interface MetricBuilder<IHistogram> with
-    member x.conf = x.conf
+    member x.conf = x.metricConf
     member x.build _ labels = Histogram(x, labels) :> IHistogram
 
-and Histogram(hconf, labels) =
+and Histogram(conf, labels) =
   do
-    let containsLe = hconf.conf.labelNames |> Array.contains "le"
+    let containsLe = conf.metricConf.labelNames |> Array.contains "le"
     if containsLe then failwith "Histogram cannot have a label named 'le'"
 
   let sumCounter = DoubleAdder()
-  let originSortedBucket = Array.sort hconf.buckets
+  let originSortedBucket = Array.sort conf.buckets
   let sortedBuckets =
     if Double.IsPositiveInfinity(Array.last originSortedBucket) then originSortedBucket
     else Array.append originSortedBucket [| Double.PositiveInfinity |]
@@ -35,7 +35,7 @@ and Histogram(hconf, labels) =
         sumCounter.Add value
 
     member x.explore () =
-      let basic = hconf.conf
+      let basic = conf.metricConf
       let sumInfo = sumCounter.Sum()
       let bucketsInfo = sortedBucketCounters |> Map.map (fun _ counter -> counter.Sum())
       let metricInfo = { labels=labels; sum=sumInfo; buckets=bucketsInfo; unit=basic.unit }
@@ -47,7 +47,9 @@ module HistogramConf =
   /// tailored to broadly measure the response time (in seconds) of a network
   /// service. Most likely, however, you will be required to define buckets
   /// customized to your use case.
-  let defaultBuckets = [| 0.005; 0.01; 0.025; 0.05; 0.075; 0.1; 0.25; 0.5; 0.75; 1.; 2.5; 5.0; 7.5; 10. |]
+  ///
+  /// This default has values from five milliseconds up to thirty-two seconds.
+  let defaultBuckets = [| 0.005; 0.01; 0.025; 0.05; 0.075; 0.1; 0.25; 0.5; 0.75; 1.; 2.5; 5.0; 7.5; 10.; 32. |]
 
   let buckets buckets (conf: HistogramConf) =
     { conf with buckets = buckets }
@@ -75,9 +77,11 @@ module HistogramConf =
 open HistogramConf
 
 type HistogramConf with
-  static member create(name, description, units) =
-    let basic = BasicConf.create(name, description, units)
-    { conf = basic; buckets = defaultBuckets }
+  static member create(name, description, units, ?buckets, ?labelNames) =
+    let metricConf = MetricConf.create(name, description, units, ?labelNames=labelNames)
+    let buckets = defaultArg buckets defaultBuckets
+    { metricConf = metricConf; buckets = buckets }
 
-  static member create basic =
-    { conf = basic; buckets = defaultBuckets }
+  static member create(basic, ?buckets) =
+    let buckets = defaultArg buckets defaultBuckets
+    { metricConf = basic; buckets = buckets }

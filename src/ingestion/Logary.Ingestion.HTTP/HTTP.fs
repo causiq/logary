@@ -1,202 +1,151 @@
-﻿namespace Logary.CORS
+﻿namespace Logary.Ingestion.HTTP
 
-open NodaTime
-
-type HTTPOrigin = string
-
-type OriginResult =
-  /// Allow all origins
-  | Star
-  /// Allow the origin passed by the Origin request header
-  | Origin of origin:string
-  /// Don't return this header
-  | Reject
-
-  static member allowAll _ =
-    Star
-
-  static member allowRequester origin =
-    Origin origin
-
-  member x.asWebPart =
-    match x with
-    | Star -> setHeader "Access-Control-Allow-Origin" "*"
-    | Origin origin -> setHeader "Access-Control-Allow-Origin" origin
-    | Reject -> never // bails out of the pipeline
-
-type CORSConfig =
-  { /// Toggle CORS-support on/off. This is toggled on if you supply a `accessControlAllowOrigin` callback
-    allowCORS: bool
-    /// https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS#The_HTTP_response_headers
-    accessControlAllowOrigin: HTTPOrigin -> OriginResult
-    /// Access-Control-Request-Method -> your allowed methods
-    accessControlAllowMethods: HttpMethod -> HttpMethod list
-    /// Access-Control-Request-Headers -> your allowed Origin
-    accessControlAllowHeaders: string list -> string list
-    /// For how long does this policy apply?
-    accessControlMaxAge: Duration
-  }
-  static member create(?accessControlAllowOrigin, ?accessControlAllowHeaders, ?accessControlMaxAge) =
-    let allowCORS, acao, acah =
-      Option.isSome accessControlAllowOrigin,
-      accessControlAllowOrigin |> Option.defaultValue (fun _ -> Star),
-      accessControlAllowHeaders |> Option.defaultValue id
-    { allowCORS = Option.isSome accessControlAllowOrigin
-      accessControlAllowOrigin = acao
-      accessControlAllowHeaders = acah
-      accessControlAllowMethods = fun _ -> HttpMethod.POST :: []
-      accessControlMaxAge = defaultArg accessControlMaxAge (Duration.FromDays 1) }
-
-
-module API =
-  open System
-  open Giraffe
-
-  let withOrigin config next =
-    warbler (fun ctx ->
-      let o = ctx.request.header "origin" |> Choice.orDefault (fun () -> "http://localhost")
-      let ao = config.accessControlAllowOrigin o
-      next ao)
-
-  let CORS (config: CORSConfig) =
-    if config.allowCORS then
-      warbler (fun ctx ->
-        let h =
-          ctx.request.header "access-control-request-headers"
-          |> Choice.map (fun h  -> h.Split([|','|], StringSplitOptions.RemoveEmptyEntries) |> List.ofArray)
-          |> Choice.orDefault (fun () -> "Content-Type" :: [])
-        let ah =
-          config.accessControlAllowHeaders h
-          |> String.concat ", "
-        let m =
-          ctx.request.header "access-control-request-method"
-          |> Choice.map HttpMethod.parse
-          |> Choice.orDefault (fun () -> HttpMethod.POST)
-        let am =
-          config.accessControlAllowMethods m
-          |> List.map (fun m -> m.ToString())
-          |> String.concat ", "
-        let aa = string config.accessControlMaxAge.TotalSeconds
-
-        withOrigin config (fun ao -> ao.asWebPart)
-        >=> setHeader "Access-Control-Allow-Methods" am
-        >=> setHeader "Access-Control-Allow-Headers" ah
-        >=> setHeader "Access-Control-Max-Age" aa)
-        >=> setHeader "Content-Type" "text/plain; charset=utf-8"
-        >=> OK ""
-    else
-      never
-
-
-namespace Logary.Ingestion
-
-open System.Net
+open System.Text
 open System.Threading
 open Hopac
 open Giraffe
 open Logary
 open Logary.Internals
 open Logary.Internals.Chiron
-open Logary.CORS
+open Logary.Ingestion
+open Logary.Ingestion.HTTP.CORS
+open FSharp.Control.Tasks.V2
+open Microsoft.AspNetCore.Builder
+open Microsoft.AspNetCore.Hosting
+open Microsoft.AspNetCore.Http
+open Microsoft.Extensions.DependencyInjection
+open Microsoft.IO
 
 type HTTPConfig =
   { ilogger: Logger
     logary: LogManager
     cancelled: Promise<unit>
     rootPath: string
-    webConfig: SuaveConfig
+    bindings: BindingList
     onSuccess: HttpHandler
-    onError: string -> WebPart
+    onError: string -> HttpHandler
     corsConfig: CORSConfig
   }
+  member x.bindingsAsURLs() =
+    x.bindings |> Seq.map string |> String.concat ","
+
   interface IngestServerConfig with
     member x.cancelled = x.cancelled
     member x.ilogger = x.ilogger
+    member x.bindings = x.bindings
 
 module internal Impl =
-  let printHelp (config: HTTPConfig): WebPart =
+  open RequestErrors
+
+  let printHelp (config: HTTPConfig): HttpHandler =
     let message = sprintf "You can post a JSON Objects to: %s" config.rootPath
-    OK message
+    text message
 
-  let onSuccess: WebPart =
-    ACCEPTED "true"
+  let onSuccess: HttpHandler =
+    setStatusCode 201 >=> json true
 
-  let onError: string -> WebPart =
+  let onError: string -> HttpHandler =
     Json.String >> Json.format >> BAD_REQUEST
 
-  let ingestWith (onSuccess, onError) (next: Ingest): WebPart =
-    fun ctx ->
-      async {
-        let input = Ingested.ofBytes ctx.request.rawForm
-        let! res = Job.toAsync (next input)
-        match res with
+  /// https://github.com/Microsoft/Microsoft.IO.RecyclableMemoryStream
+  let private manager = RecyclableMemoryStreamManager(ThrowExceptionOnToArray = true)
+
+  let ingestWith (onSuccess, onError) (ingest: Ingest): HttpHandler =
+    let getResult (ctx: HttpContext) =
+      task {
+        // https://github.com/Microsoft/Microsoft.IO.RecyclableMemoryStream#usage
+        use ms = manager.GetStream "Logary.Ingestion.HTTP.ingestWith"
+        try
+          do! ctx.Request.Body.CopyToAsync(ms)
+          let input = Ingested.ofBytes (ms.GetBuffer())
+          return! Job.ToTask (ingest input)
+        finally
+          ms.Dispose()
+      }
+
+    fun next ctx ->
+      task {
+        match! getResult ctx with
         | Ok () ->
-          return! onSuccess ctx
+          return! onSuccess next ctx
         | Result.Error err ->
-          return! onError err ctx
+          return! onError err next ctx
       }
 
   let createAdaptedCTS (config: HTTPConfig) =
     let cts = new CancellationTokenSource()
-    start (job {
-      do! config.cancelled
-      cts.Cancel()
-    })
+    start (config.cancelled |> Alt.afterFun cts.Cancel)
     cts
 
 type HTTPConfig with
-  static member create(rootPath, logary, ilogger, ?cancelled: Promise<unit>, ?endpoint, ?onSuccess, ?onError, ?corsConfig) =
-    let binding =
-      let ep = defaultArg endpoint (IPEndPoint (IPAddress.Loopback, 8888))
-      HttpBinding.create HTTP ep.Address (ep.Port |> uint16)
-
+  static member create(rootPath, logary, ilogger, ?cancelled: Promise<unit>, ?bindings, ?onSuccess, ?onError, ?corsConfig) =
     { rootPath = rootPath
       logary = logary
       ilogger = ilogger
+      bindings =
+        bindings
+          |> Option.defaultWith (fun () ->
+            [ Binding.create("http", "0.0.0.0", 8080us)
+              Binding.create("https", "0.0.0.0", 8443us) ] |> BindingList.create)
       cancelled = cancelled |> Option.defaultWith (fun () -> upcast IVar ())
       onSuccess = defaultArg onSuccess Impl.onSuccess
       onError = defaultArg onError Impl.onError
-      webConfig = { defaultConfig with bindings = binding :: []; hideHeader = true }
       corsConfig = defaultArg corsConfig (CORSConfig.create())
     }
 
 module HTTP =
   open Impl
-  open Suave.Filters
-  open Suave.Operators
-  open Suave.Writers
+  open System
+  open Microsoft.Extensions.Logging
 
-  let api (config: HTTPConfig) next: WebPart =
-    setMimeType "application/json; charset=utf-8" >=> choose [
-      GET >=> path config.rootPath >=> printHelp config
+  let api (config: HTTPConfig) ingest: HttpHandler =
+    setHttpHeader "content-type" "application/json; charset=utf-8" >=> choose [
+      GET
+        >=> route config.rootPath
+        >=> printHelp config
 
       OPTIONS
         >=> API.CORS config.corsConfig
 
       POST
-        >=> path config.rootPath
-        >=> API.withOrigin config.corsConfig (fun ao -> ao.asWebPart)
-        >=> Impl.ingestWith (config.onSuccess, config.onError) next
+        >=> route config.rootPath
+        >=> API.withOrigin config.corsConfig (fun ao -> ao.asHttpHandler)
+        >=> Impl.ingestWith (config.onSuccess, config.onError) ingest
     ]
 
-  let recv (started: IVar<unit>, shutdown: IVar<unit>) config next =
+  let internal errorHandler (logger: Logger) (ex: Exception) _ =
+    logger.error("An unhandled exception has occurred while executing the request.", ex)
+    clearResponse >=> setStatusCode 500 >=> text ex.Message
+
+  let internal configureApp (config: HTTPConfig, ingest: Ingest) (app: IApplicationBuilder) =
+    let env = app.ApplicationServices.GetService<IWebHostEnvironment>()
+    let tmp = if env.EnvironmentName = "Development" then app.UseDeveloperExceptionPage()
+              else app.UseGiraffeErrorHandler(errorHandler config.ilogger)
+    tmp.UseGiraffe(api config ingest)
+
+  let internal configureServices (services: IServiceCollection) =
+      services.AddGiraffe()
+        |> ignore
+
+  let recv (started: IVar<unit>, shutdown: IVar<unit>) (config: HTTPConfig) ingest =
+    config.ilogger.info("Starting HTTP recv-loop at {bindings}. CORS enabled={allowCORS}", fun m ->
+      m.setField("allowCORS", config.corsConfig.allowCORS))
+
+    let host =
+      WebHostBuilder()
+        .UseKestrel(fun o -> o.AllowSynchronousIO <- false)
+        .UseLogary(config.logary)
+        .Configure(Action<_> (configureApp (config, ingest)))
+        .ConfigureServices(configureServices)
+        .UseUrls(config.bindingsAsURLs())
+        .Build()
+
+    use cts = new CancellationTokenSource()
+    start (shutdown |> Alt.afterFun cts.Cancel)
+
     job {
-      let logging =
-        { Suave.Logging.Global.defaultConfig with
-            getLogger = fun name ->
-              config.ilogger
-              |> Logger.setNameEnding (String.concat "-" name)
-              |> LoggerAdapter.createGeneric<Suave.Logging.Logger>
-        }
-      Suave.Logging.Global.initialiseIfDefault logging
-      do config.ilogger.info("Starting HTTP recv-loop at {bindings}. CORS enabled={allowCORS}" >> setField "bindings" config.webConfig.bindings >> setField "allowCORS" config.corsConfig.allowCORS)
-      use cts = createAdaptedCTS config
-      let suaveConfig = { config.webConfig with cancellationToken = cts.Token }
-      let webStarted, webListening = startWebServerAsync suaveConfig (api config next)
-      do! Job.start (Job.fromAsync webListening |> Job.bind (IVar.fill shutdown))
-      do! Job.start (Job.fromAsync webStarted |> Job.bind (fun _ -> IVar.fill started ()))
-      do! config.cancelled
-      do config.ilogger.info (Model.EventMessage "Stopping HTTP recv-loop at {bindings}" >> setField "bindings" config.webConfig.bindings)
+      do! IVar.fill started ()
+      do! Job.fromUnitTask (fun () -> host.RunAsync cts.Token)
     }
 
   let create: ServerFactory<HTTPConfig> =

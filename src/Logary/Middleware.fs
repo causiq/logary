@@ -100,11 +100,11 @@ module Middleware =
       let counter =
         match conf.labelNames with
         | [||] ->
-          counterMetric.noLabels
+          counterMetric.unlabelled
         | labelNames ->
           labelNames
             |> Array.map (getLabelValues message)
-            |> counterMetric.labels
+            |> counterMetric.withLabelValues
 
       counter.inc 1.
 
@@ -120,7 +120,7 @@ module Middleware =
     let processSpanAsGauge (span: Logary.SpanMessage) =
       let via = span.resource |> Option.map (fun name -> " via " + name.ToString()) |> Option.defaultValue ""
       let gauge = GaugeConf.create(span.label, "Span" + via) |> registry.getOrCreate
-      gauge.noLabels.set span.elapsed.TotalSeconds
+      gauge.unlabelled.set span.elapsed.TotalSeconds
 
     /// https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/data-semantic-conventions.md
     let processSpanAsConvention (span: Logary.SpanMessage) =
@@ -146,7 +146,7 @@ module Middleware =
           Map.empty
 
       histO |> Option.iter (fun histogram ->
-      histogram.labels(labels).observe span.elapsed.TotalSeconds)
+      histogram.withLabels(labels).observe span.elapsed.TotalSeconds)
 
     /// https://prometheus.io/docs/practices/naming/
     /// ...should have a (single-word) application prefix relevant to the domain the metric belongs to. The prefix is

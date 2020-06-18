@@ -1,4 +1,2 @@
-group MSFT
-TaskBuilder.fs
+FSharp.Core
 Giraffe
-Microsoft.AspNetCore.Http.Features

@@ -4,7 +4,7 @@ open Logary
 
 [<Struct>] // since it only has sizeof<*void> size, and thus should be easy to use in CPU registers.
 type GaugeConf =
-  { conf: BasicConf
+  { metricConf: MetricConf
     histogramConf: HistogramConf option }
 
   interface MetricBuilder<IGauge> with
@@ -12,19 +12,20 @@ type GaugeConf =
       let histogramMetric =
         x.histogramConf
         |> Option.map (fun conf ->
-          let labelValues = conf.conf.labelNames |> Array.map (fun name -> labels.[name])
+          let labelValues = conf.metricConf.labelNames |> Array.map (fun name -> labels.[name])
           conf |> registry.getOrCreate |> Metric.labels labelValues)
       Gauge(x, labels, histogramMetric) :> IGauge
 
-    member x.conf = x.conf
+    member x.conf = x.metricConf
 
+  /// Note: having a histogram conf in the Gauge is a bit funky. Prefer to use a Histogram then.
   static member create (name, description, ?units, ?labelNames, ?histogramConf) =
     let units = defaultArg units U.Scalar
-    let basic = BasicConf.create(name, description, units, ?labelNames=labelNames)
-    { conf = basic; histogramConf = histogramConf }
+    let basic = MetricConf.create(name, description, units, ?labelNames=labelNames)
+    { metricConf = basic; histogramConf = histogramConf }
 
-  static member create (innerConf: BasicConf) =
-    { conf = innerConf; histogramConf = None }
+  static member create (innerConf: MetricConf) =
+    { metricConf = innerConf; histogramConf = None }
 
 and Gauge(gaugeConf, labels, histogram) =
   let mutable gaugeValue = DoubleAdder()
@@ -48,8 +49,8 @@ and Gauge(gaugeConf, labels, histogram) =
       histogram |> Option.iter (fun histogram -> histogram.observe value)
 
     member x.explore () =
-      let info = { labels = labels; value = gaugeValue.Sum(); unit = gaugeConf.conf.unit }
-      gaugeConf.conf.asInfo, MetricInfo.Gauge info
+      let info = { labels = labels; value = gaugeValue.Sum(); unit = gaugeConf.metricConf.unit }
+      gaugeConf.metricConf.asInfo, MetricInfo.Gauge info
 
 module GaugeConf =
   /// Consider using Histogram separately.
@@ -71,10 +72,10 @@ module GaugeConf =
   /// In order to ensure the histogram is more accurate under multi-threading, a lock will be held during updating.
   /// But if it is a simple gauge, which does not use lock for multi-threaded inc/dec.
   let withHistogram buckets gaugeConf =
-    let basicInfo = gaugeConf.conf
+    let basicInfo = gaugeConf.metricConf
     let histogramMetricName = sprintf "%s_histogram" basicInfo.name
     let histogramDescription = sprintf "histogram of gauge: '%s'" basicInfo.description
     let histogramConf =
-      HistogramConf.create { gaugeConf.conf with name=histogramMetricName; description = histogramDescription }
+      HistogramConf.create { gaugeConf.metricConf with name=histogramMetricName; description = histogramDescription }
       |> HistogramConf.buckets buckets
     { gaugeConf with histogramConf = Some histogramConf }

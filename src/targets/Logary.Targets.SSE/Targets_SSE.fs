@@ -6,7 +6,7 @@ open Hopac.Infixes
 open Logary
 open Logary.Message
 open Logary.Internals
-open Logary.CORS
+open Logary.Ingestion.HTTP.CORS
 open Logary.Configuration.Target
 
 [<assembly:InternalsVisibleTo("Logary.Targets.SSE.Tests")>]
@@ -35,17 +35,9 @@ module internal Impl =
 
   open System
   open System.Threading
-  open Suave
-  open Suave.Sockets
-  open Suave.Sockets.Control
-  open Suave.Utils
-  open Suave.Filters
-  type SSEMessage = Suave.EventSource.Message
   open Logary.Internals.Chiron
   module E = Serialization.Json.Encode
   module FJson = Logary.Internals.Chiron.Formatting.Json
-  open Logary.Adapters.Facade
-  open Logary.Formatting
 
   type State =
     private {
@@ -109,7 +101,7 @@ module internal Impl =
     fun (conn: Connection) ->
       // one tap call per client, as denoted by the connection
       iter (state.tap ()) conn
-  
+
   let api (conf: SSEConf) (state: State) ilogger =
     let (>=>) = Suave.Operators.(>=>)
     path conf.path >=> choose [

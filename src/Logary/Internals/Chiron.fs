@@ -2064,7 +2064,6 @@ module Inference =
             let inline requiredMixin (json: Json): JsonResult<'a> =
                 (^a : (static member FromJson : ^a -> Decoder<Json,'a>) Unchecked.defaultof<'a>) json
 
-[<AutoOpen>]
 module Builders =
     open JsonTransformer
 

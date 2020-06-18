@@ -383,6 +383,11 @@ type Value =
       | Bool b when b -> "true"
       | Bool _ -> "false"
 
+/// You can implement this interface on your type if you want to provide Logary with a quick way to convert
+/// your logged values into a value or multiple key-values. Most of the time you'll return a single item though.
+type IValueFormattable =
+  abstract toKeyValues: baseKey: string -> Choice<KeyValuePair<string, Value>, IReadOnlyDictionary<string, Value>>
+
 [<Struct>]
 type Gauge =
   Gauge of Value * U

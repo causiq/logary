@@ -5,7 +5,6 @@ open Logary
 open Logary.Ingestion
 open Logary.Internals
 open Logary.Internals.Chiron
-open Logary.Json
 open Logary.Model
 
 type Codec = Ingested -> Result<Model.LogaryMessageBase[], string>

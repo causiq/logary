@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.0</TargetFramework>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
     <Description>Logary support for ASP.NET Core (MS MVC) logging for the `Microsoft.Extensions.*` packages.</Description>
     <Authors>Logary Contributors</Authors>
     <PackageTags>logary;opentelemetry;tracing;jaeger;aspnet</PackageTags>
@@ -14,9 +14,19 @@
     <Content Include="paket.references" />
     <Compile Include="Internal.SystemEx.fs" />
     <Compile Include="Propagation.HttpContext.fs" />
+    <Compile Include="Logary.Trace.fs" />
+    <Compile Include="Logary.Metric.Prometheus.fs" />
+    <Compile Include="Logary.Metric.fs" />
+    <Compile Include="LogaryEx.fs" />
     <Compile Include="Middleware.fs" />
-    <Compile Include="Startup.fs" />
+    <Compile Include="Logger.fs" />
+    <Compile Include="Configuration.fs" />
   </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="../../../src/Logary/Logary.fsproj" />
   </ItemGroup>
