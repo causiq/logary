@@ -3,6 +3,9 @@
 open System
 open System.Diagnostics
 open System.Runtime.CompilerServices
+open System.Threading
+open System.Threading.Tasks
+open FSharp.Control.Tasks.Builders
 open Hopac
 open Hopac.Infixes
 open Logary
@@ -55,7 +58,7 @@ module Logger =
           let m =
             match message with
             | :? LogaryMessageBase as bm -> bm
-            | _ -> message.getAsBase Model.EventMessage
+            | _ -> message.getAsBase Model.Event
           middleware m
           logger.logWithAck (waitForBuffers, m)
     }
@@ -86,28 +89,28 @@ module LoggerEx =
     /// Also see: `eventBP`, `eventAck`, `eventWithAck` and the `log*` alternatives.
     [<CompiledName "Event">]
     member x.event(event: string, ?builder): unit =
-      let m = Model.EventMessage(event)
+      let m = Model.Event(event)
       builder |> Option.iter (fun f -> f m)
       Logger.log x m
 
     /// Also see: `event`, `eventAck`, `eventWithAck` and the `log*` alternatives.
     [<CompiledName "EventBP">]
     member x.eventBP(event: string, ?builder): Alt<unit> =
-      let m = Model.EventMessage(event)
+      let m = Model.Event(event)
       builder |> Option.iter (fun f -> f m)
       Logger.logBP x m |> Alt.Ignore
 
     /// Also see: `event`, `eventBP`, `eventWithAck` and the `log*` alternatives.
     [<CompiledName "EventAck">]
     member x.eventAck(event: string, ?builder): Promise<unit> =
-      let m = Model.EventMessage(event)
+      let m = Model.Event(event)
       builder |> Option.iter (fun f -> f m)
       Logger.logAck x m >>-*. ()
 
     /// Also see: `event`, `eventBP`, `eventAck` and the `log*` alternatives.
     [<CompiledName "EventWithAck">]
     member x.eventWithAck(event: string, ?builder): LogResult =
-      let m = Model.EventMessage event
+      let m = Model.Event event
       builder |> Option.iter (fun f -> f m)
       x.logWithAck(true, m)
 
@@ -115,19 +118,19 @@ module LoggerEx =
 
     [<CompiledName "Verbose">]
     member x.verbose(message, ?builder) =
-      let m = (Model.EventMessage(message, None, level=Verbose))
+      let m = (Model.Event(message, None, level=Verbose))
       builder |> Option.iter (fun f -> f m)
       Logger.log x m
 
     [<CompiledName "Debug">]
     member x.debug(message, ?builder) =
-      let m = (Model.EventMessage(message, None, level=Debug))
+      let m = (Model.Event(message, None, level=Debug))
       builder |> Option.iter (fun f -> f m)
       Logger.log x m
 
     [<CompiledName "Info">]
     member x.info(message, ?builder) =
-      let m = (Model.EventMessage(message, None, level=Info))
+      let m = (Model.Event(message, None, level=Info))
       builder |> Option.iter (fun f -> f m)
       Logger.log x m
 
@@ -135,19 +138,19 @@ module LoggerEx =
 
     [<CompiledName "Warn">]
     member x.warn(message, ?builder): unit =
-      let m = (Model.EventMessage(message, None, level=Warn))
+      let m = (Model.Event(message, None, level=Warn))
       builder |> Option.iter (fun f -> f m)
       Logger.log x m
 
     [<CompiledName "Warn">]
     member x.warn(message: string, e: exn, ?builder): unit =
-      let m = Model.EventMessage(message, None, level=Warn, error=e.toErrorInfo())
+      let m = Model.Event(message, None, level=Warn, error=e.toErrorInfo())
       builder |> Option.iter (fun f -> f m)
       Logger.log x m
 
     [<CompiledName "WarnBP">]
     member x.warnBP(message, ?builder): Alt<bool> =
-      let m = (Model.EventMessage(message, None, level=Warn))
+      let m = (Model.Event(message, None, level=Warn))
       builder |> Option.iter (fun f -> f m)
       Logger.logBP x m
 
@@ -157,7 +160,7 @@ module LoggerEx =
 
     [<CompiledName "WarnAck">]
     member x.warnAck(message, ?builder): Promise<bool> =
-      let m = (Model.EventMessage(message, None, level=Warn))
+      let m = (Model.Event(message, None, level=Warn))
       builder |> Option.iter (fun f -> f m)
       Logger.logAck x m
 
@@ -168,19 +171,19 @@ module LoggerEx =
 
     [<CompiledName "Error">]
     member x.error(message, ?builder): unit =
-      let m = Model.EventMessage(message, None, level=Error)
+      let m = Model.Event(message, None, level=Error)
       builder |> Option.iter (fun f -> f m)
       Logger.log x m
 
     [<CompiledName "Error">]
     member x.error(message: string, e: exn, ?builder): unit =
-      let m = Model.EventMessage(message, None, level=Error, error=e.toErrorInfo())
+      let m = Model.Event(message, None, level=Error, error=e.toErrorInfo())
       builder |> Option.iter (fun f -> f m)
       Logger.log x m
 
     [<CompiledName "ErrorBP">]
     member x.errorBP(message, ?builder): Alt<bool> =
-      let m = Model.EventMessage(message, None, level=Error)
+      let m = Model.Event(message, None, level=Error)
       builder |> Option.iter (fun f -> f m)
       Logger.logBP x m
 
@@ -190,7 +193,7 @@ module LoggerEx =
 
     [<CompiledName "ErrorAck">]
     member x.errorAck(message, ?builder): Promise<bool> =
-      let m = Model.EventMessage(message, None, level=Error)
+      let m = Model.Event(message, None, level=Error)
       builder |> Option.iter (fun f -> f m)
       Logger.logAck x m
 
@@ -201,19 +204,19 @@ module LoggerEx =
 
     [<CompiledName "Fatal">]
     member x.fatal(message, ?builder): unit =
-      let m = Model.EventMessage(message, None, level=Fatal)
+      let m = Model.Event(message, None, level=Fatal)
       builder |> Option.iter (fun f -> f m)
       Logger.log x m
 
     [<CompiledName "Fatal">]
     member x.fatal(message: string, e: exn, ?builder): unit =
-      let m = Model.EventMessage(message, None, level=Fatal, error=e.toErrorInfo())
+      let m = Model.Event(message, None, level=Fatal, error=e.toErrorInfo())
       builder |> Option.iter (fun f -> f m)
       Logger.log x m
 
     [<CompiledName "FatalBP">]
     member x.fatalBP(message, ?builder): Alt<bool> =
-      let m = Model.EventMessage(message, None, level=Fatal)
+      let m = Model.Event(message, None, level=Fatal)
       builder |> Option.iter (fun f -> f m)
       Logger.logBP x m
 
@@ -223,7 +226,7 @@ module LoggerEx =
 
     [<CompiledName "FatalAck">]
     member x.fatalAck(message, ?builder): Promise<bool> =
-      let m = Model.EventMessage(message, None, level=Fatal)
+      let m = Model.Event(message, None, level=Fatal)
       builder |> Option.iter (fun f -> f m)
       Logger.logAck x m
 
@@ -260,10 +263,10 @@ module LoggerEx =
 
     // spans/timers:
 
-    [<CompiledName "TimeFun">]
-    member x.timeFunWrap (fn: 'a -> 'b, ?measurement: string, ?builder,
-                          [<CallerMemberName>] ?memberName: string, [<CallerFilePath>] ?file: string,
-                          [<CallerLineNumber>] ?line: int): 'a -> 'b =
+    [<CompiledName "Time">]
+    member x.time (fn: 'a -> 'b, ?measurement: string, ?builder,
+                   [<CallerMemberName>] ?memberName: string, [<CallerFilePath>] ?file: string,
+                   [<CallerLineNumber>] ?lineNo: int): 'a -> 'b =
 
       let measurement =
         measurement
@@ -277,7 +280,7 @@ module LoggerEx =
           "gauge_name", measurement
         ]
         let m = Model.GaugeMessage(dur, labels, timestamp=ts, level=Debug)
-        m.addCallerInfo(defaultArg memberName "timeFunWrap", ?file=file, ?lineNo=line)
+        m.addCallerInfo(defaultArg memberName "time", ?file=file, ?lineNo=lineNo)
         builder |> Option.iter (fun f -> f m)
         x.log m
 
@@ -291,7 +294,7 @@ module LoggerEx =
     [<CompiledName "TimeJob">]
     member x.timeJob (xJ: Job<'a>, ?measurement: string, ?builder,
                      [<CallerMemberName>] ?memberName: string, [<CallerFilePath>] ?file: string,
-                     [<CallerLineNumber>] ?line: int): Job<'a> =
+                     [<CallerLineNumber>] ?lineNo: int): Job<'a> =
 
       let measurement =
         measurement
@@ -305,7 +308,7 @@ module LoggerEx =
           "gauge_name", measurement
         ]
         let m = Model.GaugeMessage(dur, labels, timestamp=ts, level=Debug)
-        m.addCallerInfo(defaultArg memberName "timeJob", ?file=file, ?lineNo=line)
+        m.addCallerInfo(defaultArg memberName "timeJob", ?file=file, ?lineNo=lineNo)
         builder |> Option.iter (fun f -> f m)
         m
 
@@ -316,7 +319,7 @@ module LoggerEx =
     [<CompiledName "TimeAlt">]
     member x.timeAlt (xA: Alt<'a>, ?measurement: string, ?builder,
                       [<CallerMemberName>] ?memberName: string, [<CallerFilePath>] ?file: string,
-                      [<CallerLineNumber>] ?line: int): Alt<'a> =
+                      [<CallerLineNumber>] ?lineNo: int): Alt<'a> =
 
       let measurement =
         measurement
@@ -331,7 +334,7 @@ module LoggerEx =
           "outcome", if wasNacked then "nack" else "ack"
         ]
         let m = Model.GaugeMessage(dur, labels, timestamp=ts, level=Debug)
-        m.addCallerInfo(defaultArg memberName "timeAlt", ?file=file, ?lineNo=line)
+        m.addCallerInfo(defaultArg memberName "timeAlt", ?file=file, ?lineNo=lineNo)
         builder |> Option.iter (fun f -> f m)
         m
 
@@ -339,6 +342,42 @@ module LoggerEx =
       let onNack ts dur = x.logBP (cb ts false dur) ^->. ()
 
       Alt.timeJob onComplete onNack xA
+
+
+    member x.timeTask(taskFactory: CancellationToken -> Task<'a>, token: CancellationToken,
+                      ?measurement: string, ?builder,
+                      [<CallerMemberName>] ?memberName: string, [<CallerFilePath>] ?file: string,
+                      [<CallerLineNumber>] ?lineNo: int): Task<'a> =
+      let measurement =
+        measurement
+          |> Option.bind nullIsNone
+          |> Option.orElse memberName
+          |> Option.defaultValue "time"
+
+      let labels = Map [
+        "logger", x.name.ToString()
+        "gauge_name", measurement
+      ]
+
+      let markFinished ranToCompletion started =
+        let finished = Stopwatch.getTimestamp()
+        let g = Gauge.ofStopwatchTicks (finished - started)
+        let labels = labels |> Map.add "outcome" (if ranToCompletion then "ack" else "nack")
+        let m = Model.GaugeMessage(g, labels)
+        m.addCallerInfo(defaultArg memberName "timeTask", ?file=file, ?lineNo=lineNo)
+        x.log(m, ?builder=builder)
+
+      task {
+        let started = Stopwatch.getTimestamp()
+        try
+          let! res = taskFactory token
+          markFinished true started
+          return res
+        with :? OperationCanceledException as oce ->
+          markFinished false started
+          return oce.reraise()
+      }
+
 
     [<CompiledName "Scoped">]
     member x.scoped label =

@@ -13,25 +13,28 @@ open Logary.Metric
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.Http
+open Microsoft.Extensions.Logging
 open Microsoft.AspNetCore.Server.Kestrel.Core
 open Microsoft.Extensions.DependencyInjection
 
 type ExporterConf =
   { nameMetric: string -> string
     metricRegistry: MetricRegistry
-    configure: IApplicationBuilder -> unit
+    configureApp: IApplicationBuilder -> unit
+    configureServices: IServiceCollection -> unit
     binding: Binding
     certificate: X509Certificate2 option
     urlPath: string
   }
 
-  static member create(registry, ?urlPath, ?binding, ?certificate, ?configure) =
+  static member create(registry, ?urlPath, ?binding, ?certificate, ?configureApp, ?configureServices) =
     let (Binding (_, nic, port)) = binding |> Option.defaultValue (Binding (Scheme "http", NIC "+", Port 9121us))
     let scheme = if certificate.IsSome then Scheme "https" else Scheme "http"
     let binding = Binding (scheme, nic, port)
     { nameMetric = defaultMetricNamer
       metricRegistry = registry
-      configure = defaultArg configure ignore
+      configureApp = defaultArg configureApp ignore
+      configureServices = defaultArg configureServices ignore
       binding = binding
       certificate = certificate
       urlPath = defaultArg urlPath "/metrics"
@@ -43,7 +46,7 @@ module ExporterConf =
   let DefaultContentType = "text/plain; version=0.0.4; charset=utf-8"
 
   let withConfigure configure conf =
-    { conf with configure = configure }
+    { conf with configureApp = configure }
 
 module Exporter =
   let writePrometheusPage (writer: TextWriter) (conf: ExporterConf): Task =
@@ -102,8 +105,9 @@ type Exporter private (cts: CancellationTokenSource) =
       task {
         context.Response.ContentType <- ExporterConf.DefaultContentType
         context.Response.StatusCode <- 200
-        use sw = new StreamWriter(context.Response.Body, Encoding.UTF8, leaveOpen=true)
+        let sw = new StreamWriter(context.Response.Body, Encoding.UTF8, leaveOpen=true)
         do! Exporter.writePrometheusPage sw conf
+        do! sw.DisposeAsync()
       } :> _
 
     let configureRoutes (_: WebHostBuilderContext) (app: IApplicationBuilder) =
@@ -113,7 +117,10 @@ type Exporter private (cts: CancellationTokenSource) =
       app.MapWhen(Func<_,_> whenGettingRoot, fun app -> app.Use(Func<_,_,_> redirectToMetrics) |> ignore)
         |> ignore
 
-      conf.configure app
+      app.UseRouting()
+        |> ignore
+
+      conf.configureApp app
 
     let configureKestrel (options: KestrelServerOptions) =
       match conf.certificate with
@@ -123,14 +130,20 @@ type Exporter private (cts: CancellationTokenSource) =
         ()
 
     let configureServices (_: WebHostBuilderContext) (services: IServiceCollection) =
+      services.AddRouting()
+        |> ignore
+
       services.Configure<KestrelServerOptions>(Action<_> configureKestrel)
         |> ignore
 
+      conf.configureServices services
+
     let builder =
       WebHostBuilder()
-        .UseKestrel()
-        .Configure(Action<_,_> configureRoutes)
+        .UseKestrel(fun o -> o.AllowSynchronousIO <- false)
+        .ConfigureLogging(fun o -> o.Services.AddLogging(fun lb -> lb.AddConsole() |> ignore) |> ignore)
         .ConfigureServices(Action<_, _> configureServices)
+        .Configure(Action<_,_> configureRoutes)
 
     let builder =
       if conf.certificate.IsNone then builder.UseUrls(conf.binding.ToString())

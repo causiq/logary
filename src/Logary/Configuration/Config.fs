@@ -8,6 +8,7 @@ open Hopac
 open Hopac.Infixes
 open Hopac.Extensions
 open Logary
+open Logary.Internals.Resources
 open Logary.Metric
 open Logary.Internals
 open Logary.Targets
@@ -25,8 +26,7 @@ module Config =
   type T =
     private {
       targets: Map<string, TargetConf>
-      host: string
-      service: string
+      resource: Resource
       getTimestamp: unit -> EpochNanoSeconds
       consoleLock: DVar<Lock>
       ilogger: ILogger
@@ -39,7 +39,7 @@ module Config =
       metricRegistry: MetricRegistry
     }
 
-  let create service host =
+  let create (resource: Resource) =
     let simple = SimpleMessageWriter() :> MessageWriter
     let errorHandler (xR: ProcessResult) =
       match xR with
@@ -49,15 +49,13 @@ module Config =
           try do! simple.write(System.Console.Error, em, cts.Token)
           with _ -> ()
         }
-
         |> ignore
       | _ -> ()
 
     { targets          = Map.empty
-      host             = host
-      service          = service
+      resource         = resource
       getTimestamp     = Global.getTimestamp
-      consoleLock      = Global.semaphoreD
+      consoleLock      = Global.lockD
       middleware       = List.empty
       ilogger          = ILogger.Console LogLevel.Warn
       setGlobals       = true
@@ -65,54 +63,57 @@ module Config =
       loggerLevels     = [(".*", LogLevel.Info)]
       logResultHandler = errorHandler
       waitForTargetsTimeout = Duration.FromSeconds 3L
-      metricRegistry = MetricRegistry()
+      metricRegistry   = Global.defaultConfig.metrics
     }
 
-  let target (tconf: TargetConf) lconf =
-    { lconf with targets = lconf.targets |> Map.add tconf.name tconf }
+  let target (tconf: TargetConf) (conf: T) =
+    { conf with targets = conf.targets |> Map.add tconf.name tconf }
 
-  let targets tconfs lconf =
-    tconfs |> Seq.fold (fun lconf tconf -> lconf |> target tconf) lconf
+  let targets tconfs (conf: T) =
+    tconfs |> Seq.fold (fun conf tconf -> conf |> target tconf) conf
 
-  let host host lconf =
-    { lconf with host = host }
+  let host host (conf: T) =
+    { conf with resource = conf.resource |> Resource.setDetail (function Hostname _ -> true | _ -> false) host }
 
-  let service name lconf =
-    { lconf with service = name }
+  let service name (conf: T) =
+    { conf with resource = { conf.resource with service = name } }
 
-  let timestamp getTimestamp lconf =
-    { lconf with getTimestamp = getTimestamp }
+  let resource resource (conf: T) =
+    { conf with resource=resource }
 
-  let consoleSemaphore getConsoleSemaphore lconf =
-    { lconf with consoleLock = getConsoleSemaphore }
+  let timestamp getTimestamp (conf: T) =
+    { conf with getTimestamp = getTimestamp }
 
-  let middleware mid (lconf: T) =
-    { lconf with middleware = mid :: lconf.middleware }
+  let consoleSemaphore getConsoleSemaphore (conf: T) =
+    { conf with consoleLock = getConsoleSemaphore }
 
-  let ilogger ilogger lconf =
-    { lconf with ilogger = ilogger }
+  let middleware mid (conf: T) =
+    { conf with middleware = mid :: conf.middleware }
 
-  let processing processor lconf =
-    { lconf with processing = processor }
+  let ilogger ilogger (conf: T) =
+    { conf with ilogger = ilogger }
 
-  let loggerLevels levels lconf =
-     { lconf with loggerLevels = levels }
+  let processing processor (conf: T) =
+    { conf with processing = processor }
+
+  let loggerLevels levels (conf: T) =
+     { conf with loggerLevels = levels }
 
   /// config the min loglevel of logger which belong to this path,
   /// path can be regex or specific logger name.
   /// specific path should config last, be careful with the config order.
   /// logger which is not set minlevel is Info by default.
-  let loggerMinLevel path minLevel lconf =
-    { lconf with loggerLevels = (path, minLevel) :: lconf.loggerLevels }
+  let loggerMinLevel path minLevel (conf: T) =
+    { conf with loggerLevels = (path, minLevel) :: conf.loggerLevels }
 
-  let logResultHandler handler lconf =
-    { lconf with logResultHandler = handler }
+  let logResultHandler handler (conf: T) =
+    { conf with logResultHandler = handler }
 
-  let disableGlobals lconf =
-    { lconf with setGlobals = false }
+  let disableGlobals (conf: T) =
+    { conf with setGlobals = false }
 
-  let metricRegistry metricRegistry lconf =
-    { lconf with metricRegistry = metricRegistry }
+  let metricRegistry metricRegistry (conf: T) =
+    { conf with metricRegistry = metricRegistry }
 
   let inline private setToGlobals (logManager: LogManager) =
     let config = { Global.defaultConfig with getLogger = logManager.getLogger }
@@ -127,45 +128,43 @@ module Config =
     | ILogger.Targets conf ->
       conf
 
-  let internal createInternalLogger (ri: RuntimeInfo.T) (itargets: TargetConf list) =
+  let internal createInternalLogger (ri: RuntimeInfoValue) (internalTargets: TargetConf list) =
     job {
       let! ilogger = InternalLogger.create ri
-      do! itargets |> Seq.Con.iterJob (fun itarget -> InternalLogger.add itarget ilogger)
+      do! internalTargets |> Seq.Con.iterJob (fun t -> InternalLogger.add t ilogger)
       return { ri with logger = ilogger }, ilogger
     }
 
-  let build (lconf: T): Job<LogManager> =
-    let ri: RuntimeInfo.T =
-      { service = lconf.service
-        host = lconf.host
-        getTimestamp = lconf.getTimestamp
-        consoleLock = lconf.consoleLock
+  let build (conf: T): Job<LogManager> =
+    let ri: RuntimeInfoValue =
+      { resource = conf.resource
+        getTimestamp = conf.getTimestamp
+        consoleLock = conf.consoleLock
         logger = NullLogger.instance }
 
-    createInternalLogger ri (createInternalTargets lconf.ilogger) >>= fun (ri, _) ->
-    let mids =
-      [ Middleware.host lconf.host
-        Middleware.service lconf.service
-        Middleware.metricsToRegistry lconf.metricRegistry
-      ]
-    let middleware = Array.ofList (lconf.middleware @ mids)
+    createInternalLogger ri (createInternalTargets conf.ilogger) >>= fun (ri, _) ->
 
-    let conf =
+    let middleware =
+      [|  yield! conf.middleware
+          yield Middleware.setResource conf.resource
+          yield Middleware.metricsToRegistry conf.metricRegistry |]
+
+    let config =
       { new LogaryConf with
-          member x.targets = lconf.targets
+          member x.targets = conf.targets
           member x.runtimeInfo = upcast ri
           member x.middleware = middleware
-          member x.processing = lconf.processing
-          member x.loggerLevels = lconf.loggerLevels
-          member x.logResultHandler = lconf.logResultHandler
-          member x.waitForTargetsTimeout = lconf.waitForTargetsTimeout
-          member x.metricRegistry = lconf.metricRegistry
+          member x.processing = conf.processing
+          member x.loggerLevels = conf.loggerLevels
+          member x.logResultHandler = conf.logResultHandler
+          member x.waitForTargetsTimeout = conf.waitForTargetsTimeout
+          member x.metricRegistry = conf.metricRegistry
       }
 
-    Registry.create conf >>- fun registry ->
+    Registry.create config >>- fun registry ->
     let logManager = Registry.toLogManager registry
-    if lconf.setGlobals then do setToGlobals logManager
+    if conf.setGlobals then do setToGlobals logManager
     logManager
 
-  let buildAndRun lconf: LogManager =
-    build lconf |> run
+  let buildAndRun (conf: T): LogManager =
+    build conf |> run

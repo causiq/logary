@@ -1,6 +1,5 @@
 namespace Logary.Configuration
 
-open System
 open Hopac
 open Hopac.Infixes
 open Logary.Configuration.Transformers
@@ -11,7 +10,7 @@ open NodaTime
 type PipeResult<'a> =
   | HasResult of 'a
   | NoResult
-with
+
   member x.HasValue () =
     match x with | HasResult _ -> true | _ -> false
   member x.TryGet () =
@@ -47,7 +46,7 @@ module PipeResult =
 type Pipe<'contInput, 'contRes, 'sourceItem> =
   internal {
     build: cont<'contInput, 'contRes> -> source<'sourceItem, 'contRes>
-    tickTimerJobs: Job<Cancellation> list
+    tickTimerJobs: (RuntimeInfo -> Job<Cancellation>) list
   }
 
 and private cont<'a,'b> = 'a -> PipeResult<'b> // just for better type annotation
@@ -77,22 +76,28 @@ module Pipe =
 
   /// As we start the Pipe running, we also spawn all the tickers, receiving their
   /// cancellation tokens in return.
-  let run cont pipe =
-    Job.conCollect pipe.tickTimerJobs >>- fun cancelTickers ->
+  let run ri cont pipe =
+    let startedJ =
+      pipe.tickTimerJobs
+        |> List.map (fun createTimer -> createTimer ri)
+        |> Job.conCollect
+
+    startedJ >>- fun cancelTickers ->
     let k = pipe.build cont
     k, cancelTickers
 
-  /// add a job to current pipe
+  /// Add a job to current pipe
   let withTickJob tickJob pipe =
     { pipe with tickTimerJobs = tickJob :: pipe.tickTimerJobs }
 
 
   let filter (predicate: 'message -> bool) pipe =
-    pipe |> chain (fun cont -> fun prev -> if predicate prev then cont prev else NoResult)
+    pipe
+      |> chain (fun cont -> fun prev -> if predicate prev then cont prev else NoResult)
 
   let choose chooser pipe =
     pipe
-    |> chain (fun cont -> fun prev -> match chooser prev with | Some mapped -> cont mapped | _ ->  NoResult)
+      |> chain (fun cont -> fun prev -> match chooser prev with | Some mapped -> cont mapped | _ ->  NoResult)
 
   /// when some item comes in, it goes to ticker.folder, generate state
   /// when somewhere outside tick through ticker , ticker.handleTick generate new state and pipe input for continuation
@@ -135,15 +140,15 @@ module Pipe =
          Mailbox.Now.send updateMb prev
          NoResult)
 
-  let tickTimer (ticker: Ticker<_,_,_>) (ri: RuntimeInfo) (duration: Duration) pipe =
+  let tickTimer (ticker: Ticker<_,_,_>) (duration: Duration) pipe =
     pipe
-      |> withTickJob (ticker.tickEvery(ri, duration))
+      |> withTickJob (ticker.tickEvery duration)
       |> tick ticker
 
   let buffer n pipe =
     pipe
     |> chain (fun cont ->
-       let results = new ResizeArray<_> ()
+       let results = ResizeArray<_> ()
        fun prev ->
          results.Add prev
          if results.Count >= n then
@@ -153,9 +158,10 @@ module Pipe =
          else
            NoResult)
 
-  let bufferTime ri duration pipe =
+  let bufferTime duration pipe =
     let ticker = BufferTicker ()
-    pipe |> tickTimer ticker ri duration
+    pipe
+      |> tickTimer ticker duration
 
   /// maybe use ArraySegment instead
   let slidingWindow size pipe =
@@ -182,15 +188,15 @@ module Pipe =
   //          window.[slidingLen] <- prev
   //          cont window)
 
-  let counter (mapping: _ -> int64) ri duration pipe =
+  let counter (mapping: _ -> int64) duration pipe =
     pipe
-    |> map mapping
-    |> bufferTime ri duration
-    |> map (Seq.sum)
+      |> map mapping
+      |> bufferTime duration
+      |> map (Seq.sum)
 
   let percentile (mapping: _ -> int64 array) quantile pipe =
     pipe
-    |> map (mapping >> Snapshot.create >> (fun snapshot -> Snapshot.quantile snapshot quantile))
+      |> map (mapping >> Snapshot.create >> (fun snapshot -> Snapshot.quantile snapshot quantile))
 
 
   type BufferAction = | Reset | Delivery | AddToBuffer
@@ -198,7 +204,8 @@ module Pipe =
   let bufferConditional (deliveryDecider: _ * list<_> -> BufferAction) pipe =
     pipe
     |> chain (fun cont ->
-       let buffer = new ResizeArray<_> ()
+       // TODO: race condition; this callback can be invoked from many different Hopac threads
+       let buffer = ResizeArray<_> ()
 
        fun prev ->
          let buffered = (List.ofSeq buffer)

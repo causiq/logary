@@ -17,7 +17,7 @@ type LogaryLogger(inner: Logger) =
       // closure-capture variables and send to Logary
       let message =
         let text = formatter.Invoke(state, ex)
-        Model.EventMessage(text, level=logLevel.asLogary)
+        Model.Event(text, level=logLevel.asLogary)
       inner.log message
 
 

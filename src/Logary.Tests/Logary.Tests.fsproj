@@ -18,7 +18,6 @@
     <Compile Include="Utils.Samples.fs" />
     <Compile Include="Utils.Arbs.fs" />
     <Compile Include="Utils.Logger.fs" />
-    <Compile Include="Internals.HashMap.fs" />
     <Compile Include="Internals.Global.fs" />
     <Compile Include="Utils.FsCheck.fs" />
     <Compile Include="Core.Constants.fs" />
@@ -33,14 +32,12 @@
     <Compile Include="Core.Gauge.fs" />
     <Compile Include="Core.NullLogger.fs" />
     <Compile Include="Core.Logger.fs" />
-    <Compile Include="Core.Middleware.fs" />
     <Compile Include="Trace.fs" />
     <Compile Include="Metric.fs" />
     <Compile Include="Codecs.fs" />
-    <Compile Include="Formatting.Json.fs" />
-    <Compile Include="Formatting.MessageWriters.fs" />
-    <Compile Include="Formatting.Literate.fs" />
-    <Compile Include="Formatting.MessageTemplates.fs" />
+    <Compile Include="Json.Encode.fs" />
+    <Compile Include="Json.Decode.fs" />
+    <Compile Include="Json.Roundtrip.fs" />
     <Compile Include="Targets.Baseline.fs" />
     <Compile Include="Targets.Core.fs" />
     <Compile Include="Configuration.Transformers.fs" />

@@ -50,3 +50,7 @@ module LogManagerEx =
   type LogManager with
     member x.getLogger (loggerName: string) =
       x.getLogger (PointName.parse loggerName)
+    member x.shutdown () =
+      x.shutdown (Duration.FromSeconds 10L, Duration.FromSeconds 10L) |> Alt.Ignore
+    member x.flushPending () =
+      x.flushPending (Duration.FromSeconds 10L) |> Alt.Ignore

@@ -2,11 +2,9 @@ namespace Logary.Tests
 
 open System.Collections.Generic
 open Logary
+open Logary.Internals
 
-type LogRecord =
-  { waitForBuffers: bool
-    level: LogLevel
-    message: LogaryMessage }
+type LogRecord = { waitForBuffers: bool; message: LogaryMessage }
 
 type StubLogger(?name: string, ?logLevel: LogLevel) =
   let sem = obj ()
@@ -19,8 +17,9 @@ type StubLogger(?name: string, ?logLevel: LogLevel) =
   interface Logger with
     member x.logWithAck (waitForBuffers, message) =
       lock sem <| fun () ->
-      if message.name.isEmpty then message.name <- name
-      _logged.Add { waitForBuffers = waitForBuffers; level = logLevel; message=message}
+      let message = message.getAsBase Model.Event
+      message.ensureName name
+      _logged.Add { waitForBuffers = waitForBuffers; message=message}
       LogResult.success
     member x.level = logLevel
     member x.name = name

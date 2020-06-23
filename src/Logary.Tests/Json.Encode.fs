@@ -1,15 +1,14 @@
 module Logary.Tests.Json
 
 open System
+open Expecto
+open Expecto.Flip
+open NodaTime
+open NodaTime.Text
 open Logary
 open Logary.Internals
 open Logary.Internals.Chiron
-open Logary.Formatting
 open Logary.Trace
-open NodaTime
-open Expecto
-open Expecto.Flip
-open NodaTime.Text
 
 type Countries =
   | Sweden
@@ -37,7 +36,7 @@ with
 let date20171111 = DateTime.Parse("2017-11-11")
 let foo () = { id = 999; name = "whatever"; created = date20171111}
 
-let complexMessage: Message =
+let complexMessage =
   let ex = exn "exception with data in it"
   ex.Data.Add ("data 1 in exn", 1)
   ex.Data.Add ("data foo in exn", foo ())
@@ -46,12 +45,14 @@ let complexMessage: Message =
   let tp () = (1, "two", foo())
   let (scalarArr: obj[]) = [| 1;  2; 3; "4"; "5"; 6.0; |]
   let (notScalarList: obj list) = [foo (); tp ()]
-  let scalarKeyValueMap = [ 1,"one" ; 2, "two"] |> HashMap.ofSeq
+  let scalarKeyValueMap = [ 1,"one" ; 2, "two"] |> Map
   let scalarKeyMap = Map [ "some user", box (foo ()) ; "some obj", box (Obj())]
   let notScalarMap = Map [([2,"2"],["3";"4"]); ([1,"a";2,"b"],["hello";"world"])]
 
-  Message.eventFormat (Info,
+  Model.Event(
     "default foo is {foo} here is a default {objDefault} and stringify {$objStr} and destructure {@objDestr}",
+    name=PointName.parse "a.b.c.d",
+    level=Info,
     foo (), Obj(),  Obj(),  Obj())
   |> Message.setName  (PointName.ofList ["a"; "b"; "c"; "d"])
   |> Message.setNanoEpoch 3123456700L
@@ -184,7 +185,6 @@ let tests fsc =
         testEncode<int * int> fsc
         testEncode<Map<string, _> * Map<string, _> * string> fsc
         testEncode<Map<string, _>> fsc
-        testEncode<HashMap<string, _>> fsc
         testEncode<Set<string>> fsc
         testEncode<IceCream> fsc
         testEncode<Collections.Generic.IDictionary<string, IceCream>> fsc

@@ -12,9 +12,9 @@ open System.Threading.Tasks
 open System.Runtime.CompilerServices
 open Hopac
 open Logary
-open Logary.CSharp
 open Logary.Internals
 open Logary.Configuration
+open Logary.Model
 
 /// This is useful to implement if you want add-on assemblies to be able to extend your builder. Then you just implement
 /// an interface that also inherits this interface and makes your extensions to the target configuration be extension
@@ -150,10 +150,10 @@ type LogaryFactory =
   /// Configure a new Logary instance. This will also give real targets to the flyweight
   /// targets that have been declared statically in your code. If you call this
   /// you get a log manager that you can later dispose, to shutdown all targets.
-  static member New(service: string, host: string, configurator: Func<ConfBuilder, ConfBuilder>): Task<LogManager> =
-    if service = null then nullArg "service"
+  static member New(resource: Resource, configurator: Func<ConfBuilder, ConfBuilder>): Task<LogManager> =
+    if isNull (box resource) then nullArg "resource"
     if configurator = null then nullArg "configurator"
-    let config = Config.create service host
+    let config = Config.create resource
     let cb = configurator.Invoke (ConfBuilder config)
     let xJ = Config.build cb.conf
     Job.ToTask xJ
@@ -162,4 +162,4 @@ type LogaryFactory =
     let getHostName () =
       try Dns.GetHostName()
       with :? SocketException -> "localhost"
-    LogaryFactory.New(service, getHostName(), configurator)
+    LogaryFactory.New(Resource.create(service, getHostName()), configurator)

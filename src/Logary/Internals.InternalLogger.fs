@@ -24,7 +24,7 @@ module internal InternalLogger =
 
     interface Logger with // internal logger
       member x.logWithAck (_, message) =
-        let m = message.getAsBase EventMessage
+        let m = message.getAsBase Model.Event
         x.messageCh *<+->- fun replCh nack -> m, nack, replCh
 
       member x.name = x.name

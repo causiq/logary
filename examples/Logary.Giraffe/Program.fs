@@ -15,50 +15,12 @@ open Giraffe
 open FSharp.Control.Tasks.V2
 
 // ---------------------------------
-// Models
-// ---------------------------------
-
-type Message =
-    {
-        Text: string
-    }
-
-// ---------------------------------
-// Views
-// ---------------------------------
-
-module Views =
-    open GiraffeViewEngine
-
-    let layout (content: XmlNode list) =
-        html [] [
-            head [] [
-                title [] [ encodedText "Logary.Giraffe" ]
-                link [ _rel "stylesheet"
-                       _type "text/css"
-                       _href "/main.css" ]
-            ]
-            body [] content
-        ]
-
-    let partial() =
-        h1 [] [ encodedText "Logary.Giraffe" ]
-
-    let index (model: Message) =
-        [
-            partial()
-            p [] [ encodedText model.Text ]
-        ] |> layout
-
-// ---------------------------------
 // Web app
 // ---------------------------------
 
 let indexHandler (name: string) =
-  let greetings = sprintf "Hello %s, from Logary!" name
-  let model = { Text = greetings }
-  let view = Views.index model
-  htmlView view
+  sprintf "Hello %s, from Logary!" name
+    |> Successful.OK
 
 type InputItem =
   { arguments: string[]; url: string }
@@ -123,8 +85,10 @@ let configureCors (builder: CorsPolicyBuilder) =
            .AllowAnyHeader()
            |> ignore
 
-let configureApp logger (app: IApplicationBuilder) =
+let configureApp (logary: LogManager) (app: IApplicationBuilder) =
     let env = app.ApplicationServices.GetService<IWebHostEnvironment>()
+    let logger = logary.getLogger "Logary.Examples.Giraffe"
+
     (if env.EnvironmentName = "Development"
      then
       app.UseDeveloperExceptionPage()
@@ -147,7 +111,6 @@ let main _ =
     |> Config.build
     |> Hopac.Hopac.run
 
-  let logger = logary.getLogger "Logary.Giraffe"
   let contentRoot = Directory.GetCurrentDirectory()
   let webRoot = Path.Combine(contentRoot, "public")
   WebHostBuilder()
@@ -155,7 +118,7 @@ let main _ =
     .UseLogary(logary)
     .UseContentRoot(contentRoot)
     .UseWebRoot(webRoot)
-    .Configure(Action<IApplicationBuilder>(configureApp logger))
+    .Configure(Action<IApplicationBuilder>(configureApp logary))
     .ConfigureServices(configureServices)
     .Build()
     .Run()

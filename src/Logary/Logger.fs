@@ -2,7 +2,6 @@ namespace Logary
 
 open System
 open Hopac
-open NodaTime
 open Logary
 
 /// Patterns to match against the context; useful for extracting the data

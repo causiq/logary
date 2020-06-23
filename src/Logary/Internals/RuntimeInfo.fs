@@ -2,16 +2,14 @@ namespace Logary.Internals
 
 open Hopac
 open Logary
+open Logary.Model
+
 
 /// A type giving more information about the service that this logary instance
 /// is running on.
 type RuntimeInfo =
-  /// Name of the service.
-  abstract service: string // TODO: convert to Resource
-  /// The host name of the machine that is running Logary. This is almost
-  /// always required to coordinate logs in a distributed system and is
-  /// also useful when reading logs from multiple machines at the same time.
-  abstract host: string
+  /// Name of the service, location in the datacenter, etc...
+  abstract resource: Resource
   /// Gets the current timestamp
   abstract getTimestamp: unit -> EpochNanoSeconds
   /// Gets the console semaphore
@@ -19,6 +17,8 @@ type RuntimeInfo =
   /// An internal logger for Logary's runtime, its {targets,metrics,...} to use.
   abstract logger: Logger
 
+  /// Replaces the logger, returning a new instance with the new logger. Does not mutate this instance.
+  abstract withLogger: logger: Logger -> RuntimeInfo
 
 /// A data-structure that gives information about the outcome of a flush
 /// operation on the Registry. This data structure is only relevant if the

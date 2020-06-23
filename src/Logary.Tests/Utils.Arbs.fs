@@ -54,7 +54,7 @@ type Arbs =
       | Value.Float f -> Arb.shrink f |> Seq.map Value.Float
       | Value.Int64 _ as ii -> int64s.Shrinker ii
       | Value.BigInt _ as bi -> bigints.Shrinker bi
-      | otherwise -> Seq.empty
+      | _ -> Seq.empty
     Arb.fromGenShrink (generator, shrinker)
 
   static member Units() =
@@ -74,7 +74,7 @@ type Arbs =
          not <| Double.IsInfinity f
       && not <| Double.IsNaN f
     Arb.Default.Derive()
-      |> Arb.filter (function | Gauge (f, units) -> isNormal f.asFloat)
+      |> Arb.filter (function | Gauge (f, _) -> isNormal f.asFloat)
 
   static member Instant() =
     Arb.Default.DateTimeOffset()
@@ -102,7 +102,8 @@ type Arbs =
       dto.flags <- flags
       return dto :> Logary.SpanMessage
     }
-    let shrinker (s: SpanMessage): SpanMessage seq = Seq.empty
+    // TO CONSIDER: improve shrinker
+    let shrinker (_: SpanMessage): SpanMessage seq = Seq.empty
     Arb.fromGenShrink (generator, shrinker)
 
   static member Exception() =
@@ -115,7 +116,6 @@ type Arbs =
     let generator =
       gen {
         let! (NonEmptyString message) = Arb.generate<NonEmptyString>
-        let! (NonEmptyString message2) = Arb.generate<NonEmptyString>
         let! exnFac =
           Gen.frequency [
             1, Gen.constant failer

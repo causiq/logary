@@ -1,9 +1,10 @@
 [<AutoOpen>]
-module Logary.Tests.TargetUtils
+module Logary.Tests.Target
 
 open System
 open System.IO
 open Hopac
+open Logary.Model
 open NodaTime
 open Expecto
 open Expecto.Logging
@@ -37,14 +38,13 @@ let buildTextWriterTarget name =
   out, error, twTargetConf
 
 let buildLogManagerWith configFac = job {
-  let svc = "svc"
-  let host = "localhost"
+  let svc = Resource.create "svc"
   let tname = "4test"
   let out, error, twTargetConf = buildTextWriterTarget tname
   // let iloggerConf = ILogger.Targets [ twTargetConf ]
 
   let! logm =
-    Config.create svc host
+    Config.create svc
     |> Config.target twTargetConf
     |> Config.processing (Events.events |> Events.setTargets [tname])
     |> Config.disableGlobals
@@ -55,11 +55,12 @@ let buildLogManagerWith configFac = job {
 
 let buildLogManager () = buildLogManagerWith id
 
-
 let emptyRuntime =
   memo (
     Config.createInternalTargets (ILogger.Console Verbose)
-    |> Config.createInternalLogger (RuntimeInfo.create "logary-tests" "dev-machine")
+    |> Config.createInternalLogger (
+      RuntimeInfo.create (Resource.create("logary-tests", "dev-machine"))
+    )
     |> Job.map (fun (ri, _) -> ri)
   )
 

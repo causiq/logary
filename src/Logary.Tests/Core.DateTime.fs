@@ -1,12 +1,16 @@
-module Logary.Tests.DateAndTime
+module Logary.Tests.DateTime
 
+open System
 open Expecto
+open Expecto.Flip
 open NodaTime
 open FsCheck
 open Logary
 open Logary.Tests
 
-let tests = [
+[<Tests>]
+let tests =
+  testList "dates and time" [
     testList "NodaTime.Duration" [
       testPropertyWithConfig fsc "toGauge()" <| fun (d: Duration) ->
         ignore (d.toGauge())
@@ -25,7 +29,8 @@ let tests = [
       let ts = SystemClock.Instance.GetCurrentInstant()
       let tsns = ts.ToUnixTimeTicks() * Constants.NanosPerTick
       let subject = DateTimeOffset.ofEpoch tsns
-      subject.Year |> Flip.Expect.equal "Year eq" (ts.ToDateTimeOffset().Year)
-      subject.Second |> Flip.Expect.equal "Second eq" (ts.ToDateTimeOffset().Second)
-      subject.Millisecond |> Flip.Expect.equal "Millisecond eq" (ts.ToDateTimeOffset().Millisecond)
-]
+      subject.Year |> Expect.equal "Year eq" (ts.ToDateTimeOffset().Year)
+      subject.Second |> Expect.equal "Second eq" (ts.ToDateTimeOffset().Second)
+      subject.Millisecond |> Expect.equal "Millisecond eq" (ts.ToDateTimeOffset().Millisecond)
+
+  ] |> testLabel "logary"

@@ -11,7 +11,7 @@ open Logary.Internals
 
 module Alt =
 
-  let timeFun onComplete onNack (xA: Alt<'a>) =
+  let time onComplete onNack (xA: Alt<'a>) =
     Alt.withNackJob (fun nack ->
       let ts = MonotonicClock.getTimestamp ()
       let start = Stopwatch.getTimestamp ()

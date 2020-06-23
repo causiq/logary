@@ -3,8 +3,9 @@ module Logary.Tests.Constants
 open Expecto
 open Logary
 
+[<Tests>]
 let tests =
-  [
+  testList "constants" [
     testList "floats" (
       [ Constants.SecondsPerTick, 0.0000001, "SecondsPerTick"
         Constants.MillisPerTick, 0.0001, "MillisPerTick"
@@ -28,27 +29,8 @@ let tests =
         Constants.TicksPerMicro, 10L, "TicksPerMicro"
       ]
       |> List.map (fun (actual, expected, name) ->
-      testCase (sprintf "ensuring constant '%s'" name) <| fun () ->
-        Expect.equal actual expected "Constant should not change"
+          testCase (sprintf "ensuring constant '%s'" name) <| fun () ->
+            Expect.equal actual expected "Constant should not change"
       )
     )
-
-    testList "KnownLiterals" (
-      [
-        KnownLiterals.LogaryPrefix, "_logary."
-        KnownLiterals.FieldsPrefix, "_fields."
-        KnownLiterals.GaugeNamePrefix, "_logary.gauge."
-
-        KnownLiterals.ErrorsContextName, "_logary.errors"
-        KnownLiterals.ServiceContextName, "_logary.service"
-        KnownLiterals.HostContextName, "_logary.host"
-        KnownLiterals.TagsContextName, "_logary.tags"
-
-        KnownLiterals.DefaultGaugeName, "default-gauge"
-      ]
-      |> List.map (fun (actual, expected) ->
-          testCase (sprintf "ensuring constant '%s'" expected)<| fun () ->
-            Expect.equal actual expected "KnownLiteral should not change"
-      )
-    )
-  ]
+  ] |> testLabel "logary"

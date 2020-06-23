@@ -1,6 +1,10 @@
 namespace Logary.Trace
 
+open System
 open System.Runtime.CompilerServices
+open System.Threading
+open System.Threading.Tasks
+open FSharp.Control.Tasks.Builders
 open Hopac
 open Logary
 open Logary.Trace.Propagation
@@ -58,17 +62,20 @@ module SpanLoggerEx =
       fun t ->
         propagator.inject(setter, x.context, t)
 
-    member x.timeFun (f: 'input -> 'res, ?label: string, // ?builder,
-                      [<CallerMemberName>] ?memberName: string,
-                      [<CallerFilePath>] ?file: string,
-                      [<CallerLineNumber>] ?lineNo: int)
-                      : 'input -> 'res =
+    member x.time (f: 'input -> 'res, ?label: string,
+                   ?builder: SpanMessage -> unit,
+                   [<CallerMemberName>] ?memberName: string,
+                   [<CallerFilePath>] ?file: string,
+                   [<CallerLineNumber>] ?lineNo: int)
+                   : 'input -> 'res =
 
       let label =
         label
           |> Option.bind nullIsNone
           |> Option.orElse memberName
           |> Option.defaultValue "methodCall"
+
+      let builder = defaultArg builder ignore
 
       fun input ->
         use scope = x.startChild(label)
@@ -78,8 +85,75 @@ module SpanLoggerEx =
         scope.finish(fun m ->
           m.addCallerInfo(defaultArg memberName "timeFun", ?file=file, ?lineNo=lineNo)
           m.timestamp <- start
-          m.finished <- Some finish) |> ignore
+          m.finished <- Some finish
+          builder m) |> ignore
         res
+
+    member x.timeAlt(xA: Alt<'a>, ?label: string,
+                     ?kind: SpanKind,
+                     ?builder: Model.SpanMessage -> unit,
+                     [<CallerMemberName>] ?memberName: string,
+                     [<CallerFilePath>] ?file: string,
+                     [<CallerLineNumber>] ?lineNo: int) =
+      let label =
+        label
+          |> Option.bind nullIsNone
+          |> Option.orElse memberName
+          |> Option.defaultValue "timeAlt"
+
+      let builder (m: Model.SpanMessage) =
+        m.addCallerInfo(defaultArg memberName "timeAlt", ?file=file, ?lineNo=lineNo)
+        defaultArg builder ignore m
+
+      // `runnable` will be re-invoked to prepare new Alt<_> values.
+      let runnable () =
+        let scope = x.startChild(label, ?kind=kind)
+        Alt.tryFinallyFun xA (fun () ->
+        scope.finish(builder)
+          |> ignore)
+
+      Alt.prepareFun runnable
+
+    member x.timeAltProducer(xA, ?label: string,
+                             ?builder: Model.SpanMessage -> unit,
+                             [<CallerMemberName>] ?memberName: string,
+                             [<CallerFilePath>] ?file: string,
+                             [<CallerLineNumber>] ?lineNo: int) =
+
+      let label = defaultArg label "timeAltProducer"
+      x.timeAlt(xA, label, SpanKind.Producer, ?builder=builder, ?memberName=memberName, ?file=file, ?lineNo=lineNo)
+
+    /// One-shot
+    member x.timeTaskProducer(taskFactory: CancellationToken -> Task<'a>, token: CancellationToken,
+                              ?label: string, ?builder,
+                              [<CallerMemberName>] ?memberName: string,
+                              [<CallerFilePath>] ?file: string,
+                              [<CallerLineNumber>] ?lineNo: int) =
+      let label =
+        label
+          |> Option.bind nullIsNone
+          |> Option.orElse memberName
+          |> Option.defaultValue "timeTaskProducer"
+
+      let markFinished ranToCompletion (m: Model.SpanMessage) =
+        m.addCallerInfo(defaultArg memberName "timeTask", ?file=file, ?lineNo=lineNo)
+        let so = m :> SpanOps
+        // why doesn't the compiler resolve the (string * Value) -> unit-overload without specifying SpanOps explicitly?
+        if not ranToCompletion then so.setAttribute("cancelled", Value.Bool true)
+
+
+      task {
+        let span = x.startChild label
+        try
+          let! res = taskFactory token
+          span.finish (markFinished true)
+            |> ignore
+          return res
+        with :? OperationCanceledException as oce ->
+          span.finish (markFinished false)
+            |> ignore
+          return oce.reraise()
+      }
 
 
 [<AutoOpen>]

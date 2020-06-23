@@ -230,11 +230,10 @@ type Naming =
       let now = (ri.getTimestamp () |> Instant.ofEpoch).ToDateTimeOffset()
 
       let known =
-        [ "service", ri.service
-          "date", now.ToString("yyyy-MM-dd")
-          "datetime", now.ToString("yyyy-MM-ddTHH-mm-ssZ")
-          "host", ri.host
-        ] |> Map
+        ri.resource.asMap()
+          |> Map.add "date" (now.ToString("yyyy-MM-dd"))
+          |> Map.add "datetime" (now.ToString("yyyy-MM-ddTHH-mm-ssZ"))
+
       match P.parse spec with
       | Choice1Of2 tokens ->
         P.format known tokens, ext
@@ -251,10 +250,10 @@ type Naming =
     member x.regex (ri: RuntimeInfo) =
       let (Naming (spec, ext)) = x
       let known =
-        [ "service", Regex.Escape ri.service
+        [ "service", Regex.Escape ri.resource.service
           "date", @"\d{4}-\d{2}-\d{2}"
           "datetime", @"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z"
-          "host", Regex.Escape ri.host
+          yield! ri.resource.asLabels() |> Seq.map (fun (k, v) -> k, Regex.Escape v)
         ] |> Map
       match P.parse spec with
       | Choice1Of2 tokens ->

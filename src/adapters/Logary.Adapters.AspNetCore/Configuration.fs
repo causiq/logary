@@ -26,7 +26,8 @@ type LogaryStartupFilter() =
 
 
 module internal Impl =
-  let addLogaryServices (logary: LogManager) _ (s: IServiceCollection) =
+  let addLogaryServices (logary: LogManager) (s: IServiceCollection) =
+    // TODO: extension method IServiceCollection.AddLogary()
     s.AddHttpContextAccessor()
      .AddSingleton(logary)
      .AddSingleton(logary.getLogger(logary.runtimeInfo.service))
@@ -35,6 +36,12 @@ module internal Impl =
     |> ignore
 
 
+// TODO: refactor to https://docs.microsoft.com/en-us/aspnet/core/fundamentals/middleware/write?view=aspnetcore-3.1
+// TODO: UseXXXMiddleware for every possible middleware that is optional
+// TODO: UseInternalLogary()
+// TODO: UseLogary(logary) on the right interface
+// TODO: UseLogary(configurator) as a configurator
+
 // EITHER use:
 [<Extension; AutoOpen>]
 module IHostBuilderEx =
@@ -42,7 +49,7 @@ module IHostBuilderEx =
 
   [<Extension; CompiledName "UseLogary">]
   let useLogary (builder: IHostBuilder, logary: LogManager) =
-     let cb = Action<_,_>(addLogaryServices logary)
+     let cb = Action<_>(addLogaryServices logary)
      builder.ConfigureServices(cb)
 
   type IHostBuilder with
@@ -56,7 +63,7 @@ module IWebHostBuilderEx =
 
   [<Extension; CompiledName "UseLogary">]
   let useLogary (builder: IWebHostBuilder, logary: LogManager) =
-     let cb = Action<_>(addLogaryServices logary ())
+     let cb = Action<_>(addLogaryServices logary)
      builder.ConfigureServices(cb)
 
   type IWebHostBuilder with

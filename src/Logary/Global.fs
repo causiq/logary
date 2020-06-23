@@ -1,5 +1,5 @@
 /// This module keeps track of the LoggingConfig reference.
-module internal Logary.Internals.Global
+module Logary.Internals.Global
 
 open Hopac
 open NodaTime
@@ -31,7 +31,7 @@ let internal clockD =
   let createClock config = { new IClock with member x.GetCurrentInstant() = Instant.ofEpoch (config.getTimestamp()) }
   configD |> DVar.map createClock
 
-let internal semaphoreD =
+let internal lockD =
   configD |> DVar.map (fun x -> x.consoleLock)
 
 /// The flyweight references the current configuration. If you want multiple per-process logging setups, then don't use
@@ -55,3 +55,7 @@ let getStaticLogger (name: PointName) = Flyweight(name) :> Logger
 /// Gets the current timestamp.
 let getTimestamp =
   configD |> DVar.mapFun (fun config -> config.getTimestamp)
+
+let getMetricRegistry () =
+  let config = DVar.get configD
+  config.metrics

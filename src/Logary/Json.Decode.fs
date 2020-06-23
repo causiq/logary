@@ -2,6 +2,7 @@
 module Logary.Json.Decode
 
 open System.Collections.Generic
+open Logary.Internals.Resources
 open NodaTime
 open Logary
 open Logary.Trace
@@ -31,6 +32,9 @@ let kind: JsonDecoder<MessageKind> =
     | "identifyUser" -> MessageKind.IdentifyUser
     | "event" | _ -> MessageKind.Event
   inner <!> D.string
+
+let resource: JsonDecoder<Resource> =
+  Resource.ofMap <!> D.mapWith D.string
 
 /// Decodes Message's `name` **values** (not property-name-property-value pair)
 /// from a `Json`.
@@ -326,15 +330,15 @@ let internal logaryMessageWith clock ctorDecoder ctorFactory =
       |> JsonResult.bind (fun m -> JsonResult.foldBind folder m (JsonObject.toPropertyList jObj))
 
 
-let eventMessageReader clock: ObjectReader<Model.EventMessage> =
+let eventMessageReader clock: ObjectReader<Model.Event> =
   let ctorDecoder =
         fun e m -> e, m
     <!> D.required D.string "event"
     <*> D.optional gauge "monetaryValue"
 
-  logaryMessageWith clock ctorDecoder (fun (event, monetaryValue) -> Model.EventMessage(event, monetaryValue))
+  logaryMessageWith clock ctorDecoder (fun (event, monetaryValue) -> Model.Event(event, monetaryValue))
 
-let eventMessage (clock: IClock): JsonDecoder<Model.EventMessage> =
+let eventMessage (clock: IClock): JsonDecoder<Model.Event> =
   D.jsonObjectWith (eventMessageReader clock)
 
 let eventMessageInterface clock: JsonDecoder<Logary.EventMessage> =

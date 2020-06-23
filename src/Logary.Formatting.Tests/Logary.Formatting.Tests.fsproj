@@ -6,6 +6,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Utils.Expect.fs" />
+    <Compile Include="Formatting.MessageWriters.fs" />
+    <Compile Include="Formatting.Literate.fs" />
+    <Compile Include="Formatting.MessageTemplates.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
   </ItemGroup>

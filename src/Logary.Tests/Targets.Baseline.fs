@@ -68,21 +68,21 @@ let basicTests targetName confFac addTS =
   testList (sprintf "target '%s' basics" targetName) [
     testCaseJob "create" <| job {
       let! ri = emptyRuntime
-      do! logger.infoWithBP (Model.EventMessage "Creating instance: calling configFactory")
+      do! logger.infoWithBP (Model.Event "Creating instance: calling configFactory")
       let conf = confFac targetName
-      do! logger.infoWithBP (Model.EventMessage "Creating instance: creating target")
+      do! logger.infoWithBP (Model.Event "Creating instance: creating target")
       let! targetApi = Target.create ri conf
-      do! logger.infoWithBP (Model.EventMessage "Creating instance: asserting")
+      do! logger.infoWithBP (Model.Event "Creating instance: asserting")
       Expect.equal targetApi.name targetName "Should be named"
       do! finalise targetApi
     }
 
     testCaseJob "start, log and stop" <| job {
       let! targetApi, now = configure ()
-      do! logger.infoWithBP (Model.EventMessage "Start, log and stop: log and wait")
+      do! logger.infoWithBP (Model.Event "Start, log and stop: log and wait")
       do! logMsgWaitAndShutdown targetApi (fun logAndWait ->
         Message.eventInfo (sprintf "User signed up! @ %s" now) |> logAndWait)
-      do! logger.infoWithBP (Model.EventMessage "Start, log and stop: done!")
+      do! logger.infoWithBP (Model.Event "Start, log and stop: done!")
     }
 
     testCaseJob "log exception message" <| job {

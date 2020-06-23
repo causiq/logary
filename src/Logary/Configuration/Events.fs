@@ -27,8 +27,25 @@ module Events =
         m.targets <- Set.ofSeq names
         m)
 
+  let tag (tag: string) pipe: Processing =
+    pipe
+      |>  Pipe.map (fun (m: Model.LogaryMessageBase) ->
+        m.tag tag
+        m)
+
+  let whenTagged (tag: string) pipe: Processing =
+    pipe
+      |> Pipe.filter (fun m -> m.hasTag tag)
+
+  let untag tag pipe: Processing =
+    pipe
+      |> Pipe.map (fun (m: Model.LogaryMessageBase) ->
+        m.untag tag
+        m)
+
   let setTarget name pipe: Processing =
-    pipe |> setTargets [ name ]
+    pipe
+      |> setTargets [ name ]
 
   let flattenSeq (pipe: Pipe<#seq<Model.LogaryMessageBase>, LogResult, Model.LogaryMessageBase>): Processing =
     pipe
@@ -45,7 +62,8 @@ module Events =
 
   /// Compose here means dispatch each event/message to all pipes, not chain all pipes together.
   let compose pipes =
-    let allTickTimerJobs = List.collect (fun pipe -> pipe.tickTimerJobs) pipes
+    let allTickTimerJobs =
+      pipes |> List.collect (fun pipe -> pipe.tickTimerJobs)
 
     let build =
       fun cont ->

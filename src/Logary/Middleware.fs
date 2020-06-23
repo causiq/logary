@@ -3,6 +3,7 @@ namespace Logary
 open System.Diagnostics
 open System.Net
 open Logary
+open Logary.Model
 open Logary.Trace
 open Logary.Metric
 
@@ -19,23 +20,23 @@ module Middleware =
     fun next msg -> next msg
 
   /// Sets the host name as a context value
-  [<CompiledName "Host">]
-  let host (host: string): Middleware =
+  [<CompiledName "SetResource">]
+  let setResource (r: Resource): Middleware =
     fun next msg ->
-      msg.setContext("host", host)
+      msg.setContextValues(r.asMap())
       next msg
 
   /// Sets the host name as a context value
-  [<CompiledName "DnsHost">]
-  let dnsHost: Middleware =
+  [<CompiledName "SetDNSHost">]
+  let setDNSHost: Middleware =
     let host = Dns.GetHostName()
     fun next msg ->
       msg.setContext("host", Value.Str host)
       next msg
 
   /// Sets the service name as a context value
-  [<CompiledName "Service">]
-  let service (name: string): Middleware =
+  [<CompiledName "SetService">]
+  let setService (name: string): Middleware =
     fun next msg ->
       msg.setContext("service", Value.Str name)
       next msg
@@ -43,15 +44,15 @@ module Middleware =
   let private pn = Process.GetCurrentProcess()
 
   /// Sets the current process' name as a context value
-  [<CompiledName "ProcessName">]
-  let processName: Middleware =
+  [<CompiledName "SetProcessName">]
+  let setProcessName: Middleware =
     fun next msg ->
       msg.setContext("processName", Value.Str pn.ProcessName)
       next msg
 
   /// Always sets this context value.
-  [<CompiledName "Context">]
-  let context name value: Middleware =
+  [<CompiledName "SetContext">]
+  let setContext name value: Middleware =
     fun next msg ->
       msg.setContext(name, value)
       next msg

@@ -1,6 +1,7 @@
 module Logary.Tests.Trace
 
 open System
+open System.Collections.Generic
 open Expecto
 open Expecto.Flip
 open Logary
@@ -12,18 +13,17 @@ open NodaTime
 
 module List =
   let findByKey (key: 'a) =
-    List.find (fun (k, _) -> k = key)
-    >> function (_, v) -> v
+    List.find (fun (KeyValue (k, _)) -> k = key)
+    >> function (KeyValue (_, v)) -> v
 
 let injectExtractProperty (inject: Setter<Map<string, string list>> -> SpanContext -> Map<string, string list> -> Map<string, string list>,
                            extract: Getter<Map<string, string list>> -> Map<string, string list> -> SpanAttr list * SpanContext option)
                           (ctx: SpanContext) =
-  let cleanMap (m: Map<string, string>) =
-    m |> Map.toSeq
-      // cannot pass whitespace keys, since they are all string based
-      |> Seq.filter (fun (k, _) -> not (String.IsNullOrWhiteSpace k))
+  let cleanMap (m: IReadOnlyDictionary<string, string>) =
+    m // cannot pass whitespace keys, since they are all string based
+      |> Seq.filter (fun (KeyValue (k, _)) -> not (String.IsNullOrWhiteSpace k))
       // cannot pass null values, since they are all string based and there's no null available
-      |> Seq.map (fun (k, v) -> k, if isNull v then "" else v)
+      |> Seq.map (fun (KeyValue (k, v)) -> k, if isNull v then "" else v)
       |> Map.ofSeq
 
   // no zero contexts
@@ -59,7 +59,7 @@ let injectExtractProperty (inject: Setter<Map<string, string list>> -> SpanConte
 
 
 let injectExtractPropertyW3C (inject, extract) (ctx: SpanContext) =
-  let nextCtx = SpanContext(ctx.traceId, ctx.spanId, ctx.flags, traceState=ctx.traceState)
+  let nextCtx = SpanContext(ctx.traceId, ctx.spanId, None, ctx.flags, traceState=ctx.traceState)
   injectExtractProperty (inject, extract) nextCtx
 
 
@@ -207,9 +207,12 @@ let tests =
             context.traceState.isZero
               |> Expect.isTrue "No TraceState in the B3 format"
 
-            context.traceContext
-              |> Map.tryFind "userId"
-              |> Expect.equal "TraceState/baggage a 'userId' key with a 'haf' value" (Some "haf")
+            match context.traceContext.TryGetValue "userId" with
+            | false, _ -> failtestf "Failed to find 'userId' context val"
+            | true, uid ->
+              uid
+                |> Expect.equal "TraceState/baggage a 'userId' key with a 'haf' value"
+                                "haf"
 
             context.traceId
               |> Expect.equal "Has correct TraceId" (TraceId.ofString "80f198ee56343ba864fe8b2a57d3eff7")
@@ -435,17 +438,19 @@ let tests =
           let spanAttrs, contextO = Jaeger.extract Extract.mapWithSingle m
 
           spanAttrs
-            |> Expect.contains "Has a jaeger-debug-id value" ("jaeger-debug-id", Value.Str "37337")
+            |> Expect.contains "Has a jaeger-debug-id value" (KeyValuePair<_,_>("jaeger-debug-id", Value.Str "37337"))
 
           contextO
             |> Expect.isSome "Extracts values successfully"
 
           let context = Option.get contextO
 
-          context.traceContext
-            |> Map.tryFind "userId"
-            |> Expect.equal "TraceState/baggage a 'userId' key with a 'haf' value" (Some "haf")
-
+          match context.traceContext.TryGetValue "userId" with
+          | false, _ -> failtestf "Failed to find 'userId' context val"
+          | true, uid ->
+            uid
+              |> Expect.equal "TraceState/baggage a 'userId' key with a 'haf' value"
+                              "haf"
           context.traceId
             |> Expect.equal "Has correct TraceId" (TraceId.ofString "abcdef1234567890abcdef1234567890")
 

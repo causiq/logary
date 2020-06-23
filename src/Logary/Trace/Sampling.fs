@@ -246,7 +246,7 @@ type PerKeySampler(opts: PerKeySamplerOptions list) =
     match keyToS.TryGetValue span.label with
     | false, _ when keyToS.Count >= int maxTracked ->
       if not logged then
-        let m = Model.EventMessage "Exceeded the maximum number of operations {maxTracked} for PerKeySampler"
+        let m = Model.Event "Exceeded the maximum number of operations {maxTracked} for PerKeySampler"
         m.setField("maxTracked", Value.Int64 (int64 maxTracked))
         Hopac.Hopac.queueIgnore (logger.logWithAck(false, m))
         logged <- true

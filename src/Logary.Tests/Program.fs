@@ -16,7 +16,6 @@ let tests =
     ]
 
     testList "internals" [
-      testList "HashMap" HashMap.tests
       testList "Global" Global.tests
     ]
 

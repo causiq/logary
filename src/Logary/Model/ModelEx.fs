@@ -2,6 +2,7 @@
 module Logary.ModelEx
 
 open Logary
+open Logary.Internals
 open Logary.Model
 open Logary.Trace
 open NodaTime
@@ -53,3 +54,41 @@ type Model.LogaryMessageBase with
       x.setContext(key, value)
     | Choice2Of2 kvs ->
       x.setContextValues kvs
+
+  member x.tag tag =
+    x.setField(tag, Value.Bool true)
+  member x.untag tag =
+    x.fields.Remove tag
+      |> ignore
+  member x.hasTag tag =
+    match x.fields.TryGetValue tag with
+    | true, Value.Bool b when b -> true
+    | _ -> false
+
+  /// Warning: O(n) operation; instead do a `x.hasTag "my tag"` check, if you can.
+  member x.getAllTags () =
+    seq {
+      for KeyValue (k, v) in x.fields do
+        match k, v with
+        | _, Value.Bool b when b ->
+          yield k
+        | _ -> ()
+    }
+
+type Logary.Gauge with
+  static member timeEvent event fn =
+    let timedFn = Gauge.time fn
+    fun input ->
+      let ts = MonotonicClock.getTimestamp()
+      let g, res = timedFn input
+      let m = Model.Event(event, None, timestamp=ts)
+      m.setGauge("duration", g)
+      m, res
+
+  static member timeGauge labels fn =
+    let timedFn = Gauge.time fn
+    fun input ->
+      let ts = MonotonicClock.getTimestamp()
+      let g, res = timedFn input
+      let m = Model.GaugeMessage(g, labels, timestamp=ts)
+      m, res

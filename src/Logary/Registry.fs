@@ -8,6 +8,7 @@ open Logary
 open Logary.Metric
 open Logary.Internals
 open Logary.Configuration
+open Logary.Model
 open NodaTime
 open System.Text.RegularExpressions
 open System.Collections.Concurrent
@@ -123,7 +124,7 @@ module Registry =
           member x.logWithAck(waitForBuffers, message) =
             if Promise.Now.isFulfilled registry.isClosed then LogResult.registryClosed () else
             if message.level < x.level then LogResult.success else
-            let message = message.getAsBase Model.EventMessage
+            let message = message.getAsBase Model.Event
             message.ensureName name
             registry.emit message
           member x.level =
@@ -211,26 +212,28 @@ module Registry =
           >>= IVar.fill isClosed
       ]
 
+    let runnable (msg: LogaryMessageBase) =
+      let targets =
+        if Set.isEmpty msg.targets then
+          targets
+        else
+          msg.targets |> Seq.choose (fun name -> Map.tryFind name targetsByName) |> Array.ofSeq
+
+      if Array.isEmpty targets then
+        NoResult
+      else
+        let putBufferTimeOut = if msg.waitForTargets then conf.waitForTargetsTimeout else Duration.Zero
+        msg
+          |> Target.logAllReduce putBufferTimeOut targets
+          |> Alt.afterFun (fun result ->
+              try conf.logResultHandler result
+              with e -> eprintfn "%O" e
+              result)
+          |> HasResult
+
     // pipe.run should only be invoke once, because state in pipes is captured when pipe.run
     let pipe =
-      conf.processing |> Pipe.run (fun msg ->
-        let targets =
-          if Set.isEmpty msg.targets then
-            targets
-          else
-            msg.targets |> Seq.choose (fun name -> Map.tryFind name targetsByName) |> Array.ofSeq
-
-        if Array.isEmpty targets then
-          NoResult
-        else
-          let putBufferTimeOut = if msg.waitForTargets then conf.waitForTargetsTimeout else Duration.Zero
-          msg
-            |> Target.logAllReduce putBufferTimeOut targets
-            |> Alt.afterFun (fun result ->
-                try conf.logResultHandler result
-                with e -> eprintfn "%O" e
-                result)
-            |> HasResult)
+      conf.processing |> Pipe.run conf.runtimeInfo runnable
 
     Impl.setMetricFailBehaviour ri.logger conf.metricRegistry
 

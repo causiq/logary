@@ -9,7 +9,7 @@ open Logary
 open Logary.Internals
 
 module Job =
-  let timeFun onComplete xJ =
+  let time onComplete xJ =
     Job.delay (fun () ->
       let ts = MonotonicClock.getTimestamp()
       let start = Stopwatch.getTimestamp()

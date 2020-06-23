@@ -1,126 +1,123 @@
 module Logary.Tests.Message
 
 open System
-open Hopac
 open Expecto
+open Expecto.Flip
 open FsCheck
 open Logary
-open Logary.Message
+open NodaTime
 
 let tests =
-  [
-      testCase "event: LogLevel -> string -> Message" <| fun _ ->
-        let m = event Info "Hello world"
-        Expect.equal m.level Info "Should have info level"
-        Expect.equal m.value ("Hello world") "Should have template"
+  testList "message" [
+    testList "event" [
+      testCase "c'tor" <| fun _ ->
+        let mid = Id.create()
+        let m = Model.Event("Hello world", Some (money Currency.EUR 1.), 1L, mid, PointName.parse "a.b.c", Info)
+        m.received <- Some 2L
+        m.setFieldValues(Map [ "a", Value.Str "b" ])
+        m.setContextValues(Map [ "b", Value.Str "c" ])
+        m.addExn (raisedExn "testing event message")
+        m.setGauge("Startup time", Duration.FromSeconds 1.23)
+        m.tag "panther"
 
-      testCase "Model.EventMessage: string -> LogLevel -> Message" <| fun _ ->
-        let m = Model.EventMessage "Hello world" Info
-        Expect.equal m.level Info "Should have info level"
-        Expect.equal m.value ("Hello world") "Should have template"
+        m.level
+          |> Expect.equal "Right level" Info
+        m.event
+          |> Expect.equal "Has 'Hello world' message" "Hello world"
+        m.monetaryValue
+          |> Expect.equal "Eq 1 EUR" (Some (money Currency.EUR 1.))
+        m.timestamp
+          |> Expect.equal "Eq 1" 1L
+        m.received
+          |> Expect.equal "Eq 2" (Some 2L)
+        m.id
+          |> Expect.equal "Message id" mid
+        m.name
+          |> Expect.equal "a.b.c" (PointName.parse "a.b.c")
+        m.fields.["a"]
+          |> Expect.equal "has 'a' field" (Value.Str "b")
+        m.context.["b"]
+          |> Expect.equal "has 'b' field" (Value.Str "c")
+        m.error
+          |> Expect.isNone "Should have no error info attached"
+        m.targets
+          |> Expect.isEmpty "Should have no targets"
+        m.error
+          |> Expect.isSome "Has an error value"
+        m.error.Value.message
+          |> Expect.equal "Has the message" (Some "testing error message")
+        m.counterConf
+          |> Expect.isNone "Has no counter conf configured by default"
+        m.gauges.["Startup time"]
+          |> Expect.equal "Has the right startup time" (Gauge.ofDuration (Duration.ofSeconds 1.23))
+        m.hasTag "panther"
+          |> Expect.isTrue "Has the 'panther' tag"
 
-      testProperty "tryGetContext after setContext" <| fun name ->
-        eventInfo "" |> setContext name name |> tryGetContext name
-        |> function | v when isNull name -> Option.isNone v | v -> v = (Some name)
+      testCase "c'tor generates MessageId" <| fun () ->
+        let m = Model.Event "e"
+        m.id.isZero
+          |> Expect.isFalse "Should have generated an Id"
+    ]
 
-      testCase "setContext override value when name exist" <| fun _ ->
-        let get = tryGetContext "key" >> Option.get
-        let set v = setContext "key" v
-        let m1 = eventInfo "" |> set 1
-        Expect.equal (get m1) 1 "Should properly set context value"
-        let m2 = m1 |> set 2
-        Expect.equal (get m2) 2 "Should override"
+    testList "gauge" [
+      testCase "c'tor" <| fun _ ->
+        let acc = Gauge (Value.Float 11.4, U.Div(U.Metres, U.Pow(U.Seconds, 2.0))) // acc
+        let m = Model.GaugeMessage (acc, Map [ "gauge_name", "Car.Speedometer"; "measurement", "dv/dt" ])
+        m.gauge
+          |> Expect.equal "Equals the gauge" acc
+        m.gauges
+          |> Expect.isEmpty "Has no other gauges"
+    ]
 
-      testProperty "setField should have field prefix" <| fun name ->
-        let prefixName = KnownLiterals.FieldsPrefix + name
-        let fv = eventInfo "" |> setField name 1 |> tryGetContext prefixName
-        Expect.isSome fv "Value should be found"
-        Expect.equal fv.Value 1 "Value should be found"
+    testList "histogram" []
 
-      testProperty "tryGetField" <| fun name ->
-        let msg = eventInfo ""
-        let value = msg |> tryGetField name
-        Expect.isNone value "Should not be found"
-        let value = msg |> setField name name |> tryGetField name
-        Expect.equal value (Some name) "Should be same"
+    testList "identify user" []
 
-      testCase "getAllFields" <| fun _ ->
-        let names = Arb.generate<NonEmptyString> |> Gen.sample 0 5 |> List.distinct |> List.map (fun (NonEmptyString name) -> name)
-        names
-        |> List.fold (fun m name ->
-           m |> setField name name) (eventInfo "")
-        |> getAllFields |> Seq.length |> fun c ->
-           Expect.equal c names.Length "Should get same length after set fields"
+    testList "set user prop" []
 
-      testPropertyWithConfig fsc "gaugeMessage" <| fun g ->
-        let saved =
-          gaugeWithUnit (PointName.parse "Car.Speedometer") "dv/dt" g
-          |> tryGetGauge "dv/dt"
-        Expect.equal saved (Some g) "Should be same"
+    testList "base" [
+      testCase "tags" <| fun () ->
+        let gm = Model.GaugeMessage(Gauge.ofSeconds 30, Map [ "gauge_name", "db"; "measurement", "request_seconds" ])
+        let tags =
+          Arb.generate<NonEmptyString>
+            |> Gen.sample 0 5
+            |> List.distinct
+            |> List.map (fun (NonEmptyString name) -> name)
 
-      testCase "getAllGauges" <| fun _ ->
-        let names = Arb.generate<NonEmptyString> |> Gen.sample 0 5 |> List.distinct |> List.map (fun (NonEmptyString name) -> name)
-        let msg = names |> List.fold (fun m name -> m |> addGauge name (Gauge (Value.Float 1., Units.Scalar))) (eventInfo "")
-        let c = msg |> getAllGauges |> Seq.length
-        Expect.equal c names.Length "Should get same length after add gauges"
+        for tag in tags do
+          gm.tag tag
 
-      testCase "getAllTags & hasTag" <| fun _ ->
-        let tags = Arb.generate<NonEmptyString> |> Gen.sample 0 5 |> List.distinct |> List.map (fun (NonEmptyString name) -> name)
-        let msg = tags |> List.fold (fun m name -> m |> tag name) (eventInfo "")
-        msg |> getAllTags |> fun tagSet ->
-           Expect.equal tagSet.Count tags.Length "Should get same length after add tags"
-           Expect.equal (tags |> Set.ofList) tagSet "Should be same set"
-           Expect.containsAll tagSet tags "Should contains all tags"
-        let msgHasAllTag = tags |> List.forall (fun tag -> hasTag tag msg )
-        Expect.isTrue msgHasAllTag "Should have all tags"
+        let found = gm.getAllTags() |> List.ofSeq
 
-      testCase "setFieldsFromObject: obj -> Message -> Message" <| fun () ->
-        let m = Model.EventMessage "Hello world" Info |> setFieldsFromObject (SampleObject())
-        let field = m |> tryGetField "PropA"
-        Expect.equal field (Some 45) "Should have PropA"
+        found.Length
+          |> Expect.equal  "Should get same length after add tags" tags.Length
+        found
+          |> Expect.containsAll "Isomorphic mapping" tags
+        tags
+          |> List.forall gm.hasTag
+          |> Expect.isTrue "Should have all tags given to it as seen by `getTag`."
 
-      testCase "eventFormat" <| fun _ ->
-        let m = Message.eventFormat (Info, "some {@data} created at {$time}", 1,2)
-        let dataf = m |> tryGetField "data"
-        let timef = m |> tryGetField "time"
-        Expect.equal dataf (Some 1) "Should have data field"
-        Expect.equal timef (Some 2) "Should have time field"
+      testCase "addExn" <| fun _ ->
+        let error = ArgumentNullException("e2")
+        let m = Model.Event "Unhandled exception message"
+        m.addExn error
 
-      testCase "addExn & getExns" <| fun _ ->
-        let e1 = Exception ("e1")
-        let e2 = ArgumentNullException ("e2")
-        let errors = eventInfo "" |> addExn e1 |> addExn e2 |> getExns
-        Expect.contains errors e1 "Should have exn"
-        Expect.contains errors (upcast e2) "Should have arg null exn"
+        m.error
+          |> Expect.isSome "Has an ErrorInfo set"
+        m.error.Value.inner
+          |> Expect.isNone "inner is None"
 
-      testCase "time and timeJob" <| fun _ ->
-        let name = PointName.parse "some.gauge.at.location"
-        let timeFun = time name id
-        let res, msg = timeFun 100
-        Expect.equal res 100 "Should have result"
+        m.error.Value.message
+          |> Expect.isSome "Has a message"
+        m.error.Value.message.Value
+          |> Expect.equal "Has the right message" "e2"
 
-        let g = tryGetGauge "time" msg
-        Expect.isSome g "Should have guage"
-        match g with
-        | Some (Gauge (_, Units.Scaled (Seconds, _))) -> ()
-        | g -> failtestf "Should have units.scaled (seconds, _) , actual: %A" g
+        m.error.Value.errorType
+          |> Expect.isSome "Has an error type"
+        m.error.Value.errorType.Value
+          |> Expect.equal "Has the right error type" "System.ArgumentNullException"
 
-      testCaseAsync "time & timeJob" <| (async {
-        let name = "some.gauge.at.location"
-
-        let test res msg =
-          Expect.equal res 100 "Should have result"
-          let g = tryGetGauge "time" msg
-          Expect.isSome g "Should have gauge"
-          match g with
-          | Some (Gauge (_, Units.Scaled (Seconds, _))) -> ()
-          | g -> failtestf "Should have units.scaled (seconds, _) , actual: %A" g
-
-        let timeFun = time (PointName.parse name) id
-        let timeJobFun = timeJob (PointName.parse name) Job.result
-        let! res1, msg1 = timeJobFun 100 |> Job.toAsync
-        let res2, msg2 = timeFun 100
-        test res1 msg1
-        test res2 msg2
-      })
-  ]
+        m.error.Value.stackTrace.frames
+          |> Expect.isNonEmpty "Has stack frames, at least one"
+    ]
+  ] |> testLabel "logary"

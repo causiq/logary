@@ -13,7 +13,7 @@ let tests = [
 
   testCaseJob "logWithAck success" (job {
     let sut = NullLogger.instance
-    let! p = sut.logWithAck(true, Model.EventMessage("hi", level=Fatal))
+    let! p = sut.logWithAck(true, Model.Event("hi", level=Fatal))
     match p with
     | Ok ack ->
       do! ack
@@ -28,7 +28,7 @@ let tests = [
 
   testCaseJob "logBP success" (job {
     let sut = NullLogger.instance
-    let! res = sut.logBP (Model.EventMessage "testing logBP")
+    let! res = sut.logBP (Model.Event "testing logBP")
     res |> Expect.isTrue "Should return true as a stubbed value"
   })
 ]

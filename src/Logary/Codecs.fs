@@ -34,7 +34,7 @@ module Codec =
   let plain: Codec =
     fun input ->
       input.utf8String()
-        |> Model.EventMessage
+        |> Model.Event
         :> Model.LogaryMessageBase
         |> Array.singleton
         |> Ok
@@ -47,8 +47,8 @@ module Codec =
       message: string
       properties: IReadOnlyDictionary<string, Value> }
 
-    member x.normalise(): Model.EventMessage =
-      Model.EventMessage(x.message, None, x.timestamp * 1_000_000L,
+    member x.normalise(): Model.Event =
+      Model.Event(x.message, None, x.timestamp * 1_000_000L,
                          ?name = Some (PointName.parse x.logger),
                          ?level = Some x.level,
                          ?ctx = Some x.properties)

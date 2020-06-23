@@ -2,6 +2,7 @@ namespace Logary.Tests
 
 open System
 open System.Runtime.CompilerServices
+open Logary
 
 type SampleObject() =
   member x.PropA =
@@ -30,9 +31,6 @@ type Tenant =
 
 [<AutoOpen>]
 module Utils =
-  open Logary
-  open NodaTime
-
   let timeMessage (nanos: int64) level =
     let value, units = float nanos, U.Scaled (U.Seconds, float Constants.NanosPerSecond)
     let g = Gauge (Value.Float value, units)
@@ -43,14 +41,20 @@ module Utils =
     Model.GaugeMessage(g, Map [ "gauge_name", "Revolver.spin" ], level=level)
 
   let multiGaugeMessage level =
-    Message.event level "Processor.% Idle"
-    |> Message.addGauges [
-      "Core 1", (Gauge (Value.Fraction (1L, 1000L), Percent))
-      "Core 2", (Gauge (Value.Float 0.99, Percent))
-      "Core 3", (Gauge (Value.Float 0.473223755, Percent))
+    let resource = [
+      "host", "db-001"
+      "service", "api-web"
+      "measurement", "Processor.% Idle"
     ]
-    |> Message.setContext "host" "db-001"
-    |> Message.setContext "service" "api-web"
+
+    Model.GaugeMessage(Gauge (Value.Fraction(83L, 100L), U.Percent),
+                       Map resource,
+                       Map [
+                         "Core 1", (Gauge (Value.Fraction (1L, 1000L), U.Percent))
+                         "Core 2", (Gauge (Value.Float 0.99, U.Percent))
+                         "Core 3", (Gauge (Value.Float 0.473223755, U.Percent))
+                       ],
+                       level=level)
 
   [<MethodImpl(MethodImplOptions.NoInlining)>]
   let innermost (throwCLRExn: bool) =
@@ -91,23 +95,14 @@ module Utils =
     (!e).Value
 
   let exnMsg =
-    Message.event Error "Unhandled exception"
-    |> Message.setNameStr "Logary.Tests"
-    |> Message.setField "tenant" { tenantId = "12345"; permissions = "RWX" }
-    |> Message.setContextFromMap (Map
-      [ "user", box (Map
-          [ "name", box "haf"
-            "id", box "deadbeef234567"
-          ])
-      ])
-    |> withException Message.addExn
+    let piUSD = Some (money Currency.USD 3.1415)
+    let m = Model.Event("Unhandled exception", piUSD, name=PointName.parse "Logary.Tests")
+    m.addExn(raisedExn "The cats are loose")
+    m.setContextValues(Map [
+      "user.name", Value.Str "haf"
+      "user.id", Value.Str "deadbeef234567"
+    ])
+    m
 
-  let helloWorld =
-    Message.Model.EventMessage "Hello World!"
-    >> Message.setTicksEpoch (0L: EpochNanoSeconds)
-
-  let helloWorldTS =
-    helloWorld
-    >> fun m ->
-        let now = SystemClock.Instance.GetCurrentInstant()
-        { m with value = sprintf "%s @ %O" m.value now }
+  let helloWorld level =
+    Model.Event("Hello World!", level=level, timestamp=0L)

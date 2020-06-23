@@ -7,6 +7,7 @@ open System.Threading
 open System.Runtime.InteropServices
 open Topshelf
 open Logary
+open Logary.Internals
 open Logary.Services.Rutta
 
 let versionAndName = sprintf "Logary Rutta v%s" AssemblyVersionInformation.AssemblyVersion
@@ -63,7 +64,8 @@ let executeInner argv exiting (parser: ArgumentParser<Args>) (results: ParseResu
     0
   else
     let ilevel = if results.Contains Args.Verbose then LogLevel.Verbose else LogLevel.Info
-    use health = results.TryPostProcessResult(Args.Health, Parsers.bindingString) |> Health.startServer
+    use health = results.TryPostProcessResult(Args.Health, Parsers.bindingString)
+                 |> Health.startServer (Global.getMetricRegistry ())
     match results.TryGetSubCommand() with
     | Some (Proxy cmd) ->
       let subParser = parser.GetSubCommandParser Proxy

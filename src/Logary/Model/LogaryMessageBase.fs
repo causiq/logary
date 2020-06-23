@@ -78,6 +78,8 @@ type LogaryMessageBase(kind, ?timestamp, ?messageId, ?name, ?level,
 
   member x.setContextValues(other: IReadOnlyDictionary<string, Value>) =
     for (KeyValue (k, v)) in other do x.context.[k] <- v
+  member x.setContextValues(other: IReadOnlyDictionary<string, string>) =
+    for (KeyValue (k, v)) in other do x.context.[k] <- Value.Str v
 
   member x.setFieldValues(other: IReadOnlyDictionary<string, Value>) =
     for (KeyValue (k, v)) in other do x.fields.[k] <- v

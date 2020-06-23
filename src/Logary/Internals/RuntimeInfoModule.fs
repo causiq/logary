@@ -3,65 +3,35 @@ namespace Logary.Internals
 open Hopac
 open Logary
 open Logary.Internals
+open Logary.Model
+
+/// An implementation of the interface RuntimeInfo
+type RuntimeInfoValue =
+  { resource: Resource
+    getTimestamp: unit -> EpochNanoSeconds
+    consoleLock: DVar<Lock>
+    logger: Logger }
+  interface RuntimeInfo with
+    member x.resource = x.resource
+    member x.getTimestamp () = x.getTimestamp ()
+    member x.consoleLock = x.consoleLock
+    member x.logger = x.logger
+    member x.withLogger logger = { x with logger = logger } :> RuntimeInfo
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module RuntimeInfo =
 
-  /// An implementation of the interface RuntimeInfo
-  type T =
-    internal {
-      host: string
-      service: string
-      getTimestamp: unit -> EpochNanoSeconds
-      consoleLock: DVar<Lock>
-      logger: Logger
-    }
-    interface RuntimeInfo with
-      member x.service = x.service
-      member x.host = x.host
-      member x.getTimestamp () = x.getTimestamp ()
-      member x.consoleLock = x.consoleLock
-      member x.logger = x.logger
+  let create resource =
+    { resource=resource
+      getTimestamp=Global.getTimestamp
+      consoleLock=Global.lockD
+      logger=NullLogger.instance }
 
-    static member create (other: RuntimeInfo) =
-      { host = other.host
-        service = other.service
-        getTimestamp = other.getTimestamp
-        consoleLock = other.consoleLock
-        logger = other.logger }
+  let ofOther (other: RuntimeInfo) =
+    { resource = other.resource
+      getTimestamp = other.getTimestamp
+      consoleLock = other.consoleLock
+      logger = other.logger }
 
-  /// Create a new RuntimeInfo record from the passed parameters.
-  ///
-  /// This function gives you the ability to pass a custom clock to use within
-  /// logary, as well as a host name that the logary source has.
-  let create (service: string) (host: string): T =
-    { service = service
-      host = host
-      getTimestamp = Global.getTimestamp
-      consoleLock = Global.semaphoreD
-      logger = NullLogger.instance }
-
-  let setServiceName sn: RuntimeInfo -> RuntimeInfo = function
-    | :? T as t ->
-      { t with service = sn } :> _
-    | other ->
-      { T.create other with service = sn } :> _
-
-  let setHost host: RuntimeInfo -> RuntimeInfo = function
-    | :? T as t ->
-      { t with host = host } :> _
-    | other ->
-      { T.create other with host = host } :> _
-
-  let setGetTimestamp fn: RuntimeInfo -> RuntimeInfo = function
-    | :? T as t ->
-      { t with getTimestamp = fn } :> _
-    | other ->
-      { T.create other with getTimestamp = fn } :> _
-
-  let setLogger logger: RuntimeInfo -> RuntimeInfo =
-    function
-    | :? T as t ->
-      { t with logger = logger } :> _
-    | other ->
-      { T.create other with logger = logger } :> _
+  let ofServiceAndHost service host =
+    create { service=service; detail=Hostname host :: [] }

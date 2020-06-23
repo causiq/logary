@@ -5,6 +5,7 @@ open System.Threading
 open Hopac
 open Giraffe
 open Logary
+open Logary.Configuration
 open Logary.Internals
 open Logary.Internals.Chiron
 open Logary.Ingestion
@@ -96,7 +97,6 @@ type HTTPConfig with
 module HTTP =
   open Impl
   open System
-  open Microsoft.Extensions.Logging
 
   let api (config: HTTPConfig) ingest: HttpHandler =
     setHttpHeader "content-type" "application/json; charset=utf-8" >=> choose [
@@ -124,19 +124,20 @@ module HTTP =
     tmp.UseGiraffe(api config ingest)
 
   let internal configureServices (services: IServiceCollection) =
-      services.AddGiraffe()
-        |> ignore
+    services.AddGiraffe()
+      |> ignore
 
   let recv (started: IVar<unit>, shutdown: IVar<unit>) (config: HTTPConfig) ingest =
     config.ilogger.info("Starting HTTP recv-loop at {bindings}. CORS enabled={allowCORS}", fun m ->
+      m.setField("bindings", config.bindings)
       m.setField("allowCORS", config.corsConfig.allowCORS))
 
     let host =
       WebHostBuilder()
         .UseKestrel(fun o -> o.AllowSynchronousIO <- false)
         .UseLogary(config.logary)
-        .Configure(Action<_> (configureApp (config, ingest)))
         .ConfigureServices(configureServices)
+        .Configure(Action<_> (configureApp (config, ingest)))
         .UseUrls(config.bindingsAsURLs())
         .Build()
 

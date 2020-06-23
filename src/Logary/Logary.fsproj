@@ -47,6 +47,7 @@
     <Compile Include="Logger.fs" />
     <Compile Include="Trace.Span.fs" />
     <Compile Include="Trace.Propagation.fs" />
+    <Compile Include="Model.Resource.fs" />
     <Compile Include="Internals/Misc.fs" />
     <Compile Include="Internals/Chiron.fs" />
     <Compile Include="Internals/Rnd.fs" />
@@ -58,6 +59,7 @@
     <Compile Include="Internals/Regex.fs" />
     <Compile Include="Internals\System.Dates.fs" />
     <Compile Include="Internals\System.Stopwatch.fs" />
+    <Compile Include="Internals\System.Exception.fs" />
     <Compile Include="Internals\NodaTime.Duration.fs" />
     <Compile Include="Internals\NodaTime.Instant.fs" />
     <Compile Include="Internals\NodaTime.OffsetDateTime.fs" />
@@ -77,7 +79,7 @@
     <Compile Include="Global.fs" />
     <Compile Include="Extensions.fs" />
     <Compile Include="Model\LogaryMessageBase.fs" />
-    <Compile Include="Model\EventMessage.fs" />
+    <Compile Include="Model\Event.fs" />
     <Compile Include="Model\ControlMessage.fs" />
     <Compile Include="Model\SpanMessage.fs" />
     <Compile Include="Model\GaugeMessage.fs" />

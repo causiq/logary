@@ -31,7 +31,7 @@ type Ticker<'state,'t,'r>(initialState:'state) =
   member _.ticked = tickCh :> Alt<_>
   member _.tick () = tickCh *<- ()
 
-  member x.tickEvery(ri: RuntimeInfo, duration: Duration) =
+  member x.tickEvery (duration: Duration) (ri: RuntimeInfo) =
     let cancellation = Cancellation.create ()
 
     let rec loop () =

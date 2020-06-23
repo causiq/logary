@@ -414,6 +414,12 @@ with
     Gauge (Value.Float ms, U.Scaled (U.Seconds, float Constants.MillisPerSecond))
   static member ofMillis (ms: int64) =
     Gauge (Value.Int64 ms, U.Scaled (U.Seconds, float Constants.MillisPerSecond))
+  static member ofSeconds (s: float) =
+    Gauge (Value.Float s, U.Seconds)
+  static member ofSeconds (s: int32) =
+    Gauge (Value.Int64 (int64 s), U.Seconds)
+  static member ofSeconds (s: int64) =
+    Gauge (Value.Int64 s, U.Seconds)
   static member ofBclTicks (bclTicks: Value) =
     Gauge (bclTicks, U.Scaled (U.Seconds, float Constants.TicksPerSecond))
   static member ofBclTicks (bclTicks: int64) =

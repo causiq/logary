@@ -3,36 +3,37 @@ module Logary.Tests.Units
 open Expecto
 open Logary
 
+[<Tests>]
 let tests =
-  [
+  testList "units" [
     testList "scaling" [
       testList "s" [
         testCase "0.0000001 s" <| fun _ ->
-          Expect.equal (U.scale Seconds 0.0000001) (100., "ns")
+          Expect.equal (U.scale U.Seconds 0.0000001) (100., "ns")
                       "Should be scaled to 100 ns"
 
         testCase "0.0001 s" <| fun _ ->
-          Expect.equal (U.scale Seconds 0.0001) (100., "µs")
+          Expect.equal (U.scale U.Seconds 0.0001) (100., "µs")
                       "Should be scaled to 100 µs"
 
         testCase "0.1 s" <| fun _ ->
-          Expect.equal (U.scale Seconds 0.1) (100., "ms")
+          Expect.equal (U.scale U.Seconds 0.1) (100., "ms")
                       "Should be scaled to 100 ms"
 
         testCase "1 s" <| fun _ ->
-          Expect.equal (U.scale Seconds 1.) (1., "s")
+          Expect.equal (U.scale U.Seconds 1.) (1., "s")
                       "Should be scaled to 1 s"
 
         testCase "10 s" <| fun _ ->
-          Expect.equal (U.scale Seconds 10.) (10., "s")
+          Expect.equal (U.scale U.Seconds 10.) (10., "s")
                       "Should be scaled to 10 s"
 
         testCase "60 s" <| fun _ ->
-          Expect.equal (U.scale Seconds 60.) (1., "min")
+          Expect.equal (U.scale U.Seconds 60.) (1., "min")
                       "Should be scaled to 1 min"
 
         testCase "100 s" <| fun _ ->
-          let value, units = U.scale Seconds 100.
+          let value, units = U.scale U.Seconds 100.
           Expect.floatClose Accuracy.veryHigh value 1.666666667
                             "Should be scaled to 1 2/3 min"
           Expect.equal units "min" "Should be scaled to minutes."
@@ -40,84 +41,84 @@ let tests =
 
       testList "bits" [
         testCase "1 bit" <| fun _ ->
-          Expect.equal (U.scale Bits 1.) (1., "bit")
+          Expect.equal (U.scale U.Bits 1.) (1., "bit")
                       "Should be passed through (1 bit)"
 
         testCase "100 bit" <| fun _ ->
-          Expect.equal (U.scale Bits 100.) (100., "bit")
+          Expect.equal (U.scale U.Bits 100.) (100., "bit")
                       "Should be passed through (100 bit)"
 
         testCase "10000 bit" <| fun _ ->
-          Expect.equal (U.scale Bits 10000.) (10., "kbit")
+          Expect.equal (U.scale U.Bits 10000.) (10., "kbit")
                       "Should be scaled to 10 kbit"
 
         testCase "1 000 000 bit" <| fun _ ->
-          Expect.equal (U.scale Bits 1000000.) (1., "Mbit")
+          Expect.equal (U.scale U.Bits 1000000.) (1., "Mbit")
                       "Should be scaled to 1 Mbit"
 
         testCase "10 000 000 bit" <| fun _ ->
-          Expect.equal (U.scale Bits 10000000.) (10., "Mbit")
+          Expect.equal (U.scale U.Bits 10000000.) (10., "Mbit")
                       "Should be scaled to 10 Mbit"
 
         testCase "1 000 000 000 bit" <| fun _ ->
-          Expect.equal (U.scale Bits 1000000000.) (1., "Gbit")
+          Expect.equal (U.scale U.Bits 1000000000.) (1., "Gbit")
                       "Should be scaled to 10 Gbit"
 
         testCase "2 500 000 000 000 bit" <| fun _ ->
-          Expect.equal (U.scale Bits 2500000000000.) (2.5, "Tbit")
+          Expect.equal (U.scale U.Bits 2500000000000.) (2.5, "Tbit")
                       "Should be scaled to 2.5 Tbit"
 
         testCase "2 000 000 000 000 000 bit" <| fun _ ->
-          Expect.equal (U.scale Bits 2000000000000000.) (2., "Pbit")
+          Expect.equal (U.scale U.Bits 2000000000000000.) (2., "Pbit")
                       "Should be scaled to 2. Pbit"
 
         testCase "2 000 000 000 000 000 000 bit" <| fun _ ->
-          let value, units = U.scale Bits 2000000000000000000.
+          let value, units = U.scale U.Bits 2000000000000000000.
           Expect.floatClose Accuracy.medium value 2. "Should be scaled to 2. Ebit"
           Expect.equal units "Ebit" "Should be scaled to 2. Ebit"
       ]
 
       testList "bytes" [
         testCase "1 byte" <| fun _ ->
-          Expect.equal (U.scale Bytes 1.) (1., "B") "Should scale 1<->1 bytes"
+          Expect.equal (U.scale U.Bytes 1.) (1., "B") "Should scale 1<->1 bytes"
 
         testCase "10 bytes" <| fun _ ->
-          Expect.equal (U.scale Bytes 10.) (10., "B") "Should not scale"
+          Expect.equal (U.scale U.Bytes 10.) (10., "B") "Should not scale"
 
         testCase "1024 bytes" <| fun _ ->
-          Expect.equal (U.scale Bytes 1024.) (1., "KiB") "Should scale to KiB"
+          Expect.equal (U.scale U.Bytes 1024.) (1., "KiB") "Should scale to KiB"
 
         testCase "(2^10)^2 bytes" <| fun _ ->
-          Expect.equal (U.scale Bytes (1024. * 1024.)) (1., "MiB") "Should scale to MiB"
+          Expect.equal (U.scale U.Bytes (1024. * 1024.)) (1., "MiB") "Should scale to MiB"
 
         testCase "(2^10)^3 bytes" <| fun _ ->
-          Expect.equal (U.scale Bytes (1024. * 1024. * 1024.)) (1., "GiB")
+          Expect.equal (U.scale U.Bytes (1024. * 1024. * 1024.)) (1., "GiB")
                       "Should scale to GiB"
 
         testCase "(2^10)^4 bytes" <| fun _ ->
-          Expect.equal (U.scale Bytes (1024. * 1024. * 1024. * 1024.)) (1., "TiB")
+          Expect.equal (U.scale U.Bytes (1024. * 1024. * 1024. * 1024.)) (1., "TiB")
                       "Should scale to TiB"
       ]
 
       testCase "scalars are not scaled" <| fun _ ->
-        Expect.equal (U.scale Scalar 12345678.) (12.345678, "M")
+        Expect.equal (U.scale U.Scalar 12345678.) (12.345678, "M")
                     "Should not present a unit for Scalars"
 
       testCase "others are not scaled" <| fun _ ->
-        Expect.equal (U.scale (Other "reqs") 12345678.) (12345678., "reqs")
+        Expect.equal (U.scale (U.Other "reqs") 12345678.) (12345678., "reqs")
                     "Should not present a unit for Scalars"
 
       testCase "Percent are always scalled x100 and presented with a % symbol" <| fun _ ->
-        Expect.equal (U.scale Percent 0.1246) (12.46, "%")
+        Expect.equal (U.scale U.Percent 0.1246) (12.46, "%")
                     "Percents are scaled properly"
 
       testCase "'Scaled' unit with a 1. scale is not actually scaled" <| fun _ ->
-        let actual = U.scale (Scaled (Percent, 1.)) 0.123
+        let actual = U.scale (U.Scaled (U.Percent, 1.)) 0.123
         let expected = 12.3, "%"
         Expect.equal actual expected "Should handle non-scaled Scaled"
 
       testCase "'Scaled' unit by 1/10" <| fun _ ->
-        let actual = U.scale (Scaled (Percent, 0.1)) 0.123
+        let actual = U.scale (U.Scaled (U.Percent, 0.1)) 0.123
         // if 12.3% is had been scaled by 0.1, then the true value is this:
         let expected = 123., "%"
         Expect.equal actual expected "Should handle 0.1x scale"
@@ -138,7 +139,7 @@ let tests =
             1234000333444555666777., 1.234000333444555666777, "Z"
           ]
           |> List.collect (fun (value, expectedf, prefix) ->
-          [ Metres; Amperes; Kelvins; Moles; Candelas; Watts; Hertz ] |> List.map (fun units ->
+          [ U.Metres; U.Amperes; U.Kelvins; U.Moles; U.Candelas; U.Watts; U.Hertz ] |> List.map (fun units ->
           testCase (sprintf "scaling %f %A" value units) (fun _ ->
             let actualf, actualu = U.scale units value
             let expectedu = sprintf "%s%s" prefix units.symbol
@@ -148,13 +149,13 @@ let tests =
       ]
 
       testCase "scaleBy10 Seconds 0.0001" <| fun _ ->
-        let actualf, actualu = U.scaleBy10 Seconds 0.0001
+        let actualf, actualu = U.scaleBy10 U.Seconds 0.0001
         let expectedf, expectedu = 1e6, "μs"
         Expect.floatClose Accuracy.veryHigh actualf expectedf "Should scale 0.0001 properly"
         Expect.equal actualu expectedu "Should scale 0.0001's unit properly"
 
       testCase "scaleBy10 Seconds 0.00011" <| fun _ ->
-        let actualf, actualu = U.scaleBy10 Seconds 0.00011
+        let actualf, actualu = U.scaleBy10 U.Seconds 0.00011
         let expectedf, expectedu = 1e6, "μs"
         Expect.floatClose Accuracy.veryHigh actualf expectedf "Should scale 0.00011 properly"
         Expect.equal actualu expectedu "Should scale 0.00011's unit properly"
@@ -178,7 +179,7 @@ let tests =
             3.1e-24, 3.1, "y"
           ]
           |> List.collect (fun (value, expectedf, prefix) ->
-          [ Metres; Amperes; Kelvins; Moles; Candelas; Watts; Hertz ] |> List.map (fun units ->
+          [ U.Metres; U.Amperes; U.Kelvins; U.Moles; U.Candelas; U.Watts; U.Hertz ] |> List.map (fun units ->
           testCase (sprintf "scaling %A %A" value units) (fun _ ->
             let actualf, actualu = U.scale units value
             let expectedu = sprintf "%s%s" prefix units.symbol
@@ -188,20 +189,21 @@ let tests =
       ]
     ]
 
-    testPropertyWithConfig fsc "Units" <| fun (u: Units) ->
+    testPropertyWithConfig fsc "Units" <| fun (u: U) ->
       match u with
-      | Offset (_, f) ->
+      | U.Offset (_, f) ->
         Expect.isNotNaN f "Should be a number"
         Expect.isNotInfinity f "Should not be infinity"
         true
       | _ ->
         true
 
-    testPropertyWithConfig fsc "symbol can be called" <| fun (u: Units) ->
+    testPropertyWithConfig fsc "symbol can be called" <| fun (u: U) ->
       try
         u.symbol |> ignore
         true
       with e ->
         Tests.failtestf "Should not throw, but did: %O" e
-  ]
+
+  ] |> testLabel "logary"
 

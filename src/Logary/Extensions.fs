@@ -2,7 +2,9 @@
 module Logary.Extensions
 
 open System.Collections.Generic
+open System.Diagnostics
 open System.Runtime.Serialization
+open Logary.Model
 open NodaTime
 open System
 open System.Globalization
@@ -158,6 +160,10 @@ type LogaryMessage with
     x.tryGetField key
       |> Option.bind (function Value.Str s -> Some s | _ -> None)
 
+  member x.tryGetFieldBool(key: string): bool option =
+    x.tryGetField key
+      |> Option.bind (function Value.Bool b -> Some b | _ -> None)
+
   member x.tryGetContext(key: string): Value option =
     match x.context.TryGetValue key with
     | false, _ -> None
@@ -187,3 +193,26 @@ type System.Exception with
       ei
     | oid, false ->
       seen.[oid]
+
+type Logary.Gauge with
+  /// Takes a function and returns a new function that also returns a Gauge value.
+  static member time (fn: 'a -> 'b): 'a -> Gauge * 'b =
+    fun input ->
+      let start = Stopwatch.getTimestamp()
+      let res = fn input
+      let ended = Stopwatch.getTimestamp()
+      Gauge.ofStopwatchTicks (ended - start),
+      res
+
+  /// Like `time`, but executes the passed function immediately and returns the result.
+  static member timeExec (fn: unit -> 'b): Gauge * 'b =
+    let start = Stopwatch.getTimestamp()
+    let res = fn ()
+    let ended = Stopwatch.getTimestamp()
+    Gauge.ofStopwatchTicks (ended - start),
+    res
+
+
+type Logary.Model.Resource with
+  member x.asLabels () = Resource.asLabels x
+  member x.asMap() = Resource.asMap x

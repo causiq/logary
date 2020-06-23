@@ -20,6 +20,10 @@ let kind: JsonEncoder<MessageKind> =
   | MessageKind.IdentifyUser -> E.string "identifyUser"
   | MessageKind.SetUserProperty -> E.string "setUserProperty"
 
+let resource: JsonEncoder<Model.Resource> =
+  fun r ->
+    E.stringMap (r.asMap())
+
 let pointName: JsonEncoder<PointName> =
   fun pn ->
     E.string (pn.ToString())

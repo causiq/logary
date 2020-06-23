@@ -29,10 +29,8 @@
     <ProjectReference Include="../../targets/Logary.Targets.Shipper/Logary.Targets.Shipper.fsproj" />
     <ProjectReference Include="../../ingestion/Logary.Ingestion.HTTP/Logary.Ingestion.HTTP.fsproj" />
     <ProjectReference Include="../../ingestion/Logary.Ingestion.UDP/Logary.Ingestion.UDP.fsproj" />
-    <ProjectReference Include="../../targets/Logary.Targets.Stackdriver/Logary.Targets.Stackdriver.fsproj" />
     <ProjectReference Include="../../ingestion/Logary.Ingestion.TCP/Logary.Ingestion.TCP.fsproj" />
-    <ProjectReference Include="../../targets/Logary.Targets.GooglePubSub/Logary.Targets.GooglePubSub.fsproj" />
-    <ProjectReference Include="../../targets/Logary.Targets.SSE/Logary.Targets.SSE.fsproj" />
+    <ProjectReference Include="..\..\ingestion\Logary.Ingestion.gRPC\Logary.Ingestion.gRPC.csproj" />
   </ItemGroup>
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />
 </Project>

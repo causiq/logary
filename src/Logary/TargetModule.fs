@@ -1,5 +1,6 @@
 namespace Logary
 
+open Logary.Model
 open NodaTime
 open Hopac
 open Hopac.Infixes
@@ -87,12 +88,15 @@ module Target =
   let create (ri: RuntimeInfo) (conf: TargetConf): Job<T> =
     let specificName = PointName.parse (sprintf "Logary.Target(%s)" conf.name)
     let targetId = Value.Str (Id.create().toBase64String())
+
+    let setTargetInfo (m: LogaryMessageBase) =
+      m.name <- specificName
+      m.setContext("targetId", targetId)
+
     let ri =
-      let logger =
-        ri.logger |> Logger.apply (fun m ->
-            m.name <- specificName
-            m.setContext("targetId", targetId))
-      ri |> RuntimeInfo.setLogger logger
+      ri.logger
+        |> Logger.apply setTargetInfo
+        |> ri.withLogger
 
     let shutdownCh = Ch ()
     RingBuffer.create conf.bufferSize >>= fun requests ->

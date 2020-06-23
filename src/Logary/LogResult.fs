@@ -4,7 +4,7 @@ open Hopac
 open Logary
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module internal ProcessResult =
+module ProcessResult =
   let success: ProcessResult = Ok Promise.unit
 
   let reduce (processResults: #seq<ProcessResult>): ProcessResult =
@@ -24,7 +24,7 @@ module internal ProcessResult =
       | _, errors -> Result.Error (bundle errors)
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module internal LogError =
+module LogError =
   let targetBufferFull (targetName: string): ProcessResult =
     ControlMessageKind.BufferFull targetName
       |> Model.ControlMessage
@@ -45,7 +45,7 @@ module internal LogError =
 
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module internal LogResult =
+module LogResult =
   let success: LogResult =
     ProcessResult.success
       |> Alt.always
