@@ -223,11 +223,11 @@ let spanLink: JsonDecoder<SpanLink> =
     | "followsFromTrace" ->
           fun pre attrs -> FollowsFromTrace (pre, attrs)
       <!> D.required traceId "predecessor"
-      <*> D.required (D.mapWith value) "attrs"
+      <*> D.required (D.mapWith value) "attributes"
     | "followsFromSpan" | _ ->
           fun pre attrs -> FollowsFromSpan (pre, attrs)
       <!> D.required spanContext "predecessor"
-      <*> D.required (D.mapWith value) "attrs"
+      <*> D.required (D.mapWith value) "attributes"
   D.jsonObject >=> (D.required D.string "type" |> Decoder.bind decode)
 
 

@@ -868,12 +868,17 @@ module Formatting =
             formatJson sb options level v
 
         and formatArray  sb options level elems =
-            let newLevel = level + 1
-            appendChar sb '['
-            appendSpaceBetweenElements sb options newLevel
-            joinArray sb options newLevel elems
-            appendSpaceBetweenElements sb options level
-            appendChar sb ']'
+            match elems with
+            | [] ->
+              appendChar sb '['
+              appendChar sb ']'
+            | elems ->
+              let newLevel = level + 1
+              appendChar sb '['
+              appendSpaceBetweenElements sb options newLevel
+              joinArray sb options newLevel elems
+              appendSpaceBetweenElements sb options level
+              appendChar sb ']'
 
         and joinArray sb options level values =
             match values with

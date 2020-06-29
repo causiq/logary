@@ -314,7 +314,7 @@ module LoggerEx =
         builder |> Option.iter (fun f -> f m)
         m
 
-      let onComplete ts dur = x.logBP (cb ts dur) ^->. ()
+      let onComplete ts dur = x.log (cb ts dur); Job.unit()
 
       Job.timeJob onComplete xJ
 

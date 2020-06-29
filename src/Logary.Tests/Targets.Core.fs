@@ -254,7 +254,7 @@ let tests =
       })
 
       testCaseJob "fields" <| (job {
-        let out, error, conf = buildTextWriterTarget "writing console target"
+        let out, _, conf = buildTextWriterTarget "writing console target"
         let! ri = emptyRuntime
         let! targetApi = Target.create ri conf
 
@@ -268,8 +268,7 @@ let tests =
           logAndWait message >>- fun _ ->
           Expect.stringContains (string out) "textwriter-test-init" "logging with fields then finalising the target"
           Expect.stringContains (string out) "foo" "logging with fields then finalising the target"
-          Expect.stringContains (string out) "bar" "logging with fields then finalising the target"
-          Expect.stringContains (string out) "the Name" "logging with fields then finalising the target")
+          Expect.stringContains (string out) "bar" "logging with fields then finalising the target")
       })
 
       testCaseJob "to correct stream" <| (job {

@@ -84,12 +84,19 @@ let tests =
 
       let outStr = out.ToString()
       let errorStr = error.ToString()
-      outStr |> Expect.stringContains "should have svc ctx info" "svc"
-      outStr |> Expect.stringContains "should have host ctx info" "localhost"
-      errorStr |> Expect.stringContains "should have svc ctx info" "svc"
-      errorStr |> Expect.stringContains "should have host ctx info" "localhost"
-      outStr |> Expect.stringContains "should have correlationId ctx info" correlationId
-      errorStr |> Expect.stringContains "should have correlationId ctx info" correlationId
+      outStr
+        |> Expect.stringContains "should have svc ctx info" "svc"
+      outStr
+        |> Expect.stringContains "should have host ctx info" "localhost"
+      outStr
+        |> Expect.stringContains "should have correlationId ctx info" correlationId
+
+      errorStr
+        |> Expect.stringContains "should have svc ctx info" "svc"
+      errorStr
+        |> Expect.stringContains "should have host ctx info" "localhost"
+      errorStr
+        |> Expect.stringContains "should have correlationId ctx info" correlationId
 
       do! logm.shutdown ()
     }
@@ -98,12 +105,12 @@ let tests =
     testList "ambient spans" [
       let prepare = job {
         let! manager, out, _  = buildLogManagerWith (fun conf -> conf |> Config.middleware Middleware.ambientSpanId)
-        let checkSpanId spanId = job {
+        let checkSpanId (spanId: SpanId) = job {
           do! manager.flushPending ()
           let output = clearStream out
           let message = sprintf "The output should have spanId, but was:\n%s" output
           output
-            |> Expect.stringContains message (spanId.ToString())
+            |> Expect.stringContains message (spanId.toBase64String())
         }
         return manager, checkSpanId, out
       }

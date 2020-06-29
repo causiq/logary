@@ -47,7 +47,8 @@ let tests =
 
       testCase "time" <| fun _ ->
         let logger = logger ()
-        let timedFn = logger.time (fun input -> input * 2)
+        let fn input = input * 2
+        let timedFn = logger.time(fn, "time")
         let res = timedFn 2
         res |> Expect.equal "Four" 4
         logger.logged.Count |> Expect.equal "Logged one message" 1
@@ -56,7 +57,7 @@ let tests =
 
       testCaseJob "timeJob" <| job {
         let logger = logger ()
-        let! res = logger.timeJob (job { return 4 })
+        let! res = logger.timeJob (job { return 4 }, "time")
         res |> Expect.equal "Four" 4
         logger.logged.Count |> Expect.equal "Logged one message" 1
 
@@ -72,7 +73,7 @@ let tests =
 
       testCaseJob "timeAlt ACK" <| job {
         let logger = logger ()
-        let! res = logger.timeAlt (Alt.once 4)
+        let! res = logger.timeAlt (Alt.once 4, "time")
 
         res
           |> Expect.equal "Four" 4
@@ -112,7 +113,7 @@ let tests =
         let logger = logger ()
         use cts = new CancellationTokenSource()
         let runnable _ = Task.FromResult 11
-        let! res = logger.timeTask(runnable, cts.Token)
+        let! res = logger.timeTask(runnable, cts.Token, "time")
 
         res
           |> Expect.equal "Eleven" 11
@@ -144,7 +145,7 @@ let tests =
         m.label
           |> Expect.equal "Has 'inner' as the label" "inner"
 
-      testCaseJob "scoped follows from" <| job {
+      ftestCaseJob "scoped follows from" <| job {
         // context
         let stubLogger = logger()
 
@@ -152,10 +153,11 @@ let tests =
         use parent = stubLogger.scoped "parent"
 
         // overload, both Logger and SpanLogger have method `timeAlt`.
-        let onceA = parent.timeAlt(timeOutMillis 100, "alt worker")
+        let randomWaitA = Alt.prepareJob (fun () -> Job.Random.bind (fun i -> Job.result (int (abs <| (int64 i) % 150L))) |> Job.map timeOutMillis)
+        let xA = parent.timeAlt(randomWaitA |> Alt.afterFun (fun () -> printfn "alt worker done"), "alt worker")
 
         // the work you'll schedule repeatedly
-        let producerA = parent.timeAltProducer(timeOutMillis 150, "alt producer")
+        let prodA = parent.timeAltProducer(randomWaitA |> Alt.afterFun (fun () -> printfn "alt producer done"), "alt producer")
 
         // similarly for tasks
         use cts = new CancellationTokenSource()
@@ -167,18 +169,25 @@ let tests =
         // the work-loop
         let rec cronJob () =
           Alt.choose [
-            producerA |> Alt.afterJob cronJob
-            onceA |> Alt.afterJob cronJob
+            prodA |> Alt.afterJob cronJob
+            xA |> Alt.afterJob cronJob
             shutdownIV :> Alt<unit>
           ]
 
-        start (cronJob ())
+        let! loopCompleteP = Promise.start (cronJob () |> Alt.afterFun (parent.finish >> ignore))
 
         // let the work-loop go for a bit
         do! timeOutMillis 2000
 
         // then shut it down and get the logged messages
         do! IVar.fill shutdownIV ()
+
+        // wait for shutdown
+        do! loopCompleteP
+
+        // wait for asynchronously logged messages to appear in stub
+        do! stubLogger.waitForAtLeast 2
+
         let messages = stubLogger.logged |> Seq.map (fun x -> x.message)
 
         // from the above, we expect:

@@ -40,13 +40,13 @@ let tests =
         m.context.["b"]
           |> Expect.equal "has 'b' field" (Value.Str "c")
         m.error
-          |> Expect.isNone "Should have no error info attached"
+          |> Expect.isSome "Should have the error info attached"
         m.targets
           |> Expect.isEmpty "Should have no targets"
         m.error
           |> Expect.isSome "Has an error value"
         m.error.Value.message
-          |> Expect.equal "Has the message" (Some "testing error message")
+          |> Expect.equal "Has the message" (Some "testing event message")
         m.counterConf
           |> Expect.isNone "Has no counter conf configured by default"
         m.gauges.["Startup time"]
@@ -99,7 +99,7 @@ let tests =
           |> Expect.isTrue "Should have all tags given to it as seen by `getTag`."
 
       testCase "addExn" <| fun _ ->
-        let error = ArgumentNullException("e2")
+        let error = raisedExn "e2"
         let m = Model.Event "Unhandled exception message"
         m.addExn error
 
@@ -111,12 +111,12 @@ let tests =
         m.error.Value.message
           |> Expect.isSome "Has a message"
         m.error.Value.message.Value
-          |> Expect.equal "Has the right message" "e2"
+          |> Expect.stringContains "Has the right message" "e2"
 
         m.error.Value.errorType
           |> Expect.isSome "Has an error type"
         m.error.Value.errorType.Value
-          |> Expect.equal "Has the right error type" "System.ArgumentNullException"
+          |> Expect.equal "Has the right error type" "System.ApplicationException"
 
         m.error.Value.stackTrace.frames
           |> Expect.isNonEmpty "Has stack frames, at least one"
