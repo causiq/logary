@@ -66,7 +66,7 @@ let injectExtractPropertyW3C (inject, extract) (ctx: SpanContext) =
 [<Tests>]
 let tests =
   let logger = Log.create "Logary.Tests.Trace"
-  [
+  testList "trace" [
     testList "span (builder)" [
       testCase "build, start, finish span" <| fun () ->
         let spanLogger =
@@ -473,3 +473,4 @@ let tests =
       ]
     ]
   ]
+  |> testLabel "logary"

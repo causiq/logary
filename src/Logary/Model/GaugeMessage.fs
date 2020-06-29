@@ -23,6 +23,15 @@ type GaugeMessage(gauge, labels, ?children, ?timestamp, ?messageId, ?name, ?leve
   member val gauge = gauge with get, set
   member val labels = labels with get, set
 
+  member x.writeCopy cb =
+    let m = GaugeMessage x
+    cb m
+    m
+
+  override x.cloneAndUpdate builder =
+    x.writeCopy builder :> LogaryMessageBase
+
+
   interface Logary.GaugeMessage with
     member x.gauge = x.gauge
     member x.labels = x.labels

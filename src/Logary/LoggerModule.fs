@@ -279,7 +279,8 @@ module LoggerEx =
           "logger", x.name.ToString()
           "gauge_name", measurement
         ]
-        let m = Model.GaugeMessage(dur, labels, timestamp=ts, level=Debug)
+        let name = x.name |> PointName.setEnding measurement
+        let m = Model.GaugeMessage(dur, labels, timestamp=ts, level=Debug, name=name)
         m.addCallerInfo(defaultArg memberName "time", ?file=file, ?lineNo=lineNo)
         builder |> Option.iter (fun f -> f m)
         x.log m
@@ -307,7 +308,8 @@ module LoggerEx =
           "logger", x.name.ToString()
           "gauge_name", measurement
         ]
-        let m = Model.GaugeMessage(dur, labels, timestamp=ts, level=Debug)
+        let name = x.name |> PointName.setEnding measurement
+        let m = Model.GaugeMessage(dur, labels, timestamp=ts, level=Debug, name=name)
         m.addCallerInfo(defaultArg memberName "timeJob", ?file=file, ?lineNo=lineNo)
         builder |> Option.iter (fun f -> f m)
         m
@@ -327,19 +329,22 @@ module LoggerEx =
           |> Option.orElse memberName
           |> Option.defaultValue "time"
 
-      let cb ts wasNacked dur =
+      let cb ts wasACKed dur =
+        let outcome = if wasACKed then "ack" else "nack"
         let labels = Map [
           "logger", x.name.ToString()
           "gauge_name", measurement
-          "outcome", if wasNacked then "nack" else "ack"
+          "outcome", outcome
         ]
-        let m = Model.GaugeMessage(dur, labels, timestamp=ts, level=Debug)
+        let name = x.name |> PointName.setEnding measurement
+        let m = Model.GaugeMessage(dur, labels, timestamp=ts, level=Debug, name=name)
+        m.setField("outcome", outcome)
         m.addCallerInfo(defaultArg memberName "timeAlt", ?file=file, ?lineNo=lineNo)
         builder |> Option.iter (fun f -> f m)
         m
 
-      let onComplete ts dur = x.logBP (cb ts true dur)
-      let onNack ts dur = x.logBP (cb ts false dur) ^->. ()
+      let onComplete ts dur = x.log(cb ts true dur); Alt.unit()
+      let onNack ts dur = x.log(cb ts false dur); Alt.unit()
 
       Alt.timeJob onComplete onNack xA
 
@@ -360,11 +365,14 @@ module LoggerEx =
       ]
 
       let markFinished ranToCompletion started =
+        let name = x.name |> PointName.setEnding measurement
         let finished = Stopwatch.getTimestamp()
         let g = Gauge.ofStopwatchTicks (finished - started)
-        let labels = labels |> Map.add "outcome" (if ranToCompletion then "ack" else "nack")
-        let m = Model.GaugeMessage(g, labels)
+        let outcome = if ranToCompletion then "ack" else "nack"
+        let labels = labels |> Map.add "outcome" outcome
+        let m = Model.GaugeMessage(g, labels, timestamp=started, level=Debug, name=name)
         m.addCallerInfo(defaultArg memberName "timeTask", ?file=file, ?lineNo=lineNo)
+        m.setField("outcome", outcome)
         x.log(m, ?builder=builder)
 
       task {

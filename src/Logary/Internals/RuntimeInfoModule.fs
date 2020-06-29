@@ -11,6 +11,7 @@ type RuntimeInfoValue =
     getTimestamp: unit -> EpochNanoSeconds
     consoleLock: DVar<Lock>
     logger: Logger }
+
   interface RuntimeInfo with
     member x.resource = x.resource
     member x.getTimestamp () = x.getTimestamp ()
@@ -35,3 +36,6 @@ module RuntimeInfo =
 
   let ofServiceAndHost service host =
     create { service=service; detail=Hostname host :: [] }
+
+  let setGetTimestamp (getTimestamp: _) (ri: RuntimeInfoValue) =
+    { ri with getTimestamp = getTimestamp }

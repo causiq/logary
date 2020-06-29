@@ -33,4 +33,5 @@ let tests =
             Expect.equal actual expected "Constant should not change"
       )
     )
-  ] |> testLabel "logary"
+  ]
+  |> testLabel "logary"

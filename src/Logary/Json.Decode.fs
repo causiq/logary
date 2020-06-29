@@ -2,7 +2,6 @@
 module Logary.Json.Decode
 
 open System.Collections.Generic
-open Logary.Internals.Resources
 open NodaTime
 open Logary
 open Logary.Trace
@@ -33,8 +32,8 @@ let kind: JsonDecoder<MessageKind> =
     | "event" | _ -> MessageKind.Event
   inner <!> D.string
 
-let resource: JsonDecoder<Resource> =
-  Resource.ofMap <!> D.mapWith D.string
+let resource: JsonDecoder<Model.Resource> =
+  Model.Resource.ofMap <!> D.mapWith D.string
 
 /// Decodes Message's `name` **values** (not property-name-property-value pair)
 /// from a `Json`.
@@ -120,36 +119,41 @@ let currency: JsonDecoder<Currency> =
   inner <!> D.string
 
 let rec units: JsonDecoder<U> =
-  let inner =
+  let stringDecoder: string -> U =
     String.toLowerInvariant >> function
     | "bits" ->
-      Decoder.alwaysPass U.Bits
+      U.Bits
     | "bytes" ->
-      Decoder.alwaysPass U.Bytes
+      U.Bytes
     | "seconds" ->
-      Decoder.alwaysPass U.Seconds
+      U.Seconds
     | "metres" ->
-      Decoder.alwaysPass U.Metres
+      U.Metres
     | "scalar" ->
-      Decoder.alwaysPass U.Scalar
+      U.Scalar
     | "amperes" ->
-      Decoder.alwaysPass U.Amperes
+      U.Amperes
     | "kelvins" ->
-      Decoder.alwaysPass U.Kelvins
+      U.Kelvins
     | "moles" ->
-      Decoder.alwaysPass U.Moles
+      U.Moles
     | "candelas" ->
-      Decoder.alwaysPass U.Candelas
+      U.Candelas
     | "percent" ->
-      Decoder.alwaysPass U.Percent
+      U.Percent
     | "watts" ->
-      Decoder.alwaysPass U.Watts
+      U.Watts
     | "hertz" ->
-      Decoder.alwaysPass U.Hertz
+      U.Hertz
     | "joules" ->
-      Decoder.alwaysPass U.Joules
+      U.Joules
     | "grams" ->
-      Decoder.alwaysPass U.Grams
+      U.Grams
+    | other ->
+      U.Other other
+
+  let inner: string -> ObjectReader<U> =
+    String.toLowerInvariant >> function
     | "currency" ->
       U.Currency <!> D.required currency "code"
     | "other" ->
@@ -172,16 +176,22 @@ let rec units: JsonDecoder<U> =
       <*> D.required D.float "power"
     | "div" ->
           fun n d -> U.Div (n, d)
-      <!> D.required units "nom"
-      <*> D.required units "denom"
+      <!> D.required units "numerator"
+      <*> D.required units "denominator"
     | "root" ->
-      U.Root <!> D.required units "base"
+      U.Root <!> D.required units "unit"
     | "log10" ->
       U.Log10 <!> D.required units "base"
     | other ->
       JsonResult.messageTypeUnknown other |> Decoder.always
 
-  D.jsonObject >=> (DI.required "type" |> Decoder.bind inner)
+  let stringD =
+    stringDecoder <!> D.string
+
+  let objD =
+    D.jsonObject >=> (DI.required "type" |> Decoder.bind inner)
+
+  D.either stringD objD
 
 let gauge: JsonDecoder<Gauge> =
   let inner (_: string) =

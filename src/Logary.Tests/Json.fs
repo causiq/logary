@@ -3,6 +3,7 @@ module Logary.Tests.Json
 open System
 open Expecto
 open Expecto.Flip
+open Logary.Model
 open NodaTime
 open NodaTime.Text
 open Logary
@@ -130,38 +131,39 @@ let testRoundtrip<'a when 'a : equality> fsCheckConfig (decoder: JsonDecoder<'a>
   testRoundtripInner (testPropertyWithConfig, "") fsCheckConfig decoder
 
 let testRoundtripStdGen (s1, s2) fsCheckConfig decoder =
-  // TODO: upgrade Expecto
   ignore fsCheckConfig
   ignore decoder
-  ptestCase (sprintf "TODO: upgrade expecto: testPropertyWithConfigStdGen (%i,%i) fsc decoder" s1 s2) (fun () -> ())
-  //testRoundtripInner (testPropertyWithConfigStdGen (s1, s2), sprintf "(%i, %i)" s1 s2) fsCheckConfig decoder
+  testRoundtripInner (testPropertyWithConfigStdGen (s1, s2), sprintf "(%i, %i)" s1 s2) fsCheckConfig decoder
 
 module Expect =
   module Message =
-    let equal (message: string) (expected: Message) (actual: Message) =
+    let equal (message: string) (expected: LogaryMessageBase) (actual: LogaryMessageBase) =
       actual.name
         |> Expect.equal "name" expected.name
       actual.level
         |> Expect.equal "level" expected.level
       actual.timestamp
         |> Expect.equal "timestamp" expected.timestamp
-      actual.value
-        |> Expect.equal "value" expected.value
+
+      match expected.tryGetAs<EventMessage>(), actual.tryGetAs<EventMessage>() with
+      | Some a, Some e ->
+        a.event
+          |> Expect.equal "event" e.event
+      | _ ->
+        ()
 
       for KeyValue (k, v) in expected.context do
-        match actual.context |> HashMap.tryFind k with
-        | None ->
-          let expKeys = (expected.context |> HashMap.toDictionary).Keys |> fun ks -> String.Join(", ", ks)
-          let actKeys = (actual.context |> HashMap.toDictionary).Keys |> fun ks -> String.Join(", ", ks)
+        match actual.context.TryGetValue k with
+        | false, _ ->
+          let expKeys = expected.context.Keys |> fun ks -> String.Join(", ", ks)
+          let actKeys = actual.context.Keys |> fun ks -> String.Join(", ", ks)
           failtestf "The key '%s' was in expected.context, but not in actual.context.\n>Exp keys: %s\n> Act keys: %s\n%s" k expKeys actKeys message
-        | Some actualValue ->
-          actualValue |> Expect.equal "value" v
+        | true, actualValue ->
+          actualValue
+            |> Expect.equal "value" v
 
 let tests fsc =
   testList "json" [
-    testCase "accessing .context" <| fun () ->
-      ignore (complexMessage.context)
-
     testList "encoding" [
       testList "primitives" [
         testEncode<uint16> fsc

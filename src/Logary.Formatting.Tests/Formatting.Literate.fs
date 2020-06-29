@@ -135,6 +135,15 @@ let levels expectedTimeText: LiterateConsole.ColouredText list =
 
 let parts =
   testList "parts" [
+    yield testCase "formatLocalTime" <| fun _ ->
+      let actual, _ =
+        let fp: IFormatProvider = upcast CultureInfo "sv-SE"
+        LiterateConsole.empty.formatLocalTime
+          fp (DateTimeOffset(2016, 10, 25, 11, 17, 41, TimeSpan(2,0,0)).asTimestamp)
+      let expected = "13:17:41"
+      Expect.isTrue (Regex.IsMatch(actual, @"\d{2}:\d{2}:\d{2}"))
+        (sprintf "Should print the time without time zone, was: %s" actual)
+
     let testLiterateCase testMsg messageFactory tokeniser cb =
       let conf, getWrittenParts = LiterateTesting.createInspectableWrittenPartsConf tokeniser
       let message = messageFactory Info

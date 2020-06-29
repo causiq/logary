@@ -3,6 +3,7 @@ module Logary.Services.Rutta.Shipper
 open System
 open Hopac
 open Logary
+open Logary.Model
 open Logary.Targets
 open Logary.Configuration
 open Logary.Targets.Shipper
@@ -23,7 +24,8 @@ let private runLogary shipperConf: IDisposable =
   //  ]
 
   let logary =
-    Config.create "Rutta" hostName
+    Resource.create("Rutta", Hostname hostName :: [])
+    |> Config.create
     |> Config.targets [
         //Noop.create (Noop.empty) (PointName.ofSingle "noop")
         //Console.create (Console.empty) (PointName.ofSingle "console")

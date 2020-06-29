@@ -1,5 +1,6 @@
 module Logary.Tests.TargetBaseline
 
+open System.Collections.Generic
 open Logary
 open Logary.Tests.Utils
 
@@ -9,6 +10,14 @@ module Messages =
     | Cake of slices:uint16
     | NoCake
     | FruitSalad
+
+    interface IValueFormattable with
+      member x.toKeyValues(baseKey: string) =
+        let value = match x with
+                    | Cake slices -> Value.Str (sprintf "Cake with %i slices" slices)
+                    | NoCake -> Value.Str "No cake"
+                    | FruitSalad -> Value.Str "Fruit salad"
+        Choice1Of2 (KeyValuePair<_,_>(baseKey, value))
 
   /// A user signup event with lots of nice data:
   ///
@@ -21,25 +30,37 @@ module Messages =
   /// - A couple of tags
   ///
   let userUpgradedPlan =
-    Message.event Info "User#{userId} '{email}' signed up, after {promoCount} promotions: {@promotions}. Cake? {willThereBeCake}"
-    |> Message.setContexts [
-      "env", box "production"
-      "service", box "WebApi"
-      "machineType", box "n1-standard-1"
-      "computeInstance", box "gke-project-id-default-pool-2de02f1c-6g3f"
-      "tenant", box (Map [ "id", box 123; "name", box "Company ABC" ])
-    ]
-    |> Message.setFieldsFromSeq [
-      "userId", box "haf"
-      "email", box "haf@example.com"
-      "promoCount", box 3
-      "ip", box "81.227.65.159" // 3 Sweden, Stockholm
-      "afterDinner", box FruitSalad
-      "willThereBeCake", box (Cake 12us)
-    ]
-    |> Message.tag "funnel"
-    |> Message.setField "promotions" [ "timeLimited2day"; "enableInvoices"; "friendReferral" ]
-    |> Message.addGauge "timeUntilSignup" (Gauge (Value.Float 2.3, Units.Days))
+    let context =
+      Map [
+        "env", Value.Str "production"
+        "service", Value.Str "WebApi"
+        "machineType", Value.Str "n1-standard-1"
+        "computeInstance", Value.Str "gke-project-id-default-pool-2de02f1c-6g3f"
+        "tenant.id", Value.Int64 123L
+        "tenant.name", Value.Str "Tom Petersson"
+        "tenant.company", Value.Str "Org Biz"
+      ]
+      :> IReadOnlyDictionary<string, Value>
+
+    let fields =
+      Map [
+        "userId", Value.Str "haf"
+        "email", Value.Str "haf@example.com"
+        "promoCount", Value.Int64 3L
+        "ip", Value.Str "81.227.65.159" // 3 Sweden, Stockholm
+      ]
+      :> IReadOnlyDictionary<string, Value>
+
+    let event =
+      Model.Event("User#{userId} '{email}' signed up, after {promoCount} promotions: {@promotions}. Cake? {willThereBeCake}",
+                  None, level=Info, ctx=context, fs=fields)
+
+    event.tag "funnel"
+    event.setField("afterDinner", FruitSalad)
+    event.setField("willThereBeCake", Cake 12us)
+    event.setField("promotions", [ "timeLimited2day"; "enableInvoices"; "friendReferral" ] |> String.concat ", ")
+    event.setGauge("timeUntilSignup", Gauge (Value.Float 2.3, U.Days))
+    event
 
 open NodaTime
 open Hopac
@@ -68,26 +89,26 @@ let basicTests targetName confFac addTS =
   testList (sprintf "target '%s' basics" targetName) [
     testCaseJob "create" <| job {
       let! ri = emptyRuntime
-      do! logger.infoWithBP (Model.Event "Creating instance: calling configFactory")
+      do! logger.infoWithBP (eventX "Creating instance: calling configFactory")
       let conf = confFac targetName
-      do! logger.infoWithBP (Model.Event "Creating instance: creating target")
+      do! logger.infoWithBP (eventX "Creating instance: creating target")
       let! targetApi = Target.create ri conf
-      do! logger.infoWithBP (Model.Event "Creating instance: asserting")
+      do! logger.infoWithBP (eventX "Creating instance: asserting")
       Expect.equal targetApi.name targetName "Should be named"
       do! finalise targetApi
     }
 
     testCaseJob "start, log and stop" <| job {
       let! targetApi, now = configure ()
-      do! logger.infoWithBP (Model.Event "Start, log and stop: log and wait")
+      do! logger.infoWithBP (eventX "Start, log and stop: log and wait")
       do! logMsgWaitAndShutdown targetApi (fun logAndWait ->
-        Message.eventInfo (sprintf "User signed up! @ %s" now) |> logAndWait)
-      do! logger.infoWithBP (Model.Event "Start, log and stop: done!")
+        Model.Event (sprintf "User signed up! @ %s" now) |> logAndWait)
+      do! logger.infoWithBP (eventX "Start, log and stop: done!")
     }
 
     testCaseJob "log exception message" <| job {
       let! targetApi, now = configure ()
-      let exnMsg = { exnMsg with value = sprintf "%s @ %s" exnMsg.value now }
+      let exnMsg = exnMsg.withEvent (sprintf "%s @ %s" exnMsg.event now)
       do! logMsgWaitAndShutdown targetApi (fun logAndWait -> logAndWait exnMsg)
     }
 

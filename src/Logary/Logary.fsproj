@@ -119,6 +119,7 @@
     <Compile Include="Registry.fs" />
     <Compile Include="Json.Encode.fs" />
     <Compile Include="Json.Decode.fs" />
+    <Compile Include="Json.MessageWriter.fs" />
     <!-- Below: formatting, serialisation -->
     <Compile Include="Ingestion.fs" />
     <Compile Include="Codecs.fs" />

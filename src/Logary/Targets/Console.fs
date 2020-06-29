@@ -22,11 +22,12 @@ let empty =
 [<CompiledName "Create">]
 let create conf name =
   TextWriter.create
-    { writer    = conf.writer
-      output    = System.Console.Out
-      error     = System.Console.Error
-      flush     = false
-      useErrorFor = Error }
+    { writer = conf.writer
+      output = System.Console.Out
+      error  = System.Console.Error
+      flush  = false
+      includeResource = true
+      useErrorFor     = Error }
     name
 
 /// Use with LogaryFactory.New( s => s.Target<Console.Builder>() )

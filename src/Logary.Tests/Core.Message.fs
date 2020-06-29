@@ -7,6 +7,7 @@ open FsCheck
 open Logary
 open NodaTime
 
+[<Tests>]
 let tests =
   testList "message" [
     testList "event" [
@@ -120,4 +121,5 @@ let tests =
         m.error.Value.stackTrace.frames
           |> Expect.isNonEmpty "Has stack frames, at least one"
     ]
-  ] |> testLabel "logary"
+  ]
+  |> testLabel "logary"

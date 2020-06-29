@@ -73,6 +73,8 @@ type LogaryMessageBase(kind, ?timestamp, ?messageId, ?name, ?level,
     x.setField("exn.source", Value.Str e.Source)
     x.setField("exn.string", Value.Str (e.ToString()))
 
+  abstract cloneAndUpdate: builder: (LogaryMessageBase -> unit) -> LogaryMessageBase
+
   member x.setContext(key: string, value: Value) =
     x.context.[key] <- value
 

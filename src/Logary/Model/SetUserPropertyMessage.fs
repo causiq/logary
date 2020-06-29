@@ -17,6 +17,14 @@ type SetUserPropertyMessage(key, value, ?timestamp, ?messageId, ?name, ?level, ?
   member val key = key with get, set
   member val value = value with get, set
 
+  member x.writeCopy cb =
+    let m = SetUserPropertyMessage x
+    cb m
+    m
+
+  override x.cloneAndUpdate builder =
+    x.writeCopy builder :> LogaryMessageBase
+
   interface Logary.SetUserPropertyMessage with
     member x.key = x.key
     member x.value = x.value

@@ -29,6 +29,24 @@ type Event(event, monetaryValue, ?timestamp, ?messageId, ?name, ?level, ?ctx, ?f
     cb y
     y
 
+  override x.cloneAndUpdate builder =
+    x.writeCopy builder :> LogaryMessageBase
+
+  member x.withEvent nextEventValue =
+    x.writeCopy <| fun m ->
+    m.event <- nextEventValue
+
+  member x.withMoney monetaryValue =
+    x.writeCopy <| fun m ->
+    m.monetaryValue <- monetaryValue
+
+  member x.withError error =
+    x.writeCopy <| fun m ->
+    m.error <- Some error
+
+  member x.withoutError () =
+    Event x
+
   override x.addExn(e, ?level) =
     level |> Option.iter (fun level -> x.level <- level)
     x.error <- Some (e.toErrorInfo())

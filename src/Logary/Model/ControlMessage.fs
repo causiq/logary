@@ -22,6 +22,9 @@ type ControlMessage(controlKind, ?children: Logary.ControlMessage[], ?timestamp,
     cb y
     y
 
+  override x.cloneAndUpdate builder =
+    x.writeCopy builder :> LogaryMessageBase
+
   interface Logary.ControlMessage with
     member x.ckind = controlKind
     member x.children = children

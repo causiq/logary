@@ -59,14 +59,14 @@ module internal Impl =
         RingBuffer.take api.requests ^=> function
           | Log (msg, ack) ->
             job {
-              let msgBase = msg.getAsBase(EventMessage)
+              let msgBase = msg.getAsBase Model.Event
               let bytes = Serialisation.serialise msgBase
               do! Job.Scheduler.isolate (fun _ -> bytes |>> state.sender)
               do! ack *<= ()
               return! loop state
             }
 
-          | Flush (ackCh, nack) ->
+          | Flush (ackCh, _) ->
             ackCh *<= ()
             >>= fun () -> loop state
 

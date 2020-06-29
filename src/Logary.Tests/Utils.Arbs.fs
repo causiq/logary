@@ -16,6 +16,20 @@ type Arbs =
     }
     |> Arb.fromGen
 
+  static member Currency(): Arbitrary<Currency> =
+    let generator =
+      Gen.oneof [
+        Arb.generate<NonEmptyString> |> Gen.map (fun (NonEmptyString s) -> Currency.Other s)
+        Gen.constant Currency.USD
+        Gen.constant Currency.EUR
+      ]
+    Arb.fromGen generator
+
+
+  static member ReadOnlyDictionary<'k, 'v when 'k : equality>(): Arbitrary<IReadOnlyDictionary<'k, 'v>> =
+    Arb.Default.Dictionary()
+      |> Arb.convert (fun d -> d :> IReadOnlyDictionary<_,_>) (fun x -> Dictionary<'k, 'v>(x))
+
   static member Uri (): Arbitrary<Uri> =
     let legalChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~:#[]@!$&'()*+,;=".ToCharArray()
     let segment = gen {
@@ -30,6 +44,18 @@ type Arbs =
       let! segments = Gen.listOfLength segs segment
       let path = "/" + (String.concat "/" segments)
       return Uri (sprintf "%s://%s%s" scheme domain.value path)
+    }
+    |> Arb.fromGen
+
+  static member Event(): Arbitrary<EventMessage> =
+    gen {
+      let! (NonEmptyString m)  = Arb.generate<NonEmptyString>
+      let! hasMoney = Arb.generate<bool>
+      if hasMoney then
+        let! money = Arb.generate<Money>
+        return Model.Event(m, Some money) :> EventMessage
+      else
+        return Model.Event m :> EventMessage
     }
     |> Arb.fromGen
 

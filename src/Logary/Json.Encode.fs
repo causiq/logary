@@ -133,7 +133,7 @@ let rec units: JsonEncoder<U> =
     E.jsonObjectWith inner (unitA, unitB)
   | U.Pow (baseU, power) ->
     let inner (baseU, power) =
-      E.required E.string "type" "mul"
+      E.required E.string "type" "pow"
       >> E.required units "base" baseU
       >> E.required E.float "power" power
     E.jsonObjectWith inner (baseU, power)
@@ -158,7 +158,7 @@ let gauge: JsonEncoder<Gauge> =
   let inner (Gauge (v, u)) =
     EI.required "type" "gauge"
     >> E.required value "value" v
-    >> E.required units "units" u
+    >> E.required units "unit" u
   E.jsonObjectWith inner
 
 let moduleInfo: JsonEncoder<ModuleInfo> =

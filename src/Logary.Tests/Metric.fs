@@ -223,7 +223,7 @@ let tests =
 
     testCase "gauge with histogram has non-empty result" <| fun () ->
       // TODO: exact expectations on how Gauge maps to Histogram; verify this test
-      
+
       let gaugeDetails, histDetails = whenUsingGaugeWithHistogram <| fun g ->
         g.inc 10.
         g.inc 5.
@@ -355,3 +355,4 @@ let tests =
       message.level
         |> Expect.equal "should have warn level" Warn
   ]
+  |> testLabel "logary"

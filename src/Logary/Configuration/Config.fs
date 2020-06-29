@@ -8,7 +8,6 @@ open Hopac
 open Hopac.Infixes
 open Hopac.Extensions
 open Logary
-open Logary.Internals.Resources
 open Logary.Metric
 open Logary.Internals
 open Logary.Targets
@@ -26,7 +25,7 @@ module Config =
   type T =
     private {
       targets: Map<string, TargetConf>
-      resource: Resource
+      resource: Model.Resource
       getTimestamp: unit -> EpochNanoSeconds
       consoleLock: DVar<Lock>
       ilogger: ILogger
@@ -39,7 +38,7 @@ module Config =
       metricRegistry: MetricRegistry
     }
 
-  let create (resource: Resource) =
+  let create (resource: Model.Resource) =
     let simple = SimpleMessageWriter() :> MessageWriter
     let errorHandler (xR: ProcessResult) =
       match xR with
@@ -73,7 +72,7 @@ module Config =
     tconfs |> Seq.fold (fun conf tconf -> conf |> target tconf) conf
 
   let host host (conf: T) =
-    { conf with resource = conf.resource |> Resource.setDetail (function Hostname _ -> true | _ -> false) host }
+    { conf with resource = conf.resource |> Model.Resource.setDetail (function Model.Hostname _ -> true | _ -> false) host }
 
   let service name (conf: T) =
     { conf with resource = { conf.resource with service = name } }

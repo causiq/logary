@@ -1,6 +1,7 @@
 namespace Logary.Tests
 
 open System.Collections.Generic
+open Hopac
 open Logary
 open Logary.Internals
 
@@ -13,6 +14,22 @@ type StubLogger(?name: string, ?logLevel: LogLevel) =
   let _logged = ResizeArray<_>(50)
 
   member x.logged = _logged :> IReadOnlyList<_>
+
+  member x.waitForAtLeast(num, ?maxCount) =
+    let maxCount = defaultArg maxCount 10
+
+    job {
+      let mutable cont = true
+      let mutable i = 1
+      while cont && i <= maxCount do
+        i <- i + 1
+        if _logged.Count >= num then
+          cont <- false
+        else
+          do! timeOutMillis (i * 20)
+    }
+
+
 
   interface Logger with
     member x.logWithAck (waitForBuffers, message) =

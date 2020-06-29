@@ -4,7 +4,6 @@ open System.Runtime.CompilerServices
 open Hopac
 open Hopac.Infixes
 open Logary
-open Logary.Message
 open Logary.Internals
 open Logary.Ingestion.HTTP.CORS
 open Logary.Configuration.Target

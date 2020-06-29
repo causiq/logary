@@ -161,6 +161,14 @@ type SpanMessage(label: string,
     finally
       Monitor.Exit _semaphore
 
+  member x.writeCopy (cb: SpanMessage -> unit): SpanMessage =
+    let m = SpanMessage x
+    cb m
+    m
+
+  override x.cloneAndUpdate builder =
+    x.writeCopy builder :> LogaryMessageBase
+
   interface Logary.SpanMessage with
     member __.label = _label
     member __.context = _context

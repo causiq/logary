@@ -378,4 +378,5 @@ let tests =
 
     testCaseJob "buffer conditional pipe" conditionalBufferingJ
 
-  ] |> testLabel "logary"
+  ]
+  |> testLabel "logary"

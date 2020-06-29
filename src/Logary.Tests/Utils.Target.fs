@@ -4,6 +4,7 @@ module Logary.Tests.Target
 open System
 open System.IO
 open Hopac
+open Logary.Internals.Chiron.Formatting
 open Logary.Model
 open NodaTime
 open Expecto
@@ -32,13 +33,13 @@ let clearStream (s: System.IO.StringWriter) =
   str
 
 let buildTextWriterTarget name =
-  let (out, error) = (new StringWriter (), new StringWriter ())
-  let twconf = TextWriter.TextWriterConf.create(out, error)
-  let twTargetConf = TextWriter.create twconf name
+  let out, error = new StringWriter(), new StringWriter()
+  let writerConf = TextWriter.TextWriterConf.create(out, error, JSONMessageWriter(JsonFormattingOptions.Pretty))
+  let twTargetConf = TextWriter.create writerConf name
   out, error, twTargetConf
 
 let buildLogManagerWith configFac = job {
-  let svc = Resource.create "svc"
+  let svc = Resource.create("svc", "localhost")
   let tname = "4test"
   let out, error, twTargetConf = buildTextWriterTarget tname
   // let iloggerConf = ILogger.Targets [ twTargetConf ]

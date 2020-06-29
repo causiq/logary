@@ -6,31 +6,39 @@ open Expecto.Flip
 open Logary
 open Logary.Codecs
 open Logary.Ingestion
+open Logary.Internals
 
-let tests = [
+[<Tests>]
+let tests =
+  testList "codecs" [
     testCase "plain"  <| fun () ->
       match Codec.plain (Ingested.String "hello") with
       | Result.Ok m ->
-        m.[0].value |> Expect.equal "Should have right value" "hello"
+        let e = m.[0].getAsOrThrow<EventMessage>()
+        e.event
+          |> Expect.equal "Should have right value" "hello"
+
       | Result.Error err ->
         failtestf "%s" err
 
     testList "json" [
       testCase "with fields.error and stacktrace" <| fun () ->
-        let sample = @"{""name"": ""MyProgram.ModuleA"", ""level"": ""Fatal"", ""value"": ""App fatal error while saving image"", ""fields"": { ""user"": { ""id"": 1, ""username"": ""haf"" }, ""error"": ""System.IO.FileNotFoundException: Could not load file or assembly 'Google.Api.Gax.Rest, Version=2.2.1.0, Culture=neutral, PublicKeyToken=3ec5ea7f18953e47' or one of its dependencies. The system cannot find the file specified.\nFile name: 'Google.Api.Gax.Rest, Version=2.2.1.0, Culture=neutral, PublicKeyToken=3ec5ea7f18953e47'\n   at Google.Cloud.Storage.V1.StorageClient.Create(GoogleCredential credential, EncryptionKey encryptionKey)\n   at A.B.C.D.Image.ImageService.<>c.<.ctor>b__4_0() in C:\\A\\B\\C\\D\\Image\\ImageService.cs:line 27\n   at System.Lazy`1.CreateValue()\n   at System.Lazy`1.LazyInitValue()\n   at A.B.C.D.Image.ImageService.TryGetFileSizeGCloud(String url, Int64& fileSize) in C:\\A\\B\\C\\D\\Image\\ImageService.cs:line 119\n\nWRN: Assembly binding logging is turned OFF.\nTo enable assembly bind failure logging, set the registry value [HKLM\\Software\\Microsoft\\Fusion!EnableLog] (DWORD) to 1.\nNote: There is some performance penalty associated with assembly bind failure logging.\nTo turn this feature off, remove the registry value [HKLM\\Software\\Microsoft\\Fusion!EnableLog].\n\n"" } }"
+        let sample = @"{""name"": ""MyProgram.ModuleA"", ""level"": ""Fatal"", ""event"": ""App fatal error while saving image"", ""fields"": { ""user"": { ""id"": 1, ""username"": ""haf"" }, ""error"": ""System.IO.FileNotFoundException: Could not load file or assembly 'Google.Api.Gax.Rest, Version=2.2.1.0, Culture=neutral, PublicKeyToken=3ec5ea7f18953e47' or one of its dependencies. The system cannot find the file specified.\nFile name: 'Google.Api.Gax.Rest, Version=2.2.1.0, Culture=neutral, PublicKeyToken=3ec5ea7f18953e47'\n   at Google.Cloud.Storage.V1.StorageClient.Create(GoogleCredential credential, EncryptionKey encryptionKey)\n   at A.B.C.D.Image.ImageService.<>c.<.ctor>b__4_0() in C:\\A\\B\\C\\D\\Image\\ImageService.cs:line 27\n   at System.Lazy`1.CreateValue()\n   at System.Lazy`1.LazyInitValue()\n   at A.B.C.D.Image.ImageService.TryGetFileSizeGCloud(String url, Int64& fileSize) in C:\\A\\B\\C\\D\\Image\\ImageService.cs:line 119\n\nWRN: Assembly binding logging is turned OFF.\nTo enable assembly bind failure logging, set the registry value [HKLM\\Software\\Microsoft\\Fusion!EnableLog] (DWORD) to 1.\nNote: There is some performance penalty associated with assembly bind failure logging.\nTo turn this feature off, remove the registry value [HKLM\\Software\\Microsoft\\Fusion!EnableLog].\n\n"" } }"
         match Codec.json (Ingested.String sample) with
         | Result.Ok m ->
-          m.[0].name
+          let e = m.[0].getAsOrThrow<EventMessage>()
+
+          e.name
             |> Expect.equal "Should parse name of logger" (PointName.parse "MyProgram.ModuleA")
-          m.[0]
-            |> Message.tryGetError
-            |> Expect.isSome "Has the error parsed and ready"
-          let lines =
-            m.[0]
-              |> Message.tryGetError
-              |> Option.get
-          lines
-            |> Expect.isNonEmpty "Has at least one line"
+
+          e.error
+            |> Expect.isSome "Has an error"
+
+          e.tryGetField "error"
+            |> Expect.isNone "Doesn't parse stacktraces into a field"
+
+          e.error.Value.stackTrace.frames
+            |> Expect.isNonEmpty "Has at least one frame in the stacktrace"
 
         | Result.Error err ->
           failtestf "%A" err
@@ -44,8 +52,8 @@ let tests = [
 </log4j:event>"""
         match Codec.log4jXML (Ingested.String sample) with
         | Result.Ok m ->
-          let m = m.[0]
-          m.value
+          let m = m.[0].getAsOrThrow<EventMessage>()
+          m.event
             |> Expect.equal "Should parse the message properly" "Sample info message"
           m.level
             |> Expect.equal "Parses Info" Info
@@ -76,40 +84,42 @@ method="run" file="Generator.java" line="94"/>
 </log4j:event>"""
         match Codec.log4jXML (Ingested.String sample) with
         | Result.Ok m ->
-          let m = m.[0]
+          let m = m.[0].getAsOrThrow<EventMessage>()
           m.name
             |> Expect.equal "Should parse logger name" (PointName.parse "first logger")
 
-          m.value
+          m.event
             |> Expect.equal "Should parse the message properly" "errormsg 3"
 
           m.level
             |> Expect.equal "Parses Error level" Error
 
-          m |> Message.tryGetField "thread"
+          m.tryGetFieldString "thread"
             |> Expect.equal "Thread is put as a field" (Some "Thread-3")
 
           m.timestamp
             |> Expect.equal "Should have correct timestamp" (1051494121460L * 1_000_000L)
 
-          m |> Message.tryGetField "NDC"
+          m.tryGetFieldString "NDC"
             |> Expect.equal "NDC is put as a field" (Some "third")
 
-          m |> Message.tryGetField "log4jmachinename"
+          m.tryGetFieldString "log4jmachinename"
             |> Expect.equal "Since we can't distinguish properties into either context nor fields: put them as fields"
                             (Some "windows")
 
-          m |> Message.tryGetField "log4japp"
+          m.tryGetFieldString "log4japp"
             |> Expect.equal "Has log4japp-field" (Some "udp-generator")
 
-          m |> Message.tryGetField "error"
-            |> Expect.equal
-                  "Should parse throwable correctly"
-                  (
-                    Some "java.lang.Exception: someexception-third
- 	at org.apache.log4j.chainsaw.Generator.run(Generator.java:94)
-"
-                  )
+          m.tryGetFieldString "error"
+            |> Expect.isNone "Should not have an error field; errors go in the `error` property"
+
+          m.error
+            |> Expect.isSome "Has an `error` property"
+
+          m.error
+            |> Expect.equal "Should parse throwable correctly"
+                  (DotNetStacktrace.tryParse "java.lang.Exception: someexception-third
+ 	at org.apache.log4j.chainsaw.Generator.run(Generator.java:94)")
 
         | Result.Error err ->
           failtestf "%s" err
@@ -133,3 +143,4 @@ method="run" file="Generator.java" line="94"/>
           |> Expect.isError "Failed to parse string, but did not throw."
     ]
   ]
+  |> testLabel "logary"

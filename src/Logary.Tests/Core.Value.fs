@@ -27,4 +27,5 @@ let tests =
           testCase actual (fun () ->
             actual |> Expect.equal "Should have correct result" expected)))
 
-  ] |> testLabel "logary"
+  ]
+  |> testLabel "logary"

@@ -17,6 +17,15 @@ type IdentifyUserMessage(prevUserId, newUserId, ?timestamp, ?messageId, ?name, ?
   member val prevUserId = prevUserId with get, set
   member val newUserId = newUserId with get, set
 
+  member x.writeCopy cb =
+    let m = IdentifyUserMessage x
+    cb m
+    m
+
+  override x.cloneAndUpdate builder =
+    x.writeCopy builder :> LogaryMessageBase
+
+
   interface Logary.IdentifyUserMessage with
     member x.prevUserId = x.prevUserId
     member x.newUserId = x.newUserId

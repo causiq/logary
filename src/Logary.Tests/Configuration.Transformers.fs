@@ -7,44 +7,50 @@ open Logary
 open Logary.Configuration
 open Logary.Configuration.Transformers
 
+[<Tests>]
 let bufferCounter =
   let take n stream =
     stream |> Stream.take n |> Stream.toSeq
 
-  let generateBufferTicker () = job {
-    let bufferTicker = BufferTicker ()
-    let expects =  Stream.Src.create ()
-    let! (sendItem, _) =
-      Pipe.start
-      |> Pipe.tick bufferTicker
-      |> Pipe.run (fun items -> Stream.Src.value expects items |> HasResult)
+  let generateBufferTicker () =
+    job {
+      let bufferTicker = BufferTicker ()
+      let expects = Stream.Src.create ()
+      let! ri = emptyRuntime
+      let! sendItem, _ =
+        Pipe.start
+        |> Pipe.tick bufferTicker
+        |> Pipe.run ri (fun items -> Stream.Src.value expects items |> HasResult)
 
-    return (sendItem, bufferTicker, Stream.Src.tap expects)
-  }
+      return sendItem, bufferTicker, Stream.Src.tap expects
+    }
 
   testList "simplest counter" [
     yield testCaseJob "initial" (job {
-      let! (sendItem, ticker, expects) = generateBufferTicker ()
+      let! _, ticker, expects = generateBufferTicker ()
       do! ticker.tick ()
       let! expect = expects |> take 1L
       let expect = expect |> Seq.toList |> List.map List.ofSeq
-      Expect.equal expect [[]] "emptry without sendItem"
+      Expect.equal expect [[]] "empty without sendItem"
     })
 
     yield testCaseJob "counting to three" (job {
-      let! (sendItem, ticker, expects) = generateBufferTicker ()
+      let! sendItem, ticker, expects = generateBufferTicker ()
       do! sendItem 1 |> PipeResult.defaultValue (Job.unit ())
       do! ticker.tick ()
-      do! sendItem 1  |> PipeResult.defaultValue (Job.unit ())
-      do! sendItem 1  |> PipeResult.defaultValue (Job.unit ())
-      do! timeOutMillis 100 // since senditem is async, so the order is not guarantee   // Mailbox.Now.send updateMb prev
+      do! sendItem 1 |> PipeResult.defaultValue (Job.unit ())
+      do! sendItem 1 |> PipeResult.defaultValue (Job.unit ())
+      do! timeOutMillis 100 // since sendItem is async, so the order is not guarantee   // Mailbox.Now.send updateMb prev
       do! ticker.tick ()
       let! expect = expects |> take 2L
-      let expect = expect |> Seq.toList
-      Expect.equal expect [[1];[1;1;];] "one and then two after two single counts"
+      let expect = Seq.toList expect
+      Expect.equal expect [[1];[1;1]] "one and then two after two single counts"
     })
   ]
+  |> testLabel "transformers"
+  |> testLabel "logary"
 
+[<Tests>]
 let snapshot =
   let sample = Snapshot.create [| 5L; 1L; 2L; 3L; 4L |]
   let empty = Snapshot.create [||]
@@ -115,6 +121,8 @@ let snapshot =
     testCase "empty: std dev" <| fun _ ->
       Expect.floatClose Accuracy.veryHigh (Snapshot.mean empty) 0. "zero"
   ]
+  |> testLabel "transformers"
+  |> testLabel "logary"
 
 let mockClock () =
   let mutable num = 0.
@@ -126,6 +134,7 @@ let mockClock () =
         res
   }
 
+[<Tests>]
 let reservoirs =
   testList "reservoirs" [
     testCase "uniform: update 1000 times" <| fun _ ->
@@ -167,13 +176,13 @@ let reservoirs =
 
         let flip f a b = f b a
         let passMinute s = // 5 second sampling rate, see mockClock
-          [ 1..12 ] |> List.fold (fun s' t -> ExpWeightedMovAvg.tick s') s
+          [ 1..12 ] |> List.fold (fun s' _ -> ExpWeightedMovAvg.tick s') s
 
         let initState =
           instance |> (flip ExpWeightedMovAvg.update) 3L |> ExpWeightedMovAvg.tick |> ExpWeightedMovAvg.tick
         let actual =
           [ for i in 1..expectations.Length - 1 do yield i ]
-          |> List.scan (fun s t -> passMinute s) initState
+          |> List.scan (fun s _ -> passMinute s) initState
           |> List.map (ExpWeightedMovAvg.rateInUnit (Duration.FromSeconds 1L))
 
         testCase explaination <| fun _ ->
@@ -239,10 +248,7 @@ let reservoirs =
           0.23594443
           0.22072766 ]
       ]
-   ]
+  ]
+  |> testLabel "transformers"
+  |> testLabel "logary"
 
-let tests = [
-  bufferCounter
-  snapshot
-  reservoirs
-]

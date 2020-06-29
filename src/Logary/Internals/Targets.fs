@@ -1,13 +1,13 @@
 namespace Logary.Internals
 
 open Hopac
-open Logary
 open Logary.Internals
+open Logary.Model
 
 /// The protocol for a targets runtime path (not the shutdown).
 type TargetMessage =
   /// Log and send something that can be ACK:ed with the message.
-  | Log of message: LogaryMessage * ack: IVar<unit>
+  | Log of message: LogaryMessageBase * ack: IVar<unit>
   /// Flush messages! Also, reply when you're done flushing your queue.
   | Flush of ack: IVar<unit> * nack: Promise<unit>
 

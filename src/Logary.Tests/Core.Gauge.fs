@@ -4,6 +4,7 @@ open Expecto
 open Expecto.Flip
 open Logary
 
+[<Tests>]
 let tests =
   testList "gauge" [
     testList "to string" [
@@ -38,4 +39,5 @@ let tests =
         ()
       | other ->
         failtestf "Expected U.Scaled (U.Seconds, _), but got %A" other
-  ] |> testLabel "logary"
+  ]
+  |> testLabel "logary"

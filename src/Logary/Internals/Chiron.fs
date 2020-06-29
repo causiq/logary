@@ -772,8 +772,8 @@ module Formatting =
         | NewLineBetweenElements of indentSpaces:int
 
     type JsonFormattingOptions =
-      { PropertyNameSpacing : PropertyNameSpacing
-        ElementSpacing : ElementSpacing }
+      { PropertyNameSpacing: PropertyNameSpacing
+        ElementSpacing: ElementSpacing }
 
       static member Compact =
         { PropertyNameSpacing = NoSpaceBetweenNameAndValue
@@ -840,12 +840,17 @@ module Formatting =
             | Json.Null -> append sb "null"
 
         and formatObject sb options level props =
-            let newLevel = level + 1
-            appendChar sb '{'
-            appendSpaceBetweenElements sb options newLevel
-            joinObject sb options newLevel props
-            appendSpaceBetweenElements sb options level
-            appendChar sb '}'
+            match props with
+            | [] ->
+              appendChar sb '{'
+              appendChar sb '}'
+            | props ->
+              let newLevel = level + 1
+              appendChar sb '{'
+              appendSpaceBetweenElements sb options newLevel
+              joinObject sb options newLevel props
+              appendSpaceBetweenElements sb options level
+              appendChar sb '}'
 
         and joinObject sb options level values =
             match values with

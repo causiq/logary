@@ -23,6 +23,15 @@ type HistogramMessage(labels, buckets, sum, ?timestamp, ?messageId, ?name, ?leve
   member val buckets = buckets with get, set
   member val sum = sum with get, set
 
+  member x.writeCopy cb =
+    let m = HistogramMessage x
+    cb m
+    m
+
+  override x.cloneAndUpdate builder =
+    x.writeCopy builder :> LogaryMessageBase
+
+
   interface Logary.HistogramMessage with
     member x.labels = x.labels
     member x.buckets = x.buckets

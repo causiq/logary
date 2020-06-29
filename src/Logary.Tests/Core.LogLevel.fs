@@ -16,3 +16,4 @@ let tests =
       if level = Info then level = Info else
       level <> Info
   ]
+  |> testLabel "logary"

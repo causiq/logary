@@ -8,54 +8,63 @@ open Logary
 open Logary.Internals
 open Logary.Configuration.Target
 
-let defaultMessageFormat = SimpleMessageWriter() :> MessageWriter
+let defaultMessageFormat = JSONMessageWriter() :> MessageWriter
 
 /// Configuration for a text writer
 type TextWriterConf =
   { /// A message writer to specify how to write the Message.
     writer: MessageWriter
-    /// the non-error text writer to output to
+    /// The non-error text writer to output to
     output: TextWriter
-    /// the error text writer to output to
+    /// The error text writer to output to
     error: TextWriter
-    /// whether to flush text writer after each line
+    /// Whether to flush text writer after each line
     flush: bool
-    /// the log level that is considered 'important' enough to write to the
+    /// Whether to add Logary's RuntimeInfo's Resource value to the context.
+    includeResource: bool
+    /// The log level that is considered 'important' enough to write to the
     /// error text writer
     useErrorFor: LogLevel }
 
   [<CompiledName "Create">]
   static member create(output, error, ?formatter: MessageWriter) =
-    { writer    = defaultArg formatter defaultMessageFormat
-      output    = output
-      error     = error
-      flush     = false
-      useErrorFor = Error }
+    { writer = defaultArg formatter defaultMessageFormat
+      output = output
+      error  = error
+      flush  = false
+      includeResource = true
+      useErrorFor     = Error }
 
 module internal Impl =
 
-  let loop (twConf: TextWriterConf) (api: TargetAPI) =
+  let loop (conf: TextWriterConf) (api: TargetAPI) =
     let withConsoleLock x = DVar.mapFun Lock.duringJob api.runtime.consoleLock x
 
     let rec loop (): Job<unit> =
       Alt.choose [
         api.shutdownCh ^=> fun ack ->
-          twConf.output.Dispose()
+          conf.output.Dispose()
 
-          if not (obj.ReferenceEquals(twConf.output, twConf.error)) then
-            twConf.error.Dispose()
+          if not (obj.ReferenceEquals(conf.output, conf.error)) then
+            conf.error.Dispose()
 
           ack *<= ()
 
         RingBuffer.take api.requests ^=> function
           | Log (message, ack) ->
             job {
-              let writer = if message.level < twConf.useErrorFor then twConf.output else twConf.error
+              let writer = if message.level < conf.useErrorFor then conf.output else conf.error
 
-              let xJ = Alt.fromUnitTask (fun ct -> twConf.writer.write(writer, message, ct)) :> Job<_>
+              let message =
+                if conf.includeResource then
+                  message.cloneAndUpdate(fun m -> m.setContextValues(api.runtime.resource.asMap()))
+                else
+                  message
+
+              let xJ = Alt.fromUnitTask (fun ct -> conf.writer.write(writer, message, ct)) :> Job<_>
               do! withConsoleLock xJ
 
-              if twConf.flush then
+              if conf.flush then
                 do! Job.fromUnitTask (fun _ -> writer.FlushAsync())
 
               do! ack *<= ()
@@ -63,8 +72,8 @@ module internal Impl =
             }
 
           | Flush (ack, _) ->
-            Job.fromUnitTask twConf.output.FlushAsync
-            >>=. Job.fromUnitTask twConf.error.FlushAsync
+            Job.fromUnitTask conf.output.FlushAsync
+            >>=. Job.fromUnitTask conf.error.FlushAsync
             >>= IVar.fill ack
             >>= loop
 

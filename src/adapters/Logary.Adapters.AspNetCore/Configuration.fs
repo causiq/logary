@@ -30,7 +30,7 @@ module internal Impl =
     // TODO: extension method IServiceCollection.AddLogary()
     s.AddHttpContextAccessor()
      .AddSingleton(logary)
-     .AddSingleton(logary.getLogger(logary.runtimeInfo.service))
+     .AddSingleton(logary.getLogger(logary.runtimeInfo.resource.service))
      .AddTransient<IStartupFilter, LogaryStartupFilter>()
      .AddSingleton<ILoggerFactory, LogaryLoggerFactory>()
     |> ignore

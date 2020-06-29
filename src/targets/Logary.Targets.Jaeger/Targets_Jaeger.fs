@@ -120,10 +120,13 @@ module internal Mapping =
     tag
 
   let createJaegerProcess (runtime: RuntimeInfo) (processTags: Tag list) =
-    let tag k v = Tag(k, TagType.STRING, VStr=v)
-    let p = Process(runtime.service)
-    p.Tags.Add(tag "host" runtime.host)
-    p.Tags.Add(tag "logary.version" AssemblyVersionInformation.AssemblyVersion)
+    let tag (k, v) = Tag(k, TagType.STRING, VStr=v)
+    let p = Process(runtime.resource.service)
+    runtime.resource.asLabels()
+      |> Seq.map tag
+      |> Seq.iter p.Tags.Add
+
+    p.Tags.Add(tag ("logary.version", AssemblyVersionInformation.AssemblyVersion))
     p.Tags.AddRange(processTags)
     p
 
@@ -354,13 +357,13 @@ module internal Impl =
           | Log (message, ack) ->
             let nextState =
               match message with
-              | :? SpanMessage as span ->
+              | :? Model.SpanMessage as span ->
                 match conf.sampler.shouldSample span with
                 | Ok attrs ->
                   handleSpan api.runtime (span, asTags attrs, ack) state
                 | Result.Error () ->
                   state
-              | :? LogaryMessageBase as m when Option.isSome m.spanId ->
+              | m when Option.isSome m.spanId ->
                 handleAmbientLog state (m.spanId.Value, message, api.runtime)
               | _ ->
                 state

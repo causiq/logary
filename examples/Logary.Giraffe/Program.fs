@@ -4,6 +4,7 @@ open System
 open System.IO
 open System.Net.Http
 open Logary
+open Logary.Model
 open Logary.Targets
 open Logary.Configuration
 open Microsoft.AspNetCore.Builder
@@ -105,7 +106,8 @@ let configureServices (services: IServiceCollection) =
 [<EntryPoint>]
 let main _ =
   let logary =
-    Config.create "Logary.Giraffe" "laptop"
+    Resource.create("Logary.Giraffe", "laptop")
+    |> Config.create
     |> Config.target (Console.create Console.empty "console")
     |> Config.ilogger (ILogger.Console Debug)
     |> Config.build

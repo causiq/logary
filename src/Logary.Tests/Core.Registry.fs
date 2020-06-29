@@ -49,7 +49,7 @@ let tests =
       do! debug "Flushed LogManager (2)."
       finfo
         |> Expect.equal "FlushPending should notify called that Registry is shut down."
-                        (FlushInfo (["registry is closed"],[]))
+                        (FlushInfo (["The Registry is shut down"],[]))
     }
 
     testCaseJob "after shutting down no logging happens" <|
@@ -79,7 +79,7 @@ let tests =
       let customMid = Middleware.setContext "correlationId" (Value.Str correlationId)
       let! logm, out, error = buildLogManagerWith (Config.middleware customMid)
       let lg = logm.getLogger("logger.test")
-      do! lg.eventAck "test info msg"
+      do! lg.eventAck("test info msg", fun m -> m.level <- Info)
       do! lg.errorAckIgnore "test error msg"
 
       let outStr = out.ToString()
@@ -310,4 +310,5 @@ let tests =
           |> Expect.equal "Should fail due to the RegistryClosed reason" ControlMessageKind.RegistryClosed
 
     })
-  ] |> testLabel "logary"
+  ]
+  |> testLabel "logary"

@@ -11,6 +11,7 @@ open Logary.Ingestion
 open Logary.Ingestion.HTTP
 open Logary.Ingestion.HTTP.CORS
 open Logary.Configuration
+open Logary.Model
 open Logary.Targets
 open fszmq
 
@@ -184,7 +185,8 @@ let start (cors, ilevel: LogLevel) (targets: TargetConf list) (listeners: (Rutta
 
   let logary =
     let hostName = Dns.GetHostName()
-    Config.create "Logary Rutta[Router]" hostName
+    Resource.create("Logary Rutta[Router]", Hostname hostName :: [])
+    |> Config.create
     |> Config.targets targets
     |> Config.processing (
         Events.events

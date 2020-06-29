@@ -10,6 +10,7 @@ open Logary
 open Logary.Trace
 open NodaTime
 
+[<Tests>]
 let tests =
   testList "Logger" [
     testList "api" [
@@ -17,8 +18,12 @@ let tests =
         m.waitForBuffers
           |> Expect.isFalse "`time` does a non-blocking log by default"
 
-        m.message.GetType().IsAssignableFrom(typeof<GaugeMessage>)
-          |> Expect.isTrue "Is a gauge"
+        let interfaces = m.message.GetType().GetInterfaces()
+
+        //printfn "interfaces %A" interfaces
+        interfaces
+          |> Array.exists (fun i -> i.IsAssignableFrom(typeof<Logary.GaugeMessage>))
+          |> Expect.isTrue "Has one interface, GaugeMessage, at the very least"
 
         let gm = m.message :?> GaugeMessage
 
@@ -29,8 +34,8 @@ let tests =
           |> Expect.isNonEmpty "Has labels, because it's a Gauge message"
 
         // has call-site info in the fields
-        for field in [ "file"; "site"; "lineNo"; "colNo" ] do
-          match m.message.tryGetFieldString field with
+        for field in [ "file"; "site"; "lineNo" ] do // no colNo for .Net
+          match m.message.tryGetField field with
           | None ->
             failtestf "Did not find field '%s' in 'fields' dictionary" field
           | Some _ -> ()
@@ -83,14 +88,19 @@ let tests =
 
         let nackIV = IVar ()
 
-        let! res = Alt.choose [
-          logger.timeAlt (Alt.never ())
-          nackIV :> _
-        ]
+        let! resP =
+          Alt.choose [ logger.timeAlt (Alt.never (), "time"); nackIV :> _ ]
+          |> Promise.start
 
         do! IVar.fill nackIV 10
+
+        let! res = resP
+
         res
           |> Expect.equal "Has the value from the nackIV" 10
+
+        do! logger.waitForAtLeast 1
+
         logger.logged.Count
           |> Expect.equal "Logged one message" 1
 
@@ -236,4 +246,5 @@ let tests =
         typeof<IDisposable>.IsAssignableFrom(typeof<LoggerScope>)
           |> Expect.isTrue "Should implement IDisposable"
     ]
-  ] |> testLabel "logary"
+  ]
+  |> testLabel "logary"

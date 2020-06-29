@@ -11,9 +11,9 @@ let tests =
   testList "global" [
     let logger = getStaticLogger (PointName.parse "a.b.c")
 
-    testCase "Flyweight level" <| fun _ ->
-      logger.level
-        |> Expect.equal "should equal Flyweight's Fatal" Fatal
+    testCase "NullLogger level" <| fun _ ->
+      NullLogger.instance.level
+        |> Expect.equal "should be Fatal" Fatal
 
     testCase "initialise config" <| fun () ->
       let given () =

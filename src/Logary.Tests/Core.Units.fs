@@ -205,5 +205,5 @@ let tests =
       with e ->
         Tests.failtestf "Should not throw, but did: %O" e
 
-  ] |> testLabel "logary"
-
+  ]
+  |> testLabel "logary"
