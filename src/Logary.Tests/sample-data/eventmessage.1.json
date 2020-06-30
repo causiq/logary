@@ -1,0 +1,25 @@
+{
+  "type": "event",
+  "id": "AAAAAAAAAAAAAAAAAAAAAA==",
+  "parentSpanId": "AAAAAAAAAAA=",
+  "logger": "",
+  "level": "verbose",
+  "timestamp": 0,
+  "context": {},
+  "fields": {
+    "\u0001": -0
+  },
+  "gauges": {
+    "}": {
+      "type": "gauge",
+      "value": -0,
+      "unit": "candelas"
+    }
+  },
+  "event": "#",
+  "monetaryValue": {
+    "type": "gauge",
+    "value": -1,
+    "unit": "usd"
+  }
+}

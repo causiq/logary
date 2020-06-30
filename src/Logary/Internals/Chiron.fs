@@ -641,7 +641,7 @@ module Parsing =
 
             between (str "\"") (str "\"")
                     (stringsSepBy (manySatisfy (fun c -> c <> '"' && c <> '\\'))
-                                (str "\\" >>. (escape <|> unicodeEscape)))
+                                  (str "\\" >>. (unicodeEscape <|> escape)))
 
 
 

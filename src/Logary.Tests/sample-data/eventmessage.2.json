@@ -1,0 +1,55 @@
+{
+  "type": "event",
+  "id": "//////////8AAAAAAAAABw==",
+  "logger": "",
+  "level": "warn",
+  "received": 1300,
+  "timestamp": 0,
+  "context": {
+    "\u0016": 0,
+    "*L": 0,
+    "-y": -0,
+    "5z\u001C": 0,
+    "6": 0.98862767213616753,
+    "BdZ": 0,
+    "Ce": 0,
+    "M": 0,
+    "N\u001A<": 0,
+    "Y": 0,
+    "])": 0,
+    "f": 0,
+    "g,": 1.3857403236721155,
+    "y": 0,
+    "}": 0
+  },
+  "fields": {},
+  "gauges": {
+    ")": {
+      "type": "gauge",
+      "value": -0,
+      "unit": {
+        "type": "scaled",
+        "unit": {
+          "type": "pow",
+          "base": {
+            "type": "log10",
+            "base": "metres"
+          },
+          "power": -0
+        },
+        "value": -0
+      }
+    },
+    "[Q\u00168\u0004": {
+      "type": "gauge",
+      "value": 0,
+      "unit": "watts"
+    }
+  },
+  "event": "15G=_+pf\bTJ\u000F",
+  "monetaryValue": {
+    "type": "gauge",
+    "value": -5,
+    "unit": "usd"
+  }
+}

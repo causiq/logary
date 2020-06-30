@@ -204,9 +204,9 @@ type Arbs =
     }
     Arb.fromGen generator
 
-//  static member EventMessage(): Arbitrary<Logary.EventMessage> =
-//    Arbs.ModelEventMessage()
-//      |> Arb.convert (fun m -> m :> _) (fun m -> m :?> Model.Event)
+  static member EventMessage(): Arbitrary<Logary.EventMessage> =
+    Arbs.ModelEventMessage()
+      |> Arb.convert (fun m -> m :> _) (fun m -> m :?> Model.Event)
 
 //  static member SpanMessage(): Arbitrary<Logary.SpanMessage> =
 //    let generator = gen {

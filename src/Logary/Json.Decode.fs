@@ -345,7 +345,7 @@ let internal logaryMessageWith clock ctorDecoder ctorFactory =
       |> JsonResult.bind (fun m -> JsonResult.foldBind folder m (JsonObject.toPropertyList jObj))
 
 
-let eventMessageReader clock: ObjectReader<Model.Event> =
+let eventMessageReader clock: ObjectReader<Logary.Model.Event> =
   let ctorDecoder =
         fun e m -> e, m
     <!> D.required D.string "event"
@@ -353,7 +353,7 @@ let eventMessageReader clock: ObjectReader<Model.Event> =
 
   logaryMessageWith clock ctorDecoder (fun (event, monetaryValue) -> Model.Event(event, monetaryValue))
 
-let eventMessage (clock: IClock): JsonDecoder<Model.Event> =
+let eventMessage (clock: IClock): JsonDecoder<Logary.Model.Event> =
   D.jsonObjectWith (eventMessageReader clock)
 
 let eventMessageInterface clock: JsonDecoder<Logary.EventMessage> =

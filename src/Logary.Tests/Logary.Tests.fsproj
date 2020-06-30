@@ -13,6 +13,8 @@
   <ItemGroup>
     <Content Include="sample-data\opentelemetry-trace.json" />
     <Content Include="sample-data\zipkin-trace.json" />
+    <Content Include="sample-data\eventmessage.1.json" />
+    <Content Include="sample-data\eventmessage.2.json" />
     <Compile Include="Utils.Target.fs" />
     <Compile Include="Utils.Expect.fs" />
     <Compile Include="Utils.Samples.fs" />

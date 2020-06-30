@@ -1,5 +1,6 @@
 module Logary.Tests.Json_2
 
+open System.IO
 open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
@@ -16,13 +17,24 @@ module D = Decode
 let testEncode suffix (encoder: JsonEncoder<'a>) =
   let testName = sprintf "encode %s%s" typeof<'a>.FullName (suffix |> Option.defaultValue "")
   testPropertyWithConfig fsc testName <| fun (value: 'a) ->
-  encoder value
-    |> ignore
+  encoder value |> ignore
+
+let ftestEncode suffix (encoder: JsonEncoder<'a>) =
+  let testName = sprintf "encode %s%s" typeof<'a>.FullName (suffix |> Option.defaultValue "")
+  ftestPropertyWithConfig fsc testName <| fun (value: 'a) ->
+  encoder value |> ignore
 
 let testDecode suffix (decoder: JsonDecoder<'a>) sampleJSON =
   let testName = sprintf "decode %s%s" typeof<'a>.FullName (suffix |> Option.defaultValue "")
   testCase testName <| fun () ->
-    decoder sampleJSON
+    decoder (sampleJSON ())
+      |> JsonResult.getOrThrow
+      |> ignore
+
+let ftestDecode suffix (decoder: JsonDecoder<'a>) sampleJSON =
+  let testName = sprintf "decode %s%s" typeof<'a>.FullName (suffix |> Option.defaultValue "")
+  ftestCase testName <| fun () ->
+    decoder (sampleJSON ())
       |> JsonResult.getOrThrow
       |> ignore
 
@@ -32,6 +44,7 @@ let buildRoundtrip (encoder: JsonEncoder<'a>, decoder: JsonDecoder<'a>) =
     try
       let encoded = encoder value
       s <- "before decode", sprintf "  Original CLR value: %A\nEncoded value: %A" value encoded
+//      printfn "2 => %s" (encoded |> Json.formatWith JsonFormattingOptions.SingleLine)
       let decoded = decoder encoded
       s <- "before JsonResult.getOrThrow", sprintf "  Original CLR value: %A\nEncoded value: %A\nDecoded value: %A" value encoded decoded
       let result = JsonResult.getOrThrow decoded
@@ -57,6 +70,11 @@ let tests =
     toRoundtrip.Add (testRoundtrip suffix (encode, decode))
     if Option.isSome sampleJSON then toDecode.Add (testDecode suffix decode sampleJSON.Value)
 
+  let fpairWithJSON suffix encode decode sampleJSON =
+    toEncode.Add (ftestEncode suffix encode)
+    toRoundtrip.Add (ftestRoundtrip suffix (encode, decode))
+    if Option.isSome sampleJSON then toDecode.Add (ftestDecode suffix decode sampleJSON.Value)
+
   let pair encode decode =
     pairWithJSON None encode decode None
 
@@ -68,7 +86,7 @@ let tests =
   pair E.currency D.currency
   pair E.errorInfo D.errorInfo
   pair E.errorInfos D.errorInfos
-//  pair E.eventMessage (D.eventMessage clock)
+//  pairWithJSON (Some " problematic") E.eventMessage (D.eventMessage clock) None
   pair E.gauge D.gauge
   pair E.gaugeMessage (D.gaugeMessage clock)
   pair E.histogramMessage (D.histogramMessage clock)
@@ -99,10 +117,10 @@ let tests =
       testPropertyWithConfigStdGen (879933225, 296761504) fsc "roundtrip Logary.Currency" (buildRoundtrip (E.currency, D.currency))
       testRoundtrip None (E.units, D.units)
       testPropertyWithConfig fsc "can generate Model.Event" <| fun (e: Model.Event) -> ignore e
-      testDecode None (D.eventMessage clock) (Json.parse """{"event":"Hello world"}""" |> JsonResult.getOrThrow)
-      testDecode (Some " simplest") (D.eventMessage clock) (Json.parse """{"event":"Hello world 2", "timestamp":"2010-02-03T04:55:00Z"}""" |> JsonResult.getOrThrow)
-      testDecode (Some " w ts") (D.eventMessage clock) (E.eventMessage (Model.Event("Hello world 3")))
-      //testDecode (Some " using Arb") (D.eventMessage clock) (Arb.generate<Model.Event> |> Gen.sample 1 1 |> List.head |> E.eventMessage)
+      testDecode None (D.eventMessage clock) (fun () -> Json.parse """{"event":"Hello world"}""" |> JsonResult.getOrThrow)
+      testDecode (Some " simplest") (D.eventMessage clock) (fun () -> Json.parse """{"event":"Hello world 2", "timestamp":"2010-02-03T04:55:00Z"}""" |> JsonResult.getOrThrow)
+      testDecode (Some " w ts") (D.eventMessage clock) (fun () -> E.eventMessage (Model.Event("Hello world 3")))
+//      ftestDecode (Some " unicode") (D.eventMessage clock) (fun () -> File.ReadAllText "sample-data/eventmessage.1.json" |> Json.parse |> JsonResult.getOrThrow)
     ]
   ]
   |> testLabel "logary"
